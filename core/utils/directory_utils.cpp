@@ -23,11 +23,17 @@ index_file_refs::ref_t reference(
     const std::string& name,
     bool include_missing /*= false*/
 ) {
-  if (!include_missing && !dir.exists(name)) {
-    return index_file_refs::ref_t(nullptr);
+  if (include_missing) {
+    return dir.attributes().add<index_file_refs>()->add(name);
   }
 
-  return dir.attributes().add<index_file_refs>()->add(name);
+  if (!dir.exists(name)) {
+    return nullptr;
+  }
+
+  auto ref = dir.attributes().add<index_file_refs>()->add(name);
+
+  return dir.exists(name) ? ref : index_file_refs::ref_t(nullptr);
 }
 
 #if defined(_MSC_VER)
@@ -46,13 +52,23 @@ bool reference(
   auto& attribute = dir.attributes().add<index_file_refs>();
 
   for (const std::string* file; file = source();) {
-    if (include_missing || dir.exists(*file)) {
+    if (include_missing) {
       if (!visitor(attribute->add(*file))) {
         return false;
       }
+
+      continue;
     }
-  
-  
+
+    if (!dir.exists(*file)) {
+      continue;
+    }
+
+    auto ref = attribute->add(*file);
+
+    if (dir.exists(*file) && !visitor(std::move(ref))) {
+      return false;
+    }
   }
 
   return true;
@@ -77,11 +93,20 @@ bool reference(
 
   auto& attribute = dir.attributes().add<index_file_refs>();
   return meta.visit_files([include_missing, &attribute, &dir, &visitor](const std::string& file) {
-    if (include_missing || dir.exists(file)) {
-      if (!visitor(attribute->add(file))) {
-        return false;
-      }
+    if (include_missing) {
+      return visitor(attribute->add(file));
     }
+
+    if (!dir.exists(file)) {
+      return true;
+    }
+
+    auto ref = attribute->add(file);
+
+    if (dir.exists(file)) {
+      return visitor(std::move(ref));
+    }
+
     return true;
   });
 }
@@ -102,10 +127,22 @@ bool reference(
   auto& attribute = dir.attributes().add<index_file_refs>();
 
   for (auto& file: files) {
-    if (include_missing || dir.exists(file)) {
+    if (include_missing) {
       if (!visitor(attribute->add(file))) {
         return false;
       }
+
+      continue;
+    }
+
+    if (!dir.exists(file)) {
+      continue;
+    }
+
+    auto ref = attribute->add(file);
+
+    if (dir.exists(file) && !visitor(std::move(ref))) {
+      return false;
     }
   }
 

@@ -32,21 +32,42 @@ iresearch::index_file_refs::ref_t load_newest_index_meta(
         return nullptr;
       }
 
+      iresearch::index_file_refs::ref_t ref;
       iresearch::directory::files files;
 
       dir.list(files);
 
-      auto* filename = reader->last_segments_file(files);
+      // ensure have a valid ref to a filename
+      for (;;) {
+        auto* filename = reader->last_segments_file(files);
 
-      if (!filename) {
-        return nullptr;
+        if (!filename) {
+          return nullptr;
+        }
+
+        ref = std::move(iresearch::directory_utils::reference(
+          const_cast<iresearch::directory&>(dir), *filename
+        ));
+
+        if (ref) {
+          break;
+        }
+
+        // remove non-existent filename
+        for (auto itr = files.begin(), end = files.end(); itr != end; ++itr) {
+          if (&*itr == filename) {
+            files.back().swap(*itr);
+            files.pop_back();
+            break;
+          }
+        }
       }
 
-      reader->read(dir, meta, *filename);
+      if (ref) {
+        reader->read(dir, meta, *ref);
+      }
 
-      return std::move(iresearch::directory_utils::reference(
-        const_cast<iresearch::directory&>(dir), *filename, true
-      ));
+      return std::move(ref);
     } catch (...) {
       return nullptr;
     }
@@ -64,8 +85,8 @@ iresearch::index_file_refs::ref_t load_newest_index_meta(
 
   struct {
     std::time_t mtime;
-    const std::string* filename;
     iresearch::index_meta_reader::ptr reader;
+    iresearch::index_file_refs::ref_t ref;
   } newest;
 
   newest.mtime = (iresearch::integer_traits<time_t>::min)();
@@ -88,30 +109,54 @@ iresearch::index_file_refs::ref_t load_newest_index_meta(
         continue; // try the next codec
       }
 
-      auto* filename = reader->last_segments_file(files);
+      iresearch::index_file_refs::ref_t ref;
 
-      if (!filename) {
+      // ensure have a valid ref to a filename
+      for (;;) {
+        auto* filename = reader->last_segments_file(files);
+
+        if (!filename) {
+          break; // try the next codec
+        }
+
+        ref = std::move(iresearch::directory_utils::reference(
+          const_cast<iresearch::directory&>(dir), *filename
+        ));
+
+        if (ref) {
+          break; // have a valid filename
+        }
+
+        // remove non-existent filename
+        for (auto itr = files.begin(), end = files.end(); itr != end; ++itr) {
+          if (&*itr == filename) {
+            files.back().swap(*itr);
+            files.pop_back();
+            break;
+          }
+        }
+      }
+
+      if (!ref) {
         continue; // try the next codec
       }
 
-      auto mtime = dir.mtime(*filename);
+      auto mtime = dir.mtime(*ref);
 
       if (mtime > newest.mtime) {
-        newest.filename = filename;
         newest.mtime = std::move(mtime);
         newest.reader = std::move(reader);
+        newest.ref = std::move(ref);
       }
     };
 
-    if (!newest.reader || !newest.filename) {
+    if (!newest.reader || !newest.ref) {
       return nullptr;
     }
 
-    newest.reader->read(dir, meta, *(newest.filename));
+    newest.reader->read(dir, meta, *(newest.ref));
 
-    return std::move(iresearch::directory_utils::reference(
-      const_cast<iresearch::directory&>(dir), *(newest.filename), true
-    ));
+    return std::move(newest.ref);
   } catch (...) {
     // NOOP
   }
