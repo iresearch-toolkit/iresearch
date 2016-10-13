@@ -39,15 +39,7 @@
 #elif defined (__GNUC__)
   // NOOP
 #endif
-
-NS_LOCAL
-
-void touch(std::time_t& time) {
-  time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-}
-
-NS_END
-
+  
 NS_ROOT
 
 //////////////////////////////////////////////////////////////////////////////
@@ -157,9 +149,8 @@ index_input::ptr memory_index_input::clone() const  {
  * memory_index_output
  * ------------------------------------------------------------------*/
 
-memory_index_output::memory_index_output(
-  memory_file& file, memory_file_meta& meta) NOEXCEPT:
-  file_(file), meta_(meta) {
+memory_index_output::memory_index_output(memory_file& file) NOEXCEPT
+  : file_(file) {
   reset();
 }
 
@@ -182,7 +173,6 @@ void memory_index_output::write_byte( byte_type byte ) {
     switch_buffer();
   }
   buf_[pos_++] = byte;
-  touch(meta_.mtime);
 }
 
 void memory_index_output::write_bytes( const byte_type* b, size_t len ) {
@@ -198,8 +188,6 @@ void memory_index_output::write_bytes( const byte_type* b, size_t len ) {
     b += to_copy;
     pos_ += to_copy;
   }
-
-  touch(meta_.mtime);
 }
 
 void memory_index_output::close() {
@@ -231,8 +219,6 @@ void memory_index_output::operator>>( data_output& out ) {
     out.write_bytes(file_.at( buf++ ), to_copy);
     pos += to_copy;
   }
-
-  touch(meta_.mtime);
 }
 
 /* -------------------------------------------------------------------
@@ -283,7 +269,7 @@ std::time_t memory_directory::mtime(const std::string& name) const {
   file_map::const_iterator it = files_.find(name);
 
   assert(it != files_.end());
-  return it->second.second.mtime;
+  return it->second->mtime();
 }
 
 bool memory_directory::remove(const std::string& name) {
@@ -310,7 +296,7 @@ int64_t memory_directory::length(const std::string& name) const {
   file_map::const_iterator it = files_.find(name);
 
   assert(it != files_.end());
-  return it->second.first->length();
+  return it->second->length();
 }
 
 void memory_directory::sync(const std::string& /*name*/) {
@@ -334,16 +320,14 @@ index_output::ptr memory_directory::create(const std::string& name) {
   auto& file = it->second;
 
   if (!res.second) { // file exists
-    file.first->reset();
+    file->reset();
   } else {
-    file.first = std::move(memory::make_unique<memory_file>(buf_size_));
+    file = std::move(memory::make_unique<memory_file>(buf_size_));
   }
-
-  touch(file.second.mtime);
 
   typedef checksum_index_output<boost::crc_32_type> checksum_output_t;
 
-  index_output::ptr out(new memory_index_output(*(file.first), file.second));
+  index_output::ptr out(new memory_index_output(*file));
   return index_output::make<checksum_output_t>(std::move(out));
 }
 
@@ -360,7 +344,7 @@ index_input::ptr memory_directory::open(const std::string& name) const {
     throw detailed_io_error(ss.str());
   }
 
-  return index_input::make<memory_index_input>(*it->second.first);
+  return index_input::make<memory_index_input>(*it->second);
 }
 
 /* -------------------------------------------------------------------

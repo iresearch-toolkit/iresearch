@@ -33,12 +33,23 @@ struct memory_file_meta {
 * memory_file
 * ------------------------------------------------------------------*/
 
+NS_LOCAL
+
+inline void touch(std::time_t& time) {
+  time = std::chrono::system_clock::to_time_t(
+    std::chrono::system_clock::now()
+  );
+}
+
+NS_END
+
 class memory_file : util::noncopyable {
  public:
   DECLARE_PTR(memory_file);
 
   explicit memory_file(size_t buf_size)
     : buf_size_(buf_size) {
+    touch(meta_.mtime);
   }
 
   memory_file(memory_file&& rhs)
@@ -52,7 +63,10 @@ class memory_file : util::noncopyable {
   size_t buffer_size() const { return buf_size_; }
 
   size_t length() const { return len_; }
-  void length(size_t length) { len_ = length; }
+  void length(size_t length) { 
+    len_ = length; 
+    touch(meta_.mtime);
+  }
 
   size_t buffer_length(size_t i) const {
     auto last_buf = len_ / buf_size_;
@@ -72,6 +86,8 @@ class memory_file : util::noncopyable {
   }
 
   byte_type* at(size_t i) const { return buffers_.at(i).get(); }
+
+  std::time_t mtime() const { return meta_.mtime; }
 
   void reset() { len_ = 0; }
 
@@ -93,6 +109,7 @@ class memory_file : util::noncopyable {
  private:
   typedef std::unique_ptr< byte_type[] > buffer_t;
 
+  memory_file_meta meta_;
   std::vector< buffer_t > buffers_;
   size_t len_{};
   size_t buf_size_;
@@ -141,7 +158,7 @@ class IRESEARCH_API memory_index_input final : public index_input {
 
 class IRESEARCH_API memory_index_output final : public index_output {
  public:
-  explicit memory_index_output(memory_file& file, memory_file_meta & meta) NOEXCEPT;
+  explicit memory_index_output(memory_file& file) NOEXCEPT;
   memory_index_output(const memory_index_output&) = default; 
   memory_index_output& operator=(const memory_index_output&) = delete;
 
@@ -169,7 +186,6 @@ class IRESEARCH_API memory_index_output final : public index_output {
   void switch_buffer();
 
   memory_file& file_; // underlying file
-  memory_file_meta& meta_; // metadata for the underlying file
   byte_type* buf_; /* current buffer */
   size_t buf_offset_; /* buffer offset in file */
   size_t pos_; /* position in current buffer */
@@ -214,7 +230,7 @@ class IRESEARCH_API memory_directory final : public directory {
 
  private:
   friend class single_instance_lock;
-  typedef std::unordered_map<std::string, std::pair<memory_file::ptr, memory_file_meta>> file_map;
+  typedef std::unordered_map<std::string, memory_file::ptr> file_map;
   typedef std::unordered_set<std::string> lock_map;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
@@ -235,8 +251,7 @@ struct IRESEARCH_API memory_output {
   explicit memory_output(size_t buf_size = memory_directory::DEF_BUF_SIZE);
 
   memory_output(memory_output&& rhs)
-    : file(std::move(rhs.file)),
-      meta(std::move(rhs.meta)) {
+    : file(std::move(rhs.file)) {
   }
 
   void reset() {
@@ -245,8 +260,7 @@ struct IRESEARCH_API memory_output {
   }
 
   memory_file file;
-  memory_file_meta meta;
-  memory_index_output stream{ file, meta };
+  memory_index_output stream{ file };
 };
 
 NS_END
