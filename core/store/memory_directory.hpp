@@ -236,8 +236,7 @@ struct IRESEARCH_API memory_output {
 
   memory_output(memory_output&& rhs)
     : file(std::move(rhs.file)),
-      meta(std::move(rhs.meta)),
-      stream(std::move(rhs.stream)) {
+      meta(std::move(rhs.meta)) {
   }
 
   void reset() {
