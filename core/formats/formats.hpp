@@ -220,10 +220,12 @@ struct IRESEARCH_API stored_fields_reader {
 struct IRESEARCH_API columns_writer {
   DECLARE_SPTR(columns_writer);
 
+  typedef std::function<bool(doc_id_t, const serializer&)> column_writer_f;
+
   virtual ~columns_writer();
 
   virtual bool prepare(directory& dir, const string_ref& filename) = 0;
-  virtual bool write(doc_id_t doc, const string_ref& field, const serializer& writer) = 0;
+  virtual std::pair<string_ref, column_writer_f> push_column(std::string&& name) = 0;
   virtual void end() = 0; // end document
   virtual void flush() = 0;
   virtual void reset() = 0;

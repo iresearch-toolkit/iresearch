@@ -77,7 +77,26 @@ bool segment_writer::store_attribute(
     const serializer* serializer) {
   REGISTER_TIMER_DETAILED();
   if (serializer) {
-    return col_writer_->write(num_docs_cached_, name, *serializer);
+    auto res = columns_.emplace(
+      std::piecewise_construct,
+      std::forward_as_tuple(make_hashed_ref(name, string_ref_hash_t())),
+      std::forward_as_tuple()
+    );
+
+    auto& it = res.first;
+
+    if (res.second) {
+      auto column = col_writer_->push_column(
+        std::string(name.c_str(), name.size())
+      );
+
+      // we have never seen it before
+      auto& key = const_cast<hashed_string_ref&>(it->first);
+      key = hashed_string_ref(it->first.hash(), column.first);
+      it->second = std::move(column.second);
+    }
+
+    return it->second(type_limits<type_t::doc_id_t>::min() + num_docs_cached_, *serializer);
   }
 
   return false;
@@ -101,6 +120,7 @@ void segment_writer::flush(std::string& filename, segment_meta& meta) {
   // flush columns indices
   col_writer_->flush();
   col_writer_->reset();
+  columns_.clear();
 
   // flush fields metadata & inverted data
   {

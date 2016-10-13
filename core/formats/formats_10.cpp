@@ -40,6 +40,7 @@
 #include <numeric>
 #include <cmath>
 #include <type_traits>
+#include <deque>
 
 NS_ROOT
 NS_BEGIN( version10 )
@@ -1463,27 +1464,31 @@ const string_ref COLUMNS_DATA_EXT = "cd";
 class writer : public iresearch::columns_writer {
  public:
   virtual bool prepare(directory& dir, const string_ref& name) override;
-  virtual bool write(doc_id_t doc, const string_ref& field, const serializer& writer) override;
+  virtual std::pair<string_ref, column_writer_f> push_column(std::string&& name) override;
   virtual void end() override; // end document
   virtual void flush() override;
   virtual void reset() override;
 
  private:
   struct column {
-     explicit column(size_t id) : id(id) {}
-     column(column&& other):
-       docs(std::move(other.docs)),
-       offsets(std::move(other.offsets)),
-       data(std::move(other.data)),
-       id(std::move(other.id)) {
+     explicit column(std::string&& name) 
+       : name(std::move(name)) {
      }
+
+     column(column&& rhs)
+       : name(std::move(rhs.name)),
+         docs(std::move(rhs.docs)),
+         offsets(std::move(rhs.offsets)),
+         data(std::move(rhs.data)) {
+     }
+
+     std::string name;
      std::vector<size_t> docs;
      std::vector<size_t> offsets;
      memory_output data;
-     size_t id;
    };
 
-   std::unordered_map<hashed_string_ref, column> columns_;
+   std::deque<column> columns_;
    directory* dir_;
    std::string name_;
 }; // writer
@@ -1494,26 +1499,31 @@ bool writer::prepare(directory& dir, const string_ref& name) {
   return true;
 }
 
-bool writer::write(doc_id_t doc, const string_ref& name, const serializer& writer) {
-  auto hashed_name = make_hashed_ref(name, string_ref_hash_t());
-  auto res = columns_.emplace(
-    std::piecewise_construct, 
-    std::forward_as_tuple(hashed_name),
-    std::forward_as_tuple(columns_.size())
-  );
+std::pair<string_ref, writer::column_writer_f> writer::push_column(std::string&& name) {
+  columns_.emplace_back(std::move(name));
 
-  auto& column = res.first->second;
-  auto& stream = column.data.stream;
+  auto& column = columns_.back();
+  return std::make_pair(
+    string_ref(columns_.back().name), 
+    [&column] (doc_id_t doc, const serializer& writer) {
+      assert(column.docs.empty() || doc >= column.docs.back());
+      
+      auto& stream = column.data.stream;
 
-  const auto ptr = stream.file_pointer();
-  if (!writer.write(stream)) {
-    // nothing has been written
-    return false;
-  }
-  
-  column.docs.push_back(doc);
-  column.offsets.push_back(ptr);
-  return true;
+      const auto ptr = stream.file_pointer();
+      if (!writer.write(stream)) {
+        // nothing has been written
+        return false;
+      }
+
+      auto& docs = column.docs;
+      if (docs.empty() || docs.back() != doc) {
+        column.docs.push_back(doc);
+        column.offsets.push_back(ptr);
+      }
+
+      return true;
+  });
 }
 
 void writer::end() {
@@ -1526,7 +1536,11 @@ void writer::flush() {
 
   std::map<string_ref, column*> sorted_columns;
   for (auto& column : columns_) {
-    sorted_columns.emplace(column.first, &column.second);
+    if (column.docs.empty()) {
+      continue; // filter out empty columns
+    }
+
+    sorted_columns.emplace(column.name, &column);
   }
 
   std::string filename;
@@ -1543,11 +1557,12 @@ void writer::flush() {
 
   const size_t data_start = data_out->file_pointer();
   meta_out->write_vlong(sorted_columns.size()); // number of columns
+  uint32_t id = 0;
   for (auto& entry : sorted_columns) {
     auto& column = *entry.second;
     column.data.stream.flush();
 
-    meta_out->write_vint(uint32_t(column.id)); // column id
+    meta_out->write_vint(id++); // column id
     write_string(*meta_out, entry.first); // column name
     meta_out->write_vlong(column.data.stream.file_pointer()); // column length
     {
@@ -1626,7 +1641,7 @@ bool reader::prepare(const reader_state& state) {
     column.offset = column_offset;
     column_offset += meta_in.read_vlong();
 
-    column.docs.resize(state.meta->docs_count, type_limits<type_t::address_t>::invalid());
+    column.docs.resize(state.meta->docs_count+1, type_limits<type_t::address_t>::invalid());
     doc_id_t last_doc = 0;
     size_t last_offset = 0;
     for (size_t num_docs = meta_in.read_vlong(); num_docs; --num_docs) {

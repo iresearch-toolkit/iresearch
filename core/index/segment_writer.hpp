@@ -121,6 +121,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   doc_header header_; // 
   update_contexts docs_context_;
   fields_data fields_;
+  std::unordered_map<hashed_string_ref, columns_writer::column_writer_f> columns_;
   std::string seg_name_;
   stored_fields_writer::ptr sf_writer_;
   columns_writer::ptr col_writer_;

@@ -1000,15 +1000,15 @@ class index_test_case_base : public tests::index_test_base {
 
       auto value_reader = segment.values("name", visitor);
       expected_value = "B"; // 'name' value in doc2
-      ASSERT_TRUE(value_reader(1));
-      expected_value = "D"; // 'name' value in doc4
-      ASSERT_TRUE(value_reader(3));
-      expected_value = "A"; // 'name' value in doc1
-      ASSERT_TRUE(value_reader(0));
-      expected_value = "C"; // 'name' value in doc3
       ASSERT_TRUE(value_reader(2));
+      expected_value = "D"; // 'name' value in doc4
+      ASSERT_TRUE(value_reader(4));
+      expected_value = "A"; // 'name' value in doc1
+      ASSERT_TRUE(value_reader(1));
+      expected_value = "C"; // 'name' value in doc3
+      ASSERT_TRUE(value_reader(3));
       ASSERT_EQ(4, calls_count);
-      ASSERT_FALSE(value_reader(4)); // invalid document id
+      ASSERT_FALSE(value_reader(5)); // invalid document id
       ASSERT_EQ(4, calls_count);
     }
 
@@ -1023,13 +1023,13 @@ class index_test_case_base : public tests::index_test_base {
 
       auto value_reader = segment.values("prefix", visitor);
       expected_value = "abcd"; // 'prefix' value in doc1
-      ASSERT_TRUE(value_reader(0)); 
-      ASSERT_FALSE(value_reader(1)); // doc2 does not contain 'prefix' column
+      ASSERT_TRUE(value_reader(1)); 
+      ASSERT_FALSE(value_reader(2)); // doc2 does not contain 'prefix' column
       expected_value = "abcde"; // 'prefix' value in doc4
-      ASSERT_TRUE(value_reader(3));
-      ASSERT_FALSE(value_reader(2)); // doc3 does not contain 'prefix' column
+      ASSERT_TRUE(value_reader(4));
+      ASSERT_FALSE(value_reader(3)); // doc3 does not contain 'prefix' column
       ASSERT_EQ(2, calls_count);
-      ASSERT_FALSE(value_reader(4)); // invalid document id
+      ASSERT_FALSE(value_reader(5)); // invalid document id
       ASSERT_EQ(2, calls_count);
     }
   }

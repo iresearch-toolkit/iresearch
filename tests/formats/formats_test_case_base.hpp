@@ -1075,25 +1075,29 @@ class format_test_case_base : public index_test_base {
     // write _1 segment
     {
       ASSERT_TRUE(writer->prepare(dir(), meta0.name));
+      
+      auto field0_writer = writer->push_column(field0).second;
+      auto field1_writer = writer->push_column(field1).second;
+      auto field2_writer = writer->push_column(field2).second;
 
       string_writer.value = "field0_doc0";
-      ASSERT_TRUE(writer->write(0, field0, string_writer)); // doc==0, column==field0
+      ASSERT_TRUE(field0_writer(0, string_writer)); // doc==0, column==field0
 
       string_writer.value = "field1_doc0";
-      ASSERT_TRUE(writer->write(0, field1, string_writer)); // doc==0, column==field1
+      ASSERT_TRUE(field1_writer(0, string_writer)); // doc==0, column==field1
       //TODO: writer same doc_id ASSERT_TRUE(writer->write(0, field1, string_writer));
 
       string_writer.value = "field2_doc0";
-      ASSERT_FALSE(writer->write(0, field2, invalid_writer)); // doc==0, column==field2
+      ASSERT_FALSE(field2_writer(0, invalid_writer)); // doc==0, column==field2
 
       string_writer.value = "field0_doc1";
-      ASSERT_FALSE(writer->write(1, field0, invalid_writer)); // doc==1, column==field0
+      ASSERT_FALSE(field0_writer(1, invalid_writer)); // doc==1, column==field0
 
       string_writer.value = "field0_doc2";
-      ASSERT_TRUE(writer->write(2, field0, string_writer)); // doc==2, colum==field0
+      ASSERT_TRUE(field0_writer(2, string_writer)); // doc==2, colum==field0
 
       string_writer.value = "field0_doc33";
-      ASSERT_TRUE(writer->write(33, field0, string_writer)); // doc==33, colum==field0
+      ASSERT_TRUE(field0_writer(33, string_writer)); // doc==33, colum==field0
 
       writer->flush();
     }
@@ -1101,25 +1105,29 @@ class format_test_case_base : public index_test_base {
     // write _2 segment, reuse writer
     {
       ASSERT_TRUE(writer->prepare(dir(), meta1.name));
+      
+      auto field1_writer = writer->push_column(field1).second;
+      auto field2_writer = writer->push_column(field2).second;
+      auto field3_writer = writer->push_column(field3).second;
 
       string_writer.value = "segment_2_field3_doc0";
-      ASSERT_TRUE(writer->write(3, field3, string_writer)); // doc==0, column==field3
+      ASSERT_TRUE(field3_writer(0, string_writer)); // doc==0, column==field3
 
       string_writer.value = "segment_2_field1_doc0";
-      ASSERT_TRUE(writer->write(0, field1, string_writer)); // doc==0, column==field1
-      //TODO: writer same doc_id ASSERT_TRUE(writer->write(0, field1, string_writer));
+      ASSERT_TRUE(field1_writer(0, string_writer)); // doc==0, column==field1
+      //TODO: writer same doc_id ASSERT_TRUE(field1_writer(0, string_writer));
 
       string_writer.value = "segment_2_field2_doc0";
-      ASSERT_FALSE(writer->write(0, field2, invalid_writer)); // doc==0, column==field2
+      ASSERT_FALSE(field2_writer(0, invalid_writer)); // doc==0, column==field2
 
       string_writer.value = "segment_2_field0_doc1";
-      ASSERT_FALSE(writer->write(1, field3, invalid_writer)); // doc==1, column==field3
+      ASSERT_FALSE(field3_writer(1, invalid_writer)); // doc==1, column==field3
 
       string_writer.value = "segment_2_field1_doc12";
-      ASSERT_TRUE(writer->write(12, field1, string_writer)); // doc==12, colum==field1
+      ASSERT_TRUE(field1_writer(12, string_writer)); // doc==12, colum==field1
 
       string_writer.value = "segment_2_field3_doc23";
-      ASSERT_TRUE(writer->write(23, field3, string_writer)); // doc==23, colum==field3
+      ASSERT_TRUE(field3_writer(23, string_writer)); // doc==23, colum==field3
 
       writer->flush();
     }
