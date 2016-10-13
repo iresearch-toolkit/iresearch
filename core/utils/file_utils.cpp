@@ -180,6 +180,36 @@ bool file_sync(const file_path_t file) {
     0, NULL
   );
 
+  // try other sharing modes since MSFT Windows fails sometimes
+  if (INVALID_HANDLE_VALUE == handle) {
+      handle = ::CreateFileW(
+      file, GENERIC_WRITE,
+      FILE_SHARE_READ, NULL,
+      OPEN_EXISTING,
+      0, NULL
+    );
+  }
+
+  // try other sharing modes since MSFT Windows fails sometimes
+  if (INVALID_HANDLE_VALUE == handle) {
+      handle = ::CreateFileW(
+      file, GENERIC_WRITE,
+      FILE_SHARE_DELETE, NULL,
+      OPEN_EXISTING,
+      0, NULL
+    );
+  }
+
+  // try other sharing modes since MSFT Windows fails sometimes
+  if (INVALID_HANDLE_VALUE == handle) {
+      handle = ::CreateFileW(
+      file, GENERIC_WRITE,
+      0, NULL,
+      OPEN_EXISTING,
+      0, NULL
+    );
+  }
+
   if (INVALID_HANDLE_VALUE == handle) {
     return false;
   }
