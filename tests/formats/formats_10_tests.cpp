@@ -16,6 +16,7 @@
 #include "store/fs_directory.hpp"
 #include "formats/formats_10.hpp"
 #include "formats_test_case_base.hpp"
+#include "formats/format_utils.hpp"
 
 class format_10_test_case : public tests::format_test_case_base {
  protected:
@@ -321,7 +322,6 @@ class format_10_test_case : public tests::format_test_case_base {
 
   void format_compress_read_write() {
     const size_t start_offset = 100;
-    const size_t end_ptr = 12342;      
     const ir::doc_id_t blocks_count = 5000;
     const ir::doc_id_t block_docs = 128;
     const ir::doc_id_t last_block_docs_count = 73;
@@ -330,7 +330,8 @@ class format_10_test_case : public tests::format_test_case_base {
 
     // writer index
     {
-      writer.prepare(dir(), "_0.idx", start_offset);
+      auto out = dir().create("_0.idx");
+      writer.prepare(*out, start_offset);
 
       ir::doc_id_t i = 0;
       for (; i < blocks_count; ++i) {
@@ -338,14 +339,15 @@ class format_10_test_case : public tests::format_test_case_base {
       }      
       writer.write(last_block_docs_count, start_offset + i); // write terminal, partially filled block
 
-      writer.end(end_ptr);
+      writer.finish();
     }
 
     // read index
     {
       const auto max_doc = blocks_count*block_docs + last_block_docs_count + ir::type_limits<ir::type_t::doc_id_t>::min();
+      auto in = dir().open("_0.idx");
       ir::compressing_index_reader reader;
-      ASSERT_EQ(end_ptr, reader.prepare(dir(), "_0.idx", max_doc));
+      ASSERT_TRUE(reader.prepare(*in, max_doc));
       ASSERT_THROW(reader.start_ptr(max_doc + 1), ir::illegal_argument);
       for (ir::doc_id_t i = ir::type_limits<ir::type_t::doc_id_t>::min(); i < max_doc; ++i) {
         ASSERT_EQ(start_offset + (i - ir::type_limits<ir::type_t::doc_id_t>::min()) / block_docs, reader.start_ptr(i));

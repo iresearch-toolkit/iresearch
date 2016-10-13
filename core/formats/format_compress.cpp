@@ -49,19 +49,13 @@ compressing_index_writer::compressing_index_writer(size_t block_size)
     block_size_(block_size) {
 }
 
-void compressing_index_writer::prepare(
-    directory& dir, 
-    const std::string& file, 
-    uint64_t ptr) {
+void compressing_index_writer::prepare(index_output& out, uint64_t ptr) {
+  out_ = &out;
   last_pos_ = ptr;
   first_pos_ = ptr;
   docs_ = 0;
   block_docs_ = 0;
   block_chunks_ = 0;
-  out_ = dir.create(file);
-
-  format_utils::write_header(*out_, FORMAT_NAME, FORMAT_MAX);
-  out_->write_vint(packed::VERSION);
 }
   
 void compressing_index_writer::compute_stats(
@@ -190,18 +184,14 @@ void compressing_index_writer::write(uint32_t docs, uint64_t ptr) {
   last_pos_ = ptr;
 }
 
-void compressing_index_writer::end(uint64_t ptr) {
+void compressing_index_writer::finish() {
   assert(out_);
 
   if (block_chunks_ > 0) {
     flush();
   }
-
-  out_->write_vint(0U); // end marker
-  out_->write_vlong(ptr);
-  format_utils::write_footer(*out_);
-
-  out_.reset();
+  
+  out_->write_vint(0); // end marker
 }
 
 /* -------------------------------------------------------------------
@@ -221,20 +211,7 @@ block_chunk::block_chunk(block_chunk&& rhs)
   rhs.base = type_limits<type_t::doc_id_t>::invalid();
 }
 
-uint64_t compressing_index_reader::prepare( 
-    const directory& dir, 
-    const std::string& file,
-    uint64_t docs_count) {
-  checksum_index_input< boost::crc_32_type > in(dir.open(file));
-
-  format_utils::check_header(
-    in,
-    compressing_index_writer::FORMAT_NAME,
-    compressing_index_writer::FORMAT_MIN,
-    compressing_index_writer::FORMAT_MAX
-  );
-
-  packed_version_ = in.read_vint();
+bool compressing_index_reader::prepare(index_input& in, uint64_t docs_count) {
   size_t num_chunks = in.read_vint();
 
   std::vector<uint32_t> packed; 
@@ -301,11 +278,8 @@ uint64_t compressing_index_reader::prepare(
     data_.emplace_back(start, doc_base, std::move(blocks));
   }
 
-  const uint64_t end_ptr = in.read_vlong();
-  format_utils::check_footer(in);
   max_doc_ = docs_count;
-
-  return end_ptr;
+  return true;
 }
 
 uint64_t compressing_index_reader::start_ptr(doc_id_t doc) const {

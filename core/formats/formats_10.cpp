@@ -1732,6 +1732,7 @@ NS_END // columns
 
 const string_ref stored_fields_writer::FIELDS_EXT = "fd";
 const string_ref stored_fields_writer::FORMAT_FIELDS = "iresearch_10_stored_fields_fields";
+const string_ref FORMAT_INDEX = "iresearch_10_compressing_index";
 const string_ref stored_fields_writer::INDEX_EXT = "fx";
 
 stored_fields_writer::stored_fields_writer(uint32_t buf_size,
@@ -1816,7 +1817,10 @@ void stored_fields_writer::prepare(directory& dir, const string_ref& seg_name) {
 
   // prepare stored fields index
   file_name(name, seg_name, INDEX_EXT);
-  index.prepare(dir, name, fields_out->file_pointer());
+  index_out_ = dir.create(name);  
+  format_utils::write_header(*index_out_, FORMAT_INDEX, FORMAT_MAX);
+  index_out_->write_vint(packed::VERSION);
+  index.prepare(*index_out_, fields_out->file_pointer());
 }
 
 bool stored_fields_writer::write(const serializer& writer) {
@@ -1830,12 +1834,15 @@ void stored_fields_writer::finish() {
     ++num_incomplete_blocks_;
   }
 
-  index.end(fields_out->file_pointer());
+  index.finish(); // finish index
+  index_out_->write_vlong(fields_out->file_pointer());
+  format_utils::write_footer(*index_out_);
 
   fields_out->write_vint(num_blocks_);
   fields_out->write_vint(num_incomplete_blocks_);
   format_utils::write_footer(*fields_out);
 
+  index_out_.reset();
   fields_out.reset();
 }
 
@@ -2000,9 +2007,17 @@ void stored_fields_reader::prepare( const reader_state& state ) {
 
   // init index reader
   file_name(buf, state.meta->name, stored_fields_writer::INDEX_EXT);
-  const uint64_t max_ptr = idx_rdr_.prepare(
-    *state.dir, buf, state.meta->docs_count
+  checksum_index_input< boost::crc_32_type > in(state.dir->open(buf));
+  format_utils::check_header(
+    in,
+    compressing_index_writer::FORMAT_NAME,
+    compressing_index_writer::FORMAT_MIN,
+    compressing_index_writer::FORMAT_MAX
   );
+  auto packed_version = in.read_vint();
+  idx_rdr_.prepare(in, state.meta->docs_count);
+  const uint64_t max_ptr = in.read_vlong();
+  format_utils::check_footer(in);
 
   // init document reader
   file_name(buf, state.meta->name, stored_fields_writer::FIELDS_EXT);

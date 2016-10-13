@@ -35,9 +35,9 @@ class IRESEARCH_API compressing_index_writer : util::noncopyable {
 
   explicit compressing_index_writer(size_t block_size);
 
-  void prepare(directory& dir, const std::string& file, uint64_t ptr);
+  void prepare(index_output& out, uint64_t ptr);
   void write(uint32_t docs, uint64_t ptr);
-  void end(uint64_t ptr);
+  void finish();
 
  private:
   void flush();
@@ -53,7 +53,7 @@ class IRESEARCH_API compressing_index_writer : util::noncopyable {
   std::vector<uint32_t> packed_;
   std::unique_ptr<uint32_t[]> doc_base_deltas_;
   std::unique_ptr<uint64_t[]> doc_pos_deltas_;
-  index_output::ptr out_;
+  index_output* out_{};
   uint64_t first_pos_;
   uint64_t last_pos_;
   size_t block_size_;
@@ -83,13 +83,7 @@ struct block_chunk {
 
 class IRESEARCH_API compressing_index_reader : util::noncopyable {
  public:
-  // returns pointer to the meta of the data file
-  uint64_t prepare(
-    const directory& dir, 
-    const std::string& seg_name,
-    uint64_t docs_count
-  );
-
+  bool prepare(index_input& in, uint64_t docs_count);
   uint64_t start_ptr(doc_id_t doc) const;
 
  private:

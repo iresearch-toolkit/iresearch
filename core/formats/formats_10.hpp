@@ -269,6 +269,7 @@ class stored_fields_writer final : public iresearch::stored_fields_writer {
   iresearch::memory_output doc_body_; // per document body buffer
   iresearch::memory_output seg_buf_; // per segment buffer
   index_output::ptr fields_out; // fields output stream
+  index_output::ptr index_out_; // index output stream
   uint32_t offsets_[MAX_BUFFERED_DOCS]{}; // document offset
   uint64_t last_offset_;
   uint32_t doc_base;
@@ -338,12 +339,6 @@ class stored_fields_reader final : public iresearch::stored_fields_reader {
   };
 
  private:
-  struct doc {
-    compressing_data_input* stream;
-    uint64_t size;
-    uint32_t fields_count;
-  };
-
   class compressing_document_reader {
    public:
    compressing_document_reader():
