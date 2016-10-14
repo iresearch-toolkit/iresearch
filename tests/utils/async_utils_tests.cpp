@@ -255,16 +255,18 @@ TEST_F(async_utils_tests, test_thread_pool_run) {
   // test schedule 1 task exception + 1 task
   {
     iresearch::async_utils::thread_pool pool(1, 0);
-    std::atomic<size_t> count(0);
+    std::condition_variable cond;
+    notifying_counter count(cond, 2);
     std::mutex mutex;
     auto task1 = [&mutex, &count]()->void { ++count; throw "error"; };
     auto task2 = [&mutex, &count]()->void { ++count; std::lock_guard<std::mutex> lock(mutex); };
     std::unique_lock<std::mutex> lock(mutex);
+    std::mutex dummy_mutex;
+    std::unique_lock<std::mutex> dummy_lock(dummy_mutex);
 
     pool.run(std::move(task1));
     pool.run(std::move(task2));
-    std::this_thread::sleep_for(std::chrono::milliseconds(100)); // assume threads start within 100msec
-    ASSERT_EQ(2, count); // 2 tasks started
+    ASSERT_TRUE(count || std::cv_status::no_timeout == cond.wait_for(dummy_lock, std::chrono::milliseconds(1000)) || count); // wait for all 2 tasks
     ASSERT_EQ(1, pool.threads());
     lock.unlock();
     pool.stop(true);
