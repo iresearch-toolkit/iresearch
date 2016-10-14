@@ -1312,7 +1312,7 @@ TEST_F(memory_index_test, concurrent_add_remove) {
     std::unordered_set<std::string> expected = { "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "~", "!", "@", "#", "$", "%" };
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_TRUE(reader->size() == 1 || reader->size() == 2); // can be 1 if thread0 finishes before thread1 starts
-    ASSERT_EQ(docs.size(), reader->docs_count());
+    ASSERT_TRUE(reader->docs_count() == docs.size() || reader->docs_count() == docs.size() - 1); // removed doc might have been on its own segment
 
     std::unordered_map<iresearch::string_ref, std::function<void(iresearch::data_input&)>> codecs{
       { "name", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
