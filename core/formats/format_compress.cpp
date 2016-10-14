@@ -44,8 +44,9 @@ NS_ROOT
 const string_ref compressing_index_writer::FORMAT_NAME = "iresearch_10_compressing_index";
 
 compressing_index_writer::compressing_index_writer(size_t block_size)
-  : doc_base_deltas_(new doc_id_t[block_size]),
-    doc_pos_deltas_(new uint64_t[block_size]),
+  : unpacked_(new uint64_t[2*block_size]),
+    doc_base_deltas_(unpacked_.get()),
+    doc_pos_deltas_(doc_base_deltas_ + block_size),
     block_size_(block_size) {
 }
 
@@ -160,11 +161,11 @@ void compressing_index_writer::flush() {
 
   // write document bases
   out_->write_vlong(docs_ - block_docs_);
-  write_block(full_chunks, doc_base_deltas_.get(), avg_chunk_docs, doc_delta_bits);
+  write_block(full_chunks, doc_base_deltas_, avg_chunk_docs, doc_delta_bits);
 
   // write start pointers
   out_->write_vlong(first_pos_);
-  write_block(full_chunks, doc_pos_deltas_.get(), avg_chunk_size, ptr_bits);
+  write_block(full_chunks, doc_pos_deltas_, avg_chunk_size, ptr_bits);
 }
 
 void compressing_index_writer::write(doc_id_t docs, uint64_t ptr) {

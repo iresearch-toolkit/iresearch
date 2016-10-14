@@ -1732,7 +1732,6 @@ NS_END // columns
 
 const string_ref stored_fields_writer::FIELDS_EXT = "fd";
 const string_ref stored_fields_writer::FORMAT_FIELDS = "iresearch_10_stored_fields_fields";
-const string_ref FORMAT_INDEX = "iresearch_10_compressing_index";
 const string_ref stored_fields_writer::INDEX_EXT = "fx";
 
 stored_fields_writer::stored_fields_writer(uint32_t buf_size,
@@ -1818,7 +1817,11 @@ void stored_fields_writer::prepare(directory& dir, const string_ref& seg_name) {
   // prepare stored fields index
   file_name(name, seg_name, INDEX_EXT);
   index_out_ = dir.create(name);  
-  format_utils::write_header(*index_out_, FORMAT_INDEX, FORMAT_MAX);
+  format_utils::write_header(
+    *index_out_, 
+    compressing_index_writer::FORMAT_NAME, 
+    compressing_index_writer::FORMAT_MAX
+  );
   index.prepare(*index_out_, fields_out->file_pointer());
 }
 

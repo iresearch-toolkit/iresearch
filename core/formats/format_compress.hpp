@@ -55,9 +55,10 @@ class IRESEARCH_API compressing_index_writer : util::noncopyable {
   );
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  std::vector<uint64_t> packed_;
-  std::unique_ptr<doc_id_t[]> doc_base_deltas_;
-  std::unique_ptr<uint64_t[]> doc_pos_deltas_;
+  std::vector<uint64_t> packed_; // proxy buffer for bit packing
+  std::unique_ptr<uint64_t[]> unpacked_; // buffer for storing unpacked data
+  doc_id_t* doc_base_deltas_; // where unpacked doc id's starts
+  uint64_t* doc_pos_deltas_; // where unpacked offsets starts
   index_output* out_{};
   uint64_t first_pos_;
   uint64_t last_pos_;
