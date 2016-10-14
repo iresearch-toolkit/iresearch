@@ -18,6 +18,8 @@
 
 NS_LOCAL
 
+MSVC_ONLY(__pragma(warning(push)))
+MSVC_ONLY(__pragma(warning(disable:4457))) // variable hides function param
 iresearch::index_file_refs::ref_t load_newest_index_meta(
   iresearch::index_meta& meta,
   const iresearch::directory& dir,
@@ -163,6 +165,7 @@ iresearch::index_file_refs::ref_t load_newest_index_meta(
 
   return nullptr;
 }
+MSVC_ONLY(__pragma(warning(pop)))
 
 NS_END
 
