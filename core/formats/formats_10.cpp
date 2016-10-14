@@ -1819,7 +1819,6 @@ void stored_fields_writer::prepare(directory& dir, const string_ref& seg_name) {
   file_name(name, seg_name, INDEX_EXT);
   index_out_ = dir.create(name);  
   format_utils::write_header(*index_out_, FORMAT_INDEX, FORMAT_MAX);
-  index_out_->write_vint(packed::VERSION);
   index.prepare(*index_out_, fields_out->file_pointer());
 }
 
@@ -2014,7 +2013,6 @@ void stored_fields_reader::prepare( const reader_state& state ) {
     compressing_index_writer::FORMAT_MIN,
     compressing_index_writer::FORMAT_MAX
   );
-  auto packed_version = in.read_vint();
   idx_rdr_.prepare(in, state.meta->docs_count);
   const uint64_t max_ptr = in.read_vlong();
   format_utils::check_footer(in);

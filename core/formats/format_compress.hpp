@@ -22,10 +22,9 @@
 
 NS_ROOT
 
-/* -------------------------------------------------------------------
- * compressing_index_writer
- * ------------------------------------------------------------------*/
-
+//////////////////////////////////////////////////////////////////////////////
+/// @class compressing_index_writer
+//////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API compressing_index_writer : util::noncopyable {
  public:
   static const string_ref FORMAT_NAME;
@@ -36,42 +35,51 @@ class IRESEARCH_API compressing_index_writer : util::noncopyable {
   explicit compressing_index_writer(size_t block_size);
 
   void prepare(index_output& out, uint64_t ptr);
-  void write(uint32_t docs, uint64_t ptr);
+  void write(doc_id_t docs, uint64_t value);
   void finish();
 
  private:
   void flush();
-  
+  void write_block(
+    size_t full_chunks,
+    const uint64_t* start,
+    uint64_t median,
+    uint32_t bits
+  );  
+
   void compute_stats(
-    uint32_t& avg_chunk_docs,
+    doc_id_t& avg_chunk_docs,
     uint64_t& avg_chunk_size,
     uint32_t& doc_delta_bits, 
     uint32_t& ptr_bits
   );
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  std::vector<uint32_t> packed_;
-  std::unique_ptr<uint32_t[]> doc_base_deltas_;
+  std::vector<uint64_t> packed_;
+  std::unique_ptr<doc_id_t[]> doc_base_deltas_;
   std::unique_ptr<uint64_t[]> doc_pos_deltas_;
   index_output* out_{};
   uint64_t first_pos_;
   uint64_t last_pos_;
   size_t block_size_;
   size_t block_chunks_;
-  uint32_t docs_;
-  uint32_t block_docs_;
+  doc_id_t docs_;
+  doc_id_t block_docs_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
-};
+}; // compressing_index_writer 
 
-/* -------------------------------------------------------------------
- * compressing_index_reader
- * ------------------------------------------------------------------*/
-
+//////////////////////////////////////////////////////////////////////////////
+/// @struct block
+/// @brief stores information about base document & start pointer
+//////////////////////////////////////////////////////////////////////////////
 struct block {
-  uint32_t base; // document offset
+  doc_id_t base; // document offset
   uint64_t start; // where block starts
-};
+}; // block
 
+//////////////////////////////////////////////////////////////////////////////
+/// @struct block_chunk
+//////////////////////////////////////////////////////////////////////////////
 struct block_chunk {
   block_chunk(uint64_t start, doc_id_t base, std::vector<block>&& docs);
   block_chunk(block_chunk&& rhs);
@@ -79,20 +87,22 @@ struct block_chunk {
   std::vector<block> blocks;
   uint64_t start; // block start
   doc_id_t base; // document base
-}; // block_data
+}; // block_chunk
 
+//////////////////////////////////////////////////////////////////////////////
+/// @class compressing_index_reader
+//////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API compressing_index_reader : util::noncopyable {
  public:
-  bool prepare(index_input& in, uint64_t docs_count);
+  bool prepare(index_input& in, doc_id_t docs_count);
   uint64_t start_ptr(doc_id_t doc) const;
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::vector<block_chunk> data_;
-  uint64_t max_doc_;
-  uint32_t packed_version_;
+  doc_id_t max_doc_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
-};
+}; // compressing_index_reader 
 
 NS_END
 

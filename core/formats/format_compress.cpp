@@ -37,14 +37,14 @@
 
 NS_ROOT
 
-/* -------------------------------------------------------------------
- * compressing_index_writer
- * ------------------------------------------------------------------*/
+// -----------------------------------------------------------------------------
+// --SECTION--                           compressing_index_writer implementation
+// -----------------------------------------------------------------------------
 
 const string_ref compressing_index_writer::FORMAT_NAME = "iresearch_10_compressing_index";
 
 compressing_index_writer::compressing_index_writer(size_t block_size)
-  : doc_base_deltas_(new uint32_t[block_size]),
+  : doc_base_deltas_(new doc_id_t[block_size]),
     doc_pos_deltas_(new uint64_t[block_size]),
     block_size_(block_size) {
 }
@@ -59,8 +59,8 @@ void compressing_index_writer::prepare(index_output& out, uint64_t ptr) {
 }
   
 void compressing_index_writer::compute_stats(
-    uint32_t& avg_chunk_docs,
-    uint64_t& avg_chunk_size,
+    doc_id_t& avg_chunk_docs,
+    size_t& avg_chunk_size,
     uint32_t& doc_delta_bits,
     uint32_t& ptr_bits) {
 
@@ -68,7 +68,7 @@ void compressing_index_writer::compute_stats(
   avg_chunk_size = 0;
   avg_chunk_docs = 0;
   if (block_chunks_ > 1) {
-    const size_t den = block_chunks_ - 1;
+    const auto den = block_chunks_ - 1;
     avg_chunk_docs = std::lround(
       static_cast<float_t>(docs_ - doc_base_deltas_[den]) / den
     );
@@ -76,23 +76,56 @@ void compressing_index_writer::compute_stats(
   }
 
   // compute number of bits to use in packing
-  uint32_t max_doc_delta = 0;
+  doc_id_t max_doc_delta = 0;
   uint64_t max_start = 0;
-  uint32_t doc_base = 0;
+  doc_id_t doc_base = 0;
   uint64_t start = 0;
   for (size_t i = 0; i < block_chunks_; ++i) {
     start += doc_pos_deltas_[i];
-    const int64_t start_delta = start - avg_chunk_size * i;
+    const auto start_delta = start - avg_chunk_size * i;
     //TODO: write start_delta
     max_start = std::max(max_start, zig_zag_encode64(start_delta));
 
-    const int32_t doc_delta = doc_base - avg_chunk_docs * uint32_t(i);
-    max_doc_delta = std::max(max_doc_delta, zig_zag_encode32(doc_delta));
+    const auto doc_delta = doc_base - avg_chunk_docs * i;
+    max_doc_delta = std::max(max_doc_delta, zig_zag_encode64(doc_delta));
     doc_base += doc_base_deltas_[i];
   }
 
-  doc_delta_bits = packed::bits_required_32(max_doc_delta);
+  doc_delta_bits = packed::bits_required_64(max_doc_delta);
   ptr_bits = packed::bits_required_64(max_start);
+}
+
+void compressing_index_writer::write_block(
+    size_t full_chunks, 
+    const uint64_t* start, 
+    uint64_t median,
+    uint32_t bits) {
+  // write block header
+  out_->write_vlong(median);
+  out_->write_vint(bits);
+
+  // write packed chunks
+  if (full_chunks) {
+    packed_.clear();
+    packed_.resize(full_chunks);
+
+    packed::pack(
+      start,
+      start + full_chunks,
+      &packed_[0],
+      bits
+    );
+
+    out_->write_bytes(
+      reinterpret_cast<const byte_type*>(&packed_[0]),
+      sizeof(uint64_t)*packed::blocks_required_64(full_chunks, bits)
+    );
+  }
+
+  // write tail
+  for (; full_chunks < block_chunks_; ++full_chunks) {
+    out_->write_vlong(start[full_chunks]);
+  }
 }
 
 void compressing_index_writer::flush() {
@@ -100,70 +133,41 @@ void compressing_index_writer::flush() {
   assert(block_chunks_ > 0);
 
   // average chunk docs count and size;
-  uint32_t avg_chunk_docs = 0;
-  uint64_t avg_chunk_size = 0;
+  doc_id_t avg_chunk_docs = 0;
+  size_t avg_chunk_size = 0;
   // number of bits to encode doc deltas & start pointers
   uint32_t doc_delta_bits = 0;
   uint32_t ptr_bits = 0;
 
   compute_stats(avg_chunk_docs, avg_chunk_size, doc_delta_bits, ptr_bits);
 
-  // convert docs to deltas
+  // convert docs & lengths to deltas
   doc_id_t delta, base = 0;
-
+  uint64_t start_delta, start = 0;
   for (size_t i = 0; i < block_chunks_; ++i) {
-    delta = zig_zag_encode32(base - avg_chunk_docs*uint32_t(i));
+    delta = zig_zag_encode64(base - avg_chunk_docs*i);
     base += doc_base_deltas_[i];
     doc_base_deltas_[i] = delta;
+    
+    start += doc_pos_deltas_[i];
+    start_delta = zig_zag_encode64(start - avg_chunk_size*i);
+    doc_pos_deltas_[i] = start_delta;
   }
 
-  size_t full_chunks = block_chunks_ - (block_chunks_ % packed::BLOCK_SIZE_32);
+  const size_t full_chunks = block_chunks_ - (block_chunks_ % packed::BLOCK_SIZE_64);
+  
+  out_->write_vlong(block_chunks_);
 
-  out_->write_vint(uint32_t(block_chunks_));
+  // write document bases
+  out_->write_vlong(docs_ - block_docs_);
+  write_block(full_chunks, doc_base_deltas_.get(), avg_chunk_docs, doc_delta_bits);
 
-  // write document bases : header
-  out_->write_vint(docs_ - block_docs_);
-  out_->write_vint(avg_chunk_docs);
-  out_->write_vint(doc_delta_bits);
-
-  // write document bases : full chunks 
-  if (full_chunks) {
-    packed_.clear();
-    packed_.resize(full_chunks);
-
-    packed::pack(
-      doc_base_deltas_.get(),
-      doc_base_deltas_.get() + full_chunks,
-      &packed_[0],
-      doc_delta_bits
-    );
-
-    out_->write_bytes(
-      reinterpret_cast<const byte_type*>(&packed_[0]),
-      sizeof(uint32_t)*packed::blocks_required_32(uint32_t(full_chunks), doc_delta_bits)
-    );
-  }
-
-  // write document bases : tail
-  for (; full_chunks < block_chunks_; ++full_chunks) {
-    out_->write_vint(doc_base_deltas_[full_chunks]);
-  }
-
-  // write start pointers : header 
+  // write start pointers
   out_->write_vlong(first_pos_);
-  out_->write_vlong(avg_chunk_size);
-  out_->write_vint(ptr_bits);
-
-  //TODO: use packed ints
-  // write start pointers : pointers 
-  int64_t pos = 0;
-  for (size_t i = 0; i < block_chunks_; ++i) {
-    pos += doc_pos_deltas_[i];
-    write_zvlong(*out_, pos - avg_chunk_size*i);
-  }
+  write_block(full_chunks, doc_pos_deltas_.get(), avg_chunk_size, ptr_bits);
 }
 
-void compressing_index_writer::write(uint32_t docs, uint64_t ptr) {
+void compressing_index_writer::write(doc_id_t docs, uint64_t ptr) {
   assert(out_);
 
   if (block_chunks_ == block_size_) {
@@ -194,9 +198,57 @@ void compressing_index_writer::finish() {
   out_->write_vint(0); // end marker
 }
 
-/* -------------------------------------------------------------------
- * compressing_index_reader
- * ------------------------------------------------------------------*/
+// -----------------------------------------------------------------------------
+// --SECTION--                           compressing_index_reader implementation
+// -----------------------------------------------------------------------------
+
+NS_LOCAL
+
+template<typename Func>
+void read_block(
+    index_input& in,
+    size_t full_chunks,
+    std::vector<uint64_t>& packed,
+    std::vector<uint64_t>& unpacked,
+    std::vector<block>& blocks,
+    const Func& get_property) {
+  const uint64_t median = in.read_vlong();
+  const uint32_t bits = in.read_vint();
+  if (bits > bits_required<uint64_t>()) {
+    // invalid number of bits per document
+    throw index_error();
+  }
+
+  // read full chunks 
+  if (full_chunks) {
+    unpacked.resize(full_chunks);
+
+    packed.resize(packed::blocks_required_64(full_chunks, bits));
+
+    in.read_bytes(
+      reinterpret_cast<byte_type*>(&packed[0]),
+      sizeof(uint64_t)*packed.size()
+    );
+
+    packed::unpack(
+      &unpacked[0], 
+      &unpacked[0] + unpacked.size(), 
+      &packed[0], 
+      bits
+    );
+
+    for (size_t i = 0; i < full_chunks; ++i) {
+      get_property(blocks[i]) = zig_zag_decode64(unpacked[i]) + i * median;
+    }
+  }
+
+  // read tail 
+  for (; full_chunks < blocks.size(); ++full_chunks) {
+    get_property(blocks[full_chunks]) = read_zvlong(in) + full_chunks * median;
+  }
+}
+
+NS_END
 
 block_chunk::block_chunk(
   uint64_t start, doc_id_t base, std::vector<block>&& blocks
@@ -211,69 +263,27 @@ block_chunk::block_chunk(block_chunk&& rhs)
   rhs.base = type_limits<type_t::doc_id_t>::invalid();
 }
 
-bool compressing_index_reader::prepare(index_input& in, uint64_t docs_count) {
-  size_t num_chunks = in.read_vint();
+bool compressing_index_reader::prepare(index_input& in, doc_id_t docs_count) {
+  std::vector<uint64_t> packed; 
+  std::vector<uint64_t> unpacked;
 
-  std::vector<uint32_t> packed; 
-  std::vector<uint32_t> unpacked;
+  std::vector<block> blocks(in.read_vlong());
+  for (; !blocks.empty(); blocks.resize(in.read_vlong())) {
+    size_t full_chunks = blocks.size() - (blocks.size() % packed::BLOCK_SIZE_64);
 
-  std::vector<block> blocks(num_chunks);
-  for (; num_chunks; num_chunks = in.read_vint()) {
-    blocks.resize(num_chunks);
-
-    size_t full_chunks = num_chunks - (num_chunks % packed::BLOCK_SIZE_32);
-
-    // read document bases : header
+    // read document bases
     const doc_id_t doc_base = in.read_vlong();
-    const doc_id_t avg_delta = in.read_vlong();
-    const uint32_t doc_bits = in.read_vint();
-    if (doc_bits > bits_required<uint32_t>()) {
-      // invalid number of bits per document
-      throw index_error();
-    }
+    read_block(
+      in, full_chunks, packed, unpacked, blocks,
+      [] (block& b)->uint64_t& { return b.base; }
+    );
 
-    // read document bases : full chunks 
-    if (full_chunks) {
-      unpacked.resize(full_chunks);
-
-      packed.resize(packed::blocks_required_32(uint32_t(full_chunks), doc_bits));
-      
-      in.read_bytes(
-        reinterpret_cast<byte_type*>(&packed[0]),
-        sizeof(uint32_t)*packed.size()
-      );
-
-      packed::unpack(
-        &unpacked[0],
-        &unpacked[0] + unpacked.size(),
-        &packed[0],
-        doc_bits
-      );
-
-      for (size_t i = 0; i < full_chunks; ++i) {
-        blocks[i].base = zig_zag_decode32(unpacked[i]) + doc_id_t(i) * avg_delta;
-      }
-    }
-
-    // read document bases : tail 
-    for (; full_chunks < num_chunks; ++full_chunks) {
-      blocks[full_chunks].base = read_zvint(in) + doc_id_t(full_chunks) * avg_delta;
-    }
-
-    // read start pointers : header
+    // read start pointers
     const uint64_t start = in.read_vlong();
-    const uint64_t avg_size = in.read_vlong();
-    const uint32_t ptr_bits = in.read_vint();
-    if (ptr_bits > bits_required<uint64_t>()) {
-      // invalid number of bits per block size
-      throw index_error();
-    }
-
-    //TODO: use packed ints here
-    // read start pointers : pointers
-    for (size_t i = 0; i < num_chunks; ++i) {
-      blocks[i].start = read_zvlong(in) + i*avg_size;
-    }
+    read_block(
+      in, full_chunks, packed, unpacked, blocks,
+      [] (block& b)->uint64_t& { return b.start; }
+    );
 
     data_.emplace_back(start, doc_base, std::move(blocks));
   }
@@ -282,10 +292,12 @@ bool compressing_index_reader::prepare(index_input& in, uint64_t docs_count) {
   return true;
 }
 
-uint64_t compressing_index_reader::start_ptr(doc_id_t doc) const {
+size_t compressing_index_reader::start_ptr(doc_id_t doc) const {
   assert(type_limits<type_t::doc_id_t>::valid(doc));
 
-  if (doc - type_limits<type_t::doc_id_t>::min() >= max_doc_) {
+  doc -= type_limits<type_t::doc_id_t>::min();
+
+  if (doc >= max_doc_) {
     throw illegal_argument();
   }
 
@@ -293,7 +305,7 @@ uint64_t compressing_index_reader::start_ptr(doc_id_t doc) const {
   auto chunk = std::lower_bound(
     data_.rbegin(),
     data_.rend(),
-    doc - type_limits<type_t::doc_id_t>::min(),
+    doc,
     [](const block_chunk& lhs, doc_id_t rhs) {
       return lhs.base > rhs;
   });
@@ -303,7 +315,7 @@ uint64_t compressing_index_reader::start_ptr(doc_id_t doc) const {
   auto block = std::lower_bound(
     chunk->blocks.rbegin(),
     chunk->blocks.rend(),
-    doc - chunk->base - type_limits<type_t::doc_id_t>::min(),
+    doc - chunk->base,
     [](const iresearch::block& lhs, doc_id_t rhs) {
       return lhs.base > rhs;
   });
