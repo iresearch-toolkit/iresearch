@@ -58,7 +58,7 @@ iresearch::bytes_ref read_compact(
     const auto read = in.read_bytes(&(buf[0]), buf_size);
     assert(read == buf_size);
   #else
-    in_.read_bytes(&(buf[0]), size);
+    in.read_bytes(&(buf[0]), size);
   #endif // IRESEARCH_DEBUG
 
   // -ve to mark uncompressed
