@@ -25,7 +25,7 @@ NS_ROOT
 //////////////////////////////////////////////////////////////////////////////
 /// @class compressing_index_writer
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API compressing_index_writer : util::noncopyable {
+class compressing_index_writer: util::noncopyable {
  public:
   static const string_ref FORMAT_NAME;
 
@@ -54,7 +54,6 @@ class IRESEARCH_API compressing_index_writer : util::noncopyable {
     uint32_t& ptr_bits
   );
 
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::vector<uint64_t> packed_; // proxy buffer for bit packing
   std::unique_ptr<uint64_t[]> unpacked_; // buffer for storing unpacked data
   doc_id_t* doc_base_deltas_; // where unpacked doc id's starts
@@ -66,7 +65,6 @@ class IRESEARCH_API compressing_index_writer : util::noncopyable {
   size_t block_chunks_;
   doc_id_t docs_;
   doc_id_t block_docs_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // compressing_index_writer 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -93,16 +91,14 @@ struct block_chunk {
 //////////////////////////////////////////////////////////////////////////////
 /// @class compressing_index_reader
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API compressing_index_reader : util::noncopyable {
+class compressing_index_reader: util::noncopyable {
  public:
   bool prepare(index_input& in, doc_id_t docs_count);
   uint64_t start_ptr(doc_id_t doc) const;
 
  private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::vector<block_chunk> data_;
   doc_id_t max_doc_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // compressing_index_reader 
 
 NS_END

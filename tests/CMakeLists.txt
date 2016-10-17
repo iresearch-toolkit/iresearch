@@ -49,7 +49,6 @@ configure_file(
 set(IReSearch_tests_sources
   ./analysis/analyzer_test.cpp
   ./analysis/token_stream_tests.cpp
-  ./formats/formats_10_tests.cpp
   ./formats/skip_list_test.cpp
   ./store/directory_test_case.cpp
   ./store/directory_cleaner_tests.cpp
@@ -135,6 +134,7 @@ add_executable(${IResearchTests_TARGET_NAME}-static
   EXCLUDE_FROM_ALL ${IReSearch_sources}
   ${IReSearch_tests_sources} ${IReSearch_tests_headers}
   ./analysis/text_analyzer_tests.cpp
+  ./formats/formats_10_tests.cpp
   ./iql/parser_test.cpp
 )
 

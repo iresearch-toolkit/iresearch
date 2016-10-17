@@ -49,7 +49,7 @@ iresearch::bytes_ref read_compact(
   iresearch::decompressor& decompressor,
   iresearch::bstring& buf
 ) {
-  auto size = in.read_int();
+  auto size = iresearch::read_zvint(in);
   size_t buf_size = std::abs(size);
 
   iresearch::oversize(buf, buf_size);
@@ -58,7 +58,7 @@ iresearch::bytes_ref read_compact(
     const auto read = in.read_bytes(&(buf[0]), buf_size);
     assert(read == buf_size);
   #else
-    in.read_bytes(&(buf[0]), size);
+    in.read_bytes(&(buf[0]), buf_size);
   #endif // IRESEARCH_DEBUG
 
   // -ve to mark uncompressed
@@ -82,14 +82,14 @@ void write_compact(
 
   if (compressor.size() < size) {
     assert(compressor.size() <= iresearch::integer_traits<int32_t>::const_max);
-    out.write_int(int32_t(compressor.size()));
+    iresearch::write_zvint(out, int32_t(compressor.size()));
     out.write_bytes(compressor.c_str(), compressor.size());
 
     return;
   }
 
   assert(size <= iresearch::integer_traits<int32_t>::const_max);
-  out.write_int(int32_t(0) - int32_t(size)); // -ve to mark uncompressed
+  iresearch::write_zvint(out, int32_t(0) - int32_t(size)); // -ve to mark uncompressed
   out.write_bytes(data, size);
 }
 

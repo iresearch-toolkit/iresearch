@@ -78,7 +78,6 @@ set(IResearch_core_sources
   ./document/serializer.cpp 
   ./error/error.cpp 
   ./formats/formats.cpp 
-  ./formats/format_compress.cpp 
   ./formats/format_utils.cpp 
   ./formats/skip_list.cpp 
   ./index/field_data.cpp
@@ -150,7 +149,6 @@ set(IResearch_core_headers
   ./document/serializer.hpp
   ./error/error.hpp
   ./formats/formats.hpp
-  ./formats/format_compress.hpp
   ./formats/format_utils.hpp
   ./formats/skip_list.hpp
   ./index/field_data.hpp
@@ -657,6 +655,7 @@ endif()
 add_library(${IResearch_TARGET_NAME}-analyzer-text-shared
   SHARED
   ./analysis/text_token_stream.cpp
+  ./analysis/text_token_stream.hpp
 )
 
 add_library(${IResearch_TARGET_NAME}-analyzer-text-static
@@ -787,19 +786,26 @@ endif()
 ### format plugins
 ################################################################################
 
-add_library(${IResearch_TARGET_NAME}-format-1_0-shared
-  SHARED
+set(IResearch_format-1_0_source
+  ./formats/format_compress.cpp
   ./formats/formats_10.cpp
   ./formats/formats_10_attributes.cpp
   ./formats/formats_burst_trie.cpp
+  ./formats/format_compress.hpp
+  ./formats/formats_10.hpp
+  ./formats/formats_10_attributes.hpp
+  ./formats/formats_burst_trie.hpp
+)
+
+add_library(${IResearch_TARGET_NAME}-format-1_0-shared
+  SHARED
+  ${IResearch_format-1_0_source}
   $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst> # used by formats_burst_trie
 )
 
 add_library(${IResearch_TARGET_NAME}-format-1_0-static
   STATIC
-  ./formats/formats_10.cpp
-  ./formats/formats_10_attributes.cpp
-  ./formats/formats_burst_trie.cpp
+  ${IResearch_format-1_0_source}
   $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst> # used by formats_burst_trie
 )
 
@@ -807,17 +813,13 @@ add_library(${IResearch_TARGET_NAME}-format-1_0-static
 if(MSVC)
   add_library(${IResearch_TARGET_NAME}-format-1_0-shared-scrt
     SHARED
-    ./formats/formats_10.cpp
-    ./formats/formats_10_attributes.cpp
-    ./formats/formats_burst_trie.cpp
+    ${IResearch_format-1_0_source}
     $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst-scrt> # used by formats_burst_trie
   )
 
   add_library(${IResearch_TARGET_NAME}-format-1_0-static-scrt
     STATIC
-    ./formats/formats_10.cpp
-    ./formats/formats_10_attributes.cpp
-    ./formats/formats_burst_trie.cpp
+    ${IResearch_format-1_0_source}
     $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst-scrt> # used by formats_burst_trie
   )
 endif()
