@@ -65,7 +65,6 @@ set(IReSearch_tests_sources
   ./index/fields_meta_test.cpp
   ./index/merge_writer_tests.cpp
   ./index/postings_tests.cpp
-  ./formats/formats_10_tests.cpp
   ./search/granular_range_filter_tests.cpp
   ./search/index_reader_test.cpp
   ./search/tfidf_test.cpp
