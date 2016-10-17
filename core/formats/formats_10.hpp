@@ -307,7 +307,7 @@ class stored_fields_reader final : public iresearch::stored_fields_reader {
     }
 
     void skip(size_t offset) {
-      assert(pos_ + offset <= decomp_.size());
+      assert(pos_ + offset <= data_.size());
       pos_ += offset;
       where_ += offset;
     }
@@ -333,6 +333,7 @@ class stored_fields_reader final : public iresearch::stored_fields_reader {
     index_input* in_;
     decompressor decomp_;
     bstring buf_; // buffer to store compressed data
+    bytes_ref data_; // reference to the uncompressed data
     size_t pos_; // position in decompressed buffer
     size_t len_; // document length
     size_t where_; // absolute position in data 

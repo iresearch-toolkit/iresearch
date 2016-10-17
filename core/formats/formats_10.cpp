@@ -42,6 +42,59 @@
 #include <type_traits>
 #include <deque>
 
+NS_LOCAL
+
+iresearch::bytes_ref read_compact(
+  iresearch::index_input& in,
+  iresearch::decompressor& decompressor,
+  iresearch::bstring& buf
+) {
+  auto size = in.read_int();
+  size_t buf_size = std::abs(size);
+
+  iresearch::oversize(buf, buf_size);
+
+  #ifdef IRESEARCH_DEBUG
+    const auto read = in.read_bytes(&(buf[0]), buf_size);
+    assert(read == buf_size);
+  #else
+    in_.read_bytes(&(buf[0]), size);
+  #endif // IRESEARCH_DEBUG
+
+  // -ve to mark uncompressed
+  if (size < 0) {
+    return iresearch::bytes_ref(buf.c_str(), buf_size);
+  }
+
+  decompressor.decompress(reinterpret_cast<const char*>(buf.c_str()), buf_size);
+
+  return decompressor;
+}
+
+void write_compact(
+  iresearch::index_output& out,
+  iresearch::compressor& compressor,
+  const iresearch::byte_type* data,
+  size_t size
+) {
+  // compressor can only handle size of int32_t, so can use the negative flag as a compression flag
+  compressor.compress(reinterpret_cast<const char*>(data), size);
+
+  if (compressor.size() < size) {
+    assert(compressor.size() <= iresearch::integer_traits<int32_t>::const_max);
+    out.write_int(int32_t(compressor.size()));
+    out.write_bytes(compressor.c_str(), compressor.size());
+
+    return;
+  }
+
+  assert(size <= iresearch::integer_traits<int32_t>::const_max);
+  out.write_int(int32_t(0) - int32_t(size)); // -ve to mark uncompressed
+  out.write_bytes(data, size);
+}
+
+NS_END
+
 NS_ROOT
 NS_BEGIN( version10 )
 
@@ -1759,8 +1812,7 @@ void stored_fields_writer::flush() {
 
   // write compressed data
   auto compress_and_copy = [this] (const byte_type* data, size_t size) {
-    compres.compress(reinterpret_cast<const char*>(data), size);
-    write_string(*fields_out, compres);
+    write_compact(*fields_out, compres, data, size);
     return true;
   };
   seg_buf_.file.visit(compress_and_copy);
@@ -1879,13 +1931,13 @@ void stored_fields_reader::compressing_document_reader::reset(doc_id_t doc) {
 }
 
 byte_type stored_fields_reader::compressing_data_input::read_byte() {
-  if (pos_ == decomp_.size()) {
+  if (pos_ == data_.size()) {
     refill();
   }
 
   ++where_;
 
-  return decomp_[pos_++];
+  return data_[pos_++];
 }
 
 size_t stored_fields_reader::compressing_data_input::read_bytes(
@@ -1895,12 +1947,12 @@ size_t stored_fields_reader::compressing_data_input::read_bytes(
   size_t copied;
 
   while(read < size && !eof()) {
-    if (pos_ == decomp_.size()) {
+    if (pos_ == data_.size()) {
       refill();
     }
 
     copied = std::min(size, len_ - where_);
-    std::memcpy(b, decomp_.c_str() + pos_, sizeof(byte_type) * copied);
+    std::memcpy(b, data_.c_str() + pos_, sizeof(byte_type) * copied);
 
     read += copied;
     b += copied;
@@ -1912,20 +1964,7 @@ size_t stored_fields_reader::compressing_data_input::read_bytes(
 }
 
 void stored_fields_reader::compressing_data_input::refill() {
-  // read encoded data
-  const size_t size = in_->read_vint();
-
-  oversize(buf_, size);
-
-#ifdef IRESEARCH_DEBUG
-  const auto read = in_->read_bytes(&(buf_[0]), size);
-  assert(read == size);
-#else 
-  in_->read_bytes(&(buf_[0]), size);
-#endif // IRESEARCH_DEBUG
-
-  // decode data
-  decomp_.decompress(bytes_ref(buf_.c_str(), size));
+  data_ = read_compact(*in_, decomp_, buf_);
   pos_ = 0;
 }
 
