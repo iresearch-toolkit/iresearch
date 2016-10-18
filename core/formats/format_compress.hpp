@@ -40,6 +40,7 @@ class compressing_index_writer: util::noncopyable {
 
  private:
   void flush();
+
   void write_block(
     size_t full_chunks,
     const uint64_t* start,
@@ -47,12 +48,7 @@ class compressing_index_writer: util::noncopyable {
     uint32_t bits
   );  
 
-  void compute_stats(
-    doc_id_t& avg_chunk_docs,
-    uint64_t& avg_chunk_size,
-    uint32_t& doc_delta_bits, 
-    uint32_t& ptr_bits
-  );
+  void encode_columns(doc_id_t& avg_chunk_docs, uint64_t& avg_chunk_size);
 
   std::vector<uint64_t> packed_; // proxy buffer for bit packing
   std::unique_ptr<uint64_t[]> unpacked_; // buffer for storing unpacked data
