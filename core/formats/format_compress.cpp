@@ -52,7 +52,6 @@ compressing_index_writer::compressing_index_writer(size_t block_size)
 
 void compressing_index_writer::prepare(index_output& out, uint64_t ptr) {
   out_ = &out;
-  last_pos_ = ptr;
   first_pos_ = ptr;
   docs_ = 0;
   block_docs_ = 0;
@@ -73,22 +72,25 @@ void compressing_index_writer::compute_stats(
     avg_chunk_docs = std::lround(
       static_cast<float_t>(docs_ - doc_base_deltas_[den]) / den
     );
-    avg_chunk_size = (last_pos_ - first_pos_) / den;
+    //avg_chunk_size = (last_pos_ - first_pos_) / den;
+    avg_chunk_size = (doc_pos_deltas_[block_chunks_-1] - first_pos_) / den;
   }
 
   // compute number of bits to use in packing
   doc_id_t max_doc_delta = 0;
   uint64_t max_start = 0;
   doc_id_t doc_base = 0;
-  uint64_t start = 0;
-  for (size_t i = 0; i < block_chunks_; ++i) {
-    start += doc_pos_deltas_[i];
-    const auto start_delta = start - avg_chunk_size * i;
-    //TODO: write start_delta
-    max_start = std::max(max_start, zig_zag_encode64(start_delta));
 
-    const auto doc_delta = doc_base - avg_chunk_docs * i;
-    max_doc_delta = std::max(max_doc_delta, zig_zag_encode64(doc_delta));
+  for (size_t i = 0; i < block_chunks_; ++i) {
+    max_start = std::max(
+      max_start,
+      zig_zag_encode64(doc_pos_deltas_[i] - avg_chunk_size * i) // delta between averaged and actual offset for position 'i'
+    );
+
+    max_doc_delta = std::max(
+      max_doc_delta, 
+      zig_zag_encode64(doc_base - avg_chunk_docs * i) // delta between averaged and actual doc_id for position 'i'
+    );
     doc_base += doc_base_deltas_[i];
   }
 
@@ -98,9 +100,11 @@ void compressing_index_writer::compute_stats(
 
 void compressing_index_writer::write_block(
     size_t full_chunks, 
-    const uint64_t* start, 
+    const uint64_t* begin, 
     uint64_t median,
     uint32_t bits) {
+  const auto* end = begin + block_chunks_;
+
   // write block header
   out_->write_vlong(median);
   out_->write_vint(bits);
@@ -111,8 +115,8 @@ void compressing_index_writer::write_block(
     packed_.resize(full_chunks);
 
     packed::pack(
-      start,
-      start + full_chunks,
+      begin,
+      begin + full_chunks,
       &packed_[0],
       bits
     );
@@ -121,11 +125,13 @@ void compressing_index_writer::write_block(
       reinterpret_cast<const byte_type*>(&packed_[0]),
       sizeof(uint64_t)*packed::blocks_required_64(full_chunks, bits)
     );
+
+    begin += full_chunks;
   }
 
   // write tail
-  for (; full_chunks < block_chunks_; ++full_chunks) {
-    out_->write_vlong(start[full_chunks]);
+  for (; begin < end; ++begin) {
+    out_->write_vlong(*begin);
   }
 }
 
@@ -144,15 +150,14 @@ void compressing_index_writer::flush() {
 
   // convert docs & lengths to deltas
   doc_id_t delta, base = 0;
-  uint64_t start_delta, start = 0;
   for (size_t i = 0; i < block_chunks_; ++i) {
     delta = zig_zag_encode64(base - avg_chunk_docs*i);
     base += doc_base_deltas_[i];
     doc_base_deltas_[i] = delta;
-    
-    start += doc_pos_deltas_[i];
-    start_delta = zig_zag_encode64(start - avg_chunk_size*i);
-    doc_pos_deltas_[i] = start_delta;
+
+    // convert block relative offsets to 
+    // deltas between average and actual offset
+    doc_pos_deltas_[i] = zig_zag_encode64(doc_pos_deltas_[i] - avg_chunk_size*i);
   }
 
   const size_t full_chunks = block_chunks_ - (block_chunks_ % packed::BLOCK_SIZE_64);
@@ -175,18 +180,15 @@ void compressing_index_writer::write(doc_id_t docs, uint64_t ptr) {
     flush();
     block_chunks_ = 0;
     block_docs_ = 0;
-    first_pos_ = last_pos_ = ptr;
+    first_pos_ = ptr;
   }
 
-  assert(ptr >= last_pos_);
-
   doc_base_deltas_[block_chunks_] = docs;
-  doc_pos_deltas_[block_chunks_] = ptr - last_pos_;
+  doc_pos_deltas_[block_chunks_] = ptr - first_pos_; // store block relative offsets
 
   ++block_chunks_;
   block_docs_ += docs;
   docs_ += docs;
-  last_pos_ = ptr;
 }
 
 void compressing_index_writer::finish() {

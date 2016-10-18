@@ -60,7 +60,6 @@ class compressing_index_writer: util::noncopyable {
   uint64_t* doc_pos_deltas_; // where unpacked offsets starts
   index_output* out_{};
   uint64_t first_pos_;
-  uint64_t last_pos_;
   size_t block_size_;
   size_t block_chunks_;
   doc_id_t docs_;
