@@ -91,29 +91,31 @@ void compressing_index_writer::write_block(
 void compressing_index_writer::flush() {
   assert(out_);
 
-  // number of cached elements
+  // total number of elements in block
   const size_t size = std::distance(keys_.get(), key_);
   assert(size);
 
-  // average chunk docs count and size;
-  doc_id_t avg_chunk_docs = 0;
-  size_t avg_chunk_size = 0;
+  // compute block stats
+  doc_id_t avg_chunk_docs = 0; // average number of docs per element
+  size_t avg_chunk_size = 0; // average size of element
   if (size > 1) {
     const auto den = size - 1;
     avg_chunk_docs = std::lround(
       static_cast<float_t>(block_docs_ - *(key_-1)) / den
     );
-    avg_chunk_size = *(offset_ - 1) / (size - 1); // -1 since the 1st offset is almost always 0
+    avg_chunk_size = *(offset_ - 1) / den; // -1 since the 1st offset is almost always 0
   }
-  
+ 
+  // total number of elements we can be pack using bit packing
   const size_t full_blocks = size - (size % packed::BLOCK_SIZE_64);
 
-  // convert doc id's and offsets to deltas, compute maximum deltas
+  // convert doc id's and offsets to deltas
+  // compute maximum deltas
   doc_id_t delta, base = 0;
-  uint64_t max_offset = 0; // maximum delta between average and actual start position
-  doc_id_t max_doc_delta = 0; // maximum delta between average and actual doc_id
+  uint64_t max_offset = 0; // max delta between average and actual start position
+  doc_id_t max_doc_delta = 0; // max delta between average and actual doc id
   for (size_t i = 0; i < full_blocks; ++i) {
-    // convert block relative doc_id's to deltas between average and actual doc_id
+    // convert block relative doc_id's to deltas between average and actual doc id
     auto& key = keys_[i];
     delta = zig_zag_encode64(base - avg_chunk_docs*i);
     base += key;
