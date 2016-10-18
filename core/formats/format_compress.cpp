@@ -45,25 +45,23 @@ const string_ref compressing_index_writer::FORMAT_NAME = "iresearch_10_compressi
 
 compressing_index_writer::compressing_index_writer(size_t block_size)
   : unpacked_(new uint64_t[2*block_size]),
-    doc_base_deltas_(unpacked_.get()),
-    doc_pos_deltas_(doc_base_deltas_ + block_size),
     block_size_(block_size) {
+  reset();
 }
 
 void compressing_index_writer::prepare(index_output& out, uint64_t ptr) {
   out_ = &out;
   first_pos_ = ptr;
   docs_ = 0;
-  block_docs_ = 0;
-  block_chunks_ = 0;
+  reset();
 }
   
 void compressing_index_writer::write_block(
     size_t full_chunks, 
-    const uint64_t* begin, 
+    const uint64_t* begin,
+    const uint64_t* end,
     uint64_t median,
     uint32_t bits) {
-  const auto* end = begin + block_chunks_;
 
   // write block header
   out_->write_vlong(median);
@@ -104,10 +102,9 @@ void compressing_index_writer::compute_stats(
   if (block_chunks_ > 1) {
     const auto den = block_chunks_ - 1;
     avg_chunk_docs = std::lround(
-      static_cast<float_t>(docs_ - doc_base_deltas_[den]) / den
+      static_cast<float_t>(docs_ - unpacked_[den]) / den
     );
-    //avg_chunk_size = (last_pos_ - first_pos_) / den;
-    avg_chunk_size = (doc_pos_deltas_[block_chunks_-1] - first_pos_) / den;
+    avg_chunk_size = (*doc_pos_deltas_ - first_pos_) / den;
   }
 }
 
@@ -128,7 +125,7 @@ void compressing_index_writer::flush() {
   for (size_t i = 0; i < block_chunks_; ++i) {
     // convert block relative doc_id's to 
     // deltas between average and actual doc_id 
-    auto& key = doc_base_deltas_[i];
+    auto& key = unpacked_[i];
     delta = zig_zag_encode64(base - avg_chunk_docs*i);
     base += key;
     key = delta;
@@ -136,7 +133,7 @@ void compressing_index_writer::flush() {
 
     // convert block relative offsets to 
     // deltas between average and actual offset
-    auto& offset = doc_pos_deltas_[i];
+    auto& offset = unpacked_[block_size_ + i];
     offset = zig_zag_encode64(offset - avg_chunk_size*i);
     max_offset = std::max(max_offset, offset);
   }
@@ -149,7 +146,8 @@ void compressing_index_writer::flush() {
   out_->write_vlong(docs_ - block_docs_);
   write_block(
     full_chunks, 
-    doc_base_deltas_, 
+    unpacked_.get(),
+    doc_base_deltas_,
     avg_chunk_docs, 
     packed::bits_required_64(max_doc_delta)
   );
@@ -158,10 +156,13 @@ void compressing_index_writer::flush() {
   out_->write_vlong(first_pos_);
   write_block(
     full_chunks, 
-    doc_pos_deltas_, 
+    unpacked_.get() + block_size_,
+    doc_pos_deltas_,
     avg_chunk_size, 
     packed::bits_required_64(max_offset)
   );
+
+  reset();
 }
 
 void compressing_index_writer::write(doc_id_t docs, uint64_t ptr) {
@@ -169,13 +170,11 @@ void compressing_index_writer::write(doc_id_t docs, uint64_t ptr) {
 
   if (block_chunks_ == block_size_) {
     flush();
-    block_chunks_ = 0;
-    block_docs_ = 0;
     first_pos_ = ptr;
   }
 
-  doc_base_deltas_[block_chunks_] = docs;
-  doc_pos_deltas_[block_chunks_] = ptr - first_pos_; // store block relative offsets
+  *doc_base_deltas_++ = docs;
+  *doc_pos_deltas_++ = ptr - first_pos_; // store block relative offsets
 
   ++block_chunks_;
   block_docs_ += docs;
