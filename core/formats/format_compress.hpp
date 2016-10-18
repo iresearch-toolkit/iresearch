@@ -51,22 +51,18 @@ class compressing_index_writer: util::noncopyable {
 
   void reset() {
     block_docs_ = 0;
-    block_chunks_ = 0;
-    doc_base_deltas_ = unpacked_.get();
-    doc_pos_deltas_ = doc_base_deltas_ + block_size_;
+    key_ = keys_.get();
+    offset_ = offsets_;
   }
 
-  void compute_stats(doc_id_t& avg_chunk_docs, uint64_t& avg_chunk_size);
-
   std::vector<uint64_t> packed_; // proxy buffer for bit packing
-  std::unique_ptr<uint64_t[]> unpacked_; // buffer for storing unpacked data
-  size_t block_size_;
-  doc_id_t* doc_base_deltas_; // where unpacked doc id's starts
-  uint64_t* doc_pos_deltas_; // where unpacked offsets starts
-  index_output* out_{};
-  uint64_t first_pos_;
-  size_t block_chunks_;
-  doc_id_t docs_;
+  std::unique_ptr<uint64_t[]> keys_; // buffer for storing unpacked data & pointer where unpacked keys begins
+  doc_id_t* offsets_; // where unpacked offsets begins
+  doc_id_t* key_; // current key 
+  uint64_t* offset_; // current offset
+  index_output* out_{}; // associated output stream
+  uint64_t block_offset_; // current block offset in a file
+  doc_id_t docs_; // total number of processed docs
   doc_id_t block_docs_;
 }; // compressing_index_writer 
 
