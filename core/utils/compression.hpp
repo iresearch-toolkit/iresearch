@@ -32,6 +32,7 @@ class IRESEARCH_API compressor: public bytes_ref, private util::noncopyable {
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::string buf_;
+  int dict_size_; // the size of the LZ4 dictionary from the previous call
   std::shared_ptr<void> stream_; // hide internal LZ4 implementation
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // compressor

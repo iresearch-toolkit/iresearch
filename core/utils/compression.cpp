@@ -18,6 +18,7 @@
 NS_ROOT
 
 compressor::compressor(unsigned int chunk_size):
+  dict_size_(0),
   stream_(LZ4_createStream(), [](void* ptr)->void { LZ4_freeStream(reinterpret_cast<LZ4_stream_t*>(ptr)); }) {
   oversize(buf_, LZ4_COMPRESSBOUND(chunk_size));
 }
@@ -25,17 +26,37 @@ compressor::compressor(unsigned int chunk_size):
 void compressor::compress(const char* src, size_t size) {
   assert(size <= std::numeric_limits<int>::max()); // LZ4 API uses int
   auto src_size = static_cast<int>(size);
-  auto& stream = *reinterpret_cast<LZ4_stream_t*>(stream_.get());
+  auto* stream = reinterpret_cast<LZ4_stream_t*>(stream_.get());
 
-  oversize(buf_, LZ4_compressBound(src_size));
-  LZ4_loadDict(&stream, nullptr, 0); // reset dictionary because buf_ may have changed
+  // ensure LZ4 dictionary from the previous run is at the start of buf_
+  {
+    auto* dict_store = dict_size_ ? &(buf_[0]) : nullptr;
 
-  auto buf_size = static_cast<int>(std::min(buf_.size(), static_cast<size_t>(std::numeric_limits<int>::max()))); // LZ4 API uses int
+    // move the LZ4 dictionary from the previous run to the start of buf_
+    if (dict_store) {
+      dict_size_ = LZ4_saveDict(stream, dict_store, dict_size_);
+      assert(dict_size_ >= 0);
+    }
+
+    oversize(buf_, LZ4_compressBound(src_size) + dict_size_);
+
+    // reload the LZ4 dictionary if buf_ has changed
+    if (&(buf_[0]) != dict_store) {
+      dict_size_ = LZ4_loadDict(stream, &(buf_[0]), dict_size_);
+      assert(dict_size_ >= 0);
+    }
+  }
+
+  auto* buf = &(buf_[dict_size_]);
+  auto buf_size = static_cast<int>(std::min(
+    buf_.size() - dict_size_,
+    static_cast<size_t>(std::numeric_limits<int>::max())) // LZ4 API uses int
+  );
 
   #if defined(LZ4_VERSION_NUMBER) && (LZ4_VERSION_NUMBER >= 10700)
-    auto lz4_size = LZ4_compress_fast_continue(&stream, src, &(buf_[0]), src_size, buf_size, 0); // 0 == use default acceleration
+    auto lz4_size = LZ4_compress_fast_continue(stream, src, buf, src_size, buf_size, 0); // 0 == use default acceleration
   #else
-    auto lz4_size = LZ4_compress_limitedOutput_continue(&stream, src, &(buf_[0]), src_size, buf_size); // use for LZ4 <= v1.6.0
+    auto lz4_size = LZ4_compress_limitedOutput_continue(stream, src, buf, src_size, buf_size); // use for LZ4 <= v1.6.0
   #endif
 
   if (lz4_size < 0) {
@@ -43,7 +64,7 @@ void compressor::compress(const char* src, size_t size) {
     throw index_error(); // corrupted index
   }
 
-  this->data_ = reinterpret_cast<const byte_type*>(buf_.data());
+  this->data_ = reinterpret_cast<const byte_type*>(buf);
   this->size_ = lz4_size;
 }
 
