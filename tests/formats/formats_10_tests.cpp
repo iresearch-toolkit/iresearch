@@ -334,10 +334,12 @@ class format_10_test_case : public tests::format_test_case_base {
       writer.prepare(*out, start_offset);
 
       ir::doc_id_t i = 0;
+      ir::doc_id_t doc = 0;
       for (; i < blocks_count; ++i) {
-        writer.write(block_docs, start_offset + i);
+        writer.write(doc, start_offset + i);
+        doc += block_docs;
       }      
-      writer.write(last_block_docs_count, start_offset + i); // write terminal, partially filled block
+      writer.write(doc, start_offset + i); // write terminal, partially filled block
 
       writer.finish();
     }

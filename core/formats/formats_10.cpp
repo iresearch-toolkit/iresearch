@@ -1801,7 +1801,7 @@ stored_fields_writer::stored_fields_writer(uint32_t buf_size,
 }
 
 void stored_fields_writer::flush() {
-  index.write(num_buffered_docs, static_cast<uint64_t>(fields_out->file_pointer()));
+  index.write(doc_base, static_cast<uint64_t>(fields_out->file_pointer()));
 
   seg_buf_.stream.flush();
 

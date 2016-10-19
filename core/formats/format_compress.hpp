@@ -40,6 +40,7 @@ class compressing_index_writer: util::noncopyable {
 
  private:
   void flush();
+  void reset(doc_id_t key, uint64_t offset);
 
   void write_block(
     size_t full_chunks,
@@ -49,21 +50,14 @@ class compressing_index_writer: util::noncopyable {
     uint32_t bits
   ); 
 
-  void reset() {
-    block_docs_ = 0;
-    key_ = keys_.get();
-    offset_ = offsets_;
-  }
-
   std::vector<uint64_t> packed_; // proxy buffer for bit packing
   std::unique_ptr<uint64_t[]> keys_; // buffer for storing unpacked data & pointer where unpacked keys begins
   doc_id_t* offsets_; // where unpacked offsets begins
   doc_id_t* key_; // current key 
   uint64_t* offset_; // current offset
   index_output* out_{}; // associated output stream
+  doc_id_t block_base_; // current block base doc id
   uint64_t block_offset_; // current block offset in a file
-  doc_id_t docs_; // total number of processed docs
-  doc_id_t block_docs_;
 }; // compressing_index_writer 
 
 //////////////////////////////////////////////////////////////////////////////
