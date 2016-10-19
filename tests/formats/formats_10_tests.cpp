@@ -331,7 +331,7 @@ class format_10_test_case : public tests::format_test_case_base {
     // writer index
     {
       auto out = dir().create("_0.idx");
-      writer.prepare(*out, start_offset);
+      writer.prepare(*out);
 
       ir::doc_id_t i = 0;
       ir::doc_id_t doc = 0;

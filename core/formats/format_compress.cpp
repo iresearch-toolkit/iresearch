@@ -48,18 +48,12 @@ compressing_index_writer::compressing_index_writer(size_t block_size)
     offsets_(keys_.get() + block_size) {
 }
 
-void compressing_index_writer::prepare(index_output& out, uint64_t offset) {
+void compressing_index_writer::prepare(index_output& out) {
   out_ = &out;
-  reset(0, offset);
+  key_ = offsets_; // will trigger 'reset' on write()
+  offset_ = offsets_; // will prevent flushing of emtpy block
 }
 
-void compressing_index_writer::reset(doc_id_t key, uint64_t offset) {
-  block_base_ = key;
-  block_offset_ = offset;
-  key_ = keys_.get();
-  offset_ = offsets_;
-}
-  
 void compressing_index_writer::write_block(
     size_t full_blocks, 
     const uint64_t* begin,
@@ -94,10 +88,20 @@ void compressing_index_writer::write_block(
 
 void compressing_index_writer::flush() {
   assert(out_);
+
+  // it's important that we determine total number of
+  // elements here using 'offset' column, since
+  // in prepare we implicitly trigger flush for first
+  // element
+  // since there are no cached elements yet, such
+  // way of getting number of elements will prevent
+  // us from the wrong behavior
    
   // total number of elements in block
-  const size_t size = std::distance(keys_.get(), key_);
-  assert(size);
+  const size_t size = std::distance(offsets_, offset_);
+  if (!size) {
+    return;
+  }
 
   // compute block stats
   doc_id_t avg_chunk_docs = 0; // average number of docs per element
@@ -167,7 +171,12 @@ void compressing_index_writer::write(doc_id_t key, uint64_t offset) {
   if (key_ == offsets_) {
     // we've reached the size of the block
     flush();
-    reset(key, offset);
+    // set block base & offset
+    block_base_ = key;
+    block_offset_ = offset;
+    // reset pointers
+    key_ = keys_.get();
+    offset_ = offsets_;
   }
 
   *key_++ = key - block_base_; // store block relative id's
@@ -180,9 +189,7 @@ void compressing_index_writer::write(doc_id_t key, uint64_t offset) {
 void compressing_index_writer::finish() {
   assert(out_);
  
-  if (keys_.get() != key_) {
-    flush(); // should flush the rest of the cached data
-  }
+  flush(); // should flush the rest of the cached data
   out_->write_vint(0); // end marker
 }
 
@@ -257,7 +264,7 @@ bool compressing_index_reader::prepare(index_input& in, doc_id_t docs_count) {
 
   std::vector<block> blocks(in.read_vlong());
   for (; !blocks.empty(); blocks.resize(in.read_vlong())) {
-    size_t full_chunks = blocks.size() - (blocks.size() % packed::BLOCK_SIZE_64);
+    const size_t full_chunks = blocks.size() - (blocks.size() % packed::BLOCK_SIZE_64);
 
     // read document bases
     const doc_id_t doc_base = in.read_vlong();

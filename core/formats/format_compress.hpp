@@ -34,13 +34,12 @@ class compressing_index_writer: util::noncopyable {
 
   explicit compressing_index_writer(size_t block_size);
 
-  void prepare(index_output& out, uint64_t ptr);
+  void prepare(index_output& out);
   void write(doc_id_t docs, uint64_t value);
   void finish();
 
  private:
   void flush();
-  void reset(doc_id_t key, uint64_t offset);
 
   void write_block(
     size_t full_chunks,

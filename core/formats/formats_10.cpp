@@ -1874,7 +1874,7 @@ void stored_fields_writer::prepare(directory& dir, const string_ref& seg_name) {
     compressing_index_writer::FORMAT_NAME, 
     compressing_index_writer::FORMAT_MAX
   );
-  index.prepare(*index_out_, fields_out->file_pointer());
+  index.prepare(*index_out_);
 }
 
 bool stored_fields_writer::write(const serializer& writer) {
