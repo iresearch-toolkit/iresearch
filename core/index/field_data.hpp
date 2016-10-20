@@ -27,6 +27,8 @@
 
 NS_ROOT
 
+class field_meta_writer;
+struct field_writer;
 class token_stream;
 class analyzer;
 struct offset;
@@ -118,7 +120,7 @@ class IRESEARCH_API fields_data: util::noncopyable {
     return *this;
   }
   const flags& features() { return features_; }
-  void flush(flush_state& state);
+  void flush(field_meta_writer& fmw, field_writer& fw, flush_state& state);
   void reset();
 
  private:

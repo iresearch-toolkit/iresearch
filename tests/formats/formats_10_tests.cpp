@@ -634,7 +634,6 @@ class format_10_test_case : public tests::format_test_case_base {
       tests::format_test_case_base::terms<decltype(terms.begin())> trms(terms.begin(), terms.end(), docs.begin(), docs.end());
 
       iresearch::flush_state flush_state;
-      flush_state.codec = &*get_codec();
       flush_state.dir = dir.get();
       flush_state.doc_count = 10000;
       flush_state.fields_count = 1;

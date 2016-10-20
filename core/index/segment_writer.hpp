@@ -70,12 +70,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     std::vector<field_id> doc_fields; // per document field ids
   }; // doc_header 
 
-  segment_writer(
-    directory& dir, 
-    format::ptr codec,
-    stored_fields_writer::ptr&& sf_writer,
-    columns_writer::ptr&& col_writer
-  ) NOEXCEPT;
+  segment_writer(directory& dir, format::ptr codec) NOEXCEPT;
 
   bool index_field(field_data& slot, token_stream* tokens, const flags& features, float_t boost);
   bool store_field(field_data& slot, const serializer* serializer);
@@ -123,6 +118,8 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   fields_data fields_;
   std::unordered_map<hashed_string_ref, columns_writer::column_writer_f> columns_;
   std::string seg_name_;
+  field_meta_writer::ptr field_meta_writer_;
+  field_writer::ptr field_writer_;
   stored_fields_writer::ptr sf_writer_;
   columns_writer::ptr col_writer_;
   format::ptr codec_;

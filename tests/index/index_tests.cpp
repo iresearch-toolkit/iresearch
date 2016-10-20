@@ -3805,6 +3805,26 @@ TEST_F(fs_index_test, writer_close) {
   ASSERT_TRUE(files.empty());
 }
 
+TEST_F(fs_index_test, profile_bulk_index_singlethread_full) {
+  profile_bulk_index(0, 0);
+}
+
+TEST_F(fs_index_test, profile_bulk_index_singlethread_batched) {
+  profile_bulk_index(0, 10000);
+}
+
+TEST_F(fs_index_test, profile_bulk_index_multithread_dedicated_commit) {
+  profile_bulk_index_dedicated_commit(16, 1, 1000);
+}
+
+TEST_F(fs_index_test, profile_bulk_index_multithread_full) {
+  profile_bulk_index(16, 0);
+}
+
+TEST_F(fs_index_test, profile_bulk_index_multithread_batched) {
+  profile_bulk_index(16, 10000);
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

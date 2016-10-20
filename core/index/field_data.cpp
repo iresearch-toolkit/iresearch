@@ -619,7 +619,9 @@ field_data& fields_data::get(const string_ref& name) {
   return slot;
 }
 
-void fields_data::flush( flush_state& state ) {
+void fields_data::flush(
+  field_meta_writer& fmw, field_writer& fw, flush_state& state
+) {
   REGISTER_TIMER_DETAILED();
   /* set the segment meta */
   state.features = &features_;
@@ -628,18 +630,15 @@ void fields_data::flush( flush_state& state ) {
   state.fields_count = fields_.size();
 
   {
-    field_meta_writer::ptr fmw = state.codec->get_field_meta_writer();
-    fmw->prepare(state);
-
-    field_writer::ptr fw = state.codec->get_field_writer();
-    fw->prepare(state);
-
     std::map<string_ref, fields_map::mapped_type*> fields;
 
     // ensure fields are sorted
     for (auto& entry: fields_) {
       fields.emplace(entry.first, &(entry.second));
     }
+
+    fmw.prepare(state);
+    fw.prepare(state);
 
     for(auto& entry: fields) {
       auto& field = *(entry.second);
@@ -648,18 +647,18 @@ void fields_data::flush( flush_state& state ) {
       auto& features = meta.features;
 
       // write field metadata
-      fmw->write(id, meta.name, features);
+      fmw.write(id, meta.name, features);
 
       // write field invert data
       auto terms = field.iterator();
 
       if (terms) {
-        fw->write(id, features, *terms);
+        fw.write(id, features, *terms);
       }
     }
 
-    fw->end();
-    fmw->end();
+    fw.end();
+    fmw.end();
   }
 }
 

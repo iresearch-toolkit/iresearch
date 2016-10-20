@@ -421,7 +421,6 @@ class IRESEARCH_API format {
 };
 
 struct IRESEARCH_API flush_state {
-  const format* codec;
   directory* dir;
   string_ref name; // segment name
   const flags* features; // segment features

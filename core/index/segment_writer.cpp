@@ -24,22 +24,12 @@ bool segment_writer::doc_header::write(data_output& out) const {
   return stored::write_header(out, doc_fields.begin(), doc_fields.end());
 }
 
-segment_writer::ptr segment_writer::make(
-    directory& dir, 
-    format::ptr codec) {
-  return ptr(new segment_writer(dir, codec, nullptr, nullptr));
+segment_writer::ptr segment_writer::make(directory& dir, format::ptr codec) {
+  return ptr(new segment_writer(dir, codec));
 }
 
-segment_writer::segment_writer(
-    directory& dir,
-    format::ptr codec,
-    stored_fields_writer::ptr&& sf_writer,
-    columns_writer::ptr&& col_writer) NOEXCEPT
-  : sf_writer_(std::move(sf_writer)),
-    col_writer_(std::move(col_writer)),
-    codec_(codec),
-    dir_(dir),
-    initialized_(sf_writer_ && col_writer_) {
+segment_writer::segment_writer(directory& dir, format::ptr codec) NOEXCEPT
+  : codec_(codec), dir_(dir), initialized_(false) {
 }
 
 bool segment_writer::index_field(
@@ -125,13 +115,12 @@ void segment_writer::flush(std::string& filename, segment_meta& meta) {
   // flush fields metadata & inverted data
   {
     flush_state state;
-    state.codec = codec_.get();
     state.dir = &dir_;
     state.doc_count = num_docs_cached_;
     state.name = seg_name_;
     state.ver = IRESEARCH_VERSION;
 
-    fields_.flush(state);
+    fields_.flush(*field_meta_writer_, *field_writer_, state);
   }
 
   meta.docs_count = num_docs_cached_;
@@ -161,6 +150,14 @@ void segment_writer::reset(std::string seg_name) {
   reset();
 
   seg_name_ = std::move(seg_name);
+
+  if (!field_meta_writer_) {
+    field_meta_writer_ = codec_->get_field_meta_writer();
+  }
+
+  if (!field_writer_) {
+    field_writer_ = codec_->get_field_writer();
+  }
 
   if (!sf_writer_) {
     sf_writer_ = codec_->get_stored_fields_writer();

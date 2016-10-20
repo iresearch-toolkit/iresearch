@@ -85,7 +85,7 @@ class memory_file : util::noncopyable {
     return buffers_.back().get();
   }
 
-  byte_type* at(size_t i) const { return buffers_.at(i).get(); }
+  byte_type* at(size_t i) const { return buffers_[i].get(); }
 
   std::time_t mtime() const { return meta_.mtime; }
 

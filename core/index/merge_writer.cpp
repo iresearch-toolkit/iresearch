@@ -460,9 +460,8 @@ namespace {
     }
 
     auto fields_count = static_cast<uint32_t>(field_meta_map.size()); // max boundary ensured by check above
-    
+
     iresearch::flush_state flush_state;
-    flush_state.codec = &codec;
     flush_state.dir = &dir;
     flush_state.doc_count = docs_count;
     flush_state.fields_count = fields_count;

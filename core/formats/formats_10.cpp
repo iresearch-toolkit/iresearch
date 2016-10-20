@@ -1481,8 +1481,8 @@ void field_meta_writer::prepare(const flush_state& state) {
   assert(state.features);
   assert(state.dir);
 
+  feature_map_.clear();
   out = state.dir->create(file_name(state.name, FORMAT_EXT));
-
   format_utils::write_header(*out, FORMAT_NAME, FORMAT_MAX);
   write_segment_features(*state.features);
   out->write_vint(static_cast<uint32_t>(state.fields_count));
@@ -1496,6 +1496,7 @@ void field_meta_writer::write(field_id id, const std::string& name, const flags&
 
 void field_meta_writer::end() {
   format_utils::write_footer(*out);
+  out.reset(); // ensure stream is closed
 }
 
 NS_BEGIN(columns)
@@ -2137,6 +2138,10 @@ postings_writer::~postings_writer() { }
 void postings_writer::prepare(index_output& out, const iresearch::flush_state& state) {
   assert(!state.name.null());
 
+  // reset writer state
+  attrs_.clear();
+  docs_count = 0;
+
   std::string name;
 
   // prepare document stream
@@ -2518,8 +2523,17 @@ void postings_writer::encode(data_output& out, const iresearch::attributes& attr
 
 void postings_writer::end() {
   format_utils::write_footer(*doc.out);
-  if (pos_) format_utils::write_footer(*pos_->out);
-  if (pay_) format_utils::write_footer(*pay_->out);
+  doc.out.reset(); // ensure stream is closed
+
+  if (pos_) {
+    format_utils::write_footer(*pos_->out);
+    pos_->out.reset(); // ensure stream is closed
+  }
+
+  if (pay_) {
+    format_utils::write_footer(*pay_->out);
+    pay_->out.reset(); // ensure stream is closed
+  }
 }
 
 // ----------------------------------------------------------------------------

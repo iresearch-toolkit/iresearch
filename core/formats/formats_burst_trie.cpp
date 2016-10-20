@@ -1461,6 +1461,18 @@ field_writer::field_writer(
 field_writer::~field_writer() { }
 
 void field_writer::prepare( const iresearch::flush_state& state ) {
+  // reset writer state
+  fields.clear();
+  last_term.clear();
+  max_term.clear();
+  min_term.first = false;
+  min_term.second.clear();
+  prefixes.assign(DEFAULT_SIZE, 0);
+  stack.clear();
+  stats.reset();
+  suffix.reset();
+  term_count = 0;
+
   fields.reserve( state.fields_count );
 
   // prepare terms and index output
@@ -1621,9 +1633,11 @@ void field_writer::end() {
 
   terms_out->write_long(static_cast<uint64_t>(terms_start));
   format_utils::write_footer(*terms_out);
+  terms_out.reset(); // ensure stream is closed
 
   index_out->write_long(static_cast<uint64_t>(index_start));
   format_utils::write_footer(*index_out);
+  index_out.reset(); // ensure stream is closed
 }
 
 /* -------------------------------------------------------------------
