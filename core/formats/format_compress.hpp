@@ -69,14 +69,6 @@ class compressing_index_reader : util::noncopyable {
     uint64_t // offset 
   > entry_t;
 
-  compressing_index_reader() = default;
-  compressing_index_reader(compressing_index_reader&& rhs);
-
-  bool prepare(index_input& in, doc_id_t max_key);
-  uint64_t lower_bound(doc_id_t key) const;
-  uint64_t find(doc_id_t key) const;
-
- private:
   struct block {
     block(uint64_t start, doc_id_t base, std::vector<entry_t>&& entries);
     block(block&& rhs);
@@ -86,6 +78,14 @@ class compressing_index_reader : util::noncopyable {
     doc_id_t key_base; // document base
   }; // block
 
+  compressing_index_reader() = default;
+  compressing_index_reader(compressing_index_reader&& rhs);
+
+  bool prepare(index_input& in, doc_id_t max_key);
+  uint64_t lower_bound(doc_id_t key) const;
+  uint64_t find(doc_id_t key) const;
+
+ private:
   std::vector<block> data_;
   doc_id_t max_key_;
 }; // compressing_index_reader 

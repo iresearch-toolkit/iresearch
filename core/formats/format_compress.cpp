@@ -243,6 +243,35 @@ void read_block(
   }
 }
 
+template<bool ExactMatch, typename Iterator>
+uint64_t find_if(Iterator begin, Iterator end, doc_id_t key) {
+  // find the right block
+  const auto block = std::lower_bound(
+    begin, end, key,
+    [](const compressing_index_reader::block& lhs, doc_id_t rhs) {
+      return lhs.key_base > rhs;
+  });
+  
+  if (block == end) {
+    return type_limits<type_t::address_t>::invalid();
+  }
+
+  // find the right entry in the block
+  const auto entry = std::lower_bound(
+    block->entries.rbegin(),
+    block->entries.rend(),
+    key -= block->key_base,
+    [](const compressing_index_reader::entry_t& lhs, doc_id_t rhs) {
+      return lhs.first > rhs;
+  });
+  
+  if (entry == block->entries.rend() || (ExactMatch && key > entry->first)) {
+    return type_limits<type_t::address_t>::invalid();
+  }
+
+  return block->offset_base + entry->second;
+}
+
 NS_END
 
 compressing_index_reader::block::block(
@@ -296,33 +325,7 @@ uint64_t compressing_index_reader::lower_bound(doc_id_t key) const {
     return type_limits<type_t::address_t>::invalid();
   }
 
-  // find the right block
-  const auto block = std::lower_bound(
-    data_.rbegin(),
-    data_.rend(),
-    key,
-    [](const compressing_index_reader::block& lhs, doc_id_t rhs) {
-      return lhs.key_base > rhs;
-  });
-  
-  if (block == data_.rend()) {
-    return type_limits<type_t::address_t>::invalid();
-  }
-
-  // find the right entry in the block 
-  const auto entry = std::lower_bound(
-    block->entries.rbegin(),
-    block->entries.rend(),
-    key - block->key_base,
-    [](const entry_t& lhs, doc_id_t rhs) {
-      return lhs.first > rhs;
-  });
-  
-  if (entry == block->entries.rend()) {
-    return type_limits<type_t::address_t>::invalid();
-  }
-
-  return block->offset_base + entry->second;
+  return find_if<false>(data_.rbegin(), data_.rend(), key);
 }
 
 uint64_t compressing_index_reader::find(doc_id_t key) const {
@@ -330,33 +333,7 @@ uint64_t compressing_index_reader::find(doc_id_t key) const {
     return type_limits<type_t::address_t>::invalid();
   }
 
-  // find the right block chunk
-  const auto block = std::lower_bound(
-    data_.rbegin(),
-    data_.rend(),
-    key,
-    [](const compressing_index_reader::block& lhs, doc_id_t rhs) {
-      return lhs.key_base > rhs;
-  });
-  
-  if (block == data_.rend()) {
-    return type_limits<type_t::address_t>::invalid();
-  }
-
-  // find the right block in the chunk
-  const auto entry = std::lower_bound(
-    block->entries.rbegin(),
-    block->entries.rend(),
-    key -= block->key_base,
-    [](const entry_t& lhs, doc_id_t rhs) {
-      return lhs.first > rhs;
-  });
-  
-  if (entry == block->entries.rend() || key > entry->first) {
-    return type_limits<type_t::address_t>::invalid();
-  }
-
-  return block->offset_base + entry->second;
+  return find_if<true>(data_.rbegin(), data_.rend(), key);
 }
 
 NS_END
