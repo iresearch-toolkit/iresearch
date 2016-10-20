@@ -107,9 +107,9 @@ void compressing_index_writer::flush() {
   doc_id_t avg_chunk_docs = 0; // average number of docs per element
   size_t avg_chunk_size = 0; // average size of element
   if (size > 1) {
-    const auto den = size - 1;
+    const auto den = size - 1; // -1 since the 1st offset is always 0
     avg_chunk_docs = std::lround(static_cast<float_t>(*(key_-1)) / den);
-    avg_chunk_size = *(offset_ - 1) / den; // -1 since the 1st offset is almost always 0
+    avg_chunk_size = *(offset_ - 1) / den;
   }
  
   // total number of elements we can be pack using bit packing
@@ -205,7 +205,7 @@ void read_block(
     size_t full_chunks,
     std::vector<uint64_t>& packed,
     std::vector<uint64_t>& unpacked,
-    std::vector<block>& blocks,
+    std::vector<compressing_index_reader::entry_t>& blocks,
     const Func& get_property) {
   const uint64_t median = in.read_vlong();
   const uint32_t bits = in.read_vint();
@@ -245,24 +245,28 @@ void read_block(
 
 NS_END
 
-block_chunk::block_chunk(
-  uint64_t start, doc_id_t base, std::vector<block>&& blocks
-): blocks(std::move(blocks)), start(start), base(base) {
+compressing_index_reader::block::block(
+    uint64_t offset_base, doc_id_t key_base, std::vector<compressing_index_reader::entry_t>&& entries)
+  : entries(std::move(entries)), key_base(key_base), offset_base(offset_base) {
 }
 
-block_chunk::block_chunk(block_chunk&& rhs)
-  : blocks(std::move(rhs.blocks)), 
-    start(rhs.start), 
-    base(rhs.base) {
-  rhs.start = type_limits<type_t::address_t>::invalid();
-  rhs.base = type_limits<type_t::doc_id_t>::invalid();
+compressing_index_reader::block::block(compressing_index_reader::block&& rhs)
+  : entries(std::move(rhs.entries)), 
+    offset_base(rhs.offset_base), 
+    key_base(rhs.key_base) {
+  rhs.offset_base = type_limits<type_t::address_t>::invalid();
+  rhs.key_base = type_limits<type_t::doc_id_t>::invalid();
 }
 
-bool compressing_index_reader::prepare(index_input& in, doc_id_t docs_count) {
+compressing_index_reader::compressing_index_reader(compressing_index_reader&& rhs)
+  : data_(std::move(rhs.data_)), max_key_(rhs.max_key_) {
+}
+
+bool compressing_index_reader::prepare(index_input& in, doc_id_t max_key) {
   std::vector<uint64_t> packed; 
   std::vector<uint64_t> unpacked;
 
-  std::vector<block> blocks(in.read_vlong());
+  std::vector<entry_t> blocks(in.read_vlong());
   for (; !blocks.empty(); blocks.resize(in.read_vlong())) {
     const size_t full_chunks = blocks.size() - (blocks.size() % packed::BLOCK_SIZE_64);
 
@@ -270,53 +274,89 @@ bool compressing_index_reader::prepare(index_input& in, doc_id_t docs_count) {
     const doc_id_t doc_base = in.read_vlong();
     read_block(
       in, full_chunks, packed, unpacked, blocks,
-      [] (block& b)->uint64_t& { return b.base; }
+      [] (entry_t& e)->doc_id_t& { return e.first; }
     );
 
     // read start pointers
     const uint64_t start = in.read_vlong();
     read_block(
       in, full_chunks, packed, unpacked, blocks,
-      [] (block& b)->uint64_t& { return b.start; }
+      [] (entry_t& e)->uint64_t& { return e.second; }
     );
 
     data_.emplace_back(start, doc_base, std::move(blocks));
   }
 
-  max_doc_ = docs_count;
+  max_key_ = max_key;
   return true;
 }
 
-size_t compressing_index_reader::start_ptr(doc_id_t doc) const {
-  assert(type_limits<type_t::doc_id_t>::valid(doc));
+uint64_t compressing_index_reader::lower_bound(doc_id_t key) const {
+  if (key >= max_key_) {
+    return type_limits<type_t::address_t>::invalid();
+  }
 
-  doc -= type_limits<type_t::doc_id_t>::min();
+  // find the right block
+  const auto block = std::lower_bound(
+    data_.rbegin(),
+    data_.rend(),
+    key,
+    [](const compressing_index_reader::block& lhs, doc_id_t rhs) {
+      return lhs.key_base > rhs;
+  });
+  
+  if (block == data_.rend()) {
+    return type_limits<type_t::address_t>::invalid();
+  }
 
-  if (doc >= max_doc_) {
-    throw illegal_argument();
+  // find the right entry in the block 
+  const auto entry = std::lower_bound(
+    block->entries.rbegin(),
+    block->entries.rend(),
+    key - block->key_base,
+    [](const entry_t& lhs, doc_id_t rhs) {
+      return lhs.first > rhs;
+  });
+  
+  if (entry == block->entries.rend()) {
+    return type_limits<type_t::address_t>::invalid();
+  }
+
+  return block->offset_base + entry->second;
+}
+
+uint64_t compressing_index_reader::find(doc_id_t key) const {
+  if (key >= max_key_) {
+    return type_limits<type_t::address_t>::invalid();
   }
 
   // find the right block chunk
-  auto chunk = std::lower_bound(
+  const auto block = std::lower_bound(
     data_.rbegin(),
     data_.rend(),
-    doc,
-    [](const block_chunk& lhs, doc_id_t rhs) {
-      return lhs.base > rhs;
+    key,
+    [](const compressing_index_reader::block& lhs, doc_id_t rhs) {
+      return lhs.key_base > rhs;
   });
-  assert(chunk != data_.rend());
+  
+  if (block == data_.rend()) {
+    return type_limits<type_t::address_t>::invalid();
+  }
 
   // find the right block in the chunk
-  auto block = std::lower_bound(
-    chunk->blocks.rbegin(),
-    chunk->blocks.rend(),
-    doc - chunk->base,
-    [](const iresearch::block& lhs, doc_id_t rhs) {
-      return lhs.base > rhs;
+  const auto entry = std::lower_bound(
+    block->entries.rbegin(),
+    block->entries.rend(),
+    key -= block->key_base,
+    [](const entry_t& lhs, doc_id_t rhs) {
+      return lhs.first > rhs;
   });
-  assert(block != chunk->blocks.rend());
+  
+  if (entry == block->entries.rend() || key > entry->first) {
+    return type_limits<type_t::address_t>::invalid();
+  }
 
-  return chunk->start + block->start;
+  return block->offset_base + entry->second;
 }
 
 NS_END

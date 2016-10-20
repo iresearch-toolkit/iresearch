@@ -35,7 +35,7 @@ class compressing_index_writer: util::noncopyable {
   explicit compressing_index_writer(size_t block_size);
 
   void prepare(index_output& out);
-  void write(doc_id_t docs, uint64_t value);
+  void write(doc_id_t key, uint64_t value);
   void finish();
 
  private:
@@ -60,37 +60,34 @@ class compressing_index_writer: util::noncopyable {
 }; // compressing_index_writer 
 
 //////////////////////////////////////////////////////////////////////////////
-/// @struct block
-/// @brief stores information about base document & start pointer
-//////////////////////////////////////////////////////////////////////////////
-struct block {
-  doc_id_t base; // document offset
-  uint64_t start; // where block starts
-}; // block
-
-//////////////////////////////////////////////////////////////////////////////
-/// @struct block_chunk
-//////////////////////////////////////////////////////////////////////////////
-struct block_chunk {
-  block_chunk(uint64_t start, doc_id_t base, std::vector<block>&& docs);
-  block_chunk(block_chunk&& rhs);
-
-  std::vector<block> blocks;
-  uint64_t start; // block start
-  doc_id_t base; // document base
-}; // block_chunk
-
-//////////////////////////////////////////////////////////////////////////////
 /// @class compressing_index_reader
 //////////////////////////////////////////////////////////////////////////////
-class compressing_index_reader: util::noncopyable {
+class compressing_index_reader : util::noncopyable {
  public:
-  bool prepare(index_input& in, doc_id_t docs_count);
-  uint64_t start_ptr(doc_id_t doc) const;
+  typedef std::pair<
+    doc_id_t, // key
+    uint64_t // offset 
+  > entry_t;
+
+  compressing_index_reader() = default;
+  compressing_index_reader(compressing_index_reader&& rhs);
+
+  bool prepare(index_input& in, doc_id_t max_key);
+  uint64_t lower_bound(doc_id_t key) const;
+  uint64_t find(doc_id_t key) const;
 
  private:
-  std::vector<block_chunk> data_;
-  doc_id_t max_doc_;
+  struct block {
+    block(uint64_t start, doc_id_t base, std::vector<entry_t>&& entries);
+    block(block&& rhs);
+
+    std::vector<entry_t> entries;
+    uint64_t offset_base; // offset base
+    doc_id_t key_base; // document base
+  }; // block
+
+  std::vector<block> data_;
+  doc_id_t max_key_;
 }; // compressing_index_reader 
 
 NS_END
