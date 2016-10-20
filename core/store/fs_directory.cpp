@@ -124,16 +124,11 @@ class fs_index_output : public buffered_index_output {
 
     if (nullptr == handle) {
       auto path = boost::locale::conv::utf_to_utf<char>(name);
-          
       std::stringstream ss;
 
-#ifdef _WIN32
-      ss << "Failed to open output file, error: " << GetLastError()
-         << ", path: " << path;
-#else
+      // even win32 uses 'errno' fo error codes in calls to file_open(...)
       ss << "Failed to open output file, error: " << errno
          << ", path: " << path;
-#endif
 
       throw detailed_io_error(ss.str());
     }
@@ -187,13 +182,9 @@ class fs_index_input : public buffered_index_input {
       auto path = boost::locale::conv::utf_to_utf<char>(name);
       std::stringstream ss;
 
-#ifdef _WIN32
-      ss << "Failed to open input file, error: " << GetLastError()
-         << ", path: " << path;
-#else
+      // even win32 uses 'errno' for error codes in calls to file_open(...)
       ss << "Failed to open input file, error: " << errno
          << ", path: " << path;
-#endif
 
       throw detailed_io_error(ss.str());
     }

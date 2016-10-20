@@ -275,6 +275,11 @@ class fst_builder : util::noncopyable {
       return id;
     }
 
+    void reset() {
+      count_ = 0;
+      std::fill(states_.begin(), states_.end(), fst::kNoStateId);
+    }
+
    private:
     static bool equals(const state& lhs, stateid_t rhs, const fst_t& fst) {
       if (fst.NumArcs( rhs ) != lhs.arcs.size() ) {
@@ -334,11 +339,6 @@ class fst_builder : util::noncopyable {
       return id;
     }
 
-    void reset() {
-      count_ = 0;
-      std::fill( states_.begin(), states_.end(), fst::kNoStateId );
-    }
-    
     // TODO: maybe use "buckets" here
     std::vector< stateid_t > states_;
     size_t count_{};

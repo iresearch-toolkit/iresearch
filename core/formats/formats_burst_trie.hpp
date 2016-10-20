@@ -47,6 +47,12 @@ class field_reader;
 
 NS_BEGIN( detail )
 
+// -------------------------------------------------------------------
+// FST predeclaration
+// -------------------------------------------------------------------
+
+class fst_buffer;
+
 /* -------------------------------------------------------------------
 * entry
 * ------------------------------------------------------------------*/
@@ -184,7 +190,7 @@ class field_writer final : public iresearch::field_writer{
     iresearch::field_id id;
     bool write_freq;
   };
-  
+
   void begin_field(const iresearch::flags& field);
   void end_field(
     field_id id, 
@@ -220,6 +226,7 @@ class field_writer final : public iresearch::field_writer{
   iresearch::postings_writer::ptr pw; /* postings writer */
   std::vector< detail::entry > stack;
   std::vector< field_meta > fields; /* finished fields metadata */
+  std::unique_ptr<detail::fst_buffer> fst_buf_; // pimpl buffer used for building FST for fields
   bstring last_term; // last pushed term
   std::vector<size_t> prefixes;
   std::pair<bool, bstring> min_term; // current min term in a block

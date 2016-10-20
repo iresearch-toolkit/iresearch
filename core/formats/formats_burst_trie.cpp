@@ -142,6 +142,28 @@ class block_meta {
   uint8_t meta_;
 };
 
+// -------------------------------------------------------------------
+// resetable FST buffer
+// -------------------------------------------------------------------
+
+class fst_buffer: public vector_byte_fst {
+ public:
+  template<typename Data>
+  fst_buffer& reset(const Data& data) {
+    fst_byte_builder builder(*this);
+
+    builder.reset();
+
+    for (auto& fst_data: data) {
+      builder.add(fst_data.prefix, fst_data.weight);
+    }
+
+    builder.finish();
+
+    return *this;
+  }
+};
+
 /* -------------------------------------------------------------------
 * term_t
 * ------------------------------------------------------------------*/
@@ -1447,6 +1469,7 @@ field_writer::field_writer(
     uint32_t min_block_size,
     uint32_t max_block_size )
   : pw(std::move(pw)),
+    fst_buf_(new detail::fst_buffer()),
     prefixes( DEFAULT_SIZE, 0 ),
     term_count( 0 ),
     min_block_size( min_block_size ),
@@ -1566,29 +1589,18 @@ void field_writer::end_field(
   using namespace detail;
 
   if (term_count > 0) {
-
-    /* cause creation of all final blocks */
+    // cause creation of all final blocks
     push(bytes_ref::nil);
 
-    /* write root block with empty prefix */
+    // write root block with empty prefix
     write_blocks(0, stack.size());
 
     assert(1 == stack.size());
     const entry& root = *stack.begin();
 
-    vector_byte_fst fst;
-    
     // build fst
-    {
-      fst_byte_builder builder(fst);
-      std::for_each(
-        root.block->index.begin(),
-        root.block->index.end(),
-        [&builder] (const block_t::prefixed_output& w) {
-          builder.add(w.prefix, w.weight);
-      });
-      builder.finish();
-    }
+    assert(fst_buf_);
+    auto& fst = fst_buf_->reset(root.block->index);
 
     // save fst
     const size_t index_start = index_out->file_pointer();
