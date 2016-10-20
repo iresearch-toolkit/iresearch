@@ -48,6 +48,7 @@ In order to be processed each field should satisfy Field concept.
  
 #### Field concept
 For type T to be Field, the following conditions have to be satisfied for an object m of type T:
+
 |Expression|Requires|Effects|
 |----|----|----|
 |m.name()|The output type must be convertible to iresearch::string_ref|A value uses as a key name.|
