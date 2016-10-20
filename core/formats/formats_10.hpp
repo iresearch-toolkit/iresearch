@@ -286,6 +286,8 @@ class stored_fields_writer final : public iresearch::stored_fields_writer {
 class stored_fields_reader final : public iresearch::stored_fields_reader {
  public:
   virtual void prepare(const reader_state& state) override;
+
+  // expects 0-based doc id's
   virtual bool visit(doc_id_t doc, const visitor_f& visitor) override;
 
   class compressing_data_input final : public data_input {
@@ -342,21 +344,21 @@ class stored_fields_reader final : public iresearch::stored_fields_reader {
  private:
   class compressing_document_reader {
    public:
-   compressing_document_reader():
-     start_(type_limits<type_t::address_t>::invalid()),
-     base_(type_limits<type_t::doc_id_t>::invalid()),
-     size_(0U) {
-   }
+    compressing_document_reader():
+      start_(type_limits<type_t::address_t>::invalid()),
+      base_(type_limits<type_t::doc_id_t>::invalid()),
+      size_(0) {
+    }
 
-   void prepare(const directory& dir, const std::string& name, uint64_t ptr);
+    void prepare(const directory& dir, const std::string& name, uint64_t ptr);
 
     inline bool contains(doc_id_t doc) const {
-      return doc >= type_limits<type_t::doc_id_t>::min() + base_
-          && doc < type_limits<type_t::doc_id_t>::min() + (base_ + size_);
+      return doc >= base_ && doc < (base_ + size_);
     }
 
     void reset(doc_id_t doc);
 
+    // expects 0-based doc id's
     compressing_data_input& document(doc_id_t doc, uint64_t start_ptr);
 
    private: 
@@ -370,8 +372,8 @@ class stored_fields_reader final : public iresearch::stored_fields_reader {
     uint32_t num_incomplete_blocks_; /* number of incomplete flushed blocks */
   };
 
-  compressing_document_reader doc_rdr_;
-  compressing_index_reader idx_rdr_;
+  compressing_document_reader docs_;
+  compressing_index_reader index_;
   const fields_meta* fields_;
 };
 

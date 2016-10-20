@@ -350,9 +350,9 @@ class format_10_test_case : public tests::format_test_case_base {
       auto in = dir().open("_0.idx");
       ir::compressing_index_reader reader;
       ASSERT_TRUE(reader.prepare(*in, max_doc));
-      ASSERT_THROW(reader.start_ptr(max_doc + 1), ir::illegal_argument);
-      for (ir::doc_id_t i = ir::type_limits<ir::type_t::doc_id_t>::min(); i < max_doc; ++i) {
-        ASSERT_EQ(start_offset + (i - ir::type_limits<ir::type_t::doc_id_t>::min()) / block_docs, reader.start_ptr(i));
+      ASSERT_EQ(ir::type_limits<ir::type_t::address_t>::invalid(), reader.lower_bound(max_doc + 1));
+      for (ir::doc_id_t i = 0; i < max_doc; ++i) {
+        ASSERT_EQ(start_offset + i / block_docs, reader.lower_bound(i));
       }
     }
   }

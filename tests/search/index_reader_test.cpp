@@ -198,9 +198,12 @@ TEST(directory_reader_test, open) {
 
   const iresearch::string_ref expected_name = "name";
   iresearch::string_ref expected_value;
-  iresearch::index_reader::document_visitor_f visitor = [&expected_value, &expected_name](
+  size_t calls_count = 0;
+  iresearch::index_reader::document_visitor_f visitor = [&calls_count, &expected_value, &expected_name](
     const ir::field_meta& field, ir::data_input& in
   ) {
+    ++calls_count;
+
     if (field.name != expected_name) {
       ir::read_string<std::string>(in); // skip string
       return true;
@@ -230,7 +233,9 @@ TEST(directory_reader_test, open) {
     ASSERT_TRUE(sub->document(3, visitor)); 
 
     // read invalid document
-    ASSERT_THROW(sub->document(4, visitor), ir::illegal_argument);
+    calls_count = 0;
+    ASSERT_FALSE(sub->document(4, visitor));
+    ASSERT_EQ(0, calls_count);
   }
 
   // second segment
@@ -252,7 +257,9 @@ TEST(directory_reader_test, open) {
     ASSERT_TRUE(sub->document(4, visitor)); 
 
     // read invalid document
-    ASSERT_THROW(sub->document(5, visitor), ir::illegal_argument);
+    calls_count = 0;
+    ASSERT_FALSE(sub->document(5, visitor));
+    ASSERT_EQ(0, calls_count);
   }
 
   // third segment
@@ -270,7 +277,9 @@ TEST(directory_reader_test, open) {
     ASSERT_TRUE(sub->document(2, visitor)); 
 
     // read invalid document
-    ASSERT_THROW(sub->document(3, visitor), ir::illegal_argument);
+    calls_count = 0;
+    ASSERT_FALSE(sub->document(3, visitor));
+    ASSERT_EQ(0, calls_count);
   }
 
   ++sub;
@@ -370,10 +379,12 @@ TEST(segment_reader_test, open) {
     };
 
     const iresearch::string_ref expected_name = "name";
+    size_t calls_count = 0;
     iresearch::string_ref expected_value;
-    iresearch::index_reader::document_visitor_f visitor = [&codecs, &expected_value, &expected_name](
+    iresearch::index_reader::document_visitor_f visitor = [&calls_count, &codecs, &expected_value, &expected_name](
       const iresearch::field_meta& field, iresearch::data_input& in
     ) {
+      ++calls_count;
       if (field.name != expected_name) {
         auto it = codecs.find(field.name);
         if (codecs.end() == it) {
@@ -402,7 +413,10 @@ TEST(segment_reader_test, open) {
     ASSERT_TRUE(rdr->document(4, visitor));
     expected_value = "E"; // 'name' value in doc5
     ASSERT_TRUE(rdr->document(5, visitor));
-    ASSERT_THROW(rdr->document(6, visitor), ir::illegal_argument); // read invalid document 
+    
+    calls_count = 0;
+    ASSERT_FALSE(rdr->document(6, visitor)); // read invalid document 
+    ASSERT_EQ(0, calls_count);
 
     // check iterators
     {

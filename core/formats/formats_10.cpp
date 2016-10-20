@@ -1507,6 +1507,7 @@ NS_BEGIN(columns)
 
 const int32_t FORMAT_MIN = 0;
 const int32_t FORMAT_MAX = FORMAT_MIN;
+const size_t INDEX_BLOCK_SIZE = 1024;
 
 const string_ref COLUMNS_FORMAT = "iresearch_10_columns";
 const string_ref COLUMNS_META_EXT = "cm";
@@ -1527,19 +1528,14 @@ class writer : public iresearch::columns_writer {
   struct column {
      explicit column(std::string&& name) 
        : name(std::move(name)) {
-     }
-
-     column(column&& rhs)
-       : name(std::move(rhs.name)),
-         docs(std::move(rhs.docs)),
-         offsets(std::move(rhs.offsets)),
-         data(std::move(rhs.data)) {
+       index.prepare(meta.stream);
      }
 
      std::string name;
-     std::vector<size_t> docs;
-     std::vector<size_t> offsets;
+     size_t size{};
+     memory_output meta;
      memory_output data;
+     compressing_index_writer index{ INDEX_BLOCK_SIZE };
    };
 
    std::deque<column> columns_;
@@ -1560,8 +1556,6 @@ std::pair<string_ref, writer::column_writer_f> writer::push_column(std::string&&
   return std::make_pair(
     string_ref(columns_.back().name), 
     [&column] (doc_id_t doc, const serializer& writer) {
-      assert(column.docs.empty() || doc >= column.docs.back());
-      
       auto& stream = column.data.stream;
 
       const auto ptr = stream.file_pointer();
@@ -1570,12 +1564,8 @@ std::pair<string_ref, writer::column_writer_f> writer::push_column(std::string&&
         return false;
       }
 
-      auto& docs = column.docs;
-      if (docs.empty() || docs.back() != doc) {
-        column.docs.push_back(doc);
-        column.offsets.push_back(ptr);
-      }
-
+      column.index.write(doc, ptr);
+      ++column.size;
       return true;
   });
 }
@@ -1590,10 +1580,13 @@ void writer::flush() {
 
   std::map<string_ref, column*> sorted_columns;
   for (auto& column : columns_) {
-    if (column.docs.empty()) {
+    if (!column.size) {
       continue; // filter out empty columns
     }
 
+    column.index.finish(); // finish writing column index
+    column.meta.stream.flush();
+    column.data.stream.flush();
     sorted_columns.emplace(column.name, &column);
   }
 
@@ -1614,25 +1607,11 @@ void writer::flush() {
   uint32_t id = 0;
   for (auto& entry : sorted_columns) {
     auto& column = *entry.second;
-    column.data.stream.flush();
 
     meta_out->write_vint(id++); // column id
     write_string(*meta_out, entry.first); // column name
     meta_out->write_vlong(column.data.stream.file_pointer()); // column length
-    {
-      doc_id_t last_doc = 0;
-      size_t last_offset = 0;
-      meta_out->write_vlong(column.docs.size());
-      for (size_t i = 0, size = column.docs.size(); i < size; ++i) {
-        auto doc = column.docs[i];
-        auto offset = column.offsets[i];
-        meta_out->write_vint(uint32_t(doc - last_doc));
-        meta_out->write_vlong(offset - last_offset);
-        last_doc = doc_id_t(doc);
-        last_offset = offset;
-      }
-    } // column header
-     
+    column.meta.stream >> *meta_out; // column index
     column.data.stream >> *data_out; // column data
   }
   data_out->write_long(data_start);
@@ -1658,7 +1637,7 @@ class reader : public iresearch::columns_reader {
   struct column_meta {
     std::string name;
     size_t offset;
-    std::vector<size_t> docs;
+    compressing_index_reader index;
   };
 
   column_reader_f column(const column_meta& meta) const;
@@ -1694,21 +1673,7 @@ bool reader::prepare(const reader_state& state) {
     column.name = read_string<decltype(column.name)>(meta_in);
     column.offset = column_offset;
     column_offset += meta_in.read_vlong();
-
-    column.docs.resize(state.meta->docs_count+1, type_limits<type_t::address_t>::invalid());
-    doc_id_t last_doc = 0;
-    size_t last_offset = 0;
-    for (size_t num_docs = meta_in.read_vlong(); num_docs; --num_docs) {
-      doc_id_t doc_delta = meta_in.read_vint();
-      size_t offset_delta = meta_in.read_vlong();
-      size_t doc = last_doc + doc_delta;
-      size_t offset = last_offset + offset_delta;
-
-      column.docs[doc] = offset;
-
-      last_offset = offset;
-      last_doc = doc_id_t(doc);
-    }
+    column.index.prepare(meta_in, state.meta->docs_count+1);
 
     const auto res = name_to_meta.emplace(column.name, &column);
     if (!res.second) {
@@ -1748,15 +1713,11 @@ bool reader::prepare(const reader_state& state) {
 
 reader::column_reader_f reader::column(const column_meta& meta) const {
   std::shared_ptr<index_input> in(data_in_->clone()); // std::function requires copy for captured params 
-  auto& offsets = meta.docs;
+  auto& index= meta.index;
   auto base_offset = in->file_pointer() + meta.offset;
 
-  return[this, &offsets, base_offset, in] (doc_id_t doc, const value_reader_f& reader) {
-    if (doc >= offsets.size()) {
-      return false;
-    }
-
-    auto doc_offset = offsets[doc];
+  return[this, &index, base_offset, in] (doc_id_t doc, const value_reader_f& reader) {
+    const auto doc_offset = index.find(doc);
 
     if (type_limits<type_t::address_t>::invalid() == doc_offset) {
       return false;
@@ -1969,9 +1930,10 @@ void stored_fields_reader::compressing_data_input::refill() {
   pos_ = 0;
 }
 
+// expects 0-based doc id's
 stored_fields_reader::compressing_data_input& stored_fields_reader::compressing_document_reader::document(
-  doc_id_t doc, uint64_t start_ptr
-) {
+    doc_id_t doc, uint64_t start_ptr) {
+
   auto doc_offset = [this](doc_id_t idx) {
     return 0 == idx ? 0 : offsets_[idx - 1];
   };
@@ -1981,10 +1943,9 @@ stored_fields_reader::compressing_data_input& stored_fields_reader::compressing_
     reset(doc);
   }
 
-  assert(type_limits<type_t::doc_id_t>::valid(doc));
   assert(contains(doc));
 
-  const doc_id_t idx = doc - base_ - type_limits<type_t::doc_id_t>::min();
+  const doc_id_t idx = doc - base_;
   const uint32_t offset = doc_offset(idx);
   const uint32_t length = doc_offset(idx+1) - offset;
 
@@ -2033,7 +1994,13 @@ void stored_fields_reader::compressing_document_reader::prepare(
 }
 
 bool stored_fields_reader::visit(doc_id_t doc, const visitor_f& visitor) {
-  auto& stream = doc_rdr_.document(doc, idx_rdr_.start_ptr(doc));
+  const auto offset = index_.lower_bound(doc);
+  if (offset == type_limits<type_t::address_t>::invalid()) {
+    // there is no such document with the specified id 
+    return false;
+  }
+
+  auto& stream = docs_.document(doc, offset);
 
   while (!stream.eof()) {
     if (!visitor(stream)) {
@@ -2056,13 +2023,13 @@ void stored_fields_reader::prepare( const reader_state& state ) {
     compressing_index_writer::FORMAT_MIN,
     compressing_index_writer::FORMAT_MAX
   );
-  idx_rdr_.prepare(in, state.meta->docs_count);
+  index_.prepare(in, state.meta->docs_count);
   const uint64_t max_ptr = in.read_vlong();
   format_utils::check_footer(in);
 
   // init document reader
   file_name(buf, state.meta->name, stored_fields_writer::FIELDS_EXT);
-  doc_rdr_.prepare(*state.dir, buf, max_ptr);
+  docs_.prepare(*state.dir, buf, max_ptr);
 
   fields_ = state.fields;
 }

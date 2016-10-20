@@ -69,14 +69,19 @@ NS_END // NS_LOCAL
 NS_ROOT
 
 bool segment_reader::document(
-  doc_id_t id, const stored_fields_reader::visitor_f& visitor
-) const {
-  return sfr_->visit(id, visitor);
+    doc_id_t doc, 
+    const stored_fields_reader::visitor_f& visitor) const {
+  assert(type_limits<type_t::doc_id_t>::valid(doc));
+  doc -= type_limits<type_t::doc_id_t>::min();
+  return sfr_->visit(doc, visitor);
 }
 
 bool segment_reader::document(
-  doc_id_t id, const document_visitor_f& visitor
-) const {
+    doc_id_t doc, 
+    const document_visitor_f& visitor) const {
+  assert(type_limits<type_t::doc_id_t>::valid(doc));
+  doc -= type_limits<type_t::doc_id_t>::min();
+
   doc_header_.clear();
   auto stored_fields_visitor = [this, &visitor] (data_input& in) {
     // read document header
@@ -98,7 +103,7 @@ bool segment_reader::document(
     return true;
   };
 
-  return sfr_->visit(id, stored_fields_visitor);
+  return sfr_->visit(doc, stored_fields_visitor);
 }
 
 sub_reader::value_visitor_f segment_reader::values(

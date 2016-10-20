@@ -31,11 +31,13 @@ class IRESEARCH_API segment_reader final : public sub_reader {
     const segment_meta& sm
   );
 
+  // expects 1-based document id
   virtual bool document(
     doc_id_t id, 
     const document_visitor_f& visitor
   ) const override;
-  
+ 
+  // expects 1-based document id
   virtual bool document(
     doc_id_t id, 
     const stored_fields_reader::visitor_f& visitor

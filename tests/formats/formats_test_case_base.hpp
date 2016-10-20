@@ -950,8 +950,8 @@ class format_test_case_base : public index_test_base {
         reader_1->prepare(state_1);
 
         gen.reset();
-        ir::doc_id_t i = ir::type_limits<ir::type_t::doc_id_t>::min();
-        for (const document* doc; i - ir::type_limits<ir::type_t::doc_id_t>::min() < seg_1.docs_count && (doc = gen.next());++i) {
+        ir::doc_id_t i = 0;
+        for (const document* doc; i < seg_1.docs_count && (doc = gen.next());++i) {
           expected_id = doc->get<tests::templates::string_field>(0).value();
           expected_name = doc->get<tests::templates::string_field>(1).value();
           ASSERT_TRUE(reader_1->visit(i, check_document));
@@ -974,7 +974,7 @@ class format_test_case_base : public index_test_base {
         };
 
         // check for equality
-        for (auto i = ir::type_limits<ir::type_t::doc_id_t>::min(), count = seg_2.docs_count + ir::type_limits<ir::type_t::doc_id_t>::min(); i < count; ++i) {
+        for (ir::doc_id_t i = 0, count = seg_2.docs_count; i < count; ++i) {
           reader_1->visit(i, read_document);
           reader_2->visit(i, check_document);
         }
@@ -991,8 +991,8 @@ class format_test_case_base : public index_test_base {
         auto reader = codec()->get_stored_fields_reader();
         reader->prepare(state);
 
-        auto i = ir::type_limits<ir::type_t::doc_id_t>::min();
-        for (const document* doc; i - ir::type_limits<ir::type_t::doc_id_t>::min() < seg_3.docs_count && (doc = gen.next()); ++i) {
+        ir::doc_id_t i = 0;
+        for (const document* doc; i < seg_3.docs_count && (doc = gen.next()); ++i) {
           expected_id = doc->get<tests::templates::string_field>(0).value();
           expected_name = doc->get<tests::templates::string_field>(1).value();
           ASSERT_TRUE(reader->visit(i, check_document));
@@ -1426,7 +1426,7 @@ class format_test_case_base : public index_test_base {
       };
 
       for (uint64_t i = 0, docs_count = meta.docs_count; i < docs_count; ++i) {
-        ASSERT_TRUE(reader->visit(iresearch::doc_id_t(ir::type_limits<ir::type_t::doc_id_t>::min() + i), visitor));
+        ASSERT_TRUE(reader->visit(iresearch::doc_id_t(i), visitor));
       }
     }
   }
