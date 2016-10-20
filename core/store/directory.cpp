@@ -17,19 +17,29 @@
 
 NS_ROOT
 
-index_lock::~index_lock() {}
+// ----------------------------------------------------------------------------
+// --SECTION--                                         directory implementation
+// ----------------------------------------------------------------------------
 
 directory::~directory() {}
 
-bool index_lock::lock(index_lock& l, size_t wait_timeout /* = 1000 */) {
-  bool locked = l.lock();
+// ----------------------------------------------------------------------------
+// --SECTION--                                        index_lock implementation
+// ----------------------------------------------------------------------------
+
+index_lock::~index_lock() {}
+
+bool index_lock::try_lock(size_t wait_timeout /* = 1000 */) {
+  const size_t LOCK_POLL_INTERVAL = 1000;
+
+  bool locked = lock();
 
   const size_t max_sleep_count = wait_timeout / LOCK_POLL_INTERVAL;
   for (size_t sleep_count = 0; 
        !locked && (wait_timeout == LOCK_WAIT_FOREVER || sleep_count < max_sleep_count); 
        ++sleep_count) {
     sleep_ms(LOCK_POLL_INTERVAL);
-    locked = l.lock();
+    locked = lock();
   }
 
   return locked;

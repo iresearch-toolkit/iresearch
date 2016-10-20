@@ -22,7 +22,7 @@
 
 NS_LOCAL
 
-const size_t NON_UPDATE_RECORD = std::numeric_limits<size_t>::max(); // non-update
+const size_t NON_UPDATE_RECORD = iresearch::integer_traits<size_t>::const_max; // non-update
 
 // append file refs for files from the specified segments description
 template<typename T, typename M>
@@ -89,6 +89,10 @@ NS_END // NS_LOCAL
 
 NS_ROOT
 
+// ----------------------------------------------------------------------------
+// --SECTION--                                      index_writer implementation 
+// ----------------------------------------------------------------------------
+
 const std::string index_writer::WRITE_LOCK_NAME = "write.lock";
 
 index_writer::flush_context::flush_context():
@@ -138,7 +142,7 @@ index_writer::ptr index_writer::make(directory& dir, format::ptr codec, OPEN_MOD
   // lock the directory
   auto lock = dir.make_lock(WRITE_LOCK_NAME);
 
-  if (!index_lock::lock(*lock)) {
+  if (!lock->try_lock()) {
     throw lock_obtain_failed() << lock_obtain_failed::lock_name(WRITE_LOCK_NAME);
   }
 

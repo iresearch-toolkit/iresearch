@@ -27,7 +27,7 @@
 
 NS_ROOT
 
-class field_meta_writer;
+struct field_meta_writer;
 struct field_writer;
 class token_stream;
 class analyzer;

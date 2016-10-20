@@ -38,7 +38,7 @@ void directory_test_case::lock_obtain_release() {
     // another single lock
     auto lock1 = dir_->make_lock("lock11");
     ASSERT_FALSE(lock1->is_locked());
-    ASSERT_TRUE(iresearch::index_lock::lock(*lock1, 3000));
+    ASSERT_TRUE(lock1->try_lock(3000));
     ASSERT_TRUE(lock1->is_locked());
     lock1->unlock();
     lock1->unlock(); // double release
@@ -69,7 +69,7 @@ void directory_test_case::lock_obtain_release() {
     ASSERT_FALSE(lock1->is_locked());
     ASSERT_TRUE(lock0->lock());
     ASSERT_FALSE(lock1->lock());
-    ASSERT_FALSE(iresearch::index_lock::lock(*lock1, 3000)); // wait 5sec
+    ASSERT_FALSE(lock1->try_lock(3000)); // wait 5sec
     ASSERT_TRUE(lock0->is_locked());
     ASSERT_TRUE(lock1->is_locked());
     lock0->unlock();

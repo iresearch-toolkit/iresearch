@@ -39,7 +39,7 @@ struct directory;
 class directory_reader;
 
 //////////////////////////////////////////////////////////////////////////////
-/// @class OpenMode 
+/// @enum OpenMode 
 /// @brief defines how index writer should be opened
 //////////////////////////////////////////////////////////////////////////////
 enum OPEN_MODE {
@@ -108,7 +108,8 @@ class IRESEARCH_API index_writer : util::noncopyable {
   ////////////////////////////////////////////////////////////////////////////
   /// @brief inserts document specified by the range of fields [begin;end) 
   ///        into index. 
-  ///        Note that changes are not visible until commit()
+  /// @note iterator underlying value type must satisfy the Field concept
+  /// @note that changes are not visible until commit()
   /// @param begin the beginning of the document
   /// @param end the end of the document
   ////////////////////////////////////////////////////////////////////////////
@@ -130,9 +131,9 @@ class IRESEARCH_API index_writer : util::noncopyable {
   ////////////////////////////////////////////////////////////////////////////
   /// @brief replaces documents matching filter for with the document
   ///        represented by the range of fields [begin;end)
-  /// Note that changes are not visible until commit()
-  /// Note that filter must be valid until commit()
-  ///
+  /// @note iterator underlying value type must satisfy the Field concept
+  /// @note that changes are not visible until commit()
+  /// @note that filter must be valid until commit()
   /// @param filter the document filter 
   /// @param begin the beginning of the document
   /// @param end the end of the document
@@ -160,8 +161,8 @@ class IRESEARCH_API index_writer : util::noncopyable {
   ////////////////////////////////////////////////////////////////////////////
   /// @brief replaces documents matching filter for with the document
   ///        represented by the range of fields [begin;end)
-  /// Note that changes are not visible until commit()
-  ///
+  /// @note iterator underlying value type must satisfy the Field concept
+  /// @note that changes are not visible until commit()
   /// @param filter the document filter 
   /// @param begin the beginning of the document
   /// @param end the end of the document
@@ -192,8 +193,8 @@ class IRESEARCH_API index_writer : util::noncopyable {
   ////////////////////////////////////////////////////////////////////////////
   /// @brief replaces documents matching filter for with the document
   ///        represented by the range of fields [begin;end)
-  /// Note that changes are not visible until commit()
-  ///
+  /// @note iterator underlying value type must satisfy the Field concept
+  /// @note that changes are not visible until commit()
   /// @param filter the document filter 
   /// @param begin the beginning of the document
   /// @param end the end of the document
@@ -223,8 +224,8 @@ class IRESEARCH_API index_writer : util::noncopyable {
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief marks documents matching filter for removal 
-  /// Note that changes are not visible until commit()
-  /// Note that filter must be valid until commit()
+  /// @note that changes are not visible until commit()
+  /// @note that filter must be valid until commit()
   ///
   /// @param filter the document filter 
   ////////////////////////////////////////////////////////////////////////////
@@ -232,7 +233,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief marks documents matching filter for removal 
-  /// Note that changes are not visible until commit()
+  /// @note that changes are not visible until commit()
   ///
   /// @param filter the document filter 
   ////////////////////////////////////////////////////////////////////////////
@@ -240,7 +241,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief marks documents matching filter for removal 
-  /// Note that changes are not visible until commit()
+  /// @note that changes are not visible until commit()
   ///
   /// @param filter the document filter 
   ////////////////////////////////////////////////////////////////////////////
