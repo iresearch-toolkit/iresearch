@@ -44,7 +44,7 @@ Read/write access to the components carried via plugin-based formats. Index may 
 ### Document
 A database record is represented as an abstraction called a document.
 A document is actually a collection of indexed/stored fields.
-In order to be processed each field should satisfy Field concept.
+In order to be processed each field should satisfy the Field concept.
  
 #### Field concept
 For type T to be Field, the following conditions have to be satisfied for an object m of type T:
