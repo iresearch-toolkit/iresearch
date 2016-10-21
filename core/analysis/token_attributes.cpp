@@ -1,0 +1,127 @@
+//
+// IResearch search engine 
+// 
+// Copyright © 2016 by EMC Corporation, All Rights Reserved
+// 
+// This software contains the intellectual property of EMC Corporation or is licensed to
+// EMC Corporation from third parties. Use of this software and the intellectual property
+// contained therein is expressly limited to the terms and conditions of the License
+// Agreement under which it is provided by or on behalf of EMC.
+// 
+
+#include "shared.hpp"
+#include "token_attributes.hpp"
+
+NS_ROOT
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                            offset
+// -----------------------------------------------------------------------------
+
+REGISTER_ATTRIBUTE(iresearch::offset);
+DEFINE_ATTRIBUTE_TYPE(offset);
+DEFINE_FACTORY_DEFAULT(offset);
+
+offset::offset() NOEXCEPT
+  : attribute(offset::type()), 
+    start( 0 ), end( 0 ) {
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                         increment
+// -----------------------------------------------------------------------------
+
+REGISTER_ATTRIBUTE(iresearch::increment);
+DEFINE_ATTRIBUTE_TYPE(increment);
+DEFINE_FACTORY_DEFAULT(increment);
+
+increment::increment() NOEXCEPT
+  : basic_attribute< uint32_t >(increment::type(), 1U) {
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    term_attribute
+// -----------------------------------------------------------------------------
+
+REGISTER_ATTRIBUTE(iresearch::term_attribute);
+DEFINE_ATTRIBUTE_TYPE(term_attribute);
+
+term_attribute::term_attribute() NOEXCEPT
+  : attribute(term_attribute::type()) {
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                           payload
+// -----------------------------------------------------------------------------
+
+REGISTER_ATTRIBUTE(iresearch::payload);
+DEFINE_ATTRIBUTE_TYPE(payload);
+DEFINE_FACTORY_DEFAULT(payload);
+
+payload::payload() NOEXCEPT
+  : basic_attribute< bytes_ref >(payload::type()) {
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                          document
+// -----------------------------------------------------------------------------
+
+REGISTER_ATTRIBUTE(iresearch::document);
+DEFINE_ATTRIBUTE_TYPE(document);
+DEFINE_FACTORY_DEFAULT(document);
+
+document::document() NOEXCEPT:
+  basic_attribute<doc_id_t>(document::type(), type_limits<type_t::doc_id_t>::invalid()) {
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                        term_meta
+// -----------------------------------------------------------------------------
+
+REGISTER_ATTRIBUTE(iresearch::term_meta);
+DEFINE_ATTRIBUTE_TYPE(iresearch::term_meta);
+DEFINE_FACTORY_DEFAULT(term_meta);
+
+term_meta::term_meta() NOEXCEPT
+  : attribute(term_meta::type()) {
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                         frequency
+// -----------------------------------------------------------------------------
+
+REGISTER_ATTRIBUTE(iresearch::frequency);
+DEFINE_ATTRIBUTE_TYPE(frequency);
+DEFINE_FACTORY_DEFAULT(frequency);
+
+frequency::frequency() NOEXCEPT
+  : basic_attribute<uint64_t>(frequency::type()) {
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                granularity_prefix
+// -----------------------------------------------------------------------------
+
+REGISTER_ATTRIBUTE(iresearch::granularity_prefix);
+DEFINE_ATTRIBUTE_TYPE(granularity_prefix);
+DEFINE_FACTORY_DEFAULT(granularity_prefix);
+
+granularity_prefix::granularity_prefix() NOEXCEPT:
+  attribute(granularity_prefix::type()) {
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                          position
+// -----------------------------------------------------------------------------
+
+REGISTER_ATTRIBUTE(iresearch::position);
+DEFINE_ATTRIBUTE_TYPE(position);
+DEFINE_FACTORY_DEFAULT(position);
+
+position::position() NOEXCEPT
+  : attribute(position::type()) {
+}
+
+position::impl::impl(size_t reserve_attrs): attrs_(reserve_attrs) {}
+
+NS_END

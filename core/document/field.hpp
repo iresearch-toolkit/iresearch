@@ -1,0 +1,229 @@
+//
+// IResearch search engine 
+// 
+// Copyright © 2016 by EMC Corporation, All Rights Reserved
+// 
+// This software contains the intellectual property of EMC Corporation or is licensed to
+// EMC Corporation from third parties. Use of this software and the intellectual property
+// contained therein is expressly limited to the terms and conditions of the License
+// Agreement under which it is provided by or on behalf of EMC.
+// 
+
+#ifndef IRESEARCH_FIELD_H
+#define IRESEARCH_FIELD_H
+
+#include "analysis/token_streams.hpp"
+#include "serializer.hpp"
+
+NS_ROOT
+
+struct data_output;
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class field 
+/// @brief base class for field implementations
+//////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API field {
+ public:
+  field() = default;
+  virtual ~field();
+
+  field(field&& rhs);
+  field& operator=(field&& rhs);
+
+  field(const field&) = default;
+  field& operator=(const field&) = default;
+
+  const std::string& name() const { return name_; }
+  void name(std::string&& name) { name_ = std::move(name); }
+  void name(const std::string& name) { name_ = name; }
+
+  void boost(float_t value) { boost_ = value; }
+  float_t boost() const { return boost_; }
+
+  bool indexed() const { return indexed_; }
+  void indexed(bool value) { indexed_ = value; }
+  
+  bool stored() const { return stored_; }
+  void stored(bool value) { stored_ = value; }
+
+ private:
+  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
+  std::string name_;
+  float_t boost_{ 1.f };
+  bool indexed_{ true };
+  bool stored_{ true };
+  IRESEARCH_API_PRIVATE_VARIABLES_END
+}; // field
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class long_field 
+/// @brief provides capabilities for storing & indexing int64_t values 
+//////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API long_field : public serializer, 
+                                 public field, 
+                                 private util::noncopyable {
+ public:
+  typedef int64_t value_t;
+
+  long_field() = default;
+  long_field(long_field&& other);
+
+  void value(value_t value) { value_ = value; }
+  value_t value() const { return value_; }
+
+  bool write(data_output& out) const override;
+  const serializer* serializer() const { return stored() ? this : nullptr; }
+  token_stream* get_tokens() const;
+  const flags& features() const;
+
+ private:
+  mutable numeric_token_stream stream_;
+  int64_t value_{};
+}; // long_field 
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class long_field 
+/// @brief provides capabilities for storing & indexing int32_t values 
+//////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API int_field : public serializer,
+                                public field, 
+                                private util::noncopyable {
+ public:
+  typedef int32_t value_t;
+
+  int_field() = default;
+  int_field(int_field&& other);
+
+  void value(value_t value) { value_ = value; }
+  value_t value() const { return value_; }
+
+  bool write(data_output& out) const override;
+  const serializer* serializer() const { return stored() ? this : nullptr; }
+  token_stream* get_tokens() const;
+  const flags& features() const;
+
+ private:
+  mutable numeric_token_stream stream_;
+  int32_t value_{};
+}; // int_field 
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class long_field 
+/// @brief provides capabilities for storing & indexing double_t values 
+//////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API double_field : public serializer, 
+                                   public field, 
+                                   private util::noncopyable {
+ public:
+  typedef double_t value_t;
+
+  double_field() = default;
+  double_field(double_field&& other);
+
+  void value(value_t value) { value_ = value; }
+  value_t value() const { return value_; }
+
+  bool write(data_output& out) const override;
+  const serializer* serializer() const { return stored() ? this : nullptr; }
+  token_stream* get_tokens() const;
+  const flags& features() const;
+
+ private:
+  mutable numeric_token_stream stream_;
+  double_t value_{};
+}; // double_field
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class long_field 
+/// @brief provides capabilities for storing & indexing double_t values 
+//////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API float_field : public serializer, 
+                                  public field, 
+                                  private util::noncopyable {
+ public:
+  typedef float_t value_t;
+
+  float_field() = default;
+  float_field(float_field&& other);
+
+  void value(value_t value) { value_ = value; }
+  value_t value() const { return value_; }
+
+  bool write(data_output& out) const override;
+  const serializer* serializer() const { return stored() ? this : nullptr; }
+  token_stream* get_tokens() const;
+  const flags& features() const;
+
+ private:
+  mutable numeric_token_stream stream_;
+  float_t value_{};
+}; // float_field 
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class long_field 
+/// @brief provides capabilities for storing & indexing string values 
+//////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API string_field : public serializer, 
+                                   public field, 
+                                   private util::noncopyable {
+ public:
+  string_field() = default;
+  string_field(string_field&& other);
+
+  const std::string& value() const { return value_; }
+  void value(std::string&& value) { value_ = std::move(value); }
+  void value(const std::string& value) { value_ = value; }
+
+  template<typename Iterator>
+  void value(Iterator first, Iterator last) {
+    value_ = std::string(first, last);
+  }
+  
+  bool write(data_output& out) const override;
+  const serializer* serializer() const { return stored() ? this : nullptr; }
+  token_stream* get_tokens() const;
+  const flags& features() const;
+
+ private:
+  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
+  mutable string_token_stream stream_;
+  std::string value_;
+  IRESEARCH_API_PRIVATE_VARIABLES_END
+}; // string_field
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class binary_field 
+/// @brief provides capabilities for storing & indexing binary values 
+//////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API binary_field : public serializer, 
+                                   public field, 
+                                   private util::noncopyable {
+ public:
+  binary_field() = default;
+  binary_field(binary_field&& other);
+
+  const bstring& value() const { return value_; }
+  void value(const bstring& value);
+  void value(bstring&& value);
+
+  template<typename Iterator>
+  void value(Iterator first, Iterator last) {
+    value(bstring(first, last));
+  }
+  
+  bool write(data_output& out) const override;
+  const serializer* serializer() const { return stored() ? this : nullptr; }
+  token_stream* get_tokens() const;
+  const flags& features() const;
+
+ private:
+  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
+  mutable string_token_stream stream_;
+  bstring value_;
+  IRESEARCH_API_PRIVATE_VARIABLES_END
+}; // binary_field
+
+NS_END
+
+#endif
