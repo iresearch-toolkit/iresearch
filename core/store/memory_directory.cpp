@@ -213,19 +213,7 @@ int64_t memory_index_output::checksum() const {
 }
 
 void memory_index_output::operator>>( data_output& out ) {
-  auto len = file_.length();
-
-  size_t pos = 0;
-  size_t buf = 0;
-  size_t to_copy = 0;
-
-  while ( pos < len ) {
-    auto buffer = file_.get_buffer(buf++);
-
-    to_copy = std::min(buffer.size, len - pos);
-    out.write_bytes(buffer.data, to_copy);
-    pos += to_copy;
-  }
+  file_ >> out;
 }
 
 /* -------------------------------------------------------------------
