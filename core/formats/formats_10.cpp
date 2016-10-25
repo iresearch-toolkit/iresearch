@@ -1634,10 +1634,16 @@ class reader : public iresearch::columns_reader {
   virtual column_reader_f column(const string_ref& name) const override;
 
  private:
-  struct column_meta {
+  struct column_meta: util::noncopyable { // noncopyable due to index
     std::string name;
     size_t offset;
     compressing_index_reader index;
+    column_meta() = default;
+    column_meta(column_meta&& other)
+      : name(std::move(other.name)),
+        offset(std::move(other.offset)),
+        index(std::move(other.index)) {
+    }
   };
 
   column_reader_f column(const column_meta& meta) const;
@@ -1765,22 +1771,16 @@ stored_fields_writer::stored_fields_writer(uint32_t buf_size,
 void stored_fields_writer::flush() {
   index.write(doc_base, static_cast<uint64_t>(fields_out->file_pointer()));
 
-  seg_buf_.stream.flush();
-
   // write header
   fields_out->write_vint(doc_base);
   fields_out->write_vint(num_buffered_docs);
   write_packed(*fields_out, offsets_, num_buffered_docs);
 
   // write compressed data
-  auto compress_and_copy = [this] (const byte_type* data, size_t size) {
-    write_compact(*fields_out, compres, data, size);
-    return true;
-  };
-  seg_buf_.file.visit(compress_and_copy);
+  write_compact(*fields_out, compres, seg_buf_.c_str(), seg_buf_.size());
 
   // reset
-  seg_buf_.stream.reset();
+  seg_buf_.reset();
   last_offset_ = 0;
   doc_base += num_buffered_docs;
   num_buffered_docs = 0;
@@ -1790,21 +1790,16 @@ void stored_fields_writer::flush() {
 void stored_fields_writer::end(const serializer* header) {
   // write document header 
   if (header) {
-    header->write(seg_buf_.stream);
+    header->write(seg_buf_);
   }
 
   // copy buffered document body to segment buffer
   {
-    doc_body_.stream.flush(); // write file length
-    auto copy = [this] (const byte_type* block, size_t size) {
-      seg_buf_.stream.write_bytes(block, size);
-      return true;
-    };
-    doc_body_.file.visit(copy); // copy data
-    doc_body_.stream.reset(); // reset stream
+    seg_buf_.write_bytes(doc_body_.c_str(), doc_body_.size()); // copy data
+    doc_body_.reset(); // reset stream
   }
 
-  const uint64_t offset = static_cast<uint64_t>(seg_buf_.stream.file_pointer());
+  const uint64_t offset = static_cast<uint64_t>(seg_buf_.size());
 
   offsets_[num_buffered_docs] = static_cast<uint32_t>(offset - last_offset_); // write document offset
   last_offset_ = offset;
@@ -1841,7 +1836,7 @@ void stored_fields_writer::prepare(directory& dir, const string_ref& seg_name) {
 
 bool stored_fields_writer::write(const serializer& writer) {
   REGISTER_TIMER_DETAILED();
-  return writer.write(doc_body_.stream); // write value
+  return writer.write(doc_body_); // write value
 }
 
 void stored_fields_writer::finish() {
@@ -1868,7 +1863,7 @@ void stored_fields_writer::reset() {
   num_buffered_docs = 0;
   num_blocks_ = 0;
   num_incomplete_blocks_ = 0;
-  seg_buf_.stream.reset();
+  seg_buf_.reset();
 }
 
 // ----------------------------------------------------------------------------
@@ -1914,6 +1909,7 @@ size_t stored_fields_reader::compressing_data_input::read_bytes(
     }
 
     copied = std::min(size, len_ - where_);
+    copied = std::min(copied, data_.size()); // if data was split between buffers
     std::memcpy(b, data_.c_str() + pos_, sizeof(byte_type) * copied);
 
     read += copied;

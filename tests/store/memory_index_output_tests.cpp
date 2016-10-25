@@ -17,7 +17,7 @@
 using namespace iresearch;
 
 TEST(memory_index_output_tests, reset) {
-  memory_file file(1024);
+  memory_file file;
   memory_index_output out(file);
 
   std::vector<std::string> data0{

@@ -266,8 +266,8 @@ class stored_fields_writer final : public iresearch::stored_fields_writer {
   // TODO: check layout
   compressing_index_writer index;
   compressor compres;
-  iresearch::memory_output doc_body_; // per document body buffer
-  iresearch::memory_output seg_buf_; // per segment buffer
+  bytes_output doc_body_; // per document body buffer
+  bytes_output seg_buf_; // per segment buffer
   index_output::ptr fields_out; // fields output stream
   index_output::ptr index_out_; // index output stream
   uint32_t offsets_[MAX_BUFFERED_DOCS]{}; // document offset
@@ -302,9 +302,17 @@ class stored_fields_reader final : public iresearch::stored_fields_reader {
       in_->seek(start);
       len_ = length;
       where_ = 0;
+
       if (len_) {
         refill();
+
+        // refill until data_ contains the requested offset
+        while (offset >= data_.size()) {
+          offset -= data_.size();
+          refill();
+        }
       }
+
       pos_ = offset;
     }
 
@@ -342,7 +350,7 @@ class stored_fields_reader final : public iresearch::stored_fields_reader {
   };
 
  private:
-  class compressing_document_reader {
+  class compressing_document_reader: util::noncopyable { // noncopyable due to index_
    public:
     compressing_document_reader():
       start_(type_limits<type_t::address_t>::invalid()),

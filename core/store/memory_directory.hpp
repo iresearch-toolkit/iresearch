@@ -14,6 +14,7 @@
 
 #include "directory.hpp"
 #include "utils/attributes.hpp"
+#include "utils/container_utils.hpp"
 #include "utils/string.hpp"
 
 #include <mutex>
@@ -43,63 +44,71 @@ inline void touch(std::time_t& time) {
 
 NS_END
 
-class memory_file : util::noncopyable {
+// <16, 8> => buffer sizes 256B, 512B, 1K, 2K, 4K, 8K, 16K, 32K, 64K, 128K, 256K, 512K, 1M, 2M, 4M, 8M
+class IRESEARCH_API memory_file:
+  public container_utils::raw_block_vector<byte_type, 16, 8> {
  public:
   DECLARE_PTR(memory_file);
 
-  explicit memory_file(size_t buf_size)
-    : buf_size_(buf_size) {
+  explicit memory_file() {
     touch(meta_.mtime);
   }
 
   memory_file(memory_file&& rhs)
-    : buffers_(std::move(rhs.buffers_)),
-      len_(rhs.len_),
-      buf_size_(rhs.buf_size_) {
+    : raw_block_vector_t(std::move(rhs)), len_(rhs.len_) {
     rhs.len_ = 0;
-    rhs.buf_size_ = 0;
   }
 
-  size_t buffer_size() const { return buf_size_; }
+  memory_file& operator>>(data_output& out) {
+    auto length = len_;
+
+    for (size_t i = 0, count = buffer_count(); i < count && length; ++i) {
+      auto buffer = get_buffer(i);
+      auto to_copy = std::min(length, buffer.size);
+
+      out.write_bytes(buffer.data, to_copy);
+      length -= to_copy;
+    }
+
+    assert(!length); // everything copied
+
+    return *this;
+  }
 
   size_t length() const { return len_; }
+
   void length(size_t length) { 
     len_ = length; 
     touch(meta_.mtime);
   }
 
+  // used length of the buffer based on total length
   size_t buffer_length(size_t i) const {
-    auto last_buf = len_ / buf_size_;
+    auto last_buf = buffer_offset(len_);
 
     if (i == last_buf) {
-      return len_ % buf_size_;
+      auto buffer = get_buffer(i);
+
+      // %size for the case if the last buffer is not one of the precomputed buckets
+      return (len_ - buffer.offset) % buffer.size;
     }
 
-    return i < last_buf ? buf_size_ : 0;
+    return i < last_buf ? get_buffer(i).size : 0;
   }
-
-  size_t num_buffers() const { return buffers_.size(); }
-
-  byte_type* push_buffer() {
-    buffers_.emplace_back(memory::make_unique< byte_type[] >(buf_size_));
-    return buffers_.back().get();
-  }
-
-  byte_type* at(size_t i) const { return buffers_[i].get(); }
 
   std::time_t mtime() const { return meta_.mtime; }
 
   void reset() { len_ = 0; }
 
   void clear() {
-    buffers_.clear();
+    raw_block_vector_t::clear();
     reset();
   }
 
   template<typename Visitor>
   bool visit(const Visitor& visitor) {
-    for (size_t i = 0, size = num_buffers(); i < size; ++i) {
-      if (!visitor(at(i), buffer_length(i))) {
+    for (size_t i = 0, count = buffer_count(); i < count; ++i) {
+      if (!visitor(get_buffer(i).data, buffer_length(i))) {
         return false;
       }
     }
@@ -107,12 +116,8 @@ class memory_file : util::noncopyable {
   }
 
  private:
-  typedef std::unique_ptr< byte_type[] > buffer_t;
-
   memory_file_meta meta_;
-  std::vector< buffer_t > buffers_;
   size_t len_{};
-  size_t buf_size_;
 };
 
 /* -------------------------------------------------------------------
@@ -186,8 +191,7 @@ class IRESEARCH_API memory_index_output final : public index_output {
   void switch_buffer();
 
   memory_file& file_; // underlying file
-  byte_type* buf_; /* current buffer */
-  size_t buf_offset_; /* buffer offset in file */
+  memory_file::buffer_t buf_; // current buffer
   size_t pos_; /* position in current buffer */
 };
 
@@ -197,10 +201,6 @@ class IRESEARCH_API memory_index_output final : public index_output {
 
 class IRESEARCH_API memory_directory final : public directory {
  public:
-  static const size_t DEF_BUF_SIZE = 1024;
-
-  explicit memory_directory(size_t buf_size = DEF_BUF_SIZE);
-
   virtual ~memory_directory();
   using directory::attributes;
   virtual iresearch::attributes& attributes() override;
@@ -239,7 +239,6 @@ class IRESEARCH_API memory_directory final : public directory {
   iresearch::attributes attributes_;
   file_map files_;
   lock_map locks_;
-  size_t buf_size_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
@@ -248,7 +247,7 @@ class IRESEARCH_API memory_directory final : public directory {
  * ------------------------------------------------------------------*/
 
 struct IRESEARCH_API memory_output {
-  explicit memory_output(size_t buf_size = memory_directory::DEF_BUF_SIZE);
+  memory_output() = default;
 
   memory_output(memory_output&& rhs)
     : file(std::move(rhs.file)) {
