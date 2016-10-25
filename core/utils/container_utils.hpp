@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "math_utils.hpp"
+#include "memory.hpp"
 #include "noncopyable.hpp"
 #include "shared.hpp"
 
