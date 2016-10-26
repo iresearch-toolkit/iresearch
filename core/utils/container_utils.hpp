@@ -112,10 +112,15 @@ class raw_block_vector: util::noncopyable {
 
   buffer_t push_buffer() {
     auto& meta = get_bucket_meta();
-    auto& bucket = buffers_.size() < meta.size()
-      ? meta[buffers_.size()] : meta.back();
 
-    buffers_.emplace_back(bucket.offset, bucket.size);
+    if (buffers_.size() < meta.size()) { // one of the precomputed buckets
+      auto& bucket = meta[buffers_.size()];
+      buffers_.emplace_back(bucket.offset, bucket.size);
+    } else { // non-precomputed buckets, offset is the sum of previous buckets
+      assert(!buffers_.empty()); // otherwise do not know what size buckets to create
+      auto& bucket = buffers_.back(); // most of the meta from last computed bucket
+      buffers_.emplace_back(bucket.offset + bucket.size, bucket.size);
+    }
 
     return buffers_.back();
   }
