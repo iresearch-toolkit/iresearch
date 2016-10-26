@@ -99,7 +99,14 @@ class raw_block_vector: util::noncopyable {
   }
 
   FORCE_INLINE size_t buffer_offset(size_t position) const NOEXCEPT {
-    return get_bucket_offset(position);
+    static const auto& last_buffer = get_bucket_meta().back();
+    static const auto last_buffer_id = get_bucket_meta().size() - 1;
+
+    // non-precomputed bucket size is the same as the last precomputed bucket size
+    return position < last_buffer.offset
+      ? get_bucket_offset(position)
+      : (last_buffer_id + (position - last_buffer.offset) / last_buffer.size)
+      ;
   }
 
   FORCE_INLINE void clear() NOEXCEPT {
@@ -111,7 +118,7 @@ class raw_block_vector: util::noncopyable {
   }
 
   buffer_t push_buffer() {
-    auto& meta = get_bucket_meta();
+    static const auto& meta = get_bucket_meta();
 
     if (buffers_.size() < meta.size()) { // one of the precomputed buckets
       auto& bucket = meta[buffers_.size()];
@@ -119,7 +126,9 @@ class raw_block_vector: util::noncopyable {
     } else { // non-precomputed buckets, offset is the sum of previous buckets
       assert(!buffers_.empty()); // otherwise do not know what size buckets to create
       auto& bucket = buffers_.back(); // most of the meta from last computed bucket
-      buffers_.emplace_back(bucket.offset + bucket.size, bucket.size);
+      auto offset = bucket.offset + bucket.size;
+      auto size = bucket.size;
+      buffers_.emplace_back(offset, size);
     }
 
     return buffers_.back();
