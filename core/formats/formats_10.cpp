@@ -1535,7 +1535,7 @@ const string_ref COLUMNSTORE_EXT = "cs";
 /// @class writer 
 //////////////////////////////////////////////////////////////////////////////
 
-class writer : public iresearch::columns_writer {
+class writer final : public iresearch::columns_writer {
  public:
   virtual bool prepare(directory& dir, const string_ref& name) override;
   virtual std::pair<string_ref, values_writer_f> push_column(std::string&& name) override;
@@ -1579,7 +1579,7 @@ void writer::flush_block(column& col) {
   {
     col.block_header_writer.finish();
     col.block_header.stream.flush();
-    col.block_header.stream >> *data_out_;
+    col.block_header.file >> *data_out_;
   }
 
   // write compressed block data
@@ -1668,18 +1668,19 @@ void writer::flush() {
     write_string(*data_out_, entry.first); // column name
     data_out_->write_vlong(column.max_block_size); // size of the biggest block
     data_out_->write_vlong(column.max_key); // max key
-    column.blocks_index.stream >> *data_out_; // column blocks index
+    column.blocks_index.file >> *data_out_; // column blocks index
   }
   format_utils::write_footer(*data_out_);
   
   data_out_->write_long(block_index_ptr);
   format_utils::write_footer(*data_out_);
-
-  data_out_.reset();
-  columns_.clear();
+  
+  reset();
 }
 
 void writer::reset() {
+  data_out_.reset();
+  columns_.clear();
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -1688,17 +1689,17 @@ void writer::reset() {
 
 NS_LOCAL
 
-iresearch::columns_reader::column_reader_f INVALID_COLUMN = 
+iresearch::columns_reader::values_reader_f INVALID_COLUMN = 
   [] (doc_id_t, const iresearch::columns_reader::value_reader_f&) {
     return false;
   };
 
 NS_END
 
-class reader : public iresearch::columns_reader {
+class reader final : public iresearch::columns_reader {
  public:
   virtual bool prepare(const reader_state& state) override;
-  virtual column_reader_f values(const string_ref& name) const override;
+  virtual values_reader_f values(const string_ref& name) const override;
 
  private:
   struct block : util::noncopyable {
@@ -1844,11 +1845,11 @@ bool reader::prepare(const reader_state& state) {
   return true;
 }
 
-reader::column_reader_f reader::values(const string_ref& name) const {
+reader::values_reader_f reader::values(const string_ref& name) const {
   const auto it = name_to_column_.find(name);
   if (name_to_column_.end() == it) {
     // can't find attribute with the specified name
-    return [] (doc_id_t, const value_reader_f&) { return false; };
+    return INVALID_COLUMN;
   }
   
   auto& column = *it->second;

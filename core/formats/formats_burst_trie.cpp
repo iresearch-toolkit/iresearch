@@ -1313,10 +1313,10 @@ void field_writer::write_block(
   stats.stream.flush();
 
   terms_out->write_vlong( shift_pack_64(static_cast<uint64_t>(suffix.stream.file_pointer()), leaf > 0 ) );
-  suffix.stream >> *terms_out;
+  suffix.file >> *terms_out;
 
   terms_out->write_vlong(static_cast<uint64_t>(stats.stream.file_pointer()));
-  stats.stream >> *terms_out;
+  stats.file >> *terms_out;
 
   suffix.stream.reset();
   stats.stream.reset();

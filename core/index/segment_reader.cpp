@@ -64,6 +64,9 @@ class masked_docs_iterator
   iresearch::doc_id_t next_;
 };
 
+iresearch::sub_reader::value_visitor_f INVALID_VISITOR =
+  [] (iresearch::doc_id_t) { return false; };
+
 NS_END // NS_LOCAL
 
 NS_ROOT
@@ -107,11 +110,10 @@ bool segment_reader::document(
 }
 
 sub_reader::value_visitor_f segment_reader::values(
-  const string_ref& field,
-  const columns_reader::value_reader_f& value_reader
-) const {
+    const string_ref& field,
+    const columns_reader::value_reader_f& value_reader) const {
   if (!cr_) {
-    return [] (doc_id_t) { return false; };
+    return INVALID_VISITOR;
   }
 
   auto column = cr_->values(field);
