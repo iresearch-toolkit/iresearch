@@ -83,21 +83,18 @@ memory_index_input::memory_index_input(const memory_file& file) NOEXCEPT
 }
 
 void memory_index_input::switch_buffer(size_t pos) {
-  const auto buf_size = file_->buffer_size();
+  auto idx = file_->buffer_offset(pos);
+  assert(idx < file_->buffer_count());
+  auto buf = file_->get_buffer(idx);
 
-  auto idx = pos / buf_size;
-  if (idx >= file_->num_buffers()) {
-    throw eof_error(); // read past eof
+  if (buf.data != buf_) {
+    buf_ = buf.data;
+    start_ = buf.offset;
+    end_ = buf_ + std::min(buf.size, file_->length() - start_);
   }
 
-  auto buf = file_->at(idx);
-  if (buf != buf_) {
-    buf_ = buf;
-    start_ = idx * buf_size;
-    end_ = buf_ + std::min(buf_size, file_->length() - start_);
-  }
-
-  begin_ = buf_ + (pos % buf_size);
+  assert(start_ <= pos && pos < start_ + std::distance(buf_, end_));
+  begin_ = buf_ + (pos - start_);
 }
 
 size_t memory_index_input::length() const {
@@ -109,6 +106,14 @@ size_t memory_index_input::file_pointer() const {
 }
     
 void memory_index_input::seek(size_t pos) {
+  // allow seeking past eof(), set to eof
+  if (pos >= file_->length()) {
+    buf_ = nullptr;
+    begin_ = nullptr;
+    start_ = file_->length();
+    return;
+  }
+
   switch_buffer(pos);
 }
 
@@ -155,36 +160,37 @@ memory_index_output::memory_index_output(memory_file& file) NOEXCEPT
 }
 
 void memory_index_output::reset() {
-  buf_ = nullptr;
-  buf_offset_ = 0;
-  buf_offset_ -= file_.buffer_size();
-  pos_ = file_.buffer_size();
+  buf_.data = nullptr;
+  buf_.offset = 0;
+  buf_.size = 0;
+  pos_ = 0;
 }
 
 void memory_index_output::switch_buffer() {
-  const auto idx = file_pointer() / file_.buffer_size();
-  buf_ = idx >= file_.num_buffers() ? file_.push_buffer() : file_.at(idx);
+  auto idx = file_.buffer_offset(file_pointer());
+
+  buf_ = idx < file_.buffer_count() ? file_.get_buffer(idx) : file_.push_buffer();
   pos_ = 0;
-  buf_offset_ = file_.buffer_size() * idx;
 }
 
 void memory_index_output::write_byte( byte_type byte ) {
-  if ( pos_ >= file_.buffer_size() ) {
+  if (pos_ >= buf_.size) {
     switch_buffer();
   }
-  buf_[pos_++] = byte;
+
+  buf_.data[pos_++] = byte;
 }
 
 void memory_index_output::write_bytes( const byte_type* b, size_t len ) {
   assert( b );
 
   for(size_t to_copy = 0; len; len -= to_copy) {
-    if (pos_ >= file_.buffer_size()) {
+    if (pos_ >= buf_.size) {
       switch_buffer();
     }
 
-    to_copy = std::min(file_.buffer_size() - pos_, len);
-    std::memcpy( buf_ + pos_, b, sizeof( byte_type ) * to_copy );
+    to_copy = std::min(buf_.size - pos_, len);
+    std::memcpy(buf_.data + pos_, b, sizeof(byte_type) * to_copy);
     b += to_copy;
     pos_ += to_copy;
   }
@@ -199,7 +205,7 @@ void memory_index_output::flush() {
 }
 
 size_t memory_index_output::file_pointer() const {
-  return buf_offset_ + pos_;
+  return buf_.offset + pos_;
 }
 
 int64_t memory_index_output::checksum() const {
@@ -207,28 +213,12 @@ int64_t memory_index_output::checksum() const {
 }
 
 void memory_index_output::operator>>( data_output& out ) {
-  auto len = file_.length();
-  auto buf_size = file_.buffer_size();
-
-  size_t pos = 0;
-  size_t buf = 0;
-  size_t to_copy = 0;
-
-  while ( pos < len ) {
-    to_copy = std::min( buf_size, len - pos );
-    out.write_bytes(file_.at( buf++ ), to_copy);
-    pos += to_copy;
-  }
+  file_ >> out;
 }
 
 /* -------------------------------------------------------------------
  * memory_directory
  * ------------------------------------------------------------------*/
-
-memory_directory::memory_directory(size_t buf_size /* = DEF_BUF_SIZE */)
-  : buf_size_(buf_size) {
-  assert(buf_size_);
-}
 
 memory_directory::~memory_directory() { }
 
@@ -322,7 +312,7 @@ index_output::ptr memory_directory::create(const std::string& name) {
   if (!res.second) { // file exists
     file->reset();
   } else {
-    file = std::move(memory::make_unique<memory_file>(buf_size_));
+    file = std::move(memory::make_unique<memory_file>());
   }
 
   typedef checksum_index_output<boost::crc_32_type> checksum_output_t;
@@ -345,14 +335,6 @@ index_input::ptr memory_directory::open(const std::string& name) const {
   }
 
   return index_input::make<memory_index_input>(*it->second);
-}
-
-/* -------------------------------------------------------------------
-* memory_output
-* ------------------------------------------------------------------*/
-
-memory_output::memory_output(size_t buf_size /* = memory_directory::DEF_BUF_SIZE */)
-  : file(buf_size) { 
 }
 
 NS_END

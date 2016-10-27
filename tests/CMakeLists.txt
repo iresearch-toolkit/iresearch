@@ -81,6 +81,7 @@ set(IReSearch_tests_sources
   ./iql/parser_common_test.cpp
   ./iql/query_builder_test.cpp
   ./utils/async_utils_tests.cpp
+  ./utils/container_utils_tests.cpp
   ./utils/object_pool_tests.cpp
   ./utils/numeric_utils_test.cpp
   ./utils/attributes_tests.cpp

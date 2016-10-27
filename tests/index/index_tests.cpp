@@ -1136,6 +1136,11 @@ protected:
 
 class fs_test_case_base : public index_test_case_base { 
 protected:
+  virtual void SetUp() {
+    index_test_case_base::SetUp();
+    MSVC_ONLY(_setmaxstdio(2048)); // workaround for error: EMFILE - Too many open files
+  }
+
   virtual ir::directory* get_directory() override {
     const fs::path dir = fs::path( test_dir() ).append( "index" );
     return new iresearch::fs_directory(dir.string());
