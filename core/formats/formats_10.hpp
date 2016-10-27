@@ -373,7 +373,7 @@ class stored_fields_reader final : public iresearch::stored_fields_reader {
   };
 
   compressing_document_reader docs_;
-  compressing_index_reader index_;
+  compressed_index<uint64_t> index_;
   const fields_meta* fields_;
 };
 

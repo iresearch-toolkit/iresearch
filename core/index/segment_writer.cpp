@@ -95,7 +95,6 @@ bool segment_writer::store_attribute(
 void segment_writer::finish(const update_context& ctx) {
   REGISTER_TIMER_DETAILED();
   sf_writer_->end(&header_);
-  col_writer_->end();
   docs_context_[type_limits<type_t::doc_id_t>::min() + num_docs_cached_++] = ctx;
   header_.doc_fields.clear();
 }

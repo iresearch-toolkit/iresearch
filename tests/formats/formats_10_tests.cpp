@@ -348,11 +348,24 @@ class format_10_test_case : public tests::format_test_case_base {
     {
       const auto max_doc = blocks_count*block_docs + last_block_docs_count + ir::type_limits<ir::type_t::doc_id_t>::min();
       auto in = dir().open("_0.idx");
-      ir::compressing_index_reader reader;
-      ASSERT_TRUE(reader.prepare(*in, max_doc));
-      ASSERT_EQ(ir::type_limits<ir::type_t::address_t>::invalid(), reader.lower_bound(max_doc + 1));
+
+      static auto visitor = [] (uint64_t& t, uint64_t v) { t = v; };
+
+      ir::compressed_index<uint64_t> reader;
+      ASSERT_TRUE(reader.read(*in, max_doc, visitor));
+      ASSERT_EQ(nullptr, reader.lower_bound(max_doc + 1));
       for (ir::doc_id_t i = 0; i < max_doc; ++i) {
-        ASSERT_EQ(start_offset + i / block_docs, reader.lower_bound(i));
+        auto* less_or_eq = reader.lower_bound(i);
+        ASSERT_NE(nullptr, less_or_eq);
+        ASSERT_EQ(start_offset + i / block_docs, *less_or_eq);
+
+        auto* exact = reader.find(i);
+        if (0 == i % block_docs) {
+          ASSERT_NE(nullptr, exact);
+          ASSERT_EQ(start_offset + i / block_docs, *exact);
+        } else {
+          ASSERT_EQ(nullptr, exact);
+        }
       }
     }
   }

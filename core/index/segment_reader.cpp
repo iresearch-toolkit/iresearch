@@ -114,10 +114,10 @@ sub_reader::value_visitor_f segment_reader::values(
     return [] (doc_id_t) { return false; };
   }
 
-  auto column_reader = cr_->column(field);
+  auto column = cr_->values(field);
 
-  return [&value_reader, column_reader](doc_id_t doc)->bool {
-    return column_reader(doc, value_reader);
+  return [&value_reader, column](doc_id_t doc)->bool {
+    return column(doc, value_reader);
   };
 }
 

@@ -1053,7 +1053,7 @@ class format_test_case_base : public index_test_base {
 
       // try to read invalild column
       {
-        auto column = reader->column(field0);
+        auto column = reader->values(field0);
         calls_count = 0;
         ASSERT_FALSE(column(0, value_reader));
         ASSERT_EQ(0, calls_count);
@@ -1158,7 +1158,7 @@ class format_test_case_base : public index_test_base {
 
       // try to read invalild column
       {
-        auto column = reader->column("invalid_column");
+        auto column = reader->values("invalid_column");
         calls_count = 0;
         ASSERT_FALSE(column(0, value_reader));
         ASSERT_EQ(0, calls_count);
@@ -1175,7 +1175,7 @@ class format_test_case_base : public index_test_base {
 
       // check field0
       {
-        auto column = reader->column(field0);
+        auto column = reader->values(field0);
         expected_value = "field0_doc0";
         calls_count = 0;
         ASSERT_TRUE(column(0, value_reader)); // check doc==33, column==field0
@@ -1221,7 +1221,7 @@ class format_test_case_base : public index_test_base {
 
       // try to read invalild column
       {
-        auto column = reader->column("invalid_column");
+        auto column = reader->values("invalid_column");
         calls_count = 0;
         ASSERT_FALSE(column(0, value_reader));
         ASSERT_EQ(0, calls_count);
@@ -1238,7 +1238,7 @@ class format_test_case_base : public index_test_base {
 
       // check field1
       {
-        auto column = reader->column(field1);
+        auto column = reader->values(field1);
         expected_value = "segment_2_field1_doc0";
         calls_count = 0;
         ASSERT_TRUE(column(0, value_reader)); // check doc==0, column==field0
