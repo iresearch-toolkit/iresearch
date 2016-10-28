@@ -12,6 +12,8 @@
 #ifndef IRESEARCH_BITSET_H
 #define IRESEARCH_BITSET_H
 
+#include <memory>
+
 #include "shared.hpp"
 #include "bit_utils.hpp"
 #include "math_utils.hpp"
@@ -24,31 +26,28 @@ class bitset {
   typedef size_t index_t;
 
   explicit bitset(size_t bits = 0)
-    : bits_(bits),
-    words_(bit_to_words(bits_)) {
+    : bits_(bits), words_(bit_to_words(bits_)) {
     if (words_) {
-      data_ = new word_t[words_];
+      data_.reset(new word_t[words_]);
       clear();
     }
   }
 
   bitset(bitset&& rhs) NOEXCEPT
-    : bits_(rhs.bits_),
-    words_(rhs.words_),
-    data_(rhs.data_) {
+    : bits_(std::move(rhs.bits_)),
+      words_(std::move(rhs.words_)),
+      data_(std::move(rhs.data_)) {
     rhs.bits_ = 0;
     rhs.words_ = 0;
-    rhs.data_ = nullptr;
   }
 
   bitset& operator=(bitset&& rhs) NOEXCEPT {
     if (this != &rhs) {
-      bits_ = rhs.bits_;
+      bits_ = std::move(rhs.bits_);
+      words_ = std::move(rhs.words_);
+      data_ = std::move(rhs.data_);
       rhs.bits_ = 0;
-      words_ = rhs.words_;
       rhs.words_ = 0;
-      data_ = rhs.data_;
-      rhs.data_ = nullptr;
     }
 
     return *this;
@@ -61,36 +60,41 @@ class bitset {
   const size_t size() const { return bits_; }
 
   const size_t words() const { return words_; }
-  const word_t* data() const { return data_; }
-  word_t* data() { return data_; }
+  const word_t* data() const { return data_.get(); }
+  word_t* data() { return data_.get(); }
 
   void set(size_t i) NOEXCEPT {
     assert(i < bits_);
+    auto* data = data_.get();
     const auto wi = word(i);
-    set_bit(data_[wi], bit(i, wi));
+    set_bit(data[wi], bit(i, wi));
   }
 
   void unset(size_t i) NOEXCEPT {
     assert(i < bits_);
+    auto* data = data_.get();
     const auto wi = word(i);
-    unset_bit(data_[wi], bit(i, wi));
+    unset_bit(data[wi], bit(i, wi));
   }
 
   void reset(size_t i, bool set) NOEXCEPT {
     assert(i < bits_);
+    auto* data = data_.get();
     const auto wi = word(i);
-    set_bit(data_[wi], bit(i, wi), set);
+    set_bit(data[wi], bit(i, wi), set);
   }
 
   bool test(size_t i) const NOEXCEPT {
     assert(i < bits_);
+    auto* data = data_.get();
     const auto wi = word(i);
-    return check_bit(data_[wi], bit(i, wi));
+    return check_bit(data[wi], bit(i, wi));
   }
 
   bool any() const {
+    auto* data = data_.get();
     return std::any_of(
-      data_, data_ + words_,
+      data, data + words_,
       [] (word_t w) { return w != 0; }
     );
   }
@@ -104,23 +108,22 @@ class bitset {
   }
 
   void clear() {
-    std::memset(data_, 0, sizeof(word_t)*words_);
+    std::memset(data_.get(), 0, sizeof(word_t)*words_);
   }
 
   // counts bits set
   word_t count() const NOEXCEPT {
+    auto* data = data_.get();
     return std::accumulate(
-      data_, data_ + words_, word_t(0),
+      data, data + words_, word_t(0),
       [] (word_t v, word_t w) {
         return v + math::math_traits<word_t>::pop(w);
     });
   }
 
-  ~bitset() {
-    delete[] data_;
-  }
+ private:
+  typedef std::unique_ptr<word_t> word_ptr;
 
-  private:
   FORCE_INLINE static size_t word(size_t i) NOEXCEPT {
     return i / bits_required<word_t>();
   }
@@ -135,7 +138,7 @@ class bitset {
 
   size_t bits_;    // number of bits in a bitset
   size_t words_;   // number of words used for storing data
-  word_t* data_{}; // words array
+  word_ptr data_; // words array
 }; // bitset
 
 NS_END
