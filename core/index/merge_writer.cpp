@@ -417,7 +417,7 @@ namespace {
   // ...........................................................................
   // compute fields_type and fields_count
   // ...........................................................................
-  bool compute_filed_meta(
+  bool compute_field_meta(
     field_meta_map_t& field_meta_map,
     iresearch::flags& fields_features,
     const iresearch::sub_reader& reader
@@ -608,7 +608,7 @@ bool merge_writer::flush(std::string& filename, segment_meta& meta) {
   for (auto& reader: readers_) {
     readers.emplace_back(reader, doc_id_map_t());
 
-    if (!compute_filed_meta(field_metas, fields_features, *reader)) {
+    if (!compute_field_meta(field_metas, fields_features, *reader)) {
       return false;
     }
 
