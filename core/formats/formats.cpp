@@ -59,8 +59,11 @@ document_mask_reader::~document_mask_reader() {}
 segment_meta_writer::~segment_meta_writer() {}
 segment_meta_reader::~segment_meta_reader() {}
 
-columns_writer::~columns_writer() {}
-columns_reader::~columns_reader() {}
+column_meta_writer::~column_meta_writer() {}
+column_meta_reader::~column_meta_reader() {}
+
+columnstore_writer::~columnstore_writer() {}
+columnstore_reader::~columnstore_reader() {}
 
 index_meta_writer::~index_meta_writer() {}
 /* static */void index_meta_writer::complete(index_meta& meta) NOEXCEPT {

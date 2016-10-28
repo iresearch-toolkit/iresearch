@@ -1501,6 +1501,84 @@ void field_meta_writer::end() {
 
 NS_BEGIN(columns)
 
+class meta_writer final : public iresearch::column_meta_writer {
+ public:
+  static const string_ref FORMAT_NAME;
+  static const string_ref FORMAT_EXT;
+
+  static const int32_t FORMAT_MIN = 0;
+  static const int32_t FORMAT_MAX = FORMAT_MIN;
+
+  virtual bool prepare(directory& dir, const string_ref& filename, size_t count) override;
+  virtual void write(const std::string& name, field_id id) override;
+  virtual void flush() override;
+
+ private:
+  index_output::ptr out_;
+}; // meta_writer 
+
+const string_ref meta_writer::FORMAT_NAME = "iresearch_10_columnmeta";
+const string_ref meta_writer::FORMAT_EXT = "cm";
+
+bool meta_writer::prepare(directory& dir, const string_ref& name, size_t count) {
+  std::string filename;
+  file_name(filename, name, FORMAT_EXT);
+
+  out_ = dir.create(filename);
+  format_utils::write_header(*out_, FORMAT_NAME, FORMAT_MAX);
+  out_->write_vlong(count);
+
+  return true;
+}
+  
+void meta_writer::write(const std::string& name, field_id id) {
+  out_->write_vlong(id);
+  write_string(*out_, name);
+}
+
+void meta_writer::flush() {
+  format_utils::write_footer(*out_);
+  out_.reset();
+}
+
+class meta_reader final : public iresearch::column_meta_reader {
+ public:
+  virtual size_t prepare(const directory& dir, const string_ref& filename) override;
+  virtual void read(std::string& name, field_id& id) override;
+  virtual void end() override;
+
+ private:
+  checksum_index_input<boost::crc_32_type> in_;
+}; // meta_writer 
+
+size_t meta_reader::prepare(const directory& dir, const string_ref& name) {
+  checksum_index_input< boost::crc_32_type > check_in(
+    dir.open(file_name(name, meta_writer::FORMAT_EXT))
+  );
+
+  in_.swap(check_in);
+  format_utils::check_header(
+    in_, 
+    meta_writer::FORMAT_NAME,
+    meta_writer::FORMAT_MIN,
+    meta_writer::FORMAT_MAX
+  );
+  return in_.read_vlong();
+}
+  
+void meta_reader::read(std::string& name, field_id& id) {
+  id = in_.read_vlong();
+  name = read_string<std::string>(in_);
+}
+
+void meta_reader::end() {
+  format_utils::check_footer(in_);
+}
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                                 Format constants 
+// ----------------------------------------------------------------------------
+
 // |Header|
 // |Compressed block #0|
 // |Compressed block #1|
@@ -1518,39 +1596,32 @@ NS_BEGIN(columns)
 // |Bloom filter offset|
 // |Footer|
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                                 Format constants 
-// ----------------------------------------------------------------------------
-
-const int32_t FORMAT_MIN = 0;
-const int32_t FORMAT_MAX = FORMAT_MIN;
 const size_t INDEX_BLOCK_SIZE = 1 << 10;
 const size_t MAX_DATA_BLOCK_SIZE = 1 << 12;
 const size_t DATA_BLOCK_SIZE = 1 << 13;
 
-const string_ref COLUMNSTORE_FORMAT = "iresearch_10_columnstore";
-const string_ref COLUMNSTORE_EXT = "cs";
-
 //////////////////////////////////////////////////////////////////////////////
 /// @class writer 
 //////////////////////////////////////////////////////////////////////////////
-
-class writer final : public iresearch::columns_writer {
+class writer final : public iresearch::columnstore_writer {
  public:
+  static const int32_t FORMAT_MIN = 0;
+  static const int32_t FORMAT_MAX = FORMAT_MIN;
+  
+  static const string_ref FORMAT_NAME;
+  static const string_ref FORMAT_EXT;
+
   virtual bool prepare(directory& dir, const string_ref& name) override;
-  virtual std::pair<string_ref, values_writer_f> push_column(std::string&& name) override;
+  virtual column_t push_column() override;
   virtual void flush() override;
-  virtual void reset() override;
 
  private:
-  struct column {
-     explicit column(std::string&& name) 
-       : name(std::move(name)) {
+  struct column : util::noncopyable {
+     explicit column() {
        blocks_index_writer.prepare(blocks_index.stream);
        block_header_writer.prepare(block_header.stream);
      }
 
-     std::string name;
      memory_output blocks_index; // blocks index
      memory_output block_header; // current block header
      compressing_index_writer block_header_writer{ INDEX_BLOCK_SIZE };
@@ -1570,6 +1641,9 @@ class writer final : public iresearch::columns_writer {
    std::string filename_;
    directory* dir_;
 }; // writer
+
+const string_ref writer::FORMAT_NAME = "iresearch_10_columnstore";
+const string_ref writer::FORMAT_EXT = "cs";
 
 void writer::flush_block(column& col) {
   // where block starts
@@ -1596,21 +1670,23 @@ void writer::flush_block(column& col) {
 }
 
 bool writer::prepare(directory& dir, const string_ref& name) {
+  columns_.clear();
+
   dir_ = &dir;
-  file_name(filename_, name, COLUMNSTORE_EXT);
+  file_name(filename_, name, FORMAT_EXT);
 
   data_out_ = dir.create(filename_);
-  format_utils::write_header(*data_out_, COLUMNSTORE_FORMAT, FORMAT_MAX);
+  format_utils::write_header(*data_out_, FORMAT_NAME, FORMAT_MAX);
 
   return true;
 }
 
-std::pair<string_ref, writer::values_writer_f> writer::push_column(std::string&& name) {
-  columns_.emplace_back(std::move(name));
-
+columnstore_writer::column_t writer::push_column() {
+  columns_.emplace_back();
   auto& column = columns_.back();
+
   return std::make_pair(
-    string_ref(columns_.back().name), 
+    columns_.size() - 1, // field id
     [&column, this] (doc_id_t doc, const serializer& writer) {
       auto& stream = column.block_buf;
       auto& block_header = column.block_header_writer;
@@ -1636,7 +1712,8 @@ std::pair<string_ref, writer::values_writer_f> writer::push_column(std::string&&
 }
 
 void writer::flush() {
-  std::map<string_ref, column*> sorted_columns;
+  // flush all remain data
+  std::vector<column*> filled;
   for (auto& column : columns_) {
     if (!column.size) {
       continue; // filter out empty columns
@@ -1649,10 +1726,10 @@ void writer::flush() {
     column.blocks_index_writer.finish();
     column.blocks_index.stream.flush();
 
-    sorted_columns.emplace(column.name, &column);
+    filled.push_back(&column);
   }
 
-  if (sorted_columns.empty()) {
+  if (filled.empty()) {
     // remove file if there is no data
     data_out_.reset();
     dir_->remove(filename_);
@@ -1660,27 +1737,16 @@ void writer::flush() {
   }
 
   const auto block_index_ptr = data_out_->file_pointer(); // where blocks index start
-  data_out_->write_vlong(sorted_columns.size()); // number of columns
-  uint32_t id = 0;
-  for (auto& entry : sorted_columns) {
-    auto& column = *entry.second;
-    data_out_->write_vint(id++); // column id
-    write_string(*data_out_, entry.first); // column name
-    data_out_->write_vlong(column.max_block_size); // size of the biggest block
-    data_out_->write_vlong(column.max_key); // max key
-    column.blocks_index.file >> *data_out_; // column blocks index
+  data_out_->write_vlong(filled.size()); // number of columns
+  for (auto* column : filled) {
+    data_out_->write_vlong(column->max_block_size); // size of the biggest block
+    data_out_->write_vlong(column->max_key); // max key
+    column->blocks_index.file >> *data_out_; // column blocks index
   }
-  format_utils::write_footer(*data_out_);
-  
   data_out_->write_long(block_index_ptr);
   format_utils::write_footer(*data_out_);
   
-  reset();
-}
-
-void writer::reset() {
   data_out_.reset();
-  columns_.clear();
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -1689,17 +1755,17 @@ void writer::reset() {
 
 NS_LOCAL
 
-iresearch::columns_reader::values_reader_f INVALID_COLUMN = 
-  [] (doc_id_t, const iresearch::columns_reader::value_reader_f&) {
+iresearch::columnstore_reader::values_reader_f INVALID_COLUMN = 
+  [] (doc_id_t, const iresearch::columnstore_reader::value_reader_f&) {
     return false;
   };
 
 NS_END
 
-class reader final : public iresearch::columns_reader {
+class reader final : public iresearch::columnstore_reader {
  public:
   virtual bool prepare(const reader_state& state) override;
-  virtual values_reader_f values(const string_ref& name) const override;
+  virtual values_reader_f values(field_id name) const override;
 
  private:
   struct block : util::noncopyable {
@@ -1720,13 +1786,11 @@ class reader final : public iresearch::columns_reader {
     column() = default;
 
     column(column&& rhs)
-      : name(std::move(rhs.name)),
-        index(std::move(rhs.index)),
+      : index(std::move(rhs.index)),
         stream(std::move(rhs.stream)),
         max_block_size(rhs.max_block_size) {
     }
 
-    std::string name;
     compressed_index<block_ref_t> index; // blocks index
     index_input::ptr stream; // column stream
     uint64_t max_block_size;
@@ -1734,10 +1798,9 @@ class reader final : public iresearch::columns_reader {
 
   bool load_block(reader::column& column, block_ref_t& block_ref) const;
 
-  std::map<string_ref, column*> name_to_column_;
   std::vector<column> columns_;
-  mutable std::deque<block> cached_blocks_; // cached blocks
   index_input::ptr data_in_; // columnstore data stream
+  mutable std::deque<block> cached_blocks_; // cached blocks
   mutable decompressor decomp_; // decompressor
 }; // reader
   
@@ -1786,7 +1849,7 @@ bool reader::prepare(const reader_state& state) {
   auto& dir = *state.dir;
 
   std::string filename;
-  file_name(filename, name, COLUMNSTORE_EXT);
+  file_name(filename, name, writer::FORMAT_EXT);
   if (!dir.exists(filename)) {
     // TODO: directory::open should return nullptr
     // instead of throwing exception
@@ -1795,6 +1858,14 @@ bool reader::prepare(const reader_state& state) {
   
   // open columstore stream
   data_in_ = dir.open(filename);
+  
+  // check header
+  format_utils::check_header(
+    *data_in_, 
+    writer::FORMAT_NAME, 
+    writer::FORMAT_MIN, 
+    writer::FORMAT_MAX
+  );
   
   // since columns data are too large
   // it is too costly to verify checksum of
@@ -1811,48 +1882,32 @@ bool reader::prepare(const reader_state& state) {
     block.first = v;
   };
    
-  std::map<string_ref, column*> name_to_column;
-  std::vector<column> columns(data_in_->read_vlong());
-  for (size_t num_fields = columns.size(); num_fields; --num_fields) {
-    const auto id = data_in_->read_vint();
+  std::vector<column> columns;
+  columns.reserve(data_in_->read_vlong());
+  for (size_t num_fields = columns.capacity(); num_fields; --num_fields) {
+    columns.emplace_back();
+    auto& column = columns.back();
 
-    if (id >= columns.size()) {
-      IR_ERROR() << "Currupted index, invalid column id=" << id;
-      return false;
-    }
-
-    auto& column = columns[id];
-
-    column.name = read_string<decltype(column.name)>(*data_in_);
     column.max_block_size = data_in_->read_vlong();
     if (!column.index.read(*data_in_, data_in_->read_vlong() + 1, visitor)) {
-      IR_ERROR() << "Unable to load blocks index for column id=" << id 
-                 << " name=" << column.name;
-      return false;
-    }
-
-    const auto res = name_to_column.emplace(column.name, &column);
-    if (!res.second) {
-      IR_ERROR() << "Corrupted index, duplicated column name=" << column.name;
+      IR_ERROR() << "Unable to load blocks index for column id=" << columns.size() - 1;
       return false;
     }
   }
 
   // noexcept
   columns_ = std::move(columns);
-  name_to_column_ = std::move(name_to_column);
 
   return true;
 }
 
-reader::values_reader_f reader::values(const string_ref& name) const {
-  const auto it = name_to_column_.find(name);
-  if (name_to_column_.end() == it) {
+reader::values_reader_f reader::values(field_id field) const {
+  if (field >= columns_.size()) {
     // can't find attribute with the specified name
     return INVALID_COLUMN;
   }
   
-  auto& column = *it->second;
+  auto& column = const_cast<reader::column&>(columns_[field]);
   return[this, &column] (doc_id_t doc, const value_reader_f& reader) {
     auto* block_ref = column.index.lower_bound(doc); // looking for data block
 
@@ -2832,13 +2887,21 @@ stored_fields_writer::ptr format::get_stored_fields_writer() const {
 stored_fields_reader::ptr format::get_stored_fields_reader() const {
   return iresearch::stored_fields_reader::make< stored_fields_reader >();
 }
-
-columns_writer::ptr format::get_columns_writer() const {
-  return columns_writer::ptr(new columns::writer());
+  
+column_meta_writer::ptr format::get_column_meta_writer() const {
+  return iresearch::column_meta_writer::ptr(new columns::meta_writer());
 }
 
-columns_reader::ptr format::get_columns_reader() const {
-  return columns_reader::ptr(new columns::reader());
+column_meta_reader::ptr format::get_column_meta_reader() const {
+  return iresearch::column_meta_reader::ptr(new columns::meta_reader());
+}
+
+columnstore_writer::ptr format::get_columnstore_writer() const {
+  return columnstore_writer::ptr(new columns::writer());
+}
+
+columnstore_reader::ptr format::get_columnstore_reader() const {
+  return columnstore_reader::ptr(new columns::reader());
 }
 
 DEFINE_FORMAT_TYPE_NAMED(iresearch::version10::format, "1_0");

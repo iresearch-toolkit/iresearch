@@ -314,6 +314,7 @@ struct empty_sub_reader : iresearch::singleton<empty_sub_reader>, iresearch::sub
       return iresearch::type_limits<iresearch::type_t::doc_id_t>::invalid();
     }
   };
+
   struct empty_string_iterator : iresearch::iterator<const iresearch::string_ref&> {
     virtual const iresearch::string_ref& value() const {
       return iresearch::string_ref::nil;
@@ -324,16 +325,38 @@ struct empty_sub_reader : iresearch::singleton<empty_sub_reader>, iresearch::sub
     }
   };
 
-  virtual bool document(iresearch::doc_id_t, const iresearch::stored_fields_reader::visitor_f&) const { return false; }
-  virtual bool document(iresearch::doc_id_t, const iresearch::index_reader::document_visitor_f&) const { return false; }
-  virtual value_visitor_f values(const iresearch::string_ref& field, const iresearch::columns_reader::value_reader_f& reader) const {
+  virtual bool document(
+      iresearch::doc_id_t, 
+      const iresearch::stored_fields_reader::visitor_f&) const { 
+    return false; 
+  }
+
+  virtual bool document(
+      iresearch::doc_id_t, 
+      const iresearch::index_reader::document_visitor_f&) const { 
+    return false; 
+  }
+  
+  virtual value_visitor_f values(
+      iresearch::field_id field,
+      const iresearch::columnstore_reader::value_reader_f& reader) const {
+    return [] (iresearch::doc_id_t) { return false; };
+  }
+
+  virtual value_visitor_f values(
+      const iresearch::string_ref& field, 
+      const iresearch::columnstore_reader::value_reader_f& reader) const {
     return [] (iresearch::doc_id_t) { return false; };
   }
 
   virtual uint64_t docs_count() const { return 0; }
 
   virtual uint64_t docs_count(const iresearch::string_ref&) const { return 0; }
-  virtual docs_iterator_t::ptr docs_iterator() const override { return docs_iterator_t::make<empty_docs_iterator>(); }
+  
+  virtual docs_iterator_t::ptr docs_iterator() const override { 
+    return docs_iterator_t::make<empty_docs_iterator>(); 
+  }
+  
   virtual uint64_t docs_max() const { return 0; }
 
   virtual reader_iterator begin() const { return reader_iterator(); }

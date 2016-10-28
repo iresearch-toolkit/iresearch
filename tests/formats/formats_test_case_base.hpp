@@ -1020,10 +1020,10 @@ class format_test_case_base : public index_test_base {
       }
     } invalid_writer;
 
-    const iresearch::string_ref& field0 = "field0";
-    const iresearch::string_ref& field1 = "field1";
-    const iresearch::string_ref& field2 = "field2";
-    const iresearch::string_ref& field3 = "field3";
+    const iresearch::field_id field0 = 0;
+    const iresearch::field_id field1 = 1;
+    const iresearch::field_id field2 = 2;
+    const iresearch::field_id field3 = 3;
 
     iresearch::segment_meta meta0("_1", nullptr);
     meta0.version = 42;
@@ -1042,11 +1042,11 @@ class format_test_case_base : public index_test_base {
       rs.fields = &fields;
       rs.meta = &meta1;
 
-      auto reader = codec()->get_columns_reader();
+      auto reader = codec()->get_columnstore_reader();
       ASSERT_FALSE(reader->prepare(rs)); // no attributes found
 
       size_t calls_count = 0;
-      iresearch::columns_reader::value_reader_f value_reader = [&calls_count] (iresearch::data_input& in) {
+      iresearch::columnstore_reader::value_reader_f value_reader = [&calls_count] (iresearch::data_input& in) {
         ++calls_count;
         return true;
       };
@@ -1070,15 +1070,24 @@ class format_test_case_base : public index_test_base {
     }
      
     // write columns values
-    auto writer = codec()->get_columns_writer();
+    auto writer = codec()->get_columnstore_writer();
 
     // write _1 segment
     {
       ASSERT_TRUE(writer->prepare(dir(), meta0.name));
       
-      auto field0_writer = writer->push_column(field0).second;
-      auto field1_writer = writer->push_column(field1).second;
-      auto field2_writer = writer->push_column(field2).second;
+      auto field0 = writer->push_column();
+      auto field0_id = field0.first;
+      auto& field0_writer = field0.second;
+      ASSERT_EQ(0, field0_id);
+      auto field1 = writer->push_column();
+      auto field1_id = field1.first;
+      auto& field1_writer = field1.second;
+      ASSERT_EQ(1, field1_id);
+      auto field2 = writer->push_column();
+      auto field2_id = field2.first;
+      auto& field2_writer = field2.second;
+      ASSERT_EQ(2, field2_id);
 
       string_writer.value = "field0_doc0";
       ASSERT_TRUE(field0_writer(0, string_writer)); // doc==0, column==field0
@@ -1106,28 +1115,37 @@ class format_test_case_base : public index_test_base {
     {
       ASSERT_TRUE(writer->prepare(dir(), meta1.name));
       
-      auto field1_writer = writer->push_column(field1).second;
-      auto field2_writer = writer->push_column(field2).second;
-      auto field3_writer = writer->push_column(field3).second;
+      auto field0 = writer->push_column();
+      auto field0_id = field0.first;
+      auto& field0_writer = field0.second;
+      ASSERT_EQ(0, field0_id);
+      auto field1 = writer->push_column();
+      auto field1_id = field1.first;
+      auto& field1_writer = field1.second;
+      ASSERT_EQ(1, field1_id);
+      auto field2 = writer->push_column();
+      auto field2_id = field2.first;
+      auto& field2_writer = field2.second;
+      ASSERT_EQ(2, field2_id);
 
       string_writer.value = "segment_2_field3_doc0";
-      ASSERT_TRUE(field3_writer(0, string_writer)); // doc==0, column==field3
+      ASSERT_TRUE(field2_writer(0, string_writer)); // doc==0, column==field3
 
       string_writer.value = "segment_2_field1_doc0";
-      ASSERT_TRUE(field1_writer(0, string_writer)); // doc==0, column==field1
+      ASSERT_TRUE(field0_writer(0, string_writer)); // doc==0, column==field1
       //TODO: writer same doc_id ASSERT_TRUE(field1_writer(0, string_writer));
 
       string_writer.value = "segment_2_field2_doc0";
-      ASSERT_FALSE(field2_writer(0, invalid_writer)); // doc==0, column==field2
+      ASSERT_FALSE(field1_writer(0, invalid_writer)); // doc==0, column==field2
 
       string_writer.value = "segment_2_field0_doc1";
-      ASSERT_FALSE(field3_writer(1, invalid_writer)); // doc==1, column==field3
+      ASSERT_FALSE(field2_writer(1, invalid_writer)); // doc==1, column==field3
 
       string_writer.value = "segment_2_field1_doc12";
-      ASSERT_TRUE(field1_writer(12, string_writer)); // doc==12, colum==field1
+      ASSERT_TRUE(field0_writer(12, string_writer)); // doc==12, colum==field1
 
       string_writer.value = "segment_2_field3_doc23";
-      ASSERT_TRUE(field3_writer(23, string_writer)); // doc==23, colum==field3
+      ASSERT_TRUE(field2_writer(23, string_writer)); // doc==23, colum==field3
 
       writer->flush();
     }
@@ -1141,24 +1159,24 @@ class format_test_case_base : public index_test_base {
       rs.fields = &fields;
       rs.meta = &meta0;
 
-      auto reader = codec()->get_columns_reader();
+      auto reader = codec()->get_columnstore_reader();
       ASSERT_TRUE(reader->prepare(rs));
 
       std::string expected_value;
       size_t calls_count = 0;
-      iresearch::columns_reader::value_reader_f value_reader = [&calls_count, &expected_value] (iresearch::data_input& in) {
+      iresearch::columnstore_reader::value_reader_f value_reader = [&calls_count, &expected_value] (iresearch::data_input& in) {
         ++calls_count;
         return expected_value == iresearch::read_string<std::string>(in);
       };
       
-      iresearch::columns_reader::value_reader_f invalid_value_reader = [&expected_value] (iresearch::data_input& in) {
+      iresearch::columnstore_reader::value_reader_f invalid_value_reader = [&expected_value] (iresearch::data_input& in) {
         expected_value.reserve(in.read_vlong()); // partial reading
         return false;
       };
 
       // try to read invalild column
       {
-        auto column = reader->values("invalid_column");
+        auto column = reader->values(ir::type_limits<ir::type_t::field_id_t>::invalid());
         calls_count = 0;
         ASSERT_FALSE(column(0, value_reader));
         ASSERT_EQ(0, calls_count);
@@ -1175,7 +1193,7 @@ class format_test_case_base : public index_test_base {
 
       // check field0
       {
-        auto column = reader->values(field0);
+        auto column = reader->values(0);
         expected_value = "field0_doc0";
         calls_count = 0;
         ASSERT_TRUE(column(0, value_reader)); // check doc==33, column==field0
@@ -1204,24 +1222,24 @@ class format_test_case_base : public index_test_base {
       rs.fields = &fields;
       rs.meta = &meta1;
 
-      auto reader = codec()->get_columns_reader();
+      auto reader = codec()->get_columnstore_reader();
       ASSERT_TRUE(reader->prepare(rs));
 
       std::string expected_value;
       size_t calls_count = 0;
-      iresearch::columns_reader::value_reader_f value_reader = [&calls_count, &expected_value] (iresearch::data_input& in) {
+      iresearch::columnstore_reader::value_reader_f value_reader = [&calls_count, &expected_value] (iresearch::data_input& in) {
         ++calls_count;
         return expected_value == iresearch::read_string<std::string>(in);
       };
       
-      iresearch::columns_reader::value_reader_f invalid_value_reader = [&expected_value] (iresearch::data_input& in) {
+      iresearch::columnstore_reader::value_reader_f invalid_value_reader = [&expected_value] (iresearch::data_input& in) {
         expected_value.reserve(in.read_vlong()); // partial reading
         return false;
       };
 
       // try to read invalild column
       {
-        auto column = reader->values("invalid_column");
+        auto column = reader->values(ir::type_limits<ir::type_t::field_id_t>::invalid());
         calls_count = 0;
         ASSERT_FALSE(column(0, value_reader));
         ASSERT_EQ(0, calls_count);
@@ -1236,9 +1254,9 @@ class format_test_case_base : public index_test_base {
         ASSERT_EQ(0, calls_count);
       }
 
-      // check field1
+      // check field0
       {
-        auto column = reader->values(field1);
+        auto column = reader->values(0);
         expected_value = "segment_2_field1_doc0";
         calls_count = 0;
         ASSERT_TRUE(column(0, value_reader)); // check doc==0, column==field0

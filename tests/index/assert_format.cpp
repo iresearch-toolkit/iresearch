@@ -762,11 +762,19 @@ iresearch::stored_fields_reader::ptr format::get_stored_fields_reader() const {
   return nullptr;
 }
 
-iresearch::columns_writer::ptr format::get_columns_writer() const {
+iresearch::column_meta_writer::ptr format::get_column_meta_writer() const {
   return nullptr;
 }
 
-iresearch::columns_reader::ptr format::get_columns_reader() const {
+iresearch::column_meta_reader::ptr format::get_column_meta_reader() const {
+  return nullptr;
+}
+
+iresearch::columnstore_writer::ptr format::get_columnstore_writer() const {
+  return nullptr;
+}
+
+iresearch::columnstore_reader::ptr format::get_columnstore_reader() const {
   return nullptr;
 }
 

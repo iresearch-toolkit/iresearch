@@ -44,20 +44,31 @@ class IRESEARCH_API segment_reader final : public sub_reader {
   ) const override;
 
   using sub_reader::docs_count;
+
   virtual uint64_t docs_count() const override { return docs_count_; }
+
   virtual docs_iterator_t::ptr docs_iterator() const override;
+
   virtual uint64_t docs_max() const override { return docs_count_; }
 
   virtual iresearch::iterator< const string_ref& >::ptr iterator() const override {
     return fr_->iterator();
   }
+
   void refresh(const segment_meta& meta); // update reader with any changes from meta
+
   virtual const term_reader* terms(const string_ref& field) const override {
     return fr_->terms(field);
   }
+  
+  virtual value_visitor_f values(
+    field_id field,
+    const columnstore_reader::value_reader_f& reader
+  ) const override;
+
   virtual value_visitor_f values(
     const string_ref& field,
-    const columns_reader::value_reader_f& reader
+    const columnstore_reader::value_reader_f& reader
   ) const override;
 
   virtual size_t size() const override { return 1; }
@@ -92,6 +103,8 @@ class IRESEARCH_API segment_reader final : public sub_reader {
     const sub_reader* rdr_;
   };
 
+  typedef std::pair<std::string, field_id> column_meta_t;
+
   segment_reader() = default;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
@@ -102,10 +115,11 @@ class IRESEARCH_API segment_reader final : public sub_reader {
   } dir_state_;
   uint64_t docs_count_;
   document_mask docs_mask_;
+  std::unordered_map<hashed_string_ref, column_meta_t> columns_;
   fields_meta fields_;
   field_reader::ptr fr_;
   stored_fields_reader::ptr sfr_;
-  columns_reader::ptr cr_;
+  columnstore_reader::ptr csr_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 

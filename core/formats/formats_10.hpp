@@ -572,9 +572,12 @@ class IRESEARCH_PLUGIN format final : public iresearch::format {
 
   virtual stored_fields_writer::ptr get_stored_fields_writer() const override;
   virtual stored_fields_reader::ptr get_stored_fields_reader() const override;
+  
+  virtual column_meta_writer::ptr get_column_meta_writer() const override;
+  virtual column_meta_reader::ptr get_column_meta_reader() const override;
 
-  virtual columns_writer::ptr get_columns_writer() const override;
-  virtual columns_reader::ptr get_columns_reader() const override;
+  virtual columnstore_writer::ptr get_columnstore_writer() const override;
+  virtual columnstore_reader::ptr get_columnstore_reader() const override;
 };
 
 NS_END

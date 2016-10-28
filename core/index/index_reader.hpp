@@ -107,7 +107,14 @@ struct IRESEARCH_API sub_reader : index_reader {
 
   // returns corresponding column reader by the specified field
   virtual value_visitor_f values(
-    const string_ref& name, const columns_reader::value_reader_f& reader
+    const string_ref& name, 
+    const columnstore_reader::value_reader_f& reader
+  ) const = 0;
+  
+  // returns corresponding column reader by the specified field
+  virtual value_visitor_f values(
+    field_id id,
+    const columnstore_reader::value_reader_f& reader
   ) const = 0;
 };
 

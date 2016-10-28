@@ -217,34 +217,62 @@ struct IRESEARCH_API stored_fields_reader {
 // --SECTION--                                                    columns_writer 
 // -----------------------------------------------------------------------------
 
-struct IRESEARCH_API columns_writer {
-  DECLARE_SPTR(columns_writer);
+struct IRESEARCH_API columnstore_writer {
+  DECLARE_SPTR(columnstore_writer);
 
   typedef std::function<bool(doc_id_t, const serializer&)> values_writer_f;
+  typedef std::pair<field_id, values_writer_f> column_t;
 
-  virtual ~columns_writer();
+  virtual ~columnstore_writer();
 
   virtual bool prepare(directory& dir, const string_ref& filename) = 0;
-  virtual std::pair<string_ref, values_writer_f> push_column(std::string&& name) = 0;
+  virtual column_t push_column() = 0;
   virtual void flush() = 0;
-  virtual void reset() = 0;
-}; // columns_writer
+}; // columnstore_writer
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                column_meta_writer 
+// -----------------------------------------------------------------------------
+
+struct IRESEARCH_API column_meta_writer {
+  DECLARE_SPTR(column_meta_writer);
+  
+  virtual ~column_meta_writer();
+  
+  virtual bool prepare(directory& dir, const string_ref& filename, size_t count) = 0;
+  virtual void write(const std::string& name, field_id id) = 0;
+  virtual void flush() = 0;
+}; // column_meta_writer 
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                column_meta_reader
+// -----------------------------------------------------------------------------
+
+struct IRESEARCH_API column_meta_reader {
+  DECLARE_SPTR(column_meta_reader);
+  
+  virtual ~column_meta_reader();
+  
+  virtual size_t prepare(const directory& dir, const string_ref& seg_name) = 0;
+  virtual void read(std::string& name, field_id& id) = 0;
+  virtual void end() = 0;
+}; // column_meta_reader 
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    columns_writer 
 // -----------------------------------------------------------------------------
 
-struct IRESEARCH_API columns_reader {
-  DECLARE_PTR(columns_reader);
+struct IRESEARCH_API columnstore_reader {
+  DECLARE_PTR(columnstore_reader);
 
   typedef std::function<bool(data_input&)> value_reader_f;
   typedef std::function<bool(doc_id_t, const value_reader_f&)> values_reader_f;
 
-  virtual ~columns_reader();
+  virtual ~columnstore_reader();
 
   virtual bool prepare(const reader_state& state) = 0;
-  virtual values_reader_f values(const string_ref& field) const = 0;
-}; // columns_reader
+  virtual values_reader_f values(field_id field) const = 0;
+}; // columnstore_reader
 
 /* -------------------------------------------------------------------
  * document_mask_writer
@@ -408,9 +436,12 @@ class IRESEARCH_API format {
 
   virtual stored_fields_writer::ptr get_stored_fields_writer() const = 0;
   virtual stored_fields_reader::ptr get_stored_fields_reader() const = 0;
+  
+  virtual column_meta_writer::ptr get_column_meta_writer() const = 0;
+  virtual column_meta_reader::ptr get_column_meta_reader() const = 0;
 
-  virtual columns_writer::ptr get_columns_writer() const = 0;
-  virtual columns_reader::ptr get_columns_reader() const = 0;
+  virtual columnstore_writer::ptr get_columnstore_writer() const = 0;
+  virtual columnstore_reader::ptr get_columnstore_reader() const = 0;
 
   const type_id& type() const { return *type_; }
 

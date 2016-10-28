@@ -110,17 +110,29 @@ bool segment_reader::document(
 }
 
 sub_reader::value_visitor_f segment_reader::values(
-    const string_ref& field,
-    const columns_reader::value_reader_f& value_reader) const {
-  if (!cr_) {
+    field_id field,
+    const columnstore_reader::value_reader_f& value_reader) const {
+  if (!csr_) {
     return INVALID_VISITOR;
   }
 
-  auto column = cr_->values(field);
+  auto column = csr_->values(field);
 
   return [&value_reader, column](doc_id_t doc)->bool {
     return column(doc, value_reader);
   };
+}
+
+sub_reader::value_visitor_f segment_reader::values(
+    const string_ref& field,
+    const columnstore_reader::value_reader_f& value_reader) const {
+  auto it = columns_.find(make_hashed_ref(field, string_ref_hash_t()));
+
+  if (it == columns_.end()) {
+    return INVALID_VISITOR;
+  }
+
+  return values(it->second.second, value_reader);
 }
 
 segment_reader::docs_iterator_t::ptr segment_reader::docs_iterator() const {
@@ -170,21 +182,41 @@ segment_reader::ptr segment_reader::open(
     rs.meta = &seg;
 
     // initialize field reader
-    field_reader::ptr fr = codec.get_field_reader();
+    auto& fr = rdr->fr_;
+    fr = codec.get_field_reader();
     fr->prepare(rs);
 
     // initialize stored fields reader
-    stored_fields_reader::ptr sfr = codec.get_stored_fields_reader();
+    auto& sfr = rdr->sfr_;
+    sfr = codec.get_stored_fields_reader();
     sfr->prepare(rs);
 
     // initialize columns reader
-    columns_reader::ptr cr = codec.get_columns_reader();
-    const bool columns_exists = cr->prepare(rs);
+    columnstore_reader::ptr csr = codec.get_columnstore_reader();
+    if (csr->prepare(rs)) {
+      rdr->csr_ = std::move(csr);
 
-    rdr->fr_ = std::move(fr);
-    rdr->sfr_ = std::move(sfr);
-    if (columns_exists) {
-      rdr->cr_ = std::move(cr);
+      // initialize columns meta
+      auto reader = codec.get_column_meta_reader();
+      size_t size = reader->prepare(dir, seg.name);
+      for (column_meta_t meta; size; --size) {
+        reader->read(meta.first, meta.second);
+
+        auto res = rdr->columns_.emplace(
+          make_hashed_ref(string_ref(meta.first), string_ref_hash_t()),
+          std::move(meta)
+        );
+
+        if (!res.second) {
+          // duplicated field
+          return nullptr;
+        }
+
+        auto& it = res.first;
+        auto& key = const_cast<hashed_string_ref&>(it->first);
+        key = hashed_string_ref(key.hash(), it->second.first);
+      }
+      reader->end();
     }
   }
 

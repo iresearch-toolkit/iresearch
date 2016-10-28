@@ -405,9 +405,12 @@ class format : public iresearch::format {
 
   virtual iresearch::stored_fields_writer::ptr get_stored_fields_writer() const override;
   virtual iresearch::stored_fields_reader::ptr get_stored_fields_reader() const override;
+  
+  virtual iresearch::column_meta_writer::ptr get_column_meta_writer() const override;
+  virtual iresearch::column_meta_reader::ptr get_column_meta_reader() const override;
 
-  virtual iresearch::columns_writer::ptr get_columns_writer() const override;
-  virtual iresearch::columns_reader::ptr get_columns_reader() const override;
+  virtual iresearch::columnstore_writer::ptr get_columnstore_writer() const override;
+  virtual iresearch::columnstore_reader::ptr get_columnstore_reader() const override;
 
  private:
   static const index_segment DEFAULT_SEGMENT;

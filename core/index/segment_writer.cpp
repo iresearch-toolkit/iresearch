@@ -74,19 +74,18 @@ bool segment_writer::store_attribute(
     );
 
     auto& it = res.first;
+    auto& column = it->second;
 
     if (res.second) {
-      auto column = col_writer_->push_column(
-        std::string(name.c_str(), name.size())
-      );
-
       // we have never seen it before
+      column.handle = col_writer_->push_column();
+      column.name = std::string(name.c_str(), name.size());
+
       auto& key = const_cast<hashed_string_ref&>(it->first);
-      key = hashed_string_ref(it->first.hash(), column.first);
-      it->second = std::move(column.second);
+      key = hashed_string_ref(it->first.hash(), column.name);
     }
 
-    return it->second(type_limits<type_t::doc_id_t>::min() + num_docs_cached_, *serializer);
+    return column.handle.second(type_limits<type_t::doc_id_t>::min() + num_docs_cached_, *serializer);
   }
 
   return false;
@@ -107,9 +106,19 @@ void segment_writer::flush(std::string& filename, segment_meta& meta) {
   sf_writer_->reset();
 
   // flush columns indices
-  col_writer_->flush();
-  col_writer_->reset();
-  columns_.clear();
+  if (!columns_.empty()) {
+    // flush columnstore
+    col_writer_->flush();
+  
+    // flush columns meta
+    col_meta_writer_->prepare(dir_, seg_name_, columns_.size());
+    for (auto& entry : columns_) {
+      auto& column = entry.second;
+      col_meta_writer_->write(column.name, column.handle.first);
+    }
+    col_meta_writer_->flush();
+    columns_.clear();
+  }
 
   // flush fields metadata & inverted data
   {
@@ -162,8 +171,12 @@ void segment_writer::reset(std::string seg_name) {
     sf_writer_ = codec_->get_stored_fields_writer();
   }
 
+  if (!col_meta_writer_) {
+    col_meta_writer_ = codec_->get_column_meta_writer();
+  }
+
   if (!col_writer_) {
-    col_writer_ = codec_->get_columns_writer();
+    col_writer_ = codec_->get_columnstore_writer();
   }
 
   const string_ref ref_seg_name = seg_name_;

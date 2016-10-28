@@ -68,7 +68,15 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     bool write(data_output& out) const override;
 
     std::vector<field_id> doc_fields; // per document field ids
-  }; // doc_header 
+  }; // doc_header
+
+  struct column : util::noncopyable {
+    column() = default;
+    column(column&&) = default;
+
+    std::string name;
+    columnstore_writer::column_t handle;
+  };
 
   segment_writer(directory& dir, format::ptr codec) NOEXCEPT;
 
@@ -116,12 +124,13 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   doc_header header_; // 
   update_contexts docs_context_;
   fields_data fields_;
-  std::unordered_map<hashed_string_ref, columns_writer::values_writer_f> columns_;
+  std::unordered_map<hashed_string_ref, column> columns_;
   std::string seg_name_;
   field_meta_writer::ptr field_meta_writer_;
   field_writer::ptr field_writer_;
   stored_fields_writer::ptr sf_writer_;
-  columns_writer::ptr col_writer_;
+  column_meta_writer::ptr col_meta_writer_;
+  columnstore_writer::ptr col_writer_;
   format::ptr codec_;
   tracking_directory dir_;
   std::atomic<uint32_t> num_docs_cached_{0};

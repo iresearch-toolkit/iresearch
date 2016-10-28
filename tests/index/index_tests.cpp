@@ -927,7 +927,7 @@ class index_test_case_base : public tests::index_test_base {
     // read attributes
     {
       size_t calls_count = 0;
-      iresearch::columns_reader::value_reader_f visitor = [&calls_count] (data_input& in) {
+      iresearch::columnstore_reader::value_reader_f visitor = [&calls_count] (data_input& in) {
         ++calls_count;
         return true;
       };
@@ -971,7 +971,7 @@ class index_test_case_base : public tests::index_test_base {
     // read attribute from invalid column
     {
       size_t calls_count = 0;
-      iresearch::columns_reader::value_reader_f visitor = [&calls_count] (data_input& in) {
+      iresearch::columnstore_reader::value_reader_f visitor = [&calls_count] (data_input& in) {
         ++calls_count;
         return true;
       };
@@ -993,7 +993,7 @@ class index_test_case_base : public tests::index_test_base {
     {
       std::string expected_value;
       size_t calls_count = 0;
-      iresearch::columns_reader::value_reader_f visitor = [&calls_count, &expected_value] (data_input& in) {
+      iresearch::columnstore_reader::value_reader_f visitor = [&calls_count, &expected_value] (data_input& in) {
         ++calls_count;
         return expected_value == iresearch::read_string<std::string>(in);
       };
@@ -1016,7 +1016,7 @@ class index_test_case_base : public tests::index_test_base {
     {
       std::string expected_value;
       size_t calls_count = 0;
-      iresearch::columns_reader::value_reader_f visitor = [&calls_count, &expected_value] (data_input& in) {
+      iresearch::columnstore_reader::value_reader_f visitor = [&calls_count, &expected_value] (data_input& in) {
         ++calls_count;
         return expected_value == iresearch::read_string<std::string>(in);
       };
