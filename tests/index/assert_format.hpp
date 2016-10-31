@@ -311,7 +311,6 @@ class field_reader : public iresearch::field_reader {
   field_reader( const index_segment& data );
 
   virtual void prepare(const iresearch::reader_state& state) override;
-  virtual iresearch::iterator<const iresearch::string_ref&>::ptr iterator() const override;
   virtual const iresearch::term_reader* terms(const iresearch::string_ref& field) const override;
   virtual size_t size() const override;
   

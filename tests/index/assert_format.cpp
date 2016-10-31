@@ -639,10 +639,6 @@ field_reader::field_reader( const index_segment& data )
 void field_reader::prepare(const iresearch::reader_state& state) {
 }
 
-iresearch::iterator<const iresearch::string_ref&>::ptr field_reader::iterator() const {
-  return iresearch::iterator<const iresearch::string_ref&>::ptr( new detail::field_iterator( data_ ) );
-}
-
 const iresearch::term_reader* field_reader::terms(const iresearch::string_ref& field) const {
   auto it = readers_.find(field);
   return readers_.end() == it ? nullptr : it->second.get();
@@ -1021,25 +1017,26 @@ void assert_index(
     tests::field_reader expected_reader(expected_segment);
 
     /* get field name iterators */
-    auto expected_fields = expected_reader.iterator();
+    auto& expected_fields = expected_segment.fields();
+    auto expected_fields_begin = expected_fields.begin();
+    auto expected_fields_end = expected_fields.end();
+
     auto& actual_fields = actual_sub_reader.fields();
     auto actual_fields_begin = actual_fields.begin();
     auto actual_fields_end = actual_fields.end();
 
     /* iterate over fields */
-    for (;actual_fields_begin != actual_fields_end;++actual_fields_begin) {
-      ASSERT_TRUE(expected_fields->next());
-
+    for (;actual_fields_begin != actual_fields_end;++actual_fields_begin, ++expected_fields_begin) {
       /* check field name */
-      ASSERT_EQ(expected_fields->value(), actual_fields_begin->name);
+      ASSERT_EQ(expected_fields_begin->first, actual_fields_begin->name);
 
       /* check field terms */
-      auto expected_term_reader = expected_reader.terms(expected_fields->value());
+      auto expected_term_reader = expected_reader.terms(expected_fields_begin->first);
       ASSERT_NE(nullptr, expected_term_reader);
       auto actual_term_reader = (*actual_index_reader)[i].terms(actual_fields_begin->name);
       ASSERT_NE(nullptr, actual_term_reader);
 
-      const iresearch::field_meta* expected_field = expected_segment.find(expected_fields->value());
+      const iresearch::field_meta* expected_field = expected_segment.find(expected_fields_begin->first);
       ASSERT_NE(nullptr, expected_field);
       auto features_to_check = features & expected_field->features;
 

@@ -520,14 +520,6 @@ class format_test_case_base : public index_test_base {
       reader->prepare(state);
       ASSERT_EQ(1, reader->size());
 
-      // check fields
-      {
-        auto fields = reader->iterator();
-        ASSERT_TRUE(fields->next());
-        ASSERT_EQ(field.name, fields->value());
-        ASSERT_FALSE(fields->next());
-      }
-
       // check terms
       ASSERT_EQ(nullptr, reader->terms("invalid_field"));
       auto term_reader = reader->terms(field.name);

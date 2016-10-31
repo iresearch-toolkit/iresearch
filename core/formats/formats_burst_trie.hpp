@@ -240,11 +240,10 @@ class field_writer final : public iresearch::field_writer{
 * field_reader
 * ------------------------------------------------------------------*/
 
-class field_reader final : public iresearch::field_reader{
+class field_reader final : public iresearch::field_reader {
  public:
   field_reader(iresearch::postings_reader::ptr&& pr);
   virtual void prepare( const reader_state& state ) override;
-  virtual iresearch::iterator< const string_ref& >::ptr iterator() const override;
   virtual const iresearch::term_reader* terms( const string_ref& field ) const override;
   virtual size_t size() const override;
 

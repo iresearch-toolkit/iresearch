@@ -133,13 +133,12 @@ struct IRESEARCH_API term_reader {
  * ------------------------------------------------------------------*/
 
 struct IRESEARCH_API field_reader {
-  DECLARE_PTR( field_reader );
-  DECLARE_FACTORY( field_reader );
+  DECLARE_PTR(field_reader);
+  DECLARE_FACTORY(field_reader);
 
   virtual ~field_reader();
 
-  virtual void prepare( const reader_state& state ) = 0;
-  virtual iterator<const string_ref&>::ptr iterator() const = 0;
+  virtual void prepare(const reader_state& state) = 0;
   virtual const term_reader* terms(const string_ref& field) const = 0;
   virtual size_t size() const = 0;
 };

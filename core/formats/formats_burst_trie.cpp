@@ -259,38 +259,6 @@ entry::~entry() {
 }
 
 /* -------------------------------------------------------------------
-* field_iterator
-* ------------------------------------------------------------------*/ 
-
-class field_iterator : public iresearch::iterator<const string_ref&>,
-                       private util::noncopyable {
- public:
-  field_iterator(const field_reader* owner)
-    : owner_(owner) {
-    assert(owner_);
-    next_ = owner_->fields_.begin();
-  }
-
-  virtual bool next() override {
-    if (owner_->fields_.end() == next_) {
-      return false;
-    }
-
-    prev_ = next_, ++next_;
-    return true;
-  }
-
-  virtual const string_ref& value() const override {
-    return prev_->first;
-  }
-
- private:
-  field_reader::fields_map_t::const_iterator prev_;
-  field_reader::fields_map_t::const_iterator next_;
-  const field_reader* owner_;
-};
-
-/* -------------------------------------------------------------------
 * block_iterator : decl
 * ------------------------------------------------------------------*/
 
@@ -1751,10 +1719,6 @@ void field_reader::prepare( const reader_state& state ) {
       --size;
     }
   }
-}
-
-iresearch::iterator< const string_ref& >::ptr field_reader::iterator() const {
-  return iresearch::iterator< const string_ref& >::ptr(new detail::field_iterator(this));
 }
 
 const iresearch::term_reader* field_reader::terms( const iresearch::string_ref& field ) const {

@@ -71,6 +71,10 @@ NS_END // NS_LOCAL
 
 NS_ROOT
 
+const term_reader* segment_reader::terms(const string_ref& field) const {
+  return fr_->terms(field);
+}
+
 bool segment_reader::document(
     doc_id_t doc, 
     const stored_fields_reader::visitor_f& visitor) const {

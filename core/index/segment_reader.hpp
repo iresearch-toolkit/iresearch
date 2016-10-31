@@ -45,17 +45,19 @@ class IRESEARCH_API segment_reader final : public sub_reader {
 
   using sub_reader::docs_count;
 
-  virtual uint64_t docs_count() const override { return docs_count_; }
+  virtual uint64_t docs_count() const override { 
+    return docs_count_; 
+  }
 
   virtual docs_iterator_t::ptr docs_iterator() const override;
 
-  virtual uint64_t docs_max() const override { return docs_count_; }
+  virtual uint64_t docs_max() const override { 
+    return docs_count_; 
+  }
 
   void refresh(const segment_meta& meta); // update reader with any changes from meta
 
-  virtual const term_reader* terms(const string_ref& field) const override {
-    return fr_->terms(field);
-  }
+  virtual const term_reader* terms(const string_ref& field) const override;
   
   virtual value_visitor_f values(
     field_id field,
@@ -67,9 +69,13 @@ class IRESEARCH_API segment_reader final : public sub_reader {
     const columnstore_reader::value_reader_f& reader
   ) const override;
 
-  virtual size_t size() const override { return 1; }
+  virtual size_t size() const override { 
+    return 1; 
+  }
  
-  virtual const fields_meta& fields() const override { return fields_; }
+  virtual const fields_meta& fields() const override { 
+    return fields_; 
+  }
 
   virtual index_reader::reader_iterator begin() const { 
     return index_reader::reader_iterator(new iterator_impl(this));
