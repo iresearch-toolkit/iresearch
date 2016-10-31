@@ -1022,19 +1022,21 @@ void assert_index(
 
     /* get field name iterators */
     auto expected_fields = expected_reader.iterator();
-    auto actual_fields = actual_sub_reader.iterator();
+    auto& actual_fields = actual_sub_reader.fields();
+    auto actual_fields_begin = actual_fields.begin();
+    auto actual_fields_end = actual_fields.end();
 
     /* iterate over fields */
-    for (; actual_fields->next();) {
+    for (;actual_fields_begin != actual_fields_end;++actual_fields_begin) {
       ASSERT_TRUE(expected_fields->next());
 
       /* check field name */
-      ASSERT_EQ(expected_fields->value(), actual_fields->value());
+      ASSERT_EQ(expected_fields->value(), actual_fields_begin->name);
 
       /* check field terms */
       auto expected_term_reader = expected_reader.terms(expected_fields->value());
       ASSERT_NE(nullptr, expected_term_reader);
-      auto actual_term_reader = (*actual_index_reader)[i].terms(actual_fields->value());
+      auto actual_term_reader = (*actual_index_reader)[i].terms(actual_fields_begin->name);
       ASSERT_NE(nullptr, actual_term_reader);
 
       const iresearch::field_meta* expected_field = expected_segment.find(expected_fields->value());

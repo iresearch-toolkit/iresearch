@@ -51,10 +51,6 @@ class IRESEARCH_API segment_reader final : public sub_reader {
 
   virtual uint64_t docs_max() const override { return docs_count_; }
 
-  virtual iresearch::iterator< const string_ref& >::ptr iterator() const override {
-    return fr_->iterator();
-  }
-
   void refresh(const segment_meta& meta); // update reader with any changes from meta
 
   virtual const term_reader* terms(const string_ref& field) const override {

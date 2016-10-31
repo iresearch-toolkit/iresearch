@@ -99,9 +99,6 @@ struct IRESEARCH_API sub_reader : index_reader {
 
   virtual const fields_meta& fields() const = 0;
 
-  /* returns iterators to field names in segment */
-  virtual iterator<const string_ref&>::ptr iterator() const = 0;
-
   /* returns corresponding term_reader by the specified field */
   virtual const term_reader* terms(const string_ref& field) const = 0;
 

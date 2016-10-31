@@ -431,20 +431,27 @@ TEST(segment_reader_test, open) {
 
     // check field names
     {
-      auto it = rdr->iterator();
-      ASSERT_TRUE(it->next());
-      ASSERT_EQ("duplicated", it->value());
-      ASSERT_TRUE(it->next());
-      ASSERT_EQ("name", it->value());
-      ASSERT_TRUE(it->next());
-      ASSERT_EQ("prefix", it->value());
-      ASSERT_TRUE(it->next());
-      ASSERT_EQ("same", it->value());
-      ASSERT_TRUE(it->next());
-      ASSERT_EQ("seq", it->value());
-      ASSERT_TRUE(it->next());
-      ASSERT_EQ("value", it->value());
-      ASSERT_FALSE(it->next());
+      auto it = rdr->fields().begin();
+      auto end = rdr->fields().end();
+      ASSERT_NE(end, it);
+      ASSERT_EQ("duplicated", it->name);
+      ++it;
+      ASSERT_NE(end, it);
+      ASSERT_EQ("name", it->name);
+      ++it;
+      ASSERT_NE(end, it);
+      ASSERT_EQ("prefix", it->name);
+      ++it;
+      ASSERT_NE(end, it);
+      ASSERT_EQ("same", it->name);
+      ++it;
+      ASSERT_NE(end, it);
+      ASSERT_EQ("seq", it->name);
+      ++it;
+      ASSERT_NE(end, it);
+      ASSERT_EQ("value", it->name);
+      ++it;
+      ASSERT_EQ(end, it);
     }
 
     // check live docs

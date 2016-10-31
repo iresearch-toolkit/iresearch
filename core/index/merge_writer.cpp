@@ -94,15 +94,18 @@ namespace {
    private:
     struct field_iterator_t {
       field_iterator_t(
-        iresearch::iterator<const iresearch::string_ref&>::ptr&& v_itr,
-        const iresearch::sub_reader& v_reader,
-        const doc_id_map_t& v_doc_id_map,
-        size_t field_id_base
-      ): itr(std::move(v_itr)), reader(&v_reader), doc_id_map(&v_doc_id_map), field_id_base(field_id_base) {}
-      field_iterator_t(field_iterator_t&& other):
-        itr(std::move(other.itr)), reader(other.reader), doc_id_map(other.doc_id_map), field_id_base(other.field_id_base) {}
+          const iresearch::fields_meta::iterator& v_itr,
+          const iresearch::fields_meta::iterator& v_end,
+          const iresearch::sub_reader& v_reader,
+          const doc_id_map_t& v_doc_id_map,
+          size_t field_id_base) 
+        : itr(v_itr), end(v_end), 
+          reader(&v_reader), doc_id_map(&v_doc_id_map), 
+          field_id_base(field_id_base) {
+        }
 
-      iresearch::iterator<const iresearch::string_ref&>::ptr itr;
+      iresearch::fields_meta::iterator itr;
+      iresearch::fields_meta::iterator end;
       const iresearch::sub_reader* reader;
       const doc_id_map_t* doc_id_map;
       size_t field_id_base; // field id offset for current segment
@@ -244,18 +247,22 @@ namespace {
   }
 
   void compound_field_iterator::add(
-    const iresearch::sub_reader& reader,
-    const doc_id_map_t& doc_id_map
-  ) {
-    field_iterator_mask_.emplace_back(term_iterator_t{field_iterators_.size(), nullptr, nullptr}); // mark as used to trigger next()
-
+      const iresearch::sub_reader& reader,
+      const doc_id_map_t& doc_id_map) {
     size_t field_id_base = 0;
     if (!field_iterators_.empty()) {
       auto& back = field_iterators_.back();
       field_id_base = back.field_id_base + back.reader->fields().size();
     }
 
-    field_iterators_.emplace_back(std::move(reader.iterator()), reader, doc_id_map, field_id_base);
+    auto& fields = reader.fields();
+    field_iterators_.emplace_back(
+      fields.begin(), 
+      fields.end(), 
+      reader, 
+      doc_id_map, 
+      field_id_base
+    );
   }
 
   const iresearch::field_meta& compound_field_iterator::meta() const {
@@ -265,9 +272,10 @@ namespace {
 
   bool compound_field_iterator::next() {
     // advance all used iterators
-    for (auto& entry: field_iterator_mask_) {
-      if (field_iterators_[entry.itr_id].itr && !field_iterators_[entry.itr_id].itr->next()) {
-        field_iterators_[entry.itr_id].itr.reset();
+    for (auto& entry : field_iterator_mask_) {
+      auto& it = field_iterators_[entry.itr_id];
+      if (it.itr != it.end) {
+        ++it.itr;
       }
     }
 
@@ -276,15 +284,15 @@ namespace {
     for (size_t i = 0, count = field_iterators_.size(); i < count; ++i) {
       auto& field_itr = field_iterators_[i];
 
-      if (!field_itr.itr) {
+      if (field_itr.itr == field_itr.end) {
         continue; // empty iterator
       }
 
-      auto& field_id = field_itr.itr->value();
-      const auto* field_meta = field_itr.reader->fields().find(field_id);
-      const auto* field_terms = field_itr.reader->terms(field_id);
+      const auto& field_meta = *field_itr.itr;
+      const auto* field_terms = field_itr.reader->terms(field_meta.name);
+      const iresearch::string_ref field_id = field_meta.name;
 
-      if (!field_meta || !field_terms  || /* !field_meta->indexed() || */
+      if (!field_terms  || 
           (!field_iterator_mask_.empty() && field_id > current_field_)) {
         continue; // empty field or value too large
       }
@@ -293,11 +301,11 @@ namespace {
       if (field_iterator_mask_.empty() || field_id < current_field_) {
         field_iterator_mask_.clear();
         current_field_ = field_id;
-        current_meta_ = field_meta;
+        current_meta_ = &field_meta;
       }
 
-      assert(*field_meta == *current_meta_); // validated by caller
-      field_iterator_mask_.emplace_back(term_iterator_t{i, field_meta, field_terms});
+      assert(field_meta == *current_meta_); // validated by caller
+      field_iterator_mask_.emplace_back(term_iterator_t{i, &field_meta, field_terms});
     }
 
     if (!field_iterator_mask_.empty()) {
@@ -423,20 +431,17 @@ namespace {
     const iresearch::sub_reader& reader
   ) {
     auto& fields = reader.fields();
-    for (auto itr = reader.iterator(); itr->next();) {
-      auto& field_id = itr->value();
-      const auto* field_meta = fields.find(field_id);
-      auto field_meta_map_itr = field_meta_map.emplace(field_id, field_meta);
+    for (auto itr = fields.begin(), end = fields.end(); itr != end;++itr) {
+      const auto& field_meta = *itr;
+      auto field_meta_map_itr = field_meta_map.emplace(field_meta.name, &field_meta);
       auto* tracked_field_meta = field_meta_map_itr.first->second;
 
       // validate field_meta equivalence
-      if (!field_meta_map_itr.second &&
-          (field_meta || tracked_field_meta) &&
-          (!field_meta || !tracked_field_meta || *field_meta != *tracked_field_meta)) {
+      if (!field_meta_map_itr.second && field_meta != *tracked_field_meta) {
         return false; // field_meta is not equal, so cannot merge segments
       }
 
-      fields_features |= field_meta->features;
+      fields_features |= field_meta.features;
     }
 
     return true;
