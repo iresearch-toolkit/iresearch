@@ -157,20 +157,22 @@ segment_reader::ptr segment_reader::open(
 
   // initialize fields
   {
-    fields_meta::by_id_map_t fields;
+    fields_meta::items_t fields;
+    flags features;
 
-    auto reader = codec.get_field_meta_reader();
-    auto visitor = [&fields](field_meta& value)->bool {
+    auto visitor = [&fields, &features](field_meta& value)->bool {
+      features |= value.features;
       fields[value.id] = std::move(value);
       return true;
     };
 
+    auto reader = codec.get_field_meta_reader();
     reader->prepare(dir, seg.name);
     fields.resize(reader->begin());
     read_all<field_meta>(visitor, *reader, fields.size());
     reader->end();
 
-    rdr->fields_ = fields_meta(std::move(fields));
+    rdr->fields_ = fields_meta(std::move(fields), std::move(features));
   }
 
   {

@@ -504,7 +504,7 @@ class format_test_case_base : public index_test_base {
       {
         std::vector<ir::field_meta> src;
         src.emplace_back(field);
-        fields = ir::fields_meta(std::move(src));
+        fields = ir::fields_meta(std::move(src), ir::flags());
       }
 
       ir::segment_meta meta;
@@ -923,7 +923,7 @@ class format_test_case_base : public index_test_base {
         std::vector<ir::field_meta> src;
         src.emplace_back("id", 0, ir::flags::empty_instance());
         src.emplace_back("name", 1, ir::flags::empty_instance());
-        fields = ir::fields_meta(std::move(src));
+        fields = ir::fields_meta(std::move(src), ir::flags());
       }
 
       std::string expected_id;
@@ -1390,7 +1390,7 @@ class format_test_case_base : public index_test_base {
       }
       writer->finish();
 
-      fields = std::move(fields_src);
+      fields = ir::fields_meta(std::move(fields_src), ir::flags());
     }
 
     gen.reset();

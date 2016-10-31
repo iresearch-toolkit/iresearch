@@ -56,52 +56,20 @@ bool field_meta::operator==(const field_meta& rhs) const {
 // --SECTION--                                        fields_meta implementation 
 // -----------------------------------------------------------------------------
 
-fields_meta::fields_meta(fields_meta::by_id_map_t&& fields) {
-  flags features;
-  by_name_map_t name_to_meta;
-  name_to_meta.reserve(fields.size());
-  string_ref_hash_t hasher;
-  
-  for (auto& field : fields) {
-    name_to_meta.emplace(
-      make_hashed_ref(string_ref(field.name), hasher), 
-      &field
-    );
-    features |= field.features;
-  }
-
-  // noexcept
-  id_to_meta_ = std::move(fields);
-  name_to_meta_ = std::move(name_to_meta);
-  features_ = std::move(features);
+fields_meta::fields_meta(fields_meta::items_t&& fields, flags&& features) 
+  : base_t(std::move(fields)), features_(std::move(features)) {
 }
 
 fields_meta::fields_meta(fields_meta&& rhs)
-  : id_to_meta_(std::move(rhs.id_to_meta_)),
-    name_to_meta_(std::move(rhs.name_to_meta_)),
-    features_(std::move(rhs.features_)) {
+  : base_t(std::move(rhs)), features_(std::move(rhs.features_)) {
 }
 
 fields_meta& fields_meta::operator=(fields_meta&& rhs) {
   if (this != &rhs) {
-    id_to_meta_ = std::move(rhs.id_to_meta_);
-    name_to_meta_ = std::move(rhs.name_to_meta_);
+    base_t::operator=(std::move(rhs));
     features_ = std::move(rhs.features_);
   }
   return *this;
-}
-
-const field_meta* fields_meta::find(field_id id) const {
-  if (id >= id_to_meta_.size()) {
-    return nullptr;
-  }
-
-  return &id_to_meta_[id];
-}
-
-const field_meta* fields_meta::find(const string_ref& name) const {
-  auto it = name_to_meta_.find(make_hashed_ref(name, string_ref_hash_t()));
-  return name_to_meta_.end() == it ? nullptr : it->second;
 }
 
 NS_END

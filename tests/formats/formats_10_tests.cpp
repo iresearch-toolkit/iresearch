@@ -109,7 +109,7 @@ class format_10_test_case : public tests::format_test_case_base {
       {
         std::vector<ir::field_meta> src;
         src.push_back(field);
-        fields = std::move(src);
+        fields = ir::fields_meta(std::move(src), ir::flags());
       }
 
       ir::segment_meta meta;
@@ -247,7 +247,7 @@ class format_10_test_case : public tests::format_test_case_base {
       {
         std::vector<ir::field_meta> src;
         src.push_back(field);
-        fields = std::move(src);
+        fields = ir::fields_meta(std::move(src), ir::flags());
       }
 
       ir::segment_meta meta;
@@ -462,7 +462,7 @@ class format_10_test_case : public tests::format_test_case_base {
       {
         std::vector<ir::field_meta> src;
         src.push_back(field);
-        fields = std::move(src);
+        fields = ir::fields_meta(std::move(src), ir::flags());
       }
 
       ir::segment_meta meta;
@@ -668,7 +668,7 @@ class format_10_test_case : public tests::format_test_case_base {
       {
         std::vector<ir::field_meta> src;
         src.push_back(field_meta);
-        fields = std::move(src);
+        fields = ir::fields_meta(std::move(src), ir::flags());
       }
 
       ir::segment_meta meta;

@@ -28,10 +28,16 @@ TEST(fields_meta_test, move) {
   fields.emplace_back("field1", 1, iresearch::flags{ document::type() });
   fields.emplace_back("field2", 2, iresearch::flags{ term_meta::type(), offset::type() });
   fields.emplace_back("field3", 3, iresearch::flags{ offset::type(), position::type() });
+    
+  iresearch::flags expected{
+    increment::type(), offset::type(),
+    document::type(), term_meta::type(),
+    position::type()
+  };
   
   // move ctor
   {
-    iresearch::fields_meta moved(std::vector<field_meta>(fields.begin(), fields.end()));
+    iresearch::fields_meta moved(std::vector<field_meta>(fields.begin(), fields.end()), iresearch::flags(expected));
     iresearch::fields_meta meta(std::move(moved));
 
     ASSERT_EQ(0, moved.size());
@@ -41,11 +47,6 @@ TEST(fields_meta_test, move) {
     ASSERT_EQ(4, meta.size());
     ASSERT_FALSE(meta.empty());
 
-    iresearch::flags expected{
-      increment::type(), offset::type(),
-      document::type(), term_meta::type(),
-      position::type()
-    };
     ASSERT_EQ(expected, meta.features());
   
     // check 
@@ -62,7 +63,7 @@ TEST(fields_meta_test, move) {
 
   // move assignment
   {
-    iresearch::fields_meta moved(std::vector<field_meta>(fields.begin(), fields.end()));
+    iresearch::fields_meta moved(std::vector<field_meta>(fields.begin(), fields.end()), iresearch::flags(expected));
     iresearch::fields_meta meta;
 
     meta = std::move(moved);

@@ -104,12 +104,12 @@ void segment_writer::flush(std::string& filename, segment_meta& meta) {
   // flush stored fields
   sf_writer_->finish();
   sf_writer_->reset();
+    
+  // flush columnstore
+  col_writer_->flush();
 
   // flush columns indices
   if (!columns_.empty()) {
-    // flush columnstore
-    col_writer_->flush();
-  
     // flush columns meta
     col_meta_writer_->prepare(dir_, seg_name_, columns_.size());
     for (auto& entry : columns_) {
