@@ -19,7 +19,7 @@
 NS_ROOT
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                         field_meta implementation 
+// --SECTION--                                         field_meta implementation
 // -----------------------------------------------------------------------------
 
 field_meta::field_meta(field_meta&& rhs)
@@ -53,7 +53,7 @@ bool field_meta::operator==(const field_meta& rhs) const {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                        fields_meta implementation 
+// --SECTION--                                        fields_meta implementation
 // -----------------------------------------------------------------------------
 
 fields_meta::fields_meta(fields_meta::items_t&& fields, flags&& features) 
@@ -68,6 +68,51 @@ fields_meta& fields_meta::operator=(fields_meta&& rhs) {
   if (this != &rhs) {
     base_t::operator=(std::move(rhs));
     features_ = std::move(rhs.features_);
+  }
+  return *this;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        column_meta implementation
+// -----------------------------------------------------------------------------
+
+column_meta::column_meta(column_meta&& rhs)
+  : name(std::move(rhs.name)), id(rhs.id) {
+  rhs.id = type_limits<type_t::field_id_t>::invalid();
+}
+
+column_meta::column_meta(const string_ref& name, field_id id)
+  : name(name.c_str(), name.size()), id(id) {
+}
+
+column_meta& column_meta::operator=(column_meta&& rhs) {
+  if (this != &rhs) {
+    name = std::move(rhs.name);
+    id = rhs.id;
+    rhs.id = type_limits<type_t::field_id_t>::invalid();
+  }
+  return *this;
+}
+
+bool column_meta::operator==(const column_meta& rhs) const {
+  return name == rhs.name;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                       columns_meta implementation
+// -----------------------------------------------------------------------------
+
+columns_meta::columns_meta(columns_meta::items_t&& fields)
+  : base_t(std::move(fields)) {
+}
+
+columns_meta::columns_meta(columns_meta&& rhs)
+  : base_t(std::move(rhs)) {
+}
+
+columns_meta& columns_meta::operator=(columns_meta&& rhs) {
+  if (this != &rhs) {
+    base_t::operator=(std::move(rhs));
   }
   return *this;
 }

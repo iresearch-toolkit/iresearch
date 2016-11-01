@@ -1543,20 +1543,25 @@ void meta_writer::flush() {
 
 class meta_reader final : public iresearch::column_meta_reader {
  public:
-  virtual size_t prepare(const directory& dir, const string_ref& filename) override;
-  virtual void read(std::string& name, field_id& id) override;
+  virtual bool prepare(const directory& dir, const string_ref& filename) override;
+  virtual size_t begin() override;
+  virtual void read(column_meta& column) override;
   virtual void end() override;
 
  private:
   checksum_index_input<boost::crc_32_type> in_;
 }; // meta_writer 
 
-size_t meta_reader::prepare(const directory& dir, const string_ref& name) {
-  checksum_index_input< boost::crc_32_type > check_in(
+bool meta_reader::prepare(const directory& dir, const string_ref& name) {
+ checksum_index_input< boost::crc_32_type > check_in(
     dir.open(file_name(name, meta_writer::FORMAT_EXT))
   );
 
   in_.swap(check_in);
+  return true;
+}
+
+size_t meta_reader::begin() {
   format_utils::check_header(
     in_, 
     meta_writer::FORMAT_NAME,
@@ -1566,9 +1571,9 @@ size_t meta_reader::prepare(const directory& dir, const string_ref& name) {
   return in_.read_vlong();
 }
   
-void meta_reader::read(std::string& name, field_id& id) {
-  id = in_.read_vlong();
-  name = read_string<std::string>(in_);
+void meta_reader::read(column_meta& column) {
+  column.id = in_.read_vlong();
+  column.name = read_string<std::string>(in_);
 }
 
 void meta_reader::end() {

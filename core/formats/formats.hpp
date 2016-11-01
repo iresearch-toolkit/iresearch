@@ -28,7 +28,9 @@ NS_ROOT
 struct serializer;
 struct segment_meta;
 class fields_meta;
+class columns_meta;
 struct field_meta;
+struct column_meta;
 struct flush_state;
 struct reader_state;
 struct data_output;
@@ -252,8 +254,9 @@ struct IRESEARCH_API column_meta_reader {
   
   virtual ~column_meta_reader();
   
-  virtual size_t prepare(const directory& dir, const string_ref& seg_name) = 0;
-  virtual void read(std::string& name, field_id& id) = 0;
+  virtual bool prepare(const directory& dir, const string_ref& seg_name) = 0;
+  virtual size_t begin() = 0;
+  virtual void read(column_meta& column) = 0;
   virtual void end() = 0;
 }; // column_meta_reader 
 

@@ -195,6 +195,43 @@ class IRESEARCH_API fields_meta : public multi_index<field_meta> {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // fields_meta 
 
+//////////////////////////////////////////////////////////////////////////////
+/// @struct column_meta 
+/// @brief represents column metadata
+//////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API column_meta { 
+ public:
+  column_meta() = default;
+  column_meta(const column_meta&) = default;
+  column_meta(column_meta&& rhs);
+  column_meta(const string_ref& field, field_id id);
+
+  column_meta& operator=(column_meta&& rhs);
+  column_meta& operator=(const column_meta&) = default;
+
+  bool operator==(const column_meta& rhs) const;
+  bool operator!=(const column_meta& rhs) const {
+    return !(*this == rhs);
+  }
+
+  std::string name;
+  field_id id{ type_limits<type_t::field_id_t>::invalid() };
+}; // column_meta
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class columns_meta 
+/// @brief a container for column metadata
+//////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API columns_meta : public multi_index<column_meta> {
+ public:
+  typedef multi_index<column_meta> base_t;
+
+  columns_meta() = default;
+  columns_meta(base_t::items_t&& fields);
+  columns_meta(columns_meta&& rhs);
+  columns_meta& operator=(columns_meta&& rhs);
+}; // columns_meta 
+
 NS_END
 
 #endif

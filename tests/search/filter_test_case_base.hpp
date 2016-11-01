@@ -336,6 +336,11 @@ struct empty_sub_reader : iresearch::singleton<empty_sub_reader>, iresearch::sub
       const iresearch::index_reader::document_visitor_f&) const { 
     return false; 
   }
+
+  virtual const iresearch::columns_meta& columns() const {
+    static iresearch::columns_meta empty;
+    return empty;
+  }
   
   virtual value_visitor_f values(
       iresearch::field_id field,
@@ -374,8 +379,8 @@ struct empty_sub_reader : iresearch::singleton<empty_sub_reader>, iresearch::sub
   virtual size_t size() const { return 0; }
 
   virtual const iresearch::fields_meta& fields() const {
-    static iresearch::fields_meta inst;
-    return inst;
+    static iresearch::fields_meta empty;
+    return empty;
   }
 }; // empty_sub_reader
 

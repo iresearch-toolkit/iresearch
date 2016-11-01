@@ -59,6 +59,10 @@ class IRESEARCH_API segment_reader final : public sub_reader {
 
   virtual const term_reader* terms(const string_ref& field) const override;
   
+  virtual const columns_meta& columns() const override { 
+    return columns_; 
+  }
+  
   virtual value_visitor_f values(
     field_id field,
     const columnstore_reader::value_reader_f& reader
@@ -117,7 +121,7 @@ class IRESEARCH_API segment_reader final : public sub_reader {
   } dir_state_;
   uint64_t docs_count_;
   document_mask docs_mask_;
-  std::unordered_map<hashed_string_ref, column_meta_t> columns_;
+  columns_meta columns_;
   fields_meta fields_;
   field_reader::ptr fr_;
   stored_fields_reader::ptr sfr_;

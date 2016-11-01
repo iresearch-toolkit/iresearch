@@ -88,19 +88,21 @@ struct IRESEARCH_API sub_reader : index_reader {
 
   using index_reader::docs_count;
 
-  /* returns number of live documents by the specified field */
+  // returns number of live documents by the specified field
   virtual uint64_t docs_count(const string_ref& field) const {
     const term_reader* rdr = terms( field );
     return nullptr == rdr ? 0 : rdr->docs_count();
   }
 
-  /* returns iterator over the live documents in current segment */
+  // returns iterator over the live documents in current segment0
   virtual docs_iterator_t::ptr docs_iterator() const = 0;
 
   virtual const fields_meta& fields() const = 0;
 
-  /* returns corresponding term_reader by the specified field */
+  // returns corresponding term_reader by the specified field
   virtual const term_reader* terms(const string_ref& field) const = 0;
+
+  virtual const columns_meta& columns() const = 0;
 
   // returns corresponding column reader by the specified field
   virtual value_visitor_f values(

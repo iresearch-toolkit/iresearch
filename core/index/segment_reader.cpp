@@ -64,6 +64,50 @@ class masked_docs_iterator
   iresearch::doc_id_t next_;
 };
 
+void read_fields_meta(
+    iresearch::fields_meta& meta, 
+    const iresearch::format& codec, 
+    const iresearch::directory& dir,
+    const std::string& name) {
+  iresearch::fields_meta::items_t fields;
+  iresearch::flags features;
+
+  auto visitor = [&fields, &features] (iresearch::field_meta& value)->bool {
+    features |= value.features;
+    fields[value.id] = std::move(value);
+    return true;
+  };
+
+  auto reader = codec.get_field_meta_reader();
+  reader->prepare(dir, name);
+  fields.resize(reader->begin());
+  iresearch::read_all<iresearch::field_meta>(visitor, *reader, fields.size());
+  reader->end();
+
+  meta = iresearch::fields_meta(std::move(fields), std::move(features));
+}
+
+void read_columns_meta(
+    iresearch::columns_meta& meta, 
+    const iresearch::format& codec, 
+    const iresearch::directory& dir,
+    const std::string& name) {
+  iresearch::columns_meta::items_t columns;
+
+  auto visitor = [&columns] (iresearch::column_meta& value)->bool {
+    columns[value.id] = std::move(value);
+    return true;
+  };
+
+  auto reader = codec.get_column_meta_reader();
+  reader->prepare(dir, name);
+  columns.resize(reader->begin());
+  iresearch::read_all<iresearch::column_meta>(visitor, *reader, columns.size());
+  reader->end();
+
+  meta = iresearch::columns_meta(std::move(columns));
+}
+
 iresearch::sub_reader::value_visitor_f INVALID_VISITOR =
   [] (iresearch::doc_id_t) { return false; };
 
@@ -135,13 +179,13 @@ sub_reader::value_visitor_f segment_reader::values(
 sub_reader::value_visitor_f segment_reader::values(
     const string_ref& field,
     const columnstore_reader::value_reader_f& value_reader) const {
-  auto it = columns_.find(make_hashed_ref(field, string_ref_hash_t()));
+  auto meta = columns_.find(field);
 
-  if (it == columns_.end()) {
+  if (!meta) {
     return INVALID_VISITOR;
   }
 
-  return values(it->second.second, value_reader);
+  return values(meta->id, value_reader);
 }
 
 segment_reader::docs_iterator_t::ptr segment_reader::docs_iterator() const {
@@ -164,71 +208,31 @@ segment_reader::ptr segment_reader::open(
 
   auto& codec = *seg.codec;
 
-  // initialize fields
-  {
-    fields_meta::items_t fields;
-    flags features;
+  // initialize fields meta
+  read_fields_meta(rdr->fields_, codec, dir, seg.name);
 
-    auto visitor = [&fields, &features](field_meta& value)->bool {
-      features |= value.features;
-      fields[value.id] = std::move(value);
-      return true;
-    };
+  reader_state rs;
+  rs.codec = &codec;
+  rs.dir = &dir;
+  rs.docs_mask = &rdr->docs_mask_;
+  rs.fields = &rdr->fields_;
+  rs.meta = &seg;
 
-    auto reader = codec.get_field_meta_reader();
-    reader->prepare(dir, seg.name);
-    fields.resize(reader->begin());
-    read_all<field_meta>(visitor, *reader, fields.size());
-    reader->end();
+  // initialize field reader
+  auto& fr = rdr->fr_;
+  fr = codec.get_field_reader();
+  fr->prepare(rs);
 
-    rdr->fields_ = fields_meta(std::move(fields), std::move(features));
-  }
+  // initialize stored fields reader
+  auto& sfr = rdr->sfr_;
+  sfr = codec.get_stored_fields_reader();
+  sfr->prepare(rs);
 
-  {
-    reader_state rs;
-    rs.codec = &codec;
-    rs.dir = &dir;
-    rs.docs_mask = &rdr->docs_mask_;
-    rs.fields = &rdr->fields_;
-    rs.meta = &seg;
-
-    // initialize field reader
-    auto& fr = rdr->fr_;
-    fr = codec.get_field_reader();
-    fr->prepare(rs);
-
-    // initialize stored fields reader
-    auto& sfr = rdr->sfr_;
-    sfr = codec.get_stored_fields_reader();
-    sfr->prepare(rs);
-
-    // initialize columns reader
-    columnstore_reader::ptr csr = codec.get_columnstore_reader();
-    if (csr->prepare(rs)) {
-      rdr->csr_ = std::move(csr);
-
-      // initialize columns meta
-      auto reader = codec.get_column_meta_reader();
-      size_t size = reader->prepare(dir, seg.name);
-      for (column_meta_t meta; size; --size) {
-        reader->read(meta.first, meta.second);
-
-        auto res = rdr->columns_.emplace(
-          make_hashed_ref(string_ref(meta.first), string_ref_hash_t()),
-          std::move(meta)
-        );
-
-        if (!res.second) {
-          // duplicated field
-          return nullptr;
-        }
-
-        auto& it = res.first;
-        auto& key = const_cast<hashed_string_ref&>(it->first);
-        key = hashed_string_ref(key.hash(), it->second.first);
-      }
-      reader->end();
-    }
+  // initialize columns meta 
+  columnstore_reader::ptr csr = codec.get_columnstore_reader();
+  if (csr->prepare(rs)) {
+    rdr->csr_ = std::move(csr);
+    read_columns_meta(rdr->columns_, codec, dir, seg.name);
   }
 
   return rdr;
