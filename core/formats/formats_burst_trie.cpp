@@ -1074,41 +1074,16 @@ index_input& term_iterator::terms_input() const {
 * term_reader : impl
 * ------------------------------------------------------------------*/
 
-term_reader::term_reader(
-  bstring&& min_term,
-  bstring&& max_term,
-  uint64_t terms_count,
-  uint64_t doc_count,
-  uint64_t doc_freq,
-  uint64_t term_freq,
-  field_reader* owner,
-  const field_meta* field
-)
-  : min_term_( std::move( min_term ) ),
-    max_term_( std::move( max_term ) ),
-    terms_count_( terms_count ),
-    doc_count_( doc_count ),
-    doc_freq_( doc_freq ),
-    term_freq_( term_freq ),
-    field_( field ),
-    fst_( nullptr ),
-    owner_( owner ) {
-  assert(owner_);
-  assert(field_);
-  min_term_ref_ = min_term_;
-  max_term_ref_ = max_term_;
-}
-
-term_reader::term_reader( term_reader&& rhs )
-  : min_term_( std::move( rhs.min_term_ ) ),
-    max_term_( std::move( rhs.max_term_ ) ),
-    terms_count_( rhs.terms_count_ ),
-    doc_count_( rhs.doc_count_ ),
-    doc_freq_( rhs.doc_freq_ ),
-    term_freq_( rhs.term_freq_ ),
-    field_( rhs.field_ ),
-    fst_( rhs.fst_ ),
-    owner_( rhs.owner_ ) {
+term_reader::term_reader(term_reader&& rhs)
+  : min_term_(std::move(rhs.min_term_)),
+    max_term_(std::move(rhs.max_term_)),
+    terms_count_(rhs.terms_count_),
+    doc_count_(rhs.doc_count_),
+    doc_freq_(rhs.doc_freq_),
+    term_freq_(rhs.term_freq_),
+    field_(rhs.field_),
+    fst_(rhs.fst_),
+    owner_(rhs.owner_) {
   min_term_ref_ = min_term_;
   max_term_ref_ = max_term_;
   rhs.min_term_ref_ = bytes_ref::nil;
@@ -1130,19 +1105,42 @@ const flags& term_reader::features() const {
   return field_->features;
 }
 
-void term_reader::prepare( index_input& in, uint64_t index_start ) {
-  index_input::ptr clone( in.clone() );
-  clone->seek( index_start );
-
-  input_buf isb( clone.get() );
-  std::istream input( &isb );
-
-  fst_ = vector_byte_fst::Read( input, fst::FstReadOptions() );
-  assert(fst_);
-}
-
 seek_term_iterator::ptr term_reader::iterator() const {
   return seek_term_iterator::make<detail::term_iterator>( this );
+}
+  
+bool term_reader::prepare(
+    index_input& meta_in, 
+    index_input& fst_in, 
+    const field_meta& field, 
+    field_reader& owner) {
+
+  // load field metadata
+  terms_count_ = meta_in.read_vlong();
+  doc_count_ = meta_in.read_vlong();
+  doc_freq_ = meta_in.read_vlong();
+  min_term_ = read_string<bstring>(meta_in);
+  min_term_ref_ = min_term_;
+  max_term_ = read_string<bstring>(meta_in);
+  max_term_ref_ = max_term_;
+  term_freq_ = field.features.check<frequency>()
+    ? meta_in.read_vlong()
+    : 0; // TODO: not 0 but reserved value
+
+  // load field index
+  const uint64_t index_start = fst_in.read_vlong();
+  index_input::ptr clone(fst_in.clone());
+  clone->seek(index_start);
+
+  input_buf isb(clone.get());
+  std::istream input(&isb);
+
+  fst_ = vector_byte_fst::Read(input, fst::FstReadOptions());
+  assert(fst_);
+
+  owner_ = &owner;
+  field_ = &field;
+  return true;
 }
 
 NS_END // detail
@@ -1666,14 +1664,14 @@ void field_reader::prepare( const reader_state& state ) {
     /* check index header */
     index_input::ptr index_in;
     detail::prepare_input(
-        str, index_in, state,
-        field_writer::TERMS_INDEX_EXT,
-        field_writer::FORMAT_TERMS_INDEX,
-        field_writer::FORMAT_MIN,
-        field_writer::FORMAT_MAX
+      str, index_in, state,
+      field_writer::TERMS_INDEX_EXT,
+      field_writer::FORMAT_TERMS_INDEX,
+      field_writer::FORMAT_MIN,
+      field_writer::FORMAT_MAX
     );
-    /* check index checksum
-     * TODO: maybe we should make it optional */
+
+    /* check index checksum */
     format_utils::check_checksum<boost::crc_32_type>(*index_in);
     {
       /* seek to index start */
@@ -1685,45 +1683,51 @@ void field_reader::prepare( const reader_state& state ) {
       index_in->seek(index_start);
     }
 
-    /* read terms for each field */
-    uint32_t size = terms_in_->read_vint();
+    //
+    // There may be stored only fields which are not encountered here
+    // Since we access to field_reader by id, we store pointers to 
+    // indexed fields in separate array of size same as the overall 
+    // number of fields (indexed or stored).
+    //
+    // It's maybe better to sequentially store indexed fields in order
+    // to provide dense field identifiers (and store readers within a
+    // single array), but there are some problems with stored fields 
+    // since when field metadata writes to directory stored document 
+    // headers (which are contains field identifiers for  now) are 
+    // already written.
+    //
+
+    // read terms for each indexed field
+    size_t size = terms_in_->read_vint();
+    fields_.reserve(size);
+    fields_mask_.resize(state.fields->size());
     while (size) {
-      const field_meta *field = state.fields->find(terms_in_->read_vint());
+      const field_meta* field = state.fields->find(terms_in_->read_vint());
+
       if (!field) {
         throw index_error(); // TODO: corrupted index: no field id
       }
-      const uint64_t term_count = terms_in_->read_vlong();
-      const uint64_t doc_count = terms_in_->read_vlong();
-      const uint64_t doc_freq = terms_in_->read_vlong();
-      auto min_term = read_string<bstring>(*terms_in_);
-      auto max_term = read_string<bstring>(*terms_in_);
-      const uint64_t term_freq = field->features.check<frequency>()
-                                 ? terms_in_->read_vlong()
-                                 : 0; // TODO: not 0 but reserved value
-      const uint64_t index_start = index_in->read_vlong();
 
-      detail::term_reader reader(
-        std::move(min_term), std::move(max_term),
-        term_count, doc_count,
-        doc_freq, term_freq,
-        this, field
-      );
+      fields_.emplace_back();
+      auto& reader = fields_.back();
 
-      auto res = fields_.emplace(field->name, std::move(reader));
-
-      if (!res.second) {
-        throw index_error(); // TODO: corrupted index: duplicate field
+      if (!reader.prepare(*terms_in_, *index_in, *field, *this)) {
+        throw index_error(); // TODO: corrupted index
       }
 
-      res.first->second.prepare(*index_in, index_start);
+      fields_mask_[field->id] = &reader;
+
       --size;
     }
   }
 }
 
-const iresearch::term_reader* field_reader::terms( const iresearch::string_ref& field ) const {
-  fields_map_t::const_iterator it = fields_.find(field);
-  return fields_.end() == it ? nullptr : &it->second;
+const iresearch::term_reader* field_reader::terms(field_id field) const {
+  if (field >= fields_mask_.size()) {
+    return nullptr;
+  }
+
+  return fields_mask_[field];
 }
 
 size_t field_reader::size() const {

@@ -54,7 +54,7 @@ bool segment_writer::store_field(
   if (serializer) {
     // store field id
     header_.doc_fields.push_back(slot.meta().id);
-
+    
     // write user fields
     return sf_writer_->write(*serializer); 
   }

@@ -683,7 +683,7 @@ class format_10_test_case : public tests::format_test_case_base {
       auto fr = get_codec()->get_field_reader();
       fr->prepare(state);
 
-      auto it = fr->terms(field)->iterator();
+      auto it = fr->terms(field_meta.id)->iterator();
       ASSERT_TRUE(it->seek(term));
       
       // ires-336 sequence

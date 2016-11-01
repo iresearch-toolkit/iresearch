@@ -521,8 +521,8 @@ class format_test_case_base : public index_test_base {
       ASSERT_EQ(1, reader->size());
 
       // check terms
-      ASSERT_EQ(nullptr, reader->terms("invalid_field"));
-      auto term_reader = reader->terms(field.name);
+      ASSERT_EQ(nullptr, reader->terms(ir::type_limits<ir::type_t::field_id_t>::invalid()));
+      auto term_reader = reader->terms(field.id);
       ASSERT_NE(nullptr, term_reader);
 
       ASSERT_EQ(sorted_terms.size(), term_reader->size());

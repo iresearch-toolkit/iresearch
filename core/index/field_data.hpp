@@ -69,6 +69,11 @@ class IRESEARCH_API field_data : util::noncopyable {
 
   const field_meta& meta() const { return meta_; }
 
+  // returns true if field contains indexed data
+  bool empty() const {
+    return type_limits<type_t::doc_id_t>::valid(last_doc_);
+  }
+
   bool invert(token_stream* tokens, const flags& features, float_t boost, doc_id_t id);
   term_iterator::ptr iterator() const;
 
@@ -77,7 +82,7 @@ class IRESEARCH_API field_data : util::noncopyable {
   friend class detail::doc_iterator;
   friend class fields_data;
 
-  void init(const doc_id_t& doc_id);
+  void init(doc_id_t doc_id);
 
   void new_term(posting& p, doc_id_t did, const payload* pay, const offset* offs);
 
@@ -93,7 +98,7 @@ class IRESEARCH_API field_data : util::noncopyable {
   postings terms_;
   byte_block_pool::inserter* byte_writer_;
   int_block_pool::inserter* int_writer_;
-  doc_id_t last_doc_;
+  doc_id_t last_doc_{ type_limits<type_t::doc_id_t>::invalid() };
   uint32_t pos_;
   uint32_t last_pos_;
   uint32_t len_;

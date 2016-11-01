@@ -96,19 +96,17 @@ class term_iterator;
 class term_reader : public iresearch::term_reader,
                     private util::noncopyable {
  public:
-  term_reader(
-    bstring&& min_term,
-    bstring&& max_term,
-    uint64_t terms_count,
-    uint64_t doc_count,
-    uint64_t doc_freq,
-    uint64_t term_freq,
-    field_reader* owner,
-    const field_meta* field
-  );
+  term_reader() = default;
   term_reader(term_reader&& rhs);
   virtual ~term_reader();
-  void prepare(index_input& in, uint64_t index_start);
+
+  bool prepare(
+    index_input& meta_in, 
+    index_input& fst_in, 
+    const field_meta& field, 
+    field_reader& owner
+  );
+
   virtual seek_term_iterator::ptr iterator() const override;
   virtual const flags& features() const override;
   virtual size_t size() const override { return terms_count_; }
@@ -242,18 +240,17 @@ class field_writer final : public iresearch::field_writer{
 
 class field_reader final : public iresearch::field_reader {
  public:
-  field_reader(iresearch::postings_reader::ptr&& pr);
-  virtual void prepare( const reader_state& state ) override;
-  virtual const iresearch::term_reader* terms( const string_ref& field ) const override;
+  explicit field_reader(iresearch::postings_reader::ptr&& pr);
+  virtual void prepare(const reader_state& state) override;
+  virtual const iresearch::term_reader* terms(field_id field) const override;
   virtual size_t size() const override;
 
  private:
   friend class detail::term_iterator;
   friend class detail::field_iterator;
 
-  typedef std::map< iresearch::string_ref, detail::term_reader > fields_map_t;
-
-  fields_map_t fields_;
+  std::vector<detail::term_reader> fields_;
+  std::vector<const detail::term_reader*> fields_mask_;
   iresearch::postings_reader::ptr pr_;
   iresearch::index_input::ptr terms_in_;
 };

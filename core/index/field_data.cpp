@@ -383,7 +383,7 @@ field_data::field_data(
 
 field_data::~field_data() { }
 
-void field_data::init(const doc_id_t& doc_id) {
+void field_data::init(doc_id_t doc_id) {
   assert(type_limits<type_t::doc_id_t>::valid(doc_id));
 
   if (doc_id == last_doc_) {
@@ -630,19 +630,21 @@ void fields_data::flush(
   state.fields_count = fields_.size();
 
   {
-    std::map<string_ref, fields_map::mapped_type*> fields;
+    static auto less = [] (const field_data* lhs, const field_data* rhs) {
+      return lhs->meta().name < rhs->meta().name;
+    };
+    std::set<const field_data*, decltype(less)> fields(less);
 
     // ensure fields are sorted
-    for (auto& entry: fields_) {
-      fields.emplace(entry.first, &(entry.second));
+    for (auto& entry : fields_) {
+      fields.emplace(&entry.second);
     }
 
     fmw.prepare(state);
     fw.prepare(state);
 
-    for(auto& entry: fields) {
-      auto& field = *(entry.second);
-      auto& meta = field.meta();
+    for (auto* field : fields) {
+      auto& meta = field->meta();
       auto id = meta.id;
       auto& features = meta.features;
 
@@ -650,11 +652,13 @@ void fields_data::flush(
       fmw.write(id, meta.name, features);
 
       // write field invert data
-      auto terms = field.iterator();
+      auto terms = field->iterator();
 
       if (terms) {
         fw.write(id, features, *terms);
       }
+
+      ++id;
     }
 
     fw.end();

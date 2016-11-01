@@ -72,7 +72,12 @@ NS_END // NS_LOCAL
 NS_ROOT
 
 const term_reader* segment_reader::terms(const string_ref& field) const {
-  return fr_->terms(field);
+  auto* meta = fields_.find(field);
+  if (!meta) {
+    return nullptr;
+  }
+
+  return fr_->terms(meta->id);
 }
 
 bool segment_reader::document(

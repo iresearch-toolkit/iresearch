@@ -311,7 +311,7 @@ class field_reader : public iresearch::field_reader {
   field_reader( const index_segment& data );
 
   virtual void prepare(const iresearch::reader_state& state) override;
-  virtual const iresearch::term_reader* terms(const iresearch::string_ref& field) const override;
+  virtual const iresearch::term_reader* terms(iresearch::field_id field) const override;
   virtual size_t size() const override;
   
   const index_segment& data() const {
@@ -319,11 +319,7 @@ class field_reader : public iresearch::field_reader {
   }
 
  private:
-#ifdef IRESEARCH_GENERIC_ASSOCIATIVE_LOOKUP
-  std::map<std::string, iresearch::term_reader::ptr, std::less<>> readers_;
-#else
-  std::map<std::string, iresearch::term_reader::ptr> readers_;
-#endif
+  std::vector<iresearch::term_reader::ptr> readers_;
   const index_segment& data_;
 };
 

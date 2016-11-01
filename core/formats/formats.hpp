@@ -139,7 +139,7 @@ struct IRESEARCH_API field_reader {
   virtual ~field_reader();
 
   virtual void prepare(const reader_state& state) = 0;
-  virtual const term_reader* terms(const string_ref& field) const = 0;
+  virtual const term_reader* terms(field_id field) const = 0;
   virtual size_t size() const = 0;
 };
 

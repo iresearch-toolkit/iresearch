@@ -317,7 +317,7 @@ void field_writer::write(
   
   auto features = features_ & fld->features;
 
-  const iresearch::term_reader* expected_term_reader = readers_.terms(fld->name);
+  const iresearch::term_reader* expected_term_reader = readers_.terms(fld->id);
   ASSERT_NE(nullptr, expected_term_reader);
 
   iresearch::bytes_ref actual_min;
@@ -625,23 +625,25 @@ class field_iterator : public iresearch::iterator <const iresearch::string_ref&>
 
 NS_END
 
-field_reader::field_reader( const index_segment& data )
-  : data_( data ) {
+field_reader::field_reader(const index_segment& data)
+  : data_(data) {
 
-  for ( const auto& pair : data_.fields() ) {
-    readers_.emplace( 
-      pair.first,
-      iresearch::term_reader::make<detail::term_reader>(pair.second)
-    );
+  readers_.resize(data.fields().size());
+
+  for (const auto& pair : data_.fields()) {
+    readers_[pair.second.id] = iresearch::term_reader::make<detail::term_reader>(pair.second);
   }
 }
 
 void field_reader::prepare(const iresearch::reader_state& state) {
 }
 
-const iresearch::term_reader* field_reader::terms(const iresearch::string_ref& field) const {
-  auto it = readers_.find(field);
-  return readers_.end() == it ? nullptr : it->second.get();
+const iresearch::term_reader* field_reader::terms(iresearch::field_id field) const {
+  if (field >= readers_.size()) {
+    return nullptr;
+  }
+
+  return readers_[field].get();
 }
   
 size_t field_reader::size() const {
@@ -1031,7 +1033,7 @@ void assert_index(
       ASSERT_EQ(expected_fields_begin->first, actual_fields_begin->name);
 
       /* check field terms */
-      auto expected_term_reader = expected_reader.terms(expected_fields_begin->first);
+      auto expected_term_reader = expected_reader.terms(expected_fields_begin->second.id);
       ASSERT_NE(nullptr, expected_term_reader);
       auto actual_term_reader = (*actual_index_reader)[i].terms(actual_fields_begin->name);
       ASSERT_NE(nullptr, actual_term_reader);
