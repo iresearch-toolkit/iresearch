@@ -1111,7 +1111,7 @@ seek_term_iterator::ptr term_reader::iterator() const {
   
 bool term_reader::prepare(
     index_input& meta_in, 
-    index_input& fst_in, 
+    std::istream& fst_in, 
     const field_meta& field, 
     field_reader& owner) {
 
@@ -1127,15 +1127,7 @@ bool term_reader::prepare(
     ? meta_in.read_vlong()
     : 0; // TODO: not 0 but reserved value
 
-  // load field index
-  const uint64_t index_start = fst_in.read_vlong();
-  index_input::ptr clone(fst_in.clone());
-  clone->seek(index_start);
-
-  input_buf isb(clone.get());
-  std::istream input(&isb);
-
-  fst_ = vector_byte_fst::Read(input, fst::FstReadOptions());
+  fst_ = vector_byte_fst::Read(fst_in, fst::FstReadOptions());
   assert(fst_);
 
   owner_ = &owner;
@@ -1697,6 +1689,10 @@ void field_reader::prepare( const reader_state& state ) {
     // already written.
     //
 
+    auto fst_in = index_in->clone();
+    input_buf isb(fst_in.get());
+    std::istream input(&isb); // stream for reading fst
+
     // read terms for each indexed field
     size_t size = terms_in_->read_vint();
     fields_.reserve(size);
@@ -1711,7 +1707,9 @@ void field_reader::prepare( const reader_state& state ) {
       fields_.emplace_back();
       auto& reader = fields_.back();
 
-      if (!reader.prepare(*terms_in_, *index_in, *field, *this)) {
+      fst_in->seek(index_in->read_vlong()); // seek to the beginning of fst for field
+
+      if (!reader.prepare(*terms_in_, input, *field, *this)) {
         throw index_error(); // TODO: corrupted index
       }
 

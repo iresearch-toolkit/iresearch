@@ -102,7 +102,7 @@ class term_reader : public iresearch::term_reader,
 
   bool prepare(
     index_input& meta_in, 
-    index_input& fst_in, 
+    std::istream& fst_in, 
     const field_meta& field, 
     field_reader& owner
   );
