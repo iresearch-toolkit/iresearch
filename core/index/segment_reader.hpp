@@ -73,6 +73,11 @@ class IRESEARCH_API segment_reader final : public sub_reader {
     const columnstore_reader::value_reader_f& reader
   ) const override;
 
+  virtual bool column(
+    field_id field,
+    const columnstore_reader::raw_reader_f& reader
+  ) const override;
+
   virtual size_t size() const override { 
     return 1; 
   }

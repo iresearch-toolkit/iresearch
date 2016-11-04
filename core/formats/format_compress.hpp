@@ -65,7 +65,67 @@ class compressing_index_writer: util::noncopyable {
 //////////////////////////////////////////////////////////////////////////////
 template<typename T>
 class compressed_index : util::noncopyable {
-  public:
+ public:
+  typedef T value_type;
+  typedef std::pair<doc_id_t, value_type> entry_t;
+ 
+  struct block {
+    block(size_t size, doc_id_t key)
+      : entries(size), key_base(key) {
+    }
+
+    block(block&&) = default;
+
+    std::vector<entry_t> entries;
+    doc_id_t key_base;
+  };
+ 
+  class iterator : public std::iterator<std::forward_iterator_tag, entry_t> {
+   public:
+    typedef const block* block_iterator_t;
+
+    iterator(block_iterator_t bit) : bit_(bit) { }
+    iterator(const iterator&) = default;
+    iterator& operator=(const iterator&) = default;
+
+    iterator& operator++() {
+      assert(!bit_->entries.empty());
+      if (offset_ == bit_->entries.size()-1) {
+        ++bit_;
+        offset_ = 0;
+      } else {
+        ++offset_;
+      }
+      return *this; 
+    }
+
+    iterator operator++(int) { 
+      auto tmp = *this;
+      ++*this;
+      return tmp;
+    }
+
+    const value_type& operator*() const {
+      return bit_->entries[offset_];
+    }
+
+    const value_type* operator->() const {
+      return &operator*();
+    }
+
+    bool operator==(const iterator& rhs) const {
+      return bit_ == rhs.bit_ && offset_ == rhs.offset_;
+    }
+    
+    bool operator!=(const iterator& rhs) const {
+      return !(*this == rhs);
+    }
+
+   private:
+    block_iterator_t bit_;
+    size_t offset_{};
+  }; // iterator
+  
   compressed_index() = default;
 
   compressed_index(compressed_index&& rhs)
@@ -132,20 +192,22 @@ class compressed_index : util::noncopyable {
     return entry ? &entry->second : nullptr;
   }
 
- private:
-  typedef std::pair<doc_id_t, T> entry_t;
+  iterator begin() const { return iterator(blocks_.data()); }
+  iterator end() const { return iterator(blocks_.data() + blocks_.size()); }
 
-  struct block {
-    block(size_t size, doc_id_t key)
-      : entries(size), key_base(key) {
+  template<typename Visitor>
+  bool visit(Visitor visitor) const {
+    for (auto& block : blocks_) {
+      for (auto& entry : block.entries) {
+        if (!visitor(entry)) {
+          return false;
+        }
+      }
     }
+    return true;
+  }
 
-    block(block&&) = default;
-
-    std::vector<entry_t> entries;
-    doc_id_t key_base;
-  };
-
+ private:
   template<typename Visitor>
   static void read_block(
       index_input& in,

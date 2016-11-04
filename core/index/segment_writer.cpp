@@ -111,7 +111,7 @@ void segment_writer::flush(std::string& filename, segment_meta& meta) {
   // flush columns indices
   if (!columns_.empty()) {
     // flush columns meta
-    col_meta_writer_->prepare(dir_, seg_name_, columns_.size());
+    col_meta_writer_->prepare(dir_, seg_name_);
     for (auto& entry : columns_) {
       auto& column = entry.second;
       col_meta_writer_->write(column.name, column.handle.first);

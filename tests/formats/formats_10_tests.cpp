@@ -321,6 +321,12 @@ class format_10_test_case : public tests::format_test_case_base {
   }
 
   void format_compress_read_write() {
+    // iterate over an empty index
+    {
+      ir::compressed_index<uint64_t> reader;
+      ASSERT_EQ(reader.begin(), reader.end());
+    }
+    
     const size_t start_offset = 100;
     const ir::doc_id_t blocks_count = 5000;
     const ir::doc_id_t block_docs = 128;
@@ -354,6 +360,24 @@ class format_10_test_case : public tests::format_test_case_base {
       ir::compressed_index<uint64_t> reader;
       ASSERT_TRUE(reader.read(*in, max_doc, visitor));
       ASSERT_EQ(nullptr, reader.lower_bound(max_doc + 1));
+
+      // check iterators equality
+      {
+        auto it0 = reader.begin();
+        std::advance(it0, 1542);
+        auto it1 = it0++;
+        ASSERT_EQ(it0, ++it1);
+        ASSERT_EQ((*it0).first, (*it1).first);
+        ASSERT_EQ((*it0).second, (*it1).second);
+      }
+
+      ir::doc_id_t i = 0;
+      for (auto& entry : reader) {
+        ASSERT_EQ(block_docs*i, entry.first);
+        ASSERT_EQ(start_offset + i, entry.second);
+        ++i;
+      }
+
       for (ir::doc_id_t i = 0; i < max_doc; ++i) {
         auto* less_or_eq = reader.lower_bound(i);
         ASSERT_NE(nullptr, less_or_eq);

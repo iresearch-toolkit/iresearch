@@ -240,7 +240,7 @@ struct IRESEARCH_API column_meta_writer {
   
   virtual ~column_meta_writer();
   
-  virtual bool prepare(directory& dir, const string_ref& filename, size_t count) = 0;
+  virtual bool prepare(directory& dir, const string_ref& filename) = 0;
   virtual void write(const std::string& name, field_id id) = 0;
   virtual void flush() = 0;
 }; // column_meta_writer 
@@ -255,9 +255,8 @@ struct IRESEARCH_API column_meta_reader {
   virtual ~column_meta_reader();
   
   virtual bool prepare(const directory& dir, const string_ref& seg_name) = 0;
-  virtual size_t begin() = 0;
-  virtual void read(column_meta& column) = 0;
-  virtual void end() = 0;
+  // returns false if there is no more data to read
+  virtual bool read(column_meta& column) = 0;
 }; // column_meta_reader 
 
 // -----------------------------------------------------------------------------
@@ -268,12 +267,14 @@ struct IRESEARCH_API columnstore_reader {
   DECLARE_PTR(columnstore_reader);
 
   typedef std::function<bool(data_input&)> value_reader_f;
+  typedef std::function<bool(doc_id_t, data_input&)> raw_reader_f;
   typedef std::function<bool(doc_id_t, const value_reader_f&)> values_reader_f;
 
   virtual ~columnstore_reader();
 
   virtual bool prepare(const reader_state& state) = 0;
   virtual values_reader_f values(field_id field) const = 0;
+  virtual bool visit(field_id field, const raw_reader_f& visitor) const = 0;
 }; // columnstore_reader
 
 /* -------------------------------------------------------------------

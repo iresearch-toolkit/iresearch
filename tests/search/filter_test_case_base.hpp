@@ -342,6 +342,12 @@ struct empty_sub_reader : iresearch::singleton<empty_sub_reader>, iresearch::sub
     return empty;
   }
   
+  virtual bool column(
+      iresearch::field_id field,
+      const iresearch::columnstore_reader::raw_reader_f& reader) const {
+    return false;
+  }
+  
   virtual value_visitor_f values(
       iresearch::field_id field,
       const iresearch::columnstore_reader::value_reader_f& reader) const {

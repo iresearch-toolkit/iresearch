@@ -101,9 +101,9 @@ void read_columns_meta(
 
   auto reader = codec.get_column_meta_reader();
   reader->prepare(dir, name);
-  columns.resize(reader->begin());
-  iresearch::read_all<iresearch::column_meta>(visitor, *reader, columns.size());
-  reader->end();
+  for (iresearch::column_meta meta; reader->read(meta);) {
+    columns.push_back(std::move(meta));
+  }
 
   meta = iresearch::columns_meta(std::move(columns));
 }
@@ -187,6 +187,16 @@ sub_reader::value_visitor_f segment_reader::values(
 
   return values(meta->id, value_reader);
 }
+  
+bool segment_reader::column(
+    field_id field,
+    const columnstore_reader::raw_reader_f& reader) const {
+  if (!csr_) {
+    return false;
+  }
+
+  return csr_->visit(field, reader);
+}
 
 segment_reader::docs_iterator_t::ptr segment_reader::docs_iterator() const {
   // the implementation generates doc_ids sequentially
@@ -228,7 +238,7 @@ segment_reader::ptr segment_reader::open(
   sfr = codec.get_stored_fields_reader();
   sfr->prepare(rs);
 
-  // initialize columns meta 
+  // initialize columns
   columnstore_reader::ptr csr = codec.get_columnstore_reader();
   if (csr->prepare(rs)) {
     rdr->csr_ = std::move(csr);

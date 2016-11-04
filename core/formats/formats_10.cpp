@@ -1509,7 +1509,7 @@ class meta_writer final : public iresearch::column_meta_writer {
   static const int32_t FORMAT_MIN = 0;
   static const int32_t FORMAT_MAX = FORMAT_MIN;
 
-  virtual bool prepare(directory& dir, const string_ref& filename, size_t count) override;
+  virtual bool prepare(directory& dir, const string_ref& filename) override;
   virtual void write(const std::string& name, field_id id) override;
   virtual void flush() override;
 
@@ -1520,23 +1520,23 @@ class meta_writer final : public iresearch::column_meta_writer {
 const string_ref meta_writer::FORMAT_NAME = "iresearch_10_columnmeta";
 const string_ref meta_writer::FORMAT_EXT = "cm";
 
-bool meta_writer::prepare(directory& dir, const string_ref& name, size_t count) {
+bool meta_writer::prepare(directory& dir, const string_ref& name) {
   std::string filename;
   file_name(filename, name, FORMAT_EXT);
 
   out_ = dir.create(filename);
   format_utils::write_header(*out_, FORMAT_NAME, FORMAT_MAX);
-  out_->write_vlong(count);
 
   return true;
 }
   
 void meta_writer::write(const std::string& name, field_id id) {
-  out_->write_vlong(id);
+  write_zvint(*out_, id);
   write_string(*out_, name);
 }
 
 void meta_writer::flush() {
+  write_zvint(*out_, type_limits<type_t::field_id_t>::invalid());
   format_utils::write_footer(*out_);
   out_.reset();
 }
@@ -1544,9 +1544,7 @@ void meta_writer::flush() {
 class meta_reader final : public iresearch::column_meta_reader {
  public:
   virtual bool prepare(const directory& dir, const string_ref& filename) override;
-  virtual size_t begin() override;
-  virtual void read(column_meta& column) override;
-  virtual void end() override;
+  virtual bool read(column_meta& column) override;
 
  private:
   checksum_index_input<boost::crc_32_type> in_;
@@ -1556,28 +1554,28 @@ bool meta_reader::prepare(const directory& dir, const string_ref& name) {
  checksum_index_input< boost::crc_32_type > check_in(
     dir.open(file_name(name, meta_writer::FORMAT_EXT))
   );
+  
+  format_utils::check_header(
+    check_in, 
+    meta_writer::FORMAT_NAME,
+    meta_writer::FORMAT_MIN,
+    meta_writer::FORMAT_MAX
+  );
 
   in_.swap(check_in);
   return true;
 }
 
-size_t meta_reader::begin() {
-  format_utils::check_header(
-    in_, 
-    meta_writer::FORMAT_NAME,
-    meta_writer::FORMAT_MIN,
-    meta_writer::FORMAT_MAX
-  );
-  return in_.read_vlong();
-}
-  
-void meta_reader::read(column_meta& column) {
-  column.id = in_.read_vlong();
-  column.name = read_string<std::string>(in_);
-}
+bool meta_reader::read(column_meta& column) {
+  const auto id = static_cast<field_id>(read_zvint(in_));
+  if (!type_limits<type_t::field_id_t>::valid(id)) {
+    format_utils::check_footer(in_);
+    return false;
+  }
 
-void meta_reader::end() {
-  format_utils::check_footer(in_);
+  column.id = id;
+  column.name = read_string<std::string>(in_);
+  return true;
 }
 
 // ----------------------------------------------------------------------------
@@ -1770,22 +1768,28 @@ NS_END
 class reader final : public iresearch::columnstore_reader {
  public:
   virtual bool prepare(const reader_state& state) override;
-  virtual values_reader_f values(field_id name) const override;
+  virtual values_reader_f values(field_id field) const override;
+  virtual bool visit(field_id field, const raw_reader_f& reader) const override;
 
  private:
+  typedef compressed_index<uint64_t> block_index_t;
+
   struct block : util::noncopyable {
     block() = default;
     block(block&&) = default;
 
     compressed_index<uint64_t> index; // block index
-    bstring data; // decompressed data block
+    bstring data; // decompressed data block (may contain auxillary information)
+    bytes_ref view; // view on decompressed data
     bytes_ref_input stream; // stream to access to data block
   };
-
+  
   typedef std::pair<
     uint64_t, // block data offset
     block* // pointer to cached block
   > block_ref_t;
+  
+  typedef compressed_index<block_ref_t> blocks_index_t;
 
   struct column : util::noncopyable {
     column() = default;
@@ -1796,12 +1800,14 @@ class reader final : public iresearch::columnstore_reader {
         max_block_size(rhs.max_block_size) {
     }
 
-    compressed_index<block_ref_t> index; // blocks index
+    blocks_index_t index; // blocks index
     index_input::ptr stream; // column stream
     uint64_t max_block_size;
   };
 
   bool load_block(reader::column& column, block_ref_t& block_ref) const;
+  bool load_block(index_input& in, block& block) const;
+  index_input& prepare(column& column) const; // prepares column stream
 
   std::vector<column> columns_;
   index_input::ptr data_in_; // columnstore data stream
@@ -1809,12 +1815,7 @@ class reader final : public iresearch::columnstore_reader {
   mutable decompressor decomp_; // decompressor
 }; // reader
   
-bool reader::load_block(reader::column& column, reader::block_ref_t& block_ref) const {
-  if (block_ref.second) {
-    // already loaded
-    return true;
-  }
- 
+index_input& reader::prepare(reader::column& column) const {
   decomp_.block_size(column.max_block_size); // set decompressor params
 
   if (!column.stream) {
@@ -1822,28 +1823,43 @@ bool reader::load_block(reader::column& column, reader::block_ref_t& block_ref) 
     column.stream = data_in_->clone();
   }
 
-  auto& stream = *column.stream;
-
-  // seek to block
-  stream.seek(block_ref.first);
-
-  // add cached entry
-  cached_blocks_.emplace_back();
-  auto& block = cached_blocks_.back();
-
+  return *column.stream;
+}
+ 
+bool reader::load_block(index_input& in, block& block) const {
   // read block index
   static auto visitor = [] (uint64_t& target, uint64_t value) {
     target = value;
   };
   
-  if (!block.index.read(stream, type_limits<type_t::doc_id_t>::eof(), visitor)) {
+  if (!block.index.read(in, type_limits<type_t::doc_id_t>::eof(), visitor)) {
     // unable to read column index
     return false;
   }
   
-  block.stream = bytes_ref_input(
-    read_compact(stream, decomp_, block.data)
-  );  // read block data
+  block.view = read_compact(in, decomp_, block.data); // read block data
+
+  return true;
+}
+
+bool reader::load_block(reader::column& column, reader::block_ref_t& block_ref) const {
+  if (block_ref.second) {
+    // already loaded
+    return true;
+  }
+ 
+  auto& stream = prepare(column); // prepare column
+
+  stream.seek(block_ref.first); // seek to block
+
+  // add cached entry
+  cached_blocks_.emplace_back();
+  auto& block = cached_blocks_.back();
+  
+  if (!load_block(stream, block)) {
+    // unable to load block
+    return false;
+  }
 
   block_ref.second = &block; // mark block as loaded
   return true;
@@ -1939,6 +1955,58 @@ reader::values_reader_f reader::values(field_id field) const {
 
     return reader(stream);
   };
+}
+  
+bool reader::visit(field_id field, const raw_reader_f& reader) const {
+  if (field >= columns_.size()) {
+    // can't find attribute with the specified id
+    return false;
+  }
+
+  auto& column = const_cast<reader::column&>(columns_[field]);
+  auto& stream = prepare(column); // prepare column stream
+
+  block* pblock;
+  block block; // we don't cache blocks during visiting
+  for (auto& bucket : column.index) {
+    // seek to block
+    stream.seek(bucket.second.first);
+
+    auto& bref = bucket.second;
+    if (!bref.second) {
+      // load block if it haven't been cached yet
+      if (!load_block(stream, block)) {
+        return false;
+      }
+      pblock = &block;
+    } else {
+      pblock = bref.second;
+    }
+
+    auto it = pblock->index.begin();
+    auto next = it;
+    auto end = pblock->index.end();
+    for (; it != end; ++it) {
+      ++next;
+
+      auto& value = *it;
+
+      auto start_offset = value.second;
+      auto end_offset = next == end ? pblock->view.size() : next->second;
+      assert(end_offset >= start_offset);
+       
+      block.stream.reset(
+        pblock->view.c_str() + start_offset, 
+        end_offset - start_offset
+      );
+
+      if (!reader(value.first, block.stream)) {
+        return false;
+      }
+    }
+  }
+
+  return true;
 }
 
 NS_END // columns

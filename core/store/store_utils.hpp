@@ -286,6 +286,11 @@ class IRESEARCH_API bytes_ref_input final : public data_input{
   virtual size_t read_bytes(byte_type* b, size_t size) override;
   void read_bytes(bstring& buf, size_t size); // append to buf
 
+  void reset(const byte_type* data, size_t size) {
+    data_ = bytes_ref(data, size);
+    pos_ = 0;
+  }
+
  private:
   bytes_ref data_;
   size_t pos_;

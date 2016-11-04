@@ -115,6 +115,11 @@ struct IRESEARCH_API sub_reader : index_reader {
     field_id id,
     const columnstore_reader::value_reader_f& reader
   ) const = 0;
+
+  virtual bool column(
+    field_id id,
+    const columnstore_reader::raw_reader_f& reader
+  ) const = 0;
 };
 
 /* context specialization for sub_reader */

@@ -34,7 +34,7 @@ class multi_index : util::noncopyable {
   typedef std::vector<value_type> items_t;
   typedef std::map<string_ref, const value_type*> by_name_sorted_t;
 
-  class iterator : std::iterator<std::bidirectional_iterator_tag, value_type> {
+  class iterator : public std::iterator<std::bidirectional_iterator_tag, value_type> {
    public:
      iterator(typename by_name_sorted_t::const_iterator it) : it_(it) { }
      iterator(const iterator&) = default;
