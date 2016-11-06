@@ -37,25 +37,19 @@ class IRESEARCH_API compressor: public bytes_ref, private util::noncopyable {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // compressor
 
-class IRESEARCH_API decompressor: public bytes_ref, private util::noncopyable {
+class IRESEARCH_API decompressor : private util::noncopyable {
  public:
   decompressor();
 
-  explicit decompressor(unsigned int chunk_size);
-
-  void block_size(size_t size);
-
-  size_t block_size() const { return buf_.size(); }
-
-  void decompress(const char* src, size_t size);
-
-  inline void decompress(const bytes_ref& src) {
-    decompress(ref_cast<char>(src).c_str(), src.size());
-  }
+  // returns number of decompressed bytes,
+  // or integer_traits<size_t>::const_max in case of error
+  size_t deflate(
+    const char* src, size_t src_size, 
+    char* dst, size_t dst_size
+  ) const;
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  std::string buf_;
   std::shared_ptr<void> stream_; // hide internal LZ4 implementation
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // decompressor

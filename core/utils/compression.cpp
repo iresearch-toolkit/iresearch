@@ -12,6 +12,7 @@
 #include "shared.hpp"
 #include "error/error.hpp"
 #include "compression.hpp"
+#include "utils/type_limits.hpp"
 
 #include <lz4.h>
 
@@ -68,34 +69,28 @@ void compressor::compress(const char* src, size_t size) {
   this->size_ = lz4_size;
 }
 
-decompressor::decompressor():
-  stream_(LZ4_createStreamDecode(), [](void* ptr)->void { LZ4_freeStreamDecode(reinterpret_cast<LZ4_streamDecode_t*>(ptr)); }) {
-  oversize(buf_);
+decompressor::decompressor()
+  : stream_(LZ4_createStreamDecode(), [](void* ptr)->void { LZ4_freeStreamDecode(reinterpret_cast<LZ4_streamDecode_t*>(ptr)); }) {
 }
-
-decompressor::decompressor(unsigned int chunk_size):
-  stream_(LZ4_createStreamDecode(), [](void* ptr)->void { LZ4_freeStreamDecode(reinterpret_cast<LZ4_streamDecode_t*>(ptr)); }) {
-  oversize(buf_, chunk_size);
-}
-
-void decompressor::block_size(size_t size) {
-  oversize(buf_, size);
-}
-
-void decompressor::decompress(const char* src, size_t size) {
-  assert(size <= std::numeric_limits<int>::max()); // LZ4 API uses int
-  auto src_size = static_cast<int>(size);
+  
+size_t decompressor::deflate(
+    const char* src, size_t src_size,
+    char* dst, size_t dst_size) const {
+  assert(src_size <= integer_traits<int>::const_max); // LZ4 API uses int
+  
   auto& stream = *reinterpret_cast<LZ4_streamDecode_t*>(stream_.get());
-  auto buf_size = static_cast<int>(std::min(buf_.size(), static_cast<size_t>(std::numeric_limits<int>::max()))); // LZ4 API uses int
-  auto lz4_size = LZ4_decompress_safe_continue(&stream, src, &(buf_[0]), src_size, buf_size);
 
-  if (lz4_size < 0) {
-    this->size_ = 0;
-    throw index_error(); // corrupted index
-  }
+  const auto lz4_size = LZ4_decompress_safe_continue(
+    &stream, 
+    src, 
+    dst, 
+    static_cast<int>(src_size),  // LZ4 API uses int
+    static_cast<int>(std::min(dst_size, static_cast<size_t>(integer_traits<int>::const_max))) // LZ4 API uses int
+  );
 
-  this->data_ = reinterpret_cast<const byte_type*>(buf_.data());
-  this->size_ = lz4_size;
+  return lz4_size < 0 
+    ? type_limits<type_t::address_t>::invalid() // corrupted index
+    : lz4_size;
 }
 
 NS_END

@@ -295,7 +295,8 @@ class stored_fields_reader final : public iresearch::stored_fields_reader {
     void prepare(index_input* in, uint32_t block_size) {
       assert(in);
       in_ = in;
-      decomp_.block_size(block_size);
+      // ensure that we have enough space to store uncompressed data
+      oversize(data_, block_size); 
     }
 
     void reset(uint64_t start, size_t length, size_t offset) {
@@ -307,8 +308,8 @@ class stored_fields_reader final : public iresearch::stored_fields_reader {
         refill();
 
         // refill until data_ contains the requested offset
-        while (offset >= data_.size()) {
-          offset -= data_.size();
+        while (offset >= view_.size()) {
+          offset -= view_.size();
           refill();
         }
       }
@@ -317,7 +318,7 @@ class stored_fields_reader final : public iresearch::stored_fields_reader {
     }
 
     void skip(size_t offset) {
-      assert(pos_ + offset <= data_.size());
+      assert(pos_ + offset <= view_.size());
       pos_ += offset;
       where_ += offset;
     }
@@ -342,8 +343,9 @@ class stored_fields_reader final : public iresearch::stored_fields_reader {
 
     index_input* in_;
     decompressor decomp_;
-    bstring buf_; // buffer to store compressed data
-    bytes_ref data_; // reference to the uncompressed data
+    bstring buf_; // compressed data
+    bstring data_; // uncompressed data
+    bytes_ref view_; // view on valid data
     size_t pos_; // position in decompressed buffer
     size_t len_; // document length
     size_t where_; // absolute position in data 

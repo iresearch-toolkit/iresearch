@@ -45,30 +45,39 @@
 NS_LOCAL
 
 iresearch::bytes_ref read_compact(
-  iresearch::index_input& in,
-  iresearch::decompressor& decompressor,
-  iresearch::bstring& buf
-) {
-  auto size = iresearch::read_zvint(in);
+    iresearch::index_input& in,
+    const iresearch::decompressor& decompressor,
+    iresearch::bstring& encode_buf,
+    iresearch::bstring& decode_buf) {
+  const auto size = iresearch::read_zvint(in);
   size_t buf_size = std::abs(size);
 
-  iresearch::oversize(buf, buf_size);
+  iresearch::oversize(encode_buf, buf_size);
 
   #ifdef IRESEARCH_DEBUG
-    const auto read = in.read_bytes(&(buf[0]), buf_size);
+    const auto read = in.read_bytes(&(encode_buf[0]), buf_size);
     assert(read == buf_size);
   #else
-    in.read_bytes(&(buf[0]), buf_size);
+    in.read_bytes(&(encode_buf[0]), buf_size);
   #endif // IRESEARCH_DEBUG
 
   // -ve to mark uncompressed
   if (size < 0) {
-    return iresearch::bytes_ref(buf.c_str(), buf_size);
+    return iresearch::bytes_ref(encode_buf.c_str(), buf_size);
   }
 
-  decompressor.decompress(reinterpret_cast<const char*>(buf.c_str()), buf_size);
+  buf_size = decompressor.deflate(
+    reinterpret_cast<const char*>(encode_buf.c_str()), 
+    buf_size,
+    reinterpret_cast<char*>(&decode_buf[0]), 
+    decode_buf.size()
+  );
 
-  return decompressor;
+  if (!iresearch::type_limits<iresearch::type_t::address_t>::valid(buf_size)) {
+    throw iresearch::index_error(); // corrupted index
+  }
+
+  return iresearch::bytes_ref(decode_buf.c_str(), buf_size);
 }
 
 void write_compact(
@@ -1779,9 +1788,11 @@ class reader final : public iresearch::columnstore_reader {
     block(block&&) = default;
 
     compressed_index<uint64_t> index; // block index
-    bstring data; // decompressed data block (may contain auxillary information)
+    bstring data; // decompressed data block
     bytes_ref view; // view on decompressed data
-    bytes_ref_input stream; // stream to access to data block
+    mutable bytes_ref_input stream; // stream to access to data block
+    bool index_loaded{ false };
+    bool data_loaded{ false };
   };
   
   typedef std::pair<
@@ -1801,32 +1812,59 @@ class reader final : public iresearch::columnstore_reader {
     }
 
     blocks_index_t index; // blocks index
-    index_input::ptr stream; // column stream
+    mutable index_input::ptr stream; // column stream
     uint64_t max_block_size;
   };
 
-  bool load_block(reader::column& column, block_ref_t& block_ref) const;
-  bool load_block(index_input& in, block& block) const;
-  index_input& prepare(column& column) const; // prepares column stream
+  bool load_block(reader::column& column, block_ref_t& ref, block& block) const {
+    return load_block_index(column, ref, block) 
+      && load_block_data(column, ref, block);
+  }
+  bool load_block_index(const reader::column& column, block_ref_t& ref, block& block) const;
+  bool load_block_index(index_input& in, block& block) const;
+  bool load_block_data(const reader::column& column, const block_ref_t& ref, block& block) const;
+  bool load_block_data(index_input& in, block& block, size_t size) const;
+  
+  // visits block entries
+  static bool visit(const block& block, const raw_reader_f& reader); 
+  
+  // prepares column stream
+  index_input& prepare(const column& column) const {
+    if (!column.stream) {
+      // init column stream if needed
+      column.stream = data_in_->clone();
+    }
+
+    return *column.stream;
+  }
 
   std::vector<column> columns_;
   index_input::ptr data_in_; // columnstore data stream
+  decompressor decomp_; // decompressor
   mutable std::deque<block> cached_blocks_; // cached blocks
-  mutable decompressor decomp_; // decompressor
+  mutable bstring encode_buf_; // 'read_compact' requires a temporary buffer
 }; // reader
   
-index_input& reader::prepare(reader::column& column) const {
-  decomp_.block_size(column.max_block_size); // set decompressor params
+bool reader::load_block_index(const reader::column& column, block_ref_t& ref, block& block) const {
+  if (block.index_loaded) {
+    // already loaded
+    return true;
+  }
+  
+  auto& in = prepare(column);
+  in.seek(ref.first);
 
-  if (!column.stream) {
-    // init column stream if needed
-    column.stream = data_in_->clone();
+  if (!load_block_index(in, block)) {
+    return false;
   }
 
-  return *column.stream;
+  // nexcept
+  // since block index have been loaded, update block start pointer
+  ref.first = in.file_pointer(); 
+  return true;
 }
- 
-bool reader::load_block(index_input& in, block& block) const {
+  
+bool reader::load_block_index(index_input& in, block& block) const {
   // read block index
   static auto visitor = [] (uint64_t& target, uint64_t value) {
     target = value;
@@ -1837,31 +1875,37 @@ bool reader::load_block(index_input& in, block& block) const {
     return false;
   }
   
-  block.view = read_compact(in, decomp_, block.data); // read block data
-
+  block.index_loaded = true;
   return true;
 }
 
-bool reader::load_block(reader::column& column, reader::block_ref_t& block_ref) const {
-  if (block_ref.second) {
+bool reader::load_block_data(const reader::column& column, const block_ref_t& ref, block& block) const {
+  if (block.data_loaded) {
     // already loaded
     return true;
   }
- 
-  auto& stream = prepare(column); // prepare column
 
-  stream.seek(block_ref.first); // seek to block
+  assert(column.stream);
+  auto& in = *column.stream;
+  in.seek(ref.first);
 
-  // add cached entry
-  cached_blocks_.emplace_back();
-  auto& block = cached_blocks_.back();
-  
-  if (!load_block(stream, block)) {
-    // unable to load block
-    return false;
+  return load_block_data(in, block, column.max_block_size);
+}
+
+bool reader::load_block_data(index_input& in, block& block, size_t block_size) const {
+  // ensure we have enough space to store uncompressed data
+  oversize(block.data, block_size);
+
+  // read block data
+  block.view = read_compact(in, decomp_, encode_buf_, block.data); 
+
+  if (block.view.c_str() != block.data.c_str()) {
+    // optmized case
+    std::memcpy(&block.data[0], block.view.c_str(), block.view.size());
+    block.view = bytes_ref(block.data.c_str(), block.view.size());
   }
 
-  block_ref.second = &block; // mark block as loaded
+  block.data_loaded = true;
   return true;
 }
 
@@ -1928,33 +1972,80 @@ reader::values_reader_f reader::values(field_id field) const {
     return INVALID_COLUMN;
   }
   
-  auto& column = const_cast<reader::column&>(columns_[field]);
+  auto& column = columns_[field];
+
   return[this, &column] (doc_id_t doc, const value_reader_f& reader) {
     auto* block_ref = column.index.lower_bound(doc); // looking for data block
 
     if (!block_ref) {
-      // there is block suitable for id equals to 'doc' in this column
+      // there is no block suitable for id equals to 'doc' in this column
       return false;
     }
 
-    if (!load_block(column, const_cast<block_ref_t&>(*block_ref))) {
-      // unable to load column
-      return false;
-    }
+    if (!block_ref->second) {
+      // block hasn't been loaded yet
 
+      // add cached entry
+      cached_blocks_.emplace_back();
+
+      // mark block as partially loaded
+      const_cast<block_ref_t*>(block_ref)->second = &(cached_blocks_.back());
+    }
+    
     auto& block = *block_ref->second;
+    
+    if (!load_block_index(column, const_cast<block_ref_t&>(*block_ref), block)) {
+      // unable to load block index
+      return false;
+    }
+
     auto* doc_offset = block.index.find(doc);
 
     if (!doc_offset) {
       // there is no document with id equals to 'doc' in this block
       return false;
     }
-   
+
+    if (!load_block_data(column, *block_ref, block)) {
+      // unable to load block data 
+      return false;
+    }
+
     auto& stream = block.stream;
-    stream.seek(*doc_offset);
+
+    stream.reset(
+      block.view.c_str() + *doc_offset,
+      block.view.size()
+    );
 
     return reader(stream);
   };
+}
+
+bool reader::visit(const reader::block& block, const reader::raw_reader_f& reader) {
+  auto it = block.index.begin();
+  auto next = it;
+  auto end = block.index.end();
+  for (; it != end; ++it) {
+    ++next;
+
+    auto& value = *it;
+
+    const auto start_offset = value.second;
+    const auto end_offset = next == end ? block.view.size() : next->second;
+    assert(end_offset >= start_offset);
+
+    block.stream.reset(
+      block.view.c_str() + start_offset,
+      end_offset - start_offset
+    );
+
+    if (!reader(value.first, block.stream)) {
+      return false;
+    }
+  }
+
+  return true;
 }
   
 bool reader::visit(field_id field, const raw_reader_f& reader) const {
@@ -1963,47 +2054,32 @@ bool reader::visit(field_id field, const raw_reader_f& reader) const {
     return false;
   }
 
-  auto& column = const_cast<reader::column&>(columns_[field]);
-  auto& stream = prepare(column); // prepare column stream
-
-  block* pblock;
-  block block; // we don't cache blocks during visiting
+  auto& column = columns_[field];
+  auto& stream = prepare(column);
+  
+  reader::block block; // do not cache blocks during visiting
+  reader::block* pblock;
   for (auto& bucket : column.index) {
+    auto& ref = bucket.second;
+    pblock = ref.second ? ref.second : &block;
+
     // seek to block
-    stream.seek(bucket.second.first);
+    stream.seek(ref.first);
 
-    auto& bref = bucket.second;
-    if (!bref.second) {
-      // load block if it haven't been cached yet
-      if (!load_block(stream, block)) {
-        return false;
-      }
-      pblock = &block;
-    } else {
-      pblock = bref.second;
+    // load block if needed
+    if (!load_block_index(stream, *pblock)
+        || !load_block_data(stream, *pblock, column.max_block_size)) {
+      return false;
     }
 
-    auto it = pblock->index.begin();
-    auto next = it;
-    auto end = pblock->index.end();
-    for (; it != end; ++it) {
-      ++next;
-
-      auto& value = *it;
-
-      auto start_offset = value.second;
-      auto end_offset = next == end ? pblock->view.size() : next->second;
-      assert(end_offset >= start_offset);
-       
-      block.stream.reset(
-        pblock->view.c_str() + start_offset, 
-        end_offset - start_offset
-      );
-
-      if (!reader(value.first, block.stream)) {
-        return false;
-      }
+    // visit block
+    if (!visit(*pblock, reader)) {
+      return false;
     }
+
+    // reset flags for next uncached block
+    block.data_loaded = false;
+    block.index_loaded = false;
   }
 
   return true;
@@ -2084,7 +2160,7 @@ void stored_fields_writer::prepare(directory& dir, const string_ref& seg_name) {
   file_name(name, seg_name, FIELDS_EXT);
   fields_out = dir.create(name);
   format_utils::write_header(*fields_out, FORMAT_FIELDS, FORMAT_MAX);
-  fields_out->write_vint(buf_size);
+  fields_out->write_vint(buf_size); // TODO: store max block size!!!!
   fields_out->write_vint(packed::VERSION);
 
   // prepare stored fields index
@@ -2152,29 +2228,28 @@ void stored_fields_reader::compressing_document_reader::reset(doc_id_t doc) {
 }
 
 byte_type stored_fields_reader::compressing_data_input::read_byte() {
-  if (pos_ == data_.size()) {
+  if (pos_ == view_.size()) {
     refill();
   }
 
   ++where_;
 
-  return data_[pos_++];
+  return view_[pos_++];
 }
 
 size_t stored_fields_reader::compressing_data_input::read_bytes(
-  byte_type* b, size_t size
-) {
+    byte_type* b, size_t size) {
   size_t read = 0;
   size_t copied;
 
   while(read < size && !eof()) {
-    if (pos_ == data_.size()) {
+    if (pos_ == view_.size()) {
       refill();
     }
 
     copied = std::min(size, len_ - where_);
-    copied = std::min(copied, data_.size()); // if data was split between buffers
-    std::memcpy(b, data_.c_str() + pos_, sizeof(byte_type) * copied);
+    copied = std::min(copied, view_.size()); // if data was split between buffers
+    std::memcpy(b, view_.c_str() + pos_, sizeof(byte_type) * copied);
 
     read += copied;
     b += copied;
@@ -2186,7 +2261,7 @@ size_t stored_fields_reader::compressing_data_input::read_bytes(
 }
 
 void stored_fields_reader::compressing_data_input::refill() {
-  data_ = read_compact(*in_, decomp_, buf_);
+  view_ = read_compact(*in_, decomp_, buf_, data_);
   pos_ = 0;
 }
 
