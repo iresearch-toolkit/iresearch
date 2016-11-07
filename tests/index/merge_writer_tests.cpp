@@ -90,7 +90,7 @@ using namespace tests;
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-TEST_F(merge_writer_tests, test_merge_writer_columns) {
+TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
   iresearch::flags STRING_FIELD_FEATURES{ iresearch::frequency::type(), iresearch::position::type() };
   iresearch::flags TEXT_FIELD_FEATURES{ iresearch::frequency::type(), iresearch::position::type(), iresearch::offset::type(), iresearch::payload::type() };
 
@@ -104,10 +104,10 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
   string3.append("string3_data");
   string4.append("string4_data");
 
-  tests::document doc1; // doc_string, doc_int
+  tests::document doc1; // doc_int, doc_string
   tests::document doc2; // doc_string, doc_int
   tests::document doc3; // doc_string, doc_int
-  tests::document doc4; // doc_string
+  tests::document doc4; // doc_string, another_column
 
   doc1.add(new tests::int_field()); {
     auto& field = doc1.back<tests::int_field>();
@@ -131,6 +131,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
   }
   
   doc4.add(new tests::templates::string_field("doc_string", string4, true, true));
+  doc4.add(new tests::templates::string_field("another_column", "another_value", true, true));
   
   iresearch::version10::format codec;
   iresearch::format::ptr codec_ptr(&codec, [](iresearch::format*)->void{});
@@ -140,16 +141,14 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
   {
     auto query_doc4 = iresearch::iql::query_builder().build("doc_string==string4_data", std::locale::classic());
     auto writer = iresearch::index_writer::make(dir, codec_ptr, iresearch::OM_CREATE);
-
     writer->add(doc1.end(), doc1.end(), doc1.begin(), doc1.end());
     writer->add(doc3.end(), doc3.end(), doc3.begin(), doc3.end());
     writer->commit();
     writer->add(doc2.end(), doc2.end(), doc2.begin(), doc2.end());
-    writer->add(doc4.end(), doc4.end(), doc4.begin(), doc4.end());
+    writer->add(doc4.begin(), doc4.end(), doc4.begin(), doc4.end());
     writer->commit();
-//    writer->remove(std::move(query_doc4.filter));
-//    writer->commit();
-//    writer->close();
+    writer->remove(std::move(query_doc4.filter));
+    writer->commit();
     writer->close();
   }
   
@@ -202,7 +201,6 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
           return false;
         }
 
-        expected_values.erase(it);
         return true;
       };
 
@@ -210,8 +208,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       auto* meta = columns.find("doc_int");
       ASSERT_NE(nullptr, meta);
       ASSERT_TRUE(segment.column(meta->id, reader));
-      ASSERT_TRUE(expected_values.empty());
-      ASSERT_EQ(2, calls_count);
+      ASSERT_EQ(expected_values.size(), calls_count);
     }
     
     // check 'doc_string' column
@@ -237,7 +234,6 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
           return false;
         }
 
-        expected_values.erase(it);
         return true;
       };
 
@@ -245,8 +241,421 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       auto* meta = columns.find("doc_string");
       ASSERT_NE(nullptr, meta);
       ASSERT_TRUE(segment.column(meta->id, reader));
-      ASSERT_TRUE(expected_values.empty());
-      ASSERT_EQ(2, calls_count);
+      ASSERT_EQ(expected_values.size(), calls_count);
+    }
+
+    // check wrong column
+    {
+      size_t calls_count = 0;
+      auto reader = [&calls_count] (iresearch::doc_id_t doc, data_input& in) {
+        ++calls_count;
+        return true;
+      };
+
+      ASSERT_EQ(nullptr, columns.find("invalid_column"));
+      ASSERT_FALSE(
+        segment.column(iresearch::type_limits<iresearch::type_t::field_id_t>::invalid(), reader)
+      );
+      ASSERT_EQ(0, calls_count);
+    }
+  }
+  
+  // check for columns segment 1
+  {
+    auto& segment = (*reader)[1];
+
+    auto& columns = segment.columns();
+    ASSERT_EQ(3, columns.size());
+
+    auto begin = columns.begin();
+    auto end = columns.end();
+    ASSERT_NE(begin, end);
+    ASSERT_EQ("another_column", begin->name);
+    ASSERT_EQ(2, begin->id);
+    ++begin;
+    ASSERT_NE(begin, end);
+    ASSERT_EQ("doc_int", begin->name);
+    ASSERT_EQ(1, begin->id);
+    ++begin;
+    ASSERT_NE(begin, end);
+    ASSERT_EQ("doc_string", begin->name);
+    ASSERT_EQ(0, begin->id);
+    ++begin;
+    ASSERT_EQ(begin, end);
+
+    // check 'doc_int' column
+    {
+      std::unordered_map<int, iresearch::doc_id_t> expected_values{
+        { 2 * 42, 1 },
+      };
+
+      size_t calls_count = 0;
+      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, data_input& in) {
+        ++calls_count;
+        const auto actual_value = iresearch::read_zvint(in);
+
+        auto it = expected_values.find(actual_value);
+        if (it == expected_values.end()) {
+          // can't find value
+          return false;
+        }
+
+        if (it->second != doc) {
+          // wrong document
+          return false;
+        }
+
+        return true;
+      };
+
+      // read values for 'doc_int'
+      auto* meta = columns.find("doc_int");
+      ASSERT_NE(nullptr, meta);
+      ASSERT_TRUE(segment.column(meta->id, reader));
+      ASSERT_EQ(expected_values.size(), calls_count);
+    }
+    
+    // check 'doc_string' column
+    {
+      std::unordered_map <std::string, iresearch::doc_id_t > expected_values{
+        { "string2_data", 1 },
+        { "string4_data", 2 }
+      };
+
+      size_t calls_count = 0;
+      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, data_input& in) {
+        ++calls_count;
+        const auto actual_value = iresearch::read_string<std::string>(in);
+
+        auto it = expected_values.find(actual_value);
+        if (it == expected_values.end()) {
+          // can't find value
+          return false;
+        }
+
+        if (it->second != doc) {
+          // wrong document
+          return false;
+        }
+
+        return true;
+      };
+
+      // read values for 'doc_string'
+      auto* meta = columns.find("doc_string");
+      ASSERT_NE(nullptr, meta);
+      ASSERT_TRUE(segment.column(meta->id, reader));
+      ASSERT_EQ(expected_values.size(), calls_count);
+    }
+    
+    // check 'another_column' column
+    {
+      std::unordered_map <std::string, iresearch::doc_id_t > expected_values{
+        { "another_value", 2 }
+      };
+
+      size_t calls_count = 0;
+      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, data_input& in) {
+        ++calls_count;
+        const auto actual_value = iresearch::read_string<std::string>(in);
+
+        auto it = expected_values.find(actual_value);
+        if (it == expected_values.end()) {
+          // can't find value
+          return false;
+        }
+
+        if (it->second != doc) {
+          // wrong document
+          return false;
+        }
+
+        return true;
+      };
+
+      // read values for 'another_column'
+      auto* meta = columns.find("another_column");
+      ASSERT_NE(nullptr, meta);
+      ASSERT_TRUE(segment.column(meta->id, reader));
+      ASSERT_EQ(expected_values.size(), calls_count);
+    }
+
+    // check invalid column 
+    {
+      size_t calls_count = 0;
+      auto reader = [&calls_count] (iresearch::doc_id_t doc, data_input& in) {
+        ++calls_count;
+        return true;
+      };
+
+      ASSERT_EQ(nullptr, columns.find("invalid_column"));
+      ASSERT_FALSE(
+        segment.column(iresearch::type_limits<iresearch::type_t::field_id_t>::invalid(), reader)
+      );
+      ASSERT_EQ(0, calls_count);
+    }
+  }
+  
+  writer.add((*reader)[0]);
+  writer.add((*reader)[1]);
+
+  std::string filename;
+  iresearch::segment_meta meta;
+
+  writer.flush(filename, meta);
+  {
+    auto segment = iresearch::segment_reader::open(dir, meta);
+    ASSERT_EQ(3, segment->docs_count());
+
+    auto& columns = segment->columns();
+    ASSERT_EQ(2, columns.size());
+    auto begin = columns.begin();
+    auto end = columns.end();
+    ASSERT_NE(begin, end);
+    ASSERT_EQ("doc_int", begin->name);
+    ASSERT_EQ(0, begin->id); // 0 since 'doc_int' < 'doc_string'
+    ++begin;
+    ASSERT_NE(begin, end);
+    ASSERT_EQ("doc_string", begin->name);
+    ASSERT_EQ(1, begin->id);
+    ++begin;
+    ASSERT_EQ(begin, end);
+    
+    // check 'doc_int' column
+    {
+      std::unordered_map<int, iresearch::doc_id_t> expected_values{
+        // segment 0
+        { 1 * 42, 1 },
+        { 3 * 42, 2 },
+        // segment 1
+        { 2 * 42, 3 }
+      };
+
+      size_t calls_count = 0;
+      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, data_input& in) {
+        ++calls_count;
+        const auto actual_value = iresearch::read_zvint(in);
+
+        auto it = expected_values.find(actual_value);
+        if (it == expected_values.end()) {
+          // can't find value
+          return false;
+        }
+
+        if (it->second != doc) {
+          // wrong document
+          return false;
+        }
+
+        return true;
+      };
+
+      // read values for 'doc_int'
+      auto* meta = columns.find("doc_int");
+      ASSERT_NE(nullptr, meta);
+      ASSERT_TRUE(segment->column(meta->id, reader));
+      ASSERT_EQ(expected_values.size(), calls_count);
+    }
+    
+    // check 'doc_string' column
+    {
+      std::unordered_map <std::string, iresearch::doc_id_t > expected_values{
+        // segment 0
+        { "string1_data", 1 },
+        { "string3_data", 2 },
+        // segment 1
+        { "string2_data", 3 }
+      };
+
+      size_t calls_count = 0;
+      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, data_input& in) {
+        ++calls_count;
+        const auto actual_value = iresearch::read_string<std::string>(in);
+
+        auto it = expected_values.find(actual_value);
+        if (it == expected_values.end()) {
+          // can't find value
+          return false;
+        }
+
+        if (it->second != doc) {
+          // wrong document
+          return false;
+        }
+
+        return true;
+      };
+
+      // read values for 'doc_string'
+      auto* meta = columns.find("doc_string");
+      ASSERT_NE(nullptr, meta);
+      ASSERT_TRUE(segment->column(meta->id, reader));
+      ASSERT_EQ(expected_values.size(), calls_count);
+    }
+    
+    // check that 'another_column' has been removed
+    {
+      size_t calls_count = 0;
+      auto reader = [&calls_count] (iresearch::doc_id_t doc, data_input& in) {
+        ++calls_count;
+        return true;
+      };
+
+      ASSERT_EQ(nullptr, columns.find("another_column"));
+      ASSERT_FALSE(segment->column(2, reader));
+      ASSERT_EQ(0, calls_count);
+    }
+  }
+}
+
+TEST_F(merge_writer_tests, test_merge_writer_columns) {
+  iresearch::flags STRING_FIELD_FEATURES{ iresearch::frequency::type(), iresearch::position::type() };
+  iresearch::flags TEXT_FIELD_FEATURES{ iresearch::frequency::type(), iresearch::position::type(), iresearch::offset::type(), iresearch::payload::type() };
+
+  std::string string1;
+  std::string string2;
+  std::string string3;
+  std::string string4;
+
+  string1.append("string1_data");
+  string2.append("string2_data");
+  string3.append("string3_data");
+  string4.append("string4_data");
+
+  tests::document doc1; // doc_string, doc_int
+  tests::document doc2; // doc_string, doc_int
+  tests::document doc3; // doc_string, doc_int
+  tests::document doc4; // doc_string
+
+  doc1.add(new tests::int_field()); {
+    auto& field = doc1.back<tests::int_field>();
+    field.name(iresearch::string_ref("doc_int"));
+    field.value(42 * 1);
+  }
+  doc1.add(new tests::templates::string_field("doc_string", string1, true, true));
+
+  doc2.add(new tests::templates::string_field("doc_string", string2, true, true));
+  doc2.add(new tests::int_field()); {
+    auto& field = doc2.back<tests::int_field>();
+    field.name(iresearch::string_ref("doc_int"));
+    field.value(42 * 2);
+  }
+  
+  doc3.add(new tests::templates::string_field("doc_string", string3, true, true));
+  doc3.add(new tests::int_field()); {
+    auto& field = doc3.back<tests::int_field>();
+    field.name(iresearch::string_ref("doc_int"));
+    field.value(42 * 3);
+  }
+  
+  doc4.add(new tests::templates::string_field("doc_string", string4, true, true));
+  
+  iresearch::version10::format codec;
+  iresearch::format::ptr codec_ptr(&codec, [](iresearch::format*)->void{});
+  iresearch::memory_directory dir;
+
+  // populate directory
+  {
+    auto writer = iresearch::index_writer::make(dir, codec_ptr, iresearch::OM_CREATE);
+    writer->add(doc1.end(), doc1.end(), doc1.begin(), doc1.end());
+    writer->add(doc3.end(), doc3.end(), doc3.begin(), doc3.end());
+    writer->commit();
+    writer->add(doc2.end(), doc2.end(), doc2.begin(), doc2.end());
+    writer->add(doc4.end(), doc4.end(), doc4.begin(), doc4.end());
+    writer->commit();
+    writer->close();
+  }
+  
+  auto reader = iresearch::directory_reader::open(dir, codec_ptr);
+  iresearch::merge_writer writer(dir, codec_ptr, "merged");
+
+  ASSERT_EQ(2, reader->size());
+  ASSERT_EQ(2, (*reader)[0].docs_count());
+  ASSERT_EQ(2, (*reader)[1].docs_count());
+
+  // check for columns segment 0
+  {
+    auto& segment = (*reader)[0];
+
+    auto& columns = segment.columns();
+    ASSERT_EQ(2, columns.size());
+
+    auto begin = columns.begin();
+    auto end = columns.end();
+    ASSERT_NE(begin, end);
+    ASSERT_EQ("doc_int", begin->name);
+    ASSERT_EQ(0, begin->id);
+    ++begin;
+    ASSERT_NE(begin, end);
+    ASSERT_EQ("doc_string", begin->name);
+    ASSERT_EQ(1, begin->id);
+    ++begin;
+    ASSERT_EQ(begin, end);
+
+    // check 'doc_int' column
+    {
+      std::unordered_map<int, iresearch::doc_id_t> expected_values{
+        { 1 * 42, 1 },
+        { 3 * 42, 2 }
+      };
+
+      size_t calls_count = 0;
+      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, data_input& in) {
+        ++calls_count;
+        const auto actual_value = iresearch::read_zvint(in);
+
+        auto it = expected_values.find(actual_value);
+        if (it == expected_values.end()) {
+          // can't find value
+          return false;
+        }
+
+        if (it->second != doc) {
+          // wrong document
+          return false;
+        }
+
+        return true;
+      };
+
+      // read values for 'doc_int'
+      auto* meta = columns.find("doc_int");
+      ASSERT_NE(nullptr, meta);
+      ASSERT_TRUE(segment.column(meta->id, reader));
+      ASSERT_EQ(expected_values.size(), calls_count);
+    }
+    
+    // check 'doc_string' column
+    {
+      std::unordered_map <std::string, iresearch::doc_id_t > expected_values{
+        { "string1_data", 1 },
+        { "string3_data", 2 }
+      };
+
+      size_t calls_count = 0;
+      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, data_input& in) {
+        ++calls_count;
+        const auto actual_value = iresearch::read_string<std::string>(in);
+
+        auto it = expected_values.find(actual_value);
+        if (it == expected_values.end()) {
+          // can't find value
+          return false;
+        }
+
+        if (it->second != doc) {
+          // wrong document
+          return false;
+        }
+
+        return true;
+      };
+
+      // read values for 'doc_string'
+      auto* meta = columns.find("doc_string");
+      ASSERT_NE(nullptr, meta);
+      ASSERT_TRUE(segment.column(meta->id, reader));
+      ASSERT_EQ(expected_values.size(), calls_count);
     }
 
     // check wrong column
@@ -306,7 +715,6 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
           return false;
         }
 
-        expected_values.erase(it);
         return true;
       };
 
@@ -314,8 +722,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       auto* meta = columns.find("doc_int");
       ASSERT_NE(nullptr, meta);
       ASSERT_TRUE(segment.column(meta->id, reader));
-      ASSERT_TRUE(expected_values.empty());
-      ASSERT_EQ(1, calls_count);
+      ASSERT_EQ(expected_values.size(), calls_count);
     }
     
     // check 'doc_string' column
@@ -341,7 +748,6 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
           return false;
         }
 
-        expected_values.erase(it);
         return true;
       };
 
@@ -349,8 +755,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       auto* meta = columns.find("doc_string");
       ASSERT_NE(nullptr, meta);
       ASSERT_TRUE(segment.column(meta->id, reader));
-      ASSERT_TRUE(expected_values.empty());
-      ASSERT_EQ(2, calls_count);
+      ASSERT_EQ(expected_values.size(), calls_count);
     }
 
     // check wrong column
@@ -420,7 +825,6 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
           return false;
         }
 
-        expected_values.erase(it);
         return true;
       };
 
@@ -428,8 +832,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       auto* meta = columns.find("doc_int");
       ASSERT_NE(nullptr, meta);
       ASSERT_TRUE(segment->column(meta->id, reader));
-      ASSERT_TRUE(expected_values.empty());
-      ASSERT_EQ(3, calls_count);
+      ASSERT_EQ(expected_values.size(), calls_count);
     }
     
     // check 'doc_string' column
@@ -459,7 +862,6 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
           return false;
         }
 
-        expected_values.erase(it);
         return true;
       };
 
@@ -467,8 +869,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       auto* meta = columns.find("doc_string");
       ASSERT_NE(nullptr, meta);
       ASSERT_TRUE(segment->column(meta->id, reader));
-      ASSERT_TRUE(expected_values.empty());
-      ASSERT_EQ(4, calls_count);
+      ASSERT_EQ(expected_values.size(), calls_count);
     }
   }
 }
