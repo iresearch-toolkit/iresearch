@@ -359,7 +359,7 @@ class format_10_test_case : public tests::format_test_case_base {
 
       ir::compressed_index<uint64_t> reader;
       ASSERT_TRUE(reader.read(*in, max_doc, visitor));
-      ASSERT_EQ(nullptr, reader.lower_bound(max_doc + 1));
+      ASSERT_EQ(reader.end(), reader.lower_bound(max_doc + 1));
 
       // check iterators equality
       {
@@ -379,16 +379,16 @@ class format_10_test_case : public tests::format_test_case_base {
       }
 
       for (ir::doc_id_t i = 0; i < max_doc; ++i) {
-        auto* less_or_eq = reader.lower_bound(i);
-        ASSERT_NE(nullptr, less_or_eq);
-        ASSERT_EQ(start_offset + i / block_docs, *less_or_eq);
+        auto less_or_eq = reader.lower_bound(i);
+        ASSERT_NE(reader.end(), less_or_eq);
+        ASSERT_EQ(start_offset + i / block_docs, less_or_eq->second);
 
-        auto* exact = reader.find(i);
+        auto exact = reader.find(i);
         if (0 == i % block_docs) {
-          ASSERT_NE(nullptr, exact);
-          ASSERT_EQ(start_offset + i / block_docs, *exact);
+          ASSERT_NE(reader.end(), less_or_eq);
+          ASSERT_EQ(start_offset + i / block_docs, exact->second);
         } else {
-          ASSERT_EQ(nullptr, exact);
+          ASSERT_EQ(reader.end(), exact);
         }
       }
     }

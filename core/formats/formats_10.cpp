@@ -1647,7 +1647,7 @@ class writer final : public iresearch::columnstore_writer {
 
    void flush_block(column& col);
 
-   std::deque<column> columns_;
+   std::deque<column> columns_; // pointers remain valid
    compressor comp_{ MAX_DATA_BLOCK_SIZE };
    index_output::ptr data_out_;
    std::string filename_;
@@ -1671,8 +1671,11 @@ void writer::flush_block(column& col) {
   // write compressed block data
   {
     auto& block_buf = col.block_buf;
+    // TODO: write decompressed block size here rather than max_block_size
     write_compact(*data_out_, comp_, block_buf.c_str(), block_buf.size());
     col.max_block_size = std::max(col.max_block_size, block_buf.size());
+
+    block_buf.reset(); // reset buffer stream after flushing
   }
 
   // write last block key & where block starts
@@ -1826,7 +1829,23 @@ class reader final : public iresearch::columnstore_reader {
   bool load_block_data(index_input& in, block& block, size_t size) const;
   
   // visits block entries
-  static bool visit(const block& block, const raw_reader_f& reader); 
+  static bool visit(const block& block, const raw_reader_f& reader);
+
+  // returns value stream
+  static data_input& value(
+    const block& block,
+    const block_index_t::iterator& vbegin, // where value starts
+    const block_index_t::iterator& vend, // where value ends
+    const block_index_t::iterator& end); // where index ends
+  
+  // returns value stream
+  static data_input& value(
+      const block& block, 
+      const block_index_t::iterator& vbegin,
+      const block_index_t::iterator& end) {
+    auto vend = vbegin;
+    return value(block, vbegin, ++vend, end);
+  }
   
   // prepares column stream
   index_input& prepare(const column& column) const {
@@ -1965,6 +1984,25 @@ bool reader::prepare(const reader_state& state) {
 
   return true;
 }
+  
+data_input& reader::value(
+    const block& block, 
+    const block_index_t::iterator& vbegin, // value begin
+    const block_index_t::iterator& vend,  // value end
+    const block_index_t::iterator& end) { // end of the block
+  const auto start_offset = vbegin->second;
+  const auto end_offset = end ==  vend ? block.view.size() : vend->second;
+  assert(end_offset >= start_offset);
+
+  auto& stream = block.stream;
+ 
+  stream.reset(
+    block.view.c_str() + start_offset,
+    end_offset - start_offset
+  );
+
+  return stream;
+}
 
 reader::values_reader_f reader::values(field_id field) const {
   if (field >= columns_.size()) {
@@ -1975,72 +2013,55 @@ reader::values_reader_f reader::values(field_id field) const {
   auto& column = columns_[field];
 
   return[this, &column] (doc_id_t doc, const value_reader_f& reader) {
-    auto* block_ref = column.index.lower_bound(doc); // looking for data block
+    const auto it = column.index.lower_bound(doc); // looking for data block
 
-    if (!block_ref) {
+    if (it == column.index.end()) {
       // there is no block suitable for id equals to 'doc' in this column
       return false;
     }
+    
+    auto& block_ref = it->second;
 
-    if (!block_ref->second) {
+    if (!block_ref.second) {
       // block hasn't been loaded yet
 
       // add cached entry
       cached_blocks_.emplace_back();
 
       // mark block as partially loaded
-      const_cast<block_ref_t*>(block_ref)->second = &(cached_blocks_.back());
+      (const_cast<block_ref_t&>(block_ref)).second = &(cached_blocks_.back());
     }
     
-    auto& block = *block_ref->second;
+    auto& block = *block_ref.second;
     
-    if (!load_block_index(column, const_cast<block_ref_t&>(*block_ref), block)) {
+    if (!load_block_index(column, const_cast<block_ref_t&>(block_ref), block)) {
       // unable to load block index
       return false;
     }
 
-    auto* doc_offset = block.index.find(doc);
+    const auto doc_offset = block.index.find(doc);
+    const auto end = block.index.end();
 
-    if (!doc_offset) {
+    if (doc_offset == end) {
       // there is no document with id equals to 'doc' in this block
       return false;
     }
 
-    if (!load_block_data(column, *block_ref, block)) {
+    if (!load_block_data(column, block_ref, block)) {
       // unable to load block data 
       return false;
     }
 
-    auto& stream = block.stream;
-
-    stream.reset(
-      block.view.c_str() + *doc_offset,
-      block.view.size()
-    );
-
-    return reader(stream);
+    return reader(value(block, doc_offset, end));
   };
 }
 
 bool reader::visit(const reader::block& block, const reader::raw_reader_f& reader) {
-  auto it = block.index.begin();
-  auto next = it;
-  auto end = block.index.end();
-  for (; it != end; ++it) {
-    ++next;
-
-    auto& value = *it;
-
-    const auto start_offset = value.second;
-    const auto end_offset = next == end ? block.view.size() : next->second;
-    assert(end_offset >= start_offset);
-
-    block.stream.reset(
-      block.view.c_str() + start_offset,
-      end_offset - start_offset
-    );
-
-    if (!reader(value.first, block.stream)) {
+  auto vbegin = block.index.begin();
+  auto vend = vbegin;
+  const auto end = block.index.end();
+  for (; vbegin != end; ++vbegin) {
+    if (!reader(vbegin->first, value(block, vbegin, ++vend, end))) {
       return false;
     }
   }
@@ -2329,13 +2350,16 @@ void stored_fields_reader::compressing_document_reader::prepare(
 }
 
 bool stored_fields_reader::visit(doc_id_t doc, const visitor_f& visitor) {
-  auto* offset = index_.lower_bound(doc);
-  if (!offset) {
+  //auto* offset = index_.lower_bound(doc);
+  auto offset = index_.lower_bound(doc);
+
+//  if (!offset) {
+  if (index_.end() == offset) {
     // there is no such document with the specified id 
     return false;
   }
 
-  auto& stream = docs_.document(doc, *offset);
+  auto& stream = docs_.document(doc, offset->second);
 
   while (!stream.eof()) {
     if (!visitor(stream)) {

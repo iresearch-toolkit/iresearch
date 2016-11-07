@@ -20,6 +20,7 @@
 #include "store/data_output.hpp"
 
 #include <memory>
+#include <algorithm>
 
 NS_ROOT
 
@@ -69,32 +70,51 @@ class compressed_index : util::noncopyable {
   typedef T value_type;
   typedef std::pair<doc_id_t, value_type> entry_t;
  
-  struct block {
+  struct block : util::noncopyable {
     block(size_t size, doc_id_t key)
-      : entries(size), key_base(key) {
+      : begin(new entry_t[size]),
+        rbegin(begin + size - 1),
+        key_base(key) {
     }
 
-    block(block&&) = default;
+    block(block&& rhs)
+      : begin(rhs.begin),
+        rbegin(rhs.rbegin),
+        key_base(rhs.key_base) {
+      rhs.begin = nullptr;
+    }
 
-    std::vector<entry_t> entries;
+    ~block() {
+      delete[] begin;
+    }
+
+    // do not use smart pointers here since last 
+    // 'operator++()' reads 'bit_->begin' value via 'end'
+    entry_t* begin;
+    entry_t* rbegin;
     doc_id_t key_base;
   };
  
   class iterator : public std::iterator<std::forward_iterator_tag, entry_t> {
    public:
     typedef const block* block_iterator_t;
+    typedef const entry_t* entry_iterator_t;
 
-    iterator(block_iterator_t bit) : bit_(bit) { }
+    iterator(block_iterator_t bit, entry_iterator_t eit)
+      : bit_(bit), eit_(eit) {
+    }
+    explicit iterator(block_iterator_t bit)
+      : iterator(bit, bit ? bit->begin : nullptr) {
+    }
     iterator(const iterator&) = default;
     iterator& operator=(const iterator&) = default;
 
     iterator& operator++() {
-      assert(!bit_->entries.empty());
-      if (offset_ == bit_->entries.size()-1) {
+      if (eit_ == bit_->rbegin) {
         ++bit_;
-        offset_ = 0;
+        eit_ = bit_->begin;
       } else {
-        ++offset_;
+        ++eit_;
       }
       return *this; 
     }
@@ -106,7 +126,7 @@ class compressed_index : util::noncopyable {
     }
 
     const value_type& operator*() const {
-      return bit_->entries[offset_];
+      return *eit_;
     }
 
     const value_type* operator->() const {
@@ -114,7 +134,7 @@ class compressed_index : util::noncopyable {
     }
 
     bool operator==(const iterator& rhs) const {
-      return bit_ == rhs.bit_ && offset_ == rhs.offset_;
+      return eit_ == rhs.eit_;
     }
     
     bool operator!=(const iterator& rhs) const {
@@ -123,7 +143,7 @@ class compressed_index : util::noncopyable {
 
    private:
     block_iterator_t bit_;
-    size_t offset_{};
+    entry_iterator_t eit_;
   }; // iterator
   
   compressed_index() = default;
@@ -155,7 +175,7 @@ class compressed_index : util::noncopyable {
 
       // read document bases
       const auto doc_base = block.key_base;
-      auto it = block.entries.begin();
+      auto it = block.begin;
       read_block(
         in, full_chunks, size, packed, unpacked,
         [&it, doc_base] (uint64_t v) {
@@ -163,9 +183,9 @@ class compressed_index : util::noncopyable {
           ++it;
       });
 
-      // read start pointers    
+      // read start pointers
       const uint64_t start = in.read_vlong();
-      it = block.entries.begin();
+      it = block.begin;
       read_block(
         in, full_chunks, size, packed, unpacked,
         [&it, &visitor, start] (uint64_t v) {
@@ -180,16 +200,19 @@ class compressed_index : util::noncopyable {
     return true;
   }
 
-  const T* find(doc_id_t key) const {
-    auto* entry = lower_bound_entry(key);
-    return !entry || key > entry->first
-      ? nullptr
-      : &entry->second;
+  iterator find(doc_id_t key) const {
+    auto it = lower_bound_entry(key);
+    auto end = this->end();
+
+    if (it == end || key > it->first) {
+      return end;
+    }
+
+    return it;
   }
 
-  const T* lower_bound(doc_id_t key) const {
-    auto* entry = lower_bound_entry(key);
-    return entry ? &entry->second : nullptr;
+  iterator lower_bound(doc_id_t key) const {
+    return lower_bound_entry(key);
   }
 
   iterator begin() const { return iterator(blocks_.data()); }
@@ -251,39 +274,36 @@ class compressed_index : util::noncopyable {
       visitor(read_zvlong(in) + full_chunks * median);
     }
   }
-
-  const entry_t* lower_bound_entry(doc_id_t key) const {
+  
+  iterator lower_bound_entry(doc_id_t key) const {
     if (key >= max_) {
-      return nullptr;
+      return end();
     }
 
     // find the right block
     const auto block = std::lower_bound(
-      blocks_.rbegin(), 
-      blocks_.rend(), 
-      key,
+      blocks_.rbegin(), blocks_.rend(), key,
       [] (const compressed_index::block& lhs, doc_id_t rhs) {
         return lhs.key_base > rhs;
     });
 
     if (block == blocks_.rend()) {
-      return nullptr;
+      return end();
     }
 
     // find the right entry in the block
+    const auto rend = std::make_reverse_iterator(block->begin);
     const auto entry = std::lower_bound(
-      block->entries.rbegin(), 
-      block->entries.rend(), 
-      key,
+      std::make_reverse_iterator(block->rbegin + 1), rend, key,
       [] (const entry_t& lhs, doc_id_t rhs) {
         return lhs.first > rhs;
     });
 
-    if (entry == block->entries.rend()) {
-      return nullptr;
+    if (entry == rend) {
+      return end();
     }
 
-    return &*entry;
+    return iterator(&*block, &*entry);
   }
 
   std::vector<block> blocks_;

@@ -1158,7 +1158,17 @@ class format_test_case_base : public index_test_base {
       size_t calls_count = 0;
       iresearch::columnstore_reader::value_reader_f value_reader = [&calls_count, &expected_value] (iresearch::data_input& in) {
         ++calls_count;
-        return expected_value == iresearch::read_string<std::string>(in);
+        if (expected_value != iresearch::read_string<std::string>(in)) {
+          return false;
+        }
+
+        iresearch::byte_type b;
+        if (in.read_bytes(&b, 1)) {
+          // read more than we allowed 
+          return false;
+        }
+
+        return true;
       };
       
       iresearch::columnstore_reader::value_reader_f invalid_value_reader = [&expected_value] (iresearch::data_input& in) {
@@ -1221,7 +1231,17 @@ class format_test_case_base : public index_test_base {
       size_t calls_count = 0;
       iresearch::columnstore_reader::value_reader_f value_reader = [&calls_count, &expected_value] (iresearch::data_input& in) {
         ++calls_count;
-        return expected_value == iresearch::read_string<std::string>(in);
+        if (expected_value != iresearch::read_string<std::string>(in)) {
+          return false;
+        }
+        
+        iresearch::byte_type b;
+        if (in.read_bytes(&b, 1)) {
+          // read more than we allowed 
+          return false;
+        }
+
+        return true;
       };
       
       iresearch::columnstore_reader::value_reader_f invalid_value_reader = [&expected_value] (iresearch::data_input& in) {
