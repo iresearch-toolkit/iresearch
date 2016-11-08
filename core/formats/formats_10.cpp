@@ -1782,10 +1782,10 @@ class reader final : public iresearch::columnstore_reader {
   virtual bool prepare(const reader_state& state) override;
   virtual values_reader_f values(field_id field) const override;
   virtual bool visit(field_id field, const raw_reader_f& reader) const override;
-
+  
  private:
   typedef compressed_index<uint64_t> block_index_t;
-
+  
   struct block : util::noncopyable {
     block() = default;
     block(block&&) = default;
@@ -1965,7 +1965,7 @@ data_input& reader::value(
     const block_index_t::iterator& vend,  // value end
     const block_index_t::iterator& end) { // end of the block
   const auto start_offset = vbegin->second;
-  const auto end_offset = end ==  vend ? block.data.size() : vend->second;
+  const auto end_offset = end == vend ? block.data.size() : vend->second;
   assert(end_offset >= start_offset);
 
   auto& stream = block.stream;
@@ -1996,7 +1996,7 @@ reader::values_reader_f reader::values(field_id field) const {
     
     auto& block_ref = it->second;
 
-    if (!block_ref.second) {
+    if (!(block_ref.second)) {
       // block hasn't been loaded yet
 
       // add cached entry

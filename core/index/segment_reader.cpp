@@ -94,11 +94,6 @@ void read_columns_meta(
     const std::string& name) {
   iresearch::columns_meta::items_t columns;
 
-  auto visitor = [&columns] (iresearch::column_meta& value)->bool {
-    columns[value.id] = std::move(value);
-    return true;
-  };
-
   auto reader = codec.get_column_meta_reader();
   reader->prepare(dir, name);
   for (iresearch::column_meta meta; reader->read(meta);) {

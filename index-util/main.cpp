@@ -16,6 +16,7 @@
 
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
+#include <fstream>
 #include <iostream>
 
 namespace {
@@ -44,10 +45,10 @@ int dump(const std::string& path, std::ostream& stream) {
            << " docsCount=" << segment.docs_max()
            << " liveDocsCount=" << segment.docs_count() << std::endl;
 
-    for (auto& field = segment.iterator(); field->next(); ) {
-      auto* meta = segment.fields().find(field->value());
-      auto* terms = segment.terms(field->value());
-      stream << "Field id=" << meta->id << " name=" << meta->name
+    auto& fields = segment.fields();
+    for (auto& meta : segment.fields()) {
+      auto* terms = segment.terms(meta.name);
+      stream << "Field id=" << meta.id << " name=" << meta.name
              << " minTerm=" << irs::ref_cast<char>(terms->min()) 
              << " maxTerm=" << irs::ref_cast<char>(terms->max())
              << " termsCount=" << terms->size()

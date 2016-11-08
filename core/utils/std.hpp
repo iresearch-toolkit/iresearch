@@ -27,6 +27,10 @@ typename ReverseIterator::iterator_type to_forward(ReverseIterator it) {
   return --(it.base());
 }
 
+template<typename Iterator>
+CONSTEXPR std::reverse_iterator<Iterator> make_reverse_iterator(Iterator it) {
+  return std::reverse_iterator<Iterator>(it);
+}
 
 NS_BEGIN( heap )
 NS_BEGIN( detail )

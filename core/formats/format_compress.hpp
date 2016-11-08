@@ -15,9 +15,11 @@
 #include "index/index_meta.hpp"
 #include "utils/string.hpp"
 #include "utils/bit_packing.hpp"
+#include "utils/std.hpp"
 #include "store/directory.hpp"
 #include "store/data_input.hpp"
 #include "store/data_output.hpp"
+#include "store/store_utils.hpp"
 
 #include <memory>
 #include <algorithm>
@@ -99,6 +101,7 @@ class compressed_index : util::noncopyable {
    public:
     typedef const block* block_iterator_t;
     typedef const entry_t* entry_iterator_t;
+    typedef typename std::iterator_traits<iterator>::value_type value_type;
 
     iterator(block_iterator_t bit, entry_iterator_t eit)
       : bit_(bit), eit_(eit) {
@@ -271,7 +274,7 @@ class compressed_index : util::noncopyable {
 
     // read tail 
     for (; full_chunks < num_chunks; ++full_chunks) {
-      visitor(read_zvlong(in) + full_chunks * median);
+      visitor(read_zvlong(in) + full_chunks * median); 
     }
   }
   
@@ -292,9 +295,9 @@ class compressed_index : util::noncopyable {
     }
 
     // find the right entry in the block
-    const auto rend = std::make_reverse_iterator(block->begin);
+    const auto rend = irstd::make_reverse_iterator(block->begin);
     const auto entry = std::lower_bound(
-      std::make_reverse_iterator(block->rbegin + 1), rend, key,
+      irstd::make_reverse_iterator(block->rbegin + 1), rend, key,
       [] (const entry_t& lhs, doc_id_t rhs) {
         return lhs.first > rhs;
     });

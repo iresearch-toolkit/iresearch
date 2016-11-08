@@ -52,7 +52,6 @@ index_writer::defragment_policy_t defragment_bytes_accum(float byte_threshold /*
     const directory& dir, const index_meta& meta
   )->index_writer::defragment_acceptor_t {
     size_t all_segment_bytes_size = 0;
-    size_t segment_count = meta.size();
 
     for (auto& segment: meta) {
       for (auto& file: segment.meta.files) {
