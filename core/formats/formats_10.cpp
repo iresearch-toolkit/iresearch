@@ -1640,7 +1640,7 @@ class writer final : public iresearch::columnstore_writer {
      compressing_index_writer blocks_index_writer{ INDEX_BLOCK_SIZE };
      bytes_output block_buf{ MAX_DATA_BLOCK_SIZE }; // current block data buffer
      doc_id_t key{ type_limits<type_t::doc_id_t>::invalid() }; // current block first key
-     doc_id_t max_key{ type_limits<type_t::doc_id_t>::invalid() }; // current column max key
+     doc_id_t last_key{ type_limits<type_t::doc_id_t>::invalid() }; // current column max key
      size_t size{};
      uint64_t max_block_size{};
    };
@@ -1716,10 +1716,14 @@ columnstore_writer::column_t writer::push_column() {
         column.key = doc;
       }
 
-      block_header.write(column.max_key = doc, ptr);
-      ++column.size;
-      if (stream.size() >= DATA_BLOCK_SIZE) {
-        flush_block(column);
+      // prevent values from the same document 
+      // to overcome block boundaries
+      if (column.last_key != doc || !column.size) {
+        block_header.write(column.last_key = doc, ptr);
+        ++column.size;
+        if (stream.size() >= DATA_BLOCK_SIZE) {
+          flush_block(column);
+        }
       }
 
       return true;
@@ -1755,7 +1759,7 @@ void writer::flush() {
   data_out_->write_vlong(filled.size()); // number of columns
   for (auto* column : filled) {
     data_out_->write_vlong(column->max_block_size); // size of the biggest block
-    data_out_->write_vlong(column->max_key); // max key
+    data_out_->write_vlong(column->last_key); // max key
     column->blocks_index.file >> *data_out_; // column blocks index
   }
   data_out_->write_long(block_index_ptr);
@@ -1819,14 +1823,8 @@ class reader final : public iresearch::columnstore_reader {
     uint64_t max_block_size;
   };
 
-  bool load_block(reader::column& column, block_ref_t& ref, block& block) const {
-    return load_block_index(column, ref, block) 
-      && load_block_data(column, ref, block);
-  }
-  bool load_block_index(const reader::column& column, block_ref_t& ref, block& block) const;
-  bool load_block_index(index_input& in, block& block) const;
-  bool load_block_data(const reader::column& column, const block_ref_t& ref, block& block) const;
-  bool load_block_data(index_input& in, block& block, size_t size) const;
+  bool load_block_index(index_input& in, block_ref_t& ref, block& block) const;
+  bool load_block_data(index_input& in, const block_ref_t& ref, block& block, size_t size) const;
   
   // visits block entries
   static bool visit(const block& block, const raw_reader_f& reader);
@@ -1848,7 +1846,7 @@ class reader final : public iresearch::columnstore_reader {
   }
   
   // prepares column stream
-  index_input& prepare(const column& column) const {
+  index_input& stream(const column& column) const {
     if (!column.stream) {
       // init column stream if needed
       column.stream = data_in_->clone();
@@ -1864,26 +1862,14 @@ class reader final : public iresearch::columnstore_reader {
   mutable bstring encode_buf_; // 'read_compact' requires a temporary buffer
 }; // reader
   
-bool reader::load_block_index(const reader::column& column, block_ref_t& ref, block& block) const {
+bool reader::load_block_index(index_input& in, block_ref_t& ref, block& block) const {
   if (block.index_loaded) {
     // already loaded
     return true;
   }
-  
-  auto& in = prepare(column);
+
   in.seek(ref.first);
 
-  if (!load_block_index(in, block)) {
-    return false;
-  }
-
-  // nexcept
-  // since block index have been loaded, update block start pointer
-  ref.first = in.file_pointer(); 
-  return true;
-}
-  
-bool reader::load_block_index(index_input& in, block& block) const {
   // read block index
   static auto visitor = [] (uint64_t& target, uint64_t value) {
     target = value;
@@ -1894,24 +1880,21 @@ bool reader::load_block_index(index_input& in, block& block) const {
     return false;
   }
   
+  // nexcept
+  // since block index have been loaded, update block start pointer
+  ref.first = in.file_pointer(); 
   block.index_loaded = true;
   return true;
 }
 
-bool reader::load_block_data(const reader::column& column, const block_ref_t& ref, block& block) const {
+bool reader::load_block_data(index_input& in, const block_ref_t& ref, block& block, size_t block_size) const {
   if (block.data_loaded) {
     // already loaded
     return true;
   }
-
-  assert(column.stream);
-  auto& in = *column.stream;
+  
   in.seek(ref.first);
 
-  return load_block_data(in, block, column.max_block_size);
-}
-
-bool reader::load_block_data(index_input& in, block& block, size_t block_size) const {
   // ensure we have enough space to store uncompressed data
   oversize(block.data, block_size);
 
@@ -2033,8 +2016,9 @@ reader::values_reader_f reader::values(field_id field) const {
     }
     
     auto& block = *block_ref.second;
+    auto& in = stream(column);
     
-    if (!load_block_index(column, const_cast<block_ref_t&>(block_ref), block)) {
+    if (!load_block_index(in, const_cast<block_ref_t&>(block_ref), block)) {
       // unable to load block index
       return false;
     }
@@ -2047,7 +2031,7 @@ reader::values_reader_f reader::values(field_id field) const {
       return false;
     }
 
-    if (!load_block_data(column, block_ref, block)) {
+    if (!load_block_data(in, block_ref, block, column.max_block_size)) {
       // unable to load block data 
       return false;
     }
@@ -2076,25 +2060,32 @@ bool reader::visit(field_id field, const raw_reader_f& reader) const {
   }
 
   auto& column = columns_[field];
-  auto& stream = prepare(column);
+  auto& in = stream(column);
   
   reader::block block; // do not cache blocks during visiting
-  reader::block* pblock;
+  block_ref_t ref;
+  ref.second = &block;
+
+  const block_ref_t* pref;
   for (auto& bucket : column.index) {
-    auto& ref = bucket.second;
-    pblock = ref.second ? ref.second : &block;
+    if (bucket.second.second) {
+      // has already been cached
+      pref = &bucket.second;
+    } else {
+      // hasn't yet been cached, use temporary block
+      pref = &ref;
+      ref.first = bucket.second.first;
+    }
 
-    // seek to block
-    stream.seek(ref.first);
+    reader::block& block = *pref->second;
 
-    // load block if needed
-    if (!load_block_index(stream, *pblock)
-        || !load_block_data(stream, *pblock, column.max_block_size)) {
+    if (!load_block_index(in, const_cast<block_ref_t&>(*pref), block)
+        || !load_block_data(in, *pref, block, column.max_block_size)) {
       return false;
     }
 
     // visit block
-    if (!visit(*pblock, reader)) {
+    if (!visit(block, reader)) {
       return false;
     }
 

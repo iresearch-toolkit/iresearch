@@ -1012,10 +1012,12 @@ class format_test_case_base : public index_test_base {
       }
     } invalid_writer;
 
-    const iresearch::field_id field0 = 0;
-    const iresearch::field_id field1 = 1;
-    const iresearch::field_id field2 = 2;
-    const iresearch::field_id field3 = 3;
+    iresearch::field_id segment0_field0_id;
+    iresearch::field_id segment0_field1_id;
+    iresearch::field_id segment0_field2_id;
+    iresearch::field_id segment1_field0_id;
+    iresearch::field_id segment1_field1_id;
+    iresearch::field_id segment1_field2_id;
 
     iresearch::segment_meta meta0("_1", nullptr);
     meta0.version = 42;
@@ -1045,7 +1047,7 @@ class format_test_case_base : public index_test_base {
 
       // try to read invalild column
       {
-        auto column = reader->values(field0);
+        auto column = reader->values(iresearch::type_limits<iresearch::type_t::field_id_t>::invalid());
         calls_count = 0;
         ASSERT_FALSE(column(0, value_reader));
         ASSERT_EQ(0, calls_count);
@@ -1069,24 +1071,26 @@ class format_test_case_base : public index_test_base {
       ASSERT_TRUE(writer->prepare(dir(), meta0.name));
       
       auto field0 = writer->push_column();
-      auto field0_id = field0.first;
+      segment0_field0_id = field0.first;
       auto& field0_writer = field0.second;
-      ASSERT_EQ(0, field0_id);
+      ASSERT_EQ(0, segment0_field0_id);
       auto field1 = writer->push_column();
-      auto field1_id = field1.first;
+      segment0_field1_id = field1.first;
       auto& field1_writer = field1.second;
-      ASSERT_EQ(1, field1_id);
+      ASSERT_EQ(1, segment0_field1_id);
       auto field2 = writer->push_column();
-      auto field2_id = field2.first;
+      segment0_field2_id = field2.first;
       auto& field2_writer = field2.second;
-      ASSERT_EQ(2, field2_id);
+      ASSERT_EQ(2, segment0_field2_id);
 
       string_writer.value = "field0_doc0";
       ASSERT_TRUE(field0_writer(0, string_writer)); // doc==0, column==field0
 
+      // multivalued attribute
       string_writer.value = "field1_doc0";
       ASSERT_TRUE(field1_writer(0, string_writer)); // doc==0, column==field1
-      //TODO: writer same doc_id ASSERT_TRUE(writer->write(0, field1, string_writer));
+      string_writer.value = "field1_doc0_1";
+      ASSERT_TRUE(field1_writer(0, string_writer)); // doc==0, column==field1
 
       string_writer.value = "field2_doc0";
       ASSERT_FALSE(field2_writer(0, invalid_writer)); // doc==0, column==field2
@@ -1108,24 +1112,24 @@ class format_test_case_base : public index_test_base {
       ASSERT_TRUE(writer->prepare(dir(), meta1.name));
       
       auto field0 = writer->push_column();
-      auto field0_id = field0.first;
+      segment1_field0_id = field0.first;
       auto& field0_writer = field0.second;
-      ASSERT_EQ(0, field0_id);
+      ASSERT_EQ(0, segment1_field0_id);
       auto field1 = writer->push_column();
-      auto field1_id = field1.first;
+      segment1_field1_id = field1.first;
       auto& field1_writer = field1.second;
-      ASSERT_EQ(1, field1_id);
+      ASSERT_EQ(1, segment1_field1_id);
       auto field2 = writer->push_column();
-      auto field2_id = field2.first;
+      segment1_field2_id = field2.first;
       auto& field2_writer = field2.second;
-      ASSERT_EQ(2, field2_id);
+      ASSERT_EQ(2, segment1_field2_id);
 
       string_writer.value = "segment_2_field3_doc0";
       ASSERT_TRUE(field2_writer(0, string_writer)); // doc==0, column==field3
 
+      // multivalued attribute
       string_writer.value = "segment_2_field1_doc0";
       ASSERT_TRUE(field0_writer(0, string_writer)); // doc==0, column==field1
-      //TODO: writer same doc_id ASSERT_TRUE(field1_writer(0, string_writer));
 
       string_writer.value = "segment_2_field2_doc0";
       ASSERT_FALSE(field1_writer(0, invalid_writer)); // doc==0, column==field2
@@ -1153,31 +1157,15 @@ class format_test_case_base : public index_test_base {
 
       auto reader = codec()->get_columnstore_reader();
       ASSERT_TRUE(reader->prepare(rs));
-
-      std::string expected_value;
-      size_t calls_count = 0;
-      iresearch::columnstore_reader::value_reader_f value_reader = [&calls_count, &expected_value] (iresearch::data_input& in) {
-        ++calls_count;
-        if (expected_value != iresearch::read_string<std::string>(in)) {
-          return false;
-        }
-
-        iresearch::byte_type b;
-        if (in.read_bytes(&b, 1)) {
-          // read more than we allowed 
-          return false;
-        }
-
-        return true;
-      };
       
-      iresearch::columnstore_reader::value_reader_f invalid_value_reader = [&expected_value] (iresearch::data_input& in) {
-        expected_value.reserve(in.read_vlong()); // partial reading
-        return false;
-      };
-
       // try to read invalild column
       {
+        size_t calls_count = 0;
+        iresearch::columnstore_reader::value_reader_f value_reader = [&calls_count] (iresearch::data_input& in) {
+          ++calls_count;
+          return true;
+        };
+
         auto column = reader->values(ir::type_limits<ir::type_t::field_id_t>::invalid());
         calls_count = 0;
         ASSERT_FALSE(column(0, value_reader));
@@ -1192,26 +1180,214 @@ class format_test_case_base : public index_test_base {
         ASSERT_FALSE(column(56, value_reader));
         ASSERT_EQ(0, calls_count);
       }
+      
+      // visit field0 values (not cached)
+      {
+        std::unordered_map<std::string, iresearch::doc_id_t> expected_values = {
+          {"field0_doc0", 0},
+          {"field0_doc2", 2},
+          {"field0_doc33", 33}
+        };
+
+        auto visitor = [&expected_values] (iresearch::doc_id_t doc, data_input& in) {
+          const auto actual_value = iresearch::read_string<std::string>(in);
+
+          auto it = expected_values.find(actual_value);
+          if (it == expected_values.end()) {
+            // can't find value
+            return false;
+          }
+
+          if (it->second != doc) {
+            // wrong document
+            return false;
+          }
+
+          expected_values.erase(it);
+          return true;
+        };
+
+        ASSERT_TRUE(reader->visit(segment0_field0_id, visitor));
+        ASSERT_TRUE(expected_values.empty());
+      }
+      
+      // partailly visit field0 values (not cached)
+      {
+        std::unordered_map<std::string, iresearch::doc_id_t> expected_values = {
+          {"field0_doc0", 0},
+          {"field0_doc2", 2},
+          {"field0_doc33", 33}
+        };
+
+        size_t calls_count = 0;
+        auto visitor = [&expected_values, &calls_count] (iresearch::doc_id_t doc, data_input& in) {
+          ++calls_count;
+
+          if (calls_count > 2) {
+            // break the loop
+            return false;
+          }
+
+          const auto actual_value = iresearch::read_string<std::string>(in);
+
+          auto it = expected_values.find(actual_value);
+          if (it == expected_values.end()) {
+            // can't find value
+            return false;
+          }
+
+          if (it->second != doc) {
+            // wrong document
+            return false;
+          }
+
+          expected_values.erase(it);
+          return true;
+        };
+
+        ASSERT_FALSE(reader->visit(segment0_field0_id, visitor));
+        ASSERT_FALSE(expected_values.empty());
+        ASSERT_EQ(1, expected_values.size());
+        ASSERT_NE(expected_values.end(), expected_values.find("field0_doc33"));
+      }
 
       // check field0
       {
-        auto column = reader->values(0);
-        expected_value = "field0_doc0";
+        std::string expected_value;
+        size_t calls_count = 0;
+        iresearch::columnstore_reader::value_reader_f value_reader = [&calls_count, &expected_value] (iresearch::data_input& in) {
+          ++calls_count;
+          if (expected_value != iresearch::read_string<std::string>(in)) {
+            return false;
+          }
+
+          iresearch::byte_type b;
+          if (in.read_bytes(&b, 1)) {
+            // read more than we allowed 
+            return false;
+          }
+
+          return true;
+        };
+
+        iresearch::columnstore_reader::value_reader_f invalid_value_reader = [&expected_value] (iresearch::data_input& in) {
+          expected_value.reserve(in.read_vlong()); // partial reading
+          return false;
+        };
+
+        auto column = reader->values(segment0_field0_id);
+
+        // read (not cached)
+        {
+          expected_value = "field0_doc0";
+          calls_count = 0;
+          ASSERT_TRUE(column(0, value_reader)); // check doc==0, column==field0
+          ASSERT_EQ(1, calls_count);
+          expected_value = "field0_doc0";
+          calls_count = 0;
+          ASSERT_FALSE(column(0, invalid_value_reader)); // reader returns false
+          ASSERT_EQ(0, calls_count);
+          expected_value = "field0_doc0";
+          calls_count = 0;
+          ASSERT_FALSE(column(5, value_reader)); // doc without value in field0
+          ASSERT_EQ(0, calls_count);
+          expected_value = "field0_doc33";
+          calls_count = 0;
+          ASSERT_TRUE(column(33, value_reader)); // check doc==33, column==field0
+          ASSERT_EQ(1, calls_count);
+        }
+        
+        // read (cached)
+        {
+          expected_value = "field0_doc0";
+          calls_count = 0;
+          ASSERT_TRUE(column(0, value_reader)); // check doc==0, column==field0
+          ASSERT_EQ(1, calls_count);
+          expected_value = "field0_doc0";
+          calls_count = 0;
+          ASSERT_FALSE(column(0, invalid_value_reader)); // reader returns false
+          ASSERT_EQ(0, calls_count);
+          expected_value = "field0_doc0";
+          calls_count = 0;
+          ASSERT_FALSE(column(5, value_reader)); // doc without value in field0
+          ASSERT_EQ(0, calls_count);
+          expected_value = "field0_doc33";
+          calls_count = 0;
+          ASSERT_TRUE(column(33, value_reader)); // check doc==33, column==field0
+          ASSERT_EQ(1, calls_count);
+        }
+      }
+      
+      // visit field0 values (cached)
+      {
+        std::unordered_map<std::string, iresearch::doc_id_t> expected_values = {
+          {"field0_doc0", 0},
+          {"field0_doc2", 2},
+          {"field0_doc33", 33}
+        };
+
+        auto visitor = [&expected_values] (iresearch::doc_id_t doc, data_input& in) {
+          const auto actual_value = iresearch::read_string<std::string>(in);
+
+          auto it = expected_values.find(actual_value);
+          if (it == expected_values.end()) {
+            // can't find value
+            return false;
+          }
+
+          if (it->second != doc) {
+            // wrong document
+            return false;
+          }
+
+          expected_values.erase(it);
+          return true;
+        };
+
+        ASSERT_TRUE(reader->visit(segment0_field0_id, visitor));
+        ASSERT_TRUE(expected_values.empty());
+      }
+      
+      // check field1 (multiple values per document)
+      {
+        std::string expected_value1;
+        std::string expected_value2;
+        size_t calls_count = 0;
+        iresearch::columnstore_reader::value_reader_f value_reader = [&calls_count, &expected_value1, &expected_value2] (iresearch::data_input& in) {
+          ++calls_count;
+
+          if (expected_value1 != iresearch::read_string<std::string>(in)) {
+            return false;
+          }
+          
+          if (expected_value2 != iresearch::read_string<std::string>(in)) {
+            return false;
+          }
+
+          iresearch::byte_type b;
+          if (in.read_bytes(&b, 1)) {
+            // read more than we allowed 
+            return false;
+          }
+
+          return true;
+        };
+
+
+        auto column = reader->values(segment0_field1_id);
+        
+        // read compound column value
+        // check doc==0, column==field1
+        expected_value1 = "field1_doc0";
+        expected_value2 = "field1_doc0_1";
         calls_count = 0;
-        ASSERT_TRUE(column(0, value_reader)); // check doc==33, column==field0
+        ASSERT_TRUE(column(0, value_reader)); 
         ASSERT_EQ(1, calls_count);
-        expected_value = "field0_doc0";
+
+        // read by invalid key
         calls_count = 0;
-        ASSERT_FALSE(column(0, invalid_value_reader)); // reader returns false
+        ASSERT_FALSE(column(iresearch::type_limits<iresearch::type_t::doc_id_t>::eof(), value_reader)); 
         ASSERT_EQ(0, calls_count);
-        expected_value = "field0_doc0";
-        calls_count = 0;
-        ASSERT_FALSE(column(5, value_reader)); // doc without value in field0
-        ASSERT_EQ(0, calls_count);
-        expected_value = "field0_doc33";
-        calls_count = 0;
-        ASSERT_TRUE(column(33, value_reader)); // check doc==33, column==field0
-        ASSERT_EQ(1, calls_count);
       }
     }
 
