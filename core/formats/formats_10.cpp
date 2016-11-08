@@ -1642,7 +1642,6 @@ class writer final : public iresearch::columnstore_writer {
      doc_id_t key{ type_limits<type_t::doc_id_t>::invalid() }; // current block first key
      doc_id_t last_key{ type_limits<type_t::doc_id_t>::invalid() }; // current column max key
      size_t size{};
-     uint64_t max_block_size{};
    };
 
    void flush_block(column& col);
@@ -1671,10 +1670,8 @@ void writer::flush_block(column& col) {
   // write compressed block data
   {
     auto& block_buf = col.block_buf;
-    // TODO: write decompressed block size here rather than max_block_size
+    write_zvlong(*data_out_, block_buf.size() - MAX_DATA_BLOCK_SIZE);
     write_compact(*data_out_, comp_, block_buf.c_str(), block_buf.size());
-    col.max_block_size = std::max(col.max_block_size, block_buf.size());
-
     block_buf.reset(); // reset buffer stream after flushing
   }
 
@@ -1758,7 +1755,6 @@ void writer::flush() {
   const auto block_index_ptr = data_out_->file_pointer(); // where blocks index start
   data_out_->write_vlong(filled.size()); // number of columns
   for (auto* column : filled) {
-    data_out_->write_vlong(column->max_block_size); // size of the biggest block
     data_out_->write_vlong(column->last_key); // max key
     column->blocks_index.file >> *data_out_; // column blocks index
   }
@@ -1796,7 +1792,6 @@ class reader final : public iresearch::columnstore_reader {
 
     compressed_index<uint64_t> index; // block index
     bstring data; // decompressed data block
-    bytes_ref view; // view on decompressed data
     mutable bytes_ref_input stream; // stream to access to data block
     bool index_loaded{ false };
     bool data_loaded{ false };
@@ -1814,17 +1809,15 @@ class reader final : public iresearch::columnstore_reader {
 
     column(column&& rhs)
       : index(std::move(rhs.index)),
-        stream(std::move(rhs.stream)),
-        max_block_size(rhs.max_block_size) {
+        stream(std::move(rhs.stream)) {
     }
 
     blocks_index_t index; // blocks index
     mutable index_input::ptr stream; // column stream
-    uint64_t max_block_size;
   };
 
   bool load_block_index(index_input& in, block_ref_t& ref, block& block) const;
-  bool load_block_data(index_input& in, const block_ref_t& ref, block& block, size_t size) const;
+  bool load_block_data(index_input& in, const block_ref_t& ref, block& block) const;
   
   // visits block entries
   static bool visit(const block& block, const raw_reader_f& reader);
@@ -1887,24 +1880,23 @@ bool reader::load_block_index(index_input& in, block_ref_t& ref, block& block) c
   return true;
 }
 
-bool reader::load_block_data(index_input& in, const block_ref_t& ref, block& block, size_t block_size) const {
+bool reader::load_block_data(index_input& in, const block_ref_t& ref, block& block) const {
   if (block.data_loaded) {
     // already loaded
     return true;
   }
   
   in.seek(ref.first);
-
+  
   // ensure we have enough space to store uncompressed data
-  oversize(block.data, block_size);
+  block.data.resize(MAX_DATA_BLOCK_SIZE + read_zvlong(in));
 
   // read block data
-  block.view = read_compact(in, decomp_, encode_buf_, block.data); 
+  auto view = read_compact(in, decomp_, encode_buf_, block.data); 
 
-  if (block.view.c_str() != block.data.c_str()) {
+  if (view.c_str() != block.data.c_str()) {
     // optmized case
-    std::memcpy(&block.data[0], block.view.c_str(), block.view.size());
-    block.view = bytes_ref(block.data.c_str(), block.view.size());
+    std::memcpy(&block.data[0], view.c_str(), view.size());
   }
 
   block.data_loaded = true;
@@ -1955,7 +1947,6 @@ bool reader::prepare(const reader_state& state) {
     columns.emplace_back();
     auto& column = columns.back();
 
-    column.max_block_size = data_in_->read_vlong();
     if (!column.index.read(*data_in_, data_in_->read_vlong() + 1, visitor)) {
       IR_ERROR() << "Unable to load blocks index for column id=" << columns.size() - 1;
       return false;
@@ -1974,13 +1965,13 @@ data_input& reader::value(
     const block_index_t::iterator& vend,  // value end
     const block_index_t::iterator& end) { // end of the block
   const auto start_offset = vbegin->second;
-  const auto end_offset = end ==  vend ? block.view.size() : vend->second;
+  const auto end_offset = end ==  vend ? block.data.size() : vend->second;
   assert(end_offset >= start_offset);
 
   auto& stream = block.stream;
  
   stream.reset(
-    block.view.c_str() + start_offset,
+    block.data.c_str() + start_offset,
     end_offset - start_offset
   );
 
@@ -2031,7 +2022,7 @@ reader::values_reader_f reader::values(field_id field) const {
       return false;
     }
 
-    if (!load_block_data(in, block_ref, block, column.max_block_size)) {
+    if (!load_block_data(in, block_ref, block)) {
       // unable to load block data 
       return false;
     }
@@ -2080,7 +2071,7 @@ bool reader::visit(field_id field, const raw_reader_f& reader) const {
     reader::block& block = *pref->second;
 
     if (!load_block_index(in, const_cast<block_ref_t&>(*pref), block)
-        || !load_block_data(in, *pref, block, column.max_block_size)) {
+        || !load_block_data(in, *pref, block)) {
       return false;
     }
 
