@@ -122,7 +122,7 @@ class bitset {
   }
 
  private:
-  typedef std::unique_ptr<word_t> word_ptr;
+  typedef std::unique_ptr<word_t[]> word_ptr_t;
 
   FORCE_INLINE static size_t word(size_t i) NOEXCEPT {
     return i / bits_required<word_t>();
@@ -138,7 +138,7 @@ class bitset {
 
   size_t bits_;    // number of bits in a bitset
   size_t words_;   // number of words used for storing data
-  word_ptr data_; // words array
+  word_ptr_t data_; // words array
 }; // bitset
 
 NS_END
