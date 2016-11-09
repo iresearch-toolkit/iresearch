@@ -16,6 +16,7 @@
 #include "utils/string.hpp"
 #include "utils/bit_packing.hpp"
 #include "utils/std.hpp"
+#include "utils/type_limits.hpp"
 #include "store/directory.hpp"
 #include "store/data_input.hpp"
 #include "store/data_output.hpp"
@@ -73,6 +74,8 @@ class compressed_index : util::noncopyable {
   typedef std::pair<doc_id_t, value_type> entry_t;
  
   struct block : util::noncopyable {
+    block() = default;
+
     block(size_t size, doc_id_t key)
       : begin(new entry_t[size]),
         rbegin(begin + size - 1),
@@ -92,9 +95,9 @@ class compressed_index : util::noncopyable {
 
     // do not use smart pointers here since last 
     // 'operator++()' reads 'bit_->begin' value via 'end'
-    entry_t* begin;
-    entry_t* rbegin;
-    doc_id_t key_base;
+    entry_t* begin{};
+    entry_t* rbegin{};
+    doc_id_t key_base{ type_limits<type_t::doc_id_t>::eof() };
   };
  
   class iterator : public std::iterator<std::forward_iterator_tag, entry_t> {
@@ -149,7 +152,9 @@ class compressed_index : util::noncopyable {
     entry_iterator_t eit_;
   }; // iterator
   
-  compressed_index() = default;
+  compressed_index() 
+    : blocks_(1) {
+  }
 
   compressed_index(compressed_index&& rhs)
     : blocks_(std::move(rhs.blocks_)),
@@ -197,6 +202,9 @@ class compressed_index : util::noncopyable {
       });
     }
 
+    // add end marker
+    blocks.emplace_back();
+
     // noexcept
     blocks_ = std::move(blocks);
     max_ = max;
@@ -219,7 +227,9 @@ class compressed_index : util::noncopyable {
   }
 
   iterator begin() const { return iterator(blocks_.data()); }
-  iterator end() const { return iterator(blocks_.data() + blocks_.size()); }
+
+  // -1 for end marker
+  iterator end() const { return iterator(blocks_.data() + blocks_.size() - 1); }
 
   template<typename Visitor>
   bool visit(Visitor visitor) const {
@@ -285,7 +295,9 @@ class compressed_index : util::noncopyable {
 
     // find the right block
     const auto block = std::lower_bound(
-      blocks_.rbegin(), blocks_.rend(), key,
+      blocks_.rbegin(), 
+      blocks_.rend()-1, // -1 for end marker
+      key,
       [] (const compressed_index::block& lhs, doc_id_t rhs) {
         return lhs.key_base > rhs;
     });
