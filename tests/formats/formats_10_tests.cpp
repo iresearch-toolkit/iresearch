@@ -858,6 +858,10 @@ TEST_F(memory_format_10_test_case, columns_rw) {
   columns_read_write();
 }
 
+TEST_F(memory_format_10_test_case, columns_meta_rw) {
+  columns_meta_read_write();
+}
+
 TEST_F(memory_format_10_test_case, document_mask_rw) {
   document_mask_read_write();
 }
@@ -914,6 +918,10 @@ TEST_F(fs_format_10_test_case, field_meta_rw) {
 
 TEST_F(fs_format_10_test_case, columns_rw) {
   columns_read_write();
+}
+
+TEST_F(fs_format_10_test_case, columns_meta_rw) {
+  columns_meta_read_write();
 }
 
 TEST_F(fs_format_10_test_case, document_mask_rw) {

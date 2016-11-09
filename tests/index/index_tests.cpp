@@ -356,7 +356,7 @@ class index_test_case_base : public tests::index_test_base {
 
       writer->buffered_docs();
     }
-  } 
+  }
   
   void profile_bulk_index_dedicated_commit(size_t insert_threads, size_t commit_threads, size_t commit_interval) {
     struct csv_doc_template_t: public tests::delim_doc_generator::doc_template, private iresearch::util::noncopyable {
@@ -1034,6 +1034,298 @@ class index_test_case_base : public tests::index_test_base {
     }
   }
 
+  void read_write_doc_attributes_big() {
+    struct csv_doc_template_t: public tests::delim_doc_generator::doc_template, private iresearch::util::noncopyable {
+      using document::end;
+
+      csv_doc_template_t() = default;
+      csv_doc_template_t(csv_doc_template_t&& other) {
+        fields_ = std::move(other.fields_);
+      }
+
+      virtual void init() {
+        fields_.clear();
+        fields_.reserve(2);
+        fields_.emplace_back(new tests::templates::string_field("id", true, true));
+        fields_.emplace_back(new tests::templates::string_field("label", true, true));
+      }
+
+      virtual void value(size_t idx, const std::string& value) {
+        switch(idx) {
+         case 0:
+          get<tests::templates::string_field>("id")->value(value);
+          break;
+         case 1:
+          get<tests::templates::string_field>("label")->value(value);
+        }
+      }
+
+      fields_t& fields() {
+        return fields_;
+      }
+    };
+          
+    csv_doc_template_t csv_doc_template;
+    tests::delim_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template, ',');
+
+    // write attributes 
+    {
+      auto writer = ir::index_writer::make(dir(), codec(), ir::OM_CREATE);
+
+      const tests::document* doc;
+      while (doc = gen.next()) {
+        writer->add(doc->end(), doc->end(), doc->begin(), doc->end());
+      }
+      writer->commit();
+    }
+
+    // read attributes
+    {
+      auto reader = ir::directory_reader::open(dir());
+      ASSERT_EQ(1, reader->size());
+
+      auto& segment = (*reader)[0];
+      auto& columns = segment.columns();
+      ASSERT_EQ(2, columns.size());
+      ASSERT_FALSE(columns.empty());
+      auto begin = columns.begin();
+      ASSERT_NE(columns.end(), begin);
+      ASSERT_EQ("id", begin->name);
+      ASSERT_EQ(0, begin->id);
+      ++begin;
+      ASSERT_NE(columns.end(), begin);
+      ASSERT_EQ("label", begin->name);
+      ASSERT_EQ(1, begin->id);
+      ++begin;
+      ASSERT_EQ(columns.end(), begin);
+
+      // check 'id' column
+      {
+        const iresearch::string_ref column_name = "id";
+        auto* meta = columns.find(column_name);
+        ASSERT_NE(nullptr, meta);
+
+        // visit column (not cached)
+        {
+          gen.reset();
+          ir::doc_id_t expected_id = 0;
+          auto visitor = [&gen, &column_name, &expected_id] (ir::doc_id_t id, data_input& in) {
+            if (id != ++expected_id) {
+              return false;
+            }
+
+            auto* doc = gen.next();
+            auto* field = doc->get<tests::templates::string_field>(column_name);
+
+            if (!field) {
+              return false;
+            }
+
+            const auto value = iresearch::read_string<std::string>(in);
+            if (field->value() != iresearch::string_ref(value)) {
+              return false;
+            }
+
+            iresearch::byte_type b;
+            const auto read = in.read_bytes(&b, 1);
+            if (read) {
+              // ensure we can't read after the value
+              return false;
+            }
+
+            return true;
+          };
+
+          ASSERT_TRUE(segment.column(meta->id, visitor));
+        }
+
+        // random access
+        {
+          const tests::document* doc = nullptr;
+          ir::columnstore_reader::value_reader_f visitor = [&doc, &gen, &column_name] (ir::data_input& in) {
+            if (!doc) {
+              return false;
+            }
+
+            auto* field = doc->get<tests::templates::string_field>(column_name);
+
+            if (!field) {
+              return false;
+            }
+
+            const auto value = iresearch::read_string<std::string>(in);
+            if (field->value() != iresearch::string_ref(value)) {
+              return false;
+            }
+            
+            iresearch::byte_type b;
+            const auto read = in.read_bytes(&b, 1);
+            if (read) {
+              // ensure we can't read after the value
+              return false;
+            }
+
+            return true;
+          };
+
+          auto reader = segment.values(meta->id, visitor);
+
+          ir::doc_id_t id = 0;
+          gen.reset();
+          while (doc = gen.next()) {
+            ASSERT_TRUE(reader(++id));
+          }
+        }
+        
+        // visit column (cached)
+        {
+          gen.reset();
+          ir::doc_id_t expected_id = 0;
+          auto visitor = [&gen, &column_name, &expected_id] (ir::doc_id_t id, data_input& in) {
+            if (id != ++expected_id) {
+              return false;
+            }
+
+            auto* doc = gen.next();
+            auto* field = doc->get<tests::templates::string_field>(column_name);
+
+            if (!field) {
+              return false;
+            }
+
+            const auto value = iresearch::read_string<std::string>(in);
+            if (field->value() != iresearch::string_ref(value)) {
+              return false;
+            }
+
+            iresearch::byte_type b;
+            const auto read = in.read_bytes(&b, 1);
+            if (read) {
+              // ensure we can't read after the value
+              return false;
+            }
+
+            return true;
+          };
+
+          ASSERT_TRUE(segment.column(meta->id, visitor));
+        }
+      }
+
+      // check 'label' column
+      {
+        const iresearch::string_ref column_name = "label";
+        auto* meta = columns.find(column_name);
+        ASSERT_NE(nullptr, meta);
+
+        // visit column (not cached)
+        {
+          gen.reset();
+          ir::doc_id_t expected_id = 0;
+          auto visitor = [&gen, &column_name, &expected_id] (ir::doc_id_t id, data_input& in) {
+            if (id != ++expected_id) {
+              return false;
+            }
+
+            auto* doc = gen.next();
+            auto* field = doc->get<tests::templates::string_field>(column_name);
+
+            if (!field) {
+              return false;
+            }
+
+            const auto value = iresearch::read_string<std::string>(in);
+            if (field->value() != iresearch::string_ref(value)) {
+              return false;
+            }
+
+            iresearch::byte_type b;
+            const auto read = in.read_bytes(&b, 1);
+            if (read) {
+              // ensure we can't read after the value
+              return false;
+            }
+
+            return true;
+          };
+
+          ASSERT_TRUE(segment.column(meta->id, visitor));
+        }
+
+        // random access
+        {
+          const tests::document* doc = nullptr;
+          ir::columnstore_reader::value_reader_f visitor = [&doc, &gen, &column_name] (ir::data_input& in) {
+            if (!doc) {
+              return false;
+            }
+
+            auto* field = doc->get<tests::templates::string_field>(column_name);
+
+            if (!field) {
+              return false;
+            }
+
+            const auto value = iresearch::read_string<std::string>(in);
+            if (field->value() != iresearch::string_ref(value)) {
+              return false;
+            }
+            
+            iresearch::byte_type b;
+            const auto read = in.read_bytes(&b, 1);
+            if (read) {
+              // ensure we can't read after the value
+              return false;
+            }
+
+            return true;
+          };
+
+          auto reader = segment.values(meta->id, visitor);
+
+          ir::doc_id_t id = 0;
+          while (doc = gen.next()) {
+            ASSERT_TRUE(reader(++id));
+          }
+        }
+        
+        // visit column (cached)
+        {
+          gen.reset();
+          ir::doc_id_t expected_id = 0;
+          auto visitor = [&gen, &column_name, &expected_id] (ir::doc_id_t id, data_input& in) {
+            if (id != ++expected_id) {
+              return false;
+            }
+
+            auto* doc = gen.next();
+            auto* field = doc->get<tests::templates::string_field>(column_name);
+
+            if (!field) {
+              return false;
+            }
+
+            const auto value = iresearch::read_string<std::string>(in);
+            if (field->value() != iresearch::string_ref(value)) {
+              return false;
+            }
+
+            iresearch::byte_type b;
+            const auto read = in.read_bytes(&b, 1);
+            if (read) {
+              // ensure we can't read after the value
+              return false;
+            }
+
+            return true;
+          };
+
+          ASSERT_TRUE(segment.column(meta->id, visitor));
+        }
+      }
+    }
+  }
+
   void writer_atomicity_check() {
     struct override_sync_directory : directory_mock {
       typedef std::function<bool (const std::string&)> sync_f;
@@ -1193,6 +1485,7 @@ TEST_F(memory_index_test, arango_demo_docs) {
 }
 
 TEST_F(memory_index_test, read_write_doc_attributes) {
+  read_write_doc_attributes_big();
   read_write_doc_attributes();
   read_empty_doc_attributes();
 }
@@ -3744,6 +4037,7 @@ TEST_F(fs_index_test, open_writer) {
 TEST_F(fs_index_test, read_write_doc_attributes) {
   read_write_doc_attributes();
   read_empty_doc_attributes();
+  read_write_doc_attributes_big();
 }
 
 TEST_F(fs_index_test, writer_transaction_isolation) {

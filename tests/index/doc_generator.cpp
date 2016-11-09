@@ -328,7 +328,8 @@ const tests::document* delim_doc_generator::next() {
 }
  
 void delim_doc_generator::reset() {
-  ifs_.seekg(0U);
+  ifs_.clear();
+  ifs_.seekg(ifs_.beg);
   doc_->reset();
 }
 

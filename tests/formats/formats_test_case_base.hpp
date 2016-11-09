@@ -993,6 +993,63 @@ class format_test_case_base : public index_test_base {
     }
   }
   
+  void columns_meta_read_write() {
+    // write meta
+    {
+      auto writer = codec()->get_column_meta_writer();
+
+      // write segment _1
+      writer->prepare(dir(), "_1");
+      writer->write("_1_column1", 1);
+      writer->write("_1_column2", 2);
+      writer->write("_1_column0", 0);
+      writer->flush();
+      
+      // write segment _2
+      writer->prepare(dir(), "_2");
+      writer->write("_2_column2", 2);
+      writer->write("_2_column1", 1);
+      writer->write("_2_column0", 0);
+      writer->flush();
+    }
+
+    // read meta from segment _1
+    {
+      auto reader = codec()->get_column_meta_reader();
+      ASSERT_TRUE(reader->prepare(dir(), "_1"));
+     
+      iresearch::column_meta meta;
+      ASSERT_TRUE(reader->read(meta));
+      ASSERT_EQ("_1_column1", meta.name);
+      ASSERT_EQ(1, meta.id);
+      ASSERT_TRUE(reader->read(meta));
+      ASSERT_EQ("_1_column2", meta.name);
+      ASSERT_EQ(2, meta.id);
+      ASSERT_TRUE(reader->read(meta));
+      ASSERT_EQ("_1_column0", meta.name);
+      ASSERT_EQ(0, meta.id);
+      ASSERT_FALSE(reader->read(meta));
+    }
+    
+    // read meta from segment _2
+    {
+      auto reader = codec()->get_column_meta_reader();
+      ASSERT_TRUE(reader->prepare(dir(), "_2"));
+     
+      iresearch::column_meta meta;
+      ASSERT_TRUE(reader->read(meta));
+      ASSERT_EQ("_2_column2", meta.name);
+      ASSERT_EQ(2, meta.id);
+      ASSERT_TRUE(reader->read(meta));
+      ASSERT_EQ("_2_column1", meta.name);
+      ASSERT_EQ(1, meta.id);
+      ASSERT_TRUE(reader->read(meta));
+      ASSERT_EQ("_2_column0", meta.name);
+      ASSERT_EQ(0, meta.id);
+      ASSERT_FALSE(reader->read(meta));
+    }
+  }
+  
   void columns_read_write() {
     ir::fields_data fdata;
     ir::fields_meta fields;
