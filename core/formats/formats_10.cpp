@@ -2504,7 +2504,7 @@ void postings_writer::prepare(index_output& out, const iresearch::flush_state& s
   out.write_vint(BLOCK_SIZE);
 
   /* prepare documents bitset */
-  docs_ = bitset(state.doc_count);
+  docs_.reset(state.doc_count);
   attrs_.add<version10::documents>()->value = &docs_;
 }
 

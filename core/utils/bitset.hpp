@@ -17,49 +17,60 @@
 #include "shared.hpp"
 #include "bit_utils.hpp"
 #include "math_utils.hpp"
+#include "noncopyable.hpp"
+#include "memory.hpp"
 
 NS_ROOT
 
-class bitset {
+class bitset : util::noncopyable {
  public:
   typedef size_t word_t;
   typedef size_t index_t;
 
-  explicit bitset(size_t bits = 0)
-    : bits_(bits), words_(bit_to_words(bits_)) {
-    if (words_) {
-      data_.reset(new word_t[words_]);
-      clear();
-    }
+  explicit bitset(size_t bits = 0) {
+    reset(bits);
   }
 
   bitset(bitset&& rhs) NOEXCEPT
-    : bits_(std::move(rhs.bits_)),
-      words_(std::move(rhs.words_)),
+    : bits_(rhs.bits_),
+      words_(rhs.words_),
+      capacity_(rhs.capacity_),
       data_(std::move(rhs.data_)) {
     rhs.bits_ = 0;
     rhs.words_ = 0;
+    rhs.capacity_ = 0;
   }
 
   bitset& operator=(bitset&& rhs) NOEXCEPT {
     if (this != &rhs) {
-      bits_ = std::move(rhs.bits_);
-      words_ = std::move(rhs.words_);
+      bits_ = rhs.bits_;
+      words_ = rhs.words_;
+      capacity_ = rhs.capacity_;
       data_ = std::move(rhs.data_);
       rhs.bits_ = 0;
       rhs.words_ = 0;
+      rhs.capacity_ = 0;
     }
 
     return *this;
   }
 
-  bitset(const bitset&) = delete;
-  bitset& operator=(const bitset&) = delete;
+  void reset(size_t bits) {
+    const auto words = bit_to_words(bits);
+    if (words > capacity_) {
+      data_ = memory::make_unique<word_t[]>(words);
+      capacity_ = words;
+    }
+    words_ = words;
+    bits_ = bits;
+    clear();
+  }
 
   // returns number of bits in bitset
   const size_t size() const { return bits_; }
-
+  const size_t capacity() const { return capacity_; }
   const size_t words() const { return words_; }
+
   const word_t* data() const { return data_.get(); }
   word_t* data() { return data_.get(); }
 
@@ -136,8 +147,9 @@ class bitset {
     return bits ? ((bits - 1) / bits_required<word_t>()) + 1 : 0;
   }
 
-  size_t bits_;    // number of bits in a bitset
-  size_t words_;   // number of words used for storing data
+  size_t bits_{};    // number of bits in a bitset
+  size_t words_{};   // number of words used for storing data
+  size_t capacity_{}; // capacity in words
   word_ptr_t data_; // words array
 }; // bitset
 

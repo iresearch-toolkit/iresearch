@@ -14,7 +14,7 @@
 
 using namespace iresearch;
 
-TEST( bitset_tests, ctor ) {
+TEST(bitset_tests, ctor) {
   /* zero size bitset*/
   {
     const bitset::index_t words = 0;
@@ -23,6 +23,7 @@ TEST( bitset_tests, ctor ) {
     ASSERT_EQ(nullptr, bs.data());
     ASSERT_EQ( size, bs.size() );
     ASSERT_EQ( words, bs.words() );
+    ASSERT_EQ(words, bs.capacity());
     ASSERT_TRUE( bs.none() );
     ASSERT_FALSE( bs.any() );
     ASSERT_TRUE( bs.all() );
@@ -36,6 +37,7 @@ TEST( bitset_tests, ctor ) {
     ASSERT_NE(nullptr, bs.data());
     ASSERT_EQ( size, bs.size() );
     ASSERT_EQ( words, bs.words() );
+    ASSERT_EQ(words, bs.capacity());
     ASSERT_TRUE( bs.none() );
     ASSERT_FALSE( bs.any() );
     ASSERT_FALSE( bs.all() );
@@ -49,6 +51,7 @@ TEST( bitset_tests, ctor ) {
     ASSERT_NE(nullptr,  bs.data());
     ASSERT_EQ( size, bs.size() );
     ASSERT_EQ( words, bs.words() );
+    ASSERT_EQ(words, bs.capacity());
     ASSERT_TRUE( bs.none() );
     ASSERT_FALSE( bs.any() );
     ASSERT_FALSE( bs.all() );
@@ -62,6 +65,7 @@ TEST( bitset_tests, ctor ) {
     ASSERT_NE(nullptr, bs.data());
     ASSERT_EQ( size, bs.size() );
     ASSERT_EQ( words, bs.words() );
+    ASSERT_EQ(words, bs.capacity());
     ASSERT_EQ( 0, bs.count() );
     ASSERT_TRUE( bs.none() );
     ASSERT_FALSE( bs.any() );
@@ -69,42 +73,129 @@ TEST( bitset_tests, ctor ) {
   }  
 }
 
-TEST( bitset_tests, set_unset) {
+TEST(bitset_tests, set_unset) {
   const bitset::index_t words = 3;
   const bitset::index_t size = 155;
-  bitset bs( size );
+  bitset bs(size);
   ASSERT_NE(nullptr, bs.data());
-  ASSERT_EQ( size, bs.size() );
-  ASSERT_EQ( words, bs.words() );
-  ASSERT_EQ( 0, bs.count() );
-  ASSERT_TRUE( bs.none() );
-  ASSERT_FALSE( bs.any() );
-  ASSERT_FALSE( bs.all() );
+  ASSERT_EQ(size, bs.size());
+  ASSERT_EQ(words, bs.words());
+  ASSERT_EQ(words, bs.capacity());
+  ASSERT_EQ(0, bs.count());
+  ASSERT_TRUE(bs.none());
+  ASSERT_FALSE(bs.any());
+  ASSERT_FALSE(bs.all());
 
   /* set */
   const bitset::index_t i = 43;
-  ASSERT_FALSE( bs.test( i ) );
-  bs.set( i );
-  ASSERT_TRUE( bs.test( i ) );
+  ASSERT_FALSE(bs.test(i));
+  bs.set(i);
+  ASSERT_TRUE(bs.test(i));
 
   /* unset */
-  bs.unset( i );
-  ASSERT_FALSE( bs.test( i ) );
+  bs.unset(i);
+  ASSERT_FALSE(bs.test(i));
 
   /* reset */
-  bs.reset( i, true );
-  ASSERT_TRUE( bs.test( i ) );
-  bs.reset( i, false );
-  ASSERT_FALSE( bs.test( i ) );
+  bs.reset(i, true );
+  ASSERT_TRUE(bs.test(i));
+  bs.reset(i, false );
+  ASSERT_FALSE(bs.test(i));
 }
 
-TEST( bitset_tests, clear_count) {
+TEST(bitset_tests, reset) {
+  bitset bs;
+  ASSERT_EQ(nullptr, bs.data());
+  ASSERT_EQ(0, bs.size());
+  ASSERT_EQ(0, bs.words());
+  ASSERT_EQ(0, bs.capacity());
+  ASSERT_TRUE(bs.none());
+  ASSERT_FALSE(bs.any());
+  ASSERT_TRUE(bs.all());
+
+  // reset to bigger size
+  bitset::index_t capacity = 3;
+  bitset::index_t words = 3;
+  bitset::index_t size = 155;
+
+  bs.reset(size);
+  ASSERT_NE(nullptr, bs.data());
+  ASSERT_EQ(size, bs.size());
+  ASSERT_EQ(words, bs.words());
+  ASSERT_EQ(capacity, bs.capacity());
+  ASSERT_EQ(0, bs.count());
+  ASSERT_TRUE(bs.none());
+  ASSERT_FALSE(bs.any());
+  ASSERT_FALSE(bs.all());
+  bs.set(42);
+  ASSERT(1, bs.count());
+  bs.set(42);
+  ASSERT(1, bs.count());
+  bs.set(73); 
+  ASSERT(2, bs.count());
+  ASSERT_FALSE(bs.none() );
+  ASSERT_TRUE(bs.any());
+  ASSERT_FALSE(bs.all());
+  const auto* prev_data = bs.data();
+  
+  // reset to smaller size
+  words = 2;
+  size = 89;
+
+  bs.reset(size); // reset to smaller size
+  ASSERT_NE(nullptr, bs.data());
+  ASSERT_EQ(size, bs.size());
+  ASSERT_EQ(words, bs.words());
+  ASSERT_EQ(capacity, bs.capacity()); // capacity haven't changed
+  ASSERT_EQ(prev_data, bs.data()); // storage haven't changed
+  ASSERT_EQ(0, bs.count());
+  ASSERT_TRUE(bs.none()); // content cleared
+  ASSERT_FALSE(bs.any()); // content cleared
+  ASSERT_FALSE(bs.all()); // content cleared
+  bs.set(42);
+  ASSERT(1, bs.count());
+  bs.set(42);
+  ASSERT(1, bs.count());
+  bs.set(73); 
+  ASSERT(2, bs.count());
+  ASSERT_FALSE(bs.none() );
+  ASSERT_TRUE(bs.any());
+  ASSERT_FALSE(bs.all());
+  
+  // reset to bigger size
+  words = 5;
+  capacity = 5;
+  size = 319;
+
+  bs.reset(size); // reset to smaller size
+  ASSERT_NE(nullptr, bs.data());
+  ASSERT_EQ(size, bs.size());
+  ASSERT_EQ(words, bs.words());
+  ASSERT_EQ(capacity, bs.capacity()); // capacity changed
+  ASSERT_NE(prev_data, bs.data()); // storage was reallocated
+  ASSERT_EQ(0, bs.count());
+  ASSERT_TRUE(bs.none()); // content cleared
+  ASSERT_FALSE(bs.any()); // content cleared
+  ASSERT_FALSE(bs.all()); // content cleared
+  bs.set(42);
+  ASSERT(1, bs.count());
+  bs.set(42);
+  ASSERT(1, bs.count());
+  bs.set(73); 
+  ASSERT(2, bs.count());
+  ASSERT_FALSE(bs.none() );
+  ASSERT_TRUE(bs.any());
+  ASSERT_FALSE(bs.all());
+}
+
+TEST(bitset_tests, clear_count) {
   const bitset::index_t words = 3;
   const bitset::index_t size = 155;
   bitset bs( size );
   ASSERT_NE(nullptr, bs.data());
   ASSERT_EQ( size, bs.size() );
   ASSERT_EQ( words, bs.words() );
+  ASSERT_EQ(words, bs.capacity());
   ASSERT_EQ( 0, bs.count() );
   ASSERT_TRUE( bs.none() );
   ASSERT_FALSE( bs.any() );
