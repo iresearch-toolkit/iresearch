@@ -52,19 +52,25 @@ iresearch::bytes_ref read_compact(
   const auto size = iresearch::read_zvint(in);
   size_t buf_size = std::abs(size);
 
-  iresearch::oversize(encode_buf, buf_size);
-
-  #ifdef IRESEARCH_DEBUG
-    const auto read = in.read_bytes(&(encode_buf[0]), buf_size);
-    assert(read == buf_size);
-  #else
-    in.read_bytes(&(encode_buf[0]), buf_size);
-  #endif // IRESEARCH_DEBUG
-
   // -ve to mark uncompressed
   if (size < 0) {
-    return iresearch::bytes_ref(encode_buf.c_str(), buf_size);
+#ifdef IRESEARCH_DEBUG
+    const auto read = in.read_bytes(&(decode_buf[0]), buf_size);
+    assert(read == buf_size);
+#else
+    in.read_bytes(&(decode_buf[0]), buf_size);
+#endif // IRESEARCH_DEBUG
+    return decode_buf;
   }
+
+  iresearch::oversize(encode_buf, buf_size);
+
+#ifdef IRESEARCH_DEBUG
+  const auto read = in.read_bytes(&(encode_buf[0]), buf_size);
+  assert(read == buf_size);
+#else
+  in.read_bytes(&(encode_buf[0]), buf_size);
+#endif // IRESEARCH_DEBUG
 
   buf_size = decompressor.deflate(
     reinterpret_cast<const char*>(encode_buf.c_str()), 
@@ -1639,9 +1645,10 @@ class writer final : public iresearch::columnstore_writer {
      compressing_index_writer block_header_writer{ INDEX_BLOCK_SIZE };
      compressing_index_writer blocks_index_writer{ INDEX_BLOCK_SIZE };
      bytes_output block_buf{ MAX_DATA_BLOCK_SIZE }; // current block data buffer
-     doc_id_t key{ type_limits<type_t::doc_id_t>::invalid() }; // current block first key
-     doc_id_t last_key{ type_limits<type_t::doc_id_t>::invalid() }; // current column max key
-     size_t size{};
+     doc_id_t begin{ type_limits<type_t::doc_id_t>::eof() }; // current block first key
+     doc_id_t end{ type_limits<type_t::doc_id_t>::eof() }; // current column max key
+     bool empty{ true }; // index empty
+     bool block_empty{ true }; // block empty
    };
 
    void flush_block(column& col);
@@ -1662,9 +1669,16 @@ void writer::flush_block(column& col) {
 
   // write block header 
   {
-    col.block_header_writer.finish();
-    col.block_header.stream.flush();
+    auto& stream = col.block_header.stream;
+    auto& writer = col.block_header_writer;
+
+    writer.finish();
+    stream.flush();
     col.block_header.file >> *data_out_;
+
+    // reset writer & stream
+    writer.prepare(stream);
+    stream.reset();
   }
 
   // write compressed block data
@@ -1676,9 +1690,10 @@ void writer::flush_block(column& col) {
   }
 
   // write last block key & where block starts
-  col.blocks_index_writer.write(col.key, block_offset);
+  col.blocks_index_writer.write(col.begin, block_offset);
 
-  col.key = type_limits<type_t::doc_id_t>::invalid();
+  col.begin = type_limits<type_t::doc_id_t>::eof();
+  col.block_empty = true;
 }
 
 bool writer::prepare(directory& dir, const string_ref& name) {
@@ -1700,6 +1715,8 @@ columnstore_writer::column_t writer::push_column() {
   return std::make_pair(
     columns_.size() - 1, // field id
     [&column, this] (doc_id_t doc, const serializer& writer) {
+      assert(column.empty || doc >= column.end);
+
       auto& stream = column.block_buf;
       auto& block_header = column.block_header_writer;
 
@@ -1709,15 +1726,16 @@ columnstore_writer::column_t writer::push_column() {
         return false;
       }
 
-      if (!type_limits<type_t::doc_id_t>::valid(doc)) {
-        column.key = doc;
-      }
-
       // prevent values from the same document 
       // to overcome block boundaries
-      if (column.last_key != doc || !column.size) {
-        block_header.write(column.last_key = doc, ptr);
-        ++column.size;
+      if (column.end != doc || column.empty) {
+        if (column.block_empty) {
+          column.begin = doc;
+          column.block_empty = false;
+        }
+
+        block_header.write(column.end = doc, ptr);
+        column.empty = false;
         if (stream.size() >= DATA_BLOCK_SIZE) {
           flush_block(column);
         }
@@ -1731,7 +1749,7 @@ void writer::flush() {
   // flush all remain data
   std::vector<column*> filled;
   for (auto& column : columns_) {
-    if (!column.size) {
+    if (column.empty) {
       continue; // filter out empty columns
     }
 
@@ -1755,7 +1773,7 @@ void writer::flush() {
   const auto block_index_ptr = data_out_->file_pointer(); // where blocks index start
   data_out_->write_vlong(filled.size()); // number of columns
   for (auto* column : filled) {
-    data_out_->write_vlong(column->last_key); // max key
+    data_out_->write_vlong(column->end); // max key
     column->blocks_index.file >> *data_out_; // column blocks index
   }
   data_out_->write_long(block_index_ptr);
@@ -1892,12 +1910,7 @@ bool reader::load_block_data(index_input& in, const block_ref_t& ref, block& blo
   block.data.resize(MAX_DATA_BLOCK_SIZE + read_zvlong(in));
 
   // read block data
-  auto view = read_compact(in, decomp_, encode_buf_, block.data); 
-
-  if (view.c_str() != block.data.c_str()) {
-    // optmized case
-    std::memcpy(&block.data[0], view.c_str(), view.size());
-  }
+  read_compact(in, decomp_, encode_buf_, block.data); 
 
   block.data_loaded = true;
   return true;
