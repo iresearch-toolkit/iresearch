@@ -72,7 +72,10 @@ class IRESEARCH_API segment_writer: util::noncopyable {
 
   struct column : util::noncopyable {
     column() = default;
-    column(column&&) = default;
+    column(column&& other)
+      : name(std::move(other.name)),
+        handle(std::move(other.handle)) {
+    }
 
     std::string name;
     columnstore_writer::column_t handle;

@@ -393,9 +393,9 @@ class index_test_case_base : public tests::index_test_base {
 
     std::atomic<size_t> parsed_docs_count(0);
     std::atomic<size_t> writer_commit_count(0);
-    insert_threads = std::max((size_t)1, insert_threads);
-    commit_threads = std::max((size_t)1, commit_threads);
-    commit_interval = std::max((size_t)1, commit_interval);
+    insert_threads = (std::max)((size_t)1, insert_threads);
+    commit_threads = (std::max)((size_t)1, commit_threads);
+    commit_interval = (std::max)((size_t)1, commit_interval);
     auto thread_count = insert_threads + commit_threads;
     ir::async_utils::thread_pool thread_pool(thread_count, thread_count);
     auto writer = open_writer();
@@ -574,9 +574,9 @@ class index_test_case_base : public tests::index_test_base {
     iresearch::timer_utils::init_stats(true);
 
     std::atomic<size_t> parsed_docs_count(0);
-    size_t writer_batch_size = batch_size ? batch_size : std::numeric_limits<size_t>::max();
+    size_t writer_batch_size = batch_size ? batch_size : (std::numeric_limits<size_t>::max)();
     std::atomic<size_t> writer_commit_count(0);
-    auto thread_count = std::max((size_t)1, num_threads);
+    auto thread_count = (std::max)((size_t)1, num_threads);
     ir::async_utils::thread_pool thread_pool(thread_count, thread_count);
     auto writer = open_writer();
     std::mutex mutex;

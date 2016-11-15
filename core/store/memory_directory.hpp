@@ -21,6 +21,16 @@
 #include <unordered_map>
 #include <unordered_set>
 
+NS_LOCAL
+
+inline void touch(std::time_t& time) {
+  time = std::chrono::system_clock::to_time_t(
+    std::chrono::system_clock::now()
+  );
+}
+
+NS_END
+
 NS_ROOT
 
 // -------------------------------------------------------------------
@@ -34,15 +44,7 @@ struct memory_file_meta {
 * memory_file
 * ------------------------------------------------------------------*/
 
-NS_LOCAL
-
-inline void touch(std::time_t& time) {
-  time = std::chrono::system_clock::to_time_t(
-    std::chrono::system_clock::now()
-  );
-}
-
-NS_END
+MSVC_ONLY(template class IRESEARCH_API iresearch::container_utils::raw_block_vector<iresearch::byte_type, 16, 8>);
 
 // <16, 8> => buffer sizes 256B, 512B, 1K, 2K, 4K, 8K, 16K, 32K, 64K, 128K, 256K, 512K, 1M, 2M, 4M, 8M
 class IRESEARCH_API memory_file:
@@ -64,7 +66,7 @@ class IRESEARCH_API memory_file:
 
     for (size_t i = 0, count = buffer_count(); i < count && length; ++i) {
       auto buffer = get_buffer(i);
-      auto to_copy = std::min(length, buffer.size);
+      auto to_copy = (std::min)(length, buffer.size);
 
       out.write_bytes(buffer.data, to_copy);
       length -= to_copy;

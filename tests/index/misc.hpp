@@ -20,7 +20,7 @@ inline bool utf8_less(
     const iresearch::byte_type* lhs, size_t lhs_len,
     const iresearch::byte_type* rhs, size_t rhs_len
 ) {
-  const auto len = std::min( lhs_len, rhs_len );
+  const auto len = (std::min)(lhs_len, rhs_len);
 
   for (size_t i = 0; i < len; ++i) {
     const uint8_t lhs_b = *lhs; ++lhs;

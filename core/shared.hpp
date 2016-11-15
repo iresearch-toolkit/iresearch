@@ -67,9 +67,9 @@
 
 // hook for MSVC-only code
 #if defined(_MSC_VER)
-  #define MSVC_ONLY(x) x
+  #define MSVC_ONLY(...) __VA_ARGS__
 #else
-  #define MSVC_ONLY(x)
+  #define MSVC_ONLY(...)
 #endif
 
 // check if sizeof(float_t) == sizeof(double_t)

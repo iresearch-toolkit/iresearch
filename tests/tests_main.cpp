@@ -44,7 +44,7 @@ struct iteration_tracker : ::testing::Environment {
   static uint32_t iteration;
 };
 
-uint32_t iteration_tracker::iteration = std::numeric_limits<uint32_t>::max();
+uint32_t iteration_tracker::iteration = (std::numeric_limits<uint32_t>::max)();
 
 /* -------------------------------------------------------------------
 * test_base

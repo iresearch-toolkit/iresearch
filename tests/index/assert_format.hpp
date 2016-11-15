@@ -191,9 +191,9 @@ class term_reader : public iresearch::term_reader {
   virtual iresearch::seek_term_iterator::ptr iterator() const override;
   virtual const iresearch::flags& features() const override;
   virtual size_t size() const override;
-  virtual uint64_t docs_count() const;
-  virtual const iresearch::bytes_ref& min() const;
-  virtual const iresearch::bytes_ref& max() const;
+  virtual uint64_t docs_count() const override;
+  virtual const iresearch::bytes_ref& (min)() const override;
+  virtual const iresearch::bytes_ref& (max)() const override;
 
  private:
   const tests::field& data_;

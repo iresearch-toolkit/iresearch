@@ -9,6 +9,7 @@
 // Agreement under which it is provided by or on behalf of EMC.
 // 
 
+#include <cctype>
 #include <mutex>
 #include <unordered_map>
 

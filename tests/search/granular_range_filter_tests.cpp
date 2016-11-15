@@ -395,7 +395,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
            .include<ir::Bound::MIN>(false)
            .insert<ir::Bound::MIN>(min_term->value())
            .include<ir::Bound::MAX>(true)
-           .insert<ir::Bound::MAX>(ir::numeric_utils::numeric_traits<int64_t>::max());
+           .insert<ir::Bound::MAX>((ir::numeric_utils::numeric_traits<int64_t>::max)());
 
       auto prepared = query.prepare(*rdr);
 
@@ -421,7 +421,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
       ir::by_granular_range query;
       query.field("seq")
            .include<ir::Bound::MIN>(true)
-           .insert<ir::Bound::MIN>(ir::numeric_utils::numeric_traits<int64_t>::min())
+           .insert<ir::Bound::MIN>((ir::numeric_utils::numeric_traits<int64_t>::min)())
            .include<ir::Bound::MAX>(true)
            .insert<ir::Bound::MAX>(max_term->value());
 
@@ -484,7 +484,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
            .include<ir::Bound::MIN>(false)
            .insert<ir::Bound::MIN>(min_term->value())
            .include<ir::Bound::MAX>(true)
-           .insert<ir::Bound::MAX>(ir::numeric_utils::numeric_traits<int32_t>::max());
+           .insert<ir::Bound::MAX>((ir::numeric_utils::numeric_traits<int32_t>::max)());
 
       auto prepared = query.prepare(*rdr);
 
@@ -510,7 +510,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
       ir::by_granular_range query;
       query.field("seq")
            .include<ir::Bound::MIN>(true)
-           .insert<ir::Bound::MIN>(ir::numeric_utils::numeric_traits<int32_t>::min())
+           .insert<ir::Bound::MIN>((ir::numeric_utils::numeric_traits<int32_t>::min)())
            .include<ir::Bound::MAX>(true)
            .insert<ir::Bound::MAX>(max_term->value());
 

@@ -19,7 +19,7 @@ namespace ir = iresearch;
 
 TEST(cost_attribute_test, consts) {
   ASSERT_EQ(
-    std::numeric_limits<ir::cost::cost_t>::max(),
+    (std::numeric_limits<ir::cost::cost_t>::max)(),
     ir::cost::cost_t(ir::cost::MAX)
   );
 }

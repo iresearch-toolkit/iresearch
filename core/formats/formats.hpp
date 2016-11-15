@@ -117,17 +117,17 @@ struct IRESEARCH_API term_reader {
 
   virtual const flags& features() const = 0;
 
-  /* total number of terms */
+  // total number of terms
   virtual size_t size() const = 0;
 
-  /* total number of documents */
+  // total number of documents
   virtual uint64_t docs_count() const = 0;
 
-  /* less significant term */
-  virtual const bytes_ref& min() const = 0;
+  // less significant term
+  virtual const bytes_ref& (min)() const = 0;
 
-  /* most significant term */
-  virtual const bytes_ref& max() const = 0;
+  // most significant term
+  virtual const bytes_ref& (max)() const = 0;
 };
 
 /* -------------------------------------------------------------------

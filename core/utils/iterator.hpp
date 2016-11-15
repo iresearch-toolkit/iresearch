@@ -25,7 +25,7 @@ NS_ROOT
 // ----------------------------------------------------------------------------
 
 template< typename T >
-struct IRESEARCH_API iterator {
+struct IRESEARCH_API_TEMPLATE iterator {
   DECLARE_PTR(iterator<T>);
   DECLARE_FACTORY(iterator<T>);
 

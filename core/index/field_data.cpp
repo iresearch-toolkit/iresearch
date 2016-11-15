@@ -630,9 +630,11 @@ void fields_data::flush(
   state.fields_count = fields_.size();
 
   {
-    static auto less = [] (const field_data* lhs, const field_data* rhs) {
-      return lhs->meta().name < rhs->meta().name;
-    };
+    static struct less_t {
+      bool operator()(const field_data* lhs, const field_data* rhs) {
+        return lhs->meta().name < rhs->meta().name;
+      };
+    } less;
     std::set<const field_data*, decltype(less)> fields(less);
 
     // ensure fields are sorted

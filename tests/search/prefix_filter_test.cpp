@@ -110,7 +110,7 @@ class prefix_filter_test_case : public filter_test_case_base {
     {
       docs_t result;
       for(size_t i = 0; i < 32; ++i) {
-        result.push_back(ir::doc_id_t(ir::type_limits<ir::type_t::doc_id_t>::min() + i));
+        result.push_back(ir::doc_id_t((ir::type_limits<ir::type_t::doc_id_t>::min)() + i));
       }
 
       costs_t costs{ result.size() };
