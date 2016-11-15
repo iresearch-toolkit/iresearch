@@ -1806,7 +1806,13 @@ class reader final : public iresearch::columnstore_reader {
   
   struct block : util::noncopyable {
     block() = default;
-    block(block&&) = default;
+    block(block&& other)
+      : index(std::move(other.index)),
+        data(std::move(other.data)),
+        stream(std::move(other.stream)),
+        index_loaded(std::move(other.index_loaded)),
+        data_loaded(std::move(other.data_loaded)) {
+    }
 
     compressed_index<uint64_t> index; // block index
     bstring data; // decompressed data block

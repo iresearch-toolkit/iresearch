@@ -80,19 +80,19 @@ class IRESEARCH_API by_granular_range: public filter {
   // use the most precise value for 'granularity_level'
   template<Bound B>
   by_granular_range& insert(bstring&& term) {
-    return insert<B>(std::numeric_limits<level_t>::min(), std::move(term));
+    return insert<B>((std::numeric_limits<level_t>::min)(), std::move(term));
   }
 
   // use the most precise value for 'granularity_level'
   template<Bound B>
   by_granular_range& insert(const bytes_ref& term) {
-    return insert<B>(std::numeric_limits<level_t>::min(), term);
+    return insert<B>((std::numeric_limits<level_t>::min)(), term);
   }
 
   // use the most precise value for 'granularity_level'
   template<Bound B>
   by_granular_range& insert(const string_ref& term) {
-    return insert<B>(std::numeric_limits<level_t>::min(), ref_cast<byte_type>(term));
+    return insert<B>((std::numeric_limits<level_t>::min)(), ref_cast<byte_type>(term));
   }
 
   // sequential 'granularity_level' value, cannot use 'iresearch::increment' since it can be 0
@@ -102,7 +102,7 @@ class IRESEARCH_API by_granular_range: public filter {
     auto& term_attr = attributes.get<term_attribute>();
     auto& increment_attr = attributes.get<increment>();
 
-    for (level_t level = std::numeric_limits<level_t>::min(); term.next(); ++level) {
+    for (level_t level = (std::numeric_limits<level_t>::min)(); term.next(); ++level) {
       insert<B>(level, term_attr->value());
     }
 

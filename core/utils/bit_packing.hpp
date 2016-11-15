@@ -74,8 +74,8 @@ inline T max_value( uint32_t bits ) {
   assert( bits >= 0U && bits <= sizeof( T ) * 8U );
 
   return bits == sizeof( T ) * 8U
-    ?std::numeric_limits< T >::max()
-    :~( ~T(0) << bits );
+    ? (std::numeric_limits<T>::max)() : ~(~T(0) << bits)
+    ;
 }
 
 IRESEARCH_API void pack(

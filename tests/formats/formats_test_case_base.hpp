@@ -148,7 +148,7 @@ class format_test_case_base : public index_test_base {
   public:
     terms(const Iterator& begin, const Iterator& end)
       : next_(begin), end_(end) {
-      docs_.push_back(ir::type_limits<ir::type_t::doc_id_t>::min());
+      docs_.push_back((ir::type_limits<ir::type_t::doc_id_t>::min)());
     }
 
     terms(const Iterator& begin, const Iterator& end,
@@ -526,8 +526,8 @@ class format_test_case_base : public index_test_base {
       ASSERT_NE(nullptr, term_reader);
 
       ASSERT_EQ(sorted_terms.size(), term_reader->size());
-      ASSERT_EQ(*sorted_terms.begin(), term_reader->min());
-      ASSERT_EQ(*sorted_terms.rbegin(), term_reader->max());
+      ASSERT_EQ(*sorted_terms.begin(), (term_reader->min)());
+      ASSERT_EQ(*sorted_terms.rbegin(), (term_reader->max)());
 
       // check terms using "next"
       {
@@ -646,31 +646,31 @@ class format_test_case_base : public index_test_base {
          }
        }
 
-       /* seek to nil (the smallest possible term) */
+       // seek to nil (the smallest possible term)
        {
-         /* with state */
+         // with state
          {
            auto term = term_reader->iterator();
            ASSERT_FALSE(term->seek(ir::bytes_ref::nil));
-           ASSERT_EQ(term_reader->min(), term->value());
+           ASSERT_EQ((term_reader->min)(), term->value());
            ASSERT_EQ(ir::SeekResult::NOT_FOUND, term->seek_ge(ir::bytes_ref::nil));
-           ASSERT_EQ(term_reader->min(), term->value());
+           ASSERT_EQ((term_reader->min)(), term->value());
          }
 
-         /* without state */
+         // without state
          {
            auto term = term_reader->iterator();
            ASSERT_FALSE(term->seek(ir::bytes_ref::nil));
-           ASSERT_EQ(term_reader->min(), term->value());
+           ASSERT_EQ((term_reader->min)(), term->value());
          }
-         
+
          {
            auto term = term_reader->iterator();
            ASSERT_EQ(ir::SeekResult::NOT_FOUND, term->seek_ge(ir::bytes_ref::nil));
-           ASSERT_EQ(term_reader->min(), term->value());
+           ASSERT_EQ((term_reader->min)(), term->value());
          }
        }
-       
+
        /* Here is the structure of blocks:
         *   TERM aaLorem
         *   TERM abaLorem

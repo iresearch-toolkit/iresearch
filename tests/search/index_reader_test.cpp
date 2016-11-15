@@ -488,8 +488,8 @@ TEST(segment_reader_test, open) {
 
         ASSERT_EQ(5, terms->size());
         ASSERT_EQ(5, terms->docs_count());
-        ASSERT_EQ(ir::ref_cast<ir::byte_type>(ir::string_ref("A")), terms->min());
-        ASSERT_EQ(ir::ref_cast<ir::byte_type>(ir::string_ref("E")), terms->max());
+        ASSERT_EQ(ir::ref_cast<ir::byte_type>(ir::string_ref("A")), (terms->min)());
+        ASSERT_EQ(ir::ref_cast<ir::byte_type>(ir::string_ref("E")), (terms->max)());
 
         auto term = terms->iterator();
 
@@ -590,8 +590,8 @@ TEST(segment_reader_test, open) {
         ASSERT_NE(nullptr, terms);
         ASSERT_EQ(1, terms->size());
         ASSERT_EQ(5, terms->docs_count());
-        ASSERT_EQ(ir::ref_cast<ir::byte_type>(ir::string_ref("xyz")), terms->min());
-        ASSERT_EQ(ir::ref_cast<ir::byte_type>(ir::string_ref("xyz")), terms->max());
+        ASSERT_EQ(ir::ref_cast<ir::byte_type>(ir::string_ref("xyz")), (terms->min)());
+        ASSERT_EQ(ir::ref_cast<ir::byte_type>(ir::string_ref("xyz")), (terms->max)());
 
         auto term = terms->iterator();
 
@@ -632,8 +632,8 @@ TEST(segment_reader_test, open) {
         ASSERT_NE(nullptr, terms);
         ASSERT_EQ(2, terms->size());
         ASSERT_EQ(4, terms->docs_count());
-        ASSERT_EQ(ir::ref_cast<ir::byte_type>(ir::string_ref("abcd")), terms->min());
-        ASSERT_EQ(ir::ref_cast<ir::byte_type>(ir::string_ref("vczc")), terms->max());
+        ASSERT_EQ(ir::ref_cast<ir::byte_type>(ir::string_ref("abcd")), (terms->min)());
+        ASSERT_EQ(ir::ref_cast<ir::byte_type>(ir::string_ref("vczc")), (terms->max)());
 
         auto term = terms->iterator();
 
@@ -684,8 +684,8 @@ TEST(segment_reader_test, open) {
         ASSERT_NE(nullptr, terms);
         ASSERT_EQ(2, terms->size());
         ASSERT_EQ(2, terms->docs_count());
-        ASSERT_EQ(ir::ref_cast<ir::byte_type>(ir::string_ref("abcd")), terms->min());
-        ASSERT_EQ(ir::ref_cast<ir::byte_type>(ir::string_ref("abcde")), terms->max());
+        ASSERT_EQ(ir::ref_cast<ir::byte_type>(ir::string_ref("abcd")), (terms->min)());
+        ASSERT_EQ(ir::ref_cast<ir::byte_type>(ir::string_ref("abcde")), (terms->max)());
 
         auto term = terms->iterator();
 

@@ -136,7 +136,7 @@ class range_filter_test_case : public filter_test_case_base {
            .include<ir::Bound::MIN>(false)
            .term<ir::Bound::MIN>(min_term->value())
            .include<ir::Bound::MAX>(true)
-           .term<ir::Bound::MAX>(ir::numeric_utils::numeric_traits<int64_t>::max());
+           .term<ir::Bound::MAX>((ir::numeric_utils::numeric_traits<int64_t>::max)());
 
       auto prepared = query.prepare(*rdr);
 
@@ -162,7 +162,7 @@ class range_filter_test_case : public filter_test_case_base {
       ir::by_range query;
       query.field("seq")
            .include<ir::Bound::MIN>(true)
-           .term<ir::Bound::MIN>(ir::numeric_utils::numeric_traits<int64_t>::min())
+           .term<ir::Bound::MIN>((ir::numeric_utils::numeric_traits<int64_t>::min)())
            .include<ir::Bound::MAX>(true)
            .term<ir::Bound::MAX>(max_term->value());
 
@@ -225,7 +225,7 @@ class range_filter_test_case : public filter_test_case_base {
            .include<ir::Bound::MIN>(false)
            .term<ir::Bound::MIN>(min_term->value())
            .include<ir::Bound::MAX>(true)
-           .term<ir::Bound::MAX>(ir::numeric_utils::numeric_traits<int32_t>::max());
+           .term<ir::Bound::MAX>((ir::numeric_utils::numeric_traits<int32_t>::max)());
 
       auto prepared = query.prepare(*rdr);
 
@@ -251,7 +251,7 @@ class range_filter_test_case : public filter_test_case_base {
       ir::by_range query;
       query.field("seq")
            .include<ir::Bound::MIN>(true)
-           .term<ir::Bound::MIN>(ir::numeric_utils::numeric_traits<int32_t>::min())
+           .term<ir::Bound::MIN>((ir::numeric_utils::numeric_traits<int32_t>::min)())
            .include<ir::Bound::MAX>(true)
            .term<ir::Bound::MAX>(max_term->value());
 

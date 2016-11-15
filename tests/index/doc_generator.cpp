@@ -397,7 +397,32 @@ json_doc_generator::json_doc_generator(
     const json_doc_generator::factory_f& factory) {
   tests::json::json_tree pt;
   json_doc_visitor visitor(factory, docs_);
-  read_json(file.string(), pt);
+
+  #if BOOST_VERSION < 105900
+    read_json(file.string(), pt);
+  #else
+  {
+    typedef tests::json::json_tree::data_type::value_type char_type;
+    typedef boost::property_tree::json_parser::detail::encoding<char_type> encoding_type;
+    typedef std::istreambuf_iterator<char_type> iterator;
+    typedef tests::json::json_comment_masking_iterator<iterator> comment_masking_iterator;
+
+    tests::json::json_callbacks callbacks;
+    encoding_type encoding;
+    auto filename = file.string();
+    std::ifstream stream(filename);
+
+    read_json_internal(
+      comment_masking_iterator(iterator(stream)),
+      iterator(),
+      encoding,
+      callbacks,
+      filename
+    );
+    pt.swap(callbacks.output());
+  }
+  #endif
+
   json::parse_json(pt, visitor);
   next_ = docs_.begin();
 }

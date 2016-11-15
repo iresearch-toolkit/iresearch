@@ -42,8 +42,8 @@ namespace tests {
     std::vector<uint32_t>* position = nullptr
   ) {
     ASSERT_EQ(doc_count, terms.docs_count());
-    ASSERT_EQ(max, terms.max());
-    ASSERT_EQ(min, terms.min());
+    ASSERT_EQ((max), (terms.max)());
+    ASSERT_EQ((min), (terms.min)());
     ASSERT_EQ(term_size, terms.size());
     ASSERT_EQ(term_features, terms.features());
 
@@ -1326,7 +1326,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
     // can't have more docs then highest doc_id
     for (size_t i = 0, count = segment.docs_count(); i < count; ++i) {
-      ASSERT_TRUE(segment.document(iresearch::doc_id_t(iresearch::type_limits<iresearch::type_t::doc_id_t>::min() + i), visitor));
+      ASSERT_TRUE(segment.document(iresearch::doc_id_t((iresearch::type_limits<iresearch::type_t::doc_id_t>::min)() + i), visitor));
     }
 
     ASSERT_TRUE(expected_bytes.empty());
@@ -1618,7 +1618,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
     // can't have more docs then highest doc_id
     for (size_t i = 0, count = segment.docs_count(); i < count; ++i) {
-      ASSERT_TRUE(segment.document(iresearch::doc_id_t(iresearch::type_limits<iresearch::type_t::doc_id_t>::min() + i), visitor));
+      ASSERT_TRUE(segment.document(iresearch::doc_id_t((iresearch::type_limits<iresearch::type_t::doc_id_t>::min)() + i), visitor));
     }
 
     ASSERT_TRUE(expected_bytes.empty());
@@ -1970,7 +1970,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
   // can't have more docs then highest doc_id
   for (size_t i = 0, count = segment->docs_count(); i < count; ++i) {
-    ASSERT_TRUE(segment->document(iresearch::doc_id_t(iresearch::type_limits<iresearch::type_t::doc_id_t>::min() + i), visitor));
+    ASSERT_TRUE(segment->document(iresearch::doc_id_t((iresearch::type_limits<iresearch::type_t::doc_id_t>::min)() + i), visitor));
   }
 
   ASSERT_TRUE(expected_bytes.empty());

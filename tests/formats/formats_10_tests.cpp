@@ -352,7 +352,7 @@ class format_10_test_case : public tests::format_test_case_base {
 
     // read index
     {
-      const auto max_doc = blocks_count*block_docs + last_block_docs_count + ir::type_limits<ir::type_t::doc_id_t>::min();
+      const auto max_doc = blocks_count*block_docs + last_block_docs_count + (ir::type_limits<ir::type_t::doc_id_t>::min)();
       auto in = dir().open("_0.idx");
 
       static auto visitor = [] (uint64_t& t, uint64_t v) { t = v; };
@@ -758,7 +758,7 @@ class format_10_test_case : public tests::format_test_case_base {
       {
         const size_t count = 117;
         docs.reserve(count);
-        auto i = ir::type_limits<ir::type_t::doc_id_t>::min();
+        auto i = (ir::type_limits<ir::type_t::doc_id_t>::min)();
         std::generate_n(std::back_inserter(docs), count,[&i]() {return i++;});
       }
       postings_seek(docs, {ir::frequency::type() });
@@ -774,7 +774,7 @@ class format_10_test_case : public tests::format_test_case_base {
       {
         const size_t count = ir::version10::postings_writer::BLOCK_SIZE;
         docs.reserve(count);
-        auto i = ir::type_limits<ir::type_t::doc_id_t>::min();
+        auto i = (ir::type_limits<ir::type_t::doc_id_t>::min)();
         std::generate_n(std::back_inserter(docs), count,[&i]() {return i++;});
       }
       postings_seek(docs, {});
@@ -790,7 +790,7 @@ class format_10_test_case : public tests::format_test_case_base {
       {
         const size_t count = 10000;
         docs.reserve(count);
-        auto i = ir::type_limits<ir::type_t::doc_id_t>::min();
+        auto i = (ir::type_limits<ir::type_t::doc_id_t>::min)();
         std::generate_n(std::back_inserter(docs), count,[&i]() {return i++;});
       }
       postings_seek(docs, {});
@@ -806,7 +806,7 @@ class format_10_test_case : public tests::format_test_case_base {
       {
         const size_t count = 32768;
         docs.reserve(count);
-        auto i = ir::type_limits<ir::type_t::doc_id_t>::min();
+        auto i = (ir::type_limits<ir::type_t::doc_id_t>::min)();
         std::generate_n(std::back_inserter(docs), count,[&i]() {return i+=2;});
       }
       postings_seek(docs, {});

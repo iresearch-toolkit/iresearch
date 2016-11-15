@@ -78,7 +78,7 @@ size_t compute_bucket_offset(size_t position) NOEXCEPT {
 ///        using an allocation strategy similar to an std::deque
 //////////////////////////////////////////////////////////////////////////////
 template<typename T, size_t num_buckets, size_t skip_bits>
-class raw_block_vector: util::noncopyable {
+class IRESEARCH_API_TEMPLATE raw_block_vector: util::noncopyable {
  public:
   typedef raw_block_vector<T, num_buckets, skip_bits> raw_block_vector_t;
 
@@ -148,7 +148,9 @@ class raw_block_vector: util::noncopyable {
      }
    };
 
+   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
    std::vector<buffer_entry_t> buffers_;
+   IRESEARCH_API_PRIVATE_VARIABLES_END
 
   static const std::vector<bucket_size_t>& get_bucket_meta() {
     static auto bucket_meta = compute_bucket_meta<num_buckets, skip_bits>();

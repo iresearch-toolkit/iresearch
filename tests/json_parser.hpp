@@ -14,10 +14,11 @@
 
 #include <iostream>
 #include <vector>
+#include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 
-namespace tests {
-namespace json {
+NS_BEGIN(tests)
+NS_BEGIN(json)
 
 using boost::property_tree::ptree;
 
@@ -25,22 +26,53 @@ using boost::property_tree::ptree;
 /// @brief a class to be used with boost::property_tree::basic_ptree as its
 ///        value_type
 ////////////////////////////////////////////////////////////////////////////////
-struct json_value {
-  bool quoted;
-  std::string value;
-  json_value() {}
-  json_value(std::string& v_value, bool v_quoted):
-    quoted(v_quoted), value(std::move(v_value)) {}
-  json_value(const json_value& other):
-    quoted(other.quoted), value(other.value) {}
-  json_value(json_value&& other):
-    quoted(other.quoted), value(std::move(other.value)) {}
-  json_value& operator=(json_value&& other) {
-    quoted = other.quoted;
-    value = std::move(other.value);
-    return *this;
-  }
-};
+#if BOOST_VERSION < 105900
+  struct json_value {
+    bool quoted;
+    std::string value;
+    json_value() {}
+    json_value(std::string& v_value, bool v_quoted):
+      quoted(v_quoted), value(std::move(v_value)) {}
+    json_value(const json_value& other):
+      quoted(other.quoted), value(other.value) {}
+    json_value(json_value&& other):
+      quoted(other.quoted), value(std::move(other.value)) {}
+    json_value& operator=(json_value&& other) {
+      quoted = other.quoted;
+      value = std::move(other.value);
+      return *this;
+    }
+  };
+#else // below definition required for boost v1.59.0+
+  struct json_value {
+    typedef char value_type; // must exactly match json_key::value_type
+    bool quoted;
+    std::string value;
+
+    json_value& operator=(const value_type* v_value) {
+      // from v1.59.0+ boost::property_tree::json_parser::detail::constants
+      static const std::string v_false("false");
+      static const std::string v_null("null");
+      static const std::string v_true("true");
+
+      if (v_false == v_value) {
+        value = "false"; // match string values for boost < v1.59.0
+      } else if (v_null == v_value) {
+        value = "null"; // match string values for boost < v1.59.0
+      } else if (v_true == v_value) {
+        value = "true"; // match string values for boost < v1.59.0
+      } else {
+        throw std::string(v_value);
+      }
+
+      quoted = false;
+
+      return *this;
+    }
+    json_value& operator+=(const value_type& v) { value += v; return *this; }
+    void clear() { quoted = false; value.clear(); }
+  };
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a class to be used with boost::property_tree::basic_ptree as key_type
@@ -49,36 +81,48 @@ struct json_value {
 ///        Note2: Boost JSON parser assumes key_type can be used interchangeably
 ///               with std::string
 ////////////////////////////////////////////////////////////////////////////////
-class json_key {
- public:
-  typedef char value_type; // myst be a type initializable from char
-  json_key(): quoted_(true) {} // constructor used by parser for string values
-  template <class InputIterator>
-  json_key(InputIterator first, InputIterator last):
-    quoted_(false), value_(first, last) {
-  } // constructor used by parser for literal values
+#if BOOST_VERSION < 105900
+  class json_key {
+   public:
+    typedef char value_type; // must be a type initializable from char
+    json_key(): quoted_(true) {} // constructor used by parser for string values
+    template <class InputIterator>
+    json_key(InputIterator first, InputIterator last):
+      quoted_(false), value_(first, last) {
+    } // constructor used by parser for literal values
 
-  bool operator<(const json_key& other) const { return value_ < other.value_; }
-  json_key& operator+=(const value_type& v) { value_ += v; return *this; }
-  operator const std::string&() const { return value_; }
-  operator json_value() {
-    // operator used by Boost JSON parser as a factory method for value_type
-    json_value value;
+    bool operator<(const json_key& other) const { return value_ < other.value_; }
+    json_key& operator+=(const value_type& v) { value_ += v; return *this; }
+    operator const std::string&() const { return value_; }
+    operator json_value() {
+      // operator used by Boost JSON parser as a factory method for value_type
+      json_value value;
 
-    value.quoted = quoted_;
-    value.value = std::move(value_);
+      value.quoted = quoted_;
+      value.value = std::move(value_);
 
-    return value;
-  }
+      return value;
+    }
 
-  const char* c_str() const { return value_.c_str(); }
-  void clear() { value_.clear(); }
-  bool empty() const { return value_.empty(); }
-  void swap(json_key& v) { value_.swap(v.value_); }
- private:
-   bool quoted_;
-   std::string value_;
-};
+    const char* c_str() const { return value_.c_str(); }
+    void clear() { value_.clear(); }
+    bool empty() const { return value_.empty(); }
+    void swap(json_key& v) { value_.swap(v.value_); }
+   private:
+     bool quoted_;
+     std::string value_;
+  };
+#else // below definition required for boost v1.59.0+
+  class json_key {
+   public:
+    bool operator<(const json_key& other) const { return value_ < other.value_; }
+    operator const std::string&() const { return value_; }
+    json_key(const json_value& value): value_(value.value) {}
+    bool empty() const { return value_.empty(); }
+   private:
+    std::string value_;
+  };
+#endif
 
 typedef boost::property_tree::basic_ptree<json_key, json_value> json_tree;
 
@@ -160,8 +204,8 @@ void parse_json(const JsonTree& json, JsonVisitor& v) {
   v.end_doc();
 }
 
-} // json
-} // tests
+NS_END // json
+NS_END // tests
 
 // required for 'json_tree' type to compile
 namespace boost {
@@ -173,5 +217,143 @@ namespace boost {
     };
   }
 }
+
+// defined after boost::property_tree::path_of<tests::json::json_key>
+NS_BEGIN(tests)
+NS_BEGIN(json)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a class to be used with boost::property_tree::read_json_internal for
+///        boost v1.59.0+ as its callback
+////////////////////////////////////////////////////////////////////////////////
+#if BOOST_VERSION < 105900
+  // NOOP, not requred, use boost::property_tree::json_parser::read_json(...)
+#else
+  class json_callbacks {
+   public:
+    typedef json_tree::data_type::value_type char_type;
+    class callbacks:
+      public boost::property_tree::json_parser::detail::standard_callbacks<json_tree> {
+      typedef boost::property_tree::json_parser::detail::standard_callbacks<json_tree> parent_t;
+      public:
+      json_tree::data_type& current_value() { return parent_t::current_value(); } // allow public visibility
+    };
+    callbacks callbacks;
+    void on_begin_array() { callbacks.on_begin_array(); callbacks.current_value().quoted = false; }
+    void on_begin_number() { callbacks.on_begin_number(); callbacks.current_value().quoted = false; }
+    void on_begin_object() { callbacks.on_begin_object(); callbacks.current_value().quoted = false; }
+    void on_begin_string() { callbacks.on_begin_string(); callbacks.current_value().quoted = true; }
+    void on_boolean(bool b) { callbacks.on_boolean(b); callbacks.current_value().quoted = false; }
+    void on_code_unit(char_type c) { callbacks.on_code_unit(c); }
+    void on_digit(char_type d) { callbacks.on_digit(d); }
+    void on_end_array() { callbacks.on_end_array(); }
+    void on_end_number() { callbacks.on_end_number(); }
+    void on_end_object() { callbacks.on_end_object(); }
+    void on_end_string() { callbacks.on_end_string(); }
+    void on_null() { callbacks.on_null(); }
+    json_tree& output() { return callbacks.output(); }
+  };
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a class to be used with boost::property_tree::read_json_internal for
+///        boost v1.59.0+ as a wrapper for an std::stream iterator to mask jSON
+///        comments since boost::property_tree::json_parser in boost v1.59.0+
+///        does not support comments
+////////////////////////////////////////////////////////////////////////////////
+#if BOOST_VERSION < 105900
+  // NOOP, not requred, use boost::property_tree::json_parser::read_json(...)
+#else
+  template<typename Iterator>
+  class json_comment_masking_iterator {
+   public:
+    typedef typename Iterator::difference_type difference_type;
+    typedef typename Iterator::iterator_category iterator_category;
+    typedef typename Iterator::pointer pointer;
+    typedef typename Iterator::reference reference;
+    typedef typename Iterator::value_type value_type;
+    json_comment_masking_iterator() {}
+    json_comment_masking_iterator(Iterator iterator): iterator_(iterator) {
+      skip_comments();
+    }
+    bool operator==(const Iterator& other) const { return iterator_ == other; }
+    bool operator!=(const Iterator& other) const { return iterator_ != other; }
+    reference operator*() const { return *iterator_; }
+    json_comment_masking_iterator& operator++() {
+      ++iterator_;
+
+      if (!quoted_) {
+        skip_comments();
+      }
+
+      if (iterator_ != end_ && *iterator_ == '"') {
+        quoted_ = !quoted_;
+      }
+
+      return *this;
+    }
+
+   private:
+    Iterator end_{};
+    Iterator iterator_{};
+    bool quoted_{};
+
+    void skip_comments() {
+      while (iterator_ != end_ && *iterator_ == '/') {
+        Iterator orig_itr = iterator_;
+
+        if (++iterator_ == end_) {
+          // not a comment, restore to previous iterator position
+          iterator_ = orig_itr;
+
+          return;
+        }
+
+        // start of single line comment
+        if (*iterator_ == '/') {
+          do {
+            if (++iterator_ == end_) {
+              return;
+            }
+          } while (*iterator_ != '\n' && *iterator_ != '\r');
+
+          return; // end of comment
+        }
+
+        // start of multiline comment
+        if (*iterator_ == '*') {
+          if (++iterator_ == end_) {
+            return;
+          }
+
+          // skip all input until closing "*/"
+          do {
+            while (*iterator_ != '*') {
+              if (++iterator_ == end_) {
+                return;
+              }
+            };
+
+            if (++iterator_ == end_) {
+              return;
+            }
+          } while (*iterator_ != '/');
+
+          ++iterator_;
+
+          continue; // check for start of next comment right after this one
+        }
+
+        // not a comment, restore to previous iterator position
+        iterator_ = orig_itr;
+
+        return; // not a comment
+      }
+    }
+  };
+#endif
+
+NS_END // json
+NS_END // tests
 
 #endif

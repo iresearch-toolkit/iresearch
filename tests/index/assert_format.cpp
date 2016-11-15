@@ -169,7 +169,7 @@ void index_segment::add(const ifield& f) {
   const iresearch::payload* pay = attrs.get<iresearch::payload>();
 
   bool empty = true;
-  iresearch::doc_id_t doc_id = ir::type_limits<ir::type_t::doc_id_t>::min() + count_;
+  auto doc_id = (ir::type_limits<ir::type_t::doc_id_t>::min)() + count_;
 
   while (stream->next()) {
     tests::term& trm = fld.add(term->value());
@@ -343,8 +343,8 @@ void field_writer::write(
 
   // check term reader
   ASSERT_EQ(expected_term_reader->size(), actual_size);
-  ASSERT_EQ(expected_term_reader->min(), actual_min);
-  ASSERT_EQ(expected_term_reader->max(), actual_max);
+  ASSERT_EQ((expected_term_reader->min)(), actual_min);
+  ASSERT_EQ((expected_term_reader->max)(), actual_max);
 }
 
 void field_writer::end() { }
@@ -580,11 +580,11 @@ uint64_t term_reader::docs_count() const {
   return data_.docs.size();
 }
 
-const iresearch::bytes_ref& term_reader::min() const {
+const iresearch::bytes_ref& (term_reader::min)() const {
   return min_;
 }
 
-const iresearch::bytes_ref& term_reader::max() const {
+const iresearch::bytes_ref& (term_reader::max)() const {
   return max_;
 }
 
@@ -847,8 +847,8 @@ void assert_terms_next(
     const iresearch::term_reader& actual_term_reader,
     const iresearch::flags& features) {
   // check term reader
-  ASSERT_EQ(expected_term_reader.min(), actual_term_reader.min());
-  ASSERT_EQ(expected_term_reader.max(), actual_term_reader.max());
+  ASSERT_EQ((expected_term_reader.min)(), (actual_term_reader.min)());
+  ASSERT_EQ((expected_term_reader.max)(), (actual_term_reader.max)());
   ASSERT_EQ(expected_term_reader.size(), actual_term_reader.size());
   ASSERT_EQ(expected_term_reader.docs_count(), actual_term_reader.docs_count());
 
@@ -876,8 +876,8 @@ void assert_terms_next(
 
   // check term reader
   ASSERT_EQ(expected_term_reader.size(), actual_size);
-  ASSERT_EQ(expected_term_reader.min(), actual_min);
-  ASSERT_EQ(expected_term_reader.max(), actual_max);
+  ASSERT_EQ((expected_term_reader.min)(), actual_min);
+  ASSERT_EQ((expected_term_reader.max)(), actual_max);
 }
 
 void assert_terms_seek(
@@ -886,8 +886,8 @@ void assert_terms_seek(
     const iresearch::flags& features,
     size_t lookahead /* = 10 */) {
   // check term reader
-  ASSERT_EQ(expected_term_reader.min(), actual_term_reader.min());
-  ASSERT_EQ(expected_term_reader.max(), actual_term_reader.max());
+  ASSERT_EQ((expected_term_reader.min)(), (actual_term_reader.min)());
+  ASSERT_EQ((expected_term_reader.max)(), (actual_term_reader.max)());
   ASSERT_EQ(expected_term_reader.size(), actual_term_reader.size());
   ASSERT_EQ(expected_term_reader.docs_count(), actual_term_reader.docs_count());
 
