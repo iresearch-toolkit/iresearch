@@ -293,7 +293,6 @@ class stored_fields_reader final : public iresearch::stored_fields_reader {
   class compressing_document_reader: util::noncopyable { // noncopyable due to index_
    public:
     compressing_document_reader():
-      start_(type_limits<type_t::address_t>::invalid()),
       base_(type_limits<type_t::doc_id_t>::invalid()),
       size_(0) {
     }
@@ -307,7 +306,11 @@ class stored_fields_reader final : public iresearch::stored_fields_reader {
     void reset(doc_id_t doc);
 
     // expects 0-based doc id's
-    bool visit(doc_id_t doc, uint64_t start_ptr, const visitor_f& visitor);
+    bool visit(
+      doc_id_t doc, // document to visit
+      uint64_t start_ptr, // where block starts
+      const visitor_f& visitor // document visitor
+    );
 
    private: 
     //compressing_data_input data_in_;
@@ -320,7 +323,6 @@ class stored_fields_reader final : public iresearch::stored_fields_reader {
     uint32_t offsets_[stored_fields_writer::MAX_BUFFERED_DOCS]{}; // document offsets 
     uint32_t headers_[stored_fields_writer::MAX_BUFFERED_DOCS]{}; // document header lengths
     index_input::ptr fields_in_;
-    uint64_t start_; /* block start pointer */
     doc_id_t base_; // document base
     uint32_t size_; /* number of documents in a block */
     uint32_t num_blocks_; /* number of flushed blocks */

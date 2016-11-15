@@ -2244,8 +2244,6 @@ void stored_fields_reader::compressing_document_reader::reset(doc_id_t doc) {
   // read header lengths
   read_packed(*fields_in_, headers_, size_);
 
-  start_ = fields_in_->file_pointer();
-
   // read data block (documents can't overcome block boundaries)
   view_ = read_compact(*fields_in_, decomp_, buf_, data_);
 }
