@@ -40,13 +40,18 @@ bool write_header(data_output& out, Iterator begin, Iterator end) {
 /// Visitor(field_id id, bool next_element_exists);
 ////////////////////////////////////////////////////////////////////////////////
 template<typename Visitor>
-void visit_header(iresearch::data_input& in, const Visitor& visitor) {
+bool visit_header(iresearch::data_input& in, const Visitor& visitor) {
   field_id id;
   bool next;
+
   do {
     next = shift_unpack_32(in.read_vint(), id);
-    visitor(id, next);
+    if (!visitor(id, next)) {
+      return false;
+    }
   } while (next);
+
+  return true;
 }
 
 NS_END // stored

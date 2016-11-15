@@ -133,27 +133,21 @@ bool segment_reader::document(
   assert(type_limits<type_t::doc_id_t>::valid(doc));
   doc -= type_limits<type_t::doc_id_t>::min();
 
-  // clear document header
-  doc_header_.clear();
-
   auto doc_visitor = [this, &visitor](data_input& header, data_input& body) {
     // read document header
-    auto header_reader = [this] (field_id id, bool) {
-      doc_header_.push_back(id);
-    };
-    stored::visit_header(header, header_reader);
-    
-    // read document body
-    for (auto field_id : doc_header_) {
-      const field_meta* field = fields_.find(field_id);
+    auto header_reader = [this, &body, &visitor] (field_id id, bool) {
+      const field_meta* field = fields_.find(id);
       assert(field);
 
+      // read field
       if (!visitor(*field, body)) {
         return false;
       }
-    }
 
-    return true;
+      return true;
+    };
+
+    return stored::visit_header(header, header_reader);
   };
   
   return sfr_->visit(doc, doc_visitor);

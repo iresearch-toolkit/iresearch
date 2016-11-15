@@ -119,7 +119,6 @@ class IRESEARCH_API segment_reader final : public sub_reader {
   segment_reader() = default;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  mutable std::vector<field_id> doc_header_; // buffered document header
   struct {
     const directory* dir;
     uint64_t version;

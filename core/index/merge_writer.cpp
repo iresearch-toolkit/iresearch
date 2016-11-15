@@ -710,23 +710,23 @@ struct document_body final : iresearch::serializer {
   iresearch::data_input* in;
   iresearch::byte_type* buf;
   size_t buf_size;
-};
+}; // document_body 
 
-struct document_header : iresearch::serializer {
+struct document_header final : iresearch::serializer {
   bool write(iresearch::data_output& out) const {
     // write header - remap field id's
-    auto header_remapper = [this, &out] (iresearch::field_id id, bool next) {
+    auto remapper = [this, &out] (iresearch::field_id id, bool next) {
       const auto mapped_id = static_cast<iresearch::field_id>((*field_id_map)[field_id_base + id]);
       out.write_vint(iresearch::shift_pack_32(mapped_id, next));
+      return true;
     };
-    iresearch::stored::visit_header(*in, header_remapper);  
-    return true;
+    return iresearch::stored::visit_header(*in, remapper);  
   }
 
   iresearch::data_input* in;
   const id_map_t* field_id_map;
   size_t field_id_base{};
-};
+}; // document_header 
 
 // ...........................................................................
 // write stored field data
