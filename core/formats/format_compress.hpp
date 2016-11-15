@@ -295,8 +295,8 @@ class compressed_index : util::noncopyable {
 
     // find the right block
     const auto block = std::lower_bound(
-      blocks_.rbegin(), 
-      blocks_.rend()-1, // -1 for end marker
+      blocks_.rbegin() + 1, // +1 for end marker
+      blocks_.rend(), 
       key,
       [] (const compressed_index::block& lhs, doc_id_t rhs) {
         return lhs.key_base > rhs;

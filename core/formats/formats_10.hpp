@@ -263,15 +263,14 @@ class stored_fields_writer final : public iresearch::stored_fields_writer {
  private:
   void flush();
 
-  // TODO: check layout
   compressing_index_writer index;
   compressor compres;
-  bytes_output doc_body_; // per document body buffer
   bytes_output seg_buf_; // per segment buffer
   index_output::ptr fields_out; // fields output stream
   index_output::ptr index_out_; // index output stream
-  uint32_t offsets_[MAX_BUFFERED_DOCS]{}; // document offset
-  uint64_t last_offset_;
+  uint32_t bodies_[MAX_BUFFERED_DOCS]{}; // document bodies length
+  uint32_t headers_[MAX_BUFFERED_DOCS]{}; // headers length
+  uint32_t last_offset_;
   uint32_t doc_base;
   uint32_t num_buffered_docs;
   uint32_t buf_size; // block size
@@ -288,7 +287,11 @@ class stored_fields_reader final : public iresearch::stored_fields_reader {
   virtual void prepare(const reader_state& state) override;
 
   // expects 0-based doc id's
-  virtual bool visit(doc_id_t doc, const visitor_f& visitor) override;
+  virtual bool visit(
+    doc_id_t doc, 
+    const visitor_f& header, 
+    const visitor_f& body 
+  ) override;
 
   class compressing_data_input final : public data_input {
     public:
@@ -369,11 +372,17 @@ class stored_fields_reader final : public iresearch::stored_fields_reader {
     void reset(doc_id_t doc);
 
     // expects 0-based doc id's
-    compressing_data_input& document(doc_id_t doc, uint64_t start_ptr);
+    bool visit(
+      doc_id_t doc, 
+      uint64_t start_ptr, 
+      const visitor_f& header,
+      const visitor_f& body
+    );
 
    private: 
     compressing_data_input data_in_;
-    uint32_t offsets_[stored_fields_writer::MAX_BUFFERED_DOCS]{}; // document lengths
+    uint32_t offsets_[stored_fields_writer::MAX_BUFFERED_DOCS]{}; // document offsets 
+    uint32_t headers_[stored_fields_writer::MAX_BUFFERED_DOCS]{}; // document header lengths
     index_input::ptr fields_in_;
     uint64_t start_; /* block start pointer */
     doc_id_t base_; // document base

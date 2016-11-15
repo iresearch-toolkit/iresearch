@@ -696,15 +696,8 @@ bool write(
 // we treat document as the stored field, 
 // then we just put it into ordinary stored_fields_writer
 // ...........................................................................
-struct document final : iresearch::serializer {
+struct document_body final : iresearch::serializer {
   bool write(iresearch::data_output& out) const {
-    // write header - remap field id's
-    auto header_remapper = [this, &out] (iresearch::field_id id, bool next) {
-      const auto mapped_id = static_cast<iresearch::field_id>((*field_id_map)[field_id_base + id]);
-      out.write_vint(iresearch::shift_pack_32(mapped_id, next));
-    };
-    iresearch::stored::visit_header(*in, header_remapper);
-
     // write body
     for (size_t read = in->read_bytes(buf, buf_size); read;
          read = in->read_bytes(buf, buf_size)) {
@@ -717,6 +710,23 @@ struct document final : iresearch::serializer {
   iresearch::data_input* in;
   iresearch::byte_type* buf;
   size_t buf_size;
+};
+
+struct document_header : iresearch::serializer {
+  bool write(iresearch::data_output& out) const {
+    return iresearch::stored::write_header(out, fields.begin(), fields.end());
+  }
+
+  void add(iresearch::field_id id) {
+    const auto mapped_id = static_cast<iresearch::field_id>((*field_id_map)[field_id_base + id]);
+    fields.push_back(mapped_id);
+  }
+
+  void clear() {
+    fields.clear();
+  }
+
+  std::vector<iresearch::field_id> fields;
   const id_map_t* field_id_map;
   size_t field_id_base{};
 };
@@ -736,15 +746,26 @@ void write(
     ReaderIterator begin,
     ReaderIterator end) {
   iresearch::stored_fields_writer::ptr sfw = codec.get_stored_fields_writer();
+  
+  document_header header;
+  header.field_id_map = &field_id_map;
 
-  document serializer;
-  serializer.buf = buf; // copy buffer
-  serializer.buf_size = buf_size; // copy buffer size
-  serializer.field_id_map = &field_id_map;
+  document_body body;
+  body.buf = buf; // copy buffer
+  body.buf_size = buf_size; // copy buffer size
 
-  iresearch::stored_fields_reader::visitor_f copier = [&serializer, &sfw](iresearch::data_input& in) {
-    serializer.in = &in; // set document stream
-    return sfw->write(serializer);
+  iresearch::stored_fields_reader::visitor_f body_copier = [&body, &sfw](iresearch::data_input& in) {
+    body.in = &in; // set document stream
+    return sfw->write(body);
+  };
+
+  iresearch::stored_fields_reader::visitor_f header_remapper = [&header](iresearch::data_input& in) {
+    header.clear();
+    auto header_remapper = [&header] (iresearch::field_id id, bool) {
+      header.add(id);
+    };
+    iresearch::stored::visit_header(in, header_remapper);  
+    return true;
   };
 
   sfw->prepare(dir, segment_name);
@@ -758,12 +779,12 @@ void write(
     for (size_t i = 0, count = doc_id_map.size(); i < count; ++i) {
       if (doc_id_map[i] != MASKED_DOC_ID) {
         auto doc = static_cast<iresearch::doc_id_t>(i); // can't have more docs then highest doc_id (offset == doc_id as per compute_doc_ids(...))
-        reader.document(doc, copier); // in order to get access to the beginning of the document, we use low-level visitor API here 
-        sfw->end(nullptr); // do not write header here
+        reader.document(doc, header_remapper, body_copier); // in order to get access to the beginning of the document, we use low-level visitor API here 
+        sfw->end(&header);
       }
     }
 
-    serializer.field_id_base += reader.fields().size();
+    header.field_id_base += reader.fields().size();
   }
 
   sfw->finish();

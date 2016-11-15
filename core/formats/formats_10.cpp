@@ -1,7 +1,7 @@
 //
 // IResearch search engine 
 // 
-// Copyright © 2016 by EMC Corporation, All Rights Reserved
+// Copyright Â© 2016 by EMC Corporation, All Rights Reserved
 // 
 // This software contains the intellectual property of EMC Corporation or is licensed to
 // EMC Corporation from third parties. Use of this software and the intellectual property
@@ -2130,7 +2130,8 @@ void stored_fields_writer::flush() {
   // write header
   fields_out->write_vint(doc_base);
   fields_out->write_vint(num_buffered_docs);
-  write_packed(*fields_out, offsets_, num_buffered_docs);
+  write_packed(*fields_out, bodies_, num_buffered_docs);
+  write_packed(*fields_out, headers_, num_buffered_docs);
 
   // write compressed data
   write_compact(*fields_out, compres, seg_buf_.c_str(), seg_buf_.size());
@@ -2144,25 +2145,27 @@ void stored_fields_writer::flush() {
 }
 
 void stored_fields_writer::end(const serializer* header) {
+  const auto header_offset = seg_buf_.size();
+
+  if (header_offset == last_offset_) {
+    // nothing has been written
+    return;
+  }
+  
   // write document header 
   if (header) {
     header->write(seg_buf_);
   }
 
-  // copy buffered document body to segment buffer
-  {
-    seg_buf_.write_bytes(doc_body_.c_str(), doc_body_.size()); // copy data
-    doc_body_.reset(); // reset stream
-  }
+  // write document header length 
+  headers_[num_buffered_docs] = static_cast<uint32_t>(seg_buf_.size() - header_offset); 
+  // write documen length
+  bodies_[num_buffered_docs] = static_cast<uint32_t>(seg_buf_.size() - last_offset_);
 
-  const uint64_t offset = static_cast<uint64_t>(seg_buf_.size());
-
-  offsets_[num_buffered_docs] = static_cast<uint32_t>(offset - last_offset_); // write document offset
-  last_offset_ = offset;
+  last_offset_ = seg_buf_.size();
   ++num_buffered_docs;
 
-  if (num_buffered_docs >= MAX_BUFFERED_DOCS 
-      || offset > buf_size) {
+  if (num_buffered_docs >= MAX_BUFFERED_DOCS || last_offset_ >= buf_size) {
     flush();
   }
 }
@@ -2192,7 +2195,7 @@ void stored_fields_writer::prepare(directory& dir, const string_ref& seg_name) {
 
 bool stored_fields_writer::write(const serializer& writer) {
   REGISTER_TIMER_DETAILED();
-  return writer.write(doc_body_); // write value
+  return writer.write(seg_buf_); // write value
 }
 
 void stored_fields_writer::finish() {
@@ -2240,6 +2243,9 @@ void stored_fields_reader::compressing_document_reader::reset(doc_id_t doc) {
   // convert lengths into offsets
   detail::delta_decode(offsets_, offsets_ + size_);
 
+  // read header lengths
+  read_packed(*fields_in_, headers_, size_);
+
   start_ = fields_in_->file_pointer();
 }
 
@@ -2282,8 +2288,11 @@ void stored_fields_reader::compressing_data_input::refill() {
 }
 
 // expects 0-based doc id's
-stored_fields_reader::compressing_data_input& stored_fields_reader::compressing_document_reader::document(
-    doc_id_t doc, uint64_t start_ptr) {
+bool stored_fields_reader::compressing_document_reader::visit(
+    doc_id_t doc, 
+    uint64_t start_ptr,
+    const visitor_f& vheader,
+    const visitor_f& vbody) {
 
   auto doc_offset = [this](doc_id_t idx) {
     return 0 == idx ? 0 : offsets_[idx - 1];
@@ -2297,13 +2306,31 @@ stored_fields_reader::compressing_data_input& stored_fields_reader::compressing_
   assert(contains(doc));
 
   const doc_id_t idx = doc - base_;
-  const uint32_t offset = doc_offset(idx);
-  const uint32_t length = doc_offset(idx+1) - offset;
-
-  // seek to the beginning of the current doc 
-  data_in_.reset(start_, length, offset); 
+  const uint32_t begin = doc_offset(idx); // where document begins 
+  const uint32_t end = doc_offset(idx+1); // where document ends
+  const uint32_t header = headers_[idx]; // header length
   
-  return data_in_;
+  // visit header
+  if (header) {
+    data_in_.reset(start_, header, end - header);
+
+    while (!data_in_.eof()) {
+      if (!vheader(data_in_)) {
+        return false;
+      }
+    }
+  }
+      
+  // visit document body
+  data_in_.reset(start_, end - header - begin, begin); 
+
+  while (!data_in_.eof()) {
+    if (!vbody(data_in_)) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 void stored_fields_reader::compressing_document_reader::prepare(
@@ -2344,25 +2371,18 @@ void stored_fields_reader::compressing_document_reader::prepare(
   format_utils::read_checksum(*fields_in_);
 }
 
-bool stored_fields_reader::visit(doc_id_t doc, const visitor_f& visitor) {
-  //auto* offset = index_.lower_bound(doc);
+bool stored_fields_reader::visit(
+    doc_id_t doc, 
+    const visitor_f& header,
+    const visitor_f& body) {
   auto offset = index_.lower_bound(doc);
 
-//  if (!offset) {
   if (index_.end() == offset) {
     // there is no such document with the specified id 
     return false;
   }
 
-  auto& stream = docs_.document(doc, offset->second);
-
-  while (!stream.eof()) {
-    if (!visitor(stream)) {
-      return false;
-    }
-  }
-
-  return true;
+  return docs_.visit(doc, offset->second, header, body);
 }
 
 void stored_fields_reader::prepare( const reader_state& state ) {
