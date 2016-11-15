@@ -40,8 +40,7 @@ class IRESEARCH_API segment_reader final : public sub_reader {
   // expects 1-based document id
   virtual bool document(
     doc_id_t id, 
-    const stored_fields_reader::visitor_f& header, 
-    const stored_fields_reader::visitor_f& body 
+    const stored_fields_reader::visitor_f& visitor 
   ) const override;
 
   using sub_reader::docs_count;

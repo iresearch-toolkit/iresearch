@@ -121,11 +121,10 @@ const term_reader* segment_reader::terms(const string_ref& field) const {
 
 bool segment_reader::document(
     doc_id_t doc, 
-    const stored_fields_reader::visitor_f& header,
-    const stored_fields_reader::visitor_f& body) const {
+    const stored_fields_reader::visitor_f& visitor) const {
   assert(type_limits<type_t::doc_id_t>::valid(doc));
   doc -= type_limits<type_t::doc_id_t>::min();
-  return sfr_->visit(doc, header, body);
+  return sfr_->visit(doc, visitor);
 }
 
 bool segment_reader::document(
@@ -134,31 +133,30 @@ bool segment_reader::document(
   assert(type_limits<type_t::doc_id_t>::valid(doc));
   doc -= type_limits<type_t::doc_id_t>::min();
 
+  // clear document header
   doc_header_.clear();
-  auto header_visitor = [this](data_input& in) {
+
+  auto doc_visitor = [this, &visitor](data_input& header, data_input& body) {
     // read document header
     auto header_reader = [this] (field_id id, bool) {
       doc_header_.push_back(id);
     };
-    stored::visit_header(in, header_reader);
-    return true;
-  };
-  
-  auto body_visitor = [this, &visitor] (data_input& in) {
+    stored::visit_header(header, header_reader);
+    
     // read document body
     for (auto field_id : doc_header_) {
       const field_meta* field = fields_.find(field_id);
       assert(field);
 
-      if (!visitor(*field, in)) {
+      if (!visitor(*field, body)) {
         return false;
       }
     }
 
     return true;
   };
-
-  return sfr_->visit(doc, header_visitor, body_visitor);
+  
+  return sfr_->visit(doc, doc_visitor);
 }
 
 sub_reader::value_visitor_f segment_reader::values(

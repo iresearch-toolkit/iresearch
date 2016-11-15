@@ -206,16 +206,15 @@ struct IRESEARCH_API stored_fields_reader {
   DECLARE_PTR(stored_fields_reader);
   DECLARE_FACTORY(stored_fields_reader);
 
-  typedef std::function<bool(data_input&)> visitor_f;
+  typedef std::function<bool(
+    data_input& /* header */, 
+    data_input& /* body */
+  )> visitor_f;
   
   virtual ~stored_fields_reader();
 
   virtual void prepare(const reader_state& state) = 0;
-  virtual bool visit(
-    doc_id_t doc, 
-    const visitor_f& header,
-    const visitor_f& visitor
-  ) = 0;
+  virtual bool visit(doc_id_t doc, const visitor_f& visitor) = 0;
 };
 
 // -----------------------------------------------------------------------------

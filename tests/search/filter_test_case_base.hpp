@@ -289,7 +289,6 @@ class filter_test_case_base : public index_test_base {
 struct empty_index_reader : iresearch::singleton<empty_index_reader>, iresearch::index_reader {
   virtual bool document(
       iresearch::doc_id_t, 
-      const iresearch::stored_fields_reader::visitor_f&,
       const iresearch::stored_fields_reader::visitor_f&) const {
     return false; 
   }
@@ -333,7 +332,6 @@ struct empty_sub_reader : iresearch::singleton<empty_sub_reader>, iresearch::sub
 
   virtual bool document(
       iresearch::doc_id_t, 
-      const iresearch::stored_fields_reader::visitor_f&,
       const iresearch::stored_fields_reader::visitor_f&) const { 
     return false; 
   }

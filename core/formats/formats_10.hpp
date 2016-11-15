@@ -287,72 +287,7 @@ class stored_fields_reader final : public iresearch::stored_fields_reader {
   virtual void prepare(const reader_state& state) override;
 
   // expects 0-based doc id's
-  virtual bool visit(
-    doc_id_t doc, 
-    const visitor_f& header, 
-    const visitor_f& body 
-  ) override;
-
-  class compressing_data_input final : public data_input {
-    public:
-    void prepare(index_input* in, uint32_t block_size) {
-      assert(in);
-      in_ = in;
-      // ensure that we have enough space to store uncompressed data
-      oversize(data_, block_size); 
-    }
-
-    void reset(uint64_t start, size_t length, size_t offset) {
-      in_->seek(start);
-      len_ = length;
-      where_ = 0;
-
-      if (len_) {
-        refill();
-
-        // refill until data_ contains the requested offset
-        while (offset >= view_.size()) {
-          offset -= view_.size();
-          refill();
-        }
-      }
-
-      pos_ = offset;
-    }
-
-    void skip(size_t offset) {
-      assert(pos_ + offset <= view_.size());
-      pos_ += offset;
-      where_ += offset;
-    }
-
-    virtual size_t file_pointer() const override {
-      return where_;
-    }
-
-    virtual size_t length() const override {
-      return len_;
-    }
-
-    virtual bool eof() const override {
-      return where_ >= len_;
-    }
-
-    virtual byte_type read_byte() override;
-    virtual size_t read_bytes(byte_type* b, size_t size) override;
-
-   private:
-    void refill();
-
-    index_input* in_;
-    decompressor decomp_;
-    bstring buf_; // compressed data
-    bstring data_; // uncompressed data
-    bytes_ref view_; // view on valid data
-    size_t pos_; // position in decompressed buffer
-    size_t len_; // document length
-    size_t where_; // absolute position in data 
-  };
+  virtual bool visit(doc_id_t doc, const visitor_f& visitor) override;
 
  private:
   class compressing_document_reader: util::noncopyable { // noncopyable due to index_
@@ -372,15 +307,16 @@ class stored_fields_reader final : public iresearch::stored_fields_reader {
     void reset(doc_id_t doc);
 
     // expects 0-based doc id's
-    bool visit(
-      doc_id_t doc, 
-      uint64_t start_ptr, 
-      const visitor_f& header,
-      const visitor_f& body
-    );
+    bool visit(doc_id_t doc, uint64_t start_ptr, const visitor_f& visitor);
 
    private: 
-    compressing_data_input data_in_;
+    //compressing_data_input data_in_;
+    decompressor decomp_;
+    bstring buf_; // compressed data
+    bstring data_; // uncompressed data
+    bytes_ref view_; // view on valid data
+    bytes_ref_input header_; // header stream
+    bytes_ref_input body_; // body stream
     uint32_t offsets_[stored_fields_writer::MAX_BUFFERED_DOCS]{}; // document offsets 
     uint32_t headers_[stored_fields_writer::MAX_BUFFERED_DOCS]{}; // document header lengths
     index_input::ptr fields_in_;

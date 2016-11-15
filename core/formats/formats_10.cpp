@@ -2233,11 +2233,9 @@ void stored_fields_reader::compressing_document_reader::reset(doc_id_t doc) {
   // read header
   base_ = fields_in_->read_vint(); // base doc_id
   size_ = fields_in_->read_vint(); // number of documents in block
-  if (!contains(doc)) {
-    /* corrupted index */
-    throw index_error();
-  }
-  
+
+  assert(contains(doc));
+
   // read document lengths
   read_packed(*fields_in_, offsets_, size_);
   // convert lengths into offsets
@@ -2247,52 +2245,16 @@ void stored_fields_reader::compressing_document_reader::reset(doc_id_t doc) {
   read_packed(*fields_in_, headers_, size_);
 
   start_ = fields_in_->file_pointer();
-}
 
-byte_type stored_fields_reader::compressing_data_input::read_byte() {
-  if (pos_ == view_.size()) {
-    refill();
-  }
-
-  ++where_;
-
-  return view_[pos_++];
-}
-
-size_t stored_fields_reader::compressing_data_input::read_bytes(
-    byte_type* b, size_t size) {
-  size_t read = 0;
-  size_t copied;
-
-  while(read < size && !eof()) {
-    if (pos_ == view_.size()) {
-      refill();
-    }
-
-    copied = std::min(size, len_ - where_);
-    copied = std::min(copied, view_.size()); // if data was split between buffers
-    std::memcpy(b, view_.c_str() + pos_, sizeof(byte_type) * copied);
-
-    read += copied;
-    b += copied;
-    pos_ += copied;
-    where_ += copied;
-  }
-
-  return read;
-}
-
-void stored_fields_reader::compressing_data_input::refill() {
-  view_ = read_compact(*in_, decomp_, buf_, data_);
-  pos_ = 0;
+  // read data block (documents can't overcome block boundaries)
+  view_ = read_compact(*fields_in_, decomp_, buf_, data_);
 }
 
 // expects 0-based doc id's
 bool stored_fields_reader::compressing_document_reader::visit(
     doc_id_t doc, 
-    uint64_t start_ptr,
-    const visitor_f& vheader,
-    const visitor_f& vbody) {
+    uint64_t start_ptr, 
+    const visitor_f& visitor) {
 
   auto doc_offset = [this](doc_id_t idx) {
     return 0 == idx ? 0 : offsets_[idx - 1];
@@ -2300,32 +2262,23 @@ bool stored_fields_reader::compressing_document_reader::visit(
 
   if (!contains(doc)) {
     fields_in_->seek(start_ptr);
-    reset(doc);
+    reset(doc); 
   }
-
   assert(contains(doc));
 
   const doc_id_t idx = doc - base_;
   const uint32_t begin = doc_offset(idx); // where document begins 
   const uint32_t end = doc_offset(idx+1); // where document ends
   const uint32_t header = headers_[idx]; // header length
-  
-  // visit header
-  if (header) {
-    data_in_.reset(start_, header, end - header);
+  assert(end >= (begin + header));
 
-    while (!data_in_.eof()) {
-      if (!vheader(data_in_)) {
-        return false;
-      }
-    }
-  }
-      
-  // visit document body
-  data_in_.reset(start_, end - header - begin, begin); 
+  // reset streams
+  header_.reset(view_.c_str() + end - header, header);
+  body_.reset(view_.c_str() + begin, end - begin - header);
 
-  while (!data_in_.eof()) {
-    if (!vbody(data_in_)) {
+  // visit document
+  while (!body_.eof()) {
+    if (!visitor(header_, body_)) {
       return false;
     }
   }
@@ -2353,8 +2306,9 @@ void stored_fields_reader::compressing_document_reader::prepare(
     throw index_error();
   }
 
-  data_in_.prepare( fields_in_.get(), block_size);
-  fields_in_->seek( ptr );
+  // ensure that we have enough space to store uncompressed data
+  oversize(data_, block_size);
+  fields_in_->seek(ptr);
 
   num_blocks_ = fields_in_->read_vint();
   num_incomplete_blocks_ = fields_in_->read_vint();
@@ -2371,18 +2325,15 @@ void stored_fields_reader::compressing_document_reader::prepare(
   format_utils::read_checksum(*fields_in_);
 }
 
-bool stored_fields_reader::visit(
-    doc_id_t doc, 
-    const visitor_f& header,
-    const visitor_f& body) {
-  auto offset = index_.lower_bound(doc);
+bool stored_fields_reader::visit(doc_id_t doc, const visitor_f& visitor) {
+  const auto offset = index_.lower_bound(doc);
 
   if (index_.end() == offset) {
     // there is no such document with the specified id 
     return false;
   }
 
-  return docs_.visit(doc, offset->second, header, body);
+  return docs_.visit(doc, offset->second, visitor);
 }
 
 void stored_fields_reader::prepare( const reader_state& state ) {

@@ -908,10 +908,6 @@ class format_test_case_base : public index_test_base {
       writer->finish();
     }
 
-    static auto empty_header = [](iresearch::data_input&) {
-      return false;
-    };
-
     // read documents
     {
       ir::fields_meta fields;
@@ -924,7 +920,7 @@ class format_test_case_base : public index_test_base {
 
       std::string expected_id;
       std::string expected_name;
-      auto check_document = [&expected_id, &expected_name] (ir::data_input& in) {
+      auto check_document = [&expected_id, &expected_name] (ir::data_input& /*header*/, ir::data_input& in) {
         if (ir::read_string<std::string>(in) != expected_id) {
           return false;
         }
@@ -950,7 +946,7 @@ class format_test_case_base : public index_test_base {
         for (const document* doc; i < seg_1.docs_count && (doc = gen.next());++i) {
           expected_id = doc->get<tests::templates::string_field>(0).value();
           expected_name = doc->get<tests::templates::string_field>(1).value();
-          ASSERT_TRUE(reader_1->visit(i, empty_header, check_document));
+          ASSERT_TRUE(reader_1->visit(i, check_document));
         }
 
         // check 2nd segment (same as 1st)
@@ -963,7 +959,7 @@ class format_test_case_base : public index_test_base {
         auto reader_2 = codec()->get_stored_fields_reader();
         reader_2->prepare(state_2);
 
-        auto read_document = [&expected_id, &expected_name] (ir::data_input& in) {
+        auto read_document = [&expected_id, &expected_name] (ir::data_input& /*header*/, ir::data_input& in) {
           expected_id = ir::read_string<std::string>(in);
           expected_name = ir::read_string<std::string>(in);
           return true;
@@ -971,8 +967,8 @@ class format_test_case_base : public index_test_base {
 
         // check for equality
         for (ir::doc_id_t i = 0, count = seg_2.docs_count; i < count; ++i) {
-          reader_1->visit(i, empty_header, read_document);
-          reader_2->visit(i, empty_header, check_document);
+          reader_1->visit(i, read_document);
+          reader_2->visit(i, check_document);
         }
       }
 
@@ -991,7 +987,7 @@ class format_test_case_base : public index_test_base {
         for (const document* doc; i < seg_3.docs_count && (doc = gen.next()); ++i) {
           expected_id = doc->get<tests::templates::string_field>(0).value();
           expected_name = doc->get<tests::templates::string_field>(1).value();
-          ASSERT_TRUE(reader->visit(i, empty_header, check_document));
+          ASSERT_TRUE(reader->visit(i, check_document));
         }
       }
     }
@@ -1644,10 +1640,6 @@ class format_test_case_base : public index_test_base {
 
     gen.reset();
     
-    static auto empty_header = [](iresearch::data_input&) {
-      return false;
-    };
-
     // read stored documents
     {
       iresearch::document_mask mask;
@@ -1660,7 +1652,7 @@ class format_test_case_base : public index_test_base {
       iresearch::stored_fields_reader::ptr reader = codec()->get_stored_fields_reader();
       reader->prepare(state);
 
-      auto visitor = [&fields, &values] (data_input& in) {
+      auto visitor = [&fields, &values] (data_input& /*header*/, data_input& in) {
         auto& expected_field = values.front();
 
         // read field meta
@@ -1697,7 +1689,7 @@ class format_test_case_base : public index_test_base {
       };
 
       for (uint64_t i = 0, docs_count = meta.docs_count; i < docs_count; ++i) {
-        ASSERT_TRUE(reader->visit(iresearch::doc_id_t(i), empty_header, visitor));
+        ASSERT_TRUE(reader->visit(iresearch::doc_id_t(i), visitor));
       }
     }
   }

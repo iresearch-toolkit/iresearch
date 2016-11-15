@@ -754,18 +754,15 @@ void write(
   body.buf = buf; // copy buffer
   body.buf_size = buf_size; // copy buffer size
 
-  iresearch::stored_fields_reader::visitor_f body_copier = [&body, &sfw](iresearch::data_input& in) {
-    body.in = &in; // set document stream
-    return sfw->write(body);
-  };
-
-  iresearch::stored_fields_reader::visitor_f header_remapper = [&header](iresearch::data_input& in) {
+  iresearch::stored_fields_reader::visitor_f visitor = [&header, &body, &sfw](iresearch::data_input& header_in, iresearch::data_input& body_in) {
     header.clear();
     auto header_remapper = [&header] (iresearch::field_id id, bool) {
       header.add(id);
     };
-    iresearch::stored::visit_header(in, header_remapper);  
-    return true;
+    iresearch::stored::visit_header(header_in, header_remapper);  
+
+    body.in = &body_in; // set document stream
+    return sfw->write(body);
   };
 
   sfw->prepare(dir, segment_name);
@@ -779,7 +776,7 @@ void write(
     for (size_t i = 0, count = doc_id_map.size(); i < count; ++i) {
       if (doc_id_map[i] != MASKED_DOC_ID) {
         auto doc = static_cast<iresearch::doc_id_t>(i); // can't have more docs then highest doc_id (offset == doc_id as per compute_doc_ids(...))
-        reader.document(doc, header_remapper, body_copier); // in order to get access to the beginning of the document, we use low-level visitor API here 
+        reader.document(doc, visitor); // in order to get access to the beginning of the document, we use low-level visitor API here 
         sfw->end(&header);
       }
     }
