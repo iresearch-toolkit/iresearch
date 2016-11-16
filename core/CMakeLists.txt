@@ -640,11 +640,11 @@ else()
     set(IResearch_STATIC_LIBRARIES "${IResearch_STATIC_LIBRARIES} addlib '${ELEMENT}'\\n")
   endforeach ()
 
-  set(IResearch_STATIC_LIBRARIES_CMD "echo \"create '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>'\\n addlib '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>'\\n ${IResearch_STATIC_LIBRARIES} save\\n end\" | ar -M")
-  string(REPLACE " " ";" IResearch_STATIC_LIBRARIES_CMD "${IResearch_STATIC_LIBRARIES_CMD}") # COMMAND requires ';' instead of ' '
+  set(IResearch_STATIC_LIBRARIES_CMD "`which echo` -e \"create '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>'\\n addlib '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>'\\n ${IResearch_STATIC_LIBRARIES} save\\n end\" | ar -M")
   add_custom_command(
     TARGET ${IResearch_TARGET_NAME}-static POST_BUILD
-    COMMAND ${IResearch_STATIC_LIBRARIES_CMD}
+    COMMAND sh -c ${IResearch_STATIC_LIBRARIES_CMD}
+    VERBATIM
   )
 endif()
 
