@@ -274,6 +274,7 @@ class stored_fields_writer final : public iresearch::stored_fields_writer {
   uint32_t doc_base;
   uint32_t num_buffered_docs;
   uint32_t buf_size; // block size
+  uint32_t block_max_size_{}; // actual max block size
   uint32_t num_blocks_; // number of flushed blocks
   uint32_t num_incomplete_blocks_; // number of incomplete flushed blocks
 };
@@ -297,13 +298,19 @@ class stored_fields_reader final : public iresearch::stored_fields_reader {
       size_(0) {
     }
 
-    void prepare(const directory& dir, const std::string& name, uint64_t ptr);
+    void prepare(
+      const directory& dir, 
+      const std::string& name, 
+      uint32_t num_blocks, 
+      uint32_t num_incomplete_blocks, 
+      uint32_t block_size
+    );
 
     inline bool contains(doc_id_t doc) const {
       return doc >= base_ && doc < (base_ + size_);
     }
 
-    void reset(doc_id_t doc);
+    void load_block(uint64_t block_ptr);
 
     // expects 0-based doc id's
     bool visit(
@@ -327,6 +334,7 @@ class stored_fields_reader final : public iresearch::stored_fields_reader {
     uint32_t size_; /* number of documents in a block */
     uint32_t num_blocks_; /* number of flushed blocks */
     uint32_t num_incomplete_blocks_; /* number of incomplete flushed blocks */
+    uint32_t block_max_size_{}; // size of the biggest block
   };
 
   compressing_document_reader docs_;

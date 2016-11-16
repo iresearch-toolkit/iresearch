@@ -2142,6 +2142,12 @@ void stored_fields_writer::flush() {
   // write compressed data
   write_compact(*fields_out, compres, seg_buf_.c_str(), seg_buf_.size());
 
+  // determine max block size
+  block_max_size_ = std::max(
+    block_max_size_, 
+    static_cast<uint32_t>(seg_buf_.size())
+  );
+
   // reset
   seg_buf_.reset();
   last_offset_ = 0;
@@ -2185,7 +2191,6 @@ void stored_fields_writer::prepare(directory& dir, const string_ref& seg_name) {
   file_name(name, seg_name, FIELDS_EXT);
   fields_out = dir.create(name);
   format_utils::write_header(*fields_out, FORMAT_FIELDS, FORMAT_MAX);
-  fields_out->write_vint(buf_size); // TODO: store max block size!!!!
   fields_out->write_vint(packed::VERSION);
 
   // prepare stored fields index
@@ -2209,14 +2214,16 @@ void stored_fields_writer::finish() {
     flush();
     ++num_incomplete_blocks_;
   }
-
-  index.finish(); // finish index
-  index_out_->write_vlong(fields_out->file_pointer());
-  format_utils::write_footer(*index_out_);
-
-  fields_out->write_vint(num_blocks_);
-  fields_out->write_vint(num_incomplete_blocks_);
+ 
+  // finish data stream 
   format_utils::write_footer(*fields_out);
+
+  // finish index stream
+  index.finish(); // finish index
+  index_out_->write_vint(num_blocks_); // total number of blocks
+  index_out_->write_vint(num_incomplete_blocks_); // total number of incomplete blocks
+  index_out_->write_vint(block_max_size_); // size of the biggest block
+  format_utils::write_footer(*index_out_);
 
   index_out_.reset();
   fields_out.reset();
@@ -2235,13 +2242,14 @@ void stored_fields_writer::reset() {
 // --SECTION--                                             stored_fields_reader 
 // ----------------------------------------------------------------------------
 
-void stored_fields_reader::compressing_document_reader::reset(doc_id_t doc) {
+void stored_fields_reader::compressing_document_reader::load_block(uint64_t block_ptr) {
+  // seek to block start pointer
+  fields_in_->seek(block_ptr);
+
   // read header
   base_ = fields_in_->read_vint(); // base doc_id
   size_ = fields_in_->read_vint(); // number of documents in block
-
-  assert(contains(doc));
-
+  
   // read document lengths
   read_packed(*fields_in_, offsets_, size_);
   // convert lengths into offsets
@@ -2249,7 +2257,10 @@ void stored_fields_reader::compressing_document_reader::reset(doc_id_t doc) {
 
   // read header lengths
   read_packed(*fields_in_, headers_, size_);
-
+  
+  // ensure that we have enough space to store uncompressed data
+  data_.resize(block_max_size_);
+  
   // read data block (documents can't overcome block boundaries)
   view_ = read_compact(*fields_in_, decomp_, buf_, data_);
 }
@@ -2265,8 +2276,7 @@ bool stored_fields_reader::compressing_document_reader::visit(
   };
 
   if (!contains(doc)) {
-    fields_in_->seek(start_ptr);
-    reset(doc); 
+    load_block(start_ptr); 
   }
   assert(contains(doc));
 
@@ -2293,7 +2303,9 @@ bool stored_fields_reader::compressing_document_reader::visit(
 void stored_fields_reader::compressing_document_reader::prepare(
     const directory& dir,
     const std::string& name,
-    uint64_t ptr) {
+    uint32_t num_blocks, 
+    uint32_t num_incomplete_blocks, 
+    uint32_t block_max_size) {
   fields_in_ = dir.open(name);
 
   format_utils::check_header(
@@ -2303,30 +2315,22 @@ void stored_fields_reader::compressing_document_reader::prepare(
     stored_fields_writer::FORMAT_MAX
   );
 
-  const uint32_t block_size = fields_in_->read_vint();
   const uint32_t version = fields_in_->read_vint();
   if (version != packed::VERSION) {
-    /* invalid packed version */
+    // invalid packed version
     throw index_error();
   }
 
-  // ensure that we have enough space to store uncompressed data
-  oversize(data_, block_size);
-  fields_in_->seek(ptr);
-
-  num_blocks_ = fields_in_->read_vint();
-  num_incomplete_blocks_ = fields_in_->read_vint();
-  if ( num_incomplete_blocks_ > num_blocks_ ) {
-    /* invalid block count */
-    throw index_error();
-  }
-
-  /* Since field values are too large
-   * it is too costly to verify checksum of
-   * the entire file. Here we perform cheap
-   * error detection which could recognize
-   * some forms of corruption. */
+  // Since field values are too large
+  // it is too costly to verify checksum of
+  // the entire file. Here we perform cheap
+  // error detection which could recognize
+  // some forms of corruption
   format_utils::read_checksum(*fields_in_);
+  
+  num_blocks_ = num_blocks;
+  num_incomplete_blocks_ = num_incomplete_blocks;
+  block_max_size_ = block_max_size;
 }
 
 bool stored_fields_reader::visit(doc_id_t doc, const visitor_f& visitor) {
@@ -2358,12 +2362,18 @@ void stored_fields_reader::prepare( const reader_state& state ) {
   };
 
   index_.read(in, state.meta->docs_count, visitor);
-  const uint64_t max_ptr = in.read_vlong();
+  const uint32_t num_blocks = in.read_vint(); // total # of complete blocks
+  const uint32_t num_incomplete_blocks = in.read_vint(); // total # of incomplete blocks
+  if (num_incomplete_blocks > num_blocks) {
+    // invalid block count
+    throw index_error();
+  }
+  const uint32_t block_max_size = in.read_vint(); // size of the biggest block
   format_utils::check_footer(in);
 
   // init document reader
   file_name(buf, state.meta->name, stored_fields_writer::FIELDS_EXT);
-  docs_.prepare(*state.dir, buf, max_ptr);
+  docs_.prepare(*state.dir, buf, num_blocks, num_incomplete_blocks, block_max_size);
 
   fields_ = state.fields;
 }

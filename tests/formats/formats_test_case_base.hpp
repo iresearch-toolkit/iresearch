@@ -1521,6 +1521,89 @@ class format_test_case_base : public index_test_base {
     }
   }
 
+  void stored_fields_big_document_read_write() {
+    struct big_stored_field : iresearch::serializer {
+      bool write(iresearch::data_output& out) const {
+        out.write_bytes(reinterpret_cast<const iresearch::byte_type*>(buf), sizeof buf);
+        return true;
+      }
+
+      char buf[65536];
+    } field; // big_stored_field
+
+    std::fstream stream(resource("simple_two_column.csv"));
+    ASSERT_TRUE(stream);
+
+    const size_t fields_count = 3;
+      
+    iresearch::segment_meta segment("big_docs", nullptr);
+
+    // write big document 
+    {
+      stored_fields_writer::ptr writer = codec()->get_stored_fields_writer();
+      writer->prepare(dir(), segment.name);
+      for (size_t size = fields_count; size; --size) {
+        stream.read(field.buf, sizeof field.buf);
+        ASSERT_TRUE(stream); // ensure that all requested data has been read
+        writer->write(field);
+      }
+      ++segment.docs_count;
+      writer->end(nullptr);
+      writer->finish();
+    }
+
+    // read big document
+    {
+      iresearch::reader_state state{ codec().get(), &dir(), nullptr, nullptr, &segment };
+
+      iresearch::stored_fields_reader::ptr reader = codec()->get_stored_fields_reader();
+      reader->prepare(state);
+
+      auto check_document = [&field, &stream, fields_count](iresearch::data_input& header, iresearch::data_input& body) {
+        // check empty header
+        {
+          iresearch::byte_type b;
+          if (header.read_bytes(&b, 1)) {
+            // read more that we actually have
+            return false;
+          }
+        }
+
+        // check body
+        {
+          char buf[sizeof field.buf];
+
+          for (auto size = fields_count; size; -- size) {
+            stream.read(field.buf, sizeof field.buf);
+            if (!stream) {
+              // have reached the end
+              return false;
+            }
+
+            const auto read = body.read_bytes(reinterpret_cast<iresearch::byte_type*>(buf), sizeof buf);
+            if (read != sizeof buf) {
+              // invalid length
+              return false;
+            }
+
+            if (std::memcmp(buf, field.buf, sizeof buf)) {
+              // invalid data
+              return false;
+            }
+          }
+        }
+
+        return true;
+      };
+
+      stream.clear(); // clear eof flag if set
+      stream.seekg(0, stream.beg); // seek to the beginning of the file
+      std::memset(field.buf, 0, sizeof field.buf); // clear buffer
+      
+      ASSERT_TRUE(reader->visit(0, check_document));
+    }
+  }
+
   void stored_fields_read_write() {
     struct Value {
       enum class Type {
