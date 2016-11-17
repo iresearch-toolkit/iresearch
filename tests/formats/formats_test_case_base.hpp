@@ -1532,21 +1532,23 @@ class format_test_case_base : public index_test_base {
     } field; // big_stored_field
 
     std::fstream stream(resource("simple_two_column.csv"));
-    ASSERT_TRUE(stream);
+    ASSERT_FALSE(!stream);
 
     const size_t fields_count = 3;
-      
+
     iresearch::segment_meta segment("big_docs", nullptr);
 
     // write big document 
     {
       stored_fields_writer::ptr writer = codec()->get_stored_fields_writer();
       writer->prepare(dir(), segment.name);
+
       for (size_t size = fields_count; size; --size) {
         stream.read(field.buf, sizeof field.buf);
-        ASSERT_TRUE(stream); // ensure that all requested data has been read
+        ASSERT_FALSE(!stream); // ensure that all requested data has been read
         writer->write(field);
       }
+
       ++segment.docs_count;
       writer->end(nullptr);
       writer->finish();
