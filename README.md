@@ -172,6 +172,12 @@ win32 binaries also available in:
 look for link: "ICU4C Binaries"
 or
 via the distributions' package manager: libicu<version>
+or
+build from source via:
+```bash
+configure --enable-static
+make
+```
 
 #### set environment
 ```bash

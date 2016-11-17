@@ -15,6 +15,10 @@
 
 #include <climits>
 
+void expect_sign_eq(long double lhs, long double rhs) {
+  EXPECT_TRUE((lhs == 0 && rhs == 0) || std::signbit(lhs) == std::signbit(rhs));
+}
+
 TEST(string_ref_tests, create) {
   using namespace iresearch;
 
@@ -135,7 +139,7 @@ TEST(string_ref_tests, compare) {
     EXPECT_EQ(ref0 < ref1, s0 < s1);
     EXPECT_EQ(ref0 >= ref1, s0 >= s1);
     EXPECT_EQ(ref0 <= ref1, s0 <= s1);
-    EXPECT_EQ(compare(ref0, ref1), s0.compare(s1));
+    expect_sign_eq(compare(ref0, ref1), s0.compare(s1));
     EXPECT_TRUE(0 == compare(ref0, s0.c_str()));
     EXPECT_TRUE(0 == compare(ref1, s1.c_str()));
   }
@@ -154,7 +158,7 @@ TEST(string_ref_tests, compare) {
     EXPECT_EQ(ref0 < ref1, s0 < s1);
     EXPECT_EQ(ref0 >= ref1, s0 >= s1);
     EXPECT_EQ(ref0 <= ref1, s0 <= s1);
-    EXPECT_EQ(compare(ref0, ref1), s0.compare(s1));
+    expect_sign_eq(compare(ref0, ref1), s0.compare(s1));
     EXPECT_TRUE(0 == compare(ref0, s0.c_str()));
     EXPECT_TRUE(0 == compare(ref1, s1.c_str()));
   }
