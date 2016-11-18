@@ -40,6 +40,7 @@ bool segment_writer::index_field(
   REGISTER_TIMER_DETAILED();
 
   if (slot.invert(tokens, features, boost, num_docs_cached_ + type_limits<type_t::doc_id_t>::min())) {
+    indexed_fields_.insert(&slot);
     fields_ += features; // accumulate segment features
     return true;
   }
@@ -52,6 +53,8 @@ bool segment_writer::store_field(
     const serializer* serializer) {
   REGISTER_TIMER_DETAILED();
   if (serializer) {
+    //TODO: add field to header after field has been written
+    
     // store field id
     header_.doc_fields.push_back(slot.meta().id);
     
@@ -93,9 +96,10 @@ bool segment_writer::store_attribute(
 
 void segment_writer::finish(const update_context& ctx) {
   REGISTER_TIMER_DETAILED();
-  sf_writer_->end(&header_);
+  sf_writer_->end(&header_); // finish document
   docs_context_[type_limits<type_t::doc_id_t>::min() + num_docs_cached_++] = ctx;
   header_.doc_fields.clear();
+  indexed_fields_.clear(); // clear indexed fields
 }
 
 void segment_writer::flush(std::string& filename, segment_meta& meta) {
