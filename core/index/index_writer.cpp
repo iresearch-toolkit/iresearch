@@ -152,36 +152,32 @@ index_writer::ptr index_writer::make(directory& dir, format::ptr codec, OPEN_MOD
   std::vector<index_file_refs::ref_t> file_refs;
   {
     auto reader = codec->get_index_meta_reader();
-    directory::files files;
-    dir.list( files );
 
-    if ( OM_CREATE == mode
-        || (OM_CREATE_APPEND == mode && !reader->index_exists(files))) {
+    std::string segments_file;
+    const bool index_exists = reader->last_segments_file(dir, segments_file);
 
-      /* Try to read. It allows us to
-       * create against an index that's
-       * currently open for searching */
+    if (OM_CREATE == mode || (OM_CREATE_APPEND == mode && !index_exists)) {
+      // Try to read. It allows us to
+      // create against an index that's
+      // currently open for searching
+
       try {
-        auto* segments_file = reader->last_segments_file(files);
-
         // for OM_CREATE meta must be fully recreated, meta read only to get last version
-        if (segments_file) {
-          reader->read(dir, meta, *segments_file);
+        if (index_exists) {
+          reader->read(dir, meta, segments_file);
           meta.clear();
         }
-      } catch ( const error_base& ) {
+      } catch (const error_base&) {
         meta = index_meta();
       }
     } else {
-      auto* segments_file = reader->last_segments_file(files);
-
-      if (!segments_file) {
+      if (!index_exists) {
         throw file_not_found();
       }
 
-      reader->read(dir, meta, *segments_file);
+      reader->read(dir, meta, segments_file);
       append_segments_refs(file_refs, dir, meta);
-      file_refs.emplace_back(iresearch::directory_utils::reference(dir, *segments_file));
+      file_refs.emplace_back(iresearch::directory_utils::reference(dir, segments_file));
     }
 
     auto lock_file_ref = iresearch::directory_utils::reference(dir, WRITE_LOCK_NAME);

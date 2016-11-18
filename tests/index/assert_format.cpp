@@ -226,6 +226,12 @@ bool index_meta_reader::index_exists(
   return true;
 }
 
+bool index_meta_reader::last_segments_file(
+    const iresearch::directory&, 
+    std::string&) const {
+  return true;
+}
+
 const std::string* index_meta_reader::last_segments_file(
   const iresearch::directory::files& files
 ) {

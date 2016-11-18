@@ -1151,16 +1151,22 @@ void index_meta_writer::rollback() NOEXCEPT {
 // --SECTION--                                                index_meta_reader
 // ----------------------------------------------------------------------------
 
-uint64_t index_generation(const std::string& segments_file) {
-  if (!iresearch::starts_with(segments_file, index_meta_writer::FORMAT_PREFIX)) {
-    return index_meta::INVALID_GEN;
-  }
+uint64_t parse_generation(const std::string& segments_file) {
+  assert(iresearch::starts_with(segments_file, index_meta_writer::FORMAT_PREFIX));
 
   const char* gen_str = segments_file.c_str() + index_meta_writer::FORMAT_PREFIX.size();
   char* suffix;
   auto gen = std::strtoull(gen_str, &suffix, 10); // 10 for base-10
 
   return suffix[0] ? index_meta::INVALID_GEN : gen;
+}
+
+uint64_t index_generation(const std::string& segments_file) {
+  if (!iresearch::starts_with(segments_file, index_meta_writer::FORMAT_PREFIX)) {
+    return index_meta::INVALID_GEN;
+  }
+
+  return parse_generation(segments_file);
 }
 
 bool index_meta_reader::index_exists(const directory::files& files) {
@@ -1172,11 +1178,11 @@ bool index_meta_reader::index_exists(const directory::files& files) {
   });
 }
 
-bool last_segments_file(directory& dir, std::string& out) {
+bool index_meta_reader::last_segments_file(const directory& dir, std::string& out) const {
   uint64_t max_gen = 0;
   directory::visitor_f visitor = [&out, &max_gen] (std::string& name) {
     if (iresearch::starts_with(name, index_meta_writer::FORMAT_PREFIX)) {
-      const uint64_t gen = index_generation(name);
+      const uint64_t gen = parse_generation(name);
       if (gen != index_meta::INVALID_GEN && gen > max_gen) {
         out = std::move(name);
         max_gen = gen;

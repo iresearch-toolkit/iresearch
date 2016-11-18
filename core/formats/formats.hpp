@@ -386,6 +386,10 @@ struct IRESEARCH_API index_meta_reader {
     const directory::files& files
   ) = 0;
 
+  virtual bool last_segments_file(
+    const directory& dir, std::string& name
+  ) const = 0;
+
   virtual void read(
     const directory& dir, 
     index_meta& meta,

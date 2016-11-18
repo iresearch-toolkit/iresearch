@@ -21,8 +21,7 @@ NS_BEGIN(directory_utils)
 index_file_refs::ref_t reference(
     directory& dir, 
     const std::string& name,
-    bool include_missing /*= false*/
-) {
+    bool include_missing /*= false*/) {
   if (include_missing) {
     return dir.attributes().add<index_file_refs>()->add(name);
   }
@@ -163,24 +162,24 @@ void remove_all_unreferenced(directory& dir) {
 directory_cleaner::removal_acceptor_t remove_except_current_segments(
   const directory& dir, format& codec
 ) {
-  directory::files files;
-
-  dir.list(files);
-
   static const auto acceptor = [](
-    const std::string& filename, const std::unordered_set<std::string>& retain
-  ) {
+      const std::string& filename, 
+      const std::unordered_set<std::string>& retain) {
     return retain.find(filename) == retain.end();
   };
+
   index_meta meta;
   auto reader = codec.get_index_meta_reader();
-  auto* segment_file = reader->last_segments_file(files);
 
-  if (!segment_file) {
+  std::string segment_file;
+  const bool index_exists = reader->last_segments_file(dir, segment_file);
+
+  if (!index_exists) {
+    // can't find segments file
     return [](const std::string&)->bool { return true; };
   }
 
-  reader->read(dir, meta, *segment_file);
+  reader->read(dir, meta, segment_file);
 
   std::unordered_set<std::string> retain;
   retain.reserve(meta.size());
@@ -190,7 +189,7 @@ directory_cleaner::removal_acceptor_t remove_except_current_segments(
     return true;
   });
 
-  retain.emplace(std::move(*segment_file));
+  retain.emplace(std::move(segment_file));
 
   return std::bind(acceptor, std::placeholders::_1, std::move(retain));
 }

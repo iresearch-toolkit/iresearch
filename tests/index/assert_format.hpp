@@ -230,6 +230,9 @@ struct index_meta_reader : public iresearch::index_meta_reader {
   virtual const std::string* last_segments_file(
     const iresearch::directory::files& files
   ) override;
+  virtual bool last_segments_file(
+    const iresearch::directory& dir, std::string& out
+  ) const override;
   virtual void read(
     const iresearch::directory& dir,
     iresearch::index_meta& meta,
