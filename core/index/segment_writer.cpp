@@ -52,14 +52,10 @@ bool segment_writer::store_field(
     field_data& slot,
     const serializer* serializer) {
   REGISTER_TIMER_DETAILED();
-  if (serializer) {
-    //TODO: add field to header after field has been written
-    
+  if (serializer && sf_writer_->write(*serializer)) {
     // store field id
     header_.doc_fields.push_back(slot.meta().id);
-    
-    // write user fields
-    return sf_writer_->write(*serializer); 
+    return true;
   }
 
   return false;

@@ -2204,7 +2204,13 @@ void stored_fields_writer::prepare(directory& dir, const string_ref& seg_name) {
 
 bool stored_fields_writer::write(const serializer& writer) {
   REGISTER_TIMER_DETAILED();
-  return writer.write(seg_buf_); // write value
+  const auto ptr = seg_buf_.size();
+  if (!writer.write(seg_buf_)) {
+    // reset to previous
+    seg_buf_.reset(ptr);
+    return false;
+  }
+  return true;
 }
 
 void stored_fields_writer::finish() {

@@ -1637,7 +1637,14 @@ class format_test_case_base : public index_test_base {
       }
 
       char buf[65536];
-    } field; // big_stored_field
+    } field;
+    
+    struct invalid_serializer : iresearch::serializer {
+      bool write(iresearch::data_output& out) const {
+        iresearch::write_string(out, iresearch::string_ref("___invalid_data___")); // write something
+        return false; // mark as failed
+      }
+    } invalid_field; 
 
     std::fstream stream(resource("simple_two_column.csv"));
     ASSERT_FALSE(!stream);
@@ -1654,7 +1661,8 @@ class format_test_case_base : public index_test_base {
       for (size_t size = fields_count; size; --size) {
         stream.read(field.buf, sizeof field.buf);
         ASSERT_FALSE(!stream); // ensure that all requested data has been read
-        writer->write(field);
+        ASSERT_TRUE(writer->write(field)); // must be written
+        ASSERT_FALSE(writer->write(invalid_field)); // must not be written
       }
 
       ++segment.docs_count;
