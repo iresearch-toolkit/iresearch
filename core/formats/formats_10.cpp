@@ -1172,6 +1172,23 @@ bool index_meta_reader::index_exists(const directory::files& files) {
   });
 }
 
+bool last_segments_file(directory& dir, std::string& out) {
+  uint64_t max_gen = 0;
+  directory::visitor_f visitor = [&out, &max_gen] (std::string& name) {
+    if (iresearch::starts_with(name, index_meta_writer::FORMAT_PREFIX)) {
+      const uint64_t gen = index_generation(name);
+      if (gen != index_meta::INVALID_GEN && gen > max_gen) {
+        out = std::move(name);
+        max_gen = gen;
+      }
+    }
+    return true; // continue iteration
+  };
+
+  dir.visit(visitor);
+  return max_gen;
+}
+
 const std::string* index_meta_reader::last_segments_file(
   const directory::files& files
 ) {

@@ -107,6 +107,10 @@ TEST_F(fs_directory_test, list) {
   list();
 }
 
+TEST_F(fs_directory_test, visit) {
+  visit();
+}
+
 TEST_F(fs_directory_test, index_io) {
   smoke_index_io();
 }

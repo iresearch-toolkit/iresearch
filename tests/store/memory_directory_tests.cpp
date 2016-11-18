@@ -43,6 +43,10 @@ TEST_F(memory_directory_test, list) {
   list();
 }
 
+TEST_F(memory_directory_test, visit) {
+  visit();
+}
+
 TEST_F(memory_directory_test, index_io) {
   smoke_index_io();
 }

@@ -173,10 +173,6 @@ class IRESEARCH_API index_meta {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // index_meta
 
-ErrorCode find_segments_file( 
-  const directory& dir,
-  const std::function< void(const string_ref&) >& handler );
-
 NS_END
 
 #endif

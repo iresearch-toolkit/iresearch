@@ -151,13 +151,11 @@ bool reference(
 
 void remove_all_unreferenced(directory& dir) {
   auto& attribute = dir.attributes().add<index_file_refs>();
-  directory::files files;
 
-  dir.list(files);
-
-  for (auto& file: files) {
-    attribute->add(std::move(file)); // ensure all files in dir are tracked
-  }
+  dir.visit([&attribute] (std::string& name) {
+    attribute->add(std::move(name)); // ensure all files in dir are tracked
+    return true;
+  });
 
   directory_cleaner::clean(dir);
 }
@@ -237,6 +235,10 @@ int64_t tracking_directory::length(const std::string& name) const {
 
 bool tracking_directory::list(directory::files& names) const {
   return impl_.list(names);
+}
+
+bool tracking_directory::visit(const directory::visitor_f& visitor) const {
+  return impl_.visit(visitor);
 }
 
 index_lock::ptr tracking_directory::make_lock(const std::string& name) {
@@ -341,6 +343,10 @@ bool ref_tracking_directory::exists(const std::string& name) const {
 
 int64_t ref_tracking_directory::length(const std::string& name) const {
   return impl_.length(name);
+}
+  
+bool ref_tracking_directory::visit(const visitor_f& visitor) const {
+  return impl_.visit(visitor);
 }
 
 bool ref_tracking_directory::list(directory::files& buf) const {

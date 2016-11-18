@@ -343,6 +343,33 @@ iresearch::attributes& fs_directory::attributes() {
 
 void fs_directory::close() { }
 
+bool fs_directory::visit(const directory::visitor_f& visitor) const {
+  auto directory = (utf8_path()/dir_).native();
+
+  if (!file_utils::is_directory(directory.c_str())) {
+    return false;
+  }
+
+#ifdef _WIN32
+  utf8_path path;
+  auto dir_visitor = [&path, &visitor] (const file_path_t name) {
+    path.clear();
+    path / name;
+
+    auto filename = path.utf8();
+    return visitor(filename);
+  };
+#else
+  std::string filename;
+  auto dir_visitor = [&filename, &visitor] (const file_path_t name) {
+    filename.assign(name);
+    return visitor(filename);
+  };
+#endif
+
+  return file_utils::visit_directory(directory.c_str(), dir_visitor, false);
+}
+
 bool fs_directory::list( directory::files& names ) const {
   auto directory = (utf8_path()/dir_).native();
 

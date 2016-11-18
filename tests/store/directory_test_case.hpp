@@ -18,6 +18,7 @@
 class directory_test_case {
  public:
   void list();
+  void visit();
   void smoke_index_io();
   void smoke_store();
   void string_read_write();

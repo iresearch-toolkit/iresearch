@@ -207,6 +207,8 @@ class IRESEARCH_API memory_directory final : public directory {
   using directory::attributes;
   virtual iresearch::attributes& attributes() override;
   virtual void close() override;
+  
+  virtual bool visit(const visitor_f& visitor) const override;
 
   virtual bool list(directory::files& names) const override;
 

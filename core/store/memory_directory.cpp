@@ -232,6 +232,21 @@ void memory_directory::close() {
   files_.clear();
 }
 
+bool memory_directory::visit(const directory::visitor_f& visitor) const {
+  SCOPED_LOCK(flock_);
+
+  std::string filename;
+
+  for (auto& entry : files_) {
+    filename = entry.first;
+    if (!visitor(filename)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 bool memory_directory::list(directory::files& names) const {
   names.clear();
   names.reserve(files_.size());

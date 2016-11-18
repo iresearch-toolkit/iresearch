@@ -80,6 +80,24 @@ utf8_path& utf8_path::operator/(const std::wstring &ucs2_name) {
   return *this;
 }
 
+utf8_path& utf8_path::operator/(const wchar_t* ucs2_name) {
+  return (*this) / iresearch::basic_string_ref<wchar_t>(ucs2_name);
+}
+
+utf8_path& utf8_path::operator/(const iresearch::basic_string_ref<wchar_t>& ucs2_name) {
+  #ifdef _WIN32
+    path_.append(ucs2_name.c_str(),ucs2_name.c_str() + ucs2_name.size() , fs_cvt);
+  #else
+    auto native_name = boost::locale::conv::utf_to_utf<char>(
+      ucs2_name.c_str(), ucs2_name.c_str() + ucs2_name.size()
+    );
+
+    path_.append(std::move(native_name), fs_cvt);
+  #endif
+
+  return *this;
+}
+  
 bool utf8_path::exists() const {
   boost::system::error_code code;
 
@@ -140,6 +158,10 @@ bool utf8_path::rmdir() const {
   boost::filesystem::remove_all(path_, code);
 
   return boost::system::errc::success == code.value();
+}
+
+void utf8_path::clear() {
+  path_.clear();
 }
 
 std::string utf8_path::utf8() const {

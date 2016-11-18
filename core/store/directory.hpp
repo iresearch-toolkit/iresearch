@@ -72,6 +72,7 @@ struct IRESEARCH_API directory
   : public util::attributes_provider, 
     private util::noncopyable {
   typedef std::vector<std::string> files;
+  typedef std::function<bool(std::string& name)> visitor_f;
 
   DECLARE_PTR(directory);
   DECLARE_FACTORY(directory);
@@ -92,6 +93,8 @@ struct IRESEARCH_API directory
   /// @returns true on success
   ////////////////////////////////////////////////////////////////////////////
   virtual bool list(files& names) const = 0;
+
+  virtual bool visit(const visitor_f& visitor) const = 0;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief check whether the file specified by the given name exists

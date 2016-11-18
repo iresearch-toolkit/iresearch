@@ -584,6 +584,7 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
     virtual bool exists(const std::string&) const override { return false; }
     virtual int64_t length(const std::string&) const override { return 0; }
     virtual bool list(files&) const override { return false; }
+    virtual bool visit(const visitor_f&) const override { return false; }
     virtual iresearch::index_lock::ptr make_lock(const std::string&) override { return nullptr; }
     virtual std::time_t mtime(const std::string& name) const override { return iresearch::integer_traits<time_t>::min(); }
     virtual iresearch::index_input::ptr open(const std::string&) const override { return nullptr; }
@@ -600,6 +601,7 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
     virtual bool exists(const std::string&) const override { throw ""; }
     virtual int64_t length(const std::string&) const override { throw ""; }
     virtual bool list(files&) const override { throw ""; }
+    virtual bool visit(const visitor_f&) const override { throw ""; }
     virtual iresearch::index_lock::ptr make_lock(const std::string&) override { throw ""; }
     virtual std::time_t mtime(const std::string& name) const override { throw ""; }
     virtual iresearch::index_input::ptr open(const std::string&) const override { throw ""; }

@@ -30,9 +30,11 @@ class utf8_path: private ::boost::filesystem::path {
  public:
   utf8_path();
   utf8_path(const ::boost::filesystem::path& path);
-  utf8_path& operator/(const std::string &utf8_name);
-  utf8_path& operator/(const iresearch::string_ref &utf8_name);
-  utf8_path& operator/(const std::wstring &ucs2_name);
+  utf8_path& operator/(const std::string& utf8_name);
+  utf8_path& operator/(const iresearch::string_ref& utf8_name);
+  utf8_path& operator/(const wchar_t* ucs2_name);
+  utf8_path& operator/(const iresearch::basic_string_ref<wchar_t>& ucs2_name);
+  utf8_path& operator/(const std::wstring& ucs2_name);
   bool exists() const;
   bool exists_file() const;
   std::time_t file_mtime() const;
@@ -44,6 +46,7 @@ class utf8_path: private ::boost::filesystem::path {
   void rename(const utf8_path& destination) const;
   bool rmdir() const;
   std::string utf8() const;
+  void clear();
 
  private:
   ::boost::filesystem::path path_;

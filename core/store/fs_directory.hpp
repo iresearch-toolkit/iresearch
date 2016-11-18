@@ -36,8 +36,10 @@ class IRESEARCH_API fs_directory : public directory {
   virtual iresearch::attributes& attributes() override;
   virtual void close() override;
 
-  virtual bool list(directory::files& names) const override;
+  virtual bool visit(const visitor_f& visitor) const override;
 
+  virtual bool list(directory::files& names) const override;
+  
   virtual bool exists(const std::string& name) const override;
 
   virtual std::time_t mtime(const std::string& name) const override;
