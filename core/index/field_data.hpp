@@ -66,6 +66,13 @@ class IRESEARCH_API field_data : util::noncopyable {
   );
 
   ~field_data();
+  
+  doc_id_t doc() const { return last_doc_; }
+  
+  // returns number of terms in a field within a document
+  size_t size() const { return len_; }
+  
+  float_t boost() const { return boost_; }
 
   const field_meta& meta() const { return meta_; }
 
@@ -75,6 +82,7 @@ class IRESEARCH_API field_data : util::noncopyable {
   }
 
   bool invert(token_stream* tokens, const flags& features, float_t boost, doc_id_t id);
+  
   term_iterator::ptr iterator() const;
 
  private:
@@ -101,11 +109,11 @@ class IRESEARCH_API field_data : util::noncopyable {
   doc_id_t last_doc_{ type_limits<type_t::doc_id_t>::invalid() };
   uint32_t pos_;
   uint32_t last_pos_;
-  uint32_t len_;
-  uint32_t num_overlap_;
+  uint32_t len_; // total number of terms
+  uint32_t num_overlap_; // number of overlapped terms
   uint32_t offs_;
   uint32_t last_start_offs_;
-  uint32_t max_term_freq_;
+  uint32_t max_term_freq_; // maximum number of terms in a field across all indexed documents 
   uint32_t unq_term_cnt_;
   float_t boost_;
 };
