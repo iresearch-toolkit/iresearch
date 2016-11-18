@@ -1050,6 +1050,68 @@ class format_test_case_base : public index_test_base {
     }
   }
   
+  void columns_read_write_empty() {
+    iresearch::segment_meta meta0("_1", nullptr);
+    meta0.version = 42;
+    meta0.docs_count = 89;
+
+    iresearch::directory::files files;
+    dir().list(files);
+    ASSERT_TRUE(files.empty());
+
+    iresearch::field_id column0_id;
+    iresearch::field_id column1_id;
+
+    // add columns
+    {
+      auto writer = codec()->get_columnstore_writer();
+      ASSERT_TRUE(writer->prepare(dir(), meta0.name));
+      column0_id = writer->push_column().first;
+      ASSERT_EQ(0, column0_id);
+      column1_id = writer->push_column().first;
+      ASSERT_EQ(1, column1_id);
+      writer->flush(); // flush empty columns
+    }
+   
+    dir().list(files);
+    ASSERT_TRUE(files.empty()); // must be empty after flush
+
+    {
+      ir::fields_meta fields;
+      iresearch::reader_state rs;
+      rs.codec = codec().get();
+      rs.dir = &dir();
+      rs.docs_mask = nullptr;
+      rs.fields = &fields;
+      rs.meta = &meta0;
+
+      auto reader = codec()->get_columnstore_reader();
+      ASSERT_FALSE(reader->prepare(rs)); // no columns found
+
+      size_t calls_count = 0;
+      iresearch::columnstore_reader::value_reader_f value_reader = [&calls_count] (iresearch::data_input& in) {
+        ++calls_count;
+        return true;
+      };
+
+      // check column 1
+      {
+        auto column = reader->values(column0_id);
+        calls_count = 0;
+        ASSERT_FALSE(column(0, value_reader));
+        ASSERT_EQ(0, calls_count);
+      }
+     
+      // check column 0
+      {
+        auto column = reader->values(column1_id);
+        calls_count = 0;
+        ASSERT_FALSE(column(0, value_reader));
+        ASSERT_EQ(0, calls_count);
+      }
+    }
+  }
+  
   void columns_read_write() {
     ir::fields_data fdata;
     ir::fields_meta fields;
@@ -1065,12 +1127,14 @@ class format_test_case_base : public index_test_base {
     
     struct invalid_serializer : iresearch::serializer {
       bool write(data_output& out) const {
+        iresearch::write_string(out, iresearch::string_ref("invalid_data"));
         return false;
       }
     } invalid_writer;
 
     iresearch::field_id segment0_field0_id;
     iresearch::field_id segment0_field1_id;
+    iresearch::field_id segment0_empty_column_id;
     iresearch::field_id segment0_field2_id;
     iresearch::field_id segment1_field0_id;
     iresearch::field_id segment1_field1_id;
@@ -1135,10 +1199,13 @@ class format_test_case_base : public index_test_base {
       segment0_field1_id = field1.first;
       auto& field1_writer = field1.second;
       ASSERT_EQ(1, segment0_field1_id);
+      auto empty_field = writer->push_column(); // gap between filled columns
+      segment0_empty_column_id = empty_field.first;
+      ASSERT_EQ(2, segment0_empty_column_id);
       auto field2 = writer->push_column();
       segment0_field2_id = field2.first;
       auto& field2_writer = field2.second;
-      ASSERT_EQ(2, segment0_field2_id);
+      ASSERT_EQ(3, segment0_field2_id);
 
       string_writer.value = "field0_doc0";
       ASSERT_TRUE(field0_writer(0, string_writer)); // doc==0, column==field0
@@ -1149,8 +1216,9 @@ class format_test_case_base : public index_test_base {
       string_writer.value = "field1_doc0_1";
       ASSERT_TRUE(field1_writer(0, string_writer)); // doc==0, column==field1
 
-      string_writer.value = "field2_doc0";
       ASSERT_FALSE(field2_writer(0, invalid_writer)); // doc==0, column==field2
+      string_writer.value = "field2_doc1";
+      ASSERT_TRUE(field2_writer(1, string_writer));
 
       string_writer.value = "field0_doc1";
       ASSERT_FALSE(field0_writer(1, invalid_writer)); // doc==1, column==field0
@@ -1445,6 +1513,46 @@ class format_test_case_base : public index_test_base {
         calls_count = 0;
         ASSERT_FALSE(column(iresearch::type_limits<iresearch::type_t::doc_id_t>::eof(), value_reader)); 
         ASSERT_EQ(0, calls_count);
+      }
+
+      // visit empty column
+      {
+        size_t calls_count = 0;
+        auto visitor = [&calls_count] (iresearch::doc_id_t doc, data_input& in) {
+          ++calls_count;
+          return true;
+        };
+
+        ASSERT_TRUE(reader->visit(segment0_empty_column_id, visitor));
+        ASSERT_EQ(0, calls_count);
+      }
+      
+      // visit field2 values (field after an empty field)
+      {
+        std::unordered_map<std::string, iresearch::doc_id_t> expected_values = {
+          {"field2_doc1", 1},
+        };
+
+        auto visitor = [&expected_values] (iresearch::doc_id_t doc, data_input& in) {
+          const auto actual_value = iresearch::read_string<std::string>(in);
+
+          auto it = expected_values.find(actual_value);
+          if (it == expected_values.end()) {
+            // can't find value
+            return false;
+          }
+
+          if (it->second != doc) {
+            // wrong document
+            return false;
+          }
+
+          expected_values.erase(it);
+          return true;
+        };
+
+        ASSERT_TRUE(reader->visit(segment0_field2_id, visitor));
+        ASSERT_TRUE(expected_values.empty());
       }
     }
 

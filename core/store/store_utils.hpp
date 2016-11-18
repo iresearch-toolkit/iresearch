@@ -231,7 +231,9 @@ class IRESEARCH_API bytes_output final: public data_output, public bytes_ref {
   bytes_output( bytes_output&& rhs );
   bytes_output& operator=( bytes_output&& rhs );
 
-  void reset() { this->size_ = 0; }
+  void reset(size_t size = 0) { 
+    this->size_ = size; 
+  }
 
   virtual void write_byte( byte_type b ) override {
     oversize(buf_, this->size() + 1).replace(this->size(), 1, 1, b);

@@ -1645,8 +1645,8 @@ class writer final : public iresearch::columnstore_writer {
      compressing_index_writer block_header_writer{ INDEX_BLOCK_SIZE };
      compressing_index_writer blocks_index_writer{ INDEX_BLOCK_SIZE };
      bytes_output block_buf{ MAX_DATA_BLOCK_SIZE }; // current block data buffer
-     doc_id_t begin{ type_limits<type_t::doc_id_t>::eof() }; // current block first key
-     doc_id_t end{ type_limits<type_t::doc_id_t>::eof() }; // current column max key
+     doc_id_t begin{ type_limits<type_t::doc_id_t>::invalid() }; // current block first key
+     doc_id_t end{ type_limits<type_t::doc_id_t>::invalid() }; // current column max key
      bool empty{ true }; // index empty
      bool block_empty{ true }; // block empty
    };
@@ -1668,29 +1668,27 @@ void writer::flush_block(column& col) {
   const auto block_offset = data_out_->file_pointer();
 
   // write block header 
-  {
-    auto& stream = col.block_header.stream;
-    auto& writer = col.block_header_writer;
+  auto& stream = col.block_header.stream;
+  auto& writer = col.block_header_writer;
 
-    writer.finish();
-    stream.flush();
-    col.block_header.file >> *data_out_;
+  writer.finish();
+  stream.flush();
+  col.block_header.file >> *data_out_;
 
-    // reset writer & stream
-    writer.prepare(stream);
-    stream.reset();
-  }
+  // reset writer & stream
+  writer.prepare(stream);
+  stream.reset();
 
   // write compressed block data
-  {
-    auto& block_buf = col.block_buf;
+  auto& block_buf = col.block_buf;
+  if (!block_buf.empty()) {
     write_zvlong(*data_out_, block_buf.size() - MAX_DATA_BLOCK_SIZE);
     write_compact(*data_out_, comp_, block_buf.c_str(), block_buf.size());
     block_buf.reset(); // reset buffer stream after flushing
-  }
 
-  // write last block key & where block starts
-  col.blocks_index_writer.write(col.begin, block_offset);
+    // write last block key & where block starts
+    col.blocks_index_writer.write(col.begin, block_offset);
+  }
 
   col.begin = type_limits<type_t::doc_id_t>::eof();
   col.block_empty = true;
@@ -1722,7 +1720,8 @@ columnstore_writer::column_t writer::push_column() {
 
       const auto ptr = stream.size();
       if (!writer.write(stream)) {
-        // nothing has been written
+        // nothing has been written, reset to previous
+        stream.reset(ptr);
         return false;
       }
 
@@ -1746,12 +1745,10 @@ columnstore_writer::column_t writer::push_column() {
 }
 
 void writer::flush() {
+  bool empty = true; // all columns are empty
+  
   // flush all remain data
-  std::vector<column*> filled;
   for (auto& column : columns_) {
-    if (column.empty) {
-      continue; // filter out empty columns
-    }
 
     // flush remain blocks
     flush_block(column);
@@ -1760,10 +1757,10 @@ void writer::flush() {
     column.blocks_index_writer.finish();
     column.blocks_index.stream.flush();
 
-    filled.push_back(&column);
+    empty &= column.empty;
   }
 
-  if (filled.empty()) {
+  if (empty) {
     // remove file if there is no data
     data_out_.reset();
     dir_->remove(filename_);
@@ -1771,10 +1768,10 @@ void writer::flush() {
   }
 
   const auto block_index_ptr = data_out_->file_pointer(); // where blocks index start
-  data_out_->write_vlong(filled.size()); // number of columns
-  for (auto* column : filled) {
-    data_out_->write_vlong(column->end); // max key
-    column->blocks_index.file >> *data_out_; // column blocks index
+  data_out_->write_vlong(columns_.size()); // number of columns
+  for (auto& column : columns_) {
+    data_out_->write_vlong(column.end); // max key
+    column.blocks_index.file >> *data_out_; // column blocks index
   }
   data_out_->write_long(block_index_ptr);
   format_utils::write_footer(*data_out_);
@@ -1966,7 +1963,8 @@ bool reader::prepare(const reader_state& state) {
     columns.emplace_back();
     auto& column = columns.back();
 
-    if (!column.index.read(*data_in_, data_in_->read_vlong() + 1, visitor)) {
+    const auto max = data_in_->read_vlong(); // last valid key
+    if (!column.index.read(*data_in_, max + 1, visitor)) {
       IR_ERROR() << "Unable to load blocks index for column id=" << columns.size() - 1;
       return false;
     }

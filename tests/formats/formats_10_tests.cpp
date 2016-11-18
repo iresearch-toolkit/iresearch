@@ -855,6 +855,7 @@ TEST_F(memory_format_10_test_case, field_meta_rw) {
 }
 
 TEST_F(memory_format_10_test_case, columns_rw) {
+  columns_read_write_empty();
   columns_read_write();
 }
 
@@ -918,6 +919,7 @@ TEST_F(fs_format_10_test_case, field_meta_rw) {
 }
 
 TEST_F(fs_format_10_test_case, columns_rw) {
+  columns_read_write_empty();
   columns_read_write();
 }
 
