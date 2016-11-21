@@ -4115,6 +4115,28 @@ TEST_F(fs_index_test, profile_bulk_index_singlethread_batched) {
   profile_bulk_index(0, 10000);
 }
 
+TEST_F(fs_index_test, profile_bulk_index_multithread_cleanup) {
+  size_t cleanup_interval = 100;
+  size_t commit_interval = 1000; // larger than cleanup_interval
+  auto* directory = &dir();
+  std::atomic<bool> working(true);
+  ir::async_utils::thread_pool thread_pool(1, 1);
+
+  thread_pool.run([cleanup_interval, directory, &working]()->void {
+    while (working.load()) {
+      iresearch::directory_cleaner::clean(*directory);
+      std::this_thread::sleep_for(std::chrono::milliseconds(cleanup_interval));
+    }
+  });
+
+  {
+    auto finalizer = ir::make_finally([&working]()->void{working = false;});
+    profile_bulk_index(16, commit_interval);
+  }
+
+  thread_pool.stop();
+}
+
 TEST_F(fs_index_test, profile_bulk_index_multithread_dedicated_commit) {
   profile_bulk_index_dedicated_commit(16, 1, 1000);
 }
