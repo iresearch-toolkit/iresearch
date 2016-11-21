@@ -27,8 +27,12 @@ void index_meta_read_write(iresearch::directory& dir, iresearch::format& codec) 
 
   /* check that there are no files in
  * a directory */
-  iresearch::directory::files files;
-  dir.list(files);
+  std::vector<std::string> files;
+  auto list_files = [&files] (std::string& name) {
+    files.emplace_back(std::move(name));
+    return true;
+  };
+  ASSERT_TRUE(dir.visit(list_files));
   ASSERT_TRUE(files.empty());
 
   /* create index metadata and
@@ -44,7 +48,8 @@ void index_meta_read_write(iresearch::directory& dir, iresearch::format& codec) 
 
   /* check that files was successfully
    * written to directory */
-  dir.list(files);
+  files.clear();
+  ASSERT_TRUE(dir.visit(list_files));
   EXPECT_EQ(1, files.size());
   EXPECT_EQ(files[0], iresearch::string_ref("pending_segments_1"));
 

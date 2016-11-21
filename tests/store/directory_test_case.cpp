@@ -556,8 +556,12 @@ void directory_test_case::visit() {
 void directory_test_case::list() {
   using namespace iresearch;
 
-  directory::files files;
-  dir_->list(files);
+  std::vector<std::string> files;
+  auto list_files = [&files] (std::string& name) {
+    files.emplace_back(std::move(name));
+    return true;
+  };
+  ASSERT_TRUE(dir_->visit(list_files));
   ASSERT_TRUE(files.empty());
 
   std::vector<std::string> names {
@@ -586,7 +590,8 @@ void directory_test_case::list() {
     dir_->create(name);
   }
 
-  dir_->list(files);
+  files.clear();
+  ASSERT_TRUE(dir_->visit(list_files));
   EXPECT_EQ(names.size(), files.size());
 
   EXPECT_TRUE(std::all_of(
@@ -775,7 +780,11 @@ void directory_test_case::smoke_store() {
 
   // Check files count
   std::vector<std::string> files;
-  dir_->list(files);
+  auto list_files = [&files] (std::string& name) {
+    files.emplace_back(std::move(name));
+    return true;
+  };
+  ASSERT_TRUE(dir_->visit(list_files));
   EXPECT_EQ(files.size(), names.size());
 
   // Read contents
@@ -814,7 +823,8 @@ void directory_test_case::smoke_store() {
   }
 
   // Check files count
-  dir_->list(files);
+  files.clear();
+  ASSERT_TRUE(dir_->visit(list_files));
   EXPECT_EQ(0, files.size());
 
   // Try to open non existing input

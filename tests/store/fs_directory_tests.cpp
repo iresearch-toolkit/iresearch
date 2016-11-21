@@ -62,8 +62,12 @@ class fs_directory_test : public directory_test_case,
     }
 
     // read files from directory
-    directory::files files;
-    dir_->list(files);
+    std::vector<std::string> files;
+    auto list_files = [&files] (std::string& name) {
+      files.emplace_back(std::move(name));
+      return true;
+    };
+    ASSERT_TRUE(dir_->visit(list_files));
     ASSERT_EQ(1, files.size());
     ASSERT_EQ(file_name, files[0]);
   }

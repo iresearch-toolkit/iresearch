@@ -243,9 +243,15 @@ class format_test_case_base : public index_test_base {
     auto query_doc3 = iresearch::iql::query_builder().build("name==C", std::locale::classic());
     auto query_doc4 = iresearch::iql::query_builder().build("name==D", std::locale::classic());
 
-    iresearch::directory::files files;
+    std::vector<std::string> files;
+    auto list_files = [&files] (std::string& name) {
+      files.emplace_back(std::move(name));
+      return true;
+    };
+
     iresearch::directory::ptr dir(get_directory());
-    ASSERT_TRUE(dir->list(files));
+    files.clear();
+    ASSERT_TRUE(dir->visit(list_files));
     ASSERT_TRUE(files.empty());
 
     // register ref counter
@@ -305,7 +311,8 @@ class format_test_case_base : public index_test_base {
       }
     }
 
-    dir->list(files);
+    files.clear();
+    ASSERT_TRUE(dir->visit(list_files));
 
     // reset directory
     for (auto& file: files) {
@@ -313,7 +320,7 @@ class format_test_case_base : public index_test_base {
     }
 
     files.clear();
-    ASSERT_TRUE(dir->list(files));
+    ASSERT_TRUE(dir->visit(list_files));
     ASSERT_TRUE(files.empty());
 
     // cleanup on refcount decrement (old files still in use)
@@ -406,7 +413,8 @@ class format_test_case_base : public index_test_base {
       }
     }
 
-    dir->list(files);
+    files.clear();
+    ASSERT_TRUE(dir->visit(list_files));
 
     // reset directory
     for (auto& file: files) {
@@ -414,7 +422,7 @@ class format_test_case_base : public index_test_base {
     }
 
     files.clear();
-    ASSERT_TRUE(dir->list(files));
+    ASSERT_TRUE(dir->visit(list_files));
     ASSERT_TRUE(files.empty());
 
     // cleanup on writer startup
@@ -1054,8 +1062,12 @@ class format_test_case_base : public index_test_base {
     meta0.version = 42;
     meta0.docs_count = 89;
 
-    iresearch::directory::files files;
-    dir().list(files);
+    std::vector<std::string> files;
+    auto list_files = [&files] (std::string& name) {
+      files.emplace_back(std::move(name));
+      return true;
+    };
+    ASSERT_TRUE(dir().visit(list_files));
     ASSERT_TRUE(files.empty());
 
     iresearch::field_id column0_id;
@@ -1071,8 +1083,9 @@ class format_test_case_base : public index_test_base {
       ASSERT_EQ(1, column1_id);
       writer->flush(); // flush empty columns
     }
-   
-    dir().list(files);
+  
+    files.clear();
+    ASSERT_TRUE(dir().visit(list_files));
     ASSERT_TRUE(files.empty()); // must be empty after flush
 
     {

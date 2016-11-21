@@ -4092,9 +4092,12 @@ TEST_F(fs_index_test, writer_close) {
   writer->commit();
   writer->close();
 
-  iresearch::directory::files files;
-
-  directory.list(files);
+  std::vector<std::string> files;
+  auto list_files = [&files] (std::string& name) {
+    files.emplace_back(std::move(name));
+    return true;
+  };
+  ASSERT_TRUE(directory.visit(list_files));
 
   // file removal should pass for all files (especially valid for Microsoft Windows)
   for (auto& file: files) {
@@ -4103,7 +4106,7 @@ TEST_F(fs_index_test, writer_close) {
 
   // validate that all files have been removed
   files.clear();
-  directory.list(files);
+  ASSERT_TRUE(directory.visit(list_files));
   ASSERT_TRUE(files.empty());
 }
 

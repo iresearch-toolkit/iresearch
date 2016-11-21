@@ -483,9 +483,12 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
     ASSERT_EQ(1, dir.length("abc"));
     ASSERT_EQ(1, track_dir.length("abc"));
 
-    iresearch::directory::files files;
-
-    track_dir.list(files);
+    std::vector<std::string> files;
+    auto list_files = [&files] (std::string& name) {
+      files.emplace_back(std::move(name));
+      return true;
+    };
+    ASSERT_TRUE(track_dir.visit(list_files));
     ASSERT_EQ(1, files.size());
     ASSERT_EQ("abc", *(files.begin()));
 
@@ -508,9 +511,12 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
     ASSERT_EQ(1, dir.length("abc"));
     ASSERT_EQ(1, track_dir.length("abc"));
 
-    iresearch::directory::files files;
-
-    track_dir.list(files);
+    std::vector<std::string> files;
+    auto list_files = [&files] (std::string& name) {
+      files.emplace_back(std::move(name));
+      return true;
+    };
+    ASSERT_TRUE(track_dir.visit(list_files));
     ASSERT_EQ(1, files.size());
     ASSERT_EQ("abc", *(files.begin()));
 
@@ -790,9 +796,12 @@ TEST_F(directory_utils_tests, test_tracking_dir) {
     ASSERT_EQ(1, dir.length("abc"));
     ASSERT_EQ(1, track_dir.length("abc"));
 
-    iresearch::directory::files files;
-
-    track_dir.list(files);
+    std::vector<std::string> files;
+    auto list_files = [&files] (std::string& name) {
+      files.emplace_back(std::move(name));
+      return true;
+    };
+    ASSERT_TRUE(track_dir.visit(list_files));
     ASSERT_EQ(1, files.size());
     ASSERT_EQ("abc", *(files.begin()));
 
@@ -815,9 +824,12 @@ TEST_F(directory_utils_tests, test_tracking_dir) {
     ASSERT_EQ(1, dir.length("abc"));
     ASSERT_EQ(1, track_dir.length("abc"));
 
-    iresearch::directory::files files;
-
-    track_dir.list(files);
+    std::vector<std::string> files;
+    auto list_files = [&files] (std::string& name) {
+      files.emplace_back(std::move(name));
+      return true;
+    };
+    ASSERT_TRUE(track_dir.visit(list_files));
     ASSERT_EQ(1, files.size());
     ASSERT_EQ("abc", *(files.begin()));
 

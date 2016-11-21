@@ -82,9 +82,12 @@ TEST_F(directory_cleaner_tests, test_directory_cleaner) {
       "tracked.file.1",
       "tracked.file.2"
     };
-    iresearch::directory::files files;
-
-    dir.list(files);
+    std::vector<std::string> files;
+    auto list_files = [&files] (std::string& name) {
+      files.emplace_back(std::move(name));
+      return true;
+    };
+    ASSERT_TRUE(dir.visit(list_files));
 
     for (auto& file: files) {
       ASSERT_EQ(1, expected.erase(file));
@@ -103,10 +106,13 @@ TEST_F(directory_cleaner_tests, test_directory_cleaner) {
       "tracked.file.1",
       "tracked.file.2"
     };
-    iresearch::directory::files files;
-
+    std::vector<std::string> files;
+    auto list_files = [&files] (std::string& name) {
+      files.emplace_back(std::move(name));
+      return true;
+    };
     ASSERT_EQ(0, iresearch::directory_cleaner::clean(dir));
-    dir.list(files);
+    ASSERT_TRUE(dir.visit(list_files));
 
     for (auto& file: files) {
       ASSERT_EQ(1, expected.erase(file));
@@ -132,11 +138,14 @@ TEST_F(directory_cleaner_tests, test_directory_cleaner) {
       "tracked.file.1",
       "tracked.file.2"
     };
-    iresearch::directory::files files;
-
+    std::vector<std::string> files;
+    auto list_files = [&files] (std::string& name) {
+      files.emplace_back(std::move(name));
+      return true;
+    };
     ref2.reset();
     ASSERT_EQ(0, iresearch::directory_cleaner::clean(dir, acceptor));
-    dir.list(files);
+    ASSERT_TRUE(dir.visit(list_files));
 
     for (auto& file: files) {
       ASSERT_EQ(1, expected.erase(file));
@@ -154,10 +163,13 @@ TEST_F(directory_cleaner_tests, test_directory_cleaner) {
       "dummy.file.4",
       "tracked.file.1"
     };
-    iresearch::directory::files files;
-
+    std::vector<std::string> files;
+    auto list_files = [&files] (std::string& name) {
+      files.emplace_back(std::move(name));
+      return true;
+    };
     ASSERT_EQ(1, iresearch::directory_cleaner::clean(dir));
-    dir.list(files);
+    ASSERT_TRUE(dir.visit(list_files));
 
     for (auto& file: files) {
       ASSERT_EQ(1, expected.erase(file));
@@ -183,11 +195,14 @@ TEST_F(directory_cleaner_tests, test_directory_cleaner) {
       "dummy.file.3",
       "dummy.file.4"
     };
-    iresearch::directory::files files;
-
+    std::vector<std::string> files;
+    auto list_files = [&files] (std::string& name) {
+      files.emplace_back(std::move(name));
+      return true;
+    };
     ref1.reset();
     ASSERT_EQ(1, iresearch::directory_cleaner::clean(dir, acceptor));
-    dir.list(files);
+    ASSERT_TRUE(dir.visit(list_files));
 
     for (auto& file: files) {
       ASSERT_EQ(1, expected.erase(file));
@@ -221,10 +236,13 @@ TEST_F(directory_cleaner_tests, test_directory_cleaner_current_segment) {
     writer->add(doc1->begin(), doc1->end());
     writer->commit();
 
-    iresearch::directory::files files;
+    std::vector<std::string> files;
+    auto list_files = [&files] (std::string& name) {
+      files.emplace_back(std::move(name));
+      return true;
+    };
     std::unordered_set<std::string> file_set;
-
-    dir.list(files);
+    ASSERT_TRUE(dir.visit(list_files));
     ASSERT_FALSE(files.empty());
     file_set.insert(files.begin(), files.end());
 
@@ -233,7 +251,8 @@ TEST_F(directory_cleaner_tests, test_directory_cleaner_current_segment) {
     writer->commit();
 
     iresearch::directory_cleaner::clean(dir, iresearch::directory_utils::remove_except_current_segments(dir, codec));
-    dir.list(files);
+    files.clear();
+    ASSERT_TRUE(dir.visit(list_files));
     ASSERT_FALSE(files.empty());
 
     // new list should not overlap due to first segment having been removed
@@ -265,11 +284,14 @@ TEST_F(directory_cleaner_tests, test_directory_cleaner_current_segment) {
 
   // no active refs keeps files from latest segments
   {
-    iresearch::directory::files files;
+    std::vector<std::string> files;
+    auto list_files = [&files] (std::string& name) {
+      files.emplace_back(std::move(name));
+      return true;
+    };
     std::unordered_set<std::string> current_files(file_set);
-
     iresearch::directory_cleaner::clean(dir, iresearch::directory_utils::remove_except_current_segments(dir, codec));
-    dir.list(files);
+    ASSERT_TRUE(dir.visit(list_files));
     ASSERT_FALSE(files.empty());
 
     // new list should be exactly the files listed in index_meta
@@ -282,12 +304,15 @@ TEST_F(directory_cleaner_tests, test_directory_cleaner_current_segment) {
 
   // active reader refs keeps files referenced by reader
   {
-    iresearch::directory::files files;
+    std::vector<std::string> files;
+    auto list_files = [&files] (std::string& name) {
+      files.emplace_back(std::move(name));
+      return true;
+    };
     std::unordered_set<std::string> current_files(file_set);
     auto reader = iresearch::directory_reader::open(dir, codec_ptr);
-
     iresearch::directory_cleaner::clean(dir);
-    dir.list(files);
+    ASSERT_TRUE(dir.visit(list_files));
     ASSERT_FALSE(files.empty());
 
     // new list should be exactly the files listed in index_meta
@@ -300,10 +325,13 @@ TEST_F(directory_cleaner_tests, test_directory_cleaner_current_segment) {
 
   // no refs and no current segment removes all files
   {
-    iresearch::directory::files files;
-
+    std::vector<std::string> files;
+    auto list_files = [&files] (std::string& name) {
+      files.emplace_back(std::move(name));
+      return true;
+    };
     iresearch::directory_cleaner::clean(dir);
-    dir.list(files);
+    ASSERT_TRUE(dir.visit(list_files));
     ASSERT_TRUE(files.empty()); // current segment should have been removed too
   }
 }
