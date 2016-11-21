@@ -246,18 +246,16 @@ TEST_F(directory_cleaner_tests, test_directory_cleaner_current_segment) {
 
   // remember files used for first/single segment
   {
-    iresearch::directory::files files;
-
-    dir.list(files);
+    std::string segments_file;
 
     iresearch::index_meta index_meta;
     auto meta_reader = codec.get_index_meta_reader();
-    auto* segments_file = meta_reader->last_segments_file(files);
+    const auto index_exists = meta_reader->last_segments_file(dir, segments_file);
 
-    ASSERT_TRUE(nullptr != segments_file);
-    meta_reader->read(dir, index_meta, *segments_file);
+    ASSERT_TRUE(index_exists);
+    meta_reader->read(dir, index_meta, segments_file);
 
-    file_set.insert(*segments_file);
+    file_set.insert(segments_file);
 
     index_meta.visit_files([&file_set] (std::string& file) {
       file_set.emplace(std::move(file));

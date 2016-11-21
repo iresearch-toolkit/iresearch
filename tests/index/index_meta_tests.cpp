@@ -55,15 +55,13 @@ void index_meta_read_write(iresearch::directory& dir, iresearch::format& codec) 
    * directory */
   iresearch::index_meta meta_read;
   {
-    directory::files files;
-
-    dir.list(files);
+    std::string segments_file;
 
     auto reader = codec.get_index_meta_reader();
-    auto* segments_file = reader->last_segments_file(files);
+    const bool index_exists = reader->last_segments_file(dir, segments_file);
 
-    ASSERT_TRUE(nullptr != segments_file);
-    reader->read(dir, meta_read, *segments_file);
+    ASSERT_TRUE(index_exists);
+    reader->read(dir, meta_read, segments_file);
   }
 
   EXPECT_EQ(meta_orig.counter(), meta_read.counter());
@@ -109,7 +107,7 @@ TEST(index_meta_tests, last_generation) {
   names.emplace_back("segments_965");
   names.emplace_back("segments_164");
   names.emplace_back("segments_117");
-
+  
   // get max value
   uint64_t max = 0;
   for (const auto& s : names) {
@@ -118,17 +116,22 @@ TEST(index_meta_tests, last_generation) {
       max = num;
     }
   }
-
-  // add entropy
-  std::random_shuffle( names.begin(), names.end() );
+  
+  // populate directory
+  iresearch::memory_directory dir;
+  for (auto& name : names) {
+    dir.create(name);
+  }
 
   iresearch::version10::format codec;
-  auto reader = codec.get_index_meta_reader();
-  auto* last_seg_file = reader->last_segments_file(names);
-  std::string expected_seg_file = "segments_" + std::to_string(max);
+  std::string last_seg_file;
 
-  ASSERT_TRUE(nullptr != last_seg_file);
-  EXPECT_EQ(expected_seg_file, *last_seg_file);
+  auto reader = codec.get_index_meta_reader();
+  const bool index_exists = reader->last_segments_file(dir, last_seg_file);
+  const std::string expected_seg_file = "segments_" + std::to_string(max);
+
+  ASSERT_TRUE(index_exists);
+  EXPECT_EQ(expected_seg_file, last_seg_file);
 }
 
 // -----------------------------------------------------------------------------

@@ -195,30 +195,32 @@ class format_test_case_base : public index_test_base {
     iresearch::format& codec,
     const std::unordered_set<std::string>& expect_additional = std::unordered_set<std::string> ()
   ) {
-    iresearch::directory::files dir_files;
-
-    ASSERT_TRUE(dir.list(dir_files));
-
-    // ignore lock file present in fs_directory
-    for (auto itr = dir_files.begin(); itr != dir_files.end();) {
-      itr = iresearch::index_writer::WRITE_LOCK_NAME == *itr
-          ? dir_files.erase(itr) : ++itr;
-    }
+    std::vector<std::string> dir_files;
+    auto visitor = [&dir_files] (std::string& file) {
+      // ignore lock file present in fs_directory
+      if (iresearch::index_writer::WRITE_LOCK_NAME != file) {
+        dir_files.emplace_back(std::move(file));
+      }      
+      return true;
+    };
+    ASSERT_TRUE(dir.visit(visitor));
 
     iresearch::index_meta index_meta;
+    std::string segment_file;
+
     auto reader = codec.get_index_meta_reader();
     iresearch::index_meta::file_set index_files(expect_additional.begin(), expect_additional.end());
-    auto* segment_file = reader->last_segments_file(dir_files);
+    const bool exists = reader->last_segments_file(dir, segment_file);
 
-    if (segment_file) {
-      reader->read(dir, index_meta, *segment_file);
+    if (exists) {
+      reader->read(dir, index_meta, segment_file);
 
       index_meta.visit_files([&index_files] (const std::string& file) {
         index_files.emplace(file);
         return true;
       });
 
-      index_files.insert(*segment_file);
+      index_files.insert(segment_file);
     }
 
     for (auto& file: dir_files) {
@@ -348,23 +350,20 @@ class format_test_case_base : public index_test_base {
       auto reader = iresearch::directory_reader::open(*dir, codec());
       std::unordered_set<std::string> reader_files;
       {
-        iresearch::directory::files files;
-
-        dir->list(files);
-
         iresearch::index_meta index_meta;
+        std::string segments_file;
         auto meta_reader = codec()->get_index_meta_reader();
-        auto* segments_file = meta_reader->last_segments_file(files);
+        const bool exists = meta_reader->last_segments_file(*dir, segments_file);
+        ASSERT_TRUE(exists);
 
-        ASSERT_TRUE(nullptr != segments_file);
-        meta_reader->read(*dir, index_meta, *segments_file);
+        meta_reader->read(*dir, index_meta, segments_file);
 
         index_meta.visit_files([&reader_files] (std::string& file) {
           reader_files.emplace(std::move(file));
           return true;
         });
 
-        reader_files.emplace(*segments_file);
+        reader_files.emplace(segments_file);
       }
 
       // add second segment (creating new index_meta file, not-removing old)

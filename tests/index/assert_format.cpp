@@ -220,22 +220,10 @@ void index_meta_writer::rollback() NOEXCEPT {
  * index_meta_reader
  * ------------------------------------------------------------------*/
 
-bool index_meta_reader::index_exists(
-  const iresearch::directory::files& files
-) {
-  return true;
-}
-
 bool index_meta_reader::last_segments_file(
     const iresearch::directory&, 
     std::string&) const {
   return false;
-}
-
-const std::string* index_meta_reader::last_segments_file(
-  const iresearch::directory::files& files
-) {
-  return nullptr;
 }
 
 void index_meta_reader::read(

@@ -63,8 +63,6 @@ TEST(directory_reader_test, open_empty_index) {
 
 TEST(directory_reader_test, open_newest_index) {
   struct test_index_meta_reader: public ir::index_meta_reader {
-    virtual bool index_exists(const ir::directory::files& files) override { return true; }
-    virtual const std::string* last_segments_file(const ir::directory::files& files) override { return &segments_file; }
     virtual bool last_segments_file(const ir::directory&, std::string& out) const override { 
       out = segments_file;
       return true;

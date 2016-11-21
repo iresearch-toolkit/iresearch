@@ -111,11 +111,6 @@ struct index_meta_writer final: public iresearch::index_meta_writer {
  * ------------------------------------------------------------------*/
 
 struct index_meta_reader final: public iresearch::index_meta_reader {
-  virtual bool index_exists(const directory::files& files) override;
-  virtual const std::string* last_segments_file(
-    const directory::files& files
-  ) override;
-
   virtual bool last_segments_file(
     const directory& dir, std::string& name
   ) const override;

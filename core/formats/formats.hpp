@@ -371,21 +371,6 @@ struct IRESEARCH_API index_meta_reader {
 
   virtual ~index_meta_reader();
 
-  virtual bool index_exists(const directory::files& files) = 0;
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// Returns a pointer to one of the files in the specified "files" collection.
-  /// If no index segments file could be found then returns nullptr.
-  ///
-  /// In order to use the returned pointer correctly
-  /// the "files" collection should be alive at the
-  /// moment of use since it is just a reference to
-  /// an entry in the specified "files" collection.
-  ////////////////////////////////////////////////////////////////////////////////
-  virtual const std::string* last_segments_file(
-    const directory::files& files
-  ) = 0;
-
   virtual bool last_segments_file(
     const directory& dir, std::string& name
   ) const = 0;

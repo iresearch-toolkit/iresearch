@@ -1161,23 +1161,6 @@ uint64_t parse_generation(const std::string& segments_file) {
   return suffix[0] ? index_meta::INVALID_GEN : gen;
 }
 
-uint64_t index_generation(const std::string& segments_file) {
-  if (!iresearch::starts_with(segments_file, index_meta_writer::FORMAT_PREFIX)) {
-    return index_meta::INVALID_GEN;
-  }
-
-  return parse_generation(segments_file);
-}
-
-bool index_meta_reader::index_exists(const directory::files& files) {
-  return std::any_of(
-    files.begin(),
-    files.end(),
-    [](const std::string& filename) {
-      return iresearch::starts_with(filename, index_meta_writer::FORMAT_PREFIX);
-  });
-}
-
 bool index_meta_reader::last_segments_file(const directory& dir, std::string& out) const {
   uint64_t max_gen = 0;
   directory::visitor_f visitor = [&out, &max_gen] (std::string& name) {
@@ -1193,35 +1176,6 @@ bool index_meta_reader::last_segments_file(const directory& dir, std::string& ou
 
   dir.visit(visitor);
   return max_gen;
-}
-
-const std::string* index_meta_reader::last_segments_file(
-  const directory::files& files
-) {
-  auto max_itr =
-    std::find_if(
-    files.begin(),
-    files.end(),
-    [](const std::string& filename) {
-      return iresearch::starts_with(filename, index_meta_writer::FORMAT_PREFIX);
-  });
-  uint64_t max = 0;
-
-  if (max_itr == files.end()
-      || (index_meta::INVALID_GEN == (max = index_generation(*max_itr)))) {
-    return nullptr;
-  }
-
-  for (directory::files::const_iterator itr = max_itr + 1; itr != files.end(); ++itr) {
-    uint64_t gen = index_generation(*itr);
-
-    if (index_meta::INVALID_GEN != gen && gen > max) {
-      max = gen;
-      max_itr = itr;
-    }
-  }
-
-  return &(*max_itr);
 }
 
 void index_meta_reader::read(
