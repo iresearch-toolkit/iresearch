@@ -233,9 +233,9 @@ void memory_directory::close() {
 }
 
 bool memory_directory::visit(const directory::visitor_f& visitor) const {
-  SCOPED_LOCK(flock_);
-
   std::string filename;
+  
+  SCOPED_LOCK(flock_);
 
   for (auto& entry : files_) {
     filename = entry.first;
@@ -244,21 +244,6 @@ bool memory_directory::visit(const directory::visitor_f& visitor) const {
     }
   }
 
-  return true;
-}
-
-bool memory_directory::list(directory::files& names) const {
-  names.clear();
-  names.reserve(files_.size());
-
-  SCOPED_LOCK(flock_);
-
-  std::transform(
-    files_.begin(), files_.end(),
-    irstd::back_emplacer(names),
-    [] (const file_map::value_type& p) {
-      return p.first;
-  });
   return true;
 }
 

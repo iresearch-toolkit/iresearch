@@ -370,37 +370,6 @@ bool fs_directory::visit(const directory::visitor_f& visitor) const {
   return file_utils::visit_directory(directory.c_str(), dir_visitor, false);
 }
 
-bool fs_directory::list( directory::files& names ) const {
-  auto directory = (utf8_path()/dir_).native();
-
-  names.clear();
-
-  if (!file_utils::is_directory(directory.c_str())) {
-    return false;
-  }
-
-  auto visitor = [&names](const file_path_t name)->bool {
-#ifdef _WIN32
-    boost::filesystem::path::string_type path(name);
-    auto u8_path = (utf8_path() / path).utf8();
-
-    names.emplace_back(std::move(u8_path));
-#else
-    names.emplace_back(name);
-#endif
-
-    return true;
-  };
-
-  if (!file_utils::visit_directory(directory.c_str(), visitor, false)) {
-    names.clear();
-
-    return false;
-  }
-
-  return true;
-}
-
 void fs_directory::sync(const std::string& name) {
   utf8_path path;
   path/dir_/name;

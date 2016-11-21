@@ -71,7 +71,6 @@ struct IRESEARCH_API index_lock : private util::noncopyable {
 struct IRESEARCH_API directory 
   : public util::attributes_provider, 
     private util::noncopyable {
-  typedef std::vector<std::string> files;
   typedef std::function<bool(std::string& name)> visitor_f;
 
   DECLARE_PTR(directory);
@@ -88,12 +87,10 @@ struct IRESEARCH_API directory
   virtual void close() = 0;
 
   ////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the list of existsing files
-  /// @param[out] names the list where file names will be stored
-  /// @returns true on success
+  /// @brief applies the specified 'visitor' to every filename in a directory
+  /// @param[in] visitor to be applied
+  /// @returns 'false' if visitor has returned 'false', 'true' otherwise
   ////////////////////////////////////////////////////////////////////////////
-  virtual bool list(files& names) const = 0;
-
   virtual bool visit(const visitor_f& visitor) const = 0;
 
   ////////////////////////////////////////////////////////////////////////////

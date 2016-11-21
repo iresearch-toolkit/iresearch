@@ -232,10 +232,6 @@ int64_t tracking_directory::length(const std::string& name) const {
   return impl_.length(name);
 }
 
-bool tracking_directory::list(directory::files& names) const {
-  return impl_.list(names);
-}
-
 bool tracking_directory::visit(const directory::visitor_f& visitor) const {
   return impl_.visit(visitor);
 }
@@ -346,10 +342,6 @@ int64_t ref_tracking_directory::length(const std::string& name) const {
   
 bool ref_tracking_directory::visit(const visitor_f& visitor) const {
   return impl_.visit(visitor);
-}
-
-bool ref_tracking_directory::list(directory::files& buf) const {
-  return impl_.list(buf);
 }
 
 index_lock::ptr ref_tracking_directory::make_lock(const std::string& name) {

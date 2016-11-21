@@ -47,9 +47,6 @@ struct directory_mock : public ir::directory {
   virtual int64_t length(const std::string& name) const override {
     return impl_.length(name);
   }
-  virtual bool list(ir::directory::files& names) const override {
-    return impl_.list(names);
-  }
   virtual bool visit(const ir::directory::visitor_f& visitor) const override {
     return impl_.visit(visitor);
   }

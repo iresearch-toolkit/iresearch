@@ -85,7 +85,6 @@ struct IRESEARCH_API tracking_directory: public directory {
   virtual index_output::ptr create(const std::string& name) override;
   virtual bool exists(const std::string& name) const override;
   virtual int64_t length(const std::string& name) const override;
-  virtual bool list(directory::files& names) const override;
   virtual bool visit(const visitor_f& visitor) const override;
   virtual index_lock::ptr make_lock(const std::string& name) override;
   virtual std::time_t mtime(const std::string& name) const override;
@@ -124,7 +123,6 @@ struct IRESEARCH_API ref_tracking_directory: public directory {
   virtual index_output::ptr create(const std::string &name) override;
   virtual bool exists(const std::string& name) const override;
   virtual int64_t length(const std::string& name) const override;
-  virtual bool list(directory::files& buf) const override;
   virtual bool visit(const visitor_f& visitor) const override;
   virtual index_lock::ptr make_lock(const std::string& name) override;
   virtual std::time_t mtime(const std::string& name) const override;

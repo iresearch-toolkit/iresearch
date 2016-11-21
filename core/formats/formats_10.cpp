@@ -1175,7 +1175,7 @@ bool index_meta_reader::last_segments_file(const directory& dir, std::string& ou
   };
 
   dir.visit(visitor);
-  return max_gen;
+  return max_gen > 0;
 }
 
 void index_meta_reader::read(
