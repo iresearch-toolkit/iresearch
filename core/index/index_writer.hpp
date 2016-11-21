@@ -319,13 +319,12 @@ class IRESEARCH_API index_writer : util::noncopyable {
   }; // modification_context
 
   struct import_context {
-    import_context(index_meta::index_segment_t&& v_segment, size_t&& v_generation, file_refs_t&& v_file_refs):
-      file_refs(std::move(v_file_refs)), generation(std::move(v_generation)), segment(std::move(v_segment)) {}
-    import_context(import_context&& other):
-      file_refs(std::move(other.file_refs)), generation(std::move(other.generation)), segment(std::move(other.segment)) {}
+    import_context(index_meta::index_segment_t&& v_segment, size_t&& v_generation)
+      : generation(std::move(v_generation)), segment(std::move(v_segment)) {}
+    import_context(import_context&& other)
+      : generation(std::move(other.generation)), segment(std::move(other.segment)) {}
     import_context& operator=(const import_context&) = delete;
 
-    file_refs_t file_refs;
     const size_t generation;
     const index_meta::index_segment_t segment;
   }; // import_context
@@ -340,6 +339,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
     DECLARE_SPTR(flush_context);
 
     std::atomic<size_t> generation_; // current modification/update generation
+    ref_tracking_directory::ptr dir_; // ref tracking directory used by this context (tracks all/only refs for this context)
     async_utils::read_write_mutex flush_mutex_; // guard for the current context during flush (write) operations vs update (read)
     index_meta meta_; // meta pending flush completion
     modification_requests_t modification_queries_; // sequential list of modification requests (remove/update)
@@ -411,7 +411,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
   index_meta::ptr commited_meta_; // last successfully committed meta 
   index_lock::ptr write_lock_; // exclusive write lock for directory
   format::ptr codec_;
-  ref_tracking_directory dir_;
+  directory& dir_; // directory used for initialization of readers
   file_refs_t file_refs_;
   index_meta_writer::ptr writer_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
