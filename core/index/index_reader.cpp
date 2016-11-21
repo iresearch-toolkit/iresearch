@@ -21,10 +21,9 @@ NS_LOCAL
 MSVC_ONLY(__pragma(warning(push)))
 MSVC_ONLY(__pragma(warning(disable:4457))) // variable hides function param
 iresearch::index_file_refs::ref_t load_newest_index_meta(
-  iresearch::index_meta& meta,
-  const iresearch::directory& dir,
-  const iresearch::format::ptr& codec
-) NOEXCEPT {
+    iresearch::index_meta& meta,
+    const iresearch::directory& dir,
+    const iresearch::format::ptr& codec) NOEXCEPT {
   // if a specific codec was specified
   if (codec) {
     try {
@@ -35,34 +34,19 @@ iresearch::index_file_refs::ref_t load_newest_index_meta(
       }
 
       iresearch::index_file_refs::ref_t ref;
-      iresearch::directory::files files;
-
-      dir.list(files);
+      std::string filename;
 
       // ensure have a valid ref to a filename
-      for (;;) {
-        auto* filename = reader->last_segments_file(files);
+      while (!ref) {
+        const bool index_exists = reader->last_segments_file(dir, filename);
 
-        if (!filename) {
+        if (!index_exists) {
           return nullptr;
         }
 
         ref = std::move(iresearch::directory_utils::reference(
-          const_cast<iresearch::directory&>(dir), *filename
+          const_cast<iresearch::directory&>(dir), filename
         ));
-
-        if (ref) {
-          break;
-        }
-
-        // remove non-existent filename
-        for (auto itr = files.begin(), end = files.end(); itr != end; ++itr) {
-          if (&*itr == filename) {
-            files.back().swap(*itr);
-            files.pop_back();
-            break;
-          }
-        }
       }
 
       if (ref) {
@@ -94,10 +78,6 @@ iresearch::index_file_refs::ref_t load_newest_index_meta(
   newest.mtime = (iresearch::integer_traits<time_t>::min)();
 
   try {
-    iresearch::directory::files files;
-
-    dir.list(files);
-
     for (auto& name: codecs) {
       auto codec = iresearch::formats::get(name);
 
@@ -112,31 +92,19 @@ iresearch::index_file_refs::ref_t load_newest_index_meta(
       }
 
       iresearch::index_file_refs::ref_t ref;
+      std::string filename;
 
       // ensure have a valid ref to a filename
-      for (;;) {
-        auto* filename = reader->last_segments_file(files);
+      while (!ref) {
+        const bool index_exists = reader->last_segments_file(dir, filename);
 
-        if (!filename) {
+        if (!index_exists) {
           break; // try the next codec
         }
 
         ref = std::move(iresearch::directory_utils::reference(
-          const_cast<iresearch::directory&>(dir), *filename
+          const_cast<iresearch::directory&>(dir), filename
         ));
-
-        if (ref) {
-          break; // have a valid filename
-        }
-
-        // remove non-existent filename
-        for (auto itr = files.begin(), end = files.end(); itr != end; ++itr) {
-          if (&*itr == filename) {
-            files.back().swap(*itr);
-            files.pop_back();
-            break;
-          }
-        }
       }
 
       if (!ref) {

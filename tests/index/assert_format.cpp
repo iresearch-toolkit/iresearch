@@ -229,7 +229,7 @@ bool index_meta_reader::index_exists(
 bool index_meta_reader::last_segments_file(
     const iresearch::directory&, 
     std::string&) const {
-  return true;
+  return false;
 }
 
 const std::string* index_meta_reader::last_segments_file(
