@@ -811,7 +811,7 @@ class format_test_case_base : public index_test_base {
       {"field2", 2, iresearch::flags{ iresearch::document::type() }, 3},
       {"field3", 3, iresearch::flags{ iresearch::offset::type(), iresearch::position::type() }, 4},
       {"field4", 4, iresearch::flags{ iresearch::term_meta::type(), iresearch::offset::type() }, 0},
-      {"field5", 5, iresearch::flags{ iresearch::increment::type(), iresearch::offset::type() }, 5}
+      {"field5", 5, iresearch::flags{ iresearch::increment::type(), iresearch::offset::type() } }
     };
 
     // write field_meta

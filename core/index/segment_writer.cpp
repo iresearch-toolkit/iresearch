@@ -14,6 +14,7 @@
 #include "store/store_utils.hpp"
 #include "index_meta.hpp"
 #include "analysis/token_stream.hpp"
+#include "analysis/token_attributes.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/version_utils.hpp"
@@ -47,7 +48,9 @@ bool segment_writer::index_field(
   REGISTER_TIMER_DETAILED();
 
   if (slot.invert(tokens, features, boost, num_docs_cached_ + type_limits<type_t::doc_id_t>::min())) {
-    indexed_fields_.insert(&slot);
+    if (features.check<norm>()) {
+      norm_fields_.insert(&slot);
+    }
     fields_ += features; // accumulate segment features
     return true;
   }
@@ -100,16 +103,14 @@ bool segment_writer::store_attribute(
 void segment_writer::finish(const update_context& ctx) {
   REGISTER_TIMER_DETAILED();
 
-  const float_t DEFAULT = 1.f; // default normalization factor
-
-  // write document normalization factors (for each indexed field)
-  for (auto* field : indexed_fields_) {
+  // write document normalization factors (for each field marked for normalization))
+  for (auto* field : norm_fields_) {
     norm_.value  = field->boost() / float_t(std::sqrt(double_t(field->size())));
-    if (norm_.value != DEFAULT) {
+    if (norm_.value != norm::empty()) {
       field->write_norm(norm_, *col_writer_);
     }
   }
-  indexed_fields_.clear(); // clear indexed fields
+  norm_fields_.clear(); // clear normalized fields
 
   // finish stored fields 
   sf_writer_->end(&header_); 

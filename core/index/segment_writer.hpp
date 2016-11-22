@@ -134,7 +134,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   update_contexts docs_context_;
   fields_data fields_;
   std::unordered_map<hashed_string_ref, column> columns_;
-  std::unordered_set<field_data*> indexed_fields_; // fields we've indexed during document processing
+  std::unordered_set<field_data*> norm_fields_; // document fields for normalization
   std::string seg_name_;
   field_meta_writer::ptr field_meta_writer_;
   field_writer::ptr field_writer_;

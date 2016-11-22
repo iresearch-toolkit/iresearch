@@ -104,7 +104,8 @@ namespace tests {
 // -----------------------------------------------------------------------------
 
 field_base::field_base(field_base&& rhs) 
-  : name_(std::move(rhs.name_)),
+  : features_(std::move(rhs.features_)),
+    name_(std::move(rhs.name_)),
     boost_(rhs.boost_),
     indexed_(rhs.indexed_),
     stored_(rhs.stored_) {
@@ -112,6 +113,7 @@ field_base::field_base(field_base&& rhs)
 
 field_base& field_base::operator=(field_base&& rhs) {
   if (this != &rhs) {
+    features_ = std::move(features_);
     name_ = std::move(rhs.name_);
     boost_ = rhs.boost_;
     indexed_ = rhs.indexed_;
@@ -140,10 +142,6 @@ bool long_field::write(ir::data_output& out) const {
   return true;
 }
 
-const ir::flags& long_field::features() const {
-  return ir::flags::empty_instance();
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                         int_field implementation
 // -----------------------------------------------------------------------------
@@ -160,10 +158,6 @@ ir::token_stream* int_field::get_tokens() const {
 
   stream_.reset(value_);
   return &stream_;
-}
-
-const ir::flags& int_field::features() const {
-  return ir::flags::empty_instance();
 }
 
 // -----------------------------------------------------------------------------
@@ -184,10 +178,6 @@ ir::token_stream* double_field::get_tokens() const {
   return &stream_;
 }
 
-const ir::flags& double_field::features() const {
-  return ir::flags::empty_instance();
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                        float_field implementation
 // -----------------------------------------------------------------------------
@@ -206,10 +196,6 @@ ir::token_stream* float_field::get_tokens() const {
   return &stream_;
 }
 
-const ir::flags& float_field::features() const {
-  return ir::flags::empty_instance();
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                       binary_field implementation
 // -----------------------------------------------------------------------------
@@ -226,10 +212,6 @@ ir::token_stream* binary_field::get_tokens() const {
 
   stream_.reset(value_);
   return &stream_;
-}
-
-const ir::flags& binary_field::features() const {
-  return ir::flags::empty_instance();
 }
 
 // -----------------------------------------------------------------------------

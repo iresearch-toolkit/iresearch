@@ -751,9 +751,23 @@ bool write(
     auto& field_meta = field_itr.meta();
     auto& field_features = field_meta.features;
 
-    field_itr.visit(remap_and_merge); // remap field id's & merge norms
-    fmw->write(iresearch::field_id(mapped_field_id), field_meta.name, field_features, cs.id());
-    fw->write(iresearch::field_id(mapped_field_id), field_features, *(field_itr.terms()));
+    // remap field id's & merge norms
+    field_itr.visit(remap_and_merge); 
+   
+    // write field metadata 
+    fmw->write(
+      iresearch::field_id(mapped_field_id), 
+      field_meta.name, 
+      field_features, 
+      cs.empty() ? iresearch::type_limits<iresearch::type_t::field_id_t>::invalid() : cs.id()
+    );
+
+    // write field terms
+    fw->write(
+      iresearch::field_id(mapped_field_id), 
+      field_features, 
+      *(field_itr.terms())
+    );
   }
 
   fw->end();

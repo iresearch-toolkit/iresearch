@@ -82,8 +82,12 @@ class field_base : public ifield {
   void stored(bool value) { stored_ = value; }
 
   const ir::serializer* serializer() const { return stored_ ? this : nullptr; }
+  
+  const ir::flags& features() const { return features_; };
+  ir::flags& features() { return features_; }
 
  private:
+  iresearch::flags features_;
   std::string name_;
   float_t boost_{ 1.f };
   bool indexed_{ true };
@@ -104,7 +108,6 @@ class long_field: public field_base {
   value_t value() const { return value_; }
   bool write(ir::data_output& out) const override;
   ir::token_stream* get_tokens() const;
-  const ir::flags& features() const;
 
  private:
   mutable ir::numeric_token_stream stream_;
@@ -126,7 +129,6 @@ class int_field: public field_base {
 
   bool write(ir::data_output& out) const override;
   ir::token_stream* get_tokens() const;
-  const ir::flags& features() const;
 
  private:
   mutable ir::numeric_token_stream stream_;
@@ -148,7 +150,6 @@ class double_field: public field_base {
 
   bool write(ir::data_output& out) const override;
   ir::token_stream* get_tokens() const;
-  const ir::flags& features() const;
 
  private:
   mutable ir::numeric_token_stream stream_;
@@ -170,7 +171,6 @@ class float_field: public field_base {
 
   bool write(ir::data_output& out) const override;
   ir::token_stream* get_tokens() const;
-  const ir::flags& features() const;
 
  private:
   mutable ir::numeric_token_stream stream_;
@@ -196,7 +196,6 @@ class binary_field: public field_base {
   
   bool write(ir::data_output& out) const override;
   ir::token_stream* get_tokens() const;
-  const ir::flags& features() const;
 
  private:
   mutable ir::string_token_stream stream_;

@@ -127,6 +127,25 @@ struct IRESEARCH_API granularity_prefix: attribute {
 }; // granularity_prefix
 
 //////////////////////////////////////////////////////////////////////////////
+/// @class norm
+/// @brief this is marker attribute only used in field::features in order to
+///        allow evaluation of the field normalization factor 
+//////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API norm : attribute {
+  DECLARE_ATTRIBUTE_TYPE();
+  DECLARE_FACTORY_DEFAULT();
+
+  FORCE_INLINE static CONSTEXPR float_t empty() {
+    return 1.f;
+  }
+
+  norm() NOEXCEPT;
+  virtual void clear() override {
+    // NOOP
+  }
+}; // norm
+
+//////////////////////////////////////////////////////////////////////////////
 /// @class term_meta
 /// @brief represents metadata associated with the term
 //////////////////////////////////////////////////////////////////////////////

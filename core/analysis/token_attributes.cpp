@@ -111,6 +111,18 @@ granularity_prefix::granularity_prefix() NOEXCEPT:
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                              norm
+// -----------------------------------------------------------------------------
+
+REGISTER_ATTRIBUTE(iresearch::norm);
+DEFINE_ATTRIBUTE_TYPE(norm);
+DEFINE_FACTORY_DEFAULT(norm);
+
+norm::norm() NOEXCEPT 
+  : attribute(norm::type()) {
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                          position
 // -----------------------------------------------------------------------------
 
