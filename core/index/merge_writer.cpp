@@ -567,6 +567,14 @@ struct binary_value final : iresearch::serializer {
   mutable iresearch::byte_type buf[1024];
 }; // binary_value 
 
+// ...........................................................................
+// Helper class responsible for writing a data from different sources 
+// into single columnstore
+//
+// Using by 
+//  'write' function to merge field norms values from different segments
+//  'write_columns' function to merge columns values from different segmnets
+// ...........................................................................
 class columnstore {
  public:
   columnstore(
@@ -592,10 +600,13 @@ class columnstore {
     }
   }
 
+  // inserts live values from the specified 'column' and 'reader' into column
   bool insert(
       const iresearch::sub_reader& reader, 
       iresearch::field_id column, 
       const doc_id_map_t& doc_id_map) {
+    assert(column_.second);
+
     pdoc_id_map = &doc_id_map;
 
     return reader.column(
@@ -612,8 +623,15 @@ class columnstore {
     }
   }
 
+  // returs 
+  //   'true' if object has been initialized sucessfully, 
+  //   'false' otherwise
   operator bool() const { return static_cast<bool>(writer_); }
+
+  // returns 'true' if no data has been written to columnstore
   bool empty() const { return empty_; }
+
+  // returns current column identifier
   iresearch::field_id id() const { return column_.first; }
 
  private:
