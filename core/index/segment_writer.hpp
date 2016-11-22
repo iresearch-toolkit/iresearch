@@ -64,7 +64,13 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   void reset(std::string seg_name);
 
  private:
-  struct doc_header : iresearch::serializer {
+  struct norm_factor final : iresearch::serializer {
+    bool write(data_output& out) const override;
+
+    float_t value; // value to write
+  }; // norm_factor
+
+  struct doc_header final : iresearch::serializer {
     bool write(data_output& out) const override;
 
     std::vector<field_id> doc_fields; // per document field ids
@@ -98,7 +104,6 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     );
   }
 
-
   // adds document field
   template<typename Field>
   void insert_field(const Field& field) {
@@ -124,11 +129,12 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   void finish(const update_context& ctx); // finish document
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  doc_header header_; // 
+  doc_header header_; // stored document header
+  norm_factor norm_; // field normalization factor
   update_contexts docs_context_;
   fields_data fields_;
   std::unordered_map<hashed_string_ref, column> columns_;
-  std::unordered_set<const field_data*> indexed_fields_; // fields we've indexed during document processing
+  std::unordered_set<field_data*> indexed_fields_; // fields we've indexed during document processing
   std::string seg_name_;
   field_meta_writer::ptr field_meta_writer_;
   field_writer::ptr field_writer_;

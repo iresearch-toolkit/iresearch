@@ -292,7 +292,11 @@ class field_meta_writer : public iresearch::field_meta_writer {
   field_meta_writer( const index_segment& data );
 
   void prepare(const iresearch::flush_state& state) override;
-  void write(iresearch::field_id id, const std::string& name, const iresearch::flags& features) override;
+  void write(
+    iresearch::field_id id, 
+    const std::string& name, 
+    const iresearch::flags& features,
+    iresearch::field_id norm) override;
   void end() override;
 
  private:

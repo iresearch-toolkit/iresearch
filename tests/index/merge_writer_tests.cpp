@@ -917,6 +917,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     auto& field = doc1.back<tests::binary_field>();
     field.name(iresearch::string_ref("doc_bytes"));
     field.value(bytes1);
+    field.boost(1.5f);
   }
   doc2.add(new tests::binary_field()); {
     auto& field = doc2.back<tests::binary_field>();
@@ -927,6 +928,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     auto& field = doc3.back<tests::binary_field>();
     field.name(iresearch::string_ref("doc_bytes"));
     field.value(bytes3);
+    field.boost(2.5f);
   }
   doc1.add(new tests::double_field()); {
     auto& field = doc1.back<tests::double_field>();
@@ -1051,6 +1053,34 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         features,
         expected_terms
       );
+
+      // ensure we have norms (since we have set boost factor)
+      ASSERT_TRUE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field->norm));
+
+      std::unordered_map<float_t, iresearch::doc_id_t> expected_values{
+        { 1.5f, 1 },
+      };
+
+      auto reader = [&expected_values] (iresearch::doc_id_t doc, data_input& in) {
+        const auto actual_value = iresearch::read_zvfloat(in); // read norm value
+
+        auto it = expected_values.find(actual_value);
+        if (it == expected_values.end()) {
+          // can't find value
+          return false;
+        }
+
+        if (it->second != doc) {
+          // wrong document
+          return false;
+        }
+
+        expected_values.erase(it);
+        return true;
+      };
+      
+      ASSERT_TRUE(segment.column(field->norm, reader));
+      ASSERT_TRUE(expected_values.empty());
     }
 
     // validate double field
@@ -1368,6 +1398,34 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         features,
         expected_terms
       );
+      
+      // ensure we have norms (since we have set boost factor)
+      ASSERT_TRUE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field->norm));
+
+      std::unordered_map<float_t, iresearch::doc_id_t> expected_values{
+        { 2.5f, 1 },
+      };
+
+      auto reader = [&expected_values] (iresearch::doc_id_t doc, data_input& in) {
+        const auto actual_value = iresearch::read_zvfloat(in); // read norm value
+
+        auto it = expected_values.find(actual_value);
+        if (it == expected_values.end()) {
+          // can't find value
+          return false;
+        }
+
+        if (it->second != doc) {
+          // wrong document
+          return false;
+        }
+
+        expected_values.erase(it);
+        return true;
+      };
+      
+      ASSERT_TRUE(segment.column(field->norm, reader));
+      ASSERT_TRUE(expected_values.empty());
     }
 
     // validate double field
@@ -1669,6 +1727,35 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       features,
       expected_terms
     );
+      
+    // ensure we have norms (since we have set boost factor)
+    ASSERT_TRUE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field->norm));
+
+    std::unordered_map<float_t, iresearch::doc_id_t> expected_values{
+      { 1.5f, 1 },
+      { 2.5f, 3 },
+    };
+
+    auto reader = [&expected_values] (iresearch::doc_id_t doc, data_input& in) {
+      const auto actual_value = iresearch::read_zvfloat(in); // read norm value
+
+      auto it = expected_values.find(actual_value);
+      if (it == expected_values.end()) {
+        // can't find value
+        return false;
+      }
+
+      if (it->second != doc) {
+        // wrong document
+        return false;
+      }
+
+      expected_values.erase(it);
+      return true;
+    };
+
+    ASSERT_TRUE(segment->column(field->norm, reader));
+    ASSERT_TRUE(expected_values.empty());
   }
 
   // validate double field

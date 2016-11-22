@@ -655,7 +655,11 @@ void field_meta_writer::prepare(const iresearch::flush_state& state) {
   EXPECT_EQ(data_.size(), state.fields_count);
 }
 
-void field_meta_writer::write(iresearch::field_id id, const std::string& name, const iresearch::flags& features) {
+void field_meta_writer::write(
+    iresearch::field_id id, 
+    const std::string& name, 
+    const iresearch::flags& features,
+    iresearch::field_id) {
   const tests::field* fld = data_.find(name);
   EXPECT_NE(nullptr, fld);
   EXPECT_EQ(fld->name, name);

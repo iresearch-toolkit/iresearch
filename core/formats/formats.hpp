@@ -158,7 +158,12 @@ struct IRESEARCH_API field_meta_writer {
   virtual ~field_meta_writer();
 
   virtual void prepare(const flush_state& state) = 0;
-  virtual void write(field_id id, const std::string& name, const flags& features) = 0;
+  virtual void write(
+    field_id id, 
+    const std::string& name, 
+    const flags& features,
+    field_id norm
+  ) = 0;
   virtual void end() = 0;
 };
 

@@ -18,7 +18,14 @@
 #include "utils/type_limits.hpp"
 #include "utils/version_utils.hpp"
 
+#include <math.h>
+
 NS_ROOT
+
+bool segment_writer::norm_factor::write(data_output& out) const {
+  write_zvfloat(out, value);
+  return true;
+}
 
 bool segment_writer::doc_header::write(data_output& out) const {
   return stored::write_header(out, doc_fields.begin(), doc_fields.end());
@@ -92,10 +99,23 @@ bool segment_writer::store_attribute(
 
 void segment_writer::finish(const update_context& ctx) {
   REGISTER_TIMER_DETAILED();
-  sf_writer_->end(&header_); // finish document
-  docs_context_[type_limits<type_t::doc_id_t>::min() + num_docs_cached_++] = ctx;
-  header_.doc_fields.clear();
+
+  const float_t DEFAULT = 1.f; // default normalization factor
+
+  // write document normalization factors (for each indexed field)
+  for (auto* field : indexed_fields_) {
+    norm_.value  = field->boost() / float_t(std::sqrt(double_t(field->size())));
+    if (norm_.value != DEFAULT) {
+      field->write_norm(norm_, *col_writer_);
+    }
+  }
   indexed_fields_.clear(); // clear indexed fields
+
+  // finish stored fields 
+  sf_writer_->end(&header_); 
+  header_.doc_fields.clear(); // clear stored document header
+
+  docs_context_[type_limits<type_t::doc_id_t>::min() + num_docs_cached_++] = ctx;
 }
 
 void segment_writer::flush(std::string& filename, segment_meta& meta) {

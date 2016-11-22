@@ -227,7 +227,12 @@ class field_meta_writer final : public iresearch::field_meta_writer{
   virtual ~field_meta_writer();
 
   virtual void prepare(const flush_state& state) override;
-  virtual void write(field_id id, const std::string& name, const flags& features) override;
+  virtual void write(
+    field_id id, 
+    const std::string& name, 
+    const flags& features,
+    field_id norm
+  ) override;
   virtual void end() override;
 
  private:

@@ -187,7 +187,7 @@ class compound_field_iterator {
   bool visit(const Visitor& visitor) const {
     for (auto& entry : field_iterator_mask_) {
       auto& itr = field_iterators_[entry.itr_id];
-      if (!visitor(*itr.reader, itr.field_id_base, *entry.meta)) {
+      if (!visitor(*itr.reader, *itr.doc_id_map, itr.field_id_base, *entry.meta)) {
         return false;
       }
     }
@@ -552,38 +552,72 @@ bool compute_field_meta(
 
   return true;
 }
-  
-struct column_value final : iresearch::serializer {
-  bool write(data_output& out) const override {
-    for (size_t read = in->read_bytes(buf, buf_size); read;
-         read = in->read_bytes(buf, buf_size)) {
+
+struct binary_value final : iresearch::serializer {
+  bool write(iresearch::data_output& out) const {
+    for (size_t read = in->read_bytes(buf, sizeof buf); read;
+         read = in->read_bytes(buf, sizeof buf)) {
       out.write_bytes(buf, read);
     }
+
     return true;
   }
 
-  data_input* in; // columns value stream
-  iresearch::byte_type* buf; // copy buffer
-  size_t buf_size; // copy buffer size
-};
+  iresearch::data_input* in;
+  mutable iresearch::byte_type buf[1024];
+}; // binary_value 
 
-bool write_columns(
-    iresearch::directory& dir,
-    iresearch::format& codec,
-    const iresearch::string_ref& segment_name,
-    compound_column_iterator_t& column_itr,
-    iresearch::byte_type* buf, 
-    size_t buf_size) {
-   
-  column_value value;
-  value.buf = buf;
-  value.buf_size = buf_size;
+class columnstore {
+ public:
+  columnstore(
+      iresearch::directory& dir,
+      iresearch::format& codec,
+      const iresearch::string_ref& segment_name, 
+      binary_value& value) 
+    : value_(&value) {
+    auto writer = codec.get_columnstore_writer();
+    if (!writer->prepare(dir, segment_name)) {
+      return; // flush failure
+    }
 
-  const doc_id_map_t* pdoc_id_map{};
-  iresearch::columnstore_writer::column_t mapped_column;
-  bool empty = false; // something has been written into column
+    writer_ = std::move(writer);
+    column_.first = iresearch::type_limits<iresearch::type_t::field_id_t>::invalid();
+  }
 
-  auto column_copier = [&empty, &value, &pdoc_id_map, &mapped_column] (iresearch::doc_id_t doc, data_input& in) {
+  ~columnstore() {
+    try {
+      writer_->flush();
+    } catch (...) {
+      // NOOP
+    }
+  }
+
+  bool insert(
+      const iresearch::sub_reader& reader, 
+      iresearch::field_id column, 
+      const doc_id_map_t& doc_id_map) {
+    pdoc_id_map = &doc_id_map;
+
+    return reader.column(
+        column, 
+        [this](iresearch::doc_id_t doc, iresearch::data_input& in) {
+      return copy(doc, in);
+    });
+  }
+
+  void reset() {
+    if (!empty_) {
+      column_ = writer_->push_column();
+      empty_ = true;
+    }
+  }
+
+  operator bool() const { return static_cast<bool>(writer_); }
+  bool empty() const { return empty_; }
+  iresearch::field_id id() const { return column_.first; }
+
+ private:
+  bool copy(iresearch::doc_id_t doc, iresearch::data_input& in) {
     assert(pdoc_id_map);
     const auto mapped_doc = (*pdoc_id_map)[doc];
     if (MASKED_DOC_ID == mapped_doc) {
@@ -591,41 +625,52 @@ bool write_columns(
       return true;
     }
 
-    empty = false;
-    value.in = &in; // set value input stream
-    return mapped_column.second(mapped_doc, value); // write value to new segment
-  };
-  
-  auto cw = codec.get_columnstore_writer();
-  cw->prepare(dir, segment_name);
+    empty_ = false;
+    value_->in = &in; // set value input stream
+    return column_.second(mapped_doc, *value_); // write value to new segment
+  }
 
-  auto visitor = [&pdoc_id_map, &mapped_column, &column_copier, &cw] (
+  iresearch::columnstore_writer::ptr writer_;
+  iresearch::columnstore_writer::column_t column_;
+  binary_value* value_;
+  const doc_id_map_t* pdoc_id_map;
+  bool empty_{ false };
+}; // columnstore
+  
+bool write_columns(
+    columnstore& cs,
+    iresearch::directory& dir,
+    iresearch::format& codec,
+    const iresearch::string_ref& segment_name,
+    compound_column_iterator_t& column_itr) {
+  assert(cs);
+  
+  auto visitor = [&cs](
       const iresearch::sub_reader& segment,
       const doc_id_map_t& doc_id_map,
       size_t column_id_base, 
       const iresearch::column_meta& column) {
-    pdoc_id_map = &doc_id_map;
-    return segment.column(column.id, column_copier);
+    return cs.insert(segment, column.id, doc_id_map);
   };
   
   auto cmw = codec.get_column_meta_writer();
-  cmw->prepare(dir, segment_name);
-  for (; column_itr.next(); ) {
-    if (!empty) {
-      mapped_column = cw->push_column();
-      empty = true;
-    }
+  if (!cmw->prepare(dir, segment_name)) {
+    // failed to prepare writer
+    return false;
+  }
+  
+  while (column_itr.next()) {
+    cs.reset();  
 
     // visit matched columns from merging segments and
     // write all survived values to the new segment 
     column_itr.visit(visitor); 
 
-    if (!empty) {
-      cmw->write((*column_itr).name, mapped_column.first);
-    }
+    if (!cs.empty()) {
+      cmw->write((*column_itr).name, cs.id());
+    } 
   }
   cmw->flush();
-  cw->flush();
 
   return true;
 }
@@ -634,16 +679,18 @@ bool write_columns(
 // write field meta and field term data
 // ...........................................................................
 bool write(
-  iresearch::directory& dir,
-  iresearch::format& codec,
-  const iresearch::string_ref& segment_name,
-  compound_field_iterator& field_itr,
-  const field_meta_map_t& field_meta_map,
-  const iresearch::flags& fields_features,
-  size_t docs_count,
-  id_map_t& field_id_map // should have enough space
-) {
-    if (field_meta_map.size() > iresearch::integer_traits<uint32_t>::const_max) {
+    columnstore& cs,
+    iresearch::directory& dir,
+    iresearch::format& codec,
+    const iresearch::string_ref& segment_name,
+    compound_field_iterator& field_itr,
+    const field_meta_map_t& field_meta_map,
+    const iresearch::flags& fields_features,
+    size_t docs_count,
+    id_map_t& field_id_map /* should have enough space */) {
+  assert(cs);
+
+  if (field_meta_map.size() > iresearch::integer_traits<uint32_t>::const_max) {
     return false; // number of fields exceeds fmw->begin(...) type
   }
 
@@ -664,21 +711,30 @@ bool write(
   fw->prepare(flush_state);
 
   size_t mapped_field_id = 0;
-  auto remapper = 
-    [&field_id_map, &mapped_field_id] (
-      const iresearch::sub_reader& /* segment */,
+  auto remap_and_merge = 
+    [&field_id_map, &mapped_field_id, &cs] (
+      const iresearch::sub_reader& segment,
+      const doc_id_map_t& doc_id_map,
       size_t field_id_base, 
       const iresearch::field_meta& field) {
     field_id_map[field_id_base + field.id] = mapped_field_id;
+
+    // merge field norms if present
+    if (iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)) {
+      cs.insert(segment, field.norm, doc_id_map);
+    }
+
     return true;
   };
 
   for (; field_itr.next(); ++mapped_field_id) {
+    cs.reset();
+
     auto& field_meta = field_itr.meta();
     auto& field_features = field_meta.features;
 
-    field_itr.visit(remapper); // remap field id's
-    fmw->write(iresearch::field_id(mapped_field_id), field_meta.name, field_features);
+    field_itr.visit(remap_and_merge); // remap field id's & merge norms
+    fmw->write(iresearch::field_id(mapped_field_id), field_meta.name, field_features, cs.id());
     fw->write(iresearch::field_id(mapped_field_id), field_features, *(field_itr.terms()));
   }
 
@@ -690,27 +746,6 @@ bool write(
 
   return true;
 }
-
-// ...........................................................................
-// in order to copy documents from one segment to another, 
-// we treat document as the stored field, 
-// then we just put it into ordinary stored_fields_writer
-// ...........................................................................
-struct document_body final : iresearch::serializer {
-  bool write(iresearch::data_output& out) const {
-    // write body
-    for (size_t read = in->read_bytes(buf, buf_size); read;
-         read = in->read_bytes(buf, buf_size)) {
-      out.write_bytes(buf, read);
-    }
-
-    return true;
-  }
-
-  iresearch::data_input* in;
-  iresearch::byte_type* buf;
-  size_t buf_size;
-}; // document_body 
 
 struct document_header final : iresearch::serializer {
   bool write(iresearch::data_output& out) const {
@@ -730,6 +765,9 @@ struct document_header final : iresearch::serializer {
 
 // ...........................................................................
 // write stored field data
+// in order to copy documents from one segment to another, 
+// we treat document as the stored field, 
+// then we just put it into ordinary stored_fields_writer
 // ReaderIterator - std::pair<const iresearch::sub_reader*, doc_id_map_t>
 // ...........................................................................
 template <typename ReaderIterator>
@@ -738,18 +776,13 @@ void write(
     iresearch::format& codec,
     const iresearch::string_ref& segment_name,
     const id_map_t& field_id_map,
-    iresearch::byte_type* buf,
-    size_t buf_size,
+    binary_value& body,
     ReaderIterator begin,
     ReaderIterator end) {
   iresearch::stored_fields_writer::ptr sfw = codec.get_stored_fields_writer();
   
   document_header header;
   header.field_id_map = &field_id_map;
-
-  document_body body;
-  body.buf = buf; // copy buffer
-  body.buf_size = buf_size; // copy buffer size
 
   iresearch::stored_fields_reader::visitor_f copier = [&header, &body, &sfw](iresearch::data_input& header_in, iresearch::data_input& body_in) {
     header.in = &header_in; // set header stream
@@ -847,23 +880,26 @@ bool merge_writer::flush(std::string& filename, segment_meta& meta) {
     total_fields_count,
     iresearch::type_limits<iresearch::type_t::field_id_t>::invalid()
   );
+ 
+  binary_value buf; // temporary buffer for copying
 
-  // write field meta and field term data
-  if (!write(track_dir, codec, name_, fields_itr, field_metas, fields_features, docs_count, id_map)) {
+  columnstore cs(track_dir, codec, name_, buf);
+  if (!cs) {
     return false; // flush failure
   }
 
-  byte_type buf[1024]; // temporary buffer for copying
+  // write columns
+  if (!write_columns(cs, track_dir, codec, name_, columns_itr)) {
+    return false; // flush failure
+  }
+
+  // write field meta and field term data
+  if (!write(cs, track_dir, codec, name_, fields_itr, field_metas, fields_features, docs_count, id_map)) {
+    return false; // flush failure
+  }
 
   // write stored field data
-  write(
-    track_dir, codec, name_, 
-    id_map, buf, sizeof buf, 
-    readers.begin(), readers.end()
-  );
-  
-  // write columns
-  write_columns(track_dir, codec, name_, columns_itr, buf, sizeof buf);
+  write(track_dir, codec, name_, id_map, buf, readers.begin(), readers.end());
 
   // ...........................................................................
   // write segment meta

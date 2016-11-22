@@ -25,17 +25,21 @@ NS_ROOT
 field_meta::field_meta(field_meta&& rhs)
   : features(std::move(rhs.features)),
     name(std::move(rhs.name)),
-    id(rhs.id) {
+    id(rhs.id),
+    norm(rhs.norm) {
   rhs.id = type_limits<type_t::field_id_t>::invalid();
+  rhs.norm = type_limits<type_t::field_id_t>::invalid();
 }
 
 field_meta::field_meta(
     const string_ref& name,
     field_id id,
-    const flags& features) 
+    const flags& features,
+    field_id norm /* = type_limits<type_t::field_id_t>::invalid() */)
   : features(features),
     name(name.c_str(), name.size()),
-    id(id) {
+    id(id), 
+    norm(norm) {
 }
 
 field_meta& field_meta::operator=(field_meta&& rhs) {
@@ -44,6 +48,8 @@ field_meta& field_meta::operator=(field_meta&& rhs) {
     name = std::move(rhs.name);
     id = rhs.id;
     rhs.id = type_limits<type_t::field_id_t>::invalid();
+    norm = rhs.norm;
+    rhs.norm = type_limits<type_t::field_id_t>::invalid();
   }
   return *this;
 }

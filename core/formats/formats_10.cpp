@@ -1434,6 +1434,7 @@ void field_meta_reader::read(iresearch::field_meta& meta) {
 
   meta.id = id;
   read_field_features(meta.features);
+  meta.norm = static_cast<field_id>(read_zvlong(in));
 }
 
 void field_meta_reader::end() {
@@ -1480,10 +1481,15 @@ void field_meta_writer::prepare(const flush_state& state) {
   out->write_vint(static_cast<uint32_t>(state.fields_count));
 }
 
-void field_meta_writer::write(field_id id, const std::string& name, const flags& features) {
+void field_meta_writer::write(
+    field_id id, 
+    const std::string& name, 
+    const flags& features,
+    field_id norm) {
   write_string(*out, name);
   out->write_vint(static_cast<uint32_t>(id));
   write_field_features(features);
+  write_zvlong(*out, norm);
 }
 
 void field_meta_writer::end() {
@@ -1543,9 +1549,15 @@ class meta_reader final : public iresearch::column_meta_reader {
 }; // meta_writer 
 
 bool meta_reader::prepare(const directory& dir, const string_ref& name) {
- checksum_index_input< boost::crc_32_type > check_in(
-    dir.open(file_name(name, meta_writer::FORMAT_EXT))
-  );
+  const auto filename = file_name(name, meta_writer::FORMAT_EXT);
+
+  if (!dir.exists(filename)) {
+    // TODO: directory::open should return nullptr
+    // instead of throwing exception
+    return false;
+  }
+
+  checksum_index_input< boost::crc_32_type > check_in(dir.open(filename));
   
   format_utils::check_header(
     check_in, 
@@ -1722,26 +1734,31 @@ columnstore_writer::column_t writer::push_column() {
 }
 
 void writer::flush() {
-  bool empty = true; // all columns are empty
+  // remove all empty columns from tail
+  while (!columns_.empty()) {
+    auto& column = columns_.back();
+    if (column.empty) {
+      columns_.pop_back();
+    } else {
+      break;
+    }
+  }
   
-  // flush all remain data
+  // remove file if there is no data to write
+  if (columns_.empty()) {
+    data_out_.reset();
+    dir_->remove(filename_);
+    return;
+  }
+  
+  // flush all remain data including possible empty columns among filled columns
   for (auto& column : columns_) {
-
     // flush remain blocks
     flush_block(column);
 
     // finish column blocks index
     column.blocks_index_writer.finish();
     column.blocks_index.stream.flush();
-
-    empty &= column.empty;
-  }
-
-  if (empty) {
-    // remove file if there is no data
-    data_out_.reset();
-    dir_->remove(filename_);
-    return;
   }
 
   const auto block_index_ptr = data_out_->file_pointer(); // where blocks index start

@@ -14,6 +14,7 @@
 
 #include "field_meta.hpp"
 #include "postings.hpp"
+#include "formats/formats.hpp"
 
 #include "index/iterators.hpp"
 
@@ -76,6 +77,8 @@ class IRESEARCH_API field_data : util::noncopyable {
 
   const field_meta& meta() const { return meta_; }
 
+  bool write_norm(const serializer& value, columnstore_writer& writer);
+
   // returns true if field contains indexed data
   bool empty() const {
     return type_limits<type_t::doc_id_t>::valid(last_doc_);
@@ -102,6 +105,7 @@ class IRESEARCH_API field_data : util::noncopyable {
   void write_offset(posting& p, int_block_pool::iterator& where,
                     const offset* offs);
 
+  columnstore_writer::values_writer_f norm_writer_;
   field_meta meta_;
   postings terms_;
   byte_block_pool::inserter* byte_writer_;

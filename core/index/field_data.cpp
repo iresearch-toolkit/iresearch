@@ -402,6 +402,16 @@ void field_data::init(doc_id_t doc_id) {
   last_doc_ = doc_id;
 }
 
+bool field_data::write_norm(const serializer& value, columnstore_writer& writer) {
+  if (!norm_writer_) {
+    auto handle = writer.push_column();
+    meta_.norm = handle.first;
+    norm_writer_ = std::move(handle.second);
+  }
+
+  return norm_writer_(doc(), value);
+}
+
 void field_data::new_term(
   posting& p, doc_id_t did, const payload* pay, const offset* offs 
 ) {
@@ -651,7 +661,7 @@ void fields_data::flush(
       auto& features = meta.features;
 
       // write field metadata
-      fmw.write(id, meta.name, features);
+      fmw.write(id, meta.name, features, meta.norm);
 
       // write field invert data
       auto terms = field->iterator();

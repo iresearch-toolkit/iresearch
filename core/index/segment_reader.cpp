@@ -92,10 +92,12 @@ void read_columns_meta(
     const iresearch::format& codec, 
     const iresearch::directory& dir,
     const std::string& name) {
-  iresearch::columns_meta::items_t columns;
-
   auto reader = codec.get_column_meta_reader();
-  reader->prepare(dir, name);
+  if (!reader->prepare(dir, name)) {
+    return;
+  }
+
+  iresearch::columns_meta::items_t columns;
   for (iresearch::column_meta meta; reader->read(meta);) {
     columns.push_back(std::move(meta));
   }
@@ -233,8 +235,9 @@ segment_reader::ptr segment_reader::open(
   columnstore_reader::ptr csr = codec.get_columnstore_reader();
   if (csr->prepare(rs)) {
     rdr->csr_ = std::move(csr);
-    read_columns_meta(rdr->columns_, codec, dir, seg.name);
   }
+    
+  read_columns_meta(rdr->columns_, codec, dir, seg.name);
 
   return rdr;
 }

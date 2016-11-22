@@ -806,12 +806,12 @@ class format_test_case_base : public index_test_base {
   void field_meta_read_write() {
     const std::string seg_name("_1");
     std::vector<iresearch::field_meta> fields{
-      {"field0", 0, iresearch::flags{ iresearch::offset::type(), iresearch::position::type() }},
-      {"field1", 1, iresearch::flags{ iresearch::position::type() }},
-      {"field2", 2, iresearch::flags{ iresearch::document::type() }},
-      {"field3", 3, iresearch::flags{ iresearch::offset::type(), iresearch::position::type() }},
-      {"field4", 4, iresearch::flags{ iresearch::term_meta::type(), iresearch::offset::type() }},
-      {"field5", 5, iresearch::flags{ iresearch::increment::type(), iresearch::offset::type() }}
+      {"field0", 0, iresearch::flags{ iresearch::offset::type(), iresearch::position::type() }, 2},
+      {"field1", 1, iresearch::flags{ iresearch::position::type() }, 1},
+      {"field2", 2, iresearch::flags{ iresearch::document::type() }, 3},
+      {"field3", 3, iresearch::flags{ iresearch::offset::type(), iresearch::position::type() }, 4},
+      {"field4", 4, iresearch::flags{ iresearch::term_meta::type(), iresearch::offset::type() }, 0},
+      {"field5", 5, iresearch::flags{ iresearch::increment::type(), iresearch::offset::type() }, 5}
     };
 
     // write field_meta
@@ -830,7 +830,7 @@ class format_test_case_base : public index_test_base {
       field_meta_writer::ptr writer = codec()->get_field_meta_writer();
       writer->prepare(state);
       for (const auto& meta : fields) {
-        writer->write(meta.id, meta.name, meta.features);
+        writer->write(meta.id, meta.name, meta.features, meta.norm);
       }
       writer->end();
     }
@@ -843,7 +843,10 @@ class format_test_case_base : public index_test_base {
       for (const auto& meta : fields) {
         iresearch::field_meta read;
         reader->read(read);
-        EXPECT_EQ(meta, read);
+        ASSERT_EQ(meta.name, read.name);
+        ASSERT_EQ(meta.id, read.id);
+        ASSERT_EQ(meta.features, read.features);
+        ASSERT_EQ(meta.norm, read.norm);
       }
       reader->end();
     }

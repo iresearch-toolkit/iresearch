@@ -159,7 +159,12 @@ struct IRESEARCH_API field_meta {
   field_meta() = default;
   field_meta(const field_meta&) = default;
   field_meta(field_meta&& rhs);
-  field_meta(const string_ref& field, field_id id, const flags& features);
+  field_meta(
+    const string_ref& field, 
+    field_id id, 
+    const flags& features, 
+    field_id norm = type_limits<type_t::field_id_t>::invalid()
+  );
 
   field_meta& operator=(field_meta&& rhs);
   field_meta& operator=(const field_meta&) = default;
@@ -172,6 +177,7 @@ struct IRESEARCH_API field_meta {
   flags features;
   std::string name;
   field_id id{ type_limits<type_t::field_id_t>::invalid() };
+  field_id norm{ type_limits<type_t::field_id_t>::invalid() };
 }; // field_meta
 
 //////////////////////////////////////////////////////////////////////////////
