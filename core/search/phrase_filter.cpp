@@ -133,7 +133,12 @@ class phrase_query : public filter::prepared {
 
       // add base iterator
       itrs.emplace_back(score_doc_iterator::make<basic_score_iterator>(
-        term_stats->first, std::move(docs), ord, term_state.second
+        rdr,
+        *phrase_state->reader,
+        term_stats->first, 
+        std::move(docs), 
+        ord, 
+        term_state.second
       ));
 
       ++term_stats;

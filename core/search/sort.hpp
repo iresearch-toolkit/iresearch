@@ -171,7 +171,10 @@ class IRESEARCH_API sort {
     /// @brief create a stateful scorer used for computation of document scores
     ////////////////////////////////////////////////////////////////////////////////
     virtual scorer::ptr prepare_scorer(
-      const attributes& query_attrs, const attributes& doc_attrs
+      const sub_reader& segment,
+      const term_reader& field,
+      const attributes& query_attrs, 
+      const attributes& doc_attrs
     ) const = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -387,8 +390,11 @@ public:
     prepared::stats prepare_stats() const;
 
     prepared::scorers prepare_scorers(
-        const attributes& stats,
-        const attributes& doc) const;
+      const sub_reader& segment,
+      const term_reader& field,
+      const attributes& stats,
+      const attributes& doc
+    ) const;
 
     bool less(const byte_type* lhs, const byte_type* rhs) const;
     void add(byte_type* lhs, const byte_type* rhs) const;

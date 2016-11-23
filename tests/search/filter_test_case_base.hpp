@@ -65,9 +65,13 @@ struct boost : public iresearch::sort {
     }
 
     virtual scorer::ptr prepare_scorer(
-      const iresearch::attributes& query_attrs, const iresearch::attributes& doc_attrs
-    ) const override {
-      return boost::scorer::make<boost::scorer>(query_attrs.get<iresearch::boost>(), query_attrs);
+        const iresearch::sub_reader&,
+        const iresearch::term_reader&,
+        const iresearch::attributes& query_attrs, 
+        const iresearch::attributes& doc_attrs) const override {
+      return boost::scorer::make<boost::scorer>(
+        query_attrs.get<iresearch::boost>(), query_attrs
+       );
     }
 
     virtual void add(score_t& dst, const score_t& src) const override {
@@ -161,8 +165,10 @@ struct frequency_sort: public iresearch::sort {
     }
 
     virtual scorer::ptr prepare_scorer(
-      const iresearch::attributes& query_attrs, const iresearch::attributes& doc_attrs
-    ) const override {
+        const iresearch::sub_reader&,
+        const iresearch::term_reader&,
+        const iresearch::attributes& query_attrs, 
+        const iresearch::attributes& doc_attrs) const override {
       auto& doc_id_t = doc_attrs.get<iresearch::document>();
       auto& count = query_attrs.get<prepared::count>();
       const size_t* docs_count = count ? &(count->value) : nullptr;
@@ -394,6 +400,26 @@ struct empty_sub_reader : iresearch::singleton<empty_sub_reader>, iresearch::sub
     return empty;
   }
 }; // empty_sub_reader
+
+struct empty_term_reader : iresearch::singleton<empty_term_reader>, iresearch::term_reader {
+  virtual iresearch::seek_term_iterator::ptr iterator() const { return nullptr; }
+  virtual const iresearch::field_meta& field() const { 
+    static iresearch::field_meta EMPTY;
+    return EMPTY;
+  }
+
+  // total number of terms
+  virtual size_t size() const { return 0; }
+
+  // total number of documents
+  virtual uint64_t docs_count() const { return 0; }
+
+  // less significant term
+  virtual const iresearch::bytes_ref& (min)() const { return iresearch::bytes_ref::nil; }
+
+  // most significant term
+  virtual const iresearch::bytes_ref& (max)() const { return iresearch::bytes_ref::nil; }
+}; // empty_term_reader
 
 } // tests
 

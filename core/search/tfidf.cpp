@@ -93,8 +93,10 @@ class sort final: iresearch::sort::prepared_base<tfidf::score_t> {
   }
 
   virtual scorer::ptr prepare_scorer(
-    const attributes& query_attrs, const attributes& doc_attrs
-  ) const override {
+      const sub_reader&,
+      const term_reader&,
+      const attributes& query_attrs, 
+      const attributes& doc_attrs) const override {
     return tfidf::scorer::make<tfidf::scorer>(
       boost::extract(query_attrs),
       query_attrs.get<tfidf::idf>(),

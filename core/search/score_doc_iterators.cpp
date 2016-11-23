@@ -26,6 +26,8 @@ score_doc_iterator_base::score_doc_iterator_base(const order::prepared& ord)
 #endif
 
 basic_score_iterator::basic_score_iterator(
+    const sub_reader& segment,
+    const term_reader& field,
     const iresearch::attributes& stats, 
     doc_iterator::ptr&& it,
     const order::prepared& ord,
@@ -39,7 +41,9 @@ basic_score_iterator::basic_score_iterator(
 
   // set scorers
   if (scr_) { 
-    scorers_ = ord_->prepare_scorers(*stats_, it_->attributes());
+    scorers_ = ord_->prepare_scorers(
+      segment, field, *stats_, it_->attributes()
+    );
   }
 }
 

@@ -54,7 +54,12 @@ class basic_doc_iterator: public iresearch::score_doc_iterator {
     attrs_.add<iresearch::cost>()->value(std::distance(first_, last_));
 
     if (score_ = iresearch::score::apply(attrs_, *ord_)) {
-      scorers_ = ord_->prepare_scorers(*stats_, attrs_);
+      scorers_ = ord_->prepare_scorers(
+        empty_sub_reader::instance(),
+        empty_term_reader::instance(),
+        *stats_,
+        attrs_
+      );
     }
   }
 

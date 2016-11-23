@@ -134,6 +134,8 @@ score_doc_iterator::ptr range_query::execute(
 
     if (scored_state_itr == state->scored_states.end()) {
       itrs.emplace_back(score_doc_iterator::make<basic_score_iterator>(
+        rdr,
+        *state->reader,
         attributes::empty_instance(),
         std::move(terms->postings(features)),
         ord,
@@ -142,6 +144,8 @@ score_doc_iterator::ptr range_query::execute(
     }
     else {
       itrs.emplace_back(score_doc_iterator::make<basic_score_iterator>(
+        rdr,
+        *state->reader,
         scored_state_itr->second,
         std::move(terms->postings(features)),
         ord,

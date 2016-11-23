@@ -15,10 +15,10 @@
 #include <memory>
 #include <vector>
 
+#include "shared.hpp"
 #include "math_utils.hpp"
 #include "memory.hpp"
 #include "noncopyable.hpp"
-#include "shared.hpp"
 
 NS_ROOT
 NS_BEGIN(container_utils)

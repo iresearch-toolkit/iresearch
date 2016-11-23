@@ -43,6 +43,8 @@ class IRESEARCH_API score_doc_iterator_base: public score_doc_iterator {
 class basic_score_iterator final : public score_doc_iterator_base {
  public:
    basic_score_iterator(
+     const sub_reader& segment,
+     const term_reader& field,
      const iresearch::attributes& stats, 
      doc_iterator::ptr&& it,
      const order::prepared& ord,

@@ -38,7 +38,13 @@ namespace tests {
       DECLARE_FACTORY(prepared);
       prepared(): sort::prepared(iresearch::flags{}) {}
       virtual collector::ptr prepare_collector() const override { return nullptr; }
-      virtual scorer::ptr prepare_scorer(const iresearch::attributes& query_attrs, const iresearch::attributes& doc_attrs) const override { return nullptr; }
+      virtual scorer::ptr prepare_scorer(
+          const iresearch::sub_reader&,
+          const iresearch::term_reader&,
+          const iresearch::attributes& query_attrs, 
+          const iresearch::attributes& doc_attrs) const override { 
+        return nullptr; 
+      }
       virtual void prepare_score(iresearch::byte_type* score) const override {}
       virtual void add(iresearch::byte_type* dst, const iresearch::byte_type* src) const override {}
       virtual bool less(const iresearch::byte_type* lhs, const iresearch::byte_type* rhs) const override { throw std::bad_function_call(); }

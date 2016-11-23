@@ -193,13 +193,15 @@ order::prepared::prepare_stats() const {
 
 order::prepared::scorers 
 order::prepared::prepare_scorers(
+    const sub_reader& segment,
+    const term_reader& field,
     const attributes& stats,
     const attributes& doc) const {
   scorers::scorers_t scrs;
   scrs.reserve(size());
-  for_each([&stats, &doc, &scrs] (const order::prepared::prepared_sort& ps) {
+  for_each([&segment, &field, &stats, &doc, &scrs] (const order::prepared::prepared_sort& ps) {
     const sort::prepared& bucket = *ps.bucket;
-    scrs.emplace_back(bucket.prepare_scorer(stats, doc));
+    scrs.emplace_back(bucket.prepare_scorer(segment, field, stats, doc));
   });
   return prepared::scorers(std::move(scrs));
 }

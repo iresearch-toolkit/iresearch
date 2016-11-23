@@ -46,7 +46,12 @@ score_doc_iterator::ptr term_query::execute(
 
   /* return iterator */
   return score_doc_iterator::make<basic_score_iterator>(
-    this->attributes(), terms->postings(ord.features()), ord, state->estimation
+    rdr, 
+    *state->reader,
+    this->attributes(), 
+    terms->postings(ord.features()), 
+    ord, 
+    state->estimation
   );
 }
 
