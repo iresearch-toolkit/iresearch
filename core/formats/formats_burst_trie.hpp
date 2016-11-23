@@ -108,7 +108,7 @@ class term_reader : public iresearch::term_reader,
   );
 
   virtual seek_term_iterator::ptr iterator() const override;
-  virtual const flags& features() const override;
+  virtual const field_meta& field() const override;
   virtual size_t size() const override { return terms_count_; }
   virtual uint64_t docs_count() const override { return doc_count_; }
   virtual const bytes_ref& min() const override { return min_term_ref_; }

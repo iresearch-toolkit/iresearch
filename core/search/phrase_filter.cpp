@@ -32,6 +32,7 @@
 #include "analysis/token_attributes.hpp"
 
 #include "index/index_reader.hpp"
+#include "index/field_meta.hpp"
 
 #include <boost/functional/hash.hpp>
 
@@ -216,7 +217,7 @@ filter::prepared::ptr by_phrase::prepare(
     }
 
     // check required features
-    if (!by_phrase::required().is_subset_of(tr->features())) {
+    if (!by_phrase::required().is_subset_of(tr->field().features)) {
       continue;
     }
     

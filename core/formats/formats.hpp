@@ -115,7 +115,7 @@ struct IRESEARCH_API term_reader {
 
   virtual seek_term_iterator::ptr iterator() const = 0;
 
-  virtual const flags& features() const = 0;
+  virtual const field_meta& field() const = 0;
 
   // total number of terms
   virtual size_t size() const = 0;

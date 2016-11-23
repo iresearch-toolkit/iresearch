@@ -1101,8 +1101,8 @@ term_reader::~term_reader() {
   delete fst_;
 }
 
-const flags& term_reader::features() const {
-  return field_->features;
+const field_meta& term_reader::field() const {
+  return *field_;
 }
 
 seek_term_iterator::ptr term_reader::iterator() const {

@@ -588,8 +588,8 @@ iresearch::seek_term_iterator::ptr term_reader::iterator() const {
   );
 }
 
-const iresearch::flags& term_reader::features() const {
-  return data_.features;
+const iresearch::field_meta& term_reader::field() const {
+  return data_;
 }
 
 class field_iterator : public iresearch::iterator <const iresearch::string_ref&> {

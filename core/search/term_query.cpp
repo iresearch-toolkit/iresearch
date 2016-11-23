@@ -38,8 +38,8 @@ score_doc_iterator::ptr term_query::execute(
   /* find term using cached state */
   auto terms = state->reader->iterator();
 
-  /* use bytes_ref::nil here since we do not need just to "jump"
-   * to cached state, and we are not interested in term value itself */
+  /* use bytes_ref::nil here since we need just to "jump" to the cached state,
+   * and we are not interested in term value itself */
   if (!terms->seek(bytes_ref::nil, *state->cookie)) {
     return score_doc_iterator::empty();
   }
