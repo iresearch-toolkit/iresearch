@@ -74,12 +74,12 @@ class index_test_base : public virtual test_base {
   }
 
   void write_segment( ir::index_writer& writer, tests::index_segment& segment, tests::doc_generator_base& gen ) {
-    /* add segment */
+    // add segment
     const document* doc;
     while ( doc = gen.next() ) {
       segment.add(doc->begin(), doc->end());
-      writer.add(doc->begin(), doc->end());
-    }    
+      writer.insert(doc->begin(), doc->end());
+    }
   }
 
   void add_segment( ir::index_writer& writer, tests::doc_generator_base& gen ) {

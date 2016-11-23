@@ -140,11 +140,11 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
   {
     auto query_doc4 = iresearch::iql::query_builder().build("doc_string==string4_data", std::locale::classic());
     auto writer = iresearch::index_writer::make(dir, codec_ptr, iresearch::OM_CREATE);
-    writer->add(doc1.end(), doc1.end(), doc1.begin(), doc1.end());
-    writer->add(doc3.end(), doc3.end(), doc3.begin(), doc3.end());
+    ASSERT_TRUE(writer->insert(doc1.end(), doc1.end(), doc1.begin(), doc1.end()));
+    ASSERT_TRUE(writer->insert(doc3.end(), doc3.end(), doc3.begin(), doc3.end()));
     writer->commit();
-    writer->add(doc2.end(), doc2.end(), doc2.begin(), doc2.end());
-    writer->add(doc4.begin(), doc4.end(), doc4.begin(), doc4.end());
+    ASSERT_TRUE(writer->insert(doc2.end(), doc2.end(), doc2.begin(), doc2.end()));
+    ASSERT_TRUE(writer->insert(doc4.begin(), doc4.end(), doc4.begin(), doc4.end()));
     writer->commit();
     writer->remove(std::move(query_doc4.filter));
     writer->commit();
@@ -556,11 +556,11 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
   // populate directory
   {
     auto writer = iresearch::index_writer::make(dir, codec_ptr, iresearch::OM_CREATE);
-    writer->add(doc1.end(), doc1.end(), doc1.begin(), doc1.end());
-    writer->add(doc3.end(), doc3.end(), doc3.begin(), doc3.end());
+    ASSERT_TRUE(writer->insert(doc1.end(), doc1.end(), doc1.begin(), doc1.end()));
+    ASSERT_TRUE(writer->insert(doc3.end(), doc3.end(), doc3.begin(), doc3.end()));
     writer->commit();
-    writer->add(doc2.end(), doc2.end(), doc2.begin(), doc2.end());
-    writer->add(doc4.end(), doc4.end(), doc4.begin(), doc4.end());
+    ASSERT_TRUE(writer->insert(doc2.end(), doc2.end(), doc2.begin(), doc2.end()));
+    ASSERT_TRUE(writer->insert(doc4.end(), doc4.end(), doc4.begin(), doc4.end()));
     writer->commit();
     writer->close();
   }
@@ -1004,11 +1004,11 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     auto query_doc4 = iresearch::iql::query_builder().build("doc_string==string4_data", std::locale::classic());
     auto writer = iresearch::index_writer::make(dir, codec_ptr, iresearch::OM_CREATE);
 
-    writer->add(doc1.begin(), doc1.end());
-    writer->add(doc2.begin(), doc2.end());
+    ASSERT_TRUE(writer->insert(doc1.begin(), doc1.end()));
+    ASSERT_TRUE(writer->insert(doc2.begin(), doc2.end()));
     writer->commit();
-    writer->add(doc3.begin(), doc3.end());
-    writer->add(doc4.begin(), doc4.end());
+    ASSERT_TRUE(writer->insert(doc3.begin(), doc3.end()));
+    ASSERT_TRUE(writer->insert(doc4.begin(), doc4.end()));
     writer->commit();
     writer->remove(std::move(query_doc4.filter));
     writer->commit();

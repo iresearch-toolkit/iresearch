@@ -40,17 +40,30 @@ segment_writer::segment_writer(directory& dir, format::ptr codec) NOEXCEPT
   : codec_(codec), dir_(dir), initialized_(false) {
 }
 
+bool segment_writer::remove(doc_id_t doc_id) {
+  return
+    doc_id < (type_limits<type_t::doc_id_t>::min() + num_docs_cached_)
+    && docs_mask_.insert(doc_id).second;
+}
+
 bool segment_writer::index_field(
     field_data& slot,
-    token_stream* tokens,
+    doc_id_t doc_id,
+    token_stream& tokens,
     const flags& features,
-    float_t boost) {
+    float_t boost
+) {
   REGISTER_TIMER_DETAILED();
 
-  if (slot.invert(tokens, features, boost, num_docs_cached_ + type_limits<type_t::doc_id_t>::min())) {
+
+  // invert only if new field features are a subset of slot features
+  if ((slot.empty() || features.is_subset_of(slot.meta().features)) &&
+      slot.invert(&tokens, slot.empty() ? features : slot.meta().features, boost, doc_id)
+  ) {
     if (features.check<norm>()) {
       norm_fields_.insert(&slot);
     }
+
     fields_ += features; // accumulate segment features
     return true;
   }
@@ -60,9 +73,11 @@ bool segment_writer::index_field(
 
 bool segment_writer::store_field(
     field_data& slot,
-    const serializer* serializer) {
+    doc_id_t doc_id,
+    const serializer& serializer
+) {
   REGISTER_TIMER_DETAILED();
-  if (serializer && sf_writer_->write(*serializer)) {
+  if (sf_writer_->write(serializer)) {
     // store field id
     header_.doc_fields.push_back(slot.meta().id);
     return true;
@@ -72,35 +87,33 @@ bool segment_writer::store_field(
 }
 
 bool segment_writer::store_attribute(
+    doc_id_t doc_id,
     const string_ref& name,
-    const serializer* serializer) {
+    const serializer& serializer
+) {
   REGISTER_TIMER_DETAILED();
-  if (serializer) {
-    auto res = columns_.emplace(
-      std::piecewise_construct,
-      std::forward_as_tuple(make_hashed_ref(name, string_ref_hash_t())),
-      std::forward_as_tuple()
-    );
+  auto res = columns_.emplace(
+    std::piecewise_construct,
+    std::forward_as_tuple(make_hashed_ref(name, string_ref_hash_t())),
+    std::forward_as_tuple()
+  );
 
-    auto& it = res.first;
-    auto& column = it->second;
+  auto& it = res.first;
+  auto& column = it->second;
 
-    if (res.second) {
-      // we have never seen it before
-      column.handle = col_writer_->push_column();
-      column.name = std::string(name.c_str(), name.size());
+  if (res.second) {
+    // we have never seen it before
+    column.handle = col_writer_->push_column();
+    column.name = std::string(name.c_str(), name.size());
 
-      auto& key = const_cast<hashed_string_ref&>(it->first);
-      key = hashed_string_ref(it->first.hash(), column.name);
-    }
-
-    return column.handle.second(type_limits<type_t::doc_id_t>::min() + num_docs_cached_, *serializer);
+    auto& key = const_cast<hashed_string_ref&>(it->first);
+    key = hashed_string_ref(it->first.hash(), column.name);
   }
 
-  return false;
+  return column.handle.second(doc_id, serializer);
 }
 
-void segment_writer::finish(const update_context& ctx) {
+void segment_writer::finish(doc_id_t doc_id, const update_context& ctx) {
   REGISTER_TIMER_DETAILED();
 
   // write document normalization factors (for each field marked for normalization))
@@ -116,7 +129,7 @@ void segment_writer::finish(const update_context& ctx) {
   sf_writer_->end(&header_); 
   header_.doc_fields.clear(); // clear stored document header
 
-  docs_context_[type_limits<type_t::doc_id_t>::min() + num_docs_cached_++] = ctx;
+  docs_context_[doc_id] = ctx;
 }
 
 void segment_writer::flush(std::string& filename, segment_meta& meta) {
@@ -171,6 +184,7 @@ void segment_writer::reset() {
 
   dir_.swap_tracked(empty_set);
   docs_context_.clear();
+  docs_mask_.clear();
   fields_.reset();
   num_docs_cached_ = 0;
 }

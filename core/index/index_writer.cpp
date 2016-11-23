@@ -291,6 +291,10 @@ bool index_writer::add_document_mask_modified_records(
   auto& rdr = get_segment_reader(meta);
 
   for (auto& mod : modification_queries) {
+    if (!mod.filter) {
+      continue; // skip invalid modification queries
+    }
+
     auto prepared = mod.filter->prepare(rdr);
 
     for (auto docItr = prepared->execute(rdr); docItr->next();) {
@@ -535,13 +539,16 @@ index_writer::flush_context::ptr index_writer::flush_all() {
   size_t files_flushed = 0; // number of flushed files
   {
     struct flush_context {
-      flush_context(): writer(nullptr) {}
-      flush_context(segment_writer& writer): writer(&writer) { }
+      flush_context(document_mask& mask)
+        : docs_mask(mask), writer(nullptr) {}
+      flush_context(segment_writer& writer)
+        : docs_mask(writer.docs_mask()), writer(&writer) {}
 
-      document_mask docs_mask;
+      document_mask& docs_mask;
       segment_writer* writer;
     }; // flush_context
 
+    std::deque<document_mask> pending_doc_masks;
     std::deque<flush_context> segment_ctxs;
     auto& modification_queries = ctx->modification_queries_;
     auto flush = [this, &modification_queries, &files_flushed, &flushed, &segment_ctxs](segment_writer& writer) {
@@ -574,7 +581,8 @@ index_writer::flush_context::ptr index_writer::flush_all() {
     // add pending complete segments
     for (auto& pending_segment: ctx->pending_segments_) {
       flushed.emplace_back(std::move(pending_segment.segment));
-      segment_ctxs.emplace_back();
+      pending_doc_masks.emplace_back();
+      segment_ctxs.emplace_back(pending_doc_masks.back());
 
       auto& flush_ctx = segment_ctxs.back();
       auto& flushed_segment = flushed.back();

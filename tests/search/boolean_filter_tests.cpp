@@ -3886,17 +3886,17 @@ protected:
 
       auto writer = open_writer();
 
-      writer->add(doc1->begin(), doc1->end()); // A
-      writer->add(doc2->begin(), doc2->end()); // B
-      writer->add(doc3->begin(), doc3->end()); // C
-      writer->add(doc4->begin(), doc4->end()); // D
+      ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end())); // A
+      ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end())); // B
+      ASSERT_TRUE(writer->insert(doc3->begin(), doc3->end())); // C
+      ASSERT_TRUE(writer->insert(doc4->begin(), doc4->end())); // D
       writer->commit();
-      writer->add(doc5->begin(), doc5->end()); // E
-      writer->add(doc6->begin(), doc6->end()); // F
-      writer->add(doc7->begin(), doc7->end()); // G
+      ASSERT_TRUE(writer->insert(doc5->begin(), doc5->end())); // E
+      ASSERT_TRUE(writer->insert(doc6->begin(), doc6->end())); // F
+      ASSERT_TRUE(writer->insert(doc7->begin(), doc7->end())); // G
       writer->commit();
-      writer->add(doc8->begin(), doc8->end()); // H
-      writer->add(doc9->begin(), doc9->end()); // I
+      ASSERT_TRUE(writer->insert(doc8->begin(), doc8->end())); // H
+      ASSERT_TRUE(writer->insert(doc9->begin(), doc9->end())); // I
       writer->commit();
     }
 

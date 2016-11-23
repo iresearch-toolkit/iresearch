@@ -112,20 +112,21 @@ class IRESEARCH_API index_writer : util::noncopyable {
   /// @note that changes are not visible until commit()
   /// @param begin the beginning of the document
   /// @param end the end of the document
+  /// @return all fields/attributes successfully insterted
   ////////////////////////////////////////////////////////////////////////////
   template<typename FieldIterator>
-  void add(FieldIterator begin, FieldIterator end) {
-    add(begin, end, empty::instance(), empty::instance());
+  bool insert(FieldIterator begin, FieldIterator end) {
+    return insert(begin, end, empty::instance(), empty::instance());
   }
   
   template<typename FieldIterator, typename AttributeIterator>
-  void add(
+  bool insert(
       FieldIterator begin, FieldIterator end,
       AttributeIterator abegin, AttributeIterator aend) {
     auto ctx = get_flush_context(); // retain lock until end of instert(...)
     auto writer = get_segment_context(*ctx);
 
-    writer->update(begin, end, abegin, aend, make_update_context(*ctx));
+    return writer->insert(begin, end, abegin, aend, make_update_context(*ctx));
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -137,25 +138,30 @@ class IRESEARCH_API index_writer : util::noncopyable {
   /// @param filter the document filter 
   /// @param begin the beginning of the document
   /// @param end the end of the document
+  /// @return all fields/attributes successfully insterted
   ////////////////////////////////////////////////////////////////////////////
   template<typename FieldIterator>
-  void update(const filter& filter, FieldIterator begin, FieldIterator end) {
-    update(filter, begin, end, empty::instance(), empty::instance());
+  bool update(const filter& filter, FieldIterator begin, FieldIterator end) {
+    return update(filter, begin, end, empty::instance(), empty::instance());
   }
   
   template<typename FieldIterator, typename AttributeIterator>
-  void update(
+  bool update(
       const filter& filter, 
       FieldIterator begin, FieldIterator end,
       AttributeIterator abegin, AttributeIterator aend) {
-
     auto ctx = get_flush_context(); // retain lock until end of instert(...)
     auto writer = get_segment_context(*ctx);
+    auto update_context = make_update_context(*ctx, filter);
 
-    writer->update(
-      begin, end, 
-      abegin, aend,
-      make_update_context(*ctx, filter));
+    if (writer->insert(begin, end, abegin, aend, update_context)) {
+      return true;
+    }
+
+    SCOPED_LOCK(ctx->mutex_); // lock due to context modification
+    ctx->modification_queries_[update_context.update_id].filter = nullptr; // mark invalid
+
+    return false;
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -168,26 +174,33 @@ class IRESEARCH_API index_writer : util::noncopyable {
   /// @param end the end of the document
   ////////////////////////////////////////////////////////////////////////////
   template<typename FieldIterator>
-  void update(filter::ptr&& filter, FieldIterator begin, FieldIterator end) {
-    update(std::move(filter), begin, end, empty::instance(), empty::instance());
+  bool update(filter::ptr&& filter, FieldIterator begin, FieldIterator end) {
+    return update(
+      std::move(filter), begin, end, empty::instance(), empty::instance()
+    );
   }
-  
+
   template<typename FieldIterator, typename AttributeIterator>
-  void update(
+  bool update(
       filter::ptr&& filter, 
       FieldIterator begin, FieldIterator end,
       AttributeIterator abegin, AttributeIterator aend) {
     if (!filter) {
-      return; // skip empty filters
+      return false; // skip empty filters
     }
 
     auto ctx = get_flush_context(); // retain lock until end of instert(...)
     auto writer = get_segment_context(*ctx);
+    auto update_context = make_update_context(*ctx, std::move(filter));
 
-    writer->update(
-      begin, end, 
-      abegin, aend,
-      make_update_context(*ctx, std::move(filter)));
+    if (writer->insert(begin, end, abegin, aend, update_context)) {
+      return true;
+    }
+
+    SCOPED_LOCK(ctx->mutex_); // lock due to context modification
+    ctx->modification_queries_[update_context.update_id].filter = nullptr; // mark invalid
+
+    return false;
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -200,26 +213,33 @@ class IRESEARCH_API index_writer : util::noncopyable {
   /// @param end the end of the document
   ////////////////////////////////////////////////////////////////////////////
   template<typename Iterator>
-  void update(const std::shared_ptr<filter>& filter, Iterator begin, Iterator end) {
-    update(filter, begin, end, empty::instance(), empty::instance());
+  bool update(
+    const std::shared_ptr<filter>& filter, Iterator begin, Iterator end
+  ) {
+    return update(filter, begin, end, empty::instance(), empty::instance());
   }
-  
+
   template<typename FieldIterator, typename AttributeIterator>
-  void update(
+  bool update(
       const std::shared_ptr<filter>& filter, 
       FieldIterator begin, FieldIterator end,
       AttributeIterator abegin, AttributeIterator aend) {
     if (!filter) {
-      return; // skip empty filters
+      return false; // skip empty filters
     }
 
     auto ctx = get_flush_context(); // retain lock until end of instert(...)
     auto writer = get_segment_context(*ctx);
+    auto update_context = make_update_context(*ctx, filter);
 
-    writer->update(
-      begin, end, 
-      abegin, aend,
-      make_update_context(*ctx, filter));
+    if (writer->insert(begin, end, abegin, aend, update_context)) {
+      return true;
+    }
+
+    SCOPED_LOCK(ctx->mutex_); // lock due to context modification
+    ctx->modification_queries_[update_context.update_id].filter = nullptr; // mark invalid
+
+    return false;
   }
 
   ////////////////////////////////////////////////////////////////////////////
