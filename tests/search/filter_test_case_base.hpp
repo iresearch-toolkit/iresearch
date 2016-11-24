@@ -409,7 +409,7 @@ struct empty_sub_reader : iresearch::singleton<empty_sub_reader>, iresearch::sub
 
 struct empty_term_reader : iresearch::singleton<empty_term_reader>, iresearch::term_reader {
   virtual iresearch::seek_term_iterator::ptr iterator() const { return nullptr; }
-  virtual const iresearch::field_meta& field() const { 
+  virtual const iresearch::field_meta& meta() const { 
     static iresearch::field_meta EMPTY;
     return EMPTY;
   }

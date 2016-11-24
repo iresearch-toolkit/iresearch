@@ -200,7 +200,7 @@ class sort final : iresearch::sort::prepared_base<bm25::score_t> {
       const attributes& doc_attrs) const override {
 
     iresearch::norm* norm = query_attrs.get<iresearch::norm>();
-    if (norm && norm->reset(segment, field.field().norm, *doc_attrs.get<document>())) {
+    if (norm && norm->reset(segment, field.meta().norm, *doc_attrs.get<document>())) {
       return bm25::scorer::make<bm25::norm_scorer>(      
         k_, 
         boost::extract(query_attrs),

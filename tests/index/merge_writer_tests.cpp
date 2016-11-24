@@ -44,7 +44,7 @@ namespace tests {
     ASSERT_EQ((max), (terms.max)());
     ASSERT_EQ((min), (terms.min)());
     ASSERT_EQ(term_size, terms.size());
-    ASSERT_EQ(term_features, terms.field().features);
+    ASSERT_EQ(term_features, terms.meta().features);
 
     for (auto term_itr = terms.iterator(); term_itr->next();) {
       auto itr = expected_terms.find(term_itr->value());

@@ -526,7 +526,7 @@ filter::prepared::ptr by_granular_range::prepare(
       continue; // no such field in this reader
     }
 
-    size_t prefix_size = tr->field().features.check<granularity_prefix>() ? 1 : 0;
+    size_t prefix_size = tr->meta().features.check<granularity_prefix>() ? 1 : 0;
     seek_term_iterator::ptr terms = tr->iterator();
 
     if (!terms->next()) {

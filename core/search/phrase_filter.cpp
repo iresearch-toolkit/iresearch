@@ -222,7 +222,7 @@ filter::prepared::ptr by_phrase::prepare(
     }
 
     // check required features
-    if (!by_phrase::required().is_subset_of(tr->field().features)) {
+    if (!by_phrase::required().is_subset_of(tr->meta().features)) {
       continue;
     }
     

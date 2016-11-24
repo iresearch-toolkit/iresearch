@@ -588,7 +588,7 @@ iresearch::seek_term_iterator::ptr term_reader::iterator() const {
   );
 }
 
-const iresearch::field_meta& term_reader::field() const {
+const iresearch::field_meta& term_reader::meta() const {
   return data_;
 }
 

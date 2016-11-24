@@ -156,7 +156,7 @@ class sort final: iresearch::sort::prepared_base<tfidf::score_t> {
       const attributes& doc_attrs) const override {
     iresearch::norm* norm = query_attrs.get<iresearch::norm>();
 
-    if (norm && norm->reset(segment, field.field().norm, *doc_attrs.get<document>())) {
+    if (norm && norm->reset(segment, field.meta().norm, *doc_attrs.get<document>())) {
       return tfidf::scorer::make<tfidf::norm_scorer>(
         norm,
         boost::extract(query_attrs),

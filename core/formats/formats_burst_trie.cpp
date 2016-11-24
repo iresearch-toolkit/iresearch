@@ -1101,7 +1101,7 @@ term_reader::~term_reader() {
   delete fst_;
 }
 
-const field_meta& term_reader::field() const {
+const field_meta& term_reader::meta() const {
   return *field_;
 }
 
