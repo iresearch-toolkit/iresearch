@@ -28,7 +28,8 @@ NS_ROOT
 // tf(doc, term) = sqrt(frequency(doc, term));
 
 // document length
-// |doc| = # of fields in document
+// Current implementation is using the following as the document length
+// |doc| = index_time_doc_boost / sqrt(# of terms in a field within a document)
 
 // average document length
 // avgDL = total_term_frequency / total_docs_count;
@@ -39,7 +40,7 @@ NS_BEGIN(bm25)
 const frequency EMPTY_FREQ;
 
 // set of features required for bm25 model
-const flags FEATURES{ frequency::type() };
+const flags FEATURES{ frequency::type(), norm::type() };
 
 struct stats final : attribute {
   DECLARE_ATTRIBUTE_TYPE();
@@ -63,35 +64,66 @@ DEFINE_FACTORY_DEFAULT(stats);
 
 typedef bm25_sort::score_t score_t;
 
-class scorer final : public iresearch::sort::scorer_base<bm25::score_t> {
+class scorer : public iresearch::sort::scorer_base<bm25::score_t> {
  public:
   DECLARE_FACTORY(scorer);
 
-  scorer(float_t k, 
+  scorer(
+      float_t k, 
       iresearch::boost::boost_t boost,
-      const iresearch::norm* norm,
       const bm25::stats* stats,
       const frequency* freq)
-    : norm_(norm),
-      stats_(stats),
-      freq_(freq ? freq : &EMPTY_FREQ),
-      num_(boost * (k + 1) * stats->idf) {
-    assert(norm_);
+    : freq_(freq ? freq : &EMPTY_FREQ),
+      num_(boost * (k + 1) * stats->idf),
+      norm_const_(k) {
     assert(freq_);
   }
 
   virtual void score(score_t& score_buf) override {
-    const float_t tf = float_t(std::sqrt(freq_->value));
-    const float_t length = stats_->norm_length * norm_->read();
-    score_buf = num_*tf / (stats_->norm_const + stats_->norm_length*length + tf);
+    const float_t freq = tf();
+    score_buf = num_ * freq / (norm_const_ + freq);
+  }
+
+ protected:
+  FORCE_INLINE float_t tf() const {
+    return float_t(std::sqrt(freq_->value));
+  };
+
+  const frequency* freq_; // document frequency
+  float_t num_; // partially precomputed numerator : boost * (k + 1) * idf
+  float_t norm_const_; // 'k' factor
+}; // scorer
+
+class norm_scorer final : public scorer {
+ public:
+  DECLARE_FACTORY(norm_scorer);
+
+  norm_scorer(
+      float_t k, 
+      iresearch::boost::boost_t boost,
+      const bm25::stats* stats,
+      const frequency* freq,
+      const iresearch::norm* norm)
+    : scorer(k, boost, stats, freq),
+      norm_(norm) {
+    assert(norm_);
+
+    // if there is no norms, assume that b==0
+    if (!norm_->empty()) {
+      norm_const_ = stats->norm_const;
+      norm_length_ = stats->norm_length;
+    }
+  }
+
+  virtual void score(score_t& score_buf) override {
+    const float_t freq = tf();
+    score_buf = num_ * freq / (norm_const_ + norm_length_ * norm_->read() + freq);
   }
 
  private:
   const iresearch::norm* norm_;
-  const bm25::stats* stats_; // bm25 stats
-  const frequency* freq_; // document frequency
-  float_t num_; // partially precomputed numerator : boost * (k + 1) * idf
-}; // scorer
+  float_t norm_length_{ 0.f }; // precomputed 'k*b/avgD' if norms presetn, '0' otherwise
+}; // norm_scorer
 
 class collector final : public iresearch::sort::collector {
  public:
@@ -113,10 +145,13 @@ class collector final : public iresearch::sort::collector {
   virtual void after_collect(
       const iresearch::index_reader& index_reader, 
       iresearch::attributes& query_attrs) override {
-    const auto total_docs_count = index_reader.docs_count();    
-    const auto avg_doc_len = static_cast<float_t>(total_term_freq) / total_docs_count;
-
     stats* bm25stats = query_attrs.add<stats>();
+
+    const auto total_docs_count = index_reader.docs_count();
+    assert(total_docs_count);
+    const auto avg_doc_len = 0 == total_term_freq 
+      ? 1.f
+      : static_cast<float_t>(total_term_freq) / total_docs_count;
 
     // precomputed idf value
     bm25stats->idf = 1 + static_cast<float_t>(
@@ -126,7 +161,7 @@ class collector final : public iresearch::sort::collector {
     // precomputed length norm
     const float_t kb = k_ * b_;
     bm25stats->norm_const = k_ - kb;
-    bm25stats->norm_length = kb / avg_doc_len;     
+    bm25stats->norm_length = kb / avg_doc_len ;     
     
     // add norm attribute
     query_attrs.add<norm>();
@@ -165,12 +200,19 @@ class sort final : iresearch::sort::prepared_base<bm25::score_t> {
       const attributes& doc_attrs) const override {
 
     iresearch::norm* norm = query_attrs.get<iresearch::norm>();
-    norm->reset(segment, field.field().norm, *doc_attrs.get<document>());
+    if (norm && norm->reset(segment, field.field().norm, *doc_attrs.get<document>())) {
+      return bm25::scorer::make<bm25::norm_scorer>(      
+        k_, 
+        boost::extract(query_attrs),
+        query_attrs.get<bm25::stats>(),
+        doc_attrs.get<frequency>(),
+        norm
+      );
+    }
 
     return bm25::scorer::make<bm25::scorer>(      
       k_, 
       boost::extract(query_attrs),
-      norm,
       query_attrs.get<bm25::stats>(),
       doc_attrs.get<frequency>()
     );

@@ -119,12 +119,25 @@ REGISTER_ATTRIBUTE(iresearch::norm);
 DEFINE_ATTRIBUTE_TYPE(norm);
 DEFINE_FACTORY_DEFAULT(norm);
 
+const document EMPTY_DOCUMENT;
+
 norm::norm() NOEXCEPT 
   : attribute(norm::type()) {
   reader_ = [this](data_input& in) {
     value_ = read_zvfloat(in);
     return true;
   };
+  reset();
+}
+
+void norm::reset() {
+  column_ = [](doc_id_t){ return false; };
+  doc_ = &EMPTY_DOCUMENT;
+  value_ = DEFAULT();
+}
+
+bool norm::empty() const {
+  return doc_ == &EMPTY_DOCUMENT;
 }
 
 bool norm::write(data_output& out) const {
@@ -133,17 +146,17 @@ bool norm::write(data_output& out) const {
 }
 
 bool norm::reset(const sub_reader& reader, field_id column, const document& doc) {
-//  if (!type_limits<type_t::field_id_t>::valid(column)) {
-//    return false;
-//  }
+  if (!type_limits<type_t::field_id_t>::valid(column)) {
+    return false;
+  }
 
   column_ = reader.values(column, reader_);
   doc_ = &doc;
-  return type_limits<type_t::field_id_t>::valid(column);
+  return true;
 }
 
 float_t norm::read() const {
-  return column_(doc_->value) ? value_ : empty();
+  return column_(doc_->value) ? value_ : DEFAULT();
 }
 
 // -----------------------------------------------------------------------------

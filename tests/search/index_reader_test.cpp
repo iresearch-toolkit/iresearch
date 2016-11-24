@@ -166,38 +166,38 @@ TEST(directory_reader_test, open) {
   ir::version10::format codec;
   iresearch::format::ptr codec_ptr(&codec, [](iresearch::format*)->void{});
 
-  /* create index */
+  // create index
   {
-    /* open writer */
+    // open writer
     auto writer = ir::index_writer::make(dir, codec_ptr, ir::OM_CREATE);
 
-    /* add first segment */
-    writer->add(doc1->begin(), doc1->end());
-    writer->add(doc2->begin(), doc2->end());
-    writer->add(doc3->begin(), doc3->end());
+    // add first segment
+    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
+    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
+    ASSERT_TRUE(writer->insert(doc3->begin(), doc3->end()));
     writer->commit();
 
-    /* add second segment */
-    writer->add(doc4->begin(), doc4->end());
-    writer->add(doc5->begin(), doc5->end());
-    writer->add(doc6->begin(), doc6->end());
-    writer->add(doc7->begin(), doc7->end());
+    // add second segment
+    ASSERT_TRUE(writer->insert(doc4->begin(), doc4->end()));
+    ASSERT_TRUE(writer->insert(doc5->begin(), doc5->end()));
+    ASSERT_TRUE(writer->insert(doc6->begin(), doc6->end()));
+    ASSERT_TRUE(writer->insert(doc7->begin(), doc7->end()));
     writer->commit();
 
-    /* add third segment */
-    writer->add(doc8->begin(), doc8->end());
-    writer->add(doc9->begin(), doc9->end());
+    // add third segment
+    ASSERT_TRUE(writer->insert(doc8->begin(), doc8->end()));
+    ASSERT_TRUE(writer->insert(doc9->begin(), doc9->end()));
     writer->commit();
   }
 
-  /* open reader */
+  // open reader
   auto rdr = ir::directory_reader::open(dir, codec_ptr);
   ASSERT_NE(nullptr, rdr);
   ASSERT_EQ(9, rdr->docs_max());
   ASSERT_EQ(9, rdr->docs_count());  
   ASSERT_EQ(3, rdr->size());
 
-  /* check subreaders */
+  // check subreaders
   auto sub = rdr->begin();
 
   const iresearch::string_ref expected_name = "name";
@@ -347,19 +347,19 @@ TEST(segment_reader_test, open) {
   ir::version10::format codec;
   ir::format::ptr codec_ptr(&codec, [](ir::format*)->void{});
   {
-    /* open writer */
+    // open writer
     auto writer = ir::index_writer::make(dir, codec_ptr, ir::OM_CREATE);
 
-    /* add first segment */
-    writer->add(doc1->begin(), doc1->end());
-    writer->add(doc2->begin(), doc2->end());
-    writer->add(doc3->begin(), doc3->end());
-    writer->add(doc4->begin(), doc4->end());
-    writer->add(doc5->begin(), doc5->end());
+    // add first segment
+    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
+    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
+    ASSERT_TRUE(writer->insert(doc3->begin(), doc3->end()));
+    ASSERT_TRUE(writer->insert(doc4->begin(), doc4->end()));
+    ASSERT_TRUE(writer->insert(doc5->begin(), doc5->end()));
     writer->commit();
   }
 
-  /* check segment */
+  // check segment
   {
     ir::segment_meta meta;
     meta.codec = codec_ptr;

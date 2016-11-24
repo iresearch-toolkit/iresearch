@@ -138,7 +138,7 @@ struct IRESEARCH_API norm : attribute, serializer {
   DECLARE_ATTRIBUTE_TYPE();
   DECLARE_FACTORY_DEFAULT();
 
-  FORCE_INLINE static CONSTEXPR float_t empty() {
+  FORCE_INLINE static CONSTEXPR float_t DEFAULT() {
     return 1.f;
   }
 
@@ -148,16 +148,19 @@ struct IRESEARCH_API norm : attribute, serializer {
 
   bool reset(const sub_reader& segment, field_id column, const document& doc);
   float_t read() const;
+  bool empty() const;
 
   virtual void clear() override {
-    // NOOP
+    reset();
   }
 
  private:
-  mutable float_t value_;
+  void reset();
+
   sub_reader::value_visitor_f column_;
   columnstore_reader::value_reader_f reader_;
-  const document* doc_{};
+  const document* doc_;
+  mutable float_t value_;
 }; // norm
 
 //////////////////////////////////////////////////////////////////////////////

@@ -271,8 +271,8 @@ class format_test_case_base : public index_test_base {
 
       // add first segment
       {
-        writer->add(doc1->begin(), doc1->end());
-        writer->add(doc2->begin(), doc2->end());
+        ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
+        ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
         writer->commit();
         iresearch::directory_cleaner::clean(*dir); // clean unused files
         assert_no_directory_artifacts(*dir, *codec());
@@ -280,7 +280,7 @@ class format_test_case_base : public index_test_base {
 
       // add second segment (creating new index_meta file, remove old)
       {
-        writer->add(doc3->begin(), doc3->end());
+        ASSERT_TRUE(writer->insert(doc3->begin(), doc3->end()));
         writer->commit();
         iresearch::directory_cleaner::clean(*dir); // clean unused files
         assert_no_directory_artifacts(*dir, *codec());
@@ -337,9 +337,9 @@ class format_test_case_base : public index_test_base {
 
       // add first segment
       {
-        writer->add(doc1->begin(), doc1->end());
-        writer->add(doc2->begin(), doc2->end());
-        writer->add(doc3->begin(), doc3->end());
+        ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
+        ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
+        ASSERT_TRUE(writer->insert(doc3->begin(), doc3->end()));
         writer->commit();
         iresearch::directory_cleaner::clean(*dir); // clean unused files
         assert_no_directory_artifacts(*dir, *codec());
@@ -375,7 +375,7 @@ class format_test_case_base : public index_test_base {
 
       // add second segment (creating new index_meta file, not-removing old)
       {
-        writer->add(doc4->begin(), doc4->end());
+        ASSERT_TRUE(writer->insert(doc4->begin(), doc4->end()));
         writer->commit();
         iresearch::directory_cleaner::clean(*dir); // clean unused files
         assert_no_directory_artifacts(*dir, *codec(), reader_files);
@@ -432,10 +432,10 @@ class format_test_case_base : public index_test_base {
         auto writer = iresearch::index_writer::make(*dir, codec(), iresearch::OPEN_MODE::OM_CREATE);
 
         writer->commit(); // initialize directory
-        writer->add(doc1->begin(), doc1->end());
+        ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
         writer->commit(); // add first segment
-        writer->add(doc2->begin(), doc2->end());
-        writer->add(doc3->begin(), doc3->end());
+        ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
+        ASSERT_TRUE(writer->insert(doc3->begin(), doc3->end()));
         writer->commit(); // add second segment
         writer->remove(*(query_doc1.filter));
         writer->commit(); // remove first segment
