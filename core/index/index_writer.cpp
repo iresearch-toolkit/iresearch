@@ -18,7 +18,7 @@
 #include "utils/type_limits.hpp"
 #include "index_writer.hpp"
 
-#include <deque>
+#include <list>
 
 NS_LOCAL
 
