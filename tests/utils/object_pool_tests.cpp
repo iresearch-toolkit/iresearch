@@ -218,7 +218,7 @@ TEST_F(object_pool_tests, unbounded_sobject_pool) {
     {
       SCOPED_LOCK_NAMED(mutex, lock);
       std::thread thread([&cond, &mutex, &pool]()->void{ auto obj = pool.emplace(2); SCOPED_LOCK(mutex); cond.notify_all(); });
-      ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, std::chrono::milliseconds(100))); // assume threads start within 100msec
+      ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, std::chrono::milliseconds(1000))); // assume threads start within 1000msec
       lock.unlock();
       thread.join();
     }
@@ -271,7 +271,7 @@ TEST_F(object_pool_tests, unbounded_uobject_pool) {
     {
       SCOPED_LOCK_NAMED(mutex, lock);
       std::thread thread([&cond, &mutex, &pool]()->void{ auto obj = pool.emplace(2); SCOPED_LOCK(mutex); cond.notify_all(); });
-      ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, std::chrono::milliseconds(100))); // assume threads start within 100msec
+      ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, std::chrono::milliseconds(1000))); // assume threads start within 1000msec
       lock.unlock();
       thread.join();
     }
