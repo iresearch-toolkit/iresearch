@@ -543,7 +543,8 @@ bool compute_field_meta(
     auto* tracked_field_meta = field_meta_map_itr.first->second;
 
     // validate field_meta equivalence
-    if (!field_meta_map_itr.second && field_meta != *tracked_field_meta) {
+    if (!field_meta_map_itr.second &&
+        !field_meta.features.is_subset_of(tracked_field_meta->features)) {
       return false; // field_meta is not equal, so cannot merge segments
     }
 

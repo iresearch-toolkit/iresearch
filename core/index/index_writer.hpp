@@ -392,16 +392,14 @@ class IRESEARCH_API index_writer : util::noncopyable {
 
   bool add_document_mask_modified_records(
     modification_requests_t& requests, 
-    document_mask& docs_mask,
-    const segment_meta& meta,
-    const segment_writer::update_contexts& doc_id_generation
+    segment_writer& writer,
+    const segment_meta& meta
   ); // return if any new records were added (modification_queries_ modified)
 
   static bool add_document_mask_unused_updates(
     modification_requests_t& requests, 
-    document_mask& docs_mask,
-    const segment_meta& meta,
-    const segment_writer::update_contexts& doc_id_generation
+    segment_writer& writer,
+    const segment_meta& meta
   ); // return if any new records were added (modification_queries_ modified)
 
   flush_context::ptr flush_all();

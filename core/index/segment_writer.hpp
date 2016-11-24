@@ -68,7 +68,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
 
   uint32_t docs_cached() const { return num_docs_cached_; }
   const update_contexts& docs_context() const { return docs_context_; }
-  document_mask& docs_mask() { return docs_mask_; }
+  const document_mask& docs_mask() { return docs_mask_; }
   bool initialized() const { return initialized_; }
   bool remove(doc_id_t doc_id);
   void reset();
