@@ -67,25 +67,25 @@ class IRESEARCH_API field_data : util::noncopyable {
   );
 
   ~field_data();
-  
+
   doc_id_t doc() const { return last_doc_; }
-  
+
   // returns number of terms in a field within a document
   size_t size() const { return len_; }
-  
+
   float_t boost() const { return boost_; }
 
   const field_meta& meta() const { return meta_; }
 
   bool write_norm(const serializer& value, columnstore_writer& writer);
 
-  // returns true if field contains indexed data
+  // returns false if field contains indexed data
   bool empty() const {
-    return type_limits<type_t::doc_id_t>::valid(last_doc_);
+    return !type_limits<type_t::doc_id_t>::valid(last_doc_);
   }
 
   bool invert(token_stream* tokens, const flags& features, float_t boost, doc_id_t id);
-  
+
   term_iterator::ptr iterator() const;
 
  private:

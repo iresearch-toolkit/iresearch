@@ -176,11 +176,10 @@ namespace tests {
     json_doc_generator generator(
       test_base::resource(json_resource), 
       analyze_text ? analyzed_field_factory : &tests::generic_json_field_factory);
-    const document* doc = generator.next();
+    const document* doc;
 
-    while (doc) {
-      writer->add(doc->begin(), doc->end());
-      doc = generator.next();
+    while ((doc = generator.next()) != nullptr) {
+      writer->insert(doc->begin(), doc->end());
     }
 
     writer->commit();
