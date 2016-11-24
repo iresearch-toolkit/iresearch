@@ -23,10 +23,13 @@ public:
 
   typedef float_t score_t;
 
-  tfidf_sort();
+  explicit tfidf_sort(bool normalize = false);
 
   virtual sort::prepared::ptr prepare() const;
-};
+
+private:
+  bool normalize_;
+}; // tfidf_sort
 
 NS_END
 

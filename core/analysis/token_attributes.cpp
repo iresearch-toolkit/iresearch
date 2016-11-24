@@ -11,6 +11,7 @@
 
 #include "shared.hpp"
 #include "token_attributes.hpp"
+#include "store/store_utils.hpp"
 
 NS_ROOT
 
@@ -120,6 +121,29 @@ DEFINE_FACTORY_DEFAULT(norm);
 
 norm::norm() NOEXCEPT 
   : attribute(norm::type()) {
+  reader_ = [this](data_input& in) {
+    value_ = read_zvfloat(in);
+    return true;
+  };
+}
+
+bool norm::write(data_output& out) const {
+  write_zvfloat(out, value_);
+  return true;
+}
+
+bool norm::reset(const sub_reader& reader, field_id column, const document& doc) {
+//  if (!type_limits<type_t::field_id_t>::valid(column)) {
+//    return false;
+//  }
+
+  column_ = reader.values(column, reader_);
+  doc_ = &doc;
+  return type_limits<type_t::field_id_t>::valid(column);
+}
+
+float_t norm::read() const {
+  return column_(doc_->value) ? value_ : empty();
 }
 
 // -----------------------------------------------------------------------------

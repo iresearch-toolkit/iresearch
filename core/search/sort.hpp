@@ -153,14 +153,13 @@ class IRESEARCH_API sort {
    public:
     DECLARE_PTR(prepared);
 
-    explicit prepared(const flags& features): features_(features) {}
-    explicit prepared(flags&& features): features_(std::move(features)) {}
+    prepared() = default;
     virtual ~prepared();
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief the features required for proper operation of this sort::prepared
     ////////////////////////////////////////////////////////////////////////////////
-    const flags& features() const { return features_; }
+    virtual const flags& features() const = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief create an object to be used for collecting index statistics
@@ -196,10 +195,7 @@ class IRESEARCH_API sort {
     /// @brief number of bytes required to store the score type (i.e. sizeof(score))
     ////////////////////////////////////////////////////////////////////////////////
     virtual size_t size() const = 0;
-
-   private:
-    flags features_;
-  };
+  }; // prepared
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief template score for base class for all prepared(compiled) sort entries
@@ -208,8 +204,6 @@ class IRESEARCH_API sort {
   class prepared_base: public prepared {
    public:
     typedef T score_t;
-    explicit prepared_base(const flags& features): prepared(features) {}
-    explicit prepared_base(flags&& features): prepared(std::move(features)) {}
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief initialize the score container and prepare it for add(...) calls

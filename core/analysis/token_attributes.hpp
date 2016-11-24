@@ -14,6 +14,9 @@
 
 #include "store/data_input.hpp"
 
+#include "document/serializer.hpp"
+
+#include "index/index_reader.hpp"
 #include "index/iterators.hpp"
 
 #include "utils/attributes.hpp"
@@ -131,7 +134,7 @@ struct IRESEARCH_API granularity_prefix: attribute {
 /// @brief this is marker attribute only used in field::features in order to
 ///        allow evaluation of the field normalization factor 
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API norm : attribute {
+struct IRESEARCH_API norm : attribute, serializer {
   DECLARE_ATTRIBUTE_TYPE();
   DECLARE_FACTORY_DEFAULT();
 
@@ -140,9 +143,21 @@ struct IRESEARCH_API norm : attribute {
   }
 
   norm() NOEXCEPT;
+  
+  virtual bool write(data_output& out) const;
+
+  bool reset(const sub_reader& segment, field_id column, const document& doc);
+  float_t read() const;
+
   virtual void clear() override {
     // NOOP
   }
+
+ private:
+  mutable float_t value_;
+  sub_reader::value_visitor_f column_;
+  columnstore_reader::value_reader_f reader_;
+  const document* doc_{};
 }; // norm
 
 //////////////////////////////////////////////////////////////////////////////

@@ -33,10 +33,10 @@ namespace tests {
     DECLARE_SORT_TYPE();
     DECLARE_FACTORY_DEFAULT();
 
-    class prepared: sort::prepared {
+    class prepared : sort::prepared {
      public:
       DECLARE_FACTORY(prepared);
-      prepared(): sort::prepared(iresearch::flags{}) {}
+      prepared() { }
       virtual collector::ptr prepare_collector() const override { return nullptr; }
       virtual scorer::ptr prepare_scorer(
           const iresearch::sub_reader&,
@@ -44,6 +44,9 @@ namespace tests {
           const iresearch::attributes& query_attrs, 
           const iresearch::attributes& doc_attrs) const override { 
         return nullptr; 
+      }
+      virtual const iresearch::flags& features() const override { 
+        return iresearch::flags::empty_instance();
       }
       virtual void prepare_score(iresearch::byte_type* score) const override {}
       virtual void add(iresearch::byte_type* dst, const iresearch::byte_type* src) const override {}

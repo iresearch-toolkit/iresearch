@@ -53,11 +53,14 @@ struct boost : public iresearch::sort {
   class prepared: public iresearch::sort::prepared_base<iresearch::boost::boost_t> {
    public:
     DECLARE_FACTORY(prepared);
-    prepared(bool reverse):
-      iresearch::sort::prepared_base<iresearch::boost::boost_t>(iresearch::flags{}) {
+    prepared(bool reverse) {
       static const std::function<bool(score_t, score_t)> greater = std::greater<score_t>();
       static const std::function<bool(score_t, score_t)> less = std::less<score_t>();
       less_ = reverse ? &greater : &less;
+    }
+
+    virtual const iresearch::flags& features() const override {
+      return iresearch::flags::empty_instance();
     }
 
     virtual collector::ptr prepare_collector() const override {
@@ -157,7 +160,10 @@ struct frequency_sort: public iresearch::sort {
 
     DECLARE_FACTORY(prepared);
 
-    prepared(): iresearch::sort::prepared_base<score_t>(iresearch::flags{}) {
+    prepared() { }
+
+    virtual const iresearch::flags& features() const override {
+      return iresearch::flags::empty_instance();
     }
 
     virtual collector::ptr prepare_collector() const override {

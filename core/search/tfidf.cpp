@@ -14,14 +14,30 @@
 #include "scorers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
+#include "index/field_meta.hpp"
 
 NS_ROOT
 NS_BEGIN(tfidf)
 
+// empty frequency
+const frequency EMPTY_FREQ;
+
+const flags& features(bool normalize) {
+  if (normalize) {
+    // set of features required for tf-idf model without normalization
+    static const flags FEATURES{ frequency::type() };
+    return FEATURES;
+  }
+
+  // set of features required for tf-idf model with normalization
+  static const flags NORM_FEATURES{ frequency::type(), norm::type() };
+  return NORM_FEATURES;
+}
+
 struct idf : basic_attribute<float_t> {
   DECLARE_ATTRIBUTE_TYPE();
   DECLARE_FACTORY_DEFAULT();
-  idf() : basic_attribute( idf::type(), 1.f ) {}
+  idf() : basic_attribute(idf::type(), 1.f) { }
 
   virtual void clear() { value = 1.f; }
 };
@@ -33,10 +49,14 @@ typedef tfidf_sort::score_t score_t;
 
 class collector final : public iresearch::sort::collector {
  public:
+  collector(bool normalize)
+    : normalize_(normalize) {
+  }
+
   virtual void collect(
-      const sub_reader& /* sub_reader */,
-      const term_reader& /* term_reader */,
-      const attributes& term_attrs ) {
+      const sub_reader& /* segment */,
+      const term_reader& /* field */,
+      const attributes& term_attrs) {
     const iresearch::term_meta* meta = term_attrs.get<iresearch::term_meta>();
     if (meta) {
       docs_count += meta->docs_count;
@@ -44,18 +64,24 @@ class collector final : public iresearch::sort::collector {
   }
 
   virtual void after_collect(
-    const iresearch::index_reader& idx_reader, iresearch::attributes& query_attrs
-  ) override {
+      const iresearch::index_reader& index, 
+      iresearch::attributes& query_attrs) override {
     query_attrs.add<tfidf::idf>()->value = 1 + static_cast<float_t>(
-      std::log(idx_reader.docs_count() / double_t(docs_count + 1))
+      std::log(index.docs_count() / double_t(docs_count + 1))
     );
+
+    if (normalize_) {
+      // add norm attribute if requested
+      query_attrs.add<norm>();
+    }
   }
 
  private:
   uint64_t docs_count = 0; // document frequency
+  bool normalize_;
 }; // collector
 
-class scorer final : public iresearch::sort::scorer_base<tfidf::score_t> {
+class scorer : public iresearch::sort::scorer_base<tfidf::score_t> {
  public:
   DECLARE_FACTORY(scorer);
 
@@ -63,40 +89,82 @@ class scorer final : public iresearch::sort::scorer_base<tfidf::score_t> {
       iresearch::boost::boost_t boost,
       const tfidf::idf* idf,
       const frequency* freq)
-    : idf_(boost * (idf ? idf->value : 1)), 
-      freq_(freq) {
+    : idf_(boost * (idf ? idf->value : 1.f)), 
+      freq_(freq ? freq : &EMPTY_FREQ) {
+    assert(freq_);
   }
 
   virtual void score(score_t& score_buf) override {
-    const float_t tf = float_t(std::sqrt(freq_ ? freq_->value : 0));
-    score_buf = idf_ * tf;
+    score_buf = tfidf();
+  }
+
+ protected:
+  FORCE_INLINE float_t tfidf() const {
+   return idf_ * float_t(std::sqrt(freq_->value));
   }
 
  private:
   float_t idf_; // precomputed : boost * idf
   const frequency* freq_;
-};
+}; // scorer
+
+class norm_scorer final : public scorer {
+ public:
+  DECLARE_FACTORY(norm_scorer);
+
+  norm_scorer(
+      const iresearch::norm* norm,
+      iresearch::boost::boost_t boost,
+      const tfidf::idf* idf,
+      const frequency* freq)
+    : scorer(boost, idf, freq),
+      norm_(norm) {
+    assert(norm_);
+  }
+
+  virtual void score(score_t& score_buf) override {
+    score_buf = tfidf() * norm_->read();
+  }
+
+ private:
+  const iresearch::norm* norm_;
+}; // norm_scorer
 
 class sort final: iresearch::sort::prepared_base<tfidf::score_t> {
  public:
   DECLARE_FACTORY(prepared);
 
-  sort(bool reverse):
-    iresearch::sort::prepared_base<tfidf::score_t>(flags{ &frequency::type() }) {
+  sort(bool normalize, bool reverse)
+    : normalize_(normalize) {
     static const std::function<bool(score_t, score_t)> greater = std::greater<score_t>();
     static const std::function<bool(score_t, score_t)> less = std::less<score_t>();
     less_ = reverse ? &greater : &less;
   }
 
+  virtual const flags& features() const override {
+    return tfidf::features(normalize_); 
+  }
+
   virtual collector::ptr prepare_collector() const override {
-    return iresearch::sort::collector::make<tfidf::collector>();
+    return iresearch::sort::collector::make<tfidf::collector>(normalize_);
   }
 
   virtual scorer::ptr prepare_scorer(
-      const sub_reader&,
-      const term_reader&,
+      const sub_reader& segment,
+      const term_reader& field,
       const attributes& query_attrs, 
       const attributes& doc_attrs) const override {
+    iresearch::norm* norm = query_attrs.get<iresearch::norm>();
+
+    if (norm && norm->reset(segment, field.field().norm, *doc_attrs.get<document>())) {
+      return tfidf::scorer::make<tfidf::norm_scorer>(
+        norm,
+        boost::extract(query_attrs),
+        query_attrs.get<tfidf::idf>(),
+        doc_attrs.get<frequency>()
+      );
+    }
+
     return tfidf::scorer::make<tfidf::scorer>(
       boost::extract(query_attrs),
       query_attrs.get<tfidf::idf>(),
@@ -114,6 +182,7 @@ class sort final: iresearch::sort::prepared_base<tfidf::score_t> {
 
  private:
   const std::function<bool(score_t, score_t)>* less_;
+  bool normalize_;
 }; // sort
 
 NS_END // tfidf 
@@ -122,10 +191,13 @@ DEFINE_SORT_TYPE_NAMED(iresearch::tfidf_sort, "tfidf");
 REGISTER_SCORER(iresearch::tfidf_sort);
 DEFINE_FACTORY_SINGLETON(tfidf_sort);
 
-tfidf_sort::tfidf_sort() : sort( tfidf_sort::type() ) {}
+tfidf_sort::tfidf_sort(bool normalize) 
+  : sort(tfidf_sort::type()),
+    normalize_(normalize) {
+}
 
 sort::prepared::ptr tfidf_sort::prepare() const {
-  return tfidf::sort::make<tfidf::sort>(reverse());
+  return tfidf::sort::make<tfidf::sort>(normalize_, reverse());
 }
 
 NS_END // ROOT
