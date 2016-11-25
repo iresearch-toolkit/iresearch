@@ -2518,34 +2518,42 @@ TEST_F(memory_index_test, doc_update) {
     auto doc1 = gen.next();
     auto doc2 = gen.next();
     auto doc3 = gen.next();
+    auto doc4 = gen.next();
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
     auto* test_field0 = new test_field();
     auto* test_field1 = new test_field();
     auto* test_field2 = new test_field();
+    auto* test_field3 = new test_field();
     std::string test_field_name("test_field");
 
-    test_field0->features_.add<iresearch::offset>();
-    test_field1->features_.add<iresearch::offset>();
-    test_field2->features_.add<iresearch::increment>();
+    test_field0->features_.add<iresearch::offset>().add<iresearch::frequency>(); // feature superset
+    test_field1->features_.add<iresearch::offset>(); // feature subset of 'test_field0'
+    test_field2->features_.add<iresearch::offset>();
+    test_field3->features_.add<iresearch::increment>();
     test_field0->name(test_field_name);
     test_field1->name(test_field_name);
     test_field2->name(test_field_name);
+    test_field3->name(test_field_name);
     test_field0->tokens_.reset("data");
     test_field1->tokens_.reset("data");
     test_field2->tokens_.reset("data");
+    test_field3->tokens_.reset("data");
     test_field0->write_result_ = true;
-    test_field1->write_result_ = false;
-    test_field2->write_result_ = true;
+    test_field1->write_result_ = true;
+    test_field2->write_result_ = false;
+    test_field3->write_result_ = true;
 
     const_cast<tests::document*>(doc1)->add(test_field0); // inject field
     const_cast<tests::document*>(doc2)->add(test_field1); // inject field
     const_cast<tests::document*>(doc3)->add(test_field2); // inject field
+    const_cast<tests::document*>(doc4)->add(test_field3); // inject field
 
     ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_FALSE(writer->insert(doc2->begin(), doc2->end())); // serializer returs false
-    ASSERT_FALSE(writer->insert(doc3->begin(), doc3->end())); // filed features differ
-    ASSERT_FALSE(writer->update(*(query_doc1.filter.get()), doc2->begin(), doc2->end()));
+    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end())); // field features subset
+    ASSERT_FALSE(writer->insert(doc3->begin(), doc3->end())); // serializer returs false
+    ASSERT_FALSE(writer->insert(doc4->begin(), doc4->end())); // field features differ
+    ASSERT_FALSE(writer->update(*(query_doc1.filter.get()), doc3->begin(), doc3->end()));
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -2558,6 +2566,9 @@ TEST_F(memory_index_test, doc_update) {
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
     expected_value = "A"; // 'name' value in doc1
+    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(docsItr->next());
+    expected_value = "B"; // 'name' value in doc2
     ASSERT_TRUE(segment.document(docsItr->value(), visitor));
     ASSERT_FALSE(docsItr->next());
   }

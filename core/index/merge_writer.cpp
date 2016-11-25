@@ -409,7 +409,7 @@ bool compound_field_iterator::next() {
       current_meta_ = &field_meta;
     }
 
-    assert(field_meta == *current_meta_); // validated by caller
+    assert(field_meta.features.is_subset_of(current_meta_->features)); // validated by caller
     field_iterator_mask_.emplace_back(term_iterator_t{i, &field_meta, field_terms});
   }
 
