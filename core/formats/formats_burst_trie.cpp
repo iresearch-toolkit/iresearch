@@ -1475,6 +1475,7 @@ void field_writer::write(
   uint64_t sum_dfreq = 0;
   uint64_t sum_tfreq = 0;
 
+  const bool freq_exists = field.check<frequency>();
   const version10::documents* docs = pw->attributes().get<version10::documents>();
   assert(docs);
 
@@ -1486,17 +1487,14 @@ void field_writer::write(
     pw->write(*postings, attrs);
 
     const term_meta* meta = attrs.add<term_meta>();
-    const frequency *tfreq = nullptr;
-    if (field.check<frequency>()) {
-      tfreq = attrs.add<frequency>();
-    }
-
-    sum_dfreq += meta->docs_count;
-    if (tfreq) {
+    if (freq_exists) {
+      const frequency *tfreq = attrs.add<frequency>();
       sum_tfreq += tfreq->value;
     }
 
     if (meta->docs_count) {
+      sum_dfreq += meta->docs_count;
+
       const bytes_ref &term = terms.value();
       push(term);
 
