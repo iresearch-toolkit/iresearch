@@ -52,18 +52,15 @@ class collector final : public iresearch::sort::collector {
   collector(bool normalize)
     : normalize_(normalize) {
   }
-
-  virtual void collect(
-      const sub_reader& /* segment */,
-      const term_reader& /* field */,
-      const attributes& term_attrs) {
+  
+  virtual void term(const attributes& term_attrs) {
     const iresearch::term_meta* meta = term_attrs.get<iresearch::term_meta>();
     if (meta) {
       docs_count += meta->docs_count;
     }
   }
 
-  virtual void after_collect(
+  virtual void finish(
       const iresearch::index_reader& index, 
       iresearch::attributes& query_attrs) override {
     query_attrs.add<tfidf::idf>()->value = 1 + static_cast<float_t>(

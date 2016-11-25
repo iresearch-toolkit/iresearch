@@ -220,44 +220,45 @@ filter::prepared::ptr by_phrase::prepare(
     if (!tr) {
       continue;
     }
-
+    
     // check required features
     if (!by_phrase::required().is_subset_of(tr->meta().features)) {
       continue;
     }
     
     // find terms
-    {
-      seek_term_iterator::ptr term = tr->iterator();
-      // get term metadata
-      const term_meta* meta = term->attributes().get<term_meta>();
+    seek_term_iterator::ptr term = tr->iterator();
+    // get term metadata
+    const term_meta* meta = term->attributes().get<term_meta>();
 
-      auto term_stats = phrase_stats.begin();
-      for(auto& word: phrase_) {
-        if (!term->seek(word.second)) {
-          if (ord.empty()) {
-            break;
-          } else {
-            // continue here because we should collect 
-            // stats for other terms in phrase
-            continue;
-          }
+    auto term_stats = phrase_stats.begin();
+    term_stats->field(sr, *tr);
+
+    for(auto& word: phrase_) {
+      if (!term->seek(word.second)) {
+        if (ord.empty()) {
+          break;
+        } else {
+          // continue here because we should collect 
+          // stats for other terms in phrase
+          continue;
         }
-
-        // read term attributes
-        term->read();
-
-        // estimate phrase & term
-        const cost::cost_t term_estimation = meta 
-          ? meta->docs_count 
-          : cost::MAX;
-        phrase_terms.emplace_back(term->cookie(), term_estimation);
-    
-        // collect stats
-        term_stats->collect(sr, *tr, term->attributes());
-        ++term_stats;
       }
+
+      // read term attributes
+      term->read();
+
+      // estimate phrase & term
+      const cost::cost_t term_estimation = meta 
+        ? meta->docs_count 
+        : cost::MAX;
+      phrase_terms.emplace_back(term->cookie(), term_estimation);
+    
+      // collect stats
+      term_stats->term(term->attributes());
+      ++term_stats;
     }
+    
 
     // we have not found all needed terms
     if (phrase_terms.size() != phrase_.size()) {
@@ -284,7 +285,7 @@ filter::prepared::ptr by_phrase::prepare(
     stats.emplace_back();
 
     auto& stat = stats.back();
-    term_stats->after_collect(rdr, stat.first);
+    term_stats->finish(rdr, stat.first);
     stat.second = position::value_t(word.first-base_offset);
 
     ++term_stats;

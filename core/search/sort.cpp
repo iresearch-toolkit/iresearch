@@ -119,27 +119,26 @@ order::prepared::stats::operator=(stats&& rhs) {
   return *this;
 }
 
-void order::prepared::stats::collect(
-    const sub_reader& segment_reader,
-    const term_reader& term_reader,
-    const attributes& term_attributes) const {
-  /* collect */
-  std::for_each(
-    colls_.begin(), colls_.end(),
-    [&segment_reader, &term_reader, &term_attributes](const sort::collector::ptr& col) {
-      col->collect(segment_reader, term_reader, term_attributes);
-  });
+void order::prepared::stats::field(
+    const sub_reader& segment,
+    const term_reader& field) const {
+  for (auto& collector : colls_) {
+    collector->field(segment, field);
+  }
 }
 
-void order::prepared::stats::after_collect(
-    const index_reader& index_reader,
+void order::prepared::stats::term(const attributes& term) const {
+  for (auto& collector : colls_) {
+    collector->term(term);
+  }
+}
+
+void order::prepared::stats::finish(
+    const index_reader& index,
     attributes& query_context) const {
-  /* after collect */
-  std::for_each(
-    colls_.begin(), colls_.end(),
-    [&index_reader,&query_context](const sort::collector::ptr& col) {
-      col->after_collect(index_reader, query_context);
-  });
+  for (auto& collector : colls_) {
+    collector->finish(index, query_context);
+  }
 }
 
 // ----------------------------------------------------------------------------

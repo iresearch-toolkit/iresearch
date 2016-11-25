@@ -121,16 +121,18 @@ struct frequency_sort: public iresearch::sort {
 
     class collector: public iresearch::sort::collector {
      public:
-      virtual void collect(
+      virtual void field(
           const iresearch::sub_reader& sub_reader, 
-          const iresearch::term_reader& term_reader,
-          const iresearch::attributes& term_attrs
-      ) override {
+          const iresearch::term_reader& term_reader) {
+        // NOOP
+      }
+
+      virtual void term(const iresearch::attributes& term_attrs) override {
         meta_attr = term_attrs.get<iresearch::term_meta>();
         docs_count += meta_attr->docs_count;
       }
 
-      virtual void after_collect(
+      virtual void finish(
         const iresearch::index_reader& idx_reader, iresearch::attributes& query_attrs
       ) override {
         query_attrs.add<count>()->value = docs_count;

@@ -71,7 +71,7 @@ void limited_sample_scorer::score(order::prepared::stats& stats) {
   for (auto& entry: scored_states_) {
     auto& scored_term_state = entry.second;
     auto terms = scored_term_state.state.reader->iterator();
-
+   
     // find term using cached state
     // use bytes_ref::nil here since we just "jump" to cached state,
     // and we are not interested in term value itself
@@ -80,14 +80,20 @@ void limited_sample_scorer::score(order::prepared::stats& stats) {
     }
 
     auto& term = terms->attributes();
+    auto& segment = scored_term_state.sub_reader;
+    auto& field = *scored_term_state.state.reader;
+    
+    // collect field level statistic 
+    stats.field(segment, field);
 
-    // collect statistics for term
-    stats.collect(scored_term_state.sub_reader, *scored_term_state.state.reader, term);
+    // collect term level statistics
+    stats.term(term);
 
     attributes scored_term_attributes;
 
     // apply/store order stats
-    stats.after_collect(scored_term_state.sub_reader, scored_term_attributes);
+    stats.finish(scored_term_state.sub_reader, scored_term_attributes);
+   
     scored_term_state.state.scored_states.emplace(
       scored_term_state.state_offset, std::move(scored_term_attributes)
     );

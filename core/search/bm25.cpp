@@ -131,45 +131,47 @@ class collector final : public iresearch::sort::collector {
     : k_(k), b_(b) {
   }
 
-  virtual void collect(
-      const sub_reader& /* sub_reader */,
-      const term_reader& term_reader,
-      const attributes& term_attrs) {
+  virtual void field(
+      const sub_reader& /* segment */,
+      const term_reader& field) override {
+    total_term_freq += field.size(); // TODO: need term_freq here
+    docs_count += field.docs_count();
+  }
+
+  virtual void term(const attributes& term_attrs) override {
     const iresearch::term_meta* meta = term_attrs.get<iresearch::term_meta>();
     if (meta) {
       docs_count += meta->docs_count;
     }
-    total_term_freq += term_reader.size(); // TODO: need term_freq here
   }
 
-  virtual void after_collect(
+  virtual void finish(
       const iresearch::index_reader& index_reader, 
       iresearch::attributes& query_attrs) override {
-    stats* bm25stats = query_attrs.add<stats>();
 
-    const auto total_docs_count = index_reader.docs_count();
-    assert(total_docs_count);
-    const auto avg_doc_len = 0 == total_term_freq 
+    const auto avg_doc_len = 0 == total_term_freq || 0 == docs_count
       ? 1.f
-      : static_cast<float_t>(total_term_freq) / total_docs_count;
+      : static_cast<float_t>(total_term_freq) / docs_count;
 
+    stats* bm25stats = query_attrs.add<stats>();
+    
     // precomputed idf value
     bm25stats->idf = 1 + static_cast<float_t>(
-      std::log(total_docs_count / double_t(docs_count + 1))
+      std::log(index_reader.docs_count() / double_t(docs_count + 1))
     ); 
 
     // precomputed length norm
     const float_t kb = k_ * b_;
     bm25stats->norm_const = k_ - kb;
-    bm25stats->norm_length = kb / avg_doc_len ;     
+    bm25stats->norm_length = kb / avg_doc_len;
     
     // add norm attribute
     query_attrs.add<norm>();
   }
 
  private:
-  uint64_t docs_count = 0; // document frequency
-  uint64_t total_term_freq = 0;
+  uint64_t docs_count = 0; // number of documents that have at least one term for processed fields
+  uint64_t total_term_freq = 0; // number of tokens for processed fields
   float_t k_;
   float_t b_;
 }; // collector

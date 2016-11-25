@@ -65,6 +65,9 @@ filter::prepared::ptr by_term::prepare(
       continue;
     }
 
+    /* collect field level stats */
+    stats.field(sr, *tr);
+
     /* find term */
     seek_term_iterator::ptr terms = tr->iterator();
     if (!terms->seek(term_)) {
@@ -88,11 +91,10 @@ filter::prepared::ptr by_term::prepare(
       state.estimation = meta->docs_count;
     }
 
-    /* collect stats */
-    auto& term = terms->attributes();
-    stats.collect(sr, *tr, term);
+    /* collect term level stats */
+    stats.term(terms->attributes());
   }
-  stats.after_collect(rdr, attrs);
+  stats.finish(rdr, attrs);
 
   /* apply boost */
   iresearch::boost::apply(attrs, this->boost() * boost);

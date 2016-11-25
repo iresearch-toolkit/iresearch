@@ -91,24 +91,28 @@ class IRESEARCH_API sort {
     DECLARE_FACTORY(collector);
 
     virtual ~collector();
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief compute term level statistics, e.g. from current attribute values
+    ////////////////////////////////////////////////////////////////////////////////
+    virtual void field(
+      const sub_reader& /* segment */,
+      const term_reader& /* field */) {
+    } 
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief compute index statistics, e.g. from current attribute values
+    /// @brief compute term level statistics, e.g. from current attribute values
     ////////////////////////////////////////////////////////////////////////////////
-    virtual void collect(
-      const sub_reader& /* sub_reader */,
-      const term_reader& /* term_reader */,
-      const attributes& /* term_attr */) {
+    virtual void term(const attributes& /* term */) {
     }
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief store collected index statistics into attributes for the current
     ///        query node
     ////////////////////////////////////////////////////////////////////////////////
-    virtual void after_collect(
-      const iresearch::index_reader& /*idx_reader*/,
-      iresearch::attributes& /*query_attrs*/
-    ) {
+    virtual void finish(
+      const iresearch::index_reader& /* index */,
+      iresearch::attributes& /*query_context*/) {
     }
   }; // collector
 
@@ -324,15 +328,12 @@ public:
       stats(stats&& rhs);
 
       stats& operator=(stats&& rhs);
+      
+      void field(const sub_reader& segment, const term_reader& field) const;
 
-      void collect(
-        const sub_reader& segment_reader,
-        const term_reader& term_reader,
-        const attributes& term_attributes) const;
+      void term(const attributes& term) const;
 
-      void after_collect(
-        const index_reader& index_reader,
-        attributes& query_context) const;
+      void finish(const index_reader& index, attributes& query_context) const;
 
      private:
       IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
