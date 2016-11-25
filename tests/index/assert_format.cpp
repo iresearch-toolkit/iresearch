@@ -592,6 +592,10 @@ const iresearch::field_meta& term_reader::meta() const {
   return data_;
 }
 
+const iresearch::attributes& term_reader::attributes() const {
+  return iresearch::attributes::empty_instance();
+}
+
 class field_iterator : public iresearch::iterator <const iresearch::string_ref&> {
  public:
   field_iterator( const index_segment& data ) : data_( data ) {

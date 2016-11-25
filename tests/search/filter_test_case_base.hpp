@@ -416,6 +416,10 @@ struct empty_term_reader : iresearch::singleton<empty_term_reader>, iresearch::t
     return EMPTY;
   }
 
+  virtual const iresearch::attributes& attributes() const {
+    return iresearch::attributes::empty_instance();
+  }
+
   // total number of terms
   virtual size_t size() const { return 0; }
 

@@ -134,7 +134,10 @@ class collector final : public iresearch::sort::collector {
   virtual void field(
       const sub_reader& /* segment */,
       const term_reader& field) override {
-    total_term_freq += field.size(); // TODO: need term_freq here
+    const frequency* freq = field.attributes().get<frequency>();
+    if (freq) {
+      total_term_freq += freq->value;
+    }
     docs_count += field.docs_count();
   }
 
@@ -148,11 +151,6 @@ class collector final : public iresearch::sort::collector {
   virtual void finish(
       const iresearch::index_reader& index_reader, 
       iresearch::attributes& query_attrs) override {
-
-    const auto avg_doc_len = 0 == total_term_freq || 0 == docs_count
-      ? 1.f
-      : static_cast<float_t>(total_term_freq) / docs_count;
-
     stats* bm25stats = query_attrs.add<stats>();
     
     // precomputed idf value
@@ -163,7 +161,11 @@ class collector final : public iresearch::sort::collector {
     // precomputed length norm
     const float_t kb = k_ * b_;
     bm25stats->norm_const = k_ - kb;
-    bm25stats->norm_length = kb / avg_doc_len;
+    bm25stats->norm_length = kb;
+    if (total_term_freq && docs_count) {
+      const auto avg_doc_len = static_cast<float_t>(total_term_freq) / docs_count;
+      bm25stats->norm_length /= avg_doc_len;
+    }
     
     // add norm attribute
     query_attrs.add<norm>();

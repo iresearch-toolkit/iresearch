@@ -107,7 +107,7 @@ struct IRESEARCH_API postings_reader {
  * term_reader
  * ------------------------------------------------------------------*/
 
-struct IRESEARCH_API term_reader {
+struct IRESEARCH_API term_reader : util::const_attributes_provider {
   DECLARE_PTR( term_reader );
   DECLARE_FACTORY( term_reader );
 

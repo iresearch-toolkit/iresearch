@@ -1101,10 +1101,6 @@ term_reader::~term_reader() {
   delete fst_;
 }
 
-const field_meta& term_reader::meta() const {
-  return *field_;
-}
-
 seek_term_iterator::ptr term_reader::iterator() const {
   return seek_term_iterator::make<detail::term_iterator>( this );
 }
@@ -1123,10 +1119,10 @@ bool term_reader::prepare(
   min_term_ref_ = min_term_;
   max_term_ = read_string<bstring>(meta_in);
   max_term_ref_ = max_term_;
-  term_freq_ = field.features.check<frequency>()
-    ? meta_in.read_vlong()
-    : 0; // TODO: not 0 but reserved value
-
+  if (field.features.check<frequency>()) {
+    frequency* freq = attrs_.add<frequency>();
+    freq->value = meta_in.read_vlong();
+  }
   fst_ = vector_byte_fst::Read(fst_in, fst::FstReadOptions());
   assert(fst_);
 

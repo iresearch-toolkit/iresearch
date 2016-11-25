@@ -108,15 +108,19 @@ class term_reader : public iresearch::term_reader,
   );
 
   virtual seek_term_iterator::ptr iterator() const override;
-  virtual const field_meta& meta() const override;
+  virtual const field_meta& meta() const override { return *field_; }
   virtual size_t size() const override { return terms_count_; }
   virtual uint64_t docs_count() const override { return doc_count_; }
   virtual const bytes_ref& min() const override { return min_term_ref_; }
   virtual const bytes_ref& max() const override { return max_term_ref_; }
+  virtual const iresearch::attributes& attributes() const override { 
+    return attrs_; 
+  }
 
  private:
   friend class term_iterator;
 
+  iresearch::attributes attrs_;
   bstring min_term_;
   bstring max_term_;
   bytes_ref min_term_ref_;
@@ -178,14 +182,14 @@ class field_writer final : public iresearch::field_writer{
 
     void write(data_output& out) const;
 
-    bstring min_term;
-    bstring max_term;
-    uint64_t index_start;
-    uint64_t doc_freq;
-    size_t doc_count;
-    uint64_t term_freq;
-    uint64_t term_count;
-    iresearch::field_id id;
+    bstring min_term; // min term
+    bstring max_term; // max term
+    uint64_t index_start; // where field index starts
+    uint64_t doc_freq; // size of postings
+    size_t doc_count; // number of documents that have at least one term for field
+    uint64_t term_freq; // total number of tokens for field
+    uint64_t term_count; // number of terms for field
+    iresearch::field_id id; // field identifier
     bool write_freq;
   };
 
