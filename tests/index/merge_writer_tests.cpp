@@ -2082,6 +2082,67 @@ TEST_F(merge_writer_tests, test_merge_writer) {
   ASSERT_TRUE(expected_string.empty());
 }
 
+TEST_F(merge_writer_tests, test_merge_writer_field_features) {
+  //iresearch::flags STRING_FIELD_FEATURES{ iresearch::frequency::type(), iresearch::position::type() };
+  //iresearch::flags TEXT_FIELD_FEATURES{ iresearch::frequency::type(), iresearch::position::type(), iresearch::offset::type(), iresearch::payload::type() };
+
+  std::string field("doc_string");
+  std::string data("string_data");
+  tests::document doc1; // string
+  tests::document doc2; // text
+
+  doc1.add(new tests::templates::string_field(field, data, true, true));
+  doc2.add(new tests::templates::text_field<iresearch::string_ref>(field, data, true, true));
+
+  ASSERT_TRUE(doc1.get(field)->features().is_subset_of(doc2.get(field)->features()));
+  ASSERT_FALSE(doc2.get(field)->features().is_subset_of(doc1.get(field)->features()));
+
+  iresearch::version10::format codec;
+  iresearch::format::ptr codec_ptr(&codec, [](iresearch::format*)->void{});
+  iresearch::memory_directory dir;
+
+  // populate directory
+  {
+    auto writer = iresearch::index_writer::make(dir, codec_ptr, iresearch::OM_CREATE);
+    ASSERT_TRUE(writer->insert(doc1.begin(), doc1.end()));
+    writer->commit();
+    ASSERT_TRUE(writer->insert(doc2.begin(), doc2.end()));
+    writer->commit();
+    writer->close();
+  }
+
+  auto reader = iresearch::directory_reader::open(dir, codec_ptr);
+  
+
+  ASSERT_EQ(2, reader->size());
+  ASSERT_EQ(1, (*reader)[0].docs_count());
+  ASSERT_EQ(1, (*reader)[1].docs_count());
+
+  // test merge existing with feature subset (success)
+  {
+    iresearch::merge_writer writer(dir, codec_ptr, "merged_subset");
+    writer.add((*reader)[1]); // assume 1 is segment with text field
+    writer.add((*reader)[0]); // assume 0 is segment with string field
+
+    std::string filename;
+    iresearch::segment_meta meta;
+
+    ASSERT_TRUE(writer.flush(filename, meta));
+  }
+
+  // test merge existing with feature superset (fail)
+  {
+    iresearch::merge_writer writer(dir, codec_ptr, "merged_superset");
+    writer.add((*reader)[0]); // assume 0 is segment with text field
+    writer.add((*reader)[1]); // assume 1 is segment with string field
+
+    std::string filename;
+    iresearch::segment_meta meta;
+
+    ASSERT_FALSE(writer.flush(filename, meta));
+  }
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
