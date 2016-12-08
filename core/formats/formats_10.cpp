@@ -1786,7 +1786,7 @@ iresearch::columnstore_reader::values_reader_f INVALID_COLUMN =
 
 NS_END
 
-class reader final : public iresearch::columnstore_reader {
+class reader final : public iresearch::columnstore_reader, util::noncopyable {
  public:
   virtual bool prepare(const reader_state& state) override;
   virtual values_reader_f values(field_id field) const override;
@@ -1799,17 +1799,11 @@ class reader final : public iresearch::columnstore_reader {
     block() = default;
     block(block&& other)
       : index(std::move(other.index)),
-        data(std::move(other.data)),
-        stream(std::move(other.stream)),
-        index_loaded(std::move(other.index_loaded)),
-        data_loaded(std::move(other.data_loaded)) {
+        data(std::move(other.data)) {
     }
 
     compressed_index<uint64_t> index; // block index
     bstring data; // decompressed data block
-    mutable bytes_ref_input stream; // stream to access to data block
-    bool index_loaded{ false };
-    bool data_loaded{ false };
   };
   
   typedef std::pair<
@@ -1818,98 +1812,56 @@ class reader final : public iresearch::columnstore_reader {
   > block_ref_t;
   
   typedef compressed_index<block_ref_t> blocks_index_t;
-
-  struct column : util::noncopyable {
-    column() = default;
-
-    column(column&& rhs)
-      : index(std::move(rhs.index)),
-        stream(std::move(rhs.stream)) {
-    }
-
-    blocks_index_t index; // blocks index
-    mutable index_input::ptr stream; // column stream
+  
+  struct read_context {
+    std::deque<block> cached_blocks;
+    bstring encode_buf; // 'read_compact' requires a temporary buffer
+    decompressor decomp; // decompressor
+    index_input::ptr stream; // input stream
+    std::mutex lock;
   };
 
-  bool load_block_index(index_input& in, block_ref_t& ref, block& block) const;
-  bool load_block_data(index_input& in, const block_ref_t& ref, block& block) const;
+  static bool read_block(
+    index_input& in, 
+    read_context& ctx,
+    block& block
+  );
   
   // visits block entries
-  static bool visit(const block& block, const raw_reader_f& reader);
+  static bool visit(const block& block, const raw_reader_f& reader, bytes_ref_input& stream);
 
-  // returns value stream
-  static data_input& value(
+  // reset value stream
+  static void reset(
+    bytes_ref_input& stream,
     const block& block,
     const block_index_t::iterator& vbegin, // where value starts
     const block_index_t::iterator& vend, // where value ends
     const block_index_t::iterator& end); // where index ends
   
-  // returns value stream
-  static data_input& value(
-      const block& block, 
-      const block_index_t::iterator& vbegin,
-      const block_index_t::iterator& end) {
-    auto vend = vbegin;
-    return value(block, vbegin, ++vend, end);
-  }
-  
-  // prepares column stream
-  index_input& stream(const column& column) const {
-    if (!column.stream) {
-      // init column stream if needed
-      column.stream = data_in_->clone();
-    }
-
-    return *column.stream;
-  }
-
-  std::vector<column> columns_;
-  index_input::ptr data_in_; // columnstore data stream
-  decompressor decomp_; // decompressor
-  mutable std::deque<block> cached_blocks_; // cached blocks
-  mutable bstring encode_buf_; // 'read_compact' requires a temporary buffer
+  mutable read_context ctx_;
+  std::vector<blocks_index_t> columns_;
 }; // reader
   
-bool reader::load_block_index(index_input& in, block_ref_t& ref, block& block) const {
-  if (block.index_loaded) {
-    // already loaded
-    return true;
-  }
-
-  in.seek(ref.first);
-
+/*static*/ bool reader::read_block(
+    index_input& in, 
+    read_context& ctx,
+    block& block) {
   // read block index
   static auto visitor = [] (uint64_t& target, uint64_t value) {
     target = value;
   };
   
   if (!block.index.read(in, type_limits<type_t::doc_id_t>::eof(), visitor)) {
-    // unable to read column index
+    // unable to read block index
     return false;
   }
-  
-  // nexcept
-  // since block index have been loaded, update block start pointer
-  ref.first = in.file_pointer(); 
-  block.index_loaded = true;
-  return true;
-}
-
-bool reader::load_block_data(index_input& in, const block_ref_t& ref, block& block) const {
-  if (block.data_loaded) {
-    // already loaded
-    return true;
-  }
-  
-  in.seek(ref.first);
   
   // ensure we have enough space to store uncompressed data
   block.data.resize(MAX_DATA_BLOCK_SIZE + read_zvlong(in));
 
   // read block data
-  read_compact(in, decomp_, encode_buf_, block.data); 
-
-  block.data_loaded = true;
+  read_compact(in, ctx.decomp, ctx.encode_buf, block.data); 
+  
   return true;
 }
 
@@ -1926,11 +1878,11 @@ bool reader::prepare(const reader_state& state) {
   }
   
   // open columstore stream
-  data_in_ = dir.open(filename);
+  auto stream = dir.open(filename);
   
   // check header
   format_utils::check_header(
-    *data_in_, 
+    *stream, 
     writer::FORMAT_NAME, 
     writer::FORMAT_MIN, 
     writer::FORMAT_MAX
@@ -1941,24 +1893,22 @@ bool reader::prepare(const reader_state& state) {
   // the entire file. here we perform cheap
   // error detection which could recognize
   // some forms of corruption. */
-  format_utils::read_checksum(*data_in_);
+  format_utils::read_checksum(*stream);
 
   // seek to data start
-  data_in_->seek(data_in_->length() - format_utils::FOOTER_LEN - sizeof(uint64_t));
-  data_in_->seek(data_in_->read_long()); // seek to blocks index
+  stream->seek(stream->length() - format_utils::FOOTER_LEN - sizeof(uint64_t));
+  stream->seek(stream->read_long()); // seek to blocks index
     
   static auto visitor = [] (block_ref_t& block, uint64_t v) {
     block.first = v;
   };
    
-  std::vector<column> columns;
-  columns.reserve(data_in_->read_vlong());
-  for (size_t num_fields = columns.capacity(); num_fields; --num_fields) {
-    columns.emplace_back();
-    auto& column = columns.back();
+  std::vector<blocks_index_t> columns(stream->read_vlong());
+  for (size_t i = 0, size = columns.size(); i < size; ++i) {
+    auto& column = columns[i];
 
-    const auto max = data_in_->read_vlong(); // last valid key
-    if (!column.index.read(*data_in_, max + 1, visitor)) {
+    const auto max = stream->read_vlong(); // last valid key
+    if (!column.read(*stream, max + 1, visitor)) {
       IR_ERROR() << "Unable to load blocks index for column id=" << columns.size() - 1;
       return false;
     }
@@ -1966,11 +1916,13 @@ bool reader::prepare(const reader_state& state) {
 
   // noexcept
   columns_ = std::move(columns);
+  ctx_.stream = std::move(stream);
 
   return true;
 }
   
-data_input& reader::value(
+void reader::reset(
+    bytes_ref_input& stream,
     const block& block, 
     const block_index_t::iterator& vbegin, // value begin
     const block_index_t::iterator& vend,  // value end
@@ -1979,14 +1931,10 @@ data_input& reader::value(
   const auto end_offset = end == vend ? block.data.size() : vend->second;
   assert(end_offset >= start_offset);
 
-  auto& stream = block.stream;
- 
   stream.reset(
     block.data.c_str() + start_offset,
     end_offset - start_offset
   );
-
-  return stream;
 }
 
 reader::values_reader_f reader::values(field_id field) const {
@@ -1996,58 +1944,64 @@ reader::values_reader_f reader::values(field_id field) const {
   }
   
   auto& column = columns_[field];
+  bytes_ref_input block_in;
 
-  return[this, &column] (doc_id_t doc, const value_reader_f& reader) {
-    const auto it = column.index.lower_bound(doc); // looking for data block
+  return[this, &column, block_in] (doc_id_t doc, const value_reader_f& reader) mutable {
+    const auto it = column.lower_bound(doc); // looking for data block
 
-    if (it == column.index.end()) {
+    if (it == column.end()) {
       // there is no block suitable for id equals to 'doc' in this column
       return false;
     }
-    
+
     auto& block_ref = it->second;
+    auto& cached = block_ref.second;
 
-    if (!(block_ref.second)) {
-      // block hasn't been loaded yet
+    if (!cached) {
+      SCOPED_LOCK(ctx_.lock);
+      if (!cached) {
+        auto& stream = *ctx_.stream;
+        stream.seek(block_ref.first);
 
-      // add cached entry
-      cached_blocks_.emplace_back();
+        // add cached entry
+        ctx_.cached_blocks.emplace_back();
+        auto& block = ctx_.cached_blocks.back();
 
-      // mark block as partially loaded
-      (const_cast<block_ref_t&>(block_ref)).second = &(cached_blocks_.back());
+        if (!read_block(stream, ctx_, block)) {
+          // unable to load block
+          return false;
+        }
+        
+        // mark block as loaded
+        const_cast<reader::block*>(cached) = &block;
+      }
     }
-    
+        
     auto& block = *block_ref.second;
-    auto& in = stream(column);
-    
-    if (!load_block_index(in, const_cast<block_ref_t&>(block_ref), block)) {
-      // unable to load block index
-      return false;
-    }
-
-    const auto doc_offset = block.index.find(doc);
-    const auto end = block.index.end();
-
-    if (doc_offset == end) {
+    const auto vbegin = block.index.find(doc); // value begin
+    const auto end = block.index.end(); // block end
+        
+    if (vbegin == end) {
       // there is no document with id equals to 'doc' in this block
       return false;
     }
+   
+    auto vend = vbegin; // value end
+    std::advance(vend, 1);
+    
+    reset(block_in, block, vbegin, vend, end);
 
-    if (!load_block_data(in, block_ref, block)) {
-      // unable to load block data 
-      return false;
-    }
-
-    return reader(value(block, doc_offset, end));
+    return reader(block_in);
   };
 }
 
-bool reader::visit(const reader::block& block, const reader::raw_reader_f& reader) {
+bool reader::visit(const reader::block& block, const reader::raw_reader_f& reader, bytes_ref_input& stream) {
   auto vbegin = block.index.begin();
   auto vend = vbegin;
   const auto end = block.index.end();
   for (; vbegin != end; ++vbegin) {
-    if (!reader(vbegin->first, value(block, vbegin, ++vend, end))) {
+    reset(stream, block, vbegin, ++vend, end);
+    if (!reader(vbegin->first, stream)) {
       return false;
     }
   }
@@ -2062,38 +2016,33 @@ bool reader::visit(field_id field, const raw_reader_f& reader) const {
   }
 
   auto& column = columns_[field];
-  auto& in = stream(column);
-  
+  bytes_ref_input block_in;
+  block_ref_t block_ref;
   reader::block block; // do not cache blocks during visiting
-  block_ref_t ref;
-  ref.second = &block;
 
-  const block_ref_t* pref;
-  for (auto& bucket : column.index) {
-    if (bucket.second.second) {
-      // has already been cached
-      pref = &bucket.second;
-    } else {
-      // hasn't yet been cached, use temporary block
-      pref = &ref;
-      ref.first = bucket.second.first;
-    }
+  for (auto& bucket : column) {
+    block_ref = bucket.second;
+    auto& cached = block_ref.second;
 
-    reader::block& block = *pref->second;
+    if (!cached) {
+      SCOPED_LOCK(ctx_.lock);
+      if (!cached) {
+        // hasn't been cached yet, use temporary block
+        auto& stream = *ctx_.stream;
+        stream.seek(block_ref.first);
 
-    if (!load_block_index(in, const_cast<block_ref_t&>(*pref), block)
-        || !load_block_data(in, *pref, block)) {
-      return false;
+        if (!read_block(stream, ctx_, block)) {
+          return false;
+        }
+
+        block_ref.second = &block;
+      }
     }
 
     // visit block
-    if (!visit(block, reader)) {
+    if (!visit(*cached, reader, block_in)) {
       return false;
     }
-
-    // reset flags for next uncached block
-    block.data_loaded = false;
-    block.index_loaded = false;
   }
 
   return true;

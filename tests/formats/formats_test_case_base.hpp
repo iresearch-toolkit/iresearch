@@ -1059,7 +1059,7 @@ class format_test_case_base : public index_test_base {
       ASSERT_FALSE(reader->read(meta));
     }
   }
-  
+    
   void columns_read_write_empty() {
     iresearch::segment_meta meta0("_1", nullptr);
     meta0.version = 42;

@@ -918,6 +918,255 @@ class index_test_case_base : public tests::index_test_base {
       }      
   }
 
+  void concurrent_read_single_column_smoke() {
+    tests::json_doc_generator gen(resource("simple_sequential.json"), &tests::generic_json_field_factory);
+    std::vector<const tests::document*> expected_docs;
+
+    // write some data into columnstore
+    auto writer = open_writer();
+    for (auto* doc = gen.next(); doc; doc = gen.next()) {
+      writer->insert(doc->end(), doc->end(), doc->begin(), doc->end());
+      expected_docs.push_back(doc);
+    }
+    writer->commit();
+
+    auto reader = open_reader();
+
+    // 1-st iteration: noncached
+    // 2-nd iteration: cached
+    for (size_t i = 0; i < 2; ++i) {
+      auto read_columns = [&expected_docs, &reader] () {
+        std::string name;
+        iresearch::columnstore_reader::value_reader_f value_reader = [&name] (iresearch::data_input& in) {
+          name = iresearch::read_string<std::string>(in);
+          return true;
+        };
+
+        size_t i = 0;
+        for (auto& segment : *reader) {
+          auto values = segment.values("name", value_reader);
+          const auto docs = segment.docs_count();
+          for (iresearch::doc_id_t doc = (iresearch::type_limits<iresearch::type_t::doc_id_t>::min)(), max = segment.docs_count(); doc <= max; ++doc) {
+            if (!values(doc)) {
+              return false;
+            }
+
+            auto* expected_doc = expected_docs[i];
+            auto expected_name = expected_doc->get<tests::templates::string_field>("name")->value();
+            if (expected_name != name) {
+              return false;
+            }
+
+            ++i;
+          }
+        }
+
+        return true;
+      };
+
+      const auto thread_count = 10;
+      std::vector<int> results(thread_count, 0);
+      std::vector<std::thread> pool;
+
+      for (size_t i = 0; i < thread_count; ++i) {
+        auto& result = results[i];
+        pool.emplace_back(std::thread([&result, &read_columns] () {
+          result = static_cast<int>(read_columns());
+        }));
+      }
+
+      for (auto& thread : pool) {
+        thread.join();
+      }
+
+      ASSERT_TRUE(std::all_of(
+        results.begin(), results.end(), [] (int res) { return 1 == res; }
+      ));
+    }
+  }
+  
+  void concurrent_read_multiple_columns() {
+    struct csv_doc_template_t: public tests::delim_doc_generator::doc_template, private iresearch::util::noncopyable {
+      using document::end;
+
+      csv_doc_template_t() = default;
+      csv_doc_template_t(csv_doc_template_t&& other) {
+        fields_ = std::move(other.fields_);
+      }
+
+      virtual void init() {
+        fields_.clear();
+        fields_.reserve(2);
+        fields_.emplace_back(new tests::templates::string_field("id", true, true));
+        fields_.emplace_back(new tests::templates::string_field("label", true, true));
+      }
+
+      virtual void value(size_t idx, const std::string& value) {
+        switch(idx) {
+         case 0:
+          get<tests::templates::string_field>("id")->value(value);
+          break;
+         case 1:
+          get<tests::templates::string_field>("label")->value(value);
+        }
+      }
+
+      fields_t& fields() {
+        return fields_;
+      }
+    };
+          
+    // write columns 
+    {
+      csv_doc_template_t csv_doc_template;
+      tests::delim_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template, ',');
+      auto writer = ir::index_writer::make(dir(), codec(), ir::OM_CREATE);
+
+      const tests::document* doc;
+      while (doc = gen.next()) {
+        ASSERT_TRUE(writer->insert(doc->end(), doc->end(), doc->begin(), doc->end()));
+      }
+      writer->commit();
+    }
+    
+    auto reader = ir::directory_reader::open(dir(), codec());
+    ASSERT_EQ(1, reader->size());
+    auto& segment = *reader->begin();
+
+    // read columns 
+    {
+      auto visit_column = [&segment] (const iresearch::string_ref& column_name) {
+        auto* meta = segment.columns().find(column_name);
+        if (!meta) {
+          return false;
+        }
+
+        ir::doc_id_t expected_id = 0;
+        csv_doc_template_t csv_doc_template;
+        tests::delim_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template, ',');
+        auto visitor = [&gen, &column_name, &expected_id] (ir::doc_id_t id, data_input& in) {
+          if (id != ++expected_id) {
+            return false;
+          }
+
+          auto* doc = gen.next();
+          auto* field = doc->get<tests::templates::string_field>(column_name);
+
+          if (!field) {
+            return false;
+          }
+
+          const auto value = iresearch::read_string<std::string>(in);
+          if (field->value() != iresearch::string_ref(value)) {
+            return false;
+          }
+
+          iresearch::byte_type b;
+          const auto read = in.read_bytes(&b, 1);
+          if (read) {
+            // ensure we can't read after the value
+            return false;
+          }
+
+          return true;
+        };
+
+        return segment.column(meta->id, visitor);
+      };
+
+      auto read_column_offset = [&segment] (const iresearch::string_ref& column_name, ir::doc_id_t offset) {
+        auto* meta = segment.columns().find(column_name);
+        if (!meta) {
+          return false;
+        }
+
+        ir::doc_id_t expected_id = 0;
+        csv_doc_template_t csv_doc_template;
+        tests::delim_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template, ',');
+        const tests::document* doc = nullptr;
+
+        ir::columnstore_reader::value_reader_f read_column_value = [&doc, &gen, &column_name] (ir::data_input& in) {
+          if (!doc) {
+            return false;
+          }
+
+          auto* field = doc->get<tests::templates::string_field>(column_name);
+
+          if (!field) {
+            return false;
+          }
+
+          const auto value = iresearch::read_string<std::string>(in);
+          if (field->value() != iresearch::string_ref(value)) {
+            return false;
+          }
+
+          iresearch::byte_type b;
+          const auto read = in.read_bytes(&b, 1);
+          if (read) {
+            // ensure we can't read after the value
+            return false;
+          }
+
+          return true;
+        };
+
+        auto reader = segment.values(meta->id, read_column_value);
+
+        // skip first 'offset' docs
+        for (ir::doc_id_t id = 0; id < offset; ++id) {
+          doc = gen.next();
+          if (!doc) {
+            // not enough documents to skip
+            return false;
+          }
+        }
+
+        do {
+          if (doc && !reader(offset)) {
+            return false;
+          }
+          ++offset;
+        } while (doc = gen.next());
+
+        return true;
+      };
+
+      const auto thread_count = 5;
+      std::vector<int> results(thread_count, 0);
+      std::vector<std::thread> pool;
+
+      const iresearch::string_ref id_column = "id";
+      const iresearch::string_ref label_column = "label";
+      auto i = 0;
+      for (auto max = thread_count/2; i < max; ++i) {
+        auto& result = results[i];
+        auto& column_name = i % 2 ? id_column : label_column;
+        pool.emplace_back(std::thread([&result, &visit_column, column_name] () {
+          result = static_cast<int>(visit_column(column_name));
+        }));
+      }
+      
+      ir::doc_id_t skip = 0;
+      for (; i < thread_count; ++i) {
+        auto& result = results[i];
+        auto& column_name = i % 2 ? id_column : label_column;
+        pool.emplace_back(std::thread([&result, &read_column_offset, column_name, skip] () {
+          result = static_cast<int>(read_column_offset(column_name, skip));
+        }));
+        skip += 10000;
+      }
+      
+      for (auto& thread : pool) {
+        thread.join();
+      }
+
+      ASSERT_TRUE(std::all_of(
+        results.begin(), results.end(), [] (int res) { return 1 == res; }
+      ));
+    }
+  }
+
   void read_empty_doc_attributes() {
     tests::json_doc_generator gen(
       resource("simple_sequential.json"),
@@ -1490,9 +1739,8 @@ class tfidf : public Base {
 // --SECTION--                           memory_directory + iresearch_format_10
 // ----------------------------------------------------------------------------
 
-class memory_index_test 
-  : public tests::cases::tfidf<tests::memory_test_case_base> {
-}; // memory_index_test
+class memory_index_test
+  : public tests::cases::tfidf<tests::memory_test_case_base> {}; // memory_index_test
 
 TEST_F(memory_index_test, arango_demo_docs) {
   {
@@ -1542,11 +1790,16 @@ TEST_F(memory_index_test, europarl_docs) {
 TEST_F(memory_index_test, monarch_eco_onthology) {
   {
     tests::json_doc_generator gen(
-      resource("ECO_Monarch.json"), 
+      resource("ECO_Monarch.json"),
       &tests::payloaded_json_field_factory);
     add_segment(gen);
   }
   assert_index();
+}
+
+TEST_F(memory_index_test, concurrent_read_column) {
+  concurrent_read_single_column_smoke();
+  concurrent_read_multiple_columns();
 }
 
 TEST_F(memory_index_test, concurrent_add) {
@@ -4142,6 +4395,11 @@ TEST_F(fs_index_test, writer_transaction_isolation) {
 
 TEST_F(fs_index_test, create_empty_index) {
   writer_check_open_modes();
+}
+
+TEST_F(fs_index_test, concurrent_read_column) {
+  concurrent_read_single_column_smoke();
+  concurrent_read_multiple_columns();
 }
 
 TEST_F(fs_index_test, writer_atomicity_check) {
