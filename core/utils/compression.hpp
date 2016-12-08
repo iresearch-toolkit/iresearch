@@ -37,9 +37,11 @@ class IRESEARCH_API compressor: public bytes_ref, private util::noncopyable {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // compressor
 
-class IRESEARCH_API decompressor : private util::noncopyable {
+class IRESEARCH_API decompressor {
  public:
   decompressor();
+  decompressor(const decompressor&) = default;
+  decompressor& operator=(const decompressor&) = default;
 
   // returns number of decompressed bytes,
   // or integer_traits<size_t>::const_max in case of error
