@@ -1973,7 +1973,7 @@ reader::values_reader_f reader::values(field_id field) const {
         }
         
         // mark block as loaded
-        const_cast<reader::block*>(cached) = &block;
+        const_cast<reader::block*&>(cached) = &block;
       }
     }
         
