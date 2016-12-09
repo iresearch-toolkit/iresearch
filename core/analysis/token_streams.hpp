@@ -35,7 +35,7 @@ class IRESEARCH_API boolean_token_stream final:
     value_ = value;
     in_use_ = false; 
   }
-  virtual const iresearch::attributes& attributes() const override {
+  virtual const iresearch::attributes& attributes() const NOEXCEPT override {
     return attrs_;
   }
   static const bytes_ref& value_false();
@@ -68,7 +68,7 @@ class IRESEARCH_API string_token_stream final:
     value_ = ref_cast<byte_type>(value);
     in_use_ = false;
   }
-  virtual const iresearch::attributes& attributes() const override {
+  virtual const iresearch::attributes& attributes() const NOEXCEPT override {
     return attrs_;
   }
 
@@ -108,7 +108,7 @@ class IRESEARCH_API numeric_token_stream final:
   void reset(double_t value, uint32_t step = PRECISION_STEP_DEF);
 
   virtual bool next() override;
-  virtual const iresearch::attributes& attributes() const override {
+  virtual const iresearch::attributes& attributes() const NOEXCEPT override {
     return attrs_;
   }
 
@@ -132,7 +132,7 @@ class IRESEARCH_API null_token_stream final:
   void reset() { 
     in_use_ = false; 
   }
-  virtual const iresearch::attributes& attributes() const override {
+  virtual const iresearch::attributes& attributes() const NOEXCEPT override {
     return attrs_;
   }
   static const bytes_ref& value_null();
