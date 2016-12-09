@@ -45,7 +45,8 @@ class format_10_test_case : public tests::format_test_case_base {
       state.features = &field.features;
       state.ver = IRESEARCH_VERSION;
 
-      ir::index_output::ptr out(dir().create("attributes"));
+      auto out = dir().create("attributes");
+      ASSERT_FALSE(!out);
 
       // prepare writer
       ir::version10::postings_writer writer(false);
@@ -121,7 +122,8 @@ class format_10_test_case : public tests::format_test_case_base {
       state.meta = &meta;
       state.fields = &fields;
 
-      ir::index_input::ptr in(dir().open("attributes"));
+      auto in = dir().open("attributes");
+      ASSERT_FALSE(!in);
 
       /* prepare reader */
       ir::version10::postings_reader reader;
@@ -201,7 +203,8 @@ class format_10_test_case : public tests::format_test_case_base {
       state.ver = IRESEARCH_VERSION;
       state.features = &field.features;
 
-      ir::index_output::ptr out(dir().create("attributes"));
+      auto out = dir().create("attributes");
+      ASSERT_FALSE(!out);
 
       /* prepare writer */
       ir::version10::postings_writer writer(false);
@@ -259,7 +262,8 @@ class format_10_test_case : public tests::format_test_case_base {
       state.meta = &meta;
       state.fields = &fields;
 
-      ir::index_input::ptr in(dir().open("attributes"));
+      auto in = dir().open("attributes");
+      ASSERT_FALSE(!in);
 
       /* prepare reader */
       ir::version10::postings_reader reader;
@@ -337,6 +341,7 @@ class format_10_test_case : public tests::format_test_case_base {
     // writer index
     {
       auto out = dir().create("_0.idx");
+      ASSERT_FALSE(!out);
       writer.prepare(*out);
 
       ir::doc_id_t i = 0;
@@ -354,6 +359,7 @@ class format_10_test_case : public tests::format_test_case_base {
     {
       const auto max_doc = blocks_count*block_docs + last_block_docs_count + (ir::type_limits<ir::type_t::doc_id_t>::min)();
       auto in = dir().open("_0.idx");
+      ASSERT_FALSE(!in);
 
       static auto visitor = [] (uint64_t& t, uint64_t v) { t = v; };
 
@@ -443,7 +449,8 @@ class format_10_test_case : public tests::format_test_case_base {
       state.ver = IRESEARCH_VERSION;
       state.features = &field.features;
 
-      ir::index_output::ptr out(dir().create("attributes"));
+      auto out = dir().create("attributes");
+      ASSERT_FALSE(!out);
       ir::write_string(*out, ir::string_ref("file_header"));
 
       /* prepare writer */
@@ -498,7 +505,8 @@ class format_10_test_case : public tests::format_test_case_base {
       state.meta = &meta;
       state.fields = &fields;
 
-      ir::index_input::ptr in(dir().open("attributes"));
+      auto in = dir().open("attributes");
+      ASSERT_FALSE(!in);
       ir::read_string<std::string>(*in);
 
       /* prepare reader */

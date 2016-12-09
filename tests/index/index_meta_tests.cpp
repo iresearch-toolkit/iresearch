@@ -125,7 +125,8 @@ TEST(index_meta_tests, last_generation) {
   // populate directory
   iresearch::memory_directory dir;
   for (auto& name : names) {
-    dir.create(name);
+    auto out = dir.create(name);
+    ASSERT_FALSE(!out);
   }
 
   iresearch::version10::format codec;

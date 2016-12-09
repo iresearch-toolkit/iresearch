@@ -120,12 +120,12 @@ bool read_write_mutex::try_lock_write() {
 void read_write_mutex::unlock() {
   // if have write lock
   if (exclusive_owner_.load() == std::this_thread::get_id()) {
+    ADOPT_SCOPED_LOCK_NAMED(mutex_, lock);
     static std::thread::id unowned;
 
     exclusive_owner_.store(unowned);
     reader_cond_.notify_all(); // wake all reader and writers
     writer_cond_.notify_all(); // wake all reader and writers
-    mutex_.unlock();
 
     return;
   }

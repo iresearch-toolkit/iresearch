@@ -107,18 +107,14 @@ iresearch::index_file_refs::ref_t load_newest_index_meta(
         ));
       }
 
-      if (!ref) {
-        continue; // try the next codec
-      }
+      std::time_t mtime;
 
-      auto mtime = dir.mtime(*ref);
-
-      if (mtime > newest.mtime) {
+      if (ref && dir.mtime(mtime, *ref) && mtime > newest.mtime) {
         newest.mtime = std::move(mtime);
         newest.reader = std::move(reader);
         newest.ref = std::move(ref);
       }
-    };
+    }
 
     if (!newest.reader || !newest.ref) {
       return nullptr;

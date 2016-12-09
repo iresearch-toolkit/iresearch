@@ -91,6 +91,15 @@ inline void prepare_output(
 
   file_name(str, state.name, ext);
   out = state.dir->create(str);
+
+  if (!out) {
+    std::stringstream ss;
+
+    ss << "Failed to create file, path: " << str;
+
+    throw detailed_io_error(ss.str());
+  }
+
   format_utils::write_header(*out, format, version);
 }
 
@@ -106,6 +115,15 @@ inline void prepare_input(
 
   file_name(str, state.meta->name, ext);
   in = state.dir->open(str);
+
+  if (!in) {
+    std::stringstream ss;
+
+    ss << "Failed to open file, path: " << str;
+
+    throw detailed_io_error(ss.str());
+  }
+
   format_utils::check_header(*in, format, min_ver, max_ver);
 }
 
@@ -380,7 +398,9 @@ class term_iterator : public iresearch::seek_term_iterator {
 
   virtual void read() override;
   virtual bool next() override;
-  const iresearch::attributes& attributes() const override { return attrs_; }
+  const iresearch::attributes& attributes() const NOEXCEPT override {
+    return attrs_;
+  }
   const bytes_ref& value() const override { return term_; }
   virtual SeekResult seek_ge(const bytes_ref& term) override;
   virtual bool seek(const bytes_ref& term) override;

@@ -198,7 +198,7 @@ class IRESEARCH_API position : public attribute {
     impl(size_t reserve_attrs);
     virtual void clear() = 0;
     using util::attributes_provider::attributes;
-    virtual iresearch::attributes& attributes() override final {
+    virtual iresearch::attributes& attributes() NOEXCEPT override final {
       return attrs_;
     }
 

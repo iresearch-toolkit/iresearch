@@ -56,7 +56,7 @@ struct IRESEARCH_API postings_writer : util::const_attributes_provider {
   virtual void encode( data_output& out, const iresearch::attributes& attrs ) = 0;
   virtual void end() = 0;
 
-  virtual const iresearch::attributes& attributes() const override {
+  virtual const iresearch::attributes& attributes() const NOEXCEPT override {
     return iresearch::attributes::empty_instance();
   }
 };

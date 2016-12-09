@@ -118,7 +118,7 @@ class token_stream_payload : public ir::token_stream {
   explicit token_stream_payload(ir::token_stream* impl);
   bool next(); 
 
-  const ir::attributes& attributes() const {
+  const ir::attributes& attributes() const NOEXCEPT {
     return impl_->attributes();
   }
 

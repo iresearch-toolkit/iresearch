@@ -98,7 +98,7 @@ class IRESEARCH_API memory_file:
     return i < last_buf ? get_buffer(i).size : 0;
   }
 
-  std::time_t mtime() const { return meta_.mtime; }
+  std::time_t mtime() const NOEXCEPT { return meta_.mtime; }
 
   void reset() { len_ = 0; }
 
@@ -197,38 +197,48 @@ class IRESEARCH_API memory_index_output final : public index_output {
   size_t pos_; /* position in current buffer */
 };
 
-/* -------------------------------------------------------------------
- * memory_directory
- * ------------------------------------------------------------------*/
-
+// -------------------------------------------------------------------
+//                                                    memory_directory
+// -------------------------------------------------------------------
 class IRESEARCH_API memory_directory final : public directory {
  public:
   virtual ~memory_directory();
+
   using directory::attributes;
-  virtual iresearch::attributes& attributes() override;
-  virtual void close() override;
-  
+
+  virtual iresearch::attributes& attributes() NOEXCEPT override;
+
+  virtual void close() NOEXCEPT override;
+
+  virtual index_output::ptr create(const std::string& name) NOEXCEPT override;
+
+  virtual bool exists(
+    bool& result, const std::string& name
+  ) const NOEXCEPT override;
+
+  virtual bool length(
+    uint64_t& result, const std::string& name
+  ) const NOEXCEPT override;
+
+  virtual index_lock::ptr make_lock(const std::string& name) NOEXCEPT override;
+
+  virtual bool mtime(
+    std::time_t& result, const std::string& name
+  ) const NOEXCEPT override;
+
+  virtual index_input::ptr open(
+    const std::string& name
+  ) const NOEXCEPT override;
+
+  virtual bool remove(const std::string& name) NOEXCEPT override;
+
+  virtual bool rename(
+    const std::string& src, const std::string& dst
+  ) NOEXCEPT override;
+
+  virtual bool sync(const std::string& name) NOEXCEPT override;
+
   virtual bool visit(const visitor_f& visitor) const override;
-
-  virtual bool exists(const std::string& name) const override;
-
-  virtual std::time_t mtime(const std::string& name) const override;
-
-  virtual bool remove(const std::string& name) override;
-
-  virtual void rename(
-    const std::string& src,
-    const std::string& dst) override;
-
-  virtual int64_t length(const std::string& name) const override;
-
-  virtual void sync(const std::string& name) override;
-
-  virtual index_lock::ptr make_lock(const std::string& name) override;
-
-  virtual index_output::ptr create(const std::string& name) override;
-
-  virtual index_input::ptr open(const std::string& name) const override;
 
  private:
   friend class single_instance_lock;

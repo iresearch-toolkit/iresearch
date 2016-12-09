@@ -209,7 +209,7 @@ class field_meta_reader final : public iresearch::field_meta_reader{
   void read_field_features(flags& features);
 
   std::vector<const attribute::type_id*> feature_map_;
-  checksum_index_input<::boost::crc_32_type> in;
+  checksum_index_input<::boost::crc_32_type> in_;
 };
     
 /* -------------------------------------------------------------------
@@ -384,7 +384,7 @@ class IRESEARCH_PLUGIN postings_writer final: public iresearch::postings_writer 
   * const_attributes_provider 
   * ------------------------------------------*/
   
-  virtual const iresearch::attributes& attributes() const override final {
+  virtual const iresearch::attributes& attributes() const NOEXCEPT override final {
     return attrs_;
   }
 

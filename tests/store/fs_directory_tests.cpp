@@ -133,6 +133,7 @@ TEST_F(fs_directory_test, orphaned_lock) {
 
       const std::string pid = std::to_string(integer_traits<int>::const_max);
       auto out = dir_->create("lock");
+      ASSERT_FALSE(!out);
       out->write_bytes(reinterpret_cast<const byte_type*>(hostname), strlen(hostname));
       out->write_byte(0);
       out->write_bytes(reinterpret_cast<const byte_type*>(pid.c_str()), pid.size());
@@ -141,9 +142,12 @@ TEST_F(fs_directory_test, orphaned_lock) {
     // try to obtain lock
     {
       auto lock = dir_->make_lock("lock");
+      ASSERT_FALSE(!lock);
       ASSERT_TRUE(lock->lock());
     }
-    ASSERT_FALSE(dir_->exists("lock"));
+
+    bool exists;
+    ASSERT_TRUE(dir_->exists(exists, "lock") && !exists);
   }
 
   // orphaned lock file with invalid pid (not a number), same hostname
@@ -155,6 +159,7 @@ TEST_F(fs_directory_test, orphaned_lock) {
 
       const std::string pid = "invalid_pid";
       auto out = dir_->create("lock");
+      ASSERT_FALSE(!out);
       out->write_bytes(reinterpret_cast<const byte_type*>(hostname), strlen(hostname));
       out->write_byte(0);
       out->write_bytes(reinterpret_cast<const byte_type*>(pid.c_str()), pid.size());
@@ -163,9 +168,11 @@ TEST_F(fs_directory_test, orphaned_lock) {
     // try to obtain lock
     {
       auto lock = dir_->make_lock("lock");
+      ASSERT_FALSE(!lock);
       ASSERT_TRUE(lock->lock());
-      lock->unlock();
-      ASSERT_FALSE(dir_->exists("lock"));
+      ASSERT_TRUE(lock->unlock());
+      bool exists;
+      ASSERT_TRUE(dir_->exists(exists, "lock") && !exists);
     }
   }
 
@@ -174,15 +181,18 @@ TEST_F(fs_directory_test, orphaned_lock) {
     // create lock file
     {
       auto out = dir_->create("lock");
+      ASSERT_FALSE(!out);
       out->flush();
     }
 
     // try to obtain lock
     {
       auto lock = dir_->make_lock("lock");
+      ASSERT_FALSE(!lock);
       ASSERT_TRUE(lock->lock());
-      lock->unlock();
-      ASSERT_FALSE(dir_->exists("lock"));
+      ASSERT_TRUE(lock->unlock());
+      bool exists;
+      ASSERT_TRUE(dir_->exists(exists, "lock") && !exists);
     }
   }
 
@@ -193,15 +203,18 @@ TEST_F(fs_directory_test, orphaned_lock) {
       char hostname[256] = {};
       ASSERT_EQ(0, get_host_name(hostname, sizeof hostname));
       auto out = dir_->create("lock");
+      ASSERT_FALSE(!out);
       out->write_bytes(reinterpret_cast<const byte_type*>(hostname), strlen(hostname));
     }
 
     // try to obtain lock
     {
       auto lock = dir_->make_lock("lock");
+      ASSERT_FALSE(!lock);
       ASSERT_TRUE(lock->lock());
-      lock->unlock();
-      ASSERT_FALSE(dir_->exists("lock"));
+      ASSERT_TRUE(lock->unlock());
+      bool exists;
+      ASSERT_TRUE(dir_->exists(exists, "lock") && !exists);
     }
   }
 
@@ -213,14 +226,18 @@ TEST_F(fs_directory_test, orphaned_lock) {
       ASSERT_EQ(0, get_host_name(hostname, sizeof hostname));
       const std::string pid = std::to_string(iresearch::get_pid());
       auto out = dir_->create("lock");
+      ASSERT_FALSE(!out);
       out->write_bytes(reinterpret_cast<const byte_type*>(hostname), strlen(hostname));
       out->write_byte(0);
       out->write_bytes(reinterpret_cast<const byte_type*>(pid.c_str()), pid.size());
     }
-    ASSERT_TRUE(dir_->exists("lock"));
+
+    bool exists;
+    ASSERT_TRUE(dir_->exists(exists, "lock") && exists);
 
     // try to obtain lock, after closing stream
     auto lock = dir_->make_lock("lock");
+    ASSERT_FALSE(!lock);
     ASSERT_FALSE(lock->lock()); // still have different hostname
   }
 
@@ -232,14 +249,18 @@ TEST_F(fs_directory_test, orphaned_lock) {
 
       const std::string pid = std::to_string(iresearch::get_pid());
       auto out = dir_->create("lock");
+      ASSERT_FALSE(!out);
       out->write_bytes(reinterpret_cast<const byte_type*>(hostname), strlen(hostname));
       out->write_byte(0);
       out->write_bytes(reinterpret_cast<const byte_type*>(pid.c_str()), pid.size());
     }
-    ASSERT_TRUE(dir_->exists("lock"));
+
+    bool exists;
+    ASSERT_TRUE(dir_->exists(exists, "lock") && exists);
 
     // try to obtain lock, after closing stream
     auto lock = dir_->make_lock("lock");
+    ASSERT_FALSE(!lock);
     ASSERT_FALSE(lock->lock()); // still have different hostname
   }
 }

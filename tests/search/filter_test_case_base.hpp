@@ -416,7 +416,7 @@ struct empty_term_reader : iresearch::singleton<empty_term_reader>, iresearch::t
     return EMPTY;
   }
 
-  virtual const iresearch::attributes& attributes() const {
+  virtual const iresearch::attributes& attributes() const NOEXCEPT {
     return iresearch::attributes::empty_instance();
   }
 

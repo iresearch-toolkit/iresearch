@@ -21,21 +21,23 @@ NS_ROOT
 /* verbosity level */
 IRESEARCH_API extern int32_t VERBOSITY;
 
-class log_message {
+class IRESEARCH_API log_message {
  public:
-  log_message(const std::string& type)
-    : fatal_(type == "FATAL") {
-    std::cerr << type << ": ";
+  log_message(const std::string& type): fatal_(type == "FATAL") {
+    stream() << type << ": ";
   }
 
   ~log_message() {
-    std::cerr << std::endl;
+    stream() << std::endl;
+
     if (fatal_) {
       exit(1);
     }
   }
 
-  std::ostream& stream() { return std::cerr; }
+  std::ostream& stream();
+
+  static void stream(std::ostream& stream); // not thread safe (for use with tests)
 
  private:
   bool fatal_;
@@ -49,6 +51,5 @@ NS_END
 #define IR_ERROR() IR_LOG_DETAILED(ERROR) 
 #define IR_INFO() IR_LOG_DETAILED(INFO) 
 #define IR_INFO_LEVEL(level) if ((level) <= iresearch::VERBOSITY) IR_INFO()
-
 
 #endif

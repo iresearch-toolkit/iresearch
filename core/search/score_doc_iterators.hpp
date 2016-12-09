@@ -24,7 +24,7 @@ NS_ROOT
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API score_doc_iterator_base: public score_doc_iterator {
  public:
-  virtual const iresearch::attributes& attributes() const override final {
+  virtual const iresearch::attributes& attributes() const NOEXCEPT override final {
     return attrs_;
   }
 

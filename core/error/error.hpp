@@ -78,6 +78,18 @@ struct IRESEARCH_API eof_error : virtual io_error {
   virtual const char* what() const NOEXCEPT;
 };
 
+// ----------------------------------------------------------------------------
+//                                                            detailed_io_error
+// ----------------------------------------------------------------------------
+struct detailed_io_error: virtual iresearch::io_error {
+  explicit detailed_io_error(const std::string& error): error_(error) {}
+  explicit detailed_io_error(std::string&& error): error_(std::move(error)) {}
+  virtual iresearch::ErrorCode code() const NOEXCEPT override{ return CODE; }
+  virtual const char* what() const NOEXCEPT{ return error_.c_str(); }
+ private:
+   std::string error_;
+};
+
 /* -------------------------------------------------------------------
  * lock_obtain_failed
  * ------------------------------------------------------------------*/

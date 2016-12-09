@@ -12,6 +12,8 @@
 #include "index/index_meta.hpp"
 #include "formats/formats.hpp"
 #include "utils/attributes.hpp"
+#include "utils/log.hpp"
+
 #include "directory_utils.hpp"
 
 NS_ROOT
@@ -26,13 +28,17 @@ index_file_refs::ref_t reference(
     return dir.attributes().add<index_file_refs>()->add(name);
   }
 
-  if (!dir.exists(name)) {
+  bool exists;
+
+  // do not add an attribute if the file definitly does not exist
+  if (!dir.exists(exists, name) || !exists) {
     return nullptr;
   }
 
   auto ref = dir.attributes().add<index_file_refs>()->add(name);
 
-  return dir.exists(name) ? ref : index_file_refs::ref_t(nullptr);
+  return dir.exists(exists, name) && exists
+    ? ref : index_file_refs::ref_t(nullptr);
 }
 
 #if defined(_MSC_VER)
@@ -59,13 +65,16 @@ bool reference(
       continue;
     }
 
-    if (!dir.exists(*file)) {
+    bool exists;
+
+    // do not add an attribute if the file definitly does not exist
+    if (!dir.exists(exists, *file) || !exists) {
       continue;
     }
 
     auto ref = attribute->add(*file);
 
-    if (dir.exists(*file) && !visitor(std::move(ref))) {
+    if (dir.exists(exists, *file) && exists && !visitor(std::move(ref))) {
       return false;
     }
   }
@@ -91,18 +100,22 @@ bool reference(
   }
 
   auto& attribute = dir.attributes().add<index_file_refs>();
+
   return meta.visit_files([include_missing, &attribute, &dir, &visitor](const std::string& file) {
     if (include_missing) {
       return visitor(attribute->add(file));
     }
 
-    if (!dir.exists(file)) {
+    bool exists;
+
+    // do not add an attribute if the file definitly does not exist
+    if (!dir.exists(exists, file) || !exists) {
       return true;
     }
 
     auto ref = attribute->add(file);
 
-    if (dir.exists(file)) {
+    if (dir.exists(exists, file) && exists) {
       return visitor(std::move(ref));
     }
 
@@ -134,13 +147,16 @@ bool reference(
       continue;
     }
 
-    if (!dir.exists(file)) {
+    bool exists;
+
+    // do not add an attribute if the file definitly does not exist
+    if (!dir.exists(exists, file) || !exists) {
       continue;
     }
 
     auto ref = attribute->add(file);
 
-    if (dir.exists(file) && !visitor(std::move(ref))) {
+    if (dir.exists(exists, file) && exists && !visitor(std::move(ref))) {
       return false;
     }
   }
@@ -207,77 +223,134 @@ tracking_directory::tracking_directory(
 
 tracking_directory::~tracking_directory() {}
 
-directory& tracking_directory::operator*() {
+directory& tracking_directory::operator*() NOEXCEPT {
   return impl_;
 }
 
-attributes& tracking_directory::attributes() {
+attributes& tracking_directory::attributes() NOEXCEPT {
   return impl_.attributes();
 }
 
-void tracking_directory::close() {
+void tracking_directory::close() NOEXCEPT {
   impl_.close();
 }
 
-index_output::ptr tracking_directory::create(const std::string& name) {
-  files_.emplace(name);
-  return impl_.create(name);
+index_output::ptr tracking_directory::create(
+  const std::string& name
+) NOEXCEPT {
+  try {
+    files_.emplace(name);
+
+    return impl_.create(name);
+  } catch (...) {
+    IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+  }
+
+  try {
+    files_.erase(name); // revert change
+  } catch (...) {
+    IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+  }
+
+  return nullptr;
 }
 
-bool tracking_directory::exists(const std::string& name) const {
-  return impl_.exists(name);
+bool tracking_directory::exists(
+  bool& result, const std::string& name
+) const NOEXCEPT {
+  return impl_.exists(result, name);
 }
 
-int64_t tracking_directory::length(const std::string& name) const {
-  return impl_.length(name);
+bool tracking_directory::length(
+  uint64_t& result, const std::string& name
+) const NOEXCEPT {
+  return impl_.length(result, name);
 }
 
 bool tracking_directory::visit(const directory::visitor_f& visitor) const {
   return impl_.visit(visitor);
 }
 
-index_lock::ptr tracking_directory::make_lock(const std::string& name) {
+index_lock::ptr tracking_directory::make_lock(
+  const std::string& name
+) NOEXCEPT {
   return impl_.make_lock(name);
 }
 
-std::time_t tracking_directory::mtime(const std::string& name) const {
-  return impl_.mtime(name);
+bool tracking_directory::mtime(
+  std::time_t& result, const std::string& name
+) const NOEXCEPT {
+  return impl_.mtime(result, name);
 }
 
-index_input::ptr tracking_directory::open(const std::string& name) const {
+index_input::ptr tracking_directory::open(
+  const std::string& name
+) const NOEXCEPT {
   if (track_open_) {
-    files_.emplace(name);
+    try {
+      files_.emplace(name);
+    } catch (...) {
+      IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+
+      return nullptr;
+    }
   }
 
   return impl_.open(name);
 }
 
-bool tracking_directory::remove(const std::string& name) {
+bool tracking_directory::remove(const std::string& name) NOEXCEPT {
   bool result = impl_.remove(name);
-  files_.erase(name);
+
+  try {
+    files_.erase(name);
+  } catch (...) {
+    IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+    // ignore failure since removal from impl_ was sucessful
+  }
+
   return result;
 }
 
-void tracking_directory::rename(
-    const std::string& src, 
-    const std::string& dst) {
-  if (files_.emplace(dst).second) {
-    files_.erase(src);
+bool tracking_directory::rename(
+  const std::string& src, const std::string& dst
+) NOEXCEPT {
+  if (!impl_.rename(src, dst)) {
+    return false;
   }
 
-  impl_.rename(src, dst);
+  try {
+    if (files_.emplace(dst).second) {
+      files_.erase(src);
+    }
+
+    return true;
+  } catch (...) {
+    IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+    impl_.rename(dst, src); // revert
+  }
+
+  return false;
 }
 
-void tracking_directory::swap_tracked(file_set& other) {
-  files_.swap(other);
+bool tracking_directory::swap_tracked(file_set& other) NOEXCEPT {
+  try {
+    files_.swap(other);
+
+    return true;
+  } catch (...) { // may throw exceptions until C++17
+    IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+  }
+
+  return false;
 }
 
-void tracking_directory::swap_tracked(tracking_directory& other) {
-  swap_tracked(other.files_);
+bool tracking_directory::swap_tracked(tracking_directory& other) NOEXCEPT {
+  return swap_tracked(other.files_);
 }
 
-void tracking_directory::sync(const std::string& name) {
-  impl_.sync(name);
+bool tracking_directory::sync(const std::string& name) NOEXCEPT {
+  return impl_.sync(name);
 }
 
 // -----------------------------------------------------------------------------
@@ -301,58 +374,71 @@ ref_tracking_directory::ref_tracking_directory(ref_tracking_directory&& other):
 
 ref_tracking_directory::~ref_tracking_directory() {}
 
-directory& ref_tracking_directory::operator*() {
+directory& ref_tracking_directory::operator*() NOEXCEPT {
   return impl_;
 }
 
-attributes& ref_tracking_directory::attributes() {
+attributes& ref_tracking_directory::attributes() NOEXCEPT {
   return impl_.attributes();
 }
 
-void ref_tracking_directory::clear_refs() const {
+void ref_tracking_directory::clear_refs() const NOEXCEPT {
   SCOPED_LOCK(mutex_);
-
   refs_.clear();
 }
 
-void ref_tracking_directory::close() {
+void ref_tracking_directory::close() NOEXCEPT {
   impl_.close();
 }
 
-index_output::ptr ref_tracking_directory::create(const std::string& name) {
-  auto ref = attribute_->add(name);
-  SCOPED_LOCK(mutex_);
-  auto result = impl_.create(name);
+index_output::ptr ref_tracking_directory::create(
+  const std::string& name
+) NOEXCEPT {
+  try {
+    auto ref = attribute_->add(name);
+    SCOPED_LOCK(mutex_);
+    auto result = impl_.create(name);
 
-  // only track ref on successful call to impl_
-  if (result) {
-    refs_.emplace(*ref, std::move(ref));
+    // only track ref on successful call to impl_
+    if (result) {
+      refs_.emplace(*ref, std::move(ref));
+    }
+
+    return result;
+  } catch (...) {
+    IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
   }
 
-  return result;
+  return nullptr;
 }
 
-bool ref_tracking_directory::exists(const std::string& name) const {
-  return impl_.exists(name);
+bool ref_tracking_directory::exists(
+  bool& result, const std::string& name
+) const NOEXCEPT {
+  return impl_.exists(result, name);
 }
 
-int64_t ref_tracking_directory::length(const std::string& name) const {
-  return impl_.length(name);
-}
-  
-bool ref_tracking_directory::visit(const visitor_f& visitor) const {
-  return impl_.visit(visitor);
+bool ref_tracking_directory::length(
+  uint64_t& result, const std::string& name
+) const NOEXCEPT {
+  return impl_.length(result, name);
 }
 
-index_lock::ptr ref_tracking_directory::make_lock(const std::string& name) {
+index_lock::ptr ref_tracking_directory::make_lock(
+  const std::string& name
+) NOEXCEPT {
   return impl_.make_lock(name);
 }
 
-std::time_t ref_tracking_directory::mtime(const std::string& name) const {
-  return impl_.mtime(name);
+bool ref_tracking_directory::mtime(
+  std::time_t& result, const std::string& name
+) const NOEXCEPT {
+  return impl_.mtime(result, name);
 }
 
-index_input::ptr ref_tracking_directory::open(const std::string& name) const {
+index_input::ptr ref_tracking_directory::open(
+  const std::string& name
+) const NOEXCEPT {
   if (!track_open_) {
     return impl_.open(name);
   }
@@ -361,38 +447,65 @@ index_input::ptr ref_tracking_directory::open(const std::string& name) const {
 
   // only track ref on successful call to impl_
   if (result) {
-    auto ref = attribute_->add(name);
+    try {
+      auto ref = attribute_->add(name);
+      SCOPED_LOCK(mutex_);
+
+      refs_.emplace(*ref, std::move(ref));
+    } catch (...) {
+      IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+
+      return nullptr;
+    }
+  }
+
+  return result;
+}
+
+bool ref_tracking_directory::remove(const std::string& name) NOEXCEPT {
+  bool result = impl_.remove(name);
+
+  try {
     SCOPED_LOCK(mutex_);
 
-    refs_.emplace(*ref, std::move(ref));
+    refs_.erase(name);
+  } catch (...) {
+    IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+    // ignore failure since removal from impl_ was sucessful
   }
 
   return result;
 }
 
-bool ref_tracking_directory::remove(const std::string& name) {
-  bool result = impl_.remove(name);
-  SCOPED_LOCK(mutex_);
-
-  refs_.erase(name);
-
-  return result;
-}
-
-void ref_tracking_directory::rename(
-    const std::string& src, const std::string& dst
-) {
-  impl_.rename(src, dst);
-
-  SCOPED_LOCK(mutex_);
-
-  if (refs_.emplace(dst, attribute_->add(dst)).second) {
-    refs_.erase(src);
+bool ref_tracking_directory::rename(
+  const std::string& src, const std::string& dst
+) NOEXCEPT {
+  if (!impl_.rename(src, dst)) {
+    return false;
   }
+
+  try {
+    SCOPED_LOCK(mutex_);
+
+    if (refs_.emplace(dst, attribute_->add(dst)).second) {
+      refs_.erase(src);
+    }
+
+    return true;
+  } catch (...) {
+    IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+    impl_.rename(dst, src); // revert
+  }
+
+  return false;
 }
 
-void ref_tracking_directory::sync(const std::string& name) {
-  impl_.sync(name);
+bool ref_tracking_directory::sync(const std::string& name) NOEXCEPT {
+  return impl_.sync(name);
+}
+
+bool ref_tracking_directory::visit(const visitor_f& visitor) const {
+  return impl_.visit(visitor);
 }
 
 bool ref_tracking_directory::visit_refs(

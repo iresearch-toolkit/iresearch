@@ -31,7 +31,7 @@ struct empty_doc_iterator : score_doc_iterator {
   virtual bool next() override { return false; }
   virtual doc_id_t seek(doc_id_t) override { return type_limits<type_t::doc_id_t>::eof(); }
   virtual void score() override { }
-  virtual const iresearch::attributes& attributes() const override {
+  virtual const iresearch::attributes& attributes() const NOEXCEPT override {
     static iresearch::attributes empty = empty_doc_iterator_attributes();
     return empty;
   }
@@ -48,7 +48,7 @@ struct empty_term_iterator : term_iterator {
   }
   virtual void read() { }
   virtual bool next() override { return false; }
-  virtual const iresearch::attributes& attributes() const override {
+  virtual const iresearch::attributes& attributes() const NOEXCEPT override {
     return iresearch::attributes::empty_instance();
   }
 };

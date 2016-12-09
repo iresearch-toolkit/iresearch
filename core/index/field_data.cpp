@@ -155,7 +155,7 @@ class doc_iterator : public iresearch::doc_iterator {
     init(field, posting, freq, prox);
   }
 
-  virtual const iresearch::attributes& attributes() const override {
+  virtual const iresearch::attributes& attributes() const NOEXCEPT override {
     return attrs_;
   }
 
@@ -256,7 +256,7 @@ class term_iterator : public iresearch::term_iterator {
     return term_;
   }
 
-  virtual const iresearch::attributes& attributes() const {
+  virtual const iresearch::attributes& attributes() const NOEXCEPT {
     return attrs_;
   }
 

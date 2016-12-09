@@ -360,7 +360,7 @@ class doc_iterator : public iresearch::doc_iterator {
     return doc_->value;
   }
 
-  const iresearch::attributes& attributes() const override{
+  const iresearch::attributes& attributes() const NOEXCEPT override {
     return attrs_;
   }
 
@@ -487,7 +487,7 @@ class term_iterator : public iresearch::seek_term_iterator {
     next_ = data_.terms.begin();
   }
 
-  const iresearch::attributes& attributes() const override {
+  const iresearch::attributes& attributes() const NOEXCEPT override {
     return attrs_;
   }
 
@@ -592,7 +592,7 @@ const iresearch::field_meta& term_reader::meta() const {
   return data_;
 }
 
-const iresearch::attributes& term_reader::attributes() const {
+const iresearch::attributes& term_reader::attributes() const NOEXCEPT {
   return iresearch::attributes::empty_instance();
 }
 

@@ -492,7 +492,7 @@ text_token_stream::text_token_stream(
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
-const iresearch::attributes& text_token_stream::attributes() const {
+const iresearch::attributes& text_token_stream::attributes() const NOEXCEPT {
   return attrs_;
 }
 

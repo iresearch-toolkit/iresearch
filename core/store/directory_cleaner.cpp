@@ -43,8 +43,8 @@ NS_ROOT
     // for retained files add a temporary reference to avoid removal
     if (!acceptor(filename)) {
       tmp_ref = refs.add(std::string(filename));
-    } else if (!count && dir.exists(filename)) {
-      remove_count += dir.remove(filename) ? 1 : 0;
+    } else if (!count && dir.remove(filename)) {
+      ++remove_count;
     }
 
     return true;

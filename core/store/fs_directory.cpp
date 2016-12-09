@@ -13,6 +13,7 @@
 #include "fs_directory.hpp"
 #include "checksum_io.hpp"
 #include "error/error.hpp"
+#include "utils/log.hpp"
 #include "utils/utf8_path.hpp"
 
 #ifdef _WIN32
@@ -23,27 +24,15 @@
 #include <boost/system/error_code.hpp>
 #include <boost/locale/encoding.hpp>
 
-#if defined(_MSC_VER)
-  #pragma warning(disable : 4244)
-  #pragma warning(disable : 4245)
-#elif defined (__GNUC__)
-  // NOOP
-#endif
-
+MSVC_ONLY(__pragma(warning(push)))
+MSVC_ONLY(__pragma(warning(disable:4244)))
+MSVC_ONLY(__pragma(warning(disable:4245)))
 #include <boost/crc.hpp>
-
-#if defined(_MSC_VER)
-  #pragma warning(default: 4244)
-  #pragma warning(default: 4245)
-#elif defined (__GNUC__)
-  // NOOP
-#endif
-
-#if defined(_MSC_VER)
-  #pragma warning ( disable : 4996 )
-#endif
+MSVC_ONLY(__pragma(warning(pop)))
 
 NS_ROOT
+MSVC_ONLY(__pragma(warning(push)))
+MSVC_ONLY(__pragma(warning(disable: 4996))) // the compiler encountered a deprecated declaration
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class fs_lock
@@ -61,49 +50,65 @@ class fs_lock : public index_lock {
       return false;
     }
 
-    // create directory if it is not exists
+    bool exists;
     utf8_path path;
-    try {
-      if (!(path/dir_).exists()) {
-        path.mkdir();
-      }
-    } catch (const boost::filesystem::filesystem_error&) {
-      std::stringstream ss;
-      ss << "Failed to create directory for lock file, path: " << path.utf8();
 
-      throw detailed_io_error(ss.str());
+    if (!(path/dir_).exists(exists)) {
+      IR_ERROR() << "Error caught in " << __FUNCTION__ << ":" << __LINE__;
+      return false;
+    }
+
+    // create directory if it is not exists
+    if (!exists && !path.mkdir()) {
+      IR_ERROR() << "Error caught in " << __FUNCTION__ << ":" << __LINE__;
+      return false;
     }
 
     // create lock file
     if (!file_utils::verify_lock_file((path/file_).c_str())) {
-      if (path.exists()) {
-        path.remove();
+      if (!path.exists(exists) || (exists && !path.remove())) {
+        IR_ERROR() << "Error caught in " << __FUNCTION__ << ":" << __LINE__;
+        return false;
       }
+
       handle_ = file_utils::create_lock_file(path.c_str());
     }
 
     return handle_ != nullptr;
   }
 
-  virtual bool is_locked() const override {
+  virtual bool is_locked(bool& result) const NOEXCEPT override {
     if (handle_ != nullptr) {
+      result = true;
       return true;
     }
 
-    utf8_path path;
-    path/dir_/file_;
-    return file_utils::verify_lock_file(path.c_str());
+    try {
+      utf8_path path;
+
+      path/dir_/file_;
+      result = file_utils::verify_lock_file(path.c_str());
+
+      return true;
+    } catch (...) {
+      IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+    }
+
+    return false;
   }
 
-  virtual void unlock() NOEXCEPT override {
+  virtual bool unlock() NOEXCEPT override {
     if (handle_ != nullptr) {
       handle_ = nullptr;
 #ifdef _WIN32
       // file will be automatically removed on close
+      return true;
 #else
-      (utf8_path()/dir_/file_).remove();
+      return (utf8_path()/dir_/file_).remove();
 #endif
     }
+
+    return false;
   }
 
  private:
@@ -117,23 +122,28 @@ class fs_lock : public index_lock {
 //////////////////////////////////////////////////////////////////////////////
 class fs_index_output : public buffered_index_output {
  public:
-  static fs_index_output* open(const file_path_t name) {
+  static index_output::ptr open(const file_path_t name) NOEXCEPT {
     assert(name);
 
     file_utils::handle_t handle(file_open(name, "wb"));
 
     if (nullptr == handle) {
       auto path = boost::locale::conv::utf_to_utf<char>(name);
-      std::stringstream ss;
 
       // even win32 uses 'errno' fo error codes in calls to file_open(...)
-      ss << "Failed to open output file, error: " << errno
-         << ", path: " << path;
+      IR_ERROR() << "Failed to open output file, error: " << errno
+                 << ", path: " << path;
 
-      throw detailed_io_error(ss.str());
+      return nullptr;
     }
 
-    return new fs_index_output(std::move(handle));
+    try {
+      return fs_index_output::make<fs_index_output>(std::move(handle));
+    } catch(...) {
+      IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+    }
+
+    return nullptr;
   }
 
   virtual void close() override {
@@ -160,6 +170,8 @@ class fs_index_output : public buffered_index_output {
   }
 
  private:
+  DECLARE_FACTORY(index_output);
+
   fs_index_output(file_utils::handle_t&& handle) NOEXCEPT
     : handle(std::move(handle)) {
   }
@@ -172,42 +184,49 @@ class fs_index_output : public buffered_index_output {
 //////////////////////////////////////////////////////////////////////////////
 class fs_index_input : public buffered_index_input {
  public:
-  static fs_index_input* open(const file_path_t name) {
+  static index_input::ptr open(const file_path_t name) NOEXCEPT {
     assert(name);
 
     file_handle::ptr handle = file_handle::make<file_handle>();
+
     handle->handle.reset(file_open(name, "rb"));
 
     if (nullptr == handle->handle) {
       auto path = boost::locale::conv::utf_to_utf<char>(name);
-      std::stringstream ss;
 
       // even win32 uses 'errno' for error codes in calls to file_open(...)
-      ss << "Failed to open input file, error: " << errno
-         << ", path: " << path;
+      IR_ERROR() << "Failed to open input file, error: " << errno
+                 << ", path: " << path;
 
-      throw detailed_io_error(ss.str());
+      return nullptr;
     }
 
     // convert file descriptor to POSIX
     auto size = file_utils::file_size(file_no(*handle));
+
     if (handle->size < 0) {
       auto path = boost::locale::conv::utf_to_utf<char>(name);
-      std::stringstream ss;
 
-#ifdef _WIN32
-      ss << "Failed to get stat for input file, error: " << GetLastError()
-         << ", path: " << path;
-#else
-      ss << "Failed to get stat for input file, error: " << errno
-         << ", path: " << path;
-#endif
+      IR_ERROR() << "Failed to get stat for input file, error: "
+      #ifdef _WIN32
+                 << GetLastError()
+      #else
+                 << errno
+      #endif
+                 << ", path: " << path;
 
-      throw detailed_io_error(ss.str());
+      return nullptr;
     }
 
     handle->size = size;
-    return new fs_index_input(std::move(handle));
+
+    try {
+      return fs_index_input::make<fs_index_input>(std::move(handle));
+    } catch(...) {
+      IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+    }
+
+    return nullptr;
   }
 
   virtual index_input::ptr clone() const override {
@@ -285,6 +304,8 @@ class fs_index_input : public buffered_index_input {
     size_t pos{}; /* current file position*/
   }; // file_handle
 
+  DECLARE_FACTORY(index_input);
+
   fs_index_input(file_handle::ptr&& handle) NOEXCEPT
     : handle_(std::move(handle)), pos_(0) {
     assert(handle_);
@@ -301,11 +322,11 @@ class fs_index_input : public buffered_index_input {
 // --SECTION--                                       fs_directory implementation
 // -----------------------------------------------------------------------------
 
-bool fs_directory::create_directory(const string_ref& dir) {
+/*static*/ bool fs_directory::create_directory(const string_ref& dir) {
   return (utf8_path()/dir).mkdir();
 }
 
-bool fs_directory::remove_directory(const string_ref& dir) {
+/*static*/ bool fs_directory::remove_directory(const string_ref& dir) {
   return (utf8_path()/dir).rmdir();
 }
 
@@ -313,35 +334,89 @@ fs_directory::fs_directory(const std::string& dir)
   : dir_(dir) {
 }
 
-const std::string& fs_directory::directory() const {
-  return dir_;
-}
-
-bool fs_directory::exists(const std::string& name) const {
-  return (utf8_path()/dir_/name).exists();
-}
-
-int64_t fs_directory::length(const std::string& name) const {
-  return (utf8_path()/dir_/name).file_size();
-}
-
-std::time_t fs_directory::mtime(const std::string& name) const {
-  return (utf8_path()/dir_/name).file_mtime();
-}
-
-bool fs_directory::remove(const std::string& name) {
-  return (utf8_path()/dir_/name).remove();
-}
-
-void fs_directory::rename(const std::string& src, const std::string& dst) {
-  (utf8_path()/dir_/src).rename(utf8_path()/dir_/dst);
-}
-
-iresearch::attributes& fs_directory::attributes() {
+iresearch::attributes& fs_directory::attributes() NOEXCEPT {
   return attributes_;
 }
 
-void fs_directory::close() { }
+void fs_directory::close() NOEXCEPT { }
+
+index_output::ptr fs_directory::create(const std::string& name) NOEXCEPT {
+  typedef checksum_index_output<boost::crc_32_type> checksum_output_t;
+
+  try {
+    auto out = fs_index_output::open((utf8_path()/dir_/name).c_str());
+
+    if (out) {
+      return index_output::make<checksum_output_t>(std::move(out));
+    }
+
+    IR_ERROR() << "Failed to open output file, path: " << name;
+
+    return nullptr;
+  } catch(...) {
+    IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+  }
+
+  return nullptr;
+}
+
+const std::string& fs_directory::directory() const NOEXCEPT {
+  return dir_;
+}
+
+bool fs_directory::exists(
+  bool& result, const std::string& name
+) const NOEXCEPT {
+  return (utf8_path()/dir_/name).exists(result);
+}
+
+bool fs_directory::length(
+  uint64_t& result, const std::string& name
+) const NOEXCEPT {
+  return (utf8_path()/dir_/name).file_size(result);
+}
+
+index_lock::ptr fs_directory::make_lock(const std::string& name) NOEXCEPT {
+  return index_lock::make<fs_lock>(dir_, name);
+}
+
+bool fs_directory::mtime(
+  std::time_t& result, const std::string& name
+) const NOEXCEPT {
+  return (utf8_path()/dir_/name).file_mtime(result);
+}
+
+bool fs_directory::remove(const std::string& name) NOEXCEPT {
+  try {
+    return (utf8_path()/dir_/name).remove();
+  } catch (...) {
+    IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+  }
+
+  return false;
+}
+
+index_input::ptr fs_directory::open(const std::string& name) const NOEXCEPT {
+  try {
+    return fs_index_input::open((utf8_path()/dir_/name).c_str());
+  } catch(...) {
+    IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+  }
+
+  return nullptr;
+}
+
+bool fs_directory::rename(
+  const std::string& src, const std::string& dst
+) NOEXCEPT {
+  try {
+    return (utf8_path()/dir_/src).rename(utf8_path()/dir_/dst);
+  } catch (...) {
+    IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+  }
+
+  return false;
+}
 
 bool fs_directory::visit(const directory::visitor_f& visitor) const {
   auto directory = (utf8_path()/dir_).native();
@@ -370,46 +445,29 @@ bool fs_directory::visit(const directory::visitor_f& visitor) const {
   return file_utils::visit_directory(directory.c_str(), dir_visitor, false);
 }
 
-void fs_directory::sync(const std::string& name) {
+bool fs_directory::sync(const std::string& name) NOEXCEPT {
   utf8_path path;
-  path/dir_/name;
-  if (!file_utils::file_sync(path.c_str())) {
-    std::stringstream ss;
 
-#ifdef _WIN32
-    ss << "Failed to sync file, error: " << GetLastError() 
-       << " path: " << path.utf8();
-#else
-    ss << "Failed to sync file, error: " << errno 
-       << " path: " << path.utf8();
-#endif
-
-    throw detailed_io_error(ss.str());
+  try {
+    path/dir_/name;
+  } catch (...) {
+    IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
   }
+
+  if (file_utils::file_sync(path.c_str())) {
+    return true;
+  }
+
+  IR_ERROR() << "Failed to sync file, error: "
+  #ifdef _WIN32
+             << GetLastError()
+  #else
+             << errno
+  #endif
+             << " path: " << path.utf8();
+
+  return false;
 }
 
-index_lock::ptr fs_directory::make_lock(const std::string& name) {
-  return index_lock::make<fs_lock>(dir_, name);
-}
-
-index_output::ptr fs_directory::create(const std::string& name) {
-  typedef checksum_index_output<boost::crc_32_type> checksum_output_t;
-
-  index_output::ptr out(
-    fs_index_output::open((utf8_path()/dir_/name).c_str())
-  );
-
-  return index_output::make<checksum_output_t>(std::move(out));
-}
-
-index_input::ptr fs_directory::open(const std::string& name) const {
-  return index_input::ptr(
-    fs_index_input::open((utf8_path()/dir_/name).c_str())
-  );
-}
-
+MSVC_ONLY(__pragma(warning(pop)))
 NS_END
-
-#if defined(_MSC_VER)
-  #pragma warning ( default : 4996 )
-#endif

@@ -14,7 +14,7 @@
 #include "checksum_io.hpp"
 
 #include "error/error.hpp"
-
+#include "utils/log.hpp"
 #include "utils/string.hpp"
 #include "utils/thread_utils.hpp"
 #include "utils/std.hpp"
@@ -59,14 +59,30 @@ class single_instance_lock : public index_lock {
     return parent->locks_.insert(name).second;
   }
 
-  virtual bool is_locked() const override {
-    SCOPED_LOCK(parent->llock_);
-    return parent->locks_.find(name) != parent->locks_.end();
+  virtual bool is_locked(bool& result) const NOEXCEPT override {
+    try {
+      SCOPED_LOCK(parent->llock_);
+
+      result = parent->locks_.find(name) != parent->locks_.end();
+
+      return true;
+    } catch (...) {
+      IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+    }
+
+    return false;
   }
 
-  virtual void unlock() NOEXCEPT override{
-    SCOPED_LOCK(parent->llock_);
-    parent->locks_.erase(name);
+  virtual bool unlock() NOEXCEPT override{
+    try {
+      SCOPED_LOCK(parent->llock_);
+
+      return parent->locks_.erase(name) > 0;
+    } catch (...) {
+      IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+    }
+
+    return false;
   }
 
  private:
@@ -222,19 +238,161 @@ void memory_index_output::operator>>( data_output& out ) {
 
 memory_directory::~memory_directory() { }
 
-iresearch::attributes& memory_directory::attributes() {
+iresearch::attributes& memory_directory::attributes() NOEXCEPT {
   return attributes_;
 }
 
-void memory_directory::close() {
+void memory_directory::close() NOEXCEPT {
   SCOPED_LOCK(flock_);
 
   files_.clear();
 }
 
+bool memory_directory::exists(
+  bool& result, const std::string& name
+) const NOEXCEPT {
+  SCOPED_LOCK(flock_);
+
+  result = files_.find(name) != files_.end();
+
+  return true;
+}
+
+index_output::ptr memory_directory::create(const std::string& name) NOEXCEPT {
+  typedef checksum_index_output<boost::crc_32_type> checksum_output_t;
+
+  try {
+    SCOPED_LOCK(flock_);
+
+    auto res = files_.emplace(
+      std::piecewise_construct,
+      std::forward_as_tuple(name),
+      std::forward_as_tuple()
+    );
+    auto& it = res.first;
+    auto& file = it->second;
+
+    if (!res.second) { // file exists
+      file->reset();
+    } else {
+      file = std::move(memory::make_unique<memory_file>());
+    }
+
+    index_output::ptr out(new memory_index_output(*file));
+
+    return index_output::make<checksum_output_t>(std::move(out));
+  } catch(...) {
+    IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+  }
+
+  return nullptr;
+}
+
+bool memory_directory::length(
+  uint64_t& result, const std::string& name
+) const NOEXCEPT {
+  SCOPED_LOCK(flock_);
+  file_map::const_iterator it = files_.find(name);
+
+  if (it == files_.end() || !it->second) {
+    return false;
+  }
+
+  result = it->second->length();
+
+  return true;
+}
+
+index_lock::ptr memory_directory::make_lock(const std::string& name) NOEXCEPT {
+  try {
+    return index_lock::make<single_instance_lock>(name, this);
+  } catch (...) {
+    IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+  }
+
+  return nullptr;
+}
+
+bool memory_directory::mtime(
+  std::time_t& result, const std::string& name
+) const NOEXCEPT {
+  SCOPED_LOCK(flock_);
+  file_map::const_iterator it = files_.find(name);
+
+  if (it == files_.end() || !it->second) {
+    return false;
+  }
+
+  result = it->second->mtime();
+
+  return true;
+}
+
+index_input::ptr memory_directory::open(
+  const std::string& name
+) const NOEXCEPT {
+  try {
+    SCOPED_LOCK(flock_);
+
+    file_map::const_iterator it = files_.find(name);
+
+    if (it != files_.end()) {
+      return index_input::make<memory_index_input>(*it->second);
+    }
+
+    IR_ERROR() << "Failed to open input file, error: File not found, path: " << name;
+
+    return nullptr;
+  } catch(...) {
+    IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+  }
+
+  return nullptr;
+}
+
+bool memory_directory::remove(const std::string& name) NOEXCEPT {
+  try {
+    SCOPED_LOCK(flock_);
+
+    return files_.erase(name) > 0;
+  } catch (...) {
+    IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+  }
+
+  return false;
+}
+
+bool memory_directory::rename(
+  const std::string& src, const std::string& dst
+) NOEXCEPT {
+  try {
+    SCOPED_LOCK(flock_);
+    file_map::iterator it = files_.find(src);
+
+    if (it == files_.end()) {
+      return false;
+    }
+
+    // noexcept
+    files_.erase(dst); // emplace() will not overwrite as per spec
+    files_.emplace(dst, std::move(it->second));
+    files_.erase(it);
+
+    return true;
+  } catch (...) {
+    IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+  }
+
+  return false;
+}
+
+bool memory_directory::sync(const std::string& /*name*/) NOEXCEPT {
+  return true;
+}
+
 bool memory_directory::visit(const directory::visitor_f& visitor) const {
   std::string filename;
-  
+
   SCOPED_LOCK(flock_);
 
   for (auto& entry : files_) {
@@ -245,96 +403,6 @@ bool memory_directory::visit(const directory::visitor_f& visitor) const {
   }
 
   return true;
-}
-
-bool memory_directory::exists(const std::string& name) const {
-  SCOPED_LOCK(flock_);
-
-  return files_.find(name) != files_.end();
-}
-
-std::time_t memory_directory::mtime(const std::string& name) const {
-  SCOPED_LOCK(flock_);
-
-  file_map::const_iterator it = files_.find(name);
-
-  assert(it != files_.end());
-  return it->second->mtime();
-}
-
-bool memory_directory::remove(const std::string& name) {
-  SCOPED_LOCK(flock_);
-
-  return files_.erase(name) > 0;
-}
-
-void memory_directory::rename(const std::string& src, const std::string& dst) {
-  SCOPED_LOCK(flock_);
-
-  file_map::iterator it = files_.find(src);
-  if (it != files_.end()) {
-    // noexcept
-    files_.erase(dst); // emplace() will not overwrite as per spec
-    files_.emplace(dst, std::move(it->second));
-    files_.erase(it);
-  }
-}
-
-int64_t memory_directory::length(const std::string& name) const {
-  SCOPED_LOCK(flock_);
-
-  file_map::const_iterator it = files_.find(name);
-
-  assert(it != files_.end());
-  return it->second->length();
-}
-
-void memory_directory::sync(const std::string& /*name*/) {
-  // NOOP
-}
-
-index_lock::ptr memory_directory::make_lock(const std::string& name) {
-  return index_lock::make<single_instance_lock>(name, this);
-}
-
-index_output::ptr memory_directory::create(const std::string& name) {
-  SCOPED_LOCK(flock_);
-
-  auto res = files_.emplace(
-    std::piecewise_construct,
-    std::forward_as_tuple(name),
-    std::forward_as_tuple()
-  );
-
-  auto& it = res.first;
-  auto& file = it->second;
-
-  if (!res.second) { // file exists
-    file->reset();
-  } else {
-    file = std::move(memory::make_unique<memory_file>());
-  }
-
-  typedef checksum_index_output<boost::crc_32_type> checksum_output_t;
-
-  index_output::ptr out(new memory_index_output(*file));
-  return index_output::make<checksum_output_t>(std::move(out));
-}
-
-index_input::ptr memory_directory::open(const std::string& name) const {
-  SCOPED_LOCK(flock_);
-
-  file_map::const_iterator it = files_.find(name);
-
-  if (it == files_.end()) {
-    std::stringstream ss;
-
-    ss << "Failed to open input file, error: File not found, path: " << name;
-
-    throw detailed_io_error(ss.str());
-  }
-
-  return index_input::make<memory_index_input>(*it->second);
 }
 
 NS_END

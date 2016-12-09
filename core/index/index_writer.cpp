@@ -145,7 +145,7 @@ index_writer::ptr index_writer::make(directory& dir, format::ptr codec, OPEN_MOD
   // lock the directory
   auto lock = dir.make_lock(WRITE_LOCK_NAME);
 
-  if (!lock->try_lock()) {
+  if (!lock || !lock->try_lock()) {
     throw lock_obtain_failed() << lock_obtain_failed::lock_name(WRITE_LOCK_NAME);
   }
 
@@ -465,8 +465,10 @@ index_writer::flush_context::ptr index_writer::get_flush_context(bool shared /*=
       lock.release();
 
       return flush_context::ptr(ctx, [](flush_context* ctx)->void {
+        async_utils::read_write_mutex::write_mutex mutex(ctx->flush_mutex_);
+        ADOPT_SCOPED_LOCK_NAMED(mutex, lock);
+
         ctx->reset(); // reset context and make ready for reuse
-        ctx->flush_mutex_.unlock();
       });
     }
   }
@@ -493,7 +495,10 @@ index_writer::flush_context::ptr index_writer::get_flush_context(bool shared /*=
 
     lock.release();
 
-    return flush_context::ptr(ctx, [](flush_context* ctx)->void{ctx->flush_mutex_.unlock();});
+    return flush_context::ptr(ctx, [](flush_context* ctx)->void {
+      async_utils::read_write_mutex::read_mutex mutex(ctx->flush_mutex_);
+      ADOPT_SCOPED_LOCK_NAMED(mutex, lock);
+    });
   }
 }
 
@@ -561,7 +566,10 @@ index_writer::flush_context::ptr index_writer::flush_all() {
 
       auto& flushed_segment = flushed.back();
 
-      writer.flush(flushed_segment.filename, flushed_segment.meta);
+      if (!writer.flush(flushed_segment.filename, flushed_segment.meta)) {
+        return false;
+      }
+
       files_flushed += flushed_segment.meta.files.size();
 
       // flush document_mask after regular flush() so remove_query can traverse
@@ -572,7 +580,9 @@ index_writer::flush_context::ptr index_writer::flush_all() {
       return true;
     };
 
-    ctx->writers_pool_.visit(flush);
+    if (!ctx->writers_pool_.visit(flush)) {
+      return nullptr;
+    }
 
     // add pending complete segments
     for (auto& pending_segment: ctx->pending_segments_) {
@@ -798,7 +808,13 @@ bool index_writer::start() {
 
     // sync files
     for (auto& file : active_flush_context_->to_sync_) {
-      to_commit->dir_->sync(file);
+      if (!to_commit->dir_->sync(file)) {
+        std::stringstream ss;
+
+        ss << "Failed to sync file, path: " << file.get();
+
+        throw detailed_io_error(ss.str());
+      }
     }
   } catch (...) {
     // in case of syncing error, just clear pending meta & peform rollback
