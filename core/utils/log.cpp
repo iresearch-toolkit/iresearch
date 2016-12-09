@@ -9,11 +9,29 @@
 // Agreement under which it is provided by or on behalf of EMC.
 // 
 
+#include <memory>
+
 #include "shared.hpp"
+#include "singleton.hpp"
+
 #include "log.hpp"
+
+NS_LOCAL
+
+class logger: public iresearch::singleton<std::ostream*> {
+  logger(): singleton() { instance() = &std::cerr; }
+};
+
+NS_END
 
 NS_ROOT
 
 int32_t VERBOSITY = 0;
+
+std::ostream& log_message::stream() { return *logger::instance(); }
+
+/*static*/ void log_message::stream(std::ostream& stream) {
+  logger::instance() = &stream;
+}
 
 NS_END
