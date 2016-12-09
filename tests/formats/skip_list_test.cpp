@@ -45,7 +45,8 @@ void write_flush(size_t count, size_t max_levels, size_t skip) {
       }
     }
 
-    ir::index_output::ptr out(dir.create("docs"));
+    auto out = dir.create("docs");
+    ASSERT_FALSE(!out);
     writer.flush(*out);
   }
 
@@ -66,7 +67,8 @@ void write_flush(size_t count, size_t max_levels, size_t skip) {
   // check data in stream
   // we write levels in reverse order into a stream (from n downto 0)
   {
-    ir::index_input::ptr in(dir.open("docs"));
+    auto in = dir.open("docs");
+    ASSERT_FALSE(!in);
 
     // skip number of levels
     in->read_vint();
@@ -198,7 +200,8 @@ TEST(skip_writer_test, reset) {
         }
       }
 
-      ir::index_output::ptr out(dir.create(file));
+      auto out = dir.create(file);
+      ASSERT_FALSE(!out);
       writer.flush(*out);
     }
   
@@ -219,7 +222,8 @@ TEST(skip_writer_test, reset) {
     // check data in stream
     // we write levels in reverse order into a stream (from n downto 0)
     {
-      ir::index_input::ptr in(dir.open(file));
+      auto in = dir.open(file);
+      ASSERT_FALSE(!in);
 
       // skip number of levels
       in->read_vint();
@@ -269,7 +273,8 @@ TEST(skip_writer_test, reset) {
         }
       }
 
-      ir::index_output::ptr out(dir.create(file));
+      auto out = dir.create(file);
+      ASSERT_FALSE(!out);
       writer.flush(*out);
     }
     
@@ -290,7 +295,8 @@ TEST(skip_writer_test, reset) {
     // check data in stream
     // we write levels in reverse order into a stream (from n downto 0)
     {
-      ir::index_input::ptr in(dir.open(file));
+      auto in = dir.open(file);
+      ASSERT_FALSE(!in);
 
       // skip number of levels
       in->read_vint();
@@ -335,14 +341,16 @@ TEST(skip_reader_test, prepare) {
     ASSERT_TRUE(static_cast<bool>(writer));
     ir::memory_directory dir;
     {
-      ir::index_output::ptr out(dir.create("docs"));
+      auto out = dir.create("docs");
+      ASSERT_FALSE(!out);
       writer.flush(*out);
     }
 
     ir::skip_reader reader(skip, skip);
     ASSERT_FALSE(reader);
     {
-      ir::index_input::ptr in(dir.open("docs"));
+      auto in = dir.open("docs");
+      ASSERT_FALSE(!in);
       reader.prepare(std::move(in));
     }
     ASSERT_TRUE(static_cast<bool>(reader));
@@ -376,13 +384,15 @@ TEST(skip_reader_test, prepare) {
         }
       }
 
-      ir::index_output::ptr out(dir.create("docs"));
+      auto out = dir.create("docs");
+      ASSERT_FALSE(!out);
       writer.flush(*out);
     }
 
     ir::skip_reader reader(skip, skip);
     ASSERT_FALSE(reader);
-    ir::index_input::ptr in(dir.open("docs"));
+    auto in = dir.open("docs");
+    ASSERT_FALSE(!in);
     reader.prepare(std::move(in));
     ASSERT_TRUE(static_cast<bool>(reader));
     ASSERT_EQ(writer.num_levels(), reader.num_levels());
@@ -432,7 +442,8 @@ TEST(skip_reader_test, seek) {
         high = doc;
       }
 
-      ir::index_output::ptr out(dir.create(file));
+      auto out = dir.create(file);
+      ASSERT_FALSE(!out);
       writer.flush(*out);
     }
 
@@ -444,7 +455,8 @@ TEST(skip_reader_test, seek) {
 
       ir::skip_reader reader(skip_0, skip_n);
       ASSERT_FALSE(reader);
-      ir::index_input::ptr in(dir.open(file));
+      auto in = dir.open(file);
+      ASSERT_FALSE(!in);
       reader.prepare(
         std::move(in), [&lower, &upper, &calls_count](size_t level, ir::index_input& in) {
           ++calls_count;
@@ -726,7 +738,8 @@ TEST(skip_reader_test, seek) {
         high = doc;
       }
 
-      ir::index_output::ptr out(dir.create(file));
+      auto out = dir.create(file);
+      ASSERT_FALSE(!out);
       writer.flush(*out);
     }
 
@@ -738,7 +751,8 @@ TEST(skip_reader_test, seek) {
 
       ir::skip_reader reader(skip_0, skip_n);
       ASSERT_FALSE(reader);
-      ir::index_input::ptr in(dir.open(file));
+      auto in = dir.open(file);
+      ASSERT_FALSE(!in);
       reader.prepare(
         std::move(in), [&lower, &upper, &calls_count](size_t level, ir::index_input& in) {
           ++calls_count;
@@ -928,7 +942,8 @@ TEST(skip_reader_test, seek) {
         high = doc;
       }
 
-      ir::index_output::ptr out(dir.create(file));
+      auto out = dir.create(file);
+      ASSERT_FALSE(!out);
       writer.flush(*out);
     }
 
@@ -941,7 +956,8 @@ TEST(skip_reader_test, seek) {
 
       ir::skip_reader reader(skip_0, skip_n);
       ASSERT_FALSE(reader);
-      ir::index_input::ptr in(dir.open(file));
+      auto in = dir.open(file);
+      ASSERT_FALSE(!in);
       reader.prepare(
         std::move(in), [&lower, &last_level, &upper, &calls_count](size_t level, ir::index_input& in) {
           ++calls_count;
@@ -1103,7 +1119,8 @@ TEST(skip_reader_test, seek) {
         high = doc;
       }
 
-      ir::index_output::ptr out(dir.create(file));
+      auto out = dir.create(file);
+      ASSERT_FALSE(!out);
       writer.flush(*out);
     }
 
@@ -1116,7 +1133,8 @@ TEST(skip_reader_test, seek) {
 
       ir::skip_reader reader(skip_0, skip_n);
       ASSERT_FALSE(reader);
-      ir::index_input::ptr in(dir.open(file));
+      auto in = dir.open(file);
+      ASSERT_FALSE(!in);
       reader.prepare(
         std::move(in), [&lower, &last_level, &upper, &calls_count](size_t level, ir::index_input &in) {
           ++calls_count;

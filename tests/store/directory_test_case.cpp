@@ -27,64 +27,74 @@ void directory_test_case::lock_obtain_release() {
   {
     // single lock
     auto lock0 = dir_->make_lock("lock0");
-    ASSERT_FALSE(lock0->is_locked());
+    ASSERT_FALSE(!lock0);
+    bool locked;
+    ASSERT_TRUE(lock0->is_locked(locked) && !locked);
     ASSERT_TRUE(lock0->lock());
-    ASSERT_TRUE(lock0->is_locked());
+    ASSERT_TRUE(lock0->is_locked(locked) && locked);
     ASSERT_FALSE(lock0->lock()); // lock is not recursive
-    ASSERT_TRUE(lock0->is_locked());
-    lock0->unlock();
-    ASSERT_FALSE(lock0->is_locked());
+    ASSERT_TRUE(lock0->is_locked(locked) && locked);
+    ASSERT_TRUE(lock0->unlock());
+    ASSERT_TRUE(lock0->is_locked(locked) && !locked);
 
     // another single lock
     auto lock1 = dir_->make_lock("lock11");
-    ASSERT_FALSE(lock1->is_locked());
+    ASSERT_FALSE(!lock1);
+    ASSERT_TRUE(lock1->is_locked(locked) && !locked);
     ASSERT_TRUE(lock1->try_lock(3000));
-    ASSERT_TRUE(lock1->is_locked());
-    lock1->unlock();
-    lock1->unlock(); // double release
-    ASSERT_FALSE(lock1->is_locked());
+    ASSERT_TRUE(lock1->is_locked(locked) && locked);
+    ASSERT_TRUE(lock1->unlock());
+    ASSERT_FALSE(lock1->unlock()); // double release
+    ASSERT_TRUE(lock1->is_locked(locked) && !locked);
   }
 
   // two different locks 
   {
     auto lock0 = dir_->make_lock("lock0");
     auto lock1 = dir_->make_lock("lock1");
-    ASSERT_FALSE(lock0->is_locked());
-    ASSERT_FALSE(lock1->is_locked());
+    ASSERT_FALSE(!lock0);
+    ASSERT_FALSE(!lock1);
+    bool locked;
+    ASSERT_TRUE(lock0->is_locked(locked) && !locked);
+    ASSERT_TRUE(lock1->is_locked(locked) && !locked);
     ASSERT_TRUE(lock0->lock());
     ASSERT_TRUE(lock1->lock());
-    ASSERT_TRUE(lock0->is_locked());
-    ASSERT_TRUE(lock1->is_locked());
-    lock0->unlock();
-    lock1->unlock();
-    ASSERT_FALSE(lock0->is_locked());
-    ASSERT_FALSE(lock1->is_locked());
+    ASSERT_TRUE(lock0->is_locked(locked) && locked);
+    ASSERT_TRUE(lock1->is_locked(locked) && locked);
+    ASSERT_TRUE(lock0->unlock());
+    ASSERT_TRUE(lock1->unlock());
+    ASSERT_TRUE(lock0->is_locked(locked) && !locked);
+    ASSERT_TRUE(lock1->is_locked(locked) && !locked);
   }
 
   // two locks with the same identifier
   {
     auto lock0 = dir_->make_lock("lock");
     auto lock1 = dir_->make_lock("lock");
-    ASSERT_FALSE(lock0->is_locked());
-    ASSERT_FALSE(lock1->is_locked());
+    ASSERT_FALSE(!lock0);
+    ASSERT_FALSE(!lock1);
+    bool locked;
+    ASSERT_TRUE(lock0->is_locked(locked) && !locked);
+    ASSERT_TRUE(lock1->is_locked(locked) && !locked);
     ASSERT_TRUE(lock0->lock());
     ASSERT_FALSE(lock1->lock());
     ASSERT_FALSE(lock1->try_lock(3000)); // wait 5sec
-    ASSERT_TRUE(lock0->is_locked());
-    ASSERT_TRUE(lock1->is_locked());
-    lock0->unlock();
-    lock1->unlock();
-    ASSERT_FALSE(lock0->is_locked());
-    ASSERT_FALSE(lock1->is_locked());
+    ASSERT_TRUE(lock0->is_locked(locked) && locked);
+    ASSERT_TRUE(lock1->is_locked(locked) && locked);
+    ASSERT_TRUE(lock0->unlock());
+    ASSERT_FALSE(lock1->unlock()); // unlocked by identifier lock0
+    ASSERT_TRUE(lock0->is_locked(locked) && !locked);
+    ASSERT_TRUE(lock1->is_locked(locked) && !locked);
   }
 }
 
 void directory_test_case::read_multiple_streams() {
   using namespace iresearch;
 
-  /* write data */
+  // write data
   {
-    index_output::ptr out(dir_->create("test"));
+    auto out = dir_->create("test");
+    ASSERT_FALSE(!out);
     out->write_vint(0);
     out->write_vint(1);
     out->write_vint(2);
@@ -93,11 +103,13 @@ void directory_test_case::read_multiple_streams() {
     out->write_vint(50000);
   }
 
-  /* read data */
+  // read data
   {
-    index_input::ptr in0(dir_->open("test"));
+    auto in0 = dir_->open("test");
+    ASSERT_FALSE(!in0);
     ASSERT_FALSE(in0->eof());
-    index_input::ptr in1(dir_->open("test"));
+    auto in1 = dir_->open("test");
+    ASSERT_FALSE(!in1);
     ASSERT_FALSE(in1->eof());
     ASSERT_EQ(0, in0->read_vint());
     ASSERT_EQ(0, in1->read_vint());
@@ -125,10 +137,12 @@ void directory_test_case::read_multiple_streams() {
     ASSERT_TRUE(in1->eof());
   }
 
-  /* read data using clone */
+  // read data using clone
   {
-    index_input::ptr in0(dir_->open("test"));
-    index_input::ptr in1(in0->clone());
+    auto in0 = dir_->open("test");
+    ASSERT_FALSE(!in0);
+    auto in1 = in0->clone();
+    ASSERT_FALSE(!in1);
     ASSERT_FALSE(in0->eof());
     ASSERT_FALSE(in1->eof());
     ASSERT_EQ(0, in0->read_vint());
@@ -220,7 +234,8 @@ void directory_test_case::string_read_write() {
 
     // write strings
     {
-      index_output::ptr out(dir_->create("test"));
+      auto out = dir_->create("test");
+      ASSERT_FALSE(!out);
       out->write_vint(strings.size());
       for (const auto& str : strings) {
         write_string(*out, str.c_str(), str.size());
@@ -229,7 +244,8 @@ void directory_test_case::string_read_write() {
     
     // read strings
     {
-      index_input::ptr in(dir_->open("test"));
+      auto in = dir_->open("test");
+      ASSERT_FALSE(!in);
       ASSERT_FALSE(in->eof());
       EXPECT_EQ(strings.size(), in->read_vint());
       for (const auto& str : strings) {
@@ -349,7 +365,8 @@ void directory_test_case::string_read_write() {
 
     // write strings
     {
-      index_output::ptr out(dir_->create("test"));
+      auto out = dir_->create("test");
+      ASSERT_FALSE(!out);
       out->write_vint(strings.size());
       for (const auto& str : strings) {
         write_string(*out, str.c_str(), str.size());
@@ -358,7 +375,8 @@ void directory_test_case::string_read_write() {
   
     // read strings
     {
-      index_input::ptr in(dir_->open("test"));
+      auto in = dir_->open("test");
+      ASSERT_FALSE(!in);
       ASSERT_FALSE(in->eof());
       EXPECT_EQ(strings.size(), in->read_vint());
       for (const auto& str : strings) {
@@ -478,7 +496,8 @@ void directory_test_case::string_read_write() {
 
     // write strings
     {
-      index_output::ptr out(dir_->create("test"));
+      auto out = dir_->create("test");
+      ASSERT_FALSE(!out);
       out->write_vint(strings.size());
       for (const auto& str : strings) {
         write_string(*out, str.c_str(), str.size());
@@ -487,7 +506,8 @@ void directory_test_case::string_read_write() {
   
     // read strings
     {
-      index_input::ptr in(dir_->open("test"));
+      auto in = dir_->open("test");
+      ASSERT_FALSE(!in);
       ASSERT_FALSE(in->eof());
       EXPECT_EQ(strings.size(), in->read_vint());
       for (const auto& str : strings) {
@@ -537,7 +557,7 @@ void directory_test_case::visit() {
 
   // add files
   for (const auto& name : names) {
-    dir_->create(name);
+    ASSERT_FALSE(!dir_->create(name));
   }
 
   // visit directory
@@ -587,7 +607,7 @@ void directory_test_case::list() {
   };
 
   for (const auto& name : names) {
-    dir_->create(name);
+    ASSERT_FALSE(!dir_->create(name));
   }
 
   files.clear();
@@ -611,7 +631,8 @@ void directory_test_case::smoke_index_io() {
 
   // write to file
   {
-    index_output::ptr out(dir_->create(name));
+    auto out = dir_->create(name);
+    ASSERT_FALSE(!out);
     out->write_bytes(payload.c_str(), payload.size());
     out->write_byte(27);
     out->write_short(std::numeric_limits< int16_t >::min());
@@ -650,7 +671,8 @@ void directory_test_case::smoke_index_io() {
 
   // read from file
   {
-    index_input::ptr in(dir_->open(name));
+    auto in = dir_->open(name);
+    ASSERT_FALSE(!in);
     EXPECT_FALSE(in->eof());
 
     // check bytes 
@@ -764,7 +786,8 @@ void directory_test_case::smoke_store() {
     --it;
     boost::crc_32_type crc;
 
-    index_output::ptr file(dir_->create(name));
+    auto file = dir_->create(name);
+    ASSERT_FALSE(!file);
     EXPECT_EQ(0, file->file_pointer());
 
     file->write_bytes(reinterpret_cast<const byte_type*>(it->c_str()), static_cast<uint32_t>(it->size()));
@@ -794,11 +817,15 @@ void directory_test_case::smoke_store() {
   for (const auto& name : names) {
     --it;
     boost::crc_32_type crc;
+    bool exists;
 
-    ASSERT_TRUE(dir_->exists(name));
-    EXPECT_EQ(dir_->length(name), it->size());
+    ASSERT_TRUE(dir_->exists(exists, name) && exists);
+    uint64_t length;
+    EXPECT_TRUE(dir_->length(length, name) && length == it->size());
 
-    checksum_index_input< boost::crc_32_type > file(dir_->open(name));
+    auto in = dir_->open(name);
+    ASSERT_FALSE(!in);
+    checksum_index_input<boost::crc_32_type> file(std::move(in));
     EXPECT_FALSE(file.eof());
     EXPECT_EQ(0, file.file_pointer());
     EXPECT_EQ(file.length(), it->size());
@@ -818,8 +845,9 @@ void directory_test_case::smoke_store() {
   }
 
   for (const auto& name : names) {
-    dir_->remove(name);
-    ASSERT_FALSE(dir_->exists(name));
+    ASSERT_TRUE(dir_->remove(name));
+    bool exists;
+    ASSERT_TRUE(dir_->exists(exists, name) && !exists);
   }
 
   // Check files count
@@ -828,14 +856,16 @@ void directory_test_case::smoke_store() {
   EXPECT_EQ(0, files.size());
 
   // Try to open non existing input
-  EXPECT_THROW(dir_->open("invalid_file_name"), iresearch::detailed_io_error);
+  ASSERT_FALSE(dir_->open("invalid_file_name"));
 
   // Check locking logic
   auto l = dir_->make_lock("sample_lock");
+  ASSERT_FALSE(!l);
   ASSERT_TRUE(l->lock());
-  ASSERT_TRUE(l->is_locked());
-  l->unlock();
-  ASSERT_FALSE(l->is_locked());
+  bool locked;
+  ASSERT_TRUE(l->is_locked(locked) && locked);
+  ASSERT_TRUE(l->unlock());
+  ASSERT_TRUE(l->is_locked(locked) && !locked);
 
   // Check read_bytes on empty file
   {
@@ -844,11 +874,13 @@ void directory_test_case::smoke_store() {
     // create file
     {
       auto out = dir_->create("empty_file");
+      ASSERT_FALSE(!out);
     }
 
     // read from file
     {
       auto in = dir_->open("empty_file");
+      ASSERT_FALSE(!in);
 
       size_t read = std::numeric_limits<size_t>::max();
       try {
@@ -871,6 +903,7 @@ void directory_test_case::smoke_store() {
     {
       byte_type buf[1024]{};
       auto out = dir_->create("nonempty_file");
+      ASSERT_FALSE(!out);
       out->write_bytes(buf, sizeof buf);
       out->write_bytes(buf, sizeof buf);
       out->write_bytes(buf, 691);
@@ -881,6 +914,7 @@ void directory_test_case::smoke_store() {
     {
       byte_type buf[1510]{};
       auto in = dir_->open("nonempty_file");
+      ASSERT_FALSE(!in);
       ASSERT_EQ(sizeof buf, in->read_bytes(buf, sizeof buf));
 
       size_t read = std::numeric_limits<size_t>::max();

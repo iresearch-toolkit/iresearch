@@ -18,6 +18,7 @@
 #include "index/index_meta.hpp"
 #include "index/segment_reader.hpp"
 #include "utils/directory_utils.hpp"
+#include "utils/log.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/version_utils.hpp"
 #include "document/serializer.hpp"
@@ -940,7 +941,11 @@ bool merge_writer::flush(std::string& filename, segment_meta& meta) {
   meta.codec = codec_;
   meta.docs_count = docs_count;
   meta.name = name_;
-  track_dir.swap_tracked(meta.files);
+
+  if (!track_dir.swap_tracked(meta.files)) {
+    IR_ERROR() << "Failed to swap list of tracked files in: " << __FUNCTION__ << ":" << __LINE__;
+    return false;
+  }
 
   iresearch::segment_meta_writer::ptr writer = codec.get_segment_meta_writer();
 

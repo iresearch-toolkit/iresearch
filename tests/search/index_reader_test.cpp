@@ -114,11 +114,11 @@ TEST(directory_reader_test, open_newest_index) {
   std::string codec1_file0("1seg0");
   std::string codec1_file1("1seg1");
 
-  dir.create(codec0_file0);
-  dir.create(codec1_file0);
+  ASSERT_FALSE(!dir.create(codec0_file0));
+  ASSERT_FALSE(!dir.create(codec1_file0));
   ir::sleep_ms(1000); // wait 1 sec to ensure index file timestamps differ
-  dir.create(codec0_file1);
-  dir.create(codec1_file1);
+  ASSERT_FALSE(!dir.create(codec0_file1));
+  ASSERT_FALSE(!dir.create(codec1_file1));
 
   test_reader0.read_file.clear();
   test_reader1.read_file.clear();

@@ -78,22 +78,32 @@ struct IRESEARCH_API tracking_directory: public directory {
   // @param track_open - track file refs for calls to open(...)
   tracking_directory(directory& impl, bool track_open = false);
   virtual ~tracking_directory();
-  directory& operator*();
+  directory& operator*() NOEXCEPT;
   using directory::attributes;
-  virtual iresearch::attributes& attributes() override;
-  virtual void close() override;
-  virtual index_output::ptr create(const std::string& name) override;
-  virtual bool exists(const std::string& name) const override;
-  virtual int64_t length(const std::string& name) const override;
+  virtual iresearch::attributes& attributes() NOEXCEPT override;
+  virtual void close() NOEXCEPT override;
+  virtual index_output::ptr create(const std::string& name) NOEXCEPT override;
+  virtual bool exists(
+    bool& result, const std::string& name
+  ) const NOEXCEPT override;
+  virtual bool length(
+    uint64_t& result, const std::string& name
+  ) const NOEXCEPT override;
+  virtual index_lock::ptr make_lock(const std::string& name) NOEXCEPT override;
+  virtual bool mtime(
+    std::time_t& result, const std::string& name
+  ) const NOEXCEPT override;
+  virtual index_input::ptr open(
+    const std::string& name
+  ) const NOEXCEPT override;
+  virtual bool remove(const std::string& name) NOEXCEPT override;
+  virtual bool rename(
+    const std::string& src, const std::string& dst
+  ) NOEXCEPT override;
+  bool swap_tracked(file_set& other) NOEXCEPT;
+  bool swap_tracked(tracking_directory& other) NOEXCEPT;
+  virtual bool sync(const std::string& name) NOEXCEPT override;
   virtual bool visit(const visitor_f& visitor) const override;
-  virtual index_lock::ptr make_lock(const std::string& name) override;
-  virtual std::time_t mtime(const std::string& name) const override;
-  virtual index_input::ptr open(const std::string& name) const override;
-  virtual bool remove(const std::string& name) override;
-  virtual void rename(const std::string& src, const std::string& dst) override;
-  void swap_tracked(file_set& other);
-  void swap_tracked(tracking_directory& other);
-  virtual void sync(const std::string& name) override;
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
@@ -115,21 +125,27 @@ struct IRESEARCH_API ref_tracking_directory: public directory {
   ref_tracking_directory(directory& impl, bool track_open = false);
   ref_tracking_directory(ref_tracking_directory&& other);
   virtual ~ref_tracking_directory();
-  directory& operator*();
+  directory& operator*() NOEXCEPT;
   using directory::attributes;
-  virtual iresearch::attributes& attributes() override;
-  void clear_refs() const;
-  virtual void close() override;
-  virtual index_output::ptr create(const std::string &name) override;
-  virtual bool exists(const std::string& name) const override;
-  virtual int64_t length(const std::string& name) const override;
+  virtual iresearch::attributes& attributes() NOEXCEPT override;
+  void clear_refs() const NOEXCEPT;
+  virtual void close() NOEXCEPT override;
+  virtual index_output::ptr create(const std::string &name) NOEXCEPT override;
+  virtual bool exists(
+    bool& result, const std::string& name
+  ) const NOEXCEPT override;
+  virtual bool length(
+    uint64_t& result, const std::string& name
+  ) const NOEXCEPT override;
+  virtual index_lock::ptr make_lock(const std::string& name) NOEXCEPT override;
+  virtual bool mtime(
+    std::time_t& result, const std::string& name
+  ) const NOEXCEPT override;
+  virtual index_input::ptr open(const std::string& name) const NOEXCEPT override;
+  virtual bool remove(const std::string& name) NOEXCEPT override;
+  virtual bool rename(const std::string& src, const std::string& dst) NOEXCEPT override;
+  virtual bool sync(const std::string& name) NOEXCEPT override;
   virtual bool visit(const visitor_f& visitor) const override;
-  virtual index_lock::ptr make_lock(const std::string& name) override;
-  virtual std::time_t mtime(const std::string& name) const override;
-  virtual index_input::ptr open(const std::string& name) const override;
-  virtual bool remove(const std::string& name) override;
-  virtual void rename(const std::string& src, const std::string& dst) override;
-  virtual void sync(const std::string& name) override;
   bool visit_refs(const std::function<bool(const index_file_refs::ref_t& ref)>& visitor) const;
 
  private:

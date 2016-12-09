@@ -57,8 +57,8 @@ bool verify_lock_file(const file_path_t file);
 
 ptrdiff_t file_size(const file_path_t file);
 ptrdiff_t file_size( int fd );
-bool file_sync(const file_path_t name);
-bool is_directory(const file_path_t name);
+bool file_sync(const file_path_t name) NOEXCEPT;
+bool is_directory(const file_path_t name) NOEXCEPT;
 bool file_exists(const file_path_t name);
 bool visit_directory(
   const file_path_t name,

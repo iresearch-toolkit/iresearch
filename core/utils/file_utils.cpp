@@ -172,7 +172,7 @@ lock_handle_t create_lock_file(const file_path_t file) {
   return handle;
 }
 
-bool file_sync(const file_path_t file) {
+bool file_sync(const file_path_t file) NOEXCEPT {
   HANDLE handle = ::CreateFileW(
     file, GENERIC_WRITE,
     FILE_SHARE_WRITE, NULL,
@@ -351,7 +351,7 @@ lock_handle_t create_lock_file(const file_path_t file) {
   return handle;
 }
 
-bool file_sync(const file_path_t file) {
+bool file_sync(const file_path_t file) NOEXCEPT {
   const int handle = open(file, O_WRONLY, S_IRWXU);
   if (handle < 0) {
     return false;
@@ -375,7 +375,7 @@ ptrdiff_t file_size(int fd) {
   return 0 == file_fstat(fd, &info) ? info.st_size : -1;
 }
 
-bool is_directory(const file_path_t name) {
+bool is_directory(const file_path_t name) NOEXCEPT {
   file_stat_t info;
 
   if (file_stat(name, &info) != 0) {

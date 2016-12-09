@@ -22,7 +22,7 @@ struct auto_##method : std::default_delete< _T > \
     typedef _T type; \
     typedef std::default_delete<type> base; \
     typedef std::unique_ptr< type, auto_##method<type> > ptr; \
-    void operator()(type* p) const \
+    void operator()(type* p) const NOEXCEPT \
     { \
       if (p) { \
         try { \

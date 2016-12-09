@@ -17,15 +17,6 @@
 
 NS_ROOT
 
-struct detailed_io_error: virtual iresearch::io_error {
-  explicit detailed_io_error(const std::string& error): error_(error) {}
-  explicit detailed_io_error(std::string&& error): error_(std::move(error)) {}
-  virtual iresearch::ErrorCode code() const NOEXCEPT override{ return CODE; }
-  virtual const char* what() const NOEXCEPT{ return error_.c_str(); }
- private:
-   std::string error_;
-};
-
 class utf8_path: private ::boost::filesystem::path {
  public:
   utf8_path();
@@ -35,15 +26,15 @@ class utf8_path: private ::boost::filesystem::path {
   utf8_path& operator/(const wchar_t* ucs2_name);
   utf8_path& operator/(const iresearch::basic_string_ref<wchar_t>& ucs2_name);
   utf8_path& operator/(const std::wstring& ucs2_name);
-  bool exists() const;
-  bool exists_file() const;
-  std::time_t file_mtime() const;
-  int64_t file_size() const;
+  bool exists(bool& result) const NOEXCEPT;
+  bool exists_file(bool& result) const NOEXCEPT;
+  bool file_mtime(std::time_t& result) const NOEXCEPT;
+  bool file_size(uint64_t& result) const NOEXCEPT;
   const ::boost::filesystem::path::string_type& native() const;
   const ::boost::filesystem::path::value_type* c_str() const;
-  bool mkdir() const;
-  bool remove() const;
-  void rename(const utf8_path& destination) const;
+  bool mkdir() const NOEXCEPT;
+  bool remove() const NOEXCEPT;
+  bool rename(const utf8_path& destination) const NOEXCEPT;
   bool rmdir() const;
   std::string utf8() const;
   void clear();

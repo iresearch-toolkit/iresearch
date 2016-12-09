@@ -27,7 +27,7 @@ NS_BEGIN(util)
 class IRESEARCH_API const_attributes_provider {
  public:
   virtual ~const_attributes_provider() {}
-  virtual const iresearch::attributes& attributes() const = 0;
+  virtual const iresearch::attributes& attributes() const NOEXCEPT = 0;
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -36,8 +36,8 @@ class IRESEARCH_API const_attributes_provider {
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API attributes_provider: public const_attributes_provider {
  public:
-  virtual iresearch::attributes& attributes() = 0;
-  virtual const iresearch::attributes& attributes() const override final {
+  virtual iresearch::attributes& attributes() NOEXCEPT = 0;
+  virtual const iresearch::attributes& attributes() const NOEXCEPT override final {
     return const_cast<attributes_provider*>(this)->attributes();
   };
 };

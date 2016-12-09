@@ -45,7 +45,9 @@ TEST_F(directory_cleaner_tests, test_directory_cleaner) {
   {
     iresearch::index_output::ptr tmp;
     tmp = dir.create("dummy.file.1");
+    ASSERT_FALSE(!tmp);
     tmp = dir.create("dummy.file.2");
+    ASSERT_FALSE(!tmp);
   }
 
   // test clean before initializing directory
@@ -60,7 +62,9 @@ TEST_F(directory_cleaner_tests, test_directory_cleaner) {
   {
     iresearch::index_output::ptr tmp;
     tmp = dir.create("dummy.file.3");
+    ASSERT_FALSE(!tmp);
     tmp = dir.create("dummy.file.4");
+    ASSERT_FALSE(!tmp);
   }
 
   // add tracked files
@@ -69,7 +73,9 @@ TEST_F(directory_cleaner_tests, test_directory_cleaner) {
   {
     iresearch::index_output::ptr tmp;
     tmp = dir.create("tracked.file.1");
+    ASSERT_FALSE(!tmp);
     tmp = dir.create("tracked.file.2");
+    ASSERT_FALSE(!tmp);
   }
 
   // test initial directory state

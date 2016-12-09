@@ -15,6 +15,7 @@
 #include "index_meta.hpp"
 #include "analysis/token_stream.hpp"
 #include "analysis/token_attributes.hpp"
+#include "utils/log.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/version_utils.hpp"
@@ -132,13 +133,13 @@ void segment_writer::finish(doc_id_t doc_id, const update_context& ctx) {
   docs_context_[doc_id] = ctx;
 }
 
-void segment_writer::flush(std::string& filename, segment_meta& meta) {
+bool segment_writer::flush(std::string& filename, segment_meta& meta) {
   REGISTER_TIMER_DETAILED();
 
   // flush stored fields
   sf_writer_->finish();
   sf_writer_->reset();
-    
+
   // flush columnstore
   col_writer_->flush();
 
@@ -166,8 +167,14 @@ void segment_writer::flush(std::string& filename, segment_meta& meta) {
   }
 
   meta.docs_count = num_docs_cached_;
-  dir_.swap_tracked(meta.files);
-  
+  meta.files.clear(); // prepare empy set to be swaped into dir_
+
+  if (!dir_.swap_tracked(meta.files)) {
+    IR_ERROR() << "Failed to swap list of tracked files in: " << __FUNCTION__ << ":" << __LINE__;
+
+    return false;
+  }
+
   // flush segment metadata
   {
     segment_meta_writer::ptr writer = codec_->get_segment_meta_writer();
@@ -175,14 +182,18 @@ void segment_writer::flush(std::string& filename, segment_meta& meta) {
 
     filename = writer->filename(meta);
   }
+
+  return true;
 }
 
 void segment_writer::reset() {
   initialized_ = false;
 
-  tracking_directory::file_set empty_set;
+  if (!dir_.swap_tracked(tracking_directory(*dir_))) {
+    // on failre next segment might have extra files which will fail to get refs
+    IR_ERROR() << "Failed to swap list of tracked files in: " << __FUNCTION__ << ":" << __LINE__;
+  }
 
-  dir_.swap_tracked(empty_set);
   docs_context_.clear();
   docs_mask_.clear();
   fields_.reset();

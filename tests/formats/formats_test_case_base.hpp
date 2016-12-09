@@ -316,7 +316,7 @@ class format_test_case_base : public index_test_base {
 
     // reset directory
     for (auto& file: files) {
-      dir->remove(file);
+      ASSERT_TRUE(dir->remove(file));
     }
 
     files.clear();
@@ -418,7 +418,7 @@ class format_test_case_base : public index_test_base {
 
     // reset directory
     for (auto& file: files) {
-      dir->remove(file);
+      ASSERT_TRUE(dir->remove(file));
     }
 
     files.clear();
@@ -445,17 +445,21 @@ class format_test_case_base : public index_test_base {
       {
         iresearch::index_output::ptr tmp;
         tmp = dir->create("dummy.file.1");
+        ASSERT_FALSE(!tmp);
         tmp = dir->create("dummy.file.2");
+        ASSERT_FALSE(!tmp);
       }
-      ASSERT_TRUE(dir->exists("dummy.file.1"));
-      ASSERT_TRUE(dir->exists("dummy.file.2"));
+
+      bool exists;
+      ASSERT_TRUE(dir->exists(exists, "dummy.file.1") && exists);
+      ASSERT_TRUE(dir->exists(exists, "dummy.file.2") && exists);
 
       // open writer
       auto writer = iresearch::index_writer::make(*dir, codec(), iresearch::OPEN_MODE::OM_CREATE);
 
       // if directory has files (for fs directory) then ensure only valid meta+segments loaded
-      ASSERT_FALSE(dir->exists("dummy.file.1"));
-      ASSERT_FALSE(dir->exists("dummy.file.2"));
+      ASSERT_TRUE(dir->exists(exists, "dummy.file.1") && !exists);
+      ASSERT_TRUE(dir->exists(exists, "dummy.file.2") && !exists);
       assert_no_directory_artifacts(*dir, *codec());
     }
   }
@@ -1059,7 +1063,7 @@ class format_test_case_base : public index_test_base {
       ASSERT_FALSE(reader->read(meta));
     }
   }
-    
+  
   void columns_read_write_empty() {
     iresearch::segment_meta meta0("_1", nullptr);
     meta0.version = 42;

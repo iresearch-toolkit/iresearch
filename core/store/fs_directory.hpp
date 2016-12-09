@@ -31,32 +31,43 @@ class IRESEARCH_API fs_directory : public directory {
 
   explicit fs_directory(const std::string& dir);
 
-  const std::string& directory() const;
   using directory::attributes;
-  virtual iresearch::attributes& attributes() override;
-  virtual void close() override;
+
+  virtual iresearch::attributes& attributes() NOEXCEPT override;
+
+  virtual void close() NOEXCEPT override;
+
+  virtual index_output::ptr create(const std::string& name) NOEXCEPT override;
+
+  const std::string& directory() const;
+
+  virtual bool exists(
+    bool& result, const std::string& name
+  ) const NOEXCEPT override;
+
+  virtual bool length(
+    uint64_t& result, const std::string& name
+  ) const NOEXCEPT override;
+
+  virtual index_lock::ptr make_lock(const std::string& name) NOEXCEPT override;
+
+  virtual bool mtime(
+    std::time_t& result, const std::string& name
+  ) const NOEXCEPT override;
+
+  virtual index_input::ptr open(
+    const std::string& name
+  ) const NOEXCEPT override;
+
+  virtual bool remove(const std::string& name) NOEXCEPT override;
+
+  virtual bool rename(
+    const std::string& src, const std::string& dst
+  ) NOEXCEPT override;
+
+  virtual bool sync(const std::string& name) NOEXCEPT override;
 
   virtual bool visit(const visitor_f& visitor) const override;
-
-  virtual bool exists(const std::string& name) const override;
-
-  virtual std::time_t mtime(const std::string& name) const override;
-
-  virtual bool remove(const std::string& name) override;
-
-  virtual void rename(
-    const std::string& src,
-    const std::string& dst) override;
-
-  virtual int64_t length(const std::string& name) const override;
-
-  virtual void sync(const std::string& name) override;
-
-  virtual index_lock::ptr make_lock(const std::string& name) override;
-
-  virtual index_output::ptr create(const std::string& name) override;
-
-  virtual index_input::ptr open(const std::string& name) const override;
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN

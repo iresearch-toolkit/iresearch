@@ -24,10 +24,13 @@ index_writer::defragment_policy_t defragment_bytes(float byte_threshold /*= 0*/)
   )->index_writer::defragment_acceptor_t {
     size_t all_segment_bytes_size = 0;
     size_t segment_count = meta.size();
+    uint64_t length;
 
     for (auto& segment : meta) {
       for (auto& file : segment.meta.files) {
-        all_segment_bytes_size += dir.exists(file) ? dir.length(file) : 0;
+        if (dir.length(length, file)) {
+          all_segment_bytes_size += length;
+        }
       }
     }
 
@@ -37,9 +40,12 @@ index_writer::defragment_policy_t defragment_bytes(float byte_threshold /*= 0*/)
     // merge segment if: {threshold} > segment_bytes / (all_segment_bytes / #segments)
     return [&dir, threshold_bytes_avg](const segment_meta& meta)->bool {
       size_t segment_bytes_size = 0;
+      uint64_t length;
 
       for (auto& file: meta.files) {
-        segment_bytes_size += dir.exists(file) ? dir.length(file) : 0;
+        if (dir.length(length, file)) {
+          segment_bytes_size += length;
+        }
       }
 
       return threshold_bytes_avg > segment_bytes_size;
@@ -52,10 +58,13 @@ index_writer::defragment_policy_t defragment_bytes_accum(float byte_threshold /*
     const directory& dir, const index_meta& meta
   )->index_writer::defragment_acceptor_t {
     size_t all_segment_bytes_size = 0;
+    uint64_t length;
 
     for (auto& segment: meta) {
       for (auto& file: segment.meta.files) {
-        all_segment_bytes_size += dir.exists(file) ? dir.length(file) : 0;
+        if (dir.length(length, file)) {
+          all_segment_bytes_size += length;
+        }
       }
     }
 
@@ -66,9 +75,12 @@ index_writer::defragment_policy_t defragment_bytes_accum(float byte_threshold /*
     return std::bind(
       [&dir, threshold_size](const segment_meta& meta, size_t& cumulative_size)->bool {
         size_t segment_bytes_size = 0;
+        uint64_t length;
 
         for (auto& file: meta.files) {
-          segment_bytes_size += dir.exists(file) ? dir.length(file) : 0;
+          if (dir.length(length, file)) {
+            segment_bytes_size += length;
+          }
         }
 
         if (cumulative_size + segment_bytes_size >= threshold_size) {

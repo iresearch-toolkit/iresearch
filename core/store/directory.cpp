@@ -13,6 +13,7 @@
 #include "directory.hpp"
 #include "data_input.hpp"
 #include "data_output.hpp"
+#include "utils/log.hpp"
 #include "utils/thread_utils.hpp"
 
 NS_ROOT
@@ -29,21 +30,26 @@ directory::~directory() {}
 
 index_lock::~index_lock() {}
 
-bool index_lock::try_lock(size_t wait_timeout /* = 1000 */) {
+bool index_lock::try_lock(size_t wait_timeout /* = 1000 */) NOEXCEPT {
   const size_t LOCK_POLL_INTERVAL = 1000;
 
-  bool locked = lock();
+  try {
+    bool locked = lock();
+    const size_t max_sleep_count = wait_timeout / LOCK_POLL_INTERVAL;
 
-  const size_t max_sleep_count = wait_timeout / LOCK_POLL_INTERVAL;
-  for (size_t sleep_count = 0; 
-       !locked && (wait_timeout == LOCK_WAIT_FOREVER || sleep_count < max_sleep_count); 
-       ++sleep_count) {
-    sleep_ms(LOCK_POLL_INTERVAL);
-    locked = lock();
+    for (size_t sleep_count = 0;
+         !locked && (wait_timeout == LOCK_WAIT_FOREVER || sleep_count < max_sleep_count);
+         ++sleep_count) {
+      sleep_ms(LOCK_POLL_INTERVAL);
+      locked = lock();
+    }
+
+    return locked;
+  } catch (...) {
+    IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
   }
 
-  return locked;
+  return false;
 }
-
 
 NS_END

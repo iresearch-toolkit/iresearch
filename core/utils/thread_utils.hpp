@@ -35,6 +35,9 @@ inline std::unique_lock< _Mutex > make_lock(_Mutex& mtx) {
 #define LOCK__(lock, line) lock ## line 
 #define LOCK_EXPANDER__(lock, line) LOCK__(lock, line)
 #define LOCK LOCK_EXPANDER__(__lock, __LINE__)
+
+#define ADOPT_SCOPED_LOCK_NAMED(mtx, name) std::unique_lock<typename std::remove_reference<decltype(mtx)>::type> name(mtx, std::adopt_lock)
+#define DEFER_SCOPED_LOCK_NAMED(mtx, name) std::unique_lock<typename std::remove_reference<decltype(mtx)>::type> name(mtx, std::defer_lock)
 #define SCOPED_LOCK(mtx) std::lock_guard<typename std::remove_reference<decltype(mtx)>::type> LOCK(mtx)
 #define SCOPED_LOCK_NAMED(mtx, name) std::unique_lock<typename std::remove_reference<decltype(mtx)>::type> name(mtx)
 #define TRY_SCOPED_LOCK_NAMED(mtx, name) std::unique_lock<typename std::remove_reference<decltype(mtx)>::type> name(mtx, std::try_to_lock)

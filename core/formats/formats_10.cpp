@@ -142,9 +142,17 @@ inline void prepare_output(
     const string_ref& format,
     const int32_t version) {
   assert( !out );
-
   file_name(str, state.name, ext);
   out = state.dir->create(str);
+
+  if (!out) {
+    std::stringstream ss;
+
+    ss << "Failed to create file, path: " << str;
+
+    throw detailed_io_error(ss.str());
+  }
+
   format_utils::write_header(*out, format, version);
 }
 
@@ -157,9 +165,17 @@ inline void prepare_input(
     const int32_t min_ver,
     const int32_t max_ver ) {
   assert( !in );
-
   file_name(str, state.meta->name, ext);
   in = state.dir->open(str);
+
+  if (!in) {
+    std::stringstream ss;
+
+    ss << "Failed to open file, path: " << str;
+
+    throw detailed_io_error(ss.str());
+  }
+
   format_utils::check_header(*in, format, min_ver, max_ver);
 }
 
@@ -1081,26 +1097,33 @@ bool index_meta_writer::prepare(directory& dir, index_meta& meta) {
   auto seg_file = file_name<index_meta_writer>(meta);
 
   try {
-    {
-      index_output::ptr out = dir.create(seg_file);
+    auto out = dir.create(seg_file);
 
-      format_utils::write_header(*out, FORMAT_NAME, FORMAT_MAX);
-      out->write_vlong(meta.generation());
-      out->write_long(meta.counter());
-      assert(meta.size() <= integer_traits<uint32_t>::const_max);
-      out->write_vint(uint32_t(meta.size()));
+    if (!out) {
+      IR_ERROR() << "Failed to create output file, path: " << seg_file;
+      return false;
+    }
 
-      for (auto& segment : meta) {
-        write_string(*out, segment.filename);
-        write_string(*out, segment.meta.codec->type().name());
-      }
+    format_utils::write_header(*out, FORMAT_NAME, FORMAT_MAX);
+    out->write_vlong(meta.generation());
+    out->write_long(meta.counter());
+    assert(meta.size() <= integer_traits<uint32_t>::const_max);
+    out->write_vint(uint32_t(meta.size()));
 
-      format_utils::write_footer(*out);
-    } // important to close output here
+    for (auto& segment: meta) {
+      write_string(*out, segment.filename);
+      write_string(*out, segment.meta.codec->type().name());
+    }
 
-    dir.sync(seg_file);
+    format_utils::write_footer(*out);
+    // important to close output here
   } catch (const io_error& e) {
     IR_ERROR() << "Caught i/o error, reason: " << e.what();
+    return false;
+  }
+
+  if (!dir.sync(seg_file)) {
+    IR_ERROR() << "Failed to sync output file, path: " << seg_file;
     return false;
   }
 
@@ -1121,7 +1144,15 @@ void index_meta_writer::commit() {
   try {
     auto clear_pending = make_finally([this]{ meta_ = nullptr; });
 
-    dir_->rename(src, dst);
+    if (!dir_->rename(src, dst)) {
+      std::stringstream ss;
+
+      ss << "Failed to rename file, src path: " << src
+         << " dst path: " << dst;
+
+      throw(detailed_io_error(ss.str()));
+    }
+
     complete(*meta_);
     dir_ = nullptr;
   } catch ( ... ) {
@@ -1137,10 +1168,8 @@ void index_meta_writer::rollback() NOEXCEPT {
 
   auto seg_file = file_name<index_meta_writer>(*meta_);
 
-  try {
-    dir_->remove(seg_file);
-  } catch (...) {
-    // suppress all errors 
+  if (!dir_->remove(seg_file)) { // suppress all errors
+    IR_ERROR() << "Failed to remove file, path: " << seg_file;
   }
 
   dir_ = nullptr;
@@ -1187,34 +1216,44 @@ void index_meta_reader::read(
     ? file_name<index_meta_reader>(meta)
     : static_cast<std::string>(filename);
 
-  checksum_index_input<boost::crc_32_type> in(dir.open(meta_file));
+  auto in = dir.open(meta_file);
+
+  if (!in) {
+    std::stringstream ss;
+
+    ss << "Failed to open file, path: " << meta_file;
+
+    throw detailed_io_error(ss.str());
+  }
+
+  checksum_index_input<boost::crc_32_type> check_in(std::move(in));
 
   // check header
   format_utils::check_header(
-    in,
+    check_in,
     index_meta_writer::FORMAT_NAME,
     index_meta_writer::FORMAT_MIN,
     index_meta_writer::FORMAT_MAX
   );
 
   // read data from segments file
-  auto gen = in.read_vlong();
-  auto cnt = in.read_long();
-  auto seg_count = in.read_vint();
+  auto gen = check_in.read_vlong();
+  auto cnt = check_in.read_long();
+  auto seg_count = check_in.read_vint();
   index_meta::index_segments_t segments(seg_count);
 
   for (size_t i = 0, count = segments.size(); i < count; ++i) {
     auto& segment = segments[i];
 
-    segment.filename = read_string<std::string>(in);
-    segment.meta.codec = formats::get(read_string<std::string>(in));
+    segment.filename = read_string<std::string>(check_in);
+    segment.meta.codec = formats::get(read_string<std::string>(check_in));
 
     auto reader = segment.meta.codec->get_segment_meta_reader();
 
     reader->read(dir, segment.meta, segment.filename);
   }
 
-  format_utils::check_footer(in);
+  format_utils::check_footer(check_in);
   complete(meta, gen, cnt, std::move(segments));
 }
 
@@ -1236,7 +1275,15 @@ std::string segment_meta_writer::filename(const segment_meta& meta) const {
 
 void segment_meta_writer::write(directory& dir, const segment_meta& meta) {
   auto meta_file = file_name<segment_meta_writer>(meta);
-  index_output::ptr out(dir.create(meta_file));
+  auto out = dir.create(meta_file);
+
+  if (!out) {
+    std::stringstream ss;
+
+    ss << "Failed to create file, path: " << meta_file;
+
+    throw detailed_io_error(ss.str());
+  }
 
   format_utils::write_header(*out, FORMAT_NAME, FORMAT_MAX);
   write_string(*out, meta.name);
@@ -1258,19 +1305,28 @@ void segment_meta_reader::read(
   const std::string meta_file = filename.null()
     ? file_name<segment_meta_writer>(meta)
     : static_cast<std::string>(filename);
+  auto in = dir.open(meta_file);
 
-  checksum_index_input<boost::crc_32_type> in(dir.open(meta_file));
+  if (!in) {
+    std::stringstream ss;
+
+    ss << "Failed to open file, path: " << meta_file;
+
+    throw detailed_io_error(ss.str());
+  }
+
+  checksum_index_input<boost::crc_32_type> check_in(std::move(in));
 
   format_utils::check_header(
-    in,
+    check_in,
     segment_meta_writer::FORMAT_NAME,
     segment_meta_writer::FORMAT_MIN,
     segment_meta_writer::FORMAT_MAX
   );
 
-  auto name = read_string<std::string>(in);
-  auto version = in.read_vlong();
-  int64_t count = in.read_vlong();
+  auto name = read_string<std::string>(check_in);
+  auto version = check_in.read_vlong();
+  int64_t count = check_in.read_vlong();
   if ( count < 0 ) {
     // corrupted index
     throw index_error();
@@ -1279,9 +1335,9 @@ void segment_meta_reader::read(
   meta.name = std::move(name);
   meta.version = version;
   meta.docs_count = count;
-  meta.files = read_strings<segment_meta::file_set>( in );
+  meta.files = read_strings<segment_meta::file_set>(check_in);
 
-  format_utils::check_footer(in);
+  format_utils::check_footer(check_in);
 }
 
 // ----------------------------------------------------------------------------
@@ -1303,7 +1359,17 @@ std::string document_mask_writer::filename(const segment_meta& meta) const {
 }
 
 void document_mask_writer::prepare(directory& dir, segment_meta const& meta) {
-  out_ = dir.create(file_name<document_mask_writer>(meta));
+  auto filename = file_name<document_mask_writer>(meta);
+
+  out_ = dir.create(filename);
+
+  if (!out_) {
+    std::stringstream ss;
+
+    ss << "Failed to create file, path: " << filename;
+
+    throw detailed_io_error(ss.str());
+  }
 }
 
 void document_mask_writer::begin(uint32_t count) {
@@ -1327,16 +1393,18 @@ document_mask_reader::~document_mask_reader() {}
 
 bool document_mask_reader::prepare(directory const& dir, segment_meta const& meta) {
   auto in_name = file_name<document_mask_writer>(meta);
+  auto in = dir.open(in_name);
 
-  if (!dir.exists(in_name)) {
+  if (!in) {
     checksum_index_input<boost::crc_32_type> empty_in;
 
+    IR_ERROR() << "Failed to open file, path: " << in_name;
     in_.swap(empty_in);
 
     return false;
   }
 
-  checksum_index_input<boost::crc_32_type> check_in(dir.open(in_name));
+  checksum_index_input<boost::crc_32_type> check_in(std::move(in));
 
   in_.swap(check_in);
 
@@ -1373,60 +1441,68 @@ field_meta_reader::~field_meta_reader() {}
 
 void field_meta_reader::read_segment_features() {
   feature_map_.clear();
-  feature_map_.reserve(in.read_vlong());
-  
-  size_t count = feature_map_.capacity();
-  while (count) {
-    const auto name = read_string<std::string>(in); // read feature name
+  feature_map_.reserve(in_.read_vlong());
+
+  for (size_t count = feature_map_.capacity(); count; --count) {
+    const auto name = read_string<std::string>(in_); // read feature name
     const attribute::type_id* feature = attribute::type_id::get(name);
+
     if (feature) {
       feature_map_.emplace_back(feature);
     } else {
       IR_ERROR() << "unknown feature name '" << name << "'";
     }
-    --count;
   }
 }
 
 void field_meta_reader::read_field_features(flags& features) {
-  size_t count = in.read_vlong();
-  while (count) {
-    const size_t id = in.read_vlong(); // feature id
+  for (size_t count = in_.read_vlong(); count; --count) {
+    const size_t id = in_.read_vlong(); // feature id
+
     if (id < feature_map_.size()) {
       features.add(*feature_map_[id]);
     } else {
       IR_ERROR() << "unknown feature id '" << id << "'";
     }
-    --count;
   }
 }
 
 void field_meta_reader::prepare(const directory& dir, const string_ref& seg_name) {
   assert(!seg_name.null());
 
-  checksum_index_input< boost::crc_32_type > check_in(
-    dir.open(file_name(seg_name, field_meta_writer::FORMAT_EXT))
-  );
+  auto filename = file_name(seg_name, field_meta_writer::FORMAT_EXT);
+  auto in = dir.open(filename);
 
-  in.swap(check_in);
+  if (!in) {
+    std::stringstream ss;
+
+    ss << "Failed to open file, path: " << filename;
+
+    throw detailed_io_error(ss.str());
+  }
+
+  checksum_index_input<boost::crc_32_type> check_in(std::move(in));
+
+  in_.swap(check_in);
 }
 
 size_t field_meta_reader::begin() {
   format_utils::check_header(
-    in,
+    in_,
     field_meta_writer::FORMAT_NAME,
     field_meta_writer::FORMAT_MIN,
     field_meta_writer::FORMAT_MAX
   );
-
   read_segment_features();
-  return in.read_vint();
+
+  return in_.read_vint();
 }
 
 void field_meta_reader::read(iresearch::field_meta& meta) {
-  meta.name = read_string<std::string>(in);
+  meta.name = read_string<std::string>(in_);
 
-  const field_id id = in.read_vint();
+  const field_id id = in_.read_vint();
+
   if (!type_limits<type_t::field_id_t>::valid(id)) {
     // corrupted index
     throw index_error();
@@ -1434,11 +1510,11 @@ void field_meta_reader::read(iresearch::field_meta& meta) {
 
   meta.id = id;
   read_field_features(meta.features);
-  meta.norm = static_cast<field_id>(read_zvlong(in));
+  meta.norm = static_cast<field_id>(read_zvlong(in_));
 }
 
 void field_meta_reader::end() {
-  format_utils::check_footer(in);
+  format_utils::check_footer(in_);
 }
 
 // ----------------------------------------------------------------------------
@@ -1475,7 +1551,19 @@ void field_meta_writer::prepare(const flush_state& state) {
   assert(state.dir);
 
   feature_map_.clear();
-  out = state.dir->create(file_name(state.name, FORMAT_EXT));
+
+  auto filename = file_name(state.name, FORMAT_EXT);
+
+  out = state.dir->create(filename);
+
+  if (!out) {
+    std::stringstream ss;
+
+    ss << "Failed to create file, path: " << filename;
+
+    throw detailed_io_error(ss.str());
+  }
+
   format_utils::write_header(*out, FORMAT_NAME, FORMAT_MAX);
   write_segment_features(*state.features);
   out->write_vint(static_cast<uint32_t>(state.fields_count));
@@ -1523,6 +1611,12 @@ bool meta_writer::prepare(directory& dir, const string_ref& name) {
   file_name(filename, name, FORMAT_EXT);
 
   out_ = dir.create(filename);
+
+  if (!out_) {
+    IR_ERROR() << "Failed to create file, path: " << filename;
+    return false;
+  }
+
   format_utils::write_header(*out_, FORMAT_NAME, FORMAT_MAX);
 
   return true;
@@ -1550,15 +1644,15 @@ class meta_reader final : public iresearch::column_meta_reader {
 
 bool meta_reader::prepare(const directory& dir, const string_ref& name) {
   const auto filename = file_name(name, meta_writer::FORMAT_EXT);
+  auto in = dir.open(filename);
 
-  if (!dir.exists(filename)) {
-    // TODO: directory::open should return nullptr
-    // instead of throwing exception
+  if (!in) {
+    IR_ERROR() << "Failed to open file, path: " << filename;
     return false;
   }
 
-  checksum_index_input< boost::crc_32_type > check_in(dir.open(filename));
-  
+  checksum_index_input<boost::crc_32_type> check_in(std::move(in));
+
   format_utils::check_header(
     check_in, 
     meta_writer::FORMAT_NAME,
@@ -1690,6 +1784,12 @@ bool writer::prepare(directory& dir, const string_ref& name) {
   file_name(filename_, name, FORMAT_EXT);
 
   data_out_ = dir.create(filename_);
+
+  if (!data_out_) {
+    IR_ERROR() << "Failed to create file, path: " << filename_;
+    return false;
+  }
+
   format_utils::write_header(*data_out_, FORMAT_NAME, FORMAT_MAX);
 
   return true;
@@ -1743,14 +1843,18 @@ void writer::flush() {
       break;
     }
   }
-  
+
   // remove file if there is no data to write
   if (columns_.empty()) {
     data_out_.reset();
-    dir_->remove(filename_);
+
+    if (!dir_->remove(filename_)) { // ignore error
+      IR_ERROR() << "Failed to remove file, path: " << filename_;
+    }
+
     return;
   }
-  
+
   // flush all remain data including possible empty columns among filled columns
   for (auto& column : columns_) {
     // flush remain blocks
@@ -1767,9 +1871,9 @@ void writer::flush() {
     data_out_->write_vlong(column.end); // max key
     column.blocks_index.file >> *data_out_; // column blocks index
   }
+
   data_out_->write_long(block_index_ptr);
   format_utils::write_footer(*data_out_);
-  
   data_out_.reset();
 }
 
@@ -1791,10 +1895,10 @@ class reader final : public iresearch::columnstore_reader, util::noncopyable {
   virtual bool prepare(const reader_state& state) override;
   virtual values_reader_f values(field_id field) const override;
   virtual bool visit(field_id field, const raw_reader_f& reader) const override;
-  
+
  private:
   typedef compressed_index<uint64_t> block_index_t;
-  
+
   struct block : util::noncopyable {
     block() = default;
     block(block&& other)
@@ -1805,14 +1909,14 @@ class reader final : public iresearch::columnstore_reader, util::noncopyable {
     compressed_index<uint64_t> index; // block index
     bstring data; // decompressed data block
   };
-  
+
   typedef std::pair<
     uint64_t, // block data offset
     block* // pointer to cached block
   > block_ref_t;
-  
+
   typedef compressed_index<block_ref_t> blocks_index_t;
-  
+
   struct read_context {
     std::deque<block> cached_blocks;
     bstring encode_buf; // 'read_compact' requires a temporary buffer
@@ -1826,7 +1930,7 @@ class reader final : public iresearch::columnstore_reader, util::noncopyable {
     read_context& ctx,
     block& block
   );
-  
+
   // visits block entries
   static bool visit(const block& block, const raw_reader_f& reader, bytes_ref_input& stream);
 
@@ -1837,11 +1941,11 @@ class reader final : public iresearch::columnstore_reader, util::noncopyable {
     const block_index_t::iterator& vbegin, // where value starts
     const block_index_t::iterator& vend, // where value ends
     const block_index_t::iterator& end); // where index ends
-  
+
   mutable read_context ctx_;
   std::vector<blocks_index_t> columns_;
 }; // reader
-  
+
 /*static*/ bool reader::read_block(
     index_input& in, 
     read_context& ctx,
@@ -1850,18 +1954,18 @@ class reader final : public iresearch::columnstore_reader, util::noncopyable {
   static auto visitor = [] (uint64_t& target, uint64_t value) {
     target = value;
   };
-  
+
   if (!block.index.read(in, type_limits<type_t::doc_id_t>::eof(), visitor)) {
     // unable to read block index
     return false;
   }
-  
+
   // ensure we have enough space to store uncompressed data
   block.data.resize(MAX_DATA_BLOCK_SIZE + read_zvlong(in));
 
   // read block data
   read_compact(in, ctx.decomp, ctx.encode_buf, block.data); 
-  
+
   return true;
 }
 
@@ -1871,15 +1975,15 @@ bool reader::prepare(const reader_state& state) {
 
   std::string filename;
   file_name(filename, name, writer::FORMAT_EXT);
-  if (!dir.exists(filename)) {
-    // TODO: directory::open should return nullptr
-    // instead of throwing exception
-    return false;
-  }
-  
+
   // open columstore stream
   auto stream = dir.open(filename);
-  
+
+  if (!stream) {
+    IR_ERROR() << "Failed to open file, path: " << filename;
+    return false;
+  }
+
   // check header
   format_utils::check_header(
     *stream, 
@@ -1898,11 +2002,11 @@ bool reader::prepare(const reader_state& state) {
   // seek to data start
   stream->seek(stream->length() - format_utils::FOOTER_LEN - sizeof(uint64_t));
   stream->seek(stream->read_long()); // seek to blocks index
-    
+
   static auto visitor = [] (block_ref_t& block, uint64_t v) {
     block.first = v;
   };
-   
+
   std::vector<blocks_index_t> columns(stream->read_vlong());
   for (size_t i = 0, size = columns.size(); i < size; ++i) {
     auto& column = columns[i];
@@ -1920,7 +2024,7 @@ bool reader::prepare(const reader_state& state) {
 
   return true;
 }
-  
+
 void reader::reset(
     bytes_ref_input& stream,
     const block& block, 
@@ -1942,7 +2046,7 @@ reader::values_reader_f reader::values(field_id field) const {
     // can't find attribute with the specified name
     return INVALID_COLUMN;
   }
-  
+
   auto& column = columns_[field];
   bytes_ref_input block_in;
 
@@ -1971,24 +2075,24 @@ reader::values_reader_f reader::values(field_id field) const {
           // unable to load block
           return false;
         }
-        
+
         // mark block as loaded
         const_cast<reader::block*&>(cached) = &block;
       }
     }
-        
+
     auto& block = *block_ref.second;
     const auto vbegin = block.index.find(doc); // value begin
     const auto end = block.index.end(); // block end
-        
+
     if (vbegin == end) {
       // there is no document with id equals to 'doc' in this block
       return false;
     }
-   
+
     auto vend = vbegin; // value end
     std::advance(vend, 1);
-    
+
     reset(block_in, block, vbegin, vend, end);
 
     return reader(block_in);
@@ -2008,7 +2112,7 @@ bool reader::visit(const reader::block& block, const reader::raw_reader_f& reade
 
   return true;
 }
-  
+
 bool reader::visit(field_id field, const raw_reader_f& reader) const {
   if (field >= columns_.size()) {
     // can't find attribute with the specified id
@@ -2127,16 +2231,34 @@ void stored_fields_writer::prepare(directory& dir, const string_ref& seg_name) {
   assert(!seg_name.null());
 
   std::string name;
- 
+
   // prepare stored fields data stream
   file_name(name, seg_name, FIELDS_EXT);
   fields_out = dir.create(name);
+
+  if (!fields_out) {
+    std::stringstream ss;
+
+    ss << "Failed to create file, path: " << name;
+
+    throw detailed_io_error(ss.str());
+  }
+
   format_utils::write_header(*fields_out, FORMAT_FIELDS, FORMAT_MAX);
   fields_out->write_vint(packed::VERSION);
 
   // prepare stored fields index
   file_name(name, seg_name, INDEX_EXT);
-  index_out_ = dir.create(name);  
+  index_out_ = dir.create(name);
+
+  if (!index_out_) {
+    std::stringstream ss;
+
+    ss << "Failed to create file, path: " << name;
+
+    throw detailed_io_error(ss.str());
+  }
+
   format_utils::write_header(
     *index_out_, 
     compressing_index_writer::FORMAT_NAME, 
@@ -2161,7 +2283,7 @@ void stored_fields_writer::finish() {
     flush();
     ++num_incomplete_blocks_;
   }
- 
+
   // finish data stream 
   format_utils::write_footer(*fields_out);
 
@@ -2196,7 +2318,7 @@ void stored_fields_reader::compressing_document_reader::load_block(uint64_t bloc
   // read header
   base_ = fields_in_->read_vint(); // base doc_id
   size_ = fields_in_->read_vint(); // number of documents in block
-  
+
   // read document lengths
   read_packed(*fields_in_, offsets_, size_);
   // convert lengths into offsets
@@ -2204,10 +2326,10 @@ void stored_fields_reader::compressing_document_reader::load_block(uint64_t bloc
 
   // read header lengths
   read_packed(*fields_in_, headers_, size_);
-  
+
   // ensure that we have enough space to store uncompressed data
   data_.resize(block_max_size_);
-  
+
   // read data block (documents can't overcome block boundaries)
   view_ = read_compact(*fields_in_, decomp_, buf_, data_);
 }
@@ -2255,6 +2377,14 @@ void stored_fields_reader::compressing_document_reader::prepare(
     uint32_t block_max_size) {
   fields_in_ = dir.open(name);
 
+  if (!fields_in_) {
+    std::stringstream ss;
+
+    ss << "Failed to open file, path: " << name;
+
+    throw detailed_io_error(ss.str());
+  }
+
   format_utils::check_header(
     *fields_in_,
     stored_fields_writer::FORMAT_FIELDS,
@@ -2296,9 +2426,21 @@ void stored_fields_reader::prepare( const reader_state& state ) {
 
   // init index reader
   file_name(buf, state.meta->name, stored_fields_writer::INDEX_EXT);
-  checksum_index_input< boost::crc_32_type > in(state.dir->open(buf));
+
+  auto in = state.dir->open(buf);
+
+  if (!in) {
+    std::stringstream ss;
+
+    ss << "Failed to open file, path: " << buf;
+
+    throw detailed_io_error(ss.str());
+  }
+
+  checksum_index_input<boost::crc_32_type> check_in(std::move(in));
+
   format_utils::check_header(
-    in,
+    check_in,
     compressing_index_writer::FORMAT_NAME,
     compressing_index_writer::FORMAT_MIN,
     compressing_index_writer::FORMAT_MAX
@@ -2308,15 +2450,16 @@ void stored_fields_reader::prepare( const reader_state& state ) {
     target = value;
   };
 
-  index_.read(in, state.meta->docs_count, visitor);
-  const uint32_t num_blocks = in.read_vint(); // total # of complete blocks
-  const uint32_t num_incomplete_blocks = in.read_vint(); // total # of incomplete blocks
+  index_.read(check_in, state.meta->docs_count, visitor);
+  const uint32_t num_blocks = check_in.read_vint(); // total # of complete blocks
+  const uint32_t num_incomplete_blocks = check_in.read_vint(); // total # of incomplete blocks
   if (num_incomplete_blocks > num_blocks) {
     // invalid block count
     throw index_error();
   }
-  const uint32_t block_max_size = in.read_vint(); // size of the biggest block
-  format_utils::check_footer(in);
+
+  const uint32_t block_max_size = check_in.read_vint(); // size of the biggest block
+  format_utils::check_footer(check_in);
 
   // init document reader
   file_name(buf, state.meta->name, stored_fields_writer::FIELDS_EXT);

@@ -35,38 +35,52 @@ struct directory_mock : public ir::directory {
   virtual iresearch::attributes& attributes() override {
     return impl_.attributes();
   }
-  virtual void close() override {
+  virtual void close() NOEXCEPT override {
     impl_.close();
   }
-  virtual ir::index_output::ptr create(const std::string& name) override {
+  virtual ir::index_output::ptr create(
+    const std::string& name
+  ) NOEXCEPT override {
     return impl_.create(name);
   }
-  virtual bool exists(const std::string& name) const override {
-    return impl_.exists(name);
+  virtual bool exists(
+    bool& result, const std::string& name
+  ) const NOEXCEPT override {
+    return impl_.exists(result, name);
   }
-  virtual int64_t length(const std::string& name) const override {
-    return impl_.length(name);
+  virtual bool length(
+    uint64_t& result, const std::string& name
+  ) const NOEXCEPT override {
+    return impl_.length(result, name);
   }
   virtual bool visit(const ir::directory::visitor_f& visitor) const override {
     return impl_.visit(visitor);
   }
-  virtual ir::index_lock::ptr make_lock(const std::string& name) override {
+  virtual ir::index_lock::ptr make_lock(
+    const std::string& name
+  ) NOEXCEPT override {
     return impl_.make_lock(name);
   }
-  virtual std::time_t mtime(const std::string& name) const override {
-    return impl_.mtime(name);
+  virtual bool mtime(
+    std::time_t& result, const std::string& name
+  ) const NOEXCEPT override {
+    return impl_.mtime(result, name);
   }
-  virtual ir::index_input::ptr open(const std::string& name) const override {
+  virtual ir::index_input::ptr open(
+    const std::string& name
+  ) const NOEXCEPT override {
     return impl_.open(name);
   }
-  virtual bool remove(const std::string& name) override {
+  virtual bool remove(const std::string& name) NOEXCEPT override {
     return impl_.remove(name);
   }
-  virtual void rename(const std::string& src, const std::string& dst) override { 
-    impl_.rename(src, dst);
+  virtual bool rename(
+    const std::string& src, const std::string& dst
+  ) NOEXCEPT override {
+    return impl_.rename(src, dst);
   }
-  virtual void sync(const std::string& name) override {
-    impl_.sync(name);
+  virtual bool sync(const std::string& name) NOEXCEPT override {
+    return impl_.sync(name);
   }
 
  private:
@@ -1015,7 +1029,7 @@ class index_test_case_base : public tests::index_test_base {
         return fields_;
       }
     };
-          
+
     // write columns 
     {
       csv_doc_template_t csv_doc_template;
@@ -1028,7 +1042,7 @@ class index_test_case_base : public tests::index_test_base {
       }
       writer->commit();
     }
-    
+
     auto reader = ir::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader->size());
     auto& segment = *reader->begin();
@@ -1603,10 +1617,16 @@ class index_test_case_base : public tests::index_test_base {
         : directory_mock(impl), sync_(std::move(sync)) {
       }
 
-      virtual void sync(const std::string& name) override {
-        if (!sync_(name)) {
-          directory_mock::sync(name);
+      virtual bool sync(const std::string& name) NOEXCEPT override {
+        try {
+          if (sync_(name)) {
+            return true;
+          }
+        } catch (...) {
+          return false;
         }
+
+        return directory_mock::sync(name);
       }
 
       sync_f sync_;
@@ -1739,8 +1759,9 @@ class tfidf : public Base {
 // --SECTION--                           memory_directory + iresearch_format_10
 // ----------------------------------------------------------------------------
 
-class memory_index_test
-  : public tests::cases::tfidf<tests::memory_test_case_base> {}; // memory_index_test
+class memory_index_test 
+  : public tests::cases::tfidf<tests::memory_test_case_base> {
+}; // memory_index_test
 
 TEST_F(memory_index_test, arango_demo_docs) {
   {

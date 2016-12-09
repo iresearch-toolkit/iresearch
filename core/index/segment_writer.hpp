@@ -61,7 +61,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     return success;
   }
 
-  void flush(std::string& filename, segment_meta& meta);
+  bool flush(std::string& filename, segment_meta& meta);
 
   const std::string& name() const { return seg_name_; }
   format::ptr codec() const { return codec_; }

@@ -13,7 +13,7 @@
 #include <boost/locale/encoding.hpp>
 
 #include "locale_utils.hpp"
-
+#include "log.hpp"
 #include "utf8_path.hpp"
 
 NS_LOCAL
@@ -97,59 +97,103 @@ utf8_path& utf8_path::operator/(const iresearch::basic_string_ref<wchar_t>& ucs2
 
   return *this;
 }
-  
-bool utf8_path::exists() const {
+
+bool utf8_path::exists(bool& result) const NOEXCEPT {
   boost::system::error_code code;
 
-  return boost::filesystem::exists(path_, code) && boost::system::errc::success == code.value();
+  result = boost::filesystem::exists(path_, code);
+
+  return (result && boost::system::errc::success == code.value())
+      || (!result && boost::system::errc::no_such_file_or_directory == code.value());
 }
 
-bool utf8_path::exists_file() const {
+bool utf8_path::exists_file(bool& result) const NOEXCEPT {
   boost::system::error_code code;
 
-  return boost::filesystem::is_regular_file(path_, code) && boost::system::errc::success == code.value();
+  result = boost::filesystem::is_regular_file(path_, code);
+
+  return boost::system::errc::success == code.value();
 }
 
-std::time_t utf8_path::file_mtime() const {
+bool utf8_path::file_mtime(std::time_t& result) const NOEXCEPT {
   boost::system::error_code code;
 
-  return boost::filesystem::last_write_time(path_, code);
+  try {
+    result = boost::filesystem::last_write_time(path_, code);
+
+    return boost::system::errc::success == code.value();
+  } catch(...) { // boost::filesystem::last_write_time(...) is not noexcept
+    IR_ERROR() << "Caught exception at " << __FUNCTION__ << ":" << __LINE__
+               << "code: " << code.value() << " for path: " << path_.c_str();
+  }
+
+  return false;
 }
 
-int64_t utf8_path::file_size() const {
+bool utf8_path::file_size(uint64_t& result) const NOEXCEPT {
   boost::system::error_code code;
 
-  return boost::filesystem::file_size(path_, code);
+  try {
+    result = boost::filesystem::file_size(path_, code);
+
+    return boost::system::errc::success == code.value();
+  } catch(...) { // boost::filesystem::file_size(...) is not noexcept
+    IR_ERROR() << "Caught exception at " << __FUNCTION__ << ":" << __LINE__
+               << "code: " << code.value() << " for path: " << path_.c_str();
+  }
+
+  return false;
 }
 
-const boost::filesystem::path::string_type& utf8_path::native() const {
+const boost::filesystem::path::string_type& utf8_path::native() const NOEXCEPT {
   return path_.native();
 }
 
-const boost::filesystem::path::value_type* utf8_path::c_str() const {
+const boost::filesystem::path::value_type* utf8_path::c_str() const NOEXCEPT {
   return path_.c_str();
 }
 
-bool utf8_path::mkdir() const {
+bool utf8_path::mkdir() const NOEXCEPT {
   boost::system::error_code code;
 
-  return boost::filesystem::create_directories(path_, code) && boost::system::errc::success == code.value();
-}
-
-bool utf8_path::remove() const {
-  boost::system::error_code code;
-
-  return boost::filesystem::remove_all(path_, code) > 0 && boost::system::errc::success == code.value();
-}
-
-void utf8_path::rename(const utf8_path& destination) const {
-  boost::system::error_code code;
-
-  boost::filesystem::rename(path_, destination.path_, code);
-
-  if(code) {
-    throw(detailed_io_error(code.message()));
+  try {
+    return boost::filesystem::create_directories(path_, code)
+           && boost::system::errc::success == code.value();
+  } catch(...) { // boost::filesystem::create_directories(...) is not noexcept
+    IR_ERROR() << "Caught exception at " << __FUNCTION__ << ":" << __LINE__
+               << "code: " << code.value() << " for path: " << path_.c_str();
   }
+
+  return false;
+}
+
+bool utf8_path::remove() const NOEXCEPT {
+  boost::system::error_code code;
+
+  try {
+    return boost::filesystem::remove_all(path_, code) > 0
+           && boost::system::errc::success == code.value();
+  } catch(...) { // boost::filesystem::remove_all(...) is not noexcept
+    IR_ERROR() << "Caught exception at " << __FUNCTION__ << ":" << __LINE__
+               << "code: " << code.value() << " for path: " << path_.c_str();
+  }
+
+  return false;
+}
+
+bool utf8_path::rename(const utf8_path& destination) const NOEXCEPT {
+  boost::system::error_code code;
+
+  try {
+    boost::filesystem::rename(path_, destination.path_, code);
+
+    return true;
+  } catch (...) {
+    IR_ERROR() << "Caught exception at " << __FUNCTION__ << ":" << __LINE__
+               << "code: " << code.value() << " for path: " << path_.c_str();
+  }
+
+  return false;
 }
 
 bool utf8_path::rmdir() const {
