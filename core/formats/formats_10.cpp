@@ -32,6 +32,7 @@
 #include "utils/std.hpp"
 #include "utils/bit_packing.hpp"
 #include "utils/type_limits.hpp"
+#include "utils/object_pool.hpp"
 #include "formats.hpp"
 
 #include <array>
@@ -1788,6 +1789,10 @@ NS_END
 
 class reader final : public iresearch::columnstore_reader, util::noncopyable {
  public:
+  explicit reader(size_t pool_size = 16) 
+    : pool_(pool_size) { 
+  }
+
   virtual bool prepare(const reader_state& state) override;
   virtual values_reader_f values(field_id field) const override;
   virtual bool visit(field_id field, const raw_reader_f& reader) const override;
@@ -1804,31 +1809,43 @@ class reader final : public iresearch::columnstore_reader, util::noncopyable {
 
     compressed_index<uint64_t> index; // block index
     bstring data; // decompressed data block
-  };
-  
-  typedef std::pair<
+  }; // block
+    
+  typedef std::pair <
     uint64_t, // block data offset
-    block* // pointer to cached block
+    std::atomic<block*> // pointer to cached block
   > block_ref_t;
   
   typedef compressed_index<block_ref_t> blocks_index_t;
-  
-  struct read_context {
+
+  // per thread read context
+  struct read_context : util::noncopyable {
+    DECLARE_SPTR(read_context);
+    
+    static ptr make(const directory& dir, const std::string& name) {
+      return std::make_shared<read_context>(dir.open(name));
+    }
+
+    explicit read_context(index_input::ptr&& stream)
+      : stream(std::move(stream)) {
+    }
+    read_context(read_context&&) = default;
+    
     std::deque<block> cached_blocks;
     bstring encode_buf; // 'read_compact' requires a temporary buffer
     decompressor decomp; // decompressor
     index_input::ptr stream; // input stream
-    std::mutex lock;
-  };
+  }; // read_context
 
-  static bool read_block(
-    index_input& in, 
-    read_context& ctx,
-    block& block
-  );
+  // read data into 'block' specified by the 'offset' using 'ctx'
+  static bool read_block(uint64_t offset, read_context& ctx, block& block);
   
   // visits block entries
-  static bool visit(const block& block, const raw_reader_f& reader, bytes_ref_input& stream);
+  static bool visit(
+    const block& block, 
+    const raw_reader_f& reader, 
+    bytes_ref_input& stream
+  );
 
   // reset value stream
   static void reset(
@@ -1837,30 +1854,35 @@ class reader final : public iresearch::columnstore_reader, util::noncopyable {
     const block_index_t::iterator& vbegin, // where value starts
     const block_index_t::iterator& vend, // where value ends
     const block_index_t::iterator& end); // where index ends
-  
-  mutable read_context ctx_;
+ 
+  mutable bounded_object_pool<read_context> pool_;
   std::vector<blocks_index_t> columns_;
+  std::string name_;
+  const directory* dir_;
 }; // reader
   
 /*static*/ bool reader::read_block(
-    index_input& in, 
+    uint64_t offset,
     read_context& ctx,
     block& block) {
+
+  // seek to the specified block start offset
+  auto& stream = *ctx.stream;
+  stream.seek(offset);
+
   // read block index
   static auto visitor = [] (uint64_t& target, uint64_t value) {
     target = value;
   };
-  
-  if (!block.index.read(in, type_limits<type_t::doc_id_t>::eof(), visitor)) {
+  if (!block.index.read(stream, type_limits<type_t::doc_id_t>::eof(), visitor)) {
     // unable to read block index
     return false;
   }
   
   // ensure we have enough space to store uncompressed data
-  block.data.resize(MAX_DATA_BLOCK_SIZE + read_zvlong(in));
-
+  block.data.resize(MAX_DATA_BLOCK_SIZE + read_zvlong(stream));
   // read block data
-  read_compact(in, ctx.decomp, ctx.encode_buf, block.data); 
+  read_compact(stream, ctx.decomp, ctx.encode_buf, block.data); 
   
   return true;
 }
@@ -1916,7 +1938,8 @@ bool reader::prepare(const reader_state& state) {
 
   // noexcept
   columns_ = std::move(columns);
-  ctx_.stream = std::move(stream);
+  name_ = std::move(filename);
+  dir_ = &dir;
 
   return true;
 }
@@ -1954,32 +1977,33 @@ reader::values_reader_f reader::values(field_id field) const {
       return false;
     }
 
-    auto& block_ref = it->second;
-    auto& cached = block_ref.second;
+    auto& block_ref = const_cast<block_ref_t&>(it->second);
+    auto* cached = block_ref.second.load();
 
     if (!cached) {
-      SCOPED_LOCK(ctx_.lock);
-      if (!cached) {
-        auto& stream = *ctx_.stream;
-        stream.seek(block_ref.first);
+      auto ctx = pool_.emplace(*dir_, name_);
 
-        // add cached entry
-        ctx_.cached_blocks.emplace_back();
-        auto& block = ctx_.cached_blocks.back();
+      // add cache entry
+      auto& cached_blocks = ctx->cached_blocks;
+      cached_blocks.emplace_back();
+      auto& block = cached_blocks.back();
 
-        if (!read_block(stream, ctx_, block)) {
-          // unable to load block
-          return false;
-        }
-        
-        // mark block as loaded
-        const_cast<reader::block*&>(cached) = &block;
+      if (!read_block(block_ref.first, *ctx, block)) {
+        // unable to load block
+        return false;
+      }
+
+      // mark block as loaded
+      if (block_ref.second.compare_exchange_strong(cached, &block)) {
+        cached = &block;
+      } else {
+        // cached by another thread
+        cached_blocks.pop_back();
       }
     }
         
-    auto& block = *block_ref.second;
-    const auto vbegin = block.index.find(doc); // value begin
-    const auto end = block.index.end(); // block end
+    const auto vbegin = cached->index.find(doc); // value begin
+    const auto end = cached->index.end(); // block end
         
     if (vbegin == end) {
       // there is no document with id equals to 'doc' in this block
@@ -1989,7 +2013,7 @@ reader::values_reader_f reader::values(field_id field) const {
     auto vend = vbegin; // value end
     std::advance(vend, 1);
     
-    reset(block_in, block, vbegin, vend, end);
+    reset(block_in, *cached, vbegin, vend, end);
 
     return reader(block_in);
   };
@@ -2017,26 +2041,22 @@ bool reader::visit(field_id field, const raw_reader_f& reader) const {
 
   auto& column = columns_[field];
   bytes_ref_input block_in;
-  block_ref_t block_ref;
+  const reader::block* cached;
   reader::block block; // do not cache blocks during visiting
 
   for (auto& bucket : column) {
-    block_ref = bucket.second;
-    auto& cached = block_ref.second;
+    auto& block_ref = bucket.second;
+    auto* cached = block_ref.second.load();
 
     if (!cached) {
-      SCOPED_LOCK(ctx_.lock);
-      if (!cached) {
-        // hasn't been cached yet, use temporary block
-        auto& stream = *ctx_.stream;
-        stream.seek(block_ref.first);
+      auto ctx = pool_.emplace(*dir_, name_);
 
-        if (!read_block(stream, ctx_, block)) {
-          return false;
-        }
-
-        block_ref.second = &block;
+      // hasn't been cached yet, use temporary block
+      if (!read_block(block_ref.first, *ctx, block)) {
+        return false;
       }
+
+      cached = &block;
     }
 
     // visit block
