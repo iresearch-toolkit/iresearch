@@ -384,7 +384,7 @@ class IRESEARCH_PLUGIN postings_writer final: public iresearch::postings_writer 
   * const_attributes_provider 
   * ------------------------------------------*/
   
-  virtual const iresearch::attributes& attributes() const override final {
+  virtual const iresearch::attributes& attributes() const NOEXCEPT override final {
     return attrs_;
   }
 

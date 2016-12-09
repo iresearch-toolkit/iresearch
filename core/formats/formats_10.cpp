@@ -252,7 +252,7 @@ class doc_iterator : public iresearch::doc_iterator {
     return doc_->value;
   }
 
-  virtual const iresearch::attributes& attributes() const override {
+  virtual const iresearch::attributes& attributes() const NOEXCEPT override {
     return attrs_;
   }
 

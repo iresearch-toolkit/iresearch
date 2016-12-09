@@ -113,7 +113,7 @@ class term_reader : public iresearch::term_reader,
   virtual uint64_t docs_count() const override { return doc_count_; }
   virtual const bytes_ref& min() const override { return min_term_ref_; }
   virtual const bytes_ref& max() const override { return max_term_ref_; }
-  virtual const iresearch::attributes& attributes() const override { 
+  virtual const iresearch::attributes& attributes() const NOEXCEPT override {
     return attrs_; 
   }
 
