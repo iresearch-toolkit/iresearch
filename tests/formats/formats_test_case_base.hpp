@@ -131,7 +131,7 @@ class format_test_case_base : public index_test_base {
       return ir::seek(*this, target);
     }
 
-    const ir::attributes& attributes() const {
+    const ir::attributes& attributes() const NOEXCEPT {
       return attrs_;
     }
 
@@ -179,7 +179,7 @@ class format_test_case_base : public index_test_base {
 
     void read() { }
 
-    const ir::attributes& attributes() const {
+    const ir::attributes& attributes() const NOEXCEPT {
       return ir::attributes::empty_instance();
     }
 

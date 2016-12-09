@@ -30,8 +30,8 @@ class utf8_path: private ::boost::filesystem::path {
   bool exists_file(bool& result) const NOEXCEPT;
   bool file_mtime(std::time_t& result) const NOEXCEPT;
   bool file_size(uint64_t& result) const NOEXCEPT;
-  const ::boost::filesystem::path::string_type& native() const;
-  const ::boost::filesystem::path::value_type* c_str() const;
+  const ::boost::filesystem::path::string_type& native() const NOEXCEPT;
+  const ::boost::filesystem::path::value_type* c_str() const NOEXCEPT;
   bool mkdir() const NOEXCEPT;
   bool remove() const NOEXCEPT;
   bool rename(const utf8_path& destination) const NOEXCEPT;

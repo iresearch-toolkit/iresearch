@@ -88,7 +88,7 @@ class basic_doc_iterator: public iresearch::score_doc_iterator {
     }
   }
 
-  virtual const iresearch::attributes& attributes() const {
+  virtual const iresearch::attributes& attributes() const NOEXCEPT {
     return attrs_;
   }
 
@@ -1077,7 +1077,7 @@ struct unestimated: public iresearch::filter {
       return iresearch::type_limits<iresearch::type_t::doc_id_t>::invalid();
     }
     virtual void score() override { }
-    virtual const iresearch::attributes& attributes() const override {
+    virtual const iresearch::attributes& attributes() const NOEXCEPT override {
       return iresearch::attributes::empty_instance();
     }
   }; // doc_iterator
@@ -1125,7 +1125,7 @@ struct estimated: public iresearch::filter {
       return iresearch::type_limits<iresearch::type_t::doc_id_t>::invalid();
     }
     virtual void score() override { }
-    virtual const iresearch::attributes& attributes() const override {
+    virtual const iresearch::attributes& attributes() const NOEXCEPT override {
       return attrs;
     }
 

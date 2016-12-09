@@ -498,7 +498,7 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
     file->write_byte(42);
     file->flush();
     uint64_t length;
-    ASSERT_TRUE(dir.length(length, "abc"), && length == 1);
+    ASSERT_TRUE(dir.length(length, "abc") && length == 1);
     ASSERT_TRUE(track_dir.length(length, "abc") && length == 1);
 
     std::vector<std::string> files;

@@ -32,7 +32,7 @@ namespace tests {
 struct directory_mock : public ir::directory {
   directory_mock(ir::directory& impl) : impl_(impl) {}
   using directory::attributes;
-  virtual iresearch::attributes& attributes() override {
+  virtual iresearch::attributes& attributes() NOEXCEPT override {
     return impl_.attributes();
   }
   virtual void close() NOEXCEPT override {

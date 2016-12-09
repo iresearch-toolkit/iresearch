@@ -444,6 +444,8 @@ const iresearch::attributes& compound_term_iterator::attributes() const NOEXCEPT
   // no way to merge attributes for the same term spread over multiple iterators
   // would require API change for attributes
   assert(false);
+  static const iresearch::attributes attrs;
+  return attrs; // ERROR condition should have been caught by assert()
 }
 
 bool compound_term_iterator::next() {

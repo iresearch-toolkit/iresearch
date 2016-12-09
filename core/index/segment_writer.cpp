@@ -189,7 +189,9 @@ bool segment_writer::flush(std::string& filename, segment_meta& meta) {
 void segment_writer::reset() {
   initialized_ = false;
 
-  if (!dir_.swap_tracked(tracking_directory(*dir_))) {
+  tracking_directory::file_set empty;
+
+  if (!dir_.swap_tracked(empty)) {
     // on failre next segment might have extra files which will fail to get refs
     IR_ERROR() << "Failed to swap list of tracked files in: " << __FUNCTION__ << ":" << __LINE__;
   }

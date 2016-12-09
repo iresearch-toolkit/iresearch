@@ -74,7 +74,7 @@ public:
     return it_->value();
   }
 
-  virtual const iresearch::attributes& attributes() const override {
+  virtual const iresearch::attributes& attributes() const NOEXCEPT override {
     return it_->attributes();
   }
 
@@ -168,7 +168,7 @@ class all_query : public filter::prepared {
       return doc_;
     }
 
-    virtual const iresearch::attributes& attributes() const {
+    virtual const iresearch::attributes& attributes() const NOEXCEPT {
       return attrs_;
     }
 

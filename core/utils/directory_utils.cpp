@@ -223,7 +223,7 @@ tracking_directory::tracking_directory(
 
 tracking_directory::~tracking_directory() {}
 
-directory& tracking_directory::operator*() {
+directory& tracking_directory::operator*() NOEXCEPT {
   return impl_;
 }
 
@@ -333,7 +333,7 @@ bool tracking_directory::rename(
   return false;
 }
 
-bool tracking_directory::swap_tracked(file_set& other) {
+bool tracking_directory::swap_tracked(file_set& other) NOEXCEPT {
   try {
     files_.swap(other);
 
@@ -345,7 +345,7 @@ bool tracking_directory::swap_tracked(file_set& other) {
   return false;
 }
 
-bool tracking_directory::swap_tracked(tracking_directory& other) {
+bool tracking_directory::swap_tracked(tracking_directory& other) NOEXCEPT {
   return swap_tracked(other.files_);
 }
 
@@ -374,7 +374,7 @@ ref_tracking_directory::ref_tracking_directory(ref_tracking_directory&& other):
 
 ref_tracking_directory::~ref_tracking_directory() {}
 
-directory& ref_tracking_directory::operator*() {
+directory& ref_tracking_directory::operator*() NOEXCEPT {
   return impl_;
 }
 

@@ -398,7 +398,9 @@ class term_iterator : public iresearch::seek_term_iterator {
 
   virtual void read() override;
   virtual bool next() override;
-  const iresearch::attributes& attributes() const override { return attrs_; }
+  const iresearch::attributes& attributes() const NOEXCEPT override {
+    return attrs_;
+  }
   const bytes_ref& value() const override { return term_; }
   virtual SeekResult seek_ge(const bytes_ref& term) override;
   virtual bool seek(const bytes_ref& term) override;
