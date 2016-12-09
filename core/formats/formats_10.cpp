@@ -2150,7 +2150,7 @@ bool reader::visit(field_id field, const raw_reader_f& reader) const {
 
   for (auto& bucket : column) {
     auto& block_ref = bucket.second;
-    auto* cached = block_ref.second.load();
+    cached = block_ref.second.load();
 
     if (!cached) {
       auto ctx = pool_.emplace(*dir_, name_);
