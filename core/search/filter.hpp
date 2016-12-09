@@ -156,7 +156,7 @@ class IRESEARCH_API filter {
     }
 
     using util::attributes_provider::attributes;
-    virtual iresearch::attributes& attributes() override final {
+    virtual iresearch::attributes& attributes() override NOEXCEPT final {
       return attrs_;
     }
 

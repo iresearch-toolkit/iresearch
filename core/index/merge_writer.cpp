@@ -63,7 +63,7 @@ struct compound_doc_iterator: public iresearch::doc_iterator {
 
   virtual ~compound_doc_iterator() {}
   void add(iresearch::doc_iterator::ptr&& postings, const doc_id_map_t& doc_id_map);
-  virtual const iresearch::attributes& attributes() const override;
+  virtual const iresearch::attributes& attributes() const NOEXCEPT override;
   virtual bool next() override;
   virtual iresearch::doc_id_t seek(iresearch::doc_id_t target) override;
   virtual iresearch::doc_id_t value() const override;
@@ -238,7 +238,7 @@ class compound_term_iterator: public iresearch::term_iterator {
   compound_term_iterator& operator=(const compound_term_iterator&) = delete; // due to references
   const iresearch::field_meta& meta() { return meta_; }
   void add(const iresearch::term_reader& reader, const doc_id_map_t& doc_id_map);
-  virtual const iresearch::attributes& attributes() const override;
+  virtual const iresearch::attributes& attributes() const NOEXCEPT override;
   virtual bool next() override;
   virtual iresearch::doc_iterator::ptr postings(const iresearch::flags& features) const override;
   virtual void read() override;
@@ -297,7 +297,7 @@ void compound_doc_iterator::add(
   iterators.emplace_back(std::move(postings), &doc_id_map);
 }
 
-const iresearch::attributes& compound_doc_iterator::attributes() const {
+const iresearch::attributes& compound_doc_iterator::attributes() const NOEXCEPT {
   return attrs;
 }
 
@@ -440,10 +440,10 @@ void compound_term_iterator::add(
   term_iterators_.emplace_back(std::move(reader.iterator()), &doc_id_map);
 }
 
-const iresearch::attributes& compound_term_iterator::attributes() const {
+const iresearch::attributes& compound_term_iterator::attributes() const NOEXCEPT {
   // no way to merge attributes for the same term spread over multiple iterators
   // would require API change for attributes
-  throw iresearch::not_impl_error();
+  assert(false);
 }
 
 bool compound_term_iterator::next() {
