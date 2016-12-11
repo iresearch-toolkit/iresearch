@@ -1602,6 +1602,7 @@ class meta_writer final : public iresearch::column_meta_writer {
 
  private:
   index_output::ptr out_;
+  field_id count_{}; // number of written objects
 }; // meta_writer 
 
 const string_ref meta_writer::FORMAT_NAME = "iresearch_10_columnmeta";
@@ -1624,26 +1625,33 @@ bool meta_writer::prepare(directory& dir, const string_ref& name) {
 }
   
 void meta_writer::write(const std::string& name, field_id id) {
-  write_zvint(*out_, id);
+  out_->write_vint(id);
   write_string(*out_, name);
+  ++count_;
 }
 
 void meta_writer::flush() {
-  write_zvint(*out_, type_limits<type_t::field_id_t>::invalid());
   format_utils::write_footer(*out_);
+  out_->write_int(count_); // write total number of written objects
   out_.reset();
+  count_ = 0;
 }
 
 class meta_reader final : public iresearch::column_meta_reader {
  public:
-  virtual bool prepare(const directory& dir, const string_ref& filename) override;
+  virtual bool prepare(
+    const directory& dir, 
+    const string_ref& filename,
+    field_id& count
+  ) override;
   virtual bool read(column_meta& column) override;
 
  private:
   checksum_index_input<boost::crc_32_type> in_;
+  field_id count_{0};
 }; // meta_writer 
 
-bool meta_reader::prepare(const directory& dir, const string_ref& name) {
+bool meta_reader::prepare(const directory& dir, const string_ref& name, field_id& count) {
   const auto filename = file_name(name, meta_writer::FORMAT_EXT);
   auto in = dir.open(filename);
 
@@ -1651,6 +1659,11 @@ bool meta_reader::prepare(const directory& dir, const string_ref& name) {
     IR_ERROR() << "Failed to open file, path: " << filename;
     return false;
   }
+
+  // read number of objects to read 
+  in->seek(in->length() - sizeof(field_id));
+  count = in->read_int();
+  in->seek(0);
 
   checksum_index_input<boost::crc_32_type> check_in(std::move(in));
 
@@ -1662,18 +1675,19 @@ bool meta_reader::prepare(const directory& dir, const string_ref& name) {
   );
 
   in_.swap(check_in);
-  return true;
+  count_ = count;
+  return count;
 }
 
 bool meta_reader::read(column_meta& column) {
-  const auto id = static_cast<field_id>(read_zvint(in_));
-  if (!type_limits<type_t::field_id_t>::valid(id)) {
-    format_utils::check_footer(in_);
+  if (!count_) {
     return false;
   }
 
-  column.id = id;
+  const auto id = in_.read_vint();
   column.name = read_string<std::string>(in_);
+  column.id = id;
+  --count_;
   return true;
 }
 

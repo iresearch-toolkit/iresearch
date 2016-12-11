@@ -1030,7 +1030,9 @@ class format_test_case_base : public index_test_base {
     // read meta from segment _1
     {
       auto reader = codec()->get_column_meta_reader();
-      ASSERT_TRUE(reader->prepare(dir(), "_1"));
+      iresearch::field_id actual_count = 0;
+      ASSERT_TRUE(reader->prepare(dir(), "_1", actual_count));
+      ASSERT_EQ(3, actual_count);
      
       iresearch::column_meta meta;
       ASSERT_TRUE(reader->read(meta));
@@ -1048,7 +1050,9 @@ class format_test_case_base : public index_test_base {
     // read meta from segment _2
     {
       auto reader = codec()->get_column_meta_reader();
-      ASSERT_TRUE(reader->prepare(dir(), "_2"));
+      iresearch::field_id actual_count = 0;
+      ASSERT_TRUE(reader->prepare(dir(), "_2", actual_count));
+      ASSERT_EQ(3, actual_count);
      
       iresearch::column_meta meta;
       ASSERT_TRUE(reader->read(meta));

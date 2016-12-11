@@ -263,7 +263,11 @@ struct IRESEARCH_API column_meta_reader {
   
   virtual ~column_meta_reader();
   
-  virtual bool prepare(const directory& dir, const string_ref& seg_name) = 0;
+  virtual bool prepare(
+    const directory& dir, 
+    const string_ref& seg_name,
+    /*out*/ field_id& count
+  ) = 0;
   // returns false if there is no more data to read
   virtual bool read(column_meta& column) = 0;
 }; // column_meta_reader 

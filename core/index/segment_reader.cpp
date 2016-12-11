@@ -93,13 +93,16 @@ void read_columns_meta(
     const iresearch::directory& dir,
     const std::string& name) {
   auto reader = codec.get_column_meta_reader();
-  if (!reader->prepare(dir, name)) {
+
+  iresearch::field_id count = 0;
+  if (!reader->prepare(dir, name, count)) {
     return;
   }
 
   iresearch::columns_meta::items_t columns;
+  columns.reserve(count);
   for (iresearch::column_meta meta; reader->read(meta);) {
-    columns.push_back(std::move(meta));
+    columns.emplace_back(std::move(meta));
   }
 
   meta = iresearch::columns_meta(std::move(columns));
