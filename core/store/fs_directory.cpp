@@ -91,7 +91,7 @@ class fs_lock : public index_lock {
 
       return true;
     } catch (...) {
-      IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+      IR_ERROR() << "Expcetion caught in " << __FUNCTION__;
     }
 
     return false;
@@ -140,7 +140,7 @@ class fs_index_output : public buffered_index_output {
     try {
       return fs_index_output::make<fs_index_output>(std::move(handle));
     } catch(...) {
-      IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+      IR_ERROR() << "Expcetion caught in " << __FUNCTION__;
     }
 
     return nullptr;
@@ -223,7 +223,7 @@ class fs_index_input : public buffered_index_input {
     try {
       return fs_index_input::make<fs_index_input>(std::move(handle));
     } catch(...) {
-      IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+      IR_ERROR() << "Expcetion caught in " << __FUNCTION__;
     }
 
     return nullptr;
@@ -344,7 +344,11 @@ index_output::ptr fs_directory::create(const std::string& name) NOEXCEPT {
   typedef checksum_index_output<boost::crc_32_type> checksum_output_t;
 
   try {
-    auto out = fs_index_output::open((utf8_path()/dir_/name).c_str());
+    utf8_path path;
+
+    path/dir_/name;
+
+    auto out = fs_index_output::open(path.c_str());
 
     if (out) {
       return index_output::make<checksum_output_t>(std::move(out));
@@ -354,7 +358,7 @@ index_output::ptr fs_directory::create(const std::string& name) NOEXCEPT {
 
     return nullptr;
   } catch(...) {
-    IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+    IR_ERROR() << "Expcetion caught in " << __FUNCTION__;
   }
 
   return nullptr;
@@ -388,9 +392,13 @@ bool fs_directory::mtime(
 
 bool fs_directory::remove(const std::string& name) NOEXCEPT {
   try {
-    return (utf8_path()/dir_/name).remove();
+    utf8_path path;
+
+    path/dir_/name;
+
+    return path.remove();
   } catch (...) {
-    IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+    IR_ERROR() << "Expcetion caught in " << __FUNCTION__;
   }
 
   return false;
@@ -398,9 +406,13 @@ bool fs_directory::remove(const std::string& name) NOEXCEPT {
 
 index_input::ptr fs_directory::open(const std::string& name) const NOEXCEPT {
   try {
-    return fs_index_input::open((utf8_path()/dir_/name).c_str());
+    utf8_path path;
+
+    path/dir_/name;
+
+    return fs_index_input::open(path.c_str());
   } catch(...) {
-    IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+    IR_ERROR() << "Expcetion caught in " << __FUNCTION__;
   }
 
   return nullptr;
@@ -410,9 +422,15 @@ bool fs_directory::rename(
   const std::string& src, const std::string& dst
 ) NOEXCEPT {
   try {
-    return (utf8_path()/dir_/src).rename(utf8_path()/dir_/dst);
+    utf8_path src_path;
+    utf8_path dst_path;
+
+    src_path/dir_/src;
+    dst_path/dir_/dst;
+
+    return src_path.rename(dst_path);
   } catch (...) {
-    IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+    IR_ERROR() << "Expcetion caught in " << __FUNCTION__;
   }
 
   return false;
@@ -446,25 +464,26 @@ bool fs_directory::visit(const directory::visitor_f& visitor) const {
 }
 
 bool fs_directory::sync(const std::string& name) NOEXCEPT {
-  utf8_path path;
 
   try {
+    utf8_path path;
+
     path/dir_/name;
+
+    if (file_utils::file_sync(path.c_str())) {
+      return true;
+    }
+
+    IR_ERROR() << "Failed to sync file, error: "
+    #ifdef _WIN32
+               << GetLastError()
+    #else
+               << errno
+    #endif
+               << " path: " << path.utf8();
   } catch (...) {
-    IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+    IR_ERROR() << "Expcetion caught in " << __FUNCTION__;
   }
-
-  if (file_utils::file_sync(path.c_str())) {
-    return true;
-  }
-
-  IR_ERROR() << "Failed to sync file, error: "
-  #ifdef _WIN32
-             << GetLastError()
-  #else
-             << errno
-  #endif
-             << " path: " << path.utf8();
 
   return false;
 }

@@ -67,7 +67,7 @@ class single_instance_lock : public index_lock {
 
       return true;
     } catch (...) {
-      IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+      IR_ERROR() << "Expcetion caught in " << __FUNCTION__;
     }
 
     return false;
@@ -79,7 +79,7 @@ class single_instance_lock : public index_lock {
 
       return parent->locks_.erase(name) > 0;
     } catch (...) {
-      IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+      IR_ERROR() << "Expcetion caught in " << __FUNCTION__;
     }
 
     return false;
@@ -282,7 +282,7 @@ index_output::ptr memory_directory::create(const std::string& name) NOEXCEPT {
 
     return index_output::make<checksum_output_t>(std::move(out));
   } catch(...) {
-    IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+    IR_ERROR() << "Expcetion caught in " << __FUNCTION__;
   }
 
   return nullptr;
@@ -307,7 +307,7 @@ index_lock::ptr memory_directory::make_lock(const std::string& name) NOEXCEPT {
   try {
     return index_lock::make<single_instance_lock>(name, this);
   } catch (...) {
-    IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+    IR_ERROR() << "Expcetion caught in " << __FUNCTION__;
   }
 
   return nullptr;
@@ -344,7 +344,7 @@ index_input::ptr memory_directory::open(
 
     return nullptr;
   } catch(...) {
-    IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+    IR_ERROR() << "Expcetion caught in " << __FUNCTION__;
   }
 
   return nullptr;
@@ -356,7 +356,7 @@ bool memory_directory::remove(const std::string& name) NOEXCEPT {
 
     return files_.erase(name) > 0;
   } catch (...) {
-    IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+    IR_ERROR() << "Expcetion caught in " << __FUNCTION__;
   }
 
   return false;
@@ -380,7 +380,7 @@ bool memory_directory::rename(
 
     return true;
   } catch (...) {
-    IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+    IR_ERROR() << "Expcetion caught in " << __FUNCTION__;
   }
 
   return false;
