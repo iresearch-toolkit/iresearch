@@ -363,9 +363,9 @@ void index_writer::defragment(const defragment_policy_t& policy) {
   std::vector<segment_reader::ptr> merge_candidates;
   index_meta::index_segment_t* merge_candindate_default = nullptr;
 
-  SCOPED_LOCK(meta_lock_); // ensure meta is not modified during defragment
   auto ctx = get_flush_context();
   auto& dir = *(ctx->dir_);
+  SCOPED_LOCK(meta_lock_); // ensure meta is not modified during defragment
   auto merge = policy(dir, meta_);
 
   // find merge candidates
