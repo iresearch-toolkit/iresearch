@@ -46,7 +46,7 @@ bool index_lock::try_lock(size_t wait_timeout /* = 1000 */) NOEXCEPT {
 
     return locked;
   } catch (...) {
-    IR_ERROR() << "Expcetion caught in " << __FUNCTION__ << ":" << __LINE__;
+    IR_ERROR() << "Expcetion caught in " << __FUNCTION__;
   }
 
   return false;
