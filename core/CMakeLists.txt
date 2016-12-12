@@ -105,6 +105,7 @@ set(IResearch_core_sources
   ./search/prefix_filter.cpp
   ./search/range_filter.cpp
   ./search/phrase_filter.cpp
+  ./search/same_position_filter.cpp
   ./search/range_query.cpp
   ./search/term_query.cpp
   ./search/boolean_filter.cpp
@@ -166,6 +167,7 @@ set(IResearch_core_headers
   ./search/score_doc_iterators.hpp
   ./search/term_filter.hpp
   ./search/phrase_filter.hpp
+  ./search/same_position_filter.hpp
   ./search/prefix_filter.hpp
   ./search/range_filter.hpp
   ./search/range_query.hpp

@@ -385,7 +385,7 @@ json_doc_generator::json_doc_generator(
   #else
   {
     typedef tests::json::json_tree::data_type::value_type char_type;
-    typedef boost::property_tree::json_parser::detail::encoding<char_type> encoding_type;
+    typedef boost::propertphrase_sequentialy_tree::json_parser::detail::encoding<char_type> encoding_type;
     typedef std::istreambuf_iterator<char_type> iterator;
     typedef tests::json::json_comment_masking_iterator<iterator> comment_masking_iterator;
 

@@ -68,6 +68,9 @@ template<> struct type_limits<type_t::pos_t> {
     return integer_traits<uint32_t>::const_max; 
   }
   CONSTEXPR static bool valid(uint32_t pos) { return invalid() != pos; }
+  CONSTEXPR static const uint32_t eof() { return invalid() - 1; }
+  CONSTEXPR static bool eof(uint32_t pos) { return eof() == pos; }
+  CONSTEXPR static const uint32_t (min)() { return 0; }
 };
 
 template<> struct type_limits<type_t::term_id_t> {

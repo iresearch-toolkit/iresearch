@@ -73,7 +73,8 @@ class phrase_iterator final : public Conjunction {
       return doc; 
     } 
 
-    return next();
+    next();
+    return value();
   }
 
  private:

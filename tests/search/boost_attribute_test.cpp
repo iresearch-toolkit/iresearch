@@ -32,7 +32,7 @@ TEST(boost_attribute_test, apply_extract) {
   iresearch::attributes attrs;
   ASSERT_EQ(ir::boost::boost_t(ir::boost::no_boost()), ir::boost::extract(attrs));
 
-  auto value = 5;
+  ir::boost::boost_t value = 5;
   {
     ir::boost::apply(attrs, value);
     ASSERT_EQ(value, ir::boost::extract(attrs));
@@ -42,7 +42,7 @@ TEST(boost_attribute_test, apply_extract) {
   }
 
   {
-    auto new_value = 15;
+    ir::boost::boost_t new_value = 15;
     ir::boost::apply(attrs, new_value);
     ASSERT_EQ(value*new_value, ir::boost::extract(attrs));
     auto& boost = attrs.get<ir::boost>();

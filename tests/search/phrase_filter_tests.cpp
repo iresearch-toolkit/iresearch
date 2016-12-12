@@ -670,8 +670,8 @@ TEST(by_phrase_test, push_back_insert) {
    
     // push term 
     {
-      q.push_back("squirell", 0);
-      ASSERT_EQ(ir::ref_cast<ir::byte_type>(ir::string_ref("squirell")), q[4]); 
+      q.push_back("squirrel", 0);
+      ASSERT_EQ(ir::ref_cast<ir::byte_type>(ir::string_ref("squirrel")), q[4]); 
     }
     ASSERT_EQ(4, q.size());
   }
@@ -712,7 +712,7 @@ TEST(by_phrase_test, equal) {
     ir::by_phrase q0;
     q0.field("name");
     q0.push_back("quick");
-    q0.push_back("squirell");
+    q0.push_back("squirrel");
     
     ir::by_phrase q1;
     q1.field("name");
