@@ -1676,7 +1676,7 @@ bool meta_reader::prepare(const directory& dir, const string_ref& name, field_id
 
   in_.swap(check_in);
   count_ = count;
-  return count;
+  return true;
 }
 
 bool meta_reader::read(column_meta& column) {
@@ -1948,11 +1948,11 @@ class reader final : public iresearch::columnstore_reader, util::noncopyable {
       : stream(std::move(stream)) {
     }
 
-    read_context(read_context&& other)
-      : cached_blocks(std::move(other.cached_blocks)),
-        encode_buf(std::move(other.encode_buf)),
-        decomp(std::move(other.decomp)),
-        stream(std::move(other.stream)) {
+    read_context(read_context&& rhs)
+      : cached_blocks(std::move(rhs.cached_blocks)),
+        encode_buf(std::move(rhs.encode_buf)),
+        decomp(std::move(rhs.decomp)),
+        stream(std::move(rhs.stream)) {
     }
 
     std::deque<block> cached_blocks;
