@@ -16,6 +16,7 @@
 #include "filter_test_case_base.hpp"
 #include "analysis/token_attributes.hpp"
 #include "search/same_position_filter.hpp"
+#include "search/term_filter.hpp" 
 
 namespace ir = iresearch;
 
@@ -69,6 +70,29 @@ class same_position_filter_test_case : public filter_test_case_base {
       ASSERT_FALSE(docs->next());
     }
 
+    // { a: 100 } - equal to 'by_term' 
+    {
+      ir::by_same_position query;
+      query.push_back("a", ir::ref_cast<ir::byte_type>(ir::string_ref("100")));
+
+      ir::by_term expected_query;
+      expected_query.field("a").term("100");
+      
+      auto prepared = query.prepare(*index);
+      auto expected_prepared = expected_query.prepare(*index);
+        
+      auto docs = prepared->execute(segment);
+      auto expected_docs = prepared->execute(segment);
+
+      ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), docs->value());
+      while (expected_docs->next()) {
+        ASSERT_TRUE(docs->next());
+        ASSERT_EQ(expected_docs->value(), docs->value());
+      }
+      ASSERT_FALSE(docs->next());
+      ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), docs->value());
+    }
+
     // { a: 100, b:30, c:6 }
     {
       ir::by_same_position q;
@@ -82,7 +106,6 @@ class same_position_filter_test_case : public filter_test_case_base {
       {
         auto docs = prepared->execute(segment);
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), docs->value());
-        //ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), docs->seek(ir::type_limits<ir::type_t::doc_id_t>::invalid()));
         ASSERT_TRUE(docs->next());
         expected_id = 6;
         ASSERT_TRUE(segment.document(docs->value(), visitor));
@@ -97,7 +120,6 @@ class same_position_filter_test_case : public filter_test_case_base {
       {
         auto docs = prepared->execute(segment);
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), docs->value());
-        //ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), docs->seek(ir::type_limits<ir::type_t::doc_id_t>::invalid()));
         ASSERT_EQ(7, docs->seek((ir::type_limits<ir::type_t::doc_id_t>::min)()));
         expected_id = 6;
         ASSERT_TRUE(segment.document(docs->value(), visitor));
@@ -106,6 +128,43 @@ class same_position_filter_test_case : public filter_test_case_base {
         ASSERT_TRUE(segment.document(docs->value(), visitor));
         ASSERT_EQ(28, docs->seek(8)); // seek backwards
         ASSERT_EQ(28, docs->seek(27)); // seek to same position
+        ASSERT_FALSE(docs->next());
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), docs->value());
+      }
+    }
+    
+    // { c: 8, b:80, a:700 }
+    {
+      ir::by_same_position q;
+      q.push_back("c", ir::ref_cast<ir::byte_type>(ir::string_ref("8")));
+      q.push_back("b", ir::ref_cast<ir::byte_type>(ir::string_ref("80")));
+      q.push_back("a", ir::ref_cast<ir::byte_type>(ir::string_ref("700")));
+
+      auto prepared = q.prepare(*index);
+
+      // next
+      {
+        auto docs = prepared->execute(segment);
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), docs->value());
+        ASSERT_TRUE(docs->next());
+        expected_id = 14;
+        ASSERT_TRUE(segment.document(docs->value(), visitor));
+        ASSERT_TRUE(docs->next());
+        expected_id = 91;
+        ASSERT_TRUE(segment.document(docs->value(), visitor));
+        ASSERT_FALSE(docs->next());
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), docs->value());
+      }
+
+      // seek
+      {
+        auto docs = prepared->execute(segment);
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), docs->value());
+        ASSERT_EQ(92, docs->seek(27));
+        expected_id = 91;
+        ASSERT_TRUE(segment.document(docs->value(), visitor));
+        ASSERT_EQ(92, docs->seek(8)); // seek backwards
+        ASSERT_EQ(92, docs->seek(27)); // seek to same position
         ASSERT_FALSE(docs->next());
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), docs->value());
       }
