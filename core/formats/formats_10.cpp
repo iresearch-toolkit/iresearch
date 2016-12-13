@@ -1939,7 +1939,7 @@ class reader final : public iresearch::columnstore_reader, util::noncopyable {
   // per thread read context
   struct read_context : util::noncopyable {
     DECLARE_SPTR(read_context);
-    
+
     static ptr make(const directory& dir, const std::string& name) {
       return std::make_shared<read_context>(dir.open(name));
     }
@@ -1947,8 +1947,14 @@ class reader final : public iresearch::columnstore_reader, util::noncopyable {
     explicit read_context(index_input::ptr&& stream)
       : stream(std::move(stream)) {
     }
-    read_context(read_context&&) = default;
-    
+
+    read_context(read_context&& other)
+      : cached_blocks(std::move(other.cached_blocks)),
+        encode_buf(std::move(other.encode_buf)),
+        decomp(std::move(other.decomp)),
+        stream(std::move(other.stream)) {
+    }
+
     std::deque<block> cached_blocks;
     bstring encode_buf; // 'read_compact' requires a temporary buffer
     decompressor decomp; // decompressor

@@ -74,7 +74,8 @@ void read_write_mutex::lock_read() {
 
   // yield if there is already a writer waiting
   if (exclusive_count_) {
-    while (std::cv_status::no_timeout == reader_cond_.wait_for(lock, std::chrono::milliseconds(1000)));
+    // wait for notification (possibly with writers waiting) or no more writers waiting
+    while (std::cv_status::timeout == reader_cond_.wait_for(lock, std::chrono::milliseconds(1000)) && exclusive_count_) {}
   }
 
   ++concurrent_count_;
@@ -82,10 +83,12 @@ void read_write_mutex::lock_read() {
 
 void read_write_mutex::lock_write() {
   SCOPED_LOCK_NAMED(mutex_, lock);
-  ++exclusive_count_; // mark mutext with writer-waiting state
+  ++exclusive_count_; // mark mutex with writer-waiting state
 
   // wait until lock is held exclusively by the current thread
-  while (concurrent_count_ && std::cv_status::no_timeout == writer_cond_.wait_for(lock, std::chrono::milliseconds(1000)));
+  while (concurrent_count_) {
+    writer_cond_.wait_for(lock, std::chrono::milliseconds(1000));
+  }
 
   --exclusive_count_;
   exclusive_owner_.store(std::this_thread::get_id());
@@ -130,12 +133,23 @@ void read_write_mutex::unlock() {
     return;
   }
 
-  // assume have read lock
-  SCOPED_LOCK(mutex_);
+  // ...........................................................................
+  // after here assume have read lock
+  // ...........................................................................
 
-  assert(concurrent_count_.load());
-  --concurrent_count_;
-  writer_cond_.notify_all(); // wake only writers since this is a reader
+  #ifdef IRESEARCH_DEBUG
+    auto count = --concurrent_count_;
+    assert(count != -1); // ensure decrement was for a positive number (i.e. not --0)
+  #else
+    --concurrent_count_;
+  #endif // IRESEARCH_DEBUG
+
+  TRY_SCOPED_LOCK_NAMED(mutex_, lock); // try to aquire mutex for use with cond
+
+  // wake only writers since this is a reader
+  // wake even without lock since writer may be waiting in lock_write() on cond
+  // the latter might also indicate a bug if deadlock occurs with SCOPED_LOCK()
+  writer_cond_.notify_all();
 }
 
 thread_pool::thread_pool(size_t max_threads /*= 0*/, size_t max_idle /*= 0*/):
