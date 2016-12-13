@@ -208,6 +208,10 @@ struct skip_state {
   uint32_t pay_pos{}; // payload size to skip before in new document block 
 }; // skip_state
 
+struct skip_context : skip_state {
+  size_t level{}; // skip level
+}; // skip level
+
 struct doc_state {
   const index_input* pos_in;
   const index_input* pay_in;
@@ -366,6 +370,7 @@ class doc_iterator : public iresearch::doc_iterator {
 
   std::vector<skip_state> skip_levels_;
   skip_reader skip_;
+  skip_context* skip_ctx_; // pointer to used skip context, will be used by skip reader
   iresearch::attributes attrs_;
   uint64_t enc_buf_[postings_writer::BLOCK_SIZE];
   doc_id_t docs_[postings_writer::BLOCK_SIZE]; // doc deltas
@@ -1005,8 +1010,8 @@ void doc_iterator::prepare( const flags& field,
 void doc_iterator::seek_to_block(doc_id_t target) {
   // check whether it make sense to use skip-list
   if (skip_levels_.front().doc < target && term_state_.docs_count > postings_writer::BLOCK_SIZE) {
-    skip_state last; // where block starts
-    size_t last_level = 0;
+    skip_context last; // where block starts
+    skip_ctx_ = &last;
 
     // init skip writer in lazy fashion
     if (!skip_) {
@@ -1015,7 +1020,9 @@ void doc_iterator::seek_to_block(doc_id_t target) {
 
       skip_.prepare(
         std::move(skip_in),
-        [&last, &last_level, this](size_t level, index_input& in) {
+        [this](size_t level, index_input& in) {
+          skip_state& last = *skip_ctx_;
+          auto& last_level = skip_ctx_->level;
           auto& next = skip_levels_[level];
 
           if (last_level > level) {
