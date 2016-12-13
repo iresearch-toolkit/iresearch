@@ -139,7 +139,7 @@ void read_write_mutex::unlock() {
 
   #ifdef IRESEARCH_DEBUG
     auto count = --concurrent_count_;
-    assert(count != -1); // ensure decrement was for a positive number (i.e. not --0)
+    assert(count != size_t(-1)); // ensure decrement was for a positive number (i.e. not --0)
   #else
     --concurrent_count_;
   #endif // IRESEARCH_DEBUG

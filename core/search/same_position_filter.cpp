@@ -59,7 +59,7 @@ class same_position_iterator final : public Conjunction {
     }
 
     next();
-    return value();
+    return this->value();
   }
 
  private:

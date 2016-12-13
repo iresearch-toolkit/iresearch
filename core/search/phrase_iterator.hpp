@@ -74,7 +74,7 @@ class phrase_iterator final : public Conjunction {
     } 
 
     next();
-    return value();
+    return this->value();
   }
 
  private:
