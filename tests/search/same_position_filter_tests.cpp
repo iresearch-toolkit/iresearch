@@ -57,7 +57,7 @@ class same_position_filter_test_case : public filter_test_case_base {
     auto& segment = *index->begin();
 
     uint64_t expected_id;
-    auto visitor = [&expected_id] (const ir::field_meta&, ir::data_input& in) {
+    ir::index_reader::document_visitor_f visitor = [&expected_id] (const ir::field_meta&, ir::data_input& in) {
       const auto actual_value = ir::read_zvlong(in);
       return actual_value == expected_id;
     };
