@@ -20,6 +20,8 @@
 
   #include "thread_utils.hpp"
 #else
+  #include <thread>
+
   #include <execinfo.h>
   #include <unistd.h> // for STDIN_FILENO/STDOUT_FILENO/STDERR_FILENO
 #endif
@@ -145,8 +147,8 @@ class logger_ctx: public iresearch::singleton<logger_ctx> {
 #else
   void stack_trace_posix() {
     auto& stream = iresearch::logger::stream();
-    static const size_t frames_max = 64; // arbitrary size
-    void* frames_buf[max_frames];
+    static const size_t frames_max = 128; // arbitrary size
+    void* frames_buf[frames_max];
     auto frames_count = backtrace(frames_buf, frames_max);
 
     if (frames_count < 1) {
@@ -154,14 +156,14 @@ class logger_ctx: public iresearch::singleton<logger_ctx> {
     }
 
     // skip current fn frame
-    ++frames_buf;
+    auto frames_buf_ptr = frames_buf + 1;
     --frames_count;
 
     int pipefd[2];
 
     if (pipe(pipefd)) {
       stream << "Failed to output stack trace to stream, redirecting stack trace to STDERR" << std::endl;
-      backtrace_symbols_fd(frames_buf, frames_count, STDERR_FILENO); // fallback to stderr
+      backtrace_symbols_fd(frames_buf_ptr, frames_count, STDERR_FILENO); // fallback to stderr
       return;
     }
 
