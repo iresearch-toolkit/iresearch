@@ -1456,7 +1456,8 @@ class index_test_case_base : public tests::index_test_base {
           ir::doc_id_t id = 0;
           gen.reset();
           while (doc = gen.next()) {
-            ASSERT_TRUE(reader(++id));
+            ++id;
+            ASSERT_TRUE(reader(id));
           }
         }
         

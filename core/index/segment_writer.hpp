@@ -75,12 +75,6 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   void reset(std::string seg_name);
 
  private:
-  struct norm_factor final : iresearch::serializer {
-    bool write(data_output& out) const override;
-
-    float_t value; // value to write
-  }; // norm_factor
-
   struct doc_header final : iresearch::serializer {
     bool write(data_output& out) const override;
 
@@ -113,18 +107,20 @@ class IRESEARCH_API segment_writer: util::noncopyable {
  
   // adds document attribute
   template<typename Attribute>
-  bool insert_attribute(doc_id_t doc_id, const Attribute& attr) {
+  bool insert_attribute(doc_id_t doc, const Attribute& attr) {
     REGISTER_TIMER_DETAILED();
-    auto* attr_serializer = static_cast<const serializer*>(attr.serializer());
-    bool success = true;
 
-    if (attr_serializer) {
-      success &= store_attribute(
-        doc_id, static_cast<const string_ref&>(attr.name()), *attr_serializer
-      );
+    auto& stream = this->stream(
+      doc, 
+      static_cast<const string_ref&>(attr.name())
+    );
+
+    if (!attr.write(stream)) {
+      stream.reset();
+      return false;
     }
 
-    return success;
+    return true;
   }
 
   // adds document field
@@ -158,11 +154,11 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     return success;
   }
 
+  columnstore_writer::column_output& stream(doc_id_t doc, const string_ref& name); // returns stream for storing attributes
   void finish(doc_id_t doc_id, const update_context& ctx); // finish document
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   doc_header header_; // stored document header
-  norm_factor norm_; // field normalization factor
   update_contexts docs_context_;
   document_mask docs_mask_; // invalid/removed doc_ids (e.g. partially indexed due to indexing failure)
   fields_data fields_;

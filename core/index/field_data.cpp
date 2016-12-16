@@ -402,14 +402,14 @@ void field_data::init(doc_id_t doc_id) {
   last_doc_ = doc_id;
 }
 
-bool field_data::write_norm(const serializer& value, columnstore_writer& writer) {
-  if (!norm_writer_) {
+data_output& field_data::norms(columnstore_writer& writer) {
+  if (!norms_) {
     auto handle = writer.push_column();
+    norms_ = std::move(handle.second);
     meta_.norm = handle.first;
-    norm_writer_ = std::move(handle.second);
   }
 
-  return norm_writer_(doc(), value);
+  return norms_(doc());
 }
 
 void field_data::new_term(

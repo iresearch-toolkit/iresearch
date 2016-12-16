@@ -591,7 +591,6 @@ class columnstore {
     }
 
     writer_ = std::move(writer);
-    column_.first = iresearch::type_limits<iresearch::type_t::field_id_t>::invalid();
   }
 
   ~columnstore() {
@@ -607,7 +606,7 @@ class columnstore {
       const iresearch::sub_reader& reader, 
       iresearch::field_id column, 
       const doc_id_map_t& doc_id_map) {
-    assert(column_.second);
+//    assert(column_.second);
 
     pdoc_id_map = &doc_id_map;
 
@@ -616,8 +615,7 @@ class columnstore {
         [this](iresearch::doc_id_t doc, iresearch::data_input& in) {
       return copy(doc, in);
     });
-  }
-
+  } 
   void reset() {
     if (!empty_) {
       column_ = writer_->push_column();
@@ -647,11 +645,13 @@ class columnstore {
 
     empty_ = false;
     value_->in = &in; // set value input stream
-    return column_.second(mapped_doc, *value_); // write value to new segment
+
+    // write value to new segment
+    return value_->write(column_.second(mapped_doc));
   }
 
   iresearch::columnstore_writer::ptr writer_;
-  iresearch::columnstore_writer::column_t column_;
+  iresearch::columnstore_writer::column_t column_{};
   binary_value* value_;
   const doc_id_map_t* pdoc_id_map;
   bool empty_{ false };

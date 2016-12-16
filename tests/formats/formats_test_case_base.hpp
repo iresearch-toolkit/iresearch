@@ -1139,22 +1139,6 @@ class format_test_case_base : public index_test_base {
     ir::fields_data fdata;
     ir::fields_meta fields;
 
-    struct string_serializer : iresearch::serializer {
-      bool write(data_output& out) const {
-        iresearch::write_string(out, value);
-        return true;
-      }
-
-      std::string value;
-    } string_writer;
-    
-    struct invalid_serializer : iresearch::serializer {
-      bool write(data_output& out) const {
-        iresearch::write_string(out, iresearch::string_ref("invalid_data"));
-        return false;
-      }
-    } invalid_writer;
-
     iresearch::field_id segment0_field0_id;
     iresearch::field_id segment0_field1_id;
     iresearch::field_id segment0_empty_column_id;
@@ -1230,27 +1214,67 @@ class format_test_case_base : public index_test_base {
       auto& field2_writer = field2.second;
       ASSERT_EQ(3, segment0_field2_id);
 
-      string_writer.value = "field0_doc0";
-      ASSERT_TRUE(field0_writer(0, string_writer)); // doc==0, column==field0
+      // column==field0
+      {
+        auto& stream = field0_writer(0);
+        ir::write_string(stream, ir::string_ref("field0_doc0")); // doc==0
+      }
 
-      // multivalued attribute
-      string_writer.value = "field1_doc0";
-      ASSERT_TRUE(field1_writer(0, string_writer)); // doc==0, column==field1
-      string_writer.value = "field1_doc0_1";
-      ASSERT_TRUE(field1_writer(0, string_writer)); // doc==0, column==field1
+      // column==field1, multivalued attribute
+      {
+        auto& stream = field1_writer(0); // doc==0
+        ir::write_string(stream, ir::string_ref("field1_doc0"));
+        ir::write_string(stream, ir::string_ref("field1_doc0_1"));
+      }
 
-      ASSERT_FALSE(field2_writer(0, invalid_writer)); // doc==0, column==field2
-      string_writer.value = "field2_doc1";
-      ASSERT_TRUE(field2_writer(1, string_writer));
+      // column==field2
+      {
+        // rollback
+        {
+          auto& stream = field2_writer(0); // doc==0
+          ir::write_string(stream, ir::string_ref("invalid_string"));
+          stream.reset(); // rollback changes
+        }
+        {
+          auto& stream = field2_writer(1); // doc==1
+          ir::write_string(stream, ir::string_ref("field2_doc1"));
+        }
+      }
 
-      string_writer.value = "field0_doc1";
-      ASSERT_FALSE(field0_writer(1, invalid_writer)); // doc==1, column==field0
+      // column==field0, rollback
+      {
+        auto& stream = field0_writer(1); // doc==1
+        ir::write_string(stream, ir::string_ref("field0_doc1"));
+        stream.reset();
+      }
 
-      string_writer.value = "field0_doc2";
-      ASSERT_TRUE(field0_writer(2, string_writer)); // doc==2, colum==field0
+      // column==field0
+      {
+        auto& stream = field0_writer(2); // doc==2
+        ir::write_string(stream, ir::string_ref("field0_doc2"));
+      }
 
-      string_writer.value = "field0_doc33";
-      ASSERT_TRUE(field0_writer(33, string_writer)); // doc==33, colum==field0
+      // column==field0
+      {
+        auto& stream = field0_writer(33); // doc==33
+        ir::write_string(stream, ir::string_ref("field0_doc33"));
+      }
+      
+      // column==field1, multivalued attribute
+      {
+        // Get stream by the same key. In this case only last written
+        // value(s) will be accessible via key 
+        // (e.g. 'field1_doc12_1', 'field1_doc12_2' in this case)
+        {
+          auto& stream = field1_writer(12); // doc==12
+          ir::write_string(stream, ir::string_ref("field12_doc1"));
+        }
+        {
+          auto& stream = field1_writer(12); // doc==12
+          ir::write_string(stream, ir::string_ref("field1_doc12_1"));
+          ir::write_string(stream, ir::string_ref("field1_doc12_2"));
+        }
+      }
 
       writer->flush();
     }
@@ -1272,24 +1296,44 @@ class format_test_case_base : public index_test_base {
       auto& field2_writer = field2.second;
       ASSERT_EQ(2, segment1_field2_id);
 
-      string_writer.value = "segment_2_field3_doc0";
-      ASSERT_TRUE(field2_writer(0, string_writer)); // doc==0, column==field3
+      // column==field3
+      {
+        auto& stream = field2_writer(0); // doc==0
+        ir::write_string(stream, ir::string_ref("segment_2_field3_doc0")); 
+      }
 
-      // multivalued attribute
-      string_writer.value = "segment_2_field1_doc0";
-      ASSERT_TRUE(field0_writer(0, string_writer)); // doc==0, column==field1
+      // column==field1, multivalued attribute
+      {
+        auto& stream = field0_writer(0); // doc==0
+        ir::write_string(stream, ir::string_ref("segment_2_field1_doc0")); 
+      }
 
-      string_writer.value = "segment_2_field2_doc0";
-      ASSERT_FALSE(field1_writer(0, invalid_writer)); // doc==0, column==field2
+      // column==field2, rollback
+      {
+        auto& stream = field1_writer(0);
+        ir::write_string(stream, ir::string_ref("segment_2_field2_doc0")); 
+        stream.reset(); // rollback
+      }
 
-      string_writer.value = "segment_2_field0_doc1";
-      ASSERT_FALSE(field2_writer(1, invalid_writer)); // doc==1, column==field3
+      // column==field3, rollback
+      {
+        auto& stream = field2_writer(1); // doc==1
+        ir::write_string(stream, ir::string_ref("segment_2_field0_doc1")); 
+        stream.reset(); // rollback
+      }
 
-      string_writer.value = "segment_2_field1_doc12";
-      ASSERT_TRUE(field0_writer(12, string_writer)); // doc==12, colum==field1
+      // colum==field1
+      {
+        auto& stream = field0_writer(12); // doc==12
+        ir::write_string(stream, ir::string_ref("segment_2_field1_doc12")); 
+      }
 
-      string_writer.value = "segment_2_field3_doc23";
-      ASSERT_TRUE(field2_writer(23, string_writer)); // doc==23, colum==field3
+      // colum==field3
+      {
+        auto& stream = field2_writer(23); // doc==23
+        ir::write_string(stream, ir::string_ref("segment_2_field3_doc23")); 
+        stream.reset(); // rollback
+      }
 
       writer->flush();
     }
@@ -1504,11 +1548,13 @@ class format_test_case_base : public index_test_base {
         iresearch::columnstore_reader::value_reader_f value_reader = [&calls_count, &expected_value1, &expected_value2] (iresearch::data_input& in) {
           ++calls_count;
 
-          if (expected_value1 != iresearch::read_string<std::string>(in)) {
+          const auto actual_value1 = iresearch::read_string<std::string>(in);
+          if (expected_value1 != actual_value1) {
             return false;
           }
           
-          if (expected_value2 != iresearch::read_string<std::string>(in)) {
+          const auto actual_value2 = iresearch::read_string<std::string>(in);
+          if (expected_value2 != actual_value2) {
             return false;
           }
 
@@ -1521,7 +1567,6 @@ class format_test_case_base : public index_test_base {
           return true;
         };
 
-
         auto column = reader->values(segment0_field1_id);
         
         // read compound column value
@@ -1530,6 +1575,14 @@ class format_test_case_base : public index_test_base {
         expected_value2 = "field1_doc0_1";
         calls_count = 0;
         ASSERT_TRUE(column(0, value_reader)); 
+        ASSERT_EQ(1, calls_count);
+
+        // read overwritten compund value
+        // check doc==12, column==field1
+        expected_value1 = "field1_doc12_1";
+        expected_value2 = "field1_doc12_2";
+        calls_count = 0;
+        ASSERT_TRUE(column(12, value_reader)); 
         ASSERT_EQ(1, calls_count);
 
         // read by invalid key

@@ -230,7 +230,12 @@ struct IRESEARCH_API stored_fields_reader {
 struct IRESEARCH_API columnstore_writer {
   DECLARE_SPTR(columnstore_writer);
 
-  typedef std::function<bool(doc_id_t, const serializer&)> values_writer_f;
+  struct column_output : data_output {
+    // resets stream to previous persisted state 
+    virtual void reset() = 0; 
+  }; // column_output
+
+  typedef std::function<column_output&(doc_id_t)> values_writer_f;
   typedef std::pair<field_id, values_writer_f> column_t;
 
   virtual ~columnstore_writer();

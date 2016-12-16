@@ -24,11 +24,6 @@
 
 NS_ROOT
 
-bool segment_writer::norm_factor::write(data_output& out) const {
-  write_zvfloat(out, value);
-  return true;
-}
-
 bool segment_writer::doc_header::write(data_output& out) const {
   return stored::write_header(out, doc_fields.begin(), doc_fields.end());
 }
@@ -87,11 +82,9 @@ bool segment_writer::store_field(
   return false;
 }
 
-bool segment_writer::store_attribute(
+columnstore_writer::column_output& segment_writer::stream(
     doc_id_t doc_id,
-    const string_ref& name,
-    const serializer& serializer
-) {
+    const string_ref& name) {
   REGISTER_TIMER_DETAILED();
   auto res = columns_.emplace(
     std::piecewise_construct,
@@ -111,17 +104,19 @@ bool segment_writer::store_attribute(
     key = hashed_string_ref(it->first.hash(), column.name);
   }
 
-  return column.handle.second(doc_id, serializer);
+  return column.handle.second(doc_id);
 }
 
 void segment_writer::finish(doc_id_t doc_id, const update_context& ctx) {
   REGISTER_TIMER_DETAILED();
 
   // write document normalization factors (for each field marked for normalization))
+  float_t value;
   for (auto* field : norm_fields_) {
-    norm_.value  = field->boost() / float_t(std::sqrt(double_t(field->size())));
-    if (norm_.value != norm::DEFAULT()) {
-      field->write_norm(norm_, *col_writer_);
+    value = field->boost() / float_t(std::sqrt(double_t(field->size())));
+    if (value != norm::DEFAULT()) {
+      auto& stream = field->norms(*col_writer_);
+      write_zvfloat(stream, value);
     }
   }
   norm_fields_.clear(); // clear normalized fields

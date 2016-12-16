@@ -313,7 +313,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
   class empty {
    public:
     const string_ref& name() const { return string_ref::nil; }
-    const iresearch::serializer* serializer() const { return nullptr; }
+    bool write(data_output&) const { return false; }
 
     static empty* instance() { return nullptr; }
 
