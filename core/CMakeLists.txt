@@ -485,22 +485,26 @@ if(MSVC)
  )
 endif()
 
-# setup CRT
+# setup MSVC specific compiler flags
 if(MSVC)
   target_compile_options(${IResearch_TARGET_NAME}-shared
     PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
+    PRIVATE "/EHa"
   )
 
   target_compile_options(${IResearch_TARGET_NAME}-static
     PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
+    PRIVATE "/EHa"
   )
 
   target_compile_options(${IResearch_TARGET_NAME}-shared-scrt
     PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
+    PRIVATE "/EHa"
   )
 
   target_compile_options(${IResearch_TARGET_NAME}-static-scrt
     PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
+    PRIVATE "/EHa"
   )
 endif()
 
@@ -539,12 +543,19 @@ if(MSVC)
  )
 endif()
 
+if (MSVC)
+  set(MSVC_ONLY_LIBRARIES "$<$<CONFIG:Debug>:Dbghelp.lib>")
+else()
+  set(MSVC_ONLY_LIBRARIES "")
+endif()
+
 target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${GCOV_LIBRARY}
   ${Boost_SHARED_sharedRT_LIBRARIES}
   ${Lz4_SHARED_LIB}
   ${Snowball_SHARED_LIB}
   ${DL_LIBRARY}
+  ${MSVC_ONLY_LIBRARIES}
 )
 
 target_link_libraries(${IResearch_TARGET_NAME}-static
@@ -552,6 +563,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
   ${Lz4_STATIC_LIB}
   ${Snowball_STATIC_LIB}
   ${DL_LIBRARY}
+  ${MSVC_ONLY_LIBRARIES}
 )
 
 # setup CRT
@@ -562,6 +574,7 @@ if(MSVC)
     ${Lz4_SHARED_LIB}
     ${Snowball_SHARED_LIB}
     ${DL_LIBRARY}
+    ${MSVC_ONLY_LIBRARIES}
   )
 
   target_link_libraries(${IResearch_TARGET_NAME}-static-scrt
@@ -569,7 +582,8 @@ if(MSVC)
     ${Lz4_STATIC_LIB}
     ${Snowball_STATIC_LIB}
     ${DL_LIBRARY}
- )
+    ${MSVC_ONLY_LIBRARIES}
+  )
 endif()
 
 if (MSVC)

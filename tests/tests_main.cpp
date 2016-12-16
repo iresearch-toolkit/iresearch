@@ -188,9 +188,7 @@ int test_base::initialize( int argc, char* argv[] ) {
   ::testing::InitGoogleTest( &argc_, argv_ ); 
 
   // suppress log messages since tests check error conditions
-  class null_buf_t: public std::basic_streambuf<char> {} null_buf;
-  std::ostream null_out(&null_buf);
-  iresearch::log_message::stream(null_out);
+  iresearch::logger::level(iresearch::logger::IRL_NONE);
 
   return RUN_ALL_TESTS();
 }

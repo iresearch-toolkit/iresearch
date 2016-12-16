@@ -1401,6 +1401,18 @@ document_mask_reader::~document_mask_reader() {}
 
 bool document_mask_reader::prepare(directory const& dir, segment_meta const& meta) {
   auto in_name = file_name<document_mask_writer>(meta);
+  bool exists;
+
+  // possible that the file does not exist since document_mask is optional
+  if (dir.exists(exists, in_name) && !exists) {
+    checksum_index_input<boost::crc_32_type> empty_in;
+
+    IR_INFO() << "Failed to open file, path: " << in_name;
+    in_.swap(empty_in);
+
+    return false;
+  }
+
   auto in = dir.open(in_name);
 
   if (!in) {
@@ -2030,6 +2042,14 @@ bool reader::prepare(const reader_state& state) {
 
   std::string filename;
   file_name(filename, name, writer::FORMAT_EXT);
+
+  bool exists;
+
+  // possible that the file does not exist since columnstore is optional
+  if (dir.exists(exists, filename) && !exists) {
+    IR_INFO() << "Failed to open file, path: " << filename;
+    return false;
+  }
 
   // open columstore stream
   auto stream = dir.open(filename);

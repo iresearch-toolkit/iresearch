@@ -91,7 +91,7 @@ class fs_lock : public index_lock {
 
       return true;
     } catch (...) {
-      IR_ERROR() << "Expcetion caught in " << __FUNCTION__;
+      IR_EXCEPTION();
     }
 
     return false;
@@ -140,7 +140,7 @@ class fs_index_output : public buffered_index_output {
     try {
       return fs_index_output::make<fs_index_output>(std::move(handle));
     } catch(...) {
-      IR_ERROR() << "Expcetion caught in " << __FUNCTION__;
+      IR_EXCEPTION();
     }
 
     return nullptr;
@@ -223,7 +223,7 @@ class fs_index_input : public buffered_index_input {
     try {
       return fs_index_input::make<fs_index_input>(std::move(handle));
     } catch(...) {
-      IR_ERROR() << "Expcetion caught in " << __FUNCTION__;
+      IR_EXCEPTION();
     }
 
     return nullptr;
@@ -358,7 +358,7 @@ index_output::ptr fs_directory::create(const std::string& name) NOEXCEPT {
 
     return nullptr;
   } catch(...) {
-    IR_ERROR() << "Expcetion caught in " << __FUNCTION__;
+    IR_EXCEPTION();
   }
 
   return nullptr;
@@ -398,7 +398,7 @@ bool fs_directory::remove(const std::string& name) NOEXCEPT {
 
     return path.remove();
   } catch (...) {
-    IR_ERROR() << "Expcetion caught in " << __FUNCTION__;
+    IR_EXCEPTION();
   }
 
   return false;
@@ -412,7 +412,7 @@ index_input::ptr fs_directory::open(const std::string& name) const NOEXCEPT {
 
     return fs_index_input::open(path.c_str());
   } catch(...) {
-    IR_ERROR() << "Expcetion caught in " << __FUNCTION__;
+    IR_EXCEPTION();
   }
 
   return nullptr;
@@ -430,7 +430,7 @@ bool fs_directory::rename(
 
     return src_path.rename(dst_path);
   } catch (...) {
-    IR_ERROR() << "Expcetion caught in " << __FUNCTION__;
+    IR_EXCEPTION();
   }
 
   return false;
@@ -464,7 +464,6 @@ bool fs_directory::visit(const directory::visitor_f& visitor) const {
 }
 
 bool fs_directory::sync(const std::string& name) NOEXCEPT {
-
   try {
     utf8_path path;
 
@@ -482,7 +481,7 @@ bool fs_directory::sync(const std::string& name) NOEXCEPT {
     #endif
                << " path: " << path.utf8();
   } catch (...) {
-    IR_ERROR() << "Expcetion caught in " << __FUNCTION__;
+    IR_EXCEPTION();
   }
 
   return false;

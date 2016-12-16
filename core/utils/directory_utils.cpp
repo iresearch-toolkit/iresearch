@@ -241,7 +241,7 @@ index_output::ptr tracking_directory::create(
   try {
     files_.emplace(name);
   } catch (...) {
-    IR_ERROR() << "Expcetion caught in " << __FUNCTION__;
+    IR_EXCEPTION();
   }
 
   auto result = impl_.create(name);
@@ -253,7 +253,7 @@ index_output::ptr tracking_directory::create(
   try {
     files_.erase(name); // revert change
   } catch (...) {
-    IR_ERROR() << "Expcetion caught in " << __FUNCTION__ ;
+    IR_EXCEPTION();
   }
 
   return nullptr;
@@ -294,7 +294,7 @@ index_input::ptr tracking_directory::open(
     try {
       files_.emplace(name);
     } catch (...) {
-      IR_ERROR() << "Expcetion caught in " << __FUNCTION__;
+      IR_EXCEPTION();
 
       return nullptr;
     }
@@ -309,7 +309,7 @@ bool tracking_directory::remove(const std::string& name) NOEXCEPT {
   try {
     files_.erase(name);
   } catch (...) {
-    IR_ERROR() << "Expcetion caught in " << __FUNCTION__;
+    IR_EXCEPTION();
     // ignore failure since removal from impl_ was sucessful
   }
 
@@ -330,7 +330,7 @@ bool tracking_directory::rename(
 
     return true;
   } catch (...) {
-    IR_ERROR() << "Expcetion caught in " << __FUNCTION__;
+    IR_EXCEPTION();
     impl_.rename(dst, src); // revert
   }
 
@@ -343,7 +343,7 @@ bool tracking_directory::swap_tracked(file_set& other) NOEXCEPT {
 
     return true;
   } catch (...) { // may throw exceptions until C++17
-    IR_ERROR() << "Expcetion caught in " << __FUNCTION__;
+    IR_EXCEPTION();
   }
 
   return false;
@@ -410,7 +410,7 @@ index_output::ptr ref_tracking_directory::create(
 
     return result;
   } catch (...) {
-    IR_ERROR() << "Expcetion caught in " << __FUNCTION__;
+    IR_EXCEPTION();
   }
 
   return nullptr;
@@ -457,7 +457,7 @@ index_input::ptr ref_tracking_directory::open(
 
       refs_.emplace(*ref, std::move(ref));
     } catch (...) {
-      IR_ERROR() << "Expcetion caught in " << __FUNCTION__;
+      IR_EXCEPTION();
 
       return nullptr;
     }
@@ -474,7 +474,7 @@ bool ref_tracking_directory::remove(const std::string& name) NOEXCEPT {
 
     refs_.erase(name);
   } catch (...) {
-    IR_ERROR() << "Expcetion caught in " << __FUNCTION__;
+    IR_EXCEPTION();
     // ignore failure since removal from impl_ was sucessful
   }
 
@@ -497,7 +497,7 @@ bool ref_tracking_directory::rename(
 
     return true;
   } catch (...) {
-    IR_ERROR() << "Expcetion caught in " << __FUNCTION__;
+    IR_EXCEPTION();
     impl_.rename(dst, src); // revert
   }
 
