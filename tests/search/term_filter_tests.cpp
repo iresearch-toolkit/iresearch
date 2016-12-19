@@ -154,24 +154,24 @@ protected:
            const std::string& name,
            const tests::json::json_value& data) {
           if (data.quoted) {
-            doc.add(new templates::string_field(
+            doc.insert(std::make_shared<templates::string_field>(
               ir::string_ref(name),
               ir::string_ref(data.value),
               true, true
             ));
           } else if ("null" == data.value) {
-            doc.add(new tests::binary_field());
-            auto& field = (doc.end() - 1).as<tests::binary_field>();
+            doc.insert(std::make_shared<tests::binary_field>());
+            auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
             field.name(iresearch::string_ref(name));
             field.value(ir::null_token_stream::value_null());
           } else if ("true" == data.value) {
-            doc.add(new tests::binary_field());
-            auto& field = (doc.end() - 1).as<tests::binary_field>();
+            doc.insert(std::make_shared<tests::binary_field>());
+            auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
             field.name(iresearch::string_ref(name));
             field.value(ir::boolean_token_stream::value_true());
           } else if ("false" == data.value) {
-            doc.add(new tests::binary_field());
-            auto& field = (doc.end() - 1).as<tests::binary_field>();
+            doc.insert(std::make_shared<tests::binary_field>());
+            auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
             field.name(iresearch::string_ref(name));
             field.value(ir::boolean_token_stream::value_true());
           } else {
@@ -179,8 +179,8 @@ protected:
             double dValue = strtod(data.value.c_str(), &czSuffix);
             if (!czSuffix[0]) {
               // 'value' can be interpreted as a double
-              doc.add(new tests::double_field());
-              auto& field = (doc.end() - 1).as<tests::double_field>();
+              doc.insert(std::make_shared<tests::double_field>());
+              auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
               field.name(iresearch::string_ref(name));
               field.value(dValue);
             }
@@ -188,23 +188,23 @@ protected:
             float fValue = strtof(data.value.c_str(), &czSuffix);
             if (!czSuffix[0]) {
               // 'value' can be interpreted as a float 
-              doc.add(new tests::float_field());
-              auto& field = (doc.end() - 1).as<tests::float_field>();
+              doc.insert(std::make_shared<tests::float_field>());
+              auto& field = (doc.indexed.end() - 1).as<tests::float_field>();
               field.name(iresearch::string_ref(name));
               field.value(fValue);
             }
 
             uint64_t lValue = uint64_t(std::ceil(dValue));
             {
-              doc.add(new tests::long_field());
-              auto& field = (doc.end() - 1).as<tests::long_field>();
+              doc.insert(std::make_shared<tests::long_field>());
+              auto& field = (doc.indexed.end() - 1).as<tests::long_field>();
               field.name(iresearch::string_ref(name));
               field.value(lValue);
             }
 
             {
-              doc.add(new tests::int_field());
-              auto& field = (doc.end() - 1).as<tests::int_field>();
+              doc.insert(std::make_shared<tests::int_field>());
+              auto& field = (doc.indexed.end() - 1).as<tests::int_field>();
               field.name(iresearch::string_ref(name));
               field.value(int32_t(lValue));
             }

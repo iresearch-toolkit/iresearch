@@ -108,29 +108,33 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
   tests::document doc3; // doc_string, doc_int
   tests::document doc4; // doc_string, another_column
 
-  doc1.add(new tests::int_field()); {
-    auto& field = doc1.back<tests::int_field>();
+  doc1.insert(std::make_shared<tests::int_field>(), true, true); {
+    auto& field = doc1.indexed.back<tests::int_field>();
     field.name(iresearch::string_ref("doc_int"));
     field.value(42 * 1);
   }
-  doc1.add(new tests::templates::string_field("doc_string", string1, true, true));
+  doc1.insert(
+    std::make_shared<tests::templates::string_field>("doc_string", string1, true, true)
+    , true, true
+  );
 
-  doc2.add(new tests::templates::string_field("doc_string", string2, true, true));
-  doc2.add(new tests::int_field()); {
-    auto& field = doc2.back<tests::int_field>();
+  doc2.insert(std::make_shared<tests::templates::string_field>("doc_string", string2, true, true), true, true);
+  doc2.insert(std::make_shared<tests::int_field>(), true, true); 
+  {
+    auto& field = doc2.indexed.back<tests::int_field>();
     field.name(iresearch::string_ref("doc_int"));
     field.value(42 * 2);
   }
   
-  doc3.add(new tests::templates::string_field("doc_string", string3, true, true));
-  doc3.add(new tests::int_field()); {
-    auto& field = doc3.back<tests::int_field>();
+  doc3.insert(std::make_shared<tests::templates::string_field>("doc_string", string3, true, true), true, true);
+  doc3.insert(std::make_shared<tests::int_field>(), true, true); {
+    auto& field = doc3.indexed.back<tests::int_field>();
     field.name(iresearch::string_ref("doc_int"));
     field.value(42 * 3);
   }
   
-  doc4.add(new tests::templates::string_field("doc_string", string4, true, true));
-  doc4.add(new tests::templates::string_field("another_column", "another_value", true, true));
+  doc4.insert(std::make_shared<tests::templates::string_field>("doc_string", string4, true, true), true, true);
+  doc4.insert(std::make_shared<tests::templates::string_field>("another_column", "another_value", true, true), true, true);
   
   iresearch::version10::format codec;
   iresearch::format::ptr codec_ptr(&codec, [](iresearch::format*)->void{});
@@ -140,11 +144,11 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
   {
     auto query_doc4 = iresearch::iql::query_builder().build("doc_string==string4_data", std::locale::classic());
     auto writer = iresearch::index_writer::make(dir, codec_ptr, iresearch::OM_CREATE);
-    ASSERT_TRUE(writer->insert(doc1.end(), doc1.end(), doc1.begin(), doc1.end()));
-    ASSERT_TRUE(writer->insert(doc3.end(), doc3.end(), doc3.begin(), doc3.end()));
+    ASSERT_TRUE(writer->insert(doc1.indexed.end(), doc1.indexed.end(), doc1.stored.begin(), doc1.stored.end()));
+    ASSERT_TRUE(writer->insert(doc3.indexed.end(), doc3.indexed.end(), doc3.stored.begin(), doc3.stored.end()));
     writer->commit();
-    ASSERT_TRUE(writer->insert(doc2.end(), doc2.end(), doc2.begin(), doc2.end()));
-    ASSERT_TRUE(writer->insert(doc4.begin(), doc4.end(), doc4.begin(), doc4.end()));
+    ASSERT_TRUE(writer->insert(doc2.indexed.end(), doc2.indexed.end(), doc2.stored.begin(), doc2.stored.end()));
+    ASSERT_TRUE(writer->insert(doc4.indexed.begin(), doc4.indexed.end(), doc4.stored.begin(), doc4.stored.end()));
     writer->commit();
     writer->remove(std::move(query_doc4.filter));
     writer->commit();
@@ -526,28 +530,30 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
   tests::document doc3; // doc_string, doc_int
   tests::document doc4; // doc_string
 
-  doc1.add(new tests::int_field()); {
-    auto& field = doc1.back<tests::int_field>();
+  doc1.insert(std::make_shared<tests::int_field>()); 
+  {
+    auto& field = doc1.indexed.back<tests::int_field>();
     field.name(iresearch::string_ref("doc_int"));
     field.value(42 * 1);
   }
-  doc1.add(new tests::templates::string_field("doc_string", string1, true, true));
+  doc1.insert(std::make_shared<tests::templates::string_field>("doc_string", string1, true, true));
 
-  doc2.add(new tests::templates::string_field("doc_string", string2, true, true));
-  doc2.add(new tests::int_field()); {
-    auto& field = doc2.back<tests::int_field>();
+  doc2.insert(std::make_shared<tests::templates::string_field>("doc_string", string2, true, true));
+  doc2.insert(std::make_shared<tests::int_field>()); {
+    auto& field = doc2.indexed.back<tests::int_field>();
     field.name(iresearch::string_ref("doc_int"));
     field.value(42 * 2);
   }
   
-  doc3.add(new tests::templates::string_field("doc_string", string3, true, true));
-  doc3.add(new tests::int_field()); {
-    auto& field = doc3.back<tests::int_field>();
+  doc3.insert(std::make_shared<tests::templates::string_field>("doc_string", string3, true, true));
+  doc3.insert(std::make_shared<tests::int_field>()); 
+  {
+    auto& field = doc3.indexed.back<tests::int_field>();
     field.name(iresearch::string_ref("doc_int"));
     field.value(42 * 3);
   }
   
-  doc4.add(new tests::templates::string_field("doc_string", string4, true, true));
+  doc4.insert(std::make_shared<tests::templates::string_field>("doc_string", string4, true, true));
   
   iresearch::version10::format codec;
   iresearch::format::ptr codec_ptr(&codec, [](iresearch::format*)->void{});
@@ -556,11 +562,11 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
   // populate directory
   {
     auto writer = iresearch::index_writer::make(dir, codec_ptr, iresearch::OM_CREATE);
-    ASSERT_TRUE(writer->insert(doc1.end(), doc1.end(), doc1.begin(), doc1.end()));
-    ASSERT_TRUE(writer->insert(doc3.end(), doc3.end(), doc3.begin(), doc3.end()));
+    ASSERT_TRUE(writer->insert(doc1.indexed.end(), doc1.indexed.end(), doc1.stored.begin(), doc1.stored.end()));
+    ASSERT_TRUE(writer->insert(doc3.indexed.end(), doc3.indexed.end(), doc3.stored.begin(), doc3.stored.end()));
     writer->commit();
-    ASSERT_TRUE(writer->insert(doc2.end(), doc2.end(), doc2.begin(), doc2.end()));
-    ASSERT_TRUE(writer->insert(doc4.end(), doc4.end(), doc4.begin(), doc4.end()));
+    ASSERT_TRUE(writer->insert(doc2.indexed.end(), doc2.indexed.end(), doc2.stored.begin(), doc2.stored.end()));
+    ASSERT_TRUE(writer->insert(doc4.indexed.end(), doc4.indexed.end(), doc4.stored.begin(), doc4.stored.end()));
     writer->commit();
     writer->close();
   }
@@ -912,103 +918,115 @@ TEST_F(merge_writer_tests, test_merge_writer) {
   tests::document doc3;
   tests::document doc4;
 
-  doc1.add(new tests::binary_field()); {
-    auto& field = doc1.back<tests::binary_field>();
+  doc1.insert(std::make_shared<tests::binary_field>()); {
+    auto& field = doc1.indexed.back<tests::binary_field>();
     field.name(iresearch::string_ref("doc_bytes"));
     field.value(bytes1);
     field.features().add<iresearch::norm>();
     field.boost(1.5f);
   }
-  doc2.add(new tests::binary_field()); {
-    auto& field = doc2.back<tests::binary_field>();
+  doc2.insert(std::make_shared<tests::binary_field>()); {
+    auto& field = doc2.indexed.back<tests::binary_field>();
     field.name(iresearch::string_ref("doc_bytes"));
     field.value(bytes2);
   }
-  doc3.add(new tests::binary_field()); {
-    auto& field = doc3.back<tests::binary_field>();
+  doc3.insert(std::make_shared<tests::binary_field>()); {
+    auto& field = doc3.indexed.back<tests::binary_field>();
     field.name(iresearch::string_ref("doc_bytes"));
     field.value(bytes3);
     field.features().add<iresearch::norm>();
     field.boost(2.5f);
   }
-  doc1.add(new tests::double_field()); {
-    auto& field = doc1.back<tests::double_field>();
+  doc1.insert(std::make_shared<tests::double_field>()); {
+    auto& field = doc1.indexed.back<tests::double_field>();
     field.name(iresearch::string_ref("doc_double"));
     field.value(2.718281828 * 1);
   }
-  doc2.add(new tests::double_field()); {
-    auto& field = doc2.back<tests::double_field>();
+  doc2.insert(std::make_shared<tests::double_field>()); {
+    auto& field = doc2.indexed.back<tests::double_field>();
     field.name(iresearch::string_ref("doc_double"));
     field.value(2.718281828 * 2);
   }
-  doc3.add(new tests::double_field()); {
-    auto& field = doc3.back<tests::double_field>();
+  doc3.insert(std::make_shared<tests::double_field>()); {
+    auto& field = doc3.indexed.back<tests::double_field>();
     field.name(iresearch::string_ref("doc_double"));
     field.value(2.718281828 * 3);
   }
-  doc1.add(new tests::float_field()); {
-    auto& field = doc1.back<tests::float_field>();
+  doc1.insert(std::make_shared<tests::float_field>()); {
+    auto& field = doc1.indexed.back<tests::float_field>();
     field.name(iresearch::string_ref("doc_float"));
     field.value(3.1415926535f * 1);
   }
-  doc2.add(new tests::float_field()); {
-    auto& field = doc2.back<tests::float_field>();
+  doc2.insert(std::make_shared<tests::float_field>()); {
+    auto& field = doc2.indexed.back<tests::float_field>();
     field.name(iresearch::string_ref("doc_float"));
     field.value(3.1415926535f * 2);
   }
-  doc3.add(new tests::float_field()); {
-    auto& field = doc3.back<tests::float_field>();
+  doc3.insert(std::make_shared<tests::float_field>()); {
+    auto& field = doc3.indexed.back<tests::float_field>();
     field.name(iresearch::string_ref("doc_float"));
     field.value(3.1415926535f * 3);
   }
-  doc1.add(new tests::int_field()); {
-    auto& field = doc1.back<tests::int_field>();
+  doc1.insert(std::make_shared<tests::int_field>()); {
+    auto& field = doc1.indexed.back<tests::int_field>();
     field.name(iresearch::string_ref("doc_int"));
     field.value(42 * 1);
   }
-  doc2.add(new tests::int_field()); {
-    auto& field = doc2.back<tests::int_field>();
+  doc2.insert(std::make_shared<tests::int_field>()); {
+    auto& field = doc2.indexed.back<tests::int_field>();
     field.name(iresearch::string_ref("doc_int"));
     field.value(42 * 2);
   }
-  doc3.add(new tests::int_field()); {
-    auto& field = doc3.back<tests::int_field>();
+  doc3.insert(std::make_shared<tests::int_field>()); {
+    auto& field = doc3.indexed.back<tests::int_field>();
     field.name(iresearch::string_ref("doc_int"));
     field.value(42 * 3);
   }
-  doc1.add(new tests::long_field()); {
-    auto& field = doc1.back<tests::long_field>();
+  doc1.insert(std::make_shared<tests::long_field>()); {
+    auto& field = doc1.indexed.back<tests::long_field>();
     field.name(iresearch::string_ref("doc_long"));
     field.value(12345 * 1);
   }
-  doc2.add(new tests::long_field()); {
-    auto& field = doc2.back<tests::long_field>();
+  doc2.insert(std::make_shared<tests::long_field>()); {
+    auto& field = doc2.indexed.back<tests::long_field>();
     field.name(iresearch::string_ref("doc_long"));
     field.value(12345 * 2);
   }
-  doc3.add(new tests::long_field()); {
-    auto& field = doc3.back<tests::long_field>();
+  doc3.insert(std::make_shared<tests::long_field>()); {
+    auto& field = doc3.indexed.back<tests::long_field>();
     field.name(iresearch::string_ref("doc_long"));
     field.value(12345 * 3);
   }
-  doc1.add(new tests::templates::string_field("doc_string", string1, true, true));
-  doc2.add(new tests::templates::string_field("doc_string", string2, true, true));
-  doc3.add(new tests::templates::string_field("doc_string", string3, true, true));
-  doc4.add(new tests::templates::string_field("doc_string", string4, true, true));
-  doc1.add(new tests::templates::text_field<iresearch::string_ref>("doc_text", text1, true));
-  doc2.add(new tests::templates::text_field<iresearch::string_ref>("doc_text", text2, true));
-  doc3.add(new tests::templates::text_field<iresearch::string_ref>("doc_text", text3, true));
+  doc1.insert(std::make_shared<tests::templates::string_field>("doc_string", string1, true, true));
+  doc2.insert(std::make_shared<tests::templates::string_field>("doc_string", string2, true, true));
+  doc3.insert(std::make_shared<tests::templates::string_field>("doc_string", string3, true, true));
+  doc4.insert(std::make_shared<tests::templates::string_field>("doc_string", string4, true, true));
+  doc1.insert(std::make_shared<tests::templates::text_field<iresearch::string_ref>>("doc_text", text1, true), true, false);
+  doc2.insert(std::make_shared<tests::templates::text_field<iresearch::string_ref>>("doc_text", text2, true), true, false);
+  doc3.insert(std::make_shared<tests::templates::text_field<iresearch::string_ref>>("doc_text", text3, true), true, false);
 
   // populate directory
   {
     auto query_doc4 = iresearch::iql::query_builder().build("doc_string==string4_data", std::locale::classic());
     auto writer = iresearch::index_writer::make(dir, codec_ptr, iresearch::OM_CREATE);
 
-    ASSERT_TRUE(writer->insert(doc1.begin(), doc1.end()));
-    ASSERT_TRUE(writer->insert(doc2.begin(), doc2.end()));
+    ASSERT_TRUE(writer->insert(
+      doc1.indexed.begin(), doc1.indexed.end(),
+      doc1.stored.begin(), doc1.stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc2.indexed.begin(), doc2.indexed.end(),
+      doc2.stored.begin(), doc2.stored.end()
+    ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(doc3.begin(), doc3.end()));
-    ASSERT_TRUE(writer->insert(doc4.begin(), doc4.end()));
+    ASSERT_TRUE(writer->insert(
+      doc3.indexed.begin(), doc3.indexed.end(),
+      doc3.stored.begin(), doc3.stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc4.indexed.begin(), doc4.indexed.end(),
+      doc4.stored.begin(), doc4.stored.end()
+    ));
     writer->commit();
     writer->remove(std::move(query_doc4.filter));
     writer->commit();
@@ -1310,47 +1328,41 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     // validate documents
     // ...........................................................................
     std::unordered_set<iresearch::bytes_ref> expected_bytes;
-    std::unordered_set<double> expected_double;
-    std::unordered_set<float> expected_float;
-    std::unordered_set<int> expected_int;
-    std::unordered_set<int64_t> expected_long;
-    std::unordered_set<std::string> expected_string;
-    iresearch::index_reader::document_visitor_f visitor = 
-      [&expected_bytes, &expected_double, &expected_float, &expected_int, &expected_long, &expected_string] 
-      (const iresearch::field_meta& field, data_input& in) {
-
-      if (field.name == "doc_bytes") { 
-        auto value = iresearch::read_string<iresearch::bstring>(in);
-        return size_t(1) == expected_bytes.erase(value);
-      }
-      
-      if (field.name == "doc_double") { 
-        auto value = iresearch::read_zvdouble(in);
-        return size_t(1) == expected_double.erase(value);
-      }
-      
-      if (field.name == "doc_float") { 
-        auto value = iresearch::read_zvfloat(in);
-        return size_t(1) == expected_float.erase(value);
-      }
-      
-      if (field.name == "doc_int") { 
-        auto value = iresearch::read_zvint(in);
-        return size_t(1) == expected_int.erase(value);
-      }
-      
-      if (field.name == "doc_long") { 
-        auto value = iresearch::read_zvlong(in);
-        return size_t(1) == expected_long.erase(value);
-      }
-      
-      if (field.name == "doc_string") { 
-        auto value = iresearch::read_string<std::string>(in);
-        return size_t(1) == expected_string.erase(value);
-      }
-
-      return false;
+    iresearch::columnstore_reader::value_reader_f bytes_visitor = [&expected_bytes] (data_input& in) {
+      const auto value = iresearch::read_string<iresearch::bstring>(in);
+      return size_t(1) == expected_bytes.erase(value);
     };
+    auto bytes_values = segment.values("doc_bytes", bytes_visitor);
+    std::unordered_set<double> expected_double;
+    iresearch::columnstore_reader::value_reader_f double_visitor = [&expected_double] (data_input& in) {
+      const auto value = iresearch::read_zvdouble(in);
+      return size_t(1) == expected_double.erase(value);
+    };
+    auto double_values = segment.values("doc_double", double_visitor);
+    std::unordered_set<float> expected_float;
+    iresearch::columnstore_reader::value_reader_f float_visitor = [&expected_float] (data_input& in) {
+      const auto value = iresearch::read_zvfloat(in);
+      return size_t(1) == expected_float.erase(value);
+    };
+    auto float_values = segment.values("doc_float", float_visitor);
+    std::unordered_set<int> expected_int;
+    iresearch::columnstore_reader::value_reader_f int_visitor = [&expected_int] (data_input& in) {
+      const auto value = iresearch::read_zvint(in);
+      return size_t(1) == expected_int.erase(value);
+    };
+    auto int_values = segment.values("doc_int", int_visitor);
+    std::unordered_set<int64_t> expected_long;
+    iresearch::columnstore_reader::value_reader_f long_visitor = [&expected_long] (data_input& in) {
+      const auto value = iresearch::read_zvlong(in);
+      return size_t(1) == expected_long.erase(value);
+    };
+    auto long_values = segment.values("doc_long", long_visitor);
+    std::unordered_set<std::string> expected_string;
+    iresearch::columnstore_reader::value_reader_f string_visitor = [&expected_string] (data_input& in) {
+      auto value = iresearch::read_string<std::string>(in);
+      return size_t(1) == expected_string.erase(value);
+    };
+    auto string_values = segment.values("doc_string", string_visitor);
 
     expected_bytes = { iresearch::bytes_ref(bytes1), iresearch::bytes_ref(bytes2) };
     expected_double = { 2.718281828 * 1, 2.718281828 * 2 };
@@ -1361,7 +1373,13 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
     // can't have more docs then highest doc_id
     for (size_t i = 0, count = segment.docs_count(); i < count; ++i) {
-      ASSERT_TRUE(segment.document(iresearch::doc_id_t((iresearch::type_limits<iresearch::type_t::doc_id_t>::min)() + i), visitor));
+      const auto doc = iresearch::doc_id_t((iresearch::type_limits<iresearch::type_t::doc_id_t>::min)() + i);
+      ASSERT_TRUE(bytes_values(doc));
+      ASSERT_TRUE(double_values(doc));
+      ASSERT_TRUE(float_values(doc));
+      ASSERT_TRUE(int_values(doc));
+      ASSERT_TRUE(long_values(doc));
+      ASSERT_TRUE(string_values(doc));
     }
 
     ASSERT_TRUE(expected_bytes.empty());
@@ -1634,47 +1652,41 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     // validate documents
     // ...........................................................................
     std::unordered_set<iresearch::bytes_ref> expected_bytes;
-    std::unordered_set<double> expected_double;
-    std::unordered_set<float> expected_float;
-    std::unordered_set<int> expected_int;
-    std::unordered_set<int64_t> expected_long;
-    std::unordered_set<std::string> expected_string;
-    iresearch::index_reader::document_visitor_f visitor = 
-      [&expected_bytes, &expected_double, &expected_float, &expected_int, &expected_long, &expected_string] 
-      (const iresearch::field_meta& field, data_input& in) {
-
-      if (field.name == "doc_bytes") { 
-        auto value = iresearch::read_string<iresearch::bstring>(in);
-        return size_t(1) == expected_bytes.erase(value);
-      }
-      
-      if (field.name == "doc_double") { 
-        auto value = iresearch::read_zvdouble(in);
-        return size_t(1) == expected_double.erase(value);
-      }
-      
-      if (field.name == "doc_float") { 
-        auto value = iresearch::read_zvfloat(in);
-        return size_t(1) == expected_float.erase(value);
-      }
-      
-      if (field.name == "doc_int") { 
-        auto value = iresearch::read_zvint(in);
-        return size_t(1) == expected_int.erase(value);
-      }
-      
-      if (field.name == "doc_long") { 
-        auto value = iresearch::read_zvlong(in);
-        return size_t(1) == expected_long.erase(value);
-      }
-      
-      if (field.name == "doc_string") { 
-        auto value = iresearch::read_string<std::string>(in);
-        return 1 == expected_string.erase(value);
-      }
-
-      return false;
+    iresearch::columnstore_reader::value_reader_f bytes_visitor = [&expected_bytes] (data_input& in) {
+      const auto value = iresearch::read_string<iresearch::bstring>(in);
+      return size_t(1) == expected_bytes.erase(value);
     };
+    auto bytes_values = segment.values("doc_bytes", bytes_visitor);
+    std::unordered_set<double> expected_double;
+    iresearch::columnstore_reader::value_reader_f double_visitor = [&expected_double] (data_input& in) {
+      const auto value = iresearch::read_zvdouble(in);
+      return size_t(1) == expected_double.erase(value);
+    };
+    auto double_values = segment.values("doc_double", double_visitor);
+    std::unordered_set<float> expected_float;
+    iresearch::columnstore_reader::value_reader_f float_visitor = [&expected_float] (data_input& in) {
+      const auto value = iresearch::read_zvfloat(in);
+      return size_t(1) == expected_float.erase(value);
+    };
+    auto float_values = segment.values("doc_float", float_visitor);
+    std::unordered_set<int> expected_int;
+    iresearch::columnstore_reader::value_reader_f int_visitor = [&expected_int] (data_input& in) {
+      const auto value = iresearch::read_zvint(in);
+      return size_t(1) == expected_int.erase(value);
+    };
+    auto int_values = segment.values("doc_int", int_visitor);
+    std::unordered_set<int64_t> expected_long;
+    iresearch::columnstore_reader::value_reader_f long_visitor = [&expected_long] (data_input& in) {
+      const auto value = iresearch::read_zvlong(in);
+      return size_t(1) == expected_long.erase(value);
+    };
+    auto long_values = segment.values("doc_long", long_visitor);
+    std::unordered_set<std::string> expected_string;
+    iresearch::columnstore_reader::value_reader_f string_visitor = [&expected_string] (data_input& in) {
+      auto value = iresearch::read_string<std::string>(in);
+      return size_t(1) == expected_string.erase(value);
+    };
+    auto string_values = segment.values("doc_string", string_visitor);
 
     expected_bytes = { iresearch::bytes_ref(bytes3) };
     expected_double = { 2.718281828 * 3 };
@@ -1685,7 +1697,13 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
     // can't have more docs then highest doc_id
     for (size_t i = 0, count = segment.docs_count(); i < count; ++i) {
-      ASSERT_TRUE(segment.document(iresearch::doc_id_t((iresearch::type_limits<iresearch::type_t::doc_id_t>::min)() + i), visitor));
+      const auto doc = iresearch::doc_id_t((iresearch::type_limits<iresearch::type_t::doc_id_t>::min)() + i);
+      bytes_values(doc);
+      double_values(doc);
+      float_values(doc);
+      int_values(doc);
+      long_values(doc);
+      ASSERT_TRUE(string_values(doc));
     }
 
     ASSERT_TRUE(expected_bytes.empty());
@@ -2020,47 +2038,41 @@ TEST_F(merge_writer_tests, test_merge_writer) {
   // validate documents
   // ...........................................................................
   std::unordered_set<iresearch::bytes_ref> expected_bytes;
-  std::unordered_set<double> expected_double;
-  std::unordered_set<float> expected_float;
-  std::unordered_set<int> expected_int;
-  std::unordered_set<int64_t> expected_long;
-  std::unordered_set<std::string> expected_string;
-  iresearch::index_reader::document_visitor_f visitor =
-    [&expected_bytes, &expected_double, &expected_float, &expected_int, &expected_long, &expected_string]
-  (const iresearch::field_meta& field, data_input& in) {
-
-    if (field.name == "doc_bytes") {
-      auto value = iresearch::read_string<iresearch::bstring>(in);
-      return size_t(1) == expected_bytes.erase(value);
-    }
-
-    if (field.name == "doc_double") {
-      auto value = iresearch::read_zvdouble(in);
-      return size_t(1) == expected_double.erase(value);
-    }
-
-    if (field.name == "doc_float") {
-      auto value = iresearch::read_zvfloat(in);
-      return size_t(1) == expected_float.erase(value);
-    }
-
-    if (field.name == "doc_int") {
-      auto value = iresearch::read_zvint(in);
-      return size_t(1) == expected_int.erase(value);
-    }
-
-    if (field.name == "doc_long") {
-      auto value = iresearch::read_zvlong(in);
-      return size_t(1) == expected_long.erase(value);
-    }
-
-    if (field.name == "doc_string") {
-      auto value = iresearch::read_string<std::string>(in);
-      return size_t(1) == expected_string.erase(value);
-    }
-
-    return false;
+  iresearch::columnstore_reader::value_reader_f bytes_visitor = [&expected_bytes] (data_input& in) {
+    const auto value = iresearch::read_string<iresearch::bstring>(in);
+    return size_t(1) == expected_bytes.erase(value);
   };
+  auto bytes_values = segment->values("doc_bytes", bytes_visitor);
+  std::unordered_set<double> expected_double;
+  iresearch::columnstore_reader::value_reader_f double_visitor = [&expected_double] (data_input& in) {
+    const auto value = iresearch::read_zvdouble(in);
+    return size_t(1) == expected_double.erase(value);
+  };
+  auto double_values = segment->values("doc_double", double_visitor);
+  std::unordered_set<float> expected_float;
+  iresearch::columnstore_reader::value_reader_f float_visitor = [&expected_float] (data_input& in) {
+    const auto value = iresearch::read_zvfloat(in);
+    return size_t(1) == expected_float.erase(value);
+  };
+  auto float_values = segment->values("doc_float", float_visitor);
+  std::unordered_set<int> expected_int;
+  iresearch::columnstore_reader::value_reader_f int_visitor = [&expected_int] (data_input& in) {
+    const auto value = iresearch::read_zvint(in);
+    return size_t(1) == expected_int.erase(value);
+  };
+  auto int_values = segment->values("doc_int", int_visitor);
+  std::unordered_set<int64_t> expected_long;
+  iresearch::columnstore_reader::value_reader_f long_visitor = [&expected_long] (data_input& in) {
+    const auto value = iresearch::read_zvlong(in);
+    return size_t(1) == expected_long.erase(value);
+  };
+  auto long_values = segment->values("doc_long", long_visitor);
+  std::unordered_set<std::string> expected_string;
+  iresearch::columnstore_reader::value_reader_f string_visitor = [&expected_string] (data_input& in) {
+    auto value = iresearch::read_string<std::string>(in);
+    return size_t(1) == expected_string.erase(value);
+  };
+  auto string_values = segment->values("doc_string", string_visitor);
 
   expected_bytes = { iresearch::bytes_ref(bytes1), iresearch::bytes_ref(bytes2), iresearch::bytes_ref(bytes3) };
   expected_double = { 2.718281828 * 1, 2.718281828 * 2, 2.718281828 * 3 };
@@ -2071,7 +2083,13 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
   // can't have more docs then highest doc_id
   for (size_t i = 0, count = segment->docs_count(); i < count; ++i) {
-    ASSERT_TRUE(segment->document(iresearch::doc_id_t((iresearch::type_limits<iresearch::type_t::doc_id_t>::min)() + i), visitor));
+    const auto doc = iresearch::doc_id_t((iresearch::type_limits<iresearch::type_t::doc_id_t>::min)() + i);
+    ASSERT_TRUE(bytes_values(doc));
+    ASSERT_TRUE(double_values(doc));
+    ASSERT_TRUE(float_values(doc));
+    ASSERT_TRUE(int_values(doc));
+    ASSERT_TRUE(long_values(doc));
+    ASSERT_TRUE(string_values(doc));
   }
 
   ASSERT_TRUE(expected_bytes.empty());
@@ -2091,11 +2109,11 @@ TEST_F(merge_writer_tests, test_merge_writer_field_features) {
   tests::document doc1; // string
   tests::document doc2; // text
 
-  doc1.add(new tests::templates::string_field(field, data, true, true));
-  doc2.add(new tests::templates::text_field<iresearch::string_ref>(field, data, true, true));
+  doc1.insert(std::make_shared<tests::templates::string_field>(field, data, true, true));
+  doc2.insert(std::make_shared<tests::templates::text_field<iresearch::string_ref>>(field, data, true, true), true, false);
 
-  ASSERT_TRUE(doc1.get(field)->features().is_subset_of(doc2.get(field)->features()));
-  ASSERT_FALSE(doc2.get(field)->features().is_subset_of(doc1.get(field)->features()));
+  ASSERT_TRUE(doc1.indexed.get(field)->features().is_subset_of(doc2.indexed.get(field)->features()));
+  ASSERT_FALSE(doc2.indexed.get(field)->features().is_subset_of(doc1.indexed.get(field)->features()));
 
   iresearch::version10::format codec;
   iresearch::format::ptr codec_ptr(&codec, [](iresearch::format*)->void{});
@@ -2104,9 +2122,15 @@ TEST_F(merge_writer_tests, test_merge_writer_field_features) {
   // populate directory
   {
     auto writer = iresearch::index_writer::make(dir, codec_ptr, iresearch::OM_CREATE);
-    ASSERT_TRUE(writer->insert(doc1.begin(), doc1.end()));
+    ASSERT_TRUE(writer->insert(
+      doc1.indexed.begin(), doc1.indexed.end(),
+      doc1.stored.begin(), doc1.stored.end()
+    ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(doc2.begin(), doc2.end()));
+    ASSERT_TRUE(writer->insert(
+      doc2.indexed.begin(), doc2.indexed.end(),
+      doc2.stored.begin(), doc2.stored.end()
+    ));
     writer->commit();
     writer->close();
   }

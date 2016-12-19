@@ -145,7 +145,7 @@ TEST(directory_reader_test, open) {
     test_base::resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json::json_value& data) {
     if (data.quoted) {
-      doc.add(new tests::templates::string_field(
+      doc.insert(std::make_shared<tests::templates::string_field>(
         ir::string_ref(name),
         ir::string_ref(data.value),
         true, true));
@@ -172,21 +172,48 @@ TEST(directory_reader_test, open) {
     auto writer = ir::index_writer::make(dir, codec_ptr, ir::OM_CREATE);
 
     // add first segment
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
-    ASSERT_TRUE(writer->insert(doc3->begin(), doc3->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
     writer->commit();
 
     // add second segment
-    ASSERT_TRUE(writer->insert(doc4->begin(), doc4->end()));
-    ASSERT_TRUE(writer->insert(doc5->begin(), doc5->end()));
-    ASSERT_TRUE(writer->insert(doc6->begin(), doc6->end()));
-    ASSERT_TRUE(writer->insert(doc7->begin(), doc7->end()));
+    ASSERT_TRUE(writer->insert(
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc5->indexed.begin(), doc5->indexed.end(),
+      doc5->stored.begin(), doc5->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc6->indexed.begin(), doc6->indexed.end(),
+      doc6->stored.begin(), doc6->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc7->indexed.begin(), doc7->indexed.end(),
+      doc7->stored.begin(), doc7->stored.end()
+    ));
     writer->commit();
 
     // add third segment
-    ASSERT_TRUE(writer->insert(doc8->begin(), doc8->end()));
-    ASSERT_TRUE(writer->insert(doc9->begin(), doc9->end()));
+    ASSERT_TRUE(writer->insert(
+      doc8->indexed.begin(), doc8->indexed.end(),
+      doc8->stored.begin(), doc8->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc9->indexed.begin(), doc9->indexed.end(),
+      doc9->stored.begin(), doc9->stored.end()
+    ));
     writer->commit();
   }
 
@@ -200,20 +227,12 @@ TEST(directory_reader_test, open) {
   // check subreaders
   auto sub = rdr->begin();
 
-  const iresearch::string_ref expected_name = "name";
   iresearch::string_ref expected_value;
   size_t calls_count = 0;
-  iresearch::index_reader::document_visitor_f visitor = [&calls_count, &expected_value, &expected_name](
-    const ir::field_meta& field, ir::data_input& in
-  ) {
+  iresearch::columnstore_reader::value_reader_f visitor = [&calls_count, &expected_value](ir::data_input& in) {
     ++calls_count;
 
-    if (field.name != expected_name) {
-      ir::read_string<std::string>(in); // skip string
-      return true;
-    }
-
-    auto value = ir::read_string<std::string>(in);
+    const auto value = ir::read_string<std::string>(in);
     if (value != expected_value) {
       return false;
     }
@@ -227,18 +246,20 @@ TEST(directory_reader_test, open) {
     ASSERT_EQ(1, sub->size());
     ASSERT_EQ(3, sub->docs_max());
     ASSERT_EQ(3, sub->docs_count());
+    
+    auto values = sub->values("name", visitor);
 
     // read documents
     expected_value = "A"; // 'name' value in doc1 
-    ASSERT_TRUE(sub->document(1, visitor)); 
+    ASSERT_TRUE(values(1)); 
     expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(sub->document(2, visitor)); 
+    ASSERT_TRUE(values(2)); 
     expected_value = "C"; // 'name' value in doc3
-    ASSERT_TRUE(sub->document(3, visitor)); 
+    ASSERT_TRUE(values(3));
 
     // read invalid document
     calls_count = 0;
-    ASSERT_FALSE(sub->document(4, visitor));
+    ASSERT_FALSE(values(4));
     ASSERT_EQ(0, calls_count);
   }
 
@@ -249,20 +270,22 @@ TEST(directory_reader_test, open) {
     ASSERT_EQ(1, sub->size());
     ASSERT_EQ(4, sub->docs_max());
     ASSERT_EQ(4, sub->docs_count());
+    
+    auto values = sub->values("name", visitor);
 
     // read documents
     expected_value = "D"; // 'name' value in doc4
-    ASSERT_TRUE(sub->document(1, visitor)); 
+    ASSERT_TRUE(values(1)); 
     expected_value = "E"; // 'name' value in doc5
-    ASSERT_TRUE(sub->document(2, visitor)); 
+    ASSERT_TRUE(values(2)); 
     expected_value = "F"; // 'name' value in doc6
-    ASSERT_TRUE(sub->document(3, visitor)); 
+    ASSERT_TRUE(values(3)); 
     expected_value = "G"; // 'name' value in doc7
-    ASSERT_TRUE(sub->document(4, visitor)); 
+    ASSERT_TRUE(values(4)); 
 
     // read invalid document
     calls_count = 0;
-    ASSERT_FALSE(sub->document(5, visitor));
+    ASSERT_FALSE(values(5));
     ASSERT_EQ(0, calls_count);
   }
 
@@ -273,41 +296,23 @@ TEST(directory_reader_test, open) {
     ASSERT_EQ(1, sub->size());
     ASSERT_EQ(2, sub->docs_max());
     ASSERT_EQ(2, sub->docs_count());
+    
+    auto values = sub->values("name", visitor);
 
     // read documents
     expected_value = "H"; // 'name' value in doc8
-    ASSERT_TRUE(sub->document(1, visitor)); 
+    ASSERT_TRUE(values(1)); 
     expected_value = "I"; // 'name' value in doc9
-    ASSERT_TRUE(sub->document(2, visitor)); 
+    ASSERT_TRUE(values(2)); 
 
     // read invalid document
     calls_count = 0;
-    ASSERT_FALSE(sub->document(3, visitor));
+    ASSERT_FALSE(values(3));
     ASSERT_EQ(0, calls_count);
   }
 
   ++sub;
   ASSERT_EQ(rdr->end(), sub);
-
-  // read documents
-  expected_value = "A"; // 'name' value in doc1
-  ASSERT_TRUE(rdr->document(1, visitor));
-  expected_value = "B"; // 'name' value in doc2
-  ASSERT_TRUE(rdr->document(2, visitor));
-  expected_value = "C"; // 'name' value in doc3
-  ASSERT_TRUE(rdr->document(3, visitor));
-  expected_value = "D"; // 'name' value in doc4
-  ASSERT_TRUE(rdr->document(4, visitor));
-  expected_value = "E"; // 'name' value in doc5
-  ASSERT_TRUE(rdr->document(5, visitor));
-  expected_value = "F"; // 'name' value in doc6
-  ASSERT_TRUE(rdr->document(6, visitor));
-  expected_value = "G"; // 'name' value in doc7
-  ASSERT_TRUE(rdr->document(7, visitor));
-  expected_value = "H"; // 'name' value in doc8
-  ASSERT_TRUE(rdr->document(8, visitor));
-  expected_value = "I"; // 'name' value in doc9
-  ASSERT_TRUE(rdr->document(9, visitor));
 }
 
 // ----------------------------------------------------------------------------
@@ -351,11 +356,26 @@ TEST(segment_reader_test, open) {
     auto writer = ir::index_writer::make(dir, codec_ptr, ir::OM_CREATE);
 
     // add first segment
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
-    ASSERT_TRUE(writer->insert(doc3->begin(), doc3->end()));
-    ASSERT_TRUE(writer->insert(doc4->begin(), doc4->end()));
-    ASSERT_TRUE(writer->insert(doc5->begin(), doc5->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc5->indexed.begin(), doc5->indexed.end(),
+      doc5->stored.begin(), doc5->stored.end()
+    ));
     writer->commit();
   }
 
@@ -373,32 +393,12 @@ TEST(segment_reader_test, open) {
     ASSERT_EQ(meta.docs_count, rdr->docs_max());
     ASSERT_EQ(meta.docs_count, rdr->docs_count());
 
-    std::unordered_map<iresearch::string_ref, std::function<void(iresearch::data_input&)>> codecs{
-      { "name", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "same", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "duplicated", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "prefix", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "seq", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-      { "value", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-    };
-
-    const iresearch::string_ref expected_name = "name";
     size_t calls_count = 0;
     iresearch::string_ref expected_value;
-    iresearch::index_reader::document_visitor_f visitor = [&calls_count, &codecs, &expected_value, &expected_name](
-      const iresearch::field_meta& field, iresearch::data_input& in
-    ) {
+    iresearch::columnstore_reader::value_reader_f visitor = [&calls_count, &expected_value](iresearch::data_input& in) {
       ++calls_count;
-      if (field.name != expected_name) {
-        auto it = codecs.find(field.name);
-        if (codecs.end() == it) {
-          return false; // can't find codec
-        }
-        it->second(in); // skip field
-        return true;
-      }
 
-      auto value = ir::read_string<std::string>(in);
+      const auto value = ir::read_string<std::string>(in);
       if (value != expected_value) {
         return false;
       }
@@ -406,20 +406,23 @@ TEST(segment_reader_test, open) {
       return true;
     };
 
+    auto& segment = *rdr->begin();
+    auto values = segment.values("name", visitor);
+
     // read documents
     expected_value = "A"; // 'name' value in doc1
-    ASSERT_TRUE(rdr->document(1, visitor));
+    ASSERT_TRUE(values(1));
     expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(rdr->document(2, visitor));
+    ASSERT_TRUE(values(2));
     expected_value = "C"; // 'name' value in doc3
-    ASSERT_TRUE(rdr->document(3, visitor));
+    ASSERT_TRUE(values(3));
     expected_value = "D"; // 'name' value in doc4
-    ASSERT_TRUE(rdr->document(4, visitor));
+    ASSERT_TRUE(values(4));
     expected_value = "E"; // 'name' value in doc5
-    ASSERT_TRUE(rdr->document(5, visitor));
+    ASSERT_TRUE(values(5));
     
     calls_count = 0;
-    ASSERT_FALSE(rdr->document(6, visitor)); // read invalid document 
+    ASSERT_FALSE(values(6)); // read invalid document 
     ASSERT_EQ(0, calls_count);
 
     // check iterators

@@ -35,30 +35,30 @@ namespace unchecked {
 
 template<typename octet_iterator>
 class break_iterator : public std::iterator<std::forward_iterator_tag, std::string> {
- public:
+  public:
   typedef unchecked::iterator<octet_iterator> utf8iterator;
 
-  break_iterator( utf8::uint32_t delim, const octet_iterator& begin, const octet_iterator& end )
-    : delim_( delim ), wbegin_( begin ), wend_( begin ), end_( end ) {
-    if ( !done() ) {
+  break_iterator(utf8::uint32_t delim, const octet_iterator& begin, const octet_iterator& end)
+    : delim_(delim), wbegin_(begin), wend_(begin), end_(end) {
+    if (!done()) {
       next();
     }
   }
 
-  explicit break_iterator( const octet_iterator& end )
-    : wbegin_( end ), wend_( end ), end_( end ) {
+  explicit break_iterator(const octet_iterator& end)
+    : wbegin_(end), wend_(end), end_(end) {
   }
 
   const std::string& operator*() const { return res_; }
 
-  const std::string* operator->( ) const { return &res_; }
+  const std::string* operator->() const { return &res_; }
 
-  bool operator==( const break_iterator& rhs ) const {
-    assert( end_ == rhs.end_ );
-    return ( wbegin_ == rhs.wbegin_ && wend_ == rhs.wend_ );
+  bool operator==(const break_iterator& rhs) const {
+    assert(end_ == rhs.end_);
+    return (wbegin_ == rhs.wbegin_ && wend_ == rhs.wend_);
   }
 
-  bool operator!=( const break_iterator& rhs ) const {
+  bool operator!=(const break_iterator& rhs) const {
     return !(operator==(rhs));
   }
 
@@ -69,21 +69,21 @@ class break_iterator : public std::iterator<std::forward_iterator_tag, std::stri
     return *this;
   }
 
-  break_iterator operator++( int ) {
-    break_iterator tmp( delim_, wbegin_, end_ );
+  break_iterator operator++(int) {
+    break_iterator tmp(delim_, wbegin_, end_);
     next();
     return tmp;
   }
 
- private:
+  private:
   void next() {
     wbegin_ = wend_;
-    wend_ = std::find( wbegin_, end_, delim_ );
-    if ( wend_ != end_ ) {
-      res_.assign( wbegin_.base(), wend_.base() );
+    wend_ = std::find(wbegin_, end_, delim_);
+    if (wend_ != end_) {
+      res_.assign(wbegin_.base(), wend_.base());
       ++wend_;
     } else {
-      res_.assign( wbegin_.base(), end_.base() );
+      res_.assign(wbegin_.base(), end_.base());
     }
   }
 
@@ -98,6 +98,15 @@ class break_iterator : public std::iterator<std::forward_iterator_tag, std::stri
 } // utf8
 
 namespace tests {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                           document implementation
+// -----------------------------------------------------------------------------
+
+document::document(document&& rhs) 
+  : indexed(std::move(rhs.indexed)), 
+    stored(std::move(rhs.stored)) {
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         field_base implementation
@@ -215,39 +224,41 @@ ir::token_stream* binary_field::get_tokens() const {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                           document implementation
+// --SECTION--                                           particle implementation
 // -----------------------------------------------------------------------------
   
-document::document( document&& rhs ) : fields_( std::move( rhs.fields_ ) ) { }
+particle::particle(particle&& rhs)
+  : fields_(std::move(rhs.fields_)) {
+}
 
-document& document::operator=( document&& rhs ) {
-  if ( this != &rhs ) {
-    fields_ = std::move( rhs.fields_ );
+particle& particle::operator=(particle&& rhs) {
+  if (this != &rhs) {
+    fields_ = std::move(rhs.fields_);
   }
 
   return *this;
 }
 
-document::~document() { }
+particle::~particle() { }
 
-void document::remove( const ir::string_ref& name ) {
+void particle::remove(const ir::string_ref& name) {
   fields_.erase(
-    std::remove_if( fields_.begin(), fields_.end(),
-      [&name] ( const ifield::ptr& fld ) {
+    std::remove_if(fields_.begin(), fields_.end(),
+      [&name] (const ifield::ptr& fld) {
         return name == fld->name(); 
     })
   );
 }
 
-bool document::contains( const ir::string_ref& name ) const {
+bool particle::contains(const ir::string_ref& name) const {
   return fields_.end() != std::find_if(
     fields_.begin(), fields_.end(),
-    [&name] ( const ifield::ptr& fld ) {
+    [&name] (const ifield::ptr& fld) {
       return name == fld->name();
-  } );
+  });
 }
 
-std::vector<const ifield*> document::find(const ir::string_ref& name) const {
+std::vector<const ifield*> particle::find(const ir::string_ref& name) const {
   std::vector<const ifield*> fields;
   std::for_each(
     fields_.begin(), fields_.end(),
@@ -260,10 +271,10 @@ std::vector<const ifield*> document::find(const ir::string_ref& name) const {
   return fields;
 }
 
-ifield* document::get( const ir::string_ref& name ) const {
+ifield* particle::get(const ir::string_ref& name) const {
   auto it = std::find_if(
     fields_.begin(), fields_.end(),
-    [&name] ( const ifield::ptr& fld ) {
+    [&name] (const ifield::ptr& fld) {
       return name == fld->name();
   });
 

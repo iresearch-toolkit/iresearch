@@ -42,7 +42,7 @@ namespace ir = iresearch;
 /// @brief base interface for all fields
 //////////////////////////////////////////////////////////////////////////////
 struct ifield : ir::serializer {
-  DECLARE_PTR(ifield);
+  DECLARE_SPTR(ifield);
   virtual ~ifield() {};
 
   virtual ir::string_ref name() const = 0;
@@ -206,32 +206,28 @@ class binary_field: public field_base {
 * document 
 * ------------------------------------------------------------------*/
 
-class document {
+class particle : ir::util::noncopyable {
  public:
   typedef std::vector<ifield::ptr> fields_t;
   typedef ir::ptr_iterator<fields_t::const_iterator> const_iterator;
   typedef ir::ptr_iterator<fields_t::iterator> iterator;
 
-  document() = default;
-  document( document&& rhs );
-
-  virtual ~document();
-  
-  document& operator=( document&& rhs );
+  particle() = default;
+  particle(particle&& rhs);
+  particle& operator=(particle&& rhs);
+  virtual ~particle();
 
   size_t size() const { return fields_.size(); }
   void clear() { fields_.clear(); }
+  void reserve(size_t size) { fields_.reserve(size); }
 
-  /* Adds field into document. Document become the owner of the field. */
-  void add(ifield* fld) { fields_.emplace_back( fld ); }
-  bool contains( const ir::string_ref& name ) const;
+  void push_back(const ifield::ptr& fld) { fields_.emplace_back(fld); }
+  bool contains(const ir::string_ref& name) const;
   ifield* get(const ir::string_ref& name) const;
   std::vector<const ifield*> find(const ir::string_ref& name) const;
-  void remove( const ir::string_ref& name );
+  void remove(const ir::string_ref& name);
 
-  ifield& back() const {
-    return *fields_.back();
-  }
+  ifield& back() const { return *fields_.back(); }
 
   template<typename T>
   T& back() const {
@@ -268,8 +264,31 @@ class document {
     
  protected:
   fields_t fields_;
-}; // document
+}; // particle 
+
+struct document : ir::util::noncopyable {
+  document() = default;
+  document(document&& rhs);
   
+  void insert(const ifield::ptr& field, bool indexed = true, bool stored = true) {
+    if (indexed) this->indexed.push_back(field);
+    if (stored) this->stored.push_back(field);
+  }
+
+  void reserve(size_t size) {
+    indexed.reserve(size);
+    stored.reserve(size);
+  }
+
+  void clear() {
+    indexed.clear();
+    stored.clear();
+  }
+  
+  particle indexed;
+  particle stored;
+}; // document
+
 /* -------------------------------------------------------------------
 * GENERATORS 
 * ------------------------------------------------------------------*/
@@ -302,7 +321,7 @@ class delim_doc_generator : public doc_generator_base {
     doc_template& doc,
     uint32_t delim = 0x0009);
 
-  virtual const tests::document* next() override;
+  virtual const tests::document* next() override; 
   virtual void reset() override;
 
  private:

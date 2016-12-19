@@ -41,14 +41,14 @@ void analyzed_json_field_factory(
 
   if (data.quoted) {
     // analyzed field
-    doc.add(new text_field(
+    doc.insert(std::make_shared<text_field>(
       std::string(name.c_str()) + "_anl",
       ir::string_ref(data.value),
       true
-    ));
+    ), true, false);
 
     // not analyzed field
-    doc.add(new string_field(
+    doc.insert(std::make_shared<string_field>(
       ir::string_ref(name),
       ir::string_ref(data.value)
     ));
@@ -94,17 +94,9 @@ class phrase_filter_test_case : public filter_test_case_base {
 
     // equals to term_filter "fox"
     {
-      const iresearch::string_ref expected_name = "name";
       iresearch::string_ref expected_value;
-      iresearch::index_reader::document_visitor_f visitor = [&expected_value, &expected_name](
-        const iresearch::field_meta& field, iresearch::data_input& in
-      ) {
-        if (field.name != expected_name) {
-          iresearch::read_string<std::string>(in); // skip string
-          return true;
-        }
-
-        auto value = iresearch::read_string<std::string>(in);
+      iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](iresearch::data_input& in) {
+        const auto value = iresearch::read_string<std::string>(in);
         if (value != expected_value) {
           return false;
         }
@@ -118,6 +110,7 @@ class phrase_filter_test_case : public filter_test_case_base {
 
       auto prepared = q.prepare(*rdr);
       auto sub = rdr->begin();
+      auto values = sub->values("name", visitor);
 
       auto docs = prepared->execute(*sub);
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(docs->value()));
@@ -126,33 +119,33 @@ class phrase_filter_test_case : public filter_test_case_base {
 
       expected_value = "A";
       ASSERT_TRUE(docs->next());
-      ASSERT_TRUE(sub->document(docs->value(), visitor));
+      ASSERT_TRUE(values(docs->value()));
       ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-      ASSERT_TRUE(sub->document(docs->value(), visitor));
+      ASSERT_TRUE(values(docs->value()));
 
       expected_value = "G";
       ASSERT_TRUE(docs->next());
-      ASSERT_TRUE(sub->document(docs->value(), visitor));
+      ASSERT_TRUE(values(docs->value()));
       ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-      ASSERT_TRUE(sub->document(docs->value(), visitor));
+      ASSERT_TRUE(values(docs->value()));
 
       expected_value = "I";
       ASSERT_TRUE(docs->next());
-      ASSERT_TRUE(sub->document(docs->value(), visitor));
+      ASSERT_TRUE(values(docs->value()));
       ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-      ASSERT_TRUE(sub->document(docs->value(), visitor));
+      ASSERT_TRUE(values(docs->value()));
 
       expected_value = "K";
       ASSERT_TRUE(docs->next());
-      ASSERT_TRUE(sub->document(docs->value(), visitor));
+      ASSERT_TRUE(values(docs->value()));
       ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-      ASSERT_TRUE(sub->document(docs->value(), visitor));
+      ASSERT_TRUE(values(docs->value()));
 
       expected_value = "L";
       ASSERT_TRUE(docs->next());
-      ASSERT_TRUE(sub->document(docs->value(), visitor));
+      ASSERT_TRUE(values(docs->value()));
       ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-      ASSERT_TRUE(sub->document(docs->value(), visitor));
+      ASSERT_TRUE(values(docs->value()));
 
       ASSERT_FALSE(docs->next());
       ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs->value()));
@@ -175,17 +168,9 @@ class phrase_filter_test_case : public filter_test_case_base {
     // equals to term_filter "fox" with phrase offset 
     // which is does not matter
     {
-      const iresearch::string_ref expected_name = "name";
       iresearch::string_ref expected_value;
-      iresearch::index_reader::document_visitor_f visitor = [&expected_value, &expected_name](
-        const iresearch::field_meta& field, iresearch::data_input& in
-      ) {
-        if (field.name != expected_name) {
-          iresearch::read_string<std::string>(in);
-          return true;
-        }
-
-        auto value = iresearch::read_string<std::string>(in);
+      iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](iresearch::data_input& in) {
+        const auto value = iresearch::read_string<std::string>(in);
         if (value != expected_value) {
           return false;
         }
@@ -199,6 +184,7 @@ class phrase_filter_test_case : public filter_test_case_base {
 
       auto prepared = q.prepare(*rdr);
       auto sub = rdr->begin();
+      auto values = sub->values("name", visitor);
 
       auto docs = prepared->execute(*sub);
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(docs->value()));
@@ -207,33 +193,33 @@ class phrase_filter_test_case : public filter_test_case_base {
 
       expected_value = "A";
       ASSERT_TRUE(docs->next());
-      ASSERT_TRUE(sub->document(docs->value(), visitor));
+      ASSERT_TRUE(values(docs->value()));
       ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-      ASSERT_TRUE(sub->document(docs->value(), visitor));
+      ASSERT_TRUE(values(docs->value()));
 
       expected_value = "G";
       ASSERT_TRUE(docs->next());
-      ASSERT_TRUE(sub->document(docs->value(), visitor));
+      ASSERT_TRUE(values(docs->value()));
       ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-      ASSERT_TRUE(sub->document(docs->value(), visitor));
+      ASSERT_TRUE(values(docs->value()));
 
       expected_value = "I";
       ASSERT_TRUE(docs->next());
-      ASSERT_TRUE(sub->document(docs->value(), visitor));
+      ASSERT_TRUE(values(docs->value()));
       ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-      ASSERT_TRUE(sub->document(docs->value(), visitor));
+      ASSERT_TRUE(values(docs->value()));
 
       expected_value = "K";
       ASSERT_TRUE(docs->next());
-      ASSERT_TRUE(sub->document(docs->value(), visitor));
+      ASSERT_TRUE(values(docs->value()));
       ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-      ASSERT_TRUE(sub->document(docs->value(), visitor));
+      ASSERT_TRUE(values(docs->value()));
 
       expected_value = "L";
       ASSERT_TRUE(docs->next());
-      ASSERT_TRUE(sub->document(docs->value(), visitor));
+      ASSERT_TRUE(values(docs->value()));
       ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-      ASSERT_TRUE(sub->document(docs->value(), visitor));
+      ASSERT_TRUE(values(docs->value()));
 
       ASSERT_FALSE(docs->next());
       ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs->value()));
@@ -241,26 +227,9 @@ class phrase_filter_test_case : public filter_test_case_base {
 
     // "quick brown fox"
     {
-      std::unordered_map<iresearch::string_ref, std::function<void(iresearch::data_input&)>> codecs{
-        { "name", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-        { "phrase", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      };
-
-      const iresearch::string_ref expected_name = "name";
       iresearch::string_ref expected_value;
-      iresearch::index_reader::document_visitor_f visitor = [&codecs, &expected_value, &expected_name](
-        const iresearch::field_meta& field, iresearch::data_input& in
-      ) {
-        if (field.name != expected_name) {
-          auto it = codecs.find(field.name);
-          if (codecs.end() == it) {
-            return false; // can't find codec
-          }
-          it->second(in); // skip field
-          return true;
-        }
-
-        auto value = iresearch::read_string<std::string>(in);
+      iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](iresearch::data_input& in) {
+        const auto value = iresearch::read_string<std::string>(in);
         if (value != expected_value) {
           return false;
         }
@@ -276,6 +245,7 @@ class phrase_filter_test_case : public filter_test_case_base {
 
       auto prepared = q.prepare(*rdr);
       auto sub = rdr->begin();
+      auto values = sub->values("name", visitor);
 
       auto docs = prepared->execute(*sub);
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(docs->value()));
@@ -284,21 +254,21 @@ class phrase_filter_test_case : public filter_test_case_base {
 
       expected_value = "A";
       ASSERT_TRUE(docs->next());
-      ASSERT_TRUE(sub->document(docs->value(), visitor));
+      ASSERT_TRUE(values(docs->value()));
       ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-      ASSERT_TRUE(sub->document(docs->value(), visitor));
+      ASSERT_TRUE(values(docs->value()));
 
       expected_value = "G";
       ASSERT_TRUE(docs->next());
-      ASSERT_TRUE(sub->document(docs->value(), visitor));
+      ASSERT_TRUE(values(docs->value()));
       ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-      ASSERT_TRUE(sub->document(docs->value(), visitor));
+      ASSERT_TRUE(values(docs->value()));
 
       expected_value = "I";
       ASSERT_TRUE(docs->next());
-      ASSERT_TRUE(sub->document(docs->value(), visitor));
+      ASSERT_TRUE(values(docs->value()));
       ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-      ASSERT_TRUE(sub->document(docs->value(), visitor));
+      ASSERT_TRUE(values(docs->value()));
 
       ASSERT_FALSE(docs->next());
       ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs->value()));
@@ -307,26 +277,9 @@ class phrase_filter_test_case : public filter_test_case_base {
 
     // "fox ... quick"
     {
-      std::unordered_map<iresearch::string_ref, std::function<void(iresearch::data_input&)>> codecs{
-        { "name", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-        { "phrase", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      };
-
-      const iresearch::string_ref expected_name = "name";
       iresearch::string_ref expected_value;
-      iresearch::index_reader::document_visitor_f visitor = [&codecs, &expected_value, &expected_name](
-        const iresearch::field_meta& field, iresearch::data_input& in
-      ) {
-        if (field.name != expected_name) {
-          auto it = codecs.find(field.name);
-          if (codecs.end() == it) {
-            return false; // can't find codec
-          }
-          it->second(in); // skip field
-          return true;
-        }
-
-        auto value = iresearch::read_string<std::string>(in);
+      iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](iresearch::data_input& in) {
+        const auto value = iresearch::read_string<std::string>(in);
         if (value != expected_value) {
           return false;
         }
@@ -342,6 +295,7 @@ class phrase_filter_test_case : public filter_test_case_base {
       auto prepared = q.prepare(*rdr);
 
       auto sub = rdr->begin();
+      auto values = sub->values("name", visitor);
       auto docs = prepared->execute(*sub); 
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(docs->value()));
       auto docs_seek = prepared->execute(*sub);
@@ -349,9 +303,9 @@ class phrase_filter_test_case : public filter_test_case_base {
 
       expected_value = "L";
       ASSERT_TRUE(docs->next());
-      ASSERT_TRUE(sub->document(docs->value(), visitor));
+      ASSERT_TRUE(values(docs->value()));
       ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-      ASSERT_TRUE(sub->document(docs->value(), visitor));
+      ASSERT_TRUE(values(docs->value()));
 
       ASSERT_FALSE(docs->next());
       ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs->value()));
@@ -361,26 +315,9 @@ class phrase_filter_test_case : public filter_test_case_base {
     // "fox ... quick" with phrase offset
     // which is does not matter
     {
-      std::unordered_map<iresearch::string_ref, std::function<void(iresearch::data_input&)>> codecs{
-        { "name", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-        { "phrase", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      };
-
-      const iresearch::string_ref expected_name = "name";
       iresearch::string_ref expected_value;
-      iresearch::index_reader::document_visitor_f visitor = [&codecs, &expected_value, &expected_name](
-        const iresearch::field_meta& field, iresearch::data_input& in
-      ) {
-        if (field.name != expected_name) {
-          auto it = codecs.find(field.name);
-          if (codecs.end() == it) {
-            return false; // can't find codec
-          }
-          it->second(in); // skip field
-          return true;
-        }
-
-        auto value = iresearch::read_string<std::string>(in);
+      iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](iresearch::data_input& in) {
+        const auto value = iresearch::read_string<std::string>(in);
         if (value != expected_value) {
           return false;
         }
@@ -396,6 +333,7 @@ class phrase_filter_test_case : public filter_test_case_base {
       auto prepared = q.prepare(*rdr);
 
       auto sub = rdr->begin();
+      auto values = sub->values("name", visitor);
       auto docs = prepared->execute(*sub); 
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid( docs->value()));
       auto docs_seek = prepared->execute(*sub);
@@ -403,9 +341,9 @@ class phrase_filter_test_case : public filter_test_case_base {
 
       expected_value = "L";
       ASSERT_TRUE(docs->next());
-      ASSERT_TRUE(sub->document(docs->value(), visitor));
+      ASSERT_TRUE(values(docs->value()));
       ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-      ASSERT_TRUE(sub->document(docs->value(), visitor));
+      ASSERT_TRUE(values(docs->value()));
 
       ASSERT_FALSE(docs->next());
       ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs->value()));
@@ -430,26 +368,9 @@ class phrase_filter_test_case : public filter_test_case_base {
 
     // "eye ... eye"
     {
-      std::unordered_map<iresearch::string_ref, std::function<void(iresearch::data_input&)>> codecs{
-        { "name", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-        { "phrase", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      };
-
-      const iresearch::string_ref expected_name = "name";
       iresearch::string_ref expected_value;
-      iresearch::index_reader::document_visitor_f visitor = [&codecs, &expected_value, &expected_name](
-        const iresearch::field_meta& field, iresearch::data_input& in
-      ) {
-        if (field.name != expected_name) {
-          auto it = codecs.find(field.name);
-          if (codecs.end() == it) {
-            return false; // can't find codec
-          }
-          it->second(in); // skip field
-          return true;
-        }
-
-        auto value = iresearch::read_string<std::string>(in);
+      iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](iresearch::data_input& in) {
+        const auto value = iresearch::read_string<std::string>(in);
         if (value != expected_value) {
           return false;
         }
@@ -465,6 +386,7 @@ class phrase_filter_test_case : public filter_test_case_base {
       auto prepared = q.prepare(*rdr);
 
       auto sub = rdr->begin();
+      auto values = sub->values("name", visitor);
       auto docs = prepared->execute(*sub); 
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(docs->value()));
       auto docs_seek = prepared->execute(*sub);
@@ -472,9 +394,9 @@ class phrase_filter_test_case : public filter_test_case_base {
 
       expected_value = "C";
       ASSERT_TRUE(docs->next());
-      ASSERT_TRUE(sub->document(docs->value(), visitor));
+      ASSERT_TRUE(values(docs->value()));
       ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-      ASSERT_TRUE(sub->document(docs->value(), visitor));
+      ASSERT_TRUE(values(docs->value()));
 
       ASSERT_FALSE(docs->next());
       ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs->value()));
@@ -483,26 +405,9 @@ class phrase_filter_test_case : public filter_test_case_base {
 
     // "as in the past we are looking forward"
     {
-      std::unordered_map<iresearch::string_ref, std::function<void(iresearch::data_input&)>> codecs{
-        { "name", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-        { "phrase", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      };
-
-      const iresearch::string_ref expected_name = "name";
       iresearch::string_ref expected_value;
-      iresearch::index_reader::document_visitor_f visitor = [&codecs, &expected_value, &expected_name](
-        const iresearch::field_meta& field, iresearch::data_input& in
-      ) {
-        if (field.name != expected_name) {
-          auto it = codecs.find(field.name);
-          if (codecs.end() == it) {
-            return false; // can't find codec
-          }
-          it->second(in); // skip field
-          return true;
-        }
-
-        auto value = iresearch::read_string<std::string>(in);
+      iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](iresearch::data_input& in) {
+        const auto value = iresearch::read_string<std::string>(in);
         if (value != expected_value) {
           return false;
         }
@@ -523,6 +428,7 @@ class phrase_filter_test_case : public filter_test_case_base {
 
       auto prepared = q.prepare(*rdr);
       auto sub = rdr->begin();
+      auto values = sub->values("name", visitor);
       auto docs = prepared->execute(*sub); 
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(docs->value()));
       auto docs_seek = prepared->execute(*sub);
@@ -530,9 +436,9 @@ class phrase_filter_test_case : public filter_test_case_base {
 
       expected_value = "H";
       ASSERT_TRUE(docs->next());
-      ASSERT_TRUE(sub->document(docs->value(), visitor));
+      ASSERT_TRUE(values(docs->value()));
       ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-      ASSERT_TRUE(sub->document(docs->value(), visitor));
+      ASSERT_TRUE(values(docs->value()));
 
       ASSERT_FALSE(docs->next());
       ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs->value()));

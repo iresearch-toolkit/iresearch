@@ -57,24 +57,24 @@ class granular_range_filter_test_case: public filter_test_case_base {
     const tests::json::json_value& data
   ) {
     if (data.quoted) {
-      doc.add(new tests::templates::string_field(
+      doc.insert(std::make_shared<tests::templates::string_field>(
         ir::string_ref(name),
         ir::string_ref(data.value),
         true, true
       ));
     } else if ("null" == data.value) {
-      doc.add(new tests::binary_field());
-      auto& field = (doc.end() - 1).as<tests::binary_field>();
+      doc.insert(std::make_shared<tests::binary_field>());
+      auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
       field.name(iresearch::string_ref(name));
       field.value(ir::null_token_stream::value_null());
     } else if ("true" == data.value) {
-      doc.add(new tests::binary_field());
-      auto& field = (doc.end() - 1).as<tests::binary_field>();
+      doc.insert(std::make_shared<tests::binary_field>());
+      auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
       field.name(iresearch::string_ref(name));
       field.value(ir::boolean_token_stream::value_true());
     } else if ("false" == data.value) {
-      doc.add(new tests::binary_field());
-      auto& field = (doc.end() - 1).as<tests::binary_field>();
+      doc.insert(std::make_shared<tests::binary_field>());
+      auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
       field.name(iresearch::string_ref(name));
       field.value(ir::boolean_token_stream::value_true());
     } else {
@@ -83,8 +83,8 @@ class granular_range_filter_test_case: public filter_test_case_base {
 
       // 'value' can be interpreted as a double
       if (!czSuffix[0]) {
-        doc.add(new granular_double_field());
-        auto& field = (doc.end() - 1).as<double_field>();
+        doc.insert(std::make_shared<granular_double_field>());
+        auto& field = (doc.indexed.end() - 1).as<double_field>();
         field.name(iresearch::string_ref(name));
         field.value(dValue);
       }
@@ -92,23 +92,23 @@ class granular_range_filter_test_case: public filter_test_case_base {
       float fValue = strtof(data.value.c_str(), &czSuffix);
       if (!czSuffix[0]) {
         // 'value' can be interpreted as a float 
-        doc.add(new granular_float_field());
-        auto& field = (doc.end() - 1).as<float_field>();
+        doc.insert(std::make_shared<granular_float_field>());
+        auto& field = (doc.indexed.end() - 1).as<float_field>();
         field.name(iresearch::string_ref(name));
         field.value(fValue);
       }
 
       uint64_t lValue = uint64_t(std::ceil(dValue));
       {
-        doc.add(new granular_long_field());
-        auto& field = (doc.end() - 1).as<long_field>();
+        doc.insert(std::make_shared<granular_long_field>());
+        auto& field = (doc.indexed.end() - 1).as<long_field>();
         field.name(iresearch::string_ref(name));
         field.value(lValue);
       }
 
       {
-        doc.add(new granular_int_field());
-        auto& field = (doc.end() - 1).as<int_field>();
+        doc.insert(std::make_shared<granular_int_field>());
+        auto& field = (doc.indexed.end() - 1).as<int_field>();
         field.name(iresearch::string_ref(name));
         field.value(int32_t(lValue));
       }

@@ -271,8 +271,14 @@ class format_test_case_base : public index_test_base {
 
       // add first segment
       {
-        ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-        ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
+        ASSERT_TRUE(writer->insert(
+          doc1->indexed.begin(), doc1->indexed.end(),
+          doc1->stored.begin(), doc1->stored.end()
+        ));
+        ASSERT_TRUE(writer->insert(
+          doc2->indexed.begin(), doc2->indexed.end(),
+          doc2->stored.begin(), doc2->stored.end()
+        ));
         writer->commit();
         iresearch::directory_cleaner::clean(*dir); // clean unused files
         assert_no_directory_artifacts(*dir, *codec());
@@ -280,7 +286,10 @@ class format_test_case_base : public index_test_base {
 
       // add second segment (creating new index_meta file, remove old)
       {
-        ASSERT_TRUE(writer->insert(doc3->begin(), doc3->end()));
+        ASSERT_TRUE(writer->insert(
+          doc3->indexed.begin(), doc3->indexed.end(),
+          doc3->stored.begin(), doc3->stored.end()
+        ));
         writer->commit();
         iresearch::directory_cleaner::clean(*dir); // clean unused files
         assert_no_directory_artifacts(*dir, *codec());
@@ -337,9 +346,18 @@ class format_test_case_base : public index_test_base {
 
       // add first segment
       {
-        ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-        ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
-        ASSERT_TRUE(writer->insert(doc3->begin(), doc3->end()));
+        ASSERT_TRUE(writer->insert(
+          doc1->indexed.begin(), doc1->indexed.end(),
+          doc1->stored.begin(), doc1->stored.end()
+        ));
+        ASSERT_TRUE(writer->insert(
+          doc2->indexed.begin(), doc2->indexed.end(),
+          doc2->stored.begin(), doc2->stored.end()
+        ));
+        ASSERT_TRUE(writer->insert(
+          doc3->indexed.begin(), doc3->indexed.end(),
+          doc3->stored.begin(), doc3->stored.end()
+        ));
         writer->commit();
         iresearch::directory_cleaner::clean(*dir); // clean unused files
         assert_no_directory_artifacts(*dir, *codec());
@@ -375,7 +393,10 @@ class format_test_case_base : public index_test_base {
 
       // add second segment (creating new index_meta file, not-removing old)
       {
-        ASSERT_TRUE(writer->insert(doc4->begin(), doc4->end()));
+        ASSERT_TRUE(writer->insert(
+          doc4->indexed.begin(), doc4->indexed.end(),
+          doc4->stored.begin(), doc4->stored.end()
+        ));
         writer->commit();
         iresearch::directory_cleaner::clean(*dir); // clean unused files
         assert_no_directory_artifacts(*dir, *codec(), reader_files);
@@ -432,10 +453,19 @@ class format_test_case_base : public index_test_base {
         auto writer = iresearch::index_writer::make(*dir, codec(), iresearch::OPEN_MODE::OM_CREATE);
 
         writer->commit(); // initialize directory
-        ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
+        ASSERT_TRUE(writer->insert(
+          doc1->indexed.begin(), doc1->indexed.end(),
+          doc1->stored.begin(), doc1->stored.end()
+        ));
         writer->commit(); // add first segment
-        ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
-        ASSERT_TRUE(writer->insert(doc3->begin(), doc3->end()));
+        ASSERT_TRUE(writer->insert(
+          doc2->indexed.begin(), doc2->indexed.end(),
+          doc2->stored.begin(), doc2->stored.end()
+        ));
+        ASSERT_TRUE(writer->insert(
+          doc3->indexed.begin(), doc3->indexed.end(),
+          doc3->stored.begin(), doc3->stored.end()
+        ));
         writer->commit(); // add second segment
         writer->remove(*(query_doc1.filter));
         writer->commit(); // remove first segment
@@ -474,13 +504,13 @@ class format_test_case_base : public index_test_base {
     tests::json_doc_generator gen(
       resource("fst_prefixes.json"),
       [&sorted_terms, &unsorted_terms] (tests::document& doc, const std::string& name, const tests::json::json_value& data) {
-        doc.add(new tests::templates::string_field(
+        doc.insert(std::make_shared<tests::templates::string_field>(
           ir::string_ref(name),
           ir::string_ref(data.value),
           true, true
         ));
 
-        auto ref = ir::ref_cast<ir::byte_type>((doc.end() - 1).as<tests::templates::string_field>().value());
+        auto ref = ir::ref_cast<ir::byte_type>((doc.indexed.end() - 1).as<tests::templates::string_field>().value());
         sorted_terms.emplace(ref);
         unsorted_terms.emplace_back(ref);
     });
@@ -859,14 +889,14 @@ class format_test_case_base : public index_test_base {
   void stored_fields_read_write_reuse() {
     struct csv_doc_template : delim_doc_generator::doc_template {
       virtual void init() {
-        fields_.clear();
-        fields_.reserve(2);
-        fields_.emplace_back(new tests::templates::string_field("id", false, true));
-        fields_.emplace_back(new tests::templates::string_field("name", false, true));
+        clear();
+        reserve(2);
+        insert(std::make_shared<tests::templates::string_field>("id", false, true));
+        insert(std::make_shared<tests::templates::string_field>("name", false, true));
       }
 
       virtual void value(size_t idx, const std::string& value) {
-        auto& field = static_cast<tests::templates::string_field&>(*fields_[idx]);
+        auto& field = indexed.get<tests::templates::string_field>(idx);
         field.value(value);
       }
       virtual void end() {}
@@ -886,7 +916,7 @@ class format_test_case_base : public index_test_base {
       // write 1st segment 
       writer->prepare(dir(), seg_1.name);
       for (const document* doc; seg_1.docs_count < 30000 && (doc = gen.next());) {
-        for (auto& field : *doc) {
+        for (auto& field : doc->stored) {
           writer->write(field);
         }
         writer->end(0);
@@ -900,7 +930,7 @@ class format_test_case_base : public index_test_base {
       // write 2nd segment 
       writer->prepare(dir(), seg_2.name);
       for (const document* doc; seg_2.docs_count < 30000 && (doc = gen.next());) {
-        for (auto& field : *doc) {
+        for (auto& field : doc->stored) {
           writer->write(field);
         }
         writer->end(nullptr);
@@ -913,7 +943,7 @@ class format_test_case_base : public index_test_base {
       // write 3rd segment
       writer->prepare(dir(), seg_3.name);
       for (const document* doc; seg_3.docs_count < 70000 && (doc = gen.next());) {
-        for (auto& field : *doc) {
+        for (auto& field : doc->stored) {
           writer->write(field);
         }
         writer->end(nullptr);
@@ -958,8 +988,8 @@ class format_test_case_base : public index_test_base {
         gen.reset();
         ir::doc_id_t i = 0;
         for (const document* doc; i < seg_1.docs_count && (doc = gen.next());++i) {
-          expected_id = doc->get<tests::templates::string_field>(0).value();
-          expected_name = doc->get<tests::templates::string_field>(1).value();
+          expected_id = doc->stored.get<tests::templates::string_field>(0).value();
+          expected_name = doc->stored.get<tests::templates::string_field>(1).value();
           ASSERT_TRUE(reader_1->visit(i, check_document));
         }
 
@@ -999,8 +1029,8 @@ class format_test_case_base : public index_test_base {
 
         ir::doc_id_t i = 0;
         for (const document* doc; i < seg_3.docs_count && (doc = gen.next()); ++i) {
-          expected_id = doc->get<tests::templates::string_field>(0).value();
-          expected_name = doc->get<tests::templates::string_field>(1).value();
+          expected_id = doc->stored.get<tests::templates::string_field>(0).value();
+          expected_name = doc->stored.get<tests::templates::string_field>(1).value();
           ASSERT_TRUE(reader->visit(i, check_document));
         }
       }
@@ -1835,28 +1865,28 @@ class format_test_case_base : public index_test_base {
       resource("simple_sequential_33.json"),
       [&values](tests::document& doc, const std::string& name, const tests::json::json_value& data) {
       if (data.quoted) {
-        doc.add(new templates::string_field(
+        doc.insert(std::make_shared<templates::string_field>(
           ir::string_ref(name),
           ir::string_ref(data.value),
           true, true));
         
-        auto& field = (doc.end() - 1).as<templates::string_field>();
+        auto& field = (doc.indexed.end() - 1).as<templates::string_field>();
         values.emplace_back(field.name(), field.value());
       } else if ("null" == data.value) {
-        doc.add(new tests::binary_field());
-        auto& field = (doc.end() - 1).as<tests::binary_field>();
+        doc.insert(std::make_shared<tests::binary_field>());
+        auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
         field.name(iresearch::string_ref(name));
         field.value(ir::null_token_stream::value_null());
         values.emplace_back(field.name(), field.value());
       } else if ("true" == data.value) {
-        doc.add(new tests::binary_field());
-        auto& field = (doc.end() - 1).as<tests::binary_field>();
+        doc.insert(std::make_shared<tests::binary_field>());
+        auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
         field.name(iresearch::string_ref(name));
         field.value(ir::boolean_token_stream::value_true());
         values.emplace_back(field.name(), field.value());
       } else if ("false" == data.value) {
-        doc.add(new tests::binary_field());
-        auto& field = (doc.end() - 1).as<tests::binary_field>();
+        doc.insert(std::make_shared<tests::binary_field>());
+        auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
         field.name(iresearch::string_ref(name));
         field.value(ir::boolean_token_stream::value_true());
         values.emplace_back(field.name(), field.value());
@@ -1866,8 +1896,8 @@ class format_test_case_base : public index_test_base {
 
         // 'value' can be interpreted as a double
         if (!czSuffix[0]) {
-          doc.add(new tests::double_field());
-          auto& field = (doc.end() - 1).as<tests::double_field>();
+          doc.insert(std::make_shared<tests::double_field>());
+          auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
           field.name(iresearch::string_ref(name));
           field.value(dValue);
           values.emplace_back(field.name(), field.value());
@@ -1895,7 +1925,7 @@ class format_test_case_base : public index_test_base {
       stored_fields_writer::ptr writer = codec()->get_stored_fields_writer();
       writer->prepare(dir(), meta.name);
       for (const document* doc; doc = gen.next();) {
-        for (const auto& field : *doc) {
+        for (const auto& field : doc->stored) {
           const auto& field_meta = fdata.get(field.name());
           fields_src.push_back(field_meta.meta());
           {

@@ -53,7 +53,7 @@ TEST_F(bm25_test, test_order) {
       [](tests::document& doc, const std::string& name, const tests::json::json_value& data) {
         static const std::string s_seq = "seq";
         static const std::string s_field = "field";
-        doc.add(new templates::string_field(name, data.value, name == s_field, name == s_seq));
+        doc.insert(std::make_shared<templates::string_field>(name, data.value, name == s_field, name == s_seq), name == s_field, name == s_seq);
     });
     add_segment(gen);
   }
@@ -73,13 +73,12 @@ TEST_F(bm25_test, test_order) {
   };
   
   uint64_t seq = 0;
-  iresearch::index_reader::document_visitor_f visitor = [&seq](
-    const iresearch::field_meta& field, iresearch::data_input& in
-  ) {
+  iresearch::columnstore_reader::value_reader_f visitor = [&seq](iresearch::data_input& in) {
     auto str_seq = iresearch::read_string<std::string>(in);
     seq = strtoull(str_seq.c_str(), nullptr, 10);
     return true;
   };
+  auto values = segment.values("seq", visitor);
 
   {
     query.term("7");
@@ -92,7 +91,7 @@ TEST_F(bm25_test, test_order) {
     auto& score = docs->attributes().get<iresearch::score>();
     for (; docs->next();) {
       docs->score();
-      ASSERT_TRUE(segment.document(docs->value(), visitor));
+      ASSERT_TRUE(values(docs->value()));
       sorted.emplace(score->value(), seq);
     }
 

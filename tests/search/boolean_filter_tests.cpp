@@ -3891,17 +3891,44 @@ protected:
 
       auto writer = open_writer();
 
-      ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end())); // A
-      ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end())); // B
-      ASSERT_TRUE(writer->insert(doc3->begin(), doc3->end())); // C
-      ASSERT_TRUE(writer->insert(doc4->begin(), doc4->end())); // D
+      ASSERT_TRUE(writer->insert(
+        doc1->indexed.begin(), doc1->indexed.end(),
+        doc1->stored.begin(), doc1->stored.end()
+      )); // A
+      ASSERT_TRUE(writer->insert(
+        doc2->indexed.begin(), doc2->indexed.end(),
+        doc2->stored.begin(), doc2->stored.end()
+      )); // B
+      ASSERT_TRUE(writer->insert(
+        doc3->indexed.begin(), doc3->indexed.end(),
+        doc3->stored.begin(), doc3->stored.end()
+      )); // C
+      ASSERT_TRUE(writer->insert(
+        doc4->indexed.begin(), doc4->indexed.end(),
+        doc4->stored.begin(), doc4->stored.end()
+      )); // D
       writer->commit();
-      ASSERT_TRUE(writer->insert(doc5->begin(), doc5->end())); // E
-      ASSERT_TRUE(writer->insert(doc6->begin(), doc6->end())); // F
-      ASSERT_TRUE(writer->insert(doc7->begin(), doc7->end())); // G
+      ASSERT_TRUE(writer->insert(
+        doc5->indexed.begin(), doc5->indexed.end(),
+        doc5->stored.begin(), doc5->stored.end()
+      )); // E
+      ASSERT_TRUE(writer->insert(
+        doc6->indexed.begin(), doc6->indexed.end(),
+        doc6->stored.begin(), doc6->stored.end()
+      )); // F
+      ASSERT_TRUE(writer->insert(
+        doc7->indexed.begin(), doc7->indexed.end(),
+        doc7->stored.begin(), doc7->stored.end()
+      )); // G
       writer->commit();
-      ASSERT_TRUE(writer->insert(doc8->begin(), doc8->end())); // H
-      ASSERT_TRUE(writer->insert(doc9->begin(), doc9->end())); // I
+      ASSERT_TRUE(writer->insert(
+        doc8->indexed.begin(), doc8->indexed.end(),
+        doc8->stored.begin(), doc8->stored.end()
+      )); // H
+      ASSERT_TRUE(writer->insert(
+        doc9->indexed.begin(), doc9->indexed.end(),
+        doc9->stored.begin(), doc9->stored.end()
+      )); // I
       writer->commit();
     }
 

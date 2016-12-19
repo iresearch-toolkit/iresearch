@@ -32,7 +32,7 @@ class same_position_filter_test_case : public filter_test_case_base {
         typedef templates::text_field<std::string> text_field;
         if (data.quoted) {
           // a || b || c
-          doc.add(new text_field(name, ir::string_ref(data.value), true));
+          doc.insert(std::make_shared<text_field>(name, ir::string_ref(data.value), true), true, false);
         } else {
           // _id
           char* czSuffix;
@@ -40,8 +40,8 @@ class same_position_filter_test_case : public filter_test_case_base {
 
           // 'value' can be interpreted as a double
           if (!czSuffix[0]) {
-            doc.add(new tests::long_field());
-            auto& field = (doc.end() - 1).as<tests::long_field>();
+            doc.insert(std::make_shared<tests::long_field>());
+            auto& field = (doc.indexed.end() - 1).as<tests::long_field>();
             field.name(name);
             field.value(lValue);
             field.stored(true);
@@ -57,10 +57,11 @@ class same_position_filter_test_case : public filter_test_case_base {
     auto& segment = *index->begin();
 
     uint64_t expected_id;
-    ir::index_reader::document_visitor_f visitor = [&expected_id] (const ir::field_meta&, ir::data_input& in) {
+    ir::columnstore_reader::value_reader_f visitor = [&expected_id] (ir::data_input& in) {
       const auto actual_value = ir::read_zvlong(in);
       return actual_value == expected_id;
     };
+    auto values = segment.values("_id", visitor);
     
     // empty query
     {
@@ -108,10 +109,10 @@ class same_position_filter_test_case : public filter_test_case_base {
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), docs->value());
         expected_id = 6;
         ASSERT_TRUE(docs->next());
-        ASSERT_TRUE(segment.document(docs->value(), visitor));
+        ASSERT_TRUE(values(docs->value()));
         expected_id = 27;
         ASSERT_TRUE(docs->next());
-        ASSERT_TRUE(segment.document(docs->value(), visitor));
+        ASSERT_TRUE(values(docs->value()));
         ASSERT_FALSE(docs->next());
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), docs->value());
       }
@@ -122,10 +123,10 @@ class same_position_filter_test_case : public filter_test_case_base {
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), docs->value());
         expected_id = 6;
         ASSERT_EQ((ir::type_limits<ir::type_t::doc_id_t>::min)() + expected_id, docs->seek((ir::type_limits<ir::type_t::doc_id_t>::min)()));
-        ASSERT_TRUE(segment.document(docs->value(), visitor));
+        ASSERT_TRUE(values(docs->value()));
         expected_id = 27;
         ASSERT_EQ((ir::type_limits<ir::type_t::doc_id_t>::min)() + expected_id, docs->seek(expected_id));
-        ASSERT_TRUE(segment.document(docs->value(), visitor));
+        ASSERT_TRUE(values(docs->value()));
         ASSERT_EQ((ir::type_limits<ir::type_t::doc_id_t>::min)() + expected_id, docs->seek(8)); // seek backwards
         ASSERT_EQ((ir::type_limits<ir::type_t::doc_id_t>::min)() + expected_id, docs->seek(27)); // seek to same position
         ASSERT_FALSE(docs->next());
@@ -148,10 +149,10 @@ class same_position_filter_test_case : public filter_test_case_base {
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), docs->value());
         expected_id = 14;
         ASSERT_TRUE(docs->next());
-        ASSERT_TRUE(segment.document(docs->value(), visitor));
+        ASSERT_TRUE(values(docs->value()));
         expected_id = 91;
         ASSERT_TRUE(docs->next());
-        ASSERT_TRUE(segment.document(docs->value(), visitor));
+        ASSERT_TRUE(values(docs->value()));
         ASSERT_FALSE(docs->next());
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), docs->value());
       }
@@ -162,7 +163,7 @@ class same_position_filter_test_case : public filter_test_case_base {
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), docs->value());
         expected_id = 91;
         ASSERT_EQ((ir::type_limits<ir::type_t::doc_id_t>::min)() + expected_id, docs->seek(27));
-        ASSERT_TRUE(segment.document(docs->value(), visitor));
+        ASSERT_TRUE(values(docs->value()));
         ASSERT_EQ((ir::type_limits<ir::type_t::doc_id_t>::min)() + expected_id, docs->seek(8)); // seek backwards
         ASSERT_EQ((ir::type_limits<ir::type_t::doc_id_t>::min)() + expected_id, docs->seek(27)); // seek to same position
         ASSERT_FALSE(docs->next());
@@ -184,43 +185,43 @@ class same_position_filter_test_case : public filter_test_case_base {
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), docs->value());
         ASSERT_TRUE(docs->next());
         expected_id = 1;
-        ASSERT_TRUE(segment.document(docs->value(), visitor));
+        ASSERT_TRUE(values(docs->value()));
         ASSERT_TRUE(docs->next());
         expected_id = 6;
-        ASSERT_TRUE(segment.document(docs->value(), visitor));
+        ASSERT_TRUE(values(docs->value()));
         ASSERT_TRUE(docs->next());
         expected_id = 11;
-        ASSERT_TRUE(segment.document(docs->value(), visitor));
+        ASSERT_TRUE(values(docs->value()));
         ASSERT_TRUE(docs->next());
         expected_id = 17;
-        ASSERT_TRUE(segment.document(docs->value(), visitor));
+        ASSERT_TRUE(values(docs->value()));
         ASSERT_TRUE(docs->next());
         expected_id = 18;
-        ASSERT_TRUE(segment.document(docs->value(), visitor));
+        ASSERT_TRUE(values(docs->value()));
         ASSERT_TRUE(docs->next());
         expected_id = 23;
-        ASSERT_TRUE(segment.document(docs->value(), visitor));
+        ASSERT_TRUE(values(docs->value()));
         ASSERT_TRUE(docs->next());
         expected_id = 24;
-        ASSERT_TRUE(segment.document(docs->value(), visitor));
+        ASSERT_TRUE(values(docs->value()));
         ASSERT_TRUE(docs->next());
         expected_id = 28;
-        ASSERT_TRUE(segment.document(docs->value(), visitor));
+        ASSERT_TRUE(values(docs->value()));
         ASSERT_TRUE(docs->next());
         expected_id = 38;
-        ASSERT_TRUE(segment.document(docs->value(), visitor));
+        ASSERT_TRUE(values(docs->value()));
         ASSERT_TRUE(docs->next());
         expected_id = 51;
-        ASSERT_TRUE(segment.document(docs->value(), visitor));
+        ASSERT_TRUE(values(docs->value()));
         ASSERT_TRUE(docs->next());
         expected_id = 66;
-        ASSERT_TRUE(segment.document(docs->value(), visitor));
+        ASSERT_TRUE(values(docs->value()));
         ASSERT_TRUE(docs->next());
         expected_id = 79;
-        ASSERT_TRUE(segment.document(docs->value(), visitor));
+        ASSERT_TRUE(values(docs->value()));
         ASSERT_TRUE(docs->next());
         expected_id = 89;
-        ASSERT_TRUE(segment.document(docs->value(), visitor));
+        ASSERT_TRUE(values(docs->value()));
         ASSERT_FALSE(docs->next());
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), docs->value());
       }
@@ -231,25 +232,25 @@ class same_position_filter_test_case : public filter_test_case_base {
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), docs->value());
         ASSERT_TRUE(docs->next());
         expected_id = 1;
-        ASSERT_TRUE(segment.document(docs->value(), visitor));
+        ASSERT_TRUE(values(docs->value()));
         expected_id = 28;
         ASSERT_EQ((ir::type_limits<ir::type_t::doc_id_t>::min)() + expected_id, docs->seek((ir::type_limits<ir::type_t::doc_id_t>::min)() + expected_id));
-        ASSERT_TRUE(segment.document(docs->value(), visitor));
+        ASSERT_TRUE(values(docs->value()));
         expected_id = 38;
         ASSERT_TRUE(docs->next());
-        ASSERT_TRUE(segment.document(docs->value(), visitor));
+        ASSERT_TRUE(values(docs->value()));
         expected_id = 51;
         ASSERT_EQ((ir::type_limits<ir::type_t::doc_id_t>::min)() + expected_id, docs->seek(45));
-        ASSERT_TRUE(segment.document(docs->value(), visitor));
+        ASSERT_TRUE(values(docs->value()));
         expected_id = 66;
         ASSERT_TRUE(docs->next());
-        ASSERT_TRUE(segment.document(docs->value(), visitor));
+        ASSERT_TRUE(values(docs->value()));
         expected_id = 79;
         ASSERT_TRUE(docs->next());
-        ASSERT_TRUE(segment.document(docs->value(), visitor));
+        ASSERT_TRUE(values(docs->value()));
         expected_id = 89;
         ASSERT_TRUE(docs->next());
-        ASSERT_TRUE(segment.document(docs->value(), visitor));
+        ASSERT_TRUE(values(docs->value()));
         ASSERT_FALSE(docs->next());
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), docs->value());
       }

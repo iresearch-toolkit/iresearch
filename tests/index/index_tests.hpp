@@ -58,14 +58,14 @@ class index_test_base : public virtual test_base {
   virtual void SetUp() {
     test_base::SetUp();
 
-    /* setting directory */
-    dir_.reset( get_directory() );
+    // set directory
+    dir_.reset(get_directory());
 
-    /* setting codec */
+    // set codec
     codec_ = get_codec();
-    
-    assert( dir_ );
-    assert( codec_ );    
+
+    assert(dir_);
+    assert(codec_);
   }
 
   virtual void TearDown() {
@@ -76,22 +76,22 @@ class index_test_base : public virtual test_base {
   void write_segment( ir::index_writer& writer, tests::index_segment& segment, tests::doc_generator_base& gen ) {
     // add segment
     const document* doc;
-    while ( doc = gen.next() ) {
-      segment.add(doc->begin(), doc->end());
-      writer.insert(doc->begin(), doc->end());
+    while (doc = gen.next()) {
+      segment.add(doc->indexed.begin(), doc->indexed.end());
+      writer.insert(doc->indexed.begin(), doc->indexed.end(), doc->stored.begin(), doc->stored.end());
     }
   }
 
-  void add_segment( ir::index_writer& writer, tests::doc_generator_base& gen ) {
+  void add_segment(ir::index_writer& writer, tests::doc_generator_base& gen) {
     index_.emplace_back();
-    write_segment( writer, index_.back(), gen );
+    write_segment(writer, index_.back(), gen);
     writer.commit();
   }
 
-  void add_segments( ir::index_writer& writer, std::vector<doc_generator_base::ptr>& gens ) {
-    for ( auto& gen : gens ) {
+  void add_segments(ir::index_writer& writer, std::vector<doc_generator_base::ptr>& gens) {
+    for (auto& gen : gens) {
       index_.emplace_back();
-      write_segment( writer, index_.back(), *gen );
+      write_segment(writer, index_.back(), *gen);
     }
     writer.commit();
   }

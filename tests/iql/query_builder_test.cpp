@@ -125,7 +125,7 @@ namespace tests {
         tests::document& doc,
         const std::string& name,
         const tests::json::json_value& value) {
-      doc.add(new analyzed_string_field(
+      doc.insert(std::make_shared<analyzed_string_field>(
         iresearch::string_ref(name),
         iresearch::string_ref(value.value)
       ));
@@ -136,23 +136,23 @@ namespace tests {
         const std::string& name,
         const tests::json::json_value& data) {
       if (data.quoted) {
-        doc.add(new templates::string_field(
+        doc.insert(std::make_shared<templates::string_field>(
           ir::string_ref(name),
           ir::string_ref(data.value),
           true, true));
       } else if ("null" == data.value) {
-        doc.add(new tests::binary_field());
-        auto& field = (doc.end() - 1).as<tests::binary_field>();
+        doc.insert(std::make_shared<tests::binary_field>());
+        auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
         field.name(iresearch::string_ref(name));
         field.value(ir::null_token_stream::value_null());
       } else if ("true" == data.value) {
-        doc.add(new tests::binary_field());
-        auto& field = (doc.end() - 1).as<tests::binary_field>();
+        doc.insert(std::make_shared<tests::binary_field>());
+        auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
         field.name(iresearch::string_ref(name));
         field.value(ir::boolean_token_stream::value_true());
       } else if ("false" == data.value) {
-        doc.add(new tests::binary_field());
-        auto& field = (doc.end() - 1).as<tests::binary_field>();
+        doc.insert(std::make_shared<tests::binary_field>());
+        auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
         field.name(iresearch::string_ref(name));
         field.value(ir::boolean_token_stream::value_true());
       } else {
@@ -161,8 +161,8 @@ namespace tests {
 
         // 'value' can be interpreted as a double
         if (!czSuffix[0]) {
-          doc.add(new tests::double_field());
-          auto& field = (doc.end() - 1).as<tests::double_field>();
+          doc.insert(std::make_shared<tests::double_field>());
+          auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
           field.name(iresearch::string_ref(name));
           field.value(dValue);
         }
@@ -179,7 +179,10 @@ namespace tests {
     const document* doc;
 
     while ((doc = generator.next()) != nullptr) {
-      writer->insert(doc->begin(), doc->end());
+      writer->insert(
+        doc->indexed.begin(), doc->indexed.end(),
+        doc->stored.begin(), doc->stored.end()
+      );
     }
 
     writer->commit();
@@ -226,36 +229,16 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
 
   // single string term
   {
-    std::unordered_map<iresearch::string_ref, std::function<void(iresearch::data_input&)>> codecs{
-      { "name", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "same", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "duplicated", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "prefix", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "seq", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-      { "value", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-    };
-
-    const iresearch::string_ref expected_name = "name";
     iresearch::string_ref expected_value;
-    iresearch::index_reader::document_visitor_f visitor = [&codecs, &expected_value, &expected_name](
-      const iresearch::field_meta& field, iresearch::data_input& in
-    ) {
-      if (field.name != expected_name) {
-        auto it = codecs.find(field.name);
-        if (codecs.end() == it) {
-          return false; // can't find codec
-        }
-        it->second(in); // skip field
-        return true;
-      }
-
-      auto value = iresearch::read_string<std::string>(in);
+    iresearch::columnstore_reader::value_reader_f visitor = [&expected_value] (iresearch::data_input& in) {
+      const auto value = iresearch::read_string<std::string>(in);
       if (value != expected_value) {
         return false;
       }
 
       return true;
     };
+    auto values = segment.values("name", visitor);
 
     auto query = query_builder().build("name==A", std::locale::classic());
     ASSERT_NE(nullptr, query.filter.get());
@@ -270,9 +253,10 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_TRUE(docsItr->next());
 
     expected_value = "A";
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
+
 /* FIXME reenable once bug is fixed
   // single numeric term
   {
@@ -300,36 +284,16 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
 */
   // term negation
   {
-    std::unordered_map<iresearch::string_ref, std::function<void(iresearch::data_input&)>> codecs{
-      { "name", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "same", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "duplicated", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "prefix", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "seq", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-      { "value", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-    };
-
-    const iresearch::string_ref expected_name = "name";
     iresearch::string_ref unexpected_value;
-    iresearch::index_reader::document_visitor_f visitor = [&codecs, &unexpected_value, &expected_name](
-      const iresearch::field_meta& field, iresearch::data_input& in
-    ) {
-      if (field.name != expected_name) {
-        auto it = codecs.find(field.name);
-        if (codecs.end() == it) {
-          return false; // can't find codec
-        }
-        it->second(in); // skip field
-        return true;
-      }
-
-      auto value = iresearch::read_string<std::string>(in);
+    iresearch::columnstore_reader::value_reader_f visitor = [&unexpected_value] (iresearch::data_input& in) {
+      const auto value = iresearch::read_string<std::string>(in);
       if (value == unexpected_value) {
         return false;
       }
 
       return true;
     };
+    auto values = segment.values("name", visitor);
 
     auto query = query_builder().build("name!=A", std::locale::classic());
     ASSERT_NE(nullptr, query.filter.get());
@@ -345,7 +309,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     for (size_t count = segment.docs_count() - 1; count > 0; --count) {
       ASSERT_TRUE(docsItr->next());
       unexpected_value = "A";
-      ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+      ASSERT_TRUE(values(docsItr->value()));
     }
 
     ASSERT_FALSE(docsItr->next());
@@ -353,36 +317,16 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
 
   // term union
   {
-    std::unordered_map<iresearch::string_ref, std::function<void(iresearch::data_input&)>> codecs{
-      { "name", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "same", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "duplicated", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "prefix", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "seq", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-      { "value", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-    };
-
-    const iresearch::string_ref expected_name = "name";
     iresearch::string_ref expected_value;
-    iresearch::index_reader::document_visitor_f visitor = [&codecs, &expected_value, &expected_name](
-      const iresearch::field_meta& field, iresearch::data_input& in
-    ) {
-      if (field.name != expected_name) {
-        auto it = codecs.find(field.name);
-        if (codecs.end() == it) {
-          return false; // can't find codec
-        }
-        it->second(in); // skip field
-        return true;
-      }
-
-      auto value = iresearch::read_string<std::string>(in);
+    iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](iresearch::data_input& in) {
+      const auto value = iresearch::read_string<std::string>(in);
       if (value != expected_value) {
         return false;
       }
 
       return true;
     };
+    auto values = segment.values("name", visitor);
 
     auto query = query_builder().build("name==A || name==B OR name==C", std::locale::classic());
     ASSERT_NE(nullptr, query.filter.get());
@@ -396,13 +340,13 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_NE(nullptr, docsItr.get());
     ASSERT_TRUE(docsItr->next());
     expected_value = "A";
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_TRUE(docsItr->next());
     expected_value = "B";
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_TRUE(docsItr->next());
     expected_value = "C";
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 /* FIXME reenable once bug is fixed
@@ -433,52 +377,23 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
   // single term greater ranges
   {
     std::unordered_set<std::string> expected = { "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z" };
-    
-    std::unordered_map<iresearch::string_ref, std::function<void(iresearch::data_input&)>> codecs{
-      { "name", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "same", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "duplicated", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "prefix", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "seq", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-      { "value", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-    };
 
     double_t seq;
-    iresearch::index_reader::document_visitor_f visitorSeq = [&codecs, &seq](
-      const iresearch::field_meta& field, iresearch::data_input& in
-    ) {
-      if (field.name != "seq") {
-        auto it = codecs.find(field.name);
-        if (codecs.end() == it) {
-          return false; // can't find codec
-        }
-        it->second(in); // skip field
-        return true;
-      }
-
+    iresearch::columnstore_reader::value_reader_f visitorSeq = [&seq](iresearch::data_input& in) {
       seq = iresearch::read_zvdouble(in);
       return true;
     };
+    auto seq_values = segment.values("seq", visitorSeq);
     
-    iresearch::index_reader::document_visitor_f visitorName = [&expected, &codecs](
-      const iresearch::field_meta& field, iresearch::data_input& in
-    ) {
-      if (field.name != "name") {
-        auto it = codecs.find(field.name);
-        if (codecs.end() == it) {
-          return false; // can't find codec
-        }
-        it->second(in); // skip field
-        return true;
-      }
-
-      auto value = iresearch::read_string<std::string>(in);
+    iresearch::columnstore_reader::value_reader_f visitorName = [&expected](iresearch::data_input& in) {
+      const auto value = iresearch::read_string<std::string>(in);
       if (1 != expected.erase(value)) {
         return false;
       }
 
       return true;
     };
+    auto name_values = segment.values("name", visitorName);
    
     auto query = query_builder().build("name > M", std::locale::classic());
     ASSERT_NE(nullptr, query.filter.get());
@@ -492,10 +407,10 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_NE(nullptr, docsItr.get());
 
     while (docsItr->next()) {
-      ASSERT_TRUE(segment.document(docsItr->value(), visitorSeq));
+      ASSERT_TRUE(seq_values(docsItr->value()));
 
       if (seq < 26) { // validate only first 26 records [A-Z]
-        ASSERT_TRUE(segment.document(docsItr->value(), visitorName));
+        ASSERT_TRUE(name_values(docsItr->value()));
       }
     }
 
@@ -506,51 +421,23 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
   {
     std::unordered_set<std::string> expected = { "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z" };
     
-    std::unordered_map<iresearch::string_ref, std::function<void(iresearch::data_input&)>> codecs{
-      { "name", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "same", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "duplicated", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "prefix", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "seq", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-      { "value", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-    };
-
     double_t seq;
-    iresearch::index_reader::document_visitor_f visitorSeq = [&codecs, &seq](
-      const iresearch::field_meta& field, iresearch::data_input& in
-    ) {
-      if (field.name != "seq") {
-        auto it = codecs.find(field.name);
-        if (codecs.end() == it) {
-          return false; // can't find codec
-        }
-        it->second(in); // skip field
-        return true;
-      }
-
+    iresearch::columnstore_reader::value_reader_f visitorSeq = [&seq](iresearch::data_input& in) {
       seq = iresearch::read_zvdouble(in);
       return true;
     };
+    auto seq_values = segment.values("seq", visitorSeq);
 
-    iresearch::index_reader::document_visitor_f visitorName = [&expected, &codecs](
-      const iresearch::field_meta& field, iresearch::data_input& in
-    ) {
-      if (field.name != "name") {
-        auto it = codecs.find(field.name);
-        if (codecs.end() == it) {
-          return false; // can't find codec
-        }
-        it->second(in); // skip field
-        return true;
-      }
-
-      auto value = iresearch::read_string<std::string>(in);
+    iresearch::columnstore_reader::value_reader_f visitorName = [&expected](iresearch::data_input& in) {
+      const auto value = iresearch::read_string<std::string>(in);
       if (1 != expected.erase(value)) {
         return false;
       }
 
       return true;
     };
+    auto name_values = segment.values("name", visitorName);
+
     auto query = query_builder().build("name >= M", std::locale::classic());
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_EQ(nullptr, query.error);
@@ -563,10 +450,10 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_NE(nullptr, docsItr.get());
 
     while (docsItr->next()) {
-      ASSERT_TRUE(segment.document(docsItr->value(), visitorSeq));
+      ASSERT_TRUE(seq_values(docsItr->value()));
 
       if (seq < 26) { // validate only first 26 records [A-Z]
-        ASSERT_TRUE(segment.document(docsItr->value(), visitorName));
+        ASSERT_TRUE(name_values(docsItr->value()));
       }
     }
 
@@ -577,51 +464,23 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
   {
     std::unordered_set<std::string> expected = { "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N" };
 
-    std::unordered_map<iresearch::string_ref, std::function<void(iresearch::data_input&)>> codecs{
-      { "name", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "same", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "duplicated", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "prefix", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "seq", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-      { "value", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-    };
-
     double_t seq;
-    iresearch::index_reader::document_visitor_f visitorSeq = [&codecs, &seq](
-      const iresearch::field_meta& field, iresearch::data_input& in
-    ) {
-      if (field.name != "seq") {
-        auto it = codecs.find(field.name);
-        if (codecs.end() == it) {
-          return false; // can't find codec
-        }
-        it->second(in); // skip field
-        return true;
-      }
-
+    iresearch::columnstore_reader::value_reader_f visitorSeq = [&seq](iresearch::data_input& in) {
       seq = iresearch::read_zvdouble(in);
       return true;
     };
+    auto seq_values = segment.values("seq", visitorSeq);
     
-    iresearch::index_reader::document_visitor_f visitorName = [&expected, &codecs](
-      const iresearch::field_meta& field, iresearch::data_input& in
-    ) {
-      if (field.name != "name") {
-        auto it = codecs.find(field.name);
-        if (codecs.end() == it) {
-          return false; // can't find codec
-        }
-        it->second(in); // skip field
-        return true;
-      }
-
-      auto value = iresearch::read_string<std::string>(in);
+    iresearch::columnstore_reader::value_reader_f visitorName = [&expected](iresearch::data_input& in) {
+      const auto value = iresearch::read_string<std::string>(in);
       if (1 != expected.erase(value)) {
         return false;
       }
 
       return true;
     };
+    auto name_values = segment.values("name", visitorName);
+
     auto query = query_builder().build("name <= N", std::locale::classic());
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_EQ(nullptr, query.error);
@@ -634,10 +493,10 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_NE(nullptr, docsItr.get());
 
     while (docsItr->next()) {
-      ASSERT_TRUE(segment.document(docsItr->value(), visitorSeq));
+      ASSERT_TRUE(seq_values(docsItr->value()));
 
       if (seq < 26) { // validate only first 26 records [A-Z]
-        ASSERT_TRUE(segment.document(docsItr->value(), visitorName));
+        ASSERT_TRUE(name_values(docsItr->value()));
       }
     }
 
@@ -648,51 +507,23 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
   {
     std::unordered_set<std::string> expected = { "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M" };
     
-    std::unordered_map<iresearch::string_ref, std::function<void(iresearch::data_input&)>> codecs{
-      { "name", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "same", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "duplicated", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "prefix", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "seq", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-      { "value", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-    };
-
     double_t seq;
-    iresearch::index_reader::document_visitor_f visitorSeq = [&codecs, &seq](
-      const iresearch::field_meta& field, iresearch::data_input& in
-    ) {
-      if (field.name != "seq") {
-        auto it = codecs.find(field.name);
-        if (codecs.end() == it) {
-          return false; // can't find codec
-        }
-        it->second(in); // skip field
-        return true;
-      }
-
+    iresearch::columnstore_reader::value_reader_f visitorSeq = [&seq](iresearch::data_input& in) {
       seq = iresearch::read_zvdouble(in);
       return true;
     };
+    auto seq_values = segment.values("seq", visitorSeq);
     
-    iresearch::index_reader::document_visitor_f visitorName = [&expected, &codecs](
-      const iresearch::field_meta& field, iresearch::data_input& in
-    ) {
-      if (field.name != "name") {
-        auto it = codecs.find(field.name);
-        if (codecs.end() == it) {
-          return false; // can't find codec
-        }
-        it->second(in); // skip field
-        return true;
-      }
-
-      auto value = iresearch::read_string<std::string>(in);
+    iresearch::columnstore_reader::value_reader_f visitorName = [&expected](iresearch::data_input& in) {
+      const auto value = iresearch::read_string<std::string>(in);
       if (1 != expected.erase(value)) {
         return false;
       }
 
       return true;
     };
+    auto name_values = segment.values("name", visitorName);
+    
     auto query = query_builder().build("name < N", std::locale::classic());
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_EQ(nullptr, query.error);
@@ -705,10 +536,10 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_NE(nullptr, docsItr.get());
 
     while (docsItr->next()) {
-      ASSERT_TRUE(segment.document(docsItr->value(), visitorSeq));
+      ASSERT_TRUE(seq_values(docsItr->value()));
 
       if (seq < 26) { // validate only first 26 records [A-Z]
-        ASSERT_TRUE(segment.document(docsItr->value(), visitorName));
+        ASSERT_TRUE(name_values(docsItr->value()));
       }
     }
 
@@ -717,36 +548,16 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
 
   // limit
   {
-    std::unordered_map<iresearch::string_ref, std::function<void(iresearch::data_input&)>> codecs{
-      { "name", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "same", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "duplicated", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "prefix", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "seq", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-      { "value", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-    };
-
-    const iresearch::string_ref expected_name = "name";
     iresearch::string_ref expected_value;
-    iresearch::index_reader::document_visitor_f visitor = [&codecs, &expected_value, &expected_name](
-      const iresearch::field_meta& field, iresearch::data_input& in
-    ) {
-      if (field.name != expected_name) {
-        auto it = codecs.find(field.name);
-        if (codecs.end() == it) {
-          return false; // can't find codec
-        }
-        it->second(in); // skip field
-        return true;
-      }
-
-      auto value = iresearch::read_string<std::string>(in);
+    iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](iresearch::data_input& in) {
+      const auto value = iresearch::read_string<std::string>(in);
       if (value != expected_value) {
         return false;
       }
 
       return true;
     };
+    auto values = segment.values("name", visitor);
 
     auto query = query_builder().build("name==A limit 42", std::locale::classic());
     ASSERT_NE(nullptr, query.filter.get());
@@ -760,7 +571,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_NE(nullptr, docsItr.get());
     ASSERT_TRUE(docsItr->next());
     expected_value = "A";
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
 
     ASSERT_EQ(42, *(query.limit));
@@ -821,30 +632,9 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
 }
 
 TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
-  std::unordered_map<iresearch::string_ref, std::function<void(iresearch::data_input&)>> codecs{
-    { "name", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-    { "same", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-    { "duplicated", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-    { "prefix", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-    { "seq", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-    { "value", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-  };
-
-  const iresearch::string_ref expected_name = "name";
   iresearch::string_ref expected_value;
-  iresearch::index_reader::document_visitor_f visitor = [&codecs, &expected_value, &expected_name](
-    const iresearch::field_meta& field, iresearch::data_input& in
-  ) {
-    if (field.name != expected_name) {
-      auto it = codecs.find(field.name);
-      if (codecs.end() == it) {
-        return false; // can't find codec
-      }
-      it->second(in); // skip field
-      return true;
-    }
-
-    auto value = iresearch::read_string<std::string>(in);
+  iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](iresearch::data_input& in) {
+    const auto value = iresearch::read_string<std::string>(in);
     if (value != expected_value) {
       return false;
     }
@@ -857,6 +647,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
   ASSERT_EQ(1, reader->size());
 
   auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+  auto values = segment.values("name", visitor);
 
   // default range builder functr ()
   {
@@ -873,7 +664,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
     ASSERT_NE(nullptr, docsItr.get());
     ASSERT_TRUE(docsItr->next());
     expected_value = "B";
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -892,7 +683,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
     ASSERT_NE(nullptr, docsItr.get());
     ASSERT_TRUE(docsItr->next());
     expected_value = "B";
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -911,7 +702,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
     ASSERT_NE(nullptr, docsItr.get());
     ASSERT_TRUE(docsItr->next());
     expected_value = "A";
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -930,10 +721,10 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
     ASSERT_NE(nullptr, docsItr.get());
     ASSERT_TRUE(docsItr->next());
     expected_value = "A";
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_TRUE(docsItr->next());
     expected_value = "B";
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -941,24 +732,10 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
   {
     iresearch::memory_directory analyzed_dir;
     auto analyzed_reader = load_json(analyzed_dir, "simple_sequential.json", true);
-    iresearch::index_reader::document_visitor_f visitor = [&codecs, &expected_value, &expected_name](
-      const iresearch::field_meta& field, iresearch::data_input& in
-    ) {
-      if (field.name != expected_name) {
-        iresearch::read_string<std::string>(in); // in analyzed case we treat all fields as strings
-        return true;
-      }
-
-      auto value = iresearch::read_string<std::string>(in);
-      if (value != expected_value) {
-        return false;
-      }
-
-      return true;
-    };
 
     ASSERT_EQ(1, analyzed_reader->size());
     auto& analyzed_segment = (*analyzed_reader)[0]; // assume 0 is id of first/only segment
+    auto analyzed_segment_values = analyzed_segment.values("name", visitor);
 
     query_builder::branch_builders builders;
     auto locale = boost::locale::generator().generate("en"); // a locale that exists in tests
@@ -974,36 +751,15 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
     ASSERT_NE(nullptr, docsItr.get());
     ASSERT_TRUE(docsItr->next());
     expected_value = "B";
-    ASSERT_TRUE(analyzed_segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(analyzed_segment_values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 }
 
 TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_custom) {
-  std::unordered_map<iresearch::string_ref, std::function<void(iresearch::data_input&)>> codecs{
-    { "name", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-    { "same", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-    { "duplicated", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-    { "prefix", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-    { "seq", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-    { "value", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-  };
-
-  const iresearch::string_ref expected_name = "name";
   iresearch::string_ref expected_value;
-  iresearch::index_reader::document_visitor_f visitor = [&codecs, &expected_value, &expected_name](
-    const iresearch::field_meta& field, iresearch::data_input& in
-  ) {
-    if (field.name != expected_name) {
-      auto it = codecs.find(field.name);
-      if (codecs.end() == it) {
-        return false; // can't find codec
-      }
-      it->second(in); // skip field
-      return true;
-    }
-
-    auto value = iresearch::read_string<std::string>(in);
+  iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](iresearch::data_input& in) {
+    const auto value = iresearch::read_string<std::string>(in);
     if (value != expected_value) {
       return false;
     }
@@ -1039,6 +795,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_custom) {
   ASSERT_EQ(1, reader->size());
 
   auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+  auto values = segment.values("name", visitor);
 
   // custom range builder functr ()
   {
@@ -1055,7 +812,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_custom) {
     ASSERT_NE(nullptr, docsItr.get());
     ASSERT_TRUE(docsItr->next());
     expected_value = "A";
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -1074,7 +831,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_custom) {
     ASSERT_NE(nullptr, docsItr.get());
     ASSERT_TRUE(docsItr->next());
     expected_value = "A";
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -1093,7 +850,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_custom) {
     ASSERT_NE(nullptr, docsItr.get());
     ASSERT_TRUE(docsItr->next());
     expected_value = "A";
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -1112,7 +869,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_custom) {
     ASSERT_NE(nullptr, docsItr.get());
     ASSERT_TRUE(docsItr->next());
     expected_value = "A";
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -1131,21 +888,12 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_custom) {
     ASSERT_NE(nullptr, docsItr.get());
     ASSERT_TRUE(docsItr->next());
     expected_value = "A";
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 }
 
 TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
-  std::unordered_map<iresearch::string_ref, std::function<void(iresearch::data_input&)>> codecs{
-    { "name", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-    { "same", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-    { "duplicated", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-    { "prefix", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-    { "seq", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-    { "value", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-  };
-
   boolean_function::contextual_function_t fnEqual = [](
     boolean_function::contextual_buffer_t& node,
     const std::locale& locale,
@@ -1169,27 +917,16 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
 
   // user supplied boolean_function
   {
-    const iresearch::string_ref expected_name = "name";
     iresearch::string_ref expected_value;
-    iresearch::index_reader::document_visitor_f visitor = [&codecs, &expected_value, &expected_name](
-      const iresearch::field_meta& field, iresearch::data_input& in
-    ) {
-      if (field.name != expected_name) {
-        auto it = codecs.find(field.name);
-        if (codecs.end() == it) {
-          return false; // can't find codec
-        }
-        it->second(in); // skip field
-        return true;
-      }
-
-      auto value = iresearch::read_string<std::string>(in);
+    iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](iresearch::data_input& in) {
+      const auto value = iresearch::read_string<std::string>(in);
       if (value != expected_value) {
         return false;
       }
 
       return true;
     };
+    auto values = segment.values("name", visitor);
 
     boolean_function bool_function(fnEqual, 2);
     boolean_functions bool_functions = {
@@ -1208,33 +945,22 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
     ASSERT_NE(nullptr, docsItr.get());
     ASSERT_TRUE(docsItr->next());
     expected_value = "A";
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
   // user supplied negated boolean_function
   {
-    const iresearch::string_ref expected_name = "name";
     iresearch::string_ref unexpected_value;
-    iresearch::index_reader::document_visitor_f visitor = [&codecs, &unexpected_value, &expected_name](
-      const iresearch::field_meta& field, iresearch::data_input& in
-    ) {
-      if (field.name != expected_name) {
-        auto it = codecs.find(field.name);
-        if (codecs.end() == it) {
-          return false; // can't find codec
-        }
-        it->second(in); // skip field
-        return true;
-      }
-
-      auto value = iresearch::read_string<std::string>(in);
+    iresearch::columnstore_reader::value_reader_f visitor = [&unexpected_value](iresearch::data_input& in) {
+      const auto value = iresearch::read_string<std::string>(in);
       if (value == unexpected_value) {
         return false;
       }
 
       return true;
     };
+    auto values = segment.values("name", visitor);
 
     boolean_function bool_function(fnEqual, 2);
     boolean_functions bool_functions = {
@@ -1254,7 +980,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
     unexpected_value = "A";
     for (size_t count = segment.docs_count() - 1; count > 0; --count) {
       ASSERT_TRUE(docsItr->next());
-      ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+      ASSERT_TRUE(values(docsItr->value()));
     }
 
     ASSERT_FALSE(docsItr->next());
@@ -1302,28 +1028,18 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
     auto docsItr = pQuery->execute(segment);
     ASSERT_NE(nullptr, docsItr.get());
     std::unordered_set<std::string> expected = { "A", "C", "D", "E" };
-    iresearch::index_reader::document_visitor_f visitor = [&expected, &codecs](
-      const iresearch::field_meta& field, iresearch::data_input& in
-    ) {
-      if (field.name != "name") {
-        auto it = codecs.find(field.name);
-        if (codecs.end() == it) {
-          return false; // can't find codec
-        }
-        it->second(in); // skip field
-        return true;
-      }
-
-      auto value = iresearch::read_string<std::string>(in);
+    iresearch::columnstore_reader::value_reader_f visitor = [&expected](iresearch::data_input& in) {
+      const auto value = iresearch::read_string<std::string>(in);
       if (1 != expected.erase(value)) {
         return false;
       }
 
       return true;
     };
+    auto values = segment.values("name", visitor);
 
     while (docsItr->next()) {
-      ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+      ASSERT_TRUE(values(docsItr->value()));
     }
 
     ASSERT_TRUE(expected.empty());
@@ -1331,30 +1047,9 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
 }
 
 TEST_F(IqlQueryBuilderTestSuite, test_query_builder_sequence_fns) {
-  std::unordered_map<iresearch::string_ref, std::function<void(iresearch::data_input&)>> codecs{
-    { "name", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-    { "same", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-    { "duplicated", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-    { "prefix", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-    { "seq", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-    { "value", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-  };
-
-  const iresearch::string_ref expected_name = "name";
   iresearch::string_ref expected_value;
-  iresearch::index_reader::document_visitor_f visitor = [&codecs, &expected_value, &expected_name](
-    const iresearch::field_meta& field, iresearch::data_input& in
-  ) {
-    if (field.name != expected_name) {
-      auto it = codecs.find(field.name);
-      if (codecs.end() == it) {
-        return false; // can't find codec
-      }
-      it->second(in); // skip field
-      return true;
-    }
-
-    auto value = iresearch::read_string<std::string>(in);
+  iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](iresearch::data_input& in) {
+    const auto value = iresearch::read_string<std::string>(in);
     if (value != expected_value) {
       return false;
     }
@@ -1377,6 +1072,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_sequence_fns) {
   ASSERT_EQ(1, reader->size());
 
   auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+  auto values = segment.values("name", visitor);
 
   // user supplied sequence_function
   {
@@ -1397,7 +1093,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_sequence_fns) {
     ASSERT_NE(nullptr, docsItr.get());
     ASSERT_TRUE(docsItr->next());
     expected_value = "A";
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 }
@@ -1473,36 +1169,16 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_order) {
 */
   // custom contextual order function
   {
-    std::unordered_map<iresearch::string_ref, std::function<void(iresearch::data_input&)>> codecs{
-      { "name", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "same", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "duplicated", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "prefix", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "seq", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-      { "value", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-    };
-
-    const iresearch::string_ref expected_name = "name";
     iresearch::string_ref expected_value;
-    iresearch::index_reader::document_visitor_f visitor = [&codecs, &expected_value, &expected_name](
-      const iresearch::field_meta& field, iresearch::data_input& in
-    ) {
-      if (field.name != expected_name) {
-        auto it = codecs.find(field.name);
-        if (codecs.end() == it) {
-          return false; // can't find codec
-        }
-        it->second(in); // skip field
-        return true;
-      }
-
-      auto value = iresearch::read_string<std::string>(in);
+    iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](iresearch::data_input& in) {
+      const auto value = iresearch::read_string<std::string>(in);
       if (value != expected_value) {
         return false;
       }
 
       return true;
     };
+    auto values = segment.values("name", visitor);
 
     std::vector<std::pair<bool, std::string>> direction;
     sequence_function::deterministic_function_t fnTestSeq = [](
@@ -1559,7 +1235,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_order) {
 
     ASSERT_TRUE(docsItr->next());
     expected_value = "A";
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
 
     ASSERT_EQ(2, direction.size());

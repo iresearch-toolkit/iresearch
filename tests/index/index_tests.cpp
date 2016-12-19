@@ -175,30 +175,29 @@ class europarl_doc_template : public delim_doc_generator::doc_template {
   typedef templates::text_field<ir::string_ref> text_field;
 
   virtual void init() {
-    fields_.clear();
-    fields_.reserve(8);
-    fields_.emplace_back(new tests::templates::string_field("title", true, true));
-    fields_.emplace_back(new text_field("title_anl", true, false));
-    fields_.emplace_back(new text_field("title_anl_pay", true, true));
+    clear();
+    indexed.push_back(std::make_shared<tests::templates::string_field>("title", true, true));
+    indexed.push_back(std::make_shared<text_field>("title_anl", true, false));
+    indexed.push_back(std::make_shared<text_field>("title_anl_pay", true, true));
+    indexed.push_back(std::make_shared<text_field>("body_anl", true, false));
+    indexed.push_back(std::make_shared<text_field>("body_anl_pay", true, true));
     {
-      fields_.emplace_back(new tests::long_field());
-      auto& field = static_cast<tests::long_field&>(*fields_.back());
+      insert(std::make_shared<tests::long_field>(), true, true);
+      auto& field = static_cast<tests::long_field&>(indexed.back());
       field.name(ir::string_ref("date"));
       field.indexed(true);
       field.stored(true);
     }
-    fields_.emplace_back(new tests::templates::string_field("datestr", true, true));
-    fields_.emplace_back(new tests::templates::string_field("body", true, true));
-    fields_.emplace_back(new text_field("body_anl", true, false));
-    fields_.emplace_back(new text_field("body_anl_pay", true, true));
+    insert(std::make_shared<tests::templates::string_field>("datestr", true, true), true, true);
+    insert(std::make_shared<tests::templates::string_field>("body", true, true), true, true);
     {
-      fields_.emplace_back(new tests::int_field());
-      auto& field = static_cast<tests::int_field&>(*fields_.back());
+      insert(std::make_shared<tests::int_field>(), true, true);
+      auto& field = static_cast<tests::int_field&>(indexed.back());
       field.name(ir::string_ref("id"));
       field.indexed(true);
       field.stored(true);
     }
-    fields_.emplace_back(new string_field("idstr", true, true));
+    insert(std::make_shared<string_field>("idstr", true, true), true, true);
   }
 
   virtual void value(size_t idx, const std::string& value) {
@@ -213,27 +212,27 @@ class europarl_doc_template : public delim_doc_generator::doc_template {
     switch (idx) {
       case 0: // title
         title_ = value;
-        get<tests::templates::string_field>("title")->value(title_);
-        get<text_field>("title_anl")->value(title_);
-        get<text_field>("title_anl_pay")->value(title_);
+        indexed.get<tests::templates::string_field>("title")->value(title_);
+        indexed.get<text_field>("title_anl")->value(title_);
+        indexed.get<text_field>("title_anl_pay")->value(title_);
         break;
       case 1: // dateA
-        get<tests::long_field>("date")->value(get_time(value));
-        get<tests::templates::string_field>("datestr")->value(value);
+        indexed.get<tests::long_field>("date")->value(get_time(value));
+        indexed.get<tests::templates::string_field>("datestr")->value(value);
         break;
       case 2: // body
         body_ = value;
-        get<tests::templates::string_field>("body")->value(body_);
-        get<text_field>("body_anl")->value(body_);
-        get<text_field>("body_anl_pay")->value(body_);
+        indexed.get<tests::templates::string_field>("body")->value(body_);
+        indexed.get<text_field>("body_anl")->value(body_);
+        indexed.get<text_field>("body_anl_pay")->value(body_);
         break;
     }
   }
 
   virtual void end() {
     ++idval_;
-    get<tests::int_field>("id")->value(idval_);
-    get<tests::templates::string_field>("idstr")->value(std::to_string(idval_));
+    indexed.get<tests::int_field>("id")->value(idval_);
+    indexed.get<tests::templates::string_field>("idstr")->value(std::to_string(idval_));
   }
 
   virtual void reset() {
@@ -253,23 +252,23 @@ void generic_json_field_factory(
     const std::string& name,
     const tests::json::json_value& data) {
   if (data.quoted) {
-    doc.add(new templates::string_field(
+    doc.insert(std::make_shared<templates::string_field>(
       ir::string_ref(name),
       ir::string_ref(data.value),
-      true, true));
+      true, true), true, true);
   } else if ("null" == data.value) {
-    doc.add(new tests::binary_field());
-    auto& field = (doc.end() - 1).as<tests::binary_field>();
+    doc.insert(std::make_shared<tests::binary_field>(), true, true);
+    auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
     field.name(iresearch::string_ref(name));
     field.value(ir::null_token_stream::value_null());
   } else if ("true" == data.value) {
-    doc.add(new tests::binary_field());
-    auto& field = (doc.end() - 1).as<tests::binary_field>();
+    doc.insert(std::make_shared<tests::binary_field>(), true, true);
+    auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
     field.name(iresearch::string_ref(name));
     field.value(ir::boolean_token_stream::value_true());
   } else if ("false" == data.value) {
-    doc.add(new tests::binary_field());
-    auto& field = (doc.end() - 1).as<tests::binary_field>();
+    doc.insert(std::make_shared<tests::binary_field>(), true, true);
+    auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
     field.name(iresearch::string_ref(name));
     field.value(ir::boolean_token_stream::value_true());
   } else {
@@ -278,8 +277,8 @@ void generic_json_field_factory(
 
     // 'value' can be interpreted as a double
     if (!czSuffix[0]) {
-      doc.add(new tests::double_field());
-      auto& field = (doc.end() - 1).as<tests::double_field>();
+      doc.insert(std::make_shared<tests::double_field>(), true, true);
+      auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
       field.name(iresearch::string_ref(name));
       field.value(dValue);
     }
@@ -294,39 +293,39 @@ void payloaded_json_field_factory(
 
   if (data.quoted) {
     // analyzed && pyaloaded
-    doc.add(new text_field(
+    doc.insert(std::make_shared<text_field>(
       std::string(name.c_str()) + "_anl_pay",
       ir::string_ref(data.value),
       true,
       true
-    ));
+    ), true, false);
 
     // analyzed field
-    doc.add(new text_field(
+    doc.insert(std::make_shared<text_field>(
       std::string(name.c_str()) + "_anl",
       ir::string_ref(data.value),
       true
-    ));
+    ), true, false);
 
     // not analyzed field
-    doc.add(new templates::string_field(
+    doc.insert(std::make_shared<templates::string_field>(
       ir::string_ref(name),
       ir::string_ref(data.value),
       true, true
-    ));
+    ), true, true);
   } else if ("null" == data.value) {
-    doc.add(new tests::binary_field());
-    auto& field = (doc.end() - 1).as<tests::binary_field>();
+    doc.insert(std::make_shared<tests::binary_field>(), true, true);
+    auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
     field.name(iresearch::string_ref(name));
     field.value(ir::null_token_stream::value_null());
   } else if ("true" == data.value) {
-    doc.add(new tests::binary_field());
-    auto& field = (doc.end() - 1).as<tests::binary_field>();
+    doc.insert(std::make_shared<tests::binary_field>(), true, true);
+    auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
     field.name(iresearch::string_ref(name));
     field.value(ir::boolean_token_stream::value_true());
   } else if ("false" == data.value) {
-    doc.add(new tests::binary_field());
-    auto& field = (doc.end() - 1).as<tests::binary_field>();
+    doc.insert(std::make_shared<tests::binary_field>(), true, true);
+    auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
     field.name(iresearch::string_ref(name));
     field.value(ir::boolean_token_stream::value_false());
   } else {
@@ -334,8 +333,8 @@ void payloaded_json_field_factory(
     double dValue = strtod(data.value.c_str(), &czSuffix);
     if (!czSuffix[0]) {
       // 'value' can be interpreted as a double
-      doc.add(new tests::double_field());
-      auto& field = (doc.end() - 1).as<tests::double_field>();
+      doc.insert(std::make_shared<tests::double_field>(), true, true);
+      auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
       field.name(iresearch::string_ref(name));
       field.value(dValue);
     }
@@ -373,33 +372,22 @@ class index_test_case_base : public tests::index_test_base {
   }
   
   void profile_bulk_index_dedicated_commit(size_t insert_threads, size_t commit_threads, size_t commit_interval) {
-    struct csv_doc_template_t: public tests::delim_doc_generator::doc_template, private iresearch::util::noncopyable {
-      using document::end;
-
-      csv_doc_template_t() = default;
-      csv_doc_template_t(csv_doc_template_t&& other) {
-        fields_ = std::move(other.fields_);
-      }
-
+    struct csv_doc_template_t: public tests::delim_doc_generator::doc_template {
       virtual void init() {
-        fields_.clear();
-        fields_.reserve(2);
-        fields_.emplace_back(new tests::templates::string_field("id", true, true));
-        fields_.emplace_back(new tests::templates::string_field("label", true, true));
+        clear();
+        reserve(2);
+        insert(std::make_shared<tests::templates::string_field>("id", true, true), true, true);
+        insert(std::make_shared<tests::templates::string_field>("label", true, true), true, true);
       }
 
       virtual void value(size_t idx, const std::string& value) {
         switch(idx) {
          case 0:
-          get<tests::templates::string_field>("id")->value(value);
+          indexed.get<tests::templates::string_field>("id")->value(value);
           break;
          case 1:
-          get<tests::templates::string_field>("label")->value(value);
+          indexed.get<tests::templates::string_field>("label")->value(value);
         }
-      }
-
-      fields_t& fields() {
-        return fields_;
       }
     };
 
@@ -455,7 +443,10 @@ class index_test_case_base : public tests::index_test_base {
 
             {
               REGISTER_TIMER_NAMED_DETAILED("load");
-              writer->insert(csv_doc_template.begin(), csv_doc_template.end());
+              writer->insert(
+                csv_doc_template.indexed.begin(), csv_doc_template.indexed.end(), 
+                csv_doc_template.stored.begin(), csv_doc_template.stored.end()
+              );
             }
           }
         });
@@ -555,33 +546,22 @@ class index_test_case_base : public tests::index_test_base {
   }
 
   void profile_bulk_index(size_t num_threads, size_t batch_size) {
-    struct csv_doc_template_t: public tests::delim_doc_generator::doc_template, private iresearch::util::noncopyable {
-      using document::end;
-
-      csv_doc_template_t() = default;
-      csv_doc_template_t(csv_doc_template_t&& other) {
-        fields_ = std::move(other.fields_);
-      }
-
+    struct csv_doc_template_t: public tests::delim_doc_generator::doc_template {
       virtual void init() {
-        fields_.clear();
-        fields_.reserve(2);
-        fields_.emplace_back(new tests::templates::string_field("id", true, true));
-        fields_.emplace_back(new tests::templates::string_field("label", true, true));
+        clear();
+        reserve(2);
+        insert(std::make_shared<tests::templates::string_field>("id", true, true), true, true);
+        insert(std::make_shared<tests::templates::string_field>("label", true, true), true, true);
       }
 
       virtual void value(size_t idx, const std::string& value) {
         switch(idx) {
          case 0:
-          get<tests::templates::string_field>("id")->value(value);
+          indexed.get<tests::templates::string_field>("id")->value(value);
           break;
          case 1:
-          get<tests::templates::string_field>("label")->value(value);
+          indexed.get<tests::templates::string_field>("label")->value(value);
         }
-      }
-
-      fields_t& fields() {
-        return fields_;
       }
     };
 
@@ -635,7 +615,10 @@ class index_test_case_base : public tests::index_test_base {
 
             {
               REGISTER_TIMER_NAMED_DETAILED("load");
-              writer->insert(csv_doc_template.begin(), csv_doc_template.end());
+              writer->insert(
+                csv_doc_template.indexed.begin(), csv_doc_template.indexed.end(), 
+                csv_doc_template.stored.begin(), csv_doc_template.stored.end()
+              );
             }
 
             if (count >= writer_batch_size) {
@@ -772,7 +755,12 @@ class index_test_case_base : public tests::index_test_base {
       );
       tests::document const* doc1 = gen.next();
       ASSERT_EQ(0, writer->buffered_docs());
-      ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
+      ASSERT_TRUE(
+        writer->insert(
+          doc1->indexed.begin(), doc1->indexed.end(),
+          doc1->stored.begin(), doc1->stored.end()
+        )
+      );
       ASSERT_EQ(1, writer->buffered_docs());
       writer->commit();
       ASSERT_EQ(0, writer->buffered_docs());
@@ -793,10 +781,10 @@ class index_test_case_base : public tests::index_test_base {
       resource("simple_sequential.json"),
       [] (tests::document& doc, const std::string& name, const tests::json::json_value& data) {
         if (data.quoted) {
-          doc.add(new templates::string_field(
+          doc.insert(std::make_shared<templates::string_field>(
             ir::string_ref(name),
             ir::string_ref(data.value),
-            true, true));
+            true, true), true, true);
         }
       });
       tests::document const* doc1 = gen.next();
@@ -804,11 +792,21 @@ class index_test_case_base : public tests::index_test_base {
       
       auto writer = ir::index_writer::make(dir(), codec(), ir::OM_CREATE);
 
-      ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
+      ASSERT_TRUE(
+        writer->insert(
+          doc1->indexed.begin(), doc1->indexed.end(),
+          doc1->stored.begin(), doc1->stored.end()
+        )
+      );
       ASSERT_EQ(1, writer->buffered_docs());
       writer->begin(); // start transaction #1 
       ASSERT_EQ(0, writer->buffered_docs());
-      ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end())); // add another document while transaction in opened
+      ASSERT_TRUE(
+        writer->insert(
+          doc2->indexed.begin(), doc2->indexed.end(),
+          doc2->stored.begin(), doc2->stored.end()
+        )
+      ); // add another document while transaction in opened
       ASSERT_EQ(1, writer->buffered_docs());
       writer->commit(); // finish transaction #1
       ASSERT_EQ(1, writer->buffered_docs()); // still have 1 buffered document not included into transaction #1
@@ -835,30 +833,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // check documents
       {       
-        std::unordered_map<iresearch::string_ref, std::function<void(iresearch::data_input&)>> codecs{
-          { "name", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-          { "same", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-          { "duplicated", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-          { "prefix", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-          { "seq", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-          { "value", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-        };
-
-        const iresearch::string_ref expected_name = "name";
         iresearch::string_ref expected_value;
-        iresearch::index_reader::document_visitor_f visitor = [&codecs, &expected_value, &expected_name](
-          const iresearch::field_meta& field, iresearch::data_input& in
-        ) {
-          if (field.name != expected_name) {
-            auto it = codecs.find(field.name);
-            if (codecs.end() == it) {
-              return false; // can't find codec
-            }
-            it->second(in); // skip field
-            return true;
-          }
-
-          auto value = iresearch::read_string<std::string>(in);
+        iresearch::columnstore_reader::value_reader_f visitor = [&expected_value] (iresearch::data_input& in) {
+          const auto value = iresearch::read_string<std::string>(in);
           if (value != expected_value) {
             return false;
           }
@@ -870,7 +847,8 @@ class index_test_case_base : public tests::index_test_base {
 
         // segment #1
         {
-          auto& segment = (*reader)[0];
+          auto& segment = (*reader)[0];          
+          auto values = segment.values("name", visitor);
           auto terms = segment.terms("same");
           ASSERT_NE(nullptr, terms);
           auto termItr = terms->iterator();
@@ -878,13 +856,14 @@ class index_test_case_base : public tests::index_test_base {
           auto docsItr = termItr->postings(iresearch::flags());
           ASSERT_TRUE(docsItr->next());
           expected_value = "A";
-          ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+          ASSERT_TRUE(values(docsItr->value()));
           ASSERT_FALSE(docsItr->next());
         }
         
         // segment #1
         {
           auto& segment = (*reader)[1];
+          auto values = segment.values("name", visitor);
           auto terms = segment.terms("same");
           ASSERT_NE(nullptr, terms);
           auto termItr = terms->iterator();
@@ -892,7 +871,7 @@ class index_test_case_base : public tests::index_test_base {
           auto docsItr = termItr->postings(iresearch::flags());
           ASSERT_TRUE(docsItr->next());
           expected_value = "B";
-          ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+          ASSERT_TRUE(values(docsItr->value()));
           ASSERT_FALSE(docsItr->next());
         }
       }
@@ -907,7 +886,12 @@ class index_test_case_base : public tests::index_test_base {
 
       auto writer = ir::index_writer::make(dir(), codec(), ir::OM_CREATE);
 
-      ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
+      ASSERT_TRUE(
+        writer->insert(
+          doc1->indexed.begin(), doc1->indexed.end(),
+          doc1->stored.begin(), doc1->stored.end()
+        )
+      );
       writer->rollback(); // does nothing
       ASSERT_EQ(1, writer->buffered_docs());
       ASSERT_TRUE(writer->begin());
@@ -939,7 +923,10 @@ class index_test_case_base : public tests::index_test_base {
     // write some data into columnstore
     auto writer = open_writer();
     for (auto* doc = gen.next(); doc; doc = gen.next()) {
-      writer->insert(doc->end(), doc->end(), doc->begin(), doc->end());
+      ASSERT_TRUE(writer->insert(
+        doc->indexed.end(), doc->indexed.end(), 
+        doc->stored.begin(), doc->stored.end()
+      ));
       expected_docs.push_back(doc);
     }
     writer->commit();
@@ -966,7 +953,7 @@ class index_test_case_base : public tests::index_test_base {
             }
 
             auto* expected_doc = expected_docs[i];
-            auto expected_name = expected_doc->get<tests::templates::string_field>("name")->value();
+            auto expected_name = expected_doc->stored.get<tests::templates::string_field>("name")->value();
             if (expected_name != name) {
               return false;
             }
@@ -1000,33 +987,22 @@ class index_test_case_base : public tests::index_test_base {
   }
   
   void concurrent_read_multiple_columns() {
-    struct csv_doc_template_t: public tests::delim_doc_generator::doc_template, private iresearch::util::noncopyable {
-      using document::end;
-
-      csv_doc_template_t() = default;
-      csv_doc_template_t(csv_doc_template_t&& other) {
-        fields_ = std::move(other.fields_);
-      }
-
+    struct csv_doc_template_t: public tests::delim_doc_generator::doc_template {
       virtual void init() {
-        fields_.clear();
-        fields_.reserve(2);
-        fields_.emplace_back(new tests::templates::string_field("id", true, true));
-        fields_.emplace_back(new tests::templates::string_field("label", true, true));
+        clear();
+        reserve(2);
+        insert(std::make_shared<tests::templates::string_field>("id", true, true), true, true);
+        insert(std::make_shared<tests::templates::string_field>("label", true, true), true, true);
       }
 
       virtual void value(size_t idx, const std::string& value) {
         switch(idx) {
          case 0:
-          get<tests::templates::string_field>("id")->value(value);
+          indexed.get<tests::templates::string_field>("id")->value(value);
           break;
          case 1:
-          get<tests::templates::string_field>("label")->value(value);
+          indexed.get<tests::templates::string_field>("label")->value(value);
         }
-      }
-
-      fields_t& fields() {
-        return fields_;
       }
     };
 
@@ -1038,7 +1014,10 @@ class index_test_case_base : public tests::index_test_base {
 
       const tests::document* doc;
       while (doc = gen.next()) {
-        ASSERT_TRUE(writer->insert(doc->end(), doc->end(), doc->begin(), doc->end()));
+        ASSERT_TRUE(writer->insert(
+          doc->indexed.end(), doc->indexed.end(), 
+          doc->stored.begin(), doc->stored.end()
+        ));
       }
       writer->commit();
     }
@@ -1064,7 +1043,7 @@ class index_test_case_base : public tests::index_test_base {
           }
 
           auto* doc = gen.next();
-          auto* field = doc->get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
 
           if (!field) {
             return false;
@@ -1104,7 +1083,7 @@ class index_test_case_base : public tests::index_test_base {
             return false;
           }
 
-          auto* field = doc->get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
 
           if (!field) {
             return false;
@@ -1196,10 +1175,10 @@ class index_test_case_base : public tests::index_test_base {
       auto writer = ir::index_writer::make(dir(), codec(), ir::OM_CREATE);
 
       // fields only
-      ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-      ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
-      ASSERT_TRUE(writer->insert(doc3->begin(), doc3->end()));
-      ASSERT_TRUE(writer->insert(doc4->begin(), doc4->end()));
+      ASSERT_TRUE(writer->insert(doc1->indexed.begin(), doc1->indexed.end()));
+      ASSERT_TRUE(writer->insert(doc2->indexed.begin(), doc2->indexed.end()));
+      ASSERT_TRUE(writer->insert(doc3->indexed.begin(), doc3->indexed.end()));
+      ASSERT_TRUE(writer->insert(doc4->indexed.begin(), doc4->indexed.end()));
       writer->commit();
     }
 
@@ -1240,10 +1219,10 @@ class index_test_case_base : public tests::index_test_base {
       auto writer = ir::index_writer::make(dir(), codec(), ir::OM_CREATE);
 
       // attributes only
-      ASSERT_TRUE(writer->insert(doc1->end(), doc1->end(), doc1->begin(), doc1->end()));
-      ASSERT_TRUE(writer->insert(doc2->end(), doc2->end(), doc2->begin(), doc2->end()));
-      ASSERT_TRUE(writer->insert(doc3->end(), doc3->end(), doc3->begin(), doc3->end()));
-      ASSERT_TRUE(writer->insert(doc4->end(), doc4->end(), doc4->begin(), doc4->end()));
+      ASSERT_TRUE(writer->insert(doc1->indexed.end(), doc1->indexed.end(), doc1->stored.begin(), doc1->stored.end()));
+      ASSERT_TRUE(writer->insert(doc2->indexed.end(), doc2->indexed.end(), doc2->stored.begin(), doc2->stored.end()));
+      ASSERT_TRUE(writer->insert(doc3->indexed.end(), doc3->indexed.end(), doc3->stored.begin(), doc3->stored.end()));
+      ASSERT_TRUE(writer->insert(doc4->indexed.end(), doc4->indexed.end(), doc4->stored.begin(), doc4->stored.end()));
       writer->commit();
     }
 
@@ -1318,33 +1297,22 @@ class index_test_case_base : public tests::index_test_base {
   }
 
   void read_write_doc_attributes_big() {
-    struct csv_doc_template_t: public tests::delim_doc_generator::doc_template, private iresearch::util::noncopyable {
-      using document::end;
-
-      csv_doc_template_t() = default;
-      csv_doc_template_t(csv_doc_template_t&& other) {
-        fields_ = std::move(other.fields_);
-      }
-
+    struct csv_doc_template_t: public tests::delim_doc_generator::doc_template {
       virtual void init() {
-        fields_.clear();
-        fields_.reserve(2);
-        fields_.emplace_back(new tests::templates::string_field("id", true, true));
-        fields_.emplace_back(new tests::templates::string_field("label", true, true));
+        clear();
+        reserve(2);
+        insert(std::make_shared<tests::templates::string_field>("id", true, true), true, true);
+        insert(std::make_shared<tests::templates::string_field>("label", true, true), true, true);
       }
 
       virtual void value(size_t idx, const std::string& value) {
         switch(idx) {
          case 0:
-          get<tests::templates::string_field>("id")->value(value);
+          indexed.get<tests::templates::string_field>("id")->value(value);
           break;
          case 1:
-          get<tests::templates::string_field>("label")->value(value);
+          indexed.get<tests::templates::string_field>("label")->value(value);
         }
-      }
-
-      fields_t& fields() {
-        return fields_;
       }
     };
           
@@ -1357,7 +1325,7 @@ class index_test_case_base : public tests::index_test_base {
 
       const tests::document* doc;
       while (doc = gen.next()) {
-        ASSERT_TRUE(writer->insert(doc->end(), doc->end(), doc->begin(), doc->end()));
+        ASSERT_TRUE(writer->insert(doc->indexed.end(), doc->indexed.end(), doc->stored.begin(), doc->stored.end()));
       }
       writer->commit();
     }
@@ -1398,7 +1366,7 @@ class index_test_case_base : public tests::index_test_base {
             }
 
             auto* doc = gen.next();
-            auto* field = doc->get<tests::templates::string_field>(column_name);
+            auto* field = doc->stored.get<tests::templates::string_field>(column_name);
 
             if (!field) {
               return false;
@@ -1430,7 +1398,7 @@ class index_test_case_base : public tests::index_test_base {
               return false;
             }
 
-            auto* field = doc->get<tests::templates::string_field>(column_name);
+            auto* field = doc->stored.get<tests::templates::string_field>(column_name);
 
             if (!field) {
               return false;
@@ -1471,7 +1439,7 @@ class index_test_case_base : public tests::index_test_base {
             }
 
             auto* doc = gen.next();
-            auto* field = doc->get<tests::templates::string_field>(column_name);
+            auto* field = doc->stored.get<tests::templates::string_field>(column_name);
 
             if (!field) {
               return false;
@@ -1512,7 +1480,7 @@ class index_test_case_base : public tests::index_test_base {
             }
 
             auto* doc = gen.next();
-            auto* field = doc->get<tests::templates::string_field>(column_name);
+            auto* field = doc->stored.get<tests::templates::string_field>(column_name);
 
             if (!field) {
               return false;
@@ -1544,7 +1512,7 @@ class index_test_case_base : public tests::index_test_base {
               return false;
             }
 
-            auto* field = doc->get<tests::templates::string_field>(column_name);
+            auto* field = doc->stored.get<tests::templates::string_field>(column_name);
 
             if (!field) {
               return false;
@@ -1583,7 +1551,7 @@ class index_test_case_base : public tests::index_test_base {
             }
 
             auto* doc = gen.next();
-            auto* field = doc->get<tests::templates::string_field>(column_name);
+            auto* field = doc->stored.get<tests::templates::string_field>(column_name);
 
             if (!field) {
               return false;
@@ -1659,10 +1627,22 @@ class index_test_case_base : public tests::index_test_base {
 
       auto writer = ir::index_writer::make(override_dir, codec(), ir::OM_APPEND);
 
-      ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-      ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
-      ASSERT_TRUE(writer->insert(doc3->begin(), doc3->end()));
-      ASSERT_TRUE(writer->insert(doc4->begin(), doc4->end()));
+      ASSERT_TRUE(writer->insert(
+        doc1->indexed.begin(), doc1->indexed.end(),
+        doc1->stored.begin(), doc1->stored.end()
+      ));
+      ASSERT_TRUE(writer->insert(
+        doc2->indexed.begin(), doc2->indexed.end(),
+        doc2->stored.begin(), doc2->stored.end()
+      ));
+      ASSERT_TRUE(writer->insert(
+        doc3->indexed.begin(), doc3->indexed.end(),
+        doc3->stored.begin(), doc3->stored.end()
+      ));
+      ASSERT_TRUE(writer->insert(
+        doc4->indexed.begin(), doc4->indexed.end(),
+        doc4->stored.begin(), doc4->stored.end()
+      ));
       ASSERT_THROW(writer->commit(), ir::illegal_state);
     }
 
@@ -1687,10 +1667,22 @@ class index_test_case_base : public tests::index_test_base {
 
       auto writer = ir::index_writer::make(override_dir, codec(), ir::OM_APPEND);
 
-      ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-      ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
-      ASSERT_TRUE(writer->insert(doc3->begin(), doc3->end()));
-      ASSERT_TRUE(writer->insert(doc4->begin(), doc4->end()));
+      ASSERT_TRUE(writer->insert(
+        doc1->indexed.begin(), doc1->indexed.end(),
+        doc1->stored.begin(), doc1->stored.end()
+      ));
+      ASSERT_TRUE(writer->insert(
+        doc2->indexed.begin(), doc2->indexed.end(),
+        doc2->stored.begin(), doc2->stored.end()
+      ));
+      ASSERT_TRUE(writer->insert(
+        doc3->indexed.begin(), doc3->indexed.end(),
+        doc3->stored.begin(), doc3->stored.end()
+      ));
+      ASSERT_TRUE(writer->insert(
+        doc4->indexed.begin(), doc4->indexed.end(),
+        doc4->stored.begin(), doc4->stored.end()
+      ));
       ASSERT_THROW(writer->commit(), ir::io_error);
     }
     
@@ -1836,13 +1828,19 @@ TEST_F(memory_index_test, concurrent_add) {
     std::thread thread0([&writer, docs](){
       for (size_t i = 0, count = docs.size(); i < count; i += 2) {
         auto& doc = docs[i];
-        ASSERT_TRUE(writer->insert(doc->begin(), doc->end()));
+        ASSERT_TRUE(writer->insert(
+          doc->indexed.begin(), doc->indexed.end(),
+          doc->stored.begin(), doc->stored.end()
+        ));
       }
     });
     std::thread thread1([&writer, docs](){
       for (size_t i = 1, count = docs.size(); i < count; i += 2) {
         auto& doc = docs[i];
-        ASSERT_TRUE(writer->insert(doc->begin(), doc->end()));
+        ASSERT_TRUE(writer->insert(
+          doc->indexed.begin(), doc->indexed.end(),
+          doc->stored.begin(), doc->stored.end()
+        ));
       }
     });
 
@@ -1861,10 +1859,10 @@ TEST_F(memory_index_test, concurrent_add_remove) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json::json_value& data) {
     if (data.quoted) {
-      doc.add(new tests::templates::string_field(
+      doc.insert(std::make_shared<tests::templates::string_field>(
         ir::string_ref(name),
         ir::string_ref(data.value),
-        true, true));
+        true, true), true, true);
       }
   });
   std::vector<const tests::document*> docs;
@@ -1878,18 +1876,27 @@ TEST_F(memory_index_test, concurrent_add_remove) {
 
     std::thread thread0([&writer, docs, &first_doc]() {
       auto& doc = docs[0];
-      writer->insert(doc->begin(), doc->end());
+      writer->insert(
+        doc->indexed.begin(), doc->indexed.end(),
+        doc->stored.begin(), doc->stored.end()
+      );
       first_doc = true;
 
       for (size_t i = 2, count = docs.size(); i < count; i += 2) { // skip first doc
         auto& doc = docs[i];
-        writer->insert(doc->begin(), doc->end());
+        writer->insert(
+          doc->indexed.begin(), doc->indexed.end(),
+          doc->stored.begin(), doc->stored.end()
+        );
       }
     });
     std::thread thread1([&writer, docs](){
       for (size_t i = 1, count = docs.size(); i < count; i += 2) {
         auto& doc = docs[i];
-        writer->insert(doc->begin(), doc->end());
+        writer->insert(
+          doc->indexed.begin(), doc->indexed.end(),
+          doc->stored.begin(), doc->stored.end()
+        );
       }
     });
     std::thread thread2([&writer,&query_doc1, &first_doc](){
@@ -1907,30 +1914,14 @@ TEST_F(memory_index_test, concurrent_add_remove) {
     ASSERT_TRUE(reader->size() == 1 || reader->size() == 2); // can be 1 if thread0 finishes before thread1 starts
     ASSERT_TRUE(reader->docs_count() == docs.size() || reader->docs_count() == docs.size() - 1); // removed doc might have been on its own segment
 
-    std::unordered_map<iresearch::string_ref, std::function<void(iresearch::data_input&)>> codecs{
-      { "name", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "same", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "duplicated", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "prefix", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "seq", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-      { "value", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-    };
-
-    const iresearch::string_ref expected_name = "name";
-    iresearch::index_reader::document_visitor_f visitor = [&codecs, &expected, &expected_name](
-      const iresearch::field_meta& field, iresearch::data_input& in
-    ) {
-      if (field.name != expected_name) {
-        auto it = codecs.find(field.name);
-        if (codecs.end() == it) {
-          return false; // can't find codec
-        }
-        it->second(in); // skip field
-        return true;
+    iresearch::columnstore_reader::value_reader_f visitor = [&expected](iresearch::data_input& in) {
+      const auto value = ir::read_string<std::string>(in);
+      if (1 != expected.erase(value)) {
+        return false;
       }
 
-      auto value = ir::read_string<std::string>(in);
-      if (1 != expected.erase(value)) {
+      iresearch::byte_type b;
+      if (in.read_bytes(&b, 1)) {
         return false;
       }
 
@@ -1939,13 +1930,14 @@ TEST_F(memory_index_test, concurrent_add_remove) {
 
     for (size_t i = 0, count = reader->size(); i < count; ++i) {
       auto& segment = (*reader)[i];
+      auto values = segment.values("name", visitor);
       auto terms = segment.terms("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(iresearch::flags());
       while(docsItr->next()) {
-        ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+        ASSERT_TRUE(values(docsItr->value()));
       }
     }
 
@@ -1958,37 +1950,16 @@ TEST_F(memory_index_test, doc_removal) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json::json_value& data) {
     if (data.quoted) {
-      doc.add(new tests::templates::string_field(
+      doc.insert(std::make_shared<tests::templates::string_field>(
         ir::string_ref(name),
         ir::string_ref(data.value),
-        true, true));
+        true, true), true, true);
       }
   });
 
-  std::unordered_map<iresearch::string_ref, std::function<void(iresearch::data_input&)>> codecs{
-    { "name", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-    { "same", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-    { "duplicated", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-    { "prefix", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-    { "seq", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-    { "value", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-  };
-
-  const iresearch::string_ref expected_name = "name";
   iresearch::string_ref expected_value;
-  iresearch::index_reader::document_visitor_f visitor = [&codecs, &expected_value, &expected_name](
-    const iresearch::field_meta& field, iresearch::data_input& in
-  ) {
-    if (field.name != expected_name) {
-      auto it = codecs.find(field.name);
-      if (codecs.end() == it) {
-        return false; // can't find codec
-      }
-      it->second(in); // skip field
-      return true;
-    }
-
-    auto value = iresearch::read_string<std::string>(in);
+  iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](iresearch::data_input& in) {
+    const auto value = iresearch::read_string<std::string>(in);
     if (value != expected_value) {
       return false;
     }
@@ -2010,12 +1981,16 @@ TEST_F(memory_index_test, doc_removal) {
   {
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    auto values = segment.values("name", visitor);
     auto terms = segment.terms("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -2023,7 +1998,7 @@ TEST_F(memory_index_test, doc_removal) {
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
     expected_value = "A"; // 'name' value in doc1
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2032,14 +2007,21 @@ TEST_F(memory_index_test, doc_removal) {
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
     writer->remove(*(query_doc1.filter.get()));
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    auto values = segment.values("name", visitor);
     auto terms = segment.terms("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -2047,7 +2029,7 @@ TEST_F(memory_index_test, doc_removal) {
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
     expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2056,14 +2038,21 @@ TEST_F(memory_index_test, doc_removal) {
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
     writer->remove(std::move(query_doc1.filter));
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    auto values = segment.values("name", visitor);
     auto terms = segment.terms("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -2071,7 +2060,7 @@ TEST_F(memory_index_test, doc_removal) {
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
     expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2080,14 +2069,21 @@ TEST_F(memory_index_test, doc_removal) {
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
     writer->remove(std::shared_ptr<iresearch::filter>(std::move(query_doc1.filter)));
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    auto values = segment.values("name", visitor);
     auto terms = segment.terms("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -2095,7 +2091,7 @@ TEST_F(memory_index_test, doc_removal) {
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
     expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2104,14 +2100,21 @@ TEST_F(memory_index_test, doc_removal) {
     auto query_doc2 = iresearch::iql::query_builder().build("name==B", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
     writer->remove(std::move(query_doc2.filter)); // not present yet
-    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    auto values = segment.values("name", visitor);
     auto terms = segment.terms("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -2119,10 +2122,10 @@ TEST_F(memory_index_test, doc_removal) {
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
     expected_value = "A"; // 'name' value in doc1
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_TRUE(docsItr->next());
     expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2131,14 +2134,21 @@ TEST_F(memory_index_test, doc_removal) {
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
     writer->remove(std::move(query_doc1.filter));
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    auto values = segment.values("name", visitor);
     auto terms = segment.terms("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -2146,7 +2156,7 @@ TEST_F(memory_index_test, doc_removal) {
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
     expected_value = "A"; // 'name' value in doc1
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2156,9 +2166,18 @@ TEST_F(memory_index_test, doc_removal) {
     auto query_doc3 = iresearch::iql::query_builder().build("name==C", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
-    ASSERT_TRUE(writer->insert(doc3->begin(), doc3->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
     writer->remove(std::move(query_doc3.filter));
     writer->commit(); // document mask with 'doc3' created
     writer->remove(std::move(query_doc2.filter));
@@ -2168,6 +2187,7 @@ TEST_F(memory_index_test, doc_removal) {
     ASSERT_EQ(1, reader->size());
 
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    auto values = segment.values("name", visitor);
     auto terms = segment.terms("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -2175,7 +2195,7 @@ TEST_F(memory_index_test, doc_removal) {
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
     expected_value = "A"; // 'name' value in doc1
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2184,16 +2204,26 @@ TEST_F(memory_index_test, doc_removal) {
     auto query_doc1_doc2 = iresearch::iql::query_builder().build("name==A||name==B", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
     writer->commit();
     writer->remove(std::move(query_doc1_doc2.filter));
-    ASSERT_TRUE(writer->insert(doc3->begin(), doc3->end()));
+    ASSERT_TRUE(writer->insert(
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    auto values = segment.values("name", visitor);
     auto terms = segment.terms("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -2201,7 +2231,7 @@ TEST_F(memory_index_test, doc_removal) {
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
     expected_value = "C"; // 'name' value in doc3
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2210,10 +2240,19 @@ TEST_F(memory_index_test, doc_removal) {
     auto query_doc2 = iresearch::iql::query_builder().build("name==B", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(doc3->begin(), doc3->end()));
+    ASSERT_TRUE(writer->insert(
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
     writer->remove(std::move(query_doc2.filter));
     writer->commit();
 
@@ -2222,6 +2261,7 @@ TEST_F(memory_index_test, doc_removal) {
 
     {
       auto& segment = (*reader)[0]; // assume 0 is id of old segment
+      auto values = segment.values("name", visitor);
       auto terms = segment.terms("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -2229,12 +2269,13 @@ TEST_F(memory_index_test, doc_removal) {
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
       expected_value = "A"; // 'name' value in doc1
-      ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+      ASSERT_TRUE(values(docsItr->value()));
       ASSERT_FALSE(docsItr->next());
     }
 
     {
       auto& segment = (*reader)[1]; // assume 1 is id of new segment
+      auto values = segment.values("name", visitor);
       auto terms = segment.terms("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -2242,7 +2283,7 @@ TEST_F(memory_index_test, doc_removal) {
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
       expected_value = "C"; // 'name' value in doc3
-      ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+      ASSERT_TRUE(values(docsItr->value()));
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -2252,11 +2293,23 @@ TEST_F(memory_index_test, doc_removal) {
     auto query_doc1_doc3 = iresearch::iql::query_builder().build("name==A || name==C", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(doc3->begin(), doc3->end()));
-    ASSERT_TRUE(writer->insert(doc4->begin(), doc4->end()));
+    ASSERT_TRUE(writer->insert(
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()
+    ));
     writer->remove(std::move(query_doc1_doc3.filter));
     writer->commit();
 
@@ -2265,6 +2318,7 @@ TEST_F(memory_index_test, doc_removal) {
 
     {
       auto& segment = (*reader)[0]; // assume 0 is id of old segment
+      auto values = segment.values("name", visitor);
       auto terms = segment.terms("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -2272,12 +2326,13 @@ TEST_F(memory_index_test, doc_removal) {
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
       expected_value = "B"; // 'name' value in doc2
-      ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+      ASSERT_TRUE(values(docsItr->value()));
       ASSERT_FALSE(docsItr->next());
     }
 
     {
       auto& segment = (*reader)[1]; // assume 1 is id of new segment
+      auto values = segment.values("name", visitor);
       auto terms = segment.terms("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -2285,7 +2340,7 @@ TEST_F(memory_index_test, doc_removal) {
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
       expected_value = "D"; // 'name' value in doc4
-      ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+      ASSERT_TRUE(values(docsItr->value()));
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -2297,19 +2352,46 @@ TEST_F(memory_index_test, doc_removal) {
     auto query_doc4 = iresearch::iql::query_builder().build("name==D", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end())); // A
-    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end())); // B
-    ASSERT_TRUE(writer->insert(doc3->begin(), doc3->end())); // C
-    ASSERT_TRUE(writer->insert(doc4->begin(), doc4->end())); // D
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    )); // A
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    )); // B
+    ASSERT_TRUE(writer->insert(
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    )); // C
+    ASSERT_TRUE(writer->insert(
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()
+    )); // D
     writer->remove(std::move(query_doc4.filter));
     writer->commit();
-    ASSERT_TRUE(writer->insert(doc5->begin(), doc5->end())); // E
-    ASSERT_TRUE(writer->insert(doc6->begin(), doc6->end())); // F
-    ASSERT_TRUE(writer->insert(doc7->begin(), doc7->end())); // G
+    ASSERT_TRUE(writer->insert(
+      doc5->indexed.begin(), doc5->indexed.end(),
+      doc5->stored.begin(), doc5->stored.end()
+    )); // E
+    ASSERT_TRUE(writer->insert(
+      doc6->indexed.begin(), doc6->indexed.end(),
+      doc6->stored.begin(), doc6->stored.end()
+    )); // F
+    ASSERT_TRUE(writer->insert(
+      doc7->indexed.begin(), doc7->indexed.end(),
+      doc7->stored.begin(), doc7->stored.end()
+    )); // G
     writer->remove(std::move(query_doc3_doc7.filter));
     writer->commit();
-    ASSERT_TRUE(writer->insert(doc8->begin(), doc8->end())); // H
-    ASSERT_TRUE(writer->insert(doc9->begin(), doc9->end())); // I
+    ASSERT_TRUE(writer->insert(
+      doc8->indexed.begin(), doc8->indexed.end(),
+      doc8->stored.begin(), doc8->stored.end()
+    )); // H
+    ASSERT_TRUE(writer->insert(
+      doc9->indexed.begin(), doc9->indexed.end(),
+      doc9->stored.begin(), doc9->stored.end()
+    )); // I
     writer->remove(std::move(query_doc2_doc6_doc9.filter));
     writer->commit();
 
@@ -2318,6 +2400,7 @@ TEST_F(memory_index_test, doc_removal) {
 
     {
       auto& segment = (*reader)[0]; // assume 0 is id of old-old segment
+      auto values = segment.values("name", visitor);
       auto terms = segment.terms("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -2325,12 +2408,13 @@ TEST_F(memory_index_test, doc_removal) {
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
       expected_value = "A"; // 'name' value in doc1
-      ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+      ASSERT_TRUE(values(docsItr->value()));
       ASSERT_FALSE(docsItr->next());
     }
 
     {
       auto& segment = (*reader)[1]; // assume 1 is id of old segment
+      auto values = segment.values("name", visitor);
       auto terms = segment.terms("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -2338,12 +2422,13 @@ TEST_F(memory_index_test, doc_removal) {
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
       expected_value = "E"; // 'name' value in doc5
-      ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+      ASSERT_TRUE(values(docsItr->value()));
       ASSERT_FALSE(docsItr->next());
     }
 
     {
       auto& segment = (*reader)[2]; // assume 2 is id of new segment
+      auto values = segment.values("name", visitor);
       auto terms = segment.terms("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -2351,7 +2436,7 @@ TEST_F(memory_index_test, doc_removal) {
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
       expected_value = "H"; // 'name' value in doc8
-      ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+      ASSERT_TRUE(values(docsItr->value()));
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -2362,38 +2447,16 @@ TEST_F(memory_index_test, doc_update) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json::json_value& data) {
     if (data.quoted) {
-      doc.add(new tests::templates::string_field(
+      doc.insert(std::make_shared<tests::templates::string_field>(
         ir::string_ref(name),
         ir::string_ref(data.value),
-        true, true));
+        true, true), true, true);
       }
   });
   
-  std::unordered_map<iresearch::string_ref, std::function<void(iresearch::data_input&)>> codecs{
-    { "name", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-    { "same", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-    { "duplicated", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-    { "prefix", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-    { "seq", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-    { "test_field", [](iresearch::data_input& in)->void{} }, // NOOP, no data writen in test
-    { "value", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-  };
-
-  const iresearch::string_ref expected_name = "name";
   iresearch::string_ref expected_value;
-  iresearch::index_reader::document_visitor_f visitor = [&codecs, &expected_value, &expected_name](
-    const iresearch::field_meta& field, iresearch::data_input& in
-  ) {
-    if (field.name != expected_name) {
-      auto it = codecs.find(field.name);
-      if (codecs.end() == it) {
-        return false; // can't find codec
-      }
-      it->second(in); // skip field
-      return true;
-    }
-
-    auto value = iresearch::read_string<std::string>(in);
+  iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](iresearch::data_input& in) {
+    const auto value = iresearch::read_string<std::string>(in);
     if (value != expected_value) {
       return false;
     }
@@ -2411,13 +2474,21 @@ TEST_F(memory_index_test, doc_update) {
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(writer->update(*(query_doc1.filter.get()), doc2->begin(), doc2->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(writer->update(
+      *(query_doc1.filter.get()),
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    auto values = segment.values("name", visitor);
     auto terms = segment.terms("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -2425,7 +2496,7 @@ TEST_F(memory_index_test, doc_update) {
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
     expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2434,13 +2505,21 @@ TEST_F(memory_index_test, doc_update) {
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(writer->update(std::move(query_doc1.filter), doc2->begin(), doc2->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(writer->update(
+      std::move(query_doc1.filter),
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    auto values = segment.values("name", visitor);
     auto terms = segment.terms("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -2448,7 +2527,7 @@ TEST_F(memory_index_test, doc_update) {
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
     expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2457,13 +2536,21 @@ TEST_F(memory_index_test, doc_update) {
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(writer->update(std::shared_ptr<iresearch::filter>(std::move(query_doc1.filter)), doc2->begin(), doc2->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(writer->update(
+      std::shared_ptr<iresearch::filter>(std::move(query_doc1.filter)),
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    auto values = segment.values("name", visitor);
     auto terms = segment.terms("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -2471,7 +2558,7 @@ TEST_F(memory_index_test, doc_update) {
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
     expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2480,10 +2567,20 @@ TEST_F(memory_index_test, doc_update) {
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
     writer->commit();
-    ASSERT_TRUE(writer->update(std::move(query_doc1.filter), doc3->begin(), doc3->end()));
+    ASSERT_TRUE(writer->update(
+      std::move(query_doc1.filter),
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -2492,18 +2589,20 @@ TEST_F(memory_index_test, doc_update) {
     {
       auto& segment = (*reader)[0]; // assume 0 is id of old segment
       auto terms = segment.terms("same");
+      auto values = segment.values("name", visitor);
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
       expected_value = "B"; // 'name' value in doc2
-      ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+      ASSERT_TRUE(values(docsItr->value()));
       ASSERT_FALSE(docsItr->next());
     }
 
     {
       auto& segment = (*reader)[1]; // assume 1 is id of new segment
+      auto values = segment.values("name", visitor);
       auto terms = segment.terms("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -2511,7 +2610,7 @@ TEST_F(memory_index_test, doc_update) {
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
       expected_value = "C"; // 'name' value in doc3
-      ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+      ASSERT_TRUE(values(docsItr->value()));
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -2523,15 +2622,31 @@ TEST_F(memory_index_test, doc_update) {
     auto query_doc3 = iresearch::iql::query_builder().build("name==C", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(writer->update(std::move(query_doc1.filter), doc2->begin(), doc2->end()));
-    ASSERT_TRUE(writer->update(std::move(query_doc2.filter), doc3->begin(), doc3->end()));
-    ASSERT_TRUE(writer->update(std::move(query_doc3.filter), doc4->begin(), doc4->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(writer->update(
+      std::move(query_doc1.filter),
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    ASSERT_TRUE(writer->update(
+      std::move(query_doc2.filter),
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
+    ASSERT_TRUE(writer->update(
+      std::move(query_doc3.filter),
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()
+    ));
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    auto values = segment.values("name", visitor);
     auto terms = segment.terms("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -2539,7 +2654,7 @@ TEST_F(memory_index_test, doc_update) {
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
     expected_value = "D"; // 'name' value in doc4
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2550,18 +2665,34 @@ TEST_F(memory_index_test, doc_update) {
     auto query_doc3 = iresearch::iql::query_builder().build("name==C", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
     writer->commit();
-    ASSERT_TRUE(writer->update(std::move(query_doc1.filter), doc2->begin(), doc2->end()));
+    ASSERT_TRUE(writer->update(
+      std::move(query_doc1.filter),
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
     writer->commit();
-    ASSERT_TRUE(writer->update(std::move(query_doc2.filter), doc3->begin(), doc3->end()));
+    ASSERT_TRUE(writer->update(
+      std::move(query_doc2.filter),
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
     writer->commit();
-    ASSERT_TRUE(writer->update(std::move(query_doc3.filter), doc4->begin(), doc4->end()));
+    ASSERT_TRUE(writer->update(
+      std::move(query_doc3.filter),
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()
+    ));
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    auto values = segment.values("name", visitor);
     auto terms = segment.terms("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -2569,7 +2700,7 @@ TEST_F(memory_index_test, doc_update) {
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
     expected_value = "D"; // 'name' value in doc4
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2578,14 +2709,22 @@ TEST_F(memory_index_test, doc_update) {
     auto query_doc2 = iresearch::iql::query_builder().build("name==B", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
     writer->commit();
-    ASSERT_TRUE(writer->update(std::move(query_doc2.filter), doc2->begin(), doc2->end())); // non-existent document
+    ASSERT_TRUE(writer->update(
+      std::move(query_doc2.filter),
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    )); // non-existent document
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    auto values = segment.values("name", visitor);
     auto terms = segment.terms("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -2593,7 +2732,7 @@ TEST_F(memory_index_test, doc_update) {
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
     expected_value = "A"; // 'name' value in doc1
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2602,15 +2741,26 @@ TEST_F(memory_index_test, doc_update) {
     auto query_doc2 = iresearch::iql::query_builder().build("name==B", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
-    ASSERT_TRUE(writer->update(*(query_doc2.filter), doc3->begin(), doc3->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    ASSERT_TRUE(writer->update(
+      *(query_doc2.filter),
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
     writer->remove(*(query_doc2.filter)); // remove no longer existent
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    auto values = segment.values("name", visitor);
     auto terms = segment.terms("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -2618,10 +2768,10 @@ TEST_F(memory_index_test, doc_update) {
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
     expected_value = "A"; // 'name' value in doc1
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_TRUE(docsItr->next());
     expected_value = "C"; // 'name' value in doc3
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2630,10 +2780,20 @@ TEST_F(memory_index_test, doc_update) {
     auto query_doc2 = iresearch::iql::query_builder().build("name==B", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
     writer->commit();
-    ASSERT_TRUE(writer->update(*(query_doc2.filter), doc3->begin(), doc3->end()));
+    ASSERT_TRUE(writer->update(
+      *(query_doc2.filter),
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
     writer->commit();
     writer->remove(*(query_doc2.filter)); // remove no longer existent
     writer->commit();
@@ -2643,6 +2803,7 @@ TEST_F(memory_index_test, doc_update) {
 
     {
       auto& segment = (*reader)[0]; // assume 0 is id of old segment
+      auto values = segment.values("name", visitor);
       auto terms = segment.terms("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -2650,12 +2811,13 @@ TEST_F(memory_index_test, doc_update) {
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
       expected_value = "A"; // 'name' value in doc1
-      ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+      ASSERT_TRUE(values(docsItr->value()));
       ASSERT_FALSE(docsItr->next());
     }
 
     {
       auto& segment = (*reader)[1]; // assume 1 is id of new segment
+      auto values = segment.values("name", visitor);
       auto terms = segment.terms("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -2663,7 +2825,7 @@ TEST_F(memory_index_test, doc_update) {
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
       expected_value = "C"; // 'name' value in doc3
-      ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+      ASSERT_TRUE(values(docsItr->value()));
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -2673,15 +2835,26 @@ TEST_F(memory_index_test, doc_update) {
     auto query_doc2 = iresearch::iql::query_builder().build("name==B", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
     writer->remove(*(query_doc2.filter));
-    ASSERT_TRUE(writer->update(*(query_doc2.filter), doc3->begin(), doc3->end())); // update no longer existent
+    ASSERT_TRUE(writer->update(
+      *(query_doc2.filter),
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    )); // update no longer existent
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    auto values = segment.values("name", visitor);
     auto terms = segment.terms("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -2689,7 +2862,7 @@ TEST_F(memory_index_test, doc_update) {
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
     expected_value = "A"; // 'name' value in doc1
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2698,17 +2871,28 @@ TEST_F(memory_index_test, doc_update) {
     auto query_doc2 = iresearch::iql::query_builder().build("name==B", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
     writer->commit();
     writer->remove(*(query_doc2.filter));
     writer->commit();
-    ASSERT_TRUE(writer->update(*(query_doc2.filter), doc3->begin(), doc3->end())); // update no longer existent
+    ASSERT_TRUE(writer->update(
+      *(query_doc2.filter),
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    )); // update no longer existent
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    auto values = segment.values("name", visitor);
     auto terms = segment.terms("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -2716,7 +2900,7 @@ TEST_F(memory_index_test, doc_update) {
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
     expected_value = "A"; // 'name' value in doc1
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2726,16 +2910,31 @@ TEST_F(memory_index_test, doc_update) {
     auto query_doc3 = iresearch::iql::query_builder().build("name==C", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
     writer->remove(*(query_doc2.filter));
-    ASSERT_TRUE(writer->update(*(query_doc2.filter), doc3->begin(), doc3->end()));
-    ASSERT_TRUE(writer->update(*(query_doc3.filter), doc4->begin(), doc4->end()));
+    ASSERT_TRUE(writer->update(
+      *(query_doc2.filter),
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
+    ASSERT_TRUE(writer->update(
+      *(query_doc3.filter),
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()
+    ));
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    auto values = segment.values("name", visitor);
     auto terms = segment.terms("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -2743,7 +2942,7 @@ TEST_F(memory_index_test, doc_update) {
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
     expected_value = "A"; // 'name' value in doc1
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2753,19 +2952,34 @@ TEST_F(memory_index_test, doc_update) {
     auto query_doc3 = iresearch::iql::query_builder().build("name==C", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
     writer->commit();
     writer->remove(*(query_doc2.filter));
     writer->commit();
-    ASSERT_TRUE(writer->update(*(query_doc2.filter), doc3->begin(), doc3->end()));
+    ASSERT_TRUE(writer->update(
+      *(query_doc2.filter),
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
     writer->commit();
-    ASSERT_TRUE(writer->update(*(query_doc3.filter), doc4->begin(), doc4->end()));
+    ASSERT_TRUE(writer->update(
+      *(query_doc3.filter),
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()
+    ));
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    auto values = segment.values("name", visitor);
     auto terms = segment.terms("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -2773,7 +2987,7 @@ TEST_F(memory_index_test, doc_update) {
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
     expected_value = "A"; // 'name' value in doc1
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2796,10 +3010,10 @@ TEST_F(memory_index_test, doc_update) {
     auto doc4 = gen.next();
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
-    auto* test_field0 = new test_field();
-    auto* test_field1 = new test_field();
-    auto* test_field2 = new test_field();
-    auto* test_field3 = new test_field();
+    auto test_field0 = std::make_shared<test_field>();
+    auto test_field1 = std::make_shared<test_field>();
+    auto test_field2 = std::make_shared<test_field>();
+    auto test_field3 = std::make_shared<test_field>();
     std::string test_field_name("test_field");
 
     test_field0->features_.add<iresearch::offset>().add<iresearch::frequency>(); // feature superset
@@ -2819,21 +3033,38 @@ TEST_F(memory_index_test, doc_update) {
     test_field2->write_result_ = false;
     test_field3->write_result_ = true;
 
-    const_cast<tests::document*>(doc1)->add(test_field0); // inject field
-    const_cast<tests::document*>(doc2)->add(test_field1); // inject field
-    const_cast<tests::document*>(doc3)->add(test_field2); // inject field
-    const_cast<tests::document*>(doc4)->add(test_field3); // inject field
+    const_cast<tests::document*>(doc1)->insert(test_field0, true, true); // inject field
+    const_cast<tests::document*>(doc2)->insert(test_field1, true, true); // inject field
+    const_cast<tests::document*>(doc3)->insert(test_field2, true, false); // inject field
+    const_cast<tests::document*>(doc4)->insert(test_field3, true, true); // inject field
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end())); // field features subset
-    ASSERT_FALSE(writer->insert(doc3->begin(), doc3->end())); // serializer returs false
-    ASSERT_FALSE(writer->insert(doc4->begin(), doc4->end())); // field features differ
-    ASSERT_FALSE(writer->update(*(query_doc1.filter.get()), doc3->begin(), doc3->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    )); // field features subset
+    ASSERT_FALSE(writer->insert(
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    )); // serializer returs false
+    ASSERT_FALSE(writer->insert(
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()
+    )); // field features differ
+    ASSERT_FALSE(writer->update(
+      *(query_doc1.filter.get()), 
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    auto values = segment.values("name", visitor);
     auto terms = segment.terms("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -2841,10 +3072,10 @@ TEST_F(memory_index_test, doc_update) {
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
     expected_value = "A"; // 'name' value in doc1
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_TRUE(docsItr->next());
     expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 }
@@ -2854,37 +3085,16 @@ TEST_F(memory_index_test, import_reader) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json::json_value& data) {
     if (data.quoted) {
-      doc.add(new tests::templates::string_field(
+      doc.insert(std::make_shared<tests::templates::string_field>(
         ir::string_ref(name),
         ir::string_ref(data.value),
-        true, true));
+        true, true), true, true);
       }
   });
   
-  std::unordered_map<iresearch::string_ref, std::function<void(iresearch::data_input&)>> codecs{
-    { "name", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-    { "same", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-    { "duplicated", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-    { "prefix", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-    { "seq", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-    { "value", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-  };
-
-  const iresearch::string_ref expected_name = "name";
   iresearch::string_ref expected_value;
-  iresearch::index_reader::document_visitor_f visitor = [&codecs, &expected_value, &expected_name](
-    const iresearch::field_meta& field, iresearch::data_input& in
-  ) {
-    if (field.name != expected_name) {
-      auto it = codecs.find(field.name);
-      if (codecs.end() == it) {
-        return false; // can't find codec
-      }
-      it->second(in); // skip field
-      return true;
-    }
-
-    auto value = iresearch::read_string<std::string>(in);
+  iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](iresearch::data_input& in) {
+    const auto value = iresearch::read_string<std::string>(in);
     if (value != expected_value) {
       return false;
     }
@@ -2903,8 +3113,14 @@ TEST_F(memory_index_test, import_reader) {
     auto data_writer = iresearch::index_writer::make(data_dir, codec(), iresearch::OM_CREATE);
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
     data_writer->commit();
     ASSERT_TRUE(writer->import(*(iresearch::directory_reader::open(data_dir, codec()))));
     writer->commit();
@@ -2913,6 +3129,7 @@ TEST_F(memory_index_test, import_reader) {
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count());
+    auto values = segment.values("name", visitor);
     auto terms = segment.terms("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -2920,10 +3137,10 @@ TEST_F(memory_index_test, import_reader) {
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
     expected_value = "A"; // 'name' value in doc1
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_TRUE(docsItr->next());
     expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2934,8 +3151,14 @@ TEST_F(memory_index_test, import_reader) {
     auto data_writer = iresearch::index_writer::make(data_dir, codec(), iresearch::OM_CREATE);
     auto writer = open_writer();
 
-    ASSERT_TRUE(data_writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(data_writer->insert(doc2->begin(), doc2->end()));
+    ASSERT_TRUE(data_writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(data_writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
     data_writer->remove(std::move(query_doc1.filter));
     data_writer->commit();
     ASSERT_TRUE(writer->import(*(iresearch::directory_reader::open(data_dir, codec()))));
@@ -2945,6 +3168,7 @@ TEST_F(memory_index_test, import_reader) {
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(1, segment.docs_count());
+    auto values = segment.values("name", visitor);
     auto terms = segment.terms("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -2952,7 +3176,7 @@ TEST_F(memory_index_test, import_reader) {
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
     expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2962,11 +3186,23 @@ TEST_F(memory_index_test, import_reader) {
     auto data_writer = iresearch::index_writer::make(data_dir, codec(), iresearch::OM_CREATE);
     auto writer = open_writer();
 
-    ASSERT_TRUE(data_writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(data_writer->insert(doc2->begin(), doc2->end()));
+    ASSERT_TRUE(data_writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(data_writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
     data_writer->commit();
-    ASSERT_TRUE(data_writer->insert(doc3->begin(), doc3->end()));
-    ASSERT_TRUE(data_writer->insert(doc4->begin(), doc4->end()));
+    ASSERT_TRUE(data_writer->insert(
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
+    ASSERT_TRUE(data_writer->insert(
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()
+    ));
     data_writer->commit();
     ASSERT_TRUE(writer->import(*(iresearch::directory_reader::open(data_dir, codec()))));
     writer->commit();
@@ -2975,6 +3211,7 @@ TEST_F(memory_index_test, import_reader) {
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(4, segment.docs_count());
+    auto values = segment.values("name", visitor);
     auto terms = segment.terms("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -2982,16 +3219,16 @@ TEST_F(memory_index_test, import_reader) {
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
     expected_value = "A"; // 'name' value in doc1
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_TRUE(docsItr->next());
     expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_TRUE(docsItr->next());
     expected_value = "C"; // 'name' value in doc3
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_TRUE(docsItr->next());
     expected_value = "D"; // 'name' value in doc4
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -3002,11 +3239,23 @@ TEST_F(memory_index_test, import_reader) {
     auto data_writer = iresearch::index_writer::make(data_dir, codec(), iresearch::OM_CREATE);
     auto writer = open_writer();
 
-    ASSERT_TRUE(data_writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(data_writer->insert(doc2->begin(), doc2->end()));
+    ASSERT_TRUE(data_writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(data_writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
     data_writer->commit();
-    ASSERT_TRUE(data_writer->insert(doc3->begin(), doc3->end()));
-    ASSERT_TRUE(data_writer->insert(doc4->begin(), doc4->end()));
+    ASSERT_TRUE(data_writer->insert(
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
+    ASSERT_TRUE(data_writer->insert(
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()
+    ));
     data_writer->remove(std::move(query_doc2_doc3.filter));
     data_writer->commit();
     ASSERT_TRUE(writer->import(*(iresearch::directory_reader::open(data_dir, codec()))));
@@ -3016,6 +3265,7 @@ TEST_F(memory_index_test, import_reader) {
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count());
+    auto values = segment.values("name", visitor);
     auto terms = segment.terms("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -3023,10 +3273,10 @@ TEST_F(memory_index_test, import_reader) {
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
     expected_value = "A"; // 'name' value in doc1
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_TRUE(docsItr->next());
     expected_value = "D"; // 'name' value in doc4
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -3037,11 +3287,23 @@ TEST_F(memory_index_test, import_reader) {
     auto data_writer = iresearch::index_writer::make(data_dir, codec(), iresearch::OM_CREATE);
     auto writer = open_writer();
 
-    ASSERT_TRUE(data_writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(data_writer->insert(doc2->begin(), doc2->end()));
+    ASSERT_TRUE(data_writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(data_writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
     data_writer->commit();
-    ASSERT_TRUE(data_writer->insert(doc3->begin(), doc3->end()));
-    ASSERT_TRUE(data_writer->insert(doc4->begin(), doc4->end()));
+    ASSERT_TRUE(data_writer->insert(
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
+    ASSERT_TRUE(data_writer->insert(
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()
+    ));
     data_writer->remove(std::move(query_doc4.filter));
     data_writer->commit();
     ASSERT_TRUE(writer->import(*(iresearch::directory_reader::open(data_dir, codec()))));
@@ -3051,6 +3313,7 @@ TEST_F(memory_index_test, import_reader) {
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(3, segment.docs_count());
+    auto values = segment.values("name", visitor);
     auto terms = segment.terms("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -3058,13 +3321,13 @@ TEST_F(memory_index_test, import_reader) {
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
     expected_value = "A"; // 'name' value in doc1
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_TRUE(docsItr->next());
     expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_TRUE(docsItr->next());
     expected_value = "C"; // 'name' value in doc3
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -3075,10 +3338,19 @@ TEST_F(memory_index_test, import_reader) {
     auto data_writer = iresearch::index_writer::make(data_dir, codec(), iresearch::OM_CREATE);
     auto writer = open_writer();
 
-    ASSERT_TRUE(data_writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(data_writer->insert(doc2->begin(), doc2->end()));
+    ASSERT_TRUE(data_writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(data_writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
     data_writer->commit();
-    ASSERT_TRUE(writer->insert(doc3->begin(), doc3->end()));
+    ASSERT_TRUE(writer->insert(
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
     writer->remove(std::move(query_doc2.filter)); // should not match any documents
     ASSERT_TRUE(writer->import(*(iresearch::directory_reader::open(data_dir, codec()))));
     writer->commit();
@@ -3089,6 +3361,7 @@ TEST_F(memory_index_test, import_reader) {
     {
       auto& segment = (*reader)[1]; // assume 1 is id of imported segment
       ASSERT_EQ(2, segment.docs_count());
+      auto values = segment.values("name", visitor);
       auto terms = segment.terms("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -3096,16 +3369,17 @@ TEST_F(memory_index_test, import_reader) {
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
       expected_value = "A"; // 'name' value in doc1
-      ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+      ASSERT_TRUE(values(docsItr->value()));
       ASSERT_TRUE(docsItr->next());
       expected_value = "B"; // 'name' value in doc2
-      ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+      ASSERT_TRUE(values(docsItr->value()));
       ASSERT_FALSE(docsItr->next());
     }
 
     {
       auto& segment = (*reader)[0]; // assume 0 is id of original segment
       ASSERT_EQ(1, segment.docs_count());
+      auto values = segment.values("name", visitor);
       auto terms = segment.terms("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -3113,7 +3387,7 @@ TEST_F(memory_index_test, import_reader) {
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
       expected_value = "C"; // 'name' value in doc3
-      ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+      ASSERT_TRUE(values(docsItr->value()));
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -3148,38 +3422,16 @@ TEST_F(memory_index_test, refresh_reader) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json::json_value& data) {
     if (data.quoted) {
-      doc.add(new tests::templates::string_field(
+      doc.insert(std::make_shared<tests::templates::string_field>(
         ir::string_ref(name),
         ir::string_ref(data.value),
-        true, true));
+        true, true), true, true);
       }
   });
 
-
-  std::unordered_map<iresearch::string_ref, std::function<void(iresearch::data_input&)>> codecs{
-    { "name", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-    { "same", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-    { "duplicated", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-    { "prefix", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-    { "seq", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-    { "value", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-  };
-
-  const iresearch::string_ref expected_name = "name";
   iresearch::string_ref expected_value;
-  iresearch::index_reader::document_visitor_f visitor = [&codecs, &expected_value, &expected_name](
-    const iresearch::field_meta& field, iresearch::data_input& in
-  ) {
-    if (field.name != expected_name) {
-      auto it = codecs.find(field.name);
-      if (codecs.end() == it) {
-        return false; // can't find codec
-      }
-      it->second(in); // skip field
-      return true;
-    }
-
-    auto value = iresearch::read_string<std::string>(in);
+  iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](iresearch::data_input& in) {
+    const auto value = iresearch::read_string<std::string>(in);
     if (value != expected_value) {
       return false;
     }
@@ -3196,8 +3448,14 @@ TEST_F(memory_index_test, refresh_reader) {
   {
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
     writer->commit();
   }
 
@@ -3208,6 +3466,7 @@ TEST_F(memory_index_test, refresh_reader) {
   {
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    auto values = segment.values("name", visitor);
     auto terms = segment.terms("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -3215,10 +3474,10 @@ TEST_F(memory_index_test, refresh_reader) {
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
     expected_value = "A"; // 'name' value in doc1
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_TRUE(docsItr->next());
     expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -3236,6 +3495,7 @@ TEST_F(memory_index_test, refresh_reader) {
     {
       ASSERT_EQ(1, reader->size());
       auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+      auto values = segment.values("name", visitor);
       auto terms = segment.terms("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -3243,10 +3503,10 @@ TEST_F(memory_index_test, refresh_reader) {
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
       expected_value = "A"; // 'name' value in doc1
-      ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+      ASSERT_TRUE(values(docsItr->value()));
       ASSERT_TRUE(docsItr->next());
       expected_value = "B"; // 'name' value in doc2
-      ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+      ASSERT_TRUE(values(docsItr->value()));
       ASSERT_FALSE(docsItr->next());
     }
 
@@ -3254,6 +3514,7 @@ TEST_F(memory_index_test, refresh_reader) {
       reader->refresh();
       ASSERT_EQ(1, reader->size());
       auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+      auto values = segment.values("name", visitor);
       auto terms = segment.terms("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -3261,7 +3522,7 @@ TEST_F(memory_index_test, refresh_reader) {
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
       expected_value = "A"; // 'name' value in doc1
-      ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+      ASSERT_TRUE(values(docsItr->value()));
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -3270,8 +3531,14 @@ TEST_F(memory_index_test, refresh_reader) {
   {
     auto writer = open_writer(ir::OPEN_MODE::OM_APPEND);
 
-    ASSERT_TRUE(writer->insert(doc3->begin(), doc3->end()));
-    ASSERT_TRUE(writer->insert(doc4->begin(), doc4->end()));
+    ASSERT_TRUE(writer->insert(
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()
+    ));
     writer->commit();
   }
 
@@ -3279,6 +3546,7 @@ TEST_F(memory_index_test, refresh_reader) {
   {
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    auto values = segment.values("name", visitor);
     auto terms = segment.terms("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -3286,7 +3554,7 @@ TEST_F(memory_index_test, refresh_reader) {
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
     expected_value = "A"; // 'name' value in doc1
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
 
     reader->refresh();
@@ -3294,6 +3562,7 @@ TEST_F(memory_index_test, refresh_reader) {
 
     {
       auto& segment = (*reader)[0]; // assume 0 is id of first segment
+      auto values = segment.values("name", visitor);
       auto terms = segment.terms("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -3301,12 +3570,13 @@ TEST_F(memory_index_test, refresh_reader) {
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
       expected_value = "A"; // 'name' value in doc1
-      ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+      ASSERT_TRUE(values(docsItr->value()));
       ASSERT_FALSE(docsItr->next());
     }
 
     {
       auto& segment = (*reader)[1]; // assume 1 is id of second segment
+      auto values = segment.values("name", visitor);
       auto terms = segment.terms("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -3314,10 +3584,10 @@ TEST_F(memory_index_test, refresh_reader) {
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
       expected_value = "C"; // 'name' value in doc3
-      ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+      ASSERT_TRUE(values(docsItr->value()));
       ASSERT_TRUE(docsItr->next());
       expected_value = "D"; // 'name' value in doc4
-      ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+      ASSERT_TRUE(values(docsItr->value()));
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -3338,6 +3608,7 @@ TEST_F(memory_index_test, refresh_reader) {
 
     {
       auto& segment = (*reader)[0]; // assume 0 is id of first segment
+      auto values = segment.values("name", visitor);
       auto terms = segment.terms("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -3345,12 +3616,13 @@ TEST_F(memory_index_test, refresh_reader) {
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
       expected_value = "A"; // 'name' value in doc1
-      ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+      ASSERT_TRUE(values(docsItr->value()));
       ASSERT_FALSE(docsItr->next());
     }
 
     {
       auto& segment = (*reader)[1]; // assume 1 is id of second segment
+      auto values = segment.values("name", visitor);
       auto terms = segment.terms("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -3358,16 +3630,16 @@ TEST_F(memory_index_test, refresh_reader) {
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
       expected_value = "C"; // 'name' value in doc3
-      ASSERT_TRUE(segment.document(docsItr->value(), visitor));
       ASSERT_TRUE(docsItr->next());
       expected_value = "D"; // 'name' value in doc4
-      ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+      ASSERT_TRUE(values(docsItr->value()));
       ASSERT_FALSE(docsItr->next());
     }
 
     reader->refresh();
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of second segment
+    auto values = segment.values("name", visitor);
     auto terms = segment.terms("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -3375,10 +3647,10 @@ TEST_F(memory_index_test, refresh_reader) {
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
     expected_value = "C"; // 'name' value in doc3
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_TRUE(docsItr->next());
     expected_value = "D"; // 'name' value in doc4
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 }
@@ -3475,24 +3747,16 @@ TEST_F(memory_index_test, segment_defragment) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json::json_value& data) {
       if (data.quoted) {
-        doc.add(new tests::templates::string_field(
+        doc.insert(std::make_shared<tests::templates::string_field>(
           ir::string_ref(name),
           ir::string_ref(data.value),
-          true, true));
+          true, true), true, true);
       }
   });
   
-  const iresearch::string_ref expected_name = "name";
   iresearch::string_ref expected_value;
-  iresearch::index_reader::document_visitor_f visitor = [&expected_value, &expected_name](
-    const ir::field_meta& field, data_input& in
-  ) {
-    if (field.name != expected_name) {
-      iresearch::read_string<std::string>(in); // skip field
-      return true;
-    }
-
-    auto value = ir::read_string<std::string>(in);
+  iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](data_input& in) {
+    const auto value = ir::read_string<std::string>(in);
     if (value != expected_value) {
       return false;
     }
@@ -3515,8 +3779,10 @@ TEST_F(memory_index_test, segment_defragment) {
   {
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
-
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
     writer->remove(std::move(query_doc1.filter));
     writer->commit();
 
@@ -3529,7 +3795,10 @@ TEST_F(memory_index_test, segment_defragment) {
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
     writer->commit();
     writer->remove(std::move(query_doc1.filter));
     writer->commit();
@@ -3543,10 +3812,19 @@ TEST_F(memory_index_test, segment_defragment) {
     auto query_doc1_doc2 = iresearch::iql::query_builder().build("name==A||name==B", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
-    ASSERT_TRUE(writer->insert(doc3->begin(), doc3->end()));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
     writer->remove(std::move(query_doc1_doc2.filter));
     writer->commit();
     writer->defragment(always_merge);
@@ -3555,12 +3833,13 @@ TEST_F(memory_index_test, segment_defragment) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back();
-    expected.back().add(doc3->begin(), doc3->end());
+    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader->size());
     const auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    auto values = segment.values("name", visitor);
     ASSERT_EQ(1, segment.docs_count()); // total count of documents
     auto terms = segment.terms("same");
     ASSERT_NE(nullptr, terms);
@@ -3569,7 +3848,7 @@ TEST_F(memory_index_test, segment_defragment) {
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
     expected_value = "C"; // 'name' value in doc3
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -3578,10 +3857,19 @@ TEST_F(memory_index_test, segment_defragment) {
     auto query_doc1_doc2 = iresearch::iql::query_builder().build("name==A||name==B", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
-    ASSERT_TRUE(writer->insert(doc3->begin(), doc3->end()));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
     writer->commit();
     writer->remove(std::move(query_doc1_doc2.filter));
     writer->commit();
@@ -3591,13 +3879,14 @@ TEST_F(memory_index_test, segment_defragment) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back();
-    expected.back().add(doc3->begin(), doc3->end());
+    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(1, segment.docs_count()); // total count of documents
+    auto values = segment.values("name", visitor);
     auto terms = segment.terms("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -3605,7 +3894,7 @@ TEST_F(memory_index_test, segment_defragment) {
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
     expected_value = "C"; // 'name' value in doc3
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -3619,8 +3908,14 @@ TEST_F(memory_index_test, segment_defragment) {
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
     writer->commit();
     writer->remove(std::move(query_doc1.filter));
     writer->defragment(merge_if_masked);
@@ -3649,11 +3944,23 @@ TEST_F(memory_index_test, segment_defragment) {
     auto query_doc1_doc3 = iresearch::iql::query_builder().build("name==A||name==C", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(doc3->begin(), doc3->end()));
-    ASSERT_TRUE(writer->insert(doc4->begin(), doc4->end()));
+    ASSERT_TRUE(writer->insert(
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()
+    ));
     writer->remove(std::move(query_doc1_doc3.filter));
     writer->commit();
     writer->defragment(always_merge);
@@ -3662,14 +3969,15 @@ TEST_F(memory_index_test, segment_defragment) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back();
-    expected.back().add(doc2->begin(), doc2->end());
-    expected.back().add(doc4->begin(), doc4->end());
+    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count()); // total count of documents
+    auto values = segment.values("name", visitor);
     auto terms = segment.terms("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -3677,10 +3985,10 @@ TEST_F(memory_index_test, segment_defragment) {
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
     expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_TRUE(docsItr->next());
     expected_value = "D"; // 'name' value in doc4
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -3689,11 +3997,23 @@ TEST_F(memory_index_test, segment_defragment) {
     auto query_doc1_doc3 = iresearch::iql::query_builder().build("name==A||name==C", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(doc3->begin(), doc3->end()));
-    ASSERT_TRUE(writer->insert(doc4->begin(), doc4->end()));
+    ASSERT_TRUE(writer->insert(
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()
+    ));
     writer->commit();
     writer->remove(std::move(query_doc1_doc3.filter));
     writer->commit();
@@ -3703,14 +4023,15 @@ TEST_F(memory_index_test, segment_defragment) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back();
-    expected.back().add(doc2->begin(), doc2->end());
-    expected.back().add(doc4->begin(), doc4->end());
+    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count()); // total count of documents
+    auto values = segment.values("name", visitor);
     auto terms = segment.terms("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -3718,10 +4039,10 @@ TEST_F(memory_index_test, segment_defragment) {
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
     expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_TRUE(docsItr->next());
     expected_value = "D"; // 'name' value in doc4
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -3730,14 +4051,32 @@ TEST_F(memory_index_test, segment_defragment) {
     auto query_doc1_doc3_doc5 = iresearch::iql::query_builder().build("name==A||name==C||name==E", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(doc3->begin(), doc3->end()));
-    ASSERT_TRUE(writer->insert(doc4->begin(), doc4->end()));
+    ASSERT_TRUE(writer->insert(
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()
+    ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(doc5->begin(), doc5->end()));
-    ASSERT_TRUE(writer->insert(doc6->begin(), doc6->end()));
+    ASSERT_TRUE(writer->insert(
+      doc5->indexed.begin(), doc5->indexed.end(),
+      doc5->stored.begin(), doc5->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc6->indexed.begin(), doc6->indexed.end(),
+      doc6->stored.begin(), doc6->stored.end()
+    ));
     writer->commit();
     writer->remove(std::move(query_doc1_doc3_doc5.filter));
     writer->commit();
@@ -3747,15 +4086,16 @@ TEST_F(memory_index_test, segment_defragment) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back();
-    expected.back().add(doc2->begin(), doc2->end());
-    expected.back().add(doc4->begin(), doc4->end());
-    expected.back().add(doc6->begin(), doc6->end());
+    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    expected.back().add(doc6->indexed.begin(), doc6->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(3, segment.docs_count()); // total count of documents
+    auto values = segment.values("name", visitor);
     auto terms = segment.terms("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -3763,13 +4103,13 @@ TEST_F(memory_index_test, segment_defragment) {
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
     expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_TRUE(docsItr->next());
     expected_value = "D"; // 'name' value in doc4
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_TRUE(docsItr->next());
     expected_value = "F"; // 'name' value in doc6
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -3777,9 +4117,18 @@ TEST_F(memory_index_test, segment_defragment) {
   {
     auto writer = open_writer();
     // add 1st segment
-    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
-    ASSERT_TRUE(writer->insert(doc4->begin(), doc4->end()));
-    ASSERT_TRUE(writer->insert(doc6->begin(), doc6->end()));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc6->indexed.begin(), doc6->indexed.end(),
+      doc6->stored.begin(), doc6->stored.end()
+    ));
     writer->commit();
 
     // add 2nd segment
@@ -3787,19 +4136,28 @@ TEST_F(memory_index_test, segment_defragment) {
       resource("simple_sequential_upper_case.json"),
       [] (tests::document& doc, const std::string& name, const tests::json::json_value& data) {
         if (data.quoted) {
-          doc.add(new tests::templates::string_field(
+          doc.insert(std::make_shared<tests::templates::string_field>(
             ir::string_ref(name),
             ir::string_ref(data.value),
-            true, true));
+            true, true), true, true);
         }
     });
 
     auto doc1_1 = gen.next();
     auto doc1_2 = gen.next();
     auto doc1_3 = gen.next();
-    ASSERT_TRUE(writer->insert(doc1_1->begin(), doc1_1->end()));
-    ASSERT_TRUE(writer->insert(doc1_2->begin(), doc1_2->end()));
-    ASSERT_TRUE(writer->insert(doc1_3->begin(), doc1_3->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1_1->indexed.begin(), doc1_1->indexed.end(),
+      doc1_1->stored.begin(), doc1_1->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc1_2->indexed.begin(), doc1_2->indexed.end(),
+      doc1_2->stored.begin(), doc1_2->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc1_3->indexed.begin(), doc1_3->indexed.end(),
+      doc1_3->stored.begin(), doc1_3->stored.end()
+    ));
     writer->commit();
 
     // defragment segments
@@ -3811,6 +4169,8 @@ TEST_F(memory_index_test, segment_defragment) {
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(6, segment.docs_count()); // total count of documents
+    auto values = segment.values("name", visitor);
+    auto upper_case_values = segment.values("NAME", visitor);
 
     auto terms = segment.terms("same");
     ASSERT_NE(nullptr, terms);
@@ -3819,22 +4179,22 @@ TEST_F(memory_index_test, segment_defragment) {
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
     expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_TRUE(docsItr->next());
     expected_value = "D"; // 'name' value in doc4
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_TRUE(docsItr->next());
     expected_value = "F"; // 'name' value in doc6
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(values(docsItr->value()));
     ASSERT_TRUE(docsItr->next());
     expected_value = "A"; // 'name' value in doc1_1
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(upper_case_values(docsItr->value()));
     ASSERT_TRUE(docsItr->next());
     expected_value = "B"; // 'name' value in doc1_2
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(upper_case_values(docsItr->value()));
     ASSERT_TRUE(docsItr->next());
     expected_value = "C"; // 'name' value in doc1_3
-    ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+    ASSERT_TRUE(upper_case_values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
   }
 }
@@ -3844,10 +4204,10 @@ TEST_F(memory_index_test, segment_defragment_policy) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json::json_value& data) {
     if (data.quoted) {
-      doc.add(new tests::templates::string_field(
+      doc.insert(std::make_shared<tests::templates::string_field>(
         ir::string_ref(name),
         ir::string_ref(data.value),
-        true, true));
+        true, true), true, true);
       }
   });
   
@@ -3862,41 +4222,35 @@ TEST_F(memory_index_test, segment_defragment_policy) {
   {
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
-    ASSERT_TRUE(writer->insert(doc3->begin(), doc3->end()));
-    ASSERT_TRUE(writer->insert(doc4->begin(), doc4->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()
+    ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(doc5->begin(), doc5->end()));
+    ASSERT_TRUE(writer->insert(
+      doc5->indexed.begin(), doc5->indexed.end(),
+      doc5->stored.begin(), doc5->stored.end()
+    ));
     writer->commit();
     writer->defragment(iresearch::index_utils::defragment_bytes(1)); // value garanteeing merge
     writer->commit();
 
     std::unordered_set<std::string> expectedName = { "A", "B", "C", "D", "E" };
 
-    std::unordered_map<iresearch::string_ref, std::function<void(iresearch::data_input&)>> codecs{
-      { "name", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "same", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "duplicated", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "prefix", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
-      { "seq", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-      { "value", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
-    };
-
-    const iresearch::string_ref expectedField = "name";
-    iresearch::index_reader::document_visitor_f visitor = [&codecs, &expectedName, &expectedField](
-      const iresearch::field_meta& field, iresearch::data_input& in
-    ) {
-      if (field.name != expectedField) {
-        auto it = codecs.find(field.name);
-        if (codecs.end() == it) {
-          return false; // can't find codec
-        }
-        it->second(in); // skip field
-        return true;
-      }
-      
-      auto value = ir::read_string<std::string>(in);
+    iresearch::columnstore_reader::value_reader_f visitor = [&expectedName](iresearch::data_input& in) {
+      const auto value = ir::read_string<std::string>(in);
       if (1 != expectedName.erase(value)) {
         return false;
       }
@@ -3907,6 +4261,7 @@ TEST_F(memory_index_test, segment_defragment_policy) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    auto values = segment.values("name", visitor);
     ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
     auto terms = segment.terms("same");
     ASSERT_NE(nullptr, terms);
@@ -3914,7 +4269,7 @@ TEST_F(memory_index_test, segment_defragment_policy) {
     ASSERT_TRUE(termItr->next());
 
     for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
-      ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+      ASSERT_TRUE(values(docsItr->value()));
     }
 
     ASSERT_TRUE(expectedName.empty());
@@ -3924,12 +4279,27 @@ TEST_F(memory_index_test, segment_defragment_policy) {
   {
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
-    ASSERT_TRUE(writer->insert(doc3->begin(), doc3->end()));
-    ASSERT_TRUE(writer->insert(doc4->begin(), doc4->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()
+    ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(doc5->begin(), doc5->end()));
+    ASSERT_TRUE(writer->insert(
+      doc5->indexed.begin(), doc5->indexed.end(),
+      doc5->stored.begin(), doc5->stored.end()
+    ));
     writer->commit();
     writer->defragment(iresearch::index_utils::defragment_bytes(0)); // value garanteeing non-merge
     writer->commit();
@@ -3939,16 +4309,8 @@ TEST_F(memory_index_test, segment_defragment_policy) {
 
     {
       std::unordered_set<std::string> expectedName = { "A", "B", "C", "D" };
-      const iresearch::string_ref expectedField = "name";
-      iresearch::index_reader::document_visitor_f visitor = [&expectedField, &expectedName](
-        const ir::field_meta& field, data_input& in
-      ) {
-        if (field.name != expectedField) {
-          ir::read_string<std::string>(in); // skip value
-          return true;
-        }
-
-        auto value = ir::read_string<std::string>(in);
+      iresearch::columnstore_reader::value_reader_f visitor = [&expectedName](data_input& in) {
+        const auto value = ir::read_string<std::string>(in);
         if (1 != expectedName.erase(value)) {
           return false;
         }
@@ -3962,8 +4324,9 @@ TEST_F(memory_index_test, segment_defragment_policy) {
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
 
+      auto values = segment.values("name", visitor);
       for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
-        ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+        ASSERT_TRUE(values(docsItr->value()));
       }
 
       ASSERT_TRUE(expectedName.empty());
@@ -3971,16 +4334,8 @@ TEST_F(memory_index_test, segment_defragment_policy) {
 
     {
       std::unordered_set<std::string> expectedName = { "E" };
-      const iresearch::string_ref expectedField = "name";
-      iresearch::index_reader::document_visitor_f visitor = [&expectedField, &expectedName](
-        const ir::field_meta& field, data_input& in
-      ) {
-        if (field.name != expectedField) {
-          ir::read_string<std::string>(in); // skip value
-          return true;
-        }
-
-        auto value = ir::read_string<std::string>(in);
+      iresearch::columnstore_reader::value_reader_f visitor = [&expectedName](data_input& in) {
+        const auto value = ir::read_string<std::string>(in);
         if (1 != expectedName.erase(value)) {
           return false;
         }
@@ -3994,8 +4349,9 @@ TEST_F(memory_index_test, segment_defragment_policy) {
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
 
+      auto values = segment.values("name", visitor);
       for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
-        ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+        ASSERT_TRUE(values(docsItr->value()));
       }
 
       ASSERT_TRUE(expectedName.empty());
@@ -4006,25 +4362,23 @@ TEST_F(memory_index_test, segment_defragment_policy) {
   {
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
     writer->commit();
     writer->defragment(iresearch::index_utils::defragment_bytes_accum(1)); // value garanteeing merge
     writer->commit();
     // segments merged because segment[0] is a candidate and needs to be merged with something
 
     std::unordered_set<std::string> expectedName = { "A", "B" };
-    const iresearch::string_ref expectedField = "name";
-    iresearch::index_reader::document_visitor_f visitor = [&expectedField, &expectedName](
-      const ir::field_meta& field, data_input& in
-    ) {
-      if (field.name != expectedField) {
-        ir::read_string<std::string>(in); // skip value
-        return true;
-      }
-
-      auto value = ir::read_string<std::string>(in);
+    iresearch::columnstore_reader::value_reader_f visitor = [&expectedName](data_input& in) {
+      const auto value = ir::read_string<std::string>(in);
       if (1 != expectedName.erase(value)) {
         return false;
       }
@@ -4040,8 +4394,9 @@ TEST_F(memory_index_test, segment_defragment_policy) {
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
 
+    auto values = segment.values("name", visitor);
     for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
-      ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+      ASSERT_TRUE(values(docsItr->value()));
     }
 
     ASSERT_TRUE(expectedName.empty());
@@ -4051,9 +4406,15 @@ TEST_F(memory_index_test, segment_defragment_policy) {
   {
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
     writer->commit();
     writer->defragment(iresearch::index_utils::defragment_bytes_accum(0)); // value garanteeing non-merge
     writer->commit();
@@ -4063,16 +4424,8 @@ TEST_F(memory_index_test, segment_defragment_policy) {
 
     {
       std::unordered_set<std::string> expectedName = { "A" };
-      const iresearch::string_ref expectedField = "name";
-      iresearch::index_reader::document_visitor_f visitor = [&expectedField, &expectedName](
-        const ir::field_meta& field, data_input& in
-      ) {
-        if (field.name != expectedField) {
-          ir::read_string<std::string>(in); // skip value
-          return true;
-        }
-
-        auto value = ir::read_string<std::string>(in);
+      iresearch::columnstore_reader::value_reader_f visitor = [&expectedName](data_input& in) {
+        const auto value = ir::read_string<std::string>(in);
         if (1 != expectedName.erase(value)) {
           return false;
         }
@@ -4086,8 +4439,9 @@ TEST_F(memory_index_test, segment_defragment_policy) {
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
 
+      auto values = segment.values("name", visitor);
       for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
-        ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+        ASSERT_TRUE(values(docsItr->value()));
       }
 
       ASSERT_TRUE(expectedName.empty());
@@ -4095,16 +4449,8 @@ TEST_F(memory_index_test, segment_defragment_policy) {
 
     {
       std::unordered_set<std::string> expectedName = { "B" };
-      const iresearch::string_ref expectedField = "name";
-      iresearch::index_reader::document_visitor_f visitor = [&expectedField, &expectedName](
-        const ir::field_meta& field, data_input& in
-      ) {
-        if (field.name != expectedField) {
-          ir::read_string<std::string>(in); // skip value
-          return true;
-        }
-
-        auto value = ir::read_string<std::string>(in);
+      iresearch::columnstore_reader::value_reader_f visitor = [&expectedName](data_input& in) {
+        const auto value = ir::read_string<std::string>(in);
         if (1 != expectedName.erase(value)) {
           return false;
         }
@@ -4118,8 +4464,9 @@ TEST_F(memory_index_test, segment_defragment_policy) {
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
 
+      auto values = segment.values("name", visitor);
       for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
-        ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+        ASSERT_TRUE(values(docsItr->value()));
       }
 
       ASSERT_TRUE(expectedName.empty());
@@ -4131,28 +4478,35 @@ TEST_F(memory_index_test, segment_defragment_policy) {
     auto query_doc2_doc3 = iresearch::iql::query_builder().build("name==B||name==C", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
-    ASSERT_TRUE(writer->insert(doc3->begin(), doc3->end()));
-    ASSERT_TRUE(writer->insert(doc4->begin(), doc4->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()
+    ));
     writer->commit();
     writer->remove(std::move(query_doc2_doc3.filter));
-    ASSERT_TRUE(writer->insert(doc5->begin(), doc5->end()));
+    ASSERT_TRUE(writer->insert(
+      doc5->indexed.begin(), doc5->indexed.end(),
+      doc5->stored.begin(), doc5->stored.end()
+    ));
     writer->commit();
     writer->defragment(iresearch::index_utils::defragment_count(1)); // value garanteeing merge
     writer->commit();
 
     std::unordered_set<std::string> expectedName = { "A", "D", "E" };
-    const iresearch::string_ref expectedField = "name";
-    iresearch::index_reader::document_visitor_f visitor = [&expectedField, &expectedName](
-      const ir::field_meta& field, data_input& in
-    ) {
-      if (field.name != expectedField) {
-        ir::read_string<std::string>(in); // skip value
-        return true;
-      }
-
-      auto value = ir::read_string<std::string>(in);
+    iresearch::columnstore_reader::value_reader_f visitor = [&expectedName](data_input& in) {
+      const auto value = ir::read_string<std::string>(in);
       if (1 != expectedName.erase(value)) {
         return false;
       }
@@ -4168,8 +4522,9 @@ TEST_F(memory_index_test, segment_defragment_policy) {
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
 
+    auto values = segment.values("name", visitor);
     for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
-      ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+      ASSERT_TRUE(values(docsItr->value()));
     }
 
     ASSERT_TRUE(expectedName.empty());
@@ -4180,13 +4535,28 @@ TEST_F(memory_index_test, segment_defragment_policy) {
     auto query_doc2_doc3_doc4 = iresearch::iql::query_builder().build("name==B||name==C||name==D", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
-    ASSERT_TRUE(writer->insert(doc3->begin(), doc3->end()));
-    ASSERT_TRUE(writer->insert(doc4->begin(), doc4->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()
+    ));
     writer->commit();
     writer->remove(std::move(query_doc2_doc3_doc4.filter));
-    ASSERT_TRUE(writer->insert(doc5->begin(), doc5->end()));
+    ASSERT_TRUE(writer->insert(
+      doc5->indexed.begin(), doc5->indexed.end(),
+      doc5->stored.begin(), doc5->stored.end()
+    ));
     writer->commit();
     writer->defragment(iresearch::index_utils::defragment_count(0)); // value garanteeing non-merge
     writer->commit();
@@ -4196,16 +4566,8 @@ TEST_F(memory_index_test, segment_defragment_policy) {
 
     {
       std::unordered_set<std::string> expectedName = { "A" };
-      const iresearch::string_ref expectedField = "name";
-      iresearch::index_reader::document_visitor_f visitor = [&expectedField, &expectedName](
-        const ir::field_meta& field, data_input& in
-      ) {
-        if (field.name != expectedField) {
-          ir::read_string<std::string>(in); // skip value
-          return true;
-        }
-
-        auto value = ir::read_string<std::string>(in);
+      iresearch::columnstore_reader::value_reader_f visitor = [&expectedName](data_input& in) {
+        const auto value = ir::read_string<std::string>(in);
         if (1 != expectedName.erase(value)) {
           return false;
         }
@@ -4219,8 +4581,9 @@ TEST_F(memory_index_test, segment_defragment_policy) {
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
 
+      auto values = segment.values("name", visitor);
       for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
-        ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+        ASSERT_TRUE(values(docsItr->value()));
       }
 
       ASSERT_TRUE(expectedName.empty());
@@ -4228,16 +4591,8 @@ TEST_F(memory_index_test, segment_defragment_policy) {
 
     {
       std::unordered_set<std::string> expectedName = { "E" };
-      const iresearch::string_ref expectedField = "name";
-      iresearch::index_reader::document_visitor_f visitor = [&expectedField, &expectedName](
-        const ir::field_meta& field, data_input& in
-      ) {
-        if (field.name != expectedField) {
-          ir::read_string<std::string>(in); // skip value
-          return true;
-        }
-
-        auto value = ir::read_string<std::string>(in);
+      iresearch::columnstore_reader::value_reader_f visitor = [&expectedName](data_input& in) {
+        const auto value = ir::read_string<std::string>(in);
         if (1 != expectedName.erase(value)) {
           return false;
         }
@@ -4251,8 +4606,9 @@ TEST_F(memory_index_test, segment_defragment_policy) {
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
 
+      auto values = segment.values("name", visitor);
       for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
-        ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+        ASSERT_TRUE(values(docsItr->value()));
       }
 
       ASSERT_TRUE(expectedName.empty());
@@ -4264,11 +4620,23 @@ TEST_F(memory_index_test, segment_defragment_policy) {
     auto query_doc2_doc4 = iresearch::iql::query_builder().build("name==B||name==D", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(doc3->begin(), doc3->end()));
-    ASSERT_TRUE(writer->insert(doc4->begin(), doc4->end()));
+    ASSERT_TRUE(writer->insert(
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()
+    ));
     writer->commit();
     writer->remove(std::move(query_doc2_doc4.filter));
     writer->commit();
@@ -4276,16 +4644,8 @@ TEST_F(memory_index_test, segment_defragment_policy) {
     writer->commit();
 
     std::unordered_set<std::string> expectedName = { "A", "C" };
-    const iresearch::string_ref expectedField = "name";
-    iresearch::index_reader::document_visitor_f visitor = [&expectedField, &expectedName](
-      const ir::field_meta& field, data_input& in
-    ) {
-      if (field.name != expectedField) {
-        ir::read_string<std::string>(in); // skip value
-        return true;
-      }
-
-      auto value = ir::read_string<std::string>(in);
+    iresearch::columnstore_reader::value_reader_f visitor = [&expectedName](data_input& in) {
+      const auto value = ir::read_string<std::string>(in);
       if (1 != expectedName.erase(value)) {
         return false;
       }
@@ -4301,8 +4661,9 @@ TEST_F(memory_index_test, segment_defragment_policy) {
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
 
+    auto values = segment.values("name", visitor);
     for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
-      ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+      ASSERT_TRUE(values(docsItr->value()));
     }
 
     ASSERT_TRUE(expectedName.empty());
@@ -4313,11 +4674,23 @@ TEST_F(memory_index_test, segment_defragment_policy) {
     auto query_doc2_doc4 = iresearch::iql::query_builder().build("name==B||name==D", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(doc1->begin(), doc1->end()));
-    ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(doc3->begin(), doc3->end()));
-    ASSERT_TRUE(writer->insert(doc4->begin(), doc4->end()));
+    ASSERT_TRUE(writer->insert(
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()
+    ));
     writer->commit();
     writer->remove(std::move(query_doc2_doc4.filter));
     writer->commit();
@@ -4329,16 +4702,8 @@ TEST_F(memory_index_test, segment_defragment_policy) {
 
     {
       std::unordered_set<std::string> expectedName = { "A" };
-      const iresearch::string_ref expectedField = "name";
-      iresearch::index_reader::document_visitor_f visitor = [&expectedField, &expectedName](
-        const ir::field_meta& field, data_input& in
-      ) {
-        if (field.name != expectedField) {
-          ir::read_string<std::string>(in); // skip value
-          return true;
-        }
-
-        auto value = ir::read_string<std::string>(in);
+      iresearch::columnstore_reader::value_reader_f visitor = [&expectedName](data_input& in) {
+        const auto value = ir::read_string<std::string>(in);
         if (1 != expectedName.erase(value)) {
           return false;
         }
@@ -4352,8 +4717,9 @@ TEST_F(memory_index_test, segment_defragment_policy) {
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
 
+      auto values = segment.values("name", visitor);
       for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
-        ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+        ASSERT_TRUE(values(docsItr->value()));
       }
 
       ASSERT_TRUE(expectedName.empty());
@@ -4361,16 +4727,8 @@ TEST_F(memory_index_test, segment_defragment_policy) {
 
     {
       std::unordered_set<std::string> expectedName = { "C" };
-      const iresearch::string_ref expectedField = "name";
-      iresearch::index_reader::document_visitor_f visitor = [&expectedField, &expectedName](
-        const ir::field_meta& field, data_input& in
-      ) {
-        if (field.name != expectedField) {
-          ir::read_string<std::string>(in); // skip value
-          return true;
-        }
-
-        auto value = ir::read_string<std::string>(in);
+      iresearch::columnstore_reader::value_reader_f visitor = [&expectedName](data_input& in) {
+        const auto value = ir::read_string<std::string>(in);
         if (1 != expectedName.erase(value)) {
           return false;
         }
@@ -4384,8 +4742,9 @@ TEST_F(memory_index_test, segment_defragment_policy) {
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
 
+      auto values = segment.values("name", visitor);
       for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
-        ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+        ASSERT_TRUE(values(docsItr->value()));
       }
 
       ASSERT_TRUE(expectedName.empty());
@@ -4461,7 +4820,10 @@ TEST_F(fs_index_test, writer_close) {
   auto* doc = gen.next();
   auto writer = open_writer();
 
-  ASSERT_TRUE(writer->insert(doc->begin(), doc->end()));
+  ASSERT_TRUE(writer->insert(
+    doc->indexed.begin(), doc->indexed.end(),
+    doc->stored.begin(), doc->stored.end()
+  ));
   writer->commit();
   writer->close();
 
