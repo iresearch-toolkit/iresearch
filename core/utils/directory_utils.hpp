@@ -58,7 +58,7 @@ IRESEARCH_API bool reference(
 );
 
 // remove all (tracked and non-tracked) files if they are unreferenced
-void remove_all_unreferenced(directory& dir);
+IRESEARCH_API void remove_all_unreferenced(directory& dir);
 
 // remove tracked files if they are unreferenced and not part of the latest segments
 IRESEARCH_API directory_cleaner::removal_acceptor_t remove_except_current_segments(
