@@ -674,29 +674,6 @@ void field_meta_writer::write(
 void field_meta_writer::end() { }
 
 /* -------------------------------------------------------------------
- * stored_fields_writer 
- * ------------------------------------------------------------------*/
-
-stored_fields_writer::stored_fields_writer(const index_segment& data)
-  : data_(data) {
-}
-
-void stored_fields_writer::prepare(
-  iresearch::directory& dir,
-  const iresearch::string_ref& seg_name) {
-}
-
-bool stored_fields_writer::write(const iresearch::serializer&) {
-  return false;
-}
-
-void stored_fields_writer::end(const iresearch::serializer*) { }
-
-void stored_fields_writer::finish() {}
-
-void stored_fields_writer::reset() {}
-
-/* -------------------------------------------------------------------
  * format 
  * ------------------------------------------------------------------*/
 
@@ -752,14 +729,6 @@ iresearch::field_writer::ptr format::get_field_writer(bool volatile_attributes /
 
 iresearch::field_reader::ptr format::get_field_reader() const {
   return iresearch::field_reader::make<tests::field_reader>(data_);
-}
-
-iresearch::stored_fields_writer::ptr format::get_stored_fields_writer() const {
-  return iresearch::stored_fields_writer::make<tests::stored_fields_writer>(data_);
-}
-
-iresearch::stored_fields_reader::ptr format::get_stored_fields_reader() const {
-  return nullptr;
 }
 
 iresearch::column_meta_writer::ptr format::get_column_meta_writer() const {

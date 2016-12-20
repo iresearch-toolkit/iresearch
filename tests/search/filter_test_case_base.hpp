@@ -301,18 +301,6 @@ class filter_test_case_base : public index_test_base {
 };
 
 struct empty_index_reader : iresearch::singleton<empty_index_reader>, iresearch::index_reader {
-  virtual bool document(
-      iresearch::doc_id_t, 
-      const iresearch::stored_fields_reader::visitor_f&) const {
-    return false; 
-  }
-
-  virtual bool document(
-      iresearch::doc_id_t, 
-      const iresearch::index_reader::document_visitor_f&) const {
-    return false;
-  }
-
   virtual uint64_t docs_count() const { return 0; }
 
   virtual uint64_t docs_count(const iresearch::string_ref& field) const { return 0; }
@@ -343,18 +331,6 @@ struct empty_sub_reader : iresearch::singleton<empty_sub_reader>, iresearch::sub
       return false;
     }
   };
-
-  virtual bool document(
-      iresearch::doc_id_t, 
-      const iresearch::stored_fields_reader::visitor_f&) const { 
-    return false; 
-  }
-
-  virtual bool document(
-      iresearch::doc_id_t, 
-      const iresearch::index_reader::document_visitor_f&) const { 
-    return false; 
-  }
 
   virtual const iresearch::columns_meta& columns() const {
     static iresearch::columns_meta empty;

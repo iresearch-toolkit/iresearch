@@ -44,18 +44,6 @@ struct IRESEARCH_API index_reader {
 
   virtual ~index_reader();
 
-  // calls visitor by the specified document id
-  virtual bool document(
-    doc_id_t id,
-    const document_visitor_f& visitor
-  ) const = 0;
-
-  // calls visitor by the specified document id
-  virtual bool document(
-    doc_id_t id,
-    const stored_fields_reader::visitor_f& visitor 
-  ) const = 0;
-
   /* number of live documents */
   virtual uint64_t docs_count() const = 0;
 
@@ -159,18 +147,6 @@ class IRESEARCH_API_TEMPLATE composite_reader : public index_reader {
     meta_(std::move(meta)) {
   }
 
-  virtual bool document(
-      doc_id_t doc,
-      const document_visitor_f& visitor) const override {
-    return visit<decltype(visitor)>(doc, visitor);
-  }
-  
-  virtual bool document(
-      doc_id_t doc,
-      const stored_fields_reader::visitor_f& visitor) const override {
-    return visit<decltype(visitor)>(doc, visitor);
-  }
-
   // number of live documents
   virtual uint64_t docs_count() const override { return docs_count_; }
 
@@ -240,12 +216,6 @@ class IRESEARCH_API_TEMPLATE composite_reader : public index_reader {
    private:
      typename composite_reader::ctxs_t::const_iterator pos_;
   };
-
-  template<typename Visitor>
-  bool visit(doc_id_t doc, const Visitor& visitor) const {
-    const auto& ctx = sub_ctx(doc);
-    return ctx.reader->document(doc - ctx.base, visitor);
-  }
 }; // composite_reader
 
 MSVC_ONLY(template class IRESEARCH_API composite_reader<sub_reader>);

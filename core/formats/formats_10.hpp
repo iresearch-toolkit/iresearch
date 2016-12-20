@@ -244,110 +244,6 @@ class field_meta_writer final : public iresearch::field_meta_writer{
 };
 
 /* -------------------------------------------------------------------
- * stored_fields_writer 
- * ------------------------------------------------------------------*/
-
-class stored_fields_writer final : public iresearch::stored_fields_writer {
- public:
-  static const uint32_t MAX_BUFFERED_DOCS = 128;
-  static const int32_t FORMAT_MIN = 0;
-  static const int32_t FORMAT_MAX = FORMAT_MIN;
-
-  static const string_ref FIELDS_EXT;
-  static const string_ref FORMAT_FIELDS;
-  static const string_ref INDEX_EXT;
-
-  stored_fields_writer(uint32_t buf_size, uint32_t block_size);
-
-  virtual void prepare(directory& dir,  const string_ref& seg_name) override;
-  virtual bool write(const serializer& serializer) override;
-  virtual void end(const serializer* header) override;
-  virtual void finish() override;
-  virtual void reset() override;
-
- private:
-  void flush();
-
-  compressing_index_writer index;
-  compressor compres;
-  bytes_output seg_buf_; // per segment buffer
-  index_output::ptr fields_out; // fields output stream
-  index_output::ptr index_out_; // index output stream
-  uint32_t bodies_[MAX_BUFFERED_DOCS]{}; // document bodies length
-  uint32_t headers_[MAX_BUFFERED_DOCS]{}; // headers length
-  uint32_t last_offset_;
-  uint32_t doc_base;
-  uint32_t num_buffered_docs;
-  uint32_t buf_size; // block size
-  uint32_t block_max_size_{}; // actual max block size
-  uint32_t num_blocks_; // number of flushed blocks
-  uint32_t num_incomplete_blocks_; // number of incomplete flushed blocks
-};
-
-/* -------------------------------------------------------------------
- * stored_fields_reader
- * ------------------------------------------------------------------*/
-
-class stored_fields_reader final : public iresearch::stored_fields_reader {
- public:
-  virtual void prepare(const reader_state& state) override;
-
-  // expects 0-based doc id's
-  virtual bool visit(doc_id_t doc, const visitor_f& visitor) override;
-
- private:
-  class compressing_document_reader: util::noncopyable { // noncopyable due to index_
-   public:
-    compressing_document_reader():
-      base_(type_limits<type_t::doc_id_t>::invalid()),
-      size_(0) {
-    }
-
-    void prepare(
-      const directory& dir, 
-      const std::string& name, 
-      uint32_t num_blocks, 
-      uint32_t num_incomplete_blocks, 
-      uint32_t block_size
-    );
-
-    inline bool contains(doc_id_t doc) const {
-      return doc >= base_ && doc < (base_ + size_);
-    }
-
-    void load_block(uint64_t block_ptr);
-
-    // expects 0-based doc id's
-    bool visit(
-      doc_id_t doc, // document to visit
-      uint64_t start_ptr, // where block starts
-      const visitor_f& visitor // document visitor
-    );
-
-   private: 
-    //compressing_data_input data_in_;
-    decompressor decomp_;
-    bstring buf_; // compressed data
-    bstring data_; // uncompressed data
-    bytes_ref view_; // view on valid data
-    bytes_ref_input header_; // header stream
-    bytes_ref_input body_; // body stream
-    uint32_t offsets_[stored_fields_writer::MAX_BUFFERED_DOCS]{}; // document offsets 
-    uint32_t headers_[stored_fields_writer::MAX_BUFFERED_DOCS]{}; // document header lengths
-    index_input::ptr fields_in_;
-    doc_id_t base_; // document base
-    uint32_t size_; /* number of documents in a block */
-    uint32_t num_blocks_; /* number of flushed blocks */
-    uint32_t num_incomplete_blocks_; /* number of incomplete flushed blocks */
-    uint32_t block_max_size_{}; // size of the biggest block
-  };
-
-  compressing_document_reader docs_;
-  compressed_index<uint64_t> index_;
-  const fields_meta* fields_;
-};
-
-/* -------------------------------------------------------------------
 * postings_writer
 * 
 * Assume that doc_count = 28, skip_n = skip_0 = 12
@@ -531,9 +427,6 @@ class IRESEARCH_PLUGIN format final : public iresearch::format {
 
   virtual field_writer::ptr get_field_writer(bool volatile_attributes = false) const override;
   virtual field_reader::ptr get_field_reader() const override;
-
-  virtual stored_fields_writer::ptr get_stored_fields_writer() const override;
-  virtual stored_fields_reader::ptr get_stored_fields_reader() const override;
   
   virtual column_meta_writer::ptr get_column_meta_writer() const override;
   virtual column_meta_reader::ptr get_column_meta_reader() const override;

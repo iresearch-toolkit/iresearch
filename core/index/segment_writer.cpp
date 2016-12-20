@@ -24,10 +24,6 @@
 
 NS_ROOT
 
-bool segment_writer::doc_header::write(data_output& out) const {
-  return stored::write_header(out, doc_fields.begin(), doc_fields.end());
-}
-
 segment_writer::ptr segment_writer::make(directory& dir, format::ptr codec) {
   return ptr(new segment_writer(dir, codec));
 }
@@ -43,39 +39,24 @@ bool segment_writer::remove(doc_id_t doc_id) {
 }
 
 bool segment_writer::index_field(
-    field_data& slot,
     doc_id_t doc_id,
+    const string_ref& name,
     token_stream& tokens,
     const flags& features,
-    float_t boost
-) {
+    float_t boost) {
   REGISTER_TIMER_DETAILED();
 
+  auto& slot = fields_.get(name);
+  auto& slot_features = slot.meta().features;
 
   // invert only if new field features are a subset of slot features
-  if ((slot.empty() || features.is_subset_of(slot.meta().features)) &&
-      slot.invert(&tokens, slot.empty() ? features : slot.meta().features, boost, doc_id)
-  ) {
+  if ((slot.empty() || features.is_subset_of(slot_features)) &&
+      slot.invert(&tokens, slot.empty() ? features : slot_features, boost, doc_id)) {
     if (features.check<norm>()) {
       norm_fields_.insert(&slot);
     }
 
     fields_ += features; // accumulate segment features
-    return true;
-  }
-
-  return false;
-}
-
-bool segment_writer::store_field(
-    field_data& slot,
-    doc_id_t doc_id,
-    const serializer& serializer
-) {
-  REGISTER_TIMER_DETAILED();
-  if (sf_writer_->write(serializer)) {
-    // store field id
-    header_.doc_fields.push_back(slot.meta().id);
     return true;
   }
 
@@ -121,19 +102,11 @@ void segment_writer::finish(doc_id_t doc_id, const update_context& ctx) {
   }
   norm_fields_.clear(); // clear normalized fields
 
-  // finish stored fields 
-  sf_writer_->end(&header_); 
-  header_.doc_fields.clear(); // clear stored document header
-
   docs_context_[doc_id] = ctx;
 }
 
 bool segment_writer::flush(std::string& filename, segment_meta& meta) {
   REGISTER_TIMER_DETAILED();
-
-  // flush stored fields
-  sf_writer_->finish();
-  sf_writer_->reset();
 
   // flush columnstore
   col_writer_->flush();
@@ -210,10 +183,6 @@ void segment_writer::reset(std::string seg_name) {
     field_writer_ = codec_->get_field_writer();
   }
 
-  if (!sf_writer_) {
-    sf_writer_ = codec_->get_stored_fields_writer();
-  }
-
   if (!col_meta_writer_) {
     col_meta_writer_ = codec_->get_column_meta_writer();
   }
@@ -222,9 +191,7 @@ void segment_writer::reset(std::string seg_name) {
     col_writer_ = codec_->get_columnstore_writer();
   }
 
-  const string_ref ref_seg_name = seg_name_;
-  sf_writer_->prepare(dir_, ref_seg_name);
-  col_writer_->prepare(dir_, ref_seg_name);
+  col_writer_->prepare(dir_, seg_name_);
 
   initialized_ = true;
 }

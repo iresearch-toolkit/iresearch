@@ -31,18 +31,6 @@ class IRESEARCH_API segment_reader final : public sub_reader {
     const segment_meta& sm
   );
 
-  // expects 1-based document id
-  virtual bool document(
-    doc_id_t id, 
-    const document_visitor_f& visitor
-  ) const override;
- 
-  // expects 1-based document id
-  virtual bool document(
-    doc_id_t id, 
-    const stored_fields_reader::visitor_f& visitor 
-  ) const override;
-
   using sub_reader::docs_count;
 
   virtual uint64_t docs_count() const override { 
@@ -128,7 +116,6 @@ class IRESEARCH_API segment_reader final : public sub_reader {
   columns_meta columns_;
   fields_meta fields_;
   field_reader::ptr fr_;
-  stored_fields_reader::ptr sfr_;
   columnstore_reader::ptr csr_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 };

@@ -185,44 +185,6 @@ struct IRESEARCH_API field_meta_reader {
   virtual void end() = 0;
 };
 
-/* -------------------------------------------------------------------
- * stored_fields_writer
- * ------------------------------------------------------------------*/
-
-struct index_reader;
-
-struct IRESEARCH_API stored_fields_writer {
-  DECLARE_PTR(stored_fields_writer);
-  DECLARE_FACTORY(stored_fields_writer);
-
-  virtual ~stored_fields_writer();
-  virtual void prepare(directory& dir, const string_ref& seg_name) = 0;
-  virtual bool write(const serializer& body) = 0;
-  virtual void end(const serializer* header) = 0;
-  virtual void finish() = 0;
-  virtual void reset() = 0;
-};
-
-/* -------------------------------------------------------------------
-* stored_fields_reader
-* ------------------------------------------------------------------*/
-
-
-struct IRESEARCH_API stored_fields_reader {
-  DECLARE_PTR(stored_fields_reader);
-  DECLARE_FACTORY(stored_fields_reader);
-
-  typedef std::function<bool(
-    data_input& /* header */, 
-    data_input& /* body */
-  )> visitor_f;
-  
-  virtual ~stored_fields_reader();
-
-  virtual void prepare(const reader_state& state) = 0;
-  virtual bool visit(doc_id_t doc, const visitor_f& visitor) = 0;
-};
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    columns_writer 
 // -----------------------------------------------------------------------------
@@ -444,9 +406,6 @@ class IRESEARCH_API format {
   virtual field_writer::ptr get_field_writer(bool volatile_attributes = false) const = 0;
   virtual field_reader::ptr get_field_reader() const = 0;
 
-  virtual stored_fields_writer::ptr get_stored_fields_writer() const = 0;
-  virtual stored_fields_reader::ptr get_stored_fields_reader() const = 0;
-  
   virtual column_meta_writer::ptr get_column_meta_writer() const = 0;
   virtual column_meta_reader::ptr get_column_meta_reader() const = 0;
 

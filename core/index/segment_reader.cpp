@@ -124,40 +124,6 @@ const term_reader* segment_reader::terms(const string_ref& field) const {
   return fr_->terms(meta->id);
 }
 
-bool segment_reader::document(
-    doc_id_t doc, 
-    const stored_fields_reader::visitor_f& visitor) const {
-  assert(type_limits<type_t::doc_id_t>::valid(doc));
-  doc -= type_limits<type_t::doc_id_t>::min();
-  return sfr_->visit(doc, visitor);
-}
-
-bool segment_reader::document(
-    doc_id_t doc, 
-    const document_visitor_f& visitor) const {
-  assert(type_limits<type_t::doc_id_t>::valid(doc));
-  doc -= type_limits<type_t::doc_id_t>::min();
-
-  auto doc_visitor = [this, &visitor](data_input& header, data_input& body) {
-    // read document header
-    auto header_reader = [this, &body, &visitor] (field_id id, bool) {
-      const field_meta* field = fields_.find(id);
-      assert(field);
-
-      // read field
-      if (!visitor(*field, body)) {
-        return false;
-      }
-
-      return true;
-    };
-
-    return stored::visit_header(header, header_reader);
-  };
-  
-  return sfr_->visit(doc, doc_visitor);
-}
-
 sub_reader::value_visitor_f segment_reader::values(
     field_id field,
     const columnstore_reader::value_reader_f& value_reader) const {
@@ -228,11 +194,6 @@ segment_reader::ptr segment_reader::open(
   auto& fr = rdr->fr_;
   fr = codec.get_field_reader();
   fr->prepare(rs);
-
-  // initialize stored fields reader
-  auto& sfr = rdr->sfr_;
-  sfr = codec.get_stored_fields_reader();
-  sfr->prepare(rs);
 
   // initialize columns
   columnstore_reader::ptr csr = codec.get_columnstore_reader();

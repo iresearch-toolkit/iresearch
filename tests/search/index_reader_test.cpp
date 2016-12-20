@@ -87,8 +87,6 @@ TEST(directory_reader_test, open_newest_index) {
     virtual ir::field_meta_writer::ptr get_field_meta_writer() const override { return nullptr; }
     virtual ir::field_writer::ptr get_field_writer(bool volatile_attributes = false) const override { return nullptr; }
     virtual ir::field_reader::ptr get_field_reader() const override { return nullptr; }
-    virtual ir::stored_fields_writer::ptr get_stored_fields_writer() const override { return nullptr; }
-    virtual ir::stored_fields_reader::ptr get_stored_fields_reader() const override { return nullptr; }
     virtual ir::column_meta_writer::ptr get_column_meta_writer() const override { return nullptr; }
     virtual ir::column_meta_reader::ptr get_column_meta_reader() const override { return nullptr; }
     virtual ir::columnstore_writer::ptr get_columnstore_writer() const override { return nullptr; }

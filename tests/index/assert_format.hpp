@@ -351,30 +351,6 @@ class field_writer : public iresearch::field_writer {
 };
 
 /* -------------------------------------------------------------------
- * stored_fields_writer 
- * ------------------------------------------------------------------*/
-
-struct ifield;
-
-class stored_fields_writer : public iresearch::stored_fields_writer {
- public:
-  explicit stored_fields_writer(const index_segment& data);
-
-  virtual void prepare(
-    iresearch::directory& dir,
-    const iresearch::string_ref& seg_name
-  ) override;
-
-  virtual bool write(const iresearch::serializer&) override;
-  virtual void end(const iresearch::serializer*) override;
-  virtual void finish() override;
-  virtual void reset() override;
-
- private:
-  const index_segment& data_;
-};
-
-/* -------------------------------------------------------------------
  * format
  * ------------------------------------------------------------------*/
 
@@ -400,9 +376,6 @@ class format : public iresearch::format {
   virtual iresearch::field_writer::ptr get_field_writer(bool volatile_attributes = false) const override;
   virtual iresearch::field_reader::ptr get_field_reader() const override;
 
-  virtual iresearch::stored_fields_writer::ptr get_stored_fields_writer() const override;
-  virtual iresearch::stored_fields_reader::ptr get_stored_fields_reader() const override;
-  
   virtual iresearch::column_meta_writer::ptr get_column_meta_writer() const override;
   virtual iresearch::column_meta_reader::ptr get_column_meta_reader() const override;
 

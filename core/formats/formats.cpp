@@ -50,9 +50,6 @@ field_reader::~field_reader() {}
 field_meta_writer::~field_meta_writer() {}
 field_meta_reader::~field_meta_reader() {}
 
-stored_fields_writer::~stored_fields_writer() {}
-stored_fields_reader::~stored_fields_reader() {}
-
 document_mask_writer::~document_mask_writer() {}
 document_mask_reader::~document_mask_reader() {}
 

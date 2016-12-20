@@ -606,8 +606,6 @@ class columnstore {
       const iresearch::sub_reader& reader, 
       iresearch::field_id column, 
       const doc_id_map_t& doc_id_map) {
-//    assert(column_.second);
-
     pdoc_id_map = &doc_id_map;
 
     return reader.column(
@@ -781,85 +779,15 @@ bool write(
   return true;
 }
 
-struct document_header final : iresearch::serializer {
-  bool write(iresearch::data_output& out) const {
-    // write header - remap field id's
-    auto remapper = [this, &out] (iresearch::field_id id, bool next) {
-      const auto mapped_id = static_cast<iresearch::field_id>((*field_id_map)[field_id_base + id]);
-      out.write_vint(iresearch::shift_pack_32(mapped_id, next));
-      return true;
-    };
-    return iresearch::stored::visit_header(*in, remapper);  
-  }
-
-  iresearch::data_input* in;
-  const id_map_t* field_id_map;
-  size_t field_id_base{};
-}; // document_header 
-
-// ...........................................................................
-// write stored field data
-// in order to copy documents from one segment to another, 
-// we treat document as the stored field, 
-// then we just put it into ordinary stored_fields_writer
-// ReaderIterator - std::pair<const iresearch::sub_reader*, doc_id_map_t>
-// ...........................................................................
-template <typename ReaderIterator>
-void write(
-    iresearch::directory& dir,
-    iresearch::format& codec,
-    const iresearch::string_ref& segment_name,
-    const id_map_t& field_id_map,
-    binary_value& body,
-    ReaderIterator begin,
-    ReaderIterator end) {
-  iresearch::stored_fields_writer::ptr sfw = codec.get_stored_fields_writer();
-  
-  document_header header;
-  header.field_id_map = &field_id_map;
-
-  iresearch::stored_fields_reader::visitor_f copier = [&header, &body, &sfw](iresearch::data_input& header_in, iresearch::data_input& body_in) {
-    header.in = &header_in; // set header stream
-    body.in = &body_in; // set document stream
-    
-    if (!sfw->write(body)) { // write document body
-      return false;
-    }
-
-    sfw->end(&header); // end document
-    return true;
-  };
-
-  sfw->prepare(dir, segment_name);
-
-  // copy stored fields for all documents (doc_id must be sequential 0 based)
-  for (auto itr = begin; itr != end; ++itr) {
-    auto& reader = *(itr->first);
-    auto& doc_id_map = itr->second;
-
-    // the implementation generates doc_ids sequentially
-    for (size_t i = 0, count = doc_id_map.size(); i < count; ++i) {
-      if (doc_id_map[i] != MASKED_DOC_ID) {
-        const auto doc = static_cast<iresearch::doc_id_t>(i); // can't have more docs then highest doc_id (offset == doc_id as per compute_doc_ids(...))
-        reader.document(doc, copier); // in order to get access to the beginning of the document, we use low-level visitor API here 
-      }
-    }
-
-    header.field_id_base += reader.fields().size();
-  }
-
-  sfw->finish();
-}
-
 NS_END // LOCAL
 
 NS_ROOT
 
 merge_writer::merge_writer(
-  directory& dir,
-  format::ptr codec,
-  const string_ref& name
-) NOEXCEPT: codec_(codec), dir_(dir), name_(name) {
+    directory& dir,
+    format::ptr codec,
+    const string_ref& name) NOEXCEPT
+  : codec_(codec), dir_(dir), name_(name) {
 }
 
 void merge_writer::add(const sub_reader& reader) {
@@ -931,9 +859,6 @@ bool merge_writer::flush(std::string& filename, segment_meta& meta) {
   if (!write(cs, track_dir, codec, name_, fields_itr, field_metas, fields_features, docs_count, id_map)) {
     return false; // flush failure
   }
-
-  // write stored field data
-  write(track_dir, codec, name_, id_map, buf, readers.begin(), readers.end());
 
   // ...........................................................................
   // write segment meta
