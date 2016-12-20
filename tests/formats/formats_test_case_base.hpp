@@ -886,7 +886,7 @@ class format_test_case_base : public index_test_base {
     }
   }
   
-  void stored_fields_read_write_reuse() {
+  void columns_read_write_reuse() {
     struct csv_doc_template : delim_doc_generator::doc_template {
       virtual void init() {
         clear();
@@ -908,48 +908,91 @@ class format_test_case_base : public index_test_base {
     iresearch::segment_meta seg_1("_1", nullptr);
     iresearch::segment_meta seg_2("_2", nullptr);
     iresearch::segment_meta seg_3("_3", nullptr);
+      
+    std::unordered_map<std::string, iresearch::columnstore_writer::column_t> columns_1;
+    std::unordered_map<std::string, iresearch::columnstore_writer::column_t> columns_2;
+    std::unordered_map<std::string, iresearch::columnstore_writer::column_t> columns_3;
 
     // write documents 
     {
-      auto writer = codec()->get_stored_fields_writer();
+      auto writer = codec()->get_columnstore_writer();
 
       // write 1st segment 
+      iresearch::doc_id_t id = 0;
       writer->prepare(dir(), seg_1.name);
       for (const document* doc; seg_1.docs_count < 30000 && (doc = gen.next());) {
+        ++id;
         for (auto& field : doc->stored) {
-          writer->write(field);
+          const auto res = columns_1.emplace(
+            std::piecewise_construct,
+            std::forward_as_tuple(std::string(field.name())),
+            std::forward_as_tuple()
+          );
+
+          if (res.second) {
+            res.first->second = writer->push_column();
+          }
+
+          auto& column = res.first->second.second;
+          auto& stream = column(id);
+
+          field.write(stream);
         }
-        writer->end(0);
         ++seg_1.docs_count;
       }
-      writer->finish();
+      writer->flush();
 
       gen.reset();
-      writer->reset();
       
       // write 2nd segment 
+      id = 0;
       writer->prepare(dir(), seg_2.name);
       for (const document* doc; seg_2.docs_count < 30000 && (doc = gen.next());) {
+        ++id;
         for (auto& field : doc->stored) {
-          writer->write(field);
+          const auto res = columns_2.emplace(
+            std::piecewise_construct,
+            std::forward_as_tuple(std::string(field.name())),
+            std::forward_as_tuple()
+          );
+
+          if (res.second) {
+            res.first->second = writer->push_column();
+          }
+          
+          auto& column = res.first->second.second;
+          auto& stream = column(id);
+
+          field.write(stream);
         }
-        writer->end(nullptr);
         ++seg_2.docs_count;
       }
-      writer->finish();
-
-      writer->reset();
+      writer->flush();
 
       // write 3rd segment
+      id = 0;
       writer->prepare(dir(), seg_3.name);
       for (const document* doc; seg_3.docs_count < 70000 && (doc = gen.next());) {
+        ++id;
         for (auto& field : doc->stored) {
-          writer->write(field);
+          const auto res = columns_3.emplace(
+            std::piecewise_construct,
+            std::forward_as_tuple(std::string(field.name())),
+            std::forward_as_tuple()
+          );
+
+          if (res.second) {
+            res.first->second = writer->push_column();
+          }
+          
+          auto& column = res.first->second.second;
+          auto& stream = column(id);
+
+          field.write(stream);
         }
-        writer->end(nullptr);
         ++seg_3.docs_count;
       }
-      writer->finish();
+      writer->flush();
     }
 
     // read documents
@@ -963,12 +1006,17 @@ class format_test_case_base : public index_test_base {
       }
 
       std::string expected_id;
-      std::string expected_name;
-      auto check_document = [&expected_id, &expected_name] (ir::data_input& /*header*/, ir::data_input& in) {
-        if (ir::read_string<std::string>(in) != expected_id) {
+      iresearch::columnstore_reader::value_reader_f check_id = [&expected_id] (ir::data_input& in) {
+        const auto value = ir::read_string<std::string>(in);
+        if (value != expected_id) {
           return false;
         }
-        if (ir::read_string<std::string>(in) != expected_name) {
+        return true;
+      };
+      std::string expected_name;
+      iresearch::columnstore_reader::value_reader_f check_name = [&expected_name] (ir::data_input& in) {
+        const auto value = ir::read_string<std::string>(in);
+        if (value != expected_name) {
           return false;
         }
         return true;
@@ -982,15 +1030,20 @@ class format_test_case_base : public index_test_base {
           &seg_1
         };
 
-        auto reader_1 = codec()->get_stored_fields_reader();
+        auto reader_1 = codec()->get_columnstore_reader();
         reader_1->prepare(state_1);
+
+        auto id_values = reader_1->values(columns_1["id"].first);
+        auto name_values = reader_1->values(columns_1["name"].first);
 
         gen.reset();
         ir::doc_id_t i = 0;
-        for (const document* doc; i < seg_1.docs_count && (doc = gen.next());++i) {
+        for (const document* doc; i < seg_1.docs_count && (doc = gen.next());) {
+          ++i;
           expected_id = doc->stored.get<tests::templates::string_field>(0).value();
+          ASSERT_TRUE(id_values(i, check_id));
           expected_name = doc->stored.get<tests::templates::string_field>(1).value();
-          ASSERT_TRUE(reader_1->visit(i, check_document));
+          ASSERT_TRUE(name_values(i, check_name));
         }
 
         // check 2nd segment (same as 1st)
@@ -1000,19 +1053,28 @@ class format_test_case_base : public index_test_base {
           &seg_2
         };
 
-        auto reader_2 = codec()->get_stored_fields_reader();
+        auto reader_2 = codec()->get_columnstore_reader();
         reader_2->prepare(state_2);
 
-        auto read_document = [&expected_id, &expected_name] (ir::data_input& /*header*/, ir::data_input& in) {
+        iresearch::columnstore_reader::value_reader_f read_id = [&expected_id] (ir::data_input& in) {
           expected_id = ir::read_string<std::string>(in);
+          return true;
+        };
+        auto id_values_2 = reader_2->values(columns_2["id"].first);
+        
+        iresearch::columnstore_reader::value_reader_f read_name = [&expected_name] (ir::data_input& in) {
           expected_name = ir::read_string<std::string>(in);
           return true;
         };
+        auto name_values_2 = reader_2->values(columns_2["name"].first);
 
         // check for equality
-        for (ir::doc_id_t i = 0, count = seg_2.docs_count; i < count; ++i) {
-          reader_1->visit(i, read_document);
-          reader_2->visit(i, check_document);
+        for (ir::doc_id_t i = 0, count = seg_2.docs_count; i < count;) {
+          ++i;
+          ASSERT_TRUE(id_values(i, read_id));
+          ASSERT_TRUE(id_values_2(i, check_id));
+          ASSERT_TRUE(name_values(i, read_name));
+          ASSERT_TRUE(name_values_2(i, check_name));
         }
       }
 
@@ -1024,14 +1086,19 @@ class format_test_case_base : public index_test_base {
           &seg_3
         };
 
-        auto reader = codec()->get_stored_fields_reader();
+        auto reader = codec()->get_columnstore_reader();
         reader->prepare(state);
+        
+        auto id_values = reader->values(columns_3["id"].first);
+        auto name_values = reader->values(columns_3["name"].first);
 
         ir::doc_id_t i = 0;
-        for (const document* doc; i < seg_3.docs_count && (doc = gen.next()); ++i) {
+        for (const document* doc; i < seg_3.docs_count && (doc = gen.next());) {
+          ++i;
           expected_id = doc->stored.get<tests::templates::string_field>(0).value();
+          ASSERT_TRUE(id_values(i, check_id));
           expected_name = doc->stored.get<tests::templates::string_field>(1).value();
-          ASSERT_TRUE(reader->visit(i, check_document));
+          ASSERT_TRUE(name_values(i, check_name));
         }
       }
     }
@@ -1735,7 +1802,7 @@ class format_test_case_base : public index_test_base {
     }
   }
 
-  void stored_fields_big_document_read_write() {
+  void columns_big_document_read_write() {
     struct big_stored_field : iresearch::serializer {
       bool write(iresearch::data_output& out) const {
         out.write_bytes(reinterpret_cast<const iresearch::byte_type*>(buf), sizeof buf);
@@ -1745,76 +1812,66 @@ class format_test_case_base : public index_test_base {
       char buf[65536];
     } field;
     
-    struct invalid_serializer : iresearch::serializer {
-      bool write(iresearch::data_output& out) const {
-        iresearch::write_string(out, iresearch::string_ref("___invalid_data___")); // write something
-        return false; // mark as failed
-      }
-    } invalid_field; 
-
     std::fstream stream(resource("simple_two_column.csv"));
     ASSERT_FALSE(!stream);
 
-    const size_t fields_count = 3;
+    ir::field_id id;
 
     iresearch::segment_meta segment("big_docs", nullptr);
 
     // write big document 
     {
-      stored_fields_writer::ptr writer = codec()->get_stored_fields_writer();
+      auto writer = codec()->get_columnstore_writer();
       writer->prepare(dir(), segment.name);
 
-      for (size_t size = fields_count; size; --size) {
+      auto column = writer->push_column();
+      id = column.first;
+
+      {
+        auto& out = column.second(0);
         stream.read(field.buf, sizeof field.buf);
         ASSERT_FALSE(!stream); // ensure that all requested data has been read
-        ASSERT_TRUE(writer->write(field)); // must be written
-        ASSERT_FALSE(writer->write(invalid_field)); // must not be written
+        ASSERT_TRUE(field.write(out)); // must be written
+        ++segment.docs_count;
+      }
+      
+      {
+        auto& out = column.second(1);
+        stream.read(field.buf, sizeof field.buf);
+        ASSERT_FALSE(!stream); // ensure that all requested data has been read
+        ASSERT_TRUE(field.write(out)); // must be written
+        ++segment.docs_count;
       }
 
-      ++segment.docs_count;
-      writer->end(nullptr);
-      writer->finish();
+      writer->flush();
     }
 
     // read big document
     {
       iresearch::reader_state state{ codec().get(), &dir(), nullptr, nullptr, &segment };
 
-      iresearch::stored_fields_reader::ptr reader = codec()->get_stored_fields_reader();
+      auto reader = codec()->get_columnstore_reader();
       reader->prepare(state);
 
-      auto check_document = [&field, &stream, fields_count](iresearch::data_input& header, iresearch::data_input& body) {
-        // check empty header
-        {
-          iresearch::byte_type b;
-          if (header.read_bytes(&b, 1)) {
-            // read more that we actually have
-            return false;
-          }
+      auto check_column = [&field, &stream](iresearch::data_input& body) {
+        // check body
+        char buf[sizeof field.buf];
+
+        stream.read(field.buf, sizeof field.buf);
+        if (!stream) {
+          // have reached the end
+          return false;
         }
 
-        // check body
-        {
-          char buf[sizeof field.buf];
+        const auto read = body.read_bytes(reinterpret_cast<iresearch::byte_type*>(buf), sizeof buf);
+        if (read != sizeof buf) {
+          // invalid length
+          return false;
+        }
 
-          for (auto size = fields_count; size; -- size) {
-            stream.read(field.buf, sizeof field.buf);
-            if (!stream) {
-              // have reached the end
-              return false;
-            }
-
-            const auto read = body.read_bytes(reinterpret_cast<iresearch::byte_type*>(buf), sizeof buf);
-            if (read != sizeof buf) {
-              // invalid length
-              return false;
-            }
-
-            if (std::memcmp(buf, field.buf, sizeof buf)) {
-              // invalid data
-              return false;
-            }
-          }
+        if (std::memcmp(buf, field.buf, sizeof buf)) {
+          // invalid data
+          return false;
         }
 
         return true;
@@ -1822,13 +1879,18 @@ class format_test_case_base : public index_test_base {
 
       stream.clear(); // clear eof flag if set
       stream.seekg(0, stream.beg); // seek to the beginning of the file
-      std::memset(field.buf, 0, sizeof field.buf); // clear buffer
       
-      ASSERT_TRUE(reader->visit(0, check_document));
+      auto values = reader->values(id);
+     
+      std::memset(field.buf, 0, sizeof field.buf); // clear buffer
+      ASSERT_TRUE(values(0, check_column));
+      
+      std::memset(field.buf, 0, sizeof field.buf); // clear buffer
+      ASSERT_TRUE(values(1, check_column));
     }
   }
 
-  void stored_fields_read_write() {
+  void columns_read_write_typed() {
     struct Value {
       enum class Type {
         String, Binary, Double
@@ -1905,44 +1967,37 @@ class format_test_case_base : public index_test_base {
       }
     });
 
-    ir::fields_data fdata;
-    ir::fields_meta fields;
-
     iresearch::segment_meta meta("_1", nullptr);
     meta.version = 42;
 
-    struct meta_serializer : ir::serializer {
-      bool write(ir::data_output& out) const {
-        out.write_vint(meta->id);
-        return true;
-      }
-      const ir::field_meta* meta;
-    } serializer;
+    std::unordered_map<std::string, ir::columnstore_writer::column_t> columns;
 
     // write stored documents
     {
-      std::vector<iresearch::field_meta> fields_src;
-      stored_fields_writer::ptr writer = codec()->get_stored_fields_writer();
+      auto writer = codec()->get_columnstore_writer();
       writer->prepare(dir(), meta.name);
+      ir::doc_id_t id = 0;
       for (const document* doc; doc = gen.next();) {
+        ++id;
         for (const auto& field : doc->stored) {
-          const auto& field_meta = fdata.get(field.name());
-          fields_src.push_back(field_meta.meta());
-          {
-            serializer.meta = &field_meta.meta();
-            writer->write(serializer);
+          const auto res = columns.emplace(
+            std::piecewise_construct,
+            std::forward_as_tuple(std::string(field.name())),
+            std::forward_as_tuple()
+          );
+
+          if (res.second) {
+            res.first->second = writer->push_column();
           }
 
-          auto field_serializer = field.serializer();
-          ASSERT_NE(nullptr, field_serializer);
-          writer->write(*field_serializer);
+          auto& column = res.first->second.second;
+          auto& stream = column(id);
+
+          ASSERT_TRUE(field.write(stream));
         }
-        writer->end(nullptr);
         ++meta.docs_count;
       }
-      writer->finish();
-
-      fields = ir::fields_meta(std::move(fields_src), ir::flags());
+      writer->flush();
     }
 
     gen.reset();
@@ -1952,38 +2007,31 @@ class format_test_case_base : public index_test_base {
       iresearch::document_mask mask;
       iresearch::reader_state state{
         codec().get(), &dir(),
-        &mask, &fields,
+        &mask, nullptr,
         &meta
       };
 
-      iresearch::stored_fields_reader::ptr reader = codec()->get_stored_fields_reader();
+      auto reader = codec()->get_columnstore_reader();
       reader->prepare(state);
 
-      auto visitor = [&fields, &values] (data_input& /*header*/, data_input& in) {
-        auto& expected_field = values.front();
-
-        // read field meta
-        auto field = fields.find(in.read_vint());
-        if (field->name != expected_field.name) {
-          return false;
-        }
-
-        switch (expected_field.type) {
+      const Value* expected_field;
+      iresearch::columnstore_reader::value_reader_f visitor = [&expected_field] (data_input& in) {
+        switch (expected_field->type) {
           case Value::Type::String: {
-            auto value = ir::read_string<std::string>(in);
-            if (expected_field.value.sValue != ir::string_ref(value)) {
+            const auto value = ir::read_string<std::string>(in);
+            if (expected_field->value.sValue != ir::string_ref(value)) {
               return false;
             }
           } break;
           case Value::Type::Binary: {
-            auto value = ir::read_string<ir::bstring>(in);
-            if (expected_field.value.binValue != value) {
+            const auto value = ir::read_string<ir::bstring>(in);
+            if (expected_field->value.binValue != value) {
               return false;
             }
           } break;
           case Value::Type::Double: {
-            auto value = ir::read_zvdouble(in);
-            if (expected_field.value.dblValue != value) {
+            const auto value = ir::read_zvdouble(in);
+            if (expected_field->value.dblValue != value) {
               return false;
             }
           } break;
@@ -1991,13 +2039,34 @@ class format_test_case_base : public index_test_base {
             return false;
         };
 
-        values.pop_front();
         return true;
       };
 
-      for (uint64_t i = 0, docs_count = meta.docs_count; i < docs_count; ++i) {
-        ASSERT_TRUE(reader->visit(iresearch::doc_id_t(i), visitor));
+      std::unordered_map<std::string, iresearch::columnstore_reader::values_reader_f> readers;
+
+      iresearch::doc_id_t i = 0;
+      for (const document* doc; doc = gen.next();) {
+        ++i;
+        for (size_t size = doc->stored.size(); size; --size) {
+          expected_field = &values.front();
+          const std::string name(expected_field->name);
+          const auto res = readers.emplace(
+            std::piecewise_construct,
+            std::forward_as_tuple(name),
+            std::forward_as_tuple()
+          );
+
+          if (res.second) {
+            res.first->second = reader->values(columns[name].first);
+          }
+
+          auto& column_reader = res.first->second;
+          ASSERT_TRUE(column_reader(iresearch::doc_id_t(i), visitor));
+
+          values.pop_front();
+        }
       }
+      ASSERT_EQ(meta.docs_count, i);
     }
   }
 }; // format_test_case_base
