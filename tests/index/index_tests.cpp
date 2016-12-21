@@ -855,14 +855,49 @@ class index_test_case_base : public tests::index_test_base {
         }
       }
   }
-  
-  void writer_begin_rollback() {
-      tests::json_doc_generator gen(
-        resource("simple_sequential.json"), 
-        &tests::generic_json_field_factory
-      );
-      tests::document const* doc1 = gen.next();
 
+  void writer_begin_rollback() {
+    tests::json_doc_generator gen(
+      resource("simple_sequential.json"), 
+      &tests::generic_json_field_factory
+    );
+
+    std::unordered_map<iresearch::string_ref, std::function<void(iresearch::data_input&)>> codecs{
+      { "name", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
+      { "same", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
+      { "duplicated", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
+      { "prefix", [](iresearch::data_input& in)->void{ iresearch::read_string<std::string>(in); } },
+      { "seq", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
+      { "value", [](iresearch::data_input& in)->void{ iresearch::read_zvdouble(in); } },
+    };
+
+    const iresearch::string_ref expected_name = "name";
+    iresearch::string_ref expected_value;
+    iresearch::index_reader::document_visitor_f visitor = [&codecs, &expected_value, &expected_name](
+      const iresearch::field_meta& field, iresearch::data_input& in
+    ) {
+      if (field.name != expected_name) {
+        auto it = codecs.find(field.name);
+        if (codecs.end() == it) {
+          return false; // can't find codec
+        }
+        it->second(in); // skip field
+        return true;
+      }
+
+      auto value = iresearch::read_string<std::string>(in);
+      if (value != expected_value) {
+        return false;
+      }
+
+      return true;
+    };
+
+    tests::document const* doc1 = gen.next();
+    tests::document const* doc2 = gen.next();
+    tests::document const* doc3 = gen.next();
+
+    {
       auto writer = ir::index_writer::make(dir(), codec(), ir::OM_CREATE);
 
       ASSERT_TRUE(
@@ -892,7 +927,40 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_EQ(0, reader->docs_max());
         ASSERT_EQ(0, reader->size());
         ASSERT_EQ(reader->begin(), reader->end());
-      }      
+      }
+    }
+
+    // test rolled-back index can still be opened after directory cleaner run
+    {
+      auto writer = ir::index_writer::make(dir(), codec(), ir::OM_CREATE);
+      ASSERT_TRUE(writer->insert(doc2->begin(), doc2->end()));
+      ASSERT_TRUE(writer->begin()); // prepare for commit tx #1
+      writer->commit(); // commit tx #2
+      auto file_count = 0;
+      auto dir_visitor = [&file_count](std::string&)->bool { ++file_count; return true; };
+      dir().visit(dir_visitor);
+      auto file_count_before = file_count;
+      ASSERT_TRUE(writer->insert(doc3->begin(), doc3->end()));
+      ASSERT_TRUE(writer->begin()); // prepare for commit tx #2
+      writer->rollback(); // rollback tx #2
+      iresearch::directory_utils::remove_all_unreferenced(dir());
+      file_count = 0;
+      dir().visit(dir_visitor);
+      ASSERT_EQ(file_count_before, file_count); // ensure rolled back file refs were released
+
+      auto reader = ir::directory_reader::open(dir(), codec());
+      ASSERT_EQ(1, reader->size());
+      auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+      auto terms = segment.terms("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      expected_value = "B"; // 'name' value in doc2
+      ASSERT_TRUE(segment.document(docsItr->value(), visitor));
+      ASSERT_FALSE(docsItr->next());
+    }
   }
 
   void concurrent_read_single_column_smoke() {
