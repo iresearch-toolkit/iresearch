@@ -115,9 +115,7 @@ document::document(document&& rhs)
 field_base::field_base(field_base&& rhs) 
   : features_(std::move(rhs.features_)),
     name_(std::move(rhs.name_)),
-    boost_(rhs.boost_),
-    indexed_(rhs.indexed_),
-    stored_(rhs.stored_) {
+    boost_(rhs.boost_) {
 }
 
 field_base& field_base::operator=(field_base&& rhs) {
@@ -125,8 +123,6 @@ field_base& field_base::operator=(field_base&& rhs) {
     features_ = std::move(features_);
     name_ = std::move(rhs.name_);
     boost_ = rhs.boost_;
-    indexed_ = rhs.indexed_;
-    stored_ = rhs.stored_;
   }
   return *this;
 }
@@ -138,10 +134,6 @@ field_base::~field_base() { }
 // -----------------------------------------------------------------------------
 
 ir::token_stream* long_field::get_tokens() const {
-  if (!indexed()) {
-    return nullptr;
-  }
-
   stream_.reset(value_);
   return &stream_;
 }
@@ -161,10 +153,6 @@ bool int_field::write(ir::data_output& out) const {
 }
 
 ir::token_stream* int_field::get_tokens() const {
-  if (!indexed()) {
-    return nullptr;
-  }
-
   stream_.reset(value_);
   return &stream_;
 }
@@ -179,10 +167,6 @@ bool double_field::write(ir::data_output& out) const {
 }
 
 ir::token_stream* double_field::get_tokens() const {
-  if (!indexed()) {
-    return nullptr;
-  }
-
   stream_.reset(value_);
   return &stream_;
 }
@@ -197,10 +181,6 @@ bool float_field::write(ir::data_output& out) const {
 }
 
 ir::token_stream* float_field::get_tokens() const {
-  if (!indexed()) {
-    return nullptr;
-  }
-
   stream_.reset(value_);
   return &stream_;
 }
@@ -215,10 +195,6 @@ bool binary_field::write(ir::data_output& out) const {
 }
 
 ir::token_stream* binary_field::get_tokens() const {
-  if (!indexed()) {
-    return nullptr;
-  }
-
   stream_.reset(value_);
   return &stream_;
 }

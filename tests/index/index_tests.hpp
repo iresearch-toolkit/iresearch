@@ -137,7 +137,6 @@ class text_field : public tests::field_base {
  public:
   text_field(
       const ir::string_ref& name, 
-      bool indexed,
       bool payload = false)
       : token_stream_(ir::analysis::analyzers::get("text", "{\"locale\":\"C\", \"ignored_words\":{}}")) {
     if (payload) {
@@ -145,14 +144,11 @@ class text_field : public tests::field_base {
       pay_stream_.reset(new token_stream_payload(token_stream_.get()));
     }
     this->name(name);
-    this->indexed(indexed);
-    this->stored(false);
   }
   
   text_field(
       const ir::string_ref& name, 
       const T& value,
-      bool indexed,
       bool payload = false)
       : token_stream_(ir::analysis::analyzers::get("text", "{\"locale\":\"C\", \"ignored_words\":{}}")),
       value_(value) {
@@ -161,8 +157,6 @@ class text_field : public tests::field_base {
       pay_stream_.reset(new token_stream_payload(token_stream_.get()));
     }
     this->name(name);
-    this->indexed(indexed);
-    this->stored(false);
   }
 
   ir::string_ref value() const { return value_; }
@@ -204,8 +198,8 @@ class text_field : public tests::field_base {
 //////////////////////////////////////////////////////////////////////////////
 class string_field : public tests::field_base {
  public:
-  string_field(const ir::string_ref& name, bool indexed, bool stored);
-  string_field(const ir::string_ref& name, const ir::string_ref& value, bool indexed, bool stored);
+  string_field(const ir::string_ref& name);
+  string_field(const ir::string_ref& name, const ir::string_ref& value);
 
   void value(const ir::string_ref& str);
   ir::string_ref value() const { return value_; }

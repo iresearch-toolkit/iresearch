@@ -32,7 +32,7 @@ class same_position_filter_test_case : public filter_test_case_base {
         typedef templates::text_field<std::string> text_field;
         if (data.quoted) {
           // a || b || c
-          doc.insert(std::make_shared<text_field>(name, ir::string_ref(data.value), true), true, false);
+          doc.indexed.push_back(std::make_shared<text_field>(name, ir::string_ref(data.value)));
         } else {
           // _id
           char* czSuffix;
@@ -44,7 +44,6 @@ class same_position_filter_test_case : public filter_test_case_base {
             auto& field = (doc.indexed.end() - 1).as<tests::long_field>();
             field.name(name);
             field.value(lValue);
-            field.stored(true);
           }
         }
 

@@ -73,12 +73,6 @@ class field_base : public ifield {
   void boost(float_t value) { boost_ = value; }
   float_t boost() const { return boost_; }
 
-  bool indexed() const { return indexed_; }
-  void indexed(bool value) { indexed_ = value; }
-  
-  bool stored() const { return stored_; }
-  void stored(bool value) { stored_ = value; }
-
   const ir::flags& features() const { return features_; };
   ir::flags& features() { return features_; }
 
@@ -86,8 +80,6 @@ class field_base : public ifield {
   iresearch::flags features_;
   std::string name_;
   float_t boost_{ 1.f };
-  bool indexed_{ true };
-  bool stored_{ true };
 }; // field_base
 
 //////////////////////////////////////////////////////////////////////////////

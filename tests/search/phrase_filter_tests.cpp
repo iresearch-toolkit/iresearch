@@ -30,7 +30,7 @@ void analyzed_json_field_factory(
   class string_field : public templates::string_field {
    public:
     string_field(const ir::string_ref& name, const ir::string_ref& value)
-      : templates::string_field(name, value, true, true) {
+      : templates::string_field(name, value) {
     }
 
     const ir::flags& features() const {
@@ -41,11 +41,10 @@ void analyzed_json_field_factory(
 
   if (data.quoted) {
     // analyzed field
-    doc.insert(std::make_shared<text_field>(
+    doc.indexed.push_back(std::make_shared<text_field>(
       std::string(name.c_str()) + "_anl",
-      ir::string_ref(data.value),
-      true
-    ), true, false);
+      ir::string_ref(data.value)
+    ));
 
     // not analyzed field
     doc.insert(std::make_shared<string_field>(

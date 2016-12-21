@@ -145,8 +145,8 @@ TEST(directory_reader_test, open) {
     if (data.quoted) {
       doc.insert(std::make_shared<tests::templates::string_field>(
         ir::string_ref(name),
-        ir::string_ref(data.value),
-        true, true));
+        ir::string_ref(data.value)
+      ));
     }
   });
 

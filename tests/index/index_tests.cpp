@@ -115,22 +115,15 @@ bool token_stream_payload::next() {
 // --SECTION--                                       string_field implemntation
 // ----------------------------------------------------------------------------
 
-string_field::string_field(
-    const ir::string_ref& name, 
-    bool indexed, bool stored) {
+string_field::string_field(const ir::string_ref& name) {
   this->name(name);
-  this->indexed(indexed);
-  this->stored(stored);
 }
 
 string_field::string_field(
     const ir::string_ref& name, 
-    const ir::string_ref& value,
-    bool indexed, bool stored) 
+    const ir::string_ref& value) 
   : value_(value) {
   this->name(name);
-  this->indexed(indexed);
-  this->stored(stored);
 }
 
 const ir::flags& string_field::features() const {
@@ -148,19 +141,12 @@ void string_field::value(const ir::string_ref& str) {
 }
 
 bool string_field::write(ir::data_output& out) const {
-  if (!stored()) {
-    return false;
-  }
-
   ir::write_string(out, value_);
   return true;
 }
 
 ir::token_stream* string_field::get_tokens() const {
   REGISTER_TIMER_DETAILED();
-  if (!indexed()) {
-    return nullptr;
-  }
 
   stream_.reset(value_);
   return &stream_;
@@ -176,28 +162,24 @@ class europarl_doc_template : public delim_doc_generator::doc_template {
 
   virtual void init() {
     clear();
-    indexed.push_back(std::make_shared<tests::templates::string_field>("title", true, true));
-    indexed.push_back(std::make_shared<text_field>("title_anl", true, false));
-    indexed.push_back(std::make_shared<text_field>("title_anl_pay", true, true));
-    indexed.push_back(std::make_shared<text_field>("body_anl", true, false));
-    indexed.push_back(std::make_shared<text_field>("body_anl_pay", true, true));
+    indexed.push_back(std::make_shared<tests::templates::string_field>("title"));
+    indexed.push_back(std::make_shared<text_field>("title_anl", false));
+    indexed.push_back(std::make_shared<text_field>("title_anl_pay", true));
+    indexed.push_back(std::make_shared<text_field>("body_anl", false));
+    indexed.push_back(std::make_shared<text_field>("body_anl_pay", true));
     {
-      insert(std::make_shared<tests::long_field>(), true, true);
+      insert(std::make_shared<tests::long_field>());
       auto& field = static_cast<tests::long_field&>(indexed.back());
       field.name(ir::string_ref("date"));
-      field.indexed(true);
-      field.stored(true);
     }
-    insert(std::make_shared<tests::templates::string_field>("datestr", true, true), true, true);
-    insert(std::make_shared<tests::templates::string_field>("body", true, true), true, true);
+    insert(std::make_shared<tests::templates::string_field>("datestr"));
+    insert(std::make_shared<tests::templates::string_field>("body"));
     {
-      insert(std::make_shared<tests::int_field>(), true, true);
+      insert(std::make_shared<tests::int_field>());
       auto& field = static_cast<tests::int_field&>(indexed.back());
       field.name(ir::string_ref("id"));
-      field.indexed(true);
-      field.stored(true);
     }
-    insert(std::make_shared<string_field>("idstr", true, true), true, true);
+    insert(std::make_shared<string_field>("idstr"));
   }
 
   virtual void value(size_t idx, const std::string& value) {
@@ -254,20 +236,20 @@ void generic_json_field_factory(
   if (data.quoted) {
     doc.insert(std::make_shared<templates::string_field>(
       ir::string_ref(name),
-      ir::string_ref(data.value),
-      true, true), true, true);
+      ir::string_ref(data.value)
+    ));
   } else if ("null" == data.value) {
-    doc.insert(std::make_shared<tests::binary_field>(), true, true);
+    doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
     field.name(iresearch::string_ref(name));
     field.value(ir::null_token_stream::value_null());
   } else if ("true" == data.value) {
-    doc.insert(std::make_shared<tests::binary_field>(), true, true);
+    doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
     field.name(iresearch::string_ref(name));
     field.value(ir::boolean_token_stream::value_true());
   } else if ("false" == data.value) {
-    doc.insert(std::make_shared<tests::binary_field>(), true, true);
+    doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
     field.name(iresearch::string_ref(name));
     field.value(ir::boolean_token_stream::value_true());
@@ -277,7 +259,7 @@ void generic_json_field_factory(
 
     // 'value' can be interpreted as a double
     if (!czSuffix[0]) {
-      doc.insert(std::make_shared<tests::double_field>(), true, true);
+      doc.insert(std::make_shared<tests::double_field>());
       auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
       field.name(iresearch::string_ref(name));
       field.value(dValue);
@@ -293,38 +275,35 @@ void payloaded_json_field_factory(
 
   if (data.quoted) {
     // analyzed && pyaloaded
-    doc.insert(std::make_shared<text_field>(
+    doc.indexed.push_back(std::make_shared<text_field>(
       std::string(name.c_str()) + "_anl_pay",
       ir::string_ref(data.value),
-      true,
       true
-    ), true, false);
+    ));
 
     // analyzed field
-    doc.insert(std::make_shared<text_field>(
+    doc.indexed.push_back(std::make_shared<text_field>(
       std::string(name.c_str()) + "_anl",
-      ir::string_ref(data.value),
-      true
-    ), true, false);
+      ir::string_ref(data.value)
+    ));
 
     // not analyzed field
     doc.insert(std::make_shared<templates::string_field>(
       ir::string_ref(name),
-      ir::string_ref(data.value),
-      true, true
-    ), true, true);
+      ir::string_ref(data.value)
+    ));
   } else if ("null" == data.value) {
-    doc.insert(std::make_shared<tests::binary_field>(), true, true);
+    doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
     field.name(iresearch::string_ref(name));
     field.value(ir::null_token_stream::value_null());
   } else if ("true" == data.value) {
-    doc.insert(std::make_shared<tests::binary_field>(), true, true);
+    doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
     field.name(iresearch::string_ref(name));
     field.value(ir::boolean_token_stream::value_true());
   } else if ("false" == data.value) {
-    doc.insert(std::make_shared<tests::binary_field>(), true, true);
+    doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
     field.name(iresearch::string_ref(name));
     field.value(ir::boolean_token_stream::value_false());
@@ -333,7 +312,7 @@ void payloaded_json_field_factory(
     double dValue = strtod(data.value.c_str(), &czSuffix);
     if (!czSuffix[0]) {
       // 'value' can be interpreted as a double
-      doc.insert(std::make_shared<tests::double_field>(), true, true);
+      doc.insert(std::make_shared<tests::double_field>());
       auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
       field.name(iresearch::string_ref(name));
       field.value(dValue);
@@ -376,8 +355,8 @@ class index_test_case_base : public tests::index_test_base {
       virtual void init() {
         clear();
         reserve(2);
-        insert(std::make_shared<tests::templates::string_field>("id", true, true), true, true);
-        insert(std::make_shared<tests::templates::string_field>("label", true, true), true, true);
+        insert(std::make_shared<tests::templates::string_field>("id"));
+        insert(std::make_shared<tests::templates::string_field>("label"));
       }
 
       virtual void value(size_t idx, const std::string& value) {
@@ -550,8 +529,8 @@ class index_test_case_base : public tests::index_test_base {
       virtual void init() {
         clear();
         reserve(2);
-        insert(std::make_shared<tests::templates::string_field>("id", true, true), true, true);
-        insert(std::make_shared<tests::templates::string_field>("label", true, true), true, true);
+        insert(std::make_shared<tests::templates::string_field>("id"));
+        insert(std::make_shared<tests::templates::string_field>("label"));
       }
 
       virtual void value(size_t idx, const std::string& value) {
@@ -783,8 +762,8 @@ class index_test_case_base : public tests::index_test_base {
         if (data.quoted) {
           doc.insert(std::make_shared<templates::string_field>(
             ir::string_ref(name),
-            ir::string_ref(data.value),
-            true, true), true, true);
+            ir::string_ref(data.value)
+          ));
         }
       });
       tests::document const* doc1 = gen.next();
@@ -991,8 +970,8 @@ class index_test_case_base : public tests::index_test_base {
       virtual void init() {
         clear();
         reserve(2);
-        insert(std::make_shared<tests::templates::string_field>("id", true, true), true, true);
-        insert(std::make_shared<tests::templates::string_field>("label", true, true), true, true);
+        insert(std::make_shared<tests::templates::string_field>("id"));
+        insert(std::make_shared<tests::templates::string_field>("label"));
       }
 
       virtual void value(size_t idx, const std::string& value) {
@@ -1301,8 +1280,8 @@ class index_test_case_base : public tests::index_test_base {
       virtual void init() {
         clear();
         reserve(2);
-        insert(std::make_shared<tests::templates::string_field>("id", true, true), true, true);
-        insert(std::make_shared<tests::templates::string_field>("label", true, true), true, true);
+        insert(std::make_shared<tests::templates::string_field>("id"));
+        insert(std::make_shared<tests::templates::string_field>("label"));
       }
 
       virtual void value(size_t idx, const std::string& value) {
@@ -1861,9 +1840,9 @@ TEST_F(memory_index_test, concurrent_add_remove) {
     if (data.quoted) {
       doc.insert(std::make_shared<tests::templates::string_field>(
         ir::string_ref(name),
-        ir::string_ref(data.value),
-        true, true), true, true);
-      }
+        ir::string_ref(data.value))
+      );
+    }
   });
   std::vector<const tests::document*> docs;
   std::atomic<bool> first_doc(false);
@@ -1952,9 +1931,9 @@ TEST_F(memory_index_test, doc_removal) {
     if (data.quoted) {
       doc.insert(std::make_shared<tests::templates::string_field>(
         ir::string_ref(name),
-        ir::string_ref(data.value),
-        true, true), true, true);
-      }
+        ir::string_ref(data.value)
+      ));
+    }
   });
 
   iresearch::string_ref expected_value;
@@ -2449,9 +2428,9 @@ TEST_F(memory_index_test, doc_update) {
     if (data.quoted) {
       doc.insert(std::make_shared<tests::templates::string_field>(
         ir::string_ref(name),
-        ir::string_ref(data.value),
-        true, true), true, true);
-      }
+        ir::string_ref(data.value)
+      ));
+    }
   });
   
   iresearch::string_ref expected_value;
@@ -3090,9 +3069,9 @@ TEST_F(memory_index_test, import_reader) {
     if (data.quoted) {
       doc.insert(std::make_shared<tests::templates::string_field>(
         ir::string_ref(name),
-        ir::string_ref(data.value),
-        true, true), true, true);
-      }
+        ir::string_ref(data.value)
+      ));
+    }
   });
   
   iresearch::string_ref expected_value;
@@ -3427,9 +3406,9 @@ TEST_F(memory_index_test, refresh_reader) {
     if (data.quoted) {
       doc.insert(std::make_shared<tests::templates::string_field>(
         ir::string_ref(name),
-        ir::string_ref(data.value),
-        true, true), true, true);
-      }
+        ir::string_ref(data.value)
+      ));
+    }
   });
 
   iresearch::string_ref expected_value;
@@ -3752,8 +3731,8 @@ TEST_F(memory_index_test, segment_defragment) {
       if (data.quoted) {
         doc.insert(std::make_shared<tests::templates::string_field>(
           ir::string_ref(name),
-          ir::string_ref(data.value),
-          true, true), true, true);
+          ir::string_ref(data.value)
+        ));
       }
   });
   
@@ -4141,8 +4120,8 @@ TEST_F(memory_index_test, segment_defragment) {
         if (data.quoted) {
           doc.insert(std::make_shared<tests::templates::string_field>(
             ir::string_ref(name),
-            ir::string_ref(data.value),
-            true, true), true, true);
+            ir::string_ref(data.value)
+          ));
         }
     });
 
@@ -4209,9 +4188,9 @@ TEST_F(memory_index_test, segment_defragment_policy) {
     if (data.quoted) {
       doc.insert(std::make_shared<tests::templates::string_field>(
         ir::string_ref(name),
-        ir::string_ref(data.value),
-        true, true), true, true);
-      }
+        ir::string_ref(data.value)
+      ));
+    }
   });
   
   tests::document const* doc1 = gen.next();

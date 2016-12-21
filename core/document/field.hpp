@@ -40,18 +40,10 @@ class IRESEARCH_API field {
   void boost(float_t value) { boost_ = value; }
   float_t boost() const { return boost_; }
 
-  bool indexed() const { return indexed_; }
-  void indexed(bool value) { indexed_ = value; }
-  
-  bool stored() const { return stored_; }
-  void stored(bool value) { stored_ = value; }
-
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::string name_;
   float_t boost_{ 1.f };
-  bool indexed_{ true };
-  bool stored_{ true };
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // field
 

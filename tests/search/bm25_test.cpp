@@ -53,7 +53,7 @@ TEST_F(bm25_test, test_order) {
       [](tests::document& doc, const std::string& name, const tests::json::json_value& data) {
         static const std::string s_seq = "seq";
         static const std::string s_field = "field";
-        doc.insert(std::make_shared<templates::string_field>(name, data.value, name == s_field, name == s_seq), name == s_field, name == s_seq);
+        doc.insert(std::make_shared<templates::string_field>(name, data.value), name == s_field, name == s_seq);
     });
     add_segment(gen);
   }

@@ -27,17 +27,13 @@ NS_ROOT
 
 field::field(field&& rhs) 
   : name_(std::move(rhs.name_)),
-    boost_(rhs.boost_),
-    indexed_(rhs.indexed_),
-    stored_(rhs.stored_) {
+    boost_(rhs.boost_) {
 }
 
 field& field::operator=(field&& rhs) {
   if (this != &rhs) {
     name_ = std::move(rhs.name_);
     boost_ = rhs.boost_;
-    indexed_ = rhs.indexed_;
-    stored_ = rhs.stored_;
   }
   return *this;
 }
@@ -58,10 +54,6 @@ bool long_field::write(data_output& out) const {
 }
 
 token_stream* long_field::get_tokens() const {
-  if (!indexed()) {
-    return nullptr;
-  }
-
   stream_.reset(value_);
   return &stream_;
 }
@@ -85,10 +77,6 @@ bool int_field::write(data_output& out) const {
 }
 
 token_stream* int_field::get_tokens() const {
-  if (!indexed()) {
-    return nullptr;
-  }
-
   stream_.reset(value_);
   return &stream_;
 }
@@ -107,10 +95,6 @@ double_field::double_field(double_field&& other):
 }
 
 token_stream* double_field::get_tokens() const {
-  if (!indexed()) {
-    return nullptr;
-  }
-
   stream_.reset(value_);
   return &stream_;
 }
@@ -139,10 +123,6 @@ bool float_field::write(data_output& out) const {
 }
 
 token_stream* float_field::get_tokens() const {
-  if (!indexed()) {
-    return nullptr;
-  }
-
   stream_.reset(value_);
   return &stream_;
 }
@@ -166,10 +146,6 @@ bool string_field::write(data_output& out) const {
 }
 
 token_stream* string_field::get_tokens() const {
-  if (!indexed()) {
-    return nullptr;
-  }
-
   stream_.reset(value_);
   return &stream_;
 }
@@ -200,10 +176,6 @@ bool binary_field::write(data_output& out) const {
 }
 
 token_stream* binary_field::get_tokens() const {
-  if (!indexed()) {
-    return nullptr;
-  }
-
   stream_.reset(value_);
   return &stream_;
 }

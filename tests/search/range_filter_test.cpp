@@ -32,8 +32,7 @@ class range_filter_test_case : public filter_test_case_base {
           if (data.quoted) {
             doc.insert(std::make_shared<tests::templates::string_field>(
               ir::string_ref(name),
-              ir::string_ref(data.value),
-              true, true
+              ir::string_ref(data.value)
             ));
           } else if ("null" == data.value) {
             doc.insert(std::make_shared<tests::binary_field>());

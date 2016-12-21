@@ -94,9 +94,9 @@ namespace tests {
 
   class analyzed_string_field: public templates::string_field {
    public:
-    analyzed_string_field(const iresearch::string_ref& name, const iresearch::string_ref& value):
-      templates::string_field(name, value, true, true),
-      token_stream_(ir::analysis::analyzers::get("text", "en")) {
+    analyzed_string_field(const iresearch::string_ref& name, const iresearch::string_ref& value)
+      : templates::string_field(name, value),
+        token_stream_(ir::analysis::analyzers::get("text", "en")) {
       if (!token_stream_) {
         throw std::runtime_error("Failed to get 'text' analyzer for args: en");
       }
@@ -138,8 +138,8 @@ namespace tests {
       if (data.quoted) {
         doc.insert(std::make_shared<templates::string_field>(
           ir::string_ref(name),
-          ir::string_ref(data.value),
-          true, true));
+          ir::string_ref(data.value)
+        ));
       } else if ("null" == data.value) {
         doc.insert(std::make_shared<tests::binary_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();

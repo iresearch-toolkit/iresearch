@@ -506,8 +506,7 @@ class format_test_case_base : public index_test_base {
       [&sorted_terms, &unsorted_terms] (tests::document& doc, const std::string& name, const tests::json::json_value& data) {
         doc.insert(std::make_shared<tests::templates::string_field>(
           ir::string_ref(name),
-          ir::string_ref(data.value),
-          true, true
+          ir::string_ref(data.value)
         ));
 
         auto ref = ir::ref_cast<ir::byte_type>((doc.indexed.end() - 1).as<tests::templates::string_field>().value());
@@ -891,8 +890,8 @@ class format_test_case_base : public index_test_base {
       virtual void init() {
         clear();
         reserve(2);
-        insert(std::make_shared<tests::templates::string_field>("id", false, true));
-        insert(std::make_shared<tests::templates::string_field>("name", false, true));
+        insert(std::make_shared<tests::templates::string_field>("id"));
+        insert(std::make_shared<tests::templates::string_field>("name"));
       }
 
       virtual void value(size_t idx, const std::string& value) {
@@ -1929,8 +1928,8 @@ class format_test_case_base : public index_test_base {
       if (data.quoted) {
         doc.insert(std::make_shared<templates::string_field>(
           ir::string_ref(name),
-          ir::string_ref(data.value),
-          true, true));
+          ir::string_ref(data.value)
+        ));
         
         auto& field = (doc.indexed.end() - 1).as<templates::string_field>();
         values.emplace_back(field.name(), field.value());

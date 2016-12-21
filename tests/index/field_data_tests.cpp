@@ -31,7 +31,6 @@ namespace tests {
       auto& field = fields.back();
       field.name(field_name);
       field.value(value);
-      field.indexed(true);
     }
 
     for (size_t i = 0, count = fields.size(); i < count; ++i) {
