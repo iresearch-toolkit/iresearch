@@ -13,7 +13,6 @@
 #define IRESEARCH_DOCUMENT_GENERATOR_H
 
 #include "analysis/token_streams.hpp"
-#include "document/serializer.hpp"
 #include "utils/iterator.hpp"
 #include "store/store_utils.hpp"
 #include "json_parser.hpp"
@@ -41,7 +40,7 @@ namespace ir = iresearch;
 /// @class ifield
 /// @brief base interface for all fields
 //////////////////////////////////////////////////////////////////////////////
-struct ifield : ir::serializer {
+struct ifield {
   DECLARE_SPTR(ifield);
   virtual ~ifield() {};
 
@@ -50,7 +49,6 @@ struct ifield : ir::serializer {
   virtual bool write(ir::data_output& out) const = 0;
   virtual ir::token_stream* get_tokens() const = 0;
   virtual const ir::flags& features() const = 0;
-  virtual const ir::serializer* serializer() const = 0;
 }; // ifield
 
 //////////////////////////////////////////////////////////////////////////////
@@ -81,8 +79,6 @@ class field_base : public ifield {
   bool stored() const { return stored_; }
   void stored(bool value) { stored_ = value; }
 
-  const ir::serializer* serializer() const { return stored_ ? this : nullptr; }
-  
   const ir::flags& features() const { return features_; };
   ir::flags& features() { return features_; }
 

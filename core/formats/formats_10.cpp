@@ -15,8 +15,6 @@
 #include "formats_burst_trie.hpp"
 #include "format_utils.hpp"
 
-#include "document/serializer.hpp"
-
 #include "analysis/token_attributes.hpp"
 
 #include "index/field_meta.hpp"

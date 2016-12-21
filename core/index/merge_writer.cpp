@@ -21,7 +21,6 @@
 #include "utils/log.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/version_utils.hpp"
-#include "document/serializer.hpp"
 #include "store/store_utils.hpp"
 
 #include <array>
@@ -555,20 +554,6 @@ bool compute_field_meta(
   return true;
 }
 
-struct binary_value final : iresearch::serializer {
-  bool write(iresearch::data_output& out) const {
-    for (size_t read = in->read_bytes(buf, sizeof buf); read;
-         read = in->read_bytes(buf, sizeof buf)) {
-      out.write_bytes(buf, read);
-    }
-
-    return true;
-  }
-
-  iresearch::data_input* in;
-  mutable iresearch::byte_type buf[1024];
-}; // binary_value 
-
 // ...........................................................................
 // Helper class responsible for writing a data from different sources 
 // into single columnstore
@@ -583,8 +568,9 @@ class columnstore {
       iresearch::directory& dir,
       iresearch::format& codec,
       const iresearch::string_ref& segment_name, 
-      binary_value& value) 
-    : value_(&value) {
+      iresearch::byte_type* buf, 
+      size_t size) 
+    : buf_(buf), size_(size) {
     auto writer = codec.get_columnstore_writer();
     if (!writer->prepare(dir, segment_name)) {
       return; // flush failure
@@ -642,15 +628,19 @@ class columnstore {
     }
 
     empty_ = false;
-    value_->in = &in; // set value input stream
 
-    // write value to new segment
-    return value_->write(column_.second(mapped_doc));
+    auto& out = column_.second(mapped_doc);
+    for (size_t read = in.read_bytes(buf_, size_); read;
+         read = in.read_bytes(buf_, size_)) {
+      out.write_bytes(buf_, read);
+    }
+    return true;
   }
 
   iresearch::columnstore_writer::ptr writer_;
   iresearch::columnstore_writer::column_t column_{};
-  binary_value* value_;
+  iresearch::byte_type* buf_;
+  size_t size_;
   const doc_id_map_t* pdoc_id_map;
   bool empty_{ false };
 }; // columnstore
@@ -842,10 +832,10 @@ bool merge_writer::flush(std::string& filename, segment_meta& meta) {
     total_fields_count,
     iresearch::type_limits<iresearch::type_t::field_id_t>::invalid()
   );
- 
-  binary_value buf; // temporary buffer for copying
 
-  columnstore cs(track_dir, codec, name_, buf);
+  iresearch::byte_type buf[1024]; // temporary buffer for copying
+
+  columnstore cs(track_dir, codec, name_, buf, sizeof buf);
   if (!cs) {
     return false; // flush failure
   }

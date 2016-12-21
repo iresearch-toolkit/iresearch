@@ -14,7 +14,6 @@
 
 #include "field_data.hpp"
 #include "doc_header.hpp"
-#include "document/serializer.hpp"
 #include "analysis/token_stream.hpp"
 #include "formats/formats.hpp"
 #include "utils/directory_utils.hpp"

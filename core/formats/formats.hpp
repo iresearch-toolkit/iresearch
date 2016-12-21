@@ -25,7 +25,6 @@
 
 NS_ROOT
 
-struct serializer;
 struct segment_meta;
 class fields_meta;
 class columns_meta;

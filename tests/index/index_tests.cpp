@@ -2998,7 +2998,10 @@ TEST_F(memory_index_test, doc_update) {
       iresearch::flags features_;
       iresearch::string_token_stream tokens_;
       bool write_result_;
-      virtual bool write(iresearch::data_output& out) const override { return write_result_; }
+      virtual bool write(iresearch::data_output& out) const override { 
+        out.write_byte(1);
+        return write_result_; 
+      }
       virtual iresearch::token_stream* get_tokens() const override { return &const_cast<test_field*>(this)->tokens_; }
       virtual const iresearch::flags& features() const override { return features_; }
     };
@@ -3035,7 +3038,7 @@ TEST_F(memory_index_test, doc_update) {
 
     const_cast<tests::document*>(doc1)->insert(test_field0, true, true); // inject field
     const_cast<tests::document*>(doc2)->insert(test_field1, true, true); // inject field
-    const_cast<tests::document*>(doc3)->insert(test_field2, true, false); // inject field
+    const_cast<tests::document*>(doc3)->insert(test_field2, true, true); // inject field
     const_cast<tests::document*>(doc4)->insert(test_field3, true, true); // inject field
 
     ASSERT_TRUE(writer->insert(

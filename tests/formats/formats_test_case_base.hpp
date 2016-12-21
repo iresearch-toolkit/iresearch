@@ -1803,7 +1803,7 @@ class format_test_case_base : public index_test_base {
   }
 
   void columns_big_document_read_write() {
-    struct big_stored_field : iresearch::serializer {
+    struct big_stored_field {
       bool write(iresearch::data_output& out) const {
         out.write_bytes(reinterpret_cast<const iresearch::byte_type*>(buf), sizeof buf);
         return true;

@@ -13,7 +13,6 @@
 #define IRESEARCH_FIELD_H
 
 #include "analysis/token_streams.hpp"
-#include "serializer.hpp"
 
 NS_ROOT
 
@@ -60,9 +59,7 @@ class IRESEARCH_API field {
 /// @class long_field 
 /// @brief provides capabilities for storing & indexing int64_t values 
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API long_field : public serializer, 
-                                 public field, 
-                                 private util::noncopyable {
+class IRESEARCH_API long_field : public field, private util::noncopyable {
  public:
   typedef int64_t value_t;
 
@@ -72,8 +69,7 @@ class IRESEARCH_API long_field : public serializer,
   void value(value_t value) { value_ = value; }
   value_t value() const { return value_; }
 
-  bool write(data_output& out) const override;
-  const serializer* serializer() const { return stored() ? this : nullptr; }
+  bool write(data_output& out) const;
   token_stream* get_tokens() const;
   const flags& features() const;
 
@@ -86,9 +82,7 @@ class IRESEARCH_API long_field : public serializer,
 /// @class long_field 
 /// @brief provides capabilities for storing & indexing int32_t values 
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API int_field : public serializer,
-                                public field, 
-                                private util::noncopyable {
+class IRESEARCH_API int_field : public field, private util::noncopyable {
  public:
   typedef int32_t value_t;
 
@@ -98,8 +92,7 @@ class IRESEARCH_API int_field : public serializer,
   void value(value_t value) { value_ = value; }
   value_t value() const { return value_; }
 
-  bool write(data_output& out) const override;
-  const serializer* serializer() const { return stored() ? this : nullptr; }
+  bool write(data_output& out) const;
   token_stream* get_tokens() const;
   const flags& features() const;
 
@@ -112,9 +105,7 @@ class IRESEARCH_API int_field : public serializer,
 /// @class long_field 
 /// @brief provides capabilities for storing & indexing double_t values 
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API double_field : public serializer, 
-                                   public field, 
-                                   private util::noncopyable {
+class IRESEARCH_API double_field : public field, private util::noncopyable {
  public:
   typedef double_t value_t;
 
@@ -124,8 +115,7 @@ class IRESEARCH_API double_field : public serializer,
   void value(value_t value) { value_ = value; }
   value_t value() const { return value_; }
 
-  bool write(data_output& out) const override;
-  const serializer* serializer() const { return stored() ? this : nullptr; }
+  bool write(data_output& out) const;
   token_stream* get_tokens() const;
   const flags& features() const;
 
@@ -138,9 +128,7 @@ class IRESEARCH_API double_field : public serializer,
 /// @class long_field 
 /// @brief provides capabilities for storing & indexing double_t values 
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API float_field : public serializer, 
-                                  public field, 
-                                  private util::noncopyable {
+class IRESEARCH_API float_field : public field, private util::noncopyable {
  public:
   typedef float_t value_t;
 
@@ -150,8 +138,7 @@ class IRESEARCH_API float_field : public serializer,
   void value(value_t value) { value_ = value; }
   value_t value() const { return value_; }
 
-  bool write(data_output& out) const override;
-  const serializer* serializer() const { return stored() ? this : nullptr; }
+  bool write(data_output& out) const;
   token_stream* get_tokens() const;
   const flags& features() const;
 
@@ -164,9 +151,7 @@ class IRESEARCH_API float_field : public serializer,
 /// @class long_field 
 /// @brief provides capabilities for storing & indexing string values 
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API string_field : public serializer, 
-                                   public field, 
-                                   private util::noncopyable {
+class IRESEARCH_API string_field : public field, private util::noncopyable {
  public:
   string_field() = default;
   string_field(string_field&& other);
@@ -180,8 +165,7 @@ class IRESEARCH_API string_field : public serializer,
     value_ = std::string(first, last);
   }
   
-  bool write(data_output& out) const override;
-  const serializer* serializer() const { return stored() ? this : nullptr; }
+  bool write(data_output& out) const;
   token_stream* get_tokens() const;
   const flags& features() const;
 
@@ -196,9 +180,7 @@ class IRESEARCH_API string_field : public serializer,
 /// @class binary_field 
 /// @brief provides capabilities for storing & indexing binary values 
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API binary_field : public serializer, 
-                                   public field, 
-                                   private util::noncopyable {
+class IRESEARCH_API binary_field : public field, private util::noncopyable {
  public:
   binary_field() = default;
   binary_field(binary_field&& other);
@@ -212,8 +194,7 @@ class IRESEARCH_API binary_field : public serializer,
     value(bstring(first, last));
   }
   
-  bool write(data_output& out) const override;
-  const serializer* serializer() const { return stored() ? this : nullptr; }
+  bool write(data_output& out) const;
   token_stream* get_tokens() const;
   const flags& features() const;
 
