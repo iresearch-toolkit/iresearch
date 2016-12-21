@@ -47,7 +47,7 @@ struct ifield {
   virtual ir::string_ref name() const = 0;
   virtual float_t boost() const = 0;
   virtual bool write(ir::data_output& out) const = 0;
-  virtual ir::token_stream* get_tokens() const = 0;
+  virtual ir::token_stream& get_tokens() const = 0;
   virtual const ir::flags& features() const = 0;
 }; // ifield
 
@@ -95,7 +95,7 @@ class long_field: public field_base {
   void value(value_t value) { value_ = value; }
   value_t value() const { return value_; }
   bool write(ir::data_output& out) const override;
-  ir::token_stream* get_tokens() const;
+  ir::token_stream& get_tokens() const;
 
  private:
   mutable ir::numeric_token_stream stream_;
@@ -116,7 +116,7 @@ class int_field: public field_base {
   value_t value() const { return value_; }
 
   bool write(ir::data_output& out) const override;
-  ir::token_stream* get_tokens() const;
+  ir::token_stream& get_tokens() const;
 
  private:
   mutable ir::numeric_token_stream stream_;
@@ -137,7 +137,7 @@ class double_field: public field_base {
   value_t value() const { return value_; }
 
   bool write(ir::data_output& out) const override;
-  ir::token_stream* get_tokens() const;
+  ir::token_stream& get_tokens() const;
 
  private:
   mutable ir::numeric_token_stream stream_;
@@ -158,7 +158,7 @@ class float_field: public field_base {
   value_t value() const { return value_; }
 
   bool write(ir::data_output& out) const override;
-  ir::token_stream* get_tokens() const;
+  ir::token_stream& get_tokens() const;
 
  private:
   mutable ir::numeric_token_stream stream_;
@@ -183,7 +183,7 @@ class binary_field: public field_base {
   }
   
   bool write(ir::data_output& out) const override;
-  ir::token_stream* get_tokens() const;
+  ir::token_stream& get_tokens() const;
 
  private:
   mutable ir::string_token_stream stream_;

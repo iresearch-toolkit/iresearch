@@ -145,11 +145,11 @@ bool string_field::write(ir::data_output& out) const {
   return true;
 }
 
-ir::token_stream* string_field::get_tokens() const {
+ir::token_stream& string_field::get_tokens() const {
   REGISTER_TIMER_DETAILED();
 
   stream_.reset(value_);
-  return &stream_;
+  return stream_;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -2981,7 +2981,7 @@ TEST_F(memory_index_test, doc_update) {
         out.write_byte(1);
         return write_result_; 
       }
-      virtual iresearch::token_stream* get_tokens() const override { return &const_cast<test_field*>(this)->tokens_; }
+      virtual iresearch::token_stream& get_tokens() const override { return const_cast<test_field*>(this)->tokens_; }
       virtual const iresearch::flags& features() const override { return features_; }
     };
 

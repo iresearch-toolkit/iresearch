@@ -102,10 +102,10 @@ namespace tests {
       }
     }
     virtual ~analyzed_string_field() {}
-    virtual iresearch::token_stream* get_tokens() const override {
+    virtual iresearch::token_stream& get_tokens() const override {
       const iresearch::string_ref& value = this->value();
       token_stream_->reset(value);
-      return token_stream_.get();
+      return *token_stream_;
     }
       
    private:

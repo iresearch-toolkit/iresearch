@@ -133,9 +133,9 @@ field_base::~field_base() { }
 // --SECTION--                                         long_field implementation
 // -----------------------------------------------------------------------------
 
-ir::token_stream* long_field::get_tokens() const {
+ir::token_stream& long_field::get_tokens() const {
   stream_.reset(value_);
-  return &stream_;
+  return stream_;
 }
 
 bool long_field::write(ir::data_output& out) const {
@@ -152,9 +152,9 @@ bool int_field::write(ir::data_output& out) const {
   return true;
 }
 
-ir::token_stream* int_field::get_tokens() const {
+ir::token_stream& int_field::get_tokens() const {
   stream_.reset(value_);
-  return &stream_;
+  return stream_;
 }
 
 // -----------------------------------------------------------------------------
@@ -166,9 +166,9 @@ bool double_field::write(ir::data_output& out) const {
   return true;
 }
 
-ir::token_stream* double_field::get_tokens() const {
+ir::token_stream& double_field::get_tokens() const {
   stream_.reset(value_);
-  return &stream_;
+  return stream_;
 }
 
 // -----------------------------------------------------------------------------
@@ -180,9 +180,9 @@ bool float_field::write(ir::data_output& out) const {
   return true;
 }
 
-ir::token_stream* float_field::get_tokens() const {
+ir::token_stream& float_field::get_tokens() const {
   stream_.reset(value_);
-  return &stream_;
+  return stream_;
 }
 
 // -----------------------------------------------------------------------------
@@ -194,9 +194,9 @@ bool binary_field::write(ir::data_output& out) const {
   return true;
 }
 
-ir::token_stream* binary_field::get_tokens() const {
+ir::token_stream& binary_field::get_tokens() const {
   stream_.reset(value_);
-  return &stream_;
+  return stream_;
 }
 
 // -----------------------------------------------------------------------------

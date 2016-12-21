@@ -171,12 +171,12 @@ class text_field : public tests::field_base {
     return features;
   }
 
-  ir::token_stream* get_tokens() const {
+  ir::token_stream& get_tokens() const {
     token_stream_->reset(value_);
 
     return pay_stream_
-      ? static_cast<ir::token_stream*>(pay_stream_.get())
-      : token_stream_.get();;
+      ? static_cast<ir::token_stream&>(*pay_stream_)
+      : *token_stream_;
   }
 
  private:
@@ -205,7 +205,7 @@ class string_field : public tests::field_base {
   ir::string_ref value() const { return value_; }
 
   virtual const ir::flags& features() const override;
-  virtual ir::token_stream* get_tokens() const override;
+  virtual ir::token_stream& get_tokens() const override;
   virtual bool write(ir::data_output& out) const override;
 
  private:

@@ -512,13 +512,11 @@ term_iterator::ptr field_data::iterator() const {
 }
 
 bool field_data::invert(
-  token_stream* stream, const flags& features, float_t boost, doc_id_t id
-) {
+    token_stream& stream, 
+    const flags& features, 
+    float_t boost, 
+    doc_id_t id) {
   REGISTER_TIMER_DETAILED();
-
-  if (!stream) {
-    return false;
-  }
 
   // accumulate field features
   meta_.features |= features;
@@ -526,7 +524,7 @@ bool field_data::invert(
   // TODO: should check feature consistency 
   // among features & meta_.features()
 
-  const attributes& attrs = stream->attributes();
+  const attributes& attrs = stream.attributes();
   const term_attribute* term = attrs.get<term_attribute>();
   const increment* inc = attrs.get<increment>();
   const offset* offs = nullptr;
@@ -540,7 +538,7 @@ bool field_data::invert(
 
   init(id); // initialize field_data for the supplied doc_id
 
-  while (stream->next()) {
+  while (stream.next()) {
     pos_ += inc->value;
     if (pos_ < last_pos_) {
       IR_ERROR() << "invalid position " << pos_ << " < " << last_pos_;

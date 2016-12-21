@@ -157,12 +157,9 @@ void index_segment::add(const ifield& f) {
   const_cast<iresearch::string_ref&>(res.first->first) = res.first->second.name;
   auto& fld = res.first->second;
 
-  auto stream = f.get_tokens();
-  if (!stream) {
-    return;
-  }
+  auto& stream = f.get_tokens();
 
-  const iresearch::attributes& attrs = stream->attributes();
+  const iresearch::attributes& attrs = stream.attributes();
   const iresearch::term_attribute* term = attrs.get<iresearch::term_attribute>();
   const iresearch::increment* inc = attrs.get<iresearch::increment>();
   const iresearch::offset* offs = attrs.get<iresearch::offset>();
@@ -171,11 +168,11 @@ void index_segment::add(const ifield& f) {
   bool empty = true;
   auto doc_id = (ir::type_limits<ir::type_t::doc_id_t>::min)() + count_;
 
-  while (stream->next()) {
+  while (stream.next()) {
     tests::term& trm = fld.add(term->value());
     tests::posting& pst = trm.add(doc_id);
 
-    pst.add(fld.pos, fld.offs, stream->attributes());
+    pst.add(fld.pos, fld.offs, attrs);
     fld.pos += inc->value;
     empty = false;
   }

@@ -62,7 +62,7 @@ class IRESEARCH_API long_field : public field, private util::noncopyable {
   value_t value() const { return value_; }
 
   bool write(data_output& out) const;
-  token_stream* get_tokens() const;
+  token_stream& get_tokens() const;
   const flags& features() const;
 
  private:
@@ -85,7 +85,7 @@ class IRESEARCH_API int_field : public field, private util::noncopyable {
   value_t value() const { return value_; }
 
   bool write(data_output& out) const;
-  token_stream* get_tokens() const;
+  token_stream& get_tokens() const;
   const flags& features() const;
 
  private:
@@ -108,7 +108,7 @@ class IRESEARCH_API double_field : public field, private util::noncopyable {
   value_t value() const { return value_; }
 
   bool write(data_output& out) const;
-  token_stream* get_tokens() const;
+  token_stream& get_tokens() const;
   const flags& features() const;
 
  private:
@@ -131,7 +131,7 @@ class IRESEARCH_API float_field : public field, private util::noncopyable {
   value_t value() const { return value_; }
 
   bool write(data_output& out) const;
-  token_stream* get_tokens() const;
+  token_stream& get_tokens() const;
   const flags& features() const;
 
  private:
@@ -158,7 +158,7 @@ class IRESEARCH_API string_field : public field, private util::noncopyable {
   }
   
   bool write(data_output& out) const;
-  token_stream* get_tokens() const;
+  token_stream& get_tokens() const;
   const flags& features() const;
 
  private:
@@ -187,7 +187,7 @@ class IRESEARCH_API binary_field : public field, private util::noncopyable {
   }
   
   bool write(data_output& out) const;
-  token_stream* get_tokens() const;
+  token_stream& get_tokens() const;
   const flags& features() const;
 
  private:

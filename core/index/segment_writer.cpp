@@ -33,8 +33,7 @@ segment_writer::segment_writer(directory& dir, format::ptr codec) NOEXCEPT
 }
 
 bool segment_writer::remove(doc_id_t doc_id) {
-  return
-    doc_id < (type_limits<type_t::doc_id_t>::min() + num_docs_cached_)
+  return doc_id < (type_limits<type_t::doc_id_t>::min() + num_docs_cached_)
     && docs_mask_.insert(doc_id).second;
 }
 
@@ -51,7 +50,7 @@ bool segment_writer::index_field(
 
   // invert only if new field features are a subset of slot features
   if ((slot.empty() || features.is_subset_of(slot_features)) &&
-      slot.invert(&tokens, slot.empty() ? features : slot_features, boost, doc_id)) {
+      slot.invert(tokens, slot.empty() ? features : slot_features, boost, doc_id)) {
     if (features.check<norm>()) {
       norm_fields_.insert(&slot);
     }

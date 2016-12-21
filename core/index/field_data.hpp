@@ -84,7 +84,7 @@ class IRESEARCH_API field_data : util::noncopyable {
     return !type_limits<type_t::doc_id_t>::valid(last_doc_);
   }
 
-  bool invert(token_stream* tokens, const flags& features, float_t boost, doc_id_t id);
+  bool invert(token_stream& tokens, const flags& features, float_t boost, doc_id_t id);
 
   term_iterator::ptr iterator() const;
 

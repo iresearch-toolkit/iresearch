@@ -40,7 +40,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
       FieldIterator begin, FieldIterator end, 
       AttributeIterator abegin, AttributeIterator aend,
       const update_context& ctx) {
-    auto doc_id = (type_limits<type_t::doc_id_t>::min)() + num_docs_cached_++;
+    const auto doc_id = (type_limits<type_t::doc_id_t>::min)() + num_docs_cached_++;
     bool success = true;
 
     for (; success && begin != end; ++begin) {
@@ -118,12 +118,12 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   bool insert_field(doc_id_t doc, const Field& field) {
     REGISTER_TIMER_DETAILED();
 
-    auto* field_tokens = static_cast<token_stream*>(field.get_tokens());
+    auto& field_tokens = static_cast<token_stream&>(field.get_tokens());
 
     return index_field(
       doc,
       static_cast<const string_ref&>(field.name()),
-      *field_tokens,
+      field_tokens,
       static_cast<const flags&>(field.features()),
       static_cast<float_t>(field.boost())
     );

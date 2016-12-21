@@ -53,9 +53,9 @@ bool long_field::write(data_output& out) const {
   return true;
 }
 
-token_stream* long_field::get_tokens() const {
+token_stream& long_field::get_tokens() const {
   stream_.reset(value_);
-  return &stream_;
+  return stream_;
 }
 
 const flags& long_field::features() const {
@@ -76,9 +76,9 @@ bool int_field::write(data_output& out) const {
   return true;
 }
 
-token_stream* int_field::get_tokens() const {
+token_stream& int_field::get_tokens() const {
   stream_.reset(value_);
-  return &stream_;
+  return stream_;
 }
 
 const flags& int_field::features() const {
@@ -94,9 +94,9 @@ double_field::double_field(double_field&& other):
   stream_(std::move(other.stream_)), value_(std::move(other.value_)) {
 }
 
-token_stream* double_field::get_tokens() const {
+token_stream& double_field::get_tokens() const {
   stream_.reset(value_);
-  return &stream_;
+  return stream_;
 }
 
 bool double_field::write(data_output& out) const {
@@ -122,9 +122,9 @@ bool float_field::write(data_output& out) const {
   return true;
 }
 
-token_stream* float_field::get_tokens() const {
+token_stream& float_field::get_tokens() const {
   stream_.reset(value_);
-  return &stream_;
+  return stream_;
 }
 
 const flags& float_field::features() const {
@@ -145,9 +145,9 @@ bool string_field::write(data_output& out) const {
   return true;
 }
 
-token_stream* string_field::get_tokens() const {
+token_stream& string_field::get_tokens() const {
   stream_.reset(value_);
-  return &stream_;
+  return stream_;
 }
 
 const flags& string_field::features() const {
@@ -175,9 +175,9 @@ bool binary_field::write(data_output& out) const {
   return true;
 }
 
-token_stream* binary_field::get_tokens() const {
+token_stream& binary_field::get_tokens() const {
   stream_.reset(value_);
-  return &stream_;
+  return stream_;
 }
 
 const flags& binary_field::features() const {
