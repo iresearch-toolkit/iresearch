@@ -60,7 +60,7 @@ filter::prepared::ptr by_term::prepare(
   auto stats = ord.prepare_stats();
   for (const auto& sr : rdr) {
     /* get term dictionary for field */
-    const term_reader* tr = sr.terms(field);
+    const term_reader* tr = sr.field(field);
     if (!tr) {
       continue;
     }

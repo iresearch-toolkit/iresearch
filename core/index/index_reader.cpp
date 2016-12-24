@@ -131,6 +131,9 @@ iresearch::index_file_refs::ref_t load_newest_index_meta(
 }
 MSVC_ONLY(__pragma(warning(pop)))
 
+iresearch::sub_reader::value_visitor_f NOOP_VISITOR =
+  [] (iresearch::doc_id_t) { return false; };
+
 NS_END
 
 NS_ROOT
@@ -261,6 +264,34 @@ void directory_reader::refresh() {
   docs_max_ = docs_max;
   file_refs_ = std::move(file_refs);
   meta_ = std::move(meta);
+}
+  
+CONSTEXPR /* static */ const sub_reader::value_visitor_f& sub_reader::noop() {
+  return NOOP_VISITOR;
+}
+
+sub_reader::value_visitor_f sub_reader::values(
+    const string_ref& field,
+    const columnstore_reader::value_reader_f& value_reader) const {
+  auto* meta = columns().find(field);
+
+  if (!meta) {
+    return sub_reader::noop();
+  }
+
+  return values(meta->id, value_reader);
+}
+
+bool sub_reader::visit(
+    const string_ref& field,
+    const columnstore_reader::raw_reader_f& value_reader) const {
+  auto* meta = columns().find(field);
+
+  if (!meta) {
+    return false;
+  }
+
+  return visit(meta->id, value_reader);
 }
 
 NS_END

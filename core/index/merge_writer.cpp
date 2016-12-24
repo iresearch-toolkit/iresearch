@@ -80,9 +80,7 @@ class compound_iterator {
       const iresearch::sub_reader& reader, 
       const doc_id_map_t& doc_id_map) {
     iterators_.emplace_back(
-      begin, end, 
-      size, iterators_.empty() ? 0 : iterators_.back().base + size,
-      reader, doc_id_map
+      begin, end, size, reader, doc_id_map
     );
   }
   
@@ -90,7 +88,7 @@ class compound_iterator {
   template<typename Visitor>
   bool visit(const Visitor& visitor) const {
     for (auto* it : iterator_mask_) {
-      if (!visitor(*it->reader, *it->doc_id_map, it->base, *it->begin)) {
+      if (!visitor(*it->reader, *it->doc_id_map, *it->begin)) {
         return false;
       }
     }
@@ -148,12 +146,12 @@ class compound_iterator {
   struct iterator_t {
     iterator_t(
         Iterator begin, Iterator end,
-        size_t size, size_t base,
+        size_t size,
         const iresearch::sub_reader& reader,
         const doc_id_map_t& doc_id_map)
       : begin(begin), end(end),
         reader(&reader), doc_id_map(&doc_id_map), 
-        size(size), base(base) {
+        size(size) {
       }
 
     Iterator begin;
@@ -161,7 +159,6 @@ class compound_iterator {
     const iresearch::sub_reader* reader;
     const doc_id_map_t* doc_id_map;
     size_t size; // initial number of element between begin and end
-    size_t base; // id offset for current segment
   };
 
   const value_type* current_value_{};
@@ -187,7 +184,7 @@ class compound_field_iterator {
   bool visit(const Visitor& visitor) const {
     for (auto& entry : field_iterator_mask_) {
       auto& itr = field_iterators_[entry.itr_id];
-      if (!visitor(*itr.reader, *itr.doc_id_map, itr.field_id_base, *entry.meta)) {
+      if (!visitor(*itr.reader, *itr.doc_id_map, *entry.meta)) {
         return false;
       }
     }
@@ -197,21 +194,17 @@ class compound_field_iterator {
  private:
   struct field_iterator_t {
     field_iterator_t(
-        const iresearch::fields_meta::iterator& v_itr,
-        const iresearch::fields_meta::iterator& v_end,
+        iresearch::field_iterator::ptr&& v_itr,
         const iresearch::sub_reader& v_reader,
-        const doc_id_map_t& v_doc_id_map,
-        size_t field_id_base) 
-      : itr(v_itr), end(v_end), 
-        reader(&v_reader), doc_id_map(&v_doc_id_map), 
-        field_id_base(field_id_base) {
+        const doc_id_map_t& v_doc_id_map)
+      : itr(std::move(v_itr)),
+        reader(&v_reader), 
+        doc_id_map(&v_doc_id_map) {
       }
 
-    iresearch::fields_meta::iterator itr;
-    iresearch::fields_meta::iterator end;
+    iresearch::field_iterator::ptr itr;
     const iresearch::sub_reader* reader;
     const doc_id_map_t* doc_id_map;
-    size_t field_id_base; // field id offset for current segment
   };
   struct term_iterator_t {
     size_t itr_id;
@@ -353,20 +346,17 @@ iresearch::doc_id_t compound_doc_iterator::value() const {
 
 void compound_field_iterator::add(
     const iresearch::sub_reader& reader,
-    const doc_id_map_t& doc_id_map) {
-  size_t field_id_base = 0;
-  if (!field_iterators_.empty()) {
-    auto& back = field_iterators_.back();
-    field_id_base = back.field_id_base + back.reader->fields().size();
-  }
+    const doc_id_map_t& doc_id_map) {   
+  field_iterator_mask_.emplace_back(term_iterator_t{
+    field_iterators_.size(),
+    nullptr,
+    nullptr
+  }); // mark as used to trigger next()
 
-  auto& fields = reader.fields();
   field_iterators_.emplace_back(
-    fields.begin(), 
-    fields.end(), 
+    reader.fields(),
     reader, 
-    doc_id_map, 
-    field_id_base
+    doc_id_map
   );
 }
 
@@ -379,8 +369,8 @@ bool compound_field_iterator::next() {
   // advance all used iterators
   for (auto& entry : field_iterator_mask_) {
     auto& it = field_iterators_[entry.itr_id];
-    if (it.itr != it.end) {
-      ++it.itr;
+    if (it.itr && !it.itr->next()) {
+      it.itr = nullptr;
     }
   }
 
@@ -389,12 +379,12 @@ bool compound_field_iterator::next() {
   for (size_t i = 0, count = field_iterators_.size(); i < count; ++i) {
     auto& field_itr = field_iterators_[i];
 
-    if (field_itr.itr == field_itr.end) {
+    if (!field_itr.itr) {
       continue; // empty iterator
     }
 
-    const auto& field_meta = *field_itr.itr;
-    const auto* field_terms = field_itr.reader->terms(field_meta.name);
+    const auto& field_meta = field_itr.itr->value().meta();
+    const auto* field_terms = field_itr.reader->field(field_meta.name);
     const iresearch::string_ref field_id = field_meta.name;
 
     if (!field_terms  || 
@@ -536,9 +526,8 @@ bool compute_field_meta(
   iresearch::flags& fields_features,
   const iresearch::sub_reader& reader
 ) {
-  auto& fields = reader.fields();
-  for (auto itr = fields.begin(), end = fields.end(); itr != end;++itr) {
-    const auto& field_meta = *itr;
+  for (auto it = reader.fields(); it->next();) {
+    const auto& field_meta = it->value().meta();
     auto field_meta_map_itr = field_meta_map.emplace(field_meta.name, &field_meta);
     auto* tracked_field_meta = field_meta_map_itr.first->second;
 
@@ -567,10 +556,7 @@ class columnstore {
   columnstore(
       iresearch::directory& dir,
       iresearch::format& codec,
-      const iresearch::string_ref& segment_name, 
-      iresearch::byte_type* buf, 
-      size_t size) 
-    : buf_(buf), size_(size) {
+      const iresearch::string_ref& segment_name) {
     auto writer = codec.get_columnstore_writer();
     if (!writer->prepare(dir, segment_name)) {
       return; // flush failure
@@ -592,14 +578,26 @@ class columnstore {
       const iresearch::sub_reader& reader, 
       iresearch::field_id column, 
       const doc_id_map_t& doc_id_map) {
-    pdoc_id_map = &doc_id_map;
-
-    return reader.column(
+    return reader.visit(
         column, 
-        [this](iresearch::doc_id_t doc, iresearch::data_input& in) {
-      return copy(doc, in);
-    });
-  } 
+        [this, &doc_id_map](iresearch::doc_id_t doc, iresearch::data_input& in) {
+          const auto mapped_doc = doc_id_map[doc];
+          if (MASKED_DOC_ID == mapped_doc) {
+            // skip deleted document
+            return true;
+          }
+
+          empty_ = false;
+
+          auto& out = column_.second(mapped_doc);
+          for (size_t read = in.read_bytes(buf_, sizeof buf_); read;
+               read = in.read_bytes(buf_, sizeof buf_)) {
+            out.write_bytes(buf_, read);
+          }
+          return true;
+        });
+  }
+
   void reset() {
     if (!empty_) {
       column_ = writer_->push_column();
@@ -619,29 +617,9 @@ class columnstore {
   iresearch::field_id id() const { return column_.first; }
 
  private:
-  bool copy(iresearch::doc_id_t doc, iresearch::data_input& in) {
-    assert(pdoc_id_map);
-    const auto mapped_doc = (*pdoc_id_map)[doc];
-    if (MASKED_DOC_ID == mapped_doc) {
-      // skip deleted document
-      return true;
-    }
-
-    empty_ = false;
-
-    auto& out = column_.second(mapped_doc);
-    for (size_t read = in.read_bytes(buf_, size_); read;
-         read = in.read_bytes(buf_, size_)) {
-      out.write_bytes(buf_, read);
-    }
-    return true;
-  }
-
+  iresearch::byte_type buf_[1024]; // temporary buffer for copying
   iresearch::columnstore_writer::ptr writer_;
   iresearch::columnstore_writer::column_t column_{};
-  iresearch::byte_type* buf_;
-  size_t size_;
-  const doc_id_map_t* pdoc_id_map;
   bool empty_{ false };
 }; // columnstore
   
@@ -656,7 +634,6 @@ bool write_columns(
   auto visitor = [&cs](
       const iresearch::sub_reader& segment,
       const doc_id_map_t& doc_id_map,
-      size_t column_id_base, 
       const iresearch::column_meta& column) {
     return cs.insert(segment, column.id, doc_id_map);
   };
@@ -684,7 +661,7 @@ bool write_columns(
 }
 
 // ...........................................................................
-// write field meta and field term data
+// write field term data
 // ...........................................................................
 bool write(
     columnstore& cs,
@@ -694,39 +671,24 @@ bool write(
     compound_field_iterator& field_itr,
     const field_meta_map_t& field_meta_map,
     const iresearch::flags& fields_features,
-    size_t docs_count,
-    id_map_t& field_id_map /* should have enough space */) {
+    size_t docs_count) {
   assert(cs);
-
-  if (field_meta_map.size() > iresearch::integer_traits<uint32_t>::const_max) {
-    return false; // number of fields exceeds fmw->begin(...) type
-  }
-
-  auto fields_count = static_cast<uint32_t>(field_meta_map.size()); // max boundary ensured by check above
 
   iresearch::flush_state flush_state;
   flush_state.dir = &dir;
   flush_state.doc_count = docs_count;
-  flush_state.fields_count = fields_count;
+  flush_state.fields_count = field_meta_map.size();
   flush_state.features = &fields_features;
   flush_state.name = segment_name;
   flush_state.ver = IRESEARCH_VERSION;
 
-  auto fmw = codec.get_field_meta_writer();
-  fmw->prepare(flush_state);
-
   auto fw = codec.get_field_writer(true);
   fw->prepare(flush_state);
 
-  size_t mapped_field_id = 0;
-  auto remap_and_merge = 
-    [&field_id_map, &mapped_field_id, &cs] (
+  auto merge_norms = [&cs] (
       const iresearch::sub_reader& segment,
       const doc_id_map_t& doc_id_map,
-      size_t field_id_base, 
       const iresearch::field_meta& field) {
-    field_id_map[field_id_base + field.id] = mapped_field_id;
-
     // merge field norms if present
     if (iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)) {
       cs.insert(segment, field.norm, doc_id_map);
@@ -735,36 +697,27 @@ bool write(
     return true;
   };
 
-  for (; field_itr.next(); ++mapped_field_id) {
+  while(field_itr.next()) {
     cs.reset();
 
     auto& field_meta = field_itr.meta();
     auto& field_features = field_meta.features;
 
-    // remap field id's & merge norms
-    field_itr.visit(remap_and_merge); 
+    // remap merge norms
+    field_itr.visit(merge_norms); 
    
-    // write field metadata 
-    fmw->write(
-      iresearch::field_id(mapped_field_id), 
-      field_meta.name, 
-      field_features, 
-      cs.empty() ? iresearch::type_limits<iresearch::type_t::field_id_t>::invalid() : cs.id()
-    );
-
     // write field terms
     fw->write(
-      iresearch::field_id(mapped_field_id), 
+      field_meta.name, 
+      cs.empty() ? iresearch::type_limits<iresearch::type_t::field_id_t>::invalid() : cs.id(),
       field_features, 
       *(field_itr.terms())
     );
   }
 
   fw->end();
-  fmw->end();
 
   fw.reset();
-  fmw.reset();
 
   return true;
 }
@@ -791,8 +744,6 @@ bool merge_writer::flush(std::string& filename, segment_meta& meta) {
   assert(codec_);
 
   auto& codec = *(codec_.get());
-  size_t total_fields_count = 0; // total number of fields across all merging segments
-  size_t total_columns_count = 0; // total number of columns across all merging segments
   std::unordered_map<iresearch::string_ref, const iresearch::field_meta*> field_metas;
   compound_field_iterator fields_itr;
   compound_column_iterator_t columns_itr;
@@ -812,11 +763,9 @@ bool merge_writer::flush(std::string& filename, segment_meta& meta) {
 
     next_id = compute_doc_ids(doc_id_map, *reader, next_id);
     fields_itr.add(*reader, doc_id_map);
-    total_fields_count += reader->fields().size();
    
     auto& columns = reader->columns();
     columns_itr.add(columns.begin(), columns.end(), columns.size(), *reader, doc_id_map);
-    total_columns_count += columns.size();
   }
 
   auto docs_count = next_id - type_limits<type_t::doc_id_t>::min(); // total number of doc_ids
@@ -827,15 +776,8 @@ bool merge_writer::flush(std::string& filename, segment_meta& meta) {
 
   tracking_directory track_dir(dir_); // track writer created files
 
-  // id_map maps id's from merging segment to new id's
-  id_map_t id_map(
-    total_fields_count,
-    iresearch::type_limits<iresearch::type_t::field_id_t>::invalid()
-  );
+  columnstore cs(track_dir, codec, name_);
 
-  iresearch::byte_type buf[1024]; // temporary buffer for copying
-
-  columnstore cs(track_dir, codec, name_, buf, sizeof buf);
   if (!cs) {
     return false; // flush failure
   }
@@ -846,7 +788,7 @@ bool merge_writer::flush(std::string& filename, segment_meta& meta) {
   }
 
   // write field meta and field term data
-  if (!write(cs, track_dir, codec, name_, fields_itr, field_metas, fields_features, docs_count, id_map)) {
+  if (!write(cs, track_dir, codec, name_, fields_itr, field_metas, fields_features, docs_count)) {
     return false; // flush failure
   }
 

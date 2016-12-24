@@ -98,7 +98,7 @@ filter::prepared::ptr by_range::prepare(
   const string_ref field = fld_;
   for (const auto& sr : rdr) {
     /* get term dictionary for field */
-    const term_reader* tr = sr.terms(field);
+    const term_reader* tr = sr.field(field);
     if (!tr) {
       continue;
     }

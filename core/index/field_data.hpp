@@ -28,7 +28,6 @@
 
 NS_ROOT
 
-struct field_meta_writer;
 struct field_writer;
 class token_stream;
 class analyzer;
@@ -61,7 +60,6 @@ class IRESEARCH_API field_data : util::noncopyable {
 
   field_data(
     const string_ref& name,
-    size_t id,
     byte_block_pool::inserter* byte_writer,
     int_block_pool::inserter* int_writer
   );
@@ -137,7 +135,7 @@ class IRESEARCH_API fields_data: util::noncopyable {
     return *this;
   }
   const flags& features() { return features_; }
-  void flush(field_meta_writer& fmw, field_writer& fw, flush_state& state);
+  void flush(field_writer& fw, flush_state& state);
   void reset();
 
  private:

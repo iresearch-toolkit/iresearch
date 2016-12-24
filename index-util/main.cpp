@@ -45,17 +45,17 @@ int dump(const std::string& path, std::ostream& stream) {
            << " docsCount=" << segment.docs_max()
            << " liveDocsCount=" << segment.docs_count() << std::endl;
 
-    auto& fields = segment.fields();
-    for (auto& meta : segment.fields()) {
-      auto* terms = segment.terms(meta.name);
+    for (auto fields = segment.fields();fields->next();) {
+      auto& field = fields->value();
+      auto& meta = field.meta();
       stream << "Field id=" << meta.id << " name=" << meta.name
-             << " minTerm=" << irs::ref_cast<char>(terms->min()) 
-             << " maxTerm=" << irs::ref_cast<char>(terms->max())
-             << " termsCount=" << terms->size()
-             << " docsCount=" << terms->docs_count()
+             << " minTerm=" << irs::ref_cast<char>(field.min()) 
+             << " maxTerm=" << irs::ref_cast<char>(field.max())
+             << " termsCount=" << field.size()
+             << " docsCount=" << field.docs_count()
              << std::endl;
      
-      auto term = terms->iterator();
+      auto term = field.iterator();
       irs::term_meta* term_meta = term->attributes().get<irs::term_meta>();
       stream << "Values" << std::endl;
       for (; term->next(); ) {

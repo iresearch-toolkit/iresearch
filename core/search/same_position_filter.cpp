@@ -264,7 +264,7 @@ filter::prepared::ptr by_same_position::prepare(
     auto term_stats = query_stats.begin();
     for (const auto& branch : terms_) {
       // get term dictionary for field
-      const term_reader* field = segment.terms(branch.first);
+      const term_reader* field = segment.field(branch.first);
       if (!field) {
         continue;
       }

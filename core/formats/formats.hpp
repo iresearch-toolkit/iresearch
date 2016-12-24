@@ -26,7 +26,6 @@
 NS_ROOT
 
 struct segment_meta;
-class fields_meta;
 class columns_meta;
 struct field_meta;
 struct column_meta;
@@ -70,7 +69,7 @@ struct IRESEARCH_API field_writer {
 
   virtual ~field_writer();
   virtual void prepare(const flush_state& state) = 0;
-  virtual void write(field_id id, const flags& features, term_iterator& data) = 0;
+  virtual void write(const std::string& name, field_id norm, const flags& features, term_iterator& data) = 0;
   virtual void end() = 0;
 };
 
@@ -79,16 +78,21 @@ struct IRESEARCH_API field_writer {
  * ------------------------------------------------------------------*/
 
 struct IRESEARCH_API postings_reader {
-  DECLARE_PTR( postings_reader );
-  DECLARE_FACTORY( postings_reader);
+  DECLARE_PTR(postings_reader);
+  DECLARE_FACTORY(postings_reader);
 
   virtual ~postings_reader();
   
-  /* in - corresponding terms stream */
-  virtual void prepare( index_input& in, const reader_state& state ) = 0;
+  // in - corresponding stream
+  // features - the set of features available for segment
+  virtual bool prepare(
+    index_input& in, 
+    const reader_state& state,
+    const flags& features
+  ) = 0;
 
-  /* parses input stream "in" and populate "attrs" collection
-   * with attributes */
+  // parses input stream "in" and populate "attrs" collection
+  // with attributes
   virtual void decode(
     data_input& in, 
     const flags& features,
@@ -140,48 +144,10 @@ struct IRESEARCH_API field_reader {
 
   virtual ~field_reader();
 
-  virtual void prepare(const reader_state& state) = 0;
-  virtual const term_reader* terms(field_id field) const = 0;
+  virtual bool prepare(const reader_state& state) = 0;
+  virtual const term_reader* field(const string_ref& field) const = 0;
+  virtual field_iterator::ptr iterator() const = 0;
   virtual size_t size() const = 0;
-};
-
-/* -------------------------------------------------------------------
- * field_meta_writer
- * ------------------------------------------------------------------*/
-
-struct directory;
-
-struct IRESEARCH_API field_meta_writer {
-  DECLARE_PTR(field_meta_writer);
-  DECLARE_FACTORY(field_meta_writer);
-
-  virtual ~field_meta_writer();
-
-  virtual void prepare(const flush_state& state) = 0;
-  virtual void write(
-    field_id id, 
-    const std::string& name, 
-    const flags& features,
-    field_id norm
-  ) = 0;
-  virtual void end() = 0;
-};
-
-/* -------------------------------------------------------------------
- * field_meta_reader
- * ------------------------------------------------------------------*/
-
-struct IRESEARCH_API field_meta_reader {
-  DECLARE_PTR( field_meta_reader );
-  DECLARE_FACTORY( field_meta_reader );
-
-  virtual ~field_meta_reader();
-
-  virtual void prepare(const directory& dir, const string_ref& seg_name) = 0;
-
-  virtual size_t begin() = 0;
-  virtual void read( field_meta& meta ) = 0;
-  virtual void end() = 0;
 };
 
 // -----------------------------------------------------------------------------
@@ -399,9 +365,6 @@ class IRESEARCH_API format {
   virtual document_mask_writer::ptr get_document_mask_writer() const = 0;
   virtual document_mask_reader::ptr get_document_mask_reader() const = 0;
 
-  virtual field_meta_writer::ptr get_field_meta_writer() const = 0;
-  virtual field_meta_reader::ptr get_field_meta_reader() const = 0;
-
   virtual field_writer::ptr get_field_writer(bool volatile_attributes = false) const = 0;
   virtual field_reader::ptr get_field_reader() const = 0;
 
@@ -430,7 +393,6 @@ struct IRESEARCH_API reader_state {
   const format* codec;
   const directory* dir;
   const document_mask* docs_mask;
-  const fields_meta* fields;
   const segment_meta* meta;
 };
 

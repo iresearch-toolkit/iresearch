@@ -106,13 +106,6 @@ class format_10_test_case : public tests::format_test_case_base {
 
     // read postings
     {
-      ir::fields_meta fields;
-      {
-        std::vector<ir::field_meta> src;
-        src.push_back(field);
-        fields = ir::fields_meta(std::move(src), ir::flags(field.features));
-      }
-
       ir::segment_meta meta;
       meta.name = "segment_name";
 
@@ -120,14 +113,13 @@ class format_10_test_case : public tests::format_test_case_base {
       state.docs_mask = nullptr;
       state.dir = &dir();
       state.meta = &meta;
-      state.fields = &fields;
 
       auto in = dir().open("attributes");
       ASSERT_FALSE(!in);
 
       /* prepare reader */
       ir::version10::postings_reader reader;
-      reader.prepare(*in, state);
+      ASSERT_TRUE(reader.prepare(*in, state, field.features));
 
       /* read term0 attributes & postings */
       {
@@ -246,13 +238,6 @@ class format_10_test_case : public tests::format_test_case_base {
 
     /* read postings */
     {
-      ir::fields_meta fields;
-      {
-        std::vector<ir::field_meta> src;
-        src.push_back(field);
-        fields = ir::fields_meta(std::move(src), ir::flags(field.features));
-      }
-
       ir::segment_meta meta;
       meta.name = "segment_name";
 
@@ -260,14 +245,13 @@ class format_10_test_case : public tests::format_test_case_base {
       state.docs_mask = nullptr;
       state.dir = &dir();
       state.meta = &meta;
-      state.fields = &fields;
 
       auto in = dir().open("attributes");
       ASSERT_FALSE(!in);
 
       /* prepare reader */
       ir::version10::postings_reader reader;
-      reader.prepare(*in, state);
+      reader.prepare(*in, state, field.features);
       
       /* cumulative attributes */
       ir::attributes read_attrs;
@@ -489,13 +473,6 @@ class format_10_test_case : public tests::format_test_case_base {
 
     /* read postings */
     {
-      ir::fields_meta fields;
-      {
-        std::vector<ir::field_meta> src;
-        src.push_back(field);
-        fields = ir::fields_meta(std::move(src), ir::flags(field.features));
-      }
-
       ir::segment_meta meta;
       meta.name = "segment_name";
 
@@ -503,7 +480,6 @@ class format_10_test_case : public tests::format_test_case_base {
       state.docs_mask = nullptr;
       state.dir = &dir();
       state.meta = &meta;
-      state.fields = &fields;
 
       auto in = dir().open("attributes");
       ASSERT_FALSE(!in);
@@ -511,7 +487,7 @@ class format_10_test_case : public tests::format_test_case_base {
 
       /* prepare reader */
       ir::version10::postings_reader reader;
-      reader.prepare(*in, state);
+      reader.prepare(*in, state, field.features);
 
       /* cumulative attributes */
       ir::attributes read_attrs;
@@ -687,20 +663,12 @@ class format_10_test_case : public tests::format_test_case_base {
       flush_state.ver = 0;
 
       ir::field_meta field_meta;
-      field_meta.id = 0;
       field_meta.name = field;
       {
         auto fw = get_codec()->get_field_writer(true);
         fw->prepare(flush_state);
-        fw->write(field_meta.id, field_meta.features, trms);
+        fw->write(field_meta.name, field_meta.norm, field_meta.features, trms);
         fw->end();
-      }
-
-      ir::fields_meta fields;
-      {
-        std::vector<ir::field_meta> src;
-        src.push_back(field_meta);
-        fields = ir::fields_meta(std::move(src), ir::flags(field_meta.features));
       }
 
       ir::segment_meta meta;
@@ -710,12 +678,11 @@ class format_10_test_case : public tests::format_test_case_base {
       state.docs_mask = nullptr;
       state.dir = dir.get();
       state.meta = &meta;
-      state.fields = &fields;
 
       auto fr = get_codec()->get_field_reader();
       fr->prepare(state);
 
-      auto it = fr->terms(field_meta.id)->iterator();
+      auto it = fr->field(field_meta.name)->iterator();
       ASSERT_TRUE(it->seek(term));
       
       // ires-336 sequence
@@ -858,10 +825,6 @@ TEST_F(memory_format_10_test_case, segment_meta_rw) {
   segment_meta_read_write();
 }
 
-TEST_F(memory_format_10_test_case, field_meta_rw) {
-  field_meta_read_write();
-}
-
 TEST_F(memory_format_10_test_case, columns_rw) {
   columns_read_write_empty();
   columns_read_write();
@@ -920,10 +883,6 @@ TEST_F(fs_format_10_test_case, postings_rw) {
 
 TEST_F(fs_format_10_test_case, segment_meta_rw) {
   segment_meta_read_write();
-}
-
-TEST_F(fs_format_10_test_case, field_meta_rw) {
-  field_meta_read_write();
 }
 
 TEST_F(fs_format_10_test_case, columns_rw) {

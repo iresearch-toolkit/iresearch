@@ -74,41 +74,49 @@ struct IRESEARCH_API sub_reader : index_reader {
   DECLARE_SPTR(sub_reader);
   DECLARE_FACTORY(sub_reader);
 
+  CONSTEXPR static const value_visitor_f& noop();
+
   using index_reader::docs_count;
 
   // returns number of live documents by the specified field
   virtual uint64_t docs_count(const string_ref& field) const {
-    const term_reader* rdr = terms( field );
+    const term_reader* rdr = this->field(field);
     return nullptr == rdr ? 0 : rdr->docs_count();
   }
 
   // returns iterator over the live documents in current segment0
   virtual docs_iterator_t::ptr docs_iterator() const = 0;
 
-  virtual const fields_meta& fields() const = 0;
-
+  virtual field_iterator::ptr fields() const = 0;
+  
   // returns corresponding term_reader by the specified field
-  virtual const term_reader* terms(const string_ref& field) const = 0;
+  virtual const term_reader* field(
+    const string_ref& field
+  ) const = 0;
 
   virtual const columns_meta& columns() const = 0;
 
   // returns corresponding column reader by the specified field
   virtual value_visitor_f values(
-    const string_ref& name, 
-    const columnstore_reader::value_reader_f& reader
-  ) const = 0;
-  
-  // returns corresponding column reader by the specified field
-  virtual value_visitor_f values(
     field_id id,
     const columnstore_reader::value_reader_f& reader
   ) const = 0;
 
-  virtual bool column(
+  virtual bool visit(
     field_id id,
     const columnstore_reader::raw_reader_f& reader
   ) const = 0;
-};
+  
+  value_visitor_f values(
+    const string_ref& field,
+    const columnstore_reader::value_reader_f& reader
+  ) const;
+  
+  bool visit(
+    const string_ref& name,
+    const columnstore_reader::raw_reader_f& reader
+  ) const;
+}; // sub_reader
 
 /* context specialization for sub_reader */
 template<>

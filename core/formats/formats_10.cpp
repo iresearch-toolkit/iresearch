@@ -1452,156 +1452,8 @@ void document_mask_reader::end() {
 }
 
 // ----------------------------------------------------------------------------
-// --SECTION--                                                field_meta_reader 
+// --SECTION--                                                      columnstore
 // ----------------------------------------------------------------------------
-
-field_meta_reader::~field_meta_reader() {}
-
-void field_meta_reader::read_segment_features() {
-  feature_map_.clear();
-  feature_map_.reserve(in_.read_vlong());
-
-  for (size_t count = feature_map_.capacity(); count; --count) {
-    const auto name = read_string<std::string>(in_); // read feature name
-    const attribute::type_id* feature = attribute::type_id::get(name);
-
-    if (feature) {
-      feature_map_.emplace_back(feature);
-    } else {
-      IR_ERROR() << "unknown feature name '" << name << "'";
-    }
-  }
-}
-
-void field_meta_reader::read_field_features(flags& features) {
-  for (size_t count = in_.read_vlong(); count; --count) {
-    const size_t id = in_.read_vlong(); // feature id
-
-    if (id < feature_map_.size()) {
-      features.add(*feature_map_[id]);
-    } else {
-      IR_ERROR() << "unknown feature id '" << id << "'";
-    }
-  }
-}
-
-void field_meta_reader::prepare(const directory& dir, const string_ref& seg_name) {
-  assert(!seg_name.null());
-
-  auto filename = file_name(seg_name, field_meta_writer::FORMAT_EXT);
-  auto in = dir.open(filename);
-
-  if (!in) {
-    std::stringstream ss;
-
-    ss << "Failed to open file, path: " << filename;
-
-    throw detailed_io_error(ss.str());
-  }
-
-  checksum_index_input<boost::crc_32_type> check_in(std::move(in));
-
-  in_.swap(check_in);
-}
-
-size_t field_meta_reader::begin() {
-  format_utils::check_header(
-    in_,
-    field_meta_writer::FORMAT_NAME,
-    field_meta_writer::FORMAT_MIN,
-    field_meta_writer::FORMAT_MAX
-  );
-  read_segment_features();
-
-  return in_.read_vint();
-}
-
-void field_meta_reader::read(iresearch::field_meta& meta) {
-  meta.name = read_string<std::string>(in_);
-
-  const field_id id = in_.read_vint();
-
-  if (!type_limits<type_t::field_id_t>::valid(id)) {
-    // corrupted index
-    throw index_error();
-  }
-
-  meta.id = id;
-  read_field_features(meta.features);
-  meta.norm = static_cast<field_id>(read_zvlong(in_));
-}
-
-void field_meta_reader::end() {
-  format_utils::check_footer(in_);
-}
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                                field_meta_writer
-// ----------------------------------------------------------------------------
-
-const string_ref field_meta_writer::FORMAT_NAME = "iresearch_10_field_meta";
-const string_ref field_meta_writer::FORMAT_EXT = "fm";
-
-field_meta_writer::~field_meta_writer() {}
-
-void field_meta_writer::write_segment_features(const flags& features) {
-  out->write_vlong(features.size());
-  feature_map_.clear();
-  feature_map_.reserve(features.size());
-  for (const attribute::type_id* feature : features) {
-    write_string(*out, feature->name());
-    feature_map_.emplace(feature, feature_map_.size());
-  }
-}
-
-void field_meta_writer::write_field_features(const flags& features) const {
-  out->write_vlong(features.size());
-  for (auto feature : features) {
-    auto it = feature_map_.find(*feature);
-    assert(it != feature_map_.end());
-    out->write_vlong(it->second);
-  }
-}
-
-void field_meta_writer::prepare(const flush_state& state) {
-  assert(!state.name.null());
-  assert(state.features);
-  assert(state.dir);
-
-  feature_map_.clear();
-
-  auto filename = file_name(state.name, FORMAT_EXT);
-
-  out = state.dir->create(filename);
-
-  if (!out) {
-    std::stringstream ss;
-
-    ss << "Failed to create file, path: " << filename;
-
-    throw detailed_io_error(ss.str());
-  }
-
-  format_utils::write_header(*out, FORMAT_NAME, FORMAT_MAX);
-  write_segment_features(*state.features);
-  out->write_vint(static_cast<uint32_t>(state.fields_count));
-}
-
-void field_meta_writer::write(
-    field_id id, 
-    const std::string& name, 
-    const flags& features,
-    field_id norm) {
-  write_string(*out, name);
-  out->write_vint(static_cast<uint32_t>(id));
-  write_field_features(features);
-  write_zvlong(*out, norm);
-}
-
-void field_meta_writer::end() {
-  format_utils::write_footer(*out);
-  out.reset(); // ensure stream is closed
-}
 
 NS_BEGIN(columns)
 
@@ -1721,12 +1573,12 @@ bool meta_reader::read(column_meta& column) {
 // |Compressed block #1|
 // |Compressed block #2|
 // ...
-// |Bloom Filter| <- not net implemented
+// |Bloom Filter| <- not implemented yet 
 // |Last block #0 key|Block #0 offset|
 // |Last block #1 key|Block #1 offset| <-- Columnstore blocks index
 // |Last block #2 key|Block #2 offset|
 // ...
-// |Bloom filter offset| <- not net implemented
+// |Bloom filter offset| <- not implemented yet 
 // |Footer|
 
 const size_t INDEX_BLOCK_SIZE = 1 << 10;
@@ -2698,7 +2550,10 @@ void postings_writer::end() {
 // --SECTION--                                                  postings_reader 
 // ----------------------------------------------------------------------------
 
-void postings_reader::prepare( index_input& in, const reader_state& state ) {
+bool postings_reader::prepare(
+    index_input& in, 
+    const reader_state& state,
+    const flags& features) {
   std::string buf;
  
   /* prepare document input */
@@ -2718,7 +2573,6 @@ void postings_reader::prepare( index_input& in, const reader_state& state ) {
   format_utils::read_checksum(*doc_in_);
   docs_mask_ = state.docs_mask;
 
-  auto& features = state.fields->features();
   if (features.check<position>()) {
     /* prepare positions input */
     detail::prepare_input(
@@ -2767,6 +2621,8 @@ void postings_reader::prepare( index_input& in, const reader_state& state ) {
     /* invalid block size */
     throw index_error();
   }
+
+  return true;
 }
 
 void postings_reader::decode( 
@@ -2851,14 +2707,6 @@ document_mask_writer::ptr format::get_document_mask_writer() const {
 
 document_mask_reader::ptr format::get_document_mask_reader() const {
   return iresearch::document_mask_reader::make<document_mask_reader>();
-}
-
-field_meta_reader::ptr format::get_field_meta_reader() const {
-  return iresearch::field_meta_reader::make< field_meta_reader >();
-}
-
-field_meta_writer::ptr format::get_field_meta_writer() const {
-  return iresearch::field_meta_writer::make< field_meta_writer >();
 }
 
 field_writer::ptr format::get_field_writer(bool volatile_attributes /*=false*/) const {

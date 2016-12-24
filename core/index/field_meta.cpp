@@ -25,20 +25,16 @@ NS_ROOT
 field_meta::field_meta(field_meta&& rhs)
   : features(std::move(rhs.features)),
     name(std::move(rhs.name)),
-    id(rhs.id),
     norm(rhs.norm) {
-  rhs.id = type_limits<type_t::field_id_t>::invalid();
   rhs.norm = type_limits<type_t::field_id_t>::invalid();
 }
 
 field_meta::field_meta(
     const string_ref& name,
-    field_id id,
     const flags& features,
     field_id norm /* = type_limits<type_t::field_id_t>::invalid() */)
   : features(features),
     name(name.c_str(), name.size()),
-    id(id), 
     norm(norm) {
 }
 
@@ -46,8 +42,6 @@ field_meta& field_meta::operator=(field_meta&& rhs) {
   if (this != &rhs) {
     features = std::move(rhs.features);
     name = std::move(rhs.name);
-    id = rhs.id;
-    rhs.id = type_limits<type_t::field_id_t>::invalid();
     norm = rhs.norm;
     rhs.norm = type_limits<type_t::field_id_t>::invalid();
   }
@@ -56,26 +50,6 @@ field_meta& field_meta::operator=(field_meta&& rhs) {
 
 bool field_meta::operator==(const field_meta& rhs) const {
   return features == rhs.features && name == rhs.name;
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                        fields_meta implementation
-// -----------------------------------------------------------------------------
-
-fields_meta::fields_meta(fields_meta::items_t&& fields, flags&& features) 
-  : base_t(std::move(fields)), features_(std::move(features)) {
-}
-
-fields_meta::fields_meta(fields_meta&& rhs)
-  : base_t(std::move(rhs)), features_(std::move(rhs.features_)) {
-}
-
-fields_meta& fields_meta::operator=(fields_meta&& rhs) {
-  if (this != &rhs) {
-    base_t::operator=(std::move(rhs));
-    features_ = std::move(rhs.features_);
-  }
-  return *this;
 }
 
 // -----------------------------------------------------------------------------

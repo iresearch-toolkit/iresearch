@@ -130,7 +130,7 @@ bool segment_writer::flush(std::string& filename, segment_meta& meta) {
     state.name = seg_name_;
     state.ver = IRESEARCH_VERSION;
 
-    fields_.flush(*field_meta_writer_, *field_writer_, state);
+    fields_.flush(*field_writer_, state);
   }
 
   meta.docs_count = num_docs_cached_;
@@ -173,10 +173,6 @@ void segment_writer::reset(std::string seg_name) {
   reset();
 
   seg_name_ = std::move(seg_name);
-
-  if (!field_meta_writer_) {
-    field_meta_writer_ = codec_->get_field_meta_writer();
-  }
 
   if (!field_writer_) {
     field_writer_ = codec_->get_field_writer();

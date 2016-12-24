@@ -161,7 +161,6 @@ struct IRESEARCH_API field_meta {
   field_meta(field_meta&& rhs);
   field_meta(
     const string_ref& field, 
-    field_id id, 
     const flags& features, 
     field_id norm = type_limits<type_t::field_id_t>::invalid()
   );
@@ -176,30 +175,8 @@ struct IRESEARCH_API field_meta {
 
   flags features;
   std::string name;
-  field_id id{ type_limits<type_t::field_id_t>::invalid() };
   field_id norm{ type_limits<type_t::field_id_t>::invalid() };
 }; // field_meta
-
-//////////////////////////////////////////////////////////////////////////////
-/// @class fields_meta 
-/// @brief a container for fields metadata
-//////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API fields_meta : public multi_index<field_meta> {
- public:
-  typedef multi_index<field_meta> base_t;
-
-  fields_meta() = default;
-  fields_meta(base_t::items_t&& fields, flags&& features);
-  fields_meta(fields_meta&& rhs);
-  fields_meta& operator=(fields_meta&& rhs);
-
-  const flags& features() const { return features_; }
-
- private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  flags features_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
-}; // fields_meta 
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct column_meta 

@@ -15,6 +15,7 @@
 #include "index/index_reader.hpp"
 #include "index/field_meta.hpp"
 #include "formats/formats.hpp"
+#include "utils/iterator.hpp"
 
 NS_ROOT
 
@@ -34,7 +35,7 @@ class IRESEARCH_API segment_reader final : public sub_reader {
   using sub_reader::docs_count;
 
   virtual uint64_t docs_count() const override { 
-    return docs_count_; 
+    return docs_count_;// -docs_mask_.size();
   }
 
   virtual docs_iterator_t::ptr docs_iterator() const override;
@@ -45,23 +46,24 @@ class IRESEARCH_API segment_reader final : public sub_reader {
 
   void refresh(const segment_meta& meta); // update reader with any changes from meta
 
-  virtual const term_reader* terms(const string_ref& field) const override;
+  virtual field_iterator::ptr fields() const override;
+
+  virtual const term_reader* field(const string_ref& field) const override;
   
   virtual const columns_meta& columns() const override { 
     return columns_; 
   }
   
+  using iresearch::sub_reader::values;
+  
   virtual value_visitor_f values(
     field_id field,
     const columnstore_reader::value_reader_f& reader
   ) const override;
+  
+  using iresearch::sub_reader::visit;
 
-  virtual value_visitor_f values(
-    const string_ref& field,
-    const columnstore_reader::value_reader_f& reader
-  ) const override;
-
-  virtual bool column(
+  virtual bool visit(
     field_id field,
     const columnstore_reader::raw_reader_f& reader
   ) const override;
@@ -70,10 +72,6 @@ class IRESEARCH_API segment_reader final : public sub_reader {
     return 1; 
   }
  
-  virtual const fields_meta& fields() const override { 
-    return fields_; 
-  }
-
   virtual index_reader::reader_iterator begin() const { 
     return index_reader::reader_iterator(new iterator_impl(this));
   }
@@ -102,8 +100,6 @@ class IRESEARCH_API segment_reader final : public sub_reader {
     const sub_reader* rdr_;
   };
 
-  typedef std::pair<std::string, field_id> column_meta_t;
-
   segment_reader() = default;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
@@ -114,7 +110,6 @@ class IRESEARCH_API segment_reader final : public sub_reader {
   uint64_t docs_count_;
   document_mask docs_mask_;
   columns_meta columns_;
-  fields_meta fields_;
   field_reader::ptr fr_;
   columnstore_reader::ptr csr_;
   IRESEARCH_API_PRIVATE_VARIABLES_END

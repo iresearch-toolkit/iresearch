@@ -516,8 +516,8 @@ class format_test_case_base : public index_test_base {
 
     // define field
     ir::field_meta field;
-    field.id = 0;
     field.name = "field";
+    field.norm = 5;
 
     // write fields
     {
@@ -534,19 +534,12 @@ class format_test_case_base : public index_test_base {
 
       auto writer = codec()->get_field_writer();
       writer->prepare(state);
-      writer->write(field.id, field.features, terms);
+      writer->write(field.name, field.norm, field.features, terms);
       writer->end();
     }
 
     // read field
     {
-      ir::fields_meta fields;
-      {
-        std::vector<ir::field_meta> src;
-        src.emplace_back(field);
-        fields = ir::fields_meta(std::move(src), ir::flags());
-      }
-
       ir::segment_meta meta;
       meta.name = "segment_name";
 
@@ -554,16 +547,18 @@ class format_test_case_base : public index_test_base {
       state.docs_mask = nullptr;
       state.dir = &dir();
       state.meta = &meta;
-      state.fields = &fields;
 
       auto reader = codec()->get_field_reader();
       reader->prepare(state);
       ASSERT_EQ(1, reader->size());
 
       // check terms
-      ASSERT_EQ(nullptr, reader->terms(ir::type_limits<ir::type_t::field_id_t>::invalid()));
-      auto term_reader = reader->terms(field.id);
+      ASSERT_EQ(nullptr, reader->field("invalid_field"));
+      auto term_reader = reader->field(field.name);
       ASSERT_NE(nullptr, term_reader);
+      ASSERT_EQ(field.name, term_reader->meta().name);
+      ASSERT_EQ(field.norm, term_reader->meta().norm);
+      ASSERT_EQ(field.features, term_reader->meta().features);
 
       ASSERT_EQ(sorted_terms.size(), term_reader->size());
       ASSERT_EQ(*sorted_terms.begin(), (term_reader->min)());
@@ -836,55 +831,6 @@ class format_test_case_base : public index_test_base {
     }
   }
 
-  void field_meta_read_write() {
-    const std::string seg_name("_1");
-    std::vector<iresearch::field_meta> fields{
-      {"field0", 0, iresearch::flags{ iresearch::offset::type(), iresearch::position::type() }, 2},
-      {"field1", 1, iresearch::flags{ iresearch::position::type() }, 1},
-      {"field2", 2, iresearch::flags{ iresearch::document::type() }, 3},
-      {"field3", 3, iresearch::flags{ iresearch::offset::type(), iresearch::position::type() }, 4},
-      {"field4", 4, iresearch::flags{ iresearch::term_meta::type(), iresearch::offset::type() }, 0},
-      {"field5", 5, iresearch::flags{ iresearch::increment::type(), iresearch::offset::type() } }
-    };
-
-    // write field_meta
-    {
-      iresearch::flags segment_features;
-      for (auto& field : fields) {
-        segment_features |= field.features;
-      }
-
-      iresearch::flush_state state{};
-      state.name = seg_name;
-      state.dir = &dir();
-      state.fields_count = fields.size();
-      state.features = &segment_features;
-
-      field_meta_writer::ptr writer = codec()->get_field_meta_writer();
-      writer->prepare(state);
-      for (const auto& meta : fields) {
-        writer->write(meta.id, meta.name, meta.features, meta.norm);
-      }
-      writer->end();
-    }
-
-    // read field_meta
-    {
-      iresearch::field_meta_reader::ptr reader = codec()->get_field_meta_reader();
-      reader->prepare(dir(), seg_name);
-      EXPECT_EQ(fields.size(), reader->begin());
-      for (const auto& meta : fields) {
-        iresearch::field_meta read;
-        reader->read(read);
-        ASSERT_EQ(meta.name, read.name);
-        ASSERT_EQ(meta.id, read.id);
-        ASSERT_EQ(meta.features, read.features);
-        ASSERT_EQ(meta.norm, read.norm);
-      }
-      reader->end();
-    }
-  }
-  
   void columns_read_write_reuse() {
     struct csv_doc_template : delim_doc_generator::doc_template {
       virtual void init() {
@@ -996,14 +942,6 @@ class format_test_case_base : public index_test_base {
 
     // read documents
     {
-      ir::fields_meta fields;
-      {
-        std::vector<ir::field_meta> src;
-        src.emplace_back("id", 0, ir::flags::empty_instance());
-        src.emplace_back("name", 1, ir::flags::empty_instance());
-        fields = ir::fields_meta(std::move(src), ir::flags());
-      }
-
       std::string expected_id;
       iresearch::columnstore_reader::value_reader_f check_id = [&expected_id] (ir::data_input& in) {
         const auto value = ir::read_string<std::string>(in);
@@ -1025,7 +963,7 @@ class format_test_case_base : public index_test_base {
       {
         iresearch::reader_state state_1{
           codec().get(), &dir(),
-          nullptr, &fields,
+          nullptr,
           &seg_1
         };
 
@@ -1048,7 +986,7 @@ class format_test_case_base : public index_test_base {
         // check 2nd segment (same as 1st)
         iresearch::reader_state state_2{
           codec().get(), &dir(),
-          nullptr, &fields,
+          nullptr,
           &seg_2
         };
 
@@ -1081,7 +1019,7 @@ class format_test_case_base : public index_test_base {
       {
         iresearch::reader_state state{
           codec().get(), &dir(),
-          nullptr, &fields,
+          nullptr,
           &seg_3
         };
 
@@ -1196,12 +1134,10 @@ class format_test_case_base : public index_test_base {
     ASSERT_TRUE(files.empty()); // must be empty after flush
 
     {
-      ir::fields_meta fields;
       iresearch::reader_state rs;
       rs.codec = codec().get();
       rs.dir = &dir();
       rs.docs_mask = nullptr;
-      rs.fields = &fields;
       rs.meta = &meta0;
 
       auto reader = codec()->get_columnstore_reader();
@@ -1233,7 +1169,6 @@ class format_test_case_base : public index_test_base {
   
   void columns_read_write() {
     ir::fields_data fdata;
-    ir::fields_meta fields;
 
     iresearch::field_id segment0_field0_id;
     iresearch::field_id segment0_field1_id;
@@ -1257,7 +1192,6 @@ class format_test_case_base : public index_test_base {
       rs.codec = codec().get();
       rs.dir = &dir();
       rs.docs_mask = nullptr;
-      rs.fields = &fields;
       rs.meta = &meta1;
 
       auto reader = codec()->get_columnstore_reader();
@@ -1440,7 +1374,6 @@ class format_test_case_base : public index_test_base {
       rs.codec = codec().get();
       rs.dir = &dir();
       rs.docs_mask = nullptr;
-      rs.fields = &fields;
       rs.meta = &meta0;
 
       auto reader = codec()->get_columnstore_reader();
@@ -1734,7 +1667,6 @@ class format_test_case_base : public index_test_base {
       rs.codec = codec().get();
       rs.dir = &dir();
       rs.docs_mask = nullptr;
-      rs.fields = &fields;
       rs.meta = &meta1;
 
       auto reader = codec()->get_columnstore_reader();
@@ -1847,7 +1779,7 @@ class format_test_case_base : public index_test_base {
 
     // read big document
     {
-      iresearch::reader_state state{ codec().get(), &dir(), nullptr, nullptr, &segment };
+      iresearch::reader_state state{ codec().get(), &dir(), nullptr, &segment };
 
       auto reader = codec()->get_columnstore_reader();
       reader->prepare(state);
@@ -2006,7 +1938,7 @@ class format_test_case_base : public index_test_base {
       iresearch::document_mask mask;
       iresearch::reader_state state{
         codec().get(), &dir(),
-        &mask, nullptr,
+        &mask,
         &meta
       };
 

@@ -64,30 +64,7 @@ class masked_docs_iterator
   iresearch::doc_id_t next_;
 };
 
-void read_fields_meta(
-    iresearch::fields_meta& meta, 
-    const iresearch::format& codec, 
-    const iresearch::directory& dir,
-    const std::string& name) {
-  iresearch::fields_meta::items_t fields;
-  iresearch::flags features;
-
-  auto visitor = [&fields, &features] (iresearch::field_meta& value)->bool {
-    features |= value.features;
-    fields[value.id] = std::move(value);
-    return true;
-  };
-
-  auto reader = codec.get_field_meta_reader();
-  reader->prepare(dir, name);
-  fields.resize(reader->begin());
-  iresearch::read_all<iresearch::field_meta>(visitor, *reader, fields.size());
-  reader->end();
-
-  meta = iresearch::fields_meta(std::move(fields), std::move(features));
-}
-
-void read_columns_meta(
+bool read_columns_meta(
     iresearch::columns_meta& meta, 
     const iresearch::format& codec, 
     const iresearch::directory& dir,
@@ -96,7 +73,7 @@ void read_columns_meta(
 
   iresearch::field_id count = 0;
   if (!reader->prepare(dir, name, count)) {
-    return;
+    return false;
   }
 
   iresearch::columns_meta::items_t columns;
@@ -106,29 +83,27 @@ void read_columns_meta(
   }
 
   meta = iresearch::columns_meta(std::move(columns));
+  return true;
 }
-
-iresearch::sub_reader::value_visitor_f INVALID_VISITOR =
-  [] (iresearch::doc_id_t) { return false; };
 
 NS_END // NS_LOCAL
 
 NS_ROOT
 
-const term_reader* segment_reader::terms(const string_ref& field) const {
-  auto* meta = fields_.find(field);
-  if (!meta) {
-    return nullptr;
-  }
 
-  return fr_->terms(meta->id);
+field_iterator::ptr segment_reader::fields() const {
+  return fr_->iterator();
+}
+
+const term_reader* segment_reader::field(const string_ref& field) const {
+  return fr_->field(field);
 }
 
 sub_reader::value_visitor_f segment_reader::values(
     field_id field,
     const columnstore_reader::value_reader_f& value_reader) const {
   if (!csr_) {
-    return INVALID_VISITOR;
+    return noop();
   }
 
   auto column = csr_->values(field);
@@ -137,20 +112,8 @@ sub_reader::value_visitor_f segment_reader::values(
     return column(doc, value_reader);
   };
 }
-
-sub_reader::value_visitor_f segment_reader::values(
-    const string_ref& field,
-    const columnstore_reader::value_reader_f& value_reader) const {
-  auto meta = columns_.find(field);
-
-  if (!meta) {
-    return INVALID_VISITOR;
-  }
-
-  return values(meta->id, value_reader);
-}
   
-bool segment_reader::column(
+bool segment_reader::visit(
     field_id field,
     const columnstore_reader::raw_reader_f& reader) const {
   if (!csr_) {
@@ -172,29 +135,27 @@ segment_reader::docs_iterator_t::ptr segment_reader::docs_iterator() const {
 segment_reader::ptr segment_reader::open(
     const directory& dir, 
     const segment_meta& seg) {
+  auto& codec = *seg.codec;
+  
   segment_reader::ptr rdr = segment_reader::ptr(new segment_reader());
   rdr->dir_state_.dir = &dir;
   rdr->dir_state_.version = integer_traits<decltype(seg.version)>::const_max; // version forcing refresh(...)
   rdr->docs_count_ = seg.docs_count;
   rdr->refresh(seg);
 
-  auto& codec = *seg.codec;
-
-  // initialize fields meta
-  read_fields_meta(rdr->fields_, codec, dir, seg.name);
-
   reader_state rs;
   rs.codec = &codec;
   rs.dir = &dir;
   rs.docs_mask = &rdr->docs_mask_;
-  rs.fields = &rdr->fields_;
   rs.meta = &seg;
 
   // initialize field reader
   auto& fr = rdr->fr_;
   fr = codec.get_field_reader();
-  fr->prepare(rs);
-
+  if (!fr->prepare(rs)) {
+    return nullptr;
+  }
+  
   // initialize columns
   columnstore_reader::ptr csr = codec.get_columnstore_reader();
   if (csr->prepare(rs)) {
@@ -202,7 +163,7 @@ segment_reader::ptr segment_reader::open(
   }
     
   read_columns_meta(rdr->columns_, codec, dir, seg.name);
-
+    
   return rdr;
 }
 

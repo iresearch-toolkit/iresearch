@@ -520,7 +520,7 @@ filter::prepared::ptr by_granular_range::prepare(
   // iterate over the segments
   for (const auto& sr: rdr) {
     // get term dictionary for field
-    const term_reader* tr = sr.terms(fld_);
+    const term_reader* tr = sr.field(fld_);
 
     if (!tr) {
       continue; // no such field in this reader

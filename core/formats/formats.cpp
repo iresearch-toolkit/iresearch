@@ -47,9 +47,6 @@ postings_reader::~postings_reader() {}
 term_reader::~term_reader() {}
 field_reader::~field_reader() {}
 
-field_meta_writer::~field_meta_writer() {}
-field_meta_reader::~field_meta_reader() {}
-
 document_mask_writer::~document_mask_writer() {}
 document_mask_reader::~document_mask_reader() {}
 

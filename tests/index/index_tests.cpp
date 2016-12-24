@@ -828,7 +828,7 @@ class index_test_case_base : public tests::index_test_base {
         {
           auto& segment = (*reader)[0];          
           auto values = segment.values("name", visitor);
-          auto terms = segment.terms("same");
+          auto terms = segment.field("same");
           ASSERT_NE(nullptr, terms);
           auto termItr = terms->iterator();
           ASSERT_TRUE(termItr->next());
@@ -843,7 +843,7 @@ class index_test_case_base : public tests::index_test_base {
         {
           auto& segment = (*reader)[1];
           auto values = segment.values("name", visitor);
-          auto terms = segment.terms("same");
+          auto terms = segment.field("same");
           ASSERT_NE(nullptr, terms);
           auto termItr = terms->iterator();
           ASSERT_TRUE(termItr->next());
@@ -937,7 +937,7 @@ class index_test_case_base : public tests::index_test_base {
       ASSERT_EQ(1, reader->size());
       auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
       auto values = segment.values("name", visitor);
-      auto terms = segment.terms("same");
+      auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
@@ -1097,7 +1097,7 @@ class index_test_case_base : public tests::index_test_base {
           return true;
         };
 
-        return segment.column(meta->id, visitor);
+        return segment.visit(meta->id, visitor);
       };
 
       auto read_column_offset = [&segment] (const iresearch::string_ref& column_name, ir::doc_id_t offset) {
@@ -1420,7 +1420,7 @@ class index_test_case_base : public tests::index_test_base {
             return true;
           };
 
-          ASSERT_TRUE(segment.column(meta->id, visitor));
+          ASSERT_TRUE(segment.visit(meta->id, visitor));
         }
 
         // random access
@@ -1493,7 +1493,7 @@ class index_test_case_base : public tests::index_test_base {
             return true;
           };
 
-          ASSERT_TRUE(segment.column(meta->id, visitor));
+          ASSERT_TRUE(segment.visit(meta->id, visitor));
         }
       }
 
@@ -1534,7 +1534,7 @@ class index_test_case_base : public tests::index_test_base {
             return true;
           };
 
-          ASSERT_TRUE(segment.column(meta->id, visitor));
+          ASSERT_TRUE(segment.visit(meta->id, visitor));
         }
 
         // random access
@@ -1605,7 +1605,7 @@ class index_test_case_base : public tests::index_test_base {
             return true;
           };
 
-          ASSERT_TRUE(segment.column(meta->id, visitor));
+          ASSERT_TRUE(segment.visit(meta->id, visitor));
         }
       }
     }
@@ -1964,7 +1964,7 @@ TEST_F(memory_index_test, concurrent_add_remove) {
     for (size_t i = 0, count = reader->size(); i < count; ++i) {
       auto& segment = (*reader)[i];
       auto values = segment.values("name", visitor);
-      auto terms = segment.terms("same");
+      auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
@@ -2024,7 +2024,7 @@ TEST_F(memory_index_test, doc_removal) {
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -2055,7 +2055,7 @@ TEST_F(memory_index_test, doc_removal) {
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -2086,7 +2086,7 @@ TEST_F(memory_index_test, doc_removal) {
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -2117,7 +2117,7 @@ TEST_F(memory_index_test, doc_removal) {
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -2148,7 +2148,7 @@ TEST_F(memory_index_test, doc_removal) {
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -2182,7 +2182,7 @@ TEST_F(memory_index_test, doc_removal) {
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -2221,7 +2221,7 @@ TEST_F(memory_index_test, doc_removal) {
 
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -2257,7 +2257,7 @@ TEST_F(memory_index_test, doc_removal) {
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -2295,7 +2295,7 @@ TEST_F(memory_index_test, doc_removal) {
     {
       auto& segment = (*reader)[0]; // assume 0 is id of old segment
       auto values = segment.values("name", visitor);
-      auto terms = segment.terms("same");
+      auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
@@ -2309,7 +2309,7 @@ TEST_F(memory_index_test, doc_removal) {
     {
       auto& segment = (*reader)[1]; // assume 1 is id of new segment
       auto values = segment.values("name", visitor);
-      auto terms = segment.terms("same");
+      auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
@@ -2352,7 +2352,7 @@ TEST_F(memory_index_test, doc_removal) {
     {
       auto& segment = (*reader)[0]; // assume 0 is id of old segment
       auto values = segment.values("name", visitor);
-      auto terms = segment.terms("same");
+      auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
@@ -2366,7 +2366,7 @@ TEST_F(memory_index_test, doc_removal) {
     {
       auto& segment = (*reader)[1]; // assume 1 is id of new segment
       auto values = segment.values("name", visitor);
-      auto terms = segment.terms("same");
+      auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
@@ -2434,7 +2434,7 @@ TEST_F(memory_index_test, doc_removal) {
     {
       auto& segment = (*reader)[0]; // assume 0 is id of old-old segment
       auto values = segment.values("name", visitor);
-      auto terms = segment.terms("same");
+      auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
@@ -2448,7 +2448,7 @@ TEST_F(memory_index_test, doc_removal) {
     {
       auto& segment = (*reader)[1]; // assume 1 is id of old segment
       auto values = segment.values("name", visitor);
-      auto terms = segment.terms("same");
+      auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
@@ -2462,7 +2462,7 @@ TEST_F(memory_index_test, doc_removal) {
     {
       auto& segment = (*reader)[2]; // assume 2 is id of new segment
       auto values = segment.values("name", visitor);
-      auto terms = segment.terms("same");
+      auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
@@ -2522,7 +2522,7 @@ TEST_F(memory_index_test, doc_update) {
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -2553,7 +2553,7 @@ TEST_F(memory_index_test, doc_update) {
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -2584,7 +2584,7 @@ TEST_F(memory_index_test, doc_update) {
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -2621,7 +2621,7 @@ TEST_F(memory_index_test, doc_update) {
 
     {
       auto& segment = (*reader)[0]; // assume 0 is id of old segment
-      auto terms = segment.terms("same");
+      auto terms = segment.field("same");
       auto values = segment.values("name", visitor);
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -2636,7 +2636,7 @@ TEST_F(memory_index_test, doc_update) {
     {
       auto& segment = (*reader)[1]; // assume 1 is id of new segment
       auto values = segment.values("name", visitor);
-      auto terms = segment.terms("same");
+      auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
@@ -2680,7 +2680,7 @@ TEST_F(memory_index_test, doc_update) {
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -2726,7 +2726,7 @@ TEST_F(memory_index_test, doc_update) {
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -2758,7 +2758,7 @@ TEST_F(memory_index_test, doc_update) {
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -2794,7 +2794,7 @@ TEST_F(memory_index_test, doc_update) {
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -2837,7 +2837,7 @@ TEST_F(memory_index_test, doc_update) {
     {
       auto& segment = (*reader)[0]; // assume 0 is id of old segment
       auto values = segment.values("name", visitor);
-      auto terms = segment.terms("same");
+      auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
@@ -2851,7 +2851,7 @@ TEST_F(memory_index_test, doc_update) {
     {
       auto& segment = (*reader)[1]; // assume 1 is id of new segment
       auto values = segment.values("name", visitor);
-      auto terms = segment.terms("same");
+      auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
@@ -2888,7 +2888,7 @@ TEST_F(memory_index_test, doc_update) {
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -2926,7 +2926,7 @@ TEST_F(memory_index_test, doc_update) {
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -2968,7 +2968,7 @@ TEST_F(memory_index_test, doc_update) {
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -3013,7 +3013,7 @@ TEST_F(memory_index_test, doc_update) {
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -3101,7 +3101,7 @@ TEST_F(memory_index_test, doc_update) {
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -3166,7 +3166,7 @@ TEST_F(memory_index_test, import_reader) {
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count());
     auto values = segment.values("name", visitor);
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -3205,7 +3205,7 @@ TEST_F(memory_index_test, import_reader) {
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(1, segment.docs_count());
     auto values = segment.values("name", visitor);
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -3248,7 +3248,7 @@ TEST_F(memory_index_test, import_reader) {
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(4, segment.docs_count());
     auto values = segment.values("name", visitor);
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -3302,7 +3302,7 @@ TEST_F(memory_index_test, import_reader) {
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count());
     auto values = segment.values("name", visitor);
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -3350,7 +3350,7 @@ TEST_F(memory_index_test, import_reader) {
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(3, segment.docs_count());
     auto values = segment.values("name", visitor);
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -3398,7 +3398,7 @@ TEST_F(memory_index_test, import_reader) {
       auto& segment = (*reader)[1]; // assume 1 is id of imported segment
       ASSERT_EQ(2, segment.docs_count());
       auto values = segment.values("name", visitor);
-      auto terms = segment.terms("same");
+      auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
@@ -3416,7 +3416,7 @@ TEST_F(memory_index_test, import_reader) {
       auto& segment = (*reader)[0]; // assume 0 is id of original segment
       ASSERT_EQ(1, segment.docs_count());
       auto values = segment.values("name", visitor);
-      auto terms = segment.terms("same");
+      auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
@@ -3503,7 +3503,7 @@ TEST_F(memory_index_test, refresh_reader) {
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -3532,7 +3532,7 @@ TEST_F(memory_index_test, refresh_reader) {
       ASSERT_EQ(1, reader->size());
       auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
       auto values = segment.values("name", visitor);
-      auto terms = segment.terms("same");
+      auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
@@ -3551,7 +3551,7 @@ TEST_F(memory_index_test, refresh_reader) {
       ASSERT_EQ(1, reader->size());
       auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
       auto values = segment.values("name", visitor);
-      auto terms = segment.terms("same");
+      auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
@@ -3583,7 +3583,7 @@ TEST_F(memory_index_test, refresh_reader) {
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -3599,7 +3599,7 @@ TEST_F(memory_index_test, refresh_reader) {
     {
       auto& segment = (*reader)[0]; // assume 0 is id of first segment
       auto values = segment.values("name", visitor);
-      auto terms = segment.terms("same");
+      auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
@@ -3613,7 +3613,7 @@ TEST_F(memory_index_test, refresh_reader) {
     {
       auto& segment = (*reader)[1]; // assume 1 is id of second segment
       auto values = segment.values("name", visitor);
-      auto terms = segment.terms("same");
+      auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
@@ -3645,7 +3645,7 @@ TEST_F(memory_index_test, refresh_reader) {
     {
       auto& segment = (*reader)[0]; // assume 0 is id of first segment
       auto values = segment.values("name", visitor);
-      auto terms = segment.terms("same");
+      auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
@@ -3659,7 +3659,7 @@ TEST_F(memory_index_test, refresh_reader) {
     {
       auto& segment = (*reader)[1]; // assume 1 is id of second segment
       auto values = segment.values("name", visitor);
-      auto terms = segment.terms("same");
+      auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
@@ -3676,7 +3676,7 @@ TEST_F(memory_index_test, refresh_reader) {
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of second segment
     auto values = segment.values("name", visitor);
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -3877,7 +3877,7 @@ TEST_F(memory_index_test, segment_defragment) {
     const auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
     ASSERT_EQ(1, segment.docs_count()); // total count of documents
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -3923,7 +3923,7 @@ TEST_F(memory_index_test, segment_defragment) {
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(1, segment.docs_count()); // total count of documents
     auto values = segment.values("name", visitor);
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -4014,7 +4014,7 @@ TEST_F(memory_index_test, segment_defragment) {
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count()); // total count of documents
     auto values = segment.values("name", visitor);
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -4068,7 +4068,7 @@ TEST_F(memory_index_test, segment_defragment) {
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count()); // total count of documents
     auto values = segment.values("name", visitor);
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -4132,7 +4132,7 @@ TEST_F(memory_index_test, segment_defragment) {
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(3, segment.docs_count()); // total count of documents
     auto values = segment.values("name", visitor);
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -4208,7 +4208,7 @@ TEST_F(memory_index_test, segment_defragment) {
     auto values = segment.values("name", visitor);
     auto upper_case_values = segment.values("NAME", visitor);
 
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -4299,7 +4299,7 @@ TEST_F(memory_index_test, segment_defragment_policy) {
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
     ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -4355,7 +4355,7 @@ TEST_F(memory_index_test, segment_defragment_policy) {
       };
       auto& segment = (*reader)[0]; // assume 0 is id of first segment
       ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
-      auto terms = segment.terms("same");
+      auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
@@ -4380,7 +4380,7 @@ TEST_F(memory_index_test, segment_defragment_policy) {
       };
       auto& segment = (*reader)[1]; // assume 1 is id of second segment
       ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
-      auto terms = segment.terms("same");
+      auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
@@ -4425,7 +4425,7 @@ TEST_F(memory_index_test, segment_defragment_policy) {
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -4470,7 +4470,7 @@ TEST_F(memory_index_test, segment_defragment_policy) {
       };
       auto& segment = (*reader)[0]; // assume 0 is id of first segment
       ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
-      auto terms = segment.terms("same");
+      auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
@@ -4495,7 +4495,7 @@ TEST_F(memory_index_test, segment_defragment_policy) {
       };
       auto& segment = (*reader)[1]; // assume 1 is id of second segment
       ASSERT_EQ(expectedName.size(), segment.docs_count());
-      auto terms = segment.terms("same");
+      auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
@@ -4553,7 +4553,7 @@ TEST_F(memory_index_test, segment_defragment_policy) {
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -4612,7 +4612,7 @@ TEST_F(memory_index_test, segment_defragment_policy) {
       };
       auto& segment = (*reader)[0]; // assume 0 is id of first segment
       ASSERT_EQ(expectedName.size() + 3, segment.docs_count()); // total count of documents (+3 == B, C, D masked)
-      auto terms = segment.terms("same");
+      auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
@@ -4637,7 +4637,7 @@ TEST_F(memory_index_test, segment_defragment_policy) {
       };
       auto& segment = (*reader)[1]; // assume 1 is id of second segment
       ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
-      auto terms = segment.terms("same");
+      auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
@@ -4692,7 +4692,7 @@ TEST_F(memory_index_test, segment_defragment_policy) {
     ASSERT_EQ(1, reader->size());
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -4748,7 +4748,7 @@ TEST_F(memory_index_test, segment_defragment_policy) {
       };
       auto& segment = (*reader)[0]; // assume 0 is id of first segment
       ASSERT_EQ(expectedName.size() + 1, segment.docs_count()); // total count of documents (+1 == B masked)
-      auto terms = segment.terms("same");
+      auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
@@ -4773,7 +4773,7 @@ TEST_F(memory_index_test, segment_defragment_policy) {
       };
       auto& segment = (*reader)[1]; // assume 1 is id of second segment
       ASSERT_EQ(expectedName.size() + 1, segment.docs_count()); // total count of documents (+1 == D masked)
-      auto terms = segment.terms("same");
+      auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());

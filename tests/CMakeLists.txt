@@ -62,7 +62,6 @@ set(IReSearch_tests_sources
   ./index/index_tests.cpp
   ./index/field_data_tests.cpp
   ./index/field_meta_test.cpp
-  ./index/fields_meta_test.cpp
   ./index/merge_writer_tests.cpp
   ./index/postings_tests.cpp
   ./search/granular_range_filter_tests.cpp

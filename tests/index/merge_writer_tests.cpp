@@ -209,7 +209,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       // read values for 'doc_int'
       auto* meta = columns.find("doc_int");
       ASSERT_NE(nullptr, meta);
-      ASSERT_TRUE(segment.column(meta->id, reader));
+      ASSERT_TRUE(segment.visit(meta->id, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
     
@@ -242,7 +242,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       // read values for 'doc_string'
       auto* meta = columns.find("doc_string");
       ASSERT_NE(nullptr, meta);
-      ASSERT_TRUE(segment.column(meta->id, reader));
+      ASSERT_TRUE(segment.visit(meta->id, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
 
@@ -256,7 +256,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
 
       ASSERT_EQ(nullptr, columns.find("invalid_column"));
       ASSERT_FALSE(
-        segment.column(iresearch::type_limits<iresearch::type_t::field_id_t>::invalid(), reader)
+        segment.visit(iresearch::type_limits<iresearch::type_t::field_id_t>::invalid(), reader)
       );
       ASSERT_EQ(0, calls_count);
     }
@@ -313,7 +313,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       // read values for 'doc_int'
       auto* meta = columns.find("doc_int");
       ASSERT_NE(nullptr, meta);
-      ASSERT_TRUE(segment.column(meta->id, reader));
+      ASSERT_TRUE(segment.visit(meta->id, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
     
@@ -346,7 +346,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       // read values for 'doc_string'
       auto* meta = columns.find("doc_string");
       ASSERT_NE(nullptr, meta);
-      ASSERT_TRUE(segment.column(meta->id, reader));
+      ASSERT_TRUE(segment.visit(meta->id, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
     
@@ -378,7 +378,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       // read values for 'another_column'
       auto* meta = columns.find("another_column");
       ASSERT_NE(nullptr, meta);
-      ASSERT_TRUE(segment.column(meta->id, reader));
+      ASSERT_TRUE(segment.visit(meta->id, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
 
@@ -392,7 +392,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
 
       ASSERT_EQ(nullptr, columns.find("invalid_column"));
       ASSERT_FALSE(
-        segment.column(iresearch::type_limits<iresearch::type_t::field_id_t>::invalid(), reader)
+        segment.visit(iresearch::type_limits<iresearch::type_t::field_id_t>::invalid(), reader)
       );
       ASSERT_EQ(0, calls_count);
     }
@@ -455,7 +455,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       // read values for 'doc_int'
       auto* meta = columns.find("doc_int");
       ASSERT_NE(nullptr, meta);
-      ASSERT_TRUE(segment->column(meta->id, reader));
+      ASSERT_TRUE(segment->visit(meta->id, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
     
@@ -491,7 +491,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       // read values for 'doc_string'
       auto* meta = columns.find("doc_string");
       ASSERT_NE(nullptr, meta);
-      ASSERT_TRUE(segment->column(meta->id, reader));
+      ASSERT_TRUE(segment->visit(meta->id, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
     
@@ -504,7 +504,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       };
 
       ASSERT_EQ(nullptr, columns.find("another_column"));
-      ASSERT_FALSE(segment->column(2, reader));
+      ASSERT_FALSE(segment->visit(2, reader));
       ASSERT_EQ(0, calls_count);
     }
   }
@@ -625,7 +625,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       // read values for 'doc_int'
       auto* meta = columns.find("doc_int");
       ASSERT_NE(nullptr, meta);
-      ASSERT_TRUE(segment.column(meta->id, reader));
+      ASSERT_TRUE(segment.visit(meta->id, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
     
@@ -658,7 +658,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       // read values for 'doc_string'
       auto* meta = columns.find("doc_string");
       ASSERT_NE(nullptr, meta);
-      ASSERT_TRUE(segment.column(meta->id, reader));
+      ASSERT_TRUE(segment.visit(meta->id, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
 
@@ -672,7 +672,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
 
       ASSERT_EQ(nullptr, columns.find("invalid_column"));
       ASSERT_FALSE(
-        segment.column(iresearch::type_limits<iresearch::type_t::field_id_t>::invalid(), reader)
+        segment.visit(iresearch::type_limits<iresearch::type_t::field_id_t>::invalid(), reader)
       );
       ASSERT_EQ(0, calls_count);
     }
@@ -725,7 +725,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       // read values for 'doc_int'
       auto* meta = columns.find("doc_int");
       ASSERT_NE(nullptr, meta);
-      ASSERT_TRUE(segment.column(meta->id, reader));
+      ASSERT_TRUE(segment.visit(meta->id, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
     
@@ -758,7 +758,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       // read values for 'doc_string'
       auto* meta = columns.find("doc_string");
       ASSERT_NE(nullptr, meta);
-      ASSERT_TRUE(segment.column(meta->id, reader));
+      ASSERT_TRUE(segment.visit(meta->id, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
 
@@ -772,7 +772,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
 
       ASSERT_EQ(nullptr, columns.find("invalid_column"));
       ASSERT_FALSE(
-        segment.column(iresearch::type_limits<iresearch::type_t::field_id_t>::invalid(), reader)
+        segment.visit(iresearch::type_limits<iresearch::type_t::field_id_t>::invalid(), reader)
       );
       ASSERT_EQ(0, calls_count);
     }
@@ -835,7 +835,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       // read values for 'doc_int'
       auto* meta = columns.find("doc_int");
       ASSERT_NE(nullptr, meta);
-      ASSERT_TRUE(segment->column(meta->id, reader));
+      ASSERT_TRUE(segment->visit(meta->id, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
     
@@ -872,7 +872,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       // read values for 'doc_string'
       auto* meta = columns.find("doc_string");
       ASSERT_NE(nullptr, meta);
-      ASSERT_TRUE(segment->column(meta->id, reader));
+      ASSERT_TRUE(segment->visit(meta->id, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
   }
@@ -1044,14 +1044,20 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     auto& segment = (*reader)[0];
     ASSERT_EQ(2, segment.docs_count());
 
-    auto& fields = segment.fields();
-
-    ASSERT_EQ(7, fields.size());
+    {
+      auto fields = segment.fields();
+      size_t size = 0;
+      while (fields->next()) {
+        ++size;
+      }
+      ASSERT_EQ(7, size);
+    }
 
     // validate bytes field
     {
-      auto field = fields.find("doc_bytes");
-      auto terms = segment.terms("doc_bytes");
+      auto terms = segment.field("doc_bytes");
+      ASSERT_NE(nullptr, terms);
+      auto& field = terms->meta();
       auto features = tests::binary_field().features();
       features.add<iresearch::norm>();
       std::unordered_map<iresearch::bytes_ref, std::unordered_set<iresearch::doc_id_t>> expected_terms;
@@ -1060,10 +1066,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("bytes2_data"))].emplace(2);
 
       ASSERT_EQ(2, segment.docs_count("doc_bytes"));
-      ASSERT_NE(nullptr, field);
-      ASSERT_TRUE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field->norm)); // 'norm' attribute has been specified
-      ASSERT_EQ(features, field->features);
-      ASSERT_NE(nullptr, terms);
+      ASSERT_TRUE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // 'norm' attribute has been specified
+      ASSERT_EQ(features, field.features);
       validate_terms(
         *terms,
         2,
@@ -1096,14 +1100,15 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         return true;
       };
       
-      ASSERT_TRUE(segment.column(field->norm, reader));
+      ASSERT_TRUE(segment.visit(field.norm, reader));
       ASSERT_TRUE(expected_values.empty());
     }
 
     // validate double field
     {
-      auto field = fields.find("doc_double");
-      auto terms = segment.terms("doc_double");
+      auto terms = segment.field("doc_double");
+      ASSERT_NE(nullptr, terms);
+      auto& field = terms->meta();
       auto features = tests::double_field().features();
       iresearch::numeric_token_stream max;
       max.reset((double_t) (2.718281828 * 2));
@@ -1124,9 +1129,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       }
 
       ASSERT_EQ(2, segment.docs_count("doc_double"));
-      ASSERT_NE(nullptr, field);
-      ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field->norm)); // norm attribute has not been specified
-      ASSERT_EQ(features, field->features);
+      ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
+      ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
       ASSERT_TRUE(max.next() && max.next() && max.next() && max.next()); // skip to last value
       ASSERT_TRUE(min.next()); // skip to first value
@@ -1143,8 +1147,9 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
     // validate float field
     {
-      auto field = fields.find("doc_float");
-      auto terms = segment.terms("doc_float");
+      auto terms = segment.field("doc_float");
+      ASSERT_NE(nullptr, terms);
+      auto& field = terms->meta();
       auto features = tests::float_field().features();
       iresearch::numeric_token_stream max;
       max.reset((float_t) (3.1415926535 * 2));
@@ -1165,9 +1170,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       }
 
       ASSERT_EQ(2, segment.docs_count("doc_float"));
-      ASSERT_NE(nullptr, field);
-      ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field->norm)); // norm attribute has not been specified
-      ASSERT_EQ(features, field->features);
+      ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
+      ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
       ASSERT_TRUE(max.next() && max.next()); // skip to last value
       ASSERT_TRUE(min.next()); // skip to first value
@@ -1184,8 +1188,9 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
     // validate int field
     {
-      auto field = fields.find("doc_int");
-      auto terms = segment.terms("doc_int");
+      auto terms = segment.field("doc_int");
+      ASSERT_NE(nullptr, terms);
+      auto& field = terms->meta();
       auto features = tests::int_field().features();
       iresearch::numeric_token_stream max;
       max.reset(42 * 2);
@@ -1206,9 +1211,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       }
 
       ASSERT_EQ(2, segment.docs_count("doc_int"));
-      ASSERT_NE(nullptr, field);
-      ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field->norm)); // norm attribute has not been specified
-      ASSERT_EQ(features, field->features);
+      ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
+      ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
       ASSERT_TRUE(max.next() && max.next()); // skip to last value
       ASSERT_TRUE(min.next()); // skip to first value
@@ -1225,8 +1229,9 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
     // validate long field
     {
-      auto field = fields.find("doc_long");
-      auto terms = segment.terms("doc_long");
+      auto terms = segment.field("doc_long");
+      ASSERT_NE(nullptr, terms);
+      auto& field = terms->meta();
       auto features = tests::long_field().features();
       iresearch::numeric_token_stream max;
       max.reset((int64_t) 12345 * 2);
@@ -1247,8 +1252,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       }
 
       ASSERT_EQ(2, segment.docs_count("doc_long"));
-      ASSERT_NE(nullptr, field);
-      ASSERT_EQ(features, field->features);
+      ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
       ASSERT_TRUE(max.next() && max.next() && max.next() && max.next()); // skip to last value
       ASSERT_TRUE(min.next()); // skip to first value
@@ -1265,8 +1269,9 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
     // validate string field
     {
-      auto field = fields.find("doc_string");
-      auto terms = segment.terms("doc_string");
+      auto terms = segment.field("doc_string");
+      ASSERT_NE(nullptr, terms);
+      auto& field = terms->meta();
       auto& features = STRING_FIELD_FEATURES;
       size_t frequency = 1;
       std::vector<uint32_t> position = { 0 };
@@ -1276,9 +1281,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("string2_data"))].emplace(2);
 
       ASSERT_EQ(2, segment.docs_count("doc_string"));
-      ASSERT_NE(nullptr, field);
-      ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field->norm)); // norm attribute has not been specified
-      ASSERT_EQ(features, field->features);
+      ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
+      ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
       validate_terms(
         *terms,
@@ -1295,8 +1299,9 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
     // validate text field
     {
-      auto field = fields.find("doc_text");
-      auto terms = segment.terms("doc_text");
+      auto terms = segment.field("doc_text");
+      ASSERT_NE(nullptr, terms);
+      auto& field = terms->meta();
       auto& features = TEXT_FIELD_FEATURES;
       size_t frequency = 1;
       std::vector<uint32_t> position = { 0 };
@@ -1306,9 +1311,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("text2_data"))].emplace(2);
 
       ASSERT_EQ(2, segment.docs_count("doc_text"));
-      ASSERT_NE(nullptr, field);
-      ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field->norm)); // norm attribute has not been specified
-      ASSERT_EQ(features, field->features);
+      ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
+      ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
       validate_terms(
         *terms,
@@ -1394,23 +1398,28 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     auto& segment = (*reader)[1];
     ASSERT_EQ(2, segment.docs_count());
 
-    auto& fields = segment.fields();
-
-    ASSERT_EQ(7, fields.size());
+    {
+      auto fields = segment.fields();
+      size_t size = 0;
+      while (fields->next()) {
+        ++size;
+      }
+      ASSERT_EQ(7, size);
+    }
 
     // validate bytes field
     {
-      auto field = fields.find("doc_bytes");
-      auto terms = segment.terms("doc_bytes");
+      auto terms = segment.field("doc_bytes");
+      ASSERT_NE(nullptr, terms);
+      auto& field = terms->meta();
       auto features = tests::binary_field().features();
       std::unordered_map<iresearch::bytes_ref, std::unordered_set<iresearch::doc_id_t>> expected_terms;
       features.add<iresearch::norm>();
       expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("bytes3_data"))].emplace(1);
 
       ASSERT_EQ(1, segment.docs_count("doc_bytes"));
-      ASSERT_NE(nullptr, field);
-      ASSERT_TRUE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field->norm)); // norm attribute has been specified
-      ASSERT_EQ(features, field->features);
+      ASSERT_TRUE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has been specified
+      ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
       validate_terms(
         *terms,
@@ -1444,14 +1453,15 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         return true;
       };
       
-      ASSERT_TRUE(segment.column(field->norm, reader));
+      ASSERT_TRUE(segment.visit(field.norm, reader));
       ASSERT_TRUE(expected_values.empty());
     }
 
     // validate double field
     {
-      auto field = fields.find("doc_double");
-      auto terms = segment.terms("doc_double");
+      auto terms = segment.field("doc_double");
+      ASSERT_NE(nullptr, terms);
+      auto& field = terms->meta();
       auto features = tests::double_field().features();
       iresearch::numeric_token_stream max;
       max.reset((double_t) (2.718281828 * 3));
@@ -1466,9 +1476,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       }
 
       ASSERT_EQ(1, segment.docs_count("doc_double"));
-      ASSERT_NE(nullptr, field);
-      ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field->norm)); // norm attribute has not been specified
-      ASSERT_EQ(features, field->features);
+      ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
+      ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
       ASSERT_TRUE(max.next() && max.next() && max.next() && max.next()); // skip to last value
       ASSERT_TRUE(min.next()); // skip to first value
@@ -1485,8 +1494,9 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
     // validate float field
     {
-      auto field = fields.find("doc_float");
-      auto terms = segment.terms("doc_float");
+      auto terms = segment.field("doc_float");
+      ASSERT_NE(nullptr, terms);
+      auto& field = terms->meta();
       auto features = tests::float_field().features();
       iresearch::numeric_token_stream max;
       max.reset((float_t) (3.1415926535 * 3));
@@ -1501,9 +1511,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       }
 
       ASSERT_EQ(1, segment.docs_count("doc_float"));
-      ASSERT_NE(nullptr, field);
-      ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field->norm)); // norm attribute has not been specified
-      ASSERT_EQ(features, field->features);
+      ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
+      ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
       ASSERT_TRUE(max.next() && max.next()); // skip to last value
       ASSERT_TRUE(min.next()); // skip to first value
@@ -1520,8 +1529,9 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
     // validate int field
     {
-      auto field = fields.find("doc_int");
-      auto terms = segment.terms("doc_int");
+      auto terms = segment.field("doc_int");
+      ASSERT_NE(nullptr, terms);
+      auto& field = terms->meta();
       auto features = tests::int_field().features();
       iresearch::numeric_token_stream max;
       max.reset(42 * 3);
@@ -1536,9 +1546,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       }
 
       ASSERT_EQ(1, segment.docs_count("doc_int"));
-      ASSERT_NE(nullptr, field);
-      ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field->norm)); // norm attribute has not been specified
-      ASSERT_EQ(features, field->features);
+      ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
+      ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
       ASSERT_TRUE(max.next() && max.next()); // skip to last value
       ASSERT_TRUE(min.next()); // skip to first value
@@ -1555,8 +1564,9 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
     // validate long field
     {
-      auto field = fields.find("doc_long");
-      auto terms = segment.terms("doc_long");
+      auto terms = segment.field("doc_long");
+      ASSERT_NE(nullptr, terms);
+      auto& field = terms->meta();
       auto features = tests::long_field().features();
       iresearch::numeric_token_stream max;
       max.reset((int64_t) 12345 * 3);
@@ -1571,9 +1581,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       }
 
       ASSERT_EQ(1, segment.docs_count("doc_long"));
-      ASSERT_NE(nullptr, field);
-      ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field->norm)); // norm attribute has not been specified
-      ASSERT_EQ(features, field->features);
+      ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
+      ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
       ASSERT_TRUE(max.next() && max.next() && max.next() && max.next()); // skip to last value
       ASSERT_TRUE(min.next()); // skip to first value
@@ -1590,8 +1599,9 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
     // validate string field
     {
-      auto field = fields.find("doc_string");
-      auto terms = segment.terms("doc_string");
+      auto terms = segment.field("doc_string");
+      ASSERT_NE(nullptr, terms);
+      auto& field = terms->meta();
       auto& features = STRING_FIELD_FEATURES;
       size_t frequency = 1;
       std::vector<uint32_t> position = { 0 };
@@ -1601,9 +1611,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("string4_data"))];
 
       ASSERT_EQ(2, segment.docs_count("doc_string"));
-      ASSERT_NE(nullptr, field);
-      ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field->norm)); // norm attribute has not been specified
-      ASSERT_EQ(features, field->features);
+      ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
+      ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
       validate_terms(
         *terms,
@@ -1620,8 +1629,9 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
     // validate text field
     {
-      auto field = fields.find("doc_text");
-      auto terms = segment.terms("doc_text");
+      auto terms = segment.field("doc_text");
+      ASSERT_NE(nullptr, terms);
+      auto& field = terms->meta();
       auto& features = TEXT_FIELD_FEATURES;
       size_t frequency = 1;
       std::vector<uint32_t> position = { 0 };
@@ -1630,9 +1640,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("text3_data"))].emplace(1);
 
       ASSERT_EQ(1, segment.docs_count("doc_text"));
-      ASSERT_NE(nullptr, field);
-      ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field->norm)); // norm attribute has not been specified
-      ASSERT_EQ(features, field->features);
+      ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
+      ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
       validate_terms(
         *terms,
@@ -1725,14 +1734,20 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
   ASSERT_EQ(3, segment->docs_count()); //doc4 removed during merge
 
-  auto& fields = segment->fields();
-
-  ASSERT_EQ(7, fields.size());
+  {
+    auto fields = segment->fields();
+    size_t size = 0;
+    while (fields->next()) {
+      ++size;
+    }
+    ASSERT_EQ(7, size);
+  }
 
   // validate bytes field
   {
-    auto field = fields.find("doc_bytes");
-    auto terms = segment->terms("doc_bytes");
+    auto terms = segment->field("doc_bytes");
+    ASSERT_NE(nullptr, terms);
+    auto& field = terms->meta();
     auto features = tests::binary_field().features();
     features.add<iresearch::norm>();
     std::unordered_map<iresearch::bytes_ref, std::unordered_set<iresearch::doc_id_t>> expected_terms;
@@ -1742,9 +1757,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("bytes3_data"))].emplace(3);
 
     ASSERT_EQ(3, segment->docs_count("doc_bytes"));
-    ASSERT_NE(nullptr, field);
-    ASSERT_TRUE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field->norm)); // norm attribute has been specified
-    ASSERT_EQ(features, field->features);
+    ASSERT_TRUE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has been specified
+    ASSERT_EQ(features, field.features);
     ASSERT_NE(nullptr, terms);
     validate_terms(
       *terms,
@@ -1779,14 +1793,15 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       return true;
     };
 
-    ASSERT_TRUE(segment->column(field->norm, reader));
+    ASSERT_TRUE(segment->visit(field.norm, reader));
     ASSERT_TRUE(expected_values.empty());
   }
 
   // validate double field
   {
-    auto field = fields.find("doc_double");
-    auto terms = segment->terms("doc_double");
+    auto terms = segment->field("doc_double");
+    ASSERT_NE(nullptr, terms);
+    auto& field = terms->meta();
     auto features = tests::double_field().features();
     iresearch::numeric_token_stream max;
     max.reset((double_t) (2.718281828 * 3));
@@ -1813,9 +1828,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     }
 
     ASSERT_EQ(3, segment->docs_count("doc_double"));
-    ASSERT_NE(nullptr, field);
-    ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field->norm)); // norm attribute has not been specified
-    ASSERT_EQ(features, field->features);
+    ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
+    ASSERT_EQ(features, field.features);
     ASSERT_NE(nullptr, terms);
     ASSERT_TRUE(max.next() && max.next() && max.next() && max.next()); // skip to last value
     ASSERT_TRUE(min.next()); // skip to first value
@@ -1832,8 +1846,9 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
   // validate float field
   {
-    auto field = fields.find("doc_float");
-    auto terms = segment->terms("doc_float");
+    auto terms = segment->field("doc_float");
+    ASSERT_NE(nullptr, terms);
+    auto& field = terms->meta();
     auto features = tests::float_field().features();
     iresearch::numeric_token_stream max;
     max.reset((float_t) (3.1415926535 * 3));
@@ -1860,9 +1875,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     }
 
     ASSERT_EQ(3, segment->docs_count("doc_float"));
-    ASSERT_NE(nullptr, field);
-    ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field->norm)); // norm attribute has not been specified
-    ASSERT_EQ(features, field->features);
+    ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
+    ASSERT_EQ(features, field.features);
     ASSERT_NE(nullptr, terms);
     ASSERT_TRUE(max.next() && max.next()); // skip to last value
     ASSERT_TRUE(min.next()); // skip to first value
@@ -1879,8 +1893,9 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
   // validate int field
   {
-    auto field = fields.find("doc_int");
-    auto terms = segment->terms("doc_int");
+    auto terms = segment->field("doc_int");
+    ASSERT_NE(nullptr, terms);
+    auto& field = terms->meta();
     auto features = tests::int_field().features();
     iresearch::numeric_token_stream max;
     max.reset(42 * 3);
@@ -1907,9 +1922,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     }
 
     ASSERT_EQ(3, segment->docs_count("doc_int"));
-    ASSERT_NE(nullptr, field);
-    ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field->norm)); // norm attribute has not been specified
-    ASSERT_EQ(features, field->features);
+    ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
+    ASSERT_EQ(features, field.features);
     ASSERT_NE(nullptr, terms);
     ASSERT_TRUE(max.next() && max.next()); // skip to last value
     ASSERT_TRUE(min.next()); // skip to first value
@@ -1926,8 +1940,9 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
   // validate long field
   {
-    auto field = fields.find("doc_long");
-    auto terms = segment->terms("doc_long");
+    auto terms = segment->field("doc_long");
+    ASSERT_NE(nullptr, terms);
+    auto& field = terms->meta();
     auto features = tests::long_field().features();
     iresearch::numeric_token_stream max;
     max.reset((int64_t) 12345 * 3);
@@ -1954,9 +1969,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     }
 
     ASSERT_EQ(3, segment->docs_count("doc_long"));
-    ASSERT_NE(nullptr, field);
-    ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field->norm)); // norm attribute has not been specified
-    ASSERT_EQ(features, field->features);
+    ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
+    ASSERT_EQ(features, field.features);
     ASSERT_NE(nullptr, terms);
     ASSERT_TRUE(max.next() && max.next() && max.next() && max.next()); // skip to last value
     ASSERT_TRUE(min.next()); // skip to first value
@@ -1973,8 +1987,9 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
   // validate string field
   {
-    auto field = fields.find("doc_string");
-    auto terms = segment->terms("doc_string");
+    auto terms = segment->field("doc_string");
+    ASSERT_NE(nullptr, terms);
+    auto& field = terms->meta();
     auto& features = STRING_FIELD_FEATURES;
     size_t frequency = 1;
     std::vector<uint32_t> position = { 0 };
@@ -1985,9 +2000,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("string3_data"))].emplace(3);
 
     ASSERT_EQ(3, segment->docs_count("doc_string"));
-    ASSERT_NE(nullptr, field);
-    ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field->norm)); // norm attribute has not been specified
-    ASSERT_EQ(features, field->features);
+    ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
+    ASSERT_EQ(features, field.features);
     ASSERT_NE(nullptr, terms);
     validate_terms(
       *terms,
@@ -2004,8 +2018,9 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
   // validate text field
   {
-    auto field = fields.find("doc_text");
-    auto terms = segment->terms("doc_text");
+    auto terms = segment->field("doc_text");
+    ASSERT_NE(nullptr, terms);
+    auto& field = terms->meta();
     auto& features = TEXT_FIELD_FEATURES;
     size_t frequency = 1;
     std::vector<uint32_t> position = { 0 };
@@ -2016,9 +2031,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("text3_data"))].emplace(3);
 
     ASSERT_EQ(3, segment->docs_count("doc_text"));
-    ASSERT_NE(nullptr, field);
-    ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field->norm)); // norm attribute has not been specified
-    ASSERT_EQ(features, field->features);
+    ASSERT_EQ(features, field.features);
     ASSERT_NE(nullptr, terms);
     validate_terms(
       *terms,

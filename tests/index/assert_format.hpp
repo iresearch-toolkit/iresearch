@@ -85,8 +85,7 @@ class field : public iresearch::field_meta {
  public:
   field(
     const iresearch::string_ref& name,
-    const iresearch::flags& features,
-    iresearch::field_id id
+    const iresearch::flags& features
   );
 
   field( field&& rhs );
@@ -285,26 +284,6 @@ class document_mask_writer: public iresearch::document_mask_writer {
 };
 
 /* -------------------------------------------------------------------
- * field_meta_writer
- * ------------------------------------------------------------------*/
-
-class field_meta_writer : public iresearch::field_meta_writer {
- public:
-  field_meta_writer( const index_segment& data );
-
-  void prepare(const iresearch::flush_state& state) override;
-  void write(
-    iresearch::field_id id, 
-    const std::string& name, 
-    const iresearch::flags& features,
-    iresearch::field_id norm) override;
-  void end() override;
-
- private:
-  const index_segment& data_;
-};
-
-/* -------------------------------------------------------------------
 * field_reader
 * ------------------------------------------------------------------*/
 
@@ -312,8 +291,9 @@ class field_reader : public iresearch::field_reader {
  public:
   field_reader( const index_segment& data );
 
-  virtual void prepare(const iresearch::reader_state& state) override;
-  virtual const iresearch::term_reader* terms(iresearch::field_id field) const override;
+  virtual bool prepare(const iresearch::reader_state& state) override;
+  virtual const iresearch::term_reader* field(const iresearch::string_ref& field) const override;
+  virtual iresearch::field_iterator::ptr iterator() const override;
   virtual size_t size() const override;
   
   const index_segment& data() const {
@@ -342,7 +322,7 @@ class field_writer : public iresearch::field_writer {
   void features(const iresearch::flags& features) { features_ = features; }
 
   virtual void prepare(const iresearch::flush_state& state) override;
-  virtual void write(iresearch::field_id id, const iresearch::flags& expected_field, iresearch::term_iterator& actual_term) override;
+  virtual void write(const std::string& name, iresearch::field_id norm, const iresearch::flags& expected_field, iresearch::term_iterator& actual_term) override;
   virtual void end() override;
 
  private:
@@ -369,9 +349,6 @@ class format : public iresearch::format {
 
   virtual document_mask_writer::ptr get_document_mask_writer() const override;
   virtual iresearch::document_mask_reader::ptr get_document_mask_reader() const override;
-
-  virtual iresearch::field_meta_reader::ptr get_field_meta_reader() const override;
-  virtual iresearch::field_meta_writer::ptr get_field_meta_writer() const override;
 
   virtual iresearch::field_writer::ptr get_field_writer(bool volatile_attributes = false) const override;
   virtual iresearch::field_reader::ptr get_field_reader() const override;

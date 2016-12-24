@@ -14,6 +14,7 @@
 
 #include "formats.hpp"
 #include "formats_10_attributes.hpp"
+#include "index/field_meta.hpp"
 
 #include "store/data_output.hpp"
 #include "store/memory_directory.hpp"
@@ -90,8 +91,8 @@ struct entry : private util::noncopyable {
 * term_reader
 * ------------------------------------------------------------------*/
 
-class field_iterator;
 class term_iterator;
+typedef std::vector<const attribute::type_id*> feature_map_t;
 
 class term_reader : public iresearch::term_reader,
                     private util::noncopyable {
@@ -101,14 +102,13 @@ class term_reader : public iresearch::term_reader,
   virtual ~term_reader();
 
   bool prepare(
-    index_input& meta_in, 
-    std::istream& fst_in, 
-    const field_meta& field, 
+    std::istream& in,
+    const feature_map_t& features,
     field_reader& owner
   );
 
   virtual seek_term_iterator::ptr iterator() const override;
-  virtual const field_meta& meta() const override { return *field_; }
+  virtual const field_meta& meta() const override { return field_; }
   virtual size_t size() const override { return terms_count_; }
   virtual uint64_t docs_count() const override { return doc_count_; }
   virtual const bytes_ref& min() const override { return min_term_ref_; }
@@ -129,7 +129,7 @@ class term_reader : public iresearch::term_reader,
   uint64_t doc_count_;
   uint64_t doc_freq_;
   uint64_t term_freq_;
-  const field_meta* field_;
+  field_meta field_;
   fst::VectorFst< byte_arc >* fst_; // TODO: use compact fst here!!!
   field_reader* owner_;
 };
@@ -160,43 +160,21 @@ class field_writer final : public iresearch::field_writer{
   virtual void prepare( const iresearch::flush_state& state ) override;
   virtual void end() override;
   virtual void write( 
-    iresearch::field_id id,
+    const std::string& name,
+    iresearch::field_id norm,
     const iresearch::flags& features,
     iresearch::term_iterator& terms 
   ) override;
 
  private:
-  struct field_meta : private util::noncopyable {
-    field_meta(
-      bstring&& min_term,
-      bstring&& max_term,
-      iresearch::field_id id,
-      uint64_t index_start,
-      uint64_t term_count,
-      size_t doc_count,
-      uint64_t doc_freq,
-      uint64_t term_freq,
-      bool write_freq
-    );
-    field_meta(field_meta&& rhs);
-
-    void write(data_output& out) const;
-
-    bstring min_term; // min term
-    bstring max_term; // max term
-    uint64_t index_start; // where field index starts
-    uint64_t doc_freq; // size of postings
-    size_t doc_count; // number of documents that have at least one term for field
-    uint64_t term_freq; // total number of tokens for field
-    uint64_t term_count; // number of terms for field
-    iresearch::field_id id; // field identifier
-    bool write_freq;
-  };
+  void write_segment_features(data_output& out, const flags& features);
+  void write_field_features(data_output& out, const flags& features) const;
 
   void begin_field(const iresearch::flags& field);
   void end_field(
-    field_id id, 
-    const iresearch::flags& field, 
+    const std::string& name,
+    iresearch::field_id norm,
+    const iresearch::flags& features, 
     uint64_t total_doc_freq, 
     uint64_t total_term_freq, 
     size_t doc_count
@@ -221,19 +199,20 @@ class field_writer final : public iresearch::field_writer{
 
   static const size_t DEFAULT_SIZE = 8;
 
+  std::unordered_map<const attribute::type_id*, size_t> feature_map_;
   iresearch::memory_output suffix; /* term suffix column */
   iresearch::memory_output stats; /* term stats column */
   iresearch::index_output::ptr terms_out; /* output stream for terms */
   iresearch::index_output::ptr index_out; /* output stream for indexes*/
   iresearch::postings_writer::ptr pw; /* postings writer */
   std::vector< detail::entry > stack;
-  std::vector< field_meta > fields; /* finished fields metadata */
   std::unique_ptr<detail::fst_buffer> fst_buf_; // pimpl buffer used for building FST for fields
   bstring last_term; // last pushed term
   std::vector<size_t> prefixes;
   std::pair<bool, bstring> min_term; // current min term in a block
   bstring max_term; // current max term in a block
   uint64_t term_count;    /* count of terms */
+  size_t fields_count{};
   uint32_t min_block_size;
   uint32_t max_block_size;
 };
@@ -245,19 +224,20 @@ class field_writer final : public iresearch::field_writer{
 class field_reader final : public iresearch::field_reader {
  public:
   explicit field_reader(iresearch::postings_reader::ptr&& pr);
-  virtual void prepare(const reader_state& state) override;
-  virtual const iresearch::term_reader* terms(field_id field) const override;
+  virtual bool prepare(const reader_state& state) override;
+  virtual const iresearch::term_reader* field(const string_ref& field) const override;
+  virtual iresearch::field_iterator::ptr iterator() const override;
   virtual size_t size() const override;
 
  private:
   friend class detail::term_iterator;
-  friend class detail::field_iterator;
 
   std::vector<detail::term_reader> fields_;
+  std::unordered_map<hashed_string_ref, term_reader*> name_to_field_;
   std::vector<const detail::term_reader*> fields_mask_;
   iresearch::postings_reader::ptr pr_;
   iresearch::index_input::ptr terms_in_;
-};
+}; // field_reader
 
 NS_END
 NS_END

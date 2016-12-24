@@ -10,8 +10,11 @@
 // 
 
 #include "iterators.hpp"
+#include "field_meta.hpp"
+#include "formats/formats.hpp"
 #include "search/cost.hpp"
 #include "utils/type_limits.hpp"
+#include "utils/singleton.hpp"
 
 NS_ROOT
 NS_LOCAL
@@ -71,6 +74,52 @@ term_iterator::ptr term_iterator::empty() {
 score_doc_iterator::ptr score_doc_iterator::empty() {
   //TODO: make singletone
   return score_doc_iterator::make<empty_doc_iterator>();
+}
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                                   field_iterator 
+// ----------------------------------------------------------------------------
+
+struct empty_term_reader : singleton<empty_term_reader>, term_reader {
+  virtual iresearch::seek_term_iterator::ptr iterator() const { return nullptr; }
+  virtual const iresearch::field_meta& meta() const { 
+    static iresearch::field_meta EMPTY;
+    return EMPTY;
+  }
+
+  virtual const iresearch::attributes& attributes() const NOEXCEPT {
+    return iresearch::attributes::empty_instance();
+  }
+
+  // total number of terms
+  virtual size_t size() const { return 0; }
+
+  // total number of documents
+  virtual uint64_t docs_count() const { return 0; }
+
+  // less significant term
+  virtual const iresearch::bytes_ref& (min)() const { 
+    return iresearch::bytes_ref::nil; 
+  }
+
+  // most significant term
+  virtual const iresearch::bytes_ref& (max)() const { 
+    return iresearch::bytes_ref::nil; 
+  }
+}; // empty_term_reader
+
+struct empty_field_iterator : field_iterator {
+  virtual const term_reader& value() const {
+    return empty_term_reader::instance();
+  }
+
+  virtual bool next() override {
+    return false;
+  }
+};
+
+field_iterator::ptr field_iterator::empty() {
+  return field_iterator::make<empty_field_iterator>();
 }
 
 NS_END // ROOT 

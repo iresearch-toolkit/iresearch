@@ -264,7 +264,7 @@ class term_iterator : public iresearch::term_iterator {
     // Does nothing now
   }
 
-  virtual iresearch::doc_iterator::ptr postings(const flags&) const override {
+  virtual iresearch::doc_iterator::ptr postings(const flags& /*features*/) const override {
     REGISTER_TIMER_DETAILED();
     assert(itr_ != postings_.end());
     auto& posting = itr_->second;
@@ -369,10 +369,9 @@ void field_data::write_prox( posting& p, int_block_pool::iterator& where,
 
 field_data::field_data( 
     const string_ref& name,
-    size_t id,
     byte_block_pool::inserter* byte_writer,
     int_block_pool::inserter* int_writer )
-  : meta_(name, field_id(id), flags::empty_instance()),
+  : meta_(name, flags::empty_instance()),
     terms_(*byte_writer),
     byte_writer_(byte_writer),
     int_writer_(int_writer),
@@ -609,7 +608,6 @@ field_data& fields_data::get(const string_ref& name) {
     std::forward_as_tuple(hashed_name),
     std::forward_as_tuple(
       name,
-      fields_.size(),
       &byte_writer_,
       &int_writer_
     )
@@ -627,9 +625,7 @@ field_data& fields_data::get(const string_ref& name) {
   return slot;
 }
 
-void fields_data::flush(
-  field_meta_writer& fmw, field_writer& fw, flush_state& state
-) {
+void fields_data::flush(field_writer& fw, flush_state& state) {
   REGISTER_TIMER_DETAILED();
   /* set the segment meta */
   state.features = &features_;
@@ -650,29 +646,21 @@ void fields_data::flush(
       fields.emplace(&entry.second);
     }
 
-    fmw.prepare(state);
     fw.prepare(state);
 
     for (auto* field : fields) {
       auto& meta = field->meta();
-      auto id = meta.id;
       auto& features = meta.features;
-
-      // write field metadata
-      fmw.write(id, meta.name, features, meta.norm);
 
       // write field invert data
       auto terms = field->iterator();
 
       if (terms) {
-        fw.write(id, features, *terms);
+        fw.write(meta.name, meta.norm, features, *terms);
       }
-
-      ++id;
     }
 
     fw.end();
-    fmw.end();
   }
 }
 

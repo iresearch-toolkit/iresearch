@@ -30,7 +30,7 @@ filter::prepared::ptr by_prefix::prepare(
   const string_ref field = this->field();
   for (const auto& sr : rdr ) {
     /* get term dictionary for field */
-    const term_reader* tr = sr.terms(field);
+    const term_reader* tr = sr.field(field);
     if (!tr) {
       continue;
     }

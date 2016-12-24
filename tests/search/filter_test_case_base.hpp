@@ -322,35 +322,23 @@ struct empty_sub_reader : iresearch::singleton<empty_sub_reader>, iresearch::sub
     }
   };
 
-  struct empty_string_iterator : iresearch::iterator<const iresearch::string_ref&> {
-    virtual const iresearch::string_ref& value() const {
-      return iresearch::string_ref::nil;
-    }
-
-    virtual bool next() {
-      return false;
-    }
-  };
-
   virtual const iresearch::columns_meta& columns() const {
     static iresearch::columns_meta empty;
     return empty;
   }
   
-  virtual bool column(
+  using iresearch::sub_reader::visit;
+  
+  virtual bool visit(
       iresearch::field_id field,
       const iresearch::columnstore_reader::raw_reader_f& reader) const {
     return false;
   }
   
+  using iresearch::sub_reader::values;
+  
   virtual value_visitor_f values(
       iresearch::field_id field,
-      const iresearch::columnstore_reader::value_reader_f& reader) const {
-    return [] (iresearch::doc_id_t) { return false; };
-  }
-
-  virtual value_visitor_f values(
-      const iresearch::string_ref& field, 
       const iresearch::columnstore_reader::value_reader_f& reader) const {
     return [] (iresearch::doc_id_t) { return false; };
   }
@@ -369,19 +357,14 @@ struct empty_sub_reader : iresearch::singleton<empty_sub_reader>, iresearch::sub
 
   virtual reader_iterator end() const { return reader_iterator(); }
 
-  virtual iresearch::iterator<const iresearch::string_ref&>::ptr iterator() const {
-    return iresearch::iterator<const iresearch::string_ref&>::make<empty_string_iterator>();
-  }
-
-  virtual const iresearch::term_reader* terms(const iresearch::string_ref&) const {
+  virtual const iresearch::term_reader* field(const iresearch::string_ref&) const {
     return nullptr;
   }
 
   virtual size_t size() const { return 0; }
 
-  virtual const iresearch::fields_meta& fields() const {
-    static iresearch::fields_meta empty;
-    return empty;
+  virtual iresearch::field_iterator::ptr fields() const {
+    return iresearch::field_iterator::empty();
   }
 }; // empty_sub_reader
 
@@ -403,10 +386,14 @@ struct empty_term_reader : iresearch::singleton<empty_term_reader>, iresearch::t
   virtual uint64_t docs_count() const { return 0; }
 
   // less significant term
-  virtual const iresearch::bytes_ref& (min)() const { return iresearch::bytes_ref::nil; }
+  virtual const iresearch::bytes_ref& (min)() const { 
+    return iresearch::bytes_ref::nil; 
+  }
 
   // most significant term
-  virtual const iresearch::bytes_ref& (max)() const { return iresearch::bytes_ref::nil; }
+  virtual const iresearch::bytes_ref& (max)() const { 
+    return iresearch::bytes_ref::nil; 
+  }
 }; // empty_term_reader
 
 } // tests

@@ -29,6 +29,7 @@
 #include "utils/bit_utils.hpp"
 #include "utils/bitset.hpp"
 #include "utils/attributes.hpp"
+#include "utils/log.hpp"
 
 #if defined(_MSC_VER)
   // NOOP
@@ -79,6 +80,49 @@ NS_BEGIN( detail )
 /* -------------------------------------------------------------------
 * helper functions
 * ------------------------------------------------------------------*/
+
+bool read_segment_features(
+    data_input& in, 
+    detail::feature_map_t& feature_map, 
+    flags& features) {
+  feature_map.clear();
+  feature_map.reserve(in.read_vlong());
+
+  features.reserve(feature_map.capacity());
+
+  for (size_t count = feature_map.capacity(); count; --count) {
+    const auto name = read_string<std::string>(in); // read feature name
+    const attribute::type_id* feature = attribute::type_id::get(name);
+
+    if (feature) {
+      feature_map.emplace_back(feature);
+      features.add(*feature);
+    } else {
+      IR_ERROR() << "unknown feature name '" << name << "'";
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool read_field_features(
+    data_input& in, 
+    const detail::feature_map_t& feature_map, 
+    flags& features) {
+  for (size_t count = in.read_vlong(); count; --count) {
+    const size_t id = in.read_vlong(); // feature id
+
+    if (id < feature_map.size()) {
+      features.add(*feature_map[id]);
+    } else {
+      IR_ERROR() << "unknown feature id '" << id << "'";
+      return false;
+    }
+  }
+
+  return true;
+}
 
 inline void prepare_output(
     std::string& str,
@@ -838,7 +882,7 @@ term_iterator::term_iterator(const term_reader* owner):
   freq_(nullptr) {
   assert(owner_);
   state_ = attrs_.add<version10::term_meta>();
-  if (owner_->field_->features.check<frequency>()) {
+  if (owner_->field_.features.check<frequency>()) {
     freq_ = attrs_.add<frequency>();
   }
 }
@@ -846,7 +890,7 @@ term_iterator::term_iterator(const term_reader* owner):
 void term_iterator::read() {
   /* read attributes */
   cur_block_->load_data(
-    *owner_->field_,
+    owner_->field_,
     *owner_->owner_->pr_
   );
 }
@@ -1074,7 +1118,7 @@ bool term_iterator::seek(const bytes_ref& term) {
 #endif
 
 doc_iterator::ptr term_iterator::postings(const flags& features) const {
-  const field_meta& field = *owner_->field_;
+  const field_meta& field = owner_->field_;
   postings_reader& pr = *owner_->owner_->pr_;
   if (cur_block_) {
     /* read attributes */
@@ -1101,7 +1145,7 @@ term_reader::term_reader(term_reader&& rhs)
     doc_count_(rhs.doc_count_),
     doc_freq_(rhs.doc_freq_),
     term_freq_(rhs.term_freq_),
-    field_(rhs.field_),
+    field_(std::move(rhs.field_)),
     fst_(rhs.fst_),
     owner_(rhs.owner_) {
   min_term_ref_ = min_term_;
@@ -1112,7 +1156,6 @@ term_reader::term_reader(term_reader&& rhs)
   rhs.doc_count_ = 0;
   rhs.doc_freq_ = 0;
   rhs.term_freq_ = 0;
-  rhs.field_ = nullptr;
   rhs.fst_ = nullptr;
   rhs.owner_ = nullptr;
 }
@@ -1126,12 +1169,16 @@ seek_term_iterator::ptr term_reader::iterator() const {
 }
   
 bool term_reader::prepare(
-    index_input& meta_in, 
-    std::istream& fst_in, 
-    const field_meta& field, 
+    std::istream& in, 
+    const feature_map_t& feature_map,
     field_reader& owner) {
-
-  // load field metadata
+  // read field metadata
+  index_input& meta_in = *static_cast<input_buf*>(in.rdbuf());
+  field_.name = read_string<std::string>(meta_in);
+  if (!read_field_features(meta_in, feature_map, field_.features)) {
+    return false;
+  }
+  field_.norm = static_cast<field_id>(read_zvlong(meta_in));
   terms_count_ = meta_in.read_vlong();
   doc_count_ = meta_in.read_vlong();
   doc_freq_ = meta_in.read_vlong();
@@ -1139,15 +1186,16 @@ bool term_reader::prepare(
   min_term_ref_ = min_term_;
   max_term_ = read_string<bstring>(meta_in);
   max_term_ref_ = max_term_;
-  if (field.features.check<frequency>()) {
+  if (field_.features.check<frequency>()) {
     frequency* freq = attrs_.add<frequency>();
     freq->value = meta_in.read_vlong();
   }
-  fst_ = vector_byte_fst::Read(fst_in, fst::FstReadOptions());
+  
+  // read fst
+  fst_ = vector_byte_fst::Read(in, fst::FstReadOptions());
   assert(fst_);
 
   owner_ = &owner;
-  field_ = &field;
   return true;
 }
 
@@ -1156,61 +1204,6 @@ NS_END // detail
 /* -------------------------------------------------------------------
 * field_writer
 * ------------------------------------------------------------------*/
-
-/* field_writer::field_meta */
-
-field_writer::field_meta::field_meta(
-  iresearch::bstring&& min_term,
-  iresearch::bstring&& max_term,
-  iresearch::field_id id,
-  uint64_t index_start,
-  uint64_t term_count,
-  size_t doc_count,
-  uint64_t doc_freq,
-  uint64_t term_freq,
-  bool write_freq
-)
-  : min_term(std::move(min_term)),
-    max_term(std::move(max_term)),
-    index_start(index_start),
-    doc_freq(doc_freq),
-    doc_count(doc_count),
-    term_freq(term_freq),
-    term_count(term_count),
-    id(id),
-    write_freq(write_freq) {
-}
-
-field_writer::field_meta::field_meta(field_writer::field_meta&& rhs)
-  : min_term(std::move(rhs.min_term)),
-    max_term(std::move(rhs.max_term)),
-    index_start(rhs.index_start),
-    doc_freq(rhs.doc_freq),
-    doc_count(rhs.doc_count),
-    term_freq(rhs.term_freq),
-    term_count(rhs.term_count),
-    id(rhs.id),
-    write_freq(rhs.write_freq) {
-  rhs.index_start = 0;
-  rhs.doc_freq = 0;
-  rhs.doc_count = 0;
-  rhs.term_freq = 0;
-  rhs.term_count = 0;
-  rhs.id = type_limits<type_t::field_id_t>::invalid();
-  rhs.write_freq = false;
-}
-
-void field_writer::field_meta::write(data_output& out) const {
-  out.write_vint(static_cast<uint32_t>(id));
-  out.write_vlong(term_count);
-  out.write_vlong(doc_count);
-  out.write_vlong(doc_freq);
-  write_string(out, min_term);
-  write_string(out, max_term);
-  if (write_freq) {
-    out.write_vlong(term_freq);
-  }
-}
 
 const string_ref field_writer::FORMAT_TERMS = "block_tree_terms_dict";
 const string_ref field_writer::TERMS_EXT = "tm";
@@ -1459,7 +1452,6 @@ field_writer::~field_writer() { }
 
 void field_writer::prepare( const iresearch::flush_state& state ) {
   // reset writer state
-  fields.clear();
   last_term.clear();
   max_term.clear();
   min_term.first = false;
@@ -1469,29 +1461,30 @@ void field_writer::prepare( const iresearch::flush_state& state ) {
   stats.reset();
   suffix.reset();
   term_count = 0;
-
-  fields.reserve( state.fields_count );
+  fields_count = 0;
 
   // prepare terms and index output
   std::string str;
   detail::prepare_output(str, terms_out, state, TERMS_EXT, FORMAT_TERMS, FORMAT_MAX);
   detail::prepare_output(str, index_out, state, TERMS_INDEX_EXT, FORMAT_TERMS_INDEX, FORMAT_MAX);
+  write_segment_features(*index_out, *state.features);
 
   // prepare postings writer
   pw->prepare(*terms_out, state);
 }
 
 void field_writer::write(
-    iresearch::field_id id,
-    const iresearch::flags& field,
+    const std::string& name,
+    iresearch::field_id norm,
+    const iresearch::flags& features,
     iresearch::term_iterator& terms) {
   REGISTER_TIMER_DETAILED();
-  begin_field(field);
+  begin_field(features);
 
   uint64_t sum_dfreq = 0;
   uint64_t sum_tfreq = 0;
 
-  const bool freq_exists = field.check<frequency>();
+  const bool freq_exists = features.check<frequency>();
   const version10::documents* docs = pw->attributes().get<version10::documents>();
   assert(docs);
 
@@ -1499,7 +1492,7 @@ void field_writer::write(
   attributes attrs;
 
   for (; terms.next();) {
-    auto postings = terms.postings(flags::empty_instance());
+    auto postings = terms.postings(features);
     pw->write(*postings, attrs);
 
     const term_meta* meta = attrs.add<term_meta>();
@@ -1529,7 +1522,7 @@ void field_writer::write(
     }
   }
 
-  end_field(id, field, sum_dfreq, sum_tfreq, docs->value->count());
+  end_field(name, norm, features, sum_dfreq, sum_tfreq, docs->value->count());
 }
 
 void field_writer::begin_field(const iresearch::flags& field) {
@@ -1550,76 +1543,86 @@ void field_writer::begin_field(const iresearch::flags& field) {
   pw->begin_field(field);
 }
 
-void field_writer::end_field(
-    field_id id,
-    const iresearch::flags& field,
-    uint64_t total_doc_freq,
-    uint64_t total_term_freq,
-    size_t doc_count) {
-  assert( terms_out );
-  assert( index_out );
-  using namespace detail;
-
-  if (term_count > 0) {
-    // cause creation of all final blocks
-    push(bytes_ref::nil);
-
-    // write root block with empty prefix
-    write_blocks(0, stack.size());
-
-    assert(1 == stack.size());
-    const entry& root = *stack.begin();
-
-    // build fst
-    assert(fst_buf_);
-    auto& fst = fst_buf_->reset(root.block->index);
-
-    // save fst
-    const size_t index_start = index_out->file_pointer();
-    {
-      output_buf isb(index_out.get());
-      std::ostream os(&isb);
-      fst.Write(os, fst::FstWriteOptions());
-    }
-
-    fields.emplace_back(
-      std::move(min_term.second),
-      std::move(max_term),
-      id,
-      static_cast<uint64_t>(index_start),
-      term_count,
-      doc_count,
-      total_doc_freq,
-      total_term_freq,
-      field.check<frequency>()
-    );
-
-    stack.clear();
+void field_writer::write_segment_features(data_output& out, const flags& features) {
+  out.write_vlong(features.size());
+  feature_map_.clear();
+  feature_map_.reserve(features.size());
+  for (const attribute::type_id* feature : features) {
+    write_string(out, feature->name());
+    feature_map_.emplace(feature, feature_map_.size());
   }
 }
 
-void field_writer::end() {
-  assert( terms_out );
-  assert( index_out );
+void field_writer::write_field_features(data_output& out, const flags& features) const {
+  out.write_vlong(features.size());
+  for (auto feature : features) {
+    auto it = feature_map_.find(*feature);
+    assert(it != feature_map_.end());
+    out.write_vlong(it->second);
+  }
+}
 
-  /* finish postings */
-  pw->end();
+void field_writer::end_field(
+    const std::string& name,
+    field_id norm,
+    const iresearch::flags& features,
+    uint64_t total_doc_freq,
+    uint64_t total_term_freq,
+    size_t doc_count) {
+  assert(terms_out);
+  assert(index_out);
+  using namespace detail;
 
-  const size_t terms_start = terms_out->file_pointer();
-  const size_t index_start = index_out->file_pointer();
-
-  /* finish fields */
-  terms_out->write_vint(static_cast<uint32_t>(fields.size()));
-  for (const field_meta& fm : fields) {
-    fm.write(*terms_out);
-    index_out->write_vlong(fm.index_start);
+  if (!term_count) {
+    // nothing to write
+    return;
   }
 
-  terms_out->write_long(static_cast<uint64_t>(terms_start));
+  // cause creation of all final blocks
+  push(bytes_ref::nil);
+
+  // write root block with empty prefix
+  write_blocks(0, stack.size());
+  assert(1 == stack.size());
+  const entry& root = *stack.begin();
+
+  // build fst
+  assert(fst_buf_);
+  auto& fst = fst_buf_->reset(root.block->index);
+
+  // write field meta
+  write_string(*index_out, name);
+  write_field_features(*index_out, features);
+  write_zvlong(*index_out, norm);
+  index_out->write_vlong(term_count);
+  index_out->write_vlong(doc_count);
+  index_out->write_vlong(total_doc_freq);
+  write_string(*index_out, min_term.second);
+  write_string(*index_out, max_term);
+  if (features.check<frequency>()) {
+    index_out->write_vlong(total_term_freq);
+  }
+
+  // write fst
+  output_buf isb(index_out.get()); // wrap stream to be OpenFST compliant
+  std::ostream os(&isb);
+  fst.Write(os, fst::FstWriteOptions());
+
+  stack.clear();
+  ++fields_count;
+}
+
+void field_writer::end() {
+  assert(terms_out);
+  assert(index_out);
+
+  // finish postings
+  pw->end();
+
   format_utils::write_footer(*terms_out);
   terms_out.reset(); // ensure stream is closed
 
-  index_out->write_long(static_cast<uint64_t>(index_start));
+  index_out->write_long(fields_count);
   format_utils::write_footer(*index_out);
   index_out.reset(); // ensure stream is closed
 }
@@ -1628,118 +1631,151 @@ void field_writer::end() {
 * field_reader
 * ------------------------------------------------------------------*/
 
+template<typename Iterator>
+class field_iterator : public iresearch::field_iterator {
+ public:
+  field_iterator(Iterator begin, Iterator end)
+    : begin_(begin), end_(end) {
+  }
+
+  virtual const iresearch::term_reader& value() const {
+    return *begin_;
+  }
+
+  virtual bool next() {
+    if (begin_ == end_) {
+      return false;
+    }
+
+    ++begin_;
+    return true;
+  }
+
+ private:
+  Iterator begin_;
+  Iterator end_;
+}; // field_iterator
+
 field_reader::field_reader(iresearch::postings_reader::ptr&& pr)
   : pr_(std::move(pr)) {
-  assert( pr_ );
+  assert(pr_);
 }
 
-void field_reader::prepare( const reader_state& state ) {
+bool field_reader::prepare(const reader_state& state) {
   std::string str;
 
+  //-----------------------------------------------------------------
+  // read term index
+  //-----------------------------------------------------------------
+
+  detail::feature_map_t feature_map;
+  flags features;
+
+  // check index header 
+  index_input::ptr index_in;
+  detail::prepare_input(
+    str, index_in, state,
+    field_writer::TERMS_INDEX_EXT,
+    field_writer::FORMAT_TERMS_INDEX,
+    field_writer::FORMAT_MIN,
+    field_writer::FORMAT_MAX
+  );
+
+  if (!detail::read_segment_features(*index_in, feature_map, features)) {
+    return false;
+  }
+
+  // check index checksum
+  format_utils::check_checksum<boost::crc_32_type>(*index_in);
+ 
+  // read total number of indexed fields
+  size_t fields_count{ 0 };
+  {
+    const uint64_t ptr = index_in->file_pointer();
+
+    index_in->seek(
+      index_in->length() - format_utils::FOOTER_LEN - sizeof(uint64_t)
+    );
+
+    fields_count = index_in->read_long();
+    index_in->seek(ptr);
+  }
+
+  input_buf isb(index_in.get());
+  std::istream input(&isb); // wrap stream to be OpenFST compliant
+
+  // read terms for each indexed field
+  fields_.reserve(fields_count);
+  name_to_field_.reserve(fields_count);
+  while (fields_count) {
+    fields_.emplace_back();
+    auto& field = fields_.back();
+
+    if (!field.prepare(input, feature_map, *this)) {
+      fields_.pop_back(); // remove inconsistent field
+      return false;
+    }
+
+    const auto& name = field.meta().name;
+    const auto res = name_to_field_.emplace(
+      make_hashed_ref(string_ref(name), string_ref_hash_t()),
+      &field
+    );
+
+    if (!res.second) {
+      IR_ERROR() << "duplicated field " << name 
+                 << " found in segment " << state.meta->name;
+      return false;
+    }
+
+    --fields_count;
+  }
+
+  // ensure that fields are sorted properly
+  assert(std::is_sorted(
+    fields_.begin(), fields_.end(),
+    [] (const term_reader& lhs, const term_reader& rhs) {
+      return lhs.meta().name < rhs.meta().name;
+  }));
+
+  //-----------------------------------------------------------------
   // prepare terms input
-  {
-    // check term header
-    detail::prepare_input(
-      str, terms_in_, state,
-      field_writer::TERMS_EXT,
-      field_writer::FORMAT_TERMS,
-      field_writer::FORMAT_MIN,
-      field_writer::FORMAT_MAX
-    );
-  
-    // prepare postings reader
-    pr_->prepare(*terms_in_, state);
+  //-----------------------------------------------------------------
 
-    /* Since terms dictionary are too large
-     * it is too costly to verify checksum of
-     * the entire file. Here we perform cheap
-     * error detection which could recognize
-     * some forms of corruption. */
-    format_utils::read_checksum(*terms_in_);
+  // check term header
+  detail::prepare_input(
+    str, terms_in_, state,
+    field_writer::TERMS_EXT,
+    field_writer::FORMAT_TERMS,
+    field_writer::FORMAT_MIN,
+    field_writer::FORMAT_MAX
+  );
 
-    /* seek to term start */
-    terms_in_->seek(
-      terms_in_->length() - format_utils::FOOTER_LEN - sizeof(uint64_t)
-    );
-
-    const uint64_t terms_start = terms_in_->read_long();
-    terms_in_->seek(terms_start);
+  // prepare postings reader
+  if (!pr_->prepare(*terms_in_, state, features)) {
+    return false;
   }
 
-  {
-    /* check index header */
-    index_input::ptr index_in;
-    detail::prepare_input(
-      str, index_in, state,
-      field_writer::TERMS_INDEX_EXT,
-      field_writer::FORMAT_TERMS_INDEX,
-      field_writer::FORMAT_MIN,
-      field_writer::FORMAT_MAX
-    );
+  // Since terms dictionary are too large
+  // it is too expensive to verify checksum of
+  // the entire file. Here we perform cheap
+  // error detection which could recognize
+  // some forms of corruption.
+  format_utils::read_checksum(*terms_in_);
 
-    /* check index checksum */
-    format_utils::check_checksum<boost::crc_32_type>(*index_in);
-    {
-      /* seek to index start */
-      index_in->seek(
-        index_in->length() - format_utils::FOOTER_LEN - sizeof(uint64_t)
-      );
-
-      const uint64_t index_start = index_in->read_long();
-      index_in->seek(index_start);
-    }
-
-    //
-    // There may be stored only fields which are not encountered here
-    // Since we access to field_reader by id, we store pointers to 
-    // indexed fields in separate array of size same as the overall 
-    // number of fields (indexed or stored).
-    //
-    // It's maybe better to sequentially store indexed fields in order
-    // to provide dense field identifiers (and store readers within a
-    // single array), but there are some problems with stored fields 
-    // since when field metadata writes to directory stored document 
-    // headers (which are contains field identifiers for  now) are 
-    // already written.
-    //
-
-    auto fst_in = index_in->clone();
-    input_buf isb(fst_in.get());
-    std::istream input(&isb); // stream for reading fst
-
-    // read terms for each indexed field
-    size_t size = terms_in_->read_vint();
-    fields_.reserve(size);
-    fields_mask_.resize(state.fields->size());
-    while (size) {
-      const field_meta* field = state.fields->find(terms_in_->read_vint());
-
-      if (!field) {
-        throw index_error(); // TODO: corrupted index: no field id
-      }
-
-      fields_.emplace_back();
-      auto& reader = fields_.back();
-
-      fst_in->seek(index_in->read_vlong()); // seek to the beginning of fst for field
-
-      if (!reader.prepare(*terms_in_, input, *field, *this)) {
-        throw index_error(); // TODO: corrupted index
-      }
-
-      fields_mask_[field->id] = &reader;
-
-      --size;
-    }
-  }
+  return true;
 }
 
-const iresearch::term_reader* field_reader::terms(field_id field) const {
-  if (field >= fields_mask_.size()) {
-    return nullptr;
-  }
+const iresearch::term_reader* field_reader::field(const string_ref& field) const {
+  const auto it = name_to_field_.find(make_hashed_ref(field, string_ref_hash_t()));
+  return it == name_to_field_.end() ? nullptr : it->second;
+}
 
-  return fields_mask_[field];
+iresearch::field_iterator::ptr field_reader::iterator() const {
+  const auto* begin = fields_.data() - 1;
+  return iresearch::field_iterator::make<field_iterator<decltype(begin)>>(
+    begin, begin + fields_.size()
+  );
 }
 
 size_t field_reader::size() const {

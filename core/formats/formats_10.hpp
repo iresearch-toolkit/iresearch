@@ -192,58 +192,6 @@ private:
 };
 
 /* -------------------------------------------------------------------
- * field_meta_reader
- * ------------------------------------------------------------------*/
-
-class field_meta_reader final : public iresearch::field_meta_reader{
- public:
-  virtual ~field_meta_reader();
-
-  virtual void prepare(const directory& dir, const string_ref& seg_name) override;
-  virtual size_t begin() override;
-  virtual void read(iresearch::field_meta& meta) override;
-  virtual void end() override;
-
- private:
-  void read_segment_features();
-  void read_field_features(flags& features);
-
-  std::vector<const attribute::type_id*> feature_map_;
-  checksum_index_input<::boost::crc_32_type> in_;
-};
-    
-/* -------------------------------------------------------------------
- * field_meta_writer
- * ------------------------------------------------------------------*/
-
-class field_meta_writer final : public iresearch::field_meta_writer{
- public:
-  static const string_ref FORMAT_EXT;
-  static const string_ref FORMAT_NAME;
-
-  static const int32_t FORMAT_MIN = 0;
-  static const int32_t FORMAT_MAX = FORMAT_MIN;
-
-  virtual ~field_meta_writer();
-
-  virtual void prepare(const flush_state& state) override;
-  virtual void write(
-    field_id id, 
-    const std::string& name, 
-    const flags& features,
-    field_id norm
-  ) override;
-  virtual void end() override;
-
- private:
-  void write_segment_features(const flags& features);
-  void write_field_features(const flags& features) const;
-
-  index_output::ptr out;
-  std::unordered_map<const attribute::type_id*, size_t> feature_map_;
-};
-
-/* -------------------------------------------------------------------
 * postings_writer
 * 
 * Assume that doc_count = 28, skip_n = skip_0 = 12
@@ -380,7 +328,11 @@ class IRESEARCH_PLUGIN postings_writer final: public iresearch::postings_writer 
 
 class IRESEARCH_PLUGIN postings_reader final: public iresearch::postings_reader {
  public:
-  virtual void prepare(index_input& in, const reader_state& state) override;
+  virtual bool prepare(
+    index_input& in, 
+    const reader_state& state, 
+    const flags& features
+  ) override;
 
   virtual void decode(
     data_input& in, 
@@ -421,9 +373,6 @@ class IRESEARCH_PLUGIN format final : public iresearch::format {
 
   virtual document_mask_writer::ptr get_document_mask_writer() const override;
   virtual document_mask_reader::ptr get_document_mask_reader() const override;
-
-  virtual field_meta_reader::ptr get_field_meta_reader() const override;
-  virtual field_meta_writer::ptr get_field_meta_writer() const override;
 
   virtual field_writer::ptr get_field_writer(bool volatile_attributes = false) const override;
   virtual field_reader::ptr get_field_reader() const override;
