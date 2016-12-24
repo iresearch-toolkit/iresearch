@@ -192,7 +192,7 @@ class all_query : public filter::prepared {
   virtual score_doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared&) const override {
-    return score_doc_iterator::make<all_iterator>(rdr.docs_max());
+    return score_doc_iterator::make<all_iterator>(rdr.docs_count());
   }
 };
 

@@ -32,15 +32,15 @@ class IRESEARCH_API segment_reader final : public sub_reader {
     const segment_meta& sm
   );
 
-  using sub_reader::docs_count;
+  using sub_reader::live_docs_count;
 
-  virtual uint64_t docs_count() const override { 
-    return docs_count_;// -docs_mask_.size();
+  virtual uint64_t live_docs_count() const override { 
+    return docs_count_ - docs_mask_.size();
   }
 
   virtual docs_iterator_t::ptr docs_iterator() const override;
 
-  virtual uint64_t docs_max() const override { 
+  virtual uint64_t docs_count() const override { 
     return docs_count_; 
   }
 

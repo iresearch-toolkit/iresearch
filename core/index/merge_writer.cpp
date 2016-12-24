@@ -505,13 +505,13 @@ iresearch::doc_id_t compute_doc_ids(
   iresearch::doc_id_t next_id
 ) {
   // assume not a lot of space wasted if type_limits<type_t::doc_id_t>::min() > 0
-  doc_id_map.resize(reader.docs_max() + iresearch::type_limits<iresearch::type_t::doc_id_t>::min(), MASKED_DOC_ID);
+  doc_id_map.resize(reader.docs_count() + iresearch::type_limits<iresearch::type_t::doc_id_t>::min(), MASKED_DOC_ID);
 
   for (auto docs_itr = reader.docs_iterator(); docs_itr->next(); ++next_id) {
     auto src_doc_id = docs_itr->value();
 
     assert(src_doc_id >= iresearch::type_limits<iresearch::type_t::doc_id_t>::min());
-    assert(src_doc_id < reader.docs_max() + iresearch::type_limits<iresearch::type_t::doc_id_t>::min());
+    assert(src_doc_id < reader.docs_count() + iresearch::type_limits<iresearch::type_t::doc_id_t>::min());
     doc_id_map[src_doc_id] = next_id; // set to next valid doc_id
   }
 

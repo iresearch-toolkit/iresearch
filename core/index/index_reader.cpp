@@ -187,8 +187,8 @@ directory_reader::ptr directory_reader::open(
 
     ctx.reader = segment_reader::open(dir, segment);
     ctx.base = static_cast<doc_id_t>(docs_max);
-    docs_max += ctx.reader->docs_max();
-    docs_count += ctx.reader->docs_count();
+    docs_max += ctx.reader->docs_count();
+    docs_count += ctx.reader->live_docs_count();
     ctx.max = doc_id_t(type_limits<type_t::doc_id_t>::min() + docs_max - 1);
     directory_utils::reference(const_cast<directory&>(dir), segment, visitor, true);
     segment_file_refs.swap(tmp_file_refs);
@@ -248,8 +248,8 @@ void directory_reader::refresh() {
     }
 
     segment_ctx.base = static_cast<doc_id_t>(docs_max);
-    docs_max += segment_ctx.reader->docs_max();
-    docs_count += segment_ctx.reader->docs_count();
+    docs_max += segment_ctx.reader->docs_count();
+    docs_count += segment_ctx.reader->live_docs_count();
     segment_ctx.max = doc_id_t(type_limits<type_t::doc_id_t>::min() + docs_max - 1);
     directory_utils::reference(const_cast<directory&>(dir_), segment, visitor, true);
     segment_file_refs.swap(tmp_file_refs);

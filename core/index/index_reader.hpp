@@ -44,22 +44,22 @@ struct IRESEARCH_API index_reader {
 
   virtual ~index_reader();
 
-  /* number of live documents */
+  // number of live documents
+  virtual uint64_t live_docs_count() const = 0;
+
+  // number of live documents for the specified field
+  virtual uint64_t live_docs_count(const string_ref& field) const = 0;
+
+  // total number of documents including deleted
   virtual uint64_t docs_count() const = 0;
 
-  /* number of live documents for the specified field */
-  virtual uint64_t docs_count(const string_ref& field) const = 0;
-
-  /* maximum number of documents */
-  virtual uint64_t docs_max() const = 0;
-
-  /* first sub-segment */
+  // first sub-segment
   virtual reader_iterator begin() const = 0;
 
-  /* after the last sub-segment */
+  // after the last sub-segment
   virtual reader_iterator end() const = 0;
 
-  /* returns number of sub-segments in current reader */
+  // returns number of sub-segments in current reader
   virtual size_t size() const = 0;
 }; // index_reader
 
@@ -76,15 +76,15 @@ struct IRESEARCH_API sub_reader : index_reader {
 
   CONSTEXPR static const value_visitor_f& noop();
 
-  using index_reader::docs_count;
+  using index_reader::live_docs_count;
 
   // returns number of live documents by the specified field
-  virtual uint64_t docs_count(const string_ref& field) const {
+  virtual uint64_t live_docs_count(const string_ref& field) const {
     const term_reader* rdr = this->field(field);
     return nullptr == rdr ? 0 : rdr->docs_count();
   }
 
-  // returns iterator over the live documents in current segment0
+  // returns iterator over the live documents in current segment
   virtual docs_iterator_t::ptr docs_iterator() const = 0;
 
   virtual field_iterator::ptr fields() const = 0;
@@ -156,18 +156,18 @@ class IRESEARCH_API_TEMPLATE composite_reader : public index_reader {
   }
 
   // number of live documents
-  virtual uint64_t docs_count() const override { return docs_count_; }
-
-  // maximum number of documents
-  virtual uint64_t docs_max() const override { return docs_max_; }
+  virtual uint64_t live_docs_count() const override { return docs_count_; }
 
   // number of live documents for the specified field
-  virtual uint64_t docs_count(const string_ref& field) const {
+  virtual uint64_t live_docs_count(const string_ref& field) const {
     return std::accumulate(ctxs_.begin(), ctxs_.end(), uint64_t(0),
       [&field](uint64_t total, const reader_context& ctx) {
-        return total + ctx.reader->docs_count(field); }
+        return total + ctx.reader->live_docs_count(field); }
     );
   }
+  
+  // maximum number of documents
+  virtual uint64_t docs_count() const override { return docs_max_; }
 
   virtual reader_iterator begin() const {
     return reader_iterator(new iterator_impl(ctxs_.begin()));

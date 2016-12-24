@@ -719,8 +719,8 @@ class index_test_case_base : public tests::index_test_base {
     // read empty index, it should not fail
     {
       auto reader = ir::directory_reader::open(dir(), codec());
+      ASSERT_EQ(0, reader->live_docs_count());
       ASSERT_EQ(0, reader->docs_count());
-      ASSERT_EQ(0, reader->docs_max());
       ASSERT_EQ(0, reader->size());
       ASSERT_EQ(reader->begin(), reader->end());
     }
@@ -748,8 +748,8 @@ class index_test_case_base : public tests::index_test_base {
     // read empty index, it should not fail
     {
       auto reader = ir::directory_reader::open(dir(), codec());
+      ASSERT_EQ(1, reader->live_docs_count());
       ASSERT_EQ(1, reader->docs_count());
-      ASSERT_EQ(1, reader->docs_max());
       ASSERT_EQ(1, reader->size());
       ASSERT_NE(reader->begin(), reader->end());
     }
@@ -793,8 +793,8 @@ class index_test_case_base : public tests::index_test_base {
       // check index, 1 document in 1 segment 
       {
         auto reader = ir::directory_reader::open(dir(), codec());
+        ASSERT_EQ(1, reader->live_docs_count());
         ASSERT_EQ(1, reader->docs_count());
-        ASSERT_EQ(1, reader->docs_max());
         ASSERT_EQ(1, reader->size());
         ASSERT_NE(reader->begin(), reader->end());        
       }
@@ -804,8 +804,8 @@ class index_test_case_base : public tests::index_test_base {
       // check index, 2 documents in 2 segments
       {
         auto reader = ir::directory_reader::open(dir(), codec());
+        ASSERT_EQ(2, reader->live_docs_count());
         ASSERT_EQ(2, reader->docs_count());
-        ASSERT_EQ(2, reader->docs_max());
         ASSERT_EQ(2, reader->size());
         ASSERT_NE(reader->begin(), reader->end());
       }
@@ -902,8 +902,8 @@ class index_test_case_base : public tests::index_test_base {
       // check index, it should be empty 
       {
         auto reader = ir::directory_reader::open(dir(), codec());
+        ASSERT_EQ(0, reader->live_docs_count());
         ASSERT_EQ(0, reader->docs_count());
-        ASSERT_EQ(0, reader->docs_max());
         ASSERT_EQ(0, reader->size());
         ASSERT_EQ(reader->begin(), reader->end());
       }
@@ -1722,8 +1722,8 @@ class index_test_case_base : public tests::index_test_base {
     // check index, it should be empty 
     {
       auto reader = ir::directory_reader::open(dir(), codec());
+      ASSERT_EQ(0, reader->live_docs_count());
       ASSERT_EQ(0, reader->docs_count());
-      ASSERT_EQ(0, reader->docs_max());
       ASSERT_EQ(0, reader->size());
       ASSERT_EQ(reader->begin(), reader->end());
     }

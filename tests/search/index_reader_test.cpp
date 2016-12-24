@@ -55,8 +55,8 @@ TEST(directory_reader_test, open_empty_index) {
   /* open reader */
   auto rdr = ir::directory_reader::open(dir, codec_ptr);
   ASSERT_NE(nullptr, rdr);
-  ASSERT_EQ(0, rdr->docs_max());
-  ASSERT_EQ(0, rdr->docs_count());  
+  ASSERT_EQ(0, rdr->docs_count());
+  ASSERT_EQ(0, rdr->live_docs_count());  
   ASSERT_EQ(0, rdr->size());
   ASSERT_EQ(rdr->end(), rdr->begin());
 }
@@ -216,8 +216,8 @@ TEST(directory_reader_test, open) {
   // open reader
   auto rdr = ir::directory_reader::open(dir, codec_ptr);
   ASSERT_NE(nullptr, rdr);
-  ASSERT_EQ(9, rdr->docs_max());
-  ASSERT_EQ(9, rdr->docs_count());  
+  ASSERT_EQ(9, rdr->docs_count());
+  ASSERT_EQ(9, rdr->live_docs_count());  
   ASSERT_EQ(3, rdr->size());
 
   // check subreaders
@@ -240,8 +240,8 @@ TEST(directory_reader_test, open) {
   {
     ASSERT_NE(rdr->end(), sub);
     ASSERT_EQ(1, sub->size());
-    ASSERT_EQ(3, sub->docs_max());
     ASSERT_EQ(3, sub->docs_count());
+    ASSERT_EQ(3, sub->live_docs_count());
     
     auto values = sub->values("name", visitor);
 
@@ -264,8 +264,8 @@ TEST(directory_reader_test, open) {
     ++sub;
     ASSERT_NE(rdr->end(), sub);
     ASSERT_EQ(1, sub->size());
-    ASSERT_EQ(4, sub->docs_max());
     ASSERT_EQ(4, sub->docs_count());
+    ASSERT_EQ(4, sub->live_docs_count());
     
     auto values = sub->values("name", visitor);
 
@@ -290,8 +290,8 @@ TEST(directory_reader_test, open) {
     ++sub;
     ASSERT_NE(rdr->end(), sub);
     ASSERT_EQ(1, sub->size());
-    ASSERT_EQ(2, sub->docs_max());
     ASSERT_EQ(2, sub->docs_count());
+    ASSERT_EQ(2, sub->live_docs_count());
     
     auto values = sub->values("name", visitor);
 
@@ -386,8 +386,8 @@ TEST(segment_reader_test, open) {
     auto rdr = ir::segment_reader::open(dir, meta);
     ASSERT_NE(nullptr, rdr);
     ASSERT_EQ(1, rdr->size());
-    ASSERT_EQ(meta.docs_count, rdr->docs_max());
     ASSERT_EQ(meta.docs_count, rdr->docs_count());
+    ASSERT_EQ(meta.docs_count, rdr->live_docs_count());
 
     size_t calls_count = 0;
     iresearch::string_ref expected_value;

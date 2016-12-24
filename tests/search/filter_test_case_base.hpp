@@ -301,11 +301,11 @@ class filter_test_case_base : public index_test_base {
 };
 
 struct empty_index_reader : iresearch::singleton<empty_index_reader>, iresearch::index_reader {
+  virtual uint64_t live_docs_count() const { return 0; }
+
+  virtual uint64_t live_docs_count(const iresearch::string_ref& field) const { return 0; }
+
   virtual uint64_t docs_count() const { return 0; }
-
-  virtual uint64_t docs_count(const iresearch::string_ref& field) const { return 0; }
-
-  virtual uint64_t docs_max() const { return 0; }
 
   virtual reader_iterator begin() const { return reader_iterator(); }
 
@@ -343,15 +343,15 @@ struct empty_sub_reader : iresearch::singleton<empty_sub_reader>, iresearch::sub
     return [] (iresearch::doc_id_t) { return false; };
   }
 
-  virtual uint64_t docs_count() const { return 0; }
+  virtual uint64_t live_docs_count() const { return 0; }
 
-  virtual uint64_t docs_count(const iresearch::string_ref&) const { return 0; }
+  virtual uint64_t live_docs_count(const iresearch::string_ref&) const { return 0; }
   
   virtual docs_iterator_t::ptr docs_iterator() const override { 
     return docs_iterator_t::make<empty_docs_iterator>(); 
   }
   
-  virtual uint64_t docs_max() const { return 0; }
+  virtual uint64_t docs_count() const { return 0; }
 
   virtual reader_iterator begin() const { return reader_iterator(); }
 
