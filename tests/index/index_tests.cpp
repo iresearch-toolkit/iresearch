@@ -4573,7 +4573,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     writer->commit();
 
     // defragment segments
-    writer->consolidate(always_merge);
+    writer->consolidate(std::move(always_merge));
     writer->commit();
 
     // validate merged segment 

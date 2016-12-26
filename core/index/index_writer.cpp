@@ -377,7 +377,7 @@ bool index_writer::add_segment_mask_consolidated_records(
   index_meta::index_segment_t& segment,
   const index_meta& meta,
   flush_context& ctx,
-  index_writer::consolidation_policy_t& policy
+  const index_writer::consolidation_policy_t& policy
 ) {
   auto& dir = *(ctx.dir_);
   auto merge = policy(dir, meta);
@@ -439,26 +439,54 @@ bool index_writer::add_segment_mask_consolidated_records(
 }
 
 void index_writer::consolidate(
-  consolidation_policy_t&& policy, bool immediate /*= true*/
+  const consolidation_policy_t& policy, bool immediate /*= true*/
 ) {
-  if (!immediate) {
+  if (immediate) {
+    index_meta::index_segment_t segment;
+    SCOPED_LOCK(commit_lock_); // ensure meta_ segments are not modified
     auto ctx = get_flush_context();
-    SCOPED_LOCK(ctx->mutex_); // lock due to context modification
 
-    ctx->consolidation_policies_.emplace_back(std::move(policy));
+    if (add_segment_mask_consolidated_records(segment, meta_, *ctx, policy)) {
+      SCOPED_LOCK(ctx->mutex_); // lock due to context modification
+      // 0 == merged segments existed before start of tx (all removes apply)
+      ctx->pending_segments_.emplace_back(std::move(segment), 0);
+    }
 
     return;
   }
 
-  index_meta::index_segment_t segment;
-  SCOPED_LOCK(commit_lock_); // ensure meta_ segments are not modified
   auto ctx = get_flush_context();
+  SCOPED_LOCK(ctx->mutex_); // lock due to context modification
 
-  if (add_segment_mask_consolidated_records(segment, meta_, *ctx, policy)) {
-    SCOPED_LOCK(ctx->mutex_); // lock due to context modification
-    // 0 == merged segments existed before start of tx (all removes apply)
-    ctx->pending_segments_.emplace_back(std::move(segment), 0);
+  ctx->consolidation_policies_.emplace_back(policy);
+}
+
+void index_writer::consolidate(
+  const std::shared_ptr<consolidation_policy_t>& policy, bool immediate /*= true*/
+) {
+  if (immediate) {
+    consolidate(*policy, immediate);
+    return;
   }
+
+  auto ctx = get_flush_context();
+  SCOPED_LOCK(ctx->mutex_); // lock due to context modification
+
+  ctx->consolidation_policies_.emplace_back(policy);
+}
+
+void index_writer::consolidate(
+  consolidation_policy_t&& policy, bool immediate /*= true*/
+) {
+  if (immediate) {
+    consolidate(policy, immediate);
+    return;
+  }
+
+  auto ctx = get_flush_context();
+  SCOPED_LOCK(ctx->mutex_); // lock due to context modification
+
+  ctx->consolidation_policies_.emplace_back(std::move(policy));
 }
 
 bool index_writer::import(const index_reader& reader) {
@@ -713,7 +741,7 @@ index_writer::flush_context::ptr index_writer::flush_all() {
     auto& segment = ctx->meta_.segments_.back();
 
     // remove empty segments
-    if (!add_segment_mask_consolidated_records(segment, ctx->meta_, *ctx, policy) ||
+    if (!add_segment_mask_consolidated_records(segment, ctx->meta_, *ctx, *(policy.policy)) ||
         !segment.meta.docs_count) {
       ctx->meta_.segments_.pop_back();
       continue;
