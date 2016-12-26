@@ -26,6 +26,7 @@ NS_BEGIN(type_t)
 struct address_t {};
 struct doc_id_t {};
 struct field_id_t {};
+struct index_gen_t {};
 struct pos_t {};
 struct term_id_t {};
 
@@ -61,6 +62,13 @@ template<> struct type_limits<type_t::field_id_t> {
     return integer_traits<field_id>::const_max; 
   }
   CONSTEXPR static bool valid(field_id id) { return invalid() != id; }
+};
+
+template<> struct type_limits<type_t::index_gen_t> {
+  CONSTEXPR static const uint64_t invalid() {
+    return integer_traits<field_id>::const_max;
+  }
+  CONSTEXPR static bool valid(uint64_t id) { return invalid() != id; }
 };
 
 template<> struct type_limits<type_t::pos_t> {

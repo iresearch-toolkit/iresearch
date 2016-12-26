@@ -87,10 +87,7 @@ TEST(index_meta_tests, ctor) {
   iresearch::index_meta meta;
   EXPECT_EQ(0, meta.counter());
   EXPECT_EQ(0, meta.size());
-  EXPECT_EQ(
-    static_cast<uint64_t>(iresearch::index_meta::INVALID_GEN),
-    meta.generation()
-  );
+  EXPECT_EQ(type_limits<type_t::index_gen_t>::invalid(), meta.generation());
 }
 
 TEST(index_meta_tests, last_generation) {

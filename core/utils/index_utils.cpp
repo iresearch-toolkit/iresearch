@@ -18,10 +18,10 @@ namespace {
 NS_ROOT
 NS_BEGIN(index_utils)
 
-index_writer::defragment_policy_t defragment_bytes(float byte_threshold /*= 0*/) {
+index_writer::consolidation_policy_t consolidate_bytes(float byte_threshold /*= 0*/) {
   return [byte_threshold](
     const directory& dir, const index_meta& meta
-  )->index_writer::defragment_acceptor_t {
+  )->index_writer::consolidation_acceptor_t {
     size_t all_segment_bytes_size = 0;
     size_t segment_count = meta.size();
     uint64_t length;
@@ -53,10 +53,10 @@ index_writer::defragment_policy_t defragment_bytes(float byte_threshold /*= 0*/)
   };
 }
 
-index_writer::defragment_policy_t defragment_bytes_accum(float byte_threshold /*= 0*/) {
+index_writer::consolidation_policy_t consolidate_bytes_accum(float byte_threshold /*= 0*/) {
   return [byte_threshold](
     const directory& dir, const index_meta& meta
-  )->index_writer::defragment_acceptor_t {
+  )->index_writer::consolidation_acceptor_t {
     size_t all_segment_bytes_size = 0;
     uint64_t length;
 
@@ -97,10 +97,10 @@ index_writer::defragment_policy_t defragment_bytes_accum(float byte_threshold /*
   };
 }
 
-index_writer::defragment_policy_t defragment_count(float docs_threshold /*= 0*/) {
+index_writer::consolidation_policy_t consolidate_count(float docs_threshold /*= 0*/) {
   return [docs_threshold](
     const directory& dir, const index_meta& meta
-  )->index_writer::defragment_acceptor_t {
+  )->index_writer::consolidation_acceptor_t {
     size_t all_segment_docs_count = 0;
     size_t segment_count = meta.size();
 
@@ -128,10 +128,10 @@ index_writer::defragment_policy_t defragment_count(float docs_threshold /*= 0*/)
   };
 }
 
-index_writer::defragment_policy_t defragment_fill(float fill_threshold /*= 0*/) {
+index_writer::consolidation_policy_t consolidate_fill(float fill_threshold /*= 0*/) {
   return [fill_threshold](
     const directory& dir, const index_meta& /*meta*/
-  )->index_writer::defragment_acceptor_t {
+  )->index_writer::consolidation_acceptor_t {
     auto threshold = std::max<float>(0, std::min<float>(1, fill_threshold));
 
     // merge segment if: {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})

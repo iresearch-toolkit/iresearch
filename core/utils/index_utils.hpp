@@ -18,16 +18,16 @@ NS_ROOT
 NS_BEGIN(index_utils)
 
 // merge segment if: {threshold} > segment_bytes / (all_segment_bytes / #segments)
-IRESEARCH_API index_writer::defragment_policy_t defragment_bytes(float byte_threshold = 0);
+IRESEARCH_API index_writer::consolidation_policy_t consolidate_bytes(float byte_threshold = 0);
 
 // merge segment if: {threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes
-IRESEARCH_API index_writer::defragment_policy_t defragment_bytes_accum(float byte_threshold = 0);
+IRESEARCH_API index_writer::consolidation_policy_t consolidate_bytes_accum(float byte_threshold = 0);
 
 // merge segment if: {threshold} > segment_docs{valid} / (all_segment_docs{valid} / #segments)
-IRESEARCH_API index_writer::defragment_policy_t defragment_count(float docs_threshold = 0);
+IRESEARCH_API index_writer::consolidation_policy_t consolidate_count(float docs_threshold = 0);
 
 // merge segment if: {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})
-IRESEARCH_API index_writer::defragment_policy_t defragment_fill(float fill_threshold = 0);
+IRESEARCH_API index_writer::consolidation_policy_t consolidate_fill(float fill_threshold = 0);
 
 void read_document_mask(
   iresearch::document_mask& docs_mask,

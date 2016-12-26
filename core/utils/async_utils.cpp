@@ -11,6 +11,7 @@
 
 #include <cassert>
 
+#include "log.hpp"
 #include "thread_utils.hpp"
 #include "async_utils.hpp"
 
@@ -303,7 +304,7 @@ void thread_pool::run() {
       try {
         fn();
       } catch (...) {
-        // NOOP
+        IR_EXCEPTION();
       }
 
       lock.lock();

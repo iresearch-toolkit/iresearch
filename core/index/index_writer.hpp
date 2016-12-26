@@ -74,10 +74,10 @@ class IRESEARCH_API index_writer : util::noncopyable {
 
   static const size_t THREAD_COUNT = 8;
 
-  typedef std::function<bool(const segment_meta& meta)> defragment_acceptor_t;
-  typedef std::function<defragment_acceptor_t(
+  typedef std::function<bool(const segment_meta& meta)> consolidation_acceptor_t;
+  typedef std::function<consolidation_acceptor_t(
     const directory& dir, const index_meta& meta
-  )> defragment_policy_t;
+  )> consolidation_policy_t;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief name of the lock for index repository 
@@ -272,8 +272,35 @@ class IRESEARCH_API index_writer : util::noncopyable {
   ///        a new segment. Frees the space occupied by the doucments marked 
   ///        as deleted and deduplicate terms.
   /// @param policy the speicified defragmentation policy
+  /// @param immediate apply the policy immediately but only to previously
+  ///        committed segments, or defer defragment until the commit stage
+  ///        and apply the policy to all segments in the commit
   ////////////////////////////////////////////////////////////////////////////
-  void defragment(const defragment_policy_t& policy);
+  void consolidate(const consolidation_policy_t& policy, bool immediate = true);
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// @brief merges segments accepted by the specified defragment policty into
+  ///        a new segment. Frees the space occupied by the doucments marked 
+  ///        as deleted and deduplicate terms.
+  /// @param policy the speicified defragmentation policy
+  /// @param immediate apply the policy immediately but only to previously
+  ///        committed segments, or defer defragment until the commit stage
+  ///        and apply the policy to all segments in the commit
+  ////////////////////////////////////////////////////////////////////////////
+  void consolidate(
+    const std::shared_ptr<consolidation_policy_t>& policy, bool immediate = true
+  );
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// @brief merges segments accepted by the specified defragment policty into
+  ///        a new segment. Frees the space occupied by the doucments marked 
+  ///        as deleted and deduplicate terms.
+  /// @param policy the speicified defragmentation policy
+  /// @param immediate apply the policy immediately but only to previously
+  ///        committed segments, or defer defragment until the commit stage
+  ///        and apply the policy to all segments in the commit
+  ////////////////////////////////////////////////////////////////////////////
+  void consolidate(consolidation_policy_t&& policy, bool immediate = true);
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief imports index from the specified index reader into new segment
@@ -321,20 +348,41 @@ class IRESEARCH_API index_writer : util::noncopyable {
     empty();
   };
 
+  struct consolidation_context {
+    consolidation_policy_t buf; // policy buffer for moved policies (private use)
+    std::shared_ptr<const consolidation_policy_t> policy; // keep a handle to the policy for the case when this object has ownership
+    consolidation_context(const consolidation_policy_t& consolidation_policy)
+      : policy(&consolidation_policy, [](const consolidation_policy_t*)->void{}) {}
+    consolidation_context(const std::shared_ptr<consolidation_policy_t>& consolidation_policy)
+      : policy(consolidation_policy) {}
+    consolidation_context(consolidation_policy_t&& consolidation_policy)
+      : buf(std::move(consolidation_policy)) {
+      policy.reset(&buf, [](const consolidation_policy_t*)->void{});
+    }
+    consolidation_context(consolidation_context&& other) {
+      if (&other.buf == other.policy.get()) {
+        buf = std::move(other.buf);
+        policy.reset(&buf, [](const consolidation_policy_t*)->void{});
+      } else {
+        policy = std::move(other.policy);
+      }
+    }
+    consolidation_context& operator=(const consolidation_context& other) = delete; // no default constructor
+  }; // consolidation_context
+
   struct modification_context {
-    const iresearch::filter* filter; // use a pointer because std::vector preallocates memory before use
+    std::shared_ptr<const iresearch::filter> filter; // keep a handle to the filter for the case when this object has ownership
     const size_t generation;
     const bool update; // this is an update modification (as opposed to remove)
     bool seen;
-    std::shared_ptr<iresearch::filter> ptr; // keep a handle to the filter for the case when this object has ownership (private use)
-    modification_context(const iresearch::filter& match_filter, size_t gen, bool isUpdate):
-      filter(&match_filter), generation(gen), update(isUpdate), seen(false) {}
-    modification_context(const std::shared_ptr<iresearch::filter>& match_filter, size_t gen, bool isUpdate):
-      filter(match_filter.get()), generation(gen), update(isUpdate), seen(false), ptr(match_filter) {}
-    modification_context(iresearch::filter::ptr&& match_filter, size_t gen, bool isUpdate):
-      filter(match_filter.get()), generation(gen), update(isUpdate), seen(false), ptr(std::move(match_filter)) {}
-    modification_context(modification_context&& other):
-      filter(other.filter), generation(other.generation), update(other.update), seen(other.seen), ptr(std::move(other.ptr)) {}
+    modification_context(const iresearch::filter& match_filter, size_t gen, bool isUpdate)
+      : filter(&match_filter, [](const iresearch::filter*)->void{}), generation(gen), update(isUpdate), seen(false) {}
+    modification_context(const std::shared_ptr<iresearch::filter>& match_filter, size_t gen, bool isUpdate)
+      : filter(match_filter), generation(gen), update(isUpdate), seen(false) {}
+    modification_context(iresearch::filter::ptr&& match_filter, size_t gen, bool isUpdate)
+      : filter(std::move(match_filter)), generation(gen), update(isUpdate), seen(false) {}
+    modification_context(modification_context&& other)
+      : filter(std::move(other.filter)), generation(other.generation), update(other.update), seen(other.seen) {}
     modification_context& operator=(const modification_context& other) = delete; // no default constructor
   }; // modification_context
 
@@ -350,14 +398,17 @@ class IRESEARCH_API index_writer : util::noncopyable {
   }; // import_context
 
   typedef std::unordered_map<std::string, segment_reader::ptr> cached_readers_t;
+  typedef std::vector<consolidation_context> consolidation_requests_t;
   typedef std::vector<modification_context> modification_requests_t;
 
   struct flush_context {
     typedef std::vector<import_context> imported_segments_t;
+    typedef std::unordered_set<string_ref> segment_mask_t;
     typedef bounded_object_pool<segment_writer> segment_writers_t;
     typedef std::vector<std::reference_wrapper<const std::string>> sync_context_t; // file names to be synced during next commit
     DECLARE_SPTR(flush_context);
 
+    consolidation_requests_t consolidation_policies_; // sequential list of segment merge policies to apply at the end of commit to all segments
     std::atomic<size_t> generation_; // current modification/update generation
     ref_tracking_directory::ptr dir_; // ref tracking directory used by this context (tracks all/only refs for this context)
     async_utils::read_write_mutex flush_mutex_; // guard for the current context during flush (write) operations vs update (read)
@@ -366,6 +417,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
     std::mutex mutex_; // guard for the current context during struct update operations, e.g. modification_queries_, pending_segments_
     flush_context* next_context_; // the next context to switch to
     imported_segments_t pending_segments_; // complete segments to be added during next commit (import)
+    segment_mask_t segment_mask_; // set of segment names to be removed from the index upon commit (refs at strings in index_writer::meta_)
     sync_context_t to_sync_; // file names to be synced during next commit
     segment_writers_t writers_pool_; // per thread segment writers
 
@@ -381,7 +433,10 @@ class IRESEARCH_API index_writer : util::noncopyable {
     index_meta::ptr&& commited_meta
   ) NOEXCEPT;
 
-  segment_reader& get_segment_reader(const segment_meta& meta);
+  // on open failure returns an empty pointer
+  // function access controlled by commit_lock_ since only used in
+  // flush_all(...) and defragment(...)
+  segment_reader::ptr get_segment_reader(const segment_meta& meta);
 
   bool add_document_mask_modified_records(
     modification_requests_t& requests, 
@@ -401,6 +456,13 @@ class IRESEARCH_API index_writer : util::noncopyable {
     segment_writer& writer,
     const segment_meta& meta
   ); // return if any new records were added (modification_queries_ modified)
+
+  bool add_segment_mask_consolidated_records(
+    index_meta::index_segment_t& segment,
+    const index_meta& meta, // already locked for read of segment meta
+    flush_context& ctx, // already locked for modification of internal structures
+    const index_writer::consolidation_policy_t& policy
+  ); // return if any new records were added (pending_segments_/segment_mask_ modified)
 
   flush_context::ptr flush_all();
 
@@ -424,13 +486,12 @@ class IRESEARCH_API index_writer : util::noncopyable {
   std::atomic<flush_context*> flush_context_; // currently active context accumulating data to be processed during the next flush
   index_meta meta_; // index metadata
   cached_readers_t cached_segment_readers_; // readers by segment name
-  std::mutex commit_lock_; // guard for cached_segment_readers_, commit_pool_
-  std::mutex meta_lock_; // guard for meta_ (all members except seg_counter_ which in can be only incremented)
+  std::mutex commit_lock_; // guard for cached_segment_readers_, commit_pool_, meta_ (modification during commit()/defragment())
   index_meta::ptr commited_meta_; // last successfully committed meta 
   index_lock::ptr write_lock_; // exclusive write lock for directory
   format::ptr codec_;
   directory& dir_; // directory used for initialization of readers
-  file_refs_t file_refs_;
+  file_refs_t file_refs_; // file refs for the commited_meta_
   index_meta_writer::ptr writer_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // index_writer
