@@ -3873,7 +3873,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     const auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
     ASSERT_EQ(1, segment.docs_count()); // total count of documents
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -3963,7 +3963,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(1, segment.docs_count()); // total count of documents
     auto values = segment.values("name", visitor);
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -4130,7 +4130,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count()); // total count of documents
     auto values = segment.values("name", visitor);
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -4183,7 +4183,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count()); // total count of documents
     auto values = segment.values("name", visitor);
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -4353,7 +4353,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(3, segment.docs_count()); // total count of documents
     auto values = segment.values("name", visitor);
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
@@ -4495,7 +4495,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     auto values = segment.values("name", visitor);
     auto upper_case_values = segment.values("NAME", visitor);
 
-    auto terms = segment.terms("same");
+    auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());

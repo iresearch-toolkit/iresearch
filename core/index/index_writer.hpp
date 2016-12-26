@@ -342,7 +342,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
     const string_ref& name() const { return string_ref::nil; }
     bool write(data_output&) const { return false; }
 
-    static empty* instance() { return nullptr; }
+    CONSTEXPR static empty* instance() { return nullptr; }
 
    private:
     empty();
