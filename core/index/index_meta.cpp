@@ -69,18 +69,18 @@ index_meta::index_meta()
     seg_counter_(0) {
 }
 index_meta::index_meta(const index_meta& rhs)
-  : segments_(rhs.segments_),
-    seg_counter_(rhs.seg_counter_.load()),
-    gen_(rhs.gen_),
+  : gen_(rhs.gen_),
     last_gen_(rhs.last_gen_),
+    segments_(rhs.segments_),
+    seg_counter_(rhs.seg_counter_.load()),
     pending_(rhs.pending_) {
 }
 
 index_meta::index_meta(index_meta&& rhs)
-  : segments_(std::move(rhs.segments_)),
-    seg_counter_(rhs.seg_counter_.load()),
-    gen_(std::move(rhs.gen_)),
+  : gen_(std::move(rhs.gen_)),
     last_gen_(std::move(rhs.last_gen_)),
+    segments_(std::move(rhs.segments_)),
+    seg_counter_(rhs.seg_counter_.load()),
     pending_(std::move(rhs.pending_)) {
 }
 

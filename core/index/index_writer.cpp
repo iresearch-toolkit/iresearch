@@ -302,7 +302,7 @@ bool index_writer::add_document_mask_modified_records(
 
   auto& doc_id_generation = writer.docs_context();
   bool modified = false;
-  auto& rdr = get_segment_reader(meta);
+  auto rdr = get_segment_reader(meta);
 
   if (!rdr) {
     throw index_error(); // failed to open segment
