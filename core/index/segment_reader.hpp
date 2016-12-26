@@ -16,6 +16,7 @@
 #include "index/field_meta.hpp"
 #include "formats/formats.hpp"
 #include "utils/iterator.hpp"
+#include "utils/hash_utils.hpp"
 
 NS_ROOT
 
@@ -32,7 +33,7 @@ class IRESEARCH_API segment_reader final : public sub_reader {
     const segment_meta& sm
   );
 
-  using sub_reader::live_docs_count;
+  using sub_reader::docs_count;
 
   virtual uint64_t live_docs_count() const override { 
     return docs_count_ - docs_mask_.size();
@@ -50,9 +51,9 @@ class IRESEARCH_API segment_reader final : public sub_reader {
 
   virtual const term_reader* field(const string_ref& field) const override;
   
-  virtual const columns_meta& columns() const override { 
-    return columns_; 
-  }
+  virtual column_iterator::ptr columns() const override;
+
+  virtual const column_meta* column(const string_ref& name) const override;
   
   using iresearch::sub_reader::values;
   
@@ -103,13 +104,15 @@ class IRESEARCH_API segment_reader final : public sub_reader {
   segment_reader() = default;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
+  std::vector<column_meta> columns_;
+  std::vector<column_meta*> id_to_column_;
+  std::unordered_map<hashed_string_ref, column_meta*> name_to_column_;
   struct {
     const directory* dir;
     uint64_t version;
   } dir_state_;
   uint64_t docs_count_;
   document_mask docs_mask_;
-  columns_meta columns_;
   field_reader::ptr fr_;
   columnstore_reader::ptr csr_;
   IRESEARCH_API_PRIVATE_VARIABLES_END

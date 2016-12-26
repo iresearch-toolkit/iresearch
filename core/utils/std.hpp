@@ -17,8 +17,33 @@
 
 NS_ROOT
 
-NS_BEGIN( irstd )
+NS_BEGIN(irstd)
 
+// helper for prior C++17 compilers
+template<typename Container, typename... Args>
+FORCE_INLINE std::pair<typename Container::iterator, bool> try_emplace(
+    Container& cont,
+    const typename Container::key_type& key,
+    Args&&... args) {
+#if (defined(_MSC_VER) && _MSC_VER >= 1900) || defined(__GNUC__)
+
+  return cont.try_emplace(key, std::forward<Args>(args)...);
+
+#else
+
+  const auto it = cont.find(key);
+  if (it != cont.end()) {
+    return{ it, false };
+  }
+
+  return cont.emplace(
+    std::piecewise_construct,
+    std::forward_as_tuple(key),
+    std::forward_as_tuple(std::forward<Args>(args)...)
+  );
+
+#endif
+}
 
 // converts reverse iterator to corresponding forward iterator
 // the function does not accept containers "end"

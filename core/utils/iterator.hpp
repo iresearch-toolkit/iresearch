@@ -34,6 +34,33 @@ struct IRESEARCH_API_TEMPLATE iterator {
   virtual bool next() = 0;
 };
 
+template<typename Iterator, typename Base>
+class iterator_adapter : public Base {
+ public:
+  typedef decltype(*Iterator()) value_type;
+
+  iterator_adapter(Iterator begin, Iterator end)
+    : begin_(begin), end_(end) {
+  }
+
+  virtual value_type value() const {
+    return *begin_;
+  }
+
+  virtual bool next() {
+    if (begin_ == end_) {
+      return false;
+    }
+
+    ++begin_;
+    return true;
+  }
+
+ private:
+  Iterator begin_;
+  Iterator end_;
+}; // field_iterator
+
 // ----------------------------------------------------------------------------
 // --SECTION--                                              C++ style iterators 
 // ----------------------------------------------------------------------------

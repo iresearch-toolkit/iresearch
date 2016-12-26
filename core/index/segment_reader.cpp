@@ -65,10 +65,12 @@ class masked_docs_iterator
 };
 
 bool read_columns_meta(
-    iresearch::columns_meta& meta, 
     const iresearch::format& codec, 
     const iresearch::directory& dir,
-    const std::string& name) {
+    const std::string& name,
+    std::vector<iresearch::column_meta>& columns,
+    std::vector<iresearch::column_meta*>& id_to_column,
+    std::unordered_map<iresearch::hashed_string_ref, iresearch::column_meta*>& name_to_column) {
   auto reader = codec.get_column_meta_reader();
 
   iresearch::field_id count = 0;
@@ -76,20 +78,53 @@ bool read_columns_meta(
     return false;
   }
 
-  iresearch::columns_meta::items_t columns;
   columns.reserve(count);
+  id_to_column.resize(count);
+  name_to_column.reserve(count);
   for (iresearch::column_meta meta; reader->read(meta);) {
     columns.emplace_back(std::move(meta));
+
+    auto& column = columns.back();
+    id_to_column[column.id] = &column;
+    
+    const auto res = name_to_column.emplace(
+      iresearch::make_hashed_ref(iresearch::string_ref(column.name), iresearch::string_ref_hash_t()),
+      &column
+    );
+
+    if (!res.second) {
+      // duplicate field
+      return false;
+    }
   }
 
-  meta = iresearch::columns_meta(std::move(columns));
+  assert(std::is_sorted(
+    columns.begin(), columns.end(),
+    [] (const iresearch::column_meta& lhs, const iresearch::column_meta& rhs) {
+      return lhs.name < rhs.name;
+  }));
+
   return true;
 }
+
+iresearch::sub_reader::value_visitor_f NOOP_VISITOR =
+  [] (iresearch::doc_id_t) { return false; };
 
 NS_END // NS_LOCAL
 
 NS_ROOT
 
+column_iterator::ptr segment_reader::columns() const {
+  const auto* begin = columns_.data() - 1;
+  return column_iterator::make<iterator_adapter<decltype(begin), column_iterator>>(
+    begin, begin + columns_.size()
+  );
+}
+
+const column_meta* segment_reader::column(const string_ref& name) const {
+  const auto it = name_to_column_.find(make_hashed_ref(name, string_ref_hash_t()));
+  return it == name_to_column_.end() ? nullptr : it->second;
+}
 
 field_iterator::ptr segment_reader::fields() const {
   return fr_->iterator();
@@ -103,7 +138,7 @@ sub_reader::value_visitor_f segment_reader::values(
     field_id field,
     const columnstore_reader::value_reader_f& value_reader) const {
   if (!csr_) {
-    return noop();
+    return NOOP_VISITOR;
   }
 
   auto column = csr_->values(field);
@@ -162,7 +197,10 @@ segment_reader::ptr segment_reader::open(
     rdr->csr_ = std::move(csr);
   }
     
-  read_columns_meta(rdr->columns_, codec, dir, seg.name);
+  read_columns_meta(
+    codec, dir, seg.name, 
+    rdr->columns_, rdr->id_to_column_, rdr->name_to_column_
+  );
     
   return rdr;
 }

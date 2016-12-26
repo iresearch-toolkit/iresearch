@@ -165,20 +165,14 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
   {
     auto& segment = (*reader)[0];
 
-    auto& columns = segment.columns();
-    ASSERT_EQ(2, columns.size());
-
-    auto begin = columns.begin();
-    auto end = columns.end();
-    ASSERT_NE(begin, end);
-    ASSERT_EQ("doc_int", begin->name);
-    ASSERT_EQ(0, begin->id);
-    ++begin;
-    ASSERT_NE(begin, end);
-    ASSERT_EQ("doc_string", begin->name);
-    ASSERT_EQ(1, begin->id);
-    ++begin;
-    ASSERT_EQ(begin, end);
+    auto columns = segment.columns();
+    ASSERT_TRUE(columns->next());
+    ASSERT_EQ("doc_int", columns->value().name);
+    ASSERT_EQ(0, columns->value().id);
+    ASSERT_TRUE(columns->next());
+    ASSERT_EQ("doc_string", columns->value().name);
+    ASSERT_EQ(1, columns->value().id);
+    ASSERT_FALSE(columns->next());
 
     // check 'doc_int' column
     {
@@ -207,7 +201,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       };
 
       // read values for 'doc_int'
-      auto* meta = columns.find("doc_int");
+      auto* meta = segment.column("doc_int");
       ASSERT_NE(nullptr, meta);
       ASSERT_TRUE(segment.visit(meta->id, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
@@ -240,7 +234,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       };
 
       // read values for 'doc_string'
-      auto* meta = columns.find("doc_string");
+      auto* meta = segment.column("doc_string");
       ASSERT_NE(nullptr, meta);
       ASSERT_TRUE(segment.visit(meta->id, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
@@ -254,7 +248,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
         return true;
       };
 
-      ASSERT_EQ(nullptr, columns.find("invalid_column"));
+      ASSERT_EQ(nullptr, segment.column("invalid_column"));
       ASSERT_FALSE(
         segment.visit(iresearch::type_limits<iresearch::type_t::field_id_t>::invalid(), reader)
       );
@@ -266,24 +260,17 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
   {
     auto& segment = (*reader)[1];
 
-    auto& columns = segment.columns();
-    ASSERT_EQ(3, columns.size());
-
-    auto begin = columns.begin();
-    auto end = columns.end();
-    ASSERT_NE(begin, end);
-    ASSERT_EQ("another_column", begin->name);
-    ASSERT_EQ(2, begin->id);
-    ++begin;
-    ASSERT_NE(begin, end);
-    ASSERT_EQ("doc_int", begin->name);
-    ASSERT_EQ(1, begin->id);
-    ++begin;
-    ASSERT_NE(begin, end);
-    ASSERT_EQ("doc_string", begin->name);
-    ASSERT_EQ(0, begin->id);
-    ++begin;
-    ASSERT_EQ(begin, end);
+    auto columns = segment.columns();
+    ASSERT_TRUE(columns->next());
+    ASSERT_EQ("another_column", columns->value().name);
+    ASSERT_EQ(2, columns->value().id);
+    ASSERT_TRUE(columns->next());
+    ASSERT_EQ("doc_int", columns->value().name);
+    ASSERT_EQ(1, columns->value().id);
+    ASSERT_TRUE(columns->next());
+    ASSERT_EQ("doc_string", columns->value().name);
+    ASSERT_EQ(0, columns->value().id);
+    ASSERT_FALSE(columns->next());
 
     // check 'doc_int' column
     {
@@ -311,7 +298,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       };
 
       // read values for 'doc_int'
-      auto* meta = columns.find("doc_int");
+      auto* meta = segment.column("doc_int");
       ASSERT_NE(nullptr, meta);
       ASSERT_TRUE(segment.visit(meta->id, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
@@ -344,7 +331,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       };
 
       // read values for 'doc_string'
-      auto* meta = columns.find("doc_string");
+      auto* meta = segment.column("doc_string");
       ASSERT_NE(nullptr, meta);
       ASSERT_TRUE(segment.visit(meta->id, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
@@ -376,7 +363,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       };
 
       // read values for 'another_column'
-      auto* meta = columns.find("another_column");
+      auto* meta = segment.column("another_column");
       ASSERT_NE(nullptr, meta);
       ASSERT_TRUE(segment.visit(meta->id, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
@@ -390,7 +377,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
         return true;
       };
 
-      ASSERT_EQ(nullptr, columns.find("invalid_column"));
+      ASSERT_EQ(nullptr, segment.column("invalid_column"));
       ASSERT_FALSE(
         segment.visit(iresearch::type_limits<iresearch::type_t::field_id_t>::invalid(), reader)
       );
@@ -409,19 +396,14 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
     auto segment = iresearch::segment_reader::open(dir, meta);
     ASSERT_EQ(3, segment->docs_count());
 
-    auto& columns = segment->columns();
-    ASSERT_EQ(2, columns.size());
-    auto begin = columns.begin();
-    auto end = columns.end();
-    ASSERT_NE(begin, end);
-    ASSERT_EQ("doc_int", begin->name);
-    ASSERT_EQ(0, begin->id); // 0 since 'doc_int' < 'doc_string'
-    ++begin;
-    ASSERT_NE(begin, end);
-    ASSERT_EQ("doc_string", begin->name);
-    ASSERT_EQ(1, begin->id);
-    ++begin;
-    ASSERT_EQ(begin, end);
+    auto columns = segment->columns();
+    ASSERT_TRUE(columns->next());
+    ASSERT_EQ("doc_int", columns->value().name);
+    ASSERT_EQ(0, columns->value().id); // 0 since 'doc_int' < 'doc_string'
+    ASSERT_TRUE(columns->next());
+    ASSERT_EQ("doc_string", columns->value().name);
+    ASSERT_EQ(1, columns->value().id);
+    ASSERT_FALSE(columns->next());
     
     // check 'doc_int' column
     {
@@ -453,7 +435,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       };
 
       // read values for 'doc_int'
-      auto* meta = columns.find("doc_int");
+      auto* meta = segment->column("doc_int");
       ASSERT_NE(nullptr, meta);
       ASSERT_TRUE(segment->visit(meta->id, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
@@ -489,7 +471,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       };
 
       // read values for 'doc_string'
-      auto* meta = columns.find("doc_string");
+      auto* meta = segment->column("doc_string");
       ASSERT_NE(nullptr, meta);
       ASSERT_TRUE(segment->visit(meta->id, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
@@ -503,7 +485,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
         return true;
       };
 
-      ASSERT_EQ(nullptr, columns.find("another_column"));
+      ASSERT_EQ(nullptr, segment->column("another_column"));
       ASSERT_FALSE(segment->visit(2, reader));
       ASSERT_EQ(0, calls_count);
     }
@@ -581,20 +563,15 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
   {
     auto& segment = (*reader)[0];
 
-    auto& columns = segment.columns();
-    ASSERT_EQ(2, columns.size());
-
-    auto begin = columns.begin();
-    auto end = columns.end();
-    ASSERT_NE(begin, end);
-    ASSERT_EQ("doc_int", begin->name);
-    ASSERT_EQ(0, begin->id);
-    ++begin;
-    ASSERT_NE(begin, end);
-    ASSERT_EQ("doc_string", begin->name);
-    ASSERT_EQ(1, begin->id);
-    ++begin;
-    ASSERT_EQ(begin, end);
+    auto columns = segment.columns();
+    ASSERT_TRUE(columns->next());
+    ASSERT_EQ("doc_int", columns->value().name);
+    ASSERT_EQ(0, columns->value().id);
+    ASSERT_TRUE(columns->next());
+    ASSERT_EQ("doc_string", columns->value().name);
+    ASSERT_EQ(1, columns->value().id);
+    ASSERT_FALSE(columns->next());
+    ASSERT_FALSE(columns->next());
 
     // check 'doc_int' column
     {
@@ -623,7 +600,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       };
 
       // read values for 'doc_int'
-      auto* meta = columns.find("doc_int");
+      auto* meta = segment.column("doc_int");
       ASSERT_NE(nullptr, meta);
       ASSERT_TRUE(segment.visit(meta->id, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
@@ -656,7 +633,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       };
 
       // read values for 'doc_string'
-      auto* meta = columns.find("doc_string");
+      auto* meta = segment.column("doc_string");
       ASSERT_NE(nullptr, meta);
       ASSERT_TRUE(segment.visit(meta->id, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
@@ -670,7 +647,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
         return true;
       };
 
-      ASSERT_EQ(nullptr, columns.find("invalid_column"));
+      ASSERT_EQ(nullptr, segment.column("invalid_column"));
       ASSERT_FALSE(
         segment.visit(iresearch::type_limits<iresearch::type_t::field_id_t>::invalid(), reader)
       );
@@ -682,20 +659,14 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
   {
     auto& segment = (*reader)[1];
 
-    auto& columns = segment.columns();
-    ASSERT_EQ(2, columns.size());
-
-    auto begin = columns.begin();
-    auto end = columns.end();
-    ASSERT_NE(begin, end);
-    ASSERT_EQ("doc_int", begin->name);
-    ASSERT_EQ(1, begin->id);
-    ++begin;
-    ASSERT_NE(begin, end);
-    ASSERT_EQ("doc_string", begin->name);
-    ASSERT_EQ(0, begin->id);
-    ++begin;
-    ASSERT_EQ(begin, end);
+    auto columns = segment.columns();
+    ASSERT_TRUE(columns->next());
+    ASSERT_EQ("doc_int", columns->value().name);
+    ASSERT_EQ(1, columns->value().id);
+    ASSERT_TRUE(columns->next());
+    ASSERT_EQ("doc_string", columns->value().name);
+    ASSERT_EQ(0, columns->value().id);
+    ASSERT_FALSE(columns->next());
 
     // check 'doc_int' column
     {
@@ -723,7 +694,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       };
 
       // read values for 'doc_int'
-      auto* meta = columns.find("doc_int");
+      auto* meta = segment.column("doc_int");
       ASSERT_NE(nullptr, meta);
       ASSERT_TRUE(segment.visit(meta->id, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
@@ -756,7 +727,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       };
 
       // read values for 'doc_string'
-      auto* meta = columns.find("doc_string");
+      auto* meta = segment.column("doc_string");
       ASSERT_NE(nullptr, meta);
       ASSERT_TRUE(segment.visit(meta->id, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
@@ -770,7 +741,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
         return true;
       };
 
-      ASSERT_EQ(nullptr, columns.find("invalid_column"));
+      ASSERT_EQ(nullptr, segment.column("invalid_column"));
       ASSERT_FALSE(
         segment.visit(iresearch::type_limits<iresearch::type_t::field_id_t>::invalid(), reader)
       );
@@ -789,19 +760,14 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
     auto segment = iresearch::segment_reader::open(dir, meta);
     ASSERT_EQ(4, segment->docs_count());
 
-    auto& columns = segment->columns();
-    ASSERT_EQ(2, columns.size());
-    auto begin = columns.begin();
-    auto end = columns.end();
-    ASSERT_NE(begin, end);
-    ASSERT_EQ("doc_int", begin->name);
-    ASSERT_EQ(0, begin->id); // 0 since 'doc_int' < 'doc_string'
-    ++begin;
-    ASSERT_NE(begin, end);
-    ASSERT_EQ("doc_string", begin->name);
-    ASSERT_EQ(1, begin->id);
-    ++begin;
-    ASSERT_EQ(begin, end);
+    auto columns = segment->columns();
+    ASSERT_TRUE(columns->next());
+    ASSERT_EQ("doc_int", columns->value().name);
+    ASSERT_EQ(0, columns->value().id); // 0 since 'doc_int' < 'doc_string'
+    ASSERT_TRUE(columns->next());
+    ASSERT_EQ("doc_string", columns->value().name);
+    ASSERT_EQ(1, columns->value().id);
+    ASSERT_FALSE(columns->next());
     
     // check 'doc_int' column
     {
@@ -833,7 +799,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       };
 
       // read values for 'doc_int'
-      auto* meta = columns.find("doc_int");
+      auto* meta = segment->column("doc_int");
       ASSERT_NE(nullptr, meta);
       ASSERT_TRUE(segment->visit(meta->id, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
@@ -870,7 +836,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       };
 
       // read values for 'doc_string'
-      auto* meta = columns.find("doc_string");
+      auto* meta = segment->column("doc_string");
       ASSERT_NE(nullptr, meta);
       ASSERT_TRUE(segment->visit(meta->id, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
@@ -1065,7 +1031,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("bytes1_data"))].emplace(1);
       expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("bytes2_data"))].emplace(2);
 
-      ASSERT_EQ(2, segment.live_docs_count("doc_bytes"));
+      ASSERT_EQ(2, segment.docs_count("doc_bytes"));
       ASSERT_TRUE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // 'norm' attribute has been specified
       ASSERT_EQ(features, field.features);
       validate_terms(
@@ -1128,7 +1094,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(2));
       }
 
-      ASSERT_EQ(2, segment.live_docs_count("doc_double"));
+      ASSERT_EQ(2, segment.docs_count("doc_double"));
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
       ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
@@ -1169,7 +1135,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(2));
       }
 
-      ASSERT_EQ(2, segment.live_docs_count("doc_float"));
+      ASSERT_EQ(2, segment.docs_count("doc_float"));
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
       ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
@@ -1210,7 +1176,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(2));
       }
 
-      ASSERT_EQ(2, segment.live_docs_count("doc_int"));
+      ASSERT_EQ(2, segment.docs_count("doc_int"));
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
       ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
@@ -1251,7 +1217,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(2));
       }
 
-      ASSERT_EQ(2, segment.live_docs_count("doc_long"));
+      ASSERT_EQ(2, segment.docs_count("doc_long"));
       ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
       ASSERT_TRUE(max.next() && max.next() && max.next() && max.next()); // skip to last value
@@ -1280,7 +1246,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("string1_data"))].emplace(1);
       expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("string2_data"))].emplace(2);
 
-      ASSERT_EQ(2, segment.live_docs_count("doc_string"));
+      ASSERT_EQ(2, segment.docs_count("doc_string"));
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
       ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
@@ -1310,7 +1276,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("text1_data"))].emplace(1);
       expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("text2_data"))].emplace(2);
 
-      ASSERT_EQ(2, segment.live_docs_count("doc_text"));
+      ASSERT_EQ(2, segment.docs_count("doc_text"));
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
       ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
@@ -1417,7 +1383,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       features.add<iresearch::norm>();
       expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("bytes3_data"))].emplace(1);
 
-      ASSERT_EQ(1, segment.live_docs_count("doc_bytes"));
+      ASSERT_EQ(1, segment.docs_count("doc_bytes"));
       ASSERT_TRUE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has been specified
       ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
@@ -1475,7 +1441,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(1));
       }
 
-      ASSERT_EQ(1, segment.live_docs_count("doc_double"));
+      ASSERT_EQ(1, segment.docs_count("doc_double"));
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
       ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
@@ -1510,7 +1476,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(1));
       }
 
-      ASSERT_EQ(1, segment.live_docs_count("doc_float"));
+      ASSERT_EQ(1, segment.docs_count("doc_float"));
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
       ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
@@ -1545,7 +1511,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(1));
       }
 
-      ASSERT_EQ(1, segment.live_docs_count("doc_int"));
+      ASSERT_EQ(1, segment.docs_count("doc_int"));
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
       ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
@@ -1580,7 +1546,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(1));
       }
 
-      ASSERT_EQ(1, segment.live_docs_count("doc_long"));
+      ASSERT_EQ(1, segment.docs_count("doc_long"));
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
       ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
@@ -1610,7 +1576,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("string3_data"))].emplace(1);
       expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("string4_data"))];
 
-      ASSERT_EQ(2, segment.live_docs_count("doc_string"));
+      ASSERT_EQ(2, segment.docs_count("doc_string"));
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
       ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
@@ -1639,7 +1605,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
       expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("text3_data"))].emplace(1);
 
-      ASSERT_EQ(1, segment.live_docs_count("doc_text"));
+      ASSERT_EQ(1, segment.docs_count("doc_text"));
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
       ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
@@ -1756,7 +1722,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("bytes2_data"))].emplace(2);
     expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("bytes3_data"))].emplace(3);
 
-    ASSERT_EQ(3, segment->live_docs_count("doc_bytes"));
+    ASSERT_EQ(3, segment->docs_count("doc_bytes"));
     ASSERT_TRUE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has been specified
     ASSERT_EQ(features, field.features);
     ASSERT_NE(nullptr, terms);
@@ -1827,7 +1793,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(3));
     }
 
-    ASSERT_EQ(3, segment->live_docs_count("doc_double"));
+    ASSERT_EQ(3, segment->docs_count("doc_double"));
     ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
     ASSERT_EQ(features, field.features);
     ASSERT_NE(nullptr, terms);
@@ -1874,7 +1840,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(3));
     }
 
-    ASSERT_EQ(3, segment->live_docs_count("doc_float"));
+    ASSERT_EQ(3, segment->docs_count("doc_float"));
     ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
     ASSERT_EQ(features, field.features);
     ASSERT_NE(nullptr, terms);
@@ -1921,7 +1887,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(3));
     }
 
-    ASSERT_EQ(3, segment->live_docs_count("doc_int"));
+    ASSERT_EQ(3, segment->docs_count("doc_int"));
     ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
     ASSERT_EQ(features, field.features);
     ASSERT_NE(nullptr, terms);
@@ -1968,7 +1934,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(3));
     }
 
-    ASSERT_EQ(3, segment->live_docs_count("doc_long"));
+    ASSERT_EQ(3, segment->docs_count("doc_long"));
     ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
     ASSERT_EQ(features, field.features);
     ASSERT_NE(nullptr, terms);
@@ -1999,7 +1965,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("string2_data"))].emplace(2);
     expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("string3_data"))].emplace(3);
 
-    ASSERT_EQ(3, segment->live_docs_count("doc_string"));
+    ASSERT_EQ(3, segment->docs_count("doc_string"));
     ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
     ASSERT_EQ(features, field.features);
     ASSERT_NE(nullptr, terms);
@@ -2030,7 +1996,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("text2_data"))].emplace(2);
     expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("text3_data"))].emplace(3);
 
-    ASSERT_EQ(3, segment->live_docs_count("doc_text"));
+    ASSERT_EQ(3, segment->docs_count("doc_text"));
     ASSERT_EQ(features, field.features);
     ASSERT_NE(nullptr, terms);
     validate_terms(

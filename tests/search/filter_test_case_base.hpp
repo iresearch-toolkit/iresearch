@@ -303,7 +303,7 @@ class filter_test_case_base : public index_test_base {
 struct empty_index_reader : iresearch::singleton<empty_index_reader>, iresearch::index_reader {
   virtual uint64_t live_docs_count() const { return 0; }
 
-  virtual uint64_t live_docs_count(const iresearch::string_ref& field) const { return 0; }
+  virtual uint64_t docs_count(const iresearch::string_ref& field) const { return 0; }
 
   virtual uint64_t docs_count() const { return 0; }
 
@@ -322,9 +322,12 @@ struct empty_sub_reader : iresearch::singleton<empty_sub_reader>, iresearch::sub
     }
   };
 
-  virtual const iresearch::columns_meta& columns() const {
-    static iresearch::columns_meta empty;
-    return empty;
+  virtual iresearch::column_iterator::ptr columns() const {
+    return iresearch::column_iterator::empty();
+  }
+
+  virtual iresearch::column_meta* column(const iresearch::string_ref& name) const {
+    return nullptr;
   }
   
   using iresearch::sub_reader::visit;
@@ -345,7 +348,7 @@ struct empty_sub_reader : iresearch::singleton<empty_sub_reader>, iresearch::sub
 
   virtual uint64_t live_docs_count() const { return 0; }
 
-  virtual uint64_t live_docs_count(const iresearch::string_ref&) const { return 0; }
+  virtual uint64_t docs_count(const iresearch::string_ref&) const { return 0; }
   
   virtual docs_iterator_t::ptr docs_iterator() const override { 
     return docs_iterator_t::make<empty_docs_iterator>(); 

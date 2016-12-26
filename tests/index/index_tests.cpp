@@ -1062,7 +1062,7 @@ class index_test_case_base : public tests::index_test_base {
     // read columns 
     {
       auto visit_column = [&segment] (const iresearch::string_ref& column_name) {
-        auto* meta = segment.columns().find(column_name);
+        auto* meta = segment.column(column_name);
         if (!meta) {
           return false;
         }
@@ -1101,7 +1101,7 @@ class index_test_case_base : public tests::index_test_base {
       };
 
       auto read_column_offset = [&segment] (const iresearch::string_ref& column_name, ir::doc_id_t offset) {
-        auto* meta = segment.columns().find(column_name);
+        auto* meta = segment.column(column_name);
         if (!meta) {
           return false;
         }
@@ -1369,24 +1369,20 @@ class index_test_case_base : public tests::index_test_base {
       ASSERT_EQ(1, reader->size());
 
       auto& segment = (*reader)[0];
-      auto& columns = segment.columns();
-      ASSERT_EQ(2, columns.size());
-      ASSERT_FALSE(columns.empty());
-      auto begin = columns.begin();
-      ASSERT_NE(columns.end(), begin);
-      ASSERT_EQ("id", begin->name);
-      ASSERT_EQ(0, begin->id);
-      ++begin;
-      ASSERT_NE(columns.end(), begin);
-      ASSERT_EQ("label", begin->name);
-      ASSERT_EQ(1, begin->id);
-      ++begin;
-      ASSERT_EQ(columns.end(), begin);
+      auto columns = segment.columns();
+      ASSERT_TRUE(columns->next());
+      ASSERT_EQ("id", columns->value().name);
+      ASSERT_EQ(0, columns->value().id);
+      ASSERT_TRUE(columns->next());
+      ASSERT_EQ("label", columns->value().name);
+      ASSERT_EQ(1, columns->value().id);
+      ASSERT_FALSE(columns->next());
+      ASSERT_FALSE(columns->next());
 
       // check 'id' column
       {
         const iresearch::string_ref column_name = "id";
-        auto* meta = columns.find(column_name);
+        auto* meta = segment.column(column_name);
         ASSERT_NE(nullptr, meta);
 
         // visit column (not cached)
@@ -1500,7 +1496,7 @@ class index_test_case_base : public tests::index_test_base {
       // check 'label' column
       {
         const iresearch::string_ref column_name = "label";
-        auto* meta = columns.find(column_name);
+        auto* meta = segment.column(column_name);
         ASSERT_NE(nullptr, meta);
 
         // visit column (not cached)

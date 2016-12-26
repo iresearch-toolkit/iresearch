@@ -29,6 +29,7 @@
 #include "utils/bit_utils.hpp"
 #include "utils/bitset.hpp"
 #include "utils/attributes.hpp"
+#include "utils/string.hpp"
 #include "utils/log.hpp"
 
 #if defined(_MSC_VER)
@@ -1631,31 +1632,6 @@ void field_writer::end() {
 * field_reader
 * ------------------------------------------------------------------*/
 
-template<typename Iterator>
-class field_iterator : public iresearch::field_iterator {
- public:
-  field_iterator(Iterator begin, Iterator end)
-    : begin_(begin), end_(end) {
-  }
-
-  virtual const iresearch::term_reader& value() const {
-    return *begin_;
-  }
-
-  virtual bool next() {
-    if (begin_ == end_) {
-      return false;
-    }
-
-    ++begin_;
-    return true;
-  }
-
- private:
-  Iterator begin_;
-  Iterator end_;
-}; // field_iterator
-
 field_reader::field_reader(iresearch::postings_reader::ptr&& pr)
   : pr_(std::move(pr)) {
   assert(pr_);
@@ -1773,7 +1749,7 @@ const iresearch::term_reader* field_reader::field(const string_ref& field) const
 
 iresearch::field_iterator::ptr field_reader::iterator() const {
   const auto* begin = fields_.data() - 1;
-  return iresearch::field_iterator::make<field_iterator<decltype(begin)>>(
+  return iresearch::field_iterator::make<iterator_adapter<decltype(begin), field_iterator>>(
     begin, begin + fields_.size()
   );
 }

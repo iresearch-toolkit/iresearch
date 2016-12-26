@@ -48,7 +48,7 @@ struct IRESEARCH_API index_reader {
   virtual uint64_t live_docs_count() const = 0;
 
   // number of live documents for the specified field
-  virtual uint64_t live_docs_count(const string_ref& field) const = 0;
+  virtual uint64_t docs_count(const string_ref& field) const = 0;
 
   // total number of documents including deleted
   virtual uint64_t docs_count() const = 0;
@@ -74,12 +74,10 @@ struct IRESEARCH_API sub_reader : index_reader {
   DECLARE_SPTR(sub_reader);
   DECLARE_FACTORY(sub_reader);
 
-  CONSTEXPR static const value_visitor_f& noop();
-
-  using index_reader::live_docs_count;
+  using index_reader::docs_count;
 
   // returns number of live documents by the specified field
-  virtual uint64_t live_docs_count(const string_ref& field) const {
+  virtual uint64_t docs_count(const string_ref& field) const {
     const term_reader* rdr = this->field(field);
     return nullptr == rdr ? 0 : rdr->docs_count();
   }
@@ -94,7 +92,9 @@ struct IRESEARCH_API sub_reader : index_reader {
     const string_ref& field
   ) const = 0;
 
-  virtual const columns_meta& columns() const = 0;
+  virtual column_iterator::ptr columns() const = 0;
+
+  virtual const column_meta* column(const string_ref& name) const = 0;
 
   // returns corresponding column reader by the specified field
   virtual value_visitor_f values(
@@ -158,11 +158,11 @@ class IRESEARCH_API_TEMPLATE composite_reader : public index_reader {
   // number of live documents
   virtual uint64_t live_docs_count() const override { return docs_count_; }
 
-  // number of live documents for the specified field
-  virtual uint64_t live_docs_count(const string_ref& field) const {
+  // number of documents for the specified field
+  virtual uint64_t docs_count(const string_ref& field) const {
     return std::accumulate(ctxs_.begin(), ctxs_.end(), uint64_t(0),
       [&field](uint64_t total, const reader_context& ctx) {
-        return total + ctx.reader->live_docs_count(field); }
+        return total + ctx.reader->docs_count(field); }
     );
   }
   

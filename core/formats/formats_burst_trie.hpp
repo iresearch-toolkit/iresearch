@@ -20,6 +20,7 @@
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
 #include "utils/buffers.hpp"
+#include "utils/hash_utils.hpp"
 
 #if defined(_MSC_VER)
   // NOOP

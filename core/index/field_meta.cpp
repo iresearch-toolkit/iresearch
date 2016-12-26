@@ -12,10 +12,6 @@
 #include "shared.hpp"
 #include "field_meta.hpp"
 
-#include "utils/thread_utils.hpp"
-
-#include "error/error.hpp"
-
 NS_ROOT
 
 // -----------------------------------------------------------------------------
@@ -76,25 +72,6 @@ column_meta& column_meta::operator=(column_meta&& rhs) {
 
 bool column_meta::operator==(const column_meta& rhs) const {
   return name == rhs.name;
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                       columns_meta implementation
-// -----------------------------------------------------------------------------
-
-columns_meta::columns_meta(columns_meta::items_t&& fields)
-  : base_t(std::move(fields)) {
-}
-
-columns_meta::columns_meta(columns_meta&& rhs)
-  : base_t(std::move(rhs)) {
-}
-
-columns_meta& columns_meta::operator=(columns_meta&& rhs) {
-  if (this != &rhs) {
-    base_t::operator=(std::move(rhs));
-  }
-  return *this;
 }
 
 NS_END

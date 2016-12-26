@@ -32,6 +32,7 @@
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/unicode_utils.hpp"
+#include "utils/std.hpp"
 
 #include <set>
 #include <algorithm>
@@ -603,14 +604,10 @@ fields_data::fields_data()
 field_data& fields_data::get(const string_ref& name) {
   const auto hashed_name = make_hashed_ref(name, string_ref_hash_t());
 
-  auto res = fields_.emplace(
-    std::piecewise_construct,
-    std::forward_as_tuple(hashed_name),
-    std::forward_as_tuple(
-      name,
-      &byte_writer_,
-      &int_writer_
-    )
+  const auto res = irstd::try_emplace(
+    fields_,                          // container
+    hashed_name,                      // key
+    name, &byte_writer_, &int_writer_ // value
   );
 
   auto& slot = res.first->second;
@@ -649,14 +646,12 @@ void fields_data::flush(field_writer& fw, flush_state& state) {
     fw.prepare(state);
 
     for (auto* field : fields) {
-      auto& meta = field->meta();
-      auto& features = meta.features;
-
       // write field invert data
       auto terms = field->iterator();
 
       if (terms) {
-        fw.write(meta.name, meta.norm, features, *terms);
+        auto& meta = field->meta();
+        fw.write(meta.name, meta.norm, meta.features, *terms);
       }
     }
 

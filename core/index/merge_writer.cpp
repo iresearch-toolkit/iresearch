@@ -71,24 +71,22 @@ struct compound_doc_iterator: public iresearch::doc_iterator {
 template<typename Iterator>
 class compound_iterator {
  public:
-  typedef typename Iterator::value_type value_type;
+  typedef typename std::remove_reference<decltype(Iterator()->value())>::type value_type;
 
   size_t size() const { return iterators_.size(); }
 
-  void add(
-      Iterator begin, Iterator end, size_t size,
-      const iresearch::sub_reader& reader, 
-      const doc_id_map_t& doc_id_map) {
-    iterators_.emplace_back(
-      begin, end, size, reader, doc_id_map
-    );
+  void add(const iresearch::sub_reader& reader, 
+           const doc_id_map_t& doc_id_map) {
+    iterator_mask_.emplace_back(iterators_.size());
+    iterators_.emplace_back(reader.columns(), reader, doc_id_map);
   }
   
   // visit matched iterators
   template<typename Visitor>
   bool visit(const Visitor& visitor) const {
-    for (auto* it : iterator_mask_) {
-      if (!visitor(*it->reader, *it->doc_id_map, *it->begin)) {
+    for (auto id : iterator_mask_) {
+      auto& it = iterators_[id];
+      if (!visitor(*it.reader, *it.doc_id_map, it.it->value())) {
         return false;
       }
     }
@@ -102,20 +100,22 @@ class compound_iterator {
 
   bool next() {
     // advance all used iterators
-    for (auto* it : iterator_mask_) {
-      if (it->begin != it->end) {
-        ++it->begin;
+    for (auto id : iterator_mask_) {
+      auto& it = iterators_[id].it;
+      if (it && !it->next()) {
+        it = nullptr;
       }
     }
 
     iterator_mask_.clear(); // reset for next pass
 
-    for (auto& it : iterators_) {
-      if (it.begin == it.end) {
+    for (size_t i = 0, size = iterators_.size(); i < size; ++i) {
+      auto& it = iterators_[i].it;
+      if (!it) {
         continue; // empty iterator
       }
 
-      const auto& value = *it.begin;
+      const auto& value = it->value();
       const iresearch::string_ref key = value.name;
 
       if (!iterator_mask_.empty() && current_key_ < key) {
@@ -130,7 +130,7 @@ class compound_iterator {
       }
 
       assert(value == *current_value_); // validated by caller
-      iterator_mask_.push_back(&it);
+      iterator_mask_.push_back(i);
     }
 
     if (!iterator_mask_.empty()) {
@@ -145,25 +145,22 @@ class compound_iterator {
  private:
   struct iterator_t {
     iterator_t(
-        Iterator begin, Iterator end,
-        size_t size,
+        Iterator&& it,
         const iresearch::sub_reader& reader,
         const doc_id_map_t& doc_id_map)
-      : begin(begin), end(end),
-        reader(&reader), doc_id_map(&doc_id_map), 
-        size(size) {
+      : it(std::move(it)),
+        reader(&reader), 
+        doc_id_map(&doc_id_map) {
       }
 
-    Iterator begin;
-    const Iterator end;
+    Iterator it;
     const iresearch::sub_reader* reader;
     const doc_id_map_t* doc_id_map;
-    size_t size; // initial number of element between begin and end
   };
 
   const value_type* current_value_{};
   iresearch::string_ref current_key_;
-  std::vector<iterator_t*> iterator_mask_; // valid iterators for current step 
+  std::vector<size_t> iterator_mask_; // valid iterators for current step 
   std::vector<iterator_t> iterators_; // all segment iterators
 };
 
@@ -217,7 +214,7 @@ class compound_field_iterator {
   std::vector<field_iterator_t> field_iterators_; // all segment iterators
 };
 
-typedef compound_iterator<decltype(iresearch::columns_meta().begin())> compound_column_iterator_t;
+typedef compound_iterator<iresearch::column_iterator::ptr> compound_column_iterator_t;
 
 // ...........................................................................
 // iterator over documents for a term over all readers
@@ -763,9 +760,7 @@ bool merge_writer::flush(std::string& filename, segment_meta& meta) {
 
     next_id = compute_doc_ids(doc_id_map, *reader, next_id);
     fields_itr.add(*reader, doc_id_map);
-   
-    auto& columns = reader->columns();
-    columns_itr.add(columns.begin(), columns.end(), columns.size(), *reader, doc_id_map);
+    columns_itr.add(*reader, doc_id_map);
   }
 
   auto docs_count = next_id - type_limits<type_t::doc_id_t>::min(); // total number of doc_ids

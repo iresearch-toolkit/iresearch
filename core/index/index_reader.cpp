@@ -266,17 +266,13 @@ void directory_reader::refresh() {
   meta_ = std::move(meta);
 }
   
-CONSTEXPR /* static */ const sub_reader::value_visitor_f& sub_reader::noop() {
-  return NOOP_VISITOR;
-}
-
 sub_reader::value_visitor_f sub_reader::values(
     const string_ref& field,
     const columnstore_reader::value_reader_f& value_reader) const {
-  auto* meta = columns().find(field);
+  auto* meta = column(field);
 
   if (!meta) {
-    return sub_reader::noop();
+    return NOOP_VISITOR;
   }
 
   return values(meta->id, value_reader);
@@ -285,7 +281,7 @@ sub_reader::value_visitor_f sub_reader::values(
 bool sub_reader::visit(
     const string_ref& field,
     const columnstore_reader::raw_reader_f& value_reader) const {
-  auto* meta = columns().find(field);
+  auto* meta = column(field);
 
   if (!meta) {
     return false;

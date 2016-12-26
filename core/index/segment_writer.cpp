@@ -19,10 +19,19 @@
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/version_utils.hpp"
+#include "utils/std.hpp"
 
 #include <math.h>
+#include <set>
 
 NS_ROOT
+
+segment_writer::column::column(
+    const string_ref& name, 
+    columnstore_writer& columnstore) {
+  this->name.assign(name.c_str(), name.size());
+  this->handle = columnstore.push_column();
+}
 
 segment_writer::ptr segment_writer::make(directory& dir, format::ptr codec) {
   return ptr(new segment_writer(dir, codec));
@@ -66,20 +75,20 @@ columnstore_writer::column_output& segment_writer::stream(
     doc_id_t doc_id,
     const string_ref& name) {
   REGISTER_TIMER_DETAILED();
-  auto res = columns_.emplace(
-    std::piecewise_construct,
-    std::forward_as_tuple(make_hashed_ref(name, string_ref_hash_t())),
-    std::forward_as_tuple()
+
+  const auto res = irstd::try_emplace(
+    columns_,                                     // container
+    make_hashed_ref(name, string_ref_hash_t()),   // key
+    name, *col_writer_                            // value
   );
 
   auto& it = res.first;
   auto& column = it->second;
 
   if (res.second) {
-    // we have never seen it before
-    column.handle = col_writer_->push_column();
-    column.name = std::string(name.c_str(), name.size());
-
+    // 'key' gets its own copy of the 'name', 
+    // here we safely replace original reference to 'name' provided by
+    // user with the reference to the cached copy in 'key'
     auto& key = const_cast<hashed_string_ref&>(it->first);
     key = hashed_string_ref(it->first.hash(), column.name);
   }
@@ -112,11 +121,22 @@ bool segment_writer::flush(std::string& filename, segment_meta& meta) {
 
   // flush columns indices
   if (!columns_.empty()) {
+    static struct less_t {
+      bool operator()(const column* lhs, const column* rhs) {
+        return lhs->name < rhs->name;
+      };
+    } less;
+    std::set<const column*, decltype(less)> columns(less);
+
+    // ensure columns are sorted
+    for (auto& entry : columns_) {
+      columns.emplace(&entry.second);
+    }
+    
     // flush columns meta
     col_meta_writer_->prepare(dir_, seg_name_);
-    for (auto& entry : columns_) {
-      auto& column = entry.second;
-      col_meta_writer_->write(column.name, column.handle.first);
+    for (auto& column: columns) {
+      col_meta_writer_->write(column->name, column->handle.first);
     }
     col_meta_writer_->flush();
     columns_.clear();

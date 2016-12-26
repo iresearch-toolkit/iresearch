@@ -56,30 +56,6 @@ struct empty_term_iterator : term_iterator {
   }
 };
 
-NS_END // LOCAL
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                              basic_term_iterator
-// ----------------------------------------------------------------------------
-
-term_iterator::ptr term_iterator::empty() {
-  //TODO: make singletone
-  return term_iterator::make<empty_term_iterator>();
-}
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                                seek_doc_iterator 
-// ----------------------------------------------------------------------------
-
-score_doc_iterator::ptr score_doc_iterator::empty() {
-  //TODO: make singletone
-  return score_doc_iterator::make<empty_doc_iterator>();
-}
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                                   field_iterator 
-// ----------------------------------------------------------------------------
-
 struct empty_term_reader : singleton<empty_term_reader>, term_reader {
   virtual iresearch::seek_term_iterator::ptr iterator() const { return nullptr; }
   virtual const iresearch::field_meta& meta() const { 
@@ -118,8 +94,51 @@ struct empty_field_iterator : field_iterator {
   }
 };
 
+struct empty_column_iterator : column_iterator {
+  virtual const column_meta& value() const {
+    static column_meta empty;
+    return empty;
+  }
+
+  virtual bool next() override {
+    return false;
+  }
+};
+ 
+NS_END // LOCAL
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                              basic_term_iterator
+// ----------------------------------------------------------------------------
+
+term_iterator::ptr term_iterator::empty() {
+  //TODO: make singletone
+  return term_iterator::make<empty_term_iterator>();
+}
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                                seek_doc_iterator 
+// ----------------------------------------------------------------------------
+
+score_doc_iterator::ptr score_doc_iterator::empty() {
+  //TODO: make singletone
+  return score_doc_iterator::make<empty_doc_iterator>();
+}
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                                   field_iterator 
+// ----------------------------------------------------------------------------
+
 field_iterator::ptr field_iterator::empty() {
   return field_iterator::make<empty_field_iterator>();
+}
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                                  column_iterator 
+// ----------------------------------------------------------------------------
+
+column_iterator::ptr column_iterator::empty() {
+  return column_iterator::make<empty_column_iterator>();
 }
 
 NS_END // ROOT 
