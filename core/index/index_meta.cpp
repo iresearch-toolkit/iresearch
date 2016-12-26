@@ -71,25 +71,25 @@ index_meta::index_meta()
 index_meta::index_meta(const index_meta& rhs)
   : gen_(rhs.gen_),
     last_gen_(rhs.last_gen_),
-    segments_(rhs.segments_),
     seg_counter_(rhs.seg_counter_.load()),
+    segments_(rhs.segments_),
     pending_(rhs.pending_) {
 }
 
 index_meta::index_meta(index_meta&& rhs)
   : gen_(std::move(rhs.gen_)),
     last_gen_(std::move(rhs.last_gen_)),
-    segments_(std::move(rhs.segments_)),
     seg_counter_(rhs.seg_counter_.load()),
+    segments_(std::move(rhs.segments_)),
     pending_(std::move(rhs.pending_)) {
 }
 
 index_meta& index_meta::operator=(index_meta&& rhs) {
   if (this != &rhs) {
-    segments_ = std::move(rhs.segments_);
-    seg_counter_ = rhs.seg_counter_.load();
     gen_ = std::move(rhs.gen_);
     last_gen_ = std::move(rhs.last_gen_);
+    seg_counter_ = rhs.seg_counter_.load();
+    segments_ = std::move(rhs.segments_);
     pending_ = std::move(rhs.pending_);
   }
   return *this;

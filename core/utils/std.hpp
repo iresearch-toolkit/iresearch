@@ -19,13 +19,15 @@ NS_ROOT
 
 NS_BEGIN(irstd)
 
-// helper for prior C++17 compilers
+// Helper for prior C++17 compilers (before MSVC 2015, GCC 6)
 template<typename Container, typename... Args>
 FORCE_INLINE std::pair<typename Container::iterator, bool> try_emplace(
     Container& cont,
     const typename Container::key_type& key,
     Args&&... args) {
-#if (defined(_MSC_VER) && _MSC_VER >= 1900) || defined(__GNUC__)
+
+#if (defined(_MSC_VER) && _MSC_VER >= 1900) \
+    || (defined(__GNUC__) && __GNUC__ >= 6)
 
   return cont.try_emplace(key, std::forward<Args>(args)...);
 
