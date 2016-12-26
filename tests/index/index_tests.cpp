@@ -3395,7 +3395,7 @@ TEST_F(memory_index_test, import_reader) {
     ASSERT_EQ(2, reader->size());
 
     {
-      auto& segment = (*reader)[1]; // assume 1 is id of imported segment
+      auto& segment = (*reader)[0]; // assume 0 is id of imported segment
       ASSERT_EQ(2, segment.docs_count());
       auto values = segment.values("name", visitor);
       auto terms = segment.terms("same");
@@ -3413,7 +3413,7 @@ TEST_F(memory_index_test, import_reader) {
     }
 
     {
-      auto& segment = (*reader)[0]; // assume 0 is id of original segment
+      auto& segment = (*reader)[1]; // assume 1 is id of original segment
       ASSERT_EQ(1, segment.docs_count());
       auto values = segment.values("name", visitor);
       auto terms = segment.terms("same");
@@ -3635,7 +3635,6 @@ TEST_F(memory_index_test, refresh_reader) {
 
     writer->remove(std::move(query_doc1.filter));
     writer->commit();
-    writer->defragment(iresearch::index_utils::defragment_fill(0.5)); // value garanteeing merge
   }
 
   // validate state pre/post refresh (old segment removed)
@@ -3769,16 +3768,16 @@ TEST_F(memory_index_test, reuse_segment_writer) {
 
   // merge all segments
   {
-    auto merge_all = [](const iresearch::directory& dir, const iresearch::index_meta& meta)->iresearch::index_writer::defragment_acceptor_t {
+    auto merge_all = [](const iresearch::directory& dir, const iresearch::index_meta& meta)->iresearch::index_writer::consolidation_acceptor_t {
       return [](const iresearch::segment_meta& meta)->bool { return true; };
     };
 
-    writer->defragment(merge_all);
+    writer->consolidate(merge_all);
     writer->commit();
   }
 }
 
-TEST_F(memory_index_test, segment_defragment) {
+TEST_F(memory_index_test, segment_consolidate) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json::json_value& data) {
@@ -3789,7 +3788,7 @@ TEST_F(memory_index_test, segment_defragment) {
         ));
       }
   });
-  
+
   iresearch::string_ref expected_value;
   iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](data_input& in) {
     const auto value = ir::read_string<std::string>(in);
@@ -3806,7 +3805,8 @@ TEST_F(memory_index_test, segment_defragment) {
   tests::document const* doc4 = gen.next();
   tests::document const* doc5 = gen.next();
   tests::document const* doc6 = gen.next();
-  auto always_merge = [](const iresearch::directory& dir, const iresearch::index_meta& meta)->iresearch::index_writer::defragment_acceptor_t {
+
+  auto always_merge = [](const iresearch::directory& dir, const iresearch::index_meta& meta)->iresearch::index_writer::consolidation_acceptor_t {
     return [](const iresearch::segment_meta& meta)->bool { return true; };
   };
   auto all_features = ir::flags{ ir::document::type(), ir::frequency::type(), ir::position::type(), ir::payload::type(), ir::offset::type() };
@@ -3815,6 +3815,7 @@ TEST_F(memory_index_test, segment_defragment) {
   {
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
+
     ASSERT_TRUE(writer->insert(
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
@@ -3843,7 +3844,7 @@ TEST_F(memory_index_test, segment_defragment) {
     ASSERT_EQ(0, reader->size());
   }
 
-  // remove empty old, defragment new
+  // remove empty old, defragment new (deferred)
   {
     auto query_doc1_doc2 = iresearch::iql::query_builder().build("name==A||name==B", std::locale::classic());
     auto writer = open_writer();
@@ -3862,8 +3863,7 @@ TEST_F(memory_index_test, segment_defragment) {
       doc3->stored.begin(), doc3->stored.end()
     ));
     writer->remove(std::move(query_doc1_doc2.filter));
-    writer->commit();
-    writer->defragment(always_merge);
+    writer->consolidate(always_merge, false);
     writer->commit();
 
     // validate structure
@@ -3888,7 +3888,52 @@ TEST_F(memory_index_test, segment_defragment) {
     ASSERT_FALSE(docsItr->next());
   }
 
-  // remove empty old, defragment old
+  // remove empty old, defragment new (immediate)
+  {
+    auto query_doc1_doc2 = iresearch::iql::query_builder().build("name==A||name==B", std::locale::classic());
+    auto writer = open_writer();
+
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    writer->commit();
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
+    writer->remove(std::move(query_doc1_doc2.filter));
+    writer->commit();
+    writer->consolidate(always_merge);
+    writer->commit();
+
+    // validate structure
+    tests::index_t expected;
+    expected.emplace_back();
+    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
+    tests::assert_index(dir(), codec(), expected, all_features);
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(1, reader->size());
+    const auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    auto values = segment.values("name", visitor);
+    ASSERT_EQ(1, segment.docs_count()); // total count of documents
+    auto terms = segment.terms("same");
+    ASSERT_NE(nullptr, terms);
+    auto termItr = terms->iterator();
+    ASSERT_TRUE(termItr->next());
+    auto docsItr = termItr->postings(iresearch::flags());
+    ASSERT_TRUE(docsItr->next());
+    expected_value = "C"; // 'name' value in doc3
+    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_FALSE(docsItr->next());
+  }
+
+  // remove empty old, defragment old (deferred)
   {
     auto query_doc1_doc2 = iresearch::iql::query_builder().build("name==A||name==B", std::locale::classic());
     auto writer = open_writer();
@@ -3908,8 +3953,7 @@ TEST_F(memory_index_test, segment_defragment) {
     ));
     writer->commit();
     writer->remove(std::move(query_doc1_doc2.filter));
-    writer->commit();
-    writer->defragment(always_merge);
+    writer->consolidate(always_merge, false);
     writer->commit();
 
     // validate structure
@@ -3934,9 +3978,55 @@ TEST_F(memory_index_test, segment_defragment) {
     ASSERT_FALSE(docsItr->next());
   }
 
-  // do not defragment old segment with uncommited removal (i.e. do not consider uncomitted removals)
+  // remove empty old, defragment old (immediate)
   {
-    auto merge_if_masked = [](const iresearch::directory& dir, const iresearch::index_meta& meta)->iresearch::index_writer::defragment_acceptor_t {
+    auto query_doc1_doc2 = iresearch::iql::query_builder().build("name==A||name==B", std::locale::classic());
+    auto writer = open_writer();
+
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    writer->commit();
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
+    writer->commit();
+    writer->remove(std::move(query_doc1_doc2.filter));
+    writer->commit();
+    writer->consolidate(always_merge);
+    writer->commit();
+
+    // validate structure
+    tests::index_t expected;
+    expected.emplace_back();
+    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
+    tests::assert_index(dir(), codec(), expected, all_features);
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(1, reader->size());
+    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, segment.docs_count()); // total count of documents
+    auto values = segment.values("name", visitor);
+    auto terms = segment.terms("same");
+    ASSERT_NE(nullptr, terms);
+    auto termItr = terms->iterator();
+    ASSERT_TRUE(termItr->next());
+    auto docsItr = termItr->postings(iresearch::flags());
+    ASSERT_TRUE(docsItr->next());
+    expected_value = "C"; // 'name' value in doc3
+    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_FALSE(docsItr->next());
+  }
+
+  // do defragment old segment with uncommited removal (i.e. do not consider uncomitted removals)
+  {
+    auto merge_if_masked = [](const iresearch::directory& dir, const iresearch::index_meta& meta)->iresearch::index_writer::consolidation_acceptor_t {
       return [&dir](const iresearch::segment_meta& meta)->bool { 
         return meta.codec->get_document_mask_reader()->prepare(dir, meta);
       };
@@ -3954,17 +4044,7 @@ TEST_F(memory_index_test, segment_defragment) {
     ));
     writer->commit();
     writer->remove(std::move(query_doc1.filter));
-    writer->defragment(merge_if_masked);
-    writer->commit();
-
-    {
-      auto reader = iresearch::directory_reader::open(dir(), codec());
-      ASSERT_EQ(1, reader->size());
-      auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
-      ASSERT_EQ(2, segment.docs_count()); // total count of documents
-    }
-
-    writer->defragment(merge_if_masked); // previous removal now committed and considered
+    writer->consolidate(merge_if_masked, false);
     writer->commit();
 
     {
@@ -3975,7 +4055,48 @@ TEST_F(memory_index_test, segment_defragment) {
     }
   }
 
-  // merge new+old segment
+  // do not defragment old segment with uncommited removal (i.e. do not consider uncomitted removals)
+  {
+    auto merge_if_masked = [](const iresearch::directory& dir, const iresearch::index_meta& meta)->iresearch::index_writer::consolidation_acceptor_t {
+      return [&dir](const iresearch::segment_meta& meta)->bool { 
+        return meta.codec->get_document_mask_reader()->prepare(dir, meta);
+      };
+    };
+    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+    auto writer = open_writer();
+
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    writer->commit();
+    writer->remove(std::move(query_doc1.filter));
+    writer->consolidate(merge_if_masked);
+    writer->commit();
+
+    {
+      auto reader = iresearch::directory_reader::open(dir(), codec());
+      ASSERT_EQ(1, reader->size());
+      auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+      ASSERT_EQ(2, segment.docs_count()); // total count of documents
+    }
+
+    writer->consolidate(merge_if_masked); // previous removal now committed and considered
+    writer->commit();
+
+    {
+      auto reader = iresearch::directory_reader::open(dir(), codec());
+      ASSERT_EQ(1, reader->size());
+      auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+      ASSERT_EQ(1, segment.docs_count()); // total count of documents
+    }
+  }
+
+  // merge new+old segment (defragment deferred)
   {
     auto query_doc1_doc3 = iresearch::iql::query_builder().build("name==A||name==C", std::locale::classic());
     auto writer = open_writer();
@@ -3998,8 +4119,7 @@ TEST_F(memory_index_test, segment_defragment) {
       doc4->stored.begin(), doc4->stored.end()
     ));
     writer->remove(std::move(query_doc1_doc3.filter));
-    writer->commit();
-    writer->defragment(always_merge);
+    writer->consolidate(always_merge, false);
     writer->commit();
 
     // validate structure
@@ -4028,7 +4148,7 @@ TEST_F(memory_index_test, segment_defragment) {
     ASSERT_FALSE(docsItr->next());
   }
 
-  // merge old+old segment
+  // merge new+old segment (defragment immediate)
   {
     auto query_doc1_doc3 = iresearch::iql::query_builder().build("name==A||name==C", std::locale::classic());
     auto writer = open_writer();
@@ -4050,10 +4170,9 @@ TEST_F(memory_index_test, segment_defragment) {
       doc4->indexed.begin(), doc4->indexed.end(),
       doc4->stored.begin(), doc4->stored.end()
     ));
-    writer->commit();
     writer->remove(std::move(query_doc1_doc3.filter));
     writer->commit();
-    writer->defragment(always_merge);
+    writer->consolidate(always_merge);
     writer->commit();
 
     // validate structure
@@ -4082,7 +4201,180 @@ TEST_F(memory_index_test, segment_defragment) {
     ASSERT_FALSE(docsItr->next());
   }
 
-  // merge old+old+old segment
+  // merge old+old segment (defragment deferred)
+  {
+    auto query_doc1_doc3 = iresearch::iql::query_builder().build("name==A||name==C", std::locale::classic());
+    auto writer = open_writer();
+
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    writer->commit();
+    ASSERT_TRUE(writer->insert(
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()
+    ));
+    writer->commit();
+    writer->remove(std::move(query_doc1_doc3.filter));
+    writer->consolidate(always_merge, false);
+    writer->commit();
+
+    // validate structure
+    tests::index_t expected;
+    expected.emplace_back();
+    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    tests::assert_index(dir(), codec(), expected, all_features);
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(1, reader->size());
+    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(2, segment.docs_count()); // total count of documents
+    auto values = segment.values("name", visitor);
+    auto terms = segment.terms("same");
+    ASSERT_NE(nullptr, terms);
+    auto termItr = terms->iterator();
+    ASSERT_TRUE(termItr->next());
+    auto docsItr = termItr->postings(iresearch::flags());
+    ASSERT_TRUE(docsItr->next());
+    expected_value = "B"; // 'name' value in doc2
+    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(docsItr->next());
+    expected_value = "D"; // 'name' value in doc4
+    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_FALSE(docsItr->next());
+  }
+
+  // merge old+old segment (defragment immediate)
+  {
+    auto query_doc1_doc3 = iresearch::iql::query_builder().build("name==A||name==C", std::locale::classic());
+    auto writer = open_writer();
+
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    writer->commit();
+    ASSERT_TRUE(writer->insert(
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()
+    ));
+    writer->commit();
+    writer->remove(std::move(query_doc1_doc3.filter));
+    writer->commit();
+    writer->consolidate(always_merge);
+    writer->commit();
+
+    // validate structure
+    tests::index_t expected;
+    expected.emplace_back();
+    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    tests::assert_index(dir(), codec(), expected, all_features);
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(1, reader->size());
+    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(2, segment.docs_count()); // total count of documents
+    auto values = segment.values("name", visitor);
+    auto terms = segment.terms("same");
+    ASSERT_NE(nullptr, terms);
+    auto termItr = terms->iterator();
+    ASSERT_TRUE(termItr->next());
+    auto docsItr = termItr->postings(iresearch::flags());
+    ASSERT_TRUE(docsItr->next());
+    expected_value = "B"; // 'name' value in doc2
+    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(docsItr->next());
+    expected_value = "D"; // 'name' value in doc4
+    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_FALSE(docsItr->next());
+  }
+
+  // merge old+old+old segment (defragment deferred)
+  {
+    auto query_doc1_doc3_doc5 = iresearch::iql::query_builder().build("name==A||name==C||name==E", std::locale::classic());
+    auto writer = open_writer();
+
+    ASSERT_TRUE(writer->insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    writer->commit();
+    ASSERT_TRUE(writer->insert(
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()
+    ));
+    writer->commit();
+    ASSERT_TRUE(writer->insert(
+      doc5->indexed.begin(), doc5->indexed.end(),
+      doc5->stored.begin(), doc5->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc6->indexed.begin(), doc6->indexed.end(),
+      doc6->stored.begin(), doc6->stored.end()
+    ));
+    writer->commit();
+    writer->remove(std::move(query_doc1_doc3_doc5.filter));
+    writer->consolidate(always_merge, false);
+    writer->commit();
+
+    // validate structure
+    tests::index_t expected;
+    expected.emplace_back();
+    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    expected.back().add(doc6->indexed.begin(), doc6->indexed.end());
+    tests::assert_index(dir(), codec(), expected, all_features);
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(1, reader->size());
+    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(3, segment.docs_count()); // total count of documents
+    auto values = segment.values("name", visitor);
+    auto terms = segment.terms("same");
+    ASSERT_NE(nullptr, terms);
+    auto termItr = terms->iterator();
+    ASSERT_TRUE(termItr->next());
+    auto docsItr = termItr->postings(iresearch::flags());
+    ASSERT_TRUE(docsItr->next());
+    expected_value = "B"; // 'name' value in doc2
+    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(docsItr->next());
+    expected_value = "D"; // 'name' value in doc4
+    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(docsItr->next());
+    expected_value = "F"; // 'name' value in doc6
+    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_FALSE(docsItr->next());
+  }
+
+  // merge old+old+old segment (defragment immediate)
   {
     auto query_doc1_doc3_doc5 = iresearch::iql::query_builder().build("name==A||name==C||name==E", std::locale::classic());
     auto writer = open_writer();
@@ -4116,7 +4408,7 @@ TEST_F(memory_index_test, segment_defragment) {
     writer->commit();
     writer->remove(std::move(query_doc1_doc3_doc5.filter));
     writer->commit();
-    writer->defragment(always_merge);
+    writer->consolidate(always_merge);
     writer->commit();
 
     // validate structure
@@ -4149,7 +4441,91 @@ TEST_F(memory_index_test, segment_defragment) {
     ASSERT_FALSE(docsItr->next());
   }
 
-  // merge two segments with different fields
+  // merge two segments with different fields (defragment deferred)
+  {
+    auto writer = open_writer();
+    // add 1st segment
+    ASSERT_TRUE(writer->insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc6->indexed.begin(), doc6->indexed.end(),
+      doc6->stored.begin(), doc6->stored.end()
+    ));
+    writer->commit();
+
+    // add 2nd segment
+    tests::json_doc_generator gen(
+      resource("simple_sequential_upper_case.json"),
+      [] (tests::document& doc, const std::string& name, const tests::json::json_value& data) {
+        if (data.quoted) {
+          doc.insert(std::make_shared<tests::templates::string_field>(
+            ir::string_ref(name),
+            ir::string_ref(data.value)
+          ));
+        }
+    });
+
+    auto doc1_1 = gen.next();
+    auto doc1_2 = gen.next();
+    auto doc1_3 = gen.next();
+    ASSERT_TRUE(writer->insert(
+      doc1_1->indexed.begin(), doc1_1->indexed.end(),
+      doc1_1->stored.begin(), doc1_1->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc1_2->indexed.begin(), doc1_2->indexed.end(),
+      doc1_2->stored.begin(), doc1_2->stored.end()
+    ));
+    ASSERT_TRUE(writer->insert(
+      doc1_3->indexed.begin(), doc1_3->indexed.end(),
+      doc1_3->stored.begin(), doc1_3->stored.end()
+    ));
+
+    // defragment segments
+    writer->consolidate(always_merge, false);
+    writer->commit();
+
+    // validate merged segment 
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(1, reader->size());
+    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(6, segment.docs_count()); // total count of documents
+    auto values = segment.values("name", visitor);
+    auto upper_case_values = segment.values("NAME", visitor);
+
+    auto terms = segment.terms("same");
+    ASSERT_NE(nullptr, terms);
+    auto termItr = terms->iterator();
+    ASSERT_TRUE(termItr->next());
+    auto docsItr = termItr->postings(iresearch::flags());
+    ASSERT_TRUE(docsItr->next());
+    expected_value = "B"; // 'name' value in doc2
+    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(docsItr->next());
+    expected_value = "D"; // 'name' value in doc4
+    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(docsItr->next());
+    expected_value = "F"; // 'name' value in doc6
+    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(docsItr->next());
+    expected_value = "A"; // 'name' value in doc1_1
+    ASSERT_TRUE(upper_case_values(docsItr->value()));
+    ASSERT_TRUE(docsItr->next());
+    expected_value = "B"; // 'name' value in doc1_2
+    ASSERT_TRUE(upper_case_values(docsItr->value()));
+    ASSERT_TRUE(docsItr->next());
+    expected_value = "C"; // 'name' value in doc1_3
+    ASSERT_TRUE(upper_case_values(docsItr->value()));
+    ASSERT_FALSE(docsItr->next());
+  }
+
+  // merge two segments with different fields (defragment immediate)
   {
     auto writer = open_writer();
     // add 1st segment
@@ -4197,9 +4573,9 @@ TEST_F(memory_index_test, segment_defragment) {
     writer->commit();
 
     // defragment segments
-    writer->defragment(always_merge);
+    writer->consolidate(always_merge);
     writer->commit();
-    
+
     // validate merged segment 
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader->size());
@@ -4235,7 +4611,7 @@ TEST_F(memory_index_test, segment_defragment) {
   }
 }
 
-TEST_F(memory_index_test, segment_defragment_policy) {
+TEST_F(memory_index_test, segment_consolidate_policy) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json::json_value& data) {
@@ -4280,7 +4656,7 @@ TEST_F(memory_index_test, segment_defragment_policy) {
       doc5->stored.begin(), doc5->stored.end()
     ));
     writer->commit();
-    writer->defragment(iresearch::index_utils::defragment_bytes(1)); // value garanteeing merge
+    writer->consolidate(iresearch::index_utils::consolidate_bytes(1)); // value garanteeing merge
     writer->commit();
 
     std::unordered_set<std::string> expectedName = { "A", "B", "C", "D", "E" };
@@ -4337,7 +4713,7 @@ TEST_F(memory_index_test, segment_defragment_policy) {
       doc5->stored.begin(), doc5->stored.end()
     ));
     writer->commit();
-    writer->defragment(iresearch::index_utils::defragment_bytes(0)); // value garanteeing non-merge
+    writer->consolidate(iresearch::index_utils::consolidate_bytes(0)); // value garanteeing non-merge
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -4408,7 +4784,7 @@ TEST_F(memory_index_test, segment_defragment_policy) {
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->commit();
-    writer->defragment(iresearch::index_utils::defragment_bytes_accum(1)); // value garanteeing merge
+    writer->consolidate(iresearch::index_utils::consolidate_bytes_accum(1)); // value garanteeing merge
     writer->commit();
     // segments merged because segment[0] is a candidate and needs to be merged with something
 
@@ -4452,7 +4828,7 @@ TEST_F(memory_index_test, segment_defragment_policy) {
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->commit();
-    writer->defragment(iresearch::index_utils::defragment_bytes_accum(0)); // value garanteeing non-merge
+    writer->consolidate(iresearch::index_utils::consolidate_bytes_accum(0)); // value garanteeing non-merge
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -4537,7 +4913,7 @@ TEST_F(memory_index_test, segment_defragment_policy) {
       doc5->stored.begin(), doc5->stored.end()
     ));
     writer->commit();
-    writer->defragment(iresearch::index_utils::defragment_count(1)); // value garanteeing merge
+    writer->consolidate(iresearch::index_utils::consolidate_count(1)); // value garanteeing merge
     writer->commit();
 
     std::unordered_set<std::string> expectedName = { "A", "D", "E" };
@@ -4594,7 +4970,7 @@ TEST_F(memory_index_test, segment_defragment_policy) {
       doc5->stored.begin(), doc5->stored.end()
     ));
     writer->commit();
-    writer->defragment(iresearch::index_utils::defragment_count(0)); // value garanteeing non-merge
+    writer->consolidate(iresearch::index_utils::consolidate_count(0)); // value garanteeing non-merge
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -4676,7 +5052,7 @@ TEST_F(memory_index_test, segment_defragment_policy) {
     writer->commit();
     writer->remove(std::move(query_doc2_doc4.filter));
     writer->commit();
-    writer->defragment(iresearch::index_utils::defragment_fill(1)); // value garanteeing merge
+    writer->consolidate(iresearch::index_utils::consolidate_fill(1)); // value garanteeing merge
     writer->commit();
 
     std::unordered_set<std::string> expectedName = { "A", "C" };
@@ -4730,7 +5106,7 @@ TEST_F(memory_index_test, segment_defragment_policy) {
     writer->commit();
     writer->remove(std::move(query_doc2_doc4.filter));
     writer->commit();
-    writer->defragment(iresearch::index_utils::defragment_fill(0)); // value garanteeing non-merge
+    writer->consolidate(iresearch::index_utils::consolidate_fill(0)); // value garanteeing non-merge
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());

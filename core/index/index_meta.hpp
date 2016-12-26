@@ -73,7 +73,7 @@ class IRESEARCH_API index_meta {
     index_segment_t& operator=(const index_segment_t& other) = default;
     index_segment_t(index_segment_t&& other);
     index_segment_t& operator=(index_segment_t&& other);
-    
+
     std::string filename;
     segment_meta meta;
   }; // index_segment_t
@@ -81,10 +81,7 @@ class IRESEARCH_API index_meta {
   typedef std::vector<index_segment_t> index_segments_t;
   DECLARE_PTR(index_meta);
 
-  static const uint64_t INVALID_GEN = integer_traits< uint64_t >::const_max;
-  static const string_ref FORMAT_NAME;
-
-  index_meta() = default;
+  index_meta();
   index_meta(index_meta&& rhs);
   index_meta(const index_meta& rhs);
   index_meta& operator=(index_meta&& rhs);
@@ -93,10 +90,9 @@ class IRESEARCH_API index_meta {
   template<typename _ForwardIterator>
   void add(_ForwardIterator begin, _ForwardIterator end) {
     segments_.reserve(segments_.size() + std::distance(begin, end));
-    gen_dirty_ |= begin != end;
     std::move(begin, end, std::back_inserter(segments_));
   }
-  
+
   template<typename Visitor>
   bool visit_files(const Visitor& visitor) const {
     return const_cast<index_meta&>(*this).visit_files(visitor);
@@ -124,13 +120,12 @@ class IRESEARCH_API index_meta {
 
   index_segments_t::iterator begin() { return segments_.begin(); }
   index_segments_t::iterator end() { return segments_.end(); }
-  
+
   index_segments_t::const_iterator begin() const { return segments_.begin(); }
   index_segments_t::const_iterator end() const { return segments_.end(); }
 
   void update_generation(const index_meta& rhs) NOEXCEPT{
     gen_ = rhs.gen_;
-    gen_dirty_ = rhs.gen_dirty_;
     last_gen_ = rhs.last_gen_;
   }
 
@@ -146,7 +141,6 @@ class IRESEARCH_API index_meta {
   void reset(const index_meta& rhs) {
     // leave version and generation counters unchanged
     segments_ = rhs.segments_;
-    gen_dirty_ = (last_gen_ == INVALID_GEN);
     pending_ = false;
   }
 
@@ -159,18 +153,15 @@ class IRESEARCH_API index_meta {
   friend struct index_meta_reader;
   friend struct index_meta_writer;
 
-  uint64_t next_generation() const {
-    return INVALID_GEN == gen_ ? 1 : gen_ + 1;
-  }
-
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
+  uint64_t gen_;
+  uint64_t last_gen_;
+  std::atomic<uint64_t> seg_counter_;
   index_segments_t segments_;
-  std::atomic<uint64_t> seg_counter_{ 0 };
-  uint64_t gen_{ INVALID_GEN };
-  uint64_t last_gen_{ INVALID_GEN };
-  bool gen_dirty_{ true }; // dirty because gen == INVALID_GEN
   bool pending_{ false };
   IRESEARCH_API_PRIVATE_VARIABLES_END
+
+  uint64_t next_generation() const;
 }; // index_meta
 
 NS_END

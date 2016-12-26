@@ -68,7 +68,6 @@ index_meta_writer::~index_meta_writer() {}
 }
 /* static */ void index_meta_writer::prepare(index_meta& meta) {
   meta.gen_ = meta.next_generation();
-  meta.gen_dirty_ = false;
 }
 
 index_meta_reader::~index_meta_reader() {}
@@ -81,7 +80,6 @@ index_meta_reader::~index_meta_reader() {}
 ) {
   meta.gen_ = generation;
   meta.last_gen_ = generation;
-  meta.gen_dirty_ = generation == index_meta::INVALID_GEN;
   meta.seg_counter_ = counter;
   meta.segments_ = std::move(segments);
 }

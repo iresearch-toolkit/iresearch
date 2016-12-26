@@ -11,6 +11,7 @@
 
 #include "shared.hpp"
 #include "formats/formats.hpp"
+#include "utils/type_limits.hpp"
 #include "index_meta.hpp"
 
 NS_ROOT
@@ -35,8 +36,13 @@ segment_meta::segment_meta(
     codec(codec) {
 }
 
-segment_meta::segment_meta(segment_meta&& rhs) {
-  *this = std::move(rhs);
+segment_meta::segment_meta(segment_meta&& rhs)
+  : files(std::move(rhs.files)),
+    name(std::move(rhs.name)),
+    docs_count(rhs.docs_count),
+    codec(rhs.codec),
+    version(rhs.version) {
+  rhs.docs_count = 0;
 }
 
 segment_meta& segment_meta::operator=(segment_meta&& rhs) {
@@ -57,12 +63,16 @@ segment_meta& segment_meta::operator=(segment_meta&& rhs) {
  * index_meta
  * ------------------------------------------------------------------*/
 
+index_meta::index_meta()
+  : gen_(type_limits<type_t::index_gen_t>::invalid()),
+    last_gen_(type_limits<type_t::index_gen_t>::invalid()),
+    seg_counter_(0) {
+}
 index_meta::index_meta(const index_meta& rhs)
   : segments_(rhs.segments_),
     seg_counter_(rhs.seg_counter_.load()),
     gen_(rhs.gen_),
     last_gen_(rhs.last_gen_),
-    gen_dirty_(rhs.gen_dirty_),
     pending_(rhs.pending_) {
 }
 
@@ -71,7 +81,6 @@ index_meta::index_meta(index_meta&& rhs)
     seg_counter_(rhs.seg_counter_.load()),
     gen_(std::move(rhs.gen_)),
     last_gen_(std::move(rhs.last_gen_)),
-    gen_dirty_(std::move(rhs.gen_dirty_)),
     pending_(std::move(rhs.pending_)) {
 }
 
@@ -81,10 +90,13 @@ index_meta& index_meta::operator=(index_meta&& rhs) {
     seg_counter_ = rhs.seg_counter_.load();
     gen_ = std::move(rhs.gen_);
     last_gen_ = std::move(rhs.last_gen_);
-    gen_dirty_ = std::move(rhs.gen_dirty_);
     pending_ = std::move(rhs.pending_);
   }
   return *this;
+}
+
+uint64_t index_meta::next_generation() const {
+  return type_limits<type_t::index_gen_t>::valid(gen_) ? (gen_ + 1) : 1;
 }
 
 /* -------------------------------------------------------------------

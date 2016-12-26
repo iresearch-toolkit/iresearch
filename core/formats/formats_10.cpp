@@ -1193,7 +1193,7 @@ uint64_t parse_generation(const std::string& segments_file) {
   char* suffix;
   auto gen = std::strtoull(gen_str, &suffix, 10); // 10 for base-10
 
-  return suffix[0] ? index_meta::INVALID_GEN : gen;
+  return suffix[0] ? type_limits<type_t::index_gen_t>::invalid() : gen;
 }
 
 bool index_meta_reader::last_segments_file(const directory& dir, std::string& out) const {
@@ -1201,7 +1201,8 @@ bool index_meta_reader::last_segments_file(const directory& dir, std::string& ou
   directory::visitor_f visitor = [&out, &max_gen] (std::string& name) {
     if (iresearch::starts_with(name, index_meta_writer::FORMAT_PREFIX)) {
       const uint64_t gen = parse_generation(name);
-      if (gen != index_meta::INVALID_GEN && gen > max_gen) {
+
+      if (type_limits<type_t::index_gen_t>::valid(gen) && gen > max_gen) {
         out = std::move(name);
         max_gen = gen;
       }
