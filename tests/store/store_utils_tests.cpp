@@ -96,7 +96,7 @@ void read_write_core_container(
 
   iresearch::bytes_input in(out);
   const Cont read = reader( in);
-  ASSERT_EQ(src, readed);
+  ASSERT_EQ(src, read);
 }
 
 void read_write_block(const std::vector<uint32_t>& source, std::vector<uint32_t>& enc_dec_buf) {
