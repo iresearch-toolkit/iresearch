@@ -21,7 +21,7 @@ NS_BEGIN(irstd)
 
 // Helper for prior C++17 compilers (before MSVC 2015, GCC 6)
 template<typename Container, typename... Args>
-FORCE_INLINE std::pair<typename Container::iterator, bool> try_emplace(
+inline std::pair<typename Container::iterator, bool> try_emplace(
     Container& cont,
     const typename Container::key_type& key,
     Args&&... args) {
@@ -50,7 +50,7 @@ FORCE_INLINE std::pair<typename Container::iterator, bool> try_emplace(
 // converts reverse iterator to corresponding forward iterator
 // the function does not accept containers "end"
 template<typename ReverseIterator>
-typename ReverseIterator::iterator_type to_forward(ReverseIterator it) {
+CONSTEXPR typename ReverseIterator::iterator_type to_forward(ReverseIterator it) {
   return --(it.base());
 }
 
@@ -79,7 +79,7 @@ inline void _for_each_top(
 
 template<
   typename RandomAccessIterator, typename Diff,
-  typename Pred, typename Func >
+  typename Pred, typename Func>
 inline void _for_each_if(
     RandomAccessIterator begin,
     Diff idx, Diff bottom,
@@ -104,7 +104,7 @@ inline void for_each_if(
     RandomAccessIterator begin,
     RandomAccessIterator end,
     Pred pred,
-    Func func ) {
+    Func func) {
   typedef typename std::iterator_traits<
       RandomAccessIterator
   >::difference_type difference_type;
@@ -123,7 +123,7 @@ template< typename RandomAccessIterator, typename Func >
 inline void for_each_top( 
     RandomAccessIterator begin, 
     RandomAccessIterator end, 
-    Func func ) {
+    Func func) {
   typedef typename std::iterator_traits<
     RandomAccessIterator
   >::difference_type difference_type;
@@ -140,16 +140,10 @@ NS_END // heap
 /////////////////////////////////////////////////////////////////////////////
 /// @brief checks that all values in the specified range are equals 
 ////////////////////////////////////////////////////////////////////////////
-template< typename InputIterator >
-bool all_equals( InputIterator begin, InputIterator end ) {
-  InputIterator cur = (begin == end ? end : begin+1);
-  for ( ; cur != end; ++cur ) {
-    if ( *cur != *begin ) {
-      return false;
-    }
-  }
-
-  return true;
+template<typename ForwardIterator>
+inline bool all_equal(ForwardIterator begin, ForwardIterator end) {
+  typedef typename std::iterator_traits<ForwardIterator>::value_type value_type;
+  return end == std::adjacent_find(begin, end, std::not_equal_to<value_type>());
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -157,29 +151,31 @@ bool all_equals( InputIterator begin, InputIterator end ) {
 /// @brief provide in place construction capabilities for stl algorithms 
 ////////////////////////////////////////////////////////////////////////////
 template<typename Container>
-class back_emplace_iterator : public std::iterator < std::output_iterator_tag, void, void, void, void > {
-public:
+class back_emplace_iterator : public std::iterator<std::output_iterator_tag, void, void, void, void> {
+ public:
   typedef Container container_type;
 
-  explicit back_emplace_iterator(Container& cont) : cont_(std::addressof(cont)) { }
+  explicit back_emplace_iterator(Container& cont) 
+    : cont_(std::addressof(cont)) {
+  }
 
   template<class T>
-  back_emplace_iterator<Container>& operator=( T&& t ) {
-    cont_->emplace_back( std::forward<T>( t ) );
+  back_emplace_iterator<Container>& operator=(T&& t) {
+    cont_->emplace_back(std::forward<T>(t));
     return *this;
   }
 
-  back_emplace_iterator& operator*( ) { return *this; }
-  back_emplace_iterator& operator++( ) { return *this; }
-  back_emplace_iterator& operator++( int ) { return *this; }
+  back_emplace_iterator& operator*() { return *this; }
+  back_emplace_iterator& operator++() { return *this; }
+  back_emplace_iterator& operator++(int) { return *this; }
 
-private:
+ private:
   Container* cont_;
-};
+}; // back_emplace_iterator 
 
 template<typename Container>
-inline back_emplace_iterator<Container> back_emplacer( Container& cont ) {
-  return back_emplace_iterator<Container>( cont );
+inline back_emplace_iterator<Container> back_emplacer(Container& cont) {
+  return back_emplace_iterator<Container>(cont);
 }
 
 NS_END

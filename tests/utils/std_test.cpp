@@ -108,22 +108,22 @@ TEST(std_test, heap_for_each_top) {
   }
 }
 
-TEST(std_test, all_equals) {
+TEST(std_test, ALL_EQUAL) {
   /* equals */
   {
     const std::vector<int> src( 10, 0 );
-    ASSERT_TRUE( irstd::all_equals( src.begin(), src.end() ) );
+    ASSERT_TRUE( irstd::all_equal( src.begin(), src.end() ) );
   }
 
   /* empty */
   {
     const std::vector<int> src;
-    ASSERT_TRUE( irstd::all_equals( src.begin(), src.end() ) );
+    ASSERT_TRUE( irstd::all_equal( src.begin(), src.end() ) );
   }
 
   /* not equals */
   {
     const std::vector<int> src{ 0, 4, 1, 3, 4, 1, 2, 51, 21, 32 };
-    ASSERT_FALSE( irstd::all_equals( src.begin(), src.end() ) );
+    ASSERT_FALSE( irstd::all_equal( src.begin(), src.end() ) );
   }
 }

@@ -15,7 +15,6 @@
 #include "gtest/gtest.h"
 
 #include "../core/shared.hpp"
-#include "tests_utils.hpp"
 #include <memory>
 #include <cstdio>
 

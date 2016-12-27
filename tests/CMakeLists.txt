@@ -112,7 +112,6 @@ set(IReSearch_tests_headers
   ./unicode/utf8/core.h
   ./tests_config.hpp
   ./json_parser.hpp
-  ./tests_utils.hpp
   ${IReSearch_generated_INCLUDE_DIR}/tests_config.hpp # auto generated
 )
 

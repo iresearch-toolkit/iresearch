@@ -172,7 +172,7 @@ public:
     // since we are using heap in order to determine next document,
     // in order to avoid useless make_heap call we expect that all
     // iterators are equal here */
-    //assert(irstd::all_equals(itrs_.begin(), itrs_.end()));
+    //assert(irstd::all_equal(itrs_.begin(), itrs_.end()));
     
     // estimate disjunction
     attrs_.add<cost>()->rule([this](){

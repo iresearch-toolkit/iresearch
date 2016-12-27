@@ -18,17 +18,37 @@ namespace tests {
 namespace detail {
 
 void packed_read_write_core(const std::vector<uint32_t> &src) {
+  const size_t BLOCK_SIZE = 128;
+  uint32_t encoded[BLOCK_SIZE];
+  const auto blocks = src.size() / BLOCK_SIZE;
+  assert(blocks);
+
   // compress data to stream
   iresearch::bytes_output out;
-  iresearch::write_packed(out, &src[0], src.size());
+
+  // write first n compressed blocks
+  {
+    auto begin = src.data();
+    for (size_t i = 0; i < blocks; ++i) {
+      iresearch::write_block(out, begin, BLOCK_SIZE, encoded);
+      begin += BLOCK_SIZE;
+    }
+  }
 
   // decompress data from stream
-  std::vector<uint32_t> readed(src.size());
+  std::vector<uint32_t> read(src.size());
   iresearch::bytes_ref_input in(out);
-  iresearch::read_packed(in, &readed[0], readed.size());
 
-  // check containers equality
-  tests::assert_equal(src, readed);
+  // read first n compressed blocks
+  {
+    auto begin = read.data();
+    for (size_t i = 0; i < blocks; ++i) {
+      iresearch::read_block(in, BLOCK_SIZE, encoded, begin);
+      begin += BLOCK_SIZE;
+    }
+  }
+
+  ASSERT_EQ(src, read);
 }
 
 using iresearch::data_input;
@@ -72,11 +92,11 @@ void read_write_core_container(
     const std::function<Cont(data_input&)>& reader,
     const std::function<data_output&(data_output&,const Cont&)>& writer) {
   iresearch::bytes_output out;
-  writer( out, src);
+  writer(out, src);
 
-  iresearch::bytes_input in( out);
-  const Cont readed = reader( in);
-  tests::assert_equal( src, readed);
+  iresearch::bytes_input in(out);
+  const Cont read = reader( in);
+  ASSERT_EQ(src, readed);
 }
 
 void read_write_block(const std::vector<uint32_t>& source, std::vector<uint32_t>& enc_dec_buf) {
@@ -86,10 +106,10 @@ void read_write_block(const std::vector<uint32_t>& source, std::vector<uint32_t>
 
   // read block
   iresearch::bytes_input in(out);
-  std::vector<uint32_t> readed(source.size());
-  iresearch::read_block(in, source.size(), &enc_dec_buf[0], &readed[0]);
+  std::vector<uint32_t> read(source.size());
+  iresearch::read_block(in, source.size(), &enc_dec_buf[0], read.data());
 
-  tests::assert_equal(source, readed);
+  ASSERT_EQ(source, read);
 }
 
 void read_write_block(const std::vector<uint32_t>& source) {
@@ -419,11 +439,6 @@ TEST(store_utils_tests, packed_read_write_32) {
     std::vector<uint32_t> all_eq_src(src.size(), 5);
     tests::detail::packed_read_write_core(all_eq_src);
   }
-  
-
-  // single value case
-  std::vector<uint32_t> single_value_src{ 10751 };
-  tests::detail::packed_read_write_core(single_value_src);
 }
 
 TEST(store_utils_tests, read_write_block) {

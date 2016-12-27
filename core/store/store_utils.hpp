@@ -170,50 +170,60 @@ IRESEARCH_API void skip(
 // --SECTION--                                                  packing helpers 
 // ----------------------------------------------------------------------------
 
-IRESEARCH_API void read_packed(data_input& in, uint32_t bits, uint32_t* dst, uint32_t size);
+IRESEARCH_API void skip_block32(
+  index_input& in, 
+  uint32_t size
+);
 
-IRESEARCH_API void read_packed(data_input& in, uint32_t* dst, uint32_t size);
-
-IRESEARCH_API void write_packed(data_output& out, uint32_t bits,
-                                const uint32_t* data, uint32_t size);
-
-IRESEARCH_API void write_packed(data_output& out, const uint32_t* values, uint32_t count);
-
-IRESEARCH_API void skip_block(index_input& in, uint32_t size,
-                              uint32_t* encoded);
-
-IRESEARCH_API void read_block(
-  data_input& in, uint32_t size, uint32_t* encoded, uint32_t* decoded
+IRESEARCH_API void skip_block64(
+  index_input& in, 
+  uint64_t size
 );
 
 IRESEARCH_API void read_block(
-  data_input& in, uint32_t size, uint64_t* encoded, uint64_t* decoded
+  data_input& in, 
+  uint32_t size, 
+  uint32_t* encoded, 
+  uint32_t* decoded
+);
+
+IRESEARCH_API void read_block(
+  data_input& in, 
+  uint32_t size, 
+  uint64_t* encoded, 
+  uint64_t* decoded
 );
 
 IRESEARCH_API void write_block(
-  data_output& out, const uint32_t* decoded, uint32_t size, uint32_t* encoded
+  data_output& out, 
+  const uint32_t* decoded, 
+  uint32_t size, 
+  uint32_t* encoded
 );
 
 IRESEARCH_API void write_block(
-  data_output& out, const uint64_t* decoded, uint32_t size, uint64_t* encoded
+  data_output& out, 
+  const uint64_t* decoded, 
+  uint32_t size, 
+  uint64_t* encoded
 );
 
-inline uint64_t shift_pack_64(uint64_t val, bool b) {
+FORCE_INLINE uint64_t shift_pack_64(uint64_t val, bool b) {
   assert(val <= 0x7FFFFFFFFFFFFFFFLL);
   return (val << 1) | (b ? 1 : 0);
 }
 
-inline uint32_t shift_pack_32(uint32_t val, bool b) {
+FORCE_INLINE uint32_t shift_pack_32(uint32_t val, bool b) {
   assert(val <= 0x7FFFFFFF);
   return (val << 1) | (b ? 1 : 0);
 }
 
-inline bool shift_unpack_64(uint64_t in, uint64_t& out) {
+FORCE_INLINE bool shift_unpack_64(uint64_t in, uint64_t& out) {
   out = in >> 1;
   return in & 1;
 }
 
-inline bool shift_unpack_32(uint32_t in, uint32_t& out) {
+FORCE_INLINE bool shift_unpack_32(uint32_t in, uint32_t& out) {
   out = in >> 1;
   return in & 1;
 }

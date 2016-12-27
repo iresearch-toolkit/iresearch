@@ -10,7 +10,6 @@
 // 
 
 #include "tests_shared.hpp"
-#include "tests_utils.hpp"
 
 #include "index/postings.hpp"
 

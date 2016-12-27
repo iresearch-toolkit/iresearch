@@ -129,121 +129,27 @@ void skip(data_input& in, size_t to_skip,
 * packed helpers
 * ------------------------------------------------------------------*/
 
-const uint32_t ALL_EQUALS = 0U;
+const uint32_t ALL_EQUAL = 0U;
 
-/* currently we accept only size that are powers of 2 */
-void read_packed( data_input& in, uint32_t bits,
-                  uint32_t* dst, uint32_t size ) {
-  /* we will read data into blocks of
-   * packed::BLOCK_SIZE count items */
-  const size_t buf_size = packed::blocks_required_32(packed::BLOCK_SIZE_32, bits);
-  auto buf = memory::make_unique<uint32_t[]>(buf_size);
-
-  /* number of iterations needed to decode data by blocks of size
-   * packed::BLOCK_SIZE */
-  const uint64_t itrs = packed::iterations_required(size);
-  for (uint64_t i = 0; i < itrs; ++i) {
-
-    /* read data */
-#ifdef IRESEARCH_DEBUG
-    const auto read = in.read_bytes(
-      reinterpret_cast<byte_type*>(buf.get()),
-      buf_size * sizeof(uint32_t)
-    );
-    assert(read == buf_size * sizeof(uint32_t));
-#else 
-    in.read_bytes(
-      reinterpret_cast<byte_type*>(buf.get()),
-      buf_size * sizeof(uint32_t)
-    );
-#endif // IRESEARCH_DEBUG
-
-    /* decompress data */
-    packed::unpack(dst, dst + packed::BLOCK_SIZE_32, buf.get(), bits);
-    /* goto next page */
-    dst += packed::BLOCK_SIZE_32;
-  }
-}
-
-void read_packed( data_input& in, uint32_t* dst, uint32_t size ) {
-  if ( 1U == size) {
-    dst[0] = in.read_vint();
-    return;
-  }
-
-  const uint32_t bits = in.read_vint();
-  if( bits >= sizeof(uint32_t)*8) {
-    /* corrupted index error */
-    throw index_error();
-  }
-
-  if ( ALL_EQUALS == bits) {  
-    std::fill( dst, dst + size, in.read_vint());
-  } else {
-    read_packed( in, bits, dst, size );
-  }
-}
-
-/* currently we accept only size that are powers of 2 
- * Note, that size of data buffer should be not less
- * than packed::BLOCK_SIZE */
-void write_packed( data_output& out, uint32_t bits,
-                   const uint32_t* data, uint32_t size ) {  
-  /* we will write data in blocks of
-   * packed::BLOCK_SIZE count items */
-  const auto buf_size = packed::blocks_required_32(packed::BLOCK_SIZE_32, bits);
-  auto buf = memory::make_unique<uint32_t[]>(buf_size);
-
-  out.write_vint(bits);
-
-  /* number of iterations needed to
-   * encode data by blocks of size
-   * packed::BLOCK_SIZE */
-  const uint64_t itrs = packed::iterations_required(size);
-
-  for (uint64_t i = 0; i < itrs; ++i) {
-    /* clean buffer*/
-    std::memset(buf.get(), 0, sizeof(uint32_t) * buf_size);
-    /* compress the data */
-    packed::pack(data, data + packed::BLOCK_SIZE_32, buf.get(), bits);
-    /* write buffer to output */
-    out.write_bytes(
-      reinterpret_cast<byte_type*>(buf.get()),
-      buf_size * sizeof(uint32_t)
-    );
-    /* goto next page */
-    data += packed::BLOCK_SIZE_32;
-  }
-}
-
-void write_packed( data_output& out, const uint32_t* data, uint32_t size ) {
-  assert( size );
-
-  if ( 1 == size ) {
-    out.write_vint( *data );
-  } else if ( irstd::all_equals( data, data + size ) ) {
-    out.write_vint( ALL_EQUALS );
-    out.write_vint( *data );
-  } else {
-    /* determine how many bits we
-     * need to store the data */
-    const uint32_t bits = packed::bits_required_32(
-      *std::max_element(data, data + size)
-    );
-
-    write_packed(out, bits, data, size);
-  }
-}
-
-void skip_block(index_input& in, uint32_t size, uint32_t* encoded) {
+void skip_block32(index_input& in, uint32_t size) {
   assert(size);
-  assert(encoded);
 
   const uint32_t bits = in.read_vint();
-  if (ALL_EQUALS == bits) {
+  if (ALL_EQUAL == bits) {
     in.read_vint();
   } else {
     in.seek(in.file_pointer() + packed::bytes_required_32(size, bits));
+  }
+}
+
+void skip_block64(index_input& in, uint64_t size) {
+  assert(size);
+
+  const uint32_t bits = in.read_vint();
+  if (ALL_EQUAL == bits) {
+    in.read_vlong();
+  } else {
+    in.seek(in.file_pointer() + packed::bytes_required_64(size, bits));
   }
 }
 
@@ -254,7 +160,7 @@ void read_block(data_input& in, uint32_t size,
   assert(decoded);
 
   const uint32_t bits = in.read_vint();
-  if (ALL_EQUALS == bits) {
+  if (ALL_EQUAL == bits) {
     std::fill(decoded, decoded + size, in.read_vint());
   } else {
     const size_t reqiured = packed::bytes_required_32(size, bits);
@@ -276,16 +182,15 @@ void read_block(data_input& in, uint32_t size,
   }
 }
 
-void read_block(
-  data_input& in, uint32_t size, uint64_t* encoded, uint64_t* decoded
-) {
+void read_block(data_input& in, uint32_t size, 
+                uint64_t* encoded, uint64_t* decoded) {
   assert(size);
   assert(encoded);
   assert(decoded);
 
   const uint32_t bits = in.read_vint();
-  if (ALL_EQUALS == bits) {
-    std::fill(decoded, decoded + size, in.read_vint());
+  if (ALL_EQUAL == bits) {
+    std::fill(decoded, decoded + size, in.read_vlong());
   } else {
     auto reqiured = packed::bytes_required_64(size, bits);
 
@@ -312,8 +217,8 @@ void write_block(data_output& out, const uint32_t* decoded,
   assert(encoded);
   assert(decoded);
 
-  if (irstd::all_equals(decoded, decoded + size)) {
-    out.write_vint(ALL_EQUALS);
+  if (irstd::all_equal(decoded, decoded + size)) {
+    out.write_vint(ALL_EQUAL);
     out.write_vint(*decoded);
   } else {
     const uint32_t bits = packed::bits_required_32(
@@ -330,16 +235,15 @@ void write_block(data_output& out, const uint32_t* decoded,
   }
 }
 
-void write_block(
-  data_output& out, const uint64_t* decoded, uint32_t size, uint64_t* encoded
-) {
+void write_block(data_output& out, const uint64_t* decoded, 
+                 uint32_t size, uint64_t* encoded) {
   assert(size);
   assert(encoded);
   assert(decoded);
 
-  if (irstd::all_equals(decoded, decoded + size)) {
-    out.write_vint(ALL_EQUALS);
-    out.write_vint(*decoded);
+  if (irstd::all_equal(decoded, decoded + size)) {
+    out.write_vint(ALL_EQUAL);
+    out.write_vlong(*decoded);
   } else {
     const auto bits = packed::bits_required_64(
       *std::max_element(decoded, decoded + size)

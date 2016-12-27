@@ -178,21 +178,21 @@ inline void prepare_input(
   format_utils::check_header(*in, format, min_ver, max_ver);
 }
 
-inline void skip_positions(index_input& in, uint32_t* enc_buf) {
-  skip_block(in, postings_writer::BLOCK_SIZE, enc_buf);
+FORCE_INLINE void skip_positions(index_input& in) {
+  skip_block32(in, postings_writer::BLOCK_SIZE);
 }
 
-inline void skip_payload(index_input& in, uint32_t* enc_buf) {
+FORCE_INLINE void skip_payload(index_input& in) {
   const size_t size = in.read_vint();
   if (size) {
-    skip_block(in, postings_writer::BLOCK_SIZE, enc_buf);
+    skip_block32(in, postings_writer::BLOCK_SIZE);
     in.seek(in.file_pointer() + size);
   }
 }
 
-inline void skip_offsets(index_input& in, uint32_t* enc_buf) {
-  skip_block(in, postings_writer::BLOCK_SIZE, enc_buf);
-  skip_block(in, postings_writer::BLOCK_SIZE, enc_buf);
+FORCE_INLINE void skip_offsets(index_input& in) {
+  skip_block32(in, postings_writer::BLOCK_SIZE);
+  skip_block32(in, postings_writer::BLOCK_SIZE);
 }
 
 NS_END // NS_LOCAL
@@ -516,7 +516,7 @@ class pos_iterator : public position::impl {
       count -= left;
       while (count >= postings_writer::BLOCK_SIZE) {
         // skip positions
-        skip_positions(*pos_in_, enc_buf_);
+        skip_positions(*pos_in_);
         count -= postings_writer::BLOCK_SIZE;
       }
       refill();
@@ -594,9 +594,9 @@ class offs_pay_iterator final : public pos_iterator {
       count -= left;
       // skip block by block
       while (count >= postings_writer::BLOCK_SIZE) {
-        skip_positions(*pos_in_, enc_buf_);
-        skip_payload(*pay_in_, enc_buf_);
-        skip_offsets(*pay_in_, enc_buf_);
+        skip_positions(*pos_in_);
+        skip_payload(*pay_in_);
+        skip_offsets(*pay_in_);
         count -= postings_writer::BLOCK_SIZE;
       }
       refill();
@@ -745,7 +745,7 @@ class offs_iterator final : public pos_iterator {
 
       // skip payload
       if (features_.payload()) {
-        skip_payload(*pay_in_, enc_buf_);
+        skip_payload(*pay_in_);
       }
 
       // read offsets
@@ -760,11 +760,11 @@ class offs_iterator final : public pos_iterator {
       count -= left;
       // skip block by block
       while (count >= postings_writer::BLOCK_SIZE) {
-        skip_positions(*pos_in_, enc_buf_);
+        skip_positions(*pos_in_);
         if (features_.payload()) {
-          skip_payload(*pay_in_, enc_buf_);
+          skip_payload(*pay_in_);
         }
-        skip_offsets(*pay_in_, enc_buf_);
+        skip_offsets(*pay_in_);
         count -= postings_writer::BLOCK_SIZE;
       }
       refill();
@@ -825,10 +825,10 @@ class pay_iterator final : public pos_iterator {
       count -= left;
       // skip block by block
       while (count >= postings_writer::BLOCK_SIZE) {
-        skip_positions(*pos_in_, enc_buf_);
-        skip_payload(*pay_in_, enc_buf_);
+        skip_positions(*pos_in_);
+        skip_payload(*pay_in_);
         if (features_.offset()) {
-          skip_offsets(*pay_in_, enc_buf_);
+          skip_offsets(*pay_in_);
         }
         count -= postings_writer::BLOCK_SIZE;
       }
@@ -903,7 +903,7 @@ class pay_iterator final : public pos_iterator {
 
       // skip offsets
       if (features_.offset()) {
-        skip_offsets(*pay_in_, enc_buf_);
+        skip_offsets(*pay_in_);
       }
     }
     pay_data_pos_ = 0;
