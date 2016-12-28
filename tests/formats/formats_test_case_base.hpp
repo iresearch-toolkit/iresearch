@@ -209,7 +209,7 @@ class format_test_case_base : public index_test_base {
     std::string segment_file;
 
     auto reader = codec.get_index_meta_reader();
-    iresearch::index_meta::file_set index_files(expect_additional.begin(), expect_additional.end());
+    std::unordered_set<std::string> index_files(expect_additional.begin(), expect_additional.end());
     const bool exists = reader->last_segments_file(dir, segment_file);
 
     if (exists) {

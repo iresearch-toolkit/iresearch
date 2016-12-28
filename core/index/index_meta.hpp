@@ -77,7 +77,7 @@ class IRESEARCH_API index_meta {
     std::string filename;
     segment_meta meta;
   }; // index_segment_t
-  typedef std::unordered_set<string_ref> file_set;
+
   typedef std::vector<index_segment_t> index_segments_t;
   DECLARE_PTR(index_meta);
 
@@ -134,14 +134,12 @@ class IRESEARCH_API index_meta {
 
   void clear() {
     segments_.clear();
-    pending_ = false;
     // leave version and generation counters unchanged do to possible readers
   }
 
   void reset(const index_meta& rhs) {
     // leave version and generation counters unchanged
     segments_ = rhs.segments_;
-    pending_ = false;
   }
 
   const index_segment_t& segment(size_t i) const {
@@ -158,7 +156,6 @@ class IRESEARCH_API index_meta {
   uint64_t last_gen_;
   std::atomic<uint64_t> seg_counter_;
   index_segments_t segments_;
-  bool pending_{ false };
   IRESEARCH_API_PRIVATE_VARIABLES_END
 
   uint64_t next_generation() const;

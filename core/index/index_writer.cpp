@@ -104,11 +104,9 @@ void index_writer::flush_context::reset() {
   consolidation_policies_.clear();
   generation_.store(0);
   dir_->clear_refs();
-  meta_.clear();
   modification_queries_.clear();
   pending_segments_.clear();
   segment_mask_.clear();
-  to_sync_.clear();
   writers_pool_.visit([this](segment_writer& writer)->bool {
     writer.reset();
     return true;
@@ -120,15 +118,15 @@ index_writer::index_writer(
     directory& dir,
     format::ptr codec,
     index_meta&& meta,
-    index_meta::ptr&& commited_meta
+    committed_state_t&& committed_state
 ) NOEXCEPT:
-    flush_context_pool_(2), // 2 because just swap them due to common commit lock
-    meta_(std::move(meta)),
-    commited_meta_(std::move(commited_meta)),
-    write_lock_(std::move(lock)),
     codec_(codec),
     dir_(dir),
-    writer_(codec->get_index_meta_writer()) {
+    flush_context_pool_(2), // 2 because just swap them due to common commit lock
+    meta_(std::move(meta)),
+    committed_state_(std::move(committed_state)),
+    writer_(codec->get_index_meta_writer()),
+    write_lock_(std::move(lock)) {
   assert(codec);
   flush_context_.store(&flush_context_pool_[0]);
 
@@ -193,15 +191,17 @@ index_writer::ptr index_writer::make(directory& dir, format::ptr codec, OPEN_MOD
     }
   }
 
-  auto commited_meta = memory::make_unique<index_meta>(meta);
+  auto comitted_state = std::make_pair(
+    std::move(memory::make_unique<index_meta>(meta)),
+    std::move(file_refs)
+  );
   index_writer::ptr writer(new index_writer( 
     std::move(lock), 
     dir, codec,
     std::move(meta),
-    std::move(commited_meta)
+    std::move(comitted_state)
   ));
 
-  writer->file_refs_ = std::move(file_refs);
   directory_utils::remove_all_unreferenced(dir); // remove non-index files from directory
 
   return writer;
@@ -375,23 +375,18 @@ bool index_writer::add_document_mask_modified_records(
 
 bool index_writer::add_segment_mask_consolidated_records(
   index_meta::index_segment_t& segment,
-  const index_meta& meta,
-  flush_context& ctx,
-  const index_writer::consolidation_policy_t& policy
+  directory& dir,
+  flush_context::segment_mask_t& segments_mask,
+  const index_meta::index_segments_t& segments, // candidates to consider
+  const consolidation_acceptor_t& acceptor // functr dictating which segments to consider
 ) {
-  auto& dir = *(ctx.dir_);
-  auto merge = policy(dir, meta);
   std::vector<segment_reader::ptr> merge_candidates;
   const index_meta::index_segment_t* merge_candindate_default = nullptr;
   flush_context::segment_mask_t segment_mask;
 
   // find merge candidates
-  for (auto& segment: meta) {
-    if (ctx.segment_mask_.end() != ctx.segment_mask_.find(segment.meta.name)) {
-      continue; // skip already removed segment
-    }
-
-    if (!merge(segment.meta)) {
+  for (auto& segment: segments) {
+    if (!acceptor(segment.meta)) {
       merge_candindate_default = &segment; // pick the last non-merged segment as default
       continue; // fill min threshold not reached
     }
@@ -410,44 +405,78 @@ bool index_writer::add_segment_mask_consolidated_records(
     return false; // nothing to merge
   }
 
-  // if only one merge candidate and another segment available then merge with other
-  if (merge_candidates.size() < 2 && merge_candindate_default) {
-    auto merge_candidate = get_segment_reader(merge_candindate_default->meta);
+  if (merge_candidates.size() < 2) {
+    if (!merge_candindate_default) {
+      if (merge_candidates[0]->docs_count() == merge_candidates[0]->live_docs_count()) {
+        return false; // no reason to consolidate a segment without any masked documents
+      }
+    } else { // if only one merge candidate and another segment available then merge with other
+      auto merge_candidate = get_segment_reader(merge_candindate_default->meta);
 
-    if (!merge_candidate) {
-      return false; // failed to open segment and nothing else to merge with
+      if (!merge_candidate) {
+        return false; // failed to open segment and nothing else to merge with
+      }
+
+      merge_candidates.emplace_back(std::move(merge_candidate));
+      segment_mask.insert(merge_candindate_default->meta.name);
     }
-
-    merge_candidates.emplace_back(std::move(merge_candidate));
-    segment_mask.insert(merge_candindate_default->meta.name);
   }
 
   auto merge_segment_name = file_name(meta_.increment()); // increment active meta, not fn arg
   merge_writer merge_writer(dir, codec_, merge_segment_name);
 
   for (auto& merge_candidate: merge_candidates) {
-    merge_writer.add(*merge_candidate);
+    merge_writer.add(*(merge_candidate));
   }
 
   if (!merge_writer.flush(segment.filename, segment.meta)) {
     return false; // import failure (no files created, nothing to clean up)
   }
 
-  ctx.segment_mask_.insert(segment_mask.begin(), segment_mask.end());
+  segments_mask.insert(segment_mask.begin(), segment_mask.end());
 
   return true;
 }
 
 void index_writer::consolidate(
-  const consolidation_policy_t& policy, bool immediate /*= true*/
+  const consolidation_policy_t& policy, bool immediate
 ) {
   if (immediate) {
+    auto meta = committed_state_.first;
     index_meta::index_segment_t segment;
-    SCOPED_LOCK(commit_lock_); // ensure meta_ segments are not modified
-    auto ctx = get_flush_context();
+    std::unordered_map<string_ref, const segment_meta*> segment_candidates;
+    SCOPED_LOCK(commit_lock_); // ensure meta_ segments are not modified by concurrent consolidate()/commit()
+    auto ctx = get_flush_context(); // can modify ctx->segment_mask_ without lock since have commit_lock_
 
-    if (add_segment_mask_consolidated_records(segment, meta_, *ctx, policy)) {
+    for (auto& segment: meta_) {
+      if (ctx->segment_mask_.end() == ctx->segment_mask_.find(segment.meta.name)) {
+        segment_candidates.emplace(segment.meta.name, &(segment.meta));
+      }
+    }
+
+    auto acceptor = policy(*(ctx->dir_), *meta);
+    auto acceptor_wrapper = [&acceptor, &segment_candidates](
+      const segment_meta& meta
+    )->bool {
+      auto itr = segment_candidates.find(meta.name);
+
+      return segment_candidates.end() != itr
+          && meta.version == itr->second->version
+          && acceptor(meta)
+          ;
+    };
+
+    // for immediate consolidate consider only comitted segments that are still unmodified in current meta
+    if (add_segment_mask_consolidated_records(segment, *(ctx->dir_), ctx->segment_mask_, meta->segments_, acceptor_wrapper)) {
+      auto meta_ref = [meta](const directory&, const index_meta&)->consolidation_acceptor_t {
+        return [](const segment_meta&)->bool { return false; };
+      };
+
       SCOPED_LOCK(ctx->mutex_); // lock due to context modification
+
+      // add a policy to hold a reference to committed_meta so that segment refs do not disapear
+      ctx->consolidation_policies_.emplace_back(std::move(meta_ref));
+
       // 0 == merged segments existed before start of tx (all removes apply)
       ctx->pending_segments_.emplace_back(std::move(segment), 0);
     }
@@ -462,7 +491,7 @@ void index_writer::consolidate(
 }
 
 void index_writer::consolidate(
-  const std::shared_ptr<consolidation_policy_t>& policy, bool immediate /*= true*/
+  const std::shared_ptr<consolidation_policy_t>& policy, bool immediate
 ) {
   if (immediate) {
     consolidate(*policy, immediate);
@@ -476,7 +505,7 @@ void index_writer::consolidate(
 }
 
 void index_writer::consolidate(
-  consolidation_policy_t&& policy, bool immediate /*= true*/
+  consolidation_policy_t&& policy, bool immediate
 ) {
   if (immediate) {
     consolidate(policy, immediate);
@@ -602,24 +631,26 @@ void index_writer::remove(filter::ptr&& filter) {
   ctx->modification_queries_.emplace_back(std::move(filter), ctx->generation_++, false);
 }
 
-index_writer::flush_context::ptr index_writer::flush_all() {
+index_writer::pending_context_t index_writer::flush_all() {
   REGISTER_TIMER_DETAILED();
+  bool modified = !type_limits<type_t::index_gen_t>::valid(meta_.last_gen_);
+  index_meta::index_segments_t segments;
+  std::unordered_set<string_ref> to_sync;
+
   auto ctx = get_flush_context(false);
   auto& dir = *(ctx->dir_);
-  bool modified = !type_limits<type_t::index_gen_t>::valid(meta_.last_gen_);
-  std::unordered_set<string_ref> to_sync;
   SCOPED_LOCK(ctx->mutex_); // ensure there are no active struct update operations
 
-  ctx->meta_ = std::move(index_meta(meta_)); // clone index metadata
-
   // update document_mask for existing (i.e. sealed) segments
-  for(size_t i = 0, count = ctx->meta_.segments_.size(); i < count; ++i) {
-    auto& segment = ctx->meta_.segments_[i];
-
-    if (ctx->segment_mask_.end() != ctx->segment_mask_.find(segment.meta.name)) {
+  for (auto& existing_segment: meta_) {
+    // skip already masked segments
+    if (ctx->segment_mask_.end() != ctx->segment_mask_.find(existing_segment.meta.name)) {
       continue;
     }
 
+    segments.emplace_back(existing_segment);
+
+    auto& segment = segments.back();
     document_mask docs_mask;
 
     read_document_mask(docs_mask, dir, segment.meta);
@@ -628,7 +659,7 @@ index_writer::flush_context::ptr index_writer::flush_all() {
     if (add_document_mask_modified_records(ctx->modification_queries_, docs_mask, segment.meta)) {
       // mask empty segments
       if (docs_mask.size() == segment.meta.docs_count) {
-        ctx->segment_mask_.emplace(meta_.segments_[i].meta.name); // ref to segment name in original meta_ will not change
+        segments.pop_back();
         modified = true; // removal of one fo the existing segments
         continue;
       }
@@ -640,9 +671,9 @@ index_writer::flush_context::ptr index_writer::flush_all() {
 
   // add pending complete segments
   for (auto& pending_segment: ctx->pending_segments_) {
-    ctx->meta_.segments_.emplace_back(std::move(pending_segment.segment));
+    segments.emplace_back(std::move(pending_segment.segment));
 
-    auto& segment = ctx->meta_.segments_.back();
+    auto& segment = segments.back();
     document_mask docs_mask;
 
     // flush document_mask after regular flush() so remove_query can traverse
@@ -652,7 +683,7 @@ index_writer::flush_context::ptr index_writer::flush_all() {
 
     // remove empty segments
     if (docs_mask.size() == segment.meta.docs_count) {
-      ctx->meta_.segments_.pop_back();
+      segments.pop_back();
       continue;
     }
 
@@ -676,15 +707,15 @@ index_writer::flush_context::ptr index_writer::flush_all() {
     };
 
     std::vector<flush_context> segment_ctxs;
-    auto flush = [this, &ctx, &segment_ctxs](segment_writer& writer) {
+    auto flush = [this, &ctx, &segments, &segment_ctxs](segment_writer& writer) {
       if (!writer.initialized()) {
         return true;
       }
 
-      segment_ctxs.emplace_back(ctx->meta_.segments_.size(), writer);
-      ctx->meta_.segments_.emplace_back(segment_meta(writer.name(), writer.codec()));
+      segment_ctxs.emplace_back(segments.size(), writer);
+      segments.emplace_back(segment_meta(writer.name(), writer.codec()));
 
-      auto& segment = ctx->meta_.segments_.back();
+      auto& segment = segments.back();
 
       if (!writer.flush(segment.filename, segment.meta)) {
         return false;
@@ -699,12 +730,12 @@ index_writer::flush_context::ptr index_writer::flush_all() {
     };
 
     if (!ctx->writers_pool_.visit(flush)) {
-      return nullptr;
+      return pending_context_t();
     }
 
     // write docs_mask if !empty(), if all docs are masked then remove segment altogether
     for (auto& segment_ctx: segment_ctxs) {
-      auto& segment = ctx->meta_.segments_[segment_ctx.segment_offset];
+      auto& segment = segments[segment_ctx.segment_offset];
       auto& writer = segment_ctx.writer;
 
       // if have a writer with potential update-replacement records then check if they were seen
@@ -731,48 +762,62 @@ index_writer::flush_context::ptr index_writer::flush_all() {
     }
   }
 
-  // add empty segment name for use with add_segment_mask_defragmented_records(...)
-  ctx->segment_mask_.emplace("");
+  auto pending_meta = memory::make_unique<index_meta>();
+
+  pending_meta->update_generation(meta_); // clone index metadata generation
+  pending_meta->segments_.reserve(segments.size());
+
+  // retain list of only non-masked segments
+  if (ctx->segment_mask_.empty()) {
+    pending_meta->segments_.swap(segments);
+  } else {
+    for (auto& segment: segments) {
+      if (ctx->segment_mask_.end() == ctx->segment_mask_.find(segment.meta.name)) {
+        pending_meta->segments_.emplace_back(std::move(segment));
+      }
+    }
+  }
 
   // add segments generated by deferred merge policies to meta
   for (auto& policy: ctx->consolidation_policies_) {
-    ctx->meta_.segments_.emplace_back();
+    segments.clear();
+    segments.emplace_back();
 
-    auto& segment = ctx->meta_.segments_.back();
+    auto acceptor = (*(policy.policy))(*(ctx->dir_), *pending_meta);
+    auto& segment = segments.back();
+    flush_context::segment_mask_t segment_mask;
 
     // remove empty segments
-    if (!add_segment_mask_consolidated_records(segment, ctx->meta_, *ctx, *(policy.policy)) ||
+    if (!add_segment_mask_consolidated_records(segment, *(ctx->dir_), segment_mask, pending_meta->segments_, acceptor) ||
         !segment.meta.docs_count) {
-      ctx->meta_.segments_.pop_back();
       continue;
     }
 
     // add files from segment to list of files to sync
     to_sync.insert(segment.meta.files.begin(), segment.meta.files.end());
-    to_sync.emplace(segment.filename);
-  }
 
-  index_meta::index_segments_t segments;
-  flush_context::segment_mask_t segment_names;
+    // retain list of only non-masked segments
+    pending_meta->segments_.swap(segments);
 
-  // create list of non-masked segments
-  for (auto& segment: ctx->meta_) {
-    if (ctx->segment_mask_.end() == ctx->segment_mask_.find(segment.meta.name)) {
-      segments.emplace_back(std::move(segment));
+    for (auto& segment: segments) {
+      if (segment_mask.end() == segment_mask.find(segment.meta.name)) {
+        pending_meta->segments_.emplace_back(std::move(segment));
+      }
     }
   }
 
-  ctx->meta_.segments_ = segments; // retain list of only non-masked segments
+  pending_context_t pending_context;
+  flush_context::segment_mask_t segment_names;
 
   // create list of segment names and files requiring FS sync
   // for refs to be valid this must be done only after all changes ctx->meta_.segments_
-  for (auto& segment: ctx->meta_) {
+  for (auto& segment: *pending_meta) {
     bool sync_segment = false;
     segment_names.emplace(segment.meta.name);
 
     for (auto& file: segment.meta.files) {
       if (to_sync.erase(file)) {
-        ctx->to_sync_.emplace_back(file); // add modified files requiring FS sync
+        pending_context.to_sync.emplace_back(file); // add modified files requiring FS sync
         sync_segment = true; // at least one file in the segment was modified
       }
     }
@@ -780,11 +825,11 @@ index_writer::flush_context::ptr index_writer::flush_all() {
     // must sync segment.filename if at least one file in the segment was modified
     // since segment moved above all its segment.filename references were invalidated
     if (sync_segment) {
-      ctx->to_sync_.emplace_back(segment.filename); // add modified files requiring FS sync
+      pending_context.to_sync.emplace_back(segment.filename); // add modified files requiring FS sync
     }
   }
 
-  modified |= !ctx->to_sync_.empty(); // new files added
+  modified |= !pending_context.to_sync.empty(); // new files added
 
   // remove stale readers from cache
   for (auto itr = cached_segment_readers_.begin(); itr != cached_segment_readers_.end();) {
@@ -797,13 +842,16 @@ index_writer::flush_context::ptr index_writer::flush_all() {
 
   // only flush a new index version upon a new index or a metadata change
   if (!modified) {
-    return nullptr;
+    return pending_context_t();
   }
 
+  pending_meta->seg_counter_.store(meta_.counter()); // ensure counter() >= max(seg#)
+  pending_context.ctx = std::move(ctx); // retain flush context reference
+  pending_context.meta = std::move(pending_meta); // retain meta pending flush
+  segments = pending_context.meta->segments_; // create copy
   meta_.segments_.swap(segments); // noexcept op
-  ctx->meta_.seg_counter_.store(meta_.counter()); // ensure counter() >= max(seg#)
 
-  return ctx;
+  return std::move(pending_context);
 }
 
 segment_writer::update_context index_writer::make_update_context(
@@ -870,7 +918,7 @@ bool index_writer::start() {
   REGISTER_TIMER_DETAILED();
   assert(write_lock_);
 
-  if (active_flush_context_) {
+  if (pending_state_) {
     // begin has been already called 
     // without corresponding call to commit
     return false;
@@ -878,33 +926,29 @@ bool index_writer::start() {
 
   // !!! remember that to_sync_ stores string_ref's to index_writer::meta !!!
   // it's valid since there is no small buffer optimization at the moment
-  auto to_commit = flush_all(); // index metadata to commit
+  auto to_commit = std::move(flush_all()); // index metadata to commit
 
   if (!to_commit) {
     return true; // nothing to commit
   }
 
   // write 1st phase of index_meta transaction
-  if (!writer_->prepare(*(to_commit->dir_), to_commit->meta_)) {
+  if (!writer_->prepare(*(to_commit.ctx->dir_), *(to_commit.meta))) {
     throw illegal_state();
   }
 
-  // 1st phase of the transaction successfully finished here,
-  // set to_commit as active flush context containing pending meta
-  active_flush_context_ = to_commit;
-
   // sync all pending files
   try {
-    auto update_generation = make_finally([this] {
-      meta_.update_generation(active_flush_context_->meta_);
+    auto update_generation = make_finally([this, &to_commit] {
+      meta_.update_generation(*(to_commit.meta));
     });
 
     // sync files
-    for (auto& file : active_flush_context_->to_sync_) {
-      if (!to_commit->dir_->sync(file)) {
+    for (auto& file: to_commit.to_sync) {
+      if (!to_commit.ctx->dir_->sync(file)) {
         std::stringstream ss;
 
-        ss << "Failed to sync file, path: " << file.get();
+        ss << "Failed to sync file, path: " << std::string(file.c_str(), file.size());
 
         throw detailed_io_error(ss.str());
       }
@@ -913,9 +957,14 @@ bool index_writer::start() {
     // in case of syncing error, just clear pending meta & peform rollback
     // next commit will create another meta & sync all pending files
     writer_->rollback();
-    active_flush_context_.reset(); // flush is rolled back
+    pending_state_.reset(); // flush is rolled back
     throw;
   }
+
+  // 1st phase of the transaction successfully finished here,
+  // set to_commit as active flush context containing pending meta
+  pending_state_.ctx = std::move(to_commit.ctx);
+  pending_state_.meta = std::move(to_commit.meta);
 
   return true;
 }
@@ -923,31 +972,32 @@ bool index_writer::start() {
 void index_writer::finish() {
   REGISTER_TIMER_DETAILED();
 
-  if (!active_flush_context_) {
+  if (!pending_state_) {
     return;
   }
 
-  auto ctx = active_flush_context_;
-  auto& dir = *(ctx->dir_);
-  std::vector<index_file_refs::ref_t> file_refs;
+  auto& ctx = *(pending_state_.ctx);
+  auto& dir = *(ctx.dir_);
+  auto& meta = *(pending_state_.meta);
+  committed_state_t committed_state;
   auto lock_file_ref = iresearch::directory_utils::reference(dir, WRITE_LOCK_NAME);
 
   if (lock_file_ref) {
     // file exists on fs_directory
-    file_refs.emplace_back(lock_file_ref);
+    committed_state.second.emplace_back(lock_file_ref);
   }
 
-  file_refs.emplace_back(iresearch::directory_utils::reference(dir, writer_->filename(ctx->meta_), true));
-  append_segments_refs(file_refs, dir, ctx->meta_);
+  committed_state.second.emplace_back(iresearch::directory_utils::reference(dir, writer_->filename(meta), true));
+  append_segments_refs(committed_state.second, dir, meta);
   writer_->commit();
-  commited_meta_ = memory::make_unique<index_meta>(ctx->meta_);
 
   // ...........................................................................
   // after here transaction successfull
   // ...........................................................................
 
-  file_refs_ = std::move(file_refs);
-  active_flush_context_.reset(); // flush is complete
+  committed_state.first = std::move(pending_state_.meta);
+  committed_state_ = std::move(committed_state);
+  pending_state_.reset(); // flush is complete, release referecne to flush_context
 }
 
 void index_writer::commit() {
@@ -962,7 +1012,7 @@ void index_writer::rollback() {
   assert(write_lock_);
   SCOPED_LOCK(commit_lock_);
 
-  if (!active_flush_context_) {
+  if (!pending_state_) {
     // there is no open transaction
     return;
   }
@@ -973,11 +1023,11 @@ void index_writer::rollback() {
 
   // guarded by commit_lock_
   writer_->rollback();
-  active_flush_context_.reset();
-  
+  pending_state_.reset();
+
   // reset actual meta, note that here we don't change 
   // segment counters since it can be changed from insert function
-  meta_.reset(*commited_meta_);
+  meta_.reset(*(committed_state_.first));
 }
 
 NS_END
