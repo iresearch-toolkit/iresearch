@@ -121,10 +121,10 @@ index_writer::index_writer(
     committed_state_t&& committed_state
 ) NOEXCEPT:
     codec_(codec),
+    committed_state_(std::move(committed_state)),
     dir_(dir),
     flush_context_pool_(2), // 2 because just swap them due to common commit lock
     meta_(std::move(meta)),
-    committed_state_(std::move(committed_state)),
     writer_(codec->get_index_meta_writer()),
     write_lock_(std::move(lock)) {
   assert(codec);
