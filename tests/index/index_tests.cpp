@@ -349,182 +349,8 @@ class index_test_case_base : public tests::index_test_base {
       writer->buffered_docs();
     }
   }
-  
-  void profile_bulk_index_dedicated_commit(size_t insert_threads, size_t commit_threads, size_t commit_interval) {
-    struct csv_doc_template_t: public tests::delim_doc_generator::doc_template {
-      virtual void init() {
-        clear();
-        reserve(2);
-        insert(std::make_shared<tests::templates::string_field>("id"));
-        insert(std::make_shared<tests::templates::string_field>("label"));
-      }
 
-      virtual void value(size_t idx, const std::string& value) {
-        switch(idx) {
-         case 0:
-          indexed.get<tests::templates::string_field>("id")->value(value);
-          break;
-         case 1:
-          indexed.get<tests::templates::string_field>("label")->value(value);
-        }
-      }
-    };
-
-    iresearch::timer_utils::init_stats(true);
-
-    std::atomic<size_t> parsed_docs_count(0);
-    std::atomic<size_t> writer_commit_count(0);
-    insert_threads = (std::max)((size_t)1, insert_threads);
-    commit_threads = (std::max)((size_t)1, commit_threads);
-    commit_interval = (std::max)((size_t)1, commit_interval);
-    auto thread_count = insert_threads + commit_threads;
-    ir::async_utils::thread_pool thread_pool(thread_count, thread_count);
-    auto writer = open_writer();
-    std::mutex mutex;
-
-    {
-      std::lock_guard<std::mutex> lock(mutex);
-
-      // spawn insert threads
-      for (size_t i = 0; i < insert_threads; ++i) {
-        thread_pool.run([&mutex, &writer, insert_threads, i, &parsed_docs_count, this]()->void {
-          {
-            // wait for all threads to be registered
-            std::lock_guard<std::mutex> lock(mutex);
-          }
-
-          csv_doc_template_t csv_doc_template;
-          tests::delim_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template, ',');
-          size_t gen_skip = i;
-
-          for(size_t count = 0;; ++count) {
-            // assume docs generated in same order and skip docs not meant for this thread
-            if (gen_skip--) {
-              if (!gen.next()) {
-                break;
-              }
-
-              continue;
-            }
-
-            gen_skip = insert_threads - 1;
-
-            {
-              REGISTER_TIMER_NAMED_DETAILED("parse");
-              csv_doc_template.init();
-
-              if (!gen.next()) {
-                break;
-              }
-            }
-
-            ++parsed_docs_count;
-
-            {
-              REGISTER_TIMER_NAMED_DETAILED("load");
-              writer->insert(
-                csv_doc_template.indexed.begin(), csv_doc_template.indexed.end(), 
-                csv_doc_template.stored.begin(), csv_doc_template.stored.end()
-              );
-            }
-          }
-        });
-      }
-
-      // wait for insert threads
-      while (thread_pool.tasks_active() < insert_threads) { }
-     
-      // spawn commit threads   
-      for (size_t i = 0; i < commit_threads; ++i) {
-        thread_pool.run([&mutex, &writer, &writer_commit_count, commit_threads, commit_interval, &thread_pool]()->void {
-          {
-            // wait for all threads to be registered
-            std::lock_guard<std::mutex> lock(mutex);
-          }
-      
-
-          for(;;) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(commit_interval));
-
-            {
-              REGISTER_TIMER_NAMED_DETAILED("commit");
-              writer->commit();
-            }
-
-            ++writer_commit_count;
-
-            if (thread_pool.tasks_active() <= commit_threads) {
-              break;
-            }
-          }
-        });
-      }
-    }
-
-    thread_pool.stop();
-
-    if (writer->buffered_docs()) {
-      {
-        REGISTER_TIMER_NAMED_DETAILED("commit");
-        writer->commit();
-      }
-      ++writer_commit_count;
-    }
-
-    std::map<std::string, std::pair<size_t, size_t>> ordered_stats;
-
-    iresearch::timer_utils::visit([&ordered_stats](const std::string& key, size_t count, size_t time)->bool {
-      std::string key_str = key;
-
-      #if defined(__GNUC__)
-        if (key_str.compare(0, strlen("virtual "), "virtual ") == 0) {
-          key_str = key_str.substr(strlen("virtual "));
-        }
-
-        size_t i;
-
-        if (std::string::npos != (i = key_str.find(' ')) && key_str.find('(') > i) {
-          key_str = key_str.substr(i + 1);
-        }
-      #elif defined(_MSC_VER)
-        size_t i;
-
-        if (std::string::npos != (i = key_str.find("__cdecl "))) {
-          key_str = key_str.substr(i + strlen("__cdecl "));
-        }
-      #endif
-
-      ordered_stats.emplace(key_str, std::make_pair(count, time));
-      return true;
-    });
-
-    auto path = fs::path(test_dir()).append("profile_bulk_index.log");
-    std::ofstream out(path.native());
-
-    for (auto& entry: ordered_stats) {
-      auto& key = entry.first;
-      auto& count = entry.second.first;
-      auto& time = entry.second.second;
-      out << key << "\tcalls:" << count << ",\ttime: " << time/1000 << " us,\tavg call: " << time/1000/(double)count << " us"<< std::endl;
-    }
-
-    out.close();
-    std::cout << "Path to timing log: " << fs::absolute(path).string() << std::endl;
-
-    auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(true, writer_commit_count <= reader->size());
-    ASSERT_EQ(true, writer_commit_count * iresearch::index_writer::THREAD_COUNT >= reader->size());
-
-    size_t indexed_docs_count = 0;
-
-    for (size_t i = 0, count = reader->size(); i < count; ++i) {
-      indexed_docs_count += (*reader)[i].docs_count();
-    }
-
-    ASSERT_EQ(parsed_docs_count, indexed_docs_count);
-  }
-
-  void profile_bulk_index(size_t num_threads, size_t batch_size) {
+  void profile_bulk_index(size_t num_threads, size_t batch_size, ir::index_writer::ptr writer = nullptr, std::atomic<size_t>* commit_count = nullptr) {
     struct csv_doc_template_t: public tests::delim_doc_generator::doc_template {
       virtual void init() {
         clear();
@@ -548,12 +374,16 @@ class index_test_case_base : public tests::index_test_base {
 
     std::atomic<size_t> parsed_docs_count(0);
     size_t writer_batch_size = batch_size ? batch_size : (std::numeric_limits<size_t>::max)();
-    std::atomic<size_t> writer_commit_count(0);
+    std::atomic<size_t> local_writer_commit_count(0);
+    std::atomic<size_t>& writer_commit_count = commit_count ? *commit_count : local_writer_commit_count;
     auto thread_count = (std::max)((size_t)1, num_threads);
     ir::async_utils::thread_pool thread_pool(thread_count, thread_count);
-    auto writer = open_writer();
     std::mutex mutex;
     std::mutex commit_mutex;
+
+    if (!writer) {
+      writer = open_writer();
+    }
 
     {
       std::lock_guard<std::mutex> lock(mutex);
@@ -701,6 +531,86 @@ class index_test_case_base : public tests::index_test_base {
     }
 
     thread_pool.stop();
+  }
+
+  void profile_bulk_index_dedicated_commit(size_t insert_threads, size_t commit_threads, size_t commit_interval) {
+    auto* directory = &dir();
+    std::atomic<bool> working(true);
+    std::atomic<size_t> writer_commit_count(0);
+
+    commit_threads = (std::max)(size_t(1), commit_threads);
+
+    ir::async_utils::thread_pool thread_pool(commit_threads, commit_threads);
+    auto writer = open_writer();
+
+    for (size_t i = 0; i < commit_threads; ++i) {
+      thread_pool.run([commit_interval, directory, &working, &writer, &writer_commit_count]()->void {
+        while (working.load()) {
+          {
+            REGISTER_TIMER_NAMED_DETAILED("commit");
+            writer->commit();
+          }
+          ++writer_commit_count;
+          std::this_thread::sleep_for(std::chrono::milliseconds(commit_interval));
+        }
+      });
+    }
+
+    {
+      auto finalizer = ir::make_finally([&working]()->void{working = false;});
+      profile_bulk_index(insert_threads, 0, writer, &writer_commit_count);
+    }
+
+    thread_pool.stop();
+  }
+
+  void profile_bulk_index_dedicated_consolidate(size_t num_threads, size_t batch_size, size_t consolidate_interval) {
+    auto policy = [](const ir::directory& dir, const ir::index_meta& meta)->ir::index_writer::consolidation_acceptor_t {
+      return [](const ir::segment_meta& meta)->bool { return true; }; // merge every segment
+    };
+    auto* directory = &dir();
+    std::atomic<bool> working(true);
+    ir::async_utils::thread_pool thread_pool(2, 2);
+    auto writer = open_writer();
+
+    thread_pool.run([consolidate_interval, directory, &working, &writer, &policy]()->void {
+      while (working.load()) {
+        writer->consolidate(policy, true);
+        std::this_thread::sleep_for(std::chrono::milliseconds(consolidate_interval));
+      }
+    });
+    thread_pool.run([consolidate_interval, directory, &working, &writer, &policy]()->void {
+      while (working.load()) {
+        writer->consolidate(policy, false);
+        std::this_thread::sleep_for(std::chrono::milliseconds(consolidate_interval));
+      }
+    });
+
+    {
+      auto finalizer = ir::make_finally([&working]()->void{working = false;});
+      profile_bulk_index(num_threads, batch_size, writer);
+    }
+
+    thread_pool.stop();
+    writer->consolidate(policy, false);
+    writer->commit();
+
+    struct dummy_doc_template_t: public tests::delim_doc_generator::doc_template {
+      virtual void init() {}
+      virtual void value(size_t idx, const std::string& value) {};
+    };
+    dummy_doc_template_t dummy_doc_template;
+    tests::delim_doc_generator gen(resource("simple_two_column.csv"), dummy_doc_template, ',');
+    size_t docs_count = 0;
+
+    // determine total number of docs in source data
+    while (gen.next()) {
+      ++docs_count;
+    }
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(1, reader->size());
+    ASSERT_EQ(docs_count, (*reader)[0].docs_count());
   }
 
   void writer_check_open_modes() {
@@ -3437,6 +3347,11 @@ TEST_F(memory_index_test, profile_bulk_index_multithread_cleanup) {
   profile_bulk_index_dedicated_cleanup(16, 1000, 100);
 }
 
+TEST_F(memory_index_test, profile_bulk_index_multithread_consolidate) {
+  // small consolidate_interval causes too many policies to be added and slows down test
+  profile_bulk_index_dedicated_consolidate(16, 2000, 800);
+}
+
 TEST_F(memory_index_test, profile_bulk_index_multithread_dedicated_commit) {
   profile_bulk_index_dedicated_commit(16, 1, 1000);
 }
@@ -3768,7 +3683,7 @@ TEST_F(memory_index_test, reuse_segment_writer) {
       return [](const iresearch::segment_meta& meta)->bool { return true; };
     };
 
-    writer->consolidate(merge_all);
+    writer->consolidate(merge_all, true);
     writer->commit();
   }
 }
@@ -3904,7 +3819,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     ));
     writer->remove(std::move(query_doc1_doc2.filter));
     writer->commit();
-    writer->consolidate(always_merge);
+    writer->consolidate(always_merge, true);
     writer->commit();
 
     // validate structure
@@ -3995,7 +3910,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     writer->commit();
     writer->remove(std::move(query_doc1_doc2.filter));
     writer->commit();
-    writer->consolidate(always_merge);
+    writer->consolidate(always_merge, true);
     writer->commit();
 
     // validate structure
@@ -4071,7 +3986,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     ));
     writer->commit();
     writer->remove(std::move(query_doc1.filter));
-    writer->consolidate(merge_if_masked);
+    writer->consolidate(merge_if_masked, true);
     writer->commit();
 
     {
@@ -4081,7 +3996,7 @@ TEST_F(memory_index_test, segment_consolidate) {
       ASSERT_EQ(2, segment.docs_count()); // total count of documents
     }
 
-    writer->consolidate(merge_if_masked); // previous removal now committed and considered
+    writer->consolidate(merge_if_masked, true); // previous removal now committed and considered
     writer->commit();
 
     {
@@ -4168,7 +4083,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     ));
     writer->remove(std::move(query_doc1_doc3.filter));
     writer->commit();
-    writer->consolidate(always_merge);
+    writer->consolidate(always_merge, true);
     writer->commit();
 
     // validate structure
@@ -4275,7 +4190,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     writer->commit();
     writer->remove(std::move(query_doc1_doc3.filter));
     writer->commit();
-    writer->consolidate(always_merge);
+    writer->consolidate(always_merge, true);
     writer->commit();
 
     // validate structure
@@ -4404,7 +4319,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     writer->commit();
     writer->remove(std::move(query_doc1_doc3_doc5.filter));
     writer->commit();
-    writer->consolidate(always_merge);
+    writer->consolidate(always_merge, true);
     writer->commit();
 
     // validate structure
@@ -4569,7 +4484,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     writer->commit();
 
     // defragment segments
-    writer->consolidate(std::move(always_merge));
+    writer->consolidate(std::move(always_merge), true);
     writer->commit();
 
     // validate merged segment 
@@ -4652,7 +4567,7 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       doc5->stored.begin(), doc5->stored.end()
     ));
     writer->commit();
-    writer->consolidate(iresearch::index_utils::consolidate_bytes(1)); // value garanteeing merge
+    writer->consolidate(iresearch::index_utils::consolidate_bytes(1), true); // value garanteeing merge
     writer->commit();
 
     std::unordered_set<std::string> expectedName = { "A", "B", "C", "D", "E" };
@@ -4709,7 +4624,7 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       doc5->stored.begin(), doc5->stored.end()
     ));
     writer->commit();
-    writer->consolidate(iresearch::index_utils::consolidate_bytes(0)); // value garanteeing non-merge
+    writer->consolidate(iresearch::index_utils::consolidate_bytes(0), true); // value garanteeing non-merge
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -4780,7 +4695,7 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->commit();
-    writer->consolidate(iresearch::index_utils::consolidate_bytes_accum(1)); // value garanteeing merge
+    writer->consolidate(iresearch::index_utils::consolidate_bytes_accum(1), true); // value garanteeing merge
     writer->commit();
     // segments merged because segment[0] is a candidate and needs to be merged with something
 
@@ -4824,7 +4739,7 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->commit();
-    writer->consolidate(iresearch::index_utils::consolidate_bytes_accum(0)); // value garanteeing non-merge
+    writer->consolidate(iresearch::index_utils::consolidate_bytes_accum(0), true); // value garanteeing non-merge
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -4909,7 +4824,7 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       doc5->stored.begin(), doc5->stored.end()
     ));
     writer->commit();
-    writer->consolidate(iresearch::index_utils::consolidate_count(1)); // value garanteeing merge
+    writer->consolidate(iresearch::index_utils::consolidate_count(1), true); // value garanteeing merge
     writer->commit();
 
     std::unordered_set<std::string> expectedName = { "A", "D", "E" };
@@ -4966,7 +4881,7 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       doc5->stored.begin(), doc5->stored.end()
     ));
     writer->commit();
-    writer->consolidate(iresearch::index_utils::consolidate_count(0)); // value garanteeing non-merge
+    writer->consolidate(iresearch::index_utils::consolidate_count(0), true); // value garanteeing non-merge
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -5048,7 +4963,7 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
     writer->commit();
     writer->remove(std::move(query_doc2_doc4.filter));
     writer->commit();
-    writer->consolidate(iresearch::index_utils::consolidate_fill(1)); // value garanteeing merge
+    writer->consolidate(iresearch::index_utils::consolidate_fill(1), true); // value garanteeing merge
     writer->commit();
 
     std::unordered_set<std::string> expectedName = { "A", "C" };
@@ -5102,7 +5017,7 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
     writer->commit();
     writer->remove(std::move(query_doc2_doc4.filter));
     writer->commit();
-    writer->consolidate(iresearch::index_utils::consolidate_fill(0)); // value garanteeing non-merge
+    writer->consolidate(iresearch::index_utils::consolidate_fill(0), true); // value garanteeing non-merge
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -5263,6 +5178,11 @@ TEST_F(fs_index_test, profile_bulk_index_singlethread_batched) {
 
 TEST_F(fs_index_test, profile_bulk_index_multithread_cleanup) {
   profile_bulk_index_dedicated_cleanup(16, 1000, 100);
+}
+
+TEST_F(fs_index_test, profile_bulk_index_multithread_consolidate) {
+  // small consolidate_interval causes too many policies to be added and slows down test
+  profile_bulk_index_dedicated_consolidate(16, 2000, 800);
 }
 
 TEST_F(fs_index_test, profile_bulk_index_multithread_dedicated_commit) {
