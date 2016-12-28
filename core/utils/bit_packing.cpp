@@ -22,7 +22,7 @@ MSVC_ONLY(__pragma(warning(disable:4127))) // constexp conditionals are intended
 MSVC_ONLY(__pragma(warning(disable:4293))) // all negative shifts are masked by constexpr conditionals
 MSVC_ONLY(__pragma(warning(disable:4724))) // all X % zero are masked by constexpr conditionals (must disable outside of fn body)
 template<int N>
-void __fastpack(const uint32_t* RESTRICT in, uint32_t* RESTRICT out) {
+void __fastpack(const uint32_t* RESTRICT in, uint32_t* RESTRICT out) NOEXCEPT {
   // 32 == sizeof(uint32_t) * 8
   static_assert(N > 0 && N <= 32, "N <= 0 || N > 32");
   // ensure all computations are constexr, i.e. no conditional jumps, no loops, no variable increment/decrement
@@ -62,7 +62,7 @@ void __fastpack(const uint32_t* RESTRICT in, uint32_t* RESTRICT out) {
 MSVC_ONLY(__pragma(warning(pop)))
 
 template<>
-void __fastpack<32>(const uint32_t* RESTRICT in, uint32_t* RESTRICT out) {
+void __fastpack<32>(const uint32_t* RESTRICT in, uint32_t* RESTRICT out) NOEXCEPT {
   std::memcpy(out, in, sizeof(uint32_t)*iresearch::packed::BLOCK_SIZE_32);
 }
 
@@ -71,7 +71,7 @@ MSVC_ONLY(__pragma(warning(disable:4127))) // constexp conditionals are intended
 MSVC_ONLY(__pragma(warning(disable:4293))) // all negative shifts are masked by constexpr conditionals
 MSVC_ONLY(__pragma(warning(disable:4724))) // all X % zero are masked by constexpr conditionals (must disable outside of fn body)
 template<int N>
-void __fastpack(const uint64_t* RESTRICT in, uint64_t* RESTRICT out) {
+void __fastpack(const uint64_t* RESTRICT in, uint64_t* RESTRICT out) NOEXCEPT {
   // 64 == sizeof(uint64_t) * 8
   static_assert(N > 0 && N <= 64, "N <= 0 || N > 64");
   // ensure all computations are constexr, i.e. no conditional jumps, no loops, no variable increment/decrement
@@ -143,7 +143,7 @@ void __fastpack(const uint64_t* RESTRICT in, uint64_t* RESTRICT out) {
 MSVC_ONLY(__pragma(warning(pop)))
 
 template<>
-void __fastpack<64>(const uint64_t* RESTRICT in, uint64_t* RESTRICT out) {
+FORCE_INLINE void __fastpack<64>(const uint64_t* RESTRICT in, uint64_t* RESTRICT out) NOEXCEPT {
   std::memcpy(out, in, sizeof(uint64_t)*iresearch::packed::BLOCK_SIZE_64);
 }
 
@@ -152,7 +152,7 @@ MSVC_ONLY(__pragma(warning(disable:4127))) // constexp conditionals are intended
 MSVC_ONLY(__pragma(warning(disable:4293))) // all negative shifts are masked by constexpr conditionals
 MSVC_ONLY(__pragma(warning(disable:4724))) // all X % zero are masked by constexpr conditionals (must disable outside of fn body)
 template<int N>
-void __fastunpack(const uint32_t* RESTRICT in, uint32_t* RESTRICT out) {
+void __fastunpack(const uint32_t* RESTRICT in, uint32_t* RESTRICT out) NOEXCEPT {
   // 32 == sizeof(uint32_t) * 8
   static_assert(N > 0 && N <= 32, "N <= 0 || N > 32");
          *out = ((*in) >> (N *  0) % 32) % (1U << N); if (((N *  1) % 32) < ((N *  0) % 32)) { ++in; *out |= ((*in) % (1U << (N *  1) % 32)) << (N - ((N *  1) % 32)); }
@@ -191,7 +191,7 @@ void __fastunpack(const uint32_t* RESTRICT in, uint32_t* RESTRICT out) {
 MSVC_ONLY(__pragma(warning(pop)))
 
 template<>
-void __fastunpack<32>(const uint32_t* RESTRICT in, uint32_t* RESTRICT out) {
+FORCE_INLINE void __fastunpack<32>(const uint32_t* RESTRICT in, uint32_t* RESTRICT out) NOEXCEPT {
   std::memcpy(out, in, sizeof(uint32_t)*iresearch::packed::BLOCK_SIZE_32);
 }
 
@@ -200,7 +200,7 @@ MSVC_ONLY(__pragma(warning(disable:4127))) // constexp conditionals are intended
 MSVC_ONLY(__pragma(warning(disable:4293))) // all negative shifts are masked by constexpr conditionals
 MSVC_ONLY(__pragma(warning(disable:4724))) // all X % zero are masked by constexpr conditionals (must disable outside of fn body)
 template<int N>
-void __fastunpack(const uint64_t* RESTRICT in, uint64_t* RESTRICT out) {
+void __fastunpack(const uint64_t* RESTRICT in, uint64_t* RESTRICT out) NOEXCEPT {
   // 64 == sizeof(uint32_t) * 8
   static_assert(N > 0 && N <= 64, "N <= 0 || N > 64");
          *out = ((*in) >> (N *  0) % 64) % (1ULL << N); if (((N *  1) % 64) < ((N *  0) % 64)) { ++in; *out |= ((*in) % (1ULL << (N *  1) % 64)) << (N - ((N *  1) % 64)); }
@@ -271,9 +271,275 @@ void __fastunpack(const uint64_t* RESTRICT in, uint64_t* RESTRICT out) {
 MSVC_ONLY(__pragma(warning(pop)))
 
 template<>
-void __fastunpack<64>(const uint64_t* RESTRICT in, uint64_t* RESTRICT out) {
+FORCE_INLINE void __fastunpack<64>(const uint64_t* RESTRICT in, uint64_t* RESTRICT out) NOEXCEPT {
   std::memcpy(out, in, sizeof(uint64_t)*iresearch::packed::BLOCK_SIZE_64);
 }
+
+MSVC_ONLY(__pragma(warning(push)))
+MSVC_ONLY(__pragma(warning(disable:4127))) // constexp conditionals are intended to be optimized out
+MSVC_ONLY(__pragma(warning(disable:4293))) // all negative shifts are masked by constexpr conditionals
+MSVC_ONLY(__pragma(warning(disable:4724))) // all X % zero are masked by constexpr conditionals (must disable outside of fn body)
+template<int N, int I>
+FORCE_INLINE uint32_t __fastpack_at(const uint32_t* in) NOEXCEPT {
+  // 32 == sizeof(uint32_t) * 8
+  static_assert(N > 0 && N <= 32, "N <= 0 || N > 32");
+  static_assert(I >= 0 && I < 32, "I < 0 || I >= 32");
+
+  // ensure all computations are constexr, i.e. no conditional jumps, no loops, no variable increment/decrement
+
+  if (N == 32) {
+    // avoid divising by 0
+    return in[I];
+  }
+
+  if ((N*(I + 1) % 32) < ((N*I) % 32)) {
+    return ((in[N*I / 32] >> (N*I % 32)) % (1U << N)) | ((in[1 + N*I / 32] % (1U << (N * (I + 1)) % 32)) << (N - ((N * (I + 1)) % 32)));
+  }
+
+  return ((in[N*I / 32] >> (N*I % 32)) % (1U << N));
+}
+
+template<int N, int I>
+FORCE_INLINE uint64_t __fastpack_at(const uint64_t* in) NOEXCEPT {
+  // 64 == sizeof(uint64_t) * 8
+  static_assert(N > 0 && N <= 64, "N <= 0 || N > 64");
+  static_assert(I >= 0 && I < 64, "I < 0 || I >= 64");
+
+  // ensure all computations are constexr, i.e. no conditional jumps, no loops, no variable increment/decrement
+
+  if (N == 64) {
+    // avoid divising by 0
+    return in[I];
+  }
+
+  if ((N*(I + 1) % 64) < ((N*I) % 64)) {
+    return ((in[N*I / 64] >> (N*I % 64)) % (1ULL << N)) | ((in[1 + N*I / 64] % (1ULL << (N * (I + 1)) % 64)) << (N - ((N * (I + 1)) % 64)));
+  }
+
+  return ((in[N*I / 64] >> (N*I % 64)) % (1ULL << N));
+}
+MSVC_ONLY(__pragma(warning(pop)))
+
+MSVC_ONLY(__pragma(warning(push)))
+MSVC_ONLY(__pragma(warning(disable:4715))) // not all control paths return a value
+template<int N>
+uint32_t __fastpack_at(const uint32_t* in, const size_t i) NOEXCEPT {
+  switch (i) {
+    case 0:  return __fastpack_at<N, 0>(in);
+    case 1:  return __fastpack_at<N, 1>(in);
+    case 2:  return __fastpack_at<N, 2>(in);
+    case 3:  return __fastpack_at<N, 3>(in);
+    case 4:  return __fastpack_at<N, 4>(in);
+    case 5:  return __fastpack_at<N, 5>(in);
+    case 6:  return __fastpack_at<N, 6>(in);
+    case 7:  return __fastpack_at<N, 7>(in);
+    case 8:  return __fastpack_at<N, 8>(in);
+    case 9:  return __fastpack_at<N, 9>(in);
+    case 10: return __fastpack_at<N, 10>(in);
+    case 11: return __fastpack_at<N, 11>(in);
+    case 12: return __fastpack_at<N, 12>(in);
+    case 13: return __fastpack_at<N, 13>(in);
+    case 14: return __fastpack_at<N, 14>(in);
+    case 15: return __fastpack_at<N, 15>(in);
+    case 16: return __fastpack_at<N, 16>(in);
+    case 17: return __fastpack_at<N, 17>(in);
+    case 18: return __fastpack_at<N, 18>(in);
+    case 19: return __fastpack_at<N, 19>(in);
+    case 20: return __fastpack_at<N, 20>(in);
+    case 21: return __fastpack_at<N, 21>(in);
+    case 22: return __fastpack_at<N, 22>(in);
+    case 23: return __fastpack_at<N, 23>(in);
+    case 24: return __fastpack_at<N, 24>(in);
+    case 25: return __fastpack_at<N, 25>(in);
+    case 26: return __fastpack_at<N, 26>(in);
+    case 27: return __fastpack_at<N, 27>(in);
+    case 28: return __fastpack_at<N, 28>(in);
+    case 29: return __fastpack_at<N, 29>(in);
+    case 30: return __fastpack_at<N, 30>(in);
+    case 31: return __fastpack_at<N, 31>(in);
+    default: assert(false);
+  }
+}
+
+uint32_t __fastpack_at(const uint32_t* in, const size_t i, const uint32_t bits) NOEXCEPT {
+  switch (bits) {
+    case 1:  return __fastpack_at<1>(in, i);
+    case 2:  return __fastpack_at<2>(in, i);
+    case 3:  return __fastpack_at<3>(in, i);
+    case 4:  return __fastpack_at<4>(in, i);
+    case 5:  return __fastpack_at<5>(in, i);
+    case 6:  return __fastpack_at<6>(in, i);
+    case 7:  return __fastpack_at<7>(in, i);
+    case 8:  return __fastpack_at<8>(in, i);
+    case 9:  return __fastpack_at<9>(in, i);
+    case 10: return __fastpack_at<10>(in, i);
+    case 11: return __fastpack_at<11>(in, i);
+    case 12: return __fastpack_at<12>(in, i);
+    case 13: return __fastpack_at<13>(in, i);
+    case 14: return __fastpack_at<14>(in, i);
+    case 15: return __fastpack_at<15>(in, i);
+    case 16: return __fastpack_at<16>(in, i);
+    case 17: return __fastpack_at<17>(in, i);
+    case 18: return __fastpack_at<18>(in, i);
+    case 19: return __fastpack_at<19>(in, i);
+    case 20: return __fastpack_at<20>(in, i);
+    case 21: return __fastpack_at<21>(in, i);
+    case 22: return __fastpack_at<22>(in, i);
+    case 23: return __fastpack_at<23>(in, i);
+    case 24: return __fastpack_at<24>(in, i);
+    case 25: return __fastpack_at<25>(in, i);
+    case 26: return __fastpack_at<26>(in, i);
+    case 27: return __fastpack_at<27>(in, i);
+    case 28: return __fastpack_at<28>(in, i);
+    case 29: return __fastpack_at<29>(in, i);
+    case 30: return __fastpack_at<30>(in, i);
+    case 31: return __fastpack_at<31>(in, i);
+    case 32: return __fastpack_at<32>(in, i);
+    default: assert(false);
+  }
+}
+
+template<int N>
+uint64_t __fastpack_at(const uint64_t* in, const size_t i) NOEXCEPT {
+  switch (i) {
+    case 0:  return __fastpack_at<N, 0>(in);
+    case 1:  return __fastpack_at<N, 1>(in);
+    case 2:  return __fastpack_at<N, 2>(in);
+    case 3:  return __fastpack_at<N, 3>(in);
+    case 4:  return __fastpack_at<N, 4>(in);
+    case 5:  return __fastpack_at<N, 5>(in);
+    case 6:  return __fastpack_at<N, 6>(in);
+    case 7:  return __fastpack_at<N, 7>(in);
+    case 8:  return __fastpack_at<N, 8>(in);
+    case 9:  return __fastpack_at<N, 9>(in);
+    case 10: return __fastpack_at<N, 10>(in);
+    case 11: return __fastpack_at<N, 11>(in);
+    case 12: return __fastpack_at<N, 12>(in);
+    case 13: return __fastpack_at<N, 13>(in);
+    case 14: return __fastpack_at<N, 14>(in);
+    case 15: return __fastpack_at<N, 15>(in);
+    case 16: return __fastpack_at<N, 16>(in);
+    case 17: return __fastpack_at<N, 17>(in);
+    case 18: return __fastpack_at<N, 18>(in);
+    case 19: return __fastpack_at<N, 19>(in);
+    case 20: return __fastpack_at<N, 20>(in);
+    case 21: return __fastpack_at<N, 21>(in);
+    case 22: return __fastpack_at<N, 22>(in);
+    case 23: return __fastpack_at<N, 23>(in);
+    case 24: return __fastpack_at<N, 24>(in);
+    case 25: return __fastpack_at<N, 25>(in);
+    case 26: return __fastpack_at<N, 26>(in);
+    case 27: return __fastpack_at<N, 27>(in);
+    case 28: return __fastpack_at<N, 28>(in);
+    case 29: return __fastpack_at<N, 29>(in);
+    case 30: return __fastpack_at<N, 30>(in);
+    case 31: return __fastpack_at<N, 31>(in);
+    case 32: return __fastpack_at<N, 32>(in);
+    case 33: return __fastpack_at<N, 33>(in);
+    case 34: return __fastpack_at<N, 34>(in);
+    case 35: return __fastpack_at<N, 35>(in);
+    case 36: return __fastpack_at<N, 36>(in);
+    case 37: return __fastpack_at<N, 37>(in);
+    case 38: return __fastpack_at<N, 38>(in);
+    case 39: return __fastpack_at<N, 39>(in);
+    case 40: return __fastpack_at<N, 40>(in);
+    case 41: return __fastpack_at<N, 41>(in);
+    case 42: return __fastpack_at<N, 42>(in);
+    case 43: return __fastpack_at<N, 43>(in);
+    case 44: return __fastpack_at<N, 44>(in);
+    case 45: return __fastpack_at<N, 45>(in);
+    case 46: return __fastpack_at<N, 46>(in);
+    case 47: return __fastpack_at<N, 47>(in);
+    case 48: return __fastpack_at<N, 48>(in);
+    case 49: return __fastpack_at<N, 49>(in);
+    case 50: return __fastpack_at<N, 50>(in);
+    case 51: return __fastpack_at<N, 51>(in);
+    case 52: return __fastpack_at<N, 52>(in);
+    case 53: return __fastpack_at<N, 53>(in);
+    case 54: return __fastpack_at<N, 54>(in);
+    case 55: return __fastpack_at<N, 55>(in);
+    case 56: return __fastpack_at<N, 56>(in);
+    case 57: return __fastpack_at<N, 57>(in);
+    case 58: return __fastpack_at<N, 58>(in);
+    case 59: return __fastpack_at<N, 59>(in);
+    case 60: return __fastpack_at<N, 60>(in);
+    case 61: return __fastpack_at<N, 61>(in);
+    case 62: return __fastpack_at<N, 62>(in);
+    case 63: return __fastpack_at<N, 63>(in);
+    default: assert(false);
+  }
+}
+
+uint64_t __fastpack_at(const uint64_t* in, const size_t i, const uint32_t bits) NOEXCEPT {
+  switch (bits) {
+    case 1:  return __fastpack_at<1>(in, i);
+    case 2:  return __fastpack_at<2>(in, i);
+    case 3:  return __fastpack_at<3>(in, i);
+    case 4:  return __fastpack_at<4>(in, i);
+    case 5:  return __fastpack_at<5>(in, i);
+    case 6:  return __fastpack_at<6>(in, i);
+    case 7:  return __fastpack_at<7>(in, i);
+    case 8:  return __fastpack_at<8>(in, i);
+    case 9:  return __fastpack_at<9>(in, i);
+    case 10: return __fastpack_at<10>(in, i);
+    case 11: return __fastpack_at<11>(in, i);
+    case 12: return __fastpack_at<12>(in, i);
+    case 13: return __fastpack_at<13>(in, i);
+    case 14: return __fastpack_at<14>(in, i);
+    case 15: return __fastpack_at<15>(in, i);
+    case 16: return __fastpack_at<16>(in, i);
+    case 17: return __fastpack_at<17>(in, i);
+    case 18: return __fastpack_at<18>(in, i);
+    case 19: return __fastpack_at<19>(in, i);
+    case 20: return __fastpack_at<20>(in, i);
+    case 21: return __fastpack_at<21>(in, i);
+    case 22: return __fastpack_at<22>(in, i);
+    case 23: return __fastpack_at<23>(in, i);
+    case 24: return __fastpack_at<24>(in, i);
+    case 25: return __fastpack_at<25>(in, i);
+    case 26: return __fastpack_at<26>(in, i);
+    case 27: return __fastpack_at<27>(in, i);
+    case 28: return __fastpack_at<28>(in, i);
+    case 29: return __fastpack_at<29>(in, i);
+    case 30: return __fastpack_at<30>(in, i);
+    case 31: return __fastpack_at<31>(in, i);
+    case 32: return __fastpack_at<32>(in, i);
+    case 33: return __fastpack_at<33>(in, i);
+    case 34: return __fastpack_at<34>(in, i);
+    case 35: return __fastpack_at<35>(in, i);
+    case 36: return __fastpack_at<36>(in, i);
+    case 37: return __fastpack_at<37>(in, i);
+    case 38: return __fastpack_at<38>(in, i);
+    case 39: return __fastpack_at<39>(in, i);
+    case 40: return __fastpack_at<40>(in, i);
+    case 41: return __fastpack_at<41>(in, i);
+    case 42: return __fastpack_at<42>(in, i);
+    case 43: return __fastpack_at<43>(in, i);
+    case 44: return __fastpack_at<44>(in, i);
+    case 45: return __fastpack_at<45>(in, i);
+    case 46: return __fastpack_at<46>(in, i);
+    case 47: return __fastpack_at<47>(in, i);
+    case 48: return __fastpack_at<48>(in, i);
+    case 49: return __fastpack_at<49>(in, i);
+    case 50: return __fastpack_at<50>(in, i);
+    case 51: return __fastpack_at<51>(in, i);
+    case 52: return __fastpack_at<52>(in, i);
+    case 53: return __fastpack_at<53>(in, i);
+    case 54: return __fastpack_at<54>(in, i);
+    case 55: return __fastpack_at<55>(in, i);
+    case 56: return __fastpack_at<56>(in, i);
+    case 57: return __fastpack_at<57>(in, i);
+    case 58: return __fastpack_at<58>(in, i);
+    case 59: return __fastpack_at<59>(in, i);
+    case 60: return __fastpack_at<60>(in, i);
+    case 61: return __fastpack_at<61>(in, i);
+    case 62: return __fastpack_at<62>(in, i);
+    case 63: return __fastpack_at<63>(in, i);
+    case 64: return __fastpack_at<64>(in, i);
+    default: assert(false);
+  }
+}
+MSVC_ONLY(__pragma(warning(push)))
 
 NS_END // NS_LOCAL
 
@@ -281,8 +547,8 @@ NS_ROOT
 NS_BEGIN(packed)
 
 void pack_block(
-  const uint32_t* RESTRICT in, uint32_t* RESTRICT out, const uint32_t bit
-) {
+    const uint32_t* RESTRICT in, uint32_t* RESTRICT out, const uint32_t bit
+) NOEXCEPT {
   switch (bit) {
     case 1:   __fastpack<1>(in, out); break;
     case 2:   __fastpack<2>(in, out); break;
@@ -322,7 +588,7 @@ void pack_block(
 
 void pack_block(
   const uint64_t* RESTRICT in, uint64_t* RESTRICT out, const uint32_t bit
-) {
+) NOEXCEPT {
   switch (bit) {
     case 1:   __fastpack<1>(in, out); break;
     case 2:   __fastpack<2>(in, out); break;
@@ -394,7 +660,7 @@ void pack_block(
 
 void unpack_block(
   const uint32_t* RESTRICT in, uint32_t* RESTRICT out, const uint32_t bit
-) {
+) NOEXCEPT {
   switch (bit) {
     case 1:   __fastunpack<1>(in, out); break;
     case 2:   __fastunpack<2>(in, out); break;
@@ -434,7 +700,7 @@ void unpack_block(
 
 void unpack_block(
   const uint64_t* RESTRICT in, uint64_t* RESTRICT out, const uint32_t bit
-) {
+) NOEXCEPT {
   switch (bit) {
     case 1:   __fastunpack<1>(in, out); break;
     case 2:   __fastunpack<2>(in, out); break;
@@ -504,9 +770,25 @@ void unpack_block(
   }
 }
 
+uint32_t at(const uint32_t* encoded, size_t i, const uint32_t bit) NOEXCEPT {
+  return __fastpack_at(
+    encoded + bit * (i / BLOCK_SIZE_32), 
+    i % BLOCK_SIZE_32, 
+    bit
+  );
+}
+
+uint64_t at(const uint64_t* encoded, size_t i, const uint32_t bit) NOEXCEPT {
+  return __fastpack_at(
+    encoded + bit * (i / BLOCK_SIZE_64), 
+    i % BLOCK_SIZE_64, 
+    bit
+  );
+}
+
 void pack(
   const uint32_t* first, const uint32_t* last, uint32_t* out, const uint32_t bit
-) {
+) NOEXCEPT {
   assert(0 == (last - first) % BLOCK_SIZE_32);
 
   for (; first < last; first += BLOCK_SIZE_32, out += bit) {
@@ -516,7 +798,7 @@ void pack(
 
 void pack(
   const uint64_t* first, const uint64_t* last, uint64_t* out, const uint32_t bit
-) {
+) NOEXCEPT {
   assert(0 == (last - first) % BLOCK_SIZE_64);
 
   for (; first < last; first += BLOCK_SIZE_64, out += bit) {
@@ -526,7 +808,7 @@ void pack(
 
 void unpack(
   uint32_t* first, uint32_t* last, const uint32_t* in, const uint32_t bit
-) {
+) NOEXCEPT {
   for (; first < last; first += BLOCK_SIZE_32, in += bit) {
     unpack_block(in, first, bit);
   }
@@ -534,7 +816,7 @@ void unpack(
 
 void unpack(
   uint64_t* first, uint64_t* last, const uint64_t* in, const uint32_t bit
-) {
+) NOEXCEPT {
   for (; first < last; first += BLOCK_SIZE_64, in += bit) {
     unpack_block(in, first, bit);
   }

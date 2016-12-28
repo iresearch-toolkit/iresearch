@@ -70,29 +70,47 @@ inline uint64_t iterations_required( uint32_t count ) {
 }
 
 template< typename T >
-inline T max_value( uint32_t bits ) {
+inline T max_value(uint32_t bits) {
   assert( bits >= 0U && bits <= sizeof( T ) * 8U );
 
   return bits == sizeof( T ) * 8U
-    ? (std::numeric_limits<T>::max)() : ~(~T(0) << bits)
-    ;
+    ? (std::numeric_limits<T>::max)() 
+    : ~(~T(0) << bits);
 }
 
-IRESEARCH_API void pack(
-  const uint32_t* first, const uint32_t* last, uint32_t* out, const uint32_t bit
-);
+IRESEARCH_API uint32_t at(
+  const uint32_t* encoded, 
+  const size_t i, 
+  const uint32_t bit) NOEXCEPT;
+
+IRESEARCH_API uint64_t at(
+  const uint64_t* encoded, 
+  const size_t i, 
+  const uint32_t bit) NOEXCEPT;
 
 IRESEARCH_API void pack(
-  const uint64_t* first, const uint64_t* last, uint64_t* out, const uint32_t bit
-);
+  const uint32_t* first, 
+  const uint32_t* last, 
+  uint32_t* out, 
+  const uint32_t bit) NOEXCEPT;
+
+IRESEARCH_API void pack(
+  const uint64_t* first, 
+  const uint64_t* last, 
+  uint64_t* out, 
+  const uint32_t bit) NOEXCEPT;
 
 IRESEARCH_API void unpack(
-  uint32_t* first, uint32_t* last, const uint32_t* in, const uint32_t bit
-);
+  uint32_t* first, 
+  uint32_t* last, 
+  const uint32_t* in, 
+  const uint32_t bit) NOEXCEPT;
 
 IRESEARCH_API void unpack(
-  uint64_t* first, uint64_t* last, const uint64_t* in, const uint32_t bit
-);
+  uint64_t* first, 
+  uint64_t* last, 
+  const uint64_t* in, 
+  const uint32_t bit) NOEXCEPT;
 
 NS_END // packing
 NS_END // root

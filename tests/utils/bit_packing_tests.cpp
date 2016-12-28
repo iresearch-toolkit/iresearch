@@ -147,13 +147,26 @@ TEST(bit_packing_tests, pack_unpack_32) {
         return lhs == rhs;
       }
 
-      return (lhs & (1U << bits) - 1ULL) == rhs;
+      return (lhs & (1U << bits) - 1U) == rhs;
     };
     ASSERT_TRUE(std::equal(src.begin(), src.end(), unpacked.begin(), comparer));
   }
-}
 
-#include <bitset>
+  // check random access
+  for (uint32_t bits = 1; bits <= 32; ++bits) {
+    std::vector<uint32_t> packed(packed::blocks_required_32(src.size(), bits), 0);
+    packed::pack(&src[0], &src[0] + src.size(), &packed[0], bits);
+
+    for(size_t i = 0, end = src.size(); i < end; ++i) {
+      auto expected_value = src[i];
+      if (bits != 32) { // 32 bit left shift cause undefined behavior
+        expected_value &= ((1U << bits) - 1U);
+      }
+
+      ASSERT_EQ(expected_value, packed::at(packed.data(), i, bits));
+    }
+  }
+}
 
 TEST(bit_packing_tests, pack_unpack_64) {
   std::vector<uint64_t> src{
@@ -203,7 +216,7 @@ TEST(bit_packing_tests, pack_unpack_64) {
   
   // check packing [1..64]
   for (uint32_t bits = 1; bits <= 64; ++bits) {
-    std::vector<uint64_t> packed(packed::blocks_required_32(src.size(), bits), 0);
+    std::vector<uint64_t> packed(packed::blocks_required_64(src.size(), bits), 0);
     packed::pack(&src[0], &src[0] + src.size(), &packed[0], bits);
 
     std::vector<uint64_t> unpacked(src.size());
@@ -218,5 +231,20 @@ TEST(bit_packing_tests, pack_unpack_64) {
       return (lhs & ((1ULL << bits) - 1ULL)) == rhs;
     };
     ASSERT_TRUE(std::equal(src.begin(), src.end(), unpacked.begin(), comparer));
+  }
+  
+  // check random access
+  for (uint32_t bits = 1; bits <= 64; ++bits) {
+    std::vector<uint64_t> packed(packed::blocks_required_64(src.size(), bits), 0);
+    packed::pack(&src[0], &src[0] + src.size(), &packed[0], bits);
+
+    for(size_t i = 0, end = src.size(); i < end; ++i) {
+      auto expected_value = src[i];
+      if (bits != 64) { // 64 bit left shift cause undefined behavior
+        expected_value &= ((1ULL << bits) - 1ULL);
+      }
+
+      ASSERT_EQ(expected_value, packed::at(packed.data(), i, bits));
+    }
   }
 }
