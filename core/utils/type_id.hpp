@@ -18,6 +18,8 @@
 NS_ROOT
 
 struct type_id { 
+  type_id() : hash(std::hash<const type_id*>()(this)) { }
+
   bool operator==( const type_id& rhs ) const {
     return this == &rhs;
   }
@@ -27,12 +29,12 @@ struct type_id {
   }
 
   /* boost::hash_combile support */
-  friend size_t hash_value( const type_id& type ) {
-    return std::hash<const type_id*>()( &type );
-  }
+  friend size_t hash_value( const type_id& type ) { return type.hash; }
     
   operator const type_id*() const { return this; }
-};
+
+  size_t hash;
+}; // type_id
 
 #define DECLARE_TYPE_ID( type_id_name ) static const type_id_name& type()
 #define DEFINE_TYPE_ID(class_name, type_id_name) const type_id_name& class_name::type() 
@@ -47,7 +49,7 @@ struct hash<iresearch::type_id> {
   typedef size_t result_type;
 
   result_type operator()( const argument_type& key ) const {
-    return hash_value( key );
+    return key.hash;
   }
 };
 
