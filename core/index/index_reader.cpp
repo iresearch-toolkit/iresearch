@@ -186,6 +186,11 @@ directory_reader::ptr directory_reader::open(
     auto& segment_file_refs = file_refs[i];
 
     ctx.reader = segment_reader::open(dir, segment);
+
+    if (!ctx.reader) {
+      throw index_error();
+    }
+
     ctx.base = static_cast<doc_id_t>(docs_max);
     docs_max += ctx.reader->docs_count();
     docs_count += ctx.reader->live_docs_count();
