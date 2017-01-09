@@ -380,6 +380,7 @@ bool index_writer::add_segment_mask_consolidated_records(
   const index_meta::index_segments_t& segments, // candidates to consider
   const consolidation_acceptor_t& acceptor // functr dictating which segments to consider
 ) {
+  REGISTER_TIMER_DETAILED();
   std::vector<segment_reader::ptr> merge_candidates;
   const index_meta::index_segment_t* merge_candindate_default = nullptr;
   flush_context::segment_mask_t segment_mask;
@@ -422,6 +423,7 @@ bool index_writer::add_segment_mask_consolidated_records(
     }
   }
 
+  REGISTER_TIMER_DETAILED();
   auto merge_segment_name = file_name(meta_.increment()); // increment active meta, not fn arg
   merge_writer merge_writer(dir, codec_, merge_segment_name);
 
@@ -442,6 +444,7 @@ void index_writer::consolidate(
   const consolidation_policy_t& policy, bool immediate
 ) {
   if (immediate) {
+    REGISTER_TIMER_DETAILED();
     auto meta = committed_state_.first;
     index_meta::index_segment_t segment;
     std::unordered_map<string_ref, const segment_meta*> segment_candidates;
@@ -484,6 +487,7 @@ void index_writer::consolidate(
     return;
   }
 
+  REGISTER_TIMER_DETAILED();
   auto ctx = get_flush_context();
   SCOPED_LOCK(ctx->mutex_); // lock due to context modification
 
