@@ -65,15 +65,20 @@ void compressing_index_writer::write_block(
   out_->write_vlong(median);
   out_->write_vint(bits);
 
+  if (ALL_EQUAL == bits) { // RLE
+    out_->write_vlong(*begin);
+    return;
+  }
+
   // write packed blocks 
   if (full_blocks) {
-    packed_.clear();
+    std::memset(packed_.data(), 0, sizeof(uint64_t)*packed_.size());
     packed_.resize(full_blocks);
 
-    packed::pack(begin, begin + full_blocks, &packed_[0], bits);
+    packed::pack(begin, begin + full_blocks, packed_.data(), bits);
 
     out_->write_bytes(
-      reinterpret_cast<const byte_type*>(&packed_[0]),
+      reinterpret_cast<const byte_type*>(packed_.data()),
       sizeof(uint64_t)*packed::blocks_required_64(full_blocks, bits)
     );
 
@@ -120,16 +125,22 @@ void compressing_index_writer::flush() {
   uint64_t max_offset = 0; // max delta between average and actual start position
   doc_id_t max_doc_delta = 0; // max delta between average and actual doc id
 
+  bool keys_equal = true;
+  const auto first_key = keys_[0];
+  bool offsets_equal = true;
+  const auto first_offset = offsets_[0];
   for (size_t i = 0; i < full_blocks; ++i) {
     // convert block relative doc_id's to deltas between average and actual doc id
     auto& key = keys_[i];
     key = zig_zag_encode64(key - avg_chunk_docs*i);
     max_doc_delta = std::max(max_doc_delta, key);
+    keys_equal &= (first_key == key);
 
     // convert block relative offsets to deltas between average and actual offset
     auto& offset = offsets_[i];
     offset = zig_zag_encode64(offset - avg_chunk_size*i);
     max_offset = std::max(max_offset, offset);
+    offsets_equal &= (first_offset == offset);
   }
 
   // convert tail doc id's and offsets to deltas
@@ -137,33 +148,35 @@ void compressing_index_writer::flush() {
     // convert block relative doc_id's to deltas between average and actual doc_id
     auto& key = keys_[i];
     key = zig_zag_encode64(key - avg_chunk_docs*i);
+    keys_equal &= (first_key == key);
     
     // convert block relative offsets to deltas between average and actual offset
     auto& offset = offsets_[i];
     offset = zig_zag_encode64(offset - avg_chunk_size*i);
+    offsets_equal &= (first_offset == offset);
   }
 
   // write total number of elements
   out_->write_vlong(size);
 
-  // write document bases
-  out_->write_vlong(block_base_);
+  // write document bases 
+  out_->write_vlong(block_base_); 
   write_block(
-    full_blocks, 
+    full_blocks,
     keys_.get(),
     key_,
-    avg_chunk_docs, 
-    packed::bits_required_64(max_doc_delta)
+    avg_chunk_docs,
+    keys_equal ? ALL_EQUAL : packed::bits_required_64(max_doc_delta)
   );
 
   // write start pointers
   out_->write_vlong(block_offset_);
   write_block(
-    full_blocks, 
+    full_blocks,
     offsets_,
     offset_,
-    avg_chunk_size, 
-    packed::bits_required_64(max_offset)
+    avg_chunk_size,
+    offsets_equal ? ALL_EQUAL : packed::bits_required_64(max_offset)
   );
 }
 
