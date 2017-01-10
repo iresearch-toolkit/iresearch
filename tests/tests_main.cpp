@@ -27,7 +27,8 @@
 #include "utils/runtime_utils.hpp"
 
 #ifdef _MSC_VER
-  #define mkdtemp(templ) 0 == _mkdir(_mktemp(templ)) ? templ : nullptr
+  // +1 for \0 at end of string
+  #define mkdtemp(templ) 0 == _mkdir(0 == _mktemp_s(templ, strlen(templ) + 1) ? templ : nullptr) ? templ : nullptr
 #endif
 
 /* -------------------------------------------------------------------
