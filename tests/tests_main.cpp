@@ -129,14 +129,16 @@ void test_base::make_directories() {
   (res_dir_ = out_dir_).append( test_name_ );  
   // add timestamp to res_dir_
   {
-    time_t rawtime;
-    struct tm* tinfo;
-    time(&rawtime);
-    tinfo = iresearch::localtime(&rawtime);
+    std::tm tinfo;
 
-    char buf[21]{};
-    strftime(buf, sizeof buf, "_%Y_%m_%d_%H_%M_%S", tinfo);
-    res_dir_.concat(buf, buf + sizeof buf - 1);
+    if (iresearch::localtime(tinfo, std::time(nullptr))) {
+      char buf[21]{};
+
+      strftime(buf, sizeof buf, "_%Y_%m_%d_%H_%M_%S", &tinfo);
+      res_dir_.concat(buf, buf + sizeof buf - 1);
+    } else {
+      res_dir_.concat("_unknown");
+    }
   }
 
   // add temporary string to res_dir_
