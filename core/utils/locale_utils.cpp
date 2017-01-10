@@ -12,31 +12,16 @@
 #include <boost/locale/generator.hpp>
 #include <boost/locale/info.hpp>
 #include <boost/locale/util.hpp>
-#include "thread_utils.hpp"
 #include "locale_utils.hpp"
 
 NS_LOCAL
 
-#if defined(_MSC_VER)
-  std::locale generate_locale(std::string const& sName) {
-    boost::locale::generator locale_genrator; // stateful object, cannot be static
+std::locale generate_locale(std::string const& sName) {
+  // valgrind reports invalid reads for locale_genrator if declared inside function
+  boost::locale::generator locale_genrator; // stateful object, cannot be static
 
-    return locale_genrator.generate(sName);
-  }
-#else
-  // object with singleton state,
-  // needs to be static, declared per-file (not inside function) and used under lock
-  // otherwise valgrind reports invalid reads
-  boost::locale::generator locale_genrator;
-
-  // only user of 'locale_genrator'
-  std::locale generate_locale(std::string const& sName) {
-    static std::mutex mutex;
-    SCOPED_LOCK(mutex);
-
-    return locale_genrator.generate(sName);
-  }
-#endif
+  return locale_genrator.generate(sName);
+}
 
 NS_END
 
