@@ -12,7 +12,33 @@
 #include <boost/locale/generator.hpp>
 #include <boost/locale/info.hpp>
 #include <boost/locale/util.hpp>
+#include "thread_utils.hpp"
 #include "locale_utils.hpp"
+
+NS_LOCAL
+
+#if defined(_MSC_VER)
+  std::locale generate_locale(std::string const& sName) {
+    boost::locale::generator locale_genrator; // stateful object, cannot be static
+
+    return locale_genrator.generate(sName);
+  }
+#else
+  // object with singleton state,
+  // needs to be static, declared per-file (not inside function) and used under lock
+  // otherwise valgrind reports invalid reads
+  boost::locale::generator locale_genrator;
+
+  // only user of 'locale_genrator'
+  std::locale generate_locale(std::string const& sName) {
+    static std::mutex mutex;
+    SCOPED_LOCK(mutex);
+
+    return locale_genrator.generate(sName);
+  }
+#endif
+
+NS_END
 
 NS_ROOT
 NS_BEGIN( locale_utils )
@@ -73,25 +99,24 @@ std::locale locale(char const* czName, bool bForceUTF8 /*= false*/) {
 }
 
 std::locale locale(std::string const& sName, bool bForceUTF8 /*= false*/) {
-  boost::locale::generator gen; // stateful object, cannot be static
-  std::locale locale = gen.generate(sName);
-
   if (!bForceUTF8) {
-    return locale;
+    return generate_locale(sName);
   }
 
   // ensure boost::locale::info facet exists for 'sName' since it is used below
+  auto locale = generate_locale(sName);
   auto locale_info = boost::locale::util::create_info(locale, sName);
+  auto& info_facet = std::use_facet<boost::locale::info>(locale_info);
 
-  if (std::use_facet<boost::locale::info>(locale_info).utf8()) {
+  if (info_facet.utf8()) {
     return locale;
   }
 
   return iresearch::locale_utils::locale(
-    std::use_facet<boost::locale::info>(locale_info).language(),
-    std::use_facet<boost::locale::info>(locale_info).country(),
+    info_facet.language(),
+    info_facet.country(),
     "UTF-8",
-    std::use_facet<boost::locale::info>(locale_info).variant()
+    info_facet.variant()
   );
 }
 
@@ -122,6 +147,20 @@ std::string name(std::locale const& locale) {
   }
   catch (...) {
     return locale.name(); // fall back to default value if failed to get facet
+  }
+}
+
+bool utf8(std::locale const& locale) {
+  try {
+    // try extracting 'info' facet from existing locale
+    return std::use_facet<boost::locale::info>(locale).utf8();
+  }
+  catch (...) {
+    // use Boost to parse the locale name and create a facet
+    auto locale_info = boost::locale::util::create_info(locale, locale.name());
+    auto& info_facet = std::use_facet<boost::locale::info>(locale_info);
+
+    return info_facet.utf8();
   }
 }
 
