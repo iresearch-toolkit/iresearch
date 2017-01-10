@@ -27,9 +27,7 @@
 #include "utils/runtime_utils.hpp"
 
 #ifdef _MSC_VER
-  #define make_temp(templ) _mktemp(templ)
-#else
-  #define make_temp(templ) mktemp(templ)
+  #define mkdtemp(templ) 0 == _mkdir(_mktemp(templ)) ? templ : nullptr
 #endif
 
 /* -------------------------------------------------------------------
@@ -144,12 +142,14 @@ void test_base::make_directories() {
   // add temporary string to res_dir_
   {
     char templ[] = "_XXXXXX";
-    make_temp(templ);
+
     res_dir_.concat(templ, templ + sizeof templ - 1);
   }
 
+  auto res_dir_templ = res_dir_.string();
+
+  res_dir_ = mkdtemp(&(res_dir_templ[0]));
   (res_path_ = res_dir_).append(test_results);
-  fs::create_directories(res_dir_);
 }
 
 void test_base::parse_command_line( po::variables_map& vm ) {
