@@ -519,7 +519,7 @@ class block_pool_sliced_reader : public std::iterator < std::input_iterator_tag,
   }
 
   inline void init() {
-    assert(end_ > 0 && where_.pool_offset() <= end_);
+    assert(end_ >= 0 && where_.pool_offset() <= end_);
 
     left_ = std::min(end_ - where_.pool_offset(),
                      LEVELS[level_].size - sizeof(uint32_t));

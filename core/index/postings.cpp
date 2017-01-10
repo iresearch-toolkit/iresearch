@@ -13,6 +13,13 @@
 #include "utils/type_limits.hpp"
 #include "postings.hpp"
 
+NS_LOCAL
+
+const iresearch::posting DUMMY{};
+const iresearch::byte_type PLACEHOLDER[1]{}; // placeholder for empty terms
+
+NS_END
+
 NS_ROOT
 
 // -----------------------------------------------------------------------------
@@ -36,8 +43,8 @@ postings::emplace_result postings::emplace(const bytes_ref& term) {
     return std::make_pair(map_.end(), false);
   }
 
-  auto slice_end = writer_.pool_offset() + max_term_len;
-  auto next_block_start = writer_.pool_offset() < parent.size()
+  const auto slice_end = writer_.pool_offset() + max_term_len;
+  const auto next_block_start = writer_.pool_offset() < parent.size()
                         ? writer_.position().block_offset() + parent.block_size()
                         : parent.block_size() * parent.count();
 
@@ -47,17 +54,19 @@ postings::emplace_result postings::emplace(const bytes_ref& term) {
   }
 
   assert(size() < type_limits<type_t::doc_id_t>::eof()); // not larger then the static flag
-  static const posting dummy{};
-  auto result = map_.emplace(make_hashed_ref(term, bytes_ref_hash_t()), dummy);
+  const auto result = map_.emplace(make_hashed_ref(term, bytes_ref_hash_t()), DUMMY);
 
   // for new terms also write out their value
   if (result.second) {
     auto& key = const_cast<hashed_bytes_ref&>(result.first->first);
-    //bytes_io<size_t>::vwrite(writer_, term.size());
 
     // reuse hash but point ref at data in pool
-    key = hashed_bytes_ref(key.hash(), writer_.position().buffer(), term.size());
-    writer_.write(term.c_str(), term.size());
+    if (term.empty()) {
+      key = hashed_bytes_ref(key.hash(), PLACEHOLDER, 0);
+    } else {
+      writer_.write(term.c_str(), term.size());
+      key = hashed_bytes_ref(key.hash(), writer_.position().buffer() - term.size(), term.size());
+    }
   }
 
   return result;

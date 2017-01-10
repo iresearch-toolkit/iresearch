@@ -563,7 +563,7 @@ bool field_data::invert(
       last_start_offs_ = start_offset;
     }
 
-    auto res = terms_.emplace(term->value());
+    const auto res = terms_.emplace(term->value());
 
     if (terms_.end() == res.first) {
       IR_ERROR() << "field \"" << meta_.name << "\" has invalid term \"" << ref_cast<char>(term->value()) << "\"";

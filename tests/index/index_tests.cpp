@@ -11,6 +11,7 @@
 
 #include "tests_shared.hpp" 
 #include "analysis/token_attributes.hpp"
+#include "analysis/token_streams.hpp"
 #include "document/field.hpp"
 #include "iql/query_builder.hpp"
 #include "formats/formats_10.hpp"
@@ -1517,6 +1518,88 @@ class index_test_case_base : public tests::index_test_base {
     }
   }
 
+  void insert_doc_with_null_empty_term() {
+    class field {
+      public:
+      field(std::string&& name, const ir::string_ref& value)
+        : name_(std::move(name)),
+        value_(value) {}
+      ir::string_ref name() const { return name_; }
+      float_t boost() const { return 1.f; }
+      ir::token_stream& get_tokens() const {
+        stream_.reset(value_);
+        return stream_;
+      }
+      const ir::flags& features() const {
+        return ir::flags::empty_instance();
+      }
+
+      private:
+      mutable ir::string_token_stream stream_;
+      std::string name_;
+      ir::string_ref value_;
+    }; // field
+
+    // write docs with empty terms
+    {
+      auto writer = ir::index_writer::make(dir(), codec(), ir::OM_CREATE);
+      // doc0: empty, nullptr
+      {
+        std::vector<field> doc;
+        doc.emplace_back(std::string("name"), ir::string_ref("", 0));
+        doc.emplace_back(std::string("name"), ir::string_ref::nil);
+        ASSERT_TRUE(writer->insert(doc.begin(), doc.end()));
+      }
+      // doc1: nullptr, empty, nullptr
+      {
+        std::vector<field> doc;
+        doc.emplace_back(std::string("name1"), ir::string_ref::nil);
+        doc.emplace_back(std::string("name1"), ir::string_ref("", 0));
+        doc.emplace_back(std::string("name"), ir::string_ref::nil);
+        ASSERT_TRUE(writer->insert(doc.begin(), doc.end()));
+      }
+      writer->commit();
+    }
+
+    // check fields with empty terms
+    {
+      auto reader = ir::directory_reader::open(dir());
+      ASSERT_EQ(1, reader->size());
+      auto& segment = (*reader)[0];
+
+      {
+        size_t count = 0;
+        auto fields = segment.fields();
+        while (fields->next()) {
+          ++count;
+        }
+        ASSERT_EQ(2, count);
+      }
+
+      {
+        auto* field = segment.field("name");
+        ASSERT_NE(nullptr, field);
+        ASSERT_EQ(1, field->size());
+        ASSERT_EQ(2, field->docs_count());
+        auto term = field->iterator();
+        ASSERT_TRUE(term->next());
+        ASSERT_EQ(0, term->value().size());
+        ASSERT_FALSE(term->next());
+      }
+
+      {
+        auto* field = segment.field("name1");
+        ASSERT_NE(nullptr, field);
+        ASSERT_EQ(1, field->size());
+        ASSERT_EQ(1, field->docs_count());
+        auto term = field->iterator();
+        ASSERT_TRUE(term->next());
+        ASSERT_EQ(0, term->value().size());
+        ASSERT_FALSE(term->next());
+      }
+    }
+  }
+
   void writer_atomicity_check() {
     struct override_sync_directory : directory_mock {
       typedef std::function<bool (const std::string&)> sync_f;
@@ -1729,6 +1812,10 @@ TEST_F(memory_index_test, writer_atomicity_check) {
 
 TEST_F(memory_index_test, writer_begin_rollback) {
   writer_begin_rollback();
+}
+
+TEST_F(memory_index_test, insert_null_empty_term) {
+  insert_doc_with_null_empty_term();
 }
 
 TEST_F(memory_index_test, europarl_docs) {
@@ -5108,6 +5195,10 @@ TEST_F(fs_index_test, concurrent_read_column) {
 
 TEST_F(fs_index_test, writer_atomicity_check) {
   writer_atomicity_check();
+}
+
+TEST_F(fs_index_test, insert_null_empty_term) {
+  insert_doc_with_null_empty_term();
 }
 
 TEST_F(fs_index_test, writer_begin_rollback) {
