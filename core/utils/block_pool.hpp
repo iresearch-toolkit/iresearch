@@ -29,7 +29,7 @@ NS_ROOT
 
 template< typename ContType >
 class block_pool_const_iterator : public std::iterator < std::random_access_iterator_tag, typename ContType::value_type > {
- public:
+  public:
   typedef ContType container;
   typedef std::iterator< std::random_access_iterator_tag, typename container::value_type > base;
 
@@ -47,20 +47,16 @@ class block_pool_const_iterator : public std::iterator < std::random_access_iter
   block_pool_const_iterator(container* pool, size_t offset)
     : pool_(pool),
       block_start_(0) {
-    if (offset >= pool_->size()) {
-      invalidate();
-    } else {
-      reset(offset);
-    }
+    reset(offset);
   }
 
   block_pool_const_iterator& operator++() {
-    increase(1);
+    seek_relative(1);
     return *this;
   }
 
   block_pool_const_iterator& operator--() {
-    decrease(1);
+    seek_relative(-1);
     return *this;
   }
 
@@ -76,43 +72,43 @@ class block_pool_const_iterator : public std::iterator < std::random_access_iter
     return state;
   }
 
-  const_reference operator*() const { return buf_[start_]; }
+  const_reference operator*() const { return *pos_; }
 
   const_reference operator[](difference_type offset) const {
     auto& rep = pool_->get_rep();
-    const difference_type pos = start_ + offset;
-    if (pos < 0 || static_cast<size_t>(pos) >= rep.block_len_) {
-      return pool_->at(block_start_ + pos);
+    const auto pos = pos_ + offset;
+    if (pos < begin_ || pos >= end_) {
+      return pool_->at(block_start_ + std::distance(begin_, pos));
     }
 
-    return buf_[pos];
+    return *pos;
   }
 
-  block_pool_const_iterator& operator+= (size_t offset) {
-    increase(offset);
+  block_pool_const_iterator& operator+=(difference_type offset) {
+    seek_relative(offset);
     return *this;
   }
 
-  block_pool_const_iterator& operator-=(size_t offset) {
-    decrease(offset);
+  block_pool_const_iterator& operator-=(difference_type offset) {
+    seek_relative(offset);
     return *this;
   }
 
-  block_pool_const_iterator operator+(size_t offset) const {
-    return block_pool_const_iterator(pool_, block_start_ + start_ + offset);
+  block_pool_const_iterator operator+(difference_type offset) const {
+    return block_pool_const_iterator(pool_, block_start_ + std::distance(begin_, pos_) + offset);
   }
 
-  block_pool_const_iterator operator-(size_t offset) const {
-    return block_pool_const_iterator(pool_, block_start_ + start_ - -offset);
+  block_pool_const_iterator operator-(difference_type offset) const {
+    return block_pool_const_iterator(pool_, block_start_ + std::distance(begin_, pos_) - offset);
   }
 
   difference_type operator-(const block_pool_const_iterator& rhs) const {
-    _compat(rhs);
+    assert(pool_ == rhs.pool_);
     return pool_offset() - rhs.pool_offset();
   }
 
   bool operator==(const block_pool_const_iterator& rhs) const {
-    _compat(rhs);
+    assert(pool_ == rhs.pool_);
     return pool_offset() == rhs.pool_offset();
   }
 
@@ -121,12 +117,12 @@ class block_pool_const_iterator : public std::iterator < std::random_access_iter
   }
 
   bool operator>(const block_pool_const_iterator& rhs) const {
-    _compat(rhs);
+    assert(pool_ == rhs.pool_);
     return pool_offset() > rhs.pool_offset();
   }
 
   bool operator<(const block_pool_const_iterator& rhs) const {
-    _compat(rhs);
+    assert(pool_ == rhs.pool_);
     return pool_offset() < rhs.pool_offset();
   }
 
@@ -138,29 +134,36 @@ class block_pool_const_iterator : public std::iterator < std::random_access_iter
     return !(*this < rhs);
   }
 
-  bool eof() const { return block_start_ + start_ == pool_->size(); }
+  bool eof() const { return block_start_ + std::distance(begin_, pos_) == pool_->size(); }
 
   const_pointer buffer() const {
-    return nullptr == buf_ ? nullptr : buf_ + start_;
+    return pos_;
   }
 
-  size_t remain() const {
-    return pool_->block_size() - start_;
-  }
+  size_t remain() const { return pool_->block_size() - std::distance(begin_, pos_); }
 
-  size_t offset() const { return start_; }
+  size_t offset() const { return std::distance(begin_, pos_); }
 
   size_t block_offset() const { return block_start_; }
 
-  size_t pool_offset() const { return block_start_ + start_; }
+  size_t pool_offset() const { return block_start_ + std::distance(begin_, pos_); }
 
   void refresh() {
     auto& rep = pool_->get_rep();
     assert(rep.block_len_);
-    buf_ = rep.buffers_[block_start_ / rep.block_len_].get();
+    const auto pos = std::distance(begin_, pos_);
+    begin_ = rep.buffers_[block_start_ / rep.block_len_].get();
+    end_ = begin_ + rep.block_len_;
+    pos_ = begin_ + pos;
   }
 
   void reset(size_t offset) {
+    if (offset >= pool_->size()) {
+      block_start_ = pool_->size();
+      begin_ = end_ = pos_ = nullptr;
+      return;
+    }
+
     auto& rep = pool_->get_rep();
     const size_t idx = offset / rep.block_len_;
     assert(idx < rep.buffers_.size());
@@ -168,70 +171,27 @@ class block_pool_const_iterator : public std::iterator < std::random_access_iter
     const size_t pos = offset % rep.block_len_;
     assert(pos < rep.block_len_);
 
-    buf_ = rep.buffers_[idx].get();
+    begin_ = rep.buffers_[idx].get();
+    end_ = begin_ + rep.block_len_;
     block_start_ = idx * rep.block_len_;
-    start_ = pos;
+    pos_ = begin_ + pos;
   }
 
   const container& parent() const { return pool_; }
 
  protected:
-  void invalidate() {
-    buf_ = nullptr;
-    block_start_ = pool_->size();
-    start_ = 0;
-  }
-
-  void _compat(const block_pool_const_iterator& rhs) const {
-#ifdef IRESEARCH_DEBUG
-    if (pool_ != rhs.pool_) {
-      // incompatible containers
-      assert(0);
+  void seek_relative(difference_type offset) {
+    pos_ += offset;
+    if (pos_ < begin_ || pos_ >= end_) {
+      reset(block_start_ + std::distance(begin_, pos_));
     }
-#endif
-  }
-
-  void increase(size_t offset) {
-    auto& rep = pool_->get_rep();
-    size_t pos = start_ + offset;
-    if (pos >= rep.block_len_) {
-
-      pos += block_start_;
-      if (pos >= pool_->size()) {
-        invalidate();
-        return;
-      }
-
-      reset(pos);
-    } else {
-      start_ = pos;
-    }
-
-    assert(start_ < rep.block_len_);
-    assert(block_start_ < pool_->size());
-  }
-
-  void decrease(size_t offset) {
-    auto& rep = pool_->get_rep();
-    if (start_ < offset) {
-      const size_t pos = block_start_ + start_;
-      if (pos < offset) {
-        invalidate();
-        return;
-      }
-      reset(pos - offset);
-    } else {
-      start_ -= offset;
-    }
-
-    assert(start_ < rep.block_len_);
-    assert(block_start_ < pool_->size());
   }
 
   container* pool_;
-  pointer buf_{};
+  pointer begin_{};
+  pointer end_{};
+  pointer pos_{};
   size_t block_start_;
-  size_t start_{};
 }; // block_pool_const_iterator 
 
 template< typename ContType >
@@ -259,13 +219,11 @@ class block_pool_iterator : public block_pool_const_iterator < ContType > {
     : base(pool, offset) {}
 
   block_pool_iterator& operator++() {
-    this->increase(1);
-    return *this;
+    return static_cast<block_pool_iterator&>(base::operator++());
   }
 
   block_pool_iterator& operator--() {
-    this->decrease(1);
-    return *this;
+    return static_cast<block_pool_iterator&>(base::operator--());
   }
 
   block_pool_iterator operator--(int) {
@@ -288,29 +246,25 @@ class block_pool_iterator : public block_pool_const_iterator < ContType > {
     return const_cast<reference>(static_cast<base&>(*this)[offset]);
   }
 
-  block_pool_iterator& operator+= (size_t offset) {
-    this->increase(offset);
-    return *this;
+  block_pool_iterator& operator+=(difference_type offset) {
+    return static_cast<block_pool_iterator&>(base::operator+=(offset));
   }
 
-  block_pool_iterator& operator-=(size_t offset) {
-    this->decrease(offset);
-    return *this;
+  block_pool_iterator& operator-=(difference_type offset) {
+    return static_cast<block_pool_iterator&>(base::operator-=(offset));
   }
 
-  block_pool_iterator operator+(size_t offset) const {
+  block_pool_iterator operator+(difference_type offset) const {
     return block_pool_iterator(this->pool_, this->pool_offset() + offset);
   }
 
-  block_pool_iterator operator-(size_t offset) const {
+  block_pool_iterator operator-(difference_type offset) const {
     return block_pool_iterator(this->pool_, this->pool_offset() - offset);
   }
 
-  inline pointer buffer() {
-    return nullptr == this->buf_ ? nullptr : this->buf_ + this->start_;
-  }
+  pointer buffer() { return pos_; }
 
-  inline container& parent() { return const_cast<container&>(*this->pool_); }
+  container& parent() { return const_cast<container&>(*this->pool_); }
 }; // block_pool_iterator 
 
 template< typename ContType >
@@ -569,7 +523,7 @@ class block_pool_inserter : public std::iterator < std::output_iterator_tag, voi
   block_pool_inserter& operator++() { return *this; }
 
   void write(const_pointer b, size_t len) {
-    assert(b != nullptr);
+    assert(b || !len);
 
     size_t to_copy = 0;
 
@@ -586,8 +540,6 @@ class block_pool_inserter : public std::iterator < std::output_iterator_tag, voi
   }
 
   void seek(size_t offset) {
-    assert(offset >= 0);
-
     if (offset >= where_.parent().size()) {
       where_.parent().next_buffer();
     }

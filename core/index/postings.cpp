@@ -16,7 +16,6 @@
 NS_LOCAL
 
 const iresearch::posting DUMMY{};
-const iresearch::byte_type PLACEHOLDER[1]{}; // placeholder for empty terms
 
 NS_END
 
@@ -61,12 +60,8 @@ postings::emplace_result postings::emplace(const bytes_ref& term) {
     auto& key = const_cast<hashed_bytes_ref&>(result.first->first);
 
     // reuse hash but point ref at data in pool
-    if (term.empty()) {
-      key = hashed_bytes_ref(key.hash(), PLACEHOLDER, 0);
-    } else {
-      writer_.write(term.c_str(), term.size());
-      key = hashed_bytes_ref(key.hash(), writer_.position().buffer() - term.size(), term.size());
-    }
+    writer_.write(term.c_str(), term.size());
+    key = hashed_bytes_ref(key.hash(), (writer_.position() - term.size()).buffer(), term.size());
   }
 
   return result;
