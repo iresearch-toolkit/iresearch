@@ -1,7 +1,7 @@
 //
 // IResearch search engine 
 // 
-// Copyright © 2016 by EMC Corporation, All Rights Reserved
+// Copyright (c) 2016 by EMC Corporation, All Rights Reserved
 // 
 // This software contains the intellectual property of EMC Corporation or is licensed to
 // EMC Corporation from third parties. Use of this software and the intellectual property

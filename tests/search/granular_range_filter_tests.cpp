@@ -1,7 +1,7 @@
 //
 // IResearch search engine 
 // 
-// Copyright © 2016 by EMC Corporation, All Rights Reserved
+// Copyright 2016 by EMC Corporation, All Rights Reserved
 // 
 // This software contains the intellectual property of EMC Corporation or is licensed to
 // EMC Corporation from third parties. Use of this software and the intellectual property
@@ -998,11 +998,11 @@ class granular_range_filter_test_case: public filter_test_case_base {
         docs, costs, *rdr);
     }
 
-    // name = [ï¿½;..]
+    // name = [DEL;..]
     // result:
     check_query(
       ir::by_granular_range().field("name")
-        .insert<ir::Bound::MIN>("ï¿½").include<ir::Bound::MIN>(false),
+        .insert<ir::Bound::MIN>("\x7f").include<ir::Bound::MIN>(false),
       docs_t{}, costs_t{0}, *rdr);
   }
 
