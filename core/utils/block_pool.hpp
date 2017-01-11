@@ -258,7 +258,7 @@ class block_pool_iterator : public block_pool_const_iterator < ContType > {
     return block_pool_iterator(this->pool_, this->pool_offset() - offset);
   }
 
-  pointer buffer() { return pos_; }
+  pointer buffer() { return this->pos_; }
 
   container& parent() { return const_cast<container&>(*this->pool_); }
 }; // block_pool_iterator 

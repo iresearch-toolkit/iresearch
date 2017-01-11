@@ -17,10 +17,11 @@
 using namespace iresearch;
 enum { BLOCK_SIZE = 32768 };
 
-template<typename T, int BlockSize>
+template<typename T, size_t BlockSize>
 class block_pool_test : public test_base {
  public:
   typedef block_pool<T, BlockSize> pool_t;
+  typedef typename pool_t::block_type block_type;
   typedef typename pool_t::inserter inserter_t;
   typedef typename pool_t::sliced_inserter sliced_inserter_t;
   typedef typename pool_t::sliced_reader sliced_reader_t;
@@ -39,7 +40,7 @@ class block_pool_test : public test_base {
   }
 
   void next_buffer_clear() {
-    ASSERT_EQ( BlockSize, decltype(pool_)::block_type::SIZE );
+    ASSERT_EQ( BlockSize, size_t(block_type::SIZE) );
     ASSERT_EQ( 0, pool_.count() );
     ASSERT_EQ( 0, pool_.size() );
     ASSERT_EQ( pool_.begin(), pool_.end() );
