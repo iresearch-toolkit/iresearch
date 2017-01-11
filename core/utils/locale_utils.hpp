@@ -64,6 +64,12 @@ IRESEARCH_API std::locale locale(std::string const& sLanguage, std::string const
  **/
 IRESEARCH_API std::string name(std::locale const& locale);
 
+/**
+ * @brief extract the locale utf8 from a locale
+ * @param locale the locale from which to extract the language
+ **/
+IRESEARCH_API bool utf8(std::locale const& locale);
+
 NS_END
 NS_END
 

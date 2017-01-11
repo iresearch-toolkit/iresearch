@@ -111,6 +111,11 @@ class int_field: public field_base {
   typedef int32_t value_t;
 
   int_field() = default;
+  int_field(int_field&& other)
+    : field_base(std::move(other)),
+      stream_(std::move(other.stream_)),
+      value_(std::move(other.value_)) {
+  }
 
   void value(value_t value) { value_ = value; }
   value_t value() const { return value_; }

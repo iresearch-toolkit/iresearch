@@ -1524,6 +1524,11 @@ class index_test_case_base : public tests::index_test_base {
       field(std::string&& name, const ir::string_ref& value)
         : name_(std::move(name)),
         value_(value) {}
+      field(field&& other)
+        : stream_(std::move(other.stream_)),
+          name_(std::move(other.name_)),
+          value_(std::move(other.value_)) {
+      }
       ir::string_ref name() const { return name_; }
       float_t boost() const { return 1.f; }
       ir::token_stream& get_tokens() const {
