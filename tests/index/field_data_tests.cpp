@@ -18,9 +18,9 @@
 
 namespace tests {
   void sort_core(const std::set<std::string>& src, uint32_t block_size) {
-    iresearch::byte_block_pool bytes_pool(1024);
+    iresearch::byte_block_pool bytes_pool;
     iresearch::byte_block_pool::inserter bytes_inserter(bytes_pool.begin());
-    iresearch::int_block_pool int_pool(1024);
+    iresearch::int_block_pool int_pool;
     iresearch::int_block_pool::inserter int_inserter(int_pool.begin());
     std::string field_name("field");
     iresearch::field_data field_data(field_name, &bytes_inserter, &int_inserter);

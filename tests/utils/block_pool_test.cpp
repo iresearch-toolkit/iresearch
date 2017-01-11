@@ -20,9 +20,10 @@ enum { BLOCK_SIZE = 32768 };
 template<typename T, int BlockSize>
 class block_pool_test : public test_base {
  public:
-  typedef typename block_pool<T>::inserter inserter_t;
-  typedef typename block_pool<T>::sliced_inserter sliced_inserter_t;
-  typedef typename block_pool<T>::sliced_reader sliced_reader_t;
+  typedef block_pool<T, BlockSize> pool_t;
+  typedef typename pool_t::inserter inserter_t;
+  typedef typename pool_t::sliced_inserter sliced_inserter_t;
+  typedef typename pool_t::sliced_reader sliced_reader_t;
 
   void ctor() const {
     ASSERT_EQ( BlockSize, pool_.block_size() );
@@ -38,20 +39,20 @@ class block_pool_test : public test_base {
   }
 
   void next_buffer_clear() {
-    ASSERT_EQ( BlockSize, pool_.block_size() );
+    ASSERT_EQ( BlockSize, decltype(pool_)::block_type::SIZE );
     ASSERT_EQ( 0, pool_.count() );
     ASSERT_EQ( 0, pool_.size() );
     ASSERT_EQ( pool_.begin(), pool_.end() );
 
     /* add buffer */
-    pool_.next_buffer();
+    pool_.alloc_buffer();
     ASSERT_EQ( 1, pool_.count() );
     ASSERT_EQ( BlockSize, pool_.size() );
     ASSERT_NE( pool_.begin(), pool_.end() );
 
     /* add several buffers */
     const size_t count = 15;
-    pool_.next_buffer( count );
+    pool_.alloc_buffer( count );
     ASSERT_EQ( 1 + count, pool_.count() );
     ASSERT_EQ( BlockSize*(1+count), pool_.size() );
     ASSERT_NE( pool_.begin(), pool_.end() );
@@ -166,7 +167,7 @@ class block_pool_test : public test_base {
 
   void slice_between_blocks() {
     // add initial block
-    pool_.next_buffer();
+    pool_.alloc_buffer();
 
     decltype(pool_.begin().pool_offset()) slice_chain_begin;
     decltype(slice_chain_begin) slice_chain_end;
@@ -229,9 +230,7 @@ class block_pool_test : public test_base {
   }
 
  protected:
-  block_pool_test() : pool_(BlockSize) {}
-
-  iresearch::block_pool<T> pool_;
+  iresearch::block_pool<T, BlockSize> pool_;
 }; // block_pool_test  
 
 /* byte_block_pool_test */

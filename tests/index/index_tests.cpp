@@ -134,8 +134,8 @@ const ir::flags& string_field::features() const {
   
 // reject too long terms
 void string_field::value(const ir::string_ref& str) {
-  const auto size_len = ir::vencode_size_32(ir::BYTE_BLOCK_SIZE);
-  const auto max_len = (std::min)(str.size(), size_t(ir::BYTE_BLOCK_SIZE - size_len));
+  const auto size_len = ir::vencode_size_32(ir::byte_block_pool::block_type::SIZE);
+  const auto max_len = (std::min)(str.size(), size_t(ir::byte_block_pool::block_type::SIZE - size_len));
   auto begin = str.begin();
   auto end = str.begin() + max_len;
   value_ = std::string(begin, end);

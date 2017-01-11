@@ -36,15 +36,7 @@ struct payload;
 class format;
 struct directory;
 
-NS_LOCAL
-
-typedef block_pool< byte_type > byte_block_pool;
-typedef block_pool< size_t > int_block_pool;
-
-const size_t INT_BLOCK_SIZE = 1 << 13;
-const size_t BYTE_BLOCK_SIZE = 1 << 15;
-
-NS_END
+typedef block_pool<size_t, 8192> int_block_pool;
 
 NS_BEGIN( detail ) 
 class term_iterator;
