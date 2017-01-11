@@ -36,6 +36,7 @@ class compressing_index_writer: util::noncopyable {
 
   static const int32_t FORMAT_MIN = 0;
   static const int32_t FORMAT_MAX = FORMAT_MIN;
+  static const uint32_t ALL_EQUAL = 0;
 
   explicit compressing_index_writer(size_t block_size);
 
@@ -259,6 +260,15 @@ class compressed_index : util::noncopyable {
       throw index_error();
     }
 
+    if (compressing_index_writer::ALL_EQUAL == bits) { // RLE
+      unpacked.resize(num_chunks);
+      const auto value = read_zvlong(in);
+      for (size_t i = 0; i < num_chunks; ++i) {
+        visitor(value + i*median);
+      }
+      return;
+    }
+
     // read full chunks 
     if (full_chunks) {
       unpacked.resize(full_chunks);
@@ -266,14 +276,14 @@ class compressed_index : util::noncopyable {
       packed.resize(packed::blocks_required_64(full_chunks, bits));
 
       in.read_bytes(
-        reinterpret_cast<byte_type*>(&packed[0]),
+        reinterpret_cast<byte_type*>(packed.data()),
         sizeof(uint64_t)*packed.size()
       );
 
       packed::unpack(
-        &unpacked[0],
-        &unpacked[0] + unpacked.size(),
-        &packed[0],
+        unpacked.data(),
+        unpacked.data() + unpacked.size(),
+        packed.data(),
         bits
       );
 

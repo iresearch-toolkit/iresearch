@@ -24,7 +24,6 @@
 #endif
 
 #include <boost/locale/encoding.hpp>
-#include <boost/locale/util.hpp>
 
 #if !defined(_MSC_VER)
   #pragma GCC diagnostic ignored "-Wunused-local-typedefs"
@@ -142,22 +141,7 @@ bool get_ignored_words(
   const std::locale& locale,
   const std::string* path = nullptr
 ) {
-  std::string language;
-
-  try {
-    // try extracting 'info' facet from existing locale
-    auto& info_facet = std::use_facet<boost::locale::info>(locale);
-
-    language = std::move(info_facet.language());
-  }
-  catch (...) {
-    // use Boost to parse the locale name and create a facet
-    auto locale_info = boost::locale::util::create_info(locale, locale.name());
-    auto& info_facet = std::use_facet<boost::locale::info>(locale_info);
-
-    language = std::move(info_facet.language());
-  }
-
+  auto language = iresearch::locale_utils::language(locale);
   boost::filesystem::path stopword_path;
   auto* custom_stopword_path =
     path
@@ -465,27 +449,11 @@ text_token_stream::text_token_stream(
   attrs_.add<offset>();
   attrs_.add<bytes_term>();
   attrs_.add<increment>();
+  locale_.country = locale_utils::country(locale);
+  locale_.encoding = locale_utils::encoding(locale);
+  locale_.language = locale_utils::language(locale);
+  locale_.utf8 = locale_utils::utf8(locale);
   state_->locale.setToBogus(); // set to uninitialized
-
-  try {
-    // try extracting 'info' facet from existing locale
-    auto& info_facet = std::use_facet<boost::locale::info>(locale);
-
-    locale_.country = std::move(info_facet.country());
-    locale_.encoding = std::move(info_facet.encoding());
-    locale_.language = std::move(info_facet.language());
-    locale_.utf8 = std::move(info_facet.utf8());
-  }
-  catch (...) {
-    // use Boost to parse the locale name and create a facet
-    auto locale_info = boost::locale::util::create_info(locale, locale.name());
-    auto& info_facet = std::use_facet<boost::locale::info>(locale_info);
-
-    locale_.country = std::move(info_facet.country());
-    locale_.encoding = std::move(info_facet.encoding());
-    locale_.language = std::move(info_facet.language());
-    locale_.utf8 = std::move(info_facet.utf8());
-  }
 }
 
 // -----------------------------------------------------------------------------

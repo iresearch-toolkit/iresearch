@@ -563,7 +563,7 @@ bool field_data::invert(
       last_start_offs_ = start_offset;
     }
 
-    auto res = terms_.emplace(term->value());
+    const auto res = terms_.emplace(term->value());
 
     if (terms_.end() == res.first) {
       IR_ERROR() << "field \"" << meta_.name << "\" has invalid term \"" << ref_cast<char>(term->value()) << "\"";
@@ -595,9 +595,7 @@ bool field_data::invert(
  * ------------------------------------------------------------------*/
 
 fields_data::fields_data()
-  : byte_pool_(BYTE_BLOCK_SIZE),
-    byte_writer_(byte_pool_.begin()),
-    int_pool_(INT_BLOCK_SIZE),
+  : byte_writer_(byte_pool_.begin()),
     int_writer_(int_pool_.begin()) {
 }
 

@@ -29,8 +29,9 @@ NS_ROOT
 
 template< typename ContType >
 class block_pool_const_iterator : public std::iterator < std::random_access_iterator_tag, typename ContType::value_type > {
- public:
+  public:
   typedef ContType container;
+  typedef typename container::block_type block_type;
   typedef std::iterator< std::random_access_iterator_tag, typename container::value_type > base;
 
   typedef typename base::pointer pointer;
@@ -40,27 +41,22 @@ class block_pool_const_iterator : public std::iterator < std::random_access_iter
   typedef typename container::const_pointer const_pointer;
 
   explicit block_pool_const_iterator(container* pool)
-    : pool_(pool),
-      block_start_(pool_->size()) {
+    : pool_(pool) {
+    reset(pool_->size());
   }
 
   block_pool_const_iterator(container* pool, size_t offset)
-    : pool_(pool),
-      block_start_(0) {
-    if (offset >= pool_->size()) {
-      invalidate();
-    } else {
-      reset(offset);
-    }
+    : pool_(pool) {
+    reset(offset);
   }
 
   block_pool_const_iterator& operator++() {
-    increase(1);
+    seek_relative(1);
     return *this;
   }
 
   block_pool_const_iterator& operator--() {
-    decrease(1);
+    seek_relative(-1);
     return *this;
   }
 
@@ -76,43 +72,42 @@ class block_pool_const_iterator : public std::iterator < std::random_access_iter
     return state;
   }
 
-  const_reference operator*() const { return buf_[start_]; }
+  const_reference operator*() const { return *pos_; }
 
   const_reference operator[](difference_type offset) const {
-    auto& rep = pool_->get_rep();
-    const difference_type pos = start_ + offset;
-    if (pos < 0 || static_cast<size_t>(pos) >= rep.block_len_) {
-      return pool_->at(block_start_ + pos);
+    const auto pos = pos_ + offset;
+    if (pos < block_->begin || pos >= block_->end) {
+      return pool_->at(block_offset() + std::distance(block_->begin, pos));
     }
 
-    return buf_[pos];
+    return *pos;
   }
 
-  block_pool_const_iterator& operator+= (size_t offset) {
-    increase(offset);
+  block_pool_const_iterator& operator+=(difference_type offset) {
+    seek_relative(offset);
     return *this;
   }
 
-  block_pool_const_iterator& operator-=(size_t offset) {
-    decrease(offset);
+  block_pool_const_iterator& operator-=(difference_type offset) {
+    seek_relative(offset);
     return *this;
   }
 
-  block_pool_const_iterator operator+(size_t offset) const {
-    return block_pool_const_iterator(pool_, block_start_ + start_ + offset);
+  block_pool_const_iterator operator+(difference_type offset) const {
+    return block_pool_const_iterator(pool_, block_offset() + std::distance(block_->begin, pos_) + offset);
   }
 
-  block_pool_const_iterator operator-(size_t offset) const {
-    return block_pool_const_iterator(pool_, block_start_ + start_ - -offset);
+  block_pool_const_iterator operator-(difference_type offset) const {
+    return block_pool_const_iterator(pool_, block_offset() + std::distance(block_->begin, pos_) - offset);
   }
 
   difference_type operator-(const block_pool_const_iterator& rhs) const {
-    _compat(rhs);
+    assert(pool_ == rhs.pool_);
     return pool_offset() - rhs.pool_offset();
   }
 
   bool operator==(const block_pool_const_iterator& rhs) const {
-    _compat(rhs);
+    assert(pool_ == rhs.pool_);
     return pool_offset() == rhs.pool_offset();
   }
 
@@ -121,12 +116,12 @@ class block_pool_const_iterator : public std::iterator < std::random_access_iter
   }
 
   bool operator>(const block_pool_const_iterator& rhs) const {
-    _compat(rhs);
+    assert(pool_ == rhs.pool_);
     return pool_offset() > rhs.pool_offset();
   }
 
   bool operator<(const block_pool_const_iterator& rhs) const {
-    _compat(rhs);
+    assert(pool_ == rhs.pool_);
     return pool_offset() < rhs.pool_offset();
   }
 
@@ -138,100 +133,60 @@ class block_pool_const_iterator : public std::iterator < std::random_access_iter
     return !(*this < rhs);
   }
 
-  bool eof() const { return block_start_ + start_ == pool_->size(); }
+  bool eof() const { return block_offset() + std::distance(block_->begin, pos_) == pool_->size(); }
 
   const_pointer buffer() const {
-    return nullptr == buf_ ? nullptr : buf_ + start_;
+    return pos_;
   }
 
-  size_t remain() const {
-    return pool_->block_size() - start_;
-  }
+  size_t remain() const { return pool_->block_size() - std::distance(block_->begin, pos_); }
 
-  size_t offset() const { return start_; }
+  size_t offset() const { return std::distance(block_->begin, pos_); }
 
   size_t block_offset() const { return block_start_; }
 
-  size_t pool_offset() const { return block_start_ + start_; }
+  size_t pool_offset() const { return block_offset() + std::distance(block_->begin, pos_); }
 
   void refresh() {
-    auto& rep = pool_->get_rep();
-    assert(rep.block_len_);
-    buf_ = rep.buffers_[block_start_ / rep.block_len_].get();
+    const auto pos = std::distance(block_->begin, pos_);
+    block_ = pool_->get_blocks()[block_offset() / block_type::SIZE].get();
+    pos_ = block_->begin + pos;
   }
 
   void reset(size_t offset) {
-    auto& rep = pool_->get_rep();
-    const size_t idx = offset / rep.block_len_;
-    assert(idx < rep.buffers_.size());
+    if (offset >= pool_->size()) {
+      block_start_ = pool_->size();
+      block_ = nullptr;
+      pos_ = nullptr;
+      return;
+    }
 
-    const size_t pos = offset % rep.block_len_;
-    assert(pos < rep.block_len_);
+    auto& blocks = pool_->get_blocks();
+    const size_t idx = offset / block_type::SIZE;
+    assert(idx < blocks.size());
 
-    buf_ = rep.buffers_[idx].get();
-    block_start_ = idx * rep.block_len_;
-    start_ = pos;
+    const size_t pos = offset % block_type::SIZE;
+    assert(pos < block_type::SIZE);
+
+    block_ = blocks[idx].get();
+    block_start_ = block_->start;
+    pos_ = block_->begin + pos;
   }
 
   const container& parent() const { return pool_; }
 
  protected:
-  void invalidate() {
-    buf_ = nullptr;
-    block_start_ = pool_->size();
-    start_ = 0;
-  }
-
-  void _compat(const block_pool_const_iterator& rhs) const {
-#ifdef IRESEARCH_DEBUG
-    if (pool_ != rhs.pool_) {
-      // incompatible containers
-      assert(0);
+  void seek_relative(difference_type offset) {
+    pos_ += offset;
+    if (pos_ < block_->begin || pos_ >= block_->end) {
+      reset(block_offset() + std::distance(block_->begin, pos_));
     }
-#endif
-  }
-
-  void increase(size_t offset) {
-    auto& rep = pool_->get_rep();
-    size_t pos = start_ + offset;
-    if (pos >= rep.block_len_) {
-
-      pos += block_start_;
-      if (pos >= pool_->size()) {
-        invalidate();
-        return;
-      }
-
-      reset(pos);
-    } else {
-      start_ = pos;
-    }
-
-    assert(start_ < rep.block_len_);
-    assert(block_start_ < pool_->size());
-  }
-
-  void decrease(size_t offset) {
-    auto& rep = pool_->get_rep();
-    if (start_ < offset) {
-      const size_t pos = block_start_ + start_;
-      if (pos < offset) {
-        invalidate();
-        return;
-      }
-      reset(pos - offset);
-    } else {
-      start_ -= offset;
-    }
-
-    assert(start_ < rep.block_len_);
-    assert(block_start_ < pool_->size());
   }
 
   container* pool_;
-  pointer buf_{};
+  typename container::block_type* block_;
+  pointer pos_;
   size_t block_start_;
-  size_t start_{};
 }; // block_pool_const_iterator 
 
 template< typename ContType >
@@ -245,6 +200,7 @@ template< typename ContType >
 class block_pool_iterator : public block_pool_const_iterator < ContType > {
  public:
   typedef ContType container;
+  typedef typename container::block_type block_type;
   typedef block_pool_const_iterator< container > base;
   typedef typename base::pointer pointer;
   typedef typename base::difference_type difference_type;
@@ -259,13 +215,11 @@ class block_pool_iterator : public block_pool_const_iterator < ContType > {
     : base(pool, offset) {}
 
   block_pool_iterator& operator++() {
-    this->increase(1);
-    return *this;
+    return static_cast<block_pool_iterator&>(base::operator++());
   }
 
   block_pool_iterator& operator--() {
-    this->decrease(1);
-    return *this;
+    return static_cast<block_pool_iterator&>(base::operator--());
   }
 
   block_pool_iterator operator--(int) {
@@ -288,29 +242,25 @@ class block_pool_iterator : public block_pool_const_iterator < ContType > {
     return const_cast<reference>(static_cast<base&>(*this)[offset]);
   }
 
-  block_pool_iterator& operator+= (size_t offset) {
-    this->increase(offset);
-    return *this;
+  block_pool_iterator& operator+=(difference_type offset) {
+    return static_cast<block_pool_iterator&>(base::operator+=(offset));
   }
 
-  block_pool_iterator& operator-=(size_t offset) {
-    this->decrease(offset);
-    return *this;
+  block_pool_iterator& operator-=(difference_type offset) {
+    return static_cast<block_pool_iterator&>(base::operator-=(offset));
   }
 
-  block_pool_iterator operator+(size_t offset) const {
+  block_pool_iterator operator+(difference_type offset) const {
     return block_pool_iterator(this->pool_, this->pool_offset() + offset);
   }
 
-  block_pool_iterator operator-(size_t offset) const {
+  block_pool_iterator operator-(difference_type offset) const {
     return block_pool_iterator(this->pool_, this->pool_offset() - offset);
   }
 
-  inline pointer buffer() {
-    return nullptr == this->buf_ ? nullptr : this->buf_ + this->start_;
-  }
+  pointer buffer() { return pos_; }
 
-  inline container& parent() { return const_cast<container&>(*this->pool_); }
+  container& parent() { return const_cast<container&>(*this->pool_); }
 }; // block_pool_iterator 
 
 template< typename ContType >
@@ -324,6 +274,7 @@ template< typename ContType >
 class block_pool_reader : public std::iterator < std::input_iterator_tag, typename ContType::value_type > {
  public:
   typedef ContType container;
+  typedef typename container::block_type block_type;
   typedef typename container::const_iterator const_iterator;
   typedef typename container::const_reference const_reference;
   typedef typename container::const_pointer const_pointer;
@@ -413,6 +364,7 @@ template< typename ContType >
 class block_pool_sliced_reader : public std::iterator < std::input_iterator_tag, typename ContType::value_type > {
  public:
   typedef ContType container;
+  typedef typename container::block_type block_type;
   typedef typename container::const_iterator const_iterator;
   typedef typename container::pointer pointer;
   typedef typename container::const_pointer const_pointer;
@@ -519,7 +471,7 @@ class block_pool_sliced_reader : public std::iterator < std::input_iterator_tag,
   }
 
   inline void init() {
-    assert(end_ > 0 && where_.pool_offset() <= end_);
+    assert(end_ >= 0 && where_.pool_offset() <= end_);
 
     left_ = std::min(end_ - where_.pool_offset(),
                      LEVELS[level_].size - sizeof(uint32_t));
@@ -538,6 +490,7 @@ template< typename ContType >
 class block_pool_inserter : public std::iterator < std::output_iterator_tag, void, void, void, void > {
  public:
   typedef ContType container;
+  typedef typename container::block_type block_type;
   typedef typename container::iterator iterator;
   typedef typename container::const_pointer const_pointer;
   typedef typename container::const_reference const_reference;
@@ -569,14 +522,14 @@ class block_pool_inserter : public std::iterator < std::output_iterator_tag, voi
   block_pool_inserter& operator++() { return *this; }
 
   void write(const_pointer b, size_t len) {
-    assert(b != nullptr);
+    assert(b || !len);
 
     size_t to_copy = 0;
 
     while (len) {
       resize();
 
-      to_copy = std::min(where_.parent().block_size() - where_.offset(), len);
+      to_copy = std::min(block_type::SIZE - where_.offset(), len);
 
       std::memcpy(where_.buffer(), b, to_copy * sizeof(value_type));
       len -= to_copy;
@@ -586,10 +539,8 @@ class block_pool_inserter : public std::iterator < std::output_iterator_tag, voi
   }
 
   void seek(size_t offset) {
-    assert(offset >= 0);
-
     if (offset >= where_.parent().size()) {
-      where_.parent().next_buffer();
+      where_.parent().alloc_buffer();
     }
 
     where_.reset(offset);
@@ -613,7 +564,7 @@ class block_pool_inserter : public std::iterator < std::output_iterator_tag, voi
 
   inline void resize() {
     if (where_.eof()) {
-      where_.parent().next_buffer();
+      where_.parent().alloc_buffer();
       where_.refresh();
     }
   }
@@ -621,11 +572,11 @@ class block_pool_inserter : public std::iterator < std::output_iterator_tag, voi
   void alloc_slice(size_t size) {
     auto pool_size = where_.parent().size();
     auto slice_start = where_.pool_offset() + size;
-    auto next_block_start = where_.block_offset() + where_.parent().block_size();
+    auto next_block_start = where_.block_offset() + block_type::SIZE;
 
     // if need to increase pool size
     if (slice_start >= pool_size) {
-      where_.parent().next_buffer();
+      where_.parent().alloc_buffer();
 
       if (slice_start == pool_size) {
         where_.refresh();
@@ -737,49 +688,62 @@ class block_pool_sliced_inserter : public std::iterator < std::output_iterator_t
   block_pool_inserter< container >* writer_;
 }; // block_pool_sliced_inserter 
 
-template< typename T, typename AllocType = std::allocator<T>>
+template<typename T, size_t Size>
+struct proxy_block_t {
+  typedef std::shared_ptr<proxy_block_t> ptr;
+  typedef T value_type;
+
+  static const size_t SIZE = Size;
+
+  explicit proxy_block_t(size_t start) : start(start) { }
+
+  value_type begin[SIZE]; // begin of valid bytes
+  value_type* end{ begin + SIZE }; // end of valid bytes
+  size_t start; // where block starts
+}; // proxy_block_t
+
+template< typename T, size_t BlockSize, typename AllocType = std::allocator<T>>
 class block_pool {
  public:
+  typedef proxy_block_t<T, BlockSize> block_type;
   typedef AllocType allocator;
   typedef typename allocator::value_type value_type;
   typedef typename allocator::reference reference;
   typedef typename allocator::const_reference const_reference;
   typedef typename allocator::pointer pointer;
   typedef typename allocator::const_pointer const_pointer;
+  typedef block_pool<value_type, BlockSize, allocator> my_type;
 
-  typedef block_pool_iterator< block_pool< value_type, allocator > > iterator;
-  typedef block_pool_const_iterator< block_pool< value_type, allocator > > const_iterator;
+  typedef block_pool_iterator<my_type> iterator;
+  typedef block_pool_const_iterator<my_type> const_iterator;
 
-  typedef block_pool_reader< block_pool< value_type, allocator> > reader;
-  typedef block_pool_sliced_reader< block_pool< value_type, allocator> > sliced_reader;
+  typedef block_pool_reader<my_type> reader;
+  typedef block_pool_sliced_reader<my_type> sliced_reader;
 
-  typedef block_pool_inserter< block_pool< value_type, allocator > > inserter;
-  typedef block_pool_sliced_inserter< block_pool< value_type, allocator > > sliced_inserter;
+  typedef block_pool_inserter<my_type> inserter;
+  typedef block_pool_sliced_inserter<my_type> sliced_inserter;
 
-  explicit block_pool(size_t block_size, const allocator& alloc = allocator())
-    : rep_(rep{ block_size }, alloc) {}
+  explicit block_pool(const allocator& alloc = allocator())
+    : rep_(blocks_t(block_ptr_allocator(alloc)), alloc) {
+    static_assert(block_type::SIZE > 0, "block_type::SIZE == 0");
+  }
 
   ~block_pool() {}
 
-  inline void next_buffer() {
-    auto& rep = get_rep();
-    buffer_ptr ptr(
-      get_allocator().allocate(rep.block_len_),
-      [this] (T* ptr) { get_allocator().deallocate(ptr, get_rep().block_len_); }
-    );
+  void alloc_buffer(size_t count = 1) {
+    proxy_allocator proxy_alloc(get_allocator());
+    auto& blocks = get_blocks();
 
-    rep.buffers_.emplace_back(std::move(ptr));
-  }
-
-  inline void next_buffer(size_t count) {
     while (count--) {
-      next_buffer();
+      blocks.emplace_back(
+        std::allocate_shared<block_type>(proxy_alloc, blocks.size() * block_type::SIZE)
+      );
     }
   }
 
   iterator write(iterator where, value_type b) {
     if (where.eof()) {
-      next_buffer();
+      alloc_buffer();
       where.refresh();
     }
 
@@ -789,16 +753,15 @@ class block_pool {
 
   iterator write(iterator where, const_pointer b, size_t len) {
     assert(b);
-    auto& rep = get_rep();
 
     size_t to_copy = 0;
     while (len) {
       if (where.eof()) {
-        next_buffer();
+        alloc_buffer();
         where.refresh();
       }
 
-      to_copy = std::min(rep.block_len_ - where.offset(), len);
+      to_copy = std::min(block_type::SIZE - where.offset(), len);
 
       memcpy(where.buffer(), b, to_copy * sizeof(value_type));
       len -= to_copy;
@@ -821,7 +784,6 @@ class block_pool {
 
   iterator read(iterator where, pointer b, size_t len) const {
     assert(b);
-    auto& rep = get_rep();
 
     size_t to_copy = 0;
 
@@ -831,7 +793,7 @@ class block_pool {
         break;
       }
 
-      to_copy = std::min(rep.block_len_ - where.offset(), len);
+      to_copy = std::min(block_type::SIZE - where.offset(), len);
       memcpy(b, where.buffer(), to_copy * sizeof(value_type));
 
       len -= to_copy;
@@ -842,95 +804,83 @@ class block_pool {
     return where;
   }
 
-  void clear() { get_rep().buffers_.clear(); }
+  void clear() { get_blocks().clear(); }
 
-  inline const_reference at(size_t offset) const {
+  const_reference at(size_t offset) const {
     return const_cast<block_pool*>(this)->at(offset);
   }
 
   reference at(size_t offset) {
     assert(offset < this->size());
-    auto& rep = get_rep();
 
-    const size_t idx = offset / rep.block_len_;
-    const size_t pos = offset % rep.block_len_;
+    const size_t idx = offset / block_type::SIZE;
+    const size_t pos = offset % block_type::SIZE;
 
-    return *(rep.buffers_[idx].get() + pos);
+    return *(get_blocks()[idx]->begin + pos);
   }
 
-  inline reference operator[](size_t offset) { return at(offset); }
+  reference operator[](size_t offset) { return at(offset); }
 
-  inline const_reference operator[](size_t offset) const {
+  const_reference operator[](size_t offset) const {
     return at(offset);
   }
 
-  inline const_iterator seek(size_t offset) const {
+  const_iterator seek(size_t offset) const {
     return const_iterator(const_cast<block_pool*>(this), offset);
   }
 
-  inline const_iterator begin() const {
+  const_iterator begin() const {
     return const_iterator(const_cast<block_pool*>(this), 0);
   }
 
-  inline const_iterator end() const {
+  const_iterator end() const {
     return const_iterator(const_cast<block_pool*>(this));
   }
 
-  inline iterator seek(size_t offset) {
+  iterator seek(size_t offset) {
     return iterator(this, offset);
   }
 
-  inline iterator begin() { return iterator(this, 0); }
+  iterator begin() { return iterator(this, 0); }
 
-  inline iterator end() { return iterator(this); }
+  iterator end() { return iterator(this); }
 
-  inline size_t block_size() const { return get_rep().block_len_; }
-
-  inline pointer buffer(size_t i) {
-    auto& rep = get_rep();
-    assert(i < rep.buffers_.size());
-    return rep.buffers_[i];
+  pointer buffer(size_t i) {
+    assert(i < count());
+    return get_blocks()[i];
   }
 
-  inline const_pointer buffer(size_t i) const {
-    auto& rep = get_rep();
-    assert(i < rep.buffers_.size());
-    return rep.buffers_[i];
+  const_pointer buffer(size_t i) const {
+    assert(i < count());
+    return get_blocks()[i];
   }
 
-  inline size_t block_offset(size_t i) const {
-    auto& rep = get_rep();
-    assert(i < rep.buffers_.size());
-    return rep.block_len_ * i;
+  size_t block_offset(size_t i) const {
+    assert(i < count());
+    return block_type::SIZE * i;
   }
 
-  inline size_t count() const { return get_rep().buffers_.size(); }
+  size_t count() const { return get_blocks().size(); }
 
-  inline size_t size() const {
-    auto& rep = get_rep();
-    return rep.block_len_ * rep.buffers_.size();
+  size_t size() const {
+    return block_type::SIZE * get_blocks().size();
   }
 
  private:
   friend iterator;
   friend const_iterator;
+  
+  typedef typename block_type::ptr block_ptr;
+  typedef typename std::allocator_traits<allocator>::template rebind_alloc<block_type> proxy_allocator;
+  typedef typename std::allocator_traits<allocator>::template rebind_alloc<block_ptr> block_ptr_allocator;
+  typedef std::vector<block_ptr, block_ptr_allocator> blocks_t;
 
-  typedef std::shared_ptr<value_type> buffer_ptr;
+  const blocks_t& get_blocks() const { return rep_.first(); }
+  blocks_t& get_blocks() { return rep_.first(); }
+  const allocator& get_allocator() const { return rep_.second(); }
+  allocator& get_allocator() { return rep_.second(); }
 
-  // data repository
-  struct rep {
-    explicit rep(size_t block_len) : block_len_(block_len) {}
-
-    std::vector<buffer_ptr> buffers_;
-    size_t block_len_;
-  };
-
-  inline const rep& get_rep() const { return rep_.first(); }
-  inline rep& get_rep() { return rep_.first(); }
-  inline const allocator& get_allocator() const { return rep_.second(); }
-  inline allocator& get_allocator() { return rep_.second(); }
-
-  compact_pair<rep, allocator> rep_;
+  compact_pair<blocks_t, allocator> rep_;
 }; // block_pool
 
 NS_END

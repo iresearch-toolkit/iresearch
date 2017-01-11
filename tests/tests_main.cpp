@@ -27,9 +27,8 @@
 #include "utils/runtime_utils.hpp"
 
 #ifdef _MSC_VER
-  #define make_temp(templ) _mktemp(templ)
-#else
-  #define make_temp(templ) mktemp(templ)
+  // +1 for \0 at end of string
+  #define mkdtemp(templ) 0 == _mkdir(0 == _mktemp_s(templ, strlen(templ) + 1) ? templ : nullptr) ? templ : nullptr
 #endif
 
 /* -------------------------------------------------------------------
@@ -129,25 +128,29 @@ void test_base::make_directories() {
   (res_dir_ = out_dir_).append( test_name_ );  
   // add timestamp to res_dir_
   {
-    time_t rawtime;
-    struct tm* tinfo;
-    time(&rawtime);
-    tinfo = iresearch::localtime(&rawtime);
+    std::tm tinfo;
 
-    char buf[21]{};
-    strftime(buf, sizeof buf, "_%Y_%m_%d_%H_%M_%S", tinfo);
-    res_dir_.concat(buf, buf + sizeof buf - 1);
+    if (iresearch::localtime(tinfo, std::time(nullptr))) {
+      char buf[21]{};
+
+      strftime(buf, sizeof buf, "_%Y_%m_%d_%H_%M_%S", &tinfo);
+      res_dir_.concat(buf, buf + sizeof buf - 1);
+    } else {
+      res_dir_.concat("_unknown");
+    }
   }
 
   // add temporary string to res_dir_
   {
     char templ[] = "_XXXXXX";
-    make_temp(templ);
+
     res_dir_.concat(templ, templ + sizeof templ - 1);
   }
 
+  auto res_dir_templ = res_dir_.string();
+
+  res_dir_ = mkdtemp(&(res_dir_templ[0]));
   (res_path_ = res_dir_).append(test_results);
-  fs::create_directories(res_dir_);
 }
 
 void test_base::parse_command_line( po::variables_map& vm ) {

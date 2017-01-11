@@ -22,6 +22,8 @@
 
 NS_ROOT
 
+typedef block_pool<byte_type, 32768> byte_block_pool;
+
 struct posting {
   doc_id_t doc_code;
   doc_id_t doc;
@@ -42,7 +44,7 @@ class IRESEARCH_API postings: util::noncopyable {
  public:
   typedef std::unordered_map<hashed_bytes_ref, posting> map_t;
   typedef std::pair<map_t::iterator, bool> emplace_result;
-  typedef block_pool<byte_type>::inserter writer_t;
+  typedef byte_block_pool::inserter writer_t;
 
   postings(writer_t& writer);
 

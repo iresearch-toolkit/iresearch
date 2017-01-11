@@ -271,7 +271,7 @@ struct block_t : private util::noncopyable {
 entry::entry(
   const iresearch::bytes_ref& term, iresearch::attributes&& attrs
 ): data(term.c_str(), term.size()), type(ET_TERM) {
-  assert( !term.null() );
+//  assert( !term.null() );
   this->term = new term_t( std::move( attrs ) );
 }
 

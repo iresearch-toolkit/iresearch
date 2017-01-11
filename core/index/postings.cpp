@@ -13,6 +13,12 @@
 #include "utils/type_limits.hpp"
 #include "postings.hpp"
 
+NS_LOCAL
+
+const iresearch::posting DUMMY{};
+
+NS_END
+
 NS_ROOT
 
 // -----------------------------------------------------------------------------
@@ -26,20 +32,20 @@ postings::postings(writer_t& writer):
 postings::emplace_result postings::emplace(const bytes_ref& term) {
   REGISTER_TIMER_DETAILED();
   auto& parent = writer_.parent();
-
+ 
   // maximum number to bytes needed for storage of term length and data
   const auto max_term_len = term.size(); // + vencode_size(term.size());
 
-  if (parent.block_size() < max_term_len) {
+  if (writer_t::container::block_type::SIZE < max_term_len) {
     // TODO: maybe move big terms it to a separate storage
     // reject terms that do not fit in a block
     return std::make_pair(map_.end(), false);
   }
 
-  auto slice_end = writer_.pool_offset() + max_term_len;
-  auto next_block_start = writer_.pool_offset() < parent.size()
-                        ? writer_.position().block_offset() + parent.block_size()
-                        : parent.block_size() * parent.count();
+  const auto slice_end = writer_.pool_offset() + max_term_len;
+  const auto next_block_start = writer_.pool_offset() < parent.size()
+                        ? writer_.position().block_offset() + writer_t::container::block_type::SIZE
+                        : writer_t::container::block_type::SIZE * parent.count();
 
   // do not span slice over 2 blocks, start slice at the start of the next block
   if (slice_end > next_block_start) {
@@ -47,17 +53,15 @@ postings::emplace_result postings::emplace(const bytes_ref& term) {
   }
 
   assert(size() < type_limits<type_t::doc_id_t>::eof()); // not larger then the static flag
-  static const posting dummy{};
-  auto result = map_.emplace(make_hashed_ref(term, bytes_ref_hash_t()), dummy);
+  const auto result = map_.emplace(make_hashed_ref(term, bytes_ref_hash_t()), DUMMY);
 
   // for new terms also write out their value
   if (result.second) {
     auto& key = const_cast<hashed_bytes_ref&>(result.first->first);
-    //bytes_io<size_t>::vwrite(writer_, term.size());
 
     // reuse hash but point ref at data in pool
-    key = hashed_bytes_ref(key.hash(), writer_.position().buffer(), term.size());
     writer_.write(term.c_str(), term.size());
+    key = hashed_bytes_ref(key.hash(), (writer_.position() - term.size()).buffer(), term.size());
   }
 
   return result;

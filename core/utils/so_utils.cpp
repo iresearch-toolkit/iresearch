@@ -46,7 +46,7 @@
       return std::string();
     }
 
-    auto lpMsgStr = (LPCSTR)lpMsgBuf;
+    auto lpMsgStr = (LPTSTR)lpMsgBuf;
     std::string result(lpMsgStr, lpMsgStr+bufLen);
 
     LocalFree(lpMsgBuf);

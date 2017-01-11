@@ -26,15 +26,12 @@ inline const char* getenv(const char* name) {
   #endif
 }
 
-inline struct tm * localtime(const time_t* time) {
+inline bool localtime(struct tm& buf, const time_t& time) {
+  // use a thread safe conversion function
   #ifdef _MSC_VER
-    #pragma warning(disable : 4996)
-  #endif
-
-    return std::localtime(time);
-
-  #ifdef _MSC_VER
-    #pragma warning(default : 4996)
+    return 0 == ::localtime_s(&buf, &time);
+  #else
+    return nullptr != ::localtime_r(&time, &buf);
   #endif
 }
 
