@@ -24,7 +24,6 @@
 
   #include <cxxabi.h> // for abi::__cxa_demangle(...)
   #include <execinfo.h>
-//#include <libunwind.h>
   #include <string.h> // for strlen(...)
   #include <unistd.h> // for STDIN_FILENO/STDOUT_FILENO/STDERR_FILENO
   #include <sys/wait.h> // for waitpid(...)
