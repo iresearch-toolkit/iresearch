@@ -140,12 +140,14 @@ class text_field : public tests::field_base {
       bool payload = false)
       : token_stream_(ir::analysis::analyzers::get("text", "{\"locale\":\"C\", \"ignored_words\":{}}")) {
     if (payload) {
-      token_stream_->reset(value_);
+      if (!token_stream_->reset(value_)) {
+         throw ir::illegal_state();
+      }
       pay_stream_.reset(new token_stream_payload(token_stream_.get()));
     }
     this->name(name);
   }
-  
+
   text_field(
       const ir::string_ref& name, 
       const T& value,
@@ -153,7 +155,9 @@ class text_field : public tests::field_base {
       : token_stream_(ir::analysis::analyzers::get("text", "{\"locale\":\"C\", \"ignored_words\":{}}")),
       value_(value) {
     if (payload) {
-      token_stream_->reset(value_);
+      if (!token_stream_->reset(value_)) {
+        throw ir::illegal_state();
+      }
       pay_stream_.reset(new token_stream_payload(token_stream_.get()));
     }
     this->name(name);
