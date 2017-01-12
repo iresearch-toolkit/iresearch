@@ -22,8 +22,12 @@
 #else
   #include <thread>
 
+  #include <cxxabi.h> // for abi::__cxa_demangle(...)
   #include <execinfo.h>
+//#include <libunwind.h>
+  #include <string.h> // for strlen(...)
   #include <unistd.h> // for STDIN_FILENO/STDOUT_FILENO/STDERR_FILENO
+  #include <sys/wait.h> // for waitpid(...)
 #endif
 
 #include "shared.hpp"
@@ -145,20 +149,67 @@ class logger_ctx: public iresearch::singleton<logger_ctx> {
     return EXCEPTION_EXECUTE_HANDLER;
   }
 #else
+  bool file_line_addr2line(const char* obj, const char* addr) {
+    auto pid = fork();
+
+    if (!pid) {
+      size_t pid_size = sizeof(pid_t)*3 + 1; // aproximately 3 chars per byte +1 for \0
+      size_t name_size = strlen("/proc//exe") + pid_size + 1; // +1 for \0
+      char pid_buf[pid_size];
+      char name_buf[name_size];
+      auto ppid = getppid();
+
+      snprintf(pid_buf, pid_size, "%d", ppid);
+      snprintf(name_buf, name_size, "/proc/%d/exe", ppid);
+
+      // The exec() family of functions replaces the current process image with a new process image.
+      // The exec() functions only return if an error has occurred.
+      execlp("addr2line", "addr2line", "-e", obj, addr, NULL);
+      exit(1);
+    }
+
+    int status;
+
+    return 0 < waitpid(pid, &status, 0) && !WEXITSTATUS(status);
+  }
+
+  bool stack_trace_gdb() {
+    auto pid = fork();
+
+    if (!pid) {
+      size_t pid_size = sizeof(pid_t)*3 + 1; // approximately 3 chars per byte +1 for \0
+      size_t name_size = strlen("/proc//exe") + pid_size + 1; // +1 for \0
+      char pid_buf[pid_size];
+      char name_buf[name_size];
+      auto ppid = getppid();
+
+      snprintf(pid_buf, pid_size, "%d", ppid);
+      snprintf(name_buf, name_size, "/proc/%d/exe", ppid);
+
+      // The exec() family of functions replaces the current process image with a new process image.
+      // The exec() functions only return if an error has occurred.
+      execlp("gdb", "gdb", "--batch", "-n", "-return-child-result", "-ex", "thread", "-ex", "bt", name_buf, pid_buf, NULL);
+      exit(1);
+    }
+
+    int status;
+
+    return 0 < waitpid(pid, &status, 0) && !WEXITSTATUS(status);
+  }
+
   void stack_trace_posix() {
     auto& stream = iresearch::logger::stream();
     static const size_t frames_max = 128; // arbitrary size
     void* frames_buf[frames_max];
     auto frames_count = backtrace(frames_buf, frames_max);
 
-    if (frames_count < 1) {
+    if (frames_count < 2) {
       return; // nothing to log
     }
 
-    // skip current fn frame
-    auto frames_buf_ptr = frames_buf + 1;
-    --frames_count;
+    frames_count -= 2; // -2 to skip stack_trace(...) + stack_trace_posix(...)
 
+    auto frames_buf_ptr = frames_buf + 2; // +2 to skip backtrace(...) + stack_trace_posix(...)
     int pipefd[2];
 
     if (pipe(pipefd)) {
@@ -167,13 +218,111 @@ class logger_ctx: public iresearch::singleton<logger_ctx> {
       return;
     }
 
-    std::thread thread([&pipefd, &stream]()->void {
-      for (char buf; read(pipefd[0], &buf, 1) > 0;) {
-        stream << buf;
+    size_t buf_len = 0;
+    size_t buf_size = 1024; // arbitrary size
+    char buf[buf_size];
+    std::thread thread([&pipefd, &stream, &buf, &buf_len, buf_size]()->void {
+      for (char ch; read(pipefd[0], &ch, 1) > 0;) {
+        if (ch != '\n') {
+          if (buf_len < buf_size - 1) {
+            buf[buf_len++] = ch;
+            continue;
+          }
+
+          if (buf_len < buf_size) {
+            buf[buf_len++] = '\0';
+            stream << buf;
+          }
+
+          stream << ch; // line longer than buf, output line directly
+          continue;
+        }
+
+        if (buf_len >= buf_size) {
+          buf_len = 0;
+          stream << std::endl;
+          continue;
+        }
+
+        char* addr_start = nullptr;
+        char* addr_end = nullptr;
+        char* fn_start = nullptr;
+        char* offset_start = nullptr;
+        char* offset_end = nullptr;
+        char* path_start = buf;
+
+        for (size_t i = 0; i < buf_len; ++i) {
+          switch(buf[i]) {
+           case '(':
+            fn_start = &buf[i + 1];
+            continue;
+           case '+':
+            offset_start = &buf[i + 1];
+            continue;
+           case ')':
+            offset_end = &buf[i];
+            continue;
+           case '[':
+            addr_start = &buf[i + 1];
+            continue;
+           case ']':
+            addr_end = &buf[i];
+            continue;
+          }
+        }
+
+        buf[buf_len] = '\0';
+        buf_len = 0;
+
+        auto fn_end = offset_start ? offset_start - 1 : nullptr;
+        auto path_end = fn_start ? fn_start - 1 : (addr_start ? addr_start - 1 : nullptr);
+
+        if (path_start < path_end) {
+          if (offset_start < offset_end) {
+            stream.write(path_start, path_end - path_start);
+
+            if (fn_start < fn_end) {
+              stream.put('(');
+              *fn_end = '\0';
+
+              int status;
+              size_t fn_len = 0;
+
+              // abi::__cxa_demangle(...) expects 'output_buffer' to be malloc()ed and does realloc()/free() internally
+              std::shared_ptr<char> fn_buf(abi::__cxa_demangle(fn_start, nullptr, &fn_len, &status));
+
+              if(fn_buf && !status) {
+                stream.write(fn_buf.get(), fn_len);
+              } else {
+                stream.write(fn_start, fn_end - fn_start);
+              }
+
+              stream.put('+') << offset_start << std::endl;
+            } else {
+              stream << path_end << " ";
+              *offset_end = '\0';
+              *path_end = '\0';
+              file_line_addr2line(path_start, offset_start);
+            }
+
+            continue;
+          }
+
+          if (addr_start < addr_end) {
+            stream << path_start << " ";
+            *addr_end = '\0';
+            *path_end = '\0';
+            file_line_addr2line(path_start, addr_start);
+
+            continue;
+          }
+        }
+
+        stream << buf << std::endl;
       }
     });
 
-    backtrace_symbols_fd(frames_buf, frames_count, pipefd[1]);
+    backtrace_symbols_fd(frames_buf_ptr, frames_count, pipefd[1]);
     close(pipefd[1]);
     thread.join();
     close(pipefd[0]);
@@ -213,7 +362,9 @@ void stack_trace() {
 
     stack_trace_win32(nullptr);
   #else
-    stack_trace_posix();
+    if (!stack_trace_gdb()) {
+      stack_trace_posix();
+    }
   #endif
 }
 

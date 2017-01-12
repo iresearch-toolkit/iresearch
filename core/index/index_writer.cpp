@@ -778,6 +778,8 @@ index_writer::pending_context_t index_writer::flush_all() {
     for (auto& segment: segments) {
       if (ctx->segment_mask_.end() == ctx->segment_mask_.find(segment.meta.name)) {
         pending_meta->segments_.emplace_back(std::move(segment));
+      } else {
+        cached_segment_readers_.erase(segment.meta.name); // no longer required
       }
     }
   }
@@ -806,6 +808,8 @@ index_writer::pending_context_t index_writer::flush_all() {
     for (auto& segment: segments) {
       if (segment_mask.end() == segment_mask.find(segment.meta.name)) {
         pending_meta->segments_.emplace_back(std::move(segment));
+      } else {
+        cached_segment_readers_.erase(segment.meta.name); // no longer required
       }
     }
   }
@@ -835,7 +839,7 @@ index_writer::pending_context_t index_writer::flush_all() {
 
   modified |= !pending_context.to_sync.empty(); // new files added
 
-  // remove stale readers from cache
+  // remove stale readers from cache (could still catch readers for segments that were pop_back()'ed)
   for (auto itr = cached_segment_readers_.begin(); itr != cached_segment_readers_.end();) {
     if (segment_names.find(itr->first) == segment_names.end()) {
       itr = cached_segment_readers_.erase(itr);
