@@ -1582,9 +1582,8 @@ bool meta_reader::read(column_meta& column) {
 // |Bloom filter offset| <- not implemented yet 
 // |Footer|
 
-const size_t INDEX_BLOCK_SIZE = 1 << 10;
-const size_t MAX_DATA_BLOCK_SIZE = 1 << 12;
-const size_t DATA_BLOCK_SIZE = 1 << 13;
+const size_t INDEX_BLOCK_SIZE = 1024;
+const size_t MAX_DATA_BLOCK_SIZE = 4096;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class writer 
@@ -1615,7 +1614,7 @@ class writer final : public iresearch::columnstore_writer {
 
     void flush(index_output& out, compressor& comp, doc_id_t doc) {
       block_header_writer.write(max, offset);
-      if (block_buf.size() >= DATA_BLOCK_SIZE) {
+      if (block_buf.size() >= MAX_DATA_BLOCK_SIZE) {
         flush_block(out, comp);
         min = doc;
       }
@@ -1669,13 +1668,13 @@ class writer final : public iresearch::columnstore_writer {
     memory_output block_header; // current block header
     compressing_index_writer block_header_writer{ INDEX_BLOCK_SIZE };
     compressing_index_writer blocks_index_writer{ INDEX_BLOCK_SIZE };
-    bytes_output block_buf{ MAX_DATA_BLOCK_SIZE }; // current block data buffer
+    bytes_output block_buf{ 2*MAX_DATA_BLOCK_SIZE }; // current block data buffer
     doc_id_t min; // current block min key
     doc_id_t max{ type_limits<type_t::doc_id_t>::invalid() }; // current block max key
   };
 
    std::deque<column> columns_; // pointers remain valid
-   compressor comp_{ MAX_DATA_BLOCK_SIZE };
+   compressor comp_{ 2*MAX_DATA_BLOCK_SIZE };
    index_output::ptr data_out_;
    std::string filename_;
    directory* dir_;
