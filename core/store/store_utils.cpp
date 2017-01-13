@@ -339,7 +339,7 @@ bytes_input::bytes_input(bytes_input&& other) NOEXCEPT
   other.size_ = 0;
 }
 
-bytes_input& bytes_input::operator=(const bytes_ref& data) NOEXCEPT {
+bytes_input& bytes_input::operator=(const bytes_ref& data) {
   if (this != &data) {
     buf_.assign(data.c_str(), data.size());
     this->data_ = buf_.data();
@@ -350,7 +350,7 @@ bytes_input& bytes_input::operator=(const bytes_ref& data) NOEXCEPT {
   return *this;
 }
 
-bytes_input& bytes_input::operator=(bytes_input&& other) {
+bytes_input& bytes_input::operator=(bytes_input&& other) NOEXCEPT {
   if (this != &other) {
     buf_ = std::move(other.buf_);
     this->data_ = buf_.data();
