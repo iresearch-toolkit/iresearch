@@ -36,10 +36,11 @@ template<
 
   basic_allocator() = default;
   basic_allocator(const basic_allocator&) = default;
-  basic_allocator(basic_allocator&& rhs) : allocator_t(std::move(rhs)) { }
+  basic_allocator(basic_allocator&& rhs) NOEXCEPT
+    : allocator_t(std::move(rhs)) { }
 
   basic_allocator& operator=(const basic_allocator&) = default;
-  basic_allocator& operator=(basic_allocator&& rhs) {
+  basic_allocator& operator=(basic_allocator&& rhs) NOEXCEPT {
     if (this != &rhs) {
       allocator_t::operator=(std::move(rhs));
     }
@@ -67,10 +68,11 @@ class basic_allocator<char, std::allocator<char>>:
 
   basic_allocator() = default;
   basic_allocator(const basic_allocator&) = default;
-  basic_allocator(basic_allocator&& rhs) : allocator_t(std::move(rhs)) { }
+  basic_allocator(basic_allocator&& rhs) NOEXCEPT
+    : allocator_t(std::move(rhs)) { }
 
   basic_allocator& operator=(const basic_allocator&) = default;
-  basic_allocator& operator=(basic_allocator&& rhs) {
+  basic_allocator& operator=(basic_allocator&& rhs) NOEXCEPT {
     if (this != &rhs) {
       allocator_t::operator=(std::move(rhs));
     }
@@ -134,8 +136,8 @@ template<
     *this += ref;
   }
 
-  basic_str_builder(basic_str_builder&& rhs):
-    ref_type(rhs.data_, rhs.size_), rep_(std::move(rhs.rep_)) {
+  basic_str_builder(basic_str_builder&& rhs) NOEXCEPT
+    : ref_type(rhs.data_, rhs.size_), rep_(std::move(rhs.rep_)) {
     rhs.data_ = nullptr;
     rhs.size_ = 0;
   }
@@ -162,7 +164,7 @@ template<
     return *this;
   }
 
-  basic_str_builder& operator=(basic_str_builder&& rhs) {
+  basic_str_builder& operator=(basic_str_builder&& rhs) NOEXCEPT {
     if (this != &rhs) {
       this->data_ = rhs.data_;
       rhs.data_ = nullptr;
@@ -318,8 +320,8 @@ template<
     *this = data;
   }
 
-  explicit basic_string_builder(basic_string_builder&& other):
-    buf_(std::move(other.buf_)) {
+  explicit basic_string_builder(basic_string_builder&& other) NOEXCEPT
+    : buf_(std::move(other.buf_)) {
     this->data_ = buf_.data();
     this->size_ = other.size();
     other.resize();
@@ -357,7 +359,7 @@ template<
     return *this;
   }
 
-  basic_string_builder& operator=(basic_string_builder&& other) {
+  basic_string_builder& operator=(basic_string_builder&& other) NOEXCEPT {
     if (this != &other) {
       buf_ = std::move(other.buf_);
       this->data_ = buf_.data();

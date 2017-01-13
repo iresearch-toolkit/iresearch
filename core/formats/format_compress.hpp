@@ -86,7 +86,7 @@ class compressed_index : util::noncopyable {
         key_base(key) {
     }
 
-    block(block&& rhs)
+    block(block&& rhs) NOEXCEPT
       : begin(rhs.begin),
         rbegin(rhs.rbegin),
         key_base(rhs.key_base) {
@@ -160,12 +160,12 @@ class compressed_index : util::noncopyable {
     : blocks_(1) {
   }
 
-  compressed_index(compressed_index&& rhs)
+  compressed_index(compressed_index&& rhs) NOEXCEPT
     : blocks_(std::move(rhs.blocks_)),
       max_(rhs.max_) {
   }
 
-  compressed_index& operator=(compressed_index&& rhs) {
+  compressed_index& operator=(compressed_index&& rhs) NOEXCEPT {
     if (this != &rhs) {
       blocks_ = std::move(rhs.blocks_);
       max_ = rhs.max_;

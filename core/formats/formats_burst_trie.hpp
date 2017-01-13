@@ -99,7 +99,7 @@ class term_reader : public iresearch::term_reader,
                     private util::noncopyable {
  public:
   term_reader() = default;
-  term_reader(term_reader&& rhs);
+  term_reader(term_reader&& rhs) NOEXCEPT;
   virtual ~term_reader();
 
   bool prepare(

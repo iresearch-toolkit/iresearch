@@ -164,13 +164,13 @@ function_arg::function_arg(const iresearch::bytes_ref& value):
   function_arg(fn_args_t(), value, NOT_IMPLEMENTED_BRANCH) {
 }
 
-function_arg::function_arg(function_arg&& other):
-  m_fnArgs(std::move(other.m_fnArgs)),
-  m_bFnBranchRef(std::move(other.m_bFnBranchRef)),
-  m_bFnValueRef(std::move(other.m_bFnValueRef)),
-  m_bValueNil(std::move(other.m_bValueNil)),
-  m_fnBranch(std::move(other.m_fnBranch)),
-  m_fnValue(std::move(other.m_fnValue)) {
+function_arg::function_arg(function_arg&& other) NOEXCEPT
+  : m_fnArgs(std::move(other.m_fnArgs)),
+    m_bFnBranchRef(std::move(other.m_bFnBranchRef)),
+    m_bFnValueRef(std::move(other.m_bFnValueRef)),
+    m_bValueNil(std::move(other.m_bValueNil)),
+    m_fnBranch(std::move(other.m_fnBranch)),
+    m_fnValue(std::move(other.m_fnValue)) {
   m_pFnBranch = m_bFnBranchRef ? std::move(other.m_pFnBranch) : &m_fnBranch;
   m_pFnValue = m_bFnValueRef ? std::move(other.m_pFnValue) : &m_fnValue;
 }
@@ -183,7 +183,7 @@ function_arg::function_arg():
 // --SECTION--                                                  public operators
 // -----------------------------------------------------------------------------
 
-function_arg& function_arg::operator=(function_arg&& other) {
+function_arg& function_arg::operator=(function_arg&& other) NOEXCEPT {
   if (this != &other) {
     m_fnArgs = std::move(other.m_fnArgs);
     m_bFnBranchRef = std::move(other.m_bFnBranchRef);

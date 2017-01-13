@@ -52,7 +52,7 @@ struct score_wrapper : BaseWrapper {
     rhs.score = nullptr;
   }  
 
-  score_wrapper& operator=(score_wrapper&& rhs) {
+  score_wrapper& operator=(score_wrapper&& rhs) NOEXCEPT {
     if (this != &rhs) {
       BaseWrapper::operator=(std::move(rhs));
       score = rhs.score;
@@ -90,13 +90,13 @@ struct cost_wrapper : BaseWrapper {
     cost = iterator_traits<BaseWrapper>::estimate(*this);
   } 
 
-  cost_wrapper(cost_wrapper&& rhs)
+  cost_wrapper(cost_wrapper&& rhs) NOEXCEPT
     : BaseWrapper(std::move(rhs)),
       cost(rhs.cost) {
      cost = cost::MAX;    
   }
 
-  cost_wrapper& operator=(cost_wrapper&& rhs) {
+  cost_wrapper& operator=(cost_wrapper&& rhs) NOEXCEPT {
     if (this != &rhs) {
       BaseWrapper::operator=(std::move(rhs));
       cost = rhs.cost;

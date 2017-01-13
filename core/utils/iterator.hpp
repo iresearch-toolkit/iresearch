@@ -91,17 +91,19 @@ class forward_iterator
 
   explicit forward_iterator(iterator_impl* impl = nullptr) : impl_(impl) {}
 
-  forward_iterator(forward_iterator&& rhs) : impl_(rhs.impl_) {
+  forward_iterator(forward_iterator&& rhs) NOEXCEPT
+    : impl_(rhs.impl_) {
     rhs.impl_ = nullptr;
   }
 
   ~forward_iterator() { delete impl_; }
 
-  forward_iterator& operator=(forward_iterator&& rhs) {
+  forward_iterator& operator=(forward_iterator&& rhs) NOEXCEPT {
     if (this != &rhs) {
       impl_ = rhs.impl_;
       rhs.impl_ = nullptr;
     }
+
     return *this;
   }
 
@@ -116,7 +118,6 @@ private:
 
   iterator_impl* impl_;
 };
-
 
 NS_BEGIN(detail)
 

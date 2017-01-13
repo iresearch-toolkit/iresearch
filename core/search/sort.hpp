@@ -302,12 +302,12 @@ public:
         : bucket(std::move(bucket)), offset(0) {
       }
 
-      prepared_sort(prepared_sort&& rhs)
+      prepared_sort(prepared_sort&& rhs) NOEXCEPT
         : bucket(std::move(rhs.bucket)), offset(rhs.offset) {
         rhs.offset = 0;
       }
 
-      prepared_sort& operator=(prepared_sort&& rhs) {
+      prepared_sort& operator=(prepared_sort&& rhs) NOEXCEPT {
         if (this != &rhs) {
           bucket = std::move(rhs.bucket);
           offset = rhs.offset;
@@ -325,10 +325,10 @@ public:
       typedef std::vector<sort::collector::ptr> collectors_t;
 
       explicit stats(collectors_t&& colls);
-      stats(stats&& rhs);
+      stats(stats&& rhs) NOEXCEPT;
 
-      stats& operator=(stats&& rhs);
-      
+      stats& operator=(stats&& rhs) NOEXCEPT;
+
       void field(const sub_reader& segment, const term_reader& field) const;
 
       void term(const attributes& term) const;
@@ -347,9 +347,9 @@ public:
 
       scorers() = default;
       explicit scorers(scorers_t&& scorers);
-      scorers(scorers&& rhs);
+      scorers(scorers&& rhs) NOEXCEPT;
 
-      scorers& operator=(scorers&& rhs);
+      scorers& operator=(scorers&& rhs) NOEXCEPT;
 
       void score(const prepared& ord, byte_type* score) const;
 
@@ -364,9 +364,9 @@ public:
     static const prepared& unordered();
 
     prepared();
-    prepared( prepared&& rhs );
+    prepared(prepared&& rhs) NOEXCEPT;
 
-    prepared& operator=( prepared&& rhs );
+    prepared& operator=(prepared&& rhs) NOEXCEPT;
 
     const flags& features() const { return features_; }
     size_t size() const { return size_; }
@@ -408,12 +408,13 @@ public:
     size_t size_;
     IRESEARCH_API_PRIVATE_VARIABLES_END
   }; // prepared
-  
+
   static const order& unordered();
 
   order() = default;
-  order( order&& rhs );
-  order& operator=( order&& rhs );
+  order(order&& rhs) NOEXCEPT;
+
+  order& operator=(order&& rhs) NOEXCEPT;
 
   prepared prepare() const;
 

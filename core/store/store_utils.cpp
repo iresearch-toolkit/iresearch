@@ -269,14 +269,14 @@ bytes_output::bytes_output(size_t capacity) {
   oversize(buf_, capacity);
 }
 
-bytes_output::bytes_output(bytes_output&& other):
-  buf_(std::move(other.buf_)) {
+bytes_output::bytes_output(bytes_output&& other) NOEXCEPT
+  : buf_(std::move(other.buf_)) {
   this->data_ = buf_.data();
   this->size_ = other.size();
 
 }
 
-bytes_output& bytes_output::operator=(bytes_output&& other) {
+bytes_output& bytes_output::operator=(bytes_output&& other) NOEXCEPT {
   if (this != &other) {
     buf_ = std::move(other.buf_);
     this->data_ = buf_.data();
@@ -331,8 +331,8 @@ bytes_input::bytes_input(const bytes_ref& data):
   this->size_ = data.size();
 }
 
-bytes_input::bytes_input(bytes_input&& other):
-  buf_(std::move(other.buf_)), pos_(other.pos_) {
+bytes_input::bytes_input(bytes_input&& other) NOEXCEPT
+  : buf_(std::move(other.buf_)), pos_(other.pos_) {
   this->data_ = buf_.data();
   this->size_ = other.size();
   other.pos_ = 0;
@@ -350,7 +350,7 @@ bytes_input& bytes_input::operator=(const bytes_ref& data) {
   return *this;
 }
 
-bytes_input& bytes_input::operator=(bytes_input&& other) {
+bytes_input& bytes_input::operator=(bytes_input&& other) NOEXCEPT {
   if (this != &other) {
     buf_ = std::move(other.buf_);
     this->data_ = buf_.data();

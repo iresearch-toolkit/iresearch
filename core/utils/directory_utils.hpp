@@ -123,7 +123,7 @@ struct IRESEARCH_API ref_tracking_directory: public directory {
   DECLARE_PTR(ref_tracking_directory);
   // @param track_open - track file refs for calls to open(...)
   ref_tracking_directory(directory& impl, bool track_open = false);
-  ref_tracking_directory(ref_tracking_directory&& other);
+  ref_tracking_directory(ref_tracking_directory&& other) NOEXCEPT;
   virtual ~ref_tracking_directory();
   directory& operator*() NOEXCEPT;
   using directory::attributes;

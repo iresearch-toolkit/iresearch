@@ -28,7 +28,7 @@ class IRESEARCH_API boolean_token_stream final:
   public token_stream, private util::noncopyable { // attrs_ non-copyable
  public:
   explicit boolean_token_stream(bool value = false);
-  boolean_token_stream(boolean_token_stream&& other);
+  boolean_token_stream(boolean_token_stream&& other) NOEXCEPT;
 
   virtual bool next() override;
   void reset(bool value) { 
@@ -57,7 +57,7 @@ class IRESEARCH_API string_token_stream final:
   public token_stream, private util::noncopyable { // attrs_ non-copyable
  public:
   string_token_stream();
-  string_token_stream(string_token_stream&& other);
+  string_token_stream(string_token_stream&& other) NOEXCEPT;
 
   virtual bool next() override;
   void reset(const bytes_ref& value) { 
@@ -96,7 +96,7 @@ class IRESEARCH_API numeric_token_stream final:
   public token_stream, private util::noncopyable { // attrs_ non-copyable
  public:
   numeric_token_stream();
-  numeric_token_stream(numeric_token_stream&& other);
+  numeric_token_stream(numeric_token_stream&& other) NOEXCEPT;
 
   void reset(int32_t value, uint32_t step = PRECISION_STEP_DEF);
   void reset(int64_t value, uint32_t step = PRECISION_STEP_DEF);
@@ -126,7 +126,7 @@ class IRESEARCH_API null_token_stream final:
   public token_stream, private util::noncopyable { // attrs_ non-copyable
  public:
   null_token_stream();
-  null_token_stream(null_token_stream&& other);
+  null_token_stream(null_token_stream&& other) NOEXCEPT;
 
   virtual bool next() override;
   void reset() { 

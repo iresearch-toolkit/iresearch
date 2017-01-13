@@ -187,7 +187,7 @@ class logger_ctx: public iresearch::singleton<logger_ctx> {
 
       // The exec() family of functions replaces the current process image with a new process image.
       // The exec() functions only return if an error has occurred.
-      execlp("gdb", "gdb", "--batch", "-n", "-return-child-result", "-ex", "thread", "-ex", "bt", name_buf, pid_buf, NULL);
+      execlp("gdb", "gdb", "-n", "-nx", "-return-child-result", "-batch", "-ex", "thread", "-ex", "bt", name_buf, pid_buf, NULL);
       exit(1);
     }
 

@@ -64,7 +64,7 @@ template<
   compact(U&&) { }
   
   compact& operator=(const compact&) = default;
-  compact& operator=(compact&&) { return *this; }
+  compact& operator=(compact&&) NOEXCEPT { return *this; }
 
   // TODO: uncomment when switch to the C++14 compiler
   /* CONSTEXPR */ T& get() { return *this; }
@@ -79,13 +79,14 @@ class compact<I, T, false> {
 
   compact() = default;
   compact(const compact&) = default;
-  compact(compact&& rhs) : val_(std::move(rhs.val_)) { }
+  compact(compact&& rhs) NOEXCEPT
+    : val_(std::move(rhs.val_)) { }
 
   template<typename U = T>
   compact(U&& value) : val_(std::forward<U>(value)) { }
 
   compact& operator=(const compact&) = default;
-  compact& operator=(compact&& rhs) {
+  compact& operator=(compact&& rhs) NOEXCEPT {
     if (this != &rhs) {
       val_ = std::move(rhs);
     }
@@ -118,7 +119,7 @@ class compact_pair : private compact<0, T0>, private compact<1, T1> {
 
   compact_pair() = default;
   compact_pair(const compact_pair&) = default;
-  compact_pair(compact_pair&& rhs)
+  compact_pair(compact_pair&& rhs) NOEXCEPT
     : first_compressed_t(std::move(rhs.first())),
       second_compressed_t(std::move(rhs.second())) {
   }
@@ -130,7 +131,7 @@ class compact_pair : private compact<0, T0>, private compact<1, T1> {
   }
 
   compact_pair& operator=(const compact_pair&) = default;
-  compact_pair& operator=(compact_pair&& rhs) {
+  compact_pair& operator=(compact_pair&& rhs) NOEXCEPT {
     if (this != &rhs) {
       first_compressed_t::operator=(std::move(rhs.first()));
       second_compressed_t::operator=(std::move(rhs.second()));

@@ -101,17 +101,18 @@ private:
   score_doc_iterator::ptr it_;
 }; // auto_score_doc_iterator
 
-query::query( query&& rhs )
+query::query(query&& rhs) NOEXCEPT
   : filter_( std::move( rhs.filter_ ) ), 
     order_( std::move( rhs.order_ ) ) {
   assert( filter_ );
 }
 
-query& query::operator=( query&& rhs ) {
+query& query::operator=(query&& rhs) NOEXCEPT {
   if ( this != &rhs ) {
     filter_ = std::move( rhs.filter_ );
     order_ = std::move( rhs.order_ );
   }
+
   return *this;
 }
 

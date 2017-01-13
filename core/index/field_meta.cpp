@@ -18,7 +18,7 @@ NS_ROOT
 // --SECTION--                                         field_meta implementation
 // -----------------------------------------------------------------------------
 
-field_meta::field_meta(field_meta&& rhs)
+field_meta::field_meta(field_meta&& rhs) NOEXCEPT
   : features(std::move(rhs.features)),
     name(std::move(rhs.name)),
     norm(rhs.norm) {
@@ -34,13 +34,14 @@ field_meta::field_meta(
     norm(norm) {
 }
 
-field_meta& field_meta::operator=(field_meta&& rhs) {
+field_meta& field_meta::operator=(field_meta&& rhs) NOEXCEPT {
   if (this != &rhs) {
     features = std::move(rhs.features);
     name = std::move(rhs.name);
     norm = rhs.norm;
     rhs.norm = type_limits<type_t::field_id_t>::invalid();
   }
+
   return *this;
 }
 
@@ -52,7 +53,7 @@ bool field_meta::operator==(const field_meta& rhs) const {
 // --SECTION--                                        column_meta implementation
 // -----------------------------------------------------------------------------
 
-column_meta::column_meta(column_meta&& rhs)
+column_meta::column_meta(column_meta&& rhs) NOEXCEPT
   : name(std::move(rhs.name)), id(rhs.id) {
   rhs.id = type_limits<type_t::field_id_t>::invalid();
 }
@@ -61,12 +62,13 @@ column_meta::column_meta(const string_ref& name, field_id id)
   : name(name.c_str(), name.size()), id(id) {
 }
 
-column_meta& column_meta::operator=(column_meta&& rhs) {
+column_meta& column_meta::operator=(column_meta&& rhs) NOEXCEPT {
   if (this != &rhs) {
     name = std::move(rhs.name);
     id = rhs.id;
     rhs.id = type_limits<type_t::field_id_t>::invalid();
   }
+
   return *this;
 }
 

@@ -266,7 +266,7 @@ TEST_F(async_utils_tests, test_thread_pool_run) {
 
     pool.run(std::move(task1));
     pool.run(std::move(task2));
-    ASSERT_TRUE(count || std::cv_status::no_timeout == cond.wait_for(dummy_lock, std::chrono::milliseconds(3000)) || count); // wait for all 3 tasks (exception trace is slow on MSVC and on *NIX with gdb)
+    ASSERT_TRUE(count || std::cv_status::no_timeout == cond.wait_for(dummy_lock, std::chrono::milliseconds(10000)) || count); // wait for all 2 tasks (exception trace is slow on MSVC and even slower on *NIX with gdb)
     ASSERT_EQ(1, pool.threads());
     lock.unlock();
     pool.stop(true);

@@ -369,11 +369,13 @@ ref_tracking_directory::ref_tracking_directory(
   track_open_(track_open) {
 }
 
-ref_tracking_directory::ref_tracking_directory(ref_tracking_directory&& other):
-  attribute_(other.attribute_), // references do not require std::move(...)
-  impl_(other.impl_), // references do not require std::move(...)
-  refs_(std::move(other.refs_)),
-  track_open_(std::move(other.track_open_)) {
+ref_tracking_directory::ref_tracking_directory(
+  ref_tracking_directory&& other
+) NOEXCEPT
+  : attribute_(other.attribute_), // references do not require std::move(...)
+    impl_(other.impl_), // references do not require std::move(...)
+    refs_(std::move(other.refs_)),
+    track_open_(std::move(other.track_open_)) {
 }
 
 ref_tracking_directory::~ref_tracking_directory() {}

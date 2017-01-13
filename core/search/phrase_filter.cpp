@@ -45,10 +45,10 @@ NS_ROOT
 struct phrase_state {
   typedef std::pair<attribute::ptr, cost::cost_t> term_state_t;
   typedef std::vector<term_state_t> terms_states_t;
-  
+
   phrase_state() = default;
 
-  phrase_state(phrase_state&& rhs) 
+  phrase_state(phrase_state&& rhs) NOEXCEPT
     : terms(std::move(rhs.terms)),
       reader(rhs.reader) {
     rhs.reader = nullptr;
@@ -74,7 +74,7 @@ class phrase_query : public filter::prepared {
   typedef std::vector<term_stats_t> phrase_stats_t;
 
   DECLARE_SPTR(phrase_query);
-  
+
   phrase_query(
       states_t&& states, 
       phrase_stats_t&& stats, 
@@ -122,7 +122,7 @@ class phrase_query : public filter::prepared {
 
       // get postings
       auto docs = terms->postings(features);
-      
+
       // get needed postings attributes
       const position* pos = docs->attributes().get<position>();
       if (!pos) {
@@ -211,7 +211,7 @@ filter::prepared::ptr by_phrase::prepare(
     UNUSED(word);
     phrase_stats.emplace_back(ord.prepare_stats());
   }
-  
+
   // iterate over the segments
   const string_ref field = fld_;
   for (const auto& sr : rdr) {
@@ -220,12 +220,12 @@ filter::prepared::ptr by_phrase::prepare(
     if (!tr) {
       continue;
     }
-    
+
     // check required features
     if (!by_phrase::required().is_subset_of(tr->meta().features)) {
       continue;
     }
-    
+
     // find terms
     seek_term_iterator::ptr term = tr->iterator();
     // get term metadata
@@ -253,7 +253,7 @@ filter::prepared::ptr by_phrase::prepare(
         ? meta->docs_count 
         : cost::MAX;
       phrase_terms.emplace_back(term->cookie(), term_estimation);
-    
+
       // collect stats
       term_stats->term(term->attributes());
       ++term_stats;
@@ -272,7 +272,7 @@ filter::prepared::ptr by_phrase::prepare(
 
     phrase_terms.reserve(phrase_.size());
   }
-  
+
   // offset of the first term in a phrase
   size_t base_offset = first_pos();
 
@@ -290,7 +290,7 @@ filter::prepared::ptr by_phrase::prepare(
 
     ++term_stats;
   }
-  
+
   phrase_query::ptr q(new phrase_query(
     std::move(phrase_states), 
     std::move(stats),

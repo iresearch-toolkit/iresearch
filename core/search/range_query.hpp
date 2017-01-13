@@ -30,7 +30,7 @@ struct term_reader;
 struct range_state {
   range_state() = default;
 
-  range_state(range_state&& rhs) 
+  range_state(range_state&& rhs) NOEXCEPT
     : reader(rhs.reader),
       min_term(std::move(rhs.min_term)),
       min_cookie(std::move(rhs.min_cookie)),
@@ -42,7 +42,7 @@ struct range_state {
     rhs.estimation = 0;
   }
 
-  range_state& operator=(range_state&& other) {
+  range_state& operator=(range_state&& other) NOEXCEPT {
     if (this == &other) {
       return *this;
     }

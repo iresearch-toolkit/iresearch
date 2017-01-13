@@ -25,16 +25,17 @@ NS_ROOT
 // --SECTION--                                              field implementation
 // -----------------------------------------------------------------------------
 
-field::field(field&& rhs) 
+field::field(field&& rhs) NOEXCEPT
   : name_(std::move(rhs.name_)),
     boost_(rhs.boost_) {
 }
 
-field& field::operator=(field&& rhs) {
+field& field::operator=(field&& rhs) NOEXCEPT {
   if (this != &rhs) {
     name_ = std::move(rhs.name_);
     boost_ = rhs.boost_;
   }
+
   return *this;
 }
 
@@ -44,8 +45,8 @@ field::~field() { }
 // --SECTION--                                         long_field implementation
 // -----------------------------------------------------------------------------
 
-long_field::long_field(long_field&& other):
-  stream_(std::move(other.stream_)), value_(std::move(other.value_)) {
+long_field::long_field(long_field&& other) NOEXCEPT
+  : stream_(std::move(other.stream_)), value_(std::move(other.value_)) {
 }
 
 bool long_field::write(data_output& out) const {
@@ -67,8 +68,8 @@ const flags& long_field::features() const {
 // --SECTION--                                         int_field implementation
 // -----------------------------------------------------------------------------
 
-int_field::int_field(int_field&& other):
-  stream_(std::move(other.stream_)), value_(std::move(other.value_)) {
+int_field::int_field(int_field&& other) NOEXCEPT
+  : stream_(std::move(other.stream_)), value_(std::move(other.value_)) {
 }
 
 bool int_field::write(data_output& out) const {
@@ -90,8 +91,8 @@ const flags& int_field::features() const {
 // --SECTION--                                       double_field implementation
 // -----------------------------------------------------------------------------
 
-double_field::double_field(double_field&& other):
-  stream_(std::move(other.stream_)), value_(std::move(other.value_)) {
+double_field::double_field(double_field&& other) NOEXCEPT
+  : stream_(std::move(other.stream_)), value_(std::move(other.value_)) {
 }
 
 token_stream& double_field::get_tokens() const {
@@ -113,8 +114,8 @@ const flags& double_field::features() const {
 // --SECTION--                                        float_field implementation
 // -----------------------------------------------------------------------------
 
-float_field::float_field(float_field&& other):
-  stream_(std::move(other.stream_)), value_(std::move(other.value_)) {
+float_field::float_field(float_field&& other) NOEXCEPT
+  : stream_(std::move(other.stream_)), value_(std::move(other.value_)) {
 }
 
 bool float_field::write(data_output& out) const {
@@ -136,8 +137,8 @@ const flags& float_field::features() const {
 // --SECTION--                                       string_field implementation
 // -----------------------------------------------------------------------------
 
-string_field::string_field(string_field&& other):
-  stream_(std::move(other.stream_)), value_(std::move(other.value_)) {
+string_field::string_field(string_field&& other) NOEXCEPT
+  : stream_(std::move(other.stream_)), value_(std::move(other.value_)) {
 }
 
 bool string_field::write(data_output& out) const {
@@ -158,8 +159,8 @@ const flags& string_field::features() const {
 // --SECTION--                                       binary_field implementation
 // -----------------------------------------------------------------------------
 
-binary_field::binary_field(binary_field&& other):
-  stream_(std::move(other.stream_)), value_(std::move(other.value_)) {
+binary_field::binary_field(binary_field&& other) NOEXCEPT
+  : stream_(std::move(other.stream_)), value_(std::move(other.value_)) {
 }
 
 void binary_field::value(const bstring& value) {
