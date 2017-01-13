@@ -52,14 +52,15 @@ const flags& flags::empty_instance() {
 
 flags::flags() { }
 
-flags::flags( flags&& rhs )
+flags::flags(flags&& rhs) NOEXCEPT
   : map_( std::move( rhs.map_ ) ) {
 }
 
-flags& flags::operator=( flags&& rhs ) {
+flags& flags::operator=(flags&& rhs) NOEXCEPT {
   if ( this != &rhs ) {
     map_ = std::move( rhs.map_ );
   }
+
   return *this;
 }
 
@@ -93,11 +94,11 @@ const attributes& attributes::empty_instance() {
 attributes::attributes(size_t /*reserve*/) {
 }
 
-attributes::attributes( attributes&& rhs )
-    : map_( std::move( rhs.map_ ) ) {
+attributes::attributes(attributes&& rhs) NOEXCEPT
+  : map_(std::move(rhs.map_)) {
 }
 
-attributes& attributes::operator=( attributes&& rhs ) {
+attributes& attributes::operator=(attributes&& rhs) NOEXCEPT {
   if ( this != &rhs ) {
     map_ = std::move( rhs.map_ );
   }

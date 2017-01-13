@@ -103,7 +103,7 @@ namespace tests {
 // --SECTION--                                           document implementation
 // -----------------------------------------------------------------------------
 
-document::document(document&& rhs) 
+document::document(document&& rhs) NOEXCEPT
   : indexed(std::move(rhs.indexed)), 
     stored(std::move(rhs.stored)) {
 }
@@ -112,18 +112,19 @@ document::document(document&& rhs)
 // --SECTION--                                         field_base implementation
 // -----------------------------------------------------------------------------
 
-field_base::field_base(field_base&& rhs) 
+field_base::field_base(field_base&& rhs) NOEXCEPT
   : features_(std::move(rhs.features_)),
     name_(std::move(rhs.name_)),
     boost_(rhs.boost_) {
 }
 
-field_base& field_base::operator=(field_base&& rhs) {
+field_base& field_base::operator=(field_base&& rhs) NOEXCEPT {
   if (this != &rhs) {
     features_ = std::move(features_);
     name_ = std::move(rhs.name_);
     boost_ = rhs.boost_;
   }
+
   return *this;
 }
 
@@ -203,11 +204,11 @@ ir::token_stream& binary_field::get_tokens() const {
 // --SECTION--                                           particle implementation
 // -----------------------------------------------------------------------------
   
-particle::particle(particle&& rhs)
+particle::particle(particle&& rhs) NOEXCEPT
   : fields_(std::move(rhs.fields_)) {
 }
 
-particle& particle::operator=(particle&& rhs) {
+particle& particle::operator=(particle&& rhs) NOEXCEPT {
   if (this != &rhs) {
     fields_ = std::move(rhs.fields_);
   }
@@ -396,7 +397,7 @@ json_doc_generator::json_doc_generator(
   next_ = docs_.begin();
 }
 
-json_doc_generator::json_doc_generator(json_doc_generator&& rhs)
+json_doc_generator::json_doc_generator(json_doc_generator&& rhs) NOEXCEPT
   : docs_(std::move(rhs.docs_)), 
     prev_(std::move(rhs.prev_)), 
     next_(std::move(rhs.next_)) {

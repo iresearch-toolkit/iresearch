@@ -36,7 +36,7 @@ segment_meta::segment_meta(
     codec(codec) {
 }
 
-segment_meta::segment_meta(segment_meta&& rhs)
+segment_meta::segment_meta(segment_meta&& rhs) NOEXCEPT
   : files(std::move(rhs.files)),
     name(std::move(rhs.name)),
     docs_count(rhs.docs_count),
@@ -45,7 +45,7 @@ segment_meta::segment_meta(segment_meta&& rhs)
   rhs.docs_count = 0;
 }
 
-segment_meta& segment_meta::operator=(segment_meta&& rhs) {
+segment_meta& segment_meta::operator=(segment_meta&& rhs) NOEXCEPT {
   if (this != &rhs) {
     files = std::move(rhs.files);
     name = std::move(rhs.name);
@@ -75,14 +75,14 @@ index_meta::index_meta(const index_meta& rhs)
     segments_(rhs.segments_) {
 }
 
-index_meta::index_meta(index_meta&& rhs)
+index_meta::index_meta(index_meta&& rhs) NOEXCEPT
   : gen_(std::move(rhs.gen_)),
     last_gen_(std::move(rhs.last_gen_)),
     seg_counter_(rhs.seg_counter_.load()),
     segments_(std::move(rhs.segments_)) {
 }
 
-index_meta& index_meta::operator=(index_meta&& rhs) {
+index_meta& index_meta::operator=(index_meta&& rhs) NOEXCEPT {
   if (this != &rhs) {
     gen_ = std::move(rhs.gen_);
     last_gen_ = std::move(rhs.last_gen_);
@@ -105,13 +105,14 @@ index_meta::index_segment_t::index_segment_t(segment_meta&& v_meta)
   : meta(std::move(v_meta)) {
 }
 
-index_meta::index_segment_t::index_segment_t(index_segment_t&& other)
+index_meta::index_segment_t::index_segment_t(index_segment_t&& other) NOEXCEPT
   : filename(std::move(other.filename)), 
     meta(std::move(other.meta)) {
 }
 
 index_meta::index_segment_t& index_meta::index_segment_t::operator=(
-    index_segment_t&& other) {
+    index_segment_t&& other
+) NOEXCEPT {
   if (this == &other) {
     return *this;
   }

@@ -97,7 +97,7 @@ struct weight_input : data_input, private util::noncopyable {
  public:
   weight_input() : it_(weight_) { }
 
-  explicit weight_input(byte_weight&& weight)
+  explicit weight_input(byte_weight&& weight) NOEXCEPT
     : weight_(std::move(weight)),
       it_(weight_) {
   }

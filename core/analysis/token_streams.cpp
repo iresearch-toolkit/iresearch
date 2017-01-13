@@ -73,11 +73,13 @@ boolean_token_stream::boolean_token_stream(bool value /*= false*/)
   attrs_.add<increment>(); // required by field_data::invert(...)
 }
 
-boolean_token_stream::boolean_token_stream(boolean_token_stream&& other):
-  attrs_(std::move(other.attrs_)),
-  term_(std::move(other.term_)),
-  in_use_(std::move(other.in_use_)),
-  value_(std::move(other.value_)) {
+boolean_token_stream::boolean_token_stream(
+  boolean_token_stream&& other
+) NOEXCEPT
+  : attrs_(std::move(other.attrs_)),
+    term_(std::move(other.term_)),
+    in_use_(std::move(other.in_use_)),
+    value_(std::move(other.value_)) {
 }
 
 bool boolean_token_stream::next() {
@@ -115,12 +117,12 @@ string_token_stream::string_token_stream()
   attrs_.add<increment>();
 }
 
-string_token_stream::string_token_stream(string_token_stream&& other):
-  attrs_(std::move(other.attrs_)),
-  offset_(std::move(other.offset_)),
-  term_(std::move(other.term_)),
-  value_(std::move(other.value_)),
-  in_use_(std::move(other.in_use_)) {
+string_token_stream::string_token_stream(string_token_stream&& other) NOEXCEPT
+  : attrs_(std::move(other.attrs_)),
+    offset_(std::move(other.offset_)),
+    term_(std::move(other.term_)),
+    value_(std::move(other.value_)),
+    in_use_(std::move(other.in_use_)) {
 }
 
 bool string_token_stream::next() {
@@ -254,10 +256,12 @@ numeric_token_stream::numeric_token_stream()
   inc_ = attrs_.add<increment>();
 }
 
-numeric_token_stream::numeric_token_stream(numeric_token_stream&& other):
-  attrs_(std::move(other.attrs_)),
-  num_(std::move(other.num_)), 
-  inc_(std::move(other.inc_)) {
+numeric_token_stream::numeric_token_stream(
+  numeric_token_stream&& other
+) NOEXCEPT
+  : attrs_(std::move(other.attrs_)),
+    num_(std::move(other.num_)), 
+    inc_(std::move(other.inc_)) {
 }
 
 void numeric_token_stream::reset(
@@ -301,10 +305,10 @@ null_token_stream::null_token_stream():
   attrs_.add<increment>(); // required by field_data::invert(...)
 }
 
-null_token_stream::null_token_stream(null_token_stream&& other):
-  attrs_(std::move(other.attrs_)),
-  term_(std::move(other.term_)),
-  in_use_(std::move(other.in_use_)) {
+null_token_stream::null_token_stream(null_token_stream&& other) NOEXCEPT
+  : attrs_(std::move(other.attrs_)),
+    term_(std::move(other.term_)),
+    in_use_(std::move(other.in_use_)) {
 }
 
 bool null_token_stream::next() {

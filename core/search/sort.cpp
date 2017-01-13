@@ -63,20 +63,21 @@ const order::prepared& order::prepared::unordered() {
   return ord;
 }
 
-order::prepared::prepared(order::prepared&& rhs)
+order::prepared::prepared(order::prepared&& rhs) NOEXCEPT
   : order_(std::move(rhs.order_)),
     features_(std::move(rhs.features_)),
     size_(rhs.size_) {
   rhs.size_ = 0;
 }
 
-order::prepared& order::prepared::operator=(order::prepared&& rhs) {
+order::prepared& order::prepared::operator=(order::prepared&& rhs) NOEXCEPT {
   if (this != &rhs) {
     order_ = std::move(rhs.order_);
     features_ = std::move(rhs.features_);
     size_ = rhs.size_;
     rhs.size_ = 0;
   }
+
   return *this;
 }
 
@@ -107,15 +108,17 @@ order::prepared::stats::stats(collectors_t&& colls)
   : colls_(std::move(colls)) {
 }
 
-order::prepared::stats::stats(stats&& rhs)
+order::prepared::stats::stats(stats&& rhs) NOEXCEPT
   : colls_(std::move(rhs.colls_)) {
 }
 
-order::prepared::stats&
-order::prepared::stats::operator=(stats&& rhs) {
+order::prepared::stats& order::prepared::stats::operator=(
+  stats&& rhs
+) NOEXCEPT {
   if (this != &rhs) {
     colls_ = std::move(rhs.colls_);
   }
+
   return *this;
 }
 
@@ -149,15 +152,17 @@ order::prepared::scorers::scorers(scorers_t&& scorers)
   : scorers_(std::move(scorers)) {
 }
 
-order::prepared::scorers::scorers(order::prepared::scorers&& rhs)
+order::prepared::scorers::scorers(order::prepared::scorers&& rhs) NOEXCEPT
   : scorers_(std::move(rhs.scorers_)) {
 }
 
-order::prepared::scorers&
-order::prepared::scorers::operator=(order::prepared::scorers&& rhs) {
+order::prepared::scorers& order::prepared::scorers::operator=(
+  order::prepared::scorers&& rhs
+) NOEXCEPT {
   if (this != &rhs) {
     scorers_ = std::move(rhs.scorers_);
   }
+
   return *this;
 }
 
@@ -241,14 +246,15 @@ void order::prepared::add(byte_type* lhs, const byte_type* rhs) const {
   });
 }
 
-order::order(order&& rhs)
+order::order(order&& rhs) NOEXCEPT
   : order_(std::move(rhs.order_)) {
 }
 
-order& order::operator=(order&& rhs) {
+order& order::operator=(order&& rhs) NOEXCEPT {
   if (this != &rhs) {
     order_ = std::move(rhs.order_);
   }
+
   return *this;
 }
 

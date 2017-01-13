@@ -1139,7 +1139,7 @@ index_input& term_iterator::terms_input() const {
 * term_reader : impl
 * ------------------------------------------------------------------*/
 
-term_reader::term_reader(term_reader&& rhs)
+term_reader::term_reader(term_reader&& rhs) NOEXCEPT
   : min_term_(std::move(rhs.min_term_)),
     max_term_(std::move(rhs.max_term_)),
     terms_count_(rhs.terms_count_),
