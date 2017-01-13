@@ -52,6 +52,7 @@ void compressing_index_writer::prepare(index_output& out) {
   out_ = &out;
   key_ = offsets_; // will trigger 'reset' on write()
   offset_ = offsets_; // will prevent flushing of emtpy block
+  count_ = 0;
 }
 
 void compressing_index_writer::write_block(
@@ -197,6 +198,8 @@ void compressing_index_writer::write(doc_id_t key, uint64_t offset) {
 
   *offset_++ = offset - block_offset_; // store block relative offsets
   assert(offset >= block_offset_ + *(offset_ - 1));
+
+  ++count_;
 }
 
 void compressing_index_writer::finish() {
