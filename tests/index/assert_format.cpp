@@ -102,12 +102,13 @@ field::field(
   this->features = features;
 }
 
-field::field( field&& rhs )
-  :field_meta( std::move( rhs ) ),
-  terms( std::move( rhs.terms ) ),
-  docs(std::move(rhs.docs)),
-  pos( rhs.pos ),
-  offs( rhs.offs ) {}
+field::field(field&& rhs) NOEXCEPT
+  : field_meta(std::move(rhs)),
+    terms( std::move(rhs.terms)),
+    docs(std::move(rhs.docs)),
+    pos( rhs.pos ),
+    offs( rhs.offs ) {
+}
 
 term& field::add(const iresearch::bytes_ref& t) {
   auto res = terms.emplace( t );
