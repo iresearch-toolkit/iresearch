@@ -1796,7 +1796,7 @@ class reader final : public iresearch::columnstore_reader, util::noncopyable {
 
   struct block : util::noncopyable {
     block() = default;
-    block(block&& other)
+    block(block&& other) NOEXCEPT
       : index(std::move(other.index)),
         data(std::move(other.data)) {
     }
@@ -1824,7 +1824,7 @@ class reader final : public iresearch::columnstore_reader, util::noncopyable {
       : stream(std::move(stream)) {
     }
 
-    read_context(read_context&& rhs)
+    read_context(read_context&& rhs) NOEXCEPT
       : cached_blocks(std::move(rhs.cached_blocks)),
         encode_buf(std::move(rhs.encode_buf)),
         decomp(std::move(rhs.decomp)),

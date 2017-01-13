@@ -484,13 +484,13 @@ class term_iterator : public iresearch::seek_term_iterator {
 
     arc() : block{} { }
 
-    arc(arc&& rhs)
+    arc(arc&& rhs) NOEXCEPT
       : state(rhs.state), 
         weight(std::move(rhs.weight)),
         block(rhs.block) {
       rhs.block = 0;
     }
-    
+
     arc(stateid_t state, const byte_weight& weight, block_iterator* block)
       : state(state), weight(weight), block(block) {
     }
@@ -502,7 +502,7 @@ class term_iterator : public iresearch::seek_term_iterator {
 
   typedef std::vector<arc> seek_state_t;
   typedef std::deque<block_iterator> block_stack_t; // does not invalidate addresses
-  
+
   ptrdiff_t seek_cached(
     size_t& prefix, arc::stateid_t& state,
     byte_weight& weight, const bytes_ref& term

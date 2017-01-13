@@ -359,7 +359,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
       : buf(std::move(consolidation_policy)) {
       policy.reset(&buf, [](const consolidation_policy_t*)->void{});
     }
-    consolidation_context(consolidation_context&& other) {
+    consolidation_context(consolidation_context&& other) NOEXCEPT {
       if (&other.buf == other.policy.get()) {
         buf = std::move(other.buf);
         policy.reset(&buf, [](const consolidation_policy_t*)->void{});
@@ -381,7 +381,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
       : filter(match_filter), generation(gen), update(isUpdate), seen(false) {}
     modification_context(iresearch::filter::ptr&& match_filter, size_t gen, bool isUpdate)
       : filter(std::move(match_filter)), generation(gen), update(isUpdate), seen(false) {}
-    modification_context(modification_context&& other)
+    modification_context(modification_context&& other) NOEXCEPT
       : filter(std::move(other.filter)), generation(other.generation), update(other.update), seen(other.seen) {}
     modification_context& operator=(const modification_context& other) = delete; // no default constructor
   }; // modification_context
@@ -389,7 +389,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
   struct import_context {
     import_context(index_meta::index_segment_t&& v_segment, size_t&& v_generation)
       : generation(std::move(v_generation)), segment(std::move(v_segment)) {}
-    import_context(import_context&& other)
+    import_context(import_context&& other) NOEXCEPT
       : generation(std::move(other.generation)), segment(std::move(other.segment)) {}
     import_context& operator=(const import_context&) = delete;
 
@@ -428,11 +428,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
     index_meta::ptr meta; // index meta of next commit
     std::vector<string_ref> to_sync; // file names to be synced during next commit
     pending_context_t() {}
-    /*
-    pending_context_t(flush_context::ptr&& v_ctx, index_meta::ptr&& v_meta)
-      : ctx(std::move(v_ctx)), meta(std::move(v_meta)) {}
-      */
-    pending_context_t(pending_context_t&& other)
+    pending_context_t(pending_context_t&& other) NOEXCEPT
       : ctx(std::move(other.ctx)), meta(std::move(other.meta)), to_sync(std::move(other.to_sync)) {}
     operator bool() const { return ctx && meta; }
   }; // pending_context_t

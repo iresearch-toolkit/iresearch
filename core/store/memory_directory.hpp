@@ -56,7 +56,7 @@ class IRESEARCH_API memory_file:
     touch(meta_.mtime);
   }
 
-  memory_file(memory_file&& rhs)
+  memory_file(memory_file&& rhs) NOEXCEPT
     : raw_block_vector_t(std::move(rhs)), len_(rhs.len_) {
     rhs.len_ = 0;
   }
@@ -261,7 +261,7 @@ class IRESEARCH_API memory_directory final : public directory {
 struct IRESEARCH_API memory_output {
   memory_output() = default;
 
-  memory_output(memory_output&& rhs)
+  memory_output(memory_output&& rhs) NOEXCEPT
     : file(std::move(rhs.file)) {
   }
 

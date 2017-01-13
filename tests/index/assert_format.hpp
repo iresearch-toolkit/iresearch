@@ -88,9 +88,9 @@ class field : public iresearch::field_meta {
     const iresearch::flags& features
   );
 
-  field( field&& rhs );
+  field(field&& rhs) NOEXCEPT;
 
-  field& operator=( field&& rhs );
+  field& operator=(field&& rhs) NOEXCEPT;
 
   term& add(const iresearch::bytes_ref& term);
   term* find(const iresearch::bytes_ref& term);
@@ -112,8 +112,8 @@ class index_segment: iresearch::util::noncopyable {
   typedef field_map_t::const_iterator iterator;
 
   index_segment();
-  index_segment( index_segment&& rhs );
-  index_segment& operator=( index_segment&& rhs );
+  index_segment(index_segment&& rhs) NOEXCEPT;
+  index_segment& operator=(index_segment&& rhs) NOEXCEPT;
    
   size_t doc_count() const { return count_; }
   size_t size() const { return fields_.size(); }

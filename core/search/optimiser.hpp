@@ -32,8 +32,8 @@ class optimiser : util::noncopyable {
   > rule_f;
 
   optimiser() = default;
-  optimiser(optimiser&& rhs);
-  optimiser& operator=(optimiser&& rhs);
+  optimiser(optimiser&& rhs) NOEXCEPT;
+  optimiser& operator=(optimiser&& rhs) NOEXCEPT;
 
   filter::prepared::ptr prepare(
     const index_reader& rdr, 

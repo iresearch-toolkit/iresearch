@@ -38,7 +38,7 @@ struct IRESEARCH_API segment_meta {
 
   segment_meta() = default;
   segment_meta(const segment_meta&) = default;
-  segment_meta(segment_meta&& rhs);
+  segment_meta(segment_meta&& rhs) NOEXCEPT;
   segment_meta(const string_ref& name, format_ptr codec);
   segment_meta(
     std::string&& name,
@@ -47,7 +47,7 @@ struct IRESEARCH_API segment_meta {
     file_set&& files
   );
 
-  segment_meta& operator=(segment_meta&& rhs);
+  segment_meta& operator=(segment_meta&& rhs) NOEXCEPT;
   segment_meta& operator=(const segment_meta&) = default;
 
   file_set files;
@@ -71,8 +71,8 @@ class IRESEARCH_API index_meta {
     index_segment_t(segment_meta&& v_meta);
     index_segment_t(const index_segment_t& other) = default;
     index_segment_t& operator=(const index_segment_t& other) = default;
-    index_segment_t(index_segment_t&& other);
-    index_segment_t& operator=(index_segment_t&& other);
+    index_segment_t(index_segment_t&& other) NOEXCEPT;
+    index_segment_t& operator=(index_segment_t&& other) NOEXCEPT;
 
     std::string filename;
     segment_meta meta;
@@ -82,9 +82,9 @@ class IRESEARCH_API index_meta {
   DECLARE_PTR(index_meta);
 
   index_meta();
-  index_meta(index_meta&& rhs);
+  index_meta(index_meta&& rhs) NOEXCEPT;
   index_meta(const index_meta& rhs);
-  index_meta& operator=(index_meta&& rhs);
+  index_meta& operator=(index_meta&& rhs) NOEXCEPT;
   index_meta& operator=(const index_meta&) = delete;
 
   template<typename _ForwardIterator>

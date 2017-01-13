@@ -35,9 +35,9 @@ using boost::property_tree::ptree;
       quoted(v_quoted), value(std::move(v_value)) {}
     json_value(const json_value& other):
       quoted(other.quoted), value(other.value) {}
-    json_value(json_value&& other):
-      quoted(other.quoted), value(std::move(other.value)) {}
-    json_value& operator=(json_value&& other) {
+    json_value(json_value&& other) NOEXCEPT
+      : quoted(other.quoted), value(std::move(other.value)) {}
+    json_value& operator=(json_value&& other) NOEXCEPT {
       quoted = other.quoted;
       value = std::move(other.value);
       return *this;

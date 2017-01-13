@@ -120,10 +120,10 @@ class IRESEARCH_API flags {
 
   flags();
   flags(const flags&) = default;
-  flags( flags&& rhs );
+  flags(flags&& rhs) NOEXCEPT;
   flags( std::initializer_list< const attribute::type_id* > flags );
   flags& operator=( std::initializer_list< const attribute::type_id* > flags );
-  flags& operator=( flags&& rhs );
+  flags& operator=(flags&& rhs) NOEXCEPT;
   flags& operator=( const flags&) = default;
 
   type_map::const_iterator begin() const { return map_.begin(); }
@@ -343,9 +343,9 @@ class IRESEARCH_API attributes : private util::noncopyable {
 
   attributes() = default;
   attributes(size_t reserve);
-  attributes(attributes&& rhs);
+  attributes(attributes&& rhs) NOEXCEPT;
 
-  attributes& operator=(attributes&& rhs);
+  attributes& operator=(attributes&& rhs) NOEXCEPT;
 
   const attribute_ref<attribute>& get(const attribute::type_id& type) const;
   attribute_ref<attribute>& get(const attribute::type_id& type);

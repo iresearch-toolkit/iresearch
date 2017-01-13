@@ -91,7 +91,8 @@ class forward_iterator
 
   explicit forward_iterator(iterator_impl* impl = nullptr) : impl_(impl) {}
 
-  forward_iterator(forward_iterator&& rhs) : impl_(rhs.impl_) {
+  forward_iterator(forward_iterator&& rhs) NOEXCEPT
+    : impl_(rhs.impl_) {
     rhs.impl_ = nullptr;
   }
 

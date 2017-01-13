@@ -95,11 +95,11 @@ public:
     states_.reserve(size);
   }
 
-  states_cache(states_cache&& rhs)
+  states_cache(states_cache&& rhs) NOEXCEPT
     : states_(std::move(rhs.states_)) {
   }
 
-  states_cache& operator=(states_cache&& rhs) {
+  states_cache& operator=(states_cache&& rhs) NOEXCEPT {
     if (this != &rhs) {
       states_ = std::move(rhs.states_);
     }
@@ -243,8 +243,8 @@ class query : util::noncopyable {
 public:
   DECLARE_SPTR( query );
 
-  query( query&& rhs );
-  query& operator=( query&& rhs );
+  query(query&& rhs) NOEXCEPT;
+  query& operator=(query&& rhs) NOEXCEPT;
 
   static query prepare(
     const index_reader& rdr,

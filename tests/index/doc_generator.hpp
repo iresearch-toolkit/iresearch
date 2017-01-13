@@ -60,8 +60,8 @@ class field_base : public ifield {
   field_base() = default;
   virtual ~field_base();
 
-  field_base(field_base&& rhs);
-  field_base& operator=(field_base&& rhs);
+  field_base(field_base&& rhs) NOEXCEPT;
+  field_base& operator=(field_base&& rhs) NOEXCEPT;
 
   field_base(const field_base&) = default;
   field_base& operator=(const field_base&) = default;
@@ -111,7 +111,7 @@ class int_field: public field_base {
   typedef int32_t value_t;
 
   int_field() = default;
-  int_field(int_field&& other)
+  int_field(int_field&& other) NOEXCEPT
     : field_base(std::move(other)),
       stream_(std::move(other.stream_)),
       value_(std::move(other.value_)) {
@@ -206,8 +206,8 @@ class particle : ir::util::noncopyable {
   typedef ir::ptr_iterator<fields_t::iterator> iterator;
 
   particle() = default;
-  particle(particle&& rhs);
-  particle& operator=(particle&& rhs);
+  particle(particle&& rhs) NOEXCEPT;
+  particle& operator=(particle&& rhs) NOEXCEPT;
   virtual ~particle();
 
   size_t size() const { return fields_.size(); }
@@ -239,13 +239,13 @@ class particle : ir::util::noncopyable {
       
     return static_cast<type&>(*fields_[i]);
   }
-  
+
   template<typename T>
   T* get(const ir::string_ref& name) const {
     typedef typename std::enable_if<
       std::is_base_of<tests::ifield, T>::value, T
      >::type type;
-      
+
     return static_cast<type*>(get(name));
   }
 
@@ -254,15 +254,15 @@ class particle : ir::util::noncopyable {
 
   const_iterator begin() const { return const_iterator(fields_.begin()); }
   const_iterator end() const { return const_iterator(fields_.end()); }
-    
+
  protected:
   fields_t fields_;
 }; // particle 
 
 struct document : ir::util::noncopyable {
   document() = default;
-  document(document&& rhs);
-  
+  document(document&& rhs) NOEXCEPT;
+
   void insert(const ifield::ptr& field, bool indexed = true, bool stored = true) {
     if (indexed) this->indexed.push_back(field);
     if (stored) this->stored.push_back(field);
@@ -277,7 +277,7 @@ struct document : ir::util::noncopyable {
     indexed.clear();
     stored.clear();
   }
-  
+
   particle indexed;
   particle stored;
 }; // document
@@ -337,7 +337,7 @@ class json_doc_generator: public doc_generator_base {
     const fs::path& file,
     const factory_f& factory);
 
-  json_doc_generator(json_doc_generator&& rhs);
+  json_doc_generator(json_doc_generator&& rhs) NOEXCEPT;
 
   virtual const tests::document* next() override;
   virtual void reset() override;

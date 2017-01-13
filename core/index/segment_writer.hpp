@@ -77,7 +77,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   struct column : util::noncopyable {
     column(const string_ref& name, columnstore_writer& columnstore);
 
-    column(column&& other)
+    column(column&& other) NOEXCEPT
       : name(std::move(other.name)),
         handle(std::move(other.handle)) {
     }

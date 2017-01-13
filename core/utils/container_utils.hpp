@@ -90,7 +90,7 @@ class IRESEARCH_API_TEMPLATE raw_block_vector: util::noncopyable {
 
   raw_block_vector() = default;
 
-  raw_block_vector(raw_block_vector&& other)
+  raw_block_vector(raw_block_vector&& other) NOEXCEPT
     : buffers_(std::move(other.buffers_)) {
   }
 
@@ -143,7 +143,7 @@ class IRESEARCH_API_TEMPLATE raw_block_vector: util::noncopyable {
        buffer_t::offset = bucket_offset;
        buffer_t::size = bucket_size;
      }
-     buffer_entry_t(buffer_entry_t&& other)
+     buffer_entry_t(buffer_entry_t&& other) NOEXCEPT
        : buffer_t(std::move(other)), ptr(std::move(other.ptr)) {
      }
    };

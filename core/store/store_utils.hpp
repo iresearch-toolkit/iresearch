@@ -238,8 +238,8 @@ class IRESEARCH_API bytes_output final: public data_output, public bytes_ref {
 
   bytes_output() = default;
   explicit bytes_output( size_t capacity );
-  bytes_output( bytes_output&& rhs );
-  bytes_output& operator=( bytes_output&& rhs );
+  bytes_output(bytes_output&& rhs) NOEXCEPT;
+  bytes_output& operator=(bytes_output&& rhs) NOEXCEPT;
 
   void reset(size_t size = 0) { 
     this->size_ = size; 
@@ -314,8 +314,8 @@ class IRESEARCH_API bytes_input final: public data_input, public bytes_ref {
 
   bytes_input();
   explicit bytes_input(const bytes_ref& data);
-  bytes_input(bytes_input&& rhs);
-  bytes_input& operator=(bytes_input&& rhs);
+  bytes_input(bytes_input&& rhs) NOEXCEPT;
+  bytes_input& operator=(bytes_input&& rhs) NOEXCEPT;
   bytes_input& operator=(const bytes_ref& data);
 
   void read_from(data_input& in, size_t size);

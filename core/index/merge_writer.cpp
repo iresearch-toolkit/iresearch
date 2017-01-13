@@ -153,7 +153,7 @@ class compound_iterator {
         doc_id_map(&doc_id_map) {
       }
 
-    iterator_t(iterator_t&& other)
+    iterator_t(iterator_t&& other) NOEXCEPT
       : it(std::move(other.it)),
         reader(std::move(other.reader)),
         doc_id_map(std::move(other.doc_id_map)) {
@@ -204,7 +204,7 @@ class compound_field_iterator {
         reader(&v_reader), 
         doc_id_map(&v_doc_id_map) {
       }
-    field_iterator_t(field_iterator_t&& other)
+    field_iterator_t(field_iterator_t&& other) NOEXCEPT
       : itr(std::move(other.itr)),
         reader(std::move(other.reader)),
         doc_id_map(std::move(other.doc_id_map)) {

@@ -30,7 +30,7 @@ struct timer_stat_t {
 class IRESEARCH_API scoped_timer: private iresearch::util::noncopyable {
  public:
   scoped_timer(timer_stat_t& stat);
-  scoped_timer(scoped_timer&& other);
+  scoped_timer(scoped_timer&& other) NOEXCEPT;
   ~scoped_timer();
 
  private:
