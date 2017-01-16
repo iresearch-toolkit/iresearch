@@ -1166,7 +1166,7 @@ class format_test_case_base : public index_test_base {
       }
     }
   }
-  
+
   void columns_read_write() {
     ir::fields_data fdata;
 
@@ -1174,6 +1174,8 @@ class format_test_case_base : public index_test_base {
     iresearch::field_id segment0_field1_id;
     iresearch::field_id segment0_empty_column_id;
     iresearch::field_id segment0_field2_id;
+    iresearch::field_id segment0_field3_id;
+    iresearch::field_id segment0_field4_id;
     iresearch::field_id segment1_field0_id;
     iresearch::field_id segment1_field1_id;
     iresearch::field_id segment1_field2_id;
@@ -1243,11 +1245,31 @@ class format_test_case_base : public index_test_base {
       segment0_field2_id = field2.first;
       auto& field2_writer = field2.second;
       ASSERT_EQ(3, segment0_field2_id);
+      auto field3 = writer->push_column();
+      segment0_field3_id = field3.first;
+      auto& field3_writer = field3.second;
+      ASSERT_EQ(4, segment0_field3_id);
+      auto field4 = writer->push_column();
+      segment0_field4_id = field4.first;
+      auto& field4_writer = field4.second;
+      ASSERT_EQ(5, segment0_field4_id);
 
       // column==field0
       {
         auto& stream = field0_writer(0);
         ir::write_string(stream, ir::string_ref("field0_doc0")); // doc==0
+      }
+
+      // column==field3
+      {
+        auto& stream = field3_writer(std::numeric_limits<ir::doc_id_t>::max());
+        ir::write_string(stream, ir::string_ref("field3_doc_max")); // doc==max
+      }
+      
+      // column==field4
+      {
+        auto& stream = field4_writer(std::numeric_limits<ir::doc_id_t>::min()); // doc==0
+        ir::write_string(stream, ir::string_ref("field4_doc_min")); 
       }
 
       // column==field1, multivalued attribute
@@ -1263,6 +1285,7 @@ class format_test_case_base : public index_test_base {
         {
           auto& stream = field2_writer(0); // doc==0
           ir::write_string(stream, ir::string_ref("invalid_string"));
+          stream.reset(); // rollback changes
           stream.reset(); // rollback changes
         }
         {
@@ -1298,15 +1321,16 @@ class format_test_case_base : public index_test_base {
       
       // column==field1, multivalued attribute
       {
-        // Get stream by the same key. In this case written vaulues
-        // will be concatenated and accessible via the specified key 
+        // Get stream by the same key. In this case written values
+        // will be rewritten and accessible via the specified key 
         // (e.g. 'field1_doc12_1', 'field1_doc12_2' in this case)
         {
           auto& stream = field1_writer(12); // doc==12
-          ir::write_string(stream, ir::string_ref("field1_doc12_1"));
+          ir::write_string(stream, ir::string_ref("field1_doc12"));
         }
         {
           auto& stream = field1_writer(12); // doc==12
+          ir::write_string(stream, ir::string_ref("field1_doc12_1"));
           ir::write_string(stream, ir::string_ref("field1_doc12_2"));
         }
       }
@@ -1407,6 +1431,60 @@ class format_test_case_base : public index_test_base {
         ASSERT_EQ(0, calls_count);
       }
       
+      // check field3
+      {
+        std::string expected_value;
+        size_t calls_count = 0;
+        iresearch::columnstore_reader::value_reader_f value_reader = [&calls_count, &expected_value] (iresearch::data_input& in) {
+          ++calls_count;
+          if (expected_value != iresearch::read_string<std::string>(in)) {
+            return false;
+          }
+
+          iresearch::byte_type b;
+          if (in.read_bytes(&b, 1)) {
+            // read more than we allowed 
+            return false;
+          }
+
+          return true;
+        };
+
+        auto column = reader->values(segment0_field3_id);
+
+        expected_value = "field3_doc_max";
+        calls_count = 0;
+        ASSERT_TRUE(column(std::numeric_limits<ir::doc_id_t>::max(), value_reader)); // check doc==max, column==field3
+        ASSERT_EQ(1, calls_count);
+      }
+      
+      // check field4
+      {
+        std::string expected_value;
+        size_t calls_count = 0;
+        iresearch::columnstore_reader::value_reader_f value_reader = [&calls_count, &expected_value] (iresearch::data_input& in) {
+          ++calls_count;
+          if (expected_value != iresearch::read_string<std::string>(in)) {
+            return false;
+          }
+
+          iresearch::byte_type b;
+          if (in.read_bytes(&b, 1)) {
+            // read more than we allowed 
+            return false;
+          }
+
+          return true;
+        };
+
+        auto column = reader->values(segment0_field4_id);
+
+        expected_value = "field4_doc_min";
+        calls_count = 0;
+        ASSERT_TRUE(column(std::numeric_limits<ir::doc_id_t>::min(), value_reader)); // check doc==min, column==field4
+        ASSERT_EQ(1, calls_count);
+      }
+
       // visit field0 values (not cached)
       {
         std::unordered_map<std::string, iresearch::doc_id_t> expected_values = {

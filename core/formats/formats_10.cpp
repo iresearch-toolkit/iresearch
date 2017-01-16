@@ -1609,42 +1609,42 @@ class writer final : public iresearch::columnstore_writer {
       block_header_writer.prepare(block_header.stream);
     }
 
-    void write(doc_id_t doc, index_output& out, compressor& comp) {
-      if (key != max) {
-        block_header_writer.write(key, offset);
-        max = key;
-      }
+    void write(doc_id_t key, index_output& out, compressor& comp) {
+      assert(key >= max);
 
-      if (offset >= MAX_DATA_BLOCK_SIZE && doc != key) {
+      // commit previous key and offset unless the 'reset' method has been called
+      if (do_commit) {
+        commit();
+      }
+        
+      // 'doc == pending_key' means that one wants to append something to buffer
+      do_commit = (key != pending_key);
+
+      // flush block if we've overcome MAX_DATA_BLOCK_SIZE size
+      if (offset >= MAX_DATA_BLOCK_SIZE && do_commit) {
         flush(out, comp);
-        min = doc;
+        min = key;
       }
-
+      
+      // reset key and offset (will be commited during the next 'write')
       offset = block_buf.size();
-      key = doc;
-    }
-
-    bool empty() const {
-      return blocks_index_writer.empty() && block_header_writer.empty();
-    }
-
-    virtual void close() override {
-      // NOOP
-    }
-
-    virtual void write_byte(byte_type b) override {
-      block_buf.write_byte(b);
+      pending_key = key;
+      ++pending_values;
+  
+      assert(pending_key >= min);
     }
     
-    virtual void write_bytes(const byte_type* b, size_t size) override {
-      block_buf.write_bytes(b, size);
-    }
+    bool pending() const { return pending_values; }
+    
+    bool empty() const { return !pending() && !docs; }
 
-    virtual void reset() override {
-      block_buf.reset(offset);
-      key = max;
+    void commit() {
+      block_header_writer.write(pending_key, offset);
+      max = pending_key;
+      ++docs;
+      pending_values = 0;
     }
-
+    
     void flush(index_output& out, compressor& comp) {
       if (block_header_writer.empty()) {
         return;
@@ -1674,6 +1674,26 @@ class writer final : public iresearch::columnstore_writer {
       block_header_stream.reset();
     }
 
+    virtual void close() override {
+      // NOOP
+    }
+
+    virtual void write_byte(byte_type b) override {
+      block_buf.write_byte(b);
+    }
+    
+    virtual void write_bytes(const byte_type* b, size_t size) override {
+      block_buf.write_bytes(b, size);
+    }
+
+    virtual void reset() override {
+      block_buf.reset(offset);
+      do_commit = false;
+      pending_values = 0;
+    }
+
+    size_t docs{}; // total number of documents
+    size_t pending_values{}; // number of values for current doc 
     uint64_t offset{ MAX_DATA_BLOCK_SIZE }; // value offset
     memory_output blocks_index; // blocks index
     memory_output block_header; // block header
@@ -1681,8 +1701,9 @@ class writer final : public iresearch::columnstore_writer {
     compressing_index_writer blocks_index_writer{ INDEX_BLOCK_SIZE };
     bytes_output block_buf{ 2*MAX_DATA_BLOCK_SIZE }; // data buffer
     doc_id_t min{ type_limits<type_t::doc_id_t>::invalid() }; // min key
-    doc_id_t max{ type_limits<type_t::doc_id_t>::eof() }; // max key
-    doc_id_t key{ type_limits<type_t::doc_id_t>::eof() }; // current key
+    doc_id_t max{ type_limits<type_t::doc_id_t>::invalid() }; // max key
+    doc_id_t pending_key{ type_limits<type_t::doc_id_t>::eof() }; // current key
+    bool do_commit{ false };
   };
 
    std::deque<column> columns_; // pointers remain valid
@@ -1725,10 +1746,6 @@ columnstore_writer::column_t writer::push_column() {
 }
 
 void writer::flush() {
-  for (auto& column : columns_) {
-    column.write(column.key, *data_out_, comp_);
-  }
-
   // remove all empty columns from tail
   while (!columns_.empty() && columns_.back().empty()) {
     columns_.pop_back();
@@ -1747,7 +1764,10 @@ void writer::flush() {
 
   // flush all remain data including possible empty columns among filled columns
   for (auto& column : columns_) {
-    // flush remain blocks
+    // commit and flush remain blocks
+    if (column.pending()) {
+      column.commit();
+    }
     column.flush(*data_out_, comp_);
 
     // finish column blocks index
