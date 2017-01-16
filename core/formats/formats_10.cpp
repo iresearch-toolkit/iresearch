@@ -1610,18 +1610,15 @@ class writer final : public iresearch::columnstore_writer {
     }
 
     void prepare(doc_id_t key, index_output& out, compressor& comp) {
-      assert(key >= max_);
+      assert(key >= max_ || iresearch::type_limits<iresearch::type_t::doc_id_t>::eof(max_));
 
       // commit previous key and offset unless the 'reset' method has been called
-      if (do_commit_) {
+      if (max_ != pending_key_) {
         commit();
       }
 
-      // 'doc == pending_key' means that one wants to append something to buffer
-      do_commit_ = (key != pending_key_);
-
       // flush block if we've overcome MAX_DATA_BLOCK_SIZE size
-      if (offset_ >= MAX_DATA_BLOCK_SIZE && do_commit_) {
+      if (offset_ >= MAX_DATA_BLOCK_SIZE && key != pending_key_) {
         flush_block(out, comp);
         min_ = key;
       }
@@ -1670,7 +1667,7 @@ class writer final : public iresearch::columnstore_writer {
 
     virtual void reset() override {
       block_buf_.reset(offset_);
-      do_commit_ = false;
+      pending_key_ = max_;
     }
 
    private:
@@ -1710,16 +1707,15 @@ class writer final : public iresearch::columnstore_writer {
     }
 
     size_t docs_{}; // number of commited docs
-    uint64_t offset_{ MAX_DATA_BLOCK_SIZE }; // value offset, because of initial MAX_DATA_BLOCK_SIZE 'min_' will be set on the next 'write'
+    uint64_t offset_{ MAX_DATA_BLOCK_SIZE }; // value offset, because of initial MAX_DATA_BLOCK_SIZE 'min_' will be set on the first 'write'
     memory_output blocks_index_; // blocks index
     memory_output block_header_; // block header
     compressing_index_writer block_header_writer_{ INDEX_BLOCK_SIZE };
     compressing_index_writer blocks_index_writer_{ INDEX_BLOCK_SIZE };
     bytes_output block_buf_{ 2*MAX_DATA_BLOCK_SIZE }; // data buffer
-    doc_id_t min_{ type_limits<type_t::doc_id_t>::invalid() }; // min key
-    doc_id_t max_{ type_limits<type_t::doc_id_t>::invalid() }; // max key
+    doc_id_t min_{ type_limits<type_t::doc_id_t>::eof() }; // min key
+    doc_id_t max_{ type_limits<type_t::doc_id_t>::eof() }; // max key
     doc_id_t pending_key_{ type_limits<type_t::doc_id_t>::eof() }; // current pending key
-    bool do_commit_{ false }; // 'true' if we need to commit key on the next 'write'
   };
 
    std::deque<column> columns_; // pointers remain valid
