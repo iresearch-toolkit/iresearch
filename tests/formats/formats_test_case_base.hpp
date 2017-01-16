@@ -1262,8 +1262,8 @@ class format_test_case_base : public index_test_base {
 
       // column==field3
       {
-        auto& stream = field3_writer(std::numeric_limits<ir::doc_id_t>::max());
-        ir::write_string(stream, ir::string_ref("field3_doc_max")); // doc==max
+//        auto& stream = field3_writer(std::numeric_limits<ir::doc_id_t>::max());
+ //       ir::write_string(stream, ir::string_ref("field3_doc_max")); // doc==max
       }
       
       // column==field4
@@ -1313,24 +1313,17 @@ class format_test_case_base : public index_test_base {
         ir::write_string(stream, ir::string_ref("field0_doc33"));
       }
       
-      // column==field0
-      {
-        auto& stream = field0_writer(ir::integer_traits<ir::doc_id_t>::const_max); // max
-        ir::write_string(stream, ir::string_ref("field0_doc_max"));
-      }
-      
       // column==field1, multivalued attribute
       {
         // Get stream by the same key. In this case written values
-        // will be rewritten and accessible via the specified key 
+        // will be concatenated and accessible via the specified key 
         // (e.g. 'field1_doc12_1', 'field1_doc12_2' in this case)
         {
           auto& stream = field1_writer(12); // doc==12
-          ir::write_string(stream, ir::string_ref("field1_doc12"));
+          ir::write_string(stream, ir::string_ref("field1_doc12_1"));
         }
         {
           auto& stream = field1_writer(12); // doc==12
-          ir::write_string(stream, ir::string_ref("field1_doc12_1"));
           ir::write_string(stream, ir::string_ref("field1_doc12_2"));
         }
       }
@@ -1432,31 +1425,31 @@ class format_test_case_base : public index_test_base {
       }
       
       // check field3
-      {
-        std::string expected_value;
-        size_t calls_count = 0;
-        iresearch::columnstore_reader::value_reader_f value_reader = [&calls_count, &expected_value] (iresearch::data_input& in) {
-          ++calls_count;
-          if (expected_value != iresearch::read_string<std::string>(in)) {
-            return false;
-          }
+      // {
+      //   std::string expected_value;
+      //   size_t calls_count = 0;
+      //   iresearch::columnstore_reader::value_reader_f value_reader = [&calls_count, &expected_value] (iresearch::data_input& in) {
+      //     ++calls_count;
+      //     if (expected_value != iresearch::read_string<std::string>(in)) {
+      //       return false;
+      //     }
 
-          iresearch::byte_type b;
-          if (in.read_bytes(&b, 1)) {
-            // read more than we allowed 
-            return false;
-          }
+      //     iresearch::byte_type b;
+      //     if (in.read_bytes(&b, 1)) {
+      //       // read more than we allowed 
+      //       return false;
+      //     }
 
-          return true;
-        };
+      //     return true;
+      //   };
 
-        auto column = reader->values(segment0_field3_id);
+      //   auto column = reader->values(segment0_field3_id);
 
-        expected_value = "field3_doc_max";
-        calls_count = 0;
-        ASSERT_TRUE(column(std::numeric_limits<ir::doc_id_t>::max(), value_reader)); // check doc==max, column==field3
-        ASSERT_EQ(1, calls_count);
-      }
+      //   expected_value = "field3_doc_max";
+      //   calls_count = 0;
+      //   ASSERT_TRUE(column(std::numeric_limits<ir::doc_id_t>::max(), value_reader)); // check doc==max, column==field3
+      //   ASSERT_EQ(1, calls_count);
+      // }
       
       // check field4
       {
@@ -1490,8 +1483,7 @@ class format_test_case_base : public index_test_base {
         std::unordered_map<std::string, iresearch::doc_id_t> expected_values = {
           {"field0_doc0", 0},
           {"field0_doc2", 2},
-          {"field0_doc33", 33},
-          {"field0_doc_max", std::numeric_limits<ir::doc_id_t>::max()}
+          {"field0_doc33", 33}
         };
 
         auto visitor = [&expected_values] (iresearch::doc_id_t doc, data_input& in) {
@@ -1521,8 +1513,7 @@ class format_test_case_base : public index_test_base {
         std::unordered_map<std::string, iresearch::doc_id_t> expected_values = {
           {"field0_doc0", 0},
           {"field0_doc2", 2},
-          {"field0_doc33", 33},
-          {"field0_doc_max", std::numeric_limits<ir::doc_id_t>::max()}
+          {"field0_doc33", 33}
         };
 
         size_t calls_count = 0;
@@ -1553,9 +1544,8 @@ class format_test_case_base : public index_test_base {
 
         ASSERT_FALSE(reader->visit(segment0_field0_id, visitor));
         ASSERT_FALSE(expected_values.empty());
-        ASSERT_EQ(2, expected_values.size());
+        ASSERT_EQ(1, expected_values.size());
         ASSERT_NE(expected_values.end(), expected_values.find("field0_doc33"));
-        ASSERT_NE(expected_values.end(), expected_values.find("field0_doc_max"));
       }
 
       // check field0
@@ -1602,10 +1592,6 @@ class format_test_case_base : public index_test_base {
           calls_count = 0;
           ASSERT_TRUE(column(33, value_reader)); // check doc==33, column==field0
           ASSERT_EQ(1, calls_count);
-          expected_value = "field0_doc_max";
-          calls_count = 0;
-          ASSERT_TRUE(column(std::numeric_limits<ir::doc_id_t>::max(), value_reader)); // check doc==max, column==field0
-          ASSERT_EQ(1, calls_count);
         }
         
         // read (cached)
@@ -1626,10 +1612,6 @@ class format_test_case_base : public index_test_base {
           calls_count = 0;
           ASSERT_TRUE(column(33, value_reader)); // check doc==33, column==field0
           ASSERT_EQ(1, calls_count);
-          expected_value = "field0_doc_max";
-          calls_count = 0;
-          ASSERT_TRUE(column(std::numeric_limits<ir::doc_id_t>::max(), value_reader)); // check doc==max, column==field0
-          ASSERT_EQ(1, calls_count);
         }
       }
       
@@ -1638,8 +1620,7 @@ class format_test_case_base : public index_test_base {
         std::unordered_map<std::string, iresearch::doc_id_t> expected_values = {
           {"field0_doc0", 0},
           {"field0_doc2", 2},
-          {"field0_doc33", 33},
-          {"field0_doc_max", std::numeric_limits<ir::doc_id_t>::max()}
+          {"field0_doc33", 33}
         };
 
         auto visitor = [&expected_values] (iresearch::doc_id_t doc, data_input& in) {
@@ -1708,7 +1689,7 @@ class format_test_case_base : public index_test_base {
         calls_count = 0;
         ASSERT_TRUE(column(12, value_reader)); 
         ASSERT_EQ(1, calls_count);
-
+        
         // read by invalid key
         calls_count = 0;
         ASSERT_FALSE(column(iresearch::type_limits<iresearch::type_t::doc_id_t>::eof(), value_reader)); 

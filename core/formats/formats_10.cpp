@@ -1616,25 +1616,26 @@ class writer final : public iresearch::columnstore_writer {
       if (do_commit_) {
         commit();
       }
-        
+
       // 'doc == pending_key' means that one wants to append something to buffer
       do_commit_ = (key != pending_key_);
 
       // flush block if we've overcome MAX_DATA_BLOCK_SIZE size
       if (offset_ >= MAX_DATA_BLOCK_SIZE && do_commit_) {
-        flush(out, comp);
+        flush_block(out, comp);
         min_ = key;
       }
       
       // reset key and offset (will be commited during the next 'write')
       offset_ = block_buf_.size();
       pending_key_ = key;
-      pending_values_ = true;
   
       assert(pending_key_ >= min_);
     }
     
-    bool empty() const { return !pending_values_ && !docs_; }
+    bool empty() const { return !docs_; }
+
+    size_t size() const { return docs_; }
 
     // current block min key
     doc_id_t min() const { return min_; }
@@ -1646,12 +1647,9 @@ class writer final : public iresearch::columnstore_writer {
       blocks_index_.file >> out; // column blocks index
     }
 
-    void finish(index_output& out, compressor& comp) {
+    void flush(index_output& out, compressor& comp) {
       // commit and flush remain blocks
-      if (pending_values_) {
-        commit();
-      }
-      flush(out, comp);
+      flush_block(out, comp);
 
       // finish column blocks index
       blocks_index_writer_.finish();
@@ -1673,7 +1671,6 @@ class writer final : public iresearch::columnstore_writer {
     virtual void reset() override {
       block_buf_.reset(offset_);
       do_commit_ = false;
-      pending_values_ = false;
     }
 
    private:
@@ -1681,10 +1678,9 @@ class writer final : public iresearch::columnstore_writer {
       block_header_writer_.write(pending_key_, offset_);
       max_ = pending_key_;
       ++docs_;
-      pending_values_ = false;
     }
 
-    void flush(index_output& out, compressor& comp) {
+    void flush_block(index_output& out, compressor& comp) {
       if (block_header_writer_.empty()) {
         return;
       }
@@ -1713,7 +1709,7 @@ class writer final : public iresearch::columnstore_writer {
       block_header_stream.reset();
     }
 
-    size_t docs_{}; // total number of documents
+    size_t docs_{}; // number of commited docs
     uint64_t offset_{ MAX_DATA_BLOCK_SIZE }; // value offset, because of initial MAX_DATA_BLOCK_SIZE 'min_' will be set on the next 'write'
     memory_output blocks_index_; // blocks index
     memory_output block_header_; // block header
@@ -1724,7 +1720,6 @@ class writer final : public iresearch::columnstore_writer {
     doc_id_t max_{ type_limits<type_t::doc_id_t>::invalid() }; // max key
     doc_id_t pending_key_{ type_limits<type_t::doc_id_t>::eof() }; // current pending key
     bool do_commit_{ false }; // 'true' if we need to commit key on the next 'write'
-    bool pending_values_{ false }; // 'true' if there is a key that should be written
   };
 
    std::deque<column> columns_; // pointers remain valid
@@ -1761,12 +1756,19 @@ columnstore_writer::column_t writer::push_column() {
   auto& column = columns_.back();
 
   return std::make_pair(id, [&column, this] (doc_id_t doc) -> column_output& {
+    assert(!iresearch::type_limits<iresearch::type_t::doc_id_t>::eof(doc));
+
     column.prepare(doc, *data_out_, comp_);
     return column;
   });
 }
 
 void writer::flush() {
+  // trigger commit for each pending key
+  for (auto& column : columns_) {
+    column.prepare(iresearch::type_limits<iresearch::type_t::doc_id_t>::eof(), *data_out_, comp_);
+  }
+
   // remove all empty columns from tail
   while (!columns_.empty() && columns_.back().empty()) {
     columns_.pop_back();
@@ -1786,12 +1788,13 @@ void writer::flush() {
   // flush all remain data including possible empty columns among filled columns
   for (auto& column : columns_) {
     // commit and flush remain blocks
-    column.finish(*data_out_, comp_);
+    column.flush(*data_out_, comp_);
   }
 
   const auto block_index_ptr = data_out_->file_pointer(); // where blocks index start
   data_out_->write_vlong(columns_.size()); // number of columns
   for (auto& column : columns_) {
+    data_out_->write_vlong(column.size()); // total number of documents
     data_out_->write_vlong(column.max()); // max key
     column.write(*data_out_); // column blocks index
   }
@@ -1838,12 +1841,17 @@ class reader final : public iresearch::columnstore_reader, util::noncopyable {
     bstring data; // decompressed data block
   }; // block
 
-  typedef std::pair <
+  typedef std::pair<
     uint64_t, // block data offset
     std::atomic<block*> // pointer to cached block
   > block_ref_t;
 
   typedef compressed_index<block_ref_t> blocks_index_t;
+
+  struct column {
+    blocks_index_t index; // blocks index
+    size_t size; // total number of documents
+  }; // column
 
   // per thread read context
   struct read_context : util::noncopyable {
@@ -1889,7 +1897,7 @@ class reader final : public iresearch::columnstore_reader, util::noncopyable {
     const block_index_t::iterator& end); // where index ends
 
   mutable bounded_object_pool<read_context> pool_;
-  std::vector<blocks_index_t> columns_;
+  std::vector<column> columns_;
   std::string name_;
   const directory* dir_;
 }; // reader
@@ -1904,10 +1912,10 @@ class reader final : public iresearch::columnstore_reader, util::noncopyable {
   stream.seek(offset);
 
   // read block index
-  static auto visitor = [] (uint64_t& target, uint64_t value) {
-    target = value;
-  };
-  if (!block.index.read(stream, type_limits<type_t::doc_id_t>::eof(), visitor)) {
+  if (!block.index.read(
+        stream, 
+        type_limits<type_t::doc_id_t>::eof(), 
+        [] (uint64_t& target, uint64_t value) { target = value; })) {
     // unable to read block index
     return false;
   }
@@ -1965,16 +1973,13 @@ bool reader::prepare(const reader_state& state) {
   stream->seek(stream->length() - format_utils::FOOTER_LEN - sizeof(uint64_t));
   stream->seek(stream->read_long()); // seek to blocks index
 
-  static auto visitor = [] (block_ref_t& block, uint64_t v) {
-    block.first = v;
-  };
-
-  std::vector<blocks_index_t> columns(stream->read_vlong());
+  std::vector<column> columns(stream->read_vlong());
   for (size_t i = 0, size = columns.size(); i < size; ++i) {
     auto& column = columns[i];
 
+    column.size = stream->read_vlong(); // total number of documents
     const auto max = stream->read_vlong(); // last valid key
-    if (!column.read(*stream, max, visitor)) {
+    if (!column.index.read(*stream, max, [](block_ref_t& block, uint64_t v){ block.first = v; })) {
       IR_ERROR() << "Unable to load blocks index for column id=" << columns.size() - 1;
       return false;
     }
@@ -2010,7 +2015,7 @@ reader::values_reader_f reader::values(field_id field) const {
     return INVALID_COLUMN;
   }
 
-  auto& column = columns_[field];
+  auto& column = columns_[field].index;
   bytes_ref_input block_in;
 
   return[this, &column, block_in] (doc_id_t doc, const value_reader_f& reader) mutable {
@@ -2088,7 +2093,7 @@ bool reader::visit(field_id field, const raw_reader_f& reader) const {
     return false;
   }
 
-  auto& column = columns_[field];
+  auto& column = columns_[field].index;
   bytes_ref_input block_in;
   const reader::block* cached;
   reader::block block; // do not cache blocks during visiting
