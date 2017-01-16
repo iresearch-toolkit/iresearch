@@ -1602,51 +1602,90 @@ class writer final : public iresearch::columnstore_writer {
   virtual void flush() override;
 
  private:
-  struct column final : iresearch::columnstore_writer::column_output {
+  class column final : public iresearch::columnstore_writer::column_output {
    public:
     column() {
-      blocks_index_writer.prepare(blocks_index.stream);
-      block_header_writer.prepare(block_header.stream);
+      blocks_index_writer_.prepare(blocks_index_.stream);
+      block_header_writer_.prepare(block_header_.stream);
     }
 
-    void write(doc_id_t key, index_output& out, compressor& comp) {
-      assert(key >= max);
+    void prepare(doc_id_t key, index_output& out, compressor& comp) {
+      assert(key >= max_);
 
       // commit previous key and offset unless the 'reset' method has been called
-      if (do_commit) {
+      if (do_commit_) {
         commit();
       }
         
       // 'doc == pending_key' means that one wants to append something to buffer
-      do_commit = (key != pending_key);
+      do_commit_ = (key != pending_key_);
 
       // flush block if we've overcome MAX_DATA_BLOCK_SIZE size
-      if (offset >= MAX_DATA_BLOCK_SIZE && do_commit) {
+      if (offset_ >= MAX_DATA_BLOCK_SIZE && do_commit_) {
         flush(out, comp);
-        min = key;
+        min_ = key;
       }
       
       // reset key and offset (will be commited during the next 'write')
-      offset = block_buf.size();
-      pending_key = key;
-      ++pending_values;
+      offset_ = block_buf_.size();
+      pending_key_ = key;
+      pending_values_ = true;
   
-      assert(pending_key >= min);
+      assert(pending_key_ >= min_);
     }
     
-    bool pending() const { return pending_values; }
-    
-    bool empty() const { return !pending() && !docs; }
+    bool empty() const { return !pending_values_ && !docs_; }
 
-    void commit() {
-      block_header_writer.write(pending_key, offset);
-      max = pending_key;
-      ++docs;
-      pending_values = 0;
+    // current block min key
+    doc_id_t min() const { return min_; }
+
+    // column max key
+    doc_id_t max() const { return max_; }
+
+    void write(index_output& out) {
+      blocks_index_.file >> out; // column blocks index
+    }
+
+    void finish(index_output& out, compressor& comp) {
+      // commit and flush remain blocks
+      if (pending_values_) {
+        commit();
+      }
+      flush(out, comp);
+
+      // finish column blocks index
+      blocks_index_writer_.finish();
+      blocks_index_.stream.flush();
     }
     
+    virtual void close() override {
+      // NOOP
+    }
+
+    virtual void write_byte(byte_type b) override {
+      block_buf_.write_byte(b);
+    }
+    
+    virtual void write_bytes(const byte_type* b, size_t size) override {
+      block_buf_.write_bytes(b, size);
+    }
+
+    virtual void reset() override {
+      block_buf_.reset(offset_);
+      do_commit_ = false;
+      pending_values_ = false;
+    }
+
+   private:
+    void commit() {
+      block_header_writer_.write(pending_key_, offset_);
+      max_ = pending_key_;
+      ++docs_;
+      pending_values_ = false;
+    }
+
     void flush(index_output& out, compressor& comp) {
-      if (block_header_writer.empty()) {
+      if (block_header_writer_.empty()) {
         return;
       }
 
@@ -1654,56 +1693,38 @@ class writer final : public iresearch::columnstore_writer {
       const auto block_offset = out.file_pointer();
 
       // write block header
-      auto& block_header_stream = block_header.stream;
-      block_header_writer.finish();
+      auto& block_header_stream = block_header_.stream;
+      block_header_writer_.finish();
       block_header_stream.flush();
-      block_header.file >> out;
+      block_header_.file >> out;
       
       // write first block key & where block starts
-      blocks_index_writer.write(min, block_offset);
+      blocks_index_writer_.write(min_, block_offset);
 
       // write compressed block data
-      write_zvlong(out, block_buf.size() - MAX_DATA_BLOCK_SIZE);
-      if (!block_buf.empty()) {
-        write_compact(out, comp, block_buf.c_str(), block_buf.size());
-        block_buf.reset(); // reset buffer stream after flushing
+      write_zvlong(out, block_buf_.size() - MAX_DATA_BLOCK_SIZE);
+      if (!block_buf_.empty()) {
+        write_compact(out, comp, block_buf_.c_str(), block_buf_.size());
+        block_buf_.reset(); // reset buffer stream after flushing
       }
       
       // reset writer & stream
-      block_header_writer.prepare(block_header_stream);
+      block_header_writer_.prepare(block_header_stream);
       block_header_stream.reset();
     }
 
-    virtual void close() override {
-      // NOOP
-    }
-
-    virtual void write_byte(byte_type b) override {
-      block_buf.write_byte(b);
-    }
-    
-    virtual void write_bytes(const byte_type* b, size_t size) override {
-      block_buf.write_bytes(b, size);
-    }
-
-    virtual void reset() override {
-      block_buf.reset(offset);
-      do_commit = false;
-      pending_values = 0;
-    }
-
-    size_t docs{}; // total number of documents
-    size_t pending_values{}; // number of values for current doc 
-    uint64_t offset{ MAX_DATA_BLOCK_SIZE }; // value offset
-    memory_output blocks_index; // blocks index
-    memory_output block_header; // block header
-    compressing_index_writer block_header_writer{ INDEX_BLOCK_SIZE };
-    compressing_index_writer blocks_index_writer{ INDEX_BLOCK_SIZE };
-    bytes_output block_buf{ 2*MAX_DATA_BLOCK_SIZE }; // data buffer
-    doc_id_t min{ type_limits<type_t::doc_id_t>::invalid() }; // min key
-    doc_id_t max{ type_limits<type_t::doc_id_t>::invalid() }; // max key
-    doc_id_t pending_key{ type_limits<type_t::doc_id_t>::eof() }; // current key
-    bool do_commit{ false };
+    size_t docs_{}; // total number of documents
+    uint64_t offset_{ MAX_DATA_BLOCK_SIZE }; // value offset, because of initial MAX_DATA_BLOCK_SIZE 'min_' will be set on the next 'write'
+    memory_output blocks_index_; // blocks index
+    memory_output block_header_; // block header
+    compressing_index_writer block_header_writer_{ INDEX_BLOCK_SIZE };
+    compressing_index_writer blocks_index_writer_{ INDEX_BLOCK_SIZE };
+    bytes_output block_buf_{ 2*MAX_DATA_BLOCK_SIZE }; // data buffer
+    doc_id_t min_{ type_limits<type_t::doc_id_t>::invalid() }; // min key
+    doc_id_t max_{ type_limits<type_t::doc_id_t>::invalid() }; // max key
+    doc_id_t pending_key_{ type_limits<type_t::doc_id_t>::eof() }; // current pending key
+    bool do_commit_{ false }; // 'true' if we need to commit key on the next 'write'
+    bool pending_values_{ false }; // 'true' if there is a key that should be written
   };
 
    std::deque<column> columns_; // pointers remain valid
@@ -1740,7 +1761,7 @@ columnstore_writer::column_t writer::push_column() {
   auto& column = columns_.back();
 
   return std::make_pair(id, [&column, this] (doc_id_t doc) -> column_output& {
-    column.write(doc, *data_out_, comp_);
+    column.prepare(doc, *data_out_, comp_);
     return column;
   });
 }
@@ -1765,21 +1786,14 @@ void writer::flush() {
   // flush all remain data including possible empty columns among filled columns
   for (auto& column : columns_) {
     // commit and flush remain blocks
-    if (column.pending()) {
-      column.commit();
-    }
-    column.flush(*data_out_, comp_);
-
-    // finish column blocks index
-    column.blocks_index_writer.finish();
-    column.blocks_index.stream.flush();
+    column.finish(*data_out_, comp_);
   }
 
   const auto block_index_ptr = data_out_->file_pointer(); // where blocks index start
   data_out_->write_vlong(columns_.size()); // number of columns
   for (auto& column : columns_) {
-    data_out_->write_vlong(column.max); // max key
-    column.blocks_index.file >> *data_out_; // column blocks index
+    data_out_->write_vlong(column.max()); // max key
+    column.write(*data_out_); // column blocks index
   }
 
   data_out_->write_long(block_index_ptr);
