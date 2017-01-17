@@ -196,11 +196,29 @@ int test_base::initialize( int argc, char* argv[] ) {
   return RUN_ALL_TESTS();
 }
 
-/* -------------------------------------------------------------------
-* main
-* ------------------------------------------------------------------*/
+void stack_trace_handler(int sig) {
+  // reset to default handler
+  signal(sig, SIG_DFL);
+  // print stack trace
+  iresearch::logger::stack_trace();
+  // re-signal to default handler (so we still get core dump if needed...)
+  raise(sig);
+}
+
+void install_stack_trace_handler() {
+  signal(SIGILL, stack_trace_handler);
+  signal(SIGSEGV, stack_trace_handler);
+  signal(SIGBUS, stack_trace_handler);
+  signal(SIGABRT, stack_trace_handler);
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                              main
+// -----------------------------------------------------------------------------
 
 int main( int argc, char* argv[] ) {
+  install_stack_trace_handler();
+
   const int code = test_base::initialize( argc, argv );
 
   std::cout << "Path to test result directory: " 
