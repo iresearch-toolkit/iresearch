@@ -261,6 +261,20 @@ find_package(Snowball
   REQUIRED
 )
 
+# find Unwind
+find_package(Unwind
+  #OPTIONAL
+)
+
+if (Unwind_FOUND)
+  add_definitions(-DUSE_LIBUNWIND)
+else()
+  set(Unwind_INCLUDE_DIR "")
+  set(Unwind_SHARED_LIBS "")
+  set(Unwind_STATIC_LIBS "")
+  set(Unwind_SHARED_LIB_RESOURCES "")
+endif()
+
 # set external dirs
 set(EXTERNAL_INCLUDE_DIRS 
   ${CMAKE_SOURCE_DIR}/external

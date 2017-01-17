@@ -248,3 +248,14 @@ foreach(ELEMENT ${ICU_SHARED_LIB_RESOURCES})
     COMMAND cp -lf ${ELEMENT} $<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared> || ${CMAKE_COMMAND} -E copy ${ELEMENT} $<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared>
   )
 endforeach()
+
+################################################################################
+### @brief copy Unwind shared dependencies
+################################################################################
+foreach(ELEMENT ${Unwind_SHARED_LIB_RESOURCES})
+  add_custom_command(
+    TARGET ${IResearchTests_TARGET_NAME}-shared POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E echo "copying library resource:" "${ELEMENT}" " -> " "$<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared>"
+    COMMAND cp -lf ${ELEMENT} $<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared> || ${CMAKE_COMMAND} -E copy ${ELEMENT} $<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared>
+  )
+endforeach()

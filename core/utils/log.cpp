@@ -23,10 +23,15 @@
   #include <thread>
 
   #include <cxxabi.h> // for abi::__cxa_demangle(...)
+  #include <dlfcn.h> // for dladdr(...)
   #include <execinfo.h>
   #include <string.h> // for strlen(...)
   #include <unistd.h> // for STDIN_FILENO/STDOUT_FILENO/STDERR_FILENO
   #include <sys/wait.h> // for waitpid(...)
+#endif
+
+#if defined(USE_LIBUNWIND)
+  #include <libunwind.h>
 #endif
 
 #include "shared.hpp"
@@ -172,6 +177,15 @@ class logger_ctx: public iresearch::singleton<logger_ctx> {
     return 0 < waitpid(pid, &status, 0) && !WEXITSTATUS(status);
   }
 
+  std::unique_ptr<char> proc_name_demangle(const char* symbol) {
+    int status;
+
+    // abi::__cxa_demangle(...) expects 'output_buffer' to be malloc()ed and does realloc()/free() internally
+    std::unique_ptr<char> buf(abi::__cxa_demangle(symbol, nullptr, nullptr, &status));
+
+    return buf && !status ? std::move(buf) : nullptr;
+  }
+
   bool stack_trace_gdb() {
     auto pid = fork();
 
@@ -284,14 +298,10 @@ class logger_ctx: public iresearch::singleton<logger_ctx> {
               stream.put('(');
               *fn_end = '\0';
 
-              int status;
-              size_t fn_len = 0;
+              auto fn_name = proc_name_demangle(fn_start);
 
-              // abi::__cxa_demangle(...) expects 'output_buffer' to be malloc()ed and does realloc()/free() internally
-              std::shared_ptr<char> fn_buf(abi::__cxa_demangle(fn_start, nullptr, &fn_len, &status));
-
-              if(fn_buf && !status) {
-                stream.write(fn_buf.get(), fn_len);
+              if(fn_name) {
+                stream << fn_name.get();
               } else {
                 stream.write(fn_start, fn_end - fn_start);
               }
@@ -329,6 +339,87 @@ class logger_ctx: public iresearch::singleton<logger_ctx> {
   }
 #endif
 
+#if defined(USE_LIBUNWIND)
+  bool file_line_addr2line(const char* obj, unw_word_t addr) {
+    size_t addr_size = sizeof(unw_word_t)*3 + 2 + 1; // aproximately 3 chars per byte +2 for 0x, +1 for \0
+    char addr_buf[addr_size];
+
+    snprintf(addr_buf, addr_size, "0x%lx", addr);
+
+    return file_line_addr2line(obj, addr_buf);
+  }
+
+  bool stack_trace_libunwind() {
+    unw_context_t ctx;
+    unw_cursor_t cursor;
+
+    if (0 != unw_getcontext(&ctx) || 0 != unw_init_local(&cursor, &ctx)) {
+      return false;
+    }
+
+    // skip backtrace(...) + stack_trace_libunwind(...)
+    if (unw_step(&cursor) <= 0) {
+      return true; // nothing to log
+    }
+
+    auto& stream = iresearch::logger::stream();
+    unw_word_t instruction_pointer;
+
+    while (unw_step(&cursor) > 0) {
+      if (0 != unw_get_reg(&cursor, UNW_REG_IP, &instruction_pointer)) {
+        stream << "<unknown>" << std::endl;
+        continue; // no instruction pointer available
+      }
+
+      Dl_info dl_info;
+
+      // resolve function/flie/line via dladdr() + addr2line
+      if (0 != dladdr((void*)instruction_pointer, &dl_info) || !dl_info.dli_fname) {
+        stream << (dl_info.dli_fname ? dl_info.dli_fname : "\?\?") << "(";
+
+        if (dl_info.dli_sname) {
+          auto proc_name = proc_name_demangle(dl_info.dli_sname);
+
+          stream << (proc_name ? proc_name.get() : dl_info.dli_sname);
+        }
+
+        stream << "+0x" << std::hex << instruction_pointer - unw_word_t(dl_info.dli_saddr) << std::dec << ")";
+        stream << "[0x" << std::hex << instruction_pointer << std::dec << "] ";
+
+        // there appears to be a magic number base address which should not be subtracted from the instruction_pointer
+        static const void* static_fbase = (void*)0x400000;
+        auto addr = instruction_pointer - (static_fbase == dl_info.dli_fbase ? unw_word_t(dl_info.dli_saddr) : unw_word_t(dl_info.dli_fbase));
+
+        if (!file_line_addr2line(dl_info.dli_fname, addr)) {
+          stream << std::endl;
+        }
+
+        continue;
+      }
+
+      size_t proc_size = 1024; // arbitrary size
+      char proc_buf[proc_size];
+      unw_word_t offset;
+
+      if (0 != unw_get_proc_name(&cursor, proc_buf, proc_size, &offset)) {
+        stream << "\?\?[0x" << std::hex << instruction_pointer << std::dec << "]" << std::endl;
+        continue; // no function info available
+      }
+
+      auto proc_name = proc_name_demangle(proc_buf);
+
+      stream << "\?\?(" << (proc_name ? proc_name.get() : proc_buf) << "+0x" << std::hex << offset << std::dec << ")";
+      stream << "[0x" << std::hex << instruction_pointer << std::dec << "]" << std::endl;
+    }
+
+    return true;
+  }
+#else
+  bool stack_trace_libunwind() {
+    return false;
+  }
+#endif
+
 NS_END
 
 NS_ROOT
@@ -361,7 +452,7 @@ void stack_trace() {
 
     stack_trace_win32(nullptr);
   #else
-    if (!stack_trace_gdb()) {
+    if (!stack_trace_libunwind() && !stack_trace_gdb()) {
       stack_trace_posix();
     }
   #endif

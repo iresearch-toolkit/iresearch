@@ -226,13 +226,13 @@ if (NOT MSVC)
 endif()
 
 include_directories(
-  .
   ${IResearch_INCLUDE_DIR}
   ${EXTERNAL_INCLUDE_DIRS}
   ${Boost_INCLUDE_DIRS}
   ${ICU_INCLUDE_DIR}
   ${Lz4_INCLUDE_DIR}
   ${Snowball_INCLUDE_DIR}
+  ${Unwind_INCLUDE_DIR}
 )
 
 include_directories(
@@ -552,6 +552,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${Boost_SHARED_sharedRT_LIBRARIES}
   ${Lz4_SHARED_LIB}
   ${Snowball_SHARED_LIB}
+  ${Unwind_SHARED_LIBS}
   ${DL_LIBRARY}
   ${MSVC_ONLY_LIBRARIES}
 )
@@ -560,6 +561,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
   ${GCOV_LIBRARY}
   ${Lz4_STATIC_LIB}
   ${Snowball_STATIC_LIB}
+  ${Unwind_STATIC_LIBS}
   ${DL_LIBRARY}
   ${MSVC_ONLY_LIBRARIES}
 )
@@ -571,6 +573,7 @@ if(MSVC)
     ${Boost_SHARED_sharedRT_LIBRARIES}
     ${Lz4_SHARED_LIB}
     ${Snowball_SHARED_LIB}
+    ${Unwind_SHARED_LIBS}
     ${DL_LIBRARY}
     ${MSVC_ONLY_LIBRARIES}
   )
@@ -579,6 +582,7 @@ if(MSVC)
     ${GCOV_LIBRARY}
     ${Lz4_STATIC_LIB}
     ${Snowball_STATIC_LIB}
+    ${Unwind_STATIC_LIBS}
     ${DL_LIBRARY}
     ${MSVC_ONLY_LIBRARIES}
   )
@@ -595,6 +599,7 @@ if (MSVC)
     ${ICU_STATIC_LIBS}
     "${Lz4_STATIC_LIB}"
     "${Snowball_STATIC_LIB}"
+    ${Unwind_STATIC_LIBS}
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
@@ -620,6 +625,7 @@ if (MSVC)
     ${ICU_STATIC_LIBS}
     "${Lz4_STATIC_LIB}"
     "${Snowball_STATIC_LIB}"
+    ${Unwind_STATIC_LIBS}
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static-scrt>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static-scrt>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static-scrt>"
@@ -646,6 +652,7 @@ else()
     ${ICU_STATIC_LIBS}
     ${Lz4_STATIC_LIB}
     ${Snowball_STATIC_LIB}
+    ${Unwind_STATIC_LIBS}
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"

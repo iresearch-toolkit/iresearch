@@ -139,7 +139,7 @@ BOOST_ROOT=<path-to>/boost_1_57_0
 make
 make install
 ```
-    
+
 #### install (win32)
 
 > If compiling iResearch with /MT add add_definitions("/MTd") to the end of
@@ -183,9 +183,7 @@ make
 ```bash
 ICU_ROOT=<path-to>/ICU_<version>
 ```
-
 or
-
 ```bash
 ICU_ROOT_SUFFIX is set (e.g. ICU_ROOT_SUFFIX=x86_64-linux-gnu for Ubuntu)
 ```
@@ -239,6 +237,30 @@ or
 SNOWBALL_ROOT_SUFFIX is set (e.g. SNOWBALL_ROOT_SUFFIX=x86_64-linux-gnu for Ubuntu)
 ```
 
+### [Unwind](http://www.nongnu.org/libunwind/) <optional>
+
+#### install (*nix)
+via the distributions' package manager: libunwind
+or
+build from source via:
+```bash
+configure
+make
+make install
+```
+
+#### install (win32)
+not yet available for win32
+
+#### set environment
+```bash
+UNWIND_ROOT=<path-to-unwind>
+```
+or
+```bash
+UNWIND_ROOT_SUFFIX is set (e.g. UNWIND_ROOT_SUFFIX=x86_64-linux-gnu for Ubuntu)
+```
+
 ### [Gooogle test](https://code.google.com/p/googletest)
 
 #### install (*nix)
@@ -247,7 +269,7 @@ mkdir build && cd build
 cmake ..
 make
 ```
-    
+
 #### install (win32)
 ```bash
 mkdir build && cd build
@@ -255,10 +277,10 @@ cmake -g "Visual studio 12" -Ax64 -Dgtest_force_shared_crt=ON ..
 cmake --build .
 mv Debug ../lib
 ```
-    
+
 #### set environment
 ```bash
-GTEST_ROOT=/var/lib/jenkins/tools/gtest-1.7.0/
+GTEST_ROOT=<path-to-gtest>
 ```
 
 ### Stopword list (for use with analysis::text_analyzer)
@@ -278,7 +300,7 @@ GTEST_ROOT=/var/lib/jenkins/tools/gtest-1.7.0/
 ```bash
 IRESEARCH_TEXT_STOPWORD_PATH=<path-to-stopword-lists>
 ```
-  
+
 > If the variable IRESEARCH_TEXT_STOPWORD_PATH is left unset then locale specific
 > stopword-list subdirectories are deemed to be located in the current working directory
 
@@ -382,10 +404,12 @@ the first whitespace is ignored), in the directory corresponding to its language
 ## Query filter building blocks
 | Filter    |       Description    |          
 |-----------|----------------------|
+|iresearch::by_granular_range|for faster filtering of numeric values within a given range, with the possibility of specifying open/closed ranges
 |iresearch::by_phrase|for word-position-sensitive filtering of values, with the possibility of skipping selected positions
-|iresearch::by_range|for filtering of values within a given range, with the possibility of specifying open/closed ranges
-|iresearch::by_term|for filtering of exact values
 |iresearch::by_prefix|for filtering of exact value prefixes
+|iresearch::by_range|for filtering of values within a given range, with the possibility of specifying open/closed ranges
+|iresearch::by_same_position|for term-insertion-order sensitive filtering of exact values
+|iresearch::by_term|for filtering of exact values
 |iresearch::And|boolean conjunction of multiple filters, influencing document ranks/scores as appropriate
 |iresearch::Or|boolean disjunction of multiple filters, influencing document ranks/scores as appropriate (including "minimum match" functionality)
 |iresearch::Not|boolean negation of multiple filters
