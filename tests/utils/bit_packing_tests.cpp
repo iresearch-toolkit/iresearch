@@ -291,8 +291,8 @@ TEST(bit_packing_tests, iterator32) {
   packed::iterator32 begin(compressed.data(), bits);
   packed::iterator32 end(compressed.data(), bits, src.size());
 
-  auto found = std::lower_bound(begin, end, 446);
-  ASSERT_NE(end, found);
-  std::cerr << *found << std::endl;
-  std::cerr << std::distance(begin, found) << std::endl;
+  for (auto value : src) {
+    const auto found = std::lower_bound(begin, end, value);
+    ASSERT_NE(end, found);
+  }
 }
