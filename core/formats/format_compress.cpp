@@ -56,9 +56,8 @@ void compressing_index_writer::prepare(index_output& out) {
 }
 
 void compressing_index_writer::write_block(
-    size_t full_blocks, 
     const uint64_t* begin,
-    const uint64_t* end,
+    size_t size,
     uint64_t median,
     uint32_t bits) {
 
@@ -72,24 +71,15 @@ void compressing_index_writer::write_block(
   }
 
   // write packed blocks 
-  if (full_blocks) {
-    std::memset(packed_.data(), 0, sizeof(uint64_t)*packed_.size());
-    packed_.resize(full_blocks);
+  std::memset(packed_.data(), 0, sizeof(uint64_t)*packed_.size());
+  packed_.resize(size);
 
-    packed::pack(begin, begin + full_blocks, packed_.data(), bits);
+  packed::pack(begin, begin + size, packed_.data(), bits);
 
-    out_->write_bytes(
-      reinterpret_cast<const byte_type*>(packed_.data()),
-      sizeof(uint64_t)*packed::blocks_required_64(full_blocks, bits)
-    );
-
-    begin += full_blocks;
-  }
-
-  // write tail
-  for (; begin < end; ++begin) {
-    out_->write_vlong(*begin);
-  }
+  out_->write_bytes(
+    reinterpret_cast<const byte_type*>(packed_.data()),
+    sizeof(uint64_t)*packed::blocks_required_64(size, bits)
+  );
 }
 
 void compressing_index_writer::flush() {
@@ -102,7 +92,7 @@ void compressing_index_writer::flush() {
   // since there are no cached elements yet, such
   // way of getting number of elements will prevent
   // us from the wrong behavior
-   
+
   // total number of elements in block
   const size_t size = std::distance(offsets_, offset_);
   if (!size) {
@@ -114,12 +104,9 @@ void compressing_index_writer::flush() {
   size_t avg_chunk_size = 0; // average size of element
   if (size > 1) {
     const auto den = size - 1; // -1 since the 1st offset is always 0
-    avg_chunk_docs = std::lround(static_cast<float_t>(*(key_-1)) / den);
-    avg_chunk_size = *(offset_ - 1) / den;
+    avg_chunk_docs = std::lround(static_cast<float_t>(key_[-1]) / den);
+    avg_chunk_size = offset_[-1] / den;
   }
- 
-  // total number of elements we can be pack using bit packing
-  const size_t full_blocks = size - (size % packed::BLOCK_SIZE_64);
 
   // convert doc id's and offsets to deltas
   // compute maximum deltas
@@ -130,7 +117,7 @@ void compressing_index_writer::flush() {
   const auto first_key = keys_[0];
   bool offsets_equal = true;
   const auto first_offset = offsets_[0];
-  for (size_t i = 0; i < full_blocks; ++i) {
+  for (size_t i = 0; i < size; ++i) {
     // convert block relative doc_id's to deltas between average and actual doc id
     auto& key = keys_[i];
     key = zig_zag_encode64(key - avg_chunk_docs*i);
@@ -144,18 +131,10 @@ void compressing_index_writer::flush() {
     offsets_equal &= (first_offset == offset);
   }
 
-  // convert tail doc id's and offsets to deltas
-  for (size_t i = full_blocks; i < size; ++i) {
-    // convert block relative doc_id's to deltas between average and actual doc_id
-    auto& key = keys_[i];
-    key = zig_zag_encode64(key - avg_chunk_docs*i);
-    keys_equal &= (first_key == key);
-    
-    // convert block relative offsets to deltas between average and actual offset
-    auto& offset = offsets_[i];
-    offset = zig_zag_encode64(offset - avg_chunk_size*i);
-    offsets_equal &= (first_offset == offset);
-  }
+  // adjust number of elements to pack to the nearest value
+  // that is multiple to the block size
+  const auto block_size = math::ceil64(size, packed::BLOCK_SIZE_64);
+  assert(block_size >= size);
 
   // write total number of elements
   out_->write_vlong(size);
@@ -163,9 +142,8 @@ void compressing_index_writer::flush() {
   // write document bases 
   out_->write_vlong(block_base_); 
   write_block(
-    full_blocks,
     keys_.get(),
-    key_,
+    block_size,
     avg_chunk_docs,
     keys_equal ? ALL_EQUAL : packed::bits_required_64(max_doc_delta)
   );
@@ -173,9 +151,8 @@ void compressing_index_writer::flush() {
   // write start pointers
   out_->write_vlong(block_offset_);
   write_block(
-    full_blocks,
     offsets_,
-    offset_,
+    block_size,
     avg_chunk_size,
     offsets_equal ? ALL_EQUAL : packed::bits_required_64(max_offset)
   );

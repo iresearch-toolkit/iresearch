@@ -50,9 +50,8 @@ class compressing_index_writer: util::noncopyable {
   void flush();
 
   void write_block(
-    size_t full_chunks,
     const uint64_t* start,
-    const uint64_t* end,
+    size_t size,
     uint64_t median,
     uint32_t bits
   ); 
@@ -179,7 +178,8 @@ class compressed_index : util::noncopyable {
     std::vector<uint64_t> unpacked;
     std::vector<block> blocks;
     for (size_t size = in.read_vlong(); size; size = in.read_vlong()) {
-      const size_t full_chunks = size - (size % packed::BLOCK_SIZE_64);
+      const size_t block_size = math::ceil64(size, packed::BLOCK_SIZE_64);
+      assert(block_size >= size);
 
       // insert new block
       blocks.emplace_back(size, in.read_vlong());
@@ -189,7 +189,7 @@ class compressed_index : util::noncopyable {
       const auto doc_base = block.key_base;
       auto it = block.begin;
       read_block(
-        in, full_chunks, size, packed, unpacked,
+        in, size, block_size, packed, unpacked,
         [&it, doc_base] (uint64_t v) {
           it->first = doc_base + v;
           ++it;
@@ -199,7 +199,7 @@ class compressed_index : util::noncopyable {
       const uint64_t start = in.read_vlong();
       it = block.begin;
       read_block(
-        in, full_chunks, size, packed, unpacked,
+        in, size, block_size, packed, unpacked,
         [&it, &visitor, start] (uint64_t v) {
           visitor(it->second, start + v);
           ++it;
@@ -251,8 +251,8 @@ class compressed_index : util::noncopyable {
   template<typename Visitor>
   static void read_block(
       index_input& in,
-      size_t full_chunks,
-      size_t num_chunks,
+      size_t size,
+      size_t block_size,
       std::vector<uint64_t>& packed,
       std::vector<uint64_t>& unpacked,
       const Visitor& visitor) {
@@ -264,43 +264,36 @@ class compressed_index : util::noncopyable {
     }
 
     if (compressing_index_writer::ALL_EQUAL == bits) { // RLE
-      unpacked.resize(num_chunks);
+      unpacked.resize(size);
       const auto value = read_zvlong(in);
-      for (size_t i = 0; i < num_chunks; ++i) {
+      for (size_t i = 0; i < size; ++i) {
         visitor(value + i*median);
       }
       return;
     }
 
-    // read full chunks 
-    if (full_chunks) {
-      unpacked.resize(full_chunks);
+    // read block
+    unpacked.resize(block_size);
 
-      packed.resize(packed::blocks_required_64(full_chunks, bits));
+    packed.resize(packed::blocks_required_64(block_size, bits));
 
-      in.read_bytes(
-        reinterpret_cast<byte_type*>(packed.data()),
-        sizeof(uint64_t)*packed.size()
-      );
+    in.read_bytes(
+      reinterpret_cast<byte_type*>(packed.data()),
+      sizeof(uint64_t)*packed.size()
+    );
 
-      packed::unpack(
-        unpacked.data(),
-        unpacked.data() + unpacked.size(),
-        packed.data(),
-        bits
-      );
+    packed::unpack(
+      unpacked.data(),
+      unpacked.data() + unpacked.size(),
+      packed.data(),
+      bits
+    );
 
-      for (size_t i = 0; i < full_chunks; ++i) {
-        visitor(zig_zag_decode64(unpacked[i]) + i * median);
-      }
-    }
-
-    // read tail 
-    for (; full_chunks < num_chunks; ++full_chunks) {
-      visitor(read_zvlong(in) + full_chunks * median); 
+    for (size_t i = 0; i < size; ++i) {
+      visitor(zig_zag_decode64(unpacked[i]) + i * median);
     }
   }
-  
+
   iterator lower_bound_entry(doc_id_t key) const {
     if (key > max_) {
       return end();

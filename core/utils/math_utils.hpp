@@ -27,10 +27,15 @@
 NS_ROOT
 NS_BEGIN( math )
 
+
+// rounds the specified 'value' to the next greater
+// value that is multiple to the specified 'step'
 inline uint64_t ceil64(uint64_t value, uint64_t step) {
   return uint64_t(std::ceil(double_t(value)/step))*step;
 }
 
+// rounds the specified 'value' to the next greater
+// value that is multiple to the specified 'step'
 inline uint32_t ceil32(uint32_t value, uint32_t step) {
   return uint32_t(std::ceil(float_t(value)/step))*step;
 }
