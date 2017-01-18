@@ -248,3 +248,51 @@ TEST(bit_packing_tests, pack_unpack_64) {
     }
   }
 }
+
+TEST(bit_packing_tests, iterator32) {
+  std::vector<uint32_t> src{
+    14410, 21766, 15994, 29493, 20819,
+    31650, 28103, 27900, 24340, 19822,
+    31073, 22825, 22494,  6121, 20200,
+    28354, 25256,   220,     2,   393,
+      805, 18232,   956, 21480, 20565,
+    20500,  4324, 16372,  1064,  9878,
+    13639, 18301, 31582, 18341, 30711,
+    25801, 16556, 23070,  7921, 20539,
+    23571, 27043,  1344, 21307, 25545,
+    27844,  4796, 31011,  2238, 21070,
+    30090, 16475,  4683, 16839, 14253,
+    17744,  5467, 19431, 17022, 24011,
+    21970,    24, 21009, 20131,  4494,
+     5110,  2991,  8127, 21700, 20629,
+    31195, 20423, 24248, 15917, 31151,
+     8090, 24170, 11403, 30484, 11747,
+    23682,  7179, 21741, 28313, 22102,
+    26759,  4385, 19645, 17771,  5977,
+    22946,  2705, 15188, 26374, 25695,
+    25673,  4866,  8263,  1860, 24033,
+    12528, 14297, 11673, 20979,   446,
+    31576, 18451, 13478, 11380,  6490,
+     2785,  3307,  1912,   382, 24139,
+    11483, 16582, 29873, 31287, 18465,
+    24084, 29421, 18341, 21654,  3290,
+    19579
+  };
+
+  src.resize(packed::items_required(src.size()));
+  std::sort(src.begin(), src.end());
+
+  const uint32_t max = *std::max_element(src.begin(), src.end());
+  const uint32_t bits = packed::bits_required_32(max);
+
+  std::vector<uint32_t> compressed(packed::blocks_required_32(src.size(), bits), 0);
+  packed::pack(src.data(), src.data() + src.size(), compressed.data(), bits);
+
+  packed::iterator32 begin(compressed.data(), bits);
+  packed::iterator32 end(compressed.data(), bits, src.size());
+
+  auto found = std::lower_bound(begin, end, 446);
+  ASSERT_NE(end, found);
+  std::cerr << *found << std::endl;
+  std::cerr << std::distance(begin, found) << std::endl;
+}

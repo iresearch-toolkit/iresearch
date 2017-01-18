@@ -143,10 +143,13 @@
 
 #define UNUSED(par) (void)(par)
 
-#define NS_BEGIN( ns ) namespace ns {
+#define NS_BEGIN(ns) namespace ns {
 #define NS_LOCAL namespace {
-#define NS_ROOT NS_BEGIN( iresearch )
+#define NS_ROOT NS_BEGIN(iresearch)
 #define NS_END }
+
+NS_ROOT NS_END // ROOT namespace predeclaration
+namespace irs = ::iresearch;
 
 #define ASSERT( cond, mess ) assert( (cond) && (mess) )
 

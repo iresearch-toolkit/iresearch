@@ -17,6 +17,7 @@
 
 #include <cmath>
 #include <limits>
+#include <iterator>
 
 NS_ROOT
 NS_BEGIN( packed )
@@ -111,6 +112,107 @@ IRESEARCH_API void unpack(
   uint64_t* last, 
   const uint64_t* in, 
   const uint32_t bit) NOEXCEPT;
+
+template<typename T>
+class iterator : public std::iterator<std::random_access_iterator_tag, T> {
+ public:
+  typedef typename std::iterator_traits<iterator>::value_type value_type;
+  typedef typename std::iterator_traits<iterator>::difference_type difference_type;
+  typedef const value_type* const_pointer;
+
+  iterator(const_pointer packed, uint32_t bits, size_t i = 0)
+    : packed_(packed), i_(i), bits_(bits) {
+    assert(packed_);
+    assert(bits_ > 0 && bits <= sizeof(value_type)*8);
+  }
+
+  iterator(const iterator&) = default;
+  iterator& operator=(const iterator&) = default;
+
+  iterator& operator++() {
+    ++i_;
+    return *this; 
+  }
+
+  iterator operator++(int) { 
+    const auto tmp = *this;
+    ++*this;
+    return tmp;
+  }
+
+  iterator& operator+=(difference_type v) {
+    i_ += v;
+    return *this;
+  }
+
+  iterator operator+(difference_type v) const {
+    return iterator(packed_, bits_, i_ + v);
+  }
+
+  iterator& operator--() {
+    --i_;
+    return *this; 
+  }
+  
+  iterator operator--(int) {
+    const auto tmp = *this;
+    --*this;
+    return tmp;
+  }
+  
+  iterator& operator-=(difference_type v) {
+    i_ -= v;
+    return *this;
+  }
+
+  iterator operator-(difference_type v) const {
+    return iterator(packed_, bits_, i_ - v);
+  }
+  
+  difference_type operator-(const iterator& rhs) const {
+    assert(packed_ == rhs.packed_); // compatibility
+    return i_ - rhs.i_;
+  }
+
+  value_type operator*() const {
+    return at(packed_, i_, bits_);
+  }
+
+  bool operator==(const iterator& rhs) const {
+    assert(packed_ == rhs.packed_); // compatibility
+    return i_ == rhs.i_;
+  }
+
+  bool operator!=(const iterator& rhs) const {
+    return !(*this == rhs);
+  }
+
+  bool operator<(const iterator& rhs) const {
+    assert(packed_ == rhs.packed_); // compatibility
+    return i_ < rhs.i_;
+  }
+
+  bool operator>=(const iterator& rhs) const {
+    return !(*this < rhs);
+  }
+  
+  bool operator>(const iterator& rhs) const {
+    assert(packed_ == rhs.packed_); // compatibility
+    return i_ > rhs.i_;
+  }
+  
+  bool operator<=(const iterator& rhs) const {
+    return !(*this > rhs);
+  }
+
+ private:
+  const_pointer packed_;
+  size_t i_;
+  uint32_t bits_;
+}; // iterator
+
+typedef iterator<uint32_t> iterator32;
+typedef iterator<uint64_t> iterator64;
 
 NS_END // packing
 NS_END // root

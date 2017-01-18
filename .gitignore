@@ -46,5 +46,8 @@ tags
 *.sdf
 *.suo
 
+# Qt Creator specific
+*.user
+
 # Builds
 /build/

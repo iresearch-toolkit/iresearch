@@ -26,6 +26,14 @@
 NS_ROOT
 NS_BEGIN( math )
 
+inline uint64_t ceil64(uint64_t value, uint64_t step) {
+  return uint64_t(std::ceil(double_t(value)/step))*step;
+}
+
+inline uint32_t ceil32(uint32_t value, uint32_t step) {
+  return uint32_t(std::ceilf(float_t(value)/step))*step;
+}
+
 IRESEARCH_API uint32_t log2_64( uint64_t value );
 
 IRESEARCH_API uint32_t log2_32( uint32_t value );
