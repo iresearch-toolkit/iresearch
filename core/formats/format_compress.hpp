@@ -38,9 +38,9 @@ class compressing_index_writer: util::noncopyable {
   static const int32_t FORMAT_MAX = FORMAT_MIN;
   static const uint32_t ALL_EQUAL = 0;
 
-  explicit compressing_index_writer(size_t block_size);
+  compressing_index_writer(size_t block_size);
 
-  void prepare(index_output& out);
+  void prepare(index_output& out, uint64_t* packed);
   void write(doc_id_t key, uint64_t value);
   void finish();
   bool empty() const { return 0 == count_; }
@@ -57,7 +57,7 @@ class compressing_index_writer: util::noncopyable {
   ); 
 
   size_t count_{}; // number of written entries
-  std::vector<uint64_t> packed_; // proxy buffer for bit packing
+  uint64_t* packed_; // temporary buffer for bit packing
   std::unique_ptr<uint64_t[]> keys_; // buffer for storing unpacked data & pointer where unpacked keys begins
   doc_id_t* offsets_; // where unpacked offsets begins
   doc_id_t* key_; // current key 

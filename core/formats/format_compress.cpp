@@ -48,8 +48,10 @@ compressing_index_writer::compressing_index_writer(size_t block_size)
     offsets_(keys_.get() + block_size) {
 }
 
-void compressing_index_writer::prepare(index_output& out) {
+void compressing_index_writer::prepare(index_output& out, uint64_t* packed) {
   out_ = &out;
+  packed_ = packed;
+  assert(packed_);
   key_ = offsets_; // will trigger 'reset' on write()
   offset_ = offsets_; // will prevent flushing of emtpy block
   count_ = 0;
@@ -70,14 +72,12 @@ void compressing_index_writer::write_block(
     return;
   }
 
-  // write packed blocks 
-  std::memset(packed_.data(), 0, sizeof(uint64_t)*packed_.size());
-  packed_.resize(size);
-
-  packed::pack(begin, begin + size, packed_.data(), bits);
+  // clear & pack
+  std::memset(packed_, 0, sizeof(uint64_t)*size);
+  packed::pack(begin, begin + size, packed_, bits);
 
   out_->write_bytes(
-    reinterpret_cast<const byte_type*>(packed_.data()),
+    reinterpret_cast<const byte_type*>(packed_),
     sizeof(uint64_t)*packed::blocks_required_64(size, bits)
   );
 }
@@ -139,8 +139,8 @@ void compressing_index_writer::flush() {
   // write total number of elements
   out_->write_vlong(size);
 
-  // write document bases 
-  out_->write_vlong(block_base_); 
+  // write document bases
+  out_->write_vlong(block_base_);
   write_block(
     keys_.get(),
     block_size,

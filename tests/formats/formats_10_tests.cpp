@@ -319,14 +319,15 @@ class format_10_test_case : public tests::format_test_case_base {
     const ir::doc_id_t blocks_count = 5000;
     const ir::doc_id_t block_docs = 128;
     const ir::doc_id_t last_block_docs_count = 73;
-      
+     
+    irs::doc_id_t tmp[1024];
     ir::compressing_index_writer writer(1024);
 
     // writer index
     {
       auto out = dir().create("_0.idx");
       ASSERT_FALSE(!out);
-      writer.prepare(*out);
+      writer.prepare(*out, tmp);
 
       ir::doc_id_t i = 0;
       ir::doc_id_t doc = 0;
