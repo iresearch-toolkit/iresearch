@@ -93,5 +93,70 @@ TEST(bit_utils_test, set_check_bit) {
   set_bit<7>(!check_bit<7>(b), b);
   set_bit<7>(!check_bit<7>(b), b);
   EXPECT_EQ(b_orig, b);
+}
 
+TEST(bit_utils_test, test_unset_bit) {
+  // test compile time
+  {
+    iresearch::byte_type b = 0x6c;
+
+    EXPECT_FALSE(iresearch::check_bit<0>(b));
+    EXPECT_FALSE(iresearch::check_bit<1>(b));
+    EXPECT_TRUE(iresearch::check_bit<2>(b));
+    EXPECT_TRUE(iresearch::check_bit<3>(b));
+    EXPECT_FALSE(iresearch::check_bit<4>(b));
+    EXPECT_TRUE(iresearch::check_bit<5>(b));
+    EXPECT_TRUE(iresearch::check_bit<6>(b));
+    EXPECT_FALSE(iresearch::check_bit<7>(b));
+
+    iresearch::unset_bit<0>(true, b);
+    iresearch::unset_bit<1>(false, b);
+    iresearch::unset_bit<2>(true, b);
+    iresearch::unset_bit<3>(false, b);
+    iresearch::unset_bit<4>(true, b);
+    iresearch::unset_bit<5>(false, b);
+    iresearch::unset_bit<6>(true, b);
+    iresearch::unset_bit<7>(false, b);
+
+    EXPECT_FALSE(iresearch::check_bit<0>(b));
+    EXPECT_FALSE(iresearch::check_bit<1>(b));
+    EXPECT_FALSE(iresearch::check_bit<2>(b));
+    EXPECT_TRUE(iresearch::check_bit<3>(b));
+    EXPECT_FALSE(iresearch::check_bit<4>(b));
+    EXPECT_TRUE(iresearch::check_bit<5>(b));
+    EXPECT_FALSE(iresearch::check_bit<6>(b));
+    EXPECT_FALSE(iresearch::check_bit<7>(b));
+  }
+
+  // test runtime
+  {
+    iresearch::byte_type b = 0x6c;
+
+    EXPECT_FALSE(iresearch::check_bit(b, 0));
+    EXPECT_FALSE(iresearch::check_bit(b, 1));
+    EXPECT_TRUE(iresearch::check_bit(b, 2));
+    EXPECT_TRUE(iresearch::check_bit(b, 3));
+    EXPECT_FALSE(iresearch::check_bit(b, 4));
+    EXPECT_TRUE(iresearch::check_bit(b, 5));
+    EXPECT_TRUE(iresearch::check_bit(b, 6));
+    EXPECT_FALSE(iresearch::check_bit(b, 7));
+
+    iresearch::unset_bit(b, 0, true);
+    iresearch::unset_bit(b, 1, false);
+    iresearch::unset_bit(b, 2, true);
+    iresearch::unset_bit(b, 3, false);
+    iresearch::unset_bit(b, 4, true);
+    iresearch::unset_bit(b, 5, false);
+    iresearch::unset_bit(b, 6, true);
+    iresearch::unset_bit(b, 7, false);
+
+    EXPECT_FALSE(iresearch::check_bit(b, 0));
+    EXPECT_FALSE(iresearch::check_bit(b, 1));
+    EXPECT_FALSE(iresearch::check_bit(b, 2));
+    EXPECT_TRUE(iresearch::check_bit(b, 3));
+    EXPECT_FALSE(iresearch::check_bit(b, 4));
+    EXPECT_TRUE(iresearch::check_bit(b, 5));
+    EXPECT_FALSE(iresearch::check_bit(b, 6));
+    EXPECT_FALSE(iresearch::check_bit(b, 7));
+  }
 }

@@ -67,12 +67,10 @@ class features {
 
   features() = default;
 
-  explicit features(const flags& in) NOEXCEPT {
-    set_bit<0>(in.check<iresearch::frequency>(), mask_);
-    set_bit<1>(in.check<iresearch::position>(), mask_);
-    set_bit<2>(in.check<iresearch::offset>(), mask_);
-    set_bit<3>(in.check<iresearch::payload>(), mask_);
-  }
+  explicit features(const flags& in) NOEXCEPT;
+
+  features operator&(const flags& in) NOEXCEPT;
+  features& operator&=(const flags& in) NOEXCEPT;
 
   bool freq() const { return check_bit<0>(mask_); }
   bool position() const { return check_bit<1>(mask_); }

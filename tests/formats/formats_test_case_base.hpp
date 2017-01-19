@@ -1268,7 +1268,7 @@ class format_test_case_base : public index_test_base {
       
       // column==field4
       {
-        auto& stream = field4_writer(std::numeric_limits<ir::doc_id_t>::min()); // doc==0
+        auto& stream = field4_writer((std::numeric_limits<ir::doc_id_t>::min)()); // doc==0
         ir::write_string(stream, ir::string_ref("field4_doc_min")); 
       }
 
@@ -1474,7 +1474,7 @@ class format_test_case_base : public index_test_base {
 
         expected_value = "field4_doc_min";
         calls_count = 0;
-        ASSERT_TRUE(column(std::numeric_limits<ir::doc_id_t>::min(), value_reader)); // check doc==min, column==field4
+        ASSERT_TRUE(column((std::numeric_limits<ir::doc_id_t>::min)(), value_reader)); // check doc==min, column==field4
         ASSERT_EQ(1, calls_count);
       }
 
