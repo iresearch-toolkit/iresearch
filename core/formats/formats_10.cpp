@@ -951,7 +951,7 @@ void doc_iterator::prepare( const flags& field,
   // get enabled features:
   // find intersection between requested
   // and available features
-  const features enabled = features(field & req);
+  auto enabled = features_ & req;
 
   // term frequency attributes
   if (enabled.freq()) {
@@ -1842,9 +1842,13 @@ class reader final : public iresearch::columnstore_reader, util::noncopyable {
 
   typedef compressed_index<block_ref_t> blocks_index_t;
 
-  struct column {
+  struct column: public util::noncopyable {
     blocks_index_t index; // blocks index
     size_t size; // total number of documents
+    column() = default;
+    column(column&& other) NOEXCEPT
+      : index(std::move(other.index)), size(std::move(other.size)) {
+    }
   }; // column
 
   // per thread read context
@@ -2712,6 +2716,30 @@ doc_iterator::ptr postings_reader::iterator(
   );
 
   return std::move(it);
+}
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                                         features
+// ----------------------------------------------------------------------------
+
+features::features(const flags& in) NOEXCEPT {
+  set_bit<0>(in.check<iresearch::frequency>(), mask_);
+  set_bit<1>(in.check<iresearch::position>(), mask_);
+  set_bit<2>(in.check<iresearch::offset>(), mask_);
+  set_bit<3>(in.check<iresearch::payload>(), mask_);
+}
+
+features features::operator&(const flags& in) NOEXCEPT {
+  return features(*this) &= in;
+}
+
+features& features::operator&=(const flags& in) NOEXCEPT {
+  unset_bit<0>(!in.check<iresearch::frequency>(), mask_);
+  unset_bit<1>(!in.check<iresearch::position>(), mask_);
+  unset_bit<2>(!in.check<iresearch::offset>(), mask_);
+  unset_bit<3>(!in.check<iresearch::payload>(), mask_);
+
+  return *this;
 }
 
 // ----------------------------------------------------------------------------

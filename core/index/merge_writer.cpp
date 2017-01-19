@@ -680,6 +680,7 @@ bool write(
     const field_meta_map_t& field_meta_map,
     const iresearch::flags& fields_features,
     size_t docs_count) {
+  REGISTER_TIMER_DETAILED();
   assert(cs);
 
   iresearch::flush_state flush_state;
@@ -746,6 +747,7 @@ void merge_writer::add(const sub_reader& reader) {
 }
 
 bool merge_writer::flush(std::string& filename, segment_meta& meta) {
+  REGISTER_TIMER_DETAILED();
   // reader with map of old doc_id to new doc_id
   typedef std::pair<const iresearch::sub_reader*, doc_id_map_t> reader_t;
 

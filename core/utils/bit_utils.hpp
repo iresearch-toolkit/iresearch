@@ -52,6 +52,20 @@ inline void set_bit( T& value, size_t bit, bool set ) NOEXCEPT{
   set ? set_bit( value, bit ) : unset_bit( value, bit );
 }
 
+template<unsigned Bit, typename T>
+inline void unset_bit(bool unset, T& value) NOEXCEPT {
+  if (unset) {
+    unset_bit<Bit>(value);
+  }
+}
+
+template<typename T>
+inline void unset_bit(T& value, size_t bit, bool unset) NOEXCEPT {
+  if (unset) {
+    unset_bit(value, bit);
+  }
+}
+
 template< unsigned Bit, typename T >
 inline CONSTEXPR bool check_bit( T value ) NOEXCEPT{
   return ( value & ( T(1) << (Bit) ) ) != 0; 
