@@ -22,9 +22,9 @@
 #include "utils/bit_utils.hpp"
 #include "utils/numeric_utils.hpp"
 #include "utils/attributes.hpp"
+#include "utils/std.hpp"
 
 #include <unordered_set>
-#include <cassert>
 
 NS_LOCAL
 
@@ -64,7 +64,7 @@ NS_END // LOCAL
 NS_ROOT
 
 // ----------------------------------------------------------------------------
-// --SECTION--                                               read/write helpers 
+// --SECTION--                                               read/write helpers
 // ----------------------------------------------------------------------------
 
 inline void write_size( data_output& out, size_t size ) {
@@ -170,42 +170,58 @@ IRESEARCH_API void skip(
 // --SECTION--                                                  packing helpers 
 // ----------------------------------------------------------------------------
 
+// skip block of the specified size that was previously
+// written with the corresponding 'write_block' function
 IRESEARCH_API void skip_block32(
-  index_input& in, 
+  index_input& in,
   uint32_t size
 );
 
+// skip block of the specified size that was previously
+// written with the corresponding 'write_block' function
 IRESEARCH_API void skip_block64(
-  index_input& in, 
+  index_input& in,
   uint64_t size
 );
 
+// reads block of the specified size from the stream
+// that was previously encoded with the corresponding
+// 'write_block' funcion
 IRESEARCH_API void read_block(
   data_input& in, 
   uint32_t size, 
-  uint32_t* encoded, 
-  uint32_t* decoded
+  uint32_t* RESTRICT encoded,
+  uint32_t* RESTRICT decoded
 );
 
+// reads block of the specified size from the stream
+// that was previously encoded with the corresponding
+// 'write_block' funcion
 IRESEARCH_API void read_block(
   data_input& in, 
   uint32_t size, 
-  uint64_t* encoded, 
-  uint64_t* decoded
+  uint64_t* RESTRICT encoded,
+  uint64_t* RESTRICT decoded
 );
 
+// writes block of the specified size to stream
+//   all values are equal -> RL encoding,
+//   otherwise            -> bit packing
 IRESEARCH_API void write_block(
   data_output& out, 
-  const uint32_t* decoded, 
+  const uint32_t* RESTRICT decoded, 
   uint32_t size, 
-  uint32_t* encoded
+  uint32_t* RESTRICT encoded
 );
 
+// writes block of the specified size to stream
+//   all values are equal -> RL encoding,
+//   otherwise            -> bit packing
 IRESEARCH_API void write_block(
-  data_output& out, 
-  const uint64_t* decoded, 
-  uint32_t size, 
-  uint64_t* encoded
+  data_output& out,
+  const uint64_t* RESTRICT decoded,
+  uint32_t size,
+  uint64_t* RESTRICT encoded
 );
 
 FORCE_INLINE uint64_t shift_pack_64(uint64_t val, bool b) {
@@ -352,6 +368,56 @@ class IRESEARCH_API bytes_input final: public data_input, public bytes_ref {
   size_t pos_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 };
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                            encode/decode helpers
+// ----------------------------------------------------------------------------
+
+template<typename Iterator>
+inline void delta_decode(Iterator begin, Iterator end) {
+  assert(std::distance(begin, end) > 0 && std::is_sorted(begin, end));
+
+  typedef typename std::iterator_traits<Iterator>::value_type value_type;
+  const auto second = begin+1;
+
+  std::transform(second, end, begin, second, std::plus<value_type>());
+}
+
+template<typename Iterator>
+inline void delta_encode(Iterator begin, Iterator end) {
+  assert(std::distance(begin, end) > 0 && std::is_sorted(begin, end));
+
+  typedef typename std::iterator_traits<Iterator>::value_type value_type;
+  const auto rend = irstd::make_reverse_iterator(begin);
+  const auto rbegin = irstd::make_reverse_iterator(end);
+
+  std::transform(
+    rbegin + 1, rend, rbegin, rbegin,
+    [](const value_type& lhs, const value_type& rhs) {
+      return rhs - lhs; 
+  });
+}
+
+inline uint64_t median_encode(uint64_t* begin, uint64_t* end) {
+  assert(std::distance(begin, end) > 0);
+
+  const uint64_t med = std::lround(
+    static_cast<double_t>(end[-1] - begin[0]) / std::distance(begin, end)
+  );
+
+  for (size_t i  = 0; begin != end; ++i, ++begin) {
+    *begin= zig_zag_encode64(*begin - med*i);
+  }
+
+  return med;
+}
+
+template<typename Visitor>
+inline void median_decode(const uint64_t med, uint64_t* begin, uint64_t* end, Visitor visitor) {
+  for (size_t i = 0; begin != end; ++i, ++begin) {
+    visitor(zig_zag_decode64(*begin) + med*i);
+  }
+}
 
 NS_END
 

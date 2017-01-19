@@ -57,31 +57,6 @@ void compressing_index_writer::prepare(index_output& out, uint64_t* packed) {
   count_ = 0;
 }
 
-void compressing_index_writer::write_block(
-    const uint64_t* begin,
-    size_t size,
-    uint64_t median,
-    uint32_t bits) {
-
-  // write block header
-  out_->write_vlong(median);
-  out_->write_vint(bits);
-
-  if (ALL_EQUAL == bits) { // RLE
-    out_->write_vlong(*begin);
-    return;
-  }
-
-  // clear & pack
-  std::memset(packed_, 0, sizeof(uint64_t)*size);
-  packed::pack(begin, begin + size, packed_, bits);
-
-  out_->write_bytes(
-    reinterpret_cast<const byte_type*>(packed_),
-    sizeof(uint64_t)*packed::blocks_required_64(size, bits)
-  );
-}
-
 void compressing_index_writer::flush() {
   assert(out_);
 
@@ -99,63 +74,27 @@ void compressing_index_writer::flush() {
     return;
   }
 
-  // compute block stats
-  doc_id_t avg_chunk_docs = 0; // average number of docs per element
-  size_t avg_chunk_size = 0; // average size of element
-  if (size > 1) {
-    const auto den = size - 1; // -1 since the 1st offset is always 0
-    avg_chunk_docs = std::lround(static_cast<float_t>(key_[-1]) / den);
-    avg_chunk_size = offset_[-1] / den;
-  }
-
-  // convert doc id's and offsets to deltas
-  // compute maximum deltas
-  uint64_t max_offset = 0; // max delta between average and actual start position
-  doc_id_t max_doc_delta = 0; // max delta between average and actual doc id
-
-  bool keys_equal = true;
-  const auto first_key = keys_[0];
-  bool offsets_equal = true;
-  const auto first_offset = offsets_[0];
-  for (size_t i = 0; i < size; ++i) {
-    // convert block relative doc_id's to deltas between average and actual doc id
-    auto& key = keys_[i];
-    key = zig_zag_encode64(key - avg_chunk_docs*i);
-    max_doc_delta = std::max(max_doc_delta, key);
-    keys_equal &= (first_key == key);
-
-    // convert block relative offsets to deltas between average and actual offset
-    auto& offset = offsets_[i];
-    offset = zig_zag_encode64(offset - avg_chunk_size*i);
-    max_offset = std::max(max_offset, offset);
-    offsets_equal &= (first_offset == offset);
-  }
-
   // adjust number of elements to pack to the nearest value
   // that is multiple to the block size
   const auto block_size = math::ceil64(size, packed::BLOCK_SIZE_64);
   assert(block_size >= size);
+
+  // compute block stats
+  const doc_id_t key_median = median_encode(keys_.get(), key_); // average number of docs per element
+  const size_t offset_median = median_encode(offsets_, offset_); // average size of element
 
   // write total number of elements
   out_->write_vlong(size);
 
   // write document bases
   out_->write_vlong(block_base_);
-  write_block(
-    keys_.get(),
-    block_size,
-    avg_chunk_docs,
-    keys_equal ? ALL_EQUAL : packed::bits_required_64(max_doc_delta)
-  );
+  out_->write_vlong(key_median);
+  write_block(*out_, keys_.get(), block_size, packed_);
 
   // write start pointers
   out_->write_vlong(block_offset_);
-  write_block(
-    offsets_,
-    block_size,
-    avg_chunk_size,
-    offsets_equal ? ALL_EQUAL : packed::bits_required_64(max_offset)
-  );
+  out_->write_vlong(offset_median);
+  write_block(*out_, offsets_, block_size, packed_);
 }
 
 void compressing_index_writer::write(doc_id_t key, uint64_t offset) {

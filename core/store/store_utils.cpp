@@ -153,8 +153,11 @@ void skip_block64(index_input& in, uint64_t size) {
   }
 }
 
-void read_block(data_input& in, uint32_t size,
-                uint32_t* encoded, uint32_t* decoded) {
+void read_block(
+    data_input& in,
+    uint32_t size,
+    uint32_t* RESTRICT encoded,
+    uint32_t* RESTRICT decoded) {
   assert(size);
   assert(encoded);
   assert(decoded);
@@ -182,8 +185,11 @@ void read_block(data_input& in, uint32_t size,
   }
 }
 
-void read_block(data_input& in, uint32_t size, 
-                uint64_t* encoded, uint64_t* decoded) {
+void read_block(
+    data_input& in,
+    uint32_t size,
+    uint64_t* RESTRICT encoded,
+    uint64_t* RESTRICT decoded) {
   assert(size);
   assert(encoded);
   assert(decoded);
@@ -211,8 +217,11 @@ void read_block(data_input& in, uint32_t size,
   }
 }
 
-void write_block(data_output& out, const uint32_t* decoded,
-                 uint32_t size, uint32_t* encoded) {
+void write_block(
+    data_output& out, 
+    const uint32_t* RESTRICT decoded,
+    uint32_t size,
+    uint32_t* RESTRICT encoded) {
   assert(size);
   assert(encoded);
   assert(decoded);
@@ -221,9 +230,10 @@ void write_block(data_output& out, const uint32_t* decoded,
     out.write_vint(ALL_EQUAL);
     out.write_vint(*decoded);
   } else {
-    const uint32_t bits = packed::bits_required_32(
+    const auto bits = packed::bits_required_32(
       *std::max_element(decoded, decoded + size)
     );
+
     std::memset(encoded, 0, sizeof(uint32_t) * size);
     packed::pack(decoded, decoded + size, encoded, bits);
 
@@ -235,8 +245,11 @@ void write_block(data_output& out, const uint32_t* decoded,
   }
 }
 
-void write_block(data_output& out, const uint64_t* decoded, 
-                 uint32_t size, uint64_t* encoded) {
+void write_block(
+    data_output& out,
+    const uint64_t* RESTRICT decoded,
+    uint32_t size,
+    uint64_t* RESTRICT encoded) {
   assert(size);
   assert(encoded);
   assert(decoded);
@@ -248,6 +261,7 @@ void write_block(data_output& out, const uint64_t* decoded,
     const auto bits = packed::bits_required_64(
       *std::max_element(decoded, decoded + size)
     );
+
     std::memset(encoded, 0, sizeof(uint64_t) * size);
     packed::pack(decoded, decoded + size, encoded, bits);
 

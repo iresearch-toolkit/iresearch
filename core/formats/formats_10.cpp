@@ -126,13 +126,6 @@ std::string file_name(M const& meta);
 NS_BEGIN( detail )
 NS_LOCAL
 
-template<typename InputIterator>
-inline void delta_decode(InputIterator first, InputIterator last) {
-  typedef typename std::iterator_traits<InputIterator>::value_type value_type;
-  const auto second = first+1;
-  std::transform(second, last, first, second, std::plus<value_type>());
-}
-
 inline void prepare_output(
     std::string& str,
     index_output::ptr& out,
@@ -1633,15 +1626,10 @@ class writer final : public iresearch::columnstore_writer {
 
     bool empty() const { return !docs_; }
 
-    size_t size() const { return docs_; }
-
-    // current block min key
-    doc_id_t min() const { return min_; }
-
-    // column max key
-    doc_id_t max() const { return max_; }
-
-    void write(index_output& out) {
+    void finish() {
+      auto& out = *parent_->data_out_;
+      out.write_vlong(docs_); // total number of documents
+      out.write_vlong(max_); // max key
       blocks_index_.file >> out; // column blocks index
     }
 
@@ -1722,6 +1710,13 @@ class writer final : public iresearch::columnstore_writer {
     doc_id_t pending_key_{ type_limits<type_t::doc_id_t>::eof() }; // current pending key
   };
 
+  //TODO:
+  // 1. Use tmp_ for bit packing & compressing
+  // 2. Do not use compressing_index_writer in column, use in memory block instead, flush by reaching the number of elements in a block or buffer size
+  // 3. Use different layout in compressing index reader (compressed blocks + bases or decompressed array)
+  // 4. Introduce different types of blocks for reading (mask, dense, sparse, compressed, decompressed)
+  // 5. Vectorize where it possible
+
   uint64_t tmp_[INDEX_BLOCK_SIZE]; // reusable temporary buffer for packing
   std::deque<column> columns_; // pointers remain valid
   compressor comp_{ 2*MAX_DATA_BLOCK_SIZE };
@@ -1795,9 +1790,7 @@ void writer::flush() {
   const auto block_index_ptr = data_out_->file_pointer(); // where blocks index start
   data_out_->write_vlong(columns_.size()); // number of columns
   for (auto& column : columns_) {
-    data_out_->write_vlong(column.size()); // total number of documents
-    data_out_->write_vlong(column.max()); // max key
-    column.write(*data_out_); // column blocks index
+    column.finish(); // column blocks index
   }
 
   data_out_->write_long(block_index_ptr);

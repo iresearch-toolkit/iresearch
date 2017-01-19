@@ -49,13 +49,6 @@ class compressing_index_writer: util::noncopyable {
  private:
   void flush();
 
-  void write_block(
-    const uint64_t* start,
-    size_t size,
-    uint64_t median,
-    uint32_t bits
-  ); 
-
   size_t count_{}; // number of written entries
   uint64_t* packed_; // temporary buffer for bit packing
   std::unique_ptr<uint64_t[]> keys_; // buffer for storing unpacked data & pointer where unpacked keys begins

@@ -836,10 +836,10 @@ TEST_F(memory_format_10_test_case, columns_rw) {
 }
 
 TEST_F(memory_format_10_test_case, columns_rw_reuse) {
+  format_compress_read_write();
   columns_big_document_read_write();
   columns_read_write_reuse();
   columns_read_write_typed();
-  format_compress_read_write();
 }
 
 TEST_F(memory_format_10_test_case, columns_meta_rw) {
