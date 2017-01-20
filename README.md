@@ -237,6 +237,39 @@ or
 SNOWBALL_ROOT_SUFFIX is set (e.g. SNOWBALL_ROOT_SUFFIX=x86_64-linux-gnu for Ubuntu)
 ```
 
+### [BFD](https://sourceware.org/binutils/) <optional>
+
+#### install (*nix)
+via the distributions' package manager: libbfd
+or
+build from source via:
+```bash
+cd libiberty
+env CFLAGS=-fPIC ./configure
+make
+
+cd ../zlib
+env CFLAGS=-fPIC ./configure
+make
+
+cd ../bfd
+env LDFLAGS='-L../libiberty -liberty' ./configure --enable-targets=all --enable-shared
+make
+```
+
+#### install (win32)
+not yet available for win32
+
+#### set environment
+Note: BINUTILS_ROOT is a "reserved" variable internally used by some of the gcc compiler tools. 
+```bash
+BFD_ROOT=<path-to-binutils>
+```
+or
+```bash
+BFD_ROOT_SUFFIX is set (e.g. BFD_ROOT_SUFFIX=x86_64-linux-gnu for Ubuntu)
+```
+
 ### [Unwind](http://www.nongnu.org/libunwind/) <optional>
 
 #### install (*nix)

@@ -246,6 +246,20 @@ if (NOT MSVC AND (CMAKE_BUILD_TYPE STREQUAL "Coverage"))
   set(GCOV_LIBRARY gcov)
 endif()
 
+#find BFD
+find_package(BFD
+  #OPTIONAL
+)
+
+if (BFD_FOUND)
+  add_definitions(-DUSE_LIBBFD)
+else()
+  set(BFD_INCLUDE_DIR "")
+  set(BFD_SHARED_LIBS "")
+  set(BFD_STATIC_LIBS "")
+  set(BFD_SHARED_LIB_RESOURCES "")
+endif()
+
 # find LZ4
 find_package(Lz4
   REQUIRED

@@ -9,6 +9,10 @@
 // Agreement under which it is provided by or on behalf of EMC.
 // 
 
+#if defined(_MSC_VER)
+  #include <signal.h> // for signal(...)/raise(...)
+#endif
+
 #include "tests_shared.hpp"
 #include "tests_config.hpp"
 
@@ -208,8 +212,11 @@ void stack_trace_handler(int sig) {
 void install_stack_trace_handler() {
   signal(SIGILL, stack_trace_handler);
   signal(SIGSEGV, stack_trace_handler);
-  signal(SIGBUS, stack_trace_handler);
   signal(SIGABRT, stack_trace_handler);
+
+  #ifndef _MSC_VER
+    signal(SIGBUS, stack_trace_handler);
+  #endif
 }
 
 // -----------------------------------------------------------------------------
