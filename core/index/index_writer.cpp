@@ -237,6 +237,7 @@ uint64_t index_writer::buffered_docs() const {
 segment_reader::ptr index_writer::get_segment_reader(
   const segment_meta& meta
 ) {
+  REGISTER_TIMER_DETAILED();
   auto it = cached_segment_readers_.find(meta.name);
 
   if (it == cached_segment_readers_.end()) {
@@ -458,7 +459,7 @@ void index_writer::consolidate(
     }
 
     auto acceptor = policy(*(ctx->dir_), *meta);
-    auto acceptor_wrapper = [&acceptor, &segment_candidates](
+    consolidation_acceptor_t acceptor_wrapper = [&acceptor, &segment_candidates](
       const segment_meta& meta
     )->bool {
       auto itr = segment_candidates.find(meta.name);
@@ -471,7 +472,7 @@ void index_writer::consolidate(
 
     // for immediate consolidate consider only comitted segments that are still unmodified in current meta
     if (add_segment_mask_consolidated_records(segment, *(ctx->dir_), ctx->segment_mask_, meta->segments_, acceptor_wrapper)) {
-      auto meta_ref = [meta](const directory&, const index_meta&)->consolidation_acceptor_t {
+      consolidation_policy_t meta_ref = [meta](const directory&, const index_meta&)->consolidation_acceptor_t {
         return [](const segment_meta&)->bool { return false; };
       };
 
