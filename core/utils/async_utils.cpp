@@ -296,7 +296,11 @@ void thread_pool::run() {
 
       // if have more tasks but no idle thread and can grow pool
       if (!queue_.empty() && active_ == pool_.size() && pool_.size() < max_threads_) {
-        pool_.emplace_back([this]()->void{run();}); // add one thread
+        try {
+          pool_.emplace_back([this]()->void{run();}); // add one thread
+        } catch (std::bad_alloc&) {
+          IR_EXCEPTION(); // log and ignore exception, new tasks will start new thread
+        }
       }
 
       lock.unlock();

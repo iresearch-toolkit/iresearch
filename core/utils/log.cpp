@@ -584,7 +584,7 @@ void stack_trace() {
 }
 
 #ifndef _MSC_VER
-  void stack_trace_noalloc(size_t skip) {
+  void stack_trace_nomalloc(size_t skip) {
     static const size_t frames_max = 128; // arbitrary size
     void* frames_buf[frames_max];
     auto frames_count = backtrace(frames_buf, frames_max);
