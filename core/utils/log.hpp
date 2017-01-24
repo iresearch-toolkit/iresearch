@@ -36,6 +36,11 @@ level_t IRESEARCH_API level(level_t min_level);
 void IRESEARCH_API stack_trace();
 IRESEARCH_API std::ostream& stream();
 
+#ifndef _MSC_VER
+  // +1 to skip stack_trace_nomalloc(...)
+  void IRESEARCH_API stack_trace_nomalloc(size_t skip = 1);
+#endif
+
 NS_END
 
 class IRESEARCH_API log_message {

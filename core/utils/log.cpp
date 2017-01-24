@@ -572,11 +572,28 @@ void stack_trace() {
 
     stack_trace_win32(nullptr);
   #else
-    if (!stack_trace_libunwind() && !stack_trace_gdb()) {
-      stack_trace_posix();
+    try {
+      if (!stack_trace_libunwind() && !stack_trace_gdb()) {
+        stack_trace_posix();
+      }
+    } catch(std::bad_alloc&) {
+      stack_trace_nomalloc(2); // +2 to skip stack_trace()
+      throw;
     }
   #endif
 }
+
+#ifndef _MSC_VER
+  void stack_trace_noalloc(size_t skip) {
+    static const size_t frames_max = 128; // arbitrary size
+    void* frames_buf[frames_max];
+    auto frames_count = backtrace(frames_buf, frames_max);
+
+    if (frames_count > skip) {
+      backtrace_symbols_fd(frames_buf + skip, frames_count - skip, STDERR_FILENO);
+    }
+  }
+#endif
 
 NS_END
 
