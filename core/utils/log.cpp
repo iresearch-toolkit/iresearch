@@ -14,15 +14,12 @@
 #endif
 
 #include <memory>
+#include <mutex>
 
 #if defined(_MSC_VER)
-  #include <mutex>
-
   #include <Windows.h> // must be included before DbgHelp.h
   #include <Psapi.h>
   #include <DbgHelp.h>
-
-  #include "thread_utils.hpp"
 #else
   #include <thread>
 
@@ -44,6 +41,7 @@
 
 #include "shared.hpp"
 #include "singleton.hpp"
+#include "thread_utils.hpp"
 
 #include "log.hpp"
 
@@ -590,6 +588,8 @@ void stack_trace() {
     auto frames_count = backtrace(frames_buf, frames_max);
 
     if (frames_count > 0 && size_t(frames_count) > skip) {
+      static std::mutex mtx;
+      SCOPED_LOCK(mtx);
       backtrace_symbols_fd(frames_buf + skip, frames_count - skip, STDERR_FILENO);
     }
   }
