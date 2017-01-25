@@ -377,29 +377,29 @@ add_custom_target(iresearch-check
 
 # setup target for memory allocation profiling
 add_custom_target(iresearch-tests-malloc
-  COMMAND valgrind --tool=massif --depth=100 --max-snapshots=100 --massif-out-file=massif.out ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --ires_output
-  COMMAND ms_print --x=300 --y=300 massif.out > massif.log
+  COMMAND valgrind --tool=massif --depth=100 --max-snapshots=500 --time-unit=ms --detailed-freq=1 --massif-out-file=massif.out ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --ires_output
+  COMMAND ms_print --x=500 --y=100 massif.out > massif.log
   DEPENDS iresearch-tests
 )
 
 # setup target for memory allocation profiling
 add_custom_target(iresearch-tests-malloc-s
-  COMMAND valgrind --tool=massif --depth=100 --max-snapshots=100 --massif-out-file=massif.out ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --ires_output
-  COMMAND ms_print --x=300 --y=300 massif.out > massif.log
+  COMMAND valgrind --tool=massif --depth=100 --max-snapshots=500 --time-unit=ms --detailed-freq=1 --massif-out-file=massif.out ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --ires_output
+  COMMAND ms_print --x=500 --y=100 massif.out > massif.log
   DEPENDS iresearch-tests
 )
 
 # setup target for memory allocation profiling
 add_custom_target(iresearch-tests-malloc-fast
-  COMMAND valgrind --tool=massif --depth=100 --max-snapshots=100 --massif-out-file=massif.out ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*:-:*europ*:-:*eco*:-:*postings_seek*:-:*profile* --ires_output
-  COMMAND ms_print --x=300 --y=300 massif.out > massif.log
+  COMMAND valgrind --tool=massif --depth=100 --max-snapshots=500 --time-unit=ms --detailed-freq=1 --massif-out-file=massif.out ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*:-:*europ*:-:*eco*:-:*postings_seek*:-:*profile* --ires_output
+  COMMAND ms_print --x=500 --y=100 massif.out > massif.log
   DEPENDS iresearch-tests
 )
 
 # setup target for memory allocation profiling
 add_custom_target(iresearch-tests-malloc-s-fast
-  COMMAND valgrind --tool=massif --depth=100 --max-snapshots=100 --massif-out-file=massif.out ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*:-:*europ*:-:*eco*:-:*postings_seek*:-:*profile* --ires_output
-  COMMAND ms_print --x=300 --y=300 massif.out > massif.log
+  COMMAND valgrind --tool=massif --depth=100 --max-snapshots=500 --time-unit=ms --detailed-freq=1 --massif-out-file=massif.out ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*:-:*europ*:-:*eco*:-:*postings_seek*:-:*profile* --ires_output
+  COMMAND ms_print --x=500 --y=100 massif.out > massif.log
   DEPENDS iresearch-tests
 )
 

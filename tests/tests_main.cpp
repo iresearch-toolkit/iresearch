@@ -11,6 +11,8 @@
 
 #if defined(_MSC_VER)
   #include <signal.h> // for signal(...)/raise(...)
+#else
+  #include <dlfcn.h> // for RTLD_NEXT
 #endif
 
 #include "tests_shared.hpp"
@@ -218,6 +220,19 @@ void install_stack_trace_handler() {
     signal(SIGBUS, stack_trace_handler);
   #endif
 }
+
+#ifndef _MSC_VER
+  // override GCC 'throw' handler to print stack trace before throw
+  extern "C" {
+    void __cxa_throw(void* ex, void* info, void(*dest)(void*)) {
+      static void(*const rethrow)(void*,void*,void(*)(void*)) __attribute__ ((noreturn)) =
+        (void(*)(void*,void*,void(*)(void*)))dlsym(RTLD_NEXT, "__cxa_throw");
+
+      iresearch::logger::stack_trace_nomalloc();
+      rethrow(ex, info, dest);
+    }
+  }
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              main

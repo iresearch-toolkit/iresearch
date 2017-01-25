@@ -201,7 +201,7 @@ bool stack_trace_libunwind(); // predeclaration
     int status;
 
     // abi::__cxa_demangle(...) expects 'output_buffer' to be malloc()ed and does realloc()/free() internally
-    std::shared_ptr<char> buf(abi::__cxa_demangle(symbol, nullptr, nullptr, &status), [](char* ptr)->void{std::free(ptr);});
+    std::shared_ptr<char> buf(abi::__cxa_demangle(symbol, nullptr, nullptr, &status), std::free);
 
     return buf && !status ? std::move(buf) : nullptr;
   }
@@ -589,7 +589,7 @@ void stack_trace() {
     void* frames_buf[frames_max];
     auto frames_count = backtrace(frames_buf, frames_max);
 
-    if (frames_count > skip) {
+    if (frames_count > 0 && size_t(frames_count) > skip) {
       backtrace_symbols_fd(frames_buf + skip, frames_count - skip, STDERR_FILENO);
     }
   }
