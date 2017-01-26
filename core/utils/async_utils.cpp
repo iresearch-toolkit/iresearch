@@ -202,7 +202,7 @@ void thread_pool::max_threads(size_t value) {
 
   // create extra thread if all threads are busy and can grow pool
   if (State::ABORT != state_ && !queue_.empty() && active_ == pool_.size() && pool_.size() < max_threads_) {
-    pool_.emplace_back([this]()->void{run();});
+    pool_.emplace_back([](thread_pool* pool)->void{ pool->run(); }, this);
   }
 
   cond_.notify_all(); // wake any idle threads if they need termination
@@ -224,7 +224,7 @@ void thread_pool::max_threads_delta(int delta) {
 
   // create extra thread if all threads are busy and can grow pool
   if (State::ABORT != state_ && !queue_.empty() && active_ == pool_.size() && pool_.size() < max_threads_) {
-    pool_.emplace_back([this]()->void{run();});
+    pool_.emplace_back([](thread_pool* pool)->void{ pool->run(); }, this);
   }
 
   cond_.notify_all(); // wake any idle threads if they need termination
@@ -242,7 +242,7 @@ bool thread_pool::run(std::function<void()>&& fn) {
 
   // create extra thread if all threads are busy and can grow pool
   if (active_ == pool_.size() && pool_.size() < max_threads_) {
-    pool_.emplace_back([this]()->void{run();});
+    pool_.emplace_back([](thread_pool* pool)->void{ pool->run(); }, this);
   }
 
   return true;
@@ -297,7 +297,7 @@ void thread_pool::run() {
       // if have more tasks but no idle thread and can grow pool
       if (!queue_.empty() && active_ == pool_.size() && pool_.size() < max_threads_) {
         try {
-          pool_.emplace_back([this]()->void{run();}); // add one thread
+          pool_.emplace_back([](thread_pool* pool)->void{ pool->run(); }, this); // add one thread
         } catch (std::bad_alloc&) {
           IR_EXCEPTION(); // log and ignore exception, new tasks will start new thread
         }
