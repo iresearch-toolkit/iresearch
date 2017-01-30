@@ -228,6 +228,7 @@ void install_stack_trace_handler() {
       static void(*const rethrow)(void*,void*,void(*)(void*)) __attribute__ ((noreturn)) =
         (void(*)(void*,void*,void(*)(void*)))dlsym(RTLD_NEXT, "__cxa_throw");
 
+      fprintf(stderr, "exception type: %s\n", reinterpret_cast<const std::type_info*>(info)->name());
       iresearch::logger::stack_trace_nomalloc();
       rethrow(ex, info, dest);
     }

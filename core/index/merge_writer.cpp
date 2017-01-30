@@ -511,9 +511,15 @@ iresearch::doc_id_t compute_doc_ids(
   doc_id_map_t& doc_id_map,
   const iresearch::sub_reader& reader,
   iresearch::doc_id_t next_id
-) {
+) NOEXCEPT {
   // assume not a lot of space wasted if type_limits<type_t::doc_id_t>::min() > 0
-  doc_id_map.resize(reader.docs_count() + iresearch::type_limits<iresearch::type_t::doc_id_t>::min(), MASKED_DOC_ID);
+  try {
+    doc_id_map.resize(reader.docs_count() + iresearch::type_limits<iresearch::type_t::doc_id_t>::min(), MASKED_DOC_ID);
+  } catch (...) {
+    IR_ERROR() << "Failed to resize merge_writer::doc_id_map to accommodate element: "
+               << reader.docs_count() + iresearch::type_limits<iresearch::type_t::doc_id_t>::min();
+    return iresearch::type_limits<iresearch::type_t::doc_id_t>::invalid();
+  }
 
   for (auto docs_itr = reader.docs_iterator(); docs_itr->next(); ++next_id) {
     auto src_doc_id = docs_itr->value();
@@ -772,6 +778,11 @@ bool merge_writer::flush(std::string& filename, segment_meta& meta) {
     auto& doc_id_map = readers.back().second;
 
     next_id = compute_doc_ids(doc_id_map, *reader, next_id);
+
+    if (iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(next_id)) {
+      return false; // failed to compute next doc_id
+    }
+
     fields_itr.add(*reader, doc_id_map);
     columns_itr.add(*reader, doc_id_map);
   }
