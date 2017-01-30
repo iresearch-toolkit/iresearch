@@ -584,6 +584,9 @@ class index_test_case_base : public tests::index_test_base {
       while (working.load()) {
         writer->consolidate(policy, false);
         std::this_thread::sleep_for(std::chrono::milliseconds(consolidate_interval));
+
+        // remove unused segments from memory/fs directory to avoid space related exceptions
+        iresearch::directory_cleaner::clean(*directory);
       }
     });
 

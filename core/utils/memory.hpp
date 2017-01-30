@@ -64,7 +64,16 @@ template < class _Ty, class... _Types >
 inline typename std::enable_if< 
     !std::is_array<_Ty>::value, 
     std::unique_ptr<_Ty> >::type make_unique( _Types&&... _Args ) { 
-  return ( std::unique_ptr<_Ty>( new _Ty( std::forward<_Types>( _Args )... ) ) ); 
+  try {
+    return std::unique_ptr<_Ty>(new _Ty(std::forward<_Types>(_Args)...));
+  } catch (std::bad_alloc&) {
+    fprintf(
+      stderr,
+      "Memory allocation failure while creating and initializing an object of size %lu bytes\n",
+      sizeof(_Ty)
+    );
+    throw;
+  }
 }
 
 template< class _Ty > 
@@ -72,7 +81,16 @@ inline typename std::enable_if<
     std::is_array<_Ty>::value && std::extent<_Ty>::value == 0,
     std::unique_ptr<_Ty>  >::type make_unique( size_t _Size ) {
   typedef typename std::remove_extent<_Ty>::type _Elem;
-  return ( std::unique_ptr<_Ty>( new _Elem[_Size]() ) );
+  try {
+    return std::unique_ptr<_Ty>(new _Elem[_Size]());
+  } catch (std::bad_alloc&) {
+    fprintf(
+      stderr,
+      "Memory allocation failure while creating and initializing an array of %lu objects each of size %lu bytes\n",
+      _Size, sizeof(_Elem)
+    );
+    throw;
+  }
 }
 
 template< class _Ty, class... _Types >
