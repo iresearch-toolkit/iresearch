@@ -779,7 +779,7 @@ bool merge_writer::flush(std::string& filename, segment_meta& meta) {
 
     next_id = compute_doc_ids(doc_id_map, *reader, next_id);
 
-    if (iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(next_id)) {
+    if (!iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(next_id)) {
       return false; // failed to compute next doc_id
     }
 
