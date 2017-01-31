@@ -34,6 +34,7 @@ enum level_t {
 level_t IRESEARCH_API level();
 level_t IRESEARCH_API level(level_t min_level);
 void IRESEARCH_API stack_trace();
+void IRESEARCH_API stack_trace(const std::exception_ptr& eptr);
 IRESEARCH_API std::ostream& stream();
 
 #ifndef _MSC_VER
@@ -90,7 +91,8 @@ NS_END
 IR_LOG_LEVEL(exception_stack_trace_level(), "STACK_TRACE")
 #define IR_EXCEPTION() if (exception_stack_trace_level() <= iresearch::logger::level()) { \
   IR_LOG_DETAILED("EXCEPTION") << "@" << __FUNCTION__ << " stack trace:" << std::endl; \
+  iresearch::logger::stack_trace(std::current_exception()); \
 } \
-IR_STACK_TRACE()
+IR_LOG_LEVEL(exception_stack_trace_level(), "EXCEPTION")
 
 #endif

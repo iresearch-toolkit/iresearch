@@ -581,6 +581,30 @@ void stack_trace() {
   #endif
 }
 
+void stack_trace(const std::exception_ptr& eptr) {
+  UNUSED(eptr); // no known way to get original instruction pointer from exception_ptr
+
+  // copy of stack_trace() for proper ignored-frames calculation
+  #if defined(_MSC_VER)
+    __try {
+      RaiseException(1, 0, 0, NULL);
+    } __except(stack_trace_win32(GetExceptionInformation())) {
+      return;
+    }
+
+    stack_trace_win32(nullptr);
+  #else
+    try {
+      if (!stack_trace_libunwind() && !stack_trace_gdb()) {
+        stack_trace_posix();
+      }
+    } catch(std::bad_alloc&) {
+      stack_trace_nomalloc(2); // +2 to skip stack_trace()
+      throw;
+    }
+  #endif
+}
+
 #ifndef _MSC_VER
   void stack_trace_nomalloc(size_t skip) {
     static const size_t frames_max = 128; // arbitrary size
