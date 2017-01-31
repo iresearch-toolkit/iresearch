@@ -65,6 +65,14 @@ class IRESEARCH_API log_message {
 
 NS_END
 
+NS_LOCAL
+
+FORCE_INLINE CONSTEXPR iresearch::logger::level_t exception_stack_trace_level() {
+  return iresearch::logger::IRL_DEBUG;
+}
+
+NS_END
+
 #define IR_LOG(prefix) iresearch::log_message(prefix).stream()
 #define IR_LOG_DETAILED(prefix) IR_LOG(prefix) << __FILE__ << ":" << __LINE__ << " "
 #define IR_LOG_LEVEL(v_level, v_prefix) if ((v_level) && (v_level) <= iresearch::logger::level()) IR_LOG_DETAILED(v_prefix)
@@ -76,7 +84,13 @@ NS_END
 #define IR_DEBUG() IR_LOG_LEVEL(iresearch::logger::IRL_DEBUG, "DEBUG")
 #define IR_TRACE() IR_LOG_LEVEL(iresearch::logger::IRL_TRACE, "TRACE")
 
-#define IR_STACK_TRACE() iresearch::logger::stack_trace()
-#define IR_EXCEPTION() IR_LOG_DETAILED("EXCEPTION") << "@" << __FUNCTION__ << " stack trace:" << std::endl; IR_STACK_TRACE()
+#define IR_STACK_TRACE() if (exception_stack_trace_level() <= iresearch::logger::level()) { \
+  iresearch::logger::stack_trace(); \
+} \
+IR_LOG_LEVEL(exception_stack_trace_level(), "STACK_TRACE")
+#define IR_EXCEPTION() if (exception_stack_trace_level() <= iresearch::logger::level()) { \
+  IR_LOG_DETAILED("EXCEPTION") << "@" << __FUNCTION__ << " stack trace:" << std::endl; \
+} \
+IR_STACK_TRACE()
 
 #endif

@@ -118,6 +118,12 @@ struct IRESEARCH_API sub_reader : index_reader {
   ) const;
 }; // sub_reader
 
+NS_END
+
+MSVC_ONLY(template class IRESEARCH_API std::function<bool(iresearch::doc_id_t)>); // sub_reader::value_visitor_f
+
+NS_ROOT
+
 /* context specialization for sub_reader */
 template<>
 struct context<sub_reader> {

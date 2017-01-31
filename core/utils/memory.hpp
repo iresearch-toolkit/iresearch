@@ -14,6 +14,10 @@
 
 #include <memory>
 
+#ifndef _MSC_VER
+  #include <malloc.h>
+#endif
+
 #include "shared.hpp"
 
 #define DECLARE_SPTR( class_name ) typedef std::shared_ptr< class_name > ptr
@@ -60,6 +64,24 @@ struct deallocator : public _alloc {
   }
 };
 
+FORCE_INLINE void malloc_statistics() {
+  #ifndef _MSC_VER
+    auto mi = mallinfo();
+
+    fprintf(stderr, "Total non-mmapped bytes (arena):       %d\n", mi.arena);
+    fprintf(stderr, "# of free chunks (ordblks):            %d\n", mi.ordblks);
+    fprintf(stderr, "# of free fastbin blocks (smblks):     %d\n", mi.smblks);
+    fprintf(stderr, "# of mapped regions (hblks):           %d\n", mi.hblks);
+    fprintf(stderr, "Bytes in mapped regions (hblkhd):      %d\n", mi.hblkhd);
+    fprintf(stderr, "Max. total allocated space (usmblks):  %d\n", mi.usmblks);
+    fprintf(stderr, "Free bytes held in fastbins (fsmblks): %d\n", mi.fsmblks);
+    fprintf(stderr, "Total allocated space (uordblks):      %d\n", mi.uordblks);
+    fprintf(stderr, "Total free space (fordblks):           %d\n", mi.fordblks);
+    fprintf(stderr, "Topmost releasable block (keepcost):   %d\n", mi.keepcost);
+    malloc_stats();
+  #endif
+}
+
 template < class _Ty, class... _Types >
 inline typename std::enable_if< 
     !std::is_array<_Ty>::value, 
@@ -72,6 +94,7 @@ inline typename std::enable_if<
       "Memory allocation failure while creating and initializing an object of size %lu bytes\n",
       sizeof(_Ty)
     );
+    malloc_statistics();
     throw;
   }
 }
@@ -89,6 +112,7 @@ inline typename std::enable_if<
       "Memory allocation failure while creating and initializing an array of %lu objects each of size %lu bytes\n",
       _Size, sizeof(_Elem)
     );
+    malloc_statistics();
     throw;
   }
 }

@@ -17,7 +17,7 @@
 
 NS_ROOT
 
-struct type_id { 
+struct IRESEARCH_API type_id {
   type_id() : hash(std::hash<const type_id*>()(this)) { }
 
   bool operator==( const type_id& rhs ) const {

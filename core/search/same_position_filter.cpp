@@ -53,7 +53,7 @@ class same_position_iterator final : public Conjunction {
   
   virtual bool next() override {
     bool next = false;
-    while((next = conjunction_t::next()) && !find_same_position()) {}
+    while(true == (next = conjunction_t::next()) && !find_same_position()) {}
     return next;
   }
 

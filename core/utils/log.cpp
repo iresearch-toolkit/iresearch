@@ -418,7 +418,7 @@ bool stack_trace_libunwind(); // predeclaration
   }
 
 #else
-  bool file_line_bfd(const bfd_callback_type_t& callback, const char* obj, void* addr) {
+  bool file_line_bfd(const bfd_callback_type_t&, const char*, void*) {
     return false;
   }
 #endif
