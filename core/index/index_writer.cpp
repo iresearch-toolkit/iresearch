@@ -132,12 +132,12 @@ index_writer::index_writer(
 
   // setup round-robin chain
   for (size_t i = 0, count = flush_context_pool_.size() - 1; i < count; ++i) {
-    flush_context_pool_[i].dir_.reset(new ref_tracking_directory(dir));
+    flush_context_pool_[i].dir_ = memory::make_unique<ref_tracking_directory>(dir);
     flush_context_pool_[i].next_context_ = &flush_context_pool_[i + 1];
   }
 
   // setup round-robin chain
-  flush_context_pool_[flush_context_pool_.size() - 1].dir_.reset(new ref_tracking_directory(dir));
+  flush_context_pool_[flush_context_pool_.size() - 1].dir_ = memory::make_unique<ref_tracking_directory>(dir);
   flush_context_pool_[flush_context_pool_.size() - 1].next_context_ = &flush_context_pool_[0];
 }
 

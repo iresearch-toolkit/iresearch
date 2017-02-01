@@ -421,7 +421,7 @@ bool compound_field_iterator::next() {
 }
 
 iresearch::term_iterator::ptr compound_field_iterator::terms() {
-  auto terms_itr = compound_term_iterator::ptr(new compound_term_iterator(meta()));
+  auto terms_itr = iresearch::memory::make_unique<compound_term_iterator>(meta());
 
   for (auto& segment: field_iterator_mask_) {
     terms_itr->add(*(segment.reader), *(field_iterators_[segment.itr_id].doc_id_map));
@@ -481,7 +481,7 @@ bool compound_term_iterator::next() {
 }
 
 iresearch::doc_iterator::ptr compound_term_iterator::postings(const iresearch::flags& /*features*/) const {
-  auto docs_itr = compound_doc_iterator::ptr(new compound_doc_iterator);
+  auto docs_itr = iresearch::memory::make_unique<compound_doc_iterator>();
 
   for (auto& itr_id: term_iterator_mask_) {
     auto& term_itr = term_iterators_[itr_id];

@@ -98,7 +98,8 @@ filter::prepared::ptr by_term::prepare(
 
   /* apply boost */
   iresearch::boost::apply(attrs, this->boost() * boost);
-  return term_query::ptr(new term_query(std::move(states), std::move(attrs)));
+
+  return memory::make_unique<term_query>(std::move(states), std::move(attrs));
 }
 
 NS_END // ROOT

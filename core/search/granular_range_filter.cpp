@@ -609,14 +609,14 @@ filter::prepared::ptr by_granular_range::prepare(
    public:
     range_query::ptr query_;
     range_filter_proxy(): filter(by_range::type()) {}
-    static ptr make() { return ptr(new range_filter_proxy()); }
+    static ptr make() { return memory::make_unique<range_filter_proxy>(); }
     virtual filter::prepared::ptr prepare(const index_reader&, const order::prepared&, boost_t) const override { return query_; }
   };
 
   Or multirange_filter;
 
   for (auto& range_state: range_states) {
-    multirange_filter.add<range_filter_proxy>().query_.reset(new range_query(std::move(range_state)));
+    multirange_filter.add<range_filter_proxy>().query_ = memory::make_unique<range_query>(std::move(range_state));
   }
 
   return multirange_filter.boost(this->boost()).prepare(rdr, ord, boost);

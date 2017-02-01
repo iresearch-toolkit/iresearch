@@ -291,16 +291,16 @@ filter::prepared::ptr by_phrase::prepare(
     ++term_stats;
   }
 
-  phrase_query::ptr q(new phrase_query(
+  auto q = memory::make_unique<phrase_query>(
     std::move(phrase_states), 
     std::move(stats),
     phrase_boost_
-  )); 
+  );
 
   // apply boost
   iresearch::boost::apply(q->attributes(), this->boost() * boost);
 
-  return q;
+  return std::move(q);
 }
 
 NS_END // ROOT

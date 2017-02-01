@@ -142,7 +142,7 @@ class doc_iterator : public iresearch::doc_iterator {
 
   template<typename... Args>
   static ptr make(Args&&... args) {
-    return ptr(new doc_iterator(std::forward<Args>(args)...));
+    return memory::make_unique<detail::doc_iterator>(std::forward<Args>(args)...);
   }
 
   doc_iterator(
@@ -508,7 +508,7 @@ void field_data::add_term(
 }
 
 term_iterator::ptr field_data::iterator() const {
-  return term_iterator::ptr(new detail::term_iterator(*this, terms_.begin(), terms_.end()));
+  return memory::make_unique<detail::term_iterator>(*this, terms_.begin(), terms_.end());
 }
 
 bool field_data::invert(

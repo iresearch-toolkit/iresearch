@@ -44,7 +44,7 @@ NS_ROOT
 const string_ref compressing_index_writer::FORMAT_NAME = "iresearch_10_compressing_index";
 
 compressing_index_writer::compressing_index_writer(size_t block_size)
-  : keys_(new uint64_t[2*block_size]),
+  : keys_(memory::make_unique<uint64_t[]>(2*block_size)),
     offsets_(keys_.get() + block_size) {
 }
 

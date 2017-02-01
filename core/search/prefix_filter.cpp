@@ -82,12 +82,12 @@ filter::prepared::ptr by_prefix::prepare(
     scorer.score(stats);
   }
 
-  range_query::ptr q(new range_query(std::move(states)));
+  auto q = memory::make_unique<range_query>(std::move(states));
 
   /* apply boost */
   iresearch::boost::apply(q->attributes(), this->boost() * boost);
 
-  return q;
+  return std::move(q);
 }
 
 DEFINE_FILTER_TYPE(by_prefix)

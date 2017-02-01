@@ -321,14 +321,14 @@ filter::prepared::ptr by_same_position::prepare(
     ++term_stats;
   }
 
-  same_position_query::ptr q(new same_position_query(
+  auto q = memory::make_unique<same_position_query>(
     std::move(query_states), std::move(stats)
-  ));
+  );
   
   // apply boost
   iresearch::boost::apply(q->attributes(), this->boost() * boost);
 
-  return q;
+  return std::move(q);
 }
 
 NS_END // ROOT
