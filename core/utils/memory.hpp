@@ -45,6 +45,33 @@ static ptr make(_Args&&... args) { \
 /*static*/ class_type::ptr class_type::make() { \
   return class_type::ptr(new class_type()); \
 }
+#define DEFINE_FACTORY_POOLED(class_type) \
+/*static*/ class_type::ptr class_type::make() { \
+  static const size_t free_list_empty = std::numeric_limits<size_t>::max(); \
+  static size_t free_list_head = free_list_empty; \
+  static std::mutex mutex; \
+  static std::deque<std::pair<class_type, size_t>> pool; \
+  class_type::ptr::element_type* entry; \
+  size_t entry_pos; \
+  std::lock_guard<std::mutex> lock(mutex); \
+  if (free_list_empty == free_list_head) { \
+    entry_pos = pool.size(); \
+    entry = &(pool.emplace(pool.end(), class_type(), free_list_empty)->first); \
+  } else { \
+    auto& entry_pair = pool[free_list_head]; \
+    entry = &(entry_pair.first); \
+    entry_pos = free_list_head; \
+    free_list_head = entry_pair.second; \
+  } \
+  return class_type::ptr( \
+    entry, \
+    [entry_pos](class_type::ptr::element_type*)->void { \
+      std::lock_guard<std::mutex> lock(mutex); \
+      pool[entry_pos].second = free_list_head; \
+      free_list_head = entry_pos; \
+    } \
+  ); \
+} // use std::deque as a non-reordering block-reserving container (user should #include all required dependencies)
 #define DEFINE_FACTORY_SINGLETON(class_type) \
 /*static*/ class_type::ptr class_type::make() { \
   static class_type::ptr instance(new class_type()); \
