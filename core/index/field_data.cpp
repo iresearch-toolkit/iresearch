@@ -178,7 +178,7 @@ class doc_iterator : public iresearch::doc_iterator {
       freq_->value = 0;
 
       if (features.check<position>()) {
-        attrs_.add<position>()->prepare(pos_ = new pos_iterator(field, *freq_, prox));
+        attrs_.add<position>()->prepare(pos_ = memory::make_unique<pos_iterator>(field, *freq_, prox).release());
       }
     }
   }

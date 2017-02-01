@@ -152,4 +152,11 @@ typename std::enable_if<
 NS_END
 NS_END
 
+#define PTR_NAMED__(line, class_type, name, ...) \
+  auto ptr ## line = iresearch::memory::make_unique<char[]>(sizeof(class_type)); \
+  class_type::ptr name(::new(ptr ## line.get()) class_type(__VA_ARGS__)); \
+  reinterpret_cast<class_type*>(ptr ## line.release()); \
+  name
+#define PTR_NAMED(class_type, name, ...) PTR_NAMED__(__LINE__, class_type, name, __VA_ARGS__)
+
 #endif

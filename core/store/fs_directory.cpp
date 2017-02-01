@@ -230,7 +230,8 @@ class fs_index_input : public buffered_index_input {
   }
 
   virtual index_input::ptr clone() const override {
-    return index_input::ptr(new fs_index_input(*this));
+    PTR_NAMED(fs_index_input, ptr, *this);
+    return ptr;
   }
 
   virtual size_t length() const override {

@@ -163,7 +163,8 @@ size_t memory_index_input::read_bytes(byte_type* b, size_t left) {
 }
 
 index_input::ptr memory_index_input::clone() const  {
-  return index_input::ptr(new memory_index_input(*this));
+  PTR_NAMED(memory_index_input, ptr, *this);
+  return ptr;
 }
 
 /* -------------------------------------------------------------------
@@ -278,7 +279,7 @@ index_output::ptr memory_directory::create(const std::string& name) NOEXCEPT {
       file = std::move(memory::make_unique<memory_file>());
     }
 
-    index_output::ptr out(new memory_index_output(*file));
+    PTR_NAMED(memory_index_output, out, *file);
 
     return index_output::make<checksum_output_t>(std::move(out));
   } catch(...) {

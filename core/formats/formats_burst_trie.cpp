@@ -271,8 +271,7 @@ struct block_t : private util::noncopyable {
 entry::entry(
   const iresearch::bytes_ref& term, iresearch::attributes&& attrs
 ): data(term.c_str(), term.size()), type(ET_TERM) {
-//  assert( !term.null() );
-  this->term = new term_t( std::move( attrs ) );
+  this->term = memory::make_unique<term_t>(std::move(attrs)).release();
 }
 
 entry::entry(
@@ -285,7 +284,7 @@ entry::entry(
     data.append(1, static_cast<byte_type>(label & 0xFF));
   }
 
-  block = new block_t( block_start, meta, label );
+  block = memory::make_unique<block_t>(block_start, meta, label).release();
 }
 
 entry::entry( entry&& rhs ) NOEXCEPT
