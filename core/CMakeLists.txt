@@ -228,6 +228,7 @@ endif()
 include_directories(
   ${IResearch_INCLUDE_DIR}
   ${EXTERNAL_INCLUDE_DIRS}
+  ${BFD_INCLUDE_DIR}
   ${Boost_INCLUDE_DIRS}
   ${ICU_INCLUDE_DIR}
   ${Lz4_INCLUDE_DIR}
@@ -557,6 +558,7 @@ endif()
 
 target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${GCOV_LIBRARY}
+  ${BFD_SHARED_LIBS}
   ${Boost_SHARED_sharedRT_LIBRARIES}
   ${Lz4_SHARED_LIB}
   ${Snowball_SHARED_LIB}
@@ -567,6 +569,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-shared
 
 target_link_libraries(${IResearch_TARGET_NAME}-static
   ${GCOV_LIBRARY}
+  ${BFD_STATIC_LIBS}
   ${Lz4_STATIC_LIB}
   ${Snowball_STATIC_LIB}
   ${Unwind_STATIC_LIBS}
@@ -578,6 +581,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
 if(MSVC)
   target_link_libraries(${IResearch_TARGET_NAME}-shared-scrt
     ${GCOV_LIBRARY}
+    ${BFD_SHARED_LIBS}
     ${Boost_SHARED_sharedRT_LIBRARIES}
     ${Lz4_SHARED_LIB}
     ${Snowball_SHARED_LIB}
@@ -588,6 +592,7 @@ if(MSVC)
 
   target_link_libraries(${IResearch_TARGET_NAME}-static-scrt
     ${GCOV_LIBRARY}
+    ${BFD_STATIC_LIBS}
     ${Lz4_STATIC_LIB}
     ${Snowball_STATIC_LIB}
     ${Unwind_STATIC_LIBS}
@@ -600,6 +605,7 @@ if (MSVC)
   unset(IResearch_STATIC_LIBRARIES)
 
   foreach(ELEMENT
+    ${BFD_STATIC_LIBS}
     "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_FILESYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_FILESYSTEM_LIBRARY_RELEASE}>"
     "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_LOCALE_LIBRARY_RELEASE}>"
     "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_PROGRAM_OPTIONS_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_PROGRAM_OPTIONS_LIBRARY_RELEASE}>"
@@ -626,6 +632,7 @@ if (MSVC)
   unset(IResearch_STATIC_SCRT_LIBRARIES)
 
   foreach(ELEMENT
+    ${BFD_STATIC_LIBS}
     "$<$<CONFIG:Debug>:${Boost_STATIC_staticRT_FILESYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_staticRT_FILESYSTEM_LIBRARY_RELEASE}>"
     "$<$<CONFIG:Debug>:${Boost_STATIC_staticRT_LOCALE_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_staticRT_LOCALE_LIBRARY_RELEASE}>"
     "$<$<CONFIG:Debug>:${Boost_STATIC_staticRT_PROGRAM_OPTIONS_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_staticRT_PROGRAM_OPTIONS_LIBRARY_RELEASE}>"
@@ -652,6 +659,7 @@ else()
   unset(IResearch_STATIC_LIBRARIES)
 
   foreach(ELEMENT
+    ${BFD_STATIC_LIBS}
     ${Boost_STATIC_sharedRT_FILESYSTEM_LIBRARY_DEBUG}
     ${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}
     ${Boost_STATIC_sharedRT_PROGRAM_OPTIONS_LIBRARY_DEBUG}

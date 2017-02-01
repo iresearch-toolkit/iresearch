@@ -160,18 +160,18 @@ bool segment_reader::visit(
 
 segment_reader::docs_iterator_t::ptr segment_reader::docs_iterator() const {
   // the implementation generates doc_ids sequentially
-  return segment_reader::docs_iterator_t::ptr(new masked_docs_iterator(
+  return memory::make_unique<masked_docs_iterator>(
     type_limits<type_t::doc_id_t>::min(),
     doc_id_t(type_limits<type_t::doc_id_t>::min() + docs_count_),
     docs_mask_
-  ));
+  );
 }
 
 segment_reader::ptr segment_reader::open(
     const directory& dir, 
     const segment_meta& seg) {
   auto& codec = *seg.codec;
-  
+
   segment_reader::ptr rdr = segment_reader::ptr(new segment_reader());
   rdr->dir_state_.dir = &dir;
   rdr->dir_state_.version = integer_traits<decltype(seg.version)>::const_max; // version forcing refresh(...)
@@ -201,7 +201,7 @@ segment_reader::ptr segment_reader::open(
     codec, dir, seg.name, 
     rdr->columns_, rdr->id_to_column_, rdr->name_to_column_
   );
-    
+
   return rdr;
 }
 

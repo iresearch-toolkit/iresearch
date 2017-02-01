@@ -9,16 +9,17 @@
 // Agreement under which it is provided by or on behalf of EMC.
 // 
 
+#if defined(USE_LIBBFD)
+  #include <config.h> // required by bfd.h, config.h must be #included before system headers
+#endif
+
 #include <memory>
+#include <mutex>
 
 #if defined(_MSC_VER)
-  #include <mutex>
-
   #include <Windows.h> // must be included before DbgHelp.h
   #include <Psapi.h>
   #include <DbgHelp.h>
-
-  #include "thread_utils.hpp"
 #else
   #include <thread>
 
@@ -30,12 +31,17 @@
   #include <sys/wait.h> // for waitpid(...)
 #endif
 
+#if defined(USE_LIBBFD)
+  #include <bfd.h>
+#endif
+
 #if defined(USE_LIBUNWIND)
   #include <libunwind.h>
 #endif
 
 #include "shared.hpp"
 #include "singleton.hpp"
+#include "thread_utils.hpp"
 
 #include "log.hpp"
 
@@ -56,6 +62,10 @@ class logger_ctx: public iresearch::singleton<logger_ctx> {
   iresearch::logger::level_t level_;
   std::ostream* stream_;
 };
+
+typedef std::function<void(const char* file, size_t line, const char* fn)> bfd_callback_type_t;
+bool file_line_bfd(const bfd_callback_type_t& callback, const char* obj, void* addr); // predeclaration
+bool stack_trace_libunwind(); // predeclaration
 
 #if defined(_MSC_VER)
   DWORD stack_trace_win32(struct _EXCEPTION_POINTERS* ex) {
@@ -177,11 +187,19 @@ class logger_ctx: public iresearch::singleton<logger_ctx> {
     return 0 < waitpid(pid, &status, 0) && !WEXITSTATUS(status);
   }
 
-  std::unique_ptr<char> proc_name_demangle(const char* symbol) {
+  bool file_line_bfd(const bfd_callback_type_t& callback, const char* obj, const char* addr) {
+    char* suffix;
+    auto address = std::strtoll(addr, &suffix, 0);
+
+    // negative addresses or parse errors are deemed invalid
+    return address < 0 || suffix ? false : file_line_bfd(callback, obj, (void*)address);
+  }
+
+  std::shared_ptr<char> proc_name_demangle(const char* symbol) {
     int status;
 
     // abi::__cxa_demangle(...) expects 'output_buffer' to be malloc()ed and does realloc()/free() internally
-    std::unique_ptr<char> buf(abi::__cxa_demangle(symbol, nullptr, nullptr, &status));
+    std::shared_ptr<char> buf(abi::__cxa_demangle(symbol, nullptr, nullptr, &status), std::free);
 
     return buf && !status ? std::move(buf) : nullptr;
   }
@@ -289,6 +307,16 @@ class logger_ctx: public iresearch::singleton<logger_ctx> {
 
         auto fn_end = offset_start ? offset_start - 1 : nullptr;
         auto path_end = fn_start ? fn_start - 1 : (addr_start ? addr_start - 1 : nullptr);
+        bfd_callback_type_t callback = [&stream](const char* file, size_t line, const char* fn)->void {
+          UNUSED(fn);
+
+          if (file) {
+            stream << file << ":" << line << std::endl;
+            return;
+          }
+
+          stream << "??:?" << std::endl;
+        };
 
         if (path_start < path_end) {
           if (offset_start < offset_end) {
@@ -311,7 +339,10 @@ class logger_ctx: public iresearch::singleton<logger_ctx> {
               stream << path_end << " ";
               *offset_end = '\0';
               *path_end = '\0';
-              file_line_addr2line(path_start, offset_start);
+
+              if (!file_line_bfd(callback, path_start, offset_start) && !file_line_addr2line(path_start, offset_start)) {
+                stream << std::endl;
+              }
             }
 
             continue;
@@ -321,7 +352,10 @@ class logger_ctx: public iresearch::singleton<logger_ctx> {
             stream << path_start << " ";
             *addr_end = '\0';
             *path_end = '\0';
-            file_line_addr2line(path_start, addr_start);
+
+            if (!file_line_bfd(callback, path_start, addr_start) && !file_line_addr2line(path_start, addr_start)) {
+              stream << std::endl;
+            }
 
             continue;
           }
@@ -339,7 +373,61 @@ class logger_ctx: public iresearch::singleton<logger_ctx> {
   }
 #endif
 
+#if defined(USE_LIBBFD)
+  bool file_line_bfd(const bfd_callback_type_t& callback, const char* obj, void* addr) {
+    struct bfd_init_t { bfd_init_t() { bfd_init(); } };
+    static bfd_init_t static_bfd_init; // one-time init of BFD
+    UNUSED(static_bfd_init);
+
+    auto* file_bfd = bfd_openr(obj, nullptr);
+
+    if (!file_bfd || !bfd_check_format(file_bfd, bfd_object)) {
+      return false;
+    }
+
+    size_t symbols_size = 1048576; // arbitrary size (4K proved too small)
+    auto symbol_bytes = bfd_get_symtab_upper_bound(file_bfd);
+
+    if (symbol_bytes <= 0 || symbols_size < size_t(symbol_bytes)) {
+      return false; // prealocated buffer is not large enough
+    }
+
+    char symbols[symbols_size];
+    asymbol** symbols_ptr = (asymbol**)&symbols;
+    auto symbols_len = bfd_canonicalize_symtab(file_bfd, symbols_ptr);
+    UNUSED(symbols_len); // actual number of symbol pointers, not including the NULL
+    auto* section = bfd_get_section_by_name(file_bfd, ".text"); // '.text' is a hardcoded section name
+    auto bfd_addr = bfd_vma(addr);
+
+    if (!section || bfd_addr < section->vma) {
+      return false; // no section or address not within section
+    }
+
+    auto offset = bfd_addr - section->vma;
+    const char* file;
+    const char* func;
+    unsigned int line;
+
+    if (!bfd_find_nearest_line(file_bfd, section, symbols_ptr, offset, &file, &func, &line)) {
+      return false; // unable to obtain file/line
+    }
+
+    callback(file, line, func);
+
+    return true;
+  }
+
+#else
+  bool file_line_bfd(const bfd_callback_type_t&, const char*, void*) {
+    return false;
+  }
+#endif
+
 #if defined(USE_LIBUNWIND)
+  bool file_line_bfd(const bfd_callback_type_t& callback, const char* obj, unw_word_t addr) {
+    return file_line_bfd(callback, obj, (void*)addr);
+  }
+
   bool file_line_addr2line(const char* obj, unw_word_t addr) {
     size_t addr_size = sizeof(unw_word_t)*3 + 2 + 1; // aproximately 3 chars per byte +2 for 0x, +1 for \0
     char addr_buf[addr_size];
@@ -375,23 +463,53 @@ class logger_ctx: public iresearch::singleton<logger_ctx> {
 
       // resolve function/flie/line via dladdr() + addr2line
       if (0 != dladdr((void*)instruction_pointer, &dl_info) || !dl_info.dli_fname) {
-        stream << (dl_info.dli_fname ? dl_info.dli_fname : "\?\?") << "(";
-
-        if (dl_info.dli_sname) {
-          auto proc_name = proc_name_demangle(dl_info.dli_sname);
-
-          stream << (proc_name ? proc_name.get() : dl_info.dli_sname);
-        }
-
-        stream << "+0x" << std::hex << instruction_pointer - unw_word_t(dl_info.dli_saddr) << std::dec << ")";
-        stream << "[0x" << std::hex << instruction_pointer << std::dec << "] ";
-
         // there appears to be a magic number base address which should not be subtracted from the instruction_pointer
         static const void* static_fbase = (void*)0x400000;
         auto addr = instruction_pointer - (static_fbase == dl_info.dli_fbase ? unw_word_t(dl_info.dli_saddr) : unw_word_t(dl_info.dli_fbase));
+        bool use_addr2line = false;
+        bfd_callback_type_t callback = [&stream, instruction_pointer, &addr, &dl_info, &use_addr2line](const char* file, size_t line, const char* fn)->void {
+          stream << (dl_info.dli_fname ? dl_info.dli_fname : "\?\?") << "(";
 
-        if (!file_line_addr2line(dl_info.dli_fname, addr)) {
+          auto proc_name = proc_name_demangle(fn);
+
+          if (!proc_name) {
+            proc_name = proc_name_demangle(dl_info.dli_sname);
+          }
+
+          if (proc_name) {
+            stream << proc_name.get();
+          } else if (fn) {
+            stream << fn;
+          } else if (dl_info.dli_sname) {
+            stream << dl_info.dli_sname;
+          }
+
+          // match offsets in Posix backtrace output
+          stream << "+0x" << std::hex << (dl_info.dli_saddr ? (instruction_pointer - unw_word_t(dl_info.dli_saddr)) : addr) << std::dec << ")";
+          stream << "[0x" << std::hex << instruction_pointer << std::dec << "] ";
+
+          if (use_addr2line) {
+            if (!file_line_addr2line(dl_info.dli_fname, addr)) {
+              stream << std::endl;
+            }
+
+            return;
+          }
+
+          stream << (file ? file : "??") << ":";
+
+          if (line) {
+            stream << line;
+          } else {
+            stream << "?";
+          }
+
           stream << std::endl;
+        };
+
+        if (!file_line_bfd(callback, dl_info.dli_fname, addr)) {
+          use_addr2line = true;
+          callback(nullptr, 0, nullptr);
         }
 
         continue;
@@ -452,11 +570,54 @@ void stack_trace() {
 
     stack_trace_win32(nullptr);
   #else
-    if (!stack_trace_libunwind() && !stack_trace_gdb()) {
-      stack_trace_posix();
+    try {
+      if (!stack_trace_libunwind() && !stack_trace_gdb()) {
+        stack_trace_posix();
+      }
+    } catch(std::bad_alloc&) {
+      stack_trace_nomalloc(2); // +2 to skip stack_trace()
+      throw;
     }
   #endif
 }
+
+void stack_trace(const std::exception_ptr& eptr) {
+  UNUSED(eptr); // no known way to get original instruction pointer from exception_ptr
+
+  // copy of stack_trace() for proper ignored-frames calculation
+  #if defined(_MSC_VER)
+    __try {
+      RaiseException(1, 0, 0, NULL);
+    } __except(stack_trace_win32(GetExceptionInformation())) {
+      return;
+    }
+
+    stack_trace_win32(nullptr);
+  #else
+    try {
+      if (!stack_trace_libunwind() && !stack_trace_gdb()) {
+        stack_trace_posix();
+      }
+    } catch(std::bad_alloc&) {
+      stack_trace_nomalloc(2); // +2 to skip stack_trace()
+      throw;
+    }
+  #endif
+}
+
+#ifndef _MSC_VER
+  void stack_trace_nomalloc(size_t skip) {
+    static const size_t frames_max = 128; // arbitrary size
+    void* frames_buf[frames_max];
+    auto frames_count = backtrace(frames_buf, frames_max);
+
+    if (frames_count > 0 && size_t(frames_count) > skip) {
+      static std::mutex mtx;
+      SCOPED_LOCK(mtx);
+      backtrace_symbols_fd(frames_buf + skip, frames_count - skip, STDERR_FILENO);
+    }
+  }
+#endif
 
 NS_END
 

@@ -223,8 +223,8 @@ iresearch::analysis::analyzer::ptr construct(
     ).first->second);
   }
 
-  return iresearch::analysis::analyzer::ptr(
-    new iresearch::analysis::text_token_stream(cached_state->first, cached_state->second)
+  return iresearch::memory::make_unique<iresearch::analysis::text_token_stream>(
+    cached_state->first, cached_state->second
   );
 }
 
@@ -241,8 +241,8 @@ iresearch::analysis::analyzer::ptr construct(
     );
 
     if (itr != cached_state_by_key.end()) {
-      return iresearch::analysis::analyzer::ptr(
-        new iresearch::analysis::text_token_stream(itr->second.first, itr->second.second)
+      return iresearch::memory::make_unique<iresearch::analysis::text_token_stream>(
+        itr->second.first, itr->second.second
       );
     }
   }
@@ -444,7 +444,7 @@ text_token_stream::text_token_stream(
 ):
   analyzer(text_token_stream::type()),
   attrs_(3), // offset + bytes_term + increment
-  state_(new state_t),
+  state_(memory::make_unique<state_t>()),
   ignored_words_(ignored_words) {
   attrs_.add<offset>();
   attrs_.add<bytes_term>();

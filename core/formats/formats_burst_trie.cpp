@@ -426,9 +426,8 @@ struct cookie : attribute {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief declaration/implementation of DECLARE_FACTORY_DEFAULT()
   //////////////////////////////////////////////////////////////////////////////
-  static ptr make(
-    const version10::term_meta& meta, uint64_t term_freq) {
-    return ptr(new cookie(meta, term_freq));
+  static ptr make(const version10::term_meta& meta, uint64_t term_freq) {
+    return memory::make_unique<cookie>(meta, term_freq);
   }
 
   version10::term_meta meta; /* term metadata */
@@ -1437,7 +1436,7 @@ field_writer::field_writer(
     uint32_t min_block_size,
     uint32_t max_block_size )
   : pw(std::move(pw)),
-    fst_buf_(new detail::fst_buffer()),
+    fst_buf_(memory::make_unique<detail::fst_buffer>()),
     prefixes( DEFAULT_SIZE, 0 ),
     term_count( 0 ),
     min_block_size( min_block_size ),

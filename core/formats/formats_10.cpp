@@ -844,13 +844,13 @@ class pay_iterator final : public pos_iterator {
 /* static */ pos_iterator::ptr pos_iterator::make(const features& enabled) {
   switch (enabled) {
     case features::POS : 
-      return pos_iterator::ptr(new pos_iterator()); 
+      return memory::make_unique<pos_iterator>(); 
     case features::POS_OFFS :
-      return pos_iterator::ptr(new offs_iterator());
+      return memory::make_unique<offs_iterator>();
     case features::POS_PAY :
-      return pos_iterator::ptr(new pay_iterator());
+      return memory::make_unique<pay_iterator>();
     case features::POS_OFFS_PAY :
-      return pos_iterator::ptr(new offs_pay_iterator());
+      return memory::make_unique<offs_pay_iterator>();
   }
   
   assert(false);
@@ -3035,19 +3035,19 @@ field_reader::ptr format::get_field_reader() const  {
 }
 
 column_meta_writer::ptr format::get_column_meta_writer() const {
-  return iresearch::column_meta_writer::ptr(new columns::meta_writer());
+  return memory::make_unique<columns::meta_writer>();
 }
 
 column_meta_reader::ptr format::get_column_meta_reader() const {
-  return iresearch::column_meta_reader::ptr(new columns::meta_reader());
+  return memory::make_unique<columns::meta_reader>();
 }
 
 columnstore_writer::ptr format::get_columnstore_writer() const {
-  return columnstore_writer::ptr(new columns::writer());
+  return memory::make_unique<columns::writer>();
 }
 
 columnstore_reader::ptr format::get_columnstore_reader() const {
-  return columnstore_reader::ptr(new columns::reader());
+  return memory::make_unique<columns::reader>();
 }
 
 DEFINE_FORMAT_TYPE_NAMED(iresearch::version10::format, "1_0");

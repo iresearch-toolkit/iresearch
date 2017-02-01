@@ -90,7 +90,7 @@ output_buf::int_type output_buf::overflow( int_type c ) {
 * ------------------------------------------------------------------*/
 
 buffered_index_output::buffered_index_output( size_t buf_size )
-  : buf( new byte_type[buf_size] ),
+  : buf(memory::make_unique<byte_type[]>(buf_size)),
     start( 0 ),
     pos( 0 ),
     buf_size( buf_size ) { 

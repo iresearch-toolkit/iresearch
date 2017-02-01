@@ -246,6 +246,20 @@ if (NOT MSVC AND (CMAKE_BUILD_TYPE STREQUAL "Coverage"))
   set(GCOV_LIBRARY gcov)
 endif()
 
+#find BFD
+find_package(BFD
+  #OPTIONAL
+)
+
+if (BFD_FOUND)
+  add_definitions(-DUSE_LIBBFD)
+else()
+  set(BFD_INCLUDE_DIR "")
+  set(BFD_SHARED_LIBS "")
+  set(BFD_STATIC_LIBS "")
+  set(BFD_SHARED_LIB_RESOURCES "")
+endif()
+
 # find LZ4
 find_package(Lz4
   REQUIRED
@@ -361,6 +375,34 @@ add_custom_target(iresearch-check
   DEPENDS iresearch-tests
 )
 
+# setup target for memory allocation profiling
+add_custom_target(iresearch-tests-malloc
+  COMMAND valgrind --tool=massif --depth=100 --max-snapshots=500 --time-unit=ms --detailed-freq=1 --massif-out-file=massif.out ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --ires_output
+  COMMAND ms_print --x=500 --y=100 massif.out > massif.log
+  DEPENDS iresearch-tests
+)
+
+# setup target for memory allocation profiling
+add_custom_target(iresearch-tests-malloc-s
+  COMMAND valgrind --tool=massif --depth=100 --max-snapshots=500 --time-unit=ms --detailed-freq=1 --massif-out-file=massif.out ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --ires_output
+  COMMAND ms_print --x=500 --y=100 massif.out > massif.log
+  DEPENDS iresearch-tests
+)
+
+# setup target for memory allocation profiling
+add_custom_target(iresearch-tests-malloc-fast
+  COMMAND valgrind --tool=massif --depth=100 --max-snapshots=500 --time-unit=ms --detailed-freq=1 --massif-out-file=massif.out ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*:-:*europ*:-:*eco*:-:*postings_seek*:-:*profile* --ires_output
+  COMMAND ms_print --x=500 --y=100 massif.out > massif.log
+  DEPENDS iresearch-tests
+)
+
+# setup target for memory allocation profiling
+add_custom_target(iresearch-tests-malloc-s-fast
+  COMMAND valgrind --tool=massif --depth=100 --max-snapshots=500 --time-unit=ms --detailed-freq=1 --massif-out-file=massif.out ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*:-:*europ*:-:*eco*:-:*postings_seek*:-:*profile* --ires_output
+  COMMAND ms_print --x=500 --y=100 massif.out > massif.log
+  DEPENDS iresearch-tests
+)
+
 # setup target for memory leak detection
 add_custom_target(iresearch-tests-memleak
   COMMAND valgrind --xml=yes --xml-file=valgrind.xml --leak-check=yes --track-origins=yes --read-var-info=yes --num-callers=64 ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --ires_output
@@ -375,13 +417,13 @@ add_custom_target(iresearch-tests-memleak-s
 
 # setup target for memory leak detection
 add_custom_target(iresearch-tests-memleak-fast
-  COMMAND valgrind --xml=yes --xml-file=valgrind.xml --leak-check=yes --track-origins=yes --read-var-info=yes --num-callers=64 ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*:-:*europ*:-:*eco*:-:*postings_seek* --ires_output
+  COMMAND valgrind --xml=yes --xml-file=valgrind.xml --leak-check=yes --track-origins=yes --read-var-info=yes --num-callers=64 ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*:-:*europ*:-:*eco*:-:*postings_seek*:-:*profile* --ires_output
   DEPENDS iresearch-tests
 )
 
 # setup target for memory leak detection
 add_custom_target(iresearch-tests-memleak-s-fast
-  COMMAND valgrind --xml=yes --xml-file=valgrind.xml --leak-check=yes --track-origins=yes --read-var-info=yes --num-callers=64 ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*:-:*europ*:-:*eco*:-:*postings_seek* --ires_output
+  COMMAND valgrind --xml=yes --xml-file=valgrind.xml --leak-check=yes --track-origins=yes --read-var-info=yes --num-callers=64 ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*:-:*europ*:-:*eco*:-:*postings_seek*:-:*profile* --ires_output
   DEPENDS iresearch-tests-static
 )
 
@@ -399,13 +441,13 @@ add_custom_target(iresearch-tests-memleak-s-shallow
 
 # setup target for memory leak detection
 add_custom_target(iresearch-tests-memleak-shallow-fast
-  COMMAND valgrind --xml=yes --xml-file=valgrind.xml --leak-check=yes --num-callers=64 ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*:-:*europ*:-:*eco*:-:*postings_seek* --ires_output
+  COMMAND valgrind --xml=yes --xml-file=valgrind.xml --leak-check=yes --num-callers=64 ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*:-:*europ*:-:*eco*:-:*postings_seek*:-:*profile* --ires_output
   DEPENDS iresearch-tests
 )
 
 # setup target for memory leak detection
 add_custom_target(iresearch-tests-memleak-s-shallow-fast
-  COMMAND valgrind --xml=yes --xml-file=valgrind.xml --leak-check=yes --num-callers=64 ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*:-:*europ*:-:*eco*:-:*postings_seek* --ires_output
+  COMMAND valgrind --xml=yes --xml-file=valgrind.xml --leak-check=yes --num-callers=64 ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*:-:*europ*:-:*eco*:-:*postings_seek*:-:*profile* --ires_output
   DEPENDS iresearch-tests-static
 )
 

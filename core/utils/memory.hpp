@@ -14,6 +14,10 @@
 
 #include <memory>
 
+#ifndef _MSC_VER
+  #include <malloc.h>
+#endif
+
 #include "shared.hpp"
 
 #define DECLARE_SPTR( class_name ) typedef std::shared_ptr< class_name > ptr
@@ -41,6 +45,33 @@ static ptr make(_Args&&... args) { \
 /*static*/ class_type::ptr class_type::make() { \
   return class_type::ptr(new class_type()); \
 }
+#define DEFINE_FACTORY_POOLED(class_type) \
+/*static*/ class_type::ptr class_type::make() { \
+  static const size_t free_list_empty = std::numeric_limits<size_t>::max(); \
+  static size_t free_list_head = free_list_empty; \
+  static std::mutex mutex; \
+  static std::deque<std::pair<class_type, size_t>> pool; \
+  class_type::ptr::element_type* entry; \
+  size_t entry_pos; \
+  std::lock_guard<std::mutex> lock(mutex); \
+  if (free_list_empty == free_list_head) { \
+    entry_pos = pool.size(); \
+    entry = &(pool.emplace(pool.end(), class_type(), free_list_empty)->first); \
+  } else { \
+    auto& entry_pair = pool[free_list_head]; \
+    entry = &(entry_pair.first); \
+    entry_pos = free_list_head; \
+    free_list_head = entry_pair.second; \
+  } \
+  return class_type::ptr( \
+    entry, \
+    [entry_pos](class_type::ptr::element_type*)->void { \
+      std::lock_guard<std::mutex> lock(mutex); \
+      pool[entry_pos].second = free_list_head; \
+      free_list_head = entry_pos; \
+    } \
+  ); \
+} // use std::deque as a non-reordering block-reserving container (user should #include all required dependencies)
 #define DEFINE_FACTORY_SINGLETON(class_type) \
 /*static*/ class_type::ptr class_type::make() { \
   static class_type::ptr instance(new class_type()); \
@@ -60,11 +91,39 @@ struct deallocator : public _alloc {
   }
 };
 
+FORCE_INLINE void malloc_statistics() {
+  #ifndef _MSC_VER
+    auto mi = mallinfo();
+
+    fprintf(stderr, "Total non-mmapped bytes (arena):       %d\n", mi.arena);
+    fprintf(stderr, "# of free chunks (ordblks):            %d\n", mi.ordblks);
+    fprintf(stderr, "# of free fastbin blocks (smblks):     %d\n", mi.smblks);
+    fprintf(stderr, "# of mapped regions (hblks):           %d\n", mi.hblks);
+    fprintf(stderr, "Bytes in mapped regions (hblkhd):      %d\n", mi.hblkhd);
+    fprintf(stderr, "Max. total allocated space (usmblks):  %d\n", mi.usmblks);
+    fprintf(stderr, "Free bytes held in fastbins (fsmblks): %d\n", mi.fsmblks);
+    fprintf(stderr, "Total allocated space (uordblks):      %d\n", mi.uordblks);
+    fprintf(stderr, "Total free space (fordblks):           %d\n", mi.fordblks);
+    fprintf(stderr, "Topmost releasable block (keepcost):   %d\n", mi.keepcost);
+    malloc_stats();
+  #endif
+}
+
 template < class _Ty, class... _Types >
 inline typename std::enable_if< 
     !std::is_array<_Ty>::value, 
     std::unique_ptr<_Ty> >::type make_unique( _Types&&... _Args ) { 
-  return ( std::unique_ptr<_Ty>( new _Ty( std::forward<_Types>( _Args )... ) ) ); 
+  try {
+    return std::unique_ptr<_Ty>(new _Ty(std::forward<_Types>(_Args)...));
+  } catch (std::bad_alloc&) {
+    fprintf(
+      stderr,
+      "Memory allocation failure while creating and initializing an object of size %lu bytes\n",
+      sizeof(_Ty)
+    );
+    malloc_statistics();
+    throw;
+  }
 }
 
 template< class _Ty > 
@@ -72,7 +131,17 @@ inline typename std::enable_if<
     std::is_array<_Ty>::value && std::extent<_Ty>::value == 0,
     std::unique_ptr<_Ty>  >::type make_unique( size_t _Size ) {
   typedef typename std::remove_extent<_Ty>::type _Elem;
-  return ( std::unique_ptr<_Ty>( new _Elem[_Size]() ) );
+  try {
+    return std::unique_ptr<_Ty>(new _Elem[_Size]());
+  } catch (std::bad_alloc&) {
+    fprintf(
+      stderr,
+      "Memory allocation failure while creating and initializing an array of %lu objects each of size %lu bytes\n",
+      _Size, sizeof(_Elem)
+    );
+    malloc_statistics();
+    throw;
+  }
 }
 
 template< class _Ty, class... _Types >

@@ -164,7 +164,7 @@ size_t buffered_index_input::refill() {
   }
 
   if (!buf_) {
-    buf_.reset(new byte_type[buf_size_]);
+    buf_ = memory::make_unique<byte_type[]>(buf_size_);
     seek_internal(start_);
   }
 

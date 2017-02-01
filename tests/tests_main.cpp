@@ -9,6 +9,12 @@
 // Agreement under which it is provided by or on behalf of EMC.
 // 
 
+#if defined(_MSC_VER)
+  #include <signal.h> // for signal(...)/raise(...)
+#else
+  #include <dlfcn.h> // for RTLD_NEXT
+#endif
+
 #include "tests_shared.hpp"
 #include "tests_config.hpp"
 
@@ -208,9 +214,26 @@ void stack_trace_handler(int sig) {
 void install_stack_trace_handler() {
   signal(SIGILL, stack_trace_handler);
   signal(SIGSEGV, stack_trace_handler);
-  signal(SIGBUS, stack_trace_handler);
   signal(SIGABRT, stack_trace_handler);
+
+  #ifndef _MSC_VER
+    signal(SIGBUS, stack_trace_handler);
+  #endif
 }
+
+#ifndef _MSC_VER
+  // override GCC 'throw' handler to print stack trace before throw
+  extern "C" {
+    void __cxa_throw(void* ex, void* info, void(*dest)(void*)) {
+      static void(*const rethrow)(void*,void*,void(*)(void*)) __attribute__ ((noreturn)) =
+        (void(*)(void*,void*,void(*)(void*)))dlsym(RTLD_NEXT, "__cxa_throw");
+
+      fprintf(stderr, "exception type: %s\n", reinterpret_cast<const std::type_info*>(info)->name());
+      iresearch::logger::stack_trace_nomalloc();
+      rethrow(ex, info, dest);
+    }
+  }
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              main

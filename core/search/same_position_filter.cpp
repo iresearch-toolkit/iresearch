@@ -53,7 +53,7 @@ class same_position_iterator final : public Conjunction {
   
   virtual bool next() override {
     bool next = false;
-    while((next = conjunction_t::next()) && !find_same_position()) {}
+    while(true == (next = conjunction_t::next()) && !find_same_position()) {}
     return next;
   }
 
@@ -321,14 +321,14 @@ filter::prepared::ptr by_same_position::prepare(
     ++term_stats;
   }
 
-  same_position_query::ptr q(new same_position_query(
+  auto q = memory::make_unique<same_position_query>(
     std::move(query_states), std::move(stats)
-  ));
+  );
   
   // apply boost
   iresearch::boost::apply(q->attributes(), this->boost() * boost);
 
-  return q;
+  return std::move(q);
 }
 
 NS_END // ROOT

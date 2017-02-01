@@ -28,6 +28,13 @@ struct IRESEARCH_API collector {
   collect_f collect = &empty_collect;
 };
 
+NS_END
+
+MSVC_ONLY(template class IRESEARCH_API std::function<void(iresearch::collector&, const iresearch::attributes&)>); // collector::prepare_f
+MSVC_ONLY(template class IRESEARCH_API std::function<void(iresearch::collector&, iresearch::doc_id_t)>); // collector::collect_f
+
+NS_ROOT
+
 /* SELECT COUNT(*) FROM index WHERE <query> */
 struct IRESEARCH_API counting_collector : collector {
   counting_collector();

@@ -78,7 +78,8 @@ class compact<I, T, false> {
   static const size_t index = I;
 
   compact() = default;
-  compact(const compact&) = default;
+  compact(const compact& other)
+    : val_(other.val_) {}
   compact(compact&& rhs) NOEXCEPT
     : val_(std::move(rhs.val_)) { }
 

@@ -172,6 +172,12 @@ struct IRESEARCH_API columnstore_writer {
   virtual void flush() = 0;
 }; // columnstore_writer
 
+NS_END
+
+MSVC_ONLY(template class IRESEARCH_API std::function<iresearch::columnstore_writer::column_output&(iresearch::doc_id_t)>); // columnstore_writer::values_writer_f
+
+NS_ROOT
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                column_meta_writer 
 // -----------------------------------------------------------------------------
@@ -221,6 +227,12 @@ struct IRESEARCH_API columnstore_reader {
   virtual values_reader_f values(field_id field) const = 0;
   virtual bool visit(field_id field, const raw_reader_f& visitor) const = 0;
 }; // columnstore_reader
+
+NS_END
+
+MSVC_ONLY(template class IRESEARCH_API std::function<bool(iresearch::data_input&)>); // columnstore_reader::value_reader_f
+
+NS_ROOT
 
 /* -------------------------------------------------------------------
  * document_mask_writer
@@ -379,6 +391,12 @@ class IRESEARCH_API format {
  private:
   const type_id* type_;
 };
+
+NS_END
+
+MSVC_ONLY(template class IRESEARCH_API std::shared_ptr<iresearch::format>); // format::ptr
+
+NS_ROOT
 
 struct IRESEARCH_API flush_state {
   directory* dir;
