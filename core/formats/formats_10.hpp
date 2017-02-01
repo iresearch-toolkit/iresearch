@@ -14,7 +14,6 @@
 
 #include "formats.hpp"
 #include "skip_list.hpp"
-#include "format_compress.hpp"
 
 #include "formats_10_attributes.hpp"
 

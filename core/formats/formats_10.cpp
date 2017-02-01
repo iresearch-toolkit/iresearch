@@ -41,79 +41,11 @@
 #include <type_traits>
 #include <deque>
 
-NS_LOCAL
-
-iresearch::bytes_ref read_compact(
-    iresearch::index_input& in,
-    const iresearch::decompressor& decompressor,
-    iresearch::bstring& encode_buf,
-    iresearch::bstring& decode_buf) {
-  const auto size = iresearch::read_zvint(in);
-  size_t buf_size = std::abs(size);
-
-  // -ve to mark uncompressed
-  if (size < 0) {
-#ifdef IRESEARCH_DEBUG
-    const auto read = in.read_bytes(&(decode_buf[0]), buf_size);
-    assert(read == buf_size);
-#else
-    in.read_bytes(&(decode_buf[0]), buf_size);
-#endif // IRESEARCH_DEBUG
-    return decode_buf;
-  }
-
-  iresearch::oversize(encode_buf, buf_size);
-
-#ifdef IRESEARCH_DEBUG
-  const auto read = in.read_bytes(&(encode_buf[0]), buf_size);
-  assert(read == buf_size);
-#else
-  in.read_bytes(&(encode_buf[0]), buf_size);
-#endif // IRESEARCH_DEBUG
-
-  buf_size = decompressor.deflate(
-    reinterpret_cast<const char*>(encode_buf.c_str()), 
-    buf_size,
-    reinterpret_cast<char*>(&decode_buf[0]), 
-    decode_buf.size()
-  );
-
-  if (!iresearch::type_limits<iresearch::type_t::address_t>::valid(buf_size)) {
-    throw iresearch::index_error(); // corrupted index
-  }
-
-  return iresearch::bytes_ref(decode_buf.c_str(), buf_size);
-}
-
-void write_compact(
-  iresearch::index_output& out,
-  iresearch::compressor& compressor,
-  const iresearch::byte_type* data,
-  size_t size
-) {
-  // compressor can only handle size of int32_t, so can use the negative flag as a compression flag
-  compressor.compress(reinterpret_cast<const char*>(data), size);
-
-  if (compressor.size() < size) {
-    assert(compressor.size() <= iresearch::integer_traits<int32_t>::const_max);
-    iresearch::write_zvint(out, int32_t(compressor.size()));
-    out.write_bytes(compressor.c_str(), compressor.size());
-
-    return;
-  }
-
-  assert(size <= iresearch::integer_traits<int32_t>::const_max);
-  iresearch::write_zvint(out, int32_t(0) - int32_t(size)); // -ve to mark uncompressed
-  out.write_bytes(data, size);
-}
-
-NS_END
-
 NS_ROOT
-NS_BEGIN( version10 )
+NS_BEGIN(version10)
 
 // ----------------------------------------------------------------------------
-// --SECTION--                                             forward declarations 
+// --SECTION--                                             forward declarations
 // ----------------------------------------------------------------------------
 
 template<typename T, typename M>
@@ -172,20 +104,20 @@ inline void prepare_input(
 }
 
 FORCE_INLINE void skip_positions(index_input& in) {
-  skip_block32(in, postings_writer::BLOCK_SIZE);
+  encode::bitpack::skip_block32(in, postings_writer::BLOCK_SIZE);
 }
 
 FORCE_INLINE void skip_payload(index_input& in) {
   const size_t size = in.read_vint();
   if (size) {
-    skip_block32(in, postings_writer::BLOCK_SIZE);
+    encode::bitpack::skip_block32(in, postings_writer::BLOCK_SIZE);
     in.seek(in.file_pointer() + size);
   }
 }
 
 FORCE_INLINE void skip_offsets(index_input& in) {
-  skip_block32(in, postings_writer::BLOCK_SIZE);
-  skip_block32(in, postings_writer::BLOCK_SIZE);
+  encode::bitpack::skip_block32(in, postings_writer::BLOCK_SIZE);
+  encode::bitpack::skip_block32(in, postings_writer::BLOCK_SIZE);
 }
 
 NS_END // NS_LOCAL
@@ -323,10 +255,10 @@ class doc_iterator : public iresearch::doc_iterator {
     const auto left = term_state_.docs_count - cur_pos_;
     if (left >= postings_writer::BLOCK_SIZE) {
       // read doc deltas
-      read_block(*doc_in_, postings_writer::BLOCK_SIZE, enc_buf_, docs_);
+      encode::bitpack::read_block(*doc_in_, postings_writer::BLOCK_SIZE, enc_buf_, docs_);
 
       if (features_.freq()) {
-        read_block(
+        encode::bitpack::read_block(
           *doc_in_,
           postings_writer::BLOCK_SIZE,
           reinterpret_cast<uint32_t*>(enc_buf_),
@@ -452,7 +384,7 @@ class pos_iterator : public position::impl {
     --pend_pos_;
     return true;
   }
-  
+
   virtual uint32_t value() const { return value_; }
 
  protected:
@@ -499,7 +431,7 @@ class pos_iterator : public position::impl {
         }
       }
     } else {
-      read_block(*pos_in_, postings_writer::BLOCK_SIZE, enc_buf_, pos_deltas_);
+      encode::bitpack::read_block(*pos_in_, postings_writer::BLOCK_SIZE, enc_buf_, pos_deltas_);
     }
   }
 
@@ -644,12 +576,12 @@ class offs_pay_iterator final : public pos_iterator {
         }
       }
     } else {
-      read_block(*pos_in_, postings_writer::BLOCK_SIZE, enc_buf_, pos_deltas_);
+      encode::bitpack::read_block(*pos_in_, postings_writer::BLOCK_SIZE, enc_buf_, pos_deltas_);
 
       // read payloads
       const uint32_t size = pay_in_->read_vint();
       if (size) {
-        read_block(*pay_in_, postings_writer::BLOCK_SIZE, enc_buf_, pay_lengths_);
+        encode::bitpack::read_block(*pay_in_, postings_writer::BLOCK_SIZE, enc_buf_, pay_lengths_);
         oversize(pay_data_, size);
 
         #ifdef IRESEARCH_DEBUG
@@ -661,8 +593,8 @@ class offs_pay_iterator final : public pos_iterator {
       }
 
       // read offsets
-      read_block(*pay_in_, postings_writer::BLOCK_SIZE, enc_buf_, offs_start_deltas_);
-      read_block(*pay_in_, postings_writer::BLOCK_SIZE, enc_buf_, offs_lengts_);
+      encode::bitpack::read_block(*pay_in_, postings_writer::BLOCK_SIZE, enc_buf_, offs_start_deltas_);
+      encode::bitpack::read_block(*pay_in_, postings_writer::BLOCK_SIZE, enc_buf_, offs_lengts_);
     }
     pay_data_pos_ = 0;
   }
@@ -734,7 +666,7 @@ class offs_iterator final : public pos_iterator {
         }
       }
     } else {
-      read_block(*pos_in_, postings_writer::BLOCK_SIZE, enc_buf_, pos_deltas_);
+      encode::bitpack::read_block(*pos_in_, postings_writer::BLOCK_SIZE, enc_buf_, pos_deltas_);
 
       // skip payload
       if (features_.payload()) {
@@ -742,8 +674,8 @@ class offs_iterator final : public pos_iterator {
       }
 
       // read offsets
-      read_block(*pay_in_, postings_writer::BLOCK_SIZE, enc_buf_, offs_start_deltas_);
-      read_block(*pay_in_, postings_writer::BLOCK_SIZE, enc_buf_, offs_lengts_);
+      encode::bitpack::read_block(*pay_in_, postings_writer::BLOCK_SIZE, enc_buf_, offs_start_deltas_);
+      encode::bitpack::read_block(*pay_in_, postings_writer::BLOCK_SIZE, enc_buf_, offs_lengts_);
     }
   }
 
@@ -878,12 +810,12 @@ class pay_iterator final : public pos_iterator {
         }
       }
     } else {
-      read_block(*pos_in_, postings_writer::BLOCK_SIZE, enc_buf_, pos_deltas_);
+      encode::bitpack::read_block(*pos_in_, postings_writer::BLOCK_SIZE, enc_buf_, pos_deltas_);
 
       /* read payloads */
       const uint32_t size = pay_in_->read_vint();
       if (size) {
-        read_block(*pay_in_, postings_writer::BLOCK_SIZE, enc_buf_, pay_lengths_);
+        encode::bitpack::read_block(*pay_in_, postings_writer::BLOCK_SIZE, enc_buf_, pay_lengths_);
         oversize(pay_data_, size);
 
         #ifdef IRESEARCH_DEBUG
@@ -1555,7 +1487,7 @@ bool meta_reader::read(column_meta& column) {
 }
 
 // ----------------------------------------------------------------------------
-// --SECTION--                                                 Format constants 
+// --SECTION--                                                 Format constants
 // ----------------------------------------------------------------------------
 
 // |Header|
@@ -1578,15 +1510,161 @@ bool meta_reader::read(column_meta& column) {
 const size_t INDEX_BLOCK_SIZE = 1024;
 const size_t MAX_DATA_BLOCK_SIZE = 4096;
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class writer 
-//////////////////////////////////////////////////////////////////////////////
+// By default we treat columns as a variable length sparse columns
+enum ColumnProperty {
+  CP_DENSE = 1, // keys can be presented as an array indices
+  CP_FIXED = 2, // fixed length column
+  CP_MASK = 4 // column contains no data
+};
 
+void write_compact(
+    irs::index_output& out,
+    irs::compressor& compressor,
+    const irs::bytes_ref& data) {
+  if (data.empty()) {
+    out.write_byte(0); // zig_zag_encode32(0) == 0
+    return;
+  }
+
+  // compressor can only handle size of int32_t, so can use the negative flag as a compression flag
+  compressor.compress(reinterpret_cast<const char*>(data.c_str()), data.size());
+
+  if (compressor.size() < data.size()) {
+    assert(compressor.size() <= irs::integer_traits<int32_t>::const_max);
+    irs::write_zvint(out, int32_t(compressor.size())); // compressed size
+    irs::write_zvlong(out, data.size() - MAX_DATA_BLOCK_SIZE); // original size
+    out.write_bytes(compressor.c_str(), compressor.size());
+    return;
+  }
+
+  assert(data.size() <= irs::integer_traits<int32_t>::const_max);
+  irs::write_zvint(out, int32_t(0) - int32_t(data.size())); // -ve to mark uncompressed
+  out.write_bytes(data.c_str(), data.size());
+}
+
+void read_compact(
+    irs::index_input& in,
+    const irs::decompressor& decompressor,
+    irs::bstring& encode_buf,
+    irs::bstring& decode_buf) {
+  const auto size = irs::read_zvint(in);
+
+  if (!size) {
+    return;
+  }
+
+  size_t buf_size = std::abs(size);
+
+  // -ve to mark uncompressed
+  if (size < 0) {
+    decode_buf.resize(buf_size); // ensure that we have enough space to store decompressed data
+
+#ifdef IRESEARCH_DEBUG
+    const auto read = in.read_bytes(&(decode_buf[0]), buf_size);
+    assert(read == buf_size);
+#else
+    in.read_bytes(&(decode_buf[0]), buf_size);
+#endif // IRESEARCH_DEBUG
+    return;
+  }
+
+  irs::oversize(encode_buf, buf_size);
+
+#ifdef IRESEARCH_DEBUG
+  const auto read = in.read_bytes(&(encode_buf[0]), buf_size);
+  assert(read == buf_size);
+#else
+  in.read_bytes(&(encode_buf[0]), buf_size);
+#endif // IRESEARCH_DEBUG
+
+  buf_size = irs::read_zvlong(in) + MAX_DATA_BLOCK_SIZE; // original size
+  decode_buf.resize(buf_size); // ensure that we have enough space to store decompressed data
+
+  buf_size = decompressor.deflate(
+    reinterpret_cast<const char*>(encode_buf.c_str()),
+    buf_size,
+    reinterpret_cast<char*>(&decode_buf[0]),
+    decode_buf.size()
+  );
+
+  if (!irs::type_limits<iresearch::type_t::address_t>::valid(buf_size)) {
+    throw irs::index_error(); // corrupted index
+  }
+}
+
+template<size_t Size>
+class index_block {
+ public:
+  static const size_t SIZE = Size;
+
+  bool push_back(doc_id_t key, uint64_t offset) {
+    assert(keys_ <= key_);
+    *key_++ = key;
+    assert(key >= key_[-1]);
+    *offset_++ = offset;
+    assert(offset >= offset_[-1]);
+    return key_ == std::end(keys_);
+  }
+
+  size_t size() const {
+    assert(key_ >= keys_);
+    return key_ - keys_;
+  }
+
+  bool empty() const {
+    return keys_ == key_;
+  }
+
+  void flush(data_output& out, uint64_t* buf) {
+    if (empty()) {
+      return;
+    }
+
+    // adjust number of elements to pack to the nearest value
+    // that is multiple to the block size
+    const auto block_size = math::ceil64(size(), packed::BLOCK_SIZE_64);
+    assert(block_size >= this->size());
+
+    // write keys
+    {
+      const auto stats = encode::avg::encode(keys_, key_);
+      encode::avg::write_block(
+        out, stats.first, stats.second,
+        keys_, block_size, buf
+      );
+    }
+
+    // write offsets
+    {
+      const auto stats = encode::avg::encode(offsets_, offset_);
+      encode::avg::write_block(
+        out, stats.first, stats.second,
+        offsets_, block_size, buf
+      );
+    }
+
+    // reset pointers and clear data
+    key_ = keys_;
+    std::memset(keys_, 0, sizeof keys_);
+    offset_ = offsets_;
+    std::memset(offsets_, 0, sizeof offsets_);
+  }
+
+ private:
+  doc_id_t keys_[Size]{};
+  uint64_t offsets_[Size]{};
+  doc_id_t* key_{ keys_ };
+  uint64_t* offset_{ offsets_ };
+}; // index_block
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class writer
+//////////////////////////////////////////////////////////////////////////////
 class writer final : public iresearch::columnstore_writer {
  public:
   static const int32_t FORMAT_MIN = 0;
   static const int32_t FORMAT_MAX = FORMAT_MIN;
-  
+
   static const string_ref FORMAT_NAME;
   static const string_ref FORMAT_EXT;
 
@@ -1597,18 +1675,20 @@ class writer final : public iresearch::columnstore_writer {
  private:
   class column final : public iresearch::columnstore_writer::column_output {
    public:
-    column(writer& parent)
-      : parent_(&parent) {
-      blocks_index_writer_.prepare(blocks_index_.stream, parent.tmp_);
-      block_header_writer_.prepare(block_header_.stream, parent.tmp_);
+    column(writer& ctx) // temporary buffer for bitpacking
+      : ctx_(&ctx) {
     }
 
     void prepare(doc_id_t key) {
-      assert(key >= max_ || iresearch::type_limits<iresearch::type_t::doc_id_t>::eof(max_));
+      assert(key >= max_ || irs::type_limits<irs::type_t::doc_id_t>::eof(max_));
 
       // commit previous key and offset unless the 'reset' method has been called
       if (max_ != pending_key_) {
-        commit();
+        if (block_index_.push_back(pending_key_, offset_)) {
+          offset_ = MAX_DATA_BLOCK_SIZE; // will trigger 'flush_block'
+        }
+        max_ = pending_key_;
+        ++docs_;
       }
 
       // flush block if we've overcome MAX_DATA_BLOCK_SIZE size
@@ -1624,12 +1704,16 @@ class writer final : public iresearch::columnstore_writer {
       assert(pending_key_ >= min_);
     }
 
-    bool empty() const { return !docs_; }
+    bool empty() const {
+      return !docs_;
+    }
 
     void finish() {
-      auto& out = *parent_->data_out_;
+      auto& out = *ctx_->data_out_;
+      out.write_vlong(INDEX_BLOCK_SIZE); // number of documents per block
       out.write_vlong(docs_); // total number of documents
       out.write_vlong(max_); // max key
+      out.write_vlong(avg_compressed_block_size_);
       blocks_index_.file >> out; // column blocks index
     }
 
@@ -1638,7 +1722,7 @@ class writer final : public iresearch::columnstore_writer {
       flush_block();
 
       // finish column blocks index
-      blocks_index_writer_.finish();
+      column_index_.flush(blocks_index_.stream, ctx_->buf_);
       blocks_index_.stream.flush();
     }
 
@@ -1660,50 +1744,37 @@ class writer final : public iresearch::columnstore_writer {
     }
 
    private:
-    void commit() {
-      block_header_writer_.write(pending_key_, offset_);
-      max_ = pending_key_;
-      ++docs_;
-    }
-
     void flush_block() {
-      if (block_header_writer_.empty()) {
+      if (block_index_.empty()) {
         return;
       }
 
-      auto& out = *parent_->data_out_;
-
-      // where block starts
-      const auto block_offset = out.file_pointer();
-
-      // write block header
-      auto& block_header_stream = block_header_.stream;
-      block_header_writer_.finish();
-      block_header_stream.flush();
-      block_header_.file >> out;
+      auto& out = *ctx_->data_out_;
+      auto* buf = ctx_->buf_;
 
       // write first block key & where block starts
-      blocks_index_writer_.write(min_, block_offset);
-
-      // write compressed block data
-      write_zvlong(out, block_buf_.size() - MAX_DATA_BLOCK_SIZE);
-      if (!block_buf_.empty()) {
-        write_compact(out, parent_->comp_, block_buf_.c_str(), block_buf_.size());
-        block_buf_.reset(); // reset buffer stream after flushing
+      if (column_index_.push_back(min_, out.file_pointer())) {
+        column_index_.flush(blocks_index_.stream, buf);
       }
 
-      // reset writer & stream
-      block_header_writer_.prepare(block_header_stream, parent_->tmp_);
-      block_header_stream.reset();
+      // flush current block
+
+      // write block header
+      out.write_vlong(INDEX_BLOCK_SIZE - block_index_.size());
+      block_index_.flush(out, buf);
+
+      // write compressed block data
+      write_compact(out, ctx_->comp_, block_buf_);
+      block_buf_.reset(); // reset buffer stream after flush
     }
 
-    writer* parent_;
-    size_t docs_{}; // number of commited docs
+    writer* ctx_;
+    size_t docs_{}; // total number of commited docs
     uint64_t offset_{ MAX_DATA_BLOCK_SIZE }; // value offset, because of initial MAX_DATA_BLOCK_SIZE 'min_' will be set on the first 'write'
+    uint64_t avg_compressed_block_size_{}; // avg compressed data block size
+    index_block<INDEX_BLOCK_SIZE> block_index_; // current block index (per document key/offset)
+    index_block<INDEX_BLOCK_SIZE> column_index_; // column block index (per block key/offset)
     memory_output blocks_index_; // blocks index
-    memory_output block_header_; // block header
-    compressing_index_writer block_header_writer_{ INDEX_BLOCK_SIZE };
-    compressing_index_writer blocks_index_writer_{ INDEX_BLOCK_SIZE };
     bytes_output block_buf_{ 2*MAX_DATA_BLOCK_SIZE }; // data buffer
     doc_id_t min_{ type_limits<type_t::doc_id_t>::eof() }; // min key
     doc_id_t max_{ type_limits<type_t::doc_id_t>::eof() }; // max key
@@ -1711,13 +1782,12 @@ class writer final : public iresearch::columnstore_writer {
   };
 
   //TODO:
-  // 1. Use tmp_ for bit packing & compressing
   // 2. Do not use compressing_index_writer in column, use in memory block instead, flush by reaching the number of elements in a block or buffer size
   // 3. Use different layout in compressing index reader (compressed blocks + bases or decompressed array)
   // 4. Introduce different types of blocks for reading (mask, dense, sparse, compressed, decompressed)
   // 5. Vectorize where it possible
 
-  uint64_t tmp_[INDEX_BLOCK_SIZE]; // reusable temporary buffer for packing
+  uint64_t buf_[INDEX_BLOCK_SIZE]; // reusable temporary buffer for packing
   std::deque<column> columns_; // pointers remain valid
   compressor comp_{ 2*MAX_DATA_BLOCK_SIZE };
   index_output::ptr data_out_;
@@ -1752,7 +1822,7 @@ columnstore_writer::column_t writer::push_column() {
   auto& column = columns_.back();
 
   return std::make_pair(id, [&column, this] (doc_id_t doc) -> column_output& {
-    assert(!iresearch::type_limits<iresearch::type_t::doc_id_t>::eof(doc));
+    assert(!irs::type_limits<irs::type_t::doc_id_t>::eof(doc));
 
     column.prepare(doc);
     return column;
@@ -1762,7 +1832,7 @@ columnstore_writer::column_t writer::push_column() {
 void writer::flush() {
   // trigger commit for each pending key
   for (auto& column : columns_) {
-    column.prepare(iresearch::type_limits<iresearch::type_t::doc_id_t>::eof());
+    column.prepare(irs::type_limits<irs::type_t::doc_id_t>::eof());
   }
 
   // remove all empty columns from tail
@@ -1799,7 +1869,7 @@ void writer::flush() {
 }
 
 //////////////////////////////////////////////////////////////////////////////
-/// @class reader 
+/// @class reader
 //////////////////////////////////////////////////////////////////////////////
 
 NS_LOCAL
@@ -1809,12 +1879,394 @@ iresearch::columnstore_reader::values_reader_f INVALID_COLUMN =
     return false;
   };
 
+template<typename Context, typename Block>
+const Block* load_block(
+    Context& ctx,
+    uint64_t offset,
+    std::atomic<const Block*>& pblock) {
+  // load block
+  const auto* block = ctx.template emplace_back<Block>(offset);
+
+  if (!block) {
+    // failed to load block
+    return nullptr;
+  }
+
+  const Block* cached = nullptr;
+
+  // mark block as loaded
+  if (pblock.compare_exchange_strong(cached, block)) {
+    cached = block;
+  } else {
+    // already cached by another thread
+    ctx.template pop_back<Block>();
+  }
+
+  return cached;
+}
+
 NS_END
 
-class reader final : public iresearch::columnstore_reader, util::noncopyable {
+template<typename Block, typename Allocator>
+class block_cache : irs::util::noncopyable {
  public:
-  explicit reader(size_t pool_size = 16) 
-    : pool_(pool_size) { 
+  block_cache(const Allocator& alloc = Allocator())
+    : cache_(alloc) {
+  }
+  block_cache(block_cache&& rhs) 
+    : cache_(std::move(rhs.cache_)) {
+  }
+
+  template<typename... Args>
+  Block& emplace_back(Args&&... args) {
+    cache_.emplace_back(std::forward<Args>(args)...);
+    return cache_.back();
+  }
+
+  void pop_back() {
+    cache_.pop_back();
+  }
+
+ private:
+  std::deque<Block, Allocator> cache_; // pointers remain valid
+}; // block_cache
+
+template<typename Block, typename Allocator>
+struct block_cache_traits {
+  typedef Block block_t;
+  typedef typename std::allocator_traits<Allocator>::template rebind_alloc<block_t> allocator_t;
+  typedef block_cache<Block, allocator_t> cache_t;
+};
+
+class sparse_block : irs::util::noncopyable {
+ public:
+  bool load(irs::index_input& in, irs::decompressor& decomp, irs::bstring& buf) {
+    const size_t size = INDEX_BLOCK_SIZE - in.read_vlong();
+
+    auto begin = std::begin(index_);
+
+    encode::avg::visit_block_packed_tail(
+      in, size, reinterpret_cast<uint64_t*>(&buf[0]),
+      [begin](uint64_t key) mutable {
+        begin->key = key;
+        ++begin;
+    });
+
+    encode::avg::visit_block_packed_tail(
+      in, size, reinterpret_cast<uint64_t*>(&buf[0]),
+      [begin](uint64_t offset) mutable {
+        begin->offset = offset;
+        ++begin;
+    });
+
+    read_compact(in, decomp, buf, data_);
+
+    return true;
+  }
+
+  bool value(
+      irs::doc_id_t key,
+      const irs::columnstore_reader::value_reader_f& reader) const {
+    // find the right ref
+    const auto end = std::end(index_);
+    auto it = std::lower_bound(
+      std::begin(index_), end, key,
+        [] (const ref& lhs, irs::doc_id_t rhs) {
+        return lhs.key < rhs;
+    });
+
+    if (end == it || key < it->key) {
+      // no document with such id in the block
+      return false;
+    }
+
+    if (data_.empty()) {
+      // block without data_, but we've found a key
+      return true;
+    }
+
+    irs::bytes_ref_input in;
+
+    const auto vbegin = it->offset;
+    const auto vend = (++it == end ? data_.size() : it->offset);
+
+    assert(vend >= vbegin);
+    in.reset(
+      data_.c_str() + vbegin, // start
+      vend - vbegin // length
+    );
+
+    return reader(in);
+  }
+
+  bool visit(const irs::columnstore_reader::raw_reader_f& reader) const {
+    irs::bytes_ref_input in;
+    auto begin = std::begin(index_);
+
+    // visit first [begin;end-1) blocks
+    doc_id_t key;
+    size_t vbegin;
+    for (const auto end = std::end(index_)-1; begin != end;) {
+      key = begin->key;
+      vbegin = begin->offset;
+
+      ++begin;
+
+      assert(begin->offset >= vbegin);
+      in.reset(
+        data_.c_str() + vbegin, // start
+        begin->offset - vbegin // length
+      );
+
+      if (!reader(key, in)) {
+        return false;
+      }
+    }
+
+    // visit tail block
+    assert(data_.size() >= begin->offset);
+    in.reset(
+      data_.c_str() + begin->offset, // start
+      data_.size() - begin->offset // length
+    );
+
+    return reader(begin->key, in);
+  }
+
+ private:
+  struct ref {
+    irs::doc_id_t key{ irs::type_limits<irs::type_t::doc_id_t>::eof() };
+    uint64_t offset;
+  };
+
+  // TODO: use single memory block for both index & data
+
+  // all blocks except the tail are going to be fully filled,
+  // so we don't track size of each block here since we could
+  // waste just INDEX_BLOCK_SIZE*sizeof(ref)-1 per column
+  // in the worst case
+  ref index_[INDEX_BLOCK_SIZE];
+  irs::bstring data_;
+}; // sparse_block
+
+template<typename Allocator = std::allocator<sparse_block>>
+class read_context
+  : public block_cache_traits<sparse_block, Allocator>::cache_t {
+ public:
+  DECLARE_SPTR(read_context);
+
+  static ptr make(const directory& dir, const std::string& name) {
+    return std::make_shared<read_context>(dir.open(name));
+  }
+
+  read_context(index_input::ptr&& in = index_input::ptr(), const Allocator& alloc = Allocator())
+  : block_cache_traits<sparse_block, Allocator>::cache_t(typename block_cache_traits<sparse_block, Allocator>::allocator_t(alloc)),
+    buf_(INDEX_BLOCK_SIZE*sizeof(uint64_t), 0),
+    stream_(std::move(in)) {
+  }
+
+  template<typename Block, typename... Args>
+  Block* emplace_back(uint64_t offset, Args&&... args) {
+    auto& block = emplace_block<Block>(
+      std::forward<Args>(args)...
+    ); // add cache entry
+
+    if (!load(block, offset)) {
+      // unable to load block
+      pop_back<Block>();
+      return nullptr;
+    }
+
+    return &block;
+  }
+
+  template<typename Block>
+  bool load(Block& block, uint64_t offset) {
+    stream_->seek(offset); // seek to the offset
+    return block.load(*stream_, decomp_, buf_);
+  }
+
+  template<typename Block>
+  void pop_back() {
+    typename block_cache_traits<Block, Allocator>::cache_t& cache = *this;
+    cache.pop_back();
+  }
+
+ private:
+  template<typename Block, typename... Args>
+  Block& emplace_block(Args&&... args) {
+    typename block_cache_traits<Block, Allocator>::cache_t& cache = *this;
+    return cache.emplace_back(std::forward<Args>(args)...);
+  }
+
+  decompressor decomp_; // decompressor
+  bstring buf_; // temporary buffer for decoding/unpacking
+  index_input::ptr stream_;
+}; // read_context
+
+typedef read_context<> read_context_t;
+
+class context_provider : private util::noncopyable {
+ public:
+  context_provider(size_t max_pool_size)
+    : pool_(std::max(size_t(1), max_pool_size)) {
+  }
+
+  void prepare(const directory& dir, std::string&& name) NOEXCEPT {
+    dir_ = &dir;
+    name_ = std::move(name);
+  }
+
+  read_context_t::ptr get_context() const {
+    return pool_.emplace(*dir_, name_);
+  }
+
+ private:
+  mutable bounded_object_pool<read_context_t> pool_;
+  std::string name_;
+  const directory* dir_;
+}; // context_provider
+
+struct column : private util::noncopyable {
+  DECLARE_PTR(column);
+
+  virtual ~column() { }
+}; // column
+
+class sparse_column : public column {
+ public:
+  typedef sparse_block block_t;
+
+  sparse_column(const context_provider& ctxs)
+    : ctxs_(&ctxs) {
+  }
+
+  bool read(data_input& in, uint64_t* buf) {
+    const auto block_size = in.read_vlong();
+    auto count = in.read_vlong(); // total number of items
+    const auto max = in.read_vlong(); // max id
+    const auto avg_compressed_block_size = in.read_vlong();
+
+    const auto blocks_count = size_t(std::ceil(double_t(count) / block_size)); // total number of blocks
+    std::vector<block_ref> refs(blocks_count + 1); // +1 for upper bound
+
+    auto begin = refs.begin();
+    for (auto end = refs.end()-2; begin != end; ) { // -2 for upper bound and tail block
+      encode::avg::visit_block_packed(
+        in, block_size, buf,
+        [begin](uint64_t key) mutable {
+          begin->key = key;
+          ++begin;
+      });
+
+      encode::avg::visit_block_packed(
+        in, block_size, buf,
+        [begin](uint64_t offset) mutable {
+          begin->offset = offset;
+          ++begin;
+      });
+
+      count -= block_size;
+      begin += block_size;
+    }
+
+    // tail block
+    const auto tail_block_size = blocks_count % block_size;
+
+    assert(count <= block_size);
+    encode::avg::visit_block_packed_tail(
+      in, tail_block_size, buf,
+      [begin](uint64_t key) mutable {
+        begin->key = key;
+        ++begin;
+    });
+
+    encode::avg::visit_block_packed_tail(
+      in, tail_block_size, buf,
+      [begin](uint64_t offset) mutable {
+        begin->offset = offset;
+        ++begin;
+    });
+    ++begin;
+
+    // upper bound
+    begin->key = max + (irs::type_limits<irs::type_t::doc_id_t>::eof(max) ? 0 : 1);
+    begin->offset = irs::type_limits<irs::type_t::address_t>::invalid();
+
+    refs_ = std::move(refs);
+    return true;
+  }
+
+  bool value(
+      irs::doc_id_t key,
+      const irs::columnstore_reader::value_reader_f& reader) const {
+    // find the right block
+    const auto rbegin = refs_.rbegin(); // upper bound
+    const auto rend = refs_.rend();
+    const auto it = std::lower_bound(
+      rbegin, rend, key,
+      [] (const block_ref& lhs, irs::doc_id_t rhs) {
+        return lhs.key > rhs;
+    });
+
+    if (it == rend || it == rbegin) {
+      return false;
+    }
+
+    const auto* cached = it->pblock.load();
+
+    if (!cached) {
+      auto ctx = ctxs_->get_context();
+
+      auto& ref = const_cast<block_ref&>(*it);
+      if (!(cached = load_block(*ctx, ref.offset, ref.pblock))) {
+        // unable to load block
+        return false;
+      }
+    }
+
+    assert(cached);
+    return cached->value(key, reader);
+  };
+
+  bool visit(const irs::columnstore_reader::raw_reader_f& reader) const {
+    sparse_block block;
+    for (auto& ref : refs_) {
+      const auto* cached = ref.pblock.load();
+      if (!cached) {
+        auto ctx = ctxs_->get_context();
+
+        if (!ctx->load(block, ref.offset)) {
+          // unable to load block
+          return false;
+        }
+        cached = &block;
+      }
+
+      assert(cached);
+      if (!cached->visit(reader)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+ private:
+  struct block_ref : irs::util::noncopyable {
+    irs::doc_id_t key; // min key in a block
+    uint64_t offset; // block offset
+    std::atomic<const block_t*> pblock; // pointer to cached block
+  }; // block_ref
+
+  const context_provider* ctxs_;
+  std::vector<block_ref> refs_; // blocks index
+}; // sparse_column
+
+class reader final : public irs::columnstore_reader,
+                     public context_provider {
+ public:
+  explicit reader(size_t pool_size = 16)
+    : context_provider(pool_size) {
   }
 
   virtual bool prepare(const reader_state& state) override;
@@ -1822,112 +2274,8 @@ class reader final : public iresearch::columnstore_reader, util::noncopyable {
   virtual bool visit(field_id field, const raw_reader_f& reader) const override;
 
  private:
-  typedef compressed_index<uint64_t> block_index_t;
-
-  struct block : util::noncopyable {
-    block() = default;
-    block(block&& other) NOEXCEPT
-      : index(std::move(other.index)),
-        data(std::move(other.data)) {
-    }
-
-    compressed_index<uint64_t> index; // block index
-    bstring data; // decompressed data block
-  }; // block
-
-  typedef std::pair<
-    uint64_t, // block data offset
-    std::atomic<block*> // pointer to cached block
-  > block_ref_t;
-
-  typedef compressed_index<block_ref_t> blocks_index_t;
-
-  struct column: public util::noncopyable {
-    blocks_index_t index; // blocks index
-    size_t size; // total number of documents
-    column() = default;
-    column(column&& other) NOEXCEPT
-      : index(std::move(other.index)), size(std::move(other.size)) {
-    }
-  }; // column
-
-  // per thread read context
-  struct read_context : util::noncopyable {
-    DECLARE_SPTR(read_context);
-
-    static ptr make(const directory& dir, const std::string& name) {
-      return std::make_shared<read_context>(dir.open(name));
-    }
-
-    explicit read_context(index_input::ptr&& stream)
-      : stream(std::move(stream)) {
-    }
-
-    read_context(read_context&& rhs) NOEXCEPT
-      : cached_blocks(std::move(rhs.cached_blocks)),
-        encode_buf(std::move(rhs.encode_buf)),
-        decomp(std::move(rhs.decomp)),
-        stream(std::move(rhs.stream)) {
-    }
-
-    std::deque<block> cached_blocks;
-    bstring encode_buf; // 'read_compact' requires a temporary buffer
-    decompressor decomp; // decompressor
-    index_input::ptr stream; // input stream
-  }; // read_context
-
-  // read data into 'block' specified by the 'offset' using 'ctx'
-  static bool read_block(uint64_t offset, read_context& ctx, block& block);
-
-  // visits block entries
-  static bool visit(
-    const block& block, 
-    const raw_reader_f& reader, 
-    bytes_ref_input& stream
-  );
-
-  // reset value stream
-  static void reset(
-    bytes_ref_input& stream,
-    const block& block,
-    const block_index_t::iterator& vbegin, // where value starts
-    const block_index_t::iterator& vend, // where value ends
-    const block_index_t::iterator& end); // where index ends
-
-  mutable bounded_object_pool<read_context> pool_;
-  std::vector<column> columns_;
-  std::string name_;
-  const directory* dir_;
+  std::vector<column::ptr> columns_;
 }; // reader
-
-/*static*/ bool reader::read_block(
-    uint64_t offset,
-    read_context& ctx,
-    block& block) {
-
-  // seek to the specified block start offset
-  auto& stream = *ctx.stream;
-  stream.seek(offset);
-
-  // read block index
-  if (!block.index.read(
-        stream, 
-        type_limits<type_t::doc_id_t>::eof(), 
-        [] (uint64_t& target, uint64_t value) { target = value; })) {
-    // unable to read block index
-    return false;
-  }
-
-  // ensure we have enough space to store uncompressed data
-  const size_t uncompressed_size = MAX_DATA_BLOCK_SIZE + read_zvlong(stream);
-  if (uncompressed_size) {
-    block.data.resize(uncompressed_size);
-    // read block data
-    read_compact(stream, ctx.decomp, ctx.encode_buf, block.data); 
-  }
-
-  return true;
-}
 
 bool reader::prepare(const reader_state& state) {
   auto& name = state.meta->name;
@@ -1954,12 +2302,12 @@ bool reader::prepare(const reader_state& state) {
 
   // check header
   format_utils::check_header(
-    *stream, 
-    writer::FORMAT_NAME, 
-    writer::FORMAT_MIN, 
+    *stream,
+    writer::FORMAT_NAME,
+    writer::FORMAT_MIN,
     writer::FORMAT_MAX
   );
-  
+
   // since columns data are too large
   // it is too costly to verify checksum of
   // the entire file. here we perform cheap
@@ -1971,40 +2319,25 @@ bool reader::prepare(const reader_state& state) {
   stream->seek(stream->length() - format_utils::FOOTER_LEN - sizeof(uint64_t));
   stream->seek(stream->read_long()); // seek to blocks index
 
-  std::vector<column> columns(stream->read_vlong());
-  for (size_t i = 0, size = columns.size(); i < size; ++i) {
-    auto& column = columns[i];
+  uint64_t buf[INDEX_BLOCK_SIZE]; // temporary buffer for bit packing
+  std::vector<column::ptr> columns;
+  columns.reserve(stream->read_vlong());
+  for (size_t i = 0, size = columns.capacity(); i < size; ++i) {
+    auto column = memory::make_unique<sparse_column>(*this);
 
-    column.size = stream->read_vlong(); // total number of documents
-    const auto max = stream->read_vlong(); // last valid key
-    if (!column.index.read(*stream, max, [](block_ref_t& block, uint64_t v){ block.first = v; })) {
-      IR_ERROR() << "Unable to load blocks index for column id=" << columns.size() - 1;
+    if (!column->read(*stream, buf)) {
+      IR_ERROR() << "Unable to load blocks index for column id=" << i;
       return false;
     }
+
+    columns.emplace_back(std::move(column));
   }
 
   // noexcept
+  context_provider::prepare(dir, std::move(filename));
   columns_ = std::move(columns);
-  name_ = std::move(filename);
-  dir_ = &dir;
 
   return true;
-}
-
-void reader::reset(
-    bytes_ref_input& stream,
-    const block& block, 
-    const block_index_t::iterator& vbegin, // value begin
-    const block_index_t::iterator& vend,  // value end
-    const block_index_t::iterator& end) { // end of the block
-  const auto start_offset = vbegin->second;
-  const auto end_offset = end == vend ? block.data.size() : vend->second;
-  assert(end_offset >= start_offset);
-
-  stream.reset(
-    block.data.c_str() + start_offset,
-    end_offset - start_offset
-  );
 }
 
 reader::values_reader_f reader::values(field_id field) const {
@@ -2013,76 +2346,12 @@ reader::values_reader_f reader::values(field_id field) const {
     return INVALID_COLUMN;
   }
 
-  auto& column = columns_[field].index;
+  auto& column = static_cast<sparse_column&>(*columns_[field]);
   bytes_ref_input block_in;
 
   return[this, &column, block_in] (doc_id_t doc, const value_reader_f& reader) mutable {
-    const auto it = column.lower_bound(doc); // looking for data block
-
-    if (it == column.end()) {
-      // there is no block suitable for id equals to 'doc' in this column
-      return false;
-    }
-
-    auto& block_ref = const_cast<block_ref_t&>(it->second);
-    auto* cached = block_ref.second.load();
-
-    if (!cached) {
-      auto ctx = pool_.emplace(*dir_, name_);
-
-      // add cache entry
-      auto& cached_blocks = ctx->cached_blocks;
-      cached_blocks.emplace_back();
-      auto& block = cached_blocks.back();
-
-      if (!read_block(block_ref.first, *ctx, block)) {
-        // unable to load block
-        return false;
-      }
-
-      // mark block as loaded
-      if (block_ref.second.compare_exchange_strong(cached, &block)) {
-        cached = &block;
-      } else {
-        // cached by another thread
-        cached_blocks.pop_back();
-      }
-    }
-
-    const auto vbegin = cached->index.find(doc); // value begin
-    const auto end = cached->index.end(); // block end
-
-    if (vbegin == end) {
-      // there is no document with id equals to 'doc' in this block
-      return false;
-    }
-
-    if (cached->data.empty()) {
-      // empty value case, but we've found a key
-      return true;
-    }
-
-    auto vend = vbegin; // value end
-    std::advance(vend, 1);
-
-    reset(block_in, *cached, vbegin, vend, end);
-
-    return reader(block_in);
+    return column.value(doc, reader);
   };
-}
-
-bool reader::visit(const reader::block& block, const reader::raw_reader_f& reader, bytes_ref_input& stream) {
-  auto vbegin = block.index.begin();
-  auto vend = vbegin;
-  const auto end = block.index.end();
-  for (; vbegin != end; ++vbegin) {
-    reset(stream, block, vbegin, ++vend, end);
-    if (!reader(vbegin->first, stream)) {
-      return false;
-    }
-  }
-
-  return true;
 }
 
 bool reader::visit(field_id field, const raw_reader_f& reader) const {
@@ -2091,33 +2360,8 @@ bool reader::visit(field_id field, const raw_reader_f& reader) const {
     return false;
   }
 
-  auto& column = columns_[field].index;
-  bytes_ref_input block_in;
-  const reader::block* cached;
-  reader::block block; // do not cache blocks during visiting
-
-  for (auto& bucket : column) {
-    auto& block_ref = bucket.second;
-    cached = block_ref.second.load();
-
-    if (!cached) {
-      auto ctx = pool_.emplace(*dir_, name_);
-
-      // hasn't been cached yet, use temporary block
-      if (!read_block(block_ref.first, *ctx, block)) {
-        return false;
-      }
-
-      cached = &block;
-    }
-
-    // visit block
-    if (!visit(*cached, reader, block_in)) {
-      return false;
-    }
-  }
-
-  return true;
+  auto& column = static_cast<sparse_column&>(*columns_[field]);
+  return column.visit(reader);
 }
 
 NS_END // columns
@@ -2138,15 +2382,15 @@ const string_ref postings_writer::PAY_FORMAT_NAME = "iresearch_10_postings_paylo
 const string_ref postings_writer::PAY_EXT = "pay";
 
 void postings_writer::doc_stream::flush(uint64_t* buf, bool freq) {
-  write_block(*out, deltas, BLOCK_SIZE, buf);
+  encode::bitpack::write_block(*out, deltas, BLOCK_SIZE, buf);
 
   if (freq) {
-    write_block(*out, freqs.get(), BLOCK_SIZE, reinterpret_cast<uint32_t*>(buf));
+    encode::bitpack::write_block(*out, freqs.get(), BLOCK_SIZE, reinterpret_cast<uint32_t*>(buf));
   }
 }
 
 void postings_writer::pos_stream::flush(uint32_t* comp_buf) {
-  write_block(*out, this->buf, BLOCK_SIZE, comp_buf);  
+  encode::bitpack::write_block(*out, this->buf, BLOCK_SIZE, comp_buf);
   size = 0;
 }
 
@@ -2174,14 +2418,14 @@ void postings_writer::pay_stream::flush_payload(uint32_t* buf) {
   if (pay_buf_.empty()) {
     return;
   }
-  write_block(*out, pay_sizes, BLOCK_SIZE, buf);  
+  encode::bitpack::write_block(*out, pay_sizes, BLOCK_SIZE, buf);
   out->write_bytes(pay_buf_.c_str(), pay_buf_.size());
   pay_buf_.clear();
 }
 
 void postings_writer::pay_stream::flush_offsets(uint32_t* buf) {
-  write_block(*out, offs_start_buf, BLOCK_SIZE, buf);  
-  write_block(*out, offs_len_buf, BLOCK_SIZE, buf);  
+  encode::bitpack::write_block(*out, offs_start_buf, BLOCK_SIZE, buf);
+  encode::bitpack::write_block(*out, offs_len_buf, BLOCK_SIZE, buf);
 }
 
 postings_writer::postings_writer(bool volatile_attributes)

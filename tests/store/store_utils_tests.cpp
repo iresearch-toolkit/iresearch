@@ -11,11 +11,61 @@
 
 #include "tests_shared.hpp"
 #include "store/store_utils.hpp"
+#include "utils/misc.hpp"
 
 using namespace iresearch;
 
 namespace tests {
 namespace detail {
+
+void avg_encode_decode_core(size_t step, size_t count) {
+  std::vector<uint64_t> values;
+  values.reserve(count);
+  for (size_t i = 1; i <= count; ++i) {
+    values.push_back(i*step);
+  }
+
+  auto encoded = values;
+  const auto stats = irs::encode::avg::encode(encoded.data(), encoded.data() + encoded.size());
+  ASSERT_EQ(values[0], stats.first);
+  ASSERT_EQ(step, stats.second);
+  ASSERT_TRUE(
+    std::all_of(encoded.begin(), encoded.end(), [](uint64_t v) { return 0 == v; })
+  );
+
+  auto success = true;
+  auto begin = values.begin();
+  irs::encode::avg::visit(
+    stats.first, stats.second, encoded.data(), encoded.data() + encoded.size(),
+    [&begin, &success](uint64_t value) {
+      success = success && (value == *begin);
+      ++begin;
+  });
+  ASSERT_TRUE(success);
+  ASSERT_EQ(values.end(), begin);
+
+  auto decoded = encoded;
+  irs::encode::avg::decode(stats.first, stats.second, decoded.data(), decoded.data() + decoded.size());
+  ASSERT_EQ(values, decoded);
+}
+
+void delta_encode_decode_core(size_t step, size_t count) {
+  std::vector<size_t> values;
+  values.reserve(count);
+  for (size_t i = 1; i <= count; ++i) {
+    values.push_back(i*step);
+  }
+
+  auto encoded = values;
+  irs::encode::delta::encode(encoded.begin(), encoded.end());
+  ASSERT_TRUE(
+    std::all_of(encoded.begin(), encoded.end(), [step](int v) { return step == v; })
+  );
+
+  auto decoded = encoded;
+  irs::encode::delta::decode(decoded.begin(), decoded.end());
+  ASSERT_EQ(values, decoded);
+}
 
 void packed_read_write_core(const std::vector<uint32_t> &src) {
   const size_t BLOCK_SIZE = 128;
@@ -30,7 +80,7 @@ void packed_read_write_core(const std::vector<uint32_t> &src) {
   {
     auto begin = src.data();
     for (size_t i = 0; i < blocks; ++i) {
-      iresearch::write_block(out, begin, BLOCK_SIZE, encoded);
+      irs::encode::bitpack::write_block(out, begin, BLOCK_SIZE, encoded);
       begin += BLOCK_SIZE;
     }
   }
@@ -43,7 +93,7 @@ void packed_read_write_core(const std::vector<uint32_t> &src) {
   {
     auto begin = read.data();
     for (size_t i = 0; i < blocks; ++i) {
-      iresearch::read_block(in, BLOCK_SIZE, encoded, begin);
+      irs::encode::bitpack::read_block(in, BLOCK_SIZE, encoded, begin);
       begin += BLOCK_SIZE;
     }
   }
@@ -64,7 +114,7 @@ void read_write_core(
     src.begin(), src.end(), 
     [&out,&writer](const T& v){ writer(out, v); }
   );
-  
+
   iresearch::bytes_input in( out);
   std::for_each(
     src.begin(), src.end(), 
@@ -102,12 +152,12 @@ void read_write_core_container(
 void read_write_block(const std::vector<uint32_t>& source, std::vector<uint32_t>& enc_dec_buf) {
   // write block
   iresearch::bytes_output out;
-  iresearch::write_block(out, &source[0], source.size(), &enc_dec_buf[0]);
+  irs::encode::bitpack::write_block(out, &source[0], source.size(), &enc_dec_buf[0]);
 
   // read block
   iresearch::bytes_input in(out);
   std::vector<uint32_t> read(source.size());
-  iresearch::read_block(in, source.size(), &enc_dec_buf[0], read.data());
+  irs::encode::bitpack::read_block(in, source.size(), &enc_dec_buf[0], read.data());
 
   ASSERT_EQ(source, read);
 }
@@ -505,3 +555,107 @@ TEST(store_utils_tests, shift_pack_unpack_64) {
   tests::detail::shift_pack_unpack_core_64(0x7FFFFFFFFFFFFFFFLL, true);
   tests::detail::shift_pack_unpack_core_64(0x7FFFFFFFFFFFFFFFLL, false);
 }
+
+TEST(store_utils_tests, delta_encode_decode) {
+  tests::detail::delta_encode_decode_core(1, 1000); // step = 1, count = 1000
+  tests::detail::delta_encode_decode_core(128, 1000); // step = 128, count = 1000
+  tests::detail::delta_encode_decode_core(1000, 1); // step = 1000, count = 1
+}
+
+TEST(store_utils_tests, avg_encode_decode) {
+  tests::detail::avg_encode_decode_core(1, 1000); // step = 1, count = 1000
+  tests::detail::avg_encode_decode_core(128, 1000); // step = 128, count = 1000
+
+  // single value case
+  {
+    std::vector<uint64_t> values{ 1000 };
+
+    auto encoded = values;
+    const auto stats = irs::encode::avg::encode(encoded.data(), encoded.data() + encoded.size());
+    ASSERT_EQ(1000, stats.first);
+    ASSERT_EQ(0, stats.second);
+    ASSERT_EQ(0, encoded[0]);
+
+    auto decoded = encoded;
+    irs::encode::avg::decode(stats.first, stats.second, decoded.data(), decoded.data() + decoded.size());
+    ASSERT_EQ(values, decoded);
+  }
+}
+
+TEST(store_utils_tests, avg_encode_block_read_write) {
+  // rl case
+  {
+    const size_t count = 1024; // 1024 % packed::BLOCK_SIZE_64 == 0
+    const uint64_t step = 127;
+
+    std::vector<uint64_t> values;
+    values.reserve(count);
+    uint64_t value = 0;
+    for (size_t i = 0; i < 1024 ; ++i) {
+      values.push_back(value += step);
+    }
+
+    // avg encode
+    auto avg_encoded = values;
+    const auto stats = irs::encode::avg::encode(
+      avg_encoded.data(), avg_encoded.data() + avg_encoded.size()
+    );
+
+    std::vector<uint64_t> buf; // temporary buffer for bit packing
+    buf.resize(values.size());
+
+    irs::bytes_output out;
+    irs::encode::avg::write_block(
+      out, stats.first, stats.second, avg_encoded.data(), avg_encoded.size(), buf.data()
+    );
+
+    ASSERT_EQ(
+      irs::vencode_size_64(step) + irs::vencode_size_64(step) + irs::vencode_size_32(irs::encode::bitpack::ALL_EQUAL) + irs::vencode_size_64(0), // base + avg + bits + single value
+      out.size()
+    );
+
+    {
+      irs::bytes_input in(out);
+      const uint64_t base = in.read_vlong();
+      const uint64_t avg= in.read_vlong();
+      const uint64_t bits = in.read_vint();
+      ASSERT_EQ(uint32_t(irs::encode::bitpack::ALL_EQUAL), bits);
+      ASSERT_EQ(step, base);
+      ASSERT_EQ(step, avg);
+    }
+
+    {
+      irs::bytes_input in(out);
+      ASSERT_TRUE(irs::encode::avg::check_block_rl64(in, step));
+    }
+
+    {
+      uint64_t base, avg;
+      irs::bytes_input in(out);
+      ASSERT_TRUE(irs::encode::avg::read_block_rl64(in, base, avg));
+      ASSERT_EQ(step, base);
+      ASSERT_EQ(step, avg);
+    }
+
+    {
+      irs::bytes_input in(out);
+
+      const uint64_t base = in.read_vlong();
+      const uint64_t avg = in.read_vlong();
+      const uint32_t bits = in.read_vint();
+      ASSERT_EQ(uint32_t(irs::encode::bitpack::ALL_EQUAL), bits);
+
+      bool success = true;
+      auto begin = values.begin();
+      irs::encode::avg::visit_block_rl64(
+        in, base, avg, values.size(),
+        [&begin, &success](uint64_t value) {
+          success = success && *begin == value;
+          ++begin;
+      });
+      ASSERT_TRUE(success);
+      ASSERT_EQ(values.end(), begin);
+    }
+  }
+}
+

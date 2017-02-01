@@ -13,7 +13,6 @@
 #include "store_utils.hpp"
 
 #include "utils/std.hpp"
-#include "utils/bit_packing.hpp"
 #include "utils/memory.hpp"
 
 NS_ROOT
@@ -125,11 +124,12 @@ void skip(data_input& in, size_t to_skip,
   }
 }
 
-/* -------------------------------------------------------------------
-* packed helpers
-* ------------------------------------------------------------------*/
+// ----------------------------------------------------------------------------
+// --SECTION--                                              bit packing helpers
+// ----------------------------------------------------------------------------
 
-const uint32_t ALL_EQUAL = 0U;
+NS_BEGIN(encode)
+NS_BEGIN(bitpack)
 
 void skip_block32(index_input& in, uint32_t size) {
   assert(size);
@@ -198,7 +198,7 @@ void read_block(
   if (ALL_EQUAL == bits) {
     std::fill(decoded, decoded + size, in.read_vlong());
   } else {
-    auto reqiured = packed::bytes_required_64(size, bits);
+    const auto reqiured = packed::bytes_required_64(size, bits);
 
 #ifdef IRESEARCH_DEBUG
     const auto read = in.read_bytes(
@@ -209,7 +209,7 @@ void read_block(
 #else 
     in.read_bytes(
       reinterpret_cast<byte_type*>(encoded),
-      reqiured 
+      reqiured
     );
 #endif // IRESEARCH_DEBUG
 
@@ -217,8 +217,8 @@ void read_block(
   }
 }
 
-void write_block(
-    data_output& out, 
+uint32_t write_block(
+    data_output& out,
     const uint32_t* RESTRICT decoded,
     uint32_t size,
     uint32_t* RESTRICT encoded) {
@@ -229,23 +229,26 @@ void write_block(
   if (irstd::all_equal(decoded, decoded + size)) {
     out.write_vint(ALL_EQUAL);
     out.write_vint(*decoded);
-  } else {
-    const auto bits = packed::bits_required_32(
-      *std::max_element(decoded, decoded + size)
-    );
-
-    std::memset(encoded, 0, sizeof(uint32_t) * size);
-    packed::pack(decoded, decoded + size, encoded, bits);
-
-    out.write_vint(bits);
-    out.write_bytes(
-      reinterpret_cast<const byte_type*>(encoded),
-      packed::bytes_required_32(size, bits)
-    );
+    return ALL_EQUAL;
   }
+
+  const auto bits = packed::bits_required_32(
+    *std::max_element(decoded, decoded + size)
+  );
+
+  std::memset(encoded, 0, sizeof(uint32_t) * size);
+  packed::pack(decoded, decoded + size, encoded, bits);
+
+  out.write_vint(bits);
+  out.write_bytes(
+    reinterpret_cast<const byte_type*>(encoded),
+    packed::bytes_required_32(size, bits)
+  );
+
+  return bits;
 }
 
-void write_block(
+uint32_t write_block(
     data_output& out,
     const uint64_t* RESTRICT decoded,
     uint32_t size,
@@ -257,25 +260,32 @@ void write_block(
   if (irstd::all_equal(decoded, decoded + size)) {
     out.write_vint(ALL_EQUAL);
     out.write_vlong(*decoded);
-  } else {
-    const auto bits = packed::bits_required_64(
-      *std::max_element(decoded, decoded + size)
-    );
-
-    std::memset(encoded, 0, sizeof(uint64_t) * size);
-    packed::pack(decoded, decoded + size, encoded, bits);
-
-    out.write_vint(bits);
-    out.write_bytes(
-      reinterpret_cast<const byte_type*>(encoded),
-      packed::bytes_required_64(size, bits)
-    );
+    return ALL_EQUAL;
   }
+
+  const auto bits = packed::bits_required_64(
+    *std::max_element(decoded, decoded + size)
+  );
+
+  std::memset(encoded, 0, sizeof(uint64_t) * size);
+  packed::pack(decoded, decoded + size, encoded, bits);
+
+  out.write_vint(bits);
+  out.write_bytes(
+    reinterpret_cast<const byte_type*>(encoded),
+    packed::bytes_required_64(size, bits)
+  );
+
+  return bits;
 }
 
-/* -------------------------------------------------------------------
-* IO streams
-* ------------------------------------------------------------------*/
+
+NS_END // bitpack
+NS_END // encode
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                                      I/O streams
+// ----------------------------------------------------------------------------
 
 /* bytes_output */
 

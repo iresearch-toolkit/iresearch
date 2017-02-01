@@ -816,11 +816,9 @@ endif()
 ################################################################################
 
 set(IResearch_format-1_0_source
-  ./formats/format_compress.cpp
   ./formats/formats_10.cpp
   ./formats/formats_10_attributes.cpp
   ./formats/formats_burst_trie.cpp
-  ./formats/format_compress.hpp
   ./formats/formats_10.hpp
   ./formats/formats_10_attributes.hpp
   ./formats/formats_burst_trie.hpp
