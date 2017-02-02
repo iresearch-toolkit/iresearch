@@ -446,15 +446,17 @@ typedef std::pair<
 // Returns block base & average
 inline stats encode(uint64_t* begin, uint64_t* end) {
   assert(std::distance(begin, end) > 0 && std::is_sorted(begin, end));
+  --end;
 
   const uint64_t base = *begin;
 
+  const std::ptrdiff_t distance[] { 1, std::distance(begin, end) }; // prevent division by 0
   const uint64_t avg = std::lround(
-    static_cast<double_t>(end[-1] - base) / std::distance(begin, end)
+    static_cast<double_t>(*end - base) / distance[distance[1] > 0]
   );
 
   *begin++ = 0; // zig_zag_encode64(*begin - base - avg*0) == 0
-  for (size_t avg_base = base; begin != end; ++begin) {
+  for (size_t avg_base = base; begin <= end; ++begin) {
     *begin = zig_zag_encode64(*begin - (avg_base += avg));
   }
 
