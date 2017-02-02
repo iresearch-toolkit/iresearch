@@ -1512,18 +1512,36 @@ const size_t MAX_DATA_BLOCK_SIZE = 4096;
 
 // By default we treat columns as a variable length sparse columns
 enum ColumnProperty {
+  CP_SPARSE = 0,
   CP_DENSE = 1, // keys can be presented as an array indices
-  CP_FIXED = 2, // fixed length column
-  CP_MASK = 4 // column contains no data
-};
+  CP_FIXED = 2, // fixed length colums
+  CP_MASK = 4, // column contains no data
+  CP_CONTINIOUS = 8 // all blocks are placed sequentially
+}; // ColumnProperty
 
-void write_compact(
+ColumnProperty operator&(ColumnProperty lhs, ColumnProperty rhs) {
+  return enum_bitwise_and(lhs, rhs);
+}
+
+ColumnProperty& operator&=(ColumnProperty& lhs, ColumnProperty rhs) {
+  return lhs = enum_bitwise_and(lhs, rhs);
+}
+
+ColumnProperty operator|(ColumnProperty lhs, ColumnProperty rhs) {
+  return enum_bitwise_or(lhs, rhs);
+}
+
+ColumnProperty& operator|=(ColumnProperty& lhs, ColumnProperty rhs) {
+  return lhs = enum_bitwise_or(lhs, rhs);
+}
+
+ColumnProperty write_compact(
     irs::index_output& out,
     irs::compressor& compressor,
     const irs::bytes_ref& data) {
   if (data.empty()) {
     out.write_byte(0); // zig_zag_encode32(0) == 0
-    return;
+    return CP_MASK;
   }
 
   // compressor can only handle size of int32_t, so can use the negative flag as a compression flag
@@ -1534,12 +1552,13 @@ void write_compact(
     irs::write_zvint(out, int32_t(compressor.size())); // compressed size
     out.write_bytes(compressor.c_str(), compressor.size());
     irs::write_zvlong(out, data.size() - MAX_DATA_BLOCK_SIZE); // original size
-    return;
+  } else {
+    assert(data.size() <= irs::integer_traits<int32_t>::const_max);
+    irs::write_zvint(out, int32_t(0) - int32_t(data.size())); // -ve to mark uncompressed
+    out.write_bytes(data.c_str(), data.size());
   }
 
-  assert(data.size() <= irs::integer_traits<int32_t>::const_max);
-  irs::write_zvint(out, int32_t(0) - int32_t(data.size())); // -ve to mark uncompressed
-  out.write_bytes(data.c_str(), data.size());
+  return CP_SPARSE;
 }
 
 void read_compact(
@@ -1606,6 +1625,12 @@ class index_block {
     return key_ == std::end(keys_);
   }
 
+  // returns total number of items
+  size_t total() const {
+    return flushed_ + this->size();
+  }
+
+  // returns number of items to be flushed
   size_t size() const {
     assert(key_ >= keys_);
     return key_ - keys_;
@@ -1615,39 +1640,55 @@ class index_block {
     return keys_ == key_;
   }
 
-  void flush(data_output& out, uint64_t* buf) {
+  ColumnProperty flush(data_output& out, uint64_t* buf) {
     if (empty()) {
-      return;
+      return CP_DENSE | CP_FIXED;
     }
+
+    const auto size = this->size();
 
     // adjust number of elements to pack to the nearest value
     // that is multiple to the block size
-    const auto block_size = math::ceil64(size(), packed::BLOCK_SIZE_64);
-    assert(block_size >= this->size());
+    const auto block_size = math::ceil64(size, packed::BLOCK_SIZE_64);
+    assert(block_size >= size);
+
+    ColumnProperty props = CP_SPARSE;
 
     // write keys
     {
       const auto stats = encode::avg::encode(keys_, key_);
-      encode::avg::write_block(
+      const auto bits = encode::avg::write_block(
         out, stats.first, stats.second,
         keys_, block_size, buf
       );
+
+      if (1 == stats.second && 0 == keys_[0] && encode::bitpack::rl(bits)) {
+        props |= CP_DENSE;
+      }
     }
 
     // write offsets
     {
       const auto stats = encode::avg::encode(offsets_, offset_);
-      encode::avg::write_block(
+      const auto bits = encode::avg::write_block(
         out, stats.first, stats.second,
         offsets_, block_size, buf
       );
+
+      if (0 == offsets_[0] && encode::bitpack::rl(bits)) {
+        props |= CP_FIXED;
+      }
     }
+
+    flushed_ += size;
 
     // reset pointers and clear data
     key_ = keys_;
     std::memset(keys_, 0, sizeof keys_);
     offset_ = offsets_;
     std::memset(offsets_, 0, sizeof offsets_);
+
+    return props;
   }
 
  private:
@@ -1655,6 +1696,7 @@ class index_block {
   uint64_t offsets_[Size]{};
   doc_id_t* key_{ keys_ };
   uint64_t* offset_{ offsets_ };
+  size_t flushed_{}; // number of flushed items
 }; // index_block
 
 //////////////////////////////////////////////////////////////////////////////
@@ -1675,7 +1717,7 @@ class writer final : public iresearch::columnstore_writer {
  private:
   class column final : public iresearch::columnstore_writer::column_output {
    public:
-    column(writer& ctx) // temporary buffer for bitpacking
+    column(writer& ctx) // compression context
       : ctx_(&ctx) {
     }
 
@@ -1683,36 +1725,36 @@ class writer final : public iresearch::columnstore_writer {
       assert(key >= max_ || irs::type_limits<irs::type_t::doc_id_t>::eof(max_));
 
       // commit previous key and offset unless the 'reset' method has been called
+      auto& offset = offsets_[0];
+
       if (max_ != pending_key_) {
-        if (block_index_.push_back(pending_key_, offset_)) {
-          offset_ = MAX_DATA_BLOCK_SIZE; // will trigger 'flush_block'
-        }
+        offset = offsets_[size_t(block_index_.push_back(pending_key_, offset))]; // will trigger 'flush_block' if offset >= MAX_DATA_BLOCK_SIZE
         max_ = pending_key_;
-        ++docs_;
       }
 
       // flush block if we've overcome MAX_DATA_BLOCK_SIZE size
-      if (offset_ >= MAX_DATA_BLOCK_SIZE && key != pending_key_) {
+      if (offset >= MAX_DATA_BLOCK_SIZE && key != pending_key_) {
         flush_block();
         min_ = key;
       }
 
       // reset key and offset (will be commited during the next 'write')
-      offset_ = block_buf_.size();
+      offset = block_buf_.size();
       pending_key_ = key;
 
       assert(pending_key_ >= min_);
     }
 
     bool empty() const {
-      return !docs_;
+      return !block_index_.total();
     }
 
     void finish() {
       auto& out = *ctx_->data_out_;
-      out.write_vlong(docs_); // total number of documents
+      out.write_vint(static_cast<uint32_t>(props_)); // column properties
+      out.write_vlong(block_index_.total()); // total number of items
       out.write_vlong(max_); // max key
-      out.write_vlong(index_blocks_); // total number of index blocks
+      out.write_vlong(column_index_.total()); // total number of index blocks
       out.write_vlong(avg_compressed_block_size_);
       blocks_index_.file >> out; // column blocks index
     }
@@ -1739,13 +1781,14 @@ class writer final : public iresearch::columnstore_writer {
     }
 
     virtual void reset() override {
-      block_buf_.reset(offset_);
+      block_buf_.reset(offsets_[0]);
       pending_key_ = max_;
     }
 
    private:
     void flush_block() {
       if (block_index_.empty()) {
+        // nothing to flush
         return;
       }
 
@@ -1753,26 +1796,31 @@ class writer final : public iresearch::columnstore_writer {
       auto* buf = ctx_->buf_;
 
       // write first block key & where block starts
-      ++index_blocks_;
       if (column_index_.push_back(min_, out.file_pointer())) {
         column_index_.flush(blocks_index_.stream, buf);
       }
 
       // flush current block
 
-      // write block header
-      out.write_vlong(block_index_.size()); // total number of elements
-      block_index_.flush(out, buf);
+      // write total number of elements in the block
+      out.write_vlong(block_index_.size());
 
-      // write compressed block data
-      write_compact(out, ctx_->comp_, block_buf_);
-      block_buf_.reset(); // reset buffer stream after flush
+      // write block index, compressed data and aggregate block properties
+      // note that order of calls is important here, since it is not defined
+      // which expression should be evaluated first in the following example:
+      //   const auto res = expr0() | expr1();
+      // otherwise it would violate format layout
+      auto block_props = block_index_.flush(out, buf);
+      block_props |= write_compact(out, ctx_->comp_, block_buf_);
+
+      // refresh column properties
+      props_ &= block_props;
+      // reset buffer stream after flush
+      block_buf_.reset();
     }
 
     writer* ctx_;
-    size_t index_blocks_{}; // total number of column index blocks
-    size_t docs_{}; // total number of documents
-    uint64_t offset_{ MAX_DATA_BLOCK_SIZE }; // value offset, because of initial MAX_DATA_BLOCK_SIZE 'min_' will be set on the first 'write'
+    uint64_t offsets_[2] { MAX_DATA_BLOCK_SIZE, MAX_DATA_BLOCK_SIZE }; // value offset, because of initial MAX_DATA_BLOCK_SIZE 'min_' will be set on the first 'write'
     uint64_t avg_compressed_block_size_{}; // avg compressed data block size
     index_block<INDEX_BLOCK_SIZE> block_index_; // current block index (per document key/offset)
     index_block<INDEX_BLOCK_SIZE> column_index_; // column block index (per block key/offset)
@@ -1781,6 +1829,7 @@ class writer final : public iresearch::columnstore_writer {
     doc_id_t min_{ type_limits<type_t::doc_id_t>::eof() }; // min key
     doc_id_t max_{ type_limits<type_t::doc_id_t>::eof() }; // max key
     doc_id_t pending_key_{ type_limits<type_t::doc_id_t>::eof() }; // current pending key
+    ColumnProperty props_{ CP_DENSE | CP_FIXED | CP_MASK }; // aggregated column properties
   };
 
   //TODO:
@@ -2165,6 +2214,7 @@ class column : private util::noncopyable {
   }
 
   virtual bool read(data_input& in, uint64_t* buf) {
+    props_ = static_cast<ColumnProperty>(in.read_vint());
     count_ = in.read_vlong();
     max_ = in.read_vlong();
     return true;
@@ -2172,11 +2222,13 @@ class column : private util::noncopyable {
 
   doc_id_t max() const { return max_; }
   doc_id_t size() const { return count_; }
+  ColumnProperty props() const { return props_; }
 
  private:
   const type_id* type_;
-  doc_id_t max_;
-  doc_id_t count_;
+  doc_id_t max_{ type_limits<type_t::doc_id_t>::eof() };
+  doc_id_t count_{};
+  ColumnProperty props_{ CP_SPARSE };
 }; // column
 
 // -----------------------------------------------------------------------------

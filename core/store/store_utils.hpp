@@ -340,6 +340,11 @@ NS_BEGIN(bitpack)
 
 const uint32_t ALL_EQUAL = 0U;
 
+// returns true if one can use run length encoding for the specified numberof bits
+inline bool rl(const uint32_t bits) {
+  return ALL_EQUAL == bits;
+}
+
 // skip block of the specified size that was previously
 // written with the corresponding 'write_block' function
 IRESEARCH_API void skip_block32(index_input& in, uint32_t size);
