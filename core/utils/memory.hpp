@@ -33,20 +33,38 @@ struct deallocator : public _alloc {
   }
 };
 
-FORCE_INLINE void malloc_statistics() {
-  #ifndef _MSC_VER
+FORCE_INLINE void malloc_statistics(FILE* out) {
+  #ifdef _MSC_VER
+    UNUSED(out);
+  #else
+    static const char* fomrat = "\
+Total non-mmapped bytes (arena):       %d\n\
+# of free chunks (ordblks):            %d\n\
+# of free fastbin blocks (smblks):     %d\n\
+# of mapped regions (hblks):           %d\n\
+Bytes in mapped regions (hblkhd):      %d\n\
+Max. total allocated space (usmblks):  %d\n\
+Free bytes held in fastbins (fsmblks): %d\n\
+Total allocated space (uordblks):      %d\n\
+Total free space (fordblks):           %d\n\
+Topmost releasable block (keepcost):   %d\n\
+";
     auto mi = mallinfo();
 
-    fprintf(stderr, "Total non-mmapped bytes (arena):       %d\n", mi.arena);
-    fprintf(stderr, "# of free chunks (ordblks):            %d\n", mi.ordblks);
-    fprintf(stderr, "# of free fastbin blocks (smblks):     %d\n", mi.smblks);
-    fprintf(stderr, "# of mapped regions (hblks):           %d\n", mi.hblks);
-    fprintf(stderr, "Bytes in mapped regions (hblkhd):      %d\n", mi.hblkhd);
-    fprintf(stderr, "Max. total allocated space (usmblks):  %d\n", mi.usmblks);
-    fprintf(stderr, "Free bytes held in fastbins (fsmblks): %d\n", mi.fsmblks);
-    fprintf(stderr, "Total allocated space (uordblks):      %d\n", mi.uordblks);
-    fprintf(stderr, "Total free space (fordblks):           %d\n", mi.fordblks);
-    fprintf(stderr, "Topmost releasable block (keepcost):   %d\n", mi.keepcost);
+    fprintf(
+      out,
+      fomrat,
+      mi.arena,
+      mi.ordblks,
+      mi.smblks,
+      mi.hblks,
+      mi.hblkhd,
+      mi.usmblks,
+      mi.fsmblks,
+      mi.uordblks,
+      mi.fordblks,
+      mi.keepcost
+    );
     malloc_stats();
   #endif
 }
@@ -63,7 +81,7 @@ inline typename std::enable_if<
       "Memory allocation failure while creating and initializing an object of size %lu bytes\n",
       sizeof(_Ty)
     );
-    malloc_statistics();
+    malloc_statistics(stderr);
     throw;
   }
 }
@@ -81,7 +99,7 @@ inline typename std::enable_if<
       "Memory allocation failure while creating and initializing an array of %lu objects each of size %lu bytes\n",
       _Size, sizeof(_Elem)
     );
-    malloc_statistics();
+    malloc_statistics(stderr);
     throw;
   }
 }
