@@ -195,12 +195,15 @@ index_writer::ptr index_writer::make(directory& dir, format::ptr codec, OPEN_MOD
     std::move(memory::make_unique<index_meta>(meta)),
     std::move(file_refs)
   );
-  index_writer::ptr writer(new index_writer( 
+
+  PTR_NAMED(
+    index_writer,
+    writer,
     std::move(lock), 
     dir, codec,
     std::move(meta),
     std::move(comitted_state)
-  ));
+  );
 
   directory_utils::remove_all_unreferenced(dir); // remove non-index files from directory
 

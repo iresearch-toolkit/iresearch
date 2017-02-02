@@ -171,8 +171,8 @@ segment_reader::ptr segment_reader::open(
     const directory& dir, 
     const segment_meta& seg) {
   auto& codec = *seg.codec;
+  PTR_NAMED(segment_reader, rdr);
 
-  segment_reader::ptr rdr = segment_reader::ptr(new segment_reader());
   rdr->dir_state_.dir = &dir;
   rdr->dir_state_.version = integer_traits<decltype(seg.version)>::const_max; // version forcing refresh(...)
   rdr->docs_count_ = seg.docs_count;

@@ -34,7 +34,8 @@ segment_writer::column::column(
 }
 
 segment_writer::ptr segment_writer::make(directory& dir, format::ptr codec) {
-  return ptr(new segment_writer(dir, codec));
+  PTR_NAMED(segment_writer, ptr, dir, codec);
+  return ptr;
 }
 
 segment_writer::segment_writer(directory& dir, format::ptr codec) NOEXCEPT
