@@ -32,31 +32,31 @@ NS_LOCAL
 using iresearch::data_input;
 using iresearch::data_output;
 
-template< typename SizeType >
-struct size_helper { 
-  static SizeType read( data_input& in );
-  static SizeType write( data_output& out, size_t size );
+template<typename T>
+struct read_write_helper {
+  static T read(data_input& in);
+  static T write(data_output& out, T size);
 };
 
 template<>
-struct size_helper< uint32_t > {
+struct read_write_helper<uint32_t> {
   inline static uint32_t read( data_input& in ) { 
     return in.read_vint();
   }
 
-  inline static void write( data_output& out, size_t size ) {
-    out.write_vint( static_cast<uint32_t>(size) );
+  inline static void write( data_output& out, uint32_t size ) {
+    out.write_vint(size);
   }
 };
 
 template<>
-struct size_helper< uint64_t > {
+struct read_write_helper<uint64_t> {
   inline static uint64_t read( data_input& in ) {
     return in.read_vlong();
   }
 
-  inline static void write( data_output& out, size_t size ) {
-    out.write_vlong( static_cast<uint64_t>(size) );
+  inline static void write( data_output& out, uint64_t size ) {
+    out.write_vlong(size);
   }
 };
 
@@ -68,12 +68,36 @@ NS_ROOT
 // --SECTION--                                               read/write helpers
 // ----------------------------------------------------------------------------
 
+template<typename T>
+void write_enum(data_output& out, T value) {
+  typedef typename std::enable_if<
+    std::is_enum<T>::value,
+    typename std::underlying_type<T>::type
+  >::type underlying_type_t;
+
+  ::read_write_helper<underlying_type_t>::write(
+    out, static_cast<underlying_type_t>(value)
+  );
+}
+
+template<typename T>
+T read_enum(data_input& in) {
+  typedef typename std::enable_if<
+    std::is_enum<T>::value,
+    typename std::underlying_type<T>::type
+  >::type underlying_type_t;
+
+  return static_cast<T>(
+    ::read_write_helper<underlying_type_t>::read(in)
+  );
+}
+
 inline void write_size( data_output& out, size_t size ) {
-  ::size_helper< size_t >::write( out, size );
+  ::read_write_helper<size_t>::write( out, size );
 }
 
 inline size_t read_size( data_input& in ) {
-  return ::size_helper< size_t >::read( in );
+  return ::read_write_helper<size_t>::read( in );
 }
 
 void IRESEARCH_API write_zvfloat(data_output& out, float_t v);

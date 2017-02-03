@@ -1418,7 +1418,7 @@ bool meta_writer::prepare(directory& dir, const string_ref& name) {
 
   return true;
 }
-  
+
 void meta_writer::write(const std::string& name, field_id id) {
   out_->write_vint(id);
   write_string(*out_, name);
@@ -1444,7 +1444,7 @@ class meta_reader final : public iresearch::column_meta_reader {
  private:
   checksum_index_input<boost::crc_32_type> in_;
   field_id count_{0};
-}; // meta_writer 
+}; // meta_writer
 
 bool meta_reader::prepare(const directory& dir, const string_ref& name, field_id& count) {
   const auto filename = file_name(name, meta_writer::FORMAT_EXT);
@@ -1511,7 +1511,7 @@ const size_t INDEX_BLOCK_SIZE = 1024;
 const size_t MAX_DATA_BLOCK_SIZE = 4096;
 
 // By default we treat columns as a variable length sparse columns
-enum ColumnProperty {
+enum ColumnProperty : uint32_t {
   CP_SPARSE = 0,
   CP_DENSE = 1, // keys can be presented as an array indices
   CP_FIXED = 2, // fixed length colums
@@ -1519,7 +1519,7 @@ enum ColumnProperty {
   CP_CONTINIOUS = 8 // all blocks are placed sequentially
 }; // ColumnProperty
 
-ColumnProperty operator&(ColumnProperty lhs, ColumnProperty rhs) {
+CONSTEXPR ColumnProperty operator&(ColumnProperty lhs, ColumnProperty rhs) {
   return enum_bitwise_and(lhs, rhs);
 }
 
@@ -1527,7 +1527,7 @@ ColumnProperty& operator&=(ColumnProperty& lhs, ColumnProperty rhs) {
   return lhs = enum_bitwise_and(lhs, rhs);
 }
 
-ColumnProperty operator|(ColumnProperty lhs, ColumnProperty rhs) {
+CONSTEXPR ColumnProperty operator|(ColumnProperty lhs, ColumnProperty rhs) {
   return enum_bitwise_or(lhs, rhs);
 }
 
@@ -1751,7 +1751,7 @@ class writer final : public iresearch::columnstore_writer {
 
     void finish() {
       auto& out = *ctx_->data_out_;
-      out.write_vint(static_cast<uint32_t>(props_)); // column properties
+      write_enum(out, props_); // column properties
       out.write_vlong(block_index_.total()); // total number of items
       out.write_vlong(max_); // max key
       out.write_vlong(column_index_.total()); // total number of index blocks
@@ -2097,9 +2097,106 @@ class sparse_block : irs::util::noncopyable {
   const ref* end_{ std::end(index_) };
 }; // sparse_block
 
+class dense_block : irs::util::noncopyable {
+ public:
+  bool load(irs::index_input& in, irs::decompressor& decomp, irs::bstring& buf) {
+    const size_t size = in.read_vlong();
+
+    uint64_t avg;
+    if (!irs::encode::avg::read_block_rl64(in, base_, avg) || 1 != avg) {
+      // invalid block type
+      return false;
+    }
+
+    auto begin = std::begin(index_);
+
+    irs::encode::avg::visit_block_packed_tail(
+      in, size, reinterpret_cast<uint64_t*>(&buf[0]),
+      [begin](uint64_t offset) mutable {
+        *begin = offset;
+        ++begin;
+    });
+
+    read_compact(in, decomp, buf, data_);
+    end_ = index_ + size;
+
+    return true;
+  }
+
+  bool value(
+      irs::doc_id_t key,
+      const irs::columnstore_reader::value_reader_f& reader) const {
+    const auto* begin = index_ + key - base_;
+    if (begin < index_ || begin >= end_) {
+      // there is no item with the speicified key
+      return false;
+    }
+
+    if (data_.empty()) {
+      // block without data, but we've found a key
+      return true;
+    }
+
+    const auto vbegin = *begin;
+    const auto vend = (++begin == end_ ? data_.size() : *begin);
+    assert(vend >= vbegin);
+
+    irs::bytes_ref_input stream;
+    stream.reset(data_.c_str() + vbegin, vend - vbegin);
+
+    return reader(stream);
+  }
+
+  bool visit(const irs::columnstore_reader::raw_reader_f& reader) const {
+    irs::bytes_ref_input in;
+
+    // visit first [begin;end-1) blocks
+    doc_id_t key = base_;
+    size_t vbegin;
+    auto begin = std::begin(index_);
+    for (const auto end = end_ - 1; begin != end; ++key) { // -1 for tail item
+      vbegin = *begin;
+
+      ++begin;
+
+      assert(*begin >= vbegin);
+      in.reset(
+        data_.c_str() + vbegin, // start
+        *begin - vbegin // length
+      );
+
+      if (!reader(key, in)) {
+        return false;
+      }
+    }
+
+    // visit tail block
+    assert(data_.size() >= *begin);
+    in.reset(
+      data_.c_str() + *begin, // start
+      data_.size() - *begin // length
+    );
+
+    return reader(key, in);
+  }
+
+ private:
+  // TODO: use single memory block for both index & data
+
+  // all blocks except the tail are going to be fully filled,
+  // so we don't track size of each block here since we could
+  // waste just INDEX_BLOCK_SIZE*sizeof(ref)-1 per column
+  // in the worst case
+  uint64_t index_[INDEX_BLOCK_SIZE];
+  irs::bstring data_;
+  uint64_t* end_{ index_ };
+  doc_id_t base_{ };
+}; // dense_block
+
 template<typename Allocator = std::allocator<sparse_block>>
 class read_context
-  : public block_cache_traits<sparse_block, Allocator>::cache_t {
+  : public block_cache_traits<sparse_block, Allocator>::cache_t,
+    public block_cache_traits<dense_block, Allocator>::cache_t {
  public:
   DECLARE_SPTR(read_context);
 
@@ -2108,9 +2205,9 @@ class read_context
   }
 
   read_context(index_input::ptr&& in = index_input::ptr(), const Allocator& alloc = Allocator())
-  : block_cache_traits<sparse_block, Allocator>::cache_t(typename block_cache_traits<sparse_block, Allocator>::allocator_t(alloc)),
-    buf_(INDEX_BLOCK_SIZE*sizeof(uint64_t), 0),
-    stream_(std::move(in)) {
+    : block_cache_traits<sparse_block, Allocator>::cache_t(typename block_cache_traits<sparse_block, Allocator>::allocator_t(alloc)),
+      buf_(INDEX_BLOCK_SIZE*sizeof(uint64_t), 0),
+      stream_(std::move(in)) {
   }
 
   template<typename Block, typename... Args>
@@ -2182,50 +2279,31 @@ class column : private util::noncopyable {
  public:
   DECLARE_PTR(column);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @class type_id 
-  //////////////////////////////////////////////////////////////////////////////
-  class type_id: public irs::type_id, util::noncopyable {
-   public:
-    typedef std::function<column::ptr(const context_provider& ctxs)> factory_f;
-    type_id(const string_ref& name, factory_f&& factory)
-      : name_(name), factory_(std::move(factory)) {
-    }
-
-    operator const type_id*() const { return this; }
-    const string_ref& name() const { return name_; }
-
-    column::ptr construct(const context_provider& ctxs) {
-      return factory_(ctxs);
-    }
-
-   private:
-    string_ref name_;
-    factory_f factory_;
-  }; // type_id
-
-  column(const type_id& type)
-    : type_(&type) {
+  column(ColumnProperty props)
+    : props_(props) {
   }
   virtual ~column() { }
 
-  const type_id& type() const {
-    return *type_;
-  }
-
   virtual bool read(data_input& in, uint64_t* buf) {
-    props_ = static_cast<ColumnProperty>(in.read_vint());
     count_ = in.read_vlong();
     max_ = in.read_vlong();
     return true;
   }
+
+  virtual bool value(
+   irs::doc_id_t key,
+   const irs::columnstore_reader::value_reader_f& reader
+  ) const = 0;
+
+  virtual bool visit(
+    const irs::columnstore_reader::raw_reader_f& reader
+  ) const = 0;
 
   doc_id_t max() const { return max_; }
   doc_id_t size() const { return count_; }
   ColumnProperty props() const { return props_; }
 
  private:
-  const type_id* type_;
   doc_id_t max_{ type_limits<type_t::doc_id_t>::eof() };
   doc_id_t count_{};
   ColumnProperty props_{ CP_SPARSE };
@@ -2249,18 +2327,19 @@ class column : private util::noncopyable {
 ////////////////////////////////////////////////////////////////////////////////
 /// @class sparse_column
 ////////////////////////////////////////////////////////////////////////////////
+template<typename Block>
 class sparse_column final : public column {
  public:
-  DECLARE_COLUMN_TYPE();
+//  DECLARE_COLUMN_TYPE();
 
-  typedef sparse_block block_t;
+  typedef Block block_t;
 
-  static column::ptr make(const context_provider& ctxs) {
-    return memory::make_unique<sparse_column>(ctxs);
+  static column::ptr make(const context_provider& ctxs, ColumnProperty props) {
+    return memory::make_unique<sparse_column>(ctxs, props);
   }
 
-  sparse_column(const context_provider& ctxs)
-    : column(sparse_column::type()), ctxs_(&ctxs) {
+  sparse_column(const context_provider& ctxs, ColumnProperty props)
+    : column(props), ctxs_(&ctxs) {
   }
 
   virtual bool read(data_input& in, uint64_t* buf) override {
@@ -2323,7 +2402,7 @@ class sparse_column final : public column {
     return true;
   }
 
-  bool value(
+  virtual bool value(
       irs::doc_id_t key,
       const irs::columnstore_reader::value_reader_f& reader) const {
     // find the right block
@@ -2355,8 +2434,8 @@ class sparse_column final : public column {
     return cached->value(key, reader);
   };
 
-  bool visit(const irs::columnstore_reader::raw_reader_f& reader) const {
-    sparse_block block;
+  virtual bool visit(const irs::columnstore_reader::raw_reader_f& reader) const {
+    block_t block;
     for (auto begin = refs_.begin(), end = refs_.end()-1; begin != end; ++begin) { // -1 for upper bound
       const auto* cached = begin->pblock.load();
       if (!cached) {
@@ -2388,7 +2467,25 @@ class sparse_column final : public column {
   std::vector<block_ref> refs_; // blocks index
 }; // sparse_column
 
-DEFINE_COLUMN_TYPE(sparse_column);
+//DEFINE_COLUMN_TYPE(sparse_column<Block>);
+
+typedef std::function<
+  column::ptr(ColumnProperty prop, const context_provider& ctxs)
+> column_factory_f;
+
+column::ptr column_factory_default(
+    ColumnProperty prop,
+    const context_provider& ctxs) {
+  switch(prop) {
+    case CP_DENSE:
+    return sparse_column<dense_block>::make(ctxs, prop);
+
+    case CP_DENSE | CP_FIXED:
+    break;
+  }
+
+  return sparse_column<sparse_block>::make(ctxs, prop);
+}
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class reader
@@ -2405,14 +2502,6 @@ class reader final : public irs::columnstore_reader,
   virtual bool visit(field_id field, const raw_reader_f& reader) const override;
 
  private:
-  column::ptr read_column(index_input& in, uint64_t* buf) {
-    auto column = sparse_column::make(*this);
-    if (!column->read(in, buf)) {
-      column = nullptr;
-    }
-    return column;
-  }
-
   std::vector<column::ptr> columns_;
 }; // reader
 
@@ -2462,9 +2551,12 @@ bool reader::prepare(const reader_state& state) {
   std::vector<column::ptr> columns;
   columns.reserve(stream->read_vlong());
   for (size_t i = 0, size = columns.capacity(); i < size; ++i) {
-    auto column = read_column(*stream, buf);
-
-    if (!column) {
+    // read column properties
+    const auto props = read_enum<ColumnProperty>(*stream);
+    // create columns
+    auto column = column_factory_default(props, *this);
+    // read column
+    if (!column || !column->read(*stream, buf)) {
       IR_ERROR() << "Unable to load blocks index for column id=" << i;
       return false;
     }
@@ -2485,7 +2577,7 @@ reader::values_reader_f reader::values(field_id field) const {
     return INVALID_COLUMN;
   }
 
-  auto& column = static_cast<sparse_column&>(*columns_[field]);
+  auto& column = *columns_[field];
   bytes_ref_input block_in;
 
   return[this, &column, block_in] (doc_id_t doc, const value_reader_f& reader) mutable {
@@ -2499,7 +2591,7 @@ bool reader::visit(field_id field, const raw_reader_f& reader) const {
     return false;
   }
 
-  auto& column = static_cast<sparse_column&>(*columns_[field]);
+  auto& column = *columns_[field];
   return column.visit(reader);
 }
 
