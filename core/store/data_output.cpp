@@ -38,13 +38,13 @@ void data_output::write_int( int32_t i ) {
   write_byte( static_cast< byte_type >( i ) );
 }
 
-void data_output::write_vint( uint32_t i ) {
-  while ( ( i & ~0x7F ) != 0 ) {
-    write_byte( static_cast< byte_type >( ( i & 0x7F ) | 0x80 ) );
+void data_output::write_vint(uint32_t i) {
+  while (i >= 0x80) {
+    write_byte(static_cast<byte_type>(i | 0x80));
     i >>= 7;
   }
 
-  write_byte( static_cast< byte_type >( i ) );
+  write_byte(static_cast<byte_type>(i));
 }
 
 void data_output::write_long( int64_t i ) {
@@ -53,12 +53,12 @@ void data_output::write_long( int64_t i ) {
 }
 
 void data_output::write_vlong( uint64_t i ) {
-  while ( i & ~uint64_t(0x7F) ) {
-    write_byte( static_cast< byte_type >( ( i & uint64_t(0x7F) ) | uint64_t(0x80) ) );
+  while (i >= uint64_t(0x80)) {
+    write_byte(static_cast<byte_type>(i | uint64_t(0x80)));
     i >>= 7;
   }
 
-  write_byte( static_cast< byte_type >( i ) );
+  write_byte(static_cast<byte_type>(i));
 }
 
 /* -------------------------------------------------------------------
