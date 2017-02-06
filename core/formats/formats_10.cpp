@@ -1754,12 +1754,17 @@ class writer final : public iresearch::columnstore_writer {
       write_enum(out, props_); // column properties
       out.write_vlong(block_index_.total()); // total number of items
       out.write_vlong(max_); // max key
+      out.write_vlong(avg_block_size_); // avg data block size
+      out.write_vlong(avg_block_count_); // avg number of elements per block
       out.write_vlong(column_index_.total()); // total number of index blocks
-      out.write_vlong(avg_compressed_block_size_);
       blocks_index_.file >> out; // column blocks index
     }
 
     void flush() {
+      const auto blocks_count = std::max(size_t(1), column_index_.total());
+      avg_block_count_ = (block_index_.total()-block_index_.size()) / blocks_count;
+      avg_block_size_ = length_ / blocks_count;
+
       // commit and flush remain blocks
       flush_block();
 
@@ -1812,6 +1817,7 @@ class writer final : public iresearch::columnstore_writer {
       // otherwise it would violate format layout
       auto block_props = block_index_.flush(out, buf);
       block_props |= write_compact(out, ctx_->comp_, block_buf_);
+      length_ += block_buf_.size();
 
       // refresh column properties
       props_ &= block_props;
@@ -1821,7 +1827,7 @@ class writer final : public iresearch::columnstore_writer {
 
     writer* ctx_;
     uint64_t offsets_[2] { MAX_DATA_BLOCK_SIZE, MAX_DATA_BLOCK_SIZE }; // value offset, because of initial MAX_DATA_BLOCK_SIZE 'min_' will be set on the first 'write'
-    uint64_t avg_compressed_block_size_{}; // avg compressed data block size
+    uint64_t length_{}; // size of the all column data blocks
     index_block<INDEX_BLOCK_SIZE> block_index_; // current block index (per document key/offset)
     index_block<INDEX_BLOCK_SIZE> column_index_; // column block index (per block key/offset)
     memory_output blocks_index_; // blocks index
@@ -1830,6 +1836,8 @@ class writer final : public iresearch::columnstore_writer {
     doc_id_t max_{ type_limits<type_t::doc_id_t>::eof() }; // max key
     doc_id_t pending_key_{ type_limits<type_t::doc_id_t>::eof() }; // current pending key
     ColumnProperty props_{ CP_DENSE | CP_FIXED | CP_MASK }; // aggregated column properties
+    uint64_t avg_block_count_{}; // average number of items per block (tail block has not taken into account since it may skew distribution)
+    uint64_t avg_block_size_{}; // average size of the block (tail block has not taken into account since it may skew distribution)
   };
 
   //TODO:
@@ -2193,10 +2201,85 @@ class dense_block : irs::util::noncopyable {
   doc_id_t base_{ };
 }; // dense_block
 
+class dense_fixed_length_block : irs::util::noncopyable {
+ public:
+  bool load(irs::index_input& in, irs::decompressor& decomp, irs::bstring& buf) {
+    size_ = in.read_vlong();
+    assert(size_);
+
+    uint64_t avg;
+    if (!irs::encode::avg::read_block_rl64(in, base_key_, avg) || 1 != avg) {
+      // invalid block type
+      return false;
+    }
+
+    if (!irs::encode::avg::read_block_rl64(in, base_offset_, avg_length_)) {
+      // invalid block type
+      return false;
+    }
+
+    read_compact(in, decomp, buf, data_);
+
+    return true;
+  }
+
+  bool value(
+      irs::doc_id_t key,
+      const irs::columnstore_reader::value_reader_f& reader) const {
+    assert(key < size_);
+
+    if (data_.empty()) {
+      // block without data, but we've found a key
+      return true;
+    }
+
+    const auto vbegin = base_offset_ + key*avg_length_;
+    const auto vlength = (size_ == ++key ? data_.size() - vbegin : avg_length_);
+
+    irs::bytes_ref_input stream;
+    stream.reset(data_.c_str() + vbegin, vlength);
+
+    return reader(stream);
+  }
+
+  bool visit(const columnstore_reader::raw_reader_f& reader) const {
+    assert(size_);
+
+    bytes_ref_input in;
+
+    // visit first 'size_-1' blocks
+    doc_id_t key = base_key_;
+    size_t offset = base_offset_;
+    for (const doc_id_t end = key + size_ - 1;  key < end; ++key, offset += avg_length_) {
+      in.reset(data_.c_str() + offset, avg_length_);
+      if (!reader(key, in)) {
+        return false;
+      }
+    }
+
+    // visit tail block
+    assert(data_.size() >= offset);
+    in.reset(
+      data_.c_str() + offset, // start
+      data_.size() - offset // length
+    );
+
+    return reader(key, in);
+  }
+
+ private:
+  doc_id_t base_key_{}; // base key
+  uint64_t base_offset_{}; // base offset
+  uint64_t avg_length_{}; // entry length
+  doc_id_t size_; // total number of entries
+  irs::bstring data_;
+}; // dense_fixed_length_block
+
 template<typename Allocator = std::allocator<sparse_block>>
 class read_context
   : public block_cache_traits<sparse_block, Allocator>::cache_t,
-    public block_cache_traits<dense_block, Allocator>::cache_t {
+    public block_cache_traits<dense_block, Allocator>::cache_t,
+    public block_cache_traits<dense_fixed_length_block, Allocator>::cache_t {
  public:
   DECLARE_SPTR(read_context);
 
@@ -2206,6 +2289,8 @@ class read_context
 
   read_context(index_input::ptr&& in = index_input::ptr(), const Allocator& alloc = Allocator())
     : block_cache_traits<sparse_block, Allocator>::cache_t(typename block_cache_traits<sparse_block, Allocator>::allocator_t(alloc)),
+      block_cache_traits<dense_block, Allocator>::cache_t(typename block_cache_traits<sparse_block, Allocator>::allocator_t(alloc)),
+      block_cache_traits<dense_fixed_length_block, Allocator>::cache_t(typename block_cache_traits<sparse_block, Allocator>::allocator_t(alloc)),
       buf_(INDEX_BLOCK_SIZE*sizeof(uint64_t), 0),
       stream_(std::move(in)) {
   }
@@ -2287,6 +2372,11 @@ class column : private util::noncopyable {
   virtual bool read(data_input& in, uint64_t* buf) {
     count_ = in.read_vlong();
     max_ = in.read_vlong();
+    avg_block_size_ = in.read_vlong();
+    avg_block_count_ = in.read_vlong();
+    if (!avg_block_count_) {
+      avg_block_count_ = integer_traits<size_t>::const_max;
+    }
     return true;
   }
 
@@ -2301,11 +2391,15 @@ class column : private util::noncopyable {
 
   doc_id_t max() const { return max_; }
   doc_id_t size() const { return count_; }
+  size_t avg_block_size() const { return avg_block_size_; }
+  size_t avg_block_count() const { return avg_block_count_; }
   ColumnProperty props() const { return props_; }
 
  private:
   doc_id_t max_{ type_limits<type_t::doc_id_t>::eof() };
   doc_id_t count_{};
+  size_t avg_block_size_{};
+  size_t avg_block_count_{};
   ColumnProperty props_{ CP_SPARSE };
 }; // column
 
@@ -2347,7 +2441,6 @@ class sparse_column final : public column {
       return false;
     }
     size_t blocks_count = in.read_vlong(); // total number of column index blocks
-    const auto avg_compressed_block_size = in.read_vlong();
 
     std::vector<block_ref> refs(blocks_count + 1); // +1 for upper bound
 
@@ -2467,7 +2560,133 @@ class sparse_column final : public column {
   std::vector<block_ref> refs_; // blocks index
 }; // sparse_column
 
-//DEFINE_COLUMN_TYPE(sparse_column<Block>);
+class dense_fixed_length_column : public column {
+ public:
+  typedef dense_fixed_length_block block_t;
+
+  static column::ptr make(const context_provider& ctxs, ColumnProperty props) {
+    return memory::make_unique<dense_fixed_length_column>(ctxs, props);
+  }
+
+  dense_fixed_length_column(const context_provider& ctxs, ColumnProperty prop)
+    : column(prop), ctxs_(&ctxs) {
+  }
+
+  virtual bool read(irs::data_input& in, uint64_t* buf) override {
+    if (!column::read(in, buf)) {
+      return false;
+    }
+    size_t blocks_count = in.read_vlong(); // total number of column index blocks
+
+    std::vector<block_ref> refs(blocks_count);
+
+    auto begin = refs.begin();
+    while (blocks_count >= INDEX_BLOCK_SIZE) {
+      if (!irs::encode::avg::check_block_rl64(in, this->avg_block_count())) {
+        // invalid column type
+        //return false;
+      }
+
+      encode::avg::visit_block_packed(
+        in, INDEX_BLOCK_SIZE, buf,
+        [begin](uint64_t offset) mutable {
+          begin->offset = offset;
+          ++begin;
+      });
+
+      begin += INDEX_BLOCK_SIZE;
+      blocks_count -= INDEX_BLOCK_SIZE;
+    }
+
+    // tail block
+    if (blocks_count) {
+      if (!irs::encode::avg::check_block_rl64(in, this->avg_block_count())) {
+        // invalid column type
+        //return false;
+      }
+
+      encode::avg::visit_block_packed_tail(
+        in, blocks_count, buf,
+        [begin](uint64_t offset) mutable {
+          begin->offset = offset;
+          ++begin;
+      });
+
+      begin += blocks_count;
+    }
+
+    refs_ = std::move(refs);
+    min_ = this->max() - this->size()+1;
+
+    return true;
+  }
+
+  virtual bool value(
+      irs::doc_id_t key,
+      const irs::columnstore_reader::value_reader_f& reader) const {
+//    if ((key -= min_) > this->max()) {
+//      return false;
+//    }
+    if (key < min_ || key > this->max()) {
+      return false;
+    }
+
+    key -= min_;
+
+    const auto idx = key / this->avg_block_count();
+    assert(idx < refs_.size());
+
+    auto& ref = const_cast<block_ref&>(refs_[idx]);
+    const auto* cached = ref.pblock.load();
+
+    if (!cached) {
+      auto ctx = ctxs_->get_context();
+
+      if (!(cached = load_block(*ctx, ref.offset, ref.pblock))) {
+        // unable to load block
+        return false;
+      }
+    }
+
+    assert(cached);
+    return cached->value(key -= idx*this->avg_block_count(), reader);
+  }
+
+  virtual bool visit(const columnstore_reader::raw_reader_f& reader) const {
+    block_t block;
+    for (auto& ref : refs_) {
+      const auto* cached = ref.pblock.load();
+      if (!cached) {
+        auto ctx = ctxs_->get_context();
+
+        if (!ctx->load(block, ref.offset)) {
+          // unable to load block
+          return false;
+        }
+
+        cached = &block;
+      }
+
+      assert(cached);
+      if (!cached->visit(reader)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+ private:
+  struct block_ref {
+    uint64_t offset; // need to store base offset since blocks may not place
+    std::atomic<const block_t*> pblock;
+  };
+
+  const context_provider* ctxs_;
+  size_t block_size_;
+  irs::doc_id_t min_; // min key
+  std::vector<block_ref> refs_;
+}; // dense_fixed_length_column
 
 typedef std::function<
   column::ptr(ColumnProperty prop, const context_provider& ctxs)
@@ -2477,11 +2696,8 @@ column::ptr column_factory_default(
     ColumnProperty prop,
     const context_provider& ctxs) {
   switch(prop) {
-    case CP_DENSE:
-    return sparse_column<dense_block>::make(ctxs, prop);
-
-    case CP_DENSE | CP_FIXED:
-    break;
+    case CP_DENSE: return sparse_column<dense_block>::make(ctxs, prop);
+    case CP_DENSE | CP_FIXED: return dense_fixed_length_column::make(ctxs, prop);
   }
 
   return sparse_column<sparse_block>::make(ctxs, prop);
