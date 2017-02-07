@@ -277,7 +277,7 @@ bool segment_reader::visit(
 
 segment_reader::segment_reader_impl::segment_reader_impl(
   const directory& dir, uint64_t meta_version, uint64_t docs_count
-): dir_(dir), meta_version_(meta_version), docs_count_(docs_count) {
+): dir_(dir), docs_count_(docs_count), meta_version_(meta_version) {
 }
 
 index_reader::reader_iterator segment_reader::segment_reader_impl::begin() const {
@@ -356,7 +356,7 @@ uint64_t segment_reader::segment_reader_impl::meta_version() const NOEXCEPT {
 
   // initialize field reader
   if (!field_reader->prepare(rs)) {
-    return nullptr; // field reader required
+    return segment_reader(); // i.e. nullptr, field reader required
   }
 
   reader->field_reader_ = std::move(field_reader);
