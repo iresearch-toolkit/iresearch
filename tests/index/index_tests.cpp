@@ -990,6 +990,11 @@ class index_test_case_base : public tests::index_test_base {
           }
 
           auto* doc = gen.next();
+
+          if (!doc) {
+            return false;
+          }
+
           auto* field = doc->stored.get<tests::templates::string_field>(column_name);
 
           if (!field) {
