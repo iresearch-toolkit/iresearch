@@ -38,32 +38,32 @@ FORCE_INLINE void malloc_statistics(FILE* out) {
     UNUSED(out);
   #else
     static const char* fomrat = "\
-Total non-mmapped bytes (arena):       %d\n\
-# of free chunks (ordblks):            %d\n\
-# of free fastbin blocks (smblks):     %d\n\
-# of mapped regions (hblks):           %d\n\
-Bytes in mapped regions (hblkhd):      %d\n\
-Max. total allocated space (usmblks):  %d\n\
-Free bytes held in fastbins (fsmblks): %d\n\
-Total allocated space (uordblks):      %d\n\
-Total free space (fordblks):           %d\n\
-Topmost releasable block (keepcost):   %d\n\
+Total non-mmapped bytes (arena):       %lld\n\
+# of free chunks (ordblks):            %lld\n\
+# of free fastbin blocks (smblks):     %lld\n\
+# of mapped regions (hblks):           %lld\n\
+Bytes in mapped regions (hblkhd):      %lld\n\
+Max. total allocated space (usmblks):  %lld\n\
+Free bytes held in fastbins (fsmblks): %lld\n\
+Total allocated space (uordblks):      %lld\n\
+Total free space (fordblks):           %lld\n\
+Topmost releasable block (keepcost):   %lld\n\
 ";
     auto mi = mallinfo();
 
     fprintf(
       out,
       fomrat,
-      mi.arena,
-      mi.ordblks,
-      mi.smblks,
-      mi.hblks,
-      mi.hblkhd,
-      mi.usmblks,
-      mi.fsmblks,
-      mi.uordblks,
-      mi.fordblks,
-      mi.keepcost
+      static_cast<long long int>(mi.arena),
+      static_cast<long long int>(mi.ordblks),
+      static_cast<long long int>(mi.smblks),
+      static_cast<long long int>(mi.hblks),
+      static_cast<long long int>(mi.hblkhd),
+      static_cast<long long int>(mi.usmblks),
+      static_cast<long long int>(mi.fsmblks),
+      static_cast<long long int>(mi.uordblks),
+      static_cast<long long int>(mi.fordblks),
+      static_cast<long long int>(mi.keepcost)
     );
     malloc_stats();
   #endif
