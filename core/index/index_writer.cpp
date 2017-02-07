@@ -237,7 +237,7 @@ uint64_t index_writer::buffered_docs() const {
   return docs_in_ram;
 }
 
-segment_reader::ptr index_writer::get_segment_reader(
+segment_reader index_writer::get_segment_reader(
   const segment_meta& meta
 ) {
   REGISTER_TIMER_DETAILED();
@@ -247,15 +247,13 @@ segment_reader::ptr index_writer::get_segment_reader(
     it = cached_segment_readers_.emplace(
       meta.name, segment_reader::open(dir_, meta)
     ).first;
-
-    if (!it->second) {
-      cached_segment_readers_.erase(it);
-
-      return nullptr; // reader open failure
-    }
+  } else {
+    it->second = it->second.reopen(meta);
   }
 
-  it->second->refresh(meta);
+  if (!it->second) {
+    cached_segment_readers_.erase(it);
+  }
 
   return it->second;
 }
@@ -277,9 +275,9 @@ bool index_writer::add_document_mask_modified_records(
   }
 
   for (auto& mod : modification_queries) {
-    auto prepared = mod.filter->prepare(*rdr);
+    auto prepared = mod.filter->prepare(rdr);
 
-    for (auto docItr = prepared->execute(*rdr); docItr->next();) {
+    for (auto docItr = prepared->execute(rdr); docItr->next();) {
       auto doc = docItr->value();
 
       // if indexed doc_id was not add()ed after the request for modification
@@ -317,9 +315,9 @@ bool index_writer::add_document_mask_modified_records(
       continue; // skip invalid modification queries
     }
 
-    auto prepared = mod.filter->prepare(*rdr);
+    auto prepared = mod.filter->prepare(rdr);
 
-    for (auto docItr = prepared->execute(*rdr); docItr->next();) {
+    for (auto docItr = prepared->execute(rdr); docItr->next();) {
       auto doc = docItr->value();
       auto generationItr = doc_id_generation.find(doc);
 
@@ -385,7 +383,7 @@ bool index_writer::add_segment_mask_consolidated_records(
   const consolidation_acceptor_t& acceptor // functr dictating which segments to consider
 ) {
   REGISTER_TIMER_DETAILED();
-  std::vector<segment_reader::ptr> merge_candidates;
+  std::vector<segment_reader> merge_candidates;
   const index_meta::index_segment_t* merge_candindate_default = nullptr;
   flush_context::segment_mask_t segment_mask;
 
@@ -412,7 +410,7 @@ bool index_writer::add_segment_mask_consolidated_records(
 
   if (merge_candidates.size() < 2) {
     if (!merge_candindate_default) {
-      if (merge_candidates[0]->docs_count() == merge_candidates[0]->live_docs_count()) {
+      if (merge_candidates[0].docs_count() == merge_candidates[0].live_docs_count()) {
         return false; // no reason to consolidate a segment without any masked documents
       }
     } else { // if only one merge candidate and another segment available then merge with other
@@ -432,7 +430,7 @@ bool index_writer::add_segment_mask_consolidated_records(
   merge_writer merge_writer(dir, codec_, merge_segment_name);
 
   for (auto& merge_candidate: merge_candidates) {
-    merge_writer.add(*(merge_candidate));
+    merge_writer.add(merge_candidate);
   }
 
   if (!merge_writer.flush(segment.filename, segment.meta)) {

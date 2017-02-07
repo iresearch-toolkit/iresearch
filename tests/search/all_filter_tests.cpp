@@ -30,12 +30,13 @@ protected:
       add_segment( gen );
     }
 
-    ir::index_reader::ptr rdr = open_reader();
+    auto rdr = open_reader();
 
     check_query(
       ir::all( ),
       docs_t{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 },
-      *rdr );
+      rdr
+    );
   }
 }; // all_filter_test_case
 

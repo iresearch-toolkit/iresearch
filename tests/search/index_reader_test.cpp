@@ -54,11 +54,11 @@ TEST(directory_reader_test, open_empty_index) {
 
   /* open reader */
   auto rdr = ir::directory_reader::open(dir, codec_ptr);
-  ASSERT_NE(nullptr, rdr);
-  ASSERT_EQ(0, rdr->docs_count());
-  ASSERT_EQ(0, rdr->live_docs_count());  
-  ASSERT_EQ(0, rdr->size());
-  ASSERT_EQ(rdr->end(), rdr->begin());
+  ASSERT_FALSE(!rdr);
+  ASSERT_EQ(0, rdr.docs_count());
+  ASSERT_EQ(0, rdr.live_docs_count());
+  ASSERT_EQ(0, rdr.size());
+  ASSERT_EQ(rdr.end(), rdr.begin());
 }
 
 TEST(directory_reader_test, open_newest_index) {
@@ -215,13 +215,13 @@ TEST(directory_reader_test, open) {
 
   // open reader
   auto rdr = ir::directory_reader::open(dir, codec_ptr);
-  ASSERT_NE(nullptr, rdr);
-  ASSERT_EQ(9, rdr->docs_count());
-  ASSERT_EQ(9, rdr->live_docs_count());  
-  ASSERT_EQ(3, rdr->size());
+  ASSERT_FALSE(!rdr);
+  ASSERT_EQ(9, rdr.docs_count());
+  ASSERT_EQ(9, rdr.live_docs_count());  
+  ASSERT_EQ(3, rdr.size());
 
   // check subreaders
-  auto sub = rdr->begin();
+  auto sub = rdr.begin();
 
   iresearch::string_ref expected_value;
   size_t calls_count = 0;
@@ -238,11 +238,11 @@ TEST(directory_reader_test, open) {
 
   // first segment
   {
-    ASSERT_NE(rdr->end(), sub);
+    ASSERT_NE(rdr.end(), sub);
     ASSERT_EQ(1, sub->size());
     ASSERT_EQ(3, sub->docs_count());
     ASSERT_EQ(3, sub->live_docs_count());
-    
+
     auto values = sub->values("name", visitor);
 
     // read documents
@@ -262,11 +262,11 @@ TEST(directory_reader_test, open) {
   // second segment
   {
     ++sub;
-    ASSERT_NE(rdr->end(), sub);
+    ASSERT_NE(rdr.end(), sub);
     ASSERT_EQ(1, sub->size());
     ASSERT_EQ(4, sub->docs_count());
     ASSERT_EQ(4, sub->live_docs_count());
-    
+
     auto values = sub->values("name", visitor);
 
     // read documents
@@ -288,11 +288,11 @@ TEST(directory_reader_test, open) {
   // third segment
   {
     ++sub;
-    ASSERT_NE(rdr->end(), sub);
+    ASSERT_NE(rdr.end(), sub);
     ASSERT_EQ(1, sub->size());
     ASSERT_EQ(2, sub->docs_count());
     ASSERT_EQ(2, sub->live_docs_count());
-    
+
     auto values = sub->values("name", visitor);
 
     // read documents
@@ -308,7 +308,7 @@ TEST(directory_reader_test, open) {
   }
 
   ++sub;
-  ASSERT_EQ(rdr->end(), sub);
+  ASSERT_EQ(rdr.end(), sub);
 }
 
 // ----------------------------------------------------------------------------
@@ -384,10 +384,10 @@ TEST(segment_reader_test, open) {
     meta.version = IRESEARCH_VERSION;
 
     auto rdr = ir::segment_reader::open(dir, meta);
-    ASSERT_NE(nullptr, rdr);
-    ASSERT_EQ(1, rdr->size());
-    ASSERT_EQ(meta.docs_count, rdr->docs_count());
-    ASSERT_EQ(meta.docs_count, rdr->live_docs_count());
+    ASSERT_FALSE(!rdr);
+    ASSERT_EQ(1, rdr.size());
+    ASSERT_EQ(meta.docs_count, rdr.docs_count());
+    ASSERT_EQ(meta.docs_count, rdr.live_docs_count());
 
     size_t calls_count = 0;
     iresearch::string_ref expected_value;
@@ -402,7 +402,7 @@ TEST(segment_reader_test, open) {
       return true;
     };
 
-    auto& segment = *rdr->begin();
+    auto& segment = *rdr.begin();
     auto values = segment.values("name", visitor);
 
     // read documents
@@ -416,23 +416,23 @@ TEST(segment_reader_test, open) {
     ASSERT_TRUE(values(4));
     expected_value = "E"; // 'name' value in doc5
     ASSERT_TRUE(values(5));
-    
+
     calls_count = 0;
     ASSERT_FALSE(values(6)); // read invalid document 
     ASSERT_EQ(0, calls_count);
 
     // check iterators
     {
-      auto it = rdr->begin();
-      ASSERT_EQ(rdr.get(), &*it); /* should return self */
-      ASSERT_NE(rdr->end(), it);
+      auto it = rdr.begin();
+      ASSERT_EQ(&rdr, &*it); /* should return self */
+      ASSERT_NE(rdr.end(), it);
       ++it;
-      ASSERT_EQ(rdr->end(), it);
+      ASSERT_EQ(rdr.end(), it);
     }
 
     // check field names
     {
-      auto it = rdr->fields();
+      auto it = rdr.fields();
       ASSERT_TRUE(it->next());
       ASSERT_EQ("duplicated", it->value().meta().name);
       ASSERT_TRUE(it->next());
@@ -450,7 +450,7 @@ TEST(segment_reader_test, open) {
 
     // check live docs
     {
-      auto it = rdr->docs_iterator();
+      auto it = rdr.docs_iterator();
       ASSERT_TRUE(it->next());
       ASSERT_EQ(1, it->value());
       ASSERT_TRUE(it->next());
@@ -467,7 +467,7 @@ TEST(segment_reader_test, open) {
     // check field metadata
     {
       {
-        auto it = rdr->fields();
+        auto it = rdr.fields();
         size_t size = 0;
         while (it->next()) {
           ++size;
@@ -478,11 +478,11 @@ TEST(segment_reader_test, open) {
       // check field
       {       
         const ir::string_ref name = "name";
-        auto field = rdr->field(name);
+        auto field = rdr.field(name);
         ASSERT_EQ(name, field->meta().name);
 
         // check terms
-        auto terms = rdr->field(name);
+        auto terms = rdr.field(name);
         ASSERT_NE(nullptr, terms);
 
         ASSERT_EQ(5, terms->size());
@@ -568,22 +568,22 @@ TEST(segment_reader_test, open) {
       // check field
       {
         const ir::string_ref name = "seq";
-        auto field = rdr->field(name);
+        auto field = rdr.field(name);
         ASSERT_EQ(name, field->meta().name);
 
         // check terms
-        auto terms = rdr->field(name);
+        auto terms = rdr.field(name);
         ASSERT_NE(nullptr, terms);
       }
 
       // check field
       {
         const ir::string_ref name = "same";
-        auto field = rdr->field(name);
+        auto field = rdr.field(name);
         ASSERT_EQ(name, field->meta().name);
 
         // check terms
-        auto terms = rdr->field(name);
+        auto terms = rdr.field(name);
         ASSERT_NE(nullptr, terms);
         ASSERT_EQ(1, terms->size());
         ASSERT_EQ(5, terms->docs_count());
@@ -620,11 +620,11 @@ TEST(segment_reader_test, open) {
       // check field
       {
         const ir::string_ref name = "duplicated";
-        auto field = rdr->field(name);
+        auto field = rdr.field(name);
         ASSERT_EQ(name, field->meta().name);
 
         // check terms
-        auto terms = rdr->field(name);
+        auto terms = rdr.field(name);
         ASSERT_NE(nullptr, terms);
         ASSERT_EQ(2, terms->size());
         ASSERT_EQ(4, terms->docs_count());
@@ -671,11 +671,11 @@ TEST(segment_reader_test, open) {
       // check field
       {
         const ir::string_ref name = "prefix";
-        auto field = rdr->field(name);
+        auto field = rdr.field(name);
         ASSERT_EQ(name, field->meta().name);
 
         // check terms
-        auto terms = rdr->field(name);
+        auto terms = rdr.field(name);
         ASSERT_NE(nullptr, terms);
         ASSERT_EQ(2, terms->size());
         ASSERT_EQ(2, terms->docs_count());
@@ -718,7 +718,7 @@ TEST(segment_reader_test, open) {
       // invalid field
       {
         const ir::string_ref name = "invalid_field";
-        ASSERT_EQ(nullptr, rdr->field(name));
+        ASSERT_EQ(nullptr, rdr.field(name));
       }
     }
   }

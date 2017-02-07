@@ -51,9 +51,9 @@ class same_position_filter_test_case : public filter_test_case_base {
     add_segment(gen);
 
     // read segment
-    ir::index_reader::ptr index = open_reader();
-    ASSERT_EQ(1, index->size());
-    auto& segment = *index->begin();
+    auto index = open_reader();
+    ASSERT_EQ(1, index.size());
+    auto& segment = *(index.begin());
 
     uint64_t expected_id;
     ir::columnstore_reader::value_reader_f visitor = [&expected_id] (ir::data_input& in) {
@@ -61,11 +61,11 @@ class same_position_filter_test_case : public filter_test_case_base {
       return actual_value == expected_id;
     };
     auto values = segment.values("_id", visitor);
-    
+
     // empty query
     {
       ir::by_same_position q;
-      auto prepared = q.prepare(*index);
+      auto prepared = q.prepare(index);
       auto docs = prepared->execute(segment);
       ASSERT_FALSE(docs->next());
     }
@@ -77,10 +77,10 @@ class same_position_filter_test_case : public filter_test_case_base {
 
       ir::by_term expected_query;
       expected_query.field("a").term("100");
-      
-      auto prepared = query.prepare(*index);
-      auto expected_prepared = expected_query.prepare(*index);
-        
+
+      auto prepared = query.prepare(index);
+      auto expected_prepared = expected_query.prepare(index);
+
       auto docs = prepared->execute(segment);
       auto expected_docs = prepared->execute(segment);
 
@@ -100,7 +100,7 @@ class same_position_filter_test_case : public filter_test_case_base {
       q.push_back("b", ir::ref_cast<ir::byte_type>(ir::string_ref("30")));
       q.push_back("c", ir::ref_cast<ir::byte_type>(ir::string_ref("6")));
 
-      auto prepared = q.prepare(*index);
+      auto prepared = q.prepare(index);
 
       // next
       {
@@ -140,7 +140,7 @@ class same_position_filter_test_case : public filter_test_case_base {
       q.push_back("b", ir::ref_cast<ir::byte_type>(ir::string_ref("80")));
       q.push_back("a", ir::ref_cast<ir::byte_type>(ir::string_ref("700")));
 
-      auto prepared = q.prepare(*index);
+      auto prepared = q.prepare(index);
 
       // next
       {
@@ -176,8 +176,8 @@ class same_position_filter_test_case : public filter_test_case_base {
       q.push_back("a", ir::ref_cast<ir::byte_type>(ir::string_ref("700")));
       q.push_back("c", ir::ref_cast<ir::byte_type>(ir::string_ref("7")));
 
-      auto prepared = q.prepare(*index);
-      
+      auto prepared = q.prepare(index);
+
       // next
       {
         auto docs = prepared->execute(segment);

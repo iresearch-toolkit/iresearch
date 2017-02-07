@@ -33,36 +33,28 @@ protected:
     }
 
     // read segment
-    ir::index_reader::ptr rdr = open_reader();
+    auto rdr = open_reader();
 
-    check_query(ir::by_term(), docs_t{ }, costs_t{0}, *rdr);
+    check_query(ir::by_term(), docs_t{ }, costs_t{0}, rdr);
 
     // empty term
-    check_query(
-      ir::by_term().field("name"),
-      docs_t{ }, costs_t{0}, *rdr);
+    check_query(ir::by_term().field("name"), docs_t{}, costs_t{0}, rdr);
 
     // empty field
-    check_query(
-      ir::by_term().term("xyz"),
-      docs_t{ }, costs_t{0}, *rdr);
+    check_query(ir::by_term().term("xyz"), docs_t{}, costs_t{0}, rdr);
 
     // search : invalid field
-    check_query(
-      ir::by_term().field( "invalid_field" ).term( "A" ),
-      docs_t{ }, costs_t{0}, *rdr);
+    check_query(ir::by_term().field("invalid_field").term("A"), docs_t{}, costs_t{0}, rdr);
 
     // search : single term
-    check_query(
-      ir::by_term().field( "name" ).term( "A" ),
-      docs_t{ 1 }, costs_t{ 1 }, *rdr);
+    check_query(ir::by_term().field("name").term("A"), docs_t{1}, costs_t{1}, rdr);
 
     { 
       ir::by_term q;
       q.field("name").term("A");
-      
-      auto prepared = q.prepare(*rdr);
-      auto sub = rdr->begin();
+
+      auto prepared = q.prepare(rdr);
+      auto sub = rdr.begin();
       auto docs0 = prepared->execute(*sub);
       auto docs1 = prepared->execute(*sub);
       ASSERT_TRUE(docs0->next());
@@ -74,12 +66,11 @@ protected:
       ir::by_term().field( "same" ).term( "xyz" ),
       docs_t{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 },
       costs_t{ 32 },
-      *rdr);
+      rdr
+    );
 
     // search : empty result
-    check_query(
-      ir::by_term().field( "same" ).term( "invalid_term" ),
-      docs_t{}, costs_t{0}, *rdr);
+    check_query(ir::by_term().field("same").term("invalid_term"), docs_t{}, costs_t{0}, rdr);
   }
 
   void by_term_sequential_boost() {
@@ -92,7 +83,7 @@ protected:
     }
 
     // read segment
-    ir::index_reader::ptr rdr = open_reader();
+    auto rdr = open_reader();
 
     // create filter
     ir::by_term filter;
@@ -105,8 +96,8 @@ protected:
 
     // without boost
     {
-      auto prep = filter.prepare(*rdr, pord);
-      auto docs = prep->execute(*(rdr->begin()), pord);
+      auto prep = filter.prepare(rdr, pord);
+      auto docs = prep->execute(*(rdr.begin()), pord);
 
       const iresearch::score* scr = docs->attributes().get<iresearch::score>();
       ASSERT_NE(nullptr, scr);
@@ -127,8 +118,8 @@ protected:
       const iresearch::boost::boost_t value = 5;
       filter.boost(value);
 
-      auto prep = filter.prepare(*rdr, pord);
-      auto docs = prep->execute(*(rdr->begin()), pord);
+      auto prep = filter.prepare(rdr, pord);
+      auto docs = prep->execute(*(rdr.begin()), pord);
 
       const iresearch::score* scr = docs->attributes().get<iresearch::score>();
       ASSERT_NE(nullptr, scr);
@@ -212,7 +203,7 @@ protected:
       add_segment(gen);
     }
 
-    ir::index_reader::ptr rdr = open_reader();
+    auto rdr = open_reader();
 
     // long (20)
     {
@@ -224,12 +215,12 @@ protected:
       ir::by_term query;
       query.field("seq").term(term->value());
 
-      auto prepared = query.prepare(*rdr);
+      auto prepared = query.prepare(rdr);
 
       std::vector<ir::doc_id_t> expected { 21 };
       std::vector<ir::doc_id_t> actual;
 
-      for (const auto& sub : *rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
         for (;docs->next();) {
           actual.push_back(docs->value());
@@ -248,12 +239,12 @@ protected:
       ir::by_term query;
       query.field("seq").term(term->value());
 
-      auto prepared = query.prepare(*rdr);
+      auto prepared = query.prepare(rdr);
 
       std::vector<ir::doc_id_t> expected { 22 };
       std::vector<ir::doc_id_t> actual;
 
-      for (const auto& sub : *rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
         for (;docs->next();) {
           actual.push_back(docs->value());
@@ -272,12 +263,12 @@ protected:
       ir::by_term query;
       query.field("value").term(term->value());
 
-      auto prepared = query.prepare(*rdr);
+      auto prepared = query.prepare(rdr);
 
       std::vector<ir::doc_id_t> expected { 13 };
       std::vector<ir::doc_id_t> actual;
 
-      for (const auto& sub : *rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
         for (;docs->next();) {
           actual.push_back(docs->value());
@@ -296,12 +287,12 @@ protected:
       ir::by_term query;
       query.field("value").term(term->value());
 
-      auto prepared = query.prepare(*rdr);
+      auto prepared = query.prepare(rdr);
 
       std::vector<ir::doc_id_t> expected { 13 };
       std::vector<ir::doc_id_t> actual;
 
-      for (const auto& sub : *rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
         for (;docs->next();) {
           actual.push_back(docs->value());
@@ -320,12 +311,12 @@ protected:
       ir::by_term query;
       query.field("value").term(term->value());
 
-      auto prepared = query.prepare(*rdr);
+      auto prepared = query.prepare(rdr);
 
       std::vector<ir::doc_id_t> expected { 1, 5, 7, 9, 10 };
       std::vector<ir::doc_id_t> actual;
 
-      for (const auto& sub : *rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
         for (;docs->next();) {
           actual.push_back(docs->value());
@@ -344,12 +335,12 @@ protected:
       ir::by_term query;
       query.field("value").term(term->value());
 
-      auto prepared = query.prepare(*rdr);
+      auto prepared = query.prepare(rdr);
 
       std::vector<ir::doc_id_t> expected { 1, 5, 7, 9, 10 };
       std::vector<ir::doc_id_t> actual;
 
-      for (const auto& sub : *rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
         for (;docs->next();) {
           actual.push_back(docs->value());
@@ -368,12 +359,12 @@ protected:
       ir::by_term query;
       query.field("value").term(term->value());
 
-      auto prepared = query.prepare(*rdr);
+      auto prepared = query.prepare(rdr);
 
       std::vector<ir::doc_id_t> expected { 1, 5, 7, 9, 10 };
       std::vector<ir::doc_id_t> actual;
 
-      for (const auto& sub : *rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
         for (;docs->next();) {
           actual.push_back(docs->value());
@@ -392,12 +383,12 @@ protected:
       ir::by_term query;
       query.field("value").term(term->value());
 
-      auto prepared = query.prepare(*rdr);
+      auto prepared = query.prepare(rdr);
 
       std::vector<ir::doc_id_t> expected { 1, 5, 7, 9, 10 };
       std::vector<ir::doc_id_t> actual;
 
-      for (const auto& sub : *rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
         for (;docs->next();) {
           actual.push_back(docs->value());
@@ -416,41 +407,32 @@ protected:
       add_segment( gen );
     }
 
-    ir::index_reader::ptr rdr = open_reader();
+    auto rdr = open_reader();
 
     // empty query
-    check_query( ir::by_term(), docs_t{ }, *rdr );
+    check_query(ir::by_term(), docs_t{ }, rdr);
 
     // empty term
-    check_query( 
-      ir::by_term().field("name"), 
-      docs_t{ }, *rdr );
+    check_query(ir::by_term().field("name"), docs_t{ }, rdr);
 
     // empty field
-    check_query( 
-      ir::by_term().term("xyz"), 
-      docs_t{ }, *rdr );
+    check_query(ir::by_term().term("xyz"), docs_t{ }, rdr);
 
     // search : invalid field
-    check_query( 
-      ir::by_term().field( "invalid_field" ).term( "A" ),
-      docs_t{ }, *rdr );
+    check_query(ir::by_term().field("invalid_field").term( "A"), docs_t{ }, rdr );
 
     // search : single term
-    check_query( 
-      ir::by_term().field( "name" ).term( "A" ),
-      docs_t{ 1 }, *rdr );
+    check_query(ir::by_term().field("name").term("A"), docs_t{ 1 }, rdr);
 
     // search : all terms
     check_query(
       ir::by_term().field( "same" ).term( "xyz" ),
       docs_t{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 },
-      *rdr );
+      rdr
+    );
 
     // search : empty result
-    check_query(
-      ir::by_term().field( "same" ).term( "invalid_term" ),
-      docs_t{}, *rdr );
+    check_query(ir::by_term().field("same").term("invalid_term"), docs_t{}, rdr);
   }
 
   void by_term_schemas() {
@@ -486,15 +468,11 @@ protected:
       add_segments(*writer, gens);
     }
 
-    ir::index_reader::ptr rdr = open_reader();
-    check_query(
-      ir::by_term().field( "Fields" ).term( "FirstName" ),
-      docs_t{ 28, 167, 194 }, *rdr );
+    auto rdr = open_reader();
+    check_query(ir::by_term().field("Fields").term("FirstName"), docs_t{ 28, 167, 194 }, rdr);
 
     // address to the [SDD-179]
-    check_query(
-      ir::by_term().field( "Name" ).term( "Product" ),
-      docs_t{ 32 }, *rdr );
+    check_query(ir::by_term().field("Name").term("Product"), docs_t{ 32 }, rdr);
   }
 };
 

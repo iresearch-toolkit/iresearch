@@ -59,6 +59,23 @@ segment_meta& segment_meta::operator=(segment_meta&& rhs) NOEXCEPT {
   return *this;
 }
 
+bool segment_meta::operator==(const segment_meta& other) const NOEXCEPT {
+  return this == &other || false == (*this != other);
+}
+
+bool segment_meta::operator!=(const segment_meta& other) const NOEXCEPT {
+  if (this == &other) {
+    return false;
+  }
+
+  return name != other.name
+    || version != other.version
+    || docs_count != other.docs_count
+    || codec != other.codec
+    || files != other.files
+  ;
+}
+
 /* -------------------------------------------------------------------
  * index_meta
  * ------------------------------------------------------------------*/
@@ -93,6 +110,27 @@ index_meta& index_meta::operator=(index_meta&& rhs) NOEXCEPT {
   return *this;
 }
 
+bool index_meta::operator==(const index_meta& other) const NOEXCEPT {
+  if (this == &other) {
+    return true;
+  }
+
+  if (gen_ != other.gen_
+      || last_gen_ != other.last_gen_
+      || seg_counter_ != other.seg_counter_
+      || segments_.size() != other.segments_.size()) {
+    return false;
+  }
+
+  for (size_t i = 0, count = segments_.size(); i < count; ++i) {
+    if (segments_[i] != other.segments_[i]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 uint64_t index_meta::next_generation() const {
   return type_limits<type_t::index_gen_t>::valid(gen_) ? (gen_ + 1) : 1;
 }
@@ -121,6 +159,22 @@ index_meta::index_segment_t& index_meta::index_segment_t::operator=(
   meta = std::move(other.meta);
 
   return *this;
+}
+
+bool index_meta::index_segment_t::operator==(
+  const index_segment_t& other
+) const NOEXCEPT {
+  return this == &other || false == (*this != other);
+}
+
+bool index_meta::index_segment_t::operator!=(
+  const index_segment_t& other
+) const NOEXCEPT {
+  if (this == &other) {
+    return false;
+  }
+
+  return filename != other.filename || meta != other.meta;
 }
 
 NS_END

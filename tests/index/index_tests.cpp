@@ -502,13 +502,13 @@ class index_test_case_base : public tests::index_test_base {
     std::cout << "Path to timing log: " << fs::absolute(path).string() << std::endl;
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(true, 1 <= reader->size()); // not all commits might produce a new segment, some might merge with concurrent commits
-    ASSERT_EQ(true, writer_commit_count * iresearch::index_writer::THREAD_COUNT >= reader->size());
+    ASSERT_EQ(true, 1 <= reader.size()); // not all commits might produce a new segment, some might merge with concurrent commits
+    ASSERT_EQ(true, writer_commit_count * iresearch::index_writer::THREAD_COUNT >= reader.size());
 
     size_t indexed_docs_count = 0;
 
-    for (size_t i = 0, count = reader->size(); i < count; ++i) {
-      indexed_docs_count += (*reader)[i].docs_count();
+    for (size_t i = 0, count = reader.size(); i < count; ++i) {
+      indexed_docs_count += reader[i].docs_count();
     }
 
     ASSERT_EQ(parsed_docs_count, indexed_docs_count);
@@ -613,8 +613,8 @@ class index_test_case_base : public tests::index_test_base {
     }
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    ASSERT_EQ(docs_count, (*reader)[0].docs_count());
+    ASSERT_EQ(1, reader.size());
+    ASSERT_EQ(docs_count, reader[0].docs_count());
   }
 
   void writer_check_open_modes() {
@@ -622,7 +622,7 @@ class index_test_case_base : public tests::index_test_base {
     ASSERT_THROW(ir::index_writer::make(dir(), codec(), ir::OM_APPEND), ir::file_not_found);
     // read index in empty directory, should fail
     ASSERT_THROW(ir::directory_reader::open(dir(), codec()), ir::index_not_found);
-    
+
     // create empty index
     {
       auto writer = ir::index_writer::make(dir(), codec(), ir::OM_CREATE);
@@ -633,10 +633,10 @@ class index_test_case_base : public tests::index_test_base {
     // read empty index, it should not fail
     {
       auto reader = ir::directory_reader::open(dir(), codec());
-      ASSERT_EQ(0, reader->live_docs_count());
-      ASSERT_EQ(0, reader->docs_count());
-      ASSERT_EQ(0, reader->size());
-      ASSERT_EQ(reader->begin(), reader->end());
+      ASSERT_EQ(0, reader.live_docs_count());
+      ASSERT_EQ(0, reader.docs_count());
+      ASSERT_EQ(0, reader.size());
+      ASSERT_EQ(reader.begin(), reader.end());
     }
 
     // append to index
@@ -658,17 +658,17 @@ class index_test_case_base : public tests::index_test_base {
       writer->commit();
       ASSERT_EQ(0, writer->buffered_docs());
     }
-    
+
     // read empty index, it should not fail
     {
       auto reader = ir::directory_reader::open(dir(), codec());
-      ASSERT_EQ(1, reader->live_docs_count());
-      ASSERT_EQ(1, reader->docs_count());
-      ASSERT_EQ(1, reader->size());
-      ASSERT_NE(reader->begin(), reader->end());
+      ASSERT_EQ(1, reader.live_docs_count());
+      ASSERT_EQ(1, reader.docs_count());
+      ASSERT_EQ(1, reader.size());
+      ASSERT_NE(reader.begin(), reader.end());
     }
   }
-  
+
   void writer_transaction_isolation() {
     tests::json_doc_generator gen(
       resource("simple_sequential.json"),
@@ -682,7 +682,7 @@ class index_test_case_base : public tests::index_test_base {
       });
       tests::document const* doc1 = gen.next();
       tests::document const* doc2 = gen.next();
-      
+
       auto writer = ir::index_writer::make(dir(), codec(), ir::OM_CREATE);
 
       ASSERT_TRUE(
@@ -707,10 +707,10 @@ class index_test_case_base : public tests::index_test_base {
       // check index, 1 document in 1 segment 
       {
         auto reader = ir::directory_reader::open(dir(), codec());
-        ASSERT_EQ(1, reader->live_docs_count());
-        ASSERT_EQ(1, reader->docs_count());
-        ASSERT_EQ(1, reader->size());
-        ASSERT_NE(reader->begin(), reader->end());        
+        ASSERT_EQ(1, reader.live_docs_count());
+        ASSERT_EQ(1, reader.docs_count());
+        ASSERT_EQ(1, reader.size());
+        ASSERT_NE(reader.begin(), reader.end());
       }
 
       writer->commit(); // transaction #2
@@ -718,10 +718,10 @@ class index_test_case_base : public tests::index_test_base {
       // check index, 2 documents in 2 segments
       {
         auto reader = ir::directory_reader::open(dir(), codec());
-        ASSERT_EQ(2, reader->live_docs_count());
-        ASSERT_EQ(2, reader->docs_count());
-        ASSERT_EQ(2, reader->size());
-        ASSERT_NE(reader->begin(), reader->end());
+        ASSERT_EQ(2, reader.live_docs_count());
+        ASSERT_EQ(2, reader.docs_count());
+        ASSERT_EQ(2, reader.size());
+        ASSERT_NE(reader.begin(), reader.end());
       }
 
       // check documents
@@ -740,7 +740,7 @@ class index_test_case_base : public tests::index_test_base {
 
         // segment #1
         {
-          auto& segment = (*reader)[0];          
+          auto& segment = reader[0];
           auto values = segment.values("name", visitor);
           auto terms = segment.field("same");
           ASSERT_NE(nullptr, terms);
@@ -752,10 +752,10 @@ class index_test_case_base : public tests::index_test_base {
           ASSERT_TRUE(values(docsItr->value()));
           ASSERT_FALSE(docsItr->next());
         }
-        
+
         // segment #1
         {
-          auto& segment = (*reader)[1];
+          auto& segment = reader[1];
           auto values = segment.values("name", visitor);
           auto terms = segment.field("same");
           ASSERT_NE(nullptr, terms);
@@ -816,10 +816,10 @@ class index_test_case_base : public tests::index_test_base {
       // check index, it should be empty 
       {
         auto reader = ir::directory_reader::open(dir(), codec());
-        ASSERT_EQ(0, reader->live_docs_count());
-        ASSERT_EQ(0, reader->docs_count());
-        ASSERT_EQ(0, reader->size());
-        ASSERT_EQ(reader->begin(), reader->end());
+        ASSERT_EQ(0, reader.live_docs_count());
+        ASSERT_EQ(0, reader.docs_count());
+        ASSERT_EQ(0, reader.size());
+        ASSERT_EQ(reader.begin(), reader.end());
       }
     }
 
@@ -848,8 +848,8 @@ class index_test_case_base : public tests::index_test_base {
       ASSERT_EQ(file_count_before, file_count); // ensure rolled back file refs were released
 
       auto reader = ir::directory_reader::open(dir(), codec());
-      ASSERT_EQ(1, reader->size());
-      auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+      ASSERT_EQ(1, reader.size());
+      auto& segment = reader[0]; // assume 0 is id of first/only segment
       auto values = segment.values("name", visitor);
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
@@ -891,7 +891,7 @@ class index_test_case_base : public tests::index_test_base {
         };
 
         size_t i = 0;
-        for (auto& segment : *reader) {
+        for (auto& segment: reader) {
           auto values = segment.values("name", value_reader);
           const auto docs = segment.docs_count();
           for (iresearch::doc_id_t doc = (iresearch::type_limits<iresearch::type_t::doc_id_t>::min)(), max = segment.docs_count(); doc <= max; ++doc) {
@@ -970,8 +970,8 @@ class index_test_case_base : public tests::index_test_base {
     }
 
     auto reader = ir::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = *reader->begin();
+    ASSERT_EQ(1, reader.size());
+    auto& segment = *(reader.begin());
 
     // read columns 
     {
@@ -1130,8 +1130,8 @@ class index_test_case_base : public tests::index_test_base {
     }
 
     auto reader = ir::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = *reader->begin();
+    ASSERT_EQ(1, reader.size());
+    auto& segment = *(reader.begin());
 
     // read attributes
     {
@@ -1174,8 +1174,8 @@ class index_test_case_base : public tests::index_test_base {
     }
 
     auto reader = ir::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = *reader->begin();
+    ASSERT_EQ(1, reader.size());
+    auto& segment = *(reader.begin());
 
     // read attribute from invalid column
     {
@@ -1262,7 +1262,7 @@ class index_test_case_base : public tests::index_test_base {
         }
       }
     };
-          
+
     csv_doc_template_t csv_doc_template;
     tests::delim_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template, ',');
 
@@ -1280,9 +1280,9 @@ class index_test_case_base : public tests::index_test_base {
     // read attributes
     {
       auto reader = ir::directory_reader::open(dir());
-      ASSERT_EQ(1, reader->size());
+      ASSERT_EQ(1, reader.size());
 
-      auto& segment = (*reader)[0];
+      auto& segment = reader[0];
       auto columns = segment.columns();
       ASSERT_TRUE(columns->next());
       ASSERT_EQ("id", columns->value().name);
@@ -1572,8 +1572,8 @@ class index_test_case_base : public tests::index_test_base {
     // check fields with empty terms
     {
       auto reader = ir::directory_reader::open(dir());
-      ASSERT_EQ(1, reader->size());
-      auto& segment = (*reader)[0];
+      ASSERT_EQ(1, reader.size());
+      auto& segment = reader[0];
 
       {
         size_t count = 0;
@@ -1715,14 +1715,14 @@ class index_test_case_base : public tests::index_test_base {
       ));
       ASSERT_THROW(writer->commit(), ir::io_error);
     }
-    
+
     // check index, it should be empty 
     {
       auto reader = ir::directory_reader::open(dir(), codec());
-      ASSERT_EQ(0, reader->live_docs_count());
-      ASSERT_EQ(0, reader->docs_count());
-      ASSERT_EQ(0, reader->size());
-      ASSERT_EQ(reader->begin(), reader->end());
+      ASSERT_EQ(0, reader.live_docs_count());
+      ASSERT_EQ(0, reader.docs_count());
+      ASSERT_EQ(0, reader.size());
+      ASSERT_EQ(reader.begin(), reader.end());
     }
   }
 }; // index_test_case
@@ -1883,8 +1883,8 @@ TEST_F(memory_index_test, concurrent_add) {
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_TRUE(reader->size() == 1 || reader->size() == 2); // can be 1 if thread0 finishes before thread1 starts
-    ASSERT_EQ(docs.size(), reader->docs_count());
+    ASSERT_TRUE(reader.size() == 1 || reader.size() == 2); // can be 1 if thread0 finishes before thread1 starts
+    ASSERT_EQ(docs.size(), reader.docs_count());
   }
 }
 
@@ -1945,8 +1945,8 @@ TEST_F(memory_index_test, concurrent_add_remove) {
 
     std::unordered_set<std::string> expected = { "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "~", "!", "@", "#", "$", "%" };
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_TRUE(reader->size() == 1 || reader->size() == 2); // can be 1 if thread0 finishes before thread1 starts
-    ASSERT_TRUE(reader->docs_count() == docs.size() || reader->docs_count() == docs.size() - 1); // removed doc might have been on its own segment
+    ASSERT_TRUE(reader.size() == 1 || reader.size() == 2); // can be 1 if thread0 finishes before thread1 starts
+    ASSERT_TRUE(reader.docs_count() == docs.size() || reader.docs_count() == docs.size() - 1); // removed doc might have been on its own segment
 
     iresearch::columnstore_reader::value_reader_f visitor = [&expected](iresearch::data_input& in) {
       const auto value = ir::read_string<std::string>(in);
@@ -1962,8 +1962,8 @@ TEST_F(memory_index_test, concurrent_add_remove) {
       return true;
     };
 
-    for (size_t i = 0, count = reader->size(); i < count; ++i) {
-      auto& segment = (*reader)[i];
+    for (size_t i = 0, count = reader.size(); i < count; ++i) {
+      auto& segment = reader[i];
       auto values = segment.values("name", visitor);
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
@@ -2022,8 +2022,8 @@ TEST_F(memory_index_test, doc_removal) {
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
@@ -2053,8 +2053,8 @@ TEST_F(memory_index_test, doc_removal) {
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
@@ -2084,8 +2084,8 @@ TEST_F(memory_index_test, doc_removal) {
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
@@ -2115,8 +2115,8 @@ TEST_F(memory_index_test, doc_removal) {
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
@@ -2146,8 +2146,8 @@ TEST_F(memory_index_test, doc_removal) {
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
@@ -2180,8 +2180,8 @@ TEST_F(memory_index_test, doc_removal) {
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
@@ -2218,9 +2218,8 @@ TEST_F(memory_index_test, doc_removal) {
     writer->commit(); // new document mask with 'doc2','doc3' created
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
@@ -2255,8 +2254,8 @@ TEST_F(memory_index_test, doc_removal) {
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
@@ -2291,10 +2290,10 @@ TEST_F(memory_index_test, doc_removal) {
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(2, reader->size());
+    ASSERT_EQ(2, reader.size());
 
     {
-      auto& segment = (*reader)[0]; // assume 0 is id of old segment
+      auto& segment = reader[0]; // assume 0 is id of old segment
       auto values = segment.values("name", visitor);
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
@@ -2308,7 +2307,7 @@ TEST_F(memory_index_test, doc_removal) {
     }
 
     {
-      auto& segment = (*reader)[1]; // assume 1 is id of new segment
+      auto& segment = reader[1]; // assume 1 is id of new segment
       auto values = segment.values("name", visitor);
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
@@ -2348,10 +2347,10 @@ TEST_F(memory_index_test, doc_removal) {
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(2, reader->size());
+    ASSERT_EQ(2, reader.size());
 
     {
-      auto& segment = (*reader)[0]; // assume 0 is id of old segment
+      auto& segment = reader[0]; // assume 0 is id of old segment
       auto values = segment.values("name", visitor);
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
@@ -2365,7 +2364,7 @@ TEST_F(memory_index_test, doc_removal) {
     }
 
     {
-      auto& segment = (*reader)[1]; // assume 1 is id of new segment
+      auto& segment = reader[1]; // assume 1 is id of new segment
       auto values = segment.values("name", visitor);
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
@@ -2430,10 +2429,10 @@ TEST_F(memory_index_test, doc_removal) {
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(3, reader->size());
+    ASSERT_EQ(3, reader.size());
 
     {
-      auto& segment = (*reader)[0]; // assume 0 is id of old-old segment
+      auto& segment = reader[0]; // assume 0 is id of old-old segment
       auto values = segment.values("name", visitor);
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
@@ -2447,7 +2446,7 @@ TEST_F(memory_index_test, doc_removal) {
     }
 
     {
-      auto& segment = (*reader)[1]; // assume 1 is id of old segment
+      auto& segment = reader[1]; // assume 1 is id of old segment
       auto values = segment.values("name", visitor);
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
@@ -2461,7 +2460,7 @@ TEST_F(memory_index_test, doc_removal) {
     }
 
     {
-      auto& segment = (*reader)[2]; // assume 2 is id of new segment
+      auto& segment = reader[2]; // assume 2 is id of new segment
       auto values = segment.values("name", visitor);
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
@@ -2520,8 +2519,8 @@ TEST_F(memory_index_test, doc_update) {
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
@@ -2551,8 +2550,8 @@ TEST_F(memory_index_test, doc_update) {
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
@@ -2582,8 +2581,8 @@ TEST_F(memory_index_test, doc_update) {
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
@@ -2618,10 +2617,10 @@ TEST_F(memory_index_test, doc_update) {
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(2, reader->size());
+    ASSERT_EQ(2, reader.size());
 
     {
-      auto& segment = (*reader)[0]; // assume 0 is id of old segment
+      auto& segment = reader[0]; // assume 0 is id of old segment
       auto terms = segment.field("same");
       auto values = segment.values("name", visitor);
       ASSERT_NE(nullptr, terms);
@@ -2635,7 +2634,7 @@ TEST_F(memory_index_test, doc_update) {
     }
 
     {
-      auto& segment = (*reader)[1]; // assume 1 is id of new segment
+      auto& segment = reader[1]; // assume 1 is id of new segment
       auto values = segment.values("name", visitor);
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
@@ -2678,8 +2677,8 @@ TEST_F(memory_index_test, doc_update) {
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
@@ -2724,8 +2723,8 @@ TEST_F(memory_index_test, doc_update) {
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
@@ -2756,8 +2755,8 @@ TEST_F(memory_index_test, doc_update) {
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
@@ -2792,8 +2791,8 @@ TEST_F(memory_index_test, doc_update) {
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
@@ -2833,10 +2832,10 @@ TEST_F(memory_index_test, doc_update) {
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(2, reader->size());
+    ASSERT_EQ(2, reader.size());
 
     {
-      auto& segment = (*reader)[0]; // assume 0 is id of old segment
+      auto& segment = reader[0]; // assume 0 is id of old segment
       auto values = segment.values("name", visitor);
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
@@ -2850,7 +2849,7 @@ TEST_F(memory_index_test, doc_update) {
     }
 
     {
-      auto& segment = (*reader)[1]; // assume 1 is id of new segment
+      auto& segment = reader[1]; // assume 1 is id of new segment
       auto values = segment.values("name", visitor);
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
@@ -2886,8 +2885,8 @@ TEST_F(memory_index_test, doc_update) {
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
@@ -2924,8 +2923,8 @@ TEST_F(memory_index_test, doc_update) {
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
@@ -2966,8 +2965,8 @@ TEST_F(memory_index_test, doc_update) {
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
@@ -3011,8 +3010,8 @@ TEST_F(memory_index_test, doc_update) {
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
@@ -3099,8 +3098,8 @@ TEST_F(memory_index_test, doc_update) {
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
@@ -3159,12 +3158,12 @@ TEST_F(memory_index_test, import_reader) {
       doc2->stored.begin(), doc2->stored.end()
     ));
     data_writer->commit();
-    ASSERT_TRUE(writer->import(*(iresearch::directory_reader::open(data_dir, codec()))));
+    ASSERT_TRUE(writer->import(iresearch::directory_reader::open(data_dir, codec())));
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count());
     auto values = segment.values("name", visitor);
     auto terms = segment.field("same");
@@ -3198,12 +3197,12 @@ TEST_F(memory_index_test, import_reader) {
     ));
     data_writer->remove(std::move(query_doc1.filter));
     data_writer->commit();
-    ASSERT_TRUE(writer->import(*(iresearch::directory_reader::open(data_dir, codec()))));
+    ASSERT_TRUE(writer->import(iresearch::directory_reader::open(data_dir, codec())));
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(1, segment.docs_count());
     auto values = segment.values("name", visitor);
     auto terms = segment.field("same");
@@ -3241,12 +3240,12 @@ TEST_F(memory_index_test, import_reader) {
       doc4->stored.begin(), doc4->stored.end()
     ));
     data_writer->commit();
-    ASSERT_TRUE(writer->import(*(iresearch::directory_reader::open(data_dir, codec()))));
+    ASSERT_TRUE(writer->import(iresearch::directory_reader::open(data_dir, codec())));
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(4, segment.docs_count());
     auto values = segment.values("name", visitor);
     auto terms = segment.field("same");
@@ -3295,12 +3294,12 @@ TEST_F(memory_index_test, import_reader) {
     ));
     data_writer->remove(std::move(query_doc2_doc3.filter));
     data_writer->commit();
-    ASSERT_TRUE(writer->import(*(iresearch::directory_reader::open(data_dir, codec()))));
+    ASSERT_TRUE(writer->import(iresearch::directory_reader::open(data_dir, codec())));
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count());
     auto values = segment.values("name", visitor);
     auto terms = segment.field("same");
@@ -3343,12 +3342,12 @@ TEST_F(memory_index_test, import_reader) {
     ));
     data_writer->remove(std::move(query_doc4.filter));
     data_writer->commit();
-    ASSERT_TRUE(writer->import(*(iresearch::directory_reader::open(data_dir, codec()))));
+    ASSERT_TRUE(writer->import(iresearch::directory_reader::open(data_dir, codec())));
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(3, segment.docs_count());
     auto values = segment.values("name", visitor);
     auto terms = segment.field("same");
@@ -3389,14 +3388,14 @@ TEST_F(memory_index_test, import_reader) {
       doc3->stored.begin(), doc3->stored.end()
     ));
     writer->remove(std::move(query_doc2.filter)); // should not match any documents
-    ASSERT_TRUE(writer->import(*(iresearch::directory_reader::open(data_dir, codec()))));
+    ASSERT_TRUE(writer->import(iresearch::directory_reader::open(data_dir, codec())));
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(2, reader->size());
+    ASSERT_EQ(2, reader.size());
 
     {
-      auto& segment = (*reader)[0]; // assume 0 is id of imported segment
+      auto& segment = reader[0]; // assume 0 is id of imported segment
       ASSERT_EQ(2, segment.docs_count());
       auto values = segment.values("name", visitor);
       auto terms = segment.field("same");
@@ -3414,7 +3413,7 @@ TEST_F(memory_index_test, import_reader) {
     }
 
     {
-      auto& segment = (*reader)[1]; // assume 1 is id of original segment
+      auto& segment = reader[1]; // assume 1 is id of original segment
       ASSERT_EQ(1, segment.docs_count());
       auto values = segment.values("name", visitor);
       auto terms = segment.field("same");
@@ -3507,8 +3506,8 @@ TEST_F(memory_index_test, refresh_reader) {
 
   // validate state
   {
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
@@ -3536,8 +3535,8 @@ TEST_F(memory_index_test, refresh_reader) {
   // validate state pre/post refresh (existing segment changed)
   {
     {
-      ASSERT_EQ(1, reader->size());
-      auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+      ASSERT_EQ(1, reader.size());
+      auto& segment = reader[0]; // assume 0 is id of first/only segment
       auto values = segment.values("name", visitor);
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
@@ -3554,9 +3553,9 @@ TEST_F(memory_index_test, refresh_reader) {
     }
 
     {
-      reader->refresh();
-      ASSERT_EQ(1, reader->size());
-      auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+      reader = reader.reopen();
+      ASSERT_EQ(1, reader.size());
+      auto& segment = reader[0]; // assume 0 is id of first/only segment
       auto values = segment.values("name", visitor);
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
@@ -3587,8 +3586,8 @@ TEST_F(memory_index_test, refresh_reader) {
 
   // validate state pre/post refresh (new segment added)
   {
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
@@ -3600,11 +3599,11 @@ TEST_F(memory_index_test, refresh_reader) {
     ASSERT_TRUE(values(docsItr->value()));
     ASSERT_FALSE(docsItr->next());
 
-    reader->refresh();
-    ASSERT_EQ(2, reader->size());
+    reader = reader.reopen();
+    ASSERT_EQ(2, reader.size());
 
     {
-      auto& segment = (*reader)[0]; // assume 0 is id of first segment
+      auto& segment = reader[0]; // assume 0 is id of first segment
       auto values = segment.values("name", visitor);
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
@@ -3618,7 +3617,7 @@ TEST_F(memory_index_test, refresh_reader) {
     }
 
     {
-      auto& segment = (*reader)[1]; // assume 1 is id of second segment
+      auto& segment = reader[1]; // assume 1 is id of second segment
       auto values = segment.values("name", visitor);
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
@@ -3646,10 +3645,10 @@ TEST_F(memory_index_test, refresh_reader) {
 
   // validate state pre/post refresh (old segment removed)
   {
-    ASSERT_EQ(2, reader->size());
+    ASSERT_EQ(2, reader.size());
 
     {
-      auto& segment = (*reader)[0]; // assume 0 is id of first segment
+      auto& segment = reader[0]; // assume 0 is id of first segment
       auto values = segment.values("name", visitor);
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
@@ -3663,7 +3662,7 @@ TEST_F(memory_index_test, refresh_reader) {
     }
 
     {
-      auto& segment = (*reader)[1]; // assume 1 is id of second segment
+      auto& segment = reader[1]; // assume 1 is id of second segment
       auto values = segment.values("name", visitor);
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
@@ -3678,9 +3677,9 @@ TEST_F(memory_index_test, refresh_reader) {
       ASSERT_FALSE(docsItr->next());
     }
 
-    reader->refresh();
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of second segment
+    reader = reader.reopen();
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of second segment
     auto values = segment.values("name", visitor);
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
@@ -3831,7 +3830,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(0, reader->size());
+    ASSERT_EQ(0, reader.size());
   }
 
   // remove empty old segment
@@ -3848,7 +3847,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(0, reader->size());
+    ASSERT_EQ(0, reader.size());
   }
 
   // remove empty old, defragment new (deferred)
@@ -3880,8 +3879,8 @@ TEST_F(memory_index_test, segment_consolidate) {
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    const auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
     ASSERT_EQ(1, segment.docs_count()); // total count of documents
     auto terms = segment.field("same");
@@ -3925,8 +3924,8 @@ TEST_F(memory_index_test, segment_consolidate) {
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    const auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
     ASSERT_EQ(1, segment.docs_count()); // total count of documents
     auto terms = segment.field("same");
@@ -3970,8 +3969,8 @@ TEST_F(memory_index_test, segment_consolidate) {
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(1, segment.docs_count()); // total count of documents
     auto values = segment.values("name", visitor);
     auto terms = segment.field("same");
@@ -4016,8 +4015,8 @@ TEST_F(memory_index_test, segment_consolidate) {
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(1, segment.docs_count()); // total count of documents
     auto values = segment.values("name", visitor);
     auto terms = segment.field("same");
@@ -4056,8 +4055,8 @@ TEST_F(memory_index_test, segment_consolidate) {
 
     {
       auto reader = iresearch::directory_reader::open(dir(), codec());
-      ASSERT_EQ(1, reader->size());
-      auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+      ASSERT_EQ(1, reader.size());
+      auto& segment = reader[0]; // assume 0 is id of first/only segment
       ASSERT_EQ(1, segment.docs_count()); // total count of documents
     }
   }
@@ -4087,8 +4086,8 @@ TEST_F(memory_index_test, segment_consolidate) {
 
     {
       auto reader = iresearch::directory_reader::open(dir(), codec());
-      ASSERT_EQ(1, reader->size());
-      auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+      ASSERT_EQ(1, reader.size());
+      auto& segment = reader[0]; // assume 0 is id of first/only segment
       ASSERT_EQ(2, segment.docs_count()); // total count of documents
     }
 
@@ -4097,8 +4096,8 @@ TEST_F(memory_index_test, segment_consolidate) {
 
     {
       auto reader = iresearch::directory_reader::open(dir(), codec());
-      ASSERT_EQ(1, reader->size());
-      auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+      ASSERT_EQ(1, reader.size());
+      auto& segment = reader[0]; // assume 0 is id of first/only segment
       ASSERT_EQ(1, segment.docs_count()); // total count of documents
     }
   }
@@ -4137,8 +4136,8 @@ TEST_F(memory_index_test, segment_consolidate) {
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count()); // total count of documents
     auto values = segment.values("name", visitor);
     auto terms = segment.field("same");
@@ -4190,8 +4189,8 @@ TEST_F(memory_index_test, segment_consolidate) {
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count()); // total count of documents
     auto values = segment.values("name", visitor);
     auto terms = segment.field("same");
@@ -4243,8 +4242,8 @@ TEST_F(memory_index_test, segment_consolidate) {
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count()); // total count of documents
     auto values = segment.values("name", visitor);
     auto terms = segment.field("same");
@@ -4297,8 +4296,8 @@ TEST_F(memory_index_test, segment_consolidate) {
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count()); // total count of documents
     auto values = segment.values("name", visitor);
     auto terms = segment.field("same");
@@ -4360,8 +4359,8 @@ TEST_F(memory_index_test, segment_consolidate) {
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(3, segment.docs_count()); // total count of documents
     auto values = segment.values("name", visitor);
     auto terms = segment.field("same");
@@ -4427,8 +4426,8 @@ TEST_F(memory_index_test, segment_consolidate) {
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(3, segment.docs_count()); // total count of documents
     auto values = segment.values("name", visitor);
     auto terms = segment.field("same");
@@ -4500,8 +4499,8 @@ TEST_F(memory_index_test, segment_consolidate) {
 
     // validate merged segment 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(6, segment.docs_count()); // total count of documents
     auto values = segment.values("name", visitor);
     auto upper_case_values = segment.values("NAME", visitor);
@@ -4585,8 +4584,8 @@ TEST_F(memory_index_test, segment_consolidate) {
 
     // validate merged segment 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(6, segment.docs_count()); // total count of documents
     auto values = segment.values("name", visitor);
     auto upper_case_values = segment.values("NAME", visitor);
@@ -4678,8 +4677,8 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
     };
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     auto values = segment.values("name", visitor);
     ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
     auto terms = segment.field("same");
@@ -4724,7 +4723,7 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(2, reader->size());
+    ASSERT_EQ(2, reader.size());
 
     {
       std::unordered_set<std::string> expectedName = { "A", "B", "C", "D" };
@@ -4736,7 +4735,7 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
 
         return true;
       };
-      auto& segment = (*reader)[0]; // assume 0 is id of first segment
+      auto& segment = reader[0]; // assume 0 is id of first segment
       ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
@@ -4761,7 +4760,7 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
 
         return true;
       };
-      auto& segment = (*reader)[1]; // assume 1 is id of second segment
+      auto& segment = reader[1]; // assume 1 is id of second segment
       ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
@@ -4805,8 +4804,8 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       return true;
     };
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
@@ -4839,7 +4838,7 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(2, reader->size());
+    ASSERT_EQ(2, reader.size());
 
     {
       std::unordered_set<std::string> expectedName = { "A" };
@@ -4851,7 +4850,7 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
 
         return true;
       };
-      auto& segment = (*reader)[0]; // assume 0 is id of first segment
+      auto& segment = reader[0]; // assume 0 is id of first segment
       ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
@@ -4876,7 +4875,7 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
 
         return true;
       };
-      auto& segment = (*reader)[1]; // assume 1 is id of second segment
+      auto& segment = reader[1]; // assume 1 is id of second segment
       ASSERT_EQ(expectedName.size(), segment.docs_count());
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
@@ -4933,8 +4932,8 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       return true;
     };
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
@@ -4981,7 +4980,7 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(2, reader->size());
+    ASSERT_EQ(2, reader.size());
 
     {
       std::unordered_set<std::string> expectedName = { "A" };
@@ -4993,7 +4992,7 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
 
         return true;
       };
-      auto& segment = (*reader)[0]; // assume 0 is id of first segment
+      auto& segment = reader[0]; // assume 0 is id of first segment
       ASSERT_EQ(expectedName.size() + 3, segment.docs_count()); // total count of documents (+3 == B, C, D masked)
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
@@ -5018,7 +5017,7 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
 
         return true;
       };
-      auto& segment = (*reader)[1]; // assume 1 is id of second segment
+      auto& segment = reader[1]; // assume 1 is id of second segment
       ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
@@ -5072,8 +5071,8 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       return true;
     };
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
@@ -5117,7 +5116,7 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(2, reader->size());
+    ASSERT_EQ(2, reader.size());
 
     {
       std::unordered_set<std::string> expectedName = { "A" };
@@ -5129,7 +5128,7 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
 
         return true;
       };
-      auto& segment = (*reader)[0]; // assume 0 is id of first segment
+      auto& segment = reader[0]; // assume 0 is id of first segment
       ASSERT_EQ(expectedName.size() + 1, segment.docs_count()); // total count of documents (+1 == B masked)
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
@@ -5154,7 +5153,7 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
 
         return true;
       };
-      auto& segment = (*reader)[1]; // assume 1 is id of second segment
+      auto& segment = reader[1]; // assume 1 is id of second segment
       ASSERT_EQ(expectedName.size() + 1, segment.docs_count()); // total count of documents (+1 == D masked)
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);

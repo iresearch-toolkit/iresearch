@@ -17,8 +17,8 @@
 #include "analysis/analyzers.hpp"
 #include "analysis/token_streams.hpp"
 #include "analysis/token_attributes.hpp"
+#include "index/directory_reader.hpp"
 #include "index/index_writer.hpp"
-#include "index/index_reader.hpp"
 #include "doc_generator.hpp"
 #include "utils/locale_utils.hpp"
 #include "utils/timer_utils.hpp"
@@ -47,7 +47,7 @@ class index_test_base : public virtual test_base {
     return ir::index_writer::make(*dir_, codec_, mode);
   }
 
-  ir::index_reader::ptr open_reader() {
+  ir::directory_reader open_reader() {
     return ir::directory_reader::open(*dir_, codec_);
   }
 

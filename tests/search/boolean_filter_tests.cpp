@@ -3523,7 +3523,7 @@ protected:
         add_segment( gen );
       }
 
-      ir::index_reader::ptr rdr = open_reader();
+      auto rdr = open_reader();
 
       // (same=xyz AND duplicated=abcd) OR (same=xyz AND duplicated=vczc)
       {
@@ -3543,7 +3543,7 @@ protected:
           child.add<iresearch::by_term>().field("duplicated").term("vczc");
         }
 
-        check_query(root, docs_t{ 1, 2, 3, 5, 8, 11, 14, 17, 19, 21, 24, 27, 31 }, *rdr);
+        check_query(root, docs_t{ 1, 2, 3, 5, 8, 11, 14, 17, 19, 21, 24, 27, 31 }, rdr);
       }
 
       // ((same=xyz AND duplicated=abcd) OR (same=xyz AND duplicated=vczc)) AND name=X
@@ -3570,7 +3570,7 @@ protected:
           }
         }
 
-        check_query( root, docs_t{ 24 }, *rdr );
+        check_query(root, docs_t{ 24 }, rdr);
       }
 
       // ((same=xyz AND duplicated=abcd) OR (name=A or name=C or NAME=P or name=U or name=X)) OR (same=xyz AND (duplicated=vczc OR (name=A OR name=C OR NAME=P OR name=U OR name=X)) )
@@ -3618,7 +3618,7 @@ protected:
           }
         }
 
-        check_query(root, docs_t{ 1, 2, 3, 5, 8, 11, 14, 16, 17, 19, 21, 24, 27, 31 }, *rdr);
+        check_query(root, docs_t{ 1, 2, 3, 5, 8, 11, 14, 16, 17, 19, 21, 24, 27, 31 }, rdr);
       }
 
       // (same=xyz AND duplicated=abcd) OR (same=xyz AND duplicated=vczc) AND *
@@ -3645,7 +3645,8 @@ protected:
         check_query( 
           root, 
           docs_t{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 },
-          *rdr );
+          rdr
+        );
       }
 
       // (same=xyz AND duplicated=abcd) OR (same=xyz AND duplicated=vczc) OR NOT *
@@ -3669,7 +3670,7 @@ protected:
           child.add<iresearch::by_term>().field("duplicated").term("vczc");
         }
 
-        check_query( root, docs_t{}, *rdr );
+        check_query(root, docs_t{}, rdr);
       }
     }
   }
@@ -3683,11 +3684,11 @@ protected:
       add_segment( gen );
     }
 
-    ir::index_reader::ptr rdr = open_reader();
+    auto rdr = open_reader();
 
     // empty query
     {
-      check_query(iresearch::Not(), docs_t{}, *rdr);
+      check_query(iresearch::Not(), docs_t{}, rdr);
     }
 
     // single not statement - empty result
@@ -3695,7 +3696,7 @@ protected:
       iresearch::Not not_node;
       not_node.filter<iresearch::by_term>().field("same").term("xyz"),
 
-      check_query(not_node, docs_t{}, *rdr );
+      check_query(not_node, docs_t{}, rdr);
     }
 
     // duplicated=abcd AND (NOT ( NOT name=A ))
@@ -3703,7 +3704,7 @@ protected:
       iresearch::And root;
       root.add<iresearch::by_term>().field("duplicated").term("abcd");
       root.add<iresearch::Not>().filter<iresearch::Not>().filter<iresearch::by_term>().field("name").term("A");
-      check_query( root, docs_t{ 1 }, *rdr );
+      check_query(root, docs_t{ 1 }, rdr);
     }
 
     // duplicated=abcd AND (NOT ( NOT (NOT (NOT ( NOT name=A )))))
@@ -3711,7 +3712,7 @@ protected:
       iresearch::And root;
       root.add<iresearch::by_term>().field("duplicated").term("abcd");
       root.add<iresearch::Not>().filter<iresearch::Not>().filter<iresearch::Not>().filter<iresearch::Not>().filter<iresearch::Not>().filter<iresearch::by_term>().field("name").term("A");
-      check_query( root, docs_t{ 5, 11, 21, 27, 31 }, *rdr );
+      check_query(root, docs_t{ 5, 11, 21, 27, 31 }, rdr);
     }
 
     // * AND NOT *
@@ -3720,14 +3721,14 @@ protected:
         iresearch::And root;
         root.add<iresearch::all>();
         root.add<iresearch::Not>().filter<iresearch::all>();
-        check_query( root, docs_t{ }, *rdr );
+        check_query(root, docs_t{ }, rdr);
       }
 
       {
         iresearch::Or root;
         root.add<iresearch::all>();
         root.add<iresearch::Not>().filter<iresearch::all>();
-        check_query( root, docs_t{ }, *rdr );
+        check_query(root, docs_t{ }, rdr);
       }
     }
 
@@ -3737,14 +3738,14 @@ protected:
         iresearch::And root;
         root.add<iresearch::by_term>().field("duplicated").term("abcd");
         root.add<iresearch::Not>().filter<iresearch::by_term>().field("name").term("A");
-        check_query( root, docs_t{ 5, 11, 21, 27, 31 }, *rdr );
+        check_query(root, docs_t{ 5, 11, 21, 27, 31 }, rdr);
       }
 
       {
         iresearch::Or root;
         root.add<iresearch::by_term>().field("duplicated").term("abcd");
         root.add<iresearch::Not>().filter<iresearch::by_term>().field("name").term("A");
-        check_query( root, docs_t{ 5, 11, 21, 27, 31 }, *rdr );
+        check_query(root, docs_t{ 5, 11, 21, 27, 31 }, rdr);
       }
     }
 
@@ -3755,7 +3756,7 @@ protected:
         root.add<iresearch::by_term>().field("duplicated").term("abcd");
         root.add<iresearch::Not>().filter<iresearch::by_term>().field("name").term("A");
         root.add<iresearch::Not>().filter<iresearch::by_term>().field("name").term("A");
-        check_query( root, docs_t{ 5, 11, 21, 27, 31 }, *rdr );
+        check_query(root, docs_t{ 5, 11, 21, 27, 31 }, rdr);
       }
 
       {
@@ -3763,7 +3764,7 @@ protected:
         root.add<iresearch::by_term>().field("duplicated").term("abcd");
         root.add<iresearch::Not>().filter<iresearch::by_term>().field("name").term("A");
         root.add<iresearch::Not>().filter<iresearch::by_term>().field("name").term("A");
-        check_query( root, docs_t{ 5, 11, 21, 27, 31 }, *rdr );
+        check_query(root, docs_t{ 5, 11, 21, 27, 31 }, rdr);
       }
     }
 
@@ -3774,7 +3775,7 @@ protected:
         root.add<iresearch::by_term>().field("duplicated").term("abcd");
         root.add<iresearch::Not>().filter<iresearch::by_term>().field("name").term("A");
         root.add<iresearch::Not>().filter<iresearch::by_term>().field("name").term("E");
-        check_query( root, docs_t{ 11, 21, 27, 31 }, *rdr );
+        check_query(root, docs_t{ 11, 21, 27, 31 }, rdr);
       }
 
       {
@@ -3782,7 +3783,7 @@ protected:
         root.add<iresearch::by_term>().field("duplicated").term("abcd");
         root.add<iresearch::Not>().filter<iresearch::by_term>().field("name").term("A");
         root.add<iresearch::Not>().filter<iresearch::by_term>().field("name").term("E");
-        check_query( root, docs_t{ 11, 21, 27, 31 }, *rdr );
+        check_query(root, docs_t{ 11, 21, 27, 31 }, rdr);
       }
     }
   }
@@ -3810,14 +3811,14 @@ protected:
       add_segments(*writer, gens);
     }
 
-    ir::index_reader::ptr rdr = open_reader();
+    auto rdr = open_reader();
 
     // Name = Product AND source=AdventureWor3ks2014
     {
       ir::And root;
       root.add<iresearch::by_term>().field("Name").term("Product");
       root.add<iresearch::by_term>().field("source").term("AdventureWor3ks2014");
-      check_query( root, docs_t{}, *rdr );
+      check_query(root, docs_t{}, rdr);
     }
   }
 
@@ -3830,11 +3831,11 @@ protected:
       add_segment( gen );
     }
 
-    ir::index_reader::ptr rdr = open_reader();
+    auto rdr = open_reader();
 
     // empty query
     {
-      check_query(iresearch::And(), docs_t{}, *rdr);
+      check_query(iresearch::And(), docs_t{}, rdr);
     }
 
     // name=V
@@ -3842,7 +3843,7 @@ protected:
       iresearch::And root;
       root.add<iresearch::by_term>().field("name").term("V"); // 22
 
-      check_query( root, docs_t{ 22 }, *rdr );
+      check_query(root, docs_t{ 22 }, rdr);
     }
 
     // duplicated=abcd AND same=xyz
@@ -3850,7 +3851,7 @@ protected:
       iresearch::And root;
       root.add<iresearch::by_term>().field("duplicated").term("abcd"); // 1,5,11,21,27,31
       root.add<iresearch::by_term>().field("same").term("xyz"); // 1..32
-      check_query( root, docs_t{ 1, 5, 11, 21, 27, 31 }, *rdr );
+      check_query(root, docs_t{ 1, 5, 11, 21, 27, 31 }, rdr);
     }
 
     // duplicated=abcd AND same=xyz AND name=A
@@ -3859,7 +3860,7 @@ protected:
       root.add<iresearch::by_term>().field("duplicated").term("abcd"); // 1,5,11,21,27,31
       root.add<iresearch::by_term>().field("same").term("xyz"); // 1..32
       root.add<iresearch::by_term>().field("name").term("A"); // 1
-      check_query( root, docs_t{ 1 }, *rdr );
+      check_query(root, docs_t{ 1 }, rdr);
     }
 
     // duplicated=abcd AND same=xyz AND name=B
@@ -3868,7 +3869,7 @@ protected:
       root.add<iresearch::by_term>().field("duplicated").term("abcd"); // 1,5,11,21,27,31
       root.add<iresearch::by_term>().field("same").term("xyz"); // 1..32
       root.add<iresearch::by_term>().field("name").term("B"); // 2
-      check_query( root, docs_t{}, *rdr );
+      check_query(root, docs_t{}, rdr);
     }
   }
 
@@ -3932,15 +3933,15 @@ protected:
       writer->commit();
     }
 
-    ir::index_reader::ptr rdr = open_reader();
+    auto rdr = open_reader();
     {
       iresearch::Or root;
       root.add<iresearch::by_term>().field("name").term("B");
       root.add<iresearch::by_term>().field("name").term("F");
       root.add<iresearch::by_term>().field("name").term("I");
 
-      auto prep = root.prepare(*rdr);
-      auto segment = rdr->begin();
+      auto prep = root.prepare(rdr);
+      auto segment = rdr.begin();
       {
         auto docs = prep->execute(*segment);
         ASSERT_TRUE(docs->next());
@@ -3975,11 +3976,11 @@ protected:
       add_segment( gen );
     }
 
-    ir::index_reader::ptr rdr = open_reader();
+    auto rdr = open_reader();
 
     // empty query
     {
-      check_query(iresearch::Or(), docs_t{}, *rdr);
+      check_query(iresearch::Or(), docs_t{}, rdr);
     }
 
     // name=V
@@ -3987,7 +3988,7 @@ protected:
       iresearch::Or root;
       root.add<iresearch::by_term>().field("name").term("V"); // 22
 
-      check_query( root, docs_t{ 22 }, *rdr );
+      check_query(root, docs_t{ 22 }, rdr);
     }
 
     // name=W OR name=Z
@@ -3996,7 +3997,7 @@ protected:
       root.add<iresearch::by_term>().field("name").term("W"); // 23
       root.add<iresearch::by_term>().field("name").term("C"); // 3
 
-      check_query( root, docs_t{ 3, 23 }, *rdr );
+      check_query(root, docs_t{ 3, 23 }, rdr);
     }
 
     // name=A OR name=Q OR name=Z
@@ -4006,7 +4007,7 @@ protected:
       root.add<iresearch::by_term>().field("name").term("Q"); // 17
       root.add<iresearch::by_term>().field("name").term("Z"); // 26
 
-      check_query( root, docs_t{ 1, 17, 26 }, *rdr );
+      check_query(root, docs_t{ 1, 17, 26 }, rdr);
     }
 
     // name=A OR name=Q OR name=Z OR same=invalid_term OR invalid_field=V
@@ -4018,7 +4019,7 @@ protected:
       root.add<iresearch::by_term>().field("same").term("invalid_term");
       root.add<iresearch::by_term>().field("invalid_field").term("V");
 
-      check_query( root, docs_t{ 1, 17, 26 }, *rdr );
+      check_query(root, docs_t{ 1, 17, 26 }, rdr);
     }
 
     // search : all terms
@@ -4033,13 +4034,16 @@ protected:
       check_query(
         root,
         docs_t{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 },
-        *rdr );
+        rdr
+      );
     }
 
     // search : empty result
     check_query(
       ir::by_term().field( "same" ).term( "invalid_term" ),
-      docs_t{}, *rdr );
+      docs_t{},
+      rdr
+    );
   }
 };
 

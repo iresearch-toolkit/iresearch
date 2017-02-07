@@ -12,110 +12,50 @@
 #ifndef IRESEARCH_SEGMENT_READER_H
 #define IRESEARCH_SEGMENT_READER_H
 
-#include "index/index_reader.hpp"
-#include "index/field_meta.hpp"
-#include "formats/formats.hpp"
-#include "utils/iterator.hpp"
-#include "utils/hash_utils.hpp"
+#include "index_reader.hpp"
 
 NS_ROOT
 
-struct segment_meta;
-class format;
-struct directory;
-
-class IRESEARCH_API segment_reader final : public sub_reader {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief interface for a segment reader
+////////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API segment_reader final: public sub_reader {
  public:
-  DECLARE_SPTR(segment_reader);
-
-  static segment_reader::ptr open(
-    const directory& dir,
-    const segment_meta& sm
-  );
-
-  using sub_reader::docs_count;
-
-  virtual uint64_t live_docs_count() const override { 
-    return docs_count_ - docs_mask_.size();
-  }
-
-  virtual docs_iterator_t::ptr docs_iterator() const override;
-
-  virtual uint64_t docs_count() const override { 
-    return docs_count_; 
-  }
-
-  void refresh(const segment_meta& meta); // update reader with any changes from meta
-
-  virtual field_iterator::ptr fields() const override;
-
-  virtual const term_reader* field(const string_ref& field) const override;
-  
-  virtual column_iterator::ptr columns() const override;
-
+  typedef segment_reader ptr; // pointer to self
+  segment_reader() = default; // required for context<segment_reader>
+  explicit operator bool() const NOEXCEPT;
+  segment_reader& operator*() NOEXCEPT;
+  const segment_reader& operator*() const NOEXCEPT;
+  segment_reader* operator->() NOEXCEPT;
+  const segment_reader* operator->() const NOEXCEPT;
+  virtual index_reader::reader_iterator begin() const override;
   virtual const column_meta* column(const string_ref& name) const override;
-  
-  using iresearch::sub_reader::values;
-  
+  virtual column_iterator::ptr columns() const override;
+  using sub_reader::docs_count;
+  virtual uint64_t docs_count() const override;
+  virtual docs_iterator_t::ptr docs_iterator() const override;
+  virtual index_reader::reader_iterator end() const override;
+  virtual const term_reader* field(const string_ref& name) const override;
+  virtual field_iterator::ptr fields() const override;
+  virtual uint64_t live_docs_count() const override;
+  static segment_reader open(const directory& dir, const segment_meta& meta);
+  segment_reader reopen(const segment_meta& meta) const;
+  void reset() NOEXCEPT;
+  virtual size_t size() const override;
+  using sub_reader::values;
   virtual value_visitor_f values(
-    field_id field,
-    const columnstore_reader::value_reader_f& reader
+    field_id field, const columnstore_reader::value_reader_f& reader
   ) const override;
-  
-  using iresearch::sub_reader::visit;
-
   virtual bool visit(
-    field_id field,
-    const columnstore_reader::raw_reader_f& reader
+    field_id field, const columnstore_reader::raw_reader_f& reader
   ) const override;
-
-  virtual size_t size() const override { 
-    return 1; 
-  }
- 
-  virtual index_reader::reader_iterator begin() const { 
-    return index_reader::reader_iterator(new iterator_impl(this));
-  }
-
-  virtual index_reader::reader_iterator end() const { 
-    return index_reader::reader_iterator(new iterator_impl());
-  }
-
  private:
-  class iterator_impl : public index_reader::reader_iterator_impl {
-   public:
-    explicit iterator_impl(const sub_reader* rdr = nullptr) NOEXCEPT
-      : rdr_(rdr) {
-    }
+  class segment_reader_impl;
+  typedef std::shared_ptr<segment_reader_impl> impl_ptr;
 
-    virtual void operator++() override { rdr_ = nullptr; }
-    virtual reference operator*() override {
-      return const_cast<reference>(*rdr_);
-    }
-    virtual const_reference operator*() const override { return *rdr_; }
-    virtual bool operator==(const reader_iterator_impl& rhs) override {
-      return rdr_ == static_cast<const iterator_impl&>(rhs).rdr_;
-    }
+  impl_ptr impl_;
 
-   private:
-    const sub_reader* rdr_;
-  };
-
-  segment_reader() = default;
-
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  std::vector<column_meta> columns_;
-  std::vector<column_meta*> id_to_column_;
-  std::unordered_map<hashed_string_ref, column_meta*> name_to_column_;
-  struct {
-    const directory* dir;
-    uint64_t version;
-  } dir_state_;
-  uint64_t docs_count_;
-  document_mask docs_mask_;
-  field_reader::ptr fr_;
-  columnstore_reader::ptr csr_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
+  segment_reader(const impl_ptr& impl);
 };
 
 NS_END

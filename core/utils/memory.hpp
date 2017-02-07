@@ -38,32 +38,32 @@ FORCE_INLINE void malloc_statistics(FILE* out) {
     UNUSED(out);
   #else
     static const char* fomrat = "\
-Total non-mmapped bytes (arena):       %d\n\
-# of free chunks (ordblks):            %d\n\
-# of free fastbin blocks (smblks):     %d\n\
-# of mapped regions (hblks):           %d\n\
-Bytes in mapped regions (hblkhd):      %d\n\
-Max. total allocated space (usmblks):  %d\n\
-Free bytes held in fastbins (fsmblks): %d\n\
-Total allocated space (uordblks):      %d\n\
-Total free space (fordblks):           %d\n\
-Topmost releasable block (keepcost):   %d\n\
+Total non-mmapped bytes (arena):       %lld\n\
+# of free chunks (ordblks):            %lld\n\
+# of free fastbin blocks (smblks):     %lld\n\
+# of mapped regions (hblks):           %lld\n\
+Bytes in mapped regions (hblkhd):      %lld\n\
+Max. total allocated space (usmblks):  %lld\n\
+Free bytes held in fastbins (fsmblks): %lld\n\
+Total allocated space (uordblks):      %lld\n\
+Total free space (fordblks):           %lld\n\
+Topmost releasable block (keepcost):   %lld\n\
 ";
     auto mi = mallinfo();
 
     fprintf(
       out,
       fomrat,
-      mi.arena,
-      mi.ordblks,
-      mi.smblks,
-      mi.hblks,
-      mi.hblkhd,
-      mi.usmblks,
-      mi.fsmblks,
-      mi.uordblks,
-      mi.fordblks,
-      mi.keepcost
+      static_cast<long long int>(mi.arena),
+      static_cast<long long int>(mi.ordblks),
+      static_cast<long long int>(mi.smblks),
+      static_cast<long long int>(mi.hblks),
+      static_cast<long long int>(mi.hblkhd),
+      static_cast<long long int>(mi.usmblks),
+      static_cast<long long int>(mi.fsmblks),
+      static_cast<long long int>(mi.uordblks),
+      static_cast<long long int>(mi.fordblks),
+      static_cast<long long int>(mi.keepcost)
     );
     malloc_stats();
   #endif
@@ -112,11 +112,19 @@ typename std::enable_if<
 NS_END
 NS_END
 
-#define PTR_NAMED__(line, class_type, name, ...) \
-  auto ptr ## line = iresearch::memory::make_unique<char[]>(sizeof(class_type)); \
-  ::new(ptr ## line.get()) class_type(__VA_ARGS__); \
-  class_type::ptr name(reinterpret_cast<class_type*>(ptr ## line.release()))
-#define PTR_NAMED(class_type, name, ...) PTR_NAMED__(__LINE__, class_type, name, __VA_ARGS__)
+#define PTR_NAMED(class_type, name, ...) \
+  class_type::ptr name; \
+  try { \
+    name.reset(new class_type(__VA_ARGS__)); \
+  } catch (std::bad_alloc&) { \
+    fprintf( \
+      stderr, \
+      "Memory allocation failure while creating and initializing an object of size %lu bytes\n", \
+      sizeof(class_type) \
+    ); \
+    iresearch::memory::malloc_statistics(stderr); \
+    throw; \
+  }
 
 #define DECLARE_SPTR(class_name) typedef std::shared_ptr<class_name> ptr
 #define DECLARE_PTR(class_name) typedef std::unique_ptr<class_name> ptr
@@ -127,9 +135,17 @@ NS_END
 template<typename _T, typename... _Args> \
 static ptr make(_Args&&... args) { \
   typedef typename std::enable_if<std::is_base_of<class_name, _T>::value, _T>::type type; \
-  auto instance = iresearch::memory::make_unique<char[]>(sizeof(type)); \
-  ::new(instance.get()) type(std::forward<_Args>(args)...); \
-  return ptr(reinterpret_cast<type*>(instance.release())); \
+  try { \
+    return ptr(new type(std::forward<_Args>(args)...)); \
+  } catch (std::bad_alloc&) { \
+    fprintf( \
+      stderr, \
+      "Memory allocation failure while creating and initializing an object of size %lu bytes\n", \
+      sizeof(type) \
+    ); \
+    iresearch::memory::malloc_statistics(stderr); \
+    throw; \
+  } \
 }
 
 //////////////////////////////////////////////////////////////////////////////

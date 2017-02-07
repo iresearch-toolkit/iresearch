@@ -16,7 +16,7 @@
 #include "analysis/token_stream.hpp"
 
 #include "index/field_meta.hpp"
-#include "index/index_reader.hpp"
+#include "index/directory_reader.hpp"
 
 #include "search/collector.hpp"
 #include "search/term_filter.hpp"
@@ -924,10 +924,10 @@ void assert_index(
     size_t skip /*= 0*/) {
   auto actual_index_reader = iresearch::directory_reader::open(dir, codec);
 
-  /* check number of segments */
-  ASSERT_EQ(expected_index.size(), actual_index_reader->size());
+  // check number of segments
+  ASSERT_EQ(expected_index.size(), actual_index_reader.size());
   size_t i = 0;
-  for (auto& actual_sub_reader : *actual_index_reader) {
+  for (auto& actual_sub_reader : actual_index_reader) {
     // skip segment if validation not required
     if (skip) {
       ++i;
@@ -951,10 +951,10 @@ void assert_index(
       /* check field name */
       ASSERT_EQ(expected_fields_begin->first, actual_fields->value().meta().name);
 
-      /* check field terms */
+      // check field terms
       auto expected_term_reader = expected_reader.field(expected_fields_begin->second.name);
       ASSERT_NE(nullptr, expected_term_reader);
-      auto actual_term_reader = (*actual_index_reader)[i].field(actual_fields->value().meta().name);
+      auto actual_term_reader = actual_index_reader[i].field(actual_fields->value().meta().name);
       ASSERT_NE(nullptr, actual_term_reader);
 
       const iresearch::field_meta* expected_field = expected_segment.find(expected_fields_begin->first);

@@ -9,7 +9,7 @@
 // Agreement under which it is provided by or on behalf of EMC.
 // 
 
-#include "index/index_reader.hpp"
+#include "index/directory_reader.hpp"
 #include "index/field_meta.hpp"
 #include "store/fs_directory.hpp"
 #include "analysis/token_attributes.hpp"
@@ -35,12 +35,12 @@ int dump(const std::string& path, std::ostream& stream) {
   auto reader = irs::directory_reader::open(dir, irs::formats::get("1_0"));
 
   stream << "Index" 
-         << " segmentsCount=" << reader->size()
-         << " docsCount=" << reader->docs_count()
-         << " liveDocsCount=" << reader->live_docs_count() << std::endl;
+         << " segmentsCount=" << reader.size()
+         << " docsCount=" << reader.docs_count()
+         << " liveDocsCount=" << reader.live_docs_count() << std::endl;
 
   size_t i = 0;
-  for (auto& segment : *reader) {
+  for (auto& segment : reader) {
     stream << "Segment id=" << i 
            << " docsCount=" << segment.docs_count()
            << " liveDocsCount=" << segment.live_docs_count() << std::endl;

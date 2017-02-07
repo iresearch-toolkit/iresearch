@@ -115,12 +115,11 @@ namespace tests {
 
   std::unordered_set<std::string> analyzed_string_field::ignore_set_;
 
-  iresearch::directory_reader::ptr load_json(
+  iresearch::directory_reader load_json(
     iresearch::directory& dir,
     const std::string json_resource,
     bool analyze_text = false
   ) {
-
     static auto analyzed_field_factory = [](
         tests::document& doc,
         const std::string& name,
@@ -223,9 +222,9 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
   };
   iresearch::memory_directory dir;
   auto reader = load_json(dir, "simple_sequential.json");
-  ASSERT_EQ(1, reader->size());
+  ASSERT_EQ(1, reader.size());
 
-  auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+  auto& segment = reader[0]; // assume 0 is id of first/only segment
 
   // single string term
   {
@@ -245,7 +244,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(*reader, iresearch::order::prepared::unordered());
+    auto pQuery = query.filter->prepare(reader, iresearch::order::prepared::unordered());
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -270,7 +269,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(*reader);
+    auto pQuery = query.filter->prepare(reader);
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -300,7 +299,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(*reader, iresearch::order::prepared::unordered());
+    auto pQuery = query.filter->prepare(reader, iresearch::order::prepared::unordered());
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -333,7 +332,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(*reader, iresearch::order::prepared::unordered());
+    auto pQuery = query.filter->prepare(reader, iresearch::order::prepared::unordered());
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -362,7 +361,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(*reader);
+    auto pQuery = query.filter->prepare(reader);
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -400,7 +399,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(*reader, iresearch::order::prepared::unordered());
+    auto pQuery = query.filter->prepare(reader, iresearch::order::prepared::unordered());
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -443,7 +442,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(*reader, iresearch::order::prepared::unordered());
+    auto pQuery = query.filter->prepare(reader, iresearch::order::prepared::unordered());
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -486,7 +485,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(*reader, iresearch::order::prepared::unordered());
+    auto pQuery = query.filter->prepare(reader, iresearch::order::prepared::unordered());
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -529,7 +528,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(*reader, iresearch::order::prepared::unordered());
+    auto pQuery = query.filter->prepare(reader, iresearch::order::prepared::unordered());
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -564,7 +563,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_NE(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(*reader, iresearch::order::prepared::unordered());
+    auto pQuery = query.filter->prepare(reader, iresearch::order::prepared::unordered());
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -588,7 +587,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_NE(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(*reader, iresearch::order::prepared::unordered());
+    auto pQuery = query.filter->prepare(reader, iresearch::order::prepared::unordered());
     ASSERT_EQ(nullptr, pQuery.get());
 
     ASSERT_EQ(0, query.error->find("@([8 - 11], 11): syntax error"));
@@ -601,7 +600,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_NE(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(*reader, iresearch::order::prepared::unordered());
+    auto pQuery = query.filter->prepare(reader, iresearch::order::prepared::unordered());
     ASSERT_EQ(nullptr, pQuery.get());
 
     ASSERT_EQ(std::string("@(7): parse error"), *(query.error));
@@ -624,7 +623,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_NE(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(*reader, iresearch::order::prepared::unordered());
+    auto pQuery = query.filter->prepare(reader, iresearch::order::prepared::unordered());
     ASSERT_EQ(nullptr, pQuery.get());
 
     ASSERT_EQ(std::string("filter conversion error, node: @5\n('name'@2 == ('A'@3, 'bcd'@4)@5)@6"), *(query.error));
@@ -644,9 +643,8 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
 
   iresearch::memory_directory dir;
   auto reader = load_json(dir, "simple_sequential.json");
-  ASSERT_EQ(1, reader->size());
-
-  auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+  ASSERT_EQ(1, reader.size());
+  auto& segment = reader[0]; // assume 0 is id of first/only segment
   auto values = segment.values("name", visitor);
 
   // default range builder functr ()
@@ -657,7 +655,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(*reader);
+    auto pQuery = query.filter->prepare(reader);
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -676,7 +674,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(*reader);
+    auto pQuery = query.filter->prepare(reader);
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -695,7 +693,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(*reader);
+    auto pQuery = query.filter->prepare(reader);
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -714,7 +712,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(*reader);
+    auto pQuery = query.filter->prepare(reader);
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -733,8 +731,8 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
     iresearch::memory_directory analyzed_dir;
     auto analyzed_reader = load_json(analyzed_dir, "simple_sequential.json", true);
 
-    ASSERT_EQ(1, analyzed_reader->size());
-    auto& analyzed_segment = (*analyzed_reader)[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(1, analyzed_reader.size());
+    auto& analyzed_segment = analyzed_reader[0]; // assume 0 is id of first/only segment
     auto analyzed_segment_values = analyzed_segment.values("name", visitor);
 
     query_builder::branch_builders builders;
@@ -744,7 +742,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(*analyzed_reader);
+    auto pQuery = query.filter->prepare(analyzed_reader);
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(analyzed_segment);
@@ -792,9 +790,8 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_custom) {
   };
   iresearch::memory_directory dir;
   auto reader = load_json(dir, "simple_sequential.json");
-  ASSERT_EQ(1, reader->size());
-
-  auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+  ASSERT_EQ(1, reader.size());
+  auto& segment = reader[0]; // assume 0 is id of first/only segment
   auto values = segment.values("name", visitor);
 
   // custom range builder functr ()
@@ -805,7 +802,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_custom) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(*reader);
+    auto pQuery = query.filter->prepare(reader);
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -824,7 +821,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_custom) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(*reader);
+    auto pQuery = query.filter->prepare(reader);
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -843,7 +840,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_custom) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(*reader);
+    auto pQuery = query.filter->prepare(reader);
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -862,7 +859,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_custom) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(*reader);
+    auto pQuery = query.filter->prepare(reader);
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -881,7 +878,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_custom) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(*reader);
+    auto pQuery = query.filter->prepare(reader);
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -911,9 +908,8 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
   };
   iresearch::memory_directory dir;
   auto reader = load_json(dir, "simple_sequential.json");
-  ASSERT_EQ(1, reader->size());
-
-  auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+  ASSERT_EQ(1, reader.size());
+  auto& segment = reader[0]; // assume 0 is id of first/only segment
 
   // user supplied boolean_function
   {
@@ -938,7 +934,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(*reader);
+    auto pQuery = query.filter->prepare(reader);
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -972,7 +968,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(*reader);
+    auto pQuery = query.filter->prepare(reader);
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -1022,7 +1018,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(*reader);
+    auto pQuery = query.filter->prepare(reader);
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -1069,9 +1065,8 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_sequence_fns) {
   };
   iresearch::memory_directory dir;
   auto reader = load_json(dir, "simple_sequential.json");
-  ASSERT_EQ(1, reader->size());
-
-  auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+  ASSERT_EQ(1, reader.size());
+  auto& segment = reader[0]; // assume 0 is id of first/only segment
   auto values = segment.values("name", visitor);
 
   // user supplied sequence_function
@@ -1086,7 +1081,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_sequence_fns) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(*reader);
+    auto pQuery = query.filter->prepare(reader);
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -1101,9 +1096,8 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_sequence_fns) {
 TEST_F(IqlQueryBuilderTestSuite, test_query_builder_order) {
   iresearch::memory_directory dir;
   auto reader = load_json(dir, "simple_sequential.json");
-  ASSERT_EQ(1, reader->size());
-
-  auto& segment = (*reader)[0]; // assume 0 is id of first/only segment
+  ASSERT_EQ(1, reader.size());
+  auto& segment = reader[0]; // assume 0 is id of first/only segment
 /* FIXME field-value order is not yet supported by iresearch::search
   // order by sequence
   {
@@ -1113,7 +1107,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_order) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(*reader);
+    auto pQuery = query.filter->prepare(reader);
 
     ASSERT_NE(nullptr, pQuery.get());
 
@@ -1150,7 +1144,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_order) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(*reader);
+    auto pQuery = query.filter->prepare(reader);
 
     ASSERT_NE(nullptr, pQuery.get());
 
@@ -1226,7 +1220,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_order) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(*reader);
+    auto pQuery = query.filter->prepare(reader);
 
     ASSERT_NE(nullptr, pQuery.get());
 
@@ -1257,7 +1251,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_order) {
     ASSERT_NE(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(*reader);
+    auto pQuery = query.filter->prepare(reader);
     ASSERT_EQ(nullptr, pQuery.get());
 
     ASSERT_EQ(0, query.error->find("@(17): parse error"));
@@ -1282,7 +1276,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_order) {
     ASSERT_NE(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(*reader);
+    auto pQuery = query.filter->prepare(reader);
     ASSERT_EQ(nullptr, pQuery.get());
 
     ASSERT_EQ(0, query.error->find("order conversion error, node: @7\n'b'()@7 ASC"));
@@ -1310,7 +1304,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_order) {
     ASSERT_NE(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(*reader);
+    auto pQuery = query.filter->prepare(reader);
     ASSERT_EQ(nullptr, pQuery.get());
 
     ASSERT_EQ(0, query.error->find("order conversion error, node: @7\n'b'()@7 ASC"));
@@ -1350,7 +1344,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_order) {
     ASSERT_NE(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(*reader);
+    auto pQuery = query.filter->prepare(reader);
     ASSERT_EQ(nullptr, pQuery.get());
 
     ASSERT_EQ(0, query.error->find("order conversion error, node: @9\n'b'('c'()@8)@9 ASC"));
