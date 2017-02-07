@@ -335,7 +335,7 @@ if (NOT MSVC AND (CMAKE_BUILD_TYPE STREQUAL "Coverage"))
 
   setup_target_for_coverage(
     ${IResearch_TARGET_NAME}-coverage 
-    ${IResearchTests_TARGET_NAME} 
+    $<TARGET_FILE:${IResearchTests_TARGET_NAME}-static>
     coverage
     "--ires_output"
   )
