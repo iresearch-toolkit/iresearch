@@ -124,7 +124,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
       add_segment(gen);
     }
 
-    ir::index_reader::ptr rdr = open_reader();
+    auto rdr = open_reader();
 
     // range under same granularity value for topmost element, (i.e. last value from numeric_token_stream)
     {
@@ -143,12 +143,12 @@ class granular_range_filter_test_case: public filter_test_case_base {
       ASSERT_EQ(2, query.size<ir::Bound::MIN>());
       ASSERT_EQ(2, query.size<ir::Bound::MAX>());
 
-      auto prepared = query.prepare(*rdr);
+      auto prepared = query.prepare(rdr);
 
       std::vector<ir::doc_id_t> expected { 1, 2, 3 };
       std::vector<ir::doc_id_t> actual;
 
-      for (const auto& sub : *rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub);
         for (;docs->next();) {
           actual.push_back(docs->value());
@@ -174,12 +174,12 @@ class granular_range_filter_test_case: public filter_test_case_base {
       ASSERT_EQ(2, query.size<ir::Bound::MIN>());
       ASSERT_EQ(2, query.size<ir::Bound::MAX>());
 
-      auto prepared = query.prepare(*rdr);
+      auto prepared = query.prepare(rdr);
 
       std::vector<ir::doc_id_t> expected { 1, 2, 3, 11, 12 };
       std::vector<ir::doc_id_t> actual;
 
-      for (const auto& sub : *rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub);
         for (;docs->next();) {
           actual.push_back(docs->value());
@@ -203,12 +203,12 @@ class granular_range_filter_test_case: public filter_test_case_base {
            .include<ir::Bound::MAX>(true)
            .insert<ir::Bound::MAX>(max_stream);
 
-      auto prepared = query.prepare(*rdr);
+      auto prepared = query.prepare(rdr);
 
       std::vector<ir::doc_id_t> expected { 1, 2, 3, 4, 5, 6, 7, 10, 11, 12 };
       std::vector<ir::doc_id_t> actual;
 
-      for (const auto& sub : *rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub);
         for (;docs->next();) {
           actual.push_back(docs->value());
@@ -229,12 +229,12 @@ class granular_range_filter_test_case: public filter_test_case_base {
            .include<ir::Bound::MAX>(true)
            .insert<ir::Bound::MAX>(ir::numeric_utils::numeric_traits<double_t>::inf());
 
-      auto prepared = query.prepare(*rdr);
+      auto prepared = query.prepare(rdr);
 
       std::vector<ir::doc_id_t> expected { 3, 4, 5, 6, 7, 8 };
       std::vector<ir::doc_id_t> actual;
 
-      for (const auto& sub : *rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub);
         for (;docs->next();) {
           actual.push_back(docs->value());
@@ -253,12 +253,12 @@ class granular_range_filter_test_case: public filter_test_case_base {
            .include<ir::Bound::MIN>(true)
            .insert<ir::Bound::MIN>(min_stream);
 
-      auto prepared = query.prepare(*rdr);
+      auto prepared = query.prepare(rdr);
 
       std::vector<ir::doc_id_t> expected { 2, 3, 4, 5, 6, 7, 8 };
       std::vector<ir::doc_id_t> actual;
 
-      for (const auto& sub : *rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub);
         for (;docs->next();) {
           actual.push_back(docs->value());
@@ -279,12 +279,12 @@ class granular_range_filter_test_case: public filter_test_case_base {
            .include<ir::Bound::MAX>(false)
            .insert<ir::Bound::MAX>(max_stream);
 
-      auto prepared = query.prepare(*rdr);
+      auto prepared = query.prepare(rdr);
 
       std::vector<ir::doc_id_t> expected { 1, 2, 3, 4, 9, 10, 11, 12 };
       std::vector<ir::doc_id_t> actual;
 
-      for (const auto& sub : *rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub);
         for (;docs->next();) {
           actual.push_back(docs->value());
@@ -303,12 +303,12 @@ class granular_range_filter_test_case: public filter_test_case_base {
            .include<ir::Bound::MAX>(true)
            .insert<ir::Bound::MAX>(max_stream);
 
-      auto prepared = query.prepare(*rdr);
+      auto prepared = query.prepare(rdr);
 
       std::vector<ir::doc_id_t> expected { 1, 2, 3, 4, 5, 9, 10, 11, 12 };
       std::vector<ir::doc_id_t> actual;
 
-      for (const auto& sub : *rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub);
         for (;docs->next();) {
           actual.push_back(docs->value());
@@ -322,12 +322,12 @@ class granular_range_filter_test_case: public filter_test_case_base {
       ir::by_granular_range query;
       query.field("value");
 
-      auto prepared = query.prepare(*rdr);
+      auto prepared = query.prepare(rdr);
 
       std::vector<ir::doc_id_t> expected { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
       std::vector<ir::doc_id_t> actual;
 
-      for (const auto& sub : *rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub);
         for (;docs->next();) {
           actual.push_back(docs->value());
@@ -347,7 +347,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
       add_segment(gen);
     }
 
-    ir::index_reader::ptr rdr = open_reader();
+    auto rdr = open_reader();
 
     // long - seq = [1..7]
     {
@@ -368,12 +368,12 @@ class granular_range_filter_test_case: public filter_test_case_base {
            .include<ir::Bound::MAX>(true)
            .insert<ir::Bound::MAX>(max_term->value());
 
-      auto prepared = query.prepare(*rdr);
+      auto prepared = query.prepare(rdr);
 
       std::vector<ir::doc_id_t> expected { 2, 3, 4, 5, 6, 7, 8 };
       std::vector<ir::doc_id_t> actual;
 
-      for (const auto& sub : *rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub);
         for (;docs->next();) {
           actual.push_back(docs->value());
@@ -396,12 +396,12 @@ class granular_range_filter_test_case: public filter_test_case_base {
            .include<ir::Bound::MAX>(true)
            .insert<ir::Bound::MAX>((ir::numeric_utils::numeric_traits<int64_t>::max)());
 
-      auto prepared = query.prepare(*rdr);
+      auto prepared = query.prepare(rdr);
 
       std::vector<ir::doc_id_t> expected { 30, 31, 32 };
       std::vector<ir::doc_id_t> actual;
 
-      for (const auto& sub : *rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
         for (;docs->next();) {
           actual.push_back(docs->value());
@@ -424,12 +424,12 @@ class granular_range_filter_test_case: public filter_test_case_base {
            .include<ir::Bound::MAX>(true)
            .insert<ir::Bound::MAX>(max_term->value());
 
-      auto prepared = query.prepare(*rdr);
+      auto prepared = query.prepare(rdr);
 
       std::vector<ir::doc_id_t> expected { 1, 2, 3, 4, 5, 6 };
       std::vector<ir::doc_id_t> actual;
 
-      for (const auto& sub : *rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
         for (;docs->next();) {
           actual.push_back(docs->value());
@@ -457,12 +457,12 @@ class granular_range_filter_test_case: public filter_test_case_base {
            .include<ir::Bound::MAX>(true)
            .insert<ir::Bound::MAX>(max_term->value());
 
-      auto prepared = query.prepare(*rdr);
+      auto prepared = query.prepare(rdr);
 
       std::vector<ir::doc_id_t> expected { 2, 3, 4, 5, 6, 7, 8 };
       std::vector<ir::doc_id_t> actual;
 
-      for (const auto& sub : *rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
         for (;docs->next();) {
           actual.push_back(docs->value());
@@ -485,12 +485,12 @@ class granular_range_filter_test_case: public filter_test_case_base {
            .include<ir::Bound::MAX>(true)
            .insert<ir::Bound::MAX>((ir::numeric_utils::numeric_traits<int32_t>::max)());
 
-      auto prepared = query.prepare(*rdr);
+      auto prepared = query.prepare(rdr);
 
       std::vector<ir::doc_id_t> expected { 30, 31, 32 };
       std::vector<ir::doc_id_t> actual;
 
-      for (const auto& sub : *rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
         for (;docs->next();) {
           actual.push_back(docs->value());
@@ -513,12 +513,12 @@ class granular_range_filter_test_case: public filter_test_case_base {
            .include<ir::Bound::MAX>(true)
            .insert<ir::Bound::MAX>(max_term->value());
 
-      auto prepared = query.prepare(*rdr);
+      auto prepared = query.prepare(rdr);
 
       std::vector<ir::doc_id_t> expected { 1, 2, 3, 4, 5, 6 };
       std::vector<ir::doc_id_t> actual;
 
-      for (const auto& sub : *rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
         for (;docs->next();) {
           actual.push_back(docs->value());
@@ -546,12 +546,12 @@ class granular_range_filter_test_case: public filter_test_case_base {
            .include<ir::Bound::MAX>(false)
            .insert<ir::Bound::MAX>(max_term->value());
 
-      auto prepared = query.prepare(*rdr);
+      auto prepared = query.prepare(rdr);
 
       std::vector<ir::doc_id_t> expected { 1, 2, 5, 7, 9, 10, 12 };
       std::vector<ir::doc_id_t> actual;
 
-      for (const auto& sub : *rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
         for (;docs->next();) {
           actual.push_back(docs->value());
@@ -574,12 +574,12 @@ class granular_range_filter_test_case: public filter_test_case_base {
            .include<ir::Bound::MAX>(false)
            .insert<ir::Bound::MAX>(max_term->value());
 
-      auto prepared = query.prepare(*rdr);
+      auto prepared = query.prepare(rdr);
 
       std::vector<ir::doc_id_t> expected{ 4, 11, 13, 14, 15, 16, 17 };
       std::vector<ir::doc_id_t> actual;
 
-      for (const auto& sub : *rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
         for (;docs->next();) {
           actual.push_back(docs->value());
@@ -602,12 +602,12 @@ class granular_range_filter_test_case: public filter_test_case_base {
            .include<ir::Bound::MAX>(true)
            .insert<ir::Bound::MAX>(ir::numeric_utils::numeric_traits<float_t>::inf());
 
-      auto prepared = query.prepare(*rdr);
+      auto prepared = query.prepare(rdr);
 
       std::vector<ir::doc_id_t> expected{ 1, 2, 3, 5, 6, 7, 8, 9, 10, 12 };
       std::vector<ir::doc_id_t> actual;
 
-      for (const auto& sub : *rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
         for (;docs->next();) {
           actual.push_back(docs->value());
@@ -634,12 +634,12 @@ class granular_range_filter_test_case: public filter_test_case_base {
            .include<ir::Bound::MAX>(true)
            .insert<ir::Bound::MAX>(max_term->value());
 
-      auto prepared = query.prepare(*rdr);
+      auto prepared = query.prepare(rdr);
 
       std::vector<ir::doc_id_t> expected{ 4, 11, 13, 14, 15, 16, 17 };
       std::vector<ir::doc_id_t> actual;
 
-      for (const auto& sub : *rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
         for (;docs->next();) {
           actual.push_back(docs->value());
@@ -662,12 +662,12 @@ class granular_range_filter_test_case: public filter_test_case_base {
            .include<ir::Bound::MAX>(false)
            .insert<ir::Bound::MAX>(max_term->value());
 
-      auto prepared = query.prepare(*rdr);
+      auto prepared = query.prepare(rdr);
 
       std::vector<ir::doc_id_t> expected{ 14, 15, 17 };
       std::vector<ir::doc_id_t> actual;
 
-      for (const auto& sub : *rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
         for (;docs->next();) {
           actual.push_back(docs->value());
@@ -690,12 +690,12 @@ class granular_range_filter_test_case: public filter_test_case_base {
            .include<ir::Bound::MAX>(true)
            .insert<ir::Bound::MAX>(ir::numeric_utils::numeric_traits<double_t>::inf());
 
-      auto prepared = query.prepare(*rdr);
+      auto prepared = query.prepare(rdr);
 
       std::vector<ir::doc_id_t> expected{ 1, 2, 3, 5, 6, 7, 8, 9, 10, 12, 13 };
       std::vector<ir::doc_id_t> actual;
 
-      for (const auto& sub : *rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
         for (;docs->next();) {
           actual.push_back(docs->value());
@@ -715,10 +715,10 @@ class granular_range_filter_test_case: public filter_test_case_base {
       add_segment( gen );
     }
 
-    ir::index_reader::ptr rdr = open_reader();
+    auto rdr = open_reader();
 
     // empty query
-    check_query(ir::by_granular_range(), docs_t{}, *rdr);
+    check_query(ir::by_granular_range(), docs_t{}, rdr);
 
     // name = (..;..)
     {
@@ -728,12 +728,12 @@ class granular_range_filter_test_case: public filter_test_case_base {
       };
       costs_t costs{ docs.size() };
 
-      check_query(ir::by_granular_range().field("name"), docs, costs, *rdr);
+      check_query(ir::by_granular_range().field("name"), docs, costs, rdr);
     }
 
     // invalid_name = (..;..)
     check_query(
-      ir::by_granular_range().field("invalid_name"), docs_t{}, *rdr);
+      ir::by_granular_range().field("invalid_name"), docs_t{}, rdr);
 
     // name = [..;..)
     {
@@ -745,7 +745,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
 
       check_query(
         ir::by_granular_range().field("name"),
-        docs, costs, *rdr);
+        docs, costs, rdr);
     }
 
     // name = (..;..]
@@ -758,7 +758,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
 
       check_query(
         ir::by_granular_range().field("name"),
-        docs, costs,  *rdr);
+        docs, costs, rdr);
     }
 
     // name = [..;..]
@@ -771,7 +771,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
 
       check_query(
         ir::by_granular_range().field("name"),
-        docs, costs, *rdr);
+        docs, costs, rdr);
     }
 
     // name = [A;..)
@@ -786,7 +786,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
       check_query(
         ir::by_granular_range().field("name")
           .insert<ir::Bound::MIN>("A").include<ir::Bound::MIN>(false),
-        docs, costs, *rdr);
+        docs, costs, rdr);
     }
 
     // name = (A;..)
@@ -801,7 +801,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
       check_query(
         ir::by_granular_range().field("name")
           .insert<ir::Bound::MIN>("A").include<ir::Bound::MIN>(true),
-        docs, costs, *rdr);
+        docs, costs, rdr);
     }
 
     // name = (..;C)
@@ -814,7 +814,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
       check_query(
         ir::by_granular_range().field("name")
           .insert<ir::Bound::MAX>("C").include<ir::Bound::MAX>(false),
-        docs, costs, *rdr);
+        docs, costs, rdr);
     }
 
     // name = (..;C]
@@ -826,7 +826,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
       check_query(
         ir::by_granular_range().field("name")
           .insert<ir::Bound::MAX>("C").include<ir::Bound::MAX>(true),
-        docs, costs, *rdr);
+        docs, costs, rdr);
     }
 
     // name = [A;C]
@@ -839,7 +839,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
         ir::by_granular_range().field("name")
           .insert<ir::Bound::MIN>("A").include<ir::Bound::MIN>(true)
           .insert<ir::Bound::MAX>("C").include<ir::Bound::MAX>(true),
-        docs, costs, *rdr);
+        docs, costs, rdr);
     }
 
     // name = [A;B]
@@ -852,7 +852,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
         ir::by_granular_range().field("name")
           .insert<ir::Bound::MIN>("A").include<ir::Bound::MIN>(true)
           .insert<ir::Bound::MAX>("B").include<ir::Bound::MAX>(true),
-        docs, costs, *rdr);
+        docs, costs, rdr);
     }
 
     // name = [A;B)
@@ -865,7 +865,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
         ir::by_granular_range().field("name")
           .insert<ir::Bound::MIN>("A").include<ir::Bound::MIN>(true)
           .insert<ir::Bound::MAX>("B").include<ir::Bound::MAX>(false),
-        docs, costs, *rdr);
+        docs, costs, rdr);
     }
 
     // name = (A;B]
@@ -878,7 +878,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
         ir::by_granular_range().field("name")
           .insert<ir::Bound::MIN>("A").include<ir::Bound::MIN>(false)
           .insert<ir::Bound::MAX>("B").include<ir::Bound::MAX>(true),
-        docs, costs, *rdr);
+        docs, costs, rdr);
     }
 
     // name = (A;B)
@@ -887,7 +887,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
       ir::by_granular_range().field("name")
         .insert<ir::Bound::MIN>("A").include<ir::Bound::MIN>(false)
         .insert<ir::Bound::MAX>("B").include<ir::Bound::MAX>(false),
-      docs_t{}, costs_t{0}, *rdr);
+      docs_t{}, costs_t{0}, rdr);
 
 
     // name = [A;C)
@@ -900,7 +900,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
         ir::by_granular_range().field("name")
           .insert<ir::Bound::MIN>("A").include<ir::Bound::MIN>(true)
           .insert<ir::Bound::MAX>("C").include<ir::Bound::MAX>(false),
-        docs, costs, *rdr);
+        docs, costs, rdr);
     }
 
     // name = (A;C]
@@ -913,7 +913,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
         ir::by_granular_range().field("name")
           .insert<ir::Bound::MIN>("A").include<ir::Bound::MIN>(false)
           .insert<ir::Bound::MAX>("C").include<ir::Bound::MAX>(true),
-        docs, costs, *rdr);
+        docs, costs, rdr);
     }
 
     // name = (A;C)
@@ -926,7 +926,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
         ir::by_granular_range().field("name")
           .insert<ir::Bound::MIN>("A").include<ir::Bound::MIN>(false)
           .insert<ir::Bound::MAX>("C").include<ir::Bound::MAX>(false),
-        docs, costs, *rdr);
+        docs, costs, rdr);
     }
 
     // name = [C;A]
@@ -935,7 +935,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
       ir::by_granular_range().field("name")
         .insert<ir::Bound::MIN>("C").include<ir::Bound::MIN>(true)
         .insert<ir::Bound::MAX>("A").include<ir::Bound::MAX>(true),
-      docs_t{}, costs_t{0}, *rdr);
+      docs_t{}, costs_t{0}, rdr);
 
     // name = [~;..]
     // result: ~
@@ -946,7 +946,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
       check_query(
         ir::by_granular_range().field("name")
           .insert<ir::Bound::MIN>("~").include<ir::Bound::MIN>(true),
-        docs, costs, *rdr);
+        docs, costs, rdr);
     }
 
     // name = (~;..]
@@ -954,7 +954,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
     check_query(
       ir::by_granular_range().field("name")
         .insert<ir::Bound::MIN>("~").include<ir::Bound::MIN>(false),
-      docs_t{}, costs_t{0}, *rdr);
+      docs_t{}, costs_t{0}, rdr);
 
     // name = [a;..]
     // result: ~
@@ -965,7 +965,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
       check_query(
         ir::by_granular_range().field("name")
           .insert<ir::Bound::MIN>("a").include<ir::Bound::MIN>(false),
-        docs, costs, *rdr);
+        docs, costs, rdr);
     }
 
     // name = [..;a]
@@ -980,7 +980,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
       check_query(
         ir::by_granular_range().field("name")
           .insert<ir::Bound::MAX>("a").include<ir::Bound::MAX>(true),
-        docs, costs, *rdr);
+        docs, costs, rdr);
     }
 
     // name = [..;a)
@@ -995,7 +995,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
       check_query(
         ir::by_granular_range().field("name")
           .insert<ir::Bound::MAX>("a").include<ir::Bound::MAX>(false),
-        docs, costs, *rdr);
+        docs, costs, rdr);
     }
 
     // name = [DEL;..]
@@ -1003,7 +1003,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
     check_query(
       ir::by_granular_range().field("name")
         .insert<ir::Bound::MIN>("\x7f").include<ir::Bound::MIN>(false),
-      docs_t{}, costs_t{0}, *rdr);
+      docs_t{}, costs_t{0}, rdr);
   }
 
   void by_range_sequential_order() {
@@ -1016,10 +1016,10 @@ class granular_range_filter_test_case: public filter_test_case_base {
       add_segment(gen);
     }
 
-    ir::index_reader::ptr rdr = open_reader();
+    auto rdr = open_reader();
 
     // empty query
-    check_query(ir::by_granular_range(), docs_t{}, *rdr);
+    check_query(ir::by_granular_range(), docs_t{}, rdr);
 
     // value = (..;..)
     {
@@ -1033,7 +1033,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
           .field("value")
           .insert<ir::Bound::MIN>(ir::numeric_utils::numeric_traits<double_t>::ninf())
           .insert<ir::Bound::MAX>(ir::numeric_utils::numeric_traits<double_t>::inf())
-        , order, docs, *rdr
+        , order, docs, rdr
       );
     }
 
@@ -1050,7 +1050,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
           .insert<ir::Bound::MIN>(ir::numeric_utils::numeric_traits<double_t>::ninf())
           .insert<ir::Bound::MAX>(ir::numeric_utils::numeric_traits<double_t>::inf())
           .scored_terms_limit(2)
-        , order, docs, *rdr
+        , order, docs, rdr
       );
     }
 
@@ -1070,7 +1070,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
           .field("value")
           .insert<ir::Bound::MIN>(ir::numeric_utils::numeric_traits<double_t>::ninf())
           .insert<ir::Bound::MAX>(max_term->value())
-        , order, docs, *rdr
+        , order, docs, rdr
       );
     }
   }

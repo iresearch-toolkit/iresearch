@@ -59,7 +59,7 @@ TEST_F(bm25_test, test_order) {
   }
 
   auto reader = iresearch::directory_reader::open(dir(), codec());
-  auto& segment = *reader->begin();
+  auto& segment = *(reader.begin());
 
   iresearch::by_term query;
   query.field("field");
@@ -86,7 +86,7 @@ TEST_F(bm25_test, test_order) {
     std::multimap<iresearch::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     std::vector<uint64_t> expected{ 0, 1, 5, 7 };
 
-    auto prepared = query.prepare(*reader, prepared_order);
+    auto prepared = query.prepare(reader, prepared_order);
     auto docs = prepared->execute(segment, prepared_order);
     auto& score = docs->attributes().get<iresearch::score>();
     for (; docs->next();) {

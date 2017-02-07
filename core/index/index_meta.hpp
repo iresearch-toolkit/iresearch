@@ -56,6 +56,9 @@ struct IRESEARCH_API segment_meta {
   segment_meta& operator=(segment_meta&& rhs) NOEXCEPT;
   segment_meta& operator=(const segment_meta&) = default;
 
+  bool operator==(const segment_meta& other) const NOEXCEPT;
+  bool operator!=(const segment_meta& other) const NOEXCEPT;
+
   file_set files;
   std::string name;
   uint64_t docs_count{};
@@ -79,6 +82,8 @@ class IRESEARCH_API index_meta {
     index_segment_t& operator=(const index_segment_t& other) = default;
     index_segment_t(index_segment_t&& other) NOEXCEPT;
     index_segment_t& operator=(index_segment_t&& other) NOEXCEPT;
+    bool operator==(const index_segment_t& other) const NOEXCEPT;
+    bool operator!=(const index_segment_t& other) const NOEXCEPT;
 
     std::string filename;
     segment_meta meta;
@@ -92,6 +97,8 @@ class IRESEARCH_API index_meta {
   index_meta(const index_meta& rhs);
   index_meta& operator=(index_meta&& rhs) NOEXCEPT;
   index_meta& operator=(const index_meta&) = delete;
+
+  bool operator==(const index_meta& other) const NOEXCEPT;
 
   template<typename _ForwardIterator>
   void add(_ForwardIterator begin, _ForwardIterator end) {

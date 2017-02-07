@@ -66,14 +66,14 @@ class phrase_filter_test_case : public filter_test_case_base {
     }
 
     // read segment
-    ir::index_reader::ptr rdr = open_reader();
+    auto rdr = open_reader();
 
     // empty field 
     {
       ir::by_phrase q;
 
-      auto prepared = q.prepare(*rdr);
-      auto sub = rdr->begin();
+      auto prepared = q.prepare(rdr);
+      auto sub = rdr.begin();
 
       auto docs = prepared->execute(*sub);
       ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs->value()));
@@ -84,8 +84,8 @@ class phrase_filter_test_case : public filter_test_case_base {
       ir::by_phrase q;
       q.field("phrase_anl");
 
-      auto prepared = q.prepare(*rdr);
-      auto sub = rdr->begin();
+      auto prepared = q.prepare(rdr);
+      auto sub = rdr.begin();
 
       auto docs = prepared->execute(*sub);
       ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs->value()));
@@ -107,8 +107,8 @@ class phrase_filter_test_case : public filter_test_case_base {
       q.field("phrase_anl")
        .push_back("fox");
 
-      auto prepared = q.prepare(*rdr);
-      auto sub = rdr->begin();
+      auto prepared = q.prepare(rdr);
+      auto sub = rdr.begin();
       auto values = sub->values("name", visitor);
 
       auto docs = prepared->execute(*sub);
@@ -156,8 +156,8 @@ class phrase_filter_test_case : public filter_test_case_base {
       q.field("phrase")
        .push_back("fox");
 
-      auto prepared = q.prepare(*rdr);
-      auto sub = rdr->begin();
+      auto prepared = q.prepare(rdr);
+      auto sub = rdr.begin();
       auto docs = prepared->execute(*sub);
       ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs->value()));
       ASSERT_FALSE(docs->next());
@@ -181,8 +181,8 @@ class phrase_filter_test_case : public filter_test_case_base {
       q.field("phrase_anl")
        .push_back("fox", ir::integer_traits<size_t>::const_max);
 
-      auto prepared = q.prepare(*rdr);
-      auto sub = rdr->begin();
+      auto prepared = q.prepare(rdr);
+      auto sub = rdr.begin();
       auto values = sub->values("name", visitor);
 
       auto docs = prepared->execute(*sub);
@@ -242,8 +242,8 @@ class phrase_filter_test_case : public filter_test_case_base {
        .push_back("brown")
        .push_back("fox");
 
-      auto prepared = q.prepare(*rdr);
-      auto sub = rdr->begin();
+      auto prepared = q.prepare(rdr);
+      auto sub = rdr.begin();
       auto values = sub->values("name", visitor);
 
       auto docs = prepared->execute(*sub);
@@ -291,9 +291,9 @@ class phrase_filter_test_case : public filter_test_case_base {
        .push_back("fox")
        .push_back("quick", 1);
 
-      auto prepared = q.prepare(*rdr);
+      auto prepared = q.prepare(rdr);
 
-      auto sub = rdr->begin();
+      auto sub = rdr.begin();
       auto values = sub->values("name", visitor);
       auto docs = prepared->execute(*sub); 
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(docs->value()));
@@ -329,9 +329,9 @@ class phrase_filter_test_case : public filter_test_case_base {
        .push_back("fox", ir::integer_traits<size_t>::const_max)
        .push_back("quick", 1);
 
-      auto prepared = q.prepare(*rdr);
+      auto prepared = q.prepare(rdr);
 
-      auto sub = rdr->begin();
+      auto sub = rdr.begin();
       auto values = sub->values("name", visitor);
       auto docs = prepared->execute(*sub); 
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid( docs->value()));
@@ -356,9 +356,9 @@ class phrase_filter_test_case : public filter_test_case_base {
        .push_back("fox")
        .push_back("quick", 2);
 
-      auto prepared = q.prepare(*rdr);
+      auto prepared = q.prepare(rdr);
 
-      auto sub = rdr->begin();
+      auto sub = rdr.begin();
       auto docs = prepared->execute(*sub); 
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(docs->value()));
       ASSERT_FALSE(docs->next());
@@ -382,9 +382,9 @@ class phrase_filter_test_case : public filter_test_case_base {
        .push_back("eye")
        .push_back("eye", 1);
 
-      auto prepared = q.prepare(*rdr);
+      auto prepared = q.prepare(rdr);
 
-      auto sub = rdr->begin();
+      auto sub = rdr.begin();
       auto values = sub->values("name", visitor);
       auto docs = prepared->execute(*sub); 
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(docs->value()));
@@ -425,8 +425,8 @@ class phrase_filter_test_case : public filter_test_case_base {
        .push_back("looking")
        .push_back("forward");
 
-      auto prepared = q.prepare(*rdr);
-      auto sub = rdr->begin();
+      auto prepared = q.prepare(rdr);
+      auto sub = rdr.begin();
       auto values = sub->values("name", visitor);
       auto docs = prepared->execute(*sub); 
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(docs->value()));

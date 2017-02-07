@@ -79,6 +79,7 @@ set(IResearch_core_sources
   ./formats/formats.cpp 
   ./formats/format_utils.cpp 
   ./formats/skip_list.cpp 
+  ./index/directory_reader.cpp
   ./index/field_data.cpp
   ./index/field_meta.cpp 
   ./index/file_names.cpp 
@@ -150,6 +151,7 @@ set(IResearch_core_headers
   ./formats/formats.hpp
   ./formats/format_utils.hpp
   ./formats/skip_list.hpp
+  ./index/directory_reader.hpp
   ./index/field_data.hpp
   ./index/field_meta.hpp
   ./index/file_names.hpp

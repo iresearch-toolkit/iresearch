@@ -30,10 +30,10 @@ class prefix_filter_test_case : public filter_test_case_base {
       add_segment( gen );
     }
 
-    ir::index_reader::ptr rdr = open_reader();
+    auto rdr = open_reader();
 
     // empty query
-    check_query(ir::by_prefix(), docs_t{}, costs_t{0}, *rdr);
+    check_query(ir::by_prefix(), docs_t{}, costs_t{0}, rdr);
 
     // empty prefix
     {
@@ -42,10 +42,7 @@ class prefix_filter_test_case : public filter_test_case_base {
       ir::order order;
 
       order.add<sort::frequency_sort>();
-      check_query(
-        ir::by_prefix().field("prefix")
-        , order, docs, *rdr
-      );
+      check_query(ir::by_prefix().field("prefix"), order, docs, rdr);
     }
 
     // empty prefix + scored_terms_limit
@@ -55,10 +52,7 @@ class prefix_filter_test_case : public filter_test_case_base {
       ir::order order;
 
       order.add<sort::frequency_sort>();
-      check_query(
-        ir::by_prefix().field("prefix").scored_terms_limit(1)
-        , order, docs, *rdr
-      );
+      check_query(ir::by_prefix().field("prefix").scored_terms_limit(1), order, docs, rdr);
     }
 
     // prefix
@@ -68,10 +62,7 @@ class prefix_filter_test_case : public filter_test_case_base {
       ir::order order;
 
       order.add<sort::frequency_sort>();
-      check_query(
-        ir::by_prefix().field("prefix").term("a")
-        , order, docs, *rdr
-      );
+      check_query(ir::by_prefix().field("prefix").term("a"), order, docs, rdr);
     }
   }
 
@@ -84,27 +75,19 @@ class prefix_filter_test_case : public filter_test_case_base {
       add_segment( gen );
     }
 
-    ir::index_reader::ptr rdr = open_reader();
+    auto rdr = open_reader();
 
-    /* empty query */
-    check_query(
-      ir::by_prefix(),
-      docs_t{}, costs_t{0}, *rdr );
-    
-    /* empty field */
-    check_query(
-      ir::by_prefix().term("xyz"),
-      docs_t{}, costs_t{0}, *rdr );
+    // empty query
+    check_query(ir::by_prefix(), docs_t{}, costs_t{0}, rdr);
 
-    /* invalid field */
-    check_query(
-      ir::by_prefix().field("same1").term("xyz"),
-      docs_t{}, costs_t{0}, *rdr );
-    
-    /* invalid prefix */
-    check_query(
-      ir::by_prefix().field("same").term("xyz_invalid"),
-      docs_t{}, costs_t{0}, *rdr );
+    // empty field
+    check_query(ir::by_prefix().term("xyz"), docs_t{}, costs_t{0}, rdr);
+
+    // invalid field
+    check_query(ir::by_prefix().field("same1").term("xyz"), docs_t{}, costs_t{0}, rdr);
+
+    // invalid prefix
+    check_query(ir::by_prefix().field("same").term("xyz_invalid"), docs_t{}, costs_t{0}, rdr);
 
     // valid prefix
     {
@@ -115,9 +98,7 @@ class prefix_filter_test_case : public filter_test_case_base {
 
       costs_t costs{ result.size() };
 
-      check_query(
-        ir::by_prefix().field("same").term("xyz"),
-        result, costs, *rdr);
+      check_query(ir::by_prefix().field("same").term("xyz"), result, costs, rdr);
     }
 
     // empty prefix : get all fields
@@ -125,9 +106,7 @@ class prefix_filter_test_case : public filter_test_case_base {
       docs_t docs{ 1, 2, 3, 5, 8, 11, 14, 17, 19, 21, 24, 27, 31 };
       costs_t costs{ docs.size() };
 
-      check_query(
-        ir::by_prefix().field("duplicated"),
-        docs, costs, *rdr);
+      check_query(ir::by_prefix().field("duplicated"), docs, costs, rdr);
     }
 
     // single digit prefix
@@ -135,50 +114,35 @@ class prefix_filter_test_case : public filter_test_case_base {
       docs_t docs{ 1, 5, 11, 21, 27, 31 };
       costs_t costs{ docs.size() };
 
-      check_query(
-        ir::by_prefix().field("duplicated").term("a"),
-        docs, costs, *rdr);
+      check_query(ir::by_prefix().field("duplicated").term("a"), docs, costs, rdr);
     }
 
-    check_query(
-      ir::by_prefix().field("name").term("!"),
-      docs_t{ 28 }, costs_t{ 1 }, *rdr);
-    
-    check_query(
-      ir::by_prefix().field("prefix").term("b"),
-      docs_t{ 9, 24 }, costs_t{ 2 }, *rdr);
+    check_query(ir::by_prefix().field("name").term("!"), docs_t{28}, costs_t{1}, rdr);
+    check_query(ir::by_prefix().field("prefix").term("b"), docs_t{9, 24}, costs_t{2}, rdr);
 
     // multiple digit prefix
     {
       docs_t docs{ 2, 3, 8, 14, 17, 19, 24 };
       costs_t costs{ docs.size() };
 
-      check_query(
-        ir::by_prefix().field("duplicated").term("vcz"),
-        docs, costs, *rdr );
+      check_query(ir::by_prefix().field("duplicated").term("vcz"), docs, costs, rdr);
     }
 
     {
       docs_t docs{ 1, 4, 21, 26, 31, 32 };
       costs_t costs{ docs.size() };
-      check_query(
-        ir::by_prefix().field("prefix").term("abc"),
-        docs, costs , *rdr);
+      check_query(ir::by_prefix().field("prefix").term("abc"), docs, costs, rdr);
     }
 
     {
       docs_t docs{ 1, 4, 21, 26, 31, 32 };
       costs_t costs{ docs.size() };
 
-      check_query(
-        ir::by_prefix().field("prefix").term("abc"),
-        docs, costs, *rdr);
+      check_query(ir::by_prefix().field("prefix").term("abc"), docs, costs, rdr);
     }
 
     // whole word
-    check_query(
-      ir::by_prefix().field("prefix").term("bateradsfsfasdf"),
-      docs_t{ 24 }, costs_t{ 1 }, *rdr);
+    check_query(ir::by_prefix().field("prefix").term("bateradsfsfasdf"), docs_t{24}, costs_t{1}, rdr);
   }
 
   void by_prefix_schemas() { 
@@ -206,11 +170,9 @@ class prefix_filter_test_case : public filter_test_case_base {
       add_segments(*writer, gens);
     }
 
-    ir::index_reader::ptr rdr = open_reader();
+    auto rdr = open_reader();
 
-    check_query( 
-      ir::by_prefix().field("Name").term("Addr"),
-      docs_t{ 1, 2, 77, 78 }, *rdr );
+    check_query(ir::by_prefix().field("Name").term("Addr"), docs_t{1, 2, 77, 78}, rdr);
   }
 }; // filter_test_case_base
 

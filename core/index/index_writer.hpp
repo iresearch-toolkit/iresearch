@@ -397,7 +397,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
     const index_meta::index_segment_t segment;
   }; // import_context
 
-  typedef std::unordered_map<std::string, segment_reader::ptr> cached_readers_t;
+  typedef std::unordered_map<std::string, segment_reader> cached_readers_t;
   typedef std::pair<std::shared_ptr<index_meta>, file_refs_t> committed_state_t;
   typedef std::vector<consolidation_context> consolidation_requests_t;
   typedef std::vector<modification_context> modification_requests_t;
@@ -451,7 +451,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
   // on open failure returns an empty pointer
   // function access controlled by commit_lock_ since only used in
   // flush_all(...) and defragment(...)
-  segment_reader::ptr get_segment_reader(const segment_meta& meta);
+  segment_reader get_segment_reader(const segment_meta& meta);
 
   bool add_document_mask_modified_records(
     modification_requests_t& requests, 

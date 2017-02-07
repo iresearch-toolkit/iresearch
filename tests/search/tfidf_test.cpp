@@ -60,7 +60,7 @@ TEST_F(tfidf_test, test_order) {
   }
 
   auto reader = iresearch::directory_reader::open(dir(), codec());
-  auto& segment = *reader->begin();
+  auto& segment = *(reader.begin());
 
   iresearch::by_term query;
   query.field("field");
@@ -68,7 +68,7 @@ TEST_F(tfidf_test, test_order) {
   iresearch::order ord;
   ord.add<iresearch::tfidf_sort>().reverse(true);
   auto prepared_order = ord.prepare();
-  
+
   auto comparer = [&prepared_order] (const iresearch::bstring& lhs, const iresearch::bstring& rhs) {
     return prepared_order.less(lhs.c_str(), rhs.c_str());
   };
@@ -87,7 +87,7 @@ TEST_F(tfidf_test, test_order) {
     std::multimap<iresearch::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     std::vector<uint64_t> expected{ 0, 1, 5, 7 };
 
-    auto prepared = query.prepare(*reader, prepared_order);
+    auto prepared = query.prepare(reader, prepared_order);
     auto docs = prepared->execute(segment, prepared_order);
     auto& score = docs->attributes().get<iresearch::score>();
     for (; docs->next();) {

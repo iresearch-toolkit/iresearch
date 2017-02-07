@@ -22,6 +22,27 @@
 
 NS_LOCAL
 
+class iterator_impl: public iresearch::index_reader::reader_iterator_impl {
+ public:
+  explicit iterator_impl(const iresearch::sub_reader* rdr = nullptr) NOEXCEPT
+    : rdr_(rdr) {
+  }
+
+  virtual void operator++() override { rdr_ = nullptr; }
+  virtual reference operator*() override {
+    return *const_cast<iresearch::sub_reader*>(rdr_);
+  }
+  virtual const_reference operator*() const override { return *rdr_; }
+  virtual bool operator==(
+    const iresearch::index_reader::reader_iterator_impl& rhs
+  ) override {
+    return rdr_ == static_cast<const iterator_impl&>(rhs).rdr_;
+  }
+
+ private:
+  const iresearch::sub_reader* rdr_;
+};
+
 class masked_docs_iterator 
     : public iresearch::segment_reader::docs_iterator_t,
       private iresearch::util::noncopyable {
@@ -114,51 +135,178 @@ NS_END // NS_LOCAL
 
 NS_ROOT
 
+// -------------------------------------------------------------------
+// segment_reader
+// -------------------------------------------------------------------
+
+class segment_reader::segment_reader_impl: public sub_reader {
+ public:
+  virtual index_reader::reader_iterator begin() const override;
+  virtual const column_meta* column(const string_ref& name) const override;
+  virtual column_iterator::ptr columns() const override;
+  const directory& dir() const NOEXCEPT;
+  virtual uint64_t docs_count() const override;
+  virtual docs_iterator_t::ptr docs_iterator() const override;
+  virtual index_reader::reader_iterator end() const override;
+  virtual const term_reader* field(const string_ref& name) const override;
+  virtual field_iterator::ptr fields() const override;
+  virtual uint64_t live_docs_count() const override;
+  uint64_t meta_version() const NOEXCEPT;
+  static segment_reader open(const directory& dir, const segment_meta& meta);
+  virtual size_t size() const override;
+  virtual value_visitor_f values(
+    field_id field, const columnstore_reader::value_reader_f& reader
+  ) const override;
+  virtual bool visit(
+    field_id field, const columnstore_reader::raw_reader_f& reader
+  ) const override;
+
+ private:
+  DECLARE_SPTR(segment_reader_impl); // required for NAMED_PTR(...)
+  std::vector<column_meta> columns_;
+  columnstore_reader::ptr columnstore_reader_;
+  const directory& dir_;
+  uint64_t docs_count_;
+  document_mask docs_mask_;
+  field_reader::ptr field_reader_;
+  std::vector<column_meta*> id_to_column_;
+  uint64_t meta_version_;
+  std::unordered_map<hashed_string_ref, column_meta*> name_to_column_;
+
+  segment_reader_impl(
+    const directory& dir,
+    uint64_t meta_version,
+    uint64_t docs_count
+  );
+};
+
+segment_reader::segment_reader(const impl_ptr& impl): impl_(impl) {
+}
+
+segment_reader::operator bool() const NOEXCEPT {
+  return impl_ ? true : false;
+}
+
+segment_reader& segment_reader::operator*() NOEXCEPT {
+  return *this;
+}
+
+const segment_reader& segment_reader::operator*() const NOEXCEPT {
+  return *this;
+}
+
+segment_reader* segment_reader::operator->() NOEXCEPT {
+  return this;
+}
+
+const segment_reader* segment_reader::operator->() const NOEXCEPT {
+  return this;
+}
+
+index_reader::reader_iterator segment_reader::begin() const {
+  return index_reader::reader_iterator(new iterator_impl(this));
+}
+
+const column_meta* segment_reader::column(const string_ref& name) const {
+  return impl_->column(name);
+}
+
 column_iterator::ptr segment_reader::columns() const {
+  return impl_->columns();
+}
+
+uint64_t segment_reader::docs_count() const {
+  return impl_->docs_count();
+}
+
+sub_reader::docs_iterator_t::ptr segment_reader::docs_iterator() const {
+  return impl_->docs_iterator();
+}
+
+index_reader::reader_iterator segment_reader::end() const {
+  return index_reader::reader_iterator(new iterator_impl());
+}
+
+const term_reader* segment_reader::field(const string_ref& name) const {
+  return impl_->field(name);
+}
+
+field_iterator::ptr segment_reader::fields() const {
+  return impl_->fields();
+}
+
+uint64_t segment_reader::live_docs_count() const {
+  return impl_->live_docs_count();
+}
+
+/*static*/ segment_reader segment_reader::open(
+  const directory& dir, const segment_meta& meta
+) {
+  return segment_reader_impl::open(dir, meta);
+}
+
+segment_reader segment_reader::reopen(const segment_meta& meta) const {
+  // reuse self if no changes to meta
+  return impl_->meta_version() == meta.version
+    ? *this : segment_reader_impl::open(impl_->dir(), meta);
+}
+
+void segment_reader::reset() NOEXCEPT {
+  impl_.reset();
+}
+
+size_t segment_reader::size() const {
+  return impl_->size();
+}
+
+sub_reader::value_visitor_f segment_reader::values(
+  field_id field, const columnstore_reader::value_reader_f& reader
+) const {
+  return impl_->values(field, reader);
+}
+
+bool segment_reader::visit(
+  field_id field, const columnstore_reader::raw_reader_f& reader
+) const {
+  return impl_->visit(field, reader);
+}
+
+// -------------------------------------------------------------------
+// segment_reader_impl
+// -------------------------------------------------------------------
+
+segment_reader::segment_reader_impl::segment_reader_impl(
+  const directory& dir, uint64_t meta_version, uint64_t docs_count
+): dir_(dir), meta_version_(meta_version), docs_count_(docs_count) {
+}
+
+index_reader::reader_iterator segment_reader::segment_reader_impl::begin() const {
+  return index_reader::reader_iterator(new iterator_impl(this));
+}
+
+const column_meta* segment_reader::segment_reader_impl::column(
+  const string_ref& name
+) const {
+  auto it = name_to_column_.find(make_hashed_ref(name, string_ref_hash_t()));
+  return it == name_to_column_.end() ? nullptr : it->second;
+}
+
+column_iterator::ptr segment_reader::segment_reader_impl::columns() const {
   const auto* begin = columns_.data() - 1;
   return column_iterator::make<iterator_adapter<decltype(begin), column_iterator>>(
     begin, begin + columns_.size()
   );
 }
 
-const column_meta* segment_reader::column(const string_ref& name) const {
-  const auto it = name_to_column_.find(make_hashed_ref(name, string_ref_hash_t()));
-  return it == name_to_column_.end() ? nullptr : it->second;
+const directory& segment_reader::segment_reader_impl::dir() const NOEXCEPT {
+  return dir_;
 }
 
-field_iterator::ptr segment_reader::fields() const {
-  return fr_->iterator();
+uint64_t segment_reader::segment_reader_impl::docs_count() const {
+  return docs_count_;
 }
 
-const term_reader* segment_reader::field(const string_ref& field) const {
-  return fr_->field(field);
-}
-
-sub_reader::value_visitor_f segment_reader::values(
-    field_id field,
-    const columnstore_reader::value_reader_f& value_reader) const {
-  if (!csr_) {
-    return NOOP_VISITOR;
-  }
-
-  auto column = csr_->values(field);
-
-  return [&value_reader, column](doc_id_t doc)->bool {
-    return column(doc, value_reader);
-  };
-}
-  
-bool segment_reader::visit(
-    field_id field,
-    const columnstore_reader::raw_reader_f& reader) const {
-  if (!csr_) {
-    return false;
-  }
-
-  return csr_->visit(field, reader);
-}
-
-segment_reader::docs_iterator_t::ptr segment_reader::docs_iterator() const {
+sub_reader::docs_iterator_t::ptr segment_reader::segment_reader_impl::docs_iterator() const {
   // the implementation generates doc_ids sequentially
   return memory::make_unique<masked_docs_iterator>(
     type_limits<type_t::doc_id_t>::min(),
@@ -167,53 +315,93 @@ segment_reader::docs_iterator_t::ptr segment_reader::docs_iterator() const {
   );
 }
 
-segment_reader::ptr segment_reader::open(
-    const directory& dir, 
-    const segment_meta& seg) {
-  auto& codec = *seg.codec;
-  PTR_NAMED(segment_reader, rdr);
-
-  rdr->dir_state_.dir = &dir;
-  rdr->dir_state_.version = integer_traits<decltype(seg.version)>::const_max; // version forcing refresh(...)
-  rdr->docs_count_ = seg.docs_count;
-  rdr->refresh(seg);
-
-  reader_state rs;
-  rs.codec = &codec;
-  rs.dir = &dir;
-  rs.docs_mask = &rdr->docs_mask_;
-  rs.meta = &seg;
-
-  // initialize field reader
-  auto& fr = rdr->fr_;
-  fr = codec.get_field_reader();
-  if (!fr->prepare(rs)) {
-    return nullptr;
-  }
-  
-  // initialize columns
-  columnstore_reader::ptr csr = codec.get_columnstore_reader();
-  if (csr->prepare(rs)) {
-    rdr->csr_ = std::move(csr);
-  }
-    
-  read_columns_meta(
-    codec, dir, seg.name, 
-    rdr->columns_, rdr->id_to_column_, rdr->name_to_column_
-  );
-
-  return rdr;
+index_reader::reader_iterator segment_reader::segment_reader_impl::end() const {
+  return index_reader::reader_iterator(new iterator_impl());
 }
 
-void segment_reader::refresh(const segment_meta& meta) {
-  if (dir_state_.version == meta.version) {
-    return; // nothing to refresh
+const term_reader* segment_reader::segment_reader_impl::field(
+  const string_ref& name
+) const {
+  return field_reader_->field(name);
+}
+
+field_iterator::ptr segment_reader::segment_reader_impl::fields() const {
+  return field_reader_->iterator();
+}
+
+uint64_t segment_reader::segment_reader_impl::live_docs_count() const {
+  return docs_count_ - docs_mask_.size();
+}
+
+uint64_t segment_reader::segment_reader_impl::meta_version() const NOEXCEPT {
+  return meta_version_;
+}
+
+/*static*/ segment_reader segment_reader::segment_reader_impl::open(
+  const directory& dir, const segment_meta& meta
+) {
+  PTR_NAMED(segment_reader_impl, reader, dir, meta.version, meta.docs_count);
+
+  index_utils::read_document_mask(reader->docs_mask_, dir, meta);
+
+  auto& codec = *meta.codec;
+  reader_state rs;
+
+  rs.codec = &codec;
+  rs.dir = &dir;
+  rs.docs_mask = &(reader->docs_mask_);
+  rs.meta = &meta;
+
+  auto field_reader = codec.get_field_reader();
+
+  // initialize field reader
+  if (!field_reader->prepare(rs)) {
+    return nullptr; // field reader required
   }
 
-  // initialize document mask
-  docs_mask_.clear();
-  index_utils::read_document_mask(docs_mask_, *(dir_state_.dir), meta);
-  dir_state_.version = meta.version;
+  reader->field_reader_ = std::move(field_reader);
+
+  auto columnstore_reader = codec.get_columnstore_reader();
+
+  // initialize column reader
+  if (columnstore_reader->prepare(rs)) {
+    reader->columnstore_reader_ = std::move(columnstore_reader);
+  }
+
+  // initialize columns meta
+  read_columns_meta(
+    codec,
+    dir,
+    meta.name, 
+    reader->columns_,
+    reader->id_to_column_,
+    reader->name_to_column_
+  );
+
+  return reader;
+}
+
+size_t segment_reader::segment_reader_impl::size() const {
+  return 1; // only 1 segment
+}
+
+sub_reader::value_visitor_f segment_reader::segment_reader_impl::values(
+  field_id field, const columnstore_reader::value_reader_f& reader
+) const {
+  if (!columnstore_reader_) {
+    return NOOP_VISITOR;
+  }
+
+  auto column = columnstore_reader_->values(field);
+
+  return [&reader, column](doc_id_t doc)->bool { return column(doc, reader); };
+}
+
+bool segment_reader::segment_reader_impl::visit(
+  field_id field, const columnstore_reader::raw_reader_f& reader
+) const {
+  return columnstore_reader_
+    ? columnstore_reader_->visit(field, reader) : false;
 }
 
 NS_END

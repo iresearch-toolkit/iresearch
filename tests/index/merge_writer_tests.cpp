@@ -157,13 +157,13 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
   auto reader = iresearch::directory_reader::open(dir, codec_ptr);
   iresearch::merge_writer writer(dir, codec_ptr, "merged");
 
-  ASSERT_EQ(2, reader->size());
-  ASSERT_EQ(2, (*reader)[0].docs_count());
-  ASSERT_EQ(2, (*reader)[1].docs_count());
+  ASSERT_EQ(2, reader.size());
+  ASSERT_EQ(2, reader[0].docs_count());
+  ASSERT_EQ(2, reader[1].docs_count());
 
   // check for columns segment 0
   {
-    auto& segment = (*reader)[0];
+    auto& segment = reader[0];
 
     auto columns = segment.columns();
     ASSERT_TRUE(columns->next());
@@ -258,7 +258,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
   
   // check for columns segment 1
   {
-    auto& segment = (*reader)[1];
+    auto& segment = reader[1];
 
     auto columns = segment.columns();
     ASSERT_TRUE(columns->next());
@@ -385,8 +385,8 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
     }
   }
   
-  writer.add((*reader)[0]);
-  writer.add((*reader)[1]);
+  writer.add(reader[0]);
+  writer.add(reader[1]);
 
   std::string filename;
   iresearch::segment_meta meta;
@@ -394,9 +394,9 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
   writer.flush(filename, meta);
   {
     auto segment = iresearch::segment_reader::open(dir, meta);
-    ASSERT_EQ(3, segment->docs_count());
+    ASSERT_EQ(3, segment.docs_count());
 
-    auto columns = segment->columns();
+    auto columns = segment.columns();
     ASSERT_TRUE(columns->next());
     ASSERT_EQ("doc_int", columns->value().name);
     ASSERT_EQ(0, columns->value().id); // 0 since 'doc_int' < 'doc_string'
@@ -435,12 +435,12 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       };
 
       // read values for 'doc_int'
-      auto* meta = segment->column("doc_int");
+      auto* meta = segment.column("doc_int");
       ASSERT_NE(nullptr, meta);
-      ASSERT_TRUE(segment->visit(meta->id, reader));
+      ASSERT_TRUE(segment.visit(meta->id, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
-    
+
     // check 'doc_string' column
     {
       std::unordered_map <std::string, iresearch::doc_id_t > expected_values{
@@ -471,12 +471,12 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       };
 
       // read values for 'doc_string'
-      auto* meta = segment->column("doc_string");
+      auto* meta = segment.column("doc_string");
       ASSERT_NE(nullptr, meta);
-      ASSERT_TRUE(segment->visit(meta->id, reader));
+      ASSERT_TRUE(segment.visit(meta->id, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
-    
+
     // check that 'another_column' has been removed
     {
       size_t calls_count = 0;
@@ -485,8 +485,8 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
         return true;
       };
 
-      ASSERT_EQ(nullptr, segment->column("another_column"));
-      ASSERT_FALSE(segment->visit(2, reader));
+      ASSERT_EQ(nullptr, segment.column("another_column"));
+      ASSERT_FALSE(segment.visit(2, reader));
       ASSERT_EQ(0, calls_count);
     }
   }
@@ -533,9 +533,9 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
     field.name(iresearch::string_ref("doc_int"));
     field.value(42 * 3);
   }
-  
+
   doc4.insert(std::make_shared<tests::templates::string_field>("doc_string", string4));
-  
+
   iresearch::version10::format codec;
   iresearch::format::ptr codec_ptr(&codec, [](iresearch::format*)->void{});
   iresearch::memory_directory dir;
@@ -551,17 +551,17 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
     writer->commit();
     writer->close();
   }
-  
+
   auto reader = iresearch::directory_reader::open(dir, codec_ptr);
   iresearch::merge_writer writer(dir, codec_ptr, "merged");
 
-  ASSERT_EQ(2, reader->size());
-  ASSERT_EQ(2, (*reader)[0].docs_count());
-  ASSERT_EQ(2, (*reader)[1].docs_count());
+  ASSERT_EQ(2, reader.size());
+  ASSERT_EQ(2, reader[0].docs_count());
+  ASSERT_EQ(2, reader[1].docs_count());
 
   // check for columns segment 0
   {
-    auto& segment = (*reader)[0];
+    auto& segment = reader[0];
 
     auto columns = segment.columns();
     ASSERT_TRUE(columns->next());
@@ -654,10 +654,10 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       ASSERT_EQ(0, calls_count);
     }
   }
-  
+
   // check for columns segment 1
   {
-    auto& segment = (*reader)[1];
+    auto& segment = reader[1];
 
     auto columns = segment.columns();
     ASSERT_TRUE(columns->next());
@@ -748,9 +748,9 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       ASSERT_EQ(0, calls_count);
     }
   }
-  
-  writer.add((*reader)[0]);
-  writer.add((*reader)[1]);
+
+  writer.add(reader[0]);
+  writer.add(reader[1]);
 
   std::string filename;
   iresearch::segment_meta meta;
@@ -758,9 +758,9 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
   writer.flush(filename, meta);
   {
     auto segment = iresearch::segment_reader::open(dir, meta);
-    ASSERT_EQ(4, segment->docs_count());
+    ASSERT_EQ(4, segment.docs_count());
 
-    auto columns = segment->columns();
+    auto columns = segment.columns();
     ASSERT_TRUE(columns->next());
     ASSERT_EQ("doc_int", columns->value().name);
     ASSERT_EQ(0, columns->value().id); // 0 since 'doc_int' < 'doc_string'
@@ -768,7 +768,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
     ASSERT_EQ("doc_string", columns->value().name);
     ASSERT_EQ(1, columns->value().id);
     ASSERT_FALSE(columns->next());
-    
+
     // check 'doc_int' column
     {
       std::unordered_map<int, iresearch::doc_id_t> expected_values{
@@ -799,12 +799,12 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       };
 
       // read values for 'doc_int'
-      auto* meta = segment->column("doc_int");
+      auto* meta = segment.column("doc_int");
       ASSERT_NE(nullptr, meta);
-      ASSERT_TRUE(segment->visit(meta->id, reader));
+      ASSERT_TRUE(segment.visit(meta->id, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
-    
+
     // check 'doc_string' column
     {
       std::unordered_map <std::string, iresearch::doc_id_t > expected_values{
@@ -836,9 +836,9 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       };
 
       // read values for 'doc_string'
-      auto* meta = segment->column("doc_string");
+      auto* meta = segment.column("doc_string");
       ASSERT_NE(nullptr, meta);
-      ASSERT_TRUE(segment->visit(meta->id, reader));
+      ASSERT_TRUE(segment.visit(meta->id, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
   }
@@ -1001,13 +1001,13 @@ TEST_F(merge_writer_tests, test_merge_writer) {
   auto reader = iresearch::directory_reader::open(dir, codec_ptr);
   iresearch::merge_writer writer(dir, codec_ptr, "merged");
 
-  ASSERT_EQ(2, reader->size());
-  ASSERT_EQ(2, (*reader)[0].docs_count());
-  ASSERT_EQ(2, (*reader)[1].docs_count());
+  ASSERT_EQ(2, reader.size());
+  ASSERT_EQ(2, reader[0].docs_count());
+  ASSERT_EQ(2, reader[1].docs_count());
 
   // validate initial data (segment 0)
   {
-    auto& segment = (*reader)[0];
+    auto& segment = reader[0];
     ASSERT_EQ(2, segment.docs_count());
 
     {
@@ -1361,7 +1361,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
   // validate initial data (segment 1)
   {
-    auto& segment = (*reader)[1];
+    auto& segment = reader[1];
     ASSERT_EQ(2, segment.docs_count());
 
     {
@@ -1688,8 +1688,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     ASSERT_TRUE(expected_string.empty());
   }
 
-  writer.add((*reader)[0]);
-  writer.add((*reader)[1]);
+  writer.add(reader[0]);
+  writer.add(reader[1]);
 
   std::string filename;
   iresearch::segment_meta meta;
@@ -1698,10 +1698,10 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
   auto segment = iresearch::segment_reader::open(dir, meta);
 
-  ASSERT_EQ(3, segment->docs_count()); //doc4 removed during merge
+  ASSERT_EQ(3, segment.docs_count()); //doc4 removed during merge
 
   {
-    auto fields = segment->fields();
+    auto fields = segment.fields();
     size_t size = 0;
     while (fields->next()) {
       ++size;
@@ -1711,7 +1711,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
   // validate bytes field
   {
-    auto terms = segment->field("doc_bytes");
+    auto terms = segment.field("doc_bytes");
     ASSERT_NE(nullptr, terms);
     auto& field = terms->meta();
     auto features = tests::binary_field().features();
@@ -1722,7 +1722,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("bytes2_data"))].emplace(2);
     expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("bytes3_data"))].emplace(3);
 
-    ASSERT_EQ(3, segment->docs_count("doc_bytes"));
+    ASSERT_EQ(3, segment.docs_count("doc_bytes"));
     ASSERT_TRUE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has been specified
     ASSERT_EQ(features, field.features);
     ASSERT_NE(nullptr, terms);
@@ -1759,13 +1759,13 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       return true;
     };
 
-    ASSERT_TRUE(segment->visit(field.norm, reader));
+    ASSERT_TRUE(segment.visit(field.norm, reader));
     ASSERT_TRUE(expected_values.empty());
   }
 
   // validate double field
   {
-    auto terms = segment->field("doc_double");
+    auto terms = segment.field("doc_double");
     ASSERT_NE(nullptr, terms);
     auto& field = terms->meta();
     auto features = tests::double_field().features();
@@ -1793,7 +1793,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(3));
     }
 
-    ASSERT_EQ(3, segment->docs_count("doc_double"));
+    ASSERT_EQ(3, segment.docs_count("doc_double"));
     ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
     ASSERT_EQ(features, field.features);
     ASSERT_NE(nullptr, terms);
@@ -1812,7 +1812,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
   // validate float field
   {
-    auto terms = segment->field("doc_float");
+    auto terms = segment.field("doc_float");
     ASSERT_NE(nullptr, terms);
     auto& field = terms->meta();
     auto features = tests::float_field().features();
@@ -1840,7 +1840,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(3));
     }
 
-    ASSERT_EQ(3, segment->docs_count("doc_float"));
+    ASSERT_EQ(3, segment.docs_count("doc_float"));
     ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
     ASSERT_EQ(features, field.features);
     ASSERT_NE(nullptr, terms);
@@ -1859,7 +1859,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
   // validate int field
   {
-    auto terms = segment->field("doc_int");
+    auto terms = segment.field("doc_int");
     ASSERT_NE(nullptr, terms);
     auto& field = terms->meta();
     auto features = tests::int_field().features();
@@ -1887,7 +1887,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(3));
     }
 
-    ASSERT_EQ(3, segment->docs_count("doc_int"));
+    ASSERT_EQ(3, segment.docs_count("doc_int"));
     ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
     ASSERT_EQ(features, field.features);
     ASSERT_NE(nullptr, terms);
@@ -1906,7 +1906,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
   // validate long field
   {
-    auto terms = segment->field("doc_long");
+    auto terms = segment.field("doc_long");
     ASSERT_NE(nullptr, terms);
     auto& field = terms->meta();
     auto features = tests::long_field().features();
@@ -1934,7 +1934,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(3));
     }
 
-    ASSERT_EQ(3, segment->docs_count("doc_long"));
+    ASSERT_EQ(3, segment.docs_count("doc_long"));
     ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
     ASSERT_EQ(features, field.features);
     ASSERT_NE(nullptr, terms);
@@ -1953,7 +1953,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
   // validate string field
   {
-    auto terms = segment->field("doc_string");
+    auto terms = segment.field("doc_string");
     ASSERT_NE(nullptr, terms);
     auto& field = terms->meta();
     auto& features = STRING_FIELD_FEATURES;
@@ -1965,7 +1965,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("string2_data"))].emplace(2);
     expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("string3_data"))].emplace(3);
 
-    ASSERT_EQ(3, segment->docs_count("doc_string"));
+    ASSERT_EQ(3, segment.docs_count("doc_string"));
     ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
     ASSERT_EQ(features, field.features);
     ASSERT_NE(nullptr, terms);
@@ -1984,7 +1984,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
   // validate text field
   {
-    auto terms = segment->field("doc_text");
+    auto terms = segment.field("doc_text");
     ASSERT_NE(nullptr, terms);
     auto& field = terms->meta();
     auto& features = TEXT_FIELD_FEATURES;
@@ -1996,7 +1996,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("text2_data"))].emplace(2);
     expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("text3_data"))].emplace(3);
 
-    ASSERT_EQ(3, segment->docs_count("doc_text"));
+    ASSERT_EQ(3, segment.docs_count("doc_text"));
     ASSERT_EQ(features, field.features);
     ASSERT_NE(nullptr, terms);
     validate_terms(
@@ -2020,37 +2020,37 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     const auto value = iresearch::read_string<iresearch::bstring>(in);
     return size_t(1) == expected_bytes.erase(value);
   };
-  auto bytes_values = segment->values("doc_bytes", bytes_visitor);
+  auto bytes_values = segment.values("doc_bytes", bytes_visitor);
   std::unordered_set<double> expected_double;
   iresearch::columnstore_reader::value_reader_f double_visitor = [&expected_double] (data_input& in) {
     const auto value = iresearch::read_zvdouble(in);
     return size_t(1) == expected_double.erase(value);
   };
-  auto double_values = segment->values("doc_double", double_visitor);
+  auto double_values = segment.values("doc_double", double_visitor);
   std::unordered_set<float> expected_float;
   iresearch::columnstore_reader::value_reader_f float_visitor = [&expected_float] (data_input& in) {
     const auto value = iresearch::read_zvfloat(in);
     return size_t(1) == expected_float.erase(value);
   };
-  auto float_values = segment->values("doc_float", float_visitor);
+  auto float_values = segment.values("doc_float", float_visitor);
   std::unordered_set<int> expected_int;
   iresearch::columnstore_reader::value_reader_f int_visitor = [&expected_int] (data_input& in) {
     const auto value = iresearch::read_zvint(in);
     return size_t(1) == expected_int.erase(value);
   };
-  auto int_values = segment->values("doc_int", int_visitor);
+  auto int_values = segment.values("doc_int", int_visitor);
   std::unordered_set<int64_t> expected_long;
   iresearch::columnstore_reader::value_reader_f long_visitor = [&expected_long] (data_input& in) {
     const auto value = iresearch::read_zvlong(in);
     return size_t(1) == expected_long.erase(value);
   };
-  auto long_values = segment->values("doc_long", long_visitor);
+  auto long_values = segment.values("doc_long", long_visitor);
   std::unordered_set<std::string> expected_string;
   iresearch::columnstore_reader::value_reader_f string_visitor = [&expected_string] (data_input& in) {
     auto value = iresearch::read_string<std::string>(in);
     return size_t(1) == expected_string.erase(value);
   };
-  auto string_values = segment->values("doc_string", string_visitor);
+  auto string_values = segment.values("doc_string", string_visitor);
 
   expected_bytes = { iresearch::bytes_ref(bytes1), iresearch::bytes_ref(bytes2), iresearch::bytes_ref(bytes3) };
   expected_double = { 2.718281828 * 1, 2.718281828 * 2, 2.718281828 * 3 };
@@ -2060,7 +2060,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
   expected_string = { string1, string2, string3 };
 
   // can't have more docs then highest doc_id
-  for (size_t i = 0, count = segment->docs_count(); i < count; ++i) {
+  for (size_t i = 0, count = segment.docs_count(); i < count; ++i) {
     const auto doc = iresearch::doc_id_t((iresearch::type_limits<iresearch::type_t::doc_id_t>::min)() + i);
     ASSERT_TRUE(bytes_values(doc));
     ASSERT_TRUE(double_values(doc));
@@ -2114,17 +2114,16 @@ TEST_F(merge_writer_tests, test_merge_writer_field_features) {
   }
 
   auto reader = iresearch::directory_reader::open(dir, codec_ptr);
-  
 
-  ASSERT_EQ(2, reader->size());
-  ASSERT_EQ(1, (*reader)[0].docs_count());
-  ASSERT_EQ(1, (*reader)[1].docs_count());
+  ASSERT_EQ(2, reader.size());
+  ASSERT_EQ(1, reader[0].docs_count());
+  ASSERT_EQ(1, reader[1].docs_count());
 
   // test merge existing with feature subset (success)
   {
     iresearch::merge_writer writer(dir, codec_ptr, "merged_subset");
-    writer.add((*reader)[1]); // assume 1 is segment with text field
-    writer.add((*reader)[0]); // assume 0 is segment with string field
+    writer.add(reader[1]); // assume 1 is segment with text field
+    writer.add(reader[0]); // assume 0 is segment with string field
 
     std::string filename;
     iresearch::segment_meta meta;
@@ -2135,8 +2134,8 @@ TEST_F(merge_writer_tests, test_merge_writer_field_features) {
   // test merge existing with feature superset (fail)
   {
     iresearch::merge_writer writer(dir, codec_ptr, "merged_superset");
-    writer.add((*reader)[0]); // assume 0 is segment with text field
-    writer.add((*reader)[1]); // assume 1 is segment with string field
+    writer.add(reader[0]); // assume 0 is segment with text field
+    writer.add(reader[1]); // assume 1 is segment with string field
 
     std::string filename;
     iresearch::segment_meta meta;
