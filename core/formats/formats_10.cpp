@@ -2661,7 +2661,7 @@ class sparse_column final : public column {
 /// @class dense_fixed_length_column
 ////////////////////////////////////////////////////////////////////////////////
 template<typename Block>
-class dense_fixed_length_column : public column {
+class dense_fixed_length_column final : public column {
  public:
   typedef Block block_t;
 
@@ -2783,25 +2783,22 @@ class dense_fixed_length_column : public column {
   };
 
   const context_provider* ctxs_;
-  size_t block_size_;
-  doc_id_t min_; // min key
   std::vector<block_ref> refs_;
+  doc_id_t min_{}; // min key
 }; // dense_fixed_length_column
 
 typedef std::function<
-  column::ptr(ColumnProperty prop, const context_provider& ctxs)
+  column::ptr(const context_provider& ctxs, ColumnProperty prop)
 > column_factory_f;
 
-typedef std::function<column::ptr(ColumnProperty prop, const context_provider& ctxs)> column_factory_f;
-
 std::unordered_map<ColumnProperty, column_factory_f, enum_hash> g_column_factories {
-  { CP_DENSE, [](ColumnProperty prop, const context_provider& ctxs){ return sparse_column<dense_block>::make(ctxs, prop); }},
-  { CP_MASK, [](ColumnProperty prop, const context_provider& ctxs){ return sparse_column<sparse_mask_block>::make(ctxs, prop); }},
-  { CP_DENSE | CP_FIXED, [](ColumnProperty prop, const context_provider& ctxs){ return dense_fixed_length_column<dense_block>::make(ctxs, prop); }},
-  { CP_DENSE | CP_FIXED | CP_MASK, [](ColumnProperty prop, const context_provider& ctxs){ return dense_fixed_length_column<dense_mask_block>::make(ctxs, prop); }}
+  { CP_DENSE,                      &sparse_column<dense_block>::make },
+  { CP_MASK,                       &sparse_column<sparse_mask_block>::make },
+  { CP_DENSE | CP_FIXED,           &dense_fixed_length_column<dense_fixed_length_block>::make },
+  { CP_DENSE | CP_FIXED | CP_MASK, &dense_fixed_length_column<dense_mask_block>::make }
 };
 
-column::ptr column_factory_default1(
+column::ptr column_factory_default(
     ColumnProperty prop,
     const context_provider& ctxs) {
   const auto factory = g_column_factories.find(prop);
@@ -2810,21 +2807,21 @@ column::ptr column_factory_default1(
     return sparse_column<sparse_block>::make(ctxs, prop);
   }
 
-  return factory->second(prop, ctxs);
+  return factory->second(ctxs, prop);
 }
 
-column::ptr column_factory_default(
-     ColumnProperty prop,
-     const context_provider& ctxs) {
-  switch(prop) {
-    case CP_DENSE: return sparse_column<dense_block>::make(ctxs, prop);
-    case CP_DENSE | CP_FIXED: return dense_fixed_length_column<dense_fixed_length_block>::make(ctxs, prop);
-    case CP_MASK : return sparse_column<sparse_mask_block>::make(ctxs, prop);
-    case CP_DENSE | CP_FIXED | CP_MASK : return dense_fixed_length_column<dense_mask_block>::make(ctxs, prop);
-  }
-
-  return sparse_column<sparse_block>::make(ctxs, prop);
-}
+//column::ptr column_factory_default1(
+//     ColumnProperty prop,
+//     const context_provider& ctxs) {
+//  switch(prop) {
+//    case CP_DENSE: return sparse_column<dense_block>::make(ctxs, prop);
+//    case CP_DENSE | CP_FIXED: return dense_fixed_length_column<dense_fixed_length_block>::make(ctxs, prop);
+//    case CP_MASK : return sparse_column<sparse_mask_block>::make(ctxs, prop);
+//    case CP_DENSE | CP_FIXED | CP_MASK : return dense_fixed_length_column<dense_mask_block>::make(ctxs, prop);
+//  }
+//
+//  return sparse_column<sparse_block>::make(ctxs, prop);
+//}
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class reader
