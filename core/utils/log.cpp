@@ -128,13 +128,13 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
 
 #if defined(_MSC_VER)
   DWORD stack_trace_win32(iresearch::logger::level_t level, struct _EXCEPTION_POINTERS* ex) {
-    auto& stream = iresearch::logger::stream(level);
+    auto* out = output(level);
     static std::mutex mutex;
-
     SCOPED_LOCK(mutex); // win32 stack trace API is not thread safe
 
     if (!ex || !ex->ContextRecord) {
-      stream << "No stack_trace available" << std::endl;
+      std::fprintf(out, "No stack_trace available\n");
+      std::fflush(out);
       return EXCEPTION_EXECUTE_HANDLER;
     }
 
@@ -157,7 +157,8 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
     DWORD module_handle_size;
 
     if (!EnumProcessModules(process, &module_handle, sizeof(HMODULE), &module_handle_size)) {
-      stream << "Failed to enumerate modules for current process" << std::endl;
+      std::fprintf(out, "Failed to enumerate modules for current process\n");
+      std::fflush(out);
       return EXCEPTION_EXECUTE_HANDLER;
     }
 
@@ -193,31 +194,36 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
       auto has_line = SymGetLineFromAddr(process, frame.AddrPC.Offset, &offset_from_line, &line);
 
       // skip frames until stack_trace entry point is encountered
-      if (skip_frame && has_symbol && stack_trace_fn_symbol == symbol.Name) {
-        skip_frame = false;  // next frame is start of exception stack trace
+      if (skip_frame) {
+        if (has_symbol && stack_trace_fn_symbol == symbol.Name) {
+          skip_frame = false; // next frame is the start of the exception stack trace
+        }
+
         continue;
       }
 
-      stream << "#" << ++frame_count << " ";
+      std::fprintf(out, "#%u ", ++frame_count);
 
       if (has_module) {
-        stream << module.ModuleName;
+        std::fprintf(out, "%s", module.ModuleName);
       }
 
       if (has_symbol) {
-        stream << "(" << symbol.Name << "+0x" << std::hex << offset_from_symbol << ")" << std::dec;
+        std::fprintf(out, "(%s+0x%x)", symbol.Name, offset_from_symbol);
       }
 
       if (has_line) {
-        stream << ": " << line.FileName << ":" << line.LineNumber << "+0x" << std::hex << offset_from_line << std::dec;
+        std::fprintf(out, ": %s:%u+0x%x", line.FileName, line.LineNumber, offset_from_line);
       }
 
-      stream << std::endl;
+      std::fprintf(out, "\n");
     }
 
     if (skip_frame) {
-      stream << "No stack_trace available outside of logger" << std::endl;
+      std::fprintf(out, "No stack_trace available outside of logger\n");
     }
+
+    std::fflush(out);
 
     return EXCEPTION_EXECUTE_HANDLER;
   }
@@ -238,8 +244,8 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
 
       // The exec() family of functions replaces the current process image with a new process image.
       // The exec() functions only return if an error has occurred.
-      dup2(1, fd); // redirect stdout to fd
-      dup2(2, fd); // redirect stderr to fd
+      dup2(fd, 1); // redirect stdout to fd
+      dup2(fd, 2); // redirect stderr to fd
       execlp("addr2line", "addr2line", "-e", obj, addr, NULL);
       exit(1);
     }
@@ -282,8 +288,8 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
 
       // The exec() family of functions replaces the current process image with a new process image.
       // The exec() functions only return if an error has occurred.
-      dup2(1, fd); // redirect stdout to fd
-      dup2(2, fd); // redirect stderr to fd
+      dup2(fd, 1); // redirect stdout to fd
+      dup2(fd, 2); // redirect stderr to fd
       execlp("gdb", "gdb", "-n", "-nx", "-return-child-result", "-batch", "-ex", "thread", "-ex", "bt", name_buf, pid_buf, NULL);
       exit(1);
     }
@@ -294,7 +300,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
   }
 
   void stack_trace_posix(iresearch::logger::level_t level) {
-    auto& stream = iresearch::logger::stream(level);
+    auto* out = output(level);
     static const size_t frames_max = 128; // arbitrary size
     void* frames_buf[frames_max];
     auto frames_count = backtrace(frames_buf, frames_max);
@@ -309,15 +315,16 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
     int pipefd[2];
 
     if (pipe(pipefd)) {
-      stream << "Failed to output stack trace to stream, redirecting stack trace to STDERR" << std::endl;
-      backtrace_symbols_fd(frames_buf_ptr, frames_count, STDERR_FILENO); // fallback to stderr
+      std::fprintf(out, "Failed to output detailed stack trace to stream, outputting plain stack trace\n");
+      std::fflush(out);
+      backtrace_symbols_fd(frames_buf_ptr, frames_count, fileno(out)); // fallback plain output
       return;
     }
 
     size_t buf_len = 0;
     size_t buf_size = 1024; // arbitrary size
     char buf[buf_size];
-    std::thread thread([&pipefd, level, &stream, &buf, &buf_len, buf_size]()->void {
+    std::thread thread([&pipefd, level, out, &buf, &buf_len, buf_size]()->void {
       for (char ch; read(pipefd[0], &ch, 1) > 0;) {
         if (ch != '\n') {
           if (buf_len < buf_size - 1) {
@@ -327,16 +334,17 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
 
           if (buf_len < buf_size) {
             buf[buf_len++] = '\0';
-            stream << buf;
+            std::fprintf(out, "%s", buf);
           }
 
-          stream << ch; // line longer than buf, output line directly
+          std::fputc(ch, out); // line longer than buf, output line directly
           continue;
         }
 
         if (buf_len >= buf_size) {
           buf_len = 0;
-          stream << std::endl;
+          std::fprintf(out, "\n");
+          std::fflush(out);
           continue;
         }
 
@@ -372,41 +380,44 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
 
         auto fn_end = offset_start ? offset_start - 1 : nullptr;
         auto path_end = fn_start ? fn_start - 1 : (addr_start ? addr_start - 1 : nullptr);
-        bfd_callback_type_t callback = [level, &stream](const char* file, size_t line, const char* fn)->void {
+        bfd_callback_type_t callback = [level, out](const char* file, size_t line, const char* fn)->void {
           UNUSED(fn);
 
           if (file) {
-            stream << file << ":" << line << std::endl;
-            return;
+            std::fprintf(out, "%s:%lu\n", file, line);
+          } else {
+            std::fprintf(out, "??:?");
           }
 
-          stream << "??:?" << std::endl;
+          std::fflush(out);
         };
 
         if (path_start < path_end) {
           if (offset_start < offset_end) {
-            stream.write(path_start, path_end - path_start);
+            std::fwrite(path_start, sizeof(char), path_end - path_start, out);
 
             if (fn_start < fn_end) {
-              stream.put('(');
+              std::fprintf(out, "(");
               *fn_end = '\0';
 
               auto fn_name = proc_name_demangle(fn_start);
 
               if(fn_name) {
-                stream << fn_name.get();
+                std::fprintf(out, "%s", fn_name.get());
               } else {
-                stream.write(fn_start, fn_end - fn_start);
+                std::fwrite(fn_start, sizeof(char), fn_end - fn_start, out);
               }
 
-              stream.put('+') << offset_start << std::endl;
+              std::fprintf(out, "+%s\n", offset_start);
+              std::fflush(out);
             } else {
-              stream << path_end << " ";
+              std::fprintf(out, "%s ", path_end);
               *offset_end = '\0';
               *path_end = '\0';
 
               if (!file_line_bfd(callback, path_start, offset_start) && !file_line_addr2line(level, path_start, offset_start)) {
-                stream << std::endl;
+                std::fprintf(out, "\n");
+                std::fflush(out);
               }
             }
 
@@ -414,19 +425,21 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
           }
 
           if (addr_start < addr_end) {
-            stream << path_start << " ";
+            std::fprintf(out, "%s ", path_start);
             *addr_end = '\0';
             *path_end = '\0';
 
             if (!file_line_bfd(callback, path_start, addr_start) && !file_line_addr2line(level, path_start, addr_start)) {
-              stream << std::endl;
+              std::fprintf(out, "\n");
+              std::fflush(out);
             }
 
             continue;
           }
         }
 
-        stream << buf << std::endl;
+        std::fprintf(out, "%s\n", buf);
+        std::fflush(out);
       }
     });
 
@@ -434,7 +447,8 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
     close(pipefd[1]);
     thread.join();
     close(pipefd[0]);
-    stream << std::endl;
+    std::fprintf(out, "\n");
+    std::fflush(out);
   }
 #endif
 
@@ -515,12 +529,13 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
       return true; // nothing to log
     }
 
-    auto& stream = iresearch::logger::stream(level);
+    auto* out = output(level);
     unw_word_t instruction_pointer;
 
     while (unw_step(&cursor) > 0) {
       if (0 != unw_get_reg(&cursor, UNW_REG_IP, &instruction_pointer)) {
-        stream << "<unknown>" << std::endl;
+        std::fprintf(out, "<unknown>\n");
+        std::fflush(out);
         continue; // no instruction pointer available
       }
 
@@ -532,8 +547,8 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
         static const void* static_fbase = (void*)0x400000;
         auto addr = instruction_pointer - (static_fbase == dl_info.dli_fbase ? unw_word_t(dl_info.dli_saddr) : unw_word_t(dl_info.dli_fbase));
         bool use_addr2line = false;
-        bfd_callback_type_t callback = [&stream, instruction_pointer, &addr, &dl_info, &use_addr2line](const char* file, size_t line, const char* fn)->void {
-          stream << (dl_info.dli_fname ? dl_info.dli_fname : "\?\?") << "(";
+        bfd_callback_type_t callback = [level, out, instruction_pointer, &addr, &dl_info, &use_addr2line](const char* file, size_t line, const char* fn)->void {
+          std::fprintf(out, "%s(", dl_info.dli_fname ? dl_info.dli_fname : "\?\?");
 
           auto proc_name = proc_name_demangle(fn);
 
@@ -542,34 +557,38 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
           }
 
           if (proc_name) {
-            stream << proc_name.get();
+            std::fprintf(out, "%s", proc_name.get());
           } else if (fn) {
-            stream << fn;
+            std::fprintf(out, "%s", fn);
           } else if (dl_info.dli_sname) {
-            stream << dl_info.dli_sname;
+            std::fprintf(out, "%s", dl_info.dli_sname);
           }
 
           // match offsets in Posix backtrace output
-          stream << "+0x" << std::hex << (dl_info.dli_saddr ? (instruction_pointer - unw_word_t(dl_info.dli_saddr)) : addr) << std::dec << ")";
-          stream << "[0x" << std::hex << instruction_pointer << std::dec << "] ";
+          std::fprintf(
+            out, "+0x%lx)[0x%lx] ",
+            dl_info.dli_saddr ? (instruction_pointer - unw_word_t(dl_info.dli_saddr)) : addr, instruction_pointer
+          );
 
           if (use_addr2line) {
             if (!file_line_addr2line(level, dl_info.dli_fname, addr)) {
-              stream << std::endl;
+              std::fprintf(out, "\n");
+              std::fflush(out);
             }
 
             return;
           }
 
-          stream << (file ? file : "??") << ":";
+          std::fprintf(out, "%s:", file ? file : "??");
 
           if (line) {
-            stream << line;
+            std::fprintf(out, "%lu", line);
           } else {
-            stream << "?";
+            std::fprintf(out, "?");
           }
 
-          stream << std::endl;
+          std::fprintf(out, "\n");
+          std::fflush(out);
         };
 
         if (!file_line_bfd(callback, dl_info.dli_fname, addr)) {
@@ -585,14 +604,15 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
       unw_word_t offset;
 
       if (0 != unw_get_proc_name(&cursor, proc_buf, proc_size, &offset)) {
-        stream << "\?\?[0x" << std::hex << instruction_pointer << std::dec << "]" << std::endl;
+        std::fprintf(out, "\?\?[0x%lx]\n", instruction_pointer);
+        std::fflush(out);
         continue; // no function info available
       }
 
       auto proc_name = proc_name_demangle(proc_buf);
 
-      stream << "\?\?(" << (proc_name ? proc_name.get() : proc_buf) << "+0x" << std::hex << offset << std::dec << ")";
-      stream << "[0x" << std::hex << instruction_pointer << std::dec << "]" << std::endl;
+      std::fprintf(out, "\?\?(%s+0x%lx)[0x%lx]\n", proc_name ? proc_name.get() : proc_buf, offset, instruction_pointer);
+      std::fflush(out);
     }
 
     return true;
