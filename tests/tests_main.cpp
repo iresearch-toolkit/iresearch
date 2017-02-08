@@ -197,7 +197,7 @@ int test_base::initialize( int argc, char* argv[] ) {
   ::testing::InitGoogleTest( &argc_, argv_ ); 
 
   // suppress log messages since tests check error conditions
-  iresearch::logger::level(iresearch::logger::IRL_NONE);
+  iresearch::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
   return RUN_ALL_TESTS();
 }
@@ -206,7 +206,7 @@ void stack_trace_handler(int sig) {
   // reset to default handler
   signal(sig, SIG_DFL);
   // print stack trace
-  iresearch::logger::stack_trace();
+  iresearch::logger::stack_trace(iresearch::logger::IRL_FATAL); // IRL_FATAL is logged to stderr above
   // re-signal to default handler (so we still get core dump if needed...)
   raise(sig);
 }

@@ -20,7 +20,10 @@
   #include <Windows.h> // must be included before DbgHelp.h
   #include <Psapi.h>
   #include <DbgHelp.h>
+
+  #include <stdio.h> // for *printf(...)
 #else
+  #include <cstdio> // for *printf(...)
   #include <thread>
 
   #include <cxxabi.h> // for abi::__cxa_demangle(...)
@@ -39,6 +42,7 @@
   #include <libunwind.h>
 #endif
 
+#include "file_utils.hpp"
 #include "shared.hpp"
 #include "singleton.hpp"
 #include "thread_utils.hpp"
@@ -47,29 +51,79 @@
 
 NS_LOCAL
 
-class logger_ctx: public iresearch::singleton<logger_ctx> {
+template <typename T, size_t Size>
+inline CONSTEXPR size_t array_size(const T(&)[Size]) { return Size; }
+
+MSVC_ONLY(__pragma(warning(push)))
+MSVC_ONLY(__pragma(warning(disable: 4996))) // the compiler encountered a deprecated declaration
+static FILE* dev_null() {
+  static auto dev_null = file_open(nullptr, "wb");
+  return dev_null.get();
+}
+MSVC_ONLY(__pragma(warning(pop)))
+
+class file_streambuf: public std::streambuf {
  public:
-  logger_ctx()
-    : singleton(), level_(iresearch::logger::IRL_INFO), stream_(&std::cerr) {
+  typedef std::streambuf::char_type char_type;
+  typedef std::streambuf::int_type int_type;
+
+  file_streambuf(FILE* out): out_(out ? out : dev_null()) {
   }
 
-  iresearch::logger::level_t level() { return level_; }
-  logger_ctx& level(iresearch::logger::level_t level) { level_ = level; return *this; }
-  std::ostream& stream() { return *stream_; }
-  logger_ctx& stream(std::ostream& stream) { stream_ = &stream; return *this; }
+  virtual std::streamsize xsputn(const char_type* data, std::streamsize size) override {
+    return std::fwrite(data, sizeof(char_type), size, out_);
+  }
+
+  virtual int_type overflow(int_type ch) override {
+    return std::fputc(ch, out_);
+  }
 
  private:
-  iresearch::logger::level_t level_;
-  std::ostream* stream_;
+  FILE* out_;
+};
+
+class logger_ctx: public iresearch::singleton<logger_ctx> {
+ public:
+  logger_ctx(): singleton() {
+    // set everything up to and including INFO to stderr
+    for (size_t i = iresearch::logger::IRL_INFO; i; --i) {
+      out_[i].file_ = stderr;
+      out_[i].streambuf_ = file_streambuf(stderr);
+    }
+  }
+
+  FILE* file(iresearch::logger::level_t level) { return out_[level].file_; }
+  logger_ctx& output(iresearch::logger::level_t level, FILE* out) {
+    out_[level].file_ = out ? out : dev_null();
+    out_[level].streambuf_ = file_streambuf(out);
+    return *this;
+  }
+  logger_ctx& output_le(iresearch::logger::level_t level, FILE* out) {
+    for (auto i = array_size(out_) - 1; i; --i) {
+      output(static_cast<iresearch::logger::level_t>(i), i > level ? nullptr : out);
+    }
+    return *this;
+  }
+  std::ostream& stream(iresearch::logger::level_t level) { return out_[level].stream_; }
+
+ private:
+  struct level_ctx_t {
+    FILE* file_;
+    std::ostream stream_;
+    file_streambuf streambuf_;
+    level_ctx_t(): stream_(&streambuf_), streambuf_(nullptr) {}
+  };
+
+  level_ctx_t out_[iresearch::logger::IRL_TRACE + 1]; // IRL_TRACE is the last value, +1 for 0'th id
 };
 
 typedef std::function<void(const char* file, size_t line, const char* fn)> bfd_callback_type_t;
-bool file_line_bfd(const bfd_callback_type_t& callback, const char* obj, void* addr); // predeclaration
-bool stack_trace_libunwind(); // predeclaration
+bool file_line_bfd(iresearch::logger::level_t level, const bfd_callback_type_t& callback, const char* obj, void* addr); // predeclaration
+bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
 
 #if defined(_MSC_VER)
-  DWORD stack_trace_win32(struct _EXCEPTION_POINTERS* ex) {
-    auto& stream = iresearch::logger::stream();
+  DWORD stack_trace_win32(iresearch::logger::level_t level, struct _EXCEPTION_POINTERS* ex) {
+    auto& stream = iresearch::logger::stream(level);
     static std::mutex mutex;
 
     SCOPED_LOCK(mutex); // win32 stack trace API is not thread safe
@@ -163,7 +217,8 @@ bool stack_trace_libunwind(); // predeclaration
     return EXCEPTION_EXECUTE_HANDLER;
   }
 #else
-  bool file_line_addr2line(const char* obj, const char* addr) {
+  bool file_line_addr2line(iresearch::logger::level_t level, const char* obj, const char* addr) {
+    auto fd = fileno(output(level));
     auto pid = fork();
 
     if (!pid) {
@@ -178,6 +233,8 @@ bool stack_trace_libunwind(); // predeclaration
 
       // The exec() family of functions replaces the current process image with a new process image.
       // The exec() functions only return if an error has occurred.
+      dup2(1, fd); // redirect stdout to fd
+      dup2(2, fd); // redirect stderr to fd
       execlp("addr2line", "addr2line", "-e", obj, addr, NULL);
       exit(1);
     }
@@ -204,7 +261,8 @@ bool stack_trace_libunwind(); // predeclaration
     return buf && !status ? std::move(buf) : nullptr;
   }
 
-  bool stack_trace_gdb() {
+  bool stack_trace_gdb(iresearch::logger::level_t level) {
+    auto fd = fileno(output(level));
     auto pid = fork();
 
     if (!pid) {
@@ -219,6 +277,8 @@ bool stack_trace_libunwind(); // predeclaration
 
       // The exec() family of functions replaces the current process image with a new process image.
       // The exec() functions only return if an error has occurred.
+      dup2(1, fd); // redirect stdout to fd
+      dup2(2, fd); // redirect stderr to fd
       execlp("gdb", "gdb", "-n", "-nx", "-return-child-result", "-batch", "-ex", "thread", "-ex", "bt", name_buf, pid_buf, NULL);
       exit(1);
     }
@@ -228,8 +288,8 @@ bool stack_trace_libunwind(); // predeclaration
     return 0 < waitpid(pid, &status, 0) && !WEXITSTATUS(status);
   }
 
-  void stack_trace_posix() {
-    auto& stream = iresearch::logger::stream();
+  void stack_trace_posix(iresearch::logger::level_t level) {
+    auto& stream = iresearch::logger::stream(level);
     static const size_t frames_max = 128; // arbitrary size
     void* frames_buf[frames_max];
     auto frames_count = backtrace(frames_buf, frames_max);
@@ -340,7 +400,7 @@ bool stack_trace_libunwind(); // predeclaration
               *offset_end = '\0';
               *path_end = '\0';
 
-              if (!file_line_bfd(callback, path_start, offset_start) && !file_line_addr2line(path_start, offset_start)) {
+              if (!file_line_bfd(callback, path_start, offset_start) && !file_line_addr2line(level, path_start, offset_start)) {
                 stream << std::endl;
               }
             }
@@ -353,7 +413,7 @@ bool stack_trace_libunwind(); // predeclaration
             *addr_end = '\0';
             *path_end = '\0';
 
-            if (!file_line_bfd(callback, path_start, addr_start) && !file_line_addr2line(path_start, addr_start)) {
+            if (!file_line_bfd(callback, path_start, addr_start) && !file_line_addr2line(level, path_start, addr_start)) {
               stream << std::endl;
             }
 
@@ -428,16 +488,16 @@ bool stack_trace_libunwind(); // predeclaration
     return file_line_bfd(callback, obj, (void*)addr);
   }
 
-  bool file_line_addr2line(const char* obj, unw_word_t addr) {
+  bool file_line_addr2line(iresearch::logger::level_t level, const char* obj, unw_word_t addr) {
     size_t addr_size = sizeof(unw_word_t)*3 + 2 + 1; // aproximately 3 chars per byte +2 for 0x, +1 for \0
     char addr_buf[addr_size];
 
     snprintf(addr_buf, addr_size, "0x%lx", addr);
 
-    return file_line_addr2line(obj, addr_buf);
+    return file_line_addr2line(level, obj, addr_buf);
   }
 
-  bool stack_trace_libunwind() {
+  bool stack_trace_libunwind(iresearch::logger::level_t level) {
     unw_context_t ctx;
     unw_cursor_t cursor;
 
@@ -450,7 +510,7 @@ bool stack_trace_libunwind(); // predeclaration
       return true; // nothing to log
     }
 
-    auto& stream = iresearch::logger::stream();
+    auto& stream = iresearch::logger::stream(level);
     unw_word_t instruction_pointer;
 
     while (unw_step(&cursor) > 0) {
@@ -489,7 +549,7 @@ bool stack_trace_libunwind(); // predeclaration
           stream << "[0x" << std::hex << instruction_pointer << std::dec << "] ";
 
           if (use_addr2line) {
-            if (!file_line_addr2line(dl_info.dli_fname, addr)) {
+            if (!file_line_addr2line(level, dl_info.dli_fname, addr)) {
               stream << std::endl;
             }
 
@@ -533,7 +593,7 @@ bool stack_trace_libunwind(); // predeclaration
     return true;
   }
 #else
-  bool stack_trace_libunwind() {
+  bool stack_trace_libunwind(iresearch::logger::level_t) {
     return false;
   }
 #endif
@@ -544,69 +604,65 @@ NS_ROOT
 
 NS_BEGIN(logger)
 
-level_t level() {
-  return logger_ctx::instance().level();
+FILE* output(level_t level) {
+  return logger_ctx::instance().file(level);
 }
 
-level_t level(level_t min_level) {
-  auto old_level = level();
-
-  logger_ctx::instance().level(min_level);
-
-  return old_level;
+void output(level_t level, FILE* out) {
+  logger_ctx::instance().output(level, out);
 }
 
-std::ostream& stream() {
-  return logger_ctx::instance().stream();
+void output_le(level_t level, FILE* out) {
+  logger_ctx::instance().output_le(level, out);
 }
 
-void stack_trace() {
+void stack_trace(level_t level) {
   #if defined(_MSC_VER)
     __try {
       RaiseException(1, 0, 0, NULL);
-    } __except(stack_trace_win32(GetExceptionInformation())) {
+    } __except(stack_trace_win32(level, GetExceptionInformation())) {
       return;
     }
 
-    stack_trace_win32(nullptr);
+    stack_trace_win32(level, nullptr);
   #else
     try {
-      if (!stack_trace_libunwind() && !stack_trace_gdb()) {
-        stack_trace_posix();
+      if (!stack_trace_libunwind(level) && !stack_trace_gdb(level)) {
+        stack_trace_posix(level);
       }
     } catch(std::bad_alloc&) {
-      stack_trace_nomalloc(2); // +2 to skip stack_trace()
+      stack_trace_nomalloc(level, 2); // +2 to skip stack_trace()
       throw;
     }
   #endif
 }
 
-void stack_trace(const std::exception_ptr& eptr) {
+void stack_trace(level_t level, const std::exception_ptr& eptr) {
   UNUSED(eptr); // no known way to get original instruction pointer from exception_ptr
 
   // copy of stack_trace() for proper ignored-frames calculation
   #if defined(_MSC_VER)
     __try {
       RaiseException(1, 0, 0, NULL);
-    } __except(stack_trace_win32(GetExceptionInformation())) {
+    } __except(stack_trace_win32(level, GetExceptionInformation())) {
       return;
     }
 
-    stack_trace_win32(nullptr);
+    stack_trace_win32(level, nullptr);
   #else
     try {
-      if (!stack_trace_libunwind() && !stack_trace_gdb()) {
-        stack_trace_posix();
+      if (!stack_trace_libunwind(level) && !stack_trace_gdb(level)) {
+        stack_trace_posix(level);
       }
     } catch(std::bad_alloc&) {
-      stack_trace_nomalloc(2); // +2 to skip stack_trace()
+      stack_trace_nomalloc(level, 2); // +2 to skip stack_trace()
       throw;
     }
   #endif
 }
 
 #ifndef _MSC_VER
-  void stack_trace_nomalloc(size_t skip) {
+  void stack_trace_nomalloc(level_t level, size_t skip) {
     static const size_t frames_max = 128; // arbitrary size
     void* frames_buf[frames_max];
     auto frames_count = backtrace(frames_buf, frames_max);
@@ -614,13 +670,19 @@ void stack_trace(const std::exception_ptr& eptr) {
     if (frames_count > 0 && size_t(frames_count) > skip) {
       static std::mutex mtx;
       SCOPED_LOCK(mtx);
-      backtrace_symbols_fd(frames_buf + skip, frames_count - skip, STDERR_FILENO);
+      backtrace_symbols_fd(frames_buf + skip, frames_count - skip, fileno(output(level)));
     }
   }
 #endif
 
+std::ostream& stream(level_t level) {
+  return logger_ctx::instance().stream(level);
+}
+
 NS_END
 
-std::ostream& log_message::stream() { return logger_ctx::instance().stream(); }
+std::ostream& log_message::stream() {
+  return logger_ctx::instance().stream(level_);
+}
 
 NS_END
