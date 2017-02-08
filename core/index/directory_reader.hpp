@@ -62,7 +62,9 @@ class IRESEARCH_API directory_reader: public composite_reader {
   class directory_reader_impl;
   typedef std::shared_ptr<directory_reader_impl> impl_ptr;
 
+  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   impl_ptr impl_;
+  IRESEARCH_API_PRIVATE_VARIABLES_END
 
   directory_reader(const impl_ptr& impl);
 };

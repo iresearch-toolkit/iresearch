@@ -710,6 +710,7 @@ index_writer::pending_context_t index_writer::flush_all() {
       flush_context(
         size_t v_segment_offset, segment_writer& v_writer
       ): segment_offset(v_segment_offset), writer(v_writer) {}
+      flush_context& operator=(const flush_context&) = delete; // because of reference
     };
 
     std::vector<flush_context> segment_ctxs;

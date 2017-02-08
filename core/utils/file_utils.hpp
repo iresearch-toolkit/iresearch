@@ -17,23 +17,24 @@
 #include <functional>
 
 #ifdef _WIN32
-
-#include <tchar.h>
+  #include <tchar.h>
   #define file_path_t wchar_t*
   #define file_stat _wstat
   #define file_fstat _fstat
   #define file_stat_t struct _stat     
   #define file_no _fileno
   #define mode_t unsigned short    
-  #define file_open(name, mode) _wfopen(name, _T(mode))
+  #define file_open(name, mode) iresearch::file_utils::handle_t(_wfopen(name ? name : _T("NUL:"), _T(mode)))
 #else
   #define file_path_t char*
   #define file_stat stat
   #define file_fstat fstat
   #define file_stat_t struct stat    
   #define file_no fileno
-  #define file_open(name, mode) fopen( name, mode )
+  #define file_open(name, mode) iresearch::file_utils::handle_t(fopen(name ? name : "/dev/null", mode))
 #endif
+
+#include "shared.hpp"
 
 NS_ROOT
 NS_BEGIN(file_utils)

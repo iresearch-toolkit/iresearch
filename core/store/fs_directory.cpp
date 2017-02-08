@@ -189,7 +189,7 @@ class fs_index_input : public buffered_index_input {
 
     file_handle::ptr handle = file_handle::make<file_handle>();
 
-    handle->handle.reset(file_open(name, "rb"));
+    handle->handle = file_open(name, "rb");
 
     if (nullptr == handle->handle) {
       auto path = boost::locale::conv::utf_to_utf<char>(name);
