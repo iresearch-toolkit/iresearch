@@ -68,6 +68,18 @@ NS_ROOT
 // --SECTION--                                               read/write helpers
 // ----------------------------------------------------------------------------
 
+struct enum_hash {
+  template<typename T>
+  size_t operator()(T value) const {
+    typedef typename std::enable_if<
+      std::is_enum<T>::value,
+      typename std::underlying_type<T>::type
+    >::type underlying_type_t;
+
+    return static_cast<underlying_type_t>(value);
+  }
+};
+
 template<typename T>
 void write_enum(data_output& out, T value) {
   typedef typename std::enable_if<
