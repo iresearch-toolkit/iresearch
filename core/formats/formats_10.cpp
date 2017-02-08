@@ -1996,9 +1996,9 @@ struct block_cache_traits {
 // --SECTION--                                                            Blocks
 // -----------------------------------------------------------------------------
 
-class sparse_block : irs::util::noncopyable {
+class sparse_block : util::noncopyable {
  public:
-  bool load(irs::index_input& in, irs::decompressor& decomp, irs::bstring& buf) {
+  bool load(index_input& in, decompressor& decomp, bstring& buf) {
     const size_t size = in.read_vlong(); // total number of entries in a block
     assert(size);
 
@@ -2028,12 +2028,12 @@ class sparse_block : irs::util::noncopyable {
   }
 
   bool value(
-      irs::doc_id_t key,
-      const irs::columnstore_reader::value_reader_f& reader) const {
+      doc_id_t key,
+      const columnstore_reader::value_reader_f& reader) const {
     // find the right ref
     auto it = std::lower_bound(
       index_, end_, key,
-        [] (const ref& lhs, irs::doc_id_t rhs) {
+        [] (const ref& lhs, doc_id_t rhs) {
         return lhs.key < rhs;
     });
 
@@ -2047,7 +2047,7 @@ class sparse_block : irs::util::noncopyable {
       return true;
     }
 
-    irs::bytes_ref_input in;
+    bytes_ref_input in;
 
     const auto vbegin = it->offset;
     const auto vend = (++it == end_ ? data_.size() : it->offset);
@@ -2061,8 +2061,8 @@ class sparse_block : irs::util::noncopyable {
     return reader(in);
   }
 
-  bool visit(const irs::columnstore_reader::raw_reader_f& reader) const {
-    irs::bytes_ref_input in;
+  bool visit(const columnstore_reader::raw_reader_f& reader) const {
+    bytes_ref_input in;
 
     // visit first [begin;end-1) blocks
     doc_id_t key;
@@ -2097,7 +2097,7 @@ class sparse_block : irs::util::noncopyable {
 
  private:
   struct ref {
-    irs::doc_id_t key{ irs::type_limits<irs::type_t::doc_id_t>::eof() };
+    doc_id_t key{ type_limits<type_t::doc_id_t>::eof() };
     uint64_t offset;
   };
 
@@ -2108,19 +2108,19 @@ class sparse_block : irs::util::noncopyable {
   // waste just INDEX_BLOCK_SIZE*sizeof(ref)-1 per column
   // in the worst case
   ref index_[INDEX_BLOCK_SIZE];
-  irs::bstring data_;
+  bstring data_;
   const ref* end_{ std::end(index_) };
 }; // sparse_block
 
-class dense_block : irs::util::noncopyable {
+class dense_block : util::noncopyable {
  public:
-  bool load(irs::index_input& in, irs::decompressor& decomp, irs::bstring& buf) {
+  bool load(index_input& in, decompressor& decomp, bstring& buf) {
     const size_t size = in.read_vlong(); // total number of entries in a block
     assert(size);
 
     // dense block must be encoded with RL encoding, avg must be equal to 1
     uint64_t avg;
-    if (!irs::encode::avg::read_block_rl64(in, base_, avg) || 1 != avg) {
+    if (!encode::avg::read_block_rl64(in, base_, avg) || 1 != avg) {
       // invalid block type
       return false;
     }
@@ -2128,7 +2128,7 @@ class dense_block : irs::util::noncopyable {
     // read data offsets
     auto begin = std::begin(index_);
 
-    irs::encode::avg::visit_block_packed_tail(
+    encode::avg::visit_block_packed_tail(
       in, size, reinterpret_cast<uint64_t*>(&buf[0]),
       [begin](uint64_t offset) mutable {
         *begin = offset;
@@ -2143,8 +2143,8 @@ class dense_block : irs::util::noncopyable {
   }
 
   bool value(
-      irs::doc_id_t key,
-      const irs::columnstore_reader::value_reader_f& reader) const {
+      doc_id_t key,
+      const columnstore_reader::value_reader_f& reader) const {
     const auto* begin = index_ + key - base_;
     if (begin < index_ || begin >= end_) {
       // there is no item with the speicified key
@@ -2160,14 +2160,14 @@ class dense_block : irs::util::noncopyable {
     const auto vend = (++begin == end_ ? data_.size() : *begin);
     assert(vend >= vbegin);
 
-    irs::bytes_ref_input stream;
+    bytes_ref_input stream;
     stream.reset(data_.c_str() + vbegin, vend - vbegin);
 
     return reader(stream);
   }
 
-  bool visit(const irs::columnstore_reader::raw_reader_f& reader) const {
-    irs::bytes_ref_input in;
+  bool visit(const columnstore_reader::raw_reader_f& reader) const {
+    bytes_ref_input in;
 
     // visit first [begin;end-1) blocks
     doc_id_t key = base_;
@@ -2207,26 +2207,26 @@ class dense_block : irs::util::noncopyable {
   // waste just INDEX_BLOCK_SIZE*sizeof(ref)-1 per column
   // in the worst case
   uint64_t index_[INDEX_BLOCK_SIZE];
-  irs::bstring data_;
+  bstring data_;
   uint64_t* end_{ index_ };
   doc_id_t base_{ };
 }; // dense_block
 
-class dense_fixed_length_block : irs::util::noncopyable {
+class dense_fixed_length_block : util::noncopyable {
  public:
-  bool load(irs::index_input& in, irs::decompressor& decomp, irs::bstring& buf) {
+  bool load(index_input& in, decompressor& decomp, bstring& buf) {
     size_ = in.read_vlong(); // total number of entries in a block
     assert(size_);
 
     // dense block must be encoded with RL encoding, avg must be equal to 1
     uint64_t avg;
-    if (!irs::encode::avg::read_block_rl64(in, base_key_, avg) || 1 != avg) {
+    if (!encode::avg::read_block_rl64(in, base_key_, avg) || 1 != avg) {
       // invalid block type
       return false;
     }
 
     // fixed length block must be encoded with RL encoding
-    if (!irs::encode::avg::read_block_rl64(in, base_offset_, avg_length_)) {
+    if (!encode::avg::read_block_rl64(in, base_offset_, avg_length_)) {
       // invalid block type
       return false;
     }
@@ -2238,8 +2238,8 @@ class dense_fixed_length_block : irs::util::noncopyable {
   }
 
   bool value(
-      irs::doc_id_t key,
-      const irs::columnstore_reader::value_reader_f& reader) const {
+      doc_id_t key,
+      const columnstore_reader::value_reader_f& reader) const {
     assert(key < size_);
 
     if (data_.empty()) {
@@ -2250,7 +2250,7 @@ class dense_fixed_length_block : irs::util::noncopyable {
     const auto vbegin = base_offset_ + key*avg_length_;
     const auto vlength = (size_ == ++key ? data_.size() - vbegin : avg_length_);
 
-    irs::bytes_ref_input stream;
+    bytes_ref_input stream;
     stream.reset(data_.c_str() + vbegin, vlength);
 
     return reader(stream);
@@ -2286,12 +2286,12 @@ class dense_fixed_length_block : irs::util::noncopyable {
   uint64_t base_offset_{}; // base offset
   uint64_t avg_length_{}; // entry length
   doc_id_t size_{}; // total number of entries
-  irs::bstring data_;
+  bstring data_;
 }; // dense_fixed_length_block
 
 class sparse_mask_block : util::noncopyable {
  public:
-  bool load(irs::index_input& in, irs::decompressor& decomp, irs::bstring& buf) {
+  bool load(index_input& in, decompressor& decomp, bstring& buf) {
     const size_t size = in.read_vlong(); // total number of entries in a block
     assert(size);
 
@@ -2304,7 +2304,7 @@ class sparse_mask_block : util::noncopyable {
     });
 
     // mask block has no data, so all offsets should be equal to 0
-    if (!irs::encode::avg::check_block_rl64(in, 0)) {
+    if (!encode::avg::check_block_rl64(in, 0)) {
       // invalid block type
       return false;
     }
@@ -2338,19 +2338,19 @@ class sparse_mask_block : util::noncopyable {
 
 class dense_mask_block {
  public:
-  bool load(irs::index_input& in, irs::decompressor& decomp, irs::bstring& buf) {
+  bool load(index_input& in, decompressor& decomp, bstring& buf) {
     const size_t size = in.read_vlong(); // total number of elements in a block
     assert(size);
 
     // dense block must be encoded with RL encoding, avg must be equal to 1
     uint64_t avg;
-    if (!irs::encode::avg::read_block_rl64(in, min_, avg) || 1 != avg) {
+    if (!encode::avg::read_block_rl64(in, min_, avg) || 1 != avg) {
       // invalid block type
       return false;
     }
 
     // mask block has no data, so all offsets must be equal to 0
-    if (!irs::encode::avg::check_block_rl64(in, 0)) {
+    if (!encode::avg::check_block_rl64(in, 0)) {
       // invalid block type
       return false;
     }
@@ -2490,12 +2490,12 @@ class column : private util::noncopyable {
   }
 
   virtual bool value(
-   irs::doc_id_t key,
-   const irs::columnstore_reader::value_reader_f& reader
+   doc_id_t key,
+   const columnstore_reader::value_reader_f& reader
   ) const = 0;
 
   virtual bool visit(
-    const irs::columnstore_reader::raw_reader_f& reader
+    const columnstore_reader::raw_reader_f& reader
   ) const = 0;
 
   doc_id_t max() const { return max_; }
@@ -2580,26 +2580,26 @@ class sparse_column final : public column {
     }
 
     // upper bound
-    if (this->max() < irs::type_limits<irs::type_t::doc_id_t>::eof()) {
+    if (this->max() < type_limits<type_t::doc_id_t>::eof()) {
       begin->key = this->max() + 1;
     } else {
-      begin->key = irs::type_limits<irs::type_t::doc_id_t>::eof();
+      begin->key = type_limits<type_t::doc_id_t>::eof();
     }
-    begin->offset = irs::type_limits<irs::type_t::address_t>::invalid();
+    begin->offset = type_limits<type_t::address_t>::invalid();
 
     refs_ = std::move(refs);
     return true;
   }
 
   virtual bool value(
-      irs::doc_id_t key,
-      const irs::columnstore_reader::value_reader_f& reader) const {
+      doc_id_t key,
+      const columnstore_reader::value_reader_f& reader) const {
     // find the right block
     const auto rbegin = refs_.rbegin(); // upper bound
     const auto rend = refs_.rend();
     const auto it = std::lower_bound(
       rbegin, rend, key,
-      [] (const block_ref& lhs, irs::doc_id_t rhs) {
+      [] (const block_ref& lhs, doc_id_t rhs) {
         return lhs.key > rhs;
     });
 
@@ -2623,7 +2623,7 @@ class sparse_column final : public column {
     return cached->value(key, reader);
   };
 
-  virtual bool visit(const irs::columnstore_reader::raw_reader_f& reader) const {
+  virtual bool visit(const columnstore_reader::raw_reader_f& reader) const {
     block_t block;
     for (auto begin = refs_.begin(), end = refs_.end()-1; begin != end; ++begin) { // -1 for upper bound
       const auto* cached = begin->pblock.load();
@@ -2646,8 +2646,8 @@ class sparse_column final : public column {
   }
 
  private:
-  struct block_ref : irs::util::noncopyable {
-    irs::doc_id_t key; // min key in a block
+  struct block_ref : util::noncopyable {
+    doc_id_t key; // min key in a block
     uint64_t offset; // block offset
     std::atomic<const block_t*> pblock; // pointer to cached block
   }; // block_ref
@@ -2672,7 +2672,7 @@ class dense_fixed_length_column final : public column {
     : column(prop), ctxs_(&ctxs) {
   }
 
-  virtual bool read(irs::data_input& in, uint64_t* buf) override {
+  virtual bool read(data_input& in, uint64_t* buf) override {
     if (!column::read(in, buf)) {
       return false;
     }
@@ -2682,7 +2682,7 @@ class dense_fixed_length_column final : public column {
 
     auto begin = refs.begin();
     while (blocks_count >= INDEX_BLOCK_SIZE) {
-      if (!irs::encode::avg::check_block_rl64(in, this->avg_block_count())) {
+      if (!encode::avg::check_block_rl64(in, this->avg_block_count())) {
         // invalid column type
         return false;
       }
@@ -2704,7 +2704,7 @@ class dense_fixed_length_column final : public column {
         ? this->avg_block_count()
         : 0; // in this case avg == 0
 
-      if (!irs::encode::avg::check_block_rl64(in, avg_block_count)) {
+      if (!encode::avg::check_block_rl64(in, avg_block_count)) {
         // invalid column type
         return false;
       }
@@ -2726,8 +2726,8 @@ class dense_fixed_length_column final : public column {
   }
 
   virtual bool value(
-      irs::doc_id_t key,
-      const irs::columnstore_reader::value_reader_f& reader) const {
+      doc_id_t key,
+      const columnstore_reader::value_reader_f& reader) const {
     if ((key -= min_) >= this->size()) {
       return false;
     }
@@ -2808,7 +2808,7 @@ column_factory_f g_column_factories[] {
 //////////////////////////////////////////////////////////////////////////////
 /// @class reader
 //////////////////////////////////////////////////////////////////////////////
-class reader final : public irs::columnstore_reader,
+class reader final : public columnstore_reader,
                      public context_provider {
  public:
   explicit reader(size_t pool_size = 16)
