@@ -1516,7 +1516,6 @@ enum ColumnProperty : uint32_t {
   CP_DENSE = 1, // keys can be presented as an array indices
   CP_FIXED = 2, // fixed length colums
   CP_MASK = 4, // column contains no data
-  CP_CONTINIOUS = 8 // all blocks are placed sequentially
 }; // ColumnProperty
 
 CONSTEXPR ColumnProperty operator&(ColumnProperty lhs, ColumnProperty rhs) {
@@ -2319,7 +2318,7 @@ class sparse_mask_block : util::noncopyable {
     // find the right ref
     const auto it = std::lower_bound(std::begin(keys_), end_, key);
 
-    return end_ != it && *it < key;
+    return !(end_ == it || *it > key);
   }
 
   bool visit(const columnstore_reader::raw_reader_f& reader) const {
@@ -2787,41 +2786,24 @@ class dense_fixed_length_column final : public column {
   doc_id_t min_{}; // min key
 }; // dense_fixed_length_column
 
+// ----------------------------------------------------------------------------
+// --SECTION--                                                 column factories
+// ----------------------------------------------------------------------------
+
 typedef std::function<
   column::ptr(const context_provider& ctxs, ColumnProperty prop)
 > column_factory_f;
 
-std::unordered_map<ColumnProperty, column_factory_f, enum_hash> g_column_factories {
-  { CP_DENSE,                      &sparse_column<dense_block>::make },
-  { CP_MASK,                       &sparse_column<sparse_mask_block>::make },
-  { CP_DENSE | CP_FIXED,           &dense_fixed_length_column<dense_fixed_length_block>::make },
-  { CP_DENSE | CP_FIXED | CP_MASK, &dense_fixed_length_column<dense_mask_block>::make }
+column_factory_f g_column_factories[] {
+  &sparse_column<sparse_block>::make, // CP_SPARSE == 0
+  &sparse_column<dense_block>::make,  // CP_DENSE  == 1
+  &sparse_column<sparse_block>::make, // CP_FIXED  == 2
+  &dense_fixed_length_column<dense_fixed_length_block>::make, // CP_DENSE | CP_FIXED == 3
+  nullptr, // CP_MASK == 4
+  nullptr, // CP_DENSE | CP_MASK == 5
+  &sparse_column<sparse_mask_block>::make,// CP_FIXED | CP_MASK == 6
+  &dense_fixed_length_column<dense_mask_block>::make, // CP_DENSE | CP_FIXED | CP_MASK == 7
 };
-
-column::ptr column_factory_default(
-    ColumnProperty prop,
-    const context_provider& ctxs) {
-  const auto factory = g_column_factories.find(prop);
-  if (factory == g_column_factories.end()) {
-    // default factory
-    return sparse_column<sparse_block>::make(ctxs, prop);
-  }
-
-  return factory->second(ctxs, prop);
-}
-
-//column::ptr column_factory_default1(
-//     ColumnProperty prop,
-//     const context_provider& ctxs) {
-//  switch(prop) {
-//    case CP_DENSE: return sparse_column<dense_block>::make(ctxs, prop);
-//    case CP_DENSE | CP_FIXED: return dense_fixed_length_column<dense_fixed_length_block>::make(ctxs, prop);
-//    case CP_MASK : return sparse_column<sparse_mask_block>::make(ctxs, prop);
-//    case CP_DENSE | CP_FIXED | CP_MASK : return dense_fixed_length_column<dense_mask_block>::make(ctxs, prop);
-//  }
-//
-//  return sparse_column<sparse_block>::make(ctxs, prop);
-//}
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class reader
@@ -2889,8 +2871,10 @@ bool reader::prepare(const reader_state& state) {
   for (size_t i = 0, size = columns.capacity(); i < size; ++i) {
     // read column properties
     const auto props = read_enum<ColumnProperty>(*stream);
-    // create columns
-    auto column = column_factory_default(props, *this);
+    // create column
+    const auto& factory = g_column_factories[props];
+    assert(factory);
+    auto column = factory(*this, props);
     // read column
     if (!column || !column->read(*stream, buf)) {
       IR_ERROR() << "Unable to load blocks index for column id=" << i;
@@ -2934,7 +2918,7 @@ bool reader::visit(field_id field, const raw_reader_f& reader) const {
 NS_END // columns
 
 // ----------------------------------------------------------------------------
-// --SECTION--                                                  postings_writer 
+// --SECTION--                                                  postings_writer
 // ----------------------------------------------------------------------------
 
 const string_ref postings_writer::TERMS_FORMAT_NAME = "iresearch_10_postings_terms";
