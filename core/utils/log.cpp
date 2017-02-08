@@ -70,6 +70,11 @@ class file_streambuf: public std::streambuf {
   file_streambuf(FILE* out): out_(out ? out : dev_null()) {
   }
 
+  file_streambuf& operator=(FILE* out) {
+    out_ = out ? out : dev_null();
+    return *this;
+  }
+
   virtual std::streamsize xsputn(const char_type* data, std::streamsize size) override {
     return std::fwrite(data, sizeof(char_type), size, out_);
   }
@@ -86,20 +91,20 @@ class logger_ctx: public iresearch::singleton<logger_ctx> {
  public:
   logger_ctx(): singleton() {
     // set everything up to and including INFO to stderr
-    for (size_t i = iresearch::logger::IRL_INFO; i; --i) {
+    for (size_t i = 0, last = iresearch::logger::IRL_INFO; i <= last; ++i) {
       out_[i].file_ = stderr;
-      out_[i].streambuf_ = file_streambuf(stderr);
+      out_[i].streambuf_ = stderr;
     }
   }
 
   FILE* file(iresearch::logger::level_t level) { return out_[level].file_; }
   logger_ctx& output(iresearch::logger::level_t level, FILE* out) {
     out_[level].file_ = out ? out : dev_null();
-    out_[level].streambuf_ = file_streambuf(out);
+    out_[level].streambuf_ = out;
     return *this;
   }
   logger_ctx& output_le(iresearch::logger::level_t level, FILE* out) {
-    for (auto i = array_size(out_) - 1; i; --i) {
+    for (size_t i = 0, count = array_size(out_); i < count; ++i) {
       output(static_cast<iresearch::logger::level_t>(i), i > level ? nullptr : out);
     }
     return *this;
@@ -118,7 +123,7 @@ class logger_ctx: public iresearch::singleton<logger_ctx> {
 };
 
 typedef std::function<void(const char* file, size_t line, const char* fn)> bfd_callback_type_t;
-bool file_line_bfd(iresearch::logger::level_t level, const bfd_callback_type_t& callback, const char* obj, void* addr); // predeclaration
+bool file_line_bfd(const bfd_callback_type_t& callback, const char* obj, void* addr); // predeclaration
 bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
 
 #if defined(_MSC_VER)
@@ -312,7 +317,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
     size_t buf_len = 0;
     size_t buf_size = 1024; // arbitrary size
     char buf[buf_size];
-    std::thread thread([&pipefd, &stream, &buf, &buf_len, buf_size]()->void {
+    std::thread thread([&pipefd, level, &stream, &buf, &buf_len, buf_size]()->void {
       for (char ch; read(pipefd[0], &ch, 1) > 0;) {
         if (ch != '\n') {
           if (buf_len < buf_size - 1) {
@@ -367,7 +372,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
 
         auto fn_end = offset_start ? offset_start - 1 : nullptr;
         auto path_end = fn_start ? fn_start - 1 : (addr_start ? addr_start - 1 : nullptr);
-        bfd_callback_type_t callback = [&stream](const char* file, size_t line, const char* fn)->void {
+        bfd_callback_type_t callback = [level, &stream](const char* file, size_t line, const char* fn)->void {
           UNUSED(fn);
 
           if (file) {

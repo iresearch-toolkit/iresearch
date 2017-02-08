@@ -22,7 +22,6 @@ NS_BEGIN(logger)
 
 // use a prefx that does not clash with any predefined macros (e.g. win32 'ERROR')
 enum level_t {
-  IRL_NONE = 0,
   IRL_FATAL,
   IRL_ERROR,
   IRL_WARN,
