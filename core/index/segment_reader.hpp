@@ -49,11 +49,14 @@ class IRESEARCH_API segment_reader final: public sub_reader {
   virtual bool visit(
     field_id field, const columnstore_reader::raw_reader_f& reader
   ) const override;
+
  private:
   class segment_reader_impl;
   typedef std::shared_ptr<segment_reader_impl> impl_ptr;
 
+  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   impl_ptr impl_;
+  IRESEARCH_API_PRIVATE_VARIABLES_END
 
   segment_reader(const impl_ptr& impl);
 };
