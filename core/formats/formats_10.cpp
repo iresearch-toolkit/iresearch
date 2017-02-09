@@ -2794,22 +2794,45 @@ typedef std::function<
   column::ptr(const context_provider& ctxs, ColumnProperty prop)
 > column_factory_f;
 
-column_factory_f g_column_factories[] {
-  &sparse_column<sparse_block>::make, // CP_SPARSE == 0
-  &sparse_column<dense_block>::make,  // CP_DENSE  == 1
-  &sparse_column<sparse_block>::make, // CP_FIXED  == 2
-  &dense_fixed_length_column<dense_fixed_length_block>::make, // CP_DENSE | CP_FIXED == 3
-  nullptr, // CP_MASK == 4
-  nullptr, // CP_DENSE | CP_MASK == 5
-  &sparse_column<sparse_mask_block>::make,// CP_FIXED | CP_MASK == 6
-  &dense_fixed_length_column<dense_mask_block>::make, // CP_DENSE | CP_FIXED | CP_MASK == 7
+typedef std::function<
+  columnstore_reader::values_reader_f(column& base)
+> column_values_f;
+
+typedef std::pair<
+  column_factory_f,
+  column_values_f
+> column_descriptor;
+
+template<typename Column>
+struct column_downcast {
+  static columnstore_reader::values_reader_f values(column& base) {
+    auto& typed = static_cast<Column&>(base);
+    return [&typed](doc_id_t key, const columnstore_reader::value_reader_f& reader) -> bool {
+      return typed.value(key, reader);
+    };
+  }
+}; // downcast
+
+template<typename Column>
+CONSTEXPR column_descriptor make_descriptor() {
+  return { &Column::make, &column_downcast<Column>::values };
+}
+
+column_descriptor g_column_descriptors[] {
+  make_descriptor<sparse_column<sparse_block>>(),                         // CP_SPARSE == 0
+  make_descriptor<sparse_column<dense_block>>(),                          // CP_DENSE  == 1
+  make_descriptor<sparse_column<sparse_block>>(),                         // CP_FIXED  == 2
+  make_descriptor<dense_fixed_length_column<dense_fixed_length_block>>(), // CP_DENSE | CP_FIXED == 3
+  { nullptr, nullptr },                                                   // CP_MASK == 4
+  { nullptr, nullptr },                                                   // CP_DENSE | CP_MASK == 5
+  make_descriptor<sparse_column<sparse_mask_block>>(),                    // CP_FIXED | CP_MASK == 6
+  make_descriptor<dense_fixed_length_column<dense_mask_block>>()          // CP_DENSE | CP_FIXED | CP_MASK == 7
 };
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class reader
 //////////////////////////////////////////////////////////////////////////////
-class reader final : public columnstore_reader,
-                     public context_provider {
+class reader final : public columnstore_reader, public context_provider {
  public:
   explicit reader(size_t pool_size = 16)
     : context_provider(pool_size) {
@@ -2872,7 +2895,7 @@ bool reader::prepare(const reader_state& state) {
     // read column properties
     const auto props = read_enum<ColumnProperty>(*stream);
     // create column
-    const auto& factory = g_column_factories[props];
+    const auto& factory = g_column_descriptors[props].first;
     assert(factory);
     auto column = factory(*this, props);
     // read column
@@ -2898,11 +2921,7 @@ reader::values_reader_f reader::values(field_id field) const {
   }
 
   auto& column = *columns_[field];
-  bytes_ref_input block_in;
-
-  return[this, &column, block_in] (doc_id_t doc, const value_reader_f& reader) mutable {
-    return column.value(doc, reader);
-  };
+  return g_column_descriptors[column.props()].second(column);
 }
 
 bool reader::visit(field_id field, const raw_reader_f& reader) const {
@@ -2911,7 +2930,7 @@ bool reader::visit(field_id field, const raw_reader_f& reader) const {
     return false;
   }
 
-  auto& column = *columns_[field];
+  const auto& column = *columns_[field];
   return column.visit(reader);
 }
 
