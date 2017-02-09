@@ -1723,11 +1723,12 @@ class writer final : public iresearch::columnstore_writer {
     void prepare(doc_id_t key) {
       assert(key >= max_ || irs::type_limits<irs::type_t::doc_id_t>::eof(max_));
 
-      // commit previous key and offset unless the 'reset' method has been called
       auto& offset = offsets_[0];
 
+      // commit previous key and offset unless the 'reset' method has been called
       if (max_ != pending_key_) {
-        offset = offsets_[size_t(block_index_.push_back(pending_key_, offset))]; // will trigger 'flush_block' if offset >= MAX_DATA_BLOCK_SIZE
+        // will trigger 'flush_block' if offset >= MAX_DATA_BLOCK_SIZE
+        offset = offsets_[size_t(block_index_.push_back(pending_key_, offset))];
         max_ = pending_key_;
       }
 
@@ -1824,7 +1825,7 @@ class writer final : public iresearch::columnstore_writer {
       block_buf_.reset();
     }
 
-    writer* ctx_;
+    writer* ctx_; // writer context
     uint64_t offsets_[2] { MAX_DATA_BLOCK_SIZE, MAX_DATA_BLOCK_SIZE }; // value offset, because of initial MAX_DATA_BLOCK_SIZE 'min_' will be set on the first 'write'
     uint64_t length_{}; // size of the all column data blocks
     index_block<INDEX_BLOCK_SIZE> block_index_; // current block index (per document key/offset)
@@ -1838,12 +1839,6 @@ class writer final : public iresearch::columnstore_writer {
     uint64_t avg_block_count_{}; // average number of items per block (tail block has not taken into account since it may skew distribution)
     uint64_t avg_block_size_{}; // average size of the block (tail block has not taken into account since it may skew distribution)
   };
-
-  //TODO:
-  // 2. Do not use compressing_index_writer in column, use in memory block instead, flush by reaching the number of elements in a block or buffer size
-  // 3. Use different layout in compressing index reader (compressed blocks + bases or decompressed array)
-  // 4. Introduce different types of blocks for reading (mask, dense, sparse, compressed, decompressed)
-  // 5. Vectorize where it possible
 
   uint64_t buf_[INDEX_BLOCK_SIZE]; // reusable temporary buffer for packing
   std::deque<column> columns_; // pointers remain valid
@@ -2291,6 +2286,10 @@ class dense_fixed_length_block : util::noncopyable {
 
 class sparse_mask_block : util::noncopyable {
  public:
+  sparse_mask_block() {
+    std::fill(std::begin(keys_), std::end(keys_), type_limits<type_t::doc_id_t>::eof());
+  }
+
   bool load(index_input& in, decompressor& decomp, bstring& buf) {
     const size_t size = in.read_vlong(); // total number of entries in a block
     assert(size);
@@ -2309,21 +2308,19 @@ class sparse_mask_block : util::noncopyable {
       return false;
     }
 
-    end_ = keys_ + size;
-
     return true;
   }
 
   bool value(doc_id_t key, const columnstore_reader::value_reader_f& /*reader*/) const {
     // find the right ref
-    const auto it = std::lower_bound(std::begin(keys_), end_, key);
+    const auto it = std::lower_bound(std::begin(keys_), std::end(keys_), key);
 
-    return !(end_ == it || *it > key);
+    return !(std::end(keys_) == it || *it > key);
   }
 
   bool visit(const columnstore_reader::raw_reader_f& reader) const {
     static bytes_ref_input in;
-    for (const auto* begin = keys_; begin != end_; ++begin) {
+    for (const auto begin = std::begin(keys_); begin != std::end(keys_); ++begin) {
       if (!reader(*begin, in)) {
         return false;
       }
@@ -2332,8 +2329,11 @@ class sparse_mask_block : util::noncopyable {
   }
 
  private:
+  // all blocks except the tail are going to be fully filled,
+  // so we don't track size of each block here since we could
+  // waste just INDEX_BLOCK_SIZE*sizeof(ref)-1 per column
+  // in the worst case
   doc_id_t keys_[INDEX_BLOCK_SIZE];
-  const doc_id_t* end_{ keys_ };
 }; // sparse_mask_block
 
 class dense_mask_block {
