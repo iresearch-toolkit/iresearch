@@ -16,6 +16,18 @@
 #include <iostream>
 #include "shared.hpp"
 
+#if defined(_MSC_VER) || defined(__MINGW32__)
+  #define IR_SIZE_T_SPECIFIER    "%Iu"
+  #define IR_SSIZE_T_SPECIFIER   "%Id"
+  #define IR_PTRDIFF_T_SPECIFIER "%Id"
+#elif defined(__GNUC__)
+  #define IR_SIZE_T_SPECIFIER    "%zu"
+  #define IR_SSIZE_T_SPECIFIER   "%zd"
+  #define IR_PTRDIFF_T_SPECIFIER "%zd"
+#else
+  static_assert(false, "Unknown size_t, ssize_t, ptrdiff_t specifiers");
+#endif
+
 NS_ROOT
 NS_BEGIN(logger)
 

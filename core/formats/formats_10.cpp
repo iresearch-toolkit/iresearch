@@ -1031,7 +1031,7 @@ bool index_meta_writer::prepare(directory& dir, index_meta& meta) {
     auto out = dir.create(seg_file);
 
     if (!out) {
-      IR_ERROR() << "Failed to create output file, path: " << seg_file;
+      IR_FRMT_ERROR("Failed to create output file, path: %s", seg_file.c_str());
       return false;
     }
 
@@ -1049,12 +1049,12 @@ bool index_meta_writer::prepare(directory& dir, index_meta& meta) {
     format_utils::write_footer(*out);
     // important to close output here
   } catch (const io_error& e) {
-    IR_ERROR() << "Caught i/o error, reason: " << e.what();
+    IR_FRMT_ERROR("Caught i/o error, reason: %s", e.what());
     return false;
   }
 
   if (!dir.sync(seg_file)) {
-    IR_ERROR() << "Failed to sync output file, path: " << seg_file;
+    IR_FRMT_ERROR("Failed to sync output file, path: %s", seg_file.c_str());
     return false;
   }
 
@@ -1100,7 +1100,7 @@ void index_meta_writer::rollback() NOEXCEPT {
   auto seg_file = file_name<index_meta_writer>(*meta_);
 
   if (!dir_->remove(seg_file)) { // suppress all errors
-    IR_ERROR() << "Failed to remove file, path: " << seg_file;
+    IR_FRMT_ERROR("Failed to remove file, path: %s", seg_file.c_str());
   }
 
   dir_ = nullptr;
@@ -1331,7 +1331,7 @@ bool document_mask_reader::prepare(directory const& dir, segment_meta const& met
   if (dir.exists(exists, in_name) && !exists) {
     checksum_index_input<boost::crc_32_type> empty_in;
 
-    IR_INFO() << "Failed to open file, path: " << in_name;
+    IR_FRMT_INFO("Failed to open file, path: %s", in_name.c_str());
     in_.swap(empty_in);
 
     return false;
@@ -1342,7 +1342,7 @@ bool document_mask_reader::prepare(directory const& dir, segment_meta const& met
   if (!in) {
     checksum_index_input<boost::crc_32_type> empty_in;
 
-    IR_ERROR() << "Failed to open file, path: " << in_name;
+    IR_FRMT_ERROR("Failed to open file, path: %s", in_name.c_str());
     in_.swap(empty_in);
 
     return false;
@@ -1410,7 +1410,7 @@ bool meta_writer::prepare(directory& dir, const string_ref& name) {
   out_ = dir.create(filename);
 
   if (!out_) {
-    IR_ERROR() << "Failed to create file, path: " << filename;
+    IR_FRMT_ERROR("Failed to create file, path: %s", filename.c_str());
     return false;
   }
 
@@ -1451,7 +1451,7 @@ bool meta_reader::prepare(const directory& dir, const string_ref& name, field_id
   auto in = dir.open(filename);
 
   if (!in) {
-    IR_ERROR() << "Failed to open file, path: " << filename;
+    IR_FRMT_ERROR("Failed to open file, path: %s", filename.c_str());
     return false;
   }
 
@@ -1860,7 +1860,7 @@ bool writer::prepare(directory& dir, const string_ref& name) {
   data_out_ = dir.create(filename_);
 
   if (!data_out_) {
-    IR_ERROR() << "Failed to create file, path: " << filename_;
+    IR_FRMT_ERROR("Failed to create file, path: %s", filename_.c_str());
     return false;
   }
 
@@ -1898,7 +1898,7 @@ void writer::flush() {
     data_out_.reset();
 
     if (!dir_->remove(filename_)) { // ignore error
-      IR_ERROR() << "Failed to remove file, path: " << filename_;
+      IR_FRMT_ERROR("Failed to remove file, path: %s", filename_.c_str());
     }
 
     return;
@@ -2320,7 +2320,7 @@ class sparse_mask_block : util::noncopyable {
 
   bool visit(const columnstore_reader::raw_reader_f& reader) const {
     static bytes_ref_input in;
-    for (const auto begin = std::begin(keys_); begin != std::end(keys_); ++begin) {
+    for (auto begin = std::begin(keys_); begin != std::end(keys_); ++begin) {
       if (!reader(*begin, in)) {
         return false;
       }
@@ -2834,7 +2834,7 @@ bool reader::prepare(const reader_state& state) {
 
   // possible that the file does not exist since columnstore is optional
   if (dir.exists(exists, filename) && !exists) {
-    IR_INFO() << "Failed to open file, path: " << filename;
+    IR_FRMT_INFO("Failed to open file, path: %s", filename.c_str());
     return false;
   }
 
@@ -2842,7 +2842,7 @@ bool reader::prepare(const reader_state& state) {
   auto stream = dir.open(filename);
 
   if (!stream) {
-    IR_ERROR() << "Failed to open file, path: " << filename;
+    IR_FRMT_ERROR("Failed to open file, path: %s", filename.c_str());
     return false;
   }
 
@@ -2877,7 +2877,7 @@ bool reader::prepare(const reader_state& state) {
     auto column = factory(*this, props);
     // read column
     if (!column || !column->read(*stream, buf)) {
-      IR_ERROR() << "Unable to load blocks index for column id=" << i;
+      IR_FRMT_ERROR("Unable to load blocks index for column id=" IR_SIZE_T_SPECIFIER, i);
       return false;
     }
 
