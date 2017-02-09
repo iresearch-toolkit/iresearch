@@ -99,7 +99,7 @@ bool read_segment_features(
       feature_map.emplace_back(feature);
       features.add(*feature);
     } else {
-      IR_ERROR() << "unknown feature name '" << name << "'";
+      IR_FRMT_ERROR("unknown feature name '%s'", name.c_str());
       return false;
     }
   }
@@ -117,7 +117,7 @@ bool read_field_features(
     if (id < feature_map.size()) {
       features.add(*feature_map[id]);
     } else {
-      IR_ERROR() << "unknown feature id '" << id << "'";
+      IR_FRMT_ERROR("unknown feature id '%lu'", id);
       return false;
     }
   }
@@ -1697,8 +1697,7 @@ bool field_reader::prepare(const reader_state& state) {
     );
 
     if (!res.second) {
-      IR_ERROR() << "duplicated field " << name 
-                 << " found in segment " << state.meta->name;
+      IR_FRMT_ERROR("duplicated field: '%s' found in segment: %s", name.c_str(), state.meta->name.c_str());
       return false;
     }
 

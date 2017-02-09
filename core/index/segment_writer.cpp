@@ -158,7 +158,7 @@ bool segment_writer::flush(std::string& filename, segment_meta& meta) {
   meta.files.clear(); // prepare empy set to be swaped into dir_
 
   if (!dir_.swap_tracked(meta.files)) {
-    IR_ERROR() << "Failed to swap list of tracked files in: " << __FUNCTION__ << ":" << __LINE__;
+    IR_FRMT_ERROR("Failed to swap list of tracked files in: %s", __FUNCTION__);
 
     return false;
   }
@@ -181,7 +181,7 @@ void segment_writer::reset() {
 
   if (!dir_.swap_tracked(empty)) {
     // on failre next segment might have extra files which will fail to get refs
-    IR_ERROR() << "Failed to swap list of tracked files in: " << __FUNCTION__ << ":" << __LINE__;
+    IR_FRMT_ERROR("Failed to swap list of tracked files in: %s", __FUNCTION__);
   }
 
   docs_context_.clear();

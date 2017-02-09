@@ -228,9 +228,8 @@ void install_stack_trace_handler() {
       static void(*const rethrow)(void*,void*,void(*)(void*)) __attribute__ ((noreturn)) =
         (void(*)(void*,void*,void(*)(void*)))dlsym(RTLD_NEXT, "__cxa_throw");
 
-      IR_STACK_TRACE()
-        << "exception type: " << reinterpret_cast<const std::type_info*>(info)->name()
-        << std::endl;
+      IR_FRMT_DEBUG("exception type: %s", reinterpret_cast<const std::type_info*>(info)->name());
+      IR_STACK_TRACE();
       rethrow(ex, info, dest);
     }
   }

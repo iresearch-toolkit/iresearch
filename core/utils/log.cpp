@@ -97,7 +97,8 @@ class logger_ctx: public iresearch::singleton<logger_ctx> {
     }
   }
 
-  FILE* file(iresearch::logger::level_t level) { return out_[level].file_; }
+  bool enabled(iresearch::logger::level_t level) const { return dev_null() != out_[level].file_; }
+  FILE* file(iresearch::logger::level_t level) const { return out_[level].file_; }
   logger_ctx& output(iresearch::logger::level_t level, FILE* out) {
     out_[level].file_ = out ? out : dev_null();
     out_[level].streambuf_ = out;
@@ -116,7 +117,7 @@ class logger_ctx: public iresearch::singleton<logger_ctx> {
     FILE* file_;
     std::ostream stream_;
     file_streambuf streambuf_;
-    level_ctx_t(): stream_(&streambuf_), streambuf_(nullptr) {}
+    level_ctx_t(): file_(dev_null()), stream_(&streambuf_), streambuf_(nullptr) {}
   };
 
   level_ctx_t out_[iresearch::logger::IRL_TRACE + 1]; // IRL_TRACE is the last value, +1 for 0'th id
@@ -626,8 +627,11 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
 NS_END
 
 NS_ROOT
-
 NS_BEGIN(logger)
+
+bool enabled(level_t level) {
+  return logger_ctx::instance().enabled(level);
+}
 
 FILE* output(level_t level) {
   return logger_ctx::instance().file(level);
@@ -642,6 +646,10 @@ void output_le(level_t level, FILE* out) {
 }
 
 void stack_trace(level_t level) {
+  if (!enabled(level)) {
+    return; // skip generating trace if logging is disabled for this level altogether
+  }
+
   #if defined(_MSC_VER)
     __try {
       RaiseException(1, 0, 0, NULL);
@@ -664,6 +672,10 @@ void stack_trace(level_t level) {
 
 void stack_trace(level_t level, const std::exception_ptr& eptr) {
   UNUSED(eptr); // no known way to get original instruction pointer from exception_ptr
+
+  if (!enabled(level)) {
+    return; // skip generating trace if logging is disabled for this level altogether
+  }
 
   // copy of stack_trace() for proper ignored-frames calculation
   #if defined(_MSC_VER)
@@ -688,6 +700,10 @@ void stack_trace(level_t level, const std::exception_ptr& eptr) {
 
 #ifndef _MSC_VER
   void stack_trace_nomalloc(level_t level, size_t skip) {
+    if (!enabled(level)) {
+      return; // skip generating trace if logging is disabled for this level altogether
+    }
+
     static const size_t frames_max = 128; // arbitrary size
     void* frames_buf[frames_max];
     auto frames_count = backtrace(frames_buf, frames_max);
@@ -704,10 +720,5 @@ std::ostream& stream(level_t level) {
   return logger_ctx::instance().stream(level);
 }
 
-NS_END
-
-std::ostream& log_message::stream() {
-  return logger_ctx::instance().stream(level_);
-}
-
+NS_END // logger
 NS_END

@@ -341,7 +341,7 @@ index_input::ptr memory_directory::open(
       return index_input::make<memory_index_input>(*it->second);
     }
 
-    IR_ERROR() << "Failed to open input file, error: File not found, path: " << name;
+    IR_FRMT_ERROR("Failed to open input file, error: File not found, path: %s", name.c_str());
 
     return nullptr;
   } catch(...) {

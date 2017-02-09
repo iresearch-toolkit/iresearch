@@ -54,20 +54,20 @@ class fs_lock : public index_lock {
     utf8_path path;
 
     if (!(path/dir_).exists(exists)) {
-      IR_ERROR() << "Error caught in " << __FUNCTION__ << ":" << __LINE__;
+      IR_FRMT_ERROR("Error caught in: %s", __FUNCTION__);
       return false;
     }
 
     // create directory if it is not exists
     if (!exists && !path.mkdir()) {
-      IR_ERROR() << "Error caught in " << __FUNCTION__ << ":" << __LINE__;
+      IR_FRMT_ERROR("Error caught in: %s", __FUNCTION__);
       return false;
     }
 
     // create lock file
     if (!file_utils::verify_lock_file((path/file_).c_str())) {
       if (!path.exists(exists) || (exists && !path.remove())) {
-        IR_ERROR() << "Error caught in " << __FUNCTION__ << ":" << __LINE__;
+        IR_FRMT_ERROR("Error caught in: %s", __FUNCTION__);
         return false;
       }
 
@@ -131,8 +131,7 @@ class fs_index_output : public buffered_index_output {
       auto path = boost::locale::conv::utf_to_utf<char>(name);
 
       // even win32 uses 'errno' fo error codes in calls to file_open(...)
-      IR_ERROR() << "Failed to open output file, error: " << errno
-                 << ", path: " << path;
+      IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s", errno, path.c_str());
 
       return nullptr;
     }
@@ -195,8 +194,7 @@ class fs_index_input : public buffered_index_input {
       auto path = boost::locale::conv::utf_to_utf<char>(name);
 
       // even win32 uses 'errno' for error codes in calls to file_open(...)
-      IR_ERROR() << "Failed to open input file, error: " << errno
-                 << ", path: " << path;
+      IR_FRMT_ERROR("Failed to open input file, error: %d, path: %s", errno, path.c_str());
 
       return nullptr;
     }
@@ -206,14 +204,13 @@ class fs_index_input : public buffered_index_input {
 
     if (handle->size < 0) {
       auto path = boost::locale::conv::utf_to_utf<char>(name);
-
-      IR_ERROR() << "Failed to get stat for input file, error: "
       #ifdef _WIN32
-                 << GetLastError()
+        auto error = GetLastError();
       #else
-                 << errno
+        auto error = errno;
       #endif
-                 << ", path: " << path;
+
+      IR_FRMT_ERROR("Failed to get stat for input file, error: %d, path: %s", error, path.c_str());
 
       return nullptr;
     }
@@ -355,7 +352,7 @@ index_output::ptr fs_directory::create(const std::string& name) NOEXCEPT {
       return index_output::make<checksum_output_t>(std::move(out));
     }
 
-    IR_ERROR() << "Failed to open output file, path: " << name;
+    IR_FRMT_ERROR("Failed to open output file, path: %s", name.c_str());
 
     return nullptr;
   } catch(...) {
@@ -474,13 +471,13 @@ bool fs_directory::sync(const std::string& name) NOEXCEPT {
       return true;
     }
 
-    IR_ERROR() << "Failed to sync file, error: "
     #ifdef _WIN32
-               << GetLastError()
+      auto error = GetLastError();
     #else
-               << errno
+      auto error = errno;
     #endif
-               << " path: " << path.utf8();
+
+    IR_FRMT_ERROR("Failed to sync file, error: %d, path: %s", error, path.utf8().c_str());
   } catch (...) {
     IR_EXCEPTION();
   }

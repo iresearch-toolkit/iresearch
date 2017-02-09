@@ -17,7 +17,6 @@
 #include "shared.hpp"
 
 NS_ROOT
-
 NS_BEGIN(logger)
 
 // use a prefx that does not clash with any predefined macros (e.g. win32 'ERROR')
@@ -30,6 +29,7 @@ enum level_t {
   IRL_TRACE
 };
 
+IRESEARCH_API bool enabled(level_t level);
 IRESEARCH_API FILE* output(level_t level);
 IRESEARCH_API void output(level_t level, FILE* out); // nullptr == /dev/null
 IRESEARCH_API void output_le(level_t level, FILE* out); // nullptr == /dev/null
@@ -42,30 +42,7 @@ IRESEARCH_API std::ostream& stream(level_t level);
   void IRESEARCH_API stack_trace_nomalloc(level_t level, size_t skip = 1);
 #endif
 
-NS_END
-
-class IRESEARCH_API log_message {
- public:
-  log_message(logger::level_t level, const std::string& type)
-    : fatal_(type == "FATAL"), level_(level) {
-    stream() << type << ": ";
-  }
-
-  ~log_message() {
-    stream() << std::endl;
-
-    if (fatal_) {
-      exit(1);
-    }
-  }
-
-  std::ostream& stream();
-
- private:
-  bool fatal_;
-  logger::level_t level_;
-}; // log_message
-
+NS_END // logger
 NS_END
 
 NS_LOCAL
@@ -76,24 +53,30 @@ FORCE_INLINE CONSTEXPR iresearch::logger::level_t exception_stack_trace_level() 
 
 NS_END
 
-#define IR_LOG(level, prefix) iresearch::log_message(level, prefix).stream()
-#define IR_LOG_DETAILED(level, prefix) IR_LOG(level, prefix) << __FILE__ << ":" << __LINE__ << " "
 #define IR_LOG_FORMATED(level, prefix, format, ...) \
-  (0&fprintf(iresearch::logger::output(level), "%s: %s:%u ", prefix, __FILE__, __LINE__)) \
-  +fprintf(iresearch::logger::output(level), format, __VA_ARGS__)
-#define IR_FATAL() IR_LOG_DETAILED(iresearch::logger::IRL_FATAL, "FATAL")
-#define IR_ERROR() IR_LOG_DETAILED(iresearch::logger::IRL_ERROR, "ERROR")
-#define IR_WARN() IR_LOG_DETAILED(iresearch::logger::IRL_WARN, "WARN")
-#define IR_INFO() IR_LOG_DETAILED(iresearch::logger::IRL_INFO, "INFO")
-#define IR_DEBUG() IR_LOG_DETAILED(iresearch::logger::IRL_DEBUG, "DEBUG")
-#define IR_TRACE() IR_LOG_DETAILED(iresearch::logger::IRL_TRACE, "TRACE")
+  std::fprintf(iresearch::logger::output(level), "%s: %s:%u " format "\n", prefix, __FILE__, __LINE__, __VA_ARGS__)
+#define IR_LOG_STREM(level, prefix) \
+  iresearch::logger::stream(level) << prefix << " " << __FILE__ << ":" << __LINE__ << " "
 
-#define IR_STACK_TRACE() \
-  iresearch::logger::stack_trace(exception_stack_trace_level()); \
-  IR_LOG_DETAILED(exception_stack_trace_level(), "STACK_TRACE")
+#define IR_FRMT_FATAL(format, ...) IR_LOG_FORMATED(iresearch::logger::IRL_FATAL, "FATAL", format, __VA_ARGS__)
+#define IR_FRMT_ERROR(format, ...) IR_LOG_FORMATED(iresearch::logger::IRL_ERROR, "ERROR", format, __VA_ARGS__)
+#define IR_FRMT_WARN(format, ...) IR_LOG_FORMATED(iresearch::logger::IRL_WARN, "WARN", format, __VA_ARGS__)
+#define IR_FRMT_INFO(format, ...) IR_LOG_FORMATED(iresearch::logger::IRL_INFO, "INFO", format, __VA_ARGS__)
+#define IR_FRMT_DEBUG(format, ...) IR_LOG_FORMATED(iresearch::logger::IRL_DEBUG, "DEBUG", format, __VA_ARGS__)
+#define IR_FRMT_TRACE(format, ...) IR_LOG_FORMATED(iresearch::logger::IRL_TRACE, "TRACE", format, __VA_ARGS__)
+
+#define IR_STRM_FATAL() IR_LOG_STREM(iresearch::logger::IRL_FATAL, "FATAL")
+#define IR_STRM_ERROR() IR_LOG_STREM(iresearch::logger::IRL_ERROR, "ERROR")
+#define IR_STRM_WARN() IR_LOG_STREM(iresearch::logger::IRL_WARN, "WARN")
+#define IR_STRM_INFO() IR_LOG_STREM(iresearch::logger::IRL_INFO, "INFO")
+#define IR_STRM_DEBUG() IR_LOG_STREM(iresearch::logger::IRL_DEBUG, "DEBUG")
+#define IR_STRM_TRACE() IR_LOG_STREM(iresearch::logger::IRL_TRACE, "TRACE")
+
 #define IR_EXCEPTION() \
-  IR_LOG_DETAILED(exception_stack_trace_level(), "EXCEPTION") << "@" << __FUNCTION__ << " stack trace:" << std::endl; \
-  iresearch::logger::stack_trace(exception_stack_trace_level(), std::current_exception()); \
-  IR_LOG_DETAILED(exception_stack_trace_level(), "EXCEPTION")
+  IR_LOG_FORMATED(exception_stack_trace_level(), "EXCEPTION", "@%s\nstack trace:", __FUNCTION__); \
+  iresearch::logger::stack_trace(exception_stack_trace_level(), std::current_exception());
+#define IR_STACK_TRACE() \
+  IR_LOG_FORMATED(exception_stack_trace_level(), "STACK_TRACE", "@%s\nstack trace:", __FUNCTION__); \
+  iresearch::logger::stack_trace(exception_stack_trace_level());
 
 #endif
