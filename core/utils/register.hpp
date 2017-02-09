@@ -87,7 +87,7 @@ class generic_register: public singleton<RegisterType> {
     void* handle = load_library(file.c_str(), 1);
 
     if (nullptr == handle) {
-      IR_ERROR() << "generic_register::load_entry_from_so : load failed";
+      IR_FRMT_ERROR("%s : load failed", __FUNCTION__);
       return entry_type();
     }
 
@@ -100,8 +100,7 @@ class generic_register: public singleton<RegisterType> {
     }
 
     if (!this_ptr->add_so_handle(handle)) {
-      IR_ERROR() << "generic_register::load_entry_from_so : "
-        << "init failed in shared object : " << file;
+      IR_FRMT_ERROR("%s : init failed in shared object : %s", __FUNCTION__, file.c_str());
       return entry_type();
     }
 
@@ -109,8 +108,7 @@ class generic_register: public singleton<RegisterType> {
     // that performs registration
     const entry_type* entry = lookup(key);
     if (nullptr == entry) {
-      IR_ERROR() << "generic_register::load_entry_from_so : "
-        << "lookup failed in shared object : " << file;
+      IR_FRMT_ERROR("%s : lookup failed in shared object : %s", __FUNCTION__, file.c_str());
       return entry_type();
     }
 

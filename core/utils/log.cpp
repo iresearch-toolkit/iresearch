@@ -626,7 +626,6 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
 NS_END
 
 NS_ROOT
-
 NS_BEGIN(logger)
 
 FILE* output(level_t level) {
@@ -704,10 +703,5 @@ std::ostream& stream(level_t level) {
   return logger_ctx::instance().stream(level);
 }
 
-NS_END
-
-std::ostream& log_message::stream() {
-  return logger_ctx::instance().stream(level_);
-}
-
+NS_END // logger
 NS_END

@@ -516,8 +516,10 @@ iresearch::doc_id_t compute_doc_ids(
   try {
     doc_id_map.resize(reader.docs_count() + iresearch::type_limits<iresearch::type_t::doc_id_t>::min(), MASKED_DOC_ID);
   } catch (...) {
-    IR_ERROR() << "Failed to resize merge_writer::doc_id_map to accommodate element: "
-               << reader.docs_count() + iresearch::type_limits<iresearch::type_t::doc_id_t>::min();
+    IR_FRMT_ERROR(
+      "Failed to resize merge_writer::doc_id_map to accommodate element: %lu",
+      reader.docs_count() + iresearch::type_limits<iresearch::type_t::doc_id_t>::min()
+    );
     return iresearch::type_limits<iresearch::type_t::doc_id_t>::invalid();
   }
 
@@ -819,7 +821,7 @@ bool merge_writer::flush(std::string& filename, segment_meta& meta) {
   meta.name = name_;
 
   if (!track_dir.swap_tracked(meta.files)) {
-    IR_ERROR() << "Failed to swap list of tracked files in: " << __FUNCTION__ << ":" << __LINE__;
+    IR_FRMT_ERROR("Failed to swap list of tracked files in: %s", __FUNCTION__);
     return false;
   }
 

@@ -34,7 +34,7 @@ int get_host_name(char* name, size_t size) {
   int err;
 
   if (err = WSAStartup(MAKEWORD(2, 2), &wsaData)) {
-    IR_ERROR() << "WSAStartup failed with error " << err;
+    IR_FRMT_ERROR("WSAStartup failed with error: %d", err);
     return -1;
   }
   
@@ -56,7 +56,7 @@ int get_host_name(char* name, size_t size) {
 bool is_same_hostname(const char* rhs, size_t size) {
   char name[256] = {};
   if (const int err = get_host_name(name, sizeof name)) {
-    IR_ERROR() << "Unable to get hostname, error" << err;
+    IR_FRMT_ERROR("Unable to get hostname, error: %d", err);
     return false;
   }
 

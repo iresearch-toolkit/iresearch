@@ -541,7 +541,7 @@ bool field_data::invert(
   while (stream.next()) {
     pos_ += inc->value;
     if (pos_ < last_pos_) {
-      IR_ERROR() << "invalid position " << pos_ << " < " << last_pos_;
+      IR_FRMT_ERROR("invalid position %u < %u", pos_, last_pos_);
       return false;
     }
     last_pos_ = pos_;
@@ -555,8 +555,7 @@ bool field_data::invert(
       const uint32_t end_offset = offs_ + offs->end;
 
       if (start_offset < last_start_offs_ || end_offset < start_offset) {
-        IR_ERROR() << "invalid offset start=" << start_offset
-          << " end=" << end_offset;
+        IR_FRMT_ERROR("invalid offset start=%u end=%u", start_offset, end_offset);
         return false;
       }
 
@@ -566,7 +565,7 @@ bool field_data::invert(
     const auto res = terms_.emplace(term->value());
 
     if (terms_.end() == res.first) {
-      IR_ERROR() << "field \"" << meta_.name << "\" has invalid term \"" << ref_cast<char>(term->value()) << "\"";
+      IR_FRMT_ERROR("field '%s' has invalid term '%s'", meta_.name.c_str(), ref_cast<char>(term->value()).c_str());
       continue;
     }
 
@@ -577,7 +576,7 @@ bool field_data::invert(
     }
 
     if (0 == ++len_) {
-      IR_ERROR() << "too many token in field, document \"" << id << "\"";
+      IR_FRMT_ERROR("too many token in field, document '%lu'", id);
       return false;
     }
   }

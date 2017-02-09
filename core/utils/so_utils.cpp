@@ -93,7 +93,11 @@ void* load_library(const char* soname, int mode /* = 2 */) {
 #endif
 
   if (!handle) {
-    IR_ERROR() << "load failed of shared object: " << name << " error: " << dlerror();
+    #ifdef _WIN32
+      IR_FRMT_ERROR("load failed of shared object: %s error: %s", name.c_str(), dlerror().c_str());
+    #else
+      IR_FRMT_ERROR("load failed of shared object: %s error: %s", name.c_str(), dlerror());
+    #endif
   }
 
   return handle;
@@ -125,7 +129,7 @@ void load_libraries(
   if (!::boost::filesystem::is_directory(pluginPath)) {
     auto u8path = (utf8_path(pluginPath)).utf8();
 
-    IR_INFO() << "library load failed, not a plugin path: " << u8path.c_str();
+    IR_FRMT_INFO("library load failed, not a plugin path: %s", u8path.c_str());
 
     return; // no plugins directory
   }
@@ -156,7 +160,7 @@ void load_libraries(
     void* handle = load_library(u8path.c_str(), 1);
 
     if (!handle) {
-      IR_ERROR() << "library load failed for path: " << u8path.c_str();
+      IR_FRMT_ERROR("library load failed for path: %s", u8path.c_str());
     }
   }
 }

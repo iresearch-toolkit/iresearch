@@ -428,7 +428,7 @@ REGISTER_ANALYZER(text_token_stream);
       ;
   }
   catch (...) {
-    IR_ERROR() << "Caught error while constructing text_token_stream from jSON arguments: " << args;
+    IR_FRMT_ERROR("Caught error while constructing text_token_stream from jSON arguments: %s", args.c_str());
   }
 
   return nullptr;

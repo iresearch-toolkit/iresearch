@@ -97,14 +97,14 @@ bool verify_lock_file(const file_path_t file) {
   // check hostname
   const size_t len = strlen(buf); // hostname length 
   if (!is_same_hostname(buf, len)) {
-    IR_INFO() << "Index locked by another host, hostname " << buf;
+    IR_FRMT_INFO("Index locked by another host, hostname: %s", buf);
     return true; // locked
   }
 
   // check pid
   const char* pid = buf + len + 1;
   if (is_valid_pid(pid)) {
-    IR_INFO() << "Index locked by another process, PID " << pid;
+    IR_FRMT_INFO("Index locked by another process, PID: %s", pid);
     return true; // locked
   }
 
@@ -123,8 +123,7 @@ lock_handle_t create_lock_file(const file_path_t file) {
 
   if (INVALID_HANDLE_VALUE == fd) {
     auto path = boost::locale::conv::utf_to_utf<char>(file);
-    IR_ERROR() << "Unable to create lock file " << path 
-               << ", error " << GetLastError();
+    IR_FRMT_ERROR("Unable to create lock file: '%s', error: %d", path.c_str(), GetLastError());
     return nullptr;
   }
   
@@ -133,14 +132,13 @@ lock_handle_t create_lock_file(const file_path_t file) {
 
   // write hostname to lock file
   if (const int err = get_host_name(buf, sizeof buf-1)) {
-    IR_ERROR() << "Unable to get hostname, error " << err;
+    IR_FRMT_ERROR("Unable to get hostname, error: %d", err);
     return nullptr;
   }
 
   if (!file_utils::write(fd, buf, strlen(buf)+1)) { // include terminate 0
     auto path = boost::locale::conv::utf_to_utf<char>(file);
-    IR_ERROR() << "Unable to write lock file " << path 
-               << ", error " << GetLastError();
+    IR_FRMT_ERROR("Unable to write lock file: '%s', error: %d", path.c_str(), GetLastError());
     return nullptr;
   }
 
@@ -152,8 +150,7 @@ lock_handle_t create_lock_file(const file_path_t file) {
   const size_t size = sprintf(buf, "%d", get_pid());
   if (!file_utils::write(fd, buf, size)) {
     auto path = boost::locale::conv::utf_to_utf<char>(file);
-    IR_ERROR() << "Unable to write lock file " << path 
-               << ", error " << GetLastError();
+    IR_FRMT_ERROR("Unable to write lock file: '%s', error: %d", path.c_str(), GetLastError());
     return nullptr;
   }
 
@@ -164,8 +161,7 @@ lock_handle_t create_lock_file(const file_path_t file) {
   // flush buffers
   if (::FlushFileBuffers(fd) <= 0) {
     auto path = boost::locale::conv::utf_to_utf<char>(file);
-    IR_ERROR() << "Unable to flush lock file " << path 
-               << ", error " << GetLastError();
+    IR_FRMT_ERROR("Unable to flush lock file: '%s', error: %d ", path.c_str(), GetLastError());
     return nullptr;
   }
 
@@ -247,9 +243,9 @@ bool verify_lock_file(const file_path_t file) {
   }
 
   const int fd = open(file, O_RDONLY);
+
   if (fd < 0) {
-    IR_ERROR() << "Unable to open lock file " << file << " for verification"
-               << ", error " << errno;
+    IR_FRMT_ERROR("Unable to open lock file '%s' for verification, error: %d", file, errno);
     return false; // not locked
   }
 
@@ -262,11 +258,10 @@ bool verify_lock_file(const file_path_t file) {
     // try to apply advisory lock on lock file
     if (flock(fd, LOCK_EX | LOCK_NB)) {
       if (EWOULDBLOCK == errno) {
-        IR_ERROR() << "Lock file " << file << " is already locked";
+        IR_FRMT_ERROR("Lock file '%s' is already locked", file);
         return true; // locked
       } else {
-        IR_ERROR() << "Unable to apply lock on lock file " << file 
-                   << ", error " << errno;
+        IR_FRMT_ERROR("Unable to apply lock on lock file: '%s', error: %d", file, errno);
         return false; // not locked
       }
     }
@@ -283,7 +278,7 @@ bool verify_lock_file(const file_path_t file) {
   // check hostname
   const size_t len = strlen(buf); // hostname length 
   if (!is_same_hostname(buf, len)) {
-    IR_INFO() << "Index locked by another host, hostname " << buf;
+    IR_FRMT_INFO("Index locked by another host, hostname: %s", buf);
     return true; // locked
   }
 
@@ -295,7 +290,7 @@ bool verify_lock_file(const file_path_t file) {
   // check pid
   const char* pid = buf+len+1;
   if (is_valid_pid(pid)) {
-    IR_INFO() << "Index locked by another process, PID " << pid;
+    IR_FRMT_INFO("Index locked by another process, PID: %s", pid);
     return true; // locked
   }
 
@@ -306,8 +301,7 @@ lock_handle_t create_lock_file(const file_path_t file) {
   const int fd = open(file, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
 
   if (fd < 0) {
-    IR_ERROR() << "Unable to create lock file " << file 
-               << ", error " << errno; 
+    IR_FRMT_ERROR("Unable to create lock file: '%s', error: %d", file, errno);
     return nullptr;
   }
   
@@ -316,35 +310,31 @@ lock_handle_t create_lock_file(const file_path_t file) {
 
   // write hostname to lock file
   if (const int err = get_host_name(buf, sizeof buf-1)) {
-    IR_ERROR() << "Unable to get hostname, error " << err;
+    IR_FRMT_ERROR("Unable to get hostname, error: %d", err);
     return nullptr;
   }
 
   if (!file_utils::write(fd, buf, strlen(buf)+1)) { // include terminated 0
-    IR_ERROR() << "Unable to write lock file " << file 
-               << ", error " << errno;
+    IR_FRMT_ERROR("Unable to write lock file: '%s', error: %d", file, errno);
     return nullptr;
   }
   
   // write PID to lock file 
   size_t size = sprintf(buf, "%d", get_pid());
   if (!file_utils::write(fd, buf, size)) {
-    IR_ERROR() << "Unable to write lock file " << file 
-               << ", error " << errno;
+    IR_FRMT_ERROR("Unable to write lock file: '%s', error: %d", file, errno);
     return nullptr;
   }
 
   // flush buffers
   if (fsync(fd)) {
-    IR_ERROR() << "Unable to flush lock file " << file 
-               << ", error " << errno;
+    IR_FRMT_ERROR("Unable to flush lock file: '%s', error: %d", file, errno);
     return nullptr;
   }
 
   // try to apply advisory lock on lock file
   if (flock(fd, LOCK_EX)) {
-    IR_ERROR() << "Unable to apply lock on lock file " << file 
-               << ", error " << errno;
+    IR_FRMT_ERROR("Unable to apply lock on lock file: '%s', error: %d", file, errno);
     return nullptr;
   }
 
@@ -381,7 +371,7 @@ bool is_directory(const file_path_t name) NOEXCEPT {
   if (file_stat(name, &info) != 0) {
     auto path = boost::locale::conv::utf_to_utf<char>(name);
 
-    IR_ERROR() << "Failed to get stat, error " << errno << " path: " << path;
+    IR_FRMT_ERROR("Failed to get stat, error %d path: %s", errno, path.c_str());
 
     return false; 
   }
