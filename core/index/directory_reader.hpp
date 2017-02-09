@@ -24,11 +24,12 @@ NS_ROOT
 class IRESEARCH_API directory_reader: public composite_reader {
  public:
   typedef directory_reader ptr; // pointer to self
+  directory_reader() = default; // allow creation of an uninitialized ptr
   explicit operator bool() const NOEXCEPT;
-  composite_reader& operator*() NOEXCEPT;
-  const composite_reader& operator*() const NOEXCEPT;
-  composite_reader* operator->() NOEXCEPT;
-  const composite_reader* operator->() const NOEXCEPT;
+  directory_reader& operator*() NOEXCEPT;
+  const directory_reader& operator*() const NOEXCEPT;
+  directory_reader* operator->() NOEXCEPT;
+  const directory_reader* operator->() const NOEXCEPT;
   virtual const sub_reader& operator[](size_t i) const override;
 
   virtual doc_id_t base(size_t i) const override;

@@ -193,19 +193,19 @@ directory_reader::operator bool() const NOEXCEPT {
   return impl_ ? true : false;
 }
 
-composite_reader& directory_reader::operator*() NOEXCEPT {
+directory_reader& directory_reader::operator*() NOEXCEPT {
   return *this;
 }
 
-const composite_reader& directory_reader::operator*() const NOEXCEPT {
+const directory_reader& directory_reader::operator*() const NOEXCEPT {
   return *this;
 }
 
-composite_reader* directory_reader::operator->() NOEXCEPT {
+directory_reader* directory_reader::operator->() NOEXCEPT {
   return this;
 }
 
-const composite_reader* directory_reader::operator->() const NOEXCEPT {
+const directory_reader* directory_reader::operator->() const NOEXCEPT {
   return this;
 }
 
