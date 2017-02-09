@@ -29,6 +29,7 @@ enum level_t {
   IRL_TRACE
 };
 
+IRESEARCH_API bool enabled(level_t level);
 IRESEARCH_API FILE* output(level_t level);
 IRESEARCH_API void output(level_t level, FILE* out); // nullptr == /dev/null
 IRESEARCH_API void output_le(level_t level, FILE* out); // nullptr == /dev/null
