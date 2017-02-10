@@ -1718,6 +1718,10 @@ class writer final : public iresearch::columnstore_writer {
    public:
     column(writer& ctx) // compression context
       : ctx_(&ctx) {
+      // initialize value offset
+      // because of initial MAX_DATA_BLOCK_SIZE 'min_' will be set on the first 'write'
+      offsets_[0] = MAX_DATA_BLOCK_SIZE;
+      offsets_[1] = MAX_DATA_BLOCK_SIZE;
     }
 
     void prepare(doc_id_t key) {
@@ -1826,7 +1830,7 @@ class writer final : public iresearch::columnstore_writer {
     }
 
     writer* ctx_; // writer context
-    uint64_t offsets_[2] { MAX_DATA_BLOCK_SIZE, MAX_DATA_BLOCK_SIZE }; // value offset, because of initial MAX_DATA_BLOCK_SIZE 'min_' will be set on the first 'write'
+    uint64_t offsets_[2]; // value offset, because of initial MAX_DATA_BLOCK_SIZE 'min_' will be set on the first 'write'
     uint64_t length_{}; // size of the all column data blocks
     index_block<INDEX_BLOCK_SIZE> block_index_; // current block index (per document key/offset)
     index_block<INDEX_BLOCK_SIZE> column_index_; // column block index (per block key/offset)
@@ -2650,6 +2654,11 @@ class sparse_column final : public column {
     doc_id_t key; // min key in a block
     uint64_t offset; // block offset
     std::atomic<const block_t*> pblock; // pointer to cached block
+    block_ref() = default;
+    block_ref(block_ref&& other) NOEXCEPT
+      : key(std::move(other.key)), offset(std::move(other.offset)) {
+      pblock = other.pblock.exchange(nullptr); // no std::move(...) for std::atomic<...>
+    }
   }; // block_ref
 
   const context_provider* ctxs_;
@@ -2779,6 +2788,11 @@ class dense_fixed_length_column final : public column {
   struct block_ref {
     uint64_t offset; // need to store base offset since blocks may not be located sequentially
     std::atomic<const block_t*> pblock;
+    block_ref() = default;
+    block_ref(block_ref&& other) NOEXCEPT
+      : offset(std::move(other.offset)) {
+      pblock = other.pblock.exchange(nullptr); // no std::move(...) for std::atomic<...>
+    }
   };
 
   const context_provider* ctxs_;
