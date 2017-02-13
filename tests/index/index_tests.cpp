@@ -16,6 +16,7 @@
 #include "iql/query_builder.hpp"
 #include "formats/formats_10.hpp"
 #include "search/filter.hpp"
+#include "search/term_filter.hpp"
 #include "store/fs_directory.hpp"
 #include "store/memory_directory.hpp"
 #include "index/index_reader.hpp"
@@ -351,7 +352,7 @@ class index_test_case_base : public tests::index_test_base {
     }
   }
 
-  void profile_bulk_index(size_t num_threads, size_t batch_size, ir::index_writer::ptr writer = nullptr, std::atomic<size_t>* commit_count = nullptr) {
+  void profile_bulk_index(size_t num_insert_threads, size_t num_import_threads, size_t num_update_threads, size_t batch_size, ir::index_writer::ptr writer = nullptr, std::atomic<size_t>* commit_count = nullptr) {
     struct csv_doc_template_t: public tests::delim_doc_generator::doc_template {
       virtual void init() {
         clear();
@@ -373,12 +374,19 @@ class index_test_case_base : public tests::index_test_base {
 
     iresearch::timer_utils::init_stats(true);
 
+    std::atomic<bool> import_again(true);
+    iresearch::memory_directory import_dir;
+    std::atomic<size_t> import_docs_count(0);
+    size_t import_interval = 10000;
+    iresearch::directory_reader import_reader;
     std::atomic<size_t> parsed_docs_count(0);
+    size_t update_skip = 1000;
     size_t writer_batch_size = batch_size ? batch_size : (std::numeric_limits<size_t>::max)();
     std::atomic<size_t> local_writer_commit_count(0);
     std::atomic<size_t>& writer_commit_count = commit_count ? *commit_count : local_writer_commit_count;
-    auto thread_count = (std::max)((size_t)1, num_threads);
-    ir::async_utils::thread_pool thread_pool(thread_count, thread_count);
+    auto thread_count = (std::max)((size_t)1, num_insert_threads);
+    auto total_threads = thread_count + num_import_threads + num_update_threads;
+    ir::async_utils::thread_pool thread_pool(total_threads, total_threads);
     std::mutex mutex;
     std::mutex commit_mutex;
 
@@ -386,11 +394,25 @@ class index_test_case_base : public tests::index_test_base {
       writer = open_writer();
     }
 
+    // initialize reader data source for import threads
+    {
+      tests::json_doc_generator import_gen(resource("simple_sequential.json"), &tests::generic_json_field_factory);
+      auto import_writer = iresearch::index_writer::make(import_dir, codec(), iresearch::OM_CREATE);
+
+      for (const tests::document* doc; (doc = import_gen.next());) {
+        import_writer->insert(doc->indexed.begin(), doc->indexed.end(), doc->stored.begin(), doc->stored.end());
+      }
+
+      import_writer->commit();
+      import_reader = iresearch::directory_reader::open(import_dir);
+    }
+
     {
       std::lock_guard<std::mutex> lock(mutex);
 
+      // register insertion jobs
       for (size_t i = 0; i < thread_count; ++i) {
-        thread_pool.run([&mutex, &commit_mutex, &writer, thread_count, i, writer_batch_size, &parsed_docs_count, &writer_commit_count, this]()->void {
+        thread_pool.run([&mutex, &commit_mutex, &writer, thread_count, i, writer_batch_size, &parsed_docs_count, &writer_commit_count, &import_again, this]()->void {
           {
             // wait for all threads to be registered
             std::lock_guard<std::mutex> lock(mutex);
@@ -426,6 +448,115 @@ class index_test_case_base : public tests::index_test_base {
             {
               REGISTER_TIMER_NAMED_DETAILED("load");
               writer->insert(
+                csv_doc_template.indexed.begin(), csv_doc_template.indexed.end(), 
+                csv_doc_template.stored.begin(), csv_doc_template.stored.end()
+              );
+            }
+
+            if (count >= writer_batch_size) {
+              TRY_SCOPED_LOCK_NAMED(commit_mutex, commit_lock);
+
+              // break commit chains by skipping commit if one is already in progress
+              if (!commit_lock) {
+                continue;
+              }
+
+              {
+                REGISTER_TIMER_NAMED_DETAILED("commit");
+                writer->commit();
+              }
+
+              count = 0;
+              ++writer_commit_count;
+            }
+          }
+
+          {
+            REGISTER_TIMER_NAMED_DETAILED("commit");
+            writer->commit();
+          }
+
+          ++writer_commit_count;
+          import_again.store(false); // stop any import threads, on completion of any insert thread
+        });
+      }
+
+      // register import jobs
+      for (size_t i = 0; i < num_import_threads; ++i) {
+        thread_pool.run([&mutex, &writer, import_reader, &import_docs_count, &import_again, &import_interval, this]()->void {
+          {
+            // wait for all threads to be registered
+            std::lock_guard<std::mutex> lock(mutex);
+          }
+
+          while (import_again.load()) {
+            import_docs_count += import_reader.docs_count();
+
+            {
+              REGISTER_TIMER_NAMED_DETAILED("import");
+              writer->import(import_reader);
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(import_interval));
+          }
+        });
+      }
+
+      // register update jobs
+      for (size_t i = 0; i < num_update_threads; ++i) {
+        thread_pool.run([&mutex, &commit_mutex, &writer, num_update_threads, i, update_skip, writer_batch_size, &writer_commit_count, this]()->void {
+          {
+            // wait for all threads to be registered
+            std::lock_guard<std::mutex> lock(mutex);
+          }
+
+          csv_doc_template_t csv_doc_template;
+          tests::delim_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template, ',');size_t doc_skip = update_skip;
+          size_t gen_skip = i;
+
+          for(size_t count = 0;; ++count) {
+            // assume docs generated in same order and skip docs not meant for this thread
+            if (gen_skip--) {
+              if (!gen.next()) {
+                break;
+              }
+
+              continue;
+            }
+
+            gen_skip = num_update_threads - 1;
+
+            if (doc_skip--) {
+              continue;// skip docs originally meant to be updated by this thread
+            }
+
+            doc_skip = update_skip;
+
+            {
+              REGISTER_TIMER_NAMED_DETAILED("parse");
+              csv_doc_template.init();
+
+              if (!gen.next()) {
+                break;
+              }
+            }
+
+            {
+              auto filter = iresearch::by_term::make();
+              auto key_field = csv_doc_template.indexed.begin()->name();
+              auto key_term = csv_doc_template.indexed.get<tests::templates::string_field>(key_field)->value();
+              auto value_field = (++(csv_doc_template.indexed.begin()))->name();
+              auto value_term = csv_doc_template.indexed.get<tests::templates::string_field>(value_field)->value();
+              std::string updated_term(value_term.c_str(), value_term.size());
+
+              static_cast<iresearch::by_term&>(*filter).field(key_field).term(key_term);
+              updated_term.append(value_term.c_str(), value_term.size()); // double up term
+              csv_doc_template.indexed.get<tests::templates::string_field>(value_field)->value(updated_term);
+              csv_doc_template.insert(std::make_shared<tests::templates::string_field>("updated"));
+
+              REGISTER_TIMER_NAMED_DETAILED("update");
+              writer->update(
+                std::move(filter),
                 csv_doc_template.indexed.begin(), csv_doc_template.indexed.end(), 
                 csv_doc_template.stored.begin(), csv_doc_template.stored.end()
               );
@@ -503,15 +634,30 @@ class index_test_case_base : public tests::index_test_base {
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(true, 1 <= reader.size()); // not all commits might produce a new segment, some might merge with concurrent commits
-    ASSERT_EQ(true, writer_commit_count * iresearch::index_writer::THREAD_COUNT >= reader.size());
+    ASSERT_TRUE(writer_commit_count * (iresearch::index_writer::THREAD_COUNT + num_import_threads) >= reader.size());
 
     size_t indexed_docs_count = 0;
+    size_t imported_docs_count = 0;
+    size_t updated_docs_count = 0;
+    iresearch::columnstore_reader::raw_reader_f imported_visitor = [&imported_docs_count](iresearch::doc_id_t, data_input&)->bool {
+      ++imported_docs_count;
+      return true;
+    };
+    iresearch::columnstore_reader::raw_reader_f updated_visitor = [&updated_docs_count](iresearch::doc_id_t, data_input&)->bool {
+      ++updated_docs_count;
+      return true;
+    };
 
     for (size_t i = 0, count = reader.size(); i < count; ++i) {
-      indexed_docs_count += reader[i].docs_count();
+      indexed_docs_count += reader[i].live_docs_count();
+      reader[i].visit("same", imported_visitor); // field present in all docs from simple_sequential.json
+      reader[i].visit("updated", updated_visitor); // field insterted by updater threads
     }
 
-    ASSERT_EQ(parsed_docs_count, indexed_docs_count);
+    ASSERT_EQ(parsed_docs_count + imported_docs_count, indexed_docs_count);
+    ASSERT_EQ(imported_docs_count, import_docs_count);
+    ASSERT_TRUE(imported_docs_count >= num_import_threads); // at least some imports took place if import enabled
+    ASSERT_TRUE(updated_docs_count >= num_update_threads); // at least some updates took place if update enabled
   }
 
   void profile_bulk_index_dedicated_cleanup(size_t num_threads, size_t batch_size, size_t cleanup_interval) {
@@ -528,7 +674,7 @@ class index_test_case_base : public tests::index_test_base {
 
     {
       auto finalizer = ir::make_finally([&working]()->void{working = false;});
-      profile_bulk_index(num_threads, batch_size);
+      profile_bulk_index(num_threads, 0, 0, batch_size);
     }
 
     thread_pool.stop();
@@ -559,7 +705,7 @@ class index_test_case_base : public tests::index_test_base {
 
     {
       auto finalizer = ir::make_finally([&working]()->void{working = false;});
-      profile_bulk_index(insert_threads, 0, writer, &writer_commit_count);
+      profile_bulk_index(insert_threads, 0, 0, 0, writer, &writer_commit_count);
     }
 
     thread_pool.stop();
@@ -592,7 +738,7 @@ class index_test_case_base : public tests::index_test_base {
 
     {
       auto finalizer = ir::make_finally([&working]()->void{working = false;});
-      profile_bulk_index(num_threads, batch_size, writer);
+      profile_bulk_index(num_threads, 0, 0, batch_size, writer);
     }
 
     thread_pool.stop();
@@ -3435,21 +3581,21 @@ TEST_F(memory_index_test, import_reader) {
 }
 
 TEST_F(memory_index_test, profile_bulk_index_singlethread_full) {
-  profile_bulk_index(0, 0);
+  profile_bulk_index(0, 0, 0, 0);
 }
 
 TEST_F(memory_index_test, profile_bulk_index_singlethread_batched) {
-  profile_bulk_index(0, 10000);
+  profile_bulk_index(0, 0, 0, 10000);
 }
 
 TEST_F(memory_index_test, profile_bulk_index_multithread_cleanup) {
-  profile_bulk_index_dedicated_cleanup(16, 1000, 100);
+  profile_bulk_index_dedicated_cleanup(16, 10000, 100);
 }
 
 TEST_F(memory_index_test, profile_bulk_index_multithread_consolidate) {
   // a lot of threads cause a lot of contention for the segment pool
   // small consolidate_interval causes too many policies to be added and slows down test
-  profile_bulk_index_dedicated_consolidate(8, 2000, 800);
+  profile_bulk_index_dedicated_consolidate(8, 10000, 1000);
 }
 
 TEST_F(memory_index_test, profile_bulk_index_multithread_dedicated_commit) {
@@ -3457,11 +3603,35 @@ TEST_F(memory_index_test, profile_bulk_index_multithread_dedicated_commit) {
 }
 
 TEST_F(memory_index_test, profile_bulk_index_multithread_full) {
-  profile_bulk_index(16, 0);
+  profile_bulk_index(16, 0, 0, 0);
 }
 
 TEST_F(memory_index_test, profile_bulk_index_multithread_batched) {
-  profile_bulk_index(16, 10000);
+  profile_bulk_index(16, 0, 0, 10000);
+}
+
+TEST_F(memory_index_test, profile_bulk_index_multithread_import_full) {
+  profile_bulk_index(12, 4, 0, 0);
+}
+
+TEST_F(memory_index_test, profile_bulk_index_multithread_import_batched) {
+  profile_bulk_index(12, 4, 0, 10000);
+}
+
+TEST_F(memory_index_test, profile_bulk_index_multithread_import_update_full) {
+  profile_bulk_index(9, 7, 5, 0); // 5 does not divide evenly into 9 or 7
+}
+
+TEST_F(memory_index_test, profile_bulk_index_multithread_import_update_batched) {
+  profile_bulk_index(9, 7, 5, 10000); // 5 does not divide evenly into 9 or 7
+}
+
+TEST_F(memory_index_test, profile_bulk_index_multithread_update_full) {
+  profile_bulk_index(16, 0, 5, 0); // 5 does not divide evenly into 16
+}
+
+TEST_F(memory_index_test, profile_bulk_index_multithread_update_batched) {
+  profile_bulk_index(16, 0, 5, 10000); // 5 does not divide evenly into 16
 }
 
 TEST_F(memory_index_test, refresh_reader) {
@@ -5273,21 +5443,21 @@ TEST_F(fs_index_test, writer_close) {
 }
 
 TEST_F(fs_index_test, profile_bulk_index_singlethread_full) {
-  profile_bulk_index(0, 0);
+  profile_bulk_index(0, 0, 0, 0);
 }
 
 TEST_F(fs_index_test, profile_bulk_index_singlethread_batched) {
-  profile_bulk_index(0, 10000);
+  profile_bulk_index(0, 0, 0, 10000);
 }
 
 TEST_F(fs_index_test, profile_bulk_index_multithread_cleanup) {
-  profile_bulk_index_dedicated_cleanup(16, 1000, 100);
+  profile_bulk_index_dedicated_cleanup(16, 10000, 100);
 }
 
 TEST_F(fs_index_test, profile_bulk_index_multithread_consolidate) {
   // a lot of threads cause a lot of contention for the segment pool
   // small consolidate_interval causes too many policies to be added and slows down test
-  profile_bulk_index_dedicated_consolidate(8, 2000, 800);
+  profile_bulk_index_dedicated_consolidate(8, 10000, 1000);
 }
 
 TEST_F(fs_index_test, profile_bulk_index_multithread_dedicated_commit) {
@@ -5295,11 +5465,35 @@ TEST_F(fs_index_test, profile_bulk_index_multithread_dedicated_commit) {
 }
 
 TEST_F(fs_index_test, profile_bulk_index_multithread_full) {
-  profile_bulk_index(16, 0);
+  profile_bulk_index(16, 0, 0, 0);
 }
 
 TEST_F(fs_index_test, profile_bulk_index_multithread_batched) {
-  profile_bulk_index(16, 10000);
+  profile_bulk_index(16, 0, 0, 10000);
+}
+
+TEST_F(fs_index_test, profile_bulk_index_multithread_import_full) {
+  profile_bulk_index(12, 4, 0, 0);
+}
+
+TEST_F(fs_index_test, profile_bulk_index_multithread_import_batched) {
+  profile_bulk_index(12, 4, 0, 10000);
+}
+
+TEST_F(fs_index_test, profile_bulk_index_multithread_import_update_full) {
+  profile_bulk_index(9, 7, 5, 0); // 5 does not divide evenly into 9 or 7
+}
+
+TEST_F(fs_index_test, profile_bulk_index_multithread_import_update_batched) {
+  profile_bulk_index(9, 7, 5, 10000); // 5 does not divide evenly into 9 or 7
+}
+
+TEST_F(fs_index_test, profile_bulk_index_multithread_update_full) {
+  profile_bulk_index(16, 0, 5, 0); // 5 does not divide evenly into 16
+}
+
+TEST_F(fs_index_test, profile_bulk_index_multithread_update_batched) {
+  profile_bulk_index(16, 0, 5, 10000); // 5 does not divide evenly into 16
 }
 
 // -----------------------------------------------------------------------------
