@@ -128,9 +128,6 @@ bool read_columns_meta(
   return true;
 }
 
-iresearch::sub_reader::value_visitor_f NOOP_VISITOR =
-  [] (iresearch::doc_id_t) { return false; };
-
 NS_END // NS_LOCAL
 
 NS_ROOT
@@ -154,11 +151,9 @@ class segment_reader::segment_reader_impl: public sub_reader {
   uint64_t meta_version() const NOEXCEPT;
   static segment_reader open(const directory& dir, const segment_meta& meta);
   virtual size_t size() const override;
-  virtual value_visitor_f values(
-    field_id field, const columnstore_reader::value_reader_f& reader
-  ) const override;
+  virtual columnstore_reader::values_reader_f values(field_id field) const override;
   virtual bool visit(
-    field_id field, const columnstore_reader::raw_reader_f& reader
+    field_id field, const columnstore_reader::values_reader_f& reader
   ) const override;
 
  private:
@@ -259,14 +254,12 @@ size_t segment_reader::size() const {
   return impl_->size();
 }
 
-sub_reader::value_visitor_f segment_reader::values(
-  field_id field, const columnstore_reader::value_reader_f& reader
-) const {
-  return impl_->values(field, reader);
+columnstore_reader::values_reader_f segment_reader::values(field_id field) const {
+  return impl_->values(field);
 }
 
 bool segment_reader::visit(
-  field_id field, const columnstore_reader::raw_reader_f& reader
+  field_id field, const columnstore_reader::values_reader_f& reader
 ) const {
   return impl_->visit(field, reader);
 }
@@ -385,20 +378,19 @@ size_t segment_reader::segment_reader_impl::size() const {
   return 1; // only 1 segment
 }
 
-sub_reader::value_visitor_f segment_reader::segment_reader_impl::values(
-  field_id field, const columnstore_reader::value_reader_f& reader
+columnstore_reader::values_reader_f segment_reader::segment_reader_impl::values(
+  field_id field
 ) const {
   if (!columnstore_reader_) {
-    return NOOP_VISITOR;
+    // NOOP reader
+    return [](doc_id_t, bytes_ref&) { return false; };
   }
 
-  auto column = columnstore_reader_->values(field);
-
-  return [&reader, column](doc_id_t doc)->bool { return column(doc, reader); };
+  return columnstore_reader_->values(field);
 }
 
 bool segment_reader::segment_reader_impl::visit(
-  field_id field, const columnstore_reader::raw_reader_f& reader
+  field_id field, const columnstore_reader::values_reader_f& reader
 ) const {
   return columnstore_reader_
     ? columnstore_reader_->visit(field, reader) : false;

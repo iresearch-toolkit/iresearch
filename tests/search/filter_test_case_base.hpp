@@ -334,16 +334,14 @@ struct empty_sub_reader : iresearch::singleton<empty_sub_reader>, iresearch::sub
   
   virtual bool visit(
       iresearch::field_id field,
-      const iresearch::columnstore_reader::raw_reader_f& reader) const {
+      const iresearch::columnstore_reader::values_reader_f& reader) const {
     return false;
   }
   
   using iresearch::sub_reader::values;
   
-  virtual value_visitor_f values(
-      iresearch::field_id field,
-      const iresearch::columnstore_reader::value_reader_f& reader) const {
-    return [] (iresearch::doc_id_t) { return false; };
+  virtual irs::columnstore_reader::values_reader_f values(iresearch::field_id field) const {
+    return [] (iresearch::doc_id_t, irs::bytes_ref&) { return false; };
   }
 
   virtual uint64_t live_docs_count() const { return 0; }

@@ -113,7 +113,6 @@ TEST(math_utils, popcnt64) {
 }
 
 TEST(math_utils, clz32) {
-  ASSERT_EQ(32, math::clz32(0));
   ASSERT_EQ(31, math::clz32(1));
   ASSERT_EQ(9, math::clz32(4333568));
   ASSERT_EQ(0, math::clz32(std::numeric_limits<uint32_t>::max()));

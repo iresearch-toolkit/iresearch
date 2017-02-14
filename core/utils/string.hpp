@@ -231,12 +231,12 @@ typedef basic_string_ref<char> string_ref;
 typedef basic_string_ref<byte_type> bytes_ref;
 
 template<typename _ElemDst, typename _ElemSrc>
-inline basic_string_ref<_ElemDst> ref_cast(const basic_string_ref<_ElemSrc>& src) {
+CONSTEXPR inline basic_string_ref<_ElemDst> ref_cast(const basic_string_ref<_ElemSrc>& src) {
   return basic_string_ref<_ElemDst>(reinterpret_cast<const _ElemDst*>(src.c_str()), src.size());
 }
 
 template<typename ElemDst, typename ElemSrc>
-inline basic_string_ref<ElemDst> ref_cast(const std::basic_string<ElemSrc>& src) {
+CONSTEXPR inline basic_string_ref<ElemDst> ref_cast(const std::basic_string<ElemSrc>& src) {
   return basic_string_ref<ElemDst>(reinterpret_cast<const ElemDst*>(src.c_str()), src.size());
 }
 

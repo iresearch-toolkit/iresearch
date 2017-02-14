@@ -19,9 +19,8 @@
 #include "index_meta.hpp"
 
 NS_LOCAL
-
-iresearch::sub_reader::value_visitor_f NOOP_VISITOR =
-  [] (iresearch::doc_id_t) { return false; };
+irs::columnstore_reader::values_reader_f NOOP_VISITOR =
+  [] (iresearch::doc_id_t, irs::bytes_ref&) { return false; };
 
 NS_END
 
@@ -37,28 +36,27 @@ index_reader::~index_reader() { }
 // sub_reader
 // -------------------------------------------------------------------
 
-sub_reader::value_visitor_f sub_reader::values(
-    const string_ref& field,
-    const columnstore_reader::value_reader_f& value_reader) const {
+columnstore_reader::values_reader_f sub_reader::values(
+    const string_ref& field) const {
   auto* meta = column(field);
 
   if (!meta) {
     return NOOP_VISITOR;
   }
 
-  return values(meta->id, value_reader);
+  return values(meta->id);
 }
 
 bool sub_reader::visit(
     const string_ref& field,
-    const columnstore_reader::raw_reader_f& value_reader) const {
+    const columnstore_reader::values_reader_f& visitor) const {
   auto* meta = column(field);
 
   if (!meta) {
     return false;
   }
 
-  return visit(meta->id, value_reader);
+  return visit(meta->id, visitor);
 }
 
 // -------------------------------------------------------------------

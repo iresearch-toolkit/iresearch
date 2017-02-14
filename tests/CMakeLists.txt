@@ -86,7 +86,6 @@ set(IReSearch_tests_sources
   ./utils/numeric_utils_test.cpp
   ./utils/attributes_tests.cpp
   ./utils/directory_utils_tests.cpp
-  ./utils/misc_tests.cpp
   ./utils/bit_packing_tests.cpp
   ./utils/bit_utils_tests.cpp
   ./utils/block_pool_test.cpp

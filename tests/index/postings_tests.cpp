@@ -12,6 +12,7 @@
 #include "tests_shared.hpp"
 
 #include "index/postings.hpp"
+#include "store/store_utils.hpp"
 
 #include <iostream>
 #include <vector>
@@ -75,7 +76,7 @@ void insert_find_core(const std::vector<std::string>& src) {
 
   // insert long key
   {
-    const std::string long_str(block_size - vencode_size_32(32767), 'c');
+    const std::string long_str(block_size - irs::vencode_traits<size_t>::size(32767), 'c');
     auto res = bh.emplace(detail::to_bytes_ref(long_str));
     ASSERT_TRUE(res.second);
   }

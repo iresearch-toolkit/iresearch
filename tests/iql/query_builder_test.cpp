@@ -228,16 +228,8 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
 
   // single string term
   {
-    iresearch::string_ref expected_value;
-    iresearch::columnstore_reader::value_reader_f visitor = [&expected_value] (iresearch::data_input& in) {
-      const auto value = iresearch::read_string<std::string>(in);
-      if (value != expected_value) {
-        return false;
-      }
-
-      return true;
-    };
-    auto values = segment.values("name", visitor);
+    irs::bytes_ref actual_value;
+    auto values = segment.values("name");
 
     auto query = query_builder().build("name==A", std::locale::classic());
     ASSERT_NE(nullptr, query.filter.get());
@@ -251,8 +243,8 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_NE(nullptr, docsItr.get());
     ASSERT_TRUE(docsItr->next());
 
-    expected_value = "A";
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -283,16 +275,9 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
 */
   // term negation
   {
-    iresearch::string_ref unexpected_value;
-    iresearch::columnstore_reader::value_reader_f visitor = [&unexpected_value] (iresearch::data_input& in) {
-      const auto value = iresearch::read_string<std::string>(in);
-      if (value == unexpected_value) {
-        return false;
-      }
-
-      return true;
-    };
-    auto values = segment.values("name", visitor);
+    irs::bytes_ref actual_value;
+    irs::bytes_ref_input in;
+    auto values = segment.values("name");
 
     auto query = query_builder().build("name!=A", std::locale::classic());
     ASSERT_NE(nullptr, query.filter.get());
@@ -307,8 +292,8 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
 
     for (size_t count = segment.docs_count() - 1; count > 0; --count) {
       ASSERT_TRUE(docsItr->next());
-      unexpected_value = "A";
-      ASSERT_TRUE(values(docsItr->value()));
+      ASSERT_TRUE(values(docsItr->value(), actual_value)); in.reset(actual_value);
+      ASSERT_NE("A", irs::read_string<std::string>(in));
     }
 
     ASSERT_FALSE(docsItr->next());
@@ -316,16 +301,8 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
 
   // term union
   {
-    iresearch::string_ref expected_value;
-    iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](iresearch::data_input& in) {
-      const auto value = iresearch::read_string<std::string>(in);
-      if (value != expected_value) {
-        return false;
-      }
-
-      return true;
-    };
-    auto values = segment.values("name", visitor);
+    irs::bytes_ref actual_value;
+    auto values = segment.values("name");
 
     auto query = query_builder().build("name==A || name==B OR name==C", std::locale::classic());
     ASSERT_NE(nullptr, query.filter.get());
@@ -338,14 +315,14 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     auto docsItr = pQuery->execute(segment);
     ASSERT_NE(nullptr, docsItr.get());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "A";
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_TRUE(docsItr->next());
-    expected_value = "B";
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_TRUE(docsItr->next());
-    expected_value = "C";
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_FALSE(docsItr->next());
   }
 /* FIXME reenable once bug is fixed
@@ -375,25 +352,14 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
 */
   // single term greater ranges
   {
-    std::unordered_set<std::string> expected = { "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z" };
+    irs::bytes_ref actual_value;
+    irs::bytes_ref_input in;
+    std::unordered_set<irs::string_ref> expected = { "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z" };
 
     double_t seq;
-    iresearch::columnstore_reader::value_reader_f visitorSeq = [&seq](iresearch::data_input& in) {
-      seq = iresearch::read_zvdouble(in);
-      return true;
-    };
-    auto seq_values = segment.values("seq", visitorSeq);
-    
-    iresearch::columnstore_reader::value_reader_f visitorName = [&expected](iresearch::data_input& in) {
-      const auto value = iresearch::read_string<std::string>(in);
-      if (1 != expected.erase(value)) {
-        return false;
-      }
+    auto seq_values = segment.values("seq");
+    auto name_values = segment.values("name");
 
-      return true;
-    };
-    auto name_values = segment.values("name", visitorName);
-   
     auto query = query_builder().build("name > M", std::locale::classic());
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_EQ(nullptr, query.error);
@@ -406,10 +372,12 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_NE(nullptr, docsItr.get());
 
     while (docsItr->next()) {
-      ASSERT_TRUE(seq_values(docsItr->value()));
+      ASSERT_TRUE(seq_values(docsItr->value(), actual_value)); in.reset(actual_value);
+      seq = irs::read_zvdouble(in);
 
       if (seq < 26) { // validate only first 26 records [A-Z]
-        ASSERT_TRUE(name_values(docsItr->value()));
+        ASSERT_TRUE(name_values(docsItr->value(), actual_value)); in.reset(actual_value);
+        ASSERT_EQ(1, expected.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
       }
     }
 
@@ -418,24 +386,13 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
 
   // single term greater-equal ranges
   {
-    std::unordered_set<std::string> expected = { "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z" };
-    
+    irs::bytes_ref actual_value;
+    irs::bytes_ref_input in;
+    std::unordered_set<irs::string_ref> expected = { "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z" };
+
     double_t seq;
-    iresearch::columnstore_reader::value_reader_f visitorSeq = [&seq](iresearch::data_input& in) {
-      seq = iresearch::read_zvdouble(in);
-      return true;
-    };
-    auto seq_values = segment.values("seq", visitorSeq);
-
-    iresearch::columnstore_reader::value_reader_f visitorName = [&expected](iresearch::data_input& in) {
-      const auto value = iresearch::read_string<std::string>(in);
-      if (1 != expected.erase(value)) {
-        return false;
-      }
-
-      return true;
-    };
-    auto name_values = segment.values("name", visitorName);
+    auto seq_values = segment.values("seq");
+    auto name_values = segment.values("name");
 
     auto query = query_builder().build("name >= M", std::locale::classic());
     ASSERT_NE(nullptr, query.filter.get());
@@ -449,10 +406,12 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_NE(nullptr, docsItr.get());
 
     while (docsItr->next()) {
-      ASSERT_TRUE(seq_values(docsItr->value()));
+      ASSERT_TRUE(seq_values(docsItr->value(), actual_value)); in.reset(actual_value);
+      seq = irs::read_zvdouble(in);
 
       if (seq < 26) { // validate only first 26 records [A-Z]
-        ASSERT_TRUE(name_values(docsItr->value()));
+        ASSERT_TRUE(name_values(docsItr->value(), actual_value)); in.reset(actual_value);
+        ASSERT_EQ(1, expected.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
       }
     }
 
@@ -461,24 +420,13 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
 
   // single term lesser-equal ranges
   {
-    std::unordered_set<std::string> expected = { "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N" };
+    irs::bytes_ref actual_value;
+    irs::bytes_ref_input in;
+    std::unordered_set<irs::string_ref> expected = { "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N" };
 
     double_t seq;
-    iresearch::columnstore_reader::value_reader_f visitorSeq = [&seq](iresearch::data_input& in) {
-      seq = iresearch::read_zvdouble(in);
-      return true;
-    };
-    auto seq_values = segment.values("seq", visitorSeq);
-    
-    iresearch::columnstore_reader::value_reader_f visitorName = [&expected](iresearch::data_input& in) {
-      const auto value = iresearch::read_string<std::string>(in);
-      if (1 != expected.erase(value)) {
-        return false;
-      }
-
-      return true;
-    };
-    auto name_values = segment.values("name", visitorName);
+    auto seq_values = segment.values("seq");
+    auto name_values = segment.values("name");
 
     auto query = query_builder().build("name <= N", std::locale::classic());
     ASSERT_NE(nullptr, query.filter.get());
@@ -492,10 +440,12 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_NE(nullptr, docsItr.get());
 
     while (docsItr->next()) {
-      ASSERT_TRUE(seq_values(docsItr->value()));
+      ASSERT_TRUE(seq_values(docsItr->value(), actual_value)); in.reset(actual_value);
+      seq = irs::read_zvdouble(in);
 
       if (seq < 26) { // validate only first 26 records [A-Z]
-        ASSERT_TRUE(name_values(docsItr->value()));
+        ASSERT_TRUE(name_values(docsItr->value(), actual_value)); in.reset(actual_value);
+        ASSERT_EQ(1, expected.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
       }
     }
 
@@ -504,25 +454,14 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
 
   // single term lesser ranges
   {
-    std::unordered_set<std::string> expected = { "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M" };
-    
-    double_t seq;
-    iresearch::columnstore_reader::value_reader_f visitorSeq = [&seq](iresearch::data_input& in) {
-      seq = iresearch::read_zvdouble(in);
-      return true;
-    };
-    auto seq_values = segment.values("seq", visitorSeq);
-    
-    iresearch::columnstore_reader::value_reader_f visitorName = [&expected](iresearch::data_input& in) {
-      const auto value = iresearch::read_string<std::string>(in);
-      if (1 != expected.erase(value)) {
-        return false;
-      }
+    irs::bytes_ref actual_value;
+    irs::bytes_ref_input in;
+    std::unordered_set<irs::string_ref> expected = { "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M" };
 
-      return true;
-    };
-    auto name_values = segment.values("name", visitorName);
-    
+    double_t seq;
+    auto seq_values = segment.values("seq");
+    auto name_values = segment.values("name");
+
     auto query = query_builder().build("name < N", std::locale::classic());
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_EQ(nullptr, query.error);
@@ -535,10 +474,12 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_NE(nullptr, docsItr.get());
 
     while (docsItr->next()) {
-      ASSERT_TRUE(seq_values(docsItr->value()));
+      ASSERT_TRUE(seq_values(docsItr->value(), actual_value)); in.reset(actual_value);
+      seq = irs::read_zvdouble(in);
 
       if (seq < 26) { // validate only first 26 records [A-Z]
-        ASSERT_TRUE(name_values(docsItr->value()));
+        ASSERT_TRUE(name_values(docsItr->value(), actual_value)); in.reset(actual_value);
+        ASSERT_EQ(1, expected.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
       }
     }
 
@@ -547,16 +488,8 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
 
   // limit
   {
-    iresearch::string_ref expected_value;
-    iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](iresearch::data_input& in) {
-      const auto value = iresearch::read_string<std::string>(in);
-      if (value != expected_value) {
-        return false;
-      }
-
-      return true;
-    };
-    auto values = segment.values("name", visitor);
+    irs::bytes_ref actual_value;
+    auto values = segment.values("name");
 
     auto query = query_builder().build("name==A limit 42", std::locale::classic());
     ASSERT_NE(nullptr, query.filter.get());
@@ -569,8 +502,8 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     auto docsItr = pQuery->execute(segment);
     ASSERT_NE(nullptr, docsItr.get());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "A";
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_FALSE(docsItr->next());
 
     ASSERT_EQ(42, *(query.limit));
@@ -631,21 +564,12 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
 }
 
 TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
-  iresearch::string_ref expected_value;
-  iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](iresearch::data_input& in) {
-    const auto value = iresearch::read_string<std::string>(in);
-    if (value != expected_value) {
-      return false;
-    }
-
-    return true;
-  };
-
+  irs::bytes_ref actual_value;
   iresearch::memory_directory dir;
   auto reader = load_json(dir, "simple_sequential.json");
   ASSERT_EQ(1, reader.size());
   auto& segment = reader[0]; // assume 0 is id of first/only segment
-  auto values = segment.values("name", visitor);
+  auto values = segment.values("name");
 
   // default range builder functr ()
   {
@@ -661,8 +585,8 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
     auto docsItr = pQuery->execute(segment);
     ASSERT_NE(nullptr, docsItr.get());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "B";
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -680,8 +604,8 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
     auto docsItr = pQuery->execute(segment);
     ASSERT_NE(nullptr, docsItr.get());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "B";
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -699,8 +623,8 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
     auto docsItr = pQuery->execute(segment);
     ASSERT_NE(nullptr, docsItr.get());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "A";
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -718,11 +642,11 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
     auto docsItr = pQuery->execute(segment);
     ASSERT_NE(nullptr, docsItr.get());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "A";
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_TRUE(docsItr->next());
-    expected_value = "B";
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -733,7 +657,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
 
     ASSERT_EQ(1, analyzed_reader.size());
     auto& analyzed_segment = analyzed_reader[0]; // assume 0 is id of first/only segment
-    auto analyzed_segment_values = analyzed_segment.values("name", visitor);
+    auto analyzed_segment_values = analyzed_segment.values("name");
 
     query_builder::branch_builders builders;
     auto locale = boost::locale::generator().generate("en"); // a locale that exists in tests
@@ -748,22 +672,14 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
     auto docsItr = pQuery->execute(analyzed_segment);
     ASSERT_NE(nullptr, docsItr.get());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "B";
-    ASSERT_TRUE(analyzed_segment_values(docsItr->value()));
+    ASSERT_TRUE(analyzed_segment_values(docsItr->value(), actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_FALSE(docsItr->next());
   }
 }
 
 TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_custom) {
-  iresearch::string_ref expected_value;
-  iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](iresearch::data_input& in) {
-    const auto value = iresearch::read_string<std::string>(in);
-    if (value != expected_value) {
-      return false;
-    }
-
-    return true;
-  };
+  irs::bytes_ref actual_value;
 
   query_builder::branch_builder_function_t fnFail = [](
     boolean_function::contextual_buffer_t&,
@@ -792,7 +708,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_custom) {
   auto reader = load_json(dir, "simple_sequential.json");
   ASSERT_EQ(1, reader.size());
   auto& segment = reader[0]; // assume 0 is id of first/only segment
-  auto values = segment.values("name", visitor);
+  auto values = segment.values("name");
 
   // custom range builder functr ()
   {
@@ -808,8 +724,9 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_custom) {
     auto docsItr = pQuery->execute(segment);
     ASSERT_NE(nullptr, docsItr.get());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "A";
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
+    ASSERT_FALSE(docsItr->next());
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -827,8 +744,8 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_custom) {
     auto docsItr = pQuery->execute(segment);
     ASSERT_NE(nullptr, docsItr.get());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "A";
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -846,8 +763,8 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_custom) {
     auto docsItr = pQuery->execute(segment);
     ASSERT_NE(nullptr, docsItr.get());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "A";
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -865,8 +782,8 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_custom) {
     auto docsItr = pQuery->execute(segment);
     ASSERT_NE(nullptr, docsItr.get());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "A";
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -884,8 +801,8 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_custom) {
     auto docsItr = pQuery->execute(segment);
     ASSERT_NE(nullptr, docsItr.get());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "A";
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_FALSE(docsItr->next());
   }
 }
@@ -913,16 +830,8 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
 
   // user supplied boolean_function
   {
-    iresearch::string_ref expected_value;
-    iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](iresearch::data_input& in) {
-      const auto value = iresearch::read_string<std::string>(in);
-      if (value != expected_value) {
-        return false;
-      }
-
-      return true;
-    };
-    auto values = segment.values("name", visitor);
+    irs::bytes_ref actual_value;
+    auto values = segment.values("name");
 
     boolean_function bool_function(fnEqual, 2);
     boolean_functions bool_functions = {
@@ -940,23 +849,16 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
     auto docsItr = pQuery->execute(segment);
     ASSERT_NE(nullptr, docsItr.get());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "A";
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_FALSE(docsItr->next());
   }
 
   // user supplied negated boolean_function
   {
-    iresearch::string_ref unexpected_value;
-    iresearch::columnstore_reader::value_reader_f visitor = [&unexpected_value](iresearch::data_input& in) {
-      const auto value = iresearch::read_string<std::string>(in);
-      if (value == unexpected_value) {
-        return false;
-      }
-
-      return true;
-    };
-    auto values = segment.values("name", visitor);
+    irs::bytes_ref actual_value;
+    irs::bytes_ref_input in;
+    auto values = segment.values("name");
 
     boolean_function bool_function(fnEqual, 2);
     boolean_functions bool_functions = {
@@ -973,10 +875,10 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
 
     auto docsItr = pQuery->execute(segment);
     ASSERT_NE(nullptr, docsItr.get());
-    unexpected_value = "A";
     for (size_t count = segment.docs_count() - 1; count > 0; --count) {
       ASSERT_TRUE(docsItr->next());
-      ASSERT_TRUE(values(docsItr->value()));
+      ASSERT_TRUE(values(docsItr->value(), actual_value)); in.reset(actual_value);
+      ASSERT_NE("A", irs::read_string<std::string>(in));
     }
 
     ASSERT_FALSE(docsItr->next());
@@ -984,6 +886,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
 
   // user supplied boolean_function with expression args
   {
+    irs::bytes_ref actual_value;
     boolean_function::contextual_function_t fnCplx = [](
       boolean_function::contextual_buffer_t& node,
       const std::locale& locale,
@@ -1023,19 +926,12 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
 
     auto docsItr = pQuery->execute(segment);
     ASSERT_NE(nullptr, docsItr.get());
-    std::unordered_set<std::string> expected = { "A", "C", "D", "E" };
-    iresearch::columnstore_reader::value_reader_f visitor = [&expected](iresearch::data_input& in) {
-      const auto value = iresearch::read_string<std::string>(in);
-      if (1 != expected.erase(value)) {
-        return false;
-      }
-
-      return true;
-    };
-    auto values = segment.values("name", visitor);
+    std::unordered_set<irs::string_ref> expected = { "A", "C", "D", "E" };
+    auto values = segment.values("name");
 
     while (docsItr->next()) {
-      ASSERT_TRUE(values(docsItr->value()));
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ(1, expected.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
     }
 
     ASSERT_TRUE(expected.empty());
@@ -1043,15 +939,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
 }
 
 TEST_F(IqlQueryBuilderTestSuite, test_query_builder_sequence_fns) {
-  iresearch::string_ref expected_value;
-  iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](iresearch::data_input& in) {
-    const auto value = iresearch::read_string<std::string>(in);
-    if (value != expected_value) {
-      return false;
-    }
-
-    return true;
-  };
+  irs::bytes_ref actual_value;
 
   sequence_function::contextual_function_t fnValue = [](
     sequence_function::contextual_buffer_t& buf,
@@ -1067,7 +955,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_sequence_fns) {
   auto reader = load_json(dir, "simple_sequential.json");
   ASSERT_EQ(1, reader.size());
   auto& segment = reader[0]; // assume 0 is id of first/only segment
-  auto values = segment.values("name", visitor);
+  auto values = segment.values("name");
 
   // user supplied sequence_function
   {
@@ -1087,8 +975,8 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_sequence_fns) {
     auto docsItr = pQuery->execute(segment);
     ASSERT_NE(nullptr, docsItr.get());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "A";
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_FALSE(docsItr->next());
   }
 }
@@ -1163,16 +1051,8 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_order) {
 */
   // custom contextual order function
   {
-    iresearch::string_ref expected_value;
-    iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](iresearch::data_input& in) {
-      const auto value = iresearch::read_string<std::string>(in);
-      if (value != expected_value) {
-        return false;
-      }
-
-      return true;
-    };
-    auto values = segment.values("name", visitor);
+    irs::bytes_ref actual_value;
+    auto values = segment.values("name");
 
     std::vector<std::pair<bool, std::string>> direction;
     sequence_function::deterministic_function_t fnTestSeq = [](
@@ -1228,8 +1108,8 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_order) {
     ASSERT_NE(nullptr, docsItr.get());
 
     ASSERT_TRUE(docsItr->next());
-    expected_value = "A";
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_FALSE(docsItr->next());
 
     ASSERT_EQ(2, direction.size());

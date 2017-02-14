@@ -725,46 +725,37 @@ class index_test_case_base : public tests::index_test_base {
       }
 
       // check documents
-      {       
-        iresearch::string_ref expected_value;
-        iresearch::columnstore_reader::value_reader_f visitor = [&expected_value] (iresearch::data_input& in) {
-          const auto value = iresearch::read_string<std::string>(in);
-          if (value != expected_value) {
-            return false;
-          }
-
-          return true;
-        };
-
+      {
         auto reader = ir::directory_reader::open(dir(), codec());
+        irs::bytes_ref actual_value;
 
         // segment #1
         {
           auto& segment = reader[0];
-          auto values = segment.values("name", visitor);
+          auto values = segment.values("name");
           auto terms = segment.field("same");
           ASSERT_NE(nullptr, terms);
           auto termItr = terms->iterator();
           ASSERT_TRUE(termItr->next());
           auto docsItr = termItr->postings(iresearch::flags());
           ASSERT_TRUE(docsItr->next());
-          expected_value = "A";
-          ASSERT_TRUE(values(docsItr->value()));
+          ASSERT_TRUE(values(docsItr->value(), actual_value));
+          ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
           ASSERT_FALSE(docsItr->next());
         }
 
         // segment #1
         {
           auto& segment = reader[1];
-          auto values = segment.values("name", visitor);
+          auto values = segment.values("name");
           auto terms = segment.field("same");
           ASSERT_NE(nullptr, terms);
           auto termItr = terms->iterator();
           ASSERT_TRUE(termItr->next());
           auto docsItr = termItr->postings(iresearch::flags());
           ASSERT_TRUE(docsItr->next());
-          expected_value = "B";
-          ASSERT_TRUE(values(docsItr->value()));
+          ASSERT_TRUE(values(docsItr->value(), actual_value));
+          ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str()));
           ASSERT_FALSE(docsItr->next());
         }
       }
@@ -776,15 +767,7 @@ class index_test_case_base : public tests::index_test_base {
       &tests::generic_json_field_factory
     );
 
-    iresearch::string_ref expected_value;
-    iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](iresearch::data_input& in) {
-      const auto value = iresearch::read_string<std::string>(in);
-      if (value != expected_value) {
-        return false;
-      }
-
-      return true;
-    };
+    irs::bytes_ref actual_value;
 
     tests::document const* doc1 = gen.next();
     tests::document const* doc2 = gen.next();
@@ -850,15 +833,15 @@ class index_test_case_base : public tests::index_test_base {
       auto reader = ir::directory_reader::open(dir(), codec());
       ASSERT_EQ(1, reader.size());
       auto& segment = reader[0]; // assume 0 is id of first/only segment
-      auto values = segment.values("name", visitor);
+      auto values = segment.values("name");
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
-      expected_value = "B"; // 'name' value in doc2
-      ASSERT_TRUE(values(docsItr->value()));
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -884,24 +867,19 @@ class index_test_case_base : public tests::index_test_base {
     // 2-nd iteration: cached
     for (size_t i = 0; i < 2; ++i) {
       auto read_columns = [&expected_docs, &reader] () {
-        std::string name;
-        iresearch::columnstore_reader::value_reader_f value_reader = [&name] (iresearch::data_input& in) {
-          name = iresearch::read_string<std::string>(in);
-          return true;
-        };
-
         size_t i = 0;
+        irs::bytes_ref actual_value;
         for (auto& segment: reader) {
-          auto values = segment.values("name", value_reader);
+          auto values = segment.values("name");
           const auto docs = segment.docs_count();
           for (iresearch::doc_id_t doc = (iresearch::type_limits<iresearch::type_t::doc_id_t>::min)(), max = segment.docs_count(); doc <= max; ++doc) {
-            if (!values(doc)) {
+            if (!values(doc, actual_value)) {
               return false;
             }
 
             auto* expected_doc = expected_docs[i];
             auto expected_name = expected_doc->stored.get<tests::templates::string_field>("name")->value();
-            if (expected_name != name) {
+            if (expected_name != irs::to_string<irs::string_ref>(actual_value.c_str())) {
               return false;
             }
 
@@ -984,7 +962,7 @@ class index_test_case_base : public tests::index_test_base {
         ir::doc_id_t expected_id = 0;
         csv_doc_template_t csv_doc_template;
         tests::delim_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template, ',');
-        auto visitor = [&gen, &column_name, &expected_id] (ir::doc_id_t id, data_input& in) {
+        auto visitor = [&gen, &column_name, &expected_id] (ir::doc_id_t id, irs::bytes_ref& actual_value) {
           if (id != ++expected_id) {
             return false;
           }
@@ -1001,15 +979,7 @@ class index_test_case_base : public tests::index_test_base {
             return false;
           }
 
-          const auto value = iresearch::read_string<std::string>(in);
-          if (field->value() != iresearch::string_ref(value)) {
-            return false;
-          }
-
-          iresearch::byte_type b;
-          const auto read = in.read_bytes(&b, 1);
-          if (read) {
-            // ensure we can't read after the value
+          if (field->value() != irs::to_string<irs::string_ref>(actual_value.c_str())) {
             return false;
           }
 
@@ -1030,8 +1000,22 @@ class index_test_case_base : public tests::index_test_base {
         tests::delim_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template, ',');
         const tests::document* doc = nullptr;
 
-        ir::columnstore_reader::value_reader_f read_column_value = [&doc, &gen, &column_name] (ir::data_input& in) {
-          if (!doc) {
+        auto reader = segment.values(meta->id);
+        irs::bytes_ref actual_value;
+
+        // skip first 'offset' docs
+        doc = gen.next();
+        for (ir::doc_id_t id = 0; id < offset && doc; ++id) {
+          doc = gen.next();
+        }
+
+        if (!doc) {
+          // not enough documents to skip
+          return false;
+        }
+
+        while (doc) {
+          if (!reader(offset + irs::type_limits<irs::type_t::doc_id_t>::min(), actual_value)) {
             return false;
           }
 
@@ -1041,38 +1025,13 @@ class index_test_case_base : public tests::index_test_base {
             return false;
           }
 
-          const auto value = iresearch::read_string<std::string>(in);
-          if (field->value() != iresearch::string_ref(value)) {
+          if (field->value() != irs::to_string<irs::string_ref>(actual_value.c_str())) {
             return false;
           }
 
-          iresearch::byte_type b;
-          const auto read = in.read_bytes(&b, 1);
-          if (read) {
-            // ensure we can't read after the value
-            return false;
-          }
-
-          return true;
-        };
-
-        auto reader = segment.values(meta->id, read_column_value);
-
-        // skip first 'offset' docs
-        for (ir::doc_id_t id = 0; id < offset; ++id) {
-          doc = gen.next();
-          if (!doc) {
-            // not enough documents to skip
-            return false;
-          }
-        }
-
-        do {
-          if (doc && !reader(offset)) {
-            return false;
-          }
           ++offset;
-        } while (doc = gen.next());
+          doc = gen.next();
+        }
 
         return true;
       };
@@ -1091,7 +1050,7 @@ class index_test_case_base : public tests::index_test_base {
           result = static_cast<int>(visit_column(column_name));
         }));
       }
-      
+
       ir::doc_id_t skip = 0;
       for (; i < thread_count; ++i) {
         auto& result = results[i];
@@ -1140,19 +1099,12 @@ class index_test_case_base : public tests::index_test_base {
 
     // read attributes
     {
-      size_t calls_count = 0;
-      iresearch::columnstore_reader::value_reader_f visitor = [&calls_count] (data_input& in) {
-        ++calls_count;
-        return true;
-      };
-
-      {
-        auto column = segment.values("name", visitor);
-        ASSERT_FALSE(column(0)); 
-        ASSERT_FALSE(column(1));
-        ASSERT_FALSE(column(2));
-        ASSERT_FALSE(column(3));
-      }
+      irs::bytes_ref value;
+      auto column = segment.values("name");
+      ASSERT_FALSE(column(0, value));
+      ASSERT_FALSE(column(1, value));
+      ASSERT_FALSE(column(2, value));
+      ASSERT_FALSE(column(3, value));
     }
   }
 
@@ -1184,67 +1136,45 @@ class index_test_case_base : public tests::index_test_base {
 
     // read attribute from invalid column
     {
-      size_t calls_count = 0;
-      iresearch::columnstore_reader::value_reader_f visitor = [&calls_count] (data_input& in) {
-        ++calls_count;
-        return true;
-      };
-
-      auto value_reader = segment.values("invalid_column", visitor);
-      ASSERT_FALSE(value_reader(0));
-      ASSERT_EQ(0, calls_count);
-      ASSERT_FALSE(value_reader(1));
-      ASSERT_EQ(0, calls_count);
-      ASSERT_FALSE(value_reader(2));
-      ASSERT_EQ(0, calls_count);
-      ASSERT_FALSE(value_reader(3));
-      ASSERT_EQ(0, calls_count);
-      ASSERT_FALSE(value_reader(4));
-      ASSERT_EQ(0, calls_count);
+      irs::bytes_ref actual_value;
+      auto value_reader = segment.values("invalid_column");
+      ASSERT_FALSE(value_reader(0, actual_value));
+      ASSERT_FALSE(value_reader(1, actual_value));
+      ASSERT_FALSE(value_reader(2, actual_value));
+      ASSERT_FALSE(value_reader(3, actual_value));
+      ASSERT_FALSE(value_reader(4, actual_value));
     }
 
     // read attributes from 'name' column (dense)
     {
-      std::string expected_value;
-      size_t calls_count = 0;
-      iresearch::columnstore_reader::value_reader_f visitor = [&calls_count, &expected_value] (data_input& in) {
-        ++calls_count;
-        return expected_value == iresearch::read_string<std::string>(in);
-      };
-
-      auto value_reader = segment.values("name", visitor);
-      expected_value = "B"; // 'name' value in doc2
-      ASSERT_TRUE(value_reader(2));
-      expected_value = "D"; // 'name' value in doc4
-      ASSERT_TRUE(value_reader(4));
-      expected_value = "A"; // 'name' value in doc1
-      ASSERT_TRUE(value_reader(1));
-      expected_value = "C"; // 'name' value in doc3
-      ASSERT_TRUE(value_reader(3));
-      ASSERT_EQ(4, calls_count);
-      ASSERT_FALSE(value_reader(5)); // invalid document id
-      ASSERT_EQ(4, calls_count);
+      irs::bytes_ref actual_value;
+      auto value_reader = segment.values("name");
+      ASSERT_TRUE(value_reader(2, actual_value));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
+      ASSERT_TRUE(value_reader(4, actual_value));
+      ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
+      ASSERT_TRUE(value_reader(1, actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+      ASSERT_TRUE(value_reader(3, actual_value));
+      ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+      ASSERT_FALSE(value_reader(5, actual_value)); // invalid document id
+      ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // same as 'name' value in doc3
     }
 
     // read attributes from 'prefix' column (sparse)
     {
-      std::string expected_value;
-      size_t calls_count = 0;
-      iresearch::columnstore_reader::value_reader_f visitor = [&calls_count, &expected_value] (data_input& in) {
-        ++calls_count;
-        return expected_value == iresearch::read_string<std::string>(in);
-      };
-
-      auto value_reader = segment.values("prefix", visitor);
-      expected_value = "abcd"; // 'prefix' value in doc1
-      ASSERT_TRUE(value_reader(1)); 
-      ASSERT_FALSE(value_reader(2)); // doc2 does not contain 'prefix' column
-      expected_value = "abcde"; // 'prefix' value in doc4
-      ASSERT_TRUE(value_reader(4));
-      ASSERT_FALSE(value_reader(3)); // doc3 does not contain 'prefix' column
-      ASSERT_EQ(2, calls_count);
-      ASSERT_FALSE(value_reader(5)); // invalid document id
-      ASSERT_EQ(2, calls_count);
+      irs::bytes_ref actual_value;
+      auto value_reader = segment.values("prefix");
+      ASSERT_TRUE(value_reader(1, actual_value));
+      ASSERT_EQ("abcd", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'prefix' value in doc1
+      ASSERT_FALSE(value_reader(2, actual_value)); // doc2 does not contain 'prefix' column
+      ASSERT_EQ("abcd", irs::to_string<irs::string_ref>(actual_value.c_str())); // same as 'prefix' value in doc1
+      ASSERT_TRUE(value_reader(4, actual_value));
+      ASSERT_EQ("abcde", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'prefix' value in doc4
+      ASSERT_FALSE(value_reader(3, actual_value)); // doc3 does not contain 'prefix' column
+      ASSERT_EQ("abcde", irs::to_string<irs::string_ref>(actual_value.c_str())); // same as 'prefix' value in doc4
+      ASSERT_FALSE(value_reader(5, actual_value)); // invalid document id
+      ASSERT_EQ("abcde", irs::to_string<irs::string_ref>(actual_value.c_str())); // same as 'prefix' value in doc4
     }
   }
 
@@ -1308,7 +1238,7 @@ class index_test_case_base : public tests::index_test_base {
         {
           gen.reset();
           ir::doc_id_t expected_id = 0;
-          auto visitor = [&gen, &column_name, &expected_id] (ir::doc_id_t id, data_input& in) {
+          auto visitor = [&gen, &column_name, &expected_id] (ir::doc_id_t id, irs::bytes_ref& in) {
             if (id != ++expected_id) {
               return false;
             }
@@ -1320,15 +1250,8 @@ class index_test_case_base : public tests::index_test_base {
               return false;
             }
 
-            const auto value = iresearch::read_string<std::string>(in);
-            if (field->value() != iresearch::string_ref(value)) {
-              return false;
-            }
-
-            iresearch::byte_type b;
-            const auto read = in.read_bytes(&b, 1);
-            if (read) {
-              // ensure we can't read after the value
+            const auto actual_value = irs::to_string<irs::string_ref>(in.c_str());
+            if (field->value() != actual_value) {
               return false;
             }
 
@@ -1341,47 +1264,27 @@ class index_test_case_base : public tests::index_test_base {
         // random access
         {
           const tests::document* doc = nullptr;
-          ir::columnstore_reader::value_reader_f visitor = [&doc, &gen, &column_name] (ir::data_input& in) {
-            if (!doc) {
-              return false;
-            }
-
-            auto* field = doc->stored.get<tests::templates::string_field>(column_name);
-
-            if (!field) {
-              return false;
-            }
-
-            const auto value = iresearch::read_string<std::string>(in);
-            if (field->value() != iresearch::string_ref(value)) {
-              return false;
-            }
-            
-            iresearch::byte_type b;
-            const auto read = in.read_bytes(&b, 1);
-            if (read) {
-              // ensure we can't read after the value
-              return false;
-            }
-
-            return true;
-          };
-
-          auto reader = segment.values(meta->id, visitor);
+          irs::bytes_ref actual_value;
+          auto reader = segment.values(meta->id);
 
           ir::doc_id_t id = 0;
           gen.reset();
           while (doc = gen.next()) {
             ++id;
-            ASSERT_TRUE(reader(id));
+            ASSERT_TRUE(reader(id, actual_value));
+
+            auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+
+            ASSERT_NE(nullptr, field);
+            ASSERT_EQ(field->value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
           }
         }
-        
+
         // visit column (cached)
         {
           gen.reset();
           ir::doc_id_t expected_id = 0;
-          auto visitor = [&gen, &column_name, &expected_id] (ir::doc_id_t id, data_input& in) {
+          auto visitor = [&gen, &column_name, &expected_id] (ir::doc_id_t id, irs::bytes_ref& in) {
             if (id != ++expected_id) {
               return false;
             }
@@ -1393,15 +1296,8 @@ class index_test_case_base : public tests::index_test_base {
               return false;
             }
 
-            const auto value = iresearch::read_string<std::string>(in);
-            if (field->value() != iresearch::string_ref(value)) {
-              return false;
-            }
-
-            iresearch::byte_type b;
-            const auto read = in.read_bytes(&b, 1);
-            if (read) {
-              // ensure we can't read after the value
+            const auto actual_value = irs::to_string<irs::string_ref>(in.c_str());
+            if (field->value() != actual_value) {
               return false;
             }
 
@@ -1422,7 +1318,7 @@ class index_test_case_base : public tests::index_test_base {
         {
           gen.reset();
           ir::doc_id_t expected_id = 0;
-          auto visitor = [&gen, &column_name, &expected_id] (ir::doc_id_t id, data_input& in) {
+          auto visitor = [&gen, &column_name, &expected_id] (ir::doc_id_t id, irs::bytes_ref& in) {
             if (id != ++expected_id) {
               return false;
             }
@@ -1434,15 +1330,7 @@ class index_test_case_base : public tests::index_test_base {
               return false;
             }
 
-            const auto value = iresearch::read_string<std::string>(in);
-            if (field->value() != iresearch::string_ref(value)) {
-              return false;
-            }
-
-            iresearch::byte_type b;
-            const auto read = in.read_bytes(&b, 1);
-            if (read) {
-              // ensure we can't read after the value
+            if (field->value() != irs::to_string<irs::string_ref>(in.c_str())) {
               return false;
             }
 
@@ -1455,45 +1343,25 @@ class index_test_case_base : public tests::index_test_base {
         // random access
         {
           const tests::document* doc = nullptr;
-          ir::columnstore_reader::value_reader_f visitor = [&doc, &gen, &column_name] (ir::data_input& in) {
-            if (!doc) {
-              return false;
-            }
 
-            auto* field = doc->stored.get<tests::templates::string_field>(column_name);
-
-            if (!field) {
-              return false;
-            }
-
-            const auto value = iresearch::read_string<std::string>(in);
-            if (field->value() != iresearch::string_ref(value)) {
-              return false;
-            }
-            
-            iresearch::byte_type b;
-            const auto read = in.read_bytes(&b, 1);
-            if (read) {
-              // ensure we can't read after the value
-              return false;
-            }
-
-            return true;
-          };
-
-          auto reader = segment.values(meta->id, visitor);
+          irs::bytes_ref actual_value;
+          auto reader = segment.values(meta->id);
 
           ir::doc_id_t id = 0;
           while (doc = gen.next()) {
-            ASSERT_TRUE(reader(++id));
+            ASSERT_TRUE(reader(++id, actual_value));
+
+            auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+            ASSERT_NE(nullptr, field);
+            ASSERT_EQ(field->value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
           }
         }
-        
+
         // visit column (cached)
         {
           gen.reset();
           ir::doc_id_t expected_id = 0;
-          auto visitor = [&gen, &column_name, &expected_id] (ir::doc_id_t id, data_input& in) {
+          auto visitor = [&gen, &column_name, &expected_id] (ir::doc_id_t id, irs::bytes_ref& in) {
             if (id != ++expected_id) {
               return false;
             }
@@ -1505,15 +1373,7 @@ class index_test_case_base : public tests::index_test_base {
               return false;
             }
 
-            const auto value = iresearch::read_string<std::string>(in);
-            if (field->value() != iresearch::string_ref(value)) {
-              return false;
-            }
-
-            iresearch::byte_type b;
-            const auto read = in.read_bytes(&b, 1);
-            if (read) {
-              // ensure we can't read after the value
+            if (field->value() != irs::to_string<irs::string_ref>(in.c_str())) {
               return false;
             }
 
@@ -1948,35 +1808,23 @@ TEST_F(memory_index_test, concurrent_add_remove) {
     thread2.join();
     writer->commit();
 
-    std::unordered_set<std::string> expected = { "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "~", "!", "@", "#", "$", "%" };
+    std::unordered_set<irs::string_ref> expected = { "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "~", "!", "@", "#", "$", "%" };
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_TRUE(reader.size() == 1 || reader.size() == 2); // can be 1 if thread0 finishes before thread1 starts
     ASSERT_TRUE(reader.docs_count() == docs.size() || reader.docs_count() == docs.size() - 1); // removed doc might have been on its own segment
 
-    iresearch::columnstore_reader::value_reader_f visitor = [&expected](iresearch::data_input& in) {
-      const auto value = ir::read_string<std::string>(in);
-      if (1 != expected.erase(value)) {
-        return false;
-      }
-
-      iresearch::byte_type b;
-      if (in.read_bytes(&b, 1)) {
-        return false;
-      }
-
-      return true;
-    };
-
+    irs::bytes_ref actual_value;
     for (size_t i = 0, count = reader.size(); i < count; ++i) {
       auto& segment = reader[i];
-      auto values = segment.values("name", visitor);
+      auto values = segment.values("name");
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(iresearch::flags());
       while(docsItr->next()) {
-        ASSERT_TRUE(values(docsItr->value()));
+        ASSERT_TRUE(values(docsItr->value(), actual_value));
+        ASSERT_EQ(1, expected.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
       }
     }
 
@@ -1996,15 +1844,7 @@ TEST_F(memory_index_test, doc_removal) {
     }
   });
 
-  iresearch::string_ref expected_value;
-  iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](iresearch::data_input& in) {
-    const auto value = iresearch::read_string<std::string>(in);
-    if (value != expected_value) {
-      return false;
-    }
-
-    return true;
-  };
+  irs::bytes_ref actual_value;
 
   tests::document const* doc1 = gen.next();
   tests::document const* doc2 = gen.next();
@@ -2029,15 +1869,15 @@ TEST_F(memory_index_test, doc_removal) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "A"; // 'name' value in doc1
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2060,15 +1900,15 @@ TEST_F(memory_index_test, doc_removal) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2091,15 +1931,15 @@ TEST_F(memory_index_test, doc_removal) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2122,15 +1962,15 @@ TEST_F(memory_index_test, doc_removal) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2153,18 +1993,18 @@ TEST_F(memory_index_test, doc_removal) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "A"; // 'name' value in doc1
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
     ASSERT_TRUE(docsItr->next());
-    expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2187,15 +2027,15 @@ TEST_F(memory_index_test, doc_removal) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "A"; // 'name' value in doc1
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2225,15 +2065,15 @@ TEST_F(memory_index_test, doc_removal) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "A"; // 'name' value in doc1
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2261,15 +2101,15 @@ TEST_F(memory_index_test, doc_removal) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "C"; // 'name' value in doc3
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2299,29 +2139,29 @@ TEST_F(memory_index_test, doc_removal) {
 
     {
       auto& segment = reader[0]; // assume 0 is id of old segment
-      auto values = segment.values("name", visitor);
+      auto values = segment.values("name");
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
-      expected_value = "A"; // 'name' value in doc1
-      ASSERT_TRUE(values(docsItr->value()));
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
       ASSERT_FALSE(docsItr->next());
     }
 
     {
       auto& segment = reader[1]; // assume 1 is id of new segment
-      auto values = segment.values("name", visitor);
+      auto values = segment.values("name");
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
-      expected_value = "C"; // 'name' value in doc3
-      ASSERT_TRUE(values(docsItr->value()));
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -2356,29 +2196,29 @@ TEST_F(memory_index_test, doc_removal) {
 
     {
       auto& segment = reader[0]; // assume 0 is id of old segment
-      auto values = segment.values("name", visitor);
+      auto values = segment.values("name");
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
-      expected_value = "B"; // 'name' value in doc2
-      ASSERT_TRUE(values(docsItr->value()));
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
       ASSERT_FALSE(docsItr->next());
     }
 
     {
       auto& segment = reader[1]; // assume 1 is id of new segment
-      auto values = segment.values("name", visitor);
+      auto values = segment.values("name");
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
-      expected_value = "D"; // 'name' value in doc4
-      ASSERT_TRUE(values(docsItr->value()));
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -2438,43 +2278,43 @@ TEST_F(memory_index_test, doc_removal) {
 
     {
       auto& segment = reader[0]; // assume 0 is id of old-old segment
-      auto values = segment.values("name", visitor);
+      auto values = segment.values("name");
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
-      expected_value = "A"; // 'name' value in doc1
-      ASSERT_TRUE(values(docsItr->value()));
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
       ASSERT_FALSE(docsItr->next());
     }
 
     {
       auto& segment = reader[1]; // assume 1 is id of old segment
-      auto values = segment.values("name", visitor);
+      auto values = segment.values("name");
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
-      expected_value = "E"; // 'name' value in doc5
-      ASSERT_TRUE(values(docsItr->value()));
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("E", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc5
       ASSERT_FALSE(docsItr->next());
     }
 
     {
       auto& segment = reader[2]; // assume 2 is id of new segment
-      auto values = segment.values("name", visitor);
+      auto values = segment.values("name");
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
-      expected_value = "H"; // 'name' value in doc8
-      ASSERT_TRUE(values(docsItr->value()));
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("H", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc8
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -2491,17 +2331,9 @@ TEST_F(memory_index_test, doc_update) {
       ));
     }
   });
-  
-  iresearch::string_ref expected_value;
-  iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](iresearch::data_input& in) {
-    const auto value = iresearch::read_string<std::string>(in);
-    if (value != expected_value) {
-      return false;
-    }
 
-    return true;
-  };
- 
+  irs::bytes_ref actual_value;
+
   tests::document const* doc1 = gen.next();
   tests::document const* doc2 = gen.next();
   tests::document const* doc3 = gen.next();
@@ -2526,15 +2358,15 @@ TEST_F(memory_index_test, doc_update) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2557,15 +2389,15 @@ TEST_F(memory_index_test, doc_update) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2588,15 +2420,15 @@ TEST_F(memory_index_test, doc_update) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2627,28 +2459,28 @@ TEST_F(memory_index_test, doc_update) {
     {
       auto& segment = reader[0]; // assume 0 is id of old segment
       auto terms = segment.field("same");
-      auto values = segment.values("name", visitor);
+      auto values = segment.values("name");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
-      expected_value = "B"; // 'name' value in doc2
-      ASSERT_TRUE(values(docsItr->value()));
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
       ASSERT_FALSE(docsItr->next());
     }
 
     {
       auto& segment = reader[1]; // assume 1 is id of new segment
-      auto values = segment.values("name", visitor);
+      auto values = segment.values("name");
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
-      expected_value = "C"; // 'name' value in doc3
-      ASSERT_TRUE(values(docsItr->value()));
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -2684,15 +2516,15 @@ TEST_F(memory_index_test, doc_update) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "D"; // 'name' value in doc4
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2730,15 +2562,15 @@ TEST_F(memory_index_test, doc_update) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "D"; // 'name' value in doc4
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2762,15 +2594,15 @@ TEST_F(memory_index_test, doc_update) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "A"; // 'name' value in doc1
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2798,18 +2630,18 @@ TEST_F(memory_index_test, doc_update) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "A"; // 'name' value in doc1
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
     ASSERT_TRUE(docsItr->next());
-    expected_value = "C"; // 'name' value in doc3
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2841,29 +2673,29 @@ TEST_F(memory_index_test, doc_update) {
 
     {
       auto& segment = reader[0]; // assume 0 is id of old segment
-      auto values = segment.values("name", visitor);
+      auto values = segment.values("name");
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
-      expected_value = "A"; // 'name' value in doc1
-      ASSERT_TRUE(values(docsItr->value()));
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
       ASSERT_FALSE(docsItr->next());
     }
 
     {
       auto& segment = reader[1]; // assume 1 is id of new segment
-      auto values = segment.values("name", visitor);
+      auto values = segment.values("name");
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
-      expected_value = "C"; // 'name' value in doc3
-      ASSERT_TRUE(values(docsItr->value()));
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -2892,15 +2724,15 @@ TEST_F(memory_index_test, doc_update) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "A"; // 'name' value in doc1
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2930,15 +2762,15 @@ TEST_F(memory_index_test, doc_update) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "A"; // 'name' value in doc1
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -2972,15 +2804,15 @@ TEST_F(memory_index_test, doc_update) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "A"; // 'name' value in doc1
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -3017,15 +2849,15 @@ TEST_F(memory_index_test, doc_update) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "A"; // 'name' value in doc1
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -3038,7 +2870,7 @@ TEST_F(memory_index_test, doc_update) {
       bool write_result_;
       virtual bool write(iresearch::data_output& out) const override { 
         out.write_byte(1);
-        return write_result_; 
+        return write_result_;
       }
       virtual iresearch::token_stream& get_tokens() const override { return const_cast<test_field*>(this)->tokens_; }
       virtual const iresearch::flags& features() const override { return features_; }
@@ -3105,18 +2937,18 @@ TEST_F(memory_index_test, doc_update) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "A"; // 'name' value in doc1
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
     ASSERT_TRUE(docsItr->next());
-    expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
     ASSERT_FALSE(docsItr->next());
   }
 }
@@ -3132,16 +2964,8 @@ TEST_F(memory_index_test, import_reader) {
       ));
     }
   });
-  
-  iresearch::string_ref expected_value;
-  iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](iresearch::data_input& in) {
-    const auto value = iresearch::read_string<std::string>(in);
-    if (value != expected_value) {
-      return false;
-    }
 
-    return true;
-  };
+  irs::bytes_ref actual_value;
 
   tests::document const* doc1 = gen.next();
   tests::document const* doc2 = gen.next();
@@ -3170,18 +2994,18 @@ TEST_F(memory_index_test, import_reader) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count());
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "A"; // 'name' value in doc1
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
     ASSERT_TRUE(docsItr->next());
-    expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -3209,15 +3033,15 @@ TEST_F(memory_index_test, import_reader) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(1, segment.docs_count());
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -3252,24 +3076,24 @@ TEST_F(memory_index_test, import_reader) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(4, segment.docs_count());
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "A"; // 'name' value in doc1
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
     ASSERT_TRUE(docsItr->next());
-    expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
     ASSERT_TRUE(docsItr->next());
-    expected_value = "C"; // 'name' value in doc3
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
     ASSERT_TRUE(docsItr->next());
-    expected_value = "D"; // 'name' value in doc4
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -3306,18 +3130,18 @@ TEST_F(memory_index_test, import_reader) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count());
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "A"; // 'name' value in doc1
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
     ASSERT_TRUE(docsItr->next());
-    expected_value = "D"; // 'name' value in doc4
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -3354,21 +3178,21 @@ TEST_F(memory_index_test, import_reader) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(3, segment.docs_count());
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "A"; // 'name' value in doc1
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
     ASSERT_TRUE(docsItr->next());
-    expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
     ASSERT_TRUE(docsItr->next());
-    expected_value = "C"; // 'name' value in doc3
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -3402,33 +3226,33 @@ TEST_F(memory_index_test, import_reader) {
     {
       auto& segment = reader[0]; // assume 0 is id of imported segment
       ASSERT_EQ(2, segment.docs_count());
-      auto values = segment.values("name", visitor);
+      auto values = segment.values("name");
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
-      expected_value = "A"; // 'name' value in doc1
-      ASSERT_TRUE(values(docsItr->value()));
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
       ASSERT_TRUE(docsItr->next());
-      expected_value = "B"; // 'name' value in doc2
-      ASSERT_TRUE(values(docsItr->value()));
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
       ASSERT_FALSE(docsItr->next());
     }
 
     {
       auto& segment = reader[1]; // assume 1 is id of original segment
       ASSERT_EQ(1, segment.docs_count());
-      auto values = segment.values("name", visitor);
+      auto values = segment.values("name");
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
-      expected_value = "C"; // 'name' value in doc3
-      ASSERT_TRUE(values(docsItr->value()));
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -3476,16 +3300,8 @@ TEST_F(memory_index_test, refresh_reader) {
     }
   });
 
-  iresearch::string_ref expected_value;
-  iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](iresearch::data_input& in) {
-    const auto value = iresearch::read_string<std::string>(in);
-    if (value != expected_value) {
-      return false;
-    }
+  irs::bytes_ref actual_value;
 
-    return true;
-  };
-  
   tests::document const* doc1 = gen.next();
   tests::document const* doc2 = gen.next();
   tests::document const* doc3 = gen.next();
@@ -3513,18 +3329,18 @@ TEST_F(memory_index_test, refresh_reader) {
   {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "A"; // 'name' value in doc1
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
     ASSERT_TRUE(docsItr->next());
-    expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -3542,18 +3358,18 @@ TEST_F(memory_index_test, refresh_reader) {
     {
       ASSERT_EQ(1, reader.size());
       auto& segment = reader[0]; // assume 0 is id of first/only segment
-      auto values = segment.values("name", visitor);
+      auto values = segment.values("name");
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
-      expected_value = "A"; // 'name' value in doc1
-      ASSERT_TRUE(values(docsItr->value()));
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
       ASSERT_TRUE(docsItr->next());
-      expected_value = "B"; // 'name' value in doc2
-      ASSERT_TRUE(values(docsItr->value()));
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
       ASSERT_FALSE(docsItr->next());
     }
 
@@ -3561,15 +3377,15 @@ TEST_F(memory_index_test, refresh_reader) {
       reader = reader.reopen();
       ASSERT_EQ(1, reader.size());
       auto& segment = reader[0]; // assume 0 is id of first/only segment
-      auto values = segment.values("name", visitor);
+      auto values = segment.values("name");
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
-      expected_value = "A"; // 'name' value in doc1
-      ASSERT_TRUE(values(docsItr->value()));
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -3593,15 +3409,15 @@ TEST_F(memory_index_test, refresh_reader) {
   {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "A"; // 'name' value in doc1
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
     ASSERT_FALSE(docsItr->next());
 
     reader = reader.reopen();
@@ -3609,32 +3425,32 @@ TEST_F(memory_index_test, refresh_reader) {
 
     {
       auto& segment = reader[0]; // assume 0 is id of first segment
-      auto values = segment.values("name", visitor);
+      auto values = segment.values("name");
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
-      expected_value = "A"; // 'name' value in doc1
-      ASSERT_TRUE(values(docsItr->value()));
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
       ASSERT_FALSE(docsItr->next());
     }
 
     {
       auto& segment = reader[1]; // assume 1 is id of second segment
-      auto values = segment.values("name", visitor);
+      auto values = segment.values("name");
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
-      expected_value = "C"; // 'name' value in doc3
-      ASSERT_TRUE(values(docsItr->value()));
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
       ASSERT_TRUE(docsItr->next());
-      expected_value = "D"; // 'name' value in doc4
-      ASSERT_TRUE(values(docsItr->value()));
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -3654,49 +3470,50 @@ TEST_F(memory_index_test, refresh_reader) {
 
     {
       auto& segment = reader[0]; // assume 0 is id of first segment
-      auto values = segment.values("name", visitor);
+      auto values = segment.values("name");
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
-      expected_value = "A"; // 'name' value in doc1
-      ASSERT_TRUE(values(docsItr->value()));
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
       ASSERT_FALSE(docsItr->next());
     }
 
     {
       auto& segment = reader[1]; // assume 1 is id of second segment
-      auto values = segment.values("name", visitor);
+      auto values = segment.values("name");
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
-      expected_value = "C"; // 'name' value in doc3
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
       ASSERT_TRUE(docsItr->next());
-      expected_value = "D"; // 'name' value in doc4
-      ASSERT_TRUE(values(docsItr->value()));
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
       ASSERT_FALSE(docsItr->next());
     }
 
     reader = reader.reopen();
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of second segment
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "C"; // 'name' value in doc3
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
     ASSERT_TRUE(docsItr->next());
-    expected_value = "D"; // 'name' value in doc4
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
     ASSERT_FALSE(docsItr->next());
   }
 }
@@ -3800,15 +3617,7 @@ TEST_F(memory_index_test, segment_consolidate) {
       }
   });
 
-  iresearch::string_ref expected_value;
-  iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](data_input& in) {
-    const auto value = ir::read_string<std::string>(in);
-    if (value != expected_value) {
-      return false;
-    }
-
-    return true;
-  };
+  irs::bytes_ref actual_value;
 
   tests::document const* doc1 = gen.next();
   tests::document const* doc2 = gen.next();
@@ -3886,7 +3695,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     ASSERT_EQ(1, segment.docs_count()); // total count of documents
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
@@ -3894,8 +3703,8 @@ TEST_F(memory_index_test, segment_consolidate) {
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "C"; // 'name' value in doc3
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -3931,7 +3740,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     ASSERT_EQ(1, segment.docs_count()); // total count of documents
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
@@ -3939,8 +3748,8 @@ TEST_F(memory_index_test, segment_consolidate) {
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "C"; // 'name' value in doc3
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -3977,15 +3786,15 @@ TEST_F(memory_index_test, segment_consolidate) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(1, segment.docs_count()); // total count of documents
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "C"; // 'name' value in doc3
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -4023,15 +3832,15 @@ TEST_F(memory_index_test, segment_consolidate) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(1, segment.docs_count()); // total count of documents
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "C"; // 'name' value in doc3
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -4144,18 +3953,18 @@ TEST_F(memory_index_test, segment_consolidate) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count()); // total count of documents
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
     ASSERT_TRUE(docsItr->next());
-    expected_value = "D"; // 'name' value in doc4
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -4197,18 +4006,18 @@ TEST_F(memory_index_test, segment_consolidate) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count()); // total count of documents
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
     ASSERT_TRUE(docsItr->next());
-    expected_value = "D"; // 'name' value in doc4
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -4250,18 +4059,18 @@ TEST_F(memory_index_test, segment_consolidate) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count()); // total count of documents
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
     ASSERT_TRUE(docsItr->next());
-    expected_value = "D"; // 'name' value in doc4
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -4304,18 +4113,18 @@ TEST_F(memory_index_test, segment_consolidate) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count()); // total count of documents
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
     ASSERT_TRUE(docsItr->next());
-    expected_value = "D"; // 'name' value in doc4
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -4367,21 +4176,21 @@ TEST_F(memory_index_test, segment_consolidate) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(3, segment.docs_count()); // total count of documents
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
     ASSERT_TRUE(docsItr->next());
-    expected_value = "D"; // 'name' value in doc4
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
     ASSERT_TRUE(docsItr->next());
-    expected_value = "F"; // 'name' value in doc6
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("F", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc6
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -4434,21 +4243,21 @@ TEST_F(memory_index_test, segment_consolidate) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(3, segment.docs_count()); // total count of documents
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
     ASSERT_TRUE(docsItr->next());
-    expected_value = "D"; // 'name' value in doc4
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
     ASSERT_TRUE(docsItr->next());
-    expected_value = "F"; // 'name' value in doc6
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("F", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc6
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -4507,8 +4316,8 @@ TEST_F(memory_index_test, segment_consolidate) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(6, segment.docs_count()); // total count of documents
-    auto values = segment.values("name", visitor);
-    auto upper_case_values = segment.values("NAME", visitor);
+    auto values = segment.values("name");
+    auto upper_case_values = segment.values("NAME");
 
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
@@ -4516,23 +4325,23 @@ TEST_F(memory_index_test, segment_consolidate) {
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
     ASSERT_TRUE(docsItr->next());
-    expected_value = "D"; // 'name' value in doc4
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
     ASSERT_TRUE(docsItr->next());
-    expected_value = "F"; // 'name' value in doc6
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("F", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc6
     ASSERT_TRUE(docsItr->next());
-    expected_value = "A"; // 'name' value in doc1_1
-    ASSERT_TRUE(upper_case_values(docsItr->value()));
+    ASSERT_TRUE(upper_case_values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1_1
     ASSERT_TRUE(docsItr->next());
-    expected_value = "B"; // 'name' value in doc1_2
-    ASSERT_TRUE(upper_case_values(docsItr->value()));
+    ASSERT_TRUE(upper_case_values(docsItr->value(), actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1_2
     ASSERT_TRUE(docsItr->next());
-    expected_value = "C"; // 'name' value in doc1_3
-    ASSERT_TRUE(upper_case_values(docsItr->value()));
+    ASSERT_TRUE(upper_case_values(docsItr->value(), actual_value));
+    ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1_3
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -4592,8 +4401,8 @@ TEST_F(memory_index_test, segment_consolidate) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(6, segment.docs_count()); // total count of documents
-    auto values = segment.values("name", visitor);
-    auto upper_case_values = segment.values("NAME", visitor);
+    auto values = segment.values("name");
+    auto upper_case_values = segment.values("NAME");
 
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
@@ -4601,23 +4410,23 @@ TEST_F(memory_index_test, segment_consolidate) {
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(iresearch::flags());
     ASSERT_TRUE(docsItr->next());
-    expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
     ASSERT_TRUE(docsItr->next());
-    expected_value = "D"; // 'name' value in doc4
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
     ASSERT_TRUE(docsItr->next());
-    expected_value = "F"; // 'name' value in doc6
-    ASSERT_TRUE(values(docsItr->value()));
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("F", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc6
     ASSERT_TRUE(docsItr->next());
-    expected_value = "A"; // 'name' value in doc1_1
-    ASSERT_TRUE(upper_case_values(docsItr->value()));
+    ASSERT_TRUE(upper_case_values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1_1
     ASSERT_TRUE(docsItr->next());
-    expected_value = "B"; // 'name' value in doc1_2
-    ASSERT_TRUE(upper_case_values(docsItr->value()));
+    ASSERT_TRUE(upper_case_values(docsItr->value(), actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1_2
     ASSERT_TRUE(docsItr->next());
-    expected_value = "C"; // 'name' value in doc1_3
-    ASSERT_TRUE(upper_case_values(docsItr->value()));
+    ASSERT_TRUE(upper_case_values(docsItr->value(), actual_value));
+    ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1_3
     ASSERT_FALSE(docsItr->next());
   }
 }
@@ -4670,29 +4479,22 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
     writer->consolidate(iresearch::index_utils::consolidate_bytes(1), true); // value garanteeing merge
     writer->commit();
 
-    std::unordered_set<std::string> expectedName = { "A", "B", "C", "D", "E" };
-
-    iresearch::columnstore_reader::value_reader_f visitor = [&expectedName](iresearch::data_input& in) {
-      const auto value = ir::read_string<std::string>(in);
-      if (1 != expectedName.erase(value)) {
-        return false;
-      }
-
-      return true;
-    };
+    std::unordered_set<irs::string_ref> expectedName = { "A", "B", "C", "D", "E" };
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
 
+    irs::bytes_ref actual_value;
     for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
-      ASSERT_TRUE(values(docsItr->value()));
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
     }
 
     ASSERT_TRUE(expectedName.empty());
@@ -4731,15 +4533,9 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
     ASSERT_EQ(2, reader.size());
 
     {
-      std::unordered_set<std::string> expectedName = { "A", "B", "C", "D" };
-      iresearch::columnstore_reader::value_reader_f visitor = [&expectedName](data_input& in) {
-        const auto value = ir::read_string<std::string>(in);
-        if (1 != expectedName.erase(value)) {
-          return false;
-        }
+      std::unordered_set<irs::string_ref> expectedName = { "A", "B", "C", "D" };
+      irs::bytes_ref actual_value;
 
-        return true;
-      };
       auto& segment = reader[0]; // assume 0 is id of first segment
       ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
       auto terms = segment.field("same");
@@ -4747,24 +4543,19 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
 
-      auto values = segment.values("name", visitor);
+      auto values = segment.values("name");
       for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
-        ASSERT_TRUE(values(docsItr->value()));
+        ASSERT_TRUE(values(docsItr->value(), actual_value));
+        ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
       }
 
       ASSERT_TRUE(expectedName.empty());
     }
 
     {
-      std::unordered_set<std::string> expectedName = { "E" };
-      iresearch::columnstore_reader::value_reader_f visitor = [&expectedName](data_input& in) {
-        const auto value = ir::read_string<std::string>(in);
-        if (1 != expectedName.erase(value)) {
-          return false;
-        }
+      std::unordered_set<irs::string_ref> expectedName = { "E" };
+      irs::bytes_ref actual_value;
 
-        return true;
-      };
       auto& segment = reader[1]; // assume 1 is id of second segment
       ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
       auto terms = segment.field("same");
@@ -4772,9 +4563,10 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
 
-      auto values = segment.values("name", visitor);
+      auto values = segment.values("name");
       for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
-        ASSERT_TRUE(values(docsItr->value()));
+        ASSERT_TRUE(values(docsItr->value(), actual_value));
+        ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
       }
 
       ASSERT_TRUE(expectedName.empty());
@@ -4799,15 +4591,9 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
     writer->commit();
     // segments merged because segment[0] is a candidate and needs to be merged with something
 
-    std::unordered_set<std::string> expectedName = { "A", "B" };
-    iresearch::columnstore_reader::value_reader_f visitor = [&expectedName](data_input& in) {
-      const auto value = ir::read_string<std::string>(in);
-      if (1 != expectedName.erase(value)) {
-        return false;
-      }
+    std::unordered_set<irs::string_ref> expectedName = { "A", "B" };
+    irs::bytes_ref actual_value;
 
-      return true;
-    };
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
@@ -4817,9 +4603,10 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
 
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
-      ASSERT_TRUE(values(docsItr->value()));
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
     }
 
     ASSERT_TRUE(expectedName.empty());
@@ -4846,15 +4633,9 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
     ASSERT_EQ(2, reader.size());
 
     {
-      std::unordered_set<std::string> expectedName = { "A" };
-      iresearch::columnstore_reader::value_reader_f visitor = [&expectedName](data_input& in) {
-        const auto value = ir::read_string<std::string>(in);
-        if (1 != expectedName.erase(value)) {
-          return false;
-        }
+      std::unordered_set<irs::string_ref> expectedName = { "A" };
+      irs::bytes_ref actual_value;
 
-        return true;
-      };
       auto& segment = reader[0]; // assume 0 is id of first segment
       ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
       auto terms = segment.field("same");
@@ -4862,24 +4643,19 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
 
-      auto values = segment.values("name", visitor);
+      auto values = segment.values("name");
       for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
-        ASSERT_TRUE(values(docsItr->value()));
+        ASSERT_TRUE(values(docsItr->value(), actual_value));
+        ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
       }
 
       ASSERT_TRUE(expectedName.empty());
     }
 
     {
-      std::unordered_set<std::string> expectedName = { "B" };
-      iresearch::columnstore_reader::value_reader_f visitor = [&expectedName](data_input& in) {
-        const auto value = ir::read_string<std::string>(in);
-        if (1 != expectedName.erase(value)) {
-          return false;
-        }
+      std::unordered_set<irs::string_ref> expectedName = { "B" };
+      irs::bytes_ref actual_value;
 
-        return true;
-      };
       auto& segment = reader[1]; // assume 1 is id of second segment
       ASSERT_EQ(expectedName.size(), segment.docs_count());
       auto terms = segment.field("same");
@@ -4887,9 +4663,10 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
 
-      auto values = segment.values("name", visitor);
+      auto values = segment.values("name");
       for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
-        ASSERT_TRUE(values(docsItr->value()));
+        ASSERT_TRUE(values(docsItr->value(), actual_value));
+        ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
       }
 
       ASSERT_TRUE(expectedName.empty());
@@ -4927,15 +4704,9 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
     writer->consolidate(iresearch::index_utils::consolidate_count(1), true); // value garanteeing merge
     writer->commit();
 
-    std::unordered_set<std::string> expectedName = { "A", "D", "E" };
-    iresearch::columnstore_reader::value_reader_f visitor = [&expectedName](data_input& in) {
-      const auto value = ir::read_string<std::string>(in);
-      if (1 != expectedName.erase(value)) {
-        return false;
-      }
+    std::unordered_set<irs::string_ref> expectedName = { "A", "D", "E" };
+    irs::bytes_ref actual_value;
 
-      return true;
-    };
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
@@ -4945,9 +4716,10 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
 
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
-      ASSERT_TRUE(values(docsItr->value()));
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
     }
 
     ASSERT_TRUE(expectedName.empty());
@@ -4988,15 +4760,9 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
     ASSERT_EQ(2, reader.size());
 
     {
-      std::unordered_set<std::string> expectedName = { "A" };
-      iresearch::columnstore_reader::value_reader_f visitor = [&expectedName](data_input& in) {
-        const auto value = ir::read_string<std::string>(in);
-        if (1 != expectedName.erase(value)) {
-          return false;
-        }
+      std::unordered_set<irs::string_ref> expectedName = { "A" };
+      irs::bytes_ref actual_value;
 
-        return true;
-      };
       auto& segment = reader[0]; // assume 0 is id of first segment
       ASSERT_EQ(expectedName.size() + 3, segment.docs_count()); // total count of documents (+3 == B, C, D masked)
       auto terms = segment.field("same");
@@ -5004,24 +4770,19 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
 
-      auto values = segment.values("name", visitor);
+      auto values = segment.values("name");
       for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
-        ASSERT_TRUE(values(docsItr->value()));
+        ASSERT_TRUE(values(docsItr->value(), actual_value));
+        ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
       }
 
       ASSERT_TRUE(expectedName.empty());
     }
 
     {
-      std::unordered_set<std::string> expectedName = { "E" };
-      iresearch::columnstore_reader::value_reader_f visitor = [&expectedName](data_input& in) {
-        const auto value = ir::read_string<std::string>(in);
-        if (1 != expectedName.erase(value)) {
-          return false;
-        }
+      std::unordered_set<irs::string_ref> expectedName = { "E" };
+      irs::bytes_ref actual_value;
 
-        return true;
-      };
       auto& segment = reader[1]; // assume 1 is id of second segment
       ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
       auto terms = segment.field("same");
@@ -5029,9 +4790,10 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
 
-      auto values = segment.values("name", visitor);
+      auto values = segment.values("name");
       for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
-        ASSERT_TRUE(values(docsItr->value()));
+        ASSERT_TRUE(values(docsItr->value(), actual_value));
+        ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
       }
 
       ASSERT_TRUE(expectedName.empty());
@@ -5066,15 +4828,9 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
     writer->consolidate(iresearch::index_utils::consolidate_fill(1), true); // value garanteeing merge
     writer->commit();
 
-    std::unordered_set<std::string> expectedName = { "A", "C" };
-    iresearch::columnstore_reader::value_reader_f visitor = [&expectedName](data_input& in) {
-      const auto value = ir::read_string<std::string>(in);
-      if (1 != expectedName.erase(value)) {
-        return false;
-      }
+    std::unordered_set<irs::string_ref> expectedName = { "A", "C" };
+    irs::bytes_ref actual_value;
 
-      return true;
-    };
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
@@ -5084,9 +4840,10 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
 
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
     for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
-      ASSERT_TRUE(values(docsItr->value()));
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
     }
 
     ASSERT_TRUE(expectedName.empty());
@@ -5124,15 +4881,9 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
     ASSERT_EQ(2, reader.size());
 
     {
-      std::unordered_set<std::string> expectedName = { "A" };
-      iresearch::columnstore_reader::value_reader_f visitor = [&expectedName](data_input& in) {
-        const auto value = ir::read_string<std::string>(in);
-        if (1 != expectedName.erase(value)) {
-          return false;
-        }
+      std::unordered_set<irs::string_ref> expectedName = { "A" };
+      irs::bytes_ref actual_value;
 
-        return true;
-      };
       auto& segment = reader[0]; // assume 0 is id of first segment
       ASSERT_EQ(expectedName.size() + 1, segment.docs_count()); // total count of documents (+1 == B masked)
       auto terms = segment.field("same");
@@ -5140,24 +4891,19 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
 
-      auto values = segment.values("name", visitor);
+      auto values = segment.values("name");
       for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
-        ASSERT_TRUE(values(docsItr->value()));
+        ASSERT_TRUE(values(docsItr->value(), actual_value));
+        ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
       }
 
       ASSERT_TRUE(expectedName.empty());
     }
 
     {
-      std::unordered_set<std::string> expectedName = { "C" };
-      iresearch::columnstore_reader::value_reader_f visitor = [&expectedName](data_input& in) {
-        const auto value = ir::read_string<std::string>(in);
-        if (1 != expectedName.erase(value)) {
-          return false;
-        }
+      std::unordered_set<irs::string_ref> expectedName = { "C" };
+      irs::bytes_ref actual_value;
 
-        return true;
-      };
       auto& segment = reader[1]; // assume 1 is id of second segment
       ASSERT_EQ(expectedName.size() + 1, segment.docs_count()); // total count of documents (+1 == D masked)
       auto terms = segment.field("same");
@@ -5165,9 +4911,10 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
 
-      auto values = segment.values("name", visitor);
+      auto values = segment.values("name");
       for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
-        ASSERT_TRUE(values(docsItr->value()));
+        ASSERT_TRUE(values(docsItr->value(), actual_value));
+        ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
       }
 
       ASSERT_TRUE(expectedName.empty());

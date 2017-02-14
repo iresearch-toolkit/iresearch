@@ -141,8 +141,6 @@ struct IRESEARCH_API norm : attribute {
   }
 
   norm() NOEXCEPT;
-  
-  virtual bool write(data_output& out) const;
 
   bool reset(const sub_reader& segment, field_id column, const document& doc);
   float_t read() const;
@@ -155,10 +153,8 @@ struct IRESEARCH_API norm : attribute {
  private:
   void reset();
 
-  sub_reader::value_visitor_f column_;
-  columnstore_reader::value_reader_f reader_;
+  columnstore_reader::values_reader_f column_;
   const document* doc_;
-  mutable float_t value_;
 }; // norm
 
 //////////////////////////////////////////////////////////////////////////////

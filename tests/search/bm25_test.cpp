@@ -67,18 +67,13 @@ TEST_F(bm25_test, test_order) {
   iresearch::order ord;
   ord.add<iresearch::bm25_sort>();
   auto prepared_order = ord.prepare();
-  
+
   auto comparer = [&prepared_order] (const iresearch::bstring& lhs, const iresearch::bstring& rhs) {
     return prepared_order.less(lhs.c_str(), rhs.c_str());
   };
-  
+
   uint64_t seq = 0;
-  iresearch::columnstore_reader::value_reader_f visitor = [&seq](iresearch::data_input& in) {
-    auto str_seq = iresearch::read_string<std::string>(in);
-    seq = strtoull(str_seq.c_str(), nullptr, 10);
-    return true;
-  };
-  auto values = segment.values("seq", visitor);
+  auto values = segment.values("seq");
 
   {
     query.term("7");
@@ -86,12 +81,18 @@ TEST_F(bm25_test, test_order) {
     std::multimap<iresearch::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     std::vector<uint64_t> expected{ 0, 1, 5, 7 };
 
+    irs::bytes_ref actual_value;
+    irs::bytes_ref_input in;
     auto prepared = query.prepare(reader, prepared_order);
     auto docs = prepared->execute(segment, prepared_order);
     auto& score = docs->attributes().get<iresearch::score>();
     for (; docs->next();) {
       docs->score();
-      ASSERT_TRUE(values(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      in.reset(actual_value);
+
+      auto str_seq = iresearch::read_string<std::string>(in);
+      seq = strtoull(str_seq.c_str(), nullptr, 10);
       sorted.emplace(score->value(), seq);
     }
 

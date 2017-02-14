@@ -66,7 +66,6 @@ struct IRESEARCH_API index_reader {
 
 struct IRESEARCH_API sub_reader : index_reader {
   typedef iresearch::iterator<doc_id_t> docs_iterator_t;
-  typedef std::function<bool(doc_id_t)> value_visitor_f;
 
   DECLARE_SPTR(sub_reader);
   DECLARE_FACTORY(sub_reader);
@@ -83,7 +82,7 @@ struct IRESEARCH_API sub_reader : index_reader {
   virtual docs_iterator_t::ptr docs_iterator() const = 0;
 
   virtual field_iterator::ptr fields() const = 0;
-  
+
   // returns corresponding term_reader by the specified field
   virtual const term_reader* field(
     const string_ref& field
@@ -94,24 +93,18 @@ struct IRESEARCH_API sub_reader : index_reader {
   virtual const column_meta* column(const string_ref& name) const = 0;
 
   // returns corresponding column reader by the specified field
-  virtual value_visitor_f values(
-    field_id id,
-    const columnstore_reader::value_reader_f& reader
-  ) const = 0;
+  virtual columnstore_reader::values_reader_f values(field_id id) const = 0;
 
   virtual bool visit(
     field_id id,
-    const columnstore_reader::raw_reader_f& reader
+    const columnstore_reader::values_reader_f& reader
   ) const = 0;
-  
-  value_visitor_f values(
-    const string_ref& field,
-    const columnstore_reader::value_reader_f& reader
-  ) const;
-  
+
+  columnstore_reader::values_reader_f values(const string_ref& field) const;
+
   bool visit(
     const string_ref& name,
-    const columnstore_reader::raw_reader_f& reader
+    const columnstore_reader::values_reader_f& reader
   ) const;
 }; // sub_reader
 

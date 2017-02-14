@@ -101,8 +101,8 @@ FORCE_INLINE uint32_t pop32( uint32_t v ) NOEXCEPT {
 #endif
 }
 
-FORCE_INLINE uint64_t pop64( uint64_t v ) NOEXCEPT{
-#if  __GNUC__ >= 4  
+FORCE_INLINE uint64_t pop64(uint64_t v) NOEXCEPT{
+#if  __GNUC__ >= 4
   return __builtin_popcountll( v );
 #elif defined(_MSC_VER) && defined(_M_X64)
   //TODO: compile time
@@ -111,24 +111,52 @@ FORCE_INLINE uint64_t pop64( uint64_t v ) NOEXCEPT{
 }
 
 FORCE_INLINE uint32_t clz32(uint32_t v) NOEXCEPT {
-  if (!v) return 32;
+  assert(v); // 0 does not supported
 #if  __GNUC__ >= 4  
   return __builtin_clz(v);
 #elif defined(_MSC_VER) 
   unsigned long idx;
   _BitScanReverse(&idx, v);
   return 31 - idx;
+#else
+  static_assert(false, "Not supported");
 #endif
 }
 
 FORCE_INLINE uint64_t clz64(uint64_t v) NOEXCEPT {
-  if (!v) return 64;
-#if  __GNUC__ >= 4  
-  return __builtin_clzl(v);
+  assert(v); // 0 does not supported
+#if  __GNUC__ >= 4
+  return __builtin_clzll(v);
 #elif defined(_MSC_VER) 
   unsigned long idx;
   _BitScanReverse64(&idx, v);
   return 63 - idx;
+#else
+  static_assert(false, "Not supported");
+#endif
+}
+
+FORCE_INLINE uint32_t log2_floor_32(uint32_t v) {
+#if __GNUC__ >= 4
+  return 31 ^ __builtin_clz(v);
+#elif defined(_MSC_VER)
+  unsigned long idx;
+  _BitScanReverse(&idx, v);
+  return idx;
+#else
+  static_assert(false, "Not supported");
+#endif
+}
+
+FORCE_INLINE uint64_t log2_floor_64(uint64_t v) {
+#if __GNUC__ >= 4
+  return 63 ^ __builtin_clzll(v);
+#elif defined(_MSC_VER)
+  unsigned long idx;
+  _BitScanReverse64(&idx, v);
+  return idx;
+#else
+  static_assert(false, "Not supported");
 #endif
 }
 

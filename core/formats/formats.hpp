@@ -217,15 +217,13 @@ struct IRESEARCH_API column_meta_reader {
 struct IRESEARCH_API columnstore_reader {
   DECLARE_PTR(columnstore_reader);
 
-  typedef std::function<bool(data_input&)> value_reader_f;
-  typedef std::function<bool(doc_id_t, data_input&)> raw_reader_f;
-  typedef std::function<bool(doc_id_t, const value_reader_f&)> values_reader_f;
+  typedef std::function<bool(doc_id_t, bytes_ref&)> values_reader_f;
 
   virtual ~columnstore_reader();
 
   virtual bool prepare(const reader_state& state) = 0;
   virtual values_reader_f values(field_id field) const = 0;
-  virtual bool visit(field_id field, const raw_reader_f& visitor) const = 0;
+  virtual bool visit(field_id field, const values_reader_f& visitor) const = 0;
 }; // columnstore_reader
 
 NS_END

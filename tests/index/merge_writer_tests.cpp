@@ -182,8 +182,9 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       };
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, data_input& in) {
+      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, irs::bytes_ref& value) {
         ++calls_count;
+        irs::bytes_ref_input in(value);
         const auto actual_value = iresearch::read_zvint(in);
 
         auto it = expected_values.find(actual_value);
@@ -206,20 +207,21 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       ASSERT_TRUE(segment.visit(meta->id, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
-    
+
     // check 'doc_string' column
     {
-      std::unordered_map <std::string, iresearch::doc_id_t > expected_values{
+      std::unordered_map <irs::string_ref, iresearch::doc_id_t > expected_values{
         { "string1_data", 1 },
         { "string3_data", 2 }
       };
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, data_input& in) {
+      auto reader = [&calls_count, &expected_values] (irs::doc_id_t doc, irs::bytes_ref& actual_value) {
         ++calls_count;
-        const auto actual_value = iresearch::read_string<std::string>(in);
 
-        auto it = expected_values.find(actual_value);
+        const auto actual_value_string = irs::to_string<irs::string_ref>(actual_value.c_str());
+
+        auto it = expected_values.find(actual_value_string);
         if (it == expected_values.end()) {
           // can't find value
           return false;
@@ -243,14 +245,14 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
     // check wrong column
     {
       size_t calls_count = 0;
-      auto reader = [&calls_count] (iresearch::doc_id_t doc, data_input& in) {
+      auto reader = [&calls_count] (irs::doc_id_t doc, irs::bytes_ref& in) {
         ++calls_count;
         return true;
       };
 
       ASSERT_EQ(nullptr, segment.column("invalid_column"));
       ASSERT_FALSE(
-        segment.visit(iresearch::type_limits<iresearch::type_t::field_id_t>::invalid(), reader)
+        segment.visit(irs::type_limits<irs::type_t::field_id_t>::invalid(), reader)
       );
       ASSERT_EQ(0, calls_count);
     }
@@ -279,9 +281,10 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       };
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, data_input& in) {
+      auto reader = [&calls_count, &expected_values] (irs::doc_id_t doc, irs::bytes_ref& in) {
         ++calls_count;
-        const auto actual_value = iresearch::read_zvint(in);
+        irs::bytes_ref_input stream(in);
+        const auto actual_value = iresearch::read_zvint(stream);
 
         auto it = expected_values.find(actual_value);
         if (it == expected_values.end()) {
@@ -303,18 +306,19 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       ASSERT_TRUE(segment.visit(meta->id, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
-    
+
     // check 'doc_string' column
     {
-      std::unordered_map <std::string, iresearch::doc_id_t > expected_values{
+      std::unordered_map <irs::string_ref, iresearch::doc_id_t > expected_values{
         { "string2_data", 1 },
         { "string4_data", 2 }
       };
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, data_input& in) {
+      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, irs::bytes_ref& in) {
         ++calls_count;
-        const auto actual_value = iresearch::read_string<std::string>(in);
+        irs::bytes_ref_input stream(in);
+        const auto actual_value = iresearch::read_string<std::string>(stream);
 
         auto it = expected_values.find(actual_value);
         if (it == expected_values.end()) {
@@ -344,9 +348,10 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       };
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, data_input& in) {
+      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, irs::bytes_ref& in) {
         ++calls_count;
-        const auto actual_value = iresearch::read_string<std::string>(in);
+        irs::bytes_ref_input stream(in);
+        const auto actual_value = iresearch::read_string<std::string>(stream);
 
         auto it = expected_values.find(actual_value);
         if (it == expected_values.end()) {
@@ -372,7 +377,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
     // check invalid column 
     {
       size_t calls_count = 0;
-      auto reader = [&calls_count] (iresearch::doc_id_t doc, data_input& in) {
+      auto reader = [&calls_count] (iresearch::doc_id_t, irs::bytes_ref&) {
         ++calls_count;
         return true;
       };
@@ -416,8 +421,9 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       };
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, data_input& in) {
+      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, irs::bytes_ref& value) {
         ++calls_count;
+        irs::bytes_ref_input in(value);
         const auto actual_value = iresearch::read_zvint(in);
 
         auto it = expected_values.find(actual_value);
@@ -443,7 +449,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
 
     // check 'doc_string' column
     {
-      std::unordered_map <std::string, iresearch::doc_id_t > expected_values{
+      std::unordered_map <irs::string_ref, iresearch::doc_id_t > expected_values{
         // segment 0
         { "string1_data", 1 },
         { "string3_data", 2 },
@@ -452,8 +458,9 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       };
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, data_input& in) {
+      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, irs::bytes_ref& value) {
         ++calls_count;
+        irs::bytes_ref_input in(value);
         const auto actual_value = iresearch::read_string<std::string>(in);
 
         auto it = expected_values.find(actual_value);
@@ -480,7 +487,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
     // check that 'another_column' has been removed
     {
       size_t calls_count = 0;
-      auto reader = [&calls_count] (iresearch::doc_id_t doc, data_input& in) {
+      auto reader = [&calls_count] (irs::doc_id_t, irs::bytes_ref&) {
         ++calls_count;
         return true;
       };
@@ -581,8 +588,9 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       };
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, data_input& in) {
+      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, irs::bytes_ref& value) {
         ++calls_count;
+        irs::bytes_ref_input in(value);
         const auto actual_value = iresearch::read_zvint(in);
 
         auto it = expected_values.find(actual_value);
@@ -605,17 +613,18 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       ASSERT_TRUE(segment.visit(meta->id, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
-    
+
     // check 'doc_string' column
     {
-      std::unordered_map <std::string, iresearch::doc_id_t > expected_values{
+      std::unordered_map <irs::string_ref, iresearch::doc_id_t > expected_values{
         { "string1_data", 1 },
         { "string3_data", 2 }
       };
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, data_input& in) {
+      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, irs::bytes_ref& value) {
         ++calls_count;
+        irs::bytes_ref_input in(value);
         const auto actual_value = iresearch::read_string<std::string>(in);
 
         auto it = expected_values.find(actual_value);
@@ -642,7 +651,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
     // check wrong column
     {
       size_t calls_count = 0;
-      auto reader = [&calls_count] (iresearch::doc_id_t doc, data_input& in) {
+      auto reader = [&calls_count] (irs::doc_id_t, irs::bytes_ref&) {
         ++calls_count;
         return true;
       };
@@ -675,8 +684,9 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       };
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, data_input& in) {
+      auto reader = [&calls_count, &expected_values] (irs::doc_id_t doc, irs::bytes_ref& value) {
         ++calls_count;
+        irs::bytes_ref_input in(value);
         const auto actual_value = iresearch::read_zvint(in);
 
         auto it = expected_values.find(actual_value);
@@ -699,17 +709,18 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       ASSERT_TRUE(segment.visit(meta->id, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
-    
+
     // check 'doc_string' column
     {
-      std::unordered_map <std::string, iresearch::doc_id_t > expected_values{
+      std::unordered_map <irs::string_ref, iresearch::doc_id_t > expected_values{
         { "string2_data", 1 },
         { "string4_data", 2 }
       };
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, data_input& in) {
+      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, irs::bytes_ref& value) {
         ++calls_count;
+        irs::bytes_ref_input in(value);
         const auto actual_value = iresearch::read_string<std::string>(in);
 
         auto it = expected_values.find(actual_value);
@@ -736,7 +747,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
     // check wrong column
     {
       size_t calls_count = 0;
-      auto reader = [&calls_count] (iresearch::doc_id_t doc, data_input& in) {
+      auto reader = [&calls_count] (irs::doc_id_t, irs::bytes_ref&) {
         ++calls_count;
         return true;
       };
@@ -780,8 +791,9 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       };
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, data_input& in) {
+      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, irs::bytes_ref& value) {
         ++calls_count;
+        irs::bytes_ref_input in(value);
         const auto actual_value = iresearch::read_zvint(in);
 
         auto it = expected_values.find(actual_value);
@@ -807,7 +819,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
 
     // check 'doc_string' column
     {
-      std::unordered_map <std::string, iresearch::doc_id_t > expected_values{
+      std::unordered_map <irs::string_ref, iresearch::doc_id_t > expected_values{
         // segment 0
         { "string1_data", 1 },
         { "string3_data", 2 },
@@ -817,8 +829,9 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       };
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, data_input& in) {
+      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, irs::bytes_ref& value) {
         ++calls_count;
+        irs::bytes_ref_input in(value);
         const auto actual_value = iresearch::read_string<std::string>(in);
 
         auto it = expected_values.find(actual_value);
@@ -1048,7 +1061,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         { 1.5f, 1 },
       };
 
-      auto reader = [&expected_values] (iresearch::doc_id_t doc, data_input& in) {
+      auto reader = [&expected_values] (iresearch::doc_id_t doc, irs::bytes_ref& value) {
+        irs::bytes_ref_input in(value);
         const auto actual_value = iresearch::read_zvfloat(in); // read norm value
 
         auto it = expected_values.find(actual_value);
@@ -1065,7 +1079,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         expected_values.erase(it);
         return true;
       };
-      
+
       ASSERT_TRUE(segment.visit(field.norm, reader));
       ASSERT_TRUE(expected_values.empty());
     }
@@ -1297,41 +1311,17 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     // validate documents
     // ...........................................................................
     std::unordered_set<iresearch::bytes_ref> expected_bytes;
-    iresearch::columnstore_reader::value_reader_f bytes_visitor = [&expected_bytes] (data_input& in) {
-      const auto value = iresearch::read_string<iresearch::bstring>(in);
-      return size_t(1) == expected_bytes.erase(value);
-    };
-    auto bytes_values = segment.values("doc_bytes", bytes_visitor);
+    auto bytes_values = segment.values("doc_bytes");
     std::unordered_set<double> expected_double;
-    iresearch::columnstore_reader::value_reader_f double_visitor = [&expected_double] (data_input& in) {
-      const auto value = iresearch::read_zvdouble(in);
-      return size_t(1) == expected_double.erase(value);
-    };
-    auto double_values = segment.values("doc_double", double_visitor);
+    auto double_values = segment.values("doc_double");
     std::unordered_set<float> expected_float;
-    iresearch::columnstore_reader::value_reader_f float_visitor = [&expected_float] (data_input& in) {
-      const auto value = iresearch::read_zvfloat(in);
-      return size_t(1) == expected_float.erase(value);
-    };
-    auto float_values = segment.values("doc_float", float_visitor);
+    auto float_values = segment.values("doc_float");
     std::unordered_set<int> expected_int;
-    iresearch::columnstore_reader::value_reader_f int_visitor = [&expected_int] (data_input& in) {
-      const auto value = iresearch::read_zvint(in);
-      return size_t(1) == expected_int.erase(value);
-    };
-    auto int_values = segment.values("doc_int", int_visitor);
+    auto int_values = segment.values("doc_int");
     std::unordered_set<int64_t> expected_long;
-    iresearch::columnstore_reader::value_reader_f long_visitor = [&expected_long] (data_input& in) {
-      const auto value = iresearch::read_zvlong(in);
-      return size_t(1) == expected_long.erase(value);
-    };
-    auto long_values = segment.values("doc_long", long_visitor);
+    auto long_values = segment.values("doc_long");
     std::unordered_set<std::string> expected_string;
-    iresearch::columnstore_reader::value_reader_f string_visitor = [&expected_string] (data_input& in) {
-      auto value = iresearch::read_string<std::string>(in);
-      return size_t(1) == expected_string.erase(value);
-    };
-    auto string_values = segment.values("doc_string", string_visitor);
+    auto string_values = segment.values("doc_string");
 
     expected_bytes = { iresearch::bytes_ref(bytes1), iresearch::bytes_ref(bytes2) };
     expected_double = { 2.718281828 * 1, 2.718281828 * 2 };
@@ -1341,14 +1331,27 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     expected_string = { string1, string2 };
 
     // can't have more docs then highest doc_id
+    irs::bytes_ref value;
+    irs::bytes_ref_input in;
     for (size_t i = 0, count = segment.docs_count(); i < count; ++i) {
       const auto doc = iresearch::doc_id_t((iresearch::type_limits<iresearch::type_t::doc_id_t>::min)() + i);
-      ASSERT_TRUE(bytes_values(doc));
-      ASSERT_TRUE(double_values(doc));
-      ASSERT_TRUE(float_values(doc));
-      ASSERT_TRUE(int_values(doc));
-      ASSERT_TRUE(long_values(doc));
-      ASSERT_TRUE(string_values(doc));
+      ASSERT_TRUE(bytes_values(doc, value)); in.reset(value);
+      ASSERT_EQ(1, expected_bytes.erase(irs::read_string<irs::bstring>(in)));
+
+      ASSERT_TRUE(double_values(doc, value)); in.reset(value);
+      ASSERT_EQ(1, expected_double.erase(irs::read_zvdouble(in)));
+
+      ASSERT_TRUE(float_values(doc, value)); in.reset(value);
+      ASSERT_EQ(1, expected_float.erase(irs::read_zvfloat(in)));
+
+      ASSERT_TRUE(int_values(doc, value)); in.reset(value);
+      ASSERT_EQ(1, expected_int.erase(irs::read_zvint(in)));
+
+      ASSERT_TRUE(long_values(doc, value)); in.reset(value);
+      ASSERT_EQ(1, expected_long.erase(irs::read_zvlong(in)));
+
+      ASSERT_TRUE(string_values(doc, value)); in.reset(value);
+      ASSERT_EQ(1, expected_string.erase(irs::read_string<std::string>(in)));
     }
 
     ASSERT_TRUE(expected_bytes.empty());
@@ -1401,7 +1404,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         { 2.5f, 1 },
       };
 
-      auto reader = [&expected_values] (iresearch::doc_id_t doc, data_input& in) {
+      auto reader = [&expected_values] (iresearch::doc_id_t doc, irs::bytes_ref& value) {
+        irs::bytes_ref_input in(value);
         const auto actual_value = iresearch::read_zvfloat(in); // read norm value
 
         auto it = expected_values.find(actual_value);
@@ -1418,7 +1422,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         expected_values.erase(it);
         return true;
       };
-      
+
       ASSERT_TRUE(segment.visit(field.norm, reader));
       ASSERT_TRUE(expected_values.empty());
     }
@@ -1626,41 +1630,17 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     // validate documents
     // ...........................................................................
     std::unordered_set<iresearch::bytes_ref> expected_bytes;
-    iresearch::columnstore_reader::value_reader_f bytes_visitor = [&expected_bytes] (data_input& in) {
-      const auto value = iresearch::read_string<iresearch::bstring>(in);
-      return size_t(1) == expected_bytes.erase(value);
-    };
-    auto bytes_values = segment.values("doc_bytes", bytes_visitor);
+    auto bytes_values = segment.values("doc_bytes");
     std::unordered_set<double> expected_double;
-    iresearch::columnstore_reader::value_reader_f double_visitor = [&expected_double] (data_input& in) {
-      const auto value = iresearch::read_zvdouble(in);
-      return size_t(1) == expected_double.erase(value);
-    };
-    auto double_values = segment.values("doc_double", double_visitor);
+    auto double_values = segment.values("doc_double");
     std::unordered_set<float> expected_float;
-    iresearch::columnstore_reader::value_reader_f float_visitor = [&expected_float] (data_input& in) {
-      const auto value = iresearch::read_zvfloat(in);
-      return size_t(1) == expected_float.erase(value);
-    };
-    auto float_values = segment.values("doc_float", float_visitor);
+    auto float_values = segment.values("doc_float");
     std::unordered_set<int> expected_int;
-    iresearch::columnstore_reader::value_reader_f int_visitor = [&expected_int] (data_input& in) {
-      const auto value = iresearch::read_zvint(in);
-      return size_t(1) == expected_int.erase(value);
-    };
-    auto int_values = segment.values("doc_int", int_visitor);
+    auto int_values = segment.values("doc_int");
     std::unordered_set<int64_t> expected_long;
-    iresearch::columnstore_reader::value_reader_f long_visitor = [&expected_long] (data_input& in) {
-      const auto value = iresearch::read_zvlong(in);
-      return size_t(1) == expected_long.erase(value);
-    };
-    auto long_values = segment.values("doc_long", long_visitor);
+    auto long_values = segment.values("doc_long");
     std::unordered_set<std::string> expected_string;
-    iresearch::columnstore_reader::value_reader_f string_visitor = [&expected_string] (data_input& in) {
-      auto value = iresearch::read_string<std::string>(in);
-      return size_t(1) == expected_string.erase(value);
-    };
-    auto string_values = segment.values("doc_string", string_visitor);
+    auto string_values = segment.values("doc_string");
 
     expected_bytes = { iresearch::bytes_ref(bytes3) };
     expected_double = { 2.718281828 * 3 };
@@ -1670,14 +1650,27 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     expected_string = { string3, string4 };
 
     // can't have more docs then highest doc_id
+    irs::bytes_ref value;
+    irs::bytes_ref_input in;
     for (size_t i = 0, count = segment.docs_count(); i < count; ++i) {
       const auto doc = iresearch::doc_id_t((iresearch::type_limits<iresearch::type_t::doc_id_t>::min)() + i);
-      bytes_values(doc);
-      double_values(doc);
-      float_values(doc);
-      int_values(doc);
-      long_values(doc);
-      ASSERT_TRUE(string_values(doc));
+      ASSERT_EQ(!expected_bytes.empty(), bytes_values(doc, value)); in.reset(value);
+      expected_bytes.erase(irs::read_string<irs::bstring>(in));
+
+      ASSERT_EQ(!expected_double.empty(), double_values(doc, value)); in.reset(value);
+      expected_double.erase(irs::read_zvdouble(in));
+
+      ASSERT_EQ(!expected_float.empty(), float_values(doc, value)); in.reset(value);
+      expected_float.erase(irs::read_zvfloat(in));
+
+      ASSERT_EQ(!expected_int.empty(), int_values(doc, value)); in.reset(value);
+      expected_int.erase(irs::read_zvint(in));
+
+      ASSERT_EQ(!expected_long.empty(), long_values(doc, value)); in.reset(value);
+      expected_long.erase(irs::read_zvlong(in));
+
+      ASSERT_TRUE(string_values(doc, value)); in.reset(value);
+      ASSERT_EQ(1, expected_string.erase(irs::read_string<std::string>(in)));
     }
 
     ASSERT_TRUE(expected_bytes.empty());
@@ -1741,7 +1734,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       { 2.5f, 3 },
     };
 
-    auto reader = [&expected_values] (iresearch::doc_id_t doc, data_input& in) {
+    auto reader = [&expected_values] (iresearch::doc_id_t doc, irs::bytes_ref& value) {
+      irs::bytes_ref_input in(value);
       const auto actual_value = iresearch::read_zvfloat(in); // read norm value
 
       auto it = expected_values.find(actual_value);
@@ -2016,41 +2010,17 @@ TEST_F(merge_writer_tests, test_merge_writer) {
   // validate documents
   // ...........................................................................
   std::unordered_set<iresearch::bytes_ref> expected_bytes;
-  iresearch::columnstore_reader::value_reader_f bytes_visitor = [&expected_bytes] (data_input& in) {
-    const auto value = iresearch::read_string<iresearch::bstring>(in);
-    return size_t(1) == expected_bytes.erase(value);
-  };
-  auto bytes_values = segment.values("doc_bytes", bytes_visitor);
+  auto bytes_values = segment.values("doc_bytes");
   std::unordered_set<double> expected_double;
-  iresearch::columnstore_reader::value_reader_f double_visitor = [&expected_double] (data_input& in) {
-    const auto value = iresearch::read_zvdouble(in);
-    return size_t(1) == expected_double.erase(value);
-  };
-  auto double_values = segment.values("doc_double", double_visitor);
+  auto double_values = segment.values("doc_double");
   std::unordered_set<float> expected_float;
-  iresearch::columnstore_reader::value_reader_f float_visitor = [&expected_float] (data_input& in) {
-    const auto value = iresearch::read_zvfloat(in);
-    return size_t(1) == expected_float.erase(value);
-  };
-  auto float_values = segment.values("doc_float", float_visitor);
+  auto float_values = segment.values("doc_float");
   std::unordered_set<int> expected_int;
-  iresearch::columnstore_reader::value_reader_f int_visitor = [&expected_int] (data_input& in) {
-    const auto value = iresearch::read_zvint(in);
-    return size_t(1) == expected_int.erase(value);
-  };
-  auto int_values = segment.values("doc_int", int_visitor);
+  auto int_values = segment.values("doc_int");
   std::unordered_set<int64_t> expected_long;
-  iresearch::columnstore_reader::value_reader_f long_visitor = [&expected_long] (data_input& in) {
-    const auto value = iresearch::read_zvlong(in);
-    return size_t(1) == expected_long.erase(value);
-  };
-  auto long_values = segment.values("doc_long", long_visitor);
+  auto long_values = segment.values("doc_long");
   std::unordered_set<std::string> expected_string;
-  iresearch::columnstore_reader::value_reader_f string_visitor = [&expected_string] (data_input& in) {
-    auto value = iresearch::read_string<std::string>(in);
-    return size_t(1) == expected_string.erase(value);
-  };
-  auto string_values = segment.values("doc_string", string_visitor);
+  auto string_values = segment.values("doc_string");
 
   expected_bytes = { iresearch::bytes_ref(bytes1), iresearch::bytes_ref(bytes2), iresearch::bytes_ref(bytes3) };
   expected_double = { 2.718281828 * 1, 2.718281828 * 2, 2.718281828 * 3 };
@@ -2060,14 +2030,28 @@ TEST_F(merge_writer_tests, test_merge_writer) {
   expected_string = { string1, string2, string3 };
 
   // can't have more docs then highest doc_id
+  irs::bytes_ref value;
+  irs::bytes_ref_input in;
   for (size_t i = 0, count = segment.docs_count(); i < count; ++i) {
     const auto doc = iresearch::doc_id_t((iresearch::type_limits<iresearch::type_t::doc_id_t>::min)() + i);
-    ASSERT_TRUE(bytes_values(doc));
-    ASSERT_TRUE(double_values(doc));
-    ASSERT_TRUE(float_values(doc));
-    ASSERT_TRUE(int_values(doc));
-    ASSERT_TRUE(long_values(doc));
-    ASSERT_TRUE(string_values(doc));
+
+    ASSERT_TRUE(bytes_values(doc, value)); in.reset(value);
+    ASSERT_EQ(1, expected_bytes.erase(irs::read_string<irs::bstring>(in)));
+
+    ASSERT_TRUE(double_values(doc, value)); in.reset(value);
+    ASSERT_EQ(1, expected_double.erase(irs::read_zvdouble(in)));
+
+    ASSERT_TRUE(float_values(doc, value)); in.reset(value);
+    ASSERT_EQ(1, expected_float.erase(irs::read_zvfloat(in)));
+
+    ASSERT_TRUE(int_values(doc, value)); in.reset(value);
+    ASSERT_EQ(1, expected_int.erase(irs::read_zvint(in)));
+
+    ASSERT_TRUE(long_values(doc, value)); in.reset(value);
+    ASSERT_EQ(1, expected_long.erase(irs::read_zvlong(in)));
+
+    ASSERT_TRUE(string_values(doc, value)); in.reset(value);
+    ASSERT_EQ(1, expected_string.erase(irs::read_string<std::string>(in)));
   }
 
   ASSERT_TRUE(expected_bytes.empty());

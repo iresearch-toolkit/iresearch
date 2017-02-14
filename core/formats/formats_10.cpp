@@ -1924,9 +1924,7 @@ void writer::flush() {
 NS_LOCAL
 
 iresearch::columnstore_reader::values_reader_f INVALID_COLUMN = 
-  [] (doc_id_t, const iresearch::columnstore_reader::value_reader_f&) {
-    return false;
-  };
+  [] (doc_id_t, bytes_ref&) { return false; };
 
 template<typename Context, typename Block>
 const Block* load_block(
@@ -2022,9 +2020,7 @@ class sparse_block : util::noncopyable {
     return true;
   }
 
-  bool value(
-      doc_id_t key,
-      const columnstore_reader::value_reader_f& reader) const {
+  bool value(doc_id_t key, bytes_ref& out) const {
     // find the right ref
     auto it = std::lower_bound(
       index_, end_, key,
@@ -2042,22 +2038,20 @@ class sparse_block : util::noncopyable {
       return true;
     }
 
-    bytes_ref_input in;
-
     const auto vbegin = it->offset;
     const auto vend = (++it == end_ ? data_.size() : it->offset);
 
     assert(vend >= vbegin);
-    in.reset(
+    out = bytes_ref(
       data_.c_str() + vbegin, // start
       vend - vbegin // length
     );
 
-    return reader(in);
+    return true;
   }
 
-  bool visit(const columnstore_reader::raw_reader_f& reader) const {
-    bytes_ref_input in;
+  bool visit(const columnstore_reader::values_reader_f& visitor) const {
+    bytes_ref value;
 
     // visit first [begin;end-1) blocks
     doc_id_t key;
@@ -2070,24 +2064,24 @@ class sparse_block : util::noncopyable {
       ++begin;
 
       assert(begin->offset >= vbegin);
-      in.reset(
+      value = bytes_ref(
         data_.c_str() + vbegin, // start
         begin->offset - vbegin // length
       );
 
-      if (!reader(key, in)) {
+      if (!visitor(key, value)) {
         return false;
       }
     }
 
     // visit tail block
     assert(data_.size() >= begin->offset);
-    in.reset(
+    value = bytes_ref(
       data_.c_str() + begin->offset, // start
       data_.size() - begin->offset // length
     );
 
-    return reader(begin->key, in);
+    return visitor(begin->key, value);
   }
 
  private:
@@ -2137,9 +2131,7 @@ class dense_block : util::noncopyable {
     return true;
   }
 
-  bool value(
-      doc_id_t key,
-      const columnstore_reader::value_reader_f& reader) const {
+  bool value(doc_id_t key, bytes_ref& out) const {
     const auto* begin = index_ + key - base_;
     if (begin < index_ || begin >= end_) {
       // there is no item with the speicified key
@@ -2155,14 +2147,13 @@ class dense_block : util::noncopyable {
     const auto vend = (++begin == end_ ? data_.size() : *begin);
     assert(vend >= vbegin);
 
-    bytes_ref_input stream;
-    stream.reset(data_.c_str() + vbegin, vend - vbegin);
+    out = bytes_ref(data_.c_str() + vbegin, vend - vbegin);
 
-    return reader(stream);
+    return true;
   }
 
-  bool visit(const columnstore_reader::raw_reader_f& reader) const {
-    bytes_ref_input in;
+  bool visit(const columnstore_reader::values_reader_f& visitor) const {
+    bytes_ref value;
 
     // visit first [begin;end-1) blocks
     doc_id_t key = base_;
@@ -2174,24 +2165,24 @@ class dense_block : util::noncopyable {
       ++begin;
 
       assert(*begin >= vbegin);
-      in.reset(
+      value = bytes_ref(
         data_.c_str() + vbegin, // start
         *begin - vbegin // length
       );
 
-      if (!reader(key, in)) {
+      if (!visitor(key, value)) {
         return false;
       }
     }
 
     // visit tail block
     assert(data_.size() >= *begin);
-    in.reset(
+    value = bytes_ref(
       data_.c_str() + *begin, // start
       data_.size() - *begin // length
     );
 
-    return reader(key, in);
+    return visitor(key, value);
   }
 
  private:
@@ -2232,9 +2223,7 @@ class dense_fixed_length_block : util::noncopyable {
     return true;
   }
 
-  bool value(
-      doc_id_t key,
-      const columnstore_reader::value_reader_f& reader) const {
+  bool value(doc_id_t key, bytes_ref& out) const {
     assert(key < size_);
 
     if (data_.empty()) {
@@ -2245,35 +2234,33 @@ class dense_fixed_length_block : util::noncopyable {
     const auto vbegin = base_offset_ + key*avg_length_;
     const auto vlength = (size_ == ++key ? data_.size() - vbegin : avg_length_);
 
-    bytes_ref_input stream;
-    stream.reset(data_.c_str() + vbegin, vlength);
-
-    return reader(stream);
+    out = bytes_ref(data_.c_str() + vbegin, vlength);
+    return true;
   }
 
-  bool visit(const columnstore_reader::raw_reader_f& reader) const {
+  bool visit(const columnstore_reader::values_reader_f& visitor) const {
     assert(size_);
 
-    bytes_ref_input in;
+    bytes_ref value;
 
     // visit first 'size_-1' blocks
     doc_id_t key = base_key_;
     size_t offset = base_offset_;
     for (const doc_id_t end = key + size_ - 1;  key < end; ++key, offset += avg_length_) {
-      in.reset(data_.c_str() + offset, avg_length_);
-      if (!reader(key, in)) {
+      value = bytes_ref(data_.c_str() + offset, avg_length_);
+      if (!visitor(key, value)) {
         return false;
       }
     }
 
     // visit tail block
     assert(data_.size() >= offset);
-    in.reset(
+    value = bytes_ref(
       data_.c_str() + offset, // start
       data_.size() - offset // length
     );
 
-    return reader(key, in);
+    return visitor(key, value);
   }
 
  private:
@@ -2311,17 +2298,16 @@ class sparse_mask_block : util::noncopyable {
     return true;
   }
 
-  bool value(doc_id_t key, const columnstore_reader::value_reader_f& /*reader*/) const {
+  bool value(doc_id_t key, bytes_ref& /*reader*/) const {
     // find the right ref
     const auto it = std::lower_bound(std::begin(keys_), std::end(keys_), key);
 
     return !(std::end(keys_) == it || *it > key);
   }
 
-  bool visit(const columnstore_reader::raw_reader_f& reader) const {
-    static bytes_ref_input in;
+  bool visit(const columnstore_reader::values_reader_f& reader) const {
     for (auto begin = std::begin(keys_); begin != std::end(keys_); ++begin) {
-      if (!reader(*begin, in)) {
+      if (!reader(*begin, bytes_ref::nil)) {
         return false;
       }
     }
@@ -2360,15 +2346,14 @@ class dense_mask_block {
     return true;
   }
 
-  bool value(doc_id_t key, const columnstore_reader::value_reader_f& /*reader*/) const {
+  bool value(doc_id_t key, bytes_ref& /*reader*/) const {
     return key >= min_ && key <= max_;
   }
 
-  bool visit(const columnstore_reader::raw_reader_f& reader) const {
-    static bytes_ref_input in;
+  bool visit(const columnstore_reader::values_reader_f& visitor) const {
     doc_id_t key = min_;
     for (; key < max_; ++key) {
-      if (reader(key, in)) {
+      if (visitor(key, bytes_ref::nil)) {
         return false;
       }
     }
@@ -2489,13 +2474,10 @@ class column : private util::noncopyable {
     return true;
   }
 
-  virtual bool value(
-   doc_id_t key,
-   const columnstore_reader::value_reader_f& reader
-  ) const = 0;
+  virtual bool value(doc_id_t key, bytes_ref& out) const = 0;
 
   virtual bool visit(
-    const columnstore_reader::raw_reader_f& reader
+    const columnstore_reader::values_reader_f& visitor
   ) const = 0;
 
   doc_id_t max() const { return max_; }
@@ -2591,9 +2573,7 @@ class sparse_column final : public column {
     return true;
   }
 
-  virtual bool value(
-      doc_id_t key,
-      const columnstore_reader::value_reader_f& reader) const {
+  virtual bool value(doc_id_t key, bytes_ref& value) const {
     // find the right block
     const auto rbegin = refs_.rbegin(); // upper bound
     const auto rend = refs_.rend();
@@ -2620,11 +2600,11 @@ class sparse_column final : public column {
     }
 
     assert(cached);
-    return cached->value(key, reader);
+    return cached->value(key, value);
   };
 
-  virtual bool visit(const columnstore_reader::raw_reader_f& reader) const {
-    block_t block;
+  virtual bool visit(const columnstore_reader::values_reader_f& visitor) const {
+    block_t block; // don't cache prevously new blocks
     for (auto begin = refs_.begin(), end = refs_.end()-1; begin != end; ++begin) { // -1 for upper bound
       const auto* cached = begin->pblock.load();
       if (!cached) {
@@ -2638,7 +2618,7 @@ class sparse_column final : public column {
       }
 
       assert(cached);
-      if (!cached->visit(reader)) {
+      if (!cached->visit(visitor)) {
         return false;
       }
     }
@@ -2725,9 +2705,7 @@ class dense_fixed_length_column final : public column {
     return true;
   }
 
-  virtual bool value(
-      doc_id_t key,
-      const columnstore_reader::value_reader_f& reader) const {
+  virtual bool value(doc_id_t key, bytes_ref& value) const {
     if ((key -= min_) >= this->size()) {
       return false;
     }
@@ -2748,11 +2726,11 @@ class dense_fixed_length_column final : public column {
     }
 
     assert(cached);
-    return cached->value(key -= block_idx*this->avg_block_count(), reader);
+    return cached->value(key -= block_idx*this->avg_block_count(), value);
   }
 
-  virtual bool visit(const columnstore_reader::raw_reader_f& reader) const {
-    block_t block;
+  virtual bool visit(const columnstore_reader::values_reader_f& visitor) const {
+    block_t block; // don't cache new blocks
     for (auto& ref : refs_) {
       const auto* cached = ref.pblock.load();
       if (!cached) {
@@ -2767,7 +2745,7 @@ class dense_fixed_length_column final : public column {
       }
 
       assert(cached);
-      if (!cached->visit(reader)) {
+      if (!cached->visit(visitor)) {
         return false;
       }
     }
@@ -2807,8 +2785,8 @@ template<typename Column>
 struct column_downcast {
   static columnstore_reader::values_reader_f values(column& base) {
     auto& typed = static_cast<Column&>(base);
-    return [&typed](doc_id_t key, const columnstore_reader::value_reader_f& reader) -> bool {
-      return typed.value(key, reader);
+    return [&typed](doc_id_t key, bytes_ref& value) -> bool {
+      return typed.value(key, value);
     };
   }
 }; // downcast
@@ -2840,7 +2818,7 @@ class reader final : public columnstore_reader, public context_provider {
 
   virtual bool prepare(const reader_state& state) override;
   virtual values_reader_f values(field_id field) const override;
-  virtual bool visit(field_id field, const raw_reader_f& reader) const override;
+  virtual bool visit(field_id field, const values_reader_f& reader) const override;
 
  private:
   std::vector<column::ptr> columns_;
@@ -2924,14 +2902,14 @@ reader::values_reader_f reader::values(field_id field) const {
   return g_column_descriptors[column.props()].second(column);
 }
 
-bool reader::visit(field_id field, const raw_reader_f& reader) const {
+bool reader::visit(field_id field, const values_reader_f& visitor) const {
   if (field >= columns_.size()) {
     // can't find attribute with the specified id
     return false;
   }
 
   const auto& column = *columns_[field];
-  return column.visit(reader);
+  return column.visit(visitor);
 }
 
 NS_END // columns

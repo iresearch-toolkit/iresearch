@@ -182,8 +182,58 @@ void shift_pack_unpack_core_64(uint64_t value, bool flag) {
   ASSERT_EQ(value, unpacked);
 }
 
+template<typename T>
+void vencode_from_array(T expected_value, size_t expected_length) {
+  typedef vencode_traits<T> traits_t;
+  ASSERT_EQ(expected_length, traits_t::size(expected_value));
+  irs::byte_type buf[traits_t::max_size()]{};
+  const auto ptr = traits_t::write(expected_value, buf);
+  ASSERT_EQ(expected_length, std::distance(std::begin(buf), ptr));
+  const auto res = traits_t::read(buf);
+  ASSERT_EQ(expected_value, res.first);
+  ASSERT_EQ(expected_length, std::distance((const irs::byte_type*)(buf), res.second));
+}
+
 } // detail
 } // tests
+
+TEST(store_utils_tests, vint_from_array) {
+  tests::detail::vencode_from_array(UINT32_C(0), 1);
+  tests::detail::vencode_from_array(UINT32_C(1), 1);
+  tests::detail::vencode_from_array(UINT32_C(100), 1);
+  tests::detail::vencode_from_array(UINT32_C(127), 1);
+  tests::detail::vencode_from_array(UINT32_C(128), 2);
+  tests::detail::vencode_from_array(UINT32_C(16383), 2);
+  tests::detail::vencode_from_array(UINT32_C(16384), 3);
+  tests::detail::vencode_from_array(UINT32_C(32000), 3);
+  tests::detail::vencode_from_array(UINT32_C(2097151), 3);
+  tests::detail::vencode_from_array(UINT32_C(2097152), 4);
+  tests::detail::vencode_from_array(UINT32_C(268435455), 4);
+  tests::detail::vencode_from_array(UINT32_C(268435456), 5);
+  tests::detail::vencode_from_array(irs::integer_traits<uint32_t>::const_max, 5);
+}
+
+TEST(store_utils_tests, vlong_from_array) {
+  tests::detail::vencode_from_array(UINT64_C(0), 1);
+  tests::detail::vencode_from_array(UINT64_C(1), 1);
+  tests::detail::vencode_from_array(UINT64_C(100), 1);
+  tests::detail::vencode_from_array(UINT64_C(127), 1);
+  tests::detail::vencode_from_array(UINT64_C(128), 2);
+  tests::detail::vencode_from_array(UINT64_C(16383), 2);
+  tests::detail::vencode_from_array(UINT64_C(16384), 3);
+  tests::detail::vencode_from_array(UINT64_C(32000), 3);
+  tests::detail::vencode_from_array(UINT64_C(2097151), 3);
+  tests::detail::vencode_from_array(UINT64_C(2097152), 4);
+  tests::detail::vencode_from_array(UINT64_C(268435455), 4);
+  tests::detail::vencode_from_array(UINT64_C(268435456), 5);
+  tests::detail::vencode_from_array(UINT64_C(34359738367), 5);
+  tests::detail::vencode_from_array(UINT64_C(34359738368), 6);
+  tests::detail::vencode_from_array(UINT64_C(4398046511103), 6);
+  tests::detail::vencode_from_array(UINT64_C(4398046511104), 7);
+  tests::detail::vencode_from_array(UINT64_C(72057594037927935), 8);
+  tests::detail::vencode_from_array(UINT64_C(72057594037927936), 9);
+  tests::detail::vencode_from_array(irs::integer_traits<uint64_t>::const_max, 10);
+}
 
 TEST(store_utils_tests, zvfloat_read_write) {
   tests::detail::read_write_core<float_t>(

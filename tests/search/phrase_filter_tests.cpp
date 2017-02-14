@@ -93,15 +93,7 @@ class phrase_filter_test_case : public filter_test_case_base {
 
     // equals to term_filter "fox"
     {
-      iresearch::string_ref expected_value;
-      iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](iresearch::data_input& in) {
-        const auto value = iresearch::read_string<std::string>(in);
-        if (value != expected_value) {
-          return false;
-        }
-
-        return true;
-      };
+      irs::bytes_ref actual_value;
 
       ir::by_phrase q;
       q.field("phrase_anl")
@@ -109,42 +101,47 @@ class phrase_filter_test_case : public filter_test_case_base {
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
-      auto values = sub->values("name", visitor);
+      auto values = sub->values("name");
 
       auto docs = prepared->execute(*sub);
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(docs->value()));
       auto docs_seek = prepared->execute(*sub);
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(docs_seek->value()));
 
-      expected_value = "A";
       ASSERT_TRUE(docs->next());
-      ASSERT_TRUE(values(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
       ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-      ASSERT_TRUE(values(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
-      expected_value = "G";
       ASSERT_TRUE(docs->next());
-      ASSERT_TRUE(values(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str()));
       ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-      ASSERT_TRUE(values(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
-      expected_value = "I";
       ASSERT_TRUE(docs->next());
-      ASSERT_TRUE(values(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str()));
       ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-      ASSERT_TRUE(values(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
-      expected_value = "K";
       ASSERT_TRUE(docs->next());
-      ASSERT_TRUE(values(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("K", irs::to_string<irs::string_ref>(actual_value.c_str()));
       ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-      ASSERT_TRUE(values(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("K", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
-      expected_value = "L";
       ASSERT_TRUE(docs->next());
-      ASSERT_TRUE(values(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("L", irs::to_string<irs::string_ref>(actual_value.c_str()));
       ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-      ASSERT_TRUE(values(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("L", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
       ASSERT_FALSE(docs->next());
       ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs->value()));
@@ -167,15 +164,7 @@ class phrase_filter_test_case : public filter_test_case_base {
     // equals to term_filter "fox" with phrase offset 
     // which is does not matter
     {
-      iresearch::string_ref expected_value;
-      iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](iresearch::data_input& in) {
-        const auto value = iresearch::read_string<std::string>(in);
-        if (value != expected_value) {
-          return false;
-        }
-
-        return true;
-      };
+      irs::bytes_ref actual_value;
 
       ir::by_phrase q;
       q.field("phrase_anl")
@@ -183,42 +172,47 @@ class phrase_filter_test_case : public filter_test_case_base {
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
-      auto values = sub->values("name", visitor);
+      auto values = sub->values("name");
 
       auto docs = prepared->execute(*sub);
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(docs->value()));
       auto docs_seek = prepared->execute(*sub);
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(docs_seek->value()));
 
-      expected_value = "A";
       ASSERT_TRUE(docs->next());
-      ASSERT_TRUE(values(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
       ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-      ASSERT_TRUE(values(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
-      expected_value = "G";
       ASSERT_TRUE(docs->next());
-      ASSERT_TRUE(values(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str()));
       ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-      ASSERT_TRUE(values(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
-      expected_value = "I";
       ASSERT_TRUE(docs->next());
-      ASSERT_TRUE(values(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str()));
       ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-      ASSERT_TRUE(values(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
-      expected_value = "K";
       ASSERT_TRUE(docs->next());
-      ASSERT_TRUE(values(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("K", irs::to_string<irs::string_ref>(actual_value.c_str()));
       ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-      ASSERT_TRUE(values(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("K", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
-      expected_value = "L";
       ASSERT_TRUE(docs->next());
-      ASSERT_TRUE(values(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("L", irs::to_string<irs::string_ref>(actual_value.c_str()));
       ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-      ASSERT_TRUE(values(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("L", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
       ASSERT_FALSE(docs->next());
       ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs->value()));
@@ -226,15 +220,7 @@ class phrase_filter_test_case : public filter_test_case_base {
 
     // "quick brown fox"
     {
-      iresearch::string_ref expected_value;
-      iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](iresearch::data_input& in) {
-        const auto value = iresearch::read_string<std::string>(in);
-        if (value != expected_value) {
-          return false;
-        }
-
-        return true;
-      };
+      irs::bytes_ref actual_value;
 
       ir::by_phrase q;
       q.field("phrase_anl")
@@ -244,30 +230,33 @@ class phrase_filter_test_case : public filter_test_case_base {
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
-      auto values = sub->values("name", visitor);
+      auto values = sub->values("name");
 
       auto docs = prepared->execute(*sub);
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(docs->value()));
       auto docs_seek = prepared->execute(*sub);
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(docs_seek->value()));
 
-      expected_value = "A";
       ASSERT_TRUE(docs->next());
-      ASSERT_TRUE(values(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
       ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-      ASSERT_TRUE(values(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
-      expected_value = "G";
       ASSERT_TRUE(docs->next());
-      ASSERT_TRUE(values(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str()));
       ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-      ASSERT_TRUE(values(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
-      expected_value = "I";
       ASSERT_TRUE(docs->next());
-      ASSERT_TRUE(values(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str()));
       ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-      ASSERT_TRUE(values(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
       ASSERT_FALSE(docs->next());
       ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs->value()));
@@ -276,15 +265,7 @@ class phrase_filter_test_case : public filter_test_case_base {
 
     // "fox ... quick"
     {
-      iresearch::string_ref expected_value;
-      iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](iresearch::data_input& in) {
-        const auto value = iresearch::read_string<std::string>(in);
-        if (value != expected_value) {
-          return false;
-        }
-
-        return true;
-      };
+      irs::bytes_ref actual_value;
 
       ir::by_phrase q;
       q.field("phrase_anl")
@@ -294,17 +275,18 @@ class phrase_filter_test_case : public filter_test_case_base {
       auto prepared = q.prepare(rdr);
 
       auto sub = rdr.begin();
-      auto values = sub->values("name", visitor);
+      auto values = sub->values("name");
       auto docs = prepared->execute(*sub); 
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(docs->value()));
       auto docs_seek = prepared->execute(*sub);
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(docs_seek->value()));
 
-      expected_value = "L";
       ASSERT_TRUE(docs->next());
-      ASSERT_TRUE(values(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("L", irs::to_string<irs::string_ref>(actual_value.c_str()));
       ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-      ASSERT_TRUE(values(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("L", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
       ASSERT_FALSE(docs->next());
       ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs->value()));
@@ -314,15 +296,7 @@ class phrase_filter_test_case : public filter_test_case_base {
     // "fox ... quick" with phrase offset
     // which is does not matter
     {
-      iresearch::string_ref expected_value;
-      iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](iresearch::data_input& in) {
-        const auto value = iresearch::read_string<std::string>(in);
-        if (value != expected_value) {
-          return false;
-        }
-
-        return true;
-      };
+      irs::bytes_ref actual_value;
 
       ir::by_phrase q;
       q.field("phrase_anl")
@@ -332,17 +306,18 @@ class phrase_filter_test_case : public filter_test_case_base {
       auto prepared = q.prepare(rdr);
 
       auto sub = rdr.begin();
-      auto values = sub->values("name", visitor);
+      auto values = sub->values("name");
       auto docs = prepared->execute(*sub); 
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid( docs->value()));
       auto docs_seek = prepared->execute(*sub);
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(docs_seek->value()));
 
-      expected_value = "L";
       ASSERT_TRUE(docs->next());
-      ASSERT_TRUE(values(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("L", irs::to_string<irs::string_ref>(actual_value.c_str()));
       ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-      ASSERT_TRUE(values(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("L", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
       ASSERT_FALSE(docs->next());
       ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs->value()));
@@ -367,15 +342,7 @@ class phrase_filter_test_case : public filter_test_case_base {
 
     // "eye ... eye"
     {
-      iresearch::string_ref expected_value;
-      iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](iresearch::data_input& in) {
-        const auto value = iresearch::read_string<std::string>(in);
-        if (value != expected_value) {
-          return false;
-        }
-
-        return true;
-      };
+      irs::bytes_ref actual_value;
 
       ir::by_phrase q;
       q.field("phrase_anl")
@@ -385,17 +352,18 @@ class phrase_filter_test_case : public filter_test_case_base {
       auto prepared = q.prepare(rdr);
 
       auto sub = rdr.begin();
-      auto values = sub->values("name", visitor);
+      auto values = sub->values("name");
       auto docs = prepared->execute(*sub); 
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(docs->value()));
       auto docs_seek = prepared->execute(*sub);
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(docs_seek->value()));
 
-      expected_value = "C";
       ASSERT_TRUE(docs->next());
-      ASSERT_TRUE(values(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str()));
       ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-      ASSERT_TRUE(values(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
       ASSERT_FALSE(docs->next());
       ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs->value()));
@@ -404,15 +372,7 @@ class phrase_filter_test_case : public filter_test_case_base {
 
     // "as in the past we are looking forward"
     {
-      iresearch::string_ref expected_value;
-      iresearch::columnstore_reader::value_reader_f visitor = [&expected_value](iresearch::data_input& in) {
-        const auto value = iresearch::read_string<std::string>(in);
-        if (value != expected_value) {
-          return false;
-        }
-
-        return true;
-      };
+      irs::bytes_ref actual_value;
 
       ir::by_phrase q;
       q.field("phrase_anl")
@@ -427,24 +387,25 @@ class phrase_filter_test_case : public filter_test_case_base {
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
-      auto values = sub->values("name", visitor);
+      auto values = sub->values("name");
       auto docs = prepared->execute(*sub); 
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(docs->value()));
       auto docs_seek = prepared->execute(*sub);
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(docs_seek->value()));
 
-      expected_value = "H";
       ASSERT_TRUE(docs->next());
-      ASSERT_TRUE(values(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("H", irs::to_string<irs::string_ref>(actual_value.c_str()));
       ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-      ASSERT_TRUE(values(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("H", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
       ASSERT_FALSE(docs->next());
       ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs->value()));
       ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs_seek->seek(ir::type_limits<ir::type_t::doc_id_t>::eof())));
-    }  
+    }
   }
-}; // phrase_filter_test_case 
+}; // phrase_filter_test_case
 
 } // tests
 

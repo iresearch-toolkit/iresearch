@@ -64,6 +64,153 @@ NS_END // LOCAL
 
 NS_ROOT
 
+inline byte_type* write_vint(uint32_t v, byte_type* begin) {
+  while (v >= 0x80) {
+    *begin++ = static_cast<byte_type>(v | 0x80);
+    v >>= 7;
+  }
+
+  *begin = static_cast<byte_type>(v);
+  return begin + 1;
+}
+
+inline byte_type* write_vlong(uint64_t v, byte_type* begin) {
+  while (v >= uint64_t(0x80)) {
+    *begin++ = static_cast<byte_type>(v | uint64_t(0x80));
+    v >>= 7;
+  }
+
+  *begin = static_cast<byte_type>(v);
+  return begin + 1;
+}
+
+inline std::pair<uint32_t, const byte_type*> read_vint(const byte_type* begin) {
+  uint32_t out = *begin++; if (!(out & 0x80)) return std::make_pair(out, begin);
+
+  uint32_t b;
+  out -= 0x80;
+  b = *begin++; out += b << 7; if (!(b & 0x80)) return std::make_pair(out, begin);
+  out -= 0x80 << 7;
+  b = *begin++; out += b << 14; if (!(b & 0x80)) return std::make_pair(out, begin);
+  out -= 0x80 << 14;
+  b = *begin++; out += b << 21; if (!(b & 0x80)) return std::make_pair(out, begin);
+  out -= 0x80 << 21;
+  b = *begin++; out += b << 28; if (!(b & 0x80)) return std::make_pair(out, begin);
+  // last byte always has MSB == 0, so we don't need to subtract 0x80
+
+  return std::make_pair(out, begin);
+}
+
+inline std::pair<uint64_t, const byte_type*> read_vlong(const byte_type* begin) {
+  const uint64_t MASK = 0x80;
+  uint64_t out = *begin++; if (!(out & MASK)) return std::make_pair(out, begin);
+
+  uint64_t b;
+  out -= MASK;
+  b = *begin++; out += b << 7; if (!(b & MASK)) return std::make_pair(out, begin);
+  out -= MASK << 7;
+  b = *begin++; out += b << 14; if (!(b & MASK)) return std::make_pair(out, begin);
+  out -= MASK << 14;
+  b = *begin++; out += b << 21; if (!(b & MASK)) return std::make_pair(out, begin);
+  out -= MASK << 21;
+  b = *begin++; out += b << 28; if (!(b & MASK)) return std::make_pair(out, begin);
+  out -= MASK << 28;
+  b = *begin++; out += b << 35; if (!(b & MASK)) return std::make_pair(out, begin);
+  out -= MASK << 35;
+  b = *begin++; out += b << 42; if (!(b & MASK)) return std::make_pair(out, begin);
+  out -= MASK << 42;
+  b = *begin++; out += b << 49; if (!(b & MASK)) return std::make_pair(out, begin);
+  out -= MASK << 49;
+  b = *begin++; out += b << 56; if (!(b & MASK)) return std::make_pair(out, begin);
+  out -= MASK << 56;
+  b = *begin++; out += b << 63; if (!(b & MASK)) return std::make_pair(out, begin);
+  // last byte always has MSB == 0, so we don't need to subtract MASK
+
+  return std::make_pair(out, begin);
+}
+
+template<typename StringType>
+StringType to_string(const byte_type* const begin) {
+  const auto res = read_vint(begin);
+  return StringType(reinterpret_cast<const char*>(res.second), res.first);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @returns number of bytes required to store value in variable length format
+////////////////////////////////////////////////////////////////////////////////
+FORCE_INLINE uint32_t vencode_size_32(uint32_t value) {
+  // compute 0 == value ? 1 : 1 + floor(log2(value)) / 7
+
+  // OR 0x1 since log2_floor_32 does not accept 0
+  const uint32_t log2 = math::log2_floor_32(value | 0x1);
+
+  // division within range [1;31]
+  return (73 + 9*log2) >> 6;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @returns number of bytes required to store value in variable length format
+////////////////////////////////////////////////////////////////////////////////
+FORCE_INLINE uint64_t vencode_size_64(uint64_t value) {
+  // compute 0 == value ? 1 : 1 + floor(log2(value)) / 7
+
+  // OR 0x1 since log2_floor_64 does not accept 0
+  const uint64_t log2 = math::log2_floor_64(value | 0x1);
+
+  // division within range [1;63]
+  return (73 + 9*log2) >> 6;
+}
+
+template<typename T>
+struct vencode_traits {
+  static size_t size(T value);
+  CONSTEXPR static size_t max_length();
+  static byte_type* write(T value, byte_type* dst);
+  static std::pair<T, const byte_type*> read(const byte_type* begin);
+}; // vencode_traits
+
+template<>
+struct vencode_traits<uint32_t> {
+  typedef uint32_t type;
+
+  static size_t size(type v) {
+    return vencode_size_32(v);
+  }
+
+  CONSTEXPR static size_t max_size() {
+    return 5; // may take up to 5 bytes
+  }
+
+  static byte_type* write(type v, byte_type* begin) {
+    return write_vint(v, begin);
+  }
+
+  static std::pair<type, const byte_type*> read(const byte_type* begin) {
+    return read_vint(begin);
+  }
+}; // vencode_traits<uint32_t>
+
+template<>
+struct vencode_traits<uint64_t> {
+  typedef uint64_t type;
+
+  static size_t size(type v) {
+    return vencode_size_64(v);
+  }
+
+  CONSTEXPR static size_t max_size() {
+    return 10; // may take up to 10 bytes
+  }
+
+  static byte_type* write(type v, byte_type* begin) {
+    return write_vlong(v, begin);
+  }
+
+  static std::pair<type, const byte_type*> read(const byte_type* begin) {
+    return read_vlong(begin);
+  }
+}; // vencode_traits<uint64_t>
+
 // ----------------------------------------------------------------------------
 // --SECTION--                                               read/write helpers
 // ----------------------------------------------------------------------------
@@ -300,6 +447,10 @@ class IRESEARCH_API bytes_ref_input final : public data_input{
   void reset(const byte_type* data, size_t size) {
     data_ = bytes_ref(data, size);
     pos_ = 0;
+  }
+
+  void reset(const bytes_ref& ref) {
+    reset(ref.c_str(), ref.size());
   }
 
  private:

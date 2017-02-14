@@ -223,18 +223,7 @@ TEST(directory_reader_test, open) {
   // check subreaders
   auto sub = rdr.begin();
 
-  iresearch::string_ref expected_value;
-  size_t calls_count = 0;
-  iresearch::columnstore_reader::value_reader_f visitor = [&calls_count, &expected_value](ir::data_input& in) {
-    ++calls_count;
-
-    const auto value = ir::read_string<std::string>(in);
-    if (value != expected_value) {
-      return false;
-    }
-
-    return true;
-  };
+  irs::bytes_ref actual_value;
 
   // first segment
   {
@@ -243,20 +232,18 @@ TEST(directory_reader_test, open) {
     ASSERT_EQ(3, sub->docs_count());
     ASSERT_EQ(3, sub->live_docs_count());
 
-    auto values = sub->values("name", visitor);
+    auto values = sub->values("name");
 
     // read documents
-    expected_value = "A"; // 'name' value in doc1 
-    ASSERT_TRUE(values(1)); 
-    expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(values(2)); 
-    expected_value = "C"; // 'name' value in doc3
-    ASSERT_TRUE(values(3));
+    ASSERT_TRUE(values(1, actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+    ASSERT_TRUE(values(2, actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
+    ASSERT_TRUE(values(3, actual_value));
+    ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
 
     // read invalid document
-    calls_count = 0;
-    ASSERT_FALSE(values(4));
-    ASSERT_EQ(0, calls_count);
+    ASSERT_FALSE(values(4, actual_value));
   }
 
   // second segment
@@ -267,22 +254,20 @@ TEST(directory_reader_test, open) {
     ASSERT_EQ(4, sub->docs_count());
     ASSERT_EQ(4, sub->live_docs_count());
 
-    auto values = sub->values("name", visitor);
+    auto values = sub->values("name");
 
     // read documents
-    expected_value = "D"; // 'name' value in doc4
-    ASSERT_TRUE(values(1)); 
-    expected_value = "E"; // 'name' value in doc5
-    ASSERT_TRUE(values(2)); 
-    expected_value = "F"; // 'name' value in doc6
-    ASSERT_TRUE(values(3)); 
-    expected_value = "G"; // 'name' value in doc7
-    ASSERT_TRUE(values(4)); 
+    ASSERT_TRUE(values(1, actual_value));
+    ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
+    ASSERT_TRUE(values(2, actual_value));
+    ASSERT_EQ("E", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc5
+    ASSERT_TRUE(values(3, actual_value));
+    ASSERT_EQ("F", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc6
+    ASSERT_TRUE(values(4, actual_value));
+    ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc7
 
     // read invalid document
-    calls_count = 0;
-    ASSERT_FALSE(values(5));
-    ASSERT_EQ(0, calls_count);
+    ASSERT_FALSE(values(5, actual_value));
   }
 
   // third segment
@@ -293,18 +278,16 @@ TEST(directory_reader_test, open) {
     ASSERT_EQ(2, sub->docs_count());
     ASSERT_EQ(2, sub->live_docs_count());
 
-    auto values = sub->values("name", visitor);
+    auto values = sub->values("name");
 
     // read documents
-    expected_value = "H"; // 'name' value in doc8
-    ASSERT_TRUE(values(1)); 
-    expected_value = "I"; // 'name' value in doc9
-    ASSERT_TRUE(values(2)); 
+    ASSERT_TRUE(values(1, actual_value));
+    ASSERT_EQ("H", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc8
+    ASSERT_TRUE(values(2, actual_value));
+    ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc9
 
     // read invalid document
-    calls_count = 0;
-    ASSERT_FALSE(values(3));
-    ASSERT_EQ(0, calls_count);
+    ASSERT_FALSE(values(3, actual_value));
   }
 
   ++sub;
@@ -389,37 +372,24 @@ TEST(segment_reader_test, open) {
     ASSERT_EQ(meta.docs_count, rdr.docs_count());
     ASSERT_EQ(meta.docs_count, rdr.live_docs_count());
 
-    size_t calls_count = 0;
-    iresearch::string_ref expected_value;
-    iresearch::columnstore_reader::value_reader_f visitor = [&calls_count, &expected_value](iresearch::data_input& in) {
-      ++calls_count;
-
-      const auto value = ir::read_string<std::string>(in);
-      if (value != expected_value) {
-        return false;
-      }
-
-      return true;
-    };
+    irs::bytes_ref actual_value;
 
     auto& segment = *rdr.begin();
-    auto values = segment.values("name", visitor);
+    auto values = segment.values("name");
 
     // read documents
-    expected_value = "A"; // 'name' value in doc1
-    ASSERT_TRUE(values(1));
-    expected_value = "B"; // 'name' value in doc2
-    ASSERT_TRUE(values(2));
-    expected_value = "C"; // 'name' value in doc3
-    ASSERT_TRUE(values(3));
-    expected_value = "D"; // 'name' value in doc4
-    ASSERT_TRUE(values(4));
-    expected_value = "E"; // 'name' value in doc5
-    ASSERT_TRUE(values(5));
+    ASSERT_TRUE(values(1, actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+    ASSERT_TRUE(values(2, actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
+    ASSERT_TRUE(values(3, actual_value));
+    ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+    ASSERT_TRUE(values(4, actual_value));
+    ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
+    ASSERT_TRUE(values(5, actual_value));
+    ASSERT_EQ("E", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc5
 
-    calls_count = 0;
-    ASSERT_FALSE(values(6)); // read invalid document 
-    ASSERT_EQ(0, calls_count);
+    ASSERT_FALSE(values(6, actual_value)); // read invalid document
 
     // check iterators
     {

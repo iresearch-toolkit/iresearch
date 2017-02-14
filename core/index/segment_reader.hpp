@@ -43,11 +43,9 @@ class IRESEARCH_API segment_reader final: public sub_reader {
   void reset() NOEXCEPT;
   virtual size_t size() const override;
   using sub_reader::values;
-  virtual value_visitor_f values(
-    field_id field, const columnstore_reader::value_reader_f& reader
-  ) const override;
+  virtual columnstore_reader::values_reader_f values(field_id field) const override;
   virtual bool visit(
-    field_id field, const columnstore_reader::raw_reader_f& reader
+    field_id field, const columnstore_reader::values_reader_f& reader
   ) const override;
 
  private:

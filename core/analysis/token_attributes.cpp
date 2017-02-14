@@ -121,28 +121,18 @@ DEFINE_FACTORY_DEFAULT(norm);
 
 const document EMPTY_DOCUMENT;
 
-norm::norm() NOEXCEPT 
+norm::norm() NOEXCEPT
   : attribute(norm::type()) {
-  reader_ = [this](data_input& in) {
-    value_ = read_zvfloat(in);
-    return true;
-  };
   reset();
 }
 
 void norm::reset() {
-  column_ = [](doc_id_t){ return false; };
+  column_ = [](doc_id_t, bytes_ref&){ return false; };
   doc_ = &EMPTY_DOCUMENT;
-  value_ = DEFAULT();
 }
 
 bool norm::empty() const {
   return doc_ == &EMPTY_DOCUMENT;
-}
-
-bool norm::write(data_output& out) const {
-  write_zvfloat(out, value_);
-  return true;
 }
 
 bool norm::reset(const sub_reader& reader, field_id column, const document& doc) {
@@ -150,13 +140,20 @@ bool norm::reset(const sub_reader& reader, field_id column, const document& doc)
     return false;
   }
 
-  column_ = reader.values(column, reader_);
+  column_ = reader.values(column);
   doc_ = &doc;
   return true;
 }
 
 float_t norm::read() const {
-  return column_(doc_->value) ? value_ : DEFAULT();
+  bytes_ref value;
+  if (!column_(doc_->value, value)) {
+    return DEFAULT();
+  }
+
+  // TODO: create set of helpers to decode float from buffer directly
+  bytes_ref_input in(value);
+  return read_zvfloat(in);
 }
 
 // -----------------------------------------------------------------------------

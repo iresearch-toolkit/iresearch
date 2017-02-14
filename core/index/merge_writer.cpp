@@ -595,8 +595,8 @@ class columnstore {
       iresearch::field_id column, 
       const doc_id_map_t& doc_id_map) {
     return reader.visit(
-        column, 
-        [this, &doc_id_map](iresearch::doc_id_t doc, iresearch::data_input& in) {
+        column,
+        [this, &doc_id_map](irs::doc_id_t doc, irs::bytes_ref& in) {
           const auto mapped_doc = doc_id_map[doc];
           if (MASKED_DOC_ID == mapped_doc) {
             // skip deleted document
@@ -606,10 +606,7 @@ class columnstore {
           empty_ = false;
 
           auto& out = column_.second(mapped_doc);
-          for (size_t read = in.read_bytes(buf_, sizeof buf_); read;
-               read = in.read_bytes(buf_, sizeof buf_)) {
-            out.write_bytes(buf_, read);
-          }
+          out.write_bytes(in.c_str(), in.size());
           return true;
         });
   }
@@ -633,7 +630,6 @@ class columnstore {
   iresearch::field_id id() const { return column_.first; }
 
  private:
-  iresearch::byte_type buf_[1024]; // temporary buffer for copying
   iresearch::columnstore_writer::ptr writer_;
   iresearch::columnstore_writer::column_t column_{};
   bool empty_{ false };
