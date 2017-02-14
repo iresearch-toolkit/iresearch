@@ -127,6 +127,7 @@ set(IResearch_core_sources
   ./utils/hash_utils.cpp
   ./utils/index_utils.cpp
   ./utils/math_utils.cpp 
+  ./utils/memory.cpp
   ./utils/version_utils.cpp
   ./utils/utf8_path.cpp
   ./utils/locale_utils.cpp
