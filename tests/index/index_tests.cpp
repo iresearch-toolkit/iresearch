@@ -384,6 +384,7 @@ class index_test_case_base : public tests::index_test_base {
     size_t writer_batch_size = batch_size ? batch_size : (std::numeric_limits<size_t>::max)();
     std::atomic<size_t> local_writer_commit_count(0);
     std::atomic<size_t>& writer_commit_count = commit_count ? *commit_count : local_writer_commit_count;
+    std::atomic<size_t> writer_import_count(0);
     auto thread_count = (std::max)((size_t)1, num_insert_threads);
     auto total_threads = thread_count + num_import_threads + num_update_threads;
     ir::async_utils::thread_pool thread_pool(total_threads, total_threads);
@@ -483,7 +484,7 @@ class index_test_case_base : public tests::index_test_base {
 
       // register import jobs
       for (size_t i = 0; i < num_import_threads; ++i) {
-        thread_pool.run([&mutex, &writer, import_reader, &import_docs_count, &import_again, &import_interval, this]()->void {
+        thread_pool.run([&mutex, &writer, import_reader, &import_docs_count, &import_again, &import_interval, &writer_import_count, this]()->void {
           {
             // wait for all threads to be registered
             std::lock_guard<std::mutex> lock(mutex);
@@ -497,6 +498,7 @@ class index_test_case_base : public tests::index_test_base {
               writer->import(import_reader);
             }
 
+            ++writer_import_count;
             std::this_thread::sleep_for(std::chrono::milliseconds(import_interval));
           }
         });
@@ -634,7 +636,7 @@ class index_test_case_base : public tests::index_test_base {
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(true, 1 <= reader.size()); // not all commits might produce a new segment, some might merge with concurrent commits
-    ASSERT_TRUE(writer_commit_count * (iresearch::index_writer::THREAD_COUNT + num_import_threads) >= reader.size());
+    ASSERT_TRUE(writer_commit_count * iresearch::index_writer::THREAD_COUNT + writer_import_count >= reader.size());
 
     size_t indexed_docs_count = 0;
     size_t imported_docs_count = 0;
