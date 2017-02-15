@@ -95,7 +95,7 @@ inline std::pair<uint32_t, const byte_type*> read_vint(const byte_type* begin) {
   out -= 0x80 << 14;
   b = *begin++; out += b << 21; if (!(b & 0x80)) return std::make_pair(out, begin);
   out -= 0x80 << 21;
-  b = *begin++; out += b << 28; if (!(b & 0x80)) return std::make_pair(out, begin);
+  b = *begin++; out += b << 28;
   // last byte always has MSB == 0, so we don't need to subtract 0x80
 
   return std::make_pair(out, begin);
@@ -123,7 +123,7 @@ inline std::pair<uint64_t, const byte_type*> read_vlong(const byte_type* begin) 
   out -= MASK << 49;
   b = *begin++; out += b << 56; if (!(b & MASK)) return std::make_pair(out, begin);
   out -= MASK << 56;
-  b = *begin++; out += b << 63; if (!(b & MASK)) return std::make_pair(out, begin);
+  b = *begin++; out += b << 63;
   // last byte always has MSB == 0, so we don't need to subtract MASK
 
   return std::make_pair(out, begin);
