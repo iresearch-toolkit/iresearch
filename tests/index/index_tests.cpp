@@ -641,11 +641,11 @@ class index_test_case_base : public tests::index_test_base {
     size_t indexed_docs_count = 0;
     size_t imported_docs_count = 0;
     size_t updated_docs_count = 0;
-    iresearch::columnstore_reader::raw_reader_f imported_visitor = [&imported_docs_count](iresearch::doc_id_t, data_input&)->bool {
+    auto imported_visitor = [&imported_docs_count](iresearch::doc_id_t, irs::bytes_ref&)->bool {
       ++imported_docs_count;
       return true;
     };
-    iresearch::columnstore_reader::raw_reader_f updated_visitor = [&updated_docs_count](iresearch::doc_id_t, data_input&)->bool {
+    auto updated_visitor = [&updated_docs_count](iresearch::doc_id_t, irs::bytes_ref&)->bool {
       ++updated_docs_count;
       return true;
     };
