@@ -1415,7 +1415,7 @@ class format_test_case_base : public index_test_base {
           {"field0_doc33", 33}
         };
 
-        auto visitor = [&expected_values] (iresearch::doc_id_t doc, irs::bytes_ref& value) {
+        auto visitor = [&expected_values] (iresearch::doc_id_t doc, const irs::bytes_ref& value) {
           const auto actual_value = irs::to_string<irs::string_ref>(value.c_str());
 
           auto it = expected_values.find(actual_value);
@@ -1446,7 +1446,7 @@ class format_test_case_base : public index_test_base {
         };
 
         size_t calls_count = 0;
-        auto visitor = [&expected_values, &calls_count] (iresearch::doc_id_t doc, irs::bytes_ref& in) {
+        auto visitor = [&expected_values, &calls_count] (iresearch::doc_id_t doc, const irs::bytes_ref& in) {
           ++calls_count;
 
           if (calls_count > 2) {
@@ -1511,7 +1511,7 @@ class format_test_case_base : public index_test_base {
           {"field0_doc33", 33}
         };
 
-        auto visitor = [&expected_values] (iresearch::doc_id_t doc, irs::bytes_ref& in) {
+        auto visitor = [&expected_values] (iresearch::doc_id_t doc, const irs::bytes_ref& in) {
           const auto actual_value = irs::to_string<irs::string_ref>(in.c_str());
 
           auto it = expected_values.find(actual_value);
@@ -1558,7 +1558,7 @@ class format_test_case_base : public index_test_base {
       // visit empty column
       {
         size_t calls_count = 0;
-        auto visitor = [&calls_count] (iresearch::doc_id_t doc, irs::bytes_ref& in) {
+        auto visitor = [&calls_count] (iresearch::doc_id_t doc, const irs::bytes_ref& in) {
           ++calls_count;
           return true;
         };
@@ -1573,7 +1573,7 @@ class format_test_case_base : public index_test_base {
           {"field2_doc1", 1},
         };
 
-        auto visitor = [&expected_values] (iresearch::doc_id_t doc, irs::bytes_ref& in) {
+        auto visitor = [&expected_values] (iresearch::doc_id_t doc, const irs::bytes_ref& in) {
           const auto actual_value = irs::to_string<irs::string_ref>(in.c_str());
 
           auto it = expected_values.find(actual_value);

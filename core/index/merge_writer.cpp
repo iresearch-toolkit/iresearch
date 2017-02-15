@@ -596,7 +596,7 @@ class columnstore {
       const doc_id_map_t& doc_id_map) {
     return reader.visit(
         column,
-        [this, &doc_id_map](irs::doc_id_t doc, irs::bytes_ref& in) {
+        [this, &doc_id_map](irs::doc_id_t doc, const irs::bytes_ref& in) {
           const auto mapped_doc = doc_id_map[doc];
           if (MASKED_DOC_ID == mapped_doc) {
             // skip deleted document

@@ -329,12 +329,12 @@ struct empty_sub_reader : iresearch::singleton<empty_sub_reader>, iresearch::sub
   virtual iresearch::column_meta* column(const iresearch::string_ref& name) const {
     return nullptr;
   }
-  
+
   using iresearch::sub_reader::visit;
-  
+
   virtual bool visit(
       iresearch::field_id field,
-      const iresearch::columnstore_reader::values_reader_f& reader) const {
+      const iresearch::columnstore_reader::values_visitor_f& reader) const {
     return false;
   }
   

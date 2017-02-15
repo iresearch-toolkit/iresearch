@@ -49,7 +49,7 @@ columnstore_reader::values_reader_f sub_reader::values(
 
 bool sub_reader::visit(
     const string_ref& field,
-    const columnstore_reader::values_reader_f& visitor) const {
+    const columnstore_reader::values_visitor_f& visitor) const {
   auto* meta = column(field);
 
   if (!meta) {

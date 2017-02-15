@@ -641,11 +641,11 @@ class index_test_case_base : public tests::index_test_base {
     size_t indexed_docs_count = 0;
     size_t imported_docs_count = 0;
     size_t updated_docs_count = 0;
-    auto imported_visitor = [&imported_docs_count](iresearch::doc_id_t, irs::bytes_ref&)->bool {
+    auto imported_visitor = [&imported_docs_count](iresearch::doc_id_t, const irs::bytes_ref&)->bool {
       ++imported_docs_count;
       return true;
     };
-    auto updated_visitor = [&updated_docs_count](iresearch::doc_id_t, irs::bytes_ref&)->bool {
+    auto updated_visitor = [&updated_docs_count](iresearch::doc_id_t, const irs::bytes_ref&)->bool {
       ++updated_docs_count;
       return true;
     };
@@ -1110,7 +1110,7 @@ class index_test_case_base : public tests::index_test_base {
         ir::doc_id_t expected_id = 0;
         csv_doc_template_t csv_doc_template;
         tests::delim_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template, ',');
-        auto visitor = [&gen, &column_name, &expected_id] (ir::doc_id_t id, irs::bytes_ref& actual_value) {
+        auto visitor = [&gen, &column_name, &expected_id] (ir::doc_id_t id, const irs::bytes_ref& actual_value) {
           if (id != ++expected_id) {
             return false;
           }
@@ -1386,7 +1386,7 @@ class index_test_case_base : public tests::index_test_base {
         {
           gen.reset();
           ir::doc_id_t expected_id = 0;
-          auto visitor = [&gen, &column_name, &expected_id] (ir::doc_id_t id, irs::bytes_ref& in) {
+          auto visitor = [&gen, &column_name, &expected_id] (ir::doc_id_t id, const irs::bytes_ref& in) {
             if (id != ++expected_id) {
               return false;
             }
@@ -1432,7 +1432,7 @@ class index_test_case_base : public tests::index_test_base {
         {
           gen.reset();
           ir::doc_id_t expected_id = 0;
-          auto visitor = [&gen, &column_name, &expected_id] (ir::doc_id_t id, irs::bytes_ref& in) {
+          auto visitor = [&gen, &column_name, &expected_id] (ir::doc_id_t id, const irs::bytes_ref& in) {
             if (id != ++expected_id) {
               return false;
             }
@@ -1466,7 +1466,7 @@ class index_test_case_base : public tests::index_test_base {
         {
           gen.reset();
           ir::doc_id_t expected_id = 0;
-          auto visitor = [&gen, &column_name, &expected_id] (ir::doc_id_t id, irs::bytes_ref& in) {
+          auto visitor = [&gen, &column_name, &expected_id] (ir::doc_id_t id, const irs::bytes_ref& in) {
             if (id != ++expected_id) {
               return false;
             }
@@ -1509,7 +1509,7 @@ class index_test_case_base : public tests::index_test_base {
         {
           gen.reset();
           ir::doc_id_t expected_id = 0;
-          auto visitor = [&gen, &column_name, &expected_id] (ir::doc_id_t id, irs::bytes_ref& in) {
+          auto visitor = [&gen, &column_name, &expected_id] (ir::doc_id_t id, const irs::bytes_ref& in) {
             if (id != ++expected_id) {
               return false;
             }

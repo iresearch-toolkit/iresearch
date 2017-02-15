@@ -218,12 +218,13 @@ struct IRESEARCH_API columnstore_reader {
   DECLARE_PTR(columnstore_reader);
 
   typedef std::function<bool(doc_id_t, bytes_ref&)> values_reader_f;
+  typedef std::function<bool(doc_id_t, const bytes_ref&)> values_visitor_f;
 
   virtual ~columnstore_reader();
 
   virtual bool prepare(const reader_state& state) = 0;
   virtual values_reader_f values(field_id field) const = 0;
-  virtual bool visit(field_id field, const values_reader_f& visitor) const = 0;
+  virtual bool visit(field_id field, const values_visitor_f& visitor) const = 0;
 }; // columnstore_reader
 
 NS_END

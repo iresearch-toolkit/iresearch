@@ -2832,7 +2832,7 @@ class reader final : public columnstore_reader, public context_provider {
 
   virtual bool prepare(const reader_state& state) override;
   virtual values_reader_f values(field_id field) const override;
-  virtual bool visit(field_id field, const values_reader_f& reader) const override;
+  virtual bool visit(field_id field, const values_visitor_f& visitor) const override;
 
  private:
   std::vector<column::ptr> columns_;
@@ -2916,7 +2916,7 @@ reader::values_reader_f reader::values(field_id field) const {
   return g_column_descriptors[column.props()].second(column);
 }
 
-bool reader::visit(field_id field, const values_reader_f& visitor) const {
+bool reader::visit(field_id field, const values_visitor_f& visitor) const {
   if (field >= columns_.size()) {
     // can't find attribute with the specified id
     return false;

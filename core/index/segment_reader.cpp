@@ -153,7 +153,7 @@ class segment_reader::segment_reader_impl: public sub_reader {
   virtual size_t size() const override;
   virtual columnstore_reader::values_reader_f values(field_id field) const override;
   virtual bool visit(
-    field_id field, const columnstore_reader::values_reader_f& reader
+    field_id field, const columnstore_reader::values_visitor_f& reader
   ) const override;
 
  private:
@@ -259,7 +259,7 @@ columnstore_reader::values_reader_f segment_reader::values(field_id field) const
 }
 
 bool segment_reader::visit(
-  field_id field, const columnstore_reader::values_reader_f& reader
+  field_id field, const columnstore_reader::values_visitor_f& reader
 ) const {
   return impl_->visit(field, reader);
 }
@@ -390,7 +390,7 @@ columnstore_reader::values_reader_f segment_reader::segment_reader_impl::values(
 }
 
 bool segment_reader::segment_reader_impl::visit(
-  field_id field, const columnstore_reader::values_reader_f& reader
+  field_id field, const columnstore_reader::values_visitor_f& reader
 ) const {
   return columnstore_reader_
     ? columnstore_reader_->visit(field, reader) : false;

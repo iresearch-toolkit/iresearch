@@ -97,14 +97,14 @@ struct IRESEARCH_API sub_reader : index_reader {
 
   virtual bool visit(
     field_id id,
-    const columnstore_reader::values_reader_f& reader
+    const columnstore_reader::values_visitor_f& reader
   ) const = 0;
 
   columnstore_reader::values_reader_f values(const string_ref& field) const;
 
   bool visit(
     const string_ref& name,
-    const columnstore_reader::values_reader_f& reader
+    const columnstore_reader::values_visitor_f& reader
   ) const;
 }; // sub_reader
 

@@ -182,7 +182,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       };
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, irs::bytes_ref& value) {
+      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, const irs::bytes_ref& value) {
         ++calls_count;
         irs::bytes_ref_input in(value);
         const auto actual_value = iresearch::read_zvint(in);
@@ -216,7 +216,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       };
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values] (irs::doc_id_t doc, irs::bytes_ref& actual_value) {
+      auto reader = [&calls_count, &expected_values] (irs::doc_id_t doc, const irs::bytes_ref& actual_value) {
         ++calls_count;
 
         const auto actual_value_string = irs::to_string<irs::string_ref>(actual_value.c_str());
@@ -245,7 +245,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
     // check wrong column
     {
       size_t calls_count = 0;
-      auto reader = [&calls_count] (irs::doc_id_t doc, irs::bytes_ref& in) {
+      auto reader = [&calls_count] (irs::doc_id_t doc, const irs::bytes_ref& in) {
         ++calls_count;
         return true;
       };
@@ -281,7 +281,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       };
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values] (irs::doc_id_t doc, irs::bytes_ref& in) {
+      auto reader = [&calls_count, &expected_values] (irs::doc_id_t doc, const irs::bytes_ref& in) {
         ++calls_count;
         irs::bytes_ref_input stream(in);
         const auto actual_value = iresearch::read_zvint(stream);
@@ -315,7 +315,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       };
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, irs::bytes_ref& in) {
+      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, const irs::bytes_ref& in) {
         ++calls_count;
         irs::bytes_ref_input stream(in);
         const auto actual_value = iresearch::read_string<std::string>(stream);
@@ -340,7 +340,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       ASSERT_TRUE(segment.visit(meta->id, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
-    
+
     // check 'another_column' column
     {
       std::unordered_map <std::string, iresearch::doc_id_t > expected_values{
@@ -348,7 +348,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       };
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, irs::bytes_ref& in) {
+      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, const irs::bytes_ref& in) {
         ++calls_count;
         irs::bytes_ref_input stream(in);
         const auto actual_value = iresearch::read_string<std::string>(stream);
@@ -377,7 +377,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
     // check invalid column 
     {
       size_t calls_count = 0;
-      auto reader = [&calls_count] (iresearch::doc_id_t, irs::bytes_ref&) {
+      auto reader = [&calls_count] (iresearch::doc_id_t, const irs::bytes_ref&) {
         ++calls_count;
         return true;
       };
@@ -421,7 +421,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       };
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, irs::bytes_ref& value) {
+      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, const irs::bytes_ref& value) {
         ++calls_count;
         irs::bytes_ref_input in(value);
         const auto actual_value = iresearch::read_zvint(in);
@@ -458,7 +458,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       };
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, irs::bytes_ref& value) {
+      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, const irs::bytes_ref& value) {
         ++calls_count;
         irs::bytes_ref_input in(value);
         const auto actual_value = iresearch::read_string<std::string>(in);
@@ -487,7 +487,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
     // check that 'another_column' has been removed
     {
       size_t calls_count = 0;
-      auto reader = [&calls_count] (irs::doc_id_t, irs::bytes_ref&) {
+      auto reader = [&calls_count] (irs::doc_id_t, const irs::bytes_ref&) {
         ++calls_count;
         return true;
       };
@@ -588,7 +588,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       };
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, irs::bytes_ref& value) {
+      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, const irs::bytes_ref& value) {
         ++calls_count;
         irs::bytes_ref_input in(value);
         const auto actual_value = iresearch::read_zvint(in);
@@ -622,7 +622,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       };
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, irs::bytes_ref& value) {
+      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, const irs::bytes_ref& value) {
         ++calls_count;
         irs::bytes_ref_input in(value);
         const auto actual_value = iresearch::read_string<std::string>(in);
@@ -651,7 +651,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
     // check wrong column
     {
       size_t calls_count = 0;
-      auto reader = [&calls_count] (irs::doc_id_t, irs::bytes_ref&) {
+      auto reader = [&calls_count] (irs::doc_id_t, const irs::bytes_ref&) {
         ++calls_count;
         return true;
       };
@@ -684,7 +684,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       };
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values] (irs::doc_id_t doc, irs::bytes_ref& value) {
+      auto reader = [&calls_count, &expected_values] (irs::doc_id_t doc, const irs::bytes_ref& value) {
         ++calls_count;
         irs::bytes_ref_input in(value);
         const auto actual_value = iresearch::read_zvint(in);
@@ -718,7 +718,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       };
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, irs::bytes_ref& value) {
+      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, const irs::bytes_ref& value) {
         ++calls_count;
         irs::bytes_ref_input in(value);
         const auto actual_value = iresearch::read_string<std::string>(in);
@@ -747,7 +747,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
     // check wrong column
     {
       size_t calls_count = 0;
-      auto reader = [&calls_count] (irs::doc_id_t, irs::bytes_ref&) {
+      auto reader = [&calls_count] (irs::doc_id_t, const irs::bytes_ref&) {
         ++calls_count;
         return true;
       };
@@ -791,7 +791,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       };
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, irs::bytes_ref& value) {
+      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, const irs::bytes_ref& value) {
         ++calls_count;
         irs::bytes_ref_input in(value);
         const auto actual_value = iresearch::read_zvint(in);
@@ -829,7 +829,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       };
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, irs::bytes_ref& value) {
+      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, const irs::bytes_ref& value) {
         ++calls_count;
         irs::bytes_ref_input in(value);
         const auto actual_value = iresearch::read_string<std::string>(in);
@@ -1061,7 +1061,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         { 1.5f, 1 },
       };
 
-      auto reader = [&expected_values] (iresearch::doc_id_t doc, irs::bytes_ref& value) {
+      auto reader = [&expected_values] (iresearch::doc_id_t doc, const irs::bytes_ref& value) {
         irs::bytes_ref_input in(value);
         const auto actual_value = iresearch::read_zvfloat(in); // read norm value
 
@@ -1404,7 +1404,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         { 2.5f, 1 },
       };
 
-      auto reader = [&expected_values] (iresearch::doc_id_t doc, irs::bytes_ref& value) {
+      auto reader = [&expected_values] (iresearch::doc_id_t doc, const irs::bytes_ref& value) {
         irs::bytes_ref_input in(value);
         const auto actual_value = iresearch::read_zvfloat(in); // read norm value
 
@@ -1734,7 +1734,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       { 2.5f, 3 },
     };
 
-    auto reader = [&expected_values] (iresearch::doc_id_t doc, irs::bytes_ref& value) {
+    auto reader = [&expected_values] (iresearch::doc_id_t doc, const irs::bytes_ref& value) {
       irs::bytes_ref_input in(value);
       const auto actual_value = iresearch::read_zvfloat(in); // read norm value
 
