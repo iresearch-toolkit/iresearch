@@ -18,41 +18,41 @@
 NS_ROOT
 
 //////////////////////////////////////////////////////////////////////////////
-/// @class compact (empty base optimization) 
+/// @class compact (empty base optimization)
 /// @brief Class provides unified way of implmeneting empty base optimization 
 ///        idiom.
 ///
-///        Example: 
-///          struct less { 
+///        Example:
+///          struct less {
 ///            bool operator<<(int a, int b) const { return a < b; } 
 ///          };
-///          
+///
 ///          struct binded_comparer : private emo<0, less> {
 ///            typedef ebo<0, less> my_comparator_t;
-///            
+///
 ///            binded_comparer(int a) : a(a) { }
 ///
-///            const my_comparator& get_comparator() const { 
+///            const my_comparator& get_comparator() const {
 ///              return my_comparator::get();
 ///            }
 ///
 ///            bool operator(int b) { return get_comparator()(a,b); }
-///            
+///
 ///            int a;
 ///          };
 ///
 ///          static_assert(
-///            sizeof(binded_comparer)==sizeof(int), 
-///            "Please , use ebo"
+///            sizeof(binded_comparer)==sizeof(int),
+///            "Please, use ebo"
 ///          );
 //////////////////////////////////////////////////////////////////////////////
 template<
-  size_t I, 
-  typename T, 
+  size_t I,
+  typename T,
   bool = std::is_empty<T>::value
 //TODO: uncomment when switch to C++14
 //  bool = std::is_empty<T>::value && !std::is_final<T>::value
-> class compact : public T {
+> class compact : public std::remove_pointer<T>::type {
  public:
   typedef T type;
   static const size_t index = I;
@@ -61,15 +61,15 @@ template<
   compact(const compact&) = default;
 
   template<typename U = T>
-  compact(U&&) { }
-  
+  compact(U&&) NOEXCEPT { }
+
   compact& operator=(const compact&) = default;
   compact& operator=(compact&&) NOEXCEPT { return *this; }
 
   // TODO: uncomment when switch to the C++14 compiler
-  /* CONSTEXPR */ T& get() { return *this; }
-  CONSTEXPR const T& get() const { return *this; }
-}; // compact 
+  /* CONSTEXPR */ T& get() NOEXCEPT { return *this; }
+  CONSTEXPR const T& get() const NOEXCEPT { return *this; }
+}; // compact
 
 template<size_t I, typename T>
 class compact<I, T, false> {
@@ -78,13 +78,15 @@ class compact<I, T, false> {
   static const size_t index = I;
 
   compact() = default;
-  compact(const compact& other)
+  compact(const compact& other) NOEXCEPT
     : val_(other.val_) {}
   compact(compact&& rhs) NOEXCEPT
     : val_(std::move(rhs.val_)) { }
 
   template<typename U = T>
-  compact(U&& value) : val_(std::forward<U>(value)) { }
+  compact(U&& value) NOEXCEPT
+    : val_(std::forward<U>(value)) {
+  }
 
   compact& operator=(const compact&) = default;
   compact& operator=(compact&& rhs) NOEXCEPT {
@@ -93,11 +95,11 @@ class compact<I, T, false> {
     }
     return *this;
   }
-  compact& operator=(const T& value) {
+  compact& operator=(const T& value) NOEXCEPT {
     val_ = value;
     return *this;
   }
-  compact& operator=(T&& value) {
+  compact& operator=(T&& value) NOEXCEPT {
     val_ = std::move(value);
     return *this;
   }

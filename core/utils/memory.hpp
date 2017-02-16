@@ -15,64 +15,348 @@
 #include <memory>
 
 #include "shared.hpp"
+#include "ebo.hpp"
+#include "log.hpp"
+#include "math_utils.hpp"
+#include "noncopyable.hpp"
 
 NS_ROOT
-NS_BEGIN( memory )
-
-template< typename _T, typename _alloc = std::allocator< _T > >
-struct deallocator : public _alloc {
-  typedef _alloc allocator_type;
-  typedef typename allocator_type::pointer pointer;
-
-  void operator()( pointer ptr ) {
-    allocator_type::deallocate( ptr, 0 );
-  }
-};
+NS_BEGIN(memory)
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief dump memory statistics and stack trace to stderr
 //////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API void dump_mem_stats_trace() NOEXCEPT;
 
-template < class _Ty, class... _Types >
-inline typename std::enable_if< 
-    !std::is_array<_Ty>::value, 
-    std::unique_ptr<_Ty> >::type make_unique( _Types&&... _Args ) { 
-  try {
-    return std::unique_ptr<_Ty>(new _Ty(std::forward<_Types>(_Args)...));
-  } catch (std::bad_alloc&) {
-    fprintf(
-      stderr,
-      "Memory allocation failure while creating and initializing an object of size %lu bytes\n",
-      sizeof(_Ty)
-    );
-    dump_mem_stats_trace();
-    throw;
-  }
-}
-
-template< class _Ty > 
+template <typename T, typename... Types>
 inline typename std::enable_if<
-    std::is_array<_Ty>::value && std::extent<_Ty>::value == 0,
-    std::unique_ptr<_Ty>  >::type make_unique( size_t _Size ) {
-  typedef typename std::remove_extent<_Ty>::type _Elem;
+  !std::is_array<T>::value,
+  std::unique_ptr<T>
+>::type make_unique(Types&&... Args) {
   try {
-    return std::unique_ptr<_Ty>(new _Elem[_Size]());
+    return std::unique_ptr<T>(new T(std::forward<Types>(Args)...));
   } catch (std::bad_alloc&) {
     fprintf(
       stderr,
-      "Memory allocation failure while creating and initializing an array of %lu objects each of size %lu bytes\n",
-      _Size, sizeof(_Elem)
+      "Memory allocation failure while creating and initializing an object of size " IR_SIZE_T_SPECIFIER " bytes\n",
+      sizeof(T)
     );
     dump_mem_stats_trace();
     throw;
   }
 }
 
-template< class _Ty, class... _Types >
+template<typename T>
+inline typename std::enable_if<
+  std::is_array<T>::value && std::extent<T>::value == 0,
+  std::unique_ptr<T>
+>::type make_unique(size_t size) {
+  typedef typename std::remove_extent<T>::type value_type;
+
+  try {
+    return std::unique_ptr<T>(new value_type[size]());
+  } catch (std::bad_alloc&) {
+    fprintf(
+      stderr,
+      "Memory allocation failure while creating and initializing an array of " IR_SIZE_T_SPECIFIER " objects each of size " IR_SIZE_T_SPECIFIER " bytes\n",
+      size, sizeof(value_type)
+    );
+    dump_mem_stats_trace();
+    throw;
+  }
+}
+
+template<typename T, typename... Types>
 typename std::enable_if<
-    std::extent<_Ty>::value != 0, 
-    void >::type make_unique( _Types&&... ) = delete;
+  std::extent<T>::value != 0,
+  void
+>::type make_unique(Types&&...) = delete;
+
+template<typename Alloc>
+struct allocator_deleter : public compact<0, Alloc*, std::is_empty<Alloc>::value> {
+  typedef compact<0, Alloc*, std::is_empty<Alloc>::value> allocator_ref;
+  typedef typename allocator_ref::type allocator_type;
+  typedef typename allocator_type::pointer pointer;
+
+  allocator_deleter(const allocator_type& alloc)
+    : allocator_ref(&alloc) {
+  }
+
+  void operator()(pointer p) const NOEXCEPT {
+    typedef std::allocator_traits<allocator_type> traits_t;
+
+    auto& alloc = *allocator_ref::get();
+
+    // destroy object
+    traits_t::destroy(alloc, p);
+
+    // deallocate storage
+    traits_t::deallocate(alloc, p, 1);
+  }
+}; // allocator_deleter
+
+template<typename T, typename Alloc, typename... Types>
+inline typename std::enable_if<
+  !std::is_array<T>::value,
+  std::unique_ptr<T, allocator_deleter<Alloc>>
+>::type allocate_unique(const Alloc& alloc, Types&&... Args) {
+  typedef std::allocator_traits<Alloc> traits_t;
+  typedef typename traits_t::pointer pointer;
+
+  pointer p;
+
+  try {
+    p = alloc.allocate(1); // allocate space for 1 object
+  } catch (std::bad_alloc&) {
+    fprintf(
+      stderr,
+      "Memory allocation failure while creating and initializing an object of size " IR_SIZE_T_SPECIFIER " bytes\n",
+      sizeof(T)
+    );
+    dump_mem_stats_trace();
+    throw;
+  }
+
+  try {
+    traits_t::construct(alloc, p, std::forward<Types>(Args)...); // construct object
+  } catch (...) {
+    alloc.deallocate(p, 1); // free allocated storage in case of any error during construction
+    throw;
+  }
+
+  return std::unique_ptr<T, allocator_deleter<Alloc>>(
+    p, allocator_deleter<Alloc>(alloc)
+  );
+}
+
+template<typename Alloc>
+class allocator_array_deleter : public compact<0, Alloc*, std::is_empty<Alloc>::value> {
+ public:
+  typedef compact<0, Alloc*, std::is_empty<Alloc>::value> allocator_ref;
+  typedef typename allocator_ref::type allocator_type;
+  typedef typename allocator_type::pointer pointer;
+
+  allocator_array_deleter(const allocator_type& alloc, size_t size)
+    : allocator_ref(&alloc), size_(size) {
+  }
+
+  void operator()(pointer p) const NOEXCEPT {
+    typedef std::allocator_traits<allocator_type> traits_t;
+
+    auto& alloc = *allocator_ref::get();
+
+    // destroy objects
+    for (auto end = p + size_; p != end; ++p) {
+      traits_t::destroy(alloc, p);
+    }
+
+    // deallocate storage
+    traits_t::deallocate(alloc, p, size_);
+  }
+
+ private:
+  size_t size_;
+}; // allocator_array_deleter
+
+template<typename T, typename Alloc>
+typename std::enable_if<
+  std::is_array<T>::value && std::extent<T>::value == 0,
+  std::unique_ptr<T, allocator_array_deleter<Alloc>>
+>::type allocate_unique(const Alloc& alloc, size_t size) {
+  typedef std::allocator_traits<Alloc> traits_t;
+  typedef typename traits_t::pointer pointer;
+
+  if (!size) {
+    return nullptr;
+  }
+
+  pointer p;
+
+  try {
+    p = alloc.allocate(size); // allocate space for 'size' object
+  } catch (std::bad_alloc&) {
+    fprintf(
+      stderr,
+      "Memory allocation failure while creating and initializing " IR_SIZE_T_SPECIFIER " object(s) of size " IR_SIZE_T_SPECIFIER " bytes\n",
+      size, sizeof(T)
+    );
+    dump_mem_stats_trace();
+    throw;
+  }
+
+  auto begin = p;
+
+  try {
+    for (auto end = begin + size; begin != end; ++begin) {
+      traits_t::construct(alloc, begin); // construct object
+    }
+  } catch (...) {
+    // destroy constructed objects
+    for ( ; p != begin; --begin) {
+      traits_t::destroy(alloc, begin);
+    }
+
+    // free allocated storage in case of any error during construction
+    alloc.deallocate(p, size);
+    throw;
+  }
+
+  return std::unique_ptr<T[], allocator_array_deleter<Alloc>>(
+    p, allocator_array_deleter<Alloc>(alloc, size)
+  );
+}
+
+template<typename T, typename Alloc, typename... Types>
+typename std::enable_if<
+  std::extent<T>::value != 0,
+  void
+>::type allocate_unique(const Alloc&, Types&&...) = delete;
+
+template<typename T>
+class free_list {
+ public:
+  typedef T               value_type;
+  typedef T*              pointer;
+  typedef T&              reference;
+  typedef const T*        const_pointer;
+  typedef const T&        const_reference;
+  typedef size_t          size_type;
+  typedef std::ptrdiff_t  difference_type;
+  typedef std::false_type propagate_on_container_copy_assignment;
+  typedef std::true_type  propagate_on_container_move_assignment;
+  typedef std::true_type  propagate_on_container_swap;
+
+  union slot {
+    value_type data;
+    slot* next;
+  };
+
+  static const size_t SLOT_SIZE = sizeof(slot);
+  static const size_t SLOT_ALIGN = alignof(slot);
+
+  pointer address(reference x) const NOEXCEPT {
+    return std::addressof(x);
+  }
+
+  const_pointer address(const_reference x) const NOEXCEPT {
+    return std::addressof(x);
+  }
+
+  static char* align(char* p) NOEXCEPT {
+    return reinterpret_cast<char*>(
+      (reinterpret_cast<uintptr_t>(p) - 1U + SLOT_ALIGN) & (-SLOT_ALIGN)
+    );
+  }
+
+  // constructs stack of slots in the specified range denoted by [begin;end]
+  static void initialize(char* begin, char* end) NOEXCEPT {
+    assert(begin);
+    auto* free = reinterpret_cast<slot*>(begin);
+    while ((begin += SLOT_SIZE) < end) {
+      free = free->next = reinterpret_cast<slot*>(begin);
+    }
+    free->next = nullptr; // mark last element
+  }
+
+  // push the specified element 'p' to the stack denoted by 'head'
+  static void push(slot*& head, pointer p) NOEXCEPT {
+    assert(p);
+    auto* free = reinterpret_cast<slot*>(p);
+    free->next = head;
+    head = free;
+  }
+
+  // pops an element from the stack denoted by 'head'
+  static pointer pop(slot*& head) NOEXCEPT {
+    assert(head);
+    auto* p = reinterpret_cast<pointer>(head);
+    head = head->next;
+    return p;
+  }
+}; // free_list
+
+template<typename T, size_t BlockSize>
+class memory_pool : public free_list<T>, util::noncopyable {
+ public:
+  typedef free_list<T> free_list_t;
+  typedef typename free_list_t::pointer pointer;
+  typedef typename free_list_t::const_pointer const_pointer;
+  typedef typename free_list_t::size_type size_type;
+  typedef typename free_list_t::slot slot;
+
+  static const size_t BLOCK_SIZE = BlockSize;
+
+  template <typename U> struct rebind {
+    typedef memory_pool<U, BLOCK_SIZE> other;
+  };
+
+  memory_pool() = default;
+  memory_pool(memory_pool&& rhs) NOEXCEPT
+    : free_(rhs.free_), blocks_(rhs.blocks_) {
+    rhs.free_ = nullptr;
+    rhs.blocks_ = nullptr;
+  }
+  memory_pool& operator=(memory_pool&& rhs) NOEXCEPT {
+    if (this != &rhs) {
+      free_ = rhs.free_;
+      blocks_ = rhs.blocks_;
+      rhs.free_ = nullptr;
+      rhs.blocks_ = nullptr;
+    }
+  }
+
+  ~memory_pool() NOEXCEPT {
+    // deallocate previously allocated blocks
+    // in reverse order
+    while (blocks_) {
+      ::free(free_list_t::pop(blocks_));
+    }
+  }
+
+  // for now pool doesn't support bulk allocation
+  // 'hint' argument ignored
+  pointer allocate(size_type n = 1, const_pointer hint = 0) {
+    if (!free_) {
+      allocate_block();
+    }
+
+    return free_list_t::pop(free_);
+  }
+
+  void deallocate(pointer p, size_type n = 1) NOEXCEPT {
+    if (p) free_list_t::push(free_, p);
+  }
+
+ private:
+  void allocate_block() {
+    // allocate memory block
+    auto* begin = reinterpret_cast<char*>(::malloc(BLOCK_SIZE));
+
+    // use 1st slot in a block to store pointer
+    // to the prevoiusly allocated block
+    free_list_t::push(blocks_, reinterpret_cast<pointer>(begin));
+
+    // align pointer to the block body
+    // since all slots have the same alignment requirements and size
+    // we need to align explicitly the first slot only
+    // all subsequent slots will be aligned implicitly
+    auto* aligned = free_list_t::align(begin + free_list_t::SLOT_SIZE);
+
+    // initialize list of free slots in allocated block
+    free_list_t::initialize(
+      aligned, aligned + BLOCK_SIZE - std::distance(begin, aligned)
+    );
+
+    // store pointer to the constructed free list
+    free_ = reinterpret_cast<slot*>(aligned);
+  }
+
+  static_assert(math::is_power2(BLOCK_SIZE), "BlockSize must be a power of 2");
+  static_assert(BLOCK_SIZE >= 2*free_list_t::SLOT_SIZE, "BlockSize is too small");
+
+  slot* free_{}; // list of free slots in the allocated blocks
+  slot* blocks_{}; // list of the allocated blocks
+}; // memory_pool
 
 NS_END
 NS_END

@@ -17,17 +17,48 @@ TEST(compact_pair_tests, check_size) {
   struct non_empty { int i; };
 
   static_assert(
-    sizeof(iresearch::compact_pair<empty, non_empty>) == sizeof(non_empty),
+    sizeof(irs::compact_pair<empty, non_empty>) == sizeof(non_empty),
     "Invalid size"
   );
-  
+
   static_assert(
-    sizeof(iresearch::compact_pair<non_empty, empty>) == sizeof(non_empty),
+    sizeof(irs::compact_pair<non_empty, empty>) == sizeof(non_empty),
     "Invalid size"
   );
-  
+
   static_assert(
-    sizeof(iresearch::compact_pair<non_empty, non_empty>) == 2*sizeof(non_empty),
+    sizeof(irs::compact_pair<non_empty, non_empty>) == 2*sizeof(non_empty),
+    "Invalid size"
+  );
+}
+
+TEST(ebo_tests, check_size) {
+  struct empty { };
+  struct non_empty { int i; };
+
+  struct empty_inherited : irs::compact<0, empty> { int i; };
+  static_assert(
+    sizeof(empty_inherited) == sizeof(int),
+    "Invalid size"
+  );
+
+  struct non_empty_inherited : irs::compact<0, non_empty> { int i; };
+  static_assert(
+    sizeof(non_empty_inherited) == 2*sizeof(int),
+    "Invalid size"
+  );
+
+  // use ebo to store pointer
+  struct empty_ref_inherited : irs::compact<0, empty*, std::is_empty<empty>::value> { int i; };
+  static_assert(
+    sizeof(empty_ref_inherited) == sizeof(int),
+    "Invalid size"
+  );
+
+  // use ebo to store pointer
+  struct non_empty_ref_inherited : irs::compact<0, non_empty*, std::is_empty<non_empty>::value> { int i; };
+  static_assert(
+    sizeof(non_empty_ref_inherited) == sizeof(std::pair<non_empty*, int>),
     "Invalid size"
   );
 }

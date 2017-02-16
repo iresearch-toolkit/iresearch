@@ -25,8 +25,22 @@
 #include <cmath>
 
 NS_ROOT
-NS_BEGIN( math )
+NS_BEGIN(math)
 
+inline size_t round_power2(size_t v) NOEXCEPT {
+  v--;
+  v |= v >> 1;
+  v |= v >> 2;
+  v |= v >> 4;
+  v |= v >> 8;
+  v |= v >> 16;
+  v++;
+  return v;
+}
+
+CONSTEXPR inline bool is_power2(size_t v) NOEXCEPT {
+  return v && !(v & (v-1));
+}
 
 // rounds the specified 'value' to the next greater
 // value that is multiple to the specified 'step'
