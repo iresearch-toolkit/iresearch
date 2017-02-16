@@ -27,7 +27,7 @@
 NS_ROOT
 NS_BEGIN(math)
 
-inline size_t round_power2(size_t v) NOEXCEPT {
+inline size_t roundup_power2(size_t v) NOEXCEPT {
   v--;
   v |= v >> 1;
   v |= v >> 2;
