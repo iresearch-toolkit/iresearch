@@ -812,8 +812,8 @@ class index_test_case_base : public tests::index_test_base {
 
     ASSERT_EQ(parsed_docs_count + imported_docs_count, indexed_docs_count);
     ASSERT_EQ(imported_docs_count, import_docs_count);
-    ASSERT_TRUE(imported_docs_count >= num_import_threads); // at least some imports took place if import enabled
-    ASSERT_TRUE(updated_docs_count >= num_update_threads); // at least some updates took place if update enabled
+    ASSERT_TRUE(imported_docs_count == num_import_threads || imported_docs_count); // at least some imports took place if import enabled
+    ASSERT_TRUE(updated_docs_count == num_update_threads || updated_docs_count); // at least some updates took place if update enabled
   }
 
   void profile_bulk_index_dedicated_cleanup(size_t num_threads, size_t batch_size, size_t cleanup_interval) {
