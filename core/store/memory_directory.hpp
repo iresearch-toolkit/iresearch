@@ -132,11 +132,11 @@ class IRESEARCH_API memory_index_input final : public index_input {
  public:
   explicit memory_index_input(const memory_file& file) NOEXCEPT;
 
-  virtual ptr dup() const override;
+  virtual ptr dup() const NOEXCEPT override;
   virtual bool eof() const override;
   virtual byte_type read_byte() override;
   virtual size_t read_bytes(byte_type* b, size_t len) override;
-  virtual ptr reopen() const override;
+  virtual ptr reopen() const NOEXCEPT override;
   virtual size_t length() const override;
 
   virtual size_t file_pointer() const override;

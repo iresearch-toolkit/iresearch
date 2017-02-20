@@ -179,10 +179,10 @@ class IRESEARCH_API skip_reader: util::noncopyable {
     level(const level& rhs);
     level(level&& rhs) NOEXCEPT;
 
-    ptr dup() const override;
+    ptr dup() const NOEXCEPT override;
     uint8_t read_byte() override;
     size_t read_bytes(byte_type* b, size_t count) override;
-    ptr reopen() const override;
+    ptr reopen() const NOEXCEPT override;
     size_t file_pointer() const override;
     size_t length() const override;
     bool eof() const override;

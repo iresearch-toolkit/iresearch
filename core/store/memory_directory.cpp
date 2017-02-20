@@ -98,7 +98,7 @@ memory_index_input::memory_index_input(const memory_file& file) NOEXCEPT
   : file_(&file) {
 }
 
-index_input::ptr memory_index_input::dup() const {
+index_input::ptr memory_index_input::dup() const NOEXCEPT {
   PTR_NAMED(memory_index_input, ptr, *this);
   return ptr;
 }
@@ -107,7 +107,7 @@ bool memory_index_input::eof() const {
   return file_pointer() >= file_->length();
 }
 
-index_input::ptr memory_index_input::reopen() const {
+index_input::ptr memory_index_input::reopen() const NOEXCEPT {
   return dup(); // memory_file pointers are thread-safe
 }
 

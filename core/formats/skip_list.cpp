@@ -152,7 +152,7 @@ skip_reader::level::level(const skip_reader::level& rhs)
     doc(rhs.doc) {
 }
 
-index_input::ptr skip_reader::level::dup() const {
+index_input::ptr skip_reader::level::dup() const NOEXCEPT {
   return index_input::make<skip_reader::level>(*this);
 }
 
@@ -164,7 +164,7 @@ size_t skip_reader::level::read_bytes(byte_type* b, size_t count) {
   return stream->read_bytes(b, std::min(end - file_pointer(), count));
 }
 
-index_input::ptr skip_reader::level::reopen() const {
+index_input::ptr skip_reader::level::reopen() const NOEXCEPT {
   level tmp(*this);
 
   tmp.stream = tmp.stream->reopen();
