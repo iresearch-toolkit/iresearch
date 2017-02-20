@@ -389,7 +389,7 @@ handle_t open(const file_path_t path, const file_path_t mode) NOEXCEPT {
     return handle_t(::_wfopen(path ? path : _T("NUL:"), mode));
     #pragma warning(default: 4996)
   #else
-    return handle_t(::fopen(name ? name : "/dev/null", mode));
+    return handle_t(::fopen(path ? path : "/dev/null", mode));
   #endif
 }
 
