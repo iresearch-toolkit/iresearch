@@ -607,6 +607,10 @@ field_reader::field_reader(const index_segment& data)
   }
 }
 
+field_reader::field_reader(field_reader&& other) NOEXCEPT
+  : readers_(std::move(other.readers_)), data_(std::move(other.data_)) {
+}
+
 bool field_reader::prepare(const iresearch::reader_state& state) {
   return true;
 }

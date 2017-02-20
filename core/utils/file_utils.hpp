@@ -24,14 +24,14 @@
   #define file_stat_t struct _stat     
   #define file_no _fileno
   #define mode_t unsigned short    
-  #define file_open(name, mode) iresearch::file_utils::handle_t(_wfopen(name ? name : _T("NUL:"), _T(mode)))
+  #define file_open(name, mode) iresearch::file_utils::open(name, _T(mode))
 #else
   #define file_path_t char*
   #define file_stat stat
   #define file_fstat fstat
   #define file_stat_t struct stat    
   #define file_no fileno
-  #define file_open(name, mode) iresearch::file_utils::handle_t(fopen(name ? name : "/dev/null", mode))
+  #define file_open(name, mode) iresearch::file_utils::open(name, mode)
 #endif
 
 #include "shared.hpp"
@@ -61,6 +61,8 @@ ptrdiff_t file_size( int fd );
 bool file_sync(const file_path_t name) NOEXCEPT;
 bool is_directory(const file_path_t name) NOEXCEPT;
 bool file_exists(const file_path_t name);
+handle_t open(const file_path_t path, const file_path_t mode) NOEXCEPT;
+handle_t open(FILE* file, const file_path_t mode) NOEXCEPT;
 bool visit_directory(
   const file_path_t name,
   const std::function<bool(const file_path_t name)>& visitor,

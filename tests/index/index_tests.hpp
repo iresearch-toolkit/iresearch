@@ -163,6 +163,12 @@ class text_field : public tests::field_base {
     this->name(name);
   }
 
+  text_field(text_field&& other) NOEXCEPT
+    : pay_stream_(std::move(other.pay_stream_)),
+      token_stream_(std::move(other.token_stream_)),
+      value_(std::move(other.value_)) {
+  }
+
   ir::string_ref value() const { return value_; }
   void value(const T& value) { value = value; }
   void value(T&& value) { value_ = std::move(value); }
