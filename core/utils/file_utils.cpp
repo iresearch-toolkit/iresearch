@@ -422,10 +422,10 @@ handle_t open(FILE* file, const file_path_t mode) NOEXCEPT {
   #else
     // posix approach is to open the original file via the file descriptor link under /proc/self/fd
     // the link is garanteed to point to the original inode even if the original file was removed
-    auto fd = :fileno(file);
-    char path[sizeof(fd)*3 + 1]; // approximate maximum number of chars, +1 for \0
+    auto fd = ::fileno(file);
+    char path[strlen("/proc/self/fd/") + sizeof(fd)*3 + 1]; // approximate maximum number of chars, +1 for \0
 
-    if (0 > fd || 0 > sprintf(buf, "/proc/self/fd/%d", fd)) {
+    if (0 > fd || 0 > sprintf(path, "/proc/self/fd/%d", fd)) {
       IR_FRMT_ERROR("Failed to get system handle from file handle, error %d", errno);
       return nullptr;
     }
