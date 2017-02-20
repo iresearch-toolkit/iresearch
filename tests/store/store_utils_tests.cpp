@@ -186,7 +186,7 @@ template<typename T>
 void vencode_from_array(T expected_value, size_t expected_length) {
   typedef vencode_traits<T> traits_t;
   ASSERT_EQ(expected_length, traits_t::size(expected_value));
-  irs::byte_type buf[traits_t::max_size()]{};
+  irs::byte_type buf[traits_t::const_max_size]{};
   const auto ptr = traits_t::write(expected_value, buf);
   ASSERT_EQ(expected_length, std::distance(std::begin(buf), ptr));
   const auto res = traits_t::read(buf);

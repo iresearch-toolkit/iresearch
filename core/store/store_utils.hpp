@@ -60,6 +60,11 @@ struct read_write_helper<uint64_t> {
   }
 };
 
+template<class T, T max_size_val>
+struct vencode_traits_base {
+    static const T const_max_size = max_size_val;
+};
+
 NS_END // LOCAL
 
 NS_ROOT
@@ -164,13 +169,13 @@ FORCE_INLINE uint64_t vencode_size_64(uint64_t value) {
 template<typename T>
 struct vencode_traits {
   static size_t size(T value);
-  CONSTEXPR static size_t max_length();
+  CONSTEXPR static size_t max_size();
   static byte_type* write(T value, byte_type* dst);
   static std::pair<T, const byte_type*> read(const byte_type* begin);
 }; // vencode_traits
 
 template<>
-struct vencode_traits<uint32_t> {
+struct vencode_traits<uint32_t>: ::vencode_traits_base<size_t, 5> {
   typedef uint32_t type;
 
   static size_t size(type v) {
@@ -178,7 +183,7 @@ struct vencode_traits<uint32_t> {
   }
 
   CONSTEXPR static size_t max_size() {
-    return 5; // may take up to 5 bytes
+    return const_max_size; // may take up to 5 bytes
   }
 
   static byte_type* write(type v, byte_type* begin) {
@@ -191,7 +196,7 @@ struct vencode_traits<uint32_t> {
 }; // vencode_traits<uint32_t>
 
 template<>
-struct vencode_traits<uint64_t> {
+struct vencode_traits<uint64_t>: ::vencode_traits_base<size_t, 10> {
   typedef uint64_t type;
 
   static size_t size(type v) {
@@ -199,7 +204,7 @@ struct vencode_traits<uint64_t> {
   }
 
   CONSTEXPR static size_t max_size() {
-    return 10; // may take up to 10 bytes
+    return const_max_size; // may take up to 10 bytes
   }
 
   static byte_type* write(type v, byte_type* begin) {

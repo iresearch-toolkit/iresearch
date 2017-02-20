@@ -414,14 +414,18 @@ class index_test_case_base : public tests::index_test_base {
             auto& exp_term_itr = expected_term_itrs[i];
 
             pool.run([&mutex, &act_term_itr, &exp_term_itr]()->void {
+              const irs::flags features({ irs::frequency::type(), irs::offset::type(), irs::position::type(), irs::payload::type() });
+              irs::doc_iterator::ptr act_docs_itr;
+              irs::doc_iterator::ptr exp_docs_itr;
+
               {
                 // wait for all threads to be registered
                 std::lock_guard<std::mutex> lock(mutex);
-              }
 
-              const irs::flags features({ irs::frequency::type(), irs::offset::type(), irs::position::type(), irs::payload::type() });
-              auto act_docs_itr = act_term_itr->postings(features); // this step creates 3 internal iterators
-              auto exp_docs_itr = exp_term_itr->postings(features); // this step creates 3 internal iterators
+                // iterators are not thread-safe
+                act_docs_itr = act_term_itr->postings(features); // this step creates 3 internal iterators
+                exp_docs_itr = exp_term_itr->postings(features); // this step creates 3 internal iterators
+              }
 
               auto& actual_attrs = act_docs_itr->attributes();
               auto& expected_attrs = exp_docs_itr->attributes();

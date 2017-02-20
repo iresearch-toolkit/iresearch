@@ -10,10 +10,12 @@
 // 
 
 #include "shared.hpp"
+#include "directory_attributes.hpp"
 #include "fs_directory.hpp"
 #include "checksum_io.hpp"
 #include "error/error.hpp"
 #include "utils/log.hpp"
+#include "utils/object_pool.hpp"
 #include "utils/utf8_path.hpp"
 
 #ifdef _WIN32
@@ -181,12 +183,17 @@ class fs_index_output : public buffered_index_output {
 //////////////////////////////////////////////////////////////////////////////
 /// @class fs_index_input
 //////////////////////////////////////////////////////////////////////////////
+class pooled_fs_index_input; // predeclaration used by fs_index_input
 class fs_index_input : public buffered_index_input {
  public:
-  static index_input::ptr open(const file_path_t name) NOEXCEPT {
+  virtual ptr dup() const NOEXCEPT override;
+
+  static index_input::ptr open(
+    const file_path_t name, size_t pool_size
+  ) NOEXCEPT {
     assert(name);
 
-    file_handle::ptr handle = file_handle::make<file_handle>();
+    auto handle = file_handle::make();
 
     handle->handle = file_open(name, "rb");
 
@@ -218,7 +225,7 @@ class fs_index_input : public buffered_index_input {
     handle->size = size;
 
     try {
-      return fs_index_input::make<fs_index_input>(std::move(handle));
+      return fs_index_input::make<fs_index_input>(std::move(handle), pool_size);
     } catch(...) {
       IR_EXCEPTION();
     }
@@ -226,14 +233,11 @@ class fs_index_input : public buffered_index_input {
     return nullptr;
   }
 
-  virtual index_input::ptr clone() const override {
-    PTR_NAMED(fs_index_input, ptr, *this);
-    return ptr;
-  }
-
   virtual size_t length() const override {
     return handle_->size;
   }
+
+  virtual ptr reopen() const NOEXCEPT override;
 
  protected:
   virtual void seek_internal(size_t pos) override {
@@ -288,12 +292,14 @@ class fs_index_input : public buffered_index_input {
   }
 
  private:
+  friend pooled_fs_index_input;
+
   /* use shared wrapper here since we don't want to
   * call "ftell" every time we need to know current 
   * position */
   struct file_handle {
     DECLARE_SPTR(file_handle);
-    DECLARE_FACTORY(file_handle);
+    DECLARE_FACTORY_DEFAULT();
 
     operator FILE*() const { return handle.get(); }
 
@@ -304,8 +310,8 @@ class fs_index_input : public buffered_index_input {
 
   DECLARE_FACTORY(index_input);
 
-  fs_index_input(file_handle::ptr&& handle) NOEXCEPT
-    : handle_(std::move(handle)), pos_(0) {
+  fs_index_input(file_handle::ptr&& handle, size_t pool_size) NOEXCEPT
+    : handle_(std::move(handle)), pool_size_(pool_size), pos_(0) {
     assert(handle_);
   }
 
@@ -313,8 +319,101 @@ class fs_index_input : public buffered_index_input {
   fs_index_input& operator=(const fs_index_input&) = delete;
 
   file_handle::ptr handle_; /* shared file handle */
+  size_t pool_size_; // size of pool for instances of pooled_fs_index_input
   size_t pos_; /* current input stream position */
 }; // fs_index_input
+
+DEFINE_FACTORY_DEFAULT(fs_index_input::file_handle);
+
+class pooled_fs_index_input: public fs_index_input {
+ public:
+  explicit pooled_fs_index_input(const fs_index_input& in);
+  virtual ptr dup() const NOEXCEPT;
+  virtual ptr reopen() const NOEXCEPT;
+
+ private:
+  typedef unbounded_object_pool<file_handle> fd_pool_t;
+  std::shared_ptr<fd_pool_t> fd_pool_;
+
+  pooled_fs_index_input(const pooled_fs_index_input& in) = default;
+  file_handle::ptr reopen(const file_handle& src) const NOEXCEPT;
+};
+
+index_input::ptr fs_index_input::dup() const NOEXCEPT {
+  try {
+    PTR_NAMED(fs_index_input, ptr, *this);
+    return ptr;
+  } catch(...) {
+    IR_EXCEPTION();
+  }
+
+  return nullptr;
+}
+
+index_input::ptr fs_index_input::reopen() const NOEXCEPT {
+  auto ptr = index_input::make<pooled_fs_index_input>(*this);
+
+  if (!ptr) {
+    return nullptr;
+  }
+
+  auto& in = static_cast<pooled_fs_index_input&>(*ptr);
+
+  return in.handle_ && in.handle_->handle ? std::move(ptr) : nullptr;
+}
+
+pooled_fs_index_input::pooled_fs_index_input(const fs_index_input& in)
+  : fs_index_input(in), fd_pool_(memory::make_unique<fd_pool_t>(pool_size_)) {
+  handle_ = reopen(*handle_);
+}
+
+index_input::ptr pooled_fs_index_input::dup() const NOEXCEPT {
+  try {
+    PTR_NAMED(pooled_fs_index_input, ptr, *this);
+    return ptr;
+  } catch(...) {
+    IR_EXCEPTION();
+  }
+
+  return nullptr;
+}
+
+index_input::ptr pooled_fs_index_input::reopen() const NOEXCEPT {
+  auto ptr = dup();
+
+  if (!ptr) {
+    return nullptr;
+  }
+
+  auto& in = static_cast<pooled_fs_index_input&>(*ptr);
+
+  in.handle_ = reopen(*handle_); // reserve a new handle from pool
+
+  return in.handle_ && in.handle_->handle ? std::move(ptr) : nullptr;
+}
+
+fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
+  const file_handle& src
+) const NOEXCEPT {
+  // reserve a new handle from the pool
+  auto handle = const_cast<pooled_fs_index_input*>(this)->fd_pool_->emplace();
+
+  if (!handle->handle) {
+    handle->handle = file_open(src, "rb"); // same permission as in fs_index_input::open(...)
+
+    if (!handle->handle) {
+      // even win32 uses 'errno' for error codes in calls to file_open(...)
+      IR_FRMT_ERROR("Failed to reopen input file, error: %d", errno);
+
+      return nullptr;
+    }
+  }
+
+  handle->pos = src.pos;
+  handle->size = src.size;
+
+  return handle;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                       fs_directory implementation
@@ -405,10 +504,12 @@ bool fs_directory::remove(const std::string& name) NOEXCEPT {
 index_input::ptr fs_directory::open(const std::string& name) const NOEXCEPT {
   try {
     utf8_path path;
+    auto pool_size =
+      const_cast<fs_directory*>(this)->attributes().add<fd_pool_size>()->size;
 
     path/dir_/name;
 
-    return fs_index_input::open(path.c_str());
+    return fs_index_input::open(path.c_str(), pool_size);
   } catch(...) {
     IR_EXCEPTION();
   }

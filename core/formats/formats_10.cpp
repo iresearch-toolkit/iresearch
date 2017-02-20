@@ -390,7 +390,7 @@ class pos_iterator : public position::impl {
  protected:
   // prepares iterator to work
   virtual void prepare(const doc_state& state) {
-    pos_in_ = state.pos_in->clone();
+    pos_in_ = state.pos_in->reopen();
     pos_in_->seek(state.term_state->pos_start);
     freq_ = state.freq;
     features_ = state.features; 
@@ -489,11 +489,11 @@ class offs_pay_iterator final : public pos_iterator {
     offs_->clear();
     pay_->clear();
   }
-  
+
  protected:
   virtual void prepare(const doc_state& state) override {
     pos_iterator::prepare(state);
-    pay_in_ = state.pay_in->clone();
+    pay_in_ = state.pay_in->reopen();
     pay_in_->seek(state.term_state->pay_start);
   }
 
@@ -618,19 +618,19 @@ class offs_iterator final : public pos_iterator {
     auto& attrs = this->attributes();
     offs_ = attrs.add<offset>();
   }
-  
+
   virtual void clear() override {
     pos_iterator::clear();
     offs_->clear();
   }
-  
+
  protected:
   virtual void prepare(const doc_state& state) override {
     pos_iterator::prepare(state);
-    pay_in_ = state.pay_in->clone();
+    pay_in_ = state.pay_in->reopen();
     pay_in_->seek(state.term_state->pay_start);
   }
-  
+
   virtual void prepare(const skip_state& state) override {
     pos_iterator::prepare(state);
     pay_in_->seek(state.pay_ptr);
@@ -719,16 +719,16 @@ class pay_iterator final : public pos_iterator {
     auto& attrs = this->attributes();
     pay_ = attrs.add<payload>();
   }
-  
+
   virtual void clear() override {
     pos_iterator::clear();
     pay_->clear();
   }
-  
+
  protected:
   virtual void prepare(const doc_state& state) override {
     pos_iterator::prepare(state);
-    pay_in_ = state.pay_in->clone();
+    pay_in_ = state.pay_in->reopen();
     pay_in_->seek(state.term_state->pay_start);
   }
 
@@ -875,9 +875,11 @@ void doc_iterator::prepare( const flags& field,
   // init document stream
   if (term_state_.docs_count > 1) {
     if (!doc_in_) {
-      doc_in_ = doc_in->clone();
+      doc_in_ = doc_in->reopen();
     }
+
     doc_in_->seek(term_state_.doc_start);
+    assert(!doc_in_->eof());
   }
 
   // get enabled features:
@@ -938,7 +940,7 @@ void doc_iterator::seek_to_block(doc_id_t target) {
 
     // init skip writer in lazy fashion
     if (!skip_) {
-      index_input::ptr skip_in = doc_in_->clone();
+      index_input::ptr skip_in = doc_in_->dup();
       skip_in->seek(term_state_.doc_start + term_state_.e_skip_start);
 
       skip_.prepare(

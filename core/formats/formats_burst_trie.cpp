@@ -1128,7 +1128,7 @@ doc_iterator::ptr term_iterator::postings(const flags& features) const {
 
 index_input& term_iterator::terms_input() const {
   if (!terms_in_) {
-    terms_in_ = owner_->owner_->terms_in_->clone();
+    terms_in_ = owner_->owner_->terms_in_->reopen();
   }
   return *terms_in_;
 }
