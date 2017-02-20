@@ -242,7 +242,7 @@ bool verify_lock_file(const file_path_t file) {
     return false; // not locked
   }
 
-  const int fd = open(file, O_RDONLY);
+  const int fd = ::open(file, O_RDONLY);
 
   if (fd < 0) {
     IR_FRMT_ERROR("Unable to open lock file '%s' for verification, error: %d", file, errno);
@@ -298,13 +298,13 @@ bool verify_lock_file(const file_path_t file) {
 }
 
 lock_handle_t create_lock_file(const file_path_t file) {
-  const int fd = open(file, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+  const int fd = ::open(file, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
 
   if (fd < 0) {
     IR_FRMT_ERROR("Unable to create lock file: '%s', error: %d", file, errno);
     return nullptr;
   }
-  
+
   lock_handle_t handle(reinterpret_cast<void*>(fd));
   char buf[256];
 
@@ -318,7 +318,7 @@ lock_handle_t create_lock_file(const file_path_t file) {
     IR_FRMT_ERROR("Unable to write lock file: '%s', error: %d", file, errno);
     return nullptr;
   }
-  
+
   // write PID to lock file 
   size_t size = sprintf(buf, "%d", get_pid());
   if (!file_utils::write(fd, buf, size)) {
@@ -342,7 +342,7 @@ lock_handle_t create_lock_file(const file_path_t file) {
 }
 
 bool file_sync(const file_path_t file) NOEXCEPT {
-  const int handle = open(file, O_WRONLY, S_IRWXU);
+  const int handle = ::open(file, O_WRONLY, S_IRWXU);
   if (handle < 0) {
     return false;
   }
