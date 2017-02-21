@@ -60,12 +60,16 @@ struct read_write_helper<uint64_t> {
   }
 };
 
+NS_END // LOCAL
+
+NS_BEGIN(detail)
+
 template<class T, T max_size_val>
 struct vencode_traits_base {
     static const T const_max_size = max_size_val;
 };
 
-NS_END // LOCAL
+NS_END // detail
 
 NS_ROOT
 
@@ -175,7 +179,7 @@ struct vencode_traits {
 }; // vencode_traits
 
 template<>
-struct vencode_traits<uint32_t>: ::vencode_traits_base<size_t, 5> {
+struct vencode_traits<uint32_t>: ::detail::vencode_traits_base<size_t, 5> {
   typedef uint32_t type;
 
   static size_t size(type v) {
@@ -196,7 +200,7 @@ struct vencode_traits<uint32_t>: ::vencode_traits_base<size_t, 5> {
 }; // vencode_traits<uint32_t>
 
 template<>
-struct vencode_traits<uint64_t>: ::vencode_traits_base<size_t, 10> {
+struct vencode_traits<uint64_t>: ::detail::vencode_traits_base<size_t, 10> {
   typedef uint64_t type;
 
   static size_t size(type v) {

@@ -328,6 +328,7 @@ DEFINE_FACTORY_DEFAULT(fs_index_input::file_handle);
 class pooled_fs_index_input: public fs_index_input {
  public:
   explicit pooled_fs_index_input(const fs_index_input& in);
+  virtual ~pooled_fs_index_input();
   virtual ptr dup() const NOEXCEPT;
   virtual ptr reopen() const NOEXCEPT;
 
@@ -365,6 +366,10 @@ index_input::ptr fs_index_input::reopen() const NOEXCEPT {
 pooled_fs_index_input::pooled_fs_index_input(const fs_index_input& in)
   : fs_index_input(in), fd_pool_(memory::make_unique<fd_pool_t>(pool_size_)) {
   handle_ = reopen(*handle_);
+}
+
+pooled_fs_index_input::~pooled_fs_index_input() {
+  handle_.reset(); // release handle before the fs_pool_ is deallocated
 }
 
 index_input::ptr pooled_fs_index_input::dup() const NOEXCEPT {
