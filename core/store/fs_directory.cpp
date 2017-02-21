@@ -414,7 +414,7 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
     }
   }
 
-  handle->pos = src.pos;
+  handle->pos = ::ftell(handle->handle.get()); // match position of file descriptor
   handle->size = src.size;
 
   return handle;
