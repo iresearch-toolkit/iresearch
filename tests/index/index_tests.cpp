@@ -3583,7 +3583,7 @@ TEST_F(memory_index_test, profile_bulk_index_multithread_cleanup) {
 TEST_F(memory_index_test, profile_bulk_index_multithread_consolidate) {
   // a lot of threads cause a lot of contention for the segment pool
   // small consolidate_interval causes too many policies to be added and slows down test
-  profile_bulk_index_dedicated_consolidate(8, 10000, 1000);
+  profile_bulk_index_dedicated_consolidate(8, 10000, 2000);
 }
 
 TEST_F(memory_index_test, profile_bulk_index_multithread_dedicated_commit) {
@@ -5372,7 +5372,7 @@ TEST_F(fs_index_test, profile_bulk_index_multithread_cleanup) {
 TEST_F(fs_index_test, profile_bulk_index_multithread_consolidate) {
   // a lot of threads cause a lot of contention for the segment pool
   // small consolidate_interval causes too many policies to be added and slows down test
-  profile_bulk_index_dedicated_consolidate(8, 10000, 1000);
+  profile_bulk_index_dedicated_consolidate(8, 10000, 2000);
 }
 
 TEST_F(fs_index_test, profile_bulk_index_multithread_dedicated_commit) {
