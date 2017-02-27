@@ -554,15 +554,24 @@ class index_test_case_base : public tests::index_test_base {
 
     // initialize reader data source for import threads
     {
-      REGISTER_TIMER_NAMED_DETAILED("init");
-      tests::json_doc_generator import_gen(resource("simple_sequential.json"), &tests::generic_json_field_factory);
       auto import_writer = iresearch::index_writer::make(import_dir, codec(), iresearch::OM_CREATE);
 
-      for (const tests::document* doc; (doc = import_gen.next());) {
-        import_writer->insert(doc->indexed.begin(), doc->indexed.end(), doc->stored.begin(), doc->stored.end());
+      {
+        REGISTER_TIMER_NAMED_DETAILED("init - setup");
+        tests::json_doc_generator import_gen(resource("simple_sequential.json"), &tests::generic_json_field_factory);
+
+        for (const tests::document* doc; (doc = import_gen.next());) {
+          REGISTER_TIMER_NAMED_DETAILED("init - insert");
+          import_writer->insert(doc->indexed.begin(), doc->indexed.end(), doc->stored.begin(), doc->stored.end());
+        }
       }
 
-      import_writer->commit();
+      {
+        REGISTER_TIMER_NAMED_DETAILED("init - commit");
+        import_writer->commit();
+      }
+
+      REGISTER_TIMER_NAMED_DETAILED("init - open");
       import_reader = iresearch::directory_reader::open(import_dir);
     }
 
