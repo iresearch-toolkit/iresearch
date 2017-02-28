@@ -54,7 +54,6 @@ struct IRESEARCH_API data_input {
 
   uint64_t read_vlong();
 };
-  
 
 /* -------------------------------------------------------------------
 * index_input
@@ -66,10 +65,9 @@ struct IRESEARCH_API index_input : public data_input {
   DECLARE_FACTORY(index_input);
 
   virtual ~index_input();
-
+  virtual ptr dup() const NOEXCEPT = 0; // non-thread-safe fd copy (offset preserved)
+  virtual ptr reopen() const NOEXCEPT = 0; // thread-safe new low-level-fd (offset preserved)
   virtual void seek(size_t pos) = 0;
-
-  virtual index_input::ptr clone() const = 0;
 
  private:
   index_input& operator=( const index_input& ) = delete;

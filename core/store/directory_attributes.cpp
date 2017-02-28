@@ -15,6 +15,23 @@
 NS_ROOT
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                      fd_pool_size
+// -----------------------------------------------------------------------------
+
+DEFINE_ATTRIBUTE_TYPE(fd_pool_size);
+DEFINE_FACTORY_DEFAULT(fd_pool_size);
+
+fd_pool_size::fd_pool_size()
+  : iresearch::attribute(fd_pool_size::type()), size(8) { // arbitary size
+}
+
+void fd_pool_size::clear() {
+  static auto default_size = fd_pool_size().size;
+
+  size = default_size;
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                   index_file_refs
 // -----------------------------------------------------------------------------
 

@@ -9,6 +9,8 @@
 // Agreement under which it is provided by or on behalf of EMC.
 // 
 
+#include <unicode/uclean.h> // for u_cleanup
+
 #include "tests_config.hpp"
 #include "tests_shared.hpp"
 #include "analysis/analyzers.hpp"
@@ -39,6 +41,8 @@ class analyzer_test: public ::testing::Test {
 
   virtual void TearDown() {
     // Code here will be called immediately after each test (right before the destructor).
+
+    u_cleanup(); // release/free all memory used by ICU
   }
 };
 

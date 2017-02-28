@@ -128,7 +128,7 @@ skip_reader::level::level(
     size_t step,
     uint64_t begin, 
     uint64_t end) NOEXCEPT
-  : stream(std::move(stream)),
+  : stream(stream->reopen()), // thread-safe input
     begin(begin), 
     end(end),
     step(step) {
@@ -144,7 +144,7 @@ skip_reader::level::level(skip_reader::level&& rhs) NOEXCEPT
 }
 
 skip_reader::level::level(const skip_reader::level& rhs)
-  : stream(rhs.stream->clone()),
+  : stream(rhs.stream->dup()), // dup of a reopen()ed input
     begin(rhs.begin), end(rhs.end),
     child(rhs.child),
     step(rhs.step), 
@@ -152,12 +152,24 @@ skip_reader::level::level(const skip_reader::level& rhs)
     doc(rhs.doc) {
 }
 
+index_input::ptr skip_reader::level::dup() const NOEXCEPT {
+  return index_input::make<skip_reader::level>(*this);
+}
+
 byte_type skip_reader::level::read_byte() {
   return stream->read_byte();
 }
-    
+
 size_t skip_reader::level::read_bytes(byte_type* b, size_t count) {
   return stream->read_bytes(b, std::min(end - file_pointer(), count));
+}
+
+index_input::ptr skip_reader::level::reopen() const NOEXCEPT {
+  level tmp(*this);
+
+  tmp.stream = tmp.stream->reopen();
+
+  return index_input::make<skip_reader::level>(std::move(tmp));
 }
 
 size_t skip_reader::level::file_pointer() const {
@@ -174,10 +186,6 @@ bool skip_reader::level::eof() const {
 
 void skip_reader::level::seek(size_t pos) {
   return stream->seek(begin + pos);
-}
-
-index_input::ptr skip_reader::level::clone() const {
-  return index_input::make<skip_reader::level>(*this);
 }
 
 skip_reader::skip_reader(
@@ -311,7 +319,7 @@ void skip_reader::prepare(index_input::ptr&& in, const read_f& read /* = nop */)
 
     // load levels from n down to 1
     for (; max_levels; --max_levels) {
-      load_level(levels, in->clone(), step);
+      load_level(levels, in->dup(), step);
 
       // seek to the next level
       in->seek(levels.back().end);

@@ -121,13 +121,22 @@
 #endif
 
 #if defined(__GNUC__)
-#define IRESEARCH_INIT(f) \
+  #define IRESEARCH_INIT(f) \
     static void f(void) __attribute__((constructor)); \
     static void f(void)
+  #define RESEARCH_FINI(f) \
+    static void f(void) __attribute__((destructor)); \
+    static void f(void)
 #elif defined(_MSC_VER)
-#define IRESEARCH_INIT(f) \
+  #define IRESEARCH_INIT(f) \
     static void __cdecl f(void); \
-    __declspec(allocate(".CRT$XCU")) void (__cdecl*f##_)(void) = f; \
+    static int f ## _init_wrapper(void) { f(); return 0; } \
+    __declspec(allocate(".CRT$XCU")) void (__cdecl*f##_)(void) = f ## _init_wrapper; \
+    static void __cdecl f(void)
+  #define RESEARCH_FINI(f) \
+    static void __cdecl f(void); \
+    static int f ## _fini_wrapper(void) { atexit(f); return 0; } \
+    __declspec(allocate(".CRT$XCU")) static int (__cdecl*f##_)(void) = f ## _fini_wrapper; \
     static void __cdecl f(void)
 #endif
 
@@ -156,4 +165,3 @@ namespace irs = ::iresearch;
 #include "types.hpp" // iresearch types
 
 #endif // IRESEACH_SHARED_H
-

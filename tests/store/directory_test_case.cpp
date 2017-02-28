@@ -15,6 +15,7 @@
 #include "store/data_output.hpp"
 #include "store/data_input.hpp"
 #include "store/checksum_io.hpp"
+#include "utils/async_utils.hpp"
 #include "utils/utf8_path.hpp"
 
 #include <boost/crc.hpp>
@@ -137,11 +138,11 @@ void directory_test_case::read_multiple_streams() {
     ASSERT_TRUE(in1->eof());
   }
 
-  // read data using clone
+  // read data using dup
   {
     auto in0 = dir_->open("test");
     ASSERT_FALSE(!in0);
-    auto in1 = in0->clone();
+    auto in1 = in0->dup();
     ASSERT_FALSE(!in1);
     ASSERT_FALSE(in0->eof());
     ASSERT_FALSE(in1->eof());
@@ -169,6 +170,89 @@ void directory_test_case::read_multiple_streams() {
     ASSERT_EQ(50000, in1->read_vint());
     ASSERT_TRUE(in0->eof());
     ASSERT_TRUE(in1->eof());
+  }
+
+  // read data using reopen
+  {
+    auto in0 = dir_->open("test");
+    ASSERT_FALSE(!in0);
+    auto in1 = in0->reopen();
+    ASSERT_FALSE(!in1);
+    ASSERT_FALSE(in0->eof());
+    ASSERT_FALSE(in1->eof());
+    ASSERT_EQ(0, in0->read_vint());
+    ASSERT_EQ(0, in1->read_vint());
+    ASSERT_FALSE(in0->eof());
+    ASSERT_FALSE(in1->eof());
+    ASSERT_EQ(1, in0->read_vint());
+    ASSERT_EQ(1, in1->read_vint());
+    ASSERT_FALSE(in0->eof());
+    ASSERT_FALSE(in1->eof());
+    ASSERT_EQ(2, in0->read_vint());
+    ASSERT_EQ(2, in1->read_vint());
+    ASSERT_FALSE(in0->eof());
+    ASSERT_FALSE(in1->eof());
+    ASSERT_EQ(300, in0->read_vint());
+    ASSERT_EQ(300, in1->read_vint());
+    ASSERT_FALSE(in0->eof());
+    ASSERT_FALSE(in1->eof());
+    ASSERT_EQ(4, in0->read_vint());
+    ASSERT_EQ(4, in1->read_vint());
+    ASSERT_FALSE(in0->eof());
+    ASSERT_FALSE(in1->eof());
+    ASSERT_EQ(50000, in0->read_vint());
+    ASSERT_EQ(50000, in1->read_vint());
+    ASSERT_TRUE(in0->eof());
+    ASSERT_TRUE(in1->eof());
+  }
+
+  // read data using reopen async
+  {
+    {
+      auto out = dir_->create("test_async");
+      ASSERT_FALSE(!out);
+
+      for (size_t i = 0; i < 10000; ++i) {
+        out->write_vint(i);
+      }
+    }
+
+    auto in = dir_->open("test_async");
+    std::mutex in_mtx;
+    std::mutex mutex;
+    irs::async_utils::thread_pool pool(16, 16);
+
+    ASSERT_FALSE(!in);
+    in = in->reopen();
+    ASSERT_FALSE(!in);
+
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+
+      for (auto i = pool.max_threads(); i; --i) {
+        pool.run([&in, &in_mtx, &mutex]()->void {
+          index_input::ptr input;
+
+          {
+            std::lock_guard<std::mutex> lock(in_mtx);
+            input = in->reopen(); // make own copy
+          }
+
+          {
+            // wait for all threads to be registered
+            std::lock_guard<std::mutex> lock(mutex);
+          }
+
+          for (size_t i = 0; i < 10000; ++i) {
+            ASSERT_EQ(i, input->read_vint());
+          }
+
+          ASSERT_TRUE(input->eof());
+        });
+      }
+    }
+
+    pool.stop();
   }
 }
 

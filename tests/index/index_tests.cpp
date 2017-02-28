@@ -324,6 +324,163 @@ void payloaded_json_field_factory(
 
 class index_test_case_base : public tests::index_test_base {
  public:
+  void concurrent_read_index() {
+    // write test docs
+    {
+      tests::json_doc_generator gen(
+        resource("simple_single_column_multi_term.json"),
+        &tests::payloaded_json_field_factory
+      );
+      add_segment(gen);
+    }
+
+    auto& expected_index = index();
+    auto actual_reader = irs::directory_reader::open(dir(), codec());
+    ASSERT_FALSE(!actual_reader);
+    ASSERT_EQ(1, actual_reader.size());
+    ASSERT_EQ(expected_index.size(), actual_reader.size());
+
+    size_t thread_count = 16; // arbitrary value > 1
+    std::vector<tests::field_reader> expected_segments;
+    std::vector<const irs::term_reader*> expected_terms; // used to validate terms
+    std::vector<irs::seek_term_iterator::ptr> expected_term_itrs; // used to validate docs
+
+    auto& actual_segment = actual_reader[0];
+    auto actual_terms = actual_segment.field("name_anl_pay");
+    ASSERT_FALSE(!actual_terms);
+
+    for (size_t i = 0; i < thread_count; ++i) {
+      expected_segments.emplace_back(expected_index[0]);
+      expected_terms.emplace_back(expected_segments.back().field("name_anl_pay"));
+      ASSERT_TRUE(nullptr != expected_terms.back());
+      expected_term_itrs.emplace_back(expected_terms.back()->iterator());
+      ASSERT_FALSE(!expected_term_itrs.back());
+    }
+
+    std::mutex mutex;
+
+    // validate terms async
+    {
+      irs::async_utils::thread_pool pool(thread_count, thread_count);
+
+      {
+        std::lock_guard<std::mutex> lock(mutex);
+
+        for (size_t i = 0; i < thread_count; ++i) {
+          auto& act_terms = actual_terms;
+          auto& exp_terms = expected_terms[i];
+
+          pool.run([&mutex, &act_terms, &exp_terms]()->void {
+            {
+              // wait for all threads to be registered
+              std::lock_guard<std::mutex> lock(mutex);
+            }
+
+            auto act_term_itr = act_terms->iterator();
+            auto exp_terms_itr = exp_terms->iterator();
+            ASSERT_FALSE(!act_term_itr);
+            ASSERT_FALSE(!exp_terms_itr);
+
+            while (act_term_itr->next()) {
+              ASSERT_TRUE(exp_terms_itr->next());
+              ASSERT_EQ(exp_terms_itr->value(), act_term_itr->value());
+            }
+
+            ASSERT_FALSE(exp_terms_itr->next());
+          });
+        }
+      }
+
+      pool.stop();
+    }
+
+    // validate docs async
+    {
+      auto actual_term_itr = actual_terms->iterator();
+
+      while (actual_term_itr->next()) {
+        for (size_t i = 0; i < thread_count; ++i) {
+          ASSERT_TRUE(expected_term_itrs[i]->next());
+          ASSERT_EQ(expected_term_itrs[i]->value(), actual_term_itr->value());
+        }
+
+        irs::async_utils::thread_pool pool(thread_count, thread_count);
+
+        {
+          std::lock_guard<std::mutex> lock(mutex);
+
+          for (size_t i = 0; i < thread_count; ++i) {
+            auto& act_term_itr = actual_term_itr;
+            auto& exp_term_itr = expected_term_itrs[i];
+
+            pool.run([&mutex, &act_term_itr, &exp_term_itr]()->void {
+              const irs::flags features({ irs::frequency::type(), irs::offset::type(), irs::position::type(), irs::payload::type() });
+              irs::doc_iterator::ptr act_docs_itr;
+              irs::doc_iterator::ptr exp_docs_itr;
+
+              {
+                // wait for all threads to be registered
+                std::lock_guard<std::mutex> lock(mutex);
+
+                // iterators are not thread-safe
+                act_docs_itr = act_term_itr->postings(features); // this step creates 3 internal iterators
+                exp_docs_itr = exp_term_itr->postings(features); // this step creates 3 internal iterators
+              }
+
+              auto& actual_attrs = act_docs_itr->attributes();
+              auto& expected_attrs = exp_docs_itr->attributes();
+              ASSERT_EQ(expected_attrs.features(), actual_attrs.features());
+
+              auto& actual_freq = actual_attrs.get<irs::frequency>();
+              auto& expected_freq = expected_attrs.get<irs::frequency>();
+              ASSERT_FALSE(!actual_freq);
+              ASSERT_FALSE(!expected_freq);
+
+              auto& actual_pos = actual_attrs.get<irs::position>();
+              auto& expected_pos = expected_attrs.get<irs::position>();
+              ASSERT_FALSE(!actual_pos);
+              ASSERT_FALSE(!expected_pos);
+
+              while (act_docs_itr->next()) {
+                ASSERT_TRUE(exp_docs_itr->next());
+                ASSERT_EQ(exp_docs_itr->value(), act_docs_itr->value());
+                ASSERT_EQ(expected_freq->value, actual_freq->value);
+
+                auto& actual_offs = actual_pos->get<irs::offset>();
+                auto& expected_offs = expected_pos->get<irs::offset>();
+                ASSERT_FALSE(!actual_offs);
+                ASSERT_FALSE(!expected_offs);
+
+                auto& actual_pay = actual_pos->get<irs::payload>();
+                auto& expected_pay = expected_pos->get<irs::payload>();
+                ASSERT_FALSE(!actual_pay);
+                ASSERT_FALSE(!expected_pay);
+
+                while(actual_pos->next()) {
+                  ASSERT_TRUE(expected_pos->next());
+                  ASSERT_EQ(expected_pos->value(), actual_pos->value());
+                  ASSERT_EQ(expected_offs->start, actual_offs->start);
+                  ASSERT_EQ(expected_offs->end, actual_offs->end);
+                  ASSERT_EQ(expected_pay->value, actual_pay->value);
+                }
+
+                ASSERT_FALSE(expected_pos->next());
+              }
+
+              ASSERT_FALSE(exp_docs_itr->next());
+            });
+          }
+        }
+
+        pool.stop();
+      }
+
+      for (size_t i = 0; i < thread_count; ++i) {
+        ASSERT_FALSE(expected_term_itrs[i]->next());
+      }
+    }
+  }
+
   void open_writer_check_lock() {
     {
       // open writer
@@ -397,14 +554,24 @@ class index_test_case_base : public tests::index_test_base {
 
     // initialize reader data source for import threads
     {
-      tests::json_doc_generator import_gen(resource("simple_sequential.json"), &tests::generic_json_field_factory);
       auto import_writer = iresearch::index_writer::make(import_dir, codec(), iresearch::OM_CREATE);
 
-      for (const tests::document* doc; (doc = import_gen.next());) {
-        import_writer->insert(doc->indexed.begin(), doc->indexed.end(), doc->stored.begin(), doc->stored.end());
+      {
+        REGISTER_TIMER_NAMED_DETAILED("init - setup");
+        tests::json_doc_generator import_gen(resource("simple_sequential.json"), &tests::generic_json_field_factory);
+
+        for (const tests::document* doc; (doc = import_gen.next());) {
+          REGISTER_TIMER_NAMED_DETAILED("init - insert");
+          import_writer->insert(doc->indexed.begin(), doc->indexed.end(), doc->stored.begin(), doc->stored.end());
+        }
       }
 
-      import_writer->commit();
+      {
+        REGISTER_TIMER_NAMED_DETAILED("init - commit");
+        import_writer->commit();
+      }
+
+      REGISTER_TIMER_NAMED_DETAILED("init - open");
       import_reader = iresearch::directory_reader::open(import_dir);
     }
 
@@ -658,8 +825,8 @@ class index_test_case_base : public tests::index_test_base {
 
     ASSERT_EQ(parsed_docs_count + imported_docs_count, indexed_docs_count);
     ASSERT_EQ(imported_docs_count, import_docs_count);
-    ASSERT_TRUE(imported_docs_count >= num_import_threads); // at least some imports took place if import enabled
-    ASSERT_TRUE(updated_docs_count >= num_update_threads); // at least some updates took place if update enabled
+    ASSERT_TRUE(imported_docs_count == num_import_threads || imported_docs_count); // at least some imports took place if import enabled
+    ASSERT_TRUE(updated_docs_count == num_update_threads || updated_docs_count); // at least some updates took place if update enabled
   }
 
   void profile_bulk_index_dedicated_cleanup(size_t num_threads, size_t batch_size, size_t cleanup_interval) {
@@ -1163,7 +1330,7 @@ class index_test_case_base : public tests::index_test_base {
         }
 
         while (doc) {
-          if (!reader(offset + irs::type_limits<irs::type_t::doc_id_t>::min(), actual_value)) {
+          if (!reader(offset + (irs::type_limits<irs::type_t::doc_id_t>::min)(), actual_value)) {
             return false;
           }
 
@@ -1861,6 +2028,10 @@ TEST_F(memory_index_test, monarch_eco_onthology) {
 TEST_F(memory_index_test, concurrent_read_column) {
   concurrent_read_single_column_smoke();
   concurrent_read_multiple_columns();
+}
+
+TEST_F(memory_index_test, concurrent_read_index) {
+  concurrent_read_index();
 }
 
 TEST_F(memory_index_test, concurrent_add) {
@@ -3421,7 +3592,7 @@ TEST_F(memory_index_test, profile_bulk_index_multithread_cleanup) {
 TEST_F(memory_index_test, profile_bulk_index_multithread_consolidate) {
   // a lot of threads cause a lot of contention for the segment pool
   // small consolidate_interval causes too many policies to be added and slows down test
-  profile_bulk_index_dedicated_consolidate(8, 10000, 1000);
+  profile_bulk_index_dedicated_consolidate(8, 10000, 5000);
 }
 
 TEST_F(memory_index_test, profile_bulk_index_multithread_dedicated_commit) {
@@ -5125,6 +5296,10 @@ TEST_F(fs_index_test, concurrent_read_column) {
   concurrent_read_multiple_columns();
 }
 
+TEST_F(fs_index_test, concurrent_read_index) {
+  concurrent_read_index();
+}
+
 TEST_F(fs_index_test, writer_atomicity_check) {
   writer_atomicity_check();
 }
@@ -5206,7 +5381,7 @@ TEST_F(fs_index_test, profile_bulk_index_multithread_cleanup) {
 TEST_F(fs_index_test, profile_bulk_index_multithread_consolidate) {
   // a lot of threads cause a lot of contention for the segment pool
   // small consolidate_interval causes too many policies to be added and slows down test
-  profile_bulk_index_dedicated_consolidate(8, 10000, 1000);
+  profile_bulk_index_dedicated_consolidate(8, 10000, 5000);
 }
 
 TEST_F(fs_index_test, profile_bulk_index_multithread_dedicated_commit) {

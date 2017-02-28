@@ -98,6 +98,19 @@ memory_index_input::memory_index_input(const memory_file& file) NOEXCEPT
   : file_(&file) {
 }
 
+index_input::ptr memory_index_input::dup() const NOEXCEPT {
+  PTR_NAMED(memory_index_input, ptr, *this);
+  return ptr;
+}
+
+bool memory_index_input::eof() const {
+  return file_pointer() >= file_->length();
+}
+
+index_input::ptr memory_index_input::reopen() const NOEXCEPT {
+  return dup(); // memory_file pointers are thread-safe
+}
+
 void memory_index_input::switch_buffer(size_t pos) {
   auto idx = file_->buffer_offset(pos);
   assert(idx < file_->buffer_count());
@@ -120,7 +133,7 @@ size_t memory_index_input::length() const {
 size_t memory_index_input::file_pointer() const {
   return start_ + std::distance(buf_, begin_);
 }
-    
+
 void memory_index_input::seek(size_t pos) {
   // allow seeking past eof(), set to eof
   if (pos >= file_->length()) {
@@ -160,11 +173,6 @@ size_t memory_index_input::read_bytes(byte_type* b, size_t left) {
     b += copied;
   }
   return length - left;
-}
-
-index_input::ptr memory_index_input::clone() const  {
-  PTR_NAMED(memory_index_input, ptr, *this);
-  return ptr;
 }
 
 /* -------------------------------------------------------------------

@@ -81,7 +81,8 @@ int64_t check_footer( checksum_index_input< Checksum >& in ) {
 
 template< typename Checksum >
 int64_t check_checksum(const index_input& in) {
-  index_input::ptr clone(in.clone());
+  auto clone = in.dup();
+
   clone->seek(0);
 
   checksum_index_input<Checksum> check_in(std::move(clone));

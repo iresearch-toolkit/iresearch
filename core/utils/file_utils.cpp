@@ -242,7 +242,7 @@ bool verify_lock_file(const file_path_t file) {
     return false; // not locked
   }
 
-  const int fd = open(file, O_RDONLY);
+  const int fd = ::open(file, O_RDONLY);
 
   if (fd < 0) {
     IR_FRMT_ERROR("Unable to open lock file '%s' for verification, error: %d", file, errno);
@@ -298,13 +298,13 @@ bool verify_lock_file(const file_path_t file) {
 }
 
 lock_handle_t create_lock_file(const file_path_t file) {
-  const int fd = open(file, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+  const int fd = ::open(file, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
 
   if (fd < 0) {
     IR_FRMT_ERROR("Unable to create lock file: '%s', error: %d", file, errno);
     return nullptr;
   }
-  
+
   lock_handle_t handle(reinterpret_cast<void*>(fd));
   char buf[256];
 
@@ -318,7 +318,7 @@ lock_handle_t create_lock_file(const file_path_t file) {
     IR_FRMT_ERROR("Unable to write lock file: '%s', error: %d", file, errno);
     return nullptr;
   }
-  
+
   // write PID to lock file 
   size_t size = sprintf(buf, "%d", get_pid());
   if (!file_utils::write(fd, buf, size)) {
@@ -342,7 +342,7 @@ lock_handle_t create_lock_file(const file_path_t file) {
 }
 
 bool file_sync(const file_path_t file) NOEXCEPT {
-  const int handle = open(file, O_WRONLY, S_IRWXU);
+  const int handle = ::open(file, O_WRONLY, S_IRWXU);
   if (handle < 0) {
     return false;
   }
@@ -381,6 +381,57 @@ bool is_directory(const file_path_t name) NOEXCEPT {
 #else
   return (info.st_mode & S_IFDIR) > 0;
 #endif
+}
+
+handle_t open(const file_path_t path, const file_path_t mode) NOEXCEPT {
+  #ifdef _WIN32
+    #pragma warning(disable: 4996) // '_wfopen': This function or variable may be unsafe.
+    return handle_t(::_wfopen(path ? path : _T("NUL:"), mode));
+    #pragma warning(default: 4996)
+  #else
+    return handle_t(::fopen(path ? path : "/dev/null", mode));
+  #endif
+}
+
+handle_t open(FILE* file, const file_path_t mode) NOEXCEPT {
+  #ifdef _WIN32
+    // win32 approach is to get the original filename of the handle and open it again
+    // due to a bug from the 1980's the file name is garanteed to not change while the file is open
+    HANDLE handle = HANDLE(::_get_osfhandle(::_fileno(file)));
+
+    if (INVALID_HANDLE_VALUE == HANDLE(handle)) {
+      IR_FRMT_ERROR("Failed to get system handle from file handle, error %d", errno);
+      return nullptr;
+    }
+
+    const auto size = sizeof(FILE_NAME_INFO) + sizeof(WCHAR)*MAX_PATH + 1; // +1 for \0
+    char info_buf[size];
+    PFILE_NAME_INFO info = reinterpret_cast<PFILE_NAME_INFO>(info_buf);
+
+    if (!GetFileInformationByHandleEx(handle, FileNameInfo, info, size)) {
+      IR_FRMT_ERROR("Failed to get filename from file handle, error %d", GetLastError());
+      return nullptr;
+    }
+
+    auto path = info->FileName;
+    auto length = info->FileNameLength >> (sizeof(path[0]) - 1); // FileNameLength is in bytes
+
+    path[length] = '\0';
+
+    return open(path, mode);
+  #else
+    // posix approach is to open the original file via the file descriptor link under /proc/self/fd
+    // the link is garanteed to point to the original inode even if the original file was removed
+    auto fd = ::fileno(file);
+    char path[strlen("/proc/self/fd/") + sizeof(fd)*3 + 1]; // approximate maximum number of chars, +1 for \0
+
+    if (0 > fd || 0 > sprintf(path, "/proc/self/fd/%d", fd)) {
+      IR_FRMT_ERROR("Failed to get system handle from file handle, error %d", errno);
+      return nullptr;
+    }
+
+    return open(path, mode);
+  #endif
 }
 
 bool visit_directory(

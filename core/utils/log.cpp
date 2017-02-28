@@ -57,7 +57,7 @@ inline CONSTEXPR size_t array_size(const T(&)[Size]) { return Size; }
 MSVC_ONLY(__pragma(warning(push)))
 MSVC_ONLY(__pragma(warning(disable: 4996))) // the compiler encountered a deprecated declaration
 static FILE* dev_null() {
-  static auto dev_null = file_open(nullptr, "wb");
+  static auto dev_null = file_open(static_cast<file_path_t>(nullptr), "wb");
   return dev_null.get();
 }
 MSVC_ONLY(__pragma(warning(pop)))

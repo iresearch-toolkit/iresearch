@@ -290,6 +290,7 @@ class document_mask_writer: public iresearch::document_mask_writer {
 class field_reader : public iresearch::field_reader {
  public:
   field_reader( const index_segment& data );
+  field_reader(field_reader&& other) NOEXCEPT;
 
   virtual bool prepare(const iresearch::reader_state& state) override;
   virtual const iresearch::term_reader* field(const iresearch::string_ref& field) const override;

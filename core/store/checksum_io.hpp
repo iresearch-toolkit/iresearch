@@ -117,12 +117,22 @@ class checksum_index_input final : public index_input {
 
   /* index_input */
 
+  virtual ptr dup() const NOEXCEPT override {
+    PTR_NAMED(checksum_index_input, ptr, impl_->dup(), crc_);
+    return ptr;
+  }
+
   virtual size_t length() const override {
     return impl_->length();
   }
 
   virtual size_t file_pointer() const override {
     return impl_->file_pointer();
+  }
+
+  virtual ptr reopen() const NOEXCEPT override {
+    PTR_NAMED(checksum_index_input, ptr, impl_->reopen(), crc_);
+    return ptr;
   }
 
   virtual void seek(size_t pos) override {
@@ -141,10 +151,6 @@ class checksum_index_input final : public index_input {
     }
     
     iresearch::skip(*this, pos - ptr, skip_buf_.get(), SKIP_BUFFER_SIZE);
-  }
-
-  virtual index_input::ptr clone() const override {
-    return index_input::ptr(new checksum_index_input(impl_->clone(), crc_));
   }
 
   virtual bool eof() const override {
