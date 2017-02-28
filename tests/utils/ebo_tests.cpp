@@ -48,17 +48,15 @@ TEST(ebo_tests, check_size) {
     "Invalid size"
   );
 
-  // use ebo to store pointer
-  struct empty_ref_inherited : irs::compact<0, empty*, std::is_empty<empty>::value> { int i; };
+  struct empty_ref_inherited : irs::compact_ref<0, empty> { int i; };
   static_assert(
     sizeof(empty_ref_inherited) == sizeof(int),
     "Invalid size"
   );
 
-  // use ebo to store pointer
-  struct non_empty_ref_inherited : irs::compact<0, non_empty*, std::is_empty<non_empty>::value> { int i; };
+  struct non_empty_ref_inherited : irs::compact_ref<0, non_empty> { int i; };
   static_assert(
-    sizeof(non_empty_ref_inherited) == sizeof(std::pair<non_empty*, int>),
+    sizeof(non_empty_ref_inherited) == 2*sizeof(non_empty*), // because of non_empty* alignment
     "Invalid size"
   );
 }

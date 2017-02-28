@@ -1927,7 +1927,7 @@ void writer::flush() {
 
 NS_LOCAL
 
-iresearch::columnstore_reader::values_reader_f INVALID_COLUMN = 
+iresearch::columnstore_reader::values_reader_f INVALID_COLUMN =
   [] (doc_id_t, bytes_ref&) { return false; };
 
 template<typename Context, typename Block>
@@ -2608,7 +2608,7 @@ class sparse_column final : public column {
   };
 
   virtual bool visit(const columnstore_reader::values_reader_f& visitor) const {
-    block_t block; // don't cache prevously new blocks
+    block_t block; // don't cache new blocks
     for (auto begin = refs_.begin(), end = refs_.end()-1; begin != end; ++begin) { // -1 for upper bound
       const auto* cached = begin->pblock.load();
       if (!cached) {

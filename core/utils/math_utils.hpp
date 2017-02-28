@@ -38,8 +38,15 @@ inline size_t roundup_power2(size_t v) NOEXCEPT {
   return v;
 }
 
-CONSTEXPR inline bool is_power2(size_t v) NOEXCEPT {
-  return v && !(v & (v-1));
+// undefined for 0
+template<typename T>
+CONSTEXPR inline bool is_power2(T v) NOEXCEPT {
+  static_assert(
+    std::is_integral<T>::value,
+    "T must be an integral type"
+  );
+
+  return !(v & (v-1));
 }
 
 // rounds the specified 'value' to the next greater
@@ -54,11 +61,11 @@ inline uint32_t ceil32(uint32_t value, uint32_t step) {
   return uint32_t(std::ceil(float_t(value)/step))*step;
 }
 
-IRESEARCH_API uint32_t log2_64( uint64_t value );
+IRESEARCH_API uint32_t log2_64(uint64_t value);
 
-IRESEARCH_API uint32_t log2_32( uint32_t value );
+IRESEARCH_API uint32_t log2_32(uint32_t value);
 
-IRESEARCH_API uint32_t log( uint64_t x, uint64_t base );
+IRESEARCH_API uint32_t log(uint64_t x, uint64_t base);
 
 /* returns number of set bits in a set of words */
 template<typename T>
@@ -92,8 +99,8 @@ FORCE_INLINE size_t popcnt( const T* value, size_t count ) NOEXCEPT {
 
 /* Hamming weight for 64bit values */
 FORCE_INLINE uint64_t popcnt64( uint64_t v ) NOEXCEPT{  
-  v = v - ( ( v >> 1 ) & ( uint64_t ) ~( uint64_t ) 0 / 3 );                           
-  v = ( v & ( uint64_t ) ~( uint64_t ) 0 / 15 * 3 ) + ( ( v >> 2 ) & ( uint64_t ) ~( uint64_t ) 0 / 15 * 3 );     
+  v = v - ( ( v >> 1 ) & ( uint64_t ) ~( uint64_t ) 0 / 3 );
+  v = ( v & ( uint64_t ) ~( uint64_t ) 0 / 15 * 3 ) + ( ( v >> 2 ) & ( uint64_t ) ~( uint64_t ) 0 / 15 * 3 );
   v = ( v + ( v >> 4 ) ) & ( uint64_t ) ~( uint64_t ) 0 / 255 * 15;                      
   return ( ( uint64_t ) ( v * ( ( uint64_t ) ~( uint64_t ) 0 / 255 ) ) >> ( sizeof( uint64_t ) - 1 ) * CHAR_BIT); 
 }
@@ -158,8 +165,13 @@ FORCE_INLINE uint32_t log2_floor_32(uint32_t v) {
   _BitScanReverse(&idx, v);
   return idx;
 #else
-  static_assert(false, "Not supported");
+  return log2_32(v);
 #endif
+}
+
+FORCE_INLINE uint32_t log2_ceil_32(uint32_t v) {
+  static const uint32_t CEIL_EXTRA[] = { 1, 0 };
+  return log2_floor_32(v) + CEIL_EXTRA[is_power2(v)];
 }
 
 FORCE_INLINE uint64_t log2_floor_64(uint64_t v) {
@@ -170,8 +182,13 @@ FORCE_INLINE uint64_t log2_floor_64(uint64_t v) {
   _BitScanReverse64(&idx, v);
   return idx;
 #else
-  static_assert(false, "Not supported");
+  return log2_64(v);
 #endif
+}
+
+FORCE_INLINE uint64_t log2_ceil_64(uint64_t v) {
+  static const uint64_t CEIL_EXTRA[] = { UINT64_C(1), UINT64_C(0) };
+  return log2_floor_64(v) + CEIL_EXTRA[is_power2(v)];
 }
 
 template<typename T>

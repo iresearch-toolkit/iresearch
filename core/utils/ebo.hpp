@@ -14,12 +14,13 @@
 
 #include "shared.hpp"
 #include <type_traits>
+#include <functional>
 
 NS_ROOT
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class compact (empty base optimization)
-/// @brief Class provides unified way of implmeneting empty base optimization 
+/// @brief Class provides unified way of implementing empty base optimization
 ///        idiom.
 ///
 ///        Example:
@@ -52,7 +53,7 @@ template<
   bool = std::is_empty<T>::value
 //TODO: uncomment when switch to C++14
 //  bool = std::is_empty<T>::value && !std::is_final<T>::value
-> class compact : public std::remove_pointer<T>::type {
+> class compact : public T {
  public:
   typedef T type;
   static const size_t index = I;
@@ -78,8 +79,8 @@ class compact<I, T, false> {
   static const size_t index = I;
 
   compact() = default;
-  compact(const compact& other) NOEXCEPT
-    : val_(other.val_) {}
+  compact(const compact& rhs) NOEXCEPT
+    : val_(rhs.val_) {}
   compact(compact&& rhs) NOEXCEPT
     : val_(std::move(rhs.val_)) { }
 
@@ -112,6 +113,80 @@ class compact<I, T, false> {
   T val_;
 }; // compact
 
+//////////////////////////////////////////////////////////////////////////////
+/// @class compact_ref (empty base optimization)
+/// @brief Class provides unified way of implementing empty base optimization
+///        for references (can't use default template argmuments in partial
+///         specialization)
+//////////////////////////////////////////////////////////////////////////////
+template<
+  size_t I,
+  typename T,
+  bool = std::is_empty<T>::value
+//TODO: uncomment when switch to C++14
+//  bool = std::is_empty<T>::value && !std::is_final<T>::value
+> class compact_ref : public T {
+ public:
+  typedef T type;
+  static const size_t index = I;
+
+  compact_ref() = default;
+  compact_ref(const compact_ref&) = default;
+
+  template<typename U = T>
+  compact_ref(U&&) NOEXCEPT { }
+
+  compact_ref& operator=(const compact_ref&) = default;
+
+  // TODO: uncomment when switch to the C++14 compiler
+  /* CONSTEXPR */ T& get() NOEXCEPT { return *this; }
+  CONSTEXPR const T& get() const NOEXCEPT { return *this; }
+}; // compact_ref
+
+template<size_t I, typename T>
+class compact_ref<I, T, false> {
+ public:
+  typedef T type;
+  static const size_t index = I;
+
+  compact_ref() = default;
+  compact_ref(const compact_ref& rhs) = default;
+
+  template<typename U = T>
+  compact_ref(const U& value) NOEXCEPT
+    : val_(const_cast<U*>(&value)) {
+  }
+
+  template<typename U = T>
+  compact_ref(U& value) NOEXCEPT
+    : val_(&value) {
+  }
+
+  compact_ref& operator=(const compact_ref&) = default;
+
+  template<typename U = T>
+  compact_ref& operator=(const U& value) NOEXCEPT {
+    val_ = const_cast<U*>(&value);
+    return *this;
+  }
+
+  template<typename U = T>
+  compact_ref& operator=(U&& value) NOEXCEPT {
+    val_ = &value;
+    return *this;
+  }
+
+  // TODO: uncomment when switch to the C++14
+  /* CONSTEXPR */ T& get() NOEXCEPT { return *val_; }
+  CONSTEXPR const T& get() const NOEXCEPT { return *val_; }
+
+ private:
+  T* val_;
+}; // compact_ref
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class compact_pair
+//////////////////////////////////////////////////////////////////////////////
 template<typename T0, typename T1>
 class compact_pair : private compact<0, T0>, private compact<1, T1> {
  public:
