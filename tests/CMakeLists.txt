@@ -91,7 +91,6 @@ set(IReSearch_tests_sources
   ./utils/block_pool_test.cpp
   ./utils/locale_utils_tests.cpp
   ./utils/ref_counter_tests.cpp
-  ./utils/memory_tests.cpp
   ./utils/string_tests.cpp
   ./utils/bitset_tests.cpp
   ./utils/ebo_tests.cpp
