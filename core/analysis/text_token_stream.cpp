@@ -52,6 +52,7 @@
 #endif
 
 #include <unicode/translit.h> // for icu::Transliterator
+#include <unicode/uclean.h> // for u_cleanup
 
 #include "libstemmer.h"
 
@@ -59,6 +60,7 @@
 #include "utils/hash_utils.hpp"
 #include "utils/locale_utils.hpp"
 #include "utils/log.hpp"
+#include "utils/misc.hpp"
 #include "utils/runtime_utils.hpp"
 #include "utils/thread_utils.hpp"
 #include "text_token_stream.hpp"
@@ -78,6 +80,12 @@ struct text_token_stream::state_t {
   std::shared_ptr<sb_stemmer> stemmer;
   std::string tmp_buf; // used by processTerm(...)
   std::shared_ptr<Transliterator> transliterator;
+  state_t(): locale("C") {
+    // NOTE: use of the default constructor for Locale() or
+    //       use of Locale::createFromName(nullptr)
+    //       causes a memory leak with Boost 1.58, as detected by valgrind
+    locale.setToBogus(); // set to uninitialized
+  }
 };
 
 NS_END // analysis
@@ -128,6 +136,11 @@ typedef std::unordered_set<std::string> ignored_words_t;
 typedef std::pair<std::locale, ignored_words_t> cached_state_t;
 static std::unordered_map<iresearch::hashed_string_ref, cached_state_t> cached_state_by_key;
 static std::mutex mutex;
+static auto icu_cleanup = iresearch::make_finally([]()->void{
+  // this call will release/free all memory used by ICU (for all users)
+  // very dangerous to call if ICU is still in use by some other code
+  //u_cleanup();
+});
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -453,7 +466,6 @@ text_token_stream::text_token_stream(
   locale_.encoding = locale_utils::encoding(locale);
   locale_.language = locale_utils::language(locale);
   locale_.utf8 = locale_utils::utf8(locale);
-  state_->locale.setToBogus(); // set to uninitialized
 }
 
 // -----------------------------------------------------------------------------

@@ -214,6 +214,7 @@ include_directories(${IResearchTests_TARGET_NAME}-shared
   ${IResearchTests_INCLUDE_DIR}
   ${IReSearch_generated_INCLUDE_DIR}
   ${IResearch_INCLUDE_DIR}
+  ${ICU_INCLUDE_DIR}
   ${GTEST_INCLUDE_DIR}
   ${Boost_INCLUDE_DIRS}
 )
@@ -222,6 +223,7 @@ include_directories(${IResearchTests_TARGET_NAME}-static
   ${IResearchTests_INCLUDE_DIR}
   ${IReSearch_generated_INCLUDE_DIR}
   ${IResearch_INCLUDE_DIR}
+  ${ICU_INCLUDE_DIR}
   ${GTEST_INCLUDE_DIR}
   ${Boost_INCLUDE_DIRS}
 )
