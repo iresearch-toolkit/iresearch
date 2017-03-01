@@ -761,42 +761,10 @@ class index_test_case_base : public tests::index_test_base {
 
     thread_pool.stop();
 
-    std::map<std::string, std::pair<size_t, size_t>> ordered_stats;
-
-    iresearch::timer_utils::visit([&ordered_stats](const std::string& key, size_t count, size_t time)->bool {
-      std::string key_str = key;
-
-      #if defined(__GNUC__)
-        if (key_str.compare(0, strlen("virtual "), "virtual ") == 0) {
-          key_str = key_str.substr(strlen("virtual "));
-        }
-
-        size_t i;
-
-        if (std::string::npos != (i = key_str.find(' ')) && key_str.find('(') > i) {
-          key_str = key_str.substr(i + 1);
-        }
-      #elif defined(_MSC_VER)
-        size_t i;
-
-        if (std::string::npos != (i = key_str.find("__cdecl "))) {
-          key_str = key_str.substr(i + strlen("__cdecl "));
-        }
-      #endif
-
-      ordered_stats.emplace(key_str, std::make_pair(count, time));
-      return true;
-    });
-
     auto path = fs::path(test_dir()).append("profile_bulk_index.log");
     std::ofstream out(path.native());
 
-    for (auto& entry: ordered_stats) {
-      auto& key = entry.first;
-      auto& count = entry.second.first;
-      auto& time = entry.second.second;
-      out << key << "\tcalls:" << count << ",\ttime: " << time/1000 << " us,\tavg call: " << time/1000/(double)count << " us"<< std::endl;
-    }
+    flush_timers(out);
 
     out.close();
     std::cout << "Path to timing log: " << fs::absolute(path).string() << std::endl;

@@ -91,6 +91,9 @@ class test_base : public ::testing::Test {
   fs::path test_dir_; /* res_dir_/<test-name>*/
   fs::path test_case_dir_; /* test_dir/<test-case-name> */    
   bool artifacts_;
-};
+}; // test_base
+
+// writes formatted report to the specified output stream
+void flush_timers(std::ostream& out);
 
 #endif

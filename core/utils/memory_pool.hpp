@@ -85,16 +85,16 @@ class freelist : private util::noncopyable {
   }
 
   void* pop_n(const size_t slot_size, size_t count) NOEXCEPT {
-    slot** begin = &head_;
+    slot* begin = reinterpret_cast<slot*>(&head_);
     slot* end;
     while (!(end = try_pop_n(begin, slot_size, count))) {
-      if (!*begin) {
+      if (!begin) {
         return nullptr;
       }
     }
 
-    auto* const ret = *begin;
-    (*begin) = end->next;
+    auto* const ret = begin;
+    begin->next = end->next;
     return ret;
   }
 
@@ -119,11 +119,11 @@ class freelist : private util::noncopyable {
   // on success, puts the beginning of the found range into the 'begin'
   // and retuns 'n-1'th element starting from 'begin'
   // on fail, puts failed element into the 'begin' and returns nullptr
-  static slot* try_pop_n(slot** begin, const size_t slot_size, size_t count) NOEXCEPT {
-    auto* it = *begin;
+  static slot* try_pop_n(slot*& begin, const size_t slot_size, size_t count) NOEXCEPT {
+    auto* it = begin->next;
     while (it && --count) {
       if ((reinterpret_cast<char*>(it) + slot_size) != reinterpret_cast<char*>(it->next)) {
-        *begin = it->next;
+        begin = it->next;
         return nullptr;
       }
       it = it->next;
@@ -344,13 +344,10 @@ template<
   }
 
   ~memory_pool() NOEXCEPT {
-    auto& alloc = this->allocator();
-
     // deallocate previously allocated blocks
     // in reverse order
     while (!blocks_.empty()) {
-      alloc.deallocate(static_cast<char*>(blocks_.pop()));
-      --capacity_;
+      this->allocator().deallocate(static_cast<char*>(blocks_.pop()));
     }
   }
 
@@ -403,6 +400,10 @@ template<
     return capacity_;
   }
 
+  size_t slot_size() const NOEXCEPT {
+    return slot_size_;
+  }
+
   size_t next_size() const NOEXCEPT {
     return next_size_;
   }
@@ -439,7 +440,7 @@ template<
     }
 
     // noexcept
-    capacity_ += size_in_bytes;
+    capacity_ += block_size;
     next_size_ = this->grow_policy()(next_size_);
 
     // use 1st slot in a block to store pointer
@@ -461,7 +462,7 @@ template<
   }
 
   const size_t slot_size_;
-  size_t capacity_{}; // number of allocated blocks
+  size_t capacity_{}; // number of allocated slots
   size_t next_size_;
   freelist free_; // list of free slots in the allocated blocks
   freelist blocks_; // list of the allocated blocks

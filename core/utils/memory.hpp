@@ -21,10 +21,114 @@
 NS_ROOT
 NS_BEGIN(memory)
 
-//////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 /// @brief dump memory statistics and stack trace to stderr
-//////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API void dump_mem_stats_trace() NOEXCEPT;
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                                         Deleters
+// ----------------------------------------------------------------------------
+
+template<typename Alloc>
+struct allocator_deallocator : public compact_ref<0, Alloc> {
+  typedef compact_ref<0, Alloc> allocator_ref_t;
+  typedef typename allocator_ref_t::allocator_type allocator_type;
+  typedef typename allocator_type::pointer pointer;
+
+  allocator_deallocator(const allocator_type& alloc)
+    : allocator_ref_t(alloc) {
+  }
+
+  void operator()(pointer p) const NOEXCEPT {
+    auto& alloc = const_cast<allocator_ref_t*>(this)->get();
+
+    // deallocate storage
+    std::allocator_traits<allocator_type>::deallocate(
+      alloc, p, 1
+    );
+  }
+}; // allocator_deallocator
+
+template<typename Alloc>
+struct allocator_deleter : public compact_ref<0, Alloc> {
+  typedef compact_ref<0, Alloc> allocator_ref_t;
+  typedef typename allocator_ref_t::type allocator_type;
+  typedef typename allocator_type::pointer pointer;
+
+  allocator_deleter(allocator_type& alloc)
+    : allocator_ref_t(alloc) {
+  }
+
+  void operator()(pointer p) const NOEXCEPT {
+    typedef std::allocator_traits<allocator_type> traits_t;
+
+    auto& alloc = const_cast<allocator_deleter*>(this)->get();
+
+    // destroy object
+    traits_t::destroy(alloc, p);
+
+    // deallocate storage
+    traits_t::deallocate(alloc, p, 1);
+  }
+}; // allocator_deleter
+
+template<typename Alloc>
+class allocator_array_deallocator : public compact_ref<0, Alloc> {
+ public:
+  typedef compact_ref<0, Alloc> allocator_ref_t;
+  typedef typename allocator_ref_t::type allocator_type;
+  typedef typename allocator_type::pointer pointer;
+
+  allocator_array_deallocator(const allocator_type& alloc, size_t size)
+    : allocator_ref_t(alloc), size_(size) {
+  }
+
+  void operator()(pointer p) const NOEXCEPT {
+    auto& alloc = const_cast<allocator_ref_t*>(this)->get();
+
+    // deallocate storage
+    std::allocator_traits<allocator_type>::deallocate(
+       alloc, p, size_
+    );
+  }
+
+ private:
+  size_t size_;
+}; // allocator_array_deallocator
+
+template<typename Alloc>
+class allocator_array_deleter : public compact_ref<0, Alloc> {
+ public:
+  typedef compact_ref<0, Alloc> allocator_ref_t;
+  typedef typename allocator_ref_t::type allocator_type;
+  typedef typename allocator_type::pointer pointer;
+
+  allocator_array_deleter(allocator_type& alloc, size_t size)
+    : allocator_ref_t(alloc), size_(size) {
+  }
+
+  void operator()(pointer p) const NOEXCEPT {
+    typedef std::allocator_traits<allocator_type> traits_t;
+
+    auto& alloc = const_cast<allocator_ref_t*>(this)->get();
+
+    // destroy objects
+    for (auto end = p + size_; p != end; ++p) {
+      traits_t::destroy(alloc, p);
+    }
+
+    // deallocate storage
+    traits_t::deallocate(alloc, p, size_);
+  }
+
+ private:
+  size_t size_;
+}; // allocator_array_deleter
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                                      make_unique
+// ----------------------------------------------------------------------------
 
 template <typename T, typename... Types>
 inline typename std::enable_if<
@@ -70,53 +174,18 @@ typename std::enable_if<
   void
 >::type make_unique(Types&&...) = delete;
 
-template<typename Alloc>
-struct allocator_deallocator : public compact_ref<0, Alloc> {
-  typedef compact_ref<0, Alloc> allocator_ref_t;
-  typedef typename allocator_ref_t::allocator_type allocator_type;
-  typedef typename allocator_type::pointer pointer;
+// ----------------------------------------------------------------------------
+// --SECTION--                                                  allocate_unique
+// ----------------------------------------------------------------------------
 
-  allocator_deallocator(const allocator_type& alloc)
-    : allocator_ref_t(alloc) {
-  }
-
-  void operator()(pointer p) const NOEXCEPT {
-    // deallocate storage
-    std::allocator_traits<allocator_type>::deallocate(
-      allocator_ref_t::get(), p, 1
-    );
-  }
-}; // allocator_deallocator
-
-template<typename Alloc>
-struct allocator_deleter : public compact_ref<0, Alloc> {
-  typedef compact_ref<0, Alloc> allocator_ref_t;
-  typedef typename allocator_ref_t::allocator_type allocator_type;
-  typedef typename allocator_type::pointer pointer;
-
-  allocator_deleter(const allocator_type& alloc)
-    : allocator_ref_t(&alloc) {
-  }
-
-  void operator()(pointer p) const NOEXCEPT {
-    typedef std::allocator_traits<allocator_type> traits_t;
-
-    auto& alloc = allocator_ref_t::get();
-
-    // destroy object
-    traits_t::destroy(alloc, p);
-
-    // deallocate storage
-    traits_t::deallocate(alloc, p, 1);
-  }
-}; // allocator_deleter
-
-template<typename T, typename Alloc, typename Deleter = allocator_deleter<Alloc>, typename... Types>
+template<typename T, typename Alloc, typename... Types>
 inline typename std::enable_if<
   !std::is_array<T>::value,
-  std::unique_ptr<T, Deleter>
->::type allocate_unique(const Alloc& alloc, Types&&... Args) {
-  typedef std::allocator_traits<Alloc> traits_t;
+  std::unique_ptr<T, allocator_deleter<Alloc>>
+>::type allocate_unique(Alloc& alloc, Types&&... Args) {
+  typedef std::allocator_traits<
+    typename std::remove_cv<Alloc>::type
+  > traits_t;
   typedef typename traits_t::pointer pointer;
 
   pointer p;
@@ -145,63 +214,14 @@ inline typename std::enable_if<
   );
 }
 
-template<typename Alloc>
-class allocator_array_deallocator : public compact_ref<0, Alloc> {
- public:
-  typedef compact_ref<0, Alloc> allocator_ref_t;
-  typedef typename allocator_ref_t::type allocator_type;
-  typedef typename allocator_type::pointer pointer;
-
-  allocator_array_deallocator(const allocator_type& alloc, size_t size)
-    : allocator_ref_t(alloc), size_(size) {
-  }
-
-  void operator()(pointer p) const NOEXCEPT {
-    // deallocate storage
-    std::allocator_traits<allocator_type>::deallocate(
-       allocator_ref_t::get(), p, size_
-    );
-  }
-
- private:
-  size_t size_;
-}; // allocator_array_deallocator
-
-template<typename Alloc>
-class allocator_array_deleter : public compact_ref<0, Alloc> {
- public:
-  typedef compact_ref<0, Alloc> allocator_ref_t;
-  typedef typename allocator_ref_t::type allocator_type;
-  typedef typename allocator_type::pointer pointer;
-
-  allocator_array_deleter(const allocator_type& alloc, size_t size)
-    : allocator_ref_t(alloc), size_(size) {
-  }
-
-  void operator()(pointer p) const NOEXCEPT {
-    typedef std::allocator_traits<allocator_type> traits_t;
-
-    auto& alloc = allocator_ref_t::get();
-
-    // destroy objects
-    for (auto end = p + size_; p != end; ++p) {
-      traits_t::destroy(alloc, p);
-    }
-
-    // deallocate storage
-    traits_t::deallocate(alloc, p, size_);
-  }
-
- private:
-  size_t size_;
-}; // allocator_array_deleter
-
-template<typename T, typename Alloc, typename Deleter = allocator_array_deleter<Alloc>>
+template<typename T, typename Alloc>
 typename std::enable_if<
   std::is_array<T>::value && std::extent<T>::value == 0,
-  std::unique_ptr<T, Deleter>
->::type allocate_unique(const Alloc& alloc, size_t size) {
-  typedef std::allocator_traits<Alloc> traits_t;
+  std::unique_ptr<T, allocator_array_deleter<Alloc>>
+>::type allocate_unique(Alloc& alloc, size_t size) {
+  typedef std::allocator_traits<
+    typename std::remove_cv<Alloc>::type
+  > traits_t;
   typedef typename traits_t::pointer pointer;
 
   if (!size) {
@@ -240,7 +260,7 @@ typename std::enable_if<
   }
 
   return std::unique_ptr<T[], allocator_array_deleter<Alloc>>(
-    p, allocator_array_deleter<Alloc>(alloc, size)
+    p, allocator_array_deleter<Alloc>(alloc)
   );
 }
 
@@ -249,7 +269,7 @@ template<typename T, typename Alloc, typename... Types>
 typename std::enable_if<
   std::extent<T>::value != 0,
   void
->::type allocate_unique(const Alloc&, Types&&...) = delete;
+>::type allocate_unique(Alloc&, Types&&...) = delete;
 
 NS_END // memory
 NS_END // ROOT
