@@ -23,7 +23,7 @@ configure_file(
 )
 
 set(IResearch_INCLUDE_DIR 
-  "${CMAKE_SOURCE_DIR}/core" 
+  "${PROJECT_SOURCE_DIR}/core" 
   CACHE INTERNAL
   ""
 )
@@ -393,7 +393,7 @@ add_custom_command(
 # trigger regeneration of utils/version_utils.cpp with build_id from file: BUILD_IDENTIFIER
 add_custom_command(
   OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/utils/build_identifier.csx
-  COMMAND ${CMAKE_COMMAND} -DSRC="${CMAKE_BINARY_DIR}/BUILD_IDENTIFIER" -DDST="${CMAKE_CURRENT_BINARY_DIR}/utils/build_identifier.csx" -P "${CMAKE_SOURCE_DIR}/cmake/HexEncodeFile.cmake"
+  COMMAND ${CMAKE_COMMAND} -DSRC="${CMAKE_BINARY_DIR}/BUILD_IDENTIFIER" -DDST="${CMAKE_CURRENT_BINARY_DIR}/utils/build_identifier.csx" -P "${PROJECT_SOURCE_DIR}/cmake/HexEncodeFile.cmake"
   COMMAND ${CMAKE_COMMAND} -E touch_nocreate ${CMAKE_CURRENT_SOURCE_DIR}/version_utils.cpp
   DEPENDS utils ${CMAKE_BINARY_DIR}/BUILD_IDENTIFIER
   WORKING_DIRECTORY utils
@@ -407,7 +407,7 @@ add_custom_target(
 add_custom_command(
   OUTPUT ${CMAKE_BINARY_DIR}/BUILD_VERSION
   COMMAND ${CMAKE_COMMAND} -E echo_append "${IResearch_version}" > ${CMAKE_BINARY_DIR}/BUILD_VERSION
-  COMMAND ${CMAKE_COMMAND} -DSRC="${CMAKE_BINARY_DIR}/BUILD_VERSION" -DDST="${CMAKE_CURRENT_BINARY_DIR}/utils/build_version.csx" -P "${CMAKE_SOURCE_DIR}/cmake/HexEncodeFile.cmake"
+  COMMAND ${CMAKE_COMMAND} -DSRC="${CMAKE_BINARY_DIR}/BUILD_VERSION" -DDST="${CMAKE_CURRENT_BINARY_DIR}/utils/build_version.csx" -P "${PROJECT_SOURCE_DIR}/cmake/HexEncodeFile.cmake"
   COMMAND ${CMAKE_COMMAND} -E touch_nocreate ${CMAKE_CURRENT_SOURCE_DIR}/version_utils.cpp
   DEPENDS utils
   WORKING_DIRECTORY utils

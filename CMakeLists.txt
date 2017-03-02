@@ -9,7 +9,7 @@ set (IResearch_TARGET_NAME
 project(${IResearch_TARGET_NAME})
 
 # attach additional cmake modules
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake") 
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
 
 ################################################################################
@@ -291,13 +291,13 @@ endif()
 
 # set external dirs
 set(EXTERNAL_INCLUDE_DIRS 
-  ${CMAKE_SOURCE_DIR}/external
+  ${PROJECT_SOURCE_DIR}/external
   CACHE INTERNAL 
   ""
 )
 
 set(IResearch_INCLUDE_DIR 
-  "${CMAKE_SOURCE_DIR}/core" 
+  "${PROJECT_SOURCE_DIR}/core"
   CACHE INTERNAL
   ""
 )
@@ -345,7 +345,7 @@ if (NOT MSVC AND (CMAKE_BUILD_TYPE STREQUAL "Coverage"))
 
   if (PYTHON_EXECUTABLE AND GCOVR_PATH)   
     # exclude directories from coverage report
-    SET(GCOVR_EXTRA_ARGS "-e;${CMAKE_SOURCE_DIR}/external/")
+    SET(GCOVR_EXTRA_ARGS "-e;${PROJECT_SOURCE_DIR}/external/")
 
     setup_target_for_coverage_cobertura(
       ${IResearch_TARGET_NAME}-coverage-cobertura
