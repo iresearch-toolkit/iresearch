@@ -36,7 +36,7 @@ set(IReSearch_generated_INCLUDE_DIR
 )
 
 set(IResearchTests_INCLUDE_DIR
-  "${CMAKE_SOURCE_DIR}/tests"
+  "${PROJECT_SOURCE_DIR}/tests"
   CACHE INTERNAL
   ""
 )
