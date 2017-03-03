@@ -33,14 +33,14 @@
   #define IRESEARCH_HELPER_TEMPLATE_EXPORT
 
 #if _MSC_VER < 1900 // prior the vc14    
-  #define ALIGNOF(v) __alignof(v)
   #define CONSTEXPR
   #define NOEXCEPT throw()
 #else
-  #define ALIGNOF(v) alignof(v)
   #define CONSTEXPR constexpr
   #define NOEXCEPT noexcept 
 #endif
+
+  #define ALIGNOF(v) __alignof(v)
   #define FORCE_INLINE inline __forceinline
   #define NO_INLINE __declspec(noinline)
   #define RESTRICT __restrict 
@@ -61,6 +61,7 @@
   #define IRESEARCH_HELPER_TEMPLATE_EXPORT IRESEARCH_HELPER_DLL_EXPORT 
 
   #define NOEXCEPT noexcept
+  #define ALIGNOF(v) alignof(v)
   #define FORCE_INLINE inline __attribute__ ((always_inline))
   #define NO_INLINE __attribute__ ((noinline))
   #define RESTRICT __restrict__
