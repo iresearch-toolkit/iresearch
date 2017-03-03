@@ -29,13 +29,17 @@ NS_LOCAL
  * macros which is affect ABI (it must be the same for all libs and objs). */
 template<typename Iterator, typename Pred>
 inline void pop_heap(Iterator first, Iterator last, Pred comp) {
-#ifdef _MSC_VER 
-  if (1 < std::distance(first, last)) {
-    std::_Pop_heap(std::_Unchecked(first), std::_Unchecked(last), comp); 
-  }
-#else
-  std::pop_heap(first, last, comp);
-#endif
+  #ifdef _MSC_VER
+    if (1 < std::distance(first, last)) {
+      #if _MSC_FULL_VER < 190024000
+        std::_Pop_heap(std::_Unchecked(first), std::_Unchecked(last), comp);
+      #else
+        std::_Pop_heap_unchecked(std::_Unchecked(first), std::_Unchecked(last), comp);
+      #endif
+    }
+  #else
+    std::pop_heap(first, last, comp);
+  #endif
 }
 
 NS_END // LOCAL

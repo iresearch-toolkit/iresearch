@@ -15,15 +15,17 @@
 namespace math = iresearch::math;
 
 TEST(math_utils_test, is_power2) {
-  //static_assert(!math::is_power2(0), "Invalid answer"); // 0 gives false negative
-  static_assert(math::is_power2(1), "Invalid answer");
-  static_assert(math::is_power2(2), "Invalid answer");
-  static_assert(!math::is_power2(3), "Invalid answer");
-  static_assert(math::is_power2(4), "Invalid answer");
-  static_assert(!math::is_power2(999), "Invalid answer");
-  static_assert(math::is_power2(1024), "Invalid answer");
-  static_assert(math::is_power2(UINT64_C(1) << 63), "Invalid answer");
-  static_assert(!math::is_power2(irs::integer_traits<size_t>::const_max), "Invalid answer");
+  using namespace iresearch::math;
+
+  //static_assert(!is_power2(0), "Invalid answer"); // 0 gives false negative
+  static_assert(is_power2(1), "Invalid answer");
+  static_assert(is_power2(2), "Invalid answer");
+  static_assert(!is_power2(3), "Invalid answer");
+  static_assert(is_power2(4), "Invalid answer");
+  static_assert(!is_power2(999), "Invalid answer");
+  static_assert(is_power2(1024), "Invalid answer");
+  static_assert(is_power2(UINT64_C(1) << 63), "Invalid answer");
+  static_assert(!is_power2(irs::integer_traits<size_t>::const_max), "Invalid answer");
 }
 
 TEST(math_utils_test, roundup_power2) {

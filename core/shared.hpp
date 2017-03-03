@@ -33,9 +33,11 @@
   #define IRESEARCH_HELPER_TEMPLATE_EXPORT
 
 #if _MSC_VER < 1900 // prior the vc14    
+  #define ALIGNOF(v) __alignof(v)
   #define CONSTEXPR
   #define NOEXCEPT throw()
 #else
+  #define ALIGNOF(v) alignof(v)
   #define CONSTEXPR constexpr
   #define NOEXCEPT noexcept 
 #endif

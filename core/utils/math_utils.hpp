@@ -38,16 +38,20 @@ inline size_t roundup_power2(size_t v) NOEXCEPT {
   return v;
 }
 
-// undefined for 0
-template<typename T>
-CONSTEXPR inline bool is_power2(T v) NOEXCEPT {
-  static_assert(
-    std::is_integral<T>::value,
-    "T must be an integral type"
-  );
+#if _MSC_VER < 1900
+  #define is_power2(v) (std::is_integral<decltype(v)>::value && !(v & (v-1)))
+#else
+  // undefined for 0
+  template<typename T>
+  CONSTEXPR inline bool is_power2(T v) NOEXCEPT {
+    static_assert(
+      std::is_integral<T>::value,
+      "T must be an integral type"
+    );
 
-  return !(v & (v-1));
-}
+    return !(v & (v-1));
+  }
+#endif
 
 // rounds the specified 'value' to the next greater
 // value that is multiple to the specified 'step'

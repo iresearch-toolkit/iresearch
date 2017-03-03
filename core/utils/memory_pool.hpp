@@ -36,7 +36,7 @@ class freelist : private util::noncopyable {
 
  public:
   static const size_t MIN_SIZE = sizeof(slot*);
-  static const size_t MIN_ALIGN = alignof(slot*);
+  static const size_t MIN_ALIGN = ALIGNOF(slot*);
 
   freelist() = default;
   freelist(freelist&& rhs) NOEXCEPT
@@ -99,7 +99,7 @@ class freelist : private util::noncopyable {
   }
 
  private:
-  static slot* segregate(void* p, const size_t slot_size, const size_t count) noexcept {
+  static slot* segregate(void* p, const size_t slot_size, const size_t count) NOEXCEPT {
     assert(p);
 
     auto* head = static_cast<slot*>(p);
@@ -414,7 +414,8 @@ template<
 
  private:
   static size_t adjust_size(size_t slot_size) {
-    static_assert(math::is_power2(freelist::MIN_ALIGN), "MIN_ALIGN must be a power of 2");
+    using namespace iresearch::math;
+    static_assert(is_power2(freelist::MIN_ALIGN), "MIN_ALIGN must be a power of 2");
 
     if (slot_size < freelist::MIN_SIZE) {
       slot_size = freelist::MIN_SIZE;
@@ -432,7 +433,7 @@ template<
     assert(block_size && slot_size_);
 
     // allocate memory block
-    const auto size_in_bytes = block_size*slot_size_ + sizeof(freelist::slot);
+    const auto size_in_bytes = block_size*slot_size_ + freelist::MIN_SIZE;
     char* begin = this->allocator().allocate(size_in_bytes);
 
     if (!begin) {
@@ -447,7 +448,7 @@ template<
     // to the prevoiusly allocated block
     blocks_.push(begin);;
 
-    return begin + sizeof(freelist::slot);
+    return begin + freelist::MIN_SIZE;
   }
 
   void allocate_block() {
