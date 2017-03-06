@@ -281,7 +281,7 @@ NS_END // ROOT
   } catch (std::bad_alloc&) { \
     fprintf( \
       stderr, \
-      "Memory allocation failure while creating and initializing an object of size %lu bytes\n", \
+      "Memory allocation failure while creating and initializing an object of size " IR_SIZE_T_SPECIFIER " bytes\n", \
       sizeof(class_type) \
     ); \
     iresearch::memory::dump_mem_stats_trace(); \
@@ -302,7 +302,7 @@ static ptr make(_Args&&... args) { \
   } catch (std::bad_alloc&) { \
     fprintf( \
       stderr, \
-      "Memory allocation failure while creating and initializing an object of size %lu bytes\n", \
+      "Memory allocation failure while creating and initializing an object of size " IR_SIZE_T_SPECIFIER " bytes\n", \
       sizeof(type) \
     ); \
     iresearch::memory::dump_mem_stats_trace(); \
