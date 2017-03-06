@@ -163,6 +163,8 @@ if (ICU_INCLUDE_DIR AND ICU_SHARED_LIBRARY_DT AND ICU_STATIC_LIBRARY_DT AND ICU_
       endif()
     endforeach()
   endforeach()
+
+  list(REMOVE_DUPLICATES ICU_SHARED_LIB_RESOURCES)
 else ()
   set(ICU_FOUND FALSE)
 endif()
