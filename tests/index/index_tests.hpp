@@ -12,6 +12,8 @@
 #ifndef IRESEARCH_INDEX_TESTS_H
 #define IRESEARCH_INDEX_TESTS_H
 
+#include <unicode/uclean.h> // for u_cleanup
+
 #include "tests_shared.hpp"
 #include "assert_format.hpp"
 #include "analysis/analyzers.hpp"
@@ -71,6 +73,8 @@ class index_test_base : public virtual test_base {
   virtual void TearDown() {
     test_base::TearDown();
     iresearch::timer_utils::init_stats(); // disable profile state tracking
+
+    u_cleanup(); // release/free all memory used by ICU
   }
 
   void write_segment( ir::index_writer& writer, tests::index_segment& segment, tests::doc_generator_base& gen ) {
