@@ -233,9 +233,7 @@ include_directories(
   ${EXTERNAL_INCLUDE_DIRS}
   ${BFD_INCLUDE_DIR}
   ${Boost_INCLUDE_DIRS}
-  ${ICU_INCLUDE_DIR}
   ${Lz4_INCLUDE_DIR}
-  ${Snowball_INCLUDE_DIR}
   ${Unwind_INCLUDE_DIR}
 )
 
@@ -564,7 +562,6 @@ target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${BFD_SHARED_LIBS}
   ${Boost_SHARED_sharedRT_LIBRARIES}
   ${Lz4_SHARED_LIB}
-  ${Snowball_SHARED_LIB}
   ${Unwind_SHARED_LIBS}
   ${DL_LIBRARY}
   ${MSVC_ONLY_LIBRARIES}
@@ -574,7 +571,6 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
   ${GCOV_LIBRARY}
   ${BFD_STATIC_LIBS}
   ${Lz4_STATIC_LIB}
-  ${Snowball_STATIC_LIB}
   ${Unwind_STATIC_LIBS}
   ${DL_LIBRARY}
   ${MSVC_ONLY_LIBRARIES}
@@ -587,7 +583,6 @@ if(MSVC)
     ${BFD_SHARED_LIBS}
     ${Boost_SHARED_sharedRT_LIBRARIES}
     ${Lz4_SHARED_LIB}
-    ${Snowball_SHARED_LIB}
     ${Unwind_SHARED_LIBS}
     ${DL_LIBRARY}
     ${MSVC_ONLY_LIBRARIES}
@@ -597,7 +592,6 @@ if(MSVC)
     ${GCOV_LIBRARY}
     ${BFD_STATIC_LIBS}
     ${Lz4_STATIC_LIB}
-    ${Snowball_STATIC_LIB}
     ${Unwind_STATIC_LIBS}
     ${DL_LIBRARY}
     ${MSVC_ONLY_LIBRARIES}
@@ -716,6 +710,29 @@ if(MSVC)
   )
 endif()
 
+target_include_directories(${IResearch_TARGET_NAME}-analyzer-text-shared
+  PRIVATE ${ICU_INCLUDE_DIR}
+  PRIVATE ${Snowball_INCLUDE_DIR}
+)
+
+target_include_directories(${IResearch_TARGET_NAME}-analyzer-text-static
+  PRIVATE ${ICU_INCLUDE_DIR}
+  PRIVATE ${Snowball_INCLUDE_DIR}
+)
+
+# setup CRT
+if(MSVC)
+  target_include_directories(${IResearch_TARGET_NAME}-analyzer-text-shared-scrt
+    PRIVATE ${ICU_INCLUDE_DIR}
+    PRIVATE ${Snowball_INCLUDE_DIR}
+  )
+
+  target_include_directories(${IResearch_TARGET_NAME}-analyzer-text-static-scrt
+    PRIVATE ${ICU_INCLUDE_DIR}
+    PRIVATE ${Snowball_INCLUDE_DIR}
+  )
+endif()
+
 target_compile_features(${IResearch_TARGET_NAME}-analyzer-text-shared
   PRIVATE
   cxx_final
@@ -801,11 +818,13 @@ target_link_libraries(${IResearch_TARGET_NAME}-analyzer-text-shared
   ${IResearch_TARGET_NAME}-shared
   ${Boost_SHARED_sharedRT_LIBRARIES}
   ${ICU_SHARED_LIBS}
+  ${Snowball_SHARED_LIB}
 )
 
 target_link_libraries(${IResearch_TARGET_NAME}-analyzer-text-static
   ${IResearch_TARGET_NAME}-static
   ${ICU_STATIC_LIBS}
+  ${Snowball_STATIC_LIB}
 )
 
 # setup CRT
@@ -814,11 +833,13 @@ if(MSVC)
     ${IResearch_TARGET_NAME}-shared-scrt
     ${Boost_SHARED_sharedRT_LIBRARIES}
     ${ICU_SHARED_LIBS}
+    ${Snowball_SHARED_LIB}
   )
 
   target_link_libraries(${IResearch_TARGET_NAME}-analyzer-text-static-scrt
     ${IResearch_TARGET_NAME}-static-scrt
     ${ICU_STATIC_LIBS}
+    ${Snowball_STATIC_LIB}
   )
 endif()
 

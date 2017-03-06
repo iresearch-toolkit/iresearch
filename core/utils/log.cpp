@@ -203,14 +203,14 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
         continue;
       }
 
-      std::fprintf(out, "#%u ", ++frame_count);
+      std::fprintf(out, "#%Iu ", ++frame_count);
 
       if (has_module) {
         std::fprintf(out, "%s", module.ModuleName);
       }
 
       if (has_symbol) {
-        std::fprintf(out, "(%s+0x%x)", symbol.Name, offset_from_symbol);
+        std::fprintf(out, "(%s+0x%Ix)", symbol.Name, offset_from_symbol);
       }
 
       if (has_line) {
