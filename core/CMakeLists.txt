@@ -598,7 +598,9 @@ if(MSVC)
   )
 endif()
 
-if (MSVC)
+if (IRESEARCH_EXCLUDE_STATIC_THIRD_PARTY_LIBS)
+  #NOOP, do not link in 3rd party libraries
+elseif (MSVC)
   unset(IResearch_STATIC_LIBRARIES)
 
   foreach(ELEMENT
