@@ -568,6 +568,10 @@ target_link_libraries(${IResearch_TARGET_NAME}-shared
 )
 
 target_link_libraries(${IResearch_TARGET_NAME}-static
+  ${IResearch_TARGET_NAME}-analyzer-text-static
+  ${IResearch_TARGET_NAME}-format-1_0-static
+  ${IResearch_TARGET_NAME}-scorer-bm25-static
+  ${IResearch_TARGET_NAME}-scorer-tfidf-static
   ${GCOV_LIBRARY}
   ${BFD_STATIC_LIBS}
   ${Lz4_STATIC_LIB}
@@ -589,6 +593,10 @@ if(MSVC)
   )
 
   target_link_libraries(${IResearch_TARGET_NAME}-static-scrt
+    ${IResearch_TARGET_NAME}-analyzer-text-static-scrt
+    ${IResearch_TARGET_NAME}-format-1_0-static-scrt
+    ${IResearch_TARGET_NAME}-scorer-bm25-static-scrt
+    ${IResearch_TARGET_NAME}-scorer-tfidf-static-scrt
     ${GCOV_LIBRARY}
     ${BFD_STATIC_LIBS}
     ${Lz4_STATIC_LIB}
