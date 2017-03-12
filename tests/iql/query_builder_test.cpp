@@ -11,6 +11,8 @@
 
 #include <boost/locale/generator.hpp>
 
+#include <unicode/uclean.h> // for u_cleanup
+
 #include "gtest/gtest.h"
 #include "tests_config.hpp"
 #include "tests_shared.hpp"
@@ -89,6 +91,8 @@ namespace tests {
 
     virtual void TearDown() {
       // Code here will be called immediately after each test (right before the destructor).
+
+      u_cleanup(); // release/free all memory used by ICU
     }
   };
 
