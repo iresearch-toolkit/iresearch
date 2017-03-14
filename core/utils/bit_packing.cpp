@@ -17,10 +17,18 @@
 
 NS_LOCAL
 
-MSVC_ONLY(__pragma(warning(push)))
-MSVC_ONLY(__pragma(warning(disable:4127))) // constexp conditionals are intended to be optimized out
-MSVC_ONLY(__pragma(warning(disable:4293))) // all negative shifts are masked by constexpr conditionals
-MSVC_ONLY(__pragma(warning(disable:4724))) // all X % zero are masked by constexpr conditionals (must disable outside of fn body)
+#if defined(_MSC_VER)
+  __pragma(warning(push))
+  __pragma(warning(disable:4127)) // constexp conditionals are intended to be optimized out
+  __pragma(warning(disable:4293)) // all negative shifts are masked by constexpr conditionals
+  __pragma(warning(disable:4724)) // all X % zero are masked by constexpr conditionals (must disable outside of fn body)
+#elif defined (__GNUC__)
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wshift-count-overflow" // all negative shifts are masked by constexpr conditionals
+  #pragma GCC diagnostic ignored "-Wshift-count-negative" // all negative shifts are masked by constexpr conditionals
+#endif
+
+
 template<int N>
 void __fastpack(const uint32_t* RESTRICT in, uint32_t* RESTRICT out) NOEXCEPT {
   // 32 == sizeof(uint32_t) * 8
@@ -59,17 +67,12 @@ void __fastpack(const uint32_t* RESTRICT in, uint32_t* RESTRICT out) NOEXCEPT {
   ++in; *out |= ((*in) % (1U << N)) << (N * 30) % 32; if (((N * 31) % 32) < ((N * 30) % 32)) { ++out; *out |= ((*in) % (1U << N)) >> (N - ((N * 31) % 32)); }
   ++in; *out |= ((*in) % (1U << N)) << (N * 31) % 32;
 }
-MSVC_ONLY(__pragma(warning(pop)))
 
 template<>
 void __fastpack<32>(const uint32_t* RESTRICT in, uint32_t* RESTRICT out) NOEXCEPT {
   std::memcpy(out, in, sizeof(uint32_t)*iresearch::packed::BLOCK_SIZE_32);
 }
 
-MSVC_ONLY(__pragma(warning(push)))
-MSVC_ONLY(__pragma(warning(disable:4127))) // constexp conditionals are intended to be optimized out
-MSVC_ONLY(__pragma(warning(disable:4293))) // all negative shifts are masked by constexpr conditionals
-MSVC_ONLY(__pragma(warning(disable:4724))) // all X % zero are masked by constexpr conditionals (must disable outside of fn body)
 template<int N>
 void __fastpack(const uint64_t* RESTRICT in, uint64_t* RESTRICT out) NOEXCEPT {
   // 64 == sizeof(uint64_t) * 8
@@ -147,10 +150,6 @@ FORCE_INLINE void __fastpack<64>(const uint64_t* RESTRICT in, uint64_t* RESTRICT
   std::memcpy(out, in, sizeof(uint64_t)*iresearch::packed::BLOCK_SIZE_64);
 }
 
-MSVC_ONLY(__pragma(warning(push)))
-MSVC_ONLY(__pragma(warning(disable:4127))) // constexp conditionals are intended to be optimized out
-MSVC_ONLY(__pragma(warning(disable:4293))) // all negative shifts are masked by constexpr conditionals
-MSVC_ONLY(__pragma(warning(disable:4724))) // all X % zero are masked by constexpr conditionals (must disable outside of fn body)
 template<int N>
 void __fastunpack(const uint32_t* RESTRICT in, uint32_t* RESTRICT out) NOEXCEPT {
   // 32 == sizeof(uint32_t) * 8
@@ -188,17 +187,12 @@ void __fastunpack(const uint32_t* RESTRICT in, uint32_t* RESTRICT out) NOEXCEPT 
   out++; *out = ((*in) >> (N * 30) % 32) % (1U << N); if (((N * 31) % 32) < ((N * 30) % 32)) { ++in; *out |= ((*in) % (1U << (N * 31) % 32)) << (N - ((N * 31) % 32)); }
   out++; *out = ((*in) >> (N * 31) % 32) % (1U << N);
 }
-MSVC_ONLY(__pragma(warning(pop)))
 
 template<>
 FORCE_INLINE void __fastunpack<32>(const uint32_t* RESTRICT in, uint32_t* RESTRICT out) NOEXCEPT {
   std::memcpy(out, in, sizeof(uint32_t)*iresearch::packed::BLOCK_SIZE_32);
 }
 
-MSVC_ONLY(__pragma(warning(push)))
-MSVC_ONLY(__pragma(warning(disable:4127))) // constexp conditionals are intended to be optimized out
-MSVC_ONLY(__pragma(warning(disable:4293))) // all negative shifts are masked by constexpr conditionals
-MSVC_ONLY(__pragma(warning(disable:4724))) // all X % zero are masked by constexpr conditionals (must disable outside of fn body)
 template<int N>
 void __fastunpack(const uint64_t* RESTRICT in, uint64_t* RESTRICT out) NOEXCEPT {
   // 64 == sizeof(uint32_t) * 8
@@ -268,17 +262,12 @@ void __fastunpack(const uint64_t* RESTRICT in, uint64_t* RESTRICT out) NOEXCEPT 
   out++; *out = ((*in) >> (N * 62) % 64) % (1ULL << N); if (((N * 63) % 64) < ((N * 62) % 64)) { ++in; *out |= ((*in) % (1ULL << (N * 63) % 64)) << (N - ((N * 63) % 64)); }
   out++; *out = ((*in) >> (N * 63) % 64) % (1ULL << N);
 }
-MSVC_ONLY(__pragma(warning(pop)))
 
 template<>
 FORCE_INLINE void __fastunpack<64>(const uint64_t* RESTRICT in, uint64_t* RESTRICT out) NOEXCEPT {
   std::memcpy(out, in, sizeof(uint64_t)*iresearch::packed::BLOCK_SIZE_64);
 }
 
-MSVC_ONLY(__pragma(warning(push)))
-MSVC_ONLY(__pragma(warning(disable:4127))) // constexp conditionals are intended to be optimized out
-MSVC_ONLY(__pragma(warning(disable:4293))) // all negative shifts are masked by constexpr conditionals
-MSVC_ONLY(__pragma(warning(disable:4724))) // all X % zero are masked by constexpr conditionals (must disable outside of fn body)
 template<int N, int I>
 FORCE_INLINE uint32_t __fastpack_at(const uint32_t* in) NOEXCEPT {
   // 32 == sizeof(uint32_t) * 8
@@ -318,7 +307,12 @@ FORCE_INLINE uint64_t __fastpack_at(const uint64_t* in) NOEXCEPT {
 
   return ((in[N*I / 64] >> (N*I % 64)) % (1ULL << N));
 }
-MSVC_ONLY(__pragma(warning(pop)))
+
+#if defined(_MSC_VER)
+  __pragma(warning(pop))
+#elif defined (__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
 
 MSVC_ONLY(__pragma(warning(push)))
 MSVC_ONLY(__pragma(warning(disable:4715))) // not all control paths return a value
