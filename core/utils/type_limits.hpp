@@ -39,46 +39,46 @@ NS_END // type_t
 template<typename TYPE> struct type_limits;
 
 template<> struct type_limits<type_t::address_t> {
-  CONSTEXPR static const uint64_t invalid() { 
-    return integer_traits<uint64_t>::const_max; 
+  CONSTEXPR static uint64_t invalid() {
+    return integer_traits<uint64_t>::const_max;
   }
   CONSTEXPR static bool valid(uint64_t addr) { return invalid() != addr; }
 };
 
 template<> struct type_limits<type_t::doc_id_t> {
-  CONSTEXPR static const doc_id_t eof() { 
-    return integer_traits<doc_id_t>::const_max; 
+  CONSTEXPR static doc_id_t eof() {
+    return integer_traits<doc_id_t>::const_max;
   }
   CONSTEXPR static bool eof(doc_id_t id) { return eof() == id; }
-  CONSTEXPR static const doc_id_t invalid() { return 0; }
-  CONSTEXPR static const doc_id_t (min)() { 
+  CONSTEXPR static doc_id_t invalid() { return 0; }
+  CONSTEXPR static doc_id_t (min)() {
     return 1; // +1 because INVALID_DOC == 0
   }
   CONSTEXPR static bool valid(doc_id_t id) { return invalid() != id; }
 };
 
 template<> struct type_limits<type_t::field_id_t> {
-  CONSTEXPR static const field_id invalid() { 
-    return integer_traits<field_id>::const_max; 
+  CONSTEXPR static field_id invalid() { 
+    return integer_traits<field_id>::const_max;
   }
   CONSTEXPR static bool valid(field_id id) { return invalid() != id; }
 };
 
 template<> struct type_limits<type_t::index_gen_t> {
-  CONSTEXPR static const uint64_t invalid() {
+  CONSTEXPR static uint64_t invalid() {
     return integer_traits<field_id>::const_max;
   }
   CONSTEXPR static bool valid(uint64_t id) { return invalid() != id; }
 };
 
 template<> struct type_limits<type_t::pos_t> {
-  CONSTEXPR static const uint32_t invalid() { 
+  CONSTEXPR static uint32_t invalid() { 
     return integer_traits<uint32_t>::const_max; 
   }
   CONSTEXPR static bool valid(uint32_t pos) { return invalid() != pos; }
-  CONSTEXPR static const uint32_t eof() { return invalid() - 1; }
+  CONSTEXPR static uint32_t eof() { return invalid() - 1; }
   CONSTEXPR static bool eof(uint32_t pos) { return eof() == pos; }
-  CONSTEXPR static const uint32_t (min)() { return 0; }
+  CONSTEXPR static uint32_t (min)() { return 0; }
 };
 
 template<> struct type_limits<type_t::term_id_t> {

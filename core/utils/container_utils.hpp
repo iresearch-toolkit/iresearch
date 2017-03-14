@@ -157,7 +157,7 @@ class IRESEARCH_API_TEMPLATE raw_block_vector: util::noncopyable {
     return bucket_meta;
   }
 
-  FORCE_INLINE static const size_t get_bucket_offset(size_t position) NOEXCEPT {
+  FORCE_INLINE static size_t get_bucket_offset(size_t position) NOEXCEPT {
     return compute_bucket_offset<skip_bits>(position);
   }
 };

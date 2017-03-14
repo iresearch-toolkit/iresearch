@@ -67,9 +67,9 @@ class bitset : util::noncopyable {
   }
 
   // returns number of bits in bitset
-  const size_t size() const { return bits_; }
-  const size_t capacity() const { return capacity_; }
-  const size_t words() const { return words_; }
+  size_t size() const { return bits_; }
+  size_t capacity() const { return capacity_; }
+  size_t words() const { return words_; }
 
   const word_t* data() const { return data_.get(); }
   word_t* data() { return data_.get(); }

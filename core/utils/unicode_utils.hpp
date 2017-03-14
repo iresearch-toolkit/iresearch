@@ -19,7 +19,7 @@ const int32_t SURROGATE_OFFSET = MIN_SUPPLEMENTARY_CODE_POINT - (UNI_SUR_HIGH_ST
 
 const uint32_t MAX_UTF8_BYTES_PER_CHAR = 4;
 
-inline const uint32_t utf8_size( uint32_t size ) {
+inline uint32_t utf8_size( uint32_t size ) {
   return size * MAX_UTF8_BYTES_PER_CHAR;
 }
 
