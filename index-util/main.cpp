@@ -23,7 +23,6 @@ namespace {
 
 namespace po = boost::program_options;
 namespace fs = boost::filesystem;
-namespace irs = iresearch;
 
 }
 
