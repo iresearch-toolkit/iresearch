@@ -61,8 +61,9 @@ class IRESEARCH_API read_write_mutex final {
    public:
     write_mutex(read_write_mutex& mutex): mutex_(mutex) {}
     void lock() { mutex_.lock_write(); }
+    bool owns_write() { return mutex_.owns_write(); }
     bool try_lock() { return mutex_.try_lock_write(); }
-    void unlock() { mutex_.unlock(); }
+    void unlock(bool exclusive_only = false) { mutex_.unlock(exclusive_only); }
    private:
     read_write_mutex& mutex_;
   };
@@ -72,11 +73,13 @@ class IRESEARCH_API read_write_mutex final {
 
   void lock_read();
   void lock_write();
+  bool owns_write();
   bool try_lock_read();
   bool try_lock_write();
 
   // The mutex must be locked by the current thread of execution, otherwise, the behavior is undefined.
-  void unlock();
+  // @param exclusive_only if true then only downgrade a lock to a read-lock
+  void unlock(bool exclusive_only = false);
 
  private:
    IRESEARCH_API_PRIVATE_VARIABLES_BEGIN

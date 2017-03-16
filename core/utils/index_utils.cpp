@@ -69,7 +69,7 @@ index_writer::consolidation_policy_t consolidate_bytes_accum(float byte_threshol
     }
 
     size_t cumulative_size = 0;
-    size_t threshold_size = all_segment_bytes_size * std::max<float>(0, std::min<float>(1, byte_threshold));
+    auto threshold_size = all_segment_bytes_size * std::max<float>(0, std::min<float>(1, byte_threshold));
 
     // merge segment if: {threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes
     return std::bind(

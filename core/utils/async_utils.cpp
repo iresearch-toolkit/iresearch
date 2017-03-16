@@ -96,6 +96,10 @@ void read_write_mutex::lock_write() {
   lock.release(); // disassociate the associated mutex without unlocking it
 }
 
+bool read_write_mutex::owns_write() {
+  return exclusive_owner_.load() == std::this_thread::get_id();
+}
+
 bool read_write_mutex::try_lock_read() {
   TRY_SCOPED_LOCK_NAMED(mutex_, lock);
 
@@ -121,17 +125,25 @@ bool read_write_mutex::try_lock_write() {
   return true;
 }
 
-void read_write_mutex::unlock() {
+void read_write_mutex::unlock(bool exclusive_only /*= false*/) {
   // if have write lock
   if (exclusive_owner_.load() == std::this_thread::get_id()) {
     ADOPT_SCOPED_LOCK_NAMED(mutex_, lock);
     static std::thread::id unowned;
+
+    if (exclusive_only) {
+      ++concurrent_count_; // aquire the read-lock
+    }
 
     exclusive_owner_.store(unowned);
     reader_cond_.notify_all(); // wake all reader and writers
     writer_cond_.notify_all(); // wake all reader and writers
 
     return;
+  }
+
+  if (exclusive_only) {
+    return; // NOOP for readers
   }
 
   // ...........................................................................

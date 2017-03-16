@@ -101,6 +101,8 @@ TEST_F(async_utils_tests, test_read_write_mutex) {
     r_mutex_t wrapper(mutex);
     std::lock_guard<r_mutex_t> lock(wrapper);
 
+    ASSERT_FALSE(mutex.owns_write());
+
     std::thread thread([&wrapper]()->void{ std::unique_lock<r_mutex_t> lock(wrapper); ASSERT_TRUE(lock.owns_lock()); });
     thread.join();
   }
@@ -110,6 +112,9 @@ TEST_F(async_utils_tests, test_read_write_mutex) {
     mutex_t mutex;
     w_mutex_t wrapper(mutex);
     std::lock_guard<w_mutex_t> lock(wrapper);
+
+    ASSERT_TRUE(mutex.owns_write());
+    ASSERT_TRUE(wrapper.owns_write());
 
     std::thread thread([&wrapper]()->void{ ASSERT_FALSE(wrapper.try_lock()); });
     thread.join();
@@ -198,6 +203,47 @@ TEST_F(async_utils_tests, test_read_write_mutex) {
     thread0.join();
     thread1.join();
     thread2.join();
+  }
+
+  // reader downgrade to a reader blocks a new writer but allows concurrent reader
+  {
+    mutex_t mutex;
+    r_mutex_t wrapper(mutex);
+    std::lock_guard<r_mutex_t> lock(wrapper);
+
+    ASSERT_FALSE(mutex.owns_write());
+    mutex.unlock(true); // downgrade to a read lock
+    ASSERT_FALSE(mutex.owns_write());
+
+    // test write lock aquire fails (mutex is locked)
+    std::thread w_thread([&mutex]()->void{ w_mutex_t wrapper(mutex); ASSERT_FALSE(wrapper.try_lock()); });
+    w_thread.join();
+
+    // test write lock aquire passes (mutex is not write-locked)
+    std::thread r_thread([&wrapper]()->void{ std::unique_lock<r_mutex_t> lock(wrapper); ASSERT_TRUE(lock.owns_lock()); });
+    r_thread.join();
+  }
+
+  // writer downgrade to a reader blocks a new writer but allows concurrent reader
+  {
+    mutex_t mutex;
+    r_mutex_t r_wrapper(mutex);
+    w_mutex_t w_wrapper(mutex);
+    std::lock_guard<w_mutex_t> lock(w_wrapper);
+
+    ASSERT_TRUE(mutex.owns_write());
+    ASSERT_TRUE(w_wrapper.owns_write());
+    w_wrapper.unlock(true); // downgrade to a read lock
+    ASSERT_FALSE(mutex.owns_write());
+    ASSERT_FALSE(w_wrapper.owns_write());
+
+    // test write lock aquire fails (mutex is locked)
+    std::thread w_thread([&mutex]()->void{ w_mutex_t wrapper(mutex); ASSERT_FALSE(wrapper.try_lock()); });
+    w_thread.join();
+
+    // test write lock aquire passes (mutex is not write-locked)
+    std::thread r_thread([&r_wrapper]()->void{ std::unique_lock<r_mutex_t> lock(r_wrapper); ASSERT_TRUE(lock.owns_lock()); });
+    r_thread.join();
   }
 }
 
