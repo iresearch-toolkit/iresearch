@@ -80,7 +80,7 @@ inline std::pair<typename Container::iterator, bool> try_emplace(
 template<typename Container, typename KeyGenerator, typename... Args>
 inline std::pair<typename Container::iterator, bool>  try_emplace_update_key(
   Container& container,
-  const typename KeyGenerator& generator,
+  const KeyGenerator& generator,
   const typename Container::key_type& key,
   Args&&... args
 ) {
@@ -108,7 +108,7 @@ inline std::pair<typename Container::iterator, bool>  try_emplace_update_key(
 template<typename Container, typename KeyGenerator, typename... Args>
 inline std::pair<typename Container::iterator, bool>  try_emplace_update_key(
   Container& container,
-  const typename KeyGenerator& generator,
+  const KeyGenerator& generator,
   typename Container::key_type&& key,
   Args&&... args
 ) {
