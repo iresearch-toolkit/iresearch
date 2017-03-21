@@ -9,15 +9,10 @@
 // Agreement under which it is provided by or on behalf of EMC.
 // 
 
+#include "utils/map_utils.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
 #include "postings.hpp"
-
-NS_LOCAL
-
-const iresearch::posting DUMMY{};
-
-NS_END
 
 NS_ROOT
 
@@ -53,18 +48,31 @@ postings::emplace_result postings::emplace(const bytes_ref& term) {
   }
 
   assert(size() < type_limits<type_t::doc_id_t>::eof()); // not larger then the static flag
-  const auto result = map_.emplace(make_hashed_ref(term, bytes_ref_hash_t()), DUMMY);
 
-  // for new terms also write out their value
-  if (result.second) {
-    auto& key = const_cast<hashed_bytes_ref&>(result.first->first);
+  struct generator_t {
+    const bytes_ref& term;
+    writer_t& writer;
+    generator_t(const bytes_ref& v_term, writer_t& v_writer)
+      : term(v_term), writer(v_writer) {
+    }
+    hashed_bytes_ref operator()(
+      const hashed_bytes_ref& key, const posting&
+    ) const {
+      // for new terms also write out their value
+      writer.write(term.c_str(), term.size());
 
-    // reuse hash but point ref at data in pool
-    writer_.write(term.c_str(), term.size());
-    key = hashed_bytes_ref(key.hash(), (writer_.position() - term.size()).buffer(), term.size());
-  }
+      // reuse hash but point ref at data in pool
+      return hashed_bytes_ref(key.hash(), (writer.position() - term.size()).buffer(), term.size());
+    }
+  } generator(term, writer_);
 
-  return result;
+  // replace original reference to 'term' provided by the caller
+  // with a reference to the cached copy in 'writer_'
+  return map_utils::try_emplace_update_key(
+    map_,                                     // container
+    generator,                                // key generator
+    make_hashed_ref(term, bytes_ref_hash_t()) // key
+  );
 }
 
 NS_END

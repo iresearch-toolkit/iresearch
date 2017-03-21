@@ -27,12 +27,12 @@
 #include "utils/bit_utils.hpp"
 #include "utils/io_utils.hpp"
 #include "utils/log.hpp"
+#include "utils/map_utils.hpp"
 #include "utils/memory.hpp"
 #include "utils/object_pool.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/unicode_utils.hpp"
-#include "utils/std.hpp"
 
 #include <set>
 #include <algorithm>
@@ -599,24 +599,23 @@ fields_data::fields_data()
 }
 
 field_data& fields_data::get(const string_ref& name) {
-  const auto hashed_name = make_hashed_ref(name, string_ref_hash_t());
+  static struct {
+    hashed_string_ref operator()(
+      const hashed_string_ref& key, const field_data& value
+    ) const NOEXCEPT {
+      // reuse hash but point ref at value
+      return hashed_string_ref(key.hash(), value.meta().name);
+    }
+  } generator;
 
-  const auto res = irstd::try_emplace(
-    fields_,                          // container
-    hashed_name,                      // key
-    name, &byte_writer_, &int_writer_ // value
-  );
-
-  auto& slot = res.first->second;
-  if (res.second) {
-    // 'slot' gets its own copy of the 'name', 
-    // here we safely replace original reference to 'name' provided by
-    // user with the reference to the cached copy in 'slot'
-    auto& key = const_cast<hashed_string_ref&>(res.first->first);
-    key = hashed_string_ref(key.hash(), slot.meta().name);
-  }
-
-  return slot;
+  // replace original reference to 'name' provided by the caller
+  // with a reference to the cached copy in 'value'
+  return map_utils::try_emplace_update_key(
+    fields_,                                    // container
+    generator,                                  // key generator
+    make_hashed_ref(name, string_ref_hash_t()), // key
+    name, &byte_writer_, &int_writer_           // value
+  ).first->second;
 }
 
 void fields_data::flush(field_writer& fw, flush_state& state) {

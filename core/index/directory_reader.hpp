@@ -23,6 +23,7 @@ NS_ROOT
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API directory_reader: public composite_reader {
  public:
+  typedef directory_reader element_type; // type same as self
   typedef directory_reader ptr; // pointer to self
   directory_reader() = default; // allow creation of an uninitialized ptr
   explicit operator bool() const NOEXCEPT;

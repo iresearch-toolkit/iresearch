@@ -16,10 +16,10 @@
 #include "analysis/token_stream.hpp"
 #include "analysis/token_attributes.hpp"
 #include "utils/log.hpp"
+#include "utils/map_utils.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/version_utils.hpp"
-#include "utils/std.hpp"
 
 #include <math.h>
 #include <set>
@@ -73,28 +73,27 @@ bool segment_writer::index_field(
 }
 
 columnstore_writer::column_output& segment_writer::stream(
-    doc_id_t doc_id,
-    const string_ref& name) {
+  doc_id_t doc_id,
+  const string_ref& name
+) {
   REGISTER_TIMER_DETAILED();
+  static struct {
+    hashed_string_ref operator()(
+      const hashed_string_ref& key, const column& value
+    ) const NOEXCEPT {
+      // reuse hash but point ref at value
+      return hashed_string_ref(key.hash(), value.name);
+    }
+  } generator;
 
-  const auto res = irstd::try_emplace(
+  // replace original reference to 'name' provided by the caller
+  // with a reference to the cached copy in 'value'
+  return map_utils::try_emplace_update_key(
     columns_,                                     // container
+    generator,                                    // key generator
     make_hashed_ref(name, string_ref_hash_t()),   // key
     name, *col_writer_                            // value
-  );
-
-  auto& it = res.first;
-  auto& column = it->second;
-
-  if (res.second) {
-    // 'key' gets its own copy of the 'name', 
-    // here we safely replace original reference to 'name' provided by
-    // user with the reference to the cached copy in 'key'
-    auto& key = const_cast<hashed_string_ref&>(it->first);
-    key = hashed_string_ref(it->first.hash(), column.name);
-  }
-
-  return column.handle.second(doc_id);
+  ).first->second.handle.second(doc_id);
 }
 
 void segment_writer::finish(doc_id_t doc_id, const update_context& ctx) {

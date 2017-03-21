@@ -2284,6 +2284,7 @@ class sparse_mask_block : util::noncopyable {
   }
 
   bool load(index_input& in, decompressor& decomp, bstring& buf) {
+    UNUSED(decomp);
     const size_t size = in.read_vlong(); // total number of entries in a block
     assert(size);
 
@@ -2331,6 +2332,8 @@ class sparse_mask_block : util::noncopyable {
 class dense_mask_block {
  public:
   bool load(index_input& in, decompressor& decomp, bstring& buf) {
+    UNUSED(buf);
+    UNUSED(decomp);
     const size_t size = in.read_vlong(); // total number of elements in a block
     assert(size);
 
@@ -2470,6 +2473,7 @@ class column : private util::noncopyable {
   virtual ~column() { }
 
   virtual bool read(data_input& in, uint64_t* buf) {
+    UNUSED(buf);
     count_ = in.read_vlong();
     max_ = in.read_vlong();
     avg_block_size_ = in.read_vlong();

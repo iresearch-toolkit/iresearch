@@ -21,6 +21,7 @@ NS_ROOT
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API segment_reader final: public sub_reader {
  public:
+  typedef segment_reader element_type; // type same as self
   typedef segment_reader ptr; // pointer to self
   segment_reader() = default; // required for context<segment_reader>
   explicit operator bool() const NOEXCEPT;

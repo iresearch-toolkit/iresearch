@@ -14,9 +14,9 @@
 
 #include "shared.hpp"
 #include "ebo.hpp"
+#include "map_utils.hpp"
 #include "math_utils.hpp"
 #include "noncopyable.hpp"
-#include "utils/std.hpp"
 
 #include <map>
 #include <memory>
@@ -633,7 +633,7 @@ template<
   }
 
   memory_pool_t& pool(const size_t size) const {
-    const auto res = irs::irstd::try_emplace(
+    const auto res = irs::map_utils::try_emplace(
       pools_, size, this->allocator(), size, 32, this->grow_policy()
     );
 
