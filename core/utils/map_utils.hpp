@@ -13,6 +13,7 @@
 #define IRESEARCH_MAP_UTILS_H
 
 #include <cassert>
+#include <tuple>
 
 #include "shared.hpp"
 
