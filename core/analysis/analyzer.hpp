@@ -39,6 +39,8 @@ class IRESEARCH_API analyzer: public token_stream {
 
   virtual bool reset(const string_ref& data) = 0;
 
+  const type_id& type() const { return *type_; }
+
  private:
   const type_id* type_;
 };
