@@ -81,6 +81,9 @@
     namespace iql {
       class context {
       public:
+        // destructor
+        virtual ~context() = default;
+
         // parser operations
         virtual void yyerror(parser::location_type const& location, std::string const& sError) = 0;
         virtual parser::token_type yylex(parser::semantic_type& value, parser::location_type& location) = 0;
