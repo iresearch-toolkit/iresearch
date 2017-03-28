@@ -284,7 +284,7 @@ NS_END // ROOT
       "Memory allocation failure while creating and initializing an object of size " IR_SIZE_T_SPECIFIER " bytes\n", \
       sizeof(class_type) \
     ); \
-    iresearch::memory::dump_mem_stats_trace(); \
+    ::iresearch::memory::dump_mem_stats_trace(); \
     throw; \
   }
 
@@ -305,7 +305,7 @@ static ptr make(_Args&&... args) { \
       "Memory allocation failure while creating and initializing an object of size " IR_SIZE_T_SPECIFIER " bytes\n", \
       sizeof(type) \
     ); \
-    iresearch::memory::dump_mem_stats_trace(); \
+    ::iresearch::memory::dump_mem_stats_trace(); \
     throw; \
   } \
 }
