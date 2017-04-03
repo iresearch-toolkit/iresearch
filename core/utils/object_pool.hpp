@@ -242,16 +242,30 @@ class bounded_object_pool : atomic_base<typename T::ptr> {
 //////////////////////////////////////////////////////////////////////////////
 template<typename T>
 class unbounded_object_pool : atomic_base<typename T::ptr> {
- public:  
+ public:
   typedef atomic_base<typename T::ptr> atomic_utils;
   DECLARE_SPTR(typename T::ptr::element_type);
 
   explicit unbounded_object_pool(size_t size)
-    : pool_(size) {
+    : pool_(size), reusable_(memory::make_unique<std::atomic<bool>>(true)) {
+  }
+
+  void clear() {
+    auto reusable = atomic_bool_utils::atomic_load(&reusable_);
+
+    reusable->store(false); // prevent existing element from returning into the pool
+    reusable = memory::make_unique<std::atomic<bool>>(true); // mark new generation
+    atomic_bool_utils::atomic_store(&reusable_, reusable);
+
+    // linearly reset all cached instances
+    for(size_t i = 0, count = pool_.size(); i < count; ++i) {
+      atomic_utils::atomic_exchange(&(pool_[i]), typename T::ptr());
+    }
   }
 
   template<typename... Args>
   ptr emplace(Args&&... args) {
+    auto reusable = atomic_bool_utils::atomic_load(&reusable_); // retrieve before seek/instantiate
     typename T::ptr value = nullptr;
 
     // liniar search for an existing entry in the pool
@@ -269,7 +283,11 @@ class unbounded_object_pool : atomic_base<typename T::ptr> {
 
     return ptr(
       raw,
-      [this, moved](typename ptr::element_type*) mutable ->void{
+      [this, moved, reusable](typename ptr::element_type*) mutable ->void {
+        if (!atomic_bool_utils::atomic_load(&reusable)->load()) {
+          return; // do not return non-reusable elements into the pool
+        }
+
         typename T::ptr val = std::move(moved.value());
 
         // linear search for an empty slot in the pool
@@ -279,11 +297,14 @@ class unbounded_object_pool : atomic_base<typename T::ptr> {
       }
     );
   }
-  
+
   size_t size() const { return pool_.size(); }
-  
+
  private:
+  typedef std::shared_ptr<std::atomic<bool>> reusable_t;
+  typedef atomic_base<reusable_t> atomic_bool_utils;
   std::vector<typename T::ptr> pool_;
+  reusable_t reusable_;
 };
 
 NS_END

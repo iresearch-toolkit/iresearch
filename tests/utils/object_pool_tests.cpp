@@ -258,6 +258,29 @@ TEST_F(object_pool_tests, unbounded_sobject_pool) {
     ASSERT_NE(obj0_ptr, obj3.get());
     // obj3 may have been allocated in the same addr as obj1, so can't safely validate
   }
+
+  // test pool clear
+  {
+    iresearch::unbounded_object_pool<test_sobject> pool(1);
+    auto obj_noreuse = pool.emplace(-1);
+    auto obj = pool.emplace(1);
+    auto* obj_ptr = obj.get();
+
+    ASSERT_EQ(1, obj->id);
+    obj.reset();
+    obj = pool.emplace(2);
+    ASSERT_EQ(1, obj->id);
+    ASSERT_EQ(obj_ptr, obj.get());
+
+    pool.clear();
+    obj.reset();
+    obj = pool.emplace(2); // may return same memory address as obj_ptr, but constructor would have been called
+    ASSERT_EQ(2, obj->id);
+
+    obj_noreuse.reset();
+    obj = pool.emplace(3); // 'obj_noreuse' should not be reused
+    ASSERT_EQ(3, obj->id);
+  }
 }
 
 TEST_F(object_pool_tests, unbounded_uobject_pool) {
@@ -310,6 +333,29 @@ TEST_F(object_pool_tests, unbounded_uobject_pool) {
     ASSERT_EQ(obj0_ptr, obj2.get());
     ASSERT_NE(obj0_ptr, obj3.get());
     // obj3 may have been allocated in the same addr as obj1, so can't safely validate
+  }
+
+  // test pool clear
+  {
+    iresearch::unbounded_object_pool<test_uobject> pool(1);
+    auto obj_noreuse = pool.emplace(-1);
+    auto obj = pool.emplace(1);
+    auto* obj_ptr = obj.get();
+
+    ASSERT_EQ(1, obj->id);
+    obj.reset();
+    obj = pool.emplace(2);
+    ASSERT_EQ(1, obj->id);
+    ASSERT_EQ(obj_ptr, obj.get());
+
+    pool.clear();
+    obj.reset();
+    obj = pool.emplace(2);
+    ASSERT_EQ(2, obj->id); // may return same memory address as obj_ptr, but constructor would have been called
+
+    obj_noreuse.reset();
+    obj = pool.emplace(3); // 'obj_noreuse' should not be reused
+    ASSERT_EQ(3, obj->id);
   }
 }
 
