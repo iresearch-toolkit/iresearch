@@ -241,9 +241,10 @@ class bounded_object_pool : atomic_base<typename T::ptr> {
 ///        space in the pool is available
 //////////////////////////////////////////////////////////////////////////////
 template<typename T>
-class unbounded_object_pool : atomic_base<typename T::ptr> {
+class unbounded_object_pool
+  : private atomic_base<typename T::ptr>,
+    private atomic_base<std::shared_ptr<std::atomic<bool>>> {
  public:
-  typedef atomic_base<typename T::ptr> atomic_utils;
   DECLARE_SPTR(typename T::ptr::element_type);
 
   explicit unbounded_object_pool(size_t size)
@@ -259,7 +260,8 @@ class unbounded_object_pool : atomic_base<typename T::ptr> {
 
     // linearly reset all cached instances
     for(size_t i = 0, count = pool_.size(); i < count; ++i) {
-      atomic_utils::atomic_exchange(&(pool_[i]), typename T::ptr());
+      typename T::ptr empty;
+      atomic_utils::atomic_exchange(&(pool_[i]), empty);
     }
   }
 
@@ -284,7 +286,7 @@ class unbounded_object_pool : atomic_base<typename T::ptr> {
     return ptr(
       raw,
       [this, moved, reusable](typename ptr::element_type*) mutable ->void {
-        if (!atomic_bool_utils::atomic_load(&reusable)->load()) {
+        if (!static_cast<atomic_bool_utils*>(this)->atomic_load(&reusable)->load()) {
           return; // do not return non-reusable elements into the pool
         }
 
@@ -302,6 +304,7 @@ class unbounded_object_pool : atomic_base<typename T::ptr> {
 
  private:
   typedef std::shared_ptr<std::atomic<bool>> reusable_t;
+  typedef atomic_base<typename T::ptr> atomic_utils;
   typedef atomic_base<reusable_t> atomic_bool_utils;
   std::vector<typename T::ptr> pool_;
   reusable_t reusable_;
