@@ -86,6 +86,7 @@ class IRESEARCH_API read_write_mutex final {
    std::atomic<size_t> concurrent_count_;
    size_t exclusive_count_;
    std::atomic<std::thread::id> exclusive_owner_;
+   size_t exclusive_owner_recursion_count_;
    std::mutex mutex_;
    std::condition_variable reader_cond_;
    std::condition_variable writer_cond_;

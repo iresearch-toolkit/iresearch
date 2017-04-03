@@ -62,7 +62,8 @@ void busywait_mutex::unlock() {
   }
 }
 
-read_write_mutex::read_write_mutex(): concurrent_count_(0), exclusive_count_(0) {
+read_write_mutex::read_write_mutex()
+  : concurrent_count_(0), exclusive_count_(0), exclusive_owner_recursion_count_(0) {
 }
 
 read_write_mutex::~read_write_mutex() {
@@ -71,6 +72,13 @@ read_write_mutex::~read_write_mutex() {
 }
 
 void read_write_mutex::lock_read() {
+  // if have write lock
+  if (owns_write()) {
+    ++exclusive_owner_recursion_count_; // write recursive lock
+
+    return;
+  }
+
   SCOPED_LOCK_NAMED(mutex_, lock);
 
   // yield if there is already a writer waiting
@@ -83,6 +91,13 @@ void read_write_mutex::lock_read() {
 }
 
 void read_write_mutex::lock_write() {
+  // if have write lock
+  if (owns_write()) {
+    ++exclusive_owner_recursion_count_; // write recursive lock
+
+    return;
+  }
+
   SCOPED_LOCK_NAMED(mutex_, lock);
   ++exclusive_count_; // mark mutex with writer-waiting state
 
@@ -101,6 +116,13 @@ bool read_write_mutex::owns_write() {
 }
 
 bool read_write_mutex::try_lock_read() {
+  // if have write lock
+  if (owns_write()) {
+    ++exclusive_owner_recursion_count_; // write recursive lock
+
+    return true;
+  }
+
   TRY_SCOPED_LOCK_NAMED(mutex_, lock);
 
   if (!lock) {
@@ -113,6 +135,13 @@ bool read_write_mutex::try_lock_read() {
 }
 
 bool read_write_mutex::try_lock_write() {
+  // if have write lock
+  if (owns_write()) {
+    ++exclusive_owner_recursion_count_; // write recursive lock
+
+    return true;
+  }
+
   TRY_SCOPED_LOCK_NAMED(mutex_, lock);
 
   if (!lock || concurrent_count_) {
@@ -127,7 +156,15 @@ bool read_write_mutex::try_lock_write() {
 
 void read_write_mutex::unlock(bool exclusive_only /*= false*/) {
   // if have write lock
-  if (exclusive_owner_.load() == std::this_thread::get_id()) {
+  if (owns_write()) {
+    if (exclusive_owner_recursion_count_) {
+      if (!exclusive_only) { // a recursively locked mutex is alway top-level write locked
+        --exclusive_owner_recursion_count_; // write recursion unlock one level
+      }
+
+      return;
+    }
+
     ADOPT_SCOPED_LOCK_NAMED(mutex_, lock);
     static std::thread::id unowned;
 

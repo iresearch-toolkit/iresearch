@@ -245,6 +245,83 @@ TEST_F(async_utils_tests, test_read_write_mutex) {
     std::thread r_thread([&r_wrapper]()->void{ std::unique_lock<r_mutex_t> lock(r_wrapper); ASSERT_TRUE(lock.owns_lock()); });
     r_thread.join();
   }
+
+  // reader recursive lock
+  {
+    mutex_t mutex;
+    r_mutex_t r_wrapper(mutex);
+    w_mutex_t w_wrapper(mutex);
+
+    {
+      std::lock_guard<r_mutex_t> lock0(r_wrapper);
+
+      // test write lock aquire fails (mutex is locked)
+      std::thread thread0([&mutex]()->void{ w_mutex_t wrapper(mutex); ASSERT_FALSE(wrapper.try_lock()); });
+      thread0.join();
+
+      {
+        std::unique_lock<r_mutex_t> lock1(r_wrapper, std::try_to_lock);
+        ASSERT_TRUE(lock1.owns_lock());
+
+        // test write lock aquire fails (mutex is locked)
+        std::thread thread1([&mutex]()->void{ w_mutex_t wrapper(mutex); ASSERT_FALSE(wrapper.try_lock()); });
+        thread1.join();
+      }
+
+      // test write lock aquire fails (mutex is locked)
+      std::thread thread2([&mutex]()->void{ w_mutex_t wrapper(mutex); ASSERT_FALSE(wrapper.try_lock()); });
+      thread2.join();
+    }
+
+    // test write lock aquire passes (mutex is not write-locked)
+    std::thread thread3([&w_wrapper]()->void{ std::unique_lock<w_mutex_t> lock(w_wrapper, std::try_to_lock); ASSERT_TRUE(lock.owns_lock()); });
+    thread3.join();
+  }
+
+  // writer recursive lock
+  {
+    mutex_t mutex;
+    r_mutex_t r_wrapper(mutex);
+    w_mutex_t w_wrapper(mutex);
+
+    {
+      std::lock_guard<w_mutex_t> lock0(w_wrapper);
+
+      // test write lock aquire fails (mutex is locked)
+      std::thread thread0([&mutex]()->void{ w_mutex_t wrapper(mutex); ASSERT_FALSE(wrapper.try_lock()); });
+      thread0.join();
+
+      {
+        std::unique_lock<w_mutex_t> lock1(w_wrapper, std::try_to_lock);
+        ASSERT_TRUE(lock1.owns_lock());
+
+        // test read lock aquire fails (mutex is locked)
+        std::thread thread1([&mutex]()->void{ r_mutex_t wrapper(mutex); ASSERT_FALSE(wrapper.try_lock()); });
+        thread1.join();
+
+        // test write lock aquire fails (mutex is locked)
+        std::thread thread2([&mutex]()->void{ w_mutex_t wrapper(mutex); ASSERT_FALSE(wrapper.try_lock()); });
+        thread2.join();
+
+        w_wrapper.unlock(true); // downgrade recursion to read-only
+
+        // test read lock aquire fails (mutex is locked)
+        std::thread thread3([&mutex]()->void{ r_mutex_t wrapper(mutex); ASSERT_FALSE(wrapper.try_lock()); });
+        thread3.join();
+
+        // test write lock aquire fails (mutex is locked)
+        std::thread thread4([&mutex]()->void{ w_mutex_t wrapper(mutex); ASSERT_FALSE(wrapper.try_lock()); });
+        thread4.join();
+
+        std::unique_lock<r_mutex_t> lock2(r_wrapper, std::try_to_lock);
+        ASSERT_TRUE(lock2.owns_lock());
+      }
+    }
+
+    // test write lock aquire passes (mutex is not write-locked)
+    std::thread thread5([&w_wrapper]()->void{ std::unique_lock<w_mutex_t> lock(w_wrapper, std::try_to_lock); ASSERT_TRUE(lock.owns_lock()); });
+    thread5.join();
+  }
 }
 
 TEST_F(async_utils_tests, test_thread_pool_run) {
