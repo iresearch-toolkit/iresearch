@@ -35,20 +35,29 @@ class IRESEARCH_API segment_writer: util::noncopyable {
 
   typedef std::unordered_map<doc_id_t, update_context> update_contexts;
 
-  template<typename FieldIterator, typename AttributeIterator>
-  bool insert(
-      FieldIterator begin, FieldIterator end, 
-      AttributeIterator abegin, AttributeIterator aend,
+  template<
+    typename Indexed,
+    typename Stored,
+    typename IndexedStored
+  > bool insert(
+      Indexed ibegin, Indexed iend,
+      Stored sbegin, Stored send,
+      IndexedStored isbegin, IndexedStored isend,
       const update_context& ctx) {
     const auto doc_id = (type_limits<type_t::doc_id_t>::min)() + num_docs_cached_++;
     bool success = true;
 
-    for (; success && begin != end; ++begin) {
-      success &= insert_field(doc_id, *begin);
+    for (; success && isbegin != isend; ++isbegin) {
+      auto& field = *isbegin;
+      success &= (insert_field(doc_id, field) && insert_attribute(doc_id, field));
     }
 
-    for (; success && abegin != aend; ++abegin) {
-      success &= insert_attribute(doc_id, *abegin);
+    for (; success && ibegin != iend; ++ibegin) {
+      success &= insert_field(doc_id, *ibegin);
+    }
+
+    for (; success && sbegin != send; ++sbegin) {
+      success &= insert_attribute(doc_id, *sbegin);
     }
 
     if (!success) {

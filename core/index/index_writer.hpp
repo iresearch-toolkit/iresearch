@@ -114,19 +114,43 @@ class IRESEARCH_API index_writer : util::noncopyable {
   /// @param end the end of the document
   /// @return all fields/attributes successfully insterted
   ////////////////////////////////////////////////////////////////////////////
-  template<typename FieldIterator>
-  bool insert(FieldIterator begin, FieldIterator end) {
-    return insert(begin, end, empty::instance(), empty::instance());
+  template<typename Indexed>
+  bool insert(Indexed begin, Indexed end) {
+    return insert(
+      begin, end,
+      empty::instance(), empty::instance(),
+      empty::instance(), empty::instance()
+    );
   }
-  
-  template<typename FieldIterator, typename AttributeIterator>
+
+  template<typename Indexed, typename Stored>
   bool insert(
-      FieldIterator begin, FieldIterator end,
-      AttributeIterator abegin, AttributeIterator aend) {
+      Indexed ibegin, Indexed iend,
+      Stored sbegin, Stored send) {
+    return insert(
+      ibegin, iend,
+      sbegin, send,
+      empty::instance(), empty::instance()
+    );
+  }
+
+  template<
+    typename Indexed,
+    typename Stored,
+    typename IndexedStored
+  > bool insert(
+      Indexed ibegin, Indexed iend,
+      Stored sbegin, Stored send,
+      IndexedStored isbegin, IndexedStored isend) {
     auto ctx = get_flush_context(); // retain lock until end of instert(...)
     auto writer = get_segment_context(*ctx);
 
-    return writer->insert(begin, end, abegin, aend, make_update_context(*ctx));
+    return writer->insert(
+      ibegin, iend,
+      sbegin, send,
+      isbegin, isend,
+      make_update_context(*ctx)
+    );
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -140,21 +164,43 @@ class IRESEARCH_API index_writer : util::noncopyable {
   /// @param end the end of the document
   /// @return all fields/attributes successfully insterted
   ////////////////////////////////////////////////////////////////////////////
-  template<typename FieldIterator>
-  bool update(const filter& filter, FieldIterator begin, FieldIterator end) {
-    return update(filter, begin, end, empty::instance(), empty::instance());
+  template<typename Indexed>
+  bool update(const filter& filter, Indexed begin, Indexed end) {
+    return update(
+      filter,
+      begin, end,
+      empty::instance(), empty::instance(),
+      empty::instance(), empty::instance()
+    );
   }
-  
-  template<typename FieldIterator, typename AttributeIterator>
+
+  template<typename Indexed, typename Stored>
   bool update(
-      const filter& filter, 
-      FieldIterator begin, FieldIterator end,
-      AttributeIterator abegin, AttributeIterator aend) {
+      const filter& filter,
+      Indexed ibegin, Indexed iend,
+      Stored sbegin, Stored send) {
+    return update(
+      filter,
+      ibegin, iend,
+      sbegin, send,
+      empty::instance(), empty::instance()
+    );
+  }
+
+  template<
+    typename Indexed, 
+    typename Stored,
+    typename IndexedStored
+  > bool update(
+      const filter& filter,
+      Indexed ibegin, Indexed iend,
+      Stored sbegin, Stored send,
+      IndexedStored isbegin, IndexedStored isend) {
     auto ctx = get_flush_context(); // retain lock until end of instert(...)
     auto writer = get_segment_context(*ctx);
     auto update_context = make_update_context(*ctx, filter);
 
-    if (writer->insert(begin, end, abegin, aend, update_context)) {
+    if (writer->insert(ibegin, iend, sbegin, send, isbegin, isend, update_context)) {
       return true;
     }
 
@@ -173,18 +219,35 @@ class IRESEARCH_API index_writer : util::noncopyable {
   /// @param begin the beginning of the document
   /// @param end the end of the document
   ////////////////////////////////////////////////////////////////////////////
-  template<typename FieldIterator>
-  bool update(filter::ptr&& filter, FieldIterator begin, FieldIterator end) {
+  template<typename Indexed>
+  bool update(filter::ptr&& filter, Indexed begin, Indexed end) {
     return update(
-      std::move(filter), begin, end, empty::instance(), empty::instance()
+      std::move(filter),
+      begin, end,
+      empty::instance(), empty::instance(),
+      empty::instance(), empty::instance()
     );
   }
 
-  template<typename FieldIterator, typename AttributeIterator>
+  template<typename Indexed, typename Stored>
   bool update(
-      filter::ptr&& filter, 
-      FieldIterator begin, FieldIterator end,
-      AttributeIterator abegin, AttributeIterator aend) {
+      filter::ptr&& filter,
+      Indexed ibegin, Indexed iend,
+      Stored sbegin, Stored send) {
+    return update(
+      std::move(filter),
+      ibegin, iend,
+      sbegin, send,
+      empty::instance(), empty::instance()
+    );
+  }
+
+  template<typename Indexed, typename Stored, typename IndexedStored>
+  bool update(
+      filter::ptr&& filter,
+      Indexed ibegin, Indexed iend,
+      Stored sbegin, Stored send,
+      IndexedStored isbegin, IndexedStored isend) {
     if (!filter) {
       return false; // skip empty filters
     }
@@ -193,7 +256,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
     auto writer = get_segment_context(*ctx);
     auto update_context = make_update_context(*ctx, std::move(filter));
 
-    if (writer->insert(begin, end, abegin, aend, update_context)) {
+    if (writer->insert(ibegin, iend, sbegin, send, isbegin, isend, update_context)) {
       return true;
     }
 
@@ -212,18 +275,39 @@ class IRESEARCH_API index_writer : util::noncopyable {
   /// @param begin the beginning of the document
   /// @param end the end of the document
   ////////////////////////////////////////////////////////////////////////////
-  template<typename Iterator>
+  template<typename Indexed>
   bool update(
-    const std::shared_ptr<filter>& filter, Iterator begin, Iterator end
-  ) {
-    return update(filter, begin, end, empty::instance(), empty::instance());
+      const std::shared_ptr<filter>& filter, Indexed begin, Indexed end) {
+    return update(
+      filter,
+      begin, end,
+      empty::instance(), empty::instance(),
+      empty::instance(), empty::instance()
+    );
   }
 
-  template<typename FieldIterator, typename AttributeIterator>
+  template<typename Indexed, typename Stored>
   bool update(
       const std::shared_ptr<filter>& filter, 
-      FieldIterator begin, FieldIterator end,
-      AttributeIterator abegin, AttributeIterator aend) {
+      Indexed ibegin, Indexed iend,
+      Stored sbegin, Stored send) {
+    return update(
+      filter,
+      ibegin, iend,
+      sbegin, send,
+      empty::instance(), empty::instance()
+    );
+  }
+
+  template<
+    typename Indexed,
+    typename Stored,
+    typename IndexedStored
+  > bool update(
+      const std::shared_ptr<filter>& filter,
+      Indexed ibegin, Indexed iend,
+      Stored sbegin, Stored send,
+      IndexedStored isbegin, IndexedStored isend) {
     if (!filter) {
       return false; // skip empty filters
     }
@@ -232,7 +316,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
     auto writer = get_segment_context(*ctx);
     auto update_context = make_update_context(*ctx, filter);
 
-    if (writer->insert(begin, end, abegin, aend, update_context)) {
+    if (writer->insert(ibegin, iend, sbegin, send, isbegin, isend, update_context)) {
       return true;
     }
 
@@ -336,17 +420,30 @@ class IRESEARCH_API index_writer : util::noncopyable {
  private:
   typedef std::vector<index_file_refs::ref_t> file_refs_t;
 
-  // empty attribute iterator
+  struct empty_token_stream : token_stream {
+    bool next() { return false; }
+    const iresearch::attributes& attributes() const NOEXCEPT {
+      return iresearch::attributes::empty_instance();
+    }
+  }; // empty_token_stream
+
+  // empty field and attribute iterator
   class empty {
    public:
     const string_ref& name() const { return string_ref::nil; }
+    token_stream& get_tokens() const {
+      static empty_token_stream instance;
+      return instance;
+    }
+    const flags& features() const { return flags::empty_instance(); }
+    float_t boost() const { return 1.f; }
     bool write(data_output&) const { return false; }
 
     CONSTEXPR static empty* instance() { return nullptr; }
 
    private:
     empty();
-  };
+  }; // empty
 
   struct consolidation_context {
     consolidation_policy_t buf; // policy buffer for moved policies (private use)
