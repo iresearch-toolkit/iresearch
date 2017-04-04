@@ -177,6 +177,8 @@ bool get_ignored_words(
   try {
     if (!boost::filesystem::is_directory(stopword_path) ||
         !boost::filesystem::is_directory(stopword_path.append(language))) {
+      IR_FRMT_ERROR("Failed to load stopwords from path: %s", stopword_path.c_str());
+
       return false;
     }
 
@@ -190,6 +192,8 @@ bool get_ignored_words(
       std::ifstream in(dir_itr->path().native());
 
       if (!in) {
+        IR_FRMT_ERROR("Failed to load stopwords from path: %s", dir_itr->path().c_str());
+
         return false;
       }
 
@@ -210,7 +214,8 @@ bool get_ignored_words(
 
     return true;
   } catch (...) {
-    // NOOP
+    IR_FRMT_ERROR("Caught error while loading stopwords from path: %s", stopword_path.c_str());
+    IR_EXCEPTION();
   }
 
   return false;
@@ -416,7 +421,11 @@ REGISTER_ANALYZER(text_token_stream);
     std::stringstream args_stream(std::string(args.c_str(), args.size()));
     ::boost::property_tree::ptree pt;
 
-    ::boost::property_tree::read_json(args_stream, pt);
+    {
+      static std::mutex mutex;
+      SCOPED_LOCK(mutex); // ::boost::property_tree::read_json(...) is not thread-safe, was seen to SEGFAULT
+      ::boost::property_tree::read_json(args_stream, pt);
+    }
 
     auto locale = iresearch::locale_utils::locale(pt.get<std::string>("locale"));
     auto ignored_words = pt.get_child_optional("ignored_words");
@@ -442,6 +451,7 @@ REGISTER_ANALYZER(text_token_stream);
   }
   catch (...) {
     IR_FRMT_ERROR("Caught error while constructing text_token_stream from jSON arguments: %s", args.c_str());
+    IR_EXCEPTION();
   }
 
   return nullptr;
