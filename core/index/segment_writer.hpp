@@ -123,6 +123,17 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     return true;
   }
 
+  template<typename Attribute>
+  bool insert_attribute(doc_id_t doc, Attribute* attr) {
+    assert(attr);
+    return insert_attribute(doc, *attr);
+  }
+
+  template<typename Attribute>
+  bool insert_attribute(doc_id_t doc, const std::reference_wrapper<Attribute>& ref) {
+    return insert_attribute(doc, ref.get());
+  }
+
   // adds document field
   template<typename Field>
   bool insert_field(doc_id_t doc, const Field& field) {
@@ -137,6 +148,17 @@ class IRESEARCH_API segment_writer: util::noncopyable {
       static_cast<const flags&>(field.features()),
       static_cast<float_t>(field.boost())
     );
+  }
+
+  template<typename Field>
+  bool insert_field(doc_id_t doc, Field* field) {
+    assert(field);
+    return insert_attribute(doc, *field);
+  }
+
+  template<typename Field>
+  bool insert_field(doc_id_t doc, const std::reference_wrapper<Field>& field) {
+    return insert_attribute(doc, field.get());
   }
 
   columnstore_writer::column_output& stream(doc_id_t doc, const string_ref& name); // returns stream for storing attributes

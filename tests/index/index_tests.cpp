@@ -1756,6 +1756,141 @@ class index_test_case_base : public tests::index_test_base {
     }
   }
 
+  void writer_accept_pointer_to_field() {
+    class field {
+     public:
+      field(std::string&& name, const ir::string_ref& value)
+        : name_(std::move(name)),
+        value_(value) {}
+      field(field&& other) NOEXCEPT
+        : stream_(std::move(other.stream_)),
+          name_(std::move(other.name_)),
+          value_(std::move(other.value_)) {
+      }
+      ir::string_ref name() const { return name_; }
+      float_t boost() const { return 1.f; }
+      ir::token_stream& get_tokens() const {
+        stream_.reset(value_);
+        return stream_;
+      }
+      const ir::flags& features() const {
+        return ir::flags::empty_instance();
+      }
+      bool write(ir::data_output& out) const NOEXCEPT {
+        return true;
+      }
+
+     private:
+      mutable ir::string_token_stream stream_;
+      std::string name_;
+      ir::string_ref value_;
+    }; // field
+
+    auto writer = ir::index_writer::make(dir(), codec(), ir::OM_CREATE);
+
+    std::vector<field> fields;
+    fields.emplace_back(std::string("name"), ir::string_ref("test"));
+    fields.emplace_back(std::string("name"), ir::string_ref("test2"));
+
+    std::vector<field*> pointers;
+    std::vector<const field*> const_pointers;
+    std::vector<std::reference_wrapper<field>> refs;
+    std::vector<std::reference_wrapper<const field>> crefs;
+    for (auto& field : fields) {
+      pointers.emplace_back(&field);
+      const_pointers.emplace_back(&field);
+      refs.emplace_back(field);
+      crefs.emplace_back(field);
+    }
+
+    // pointers
+
+    // index only
+    ASSERT_TRUE(writer->insert(
+      pointers.begin(), pointers.end()
+    ));
+
+    // index and store
+    ASSERT_TRUE(writer->insert(
+      pointers.begin(), pointers.end(),
+      pointers.begin(), pointers.end()
+    ));
+
+    // index and store
+    ASSERT_TRUE(writer->insert(
+      pointers.begin(), pointers.end(),
+      pointers.begin(), pointers.end(),
+      pointers.begin(), pointers.end()
+    ));
+
+    // const pointers
+
+    // index only
+    ASSERT_TRUE(writer->insert(
+      const_pointers.begin(), const_pointers.end()
+    ));
+
+    // index and store
+    ASSERT_TRUE(writer->insert(
+      const_pointers.begin(), const_pointers.end(),
+      const_pointers.begin(), const_pointers.end()
+    ));
+
+    // index and store
+    ASSERT_TRUE(writer->insert(
+      const_pointers.begin(), const_pointers.end(),
+      const_pointers.begin(), const_pointers.end(),
+      const_pointers.begin(), const_pointers.end()
+    ));
+
+    // references
+
+    // index only
+    ASSERT_TRUE(writer->insert(
+      refs.begin(), refs.end()
+    ));
+
+    // index and store
+    ASSERT_TRUE(writer->insert(
+      refs.begin(), refs.end(),
+      refs.begin(), refs.end()
+    ));
+
+    // index and store
+    ASSERT_TRUE(writer->insert(
+      refs.begin(), refs.end(),
+      refs.begin(), refs.end(),
+      refs.begin(), refs.end()
+    ));
+
+    // const references
+
+    // index only
+    ASSERT_TRUE(writer->insert(
+      crefs.begin(), crefs.end()
+    ));
+
+    // index and store
+    ASSERT_TRUE(writer->insert(
+      crefs.begin(), crefs.end(),
+      crefs.begin(), crefs.end()
+    ));
+
+    // index and store
+    ASSERT_TRUE(writer->insert(
+      crefs.begin(), crefs.end(),
+      crefs.begin(), crefs.end(),
+      crefs.begin(), crefs.end()
+    ));
+
+    writer->commit();
+
+    auto reader = ir::directory_reader::open(dir());
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0];
+    ASSERT_EQ(12, reader->docs_count());
+  }
+
   void writer_atomicity_check() {
     struct override_sync_directory : directory_mock {
       typedef std::function<bool (const std::string&)> sync_f;
@@ -1964,6 +2099,10 @@ TEST_F(memory_index_test, writer_transaction_isolation) {
 
 TEST_F(memory_index_test, writer_atomicity_check) {
   writer_atomicity_check();
+}
+
+TEST_F(memory_index_test, writer_accept_pointer_to_field) {
+  writer_accept_pointer_to_field();
 }
 
 TEST_F(memory_index_test, writer_begin_rollback) {
