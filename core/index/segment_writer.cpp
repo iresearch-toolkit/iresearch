@@ -42,9 +42,10 @@ segment_writer::segment_writer(directory& dir, format::ptr codec) NOEXCEPT
   : codec_(codec), dir_(dir), initialized_(false) {
 }
 
+// expect 0-based doc_id
 bool segment_writer::remove(doc_id_t doc_id) {
-  return doc_id < (type_limits<type_t::doc_id_t>::min() + num_docs_cached_)
-    && docs_mask_.insert(doc_id).second;
+  return doc_id < num_docs_cached_
+    && docs_mask_.insert(type_limits<type_t::doc_id_t>::min() + doc_id).second;
 }
 
 bool segment_writer::index_field(
@@ -73,9 +74,7 @@ bool segment_writer::index_field(
 }
 
 columnstore_writer::column_output& segment_writer::stream(
-  doc_id_t doc_id,
-  const string_ref& name
-) {
+    doc_id_t doc_id, const string_ref& name) {
   REGISTER_TIMER_DETAILED();
   static struct {
     hashed_string_ref operator()(
@@ -96,7 +95,7 @@ columnstore_writer::column_output& segment_writer::stream(
   ).first->second.handle.second(doc_id);
 }
 
-void segment_writer::finish(doc_id_t doc_id, const update_context& ctx) {
+void segment_writer::finish() {
   REGISTER_TIMER_DETAILED();
 
   // write document normalization factors (for each field marked for normalization))
@@ -108,9 +107,8 @@ void segment_writer::finish(doc_id_t doc_id, const update_context& ctx) {
       write_zvfloat(stream, value);
     }
   }
-  norm_fields_.clear(); // clear normalized fields
 
-  docs_context_[doc_id] = ctx;
+  norm_fields_.clear(); // clear normalized fields
 }
 
 bool segment_writer::flush(std::string& filename, segment_meta& meta) {
@@ -132,7 +130,7 @@ bool segment_writer::flush(std::string& filename, segment_meta& meta) {
     for (auto& entry : columns_) {
       columns.emplace(&entry.second);
     }
-    
+
     // flush columns meta
     col_meta_writer_->prepare(dir_, seg_name_);
     for (auto& column: columns) {

@@ -318,19 +318,21 @@ bool index_writer::add_document_mask_modified_records(
     auto prepared = mod.filter->prepare(rdr);
 
     for (auto docItr = prepared->execute(rdr); docItr->next();) {
-      auto doc = docItr->value();
-      auto generationItr = doc_id_generation.find(doc);
+      const auto doc = docItr->value() - (type_limits<type_t::doc_id_t>::min)();
+
+      if (doc >= doc_id_generation.size()) {
+        continue;
+      }
+
+      const auto& doc_ctx = doc_id_generation[doc];
 
       // if indexed doc_id was add()ed after the request for modification then it should be skipped
-      if (generationItr == doc_id_generation.end() ||
-          mod.generation < generationItr->second.generation) {
+      if (mod.generation < doc_ctx.generation) {
         continue; // the current modification query does not match any records
       }
 
       // if not already masked
       if (writer.remove(doc)) {
-        auto& doc_ctx = generationItr->second;
-
         // if not an update modification (i.e. a remove modification) or
         // if non-update-value record or update-value record whose query was seen
         // for every update request a replacement 'update-value' is optimistically inserted
@@ -348,9 +350,9 @@ bool index_writer::add_document_mask_modified_records(
 }
 
 /* static */ bool index_writer::add_document_mask_unused_updates(
-  modification_requests_t& modification_queries,
-  segment_writer& writer,
-  const segment_meta& meta
+    modification_requests_t& modification_queries,
+    segment_writer& writer,
+    const segment_meta& meta
 ) {
   if (modification_queries.empty()) {
     return false; // nothing new to add
@@ -360,27 +362,33 @@ bool index_writer::add_document_mask_modified_records(
   bool modified = false;
 
   // the implementation generates doc_ids sequentially
-  for (size_t i = 0, count = meta.docs_count; i < count; ++i) {
-    auto doc = doc_id_t(type_limits<type_t::doc_id_t>::min() + i); // can't have more docs then highest doc_id
-    auto generationItr = doc_id_generation.find(doc);
+//  for (doc_id_t doc = 0, count = meta.docs_count; doc < count; ++doc) {
+//    if (doc >= doc_id_generation.size()) {
+//      continue;
+//    }
+  doc_id_t doc = 0;
+  for (const auto& doc_ctx : doc_id_generation) {
+
+//    const auto& doc_ctx = doc_id_generation[doc];
 
     // if it's an update record placeholder who's query did not match any records
-    if (generationItr != doc_id_generation.end() &&
-        generationItr->second.update_id != NON_UPDATE_RECORD &&
-        !modification_queries[generationItr->second.update_id].seen) {
+    if (doc_ctx.update_id != NON_UPDATE_RECORD
+        && !modification_queries[doc_ctx.update_id].seen) {
       modified |= writer.remove(doc);
     }
+
+    ++doc;
   }
 
   return modified;
 }
 
 bool index_writer::add_segment_mask_consolidated_records(
-  index_meta::index_segment_t& segment,
-  directory& dir,
-  flush_context::segment_mask_t& segments_mask,
-  const index_meta::index_segments_t& segments, // candidates to consider
-  const consolidation_acceptor_t& acceptor // functr dictating which segments to consider
+    index_meta::index_segment_t& segment,
+    directory& dir,
+    flush_context::segment_mask_t& segments_mask,
+    const index_meta::index_segments_t& segments, // candidates to consider
+    const consolidation_acceptor_t& acceptor // functr dictating which segments to consider
 ) {
   REGISTER_TIMER_DETAILED();
   std::vector<segment_reader> merge_candidates;

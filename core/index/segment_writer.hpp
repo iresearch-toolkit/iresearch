@@ -33,7 +33,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     size_t update_id;
   };
 
-  typedef std::unordered_map<doc_id_t, update_context> update_contexts;
+  typedef std::vector<update_context> update_contexts;
 
   template<
     typename Indexed,
@@ -45,28 +45,39 @@ class IRESEARCH_API segment_writer: util::noncopyable {
       IndexedStored isbegin, IndexedStored isend,
       const update_context& ctx) {
     const auto doc_id = (type_limits<type_t::doc_id_t>::min)() + num_docs_cached_++;
-    bool success = true;
+    bool valid_ = true;
 
-    for (; success && isbegin != isend; ++isbegin) {
+    docs_context_.emplace_back(ctx);
+
+    for (; valid_ && isbegin != isend; ++isbegin) {
       auto& field = *isbegin;
-      success &= (insert_field(doc_id, field) && insert_attribute(doc_id, field));
+      valid_ &= (insert_field(doc_id, field) && insert_attribute(doc_id, field));
     }
 
-    for (; success && ibegin != iend; ++ibegin) {
-      success &= insert_field(doc_id, *ibegin);
+    for (; valid_ && ibegin != iend; ++ibegin) {
+      valid_ &= insert_field(doc_id, *ibegin);
     }
 
-    for (; success && sbegin != send; ++sbegin) {
-      success &= insert_attribute(doc_id, *sbegin);
+    for (; valid_ && sbegin != send; ++sbegin) {
+      valid_ &= insert_attribute(doc_id, *sbegin);
     }
 
-    if (!success) {
-      remove(doc_id); // mark as removed since not fully inserted
+    if (!valid_) {
+      remove(doc_id - (type_limits<type_t::doc_id_t>::min)()); // mark as removed since not fully inserted
     }
 
-    finish(doc_id, ctx);
+    finish();
 
-    return success;
+    return valid_;
+  }
+
+  doc_id_t commit(doc_id_t doc) {
+    if (!valid_) {
+      remove(doc);
+    }
+
+    finish();
+    return doc;
   }
 
   bool flush(std::string& filename, segment_meta& meta);
@@ -78,7 +89,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   const update_contexts& docs_context() const { return docs_context_; }
   const document_mask& docs_mask() { return docs_mask_; }
   bool initialized() const { return initialized_; }
-  bool remove(doc_id_t doc_id);
+  bool remove(doc_id_t doc_id); // expect 0-based doc_id
   void reset();
   void reset(std::string seg_name);
 
@@ -98,10 +109,10 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   segment_writer(directory& dir, format::ptr codec) NOEXCEPT;
 
   bool index_field(
-    doc_id_t doc_id, 
-    const string_ref& name, 
-    token_stream& tokens, 
-    const flags& features, 
+    doc_id_t doc_id,
+    const string_ref& name,
+    token_stream& tokens,
+    const flags& features,
     float_t boost
   );
 
@@ -111,7 +122,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     REGISTER_TIMER_DETAILED();
 
     auto& stream = this->stream(
-      doc, 
+      doc,
       static_cast<const string_ref&>(attr.name())
     );
 
@@ -162,7 +173,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   }
 
   columnstore_writer::column_output& stream(doc_id_t doc, const string_ref& name); // returns stream for storing attributes
-  void finish(doc_id_t doc_id, const update_context& ctx); // finish document
+  void finish(); // finish document
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   update_contexts docs_context_;
@@ -176,7 +187,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   columnstore_writer::ptr col_writer_;
   format::ptr codec_;
   tracking_directory dir_;
-  std::atomic<uint32_t> num_docs_cached_{0};
+  uint32_t num_docs_cached_{};
   bool initialized_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // segment_writer

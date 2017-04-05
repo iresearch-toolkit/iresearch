@@ -94,7 +94,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
     directory& dir, 
     format::ptr codec, 
     OPEN_MODE mode);
-  
+
   ////////////////////////////////////////////////////////////////////////////
   /// @brief destructor 
   ////////////////////////////////////////////////////////////////////////////
@@ -498,6 +498,44 @@ class IRESEARCH_API index_writer : util::noncopyable {
   typedef std::pair<std::shared_ptr<index_meta>, file_refs_t> committed_state_t;
   typedef std::vector<consolidation_context> consolidation_requests_t;
   typedef std::vector<modification_context> modification_requests_t;
+
+//  class document_proxy : private util::noncopyable {
+//   public:
+//    document_proxy(
+//      segment_writer::ptr&& segment,
+//      flush_context::ptr&& flush_ctx) NOEXCEPT
+//    : segment_(std::move(segment)),
+//      flush_ctx_(std::move(flush_ctx)) {
+//    }
+//
+//    document_proxy(document_proxy&&) = default;
+//
+//    ~document_proxy() {
+//      try {
+//        commit();
+//      } catch (...) {
+//        // suppress all errors
+//      }
+//    }
+//
+//    template<typename Field>
+//    bool index(const Field& field) {
+//      return writer_->insert_field(doc_, field);
+//    }
+//
+//    template<typename Field>
+//    bool store(const Field& field) {
+//      return writer_->insert_attribute(doc_, field);
+//    }
+//
+//    doc_id_t commit() {
+//      return writer_->commit();
+//    }
+//
+//   private:
+//    segment_writer::ptr writer_;
+//    flush_context::ptr flush_ctx_;
+//  };
 
   struct flush_context {
     typedef std::vector<import_context> imported_segments_t;
