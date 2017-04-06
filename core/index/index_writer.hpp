@@ -142,14 +142,10 @@ class IRESEARCH_API index_writer : util::noncopyable {
       Indexed ibegin, Indexed iend,
       Stored sbegin, Stored send,
       IndexedStored isbegin, IndexedStored isend) {
-    auto ctx = get_flush_context(); // retain lock until end of instert(...)
-    auto writer = get_segment_context(*ctx);
+    auto builder = this->insert();
 
-    return writer->insert(
-      ibegin, iend,
-      sbegin, send,
-      isbegin, isend,
-      make_update_context(*ctx)
+    return fill(
+      builder,  ibegin, iend, sbegin, send, isbegin, isend
     );
   }
 
@@ -196,18 +192,11 @@ class IRESEARCH_API index_writer : util::noncopyable {
       Indexed ibegin, Indexed iend,
       Stored sbegin, Stored send,
       IndexedStored isbegin, IndexedStored isend) {
-    auto ctx = get_flush_context(); // retain lock until end of instert(...)
-    auto writer = get_segment_context(*ctx);
-    auto update_context = make_update_context(*ctx, filter);
+    auto builder = this->update(filter);
 
-    if (writer->insert(ibegin, iend, sbegin, send, isbegin, isend, update_context)) {
-      return true;
-    }
-
-    SCOPED_LOCK(ctx->mutex_); // lock due to context modification
-    ctx->modification_queries_[update_context.update_id].filter = nullptr; // mark invalid
-
-    return false;
+    return fill(
+      builder,  ibegin, iend, sbegin, send, isbegin, isend
+    );
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -248,22 +237,11 @@ class IRESEARCH_API index_writer : util::noncopyable {
       Indexed ibegin, Indexed iend,
       Stored sbegin, Stored send,
       IndexedStored isbegin, IndexedStored isend) {
-    if (!filter) {
-      return false; // skip empty filters
-    }
+    auto builder = this->update(std::move(filter));
 
-    auto ctx = get_flush_context(); // retain lock until end of instert(...)
-    auto writer = get_segment_context(*ctx);
-    auto update_context = make_update_context(*ctx, std::move(filter));
-
-    if (writer->insert(ibegin, iend, sbegin, send, isbegin, isend, update_context)) {
-      return true;
-    }
-
-    SCOPED_LOCK(ctx->mutex_); // lock due to context modification
-    ctx->modification_queries_[update_context.update_id].filter = nullptr; // mark invalid
-
-    return false;
+    return fill(
+      builder,  ibegin, iend, sbegin, send, isbegin, isend
+    );
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -308,22 +286,11 @@ class IRESEARCH_API index_writer : util::noncopyable {
       Indexed ibegin, Indexed iend,
       Stored sbegin, Stored send,
       IndexedStored isbegin, IndexedStored isend) {
-    if (!filter) {
-      return false; // skip empty filters
-    }
+    auto builder = this->update(filter);
 
-    auto ctx = get_flush_context(); // retain lock until end of instert(...)
-    auto writer = get_segment_context(*ctx);
-    auto update_context = make_update_context(*ctx, filter);
-
-    if (writer->insert(ibegin, iend, sbegin, send, isbegin, isend, update_context)) {
-      return true;
-    }
-
-    SCOPED_LOCK(ctx->mutex_); // lock due to context modification
-    ctx->modification_queries_[update_context.update_id].filter = nullptr; // mark invalid
-
-    return false;
+    return fill(
+      builder,  ibegin, iend, sbegin, send, isbegin, isend
+    );
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -499,44 +466,6 @@ class IRESEARCH_API index_writer : util::noncopyable {
   typedef std::vector<consolidation_context> consolidation_requests_t;
   typedef std::vector<modification_context> modification_requests_t;
 
-//  class document_proxy : private util::noncopyable {
-//   public:
-//    document_proxy(
-//      segment_writer::ptr&& segment,
-//      flush_context::ptr&& flush_ctx) NOEXCEPT
-//    : segment_(std::move(segment)),
-//      flush_ctx_(std::move(flush_ctx)) {
-//    }
-//
-//    document_proxy(document_proxy&&) = default;
-//
-//    ~document_proxy() {
-//      try {
-//        commit();
-//      } catch (...) {
-//        // suppress all errors
-//      }
-//    }
-//
-//    template<typename Field>
-//    bool index(const Field& field) {
-//      return writer_->insert_field(doc_, field);
-//    }
-//
-//    template<typename Field>
-//    bool store(const Field& field) {
-//      return writer_->insert_attribute(doc_, field);
-//    }
-//
-//    doc_id_t commit() {
-//      return writer_->commit();
-//    }
-//
-//   private:
-//    segment_writer::ptr writer_;
-//    flush_context::ptr flush_ctx_;
-//  };
-
   struct flush_context {
     typedef std::vector<import_context> imported_segments_t;
     typedef std::unordered_set<string_ref> segment_mask_t;
@@ -620,8 +549,8 @@ class IRESEARCH_API index_writer : util::noncopyable {
   flush_context::ptr get_flush_context(bool shared = true);
   index_writer::flush_context::segment_writers_t::ptr get_segment_context(flush_context& ctx);
 
-  // returns context for "add" operatio
-  segment_writer::update_context make_update_context(flush_context& ctx);
+  // returns context for "add" operation
+  static segment_writer::update_context make_update_context(flush_context& ctx);
 
   // returns context for "update" operation
   segment_writer::update_context make_update_context(flush_context& ctx, const filter& filter);
@@ -644,6 +573,244 @@ class IRESEARCH_API index_writer : util::noncopyable {
   index_meta_writer::ptr writer_;
   index_lock::ptr write_lock_; // exclusive write lock for directory
   IRESEARCH_API_PRIVATE_VARIABLES_END
+
+  public:
+
+  class builder : private util::noncopyable {
+   public:
+    ~builder() NOEXCEPT { }
+
+    bool valid() const NOEXCEPT {
+      return writer_->valid();
+    }
+
+    template<typename Field>
+    bool store(Field& field) {
+      return writer_->store(field);
+    }
+
+    template<typename Field>
+    bool store(Field* attr) {
+      assert(attr);
+      return store(*attr);
+    }
+
+    template<typename Field>
+    bool store(std::reference_wrapper<Field> ref) {
+      return store(ref.get());
+    }
+
+    template<typename Field, typename Deleter>
+    bool store(const std::unique_ptr<Field, Deleter>& field) {
+      assert(field);
+      return store(*field);
+    }
+
+    template<typename Field>
+    bool store(const std::shared_ptr<Field>& field) {
+      assert(field);
+      return store(*field);
+    }
+
+    template<typename Iterator>
+    bool store(Iterator begin, Iterator end) {
+      for (; valid() && begin != end; ++begin) {
+        store(*begin);
+      }
+      return valid();
+    }
+
+    template<typename Field>
+    bool index(Field& field) {
+      return writer_->index(field);
+    }
+
+    template<typename Field>
+    bool index(Field* field) {
+      assert(field);
+      return index(*field);
+    }
+
+    template<typename Field>
+    bool index(std::reference_wrapper<Field> field) {
+      return index(field.get());
+    }
+
+    template<typename Field, typename Deleter>
+    bool index(const std::unique_ptr<Field, Deleter>& field) {
+      assert(field);
+      return index(*field);
+    }
+
+    template<typename Field>
+    bool index(const std::shared_ptr<Field>& field) {
+      assert(field);
+      return index(*field);
+    }
+
+    template<typename Iterator>
+    bool index(Iterator begin, Iterator end) {
+      for (; valid() && begin != end; ++begin) {
+        index(*begin);
+      }
+      return valid();
+    }
+
+    template<typename Field>
+    bool index_and_store(Field& field) {
+      return writer_->index_and_store(field);
+    }
+
+    template<typename Field>
+    bool index_and_store(Field* field) {
+      assert(field);
+      return index_and_store(*field);
+    }
+
+    template<typename Field>
+    bool index_and_store(std::reference_wrapper<Field> field) {
+      return index_and_store(field.get());
+    }
+
+    template<typename Field, typename Deleter>
+    bool index_and_store(const std::unique_ptr<Field, Deleter>& field) {
+      assert(field);
+      return index_and_store(*field);
+    }
+
+    template<typename Field>
+    bool index_and_store(const std::shared_ptr<Field>& field) {
+      assert(field);
+      return index_and_store(*field);
+    }
+
+    template<typename Iterator>
+    bool index_and_store(Iterator begin ,Iterator end) {
+      for (; valid() && begin != end; ++begin) {
+        index_and_store(*begin);
+      }
+      return valid();
+    }
+
+   protected:
+    builder(
+      std::shared_ptr<segment_writer>&& writer,
+      std::shared_ptr<flush_context>&& ctx) NOEXCEPT
+    : writer_(std::move(writer)),
+      ctx_(std::move(ctx)) {
+    }
+
+    builder(builder&& rhs) NOEXCEPT
+      : writer_(std::move(rhs.writer_)),
+        ctx_(std::move(rhs.ctx_)) {
+    }
+
+    std::shared_ptr<segment_writer> writer_;
+    std::shared_ptr<flush_context> ctx_;
+  };
+
+  class inserter : public builder {
+   public:
+    inserter(
+      std::shared_ptr<segment_writer>&& writer,
+      std::shared_ptr<flush_context>&& ctx) NOEXCEPT
+      : builder(std::move(writer), std::move(ctx)) {
+    }
+
+    inserter(inserter&& rhs) NOEXCEPT
+      : builder(std::move(rhs)) {
+    }
+
+    void commit(bool allow_empty = false) {
+      writer_->commit(allow_empty);
+      writer_->begin(index_writer::make_update_context(*ctx_));
+    }
+
+    ~inserter() NOEXCEPT {
+      try {
+        writer_->commit(false);
+      } catch (...) {
+        // suppress all errors
+      }
+    }
+  };
+
+  class updater : public builder {
+   public:
+    updater(
+      std::shared_ptr<segment_writer>&& writer,
+      std::shared_ptr<flush_context>&& ctx) NOEXCEPT
+      : builder(std::move(writer), std::move(ctx)) {
+    }
+
+    updater(updater&& rhs) NOEXCEPT
+      : builder(std::move(rhs)) {
+    }
+
+    ~updater() NOEXCEPT {
+      try {
+        writer_->commit();
+      } catch (...) {
+        // suppress all errors
+      }
+
+      if (!valid()) {
+        SCOPED_LOCK(ctx_->mutex_); // lock due to context modification
+        ctx_->modification_queries_[writer_->doc_context().update_id].filter = nullptr; // mark invalid
+      }
+    }
+  };
+
+  template<
+    typename Indexed,
+    typename Stored,
+    typename IndexedStored
+  > bool fill(
+      builder& builder,
+      Indexed ibegin, Indexed iend,
+      Stored sbegin, Stored send,
+      IndexedStored isbegin, IndexedStored isend) {
+    builder.index(ibegin, iend);
+    builder.store(sbegin, send);
+    builder.index_and_store(isbegin, isend);
+    return builder.valid();
+  }
+
+  inserter insert() {
+    auto ctx = get_flush_context(); // retain lock until end of instert(...)
+    auto writer = get_segment_context(*ctx);
+
+    writer->begin(make_update_context(*ctx));
+    return inserter(std::move(writer), std::move(ctx));
+  }
+
+  updater update(const irs::filter& filter) {
+    auto ctx = get_flush_context(); // retain lock until end of instert(...)
+    auto writer = get_segment_context(*ctx);
+
+    writer->begin(make_update_context(*ctx, filter));
+    return updater(std::move(writer), std::move(ctx));
+  }
+
+  updater update(filter::ptr&& filter) {
+    // FIXME check filter for null and return invalid updater with invaid writer
+
+    auto ctx = get_flush_context(); // retain lock until end of instert(...)
+    auto writer = get_segment_context(*ctx);
+
+    writer->begin(make_update_context(*ctx, std::move(filter)));
+    return updater(std::move(writer), std::move(ctx));
+  }
+
+  updater update(const std::shared_ptr<irs::filter>& filter) {
+    // FIXME check filter for null and return invalid updater with invaid writer
+
+    auto ctx = get_flush_context(); // retain lock until end of instert(...)
+    auto writer = get_segment_context(*ctx);
+
+    writer->begin(make_update_context(*ctx, filter));
+    return updater(std::move(writer), std::move(ctx));
+  }
 }; // index_writer
 
 NS_END

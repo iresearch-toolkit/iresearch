@@ -612,8 +612,7 @@ index_writer::flush_context::ptr index_writer::get_flush_context(bool shared /*=
 }
 
 index_writer::flush_context::segment_writers_t::ptr index_writer::get_segment_context(
-  flush_context& ctx
-) {
+    flush_context& ctx) {
   auto writer = ctx.writers_pool_.emplace(*(ctx.dir_), codec_);
 
   if (!writer->initialized()) {
@@ -873,9 +872,8 @@ index_writer::pending_context_t index_writer::flush_all() {
   return std::move(pending_context);
 }
 
-segment_writer::update_context index_writer::make_update_context(
-  flush_context& ctx
-) {
+/*static*/ segment_writer::update_context index_writer::make_update_context(
+    flush_context& ctx) {
   return segment_writer::update_context {
     ctx.generation_.load(), // current modification generation
     NON_UPDATE_RECORD
@@ -883,8 +881,7 @@ segment_writer::update_context index_writer::make_update_context(
 }
 
 segment_writer::update_context index_writer::make_update_context(
-  flush_context& ctx, const filter& filter
-) {
+    flush_context& ctx, const filter& filter) {
   auto generation = ++ctx.generation_;
   SCOPED_LOCK(ctx.mutex_); // lock due to context modification
   size_t update_id = ctx.modification_queries_.size();
@@ -898,8 +895,7 @@ segment_writer::update_context index_writer::make_update_context(
 }
 
 segment_writer::update_context index_writer::make_update_context(
-  flush_context& ctx, const std::shared_ptr<filter>& filter
-) {
+    flush_context& ctx, const std::shared_ptr<filter>& filter) {
   auto generation = ++ctx.generation_;
   SCOPED_LOCK(ctx.mutex_); // lock due to context modification
   size_t update_id = ctx.modification_queries_.size();
@@ -913,8 +909,7 @@ segment_writer::update_context index_writer::make_update_context(
 }
 
 segment_writer::update_context index_writer::make_update_context(
-  flush_context& ctx, filter::ptr&& filter
-) {
+    flush_context& ctx, filter::ptr&& filter) {
   assert(filter);
   auto generation = ++ctx.generation_;
   SCOPED_LOCK(ctx.mutex_); // lock due to context modification

@@ -44,18 +44,19 @@ segment_writer::segment_writer(directory& dir, format::ptr codec) NOEXCEPT
 
 // expect 0-based doc_id
 bool segment_writer::remove(doc_id_t doc_id) {
-  return doc_id < num_docs_cached_
+  return doc_id < docs_cached()
     && docs_mask_.insert(type_limits<type_t::doc_id_t>::min() + doc_id).second;
 }
 
 bool segment_writer::index_field(
-    doc_id_t doc_id,
     const string_ref& name,
     token_stream& tokens,
     const flags& features,
     float_t boost) {
   REGISTER_TIMER_DETAILED();
+  empty_ = false;
 
+  const doc_id_t doc_id = docs_cached();
   auto& slot = fields_.get(name);
   auto& slot_features = slot.meta().features;
 
@@ -107,8 +108,6 @@ void segment_writer::finish() {
       write_zvfloat(stream, value);
     }
   }
-
-  norm_fields_.clear(); // clear normalized fields
 }
 
 bool segment_writer::flush(std::string& filename, segment_meta& meta) {
@@ -144,14 +143,14 @@ bool segment_writer::flush(std::string& filename, segment_meta& meta) {
   {
     flush_state state;
     state.dir = &dir_;
-    state.doc_count = num_docs_cached_;
+    state.doc_count = docs_cached();
     state.name = seg_name_;
     state.ver = IRESEARCH_VERSION;
 
     fields_.flush(*field_writer_, state);
   }
 
-  meta.docs_count = num_docs_cached_;
+  meta.docs_count = docs_cached();
   meta.files.clear(); // prepare empy set to be swaped into dir_
 
   if (!dir_.swap_tracked(meta.files)) {
@@ -184,7 +183,6 @@ void segment_writer::reset() {
   docs_context_.clear();
   docs_mask_.clear();
   fields_.reset();
-  num_docs_cached_ = 0;
 }
 
 void segment_writer::reset(std::string seg_name) {
