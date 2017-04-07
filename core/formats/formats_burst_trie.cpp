@@ -1129,6 +1129,11 @@ doc_iterator::ptr term_iterator::postings(const flags& features) const {
 index_input& term_iterator::terms_input() const {
   if (!terms_in_) {
     terms_in_ = owner_->owner_->terms_in_->reopen();
+
+    if (!terms_in_) {
+      IR_FRMT_FATAL("failed to reopen terms input");
+      assert(false);
+    }
   }
   return *terms_in_;
 }
