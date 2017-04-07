@@ -393,8 +393,9 @@ class pos_iterator : public position::impl {
     pos_in_ = state.pos_in->reopen();
 
     if (!pos_in_) {
-      IR_FRMT_FATAL("failed to reopen positions input");
-      assert(false);
+      IR_FRMT_FATAL("Failed to reopen positions input in: %s", __FUNCTION__);
+
+      throw detailed_io_error("Failed to reopen positions input");
     }
 
     pos_in_->seek(state.term_state->pos_start);
@@ -502,8 +503,9 @@ class offs_pay_iterator final : public pos_iterator {
     pay_in_ = state.pay_in->reopen();
 
     if (!pay_in_) {
-      IR_FRMT_FATAL("failed to reopen payload input");
-      assert(false);
+      IR_FRMT_FATAL("Failed to reopen payload input in: %s", __FUNCTION__);
+
+      throw detailed_io_error("Failed to reopen payload input");
     }
 
     pay_in_->seek(state.term_state->pay_start);
@@ -642,8 +644,9 @@ class offs_iterator final : public pos_iterator {
     pay_in_ = state.pay_in->reopen();
 
     if (!pay_in_) {
-      IR_FRMT_FATAL("failed to reopen payload input");
-      assert(false);
+      IR_FRMT_FATAL("Failed to reopen payload input in: %s", __FUNCTION__);
+
+      throw detailed_io_error("Failed to reopen payload input");
     }
 
     pay_in_->seek(state.term_state->pay_start);
@@ -749,8 +752,9 @@ class pay_iterator final : public pos_iterator {
     pay_in_ = state.pay_in->reopen();
 
     if (!pay_in_) {
-      IR_FRMT_FATAL("failed to reopen payload input");
-      assert(false);
+      IR_FRMT_FATAL("Failed to reopen payload input in: %s", __FUNCTION__);
+
+      throw detailed_io_error("Failed to reopen payload input");
     }
 
     pay_in_->seek(state.term_state->pay_start);
@@ -902,8 +906,9 @@ void doc_iterator::prepare( const flags& field,
       doc_in_ = doc_in->reopen();
 
       if (!doc_in_) {
-        IR_FRMT_FATAL("failed to reopen document input");
-        assert(false);
+        IR_FRMT_FATAL("Failed to reopen document input in: %s", __FUNCTION__);
+
+        throw detailed_io_error("Failed to reopen document input");
       }
     }
 
