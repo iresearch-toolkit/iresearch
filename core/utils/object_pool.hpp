@@ -97,6 +97,13 @@ move_on_copy<T> make_move_on_copy(T&& value) {
 //////////////////////////////////////////////////////////////////////////////
 template<typename T>
 class bounded_object_pool : atomic_base<typename T::ptr> {
+ private:
+  struct slot_t : util::noncopyable {
+    bounded_object_pool* owner;
+    typename T::ptr ptr;
+    std::atomic_flag used;
+  }; // slot_t
+
  public:
   typedef atomic_base<typename T::ptr> atomic_utils;
   typedef typename T::ptr::element_type element_type;
@@ -104,19 +111,19 @@ class bounded_object_pool : atomic_base<typename T::ptr> {
   // do not use std::shared_ptr to avoid unnecessary heap allocatons
   class ptr : util::noncopyable {
    public:
-    ptr(element_type* ptr, bounded_object_pool* owner, size_t i) NOEXCEPT
-      : ptr_(ptr), owner_(owner), i_(i) {
+    ptr(slot_t& slot) NOEXCEPT
+      : slot_(&slot) {
     }
 
     ptr(ptr&& rhs) NOEXCEPT
-      : ptr_(rhs.ptr_) {
-      rhs.ptr_ = nullptr; // take ownership
+      : slot_(rhs.slot_) {
+      rhs.slot_ = nullptr; // take ownership
     }
 
     ptr& operator=(ptr&& rhs) NOEXCEPT {
       if (this != &rhs) {
-        ptr_ = rhs.ptr_;
-        rhs.ptr_ = nullptr; // take ownership
+        slot_ = rhs.slot_;
+        rhs.slot_ = nullptr; // take ownership
       }
       return *this;
     }
@@ -126,32 +133,32 @@ class bounded_object_pool : atomic_base<typename T::ptr> {
     }
 
     void reset() NOEXCEPT {
-      if (!ptr_) {
+      if (!slot_) {
         // nothing to do
         return;
       }
 
-      owner_->unlock(i_);
-      ptr_ = nullptr; // release ownership
+      assert(slot_->owner);
+      slot_->owner->unlock(*slot_);
+      slot_ = nullptr; // release ownership
     }
 
-    element_type& operator*() const NOEXCEPT { return *ptr_; }
-    element_type* operator->() const NOEXCEPT { return ptr_; }
-    element_type* get() const NOEXCEPT { return ptr_; }
-    operator bool() const NOEXCEPT { return ptr_; }
+    element_type& operator*() const NOEXCEPT { return *slot_->ptr; }
+    element_type* operator->() const NOEXCEPT { return get(); }
+    element_type* get() const NOEXCEPT { return slot_->ptr.get(); }
+    operator bool() const NOEXCEPT { return slot_->ptr; }
 
    private:
-    element_type* ptr_;
-    bounded_object_pool* owner_;
-    size_t i_;
+    slot_t* slot_;
   }; // ptr
 
   explicit bounded_object_pool(size_t size)
     : free_count_(std::max(size_t(1), size)), 
-      pool_(std::max(size_t(1), size)), 
-      used_(std::max(size_t(1), size)) {
-    for (auto& flag : used_) {
-      flag.clear();
+      pool_(std::max(size_t(1), size)) {
+    // initialize pool
+    for (auto& slot : pool_) {
+      slot.used.clear();
+      slot.owner = this;
     }
   }
 
@@ -159,21 +166,20 @@ class bounded_object_pool : atomic_base<typename T::ptr> {
   ptr emplace(Args&&... args) {
     for(;;) {
       // linear search for an unused slot in the pool
-      for(size_t i = 0, count = used_.size(); i < count; ++i) {
-        if (lock(i)) {
-          auto& slot = pool_[i];
-
-          if (!slot) {
+      for (auto& slot : pool_) {
+        if (lock(slot)) {
+          auto& p = slot.ptr;
+          if (!p) {
             try {
               auto value = T::make(std::forward<Args>(args)...);
-              atomic_utils::atomic_store(&slot, value);
+              atomic_utils::atomic_store(&p, value);
             } catch (...) {
-              unlock(i);
+              unlock(slot);
               throw;
             }
           }
 
-          return ptr(slot.get(), this, i);
+          return ptr(slot);
         }
       }
 
@@ -193,8 +199,9 @@ class bounded_object_pool : atomic_base<typename T::ptr> {
     // shared visitation does not acquire exclusive lock on object
     // it is up to the caller to guarantee proper synchronization
     if (shared) {
-      for (size_t i = 0, count = pool_.size(); i < count; ++i) {
-        auto obj = atomic_utils::atomic_load(&pool_[i]).get();
+      for (auto& slot : pool_) {
+        auto& p = slot.ptr;
+        auto* obj = atomic_utils::atomic_load(&p).get();
 
         if (obj && !visitor(*obj)) {
           return false;
@@ -210,7 +217,7 @@ class bounded_object_pool : atomic_base<typename T::ptr> {
     auto unlock_all = make_finally([this, &used] () {
       for (size_t i = 0, count = used.size(); i < count; ++i) {
         if (used[i]) {
-          unlock(i);
+          unlock(pool_[i]);
         }
       }
     });
@@ -221,10 +228,12 @@ class bounded_object_pool : atomic_base<typename T::ptr> {
           continue;
         }
 
-        if (lock(i)) {
+        auto& slot = pool_[i];
+        if (lock(slot)) {
           used[i] = true;
 
-          auto obj = atomic_utils::atomic_load(&pool_[i]).get();
+          auto& p = slot.ptr;
+          auto* obj = atomic_utils::atomic_load(&p).get();
 
           if (obj && !visitor(*obj)) {
             return false;
@@ -253,16 +262,16 @@ class bounded_object_pool : atomic_base<typename T::ptr> {
     }
   }
 
-  bool lock(size_t i) const {
-    if (!used_[i].test_and_set()) {
+  bool lock(slot_t& slot) const {
+    if (!slot.used.test_and_set()) {
       --free_count_;
       return true;
     }
     return false;
   }
   
-  void unlock(size_t i) const {   
-    used_[i].clear();
+  void unlock(slot_t& slot) const {
+    slot.used.clear();
     SCOPED_LOCK(mutex_);
     ++free_count_; // under lock to ensure cond_.wait_for(...) not triggered
     cond_.notify_all();
@@ -271,9 +280,8 @@ class bounded_object_pool : atomic_base<typename T::ptr> {
   mutable std::condition_variable cond_;
   mutable std::atomic<size_t> free_count_;
   mutable std::mutex mutex_;
-  std::vector<typename T::ptr> pool_;
-  mutable std::vector<std::atomic_flag> used_;
-};
+  mutable std::vector<slot_t> pool_;
+}; // bounded_object_pool
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief a fixed size pool of objects
@@ -351,7 +359,7 @@ class unbounded_object_pool
   typedef atomic_base<reusable_t> atomic_bool_utils;
   std::vector<typename T::ptr> pool_;
   reusable_t reusable_;
-};
+}; // unbounded_object_pool
 
 NS_END
 
