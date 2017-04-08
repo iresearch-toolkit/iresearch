@@ -658,7 +658,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
     // do not use std::shared_ptr to avoid unnecessary heap allocatons
     class ptr : util::noncopyable {
      public:
-      ptr(flush_context* ctx = nullptr, bool shared = false) NOEXCEPT
+      explicit ptr(flush_context* ctx = nullptr, bool shared = false) NOEXCEPT
         : ctx(ctx), shared(shared) {
       }
 
