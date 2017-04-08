@@ -55,8 +55,8 @@ struct numeric_traits;
 template<>
 struct numeric_traits<int32_t> {
   typedef int32_t integral_t;
-  static const bytes_ref& min() { return mini32(); } 
-  static const bytes_ref& max() { return maxi32(); } 
+  static const bytes_ref& (min)() { return mini32(); } 
+  static const bytes_ref& (max)() { return maxi32(); } 
   inline static integral_t integral(integral_t value) { return value; }
   CONSTEXPR static size_t size() { return sizeof(integral_t)+1; }
   static size_t encode(integral_t value, byte_type* out, size_t offset = 0) {
@@ -70,8 +70,8 @@ struct numeric_traits<int32_t> {
 template<>
 struct numeric_traits<int64_t> {
   typedef int64_t integral_t;
-  static const bytes_ref& min() { return mini64(); } 
-  static const bytes_ref& max() { return maxi64(); } 
+  static const bytes_ref& (min)() { return mini64(); } 
+  static const bytes_ref& (max)() { return maxi64(); } 
   inline static integral_t integral(integral_t value) { return value; }
   CONSTEXPR static size_t size() { return sizeof(integral_t)+1; }
   static size_t encode(integral_t value, byte_type* out, size_t offset = 0) {
@@ -87,8 +87,8 @@ template<>
 struct numeric_traits<float_t> {
   typedef int32_t integral_t;
   static const bytes_ref& ninf() { return nfinf32(); }
-  static const bytes_ref& min() { return minf32(); } 
-  static const bytes_ref& max() { return maxf32(); } 
+  static const bytes_ref& (min)() { return minf32(); } 
+  static const bytes_ref& (max)() { return maxf32(); } 
   static const bytes_ref& inf() { return finf32(); }
   static float_t floating(integral_t value) { return i32tof(value); }
   static integral_t integral(float_t value) { return ftoi32(value); }
@@ -106,8 +106,8 @@ template<>
 struct numeric_traits<double_t> {
   typedef int64_t integral_t;
   static const bytes_ref& ninf() { return ndinf64(); }
-  static const bytes_ref& min() { return mind64(); } 
-  static const bytes_ref& max() { return maxd64(); } 
+  static const bytes_ref& (min)() { return mind64(); } 
+  static const bytes_ref& (max)() { return maxd64(); } 
   static const bytes_ref& inf() { return dinf64(); }
   static double_t floating(integral_t value) { return i64tod(value); }
   static integral_t integral(double_t value) { return dtoi64(value); }
