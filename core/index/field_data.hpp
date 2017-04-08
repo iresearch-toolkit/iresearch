@@ -120,7 +120,7 @@ class IRESEARCH_API fields_data: util::noncopyable {
 
   fields_data();
 
-  field_data& get(const string_ref& name);
+  field_data& get(const hashed_string_ref& name);
   size_t size() const { return fields_.size(); }
   fields_data& operator+=(const flags& features) {
     features_ |= features;

@@ -598,7 +598,7 @@ fields_data::fields_data()
     int_writer_(int_pool_.begin()) {
 }
 
-field_data& fields_data::get(const string_ref& name) {
+field_data& fields_data::get(const hashed_string_ref& name) {
   static struct {
     hashed_string_ref operator()(
       const hashed_string_ref& key, const field_data& value
@@ -613,7 +613,7 @@ field_data& fields_data::get(const string_ref& name) {
   return map_utils::try_emplace_update_key(
     fields_,                                    // container
     generator,                                  // key generator
-    make_hashed_ref(name, string_ref_hash_t()), // key
+    name,                                       // key
     name, &byte_writer_, &int_writer_           // value
   ).first->second;
 }

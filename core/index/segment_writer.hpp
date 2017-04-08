@@ -108,8 +108,8 @@ class IRESEARCH_API segment_writer: util::noncopyable {
 
   segment_writer(directory& dir, format::ptr codec) NOEXCEPT;
 
-  bool index_field(
-    const string_ref& name,
+  bool index(
+    const hashed_string_ref& name,
     token_stream& tokens,
     const flags& features,
     float_t boost
@@ -119,12 +119,13 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   bool store_worker(Field& field) {
     REGISTER_TIMER_DETAILED();
 
-    const doc_id_t doc = docs_cached();
-
-    auto& stream = this->stream(
-      doc,
-      static_cast<const string_ref&>(field.name())
+    const auto name = make_hashed_ref(
+      static_cast<const string_ref&>(field.name()),
+      string_ref_hash_t()
     );
+
+    const doc_id_t doc = docs_cached();
+    auto& stream = this->stream(doc, name);
 
     if (!field.write(stream)) {
       stream.reset();
@@ -139,22 +140,52 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   bool index_worker(Field& field) {
     REGISTER_TIMER_DETAILED();
 
-    auto& field_tokens = static_cast<token_stream&>(field.get_tokens());
-
-    return index_field(
+    const auto name = make_hashed_ref(
       static_cast<const string_ref&>(field.name()),
-      field_tokens,
-      static_cast<const flags&>(field.features()),
-      static_cast<float_t>(field.boost())
+      string_ref_hash_t()
     );
+
+    auto& tokens = static_cast<token_stream&>(field.get_tokens());
+    const auto& features = static_cast<const flags&>(field.features());
+    const auto boost = static_cast<float_t>(field.boost());
+
+    return index(name, tokens, features, boost);
   }
 
   template<typename Field>
   bool index_and_store_worker(Field& field) {
-    return index_worker(field) && store_worker(field);
+    REGISTER_TIMER_DETAILED();
+
+    const auto name = make_hashed_ref(
+      static_cast<const string_ref&>(field.name()),
+      string_ref_hash_t()
+    );
+
+    // index field
+    auto& tokens = static_cast<token_stream&>(field.get_tokens());
+    const auto& features = static_cast<const flags&>(field.features());
+    const auto boost = static_cast<float_t>(field.boost());
+
+    const bool indexed = index(name, tokens, features, boost);
+
+    // store field
+    const doc_id_t doc = docs_cached();
+    auto& stream = this->stream(doc, name);
+
+    if (!field.write(stream)) {
+      stream.reset();
+      return indexed;
+    }
+
+    return true; // at least indexed
   }
 
-  columnstore_writer::column_output& stream(doc_id_t doc, const string_ref& name); // returns stream for storing attributes
+  // returns stream for storing attributes
+  columnstore_writer::column_output& stream(
+    doc_id_t doc,
+    const hashed_string_ref& name
+  );
+
   void finish(); // finishes document
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN

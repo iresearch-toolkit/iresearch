@@ -48,8 +48,8 @@ bool segment_writer::remove(doc_id_t doc_id) {
     && docs_mask_.insert(type_limits<type_t::doc_id_t>::min() + doc_id).second;
 }
 
-bool segment_writer::index_field(
-    const string_ref& name,
+bool segment_writer::index(
+    const hashed_string_ref& name,
     token_stream& tokens,
     const flags& features,
     float_t boost) {
@@ -74,7 +74,7 @@ bool segment_writer::index_field(
 }
 
 columnstore_writer::column_output& segment_writer::stream(
-    doc_id_t doc_id, const string_ref& name) {
+    doc_id_t doc_id, const hashed_string_ref& name) {
   REGISTER_TIMER_DETAILED();
   static struct {
     hashed_string_ref operator()(
@@ -90,7 +90,7 @@ columnstore_writer::column_output& segment_writer::stream(
   return map_utils::try_emplace_update_key(
     columns_,                                     // container
     generator,                                    // key generator
-    make_hashed_ref(name, string_ref_hash_t()),   // key
+    name,                                         // key
     name, *col_writer_                            // value
   ).first->second.handle.second(doc_id);
 }
