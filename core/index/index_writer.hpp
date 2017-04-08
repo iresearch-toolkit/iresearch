@@ -39,7 +39,7 @@ struct directory;
 class directory_reader;
 
 //////////////////////////////////////////////////////////////////////////////
-/// @enum OpenMode 
+/// @enum OpenMode
 /// @brief defines how index writer should be opened
 //////////////////////////////////////////////////////////////////////////////
 enum OPEN_MODE {
@@ -48,13 +48,13 @@ enum OPEN_MODE {
   ///        exists, all contents will be cleared.
   ////////////////////////////////////////////////////////////////////////////
   OM_CREATE,
-  
+
   ////////////////////////////////////////////////////////////////////////////
   /// @brief Opens existsing index repository. In case if repository does not 
   ///        exists, error will be generated.
   ////////////////////////////////////////////////////////////////////////////
   OM_APPEND,
-  
+
   ////////////////////////////////////////////////////////////////////////////
   /// @brief Checks whether index repository already exists. If so, opens it, 
   ///        otherwise initializes new repository
@@ -70,6 +70,130 @@ enum OPEN_MODE {
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API index_writer : util::noncopyable {
  public:
+  class document : private util::noncopyable {
+   public:
+    explicit document(segment_writer& writer) NOEXCEPT
+      : writer_(writer) {
+    }
+
+    ~document() = default;
+
+    bool valid() const NOEXCEPT {
+      return writer_.valid();
+    }
+
+    template<typename Field>
+    bool store(Field& field) const {
+      return writer_.store(field);
+    }
+
+    template<typename Field>
+    bool store(Field* attr) const {
+      assert(attr);
+      return store(*attr);
+    }
+
+    template<typename Field>
+    bool store(std::reference_wrapper<Field> ref) const {
+      return store(ref.get());
+    }
+
+    template<typename Field, typename Deleter>
+    bool store(const std::unique_ptr<Field, Deleter>& field) const {
+      assert(field);
+      return store(*field);
+    }
+
+    template<typename Field>
+    bool store(const std::shared_ptr<Field>& field) const {
+      assert(field);
+      return store(*field);
+    }
+
+    template<typename Iterator>
+    bool store(Iterator begin, Iterator end) const {
+      for (; valid() && begin != end; ++begin) {
+        store(*begin);
+      }
+      return valid();
+    }
+
+    template<typename Field>
+    bool index(Field& field) const {
+      return writer_.index(field);
+    }
+
+    template<typename Field>
+    bool index(Field* field) const {
+      assert(field);
+      return index(*field);
+    }
+
+    template<typename Field>
+    bool index(std::reference_wrapper<Field> field) const {
+      return index(field.get());
+    }
+
+    template<typename Field, typename Deleter>
+    bool index(const std::unique_ptr<Field, Deleter>& field) const {
+      assert(field);
+      return index(*field);
+    }
+
+    template<typename Field>
+    bool index(const std::shared_ptr<Field>& field) const {
+      assert(field);
+      return index(*field);
+    }
+
+    template<typename Iterator>
+    bool index(Iterator begin, Iterator end) const {
+      for (; valid() && begin != end; ++begin) {
+        index(*begin);
+      }
+      return valid();
+    }
+
+    template<typename Field>
+    bool index_and_store(Field& field) const {
+      return writer_.index_and_store(field);
+    }
+
+    template<typename Field>
+    bool index_and_store(Field* field) const {
+      assert(field);
+      return index_and_store(*field);
+    }
+
+    template<typename Field>
+    bool index_and_store(std::reference_wrapper<Field> field) const {
+      return index_and_store(field.get());
+    }
+
+    template<typename Field, typename Deleter>
+    bool index_and_store(const std::unique_ptr<Field, Deleter>& field) const {
+      assert(field);
+      return index_and_store(*field);
+    }
+
+    template<typename Field>
+    bool index_and_store(const std::shared_ptr<Field>& field) const {
+      assert(field);
+      return index_and_store(*field);
+    }
+
+    template<typename Iterator>
+    bool index_and_store(Iterator begin ,Iterator end) const {
+      for (; valid() && begin != end; ++begin) {
+        index_and_store(*begin);
+      }
+      return valid();
+    }
+
+   private:
+    segment_writer& writer_;
+  }; // document
+
   DECLARE_SPTR(index_writer);
 
   static const size_t THREAD_COUNT = 8;
@@ -91,8 +215,8 @@ class IRESEARCH_API index_writer : util::noncopyable {
   /// @param mode specifies how to open a writer
   ////////////////////////////////////////////////////////////////////////////
   static index_writer::ptr make(
-    directory& dir, 
-    format::ptr codec, 
+    directory& dir,
+    format::ptr codec,
     OPEN_MODE mode);
 
   ////////////////////////////////////////////////////////////////////////////
@@ -104,6 +228,57 @@ class IRESEARCH_API index_writer : util::noncopyable {
   /// @returns overall number of buffered documents in a writer 
   ////////////////////////////////////////////////////////////////////////////
   uint64_t buffered_docs() const;
+
+  template<typename Func>
+  bool insert(Func func) {
+    auto ctx = get_flush_context(); // retain lock until end of insert(...)
+    auto writer = get_segment_context(*ctx);
+
+    document doc(*writer);
+
+    bool stop = true;
+    do {
+      writer->begin(make_update_context(*ctx));
+      try {
+        stop = func(doc);
+        writer->commit();
+      } catch (...) {
+        writer->rollback();
+      }
+    } while (!stop);
+
+    return writer->valid();
+  }
+
+  template<typename Func>
+  bool update(const irs::filter& filter, Func func) {
+    auto ctx = get_flush_context(); // retain lock until end of update(...)
+    auto writer = get_segment_context(*ctx);
+
+    writer->begin(make_update_context(*ctx, filter));
+
+    return update(*ctx, *writer, func);
+  }
+
+  template<typename Func>
+  bool update(irs::filter::ptr&& filter, Func func) {
+    auto ctx = get_flush_context(); // retain lock until end of update(...)
+    auto writer = get_segment_context(*ctx);
+
+    writer->begin(make_update_context(*ctx, std::move(filter)));
+
+    return update(*ctx, *writer, func);
+  }
+
+  template<typename Func>
+  bool update(const std::shared_ptr<irs::filter>& filter, Func func) {
+    auto ctx = get_flush_context(); // retain lock until end of update(...)
+    auto writer = get_segment_context(*ctx);
+
+    writer->begin(make_update_context(*ctx, filter));
+
+    return update(*ctx, *writer, func);
+  }
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief inserts document specified by the range of fields [begin;end) 
@@ -142,11 +317,14 @@ class IRESEARCH_API index_writer : util::noncopyable {
       Indexed ibegin, Indexed iend,
       Stored sbegin, Stored send,
       IndexedStored isbegin, IndexedStored isend) {
-    auto builder = this->insert();
+    auto func =[&](document& doc) {
+      doc.index(ibegin, iend);
+      doc.store(sbegin, send);
+      doc.index_and_store(isbegin, isend);
+      return true; // break the loop
+    };
 
-    return fill(
-      builder,  ibegin, iend, sbegin, send, isbegin, isend
-    );
+    return insert(func);
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -192,11 +370,13 @@ class IRESEARCH_API index_writer : util::noncopyable {
       Indexed ibegin, Indexed iend,
       Stored sbegin, Stored send,
       IndexedStored isbegin, IndexedStored isend) {
-    auto builder = this->update(filter);
+    auto func =[&](document& doc) {
+      doc.index(ibegin, iend);
+      doc.store(sbegin, send);
+      doc.index_and_store(isbegin, isend);
+    };
 
-    return fill(
-      builder,  ibegin, iend, sbegin, send, isbegin, isend
-    );
+    return update(filter, func);
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -237,11 +417,13 @@ class IRESEARCH_API index_writer : util::noncopyable {
       Indexed ibegin, Indexed iend,
       Stored sbegin, Stored send,
       IndexedStored isbegin, IndexedStored isend) {
-    auto builder = this->update(std::move(filter));
+    auto func =[&](document& doc) {
+      doc.index(ibegin, iend);
+      doc.store(sbegin, send);
+      doc.index_and_store(isbegin, isend);
+    };
 
-    return fill(
-      builder,  ibegin, iend, sbegin, send, isbegin, isend
-    );
+    return update(std::move(filter), func);
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -286,11 +468,13 @@ class IRESEARCH_API index_writer : util::noncopyable {
       Indexed ibegin, Indexed iend,
       Stored sbegin, Stored send,
       IndexedStored isbegin, IndexedStored isend) {
-    auto builder = this->update(filter);
+    auto func =[&](document& doc) {
+      doc.index(ibegin, iend);
+      doc.store(sbegin, send);
+      doc.index_and_store(isbegin, isend);
+    };
 
-    return fill(
-      builder,  ibegin, iend, sbegin, send, isbegin, isend
-    );
+    return update(filter, func);
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -557,6 +741,26 @@ class IRESEARCH_API index_writer : util::noncopyable {
   segment_writer::update_context make_update_context(flush_context& ctx, const std::shared_ptr<filter>& filter);
   segment_writer::update_context make_update_context(flush_context& ctx, filter::ptr&& filter);
 
+  template<typename Func>
+  bool update(flush_context& ctx, segment_writer& writer, Func func) {
+    document doc(writer);
+
+    try {
+      func(doc);
+      writer.commit();
+    } catch (...) {
+      writer.rollback();
+    }
+
+    if (!writer.valid()) {
+      SCOPED_LOCK(ctx.mutex_); // lock due to context modification
+      ctx.modification_queries_[writer.doc_context().update_id].filter = nullptr; // mark invalid
+      return false;
+    }
+
+    return true;
+  }
+
   bool start(); // starts transaction
   void finish(); // finishes transaction
 
@@ -573,244 +777,6 @@ class IRESEARCH_API index_writer : util::noncopyable {
   index_meta_writer::ptr writer_;
   index_lock::ptr write_lock_; // exclusive write lock for directory
   IRESEARCH_API_PRIVATE_VARIABLES_END
-
-  public:
-
-  class builder : private util::noncopyable {
-   public:
-    ~builder() NOEXCEPT { }
-
-    bool valid() const NOEXCEPT {
-      return writer_->valid();
-    }
-
-    template<typename Field>
-    bool store(Field& field) {
-      return writer_->store(field);
-    }
-
-    template<typename Field>
-    bool store(Field* attr) {
-      assert(attr);
-      return store(*attr);
-    }
-
-    template<typename Field>
-    bool store(std::reference_wrapper<Field> ref) {
-      return store(ref.get());
-    }
-
-    template<typename Field, typename Deleter>
-    bool store(const std::unique_ptr<Field, Deleter>& field) {
-      assert(field);
-      return store(*field);
-    }
-
-    template<typename Field>
-    bool store(const std::shared_ptr<Field>& field) {
-      assert(field);
-      return store(*field);
-    }
-
-    template<typename Iterator>
-    bool store(Iterator begin, Iterator end) {
-      for (; valid() && begin != end; ++begin) {
-        store(*begin);
-      }
-      return valid();
-    }
-
-    template<typename Field>
-    bool index(Field& field) {
-      return writer_->index(field);
-    }
-
-    template<typename Field>
-    bool index(Field* field) {
-      assert(field);
-      return index(*field);
-    }
-
-    template<typename Field>
-    bool index(std::reference_wrapper<Field> field) {
-      return index(field.get());
-    }
-
-    template<typename Field, typename Deleter>
-    bool index(const std::unique_ptr<Field, Deleter>& field) {
-      assert(field);
-      return index(*field);
-    }
-
-    template<typename Field>
-    bool index(const std::shared_ptr<Field>& field) {
-      assert(field);
-      return index(*field);
-    }
-
-    template<typename Iterator>
-    bool index(Iterator begin, Iterator end) {
-      for (; valid() && begin != end; ++begin) {
-        index(*begin);
-      }
-      return valid();
-    }
-
-    template<typename Field>
-    bool index_and_store(Field& field) {
-      return writer_->index_and_store(field);
-    }
-
-    template<typename Field>
-    bool index_and_store(Field* field) {
-      assert(field);
-      return index_and_store(*field);
-    }
-
-    template<typename Field>
-    bool index_and_store(std::reference_wrapper<Field> field) {
-      return index_and_store(field.get());
-    }
-
-    template<typename Field, typename Deleter>
-    bool index_and_store(const std::unique_ptr<Field, Deleter>& field) {
-      assert(field);
-      return index_and_store(*field);
-    }
-
-    template<typename Field>
-    bool index_and_store(const std::shared_ptr<Field>& field) {
-      assert(field);
-      return index_and_store(*field);
-    }
-
-    template<typename Iterator>
-    bool index_and_store(Iterator begin ,Iterator end) {
-      for (; valid() && begin != end; ++begin) {
-        index_and_store(*begin);
-      }
-      return valid();
-    }
-
-   protected:
-    builder(
-      std::shared_ptr<segment_writer>&& writer,
-      std::shared_ptr<flush_context>&& ctx) NOEXCEPT
-    : writer_(std::move(writer)),
-      ctx_(std::move(ctx)) {
-    }
-
-    builder(builder&& rhs) NOEXCEPT
-      : writer_(std::move(rhs.writer_)),
-        ctx_(std::move(rhs.ctx_)) {
-    }
-
-    std::shared_ptr<segment_writer> writer_;
-    std::shared_ptr<flush_context> ctx_;
-  };
-
-  class inserter : public builder {
-   public:
-    inserter(
-      std::shared_ptr<segment_writer>&& writer,
-      std::shared_ptr<flush_context>&& ctx) NOEXCEPT
-      : builder(std::move(writer), std::move(ctx)) {
-    }
-
-    inserter(inserter&& rhs) NOEXCEPT
-      : builder(std::move(rhs)) {
-    }
-
-    void commit(bool allow_empty = false) {
-      writer_->commit(allow_empty);
-      writer_->begin(index_writer::make_update_context(*ctx_));
-    }
-
-    ~inserter() NOEXCEPT {
-      try {
-        writer_->commit(false);
-      } catch (...) {
-        // suppress all errors
-      }
-    }
-  };
-
-  class updater : public builder {
-   public:
-    updater(
-      std::shared_ptr<segment_writer>&& writer,
-      std::shared_ptr<flush_context>&& ctx) NOEXCEPT
-      : builder(std::move(writer), std::move(ctx)) {
-    }
-
-    updater(updater&& rhs) NOEXCEPT
-      : builder(std::move(rhs)) {
-    }
-
-    ~updater() NOEXCEPT {
-      try {
-        writer_->commit();
-      } catch (...) {
-        // suppress all errors
-      }
-
-      if (!valid()) {
-        SCOPED_LOCK(ctx_->mutex_); // lock due to context modification
-        ctx_->modification_queries_[writer_->doc_context().update_id].filter = nullptr; // mark invalid
-      }
-    }
-  };
-
-  template<
-    typename Indexed,
-    typename Stored,
-    typename IndexedStored
-  > bool fill(
-      builder& builder,
-      Indexed ibegin, Indexed iend,
-      Stored sbegin, Stored send,
-      IndexedStored isbegin, IndexedStored isend) {
-    builder.index(ibegin, iend);
-    builder.store(sbegin, send);
-    builder.index_and_store(isbegin, isend);
-    return builder.valid();
-  }
-
-  inserter insert() {
-    auto ctx = get_flush_context(); // retain lock until end of instert(...)
-    auto writer = get_segment_context(*ctx);
-
-    writer->begin(make_update_context(*ctx));
-    return inserter(std::move(writer), std::move(ctx));
-  }
-
-  updater update(const irs::filter& filter) {
-    auto ctx = get_flush_context(); // retain lock until end of instert(...)
-    auto writer = get_segment_context(*ctx);
-
-    writer->begin(make_update_context(*ctx, filter));
-    return updater(std::move(writer), std::move(ctx));
-  }
-
-  updater update(filter::ptr&& filter) {
-    // FIXME check filter for null and return invalid updater with invaid writer
-
-    auto ctx = get_flush_context(); // retain lock until end of instert(...)
-    auto writer = get_segment_context(*ctx);
-
-    writer->begin(make_update_context(*ctx, std::move(filter)));
-    return updater(std::move(writer), std::move(ctx));
-  }
-
-  updater update(const std::shared_ptr<irs::filter>& filter) {
-    // FIXME check filter for null and return invalid updater with invaid writer
-
-    auto ctx = get_flush_context(); // retain lock until end of instert(...)
-    auto writer = get_segment_context(*ctx);
-
-    writer->begin(make_update_context(*ctx, filter));
-    return updater(std::move(writer), std::move(ctx));
-  }
 }; // index_writer
 
 NS_END

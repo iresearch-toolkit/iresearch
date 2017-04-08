@@ -54,7 +54,6 @@ bool segment_writer::index_field(
     const flags& features,
     float_t boost) {
   REGISTER_TIMER_DETAILED();
-  empty_ = false;
 
   const doc_id_t doc_id = docs_cached();
   auto& slot = fields_.get(name);

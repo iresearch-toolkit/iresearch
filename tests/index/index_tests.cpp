@@ -1756,6 +1756,68 @@ class index_test_case_base : public tests::index_test_base {
     }
   }
 
+  void writer_bulk_insert() {
+    class field {
+     public:
+      field(std::string&& name, const ir::string_ref& value)
+        : name_(std::move(name)),
+        value_(value) {}
+      field(field&& other) NOEXCEPT
+        : stream_(std::move(other.stream_)),
+          name_(std::move(other.name_)),
+          value_(std::move(other.value_)) {
+      }
+      ir::string_ref name() const { return name_; }
+      float_t boost() const { return 1.f; }
+      ir::token_stream& get_tokens() const {
+        stream_.reset(value_);
+        return stream_;
+      }
+      const ir::flags& features() const {
+        return ir::flags::empty_instance();
+      }
+      bool write(ir::data_output& out) const NOEXCEPT {
+        return true;
+      }
+
+     private:
+      mutable ir::string_token_stream stream_;
+      std::string name_;
+      ir::string_ref value_;
+    }; // field
+
+    // insert documents
+    auto writer = ir::index_writer::make(dir(), codec(), ir::OM_CREATE);
+
+    size_t i = 0;
+    const size_t max = 2;
+    auto bulk_inserter = [&i, &max](irs::index_writer::document& doc) mutable {
+      switch (i) {
+        case 0: {
+          field fld("name", "doc0");
+          doc.index(fld);
+        } break;
+        case 1: {
+          field fld("name", "doc1");
+          doc.index(fld);
+        } break;
+      }
+
+      return ++i == max;
+    };
+
+    ASSERT_TRUE(writer->insert(bulk_inserter));
+    writer->commit();
+
+    // check index
+    {
+      auto reader = ir::directory_reader::open(dir());
+      ASSERT_EQ(1, reader.size());
+      auto& segment = reader[0];
+      ASSERT_EQ(2, reader->docs_count());
+    }
+  }
+
   void writer_accept_pointer_to_field() {
     class field {
      public:
@@ -2103,6 +2165,10 @@ TEST_F(memory_index_test, writer_atomicity_check) {
 
 TEST_F(memory_index_test, writer_accept_pointer_to_field) {
   writer_accept_pointer_to_field();
+}
+
+TEST_F(memory_index_test, writer_bulk_insert) {
+  writer_bulk_insert();
 }
 
 TEST_F(memory_index_test, writer_begin_rollback) {
