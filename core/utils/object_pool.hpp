@@ -20,6 +20,7 @@
 #include "shared.hpp"
 #include "thread_utils.hpp"
 #include "misc.hpp"
+#include "noncopyable.hpp"
 
 NS_ROOT
 
@@ -98,7 +99,52 @@ template<typename T>
 class bounded_object_pool : atomic_base<typename T::ptr> {
  public:
   typedef atomic_base<typename T::ptr> atomic_utils;
-  DECLARE_SPTR(typename T::ptr::element_type);
+  typedef typename T::ptr::element_type element_type;
+
+  // do not use std::shared_ptr to avoid unnecessary heap allocatons
+  class ptr : util::noncopyable {
+   public:
+    ptr(element_type* ptr, bounded_object_pool* owner, size_t i) NOEXCEPT
+      : ptr_(ptr), owner_(owner), i_(i) {
+    }
+
+    ptr(ptr&& rhs) NOEXCEPT
+      : ptr_(rhs.ptr_) {
+      rhs.ptr_ = nullptr; // take ownership
+    }
+
+    ptr& operator=(ptr&& rhs) NOEXCEPT {
+      if (this != &rhs) {
+        ptr_ = rhs.ptr_;
+        rhs.ptr_ = nullptr; // take ownership
+      }
+      return *this;
+    }
+
+    ~ptr() NOEXCEPT {
+      reset();
+    }
+
+    void reset() NOEXCEPT {
+      if (!ptr_) {
+        // nothing to do
+        return;
+      }
+
+      owner_->unlock(i_);
+      ptr_ = nullptr; // release ownership
+    }
+
+    element_type& operator*() const NOEXCEPT { return *ptr_; }
+    element_type* operator->() const NOEXCEPT { return ptr_; }
+    element_type* get() const NOEXCEPT { return ptr_; }
+    operator bool() const NOEXCEPT { return ptr_; }
+
+   private:
+    element_type* ptr_;
+    bounded_object_pool* owner_;
+    size_t i_;
+  }; // ptr
 
   explicit bounded_object_pool(size_t size)
     : free_count_(std::max(size_t(1), size)), 
@@ -127,10 +173,7 @@ class bounded_object_pool : atomic_base<typename T::ptr> {
             }
           }
 
-          return ptr(
-            slot.get(), 
-            [this, i](typename ptr::element_type*) { unlock(i); }
-          );
+          return ptr(slot.get(), this, i);
         }
       }
 

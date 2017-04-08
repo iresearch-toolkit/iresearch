@@ -2450,7 +2450,7 @@ class context_provider : private util::noncopyable {
     name_ = std::move(name);
   }
 
-  read_context_t::ptr get_context() const {
+  bounded_object_pool<read_context_t>::ptr get_context() const {
     return pool_.emplace(*dir_, name_);
   }
 
