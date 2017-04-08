@@ -573,12 +573,7 @@ index_writer::flush_context::ptr index_writer::get_flush_context(bool shared /*=
 
       lock.release();
 
-      return flush_context::ptr(ctx, [](flush_context* ctx)->void {
-        async_utils::read_write_mutex::write_mutex mutex(ctx->flush_mutex_);
-        ADOPT_SCOPED_LOCK_NAMED(mutex, lock);
-
-        ctx->reset(); // reset context and make ready for reuse
-      });
+      return flush_context::ptr(ctx, false);
     }
   }
 
@@ -604,10 +599,7 @@ index_writer::flush_context::ptr index_writer::get_flush_context(bool shared /*=
 
     lock.release();
 
-    return flush_context::ptr(ctx, [](flush_context* ctx)->void {
-      async_utils::read_write_mutex::read_mutex mutex(ctx->flush_mutex_);
-      ADOPT_SCOPED_LOCK_NAMED(mutex, lock);
-    });
+    return flush_context::ptr(ctx, true);
   }
 }
 

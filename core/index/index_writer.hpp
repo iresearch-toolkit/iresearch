@@ -654,7 +654,59 @@ class IRESEARCH_API index_writer : util::noncopyable {
     typedef std::vector<import_context> imported_segments_t;
     typedef std::unordered_set<string_ref> segment_mask_t;
     typedef bounded_object_pool<segment_writer> segment_writers_t;
-    DECLARE_SPTR(flush_context);
+
+    // do not use std::shared_ptr to avoid unnecessary heap allocatons
+    class ptr : util::noncopyable {
+     public:
+      ptr(flush_context* ctx = nullptr, bool shared = false) NOEXCEPT
+        : ctx(ctx), shared(shared) {
+      }
+
+      ptr(ptr&& rhs) NOEXCEPT
+        : ctx(rhs.ctx), shared(rhs.shared) {
+        rhs.ctx = nullptr; // take ownership
+      }
+
+      ptr& operator=(ptr&& rhs) NOEXCEPT {
+        if (this != &rhs) {
+          ctx = rhs.ctx;
+          rhs.ctx = nullptr; // take ownership
+          shared = rhs.shared;
+        }
+        return *this;
+      }
+
+      ~ptr() NOEXCEPT {
+        reset();
+      }
+
+      void reset() NOEXCEPT {
+        if (!ctx) {
+          // nothing to do
+          return;
+        }
+
+        if (!shared) {
+          async_utils::read_write_mutex::write_mutex mutex(ctx->flush_mutex_);
+          ADOPT_SCOPED_LOCK_NAMED(mutex, lock);
+
+          ctx->reset(); // reset context and make ready for reuse
+        } else {
+          async_utils::read_write_mutex::read_mutex mutex(ctx->flush_mutex_);
+          ADOPT_SCOPED_LOCK_NAMED(mutex, lock);
+        }
+
+        ctx = nullptr;
+      }
+
+      flush_context& operator*() const NOEXCEPT { return *ctx; }
+      flush_context* operator->() const NOEXCEPT { return ctx; }
+      operator bool() const NOEXCEPT { return ctx; }
+
+     private:
+      flush_context* ctx;
+      bool shared;
+    }; // ptr
 
     consolidation_requests_t consolidation_policies_; // sequential list of segment merge policies to apply at the end of commit to all segments
     std::atomic<size_t> generation_; // current modification/update generation
