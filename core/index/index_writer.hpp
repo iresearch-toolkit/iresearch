@@ -236,16 +236,16 @@ class IRESEARCH_API index_writer : util::noncopyable {
 
     document doc(*writer);
 
-    bool stop = true;
+    bool has_next = true;
     do {
       writer->begin(make_update_context(*ctx));
       try {
-        stop = func(doc);
+        has_next = func(doc);
         writer->commit();
       } catch (...) {
         writer->rollback();
       }
-    } while (!stop);
+    } while (has_next);
 
     return writer->valid();
   }
@@ -321,7 +321,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
       doc.index(ibegin, iend);
       doc.store(sbegin, send);
       doc.index_and_store(isbegin, isend);
-      return true; // break the loop
+      return false; // break the loop
     };
 
     return insert(func);

@@ -1803,7 +1803,7 @@ class index_test_case_base : public tests::index_test_base {
         } break;
       }
 
-      return ++i == max;
+      return ++i != max;
     };
 
     ASSERT_TRUE(writer->insert(bulk_inserter));
