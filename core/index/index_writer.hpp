@@ -650,7 +650,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
   typedef std::vector<consolidation_context> consolidation_requests_t;
   typedef std::vector<modification_context> modification_requests_t;
 
-  struct flush_context {
+  struct IRESEARCH_API flush_context {
     typedef std::vector<import_context> imported_segments_t;
     typedef std::unordered_set<string_ref> segment_mask_t;
     typedef bounded_object_pool<segment_writer> segment_writers_t;
