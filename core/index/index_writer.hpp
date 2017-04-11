@@ -701,7 +701,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
 
       flush_context& operator*() const NOEXCEPT { return *ctx; }
       flush_context* operator->() const NOEXCEPT { return ctx; }
-      operator bool() const NOEXCEPT { return ctx; }
+      operator bool() const NOEXCEPT { return nullptr != ctx; }
 
      private:
       flush_context* ctx;
