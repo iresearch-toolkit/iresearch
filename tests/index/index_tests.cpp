@@ -562,7 +562,7 @@ class index_test_case_base : public tests::index_test_base {
 
         for (const tests::document* doc; (doc = import_gen.next());) {
           REGISTER_TIMER_NAMED_DETAILED("init - insert");
-          import_writer->insert(doc->indexed.begin(), doc->indexed.end(), doc->stored.begin(), doc->stored.end());
+          insert(*import_writer, doc->indexed.begin(), doc->indexed.end(), doc->stored.begin(), doc->stored.end());
         }
       }
 
@@ -615,7 +615,7 @@ class index_test_case_base : public tests::index_test_base {
 
             {
               REGISTER_TIMER_NAMED_DETAILED("load");
-              writer->insert(
+              insert(*writer,
                 csv_doc_template.indexed.begin(), csv_doc_template.indexed.end(), 
                 csv_doc_template.stored.begin(), csv_doc_template.stored.end()
               );
@@ -724,7 +724,7 @@ class index_test_case_base : public tests::index_test_base {
               csv_doc_template.insert(std::make_shared<tests::templates::string_field>("updated"));
 
               REGISTER_TIMER_NAMED_DETAILED("update");
-              writer->update(
+              update(*writer,
                 std::move(filter),
                 csv_doc_template.indexed.begin(), csv_doc_template.indexed.end(), 
                 csv_doc_template.stored.begin(), csv_doc_template.stored.end()
@@ -932,7 +932,7 @@ class index_test_case_base : public tests::index_test_base {
       tests::document const* doc1 = gen.next();
       ASSERT_EQ(0, writer->buffered_docs());
       ASSERT_TRUE(
-        writer->insert(
+        insert(*writer,
           doc1->indexed.begin(), doc1->indexed.end(),
           doc1->stored.begin(), doc1->stored.end()
         )
@@ -969,7 +969,7 @@ class index_test_case_base : public tests::index_test_base {
       auto writer = ir::index_writer::make(dir(), codec(), ir::OM_CREATE);
 
       ASSERT_TRUE(
-        writer->insert(
+        insert(*writer,
           doc1->indexed.begin(), doc1->indexed.end(),
           doc1->stored.begin(), doc1->stored.end()
         )
@@ -978,7 +978,7 @@ class index_test_case_base : public tests::index_test_base {
       writer->begin(); // start transaction #1 
       ASSERT_EQ(0, writer->buffered_docs());
       ASSERT_TRUE(
-        writer->insert(
+        insert(*writer,
           doc2->indexed.begin(), doc2->indexed.end(),
           doc2->stored.begin(), doc2->stored.end()
         )
@@ -1060,7 +1060,7 @@ class index_test_case_base : public tests::index_test_base {
       auto writer = ir::index_writer::make(dir(), codec(), ir::OM_CREATE);
 
       ASSERT_TRUE(
-        writer->insert(
+        insert(*writer,
           doc1->indexed.begin(), doc1->indexed.end(),
           doc1->stored.begin(), doc1->stored.end()
         )
@@ -1092,7 +1092,7 @@ class index_test_case_base : public tests::index_test_base {
     // test rolled-back index can still be opened after directory cleaner run
     {
       auto writer = ir::index_writer::make(dir(), codec(), ir::OM_CREATE);
-      ASSERT_TRUE(writer->insert(
+      ASSERT_TRUE(insert(*writer,
         doc2->indexed.begin(), doc2->indexed.end(),
         doc2->stored.begin(), doc2->stored.end()
       ));
@@ -1102,7 +1102,7 @@ class index_test_case_base : public tests::index_test_base {
       auto dir_visitor = [&file_count](std::string&)->bool { ++file_count; return true; };
       dir().visit(dir_visitor);
       auto file_count_before = file_count;
-      ASSERT_TRUE(writer->insert(
+      ASSERT_TRUE(insert(*writer,
         doc3->indexed.begin(), doc3->indexed.end(),
         doc3->stored.begin(), doc3->stored.end()
       ));
@@ -1136,7 +1136,7 @@ class index_test_case_base : public tests::index_test_base {
     // write some data into columnstore
     auto writer = open_writer();
     for (auto* doc = gen.next(); doc; doc = gen.next()) {
-      ASSERT_TRUE(writer->insert(
+      ASSERT_TRUE(insert(*writer,
         doc->indexed.end(), doc->indexed.end(), 
         doc->stored.begin(), doc->stored.end()
       ));
@@ -1222,7 +1222,7 @@ class index_test_case_base : public tests::index_test_base {
 
       const tests::document* doc;
       while (doc = gen.next()) {
-        ASSERT_TRUE(writer->insert(
+        ASSERT_TRUE(insert(*writer,
           doc->indexed.end(), doc->indexed.end(), 
           doc->stored.begin(), doc->stored.end()
         ));
@@ -1369,10 +1369,10 @@ class index_test_case_base : public tests::index_test_base {
       auto writer = ir::index_writer::make(dir(), codec(), ir::OM_CREATE);
 
       // fields only
-      ASSERT_TRUE(writer->insert(doc1->indexed.begin(), doc1->indexed.end()));
-      ASSERT_TRUE(writer->insert(doc2->indexed.begin(), doc2->indexed.end()));
-      ASSERT_TRUE(writer->insert(doc3->indexed.begin(), doc3->indexed.end()));
-      ASSERT_TRUE(writer->insert(doc4->indexed.begin(), doc4->indexed.end()));
+      ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end()));
+      ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end()));
+      ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end()));
+      ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end()));
       writer->commit();
     }
 
@@ -1406,10 +1406,10 @@ class index_test_case_base : public tests::index_test_base {
       auto writer = ir::index_writer::make(dir(), codec(), ir::OM_CREATE);
 
       // attributes only
-      ASSERT_TRUE(writer->insert(doc1->indexed.end(), doc1->indexed.end(), doc1->stored.begin(), doc1->stored.end()));
-      ASSERT_TRUE(writer->insert(doc2->indexed.end(), doc2->indexed.end(), doc2->stored.begin(), doc2->stored.end()));
-      ASSERT_TRUE(writer->insert(doc3->indexed.end(), doc3->indexed.end(), doc3->stored.begin(), doc3->stored.end()));
-      ASSERT_TRUE(writer->insert(doc4->indexed.end(), doc4->indexed.end(), doc4->stored.begin(), doc4->stored.end()));
+      ASSERT_TRUE(insert(*writer, doc1->indexed.end(), doc1->indexed.end(), doc1->stored.begin(), doc1->stored.end()));
+      ASSERT_TRUE(insert(*writer, doc2->indexed.end(), doc2->indexed.end(), doc2->stored.begin(), doc2->stored.end()));
+      ASSERT_TRUE(insert(*writer, doc3->indexed.end(), doc3->indexed.end(), doc3->stored.begin(), doc3->stored.end()));
+      ASSERT_TRUE(insert(*writer, doc4->indexed.end(), doc4->indexed.end(), doc4->stored.begin(), doc4->stored.end()));
       writer->commit();
     }
 
@@ -1490,7 +1490,7 @@ class index_test_case_base : public tests::index_test_base {
 
       const tests::document* doc;
       while (doc = gen.next()) {
-        ASSERT_TRUE(writer->insert(doc->indexed.end(), doc->indexed.end(), doc->stored.begin(), doc->stored.end()));
+        ASSERT_TRUE(insert(*writer, doc->indexed.end(), doc->indexed.end(), doc->stored.begin(), doc->stored.end()));
       }
       writer->commit();
     }
@@ -1704,7 +1704,7 @@ class index_test_case_base : public tests::index_test_base {
         std::vector<field> doc;
         doc.emplace_back(std::string("name"), ir::string_ref("", 0));
         doc.emplace_back(std::string("name"), ir::string_ref::nil);
-        ASSERT_TRUE(writer->insert(doc.begin(), doc.end()));
+        ASSERT_TRUE(insert(*writer, doc.begin(), doc.end()));
       }
       // doc1: nullptr, empty, nullptr
       {
@@ -1712,7 +1712,7 @@ class index_test_case_base : public tests::index_test_base {
         doc.emplace_back(std::string("name1"), ir::string_ref::nil);
         doc.emplace_back(std::string("name1"), ir::string_ref("", 0));
         doc.emplace_back(std::string("name"), ir::string_ref::nil);
-        ASSERT_TRUE(writer->insert(doc.begin(), doc.end()));
+        ASSERT_TRUE(insert(*writer, doc.begin(), doc.end()));
       }
       writer->commit();
     }
@@ -1795,11 +1795,11 @@ class index_test_case_base : public tests::index_test_base {
       switch (i) {
         case 0: {
           field fld("name", "doc0");
-          doc.index(fld);
+          doc.insert<irs::Action::INDEX>(fld);
         } break;
         case 1: {
           field fld("name", "doc1");
-          doc.index(fld);
+          doc.insert<irs::Action::INDEX>(fld);
         } break;
       }
 
@@ -1856,31 +1856,20 @@ class index_test_case_base : public tests::index_test_base {
 
     std::vector<field*> pointers;
     std::vector<const field*> const_pointers;
-    std::vector<std::reference_wrapper<field>> refs;
-    std::vector<std::reference_wrapper<const field>> crefs;
     for (auto& field : fields) {
       pointers.emplace_back(&field);
       const_pointers.emplace_back(&field);
-      refs.emplace_back(field);
-      crefs.emplace_back(field);
     }
 
     // pointers
 
     // index only
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       pointers.begin(), pointers.end()
     ));
 
     // index and store
-    ASSERT_TRUE(writer->insert(
-      pointers.begin(), pointers.end(),
-      pointers.begin(), pointers.end()
-    ));
-
-    // index and store
-    ASSERT_TRUE(writer->insert(
-      pointers.begin(), pointers.end(),
+    ASSERT_TRUE(insert(*writer,
       pointers.begin(), pointers.end(),
       pointers.begin(), pointers.end()
     ));
@@ -1888,61 +1877,14 @@ class index_test_case_base : public tests::index_test_base {
     // const pointers
 
     // index only
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       const_pointers.begin(), const_pointers.end()
     ));
 
     // index and store
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       const_pointers.begin(), const_pointers.end(),
       const_pointers.begin(), const_pointers.end()
-    ));
-
-    // index and store
-    ASSERT_TRUE(writer->insert(
-      const_pointers.begin(), const_pointers.end(),
-      const_pointers.begin(), const_pointers.end(),
-      const_pointers.begin(), const_pointers.end()
-    ));
-
-    // references
-
-    // index only
-    ASSERT_TRUE(writer->insert(
-      refs.begin(), refs.end()
-    ));
-
-    // index and store
-    ASSERT_TRUE(writer->insert(
-      refs.begin(), refs.end(),
-      refs.begin(), refs.end()
-    ));
-
-    // index and store
-    ASSERT_TRUE(writer->insert(
-      refs.begin(), refs.end(),
-      refs.begin(), refs.end(),
-      refs.begin(), refs.end()
-    ));
-
-    // const references
-
-    // index only
-    ASSERT_TRUE(writer->insert(
-      crefs.begin(), crefs.end()
-    ));
-
-    // index and store
-    ASSERT_TRUE(writer->insert(
-      crefs.begin(), crefs.end(),
-      crefs.begin(), crefs.end()
-    ));
-
-    // index and store
-    ASSERT_TRUE(writer->insert(
-      crefs.begin(), crefs.end(),
-      crefs.begin(), crefs.end(),
-      crefs.begin(), crefs.end()
     ));
 
     writer->commit();
@@ -1950,7 +1892,7 @@ class index_test_case_base : public tests::index_test_base {
     auto reader = ir::directory_reader::open(dir());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];
-    ASSERT_EQ(12, reader->docs_count());
+    ASSERT_EQ(4, reader->docs_count());
   }
 
   void writer_atomicity_check() {
@@ -2002,19 +1944,19 @@ class index_test_case_base : public tests::index_test_base {
 
       auto writer = ir::index_writer::make(override_dir, codec(), ir::OM_APPEND);
 
-      ASSERT_TRUE(writer->insert(
+      ASSERT_TRUE(insert(*writer,
         doc1->indexed.begin(), doc1->indexed.end(),
         doc1->stored.begin(), doc1->stored.end()
       ));
-      ASSERT_TRUE(writer->insert(
+      ASSERT_TRUE(insert(*writer,
         doc2->indexed.begin(), doc2->indexed.end(),
         doc2->stored.begin(), doc2->stored.end()
       ));
-      ASSERT_TRUE(writer->insert(
+      ASSERT_TRUE(insert(*writer,
         doc3->indexed.begin(), doc3->indexed.end(),
         doc3->stored.begin(), doc3->stored.end()
       ));
-      ASSERT_TRUE(writer->insert(
+      ASSERT_TRUE(insert(*writer,
         doc4->indexed.begin(), doc4->indexed.end(),
         doc4->stored.begin(), doc4->stored.end()
       ));
@@ -2042,19 +1984,19 @@ class index_test_case_base : public tests::index_test_base {
 
       auto writer = ir::index_writer::make(override_dir, codec(), ir::OM_APPEND);
 
-      ASSERT_TRUE(writer->insert(
+      ASSERT_TRUE(insert(*writer,
         doc1->indexed.begin(), doc1->indexed.end(),
         doc1->stored.begin(), doc1->stored.end()
       ));
-      ASSERT_TRUE(writer->insert(
+      ASSERT_TRUE(insert(*writer,
         doc2->indexed.begin(), doc2->indexed.end(),
         doc2->stored.begin(), doc2->stored.end()
       ));
-      ASSERT_TRUE(writer->insert(
+      ASSERT_TRUE(insert(*writer,
         doc3->indexed.begin(), doc3->indexed.end(),
         doc3->stored.begin(), doc3->stored.end()
       ));
-      ASSERT_TRUE(writer->insert(
+      ASSERT_TRUE(insert(*writer,
         doc4->indexed.begin(), doc4->indexed.end(),
         doc4->stored.begin(), doc4->stored.end()
       ));
@@ -2219,7 +2161,7 @@ TEST_F(memory_index_test, concurrent_add) {
     std::thread thread0([&writer, docs](){
       for (size_t i = 0, count = docs.size(); i < count; i += 2) {
         auto& doc = docs[i];
-        ASSERT_TRUE(writer->insert(
+        ASSERT_TRUE(insert(*writer,
           doc->indexed.begin(), doc->indexed.end(),
           doc->stored.begin(), doc->stored.end()
         ));
@@ -2228,7 +2170,7 @@ TEST_F(memory_index_test, concurrent_add) {
     std::thread thread1([&writer, docs](){
       for (size_t i = 1, count = docs.size(); i < count; i += 2) {
         auto& doc = docs[i];
-        ASSERT_TRUE(writer->insert(
+        ASSERT_TRUE(insert(*writer,
           doc->indexed.begin(), doc->indexed.end(),
           doc->stored.begin(), doc->stored.end()
         ));
@@ -2267,7 +2209,7 @@ TEST_F(memory_index_test, concurrent_add_remove) {
 
     std::thread thread0([&writer, docs, &first_doc]() {
       auto& doc = docs[0];
-      writer->insert(
+      insert(*writer,
         doc->indexed.begin(), doc->indexed.end(),
         doc->stored.begin(), doc->stored.end()
       );
@@ -2275,7 +2217,7 @@ TEST_F(memory_index_test, concurrent_add_remove) {
 
       for (size_t i = 2, count = docs.size(); i < count; i += 2) { // skip first doc
         auto& doc = docs[i];
-        writer->insert(
+        insert(*writer,
           doc->indexed.begin(), doc->indexed.end(),
           doc->stored.begin(), doc->stored.end()
         );
@@ -2284,7 +2226,7 @@ TEST_F(memory_index_test, concurrent_add_remove) {
     std::thread thread1([&writer, docs](){
       for (size_t i = 1, count = docs.size(); i < count; i += 2) {
         auto& doc = docs[i];
-        writer->insert(
+        insert(*writer,
           doc->indexed.begin(), doc->indexed.end(),
           doc->stored.begin(), doc->stored.end()
         );
@@ -2352,7 +2294,7 @@ TEST_F(memory_index_test, doc_removal) {
   {
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
@@ -2378,11 +2320,11 @@ TEST_F(memory_index_test, doc_removal) {
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
@@ -2409,11 +2351,11 @@ TEST_F(memory_index_test, doc_removal) {
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
@@ -2440,11 +2382,11 @@ TEST_F(memory_index_test, doc_removal) {
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
@@ -2471,12 +2413,12 @@ TEST_F(memory_index_test, doc_removal) {
     auto query_doc2 = iresearch::iql::query_builder().build("name==B", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
     writer->remove(std::move(query_doc2.filter)); // not present yet
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
@@ -2505,12 +2447,12 @@ TEST_F(memory_index_test, doc_removal) {
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
     writer->remove(std::move(query_doc1.filter));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
@@ -2537,15 +2479,15 @@ TEST_F(memory_index_test, doc_removal) {
     auto query_doc3 = iresearch::iql::query_builder().build("name==C", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
@@ -2574,17 +2516,17 @@ TEST_F(memory_index_test, doc_removal) {
     auto query_doc1_doc2 = iresearch::iql::query_builder().build("name==A||name==B", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->commit();
     writer->remove(std::move(query_doc1_doc2.filter));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
@@ -2610,16 +2552,16 @@ TEST_F(memory_index_test, doc_removal) {
     auto query_doc2 = iresearch::iql::query_builder().build("name==B", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
@@ -2663,20 +2605,20 @@ TEST_F(memory_index_test, doc_removal) {
     auto query_doc1_doc3 = iresearch::iql::query_builder().build("name==A || name==C", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
       doc4->stored.begin(), doc4->stored.end()
     ));
@@ -2722,43 +2664,43 @@ TEST_F(memory_index_test, doc_removal) {
     auto query_doc4 = iresearch::iql::query_builder().build("name==D", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     )); // A
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     )); // B
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     )); // C
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
       doc4->stored.begin(), doc4->stored.end()
     )); // D
     writer->remove(std::move(query_doc4.filter));
     writer->commit();
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc5->indexed.begin(), doc5->indexed.end(),
       doc5->stored.begin(), doc5->stored.end()
     )); // E
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc6->indexed.begin(), doc6->indexed.end(),
       doc6->stored.begin(), doc6->stored.end()
     )); // F
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc7->indexed.begin(), doc7->indexed.end(),
       doc7->stored.begin(), doc7->stored.end()
     )); // G
     writer->remove(std::move(query_doc3_doc7.filter));
     writer->commit();
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc8->indexed.begin(), doc8->indexed.end(),
       doc8->stored.begin(), doc8->stored.end()
     )); // H
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc9->indexed.begin(), doc9->indexed.end(),
       doc9->stored.begin(), doc9->stored.end()
     )); // I
@@ -2836,11 +2778,11 @@ TEST_F(memory_index_test, doc_update) {
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(writer->update(
+    ASSERT_TRUE(update(*writer,
       *(query_doc1.filter.get()),
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
@@ -2867,11 +2809,11 @@ TEST_F(memory_index_test, doc_update) {
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(writer->update(
+    ASSERT_TRUE(update(*writer,
       std::move(query_doc1.filter),
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
@@ -2898,11 +2840,11 @@ TEST_F(memory_index_test, doc_update) {
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(writer->update(
+    ASSERT_TRUE(update(*writer,
       std::shared_ptr<iresearch::filter>(std::move(query_doc1.filter)),
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
@@ -2929,16 +2871,16 @@ TEST_F(memory_index_test, doc_update) {
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->commit();
-    ASSERT_TRUE(writer->update(
+    ASSERT_TRUE(update(*writer,
       std::move(query_doc1.filter),
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
@@ -2984,21 +2926,21 @@ TEST_F(memory_index_test, doc_update) {
     auto query_doc3 = iresearch::iql::query_builder().build("name==C", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(writer->update(
+    ASSERT_TRUE(update(*writer,
       std::move(query_doc1.filter),
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
-    ASSERT_TRUE(writer->update(
+    ASSERT_TRUE(update(*writer,
       std::move(query_doc2.filter),
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
-    ASSERT_TRUE(writer->update(
+    ASSERT_TRUE(update(*writer,
       std::move(query_doc3.filter),
       doc4->indexed.begin(), doc4->indexed.end(),
       doc4->stored.begin(), doc4->stored.end()
@@ -3027,24 +2969,24 @@ TEST_F(memory_index_test, doc_update) {
     auto query_doc3 = iresearch::iql::query_builder().build("name==C", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
     writer->commit();
-    ASSERT_TRUE(writer->update(
+    ASSERT_TRUE(update(*writer,
       std::move(query_doc1.filter),
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->commit();
-    ASSERT_TRUE(writer->update(
+    ASSERT_TRUE(update(*writer,
       std::move(query_doc2.filter),
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
     writer->commit();
-    ASSERT_TRUE(writer->update(
+    ASSERT_TRUE(update(*writer,
       std::move(query_doc3.filter),
       doc4->indexed.begin(), doc4->indexed.end(),
       doc4->stored.begin(), doc4->stored.end()
@@ -3071,12 +3013,12 @@ TEST_F(memory_index_test, doc_update) {
     auto query_doc2 = iresearch::iql::query_builder().build("name==B", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
     writer->commit();
-    ASSERT_TRUE(writer->update(
+    ASSERT_TRUE(update(*writer,
       std::move(query_doc2.filter),
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
@@ -3103,15 +3045,15 @@ TEST_F(memory_index_test, doc_update) {
     auto query_doc2 = iresearch::iql::query_builder().build("name==B", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
-    ASSERT_TRUE(writer->update(
+    ASSERT_TRUE(update(*writer,
       *(query_doc2.filter),
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
@@ -3142,16 +3084,16 @@ TEST_F(memory_index_test, doc_update) {
     auto query_doc2 = iresearch::iql::query_builder().build("name==B", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->commit();
-    ASSERT_TRUE(writer->update(
+    ASSERT_TRUE(update(*writer,
       *(query_doc2.filter),
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
@@ -3197,16 +3139,16 @@ TEST_F(memory_index_test, doc_update) {
     auto query_doc2 = iresearch::iql::query_builder().build("name==B", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->remove(*(query_doc2.filter));
-    ASSERT_TRUE(writer->update(
+    ASSERT_TRUE(update(*writer,
       *(query_doc2.filter),
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
@@ -3233,18 +3175,18 @@ TEST_F(memory_index_test, doc_update) {
     auto query_doc2 = iresearch::iql::query_builder().build("name==B", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->commit();
     writer->remove(*(query_doc2.filter));
     writer->commit();
-    ASSERT_TRUE(writer->update(
+    ASSERT_TRUE(update(*writer,
       *(query_doc2.filter),
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
@@ -3272,21 +3214,21 @@ TEST_F(memory_index_test, doc_update) {
     auto query_doc3 = iresearch::iql::query_builder().build("name==C", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->remove(*(query_doc2.filter));
-    ASSERT_TRUE(writer->update(
+    ASSERT_TRUE(update(*writer,
       *(query_doc2.filter),
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
-    ASSERT_TRUE(writer->update(
+    ASSERT_TRUE(update(*writer,
       *(query_doc3.filter),
       doc4->indexed.begin(), doc4->indexed.end(),
       doc4->stored.begin(), doc4->stored.end()
@@ -3314,24 +3256,24 @@ TEST_F(memory_index_test, doc_update) {
     auto query_doc3 = iresearch::iql::query_builder().build("name==C", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->commit();
     writer->remove(*(query_doc2.filter));
     writer->commit();
-    ASSERT_TRUE(writer->update(
+    ASSERT_TRUE(update(*writer,
       *(query_doc2.filter),
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
     writer->commit();
-    ASSERT_TRUE(writer->update(
+    ASSERT_TRUE(update(*writer,
       *(query_doc3.filter),
       doc4->indexed.begin(), doc4->indexed.end(),
       doc4->stored.begin(), doc4->stored.end()
@@ -3403,23 +3345,23 @@ TEST_F(memory_index_test, doc_update) {
     const_cast<tests::document*>(doc3)->insert(test_field2, true, true); // inject field
     const_cast<tests::document*>(doc4)->insert(test_field3, true, true); // inject field
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     )); // field features subset
-    ASSERT_FALSE(writer->insert(
+    ASSERT_FALSE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     )); // serializer returs false
-    ASSERT_FALSE(writer->insert(
+    ASSERT_FALSE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
       doc4->stored.begin(), doc4->stored.end()
     )); // field features differ
-    ASSERT_FALSE(writer->update(
+    ASSERT_FALSE(update(*writer,
       *(query_doc1.filter.get()), 
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
@@ -3470,11 +3412,11 @@ TEST_F(memory_index_test, import_reader) {
     auto data_writer = iresearch::index_writer::make(data_dir, codec(), iresearch::OM_CREATE);
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
@@ -3508,11 +3450,11 @@ TEST_F(memory_index_test, import_reader) {
     auto data_writer = iresearch::index_writer::make(data_dir, codec(), iresearch::OM_CREATE);
     auto writer = open_writer();
 
-    ASSERT_TRUE(data_writer->insert(
+    ASSERT_TRUE(insert(*data_writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(data_writer->insert(
+    ASSERT_TRUE(insert(*data_writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
@@ -3543,20 +3485,20 @@ TEST_F(memory_index_test, import_reader) {
     auto data_writer = iresearch::index_writer::make(data_dir, codec(), iresearch::OM_CREATE);
     auto writer = open_writer();
 
-    ASSERT_TRUE(data_writer->insert(
+    ASSERT_TRUE(insert(*data_writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(data_writer->insert(
+    ASSERT_TRUE(insert(*data_writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
     data_writer->commit();
-    ASSERT_TRUE(data_writer->insert(
+    ASSERT_TRUE(insert(*data_writer,
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
-    ASSERT_TRUE(data_writer->insert(
+    ASSERT_TRUE(insert(*data_writer,
       doc4->indexed.begin(), doc4->indexed.end(),
       doc4->stored.begin(), doc4->stored.end()
     ));
@@ -3596,20 +3538,20 @@ TEST_F(memory_index_test, import_reader) {
     auto data_writer = iresearch::index_writer::make(data_dir, codec(), iresearch::OM_CREATE);
     auto writer = open_writer();
 
-    ASSERT_TRUE(data_writer->insert(
+    ASSERT_TRUE(insert(*data_writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(data_writer->insert(
+    ASSERT_TRUE(insert(*data_writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
     data_writer->commit();
-    ASSERT_TRUE(data_writer->insert(
+    ASSERT_TRUE(insert(*data_writer,
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
-    ASSERT_TRUE(data_writer->insert(
+    ASSERT_TRUE(insert(*data_writer,
       doc4->indexed.begin(), doc4->indexed.end(),
       doc4->stored.begin(), doc4->stored.end()
     ));
@@ -3644,20 +3586,20 @@ TEST_F(memory_index_test, import_reader) {
     auto data_writer = iresearch::index_writer::make(data_dir, codec(), iresearch::OM_CREATE);
     auto writer = open_writer();
 
-    ASSERT_TRUE(data_writer->insert(
+    ASSERT_TRUE(insert(*data_writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(data_writer->insert(
+    ASSERT_TRUE(insert(*data_writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
     data_writer->commit();
-    ASSERT_TRUE(data_writer->insert(
+    ASSERT_TRUE(insert(*data_writer,
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
-    ASSERT_TRUE(data_writer->insert(
+    ASSERT_TRUE(insert(*data_writer,
       doc4->indexed.begin(), doc4->indexed.end(),
       doc4->stored.begin(), doc4->stored.end()
     ));
@@ -3695,16 +3637,16 @@ TEST_F(memory_index_test, import_reader) {
     auto data_writer = iresearch::index_writer::make(data_dir, codec(), iresearch::OM_CREATE);
     auto writer = open_writer();
 
-    ASSERT_TRUE(data_writer->insert(
+    ASSERT_TRUE(insert(*data_writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(data_writer->insert(
+    ASSERT_TRUE(insert(*data_writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
     data_writer->commit();
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
@@ -3827,11 +3769,11 @@ TEST_F(memory_index_test, refresh_reader) {
   {
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
@@ -3910,11 +3852,11 @@ TEST_F(memory_index_test, refresh_reader) {
   {
     auto writer = open_writer(ir::OPEN_MODE::OM_APPEND);
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
       doc4->stored.begin(), doc4->stored.end()
     ));
@@ -4152,7 +4094,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
@@ -4168,7 +4110,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
@@ -4185,16 +4127,16 @@ TEST_F(memory_index_test, segment_consolidate) {
     auto query_doc1_doc2 = iresearch::iql::query_builder().build("name==A||name==B", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
@@ -4229,16 +4171,16 @@ TEST_F(memory_index_test, segment_consolidate) {
     auto query_doc1_doc2 = iresearch::iql::query_builder().build("name==A||name==B", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
@@ -4274,16 +4216,16 @@ TEST_F(memory_index_test, segment_consolidate) {
     auto query_doc1_doc2 = iresearch::iql::query_builder().build("name==A||name==B", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
@@ -4319,16 +4261,16 @@ TEST_F(memory_index_test, segment_consolidate) {
     auto query_doc1_doc2 = iresearch::iql::query_builder().build("name==A||name==B", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
@@ -4370,11 +4312,11 @@ TEST_F(memory_index_test, segment_consolidate) {
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
@@ -4401,11 +4343,11 @@ TEST_F(memory_index_test, segment_consolidate) {
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
@@ -4437,20 +4379,20 @@ TEST_F(memory_index_test, segment_consolidate) {
     auto query_doc1_doc3 = iresearch::iql::query_builder().build("name==A||name==C", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
       doc4->stored.begin(), doc4->stored.end()
     ));
@@ -4489,20 +4431,20 @@ TEST_F(memory_index_test, segment_consolidate) {
     auto query_doc1_doc3 = iresearch::iql::query_builder().build("name==A||name==C", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
       doc4->stored.begin(), doc4->stored.end()
     ));
@@ -4542,20 +4484,20 @@ TEST_F(memory_index_test, segment_consolidate) {
     auto query_doc1_doc3 = iresearch::iql::query_builder().build("name==A||name==C", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
       doc4->stored.begin(), doc4->stored.end()
     ));
@@ -4595,20 +4537,20 @@ TEST_F(memory_index_test, segment_consolidate) {
     auto query_doc1_doc3 = iresearch::iql::query_builder().build("name==A||name==C", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
       doc4->stored.begin(), doc4->stored.end()
     ));
@@ -4649,29 +4591,29 @@ TEST_F(memory_index_test, segment_consolidate) {
     auto query_doc1_doc3_doc5 = iresearch::iql::query_builder().build("name==A||name==C||name==E", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
       doc4->stored.begin(), doc4->stored.end()
     ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc5->indexed.begin(), doc5->indexed.end(),
       doc5->stored.begin(), doc5->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc6->indexed.begin(), doc6->indexed.end(),
       doc6->stored.begin(), doc6->stored.end()
     ));
@@ -4715,29 +4657,29 @@ TEST_F(memory_index_test, segment_consolidate) {
     auto query_doc1_doc3_doc5 = iresearch::iql::query_builder().build("name==A||name==C||name==E", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
       doc4->stored.begin(), doc4->stored.end()
     ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc5->indexed.begin(), doc5->indexed.end(),
       doc5->stored.begin(), doc5->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc6->indexed.begin(), doc6->indexed.end(),
       doc6->stored.begin(), doc6->stored.end()
     ));
@@ -4781,15 +4723,15 @@ TEST_F(memory_index_test, segment_consolidate) {
   {
     auto writer = open_writer();
     // add 1st segment
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
       doc4->stored.begin(), doc4->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc6->indexed.begin(), doc6->indexed.end(),
       doc6->stored.begin(), doc6->stored.end()
     ));
@@ -4810,15 +4752,15 @@ TEST_F(memory_index_test, segment_consolidate) {
     auto doc1_1 = gen.next();
     auto doc1_2 = gen.next();
     auto doc1_3 = gen.next();
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1_1->indexed.begin(), doc1_1->indexed.end(),
       doc1_1->stored.begin(), doc1_1->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1_2->indexed.begin(), doc1_2->indexed.end(),
       doc1_2->stored.begin(), doc1_2->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1_3->indexed.begin(), doc1_3->indexed.end(),
       doc1_3->stored.begin(), doc1_3->stored.end()
     ));
@@ -4865,15 +4807,15 @@ TEST_F(memory_index_test, segment_consolidate) {
   {
     auto writer = open_writer();
     // add 1st segment
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
       doc4->stored.begin(), doc4->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc6->indexed.begin(), doc6->indexed.end(),
       doc6->stored.begin(), doc6->stored.end()
     ));
@@ -4894,15 +4836,15 @@ TEST_F(memory_index_test, segment_consolidate) {
     auto doc1_1 = gen.next();
     auto doc1_2 = gen.next();
     auto doc1_3 = gen.next();
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1_1->indexed.begin(), doc1_1->indexed.end(),
       doc1_1->stored.begin(), doc1_1->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1_2->indexed.begin(), doc1_2->indexed.end(),
       doc1_2->stored.begin(), doc1_2->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1_3->indexed.begin(), doc1_3->indexed.end(),
       doc1_3->stored.begin(), doc1_3->stored.end()
     ));
@@ -4970,24 +4912,24 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
   {
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
       doc4->stored.begin(), doc4->stored.end()
     ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc5->indexed.begin(), doc5->indexed.end(),
       doc5->stored.begin(), doc5->stored.end()
     ));
@@ -5020,24 +4962,24 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
   {
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
       doc4->stored.begin(), doc4->stored.end()
     ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc5->indexed.begin(), doc5->indexed.end(),
       doc5->stored.begin(), doc5->stored.end()
     ));
@@ -5093,12 +5035,12 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
   {
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
@@ -5132,12 +5074,12 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
   {
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
@@ -5194,25 +5136,25 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
     auto query_doc2_doc3 = iresearch::iql::query_builder().build("name==B||name==C", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
       doc4->stored.begin(), doc4->stored.end()
     ));
     writer->commit();
     writer->remove(std::move(query_doc2_doc3.filter));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc5->indexed.begin(), doc5->indexed.end(),
       doc5->stored.begin(), doc5->stored.end()
     ));
@@ -5246,25 +5188,25 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
     auto query_doc2_doc3_doc4 = iresearch::iql::query_builder().build("name==B||name==C||name==D", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
       doc4->stored.begin(), doc4->stored.end()
     ));
     writer->commit();
     writer->remove(std::move(query_doc2_doc3_doc4.filter));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc5->indexed.begin(), doc5->indexed.end(),
       doc5->stored.begin(), doc5->stored.end()
     ));
@@ -5321,20 +5263,20 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
     auto query_doc2_doc4 = iresearch::iql::query_builder().build("name==B||name==D", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
       doc4->stored.begin(), doc4->stored.end()
     ));
@@ -5370,20 +5312,20 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
     auto query_doc2_doc4 = iresearch::iql::query_builder().build("name==B||name==D", std::locale::classic());
     auto writer = open_writer();
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
       doc4->stored.begin(), doc4->stored.end()
     ));
@@ -5514,7 +5456,7 @@ TEST_F(fs_index_test, writer_close) {
   auto* doc = gen.next();
   auto writer = open_writer();
 
-  ASSERT_TRUE(writer->insert(
+  ASSERT_TRUE(insert(*writer,
     doc->indexed.begin(), doc->indexed.end(),
     doc->stored.begin(), doc->stored.end()
   ));

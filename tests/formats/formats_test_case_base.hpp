@@ -271,11 +271,11 @@ class format_test_case_base : public index_test_base {
 
       // add first segment
       {
-        ASSERT_TRUE(writer->insert(
+        ASSERT_TRUE(insert(*writer,
           doc1->indexed.begin(), doc1->indexed.end(),
           doc1->stored.begin(), doc1->stored.end()
         ));
-        ASSERT_TRUE(writer->insert(
+        ASSERT_TRUE(insert(*writer,
           doc2->indexed.begin(), doc2->indexed.end(),
           doc2->stored.begin(), doc2->stored.end()
         ));
@@ -286,7 +286,7 @@ class format_test_case_base : public index_test_base {
 
       // add second segment (creating new index_meta file, remove old)
       {
-        ASSERT_TRUE(writer->insert(
+        ASSERT_TRUE(insert(*writer,
           doc3->indexed.begin(), doc3->indexed.end(),
           doc3->stored.begin(), doc3->stored.end()
         ));
@@ -346,15 +346,15 @@ class format_test_case_base : public index_test_base {
 
       // add first segment
       {
-        ASSERT_TRUE(writer->insert(
+        ASSERT_TRUE(insert(*writer,
           doc1->indexed.begin(), doc1->indexed.end(),
           doc1->stored.begin(), doc1->stored.end()
         ));
-        ASSERT_TRUE(writer->insert(
+        ASSERT_TRUE(insert(*writer,
           doc2->indexed.begin(), doc2->indexed.end(),
           doc2->stored.begin(), doc2->stored.end()
         ));
-        ASSERT_TRUE(writer->insert(
+        ASSERT_TRUE(insert(*writer,
           doc3->indexed.begin(), doc3->indexed.end(),
           doc3->stored.begin(), doc3->stored.end()
         ));
@@ -393,7 +393,7 @@ class format_test_case_base : public index_test_base {
 
       // add second segment (creating new index_meta file, not-removing old)
       {
-        ASSERT_TRUE(writer->insert(
+        ASSERT_TRUE(insert(*writer,
           doc4->indexed.begin(), doc4->indexed.end(),
           doc4->stored.begin(), doc4->stored.end()
         ));
@@ -453,16 +453,16 @@ class format_test_case_base : public index_test_base {
         auto writer = iresearch::index_writer::make(*dir, codec(), iresearch::OPEN_MODE::OM_CREATE);
 
         writer->commit(); // initialize directory
-        ASSERT_TRUE(writer->insert(
+        ASSERT_TRUE(insert(*writer,
           doc1->indexed.begin(), doc1->indexed.end(),
           doc1->stored.begin(), doc1->stored.end()
         ));
         writer->commit(); // add first segment
-        ASSERT_TRUE(writer->insert(
+        ASSERT_TRUE(insert(*writer,
           doc2->indexed.begin(), doc2->indexed.end(),
           doc2->stored.begin(), doc2->stored.end()
         ));
-        ASSERT_TRUE(writer->insert(
+        ASSERT_TRUE(insert(*writer,
           doc3->indexed.begin(), doc3->indexed.end(),
           doc3->stored.begin(), doc3->stored.end()
         ));

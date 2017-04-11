@@ -182,7 +182,7 @@ namespace tests {
     const document* doc;
 
     while ((doc = generator.next()) != nullptr) {
-      writer->insert(
+      insert(*writer,
         doc->indexed.begin(), doc->indexed.end(),
         doc->stored.begin(), doc->stored.end()
       );

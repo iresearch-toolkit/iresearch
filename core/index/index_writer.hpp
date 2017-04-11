@@ -62,6 +62,49 @@ enum OPEN_MODE {
   OM_CREATE_APPEND
 };
 
+enum class Action : uint32_t {
+  INDEX = 1,
+  STORE = 2
+}; // Action
+
+CONSTEXPR Action operator|(Action lhs, Action rhs) {
+  return enum_bitwise_or(lhs, rhs);
+}
+
+CONSTEXPR Action operator&(Action lhs, Action rhs) {
+  return enum_bitwise_and(lhs, rhs);
+}
+
+template<Action action>
+struct action_traits {
+  template<typename Field>
+  static bool insert(segment_writer& writer, Field& field);
+}; // action_traits
+
+template<>
+struct action_traits<Action::INDEX> {
+  template<typename Field>
+  static bool insert(segment_writer& writer, Field& field) {
+    return writer.index(field);
+  }
+}; // action_traits
+
+template<>
+struct action_traits<Action::STORE> {
+  template<typename Field>
+  static bool insert(segment_writer& writer, Field& field) {
+    return writer.store(field);
+  }
+}; // action_traits
+
+template<>
+struct action_traits<Action::INDEX | Action::STORE> {
+  template<typename Field>
+  static bool insert(segment_writer& writer, Field& field) {
+    return writer.index_and_store(field);
+  }
+}; // action_traits
+
 //////////////////////////////////////////////////////////////////////////////
 /// @class index_writer 
 /// @brief The object is using for indexing data. Only one writer can write to
@@ -82,110 +125,33 @@ class IRESEARCH_API index_writer : util::noncopyable {
       return writer_.valid();
     }
 
-    template<typename Field>
-    bool store(Field& field) const {
-      return writer_.store(field);
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief inserts the specified field into the document
+    /// @note 'field' value type must satisfy the Field concept
+    /// @param field attribute to be inserted
+    /// @return field successfully insterted
+    ////////////////////////////////////////////////////////////////////////////
+    template<Action ACTION, typename Field>
+    bool insert(Field& field) const {
+      return action_traits<ACTION>::insert(writer_, field);
     }
 
-    template<typename Field>
-    bool store(Field* attr) const {
-      assert(attr);
-      return store(*attr);
-    }
-
-    template<typename Field>
-    bool store(std::reference_wrapper<Field> ref) const {
-      return store(ref.get());
-    }
-
-    template<typename Field, typename Deleter>
-    bool store(const std::unique_ptr<Field, Deleter>& field) const {
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief inserts the specified field into the document
+    /// @note '*field' value type must satisfy the Field concept
+    /// @param pointer to field attribute to be inserted
+    /// @return field successfully insterted
+    ////////////////////////////////////////////////////////////////////////////
+    template<Action ACTION, typename Field>
+    bool insert(Field* field) const {
       assert(field);
-      return store(*field);
+      return insert<ACTION>(*field);
     }
 
-    template<typename Field>
-    bool store(const std::shared_ptr<Field>& field) const {
-      assert(field);
-      return store(*field);
-    }
-
-    template<typename Iterator>
-    bool store(Iterator begin, Iterator end) const {
+    template<Action ACTION, typename Iterator>
+    bool insert(Iterator begin, Iterator end) const {
       for (; valid() && begin != end; ++begin) {
-        store(*begin);
-      }
-      return valid();
-    }
-
-    template<typename Field>
-    bool index(Field& field) const {
-      return writer_.index(field);
-    }
-
-    template<typename Field>
-    bool index(Field* field) const {
-      assert(field);
-      return index(*field);
-    }
-
-    template<typename Field>
-    bool index(std::reference_wrapper<Field> field) const {
-      return index(field.get());
-    }
-
-    template<typename Field, typename Deleter>
-    bool index(const std::unique_ptr<Field, Deleter>& field) const {
-      assert(field);
-      return index(*field);
-    }
-
-    template<typename Field>
-    bool index(const std::shared_ptr<Field>& field) const {
-      assert(field);
-      return index(*field);
-    }
-
-    template<typename Iterator>
-    bool index(Iterator begin, Iterator end) const {
-      for (; valid() && begin != end; ++begin) {
-        index(*begin);
-      }
-      return valid();
-    }
-
-    template<typename Field>
-    bool index_and_store(Field& field) const {
-      return writer_.index_and_store(field);
-    }
-
-    template<typename Field>
-    bool index_and_store(Field* field) const {
-      assert(field);
-      return index_and_store(*field);
-    }
-
-    template<typename Field>
-    bool index_and_store(std::reference_wrapper<Field> field) const {
-      return index_and_store(field.get());
-    }
-
-    template<typename Field, typename Deleter>
-    bool index_and_store(const std::unique_ptr<Field, Deleter>& field) const {
-      assert(field);
-      return index_and_store(*field);
-    }
-
-    template<typename Field>
-    bool index_and_store(const std::shared_ptr<Field>& field) const {
-      assert(field);
-      return index_and_store(*field);
-    }
-
-    template<typename Iterator>
-    bool index_and_store(Iterator begin ,Iterator end) const {
-      for (; valid() && begin != end; ++begin) {
-        index_and_store(*begin);
+        insert<ACTION>(*begin);
       }
       return valid();
     }
@@ -229,6 +195,13 @@ class IRESEARCH_API index_writer : util::noncopyable {
   ////////////////////////////////////////////////////////////////////////////
   uint64_t buffered_docs() const;
 
+  // FIXME update documentation
+  ////////////////////////////////////////////////////////////////////////////
+  /// @brief inserts document to be filled by the specified functor into index.
+  /// @note that changes are not visible until commit()
+  /// @param func insertion logic
+  /// @return all fields/attributes successfully insterted
+  ////////////////////////////////////////////////////////////////////////////
   template<typename Func>
   bool insert(Func func) {
     auto ctx = get_flush_context(); // retain lock until end of insert(...)
@@ -250,6 +223,18 @@ class IRESEARCH_API index_writer : util::noncopyable {
     return writer->valid();
   }
 
+  // FIXME update documentation
+  ////////////////////////////////////////////////////////////////////////////
+  /// @brief replaces documents matching filter for with the document
+  ///        represented by the range of fields [begin;end)
+  /// @note iterator underlying value type must satisfy the Field concept
+  /// @note that changes are not visible until commit()
+  /// @note that filter must be valid until commit()
+  /// @param filter the document filter
+  /// @param begin the beginning of the document
+  /// @param end the end of the document
+  /// @return all fields/attributes successfully insterted
+  ////////////////////////////////////////////////////////////////////////////
   template<typename Func>
   bool update(const irs::filter& filter, Func func) {
     auto ctx = get_flush_context(); // retain lock until end of update(...)
@@ -260,6 +245,16 @@ class IRESEARCH_API index_writer : util::noncopyable {
     return update(*ctx, *writer, func);
   }
 
+  // FIXME update documentation
+  ////////////////////////////////////////////////////////////////////////////
+  /// @brief replaces documents matching filter for with the document
+  ///        represented by the range of fields [begin;end)
+  /// @note iterator underlying value type must satisfy the Field concept
+  /// @note that changes are not visible until commit()
+  /// @param filter the document filter
+  /// @param begin the beginning of the document
+  /// @param end the end of the document
+  ////////////////////////////////////////////////////////////////////////////
   template<typename Func>
   bool update(irs::filter::ptr&& filter, Func func) {
     auto ctx = get_flush_context(); // retain lock until end of update(...)
@@ -270,6 +265,16 @@ class IRESEARCH_API index_writer : util::noncopyable {
     return update(*ctx, *writer, func);
   }
 
+  // FIXME update documentation
+  ////////////////////////////////////////////////////////////////////////////
+  /// @brief replaces documents matching filter for with the document
+  ///        represented by the range of fields [begin;end)
+  /// @note iterator underlying value type must satisfy the Field concept
+  /// @note that changes are not visible until commit()
+  /// @param filter the document filter
+  /// @param begin the beginning of the document
+  /// @param end the end of the document
+  ////////////////////////////////////////////////////////////////////////////
   template<typename Func>
   bool update(const std::shared_ptr<irs::filter>& filter, Func func) {
     auto ctx = get_flush_context(); // retain lock until end of update(...)
@@ -278,203 +283,6 @@ class IRESEARCH_API index_writer : util::noncopyable {
     writer->begin(make_update_context(*ctx, filter));
 
     return update(*ctx, *writer, func);
-  }
-
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief inserts document specified by the range of fields [begin;end) 
-  ///        into index. 
-  /// @note iterator underlying value type must satisfy the Field concept
-  /// @note that changes are not visible until commit()
-  /// @param begin the beginning of the document
-  /// @param end the end of the document
-  /// @return all fields/attributes successfully insterted
-  ////////////////////////////////////////////////////////////////////////////
-  template<typename Indexed>
-  bool insert(Indexed begin, Indexed end) {
-    return insert(
-      begin, end,
-      empty::instance(), empty::instance(),
-      empty::instance(), empty::instance()
-    );
-  }
-
-  template<typename Indexed, typename Stored>
-  bool insert(
-      Indexed ibegin, Indexed iend,
-      Stored sbegin, Stored send) {
-    return insert(
-      ibegin, iend,
-      sbegin, send,
-      empty::instance(), empty::instance()
-    );
-  }
-
-  template<
-    typename Indexed,
-    typename Stored,
-    typename IndexedStored
-  > bool insert(
-      Indexed ibegin, Indexed iend,
-      Stored sbegin, Stored send,
-      IndexedStored isbegin, IndexedStored isend) {
-    auto func =[&](document& doc) {
-      doc.index(ibegin, iend);
-      doc.store(sbegin, send);
-      doc.index_and_store(isbegin, isend);
-      return false; // break the loop
-    };
-
-    return insert(func);
-  }
-
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief replaces documents matching filter for with the document
-  ///        represented by the range of fields [begin;end)
-  /// @note iterator underlying value type must satisfy the Field concept
-  /// @note that changes are not visible until commit()
-  /// @note that filter must be valid until commit()
-  /// @param filter the document filter 
-  /// @param begin the beginning of the document
-  /// @param end the end of the document
-  /// @return all fields/attributes successfully insterted
-  ////////////////////////////////////////////////////////////////////////////
-  template<typename Indexed>
-  bool update(const filter& filter, Indexed begin, Indexed end) {
-    return update(
-      filter,
-      begin, end,
-      empty::instance(), empty::instance(),
-      empty::instance(), empty::instance()
-    );
-  }
-
-  template<typename Indexed, typename Stored>
-  bool update(
-      const filter& filter,
-      Indexed ibegin, Indexed iend,
-      Stored sbegin, Stored send) {
-    return update(
-      filter,
-      ibegin, iend,
-      sbegin, send,
-      empty::instance(), empty::instance()
-    );
-  }
-
-  template<
-    typename Indexed, 
-    typename Stored,
-    typename IndexedStored
-  > bool update(
-      const filter& filter,
-      Indexed ibegin, Indexed iend,
-      Stored sbegin, Stored send,
-      IndexedStored isbegin, IndexedStored isend) {
-    auto func =[&](document& doc) {
-      doc.index(ibegin, iend);
-      doc.store(sbegin, send);
-      doc.index_and_store(isbegin, isend);
-    };
-
-    return update(filter, func);
-  }
-
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief replaces documents matching filter for with the document
-  ///        represented by the range of fields [begin;end)
-  /// @note iterator underlying value type must satisfy the Field concept
-  /// @note that changes are not visible until commit()
-  /// @param filter the document filter 
-  /// @param begin the beginning of the document
-  /// @param end the end of the document
-  ////////////////////////////////////////////////////////////////////////////
-  template<typename Indexed>
-  bool update(filter::ptr&& filter, Indexed begin, Indexed end) {
-    return update(
-      std::move(filter),
-      begin, end,
-      empty::instance(), empty::instance(),
-      empty::instance(), empty::instance()
-    );
-  }
-
-  template<typename Indexed, typename Stored>
-  bool update(
-      filter::ptr&& filter,
-      Indexed ibegin, Indexed iend,
-      Stored sbegin, Stored send) {
-    return update(
-      std::move(filter),
-      ibegin, iend,
-      sbegin, send,
-      empty::instance(), empty::instance()
-    );
-  }
-
-  template<typename Indexed, typename Stored, typename IndexedStored>
-  bool update(
-      filter::ptr&& filter,
-      Indexed ibegin, Indexed iend,
-      Stored sbegin, Stored send,
-      IndexedStored isbegin, IndexedStored isend) {
-    auto func =[&](document& doc) {
-      doc.index(ibegin, iend);
-      doc.store(sbegin, send);
-      doc.index_and_store(isbegin, isend);
-    };
-
-    return update(std::move(filter), func);
-  }
-
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief replaces documents matching filter for with the document
-  ///        represented by the range of fields [begin;end)
-  /// @note iterator underlying value type must satisfy the Field concept
-  /// @note that changes are not visible until commit()
-  /// @param filter the document filter 
-  /// @param begin the beginning of the document
-  /// @param end the end of the document
-  ////////////////////////////////////////////////////////////////////////////
-  template<typename Indexed>
-  bool update(
-      const std::shared_ptr<filter>& filter, Indexed begin, Indexed end) {
-    return update(
-      filter,
-      begin, end,
-      empty::instance(), empty::instance(),
-      empty::instance(), empty::instance()
-    );
-  }
-
-  template<typename Indexed, typename Stored>
-  bool update(
-      const std::shared_ptr<filter>& filter, 
-      Indexed ibegin, Indexed iend,
-      Stored sbegin, Stored send) {
-    return update(
-      filter,
-      ibegin, iend,
-      sbegin, send,
-      empty::instance(), empty::instance()
-    );
-  }
-
-  template<
-    typename Indexed,
-    typename Stored,
-    typename IndexedStored
-  > bool update(
-      const std::shared_ptr<filter>& filter,
-      Indexed ibegin, Indexed iend,
-      Stored sbegin, Stored send,
-      IndexedStored isbegin, IndexedStored isend) {
-    auto func =[&](document& doc) {
-      doc.index(ibegin, iend);
-      doc.store(sbegin, send);
-      doc.index_and_store(isbegin, isend);
-    };
-
-    return update(filter, func);
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -570,31 +378,6 @@ class IRESEARCH_API index_writer : util::noncopyable {
 
  private:
   typedef std::vector<index_file_refs::ref_t> file_refs_t;
-
-  struct empty_token_stream : token_stream {
-    bool next() { return false; }
-    const iresearch::attributes& attributes() const NOEXCEPT {
-      return iresearch::attributes::empty_instance();
-    }
-  }; // empty_token_stream
-
-  // empty field and attribute iterator
-  class empty {
-   public:
-    const string_ref& name() const { return string_ref::nil; }
-    token_stream& get_tokens() const {
-      static empty_token_stream instance;
-      return instance;
-    }
-    const flags& features() const { return flags::empty_instance(); }
-    float_t boost() const { return 1.f; }
-    bool write(data_output&) const { return false; }
-
-    CONSTEXPR static empty* instance() { return nullptr; }
-
-   private:
-    empty();
-  }; // empty
 
   struct consolidation_context {
     consolidation_policy_t buf; // policy buffer for moved policies (private use)

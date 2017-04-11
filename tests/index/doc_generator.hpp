@@ -15,6 +15,7 @@
 #include "analysis/token_streams.hpp"
 #include "utils/iterator.hpp"
 #include "store/store_utils.hpp"
+#include "index/index_writer.hpp"
 #include "json_parser.hpp"
 
 #include <fstream>
@@ -349,6 +350,116 @@ class json_doc_generator: public doc_generator_base {
   std::vector<document>::const_iterator prev_;
   std::vector<document>::const_iterator next_;
 }; // json_doc_generator
+
+template<typename Indexed>
+bool insert(
+    irs::index_writer& writer,
+    Indexed ibegin, Indexed iend) {
+  auto inserter = [&](irs::index_writer::document& doc) {
+    doc.insert<irs::Action::INDEX>(ibegin, iend);
+    return false; // break the loop
+  };
+
+  return writer.insert(inserter);
+}
+
+template<typename Indexed, typename Stored>
+bool insert(
+    irs::index_writer& writer,
+    Indexed ibegin, Indexed iend,
+    Stored sbegin, Stored send) {
+  auto inserter = [&](irs::index_writer::document& doc) {
+    doc.insert<irs::Action::INDEX>(ibegin, iend);
+    doc.insert<irs::Action::STORE>(sbegin, send);
+    return false; // break the loop
+  };
+
+  return writer.insert(inserter);
+}
+
+template<typename Indexed>
+bool update(
+    irs::index_writer& writer,
+    const irs::filter& filter,
+    Indexed ibegin, Indexed iend) {
+  auto inserter = [&](irs::index_writer::document& doc) {
+    doc.insert<irs::Action::INDEX>(ibegin, iend);
+    return false; // break the loop
+  };
+
+  return writer.update(filter, inserter);
+}
+
+template<typename Indexed, typename Stored>
+bool update(
+    irs::index_writer& writer,
+    const irs::filter& filter,
+    Indexed ibegin, Indexed iend,
+    Stored sbegin, Stored send) {
+  auto inserter = [&](irs::index_writer::document& doc) {
+    doc.insert<irs::Action::INDEX>(ibegin, iend);
+    doc.insert<irs::Action::STORE>(sbegin, send);
+    return false; // break the loop
+  };
+
+  return writer.update(filter, inserter);
+}
+
+template<typename Indexed>
+bool update(
+    irs::index_writer& writer,
+    irs::filter::ptr&& filter,
+    Indexed ibegin, Indexed iend) {
+  auto inserter = [&](irs::index_writer::document& doc) {
+    doc.insert<irs::Action::INDEX>(ibegin, iend);
+    return false; // break the loop
+  };
+
+  return writer.update(std::move(filter), inserter);
+}
+
+template<typename Indexed, typename Stored>
+bool update(
+    irs::index_writer& writer,
+    irs::filter::ptr&& filter,
+    Indexed ibegin, Indexed iend,
+    Stored sbegin, Stored send) {
+  auto inserter = [&](irs::index_writer::document& doc) {
+    doc.insert<irs::Action::INDEX>(ibegin, iend);
+    doc.insert<irs::Action::STORE>(sbegin, send);
+    return false; // break the loop
+  };
+
+  return writer.update(std::move(filter), inserter);
+}
+
+template<typename Indexed>
+bool update(
+    irs::index_writer& writer,
+    const std::shared_ptr<irs::filter>& filter,
+    Indexed ibegin, Indexed iend) {
+  auto inserter = [&](irs::index_writer::document& doc) {
+    doc.insert<irs::Action::INDEX>(ibegin, iend);
+    return false; // break the loop
+  };
+
+  return writer.update(filter, inserter);
+}
+
+template<typename Indexed, typename Stored>
+bool update(
+    irs::index_writer& writer,
+    const std::shared_ptr<irs::filter>& filter,
+    Indexed ibegin, Indexed iend,
+    Stored sbegin, Stored send) {
+  auto inserter = [&](irs::index_writer::document& doc) {
+    doc.insert<irs::Action::INDEX>(ibegin, iend);
+    doc.insert<irs::Action::STORE>(sbegin, send);
+    return false; // break the loop
+  };
+
+  return writer.update(filter, inserter);
+}
 
 } // tests
 

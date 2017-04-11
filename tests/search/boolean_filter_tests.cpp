@@ -3892,41 +3892,41 @@ protected:
 
       auto writer = open_writer();
 
-      ASSERT_TRUE(writer->insert(
+      ASSERT_TRUE(insert(*writer,
         doc1->indexed.begin(), doc1->indexed.end(),
         doc1->stored.begin(), doc1->stored.end()
       )); // A
-      ASSERT_TRUE(writer->insert(
+      ASSERT_TRUE(insert(*writer,
         doc2->indexed.begin(), doc2->indexed.end(),
         doc2->stored.begin(), doc2->stored.end()
       )); // B
-      ASSERT_TRUE(writer->insert(
+      ASSERT_TRUE(insert(*writer,
         doc3->indexed.begin(), doc3->indexed.end(),
         doc3->stored.begin(), doc3->stored.end()
       )); // C
-      ASSERT_TRUE(writer->insert(
+      ASSERT_TRUE(insert(*writer,
         doc4->indexed.begin(), doc4->indexed.end(),
         doc4->stored.begin(), doc4->stored.end()
       )); // D
       writer->commit();
-      ASSERT_TRUE(writer->insert(
+      ASSERT_TRUE(insert(*writer,
         doc5->indexed.begin(), doc5->indexed.end(),
         doc5->stored.begin(), doc5->stored.end()
       )); // E
-      ASSERT_TRUE(writer->insert(
+      ASSERT_TRUE(insert(*writer,
         doc6->indexed.begin(), doc6->indexed.end(),
         doc6->stored.begin(), doc6->stored.end()
       )); // F
-      ASSERT_TRUE(writer->insert(
+      ASSERT_TRUE(insert(*writer,
         doc7->indexed.begin(), doc7->indexed.end(),
         doc7->stored.begin(), doc7->stored.end()
       )); // G
       writer->commit();
-      ASSERT_TRUE(writer->insert(
+      ASSERT_TRUE(insert(*writer,
         doc8->indexed.begin(), doc8->indexed.end(),
         doc8->stored.begin(), doc8->stored.end()
       )); // H
-      ASSERT_TRUE(writer->insert(
+      ASSERT_TRUE(insert(*writer,
         doc9->indexed.begin(), doc9->indexed.end(),
         doc9->stored.begin(), doc9->stored.end()
       )); // I

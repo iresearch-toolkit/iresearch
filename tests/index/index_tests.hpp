@@ -82,7 +82,7 @@ class index_test_base : public virtual test_base {
     const document* doc;
     while (doc = gen.next()) {
       segment.add(doc->indexed.begin(), doc->indexed.end());
-      writer.insert(doc->indexed.begin(), doc->indexed.end(), doc->stored.begin(), doc->stored.end());
+      insert(writer, doc->indexed.begin(), doc->indexed.end(), doc->stored.begin(), doc->stored.end());
     }
   }
 

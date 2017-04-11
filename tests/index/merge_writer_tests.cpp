@@ -143,11 +143,11 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
   {
     auto query_doc4 = iresearch::iql::query_builder().build("doc_string==string4_data", std::locale::classic());
     auto writer = iresearch::index_writer::make(dir, codec_ptr, iresearch::OM_CREATE);
-    ASSERT_TRUE(writer->insert(doc1.indexed.end(), doc1.indexed.end(), doc1.stored.begin(), doc1.stored.end()));
-    ASSERT_TRUE(writer->insert(doc3.indexed.end(), doc3.indexed.end(), doc3.stored.begin(), doc3.stored.end()));
+    ASSERT_TRUE(insert(*writer, doc1.indexed.end(), doc1.indexed.end(), doc1.stored.begin(), doc1.stored.end()));
+    ASSERT_TRUE(insert(*writer, doc3.indexed.end(), doc3.indexed.end(), doc3.stored.begin(), doc3.stored.end()));
     writer->commit();
-    ASSERT_TRUE(writer->insert(doc2.indexed.end(), doc2.indexed.end(), doc2.stored.begin(), doc2.stored.end()));
-    ASSERT_TRUE(writer->insert(doc4.indexed.begin(), doc4.indexed.end(), doc4.stored.begin(), doc4.stored.end()));
+    ASSERT_TRUE(insert(*writer, doc2.indexed.end(), doc2.indexed.end(), doc2.stored.begin(), doc2.stored.end()));
+    ASSERT_TRUE(insert(*writer, doc4.indexed.begin(), doc4.indexed.end(), doc4.stored.begin(), doc4.stored.end()));
     writer->commit();
     writer->remove(std::move(query_doc4.filter));
     writer->commit();
@@ -550,11 +550,11 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
   // populate directory
   {
     auto writer = iresearch::index_writer::make(dir, codec_ptr, iresearch::OM_CREATE);
-    ASSERT_TRUE(writer->insert(doc1.indexed.end(), doc1.indexed.end(), doc1.stored.begin(), doc1.stored.end()));
-    ASSERT_TRUE(writer->insert(doc3.indexed.end(), doc3.indexed.end(), doc3.stored.begin(), doc3.stored.end()));
+    ASSERT_TRUE(insert(*writer, doc1.indexed.end(), doc1.indexed.end(), doc1.stored.begin(), doc1.stored.end()));
+    ASSERT_TRUE(insert(*writer, doc3.indexed.end(), doc3.indexed.end(), doc3.stored.begin(), doc3.stored.end()));
     writer->commit();
-    ASSERT_TRUE(writer->insert(doc2.indexed.end(), doc2.indexed.end(), doc2.stored.begin(), doc2.stored.end()));
-    ASSERT_TRUE(writer->insert(doc4.indexed.end(), doc4.indexed.end(), doc4.stored.begin(), doc4.stored.end()));
+    ASSERT_TRUE(insert(*writer, doc2.indexed.end(), doc2.indexed.end(), doc2.stored.begin(), doc2.stored.end()));
+    ASSERT_TRUE(insert(*writer, doc4.indexed.end(), doc4.indexed.end(), doc4.stored.begin(), doc4.stored.end()));
     writer->commit();
     writer->close();
   }
@@ -988,20 +988,20 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     auto query_doc4 = iresearch::iql::query_builder().build("doc_string==string4_data", std::locale::classic());
     auto writer = iresearch::index_writer::make(dir, codec_ptr, iresearch::OM_CREATE);
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1.indexed.begin(), doc1.indexed.end(),
       doc1.stored.begin(), doc1.stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2.indexed.begin(), doc2.indexed.end(),
       doc2.stored.begin(), doc2.stored.end()
     ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc3.indexed.begin(), doc3.indexed.end(),
       doc3.stored.begin(), doc3.stored.end()
     ));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc4.indexed.begin(), doc4.indexed.end(),
       doc4.stored.begin(), doc4.stored.end()
     ));
@@ -2084,12 +2084,12 @@ TEST_F(merge_writer_tests, test_merge_writer_field_features) {
   // populate directory
   {
     auto writer = iresearch::index_writer::make(dir, codec_ptr, iresearch::OM_CREATE);
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1.indexed.begin(), doc1.indexed.end(),
       doc1.stored.begin(), doc1.stored.end()
     ));
     writer->commit();
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2.indexed.begin(), doc2.indexed.end(),
       doc2.stored.begin(), doc2.stored.end()
     ));

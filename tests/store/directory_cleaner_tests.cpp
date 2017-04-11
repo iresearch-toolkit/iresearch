@@ -239,7 +239,7 @@ TEST_F(directory_cleaner_tests, test_directory_cleaner_current_segment) {
   {
     auto writer = iresearch::index_writer::make(dir, codec_ptr, iresearch::OPEN_MODE::OM_CREATE);
 
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
@@ -256,7 +256,7 @@ TEST_F(directory_cleaner_tests, test_directory_cleaner_current_segment) {
     file_set.insert(files.begin(), files.end());
 
     writer->remove(std::move(query_doc1.filter));
-    ASSERT_TRUE(writer->insert(
+    ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
