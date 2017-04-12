@@ -81,5 +81,6 @@ before_script:
     - cd build
   
 script: 
-    - cmake -DCMAKE_CXX_COMPILER=$COMPILER .. && make iresearch-tests-static
+    - cmake .. 
+    - make iresearch-tests-static
     
