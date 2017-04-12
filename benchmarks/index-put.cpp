@@ -12,14 +12,10 @@
 #include "index/index_writer.hpp"
 #include "analysis/token_streams.hpp"
 #include "analysis/text_token_stream.hpp"
-#include "index/directory_reader.hpp"
-#include "index/field_meta.hpp"
 #include "store/fs_directory.hpp"
 #include "analysis/token_attributes.hpp"
-#include "utils/locale_utils.hpp"
 
 #include <boost/program_options.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/thread.hpp>
 #include <boost/chrono.hpp>
 #include <unicode/uclean.h>
@@ -30,7 +26,6 @@
 namespace {
 
 namespace po = boost::program_options;
-namespace fs = boost::filesystem;
 
 }
 
@@ -644,17 +639,12 @@ int main(int argc, char* argv[]) {
 
     // general description
     std::string mode;
-    po::options_description desc("\n[IReSearch-index-util] General options");
+    po::options_description desc("\n[IReSearch-benchmarks-index] General options");
     desc.add_options()
             ("help,h", "produce help message")
-            ("mode,m", po::value<std::string>(&mode), "Select mode: dump|put");
+            ("mode,m", po::value<std::string>(&mode), "Select mode: put");
 
     // stats mode description
-    po::options_description stats_desc("Dump mode options");
-    stats_desc.add_options()
-            (INDEX_DIR.c_str(), po::value<std::string>(), "Path to index directory")
-            (OUTPUT.c_str(), po::value<std::string>(), "Output file");
-
     po::options_description put_desc("Put mode options");
     put_desc.add_options()
             (INDEX_DIR.c_str(), po::value<std::string>(), "Path to index directory")
@@ -671,7 +661,6 @@ int main(int argc, char* argv[]) {
 
     // show help
     if (vm.count("help")) {
-        desc.add(stats_desc);
         desc.add(put_desc);
         std::cout << desc << std::endl;
         return 0;
