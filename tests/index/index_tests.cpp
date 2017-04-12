@@ -1878,7 +1878,7 @@ class index_test_case_base : public tests::index_test_base {
           stored_field stored("stored", "doc0");
           state &= doc.insert<irs::Action::STORE>(stored);
           indexed_and_stored_field indexed_and_stored("indexed_and_stored", "doc0");
-          state &= doc.insert<irs::Action::INDEX | irs::Action::STORE>(indexed_and_stored);
+          state &= doc.insert<irs::Action::INDEX_STORE>(indexed_and_stored);
         } break;
         case 1: { // doc1
           // indexed and stored fields can be indexed/stored only
@@ -1901,19 +1901,19 @@ class index_test_case_base : public tests::index_test_base {
         } break;
         case 4: { // doc4 (will be dropped since it contains invalid indexed and stored field)
           indexed_and_stored_field indexed_and_stored("indexed", "doc4", false, false);
-          state &= doc.insert<irs::Action::INDEX | irs::Action::STORE>(indexed_and_stored);
+          state &= doc.insert<irs::Action::INDEX_STORE>(indexed_and_stored);
           stored_field stored("stored", "doc4");
           state &= doc.insert<irs::Action::STORE>(stored);
         } break;
         case 5: { // doc5
           indexed_and_stored_field indexed_and_stored("indexed_and_stored", "doc5", false); // will not be stored, but will be indexed
-          state &= doc.insert<irs::Action::INDEX | irs::Action::STORE>(indexed_and_stored);
+          state &= doc.insert<irs::Action::INDEX_STORE>(indexed_and_stored);
           stored_field stored("stored", "doc5");
           state &= doc.insert<irs::Action::STORE>(stored);
         } break;
         case 6: { // doc6
           indexed_and_stored_field indexed_and_stored("indexed_and_stored", "doc6", true, false); // will not be indexed, but will be stored
-          state &= doc.insert<irs::Action::INDEX | irs::Action::STORE>(indexed_and_stored);
+          state &= doc.insert<irs::Action::INDEX_STORE>(indexed_and_stored);
           stored_field stored("stored", "doc6");
           state &= doc.insert<irs::Action::STORE>(stored);
         } break;

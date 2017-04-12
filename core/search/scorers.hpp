@@ -34,7 +34,10 @@ NS_ROOT
 
 class IRESEARCH_API scorer_registrar {
  public:
-   scorer_registrar(const sort::type_id& type, sort::ptr(*factory)());
+  scorer_registrar(
+    const sort::type_id& type,
+    sort::ptr(*factory)(const irs::string_ref& args)
+  );
 };
 
 #define REGISTER_SCORER__(scorer_name, line) static iresearch::scorer_registrar scorer_registrar ## _ ## line(scorer_name::type(), &scorer_name::make)
@@ -54,7 +57,7 @@ class IRESEARCH_API scorers {
   ///        requires use of DECLARE_FACTORY_DEFAULT() in class definition
   ///        NOTE: make(...) MUST be defined in CPP to ensire proper code scope
   ////////////////////////////////////////////////////////////////////////////////
-  static sort::ptr get(const string_ref& name);
+  static sort::ptr get(const string_ref& name, const string_ref& args);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief for static lib reference all known scorers in lib

@@ -26,6 +26,10 @@ class IRESEARCH_API directory_reader: public composite_reader {
   typedef directory_reader element_type; // type same as self
   typedef directory_reader ptr; // pointer to self
   directory_reader() = default; // allow creation of an uninitialized ptr
+  directory_reader(const directory_reader& other);
+  directory_reader(directory_reader&& other) NOEXCEPT;
+  directory_reader& operator=(const directory_reader& other);
+  directory_reader& operator=(directory_reader&& other) NOEXCEPT;
   explicit operator bool() const NOEXCEPT;
   directory_reader& operator*() NOEXCEPT;
   const directory_reader& operator*() const NOEXCEPT;
@@ -61,6 +65,7 @@ class IRESEARCH_API directory_reader: public composite_reader {
   virtual size_t size() const override;
 
  private:
+  class atomic_helper;
   class directory_reader_impl;
   typedef std::shared_ptr<directory_reader_impl> impl_ptr;
 

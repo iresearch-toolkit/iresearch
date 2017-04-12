@@ -13,6 +13,7 @@
 #include "index/index_tests.hpp"
 #include "store/memory_directory.hpp"
 #include "search/scorers.hpp"
+#include "search/sort.hpp"
 #include "search/term_filter.hpp"
 #include "search/tfidf.hpp"
 #include "utils/utf8_path.hpp"
@@ -33,16 +34,17 @@ class tfidf_test: public index_test_base {
 NS_END
 
 using namespace tests;
-namespace ir = iresearch;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
 TEST_F(tfidf_test, test_load) {
-  auto scorer = iresearch::scorers::get("tfidf");
+  irs::order order;
+  auto scorer = irs::scorers::get("tfidf", irs::string_ref::nil);
 
   ASSERT_NE(nullptr, scorer);
+  ASSERT_EQ(1, order.add(scorer).size());
 }
 
 #ifndef IRESEARCH_DLL
@@ -66,7 +68,7 @@ TEST_F(tfidf_test, test_order) {
   query.field("field");
 
   iresearch::order ord;
-  ord.add<iresearch::tfidf_sort>().reverse(true);
+  ord.add<iresearch::tfidf_sort>(irs::string_ref::nil).reverse(true);
   auto prepared_order = ord.prepare();
 
   auto comparer = [&prepared_order] (const iresearch::bstring& lhs, const iresearch::bstring& rhs) {

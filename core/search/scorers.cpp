@@ -23,7 +23,7 @@ NS_LOCAL
 const std::string FILENAME_PREFIX("libscorer-");
 
 class scorer_register:
-  public iresearch::generic_register<iresearch::string_ref, iresearch::sort::ptr(*)(), scorer_register> {
+  public irs::generic_register<irs::string_ref, irs::sort::ptr(*)(const irs::string_ref& args), scorer_register> {
  protected:
   virtual std::string key_to_filename(const key_type& key) const override {
     std::string filename(FILENAME_PREFIX.size() + key.size(), 0);
@@ -39,9 +39,13 @@ NS_END
 
 NS_ROOT
 
-/*static*/ sort::ptr scorers::get(const string_ref& name) {
+/*static*/ sort::ptr scorers::get(
+    const string_ref& name,
+    const string_ref& args
+) {
   auto* factory = scorer_register::instance().get(name);
-  return factory ? factory() : nullptr;
+
+  return factory ? factory(args) : nullptr;
 }
 
 /*static*/ void scorers::init() {
@@ -66,7 +70,8 @@ NS_ROOT
 // -----------------------------------------------------------------------------
 
 scorer_registrar::scorer_registrar(
-  const sort::type_id& type, sort::ptr(*factory)()
+    const sort::type_id& type,
+    sort::ptr(*factory)(const irs::string_ref& args)
 ) {
   scorer_register::instance().set(type.name(), factory);
 }

@@ -186,7 +186,13 @@ NS_END // tfidf
 
 DEFINE_SORT_TYPE_NAMED(iresearch::tfidf_sort, "tfidf");
 REGISTER_SCORER(iresearch::tfidf_sort);
-DEFINE_FACTORY_SINGLETON(tfidf_sort);
+
+/*static*/ sort::ptr tfidf_sort::make(const string_ref& args) {
+  static PTR_NAMED(tfidf_sort, ptr);
+  UNUSED(args);
+
+  return ptr;
+}
 
 tfidf_sort::tfidf_sort(bool normalize) 
   : sort(tfidf_sort::type()),

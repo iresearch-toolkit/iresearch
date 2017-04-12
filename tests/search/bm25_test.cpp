@@ -13,6 +13,7 @@
 #include "index/index_tests.hpp"
 #include "store/memory_directory.hpp"
 #include "search/scorers.hpp"
+#include "search/sort.hpp"
 #include "search/bm25.hpp"
 #include "search/term_filter.hpp"
 #include "utils/utf8_path.hpp"
@@ -39,9 +40,11 @@ using namespace tests;
 // -----------------------------------------------------------------------------
 
 TEST_F(bm25_test, test_load) {
-  auto scorer = iresearch::scorers::get("bm25");
+  irs::order order;
+  auto scorer = irs::scorers::get("bm25", irs::string_ref::nil);
 
   ASSERT_NE(nullptr, scorer);
+  ASSERT_EQ(1, order.add(scorer).size());
 }
 
 #ifndef IRESEARCH_DLL
@@ -65,7 +68,7 @@ TEST_F(bm25_test, test_order) {
   query.field("field");
 
   iresearch::order ord;
-  ord.add<iresearch::bm25_sort>();
+  ord.add<iresearch::bm25_sort>(irs::string_ref::nil);
   auto prepared_order = ord.prepare();
 
   auto comparer = [&prepared_order] (const iresearch::bstring& lhs, const iresearch::bstring& rhs) {
