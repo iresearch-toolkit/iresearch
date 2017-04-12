@@ -11,7 +11,6 @@
 
 #include "index/directory_reader.hpp"
 #include "store/fs_directory.hpp"
-#include "utils/locale_utils.hpp"
 #include "search/term_filter.hpp"
 #include "search/prefix_filter.hpp"
 #include "search/boolean_filter.hpp"
@@ -19,20 +18,17 @@
 #include "search/bm25.hpp"
 
 #include <boost/program_options.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/chrono.hpp>
 #include <boost/thread.hpp>
 #include <unicode/uclean.h>
-#include <boost/regex.hpp>
-#include <unicode/uclean.h>
 
+#include <regex>
 #include <fstream>
 #include <iostream>
 
 namespace {
 
 namespace po = boost::program_options;
-namespace fs = boost::filesystem;
 
 }
 
@@ -187,13 +183,13 @@ class TaskSource {
      *
      */
     int parseLines(std::string& line, Line::ptr& p) {
-        static const boost::regex m1("(\\S+): (.+)");
+        static const std::regex m1("(\\S+): (.+)");
 
-        boost::smatch res;
+        std::smatch res;
         std::string category;
         std::string text;
 
-        if (boost::regex_match(line, res, m1)) {
+        if (std::regex_match(line, res, m1)) {
             category.assign(res[1].first, res[1].second);
             text.assign(res[2].first, res[2].second);
 
@@ -269,18 +265,18 @@ class TaskSource {
      *
      */
     bool splitFreq(std::string& text, std::string& term) {
-        static const boost::regex freqPattern1("(\\S+)\\s*#\\s*(.+)"); // single term, prefix
-        static const boost::regex freqPattern2("\"(.+)\"\\s*#\\s*(.+)"); // phrase
-        static const boost::regex freqPattern3("((?:\\S+\\s+)+)\\s*#\\s*(.+)"); // AND/OR groups
-        boost::smatch res;
+        static const std::regex freqPattern1("(\\S+)\\s*#\\s*(.+)"); // single term, prefix
+        static const std::regex freqPattern2("\"(.+)\"\\s*#\\s*(.+)"); // phrase
+        static const std::regex freqPattern3("((?:\\S+\\s+)+)\\s*#\\s*(.+)"); // AND/OR groups
+        std::smatch res;
 
-        if (boost::regex_match(text, res, freqPattern1)) {
+        if (std::regex_match(text, res, freqPattern1)) {
             term.assign(res[1].first, res[1].second);
             return true;
-        } else if (boost::regex_match(text, res, freqPattern2)) {
+        } else if (std::regex_match(text, res, freqPattern2)) {
             term.assign(res[1].first, res[1].second);
             return true;
-        } else if (boost::regex_match(text, res, freqPattern3)) {
+        } else if (std::regex_match(text, res, freqPattern3)) {
             term.assign(res[1].first, res[1].second);
             return true;
         }
@@ -292,8 +288,8 @@ class TaskSource {
      */
     int prepareQueries(std::vector<Line::ptr>& lines, irs::directory_reader& reader, int topN) {
 
-        //        static const boost::regex filterPattern(" \\+filter=([0-9\\.]+)%");
-        //        static const boost::regex minShouldMatchPattern(" \\+minShouldMatch=(\\d+)($| )");
+        //        static const std::regex filterPattern(" \\+filter=([0-9\\.]+)%");
+        //        static const std::regex minShouldMatchPattern(" \\+minShouldMatch=(\\d+)($| )");
 
         irs::order order;
         order.add<irs::bm25_sort>(irs::string_ref::nil);
@@ -641,17 +637,12 @@ int main(int argc, char* argv[]) {
 
     // general description
     std::string mode;
-    po::options_description desc("\n[IReSearch-index-util] General options");
+    po::options_description desc("\n[IReSearch-benchmarks-search] General options");
     desc.add_options()
             ("help,h", "produce help message")
-            ("mode,m", po::value<std::string>(&mode), "Select mode: dump|put");
+            ("mode,m", po::value<std::string>(&mode), "Select mode: search");
 
     // stats mode description
-    po::options_description stats_desc("Dump mode options");
-    stats_desc.add_options()
-            (INDEX_DIR.c_str(), po::value<std::string>(), "Path to index directory")
-            (OUTPUT.c_str(), po::value<std::string>(), "Output file");
-
     po::options_description put_desc("Search mode options");
     put_desc.add_options()
             (INDEX_DIR.c_str(), po::value<std::string>(), "Path to index directory")
@@ -671,7 +662,6 @@ int main(int argc, char* argv[]) {
 
     // show help
     if (vm.count("help")) {
-        desc.add(stats_desc);
         desc.add(put_desc);
         std::cout << desc << std::endl;
         return 0;
