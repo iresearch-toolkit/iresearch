@@ -418,6 +418,8 @@ public:
 
   prepared prepare() const;
 
+  order& add(sort::ptr const& sort);
+
   template<typename T, typename... Args>
   T& add(Args&&... args) {
     typedef typename std::enable_if <

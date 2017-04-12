@@ -64,14 +64,15 @@ enum OPEN_MODE {
 
 enum class Action : uint32_t {
   INDEX = 1,
-  STORE = 2
+  STORE = 2,
+  INDEX_STORE = 3
 }; // Action
 
-CONSTEXPR Action operator|(Action lhs, Action rhs) {
+inline CONSTEXPR Action operator|(Action lhs, Action rhs) {
   return enum_bitwise_or(lhs, rhs);
 }
 
-CONSTEXPR Action operator&(Action lhs, Action rhs) {
+inline CONSTEXPR Action operator&(Action lhs, Action rhs) {
   return enum_bitwise_and(lhs, rhs);
 }
 
@@ -98,7 +99,7 @@ struct action_traits<Action::STORE> {
 }; // action_traits
 
 template<>
-struct action_traits<Action::INDEX | Action::STORE> {
+struct action_traits<Action::INDEX_STORE> {
   template<typename Field>
   static bool insert(segment_writer& writer, Field& field) {
     return writer.index_and_store(field);

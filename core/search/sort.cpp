@@ -81,6 +81,12 @@ order::prepared& order::prepared::operator=(order::prepared&& rhs) NOEXCEPT {
   return *this;
 }
 
+order& order::add(sort::ptr const& sort) {
+  order_.emplace_back(sort);
+
+  return *this;
+}
+
 order::prepared order::prepare() const {
   order::prepared pord;
   pord.order_.reserve(order_.size());

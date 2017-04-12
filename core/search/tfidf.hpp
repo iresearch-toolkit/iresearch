@@ -19,7 +19,7 @@ NS_ROOT
 class tfidf_sort : public sort {
 public:
   DECLARE_SORT_TYPE();
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY_DEFAULT(const string_ref& args);
 
   typedef float_t score_t;
 

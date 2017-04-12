@@ -240,7 +240,13 @@ NS_END // bm25
 
 DEFINE_SORT_TYPE_NAMED(iresearch::bm25_sort, "bm25");
 REGISTER_SCORER(iresearch::bm25_sort);
-DEFINE_FACTORY_SINGLETON(bm25_sort);
+
+/*static*/ sort::ptr bm25_sort::make(const string_ref& args) {
+  static PTR_NAMED(bm25_sort, ptr);
+  UNUSED(args);
+
+  return ptr;
+}
 
 bm25_sort::bm25_sort(float_t k, float_t b) 
   : sort(bm25_sort::type()), k_(k), b_(b) {
