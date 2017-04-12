@@ -72,7 +72,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   }
 
   // rollbacks document-write transaction,
-  // implicitly NOEXCEPT since we reserve a memory in a begin
+  // implicitly NOEXCEPT since we reserve memory in 'begin'
   void rollback() {
     // mark as removed since not fully inserted
     remove(docs_cached() - (type_limits<type_t::doc_id_t>::min)());

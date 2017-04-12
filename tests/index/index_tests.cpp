@@ -31,6 +31,23 @@ namespace ir = iresearch;
 
 namespace tests {
 
+struct incompatible_attribute : irs::attribute {
+  DECLARE_ATTRIBUTE_TYPE();
+  DECLARE_FACTORY_DEFAULT();
+
+  incompatible_attribute() NOEXCEPT;
+
+  virtual void clear() override { }
+};
+
+REGISTER_ATTRIBUTE(incompatible_attribute);
+DEFINE_ATTRIBUTE_TYPE(incompatible_attribute);
+DEFINE_FACTORY_DEFAULT(incompatible_attribute);
+
+incompatible_attribute::incompatible_attribute() NOEXCEPT
+  : irs::attribute(incompatible_attribute::type()) {
+}
+
 struct directory_mock : public ir::directory {
   directory_mock(ir::directory& impl) : impl_(impl) {}
   using directory::attributes;
@@ -1757,13 +1774,54 @@ class index_test_case_base : public tests::index_test_base {
   }
 
   void writer_bulk_insert() {
-    class field {
+    class indexed_and_stored_field {
      public:
-      field(std::string&& name, const ir::string_ref& value)
-        : name_(std::move(name)),
-        value_(value) {}
-      field(field&& other) NOEXCEPT
-        : stream_(std::move(other.stream_)),
+      indexed_and_stored_field(std::string&& name, const ir::string_ref& value, bool stored_valid = true, bool indexed_valid = true)
+        : name_(std::move(name)), value_(value), stored_valid_(stored_valid) {
+        if (!indexed_valid) {
+          features_.add<tests::incompatible_attribute>();
+        }
+      }
+      indexed_and_stored_field(indexed_and_stored_field&& other) NOEXCEPT
+        : features_(std::move(other.features_)),
+          stream_(std::move(other.stream_)),
+          name_(std::move(other.name_)),
+          value_(std::move(other.value_)),
+          stored_valid_(other.stored_valid_) {
+      }
+      ir::string_ref name() const { return name_; }
+      float_t boost() const { return 1.f; }
+      ir::token_stream& get_tokens() const {
+        stream_.reset(value_);
+        return stream_;
+      }
+      const ir::flags& features() const {
+        return features_;
+      }
+      bool write(ir::data_output& out) const NOEXCEPT {
+        irs::write_string(out, value_);
+        return stored_valid_;
+      }
+
+     private:
+      ir::flags features_;
+      mutable ir::string_token_stream stream_;
+      std::string name_;
+      ir::string_ref value_;
+      bool stored_valid_;
+    }; // indexed_and_stored_field
+
+    class indexed_field {
+     public:
+      indexed_field(std::string&& name, const ir::string_ref& value, bool valid = true)
+        : name_(std::move(name)), value_(value) {
+        if (!valid) {
+          features_.add<tests::incompatible_attribute>();
+        }
+      }
+      indexed_field(indexed_field&& other) NOEXCEPT
+        : features_(std::move(other.features_)),
+          stream_(std::move(other.stream_)),
           name_(std::move(other.name_)),
           value_(std::move(other.value_)) {
       }
@@ -1774,32 +1832,90 @@ class index_test_case_base : public tests::index_test_base {
         return stream_;
       }
       const ir::flags& features() const {
-        return ir::flags::empty_instance();
-      }
-      bool write(ir::data_output& out) const NOEXCEPT {
-        return true;
+        return features_;
       }
 
      private:
+      irs::flags features_;
       mutable ir::string_token_stream stream_;
       std::string name_;
       ir::string_ref value_;
-    }; // field
+    }; // indexed_field
+
+    struct stored_field {
+      stored_field(const irs::string_ref& name, const irs::string_ref& value, bool valid = true)
+        : name_(name), value_(value), valid_(valid) {
+      }
+
+      const irs::string_ref& name() const {
+        return name_;
+      }
+
+      bool write(irs::data_output& out) const {
+        write_string(out, value_);
+        return valid_;
+      }
+
+      irs::string_ref name_;
+      irs::string_ref value_;
+      bool valid_;
+    }; // stored_field
 
     // insert documents
     auto writer = ir::index_writer::make(dir(), codec(), ir::OM_CREATE);
 
     size_t i = 0;
-    const size_t max = 2;
-    auto bulk_inserter = [&i, &max](irs::index_writer::document& doc) mutable {
+    const size_t max = 7;
+    bool states[max];
+    std::fill(std::begin(states), std::end(states), true);
+
+    auto bulk_inserter = [&i, &max, &states](irs::index_writer::document& doc) mutable {
+      auto& state = states[i];
       switch (i) {
-        case 0: {
-          field fld("name", "doc0");
-          doc.insert<irs::Action::INDEX>(fld);
+        case 0: { // doc0
+          indexed_field indexed("indexed", "doc0");
+          state &= doc.insert<irs::Action::INDEX>(indexed);
+          stored_field stored("stored", "doc0");
+          state &= doc.insert<irs::Action::STORE>(stored);
+          indexed_and_stored_field indexed_and_stored("indexed_and_stored", "doc0");
+          state &= doc.insert<irs::Action::INDEX | irs::Action::STORE>(indexed_and_stored);
         } break;
-        case 1: {
-          field fld("name", "doc1");
-          doc.insert<irs::Action::INDEX>(fld);
+        case 1: { // doc1
+          // indexed and stored fields can be indexed/stored only
+          indexed_and_stored_field indexed("indexed", "doc1");
+          state &= doc.insert<irs::Action::INDEX>(indexed);
+          indexed_and_stored_field stored("stored", "doc1");
+          state &= doc.insert<irs::Action::STORE>(stored);
+        } break;
+        case 2: { // doc2 (will be dropped since it contains invalid stored field)
+          indexed_and_stored_field indexed("indexed", "doc2");
+          state &= doc.insert<irs::Action::INDEX>(indexed);
+          stored_field stored("stored", "doc2", false);
+          state &= doc.insert<irs::Action::STORE>(stored);
+        } break;
+        case 3: { // doc3 (will be dropped since it contains invalid indexed field)
+          indexed_field indexed("indexed", "doc3", false);
+          state &= doc.insert<irs::Action::INDEX>(indexed);
+          stored_field stored("stored", "doc3");
+          state &= doc.insert<irs::Action::STORE>(stored);
+        } break;
+        case 4: { // doc4 (will be dropped since it contains invalid indexed and stored field)
+          indexed_and_stored_field indexed_and_stored("indexed", "doc4", false, false);
+          state &= doc.insert<irs::Action::INDEX | irs::Action::STORE>(indexed_and_stored);
+          stored_field stored("stored", "doc4");
+          state &= doc.insert<irs::Action::STORE>(stored);
+        } break;
+        case 5: { // doc5
+          indexed_and_stored_field indexed_and_stored("indexed_and_stored", "doc5", false); // will not be stored, but will be indexed
+          state &= doc.insert<irs::Action::INDEX | irs::Action::STORE>(indexed_and_stored);
+          stored_field stored("stored", "doc5");
+          state &= doc.insert<irs::Action::STORE>(stored);
+        } break;
+        case 6: { // doc6
+          indexed_and_stored_field indexed_and_stored("indexed_and_stored", "doc6", true, false); // will not be indexed, but will be stored
+          state &= doc.insert<irs::Action::INDEX | irs::Action::STORE>(indexed_and_stored);
+          stored_field stored("stored", "doc6");
+          state &= doc.insert<irs::Action::STORE>(stored);
         } break;
       }
 
@@ -1807,6 +1923,14 @@ class index_test_case_base : public tests::index_test_base {
     };
 
     ASSERT_TRUE(writer->insert(bulk_inserter));
+    ASSERT_TRUE(states[0]); // successfully inserted
+    ASSERT_TRUE(states[1]); // successfully inserted
+    ASSERT_FALSE(states[2]); // skipped
+    ASSERT_FALSE(states[3]); // skipped
+    ASSERT_FALSE(states[4]); // skipped
+    ASSERT_TRUE(states[5]); // successfully inserted
+    ASSERT_TRUE(states[6]); // successfully inserted
+
     writer->commit();
 
     // check index
@@ -1814,85 +1938,25 @@ class index_test_case_base : public tests::index_test_base {
       auto reader = ir::directory_reader::open(dir());
       ASSERT_EQ(1, reader.size());
       auto& segment = reader[0];
-      ASSERT_EQ(2, reader->docs_count());
-    }
-  }
+      ASSERT_EQ(7, reader->docs_count()); // we have 7 documents in total
+      ASSERT_EQ(4, reader->live_docs_count()); // 3 of which marked as deleted
 
-  void writer_accept_pointer_to_field() {
-    class field {
-     public:
-      field(std::string&& name, const ir::string_ref& value)
-        : name_(std::move(name)),
-        value_(value) {}
-      field(field&& other) NOEXCEPT
-        : stream_(std::move(other.stream_)),
-          name_(std::move(other.name_)),
-          value_(std::move(other.value_)) {
-      }
-      ir::string_ref name() const { return name_; }
-      float_t boost() const { return 1.f; }
-      ir::token_stream& get_tokens() const {
-        stream_.reset(value_);
-        return stream_;
-      }
-      const ir::flags& features() const {
-        return ir::flags::empty_instance();
-      }
-      bool write(ir::data_output& out) const NOEXCEPT {
+      std::unordered_set<std::string> expected_values { "doc0", "doc1", "doc5", "doc6" };
+      std::unordered_set<std::string> actual_values;
+
+      auto visitor = [&actual_values](irs::doc_id_t doc, const irs::bytes_ref& value) {
         return true;
+      };
+
+      irs::bytes_ref value;
+      auto column = segment.values("stored");
+      auto it = segment.docs_iterator();
+      while (it->next()) {
+        ASSERT_TRUE(column(it->value(), value));
+        actual_values.emplace(irs::to_string<std::string>(value.c_str()));
       }
-
-     private:
-      mutable ir::string_token_stream stream_;
-      std::string name_;
-      ir::string_ref value_;
-    }; // field
-
-    auto writer = ir::index_writer::make(dir(), codec(), ir::OM_CREATE);
-
-    std::vector<field> fields;
-    fields.emplace_back(std::string("name"), ir::string_ref("test"));
-    fields.emplace_back(std::string("name"), ir::string_ref("test2"));
-
-    std::vector<field*> pointers;
-    std::vector<const field*> const_pointers;
-    for (auto& field : fields) {
-      pointers.emplace_back(&field);
-      const_pointers.emplace_back(&field);
+      ASSERT_EQ(expected_values, actual_values);
     }
-
-    // pointers
-
-    // index only
-    ASSERT_TRUE(insert(*writer,
-      pointers.begin(), pointers.end()
-    ));
-
-    // index and store
-    ASSERT_TRUE(insert(*writer,
-      pointers.begin(), pointers.end(),
-      pointers.begin(), pointers.end()
-    ));
-
-    // const pointers
-
-    // index only
-    ASSERT_TRUE(insert(*writer,
-      const_pointers.begin(), const_pointers.end()
-    ));
-
-    // index and store
-    ASSERT_TRUE(insert(*writer,
-      const_pointers.begin(), const_pointers.end(),
-      const_pointers.begin(), const_pointers.end()
-    ));
-
-    writer->commit();
-
-    auto reader = ir::directory_reader::open(dir());
-    ASSERT_EQ(1, reader.size());
-    auto& segment = reader[0];
-    ASSERT_EQ(4, reader->docs_count());
   }
 
   void writer_atomicity_check() {
@@ -2103,10 +2167,6 @@ TEST_F(memory_index_test, writer_transaction_isolation) {
 
 TEST_F(memory_index_test, writer_atomicity_check) {
   writer_atomicity_check();
-}
-
-TEST_F(memory_index_test, writer_accept_pointer_to_field) {
-  writer_accept_pointer_to_field();
 }
 
 TEST_F(memory_index_test, writer_bulk_insert) {

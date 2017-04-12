@@ -62,8 +62,21 @@ enum OPEN_MODE {
   OM_CREATE_APPEND
 };
 
+//////////////////////////////////////////////////////////////////////////////
+/// @enum Action
+/// @brief defines how the inserting field should be processed
+//////////////////////////////////////////////////////////////////////////////
 enum class Action : uint32_t {
+  ////////////////////////////////////////////////////////////////////////////
+  /// @brief Field should be indexed only
+  /// @note Field must satisfy 'Field' concept
+  ////////////////////////////////////////////////////////////////////////////
   INDEX = 1,
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// @brief Field should be stored only
+  /// @note Field must satisfy 'Attribute' concept
+  ////////////////////////////////////////////////////////////////////////////
   STORE = 2
 }; // Action
 
@@ -74,6 +87,8 @@ CONSTEXPR Action operator|(Action lhs, Action rhs) {
 CONSTEXPR Action operator&(Action lhs, Action rhs) {
   return enum_bitwise_and(lhs, rhs);
 }
+
+NS_LOCAL
 
 template<Action action>
 struct action_traits {
@@ -105,31 +120,49 @@ struct action_traits<Action::INDEX | Action::STORE> {
   }
 }; // action_traits
 
-//////////////////////////////////////////////////////////////////////////////
+NS_END
+
+////////////////////////////////////////////////////////////////////////////////
 /// @class index_writer 
 /// @brief The object is using for indexing data. Only one writer can write to
 ///        the same directory simultaneously.
 ///        Thread safe.
-//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API index_writer : util::noncopyable {
  public:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @class document
+  /// @brief Facade for the insertion logic
+  //////////////////////////////////////////////////////////////////////////////
   class document : private util::noncopyable {
    public:
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief constructor
+    ////////////////////////////////////////////////////////////////////////////
     explicit document(segment_writer& writer) NOEXCEPT
       : writer_(writer) {
     }
 
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief destructor
+    ////////////////////////////////////////////////////////////////////////////
     ~document() = default;
 
+    ////////////////////////////////////////////////////////////////////////////
+    /// @return current state of the objecta
+    /// @note that in case if object is in ivalid state all further operations
+    ///       will not take any effect
+    ////////////////////////////////////////////////////////////////////////////
     bool valid() const NOEXCEPT {
       return writer_.valid();
     }
 
     ////////////////////////////////////////////////////////////////////////////
-    /// @brief inserts the specified field into the document
-    /// @note 'field' value type must satisfy the Field concept
+    /// @brief inserts the specified field into the document according to the
+    ///        specified ACTION
+    /// @note 'Field' type type must satisfy the Field concept
     /// @param field attribute to be inserted
-    /// @return field successfully insterted
+    /// @return true, if field was successfully insterted
     ////////////////////////////////////////////////////////////////////////////
     template<Action ACTION, typename Field>
     bool insert(Field& field) const {
@@ -137,10 +170,12 @@ class IRESEARCH_API index_writer : util::noncopyable {
     }
 
     ////////////////////////////////////////////////////////////////////////////
-    /// @brief inserts the specified field into the document
-    /// @note '*field' value type must satisfy the Field concept
-    /// @param pointer to field attribute to be inserted
-    /// @return field successfully insterted
+    /// @brief inserts the specified field (denoted by the pointer) into the
+    ///        document according to the specified ACTION
+    /// @note 'Field' type type must satisfy the Field concept
+    /// @note pointer must not be nullptr
+    /// @param field attribute to be inserted
+    /// @return true, if field was successfully insterted
     ////////////////////////////////////////////////////////////////////////////
     template<Action ACTION, typename Field>
     bool insert(Field* field) const {
@@ -148,6 +183,14 @@ class IRESEARCH_API index_writer : util::noncopyable {
       return insert<ACTION>(*field);
     }
 
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief inserts the specified range of fields, denoted by the [begin;end)
+    ///        into the document according to the specified ACTION
+    /// @note 'Iterator' underline value type must satisfy the Field concept
+    /// @param begin the beginning of the fields range
+    /// @param end the end of the fields range
+    /// @return true, if the range was successfully insterted
+    ////////////////////////////////////////////////////////////////////////////
     template<Action ACTION, typename Iterator>
     bool insert(Iterator begin, Iterator end) const {
       for (; valid() && begin != end; ++begin) {
@@ -195,12 +238,13 @@ class IRESEARCH_API index_writer : util::noncopyable {
   ////////////////////////////////////////////////////////////////////////////
   uint64_t buffered_docs() const;
 
-  // FIXME update documentation
   ////////////////////////////////////////////////////////////////////////////
-  /// @brief inserts document to be filled by the specified functor into index.
+  /// @brief inserts document to be filled by the specified functor into index
   /// @note that changes are not visible until commit()
-  /// @param func insertion logic
-  /// @return all fields/attributes successfully insterted
+  /// @note the specified 'func' should return false in order to break the
+  ///       insertion loop
+  /// @param func the insertion logic
+  /// @return status of the last insert operation
   ////////////////////////////////////////////////////////////////////////////
   template<typename Func>
   bool insert(Func func) {
@@ -217,22 +261,20 @@ class IRESEARCH_API index_writer : util::noncopyable {
         writer->commit();
       } catch (...) {
         writer->rollback();
+        throw;
       }
     } while (has_next);
 
     return writer->valid();
   }
 
-  // FIXME update documentation
   ////////////////////////////////////////////////////////////////////////////
-  /// @brief replaces documents matching filter for with the document
-  ///        represented by the range of fields [begin;end)
-  /// @note iterator underlying value type must satisfy the Field concept
+  /// @brief replaces documents matching filter with the document
+  ///        to be filled by the specified functor
   /// @note that changes are not visible until commit()
   /// @note that filter must be valid until commit()
   /// @param filter the document filter
-  /// @param begin the beginning of the document
-  /// @param end the end of the document
+  /// @param func the insertion logic
   /// @return all fields/attributes successfully insterted
   ////////////////////////////////////////////////////////////////////////////
   template<typename Func>
@@ -245,15 +287,13 @@ class IRESEARCH_API index_writer : util::noncopyable {
     return update(*ctx, *writer, func);
   }
 
-  // FIXME update documentation
   ////////////////////////////////////////////////////////////////////////////
-  /// @brief replaces documents matching filter for with the document
-  ///        represented by the range of fields [begin;end)
-  /// @note iterator underlying value type must satisfy the Field concept
+  /// @brief replaces documents matching filter with the document
+  ///        to be filled by the specified functor
   /// @note that changes are not visible until commit()
   /// @param filter the document filter
-  /// @param begin the beginning of the document
-  /// @param end the end of the document
+  /// @param func the insertion logic
+  /// @return all fields/attributes successfully insterted
   ////////////////////////////////////////////////////////////////////////////
   template<typename Func>
   bool update(irs::filter::ptr&& filter, Func func) {
@@ -265,15 +305,13 @@ class IRESEARCH_API index_writer : util::noncopyable {
     return update(*ctx, *writer, func);
   }
 
-  // FIXME update documentation
   ////////////////////////////////////////////////////////////////////////////
-  /// @brief replaces documents matching filter for with the document
-  ///        represented by the range of fields [begin;end)
-  /// @note iterator underlying value type must satisfy the Field concept
+  /// @brief replaces documents matching filter with the document
+  ///        to be filled by the specified functor
   /// @note that changes are not visible until commit()
   /// @param filter the document filter
-  /// @param begin the beginning of the document
-  /// @param end the end of the document
+  /// @param func the insertion logic
+  /// @return all fields/attributes successfully insterted
   ////////////////////////////////////////////////////////////////////////////
   template<typename Func>
   bool update(const std::shared_ptr<irs::filter>& filter, Func func) {
@@ -585,6 +623,11 @@ class IRESEARCH_API index_writer : util::noncopyable {
       writer.commit();
     } catch (...) {
       writer.rollback();
+
+      SCOPED_LOCK(ctx.mutex_); // lock due to context modification
+      ctx.modification_queries_[writer.doc_context().update_id].filter = nullptr; // mark invalid
+
+      throw;
     }
 
     if (!writer.valid()) {
