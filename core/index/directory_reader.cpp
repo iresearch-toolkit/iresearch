@@ -206,10 +206,9 @@ directory_reader::directory_reader(directory_reader&& other) NOEXCEPT {
 
 directory_reader& directory_reader::operator=(const directory_reader& other) {
   if (this != &other) {
-    atomic_helper::instance().atomic_store(
-      &impl_,
-      atomic_helper::instance().atomic_load(&(other.impl_))
-    );
+    auto impl = atomic_helper::instance().atomic_load(&(other.impl_));
+
+    atomic_helper::instance().atomic_exchange(&impl_, impl);
   }
 
   return *this;
