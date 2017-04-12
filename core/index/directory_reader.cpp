@@ -11,6 +11,8 @@
 
 #include "composite_reader_impl.hpp"
 #include "utils/directory_utils.hpp"
+#include "utils/object_pool.hpp"
+#include "utils/singleton.hpp"
 #include "utils/type_limits.hpp"
 
 #include "directory_reader.hpp"
@@ -152,6 +154,11 @@ struct context<segment_reader> {
 // directory_reader
 // -------------------------------------------------------------------
 
+class directory_reader::atomic_helper:
+  public atomic_base<directory_reader::impl_ptr>,
+  public singleton<directory_reader::atomic_helper> {
+};
+
 class directory_reader::directory_reader_impl:
   public composite_reader_impl<segment_reader> {
  public:
@@ -187,6 +194,33 @@ class directory_reader::directory_reader_impl:
 };
 
 directory_reader::directory_reader(const impl_ptr& impl): impl_(impl) {
+}
+
+directory_reader::directory_reader(const directory_reader& other) {
+  *this = other;
+}
+
+directory_reader::directory_reader(directory_reader&& other) NOEXCEPT {
+  *this = std::move(other);
+}
+
+directory_reader& directory_reader::operator=(const directory_reader& other) {
+  if (this != &other) {
+    atomic_helper::instance().atomic_store(
+      &impl_,
+      atomic_helper::instance().atomic_load(&(other.impl_))
+    );
+  }
+
+  return *this;
+}
+
+directory_reader& directory_reader::operator=(directory_reader&& other) NOEXCEPT {
+  if (this != &other) {
+    atomic_helper::instance().atomic_exchange(&impl_, other.impl_);
+  }
+
+  return *this;
 }
 
 directory_reader::operator bool() const NOEXCEPT {
