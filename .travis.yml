@@ -77,10 +77,15 @@ install:
     fi
   
 before_script:  
-    - mkdir build
-    - cd build
+  - mkdir build
+  - cd build
+    
+  ############################################################################
+  # Go back to the root of the project and setup the build directory
+  ############################################################################
+  - cd ${TRAVIS_BUILD_DIR}
+  - (mkdir build && cd build && cmake .. ${CMAKE_OPTIONS})
   
-script: 
-    - cmake .. 
+script:     
     - make iresearch-tests-static
     
