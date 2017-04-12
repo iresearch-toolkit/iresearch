@@ -136,7 +136,7 @@ struct SearchTask : public Task {
         int cnt = 0;
         for (auto& segment : reader) { // iterate segments
             irs::order order;
-            order.add<irs::bm25_sort>();
+            order.add<irs::bm25_sort>(irs::string_ref::nil);
             auto prepared_order = order.prepare();
             irs::score_doc_iterator::ptr docs = prepared->execute(segment, prepared_order); // query segment
             auto& score = docs->attributes().get<iresearch::score>();
@@ -296,7 +296,7 @@ class TaskSource {
         //        static const boost::regex minShouldMatchPattern(" \\+minShouldMatch=(\\d+)($| )");
 
         irs::order order;
-        order.add<irs::bm25_sort>();
+        order.add<irs::bm25_sort>(irs::string_ref::nil);
         auto ord = order.prepare();
 
         for (auto& line : lines) {

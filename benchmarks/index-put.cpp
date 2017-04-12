@@ -470,7 +470,20 @@ private:
             ustringp line = a.reader.getLine();
             if (line == nullptr || line->empty()) break;
             doc.fill(line.get());
-            a.writer->insert2(doc.elements.begin(), doc.elements.end(), doc.store.begin(), doc.store.end());
+
+            auto inserter = [&doc](const irs::index_writer::document& builder) {
+              for (auto* field : doc.elements) {
+                builder.insert<irs::Action::INDEX>(*field);
+              }
+
+              for (auto* field : doc.store) {
+                builder.insert<irs::Action::STORE>(*field);
+              }
+
+              return false; // break the loop
+            };
+
+            a.writer->insert(inserter);
             ++stats.inserts;
             //std::cout << "insert: "<< (void*)line->c_str() << std::endl;
             if (a.committer.commitPeriodic()) {
