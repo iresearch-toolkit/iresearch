@@ -130,6 +130,31 @@ class IRESEARCH_API index_writer : util::noncopyable {
   }
 
   ////////////////////////////////////////////////////////////////////////////
+  /// @brief inserts document specified by the range of fields [begin;end) 
+  ///        into index. 
+  /// @note iterator underlying value type must satisfy the Field concept
+  /// @note that changes are not visible until commit()
+  /// @param begin the beginning of the document
+  /// @param end the end of the document
+  /// @return all fields/attributes successfully insterted
+  ////////////////////////////////////////////////////////////////////////////
+  template<typename FieldIterator>
+  bool insert2(FieldIterator begin, FieldIterator end) {
+    return insert2(begin, end, empty::instance(), empty::instance());
+  }
+  
+  template<typename FieldIterator, typename AttributeIterator>
+  bool insert2(
+      FieldIterator begin, FieldIterator end,
+      AttributeIterator abegin, AttributeIterator aend) {
+    auto ctx = get_flush_context(); // retain lock until end of instert(...)
+    auto writer = get_segment_context(*ctx);
+
+    return writer->insert2(begin, end, abegin, aend, make_update_context(*ctx));
+  }
+  
+  
+  ////////////////////////////////////////////////////////////////////////////
   /// @brief replaces documents matching filter for with the document
   ///        represented by the range of fields [begin;end)
   /// @note iterator underlying value type must satisfy the Field concept

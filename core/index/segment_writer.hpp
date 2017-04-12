@@ -60,6 +60,31 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     return success;
   }
 
+  template<typename FieldIterator, typename AttributeIterator>
+  bool insert2(
+      FieldIterator begin, FieldIterator end, 
+      AttributeIterator abegin, AttributeIterator aend,
+      const update_context& ctx) {
+    const auto doc_id = (type_limits<type_t::doc_id_t>::min)() + num_docs_cached_++;
+    bool success = true;
+
+    for (; success && begin != end; ++begin) {
+      success &= insert_field(doc_id, **begin);
+    }
+
+    for (; success && abegin != aend; ++abegin) {
+      success &= insert_attribute(doc_id, **abegin);
+    }
+
+    if (!success) {
+      remove(doc_id); // mark as removed since not fully inserted
+    }
+
+    finish(doc_id, ctx);
+
+    return success;
+  }
+  
   bool flush(std::string& filename, segment_meta& meta);
 
   const std::string& name() const { return seg_name_; }
