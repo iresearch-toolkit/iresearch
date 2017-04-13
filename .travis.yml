@@ -112,15 +112,16 @@ install:
   ############################################################################
   # Install gtest
   ############################################################################
-  GTEST_DIR=${DEPS_DIR}/gtest
-  GTEST_URL="https://github.com/google/googletest.git"
-  cd ${DEPS_DIR}
-  travis_retry git clone --depth 1 --recursive --quiet ${GTEST_URL} ${GTEST_DIR} || exit 1        
-  cd ${GTEST_DIR}
-  mkdir build && cd build
-  cmake -DCMAKE_INSTALL_PREFIX=${GTEST_DIR}/build/package ..
-  make  
-  export GTEST_ROOT=${GTEST_DIR}/build/package
+  - |
+    GTEST_DIR=${DEPS_DIR}/gtest
+    GTEST_URL="https://github.com/google/googletest.git"
+    cd ${DEPS_DIR}
+    travis_retry git clone --depth 1 --recursive --quiet ${GTEST_URL} ${GTEST_DIR} || exit 1        
+    cd ${GTEST_DIR}
+    mkdir build && cd build
+    cmake -DCMAKE_INSTALL_PREFIX=${GTEST_DIR}/build/package ..
+    make install
+    export GTEST_ROOT=${GTEST_DIR}/build/package
         
 before_script:
   ############################################################################
