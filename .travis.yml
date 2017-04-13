@@ -33,6 +33,19 @@ install:
   - if [[ "${COMPILER}" != "" ]]; then export CXX=${COMPILER}; fi
   
   ############################################################################
+  # Install a recent CMake
+  ############################################################################
+  - |
+    if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
+      CMAKE_URL="https://cmake.org/files/v3.7/cmake-3.7.2-Linux-x86_64.tar.gz"
+      mkdir cmake && travis_retry wget --no-check-certificate --quiet -O - ${CMAKE_URL} | tar --strip-components=1 -xz -C cmake
+      export PATH=${DEPS_DIR}/cmake/bin:${PATH}
+    else
+      brew upgrade cmake || brew install cmake
+    fi
+  - cmake --version
+  
+  ############################################################################
   # Install Boost headers
   ############################################################################
   - |
@@ -48,31 +61,18 @@ install:
           mkdir -p ${BOOST_DIR}
           { travis_retry wget --quiet -O - ${BOOST_URL} | tar --strip-components=1 -xz -C ${BOOST_DIR}; } || exit 1
         fi
-      fi
-      CMAKE_OPTIONS+=" -DBOOST_ROOT=${BOOST_DIR}"
+      fi      
     fi
   
-  ############################################################################
-  # Install a recent CMake
-  ############################################################################
-  - |
-    if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
-      CMAKE_URL="https://cmake.org/files/v3.7/cmake-3.7.2-Linux-x86_64.tar.gz"
-      mkdir cmake && travis_retry wget --no-check-certificate --quiet -O - ${CMAKE_URL} | tar --strip-components=1 -xz -C cmake
-      export PATH=${DEPS_DIR}/cmake/bin:${PATH}
-    else
-      brew upgrade cmake || brew install cmake
-    fi
-  - cmake --version
-
   ############################################################################
   # Install Boost.Build
   ############################################################################
   - |
     if [[ "${BOOST_BUILD}" == "true" ]]; then
-      (cd ${BOOST_DIR} && ./bootstrap.sh --with-libraries=filesystem,locale,program_options,system,thread && ./b2 install --prefix=${DEPS_DIR}/b2)
+      (cd ${BOOST_DIR} && ./bootstrap.sh --with-libraries=filesystem,locale,program_options,system,thread && ./b2 install)
       export PATH=${DEPS_DIR}/b2/bin:${PATH}
     fi
+    CMAKE_OPTIONS+=" -DBOOST_ROOT=/usr/local"
   
 before_script:
   ############################################################################
