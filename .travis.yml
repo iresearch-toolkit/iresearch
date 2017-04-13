@@ -29,7 +29,6 @@ install:
   # Setup default versions and override compiler if needed
   ############################################################################  
   - if [[ "${BOOST_VERSION}" == "default" ]]; then BOOST_VERSION=1.63.0; fi
-
   - if [[ "${COMPILER}" != "" ]]; then export CXX=${COMPILER}; fi
   
   ############################################################################
@@ -70,9 +69,20 @@ install:
     if [[ "${BOOST_BUILD}" == "true" ]]; then
       (cd ${BOOST_DIR} && ./bootstrap.sh --with-libraries=filesystem,locale,program_options,system,thread && ./b2 install --libdir=lib)      
     fi
-    export BOOST_ROOT=${BOOST_DIR}
-    ll BOOST_ROOT
-  
+    CMAKE_OPTIONS+=" -DBOOST_ROOT=${BOOST_DIR}"    
+    
+  ############################################################################
+  # Install Lz4
+  ############################################################################
+  - |
+    cd ${DEPS_DIR}
+    LZ4_DIR = ${DEPS_DIR}/lz4
+    LZ4_URL = "https://github.com/lz4/lz4"        
+    travis_retry git clone --depth 1 --recursive --quiet ${LZ4_URL} ${LZ4_DIR} || exit 1
+    cd ${LZ4_DIR}
+    make install DESTDIR=build PREFIX=""
+    export LZ4_ROOT=${LZ4_DIR}/build
+        
 before_script:
   ############################################################################
   # Go back to the root of the project and setup the build directory
