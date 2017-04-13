@@ -72,14 +72,11 @@ install:
   ############################################################################
   - |
     if [[ "${BOOST_BUILD}" == "true" ]]; then
-      (cd ${BOOST_DIR}/tools/build && ./bootstrap.sh && ./b2 install --prefix=${DEPS_DIR}/b2)
+      (cd ${BOOST_DIR}/tools/build && ./bootstrap.sh --with-libraries=filesystem,locale,program_options,system,thread && ./b2 install --prefix=${DEPS_DIR}/b2)
       export PATH=${DEPS_DIR}/b2/bin:${PATH}
     fi
   
-before_script:  
-  - mkdir build
-  - cd build
-    
+before_script:
   ############################################################################
   # Go back to the root of the project and setup the build directory
   ############################################################################
