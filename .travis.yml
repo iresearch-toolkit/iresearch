@@ -15,7 +15,7 @@ matrix:
   include:
     # GCC 4.9
     - os: linux
-    - env: COMPILER=g++-4.9 BOOST_VERSION=default
+    - env: COMPILER=g++-4.9 BOOST_VERSION=default BOOST_BUILD=true
     - compiler: gcc
           
 install:
@@ -51,7 +51,7 @@ install:
         # Make sure we don't conflict with the Hana shipped with Boost
         rm -rf ${BOOST_ROOT}/include/boost/{hana,hana.hpp}
       fi
-      export BOOST_ROOT="${BOOST_DIR}"
+      CMAKE_OPTIONS+=" -DBOOST_ROOT=${BOOST_DIR}"
     fi
   
   ############################################################################
