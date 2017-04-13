@@ -70,7 +70,8 @@ install:
     if [[ "${BOOST_BUILD}" == "true" ]]; then
       (cd ${BOOST_DIR} && ./bootstrap.sh --with-libraries=filesystem,locale,program_options,system,thread && ./b2 install --libdir=lib)      
     fi
-    CMAKE_OPTIONS+=" -DBOOST_ROOT=${BOOST_DIR}"
+    export BOOST_ROOT=${BOOST_DIR}
+    ll BOOST_ROOT
   
 before_script:
   ############################################################################
