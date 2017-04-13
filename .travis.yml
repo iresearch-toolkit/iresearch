@@ -13,6 +13,8 @@ addons:
 
 cache:
   directories:
+    - ${TRAVIS_BUILD_DIR}/deps/lz4
+    - ${TRAVIS_BUILD_DIR}/deps/boost-1.58.0
     - ${TRAVIS_BUILD_DIR}/deps/boost-1.59.0
     - ${TRAVIS_BUILD_DIR}/deps/boost-1.60.0
     - ${TRAVIS_BUILD_DIR}/deps/boost-1.61.0
@@ -88,7 +90,7 @@ install:
     cd ${DEPS_DIR}
     travis_retry git clone --depth 1 --recursive --quiet ${LZ4_URL} ${LZ4_DIR} || exit 1
     cd ${LZ4_DIR}
-    make install DESTDIR=build PREFIX=""
+    make install DESTDIR=${LZ4_DIR}/build PREFIX=""
     export LZ4_ROOT=${LZ4_DIR}/build
         
 before_script:
