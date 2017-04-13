@@ -130,6 +130,7 @@ before_script:
   - cd ${TRAVIS_BUILD_DIR}
   - (mkdir build && cd build && cmake .. ${CMAKE_OPTIONS})
   
-script:     
-    - make
+script:
+    - cd ${TRAVIS_BUILD_DIR}/build
+    - make iresearch-tests-static
     
