@@ -85,11 +85,13 @@ install:
   ############################################################################
   - |    
     LZ4_DIR=${DEPS_DIR}/lz4
-    LZ4_URL="https://github.com/lz4/lz4.git"        
-    cd ${DEPS_DIR}
-    travis_retry git clone --depth 1 --recursive --quiet ${LZ4_URL} ${LZ4_DIR} || exit 1
-    cd ${LZ4_DIR}
-    make install DESTDIR=${LZ4_DIR}/build PREFIX=""
+    if [[ -z "$(ls -A ${LZ4_DIR})" ]]; then
+      LZ4_URL="https://github.com/lz4/lz4.git"        
+      cd ${DEPS_DIR}
+      travis_retry git clone --depth 1 --recursive --quiet ${LZ4_URL} ${LZ4_DIR} || exit 1
+      cd ${LZ4_DIR}
+      make install DESTDIR=${LZ4_DIR}/build PREFIX=""
+    fi
     export LZ4_ROOT=${LZ4_DIR}/build
     
   ############################################################################
@@ -97,16 +99,18 @@ install:
   ############################################################################
   - |
     SNOWBALL_DIR=${DEPS_DIR}/snowball
-    SNOWBALL_URL="https://github.com/snowballstem/snowball.git"        
-    cd ${DEPS_DIR}
-    travis_retry git clone --quiet ${SNOWBALL_URL} ${SNOWBALL_DIR} || exit 1        
-    cd ${SNOWBALL_DIR}
-    git reset --hard 9e0a8340d58c70f91e8a0233b985242dc69c6fb8
-    mkdir build && cd build
-    cmake -DENABLE_STATIC=OFF -DNO_SHARED=OFF -g "Unix Makefiles" ..
-    cmake --build .
-    cmake -DENABLE_STATIC=OFF -DNO_SHARED=ON -g "Unix Makefiles" ..
-    cmake --build .
+    if [[ -z "$(ls -A ${LZ4_DIR})" ]]; then
+      SNOWBALL_URL="https://github.com/snowballstem/snowball.git"        
+      cd ${DEPS_DIR}
+      travis_retry git clone --quiet ${SNOWBALL_URL} ${SNOWBALL_DIR} || exit 1        
+      cd ${SNOWBALL_DIR}
+      git reset --hard 9e0a8340d58c70f91e8a0233b985242dc69c6fb8
+      mkdir build && cd build
+      cmake -DENABLE_STATIC=OFF -DNO_SHARED=OFF -g "Unix Makefiles" ..
+      cmake --build .
+      cmake -DENABLE_STATIC=OFF -DNO_SHARED=ON -g "Unix Makefiles" ..
+      cmake --build .
+    fi
     export SNOWBALL_ROOT=${SNOWBALL_DIR}
     
   ############################################################################
@@ -114,13 +118,15 @@ install:
   ############################################################################
   - |
     GTEST_DIR=${DEPS_DIR}/gtest
-    GTEST_URL="https://github.com/google/googletest.git"
-    cd ${DEPS_DIR}
-    travis_retry git clone --depth 1 --recursive --quiet ${GTEST_URL} ${GTEST_DIR} || exit 1        
-    cd ${GTEST_DIR}
-    mkdir build && cd build
-    cmake -DCMAKE_INSTALL_PREFIX=${GTEST_DIR}/build/package ..
-    make install
+    if [[ -z "$(ls -A ${LZ4_DIR})" ]]; then
+      GTEST_URL="https://github.com/google/googletest.git"
+      cd ${DEPS_DIR}
+      travis_retry git clone --depth 1 --recursive --quiet ${GTEST_URL} ${GTEST_DIR} || exit 1        
+      cd ${GTEST_DIR}
+      mkdir build && cd build
+      cmake -DCMAKE_INSTALL_PREFIX=${GTEST_DIR}/build/package ..
+      make install
+    fi
     export GTEST_ROOT=${GTEST_DIR}/build/package
         
 before_script:
