@@ -106,7 +106,7 @@ install:
     cmake --build .
     cmake -DENABLE_STATIC=OFF -DNO_SHARED=ON -g "Unix Makefiles" ..
     cmake --build .
-    export SNOWBALL_ROOT=${SNOWBALL_DIR}/build
+    export SNOWBALL_ROOT=${SNOWBALL_DIR}
         
 before_script:
   ############################################################################
