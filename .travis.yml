@@ -120,7 +120,7 @@ install:
   mkdir build && cd build
   cmake -DCMAKE_INSTALL_PREFIX=${GTEST_DIR}/build/package ..
   make  
-  export GTEST_ROOT=${GTEST_DIR}//build/package
+  export GTEST_ROOT=${GTEST_DIR}/build/package
         
 before_script:
   ############################################################################
