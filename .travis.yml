@@ -10,7 +10,15 @@ addons:
       - g++-4.9
     sources: &sources
       - ubuntu-toolchain-r-test
-      
+
+cache:
+  directories:
+    - ${TRAVIS_BUILD_DIR}/deps/boost-1.59.0
+    - ${TRAVIS_BUILD_DIR}/deps/boost-1.60.0
+    - ${TRAVIS_BUILD_DIR}/deps/boost-1.61.0
+    - ${TRAVIS_BUILD_DIR}/deps/boost-1.62.0
+    - ${TRAVIS_BUILD_DIR}/deps/boost-1.63.0
+
 matrix:
   include:
     # GCC 4.9
@@ -74,10 +82,10 @@ install:
   ############################################################################
   # Install Lz4
   ############################################################################
-  - |
+  - |    
+    LZ4_DIR=${DEPS_DIR}/lz4
+    LZ4_URL="https://github.com/lz4/lz4"        
     cd ${DEPS_DIR}
-    LZ4_DIR = ${DEPS_DIR}/lz4
-    LZ4_URL = "https://github.com/lz4/lz4"        
     travis_retry git clone --depth 1 --recursive --quiet ${LZ4_URL} ${LZ4_DIR} || exit 1
     cd ${LZ4_DIR}
     make install DESTDIR=build PREFIX=""
