@@ -38,7 +38,6 @@ install:
   - |
     if [[ "${BOOST_VERSION}" != "" ]]; then
       BOOST_DIR=${DEPS_DIR}/boost-${BOOST_VERSION}
-      mkdir -p ${BOOST_DIR}
       if [[ -z "$(ls -A ${BOOST_DIR})" ]]; then
         if [[ "${BOOST_VERSION}" == "trunk" ]]; then
           BOOST_URL="http://github.com/boostorg/boost.git"
@@ -71,7 +70,8 @@ install:
   ############################################################################
   - |
     if [[ "${BOOST_BUILD}" == "true" ]]; then
-      (cd ${BOOST_DIR}/tools/build && ./bootstrap.sh --with-libraries=filesystem,locale,program_options,system,thread && ./b2 install --prefix=${DEPS_DIR}/b2)
+      (cd ${BOOST_DIR}/tools/build && ./bootstrap.sh)
+      ./b2 install --prefix=${DEPS_DIR}/b2 --with-libraries=filesystem,locale,program_options,system,thread
       export PATH=${DEPS_DIR}/b2/bin:${PATH}
     fi
   
