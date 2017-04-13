@@ -16,6 +16,7 @@
 
 #include "formats/format_utils.hpp"
 #include "utils/index_utils.hpp"
+#include "utils/singleton.hpp"
 #include "utils/type_limits.hpp"
 
 #include <unordered_map>
@@ -136,6 +137,11 @@ NS_ROOT
 // segment_reader
 // -------------------------------------------------------------------
 
+class segment_reader::atomic_helper:
+  public atomic_base<segment_reader::impl_ptr>,
+  public singleton<segment_reader::atomic_helper> {
+};
+
 class segment_reader::segment_reader_impl: public sub_reader {
  public:
   virtual index_reader::reader_iterator begin() const override;
@@ -176,6 +182,32 @@ class segment_reader::segment_reader_impl: public sub_reader {
 };
 
 segment_reader::segment_reader(const impl_ptr& impl): impl_(impl) {
+}
+
+segment_reader::segment_reader(const segment_reader& other) {
+  *this = other;
+}
+
+segment_reader::segment_reader(segment_reader&& other) NOEXCEPT {
+  *this = std::move(other);
+}
+
+segment_reader& segment_reader::operator=(const segment_reader& other) {
+  if (this != &other) {
+    auto impl = atomic_helper::instance().atomic_load(&(other.impl_));
+
+    atomic_helper::instance().atomic_exchange(&impl_, impl);
+  }
+
+  return *this;
+}
+
+segment_reader& segment_reader::operator=(segment_reader&& other) NOEXCEPT {
+  if (this != &other) {
+    atomic_helper::instance().atomic_exchange(&impl_, other.impl_);
+  }
+
+  return *this;
 }
 
 segment_reader::operator bool() const NOEXCEPT {
