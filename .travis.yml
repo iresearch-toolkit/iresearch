@@ -103,7 +103,7 @@ install:
       cd ${ICU_DIR}
       tar -zxf icu4c-57_1-src.tgz            
       cd icu/source
-      configure --enable-static
+      ./configure --enable-static
       make
     fi
     export ICU_ROOT=${ICU_DIR}
@@ -132,7 +132,7 @@ install:
   ############################################################################
   - |
     GTEST_DIR=${DEPS_DIR}/gtest
-    if [[ -z "$(ls -A ${LZ4_DIR})" ]]; then
+    if [[ -z "$(ls -A ${GTEST_DIR})" ]]; then
       GTEST_URL="https://github.com/google/googletest.git"
       cd ${DEPS_DIR}
       travis_retry git clone --depth 1 --recursive --quiet ${GTEST_URL} ${GTEST_DIR} || exit 1        
