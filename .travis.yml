@@ -104,9 +104,9 @@ install:
       tar -zxf icu4c-57_1-src.tgz            
       cd icu/source
       ./configure --enable-static
-      make
+      make install DESTDIR=${ICU_DIR}
     fi
-    export ICU_ROOT=${ICU_DIR}
+    export ICU_ROOT=${ICU_DIR}/usr/local
 
   ############################################################################
   # Install snowball
