@@ -28,7 +28,7 @@ matrix:
   include:
     # GCC 4.9
     - os: linux
-    - env: COMPILER=g++-4.9 BOOST_VERSION=default ICU_VERSION=default
+    - env: COMPILER=g++-4.9 BOOST_VERSION=default
     - compiler: gcc
           
 install:
@@ -41,8 +41,7 @@ install:
   ############################################################################
   # Setup default versions and override compiler if needed
   ############################################################################  
-  - if [[ "${BOOST_VERSION}" == "default" ]]; then BOOST_VERSION=1.63.0; fi
-  - if [[ "${ICU_VERSION}" == "default" ]]; then ICU_VERSION=55.1; fi
+  - if [[ "${BOOST_VERSION}" == "default" ]]; then BOOST_VERSION=1.63.0; fi  
   - if [[ "${COMPILER}" != "" ]]; then export CXX=${COMPILER}; fi
   
   ############################################################################
@@ -101,7 +100,7 @@ install:
       ICU_URL="http://download.icu-project.org/files/icu4c/57.1/icu4c-57_1-src.tgz"              
       cd ${DEPS_DIR}
       wget -P icu ${ICU_URL}
-      cd ${ICU_DIR}/icu
+      cd ${ICU_DIR}
       tar -zxf icu4c-57_1-src.tgz            
       cd icu/source
       configure --enable-static
@@ -114,7 +113,7 @@ install:
   ############################################################################
   - |
     SNOWBALL_DIR=${DEPS_DIR}/snowball
-    if [[ -z "$(ls -A ${LZ4_DIR})" ]]; then
+    if [[ -z "$(ls -A ${SNOWBALL_DIR})" ]]; then
       SNOWBALL_URL="https://github.com/snowballstem/snowball.git"        
       cd ${DEPS_DIR}
       travis_retry git clone --quiet ${SNOWBALL_URL} ${SNOWBALL_DIR} || exit 1        
