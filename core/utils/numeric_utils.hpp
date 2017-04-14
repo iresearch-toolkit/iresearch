@@ -21,15 +21,25 @@ inline CONSTEXPR bool is_big_endian() {
   return *(uint16_t*)"\0\xff" < 0x100; 
 }
 
-IRESEARCH_API size_t encode64(uint64_t value, byte_type* out, size_t shift = 0);
-IRESEARCH_API uint64_t decode64(const byte_type* out);
 IRESEARCH_API const bytes_ref& mini64();
 IRESEARCH_API const bytes_ref& maxi64();
 
-IRESEARCH_API size_t encode32(uint32_t value, byte_type* out, size_t shift = 0);
-IRESEARCH_API uint32_t decode32(const byte_type* out);
+IRESEARCH_API uint64_t decode64(const byte_type* out);
+IRESEARCH_API size_t encode64(uint64_t value, byte_type* out, size_t shift = 0);
+IRESEARCH_API uint64_t hton64(uint64_t value);
+IRESEARCH_API uint64_t ntoh64(uint64_t value);
+IRESEARCH_API const bytes_ref& minu64();
+IRESEARCH_API const bytes_ref& maxu64();
+
 IRESEARCH_API const bytes_ref& mini32();
 IRESEARCH_API const bytes_ref& maxi32();
+
+IRESEARCH_API uint32_t decode32(const byte_type* out);
+IRESEARCH_API size_t encode32(uint32_t value, byte_type* out, size_t shift = 0);
+IRESEARCH_API uint32_t hton32(uint32_t value);
+IRESEARCH_API uint32_t ntoh32(uint32_t value);
+IRESEARCH_API const bytes_ref& minu32();
+IRESEARCH_API const bytes_ref& maxu32();
 
 IRESEARCH_API size_t encodef32(uint32_t value, byte_type* out, size_t shift = 0);
 IRESEARCH_API uint32_t decodef32(const byte_type* out);
@@ -68,6 +78,27 @@ struct numeric_traits<int32_t> {
 }; // numeric_traits
 
 template<>
+struct numeric_traits<uint32_t> {
+  typedef uint32_t integral_t;
+  static integral_t decode(const byte_type* in) { return decode32(in); }
+  static size_t encode(integral_t value, byte_type* out, size_t offset = 0) {
+    return encode32(value, out, offset);
+  }
+  static integral_t hton(integral_t value) { return hton32(value); }
+  static integral_t ntoh(integral_t value) { return ntoh32(value); }
+  inline static integral_t integral(integral_t value) { return value; }
+  static const bytes_ref& (min)() { return minu32(); }
+  static const bytes_ref& (max)() { return maxu32(); }
+  static bytes_ref raw_ref(integral_t const& value) {
+    return bytes_ref(
+      reinterpret_cast<irs::byte_type const*>(&value),
+      sizeof(value)
+    );
+  }
+  CONSTEXPR static size_t size() { return sizeof(integral_t) + 1; }
+};
+
+template<>
 struct numeric_traits<int64_t> {
   typedef int64_t integral_t;
   static const bytes_ref& (min)() { return mini64(); } 
@@ -81,6 +112,27 @@ struct numeric_traits<int64_t> {
     return decode64(in);
   }
 }; // numeric_traits
+
+template<>
+struct numeric_traits<uint64_t> {
+  typedef uint64_t integral_t;
+  static integral_t decode(const byte_type* in) { return decode64(in); }
+  static size_t encode(integral_t value, byte_type* out, size_t offset = 0) {
+    return encode64(value, out, offset);
+  }
+  static integral_t hton(integral_t value) { return hton64(value); }
+  static integral_t ntoh(integral_t value) { return ntoh64(value); }
+  inline static integral_t integral(integral_t value) { return value; }
+  static const bytes_ref& (max)() { return maxu64(); }
+  static const bytes_ref& (min)() { return minu64(); }
+  static bytes_ref raw_ref(integral_t const& value) {
+    return bytes_ref(
+      reinterpret_cast<irs::byte_type const*>(&value),
+      sizeof(value)
+    );
+  }
+  CONSTEXPR static size_t size() { return sizeof(integral_t) + 1; }
+};
 
 #ifndef FLOAT_T_IS_DOUBLE_T
 template<>

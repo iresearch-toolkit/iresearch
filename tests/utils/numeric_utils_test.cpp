@@ -51,7 +51,7 @@ TEST(numeric_utils_test, encode32) {
       expected.append(1, 0);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 8 
     {
       const size_t shift = 8;
@@ -65,7 +65,7 @@ TEST(numeric_utils_test, encode32) {
       expected.append(1, 0);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 16
     {
       const size_t shift = 16;
@@ -78,7 +78,7 @@ TEST(numeric_utils_test, encode32) {
       expected.append(1, 0);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 24 
     {
       const size_t shift = 24;
@@ -90,7 +90,7 @@ TEST(numeric_utils_test, encode32) {
       expected.append(1, 0x80);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 32
     {
       const size_t shift = 32;
@@ -101,7 +101,7 @@ TEST(numeric_utils_test, encode32) {
       expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 43
     {
       const size_t shift = 43;
@@ -113,7 +113,7 @@ TEST(numeric_utils_test, encode32) {
       ASSERT_EQ(actual, expected);
       ASSERT_EQ(0, ir::numeric_utils::decode32(actual.data()));
     }
-    
+
     for (size_t shift = 0; shift < ir::bits_required<uint32_t>(); ++shift) {
       ir::bstring actual;
       actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
@@ -153,7 +153,7 @@ TEST(numeric_utils_test, encode32) {
       expected.append(1, 0);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 16
     {
       const size_t shift = 16;
@@ -166,7 +166,7 @@ TEST(numeric_utils_test, encode32) {
       expected.append(1, 0);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 24 
     {
       const size_t shift = 24;
@@ -178,7 +178,7 @@ TEST(numeric_utils_test, encode32) {
       expected.append(1, 0x80);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 32 
     {
       const size_t shift = 32;
@@ -189,7 +189,7 @@ TEST(numeric_utils_test, encode32) {
       expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 1132 
     {
       const size_t shift = 1132;
@@ -201,7 +201,7 @@ TEST(numeric_utils_test, encode32) {
       ASSERT_EQ(actual, expected);
       ASSERT_EQ(0, ir::numeric_utils::decode32(actual.data()));
     }
-    
+
     for (size_t shift = 0; shift < ir::bits_required<uint32_t>(); ++shift) {
       ir::bstring actual;
       actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
@@ -228,7 +228,7 @@ TEST(numeric_utils_test, encode32) {
       expected.append(1, 0x37);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 8
     {
       const size_t shift = 8;
@@ -242,7 +242,7 @@ TEST(numeric_utils_test, encode32) {
       expected.append(1, 0x30);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 16 
     {
       const size_t shift = 16;
@@ -255,7 +255,7 @@ TEST(numeric_utils_test, encode32) {
       expected.append(1, 0);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 24 
     {
       const size_t shift = 24;
@@ -267,7 +267,7 @@ TEST(numeric_utils_test, encode32) {
       expected.append(1, 0x80);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 32 
     {
       const size_t shift = 32;
@@ -278,7 +278,7 @@ TEST(numeric_utils_test, encode32) {
       expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
       ASSERT_EQ(actual, expected);
     }
-    
+
     // invalid shift = 54 
     {
       const size_t shift = 54;
@@ -298,7 +298,7 @@ TEST(numeric_utils_test, encode32) {
       ASSERT_EQ(((value >> shift) << shift), ir::numeric_utils::decode32(actual.data()));
     }
   }
-  
+
   // 3 bytes
   {
     const uint32_t value = 0x44007D;
@@ -317,7 +317,7 @@ TEST(numeric_utils_test, encode32) {
       expected.append(1, 0x7D);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 8
     {
       const size_t shift = 8;
@@ -331,7 +331,7 @@ TEST(numeric_utils_test, encode32) {
       expected.append(1, 0);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 16 
     {
       const size_t shift = 16;
@@ -344,7 +344,7 @@ TEST(numeric_utils_test, encode32) {
       expected.append(1, 0x44);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 24 
     {
       const size_t shift = 24;
@@ -356,7 +356,7 @@ TEST(numeric_utils_test, encode32) {
       expected.append(1, 0x80);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 32 
     {
       const size_t shift = 32;
@@ -367,7 +367,7 @@ TEST(numeric_utils_test, encode32) {
       expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
       ASSERT_EQ(actual, expected);
     }
-    
+
     // invalid shift = 33 
     {
       const size_t shift = 33;
@@ -379,7 +379,7 @@ TEST(numeric_utils_test, encode32) {
       ASSERT_EQ(actual, expected);
       ASSERT_EQ(0, ir::numeric_utils::decode32(actual.data()));
     }
-    
+
     for (size_t shift = 0; shift < ir::bits_required<uint32_t>(); ++shift) {
       ir::bstring actual;
       actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
@@ -387,7 +387,7 @@ TEST(numeric_utils_test, encode32) {
       ASSERT_EQ(((value >> shift) << shift), ir::numeric_utils::decode32(actual.data()));
     }
   }
-  
+
   // 4 bytes
   {
     const uint32_t value = 0x7FFFFEAF;
@@ -406,7 +406,7 @@ TEST(numeric_utils_test, encode32) {
       expected.append(1, 0xAF);
       ASSERT_EQ(actual, expected);
     }
-  
+
     // shift = 8
     {
       const size_t shift = 8;
@@ -420,7 +420,7 @@ TEST(numeric_utils_test, encode32) {
       expected.append(1, 0xFE);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 16
     {
       const size_t shift = 16;
@@ -433,7 +433,7 @@ TEST(numeric_utils_test, encode32) {
       expected.append(1, 0xFF);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 24 
     {
       const size_t shift = 24;
@@ -445,7 +445,7 @@ TEST(numeric_utils_test, encode32) {
       expected.append(1, 0xFF);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 32 
     {
       const size_t shift = 32;
@@ -456,7 +456,7 @@ TEST(numeric_utils_test, encode32) {
       expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
       ASSERT_EQ(actual, expected);
     }
-    
+
     // invalid shift = 33
     {
       const size_t shift = 33;
@@ -468,7 +468,7 @@ TEST(numeric_utils_test, encode32) {
       ASSERT_EQ(actual, expected);
       ASSERT_EQ(0, ir::numeric_utils::decode32(actual.data()));
     }
-    
+
     for (size_t shift = 0; shift < ir::bits_required<uint32_t>(); ++shift) {
       ir::bstring actual;
       actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
@@ -661,7 +661,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 16 
     {
       const size_t shift = 16;
@@ -678,7 +678,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 32 
     {
       const size_t shift = 32;
@@ -693,7 +693,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 48 
     {
       const size_t shift = 48;
@@ -706,7 +706,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 56 
     {
       const size_t shift = 56;
@@ -718,7 +718,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0x80);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 64 
     {
       const size_t shift = 64;
@@ -729,7 +729,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 65 
     {
       const size_t shift = 65;
@@ -741,7 +741,7 @@ TEST(numeric_utils_test, encode64) {
       ASSERT_EQ(actual, expected);
       ASSERT_EQ(0, ir::numeric_utils::decode64(actual.data()));
     }
-    
+
     for (size_t shift = 0; shift < ir::bits_required<uint64_t>(); ++shift) {
       ir::bstring actual;
       actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
@@ -771,7 +771,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0x7D);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 16 
     {
       const size_t shift = 16;
@@ -788,7 +788,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 32 
     {
       const size_t shift = 32;
@@ -803,7 +803,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 48 
     {
       const size_t shift = 48;
@@ -816,7 +816,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 56 
     {
       const size_t shift = 56;
@@ -828,7 +828,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0x80);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 64 
     {
       const size_t shift = 64;
@@ -839,7 +839,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 65 
     {
       const size_t shift = 65;
@@ -851,7 +851,7 @@ TEST(numeric_utils_test, encode64) {
       ASSERT_EQ(actual, expected);
       ASSERT_EQ(0, ir::numeric_utils::decode64(actual.data()));
     }
-    
+
     for (size_t shift = 0; shift < ir::bits_required<uint64_t>(); ++shift) {
       ir::bstring actual;
       actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
@@ -881,7 +881,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0x37);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 16 
     {
       const size_t shift = 16;
@@ -898,7 +898,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 32 
     {
       const size_t shift = 32;
@@ -913,7 +913,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 48 
     {
       const size_t shift = 48;
@@ -926,7 +926,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 56 
     {
       const size_t shift = 56;
@@ -938,7 +938,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0x80);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 64 
     {
       const size_t shift = 64;
@@ -949,7 +949,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 65 
     {
       const size_t shift = 65;
@@ -961,7 +961,7 @@ TEST(numeric_utils_test, encode64) {
       ASSERT_EQ(actual, expected);
       ASSERT_EQ(0, ir::numeric_utils::decode64(actual.data()));
     }
-    
+
     for (size_t shift = 0; shift < ir::bits_required<uint64_t>(); ++shift) {
       ir::bstring actual;
       actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
@@ -969,7 +969,7 @@ TEST(numeric_utils_test, encode64) {
       ASSERT_EQ(((value >> shift) << shift), ir::numeric_utils::decode64(actual.data()));
     }
   }
-  
+
   // 3 bytes
   {
     const uint64_t value = 0x44007D;
@@ -991,7 +991,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0x7D);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 16 
     {
       const size_t shift = 16;
@@ -1009,7 +1009,7 @@ TEST(numeric_utils_test, encode64) {
 
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 32 
     {
       const size_t shift = 32;
@@ -1024,7 +1024,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 48 
     {
       const size_t shift = 48;
@@ -1037,7 +1037,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 56 
     {
       const size_t shift = 56;
@@ -1049,7 +1049,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0x80);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 64 
     {
       const size_t shift = 64;
@@ -1060,7 +1060,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 65 
     {
       const size_t shift = 65;
@@ -1072,7 +1072,7 @@ TEST(numeric_utils_test, encode64) {
       ASSERT_EQ(actual, expected);
       ASSERT_EQ(0, ir::numeric_utils::decode64(actual.data()));
     }
-    
+
     for (size_t shift = 0; shift < ir::bits_required<uint64_t>(); ++shift) {
       ir::bstring actual;
       actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
@@ -1080,7 +1080,7 @@ TEST(numeric_utils_test, encode64) {
       ASSERT_EQ(((value >> shift) << shift), ir::numeric_utils::decode64(actual.data()));
     }
   }
-  
+
   // 4 bytes
   {
     const uint64_t value = 0x7FFFFEAF;
@@ -1102,7 +1102,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0xAF);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 16 
     {
       const size_t shift = 16;
@@ -1119,7 +1119,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0xFF);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 32 
     {
       const size_t shift = 32;
@@ -1134,7 +1134,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 48 
     {
       const size_t shift = 48;
@@ -1147,7 +1147,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 56 
     {
       const size_t shift = 56;
@@ -1159,7 +1159,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0x80);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 64 
     {
       const size_t shift = 64;
@@ -1170,7 +1170,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 65 
     {
       const size_t shift = 65;
@@ -1182,7 +1182,7 @@ TEST(numeric_utils_test, encode64) {
       ASSERT_EQ(actual, expected);
       ASSERT_EQ(0, ir::numeric_utils::decode64(actual.data()));
     }
-    
+
     for (size_t shift = 0; shift < ir::bits_required<uint64_t>(); ++shift) {
       ir::bstring actual;
       actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
@@ -1190,7 +1190,7 @@ TEST(numeric_utils_test, encode64) {
       ASSERT_EQ(((value >> shift) << shift), ir::numeric_utils::decode64(actual.data()));
     }
   }
-  
+
   // 5 bytes
   {
     const uint64_t value = uint64_t(0xCE7FFFFEAF);
@@ -1212,7 +1212,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0xAF);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 16 
     {
       const size_t shift = 16;
@@ -1229,7 +1229,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0xFF);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 32 
     {
       const size_t shift = 32;
@@ -1244,7 +1244,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0xCE);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 48 
     {
       const size_t shift = 48;
@@ -1257,7 +1257,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 56 
     {
       const size_t shift = 56;
@@ -1269,7 +1269,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0x80);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 64 
     {
       const size_t shift = 64;
@@ -1280,7 +1280,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 65 
     {
       const size_t shift = 65;
@@ -1292,7 +1292,7 @@ TEST(numeric_utils_test, encode64) {
       ASSERT_EQ(actual, expected);
       ASSERT_EQ(0, ir::numeric_utils::decode64(actual.data()));
     }
-    
+
     for (size_t shift = 0; shift < ir::bits_required<uint64_t>(); ++shift) {
       ir::bstring actual;
       actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
@@ -1300,7 +1300,7 @@ TEST(numeric_utils_test, encode64) {
       ASSERT_EQ(((value >> shift) << shift), ir::numeric_utils::decode64(actual.data()));
     }
   }
-  
+
   // 6 bytes
   {
     const uint64_t value = uint64_t(0xFACE7FFFFEAF);
@@ -1322,7 +1322,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0xAF);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 16 
     {
       const size_t shift = 16;
@@ -1339,7 +1339,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0xFF);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 32 
     {
       const size_t shift = 32;
@@ -1354,7 +1354,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0xCE);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 48 
     {
       const size_t shift = 48;
@@ -1367,7 +1367,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 56 
     {
       const size_t shift = 56;
@@ -1379,7 +1379,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0x80);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 64 
     {
       const size_t shift = 64;
@@ -1390,7 +1390,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 65 
     {
       const size_t shift = 65;
@@ -1402,7 +1402,7 @@ TEST(numeric_utils_test, encode64) {
       ASSERT_EQ(actual, expected);
       ASSERT_EQ(0, ir::numeric_utils::decode64(actual.data()));
     }
-    
+
     for (size_t shift = 0; shift < ir::bits_required<uint64_t>(); ++shift) {
       ir::bstring actual;
       actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
@@ -1410,7 +1410,7 @@ TEST(numeric_utils_test, encode64) {
       ASSERT_EQ(((value >> shift) << shift), ir::numeric_utils::decode64(actual.data()));
     }
   }
-  
+
   // 7 bytes
   {
     const uint64_t value = uint64_t(0xEFFACE7FFFFEAF);
@@ -1432,7 +1432,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0xAF);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 16 
     {
       const size_t shift = 16;
@@ -1449,7 +1449,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0xFF);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 32 
     {
       const size_t shift = 32;
@@ -1464,7 +1464,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0xCE);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 48 
     {
       const size_t shift = 48;
@@ -1477,7 +1477,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0xEF);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 56 
     {
       const size_t shift = 56;
@@ -1489,7 +1489,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0x80);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 64 
     {
       const size_t shift = 64;
@@ -1500,7 +1500,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 65 
     {
       const size_t shift = 65;
@@ -1512,7 +1512,7 @@ TEST(numeric_utils_test, encode64) {
       ASSERT_EQ(actual, expected);
       ASSERT_EQ(0, ir::numeric_utils::decode64(actual.data()));
     }
-    
+
     for (size_t shift = 0; shift < ir::bits_required<uint64_t>(); ++shift) {
       ir::bstring actual;
       actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
@@ -1520,7 +1520,7 @@ TEST(numeric_utils_test, encode64) {
       ASSERT_EQ(((value >> shift) << shift), ir::numeric_utils::decode64(actual.data()));
     }
   }
-  
+
   // 8 bytes
   {
     const uint64_t value = uint64_t(0x2AEFFACE7FFFFEAF);
@@ -1542,7 +1542,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0xAF);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 16 
     {
       const size_t shift = 16;
@@ -1559,7 +1559,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0xFF);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 32 
     {
       const size_t shift = 32;
@@ -1574,7 +1574,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0xCE);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 48 
     {
       const size_t shift = 48;
@@ -1587,7 +1587,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0xEF);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 56 
     {
       const size_t shift = 56;
@@ -1599,7 +1599,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, 0xAA);
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 64 
     {
       const size_t shift = 64;
@@ -1610,7 +1610,7 @@ TEST(numeric_utils_test, encode64) {
       expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
       ASSERT_EQ(actual, expected);
     }
-    
+
     // shift = 65 
     {
       const size_t shift = 65;
@@ -1622,7 +1622,7 @@ TEST(numeric_utils_test, encode64) {
       ASSERT_EQ(actual, expected);
       ASSERT_EQ(0, ir::numeric_utils::decode64(actual.data()));
     }
-    
+
     for (size_t shift = 0; shift < ir::bits_required<uint64_t>(); ++shift) {
       ir::bstring actual;
       actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
@@ -1644,7 +1644,7 @@ TEST(numeric_utils_test, int_traits) {
     traits_t::decode(traits_t::max().c_str())
   );
   ASSERT_EQ(5, traits_t::size());
-  
+
   {
     auto encoded = encode(std::numeric_limits<type>::min());
     ASSERT_EQ(
@@ -1652,6 +1652,7 @@ TEST(numeric_utils_test, int_traits) {
       traits_t::decode(encoded.c_str())
     );
   }
+
   {
     auto encoded = encode(std::numeric_limits<type>::max());
     ASSERT_EQ(
@@ -1659,12 +1660,65 @@ TEST(numeric_utils_test, int_traits) {
       traits_t::decode(encoded.c_str())
     );
   }
+
   {
     auto encoded = encode(INT32_C(0));
     ASSERT_EQ(
       INT32_C(0),
       traits_t::decode(encoded.c_str())
     );
+  }
+}
+
+TEST(numeric_utils_test, uint_traits) {
+  typedef ir::numeric_utils::numeric_traits<uint32_t> traits_t;
+  typedef traits_t::integral_t type;
+  ASSERT_EQ(
+    std::numeric_limits<type>::min(), 
+    traits_t::decode(traits_t::min().c_str())
+  );
+  ASSERT_EQ(
+    std::numeric_limits<type>::max(), 
+    traits_t::decode(traits_t::max().c_str())
+  );
+  ASSERT_EQ(5, traits_t::size());
+
+  {
+    auto encoded = encode(std::numeric_limits<type>::min());
+    ASSERT_EQ(
+      std::numeric_limits<type>::min(), 
+      traits_t::decode(encoded.c_str())
+    );
+  }
+
+  {
+    auto encoded = encode(std::numeric_limits<type>::max());
+    ASSERT_EQ(
+      std::numeric_limits<type>::max(), 
+      traits_t::decode(encoded.c_str())
+    );
+  }
+
+  {
+    auto encoded = encode(INT32_C(0));
+    ASSERT_EQ(
+      INT32_C(0),
+      traits_t::decode(encoded.c_str())
+    );
+  }
+
+  {
+    traits_t::integral_t value(0x12345678);
+
+    if (irs::numeric_utils::is_big_endian()) {
+      ASSERT_EQ(value, traits_t::hton(value));
+      ASSERT_EQ(value, traits_t::ntoh(value));
+    } else {
+      ASSERT_NE(value, traits_t::hton(value));
+      ASSERT_NE(value, traits_t::ntoh(value));
+      ASSERT_EQ(value, traits_t::hton(traits_t::ntoh(value)));
+      ASSERT_EQ(value, traits_t::ntoh(traits_t::hton(value)));
+    }
   }
 }
 
@@ -1680,7 +1734,7 @@ TEST(numeric_utils_test, long_traits) {
     traits_t::decode(traits_t::max().c_str())
   );
   ASSERT_EQ(9, traits_t::size());
-  
+
   {
     auto encoded = encode(std::numeric_limits<type>::min());
     ASSERT_EQ(
@@ -1688,6 +1742,7 @@ TEST(numeric_utils_test, long_traits) {
       traits_t::decode(encoded.c_str())
     );
   }
+
   {
     auto encoded = encode(std::numeric_limits<type>::max());
     ASSERT_EQ(
@@ -1695,12 +1750,65 @@ TEST(numeric_utils_test, long_traits) {
       traits_t::decode(encoded.c_str())
     );
   }
+
   {
     auto encoded = encode(INT64_C(0));
     ASSERT_EQ(
       INT64_C(0),
       traits_t::decode(encoded.c_str())
     );
+  }
+}
+
+TEST(numeric_utils_test, ulong_traits) {
+  typedef ir::numeric_utils::numeric_traits<uint64_t> traits_t;
+  typedef traits_t::integral_t type;
+  ASSERT_EQ(
+    std::numeric_limits<type>::min(), 
+    traits_t::decode(traits_t::min().c_str())
+  );
+  ASSERT_EQ(
+    std::numeric_limits<type>::max(), 
+    traits_t::decode(traits_t::max().c_str())
+  );
+  ASSERT_EQ(9, traits_t::size());
+
+  {
+    auto encoded = encode(std::numeric_limits<type>::min());
+    ASSERT_EQ(
+      std::numeric_limits<type>::min(), 
+      traits_t::decode(encoded.c_str())
+    );
+  }
+
+  {
+    auto encoded = encode(std::numeric_limits<type>::max());
+    ASSERT_EQ(
+      std::numeric_limits<type>::max(), 
+      traits_t::decode(encoded.c_str())
+    );
+  }
+
+  {
+    auto encoded = encode(INT64_C(0));
+    ASSERT_EQ(
+      INT64_C(0),
+      traits_t::decode(encoded.c_str())
+    );
+  }
+
+  {
+    traits_t::integral_t value(0x1234567890ABCDEF);
+
+    if (irs::numeric_utils::is_big_endian()) {
+      ASSERT_EQ(value, traits_t::hton(value));
+      ASSERT_EQ(value, traits_t::ntoh(value));
+    } else {
+      ASSERT_NE(value, traits_t::hton(value));
+      ASSERT_NE(value, traits_t::ntoh(value));
+      ASSERT_EQ(value, traits_t::hton(traits_t::ntoh(value)));
+      ASSERT_EQ(value, traits_t::ntoh(traits_t::hton(value)));
+    }
   }
 }
 
@@ -1724,7 +1832,7 @@ TEST(numeric_utils_test, float_traits) {
     traits_t::decode(traits_t::ninf().c_str())
   );
   ASSERT_EQ(5, traits_t::size());
-  
+
   {
     auto encoded = encode(std::numeric_limits<type>::min());
     ASSERT_EQ(
@@ -1782,7 +1890,7 @@ TEST(numeric_utils_test, double_traits) {
     traits_t::decode(traits_t::ninf().c_str())
   );
   ASSERT_EQ(9, traits_t::size());
-  
+
   {
     auto encoded = encode(std::numeric_limits<type>::min());
     ASSERT_EQ(
