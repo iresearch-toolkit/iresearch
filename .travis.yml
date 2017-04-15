@@ -7,7 +7,7 @@ addons:
   apt:    
     packages:
       - valgrind
-      - g++-5.4
+      - g++-5
     sources: &sources
       - ubuntu-toolchain-r-test
 
@@ -28,7 +28,7 @@ matrix:
   include:
     # GCC 5.4
     - os: linux
-    - env: COMPILER=g++-5.4 BOOST_VERSION=default
+    - env: COMPILER=g++-5 BOOST_VERSION=default
     - compiler: gcc
           
 install:
