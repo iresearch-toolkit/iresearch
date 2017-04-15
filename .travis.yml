@@ -17,12 +17,12 @@ cache:
 #    - ${TRAVIS_BUILD_DIR}/deps/gtest
 #    - ${TRAVIS_BUILD_DIR}/deps/snowball
 #    - ${TRAVIS_BUILD_DIR}/deps/lz4
-    - ${TRAVIS_BUILD_DIR}/deps/boost-1.58.0
-    - ${TRAVIS_BUILD_DIR}/deps/boost-1.59.0
-    - ${TRAVIS_BUILD_DIR}/deps/boost-1.60.0
-    - ${TRAVIS_BUILD_DIR}/deps/boost-1.61.0
-    - ${TRAVIS_BUILD_DIR}/deps/boost-1.62.0
-    - ${TRAVIS_BUILD_DIR}/deps/boost-1.63.0
+#    - ${TRAVIS_BUILD_DIR}/deps/boost-1.58.0
+#    - ${TRAVIS_BUILD_DIR}/deps/boost-1.59.0
+#    - ${TRAVIS_BUILD_DIR}/deps/boost-1.60.0
+#    - ${TRAVIS_BUILD_DIR}/deps/boost-1.61.0
+#    - ${TRAVIS_BUILD_DIR}/deps/boost-1.62.0
+#    - ${TRAVIS_BUILD_DIR}/deps/boost-1.63.0
 
 matrix:
   include:
@@ -36,6 +36,7 @@ before_install:
 
 install:
   - g++ --version
+  
   ############################################################################
   # All the dependencies are installed in ${TRAVIS_BUILD_DIR}/deps/
   ############################################################################
@@ -60,6 +61,23 @@ install:
       brew upgrade cmake || brew install cmake
     fi
   - cmake --version
+  
+  ############################################################################
+  # Install ICU
+  ############################################################################
+  - |    
+    ICU_DIR=${DEPS_DIR}/icu
+    if [[ -z "$(ls -A ${ICU_DIR})" ]]; then
+      ICU_URL="http://download.icu-project.org/files/icu4c/57.1/icu4c-57_1-src.tgz"              
+      cd ${DEPS_DIR}
+      wget -P icu ${ICU_URL}
+      cd ${ICU_DIR}
+      tar -zxf icu4c-57_1-src.tgz            
+      cd icu/source
+      ./configure --enable-static
+      make install #DESTDIR=${ICU_DIR}
+    fi
+    export ICU_ROOT=${ICU_DIR}/usr/local  
   
   ############################################################################
   # Install Boost
@@ -94,23 +112,6 @@ install:
       make install DESTDIR=${LZ4_DIR}/build PREFIX=""
     fi
     export LZ4_ROOT=${LZ4_DIR}/build
-    
-  ############################################################################
-  # Install ICU
-  ############################################################################
-  - |    
-    ICU_DIR=${DEPS_DIR}/icu
-    if [[ -z "$(ls -A ${ICU_DIR})" ]]; then
-      ICU_URL="http://download.icu-project.org/files/icu4c/57.1/icu4c-57_1-src.tgz"              
-      cd ${DEPS_DIR}
-      wget -P icu ${ICU_URL}
-      cd ${ICU_DIR}
-      tar -zxf icu4c-57_1-src.tgz            
-      cd icu/source
-      ./configure --enable-static
-      make install DESTDIR=${ICU_DIR}
-    fi
-    export ICU_ROOT=${ICU_DIR}/usr/local
 
   ############################################################################
   # Install snowball
