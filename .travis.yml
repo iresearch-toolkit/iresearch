@@ -41,7 +41,7 @@ install:
   ############################################################################
   # Setup default versions and override compiler if needed
   ############################################################################  
-  - if [[ "${BOOST_VERSION}" == "default" ]]; then BOOST_VERSION=1.63.0; fi  
+  - if [[ "${BOOST_VERSION}" == "default" ]]; then BOOST_VERSION=1.62.0; fi  
   - if [[ "${COMPILER}" != "" ]]; then export CXX=${COMPILER}; fi
   
   ############################################################################
