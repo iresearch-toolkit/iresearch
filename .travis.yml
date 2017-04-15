@@ -26,9 +26,17 @@ cache:
 
 matrix:
   include:
-    # GCC 5.4
+    ############################################################################
+    # Debug build
+    ############################################################################
     - os: linux
-      env: COMPILER=g++-5 BOOST_VERSION=default
+      env: COMPILER=g++-5 BOOST_VERSION=default CMAKE_OPTIONS="-DCMAKE_BUILD_TYPE=Debug"
+      compiler: gcc
+    ############################################################################
+    # Release build
+    ############################################################################
+    - os: linux
+      env: COMPILER=g++-5 BOOST_VERSION=default CMAKE_OPTIONS="-DCMAKE_BUILD_TYPE=Release"
       compiler: gcc
         
 before_install:
