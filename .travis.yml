@@ -41,7 +41,7 @@ install:
   ############################################################################
   # Setup default versions and override compiler if needed
   ############################################################################  
-  - if [[ "${BOOST_VERSION}" == "default" ]]; then BOOST_VERSION=1.62.0; fi  
+  - if [[ "${BOOST_VERSION}" == "default" ]]; then BOOST_VERSION=1.58.0; fi  
   - if [[ "${COMPILER}" != "" ]]; then export CXX=${COMPILER}; fi
   
   ############################################################################
@@ -152,5 +152,5 @@ before_script:
   
 script:
     - cd ${TRAVIS_BUILD_DIR}/build
-    - make iresearch-tests-static
+    - make iresearch-tests-static -j4
     
