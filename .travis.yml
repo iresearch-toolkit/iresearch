@@ -77,7 +77,7 @@ install:
       ./configure --enable-static
       sudo make install #DESTDIR=${ICU_DIR}
     fi
-    export ICU_ROOT=${ICU_DIR}/usr/local  
+    export ICU_ROOT=/usr/local  
   
   ############################################################################
   # Install Boost
