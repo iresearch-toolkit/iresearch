@@ -71,7 +71,7 @@ postings::emplace_result postings::emplace(const bytes_ref& term) {
   return map_utils::try_emplace_update_key(
     map_,                                     // container
     generator,                                // key generator
-    make_hashed_ref(term, bytes_ref_hash_t()) // key
+    make_hashed_ref(term, std::hash<irs::bytes_ref>()) // key
   );
 }
 

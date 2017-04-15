@@ -13,7 +13,6 @@
 #define IRESEARCH_STRING_H
 
 #include "shared.hpp"
-#include "ebo.hpp"
 
 #include <cmath>
 #include <cstring>
@@ -240,66 +239,21 @@ CONSTEXPR inline basic_string_ref<ElemDst> ref_cast(const std::basic_string<Elem
   return basic_string_ref<ElemDst>(reinterpret_cast<const ElemDst*>(src.c_str()), src.size());
 }
 
-/* -------------------------------------------------------------------
- * String algorithms
- * ------------------------------------------------------------------*/
+// -----------------------------------------------------------------------------
+// String hashing algorithms
+// -----------------------------------------------------------------------------
 
-NS_BEGIN( detail )
+NS_BEGIN(hash_utils)
 
-size_t IRESEARCH_API _char_hash_32(const iresearch::byte_type*, size_t);
-size_t IRESEARCH_API _char_hash_64(const iresearch::byte_type*, size_t);
-size_t IRESEARCH_API _char_hash_32( const char*, size_t );
-size_t IRESEARCH_API _char_hash_64( const char*, size_t );
+IRESEARCH_API size_t hash(const irs::bstring& value);
+IRESEARCH_API size_t hash(const char* value);
+IRESEARCH_API size_t hash(const wchar_t* value);
+IRESEARCH_API size_t hash(const bytes_ref& value);
+IRESEARCH_API size_t hash(const string_ref& value);
 
-template< typename _T, size_t _Size >
-struct hash_impl;
+NS_END // hash_utils
 
-template<>
-struct hash_impl <const iresearch::byte_type*, sizeof(uint32_t) > {
-  inline static size_t hash(const iresearch::byte_type* val, size_t size) {
-    return _char_hash_32(val, size);
-  }
-};
-
-template<>
-struct hash_impl < const iresearch::byte_type*, sizeof(uint64_t) > {
-  inline static size_t hash(const iresearch::byte_type* val, size_t size) {
-    return _char_hash_64(val, size);
-  }
-};
-
-template<>
-struct hash_impl < const char*, sizeof( uint32_t ) > {
-  inline static size_t hash( const char* val, size_t size ) {
-    return _char_hash_32( val, size );
-  }
-};
-
-template<>
-struct hash_impl < const char*, sizeof( uint64_t ) > {
-  inline static size_t hash( const char* val, size_t size ) {
-    return _char_hash_64( val, size );
-  }
-};
-
-NS_END // detail
-
-/* -------------------------------------------------------------------
-* boost::hash_combine support
-* ------------------------------------------------------------------*/
-
-inline size_t hash_value( const string_ref& v ) {
-  return detail::hash_impl<const char*, sizeof( size_t )>::hash( v.c_str(), v.size() );
-}
-
-inline size_t hash_value( const bytes_ref& v ) {
-  return detail::hash_impl<const char*, sizeof( size_t )>::hash(
-    reinterpret_cast< const char* >( v.c_str() ),
-    v.size()
-    );
-}
-
-NS_END
+NS_END // NS_ROOT
 
 /* -------------------------------------------------------------------
  * std extensions
@@ -362,32 +316,38 @@ struct char_traits<::iresearch::byte_type> {
   MSVC_ONLY(static void _Copy_s(char_type* /*dst*/, size_t /*dst_size*/, const char_type* /*src*/, size_t /*src_size*/) { assert(false); });
 };
 
-template<> struct hash <::iresearch::bytes_ref> {
-  size_t operator()(const ::iresearch::bytes_ref& data) const {
-    using ::iresearch::detail::hash_impl;
-    return hash_impl<const iresearch::byte_type*, sizeof(size_t)>::hash(data.c_str(), data.size());
+template<>
+struct hash<char*> {
+  size_t operator()(const char* value) const {
+    return ::iresearch::hash_utils::hash(value);
   }
 };
 
-template<> struct hash < ::iresearch::string_ref > {
-  size_t operator()( const ::iresearch::string_ref& str ) const {
-    using ::iresearch::detail::hash_impl;
-    return hash_impl< const char*, sizeof( size_t ) >::hash( str.c_str(), str.size() );
+template<>
+struct hash<wchar_t*> {
+  size_t operator()(const wchar_t* value) const {
+    return ::iresearch::hash_utils::hash(value);
   }
 };
 
 template<>
 struct hash<::iresearch::bstring> {
-  size_t operator()(const ::iresearch::bstring& data) const {
-    using ::iresearch::detail::hash_impl;
-    return hash_impl<const iresearch::byte_type*, sizeof(size_t)>::hash(data.c_str(), data.size());
+  size_t operator()(const ::iresearch::bstring& value) const {
+    return ::iresearch::hash_utils::hash(value);
   }
 };
 
-template<> struct hash < const char* > {
-  size_t operator()( const char* str ) const {
-    using ::iresearch::detail::hash_impl;
-    return hash_impl< const char*, sizeof( size_t )>::hash( str, strlen( str ) );
+template<>
+struct hash<::iresearch::bytes_ref> {
+  size_t operator()(const ::iresearch::bytes_ref& value) const {
+    return ::iresearch::hash_utils::hash(value);
+  }
+};
+
+template<>
+struct hash<::iresearch::string_ref> {
+  size_t operator()(const ::iresearch::string_ref& value) const {
+    return ::iresearch::hash_utils::hash(value);
   }
 };
 

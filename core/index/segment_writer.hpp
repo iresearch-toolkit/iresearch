@@ -121,7 +121,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
 
     const auto name = make_hashed_ref(
       static_cast<const string_ref&>(field.name()),
-      string_ref_hash_t()
+      std::hash<irs::string_ref>()
     );
 
     const doc_id_t doc = docs_cached();
@@ -142,7 +142,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
 
     const auto name = make_hashed_ref(
       static_cast<const string_ref&>(field.name()),
-      string_ref_hash_t()
+      std::hash<irs::string_ref>()
     );
 
     auto& tokens = static_cast<token_stream&>(field.get_tokens());
@@ -158,7 +158,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
 
     const auto name = make_hashed_ref(
       static_cast<const string_ref&>(field.name()),
-      string_ref_hash_t()
+      std::hash<irs::string_ref>()
     );
 
     // index field
@@ -206,5 +206,4 @@ class IRESEARCH_API segment_writer: util::noncopyable {
 }; // segment_writer
 
 NS_END
-
 #endif

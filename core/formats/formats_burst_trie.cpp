@@ -1698,7 +1698,7 @@ bool field_reader::prepare(const reader_state& state) {
 
     const auto& name = field.meta().name;
     const auto res = name_to_field_.emplace(
-      make_hashed_ref(string_ref(name), string_ref_hash_t()),
+      make_hashed_ref(string_ref(name), std::hash<irs::string_ref>()),
       &field
     );
 
@@ -1746,7 +1746,7 @@ bool field_reader::prepare(const reader_state& state) {
 }
 
 const iresearch::term_reader* field_reader::field(const string_ref& field) const {
-  const auto it = name_to_field_.find(make_hashed_ref(field, string_ref_hash_t()));
+  auto it = name_to_field_.find(make_hashed_ref(field, std::hash<irs::string_ref>()));
   return it == name_to_field_.end() ? nullptr : it->second;
 }
 

@@ -9,7 +9,42 @@
 // Agreement under which it is provided by or on behalf of EMC.
 // 
 
+#include <chrono>
+
+#include "MurmurHash/MurmurHash3.h"
+
 #include "string.hpp"
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     hash function
+// -----------------------------------------------------------------------------
+
+NS_LOCAL
+
+inline uint32_t get_seed() {
+  auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+    std::chrono::high_resolution_clock::now().time_since_epoch()
+  );
+
+  return static_cast<uint32_t>(ms.count());
+}
+
+template<typename T>
+inline size_t get_hash(const T* value, size_t size) {
+  static const auto seed = get_seed();
+  uint32_t code;
+
+  MurmurHash3_x86_32(value, size, seed, &code);
+
+  return code;
+}
+
+template<typename T>
+inline size_t get_hash(const T& value) {
+  return (value.c_str(), static_cast<int>(value.size()));
+}
+
+NS_END
 
 NS_ROOT
 
@@ -25,46 +60,27 @@ template class IRESEARCH_API basic_string_ref<byte_type>;
 
 #endif
 
-NS_BEGIN( detail )
+NS_BEGIN(hash_utils)
 
-size_t _char_hash_32(const iresearch::byte_type* _First, size_t _Count) {
-  return _char_hash_32(reinterpret_cast<const char*>(_First), _Count);
+size_t hash(const bstring& value) {
+  return get_hash(value);
 }
 
-size_t _char_hash_64(const iresearch::byte_type* _First, size_t _Count) {
-  return _char_hash_64(reinterpret_cast<const char*>(_First), _Count);
+size_t hash(const char* value) {
+  return get_hash(value, std::char_traits<char>::length(value) * sizeof(char));
 }
 
-size_t _char_hash_32( const char* _First, size_t _Count ) {
-  //static_assert(sizeof(size_t) == 4, "This code is for 32-bit size_t.");
-
-  const size_t _FNV_offset_basis = 2166136261U;
-  const size_t _FNV_prime = 16777619U;
-
-  size_t _Val = _FNV_offset_basis;
-  for ( size_t _Next = 0; _Next < _Count; ++_Next ) {	// fold in another byte
-    _Val ^= ( size_t ) _First[_Next];
-    _Val *= _FNV_prime;
-  }
-
-  return _Val;
+size_t hash(const wchar_t* value) {
+  return get_hash(value, std::char_traits<wchar_t>::length(value) * sizeof(wchar_t));
 }
 
-size_t _char_hash_64( const char* _First, size_t _Count ) {
-  //static_assert(sizeof(size_t) == 8, "This code is for 64-bit size_t.");
-  const size_t _FNV_offset_basis = 14695981039346656037UL;
-  const size_t _FNV_prime = 1099511628211UL;
-
-  size_t _Val = _FNV_offset_basis;
-  for ( size_t _Next = 0; _Next < _Count; ++_Next ) {	// fold in another byte
-    _Val ^= ( size_t ) _First[_Next];
-    _Val *= _FNV_prime;
-  }
-
-  _Val ^= _Val >> 32;
-
-  return _Val;
+size_t hash(const bytes_ref& value) {
+  return get_hash(value);
 }
 
-NS_END
+size_t hash(const string_ref& value) {
+  return get_hash(value);
+}
+
+NS_END // detail
 NS_END

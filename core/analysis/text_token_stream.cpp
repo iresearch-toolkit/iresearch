@@ -236,7 +236,7 @@ iresearch::analysis::analyzer::ptr construct(
 
     cached_state = &(cached_state_by_key.emplace(
       std::piecewise_construct,
-      std::forward_as_tuple(iresearch::make_hashed_ref(cache_key, iresearch::string_ref_hash_t())),
+      std::forward_as_tuple(irs::make_hashed_ref(cache_key, std::hash<irs::string_ref>())),
       std::forward_as_tuple(locale, std::move(ignored_words))
     ).first->second);
   }
@@ -255,7 +255,7 @@ iresearch::analysis::analyzer::ptr construct(
   {
     SCOPED_LOCK(mutex);
     auto itr = cached_state_by_key.find(
-      iresearch::make_hashed_ref(cache_key, iresearch::string_ref_hash_t())
+      irs::make_hashed_ref(cache_key, std::hash<irs::string_ref>())
     );
 
     if (itr != cached_state_by_key.end()) {

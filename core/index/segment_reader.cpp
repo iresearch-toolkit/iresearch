@@ -103,14 +103,15 @@ bool read_columns_meta(
   columns.reserve(count);
   id_to_column.resize(count);
   name_to_column.reserve(count);
+
   for (iresearch::column_meta meta; reader->read(meta);) {
     columns.emplace_back(std::move(meta));
 
     auto& column = columns.back();
     id_to_column[column.id] = &column;
-    
+
     const auto res = name_to_column.emplace(
-      iresearch::make_hashed_ref(iresearch::string_ref(column.name), iresearch::string_ref_hash_t()),
+      irs::make_hashed_ref(iresearch::string_ref(column.name), std::hash<irs::string_ref>()),
       &column
     );
 
@@ -312,7 +313,7 @@ index_reader::reader_iterator segment_reader::segment_reader_impl::begin() const
 const column_meta* segment_reader::segment_reader_impl::column(
   const string_ref& name
 ) const {
-  auto it = name_to_column_.find(make_hashed_ref(name, string_ref_hash_t()));
+  auto it = name_to_column_.find(make_hashed_ref(name, std::hash<irs::string_ref>()));
   return it == name_to_column_.end() ? nullptr : it->second;
 }
 
