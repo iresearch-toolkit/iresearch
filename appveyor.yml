@@ -16,9 +16,12 @@ build:
 environment:
   matrix:
   - BOOST_VERSION: default
-    CMAKE_OPTIONS: -DCMAKE_BUILD_TYPE=Debug
+    CONFIGURATION: Debug
+    CMAKE_OPTIONS: -DCMAKE_BUILD_TYPE=%CONFIGURATION%
   - BOOST_VERSION: default
-    CMAKE_OPTIONS: -DCMAKE_BUILD_TYPE=Release
+    CONFIGURATION: Release
+    CMAKE_OPTIONS: -DCMAKE_BUILD_TYPE=%CONFIGURATION%
+    
 
 install:
   ############################################################################
@@ -39,7 +42,6 @@ install:
   - cmake -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 -Dgtest_force_shared_crt=ON ..
   - cmake --build .
   - cmake --install .
-  - dir
   - mv %PLATFORM\%CONFIGURATION% ../googletest/lib
   - set GTEST_ROOT=%GTEST_DIR%/googletest
   
