@@ -13,33 +13,27 @@ platform: x64
 build:
   verbosity: normal
 
-matrix:
-  include:
-    ############################################################################
-    # Debug build, static library
-    ############################################################################
-    - env: BOOST_VERSION=default CMAKE_OPTIONS="-DCMAKE_BUILD_TYPE=Debug"
+environment:
+  matrix:
+  - BOOST_VERSION: default
+    CMAKE_OPTIONS: -DCMAKE_BUILD_TYPE=Debug
+  - BOOST_VERSION: default
+    CMAKE_OPTIONS: -DCMAKE_BUILD_TYPE=Release
 
-    ############################################################################
-    # Release build, static library
-    ############################################################################
-    - env: BOOST_VERSION=default CMAKE_OPTIONS="-DCMAKE_BUILD_TYPE=Release"
-      
 install:
+  ############################################################################
+  # All the dependencies are installed in %APPVEYOR_BUILD_FOLDER%\deps
+  ############################################################################
   - cmd: >-
-      :: All the dependencies are installed in %APPVEYOR_BUILD_FOLDER%\deps
       set DEPS_DIR=%APPVEYOR_BUILD_FOLDER%\deps
       mkdir %DEPS_DIR%
 
-before_script:
-  ############################################################################
-  # Go back to the root of the project and setup the build directory
-  ############################################################################
-  - cmd: >-
-    cd %APPVEYOR_BUILD_FOLDER%
-    (mkdir build && cd build && cmake -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 %CMAKE_OPTIONS% ..)
+before_build:
+  - call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
 
-script:
+build_script:
   - cmd: >-
-    cd %APPVEYOR_BUILD_FOLDER%\build
-    cmake --build .
+      cd %APPVEYOR_BUILD_FOLDER%
+      mkdir build
+      cd build
+      cmake -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 %CMAKE_OPTIONS% ..
