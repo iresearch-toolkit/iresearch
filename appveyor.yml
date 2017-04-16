@@ -58,13 +58,14 @@ install:
   ############################################################################
   # Install Boost
   ############################################################################
-  - set BOOST_ROOT=C:\Libraries\boost_1_58_0
-  - cd %BOOST_ROOT%
+  - set BOOST_DIR=C:\Libraries\boost_1_58_0
+  - cd %BOOST_DIR%
   - bootstrap.bat --with-libraries=filesystem
   - bootstrap.bat --with-libraries=program_options
   - bootstrap.bat --with-libraries=test
   - bootstrap.bat --with-libraries=thread
-  - b2 --build-type=complete lib address-model=64
+  - b2 --build-dir=%BOOST_DIR%\build --build-type=complete stage address-model=64
+  - set BOOST_ROOT=%BOOST_DIR%\build
 
   ############################################################################
   # Install snowball
