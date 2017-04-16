@@ -21,7 +21,8 @@ environment:
     CMAKE_OPTIONS: -DCMAKE_BUILD_TYPE=Release
 
 install:
-  - echo on && echo %CONFIGURATION%
+  - echo on
+  - echo %CONFIGURATION%
   ############################################################################
   # All the dependencies are installed in %APPVEYOR_BUILD_FOLDER%\deps
   ############################################################################
