@@ -26,6 +26,25 @@ install:
   ############################################################################
   - set DEPS_DIR=%APPVEYOR_BUILD_FOLDER%\deps
   - mkdir %DEPS_DIR%
+  
+  ############################################################################
+  # Install Boost
+  ############################################################################
+  - set BOOST_ROOT=C:\Libraries\boost_1_58_0
+ 
+  ############################################################################
+  # Install Lz4
+  ############################################################################
+  - set LZ4_DIR=%DEPS_DIR%\lz4
+  - set LZ4_URL="https://github.com/lz4/lz4.git"
+  - cd %DEPS_DIR%
+  - git clone --depth 1 --recursive --quiet %LZ4_URL% %LZ4_DIR%
+  - cd %LZ4_DIR%
+  - mkdir build && cd build && mkdir package
+  - cmake -DCMAKE_INSTALL_PREFIX=%LZ4_ROOT%\build\package -DBUILD_LIBS=on -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 ../cmake_unofficial
+  - cmake --build .
+  - cmake --build . --target install
+  - set LZ4_ROOT=%LZ4_ROOT%\build\package
 
 before_build:
   - call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
