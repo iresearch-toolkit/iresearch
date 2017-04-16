@@ -32,9 +32,9 @@ install:
   ############################################################################
   - set GTEST_DIR=%DEPS_DIR%\gtest
   - set GTEST_URL="https://github.com/google/googletest.git" 
-  - cd ${DEPS_DIR}
-  - appveyor-retry git clone --depth 1 --recursive --quiet ${GTEST_URL} ${GTEST_DIR} || exit 1        
-  - cd ${GTEST_DIR}
+  - cd %DEPS_DIR%
+  - appveyor-retry git clone --depth 1 --recursive --quiet %GTEST_URL% %GTEST_DIR% || exit 1        
+  - cd %GTEST_DIR%
   - mkdir build && cd build
   - cmake -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 -Dgtest_force_shared_crt=ON ..
   - cmake --build .
