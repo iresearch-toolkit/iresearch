@@ -39,6 +39,7 @@ install:
   - cmake -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 -Dgtest_force_shared_crt=ON ..
   - cmake --build .
   - cmake --install .
+  - dir
   - mv Debug ../googletest/lib
   - mv Release ../googletest/lib
   - set GTEST_ROOT=%GTEST_DIR%/googletest
