@@ -40,11 +40,11 @@ install:
   - cd %DEPS_DIR%
   - git clone --depth 1 --recursive --quiet %LZ4_URL% %LZ4_DIR%
   - cd %LZ4_DIR%
-  - mkdir build && cd build && mkdir package
-  - cmake -DCMAKE_INSTALL_PREFIX=%LZ4_ROOT%\build\package -DBUILD_LIBS=on -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 ../contrib/cmake_unofficial
+  - mkdir build && cd build
+  - cmake -DCMAKE_INSTALL_PREFIX=%LZ4_ROOT%\build -DBUILD_LIBS=on -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 ../contrib/cmake_unofficial
   - cmake --build .
   - cmake --build . --target install
-  - set LZ4_ROOT=%LZ4_ROOT%\build\package
+  - set LZ4_ROOT=%LZ4_ROOT%\build
 
 before_build:
   - call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
