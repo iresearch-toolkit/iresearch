@@ -49,8 +49,7 @@ install:
   - set SNOWBALL_URL="https://github.com/snowballstem/snowball.git"
   - cd %DEPS_DIR%
   - appveyor-retry git clone --quiet %SNOWBALL_URL% %SNOWBALL_DIR%
-  - dir
-  - cd ${SNOWBALL_DIR}
+  - cd %SNOWBALL_DIR%
   - git reset --hard 9e0a8340d58c70f91e8a0233b985242dc69c6fb8
   - mkdir build && cd build
 #  - set PATH=%PATH%;<path-to>/build/Debug
