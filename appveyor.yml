@@ -1,0 +1,45 @@
+version: 1.0.{build}
+
+branches:
+  only:
+    - master
+  
+image:
+#  - Visual Studio 2013
+  - Visual Studio 2015
+
+platform: x64
+
+build:
+  verbosity: normal
+
+matrix:
+  include:
+    ############################################################################
+    # Debug build, static library
+    ############################################################################
+    - env: BOOST_VERSION=default CMAKE_OPTIONS="-DCMAKE_BUILD_TYPE=Debug"
+
+    ############################################################################
+    # Release build, static library
+    ############################################################################
+    - env: BOOST_VERSION=default CMAKE_OPTIONS="-DCMAKE_BUILD_TYPE=Release"
+      
+install:
+  - cmd: >-
+      :: All the dependencies are installed in %APPVEYOR_BUILD_FOLDER%\deps
+      set DEPS_DIR=%APPVEYOR_BUILD_FOLDER%\deps
+      mkdir %DEPS_DIR%
+
+before_script:
+  ############################################################################
+  # Go back to the root of the project and setup the build directory
+  ############################################################################
+  - cmd: >-
+    cd %APPVEYOR_BUILD_FOLDER%
+    (mkdir build && cd build && cmake -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 %CMAKE_OPTIONS% ..)
+
+script:
+  - cmd: >-
+    cd %APPVEYOR_BUILD_FOLDER%\build
+    cmake --build .
