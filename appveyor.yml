@@ -28,6 +28,20 @@ install:
   - mkdir %DEPS_DIR%
   
   ############################################################################
+  # Install gtest
+  ############################################################################
+  - set GTEST_DIR=%DEPS_DIR%\gtest
+  - set GTEST_URL="https://github.com/google/googletest.git" 
+  - cd ${DEPS_DIR}
+  - appveyor-retry git clone --depth 1 --recursive --quiet ${GTEST_URL} ${GTEST_DIR} || exit 1        
+  - cd ${GTEST_DIR}
+  - mkdir build && cd build
+  - cmake -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 -Dgtest_force_shared_crt=ON ..
+  - cmake --build .
+  - mv Debug ../lib
+  - set GTEST_ROOT=%GTEST_DIR%
+  
+  ############################################################################
   # Install ICU
   ############################################################################
   - set ICU_DIR=%DEPS_DIR%\icu
@@ -72,10 +86,6 @@ install:
   - cmake --build .
   - cmake --build . --target install
   - set LZ4_ROOT=%LZ4_ROOT%\build
-
-  ############################################################################
-  # Install gtest
-  ############################################################################
 
 before_build:
   - call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
