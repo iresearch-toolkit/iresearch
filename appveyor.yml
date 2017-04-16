@@ -28,6 +28,16 @@ install:
   - mkdir %DEPS_DIR%
   
   ############################################################################
+  # Install ICU
+  ############################################################################
+  - set ICU_DIR=%DEPS_DIR%\icu
+  - mkdir %ICU_DIR% && cd %ICU_DIR%
+  - set ICU_URL="http://download.icu-project.org/files/icu4c/57.1/icu4c-57_1-win64-msvc10.zip"
+  - appveyor DownloadFile %ICU_URL% -FileName icu4c-57_1-win64-msvc10.zip
+  - 7z x icu4c-57_1-win64-msvc10.zip -o%ICU_DIR% > nul
+  - set ICU_ROOT=%ICU_DIR%
+
+  ############################################################################
   # Install Boost
   ############################################################################
   - set BOOST_ROOT=C:\Libraries\boost_1_58_0
@@ -38,13 +48,21 @@ install:
   - set LZ4_DIR=%DEPS_DIR%\lz4
   - set LZ4_URL="https://github.com/lz4/lz4.git"
   - cd %DEPS_DIR%
-  - git clone --depth 1 --recursive --quiet %LZ4_URL% %LZ4_DIR%
+  - appveyor-retry git clone --depth 1 --recursive --quiet %LZ4_URL% %LZ4_DIR%
   - cd %LZ4_DIR%
   - mkdir build && cd build
   - cmake -DCMAKE_INSTALL_PREFIX=%LZ4_ROOT%\build -DBUILD_STATIC_LIBS=on -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 ../contrib/cmake_unofficial
   - cmake --build .
   - cmake --build . --target install
   - set LZ4_ROOT=%LZ4_ROOT%\build
+
+  ############################################################################
+  # Install snowball
+  ############################################################################
+
+  ############################################################################
+  # Install gtest
+  ############################################################################
 
 before_build:
   - call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
