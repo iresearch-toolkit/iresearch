@@ -24,16 +24,14 @@ install:
   ############################################################################
   # All the dependencies are installed in %APPVEYOR_BUILD_FOLDER%\deps
   ############################################################################
-  - cmd: >-
-      set DEPS_DIR=%APPVEYOR_BUILD_FOLDER%\deps
-      mkdir %DEPS_DIR%
+  - set DEPS_DIR=%APPVEYOR_BUILD_FOLDER%\deps
+  - mkdir %DEPS_DIR%
 
 before_build:
   - call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
 
 build_script:
-  - cmd: >-
-      cd %APPVEYOR_BUILD_FOLDER%
-      mkdir build
-      cd build
-      cmake -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 %CMAKE_OPTIONS% ..
+  - cd %APPVEYOR_BUILD_FOLDER%
+  - mkdir build
+  - cd build
+  - cmake -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 %CMAKE_OPTIONS% ..
