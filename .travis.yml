@@ -44,7 +44,7 @@ matrix:
     # Debug build, dynamic library
     ############################################################################
     - os: linux
-      env: COMPILER=g++-5 BOOST_VERSION=default CMAKE_OPTIONS="-DCMAKE_BUILD_TYPE=Release"
+      env: COMPILER=g++-5 BOOST_VERSION=default CMAKE_OPTIONS="-DCMAKE_BUILD_TYPE=Debug"
       compiler: gcc
 
     ############################################################################
@@ -181,4 +181,4 @@ before_script:
 script:
     - cd ${TRAVIS_BUILD_DIR}/build
     - make iresearch-tests${BUILD_TYPE_SUFFIX} -j4
-    
+    - ./bin/iresearch-tests${TEST_EXECUTABLE_SUFFIX}
