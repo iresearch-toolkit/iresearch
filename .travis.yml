@@ -13,16 +13,20 @@ addons:
 
 cache:
   directories:
-#    - ${TRAVIS_BUILD_DIR}/deps/icu
-#    - ${TRAVIS_BUILD_DIR}/deps/gtest
-#    - ${TRAVIS_BUILD_DIR}/deps/snowball
-#    - ${TRAVIS_BUILD_DIR}/deps/lz4
-#    - ${TRAVIS_BUILD_DIR}/deps/boost-1.58.0
-#    - ${TRAVIS_BUILD_DIR}/deps/boost-1.59.0
-#    - ${TRAVIS_BUILD_DIR}/deps/boost-1.60.0
-#    - ${TRAVIS_BUILD_DIR}/deps/boost-1.61.0
-#    - ${TRAVIS_BUILD_DIR}/deps/boost-1.62.0
-#    - ${TRAVIS_BUILD_DIR}/deps/boost-1.63.0
+    - ${TRAVIS_BUILD_DIR}/deps/icu
+    - ${TRAVIS_BUILD_DIR}/deps/gtest
+    - ${TRAVIS_BUILD_DIR}/deps/snowball
+    - ${TRAVIS_BUILD_DIR}/deps/lz4
+    - ${TRAVIS_BUILD_DIR}/deps/boost-1.58.0
+    - ${TRAVIS_BUILD_DIR}/deps/boost-1.59.0
+    - ${TRAVIS_BUILD_DIR}/deps/boost-1.60.0
+    - ${TRAVIS_BUILD_DIR}/deps/boost-1.61.0
+    - ${TRAVIS_BUILD_DIR}/deps/boost-1.62.0
+    - ${TRAVIS_BUILD_DIR}/deps/boost-1.63.0
+
+branches:
+  only:
+    - master
 
 matrix:
   include:
@@ -98,8 +102,8 @@ install:
       tar -zxf icu4c-57_1-src.tgz            
       cd icu/source
       ./configure --enable-static
-      sudo make install #DESTDIR=${ICU_DIR}
     fi
+    sudo make install #DESTDIR=${ICU_DIR}
     export ICU_ROOT=/usr/local  
   
   ############################################################################
@@ -181,4 +185,4 @@ before_script:
 script:
     - cd ${TRAVIS_BUILD_DIR}/build
     - make iresearch-tests${BUILD_TYPE_SUFFIX} -j4
-    - ./bin/iresearch-tests${TEST_EXECUTABLE_SUFFIX}
+    - travis_wait 60 ./bin/iresearch-tests${TEST_EXECUTABLE_SUFFIX}
