@@ -42,9 +42,9 @@ install:
   - mkdir build && cd build
   - set PATH=%PATH%;%SNOWBALL_DIR%\build\%PLATFORM%\%CONFIGURATION%
   - cmake -DENABLE_STATIC=OFF -DNO_SHARED=OFF -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 ..
-  - cmake --build .
+  - cmake --build . --target stemmer
   - cmake -DENABLE_STATIC=OFF -DNO_SHARED=ON -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 ..
-  - cmake --build .
+  - cmake --build . --target stemmer
   - set SNOWBALL_ROOT=%SNOWBALL_DIR%\build   
   
   ############################################################################
