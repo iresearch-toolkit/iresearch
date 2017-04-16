@@ -34,8 +34,9 @@ install:
   - mkdir %ICU_DIR% && cd %ICU_DIR%
   - set ICU_URL="http://download.icu-project.org/files/icu4c/57.1/icu4c-57_1-Win64-msvc10.zip"
   - appveyor DownloadFile %ICU_URL% -FileName icu4c-57_1-win64-msvc10.zip
-  - 7z x icu4c-57_1-win64-msvc10.zip -o%ICU_DIR% > nul
-  - set ICU_ROOT=%ICU_DIR%
+  - 7z x icu4c-57_1-win64-msvc10.zip -o. > nul
+  - set ICU_ROOT=%ICU_DIR%\icu
+  - dir %ICU_ROOT%
 
   ############################################################################
   # Install Boost
