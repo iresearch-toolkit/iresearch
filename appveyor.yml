@@ -56,7 +56,7 @@ install:
   - appveyor-retry git clone --depth 1 --recursive --quiet %GTEST_URL% %GTEST_DIR% || exit 1        
   - cd %GTEST_DIR%
   - mkdir build && cd build
-  - cmake -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 -Dgtest_force_shared_crt=ON ..
+  - cmake -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 -Dgtest_force_shared_crt=ON -DBUILD_GTEST=ON -DBUILD_GMOCK=OFF  ..
   - cmake --build .
   - cmake --install .
   - mkdir ..\googletest\lib
