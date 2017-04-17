@@ -59,10 +59,8 @@ install:
   - cmake -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 -Dgtest_force_shared_crt=ON -DBUILD_GTEST=ON -DBUILD_GMOCK=OFF  ..
   - cmake --build .
   - cmake --install .
-  - mkdir ..\googletest\lib
-  - dir googletest
-  - dir %PLATFORM%\%CONFIGURATION%
-  - mv %CONFIGURATION% ..\googletest\lib
+  - mkdir ..\googletest\lib  
+  - mv googletest\%CONFIGURATION% ..\googletest\lib
   - set GTEST_ROOT=%GTEST_DIR%\googletest
   
   ############################################################################
