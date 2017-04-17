@@ -77,11 +77,8 @@ install:
   ############################################################################
   - set BOOST_DIR=C:\Libraries\boost_1_58_0
   - cd %BOOST_DIR%
-  - bootstrap.bat --with-libraries=filesystem
-  - bootstrap.bat --with-libraries=program_options
-  - bootstrap.bat --with-libraries=test
-  - bootstrap.bat --with-libraries=thread
-  - b2 --build-dir=%BOOST_DIR%\build --build-type=complete stage address-model=64
+  - bootstrap.bat  
+  - b2 --build-dir=%BOOST_DIR%\build --build-type=complete stage address-model=64 --with-filesystem --with-program_options --with-test --with-thread
   - set BOOST_ROOT=%BOOST_DIR%\build
  
   ############################################################################
