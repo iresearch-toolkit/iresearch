@@ -24,6 +24,10 @@ class IRESEARCH_API segment_reader final: public sub_reader {
   typedef segment_reader element_type; // type same as self
   typedef segment_reader ptr; // pointer to self
   segment_reader() = default; // required for context<segment_reader>
+  segment_reader(const segment_reader& other);
+  segment_reader(segment_reader&& other) NOEXCEPT;
+  segment_reader& operator=(const segment_reader& other);
+  segment_reader& operator=(segment_reader&& other) NOEXCEPT;
   explicit operator bool() const NOEXCEPT;
   segment_reader& operator*() NOEXCEPT;
   const segment_reader& operator*() const NOEXCEPT;
@@ -50,6 +54,7 @@ class IRESEARCH_API segment_reader final: public sub_reader {
   ) const override;
 
  private:
+  class atomic_helper;
   class segment_reader_impl;
   typedef std::shared_ptr<segment_reader_impl> impl_ptr;
 

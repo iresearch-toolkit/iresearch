@@ -599,13 +599,9 @@ class format_10_test_case : public tests::format_test_case_base {
       ir::segment_meta meta;
       meta.name = segment_name;
 
-      ir::reader_state state;
-      state.docs_mask = nullptr;
-      state.dir = dir.get();
-      state.meta = &meta;
-
+      irs::document_mask docs_mask;
       auto fr = get_codec()->get_field_reader();
-      fr->prepare(state);
+      fr->prepare(*dir, meta, docs_mask);
 
       auto it = fr->field(field_meta.name)->iterator();
       ASSERT_TRUE(it->seek(term));

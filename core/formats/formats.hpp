@@ -144,7 +144,12 @@ struct IRESEARCH_API field_reader {
 
   virtual ~field_reader();
 
-  virtual bool prepare(const reader_state& state) = 0;
+  virtual bool prepare(
+    const directory& dir,
+    const segment_meta& meta,
+    const document_mask& mask
+  ) = 0;
+
   virtual const term_reader* field(const string_ref& field) const = 0;
   virtual field_iterator::ptr iterator() const = 0;
   virtual size_t size() const = 0;
@@ -167,7 +172,7 @@ struct IRESEARCH_API columnstore_writer {
 
   virtual ~columnstore_writer();
 
-  virtual bool prepare(directory& dir, const string_ref& filename) = 0;
+  virtual bool prepare(directory& dir, const segment_meta& meta) = 0;
   virtual column_t push_column() = 0;
   virtual void flush() = 0;
 }; // columnstore_writer
@@ -184,10 +189,8 @@ NS_ROOT
 
 struct IRESEARCH_API column_meta_writer {
   DECLARE_SPTR(column_meta_writer);
-  
   virtual ~column_meta_writer();
-  
-  virtual bool prepare(directory& dir, const string_ref& filename) = 0;
+  virtual bool prepare(directory& dir, const segment_meta& meta) = 0;
   virtual void write(const std::string& name, field_id id) = 0;
   virtual void flush() = 0;
 }; // column_meta_writer 
@@ -198,12 +201,10 @@ struct IRESEARCH_API column_meta_writer {
 
 struct IRESEARCH_API column_meta_reader {
   DECLARE_SPTR(column_meta_reader);
-  
   virtual ~column_meta_reader();
-  
   virtual bool prepare(
     const directory& dir, 
-    const string_ref& seg_name,
+    const segment_meta& meta,
     /*out*/ field_id& count
   ) = 0;
   // returns false if there is no more data to read
@@ -211,7 +212,7 @@ struct IRESEARCH_API column_meta_reader {
 }; // column_meta_reader 
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    columns_writer 
+// --SECTION--                                                    columns_reader
 // -----------------------------------------------------------------------------
 
 struct IRESEARCH_API columnstore_reader {
@@ -222,7 +223,16 @@ struct IRESEARCH_API columnstore_reader {
 
   virtual ~columnstore_reader();
 
-  virtual bool prepare(const reader_state& state) = 0;
+  // @param seen if found and seen != nullptr -> set seen = true
+  //             if not found and seen != nullptr -> set seen = false, return true
+  //             if not found and seen == nullptr -> log warning, return false
+  // @return success
+  virtual bool prepare(
+    const directory& dir,
+    const segment_meta& meta,
+    bool* seen = nullptr
+  ) = 0;
+
   virtual values_reader_f values(field_id field) const = 0;
   virtual bool visit(field_id field, const values_visitor_f& visitor) const = 0;
 }; // columnstore_reader
@@ -259,8 +269,16 @@ struct IRESEARCH_API document_mask_reader {
 
   virtual ~document_mask_reader();
 
+  // @param seen if found and seen != nullptr -> set seen = true
+  //             if not found and seen != nullptr -> set seen = false, return true
+  //             if not found and seen == nullptr -> log warning, return false
   // @return success
-  virtual bool prepare(const directory& dir, const segment_meta& meta) = 0;
+  virtual bool prepare(
+    const directory& dir,
+    const segment_meta& meta,
+    bool* seen = nullptr
+  ) = 0;
+
   virtual uint32_t begin() = 0;
   virtual void read(doc_id_t& mask) = 0;
   virtual void end() = 0;
@@ -407,7 +425,6 @@ struct IRESEARCH_API flush_state {
 };
 
 struct IRESEARCH_API reader_state {
-  const format* codec;
   const directory* dir;
   const document_mask* docs_mask;
   const segment_meta* meta;

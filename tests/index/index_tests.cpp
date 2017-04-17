@@ -4366,7 +4366,8 @@ TEST_F(memory_index_test, segment_consolidate) {
   {
     auto merge_if_masked = [](const iresearch::directory& dir, const iresearch::index_meta& meta)->iresearch::index_writer::consolidation_acceptor_t {
       return [&dir](const iresearch::segment_meta& meta)->bool { 
-        return meta.codec->get_document_mask_reader()->prepare(dir, meta);
+        bool seen;
+        return meta.codec->get_document_mask_reader()->prepare(dir, meta, &seen) && seen;
       };
     };
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
@@ -4397,7 +4398,8 @@ TEST_F(memory_index_test, segment_consolidate) {
   {
     auto merge_if_masked = [](const iresearch::directory& dir, const iresearch::index_meta& meta)->iresearch::index_writer::consolidation_acceptor_t {
       return [&dir](const iresearch::segment_meta& meta)->bool { 
-        return meta.codec->get_document_mask_reader()->prepare(dir, meta);
+        bool seen;
+        return meta.codec->get_document_mask_reader()->prepare(dir, meta, &seen) && seen;
       };
     };
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());

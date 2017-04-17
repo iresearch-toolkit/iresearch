@@ -543,13 +543,9 @@ class format_test_case_base : public index_test_base {
       ir::segment_meta meta;
       meta.name = "segment_name";
 
-      ir::reader_state state;
-      state.docs_mask = nullptr;
-      state.dir = &dir();
-      state.meta = &meta;
-
+      irs::document_mask docs_mask;
       auto reader = codec()->get_field_reader();
-      reader->prepare(state);
+      reader->prepare(dir(), meta, docs_mask);
       ASSERT_EQ(1, reader->size());
 
       // check terms
@@ -853,7 +849,11 @@ class format_test_case_base : public index_test_base {
     iresearch::segment_meta seg_1("_1", nullptr);
     iresearch::segment_meta seg_2("_2", nullptr);
     iresearch::segment_meta seg_3("_3", nullptr);
-      
+
+    seg_1.codec = codec();
+    seg_2.codec = codec();
+    seg_3.codec = codec();
+
     std::unordered_map<std::string, iresearch::columnstore_writer::column_t> columns_1;
     std::unordered_map<std::string, iresearch::columnstore_writer::column_t> columns_2;
     std::unordered_map<std::string, iresearch::columnstore_writer::column_t> columns_3;
@@ -864,7 +864,8 @@ class format_test_case_base : public index_test_base {
 
       // write 1st segment 
       iresearch::doc_id_t id = 0;
-      writer->prepare(dir(), seg_1.name);
+      writer->prepare(dir(), seg_1);
+
       for (const document* doc; seg_1.docs_count < 30000 && (doc = gen.next());) {
         ++id;
         for (auto& field : doc->stored) {
@@ -888,10 +889,11 @@ class format_test_case_base : public index_test_base {
       writer->flush();
 
       gen.reset();
-      
+
       // write 2nd segment 
       id = 0;
-      writer->prepare(dir(), seg_2.name);
+      writer->prepare(dir(), seg_2);
+
       for (const document* doc; seg_2.docs_count < 30000 && (doc = gen.next());) {
         ++id;
         for (auto& field : doc->stored) {
@@ -916,7 +918,8 @@ class format_test_case_base : public index_test_base {
 
       // write 3rd segment
       id = 0;
-      writer->prepare(dir(), seg_3.name);
+      writer->prepare(dir(), seg_3);
+
       for (const document* doc; seg_3.docs_count < 70000 && (doc = gen.next());) {
         ++id;
         for (auto& field : doc->stored) {
@@ -946,14 +949,8 @@ class format_test_case_base : public index_test_base {
 
       // check 1st segment
       {
-        iresearch::reader_state state_1{
-          codec().get(), &dir(),
-          nullptr,
-          &seg_1
-        };
-
         auto reader_1 = codec()->get_columnstore_reader();
-        reader_1->prepare(state_1);
+        ASSERT_TRUE(reader_1->prepare(dir(), seg_1));
 
         auto id_values = reader_1->values(columns_1["id"].first);
         auto name_values = reader_1->values(columns_1["name"].first);
@@ -969,14 +966,8 @@ class format_test_case_base : public index_test_base {
         }
 
         // check 2nd segment (same as 1st)
-        iresearch::reader_state state_2{
-          codec().get(), &dir(),
-          nullptr,
-          &seg_2
-        };
-
         auto reader_2 = codec()->get_columnstore_reader();
-        reader_2->prepare(state_2);
+        ASSERT_TRUE(reader_2->prepare(dir(), seg_2));
 
         auto id_values_2 = reader_2->values(columns_2["id"].first);
         auto name_values_2 = reader_2->values(columns_2["name"].first);
@@ -996,14 +987,8 @@ class format_test_case_base : public index_test_base {
 
       // check 3rd segment
       {
-        iresearch::reader_state state{
-          codec().get(), &dir(),
-          nullptr,
-          &seg_3
-        };
-
         auto reader = codec()->get_columnstore_reader();
-        reader->prepare(state);
+        ASSERT_TRUE(reader->prepare(dir(), seg_3));
 
         auto id_values = reader->values(columns_3["id"].first);
         auto name_values = reader->values(columns_3["name"].first);
@@ -1024,16 +1009,21 @@ class format_test_case_base : public index_test_base {
     // write meta
     {
       auto writer = codec()->get_column_meta_writer();
+      irs::segment_meta meta0;
+      irs::segment_meta meta1;
+
+      meta0.name = "_1";
+      meta1.name = "_2";
 
       // write segment _1
-      writer->prepare(dir(), "_1");
+      writer->prepare(dir(), meta0);
       writer->write("_1_column1", 1);
       writer->write("_1_column2", 2);
       writer->write("_1_column0", 0);
       writer->flush();
 
       // write segment _2
-      writer->prepare(dir(), "_2");
+      writer->prepare(dir(), meta1);
       writer->write("_2_column2", 2);
       writer->write("_2_column1", 1);
       writer->write("_2_column0", 0);
@@ -1044,7 +1034,11 @@ class format_test_case_base : public index_test_base {
     {
       auto reader = codec()->get_column_meta_reader();
       iresearch::field_id actual_count = 0;
-      ASSERT_TRUE(reader->prepare(dir(), "_1", actual_count));
+      irs::segment_meta seg_meta;
+
+      seg_meta.name = "_1";
+
+      ASSERT_TRUE(reader->prepare(dir(), seg_meta, actual_count));
       ASSERT_EQ(3, actual_count);
 
       iresearch::column_meta meta;
@@ -1064,7 +1058,11 @@ class format_test_case_base : public index_test_base {
     {
       auto reader = codec()->get_column_meta_reader();
       iresearch::field_id actual_count = 0;
-      ASSERT_TRUE(reader->prepare(dir(), "_2", actual_count));
+      irs::segment_meta seg_meta;
+
+      seg_meta.name = "_2";
+
+      ASSERT_TRUE(reader->prepare(dir(), seg_meta, actual_count));
       ASSERT_EQ(3, actual_count);
      
       iresearch::column_meta meta;
@@ -1085,6 +1083,7 @@ class format_test_case_base : public index_test_base {
     iresearch::segment_meta meta0("_1", nullptr);
     meta0.version = 42;
     meta0.docs_count = 89;
+    meta0.codec = codec();
 
     std::vector<std::string> files;
     auto list_files = [&files] (std::string& name) {
@@ -1100,7 +1099,7 @@ class format_test_case_base : public index_test_base {
     // add columns
     {
       auto writer = codec()->get_columnstore_writer();
-      ASSERT_TRUE(writer->prepare(dir(), meta0.name));
+      ASSERT_TRUE(writer->prepare(dir(), meta0));
       column0_id = writer->push_column().first;
       ASSERT_EQ(0, column0_id);
       column1_id = writer->push_column().first;
@@ -1113,14 +1112,10 @@ class format_test_case_base : public index_test_base {
     ASSERT_TRUE(files.empty()); // must be empty after flush
 
     {
-      iresearch::reader_state rs;
-      rs.codec = codec().get();
-      rs.dir = &dir();
-      rs.docs_mask = nullptr;
-      rs.meta = &meta0;
-
       auto reader = codec()->get_columnstore_reader();
-      ASSERT_FALSE(reader->prepare(rs)); // no columns found
+      bool seen;
+      ASSERT_TRUE(reader->prepare(dir(), meta0, &seen));
+      ASSERT_FALSE(seen); // no columns found
 
       irs::bytes_ref actual_value;
 
@@ -1154,21 +1149,19 @@ class format_test_case_base : public index_test_base {
     iresearch::segment_meta meta0("_1", nullptr);
     meta0.version = 42;
     meta0.docs_count = 89;
+    meta0.codec = codec();
 
     iresearch::segment_meta meta1("_2", nullptr);
     meta1.version = 23;
     meta1.docs_count = 115;
+    meta1.codec = codec();
 
     // read attributes from empty directory 
     {
-      iresearch::reader_state rs;
-      rs.codec = codec().get();
-      rs.dir = &dir();
-      rs.docs_mask = nullptr;
-      rs.meta = &meta1;
-
       auto reader = codec()->get_columnstore_reader();
-      ASSERT_FALSE(reader->prepare(rs)); // no attributes found
+      bool seen;
+      ASSERT_TRUE(reader->prepare(dir(), meta1, &seen));
+      ASSERT_FALSE(seen); // no attributes found
 
       irs::bytes_ref actual_value;
 
@@ -1187,7 +1180,7 @@ class format_test_case_base : public index_test_base {
 
     // write _1 segment
     {
-      ASSERT_TRUE(writer->prepare(dir(), meta0.name));
+      ASSERT_TRUE(writer->prepare(dir(), meta0));
 
       auto field0 = writer->push_column();
       segment0_field0_id = field0.first;
@@ -1292,8 +1285,8 @@ class format_test_case_base : public index_test_base {
 
     // write _2 segment, reuse writer
     {
-      ASSERT_TRUE(writer->prepare(dir(), meta1.name));
-      
+      ASSERT_TRUE(writer->prepare(dir(), meta1));
+
       auto field0 = writer->push_column();
       segment1_field0_id = field0.first;
       auto& field0_writer = field0.second;
@@ -1351,14 +1344,8 @@ class format_test_case_base : public index_test_base {
 
     // read columns values from segment _1
     {
-      iresearch::reader_state rs;
-      rs.codec = codec().get();
-      rs.dir = &dir();
-      rs.docs_mask = nullptr;
-      rs.meta = &meta0;
-
       auto reader = codec()->get_columnstore_reader();
-      ASSERT_TRUE(reader->prepare(rs));
+      ASSERT_TRUE(reader->prepare(dir(), meta0));
 
       // try to read invalild column
       {
@@ -1598,15 +1585,9 @@ class format_test_case_base : public index_test_base {
 
     // read columns values from segment _2
     {
-      iresearch::reader_state rs;
-      rs.codec = codec().get();
-      rs.dir = &dir();
-      rs.docs_mask = nullptr;
-      rs.meta = &meta1;
-
       irs::bytes_ref actual_value;
       auto reader = codec()->get_columnstore_reader();
-      ASSERT_TRUE(reader->prepare(rs));
+      ASSERT_TRUE(reader->prepare(dir(), meta1));
 
       // try to read invalild column
       {
@@ -1634,10 +1615,13 @@ class format_test_case_base : public index_test_base {
     iresearch::segment_meta segment("bit_mask", nullptr);
     iresearch::field_id id;
 
+    segment.codec = codec();
+
     // write bit mask into the column without actual data
     {
       auto writer = codec()->get_columnstore_writer();
-      writer->prepare(dir(), segment.name);
+      writer->prepare(dir(), segment);
+
       auto column = writer->push_column();
 
       id = column.first; 
@@ -1653,10 +1637,8 @@ class format_test_case_base : public index_test_base {
     // check previously written mask
     {
       irs::bytes_ref actual_value;
-      iresearch::reader_state state{ codec().get(), &dir(), nullptr, &segment };
-
       auto reader = codec()->get_columnstore_reader();
-      reader->prepare(state);
+      ASSERT_TRUE(reader->prepare(dir(), segment));
 
       auto mask = reader->values(id);
       ASSERT_TRUE(mask(0, actual_value));
@@ -1693,10 +1675,12 @@ class format_test_case_base : public index_test_base {
 
     iresearch::segment_meta segment("big_docs", nullptr);
 
+    segment.codec = codec();
+
     // write big document 
     {
       auto writer = codec()->get_columnstore_writer();
-      writer->prepare(dir(), segment.name);
+      writer->prepare(dir(), segment);
 
       auto column = writer->push_column();
       id = column.first;
@@ -1723,10 +1707,8 @@ class format_test_case_base : public index_test_base {
     // read big document
     {
       irs::bytes_ref actual_value;
-      iresearch::reader_state state{ codec().get(), &dir(), nullptr, &segment };
-
       auto reader = codec()->get_columnstore_reader();
-      reader->prepare(state);
+      ASSERT_TRUE(reader->prepare(dir(), segment));
 
       stream.clear(); // clear eof flag if set
       stream.seekg(0, stream.beg); // seek to the beginning of the file
@@ -1826,14 +1808,17 @@ class format_test_case_base : public index_test_base {
 
     iresearch::segment_meta meta("_1", nullptr);
     meta.version = 42;
+    meta.codec = codec();
 
     std::unordered_map<std::string, ir::columnstore_writer::column_t> columns;
 
     // write stored documents
     {
       auto writer = codec()->get_columnstore_writer();
-      writer->prepare(dir(), meta.name);
+      writer->prepare(dir(), meta);
+
       ir::doc_id_t id = 0;
+
       for (const document* doc; doc = gen.next();) {
         ++id;
         for (const auto& field : doc->stored) {
@@ -1862,14 +1847,8 @@ class format_test_case_base : public index_test_base {
     // read stored documents
     {
       iresearch::document_mask mask;
-      iresearch::reader_state state{
-        codec().get(), &dir(),
-        &mask,
-        &meta
-      };
-
       auto reader = codec()->get_columnstore_reader();
-      reader->prepare(state);
+      ASSERT_TRUE(reader->prepare(dir(), meta));
 
       std::unordered_map<std::string, iresearch::columnstore_reader::values_reader_f> readers;
 

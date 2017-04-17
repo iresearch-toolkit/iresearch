@@ -22,6 +22,7 @@
 #include <boost/thread.hpp>
 #include <unicode/uclean.h>
 
+#include <random>
 #include <regex>
 #include <fstream>
 #include <iostream>
@@ -89,7 +90,7 @@ struct Task {
     virtual ~Task() {
     }
 
-    int go(std::thread::id id, irs::directory_reader& reader) {
+    void go(std::thread::id id, irs::directory_reader& reader) {
         tid = id;
         boost::posix_time::ptime start = boost::posix_time::microsec_clock::local_time();
 

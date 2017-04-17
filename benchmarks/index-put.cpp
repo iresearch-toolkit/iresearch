@@ -38,6 +38,10 @@ static const std::string CPR = "commit-period";
 
 typedef std::unique_ptr<std::string> ustringp;
 
+#if _MSC_VER < 1900
+  #define snprintf _snprintf
+#endif
+
 /**
  * Document
  */

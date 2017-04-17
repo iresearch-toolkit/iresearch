@@ -16,6 +16,7 @@
 
 #include "formats/format_utils.hpp"
 #include "utils/index_utils.hpp"
+#include "utils/singleton.hpp"
 #include "utils/type_limits.hpp"
 
 #include <unordered_map>
@@ -88,28 +89,30 @@ class masked_docs_iterator
 bool read_columns_meta(
     const iresearch::format& codec, 
     const iresearch::directory& dir,
-    const std::string& name,
+    const irs::segment_meta& meta,
     std::vector<iresearch::column_meta>& columns,
     std::vector<iresearch::column_meta*>& id_to_column,
-    std::unordered_map<iresearch::hashed_string_ref, iresearch::column_meta*>& name_to_column) {
+    std::unordered_map<iresearch::hashed_string_ref, iresearch::column_meta*>& name_to_column
+) {
   auto reader = codec.get_column_meta_reader();
-
   iresearch::field_id count = 0;
-  if (!reader->prepare(dir, name, count)) {
+
+  if (!reader->prepare(dir, meta, count)) {
     return false;
   }
 
   columns.reserve(count);
   id_to_column.resize(count);
   name_to_column.reserve(count);
+
   for (iresearch::column_meta meta; reader->read(meta);) {
     columns.emplace_back(std::move(meta));
 
     auto& column = columns.back();
     id_to_column[column.id] = &column;
-    
+
     const auto res = name_to_column.emplace(
-      iresearch::make_hashed_ref(iresearch::string_ref(column.name), iresearch::string_ref_hash_t()),
+      irs::make_hashed_ref(iresearch::string_ref(column.name), std::hash<irs::string_ref>()),
       &column
     );
 
@@ -135,6 +138,11 @@ NS_ROOT
 // -------------------------------------------------------------------
 // segment_reader
 // -------------------------------------------------------------------
+
+class segment_reader::atomic_helper:
+  public atomic_base<segment_reader::impl_ptr>,
+  public singleton<segment_reader::atomic_helper> {
+};
 
 class segment_reader::segment_reader_impl: public sub_reader {
  public:
@@ -176,6 +184,32 @@ class segment_reader::segment_reader_impl: public sub_reader {
 };
 
 segment_reader::segment_reader(const impl_ptr& impl): impl_(impl) {
+}
+
+segment_reader::segment_reader(const segment_reader& other) {
+  *this = other;
+}
+
+segment_reader::segment_reader(segment_reader&& other) NOEXCEPT {
+  *this = std::move(other);
+}
+
+segment_reader& segment_reader::operator=(const segment_reader& other) {
+  if (this != &other) {
+    auto impl = atomic_helper::instance().atomic_load(&(other.impl_));
+
+    atomic_helper::instance().atomic_exchange(&impl_, impl);
+  }
+
+  return *this;
+}
+
+segment_reader& segment_reader::operator=(segment_reader&& other) NOEXCEPT {
+  if (this != &other) {
+    atomic_helper::instance().atomic_exchange(&impl_, other.impl_);
+  }
+
+  return *this;
 }
 
 segment_reader::operator bool() const NOEXCEPT {
@@ -280,7 +314,7 @@ index_reader::reader_iterator segment_reader::segment_reader_impl::begin() const
 const column_meta* segment_reader::segment_reader_impl::column(
   const string_ref& name
 ) const {
-  auto it = name_to_column_.find(make_hashed_ref(name, string_ref_hash_t()));
+  auto it = name_to_column_.find(make_hashed_ref(name, std::hash<irs::string_ref>()));
   return it == name_to_column_.end() ? nullptr : it->second;
 }
 
@@ -338,26 +372,20 @@ uint64_t segment_reader::segment_reader_impl::meta_version() const NOEXCEPT {
   index_utils::read_document_mask(reader->docs_mask_, dir, meta);
 
   auto& codec = *meta.codec;
-  reader_state rs;
-
-  rs.codec = &codec;
-  rs.dir = &dir;
-  rs.docs_mask = &(reader->docs_mask_);
-  rs.meta = &meta;
-
   auto field_reader = codec.get_field_reader();
 
   // initialize field reader
-  if (!field_reader->prepare(rs)) {
+  if (!field_reader->prepare(dir, meta, reader->docs_mask_)) {
     return segment_reader(); // i.e. nullptr, field reader required
   }
 
   reader->field_reader_ = std::move(field_reader);
 
   auto columnstore_reader = codec.get_columnstore_reader();
+  bool seen;
 
-  // initialize column reader
-  if (columnstore_reader->prepare(rs)) {
+  // initialize column reader (even if there is no columnstore)
+  if (columnstore_reader->prepare(dir, meta, &seen)) {
     reader->columnstore_reader_ = std::move(columnstore_reader);
   }
 
@@ -365,7 +393,7 @@ uint64_t segment_reader::segment_reader_impl::meta_version() const NOEXCEPT {
   read_columns_meta(
     codec,
     dir,
-    meta.name, 
+    meta,
     reader->columns_,
     reader->id_to_column_,
     reader->name_to_column_

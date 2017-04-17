@@ -66,14 +66,6 @@ hashed_basic_string_ref<Elem> make_hashed_ref(const basic_string_ref<Elem>& ref,
   return hashed_basic_string_ref<Elem>(hasher(ref), ref, size);
 }
 
-struct IRESEARCH_API bytes_ref_hash_t {
-  size_t operator()(const bytes_ref& value) const;
-};
-
-struct IRESEARCH_API string_ref_hash_t {
-  size_t operator()(const string_ref& value) const;
-};
-
 typedef hashed_basic_string_ref<byte_type> hashed_bytes_ref;
 typedef hashed_basic_string_ref<char> hashed_string_ref;
 

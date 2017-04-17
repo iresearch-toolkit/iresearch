@@ -569,12 +569,10 @@ bool compute_field_meta(
 // ...........................................................................
 class columnstore {
  public:
-  columnstore(
-      iresearch::directory& dir,
-      iresearch::format& codec,
-      const iresearch::string_ref& segment_name) {
-    auto writer = codec.get_columnstore_writer();
-    if (!writer->prepare(dir, segment_name)) {
+  columnstore(irs::directory& dir, const irs::segment_meta& meta) {
+    auto writer = meta.codec->get_columnstore_writer();
+
+    if (!writer->prepare(dir, meta)) {
       return; // flush failure
     }
 
@@ -634,28 +632,29 @@ class columnstore {
   iresearch::columnstore_writer::column_t column_{};
   bool empty_{ false };
 }; // columnstore
-  
+
 bool write_columns(
     columnstore& cs,
     iresearch::directory& dir,
-    iresearch::format& codec,
-    const iresearch::string_ref& segment_name,
-    compound_column_iterator_t& column_itr) {
+    const irs::segment_meta& meta,
+    compound_column_iterator_t& column_itr
+) {
   assert(cs);
-  
+
   auto visitor = [&cs](
       const iresearch::sub_reader& segment,
       const doc_id_map_t& doc_id_map,
       const iresearch::column_meta& column) {
     return cs.insert(segment, column.id, doc_id_map);
   };
-  
-  auto cmw = codec.get_column_meta_writer();
-  if (!cmw->prepare(dir, segment_name)) {
+
+  auto cmw = meta.codec->get_column_meta_writer();
+
+  if (!cmw->prepare(dir, meta)) {
     // failed to prepare writer
     return false;
   }
-  
+
   while (column_itr.next()) {
     cs.reset();  
 
@@ -678,24 +677,23 @@ bool write_columns(
 bool write(
     columnstore& cs,
     iresearch::directory& dir,
-    iresearch::format& codec,
-    const iresearch::string_ref& segment_name,
+    const irs::segment_meta& meta,
     compound_field_iterator& field_itr,
     const field_meta_map_t& field_meta_map,
-    const iresearch::flags& fields_features,
-    size_t docs_count) {
+    const irs::flags& fields_features
+) {
   REGISTER_TIMER_DETAILED();
   assert(cs);
 
   iresearch::flush_state flush_state;
   flush_state.dir = &dir;
-  flush_state.doc_count = docs_count;
+  flush_state.doc_count = meta.docs_count;
   flush_state.fields_count = field_meta_map.size();
   flush_state.features = &fields_features;
-  flush_state.name = segment_name;
+  flush_state.name = meta.name;
   flush_state.ver = IRESEARCH_VERSION;
 
-  auto fw = codec.get_field_writer(true);
+  auto fw = meta.codec->get_field_writer(true);
   fw->prepare(flush_state);
 
   auto merge_norms = [&cs] (
@@ -739,11 +737,8 @@ NS_END // LOCAL
 
 NS_ROOT
 
-merge_writer::merge_writer(
-    directory& dir,
-    format::ptr codec,
-    const string_ref& name) NOEXCEPT
-  : codec_(codec), dir_(dir), name_(name) {
+merge_writer::merge_writer(directory& dir, const string_ref& name) NOEXCEPT
+  : dir_(dir), name_(name) {
 }
 
 void merge_writer::add(const sub_reader& reader) {
@@ -755,9 +750,6 @@ bool merge_writer::flush(std::string& filename, segment_meta& meta) {
   // reader with map of old doc_id to new doc_id
   typedef std::pair<const iresearch::sub_reader*, doc_id_map_t> reader_t;
 
-  assert(codec_);
-
-  auto& codec = *(codec_.get());
   std::unordered_map<iresearch::string_ref, const iresearch::field_meta*> field_metas;
   compound_field_iterator fields_itr;
   compound_column_iterator_t columns_itr;
@@ -785,43 +777,38 @@ bool merge_writer::flush(std::string& filename, segment_meta& meta) {
     columns_itr.add(*reader, doc_id_map);
   }
 
-  auto docs_count = next_id - type_limits<type_t::doc_id_t>::min(); // total number of doc_ids
+  meta.docs_count = next_id - type_limits<type_t::doc_id_t>::min(); // total number of doc_ids
 
   //...........................................................................
   // write merged segment data
   //...........................................................................
 
   tracking_directory track_dir(dir_); // track writer created files
-
-  columnstore cs(track_dir, codec, name_);
+  columnstore cs(track_dir, meta);
 
   if (!cs) {
     return false; // flush failure
   }
 
   // write columns
-  if (!write_columns(cs, track_dir, codec, name_, columns_itr)) {
+  if (!write_columns(cs, track_dir, meta, columns_itr)) {
     return false; // flush failure
   }
 
   // write field meta and field term data
-  if (!write(cs, track_dir, codec, name_, fields_itr, field_metas, fields_features, docs_count)) {
+  if (!write(cs, track_dir, meta, fields_itr, field_metas, fields_features)) {
     return false; // flush failure
   }
 
   // ...........................................................................
   // write segment meta
   // ...........................................................................
-  meta.codec = codec_;
-  meta.docs_count = docs_count;
-  meta.name = name_;
-
   if (!track_dir.swap_tracked(meta.files)) {
     IR_FRMT_ERROR("Failed to swap list of tracked files in: %s", __FUNCTION__);
     return false;
   }
 
-  iresearch::segment_meta_writer::ptr writer = codec.get_segment_meta_writer();
+  auto writer = meta.codec->get_segment_meta_writer();
 
   writer->write(dir_, meta);
   filename = writer->filename(meta);

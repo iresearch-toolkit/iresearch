@@ -26,7 +26,7 @@ struct segment_meta;
 class IRESEARCH_API segment_writer: util::noncopyable {
  public:
   DECLARE_PTR(segment_writer);
-  DECLARE_FACTORY_DEFAULT(directory& dir, format::ptr codec);
+  DECLARE_FACTORY_DEFAULT(directory& dir);
 
   struct update_context {
     size_t generation;
@@ -82,7 +82,6 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   bool flush(std::string& filename, segment_meta& meta);
 
   const std::string& name() const NOEXCEPT { return seg_name_; }
-  format::ptr codec() const NOEXCEPT { return codec_; }
   size_t docs_cached() const NOEXCEPT { return docs_context_.size(); }
   const update_contexts& docs_context() const NOEXCEPT { return docs_context_; }
   const update_context& doc_context() const { return docs_context_.back(); }
@@ -91,7 +90,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   bool remove(doc_id_t doc_id); // expect 0-based doc_id
   bool valid() const NOEXCEPT { return valid_; }
   void reset();
-  void reset(std::string seg_name);
+  void reset(const segment_meta& meta);
 
  private:
   struct column : util::noncopyable {
@@ -106,7 +105,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     columnstore_writer::column_t handle;
   };
 
-  segment_writer(directory& dir, format::ptr codec) NOEXCEPT;
+  segment_writer(directory& dir) NOEXCEPT;
 
   bool index(
     const hashed_string_ref& name,
@@ -121,7 +120,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
 
     const auto name = make_hashed_ref(
       static_cast<const string_ref&>(field.name()),
-      string_ref_hash_t()
+      std::hash<irs::string_ref>()
     );
 
     const doc_id_t doc = docs_cached();
@@ -142,7 +141,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
 
     const auto name = make_hashed_ref(
       static_cast<const string_ref&>(field.name()),
-      string_ref_hash_t()
+      std::hash<irs::string_ref>()
     );
 
     auto& tokens = static_cast<token_stream&>(field.get_tokens());
@@ -158,7 +157,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
 
     const auto name = make_hashed_ref(
       static_cast<const string_ref&>(field.name()),
-      string_ref_hash_t()
+      std::hash<irs::string_ref>()
     );
 
     // index field
@@ -198,7 +197,6 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   field_writer::ptr field_writer_;
   column_meta_writer::ptr col_meta_writer_;
   columnstore_writer::ptr col_writer_;
-  format::ptr codec_;
   tracking_directory dir_;
   bool initialized_;
   bool valid_{ true }; // current state
@@ -206,5 +204,4 @@ class IRESEARCH_API segment_writer: util::noncopyable {
 }; // segment_writer
 
 NS_END
-
 #endif

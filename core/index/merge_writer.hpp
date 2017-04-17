@@ -29,17 +29,12 @@ struct sub_reader;
 class IRESEARCH_API merge_writer: public util::noncopyable {
  public:
   DECLARE_PTR(merge_writer);
-  merge_writer(
-    directory& dir,
-    format_ptr codec,
-    const string_ref& seg_name
-  ) NOEXCEPT;
+  merge_writer(directory& dir, const string_ref& seg_name) NOEXCEPT;
   void add(const sub_reader& reader);
   bool flush(std::string& filename, segment_meta& meta); // return merge successful
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  format_ptr codec_;
   directory& dir_;
   string_ref name_;
   std::vector<const iresearch::sub_reader*> readers_;

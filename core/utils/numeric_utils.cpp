@@ -176,6 +176,16 @@ const bytes_ref& maxi32() {
   return data;
 }
 
+const bytes_ref& minu32() {
+  static bytes_ref data = encode(static_buf<uint32_t, buf_id_t::MIN>(), integer_traits<uint32_t>::const_min);
+  return data; 
+}
+
+const bytes_ref& maxu32() {
+  static bytes_ref data = encode(static_buf<uint32_t, buf_id_t::MAX>(), integer_traits<uint32_t>::const_max);
+  return data;
+}
+
 const bytes_ref& mini64() {
   static bytes_ref data = encode(static_buf<int64_t, buf_id_t::MIN>(), integer_traits<int64_t>::const_min);
   return data;
@@ -184,6 +194,32 @@ const bytes_ref& mini64() {
 const bytes_ref& maxi64() {
   static bytes_ref data = encode(static_buf<int64_t, buf_id_t::MAX>(), integer_traits<int64_t>::const_max);
   return data;
+}
+
+const bytes_ref& minu64() {
+  static bytes_ref data = encode(static_buf<uint64_t, buf_id_t::MIN>(), integer_traits<uint64_t>::const_min);
+  return data;
+}
+
+const bytes_ref& maxu64() {
+  static bytes_ref data = encode(static_buf<uint64_t, buf_id_t::MAX>(), integer_traits<uint64_t>::const_max);
+  return data;
+}
+
+uint32_t hton32(uint32_t value) {
+  return encode_traits<uint32_t>::hton(value);
+}
+
+uint32_t ntoh32(uint32_t value) {
+  return encode_traits<uint32_t>::ntoh(value);
+}
+
+uint64_t hton64(uint64_t value) {
+  return encode_traits<uint64_t>::hton(value);
+}
+
+uint64_t ntoh64(uint64_t value) {
+  return encode_traits<uint64_t>::ntoh(value);
 }
 
 int32_t ftoi32(float_t value) {
