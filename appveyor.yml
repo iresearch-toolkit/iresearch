@@ -45,7 +45,7 @@ install:
   - cmake --build . --target
   - cmake -DENABLE_STATIC=OFF -DNO_SHARED=OFF -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 ..  
   - cmake --build . --target
-  - set SNOWBALL_ROOT=%SNOWBALL_DIR%\build   
+  - set SNOWBALL_ROOT=%SNOWBALL_DIR%   
   
   ############################################################################
   # Install gtest
@@ -78,8 +78,8 @@ install:
   - set BOOST_DIR=C:\Libraries\boost_1_58_0
   - cd %BOOST_DIR%
   - bootstrap.bat  
-  - b2 --build-dir=%BOOST_DIR%\build --build-type=complete stage address-model=64 --with-filesystem --with-program_options --with-test --with-thread
-  - set BOOST_ROOT=%BOOST_DIR%\build
+  - b2 --build-dir=%BOOST_DIR%\build --build-type=complete stage address-model=64 --with-filesystem --with-program_options --with-locale -with-system --with-thread
+  - set BOOST_ROOT=%BOOST_DIR%
  
   ############################################################################
   # Install Lz4
