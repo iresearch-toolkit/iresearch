@@ -60,7 +60,7 @@ install:
   - cmake --build .
   - cmake --install .
   - mkdir ..\googletest\lib
-  - dir
+  - dir googletest
   - dir %PLATFORM%\%CONFIGURATION%
   - mv %CONFIGURATION% ..\googletest\lib
   - set GTEST_ROOT=%GTEST_DIR%\googletest
