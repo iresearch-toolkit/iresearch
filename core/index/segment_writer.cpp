@@ -33,13 +33,13 @@ segment_writer::column::column(
   this->handle = columnstore.push_column();
 }
 
-segment_writer::ptr segment_writer::make(directory& dir, format::ptr codec) {
-  PTR_NAMED(segment_writer, ptr, dir, codec);
+segment_writer::ptr segment_writer::make(directory& dir) {
+  PTR_NAMED(segment_writer, ptr, dir);
   return ptr;
 }
 
-segment_writer::segment_writer(directory& dir, format::ptr codec) NOEXCEPT
-  : codec_(codec), dir_(dir), initialized_(false) {
+segment_writer::segment_writer(directory& dir) NOEXCEPT
+  : dir_(dir), initialized_(false) {
 }
 
 // expect 0-based doc_id
@@ -130,7 +130,7 @@ bool segment_writer::flush(std::string& filename, segment_meta& meta) {
     }
 
     // flush columns meta
-    col_meta_writer_->prepare(dir_, seg_name_);
+    col_meta_writer_->prepare(dir_, meta);
     for (auto& column: columns) {
       col_meta_writer_->write(column->name, column->handle.first);
     }
@@ -160,7 +160,7 @@ bool segment_writer::flush(std::string& filename, segment_meta& meta) {
 
   // flush segment metadata
   {
-    segment_meta_writer::ptr writer = codec_->get_segment_meta_writer();
+    segment_meta_writer::ptr writer = meta.codec->get_segment_meta_writer();
     writer->write(dir_, meta);
 
     filename = writer->filename(meta);
@@ -184,25 +184,24 @@ void segment_writer::reset() {
   fields_.reset();
 }
 
-void segment_writer::reset(std::string seg_name) {
+void segment_writer::reset(const segment_meta& meta) {
   reset();
 
-  seg_name_ = std::move(seg_name);
+  seg_name_ = meta.name;
 
   if (!field_writer_) {
-    field_writer_ = codec_->get_field_writer();
+    field_writer_ = meta.codec->get_field_writer();
   }
 
   if (!col_meta_writer_) {
-    col_meta_writer_ = codec_->get_column_meta_writer();
+    col_meta_writer_ = meta.codec->get_column_meta_writer();
   }
 
   if (!col_writer_) {
-    col_writer_ = codec_->get_columnstore_writer();
+    col_writer_ = meta.codec->get_columnstore_writer();
   }
 
-  col_writer_->prepare(dir_, seg_name_);
-
+  col_writer_->prepare(dir_, meta);
   initialized_ = true;
 }
 

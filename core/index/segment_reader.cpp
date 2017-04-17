@@ -89,14 +89,15 @@ class masked_docs_iterator
 bool read_columns_meta(
     const iresearch::format& codec, 
     const iresearch::directory& dir,
-    const std::string& name,
+    const irs::segment_meta& meta,
     std::vector<iresearch::column_meta>& columns,
     std::vector<iresearch::column_meta*>& id_to_column,
-    std::unordered_map<iresearch::hashed_string_ref, iresearch::column_meta*>& name_to_column) {
+    std::unordered_map<iresearch::hashed_string_ref, iresearch::column_meta*>& name_to_column
+) {
   auto reader = codec.get_column_meta_reader();
-
   iresearch::field_id count = 0;
-  if (!reader->prepare(dir, name, count)) {
+
+  if (!reader->prepare(dir, meta, count)) {
     return false;
   }
 
@@ -371,26 +372,20 @@ uint64_t segment_reader::segment_reader_impl::meta_version() const NOEXCEPT {
   index_utils::read_document_mask(reader->docs_mask_, dir, meta);
 
   auto& codec = *meta.codec;
-  reader_state rs;
-
-  rs.codec = &codec;
-  rs.dir = &dir;
-  rs.docs_mask = &(reader->docs_mask_);
-  rs.meta = &meta;
-
   auto field_reader = codec.get_field_reader();
 
   // initialize field reader
-  if (!field_reader->prepare(rs)) {
+  if (!field_reader->prepare(dir, meta, reader->docs_mask_)) {
     return segment_reader(); // i.e. nullptr, field reader required
   }
 
   reader->field_reader_ = std::move(field_reader);
 
   auto columnstore_reader = codec.get_columnstore_reader();
+  bool seen;
 
-  // initialize column reader
-  if (columnstore_reader->prepare(rs)) {
+  // initialize column reader (even if there is no columnstore)
+  if (columnstore_reader->prepare(dir, meta, &seen)) {
     reader->columnstore_reader_ = std::move(columnstore_reader);
   }
 
@@ -398,7 +393,7 @@ uint64_t segment_reader::segment_reader_impl::meta_version() const NOEXCEPT {
   read_columns_meta(
     codec,
     dir,
-    meta.name, 
+    meta,
     reader->columns_,
     reader->id_to_column_,
     reader->name_to_column_

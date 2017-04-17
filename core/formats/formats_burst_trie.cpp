@@ -1641,7 +1641,11 @@ field_reader::field_reader(iresearch::postings_reader::ptr&& pr)
   assert(pr_);
 }
 
-bool field_reader::prepare(const reader_state& state) {
+bool field_reader::prepare(
+    const directory& dir,
+    const segment_meta& meta,
+    const document_mask& mask
+) {
   std::string str;
 
   //-----------------------------------------------------------------
@@ -1650,6 +1654,11 @@ bool field_reader::prepare(const reader_state& state) {
 
   detail::feature_map_t feature_map;
   flags features;
+  reader_state state;
+
+  state.dir = &dir;
+  state.docs_mask = &mask;
+  state.meta = &meta;
 
   // check index header 
   index_input::ptr index_in;

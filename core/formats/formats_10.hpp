@@ -179,7 +179,12 @@ class document_mask_reader final: public iresearch::document_mask_reader {
 public:
   virtual ~document_mask_reader();
 
-  virtual bool prepare(directory const& dir, segment_meta const& meta) override;
+  virtual bool prepare(
+    const directory& dir,
+    const segment_meta& meta,
+    bool* seen = nullptr
+  ) override;
+
   virtual uint32_t begin() override;
   virtual void read(iresearch::doc_id_t& mask) override;
   virtual void end() override;

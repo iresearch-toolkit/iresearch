@@ -611,7 +611,7 @@ field_reader::field_reader(field_reader&& other) NOEXCEPT
   : readers_(std::move(other.readers_)), data_(std::move(other.data_)) {
 }
 
-bool field_reader::prepare(const iresearch::reader_state& state) {
+bool field_reader::prepare(const irs::directory& dir, const irs::segment_meta& meta, const irs::document_mask& mask) {
   return true;
 }
 

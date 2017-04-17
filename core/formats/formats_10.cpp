@@ -868,7 +868,7 @@ class pay_iterator final : public pos_iterator {
   uint64_t pay_data_pos_{}; /* current postition in payload buffer */
   bstring pay_data_; // buffer to store payload data
 }; // pay_iterator
-  
+
 /* static */ pos_iterator::ptr pos_iterator::make(const features& enabled) {
   switch (enabled) {
     case features::POS : 
@@ -880,7 +880,7 @@ class pay_iterator final : public pos_iterator {
     case features::POS_OFFS_PAY :
       return memory::make_unique<offs_pay_iterator>();
   }
-  
+
   assert(false);
   return nullptr;
 }
@@ -1359,7 +1359,11 @@ void document_mask_writer::end() {
 
 document_mask_reader::~document_mask_reader() {}
 
-bool document_mask_reader::prepare(directory const& dir, segment_meta const& meta) {
+bool document_mask_reader::prepare(
+    const directory& dir,
+    const segment_meta& meta,
+    bool* seen /*= nullptr*/
+) {
   auto in_name = file_name<document_mask_writer>(meta);
   bool exists;
 
@@ -1367,10 +1371,17 @@ bool document_mask_reader::prepare(directory const& dir, segment_meta const& met
   if (dir.exists(exists, in_name) && !exists) {
     checksum_index_input<boost::crc_32_type> empty_in;
 
-    IR_FRMT_INFO("Failed to open file, path: %s", in_name.c_str());
     in_.swap(empty_in);
 
-    return false;
+    if (!seen) {
+      IR_FRMT_ERROR("Failed to open file, path: %s", in_name.c_str());
+
+      return false;
+    }
+
+    *seen = false;
+
+    return true;
   }
 
   auto in = dir.open(in_name);
@@ -1387,6 +1398,10 @@ bool document_mask_reader::prepare(directory const& dir, segment_meta const& met
   checksum_index_input<boost::crc_32_type> check_in(std::move(in));
 
   in_.swap(check_in);
+
+  if (seen) {
+    *seen = true;
+  }
 
   return true;
 }
@@ -1419,6 +1434,12 @@ void document_mask_reader::end() {
 
 NS_BEGIN(columns)
 
+template<typename T, typename M>
+std::string file_name(const M& meta); // forward declaration
+
+template<typename T, typename M>
+void file_name(std::string& buf, M const& meta); // forward declaration
+
 class meta_writer final : public iresearch::column_meta_writer {
  public:
   static const string_ref FORMAT_NAME;
@@ -1427,7 +1448,7 @@ class meta_writer final : public iresearch::column_meta_writer {
   static const int32_t FORMAT_MIN = 0;
   static const int32_t FORMAT_MAX = FORMAT_MIN;
 
-  virtual bool prepare(directory& dir, const string_ref& filename) override;
+  virtual bool prepare(directory& dir, const segment_meta& meta) override;
   virtual void write(const std::string& name, field_id id) override;
   virtual void flush() override;
 
@@ -1439,9 +1460,15 @@ class meta_writer final : public iresearch::column_meta_writer {
 const string_ref meta_writer::FORMAT_NAME = "iresearch_10_columnmeta";
 const string_ref meta_writer::FORMAT_EXT = "cm";
 
-bool meta_writer::prepare(directory& dir, const string_ref& name) {
-  std::string filename;
-  file_name(filename, name, FORMAT_EXT);
+template<>
+std::string file_name<column_meta_writer, segment_meta>(
+    const segment_meta& meta
+) {
+  return irs::file_name(meta.name, columns::meta_writer::FORMAT_EXT);
+};
+
+bool meta_writer::prepare(directory& dir, const segment_meta& meta) {
+  auto filename = file_name<column_meta_writer>(meta);
 
   out_ = dir.create(filename);
 
@@ -1472,7 +1499,7 @@ class meta_reader final : public iresearch::column_meta_reader {
  public:
   virtual bool prepare(
     const directory& dir, 
-    const string_ref& filename,
+    const segment_meta& meta,
     field_id& count
   ) override;
   virtual bool read(column_meta& column) override;
@@ -1482,8 +1509,12 @@ class meta_reader final : public iresearch::column_meta_reader {
   field_id count_{0};
 }; // meta_writer
 
-bool meta_reader::prepare(const directory& dir, const string_ref& name, field_id& count) {
-  const auto filename = file_name(name, meta_writer::FORMAT_EXT);
+bool meta_reader::prepare(
+    const directory& dir,
+    const segment_meta& meta,
+    field_id& count
+) {
+  auto filename = file_name<column_meta_writer>(meta);
   auto in = dir.open(filename);
 
   if (!in) {
@@ -1745,7 +1776,7 @@ class writer final : public iresearch::columnstore_writer {
   static const string_ref FORMAT_NAME;
   static const string_ref FORMAT_EXT;
 
-  virtual bool prepare(directory& dir, const string_ref& name) override;
+  virtual bool prepare(directory& dir, const segment_meta& meta) override;
   virtual column_t push_column() override;
   virtual void flush() override;
 
@@ -1891,12 +1922,26 @@ class writer final : public iresearch::columnstore_writer {
 const string_ref writer::FORMAT_NAME = "iresearch_10_columnstore";
 const string_ref writer::FORMAT_EXT = "cs";
 
-bool writer::prepare(directory& dir, const string_ref& name) {
+template<>
+std::string file_name<columnstore_writer, segment_meta>(
+    const segment_meta& meta
+) {
+  return irs::file_name(meta.name, columns::writer::FORMAT_EXT);
+};
+
+template<>
+void file_name<columnstore_writer, segment_meta>(
+    std::string& buf,
+    const segment_meta& meta
+) {
+  irs::file_name(buf, meta.name, columns::writer::FORMAT_EXT);
+};
+
+bool writer::prepare(directory& dir, const segment_meta& meta) {
   columns_.clear();
 
   dir_ = &dir;
-  file_name(filename_, name, FORMAT_EXT);
-
+  file_name<columnstore_writer>(filename_, meta);
   data_out_ = dir.create(filename_);
 
   if (!data_out_) {
@@ -2870,7 +2915,12 @@ class reader final : public columnstore_reader, public context_provider {
     : context_provider(pool_size) {
   }
 
-  virtual bool prepare(const reader_state& state) override;
+  virtual bool prepare(
+    const directory& dir,
+    const segment_meta& meta,
+    bool* seen = nullptr
+  ) override;
+
   virtual values_reader_f values(field_id field) const override;
   virtual bool visit(field_id field, const values_visitor_f& visitor) const override;
 
@@ -2878,19 +2928,25 @@ class reader final : public columnstore_reader, public context_provider {
   std::vector<column::ptr> columns_;
 }; // reader
 
-bool reader::prepare(const reader_state& state) {
-  auto& name = state.meta->name;
-  auto& dir = *state.dir;
-
-  std::string filename;
-  file_name(filename, name, writer::FORMAT_EXT);
-
+bool reader::prepare(
+    const directory& dir,
+    const segment_meta& meta,
+    bool* seen /*= nullptr*/
+) {
+  auto filename = file_name<columnstore_writer>(meta);
   bool exists;
 
   // possible that the file does not exist since columnstore is optional
   if (dir.exists(exists, filename) && !exists) {
-    IR_FRMT_INFO("Failed to open file, path: %s", filename.c_str());
-    return false;
+    if (!seen) {
+      IR_FRMT_ERROR("Failed to open file, path: %s", filename.c_str());
+
+      return false;
+    }
+
+    *seen = false;
+
+    return true;
   }
 
   // open columstore stream
@@ -2898,6 +2954,7 @@ bool reader::prepare(const reader_state& state) {
 
   if (!stream) {
     IR_FRMT_ERROR("Failed to open file, path: %s", filename.c_str());
+
     return false;
   }
 
@@ -2942,6 +2999,10 @@ bool reader::prepare(const reader_state& state) {
   // noexcept
   context_provider::prepare(dir, std::move(filename));
   columns_ = std::move(columns);
+
+  if (seen) {
+    *seen = true;
+  }
 
   return true;
 }

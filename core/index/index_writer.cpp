@@ -14,6 +14,7 @@
 #include "merge_writer.hpp"
 #include "formats/format_utils.hpp"
 #include "utils/directory_utils.hpp"
+#include "utils/index_utils.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
 #include "index_writer.hpp"
@@ -38,24 +39,6 @@ void append_segments_refs(
 
   // track all files referenced in index_meta
   iresearch::directory_utils::reference(dir, meta, visitor, true);
-}
-
-void read_document_mask(
-  iresearch::document_mask& docs_mask,
-  const iresearch::directory& dir,
-  const iresearch::segment_meta& meta
-) {
-  auto reader = meta.codec->get_document_mask_reader();
-  auto visitor = [&docs_mask](iresearch::doc_id_t value)->bool {
-    docs_mask.insert(value);
-    return true;
-  };
-
-  // there will not be a document_mask list for new segments without deletes
-  if (reader->prepare(dir, meta)) {
-    iresearch::read_all<iresearch::doc_id_t>(visitor, *reader, reader->begin());
-    reader->end();
-  }
 }
 
 const std::string& write_document_mask(
@@ -435,11 +418,13 @@ bool index_writer::add_segment_mask_consolidated_records(
 
   REGISTER_TIMER_DETAILED();
   auto merge_segment_name = file_name(meta_.increment()); // increment active meta, not fn arg
-  merge_writer merge_writer(dir, codec_, merge_segment_name);
+  merge_writer merge_writer(dir, merge_segment_name);
 
   for (auto& merge_candidate: merge_candidates) {
     merge_writer.add(merge_candidate);
   }
+
+  segment.meta.codec = codec_;
 
   if (!merge_writer.flush(segment.filename, segment.meta)) {
     return false; // import failure (no files created, nothing to clean up)
@@ -535,13 +520,13 @@ void index_writer::consolidate(
 bool index_writer::import(const index_reader& reader) {
   auto ctx = get_flush_context();
   auto merge_segment_name = file_name(meta_.increment());
-  merge_writer merge_writer(*(ctx->dir_), codec_, merge_segment_name);
+  merge_writer merge_writer(*(ctx->dir_), merge_segment_name);
 
   for (auto itr = reader.begin(), end = reader.end(); itr != end; ++itr) {
     merge_writer.add(*itr);
   }
 
-  index_meta::index_segment_t segment;
+  index_meta::index_segment_t segment(segment_meta(merge_segment_name, codec_));
 
   if (!merge_writer.flush(segment.filename, segment.meta)) {
     return false; // import failure (no files created, nothing to clean up)
@@ -605,10 +590,10 @@ index_writer::flush_context::ptr index_writer::get_flush_context(bool shared /*=
 
 index_writer::flush_context::segment_writers_t::ptr index_writer::get_segment_context(
     flush_context& ctx) {
-  auto writer = ctx.writers_pool_.emplace(*(ctx.dir_), codec_);
+  auto writer = ctx.writers_pool_.emplace(*(ctx.dir_));
 
   if (!writer->initialized()) {
-    writer->reset(file_name(meta_.increment()));
+    writer->reset(segment_meta(file_name(meta_.increment()), codec_));
   }
 
   return writer;
@@ -658,7 +643,7 @@ index_writer::pending_context_t index_writer::flush_all() {
     auto& segment = segments.back();
     document_mask docs_mask;
 
-    read_document_mask(docs_mask, dir, segment.meta);
+    index_utils::read_document_mask(docs_mask, dir, segment.meta);
 
     // write docs_mask if masks added, if all docs are masked then mask segment
     if (add_document_mask_modified_records(ctx->modification_queries_, docs_mask, segment.meta)) {
@@ -719,7 +704,7 @@ index_writer::pending_context_t index_writer::flush_all() {
       }
 
       segment_ctxs.emplace_back(segments.size(), writer);
-      segments.emplace_back(segment_meta(writer.name(), writer.codec()));
+      segments.emplace_back(segment_meta(writer.name(), codec_));
 
       auto& segment = segments.back();
 

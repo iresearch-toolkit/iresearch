@@ -225,7 +225,13 @@ class field_writer final : public iresearch::field_writer{
 class field_reader final : public iresearch::field_reader {
  public:
   explicit field_reader(iresearch::postings_reader::ptr&& pr);
-  virtual bool prepare(const reader_state& state) override;
+
+  virtual bool prepare(
+    const directory& dir,
+    const segment_meta& meta,
+    const document_mask& mask
+  ) override;
+
   virtual const iresearch::term_reader* field(const string_ref& field) const override;
   virtual iresearch::field_iterator::ptr iterator() const override;
   virtual size_t size() const override;

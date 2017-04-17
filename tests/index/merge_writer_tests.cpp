@@ -155,7 +155,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
   }
   
   auto reader = iresearch::directory_reader::open(dir, codec_ptr);
-  iresearch::merge_writer writer(dir, codec_ptr, "merged");
+  irs::merge_writer writer(dir, "merged");
 
   ASSERT_EQ(2, reader.size());
   ASSERT_EQ(2, reader[0].docs_count());
@@ -396,7 +396,9 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
   std::string filename;
   iresearch::segment_meta meta;
 
+  meta.codec = codec_ptr;
   writer.flush(filename, meta);
+
   {
     auto segment = iresearch::segment_reader::open(dir, meta);
     ASSERT_EQ(3, segment.docs_count());
@@ -560,7 +562,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
   }
 
   auto reader = iresearch::directory_reader::open(dir, codec_ptr);
-  iresearch::merge_writer writer(dir, codec_ptr, "merged");
+  irs::merge_writer writer(dir, "merged");
 
   ASSERT_EQ(2, reader.size());
   ASSERT_EQ(2, reader[0].docs_count());
@@ -766,7 +768,9 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
   std::string filename;
   iresearch::segment_meta meta;
 
+  meta.codec = codec_ptr;
   writer.flush(filename, meta);
+
   {
     auto segment = iresearch::segment_reader::open(dir, meta);
     ASSERT_EQ(4, segment.docs_count());
@@ -1012,7 +1016,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
   }
 
   auto reader = iresearch::directory_reader::open(dir, codec_ptr);
-  iresearch::merge_writer writer(dir, codec_ptr, "merged");
+  irs::merge_writer writer(dir, "merged");
 
   ASSERT_EQ(2, reader.size());
   ASSERT_EQ(2, reader[0].docs_count());
@@ -1687,6 +1691,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
   std::string filename;
   iresearch::segment_meta meta;
 
+  meta.codec = codec_ptr;
   writer.flush(filename, meta);
 
   auto segment = iresearch::segment_reader::open(dir, meta);
@@ -2105,25 +2110,27 @@ TEST_F(merge_writer_tests, test_merge_writer_field_features) {
 
   // test merge existing with feature subset (success)
   {
-    iresearch::merge_writer writer(dir, codec_ptr, "merged_subset");
+    irs::merge_writer writer(dir, "merged_subset");
     writer.add(reader[1]); // assume 1 is segment with text field
     writer.add(reader[0]); // assume 0 is segment with string field
 
     std::string filename;
     iresearch::segment_meta meta;
 
+    meta.codec = codec_ptr;
     ASSERT_TRUE(writer.flush(filename, meta));
   }
 
   // test merge existing with feature superset (fail)
   {
-    iresearch::merge_writer writer(dir, codec_ptr, "merged_superset");
+    irs::merge_writer writer(dir, "merged_superset");
     writer.add(reader[0]); // assume 0 is segment with text field
     writer.add(reader[1]); // assume 1 is segment with string field
 
     std::string filename;
     iresearch::segment_meta meta;
 
+    meta.codec = codec_ptr;
     ASSERT_FALSE(writer.flush(filename, meta));
   }
 }
