@@ -40,7 +40,7 @@ install:
   - cd %SNOWBALL_DIR%
   - git reset --hard 9e0a8340d58c70f91e8a0233b985242dc69c6fb8
   - mkdir build && cd build
-#  - set PATH=%PATH%;%SNOWBALL_DIR%\build\%CONFIGURATION%
+  - set PATH=%PATH%;%SNOWBALL_DIR%\build\%CONFIGURATION%
   - cmake -DENABLE_STATIC=OFF -DNO_SHARED=ON -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 ..  
   - cmake --build .
   - cmake -DENABLE_STATIC=OFF -DNO_SHARED=OFF -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 ..  
