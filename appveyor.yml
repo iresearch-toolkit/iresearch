@@ -60,8 +60,8 @@ install:
   - cmake --build .
   - cmake --install .
   - mkdir ..\googletest\lib  
-  - mv googletest\%CONFIGURATION% ..\googletest\lib
-  - set GTEST_ROOT=%GTEST_DIR%
+  - move /Y googletest\%CONFIGURATION%\* ..\googletest\lib
+  - set GTEST_ROOT=%GTEST_DIR%\googletest
   
   ############################################################################
   # Install ICU
