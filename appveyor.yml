@@ -59,8 +59,9 @@ install:
   - cmake -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 -Dgtest_force_shared_crt=ON ..
   - cmake --build .
   - cmake --install .
-  - mv %PLATFORM%\%CONFIGURATION% ../googletest/lib
-  - set GTEST_ROOT=%GTEST_DIR%/googletest
+  - mkdir ..\googletest\lib
+  - mv %CONFIGURATION% ..\googletest\lib
+  - set GTEST_ROOT=%GTEST_DIR%\googletest
   
   ############################################################################
   # Install ICU
