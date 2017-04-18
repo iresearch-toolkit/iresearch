@@ -109,7 +109,14 @@ class IRESEARCH_API numeric_token_stream final:
   #endif
 
   void reset(double_t value, uint32_t step = PRECISION_STEP_DEF);
-  bytes_ref value(bstring& buf) const;
+  static bytes_ref value(bstring& buf, int32_t value);
+  static bytes_ref value(bstring& buf, int64_t value);
+
+  #ifndef FLOAT_T_IS_DOUBLE_T
+    static bytes_ref value(bstring& buf, float_t value);
+  #endif
+
+  static bytes_ref value(bstring& buf, double_t value);
 
  private:
   iresearch::attributes attrs_;

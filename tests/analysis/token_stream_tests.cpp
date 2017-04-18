@@ -181,22 +181,15 @@ TEST( numeric_token_stream_tests, ctor) {
 }
 
 TEST(numeric_token_stream_tests, value) {
-  {
-    bstring buf;
-    numeric_token_stream ts;
-    ASSERT_NE(nullptr, ts.attributes().get<term_attribute>());
-    ASSERT_EQ(bytes_ref::nil, ts.value(buf));
-  }
-
   // int
   {
     bstring buf;
     numeric_token_stream ts;
-    auto term = ts.attributes().get<term_attribute>();
+    auto& term = ts.attributes().get<term_attribute>();
     ASSERT_NE(nullptr, term);
     ts.reset(35);
 
-    auto value = ts.value(buf);
+    auto value = numeric_token_stream::value(buf, 35);
     ASSERT_EQ(true, ts.next());
     ASSERT_EQ(term->value(), value); // value same as 1st
     ASSERT_EQ(true, ts.next());
@@ -208,11 +201,11 @@ TEST(numeric_token_stream_tests, value) {
   {
     bstring buf;
     numeric_token_stream ts;
-    auto term = ts.attributes().get<term_attribute>();
+    auto& term = ts.attributes().get<term_attribute>();
     ASSERT_NE(nullptr, term);
     ts.reset(int64_t(75));
 
-    auto value = ts.value(buf);
+    auto value = numeric_token_stream::value(buf, int64_t(75));
     ASSERT_EQ(true, ts.next());
     ASSERT_EQ(term->value(), value); // value same as 1st
     ASSERT_EQ(true, ts.next());
@@ -228,11 +221,11 @@ TEST(numeric_token_stream_tests, value) {
   {
     bstring buf;
     numeric_token_stream ts;
-    auto term = ts.attributes().get<term_attribute>();
+    auto& term = ts.attributes().get<term_attribute>();
     ASSERT_NE(nullptr, term);
     ts.reset((float_t)35.f);
 
-    auto value = ts.value(buf);
+    auto value = numeric_token_stream::value(buf, (float_t)35.f);
     ASSERT_EQ(true, ts.next());
     ASSERT_EQ(term->value(), value); // value same as 1st
     ASSERT_EQ(true, ts.next());
@@ -244,11 +237,11 @@ TEST(numeric_token_stream_tests, value) {
   {
     bstring buf;
     numeric_token_stream ts;
-    auto term = ts.attributes().get<term_attribute>();
+    auto& term = ts.attributes().get<term_attribute>();
     ASSERT_NE(nullptr, term);
     ts.reset((double_t)35.);
 
-    auto value = ts.value(buf);
+    auto value = numeric_token_stream::value(buf, (double_t)35.);
     ASSERT_EQ(true, ts.next());
     ASSERT_EQ(term->value(), value); // value same as 1st
     ASSERT_EQ(true, ts.next());
