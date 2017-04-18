@@ -98,6 +98,9 @@ class IRESEARCH_API numeric_token_stream final:
   numeric_token_stream();
   numeric_token_stream(numeric_token_stream&& other) NOEXCEPT;
 
+  virtual const irs::attributes& attributes() const NOEXCEPT override;
+  virtual bool next() override;
+
   void reset(int32_t value, uint32_t step = PRECISION_STEP_DEF);
   void reset(int64_t value, uint32_t step = PRECISION_STEP_DEF);
 
@@ -106,11 +109,7 @@ class IRESEARCH_API numeric_token_stream final:
   #endif
 
   void reset(double_t value, uint32_t step = PRECISION_STEP_DEF);
-
-  virtual bool next() override;
-  virtual const iresearch::attributes& attributes() const NOEXCEPT override {
-    return attrs_;
-  }
+  bytes_ref value(bstring& buf) const;
 
  private:
   iresearch::attributes attrs_;

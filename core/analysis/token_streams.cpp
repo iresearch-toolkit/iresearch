@@ -144,6 +144,22 @@ class numeric_term final : public term_attribute {
  public:
   DECLARE_FACTORY_DEFAULT();
 
+  bool next(increment& inc) {
+    auto bits = type_ > NT_DBL
+        ? bits_required<int32_t>()
+        : bits_required<int64_t>();
+
+    if (shift_ >= bits) {
+      return false;
+    }
+
+    data_ref_ = value(data_, shift_);
+    shift_ += step_;
+    inc.value = step_ == shift_ ? 1 : 0;
+
+    return true;
+  }
+
   void reset(int32_t value, uint32_t step) { 
     val_.i32 = value; 
     type_ = NT_INT;
@@ -182,53 +198,35 @@ class numeric_term final : public term_attribute {
     return data_ref_;
   }
 
-  bool next(increment& inc) {
-    const uint32_t bits = type_ > NT_DBL 
-        ? bits_required<int32_t>()
-        : bits_required<int64_t>();
+  bytes_ref value(bstring& buf, uint32_t shift) {
+    switch (type_) {
+     case NT_LONG: {
+      typedef numeric_utils::numeric_traits<int64_t> traits_t;
+      oversize(buf, traits_t::size());
 
-    if (shift_ >= bits) {
-      return false;
+      return bytes_ref(&(buf[0]), traits_t::encode(val_.i64, &(buf[0]), shift));
+     }
+     case NT_DBL: {
+      typedef numeric_utils::numeric_traits<double_t> traits_t;
+      oversize(buf, traits_t::size());
+
+      return bytes_ref(&(buf[0]), traits_t::encode(val_.i64, &(buf[0]), shift));
+     }
+     case NT_INT: {
+      typedef numeric_utils::numeric_traits<int32_t> traits_t;
+      oversize(buf, traits_t::size());
+
+      return bytes_ref(&(buf[0]), traits_t::encode(val_.i32, &(buf[0]), shift));
+     }
+     case NT_FLOAT: { 
+      typedef numeric_utils::numeric_traits<float_t> traits_t;
+      oversize(buf, traits_t::size());
+
+      return bytes_ref(&(buf[0]), traits_t::encode(val_.i32, &(buf[0]), shift));
+     }
     }
 
-    switch (type_) {
-      case NT_LONG: {
-        typedef numeric_utils::numeric_traits<int64_t> traits_t;
-        oversize(data_, traits_t::size());
-
-        auto size = traits_t::encode(val_.i64, &(data_[0]), shift_);
-
-        data_ref_ = bytes_ref(&(data_[0]), size);
-      } break;
-      case NT_DBL: {
-        typedef numeric_utils::numeric_traits<double_t> traits_t;
-        oversize(data_, traits_t::size());
-
-        auto size = traits_t::encode(val_.i64, &(data_[0]), shift_);
-
-        data_ref_ = bytes_ref(&(data_[0]), size);
-      } break;
-      case NT_INT: {
-        typedef numeric_utils::numeric_traits<int32_t> traits_t;
-        oversize(data_, traits_t::size());
-
-        auto size = traits_t::encode(val_.i32, &(data_[0]), shift_);
-
-        data_ref_ = bytes_ref(&(data_[0]), size);
-      } break;
-      case NT_FLOAT: { 
-        typedef numeric_utils::numeric_traits<float_t> traits_t;
-        oversize(data_, traits_t::size());
-
-        auto size = traits_t::encode(val_.i32, &(data_[0]), shift_);
-
-        data_ref_ = bytes_ref(&(data_[0]), size);
-      } break;
-    };
-
-    shift_ += step_;
-    inc.value = step_ == shift_ ? 1 : 0;
-    return true;
+    return bytes_ref::nil;
   }
 
  private:
@@ -264,6 +262,14 @@ numeric_token_stream::numeric_token_stream(
     inc_(std::move(other.inc_)) {
 }
 
+const irs::attributes& numeric_token_stream::attributes() const NOEXCEPT {
+  return attrs_;
+}
+
+bool numeric_token_stream::next() {
+  return num_->next(*inc_);
+}
+
 void numeric_token_stream::reset(
     int32_t value, 
     uint32_t step /* = PRECISION_STEP_DEF */) { 
@@ -290,8 +296,8 @@ void numeric_token_stream::reset(
   num_->reset(value, step); 
 }
 
-bool numeric_token_stream::next() {
-  return num_->next(*inc_);
+bytes_ref numeric_token_stream::value(bstring& buf) const {
+  return num_->value(buf, 0);
 }
 
 // -----------------------------------------------------------------------------

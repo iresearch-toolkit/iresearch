@@ -179,3 +179,84 @@ TEST( numeric_token_stream_tests, ctor) {
     ASSERT_NE(nullptr, ts.attributes().get<increment>());
   }
 }
+
+TEST(numeric_token_stream_tests, value) {
+  {
+    bstring buf;
+    numeric_token_stream ts;
+    ASSERT_NE(nullptr, ts.attributes().get<term_attribute>());
+    ASSERT_EQ(bytes_ref::nil, ts.value(buf));
+  }
+
+  // int
+  {
+    bstring buf;
+    numeric_token_stream ts;
+    auto term = ts.attributes().get<term_attribute>();
+    ASSERT_NE(nullptr, term);
+    ts.reset(35);
+
+    auto value = ts.value(buf);
+    ASSERT_EQ(true, ts.next());
+    ASSERT_EQ(term->value(), value); // value same as 1st
+    ASSERT_EQ(true, ts.next());
+    ASSERT_NE(term->value(), value); // value not same as 2nd
+    ASSERT_EQ(false, ts.next());
+  }
+
+  // long
+  {
+    bstring buf;
+    numeric_token_stream ts;
+    auto term = ts.attributes().get<term_attribute>();
+    ASSERT_NE(nullptr, term);
+    ts.reset(int64_t(75));
+
+    auto value = ts.value(buf);
+    ASSERT_EQ(true, ts.next());
+    ASSERT_EQ(term->value(), value); // value same as 1st
+    ASSERT_EQ(true, ts.next());
+    ASSERT_NE(term->value(), value); // value not same as 2nd
+    ASSERT_EQ(true, ts.next());
+    ASSERT_NE(term->value(), value); // value not same as 3rd
+    ASSERT_EQ(true, ts.next());
+    ASSERT_NE(term->value(), value); // value not same as 4th
+    ASSERT_EQ(false, ts.next());
+  }
+
+  // float
+  {
+    bstring buf;
+    numeric_token_stream ts;
+    auto term = ts.attributes().get<term_attribute>();
+    ASSERT_NE(nullptr, term);
+    ts.reset((float_t)35.f);
+
+    auto value = ts.value(buf);
+    ASSERT_EQ(true, ts.next());
+    ASSERT_EQ(term->value(), value); // value same as 1st
+    ASSERT_EQ(true, ts.next());
+    ASSERT_NE(term->value(), value); // value not same as 2nd
+    ASSERT_EQ(false, ts.next());
+  }
+
+  // double
+  {
+    bstring buf;
+    numeric_token_stream ts;
+    auto term = ts.attributes().get<term_attribute>();
+    ASSERT_NE(nullptr, term);
+    ts.reset((double_t)35.);
+
+    auto value = ts.value(buf);
+    ASSERT_EQ(true, ts.next());
+    ASSERT_EQ(term->value(), value); // value same as 1st
+    ASSERT_EQ(true, ts.next());
+    ASSERT_NE(term->value(), value); // value not same as 2nd
+    ASSERT_EQ(true, ts.next());
+    ASSERT_NE(term->value(), value); // value not same as 3rd
+    ASSERT_EQ(true, ts.next());
+    ASSERT_NE(term->value(), value); // value not same as 4th
+    ASSERT_EQ(false, ts.next());
+  }
+}
