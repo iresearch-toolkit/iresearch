@@ -38,7 +38,7 @@ inline size_t roundup_power2(size_t v) NOEXCEPT {
   return v;
 }
 
-#if _MSC_VER < 1900
+#if defined(_MSC_VER) && (_MSC_VER < 1900)
   #define is_power2(v) (std::is_integral<decltype(v)>::value && !(v & (v-1)))
 #else
   // undefined for 0
