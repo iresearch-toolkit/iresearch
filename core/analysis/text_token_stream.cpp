@@ -410,21 +410,17 @@ char const* text_token_stream::STOPWORD_PATH_ENV_VARIABLE = "IRESEARCH_TEXT_STOP
 DEFINE_ANALYZER_TYPE_NAMED(text_token_stream, "text");
 REGISTER_ANALYZER(text_token_stream);
 /*static*/ analyzer::ptr text_token_stream::make(const string_ref& args) {
-  auto stream = construct(args);
-
-  if (stream) {
-    return stream;
-  }
-
   // try to parse 'args' as a jSON config
   try {
     std::stringstream args_stream(std::string(args.c_str(), args.size()));
     ::boost::property_tree::ptree pt;
 
-    {
+    try {
       static std::mutex mutex;
       SCOPED_LOCK(mutex); // ::boost::property_tree::read_json(...) is not thread-safe, was seen to SEGFAULT
       ::boost::property_tree::read_json(args_stream, pt);
+    } catch(...) {
+      return construct(args); // fallback to parseing 'args' as a locale name
     }
 
     auto locale = iresearch::locale_utils::locale(pt.get<std::string>("locale"));

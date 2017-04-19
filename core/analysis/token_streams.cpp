@@ -144,6 +144,22 @@ class numeric_term final : public term_attribute {
  public:
   DECLARE_FACTORY_DEFAULT();
 
+  bool next(increment& inc) {
+    auto bits = type_ > NT_DBL
+        ? bits_required<int32_t>()
+        : bits_required<int64_t>();
+
+    if (shift_ >= bits) {
+      return false;
+    }
+
+    data_ref_ = value(data_, type_, val_, shift_);
+    shift_ += step_;
+    inc.value = step_ == shift_ ? 1 : 0;
+
+    return true;
+  }
+
   void reset(int32_t value, uint32_t step) { 
     val_.i32 = value; 
     type_ = NT_INT;
@@ -182,53 +198,38 @@ class numeric_term final : public term_attribute {
     return data_ref_;
   }
 
-  bool next(increment& inc) {
-    const uint32_t bits = type_ > NT_DBL 
-        ? bits_required<int32_t>()
-        : bits_required<int64_t>();
+  static bytes_ref value(bstring& buf, int32_t value) {
+    decltype(val_) val;
 
-    if (shift_ >= bits) {
-      return false;
+    val.i32 = value;
+
+    return numeric_term::value(buf, NT_INT, val, 0);
+  }
+
+  static bytes_ref value(bstring& buf, int64_t value) {
+    decltype(val_) val;
+
+    val.i64 = value;
+
+    return numeric_term::value(buf, NT_LONG, val, 0);
+  }
+
+  #ifndef FLOAT_T_IS_DOUBLE_T
+    static bytes_ref value(bstring& buf, float_t value) {
+      decltype(val_) val;
+
+      val.i32 = numeric_utils::numeric_traits<float_t>::integral(value);
+
+      return numeric_term::value(buf, NT_FLOAT, val, 0);
     }
+  #endif
 
-    switch (type_) {
-      case NT_LONG: {
-        typedef numeric_utils::numeric_traits<int64_t> traits_t;
-        oversize(data_, traits_t::size());
+  static bytes_ref value(bstring& buf, double_t value) {
+    decltype(val_) val;
 
-        auto size = traits_t::encode(val_.i64, &(data_[0]), shift_);
+    val.i64 = numeric_utils::numeric_traits<double_t>::integral(value);
 
-        data_ref_ = bytes_ref(&(data_[0]), size);
-      } break;
-      case NT_DBL: {
-        typedef numeric_utils::numeric_traits<double_t> traits_t;
-        oversize(data_, traits_t::size());
-
-        auto size = traits_t::encode(val_.i64, &(data_[0]), shift_);
-
-        data_ref_ = bytes_ref(&(data_[0]), size);
-      } break;
-      case NT_INT: {
-        typedef numeric_utils::numeric_traits<int32_t> traits_t;
-        oversize(data_, traits_t::size());
-
-        auto size = traits_t::encode(val_.i32, &(data_[0]), shift_);
-
-        data_ref_ = bytes_ref(&(data_[0]), size);
-      } break;
-      case NT_FLOAT: { 
-        typedef numeric_utils::numeric_traits<float_t> traits_t;
-        oversize(data_, traits_t::size());
-
-        auto size = traits_t::encode(val_.i32, &(data_[0]), shift_);
-
-        data_ref_ = bytes_ref(&(data_[0]), size);
-      } break;
-    };
-
-    shift_ += step_;
-    inc.value = step_ == shift_ ? 1 : 0;
-    return true;
+    return numeric_term::value(buf, NT_DBL, val, 0);
   }
 
  private:
@@ -243,6 +244,42 @@ class numeric_term final : public term_attribute {
   NumericType type_;
   uint32_t step_;
   uint32_t shift_;
+
+  static bytes_ref value(
+      bstring& buf,
+      NumericType type,
+      decltype(val_) val,
+      uint32_t shift
+  ) {
+    switch (type) {
+     case NT_LONG: {
+      typedef numeric_utils::numeric_traits<int64_t> traits_t;
+      oversize(buf, traits_t::size());
+
+      return bytes_ref(&(buf[0]), traits_t::encode(val.i64, &(buf[0]), shift));
+     }
+     case NT_DBL: {
+      typedef numeric_utils::numeric_traits<double_t> traits_t;
+      oversize(buf, traits_t::size());
+
+      return bytes_ref(&(buf[0]), traits_t::encode(val.i64, &(buf[0]), shift));
+     }
+     case NT_INT: {
+      typedef numeric_utils::numeric_traits<int32_t> traits_t;
+      oversize(buf, traits_t::size());
+
+      return bytes_ref(&(buf[0]), traits_t::encode(val.i32, &(buf[0]), shift));
+     }
+     case NT_FLOAT: { 
+      typedef numeric_utils::numeric_traits<float_t> traits_t;
+      oversize(buf, traits_t::size());
+
+      return bytes_ref(&(buf[0]), traits_t::encode(val.i32, &(buf[0]), shift));
+     }
+    }
+
+    return bytes_ref::nil;
+  }
 }; // numeric_term
 DEFINE_FACTORY_DEFAULT(numeric_term);
 
@@ -262,6 +299,14 @@ numeric_token_stream::numeric_token_stream(
   : attrs_(std::move(other.attrs_)),
     num_(std::move(other.num_)), 
     inc_(std::move(other.inc_)) {
+}
+
+const irs::attributes& numeric_token_stream::attributes() const NOEXCEPT {
+  return attrs_;
+}
+
+bool numeric_token_stream::next() {
+  return num_->next(*inc_);
 }
 
 void numeric_token_stream::reset(
@@ -290,8 +335,22 @@ void numeric_token_stream::reset(
   num_->reset(value, step); 
 }
 
-bool numeric_token_stream::next() {
-  return num_->next(*inc_);
+/*static*/ bytes_ref numeric_token_stream::value(bstring& buf, int32_t value) {
+  return numeric_term::value(buf, value);
+}
+
+/*static*/ bytes_ref numeric_token_stream::value(bstring& buf, int64_t value) {
+  return numeric_term::value(buf, value);
+}
+
+#ifndef FLOAT_T_IS_DOUBLE_T
+  /*static*/ bytes_ref numeric_token_stream::value(bstring& buf, float_t value) {
+    return numeric_term::value(buf, value);
+  }
+#endif
+
+/*static*/ bytes_ref numeric_token_stream::value(bstring& buf, double_t value) {
+  return numeric_term::value(buf, value);
 }
 
 // -----------------------------------------------------------------------------

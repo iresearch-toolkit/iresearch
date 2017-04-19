@@ -150,6 +150,10 @@ void query::execute(const index_reader& rdr, collector& c) const {
   }
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                               all
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @class all_query
 /// @brief compiled all_filter that returns all documents
@@ -207,6 +211,24 @@ filter::prepared::ptr all::prepare(
     const order::prepared&,
     boost_t) const {
   return filter::prepared::make<all_query>();
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                             empty
+// -----------------------------------------------------------------------------
+
+DEFINE_FILTER_TYPE(irs::empty);
+DEFINE_FACTORY_DEFAULT(irs::empty);
+
+empty::empty(): filter(empty::type()) {
+}
+
+filter::prepared::ptr empty::prepare(
+    const index_reader&,
+    const order::prepared&,
+    boost_t
+) const {
+  return filter::prepared::empty();
 }
 
 NS_END

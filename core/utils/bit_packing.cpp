@@ -143,7 +143,6 @@ void __fastpack(const uint64_t* RESTRICT in, uint64_t* RESTRICT out) NOEXCEPT {
   ++in; *out |= ((*in) % (1ULL << N)) << (N * 62) % 64; if (((N * 63) % 64) < ((N * 62) % 64)) { ++out; *out |= ((*in) % (1ULL << N)) >> (N - ((N * 63) % 64)); }
   ++in; *out |= ((*in) % (1ULL << N)) << (N * 63) % 64;
 }
-MSVC_ONLY(__pragma(warning(pop)))
 
 template<>
 FORCE_INLINE void __fastpack<64>(const uint64_t* RESTRICT in, uint64_t* RESTRICT out) NOEXCEPT {

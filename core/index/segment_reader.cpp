@@ -384,8 +384,8 @@ uint64_t segment_reader::segment_reader_impl::meta_version() const NOEXCEPT {
   auto columnstore_reader = codec.get_columnstore_reader();
   bool seen;
 
-  // initialize column reader (even if there is no columnstore)
-  if (columnstore_reader->prepare(dir, meta, &seen)) {
+  // initialize column reader
+  if (columnstore_reader->prepare(dir, meta, &seen) && seen) {
     reader->columnstore_reader_ = std::move(columnstore_reader);
   }
 
