@@ -40,7 +40,7 @@ env:
     ############################################################################
     # Debug build, static library
     ############################################################################
-    - CMAKE_OPTIONS="-DCMAKE_BUILD_TYPE=Debug" BUILD_TYPE_SUFFIX="-static" TEST_EXECUTABLE_SUFFIX="-s" TEST_PARAMS="--gtest_filter=*:-:*europarl*
+    - CMAKE_OPTIONS="-DCMAKE_BUILD_TYPE=Debug" BUILD_TYPE_SUFFIX="-static" TEST_EXECUTABLE_SUFFIX="-s" TEST_PARAMS="--gtest_filter=*:-:*europarl*"
 
     ############################################################################
     # Release build, static library
@@ -50,7 +50,7 @@ env:
     ############################################################################
     # Debug build, shared library
     ############################################################################
-    - CMAKE_OPTIONS="-DCMAKE_BUILD_TYPE=Debug" TEST_PARAMS="--gtest_filter=*:-:*europarl*
+    - CMAKE_OPTIONS="-DCMAKE_BUILD_TYPE=Debug" TEST_PARAMS="--gtest_filter=*:-:*europarl*"
 
     ############################################################################
     # Release build, shared library
