@@ -279,6 +279,24 @@ class IRESEARCH_API all: public filter {
     boost_t) const override;
 }; // all
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class empty
+/// @brief filter that returns no documents
+////////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API empty: public filter {
+ public:
+  DECLARE_FILTER_TYPE();
+  DECLARE_FACTORY_DEFAULT();
+
+  empty();
+
+  virtual filter::prepared::ptr prepare(
+    const index_reader& rdr,
+    const order::prepared& ord,
+    boost_t
+  ) const override;
+};
+
 NS_END
 
 NS_BEGIN( std )
