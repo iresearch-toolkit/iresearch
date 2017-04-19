@@ -187,5 +187,5 @@ before_script:
   
 script:
     - cd ${TRAVIS_BUILD_DIR}/build
-    - make iresearch-tests${BUILD_TYPE_SUFFIX} -j4
+    - make iresearch-tests${BUILD_TYPE_SUFFIX}
     - travis_wait 60 ./bin/iresearch-tests${TEST_EXECUTABLE_SUFFIX} ${TEST_PARAMS}
