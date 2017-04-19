@@ -417,14 +417,14 @@ bool index_writer::add_segment_mask_consolidated_records(
   }
 
   REGISTER_TIMER_DETAILED();
-  auto merge_segment_name = file_name(meta_.increment()); // increment active meta, not fn arg
-  merge_writer merge_writer(dir, merge_segment_name);
+  segment.meta.codec = codec_;
+  segment.meta.name = file_name(meta_.increment()); // increment active meta, not fn arg
+
+  merge_writer merge_writer(dir, segment.meta.name);
 
   for (auto& merge_candidate: merge_candidates) {
     merge_writer.add(merge_candidate);
   }
-
-  segment.meta.codec = codec_;
 
   if (!merge_writer.flush(segment.filename, segment.meta)) {
     return false; // import failure (no files created, nothing to clean up)
