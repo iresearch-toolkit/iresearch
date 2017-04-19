@@ -37,12 +37,11 @@ env:
     - MAKEFLAGS="-j 4"
     - BOOST_VERSION=default
   matrix:
-    - CMAKE_OPTIONS="-DCMAKE_BUILD_TYPE=Debug"                # debug
-    - CMAKE_OPTIONS="-DCMAKE_BUILD_TYPE=Release"              # release
-  matrix:
+    - CMAKE_OPTIONS:
+      - "-DCMAKE_BUILD_TYPE=Debug"                # debug
+      - "-DCMAKE_BUILD_TYPE=Release"              # release
     - BUILD_TYPE_SUFFIX="-static" TEST_EXECUTABLE_SUFFIX="-s" # static library
     - BUILD_TYPE_SUFFIX="" TEST_EXECUTABLE_SUFFIX=""          # shared library
-  matrix:  
     - TEST_PARAMS="--gtest_filter=*europarl*
     - TEST_PARAMS="--gtest_filter=*:-:*europarl*
       
