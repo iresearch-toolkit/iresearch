@@ -28,6 +28,10 @@ branches:
   only:
     - master
 
+env:
+  global:
+    - MAKEFLAGS="-j 4"
+
 matrix:
   include:
     ############################################################################
