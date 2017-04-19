@@ -32,6 +32,10 @@ env:
   global:
     - MAKEFLAGS="-j 4"
 
+env:
+  - TEST_PARAMS="--gtest_filter=*europarl*
+  - TEST_PARAMS="--gtest_filter=*:-:*europarl*
+
 matrix:
   include:
     ############################################################################
