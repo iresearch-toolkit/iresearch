@@ -46,16 +46,6 @@ class IRESEARCH_API segment_reader final: public sub_reader {
   template<typename T>
   static bool has(const segment_meta& meta) NOEXCEPT;
 
-  template<>
-  static bool has<columnstore_reader>(const segment_meta& meta) NOEXCEPT {
-    return meta.column_store; // a separate flag to track presence of column store
-  }
-
-  template<>
-  static bool has<document_mask_reader>(const segment_meta& meta) NOEXCEPT {
-    return meta.version > 0; // all version > 0 have document mask
-  }
-
   virtual uint64_t live_docs_count() const override;
   static segment_reader open(const directory& dir, const segment_meta& meta);
   segment_reader reopen(const segment_meta& meta) const;
@@ -78,6 +68,16 @@ class IRESEARCH_API segment_reader final: public sub_reader {
 
   segment_reader(const impl_ptr& impl);
 };
+
+template<>
+/*static*/ IRESEARCH_API bool segment_reader::has<columnstore_reader>(
+    const segment_meta& meta
+) NOEXCEPT;
+
+template<>
+/*static*/ IRESEARCH_API bool segment_reader::has<document_mask_reader>(
+    const segment_meta& meta
+) NOEXCEPT;
 
 NS_END
 

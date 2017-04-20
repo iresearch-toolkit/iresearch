@@ -264,6 +264,20 @@ field_iterator::ptr segment_reader::fields() const {
   return impl_->fields();
 }
 
+template<>
+/*static*/ bool segment_reader::has<columnstore_reader>(
+    const segment_meta& meta
+) NOEXCEPT {
+  return meta.column_store; // a separate flag to track presence of column store
+}
+
+template<>
+/*static*/ bool segment_reader::has<document_mask_reader>(
+    const segment_meta& meta
+) NOEXCEPT {
+  return meta.version > 0; // all version > 0 have document mask
+}
+
 uint64_t segment_reader::live_docs_count() const {
   return impl_->live_docs_count();
 }
