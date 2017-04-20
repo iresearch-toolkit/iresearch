@@ -638,6 +638,7 @@ int put(const std::string& path, std::istream& stream, int maxlines, int thrs, i
 
     while (line_max) {
       batch_provider.buf_.resize(batch_provider.buf_.size() + 1);
+      batch_provider.cond_.notify_all();
 
       auto& line = batch_provider.buf_.back();
 
@@ -655,6 +656,7 @@ int put(const std::string& path, std::istream& stream, int maxlines, int thrs, i
     }
 
     batch_provider.eof_ = true;
+    std::cout << "Stream read end" << std::endl;
   });
 
   // commiter thread
@@ -662,14 +664,16 @@ int put(const std::string& path, std::istream& stream, int maxlines, int thrs, i
     while (!batch_provider.done_.load()) {
       {
         SCOPED_TIMER("Commit time");
+        std::cout << "<" << std::flush;
         writer->commit();
+        std::cout << ">" << std::endl;
       }
 
       std::this_thread::sleep_for(std::chrono::milliseconds(commit_ms));
     }
   });
 
-  // inderxer threads
+  // indexer threads
   for (size_t i = inserter_count; i; --i) {
     thread_pool.run([&batch_provider, &writer]()->void {
       std::vector<std::string> buf;
@@ -693,7 +697,9 @@ int put(const std::string& path, std::istream& stream, int maxlines, int thrs, i
           return ++i < buf.size();
         };
 
+        std::cout << "[" << std::flush;
         writer->insert(inserter);
+        std::cout << "]" << std::flush;
       }
     });
   }
