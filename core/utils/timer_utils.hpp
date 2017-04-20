@@ -56,6 +56,7 @@ IRESEARCH_API timer_stat_t& get_stat(const std::string& key);
     timer_state ## _ ## line \
   );
 #define REGISTER_TIMER_EXPANDER__(timer_name, line) REGISTER_TIMER__(timer_name, line)
+#define SCOPED_TIMER(timer_name) REGISTER_TIMER_EXPANDER__(timer_name, __LINE__)
 
 #ifdef IRESEARCH_DEBUG
   #define REGISTER_TIMER(timer_name) REGISTER_TIMER_EXPANDER__(timer_name, __LINE__)

@@ -585,6 +585,131 @@ static int put(const std::string& path, std::istream& stream, int maxlines, int 
     return 0;
 }
 
+int put(const std::string& path, std::istream& stream, int maxlines, int thrs, int cpr, size_t batch_size) {
+  irs::fs_directory dir(path);
+  auto writer = irs::index_writer::make(dir, irs::formats::get("1_0"), irs::OPEN_MODE::OM_CREATE);
+  size_t inserter_count = std::max(1, thrs);
+  size_t commit_ms = std::max(1, cpr);
+  size_t line_max = std::max(1, maxlines);
+  irs::async_utils::thread_pool thread_pool(inserter_count + 1 + 1); // +1 for commiter thread +1 for stream reader thread
+
+  SCOPED_TIMER("Total Time");
+  std::cout << "Data path=" << path << "; max-lines=" << maxlines << "; threads=" << thrs << "; commit-period=" << cpr << std::endl;
+
+  struct {
+    std::condition_variable cond_;
+    std::atomic<bool> done_;
+    bool eof_;
+    std::mutex mutex_;
+    std::vector<std::string> buf_;
+
+    bool swap(std::vector<std::string>& buf) {
+      SCOPED_LOCK_NAMED(mutex_, lock);
+
+      for (;;) {
+        buf_.swap(buf);
+        buf_.resize(0);
+        cond_.notify_all();
+
+        if (!buf.empty()) {
+          return true;
+        }
+
+        if (eof_) {
+          done_.store(true);
+          return false;
+        }
+
+        if (!eof_) {
+          SCOPED_TIMER("Stream read wait time");
+          cond_.wait(lock);
+        }
+      }
+    }
+  } batch_provider;
+
+  batch_provider.done_.store(false);
+  batch_provider.eof_ = false;
+
+  // stream reader thread
+  thread_pool.run([&batch_provider, &line_max, batch_size, &stream]()->void {
+    SCOPED_TIMER("Stream read total time");
+    SCOPED_LOCK_NAMED(batch_provider.mutex_, lock);
+
+    while (line_max) {
+      batch_provider.buf_.resize(batch_provider.buf_.size() + 1);
+
+      auto& line = batch_provider.buf_.back();
+
+      if (std::getline(stream, line).eof()) {
+        batch_provider.buf_.pop_back();
+        break;
+      }
+
+      --line_max;
+
+      if (batch_provider.buf_.size() >= batch_size) {
+        SCOPED_TIMER("Stream read idle time");
+        batch_provider.cond_.wait(lock);
+      }
+    }
+
+    batch_provider.eof_ = true;
+  });
+
+  // commiter thread
+  thread_pool.run([&batch_provider, commit_ms, &writer]()->void {
+    while (!batch_provider.done_.load()) {
+      {
+        SCOPED_TIMER("Commit time");
+        writer->commit();
+      }
+
+      std::this_thread::sleep_for(std::chrono::milliseconds(commit_ms));
+    }
+  });
+
+  // inderxer threads
+  for (size_t i = inserter_count; i; --i) {
+    thread_pool.run([&batch_provider, &writer]()->void {
+      std::vector<std::string> buf;
+
+      while (batch_provider.swap(buf)) {
+        SCOPED_TIMER(std::string("Index batch ") + std::to_string(buf.size()));
+        size_t i = 0;
+        auto inserter = [&buf, &i](const irs::index_writer::document& builder) {
+          Doc doc;
+
+          doc.fill(&(buf[i]));
+
+          for (auto* field: doc.elements) {
+            builder.insert<irs::Action::INDEX>(*field);
+          }
+
+          for (auto* field : doc.store) {
+            builder.insert<irs::Action::STORE>(*field);
+          }
+
+          return ++i < buf.size();
+        };
+
+        writer->insert(inserter);
+      }
+    });
+  }
+
+  thread_pool.stop();
+
+  {
+    SCOPED_TIMER("Commit time");
+    writer->commit();
+  }
+
+  u_cleanup();
+
+  return 0;
+}
+
 /**
  * 
  * @param vm
@@ -669,6 +794,14 @@ int main(int argc, char* argv[]) {
         std::cout << desc << std::endl;
         return 0;
     }
+
+    irs::timer_utils::init_stats(true);
+    auto output_stats = irs::make_finally([]()->void {
+      irs::timer_utils::visit([](const std::string& key, size_t count, size_t time)->bool {
+        std::cout << key << " calls:" << count << ", time: " << time/1000 << " us, avg call: " << time/1000/(double)count << " us"<< std::endl;
+        return true;
+      });
+    });
 
     // enter dump mode
     if ("put" == mode) {
