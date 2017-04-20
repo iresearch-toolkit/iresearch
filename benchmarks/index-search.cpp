@@ -41,6 +41,7 @@ static const std::string THR = "threads";
 static const std::string TOPN = "topN";
 static const std::string RND = "random";
 static const std::string RPT = "repeat";
+static const std::string CSV = "csv";
 
 static bool v = false;
 
@@ -102,6 +103,7 @@ struct Task {
     virtual int query(irs::directory_reader& reader) = 0;
 
     virtual void print(std::ostream& out) = 0;
+    virtual void print_csv(std::ostream& out) = 0;
 
 };
 
@@ -168,6 +170,12 @@ struct SearchTask : public Task {
             out << "  doc=" << doc.id << " score=" << doc.score << std::endl;
         }
         out << std::endl;
+    }
+
+    /**
+     */
+    void print_csv(std::ostream& out) override {
+        out << category << "," << text << "," << totalHitCount << "," << tdiff.total_milliseconds() / 1000. << "," << tdiff.total_milliseconds() << std::endl;
     }
 
 };
@@ -509,16 +517,17 @@ static int testQueries(std::vector<Task::ptr>& tasks, irs::directory_reader& rea
 
 /**
  */
-static int printResults(std::vector<Task::ptr>& tasks, std::ostream& out) {
+static int printResults(std::vector<Task::ptr>& tasks, std::ostream& out, bool csv) {
     for (auto& task : tasks) {
-        task->print(out);
+        csv ? task->print_csv(out) : task->print(out);
     }
     return 0;
 }
 
 /**
  */
-static int search(const std::string& path, std::istream& in, std::ostream& out, int maxtasks, int repeat, int thrs, int topN, bool shuffle) {
+static int search(const std::string& path, std::istream& in, std::ostream& out, 
+        int maxtasks, int repeat, int thrs, int topN, bool shuffle, bool csv) {
 
     boost::posix_time::ptime start = boost::posix_time::microsec_clock::local_time();
 
@@ -547,7 +556,7 @@ static int search(const std::string& path, std::istream& in, std::ostream& out, 
 
     // run search in
     //testQueries(tasks.getTasks(), reader);
-    printResults(tasks.getTasks(), out);
+    printResults(tasks.getTasks(), out, csv);
 
     boost::posix_time::time_duration msdiff = boost::posix_time::microsec_clock::local_time() - start;
 
@@ -604,6 +613,11 @@ static int search(const po::variables_map& vm) {
     }
     std::cout << "Number of top documents to collect=" << topN << std::endl;
 
+    bool csv = false;
+    if (vm.count(CSV)) {
+        csv = true;
+    }
+    std::cout << "Output CSV=" << shuffle << std::endl;
 
     auto& file = vm[INPUT].as<std::string>();
     std::fstream in(file, std::fstream::in);
@@ -619,10 +633,10 @@ static int search(const po::variables_map& vm) {
             return 1;
         }
 
-        return search(path, in, out, maxtasks, repeat, thrs, topN, shuffle);
+        return search(path, in, out, maxtasks, repeat, thrs, topN, shuffle, csv);
     }
 
-    return search(path, in, std::cout, maxtasks, repeat, thrs, topN, shuffle);
+    return search(path, in, std::cout, maxtasks, repeat, thrs, topN, shuffle, csv);
 }
 
 /**
@@ -653,7 +667,8 @@ int main(int argc, char* argv[]) {
             (RPT.c_str(), po::value<int>(), "Task repeat count")
             (THR.c_str(), po::value<int>(), "Number of search threads")
             (TOPN.c_str(), po::value<int>(), "Number of top search results")
-            (RND.c_str(), "Shuffle tasks");
+            (RND.c_str(), "Shuffle tasks")
+            (CSV.c_str(), "CSV output");
 
     po::command_line_parser parser(argc, argv);
     parser.options(desc).allow_unregistered();
