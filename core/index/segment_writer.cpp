@@ -136,6 +136,7 @@ bool segment_writer::flush(std::string& filename, segment_meta& meta) {
     }
     col_meta_writer_->flush();
     columns_.clear();
+    meta.column_store = true;
   }
 
   // flush fields metadata & inverted data

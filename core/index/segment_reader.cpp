@@ -382,10 +382,10 @@ uint64_t segment_reader::segment_reader_impl::meta_version() const NOEXCEPT {
   reader->field_reader_ = std::move(field_reader);
 
   auto columnstore_reader = codec.get_columnstore_reader();
-  bool seen;
 
-  // initialize column reader
-  if (columnstore_reader->prepare(dir, meta, &seen) && seen) {
+  // initialize column reader (if available)
+  if (segment_reader::has<irs::columnstore_reader>(meta)
+      && columnstore_reader->prepare(dir, meta)) {
     reader->columnstore_reader_ = std::move(columnstore_reader);
   }
 

@@ -602,6 +602,7 @@ class columnstore {
           }
 
           empty_ = false;
+          empty_writer_ = false;
 
           auto& out = column_.second(mapped_doc);
           out.write_bytes(in.c_str(), in.size());
@@ -624,6 +625,9 @@ class columnstore {
   // returns 'true' if no data has been written to columnstore
   bool empty() const { return empty_; }
 
+  // @return if column data has been written to columnstore writer (any column)
+  bool empty_writer() const { return empty_writer_; }
+
   // returns current column identifier
   iresearch::field_id id() const { return column_.first; }
 
@@ -631,6 +635,7 @@ class columnstore {
   iresearch::columnstore_writer::ptr writer_;
   iresearch::columnstore_writer::column_t column_{};
   bool empty_{ false };
+  bool empty_writer_{ false };
 }; // columnstore
 
 bool write_columns(
@@ -799,6 +804,8 @@ bool merge_writer::flush(std::string& filename, segment_meta& meta) {
   if (!write(cs, track_dir, meta, fields_itr, field_metas, fields_features)) {
     return false; // flush failure
   }
+
+  meta.column_store = !cs.empty_writer();
 
   // ...........................................................................
   // write segment meta

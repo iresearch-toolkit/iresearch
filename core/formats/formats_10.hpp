@@ -130,6 +130,10 @@ struct segment_meta_writer final : public iresearch::segment_meta_writer{
   static const int32_t FORMAT_MIN = 0;
   static const int32_t FORMAT_MAX = FORMAT_MIN;
 
+  enum flags_t {
+    HAS_COLUMN_STORE = 1,
+  };
+
   virtual std::string filename(const segment_meta& meta) const override;
   virtual void write(directory& dir, const segment_meta& meta) override;
 };

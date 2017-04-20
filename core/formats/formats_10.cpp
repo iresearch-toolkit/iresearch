@@ -1244,6 +1244,7 @@ std::string segment_meta_writer::filename(const segment_meta& meta) const {
 void segment_meta_writer::write(directory& dir, const segment_meta& meta) {
   auto meta_file = file_name<segment_meta_writer>(meta);
   auto out = dir.create(meta_file);
+  byte_type flags = meta.column_store ? segment_meta_writer::flags_t::HAS_COLUMN_STORE : 0;
 
   if (!out) {
     std::stringstream ss;
@@ -1257,6 +1258,7 @@ void segment_meta_writer::write(directory& dir, const segment_meta& meta) {
   write_string(*out, meta.name);
   out->write_vlong(meta.version);
   out->write_vlong( meta.docs_count);
+  out->write_byte(flags);
   write_strings( *out, meta.files );
   format_utils::write_footer(*out);
 }
@@ -1295,13 +1297,21 @@ void segment_meta_reader::read(
   auto name = read_string<std::string>(check_in);
   auto version = check_in.read_vlong();
   int64_t count = check_in.read_vlong();
+  auto flags = check_in.read_byte();
+
   if ( count < 0 ) {
     // corrupted index
     throw index_error();
   }
 
+  if (flags & ~(segment_meta_writer::flags_t::HAS_COLUMN_STORE)) {
+    // corrupted index
+    throw index_error(); // use of unsupported flags
+  }
+
   meta.name = std::move(name);
   meta.version = version;
+  meta.column_store = flags & segment_meta_writer::flags_t::HAS_COLUMN_STORE;
   meta.docs_count = count;
   meta.files = read_strings<segment_meta::file_set>(check_in);
 

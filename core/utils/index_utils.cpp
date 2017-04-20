@@ -151,15 +151,18 @@ void read_document_mask(
   const iresearch::directory& dir,
   const iresearch::segment_meta& meta
 ) {
+  if (!segment_reader::has<document_mask_reader>(meta)) {
+    return; // nothing to read
+  }
+
   auto reader = meta.codec->get_document_mask_reader();
-  bool seen = true;
   auto visitor = [&docs_mask](const doc_id_t& value)->bool {
     docs_mask.insert(value);
     return true;
   };
 
   // there will not be a document_mask list for new segments without deletes
-  if (reader->prepare(dir, meta, meta.version ? nullptr : &seen) && seen) {
+  if (reader->prepare(dir, meta)) {
     read_all<iresearch::doc_id_t>(visitor, *reader, reader->begin());
     reader->end();
   }

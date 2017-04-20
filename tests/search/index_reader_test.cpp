@@ -298,6 +298,94 @@ TEST(directory_reader_test, open) {
 // --SECTION--                                                   Segment reader 
 // ----------------------------------------------------------------------------
 
+TEST(segment_reader_test, segment_reader_has) {
+  irs::version10::format codec;
+
+  // has none (default)
+  {
+    auto writer = codec.get_segment_meta_writer();
+    auto reader = codec.get_segment_meta_reader();
+    irs::memory_directory dir;
+    irs::segment_meta expected;
+
+    writer->write(dir, expected);
+
+    irs::segment_meta meta;
+
+    reader->read(dir, meta, writer->filename(expected));
+
+    ASSERT_EQ(expected, meta);
+    ASSERT_FALSE(irs::segment_reader::has<irs::columnstore_reader>(meta));
+    ASSERT_FALSE(irs::segment_reader::has<irs::document_mask_reader>(meta));
+  }
+
+  // has column store
+  {
+    auto writer = codec.get_segment_meta_writer();
+    auto reader = codec.get_segment_meta_reader();
+    irs::memory_directory dir;
+    irs::segment_meta expected;
+
+    expected.column_store = true;
+    writer->write(dir, expected);
+
+    irs::segment_meta meta;
+
+    reader->read(dir, meta, writer->filename(expected));
+
+    ASSERT_EQ(expected, meta);
+    ASSERT_TRUE(irs::segment_reader::has<irs::columnstore_reader>(meta));
+    ASSERT_FALSE(irs::segment_reader::has<irs::document_mask_reader>(meta));
+  }
+
+  // has document mask
+  {
+    auto writer = codec.get_segment_meta_writer();
+    auto reader = codec.get_segment_meta_reader();
+    auto docs_mask_writer = codec.get_document_mask_writer();
+    irs::memory_directory dir;
+    irs::segment_meta expected;
+
+    expected.version = 1; // version > 0 implies document_mask
+    docs_mask_writer->prepare(dir, expected);
+    docs_mask_writer->begin(0);
+    docs_mask_writer->end();
+    writer->write(dir, expected);
+
+    irs::segment_meta meta;
+
+    reader->read(dir, meta, writer->filename(expected));
+
+    ASSERT_EQ(expected, meta);
+    ASSERT_FALSE(irs::segment_reader::has<irs::columnstore_reader>(meta));
+    ASSERT_TRUE(irs::segment_reader::has<irs::document_mask_reader>(meta));
+  }
+
+  // has all
+  {
+    auto writer = codec.get_segment_meta_writer();
+    auto reader = codec.get_segment_meta_reader();
+    auto docs_mask_writer = codec.get_document_mask_writer();
+    irs::memory_directory dir;
+    irs::segment_meta expected;
+
+    expected.column_store = true;
+    expected.version = 1; // version > 0 implies document_mask
+    docs_mask_writer->prepare(dir, expected);
+    docs_mask_writer->begin(0);
+    docs_mask_writer->end();
+    writer->write(dir, expected);
+
+    irs::segment_meta meta;
+
+    reader->read(dir, meta, writer->filename(expected));
+
+    ASSERT_EQ(expected, meta);
+    ASSERT_TRUE(irs::segment_reader::has<irs::columnstore_reader>(meta));
+    ASSERT_TRUE(irs::segment_reader::has<irs::document_mask_reader>(meta));
+  }
+}
+
 TEST(segment_reader_test, open_invalid_segment) {
   ir::memory_directory dir;
   ir::version10::format codec;
@@ -362,6 +450,7 @@ TEST(segment_reader_test, open) {
   {
     ir::segment_meta meta;
     meta.codec = codec_ptr;
+    meta.column_store = true;
     meta.docs_count = 5;
     meta.name = "_1";
     meta.version = IRESEARCH_VERSION;

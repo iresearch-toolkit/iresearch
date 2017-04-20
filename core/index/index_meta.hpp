@@ -50,6 +50,7 @@ struct IRESEARCH_API segment_meta {
     std::string&& name,
     format_ptr codec,
     uint64_t docs_count,
+    bool column_store,
     file_set&& files
   );
 
@@ -63,6 +64,7 @@ struct IRESEARCH_API segment_meta {
   std::string name;
   uint64_t docs_count{};
   format_ptr codec;
+  bool column_store{};
   uint64_t version{};
 };
 
