@@ -11,6 +11,10 @@ project(${IResearch_TARGET_NAME})
 # attach additional cmake modules
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
+if (NOT MSVC)
+  # put GCC version into GCC_VERSION variable
+  execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)
+endif()
 
 ################################################################################
 ### find Boost
@@ -33,6 +37,14 @@ endif()
 
 set(Boost_USE_MULTITHREAD ON)
 
+# define boost required components
+set(Boost_REQUIRED_COMPONENTS filesystem locale system program_options thread)
+
+if (NOT MSVC AND GCC_VERSION VERSION_LESS 4.9)
+  # GCC before 4.9 does not support std::regex
+  set(Boost_REQUIRED_COMPONENTS ${Boost_REQUIRED_COMPONENTS} regex)
+endif()
+
 # clear Boost cache before invocation
 unset(Boost_INCLUDE_DIR CACHE)
 unset(Boost_FILESYSTEM_LIBRARY_DEBUG CACHE)
@@ -54,7 +66,7 @@ set(Boost_USE_STATIC_RUNTIME OFF)
 find_package(Boost
   1.57.0
   REQUIRED
-  COMPONENTS filesystem locale regex system program_options thread
+  COMPONENTS ${Boost_REQUIRED_COMPONENTS}
 )
 set(Boost_SHARED_sharedRT_LIBRARIES ${Boost_LIBRARIES})
 set(Boost_SHARED_sharedRT_FILESYSTEM_LIBRARY_DEBUG ${Boost_FILESYSTEM_LIBRARY_DEBUG})
@@ -122,7 +134,7 @@ set(Boost_USE_STATIC_RUNTIME ON)
 find_package(Boost
   1.57.0
   REQUIRED
-  COMPONENTS filesystem locale regex system program_options thread
+  COMPONENTS ${Boost_REQUIRED_COMPONENTS}
 )
 set(Boost_SHARED_staticRT_LIBRARIES ${Boost_LIBRARIES})
 set(Boost_SHARED_staticRT_FILESYSTEM_LIBRARY_DEBUG ${Boost_FILESYSTEM_LIBRARY_DEBUG})
@@ -188,7 +200,7 @@ set(Boost_USE_STATIC_RUNTIME OFF)
 find_package(Boost
   1.57.0
   REQUIRED
-  COMPONENTS filesystem locale regex system program_options thread
+  COMPONENTS ${Boost_REQUIRED_COMPONENTS}
 )
 set(Boost_STATIC_sharedRT_LIBRARIES ${Boost_LIBRARIES})
 set(Boost_STATIC_sharedRT_FILESYSTEM_LIBRARY_DEBUG ${Boost_FILESYSTEM_LIBRARY_DEBUG})
@@ -229,7 +241,7 @@ set(Boost_USE_STATIC_RUNTIME ON)
 find_package(Boost
   1.57.0
   REQUIRED
-  COMPONENTS filesystem locale regex system program_options thread
+  COMPONENTS ${Boost_REQUIRED_COMPONENTS}
 )
 set(Boost_STATIC_staticRT_LIBRARIES ${Boost_LIBRARIES})
 set(Boost_STATIC_staticRT_FILESYSTEM_LIBRARY_DEBUG ${Boost_FILESYSTEM_LIBRARY_DEBUG})

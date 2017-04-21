@@ -76,18 +76,16 @@ set_target_properties(${IResearchBencmarks_TARGET_NAME}-search
   COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
 )
 
-if (MSVC)
-  target_link_libraries(${IResearchBencmarks_TARGET_NAME}-search
-    ${IResearch_TARGET_NAME}-static
-    ${PTHREAD_LIBRARY}
-  )
-else()
-  target_link_libraries(${IResearchBencmarks_TARGET_NAME}-search
-    ${IResearch_TARGET_NAME}-static
-    ${Boost_STATIC_sharedRT_REGEX_LIBRARY_RELEASE}
-    ${PTHREAD_LIBRARY}
-  )
+if (NOT MSVC AND GCC_VERSION VERSION_LESS 4.9)
+  # GCC before 4.9 does not support std::regex
+  set(REGEX_LIBRARY ${Boost_STATIC_sharedRT_REGEX_LIBRARY_RELEASE})
 endif()
+
+target_link_libraries(${IResearchBencmarks_TARGET_NAME}-search
+  ${IResearch_TARGET_NAME}-static
+  ${PTHREAD_LIBRARY}
+  ${REGEX_LIBRARY}
+)
 
 target_compile_features(${IResearchBencmarks_TARGET_NAME}-search
   PRIVATE
