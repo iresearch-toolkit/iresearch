@@ -41,7 +41,7 @@ inline size_t get_hash(const T* value, size_t size) {
 
 template<typename T>
 inline size_t get_hash(const T& value) {
-  return (value.c_str(), static_cast<int>(value.size()));
+  return get_hash(value.c_str(), value.size());
 }
 
 NS_END
