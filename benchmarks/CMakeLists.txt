@@ -76,10 +76,18 @@ set_target_properties(${IResearchBencmarks_TARGET_NAME}-search
   COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
 )
 
-target_link_libraries(${IResearchBencmarks_TARGET_NAME}-search
-  ${IResearch_TARGET_NAME}-static
-  ${PTHREAD_LIBRARY}
-)
+if (MSVC)
+  target_link_libraries(${IResearchBencmarks_TARGET_NAME}-search
+    ${IResearch_TARGET_NAME}-static
+    ${PTHREAD_LIBRARY}
+  )
+else()
+  target_link_libraries(${IResearchBencmarks_TARGET_NAME}-search
+    ${IResearch_TARGET_NAME}-static
+    ${Boost_STATIC_sharedRT_REGEX_LIBRARY_RELEASE}
+    ${PTHREAD_LIBRARY}
+  )
+endif()
 
 target_compile_features(${IResearchBencmarks_TARGET_NAME}-search
   PRIVATE

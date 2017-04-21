@@ -114,7 +114,7 @@ v1.57.0 or later (filesystem locale system program_options thread)
 > line
 
 ```bash
-./bootstrap.sh --with-libraries=filesystem,locale,program_options,system,thread
+./bootstrap.sh --with-libraries=filesystem,locale,program_options,system,regex,thread
 ./b2
 ```
 
