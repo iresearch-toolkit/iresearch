@@ -49,22 +49,16 @@ postings::emplace_result postings::emplace(const bytes_ref& term) {
 
   assert(size() < type_limits<type_t::doc_id_t>::eof()); // not larger then the static flag
 
-  struct generator_t {
-    const bytes_ref& term;
-    writer_t& writer;
-    generator_t(const bytes_ref& v_term, writer_t& v_writer)
-      : term(v_term), writer(v_writer) {
-    }
-    hashed_bytes_ref operator()(
-      const hashed_bytes_ref& key, const posting&
-    ) const {
-      // for new terms also write out their value
-      writer.write(term.c_str(), term.size());
+  auto generator = [&term, this](const hashed_bytes_ref& key, const posting&) {
+    // for new terms also write out their value
+    writer_.write(term.c_str(), term.size());
 
-      // reuse hash but point ref at data in pool
-      return hashed_bytes_ref(key.hash(), (writer.position() - term.size()).buffer(), term.size());
-    }
-  } generator(term, writer_);
+    // reuse hash but point ref at data in pool
+    return hashed_bytes_ref(
+      key.hash(),
+      (writer_.position() - term.size()).buffer(), term.size()
+    );
+  };
 
   // replace original reference to 'term' provided by the caller
   // with a reference to the cached copy in 'writer_'

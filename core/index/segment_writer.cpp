@@ -76,14 +76,13 @@ bool segment_writer::index(
 columnstore_writer::column_output& segment_writer::stream(
     doc_id_t doc_id, const hashed_string_ref& name) {
   REGISTER_TIMER_DETAILED();
-  static struct {
-    hashed_string_ref operator()(
-      const hashed_string_ref& key, const column& value
-    ) const NOEXCEPT {
-      // reuse hash but point ref at value
-      return hashed_string_ref(key.hash(), value.name);
-    }
-  } generator;
+
+  static auto generator = [](
+      const hashed_string_ref& key,
+      const column& value) const NOEXCEPT {
+    // reuse hash but point ref at value
+    return hashed_string_ref(key.hash(), value.name);
+  }
 
   // replace original reference to 'name' provided by the caller
   // with a reference to the cached copy in 'value'

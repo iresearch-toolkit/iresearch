@@ -599,14 +599,12 @@ fields_data::fields_data()
 }
 
 field_data& fields_data::get(const hashed_string_ref& name) {
-  static struct {
-    hashed_string_ref operator()(
-      const hashed_string_ref& key, const field_data& value
-    ) const NOEXCEPT {
-      // reuse hash but point ref at value
-      return hashed_string_ref(key.hash(), value.meta().name);
-    }
-  } generator;
+  static auto generator = [](
+      const hashed_string_ref& key,
+      const field_data& value) NOEXCEPT {
+    // reuse hash but point ref at value
+    return hashed_string_ref(key.hash(), value.meta().name);
+  };
 
   // replace original reference to 'name' provided by the caller
   // with a reference to the cached copy in 'value'
@@ -622,7 +620,7 @@ void fields_data::flush(field_writer& fw, flush_state& state) {
   REGISTER_TIMER_DETAILED();
   /* set the segment meta */
   state.features = &features_;
-  
+
   /* set total number of field in the segment */
   state.fields_count = fields_.size();
 
