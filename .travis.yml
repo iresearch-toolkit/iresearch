@@ -192,6 +192,8 @@ deploy:
   provider: releases
   api_key:
     secure: WldnAnXt5V7vZHmeAi/+tDxWYnQKOmgklgSRbjlRxCYpqNKwaqoIT/4W17+fd8UvPiB1wvsgfQ6DrrhN5ZUDKMUuH7OICuko6BJsOw2Ydx5e20BnbZaiU2+VmQpd6x1D90/CFjD3V6kSFRMnKd5crG/02A1UGTQnAtlzw+KTSoH7Vk3iHP6q9mq1fmnq4Aa0dLDMChIMLcPiLP/aJWh2+sdZqyaCMiMTaNW8aWLDxRVakHSUrie3CoMpWgraq5xQIwTskUm26NhS8v9d4BI3rbXBwQ50Hu7na/CqegjTJ3BIn9ePqeLWDfZewCGbQcSrJoBKSgMi70D3/BaZ8dvSCZODRH5hAPk7J4uPjQTkfkPws9Otj5iNlYlEQ3U/cGTNX2drzpSWKJS+9N5tiXhlAkegpZMW4czcsIISXA98CthMSxIT3rqxcNUL6ZlImZyFxa0bav7Jlx1SwQxrsIPFuxsX4qscG/D/QKu54l36h8qcmVKHThBL2UyQYDDgy4EPYXnO+cgi3aAuXkTS5a7jv6MEC9UTwSU6XAVYFZDhgRxlsq3xq/maOsVN/xCw1zY4cfFlHEG1/OLIX1sbJtct8mNMxsHCW+Xeku2NSLg/Vr5fgLQt8upOd49rMwhQyBn+3gp0eaEOlcIGbhDC/RnXS3UJtuO38DgkRvwfQ90B0gw=
-  file: iresearch-${TRAVIS_OS_NAME}-${BUILD_TYPE}-${TRAVIS_BUILD_NUMBER}.tar.gz
+  file: ${TRAVIS_BUILD_DIR}/build/iresearch-${TRAVIS_OS_NAME}-${BUILD_TYPE}-${TRAVIS_BUILD_NUMBER}.tar.gz
+  skip_cleanup: true
   on:
+    tags: true
     repo: iresearch-toolkit/iresearch
