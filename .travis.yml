@@ -195,5 +195,5 @@ deploy:
   file: build/iresearch-${TRAVIS_OS_NAME}-${BUILD_TYPE}-${TRAVIS_BUILD_NUMBER}.tar.gz
   skip_cleanup: true
   on:
-    tags: true
+#    tags: true
     repo: iresearch-toolkit/iresearch
