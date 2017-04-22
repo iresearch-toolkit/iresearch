@@ -79,10 +79,10 @@ columnstore_writer::column_output& segment_writer::stream(
 
   static auto generator = [](
       const hashed_string_ref& key,
-      const column& value) const NOEXCEPT {
+      const column& value) NOEXCEPT {
     // reuse hash but point ref at value
     return hashed_string_ref(key.hash(), value.name);
-  }
+  };
 
   // replace original reference to 'name' provided by the caller
   // with a reference to the cached copy in 'value'

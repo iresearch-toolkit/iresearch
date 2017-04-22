@@ -39,11 +39,6 @@ inline size_t get_hash(const T* value, size_t size) {
   return code;
 }
 
-template<typename T>
-inline size_t get_hash(const T& value) {
-  return get_hash(value.c_str(), value.size());
-}
-
 NS_END
 
 NS_ROOT
@@ -63,7 +58,7 @@ template class IRESEARCH_API basic_string_ref<byte_type>;
 NS_BEGIN(hash_utils)
 
 size_t hash(const bstring& value) {
-  return get_hash(value);
+  return get_hash(value.c_str(), value.size());
 }
 
 size_t hash(const char* value) {
@@ -75,11 +70,11 @@ size_t hash(const wchar_t* value) {
 }
 
 size_t hash(const bytes_ref& value) {
-  return get_hash(value);
+  return get_hash(value.c_str(), value.size());
 }
 
 size_t hash(const string_ref& value) {
-  return get_hash(value);
+  return get_hash(value.c_str(), value.size());
 }
 
 NS_END // detail
