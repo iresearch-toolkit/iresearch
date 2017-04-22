@@ -322,7 +322,7 @@ iresearch::analysis::analyzer::ptr construct(
 }
 
 bool process_term(
-  iresearch::attributes& attrs,
+  bytes_term& term,
   const std::unordered_set<std::string>& ignored_words,
   iresearch::analysis::text_token_stream::state_t& state,
   UnicodeString const& data
@@ -362,11 +362,6 @@ bool process_term(
   }
 
   // ...........................................................................
-  // get value holder
-  // ...........................................................................
-  auto& term = attrs.add<bytes_term>();
-
-  // ...........................................................................
   // find the token stem
   // ...........................................................................
   if (state.stemmer) {
@@ -377,7 +372,7 @@ bool process_term(
 
     if (value) {
       static_assert(sizeof(iresearch::byte_type) == sizeof(sb_symbol), "sizeof(iresearch::byte_type) != sizeof(sb_symbol)");
-      term->value(iresearch::bytes_ref(reinterpret_cast<const iresearch::byte_type*>(value), sb_stemmer_length(state.stemmer.get())));
+      term.value(iresearch::bytes_ref(reinterpret_cast<const iresearch::byte_type*>(value), sb_stemmer_length(state.stemmer.get())));
 
       return true;
     }
@@ -387,7 +382,7 @@ bool process_term(
   // use the value of the unstemmed token
   // ...........................................................................
   static_assert(sizeof(iresearch::byte_type) == sizeof(char), "sizeof(iresearch::byte_type) != sizeof(char)");
-  term->value(iresearch::bstring(iresearch::ref_cast<iresearch::byte_type>(word_utf8).c_str(), word_utf8.size()));
+  term.value(iresearch::bstring(iresearch::ref_cast<iresearch::byte_type>(word_utf8).c_str(), word_utf8.size()));
 
   return true;
 }
@@ -458,15 +453,14 @@ REGISTER_ANALYZER(text_token_stream);
 // -----------------------------------------------------------------------------
 
 text_token_stream::text_token_stream(
-  const std::locale& locale,
-  const std::unordered_set<std::string>& ignored_words
-):
-  analyzer(text_token_stream::type()),
-  attrs_(3), // offset + bytes_term + increment
-  state_(memory::make_unique<state_t>()),
-  ignored_words_(ignored_words) {
-  attrs_.add<offset>();
-  attrs_.add<bytes_term>();
+    const std::locale& locale,
+    const std::unordered_set<std::string>& ignored_words
+) : analyzer(text_token_stream::type()),
+    attrs_(3), // offset + bytes_term + increment
+    state_(memory::make_unique<state_t>()),
+    ignored_words_(ignored_words) {
+  offs_ = attrs_.add<offset>();
+  term_ = attrs_.add<bytes_term>();
   attrs_.add<increment>();
   locale_.country = locale_utils::country(locale);
   locale_.encoding = locale_utils::encoding(locale);
@@ -573,8 +567,6 @@ bool text_token_stream::reset(const string_ref& data) {
 }
 
 bool text_token_stream::next() {
-  auto& offset = attrs_.add<iresearch::offset>();
-
   // ...........................................................................
   // find boundaries of the next word
   // ...........................................................................
@@ -586,12 +578,12 @@ bool text_token_stream::next() {
     // skip whitespace and unsuccessful terms
     // ...........................................................................
     if (state_->break_iterator->getRuleStatus() == UWordBreak::UBRK_WORD_NONE ||
-        !process_term(attrs_, ignored_words_, *state_, state_->data.tempSubString(start, end - start))) {
+        !process_term(static_cast<bytes_term&>(*term_), ignored_words_, *state_, state_->data.tempSubString(start, end - start))) {
       continue;
     }
 
-    offset->start = start;
-    offset->end = end;
+    offs_->start = start;
+    offs_->end = end;
     return true;
   }
 

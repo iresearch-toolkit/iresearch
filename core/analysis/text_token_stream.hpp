@@ -17,6 +17,10 @@
 #include "token_stream.hpp"
 
 NS_ROOT
+
+struct offset;
+struct term_attribute;
+
 NS_BEGIN(analysis)
 
 class text_token_stream: public analyzer {
@@ -52,6 +56,8 @@ class text_token_stream: public analyzer {
     bool utf8;
   } locale_;
   const std::unordered_set<std::string>& ignored_words_;
+  iresearch::offset* offs_;
+  iresearch::term_attribute* term_;
 };
 
 NS_END // analysis
