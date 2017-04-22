@@ -42,209 +42,269 @@ typedef std::unique_ptr<std::string> ustringp;
   #define snprintf _snprintf
 #endif
 
+static const std::string n_id = "id";
+static const std::string n_title = "title";
+static const std::string n_date = "date";
+static const std::string n_timesecnum = "timesecnum";
+static const std::string n_body = "body";
+
+static const irs::flags text_features{
+  irs::frequency::type(),
+  irs::position::type(),
+  irs::offset::type(),
+  irs::norm::type()
+};
+
+static const irs::flags numeric_features{
+  irs::granularity_prefix::type()
+};
+
+
 /**
  * Document
  */
 struct Doc {
-    static std::atomic<uint64_t> next_id;
+  static std::atomic<uint64_t> next_id;
 
-    /**
-     * C++ version 0.4 char* style "itoa":
-     * Written by Lukás Chmela
-     * Released under GPLv3.
-     */
-    char* itoa(int value, char* result, int base) {
-        // check that the base if valid
-        if (base < 2 || base > 36) {
-            *result = '\0';
-            return result;
-        }
-
-        char* ptr = result, *ptr1 = result, tmp_char;
-        int tmp_value;
-
-        do {
-            tmp_value = value;
-            value /= base;
-            *ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz" [35 + (tmp_value - value * base)];
-        } while (value);
-
-        // Apply negative sign
-        if (tmp_value < 0) *ptr++ = '-';
-        *ptr-- = '\0';
-        while (ptr1 < ptr) {
-            tmp_char = *ptr;
-            *ptr-- = *ptr1;
-            *ptr1++ = tmp_char;
-        }
-        return result;
+  /**
+   * C++ version 0.4 char* style "itoa":
+   * Written by Lukás Chmela
+   * Released under GPLv3.
+   */
+  char* itoa(int value, char* result, int base) {
+    // check that the base if valid
+    if (base < 2 || base > 36) {
+      *result = '\0';
+      return result;
     }
 
-    /**
-     */
-    struct Field {
-        std::string& _name;
-        const irs::flags feats;
+    char* ptr = result, *ptr1 = result, tmp_char;
+    int tmp_value;
 
-        Field(std::string& n, const irs::flags& flags) : _name(n), feats(flags) {
-        }
+    do {
+      tmp_value = value;
+      value /= base;
+      *ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz" [35 + (tmp_value - value * base)];
+    } while (value);
 
-        const std::string& name() const {
-            return _name;
-        }
+    // Apply negative sign
+    if (tmp_value < 0) *ptr++ = '-';
+    *ptr-- = '\0';
+    while (ptr1 < ptr) {
+      tmp_char = *ptr;
+      *ptr-- = *ptr1;
+      *ptr1++ = tmp_char;
+    }
+    return result;
+  }
 
-        float_t boost() const {
-            return 1.0;
-        }
+  /**
+  */
+  struct Field {
+    const std::string& _name;
+    const irs::flags feats;
 
-        virtual irs::token_stream& get_tokens() const = 0;
-
-        const irs::flags& features() const {
-            return feats;
-        }
-
-        virtual bool write(irs::data_output& out) const = 0;
-        
-        virtual ~Field() {}
-    };
-    
-    /**
-     */
-    struct StringField : public Field {
-        std::string f;
-        mutable irs::string_token_stream _stream;
-
-        StringField(std::string& n, const irs::flags& flags, std::string& a) :
-        Field(n, flags),
-        f(a) {
-        }
-
-        irs::token_stream& get_tokens() const override {
-            _stream.reset(f);
-            return _stream;
-        }
-
-        bool write(irs::data_output& out) const override {
-            irs::write_string(out, f.c_str(), f.length());
-            return true;
-        }
-    };
-
-    /**
-     */
-    struct TextField : public Field {
-        std::string f;
-        mutable irs::analysis::analyzer::ptr stream;
-        static const std::string& aname;
-        static const std::string& aignore;
-
-        TextField(std::string& n, const irs::flags& flags, std::string& a) :
-        Field(n, flags),
-        f(a) {
-            stream = irs::analysis::analyzers::get(aname, aignore);
-        }
-
-        irs::token_stream& get_tokens() const override {
-            stream->reset(f);
-            return *stream;
-        }
-
-        bool write(irs::data_output& out) const override {
-            irs::write_string(out, f.c_str(), f.length());
-            return true;
-        }
-        
-        ~TextField() {
-        }
-    };
-
-    /**
-     */
-    struct NumericField : public Field {
-        mutable irs::numeric_token_stream stream;
-        int64_t value;
-
-        NumericField(std::string& n, irs::flags flags, uint64_t v) :
-        Field(n, flags),
-        value(v) {
-        }
-
-        irs::token_stream& get_tokens() const override {
-            stream.reset(value);
-            return stream;
-        }
-
-        bool write(irs::data_output& out) const override {
-            irs::write_zvlong(out, value);
-            return true;
-        }
-    };
-
-    std::vector<Field*> elements;
-    std::vector<Field*> store;
-    
-    ~Doc() {
-        for (auto e : elements) {
-            delete e;
-        }
-        for (auto e : store) {
-            delete e;
-        }
+    Field(const std::string& n, const irs::flags& flags) 
+      : _name(n), feats(flags) {
     }
 
-    /**
-     * Parse line to fields
-     * @todo way too many string copies here
-     * @param line
-     * @return 
-     */
-    void fill(std::string* line) {
-        static std::string n_id = "id";
-        static std::string n_title = "title";
-        static std::string n_date = "date";
-        static std::string n_timesecnum = "timesecnum";
-        static std::string n_body = "body";
-        std::stringstream lineStream(*line);
-        std::string cell;
-
-        // id: uint64_t to string, base 36
-        uint64_t id = next_id++; // atomic fetch and get
-        char str[10];
-        itoa(id, str, 36);
-        char str2[10];
-        snprintf(str2, sizeof (str2), "%6s", str);
-        std::string s(str2);
-        std::replace(s.begin(), s.end(), ' ', '0');
-        elements.push_back(new StringField(n_id, irs::flags{irs::granularity_prefix::type()}, s));
-        store.push_back(new StringField(n_id, irs::flags{irs::granularity_prefix::type()}, s));
-
-        // title: string
-        std::getline(lineStream, cell, '\t');
-        elements.push_back(new StringField(n_title, irs::flags::empty_instance(), cell));
-
-        // date: string
-        std::getline(lineStream, cell, '\t');
-        elements.push_back(new StringField(n_date, irs::flags::empty_instance(), cell));
-        store.push_back(new StringField(n_date, irs::flags::empty_instance(), cell));
-
-        // +date: uint64_t
-        uint64_t t = 0; //boost::posix_time::microsec_clock::local_time().total_milliseconds();
-        elements.push_back(new NumericField(n_timesecnum,
-                irs::flags{irs::granularity_prefix::type()}, t));
-
-        // body: text
-        std::getline(lineStream, cell, '\t');
-        elements.push_back(new TextField(n_body,
-                irs::flags{irs::frequency::type(), irs::position::type(), irs::offset::type(), irs::norm::type()}, cell));
+    const std::string& name() const {
+      return _name;
     }
 
+    float_t boost() const {
+      return 1.0;
+    }
+
+    virtual irs::token_stream& get_tokens() const = 0;
+
+    const irs::flags& features() const {
+      return feats;
+    }
+
+    virtual bool write(irs::data_output& out) const = 0;
+
+    virtual ~Field() {}
+  };
+
+  struct StringField : public Field {
+    std::string f;
+    mutable irs::string_token_stream _stream;
+
+    StringField(const std::string& n, const irs::flags& flags)
+      : Field(n, flags) {
+    }
+
+    StringField(const std::string& n, const irs::flags& flags, const std::string& a)
+      : Field(n, flags), f(a) {
+    }
+
+    irs::token_stream& get_tokens() const override {
+      _stream.reset(f);
+      return _stream;
+    }
+
+    bool write(irs::data_output& out) const override {
+      irs::write_string(out, f.c_str(), f.length());
+      return true;
+    }
+  };
+
+  struct TextField : public Field {
+    std::string f;
+    mutable irs::analysis::analyzer::ptr stream;
+    static const std::string& aname;
+    static const std::string& aignore;
+
+    TextField(const std::string& n, const irs::flags& flags)
+      : Field(n, flags) {
+      stream = irs::analysis::analyzers::get(aname, aignore);
+    }
+
+    TextField(const std::string& n, const irs::flags& flags, std::string& a)
+      : Field(n, flags), f(a) {
+      stream = irs::analysis::analyzers::get(aname, aignore);
+    }
+
+    irs::token_stream& get_tokens() const override {
+      stream->reset(f);
+      return *stream;
+    }
+
+    bool write(irs::data_output& out) const override {
+      irs::write_string(out, f.c_str(), f.length());
+      return true;
+    }
+  };
+
+  struct NumericField : public Field {
+    mutable irs::numeric_token_stream stream;
+    int64_t value;
+
+    NumericField(const std::string& n, const irs::flags& flags)
+      : Field(n, flags) {
+    }
+
+    NumericField(const std::string& n, const irs::flags& flags, uint64_t v)
+      : Field(n, flags), value(v) {
+    }
+
+    irs::token_stream& get_tokens() const override {
+      stream.reset(value);
+      return stream;
+    }
+
+    bool write(irs::data_output& out) const override {
+      irs::write_zvlong(out, value);
+      return true;
+    }
+  };
+
+  std::vector<std::shared_ptr<Field>> elements;
+  std::vector<std::shared_ptr<Field>> store;
+
+  /**
+   * Parse line to fields
+   * @todo way too many string copies here
+   * @param line
+   * @return 
+   */
+  virtual void fill(std::string* line) {
+    std::stringstream lineStream(*line);
+    std::string cell;
+
+    // id: uint64_t to string, base 36
+    uint64_t id = next_id++; // atomic fetch and get
+    char str[10];
+    itoa(id, str, 36);
+    char str2[10];
+    snprintf(str2, sizeof (str2), "%6s", str);
+    std::string s(str2);
+    std::replace(s.begin(), s.end(), ' ', '0');
+    elements.emplace_back(std::make_shared<StringField>(n_id, irs::flags{irs::granularity_prefix::type()}, s));
+    store.emplace_back(elements.back());
+
+    // title: string
+    std::getline(lineStream, cell, '\t');
+    elements.emplace_back(std::make_shared<StringField>(n_title, irs::flags::empty_instance(), cell));
+
+    // date: string
+    std::getline(lineStream, cell, '\t');
+    elements.emplace_back(std::make_shared<StringField>(n_date, irs::flags::empty_instance(), cell));
+    store.emplace_back(elements.back());
+
+    // +date: uint64_t
+    uint64_t t = 0; //boost::posix_time::microsec_clock::local_time().total_milliseconds();
+    elements.emplace_back(
+      std::make_shared<NumericField>(n_timesecnum, irs::flags{irs::granularity_prefix::type()}, t)
+    );
+
+    // body: text
+    std::getline(lineStream, cell, '\t');
+    elements.emplace_back(
+      std::make_shared<TextField>(n_body, irs::flags{irs::frequency::type(), irs::position::type(), irs::offset::type(), irs::norm::type()}, cell)
+    );
+  }
 };
 
 std::atomic<uint64_t> Doc::next_id(0);
 const std::string& Doc::TextField::aname = std::string("text");
 const std::string& Doc::TextField::aignore = std::string("{\"locale\":\"en\", \"ignored_words\":[\"abc\", \"def\", \"ghi\"]}");
 
-        
+struct WikiDoc : Doc {
+  WikiDoc() {
+    // id
+    elements.emplace_back(id = std::make_shared<StringField>(n_id, irs::flags::empty_instance()));
+    store.emplace_back(elements.back());
+
+    // title: string
+    elements.push_back(title = std::make_shared<StringField>(n_title, irs::flags::empty_instance()));
+
+    // date: string
+    elements.push_back(date = std::make_shared<StringField>(n_date, irs::flags::empty_instance()));
+    store.push_back(elements.back());
+
+    // date: uint64_t
+    elements.push_back(ndate = std::make_shared<NumericField>(n_timesecnum, numeric_features));
+
+    // body: text
+    elements.push_back(body = std::make_shared<TextField>(n_body, text_features));
+  }
+
+  virtual void fill(std::string* line) {
+    std::stringstream lineStream(*line);
+
+    // id: uint64_t to string, base 36
+    uint64_t id = next_id++; // atomic fetch and get
+    char str[10];
+    itoa(id, str, 36);
+    char str2[10];
+    snprintf(str2, sizeof (str2), "%6s", str);
+    auto& s = this->id->f;
+    s = str2;
+    std::replace(s.begin(), s.end(), ' ', '0');
+
+    // title: string
+    std::getline(lineStream, title->f, '\t');
+
+    // date: string
+    std::getline(lineStream, date->f, '\t');
+
+    // +date: uint64_t
+    uint64_t t = 0; //boost::posix_time::microsec_clock::local_time().total_milliseconds();
+    ndate->value = t;
+
+    // body: text
+    std::getline(lineStream, body->f, '\t');
+  }
+
+  std::shared_ptr<StringField> id;
+  std::shared_ptr<StringField> title;
+  std::shared_ptr<StringField> date;
+  std::shared_ptr<NumericField> ndate;
+  std::shared_ptr<TextField> body;
+};
+
 /**
  * Line file reader
  */
@@ -471,11 +531,11 @@ private:
             doc.fill(line.get());
 
             auto inserter = [&doc](const irs::index_writer::document& builder) {
-              for (auto* field : doc.elements) {
+              for (auto& field : doc.elements) {
                 builder.insert<irs::Action::INDEX>(*field);
               }
 
-              for (auto* field : doc.store) {
+              for (auto& field : doc.store) {
                 builder.insert<irs::Action::STORE>(*field);
               }
 
@@ -677,20 +737,19 @@ int put(const std::string& path, std::istream& stream, int maxlines, int thrs, i
   for (size_t i = inserter_count; i; --i) {
     thread_pool.run([&batch_provider, &writer]()->void {
       std::vector<std::string> buf;
+      WikiDoc doc;
 
       while (batch_provider.swap(buf)) {
         SCOPED_TIMER(std::string("Index batch ") + std::to_string(buf.size()));
         size_t i = 0;
-        auto inserter = [&buf, &i](const irs::index_writer::document& builder) {
-          Doc doc;
-
+        auto inserter = [&buf, &i, &doc](const irs::index_writer::document& builder) {
           doc.fill(&(buf[i]));
 
-          for (auto* field: doc.elements) {
+          for (auto& field: doc.elements) {
             builder.insert<irs::Action::INDEX>(*field);
           }
 
-          for (auto* field : doc.store) {
+          for (auto& field : doc.store) {
             builder.insert<irs::Action::STORE>(*field);
           }
 
