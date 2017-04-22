@@ -40,22 +40,22 @@ env:
     ############################################################################
     # Debug build, static library
     ############################################################################
-    - CMAKE_OPTIONS="-DCMAKE_BUILD_TYPE=Debug" BUILD_TYPE="STATIC" TEST_PARAMS="--gtest_filter=*:-:*"
+    - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
     # Release build, static library
     ############################################################################
-    - CMAKE_OPTIONS="-DCMAKE_BUILD_TYPE=Release" BUILD_TYPE="STATIC"
+    - BUILD_TYPE="Release" STATIC_LIB="true"
     
     ############################################################################
     # Debug build, shared library
     ############################################################################
-    - CMAKE_OPTIONS="-DCMAKE_BUILD_TYPE=Debug" TEST_PARAMS="--gtest_filter=*:-:*"
+    - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
     # Release build, shared library
     ############################################################################
-    - CMAKE_OPTIONS="-DCMAKE_BUILD_TYPE=Release"
+    - BUILD_TYPE="Release"
           
 before_install:
   sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 60 --slave /usr/bin/g++ g++ /usr/bin/g++-5
@@ -178,21 +178,22 @@ before_script:
   ############################################################################
   # Go back to the root of the project and setup the build directory
   ############################################################################
+  - CMAKE_OPTIONS="-DCMAKE_BUILD_TYPE=${BUILD_TYPE}"
   - cd ${TRAVIS_BUILD_DIR}
   - (mkdir build && cd build && cmake .. ${CMAKE_OPTIONS})
   
 script:
-    - if [[ "${BUILD_TYPE}" == "static" ]]; then BUILD_TYPE_SUFFIX="-static" TEST_EXECUTABLE_SUFFIX="-s"; fi  
+    - if [[ "${STATIC_LIB}" == "true" ]]; then BUILD_TYPE_SUFFIX="-static" TEST_EXECUTABLE_SUFFIX="-s"; fi  
     - cd ${TRAVIS_BUILD_DIR}/build
     - make iresearch-tests${BUILD_TYPE_SUFFIX}
     - travis_wait 60 ./bin/iresearch-tests${TEST_EXECUTABLE_SUFFIX} ${TEST_PARAMS}
-    - tar -czf iresearch-${TRAVIS_OS_NAME}-${BUILD_TYPE}-${TRAVIS_BUILD_NUMBER}.tar.gz bin 
+    - tar -czf iresearch-${TRAVIS_OS_NAME}-${BUILD_TYPE}${BUILD_TYPE_SUFFIX}-${TRAVIS_BUILD_NUMBER}.tar.gz bin 
     
 deploy:
   provider: releases
   api_key:
     secure: WldnAnXt5V7vZHmeAi/+tDxWYnQKOmgklgSRbjlRxCYpqNKwaqoIT/4W17+fd8UvPiB1wvsgfQ6DrrhN5ZUDKMUuH7OICuko6BJsOw2Ydx5e20BnbZaiU2+VmQpd6x1D90/CFjD3V6kSFRMnKd5crG/02A1UGTQnAtlzw+KTSoH7Vk3iHP6q9mq1fmnq4Aa0dLDMChIMLcPiLP/aJWh2+sdZqyaCMiMTaNW8aWLDxRVakHSUrie3CoMpWgraq5xQIwTskUm26NhS8v9d4BI3rbXBwQ50Hu7na/CqegjTJ3BIn9ePqeLWDfZewCGbQcSrJoBKSgMi70D3/BaZ8dvSCZODRH5hAPk7J4uPjQTkfkPws9Otj5iNlYlEQ3U/cGTNX2drzpSWKJS+9N5tiXhlAkegpZMW4czcsIISXA98CthMSxIT3rqxcNUL6ZlImZyFxa0bav7Jlx1SwQxrsIPFuxsX4qscG/D/QKu54l36h8qcmVKHThBL2UyQYDDgy4EPYXnO+cgi3aAuXkTS5a7jv6MEC9UTwSU6XAVYFZDhgRxlsq3xq/maOsVN/xCw1zY4cfFlHEG1/OLIX1sbJtct8mNMxsHCW+Xeku2NSLg/Vr5fgLQt8upOd49rMwhQyBn+3gp0eaEOlcIGbhDC/RnXS3UJtuO38DgkRvwfQ90B0gw=
-  file: ${TRAVIS_BUILD_DIR}/build/iresearch-${TRAVIS_OS_NAME}-${BUILD_TYPE}-${TRAVIS_BUILD_NUMBER}.tar.gz
+  file: ${TRAVIS_BUILD_DIR}/build/iresearch-${TRAVIS_OS_NAME}-${BUILD_TYPE}${BUILD_TYPE_SUFFIX}-${TRAVIS_BUILD_NUMBER}.tar.gz
   skip_cleanup: true
   on:
 #    tags: true
