@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/iresearch-toolkit/iresearch.svg?branch=master)](https://travis-ci.org/iresearch-toolkit/iresearch)
+
 # EMC IResearch search engine
 ### Version 1.0
 
