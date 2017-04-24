@@ -19,6 +19,11 @@ NS_ROOT
 class tfidf_sort : public sort {
 public:
   DECLARE_SORT_TYPE();
+
+  // for use with irs::order::add<T>() and default args (static build)
+  DECLARE_FACTORY_DEFAULT();
+
+  // for use with irs::order::add(...) (dynamic build) or jSON args (static build)
   DECLARE_FACTORY_DEFAULT(const string_ref& args);
 
   typedef float_t score_t;

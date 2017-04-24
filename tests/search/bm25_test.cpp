@@ -12,6 +12,7 @@
 #include "tests_shared.hpp"
 #include "index/index_tests.hpp"
 #include "store/memory_directory.hpp"
+#include "search/range_filter.hpp"
 #include "search/scorers.hpp"
 #include "search/sort.hpp"
 #include "search/bm25.hpp"
@@ -47,6 +48,170 @@ TEST_F(bm25_test, test_load) {
   ASSERT_EQ(1, order.add(scorer).size());
 }
 
+TEST_F(bm25_test, test_query) {
+  {
+    tests::json_doc_generator gen(
+      resource("simple_sequential_order.json"),
+      [](tests::document& doc, const std::string& name, const tests::json::json_value& data) {
+        static const std::string s_seq = "seq";
+        static const std::string s_field = "field";
+        doc.insert(std::make_shared<templates::string_field>(name, data.value), name == s_field, name == s_seq);
+    });
+    add_segment(gen);
+  }
+
+  irs::order order;
+
+  order.add(irs::scorers::get("bm25", irs::string_ref::nil));
+
+  auto prepared_order = order.prepare();
+  auto comparer = [&prepared_order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
+    return prepared_order.less(lhs.c_str(), rhs.c_str());
+  };
+
+  auto reader = iresearch::directory_reader::open(dir(), codec());
+  auto& segment = *(reader.begin());
+  auto values = segment.values("seq");
+
+  // by_term
+  {
+    irs::by_term filter;
+
+    filter.field("field").term("7");
+
+    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
+    std::vector<uint64_t> expected{ 0, 1, 5, 7 };
+
+    irs::bytes_ref actual_value;
+    irs::bytes_ref_input in;
+    auto prepared_filter = filter.prepare(reader, prepared_order);
+    auto docs = prepared_filter->execute(segment, prepared_order);
+    auto& score = docs->attributes().get<irs::score>();
+
+    while(docs->next()) {
+      docs->score();
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      in.reset(actual_value);
+
+      auto str_seq = irs::read_string<std::string>(in);
+      auto seq = strtoull(str_seq.c_str(), nullptr, 10);
+      sorted.emplace(score->value(), seq);
+    }
+
+    ASSERT_EQ(expected.size(), sorted.size());
+    size_t i = 0;
+
+    for (auto& entry: sorted) {
+      ASSERT_EQ(expected[i++], entry.second);
+    }
+  }
+
+  // by_range single
+  {
+    irs::by_range filter;
+
+    filter.field("field")
+      .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("6")
+      .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("8");
+
+    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
+    std::vector<uint64_t> expected{ 0, 1, 5, 7 };
+
+    irs::bytes_ref actual_value;
+    irs::bytes_ref_input in;
+    auto prepared_filter = filter.prepare(reader, prepared_order);
+    auto docs = prepared_filter->execute(segment, prepared_order);
+    auto& score = docs->attributes().get<irs::score>();
+
+    while(docs->next()) {
+      docs->score();
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      in.reset(actual_value);
+
+      auto str_seq = irs::read_string<std::string>(in);
+      auto seq = strtoull(str_seq.c_str(), nullptr, 10);
+      sorted.emplace(score->value(), seq);
+    }
+
+    ASSERT_EQ(expected.size(), sorted.size());
+    size_t i = 0;
+
+    for (auto& entry: sorted) {
+      ASSERT_EQ(expected[i++], entry.second);
+    }
+  }
+
+  // by_range single + scored_terms_limit
+  {
+    irs::by_range filter;
+
+    filter.field("field").scored_terms_limit(0)
+      .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("8")
+      .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("9");
+
+    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
+    std::vector<uint64_t> expected{ 3, 7 };
+
+    irs::bytes_ref actual_value;
+    irs::bytes_ref_input in;
+    auto prepared_filter = filter.prepare(reader, prepared_order);
+    auto docs = prepared_filter->execute(segment, prepared_order);
+    auto& score = docs->attributes().get<irs::score>();
+
+    while(docs->next()) {
+      docs->score();
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      in.reset(actual_value);
+
+      auto str_seq = irs::read_string<std::string>(in);
+      auto seq = strtoull(str_seq.c_str(), nullptr, 10);
+      sorted.emplace(score->value(), seq);
+    }
+
+    ASSERT_EQ(expected.size(), sorted.size());
+    size_t i = 0;
+
+    for (auto& entry: sorted) {
+      ASSERT_EQ(expected[i++], entry.second);
+    }
+  }
+
+  // by_range multiple
+  {
+    irs::by_range filter;
+
+    filter.field("field")
+      .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("6")
+      .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("8");
+
+    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
+    std::vector<uint64_t> expected{ 3, 7, 5, 1, 0 };
+
+    irs::bytes_ref actual_value;
+    irs::bytes_ref_input in;
+    auto prepared_filter = filter.prepare(reader, prepared_order);
+    auto docs = prepared_filter->execute(segment, prepared_order);
+    auto& score = docs->attributes().get<irs::score>();
+
+    while(docs->next()) {
+      docs->score();
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      in.reset(actual_value);
+
+      auto str_seq = irs::read_string<std::string>(in);
+      auto seq = strtoull(str_seq.c_str(), nullptr, 10);
+      sorted.emplace(score->value(), seq);
+    }
+
+    ASSERT_EQ(expected.size(), sorted.size());
+    size_t i = 0;
+
+    for (auto& entry: sorted) {
+      ASSERT_EQ(expected[i++], entry.second);
+    }
+  }
+}
+
 #ifndef IRESEARCH_DLL
 
 TEST_F(bm25_test, test_order) {
@@ -68,7 +233,7 @@ TEST_F(bm25_test, test_order) {
   query.field("field");
 
   iresearch::order ord;
-  ord.add<iresearch::bm25_sort>(irs::string_ref::nil);
+  ord.add<iresearch::bm25_sort>();
   auto prepared_order = ord.prepare();
 
   auto comparer = [&prepared_order] (const iresearch::bstring& lhs, const iresearch::bstring& rhs) {

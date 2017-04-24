@@ -74,7 +74,7 @@ class scorer : public iresearch::sort::scorer_base<bm25::score_t> {
       const bm25::stats* stats,
       const frequency* freq)
     : freq_(freq ? freq : &EMPTY_FREQ),
-      num_(boost * (k + 1) * stats->idf),
+      num_(boost * (k + 1) * (stats ? stats->idf : 1.f)),
       norm_const_(k) {
     assert(freq_);
   }
@@ -240,6 +240,8 @@ NS_END // bm25
 
 DEFINE_SORT_TYPE_NAMED(iresearch::bm25_sort, "bm25");
 REGISTER_SCORER(iresearch::bm25_sort);
+
+DEFINE_FACTORY_DEFAULT(irs::bm25_sort);
 
 /*static*/ sort::ptr bm25_sort::make(const string_ref& args) {
   static PTR_NAMED(bm25_sort, ptr);
