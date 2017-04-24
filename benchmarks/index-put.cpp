@@ -310,18 +310,17 @@ int put(const std::string& path, std::istream& stream, size_t lines_max, size_t 
   irs::fs_directory dir(path);
   auto writer = irs::index_writer::make(dir, irs::formats::get("1_0"), irs::OPEN_MODE::OM_CREATE);
 
-  indexer_threads = std::min(size_t(1), std::min(indexer_threads, std::numeric_limits<size_t>::max() - 1 - 1)); // -1 for commiter thread -1 for stream reader thread
+  indexer_threads = std::max(size_t(1), std::min(indexer_threads, std::numeric_limits<size_t>::max() - 1 - 1)); // -1 for commiter thread -1 for stream reader thread
 
   irs::async_utils::thread_pool thread_pool(indexer_threads + 1 + 1); // +1 for commiter thread +1 for stream reader thread
 
   SCOPED_TIMER("Total Time");
-  std::cout << "Config: "
-    << OUTPUT << "=" << path << "; "
-    << MAX << "=" << lines_max << "; "
-    << THR << "=" << indexer_threads << "; "
-    << CPR << "=" << commit_interval_ms << "; "
-    << BATCH_SIZE << "=" << batch_size
-    << std::endl;
+  std::cout << "Configuration: " << std::endl;
+  std::cout << OUTPUT << "=" << path << std::endl;
+  std::cout << MAX << "=" << lines_max << std::endl;
+  std::cout << THR << "=" << indexer_threads << std::endl;
+  std::cout << CPR << "=" << commit_interval_ms << std::endl;
+  std::cout << BATCH_SIZE << "=" << batch_size << std::endl;
 
   struct {
     std::condition_variable cond_;
@@ -381,7 +380,7 @@ int put(const std::string& path, std::istream& stream, size_t lines_max, size_t 
     }
 
     batch_provider.eof_ = true;
-    std::cout << "Stream read end" << std::endl;
+    std::cout << "EOF" << std::flush;
   });
 
   // commiter thread
@@ -390,7 +389,7 @@ int put(const std::string& path, std::istream& stream, size_t lines_max, size_t 
       while (!batch_provider.done_.load()) {
         {
           SCOPED_TIMER("Commit time");
-          std::cout << std::endl; // break indexer thread output by commit
+          std::cout << "COMMIT" << std::endl; // break indexer thread output by commit
           writer->commit();
         }
 
@@ -430,17 +429,26 @@ int put(const std::string& path, std::istream& stream, size_t lines_max, size_t 
 
   thread_pool.stop();
 
+  {
+    SCOPED_TIMER("Commit time");
+    std::cout << "COMMIT" << std::endl; // break indexer thread output by commit
+    writer->commit();
+  }
+
   // merge all segments into a single segment
   writer->consolidate(
     [](const irs::directory&, const irs::index_meta&)->irs::index_writer::consolidation_acceptor_t {
-      return [](const irs::segment_meta&)->bool{ return true; };
+      return [](const irs::segment_meta& meta)->bool {
+        std::cout << meta.name << std::endl;
+        return true;
+      };
     },
     false
   );
 
   {
-    SCOPED_TIMER("Commit time");
-    std::cout << std::endl; // break indexer thread output by commit
+    SCOPED_TIMER("Merge time");
+    std::cout << "Merging segments:" << std::endl;
     writer->commit();
   }
 
