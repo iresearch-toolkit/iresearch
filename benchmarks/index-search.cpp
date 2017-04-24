@@ -146,29 +146,33 @@ struct SearchTask : public Task {
      * 
      */
     virtual int query(irs::directory_reader& reader) override {
-        int cnt = 0;
         for (auto& segment : reader) { // iterate segments
             irs::order order;
             order.add<irs::bm25_sort>(irs::string_ref::nil);
             auto prepared_order = order.prepare();
             irs::score_doc_iterator::ptr docs = prepared->execute(segment, prepared_order); // query segment
             auto& score = docs->attributes().get<iresearch::score>();
-
-            /// 
-            /// @todo sort by score and get only topN top documents
-            ///  
+            auto comparer = [&prepared_order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
+              return prepared_order.less(lhs.c_str(), rhs.c_str());
+            };
+            std::multimap<irs::bstring, Entry, decltype(comparer)> sorted(comparer);
 
             while (docs->next()) {
-                ++totalHitCount;
-                if (cnt < topN) {
-                    irs::bytes_ref value;
-                    const irs::doc_id_t doc_id = docs->value(); // get doc id
-                    docs->score();
-                    auto scoreValue = score ? score->get<float>(0) : .0; //score ? irs::bytes_ref(score->value()) : irs::bytes_ref::nil; 
-                    //std::cout << "id=" << doc_id << "; score="<< scoreValue <<std::endl;
-                    top_docs.emplace_back(doc_id, scoreValue);
-                    ++cnt;
-                }
+              ++totalHitCount;
+              docs->score();
+              sorted.emplace(
+                std::piecewise_construct,
+                std::forward_as_tuple(score->value()),
+                std::forward_as_tuple(docs->value(), score ? score->get<float>(0) : .0)
+              );
+
+              if (sorted.size() > topN) {
+                sorted.erase(--(sorted.end()));
+              }
+            }
+
+            for (auto& entry: sorted) {
+              top_docs.emplace_back(std::move(entry.second));
             }
         }
         return 0;

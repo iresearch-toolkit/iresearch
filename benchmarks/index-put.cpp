@@ -316,7 +316,7 @@ int put(const std::string& path, std::istream& stream, size_t lines_max, size_t 
 
   SCOPED_TIMER("Total Time");
   std::cout << "Configuration: " << std::endl;
-  std::cout << OUTPUT << "=" << path << std::endl;
+  std::cout << INDEX_DIR << "=" << path << std::endl;
   std::cout << MAX << "=" << lines_max << std::endl;
   std::cout << THR << "=" << indexer_threads << std::endl;
   std::cout << CPR << "=" << commit_interval_ms << std::endl;
