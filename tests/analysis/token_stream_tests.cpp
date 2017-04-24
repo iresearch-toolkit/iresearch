@@ -194,7 +194,7 @@ TEST(numeric_token_stream_tests, value) {
     ASSERT_EQ(term->value(), value); // value same as 1st
     ASSERT_EQ(true, ts.next());
     ASSERT_NE(term->value(), value); // value not same as 2nd
-    ASSERT_EQ(false, ts.next());
+    ASSERT_EQ(true, !ts.next());
   }
 
   // long
@@ -214,7 +214,7 @@ TEST(numeric_token_stream_tests, value) {
     ASSERT_NE(term->value(), value); // value not same as 3rd
     ASSERT_EQ(true, ts.next());
     ASSERT_NE(term->value(), value); // value not same as 4th
-    ASSERT_EQ(false, ts.next());
+    ASSERT_EQ(true, !ts.next());
   }
 
   // float
@@ -230,7 +230,7 @@ TEST(numeric_token_stream_tests, value) {
     ASSERT_EQ(term->value(), value); // value same as 1st
     ASSERT_EQ(true, ts.next());
     ASSERT_NE(term->value(), value); // value not same as 2nd
-    ASSERT_EQ(false, ts.next());
+    ASSERT_EQ(true, !ts.next());
   }
 
   // double
@@ -250,6 +250,6 @@ TEST(numeric_token_stream_tests, value) {
     ASSERT_NE(term->value(), value); // value not same as 3rd
     ASSERT_EQ(true, ts.next());
     ASSERT_NE(term->value(), value); // value not same as 4th
-    ASSERT_EQ(false, ts.next());
+    ASSERT_EQ(true, !ts.next());
   }
 }
