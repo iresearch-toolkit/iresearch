@@ -146,6 +146,8 @@ struct SearchTask : public Task {
      * 
      */
     virtual int query(irs::directory_reader& reader) override {
+        SCOPED_TIMER("Query execution + Result processing time");
+
         for (auto& segment : reader) { // iterate segments
             irs::order order;
             order.add<irs::bm25_sort>(irs::string_ref::nil);
@@ -158,6 +160,7 @@ struct SearchTask : public Task {
             std::multimap<irs::bstring, Entry, decltype(comparer)> sorted(comparer);
 
             while (docs->next()) {
+              SCOPED_TIMER("Result processing time");
               ++totalHitCount;
               docs->score();
               sorted.emplace(
@@ -700,6 +703,14 @@ int main(int argc, char* argv[]) {
         std::cout << desc << std::endl;
         return 0;
     }
+
+    irs::timer_utils::init_stats(true);
+    auto output_stats = irs::make_finally([]()->void {
+      irs::timer_utils::visit([](const std::string& key, size_t count, size_t time)->bool {
+        std::cout << key << " calls:" << count << ", time: " << time/1000 << " us, avg call: " << time/1000/(double)count << " us"<< std::endl;
+        return true;
+      });
+    });
 
     // enter dump mode
     if ("search" == mode) {
