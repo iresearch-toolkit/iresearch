@@ -32,7 +32,7 @@ struct iterator_traits {
   }
 
   static bool greater(const wrapper_t& lhs, const wrapper_t& rhs) {
-    return (1 + lhs->value()) > (1 + rhs->value());
+    return lhs->value() > rhs->value();
   }
 }; // iterator_traits 
 
@@ -78,7 +78,7 @@ struct iterator_traits<score_wrapper<DocIterator>> {
   }
 
   static bool greater(const wrapper_t& lhs, const wrapper_t& rhs) {
-    return (1 + lhs->value()) > (1 + rhs->value());
+    return lhs->value() > rhs->value();
   }
 }; // iterator_traits 
 
