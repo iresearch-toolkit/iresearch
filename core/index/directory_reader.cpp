@@ -57,6 +57,8 @@ iresearch::index_file_refs::ref_t load_newest_index_meta(
 
       return std::move(ref);
     } catch (...) {
+      IR_EXCEPTION();
+
       return nullptr;
     }
   }
@@ -126,7 +128,7 @@ iresearch::index_file_refs::ref_t load_newest_index_meta(
 
     return std::move(newest.ref);
   } catch (...) {
-    // NOOP
+    IR_EXCEPTION();
   }
 
   return nullptr;
