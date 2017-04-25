@@ -30,6 +30,7 @@ namespace po = boost::program_options;
 }
 
 static const std::string BATCH_SIZE = "batch-size";
+static const std::string CONSOLIDATE = "consolidate";
 static const std::string INDEX_DIR = "index-dir";
 static const std::string OUTPUT = "out";
 static const std::string INPUT = "in";
@@ -306,7 +307,15 @@ struct WikiDoc : Doc {
   std::shared_ptr<TextField> body;
 };
 
-int put(const std::string& path, std::istream& stream, size_t lines_max, size_t indexer_threads, size_t commit_interval_ms, size_t batch_size) {
+int put(
+    const std::string& path,
+    std::istream& stream,
+    size_t lines_max,
+    size_t indexer_threads,
+    size_t commit_interval_ms,
+    size_t batch_size,
+    bool consolidate
+) {
   irs::fs_directory dir(path);
   auto writer = irs::index_writer::make(dir, irs::formats::get("1_0"), irs::OPEN_MODE::OM_CREATE);
 
@@ -321,6 +330,7 @@ int put(const std::string& path, std::istream& stream, size_t lines_max, size_t 
   std::cout << THR << "=" << indexer_threads << std::endl;
   std::cout << CPR << "=" << commit_interval_ms << std::endl;
   std::cout << BATCH_SIZE << "=" << batch_size << std::endl;
+  std::cout << CONSOLIDATE << "=" << consolidate << std::endl;
 
   struct {
     std::condition_variable cond_;
@@ -446,13 +456,12 @@ int put(const std::string& path, std::istream& stream, size_t lines_max, size_t 
     false
   );
 
-  {
+  if (consolidate) {
     SCOPED_TIMER("Merge time");
     std::cout << "Merging segments:" << std::endl;
     writer->commit();
+    irs::directory_utils::remove_all_unreferenced(dir);
   }
-
-  irs::directory_utils::remove_all_unreferenced(dir);
 
   u_cleanup();
 
@@ -476,6 +485,7 @@ int put(const po::variables_map& vm) {
     }
 
     auto batch_size = vm.count(BATCH_SIZE) ? vm[BATCH_SIZE].as<size_t>() : size_t(0);
+    auto consolidate = vm.count(CONSOLIDATE) ? vm[CONSOLIDATE].as<bool>() : false;
     auto commit_interval_ms = vm.count(CPR) ? vm[CPR].as<size_t>() : size_t(0);
     auto indexer_threads = vm.count(THR) ? vm[THR].as<size_t>() : size_t(0);
     auto lines_max = vm.count(MAX) ? vm[MAX].as<size_t>() : size_t(0);
@@ -487,10 +497,10 @@ int put(const po::variables_map& vm) {
             return 1;
         }
 
-        return put(path, in, lines_max, indexer_threads, commit_interval_ms, batch_size);
+        return put(path, in, lines_max, indexer_threads, commit_interval_ms, batch_size, consolidate);
     }
 
-    return put(path, std::cin, lines_max, indexer_threads, commit_interval_ms, batch_size);
+    return put(path, std::cin, lines_max, indexer_threads, commit_interval_ms, batch_size, consolidate);
 }
 
 /**
@@ -517,6 +527,7 @@ int main(int argc, char* argv[]) {
             (INDEX_DIR.c_str(), po::value<std::string>(), "Path to index directory")
             (INPUT.c_str(), po::value<std::string>(), "Input file")
             (BATCH_SIZE.c_str(), po::value<size_t>(), "Lines per batch")
+            (CONSOLIDATE.c_str(), po::value<bool>(), "Consolidate segments")
             (MAX.c_str(), po::value<size_t>(), "Maximum lines")
             (THR.c_str(), po::value<size_t>(), "Number of insert threads")
             (CPR.c_str(), po::value<size_t>(), "Commit period in lines");
