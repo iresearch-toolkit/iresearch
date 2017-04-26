@@ -52,9 +52,10 @@ class generic_register: public singleton<RegisterType> {
 
   virtual ~generic_register() { }
 
-  void set(const key_type& key, const entry_type& entry) {
+  // @return successful new registration (false == 'key' already registered)
+  bool set(const key_type& key, const entry_type& entry) {
     std::lock_guard<mutex_t> lock(mutex_);
-    reg_map_.emplace(key, entry);
+    return reg_map_.emplace(key, entry).second;
   }
 
   entry_type get(const key_type& key) const {

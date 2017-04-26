@@ -50,6 +50,18 @@ DEFINE_FACTORY_DEFAULT(invalid_attribute);
 
 } // tests
 
+TEST(attributes_tests, duplicate_register) {
+  struct dummy_attribute: public irs::attribute {
+    DECLARE_ATTRIBUTE_TYPE() { static irs::attribute::type_id type("dummy_attribute"); return type; }
+    dummy_attribute(): irs::attribute(dummy_attribute::type()) { }
+  };
+
+  irs::attribute_registrar initial(dummy_attribute::type());
+  ASSERT_FALSE(!initial);
+  irs::attribute_registrar duplicate(dummy_attribute::type());
+  ASSERT_TRUE(!duplicate);
+}
+
 TEST( attributes_tests, ctor) {
   attributes attrs;
 

@@ -38,6 +38,9 @@ class IRESEARCH_API scorer_registrar {
     const sort::type_id& type,
     sort::ptr(*factory)(const irs::string_ref& args)
   );
+  operator bool() const NOEXCEPT;
+ private:
+  bool registered_;
 };
 
 #define REGISTER_SCORER__(scorer_name, line) static iresearch::scorer_registrar scorer_registrar ## _ ## line(scorer_name::type(), &scorer_name::make)
