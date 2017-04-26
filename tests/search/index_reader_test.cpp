@@ -303,9 +303,9 @@ TEST(segment_reader_test, segment_reader_has) {
 
   // has none (default)
   {
+    irs::memory_directory dir;
     auto writer = codec.get_segment_meta_writer();
     auto reader = codec.get_segment_meta_reader();
-    irs::memory_directory dir;
     irs::segment_meta expected;
 
     writer->write(dir, expected);
@@ -321,9 +321,9 @@ TEST(segment_reader_test, segment_reader_has) {
 
   // has column store
   {
+    irs::memory_directory dir;
     auto writer = codec.get_segment_meta_writer();
     auto reader = codec.get_segment_meta_reader();
-    irs::memory_directory dir;
     irs::segment_meta expected;
 
     expected.column_store = true;
@@ -340,10 +340,10 @@ TEST(segment_reader_test, segment_reader_has) {
 
   // has document mask
   {
+    irs::memory_directory dir;
     auto writer = codec.get_segment_meta_writer();
     auto reader = codec.get_segment_meta_reader();
     auto docs_mask_writer = codec.get_document_mask_writer();
-    irs::memory_directory dir;
     irs::segment_meta expected;
 
     expected.version = 1; // version > 0 implies document_mask
@@ -363,10 +363,10 @@ TEST(segment_reader_test, segment_reader_has) {
 
   // has all
   {
+    irs::memory_directory dir;
     auto writer = codec.get_segment_meta_writer();
     auto reader = codec.get_segment_meta_reader();
     auto docs_mask_writer = codec.get_document_mask_writer();
-    irs::memory_directory dir;
     irs::segment_meta expected;
 
     expected.column_store = true;
