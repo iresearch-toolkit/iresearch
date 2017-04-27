@@ -24,7 +24,6 @@ NS_LOCAL
   __pragma(warning(disable:4724)) // all X % zero are masked by constexpr conditionals (must disable outside of fn body)
 #elif defined (__GNUC__)
   #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wshift-count-overflow" // all negative shifts are masked by constexpr conditionals
   #pragma GCC diagnostic ignored "-Wshift-count-negative" // all negative shifts are masked by constexpr conditionals
 #endif
 
@@ -270,15 +269,10 @@ FORCE_INLINE void __fastunpack<64>(const uint64_t* RESTRICT in, uint64_t* RESTRI
 template<int N, int I>
 FORCE_INLINE uint32_t __fastpack_at(const uint32_t* in) NOEXCEPT {
   // 32 == sizeof(uint32_t) * 8
-  static_assert(N > 0 && N <= 32, "N <= 0 || N > 32");
+  static_assert(N > 0 && N < 32, "N <= 0 || N > 32");
   static_assert(I >= 0 && I < 32, "I < 0 || I >= 32");
 
   // ensure all computations are constexr, i.e. no conditional jumps, no loops, no variable increment/decrement
-
-  if (N == 32) {
-    // avoid divising by 0
-    return in[I];
-  }
 
   if ((N*(I + 1) % 32) < ((N*I) % 32)) {
     return ((in[N*I / 32] >> (N*I % 32)) % (1U << N)) | ((in[1 + N*I / 32] % (1U << (N * (I + 1)) % 32)) << (N - ((N * (I + 1)) % 32)));
@@ -290,15 +284,10 @@ FORCE_INLINE uint32_t __fastpack_at(const uint32_t* in) NOEXCEPT {
 template<int N, int I>
 FORCE_INLINE uint64_t __fastpack_at(const uint64_t* in) NOEXCEPT {
   // 64 == sizeof(uint64_t) * 8
-  static_assert(N > 0 && N <= 64, "N <= 0 || N > 64");
+  static_assert(N > 0 && N < 64, "N <= 0 || N > 64");
   static_assert(I >= 0 && I < 64, "I < 0 || I >= 64");
 
   // ensure all computations are constexr, i.e. no conditional jumps, no loops, no variable increment/decrement
-
-  if (N == 64) {
-    // avoid divising by 0
-    return in[I];
-  }
 
   if ((N*(I + 1) % 64) < ((N*I) % 64)) {
     return ((in[N*I / 64] >> (N*I % 64)) % (1ULL << N)) | ((in[1 + N*I / 64] % (1ULL << (N * (I + 1)) % 64)) << (N - ((N * (I + 1)) % 64)));
@@ -352,6 +341,13 @@ uint32_t __fastpack_at(const uint32_t* in, const size_t i) NOEXCEPT {
     case 31: return __fastpack_at<N, 31>(in);
     default: assert(false);
   }
+}
+
+template<>
+uint32_t __fastpack_at<32>(const uint32_t* in, const size_t i) NOEXCEPT {
+  // 32 == sizeof(uint32_t) * 8
+  assert(i < 32);
+  return in[i];
 }
 
 uint32_t __fastpack_at(const uint32_t* in, const size_t i, const uint32_t bits) NOEXCEPT {
@@ -461,6 +457,13 @@ uint64_t __fastpack_at(const uint64_t* in, const size_t i) NOEXCEPT {
     case 63: return __fastpack_at<N, 63>(in);
     default: assert(false);
   }
+}
+
+template<>
+uint64_t __fastpack_at<64>(const uint64_t* in, const size_t i) NOEXCEPT {
+  // 64 == sizeof(uint64_t) * 8
+  assert(i < 64);
+  return in[i];
 }
 
 uint64_t __fastpack_at(const uint64_t* in, const size_t i, const uint32_t bits) NOEXCEPT {
