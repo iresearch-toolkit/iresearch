@@ -19,8 +19,10 @@ TEST(scorers_tests, duplicate_register) {
     dummy_scorer(): irs::sort(dummy_scorer::type()) { }
   };
 
+  static bool initial_expected = true;
   irs::scorer_registrar initial(dummy_scorer::type(), &dummy_scorer::make);
-  ASSERT_FALSE(!initial);
+  ASSERT_EQ(!initial_expected, !initial);
+  initial_expected = false; // next test iteration will not be able to register the same scorer
   irs::scorer_registrar duplicate(dummy_scorer::type(), &dummy_scorer::make);
   ASSERT_TRUE(!duplicate);
 }

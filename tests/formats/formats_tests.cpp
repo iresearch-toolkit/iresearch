@@ -19,8 +19,10 @@ TEST(formats_tests, duplicate_register) {
     dummy_format(): irs::format(dummy_format::type()) { }
   };
 
+  static bool initial_expected = true;
   irs::format_registrar initial(dummy_format::type(), &dummy_format::make);
-  ASSERT_FALSE(!initial);
+  ASSERT_EQ(!initial_expected, !initial);
+  initial_expected = false; // next test iteration will not be able to register the same format
   irs::format_registrar duplicate(dummy_format::type(), &dummy_format::make);
   ASSERT_TRUE(!duplicate);
 }

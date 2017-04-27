@@ -56,8 +56,10 @@ TEST(attributes_tests, duplicate_register) {
     dummy_attribute(): irs::attribute(dummy_attribute::type()) { }
   };
 
+  static bool initial_expected = true;
   irs::attribute_registrar initial(dummy_attribute::type());
-  ASSERT_FALSE(!initial);
+  ASSERT_EQ(!initial_expected, !initial);
+  initial_expected = false; // next test iteration will not be able to register the same attribute
   irs::attribute_registrar duplicate(dummy_attribute::type());
   ASSERT_TRUE(!duplicate);
 }
