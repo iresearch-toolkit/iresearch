@@ -22,6 +22,7 @@
 #include "index/index_reader.hpp"
 #include "utils/async_utils.hpp"
 #include "utils/index_utils.hpp"
+#include "utils/numeric_utils.hpp"
 
 #include "index_tests.hpp"
 
@@ -1408,6 +1409,59 @@ class index_test_case_base : public tests::index_test_base {
     }
   }
 
+  void read_write_doc_attributes_fixed_length() {
+    const irs::doc_id_t MAX_DOCS = 8;
+    static const iresearch::string_ref column_name = "id";
+
+    // write documents
+    {
+      struct stored {
+        const irs::string_ref& name() { return column_name; }
+
+        bool write(irs::data_output& out) {
+          irs::write_string(
+            out,
+            irs::numeric_utils::numeric_traits<uint64_t>::raw_ref(value)
+          );
+          return true;
+        }
+
+        uint64_t value{};
+      } field;
+
+      auto inserter = [&field](const irs::index_writer::document& doc) {
+        doc.insert<irs::Action::STORE>(field);
+        return ++field.value < MAX_DOCS;
+      };
+
+      auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+      writer->insert(inserter); // insert MAX_DOCS documents
+      writer->commit();
+    }
+
+    // read inserted values
+    {
+      auto reader = ir::directory_reader::open(dir(), codec());
+      ASSERT_EQ(1, reader.size());
+
+      auto& segment = *(reader.begin());
+      ASSERT_EQ(irs::doc_id_t(MAX_DOCS), segment.live_docs_count());
+
+      auto* meta = segment.column(column_name);
+      ASSERT_NE(nullptr, meta);
+
+      irs::bytes_ref actual_value;
+      auto values = segment.values(column_name);
+
+      for (irs::doc_id_t i = 0; i < MAX_DOCS; ++i) {
+        const irs::doc_id_t doc = i + irs::type_limits<irs::type_t::doc_id_t>::min();
+        ASSERT_TRUE(values(doc, actual_value));
+        const auto actual_str_value = irs::to_string<irs::string_ref>(actual_value.c_str());
+        ASSERT_EQ(i, *reinterpret_cast<const irs::doc_id_t*>(actual_str_value.c_str()));
+      }
+    }
+  }
+
   void read_write_doc_attributes() {
     tests::json_doc_generator gen(
       resource("simple_sequential.json"),
@@ -2148,6 +2202,7 @@ TEST_F(memory_index_test, arango_demo_docs) {
 }
 
 TEST_F(memory_index_test, read_write_doc_attributes) {
+  read_write_doc_attributes_fixed_length();
   read_write_doc_attributes_big();
   read_write_doc_attributes();
   read_empty_doc_attributes();
