@@ -76,7 +76,10 @@ struct IRESEARCH_API attribute {
 
 class IRESEARCH_API attribute_registrar {
  public:
-   attribute_registrar(const attribute::type_id& type);
+  attribute_registrar(const attribute::type_id& type);
+  operator bool() const NOEXCEPT;
+ private:
+  bool registered_;
 };
 
 #define REGISTER_ATTRIBUTE__(attribute_name, line) static iresearch::attribute_registrar attribute_registrar ## _ ## line(attribute_name::type())

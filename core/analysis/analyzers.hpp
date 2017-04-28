@@ -35,10 +35,13 @@ NS_BEGIN(analysis)
 
 class IRESEARCH_API analyzer_registrar {
  public:
-   analyzer_registrar(
-     const analyzer::type_id& type,
-     analyzer::ptr(*factory)(const iresearch::string_ref& args)
-   );
+  analyzer_registrar(
+    const analyzer::type_id& type,
+    analyzer::ptr(*factory)(const iresearch::string_ref& args)
+  );
+  operator bool() const NOEXCEPT;
+ private:
+  bool registered_;
 };
 
 #define REGISTER_ANALYZER__(analyzer_name, line) static iresearch::analysis::analyzer_registrar analyzer_registrar ## _ ## line(analyzer_name::type(), &analyzer_name::make)

@@ -69,8 +69,20 @@ NS_BEGIN(analysis)
 
 analyzer_registrar::analyzer_registrar(
   const analyzer::type_id& type, analyzer::ptr(*factory)(const iresearch::string_ref& args)
-) {
-  analyzer_register::instance().set(type.name(), factory);
+): registered_(analyzer_register::instance().set(type.name(), factory)) {
+  if (!registered_) {
+    IR_FRMT_WARN(
+      "type name collision detected while registering analyzer, ignoring: type '%s' from %s:%d",
+      type.name().c_str(),
+      __FILE__,
+      __LINE__
+    );
+    IR_STACK_TRACE();
+  }
+}
+
+analyzer_registrar::operator bool() const NOEXCEPT {
+  return registered_;
 }
 
 NS_END // NS_BEGIN(analysis)

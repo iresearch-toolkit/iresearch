@@ -29,6 +29,8 @@ namespace po = boost::program_options;
 
 }
 
+static const std::string BATCH_SIZE = "batch-size";
+static const std::string CONSOLIDATE = "consolidate";
 static const std::string INDEX_DIR = "index-dir";
 static const std::string OUTPUT = "out";
 static const std::string INPUT = "in";
@@ -305,356 +307,30 @@ struct WikiDoc : Doc {
   std::shared_ptr<TextField> body;
 };
 
-/**
- * Line file reader
- */
-class LineFileReader {
-public:
-
-    /**
-     * worker args
-     */
-    struct Args {
-        std::istream& stream;
-        int maxlines;
-
-        Args(std::istream& s, int mx) :
-        stream(s), maxlines(mx) {
-        }
-    };
-
-    struct Stats {
-        uint64_t lines;
-
-        Stats() :
-        lines(0) {
-        }
-    };
-
-private:
-    std::thread* thr;
-    std::mutex mutex;
-    std::condition_variable cond;
-    std::queue<ustringp> queue;
-    bool depleted;
-    Stats stats;
-
-    /**
-     * worker
-     * @param s
-     */
-    void worker(Args a) {
-
-        {
-            std::string line;
-            getline(a.stream, line); // skip header
-        }
-
-        while (a.maxlines > 0) {
-            auto line = ustringp(new std::string());
-            std::getline(a.stream, *line);
-            {
-                std::lock_guard<std::mutex> l(mutex);
-                //std::cout << "push: "<< (void*)line->c_str() << std::endl;
-                queue.push(std::move(line));
-                if (queue.back()->empty()) {
-                    break;
-                }
-                cond.notify_one();
-            }
-            --a.maxlines;
-        }
-
-        {
-            std::lock_guard<std::mutex> l(mutex);
-            depleted = true;
-            cond.notify_all();
-        }
-    }
-
-
-public:
-
-    /**
-     * 
-     */
-    LineFileReader() : thr(nullptr), depleted(false) {
-    }
-
-    /**
-     * 
-     * @param a
-     */
-    void start(Args a) {
-        thr = new std::thread(std::bind(&LineFileReader::worker, this, a));
-    }
-
-    /**
-     * 
-     */
-    void join() {
-        thr->join();
-        delete thr;
-    }
-
-    /**
-     * 
-     * @return 
-     */
-    ustringp getLine() {
-        ustringp r = nullptr;
-        std::unique_lock<std::mutex> l(mutex);
-        while (!depleted || !queue.empty()) {
-            if (!queue.empty()) {
-                r = std::move(queue.front());
-                queue.pop();
-                //std::cout << "pop: "<< (void*)r->c_str() << std::endl;
-                break;
-            }
-            cond.wait(l);
-        }
-        return r;
-    }
-
-    /**
-     * 
-     * @return 
-     */
-    Stats& getStats() {
-        return stats;
-    }
-
-};
-
-/**
- * Synchronized committer
- */
-class Committer {
-    irs::index_writer::ptr writer;
-    uint64_t inserts;
-    int workers;
-    uint64_t period;
-    std::mutex mutex;
-
-public:
-
-    Committer(irs::index_writer::ptr w, int thrs, uint64_t cpr) :
-    writer(w),
-    inserts(0),
-    workers(thrs),
-    period(cpr) {
-    }
-
-    /**
-     * 
-     * @return 
-     */
-    bool commitPeriodic() {
-        bool do_commit = false;
-        {
-            std::lock_guard<std::mutex> l(mutex);
-            ++inserts;
-            if (inserts > period) {
-                do_commit = true;
-                inserts = 0;
-            }
-        }
-        if (do_commit) {
-            writer->commit();
-        }
-        return do_commit;
-    }
-
-    /**
-     * 
-     * @return 
-     */
-    bool commitFinalize() {
-        bool do_commit = false;
-        {
-            std::lock_guard<std::mutex> l(mutex);
-            --workers;
-            if (workers == 0 && inserts != 0) {
-                do_commit = true;
-            }
-        }
-        if (do_commit) {
-            writer->commit();
-        }
-        return do_commit;
-    }
-
-};
-
-/**
- * Indexing thread
- */
-class Indexer {
-public:
-
-    /**
-     * worker args
-     */
-    struct Args {
-        LineFileReader& reader;
-        irs::index_writer::ptr writer;
-        Committer& committer;
-
-        Args(LineFileReader& lr, irs::index_writer::ptr w, Committer& c) : reader(lr), writer(w), committer(c) {
-        }
-    };
-
-    struct Stats {
-        uint64_t inserts;
-        uint64_t commits;
-
-        Stats() :
-        inserts(0),
-        commits(0) {
-        }
-    };
-
-private:
-    std::thread* thr;
-    std::mutex mutex;
-    Stats stats;
-
-    /**
-     * worker
-     * @param a
-     */
-    void worker(Args a) {
-        while (true) {
-            Doc doc;
-            ustringp line = a.reader.getLine();
-            if (line == nullptr || line->empty()) break;
-            doc.fill(line.get());
-
-            auto inserter = [&doc](const irs::index_writer::document& builder) {
-              for (auto& field : doc.elements) {
-                builder.insert<irs::Action::INDEX>(*field);
-              }
-
-              for (auto& field : doc.store) {
-                builder.insert<irs::Action::STORE>(*field);
-              }
-
-              return false; // break the loop
-            };
-
-            a.writer->insert(inserter);
-            ++stats.inserts;
-            //std::cout << "insert: "<< (void*)line->c_str() << std::endl;
-            if (a.committer.commitPeriodic()) {
-                ++stats.commits;
-                std::cout << "thread " << thr->get_id() << ": triggered commitPeriodic" << std::endl;
-
-            }
-        }
-        // finalize
-        if (a.committer.commitFinalize()) {
-            ++stats.commits;
-            std::cout << "thread " << thr->get_id() << ": triggered commitFinalize" << std::endl;
-        }
-        std::cout << "thread " << thr->get_id() << ": inserted docs=" << std::dec << stats.inserts <<
-                ": commits=" << std::dec << stats.commits << std::endl;
-    }
-
-public:
-
-    /**
-     * 
-     */
-    Indexer() : thr(nullptr) {
-    }
-
-    /**
-     * 
-     * @param a
-     */
-    void start(Args a) {
-        thr = new std::thread(std::bind(&Indexer::worker, this, a));
-    }
-
-    /**
-     * 
-     */
-    void join() {
-        thr->join();
-        delete thr;
-    }
-
-    /**
-     * 
-     * @return 
-     */
-    Stats& getStats() {
-        return stats;
-    }
-};
-
-/**
- * Threads spawner
- * @param path
- * @param stream
- * @param maxlines
- * @param thrs
- * @return 
- */
-static int put(const std::string& path, std::istream& stream, int maxlines, int thrs, int cpr) {
-
-    boost::posix_time::ptime start = boost::posix_time::microsec_clock::local_time();
-
-    irs::fs_directory dir(path);
-    auto writer = irs::index_writer::make(dir, irs::formats::get("1_0"), irs::OPEN_MODE::OM_CREATE);
-
-    Committer committer(writer, thrs, cpr);
-
-    LineFileReader rl;
-    rl.start(LineFileReader::Args(stream, maxlines));
-
-    std::vector<Indexer*> indexers;
-
-    while (thrs) {
-        Indexer* indexer = new Indexer();
-        indexer->start(Indexer::Args(rl, writer, committer));
-        indexers.push_back(indexer);
-        --thrs;
-    }
-
-    uint64_t inserts = 0;
-    uint64_t commits = 0;
-    while (!indexers.empty()) {
-        indexers.back()->join();
-        inserts += indexers.back()->getStats().inserts;
-        commits += indexers.back()->getStats().commits;
-        delete indexers.back();
-        indexers.pop_back();
-    }
-
-    rl.join();
-
-    writer->close();
-
-    boost::posix_time::time_duration msdiff = boost::posix_time::microsec_clock::local_time() - start;
-
-    std::cout << "Total inserts=" << inserts << "; commits=" << commits << "; ms=" << msdiff.total_milliseconds() << std::endl;
-
-    u_cleanup();
-
-    return 0;
-}
-
-int put(const std::string& path, std::istream& stream, int maxlines, int thrs, int cpr, size_t batch_size) {
+int put(
+    const std::string& path,
+    std::istream& stream,
+    size_t lines_max,
+    size_t indexer_threads,
+    size_t commit_interval_ms,
+    size_t batch_size,
+    bool consolidate
+) {
   irs::fs_directory dir(path);
   auto writer = irs::index_writer::make(dir, irs::formats::get("1_0"), irs::OPEN_MODE::OM_CREATE);
-  size_t inserter_count = std::max(1, thrs);
-  size_t commit_ms = std::max(1, cpr);
-  size_t line_max = std::max(1, maxlines);
-  irs::async_utils::thread_pool thread_pool(inserter_count + 1 + 1); // +1 for commiter thread +1 for stream reader thread
+
+  indexer_threads = std::max(size_t(1), std::min(indexer_threads, std::numeric_limits<size_t>::max() - 1 - 1)); // -1 for commiter thread -1 for stream reader thread
+
+  irs::async_utils::thread_pool thread_pool(indexer_threads + 1 + 1); // +1 for commiter thread +1 for stream reader thread
 
   SCOPED_TIMER("Total Time");
-  std::cout << "Data path=" << path << "; max-lines=" << maxlines << "; threads=" << thrs << "; commit-period=" << cpr << std::endl;
+  std::cout << "Configuration: " << std::endl;
+  std::cout << INDEX_DIR << "=" << path << std::endl;
+  std::cout << MAX << "=" << lines_max << std::endl;
+  std::cout << THR << "=" << indexer_threads << std::endl;
+  std::cout << CPR << "=" << commit_interval_ms << std::endl;
+  std::cout << BATCH_SIZE << "=" << batch_size << std::endl;
+  std::cout << CONSOLIDATE << "=" << consolidate << std::endl;
 
   struct {
     std::condition_variable cond_;
@@ -692,11 +368,11 @@ int put(const std::string& path, std::istream& stream, int maxlines, int thrs, i
   batch_provider.eof_ = false;
 
   // stream reader thread
-  thread_pool.run([&batch_provider, &line_max, batch_size, &stream]()->void {
+  thread_pool.run([&batch_provider, lines_max, batch_size, &stream]()->void {
     SCOPED_TIMER("Stream read total time");
     SCOPED_LOCK_NAMED(batch_provider.mutex_, lock);
 
-    while (line_max) {
+    for (auto i = lines_max ? lines_max : std::numeric_limits<size_t>::max(); i; --i) {
       batch_provider.buf_.resize(batch_provider.buf_.size() + 1);
       batch_provider.cond_.notify_all();
 
@@ -707,34 +383,33 @@ int put(const std::string& path, std::istream& stream, int maxlines, int thrs, i
         break;
       }
 
-      --line_max;
-
-      if (batch_provider.buf_.size() >= batch_size) {
+      if (batch_size && batch_provider.buf_.size() >= batch_size) {
         SCOPED_TIMER("Stream read idle time");
         batch_provider.cond_.wait(lock);
       }
     }
 
     batch_provider.eof_ = true;
-    std::cout << "Stream read end" << std::endl;
+    std::cout << "EOF" << std::flush;
   });
 
   // commiter thread
-  thread_pool.run([&batch_provider, commit_ms, &writer]()->void {
-    while (!batch_provider.done_.load()) {
-      {
-        SCOPED_TIMER("Commit time");
-        std::cout << "<" << std::flush;
-        writer->commit();
-        std::cout << ">" << std::endl;
-      }
+  if (commit_interval_ms) {
+    thread_pool.run([&batch_provider, commit_interval_ms, &writer]()->void {
+      while (!batch_provider.done_.load()) {
+        {
+          SCOPED_TIMER("Commit time");
+          std::cout << "COMMIT" << std::endl; // break indexer thread output by commit
+          writer->commit();
+        }
 
-      std::this_thread::sleep_for(std::chrono::milliseconds(commit_ms));
-    }
-  });
+        std::this_thread::sleep_for(std::chrono::milliseconds(commit_interval_ms));
+      }
+    });
+  }
 
   // indexer threads
-  for (size_t i = inserter_count; i; --i) {
+  for (size_t i = indexer_threads; i; --i) {
     thread_pool.run([&batch_provider, &writer]()->void {
       std::vector<std::string> buf;
       WikiDoc doc;
@@ -756,9 +431,8 @@ int put(const std::string& path, std::istream& stream, int maxlines, int thrs, i
           return ++i < buf.size();
         };
 
-        std::cout << "[" << std::flush;
         writer->insert(inserter);
-        std::cout << "]" << std::flush;
+        std::cout << "." << std::flush; // newline in commit thread
       }
     });
   }
@@ -767,7 +441,26 @@ int put(const std::string& path, std::istream& stream, int maxlines, int thrs, i
 
   {
     SCOPED_TIMER("Commit time");
+    std::cout << "COMMIT" << std::endl; // break indexer thread output by commit
     writer->commit();
+  }
+
+  // merge all segments into a single segment
+  writer->consolidate(
+    [](const irs::directory&, const irs::index_meta&)->irs::index_writer::consolidation_acceptor_t {
+      return [](const irs::segment_meta& meta)->bool {
+        std::cout << meta.name << std::endl;
+        return true;
+      };
+    },
+    false
+  );
+
+  if (consolidate) {
+    SCOPED_TIMER("Merge time");
+    std::cout << "Merging segments:" << std::endl;
+    writer->commit();
+    irs::directory_utils::remove_all_unreferenced(dir);
   }
 
   u_cleanup();
@@ -791,20 +484,11 @@ int put(const po::variables_map& vm) {
         return 1;
     }
 
-    int maxlines = -1;
-    if (vm.count(MAX)) {
-        maxlines = vm[MAX].as<int>();
-    }
-
-    int thrs = 1;
-    if (vm.count(THR)) {
-        thrs = vm[THR].as<int>();
-    }
-
-    int cpr = -1;
-    if (vm.count(CPR)) {
-        cpr = vm[CPR].as<int>();
-    }
+    auto batch_size = vm.count(BATCH_SIZE) ? vm[BATCH_SIZE].as<size_t>() : size_t(0);
+    auto consolidate = vm.count(CONSOLIDATE) ? vm[CONSOLIDATE].as<bool>() : false;
+    auto commit_interval_ms = vm.count(CPR) ? vm[CPR].as<size_t>() : size_t(0);
+    auto indexer_threads = vm.count(THR) ? vm[THR].as<size_t>() : size_t(0);
+    auto lines_max = vm.count(MAX) ? vm[MAX].as<size_t>() : size_t(0);
 
     if (vm.count(INPUT)) {
         auto& file = vm[INPUT].as<std::string>();
@@ -813,11 +497,10 @@ int put(const po::variables_map& vm) {
             return 1;
         }
 
-        return put(path, in, maxlines, thrs, cpr);
-
+        return put(path, in, lines_max, indexer_threads, commit_interval_ms, batch_size, consolidate);
     }
 
-    return put(path, std::cin, maxlines, thrs, cpr);
+    return put(path, std::cin, lines_max, indexer_threads, commit_interval_ms, batch_size, consolidate);
 }
 
 /**
@@ -843,9 +526,11 @@ int main(int argc, char* argv[]) {
     put_desc.add_options()
             (INDEX_DIR.c_str(), po::value<std::string>(), "Path to index directory")
             (INPUT.c_str(), po::value<std::string>(), "Input file")
-            (MAX.c_str(), po::value<int>(), "Maximum lines")
-            (THR.c_str(), po::value<int>(), "Number of insert threads")
-            (CPR.c_str(), po::value<int>(), "Commit period in lines");
+            (BATCH_SIZE.c_str(), po::value<size_t>(), "Lines per batch")
+            (CONSOLIDATE.c_str(), po::value<bool>(), "Consolidate segments")
+            (MAX.c_str(), po::value<size_t>(), "Maximum lines")
+            (THR.c_str(), po::value<size_t>(), "Number of insert threads")
+            (CPR.c_str(), po::value<size_t>(), "Commit period in lines");
 
     po::command_line_parser parser(argc, argv);
     parser.options(desc).allow_unregistered();

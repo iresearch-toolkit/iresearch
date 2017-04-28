@@ -72,8 +72,19 @@ NS_ROOT
 scorer_registrar::scorer_registrar(
     const sort::type_id& type,
     sort::ptr(*factory)(const irs::string_ref& args)
-) {
-  scorer_register::instance().set(type.name(), factory);
+): registered_(scorer_register::instance().set(type.name(), factory)) {
+  if (!registered_) {
+    IR_FRMT_WARN(
+      "type name collision detected while registering scorer, ignoring: type '%s' from %s:%d",
+      type.name().c_str(),
+      __FILE__,
+      __LINE__
+    );
+    IR_STACK_TRACE();
+  }}
+
+scorer_registrar::operator bool() const NOEXCEPT {
+  return registered_;
 }
 
 NS_END
