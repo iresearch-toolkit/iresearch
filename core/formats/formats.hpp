@@ -482,7 +482,10 @@ class IRESEARCH_API formats {
 
 class IRESEARCH_API format_registrar {
  public:
-   format_registrar(const format::type_id& type, format::ptr(*factory)());
+  format_registrar(const format::type_id& type, format::ptr(*factory)());
+  operator bool() const NOEXCEPT;
+ private:
+  bool registered_;
 };
 
 #define REGISTER_FORMAT__(format_name, line) static iresearch::format_registrar format_registrar ## _ ## line(format_name::type(), &format_name::make)

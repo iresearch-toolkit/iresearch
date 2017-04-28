@@ -62,7 +62,7 @@ TEST_F(tfidf_test, test_query) {
 
   irs::order order;
 
-  order.add(irs::scorers::get("tfidf", "{\"reverse\": true}"));
+  order.add(irs::scorers::get("tfidf", irs::string_ref::nil));
 
   auto prepared_order = order.prepare();
   auto comparer = [&prepared_order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
@@ -233,7 +233,7 @@ TEST_F(tfidf_test, test_order) {
   query.field("field");
 
   iresearch::order ord;
-  ord.add<iresearch::tfidf_sort>().reverse(true);
+  ord.add<iresearch::tfidf_sort>();
   auto prepared_order = ord.prepare();
 
   auto comparer = [&prepared_order] (const iresearch::bstring& lhs, const iresearch::bstring& rhs) {

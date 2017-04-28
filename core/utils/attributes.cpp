@@ -138,8 +138,21 @@ attribute_ref<attribute>& attributes::add(const attribute::type_id& type) {
 // --SECTION--                                            attribute registration
 // -----------------------------------------------------------------------------
 
-attribute_registrar::attribute_registrar(const attribute::type_id& type) {
-  attribute_register::instance().set(type.name(), &type);
+attribute_registrar::attribute_registrar(const attribute::type_id& type)
+  : registered_(attribute_register::instance().set(type.name(), &type)) {
+  if (!registered_) {
+    IR_FRMT_WARN(
+      "type name collision detected while registering attribute, ignoring: type '%s' from %s:%d",
+      type.name().c_str(),
+      __FILE__,
+      __LINE__
+    );
+    IR_STACK_TRACE();
+  }
+}
+
+attribute_registrar::operator bool() const NOEXCEPT {
+  return registered_;
 }
 
 NS_END

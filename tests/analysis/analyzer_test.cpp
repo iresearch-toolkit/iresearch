@@ -54,6 +54,21 @@ using namespace tests;
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
+TEST_F(analyzer_test, duplicate_register) {
+  struct dummy_analyzer: public irs::analysis::analyzer {
+    DECLARE_ANALYZER_TYPE() { static irs::analysis::analyzer::type_id type("dummy_analyzer"); return type; }
+    static ptr make(const irs::string_ref&) { return nullptr; }
+    dummy_analyzer(): irs::analysis::analyzer(dummy_analyzer::type()) { }
+  };
+
+  static bool initial_expected = true;
+  irs::analysis::analyzer_registrar initial(dummy_analyzer::type(), &dummy_analyzer::make);
+  ASSERT_EQ(!initial_expected, !initial);
+  initial_expected = false; // next test iteration will not be able to register the same analyzer
+  irs::analysis::analyzer_registrar duplicate(dummy_analyzer::type(), &dummy_analyzer::make);
+  ASSERT_TRUE(!duplicate);
+}
+
 TEST_F(analyzer_test, test_load) {
   {
     auto analyzer = iresearch::analysis::analyzers::get("text", "en");

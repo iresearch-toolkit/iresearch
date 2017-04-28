@@ -49,6 +49,7 @@ configure_file(
 set(IReSearch_tests_sources
   ./analysis/analyzer_test.cpp
   ./analysis/token_stream_tests.cpp
+  ./formats/formats_tests.cpp
   ./formats/skip_list_test.cpp
   ./store/directory_test_case.cpp
   ./store/directory_cleaner_tests.cpp
@@ -67,6 +68,7 @@ set(IReSearch_tests_sources
   ./search/empty_filter_tests.cpp
   ./search/granular_range_filter_tests.cpp
   ./search/index_reader_test.cpp
+  ./search/scorers_tests.cpp
   ./search/tfidf_test.cpp
   ./search/bm25_test.cpp
   ./search/cost_attribute_test.cpp

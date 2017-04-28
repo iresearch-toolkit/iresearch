@@ -9,20 +9,6 @@
 // Agreement under which it is provided by or on behalf of EMC.
 // 
 
-#if !defined(_MSC_VER)
-  #pragma GCC diagnostic ignored "-Wunused-local-typedefs"
-#else
-  #pragma warning(disable: 4512)
-#endif
-
-  #include <boost/property_tree/json_parser.hpp>
-
-#if !defined(_MSC_VER)
-  #pragma GCC diagnostic pop
-#else
-  #pragma warning(default: 4512)
-#endif
-
 #include "tfidf.hpp"
 
 #include "scorers.hpp"
@@ -205,40 +191,15 @@ DEFINE_FACTORY_DEFAULT(irs::tfidf_sort);
 
 /*static*/ sort::ptr tfidf_sort::make(const string_ref& args) {
   static PTR_NAMED(tfidf_sort, ptr);
+  UNUSED(args);
 
-  if (args.empty()) {
-    return ptr; // no jSON object to initialize with
-  }
-
-  // try to parse 'args' as a jSON config
-  try {
-    std::stringstream args_stream(std::string(args.c_str(), args.size()));
-    ::boost::property_tree::ptree pt;
-
-    {
-      static std::mutex mutex;
-      SCOPED_LOCK(mutex); // ::boost::property_tree::read_json(...) is not thread-safe, was seen to SEGFAULT
-      ::boost::property_tree::read_json(args_stream, pt);
-    }
-
-    auto reverse = pt.get_optional<bool>("reverse");
-
-    if (reverse) {
-      ptr->reverse(reverse.value());
-    }
-
-    return ptr;
-  } catch(...) {
-    IR_FRMT_ERROR("Caught error while constructing tfidf_sort from jSON arguments: %s", args.c_str());
-    IR_EXCEPTION();
-  }
-
-  return nullptr;
+  return ptr;
 }
 
 tfidf_sort::tfidf_sort(bool normalize) 
   : sort(tfidf_sort::type()),
     normalize_(normalize) {
+  reverse(true); // return the most relevant results first
 }
 
 sort::prepared::ptr tfidf_sort::prepare() const {
