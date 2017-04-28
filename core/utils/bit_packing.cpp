@@ -339,7 +339,7 @@ uint32_t __fastpack_at(const uint32_t* in, const size_t i) NOEXCEPT {
     case 29: return __fastpack_at<N, 29>(in);
     case 30: return __fastpack_at<N, 30>(in);
     case 31: return __fastpack_at<N, 31>(in);
-    default: assert(false);
+    default: assert(false); return 0; // this should never be hit, or algorithm error
   }
 }
 
@@ -384,7 +384,7 @@ uint32_t __fastpack_at(const uint32_t* in, const size_t i, const uint32_t bits) 
     case 30: return __fastpack_at<30>(in, i);
     case 31: return __fastpack_at<31>(in, i);
     case 32: return __fastpack_at<32>(in, i);
-    default: assert(false);
+    default: assert(false); return 0; // this should never be hit, or algorithm error
   }
 }
 
@@ -455,7 +455,7 @@ uint64_t __fastpack_at(const uint64_t* in, const size_t i) NOEXCEPT {
     case 61: return __fastpack_at<N, 61>(in);
     case 62: return __fastpack_at<N, 62>(in);
     case 63: return __fastpack_at<N, 63>(in);
-    default: assert(false);
+    default: assert(false); return 0; // this should never be hit, or algorithm error
   }
 }
 
@@ -532,7 +532,7 @@ uint64_t __fastpack_at(const uint64_t* in, const size_t i, const uint32_t bits) 
     case 62: return __fastpack_at<62>(in, i);
     case 63: return __fastpack_at<63>(in, i);
     case 64: return __fastpack_at<64>(in, i);
-    default: assert(false);
+    default: assert(false); return 0; // this should never be hit, or algorithm error
   }
 }
 MSVC_ONLY(__pragma(warning(push)))
