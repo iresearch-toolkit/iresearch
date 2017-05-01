@@ -97,9 +97,7 @@ TEST(memory_pool_allocator_test, allocate_deallocate) {
     size_t* dtor_calls_;
   }; // test
 
-  irs::memory::memory_pool_allocator<
-    checker
-  > pool;
+  irs::memory::memory_pool_allocator<checker> pool;
 
   auto* p = pool.allocate(1);
   ASSERT_EQ(0, ctor_calls);
@@ -140,23 +138,139 @@ TEST(memory_pool_allocator_test, profile_std_map) {
   {
     std::map<size_t, test_data, std::less<test_data>> data;
     for (size_t i = 0; i < size; ++i) {
-      REGISTER_TIMER__("std::allocator", __LINE__);
+      SCOPED_TIMER("std::allocator");
       data.emplace(i, i);
     }
   }
 
   // pool allocator
   {
+#if defined(_MSC_VER) && defined(IRESEARCH_DEBUG)
+    // MSVC in debug mode sets _ITERATOR_DEBUG_LEVEL equal to 2 (by default) which 
+    // causes modification of the containers/iterators layout. Internally, containers 
+    // allocate auxillary "Proxy" objects which are have to be created with the help 
+    // of the provided allocator using "rebind". 
+    // In that case allocator should handle creation of more than one types of objects
+    // with the different layout what is impossible for simple segregated storage allocator.
+    // That's why we have to use memory_pool_multi_size_allocator instead of
+    // memory_pool_allocator to deal with that MSVC feature.
+
+    typedef irs::memory::memory_pool_multi_size_allocator<
+      test_data,
+      irs::memory::identity_grow,
+      irs::memory::malloc_free_allocator,
+      irs::memory::single_allocator_tag
+    > alloc_t;
+    
+    irs::memory::memory_multi_size_pool<
+      irs::memory::identity_grow,
+      irs::memory::malloc_free_allocator
+    > pool;
+
+    alloc_t alloc(pool);
+
+    std::map<size_t, test_data, std::less<test_data>, alloc_t> data(alloc);
+#else
     typedef irs::memory::memory_pool_allocator<
       test_data,
       irs::memory::identity_grow,
       irs::memory::malloc_free_allocator,
       irs::memory::single_allocator_tag
-    > pool_t;
+    > alloc_t;
+    
+    std::map<size_t, test_data, std::less<test_data>, alloc_t> data;
+#endif
 
-    std::map<size_t, test_data, std::less<test_data>, pool_t> data;
     for (size_t i = 0; i < size; ++i) {
-      REGISTER_TIMER__("irs::allocator", __LINE__);
+      SCOPED_TIMER("irs::allocator");
+      data.emplace(i, i);
+    }
+
+    // check data
+    for (size_t i = 0; i < size; ++i) {
+      const auto it = data.find(i);
+      ASSERT_NE(data.end(), it);
+      ASSERT_EQ(i, it->second.a);
+    }
+  }
+
+  flush_timers(std::cout);
+}
+
+TEST(memory_pool_allocator_test, profile_std_multimap) {
+  struct test_data {
+    test_data(size_t i)
+      : a(i), b(i), c(i), d(i) {
+    }
+
+    bool operator<(const test_data& rhs) const {
+      return a < rhs.a;
+    }
+
+    size_t a;
+    size_t b;
+    size_t c;
+    size_t d;
+  };
+
+  auto comparer = [](const test_data& lhs, const test_data& rhs) {
+    return lhs.a == rhs.a;
+  };
+
+  const size_t size = 10000;
+  iresearch::timer_utils::init_stats(true);
+
+  // default allocator
+  {
+    std::multimap<size_t, test_data, std::less<test_data>> data;
+    for (size_t i = 0; i < size; ++i) {
+      SCOPED_TIMER("std::allocator");
+      data.emplace(i, i);
+      data.emplace(i, i);
+    }
+  }
+
+  // pool allocator
+  {
+#if defined(_MSC_VER) && defined(IRESEARCH_DEBUG)
+    // MSVC in debug mode sets _ITERATOR_DEBUG_LEVEL equal to 2 (by default) which 
+    // causes modification of the containers/iterators layout. Internally, containers 
+    // allocate auxillary "Proxy" objects which are have to be created with the help 
+    // of the provided allocator using "rebind". 
+    // In that case allocator should handle creation of more than one types of objects
+    // with the different layout what is impossible for simple segregated storage allocator.
+    // That's why we have to use memory_pool_multi_size_allocator instead of
+    // memory_pool_allocator to deal with that MSVC feature.
+
+    typedef irs::memory::memory_pool_multi_size_allocator<
+      test_data,
+      irs::memory::identity_grow,
+      irs::memory::malloc_free_allocator,
+      irs::memory::single_allocator_tag
+    > alloc_t;
+    
+    irs::memory::memory_multi_size_pool<
+      irs::memory::identity_grow,
+      irs::memory::malloc_free_allocator
+    > pool;
+
+    alloc_t alloc(pool);
+
+    std::multimap<size_t, test_data, std::less<test_data>, alloc_t> data(alloc);
+#else
+    typedef irs::memory::memory_pool_allocator<
+      test_data,
+      irs::memory::identity_grow,
+      irs::memory::malloc_free_allocator,
+      irs::memory::single_allocator_tag
+    > alloc_t;
+    
+    std::multimap<size_t, test_data, std::less<test_data>, alloc_t> data;
+#endif
+
+    for (size_t i = 0; i < size; ++i) {
+      SCOPED_TIMER("irs::allocator");
+      data.emplace(i, i);
       data.emplace(i, i);
     }
 
@@ -190,23 +304,51 @@ TEST(memory_pool_allocator_test, profile_std_list) {
   {
     std::list<test_data> data;
     for (size_t i = 0; i < size; ++i) {
-      REGISTER_TIMER__("std::allocator", __LINE__);
+      SCOPED_TIMER("std::allocator");
       data.emplace_back(i);
     }
   }
 
   // pool allocator
   {
+#if defined(_MSC_VER) && defined(IRESEARCH_DEBUG)
+    // MSVC in debug mode sets _ITERATOR_DEBUG_LEVEL equal to 2 (by default) which 
+    // causes modification of the containers/iterators layout. Internally, containers 
+    // allocate auxillary "Proxy" objects which are have to be created with the help 
+    // of the provided allocator using "rebind". 
+    // In that case allocator should handle creation of more than one types of objects
+    // with the different layout what is impossible for simple segregated storage allocator.
+    // That's why we have to use memory_pool_multi_size_allocator instead of
+    // memory_pool_allocator to deal with that MSVC feature.
+
+    typedef irs::memory::memory_pool_multi_size_allocator<
+      test_data,
+      irs::memory::identity_grow,
+      irs::memory::malloc_free_allocator,
+      irs::memory::single_allocator_tag
+    > alloc_t;
+    
+    irs::memory::memory_multi_size_pool<
+      irs::memory::identity_grow,
+      irs::memory::malloc_free_allocator
+    > pool;
+
+    alloc_t alloc(pool);
+
+    std::list<test_data, alloc_t> data(alloc);
+#else
     typedef irs::memory::memory_pool_allocator<
       test_data,
       irs::memory::identity_grow,
       irs::memory::malloc_free_allocator,
       irs::memory::single_allocator_tag
-    > pool_t;
+    > alloc_t;
+    
+    std::list<test_data, alloc_t> data;
+#endif
 
-    std::list<test_data, pool_t> data;
     for (size_t i = 0; i < size; ++i) {
-      REGISTER_TIMER__("irs::allocator", __LINE__);
+      SCOPED_TIMER("irs::allocator");
       data.emplace_back(i);
     }
 
@@ -248,23 +390,51 @@ TEST(memory_pool_allocator_test, profile_std_set) {
   {
     std::set<test_data, std::less<test_data>> data;
     for (size_t i = 0; i < size; ++i) {
-      REGISTER_TIMER__("std::allocator", __LINE__);
+      SCOPED_TIMER("std::allocator");
       data.emplace(i);
     }
   }
 
   // pool allocator
   {
+#if defined(_MSC_VER) && defined(IRESEARCH_DEBUG)
+    // MSVC in debug mode sets _ITERATOR_DEBUG_LEVEL equal to 2 (by default) which 
+    // causes modification of the containers/iterators layout. Internally, containers 
+    // allocate auxillary "Proxy" objects which are have to be created with the help 
+    // of the provided allocator using "rebind". 
+    // In that case allocator should handle creation of more than one types of objects
+    // with the different layout what is impossible for simple segregated storage allocator.
+    // That's why we have to use memory_pool_multi_size_allocator instead of
+    // memory_pool_allocator to deal with that MSVC feature.
+
+    typedef irs::memory::memory_pool_multi_size_allocator<
+      test_data,
+      irs::memory::identity_grow,
+      irs::memory::malloc_free_allocator,
+      irs::memory::single_allocator_tag
+    > alloc_t;
+    
+    irs::memory::memory_multi_size_pool<
+      irs::memory::identity_grow,
+      irs::memory::malloc_free_allocator
+    > pool;
+
+    alloc_t alloc(pool);
+
+    std::set<test_data, std::less<test_data>, alloc_t> data(alloc);
+#else
     typedef irs::memory::memory_pool_allocator<
       test_data,
       irs::memory::identity_grow,
       irs::memory::malloc_free_allocator,
       irs::memory::single_allocator_tag
-    > pool_t;
+    > alloc_t;
+    
+    std::set<test_data, std::less<test_data>, alloc_t> data;
+#endif
 
-    std::set<test_data, std::less<test_data>, pool_t> data;
     for (size_t i = 0; i < size; ++i) {
-      REGISTER_TIMER__("irs::allocator", __LINE__);
+      SCOPED_TIMER("irs::allocator");
       data.emplace(i);
     }
 

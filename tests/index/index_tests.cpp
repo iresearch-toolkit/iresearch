@@ -1410,7 +1410,7 @@ class index_test_case_base : public tests::index_test_base {
   }
 
   void read_write_doc_attributes_fixed_length() {
-    const irs::doc_id_t MAX_DOCS = 8;
+    static const irs::doc_id_t MAX_DOCS = 8;
     static const iresearch::string_ref column_name = "id";
 
     // write documents
@@ -1454,7 +1454,7 @@ class index_test_case_base : public tests::index_test_base {
       auto values = segment.values(column_name);
 
       for (irs::doc_id_t i = 0; i < MAX_DOCS; ++i) {
-        const irs::doc_id_t doc = i + irs::type_limits<irs::type_t::doc_id_t>::min();
+        const irs::doc_id_t doc = i + (irs::type_limits<irs::type_t::doc_id_t>::min)();
         ASSERT_TRUE(values(doc, actual_value));
         const auto actual_str_value = irs::to_string<irs::string_ref>(actual_value.c_str());
         ASSERT_EQ(i, *reinterpret_cast<const irs::doc_id_t*>(actual_str_value.c_str()));

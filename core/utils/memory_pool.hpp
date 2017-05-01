@@ -535,7 +535,7 @@ template<
   template<typename U>
   memory_pool_allocator(const memory_pool_allocator<U, GrowPolicy, BlockAllocator, Tag>& rhs) NOEXCEPT
     : memory_pool_impl_t(rhs.allocator(), sizeof(U), rhs.next_size(), rhs.grow_policy()) {
-    assert(this->empty());
+    assert(rhs.empty()); // can't cast non empty allocator
   }
 
   memory_pool_allocator(
@@ -545,10 +545,10 @@ template<
   }
 
   memory_pool_allocator(
-      const block_allocator_t& alloc,
+      const BlockAllocator& block_alloc,
       const size_t initial_size = 32,
       const GrowPolicy& grow_policy = GrowPolicy()) NOEXCEPT
-    : memory_pool_impl_t(alloc, sizeof(T), initial_size, grow_policy) {
+    : memory_pool_impl_t(block_alloc, sizeof(T), initial_size, grow_policy) {
   }
 
   memory_pool_allocator(memory_pool_allocator&& rhs) NOEXCEPT
@@ -612,8 +612,9 @@ template<
 
   memory_multi_size_pool(
       size_t initial_size = 32,
+      const block_allocator_t& block_alloc = block_allocator_t(),
       const grow_policy_t& grow_policy = grow_policy_t()) NOEXCEPT
-    : pool_base_t(grow_policy, block_allocator_t()) {
+    : pool_base_t(grow_policy, block_alloc) {
   }
 
   void* allocate(const size_t slot_size) {
@@ -641,12 +642,7 @@ template<
   }
 
  private:
-  mutable std::map<
-    size_t,
-    memory_pool_t,
-    std::less<size_t>,
-    memory_pool_allocator<memory_pool_t>
-  > pools_;
+  mutable std::map<size_t, memory_pool_t> pools_;
 }; // memory_multi_size_pool
 
 ///////////////////////////////////////////////////////////////////////////////
