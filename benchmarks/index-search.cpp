@@ -9,6 +9,8 @@
 // Agreement under which it is provided by or on behalf of EMC.
 //
 
+#include "analysis/analyzers.hpp"
+#include "analysis/token_attributes.hpp"
 #include "index/directory_reader.hpp"
 #include "store/fs_directory.hpp"
 #include "search/term_filter.hpp"
@@ -16,6 +18,7 @@
 #include "search/boolean_filter.hpp"
 #include "search/phrase_filter.hpp"
 #include "search/bm25.hpp"
+#include "utils/async_utils.hpp"
 
 #include <boost/program_options.hpp>
 #include <boost/chrono.hpp>
@@ -517,6 +520,130 @@ public:
 
 };
 
+irs::string_ref splitFreq(const std::string& text) {
+  static const std::regex freqPattern1("(\\S+)\\s*#\\s*(.+)"); // single term, prefix
+  static const std::regex freqPattern2("\"(.+)\"\\s*#\\s*(.+)"); // phrase
+  static const std::regex freqPattern3("((?:\\S+\\s+)+)\\s*#\\s*(.+)"); // AND/OR groups
+  std::smatch res;
+
+  if (std::regex_match(text, res, freqPattern1)) {
+    return irs::string_ref(&*(res[1].first), std::distance(res[1].first, res[1].second));
+  } else if (std::regex_match(text, res, freqPattern2)) {
+    return irs::string_ref(&*(res[1].first), std::distance(res[1].first, res[1].second));
+  } else if (std::regex_match(text, res, freqPattern3)) {
+    return irs::string_ref(&*(res[1].first), std::distance(res[1].first, res[1].second));
+  }
+
+  return irs::string_ref::nil;
+}
+
+irs::filter::prepared::ptr prepareFilter(
+  const irs::directory_reader& reader,
+  const irs::order::prepared& order,
+  const std::string& category,
+  const std::string& text,
+  const irs::analysis::analyzer::ptr& analyzer,
+  std::string& tmpBuf
+) {
+  irs::string_ref terms;
+
+  if (category == "HighTerm" || category == "MedTerm" || category == "LowTerm") {
+    if ((terms = splitFreq(text)).null()) {
+      return nullptr;
+    }
+
+    irs::by_term query;
+
+    query.field("body").term(terms);
+
+    return query.prepare(reader, order);
+  }
+
+  if (category == "HighPhrase" || category == "MedPhrase" || category == "LowPhrase") {
+    if ((terms = splitFreq(text)).null()) {
+      return nullptr;
+    }
+
+    irs::by_phrase query;
+
+    query.field("body");
+    analyzer->reset(terms);
+
+    for (auto term = analyzer->attributes().get<irs::term_attribute>(); analyzer->next();) {
+      query.push_back(term->value());
+    }
+
+    return query.prepare(reader, order);
+  }
+
+  if (category == "AndHighHigh" || category == "AndHighMed" || category == "AndHighLow") {
+    if ((terms = splitFreq(text)).null()) {
+      return nullptr;
+    }
+
+    irs::And query;
+
+    for (std::istringstream in(terms); std::getline(in, tmpBuf, ' ');) {
+      query.add<irs::by_term>().field("body").term(tmpBuf.c_str() + 1); // +1 for skip '+' at the start of the term
+    }
+
+    return query.prepare(reader, order);
+  }
+
+  if (category == "OrHighHigh" || category == "OrHighMed" || category == "OrHighLow") {
+    if ((terms = splitFreq(text)).null()) {
+      return nullptr;
+    }
+
+    irs::Or query;
+
+    for (std::istringstream in(terms); std::getline(in, tmpBuf, ' ');) {
+      query.add<irs::by_term>().field("body").term(tmpBuf);
+    }
+
+    return query.prepare(reader, order);
+  }
+
+  if (category == "Prefix3") {
+    irs::by_prefix query;
+
+    terms = irs::string_ref(text, text.size() - 1); // cut '~' at the end of the text
+    query.field("body").term(terms);
+
+    return query.prepare(reader, order);
+  }
+
+  return nullptr;
+}
+
+void prepareTasks(std::vector<Line>& buf, std::istream& in, size_t tasks_per_category) {
+  std::map<std::string, size_t> category_counts;
+  std::string tmpBuf;
+
+  // parse all lines to category:text
+  while (!in.eof()) {
+    static const std::regex m1("(\\S+): (.+)");
+    std::smatch res;
+
+    std::getline(in, tmpBuf);
+
+    if (std::regex_match(tmpBuf, res, m1)) {
+      auto& count = category_counts.emplace(
+        std::piecewise_construct,
+        std::forward_as_tuple(res[1].first, res[1].second),
+        std::forward_as_tuple(0)
+      ).first->second;
+
+      if (++count <= tasks_per_category) {
+        buf.emplace_back(
+          std::string(res[1].first, res[1].second),
+          std::string(res[2].first, res[2].second)
+        );
+      }
+    }
+  }
+}
+
 /**
  */
 static int testQueries(std::vector<Task::ptr>& tasks, irs::directory_reader& reader) {
@@ -588,6 +715,194 @@ static int search(const std::string& path, std::istream& in, std::ostream& out,
     return 0;
 }
 
+int search(
+    const std::string& path,
+    std::istream& in,
+    std::ostream& out,
+    size_t tasks_max,
+    size_t repeat,
+    size_t search_threads,
+    size_t limit,
+    bool shuffle,
+    bool csv
+) {
+  search_threads = std::max(size_t(1), search_threads);
+
+  irs::fs_directory dir(path);
+  irs::async_utils::thread_pool thread_pool(search_threads);
+
+  SCOPED_TIMER("Total Time");
+  std::cout << "Configuration: " << std::endl;
+  std::cout << INDEX_DIR << "=" << path << std::endl;
+  std::cout << MAX << "=" << tasks_max << std::endl;
+  std::cout << RPT << "=" << repeat << std::endl;
+  std::cout << THR << "=" << search_threads << std::endl;
+  std::cout << TOPN << "=" << limit << std::endl;
+  std::cout << RND << "=" << shuffle << std::endl;
+  std::cout << CSV << "=" << csv << std::endl;
+
+  struct task_provider_t {
+    std::mutex mutex;
+    size_t next_task;
+    std::mt19937 randomizer;
+    size_t repeat;
+    bool shuffle;
+    std::vector<Line> tasks;
+    std::vector<size_t> task_ids;
+
+    task_provider_t(): repeat(0), shuffle(false) {}
+
+    void operator=(std::vector<Line>&& lines) {
+      next_task = 0;
+      tasks = std::move(lines);
+      task_ids.resize(tasks.size());
+
+      for (size_t i = 0, count = task_ids.size(); i < count; ++i) {
+        task_ids[i] = i;
+      }
+
+      // initial shuffle
+      if (shuffle) {
+        std::shuffle(task_ids.begin(), task_ids.end(), randomizer);
+      }
+    }
+
+    const Line* operator++() {
+      SCOPED_LOCK(mutex);
+
+      if (next_task >= task_ids.size()) {
+        return nullptr;
+      }
+
+      auto& task = tasks[next_task++];
+
+      // prepare tasks for next iteration if repeat requested
+      if (next_task >= task_ids.size() && repeat--) {
+        next_task = 0;
+
+        // shuffle
+        if (shuffle) {
+          std::shuffle(task_ids.begin(), task_ids.end(), randomizer);
+        }
+      }
+
+      return &task;
+    }
+
+  } task_provider;
+
+  // prepare tasks set
+  {
+    std::vector<Line> lines;
+
+    prepareTasks(lines, in, tasks_max);
+    task_provider.shuffle = shuffle;
+    task_provider.repeat = repeat;
+    task_provider.tasks = std::move(lines);
+  }
+
+  // indexer threads
+  for (size_t i = search_threads; i; --i) {
+    thread_pool.run([&task_provider, &dir, limit, &out, csv]()->void {
+      struct Entry {
+        irs::doc_id_t id;
+        float score;
+        Entry(irs::doc_id_t i, float s): id(i), score(s) {}
+      };
+      static const std::string analyzer_name("text");
+      static const std::string analyzer_args("{\"locale\":\"en\", \"ignored_words\":[\"abc\", \"def\", \"ghi\"]}"); // from index-put
+      auto analyzer = irs::analysis::analyzers::get(analyzer_name, analyzer_args);
+      auto reader = irs::directory_reader::open(dir, irs::formats::get("1_0"));
+      irs::filter::prepared::ptr filter;
+      irs::order::prepared order;
+      std::string tmpBuf;
+      auto comparer = [&order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
+        return order.less(lhs.c_str(), rhs.c_str());
+      };
+      std::multimap<irs::bstring, Entry, decltype(comparer)> sorted(comparer);
+
+      {
+        SCOPED_TIMER("Order building");
+        irs::order sort;
+
+        sort.add(irs::scorers::get("bm25", irs::string_ref::nil));
+        order = sort.prepare();
+      }
+
+      // process a single task
+      for (const Line* line; (line = ++task_provider) != nullptr;) {
+        SCOPED_TIMER("Full task processing time");
+        size_t doc_count = 0;
+        auto start = std::chrono::system_clock::now();
+
+        sorted.clear();
+
+        // parse task
+        {
+          SCOPED_TIMER("Query building time");
+          filter = prepareFilter(reader, order, line->category, line->text, analyzer, tmpBuf);
+
+          if (!filter) {
+            continue;
+          }
+        }
+
+        // execute task
+        {
+          SCOPED_TIMER("Query execution time");
+
+          for (auto& segment: reader) {
+            auto docs = filter->execute(segment, order); // query segment
+            auto& score = docs->attributes().get<irs::score>();
+
+            while (docs->next()) {
+              ++doc_count;
+              docs->score();
+              sorted.emplace(
+                std::piecewise_construct,
+                std::forward_as_tuple(score->value()),
+                std::forward_as_tuple(docs->value(), score ? score->get<float>(0) : .0)
+              );
+
+              if (sorted.size() > limit) {
+                sorted.erase(--(sorted.end()));
+              }
+            }
+          }
+        }
+
+        // output task results
+        {
+          static std::mutex mutex;
+          SCOPED_LOCK(mutex);
+          SCOPED_TIMER("Result processing time");
+          auto tdiff = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start);
+
+          if (csv) {
+            out << line->category << "," << line->text << "," << doc_count << "," << tdiff.count() / 1000. << "," << tdiff.count() << std::endl;
+          } else {
+            out << "TASK: cat=" << line->category << " q='body:" << line->text << "' hits=" << doc_count << std::endl;
+            out << "  " << tdiff.count() / 1000. << " msec" << std::endl;
+            out << "  thread " << std::this_thread::get_id() << std::endl;
+
+            for (auto& entry: sorted) {
+              out << "  doc=" << entry.second.id << " score=" << entry.second.score << std::endl;
+            }
+
+            out << std::endl;
+          }
+        }
+      }
+    });
+  }
+
+  thread_pool.stop();
+
+  u_cleanup();
+
+  return 0;
+}
+
 /**
  *
  * @param vm
@@ -604,15 +919,15 @@ static int search(const po::variables_map& vm) {
         return 1;
     }
 
-    int maxtasks = 1;
+    size_t maxtasks = 1;
     if (vm.count(MAX)) {
-        maxtasks = vm[MAX].as<int>();
+        maxtasks = vm[MAX].as<size_t>();
     }
     std::cout << "Max tasks in category=" << maxtasks << std::endl;
 
-    int repeat = 20;
+    size_t repeat = 20;
     if (vm.count(RPT)) {
-        repeat = vm[RPT].as<int>();
+        repeat = vm[RPT].as<size_t>();
     }
     std::cout << "Task repeat count=" << repeat << std::endl;
 
@@ -622,15 +937,15 @@ static int search(const po::variables_map& vm) {
     }
     std::cout << "Do task list shuffle=" << shuffle << std::endl;
 
-    int thrs = 1;
+    size_t thrs = 1;
     if (vm.count(THR)) {
-        thrs = vm[THR].as<int>();
+        thrs = vm[THR].as<size_t>();
     }
     std::cout << "Search threads=" << thrs << std::endl;
 
-    int topN = 10;
+    size_t topN = 10;
     if (vm.count(TOPN)) {
-        topN = vm[TOPN].as<int>();
+        topN = vm[TOPN].as<size_t>();
     }
     std::cout << "Number of top documents to collect=" << topN << std::endl;
 
