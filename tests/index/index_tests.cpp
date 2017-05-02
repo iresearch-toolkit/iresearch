@@ -1434,14 +1434,14 @@ class index_test_case_base : public tests::index_test_base {
         return ++field.value < MAX_DOCS;
       };
 
-      auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE);
       writer->insert(inserter); // insert MAX_DOCS documents
       writer->commit();
     }
 
     // read inserted values
     {
-      auto reader = ir::directory_reader::open(dir(), codec());
+      auto reader = ir::directory_reader::open(this->dir(), this->codec());
       ASSERT_EQ(1, reader.size());
 
       auto& segment = *(reader.begin());
@@ -1451,7 +1451,7 @@ class index_test_case_base : public tests::index_test_base {
       ASSERT_NE(nullptr, meta);
 
       irs::bytes_ref actual_value;
-      auto values = segment.values(column_name);
+      irs::columnstore_reader::values_reader_f values = segment.values(column_name);
 
       for (irs::doc_id_t i = 0; i < MAX_DOCS; ++i) {
         const irs::doc_id_t doc = i + (irs::type_limits<irs::type_t::doc_id_t>::min)();

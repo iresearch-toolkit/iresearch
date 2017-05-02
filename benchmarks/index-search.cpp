@@ -72,10 +72,7 @@ struct Line {
     std::string category;
     std::string text;
 
-    Line(std::string& c, std::string& t) :
-    category(c),
-    text(t) {
-    }
+    Line(const std::string& c, const std::string& t): category(c), text(t) {}
 };
 
 /**
@@ -569,7 +566,7 @@ irs::filter::prepared::ptr prepareFilter(
     query.field("body");
     analyzer->reset(terms);
 
-    for (auto term = analyzer->attributes().get<irs::term_attribute>(); analyzer->next();) {
+    for (auto& term = analyzer->attributes().get<irs::term_attribute>(); analyzer->next();) {
       query.push_back(term->value());
     }
 
