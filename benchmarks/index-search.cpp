@@ -996,10 +996,10 @@ int main(int argc, char* argv[]) {
             (INDEX_DIR.c_str(), po::value<std::string>(), "Path to index directory")
             (INPUT.c_str(), po::value<std::string>(), "Task file")
             (OUTPUT.c_str(), po::value<std::string>(), "Stats file")
-            (MAX.c_str(), po::value<int>(), "Maximum tasks per category")
-            (RPT.c_str(), po::value<int>(), "Task repeat count")
-            (THR.c_str(), po::value<int>(), "Number of search threads")
-            (TOPN.c_str(), po::value<int>(), "Number of top search results")
+            (MAX.c_str(), po::value<size_t>(), "Maximum tasks per category")
+            (RPT.c_str(), po::value<size_t>(), "Task repeat count")
+            (THR.c_str(), po::value<size_t>(), "Number of search threads")
+            (TOPN.c_str(), po::value<size_t>(), "Number of top search results")
             (RND.c_str(), "Shuffle tasks")
             (CSV.c_str(), "CSV output");
 
