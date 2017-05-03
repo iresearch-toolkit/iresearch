@@ -795,7 +795,7 @@ int search(
     prepareTasks(lines, in, tasks_max);
     task_provider.shuffle = shuffle;
     task_provider.repeat = repeat;
-    task_provider.tasks = std::move(lines);
+    task_provider = std::move(lines);
   }
 
   // indexer threads
