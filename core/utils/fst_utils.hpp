@@ -18,11 +18,8 @@
 #include "noncopyable.hpp"
 
 #include "fst_decl.hpp"
-#include <fst/string-weight.h>
+#include "fst_string_weight.h"
 
-NS_ROOT
-
-NS_BEGIN( fst_utils )
 NS_LOCAL
 
 //////////////////////////////////////////////////////////////////////////////
@@ -31,24 +28,26 @@ NS_LOCAL
 /// @returns true - if the specified weight "w" equals to "val",
 ///          false - otherwise
 //////////////////////////////////////////////////////////////////////////////
-template<typename L, fst::StringType S = fst::STRING_LEFT>
-inline bool equal_to(const fst::StringWeight<L,S>& w, int val) {
-  if (w.Size() != 1) {
-    return false;
-  }
-
-  fst::StringWeightIterator<L, S> iter(w);
-  return iter.Value() == static_cast<L>(val);
+template<typename L>
+inline bool equal_to(const fst::StringLeftWeight<L>& w, int val) {
+  // it's important to cast 'val' to L here since
+  // sizeof(L) maybe less than sizeof(int)
+  return 1 == w.Size() && w[0] == static_cast<L>(val);
 }
 
 NS_END
+
+NS_ROOT
+
+
+NS_BEGIN(fst_utils)
 
 //////////////////////////////////////////////////////////////////////////////
 /// @returns true - if the specified string weight "w" equals to
 //           "StringWeight::Zero()", false - otherwise
 //////////////////////////////////////////////////////////////////////////////
-template<typename L, fst::StringType S = fst::STRING_LEFT>
-inline bool is_zero(const fst::StringWeight<L,S>& w) {
+template<typename L>
+inline bool is_zero(const fst::StringLeftWeight<L>& w) {
   return equal_to(w, fst::kStringInfinity);
 }
 
@@ -56,71 +55,68 @@ inline bool is_zero(const fst::StringWeight<L,S>& w) {
 /// @returns true - if the specified string weight "w" equals to
 //           "StringWeight::NoWeight()", false - otherwise
 //////////////////////////////////////////////////////////////////////////////
-template<typename L, fst::StringType S = fst::STRING_LEFT>
-inline bool is_no_weight(const fst::StringWeight<L,S>& w) {
+template<typename L>
+inline bool is_no_weight(const fst::StringLeftWeight<L>& w) {
   return equal_to(w, fst::kStringBad);
 }
 
-template<typename L, fst::StringType S = fst::STRING_LEFT>
-inline void append( fst::StringWeight< L, S >& lhs,
-                    const fst::StringWeight< L, S >& rhs ) {
+template<typename L>
+inline void append(
+    fst::StringLeftWeight<L>& lhs,
+    const fst::StringLeftWeight<L>& rhs) {
   assert(!is_no_weight(rhs));
 
-  if (fst::StringWeight<L,S>::One() == rhs || is_zero(rhs)) {
+  if (fst::StringLeftWeight<L>::One() == rhs || is_zero(rhs)) {
     return;
   }
 
-  for ( fst::StringWeightIterator< L, S > it( rhs ); !it.Done(); it.Next() ) {
-    lhs.PushBack( it.Value() );
-  }
+  lhs.PushBack(rhs.begin(), rhs.end());
 }
 
 NS_END // fst_utils
 
-struct weight_output : data_output, private util::noncopyable {
+struct byte_weight_output : data_output, private util::noncopyable {
   virtual void close() override {}
 
-  virtual void write_byte(byte_type b) override {
+  virtual void write_byte(byte_type b) override final {
     weight.PushBack(b);
   }
 
-  virtual void write_bytes(const byte_type* b, size_t len) override {
-    for (size_t i = 0; i < len; ++i) {
-      weight.PushBack(b[i]);
-    }
+  virtual void write_bytes(const byte_type* b, size_t len) override final {
+    weight.PushBack(b, b + len);
   }
 
   byte_weight weight;
-}; // weight_output 
+}; // byte_weight_output
 
-struct weight_input : data_input, private util::noncopyable {
+struct byte_weight_input final : data_input, private util::noncopyable {
  public:
-  weight_input() : it_(weight_) { }
+  byte_weight_input() = default;
 
-  explicit weight_input(byte_weight&& weight) NOEXCEPT
+  explicit byte_weight_input(byte_weight&& weight) NOEXCEPT
     : weight_(std::move(weight)),
-      it_(weight_) {
+      begin_(weight_.begin()),
+      end_(weight_.end()) {
   }
 
   virtual byte_type read_byte() override {
-    assert(!it_.Done());
-    byte_type b = it_.Value();
-    it_.Next();
+    assert(!eof());
+    const auto b = *begin_;
+    ++begin_;
     return b;
   }
 
   virtual size_t read_bytes(byte_type* b, size_t size) override {
-    size_t read = 0;
-    for (; read < size && !it_.Done();) {
-      *b++ = it_.Value();
-      it_.Next();
-      ++read;
-    }
+    const size_t pos = std::distance(weight_.begin(), begin_); // current position
+    const size_t read = std::min(size, weight_.Size() - pos);  // number of elements to read
+
+    std::memcpy(b, weight_.c_str() + pos, read*sizeof(byte_type));
+
     return read;
   }
 
   virtual bool eof() const override {
-    return it_.Done();
+    return begin_ == end_;
   }
 
   virtual size_t length() const override {
@@ -128,18 +124,19 @@ struct weight_input : data_input, private util::noncopyable {
   }
 
   virtual size_t file_pointer() const override {
-    throw not_impl_error();
+    return std::distance(weight_.begin(), begin_);
   }
 
   void reset() {
-    it_.Reset();
+    begin_ = weight_.begin();
   }
 
  private:
   byte_weight weight_;
-  byte_weight_iterator it_;
-}; // weight_input 
+  byte_weight::iterator begin_{ weight_.begin() };
+  const byte_weight::iterator end_{ weight_.end() };
+}; // byte_weight_input
 
-NS_END
+NS_END // ROOT
 
 #endif

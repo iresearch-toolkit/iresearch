@@ -13,17 +13,20 @@
 #define IRESEARCH_FST_DECL_H
 
 #include <fst/fst-decl.h>
-#include <fst/string-weight-decl.h>
+
+NS_BEGIN(fst)
+
+template<typename Label> class StringLeftWeight;
+
+NS_END
 
 NS_ROOT
 
-typedef fst::StringWeight< byte_type > byte_weight;
-typedef fst::StringWeightIterator< byte_type > byte_weight_iterator;
-typedef fst::ArcTpl< byte_weight > byte_arc;
-typedef fst::VectorFst< byte_arc > vector_byte_fst;
+typedef fst::StringLeftWeight<byte_type> byte_weight;
+typedef fst::ArcTpl<byte_weight> byte_arc;
+typedef fst::VectorFst<byte_arc> vector_byte_fst;
 
-template< typename Key, typename Weight > class fst_builder;
-
+template<typename Key, typename Weight> class fst_builder;
 typedef fst_builder<byte_type, vector_byte_fst> fst_byte_builder;
 
 NS_END

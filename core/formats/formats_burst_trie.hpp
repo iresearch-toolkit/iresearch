@@ -29,7 +29,8 @@
   #pragma GCC diagnostic ignored "-Wunused-local-typedefs"
 #endif
 
-  #include "utils/fst_decl.hpp"
+//#include "utils/fst_decl.hpp"
+#include "utils/fst_utils.hpp"
 
 #if defined(_MSC_VER)
   // NOOP
@@ -119,6 +120,7 @@ class term_reader : public iresearch::term_reader,
   }
 
  private:
+  typedef fst::VectorFst<byte_arc> fst_t;
   friend class term_iterator;
 
   iresearch::attributes attrs_;
@@ -131,7 +133,7 @@ class term_reader : public iresearch::term_reader,
   uint64_t doc_freq_;
   uint64_t term_freq_;
   field_meta field_;
-  fst::VectorFst< byte_arc >* fst_; // TODO: use compact fst here!!!
+  fst_t* fst_; // TODO: use compact fst here!!!
   field_reader* owner_;
 };
 

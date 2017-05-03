@@ -209,7 +209,7 @@ class block_meta {
 // resetable FST buffer
 // -------------------------------------------------------------------
 
-class fst_buffer: public vector_byte_fst {
+class fst_buffer : public vector_byte_fst {
  public:
   template<typename Data>
   fst_buffer& reset(const Data& data) {
@@ -244,18 +244,20 @@ struct term_t : private util::noncopyable {
 * ------------------------------------------------------------------*/
 
 struct block_t : private util::noncopyable {
-  struct prefixed_output : iresearch::weight_output {
-    explicit prefixed_output(bstring&& prefix): prefix(prefix) {}
+  struct prefixed_output final : iresearch::byte_weight_output {
+    explicit prefixed_output(bstring&& prefix) NOEXCEPT
+      : prefix(prefix) {
+    }
 
     bstring prefix;
   }; // prefixed_output
 
   static const int16_t INVALID_LABEL = -1;
-  
-  block_t( uint64_t block_start, const block_meta& meta, int16_t label )
-    : start( block_start ),
-      label( label ),
-      meta( meta ) {
+
+  block_t(uint64_t block_start, const block_meta& meta, int16_t label)
+    : start(block_start),
+      label(label),
+      meta(meta) {
   }
 
   std::list<prefixed_output> index; /* fst index data */
@@ -380,7 +382,7 @@ class block_iterator : util::noncopyable {
   SeekResult scan_to_term_leaf(const bytes_ref& term, uint64_t& suffix, uint64_t& start);
 
   //TODO: check layout
-  weight_input header_in_; /* reader for block header */
+  byte_weight_input header_in_; /* reader for block header */
   bytes_input suffix_in_; /* suffix input stream */
   bytes_input stats_in_; /* stats input stream */
   term_iterator* owner_;
@@ -543,14 +545,15 @@ class term_iterator : public iresearch::seek_term_iterator {
   frequency* freq_;
   mutable index_input::ptr terms_in_;
   bytes_builder term_;
+  byte_weight weight_; // aggregated fst output
 };
 
 /* -------------------------------------------------------------------
 * block_iterator : impl
 * ------------------------------------------------------------------*/
 
-block_iterator::block_iterator( byte_weight&& header, size_t prefix, 
-                                term_iterator* owner )
+block_iterator::block_iterator(byte_weight&& header, size_t prefix,
+                               term_iterator* owner )
   : header_in_(std::move(header)),
     owner_(owner),
     prefix_(prefix),
@@ -899,7 +902,7 @@ bool term_iterator::next() {
   if (!cur_block_) {
     if (term_.empty()) {
       /* iterator at the beginning */
-      const vector_byte_fst& fst = *owner_->fst_;
+      const auto& fst = *owner_->fst_;
       cur_block_ = push_block(fst.Final(fst.Start()), 0);
       cur_block_->load();
     } else {
@@ -1012,15 +1015,17 @@ ptrdiff_t term_iterator::seek_cached(
 SeekResult term_iterator::seek_equal(const bytes_ref& term) {
   assert(owner_->fst_);
 
-  const vector_byte_fst& fst = *owner_->fst_;
-  typedef decltype(fst.Final(0)) weight_t;
+  typedef term_reader::fst_t fst_t;
+  typedef fst_t::Weight weight_t;
 
-  size_t prefix = 0; /* number of current symbol to process */
-  arc::stateid_t state = fst.Start(); /* start state */
-  byte_weight out; /* aggregated fst output */
+  const auto& fst = *owner_->fst_;
+
+  size_t prefix = 0; // number of current symbol to process
+  arc::stateid_t state = fst.Start(); // start state
+  weight_.Clear(); // clear aggregated fst output
 
   if (cur_block_) {
-    const auto cmp = seek_cached(prefix, state, out, term);
+    const auto cmp = seek_cached(prefix, state, weight_, term);
     if (cmp > 0) {
       /* target term is before the current term */
       cur_block_->reset();
@@ -1037,21 +1042,21 @@ SeekResult term_iterator::seek_equal(const bytes_ref& term) {
   sstate_.resize(prefix); /* remove invalid cached arcs */
 
   bool found = fst_byte_builder::final != state;
-  typedef fst::SortedMatcher<vector_byte_fst> matcher_t;
+  typedef fst::SortedMatcher<fst_t> matcher_t;
   fst::ExplicitMatcher<matcher_t> matcher(fst, fst::MATCH_INPUT); // avoid implicit loops
   while (found && prefix < term.size()) {
     matcher.SetState(state);
     if (found = matcher.Find(term[prefix])) {
-      const byte_arc& arc = matcher.Value();
+      const auto& arc = matcher.Value();
       term_ += byte_type(arc.ilabel);
-      fst_utils::append(out, arc.weight);
+      fst_utils::append(weight_, arc.weight);
       ++prefix;
 
-      const weight_t weight = fst.Final(state = arc.nextstate);
+      const auto weight = fst.Final(state = arc.nextstate);
       if (weight_t::One() != weight && !fst_utils::is_zero(weight)) {
-        cur_block_ = push_block(fst::Times(out, weight), prefix);
+        cur_block_ = push_block(fst::Times(weight_, weight), prefix);
       } else if (fst_byte_builder::final == state) {
-        cur_block_ = push_block(std::move(out), prefix);
+        cur_block_ = push_block(std::move(weight_), prefix);
         found = false;
       }
 
@@ -1195,9 +1200,9 @@ bool term_reader::prepare(
     frequency* freq = attrs_.add<frequency>();
     freq->value = meta_in.read_vlong();
   }
-  
+
   // read fst
-  fst_ = vector_byte_fst::Read(in, fst::FstReadOptions());
+  fst_ = fst_t::Read(in, fst::FstReadOptions());
   assert(fst_);
 
   owner_ = &owner;
