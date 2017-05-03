@@ -1053,7 +1053,7 @@ SeekResult term_iterator::seek_equal(const bytes_ref& term) {
       ++prefix;
 
       const auto weight = fst.Final(state = arc.nextstate);
-      if (weight_t::One() != weight && !fst_utils::is_zero(weight)) {
+      if (weight_t::One() != weight && weight_t::Zero() != weight) {
         cur_block_ = push_block(fst::Times(weight_, weight), prefix);
       } else if (fst_byte_builder::final == state) {
         cur_block_ = push_block(std::move(weight_), prefix);

@@ -88,7 +88,7 @@ class StringLeftWeight {
   }
 
   bool Member() const NOEXCEPT {
-    return 1 != str_.size() || str_[0] != kStringBad;
+    return NoWeight() != *this;
   }
 
   std::istream& Read(std::istream& strm) {
@@ -149,7 +149,7 @@ class StringLeftWeight {
     return str_.c_str();
   }
 
-  void Empty() const NOEXCEPT {
+  bool Empty() const NOEXCEPT {
     return str_.empty();
   }
 
@@ -168,6 +168,10 @@ class StringLeftWeight {
   template<typename Iterator>
   void PushBack(Iterator begin, Iterator end) {
     str_.append(begin, end);
+  }
+
+  void PushBack(const StringLeftWeight& w) {
+    PushBack(w.begin(), w.end());
   }
 
   void Reserve(size_t capacity) {
@@ -283,8 +287,8 @@ template <typename Label>
 inline StringLeftWeight<Label> Times(
     const StringLeftWeight<Label>& lhs,
     const StringLeftWeight<Label>& rhs) {
-  using Weight = StringLeftWeight<Label>;
- 
+  typedef StringLeftWeight<Label> Weight;
+
   if (!lhs.Member() || !rhs.Member()) {
     return Weight::NoWeight();
   }
@@ -293,7 +297,7 @@ inline StringLeftWeight<Label> Times(
     return Weight::Zero();
   }
 
-  Weight product(lhs.end(), lhs.end()); // create empty weight
+  Weight product;
   product.Reserve(lhs.Size() + rhs.Size());
   product.PushBack(lhs.begin(), lhs.end());
   product.PushBack(rhs.begin(), rhs.end());
@@ -305,30 +309,30 @@ template <typename Label>
 inline StringLeftWeight<Label> DivideLeft(
     const StringLeftWeight<Label>& lhs,
     const StringLeftWeight<Label>& rhs) {
-  using Weight = StringLeftWeight<Label>;
+  typedef StringLeftWeight<Label> Weight;
   
   if (!lhs.Member() || !rhs.Member()) {
     return Weight::NoWeight();
   }
 
   if (rhs == Weight::Zero()) {
-    return Weight(kStringBad);
-  } else if (lhs == Weight::Zero()) {
+    return Weight::NoWeight();
+  } if (lhs == Weight::Zero()) {
     return Weight::Zero();
   }
 
   if (rhs.Size() > lhs.Size()) {
-    return Weight(lhs.end(), lhs.end()); // return empty weight
+    return Weight();
   }
 
   return Weight(lhs.begin() + rhs.Size(), lhs.end());
 }
 
-template <typename L> 
-inline StringLeftWeight<L>
-Divide(const StringLeftWeight<L>& lhs,
-       const StringLeftWeight<L>& rhs,
-       DivideType typ) {
+template <typename Label>
+inline StringLeftWeight<Label> Divide(
+    const StringLeftWeight<Label>& lhs,
+    const StringLeftWeight<Label>& rhs,
+    DivideType typ) {
   assert(DIVIDE_LEFT == typ);
   return DivideLeft(lhs, rhs);
 }

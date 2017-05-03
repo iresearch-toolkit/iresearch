@@ -20,57 +20,25 @@
 #include "fst_decl.hpp"
 #include "fst_string_weight.h"
 
-NS_LOCAL
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief fast and effective helper to check if the specified weight equals
-///        to special semiring member
-/// @returns true - if the specified weight "w" equals to "val",
-///          false - otherwise
-//////////////////////////////////////////////////////////////////////////////
-template<typename L>
-inline bool equal_to(const fst::StringLeftWeight<L>& w, int val) {
-  // it's important to cast 'val' to L here since
-  // sizeof(L) maybe less than sizeof(int)
-  return 1 == w.Size() && w[0] == static_cast<L>(val);
-}
-
-NS_END
-
 NS_ROOT
 
-
 NS_BEGIN(fst_utils)
-
-//////////////////////////////////////////////////////////////////////////////
-/// @returns true - if the specified string weight "w" equals to
-//           "StringWeight::Zero()", false - otherwise
-//////////////////////////////////////////////////////////////////////////////
-template<typename L>
-inline bool is_zero(const fst::StringLeftWeight<L>& w) {
-  return equal_to(w, fst::kStringInfinity);
-}
-
-//////////////////////////////////////////////////////////////////////////////
-/// @returns true - if the specified string weight "w" equals to
-//           "StringWeight::NoWeight()", false - otherwise
-//////////////////////////////////////////////////////////////////////////////
-template<typename L>
-inline bool is_no_weight(const fst::StringLeftWeight<L>& w) {
-  return equal_to(w, fst::kStringBad);
-}
 
 template<typename L>
 inline void append(
     fst::StringLeftWeight<L>& lhs,
     const fst::StringLeftWeight<L>& rhs) {
-  assert(!is_no_weight(rhs));
+  assert(fst::StringLeftWeight<L>::NoWeight() != rhs);
 
-  if (fst::StringLeftWeight<L>::One() == rhs || is_zero(rhs)) {
+  if (fst::StringLeftWeight<L>::Zero() == rhs) {
     return;
   }
 
-  lhs.PushBack(rhs.begin(), rhs.end());
+  // must be empty in order to simplify the condition above
+  // (otherwise we should do return in case if fst::StringLeftWeight<L>::One() == rhs)
+  assert(fst::StringLeftWeight<L>::One().Empty());
+
+  lhs.PushBack(rhs);
 }
 
 NS_END // fst_utils
