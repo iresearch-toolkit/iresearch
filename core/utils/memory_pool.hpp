@@ -534,7 +534,7 @@ template<
 
   template<typename U>
   memory_pool_allocator(const memory_pool_allocator<U, GrowPolicy, BlockAllocator, Tag>& rhs) NOEXCEPT
-    : memory_pool_impl_t(rhs.allocator(), sizeof(U), rhs.next_size(), rhs.grow_policy()) {
+    : memory_pool_impl_t(rhs.allocator(), sizeof(T), rhs.next_size(), rhs.grow_policy()) {
     assert(rhs.empty()); // can't cast non empty allocator
   }
 
