@@ -885,7 +885,7 @@ int search(
         alloc_t alloc(pool);
       #else
         typedef irs::memory::memory_pool_allocator<Entry, irs::memory::identity_grow> alloc_t;
-        alloc_t alloc(limit + 1); // +1 for overflow element
+        alloc_t alloc;
       #endif
 
       std::multimap<irs::bstring, Entry, decltype(comparer), alloc_t> sorted(comparer, alloc);
