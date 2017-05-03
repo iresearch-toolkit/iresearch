@@ -19,6 +19,7 @@
 #include "search/phrase_filter.hpp"
 #include "search/bm25.hpp"
 #include "utils/async_utils.hpp"
+#include "utils/memory_pool.hpp"
 
 #include <boost/program_options.hpp>
 #include <boost/chrono.hpp>
@@ -518,7 +519,6 @@ public:
 };
 
 enum class category_t {
-  UNKNOWN,
   HighTerm,
   MedTerm,
   LowTerm,
@@ -532,6 +532,7 @@ enum class category_t {
   OrHighMed,
   OrHighLow,
   Prefix3,
+  UNKNOWN
 };
 
 struct task_t {
@@ -876,7 +877,18 @@ int search(
       auto comparer = [&order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
         return order.less(lhs.c_str(), rhs.c_str());
       };
-      std::multimap<irs::bstring, Entry, decltype(comparer)> sorted(comparer);
+
+      #if defined(_MSC_VER) && defined(IRESEARCH_DEBUG)
+        typedef irs::memory::memory_pool_multi_size_allocator<Entry, irs::memory::identity_grow> alloc_t;
+        typedef irs::memory::memory_multi_size_pool<irs::memory::identity_grow> pool_t;
+        pool_t pool;
+        alloc_t alloc(pool);
+      #else
+        typedef irs::memory::memory_pool_allocator<Entry, irs::memory::identity_grow> alloc_t;
+        alloc_t alloc(limit + 1); // +1 for overflow element
+      #endif
+
+      std::multimap<irs::bstring, Entry, decltype(comparer), alloc_t> sorted(comparer, alloc);
 
       {
         SCOPED_TIMER("Order building");
@@ -896,7 +908,16 @@ int search(
 
         // parse task
         {
+          static struct timers_t {
+            std::vector<irs::timer_utils::timer_stat_t*> stat;
+            timers_t() {
+              for (size_t i = 0, count = size_t(category_t::UNKNOWN); i <= count; ++i) {
+                stat.emplace_back(&irs::timer_utils::get_stat(std::string("Query building (") + stringCategory(category_t(i)).c_str() + ") time"));
+              }
+            }
+          } timers;
           SCOPED_TIMER("Query building time");
+          irs::timer_utils::scoped_timer timer(*(timers.stat[size_t(task->category)]));
           filter = prepareFilter(reader, order, task->category, task->text, analyzer, tmpBuf);
 
           if (!filter) {
@@ -906,7 +927,16 @@ int search(
 
         // execute task
         {
+          static struct timers_t {
+            std::vector<irs::timer_utils::timer_stat_t*> stat;
+            timers_t() {
+              for (size_t i = 0, count = size_t(category_t::UNKNOWN); i <= count; ++i) {
+                stat.emplace_back(&irs::timer_utils::get_stat(std::string("Query execution (") + stringCategory(category_t(i)).c_str() + ") time"));
+              }
+            }
+          } timers;
           SCOPED_TIMER("Query execution time");
+          irs::timer_utils::scoped_timer timer(*(timers.stat[size_t(task->category)]));
 
           for (auto& segment: reader) {
             auto docs = filter->execute(segment, order); // query segment
