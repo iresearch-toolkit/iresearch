@@ -614,7 +614,8 @@ template<
       size_t initial_size = 32,
       const block_allocator_t& block_alloc = block_allocator_t(),
       const grow_policy_t& grow_policy = grow_policy_t()) NOEXCEPT
-    : pool_base_t(grow_policy, block_alloc) {
+    : pool_base_t(grow_policy, block_alloc),
+      initial_size_(initial_size) {
   }
 
   void* allocate(const size_t slot_size) {
@@ -635,7 +636,7 @@ template<
 
   memory_pool_t& pool(const size_t size) const {
     const auto res = irs::map_utils::try_emplace(
-      pools_, size, this->allocator(), size, 32, this->grow_policy()
+      pools_, size, this->allocator(), size, initial_size_, this->grow_policy()
     );
 
     return res.first->second;
@@ -643,6 +644,7 @@ template<
 
  private:
   mutable std::map<size_t, memory_pool_t> pools_;
+  const size_t initial_size_; // initial size for all sub-allocators
 }; // memory_multi_size_pool
 
 ///////////////////////////////////////////////////////////////////////////////

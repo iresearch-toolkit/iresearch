@@ -140,6 +140,9 @@ TEST(memory_pool_allocator_test, profile_std_map) {
     for (size_t i = 0; i < size; ++i) {
       SCOPED_TIMER("std::allocator");
       data.emplace(i, i);
+      if (i % 2) {
+        data.erase(--data.end());
+      }
     }
   }
 
@@ -167,13 +170,20 @@ TEST(memory_pool_allocator_test, profile_std_map) {
     for (size_t i = 0; i < size; ++i) {
       SCOPED_TIMER("irs::allocator");
       data.emplace(i, i);
+      if (i % 2) {
+        data.erase(--data.end());
+      }
     }
 
     // check data
     for (size_t i = 0; i < size; ++i) {
       const auto it = data.find(i);
-      ASSERT_NE(data.end(), it);
-      ASSERT_EQ(i, it->second.a);
+      if (i % 2) {
+        ASSERT_EQ(data.end(), it);
+      } else {
+        ASSERT_NE(data.end(), it);
+        ASSERT_EQ(i, it->second.a);
+      }
     }
   }
 #endif
@@ -199,13 +209,60 @@ TEST(memory_pool_allocator_test, profile_std_map) {
     for (size_t i = 0; i < size; ++i) {
       SCOPED_TIMER("irs::allocator(multi-size)");
       data.emplace(i, i);
+      if (i % 2) {
+        data.erase(--data.end());
+      }
     }
 
     // check data
     for (size_t i = 0; i < size; ++i) {
       const auto it = data.find(i);
-      ASSERT_NE(data.end(), it);
-      ASSERT_EQ(i, it->second.a);
+      if (i % 2) {
+        ASSERT_EQ(data.end(), it);
+      } else {
+        ASSERT_NE(data.end(), it);
+        ASSERT_EQ(i, it->second.a);
+      }
+    }
+  }
+
+  // mutli-size pool allocator (custom initial size)
+  {
+    const size_t initial_size = 128;
+
+    typedef irs::memory::memory_pool_multi_size_allocator<
+      test_data,
+      irs::memory::identity_grow,
+      irs::memory::malloc_free_allocator,
+      irs::memory::single_allocator_tag
+    > alloc_t;
+
+    irs::memory::memory_multi_size_pool<
+      irs::memory::identity_grow,
+      irs::memory::malloc_free_allocator
+    > pool(initial_size);
+
+    alloc_t alloc(pool);
+
+    std::map<size_t, test_data, std::less<test_data>, alloc_t> data(alloc);
+
+    for (size_t i = 0; i < size; ++i) {
+      SCOPED_TIMER("irs::allocator(multi-size,initial_size==128)");
+      data.emplace(i, i);
+      if (i % 2) {
+        data.erase(--data.end());
+      }
+    }
+
+    // check data
+    for (size_t i = 0; i < size; ++i) {
+      const auto it = data.find(i);
+      if (i % 2) {
+        ASSERT_EQ(data.end(), it);
+      } else {
+        ASSERT_NE(data.end(), it);
+        ASSERT_EQ(i, it->second.a);
+      }
     }
   }
 
@@ -242,6 +299,7 @@ TEST(memory_pool_allocator_test, profile_std_multimap) {
       SCOPED_TIMER("std::allocator");
       data.emplace(i, i);
       data.emplace(i, i);
+      data.erase(--data.end());
     }
   }
 
@@ -270,6 +328,7 @@ TEST(memory_pool_allocator_test, profile_std_multimap) {
       SCOPED_TIMER("irs::allocator");
       data.emplace(i, i);
       data.emplace(i, i);
+      data.erase(--data.end());
     }
 
     // check data
@@ -310,6 +369,7 @@ TEST(memory_pool_allocator_test, profile_std_multimap) {
       SCOPED_TIMER("irs::allocator(initial_size==128)");
       data.emplace(i, i);
       data.emplace(i, i);
+      data.erase(--data.end());
     }
 
     // check data
@@ -343,6 +403,42 @@ TEST(memory_pool_allocator_test, profile_std_multimap) {
       SCOPED_TIMER("irs::allocator(multi-size)");
       data.emplace(i, i);
       data.emplace(i, i);
+      data.erase(--data.end());
+    }
+
+    // check data
+    for (size_t i = 0; i < size; ++i) {
+      const auto it = data.find(i);
+      ASSERT_NE(data.end(), it);
+      ASSERT_EQ(i, it->second.a);
+    }
+  }
+
+  // mutli-size pool allocator (custom initial size)
+  {
+    const size_t initial_size =128;
+
+    typedef irs::memory::memory_pool_multi_size_allocator<
+      test_data,
+      irs::memory::identity_grow,
+      irs::memory::malloc_free_allocator,
+      irs::memory::single_allocator_tag
+    > alloc_t;
+
+    irs::memory::memory_multi_size_pool<
+      irs::memory::identity_grow,
+      irs::memory::malloc_free_allocator
+    > pool(initial_size);
+
+    alloc_t alloc(pool);
+
+    std::multimap<size_t, test_data, std::less<test_data>, alloc_t> data(alloc);
+
+    for (size_t i = 0; i < size; ++i) {
+      SCOPED_TIMER("irs::allocator(multi-size,initial_size==128)");
+      data.emplace(i, i);
+      data.emplace(i, i);
+      data.erase(--data.end());
     }
 
     // check data
@@ -377,6 +473,9 @@ TEST(memory_pool_allocator_test, profile_std_list) {
     for (size_t i = 0; i < size; ++i) {
       SCOPED_TIMER("std::allocator");
       data.emplace_back(i);
+      if (i % 2) {
+        data.erase(--data.end());
+      }
     }
   }
 
@@ -404,13 +503,16 @@ TEST(memory_pool_allocator_test, profile_std_list) {
     for (size_t i = 0; i < size; ++i) {
       SCOPED_TIMER("irs::allocator");
       data.emplace_back(i);
+      if (i % 2) {
+        data.erase(--data.end());
+      }
     }
 
     // check data
     size_t i = 0;
     for (auto& item : data) {
       ASSERT_EQ(i, item.a);
-      ++i;
+      i += 2;
     }
   }
 #endif
@@ -436,13 +538,52 @@ TEST(memory_pool_allocator_test, profile_std_list) {
     for (size_t i = 0; i < size; ++i) {
       SCOPED_TIMER("irs::allocator(multi-size)");
       data.emplace_back(i);
+      if (i % 2) {
+        data.erase(--data.end());
+      }
     }
 
     // check data
     size_t i = 0;
     for (auto& item : data) {
       ASSERT_EQ(i, item.a);
-      ++i;
+      i += 2;
+    }
+  }
+
+  // mutli-size pool allocator (custom initial size)
+  {
+    const size_t initial_size = 128;
+
+    typedef irs::memory::memory_pool_multi_size_allocator<
+      test_data,
+      irs::memory::identity_grow,
+      irs::memory::malloc_free_allocator,
+      irs::memory::single_allocator_tag
+    > alloc_t;
+
+    irs::memory::memory_multi_size_pool<
+      irs::memory::identity_grow,
+      irs::memory::malloc_free_allocator
+    > pool(initial_size);
+
+    alloc_t alloc(pool);
+
+    std::list<test_data, alloc_t> data(alloc);
+
+    for (size_t i = 0; i < size; ++i) {
+      SCOPED_TIMER("irs::allocator(multi-size,initial_size==128)");
+      data.emplace_back(i);
+      if (i % 2) {
+        data.erase(--data.end());
+      }
+    }
+
+    // check data
+    size_t i = 0;
+    for (auto& item : data) {
+      ASSERT_EQ(i, item.a);
+      i += 2;
     }
   }
 
@@ -478,6 +619,9 @@ TEST(memory_pool_allocator_test, profile_std_set) {
     for (size_t i = 0; i < size; ++i) {
       SCOPED_TIMER("std::allocator");
       data.emplace(i);
+      if (i % 2) {
+        data.erase(--data.end());
+      }
     }
   }
 
@@ -505,13 +649,20 @@ TEST(memory_pool_allocator_test, profile_std_set) {
     for (size_t i = 0; i < size; ++i) {
       SCOPED_TIMER("irs::allocator");
       data.emplace(i);
+      if (i % 2) {
+        data.erase(--data.end());
+      }
     }
 
     // check data
     for (size_t i = 0; i < size; ++i) {
       const auto it = data.find(test_data(i));
-      ASSERT_NE(data.end(), it);
-      ASSERT_EQ(i, it->a);
+      if (i % 2) {
+        ASSERT_EQ(data.end(), it);
+      } else {
+        ASSERT_NE(data.end(), it);
+        ASSERT_EQ(i, it->a);
+      }
     }
   }
 #endif
@@ -537,13 +688,60 @@ TEST(memory_pool_allocator_test, profile_std_set) {
     for (size_t i = 0; i < size; ++i) {
       SCOPED_TIMER("irs::allocator(multi-size)");
       data.emplace(i);
+      if (i % 2) {
+        data.erase(--data.end());
+      }
     }
 
     // check data
     for (size_t i = 0; i < size; ++i) {
       const auto it = data.find(test_data(i));
-      ASSERT_NE(data.end(), it);
-      ASSERT_EQ(i, it->a);
+      if (i % 2) {
+        ASSERT_EQ(data.end(), it);
+      } else {
+        ASSERT_NE(data.end(), it);
+        ASSERT_EQ(i, it->a);
+      }
+    }
+  }
+
+  // mutli-size pool allocator (custom initial size)
+  {
+    const size_t initial_size = 128;
+
+    typedef irs::memory::memory_pool_multi_size_allocator<
+      test_data,
+      irs::memory::identity_grow,
+      irs::memory::malloc_free_allocator,
+      irs::memory::single_allocator_tag
+    > alloc_t;
+
+    irs::memory::memory_multi_size_pool<
+      irs::memory::identity_grow,
+      irs::memory::malloc_free_allocator
+    > pool(initial_size);
+
+    alloc_t alloc(pool);
+
+    std::set<test_data, std::less<test_data>, alloc_t> data(alloc);
+
+    for (size_t i = 0; i < size; ++i) {
+      SCOPED_TIMER("irs::allocator(multi-size,initial_size==128)");
+      data.emplace(i);
+      if (i % 2) {
+        data.erase(--data.end());
+      }
+    }
+
+    // check data
+    for (size_t i = 0; i < size; ++i) {
+      const auto it = data.find(test_data(i));
+      if (i % 2) {
+        ASSERT_EQ(data.end(), it);
+      } else {
+        ASSERT_NE(data.end(), it);
+        ASSERT_EQ(i, it->a);
+      }
     }
   }
 
