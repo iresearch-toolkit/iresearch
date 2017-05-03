@@ -517,6 +517,66 @@ public:
 
 };
 
+enum class category_t {
+  UNKNOWN,
+  HighTerm,
+  MedTerm,
+  LowTerm,
+  HighPhrase,
+  MedPhrase,
+  LowPhrase,
+  AndHighHigh,
+  AndHighMed,
+  AndHighLow,
+  OrHighHigh,
+  OrHighMed,
+  OrHighLow,
+  Prefix3,
+};
+
+struct task_t {
+  category_t category;
+  std::string text;
+  task_t(category_t v_category, std::string&& v_text): category(v_category), text(std::move(v_text)) {}
+};
+
+category_t parseCategory(const irs::string_ref& value) {
+  if (value == "HighTerm") return category_t::HighTerm;
+  if (value == "MedTerm") return category_t::MedTerm;
+  if (value == "LowTerm") return category_t::LowTerm;
+  if (value == "HighPhrase") return category_t::HighPhrase;
+  if (value == "MedPhrase") return category_t::MedPhrase;
+  if (value == "LowPhrase") return category_t::LowPhrase;
+  if (value == "AndHighHigh") return category_t::AndHighHigh;
+  if (value == "AndHighMed") return category_t::AndHighMed;
+  if (value == "AndHighLow") return category_t::AndHighLow;
+  if (value == "OrHighHigh") return category_t::OrHighHigh;
+  if (value == "OrHighMed") return category_t::OrHighMed;
+  if (value == "OrHighLow") return category_t::OrHighLow;
+  if (value == "Prefix3") return category_t::Prefix3;
+
+  return category_t::UNKNOWN;
+}
+
+irs::string_ref stringCategory(category_t category) {
+  switch(category) {
+   case category_t::HighTerm: return "HighTerm";
+   case category_t::MedTerm: return "MedTerm";
+   case category_t::LowTerm: return "LowTerm";
+   case category_t::HighPhrase: return "HighPhrase";
+   case category_t::MedPhrase: return "MedPhrase";
+   case category_t::LowPhrase: return "LowPhrase";
+   case category_t::AndHighHigh: return "AndHighHigh";
+   case category_t::AndHighMed: return "AndHighMed";
+   case category_t::AndHighLow: return "AndHighLow";
+   case category_t::OrHighHigh: return "OrHighHigh";
+   case category_t::OrHighMed: return "OrHighMed";
+   case category_t::OrHighLow: return "OrHighLow";
+   case category_t::Prefix3: return "Prefix3";
+   default: return "<unknown>";
+  }
+}
+
 irs::string_ref splitFreq(const std::string& text) {
   static const std::regex freqPattern1("(\\S+)\\s*#\\s*(.+)"); // single term, prefix
   static const std::regex freqPattern2("\"(.+)\"\\s*#\\s*(.+)"); // phrase
@@ -537,14 +597,17 @@ irs::string_ref splitFreq(const std::string& text) {
 irs::filter::prepared::ptr prepareFilter(
   const irs::directory_reader& reader,
   const irs::order::prepared& order,
-  const std::string& category,
+  category_t category,
   const std::string& text,
   const irs::analysis::analyzer::ptr& analyzer,
   std::string& tmpBuf
 ) {
   irs::string_ref terms;
 
-  if (category == "HighTerm" || category == "MedTerm" || category == "LowTerm") {
+  switch (category) {
+   case category_t::HighTerm: // fall through
+   case category_t::MedTerm: // fall through
+   case category_t::LowTerm: {
     if ((terms = splitFreq(text)).null()) {
       return nullptr;
     }
@@ -554,9 +617,10 @@ irs::filter::prepared::ptr prepareFilter(
     query.field("body").term(terms);
 
     return query.prepare(reader, order);
-  }
-
-  if (category == "HighPhrase" || category == "MedPhrase" || category == "LowPhrase") {
+   }
+   case category_t::HighPhrase: // fall through
+   case category_t::MedPhrase: // fall through
+   case category_t::LowPhrase: {
     if ((terms = splitFreq(text)).null()) {
       return nullptr;
     }
@@ -571,9 +635,10 @@ irs::filter::prepared::ptr prepareFilter(
     }
 
     return query.prepare(reader, order);
-  }
-
-  if (category == "AndHighHigh" || category == "AndHighMed" || category == "AndHighLow") {
+   }
+   case category_t::AndHighHigh: // fall through
+   case category_t::AndHighMed: // fall through
+   case category_t::AndHighLow: {
     if ((terms = splitFreq(text)).null()) {
       return nullptr;
     }
@@ -585,9 +650,10 @@ irs::filter::prepared::ptr prepareFilter(
     }
 
     return query.prepare(reader, order);
-  }
-
-  if (category == "OrHighHigh" || category == "OrHighMed" || category == "OrHighLow") {
+   }
+   case category_t::OrHighHigh: // fall through
+   case category_t::OrHighMed: // fall through
+   case category_t::OrHighLow: {
     if ((terms = splitFreq(text)).null()) {
       return nullptr;
     }
@@ -599,22 +665,22 @@ irs::filter::prepared::ptr prepareFilter(
     }
 
     return query.prepare(reader, order);
-  }
-
-  if (category == "Prefix3") {
+   }
+   case category_t::Prefix3: {
     irs::by_prefix query;
 
     terms = irs::string_ref(text, text.size() - 1); // cut '~' at the end of the text
     query.field("body").term(terms);
 
     return query.prepare(reader, order);
+   }
   }
 
   return nullptr;
 }
 
-void prepareTasks(std::vector<Line>& buf, std::istream& in, size_t tasks_per_category) {
-  std::map<std::string, size_t> category_counts;
+void prepareTasks(std::vector<task_t>& buf, std::istream& in, size_t tasks_per_category) {
+  std::map<category_t, size_t> category_counts;
   std::string tmpBuf;
 
   // parse all lines to category:text
@@ -625,17 +691,11 @@ void prepareTasks(std::vector<Line>& buf, std::istream& in, size_t tasks_per_cat
     std::getline(in, tmpBuf);
 
     if (std::regex_match(tmpBuf, res, m1)) {
-      auto& count = category_counts.emplace(
-        std::piecewise_construct,
-        std::forward_as_tuple(res[1].first, res[1].second),
-        std::forward_as_tuple(0)
-      ).first->second;
+      auto category = parseCategory(irs::string_ref(&*(res[1].first), std::distance(res[1].first, res[1].second)));
+      auto& count = category_counts.emplace(category, 0).first->second;
 
       if (++count <= tasks_per_category) {
-        buf.emplace_back(
-          std::string(res[1].first, res[1].second),
-          std::string(res[2].first, res[2].second)
-        );
+        buf.emplace_back(category, std::string(res[2].first, res[2].second));
       }
     }
   }
@@ -744,12 +804,12 @@ int search(
     std::mt19937 randomizer;
     size_t repeat;
     bool shuffle;
-    std::vector<Line> tasks;
+    std::vector<task_t> tasks;
     std::vector<size_t> task_ids;
 
     task_provider_t(): repeat(0), shuffle(false) {}
 
-    void operator=(std::vector<Line>&& lines) {
+    void operator=(std::vector<task_t>&& lines) {
       next_task = 0;
       tasks = std::move(lines);
       task_ids.resize(tasks.size());
@@ -764,7 +824,7 @@ int search(
       }
     }
 
-    const Line* operator++() {
+    const task_t* operator++() {
       SCOPED_LOCK(mutex);
 
       if (next_task >= task_ids.size()) {
@@ -790,12 +850,12 @@ int search(
 
   // prepare tasks set
   {
-    std::vector<Line> lines;
+    std::vector<task_t> tasks;
 
-    prepareTasks(lines, in, tasks_max);
+    prepareTasks(tasks, in, tasks_max);
     task_provider.shuffle = shuffle;
     task_provider.repeat = repeat;
-    task_provider = std::move(lines);
+    task_provider = std::move(tasks);
   }
 
   // indexer threads
@@ -827,7 +887,7 @@ int search(
       }
 
       // process a single task
-      for (const Line* line; (line = ++task_provider) != nullptr;) {
+      for (const task_t* task; (task = ++task_provider) != nullptr;) {
         SCOPED_TIMER("Full task processing time");
         size_t doc_count = 0;
         auto start = std::chrono::system_clock::now();
@@ -837,7 +897,7 @@ int search(
         // parse task
         {
           SCOPED_TIMER("Query building time");
-          filter = prepareFilter(reader, order, line->category, line->text, analyzer, tmpBuf);
+          filter = prepareFilter(reader, order, task->category, task->text, analyzer, tmpBuf);
 
           if (!filter) {
             continue;
@@ -876,9 +936,9 @@ int search(
           auto tdiff = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start);
 
           if (csv) {
-            out << line->category << "," << line->text << "," << doc_count << "," << tdiff.count() / 1000. << "," << tdiff.count() << std::endl;
+            out << stringCategory(task->category) << "," << task->text << "," << doc_count << "," << tdiff.count() / 1000. << "," << tdiff.count() << std::endl;
           } else {
-            out << "TASK: cat=" << line->category << " q='body:" << line->text << "' hits=" << doc_count << std::endl;
+            out << "TASK: cat=" << stringCategory(task->category) << " q='body:" << task->text << "' hits=" << doc_count << std::endl;
             out << "  " << tdiff.count() / 1000. << " msec" << std::endl;
             out << "  thread " << std::this_thread::get_id() << std::endl;
 
