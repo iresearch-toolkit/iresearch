@@ -13,6 +13,7 @@
 #define IRESEARCH_MEMORY_H
 
 #include <memory>
+#include <boost/integer/static_min_max.hpp>
 
 #include "shared.hpp"
 #include "ebo.hpp"
@@ -25,6 +26,46 @@ NS_BEGIN(memory)
 /// @brief dump memory statistics and stack trace to stderr
 ///////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API void dump_mem_stats_trace() NOEXCEPT;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @struct aligned_union
+/// @brief Provides the member typedef type, which is a POD type of a size and
+///        alignment suitable for use as uninitialized storage for an object of
+///        any of the specified Types (T0 or T1)
+///////////////////////////////////////////////////////////////////////////////
+template<typename T0, typename T1>
+struct aligned_union {
+  static const size_t alignment_value = boost::static_unsigned_max<
+    alignof(T0), alignof(T1)
+  >::value;
+
+  static const size_t size_value =  boost::static_unsigned_max<
+    sizeof(T0), sizeof(T1)
+  >::value;
+
+  struct type {
+    template<typename T>
+    T* as() {
+      static_assert(
+        std::is_convertible<T0, T>::value || std::is_convertible<T1, T>::value,
+        "T must be convertible to T0 or T1"
+      );
+      return reinterpret_cast<T*>(raw);
+    }
+
+    template<typename T>
+    const T* as() const {
+      return const_cast<type&>(*this).as<T>();
+    }
+
+    template<typename T, typename... Args>
+    void construct(Args&&... args) {
+      new (raw) T(std::forward<Args>(args)...);
+    }
+
+    alignas(alignment_value) char raw[size_value];
+  };
+}; // aligned_union
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                         Deleters

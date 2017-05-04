@@ -74,13 +74,42 @@
 
 NS_ROOT
 
-NS_BEGIN( burst_trie )
+NS_BEGIN(burst_trie)
 
-NS_BEGIN( detail )
+NS_BEGIN(detail)
 
-/* -------------------------------------------------------------------
-* helper functions
-* ------------------------------------------------------------------*/
+///////////////////////////////////////////////////////////////////////////////
+/// @struct block_meta
+/// @brief Provides set of helper functions to work with block metadata
+///////////////////////////////////////////////////////////////////////////////
+struct block_meta {
+  // mask bit layout:
+  // 0 - has terms
+  // 1 - has sub blocks
+  // 2 - is floor block
+
+  // block has terms
+  static bool terms(byte_type mask) { return check_bit<ET_TERM>(mask); }
+
+  // block has sub-blocks
+  static bool blocks(byte_type mask) { return check_bit<ET_BLOCK>(mask); }
+
+  static void type(byte_type& mask, EntryType type) { set_bit(mask, type); }
+
+  // block is floor block
+  static bool floor(byte_type mask) { return check_bit<ET_INVALID>(mask); }
+  static void floor(byte_type& mask, bool b) { set_bit<ET_INVALID>(b, mask); }
+
+  // resets block meta
+  static void reset(byte_type mask) {
+    unset_bit<ET_TERM>(mask);
+    unset_bit<ET_BLOCK>(mask);
+  }
+}; // block_meta
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                           Helpers
+// -----------------------------------------------------------------------------
 
 bool read_segment_features(
     data_input& in, 
@@ -172,43 +201,10 @@ inline void prepare_input(
   format_utils::check_header(*in, format, min_ver, max_ver);
 }
 
-class block_meta {
- public:
-  block_meta() : meta_(0) { }
-
-  explicit block_meta(uint8_t meta) : meta_(meta) { }
-
-  /* block has terms */
-  bool terms() const { return check_bit<ET_TERM>(meta_); }
-
-  /* block has sub-blocks */
-  bool blocks() const { return check_bit<ET_BLOCK>(meta_); }
-
-  void type(EntryType type) { set_bit(meta_, type); }
-
-  /* block is floor block */
-  bool floor() const { return check_bit<ET_BLOCK + 1>(meta_); }
-
-  void floor(bool b) { set_bit<ET_BLOCK + 1>(b, meta_); }
-
-  explicit operator byte_type() const { return meta_; }
-
-  void reset() {
-    unset_bit<ET_TERM>(meta_);
-    unset_bit<ET_BLOCK>(meta_);
-  }
-
- private:
-  /* 0 - has terms
-   * 1 - has sub blocks
-   * 2 - is floor block */
-  uint8_t meta_;
-};
-
-// -------------------------------------------------------------------
-// resetable FST buffer
-// -------------------------------------------------------------------
-
+///////////////////////////////////////////////////////////////////////////////
+/// @class fst_buffer
+/// @brief resetable FST buffer
+///////////////////////////////////////////////////////////////////////////////
 class fst_buffer : public vector_byte_fst {
  public:
   template<typename Data>
@@ -225,107 +221,75 @@ class fst_buffer : public vector_byte_fst {
 
     return *this;
   }
-};
+}; // fst_buffer
 
-/* -------------------------------------------------------------------
-* term_t
-* ------------------------------------------------------------------*/
+// -----------------------------------------------------------------------------
+// --SECTION--                                              entry implementation
+// -----------------------------------------------------------------------------
 
-struct term_t : private util::noncopyable {
-  term_t(iresearch::attributes &&attrs)
-    : attrs(std::move(attrs)) {
-  }
-
-  iresearch::attributes attrs;
-};
-
-/* -------------------------------------------------------------------
-* block_t 
-* ------------------------------------------------------------------*/
-
-struct block_t : private util::noncopyable {
-  struct prefixed_output final : iresearch::byte_weight_output {
-    explicit prefixed_output(bstring&& prefix) NOEXCEPT
-      : prefix(prefix) {
-    }
-
-    bstring prefix;
-  }; // prefixed_output
-
-  static const int16_t INVALID_LABEL = -1;
-
-  block_t(uint64_t block_start, const block_meta& meta, int16_t label)
-    : start(block_start),
-      label(label),
-      meta(meta) {
-  }
-
-  std::list<prefixed_output> index; /* fst index data */
-  uint64_t start; /* file pointer */
-  int16_t label; /* block lead label */
-  block_meta meta; /* block metadata */
-};
-
-/* -------------------------------------------------------------------
-* entry
-* ------------------------------------------------------------------*/
-
-entry::entry(
-  const iresearch::bytes_ref& term, iresearch::attributes&& attrs
-): data(term.c_str(), term.size()), type(ET_TERM) {
-  this->term = memory::make_unique<term_t>(std::move(attrs)).release();
+entry::entry(const iresearch::bytes_ref& term, iresearch::attributes&& attrs)
+  : data_(term.c_str(), term.size()),
+    type_(ET_TERM) {
+  mem_.construct<irs::attributes>(std::move(attrs));
 }
 
 entry::entry(
-  const iresearch::bytes_ref& prefix,
-  uint64_t block_start,
-  const block_meta& meta,
-  int16_t label
-): data(prefix.c_str(), prefix.size()), type(ET_BLOCK) {
+    const iresearch::bytes_ref& prefix,
+    uint64_t block_start,
+    byte_type meta,
+    int16_t label)
+  : data_(prefix.c_str(), prefix.size()),
+    type_(ET_BLOCK) {
   if (block_t::INVALID_LABEL != label) {
-    data.append(1, static_cast<byte_type>(label & 0xFF));
+    data_.append(1, static_cast<byte_type>(label & 0xFF));
   }
 
-  block = memory::make_unique<block_t>(block_start, meta, label).release();
+  mem_.construct<block_t>(block_start, meta, label);
 }
 
-entry::entry( entry&& rhs ) NOEXCEPT
-  : data( std::move( rhs.data ) ),
-    term( rhs.term ),
-    type( rhs.type ) {
-  /* prevent deletion */
-  rhs.term = 0;
+entry::entry(entry&& rhs) NOEXCEPT
+  : data_(std::move(rhs.data_)),
+    type_(rhs.type_) {
+  move_union(std::move(rhs));
 }
 
 entry& entry::operator=(entry&& rhs) NOEXCEPT{
-  if (this == &rhs) {
-    return *this;
+  if (this != &rhs) {
+    data_ = std::move(rhs.data_);
+    type_ = rhs.type_;
+    destroy();
+    move_union(std::move(rhs));
   }
 
-  data = std::move(rhs.data);
-
-  destroy();
-  term = rhs.term, rhs.term = 0;
-  type = rhs.type;
   return *this;
 }
 
-void entry::destroy() NOEXCEPT{
-  switch ( type ) {
-    case ET_TERM: delete term; break;
-    case ET_BLOCK: delete block; break;
-    default: assert( false ); break;
+void entry::move_union(entry&& rhs) NOEXCEPT {
+  switch (rhs.type_) {
+    case ET_TERM: mem_.construct<irs::attributes>(std::move(rhs.term())); break;
+    case ET_BLOCK: mem_.construct<block_t>(std::move(rhs.block()));       break;
+    default: break;
+  }
+
+  // prevent deletion
+  rhs.type_ = ET_INVALID;
+}
+
+void entry::destroy() NOEXCEPT {
+  switch (type_) {
+    case ET_TERM: mem_.as<irs::attributes>()->~attributes(); break;
+    case ET_BLOCK: mem_.as<block_t>()->~block_t(); break;
+    default: break;
   }
 }
 
-entry::~entry() {
+entry::~entry() NOEXCEPT {
   destroy();
 }
 
-/* -------------------------------------------------------------------
-* block_iterator : decl
-* ------------------------------------------------------------------*/
-
+///////////////////////////////////////////////////////////////////////////////
+/// @class block_iterator
+///////////////////////////////////////////////////////////////////////////////
 class block_iterator : util::noncopyable {
  public:
   static const uint64_t UNDEFINED = integer_traits<uint64_t>::const_max;
@@ -350,7 +314,7 @@ class block_iterator : util::noncopyable {
 
   const version10::term_meta& state() const { return state_; }
   bool dirty() const { return dirty_; }
-  const block_meta& meta() const { return cur_meta_; }
+  byte_type meta() const { return cur_meta_; }
   size_t prefix() const { return prefix_; }
   uint64_t sub_count() const { return sub_count_; }
   EntryType type() const { return cur_type_; }
@@ -399,16 +363,15 @@ class block_iterator : util::noncopyable {
   uint64_t sub_count_; /* number of sub-blocks */
   int16_t next_label_{ block_t::INVALID_LABEL }; /* next label (of the next sub-block)*/
   EntryType cur_type_; /* term or block */
-  block_meta meta_; /* initial block metadata */
-  block_meta cur_meta_; /* current block metadata */
+  byte_type meta_; /* initial block metadata */
+  byte_type cur_meta_; /* current block metadata */
   bool dirty_{ true }; /* current block is dirty */
   bool leaf_{ false }; /* current block is leaf block */
 };
 
-/* -------------------------------------------------------------------
-* term_iterator : decl
-* ------------------------------------------------------------------*/
-
+///////////////////////////////////////////////////////////////////////////////
+/// @struct cookie
+///////////////////////////////////////////////////////////////////////////////
 struct cookie : attribute {
   DECLARE_ATTRIBUTE_TYPE();
 
@@ -437,6 +400,9 @@ struct cookie : attribute {
 
 DEFINE_ATTRIBUTE_TYPE(cookie);
 
+///////////////////////////////////////////////////////////////////////////////
+/// @class term_iterator
+///////////////////////////////////////////////////////////////////////////////
 class term_iterator : public iresearch::seek_term_iterator {
  public:
   explicit term_iterator(const term_reader* owner);
@@ -548,9 +514,9 @@ class term_iterator : public iresearch::seek_term_iterator {
   byte_weight weight_; // aggregated fst output
 };
 
-/* -------------------------------------------------------------------
-* block_iterator : impl
-* ------------------------------------------------------------------*/
+// -----------------------------------------------------------------------------
+// --SECTION--                                     block_iterator implementation
+// -----------------------------------------------------------------------------
 
 block_iterator::block_iterator(byte_weight&& header, size_t prefix,
                                term_iterator* owner )
@@ -559,9 +525,9 @@ block_iterator::block_iterator(byte_weight&& header, size_t prefix,
     prefix_(prefix),
     sub_count_(0) {
   assert(owner_);
-  cur_meta_ = meta_ = block_meta(header_in_.read_byte());
+  cur_meta_ = meta_ = header_in_.read_byte();
   cur_start_ = start_ = header_in_.read_vlong();
-  if (meta_.floor()) {
+  if (block_meta::floor(meta_)) {
     sub_count_ = header_in_.read_vlong();
     next_label_ = header_in_.read_byte();
   }
@@ -769,7 +735,7 @@ SeekResult block_iterator::scan_to_term(const bytes_ref& term) {
 void block_iterator::scan_to_block(const bytes_ref& term) {
   assert(sub_count_ != UNDEFINED);
 
-  if (!sub_count_ || !meta_.floor() || term.size() <= prefix_) {
+  if (!sub_count_ || !block_meta::floor(meta_) || term.size() <= prefix_) {
     /* no sub-blocks, nothing to do */
     return;
   }
@@ -784,7 +750,7 @@ void block_iterator::scan_to_block(const bytes_ref& term) {
   uint64_t start = cur_start_;
   for (;;) {
     start = start_ + header_in_.read_vlong();
-    cur_meta_ = block_meta(header_in_.read_byte());
+    cur_meta_ = header_in_.read_byte();
     --sub_count_;
 
     if (0 == sub_count_) {
@@ -862,7 +828,7 @@ void block_iterator::reset() {
   next_label_ = block_t::INVALID_LABEL;
   cur_start_ = start_;
   cur_meta_ = meta_;
-  if ( meta_.floor() ) {
+  if (block_meta::floor(meta_)) {
     assert( sub_count_ != UNDEFINED );
     header_in_.reset();
     header_in_.read_byte(); // skip meta
@@ -873,9 +839,9 @@ void block_iterator::reset() {
   dirty_ = true;
 }
 
-/* -------------------------------------------------------------------
-* term_iterator : impl
-* ------------------------------------------------------------------*/
+// -----------------------------------------------------------------------------
+// --SECTION--                                      term_iterator implementation
+// -----------------------------------------------------------------------------
 
 term_iterator::term_iterator(const term_reader* owner):
   attrs_(2), // version10::term_meta + frequency
@@ -1069,7 +1035,7 @@ SeekResult term_iterator::seek_equal(const bytes_ref& term) {
   assert(cur_block_);
   sstate_.resize(cur_block_->prefix());
   cur_block_->scan_to_block(term);
-  if (!cur_block_->meta().terms()) {
+  if (!block_meta::terms(cur_block_->meta())) {
     /* current block does not contain terms */
     term_.reset(prefix);
     return SeekResult::NOT_FOUND;
@@ -1144,9 +1110,9 @@ index_input& term_iterator::terms_input() const {
   return *terms_in_;
 }
 
-/* -------------------------------------------------------------------
-* term_reader : impl
-* ------------------------------------------------------------------*/
+// -----------------------------------------------------------------------------
+// --SECTION--                                        term_reader implementation
+// -----------------------------------------------------------------------------
 
 term_reader::term_reader(term_reader&& rhs) NOEXCEPT
   : min_term_(std::move(rhs.min_term_)),
@@ -1211,43 +1177,45 @@ bool term_reader::prepare(
 
 NS_END // detail
 
-/* -------------------------------------------------------------------
-* field_writer
-* ------------------------------------------------------------------*/
+// -----------------------------------------------------------------------------
+// --SECTION--                                       field_writer implementation
+// -----------------------------------------------------------------------------
 
 const string_ref field_writer::FORMAT_TERMS = "block_tree_terms_dict";
 const string_ref field_writer::TERMS_EXT = "tm";
 const string_ref field_writer::FORMAT_TERMS_INDEX = "block_tree_terms_index";
 const string_ref field_writer::TERMS_INDEX_EXT = "ti";
 
-void field_writer::write_term_entry( const detail::entry& e, size_t prefix, bool leaf ) {
+void field_writer::write_term_entry(const detail::entry& e, size_t prefix, bool leaf) {
   using namespace detail;
 
-  const size_t suf_size = e.data.size() - prefix;
-  suffix.stream.write_vlong( leaf ? suf_size : shift_pack_64( suf_size, false ) );
-  suffix.stream.write_bytes( e.data.c_str() + prefix, suf_size );
+  const auto& data = e.data();
+  const size_t suf_size = data.size() - prefix;
+  suffix.stream.write_vlong(leaf ? suf_size : shift_pack_64(suf_size, false));
+  suffix.stream.write_bytes(data.c_str() + prefix, suf_size);
 
-  pw->encode( stats.stream, e.term->attrs );
+  pw->encode(stats.stream, e.term());
 }
 
 void field_writer::write_block_entry(
     const detail::entry& e,
     size_t prefix,
-    uint64_t block_start ) {
-    const size_t suf_size = e.data.size() - prefix;
-  suffix.stream.write_vlong( shift_pack_64( suf_size, true ) );
-  suffix.stream.write_bytes( e.data.c_str() + prefix, suf_size );
+    uint64_t block_start) {
+  const auto& data = e.data();
+  const size_t suf_size = data.size() - prefix;
+  suffix.stream.write_vlong(shift_pack_64(suf_size, true));
+  suffix.stream.write_bytes(data.c_str() + prefix, suf_size);
 
   /* current block start pointer
   * should be greater */
-  assert( block_start > e.block->start );
-  suffix.stream.write_vlong( block_start - e.block->start );
+  assert( block_start > e.block().start );
+  suffix.stream.write_vlong( block_start - e.block().start );
 }
 
 void field_writer::write_block(
     std::list< detail::entry >& blocks, size_t prefix,
     size_t begin, size_t end,
-    const detail::block_meta& meta,
+    irs::byte_type meta,
     int16_t label ) {
   assert( end > begin );
   using namespace detail;
@@ -1262,7 +1230,7 @@ void field_writer::write_block(
   );
 
   /* write block entries */
-  const uint64_t leaf = !meta.blocks();
+  const uint64_t leaf = !block_meta::blocks(meta);
 
   std::list< detail::block_t::prefixed_output > index;
 
@@ -1270,18 +1238,18 @@ void field_writer::write_block(
 
   for ( size_t i = begin; i < end; ++i ) {
     entry& e = stack[i];
-    assert(starts_with(e.data, bytes_ref(last_term.c_str(), prefix)));
+    assert(starts_with(e.data(), bytes_ref(last_term.c_str(), prefix)));
 
-    switch ( e.type ) {
+    switch (e.type()) {
       case detail::ET_TERM:
         write_term_entry( e, prefix, leaf > 0 );
         break;
       case detail::ET_BLOCK: {
         write_block_entry( e, prefix, block_start );
-        index.splice( index.end(), e.block->index );
+        index.splice( index.end(), e.block().index );
       } break;
       default:
-        assert( false );
+        assert(false);
         break;
     }
   }
@@ -1302,7 +1270,7 @@ void field_writer::write_block(
   blocks.emplace_back(bytes_ref(last_term.c_str(), prefix), block_start, meta, label);
 
   if ( !index.empty() ) {
-    blocks.back().block->index = std::move( index );
+    blocks.back().block().index = std::move( index );
   }
 }
 
@@ -1313,7 +1281,7 @@ void field_writer::merge_blocks( std::list< detail::entry >& blocks ) {
   std::list<entry>::iterator it = blocks.begin();
   entry& root = *it;
 
-  root.block->index.emplace_front(std::move(root.data));
+  root.block().index.emplace_front(std::move(root.data()));
 
   // First byte in block header must not be equal to fst::kStringInfinity
   // Consider the following:
@@ -1322,35 +1290,35 @@ void field_writer::merge_blocks( std::list< detail::entry >& blocks ) {
   //   CommonPrefix = fst::Plus(StringWeight0, StringWeight1) -> { fst::kStringInfinity }
   //   Suffix = fst::Divide(StringWeight1, CommonPrefix) -> { fst::kStringBad }
   // But actually Suffix should be equal to { 0x22 ... }
-  assert(static_cast<byte_type>(root.block->meta) != fst::kStringInfinity);
+  assert(static_cast<byte_type>(root.block().meta) != fst::kStringInfinity);
 
   /* will be just several bytes here */
-  block_t::prefixed_output& out = *root.block->index.begin();
-  out.write_byte(static_cast<byte_type>(root.block->meta)); // block metadata
-  out.write_vlong(root.block->start); // start pointer of the block
+  block_t::prefixed_output& out = *root.block().index.begin();
+  out.write_byte(static_cast<byte_type>(root.block().meta)); // block metadata
+  out.write_vlong(root.block().start); // start pointer of the block
 
-  if (root.block->meta.floor()) {
+  if (block_meta::floor(root.block().meta)) {
     out.write_vlong(static_cast< uint64_t >(blocks.size()-1));
     for ( ++it; it != blocks.end(); ++it ) {
-      const block_t* block = it->block;
+      const block_t* block = &it->block();
       assert( block->label != block_t::INVALID_LABEL );
-      assert( block->start > root.block->start );
+      assert( block->start > root.block().start );
 
-      const uint64_t start_delta = it->block->start - root.block->start;
+      const uint64_t start_delta = it->block().start - root.block().start;
       out.write_byte( static_cast< byte_type >( block->label & 0xFF ) );
       out.write_vlong( start_delta );
       out.write_byte( static_cast< byte_type >( block->meta ) );
 
-      root.block->index.splice(
-        root.block->index.end(),
-        it->block->index
+      root.block().index.splice(
+        root.block().index.end(),
+        it->block().index
       );
     }
   } else {
     for ( ++it; it != blocks.end(); ++it ) {
-      root.block->index.splice(
-        root.block->index.end(),
-        it->block->index
+      root.block().index.splice(
+        root.block().index.end(),
+        it->block().index
       );
     }
   }
@@ -1362,7 +1330,8 @@ void field_writer::write_blocks( size_t prefix, size_t count ) {
   using namespace detail;
 
   /* block metadata */
-  detail::block_meta meta;
+//  detail::block_meta meta;
+  irs::byte_type meta{};
 
   /* created blocks */
   std::list< entry > blocks;
@@ -1375,32 +1344,33 @@ void field_writer::write_blocks( size_t prefix, size_t count ) {
   int16_t next_label = block_t::INVALID_LABEL; /* next lead suffix label in current block */
   for ( size_t i = begin; i < end; ++i ) {
     const entry& e = stack[i];
+    const auto& data = e.data();
 
-    const int16_t label = e.data.size() == prefix
+    const int16_t label = data.size() == prefix
       ? block_t::INVALID_LABEL
-      : e.data[prefix];
+      : data[prefix];
 
     if ( last_label != label ) {
       const size_t block_size = i - block_start;
 
       if ( block_size >= min_block_size
            && end - block_start > max_block_size ) {
-        meta.floor( block_size < count );
+        block_meta::floor(meta, block_size < count);
         write_block( blocks, prefix, block_start, i, meta, next_label );
         next_label = label;
-        meta.reset();
+        block_meta::reset(meta);
         block_start = i;
       }
 
       last_label = label;
     }
 
-    meta.type( e.type );
+    block_meta::type(meta, e.type());
   }
 
   /* write remaining block */
   if ( block_start < end ) {
-    meta.floor( end - block_start < count );
+    block_meta::floor(meta, end - block_start < count);
     write_block( blocks, prefix, block_start, end, meta, next_label );
   }
 
@@ -1598,7 +1568,7 @@ void field_writer::end_field(
 
   // build fst
   assert(fst_buf_);
-  auto& fst = fst_buf_->reset(root.block->index);
+  auto& fst = fst_buf_->reset(root.block().index);
 
   // write field meta
   write_string(*index_out, name);
@@ -1637,9 +1607,9 @@ void field_writer::end() {
   index_out.reset(); // ensure stream is closed
 }
 
-/* -------------------------------------------------------------------
-* field_reader
-* ------------------------------------------------------------------*/
+// -----------------------------------------------------------------------------
+// --SECTION--                                       field_reader implementation
+// -----------------------------------------------------------------------------
 
 field_reader::field_reader(iresearch::postings_reader::ptr&& pr)
   : pr_(std::move(pr)) {

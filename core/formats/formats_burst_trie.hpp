@@ -21,6 +21,7 @@
 #include "store/store_utils.hpp"
 #include "utils/buffers.hpp"
 #include "utils/hash_utils.hpp"
+#include "utils/memory.hpp"
 
 #if defined(_MSC_VER)
   // NOOP
@@ -29,7 +30,6 @@
   #pragma GCC diagnostic ignored "-Wunused-local-typedefs"
 #endif
 
-//#include "utils/fst_decl.hpp"
 #include "utils/fst_utils.hpp"
 
 #if defined(_MSC_VER)
@@ -42,60 +42,117 @@
 #include "utils/noncopyable.hpp"
 
 #include <list>
+#include <type_traits>
 
 NS_ROOT
 NS_BEGIN(burst_trie)
 
 class field_reader;
 
-NS_BEGIN( detail )
+NS_BEGIN(detail)
 
-// -------------------------------------------------------------------
-// FST predeclaration
-// -------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                              Forward declarations
+// -----------------------------------------------------------------------------
 
 class fst_buffer;
+class term_iterator;
 
-/* -------------------------------------------------------------------
-* entry
-* ------------------------------------------------------------------*/
+// -----------------------------------------------------------------------------
+// --SECTION--                                                          typedefs
+// -----------------------------------------------------------------------------
 
+typedef std::vector<const attribute::type_id*> feature_map_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @class block_t
+/// @brief block of terms
+///////////////////////////////////////////////////////////////////////////////
+struct block_t : private util::noncopyable {
+  struct prefixed_output final : iresearch::byte_weight_output {
+    explicit prefixed_output(bstring&& prefix) NOEXCEPT
+      : prefix(prefix) {
+    }
+
+    bstring prefix;
+  }; // prefixed_output
+
+  static const int16_t INVALID_LABEL = -1;
+
+  block_t(uint64_t block_start, byte_type meta, int16_t label) NOEXCEPT
+    : start(block_start),
+      label(label),
+      meta(meta) {
+  }
+
+  block_t(block_t&& rhs) NOEXCEPT
+    : index(std::move(rhs.index)),
+      start(rhs.start),
+      label(rhs.label),
+      meta(rhs.meta) {
+  }
+
+  block_t& operator=(block_t&& rhs) NOEXCEPT {
+    if (this != &rhs) {
+      index = std::move(rhs.index);
+      start = rhs.start;
+      label = rhs.label;
+      meta =  rhs.meta;
+    }
+    return *this;
+  }
+
+  std::list<prefixed_output> index; // fst index data
+  uint64_t start; // file pointer
+  int16_t label;  // block lead label
+  byte_type meta; // block metadata
+}; // block_t
+
+///////////////////////////////////////////////////////////////////////////////
+/// @enum EntryType
+///////////////////////////////////////////////////////////////////////////////
 enum EntryType : byte_type {
-  ET_TERM = 0U,
-  ET_BLOCK
-};
+  ET_TERM = 0,
+  ET_BLOCK,
+  ET_INVALID
+}; // EntryType
 
-class block_meta;
-struct term_t;
-struct block_t;
-
-struct entry : private util::noncopyable {
+///////////////////////////////////////////////////////////////////////////////
+/// @class entry
+/// @brief block or term
+///////////////////////////////////////////////////////////////////////////////
+class entry : private util::noncopyable {
  public:
   entry(const iresearch::bytes_ref& term, iresearch::attributes&& attrs);
   entry(const iresearch::bytes_ref& prefix, uint64_t block_start,
-        const block_meta& meta, int16_t label);
+        byte_type meta, int16_t label);
   entry(entry&& rhs) NOEXCEPT;
   entry& operator=(entry&& rhs) NOEXCEPT;
-  ~entry();
+  ~entry() NOEXCEPT;
 
-  iresearch::bstring data; // block prefix or term
-  union {
-    term_t* term;
-    block_t* block;
-  };
-  EntryType type;
+  const irs::attributes& term() const NOEXCEPT { return *mem_.as<irs::attributes>(); }
+  irs::attributes& term() NOEXCEPT { return *mem_.as<irs::attributes>(); }
+
+  const block_t& block() const NOEXCEPT { return *mem_.as<block_t>(); }
+  block_t& block() NOEXCEPT { return *mem_.as<block_t>(); }
+
+  const irs::bstring& data() const NOEXCEPT { return data_; }
+  irs::bstring& data() NOEXCEPT { return data_; }
+
+  EntryType type() const NOEXCEPT { return type_; }
 
  private:
   void destroy() NOEXCEPT;
+  void move_union(entry&& rhs) NOEXCEPT;
+
+  iresearch::bstring data_; // block prefix or term
+  memory::aligned_union<irs::attributes, block_t>::type mem_; // storage
+  EntryType type_; // entry type
 }; // entry
 
-/* -------------------------------------------------------------------
-* term_reader
-* ------------------------------------------------------------------*/
-
-class term_iterator;
-typedef std::vector<const attribute::type_id*> feature_map_t;
-
+///////////////////////////////////////////////////////////////////////////////
+/// @class term_reader
+///////////////////////////////////////////////////////////////////////////////
 class term_reader : public iresearch::term_reader,
                     private util::noncopyable {
  public:
@@ -135,15 +192,14 @@ class term_reader : public iresearch::term_reader,
   field_meta field_;
   fst_t* fst_; // TODO: use compact fst here!!!
   field_reader* owner_;
-};
+}; // term_reader
 
 NS_END // detail
 
-/* -------------------------------------------------------------------
-* field_writer
-* ------------------------------------------------------------------*/
-
-class field_writer final : public iresearch::field_writer{
+///////////////////////////////////////////////////////////////////////////////
+/// @class field_writer
+///////////////////////////////////////////////////////////////////////////////
+class field_writer final : public iresearch::field_writer {
  public:
   static const int32_t FORMAT_MIN = 0;
   static const int32_t FORMAT_MAX = FORMAT_MIN;
@@ -193,7 +249,7 @@ class field_writer final : public iresearch::field_writer{
   * label - block lead label ( if present ) */
   void write_block( std::list< detail::entry >& blocks,
                     size_t prefix, size_t begin,
-                    size_t end, const detail::block_meta& meta,
+                    size_t end, byte_type meta,
                     int16_t label );
   /* prefix - prefix length ( in last_term
   * count - number of entries to write into block */
@@ -218,12 +274,11 @@ class field_writer final : public iresearch::field_writer{
   size_t fields_count{};
   uint32_t min_block_size;
   uint32_t max_block_size;
-};
+}; // field_writer
 
-/* -------------------------------------------------------------------
-* field_reader
-* ------------------------------------------------------------------*/
-
+///////////////////////////////////////////////////////////////////////////////
+/// @class field_reader
+///////////////////////////////////////////////////////////////////////////////
 class field_reader final : public iresearch::field_reader {
  public:
   explicit field_reader(iresearch::postings_reader::ptr&& pr);
@@ -248,7 +303,7 @@ class field_reader final : public iresearch::field_reader {
   iresearch::index_input::ptr terms_in_;
 }; // field_reader
 
-NS_END
-NS_END
+NS_END // burst_trie
+NS_END // ROOT
 
 #endif
