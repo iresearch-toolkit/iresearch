@@ -293,6 +293,7 @@ template<
   typedef pool_base<GrowPolicy, BlockAllocator> pool_base_t;
   typedef typename pool_base_t::grow_policy_t grow_policy_t;
   typedef typename pool_base_t::block_allocator_t block_allocator_t;
+  typedef typename block_allocator_t::size_type size_type;
 
   memory_pool(
       const size_t slot_size,
@@ -462,11 +463,22 @@ template<
     free_.assign(begin, slot_size_, block_size);
   }
 
-  const size_t slot_size_;
+  // this method is using by memory_pool_allocator
+  // to rebind it from one type to another
+  void rebind(size_t slot_size) {
+    // can rebind empty allocator only
+    assert(slot_size_ == slot_size || this->empty());
+    slot_size_ = slot_size;
+  }
+
+  size_t slot_size_;
   size_t capacity_{}; // number of allocated slots
   size_t next_size_;
   freelist free_; // list of free slots in the allocated blocks
   freelist blocks_; // list of the allocated blocks
+
+  template<typename, typename, typename>
+  friend class memory_pool_allocator;
 }; // memory_pool
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -510,16 +522,13 @@ struct bulk_allocator_tag { };
 ///////////////////////////////////////////////////////////////////////////////
 template<
   typename T,
-  typename GrowPolicy = log2_grow,
-  typename BlockAllocator = malloc_free_allocator,
+  typename MemoryPool,
   typename Tag = single_allocator_tag
-> class memory_pool_allocator : private memory_pool<GrowPolicy, BlockAllocator>,
-                                public allocator_base<T> {
+> class memory_pool_allocator : public allocator_base<T> {
  public:
-  typedef memory_pool<GrowPolicy, BlockAllocator> memory_pool_impl_t;
+  typedef MemoryPool memory_pool_t;
+  typedef typename MemoryPool::size_type size_type;
 
-  typedef BlockAllocator block_allocator_t;
-  typedef typename block_allocator_t::size_type size_type;
   typedef allocator_base<T> allocator_base_t;
   typedef typename allocator_base_t::pointer pointer;
   typedef typename allocator_base_t::const_pointer const_pointer;
@@ -529,36 +538,18 @@ template<
   typedef std::true_type  propagate_on_container_swap;
 
   template <typename U> struct rebind {
-    typedef memory_pool_allocator<U, GrowPolicy, BlockAllocator, Tag> other;
+    typedef memory_pool_allocator<U, MemoryPool, Tag> other;
   };
 
   template<typename U>
-  memory_pool_allocator(const memory_pool_allocator<U, GrowPolicy, BlockAllocator, Tag>& rhs) NOEXCEPT
-    : memory_pool_impl_t(rhs.allocator(), sizeof(T), rhs.next_size(), rhs.grow_policy()) {
-    assert(rhs.empty()); // can't cast non empty allocator
+  memory_pool_allocator(const memory_pool_allocator<U, memory_pool_t, Tag>& rhs) NOEXCEPT
+    : pool_(rhs.pool_) {
+    pool_->rebind(sizeof(T));
   }
 
-  memory_pool_allocator(
-      const size_t initial_size = 32,
-      const GrowPolicy& grow_policy = GrowPolicy()) NOEXCEPT
-    : memory_pool_impl_t(sizeof(T), initial_size, grow_policy) {
-  }
-
-  memory_pool_allocator(
-      const BlockAllocator& block_alloc,
-      const size_t initial_size = 32,
-      const GrowPolicy& grow_policy = GrowPolicy()) NOEXCEPT
-    : memory_pool_impl_t(block_alloc, sizeof(T), initial_size, grow_policy) {
-  }
-
-  memory_pool_allocator(memory_pool_allocator&& rhs) NOEXCEPT
-    : memory_pool_impl_t(std::move(rhs)) {
-  }
-
-  memory_pool_allocator& operator=(memory_pool_allocator&& rhs) NOEXCEPT {
-    if (this != &rhs) {
-      memory_pool_impl_t::operator=(std::move(rhs));
-    }
+  explicit memory_pool_allocator(memory_pool_t& pool) NOEXCEPT
+    : pool_(&pool) {
+    pool_->rebind(sizeof(T));
   }
 
   pointer allocate(size_type n, const_pointer hint = 0) {
@@ -566,32 +557,34 @@ template<
 
     if (std::is_same<Tag, single_allocator_tag>::value) {
       assert(1 == n);
-      return static_cast<pointer>(memory_pool_impl_t::allocate());
+      return static_cast<pointer>(pool_->allocate());
     }
 
     if (1 == n) {
-      return static_cast<pointer>(memory_pool_impl_t::allocate());
+      return static_cast<pointer>(pool_->allocate());
     }
 
-    return static_cast<pointer>(memory_pool_impl_t::allocate(n));
+    return static_cast<pointer>(pool_->allocate(n));
   }
 
   void deallocate(pointer p, size_type n = 1) NOEXCEPT {
     if (std::is_same<Tag, single_allocator_tag>::value) {
       assert(1 == n);
-      memory_pool_impl_t::deallocate(p);
+      pool_->deallocate(p);
       return;
     }
 
     if (1 == n) {
-      memory_pool_impl_t::deallocate(p);
+      pool_->deallocate(p);
     } else {
-      memory_pool_impl_t::deallocate(p, n);
+      pool_->deallocate(p, n);
     }
   }
 
  private:
-  template<typename U, typename, typename, typename>
+  memory_pool_t* pool_;
+
+  template<typename U, typename, typename>
   friend class memory_pool_allocator;
 }; // memory_pool_allocator
 
@@ -655,16 +648,14 @@ template<
 ///////////////////////////////////////////////////////////////////////////////
 template<
   typename T,
-  typename GrowPolicy = log2_grow,
-  typename BlockAllocator = malloc_free_allocator,
+  typename AllocatorsPool,
   typename Tag = single_allocator_tag
 > class memory_pool_multi_size_allocator : public allocator_base<T> {
  public:
-  typedef memory_multi_size_pool<GrowPolicy, BlockAllocator> allocators_t;
-  typedef memory_pool<GrowPolicy, BlockAllocator> memory_pool_t;
+  typedef AllocatorsPool allocators_t;
+  typedef typename allocators_t::memory_pool_t memory_pool_t;
 
-  typedef BlockAllocator block_allocator_t;
-  typedef typename block_allocator_t::size_type size_type;
+  typedef typename memory_pool_t::size_type size_type;
   typedef allocator_base<T> allocator_base_t;
   typedef typename allocator_base_t::pointer pointer;
   typedef typename allocator_base_t::const_pointer const_pointer;
@@ -674,20 +665,17 @@ template<
   typedef std::true_type  propagate_on_container_swap;
 
   template <typename U> struct rebind {
-    typedef memory_pool_multi_size_allocator <U, GrowPolicy, BlockAllocator, Tag> other;
+    typedef memory_pool_multi_size_allocator <U, AllocatorsPool, Tag> other;
   };
 
   template<typename U>
-  memory_pool_multi_size_allocator(const memory_pool_multi_size_allocator<U, GrowPolicy, BlockAllocator, Tag>& rhs) NOEXCEPT
+  memory_pool_multi_size_allocator(const memory_pool_multi_size_allocator<U, AllocatorsPool, Tag>& rhs) NOEXCEPT
     : allocators_(rhs.allocators_), pool_(&allocators_->pool(sizeof(T))) {
   }
 
   memory_pool_multi_size_allocator(allocators_t& pool) NOEXCEPT
     : allocators_(&pool), pool_(&allocators_->pool(sizeof(T))) {
   }
-
-  memory_pool_multi_size_allocator(const memory_pool_multi_size_allocator&) = default;
-  memory_pool_multi_size_allocator& operator=(const memory_pool_multi_size_allocator&) = default;
 
   pointer allocate(size_type n, const_pointer hint = 0) {
     UNUSED(hint);
@@ -722,31 +710,29 @@ template<
   allocators_t* allocators_;
   memory_pool_t* pool_;
 
-  template<typename U, typename, typename, typename>
+  template<typename U, typename, typename>
   friend class memory_pool_multi_size_allocator;
 }; // memory_pool_multi_size_allocator
 
 template<
   typename T,
   typename U,
-  typename GrowPolicy,
-  typename BlockAllocator,
+  typename AllocatorsPool,
   typename Tag
 > CONSTEXPR inline bool operator==(
-    const memory_pool_multi_size_allocator<T, GrowPolicy, BlockAllocator, Tag>& lhs,
-    const memory_pool_multi_size_allocator<U, GrowPolicy, BlockAllocator, Tag>& rhs) {
+    const memory_pool_multi_size_allocator<T, AllocatorsPool, Tag>& lhs,
+    const memory_pool_multi_size_allocator<U, AllocatorsPool, Tag>& rhs) {
   return lhs.allocators_ == rhs.allocators_ && sizeof(T) == sizeof(U);
 }
 
 template<
   typename T,
   typename U,
-  typename GrowPolicy,
-  typename BlockAllocator,
+  typename AllocatorsPool,
   typename Tag
 > CONSTEXPR inline bool operator!=(
-    const memory_pool_multi_size_allocator<T, GrowPolicy, BlockAllocator, Tag>& lhs,
-    const memory_pool_multi_size_allocator<U, GrowPolicy, BlockAllocator, Tag>& rhs) {
+    const memory_pool_multi_size_allocator<T, AllocatorsPool, Tag>& lhs,
+    const memory_pool_multi_size_allocator<U, AllocatorsPool, Tag>& rhs) {
   return !(lhs == rhs);
 }
 

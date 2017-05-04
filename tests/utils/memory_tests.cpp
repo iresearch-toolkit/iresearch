@@ -97,18 +97,19 @@ TEST(memory_pool_allocator_test, allocate_deallocate) {
     size_t* dtor_calls_;
   }; // test
 
-  irs::memory::memory_pool_allocator<checker> pool;
+  irs::memory::memory_pool<> pool(0);
+  irs::memory::memory_pool_allocator<checker, decltype(pool)> alloc(pool);
 
-  auto* p = pool.allocate(1);
+  auto* p = alloc.allocate(1);
   ASSERT_EQ(0, ctor_calls);
   ASSERT_EQ(0, dtor_calls);
-  pool.construct(p, ctor_calls, dtor_calls);
+  alloc.construct(p, ctor_calls, dtor_calls);
   ASSERT_EQ(1, ctor_calls);
   ASSERT_EQ(0, dtor_calls);
-  pool.destroy(p);
+  alloc.destroy(p);
   ASSERT_EQ(1, ctor_calls);
   ASSERT_EQ(1, dtor_calls);
-  pool.deallocate(p, 1);
+  alloc.deallocate(p, 1);
 }
 
 TEST(memory_pool_allocator_test, profile_std_map) {
@@ -158,14 +159,20 @@ TEST(memory_pool_allocator_test, profile_std_map) {
 
   // pool allocator
   {
-    typedef irs::memory::memory_pool_allocator<
-      test_data,
+    irs::memory::memory_pool<
       irs::memory::identity_grow,
-      irs::memory::malloc_free_allocator,
+      irs::memory::malloc_free_allocator
+    > pool(0);
+
+    typedef irs::memory::memory_pool_allocator<
+      std::pair<const size_t, test_data>,
+      decltype(pool),
       irs::memory::single_allocator_tag
     > alloc_t;
-    
-    std::map<size_t, test_data, std::less<test_data>, alloc_t> data;
+
+    std::map<size_t, test_data, std::less<size_t>, alloc_t> data(
+      alloc_t{pool}
+    );
 
     for (size_t i = 0; i < size; ++i) {
       SCOPED_TIMER("irs::allocator");
@@ -190,21 +197,20 @@ TEST(memory_pool_allocator_test, profile_std_map) {
 
   // mutli-size pool allocator
   {
-    typedef irs::memory::memory_pool_multi_size_allocator<
-      test_data,
-      irs::memory::identity_grow,
-      irs::memory::malloc_free_allocator,
-      irs::memory::single_allocator_tag
-    > alloc_t;
-
     irs::memory::memory_multi_size_pool<
       irs::memory::identity_grow,
       irs::memory::malloc_free_allocator
     > pool;
 
-    alloc_t alloc(pool);
+    typedef irs::memory::memory_pool_multi_size_allocator<
+      test_data,
+      decltype(pool),
+      irs::memory::single_allocator_tag
+    > alloc_t;
 
-    std::map<size_t, test_data, std::less<test_data>, alloc_t> data(alloc);
+    std::map<size_t, test_data, std::less<test_data>, alloc_t> data(
+      alloc_t{pool}
+    );
 
     for (size_t i = 0; i < size; ++i) {
       SCOPED_TIMER("irs::allocator(multi-size)");
@@ -230,21 +236,20 @@ TEST(memory_pool_allocator_test, profile_std_map) {
   {
     const size_t initial_size = 128;
 
-    typedef irs::memory::memory_pool_multi_size_allocator<
-      test_data,
-      irs::memory::identity_grow,
-      irs::memory::malloc_free_allocator,
-      irs::memory::single_allocator_tag
-    > alloc_t;
-
     irs::memory::memory_multi_size_pool<
       irs::memory::identity_grow,
       irs::memory::malloc_free_allocator
     > pool(initial_size);
 
-    alloc_t alloc(pool);
+    typedef irs::memory::memory_pool_multi_size_allocator<
+      test_data,
+      decltype(pool),
+      irs::memory::single_allocator_tag
+    > alloc_t;
 
-    std::map<size_t, test_data, std::less<test_data>, alloc_t> data(alloc);
+    std::map<size_t, test_data, std::less<test_data>, alloc_t> data(
+      alloc_t{pool}
+    );
 
     for (size_t i = 0; i < size; ++i) {
       SCOPED_TIMER("irs::allocator(multi-size,initial_size==128)");
@@ -315,14 +320,20 @@ TEST(memory_pool_allocator_test, profile_std_multimap) {
 
   // pool allocator (default ctor)
   {
+    irs::memory::memory_pool<
+      irs::memory::identity_grow,
+      irs::memory::malloc_free_allocator
+    > pool(0);
+
     typedef irs::memory::memory_pool_allocator<
       test_data,
-      irs::memory::identity_grow,
-      irs::memory::malloc_free_allocator,
+      decltype(pool),
       irs::memory::single_allocator_tag
     > alloc_t;
     
-    std::multimap<size_t, test_data, std::less<test_data>, alloc_t> data;
+    std::multimap<size_t, test_data, std::less<size_t>, alloc_t> data(
+      alloc_t{pool}
+    );
 
     for (size_t i = 0; i < size; ++i) {
       SCOPED_TIMER("irs::allocator");
@@ -354,16 +365,20 @@ TEST(memory_pool_allocator_test, profile_std_multimap) {
   {
     const size_t initial_size = 128;
 
+    irs::memory::memory_pool<
+      irs::memory::identity_grow,
+      irs::memory::malloc_free_allocator
+    > pool(0, initial_size);
+
     typedef irs::memory::memory_pool_allocator<
       test_data,
-      irs::memory::identity_grow,
-      irs::memory::malloc_free_allocator,
+      decltype(pool),
       irs::memory::single_allocator_tag
     > alloc_t;
 
-    alloc_t alloc(initial_size);
-
-    std::multimap<size_t, test_data, std::less<test_data>, alloc_t> data(alloc);
+    std::multimap<size_t, test_data, std::less<test_data>, alloc_t> data(
+      alloc_t{pool}
+    );
 
     for (size_t i = 0; i < size; ++i) {
       SCOPED_TIMER("irs::allocator(initial_size==128)");
@@ -383,21 +398,20 @@ TEST(memory_pool_allocator_test, profile_std_multimap) {
 
   // mutli-size pool allocator
   {
-    typedef irs::memory::memory_pool_multi_size_allocator<
-      test_data,
-      irs::memory::identity_grow,
-      irs::memory::malloc_free_allocator,
-      irs::memory::single_allocator_tag
-    > alloc_t;
-
     irs::memory::memory_multi_size_pool<
       irs::memory::identity_grow,
       irs::memory::malloc_free_allocator
     > pool;
 
-    alloc_t alloc(pool);
+    typedef irs::memory::memory_pool_multi_size_allocator<
+      test_data,
+      decltype(pool),
+      irs::memory::single_allocator_tag
+    > alloc_t;
 
-    std::multimap<size_t, test_data, std::less<test_data>, alloc_t> data(alloc);
+    std::multimap<size_t, test_data, std::less<test_data>, alloc_t> data(
+      alloc_t{pool}
+    );
 
     for (size_t i = 0; i < size; ++i) {
       SCOPED_TIMER("irs::allocator(multi-size)");
@@ -418,21 +432,20 @@ TEST(memory_pool_allocator_test, profile_std_multimap) {
   {
     const size_t initial_size =128;
 
-    typedef irs::memory::memory_pool_multi_size_allocator<
-      test_data,
-      irs::memory::identity_grow,
-      irs::memory::malloc_free_allocator,
-      irs::memory::single_allocator_tag
-    > alloc_t;
-
     irs::memory::memory_multi_size_pool<
       irs::memory::identity_grow,
       irs::memory::malloc_free_allocator
     > pool(initial_size);
 
-    alloc_t alloc(pool);
+    typedef irs::memory::memory_pool_multi_size_allocator<
+      test_data,
+      decltype(pool),
+      irs::memory::single_allocator_tag
+    > alloc_t;
 
-    std::multimap<size_t, test_data, std::less<test_data>, alloc_t> data(alloc);
+    std::multimap<size_t, test_data, std::less<test_data>, alloc_t> data(
+       alloc_t{pool}
+    );
 
     for (size_t i = 0; i < size; ++i) {
       SCOPED_TIMER("irs::allocator(multi-size,initial_size==128)");
@@ -491,14 +504,18 @@ TEST(memory_pool_allocator_test, profile_std_list) {
 
   // pool allocator (default size)
   {
+    irs::memory::memory_pool<
+      irs::memory::identity_grow,
+      irs::memory::malloc_free_allocator
+    > pool(0);
+
     typedef irs::memory::memory_pool_allocator<
       test_data,
-      irs::memory::identity_grow,
-      irs::memory::malloc_free_allocator,
+      decltype(pool),
       irs::memory::single_allocator_tag
     > alloc_t;
     
-    std::list<test_data, alloc_t> data;
+    std::list<test_data, alloc_t> data(alloc_t{pool});
 
     for (size_t i = 0; i < size; ++i) {
       SCOPED_TIMER("irs::allocator");
@@ -519,21 +536,18 @@ TEST(memory_pool_allocator_test, profile_std_list) {
 
   // mutli-size pool allocator
   {
-    typedef irs::memory::memory_pool_multi_size_allocator<
-      test_data,
-      irs::memory::identity_grow,
-      irs::memory::malloc_free_allocator,
-      irs::memory::single_allocator_tag
-    > alloc_t;
-
     irs::memory::memory_multi_size_pool<
       irs::memory::identity_grow,
       irs::memory::malloc_free_allocator
     > pool;
 
-    alloc_t alloc(pool);
+    typedef irs::memory::memory_pool_multi_size_allocator<
+      test_data,
+      decltype(pool),
+      irs::memory::single_allocator_tag
+    > alloc_t;
 
-    std::list<test_data, alloc_t> data(alloc);
+    std::list<test_data, alloc_t> data(alloc_t{pool});
 
     for (size_t i = 0; i < size; ++i) {
       SCOPED_TIMER("irs::allocator(multi-size)");
@@ -555,21 +569,18 @@ TEST(memory_pool_allocator_test, profile_std_list) {
   {
     const size_t initial_size = 128;
 
-    typedef irs::memory::memory_pool_multi_size_allocator<
-      test_data,
-      irs::memory::identity_grow,
-      irs::memory::malloc_free_allocator,
-      irs::memory::single_allocator_tag
-    > alloc_t;
-
     irs::memory::memory_multi_size_pool<
       irs::memory::identity_grow,
       irs::memory::malloc_free_allocator
     > pool(initial_size);
 
-    alloc_t alloc(pool);
+    typedef irs::memory::memory_pool_multi_size_allocator<
+      test_data,
+      decltype(pool),
+      irs::memory::single_allocator_tag
+    > alloc_t;
 
-    std::list<test_data, alloc_t> data(alloc);
+    std::list<test_data, alloc_t> data(alloc_t{pool});
 
     for (size_t i = 0; i < size; ++i) {
       SCOPED_TIMER("irs::allocator(multi-size,initial_size==128)");
@@ -637,14 +648,18 @@ TEST(memory_pool_allocator_test, profile_std_set) {
 
   // pool allocator (default ctor)
   {
+    irs::memory::memory_pool<
+      irs::memory::identity_grow,
+      irs::memory::malloc_free_allocator
+    > pool(0);
+
     typedef irs::memory::memory_pool_allocator<
       test_data,
-      irs::memory::identity_grow,
-      irs::memory::malloc_free_allocator,
+      decltype(pool),
       irs::memory::single_allocator_tag
     > alloc_t;
     
-    std::set<test_data, std::less<test_data>, alloc_t> data;
+    std::set<test_data, std::less<test_data>, alloc_t> data(alloc_t{pool});
 
     for (size_t i = 0; i < size; ++i) {
       SCOPED_TIMER("irs::allocator");
@@ -669,21 +684,20 @@ TEST(memory_pool_allocator_test, profile_std_set) {
 
   // mutli-size pool allocator
   {
-    typedef irs::memory::memory_pool_multi_size_allocator<
-      test_data,
-      irs::memory::identity_grow,
-      irs::memory::malloc_free_allocator,
-      irs::memory::single_allocator_tag
-    > alloc_t;
-
     irs::memory::memory_multi_size_pool<
       irs::memory::identity_grow,
       irs::memory::malloc_free_allocator
     > pool;
 
-    alloc_t alloc(pool);
+    typedef irs::memory::memory_pool_multi_size_allocator<
+      test_data,
+      decltype(pool),
+      irs::memory::single_allocator_tag
+    > alloc_t;
 
-    std::set<test_data, std::less<test_data>, alloc_t> data(alloc);
+    std::set<test_data, std::less<test_data>, alloc_t> data(
+      alloc_t{pool}
+    );
 
     for (size_t i = 0; i < size; ++i) {
       SCOPED_TIMER("irs::allocator(multi-size)");
@@ -709,21 +723,20 @@ TEST(memory_pool_allocator_test, profile_std_set) {
   {
     const size_t initial_size = 128;
 
-    typedef irs::memory::memory_pool_multi_size_allocator<
-      test_data,
-      irs::memory::identity_grow,
-      irs::memory::malloc_free_allocator,
-      irs::memory::single_allocator_tag
-    > alloc_t;
-
     irs::memory::memory_multi_size_pool<
       irs::memory::identity_grow,
       irs::memory::malloc_free_allocator
     > pool(initial_size);
 
-    alloc_t alloc(pool);
+    typedef irs::memory::memory_pool_multi_size_allocator<
+      test_data,
+      decltype(pool),
+      irs::memory::single_allocator_tag
+    > alloc_t;
 
-    std::set<test_data, std::less<test_data>, alloc_t> data(alloc);
+    std::set<test_data, std::less<test_data>, alloc_t> data(
+      alloc_t{pool}
+    );
 
     for (size_t i = 0; i < size; ++i) {
       SCOPED_TIMER("irs::allocator(multi-size,initial_size==128)");
@@ -765,15 +778,19 @@ TEST(memory_pool_allocator_test, allocate_unique) {
     size_t* dtor_calls_;
   }; // test
 
+  irs::memory::memory_pool<
+    irs::memory::identity_grow,
+    irs::memory::malloc_free_allocator
+  > pool(0);
+
   irs::memory::memory_pool_allocator<
     checker,
-    irs::memory::identity_grow,
-    irs::memory::malloc_free_allocator,
+    decltype(pool),
     irs::memory::single_allocator_tag
-  > pool;
+  > alloc(pool);
 
   {
-    auto ptr = irs::memory::allocate_unique<checker>(pool, ctor_calls, dtor_calls);
+    auto ptr = irs::memory::allocate_unique<checker>(alloc, ctor_calls, dtor_calls);
     ASSERT_EQ(1, ctor_calls);
     ASSERT_EQ(0, dtor_calls);
   }
@@ -798,25 +815,64 @@ TEST(memory_pool_allocator_test, allocate_shared) {
     size_t* dtor_calls_;
   }; // test
 
-  // can't use memory_pool_allocator here since
-  // allocator should satisfy CopyConstructible concept
-  irs::memory::memory_multi_size_pool<
-    irs::memory::identity_grow,
-    irs::memory::malloc_free_allocator
-  > pool;
+#if !(defined(_MSC_VER) && defined(IRESEARCH_DEBUG))
+  // MSVC in debug mode sets _ITERATOR_DEBUG_LEVEL equal to 2 (by default) which
+  // causes modification of the containers/iterators layout. Internally, containers
+  // allocate auxillary "Proxy" objects which are have to be created with the help
+  // of the provided allocator using "rebind".
+  // In that case allocator should handle creation of more than one types of objects
+  // with the different layout what is impossible for simple segregated storage allocator.
+  // That's why we have to use memory_pool_multi_size_allocator instead of
+  // memory_pool_allocator to deal with that MSVC feature.
 
-  irs::memory::memory_pool_multi_size_allocator<
-    checker,
-    irs::memory::identity_grow,
-    irs::memory::malloc_free_allocator,
-    irs::memory::single_allocator_tag
-  > alloc(pool);
-
+  // pool allocator
   {
-    auto ptr = std::allocate_shared<checker>(alloc, ctor_calls, dtor_calls);
+    ctor_calls = 0;
+    dtor_calls = 0;
+
+    irs::memory::memory_pool<
+      irs::memory::identity_grow,
+      irs::memory::malloc_free_allocator
+    > pool(0);
+
+    irs::memory::memory_pool_allocator<
+      checker,
+      decltype(pool),
+      irs::memory::single_allocator_tag
+    > alloc(pool);
+
+    {
+      auto ptr = std::allocate_shared<checker>(alloc, ctor_calls, dtor_calls);
+      ASSERT_EQ(1, ctor_calls);
+      ASSERT_EQ(0, dtor_calls);
+    }
     ASSERT_EQ(1, ctor_calls);
-    ASSERT_EQ(0, dtor_calls);
+    ASSERT_EQ(1, dtor_calls);
   }
-  ASSERT_EQ(1, ctor_calls);
-  ASSERT_EQ(1, dtor_calls);
+#endif
+
+  // multi-size allocator
+  {
+    ctor_calls = 0;
+    dtor_calls = 0;
+
+    irs::memory::memory_multi_size_pool<
+      irs::memory::identity_grow,
+      irs::memory::malloc_free_allocator
+    > pool;
+
+    irs::memory::memory_pool_multi_size_allocator<
+      checker,
+      decltype(pool),
+      irs::memory::single_allocator_tag
+    > alloc(pool);
+
+    {
+      auto ptr = std::allocate_shared<checker>(alloc, ctor_calls, dtor_calls);
+      ASSERT_EQ(1, ctor_calls);
+      ASSERT_EQ(0, dtor_calls);
+    }
+    ASSERT_EQ(1, ctor_calls);
+    ASSERT_EQ(1, dtor_calls);
+  }
 }
