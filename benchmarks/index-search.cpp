@@ -832,11 +832,12 @@ int search(
         return nullptr;
       }
 
-      auto& task = tasks[next_task++];
+      auto& task = tasks[task_ids[next_task++]];
 
       // prepare tasks for next iteration if repeat requested
-      if (next_task >= task_ids.size() && repeat--) {
+      if (next_task >= task_ids.size() && repeat) {
         next_task = 0;
+        --repeat;
 
         // shuffle
         if (shuffle) {
@@ -881,11 +882,11 @@ int search(
       #if defined(_MSC_VER) && defined(IRESEARCH_DEBUG)
         typedef irs::memory::memory_pool_multi_size_allocator<Entry, irs::memory::identity_grow> alloc_t;
         typedef irs::memory::memory_multi_size_pool<irs::memory::identity_grow> pool_t;
-        pool_t pool;
+        pool_t pool(limit + 1); // +1 for least significant overflow element
         alloc_t alloc(pool);
       #else
         typedef irs::memory::memory_pool_allocator<Entry, irs::memory::identity_grow> alloc_t;
-        alloc_t alloc;
+        alloc_t alloc(limit + 1); // +1 for least significant overflow element
       #endif
 
       std::multimap<irs::bstring, Entry, decltype(comparer), alloc_t> sorted(comparer, alloc);
