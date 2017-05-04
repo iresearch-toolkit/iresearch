@@ -266,8 +266,8 @@ entry& entry::operator=(entry&& rhs) NOEXCEPT{
 
 void entry::move_union(entry&& rhs) NOEXCEPT {
   switch (rhs.type_) {
-    case ET_TERM: mem_.construct<irs::attributes>(std::move(rhs.term())); break;
-    case ET_BLOCK: mem_.construct<block_t>(std::move(rhs.block()));       break;
+    case ET_TERM  : mem_.construct<irs::attributes>(std::move(rhs.term())); break;
+    case ET_BLOCK : mem_.construct<block_t>(std::move(rhs.block()));        break;
     default: break;
   }
 
@@ -277,8 +277,8 @@ void entry::move_union(entry&& rhs) NOEXCEPT {
 
 void entry::destroy() NOEXCEPT {
   switch (type_) {
-    case ET_TERM: mem_.as<irs::attributes>()->~attributes(); break;
-    case ET_BLOCK: mem_.as<block_t>()->~block_t(); break;
+    case ET_TERM  : mem_.destroy<irs::attributes>(); break;
+    case ET_BLOCK : mem_.destroy<block_t>();         break;
     default: break;
   }
 }

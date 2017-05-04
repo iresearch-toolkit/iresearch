@@ -60,7 +60,20 @@ struct aligned_union {
 
     template<typename T, typename... Args>
     void construct(Args&&... args) {
+      static_assert(
+        std::is_same<T, T0>::value || std::is_same<T, T1>::value,
+        "T must be T0 or T1"
+      );
       new (raw) T(std::forward<Args>(args)...);
+    }
+
+    template<typename T>
+    void destroy() {
+      static_assert(
+        std::is_convertible<T0, T>::value || std::is_convertible<T1, T>::value,
+        "T must be convertible to T0 or T1"
+      );
+      as<T>()->~T();
     }
 
     alignas(alignment_value) char raw[size_value];
