@@ -784,10 +784,8 @@ int search(
     bool shuffle,
     bool csv
 ) {
+  repeat = std::max(size_t(1), repeat);
   search_threads = std::max(size_t(1), search_threads);
-
-  irs::fs_directory dir(path);
-  irs::async_utils::thread_pool thread_pool(search_threads);
 
   SCOPED_TIMER("Total Time");
   std::cout << "Configuration: " << std::endl;
@@ -798,6 +796,24 @@ int search(
   std::cout << TOPN << "=" << limit << std::endl;
   std::cout << RND << "=" << shuffle << std::endl;
   std::cout << CSV << "=" << csv << std::endl;
+
+  irs::fs_directory dir(path);
+  irs::directory_reader reader;
+  irs::order::prepared order;
+  irs::async_utils::thread_pool thread_pool(search_threads);
+
+  {
+    SCOPED_TIMER("Index read time");
+    reader = irs::directory_reader::open(dir, irs::formats::get("1_0"));
+  }
+
+  {
+    SCOPED_TIMER("Order build time");
+    irs::order sort;
+
+    sort.add(irs::scorers::get("bm25", irs::string_ref::nil));
+    order = sort.prepare();
+  }
 
   struct task_provider_t {
     std::mutex mutex;
@@ -832,11 +848,12 @@ int search(
         return nullptr;
       }
 
-      auto& task = tasks[next_task++];
+      auto& task = tasks[task_ids[next_task++]];
 
       // prepare tasks for next iteration if repeat requested
-      if (next_task >= task_ids.size() && repeat--) {
+      if (next_task >= task_ids.size() && repeat) {
         next_task = 0;
+        --repeat;
 
         // shuffle
         if (shuffle) {
@@ -854,14 +871,14 @@ int search(
     std::vector<task_t> tasks;
 
     prepareTasks(tasks, in, tasks_max);
+    task_provider.repeat = repeat - 1; // -1 for first run (i.e. additional repeats)
     task_provider.shuffle = shuffle;
-    task_provider.repeat = repeat;
     task_provider = std::move(tasks);
   }
 
   // indexer threads
   for (size_t i = search_threads; i; --i) {
-    thread_pool.run([&task_provider, &dir, limit, &out, csv]()->void {
+    thread_pool.run([&task_provider, &dir, &reader, &order, limit, &out, csv]()->void {
       struct Entry {
         irs::doc_id_t id;
         float score;
@@ -870,9 +887,7 @@ int search(
       static const std::string analyzer_name("text");
       static const std::string analyzer_args("{\"locale\":\"en\", \"ignored_words\":[\"abc\", \"def\", \"ghi\"]}"); // from index-put
       auto analyzer = irs::analysis::analyzers::get(analyzer_name, analyzer_args);
-      auto reader = irs::directory_reader::open(dir, irs::formats::get("1_0"));
       irs::filter::prepared::ptr filter;
-      irs::order::prepared order;
       std::string tmpBuf;
       auto comparer = [&order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
         return order.less(lhs.c_str(), rhs.c_str());
@@ -881,22 +896,14 @@ int search(
       #if defined(_MSC_VER) && defined(IRESEARCH_DEBUG)
         typedef irs::memory::memory_pool_multi_size_allocator<Entry, irs::memory::identity_grow> alloc_t;
         typedef irs::memory::memory_multi_size_pool<irs::memory::identity_grow> pool_t;
-        pool_t pool;
+        pool_t pool(limit + 1); // +1 for least significant overflow element
         alloc_t alloc(pool);
       #else
         typedef irs::memory::memory_pool_allocator<Entry, irs::memory::identity_grow> alloc_t;
-        alloc_t alloc;
+        alloc_t alloc(limit + 1); // +1 for least significant overflow element
       #endif
 
       std::multimap<irs::bstring, Entry, decltype(comparer), alloc_t> sorted(comparer, alloc);
-
-      {
-        SCOPED_TIMER("Order building");
-        irs::order sort;
-
-        sort.add(irs::scorers::get("bm25", irs::string_ref::nil));
-        order = sort.prepare();
-      }
 
       // process a single task
       for (const task_t* task; (task = ++task_provider) != nullptr;) {
