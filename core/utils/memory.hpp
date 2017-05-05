@@ -18,6 +18,7 @@
 #include "shared.hpp"
 #include "ebo.hpp"
 #include "log.hpp"
+#include "std.hpp"
 
 NS_ROOT
 NS_BEGIN(memory)
@@ -27,6 +28,14 @@ NS_BEGIN(memory)
 ///////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API void dump_mem_stats_trace() NOEXCEPT;
 
+#if defined(_MSV_VER)
+
+template<typename T0, typename T1>
+struct aligned_union : std::aligned_union<0, T0, T1> {
+};
+
+#else // __GNUC__
+
 ///////////////////////////////////////////////////////////////////////////////
 /// @struct aligned_union
 /// @brief Provides the member typedef type, which is a POD type of a size and
@@ -35,17 +44,9 @@ IRESEARCH_API void dump_mem_stats_trace() NOEXCEPT;
 ///////////////////////////////////////////////////////////////////////////////
 template<typename T0, typename T1>
 struct aligned_union {
-  static const size_t alignment_value = boost::static_unsigned_max<
-    alignof(T0), alignof(T1)
-  >::value;
-
-  static const size_t size_value =  boost::static_unsigned_max<
-    sizeof(T0), sizeof(T1)
-  >::value;
-
   struct type {
     template<typename T>
-    T* as() {
+    T* as() NOEXCEPT {
       static_assert(
         std::is_convertible<T0, T>::value || std::is_convertible<T1, T>::value,
         "T must be convertible to T0 or T1"
@@ -54,7 +55,7 @@ struct aligned_union {
     }
 
     template<typename T>
-    const T* as() const {
+    const T* as() const NOEXCEPT {
       return const_cast<type&>(*this).as<T>();
     }
 
@@ -68,7 +69,7 @@ struct aligned_union {
     }
 
     template<typename T>
-    void destroy() {
+    void destroy() NOEXCEPT {
       static_assert(
         std::is_convertible<T0, T>::value || std::is_convertible<T1, T>::value,
         "T must be convertible to T0 or T1"
@@ -76,9 +77,16 @@ struct aligned_union {
       as<T>()->~T();
     }
 
-    alignas(alignment_value) char raw[size_value];
+    alignas(irstd::max(alignof(T0), alignof(T1))) char raw[
+      irstd::max(sizeof(T0), sizeof(T1))
+    ];
   };
+
+  static const size_t alignment_value = alignof(type);
+  static const size_t size_value =  sizeof(type);
 }; // aligned_union
+
+#endif
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                         Deleters

@@ -19,6 +19,10 @@ NS_ROOT
 
 NS_BEGIN(irstd)
 
+// constexpr version of min/max functions (for prior c++11 environments)
+template<typename T> CONSTEXPR T max(T a, T b) { return a < b ? b : a; }
+template<typename T> CONSTEXPR T min(T a, T b) { return a < b ? a : b; }
+
 // converts reverse iterator to corresponding forward iterator
 // the function does not accept containers "end"
 template<typename ReverseIterator>
@@ -31,8 +35,8 @@ CONSTEXPR std::reverse_iterator<Iterator> make_reverse_iterator(Iterator it) {
   return std::reverse_iterator<Iterator>(it);
 }
 
-NS_BEGIN( heap )
-NS_BEGIN( detail )
+NS_BEGIN(heap)
+NS_BEGIN(detail)
 
 template<typename RandomAccessIterator, typename Diff, typename Func >
 inline void _for_each_top(
