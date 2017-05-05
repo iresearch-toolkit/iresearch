@@ -19,9 +19,16 @@ NS_ROOT
 
 NS_BEGIN(irstd)
 
-// constexpr version of min/max functions (for prior c++11 environments)
-template<typename T> CONSTEXPR T max(T a, T b) { return a < b ? b : a; }
-template<typename T> CONSTEXPR T min(T a, T b) { return a < b ? a : b; }
+// constexpr versions of min/max functions (for prior c++14 environments)
+template<typename T> 
+CONSTEXPR const T& (max)(const T& a, const T& b) { 
+  return a < b ? b : a; 
+}
+
+template<typename T> 
+CONSTEXPR const T& (min)(const T& a, const T& b) { 
+  return a < b ? a : b; 
+}
 
 // converts reverse iterator to corresponding forward iterator
 // the function does not accept containers "end"

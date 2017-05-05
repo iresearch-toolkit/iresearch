@@ -146,7 +146,7 @@ class entry : private util::noncopyable {
   void move_union(entry&& rhs) NOEXCEPT;
 
   iresearch::bstring data_; // block prefix or term
-  memory::aligned_union<irs::attributes, block_t>::type mem_; // storage
+  memory::aligned_type<irs::attributes, block_t> mem_; // storage
   EntryType type_; // entry type
 }; // entry
 

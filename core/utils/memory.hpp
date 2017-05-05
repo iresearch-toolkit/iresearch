@@ -13,7 +13,6 @@
 #define IRESEARCH_MEMORY_H
 
 #include <memory>
-#include <boost/integer/static_min_max.hpp>
 
 #include "shared.hpp"
 #include "ebo.hpp"
@@ -28,14 +27,6 @@ NS_BEGIN(memory)
 ///////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API void dump_mem_stats_trace() NOEXCEPT;
 
-#if defined(_MSV_VER)
-
-template<typename T0, typename T1>
-struct aligned_union : std::aligned_union<0, T0, T1> {
-};
-
-#else // __GNUC__
-
 ///////////////////////////////////////////////////////////////////////////////
 /// @struct aligned_union
 /// @brief Provides the member typedef type, which is a POD type of a size and
@@ -44,49 +35,57 @@ struct aligned_union : std::aligned_union<0, T0, T1> {
 ///////////////////////////////////////////////////////////////////////////////
 template<typename T0, typename T1>
 struct aligned_union {
+#if defined(_MSC_VER)
+  typedef typename std::aligned_union<0, T0, T1>::type type;
+#else // __GNUC__
+  // GCC < 4.9 does not support std::aligned_union
   struct type {
-    template<typename T>
-    T* as() NOEXCEPT {
-      static_assert(
-        std::is_convertible<T0, T>::value || std::is_convertible<T1, T>::value,
-        "T must be convertible to T0 or T1"
-      );
-      return reinterpret_cast<T*>(raw);
-    }
-
-    template<typename T>
-    const T* as() const NOEXCEPT {
-      return const_cast<type&>(*this).as<T>();
-    }
-
-    template<typename T, typename... Args>
-    void construct(Args&&... args) {
-      static_assert(
-        std::is_same<T, T0>::value || std::is_same<T, T1>::value,
-        "T must be T0 or T1"
-      );
-      new (raw) T(std::forward<Args>(args)...);
-    }
-
-    template<typename T>
-    void destroy() NOEXCEPT {
-      static_assert(
-        std::is_convertible<T0, T>::value || std::is_convertible<T1, T>::value,
-        "T must be convertible to T0 or T1"
-      );
-      as<T>()->~T();
-    }
-
     alignas(irstd::max(alignof(T0), alignof(T1))) char raw[
       irstd::max(sizeof(T0), sizeof(T1))
     ];
   };
-
+#endif
+  
   static const size_t alignment_value = alignof(type);
   static const size_t size_value =  sizeof(type);
-}; // aligned_union
+}; // aligned_union 
 
-#endif
+template<typename T0, typename T1>
+struct aligned_type {
+  template<typename T>
+  T* as() NOEXCEPT {
+    static_assert(
+      std::is_convertible<T0, T>::value || std::is_convertible<T1, T>::value,
+      "T must be convertible to T0 or T1"
+      );
+    return reinterpret_cast<T*>(&storage);
+  }
+
+  template<typename T>
+  const T* as() const NOEXCEPT {
+    return const_cast<aligned_type&>(*this).as<T>();
+  }
+
+  template<typename T, typename... Args>
+  void construct(Args&&... args) {
+    static_assert(
+      std::is_same<T, T0>::value || std::is_same<T, T1>::value,
+      "T must be T0 or T1"
+      );
+    new (as<T>()) T(std::forward<Args>(args)...);
+  }
+
+  template<typename T>
+  void destroy() NOEXCEPT {
+    static_assert(
+      std::is_convertible<T0, T>::value || std::is_convertible<T1, T>::value,
+      "T must be convertible to T0 or T1"
+      );
+    as<T>()->~T();
+  }
+
+  typename aligned_union<T0, T1>::type storage;
+}; // aligned_type 
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                         Deleters
