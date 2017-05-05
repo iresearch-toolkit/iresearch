@@ -1439,7 +1439,7 @@ class index_test_case_base : public tests::index_test_base {
       writer->commit();
     }
 
-    // read inserted values
+    // check inserted values
     {
       auto reader = ir::directory_reader::open(this->dir(), this->codec());
       ASSERT_EQ(1, reader.size());
@@ -1450,14 +1450,39 @@ class index_test_case_base : public tests::index_test_base {
       auto* meta = segment.column(column_name);
       ASSERT_NE(nullptr, meta);
 
-      irs::bytes_ref actual_value;
-      irs::columnstore_reader::values_reader_f values = segment.values(column_name);
+      // read values
+      {
+        irs::bytes_ref actual_value;
+        irs::columnstore_reader::values_reader_f values = segment.values(column_name);
 
-      for (irs::doc_id_t i = 0; i < MAX_DOCS; ++i) {
-        const irs::doc_id_t doc = i + (irs::type_limits<irs::type_t::doc_id_t>::min)();
-        ASSERT_TRUE(values(doc, actual_value));
-        const auto actual_str_value = irs::to_string<irs::string_ref>(actual_value.c_str());
-        ASSERT_EQ(i, *reinterpret_cast<const irs::doc_id_t*>(actual_str_value.c_str()));
+        for (irs::doc_id_t i = 0; i < MAX_DOCS; ++i) {
+          const irs::doc_id_t doc = i + (irs::type_limits<irs::type_t::doc_id_t>::min)();
+          ASSERT_TRUE(values(doc, actual_value));
+          const auto actual_str_value = irs::to_string<irs::string_ref>(actual_value.c_str());
+          ASSERT_EQ(i, *reinterpret_cast<const irs::doc_id_t*>(actual_str_value.c_str()));
+        }
+      }
+
+      // visit values
+      {
+        irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        irs::doc_id_t expected_value = 0;
+        auto visitor = [&expected_value, &expected_doc](irs::doc_id_t actual_doc, const irs::bytes_ref& actual_data) {
+          if (expected_doc != actual_doc) {
+            return false;
+          }
+
+          const auto actual_value = irs::to_string<irs::string_ref>(actual_data.c_str());
+          if (expected_value != *reinterpret_cast<const irs::doc_id_t*>(actual_value.c_str())) {
+            return false;
+          }
+
+          ++expected_doc;
+          ++expected_value;
+          return true;
+        };
+
+        ASSERT_TRUE(segment.visit(column_name, visitor));
       }
     }
   }
@@ -2202,6 +2227,7 @@ TEST_F(memory_index_test, arango_demo_docs) {
 }
 
 TEST_F(memory_index_test, read_write_doc_attributes) {
+  read_write_doc_attributes_bug();
   read_write_doc_attributes_fixed_length();
   read_write_doc_attributes_big();
   read_write_doc_attributes();
@@ -5510,6 +5536,7 @@ TEST_F(fs_index_test, open_writer) {
 }
 
 TEST_F(fs_index_test, read_write_doc_attributes) {
+  read_write_doc_attributes_fixed_length();
   read_write_doc_attributes();
   read_empty_doc_attributes();
   read_write_doc_attributes_big();
