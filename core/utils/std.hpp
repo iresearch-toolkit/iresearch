@@ -13,7 +13,9 @@
 #define IRESEARCH_STD_H
 
 #include "shared.hpp"
+
 #include <iterator>
+#include <algorithm>
 
 NS_ROOT
 
