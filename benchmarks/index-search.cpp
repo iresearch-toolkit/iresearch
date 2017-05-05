@@ -896,14 +896,16 @@ int search(
       #if defined(_MSC_VER) && defined(IRESEARCH_DEBUG)
         typedef irs::memory::memory_pool_multi_size_allocator<Entry, irs::memory::identity_grow> alloc_t;
         typedef irs::memory::memory_multi_size_pool<irs::memory::identity_grow> pool_t;
-        pool_t pool(limit + 1); // +1 for least significant overflow element
-        alloc_t alloc(pool);
       #else
-        typedef irs::memory::memory_pool_allocator<Entry, irs::memory::identity_grow> alloc_t;
-        alloc_t alloc(limit + 1); // +1 for least significant overflow element
+        typedef irs::memory::memory_pool<irs::memory::identity_grow> pool_t;
+        typedef irs::memory::memory_pool_allocator<Entry, pool_t> alloc_t;
       #endif
 
-      std::multimap<irs::bstring, Entry, decltype(comparer), alloc_t> sorted(comparer, alloc);
+      pool_t pool(limit + 1); // +1 for least significant overflow element
+
+      std::multimap<irs::bstring, Entry, decltype(comparer), alloc_t> sorted(
+        comparer, alloc_t{pool}
+      );
 
       // process a single task
       for (const task_t* task; (task = ++task_provider) != nullptr;) {
