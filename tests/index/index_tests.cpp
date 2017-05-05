@@ -2227,7 +2227,6 @@ TEST_F(memory_index_test, arango_demo_docs) {
 }
 
 TEST_F(memory_index_test, read_write_doc_attributes) {
-  read_write_doc_attributes_bug();
   read_write_doc_attributes_fixed_length();
   read_write_doc_attributes_big();
   read_write_doc_attributes();
