@@ -295,29 +295,14 @@ template<
   typedef typename pool_base_t::block_allocator_t block_allocator_t;
   typedef typename block_allocator_t::size_type size_type;
 
-  memory_pool(
-      const size_t slot_size,
+  explicit memory_pool(
+      const size_t slot_min_size = 0,
       size_t initial_size = 32,
-      const grow_policy_t& grow_policy = grow_policy_t()) NOEXCEPT
-    : pool_base_t(grow_policy, block_allocator_t()),
-      slot_size_(adjust_size(slot_size)),
-      next_size_(initial_size) {
-    static_assert(
-      std::is_empty<block_allocator_t>::value,
-      "Default constuctor is allowed for stateless allocators only"
-    );
-    assert(next_size_ >= 2); // block chain + 1 slot
-  }
-
-  memory_pool(
-      const block_allocator_t& alloc,
-      const size_t slot_size,
-      size_t initial_size = 32,
+      const block_allocator_t& alloc = block_allocator_t(),
       const grow_policy_t& grow_policy = grow_policy_t()) NOEXCEPT
     : pool_base_t(grow_policy, alloc),
-      slot_size_(adjust_size(slot_size)),
-      next_size_(initial_size) {
-    assert(next_size_ >= 2); // block chain + 1 slot
+      slot_size_(adjust_slot_size(slot_min_size)),
+      next_size_(adjust_initial_size(initial_size)) {
   }
 
   memory_pool(memory_pool&& rhs) NOEXCEPT
@@ -414,7 +399,11 @@ template<
   }
 
  private:
-  static size_t adjust_size(size_t slot_size) {
+  static size_t adjust_initial_size(size_t next_size) NOEXCEPT {
+    return std::max(next_size, size_t(2)); // block chain + 1 slot
+  }
+
+  static size_t adjust_slot_size(size_t slot_size) NOEXCEPT {
     using namespace iresearch::math;
     static_assert(is_power2(freelist::MIN_ALIGN), "MIN_ALIGN must be a power of 2");
 
@@ -603,7 +592,7 @@ template<
   typedef typename pool_base_t::block_allocator_t block_allocator_t;
   typedef memory_pool<grow_policy_t, block_allocator_t> memory_pool_t;
 
-  memory_multi_size_pool(
+  explicit memory_multi_size_pool(
       size_t initial_size = 32,
       const block_allocator_t& block_alloc = block_allocator_t(),
       const grow_policy_t& grow_policy = grow_policy_t()) NOEXCEPT
@@ -629,7 +618,7 @@ template<
 
   memory_pool_t& pool(const size_t size) const {
     const auto res = irs::map_utils::try_emplace(
-      pools_, size, this->allocator(), size, initial_size_, this->grow_policy()
+      pools_, size, size, initial_size_, this->allocator(), this->grow_policy()
     );
 
     return res.first->second;

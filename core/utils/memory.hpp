@@ -50,6 +50,12 @@ struct aligned_union {
   static const size_t size_value =  sizeof(type);
 }; // aligned_union 
 
+///////////////////////////////////////////////////////////////////////////////
+/// @struct aligned_type
+/// @brief Provides the storage (POD type) that is suitable for use as
+///        uninitialized storage for an object of  any of the specified
+///        Types (T0 or T1)
+///////////////////////////////////////////////////////////////////////////////
 template<typename T0, typename T1>
 struct aligned_type {
   template<typename T>
