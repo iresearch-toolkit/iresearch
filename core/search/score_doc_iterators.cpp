@@ -12,11 +12,19 @@
 #include "shared.hpp"
 #include "score_doc_iterators.hpp"
 
+NS_LOCAL
+
+// placeholder for empty score
+irs::score EMPTY_SCORE;
+
+NS_END
+
 NS_ROOT
   
 score_doc_iterator_base::score_doc_iterator_base(const order::prepared& ord)
   : ord_(&ord) {
-  scr_ = iresearch::score::apply(attrs_, ord);
+  auto* score = iresearch::score::apply(attrs_, ord);
+  scr_ = score ? score : &EMPTY_SCORE;
 }
 
 #if defined(_MSC_VER)
@@ -40,11 +48,9 @@ basic_score_iterator::basic_score_iterator(
   attrs_.add<cost>()->value(estimation);
 
   // set scorers
-  if (scr_) { 
-    scorers_ = ord_->prepare_scorers(
-      segment, field, *stats_, it_->attributes()
-    );
-  }
+  scorers_ = ord_->prepare_scorers(
+    segment, field, *stats_, it_->attributes()
+  );
 }
 
 #if defined(_MSC_VER)

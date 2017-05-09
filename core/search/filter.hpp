@@ -51,6 +51,8 @@ class IRESEARCH_API score : public attribute {
   DECLARE_ATTRIBUTE_TYPE();
   DECLARE_FACTORY_DEFAULT();
 
+  score();
+
   template<typename T>
   const T& get(size_t i) const {
     assert(order_ && sizeof(T) == (*order_)[i].bucket->size());
@@ -78,14 +80,10 @@ class IRESEARCH_API score : public attribute {
   }
 
  private:
-  friend attribute; // to access constructor
-
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   const order::prepared* order_;
   bstring value_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
-
-  score();
 }; // score
 
 template<typename State>
