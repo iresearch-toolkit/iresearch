@@ -894,8 +894,8 @@ int search(
       };
 
       #if defined(_MSC_VER) && defined(IRESEARCH_DEBUG)
-        typedef irs::memory::memory_pool_multi_size_allocator<Entry, irs::memory::identity_grow> alloc_t;
         typedef irs::memory::memory_multi_size_pool<irs::memory::identity_grow> pool_t;
+        typedef irs::memory::memory_pool_multi_size_allocator<Entry, pool_t> alloc_t;
       #else
         typedef irs::memory::memory_pool<irs::memory::identity_grow> pool_t;
         typedef irs::memory::memory_pool_allocator<Entry, pool_t> alloc_t;
