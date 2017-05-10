@@ -256,7 +256,7 @@ TEST(boolean_query_boost, hierarchy) {
     );
 
     auto& scr = docs->attributes().get<iresearch::score>();
-    ASSERT_NE(nullptr, scr);
+    ASSERT_FALSE(!scr);
 
     /* the first hit should be scored as 2*value^3 +2*value^3+value^2 since it
      * exists in all results */
@@ -475,7 +475,7 @@ TEST(boolean_query_boost, and) {
     );
 
     auto& boost = prep->attributes().get<iresearch::boost>();
-    ASSERT_TRUE(!boost);
+    ASSERT_EQ(nullptr, boost);
   }
 
   // boosted boolean query
@@ -749,7 +749,7 @@ TEST(boolean_query_boost, or) {
     );
 
     auto& boost = prep->attributes().get<iresearch::boost>();
-    ASSERT_TRUE(!boost);
+    ASSERT_EQ(nullptr, boost);
   }
 
   // single boosted query

@@ -100,7 +100,7 @@ protected:
       auto docs = prep->execute(*(rdr.begin()), pord);
 
       auto& scr = docs->attributes().get<iresearch::score>();
-      ASSERT_NE(nullptr, scr);
+      ASSERT_FALSE(!scr);
 
       // first hit
       {

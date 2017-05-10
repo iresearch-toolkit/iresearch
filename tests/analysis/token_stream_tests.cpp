@@ -111,7 +111,7 @@ TEST( string_token_stream_tests, next_end) {
 
   // check attributes
   auto& term = ts.attributes().get<term_attribute>();
-  ASSERT_NE(nullptr, term);
+  ASSERT_FALSE(!term);
   ASSERT_TRUE( term->value().null());
   auto& offs = ts.attributes().get<offset>();
   ASSERT_FALSE(!offs);

@@ -3182,7 +3182,7 @@ void postings_writer::write(doc_iterator& docs, iresearch::attributes& attrs) {
   const offset* offs = nullptr;
   const payload* pay = nullptr;
   frequency* tfreq = nullptr;
-  version10::term_meta* meta = attrs.add<version10::term_meta>();
+  auto& meta = attrs.add<version10::term_meta>();
 
   if (freq) {
     if (pos && !volatile_attributes_) {
