@@ -61,7 +61,7 @@ std::string file_name(M const& meta);
 // --SECTION--                                                 helper functions 
 // ----------------------------------------------------------------------------
 
-NS_BEGIN( detail )
+NS_BEGIN(detail)
 NS_LOCAL
 
 inline void prepare_output(
@@ -150,10 +150,11 @@ struct doc_state {
   uint64_t tail_start;
   size_t tail_length;
   version10::features features;
-};
+}; // doc_state
 
-class pos_iterator;
-
+///////////////////////////////////////////////////////////////////////////////
+/// @class doc_iterator
+///////////////////////////////////////////////////////////////////////////////
 class doc_iterator : public iresearch::doc_iterator {
  public:
   DECLARE_PTR(doc_iterator);
@@ -166,12 +167,40 @@ class doc_iterator : public iresearch::doc_iterator {
     std::fill(docs_, docs_ + postings_writer::BLOCK_SIZE, type_limits<type_t::doc_id_t>::invalid());
   }
 
-  void prepare(const flags& field,
-               const iresearch::attributes &attrs,
-               const flags &features,
-               const index_input *doc_in,
-               const index_input *pos_in,
-               const index_input *pay_in);
+  void prepare(
+      const version10::features& field,
+      const version10::features& enabled,
+      const iresearch::attributes& attrs,
+      const index_input* doc_in,
+      const index_input* pos_in,
+      const index_input* pay_in) {
+    features_ = field;
+
+    // add mandatory attributes
+    doc_ = attrs_.add<document>();
+
+    // get state attribute
+    assert(attrs.contains<version10::term_meta>());
+    term_state_ = *attrs.get<version10::term_meta>();
+
+    // init document stream
+    if (term_state_.docs_count > 1) {
+      if (!doc_in_) {
+        doc_in_ = doc_in->reopen();
+
+        if (!doc_in_) {
+          IR_FRMT_FATAL("Failed to reopen document input in: %s", __FUNCTION__);
+
+          throw detailed_io_error("Failed to reopen document input");
+        }
+      }
+
+      doc_in_->seek(term_state_.doc_start);
+      assert(!doc_in_->eof());
+    }
+
+    prepare_attributes(enabled, attrs, pos_in, pay_in);
+  }
 
   virtual doc_id_t seek(doc_id_t target) override {
     if (target <= doc_->value) {
@@ -196,7 +225,24 @@ class doc_iterator : public iresearch::doc_iterator {
   #pragma GCC diagnostic ignored "-Wparentheses"
 #endif
 
-  virtual bool next() override;
+  virtual bool next() override {
+    if (begin_ == end_) {
+      cur_pos_ += relative_pos();
+
+      if (cur_pos_ == term_state_.docs_count) {
+        doc_->value = type_limits<type_t::doc_id_t>::eof();
+        begin_ = end_ = docs_; // seal the iterator
+        return false;
+      }
+
+      refill();
+    }
+
+    doc_->value += *begin_++;
+    freq_->value = *doc_freq_++;
+
+    return true;
+  }
 
 #if defined(_MSC_VER)
   #pragma warning( default : 4706 )
@@ -204,7 +250,23 @@ class doc_iterator : public iresearch::doc_iterator {
   #pragma GCC diagnostic pop
 #endif
 
- private:
+ protected:
+  virtual void prepare_attributes(
+      const version10::features& enabled,
+      const iresearch::attributes& attrs,
+      const index_input* pos_in,
+      const index_input* pay_in) {
+    // term frequency attributes
+    if (enabled.freq()) {
+      assert(attrs.contains<frequency>());
+      freq_ = attrs_.add<frequency>();
+      term_freq_ = attrs.get<frequency>()->value;
+    }
+  }
+
+  virtual void seek_notify(const skip_context& /*ctx*/) {
+  }
+
   void seek_to_block(doc_id_t target);
 
   // returns current position in the document block 'docs_'
@@ -294,24 +356,94 @@ class doc_iterator : public iresearch::doc_iterator {
   doc_id_t* begin_{docs_};
   doc_id_t* end_{docs_};
   uint32_t* doc_freq_{}; // pointer into docs_ to the frequency attribute value for the current doc
-  uint64_t term_freq_{}; /* total term frequency */
-  pos_iterator* pos_{};
+  uint64_t term_freq_{}; // total term frequency
   document* doc_;
   frequency* freq_{ &EMPTY_FREQ };
   index_input::ptr doc_in_;
   version10::term_meta term_state_;
-  features features_; /* field features */
+  features features_; // field features
 }; // doc_iterator 
 
-class mask_doc_iterator final: public doc_iterator {
+void doc_iterator::seek_to_block(doc_id_t target) {
+  // check whether it make sense to use skip-list
+  if (skip_levels_.front().doc < target && term_state_.docs_count > postings_writer::BLOCK_SIZE) {
+    skip_context last; // where block starts
+    skip_ctx_ = &last;
+
+    // init skip writer in lazy fashion
+    if (!skip_) {
+      index_input::ptr skip_in = doc_in_->dup();
+      skip_in->seek(term_state_.doc_start + term_state_.e_skip_start);
+
+      skip_.prepare(
+        std::move(skip_in),
+        [this](size_t level, index_input& in) {
+          skip_state& last = *skip_ctx_;
+          auto& last_level = skip_ctx_->level;
+          auto& next = skip_levels_[level];
+
+          if (last_level > level) {
+            // move to the more granular level
+            next = last;
+          } else {
+            // store previous step on the same level
+            last = next;
+          }
+
+          last_level = level;
+
+          if (in.eof()) {
+            // stream exhausted
+            return (next.doc = type_limits<type_t::doc_id_t>::eof());
+          }
+
+          return read_skip(next, in);
+      });
+
+      // initialize skip levels
+      const auto num_levels = skip_.num_levels();
+      if (num_levels) {
+        skip_levels_.resize(num_levels);
+
+        // since we store pointer deltas, add postings offset
+        auto& top = skip_levels_.back();
+        top.doc_ptr = term_state_.doc_start;
+        top.pos_ptr = term_state_.pos_start;
+        top.pay_ptr = term_state_.pay_start;
+      }
+    }
+
+    const size_t skipped = skip_.seek(target);
+    if (skipped > (cur_pos_ + relative_pos())) {
+      doc_in_->seek(last.doc_ptr);
+      doc_->value = last.doc;
+      cur_pos_ = skipped;
+      begin_ = end_ = docs_; // will trigger refill in "next"
+      seek_notify(last); // notifies derivatives
+    }
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// @class mask_doc_iterator
+///////////////////////////////////////////////////////////////////////////////
+template<typename DocIterator>
+class mask_doc_iterator final: public DocIterator {
  public:
+  typedef DocIterator doc_iterator_t;
+
+  static_assert(
+    std::is_base_of<irs::doc_iterator, doc_iterator_t>::value,
+    "DocIterator must be derived from iresearch::doc_iterator"
+   );
+
   explicit mask_doc_iterator(const document_mask& mask) 
     : mask_(mask) {
   }
 
   virtual bool next() override {
-    while (doc_iterator::next()) {
-      if (mask_.find(value()) == mask_.end()) {
+    while (doc_iterator_t::next()) {
+      if (mask_.find(this->value()) == mask_.end()) {
         return true;
       }
     }
@@ -320,21 +452,24 @@ class mask_doc_iterator final: public doc_iterator {
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
-    const auto doc = doc_iterator::seek(target);
+    const auto doc = doc_iterator_t::seek(target);
 
     if (mask_.find(doc) == mask_.end()) {
       return doc;
     }
 
-    next();
+    this->next();
 
-    return value();
+    return this->value();
   }
 
  private:
   const document_mask& mask_; /* excluded document ids */
 }; // mask_doc_iterator
 
+///////////////////////////////////////////////////////////////////////////////
+/// @class pos_iterator
+///////////////////////////////////////////////////////////////////////////////
 class pos_iterator : public position::impl {
  public:
   DECLARE_PTR(pos_iterator);
@@ -467,11 +602,14 @@ class pos_iterator : public position::impl {
   features features_; /* field features */
  
  private:
-  friend class doc_iterator;
+  friend class pos_doc_iterator;
 
   static pos_iterator::ptr make(const features& enabled);
 }; // pos_iterator
 
+///////////////////////////////////////////////////////////////////////////////
+/// @class offs_pay_iterator
+///////////////////////////////////////////////////////////////////////////////
 class offs_pay_iterator final : public pos_iterator {
  public:  
   DECLARE_PTR( offs_pay_iterator );
@@ -615,6 +753,9 @@ class offs_pay_iterator final : public pos_iterator {
   bstring pay_data_; // buffer to store payload data
 }; // pay_offs_iterator
 
+///////////////////////////////////////////////////////////////////////////////
+/// @class offs_iterator
+///////////////////////////////////////////////////////////////////////////////
 class offs_iterator final : public pos_iterator {
  public:
   DECLARE_PTR(offs_iterator);
@@ -723,6 +864,9 @@ class offs_iterator final : public pos_iterator {
   uint32_t offs_lengts_[postings_writer::BLOCK_SIZE]; /* buffer to store offset lengths */
 }; // offs_iterator
 
+///////////////////////////////////////////////////////////////////////////////
+/// @class pay_iterator
+///////////////////////////////////////////////////////////////////////////////
 class pay_iterator final : public pos_iterator {
  public:
   DECLARE_PTR(pay_iterator);
@@ -877,163 +1021,91 @@ class pay_iterator final : public pos_iterator {
   return nullptr;
 }
 
-bool doc_iterator::next() {
-  if (begin_ == end_) {
-    cur_pos_ += relative_pos();
+///////////////////////////////////////////////////////////////////////////////
+/// @class pos_doc_iterator
+///////////////////////////////////////////////////////////////////////////////
+class pos_doc_iterator : public doc_iterator {
+ public:
+  virtual bool next() override {
+    if (begin_ == end_) {
+      cur_pos_ += relative_pos();
 
-    if (cur_pos_ == term_state_.docs_count) {
-      doc_->value = type_limits<type_t::doc_id_t>::eof();
-      begin_ = end_ = docs_; // seal the iterator
-      return false;
+      if (cur_pos_ == term_state_.docs_count) {
+        doc_->value = type_limits<type_t::doc_id_t>::eof();
+        begin_ = end_ = docs_; // seal the iterator
+        return false;
+      }
+
+      refill();
     }
 
-    refill();
-  }
+    doc_->value += *begin_++;
 
-  doc_->value += *begin_++;
-  freq_->value = *doc_freq_++;
+    // update frequency attribute
+    auto& freq = freq_->value;
+    freq = *doc_freq_++;
 
-  // TODO: move to separate implementation
-  if (pos_) {
-    pos_->pend_pos_ += freq_->value;
+    // update position attribute
+    assert(pos_);
+    pos_->pend_pos_ += freq;
     pos_->clear();
+
+    return true;
   }
 
-  return true;
-}
+ protected:
+  virtual void prepare_attributes(
+    const version10::features& features,
+    const irs::attributes &attrs,
+    const index_input* pos_in,
+    const index_input* pay_in
+  ) final;
 
-void doc_iterator::prepare(
-    const flags& field,
+  virtual void seek_notify(const skip_context &ctx) final {
+    assert(pos_);
+    // notify positions
+    pos_->prepare(ctx);
+  }
+
+ private:
+  pos_iterator* pos_{};
+}; // pos_doc_iterator
+
+void pos_doc_iterator::prepare_attributes(
+    const version10::features& enabled,
     const iresearch::attributes& attrs,
-    const flags& req,
-    const index_input* doc_in,
     const index_input* pos_in,
     const index_input* pay_in) {
-  features_ = features(field);
+  doc_iterator::prepare_attributes(
+    enabled, attrs, pos_in, pay_in
+  );
 
-  // add mandatory attributes
-  doc_ = attrs_.add<document>();
+  assert(attrs.contains<frequency>());
+  assert(enabled.position());
 
-  // get state attribute
-  assert(attrs.contains<version10::term_meta>());
-  term_state_ = *attrs.get<version10::term_meta>();
+  // position attribute
+  pos_iterator::ptr it = pos_iterator::make(enabled);
 
-  // init document stream
-  if (term_state_.docs_count > 1) {
-    if (!doc_in_) {
-      doc_in_ = doc_in->reopen();
-
-      if (!doc_in_) {
-        IR_FRMT_FATAL("Failed to reopen document input in: %s", __FUNCTION__);
-
-        throw detailed_io_error("Failed to reopen document input");
-      }
-    }
-
-    doc_in_->seek(term_state_.doc_start);
-    assert(!doc_in_->eof());
+  doc_state state;
+  state.pos_in = pos_in;
+  state.pay_in = pay_in;
+  state.term_state = &term_state_;
+  state.freq = &freq_->value;
+  state.features = features_;
+  state.enc_buf = enc_buf_;
+  if (term_freq_ < postings_writer::BLOCK_SIZE) {
+    state.tail_start = term_state_.pos_start;
+  } else if (term_freq_ == postings_writer::BLOCK_SIZE) {
+    state.tail_start = type_limits<type_t::address_t>::invalid();
+  } else {
+    state.tail_start = term_state_.pos_start + term_state_.pos_end;
   }
+  state.tail_length = term_freq_ % postings_writer::BLOCK_SIZE;
+  it->prepare(state);
 
-  // get enabled features:
-  // find intersection between requested
-  // and available features
-  auto enabled = features_ & req;
-
-  // term frequency attributes
-  if (enabled.freq()) {
-    assert(attrs.contains<frequency>());
-    freq_ = attrs_.add<frequency>();
-    term_freq_ = attrs.get<frequency>()->value;
-
-    // position attribute 
-    if (enabled.position()) {
-      pos_iterator::ptr it = pos_iterator::make(enabled);
-
-      doc_state state;
-      state.pos_in = pos_in;
-      state.pay_in = pay_in;
-      state.term_state = &term_state_;
-      state.freq = &freq_->value;
-      state.features = features_;
-      state.enc_buf = enc_buf_;
-      if (term_freq_ < postings_writer::BLOCK_SIZE) {
-        state.tail_start = term_state_.pos_start;
-      } else if (term_freq_ == postings_writer::BLOCK_SIZE) {
-        state.tail_start = type_limits<type_t::address_t>::invalid();
-      } else {
-        state.tail_start = term_state_.pos_start + term_state_.pos_end;
-      }
-      state.tail_length = term_freq_ % postings_writer::BLOCK_SIZE;
-      it->prepare(state);
-
-      // finish initialization
-      position* pos = attrs_.add<position>();
-      pos->prepare(pos_ = it.release());
-    }
-  }
-}
-
-void doc_iterator::seek_to_block(doc_id_t target) {
-  // check whether it make sense to use skip-list
-  if (skip_levels_.front().doc < target && term_state_.docs_count > postings_writer::BLOCK_SIZE) {
-    skip_context last; // where block starts
-    skip_ctx_ = &last;
-
-    // init skip writer in lazy fashion
-    if (!skip_) {
-      index_input::ptr skip_in = doc_in_->dup();
-      skip_in->seek(term_state_.doc_start + term_state_.e_skip_start);
-
-      skip_.prepare(
-        std::move(skip_in),
-        [this](size_t level, index_input& in) {
-          skip_state& last = *skip_ctx_;
-          auto& last_level = skip_ctx_->level;
-          auto& next = skip_levels_[level];
-
-          if (last_level > level) {
-            // move to the more granular level
-            next = last;
-          } else {
-            // store previous step on the same level
-            last = next;
-          }
-
-          last_level = level;
-
-          if (in.eof()) {
-            // stream exhausted
-            return (next.doc = type_limits<type_t::doc_id_t>::eof());
-          }
-
-          return read_skip(next, in);
-      });
-
-      // initialize skip levels
-      const auto num_levels = skip_.num_levels();
-      if (num_levels) {
-        skip_levels_.resize(num_levels);
-
-        // since we store pointer deltas, add postings offset 
-        auto& top = skip_levels_.back();
-        top.doc_ptr = term_state_.doc_start;
-        top.pos_ptr = term_state_.pos_start;
-        top.pay_ptr = term_state_.pay_start;
-      }
-    }
-
-    const size_t skipped = skip_.seek(target);
-    if (skipped > (cur_pos_ + relative_pos())) {
-      doc_in_->seek(last.doc_ptr);
-      doc_->value = last.doc;
-      cur_pos_ = skipped;
-      begin_ = end_ = docs_; // will trigger refill in "next"
-      if (pos_) {
-        // notify positions
-        pos_->prepare(last);
-      }
-    }
-  }
+  // finish initialization
+  position* pos = attrs_.add<position>();
+  pos->prepare(pos_ = it.release());
 }
 
 NS_END // detail
@@ -3629,13 +3701,46 @@ void postings_reader::decode(
 doc_iterator::ptr postings_reader::iterator(
     const flags& field,
     const attributes& attrs,
-    const flags& req ) {
-  detail::doc_iterator::ptr it = !docs_mask_ || docs_mask_->empty()
-    ? detail::doc_iterator::make<detail::doc_iterator>() 
-    : detail::doc_iterator::make<detail::mask_doc_iterator>( *docs_mask_ );
+    const flags& req) {
+  typedef detail::doc_iterator doc_iterator_t;
+  typedef detail::pos_doc_iterator pos_doc_iterator_t;
+  typedef std::function<doc_iterator_t::ptr(const document_mask*)> factory_t;
 
-  it->prepare( 
-    field, attrs, req, 
+  static const factory_t FACTORIES[] {
+    [](const document_mask* /*mask*/) {
+      return doc_iterator_t::make<detail::doc_iterator>();
+    },
+
+    [](const document_mask* /*mask*/) {
+      return doc_iterator_t::make<pos_doc_iterator_t>();
+    },
+
+    [](const document_mask* mask) {
+      assert(mask);
+      typedef detail::mask_doc_iterator<doc_iterator_t> iterator_t;
+      return doc_iterator_t::make<iterator_t>(*mask);
+    },
+
+    [](const document_mask* mask) {
+      assert(mask);
+      typedef detail::mask_doc_iterator<pos_doc_iterator_t> iterator_t;
+      return doc_iterator_t::make<iterator_t>(*mask);
+    }
+  };
+
+  // compile field features
+  const auto features = version10::features(field);
+  // get enabled features:
+  // find intersection between requested and available features
+  const auto enabled = features & req;
+
+  const bool has_mask = docs_mask_ && !docs_mask_->empty();
+  const auto& factory = FACTORIES[enabled.position() + 2*has_mask];
+
+  auto it = factory(docs_mask_);
+
+  it->prepare(
+    features, enabled, attrs,
     doc_in_.get(), pos_in_.get(), pay_in_.get() 
   );
 
@@ -3653,7 +3758,7 @@ features::features(const flags& in) NOEXCEPT {
   set_bit<3>(in.check<iresearch::payload>(), mask_);
 }
 
-features features::operator&(const flags& in) NOEXCEPT {
+features features::operator&(const flags& in) const NOEXCEPT {
   return features(*this) &= in;
 }
 

@@ -68,7 +68,7 @@ class features {
 
   explicit features(const flags& in) NOEXCEPT;
 
-  features operator&(const flags& in) NOEXCEPT;
+  features operator&(const flags& in) const NOEXCEPT;
   features& operator&=(const flags& in) NOEXCEPT;
 
   bool freq() const { return check_bit<0>(mask_); }
