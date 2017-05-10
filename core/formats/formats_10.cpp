@@ -175,7 +175,7 @@ class doc_iterator : public iresearch::doc_iterator {
       const index_input* pos_in,
       const index_input* pay_in) {
     features_ = field; // set field features
-    enabled_  enabled; // set enabled features
+    enabled_ = enabled; // set enabled features
 
     // add mandatory attributes
     doc_ = attrs_.add<document>();

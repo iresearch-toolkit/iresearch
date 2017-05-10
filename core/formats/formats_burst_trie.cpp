@@ -52,7 +52,7 @@
   // NOOP
 #endif
 
-#include <fst/matcher.h>
+#include "utils/fst_matcher.hpp"
 
 #if defined(_MSC_VER)
   #pragma warning(disable : 4244)
@@ -443,6 +443,9 @@ class term_iterator : public iresearch::seek_term_iterator {
   index_input& terms_input() const;
 
  private:
+  typedef term_reader::fst_t fst_t;
+  typedef fst::SortedMatcher<fst_t> core_matcher_t;
+
   friend class block_iterator;
 
   struct arc {
@@ -502,11 +505,13 @@ class term_iterator : public iresearch::seek_term_iterator {
     return &block_stack_.back();
   }
 
+  const term_reader* owner_;
+  core_matcher_t core_matcher_;
+  fst::explicit_matcher<core_matcher_t> matcher_; // to avoid implicit loops
   iresearch::attributes attrs_;
   seek_state_t sstate_;
   block_stack_t block_stack_;
   block_iterator* cur_block_;
-  const term_reader* owner_;
   version10::term_meta* state_;
   frequency* freq_;
   mutable index_input::ptr terms_in_;
@@ -518,8 +523,10 @@ class term_iterator : public iresearch::seek_term_iterator {
 // --SECTION--                                     block_iterator implementation
 // -----------------------------------------------------------------------------
 
-block_iterator::block_iterator(byte_weight&& header, size_t prefix,
-                               term_iterator* owner )
+block_iterator::block_iterator(
+    byte_weight&& header,
+    size_t prefix,
+    term_iterator* owner)
   : header_in_(std::move(header)),
     owner_(owner),
     prefix_(prefix),
@@ -533,8 +540,10 @@ block_iterator::block_iterator(byte_weight&& header, size_t prefix,
   }
 }
 
-block_iterator::block_iterator( uint64_t start, size_t prefix, 
-                                term_iterator* owner )
+block_iterator::block_iterator(
+    uint64_t start,
+    size_t prefix,
+    term_iterator* owner)
   : owner_(owner),
     start_(start),
     cur_start_(start),
@@ -843,11 +852,13 @@ void block_iterator::reset() {
 // --SECTION--                                      term_iterator implementation
 // -----------------------------------------------------------------------------
 
-term_iterator::term_iterator(const term_reader* owner):
-  attrs_(2), // version10::term_meta + frequency
-  cur_block_(nullptr),
-  owner_(owner),
-  freq_(nullptr) {
+term_iterator::term_iterator(const term_reader* owner)
+  : owner_(owner),
+    core_matcher_(*owner->fst_, fst::MATCH_INPUT),
+    matcher_(core_matcher_),
+    attrs_(2), // version10::term_meta + frequency
+    cur_block_(nullptr),
+    freq_(nullptr) {
   assert(owner_);
   state_ = attrs_.add<version10::term_meta>();
   if (owner_->field_.features.check<frequency>()) {
@@ -981,7 +992,6 @@ ptrdiff_t term_iterator::seek_cached(
 SeekResult term_iterator::seek_equal(const bytes_ref& term) {
   assert(owner_->fst_);
 
-  typedef term_reader::fst_t fst_t;
   typedef fst_t::Weight weight_t;
 
   const auto& fst = *owner_->fst_;
@@ -1008,12 +1018,10 @@ SeekResult term_iterator::seek_equal(const bytes_ref& term) {
   sstate_.resize(prefix); /* remove invalid cached arcs */
 
   bool found = fst_byte_builder::final != state;
-  typedef fst::SortedMatcher<fst_t> matcher_t;
-  fst::ExplicitMatcher<matcher_t> matcher(fst, fst::MATCH_INPUT); // avoid implicit loops
   while (found && prefix < term.size()) {
-    matcher.SetState(state);
-    if (found = matcher.Find(term[prefix])) {
-      const auto& arc = matcher.Value();
+    matcher_.SetState(state);
+    if (found = matcher_.Find(term[prefix])) {
+      const auto& arc = matcher_.Value();
       term_ += byte_type(arc.ilabel);
       fst_utils::append(weight_, arc.weight);
       ++prefix;
