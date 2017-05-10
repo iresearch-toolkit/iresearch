@@ -320,9 +320,9 @@ class mask_doc_iterator final: public doc_iterator {
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
-    auto doc = doc_iterator::seek(target);
+    const auto doc = doc_iterator::seek(target);
 
-    if ( mask_.find( target ) == mask_.end() ) {
+    if (mask_.find(doc) == mask_.end()) {
       return doc;
     }
 
