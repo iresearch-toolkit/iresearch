@@ -525,8 +525,8 @@ bool field_data::invert(
   // among features & meta_.features()
 
   const attributes& attrs = stream.attributes();
-  const term_attribute* term = attrs.get<term_attribute>();
-  const increment* inc = attrs.get<increment>();
+  auto& term = attrs.get<term_attribute>();
+  auto& inc = attrs.get<increment>();
   const offset* offs = nullptr;
   const payload* pay = nullptr;
   if (meta_.features.check<offset>()) {

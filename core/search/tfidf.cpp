@@ -54,7 +54,8 @@ class collector final : public iresearch::sort::collector {
   }
   
   virtual void term(const attributes& term_attrs) {
-    const iresearch::term_meta* meta = term_attrs.get<iresearch::term_meta>();
+    auto& meta = term_attrs.get<iresearch::term_meta>();
+
     if (meta) {
       docs_count += meta->docs_count;
     }
@@ -151,11 +152,11 @@ class sort final: iresearch::sort::prepared_base<tfidf::score_t> {
       const term_reader& field,
       const attributes& query_attrs, 
       const attributes& doc_attrs) const override {
-    iresearch::norm* norm = query_attrs.get<iresearch::norm>();
+    auto& norm = query_attrs.get<iresearch::norm>();
 
     if (norm && norm->reset(segment, field.meta().norm, *doc_attrs.get<document>())) {
       return tfidf::scorer::make<tfidf::norm_scorer>(
-        norm,
+        &*norm,
         boost::extract(query_attrs),
         query_attrs.get<tfidf::idf>(),
         doc_attrs.get<frequency>()

@@ -59,8 +59,8 @@ position::position(
 posting::posting(iresearch::doc_id_t id): id_(id) {}
 
 void posting::add(uint32_t pos, uint32_t offs_start, const iresearch::attributes& attrs) {
-  const iresearch::offset* offs = attrs.get<iresearch::offset>();
-  const iresearch::payload* pay = attrs.get<iresearch::payload>();
+  auto& offs = attrs.get<iresearch::offset>();
+  auto& pay = attrs.get<iresearch::payload>();
 
   uint32_t start = iresearch::offset::INVALID_OFFSET;
   uint32_t end = iresearch::offset::INVALID_OFFSET;
@@ -159,10 +159,10 @@ void index_segment::add(const ifield& f) {
   auto& stream = f.get_tokens();
 
   const iresearch::attributes& attrs = stream.attributes();
-  const iresearch::term_attribute* term = attrs.get<iresearch::term_attribute>();
-  const iresearch::increment* inc = attrs.get<iresearch::increment>();
-  const iresearch::offset* offs = attrs.get<iresearch::offset>();
-  const iresearch::payload* pay = attrs.get<iresearch::payload>();
+  auto& term = attrs.get<iresearch::term_attribute>();
+  auto& inc = attrs.get<iresearch::increment>();
+  auto& offs = attrs.get<iresearch::offset>();
+  auto& pay = attrs.get<iresearch::payload>();
 
   bool empty = true;
   auto doc_id = (ir::type_limits<ir::type_t::doc_id_t>::min)() + count_;
@@ -553,7 +553,7 @@ class term_iterator : public iresearch::seek_term_iterator {
     return false;
   }
 
-  virtual iresearch::attribute::ptr cookie() const {
+  virtual irs::seek_term_iterator::cookie_ptr cookie() const {
     return nullptr;
   }
 
@@ -725,25 +725,27 @@ void assert_term(
       auto& actual_attrs = actual_docs->attributes();
       ASSERT_EQ(expected_attrs.features(), actual_attrs.features());
 
-      const iresearch::frequency* expected_freq = expected_attrs.get<iresearch::frequency>();
-      const iresearch::frequency* actual_freq = actual_attrs.get<iresearch::frequency>();
+      auto& expected_freq = expected_attrs.get<iresearch::frequency>();
+      auto& actual_freq = actual_attrs.get<iresearch::frequency>();
+
       if (expected_freq) {
-        ASSERT_NE(nullptr, actual_freq);
+        ASSERT_FALSE(!actual_freq);
         ASSERT_EQ(expected_freq->value, actual_freq->value);
       }
 
-      const iresearch::position* expected_pos = expected_attrs.get< iresearch::position >();
-      const iresearch::position* actual_pos = actual_attrs.get< iresearch::position >();
+      auto& expected_pos = expected_attrs.get< iresearch::position >();
+      auto& actual_pos = actual_attrs.get< iresearch::position >();
+
       if (expected_pos) {
-        ASSERT_NE(nullptr, actual_pos);
+        ASSERT_FALSE(!actual_pos);
 
-        const iresearch::offset* expected_offs = expected_pos->get<iresearch::offset>();
-        const iresearch::offset* actual_offs = actual_pos->get<iresearch::offset>();
-        if (expected_offs) ASSERT_NE(nullptr, actual_offs);
+        auto& expected_offs = expected_pos->get<iresearch::offset>();
+        auto& actual_offs = actual_pos->get<iresearch::offset>();
+        if (expected_offs) ASSERT_FALSE(!actual_offs);
 
-        const iresearch::payload* expected_pay = expected_pos->get<iresearch::payload>();
-        const iresearch::payload* actual_pay = actual_pos->get<iresearch::payload>();
-        if (expected_pay) ASSERT_NE(nullptr, actual_pay);
+        auto& expected_pay = expected_pos->get<iresearch::payload>();
+        auto& actual_pay = actual_pos->get<iresearch::payload>();
+        if (expected_pay) ASSERT_FALSE(!actual_pay);
 
         for (; expected_pos->next();) {
           ASSERT_TRUE(actual_pos->next());
@@ -826,7 +828,7 @@ void assert_terms_seek(
     }
 
     // seek without state, iterate forward
-    iresearch::attribute::ptr cookie; // cookie
+    irs::seek_term_iterator::cookie_ptr cookie; // cookie
     {
       auto actual_term = actual_term_reader.iterator();
       ASSERT_TRUE(actual_term->seek(expected_term->value()));

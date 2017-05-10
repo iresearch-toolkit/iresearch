@@ -99,7 +99,7 @@ protected:
       auto prep = filter.prepare(rdr, pord);
       auto docs = prep->execute(*(rdr.begin()), pord);
 
-      const iresearch::score* scr = docs->attributes().get<iresearch::score>();
+      auto& scr = docs->attributes().get<iresearch::score>();
       ASSERT_NE(nullptr, scr);
 
       // first hit
@@ -121,7 +121,7 @@ protected:
       auto prep = filter.prepare(rdr, pord);
       auto docs = prep->execute(*(rdr.begin()), pord);
 
-      const iresearch::score* scr = docs->attributes().get<iresearch::score>();
+      auto& scr = docs->attributes().get<iresearch::score>();
       ASSERT_NE(nullptr, scr);
 
       // first hit
@@ -209,7 +209,7 @@ protected:
     {
       ir::numeric_token_stream stream;
       stream.reset(INT64_C(20));
-      const ir::term_attribute* term = stream.attributes().get<ir::term_attribute>();
+      auto& term = stream.attributes().get<ir::term_attribute>();
       ASSERT_TRUE(stream.next());
 
       ir::by_term query;
@@ -233,7 +233,7 @@ protected:
     {
       ir::numeric_token_stream stream;
       stream.reset(INT32_C(21));
-      const ir::term_attribute* term = stream.attributes().get<ir::term_attribute>();
+      auto& term = stream.attributes().get<ir::term_attribute>();
       ASSERT_TRUE(stream.next());
 
       ir::by_term query;
@@ -257,7 +257,7 @@ protected:
     {
       ir::numeric_token_stream stream;
       stream.reset((double_t)90.564);
-      const ir::term_attribute* term = stream.attributes().get<ir::term_attribute>();
+      auto& term = stream.attributes().get<ir::term_attribute>();
       ASSERT_TRUE(stream.next());
 
       ir::by_term query;
@@ -281,7 +281,7 @@ protected:
     {
       ir::numeric_token_stream stream;
       stream.reset((float_t)90.564f);
-      const ir::term_attribute* term = stream.attributes().get<ir::term_attribute>();
+      auto& term = stream.attributes().get<ir::term_attribute>();
       ASSERT_TRUE(stream.next());
 
       ir::by_term query;
@@ -305,7 +305,7 @@ protected:
     {
       ir::numeric_token_stream stream;
       stream.reset((double_t)100.);
-      const ir::term_attribute* term = stream.attributes().get<ir::term_attribute>();
+      auto& term = stream.attributes().get<ir::term_attribute>();
       ASSERT_TRUE(stream.next());
 
       ir::by_term query;
@@ -329,7 +329,7 @@ protected:
     {
       ir::numeric_token_stream stream;
       stream.reset((float_t)100.f);
-      const ir::term_attribute* term = stream.attributes().get<ir::term_attribute>();
+      auto& term = stream.attributes().get<ir::term_attribute>();
       ASSERT_TRUE(stream.next());
 
       ir::by_term query;
@@ -353,7 +353,7 @@ protected:
     {
       ir::numeric_token_stream stream;
       stream.reset(100);
-      const ir::term_attribute* term = stream.attributes().get<ir::term_attribute>();
+      auto& term = stream.attributes().get<ir::term_attribute>();
       ASSERT_TRUE(stream.next());
 
       ir::by_term query;
@@ -377,7 +377,7 @@ protected:
     {
       ir::numeric_token_stream stream;
       stream.reset(INT64_C(100));
-      const ir::term_attribute* term = stream.attributes().get<ir::term_attribute>();
+      auto& term = stream.attributes().get<ir::term_attribute>();
       ASSERT_TRUE(stream.next());
 
       ir::by_term query;

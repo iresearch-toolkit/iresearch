@@ -43,7 +43,7 @@ filter::prepared::ptr by_prefix::prepare(
     }
 
     /* get term metadata */
-    const term_meta* meta = terms->attributes().get<term_meta>();
+    auto& meta = terms->attributes().get<term_meta>();
 
     if (starts_with(terms->value(), prefix)) {
       terms->read();

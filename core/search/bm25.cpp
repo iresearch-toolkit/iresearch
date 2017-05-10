@@ -134,15 +134,18 @@ class collector final : public iresearch::sort::collector {
   virtual void field(
       const sub_reader& /* segment */,
       const term_reader& field) override {
-    const frequency* freq = field.attributes().get<frequency>();
+    auto& freq = field.attributes().get<frequency>();
+
     if (freq) {
       total_term_freq += freq->value;
     }
+
     docs_count += field.docs_count();
   }
 
   virtual void term(const attributes& term_attrs) override {
-    const iresearch::term_meta* meta = term_attrs.get<iresearch::term_meta>();
+    auto& meta = term_attrs.get<iresearch::term_meta>();
+
     if (meta) {
       docs_count += meta->docs_count;
     }
@@ -151,8 +154,8 @@ class collector final : public iresearch::sort::collector {
   virtual void finish(
       const iresearch::index_reader& index_reader, 
       iresearch::attributes& query_attrs) override {
-    stats* bm25stats = query_attrs.add<stats>();
-    
+    auto& bm25stats = query_attrs.add<stats>();
+
     // precomputed idf value
     bm25stats->idf = 1 + static_cast<float_t>(
       std::log(index_reader.docs_count() / double_t(docs_count + 1))
@@ -202,15 +205,15 @@ class sort final : iresearch::sort::prepared_base<bm25::score_t> {
       const term_reader& field,
       const attributes& query_attrs, 
       const attributes& doc_attrs) const override {
+    auto& norm = query_attrs.get<iresearch::norm>();
 
-    iresearch::norm* norm = query_attrs.get<iresearch::norm>();
     if (norm && norm->reset(segment, field.meta().norm, *doc_attrs.get<document>())) {
       return bm25::scorer::make<bm25::norm_scorer>(      
         k_, 
         boost::extract(query_attrs),
         query_attrs.get<bm25::stats>(),
         doc_attrs.get<frequency>(),
-        norm
+        &*norm
       );
     }
 

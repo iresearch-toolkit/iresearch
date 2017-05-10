@@ -37,7 +37,7 @@ struct reader_term_state {
   }
 
   const term_reader* reader{};
-  attribute::ptr cookie;
+  seek_term_iterator::cookie_ptr cookie;
   cost::cost_t estimation{};
 }; // term_state
 

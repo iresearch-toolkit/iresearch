@@ -310,20 +310,21 @@ class format_10_test_case : public tests::format_test_case_base {
   }
 
   void assert_positions(const ir::doc_iterator& expected, const ir::doc_iterator& actual) {
-    ir::position* expected_pos = expected.attributes().get<ir::position>();
-    ir::position* actual_pos = actual.attributes().get<ir::position>();
-    ASSERT_EQ(nullptr == expected_pos, nullptr == actual_pos);
+    auto& expected_pos = expected.attributes().get<ir::position>();
+    auto& actual_pos = actual.attributes().get<ir::position>();
+    ASSERT_EQ(!expected_pos, !actual_pos);
+
     if (!expected_pos) {
       return;
     }
 
-    ir::offset* expected_offset = expected_pos->attributes().get<ir::offset>();
-    ir::offset* actual_offset = actual_pos->attributes().get<ir::offset>();
-    ASSERT_EQ(nullptr == expected_offset, nullptr == actual_offset);
-    
-    ir::payload* expected_payload = expected_pos->attributes().get<ir::payload>();
-    ir::payload* actual_payload = actual_pos->attributes().get<ir::payload>();
-    ASSERT_EQ(nullptr == expected_payload, nullptr == actual_payload);
+    auto& expected_offset = expected_pos->attributes().get<ir::offset>();
+    auto& actual_offset = actual_pos->attributes().get<ir::offset>();
+    ASSERT_EQ(!expected_offset, !actual_offset);
+
+    auto& expected_payload = expected_pos->attributes().get<ir::payload>();
+    auto& actual_payload = actual_pos->attributes().get<ir::payload>();
+    ASSERT_EQ(!expected_payload, !actual_payload);
 
     for (; expected_pos->next();) {
       ASSERT_TRUE(actual_pos->next());

@@ -255,7 +255,7 @@ TEST(boolean_query_boost, hierarchy) {
       empty_sub_reader::instance(), pord
     );
 
-    const iresearch::score* scr = docs->attributes().get<iresearch::score>();
+    auto& scr = docs->attributes().get<iresearch::score>();
     ASSERT_NE(nullptr, scr);
 
     /* the first hit should be scored as 2*value^3 +2*value^3+value^2 since it
@@ -341,7 +341,7 @@ TEST(boolean_query_boost, hierarchy) {
       empty_sub_reader::instance(), pord
     );
 
-    const iresearch::score* scr = docs->attributes().get<iresearch::score>();
+    auto& scr = docs->attributes().get<iresearch::score>();
     ASSERT_NE(nullptr, scr);
 
     /* the first hit should be scored as 2*value^3+value^2+3*value^2+value
@@ -433,7 +433,7 @@ TEST(boolean_query_boost, hierarchy) {
 
     auto docs = prep->execute(empty_sub_reader::instance(), pord);
 
-    const iresearch::score* scr = docs->attributes().get<iresearch::score>();
+    auto& scr = docs->attributes().get<iresearch::score>();
     ASSERT_NE(nullptr, scr);
 
     // the first hit should be scored as value^3+2*value^2+3*value^2+value
@@ -474,8 +474,8 @@ TEST(boolean_query_boost, and) {
       iresearch::order::prepared::unordered()
     );
 
-    const iresearch::boost* boost = prep->attributes().get<iresearch::boost>();
-    ASSERT_EQ(nullptr, boost);
+    auto& boost = prep->attributes().get<iresearch::boost>();
+    ASSERT_TRUE(!boost);
   }
 
   // boosted boolean query
@@ -490,8 +490,8 @@ TEST(boolean_query_boost, and) {
       iresearch::order::prepared::unordered()
     );
 
-    const iresearch::boost* boost = prep->attributes().get<iresearch::boost>();
-    ASSERT_NE(nullptr, boost);
+    auto& boost = prep->attributes().get<iresearch::boost>();
+    ASSERT_FALSE(!boost);
     ASSERT_EQ(value, boost->value);
   }
 
@@ -517,8 +517,8 @@ TEST(boolean_query_boost, and) {
 
     auto docs = prep->execute(empty_sub_reader::instance(), pord);
 
-    const iresearch::score* scr = docs->attributes().get<iresearch::score>();
-    ASSERT_NE(nullptr, scr);
+    auto& scr = docs->attributes().get<iresearch::score>();
+    ASSERT_FALSE(!scr);
     ASSERT_TRUE(docs->next());
     docs->score();
     auto doc_boost = scr->get<tests::sort::boost::score_t>(0) ;
@@ -549,8 +549,8 @@ TEST(boolean_query_boost, and) {
 
     auto docs = prep->execute(empty_sub_reader::instance(), pord);
 
-    const iresearch::score* scr = docs->attributes().get<iresearch::score>();
-    ASSERT_NE(nullptr, scr);
+    auto& scr = docs->attributes().get<iresearch::score>();
+    ASSERT_FALSE(!scr);
     ASSERT_TRUE(docs->next());
     docs->score();
     auto doc_boost = scr->get<tests::sort::boost::score_t>(0) ;
@@ -588,8 +588,8 @@ TEST(boolean_query_boost, and) {
 
     /* the first hit should be scored as value*value + value*value since it
      * exists in both results */
-    const iresearch::score* scr = docs->attributes().get<iresearch::score>();
-    ASSERT_NE(nullptr, scr);
+    auto& scr = docs->attributes().get<iresearch::score>();
+    ASSERT_FALSE(!scr);
     ASSERT_TRUE(docs->next());
     docs->score();
     auto doc_boost = scr->get<tests::sort::boost::score_t>(0) ;
@@ -635,8 +635,8 @@ TEST(boolean_query_boost, and) {
 
     auto docs = prep->execute(empty_sub_reader::instance(), pord);
 
-    const iresearch::score* scr = docs->attributes().get<iresearch::score>();
-    ASSERT_NE(nullptr, scr);
+    auto& scr = docs->attributes().get<iresearch::score>();
+    ASSERT_FALSE(!scr);
     ASSERT_TRUE(docs->next());
     docs->score();
     auto doc_boost = scr->get<tests::sort::boost::score_t>(0) ;
@@ -681,8 +681,8 @@ TEST(boolean_query_boost, and) {
 
     auto docs = prep->execute(empty_sub_reader::instance(), pord);
 
-    const iresearch::score* scr = docs->attributes().get<iresearch::score>();
-    ASSERT_NE(nullptr, scr);
+    auto& scr = docs->attributes().get<iresearch::score>();
+    ASSERT_FALSE(!scr);
     ASSERT_TRUE(docs->next());
     docs->score();
     auto doc_boost = scr->get<tests::sort::boost::score_t>(0) ;
@@ -725,8 +725,8 @@ TEST(boolean_query_boost, and) {
 
     auto docs = prep->execute(empty_sub_reader::instance(), pord);
 
-    const iresearch::score* scr = docs->attributes().get<iresearch::score>();
-    ASSERT_NE(nullptr, scr);
+    auto& scr = docs->attributes().get<iresearch::score>();
+    ASSERT_FALSE(!scr);
     ASSERT_TRUE(docs->next());
     docs->score();
     auto doc_boost = scr->get<tests::sort::boost::score_t>(0) ;
@@ -748,8 +748,8 @@ TEST(boolean_query_boost, or) {
       iresearch::order::prepared::unordered()
     );
 
-    const iresearch::boost* boost = prep->attributes().get<iresearch::boost>();
-    ASSERT_EQ(nullptr, boost);
+    auto& boost = prep->attributes().get<iresearch::boost>();
+    ASSERT_TRUE(!boost);
   }
 
   // single boosted query
@@ -764,8 +764,8 @@ TEST(boolean_query_boost, or) {
       iresearch::order::prepared::unordered()
     );
 
-    const iresearch::boost* boost = prep->attributes().get<iresearch::boost>();
-    ASSERT_NE(nullptr, boost);
+    auto& boost = prep->attributes().get<iresearch::boost>();
+    ASSERT_FALSE(!boost);
     ASSERT_EQ(value, boost->value);
   }
 
@@ -791,8 +791,8 @@ TEST(boolean_query_boost, or) {
 
     auto docs = prep->execute(empty_sub_reader::instance(), pord);
 
-    const iresearch::score* scr = docs->attributes().get<iresearch::score>();
-    ASSERT_NE(nullptr, scr);
+    auto& scr = docs->attributes().get<iresearch::score>();
+    ASSERT_FALSE(!scr);
     ASSERT_TRUE(docs->next());
     docs->score();
     auto doc_boost = scr->get<tests::sort::boost::score_t>(0) ;
@@ -823,8 +823,8 @@ TEST(boolean_query_boost, or) {
 
     auto docs = prep->execute(empty_sub_reader::instance(), pord);
 
-    const iresearch::score* scr = docs->attributes().get<iresearch::score>();
-    ASSERT_NE(nullptr, scr);
+    auto& scr = docs->attributes().get<iresearch::score>();
+    ASSERT_FALSE(!scr);
     ASSERT_TRUE(docs->next());
     docs->score();
     auto doc_boost = scr->get<tests::sort::boost::score_t>(0) ;
@@ -860,8 +860,8 @@ TEST(boolean_query_boost, or) {
 
     auto docs = prep->execute(empty_sub_reader::instance(), pord);
 
-    const iresearch::score* scr = docs->attributes().get<iresearch::score>();
-    ASSERT_NE(nullptr, scr);
+    auto& scr = docs->attributes().get<iresearch::score>();
+    ASSERT_FALSE(!scr);
 
     /* the first hit should be scored as value*value + value*value since it
      * exists in both results */
@@ -922,8 +922,8 @@ TEST(boolean_query_boost, or) {
 
     auto docs = prep->execute(empty_sub_reader::instance(), pord);
 
-    const iresearch::score* scr = docs->attributes().get<iresearch::score>();
-    ASSERT_NE(nullptr, scr);
+    auto& scr = docs->attributes().get<iresearch::score>();
+    ASSERT_FALSE(!scr);
 
     // first hit
     {
@@ -981,8 +981,8 @@ TEST(boolean_query_boost, or) {
 
     auto docs = prep->execute(empty_sub_reader::instance(), pord);
 
-    const iresearch::score* scr = docs->attributes().get<iresearch::score>();
-    ASSERT_NE(nullptr, scr);
+    auto& scr = docs->attributes().get<iresearch::score>();
+    ASSERT_FALSE(!scr);
 
     // first hit
     {
@@ -1036,8 +1036,8 @@ TEST(boolean_query_boost, or) {
 
     auto docs = prep->execute(empty_sub_reader::instance(), pord);
 
-    const iresearch::score* scr = docs->attributes().get<iresearch::score>();
-    ASSERT_NE(nullptr, scr);
+    auto& scr = docs->attributes().get<iresearch::score>();
+    ASSERT_FALSE(!scr);
 
     // first hit
     {

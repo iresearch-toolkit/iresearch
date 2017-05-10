@@ -43,7 +43,7 @@ NS_ROOT
 /// @brief cached per reader phrase state
 //////////////////////////////////////////////////////////////////////////////
 struct phrase_state {
-  typedef std::pair<attribute::ptr, cost::cost_t> term_state_t;
+  typedef std::pair<seek_term_iterator::cookie_ptr, cost::cost_t> term_state_t;
   typedef std::vector<term_state_t> terms_states_t;
 
   phrase_state() = default;
@@ -124,7 +124,7 @@ class phrase_query : public filter::prepared {
       auto docs = terms->postings(features);
 
       // get needed postings attributes
-      const position* pos = docs->attributes().get<position>();
+      auto& pos = docs->attributes().get<position>();
       if (!pos) {
         // positions not found
         return score_doc_iterator::empty();
@@ -229,7 +229,7 @@ filter::prepared::ptr by_phrase::prepare(
     // find terms
     seek_term_iterator::ptr term = tr->iterator();
     // get term metadata
-    const term_meta* meta = term->attributes().get<term_meta>();
+    auto& meta = term->attributes().get<term_meta>();
 
     auto term_stats = phrase_stats.begin();
     term_stats->field(sr, *tr);

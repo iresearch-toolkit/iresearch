@@ -938,6 +938,7 @@ void doc_iterator::prepare( const flags& field,
       state.freq = &freq_->value;
       state.features = features_;
       state.enc_buf = enc_buf_;
+
       if (term_freq_ < postings_writer::BLOCK_SIZE) {
         state.tail_start = term_state_.pos_start;
       } else if (term_freq_ == postings_writer::BLOCK_SIZE) {
@@ -945,11 +946,12 @@ void doc_iterator::prepare( const flags& field,
       } else {
         state.tail_start = term_state_.pos_start + term_state_.pos_end;
       }
+
       state.tail_length = term_freq_ % postings_writer::BLOCK_SIZE;
       it->prepare(state);
 
       // finish initialization
-      position* pos = attrs_.add<position>();
+      auto& pos = attrs_.add<position>();
       pos->prepare(pos_ = it.release());
     }
   }
@@ -3466,8 +3468,8 @@ void postings_writer::write_skip(size_t level, index_output& out) {
 }
 
 void postings_writer::encode(data_output& out, const iresearch::attributes& attrs) {
-  const version10::term_meta* meta = attrs.get<term_meta>();
-  const frequency* tfreq = attrs.get<frequency>();
+  auto& meta = attrs.get<term_meta>();
+  auto& tfreq = attrs.get<frequency>();
 
   out.write_vlong(meta->docs_count);
   if (tfreq) {
@@ -3591,8 +3593,8 @@ void postings_reader::decode(
     data_input& in, 
     const flags& meta, 
     attributes& attrs) {
-  version10::term_meta* tmeta = attrs.add<version10::term_meta>();
-  frequency* tfreq = attrs.get<frequency>();
+  auto& tmeta = attrs.add<version10::term_meta>();
+  auto& tfreq = attrs.get<frequency>();
 
   assert(tmeta);
 

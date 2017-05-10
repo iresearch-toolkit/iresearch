@@ -52,7 +52,7 @@ void limited_sample_scorer::collect(
   size_t scored_state_id, // state identifier used for querying of attributes
   iresearch::range_state& scored_state, // state containing this scored term
   const iresearch::sub_reader& reader, // segment reader for the current term
-  iresearch::attribute::ptr&& cookie // term-reader term offset cache
+  seek_term_iterator::cookie_ptr&& cookie // term-reader term offset cache
 ) {
   scored_states_.emplace(
     std::piecewise_construct,

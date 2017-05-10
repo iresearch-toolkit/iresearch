@@ -96,11 +96,11 @@ class format_test_case_base : public index_test_base {
              const ir::flags& features = ir::flags::empty_instance())
       : next_(begin), end_(end) {
       if (features.check<ir::frequency>()) {
-        ir::frequency* freq = attrs_.add<ir::frequency>();
+        auto& freq = attrs_.add<ir::frequency>();
         freq->value = 10;
 
         if (features.check<ir::position>()) {
-          ir::position* pos = attrs_.add<ir::position>();
+          auto& pos = attrs_.add<ir::position>();
           pos->prepare(pos_ = new position(features));
         }
       }
