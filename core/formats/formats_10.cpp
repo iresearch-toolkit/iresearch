@@ -174,7 +174,8 @@ class doc_iterator : public iresearch::doc_iterator {
       const index_input* doc_in,
       const index_input* pos_in,
       const index_input* pay_in) {
-    features_ = field;
+    features_ = field; // set field features
+    enabled_  enabled; // set enabled features
 
     // add mandatory attributes
     doc_ = attrs_.add<document>();
@@ -315,12 +316,21 @@ class doc_iterator : public iresearch::doc_iterator {
       encode::bitpack::read_block(*doc_in_, postings_writer::BLOCK_SIZE, enc_buf_, docs_);
 
       if (features_.freq()) {
-        encode::bitpack::read_block(
-          *doc_in_,
-          postings_writer::BLOCK_SIZE,
-          reinterpret_cast<uint32_t*>(enc_buf_),
-          doc_freqs_
-        );
+        // read frequency it is required by
+        // the iterator or just skip it otherwise
+        if (enabled_.freq()) {
+          encode::bitpack::read_block(
+            *doc_in_,
+            postings_writer::BLOCK_SIZE,
+            reinterpret_cast<uint32_t*>(enc_buf_),
+            doc_freqs_
+          );
+        } else {
+          encode::bitpack::skip_block32(
+            *doc_in_,
+            postings_writer::BLOCK_SIZE
+          );
+        }
       }
       end_ = docs_ + postings_writer::BLOCK_SIZE;
     } else if (1U == term_state_.docs_count) {
@@ -362,6 +372,7 @@ class doc_iterator : public iresearch::doc_iterator {
   index_input::ptr doc_in_;
   version10::term_meta term_state_;
   features features_; // field features
+  features enabled_; // enabled iterator features
 }; // doc_iterator 
 
 void doc_iterator::seek_to_block(doc_id_t target) {
