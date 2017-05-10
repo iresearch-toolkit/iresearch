@@ -41,6 +41,12 @@
 #include <type_traits>
 #include <deque>
 
+NS_LOCAL
+
+irs::frequency EMPTY_FREQ; // placeholder for empty frequency
+
+NS_END
+
 NS_ROOT
 NS_BEGIN(version10)
 
@@ -190,24 +196,7 @@ class doc_iterator : public iresearch::doc_iterator {
   #pragma GCC diagnostic ignored "-Wparentheses"
 #endif
 
-  virtual bool next() override {
-    if (cur_pos_ == term_state_.docs_count) {
-      doc_->value = type_limits<type_t::doc_id_t>::eof();
-      return false;
-    }
-
-    if (begin_ == end_) {
-      refill();
-    }
-
-    doc_->value += *begin_;
-    refresh();
-
-    ++cur_pos_;
-    ++begin_;
-    ++doc_freq_;
-    return true;
-  }
+  virtual bool next() override;
 
 #if defined(_MSC_VER)
   #pragma warning( default : 4706 )
@@ -217,6 +206,12 @@ class doc_iterator : public iresearch::doc_iterator {
 
  private:
   void seek_to_block(doc_id_t target);
+
+  // returns current position in the document block 'docs_'
+  size_t relative_pos() NOEXCEPT {
+    assert(begin_ >= docs_);
+    return begin_ - docs_;
+  }
 
   doc_id_t read_skip(skip_state& state, index_input& in) {
     state.doc = in.read_vint();
@@ -288,9 +283,6 @@ class doc_iterator : public iresearch::doc_iterator {
     doc_freq_ = reinterpret_cast<uint32_t*>(begin_ + postings_writer::BLOCK_SIZE);
   }
 
-  // refreshes attributes
-  inline void refresh();
-
   std::vector<skip_state> skip_levels_;
   skip_reader skip_;
   skip_context* skip_ctx_; // pointer to used skip context, will be used by skip reader
@@ -299,13 +291,13 @@ class doc_iterator : public iresearch::doc_iterator {
   doc_id_t docs_[postings_writer::BLOCK_SIZE]; // doc deltas
   uint32_t doc_freqs_[postings_writer::BLOCK_SIZE];
   uint64_t cur_pos_{};
-  doc_id_t* begin_{docs_+postings_writer::BLOCK_SIZE};
-  doc_id_t* end_{docs_+postings_writer::BLOCK_SIZE};
+  doc_id_t* begin_{docs_};
+  doc_id_t* end_{docs_};
   uint32_t* doc_freq_{}; // pointer into docs_ to the frequency attribute value for the current doc
   uint64_t term_freq_{}; /* total term frequency */
   pos_iterator* pos_{};
   document* doc_;
-  frequency* freq_{};
+  frequency* freq_{ &EMPTY_FREQ };
   index_input::ptr doc_in_;
   version10::term_meta term_state_;
   features features_; /* field features */
@@ -885,12 +877,38 @@ class pay_iterator final : public pos_iterator {
   return nullptr;
 }
 
-void doc_iterator::prepare( const flags& field,
-                            const iresearch::attributes& attrs,
-                            const flags& req,
-                            const index_input* doc_in,
-                            const index_input* pos_in,
-                            const index_input* pay_in ) {
+bool doc_iterator::next() {
+  if (begin_ == end_) {
+    cur_pos_ += relative_pos();
+
+    if (cur_pos_ == term_state_.docs_count) {
+      doc_->value = type_limits<type_t::doc_id_t>::eof();
+      begin_ = end_ = docs_; // seal the iterator
+      return false;
+    }
+
+    refill();
+  }
+
+  doc_->value += *begin_++;
+  freq_->value = *doc_freq_++;
+
+  // TODO: move to separate implementation
+  if (pos_) {
+    pos_->pend_pos_ += freq_->value;
+    pos_->clear();
+  }
+
+  return true;
+}
+
+void doc_iterator::prepare(
+    const flags& field,
+    const iresearch::attributes& attrs,
+    const flags& req,
+    const index_input* doc_in,
+    const index_input* pos_in,
+    const index_input* pay_in) {
   features_ = features(field);
 
   // add mandatory attributes
@@ -955,17 +973,6 @@ void doc_iterator::prepare( const flags& field,
   }
 }
 
-/* inline */ void doc_iterator::refresh() {
-  if (freq_) {
-    freq_->value = *doc_freq_;
-
-    if (pos_) {
-      pos_->pend_pos_ += freq_->value;
-      pos_->clear();
-    }
-  }
-}
-
 void doc_iterator::seek_to_block(doc_id_t target) {
   // check whether it make sense to use skip-list
   if (skip_levels_.front().doc < target && term_state_.docs_count > postings_writer::BLOCK_SIZE) {
@@ -1016,11 +1023,11 @@ void doc_iterator::seek_to_block(doc_id_t target) {
     }
 
     const size_t skipped = skip_.seek(target);
-    if (skipped > cur_pos_) {
+    if (skipped > (cur_pos_ + relative_pos())) {
       doc_in_->seek(last.doc_ptr);
       doc_->value = last.doc;
       cur_pos_ = skipped;
-      begin_ = end_; // will trigger refill in "next"
+      begin_ = end_ = docs_; // will trigger refill in "next"
       if (pos_) {
         // notify positions
         pos_->prepare(last);
