@@ -14,6 +14,7 @@ build:
   verbosity: normal
 
 environment:
+  WINFLEXBISON_ARCHIVE: win_flex_bison-2.4.5.zip
   matrix:
   - BOOST_VERSION: default
     CONFIGURATION: Debug
@@ -26,9 +27,13 @@ environment:
 
 install:
   ############################################################################
-  # Add bison executable to PATH
+  # Install flex/bison
   ############################################################################
-  - set PATH=%PATH%;C:\cygwin64
+  - if not exist "%WINFLEXBISON_ARCHIVE%" appveyor DownloadFile "http://downloads.sourceforge.net/project/winflexbison/%WINFLEXBISON_ARCHIVE%"
+  - 7z x -y -owinflexbison\ "%WINFLEXBISON_ARCHIVE%" > nul
+  - set PATH=%PATH%;%CD%\winflexbison
+  - win_bison --version
+  - bison --version
   
   ############################################################################
   # All the dependencies are installed in %APPVEYOR_BUILD_FOLDER%\deps
