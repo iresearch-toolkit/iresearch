@@ -882,22 +882,23 @@ int search(
     task_provider = std::move(tasks);
   }
 
+  struct Entry {
+    Entry(irs::doc_id_t i, float s)
+      : id(i), score(s) {
+    }
+
+    irs::doc_id_t id;
+    float score;
+  };
+
   // indexer threads
   for (size_t i = search_threads; i; --i) {
     thread_pool.run([&task_provider, &dir, &reader, &order, limit, &out, csv, scored_terms_limit]()->void {
-      struct Entry {
-        irs::doc_id_t id;
-        float score;
-        Entry(irs::doc_id_t i, float s): id(i), score(s) {}
-      };
       static const std::string analyzer_name("text");
       static const std::string analyzer_args("{\"locale\":\"en\", \"ignored_words\":[\"abc\", \"def\", \"ghi\"]}"); // from index-put
       auto analyzer = irs::analysis::analyzers::get(analyzer_name, analyzer_args);
       irs::filter::prepared::ptr filter;
       std::string tmpBuf;
-      auto comparer = [&order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
-        return order.less(lhs.c_str(), rhs.c_str());
-      };
 
       #if defined(_MSC_VER) && defined(IRESEARCH_DEBUG)
         typedef irs::memory::memory_multi_size_pool<irs::memory::identity_grow> pool_t;
@@ -909,9 +910,18 @@ int search(
 
       pool_t pool(limit + 1); // +1 for least significant overflow element
 
+#ifdef IRESEARCH_COMPLEX_SCORING
+      auto comparer = [&order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
+        return order.less(lhs.c_str(), rhs.c_str());
+      };
       std::multimap<irs::bstring, Entry, decltype(comparer), alloc_t> sorted(
         comparer, alloc_t{pool}
       );
+#else
+      std::multimap<float, irs::doc_id_t, std::less<float>, alloc_t> sorted(
+        std::less<float>(), alloc_t{pool}
+      );
+#endif
 
       // process a single task
       for (const task_t* task; (task = ++task_provider) != nullptr;) {
@@ -962,13 +972,18 @@ int search(
 
             while (docs->next()) {
               ++doc_count;
+
               docs->score();
 
+#ifdef IRESEARCH_COMPLEX_SCORING
               sorted.emplace(
                 std::piecewise_construct,
                 std::forward_as_tuple(score->value()),
                 std::forward_as_tuple(docs->value(), score_value)
               );
+#else
+              sorted.emplace(score_value, docs->value());
+#endif
 
               if (sorted.size() > limit) {
                 sorted.erase(--(sorted.end()));
@@ -991,8 +1006,12 @@ int search(
             out << "  " << tdiff.count() / 1000. << " msec" << std::endl;
             out << "  thread " << std::this_thread::get_id() << std::endl;
 
-            for (auto& entry: sorted) {
+            for (auto& entry : sorted) {
+#ifdef IRESEARCH_COMPLEX_SCORING
               out << "  doc=" << entry.second.id << " score=" << entry.second.score << std::endl;
+#else
+              out << "  doc=" << entry.second << " score=" << entry.first<< std::endl;
+#endif
             }
 
             out << std::endl;
