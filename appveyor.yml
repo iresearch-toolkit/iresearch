@@ -21,6 +21,7 @@ environment:
   - BOOST_VERSION: default
     CONFIGURATION: Release
     CMAKE_OPTIONS: -DCMAKE_BUILD_TYPE=%CONFIGURATION%
+    CMAKE_BUILD_OPTIONS: --config %CONFIGURATION%
     
 
 install:
@@ -104,3 +105,4 @@ build_script:
   - mkdir build
   - cd build
   - cmake -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 %CMAKE_OPTIONS% ..
+  - cmake --build . %CMAKE_BUILD_OPTIONS%
