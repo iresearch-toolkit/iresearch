@@ -36,7 +36,7 @@ IRESEARCH_API void dump_mem_stats_trace() NOEXCEPT;
 template<typename... Types>
 struct aligned_union {
 #if defined(_MSC_VER)
-  typedef typename std::aligned_union<0, T0, T1>::type type;
+  typedef typename std::aligned_union<0, Types...>::type type;
 #else // __GNUC__
   // GCC < 4.9 does not support std::aligned_union
   struct type {
