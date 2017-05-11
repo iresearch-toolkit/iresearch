@@ -390,7 +390,7 @@ struct cookie : attribute {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief declaration/implementation of DECLARE_FACTORY_DEFAULT()
   //////////////////////////////////////////////////////////////////////////////
-  static ptr make(const version10::term_meta& meta, uint64_t term_freq) {
+  static seek_term_iterator::cookie_ptr make(const version10::term_meta& meta, uint64_t term_freq) {
     return memory::make_unique<cookie>(meta, term_freq);
   }
 
@@ -434,7 +434,7 @@ class term_iterator : public iresearch::seek_term_iterator {
     cur_block_ = nullptr;
     return true;
   }
-  virtual attribute::ptr cookie() const override {
+  virtual seek_term_iterator::cookie_ptr cookie() const override {
     return detail::cookie::make(
       *state_, freq_ ? freq_->value : 0
     );

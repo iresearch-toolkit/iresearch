@@ -92,7 +92,7 @@ TEST( attributes_tests, copy) {
   attributes dst;
   tests::attribute* copied = copy_attribute<tests::attribute>(dst, src);
   ASSERT_NE(nullptr, copied);
-  ASSERT_NE(added, copied);
+  ASSERT_NE(&*added, copied);
   ASSERT_EQ(*added, *copied);
 
   /* copy invalid attribute */
@@ -111,7 +111,7 @@ TEST( attributes_tests, add_get_clear_state_clear) {
   /* add attribute */
   {
     auto& added1 = attrs.add<tests::attribute>();
-    ASSERT_EQ(added, added1);
+    ASSERT_EQ(&*added, &*added1);
     ASSERT_EQ(1, attrs.size());
     ASSERT_TRUE(attrs.contains<tests::attribute>());
     ASSERT_EQ(flags{added->type()}, attrs.features());
@@ -123,8 +123,8 @@ TEST( attributes_tests, add_get_clear_state_clear) {
     ASSERT_FALSE(!added1);
     auto& added2 = attrs.get<tests::attribute>();
     ASSERT_FALSE(!added2);
-    ASSERT_EQ(added, added2);
-    ASSERT_EQ(added1, added2);
+    ASSERT_EQ(&*added, &*added2);
+    ASSERT_EQ(&*added1, &*added2);
   }
 
   /* clear state */
@@ -154,7 +154,7 @@ TEST(attributes_tests, visit) {
   attributes attrs;
 
   // add first attribute
-  ASSERT_NE(nullptr, attrs.add<tests::attribute>());
+  ASSERT_FALSE(!attrs.add<tests::attribute>());
   ASSERT_EQ(1, attrs.size());
   ASSERT_TRUE(attrs.contains<tests::attribute>());
   ASSERT_EQ(flags{tests::attribute::type()}, attrs.features());
