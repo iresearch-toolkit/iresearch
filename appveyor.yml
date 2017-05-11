@@ -14,7 +14,7 @@ build:
   verbosity: normal
 
 environment:
-  WINFLEXBISON_ARCHIVE: win_flex_bison-2.4.5.zip
+  WINFLEXBISON_ARCHIVE: win_flex_bison-2.4.9.zip
   matrix:
   - BOOST_VERSION: default
     CONFIGURATION: Debug
