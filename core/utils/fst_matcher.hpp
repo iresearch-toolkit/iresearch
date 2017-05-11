@@ -23,10 +23,10 @@ NS_BEGIN(fst)
 // used to look-up explicit label matches, this class saves the user
 // from having to check for and discard the unwanted implicit matches
 // themselves.
-template <class MatcherBase>
-class explicit_matcher final : public MatcherBase {
+template <class MatcherImpl>
+class explicit_matcher final : public MatcherImpl {
  public:
-  typedef typename MatcherBase::FST FST;
+  typedef typename MatcherImpl::FST FST;
   typedef typename FST::Arc Arc;
   typedef typename Arc::Label Label;
   typedef typename Arc::StateId StateId;
@@ -34,16 +34,16 @@ class explicit_matcher final : public MatcherBase {
 
   template<typename... Args>
   explicit explicit_matcher(Args&&... args)
-    : MatcherBase(std::forward<Args>(args)...),
+    : MatcherImpl(std::forward<Args>(args)...),
 #ifdef IRESEARCH_DEBUG
-      match_type_(MatcherBase::Type(true)) // test fst properties
+      match_type_(MatcherImpl::Type(true)) // test fst properties
 #else
-      match_type_(MatcherBase::Type(false)) // read type without checks
+      match_type_(MatcherImpl::Type(false)) // read type without checks
 #endif
   { }
 
   explicit_matcher(const explicit_matcher& rhs, bool safe = false)
-    : MatcherBase(rhs, safe),
+    : MatcherImpl(rhs, safe),
       match_type_(rhs.match_type_) {
   }
 
@@ -52,55 +52,55 @@ class explicit_matcher final : public MatcherBase {
   }
 
   MatchType Type(bool test) const {
-    return MatcherBase::Type(test);
+    return MatcherImpl::Type(test);
   }
 
   void SetState(StateId s) {
-    MatcherBase::SetState(s);
+    MatcherImpl::SetState(s);
   }
 
   bool Find(Label match_label) {
-    MatcherBase::Find(match_label);
+    MatcherImpl::Find(match_label);
     CheckArc();
     return !Done();
   }
 
-  bool Done() const { return MatcherBase::Done(); }
+  bool Done() const { return MatcherImpl::Done(); }
 
-  const Arc& Value() const { return MatcherBase::Value(); }
+  const Arc& Value() const { return MatcherImpl::Value(); }
 
   void Next() {
-    MatcherBase::Next();
+    MatcherImpl::Next();
     CheckArc();
   }
 
   Weight Final(StateId s) const {
-    return MatcherBase::Final(s);
+    return MatcherImpl::Final(s);
   }
 
   ssize_t Priority(StateId s) {
-    return  MatcherBase::Priority(s);
+    return  MatcherImpl::Priority(s);
   }
 
   const FST& GetFst() const {
-    return MatcherBase::GetFst();
+    return MatcherImpl::GetFst();
   }
 
   uint64 Properties(uint64 inprops) const {
-    return MatcherBase::Properties(inprops);
+    return MatcherImpl::Properties(inprops);
   }
 
   uint32 Flags() const {
-    return MatcherBase::Flags();
+    return MatcherImpl::Flags();
   }
 
  private:
   // Checks current arc if available and explicit. If not available, stops. If
   // not explicit, checks next ones.
   void CheckArc() {
-    for (; !MatcherBase::Done(); MatcherBase::Next()) {
-      const auto label = match_type_ == MATCH_INPUT ? MatcherBase::Value().ilabel
-                                                    : MatcherBase::Value().olabel;
+    for (; !MatcherImpl::Done(); MatcherImpl::Next()) {
+      const auto label = match_type_ == MATCH_INPUT ? MatcherImpl::Value().ilabel
+                                                    : MatcherImpl::Value().olabel;
       if (label != kNoLabel) return;
     }
   }
