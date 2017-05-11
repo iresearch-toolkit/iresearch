@@ -27,12 +27,13 @@ environment:
 
 install:
   ############################################################################
-  # Install flex/bison
+  # Setup bison
   ############################################################################
-  - if not exist "%WINFLEXBISON_ARCHIVE%" appveyor DownloadFile "http://downloads.sourceforge.net/project/winflexbison/%WINFLEXBISON_ARCHIVE%"
-  - 7z x -y -owinflexbison\ "%WINFLEXBISON_ARCHIVE%" > nul
-  - set PATH=%PATH%;%CD%\winflexbison
-  - win_bison --version
+#  - if not exist "%WINFLEXBISON_ARCHIVE%" appveyor DownloadFile "http://downloads.sourceforge.net/project/winflexbison/%WINFLEXBISON_ARCHIVE%"
+#  - 7z x -y -owinflexbison\ "%WINFLEXBISON_ARCHIVE%" > nul
+#  - set PATH=%PATH%;%CD%\winflexbison
+#  - win_bison --version
+  - set PATH=%PATH%;C:\cygwin64\bin
   - bison --version
   
   ############################################################################
