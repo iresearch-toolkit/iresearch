@@ -60,6 +60,7 @@ static const std::string TOPN = "topN";
 static const std::string RND = "random";
 static const std::string RPT = "repeat";
 static const std::string CSV = "csv";
+static const std::string SCORED_TERMS_LIMIT = "scored-terms-limit";
 
 static bool v = false;
 
@@ -596,12 +597,13 @@ irs::string_ref splitFreq(const std::string& text) {
 }
 
 irs::filter::prepared::ptr prepareFilter(
-  const irs::directory_reader& reader,
-  const irs::order::prepared& order,
-  category_t category,
-  const std::string& text,
-  const irs::analysis::analyzer::ptr& analyzer,
-  std::string& tmpBuf
+    const irs::directory_reader& reader,
+    const irs::order::prepared& order,
+    category_t category,
+    const std::string& text,
+    const irs::analysis::analyzer::ptr& analyzer,
+    std::string& tmpBuf,
+    size_t scored_terms_limit
 ) {
   irs::string_ref terms;
 
@@ -669,6 +671,7 @@ irs::filter::prepared::ptr prepareFilter(
    }
    case category_t::Prefix3: {
     irs::by_prefix query;
+    query.scored_terms_limit(scored_terms_limit);
 
     terms = irs::string_ref(text, text.size() - 1); // cut '~' at the end of the text
     query.field("body").term(terms);
@@ -782,10 +785,12 @@ int search(
     size_t search_threads,
     size_t limit,
     bool shuffle,
-    bool csv
+    bool csv,
+    size_t scored_terms_limit
 ) {
   repeat = std::max(size_t(1), repeat);
   search_threads = std::max(size_t(1), search_threads);
+  scored_terms_limit = std::max(size_t(1), scored_terms_limit);
 
   SCOPED_TIMER("Total Time");
   std::cout << "Configuration: " << std::endl;
@@ -796,6 +801,7 @@ int search(
   std::cout << TOPN << "=" << limit << std::endl;
   std::cout << RND << "=" << shuffle << std::endl;
   std::cout << CSV << "=" << csv << std::endl;
+  std::cout << SCORED_TERMS_LIMIT << "=" << scored_terms_limit << std::endl;
 
   irs::fs_directory dir(path);
   irs::directory_reader reader;
@@ -878,7 +884,7 @@ int search(
 
   // indexer threads
   for (size_t i = search_threads; i; --i) {
-    thread_pool.run([&task_provider, &dir, &reader, &order, limit, &out, csv]()->void {
+    thread_pool.run([&task_provider, &dir, &reader, &order, limit, &out, csv, scored_terms_limit]()->void {
       struct Entry {
         irs::doc_id_t id;
         float score;
@@ -927,7 +933,7 @@ int search(
           } timers;
           SCOPED_TIMER("Query building time");
           irs::timer_utils::scoped_timer timer(*(timers.stat[size_t(task->category)]));
-          filter = prepareFilter(reader, order, task->category, task->text, analyzer, tmpBuf);
+          filter = prepareFilter(reader, order, task->category, task->text, analyzer, tmpBuf, scored_terms_limit);
 
           if (!filter) {
             continue;
@@ -1051,21 +1057,25 @@ static int search(const po::variables_map& vm) {
     }
     std::cout << "Output CSV=" << shuffle << std::endl;
 
+    size_t scored_terms_limit = 1024;
+    if (vm.count(SCORED_TERMS_LIMIT)) {
+      scored_terms_limit = vm[SCORED_TERMS_LIMIT].as<size_t>();
+    }
+
     auto& file = vm[INPUT].as<std::string>();
     std::fstream in(file, std::fstream::in);
     if (!in) {
-
-        return 1;
+      return 1;
     }
 
     if (vm.count(OUTPUT)) {
-        auto& file = vm[OUTPUT].as<std::string>();
-        std::fstream out(file, std::fstream::out | std::fstream::trunc);
-        if (!out) {
-            return 1;
-        }
+      auto& file = vm[OUTPUT].as<std::string>();
+      std::fstream out(file, std::fstream::out | std::fstream::trunc);
+      if (!out) {
+        return 1;
+      }
 
-        return search(path, in, out, maxtasks, repeat, thrs, topN, shuffle, csv);
+      return search(path, in, out, maxtasks, repeat, thrs, topN, shuffle, csv);
     }
 
     return search(path, in, std::cout, maxtasks, repeat, thrs, topN, shuffle, csv);
@@ -1099,6 +1109,7 @@ int main(int argc, char* argv[]) {
             (RPT.c_str(), po::value<size_t>(), "Task repeat count")
             (THR.c_str(), po::value<size_t>(), "Number of search threads")
             (TOPN.c_str(), po::value<size_t>(), "Number of top search results")
+            (SCORED_TERMS_LIMIT.c_str(), po::value<size_t>(), "Number of document to score in range/prefix queries")
             (RND.c_str(), "Shuffle tasks")
             (CSV.c_str(), "CSV output");
 
