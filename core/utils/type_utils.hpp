@@ -33,11 +33,27 @@ struct template_traits_t<First, Second...> {
     return sizeof(First) + template_traits_t<Second...>::size();
   }
 
-  static CONSTEXPR size_t size_aligned(size_t size = 0) NOEXCEPT {
+  static CONSTEXPR size_t size_aligned(size_t start = 0) NOEXCEPT {
     return template_traits_t<Second...>::size_aligned(
-      size
-      + ((std::alignment_of<First>() - (size % std::alignment_of<First>())) % std::alignment_of<First>()) // padding
+      template_traits_t<First>::size_max_aligned(start)
+    );
+  }
+
+  static CONSTEXPR size_t size_max(size_t max = 0) NOEXCEPT {
+    return template_traits_t<Second...>::size_max(
+      max < sizeof(First) ? sizeof(First) : max
+    );
+  }
+
+  static CONSTEXPR size_t size_max_aligned(size_t start = 0, size_t max = 0) NOEXCEPT {
+    auto size =
+      start
+      + ((std::alignment_of<First>() - (start % std::alignment_of<First>())) % std::alignment_of<First>()) // padding
       + sizeof(First)
+      ;
+
+    return template_traits_t<Second...>::size_max_aligned(
+      start, max < size ? size : max
     );
   }
 };
@@ -52,8 +68,16 @@ struct template_traits_t<> {
     return 0;
   }
 
-  static CONSTEXPR size_t size_aligned(size_t size = 0) NOEXCEPT {
-    return size;
+  static CONSTEXPR size_t size_aligned(size_t start = 0) NOEXCEPT {
+    return start;
+  }
+
+  static CONSTEXPR size_t size_max(size_t max = 0) NOEXCEPT {
+    return max;
+  }
+
+  static CONSTEXPR size_t size_max_aligned(size_t start = 0, size_t max = 0) NOEXCEPT {
+    return max ? max : start;
   }
 };
 
