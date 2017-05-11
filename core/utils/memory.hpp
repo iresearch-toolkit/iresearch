@@ -33,15 +33,15 @@ IRESEARCH_API void dump_mem_stats_trace() NOEXCEPT;
 ///        alignment suitable for use as uninitialized storage for an object of
 ///        any of the specified Types (T0 or T1)
 ///////////////////////////////////////////////////////////////////////////////
-template<typename T0, typename T1>
+template<typename... Types>
 struct aligned_union {
 #if defined(_MSC_VER)
   typedef typename std::aligned_union<0, T0, T1>::type type;
 #else // __GNUC__
   // GCC < 4.9 does not support std::aligned_union
   struct type {
-    alignas(irstd::max(alignof(T0), alignof(T1))) char raw[
-      irstd::max(sizeof(T0), sizeof(T1))
+    alignas(irs::template_traits_t<Types...>::align_max()) char raw[
+      irs::template_traits_t<Types...>::size_max()
     ];
   };
 #endif

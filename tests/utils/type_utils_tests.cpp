@@ -49,6 +49,48 @@ TEST(type_utils_tests, template_traits) {
     ASSERT_EQ(26, (irs::template_traits_t<int32_t, bool, int64_t, short>::size_aligned(3)));
   }
 
+  // test align_max
+  {
+    ASSERT_EQ(0, (irs::template_traits_t<>::align_max()));
+
+    ASSERT_EQ(
+      std::alignment_of<int32_t>::value,
+      irs::template_traits_t<int32_t>::align_max()
+    );
+
+    ASSERT_EQ(
+      std::max(std::alignment_of<int32_t>::value, std::alignment_of<bool>::value),
+      (irs::template_traits_t<int32_t, bool>::size_max())
+    );
+
+    {
+      static const size_t alignments[] {
+        std::alignment_of<int32_t>::value,
+        std::alignment_of<bool>::value,
+        std::alignment_of<int64_t>::value
+      };
+
+      ASSERT_EQ(
+        *std::max_element(std::begin(alignments), std::end(alignments)),
+        (irs::template_traits_t<int32_t, bool, int64_t>::size_max())
+      );
+    }
+
+    {
+      static const size_t alignments[] {
+        std::alignment_of<int32_t>::value,
+        std::alignment_of<bool>::value,
+        std::alignment_of<int64_t>::value,
+        std::alignment_of<short>::value
+      };
+
+      ASSERT_EQ(
+        *std::max_element(std::begin(alignments), std::end(alignments)),
+        (irs::template_traits_t<int32_t, bool, int64_t, short>::size_max())
+      );
+    }
+  }
+
   // test size_max
   {
     ASSERT_EQ(0, (irs::template_traits_t<>::size_max()));
