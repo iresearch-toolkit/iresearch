@@ -60,6 +60,7 @@ static const std::string TOPN = "topN";
 static const std::string RND = "random";
 static const std::string RPT = "repeat";
 static const std::string CSV = "csv";
+static const std::string SCORED_TERMS_LIMIT = "scored-terms-limit";
 
 static bool v = false;
 
@@ -596,12 +597,13 @@ irs::string_ref splitFreq(const std::string& text) {
 }
 
 irs::filter::prepared::ptr prepareFilter(
-  const irs::directory_reader& reader,
-  const irs::order::prepared& order,
-  category_t category,
-  const std::string& text,
-  const irs::analysis::analyzer::ptr& analyzer,
-  std::string& tmpBuf
+    const irs::directory_reader& reader,
+    const irs::order::prepared& order,
+    category_t category,
+    const std::string& text,
+    const irs::analysis::analyzer::ptr& analyzer,
+    std::string& tmpBuf,
+    size_t scored_terms_limit
 ) {
   irs::string_ref terms;
 
@@ -669,6 +671,7 @@ irs::filter::prepared::ptr prepareFilter(
    }
    case category_t::Prefix3: {
     irs::by_prefix query;
+    query.scored_terms_limit(scored_terms_limit);
 
     terms = irs::string_ref(text, text.size() - 1); // cut '~' at the end of the text
     query.field("body").term(terms);
@@ -782,10 +785,12 @@ int search(
     size_t search_threads,
     size_t limit,
     bool shuffle,
-    bool csv
+    bool csv,
+    size_t scored_terms_limit
 ) {
   repeat = std::max(size_t(1), repeat);
   search_threads = std::max(size_t(1), search_threads);
+  scored_terms_limit = std::max(size_t(1), scored_terms_limit);
 
   SCOPED_TIMER("Total Time");
   std::cout << "Configuration: " << std::endl;
@@ -796,6 +801,7 @@ int search(
   std::cout << TOPN << "=" << limit << std::endl;
   std::cout << RND << "=" << shuffle << std::endl;
   std::cout << CSV << "=" << csv << std::endl;
+  std::cout << SCORED_TERMS_LIMIT << "=" << scored_terms_limit << std::endl;
 
   irs::fs_directory dir(path);
   irs::directory_reader reader;
@@ -876,22 +882,23 @@ int search(
     task_provider = std::move(tasks);
   }
 
+  struct Entry {
+    Entry(irs::doc_id_t i, float s)
+      : id(i), score(s) {
+    }
+
+    irs::doc_id_t id;
+    float score;
+  };
+
   // indexer threads
   for (size_t i = search_threads; i; --i) {
-    thread_pool.run([&task_provider, &dir, &reader, &order, limit, &out, csv]()->void {
-      struct Entry {
-        irs::doc_id_t id;
-        float score;
-        Entry(irs::doc_id_t i, float s): id(i), score(s) {}
-      };
+    thread_pool.run([&task_provider, &dir, &reader, &order, limit, &out, csv, scored_terms_limit]()->void {
       static const std::string analyzer_name("text");
       static const std::string analyzer_args("{\"locale\":\"en\", \"ignored_words\":[\"abc\", \"def\", \"ghi\"]}"); // from index-put
       auto analyzer = irs::analysis::analyzers::get(analyzer_name, analyzer_args);
       irs::filter::prepared::ptr filter;
       std::string tmpBuf;
-      auto comparer = [&order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
-        return order.less(lhs.c_str(), rhs.c_str());
-      };
 
       #if defined(_MSC_VER) && defined(IRESEARCH_DEBUG)
         typedef irs::memory::memory_multi_size_pool<irs::memory::identity_grow> pool_t;
@@ -903,9 +910,18 @@ int search(
 
       pool_t pool(limit + 1); // +1 for least significant overflow element
 
+#ifdef IRESEARCH_COMPLEX_SCORING
+      auto comparer = [&order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
+        return order.less(lhs.c_str(), rhs.c_str());
+      };
       std::multimap<irs::bstring, Entry, decltype(comparer), alloc_t> sorted(
         comparer, alloc_t{pool}
       );
+#else
+      std::multimap<float, irs::doc_id_t, std::less<float>, alloc_t> sorted(
+        std::less<float>(), alloc_t{pool}
+      );
+#endif
 
       // process a single task
       for (const task_t* task; (task = ++task_provider) != nullptr;) {
@@ -927,7 +943,7 @@ int search(
           } timers;
           SCOPED_TIMER("Query building time");
           irs::timer_utils::scoped_timer timer(*(timers.stat[size_t(task->category)]));
-          filter = prepareFilter(reader, order, task->category, task->text, analyzer, tmpBuf);
+          filter = prepareFilter(reader, order, task->category, task->text, analyzer, tmpBuf, scored_terms_limit);
 
           if (!filter) {
             continue;
@@ -947,18 +963,27 @@ int search(
           SCOPED_TIMER("Query execution time");
           irs::timer_utils::scoped_timer timer(*(timers.stat[size_t(task->category)]));
 
+          const float EMPTY_SCORE = 0.f;
+
           for (auto& segment: reader) {
             auto docs = filter->execute(segment, order); // query segment
             auto& score = docs->attributes().get<irs::score>();
+            const auto& score_value = score ? score->get<float>(0) : EMPTY_SCORE;
 
             while (docs->next()) {
               ++doc_count;
+
               docs->score();
+
+#ifdef IRESEARCH_COMPLEX_SCORING
               sorted.emplace(
                 std::piecewise_construct,
                 std::forward_as_tuple(score->value()),
-                std::forward_as_tuple(docs->value(), score ? score->get<float>(0) : .0)
+                std::forward_as_tuple(docs->value(), score_value)
               );
+#else
+              sorted.emplace(score_value, docs->value());
+#endif
 
               if (sorted.size() > limit) {
                 sorted.erase(--(sorted.end()));
@@ -981,8 +1006,12 @@ int search(
             out << "  " << tdiff.count() / 1000. << " msec" << std::endl;
             out << "  thread " << std::this_thread::get_id() << std::endl;
 
-            for (auto& entry: sorted) {
+            for (auto& entry : sorted) {
+#ifdef IRESEARCH_COMPLEX_SCORING
               out << "  doc=" << entry.second.id << " score=" << entry.second.score << std::endl;
+#else
+              out << "  doc=" << entry.second << " score=" << entry.first<< std::endl;
+#endif
             }
 
             out << std::endl;
@@ -1051,21 +1080,25 @@ static int search(const po::variables_map& vm) {
     }
     std::cout << "Output CSV=" << shuffle << std::endl;
 
+    size_t scored_terms_limit = 1024;
+    if (vm.count(SCORED_TERMS_LIMIT)) {
+      scored_terms_limit = vm[SCORED_TERMS_LIMIT].as<size_t>();
+    }
+
     auto& file = vm[INPUT].as<std::string>();
     std::fstream in(file, std::fstream::in);
     if (!in) {
-
-        return 1;
+      return 1;
     }
 
     if (vm.count(OUTPUT)) {
-        auto& file = vm[OUTPUT].as<std::string>();
-        std::fstream out(file, std::fstream::out | std::fstream::trunc);
-        if (!out) {
-            return 1;
-        }
+      auto& file = vm[OUTPUT].as<std::string>();
+      std::fstream out(file, std::fstream::out | std::fstream::trunc);
+      if (!out) {
+        return 1;
+      }
 
-        return search(path, in, out, maxtasks, repeat, thrs, topN, shuffle, csv);
+      return search(path, in, out, maxtasks, repeat, thrs, topN, shuffle, csv);
     }
 
     return search(path, in, std::cout, maxtasks, repeat, thrs, topN, shuffle, csv);
@@ -1099,6 +1132,7 @@ int main(int argc, char* argv[]) {
             (RPT.c_str(), po::value<size_t>(), "Task repeat count")
             (THR.c_str(), po::value<size_t>(), "Number of search threads")
             (TOPN.c_str(), po::value<size_t>(), "Number of top search results")
+            (SCORED_TERMS_LIMIT.c_str(), po::value<size_t>(), "Number of document to score in range/prefix queries")
             (RND.c_str(), "Shuffle tasks")
             (CSV.c_str(), "CSV output");
 
