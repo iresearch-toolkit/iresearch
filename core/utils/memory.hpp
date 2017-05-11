@@ -31,7 +31,7 @@ IRESEARCH_API void dump_mem_stats_trace() NOEXCEPT;
 /// @struct aligned_union
 /// @brief Provides the member typedef type, which is a POD type of a size and
 ///        alignment suitable for use as uninitialized storage for an object of
-///        any of the specified Types (T0 or T1)
+///        any of the specified Types
 ///////////////////////////////////////////////////////////////////////////////
 template<typename... Types>
 struct aligned_union {
@@ -53,17 +53,16 @@ struct aligned_union {
 ///////////////////////////////////////////////////////////////////////////////
 /// @struct aligned_type
 /// @brief Provides the storage (POD type) that is suitable for use as
-///        uninitialized storage for an object of  any of the specified
-///        Types (T0 or T1)
+///        uninitialized storage for an object of  any of the specified Types
 ///////////////////////////////////////////////////////////////////////////////
-template<typename T0, typename T1>
+template<typename... Types>
 struct aligned_type {
   template<typename T>
   T* as() NOEXCEPT {
     static_assert(
-      std::is_convertible<T0, T>::value || std::is_convertible<T1, T>::value,
-      "T must be convertible to T0 or T1"
-      );
+      irs::is_convertible<T, Types...>(),
+      "T must be convertible to the specified Types"
+    );
     return reinterpret_cast<T*>(&storage);
   }
 
@@ -75,23 +74,23 @@ struct aligned_type {
   template<typename T, typename... Args>
   void construct(Args&&... args) {
     static_assert(
-      std::is_same<T, T0>::value || std::is_same<T, T1>::value,
-      "T must be T0 or T1"
-      );
+      irs::in_list<T, Types...>(),
+      "T must be in the specified list of Types"
+    );
     new (as<T>()) T(std::forward<Args>(args)...);
   }
 
   template<typename T>
   void destroy() NOEXCEPT {
     static_assert(
-      std::is_convertible<T0, T>::value || std::is_convertible<T1, T>::value,
-      "T must be convertible to T0 or T1"
-      );
+      irs::is_convertible<T, Types...>(),
+      "T must be convertible to the specified Types"
+    );
     as<T>()->~T();
   }
 
-  typename aligned_union<T0, T1>::type storage;
-}; // aligned_type 
+  typename aligned_union<Types...>::type storage;
+}; // aligned_type
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                         Deleters

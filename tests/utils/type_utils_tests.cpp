@@ -12,6 +12,27 @@
 #include "tests_shared.hpp"
 #include "utils/type_utils.hpp"
 
+TEST(type_utils_tests, is_convertible) {
+  struct A { };
+  struct B : A {};
+  struct C {};
+
+  ASSERT_FALSE((irs::is_convertible<A>()));
+  ASSERT_FALSE((irs::is_convertible<A, void>()));
+  ASSERT_TRUE((irs::is_convertible<void*, A*>()));
+  ASSERT_TRUE((irs::is_convertible<A, B, C>()));
+}
+
+TEST(type_utils_tests, in_list) {
+  struct A { };
+  struct B : A {};
+  struct C {};
+
+  ASSERT_FALSE((irs::in_list<A>()));
+  ASSERT_FALSE((irs::in_list<A, B, C>()));
+  ASSERT_TRUE((irs::in_list<A, A, B, C>()));
+}
+
 TEST(type_utils_tests, template_traits) {
   // test count
   {

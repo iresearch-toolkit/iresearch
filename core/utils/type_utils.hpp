@@ -14,11 +14,12 @@
 
 #include "shared.hpp"
 #include "std.hpp"
+#include <type_traits>
 
 NS_ROOT
 
 // ----------------------------------------------------------------------------
-// template type traits
+// --SECTION--                                             template type traits
 // ----------------------------------------------------------------------------
 
 template <typename... Types>
@@ -65,7 +66,19 @@ struct template_traits_t<First, Second...> {
       start, irstd::max(max, offset_aligned(start))
     );
   }
-};
+
+  template <typename T>
+  static CONSTEXPR bool is_convertible() NOEXCEPT {
+    return std::is_convertible<First, T>::value
+      || template_traits_t<Second...>::template is_convertible<T>();
+  }
+
+  template<typename T>
+  static CONSTEXPR bool in_list() NOEXCEPT {
+    return std::is_same<First, T>::value
+      || template_traits_t<Second...>::template in_list<T>();
+  }
+}; // template_traits_t
 
 template<>
 struct template_traits_t<> {
@@ -96,7 +109,35 @@ struct template_traits_t<> {
   static CONSTEXPR size_t size_max_aligned(size_t start = 0, size_t max = 0) NOEXCEPT {
     return max ? max : start;
   }
-};
+
+  template<typename T>
+  static CONSTEXPR bool is_convertible() NOEXCEPT {
+    return false;
+  }
+
+  template<typename T>
+  static CONSTEXPR bool in_list() NOEXCEPT {
+    return false;
+  }
+}; // template_traits_t
+
+///////////////////////////////////////////////////////////////////////////////
+/// @returns true if type 'T' is convertible to one of the specified 'Types',
+///          false otherwise
+///////////////////////////////////////////////////////////////////////////////
+template<typename T, typename... Types>
+CONSTEXPR bool is_convertible() NOEXCEPT {
+  return template_traits_t<Types...>::template is_convertible<T>();
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// @returns true if type 'T' is present in the specified list of 'Types',
+///          false otherwise
+///////////////////////////////////////////////////////////////////////////////
+template<typename T, typename... Types>
+CONSTEXPR bool in_list() NOEXCEPT {
+  return template_traits_t<Types...>::template in_list<T>();
+}
 
 NS_END
 
