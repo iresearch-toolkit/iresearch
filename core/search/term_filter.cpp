@@ -73,9 +73,9 @@ filter::prepared::ptr by_term::prepare(
     if (!terms->seek(term_)) {
       continue;
     }
-    
+
     /* get term metadata */
-    const term_meta* meta = terms->attributes().get<term_meta>();
+    auto& meta = terms->attributes().get<term_meta>();
 
     /* read term attributes */
     terms->read();

@@ -85,14 +85,14 @@ TEST( attributes_tests, ctor) {
 
 TEST( attributes_tests, copy) {
   attributes src;
-  tests::attribute* added = src.add<tests::attribute>();
+  auto& added = src.add<tests::attribute>();
   added->value = 10;
 
   /* copy attribute */
   attributes dst;
   tests::attribute* copied = copy_attribute<tests::attribute>(dst, src);
   ASSERT_NE(nullptr, copied);
-  ASSERT_NE(added, copied);
+  ASSERT_NE(&*added, copied);
   ASSERT_EQ(*added, *copied);
 
   /* copy invalid attribute */
@@ -102,16 +102,16 @@ TEST( attributes_tests, copy) {
 
 TEST( attributes_tests, add_get_clear_state_clear) {
   attributes attrs;
-  tests::attribute* added = attrs.add<tests::attribute>();
-  ASSERT_NE(nullptr, added);
+  auto& added = attrs.add<tests::attribute>();
+  ASSERT_FALSE(!added);
   ASSERT_EQ(1, attrs.size());
   ASSERT_TRUE(attrs.contains<tests::attribute>());
   ASSERT_EQ(flags{added->type()}, attrs.features());
 
   /* add attribute */
   {
-    tests::attribute *added1 = attrs.add<tests::attribute>();
-    ASSERT_EQ(added, added1);
+    auto& added1 = attrs.add<tests::attribute>();
+    ASSERT_EQ(&*added, &*added1);
     ASSERT_EQ(1, attrs.size());
     ASSERT_TRUE(attrs.contains<tests::attribute>());
     ASSERT_EQ(flags{added->type()}, attrs.features());
@@ -119,12 +119,12 @@ TEST( attributes_tests, add_get_clear_state_clear) {
 
   /* get attribute */
   {
-    const attribute* added1 = attrs.get(added->type());
-    ASSERT_NE(nullptr, added1);
-    const tests::attribute* added2 = attrs.get<tests::attribute>();
-    ASSERT_NE(nullptr, added2);
-    ASSERT_EQ(added, added2);
-    ASSERT_EQ(added1, added2);
+    auto& added1 = attrs.get(added->type());
+    ASSERT_FALSE(!added1);
+    auto& added2 = attrs.get<tests::attribute>();
+    ASSERT_FALSE(!added2);
+    ASSERT_EQ(&*added, &*added2);
+    ASSERT_EQ(&*added1, &*added2);
   }
 
   /* clear state */
@@ -154,13 +154,13 @@ TEST(attributes_tests, visit) {
   attributes attrs;
 
   // add first attribute
-  ASSERT_NE(nullptr, attrs.add<tests::attribute>());
+  ASSERT_FALSE(!attrs.add<tests::attribute>());
   ASSERT_EQ(1, attrs.size());
   ASSERT_TRUE(attrs.contains<tests::attribute>());
   ASSERT_EQ(flags{tests::attribute::type()}, attrs.features());
 
   // add second attribute
-  ASSERT_NE(nullptr, attrs.add<tests::invalid_attribute>());
+  ASSERT_FALSE(!attrs.add<tests::invalid_attribute>());
   ASSERT_EQ(2, attrs.size());
   ASSERT_TRUE(attrs.contains<tests::invalid_attribute>());
   ASSERT_EQ(flags({tests::attribute::type(), tests::invalid_attribute::type()}), attrs.features());

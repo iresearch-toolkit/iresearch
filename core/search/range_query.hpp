@@ -60,16 +60,11 @@ struct range_state {
     return *this;
   }
 
-  /* reader using for iterate over the terms */
-  const term_reader* reader {};
-  /* minimum term to start from */
-  bstring min_term;
-  /* cookie corresponding to the start term */
-  attribute::ptr min_cookie;
-  /* per-segment query estimation */
-  cost::cost_t estimation{};
-  /* number of terms to process from start term */
-  size_t count {};
+  const term_reader* reader{}; // reader using for iterate over the terms
+  bstring min_term; // minimum term to start from
+  seek_term_iterator::cookie_ptr min_cookie; // cookie corresponding to the start term
+  cost::cost_t estimation{}; // per-segment query estimation
+  size_t count{}; // number of terms to process from start term
 
   // scored states/stats by their offset in range_state
   typedef std::unordered_map<size_t, attributes> scored_states_t;
@@ -87,7 +82,7 @@ class limited_sample_scorer {
     size_t scored_state_id, // state identifier used for querying of attributes
     iresearch::range_state& scored_state, // state containing this scored term
     const iresearch::sub_reader& reader, // segment reader for the current term
-    iresearch::attribute::ptr&& cookie // term-reader term offset cache
+    seek_term_iterator::cookie_ptr&& cookie // term-reader term offset cache
   );
   void score(order::prepared::stats& stats);
 
@@ -96,7 +91,7 @@ class limited_sample_scorer {
   /// @brief a representation of a term cookie with its asociated range_state
   //////////////////////////////////////////////////////////////////////////////
   struct scored_term_state_t {
-    iresearch::attribute::ptr cookie; // term offset cache
+    seek_term_iterator::cookie_ptr cookie; // term offset cache
     iresearch::range_state& state; // state containing this scored term
     size_t state_offset;
 
@@ -105,7 +100,7 @@ class limited_sample_scorer {
       const iresearch::sub_reader& sr,
       iresearch::range_state& scored_state,
       size_t scored_state_offset,
-      iresearch::attribute::ptr && scored_cookie
+      seek_term_iterator::cookie_ptr&& scored_cookie
     ):
       cookie(std::move(scored_cookie)),
       state(scored_state),

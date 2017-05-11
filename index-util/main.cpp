@@ -56,7 +56,7 @@ int dump(const std::string& path, std::ostream& stream) {
              << std::endl;
 
       auto term = field.iterator();
-      irs::term_meta* term_meta = term->attributes().get<irs::term_meta>();
+      auto& term_meta = term->attributes().get<irs::term_meta>();
       stream << "Values" << std::endl;
       for (; term->next(); ) {
         term->read();

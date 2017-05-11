@@ -54,9 +54,9 @@ TEST_F(TextAnalyzerParserTestSuite, test_nbsp_whitespace) {
 
   ASSERT_NE(nullptr, pStream);
 
-  const iresearch::offset* pOffset = pStream->attributes().get<iresearch::offset>();
-  const iresearch::payload* pPayload = pStream->attributes().get<iresearch::payload>();
-  const iresearch::term_attribute* pValue = pStream->attributes().get<iresearch::term_attribute>();
+  auto& pOffset = pStream->attributes().get<iresearch::offset>();
+  auto& pPayload = pStream->attributes().get<iresearch::payload>();
+  auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
 
   ASSERT_TRUE(pStream->next());
   ASSERT_EQ("1,24", std::string((char*)(pValue->value().c_str()), pValue->value().size()));
@@ -82,9 +82,9 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
 
     ASSERT_NE(nullptr, pStream);
 
-    const iresearch::offset* pOffset = pStream->attributes().get<iresearch::offset>();
-    const iresearch::payload* pPayload = pStream->attributes().get<iresearch::payload>();
-    const iresearch::term_attribute* pValue = pStream->attributes().get<iresearch::term_attribute>();
+    auto& pOffset = pStream->attributes().get<iresearch::offset>();
+    auto& pPayload = pStream->attributes().get<iresearch::payload>();
+    auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
 
     ASSERT_TRUE(pStream->next());
     ASSERT_EQ("a", std::string((char*)(pValue->value().c_str()), pValue->value().size()));
@@ -128,9 +128,9 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
 
     ASSERT_NE(nullptr, pStream);
 
-    const iresearch::offset* pOffset = pStream->attributes().get<iresearch::offset>();
-    const iresearch::payload* pPayload = pStream->attributes().get<iresearch::payload>();
-    const iresearch::term_attribute* pValue = pStream->attributes().get<iresearch::term_attribute>();
+    auto& pOffset = pStream->attributes().get<iresearch::offset>();
+    auto& pPayload = pStream->attributes().get<iresearch::payload>();
+    auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
 
     ASSERT_TRUE(pStream->next());
     ASSERT_EQ("thing", std::string((char*)(pValue->value().c_str()), pValue->value().size()));
@@ -155,9 +155,9 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
 
     ASSERT_NE(nullptr, pStream);
 
-    const iresearch::offset* pOffset = pStream->attributes().get<iresearch::offset>();
-    const iresearch::payload* pPayload = pStream->attributes().get<iresearch::payload>();
-    const iresearch::term_attribute* pValue = pStream->attributes().get<iresearch::term_attribute>();
+    auto& pOffset = pStream->attributes().get<iresearch::offset>();
+    auto& pPayload = pStream->attributes().get<iresearch::payload>();
+    auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
 
     ASSERT_TRUE(pStream->next());
     ASSERT_EQ(L"\u043F\u043E", boost::locale::conv::utf_to_utf<wchar_t>(pValue->value().c_str(), pValue->value().c_str() + pValue->value().size()));
@@ -190,9 +190,9 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
 
     ASSERT_NE(nullptr, pStream);
 
-    const iresearch::offset* pOffset = pStream->attributes().get<iresearch::offset>();
-    const iresearch::payload* pPayload = pStream->attributes().get<iresearch::payload>();
-    const iresearch::term_attribute* pValue = pStream->attributes().get<iresearch::term_attribute>();
+    auto& pOffset = pStream->attributes().get<iresearch::offset>();
+    auto& pPayload = pStream->attributes().get<iresearch::payload>();
+    auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
 
     ASSERT_TRUE(pStream->next());
     ASSERT_EQ(L"i\u0131", boost::locale::conv::utf_to_utf<wchar_t>(pValue->value().c_str(), pValue->value().c_str() + pValue->value().size()));
@@ -212,9 +212,9 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
 
     ASSERT_NE(nullptr, pStream);
 
-    const iresearch::offset* pOffset = pStream->attributes().get<iresearch::offset>();
-    const iresearch::payload* pPayload = pStream->attributes().get<iresearch::payload>();
-    const iresearch::term_attribute* pValue = pStream->attributes().get<iresearch::term_attribute>();
+    auto& pOffset = pStream->attributes().get<iresearch::offset>();
+    auto& pPayload = pStream->attributes().get<iresearch::payload>();
+    auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
 
     ASSERT_TRUE(pStream->next());
     ASSERT_EQ("running", std::string((char*)(pValue->value().c_str()), pValue->value().size()));
@@ -256,9 +256,9 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords) {
 
     ASSERT_NE(nullptr, pStream);
 
-    const iresearch::offset* pOffset = pStream->attributes().get<iresearch::offset>();
-    const iresearch::payload* pPayload = pStream->attributes().get<iresearch::payload>();
-    const iresearch::term_attribute* pValue = pStream->attributes().get<iresearch::term_attribute>();
+    auto& pOffset = pStream->attributes().get<iresearch::offset>();
+    auto& pPayload = pStream->attributes().get<iresearch::payload>();
+    auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
 
     ASSERT_TRUE(pStream->next());
     ASSERT_EQ("e", std::string((char*)(pValue->value().c_str()), pValue->value().size()));

@@ -353,12 +353,12 @@ class granular_range_filter_test_case: public filter_test_case_base {
     {
       ir::numeric_token_stream min_stream;
       min_stream.reset(INT64_C(1));
-      const ir::term_attribute* min_term = min_stream.attributes().get<ir::term_attribute>();
+      auto& min_term = min_stream.attributes().get<ir::term_attribute>();
       ASSERT_TRUE(min_stream.next());
 
       ir::numeric_token_stream max_stream;
       max_stream.reset(INT64_C(7));
-      const ir::term_attribute* max_term = max_stream.attributes().get<ir::term_attribute>();
+      auto& max_term = max_stream.attributes().get<ir::term_attribute>();
       ASSERT_TRUE(max_stream.next());
 
       ir::by_granular_range query;
@@ -386,7 +386,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
     {
       ir::numeric_token_stream min_stream;
       min_stream.reset(INT64_C(28));
-      const ir::term_attribute* min_term = min_stream.attributes().get<ir::term_attribute>();
+      auto& min_term = min_stream.attributes().get<ir::term_attribute>();
       ASSERT_TRUE(min_stream.next());
 
       ir::by_granular_range query;
@@ -414,7 +414,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
     {
       ir::numeric_token_stream max_stream;
       max_stream.reset(INT64_C(5));
-      const ir::term_attribute* max_term = max_stream.attributes().get<ir::term_attribute>();
+      auto& max_term = max_stream.attributes().get<ir::term_attribute>();
       ASSERT_TRUE(max_stream.next());
 
       ir::by_granular_range query;
@@ -442,12 +442,12 @@ class granular_range_filter_test_case: public filter_test_case_base {
     {
       ir::numeric_token_stream min_stream;
       min_stream.reset(INT32_C(1));
-      const ir::term_attribute* min_term = min_stream.attributes().get<ir::term_attribute>();
+      auto& min_term = min_stream.attributes().get<ir::term_attribute>();
       ASSERT_TRUE(min_stream.next());
 
       ir::numeric_token_stream max_stream;
       max_stream.reset(INT32_C(7));
-      const ir::term_attribute* max_term = max_stream.attributes().get<ir::term_attribute>();
+      auto& max_term = max_stream.attributes().get<ir::term_attribute>();
       ASSERT_TRUE(max_stream.next());
 
       ir::by_granular_range query;
@@ -475,7 +475,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
     {
       ir::numeric_token_stream min_stream;
       min_stream.reset(INT32_C(28));
-      const ir::term_attribute* min_term = min_stream.attributes().get<ir::term_attribute>();
+      auto& min_term = min_stream.attributes().get<ir::term_attribute>();
       ASSERT_TRUE(min_stream.next());
 
       ir::by_granular_range query;
@@ -503,7 +503,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
     {
       ir::numeric_token_stream max_stream;
       max_stream.reset(INT32_C(5));
-      const ir::term_attribute* max_term = max_stream.attributes().get<ir::term_attribute>();
+      auto& max_term = max_stream.attributes().get<ir::term_attribute>();
       ASSERT_TRUE(max_stream.next());
 
       ir::by_granular_range query;
@@ -531,12 +531,12 @@ class granular_range_filter_test_case: public filter_test_case_base {
     {
       ir::numeric_token_stream min_stream;
       min_stream.reset((float_t)91.524f);
-      const ir::term_attribute* min_term = min_stream.attributes().get<ir::term_attribute>();
+      auto& min_term = min_stream.attributes().get<ir::term_attribute>();
       ASSERT_TRUE(min_stream.next());
 
       ir::numeric_token_stream max_stream;
       max_stream.reset((float_t)123.f);
-      const ir::term_attribute* max_term = max_stream.attributes().get<ir::term_attribute>();
+      auto& max_term = max_stream.attributes().get<ir::term_attribute>();
       ASSERT_TRUE(max_stream.next());
 
       ir::by_granular_range query;
@@ -564,7 +564,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
     {
       ir::numeric_token_stream max_stream;
       max_stream.reset((float_t)90.565f);
-      const ir::term_attribute* max_term = max_stream.attributes().get<ir::term_attribute>();
+      auto& max_term = max_stream.attributes().get<ir::term_attribute>();
       ASSERT_TRUE(max_stream.next());
 
       ir::by_granular_range query;
@@ -592,7 +592,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
     {
       ir::numeric_token_stream min_stream;
       min_stream.reset((float_t)90.565f);
-      const ir::term_attribute* min_term = min_stream.attributes().get<ir::term_attribute>();
+      auto& min_term = min_stream.attributes().get<ir::term_attribute>();
       ASSERT_TRUE(min_stream.next());
 
       ir::by_granular_range query;
@@ -620,11 +620,11 @@ class granular_range_filter_test_case: public filter_test_case_base {
     {
       ir::numeric_token_stream min_stream;
       min_stream.reset((double_t)-40.);
-      const ir::term_attribute* min_term = min_stream.attributes().get<ir::term_attribute>();
+      auto& min_term = min_stream.attributes().get<ir::term_attribute>();
       ASSERT_TRUE(min_stream.next());
       ir::numeric_token_stream max_stream;
       max_stream.reset((double_t)90.564);
-      const ir::term_attribute* max_term = max_stream.attributes().get<ir::term_attribute>();
+      auto& max_term = max_stream.attributes().get<ir::term_attribute>();
       ASSERT_TRUE(max_stream.next());
 
       ir::by_granular_range query;
@@ -652,7 +652,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
     {
       ir::numeric_token_stream max_stream;
       max_stream.reset((double_t)5.);
-      const ir::term_attribute* max_term = max_stream.attributes().get<ir::term_attribute>();
+      auto& max_term = max_stream.attributes().get<ir::term_attribute>();
       ASSERT_TRUE(max_stream.next());
 
       ir::by_granular_range query;
@@ -680,7 +680,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
     {
       ir::numeric_token_stream min_stream;
       min_stream.reset((double_t)90.543);
-      const ir::term_attribute* min_term = min_stream.attributes().get<ir::term_attribute>();
+      auto& min_term = min_stream.attributes().get<ir::term_attribute>();
       ASSERT_TRUE(min_stream.next());
 
       ir::by_granular_range query;

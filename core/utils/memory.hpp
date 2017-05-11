@@ -45,8 +45,8 @@ struct aligned_union {
     ];
   };
 #endif
-  
-  static const size_t alignment_value = alignof(type);
+
+  static const size_t alignment_value = ALIGNOF(type);
   static const size_t size_value =  sizeof(type);
 }; // aligned_union 
 

@@ -391,7 +391,7 @@ struct cookie : attribute {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief declaration/implementation of DECLARE_FACTORY_DEFAULT()
   //////////////////////////////////////////////////////////////////////////////
-  static ptr make(const version10::term_meta& meta, uint64_t term_freq) {
+  static seek_term_iterator::cookie_ptr make(const version10::term_meta& meta, uint64_t term_freq) {
     return memory::make_unique<cookie>(meta, term_freq);
   }
 
@@ -435,7 +435,7 @@ class term_iterator : public iresearch::seek_term_iterator {
     cur_block_ = nullptr;
     return true;
   }
-  virtual attribute::ptr cookie() const override {
+  virtual seek_term_iterator::cookie_ptr cookie() const override {
     return detail::cookie::make(
       *state_, freq_ ? freq_->value : 0
     );
@@ -1159,9 +1159,11 @@ bool term_reader::prepare(
   // read field metadata
   index_input& meta_in = *static_cast<input_buf*>(in.rdbuf());
   field_.name = read_string<std::string>(meta_in);
+
   if (!read_field_features(meta_in, feature_map, field_.features)) {
     return false;
   }
+
   field_.norm = static_cast<field_id>(read_zvlong(meta_in));
   terms_count_ = meta_in.read_vlong();
   doc_count_ = meta_in.read_vlong();
@@ -1170,8 +1172,9 @@ bool term_reader::prepare(
   min_term_ref_ = min_term_;
   max_term_ = read_string<bstring>(meta_in);
   max_term_ref_ = max_term_;
+
   if (field_.features.check<frequency>()) {
-    frequency* freq = attrs_.add<frequency>();
+    auto& freq = attrs_.add<frequency>();
     freq->value = meta_in.read_vlong();
   }
 
@@ -1473,7 +1476,7 @@ void field_writer::write(
   uint64_t sum_tfreq = 0;
 
   const bool freq_exists = features.check<frequency>();
-  const version10::documents* docs = pw->attributes().get<version10::documents>();
+  auto& docs = pw->attributes().get<version10::documents>();
   assert(docs);
 
   /* aggregated by postings writer term attributes */
@@ -1483,9 +1486,10 @@ void field_writer::write(
     auto postings = terms.postings(features);
     pw->write(*postings, attrs);
 
-    const term_meta* meta = attrs.add<term_meta>();
+    auto& meta = attrs.add<term_meta>();
+
     if (freq_exists) {
-      const frequency *tfreq = attrs.add<frequency>();
+      auto& tfreq = attrs.add<frequency>();
       sum_tfreq += tfreq->value;
     }
 

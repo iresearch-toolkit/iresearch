@@ -36,8 +36,8 @@ void collect_terms(
     state.min_term = terms.value();
     state.min_cookie = terms.cookie();
 
-    /* get term metadata */
-    const term_meta* meta = terms.attributes().get<term_meta>();
+    // get term metadata
+    auto& meta = terms.attributes().get<term_meta>();
 
     do {
       // fill scoring candidates

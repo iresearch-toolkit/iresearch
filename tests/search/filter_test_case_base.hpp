@@ -267,7 +267,7 @@ class filter_test_case_base : public index_test_base {
 
       while(docs->next()) {
         docs->score();
-        ASSERT_TRUE(score);
+        ASSERT_FALSE(!score);
         scored_result.emplace(score->value(), docs->value());
       }
     }

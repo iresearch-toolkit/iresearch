@@ -3270,7 +3270,7 @@ void postings_writer::write(doc_iterator& docs, iresearch::attributes& attrs) {
   const offset* offs = nullptr;
   const payload* pay = nullptr;
   frequency* tfreq = nullptr;
-  version10::term_meta* meta = attrs.add<version10::term_meta>();
+  auto& meta = attrs.add<version10::term_meta>();
 
   if (freq) {
     if (pos && !volatile_attributes_) {
@@ -3556,8 +3556,8 @@ void postings_writer::write_skip(size_t level, index_output& out) {
 }
 
 void postings_writer::encode(data_output& out, const iresearch::attributes& attrs) {
-  const version10::term_meta* meta = attrs.get<term_meta>();
-  const frequency* tfreq = attrs.get<frequency>();
+  auto& meta = attrs.get<term_meta>();
+  auto& tfreq = attrs.get<frequency>();
 
   out.write_vlong(meta->docs_count);
   if (tfreq) {
@@ -3681,8 +3681,8 @@ void postings_reader::decode(
     data_input& in, 
     const flags& meta, 
     attributes& attrs) {
-  version10::term_meta* tmeta = attrs.add<version10::term_meta>();
-  frequency* tfreq = attrs.get<frequency>();
+  auto& tmeta = attrs.add<version10::term_meta>();
+  auto& tfreq = attrs.get<frequency>();
 
   assert(tmeta);
 

@@ -101,6 +101,7 @@ set(IReSearch_tests_sources
   ./utils/ebo_tests.cpp
   ./utils/math_utils_test.cpp
   ./utils/std_test.cpp
+  ./utils/type_utils_tests.cpp
   ./tests_main.cpp
 )
 

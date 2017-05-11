@@ -141,18 +141,18 @@ class same_position_query final : public filter::prepared {
     auto term_stats = stats_.begin();
     for (auto& term_state : *query_state) {
       auto term = term_state.reader->iterator();
-      
+
       // use bytes_ref::nil here since we do not need just to "jump"
       // to cached state, and we are not interested in term value itself */
       if (!term->seek(bytes_ref::nil, *term_state.cookie)) {
         return score_doc_iterator::empty();
       }
-      
+
       // get postings
       auto docs = term->postings(features);
-      
+
       // get needed postings attributes
-      const position* pos = docs->attributes().get<position>();
+      auto& pos = docs->attributes().get<position>();
       if (!pos) {
         // positions not found
         return score_doc_iterator::empty();
@@ -277,7 +277,7 @@ filter::prepared::ptr by_same_position::prepare(
       // find terms
       seek_term_iterator::ptr term = field->iterator();
       // get term metadata
-      const term_meta* meta = term->attributes().get<term_meta>();
+      auto& meta = term->attributes().get<term_meta>();
 
       if (!term->seek(branch.second)) {
         if (ord.empty()) {
