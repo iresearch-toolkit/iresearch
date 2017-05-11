@@ -14,8 +14,6 @@
 
 #include "shared.hpp"
 
-#include <fst/matcher.h>
-
 NS_BEGIN(fst)
 
 // This class discards any implicit matches (e.g., the implicit epsilon
@@ -25,87 +23,89 @@ NS_BEGIN(fst)
 // used to look-up explicit label matches, this class saves the user
 // from having to check for and discard the unwanted implicit matches
 // themselves.
-template <class M>
-class explicit_matcher : public MatcherBase<typename M::Arc> {
+template <class MatcherBase>
+class explicit_matcher final : public MatcherBase {
  public:
-  using FST = typename M::FST;
-  using Arc = typename FST::Arc;
-  using Label = typename Arc::Label;
-  using StateId = typename Arc::StateId;
-  using Weight = typename Arc::Weight;
+  typedef typename MatcherBase::FST FST;
+  typedef typename FST::Arc Arc;
+  typedef typename Arc::Label Label;
+  typedef typename Arc::StateId StateId;
+  typedef typename Arc::Weight Weight;
 
-  explicit explicit_matcher(M& matcher)
-    : matcher_(&matcher),
+  template<typename... Args>
+  explicit explicit_matcher(Args&&... args)
+    : MatcherBase(std::forward<Args>(args)...),
 #ifdef IRESEARCH_DEBUG
-      match_type_(matcher.Type(true)), // test fst properties
+      match_type_(MatcherBase::Type(true)) // test fst properties
 #else
-      match_type_(matcher.Type(false)),
+      match_type_(MatcherBase::Type(false)) // read type without checks
 #endif
-      error_(false) {
+  { }
+
+  explicit_matcher(const explicit_matcher& rhs, bool safe = false)
+    : MatcherBase(rhs, safe),
+      match_type_(rhs.match_type_) {
   }
 
-  virtual explicit_matcher<M>* Copy(bool safe = false) const {
-    UNUSED(safe);
-    return new explicit_matcher<M>(*this);
+  explicit_matcher* Copy(bool safe = false) const {
+    return new explicit_matcher(*this, safe);
   }
 
-  virtual MatchType Type(bool test) const { return matcher_->Type(test); }
+  MatchType Type(bool test) const {
+    return MatcherBase::Type(test);
+  }
 
   void SetState(StateId s) {
-    matcher_->SetState(s);
+    MatcherBase::SetState(s);
   }
 
   bool Find(Label match_label) {
-    matcher_->Find(match_label);
+    MatcherBase::Find(match_label);
     CheckArc();
     return !Done();
   }
 
-  bool Done() const { return matcher_->Done(); }
+  bool Done() const { return MatcherBase::Done(); }
 
-  const Arc& Value() const { return matcher_->Value(); }
+  const Arc& Value() const { return MatcherBase::Value(); }
 
   void Next() {
-    matcher_->Next();
+    MatcherBase::Next();
     CheckArc();
   }
 
-  Weight Final(StateId s) const { return matcher_->Final(s); }
-
-  ssize_t Priority(StateId s) { return  matcher_->Priority(s); }
-
-  virtual const FST &GetFst() const { return matcher_->GetFst(); }
-
-  virtual uint64 Properties(uint64 inprops) const {
-    return matcher_->Properties(inprops);
+  Weight Final(StateId s) const {
+    return MatcherBase::Final(s);
   }
 
-  virtual uint32 Flags() const {
-    return matcher_->Flags();
+  ssize_t Priority(StateId s) {
+    return  MatcherBase::Priority(s);
+  }
+
+  const FST& GetFst() const {
+    return MatcherBase::GetFst();
+  }
+
+  uint64 Properties(uint64 inprops) const {
+    return MatcherBase::Properties(inprops);
+  }
+
+  uint32 Flags() const {
+    return MatcherBase::Flags();
   }
 
  private:
   // Checks current arc if available and explicit. If not available, stops. If
   // not explicit, checks next ones.
   void CheckArc() {
-    for (; !matcher_->Done(); matcher_->Next()) {
-      const auto label = match_type_ == MATCH_INPUT ? matcher_->Value().ilabel
-                                                    : matcher_->Value().olabel;
+    for (; !MatcherBase::Done(); MatcherBase::Next()) {
+      const auto label = match_type_ == MATCH_INPUT ? MatcherBase::Value().ilabel
+                                                    : MatcherBase::Value().olabel;
       if (label != kNoLabel) return;
     }
   }
 
-  virtual void SetState_(StateId s) { SetState(s); }
-  virtual bool Find_(Label label) { return Find(label); }
-  virtual bool Done_() const { return Done(); }
-  virtual const Arc& Value_() const { return Value(); }
-  virtual void Next_() { Next(); }
-  virtual Weight Final_(StateId s) const { return Final(s); }
-  virtual ssize_t Priority_(StateId s) { return Priority(s); }
-
-  M* matcher_;
   MatchType match_type_;  // Type of match requested.
-  bool error_;            // Error encountered?
 }; // explicit_matcher
 
 NS_END // fst

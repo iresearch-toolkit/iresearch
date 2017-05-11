@@ -31,6 +31,7 @@
 #include "utils/attributes.hpp"
 #include "utils/string.hpp"
 #include "utils/log.hpp"
+#include "utils/fst_matcher.hpp"
 
 #if defined(_MSC_VER)
   // NOOP
@@ -52,7 +53,7 @@
   // NOOP
 #endif
 
-#include "utils/fst_matcher.hpp"
+#include <fst/matcher.h>
 
 #if defined(_MSC_VER)
   #pragma warning(disable : 4244)
@@ -444,7 +445,8 @@ class term_iterator : public iresearch::seek_term_iterator {
 
  private:
   typedef term_reader::fst_t fst_t;
-  typedef fst::SortedMatcher<fst_t> core_matcher_t;
+  typedef fst::SortedMatcher<fst_t> sorted_matcher_t;
+  typedef fst::explicit_matcher<sorted_matcher_t> matcher_t; // avoid implicit loops
 
   friend class block_iterator;
 
@@ -506,8 +508,7 @@ class term_iterator : public iresearch::seek_term_iterator {
   }
 
   const term_reader* owner_;
-  core_matcher_t core_matcher_;
-  fst::explicit_matcher<core_matcher_t> matcher_; // to avoid implicit loops
+  matcher_t matcher_;
   iresearch::attributes attrs_;
   seek_state_t sstate_;
   block_stack_t block_stack_;
@@ -854,8 +855,7 @@ void block_iterator::reset() {
 
 term_iterator::term_iterator(const term_reader* owner)
   : owner_(owner),
-    core_matcher_(*owner->fst_, fst::MATCH_INPUT),
-    matcher_(core_matcher_),
+    matcher_(*owner->fst_, fst::MATCH_INPUT),
     attrs_(2), // version10::term_meta + frequency
     cur_block_(nullptr),
     freq_(nullptr) {
