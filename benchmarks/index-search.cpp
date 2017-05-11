@@ -953,17 +953,21 @@ int search(
           SCOPED_TIMER("Query execution time");
           irs::timer_utils::scoped_timer timer(*(timers.stat[size_t(task->category)]));
 
+          const float EMPTY_SCORE = 0.f;
+
           for (auto& segment: reader) {
             auto docs = filter->execute(segment, order); // query segment
             auto& score = docs->attributes().get<irs::score>();
+            const auto& score_value = score ? score->get<float>(0) : EMPTY_SCORE;
 
             while (docs->next()) {
               ++doc_count;
               docs->score();
+
               sorted.emplace(
                 std::piecewise_construct,
                 std::forward_as_tuple(score->value()),
-                std::forward_as_tuple(docs->value(), score ? score->get<float>(0) : .0)
+                std::forward_as_tuple(docs->value(), score_value)
               );
 
               if (sorted.size() > limit) {
