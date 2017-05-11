@@ -13,6 +13,7 @@
 #define IRESEARCH_TYPE_UTILS_H
 
 #include "shared.hpp"
+#include "std.hpp"
 
 NS_ROOT
 
@@ -39,21 +40,29 @@ struct template_traits_t<First, Second...> {
     );
   }
 
-  static CONSTEXPR size_t size_max(size_t max = 0) NOEXCEPT {
-    return template_traits_t<Second...>::size_max(
-      max < sizeof(First) ? sizeof(First) : max
+  static CONSTEXPR size_t align_max(size_t max = 0) NOEXCEPT {
+    return template_traits_t<Second...>::align_max(
+      irstd::max(max, std::alignment_of<First>::value)
     );
   }
 
-  static CONSTEXPR size_t size_max_aligned(size_t start = 0, size_t max = 0) NOEXCEPT {
-    auto size =
-      start
-      + ((std::alignment_of<First>() - (start % std::alignment_of<First>())) % std::alignment_of<First>()) // padding
-      + sizeof(First)
-      ;
+  static CONSTEXPR size_t size_max(size_t max = 0) NOEXCEPT {
+    return template_traits_t<Second...>::size_max(
+      irstd::max(max, sizeof(First))
+    );
+  }
 
+  static CONSTEXPR size_t offset_aligned(size_t start = 0) NOEXCEPT {
+    typedef std::alignment_of<First> align_t;
+
+    return start
+      + ((align_t::value - (start % align_t::value)) % align_t::value) // padding
+      + sizeof(First);
+  }
+
+  static CONSTEXPR size_t size_max_aligned(size_t start = 0, size_t max = 0) NOEXCEPT {
     return template_traits_t<Second...>::size_max_aligned(
-      start, max < size ? size : max
+      start, irstd::max(max, offset_aligned(start))
     );
   }
 };
@@ -72,8 +81,16 @@ struct template_traits_t<> {
     return start;
   }
 
+  static CONSTEXPR size_t align_max(size_t max = 0) NOEXCEPT {
+    return max;
+  }
+
   static CONSTEXPR size_t size_max(size_t max = 0) NOEXCEPT {
     return max;
+  }
+
+  static CONSTEXPR size_t offset_aligned(size_t start = 0) NOEXCEPT {
+    return start;
   }
 
   static CONSTEXPR size_t size_max_aligned(size_t start = 0, size_t max = 0) NOEXCEPT {
