@@ -120,8 +120,15 @@ build_script:
   - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-tests-static
   - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-benchmarks-index
   - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-benchmarks-search
-  
+   
+test_script:
   ############################################################################
   # Execute tests
   ############################################################################
-  - bin\%CONFIGURATION%\iresearch-tests-s --gtest_output=xml:test_results.xml --gtest_filter=*type_utils*
+  - cmd: bin\%CONFIGURATION%\iresearch-tests-s --gtest_output=xml:test_results.xml --gtest_filter=*type_utils*
+
+on_finish:
+  ############################################################################
+  # Publish tests results
+  ############################################################################
+  - ps: (new-object net.webclient).UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", (Resolve-Path .\test_results.xml))
