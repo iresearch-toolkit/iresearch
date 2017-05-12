@@ -1409,6 +1409,146 @@ class index_test_case_base : public tests::index_test_base {
     }
   }
 
+  void read_write_doc_attributes_sparse_mask() {
+    static const irs::doc_id_t MAX_DOCS = 8;
+    static const iresearch::string_ref column_name = "id";
+
+    // write documents
+    {
+      struct stored {
+        const irs::string_ref& name() { return column_name; }
+        bool write(irs::data_output& out) { return true; }
+      } field;
+
+      irs::doc_id_t docs_count = 0;
+      auto inserter = [&docs_count, &field](const irs::index_writer::document& doc) {
+        if (docs_count % 2) {
+          doc.insert<irs::Action::STORE>(field);
+        }
+        return ++docs_count < MAX_DOCS;
+      };
+
+      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE);
+      writer->insert(inserter); // insert MAX_DOCS/2 documents
+      writer->commit();
+    }
+
+    // check inserted values
+    {
+      auto reader = ir::directory_reader::open(this->dir(), this->codec());
+      ASSERT_EQ(1, reader.size());
+
+      auto& segment = *(reader.begin());
+      ASSERT_EQ(irs::doc_id_t(MAX_DOCS), segment.live_docs_count());
+
+      auto* meta = segment.column(column_name);
+      ASSERT_NE(nullptr, meta);
+
+      // read values
+      {
+        irs::columnstore_reader::values_reader_f values = segment.values(column_name);
+        irs::bytes_ref actual_value;
+
+        for (irs::doc_id_t i = 0; i < MAX_DOCS; ++i) {
+          const irs::doc_id_t doc = i + (irs::type_limits<irs::type_t::doc_id_t>::min)();
+          ASSERT_EQ(i % 2, values(doc, actual_value));
+          ASSERT_EQ(irs::bytes_ref::nil, actual_value);
+        }
+      }
+
+      // visit values
+      {
+        irs::doc_id_t docs_count = 0;
+        irs::doc_id_t expected_doc = 2;
+        auto visitor = [&docs_count, &expected_doc](irs::doc_id_t actual_doc, const irs::bytes_ref& actual_data) {
+          if (expected_doc != actual_doc) {
+            return false;
+          }
+
+          if (irs::bytes_ref::nil != actual_data) {
+            return false;
+          }
+
+          expected_doc += 2;
+          ++docs_count;
+          return true;
+        };
+
+        ASSERT_TRUE(segment.visit(column_name, visitor));
+        ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
+      }
+    }
+  }
+
+  void read_write_doc_attributes_dense_mask() {
+    static const irs::doc_id_t MAX_DOCS = 8;
+    static const iresearch::string_ref column_name = "id";
+
+    // write documents
+    {
+      struct stored {
+        const irs::string_ref& name() { return column_name; }
+        bool write(irs::data_output& out) { return true; }
+      } field;
+
+      irs::doc_id_t docs_count = 0;
+      auto inserter = [&docs_count, &field](const irs::index_writer::document& doc) {
+        doc.insert<irs::Action::STORE>(field);
+        return ++docs_count < MAX_DOCS;
+      };
+
+      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE);
+      writer->insert(inserter); // insert MAX_DOCS documents
+      writer->commit();
+    }
+
+    // check inserted values
+    {
+      auto reader = ir::directory_reader::open(this->dir(), this->codec());
+      ASSERT_EQ(1, reader.size());
+
+      auto& segment = *(reader.begin());
+      ASSERT_EQ(irs::doc_id_t(MAX_DOCS), segment.live_docs_count());
+
+      auto* meta = segment.column(column_name);
+      ASSERT_NE(nullptr, meta);
+
+      // read values
+      {
+        irs::columnstore_reader::values_reader_f values = segment.values(column_name);
+        irs::bytes_ref actual_value;
+
+        for (irs::doc_id_t i = 0; i < MAX_DOCS; ++i) {
+          const irs::doc_id_t doc = i + (irs::type_limits<irs::type_t::doc_id_t>::min)();
+          ASSERT_TRUE(values(doc, actual_value));
+          ASSERT_EQ(irs::bytes_ref::nil, actual_value);
+        }
+      }
+
+      // visit values
+      {
+        irs::doc_id_t docs_count = 0;
+        irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        auto visitor = [&docs_count, &expected_doc](irs::doc_id_t actual_doc, const irs::bytes_ref& actual_data) {
+          if (expected_doc != actual_doc) {
+            return false;
+          }
+
+          if (irs::bytes_ref::nil != actual_data) {
+            return false;
+          }
+
+          ++expected_doc;
+          ++docs_count;
+          return true;
+        };
+
+        ASSERT_TRUE(segment.visit(column_name, visitor));
+        ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
+      }
+    }
+  }
+
   void read_write_doc_attributes_fixed_length() {
     static const irs::doc_id_t MAX_DOCS = 8;
     static const iresearch::string_ref column_name = "id";
@@ -2227,6 +2367,8 @@ TEST_F(memory_index_test, arango_demo_docs) {
 }
 
 TEST_F(memory_index_test, read_write_doc_attributes) {
+  read_write_doc_attributes_sparse_mask();
+  read_write_doc_attributes_dense_mask();
   read_write_doc_attributes_fixed_length();
   read_write_doc_attributes_big();
   read_write_doc_attributes();

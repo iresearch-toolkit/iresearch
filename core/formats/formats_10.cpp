@@ -44,6 +44,7 @@
 NS_LOCAL
 
 irs::frequency EMPTY_FREQ; // placeholder for empty frequency
+irs::bytes_ref DUMMY; // placeholder for visiting logic in columnstore
 
 NS_END
 
@@ -2409,6 +2410,7 @@ class dense_fixed_length_block : util::noncopyable {
   }
 
   bool value(doc_id_t key, bytes_ref& out) const {
+    // expect 0-based key
     assert(key < size_);
 
     if (data_.empty()) {
@@ -2459,18 +2461,20 @@ class dense_fixed_length_block : util::noncopyable {
 class sparse_mask_block : util::noncopyable {
  public:
   sparse_mask_block() {
-    std::fill(std::begin(keys_), std::end(keys_), type_limits<type_t::doc_id_t>::eof());
+    std::fill(
+      std::begin(keys_), std::end(keys_),
+      type_limits<type_t::doc_id_t>::eof()
+    );
   }
 
-  bool load(index_input& in, decompressor& decomp, bstring& buf) {
-    UNUSED(decomp);
-    const size_t size = in.read_vlong(); // total number of entries in a block
-    assert(size);
+  bool load(index_input& in, decompressor& /*decomp*/, bstring& buf) {
+    size_ = in.read_vlong(); // total number of entries in a block
+    assert(size_);
 
     auto begin = std::begin(keys_);
 
     encode::avg::visit_block_packed_tail(
-      in, size, reinterpret_cast<uint64_t*>(&buf[0]),
+      in, size_, reinterpret_cast<uint64_t*>(&buf[0]),
       [begin](uint64_t key) mutable {
         *begin++ = key;
     });
@@ -2485,15 +2489,21 @@ class sparse_mask_block : util::noncopyable {
   }
 
   bool value(doc_id_t key, bytes_ref& /*reader*/) const {
-    // find the right ref
-    const auto it = std::lower_bound(std::begin(keys_), std::end(keys_), key);
+    // we don't evaluate 'end' here as 'keys_ + size_'
+    // since it all blocks except the tail one are
+    // going to be fully filled, that allows compiler
+    // to generate better optimized code
+
+    const auto it = std::lower_bound(
+      std::begin(keys_), std::end(keys_), key
+    );
 
     return !(std::end(keys_) == it || *it > key);
   }
 
   bool visit(const columnstore_reader::values_reader_f& reader) const {
-    for (auto begin = std::begin(keys_); begin != std::end(keys_); ++begin) {
-      if (!reader(*begin, bytes_ref::nil)) {
+    for (auto begin = std::begin(keys_), end = begin + size_; begin != end; ++begin) {
+      if (!reader(*begin, DUMMY)) {
         return false;
       }
     }
@@ -2501,20 +2511,19 @@ class sparse_mask_block : util::noncopyable {
   }
 
  private:
-  // all blocks except the tail are going to be fully filled,
-  // so we don't track size of each block here since we could
+  // all blocks except the tail one are going to be fully filled,
+  // so we store keys in a fixed length array since we could
   // waste just INDEX_BLOCK_SIZE*sizeof(ref)-1 per column
   // in the worst case
   doc_id_t keys_[INDEX_BLOCK_SIZE];
+  doc_id_t size_{}; // number of documents in a block
 }; // sparse_mask_block
 
 class dense_mask_block {
  public:
-  bool load(index_input& in, decompressor& decomp, bstring& buf) {
-    UNUSED(buf);
-    UNUSED(decomp);
-    const size_t size = in.read_vlong(); // total number of elements in a block
-    assert(size);
+  bool load(index_input& in, decompressor& /*decomp*/, bstring& /*buf*/) {
+    size_ = in.read_vlong(); // total number of elements in a block
+    assert(size_);
 
     // dense block must be encoded with RL encoding, avg must be equal to 1
     uint64_t avg;
@@ -2529,19 +2538,18 @@ class dense_mask_block {
       return false;
     }
 
-    max_ = min_ + size;
-
     return true;
   }
 
   bool value(doc_id_t key, bytes_ref& /*reader*/) const {
-    return key >= min_ && key <= max_;
+    // expect 0-based key
+    return key < size_;
   }
 
   bool visit(const columnstore_reader::values_reader_f& visitor) const {
     doc_id_t key = min_;
-    for (; key < max_; ++key) {
-      if (visitor(key, bytes_ref::nil)) {
+    for (const auto max = min_ + size_; key < max; ++key) {
+      if (!visitor(key, DUMMY)) {
         return false;
       }
     }
@@ -2549,8 +2557,8 @@ class dense_mask_block {
   }
 
  private:
-  doc_id_t min_{};
-  doc_id_t max_{};
+  doc_id_t min_{}; // min key
+  doc_id_t size_{}; // number of documents in a block
 }; // dense_mask_block
 
 template<typename Allocator = std::allocator<sparse_block>>
@@ -2651,8 +2659,7 @@ class column : private util::noncopyable {
   }
   virtual ~column() { }
 
-  virtual bool read(data_input& in, uint64_t* buf) {
-    UNUSED(buf);
+  virtual bool read(data_input& in, uint64_t* /*buf*/) {
     count_ = in.read_vlong();
     max_ = in.read_vlong();
     avg_block_size_ = in.read_vlong();
