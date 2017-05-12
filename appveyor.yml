@@ -14,25 +14,23 @@ build:
   verbosity: normal
 
 environment:
-  WINFLEXBISON_ARCHIVE: win_flex_bison-2.4.9.zip
+  TEST_RESULTS: test_results.xml
   matrix:
   - BOOST_VERSION: default
     CONFIGURATION: Debug
     CMAKE_OPTIONS: -DCMAKE_BUILD_TYPE=%CONFIGURATION%
-  - BOOST_VERSION: default
-    CONFIGURATION: Release
-    CMAKE_OPTIONS: -DCMAKE_BUILD_TYPE=%CONFIGURATION%
     CMAKE_BUILD_OPTIONS: --config %CONFIGURATION%
+    TEST_OPTIONS: --gtest_filter=*:-:*europ*:*monarch*:*postings_seek*:*reuse*
+#  - BOOST_VERSION: default
+#    CONFIGURATION: Release
+#    CMAKE_OPTIONS: -DCMAKE_BUILD_TYPE=%CONFIGURATION%
+#    CMAKE_BUILD_OPTIONS: --config %CONFIGURATION%
     
 
 install:
   ############################################################################
   # Setup bison
   ############################################################################
-#  - if not exist "%WINFLEXBISON_ARCHIVE%" appveyor DownloadFile "http://downloads.sourceforge.net/project/winflexbison/%WINFLEXBISON_ARCHIVE%"
-#  - 7z x -y -owinflexbison\ "%WINFLEXBISON_ARCHIVE%" > nul
-#  - set PATH=%PATH%;%CD%\winflexbison
-#  - win_bison --version
   - set PATH=%PATH%;C:\cygwin64\bin
   - bison --version
   
@@ -54,9 +52,9 @@ install:
   - mkdir build && cd build
   - set PATH=%PATH%;%SNOWBALL_DIR%\build\%CONFIGURATION%
   - cmake %CMAKE_OPTIONS% -DENABLE_STATIC=OFF -DNO_SHARED=ON -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 ..  
-  - cmake --build . --config %CONFIGURATION%
+  - cmake --build . %CMAKE_BUILD_OPTIONS%
   - cmake %CMAKE_OPTIONS% -DENABLE_STATIC=OFF -DNO_SHARED=OFF -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 ..  
-  - cmake --build . --config %CONFIGURATION%
+  - cmake --build . %CMAKE_BUILD_OPTIONS%
   - set SNOWBALL_ROOT=%SNOWBALL_DIR%   
   
   ############################################################################
@@ -69,7 +67,7 @@ install:
   - cd %GTEST_DIR%
   - mkdir build && cd build
   - cmake -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 -Dgtest_force_shared_crt=ON -DBUILD_GTEST=ON -DBUILD_GMOCK=OFF  ..
-  - cmake --build . --config %CONFIGURATION%
+  - cmake --build . %CMAKE_BUILD_OPTIONS%
   - cmake --install .
   - mkdir ..\googletest\lib  
   - move /Y googletest\%CONFIGURATION%\* ..\googletest\lib
@@ -104,7 +102,7 @@ install:
   - cd %LZ4_DIR%
   - mkdir build && cd build
   - cmake -DCMAKE_INSTALL_PREFIX=%LZ4_ROOT%\build -DBUILD_STATIC_LIBS=on -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 ../contrib/cmake_unofficial
-  - cmake --build . --config %CONFIGURATION%
+  - cmake --build . %CMAKE_BUILD_OPTIONS%
   - cmake --build . --target install
   - set LZ4_ROOT=%LZ4_ROOT%\build
 
@@ -115,5 +113,32 @@ build_script:
   - cd %APPVEYOR_BUILD_FOLDER%
   - mkdir build
   - cd build
-  - cmake -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 %CMAKE_OPTIONS% ..
-  - cmake --build . %CMAKE_BUILD_OPTIONS%
+  - cmake -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 %CMAKE_OPTIONS% ..  
+  
+  ############################################################################
+  # Build static version (linked with dynamic CRT)
+  ############################################################################
+  - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-tests-static  
+  
+  ############################################################################
+  # Build shared version (linked with dynamic CRT)
+  ############################################################################
+  - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-tests-shared
+  
+  ############################################################################
+  # Build benchmarks
+  ############################################################################
+  - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-benchmarks-index
+  - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-benchmarks-search
+   
+test_script:
+  ############################################################################
+  # Execute tests
+  ############################################################################
+  - cmd: bin\%CONFIGURATION%\iresearch-tests-s --gtest_output=xml:%TEST_RESULTS% %TEST_OPTIONS%
+
+on_finish:
+  ############################################################################
+  # Publish tests results
+  ############################################################################
+  - ps: (new-object net.webclient).UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", (Resolve-Path .\%TEST_RESULTS%))
