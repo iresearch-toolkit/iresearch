@@ -111,4 +111,4 @@ build_script:
   - mkdir build
   - cd build
   - cmake -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 %CMAKE_OPTIONS% ..
-  - cmake --build . %CMAKE_BUILD_OPTIONS%
+  - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-tests-static
