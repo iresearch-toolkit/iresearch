@@ -18,10 +18,11 @@ environment:
   - BOOST_VERSION: default
     CONFIGURATION: Debug
     CMAKE_OPTIONS: -DCMAKE_BUILD_TYPE=%CONFIGURATION%
-  - BOOST_VERSION: default
-    CONFIGURATION: Release
-    CMAKE_OPTIONS: -DCMAKE_BUILD_TYPE=%CONFIGURATION%
     CMAKE_BUILD_OPTIONS: --config %CONFIGURATION%
+#  - BOOST_VERSION: default
+#    CONFIGURATION: Release
+#    CMAKE_OPTIONS: -DCMAKE_BUILD_TYPE=%CONFIGURATION%
+#    CMAKE_BUILD_OPTIONS: --config %CONFIGURATION%
     
 
 install:
@@ -49,9 +50,9 @@ install:
   - mkdir build && cd build
   - set PATH=%PATH%;%SNOWBALL_DIR%\build\%CONFIGURATION%
   - cmake %CMAKE_OPTIONS% -DENABLE_STATIC=OFF -DNO_SHARED=ON -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 ..  
-  - cmake --build . --config %CONFIGURATION%
+  - cmake --build . %CMAKE_BUILD_OPTIONS%
   - cmake %CMAKE_OPTIONS% -DENABLE_STATIC=OFF -DNO_SHARED=OFF -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 ..  
-  - cmake --build . --config %CONFIGURATION%
+  - cmake --build . %CMAKE_BUILD_OPTIONS%
   - set SNOWBALL_ROOT=%SNOWBALL_DIR%   
   
   ############################################################################
@@ -64,7 +65,7 @@ install:
   - cd %GTEST_DIR%
   - mkdir build && cd build
   - cmake -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 -Dgtest_force_shared_crt=ON -DBUILD_GTEST=ON -DBUILD_GMOCK=OFF  ..
-  - cmake --build . --config %CONFIGURATION%
+  - cmake --build . %CMAKE_BUILD_OPTIONS%
   - cmake --install .
   - mkdir ..\googletest\lib  
   - move /Y googletest\%CONFIGURATION%\* ..\googletest\lib
@@ -99,7 +100,7 @@ install:
   - cd %LZ4_DIR%
   - mkdir build && cd build
   - cmake -DCMAKE_INSTALL_PREFIX=%LZ4_ROOT%\build -DBUILD_STATIC_LIBS=on -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 ../contrib/cmake_unofficial
-  - cmake --build . --config %CONFIGURATION%
+  - cmake --build . %CMAKE_BUILD_OPTIONS%
   - cmake --build . --target install
   - set LZ4_ROOT=%LZ4_ROOT%\build
 
@@ -111,7 +112,16 @@ build_script:
   - mkdir build
   - cd build
   - cmake -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 %CMAKE_OPTIONS% ..  
+  
+  ############################################################################
+  # Build static and shared versions (linked with dynamic CRT)
+  ############################################################################
+  - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-tests-shared
   - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-tests-static
   - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-benchmarks-index
   - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-benchmarks-search
   
+  ############################################################################
+  # Execute tests
+  ############################################################################
+  - bin\%CONFIGURATION%\iresearch-tests-s --gtest_output=xml:test_results.xml --gtest_filter=*type_utils*
