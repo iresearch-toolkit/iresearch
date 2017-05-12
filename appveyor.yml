@@ -20,7 +20,7 @@ environment:
     CONFIGURATION: Debug
     CMAKE_OPTIONS: -DCMAKE_BUILD_TYPE=%CONFIGURATION%
     CMAKE_BUILD_OPTIONS: --config %CONFIGURATION%
-    TEST_OPTIONS=--gtest_filter=*:-:*europ*:*monarch*:*postings_seek*:*reuse*
+    TEST_OPTIONS: --gtest_filter=*:-:*europ*:*monarch*:*postings_seek*:*reuse*
 #  - BOOST_VERSION: default
 #    CONFIGURATION: Release
 #    CMAKE_OPTIONS: -DCMAKE_BUILD_TYPE=%CONFIGURATION%
