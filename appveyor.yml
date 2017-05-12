@@ -14,11 +14,13 @@ build:
   verbosity: normal
 
 environment:
+  TEST_RESULTS: test_results.xml
   matrix:
   - BOOST_VERSION: default
     CONFIGURATION: Debug
     CMAKE_OPTIONS: -DCMAKE_BUILD_TYPE=%CONFIGURATION%
     CMAKE_BUILD_OPTIONS: --config %CONFIGURATION%
+    TEST_OPTIONS=--gtest_filter=*:-:*europ*:*monarch*:*postings_seek*:*reuse*
 #  - BOOST_VERSION: default
 #    CONFIGURATION: Release
 #    CMAKE_OPTIONS: -DCMAKE_BUILD_TYPE=%CONFIGURATION%
@@ -114,10 +116,18 @@ build_script:
   - cmake -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 %CMAKE_OPTIONS% ..  
   
   ############################################################################
-  # Build static and shared versions (linked with dynamic CRT)
+  # Build static version (linked with dynamic CRT)
+  ############################################################################
+  - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-tests-static  
+  
+  ############################################################################
+  # Build shared version (linked with dynamic CRT)
   ############################################################################
   - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-tests-shared
-  - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-tests-static
+  
+  ############################################################################
+  # Build benchmarks
+  ############################################################################
   - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-benchmarks-index
   - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-benchmarks-search
    
@@ -125,10 +135,10 @@ test_script:
   ############################################################################
   # Execute tests
   ############################################################################
-  - cmd: bin\%CONFIGURATION%\iresearch-tests-s --gtest_output=xml:test_results.xml --gtest_filter=*type_utils*
+  - cmd: bin\%CONFIGURATION%\iresearch-tests-s --gtest_output=xml:%TEST_RESULTS% %TEST_OPTIONS%
 
 on_finish:
   ############################################################################
   # Publish tests results
   ############################################################################
-  - ps: (new-object net.webclient).UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", (Resolve-Path .\test_results.xml))
+  - ps: (new-object net.webclient).UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", (Resolve-Path .\%TEST_RESULTS%))
