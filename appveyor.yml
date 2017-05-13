@@ -13,9 +13,9 @@ platform: x64
 build:
   verbosity: normal
 
-CONFIGURATION: 
-  - Debug
-  - Release
+configuration: 
+  - debug
+  - release
 
 environment:
   TEST_RESULTS: test_results.xml
