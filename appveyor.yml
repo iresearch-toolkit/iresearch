@@ -13,7 +13,7 @@ platform: x64
 build:
   verbosity: normal
 
-Configuration: 
+configuration: 
   #- Debug
   - Release
 
