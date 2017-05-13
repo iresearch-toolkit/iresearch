@@ -13,19 +13,19 @@ platform: x64
 build:
   verbosity: normal
 
-configuration: 
-  - debug
-  - release
+Configuration: 
+  #- Debug
+  - Release
 
 environment:
   TEST_RESULTS: test_results.xml
   BOOST_VERSION: default
   matrix:
   - BUILD_SUFFIX: -shared    
-    TEST_OPTIONS: --gtest_filter=*:-:*
+    TEST_OPTIONS: --gtest_filter=*type_utils*
   - BUILD_SUFFIX: -static    
     EXECUTABLE_SUFFIX: -s
-    TEST_OPTIONS: --gtest_filter=*:-:*
+    TEST_OPTIONS: --gtest_filter=*type_utils*
     
 install:
   ############################################################################
