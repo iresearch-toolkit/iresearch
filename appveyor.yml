@@ -21,9 +21,10 @@ environment:
   TEST_RESULTS: test_results.xml
   BOOST_VERSION: default
   matrix:
-  - BUILD_SUFFIX: -shared        
+  - BUILD_SUFFIX: -shared    
     TEST_OPTIONS: --gtest_filter=*:-:*
   - BUILD_SUFFIX: -static    
+    EXECUTABLE_SUFFIX: -s
     TEST_OPTIONS: --gtest_filter=*:-:*
     
 install:
@@ -121,7 +122,7 @@ test_script:
   ############################################################################
   # Execute tests
   ############################################################################
-  - cmd: bin\%CONFIGURATION%\iresearch-tests-s --gtest_output=xml:%TEST_RESULTS% %TEST_OPTIONS%
+  - cmd: bin\%CONFIGURATION%\iresearch-tests%EXECUTABLE_SUFFIX%.exe --gtest_output=xml:%TEST_RESULTS% %TEST_OPTIONS%
 
 on_finish:
   ############################################################################
