@@ -124,10 +124,10 @@ test_script:
   ############################################################################
   # Execute tests
   ############################################################################
-  - cmd: bin\%CONFIGURATION%\iresearch-tests%EXECUTABLE_SUFFIX%.exe --gtest_output=xml:test_results.xml %TEST_OPTIONS%
+  - cmd: bin\%CONFIGURATION%\iresearch-tests%EXECUTABLE_SUFFIX%.exe --gtest_output=xml:%APPVEYOR_BUILD_FOLDER%\build\bin\%CONFIGURATION%\test_results.xml %TEST_OPTIONS%
 
 on_finish:
   ############################################################################
   # Publish tests results
   ############################################################################
-  - ps: (new-object net.webclient).UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", (Resolve-Path .\test_results.xml))
+  - ps: (new-object net.webclient).UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", "$($env:APPVEYOR_BUILD_FOLDER)\build\bin\$($env:CONFIGURATION)\test_results.xml")
