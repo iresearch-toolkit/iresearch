@@ -18,18 +18,18 @@ configuration:
   - Release
 
 environment:
-  TEST_RESULTS: test_results.xml
   BOOST_VERSION: default
   CMAKE_OPTIONS: -DCMAKE_BUILD_TYPE=%CONFIGURATION%
   CMAKE_BUILD_OPTIONS: --config %CONFIGURATION%
   matrix:
-  - BUILD_SUFFIX: -shared    
-    TEST_OPTIONS: --gtest_filter=*type_utils*
+#  - BUILD_SUFFIX: -shared    
+#    TEST_OPTIONS: --gtest_filter=*type_utils*
   - BUILD_SUFFIX: -static    
     EXECUTABLE_SUFFIX: -s
     TEST_OPTIONS: --gtest_filter=*type_utils*
     
 install:
+  - set TEST_RESULTS=%APPVEYOR_BUILD_FOLDER%\build\bin\%CONFIGURATION%\test-results-%CONFIGURATION%-%EXECUTABLE_SUFFIX%.xml
   ############################################################################
   # Setup bison
   ############################################################################
@@ -124,10 +124,10 @@ test_script:
   ############################################################################
   # Execute tests
   ############################################################################
-  - cmd: bin\%CONFIGURATION%\iresearch-tests%EXECUTABLE_SUFFIX%.exe --gtest_output=xml:%APPVEYOR_BUILD_FOLDER%\build\bin\%CONFIGURATION%\test_results.xml %TEST_OPTIONS%
+  - cmd: bin\%CONFIGURATION%\iresearch-tests%EXECUTABLE_SUFFIX%.exe --gtest_output=xml:%TEST_RESULTS% %TEST_OPTIONS%
 
 on_finish:
   ############################################################################
   # Publish tests results
   ############################################################################
-  - ps: (new-object net.webclient).UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", "$($env:APPVEYOR_BUILD_FOLDER)\build\bin\$($env:CONFIGURATION)\test_results.xml")
+  - ps: (new-object net.webclient).UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", "$($env:TEST_RESULTS)")
