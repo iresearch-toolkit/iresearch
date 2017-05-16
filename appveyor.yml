@@ -119,6 +119,7 @@ build_script:
   - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-tests-static
   - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-benchmarks-index
   - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-benchmarks-search
+  - dir bin\%CONFIGURATION%
    
 test_script:
   ############################################################################
