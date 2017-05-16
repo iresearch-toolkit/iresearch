@@ -28,8 +28,7 @@ environment:
     EXECUTABLE_SUFFIX: -s
     TEST_OPTIONS: --gtest_filter=*type_utils*
     
-install:
-  - set TEST_RESULTS=%APPVEYOR_BUILD_FOLDER%\build\bin\%CONFIGURATION%\test-results-%CONFIGURATION%-%EXECUTABLE_SUFFIX%.xml
+install:  
   ############################################################################
   # Setup bison
   ############################################################################
@@ -84,6 +83,7 @@ install:
   - appveyor DownloadFile %ICU_URL% -FileName icu4c-57_1-win64-msvc10.zip
   - 7z x icu4c-57_1-win64-msvc10.zip -o. > nul
   - set ICU_ROOT=%ICU_DIR%\icu
+  - set PATH=%PATH%;%ICU_ROOT%\bin64
 
   ############################################################################
   # Install Boost
@@ -118,14 +118,13 @@ build_script:
   - cmake -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 %CMAKE_OPTIONS% ..      
   - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-tests-static
   - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-benchmarks-index
-  - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-benchmarks-search
-  - dir bin\%CONFIGURATION%
+  - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-benchmarks-search  
    
 test_script:
   ############################################################################
   # Execute tests
   ############################################################################
-  - cmd: bin\%CONFIGURATION%\iresearch-tests-s.exe --gtest_output=xml:test_results.xml --gtest_filter=*type_utils*
+  - cmd: bin\%CONFIGURATION%\iresearch-tests-s.exe --gtest_output=xml:test_results.xml %TEST_OPTIONS%
 
 on_finish:
   ############################################################################
