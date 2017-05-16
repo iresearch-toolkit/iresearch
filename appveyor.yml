@@ -125,7 +125,7 @@ test_script:
   ############################################################################
   # Execute tests
   ############################################################################
-  - cmd: bin\%CONFIGURATION%\iresearch-tests%EXECUTABLE_SUFFIX%.exe --gtest_output=xml:test_results.xml --gtest_filter=*type_utils*
+  - cmd: bin\%CONFIGURATION%\iresearch-tests-s.exe --gtest_output=xml:test_results.xml --gtest_filter=*type_utils*
 
 on_finish:
   ############################################################################
