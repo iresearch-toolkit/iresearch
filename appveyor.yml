@@ -22,8 +22,8 @@ environment:
   CMAKE_OPTIONS: -DCMAKE_BUILD_TYPE=%CONFIGURATION%
   CMAKE_BUILD_OPTIONS: --config %CONFIGURATION%
   matrix:
-#  - BUILD_SUFFIX: -shared    
-#    TEST_OPTIONS: --gtest_filter=*type_utils*
+  - BUILD_SUFFIX: -shared    
+    TEST_OPTIONS: --gtest_filter=*type_utils*
   - BUILD_SUFFIX: -static    
     EXECUTABLE_SUFFIX: -s
     TEST_OPTIONS: --gtest_filter=*type_utils*
@@ -130,4 +130,4 @@ on_finish:
   ############################################################################
   # Publish tests results
   ############################################################################
-  - ps: (new-object net.webclient).UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", (ResolvePath .\test_results.xml))
+  - ps: (new-object net.webclient).UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", (Resolve-Path .\test_results.xml))
