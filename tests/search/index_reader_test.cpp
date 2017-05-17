@@ -75,10 +75,12 @@ TEST(directory_reader_test, open_newest_index) {
   };
   class test_format: public ir::format {
    public:
-    ir::index_meta_reader::ptr index_meta_reader;
+    mutable test_index_meta_reader index_meta_reader;
     test_format(const ir::format::type_id& type): ir::format(type) {}
     virtual ir::index_meta_writer::ptr get_index_meta_writer() const override { return nullptr; }
-    virtual ir::index_meta_reader::ptr get_index_meta_reader() const override { return index_meta_reader; }
+    virtual ir::index_meta_reader::ptr get_index_meta_reader() const override {
+      return irs::index_meta_reader::ptr(&index_meta_reader, [](irs::index_meta_reader*){});
+    }
     virtual ir::segment_meta_writer::ptr get_segment_meta_writer() const override { return nullptr; }
     virtual ir::segment_meta_reader::ptr get_segment_meta_reader() const override { return nullptr; }
     virtual ir::document_mask_writer::ptr get_document_mask_writer() const override { return nullptr; }
@@ -96,11 +98,8 @@ TEST(directory_reader_test, open_newest_index) {
   test_format test_codec1(test_format1_type);
   ir::format_registrar test_format0_registrar(test_format0_type, &get_codec0);
   ir::format_registrar test_format1_registrar(test_format1_type, &get_codec1);
-  test_index_meta_reader test_reader0;
-  test_index_meta_reader test_reader1;
-
-  test_codec0.index_meta_reader = ir::index_meta_reader::ptr(&test_reader0, [](ir::index_meta_reader*){});
-  test_codec1.index_meta_reader = ir::index_meta_reader::ptr(&test_reader1, [](ir::index_meta_reader*){});
+  test_index_meta_reader& test_reader0 = test_codec0.index_meta_reader;
+  test_index_meta_reader& test_reader1 = test_codec1.index_meta_reader;
   codec0 = &test_codec0;
   codec1 = &test_codec1;
 

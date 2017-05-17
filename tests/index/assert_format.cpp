@@ -652,21 +652,24 @@ iresearch::index_meta_writer::ptr format::get_index_meta_writer() const {
 }
 
 iresearch::index_meta_reader::ptr format::get_index_meta_reader() const {
-  static iresearch::index_meta_reader::ptr reader =
-    iresearch::index_meta_reader::make<index_meta_reader>();
-
   // can reuse stateless reader
-  return reader;
+  static index_meta_reader reader;
+
+  return irs::index_meta_reader::ptr(&reader, [](irs::index_meta_reader*){});
 }
 
 iresearch::segment_meta_writer::ptr format::get_segment_meta_writer() const {
-  static iresearch::segment_meta_writer::ptr w = iresearch::segment_meta_writer::make< segment_meta_writer >();
-  return w;
+  // can reuse stateless writer
+  static segment_meta_writer writer;
+
+  return irs::segment_meta_writer::ptr(&writer, [](irs::segment_meta_writer*){});
 }
 
 iresearch::segment_meta_reader::ptr format::get_segment_meta_reader() const {
-  static iresearch::segment_meta_reader::ptr r = iresearch::segment_meta_reader::make< segment_meta_reader >();
-  return r;
+  // can reuse stateless reader
+  static segment_meta_reader reader;
+
+  return irs::segment_meta_reader::ptr(&reader, [](irs::segment_meta_reader*){});
 }
 
 iresearch::document_mask_reader::ptr format::get_document_mask_reader() const {

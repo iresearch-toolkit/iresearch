@@ -289,8 +289,7 @@ struct IRESEARCH_API document_mask_reader {
  * ------------------------------------------------------------------*/
 
 struct IRESEARCH_API segment_meta_writer {
-  DECLARE_SPTR( segment_meta_writer );
-  DECLARE_FACTORY( segment_meta_writer );
+  DECLARE_PTR_WITH_DELETER(segment_meta_writer);
 
   virtual ~segment_meta_writer();
   virtual std::string filename(const segment_meta& meta) const = 0;
@@ -302,8 +301,7 @@ struct IRESEARCH_API segment_meta_writer {
  * ------------------------------------------------------------------*/
 
 struct IRESEARCH_API segment_meta_reader {
-  DECLARE_SPTR( segment_meta_reader );
-  DECLARE_FACTORY( segment_meta_reader );
+  DECLARE_PTR_WITH_DELETER(segment_meta_reader);
 
   virtual ~segment_meta_reader();
 
@@ -319,7 +317,7 @@ struct IRESEARCH_API segment_meta_reader {
  * ------------------------------------------------------------------*/
 
 struct IRESEARCH_API index_meta_writer {
-  DECLARE_SPTR(index_meta_writer);
+  DECLARE_PTR(index_meta_writer);
   DECLARE_FACTORY(index_meta_writer);
 
   virtual ~index_meta_writer();
@@ -337,8 +335,7 @@ struct IRESEARCH_API index_meta_writer {
  * ------------------------------------------------------------------*/
 
 struct IRESEARCH_API index_meta_reader {
-  DECLARE_SPTR(index_meta_reader);
-  DECLARE_FACTORY(index_meta_reader);
+  DECLARE_PTR_WITH_DELETER(index_meta_reader);
 
   virtual ~index_meta_reader();
 

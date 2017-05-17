@@ -356,6 +356,7 @@ NS_END // ROOT
 
 #define DECLARE_SPTR(class_name) typedef std::shared_ptr<class_name> ptr
 #define DECLARE_PTR(class_name) typedef std::unique_ptr<class_name> ptr
+#define DECLARE_PTR_WITH_DELETER(class_name) typedef std::unique_ptr<class_name, std::function<void(class_name*)>> ptr;
 #define DECLARE_REF(class_name) typedef std::reference_wrapper<class_name> ref
 #define DECLARE_CREF(class_name) typedef std::reference_wrapper<const class_name> cref
 

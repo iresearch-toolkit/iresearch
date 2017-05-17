@@ -3793,6 +3793,8 @@ features& features::operator&=(const flags& in) NOEXCEPT {
 // --SECTION--                                                           format 
 // ----------------------------------------------------------------------------
 
+template<typename T> void empty_deleter(T*) { }
+
 format::format(): iresearch::format(format::type()) {}
 
 index_meta_writer::ptr format::get_index_meta_writer() const  {
@@ -3800,21 +3802,24 @@ index_meta_writer::ptr format::get_index_meta_writer() const  {
 }
 
 index_meta_reader::ptr format::get_index_meta_reader() const {
-  static auto reader = iresearch::index_meta_reader::make<index_meta_reader>();
   // can reuse stateless reader
-  return reader;
+  static index_meta_reader reader;
+
+  return index_meta_reader::ptr(&reader, &empty_deleter<irs::index_meta_reader>);
 }
 
 segment_meta_writer::ptr format::get_segment_meta_writer() const {
-  static auto writer = iresearch::segment_meta_writer::make<segment_meta_writer>();
-  // can reuse stateless writer 
-  return writer;
+  // can reuse stateless writer
+  static segment_meta_writer writer;
+
+  return segment_meta_writer::ptr(&writer, &empty_deleter<irs::segment_meta_writer>);
 }
 
 segment_meta_reader::ptr format::get_segment_meta_reader() const {
-  static auto reader = iresearch::segment_meta_reader::make<segment_meta_reader>();
-  // can reuse stateless writer 
-  return reader;
+  // can reuse stateless writer
+  static segment_meta_reader reader;
+
+  return segment_meta_reader::ptr(&reader, &empty_deleter<irs::segment_meta_reader>);
 }
 
 document_mask_writer::ptr format::get_document_mask_writer() const {

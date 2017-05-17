@@ -389,8 +389,6 @@ FORCE_INLINE bool shift_unpack_32(uint32_t in, uint32_t& out) {
 
 class IRESEARCH_API bytes_output final: public data_output, public bytes_ref {
  public:
-  DECLARE_PTR( bytes_output );
-
   bytes_output() = default;
   explicit bytes_output( size_t capacity );
   bytes_output(bytes_output&& rhs) NOEXCEPT;
@@ -422,8 +420,6 @@ class IRESEARCH_API bytes_output final: public data_output, public bytes_ref {
 
 class IRESEARCH_API bytes_ref_input final : public data_input{
  public:
-  DECLARE_PTR(bytes_ref_input);
-
   bytes_ref_input();
   explicit bytes_ref_input(const bytes_ref& data);
 
@@ -469,8 +465,6 @@ class IRESEARCH_API bytes_ref_input final : public data_input{
 
 class IRESEARCH_API bytes_input final: public data_input, public bytes_ref {
  public:
-  DECLARE_PTR(bytes_input);
-
   bytes_input();
   explicit bytes_input(const bytes_ref& data);
   bytes_input(bytes_input&& rhs) NOEXCEPT;
