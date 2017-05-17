@@ -552,7 +552,7 @@ if(MSVC)
 endif()
 
 if (MSVC)
-  set(MSVC_ONLY_LIBRARIES "$<$<CONFIG:Debug>:Dbghelp.lib>")
+  set(MSVC_ONLY_LIBRARIES "Dbghelp.lib")
 else()
   set(MSVC_ONLY_LIBRARIES "")
 endif()

@@ -13,21 +13,22 @@ platform: x64
 build:
   verbosity: normal
 
-environment:
-  TEST_RESULTS: test_results.xml
-  matrix:
-  - BOOST_VERSION: default
-    CONFIGURATION: Debug
-    CMAKE_OPTIONS: -DCMAKE_BUILD_TYPE=%CONFIGURATION%
-    CMAKE_BUILD_OPTIONS: --config %CONFIGURATION%
-    TEST_OPTIONS: --gtest_filter=*:-:*europ*:*monarch*:*postings_seek*:*reuse*
-#  - BOOST_VERSION: default
-#    CONFIGURATION: Release
-#    CMAKE_OPTIONS: -DCMAKE_BUILD_TYPE=%CONFIGURATION%
-#    CMAKE_BUILD_OPTIONS: --config %CONFIGURATION%
-    
+configuration: 
+  - Debug
+  - Release
 
-install:
+environment:
+  BOOST_VERSION: default
+  CMAKE_OPTIONS: -DCMAKE_BUILD_TYPE=%CONFIGURATION%
+  CMAKE_BUILD_OPTIONS: --config %CONFIGURATION%
+  matrix:
+  - BUILD_SUFFIX: -shared    
+    TEST_OPTIONS: --gtest_filter=*type_utils*
+  - BUILD_SUFFIX: -static    
+    EXECUTABLE_SUFFIX: -s
+    TEST_OPTIONS: --gtest_filter=*type_utils*
+    
+install:  
   ############################################################################
   # Setup bison
   ############################################################################
@@ -82,6 +83,7 @@ install:
   - appveyor DownloadFile %ICU_URL% -FileName icu4c-57_1-win64-msvc10.zip
   - 7z x icu4c-57_1-win64-msvc10.zip -o. > nul
   - set ICU_ROOT=%ICU_DIR%\icu
+  - set PATH=%PATH%;%ICU_ROOT%\bin64
 
   ############################################################################
   # Install Boost
@@ -113,32 +115,19 @@ build_script:
   - cd %APPVEYOR_BUILD_FOLDER%
   - mkdir build
   - cd build
-  - cmake -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 %CMAKE_OPTIONS% ..  
-  
-  ############################################################################
-  # Build static version (linked with dynamic CRT)
-  ############################################################################
-  - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-tests-static  
-  
-  ############################################################################
-  # Build shared version (linked with dynamic CRT)
-  ############################################################################
-  - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-tests-shared
-  
-  ############################################################################
-  # Build benchmarks
-  ############################################################################
+  - cmake -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 %CMAKE_OPTIONS% ..      
+  - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-tests-static
   - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-benchmarks-index
-  - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-benchmarks-search
+  - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-benchmarks-search  
    
 test_script:
   ############################################################################
   # Execute tests
   ############################################################################
-  - cmd: bin\%CONFIGURATION%\iresearch-tests-s --gtest_output=xml:%TEST_RESULTS% %TEST_OPTIONS%
+  - cmd: bin\%CONFIGURATION%\iresearch-tests-s.exe --gtest_output=xml:test_results.xml %TEST_OPTIONS%
 
 on_finish:
   ############################################################################
   # Publish tests results
   ############################################################################
-  - ps: (new-object net.webclient).UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", (Resolve-Path .\%TEST_RESULTS%))
+  - ps: (new-object net.webclient).UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", (Resolve-Path .\test_results.xml))

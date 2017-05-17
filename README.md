@@ -1,4 +1,12 @@
-[![Build Status](https://travis-ci.org/iresearch-toolkit/iresearch.svg?branch=master)](https://travis-ci.org/iresearch-toolkit/iresearch)
+
+|Branch      |Status   |
+|------------|---------|
+|master      |[![Build Status][travisMasterBadge]][travisLink] [![Build status][AppveyorMasterBadge]][AppveyorLink] |
+
+[travisMasterBadge]: https://travis-ci.org/iresearch-toolkit/iresearch.svg?branch=master "Linux"
+[travisLink]: https://travis-ci.org/iresearch-toolkit/iresearch "Linux"
+[AppveyorMasterBadge]: https://ci.appveyor.com/api/projects/status/umr1pa805v7xa54a/branch/master?svg=true "Windows"
+[AppveyorLink]: https://ci.appveyor.com/project/gnusi/iresearch/branch/master "Windows"
 
 # EMC IResearch search engine
 ### Version 1.0
