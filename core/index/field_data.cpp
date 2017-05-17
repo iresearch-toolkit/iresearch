@@ -137,23 +137,13 @@ class pos_iterator : public iresearch::position::impl {
  * doc_iterator
  * ------------------------------------------------------------------*/
 
+const byte_block_pool EMPTY_POOL;
+
 class doc_iterator : public iresearch::doc_iterator {
  public:
-
-  template<typename... Args>
-  static ptr make(Args&&... args) {
-    return memory::make_unique<detail::doc_iterator>(std::forward<Args>(args)...);
-  }
-
-  doc_iterator(
-    const field_data& field, const posting& posting,
-    const byte_block_pool::sliced_reader& freq,
-    const byte_block_pool::sliced_reader& prox
-  ):
-    attrs_(3), // document + frequency + position
-    freq_in_(freq) {
-    doc_ = attrs_.add< document >();
-    init(field, posting, freq, prox);
+  doc_iterator()
+    : attrs_(3), // document + frequency + position
+      freq_in_(EMPTY_POOL.begin(), 0) {
   }
 
   virtual const iresearch::attributes& attributes() const NOEXCEPT override {
@@ -161,26 +151,32 @@ class doc_iterator : public iresearch::doc_iterator {
   }
 
   void init(
-    const field_data& field, const posting& posting,
-    const byte_block_pool::sliced_reader& freq,
-    const byte_block_pool::sliced_reader& prox
-  ) {
-    freq_in_ = freq;
+      const field_data& field, const irs::posting& posting,
+      const byte_block_pool::sliced_reader& freq,
+      const byte_block_pool::sliced_reader& prox) {
     freq_ = nullptr;
     pos_ = nullptr;
+    freq_in_ = freq;
     posting_ = &posting;
     field_ = &field;
+
+    attrs_.clear();
+
+    doc_ = attrs_.add<document>();
     doc_->value = 0;
 
-    auto& features = field_->meta().features;
+    const auto& features = field_->meta().features;
     if (features.check<frequency>()) {
       freq_ = attrs_.add<frequency>();
       freq_->value = 0;
 
       if (features.check<position>()) {
-        attrs_.add<position>()->prepare(pos_ = memory::make_unique<pos_iterator>(field, *freq_, prox).release());
+        auto& pos = attrs_.add<position>();
+        auto pos_it = memory::make_unique<pos_iterator>(field, *freq_, prox);
+        pos->prepare(pos_ = pos_it.release());
       }
     }
+
   }
 
   virtual doc_id_t seek(doc_id_t doc) override {
@@ -192,7 +188,7 @@ class doc_iterator : public iresearch::doc_iterator {
   }
 
   virtual bool next() override {
-    if ( freq_in_.eof() ) {
+    if (freq_in_.eof()) {
       if (!type_limits<type_t::doc_id_t>::valid(posting_->doc_code)) {
         return false;
       }
@@ -205,7 +201,7 @@ class doc_iterator : public iresearch::doc_iterator {
 
       const_cast<posting*>(posting_)->doc_code = type_limits<type_t::doc_id_t>::invalid();
     } else {
-      if ( freq_ ) {
+      if (freq_) {
         doc_id_t delta;
 
         if (shift_unpack_64( bytes_io<uint64_t>::vread(freq_in_), delta)) {
@@ -222,13 +218,13 @@ class doc_iterator : public iresearch::doc_iterator {
       assert(doc_->value != posting_->doc);
     }
 
-    if ( pos_ ) pos_->clear();
+    if (pos_) pos_->clear();
 
     return true;
   }
 
  private:
-  iresearch::attributes attrs_;
+  irs::attributes attrs_;
   byte_block_pool::sliced_reader freq_in_;
   document* doc_;
   frequency* freq_;
@@ -243,14 +239,16 @@ class doc_iterator : public iresearch::doc_iterator {
 
 class term_iterator : public iresearch::term_iterator {
  public:
-  template<typename Iterator>
-  term_iterator(const field_data& field, Iterator begin, Iterator end):
-    field_(field),
-    itr_increment_(false),
-    postings_pool_(4) { // pool size 4
-    postings_.insert(begin, end);
+  void reset(const field_data& field) {
+    // refill postings
+    postings_.clear();
+    postings_.insert(field.terms_.begin(), field.terms_.end());
+    // set field
+    field_ = &field;
+    // reset state
     itr_ = postings_.begin();
-
+    itr_increment_ = false;
+    term_ = irs::bytes_ref::nil;
   }
 
   virtual const bytes_ref& value() const {
@@ -258,7 +256,7 @@ class term_iterator : public iresearch::term_iterator {
   }
 
   virtual const iresearch::attributes& attributes() const NOEXCEPT {
-    return attrs_;
+    return irs::attributes::empty_instance();
   }
 
   virtual void read() {
@@ -268,28 +266,24 @@ class term_iterator : public iresearch::term_iterator {
   virtual iresearch::doc_iterator::ptr postings(const flags& /*features*/) const override {
     REGISTER_TIMER_DETAILED();
     assert(itr_ != postings_.end());
-    auto& posting = itr_->second;
+
+    const irs::posting& posting = itr_->second;
 
     // where the term's data starts
-    int_block_pool::const_iterator ptr = field_.int_writer_->parent().seek(posting.int_start);
+    auto ptr = field_->int_writer_->parent().seek(posting.int_start);
     const auto freq_end = *ptr; ++ptr;
     const auto prox_end = *ptr; ++ptr;
     const auto freq_begin = *ptr; ++ptr;
     const auto prox_begin = *ptr;
 
-    auto& pool = field_.byte_writer_->parent();
+    auto& pool = field_->byte_writer_->parent();
 
-    // term's frequencies
-    byte_block_pool::sliced_reader freq = byte_block_pool::sliced_reader(pool.seek(freq_begin), freq_end);
+    const byte_block_pool::sliced_reader freq(pool.seek(freq_begin), freq_end); // term's frequencies
+    const byte_block_pool::sliced_reader prox(pool.seek(prox_begin), prox_end); // term's proximity // TODO: create on demand!!!
 
-    // TODO: create on demand!!!
-    // term's proximity
-    byte_block_pool::sliced_reader prox = byte_block_pool::sliced_reader(pool.seek(prox_begin), prox_end);
-    auto doc_itr = postings_pool_.emplace(field_, posting, freq, prox);
+    doc_itr_.init(*field_, posting, freq, prox);
 
-    static_cast<doc_iterator&>(*doc_itr).init(field_, posting, freq, prox);
-
-    return doc_itr;
+    return pdoc_itr_;
   }
 
   virtual bool next() override {   
@@ -299,7 +293,7 @@ class term_iterator : public iresearch::term_iterator {
 
     if (itr_ == postings_.end()) {
       itr_increment_ = false;
-      term_ = iresearch::bytes_ref::nil;
+      term_ = irs::bytes_ref::nil;
 
       return false;
     }
@@ -316,15 +310,20 @@ class term_iterator : public iresearch::term_iterator {
       return utf8_less(lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size());
     }
   };
-  typedef std::map<bytes_ref, const posting&, utf8_less_t> map_t;
 
-  iresearch::attributes attrs_;
-  const field_data& field_;
-  map_t::iterator itr_;
-  bool itr_increment_;
+  typedef std::map<
+    bytes_ref,
+    std::reference_wrapper<const posting>,
+    utf8_less_t
+  > map_t;
+
   map_t postings_;
+  map_t::iterator itr_{ postings_.end() };
   iresearch::bytes_ref term_;
-  mutable unbounded_object_pool<doc_iterator> postings_pool_;
+  const field_data* field_;
+  mutable detail::doc_iterator doc_itr_;
+  irs::doc_iterator::ptr pdoc_itr_{ &doc_itr_, [](irs::doc_iterator*){} }; // TODO: remove, use unuqie_ptr with std::function instead
+  bool itr_increment_{ false };
 };
 
 NS_END
@@ -507,10 +506,6 @@ void field_data::add_term(
   }
 }
 
-term_iterator::ptr field_data::iterator() const {
-  return memory::make_unique<detail::term_iterator>(*this, terms_.begin(), terms_.end());
-}
-
 bool field_data::invert(
     token_stream& stream, 
     const flags& features, 
@@ -639,14 +634,16 @@ void fields_data::flush(field_writer& fw, flush_state& state) {
 
     fw.prepare(state);
 
-    for (auto* field : fields) {
-      // write field invert data
-      auto terms = field->iterator();
+    detail::term_iterator terms;
 
-      if (terms) {
-        auto& meta = field->meta();
-        fw.write(meta.name, meta.norm, meta.features, *terms);
-      }
+    for (auto* field : fields) {
+      auto& meta = field->meta();
+
+      // reset iterator
+      terms.reset(*field);
+
+      // write inverted data
+      fw.write(meta.name, meta.norm, meta.features, terms);
     }
 
     fw.end();

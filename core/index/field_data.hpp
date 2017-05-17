@@ -48,8 +48,6 @@ NS_END
  * of field name. It is implicity interned by global ids */
 class IRESEARCH_API field_data : util::noncopyable {
  public:
-  DECLARE_PTR(field_data);
-
   field_data(
     const string_ref& name,
     byte_block_pool::inserter* byte_writer,
@@ -75,8 +73,6 @@ class IRESEARCH_API field_data : util::noncopyable {
   }
 
   bool invert(token_stream& tokens, const flags& features, float_t boost, doc_id_t id);
-
-  term_iterator::ptr iterator() const;
 
  private:
   friend class detail::term_iterator;
