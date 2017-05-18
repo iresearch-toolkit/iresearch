@@ -38,35 +38,84 @@ typedef std::unordered_map<iresearch::string_ref, const iresearch::field_meta*> 
 
 const iresearch::doc_id_t MASKED_DOC_ID = iresearch::integer_traits<iresearch::doc_id_t>::const_max; // masked doc_id (ignore)
 
-// ...........................................................................
-// compound view of multiple attributes as a single object
-// ...........................................................................
-class compound_attributes: public iresearch::attributes {
-  using iresearch::attributes::add;
-  public:
-  void add(const iresearch::attributes& attributes);
-  void set(const iresearch::attributes& attributes);
-};
+//////////////////////////////////////////////////////////////////////////////
+/// @class compound_attributes
+/// @brief compound view of multiple attributes as a single object
+//////////////////////////////////////////////////////////////////////////////
+class compound_attributes : public irs::attributes {
+ private:
+  using irs::attributes::add;
 
-// ..........................................................................
-// iterator over doc_ids for a term over all readers
-// ...........................................................................
-struct compound_doc_iterator: public iresearch::doc_iterator {
-  typedef std::pair<iresearch::doc_iterator::ptr, const doc_id_map_t*> doc_iterator_t;
+ public:
+  void add(const irs::attributes& attributes) {
+    auto visitor = [this](
+        const irs::attribute::type_id& type_id,
+        const irs::attribute_ref<iresearch::attribute>&
+    ) ->bool {
+      add(type_id);
+      return true;
+    };
+
+    attributes.visit(visitor); // add
+  }
+
+  void set(const irs::attributes& attributes) {
+    auto visitor_unset = [](
+      const iresearch::attribute::type_id&,
+      iresearch::attribute_ref<iresearch::attribute>& value
+    )->bool {
+      value = nullptr;
+      return true;
+    };
+    auto visitor_update = [this](
+      const iresearch::attribute::type_id& type_id,
+      const iresearch::attribute_ref<iresearch::attribute>& value
+    )->bool {
+      add(type_id) = value;
+      return true;
+    };
+
+    visit(visitor_unset); // unset
+    attributes.visit(visitor_update); // set
+  }
+}; // compound_attributes
+
+//////////////////////////////////////////////////////////////////////////////
+/// @struct compound_doc_iterator
+/// @brief iterator over doc_ids for a term over all readers
+//////////////////////////////////////////////////////////////////////////////
+struct compound_doc_iterator : public irs::doc_iterator {
+  typedef std::pair<irs::doc_iterator::ptr, const doc_id_map_t*> doc_iterator_t;
 
   DECLARE_PTR(compound_doc_iterator);
-  compound_attributes attrs;
-  std::vector<doc_iterator_t> iterators;
-  iresearch::doc_id_t current_id = iresearch::type_limits<iresearch::type_t::doc_id_t>::invalid();
-  size_t current_itr = 0;
 
   virtual ~compound_doc_iterator() {}
-  void add(iresearch::doc_iterator::ptr&& postings, const doc_id_map_t& doc_id_map);
-  virtual const iresearch::attributes& attributes() const NOEXCEPT override;
+  void add(irs::doc_iterator::ptr&& postings, const doc_id_map_t& doc_id_map) {
+    if (iterators.empty()) {
+      attrs.set(postings->attributes()); // add keys and set values
+    }
+    else {
+      attrs.add(postings->attributes()); // only add missing keys
+    }
+
+    iterators.emplace_back(std::move(postings), &doc_id_map);
+  }
+  virtual const irs::attributes& attributes() const NOEXCEPT override {
+    return attrs;
+  }
   virtual bool next() override;
-  virtual iresearch::doc_id_t seek(iresearch::doc_id_t target) override;
-  virtual iresearch::doc_id_t value() const override;
-};
+  virtual irs::doc_id_t seek(irs::doc_id_t target) override {
+    return irs::seek(*this, target);
+  }
+  virtual irs::doc_id_t value() const override {
+    return current_id;
+  }
+
+  compound_attributes attrs;
+  std::vector<doc_iterator_t> iterators;
+  irs::doc_id_t current_id = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+  size_t current_itr = 0;
+}; // compound_doc_iterator
 
 template<typename Iterator>
 class compound_iterator {
@@ -168,18 +217,60 @@ class compound_iterator {
   iresearch::string_ref current_key_;
   std::vector<size_t> iterator_mask_; // valid iterators for current step 
   std::vector<iterator_t> iterators_; // all segment iterators
-};
+}; // compound_iterator
 
-// ...........................................................................
-// iterator over field_ids over all readers
-// ...........................................................................
+//////////////////////////////////////////////////////////////////////////////
+/// @class compound_term_iterator
+/// @brief iterator over documents for a term over all readers
+//////////////////////////////////////////////////////////////////////////////
+class compound_term_iterator : public irs::term_iterator {
+ public:
+  void reset(const irs::field_meta& meta) NOEXCEPT {
+    meta_ = &meta;
+    term_iterator_mask_.clear();
+    term_iterators_.clear();
+    current_term_ = irs::bytes_ref::nil;
+  }
+
+  compound_term_iterator& operator=(const compound_term_iterator&) = delete; // due to references
+  const irs::field_meta& meta() const NOEXCEPT { return *meta_; }
+  void add(const irs::term_reader& reader, const doc_id_map_t& doc_id_map);
+  virtual const irs::attributes& attributes() const NOEXCEPT override {
+    // no way to merge attributes for the same term spread over multiple iterators
+    // would require API change for attributes
+    throw irs::not_impl_error();
+  }
+  virtual bool next() override;
+  virtual irs::doc_iterator::ptr postings(const irs::flags& features) const override;
+  virtual void read() override {
+    for (auto& itr_id: term_iterator_mask_) {
+      if (term_iterators_[itr_id].first) {
+        term_iterators_[itr_id].first->read();
+      }
+    }
+  }
+  virtual const irs::bytes_ref& value() const override {
+    return current_term_;
+  }
+ private:
+  typedef std::pair<irs::seek_term_iterator::ptr, const doc_id_map_t*> term_iterator_t;
+
+  irs::bytes_ref current_term_;
+  const irs::field_meta* meta_;
+  std::vector<size_t> term_iterator_mask_; // valid iterators for current term
+  std::vector<term_iterator_t> term_iterators_; // all term iterators
+}; // compound_term_iterator
+
+//////////////////////////////////////////////////////////////////////////////
+/// @struct compound_field_iterator
+/// @brief iterator over field_ids over all readers
+//////////////////////////////////////////////////////////////////////////////
 class compound_field_iterator {
  public:
-  compound_field_iterator() {}
-  void add(const iresearch::sub_reader& reader, const doc_id_map_t& doc_id_map);
-  const iresearch::field_meta& meta() const;
+  void add(const irs::sub_reader& reader, const doc_id_map_t& doc_id_map);
+  const irs::field_meta& meta() const;
   bool next();
-  iresearch::term_iterator::ptr terms();
+  irs::term_iterator& terms();
   size_t size() const { return field_iterators_.size(); }
 
   // visit matched iterators
@@ -197,109 +288,36 @@ class compound_field_iterator {
  private:
   struct field_iterator_t {
     field_iterator_t(
-        iresearch::field_iterator::ptr&& v_itr,
-        const iresearch::sub_reader& v_reader,
+        irs::field_iterator::ptr&& v_itr,
+        const irs::sub_reader& v_reader,
         const doc_id_map_t& v_doc_id_map)
       : itr(std::move(v_itr)),
         reader(&v_reader), 
         doc_id_map(&v_doc_id_map) {
-      }
+    }
     field_iterator_t(field_iterator_t&& other) NOEXCEPT
       : itr(std::move(other.itr)),
         reader(std::move(other.reader)),
         doc_id_map(std::move(other.doc_id_map)) {
     }
 
-    iresearch::field_iterator::ptr itr;
+    irs::field_iterator::ptr itr;
     const iresearch::sub_reader* reader;
     const doc_id_map_t* doc_id_map;
   };
   struct term_iterator_t {
     size_t itr_id;
-    const iresearch::field_meta* meta;
-    const iresearch::term_reader* reader;
+    const irs::field_meta* meta;
+    const irs::term_reader* reader;
   };
-  iresearch::string_ref current_field_;
-  const iresearch::field_meta* current_meta_{};
+  irs::string_ref current_field_;
+  const irs::field_meta* current_meta_{};
   std::vector<term_iterator_t> field_iterator_mask_; // valid iterators for current field
   std::vector<field_iterator_t> field_iterators_; // all segment iterators
-};
+  compound_term_iterator term_itr_;
+}; // compound_field_iterator
 
 typedef compound_iterator<iresearch::column_iterator::ptr> compound_column_iterator_t;
-
-// ...........................................................................
-// iterator over documents for a term over all readers
-// ...........................................................................
-class compound_term_iterator: public iresearch::term_iterator {
- public:
-  DECLARE_PTR(compound_term_iterator);
-  compound_term_iterator(const iresearch::field_meta& meta): meta_(meta) {}
-  virtual ~compound_term_iterator() {}
-  compound_term_iterator& operator=(const compound_term_iterator&) = delete; // due to references
-  const iresearch::field_meta& meta() { return meta_; }
-  void add(const iresearch::term_reader& reader, const doc_id_map_t& doc_id_map);
-  virtual const iresearch::attributes& attributes() const NOEXCEPT override;
-  virtual bool next() override;
-  virtual iresearch::doc_iterator::ptr postings(const iresearch::flags& features) const override;
-  virtual void read() override;
-  virtual const iresearch::bytes_ref& value() const override;
- private:
-  typedef std::pair<iresearch::seek_term_iterator::ptr, const doc_id_map_t*> term_iterator_t;
-
-  iresearch::bytes_ref current_term_;
-  const iresearch::field_meta meta_;
-  std::vector<size_t> term_iterator_mask_; // valid iterators for current term
-  std::vector<term_iterator_t> term_iterators_; // all term iterators
-};
-
-void compound_attributes::add(const iresearch::attributes& attributes) {
-  auto visitor = [this](
-    const iresearch::attribute::type_id& type_id,
-    const iresearch::attribute_ref<iresearch::attribute>&
-  )->bool {
-    add(type_id);
-    return true;
-  };
-
-  attributes.visit(visitor); // add
-}
-
-void compound_attributes::set(const iresearch::attributes& attributes) {
-  auto visitor_unset = [](
-    const iresearch::attribute::type_id&,
-    iresearch::attribute_ref<iresearch::attribute>& value
-  )->bool {
-    value = nullptr;
-    return true;
-  };
-  auto visitor_update = [this](
-    const iresearch::attribute::type_id& type_id,
-    const iresearch::attribute_ref<iresearch::attribute>& value
-  )->bool {
-    add(type_id) = value;
-    return true;
-  };
-
-  visit(visitor_unset); // unset
-  attributes.visit(visitor_update); // set
-}
-
-void compound_doc_iterator::add(
-  iresearch::doc_iterator::ptr&& postings, const doc_id_map_t& doc_id_map
-) {
-  if (iterators.empty()) {
-    attrs.set(postings->attributes()); // add keys and set values
-  }
-  else {
-    attrs.add(postings->attributes()); // only add missing keys
-  }
-
-  iterators.emplace_back(std::move(postings), &doc_id_map);
-}
-
-const iresearch::attributes& compound_doc_iterator::attributes() const NOEXCEPT {
-  return attrs;
-}
 
 bool compound_doc_iterator::next() {
   for (
@@ -342,14 +360,6 @@ bool compound_doc_iterator::next() {
   attrs.set(iresearch::attributes::empty_instance());
 
   return false;
-}
-
-iresearch::doc_id_t compound_doc_iterator::seek(iresearch::doc_id_t target) {
-  return iresearch::seek(*this, target);
-}
-
-iresearch::doc_id_t compound_doc_iterator::value() const {
-  return current_id;
 }
 
 void compound_field_iterator::add(
@@ -420,14 +430,14 @@ bool compound_field_iterator::next() {
   return false;
 }
 
-iresearch::term_iterator::ptr compound_field_iterator::terms() {
-  auto terms_itr = iresearch::memory::make_unique<compound_term_iterator>(meta());
+irs::term_iterator& compound_field_iterator::terms() {
+  term_itr_.reset(meta());
 
-  for (auto& segment: field_iterator_mask_) {
-    terms_itr->add(*(segment.reader), *(field_iterators_[segment.itr_id].doc_id_map));
+  for (auto& segment : field_iterator_mask_) {
+    term_itr_.add(*(segment.reader), *(field_iterators_[segment.itr_id].doc_id_map));
   }
 
-  return iresearch::term_iterator::ptr(terms_itr.release());
+  return term_itr_;
 }  
 
 void compound_term_iterator::add(
@@ -435,12 +445,6 @@ void compound_term_iterator::add(
     const doc_id_map_t& doc_id_map) {
   term_iterator_mask_.emplace_back(term_iterators_.size()); // mark as used to trigger next()
   term_iterators_.emplace_back(std::move(reader.iterator()), &doc_id_map);
-}
-
-const iresearch::attributes& compound_term_iterator::attributes() const NOEXCEPT {
-  // no way to merge attributes for the same term spread over multiple iterators
-  // would require API change for attributes
-  throw iresearch::not_impl_error();
 }
 
 bool compound_term_iterator::next() {
@@ -480,28 +484,16 @@ bool compound_term_iterator::next() {
   return false;
 }
 
-iresearch::doc_iterator::ptr compound_term_iterator::postings(const iresearch::flags& /*features*/) const {
-  auto docs_itr = iresearch::memory::make_unique<compound_doc_iterator>();
+irs::doc_iterator::ptr compound_term_iterator::postings(const irs::flags& /*features*/) const {
+  auto docs_itr = irs::memory::make_unique<compound_doc_iterator>();
 
   for (auto& itr_id: term_iterator_mask_) {
     auto& term_itr = term_iterators_[itr_id];
 
-    docs_itr->add(term_itr.first->postings(meta_.features), *(term_itr.second));
+    docs_itr->add(term_itr.first->postings(meta().features), *(term_itr.second));
   }
 
-  return iresearch::doc_iterator::ptr(docs_itr.release());
-}
-
-void compound_term_iterator::read() {
-  for (auto& itr_id: term_iterator_mask_) {
-    if (term_iterators_[itr_id].first) {
-      term_iterators_[itr_id].first->read();
-    }
-  }
-}
-
-const iresearch::bytes_ref& compound_term_iterator::value() const {
-  return current_term_;
+  return irs::doc_iterator::ptr(docs_itr.release());
 }
 
 // ...........................................................................
@@ -724,10 +716,10 @@ bool write(
    
     // write field terms
     fw->write(
-      field_meta.name, 
+      field_meta.name,
       cs.empty() ? iresearch::type_limits<iresearch::type_t::field_id_t>::invalid() : cs.id(),
-      field_features, 
-      *(field_itr.terms())
+      field_features,
+      field_itr.terms()
     );
   }
 
