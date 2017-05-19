@@ -23,9 +23,9 @@ MSVC_ONLY(template class IRESEARCH_API std::basic_string<iresearch::byte_type>);
 
 NS_ROOT
 
-// -------------------------------------------------------------------
-// binary std::string
-// -------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+// --SECTION--                                               binary std::string
+// ----------------------------------------------------------------------------
 
 typedef std::basic_string<byte_type> bstring;
 
@@ -40,17 +40,16 @@ inline std::basic_string<T>& oversize(
   return buf;
 }
 
-// -------------------------------------------------------------------
-// basic_string_ref
-// -------------------------------------------------------------------
-
+//////////////////////////////////////////////////////////////////////////////
+/// @class basic_string_ref
+//////////////////////////////////////////////////////////////////////////////
 template<typename Elem, typename Traits = std::char_traits<Elem>>
 class basic_string_ref {
  public:
   typedef Traits traits_type;
   typedef Elem char_type;
 
-  static basic_string_ref nil;
+  static const basic_string_ref nil;
 
   basic_string_ref() : data_( nullptr ), size_( 0 ) { }
 
@@ -180,14 +179,14 @@ class basic_string_ref {
  protected:
   const char_type* data_;
   size_t size_;
-};
+}; // basic_string_ref
 
 template class IRESEARCH_API basic_string_ref<char>;
 template class IRESEARCH_API basic_string_ref<wchar_t>;
 template class IRESEARCH_API basic_string_ref<byte_type>;
 
 template < typename _Elem, typename _Traits > 
-basic_string_ref< _Elem, _Traits > basic_string_ref< _Elem, _Traits >::nil;
+const basic_string_ref< _Elem, _Traits > basic_string_ref< _Elem, _Traits >::nil;
 
 template< typename _Elem, typename _Traits >
 inline bool starts_with( const basic_string_ref< _Elem, _Traits >& first,
@@ -239,9 +238,9 @@ CONSTEXPR inline basic_string_ref<ElemDst> ref_cast(const std::basic_string<Elem
   return basic_string_ref<ElemDst>(reinterpret_cast<const ElemDst*>(src.c_str()), src.size());
 }
 
-// -----------------------------------------------------------------------------
-// String hashing algorithms
-// -----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+// --SECTION--                                        String hashing algorithms
+// ----------------------------------------------------------------------------
 
 NS_BEGIN(hash_utils)
 
@@ -255,11 +254,11 @@ NS_END // hash_utils
 
 NS_END // NS_ROOT
 
-/* -------------------------------------------------------------------
- * std extensions
- * ------------------------------------------------------------------*/
+// ----------------------------------------------------------------------------
+// --SECTION--                                                   std extensions
+// ----------------------------------------------------------------------------
 
-NS_BEGIN( std )
+NS_BEGIN(std)
 
 template<>
 struct char_traits<::iresearch::byte_type> {
@@ -314,42 +313,42 @@ struct char_traits<::iresearch::byte_type> {
   static int_type to_int_type(char_type ch) { return ch; }
 
   MSVC_ONLY(static void _Copy_s(char_type* /*dst*/, size_t /*dst_size*/, const char_type* /*src*/, size_t /*src_size*/) { assert(false); });
-};
+}; // char_traits
 
 template<>
 struct hash<char*> {
   size_t operator()(const char* value) const {
     return ::iresearch::hash_utils::hash(value);
   }
-};
+}; // hash
 
 template<>
 struct hash<wchar_t*> {
   size_t operator()(const wchar_t* value) const {
     return ::iresearch::hash_utils::hash(value);
   }
-};
+}; // hash
 
 template<>
 struct hash<::iresearch::bstring> {
   size_t operator()(const ::iresearch::bstring& value) const {
     return ::iresearch::hash_utils::hash(value);
   }
-};
+}; // hash
 
 template<>
 struct hash<::iresearch::bytes_ref> {
   size_t operator()(const ::iresearch::bytes_ref& value) const {
     return ::iresearch::hash_utils::hash(value);
   }
-};
+}; // hash
 
 template<>
 struct hash<::iresearch::string_ref> {
   size_t operator()(const ::iresearch::string_ref& value) const {
     return ::iresearch::hash_utils::hash(value);
   }
-};
+}; // hash
 
 NS_END // std
 
