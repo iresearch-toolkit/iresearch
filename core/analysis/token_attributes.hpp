@@ -188,7 +188,7 @@ class IRESEARCH_API position : public attribute {
     }
     template<typename... Types>
     void reserve() {
-      attrs_.reserve<Types>();
+      attrs_.reserve<Types...>();
     }
 
    protected:
