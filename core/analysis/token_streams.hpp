@@ -42,7 +42,7 @@ class IRESEARCH_API boolean_token_stream final:
   static const bytes_ref& value_true();
  private:
   iresearch::attributes attrs_;
-  basic_term* term_;
+  attribute_ref<basic_term>* term_;
   bool in_use_;
   bool value_;
 };
@@ -74,8 +74,8 @@ class IRESEARCH_API string_token_stream final:
 
  private:
   iresearch::attributes attrs_;
-  offset* offset_;
-  basic_term* term_;
+  attribute_ref<offset>* offset_;
+  attribute_ref<basic_term>* term_;
   bytes_ref value_;
   bool in_use_;
 }; // string_token_stream 
@@ -120,8 +120,8 @@ class IRESEARCH_API numeric_token_stream final:
 
  private:
   iresearch::attributes attrs_;
-  numeric_term* num_;
-  increment* inc_;
+  attribute_ref<increment>* inc_;
+  attribute_ref<numeric_term>* num_;
 }; // numeric_token_stream 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -145,7 +145,7 @@ class IRESEARCH_API null_token_stream final:
 
  private:
   iresearch::attributes attrs_;
-  basic_term* term_;
+  attribute_ref<basic_term>* term_;
   bool in_use_;
 };
 

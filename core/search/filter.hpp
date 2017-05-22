@@ -34,22 +34,22 @@ class IRESEARCH_API score : public attribute {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief applies score to the specified attributes collection ("src")
-  /// @return pointer to the attribute
+  /// @return pointer to the attribute or nullptr if not found
   //////////////////////////////////////////////////////////////////////////////
-  static iresearch::score* apply(attributes& src, const order::prepared& ord) {
+  static attribute_ref<score>* apply(attributes& src, const order::prepared& ord) {
     if (ord.empty()) {
       return nullptr;
     }
+
     auto& attr = src.add<score>();
 
     attr->order_ = &ord;
     attr->value_.resize(ord.size());
 
-    return attr;
+    return &attr;
   }
 
   DECLARE_ATTRIBUTE_TYPE();
-  DECLARE_FACTORY_DEFAULT();
 
   score();
 

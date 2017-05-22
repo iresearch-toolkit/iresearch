@@ -127,8 +127,8 @@ class token_stream_payload : public ir::token_stream {
   }
 
  private:
-  ir::term_attribute* term_;
-  ir::payload* pay_;
+  irs::attribute_ref<irs::term_attribute>* term_;
+  irs::attribute_ref<irs::payload>* pay_;
   ir::token_stream* impl_;
 }; // token_stream_payload
 

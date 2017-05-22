@@ -44,6 +44,7 @@
 NS_LOCAL
 
 irs::frequency EMPTY_FREQ; // placeholder for empty frequency
+irs::attribute_ref<irs::frequency> EMPTY_FREQ_REF(&EMPTY_FREQ);
 irs::bytes_ref DUMMY; // placeholder for visiting logic in columnstore
 
 NS_END
@@ -146,7 +147,7 @@ struct doc_state {
   const index_input* pos_in;
   const index_input* pay_in;
   version10::term_meta* term_state;
-  uint64_t* freq;
+  attribute_ref<frequency>* freq;
   uint64_t* enc_buf;
   uint64_t tail_start;
   size_t tail_length;
@@ -179,7 +180,7 @@ class doc_iterator : public iresearch::doc_iterator {
     enabled_ = enabled; // set enabled features
 
     // add mandatory attributes
-    doc_ = attrs_.add<document>();
+    doc_ = &attrs_.add<document>();
 
     // get state attribute
     assert(attrs.contains<version10::term_meta>());
@@ -205,8 +206,8 @@ class doc_iterator : public iresearch::doc_iterator {
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
-    if (target <= doc_->value) {
-      return doc_->value;
+    if (target <= (*doc_)->value) {
+      return (*doc_)->value;
     }
 
     seek_to_block(target);
@@ -214,7 +215,7 @@ class doc_iterator : public iresearch::doc_iterator {
   }
 
   virtual doc_id_t value() const override {
-    return doc_->value;
+    return (*doc_)->value;
   }
 
   virtual const iresearch::attributes& attributes() const NOEXCEPT override {
@@ -232,7 +233,7 @@ class doc_iterator : public iresearch::doc_iterator {
       cur_pos_ += relative_pos();
 
       if (cur_pos_ == term_state_.docs_count) {
-        doc_->value = type_limits<type_t::doc_id_t>::eof();
+        (*doc_)->value = type_limits<type_t::doc_id_t>::eof();
         begin_ = end_ = docs_; // seal the iterator
         return false;
       }
@@ -240,8 +241,8 @@ class doc_iterator : public iresearch::doc_iterator {
       refill();
     }
 
-    doc_->value += *begin_++;
-    freq_->value = *doc_freq_++;
+    (*doc_)->value += *begin_++;
+    (*freq_)->value = *doc_freq_++;
 
     return true;
   }
@@ -261,7 +262,7 @@ class doc_iterator : public iresearch::doc_iterator {
     // term frequency attributes
     if (enabled.freq()) {
       assert(attrs.contains<frequency>());
-      freq_ = attrs_.add<frequency>();
+      freq_ = &attrs_.add<frequency>();
       term_freq_ = attrs.get<frequency>()->value;
     }
   }
@@ -348,8 +349,8 @@ class doc_iterator : public iresearch::doc_iterator {
     begin_ = docs_;
 
     // if this is the initial doc_id then set it to min() for proper delta value
-    if (!type_limits<type_t::doc_id_t>::valid(doc_->value)) {
-      doc_->value = type_limits<type_t::doc_id_t>::min(); // next() will add delta
+    if (!type_limits<type_t::doc_id_t>::valid((*doc_)->value)) {
+      (*doc_)->value = type_limits<type_t::doc_id_t>::min(); // next() will add delta
     }
 
     // postings_writer::begin_doc(doc_id_t, const frequency*) writes frequency as uint32_t
@@ -368,8 +369,8 @@ class doc_iterator : public iresearch::doc_iterator {
   doc_id_t* end_{docs_};
   uint32_t* doc_freq_{}; // pointer into docs_ to the frequency attribute value for the current doc
   uint64_t term_freq_{}; // total term frequency
-  document* doc_;
-  frequency* freq_{ &EMPTY_FREQ };
+  attribute_ref<document>* doc_;
+  attribute_ref<frequency>* freq_{ &EMPTY_FREQ_REF };
   index_input::ptr doc_in_;
   version10::term_meta term_state_;
   features features_; // field features
@@ -428,7 +429,7 @@ void doc_iterator::seek_to_block(doc_id_t target) {
     const size_t skipped = skip_.seek(target);
     if (skipped > (cur_pos_ + relative_pos())) {
       doc_in_->seek(last.doc_ptr);
-      doc_->value = last.doc;
+      (*doc_)->value = last.doc;
       cur_pos_ = skipped;
       begin_ = end_ = docs_; // will trigger refill in "next"
       seek_notify(last); // notifies derivatives
@@ -501,7 +502,8 @@ class pos_iterator : public position::impl {
       return false;
     }
 
-    const uint64_t freq = *freq_;
+    auto freq = (*freq_)->value;
+
     if (pend_pos_ > freq) {
       skip(pend_pos_ - freq);
       pend_pos_ = freq;
@@ -603,7 +605,7 @@ class pos_iterator : public position::impl {
   }
 
   uint32_t pos_deltas_[postings_writer::BLOCK_SIZE]; /* buffer to store position deltas */
-  const uint64_t* freq_; /* lenght of the posting list for a document */
+  attribute_ref<frequency>* freq_; // lenght of the posting list for a document
   uint32_t* enc_buf_; /* auxillary buffer to decode data */
   uint64_t pend_pos_{}; /* how many positions "behind" we are */
   uint64_t tail_start_; /* file pointer where the last (vInt encoded) pos delta block is */
@@ -629,14 +631,14 @@ class offs_pay_iterator final : public pos_iterator {
   offs_pay_iterator():
     pos_iterator(2) { // offset + payload
     auto& attrs = this->attributes();
-    offs_ = attrs.add<offset>();
-    pay_ = attrs.add<payload>();
+    offs_ = &attrs.add<offset>();
+    pay_ = &attrs.add<payload>();
   }
 
   virtual void clear() override {
     pos_iterator::clear();
-    offs_->clear();
-    pay_->clear();
+    (*offs_)->clear();
+    (*pay_)->clear();
   }
 
  protected:
@@ -660,10 +662,10 @@ class offs_pay_iterator final : public pos_iterator {
   }
 
   virtual void read_attributes() override {
-    offs_->start += offs_start_deltas_[buf_pos_];
-    offs_->end = offs_->start + offs_lengts_[buf_pos_];
+    (*offs_)->start += offs_start_deltas_[buf_pos_];
+    (*offs_)->end = (*offs_)->start + offs_lengts_[buf_pos_];
 
-    pay_->value = bytes_ref(
+    (*pay_)->value = bytes_ref(
       pay_data_.c_str() + pay_data_pos_,
       pay_lengths_[buf_pos_]);
     pay_data_pos_ += pay_lengths_[buf_pos_];
@@ -756,8 +758,8 @@ class offs_pay_iterator final : public pos_iterator {
   }
 
   index_input::ptr pay_in_;
-  offset* offs_;
-  payload* pay_;
+  attribute_ref<offset>* offs_;
+  attribute_ref<payload>* pay_;
   uint32_t offs_start_deltas_[postings_writer::BLOCK_SIZE]{}; /* buffer to store offset starts */
   uint32_t offs_lengts_[postings_writer::BLOCK_SIZE]{}; /* buffer to store offset lengths */
   uint32_t pay_lengths_[postings_writer::BLOCK_SIZE]{}; /* buffer to store payload lengths */
@@ -775,12 +777,12 @@ class offs_iterator final : public pos_iterator {
   offs_iterator():
     pos_iterator(1) { // offset
     auto& attrs = this->attributes();
-    offs_ = attrs.add<offset>();
+    offs_ = &attrs.add<offset>();
   }
 
   virtual void clear() override {
     pos_iterator::clear();
-    offs_->clear();
+    (*offs_)->clear();
   }
 
  protected:
@@ -803,8 +805,8 @@ class offs_iterator final : public pos_iterator {
   }
 
   virtual void read_attributes() override {
-    offs_->start += offs_start_deltas_[buf_pos_];
-    offs_->end = offs_->start + offs_lengts_[buf_pos_];
+    (*offs_)->start += offs_start_deltas_[buf_pos_];
+    (*offs_)->end = (*offs_)->start + offs_lengts_[buf_pos_];
   }
 
   virtual void refill() override {
@@ -871,7 +873,7 @@ class offs_iterator final : public pos_iterator {
   }
 
   index_input::ptr pay_in_;
-  offset* offs_;
+  attribute_ref<offset>* offs_;
   uint32_t offs_start_deltas_[postings_writer::BLOCK_SIZE]; /* buffer to store offset starts */
   uint32_t offs_lengts_[postings_writer::BLOCK_SIZE]; /* buffer to store offset lengths */
 }; // offs_iterator
@@ -886,12 +888,12 @@ class pay_iterator final : public pos_iterator {
   pay_iterator():
     pos_iterator(1) { // payload
     auto& attrs = this->attributes();
-    pay_ = attrs.add<payload>();
+    pay_ = &attrs.add<payload>();
   }
 
   virtual void clear() override {
     pos_iterator::clear();
-    pay_->clear();
+    (*pay_)->clear();
   }
 
  protected:
@@ -915,7 +917,7 @@ class pay_iterator final : public pos_iterator {
   }
 
   virtual void read_attributes() override {
-    pay_->value = bytes_ref( pay_data_.data() + pay_data_pos_,
+    (*pay_)->value = bytes_ref( pay_data_.data() + pay_data_pos_,
                              pay_lengths_[buf_pos_] );
     pay_data_pos_ += pay_lengths_[buf_pos_];
   }
@@ -1011,7 +1013,7 @@ class pay_iterator final : public pos_iterator {
   }
 
   index_input::ptr pay_in_;
-  payload* pay_;
+  attribute_ref<payload>* pay_;
   uint32_t pay_lengths_[postings_writer::BLOCK_SIZE]{}; /* buffer to store payload lengths */
   uint64_t pay_data_pos_{}; /* current postition in payload buffer */
   bstring pay_data_; // buffer to store payload data
@@ -1043,7 +1045,7 @@ class pos_doc_iterator : public doc_iterator {
       cur_pos_ += relative_pos();
 
       if (cur_pos_ == term_state_.docs_count) {
-        doc_->value = type_limits<type_t::doc_id_t>::eof();
+        (*doc_)->value = type_limits<type_t::doc_id_t>::eof();
         begin_ = end_ = docs_; // seal the iterator
         return false;
       }
@@ -1051,10 +1053,10 @@ class pos_doc_iterator : public doc_iterator {
       refill();
     }
 
-    doc_->value += *begin_++;
+    (*doc_)->value += *begin_++;
 
     // update frequency attribute
-    auto& freq = freq_->value;
+    auto& freq = (*freq_)->value;
     freq = *doc_freq_++;
 
     // update position attribute
@@ -1102,7 +1104,7 @@ void pos_doc_iterator::prepare_attributes(
   state.pos_in = pos_in;
   state.pay_in = pay_in;
   state.term_state = &term_state_;
-  state.freq = &freq_->value;
+  state.freq = freq_;
   state.features = features_;
   state.enc_buf = enc_buf_;
   if (term_freq_ < postings_writer::BLOCK_SIZE) {
@@ -1116,7 +1118,7 @@ void pos_doc_iterator::prepare_attributes(
   it->prepare(state);
 
   // finish initialization
-  position* pos = attrs_.add<position>();
+  auto& pos = attrs_.add<position>();
   pos->prepare(pos_ = it.release());
 }
 
@@ -3273,19 +3275,20 @@ void postings_writer::begin_block() {
 void postings_writer::write(doc_iterator& docs, iresearch::attributes& attrs) {
   REGISTER_TIMER_DETAILED();
   auto& freq = docs.attributes().get<frequency>();
-  auto& pos = freq ? docs.attributes().get<position>() : attribute_ref<position>::nil();
-  const offset* offs = nullptr;
-  const payload* pay = nullptr;
-  frequency* tfreq = nullptr;
+  const attribute_ref<offset>* offs = nullptr;
+  const attribute_ref<payload>* pay = nullptr;
+  const attribute_ref<position>* pos = nullptr;
+  const attribute_ref<frequency>* tfreq = nullptr;
   auto& meta = attrs.add<version10::term_meta>();
 
   if (freq) {
-    if (pos && !volatile_attributes_) {
-      offs = pos->get< offset >();
-      pay = pos->get< payload >();
-    }
+    pos = &(docs.attributes().get<position>()); // track attribute_ref since underlying attribute changes if 'volatile_attributes_'
+    tfreq = &(attrs.add<frequency>());
 
-    tfreq = attrs.add< frequency >();
+    if (pos && *pos && !volatile_attributes_) {
+      offs = &((*pos)->get<offset>());
+      pay = &((*pos)->get<payload>());
+    }
   }
 
   begin_term();
@@ -3294,29 +3297,30 @@ void postings_writer::write(doc_iterator& docs, iresearch::attributes& attrs) {
     auto did = docs.value();
 
     assert(type_limits<type_t::doc_id_t>::valid(did));
-    begin_doc(did, freq);
+    begin_doc(did, &*freq);
     docs_.set(did - type_limits<type_t::doc_id_t>::min());
 
-    if (pos) {
+    if (pos && *pos) {
       if (volatile_attributes_) {
-        offs = pos->get<offset>();
-        pay = pos->get<payload>();
+        offs = &((*pos)->get<offset>());
+        pay = &((*pos)->get<payload>());
       }
 
-      while ( pos->next() ) {
-        add_position( pos->value(), offs, pay );
+      while ((*pos)->next()) {
+        add_position((*pos)->value(), offs ? &**offs : nullptr, pay ? &**pay : nullptr);
       }
     }
 
     ++meta->docs_count;
+
     if (tfreq) {
-      tfreq->value += freq->value;
+      (*tfreq)->value += freq->value;
     }
 
     end_doc();
   }
 
-  end_term(*meta, tfreq);
+  end_term(*meta, tfreq ? &**tfreq : nullptr);
 }
 
 #if defined(_MSC_VER)
@@ -3567,17 +3571,21 @@ void postings_writer::encode(data_output& out, const iresearch::attributes& attr
   auto& tfreq = attrs.get<frequency>();
 
   out.write_vlong(meta->docs_count);
+
   if (tfreq) {
     assert(tfreq->value >= meta->docs_count);
     out.write_vlong(tfreq->value - meta->docs_count);
   }
 
   out.write_vlong(meta->doc_start - last_state.doc_start);
+
   if (features_.position()) {
     out.write_vlong(meta->pos_start - last_state.pos_start);
+
     if (type_limits<type_t::address_t>::valid(meta->pos_end)) {
       out.write_vlong(meta->pos_end);
     }
+
     if (features_.payload() || features_.offset()) {
       out.write_vlong(meta->pay_start - last_state.pay_start);
     }
@@ -3687,13 +3695,16 @@ bool postings_reader::prepare(
 void postings_reader::decode( 
     data_input& in, 
     const flags& meta, 
-    attributes& attrs) {
+    attributes& attrs
+) {
+  static attribute_ref<frequency> empty;
   auto& tmeta = attrs.add<version10::term_meta>();
-  auto& tfreq = attrs.get<frequency>();
+  auto& tfreq = attrs.get<frequency>(empty);
 
   assert(tmeta);
 
   tmeta->docs_count = in.read_vlong();
+
   if (tfreq) {
     tfreq->value = tmeta->docs_count + in.read_vlong();
   }

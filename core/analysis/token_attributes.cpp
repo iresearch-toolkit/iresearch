@@ -21,7 +21,6 @@ NS_ROOT
 
 REGISTER_ATTRIBUTE(iresearch::offset);
 DEFINE_ATTRIBUTE_TYPE(offset);
-DEFINE_FACTORY_DEFAULT(offset);
 
 offset::offset() NOEXCEPT
   : attribute(offset::type()), 
@@ -34,7 +33,6 @@ offset::offset() NOEXCEPT
 
 REGISTER_ATTRIBUTE(iresearch::increment);
 DEFINE_ATTRIBUTE_TYPE(increment);
-DEFINE_FACTORY_DEFAULT(increment);
 
 increment::increment() NOEXCEPT
   : basic_attribute< uint32_t >(increment::type(), 1U) {
@@ -57,7 +55,6 @@ term_attribute::term_attribute() NOEXCEPT
 
 REGISTER_ATTRIBUTE(iresearch::payload);
 DEFINE_ATTRIBUTE_TYPE(payload);
-DEFINE_FACTORY_DEFAULT(payload);
 
 payload::payload() NOEXCEPT
   : basic_attribute< bytes_ref >(payload::type()) {
@@ -69,7 +66,6 @@ payload::payload() NOEXCEPT
 
 REGISTER_ATTRIBUTE(iresearch::document);
 DEFINE_ATTRIBUTE_TYPE(document);
-DEFINE_FACTORY_DEFAULT(document);
 
 document::document() NOEXCEPT:
   basic_attribute<doc_id_t>(document::type(), type_limits<type_t::doc_id_t>::invalid()) {
@@ -81,7 +77,6 @@ document::document() NOEXCEPT:
 
 REGISTER_ATTRIBUTE(iresearch::term_meta);
 DEFINE_ATTRIBUTE_TYPE(iresearch::term_meta);
-DEFINE_FACTORY_DEFAULT(term_meta);
 
 term_meta::term_meta() NOEXCEPT
   : attribute(term_meta::type()) {
@@ -93,7 +88,6 @@ term_meta::term_meta() NOEXCEPT
 
 REGISTER_ATTRIBUTE(iresearch::frequency);
 DEFINE_ATTRIBUTE_TYPE(frequency);
-DEFINE_FACTORY_DEFAULT(frequency);
 
 frequency::frequency() NOEXCEPT
   : basic_attribute<uint64_t>(frequency::type()) {
@@ -105,7 +99,6 @@ frequency::frequency() NOEXCEPT
 
 REGISTER_ATTRIBUTE(iresearch::granularity_prefix);
 DEFINE_ATTRIBUTE_TYPE(granularity_prefix);
-DEFINE_FACTORY_DEFAULT(granularity_prefix);
 
 granularity_prefix::granularity_prefix() NOEXCEPT:
   attribute(granularity_prefix::type()) {
@@ -117,7 +110,6 @@ granularity_prefix::granularity_prefix() NOEXCEPT:
 
 REGISTER_ATTRIBUTE(iresearch::norm);
 DEFINE_ATTRIBUTE_TYPE(norm);
-DEFINE_FACTORY_DEFAULT(norm);
 
 const document EMPTY_DOCUMENT;
 
@@ -162,10 +154,13 @@ float_t norm::read() const {
 
 REGISTER_ATTRIBUTE(iresearch::position);
 DEFINE_ATTRIBUTE_TYPE(position);
-DEFINE_FACTORY_DEFAULT(position);
 
 position::position() NOEXCEPT
   : attribute(position::type()) {
+}
+
+position::position(position&& other) NOEXCEPT
+  : attribute(std::move(other)), impl_(std::move(other.impl_)) {
 }
 
 position::impl::impl(size_t reserve_attrs): attrs_(reserve_attrs) {}

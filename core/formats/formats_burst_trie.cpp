@@ -422,10 +422,12 @@ class term_iterator : public iresearch::seek_term_iterator {
     assert(detail::cookie::type() == cookie.type());
     /* copy state */
     auto& state = static_cast<const detail::cookie&>(cookie);
-    *state_ = state.meta;
+    **state_ = state.meta;
+
     if (freq_) {
-      freq_->value = state.term_freq;
+      (*freq_)->value = state.term_freq;
     }
+
     /* copy term */
     term_.reset();
     term_ += term;
@@ -437,7 +439,7 @@ class term_iterator : public iresearch::seek_term_iterator {
   }
   virtual seek_term_iterator::cookie_ptr cookie() const override {
     return detail::cookie::make(
-      *state_, freq_ ? freq_->value : 0
+      **state_, freq_ ? (*freq_)->value : 0
     );
   }
   virtual doc_iterator::ptr postings( const flags& features ) const override;
@@ -513,8 +515,8 @@ class term_iterator : public iresearch::seek_term_iterator {
   seek_state_t sstate_;
   block_stack_t block_stack_;
   block_iterator* cur_block_;
-  version10::term_meta* state_;
-  frequency* freq_;
+  attribute_ref<version10::term_meta>* state_;
+  attribute_ref<frequency>* freq_;
   mutable index_input::ptr terms_in_;
   bytes_builder term_;
   byte_weight weight_; // aggregated fst output
@@ -819,16 +821,16 @@ void block_iterator::load_data(const field_meta& meta, iresearch::postings_reade
   auto& state = *owner_->state_;
   if (0 == cur_stats_ent_) {
     /* clear state at the beginning */
-    state.clear();
+    state->clear();
   } else {
-    state = state_;
+    *state = state_;
   }
 
   for (; cur_stats_ent_ < term_count_; ++cur_stats_ent_) {
     pr.decode(stats_in_, meta.features, owner_->attrs_);
   }
 
-  state_ = state;
+  state_ = *state;
 }
 
 void block_iterator::reset() {
@@ -860,9 +862,10 @@ term_iterator::term_iterator(const term_reader* owner)
     cur_block_(nullptr),
     freq_(nullptr) {
   assert(owner_);
-  state_ = attrs_.add<version10::term_meta>();
+  state_ = &attrs_.add<version10::term_meta>();
+
   if (owner_->field_.features.check<frequency>()) {
-    freq_ = attrs_.add<frequency>();
+    freq_ = &attrs_.add<frequency>();
   }
 }
 
@@ -911,7 +914,7 @@ bool term_iterator::next() {
     } else {
       const uint64_t start = cur_block_->start();
       cur_block_ = pop_block();
-      *state_ = cur_block_->state();
+      **state_ = cur_block_->state();
       if (cur_block_->dirty() || cur_block_->sub_start() != start) {
         /* here we currently on non block that was not loaded yet */
         cur_block_->scan_to_block(term_); /* to sub-block */
@@ -1501,6 +1504,7 @@ void field_writer::write(
 
       /* push term to the top of the stack */
       stack.emplace_back(term, std::move(attrs));
+      attrs = std::move(attributes()); // insure valid internal state for reuse
 
       if (!min_term.first) {
         min_term.first = true;

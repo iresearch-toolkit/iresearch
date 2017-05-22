@@ -174,9 +174,12 @@ class conjunction : public score_doc_iterator_base {
   size_t size() const { return itrs_.size(); }
 
   virtual void score() override final {
-    if (!scr_) return;
-    scr_->clear();
-    score_impl(scr_->leak());
+    if (!scr_) {
+      return;
+    }
+
+    (*scr_)->clear();
+    score_impl((*scr_)->leak());
   }
 
   virtual doc_id_t value() const override {

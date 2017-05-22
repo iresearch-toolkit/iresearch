@@ -36,14 +36,13 @@ const flags& features(bool normalize) {
 
 struct idf : basic_attribute<float_t> {
   DECLARE_ATTRIBUTE_TYPE();
-  DECLARE_FACTORY_DEFAULT();
+
   idf() : basic_attribute(idf::type(), 1.f) { }
 
   virtual void clear() { value = 1.f; }
 };
 
 DEFINE_ATTRIBUTE_TYPE(iresearch::tfidf::idf);
-DEFINE_FACTORY_DEFAULT(idf);
 
 typedef tfidf_sort::score_t score_t;
 
@@ -81,8 +80,6 @@ class collector final : public iresearch::sort::collector {
 
 class scorer : public iresearch::sort::scorer_base<tfidf::score_t> {
  public:
-  DECLARE_FACTORY(scorer);
-
   scorer(
       iresearch::boost::boost_t boost,
       const tfidf::idf* idf,
@@ -158,15 +155,15 @@ class sort final: iresearch::sort::prepared_base<tfidf::score_t> {
       return tfidf::scorer::make<tfidf::norm_scorer>(
         &*norm,
         boost::extract(query_attrs),
-        query_attrs.get<tfidf::idf>(),
-        doc_attrs.get<frequency>()
+        &*query_attrs.get<tfidf::idf>(),
+        &*doc_attrs.get<frequency>()
       );
     }
 
     return tfidf::scorer::make<tfidf::scorer>(
       boost::extract(query_attrs),
-      query_attrs.get<tfidf::idf>(),
-      doc_attrs.get<frequency>()
+      &*(query_attrs.get<tfidf::idf>()),
+      &*(doc_attrs.get<frequency>())
     );
   }
 
