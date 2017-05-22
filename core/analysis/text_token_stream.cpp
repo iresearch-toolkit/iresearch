@@ -463,9 +463,9 @@ text_token_stream::text_token_stream(
     const std::locale& locale,
     const std::unordered_set<std::string>& ignored_words
 ) : analyzer(text_token_stream::type()),
-    attrs_(3), // offset + bytes_term + increment
     state_(memory::make_unique<state_t>()),
     ignored_words_(ignored_words) {
+  attrs_.reserve<offset, bytes_term, increment>();
   offs_ = &attrs_.add<offset>();
   term_ = &reinterpret_cast<attribute_ref<term_attribute>&>(attrs_.add<bytes_term>());
   attrs_.add<increment>();

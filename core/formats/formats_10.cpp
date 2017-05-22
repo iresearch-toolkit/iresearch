@@ -489,9 +489,6 @@ class pos_iterator : public position::impl {
 
   pos_iterator() = default;
 
-  pos_iterator(size_t reserve_attrs): position::impl(reserve_attrs) {
-  }
-
   virtual void clear() {
     value_ = position::INVALID;
   }
@@ -628,9 +625,10 @@ class offs_pay_iterator final : public pos_iterator {
  public:  
   DECLARE_PTR( offs_pay_iterator );
 
-  offs_pay_iterator():
-    pos_iterator(2) { // offset + payload
+  offs_pay_iterator() {
     auto& attrs = this->attributes();
+
+    attrs.reserve<offset, payload>();
     offs_ = &attrs.add<offset>();
     pay_ = &attrs.add<payload>();
   }
@@ -774,9 +772,10 @@ class offs_iterator final : public pos_iterator {
  public:
   DECLARE_PTR(offs_iterator);
 
-  offs_iterator():
-    pos_iterator(1) { // offset
+  offs_iterator() {
     auto& attrs = this->attributes();
+
+    attrs.reserve<offset>();
     offs_ = &attrs.add<offset>();
   }
 
@@ -885,9 +884,10 @@ class pay_iterator final : public pos_iterator {
  public:
   DECLARE_PTR(pay_iterator);
 
-  pay_iterator():
-    pos_iterator(1) { // payload
+  pay_iterator() {
     auto& attrs = this->attributes();
+
+    attrs.reserve<payload>();
     pay_ = &attrs.add<payload>();
   }
 

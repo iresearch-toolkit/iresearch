@@ -858,10 +858,10 @@ void block_iterator::reset() {
 term_iterator::term_iterator(const term_reader* owner)
   : owner_(owner),
     matcher_(*owner->fst_, fst::MATCH_INPUT),
-    attrs_(2), // version10::term_meta + frequency
     cur_block_(nullptr),
     freq_(nullptr) {
   assert(owner_);
+  attrs_.reserve<version10::term_meta, frequency>();
   state_ = &attrs_.add<version10::term_meta>();
 
   if (owner_->field_.features.check<frequency>()) {

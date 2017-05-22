@@ -377,7 +377,6 @@ class IRESEARCH_API attributes : private util::noncopyable {
   static const attributes& empty_instance();
 
   attributes() = default;
-  attributes(size_t reserve);
   attributes(attributes&& rhs) NOEXCEPT;
 
   attributes& operator=(attributes&& rhs) NOEXCEPT;
@@ -386,6 +385,17 @@ class IRESEARCH_API attributes : private util::noncopyable {
   attribute_ref<attribute>& get(const attribute::type_id& type, attribute_ref<attribute>& fallback);
   const attribute_ref<attribute>& get(const attribute::type_id& type, const attribute_ref<attribute>& fallback = attribute_ref<attribute>::nil()) const;
   void remove( const attribute::type_id& type );
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief ordered list of types to reserve space for
+  ///        type order should match calls to add<type>(...)
+  //////////////////////////////////////////////////////////////////////////////
+  template<typename... Types>
+  void reserve() {
+    buf_.reserve((std::max)(buf_.capacity(), template_traits_t<Types...>::size_aligned()));
+    //map_.reserve((std::max)(map_.capacity(), template_traits_t<Types...>::count()));
+  }
+
   void clear();
 
   size_t size() const { return map_.size(); }

@@ -181,11 +181,14 @@ class IRESEARCH_API position : public attribute {
     DECLARE_PTR(impl);
 
     impl() = default;
-    impl(size_t reserve_attrs);
     virtual void clear() = 0;
     using util::attributes_provider::attributes;
     virtual iresearch::attributes& attributes() NOEXCEPT override final {
       return attrs_;
+    }
+    template<typename... Types>
+    void reserve() {
+      attrs_.reserve<Types>();
     }
 
    protected:

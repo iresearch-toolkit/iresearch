@@ -64,9 +64,9 @@ class basic_term final : public term_attribute {
 // -----------------------------------------------------------------------------
 
 boolean_token_stream::boolean_token_stream(bool value /*= false*/) 
-  : attrs_(1), // increment
-    in_use_(false), 
+  : in_use_(false), 
     value_(value) {
+  attrs_.reserve<basic_term, increment>();
   term_ = &attrs_.add<basic_term>();
   attrs_.add<increment>(); // required by field_data::invert(...)
 }
@@ -108,8 +108,8 @@ bool boolean_token_stream::next() {
 // -----------------------------------------------------------------------------
 
 string_token_stream::string_token_stream()
-  : attrs_(3), // offset + basic_term + increment
-    in_use_(false) {
+  : in_use_(false) {
+  attrs_.reserve<offset, basic_term, increment>();
   offset_ = &attrs_.add<offset>();
   term_ = &attrs_.add<basic_term>();
   attrs_.add<increment>();
@@ -282,8 +282,8 @@ class numeric_term final : public term_attribute {
 // --SECTION--                                       numeric_term implementation
 // -----------------------------------------------------------------------------
 
-numeric_token_stream::numeric_token_stream() 
-  : attrs_(2) { // numeric_term + increment
+numeric_token_stream::numeric_token_stream() {
+  attrs_.reserve<increment, numeric_term>();
   inc_ = &attrs_.add<increment>();
   num_ = &attrs_.add<numeric_term>();
 }
@@ -352,9 +352,9 @@ void numeric_token_stream::reset(
 // --SECTION--                                  null_token_stream implementation
 // -----------------------------------------------------------------------------
 
-null_token_stream::null_token_stream():
-  attrs_(2), // basic_term + increment
-  in_use_(false) {
+null_token_stream::null_token_stream()
+  : in_use_(false) {
+  attrs_.reserve<basic_term, increment>();
   term_ = &attrs_.add<basic_term>();
   attrs_.add<increment>(); // required by field_data::invert(...)
 }

@@ -87,11 +87,8 @@ flags& flags::operator=( std::initializer_list<const attribute::type_id* > flags
 // -----------------------------------------------------------------------------
  
 const attributes& attributes::empty_instance() {
-  static attributes instance(0);
+  static attributes instance;
   return instance;
-}
-
-attributes::attributes(size_t /*reserve*/) {
 }
 
 attributes::attributes(attributes&& rhs) NOEXCEPT {

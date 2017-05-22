@@ -69,8 +69,7 @@ class pos_iterator : public iresearch::position::impl {
   pos_iterator(
       const field_data& field, const attribute_ref<frequency>& freq,
       const byte_block_pool::sliced_reader& prox)
-    : iresearch::position::impl(2), // offset + payload
-      prox_in_(prox),
+    : prox_in_(prox),
       freq_(freq),
       pos_{},
       pay_{},
@@ -79,9 +78,13 @@ class pos_iterator : public iresearch::position::impl {
       val_{} {
     auto& attrs = this->attributes();
     auto& features = field_.meta().features;
+
+    attrs.reserve<offset, payload>();
+
     if (features.check< offset >()) {
       offs_ = &attrs.add<offset>();
     }
+
     if (features.check< payload >()) {
       pay_ = &attrs.add<payload>();
     }
@@ -143,8 +146,8 @@ const byte_block_pool EMPTY_POOL;
 class doc_iterator : public iresearch::doc_iterator {
  public:
   doc_iterator()
-    : attrs_(3), // document + frequency + position
-      freq_in_(EMPTY_POOL.begin(), 0) {
+    : freq_in_(EMPTY_POOL.begin(), 0) {
+    attrs_.reserve<document, frequency, position>();
   }
 
   virtual const iresearch::attributes& attributes() const NOEXCEPT override {

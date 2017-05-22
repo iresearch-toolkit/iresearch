@@ -163,6 +163,4 @@ position::position(position&& other) NOEXCEPT
   : attribute(std::move(other)), impl_(std::move(other.impl_)) {
 }
 
-position::impl::impl(size_t reserve_attrs): attrs_(reserve_attrs) {}
-
 NS_END
