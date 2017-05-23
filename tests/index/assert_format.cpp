@@ -522,6 +522,13 @@ class term_iterator : public iresearch::seek_term_iterator {
     return true;
   }
 
+  virtual bool seek(
+      const irs::bytes_ref& term,
+      const seek_cookie& cookie
+  ) override {
+    return false;
+  }
+
   virtual iresearch::SeekResult seek_ge(const iresearch::bytes_ref& value) override {
     auto it = data_.terms.lower_bound(value);
     if (it == data_.terms.end()) {
@@ -545,12 +552,6 @@ class term_iterator : public iresearch::seek_term_iterator {
 
   virtual doc_iterator::ptr postings(const iresearch::flags& features) const override {
     return doc_iterator::make< detail::doc_iterator >( features, *prev_ );
-  }
-
-  virtual bool seek(
-      const iresearch::bytes_ref& term,
-      const iresearch::attribute& cookie) {
-    return false;
   }
 
   virtual irs::seek_term_iterator::cookie_ptr cookie() const {

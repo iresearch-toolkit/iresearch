@@ -373,17 +373,12 @@ class block_iterator : util::noncopyable {
 ///////////////////////////////////////////////////////////////////////////////
 /// @struct cookie
 ///////////////////////////////////////////////////////////////////////////////
-struct cookie : attribute {
-  DECLARE_ATTRIBUTE_TYPE();
-
-  cookie(const version10::term_meta& meta,
-         uint64_t term_freq)
-    : attribute(cookie::type()),
-      meta(meta),
-      term_freq(term_freq) {
+struct cookie: public seek_term_iterator::seek_cookie {
+  cookie(const version10::term_meta& meta, uint64_t term_freq)
+    : meta(meta), term_freq(term_freq) {
   }
 
-  virtual void clear() override {
+  virtual void clear() {
     meta.clear();
     term_freq = 0;
   }
@@ -398,8 +393,6 @@ struct cookie : attribute {
   version10::term_meta meta; /* term metadata */
   uint64_t term_freq; /* length of the positions list */
 }; // cookie
-
-DEFINE_ATTRIBUTE_TYPE(cookie);
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class term_iterator
@@ -416,27 +409,7 @@ class term_iterator : public iresearch::seek_term_iterator {
   const bytes_ref& value() const override { return term_; }
   virtual SeekResult seek_ge(const bytes_ref& term) override;
   virtual bool seek(const bytes_ref& term) override;
-  virtual bool seek(
-      const bytes_ref& term,
-      const iresearch::attribute& cookie) override {
-    assert(detail::cookie::type() == cookie.type());
-    /* copy state */
-    auto& state = static_cast<const detail::cookie&>(cookie);
-    **state_ = state.meta;
-
-    if (freq_) {
-      (*freq_)->value = state.term_freq;
-    }
-
-    /* copy term */
-    term_.reset();
-    term_ += term;
-    /* reset seek state */
-    sstate_.resize(0);
-    /* mark block as invalid */
-    cur_block_ = nullptr;
-    return true;
-  }
+  virtual bool seek(const bytes_ref& term, const seek_cookie& cookie) override;
   virtual seek_term_iterator::cookie_ptr cookie() const override {
     return detail::cookie::make(
       **state_, freq_ ? (*freq_)->value : 0
@@ -1090,6 +1063,33 @@ SeekResult term_iterator::seek_ge(const bytes_ref& term) {
 
 bool term_iterator::seek(const bytes_ref& term) {
   return SeekResult::FOUND == seek_equal(term);
+}
+
+bool term_iterator::seek(const bytes_ref& term, const seek_cookie& cookie) {
+  #ifdef IRESEARCH_DEBUG
+    auto& state = dynamic_cast<const detail::cookie&>(cookie);
+  #else
+    auto& state = static_cast<const detail::cookie&>(cookie);
+  #endif
+
+  // copy state
+  **state_ = state.meta;
+
+  if (freq_) {
+    (*freq_)->value = state.term_freq;
+  }
+
+  // copy term
+  term_.reset();
+  term_ += term;
+
+  // reset seek state
+  sstate_.resize(0);
+
+  // mark block as invalid
+  cur_block_ = nullptr;
+
+  return true;
 }
 
 #if defined(_MSC_VER)
