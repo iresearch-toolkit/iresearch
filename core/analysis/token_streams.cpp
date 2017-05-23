@@ -41,7 +41,6 @@ NS_ROOT
 //////////////////////////////////////////////////////////////////////////////
 class basic_term final : public term_attribute {
  public:
-  DECLARE_FACTORY_DEFAULT();
   basic_term(): value_(nullptr) {}
 
   virtual void clear() override {
@@ -59,17 +58,16 @@ class basic_term final : public term_attribute {
  private:
   const bytes_ref* value_;
 }; // basic_term
-DEFINE_FACTORY_DEFAULT(basic_term);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                               boolean_token_stream implementation
 // -----------------------------------------------------------------------------
 
 boolean_token_stream::boolean_token_stream(bool value /*= false*/) 
-  : attrs_(1), // increment
-    in_use_(false), 
+  : in_use_(false), 
     value_(value) {
-  term_ = attrs_.add<basic_term>();
+  attrs_.reserve<basic_term, increment>();
+  term_ = &attrs_.add<basic_term>();
   attrs_.add<increment>(); // required by field_data::invert(...)
 }
 
@@ -88,7 +86,7 @@ bool boolean_token_stream::next() {
   }
 
   in_use_ = true;
-  term_->value(value_ ? &value_true() : &value_false());
+  (*term_)->value(value_ ? &value_true() : &value_false());
 
   return true;
 }
@@ -110,10 +108,10 @@ bool boolean_token_stream::next() {
 // -----------------------------------------------------------------------------
 
 string_token_stream::string_token_stream()
-  : attrs_(3), // offset + basic_term + increment
-    in_use_(false) {
-  offset_ = attrs_.add<offset>();
-  term_ = attrs_.add<basic_term>();
+  : in_use_(false) {
+  attrs_.reserve<offset, basic_term, increment>();
+  offset_ = &attrs_.add<offset>();
+  term_ = &attrs_.add<basic_term>();
   attrs_.add<increment>();
 }
 
@@ -130,9 +128,9 @@ bool string_token_stream::next() {
     return false;
   }
 
-  term_->value(&value_);
-  offset_->start = 0;
-  offset_->end = static_cast<uint32_t>(value_.size());
+  (*term_)->value(&value_);
+  (*offset_)->start = 0;
+  (*offset_)->end = static_cast<uint32_t>(value_.size());
   return (in_use_ = true);
 }
 
@@ -142,8 +140,6 @@ bool string_token_stream::next() {
 //////////////////////////////////////////////////////////////////////////////
 class numeric_term final : public term_attribute {
  public:
-  DECLARE_FACTORY_DEFAULT();
-
   bool next(increment& inc) {
     auto bits = type_ > NT_DBL
         ? bits_required<int32_t>()
@@ -281,24 +277,23 @@ class numeric_term final : public term_attribute {
     return bytes_ref::nil;
   }
 }; // numeric_term
-DEFINE_FACTORY_DEFAULT(numeric_term);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                       numeric_term implementation
 // -----------------------------------------------------------------------------
 
-numeric_token_stream::numeric_token_stream() 
-  : attrs_(2) { // numeric_term + increment
-  num_ = attrs_.add<numeric_term>();
-  inc_ = attrs_.add<increment>();
+numeric_token_stream::numeric_token_stream() {
+  attrs_.reserve<increment, numeric_term>();
+  inc_ = &attrs_.add<increment>();
+  num_ = &attrs_.add<numeric_term>();
 }
 
 numeric_token_stream::numeric_token_stream(
   numeric_token_stream&& other
 ) NOEXCEPT
-  : attrs_(std::move(other.attrs_)),
-    num_(std::move(other.num_)), 
-    inc_(std::move(other.inc_)) {
+  : attrs_(std::move(other.attrs_)), 
+    inc_(std::move(other.inc_)),
+    num_(std::move(other.num_)) {
 }
 
 const irs::attributes& numeric_token_stream::attributes() const NOEXCEPT {
@@ -306,33 +301,33 @@ const irs::attributes& numeric_token_stream::attributes() const NOEXCEPT {
 }
 
 bool numeric_token_stream::next() {
-  return num_->next(*inc_);
+  return (*num_)->next(**inc_);
 }
 
 void numeric_token_stream::reset(
     int32_t value, 
     uint32_t step /* = PRECISION_STEP_DEF */) { 
-  num_->reset(value, step); 
+  (*num_)->reset(value, step); 
 }
 
 void numeric_token_stream::reset(
     int64_t value, 
     uint32_t step /* = PRECISION_STEP_DEF */) { 
-  num_->reset(value, step); 
+  (*num_)->reset(value, step); 
 }
 
 #ifndef FLOAT_T_IS_DOUBLE_T
 void numeric_token_stream::reset(
     float_t value, 
     uint32_t step /* = PRECISION_STEP_DEF */) { 
-  num_->reset(value, step); 
+  (*num_)->reset(value, step); 
 }
 #endif
 
 void numeric_token_stream::reset(
     double_t value, 
     uint32_t step /* = PRECISION_STEP_DEF */) { 
-  num_->reset(value, step); 
+  (*num_)->reset(value, step); 
 }
 
 /*static*/ bytes_ref numeric_token_stream::value(bstring& buf, int32_t value) {
@@ -357,10 +352,10 @@ void numeric_token_stream::reset(
 // --SECTION--                                  null_token_stream implementation
 // -----------------------------------------------------------------------------
 
-null_token_stream::null_token_stream():
-  attrs_(2), // basic_term + increment
-  in_use_(false) {
-  term_ = attrs_.add<basic_term>();
+null_token_stream::null_token_stream()
+  : in_use_(false) {
+  attrs_.reserve<basic_term, increment>();
+  term_ = &attrs_.add<basic_term>();
   attrs_.add<increment>(); // required by field_data::invert(...)
 }
 
@@ -376,7 +371,7 @@ bool null_token_stream::next() {
   }
 
   in_use_ = true;
-  term_->value(&value_null());
+  (*term_)->value(&value_null());
 
   return true;
 }

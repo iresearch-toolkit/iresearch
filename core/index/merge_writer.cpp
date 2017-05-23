@@ -71,7 +71,7 @@ class compound_attributes : public irs::attributes {
       const irs::attribute::type_id& type_id,
       const irs::attribute_ref<irs::attribute>& value
     )->bool {
-      add(type_id) = value;
+      add(type_id) = &*value;
       return true;
     };
 

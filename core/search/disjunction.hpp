@@ -71,9 +71,12 @@ class basic_disjunction final : public score_doc_iterator_base {
   }
 
   virtual void score() override {
-    if (!scr_) return;
-    scr_->clear();
-    score_impl(scr_->leak());
+    if (!scr_) {
+      return;
+    }
+
+    (*scr_)->clear();
+    score_impl((*scr_)->leak());
   }
 
   virtual doc_id_t value() const override {
@@ -189,9 +192,12 @@ public:
   }
 
   virtual void score() override {
-    if (!scr_) return;
-    scr_->clear();
-    score_impl(scr_->leak());
+    if (!scr_) {
+      return;
+    }
+
+    (*scr_)->clear();
+    score_impl((*scr_)->leak());
   }
 
   virtual doc_id_t value() const override {
@@ -377,9 +383,12 @@ template<
   }
 
   virtual void score() override {
-    if (!scr_) return;
-    scr_->clear();
-    score_impl(scr_->leak());
+    if (!scr_) {
+      return;
+    }
+
+    (*scr_)->clear();
+    score_impl((*scr_)->leak());
   }
 
   virtual doc_id_t value() const override {

@@ -99,7 +99,16 @@ NS_LOCAL
 
 class bytes_term: public iresearch::term_attribute {
  public:
-  DECLARE_FACTORY_DEFAULT();
+  bytes_term() = default;
+
+  bytes_term(bytes_term&& other) NOEXCEPT {
+    if (other.buf_.c_str() == other.value_.c_str()) {
+      buf_ = std::move(other.buf_);
+      value(buf_);
+    } else {
+      value_ = std::move(other.value_);
+    }
+  }
 
   virtual ~bytes_term() {}
 
@@ -125,8 +134,6 @@ class bytes_term: public iresearch::term_attribute {
   iresearch::bstring buf_; // buffer for value if value cannot be referenced directly
   iresearch::bytes_ref value_;
 };
-
-DEFINE_FACTORY_DEFAULT(bytes_term);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -411,8 +418,8 @@ REGISTER_ANALYZER(text_token_stream);
     ::boost::property_tree::ptree pt;
 
     try {
-      static std::mutex mutex;
-      SCOPED_LOCK(mutex); // ::boost::property_tree::read_json(...) is not thread-safe, was seen to SEGFAULT
+      static std::mutex pt_mutex;
+      SCOPED_LOCK(pt_mutex); // ::boost::property_tree::read_json(...) is not thread-safe, was seen to SEGFAULT
       ::boost::property_tree::read_json(args_stream, pt);
     } catch(...) {
       return construct(args); // fallback to parseing 'args' as a locale name
@@ -456,11 +463,11 @@ text_token_stream::text_token_stream(
     const std::locale& locale,
     const std::unordered_set<std::string>& ignored_words
 ) : analyzer(text_token_stream::type()),
-    attrs_(3), // offset + bytes_term + increment
     state_(memory::make_unique<state_t>()),
     ignored_words_(ignored_words) {
-  offs_ = attrs_.add<offset>();
-  term_ = attrs_.add<bytes_term>();
+  attrs_.reserve<offset, bytes_term, increment>();
+  offs_ = &attrs_.add<offset>();
+  term_ = &reinterpret_cast<attribute_ref<term_attribute>&>(attrs_.add<bytes_term>());
   attrs_.add<increment>();
   locale_.country = locale_utils::country(locale);
   locale_.encoding = locale_utils::encoding(locale);
@@ -578,12 +585,12 @@ bool text_token_stream::next() {
     // skip whitespace and unsuccessful terms
     // ...........................................................................
     if (state_->break_iterator->getRuleStatus() == UWordBreak::UBRK_WORD_NONE ||
-        !process_term(static_cast<bytes_term&>(*term_), ignored_words_, *state_, state_->data.tempSubString(start, end - start))) {
+        !process_term(static_cast<bytes_term&>(**term_), ignored_words_, *state_, state_->data.tempSubString(start, end - start))) {
       continue;
     }
 
-    offs_->start = start;
-    offs_->end = end;
+    (*offs_)->start = start;
+    (*offs_)->end = end;
     return true;
   }
 

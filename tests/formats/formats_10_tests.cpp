@@ -65,8 +65,8 @@ class format_10_test_case : public tests::format_test_case_base {
         // check term_meta
         {
           auto& meta = *attrs0.get<ir::version10::term_meta>();
-          ASSERT_EQ(1, meta.docs_count);
-          ASSERT_EQ(2, meta.e_single_doc);
+          ASSERT_EQ(1, meta->docs_count);
+          ASSERT_EQ(2, meta->e_single_doc);
         }
 
         // write term0 attributes to out
@@ -82,8 +82,8 @@ class format_10_test_case : public tests::format_test_case_base {
         // check term_meta
         {
           auto& meta = *attrs1.get<ir::version10::term_meta>();
-          ASSERT_EQ(1, meta.docs_count);
-          ASSERT_EQ(5, meta.e_single_doc);
+          ASSERT_EQ(1, meta->docs_count);
+          ASSERT_EQ(5, meta->e_single_doc);
         }
 
         // write term0 attributes to out
@@ -94,11 +94,11 @@ class format_10_test_case : public tests::format_test_case_base {
       {
         auto& meta0 = *attrs0.get<ir::version10::term_meta>();
         auto& meta1 = *attrs1.get<ir::version10::term_meta>();
-        ASSERT_EQ(meta0.docs_count, meta1.docs_count);
-        ASSERT_EQ(meta0.doc_start, meta1.doc_start);
-        ASSERT_EQ(meta0.pos_start, meta1.pos_start);
-        ASSERT_EQ(meta0.pos_end, meta1.pos_end);
-        ASSERT_EQ(meta0.pay_start, meta1.pay_start);
+        ASSERT_EQ(meta0->docs_count, meta1->docs_count);
+        ASSERT_EQ(meta0->doc_start, meta1->doc_start);
+        ASSERT_EQ(meta0->pos_start, meta1->pos_start);
+        ASSERT_EQ(meta0->pos_end, meta1->pos_end);
+        ASSERT_EQ(meta0->pay_start, meta1->pay_start);
       }
 
       // finish writing
@@ -132,13 +132,13 @@ class format_10_test_case : public tests::format_test_case_base {
         {
           auto& meta = *attrs0.get<ir::version10::term_meta>();
           auto& read_meta = *read_attrs.get<ir::version10::term_meta>();
-          ASSERT_EQ(meta.docs_count, read_meta.docs_count);
-          ASSERT_EQ(meta.doc_start, read_meta.doc_start);
-          ASSERT_EQ(meta.pos_start, read_meta.pos_start);
-          ASSERT_EQ(meta.pos_end, read_meta.pos_end);
-          ASSERT_EQ(meta.pay_start, read_meta.pay_start);
-          ASSERT_EQ(meta.e_single_doc, read_meta.e_single_doc);
-          ASSERT_EQ(meta.e_skip_start, read_meta.e_skip_start);
+          ASSERT_EQ(meta->docs_count, read_meta->docs_count);
+          ASSERT_EQ(meta->doc_start, read_meta->doc_start);
+          ASSERT_EQ(meta->pos_start, read_meta->pos_start);
+          ASSERT_EQ(meta->pos_end, read_meta->pos_end);
+          ASSERT_EQ(meta->pay_start, read_meta->pay_start);
+          ASSERT_EQ(meta->e_single_doc, read_meta->e_single_doc);
+          ASSERT_EQ(meta->e_skip_start, read_meta->e_skip_start);
         }
 
         /* read documents */
@@ -157,13 +157,13 @@ class format_10_test_case : public tests::format_test_case_base {
         {
           auto& meta = *attrs1.get<ir::version10::term_meta>();
           auto& read_meta = *read_attrs.get<ir::version10::term_meta>();
-          ASSERT_EQ(meta.docs_count, read_meta.docs_count);
-          ASSERT_EQ(0, read_meta.doc_start); /* we don't read doc start in case of singleton */
-          ASSERT_EQ(meta.pos_start, read_meta.pos_start);
-          ASSERT_EQ(meta.pos_end, read_meta.pos_end);
-          ASSERT_EQ(meta.pay_start, read_meta.pay_start);
-          ASSERT_EQ(meta.e_single_doc, read_meta.e_single_doc);
-          ASSERT_EQ(meta.e_skip_start, read_meta.e_skip_start);
+          ASSERT_EQ(meta->docs_count, read_meta->docs_count);
+          ASSERT_EQ(0, read_meta->doc_start); /* we don't read doc start in case of singleton */
+          ASSERT_EQ(meta->pos_start, read_meta->pos_start);
+          ASSERT_EQ(meta->pos_end, read_meta->pos_end);
+          ASSERT_EQ(meta->pay_start, read_meta->pay_start);
+          ASSERT_EQ(meta->e_single_doc, read_meta->e_single_doc);
+          ASSERT_EQ(meta->e_skip_start, read_meta->e_skip_start);
         }
 
         /* read documents */
@@ -230,7 +230,7 @@ class format_10_test_case : public tests::format_test_case_base {
       {
         auto& meta0 = *attrs0.get<ir::version10::term_meta>();
         auto& meta1 = *attrs1.get<ir::version10::term_meta>();
-        ASSERT_GT(meta1.doc_start, meta0.doc_start);
+        ASSERT_GT(meta1->doc_start, meta0->doc_start);
       }
 
       /* finish writing */
@@ -266,13 +266,13 @@ class format_10_test_case : public tests::format_test_case_base {
         {
           auto& meta = *attrs0.get<ir::version10::term_meta>();
           auto& read_meta = *read_attrs.get<ir::version10::term_meta>();
-          ASSERT_EQ(meta.docs_count, read_meta.docs_count);
-          ASSERT_EQ(meta.doc_start, read_meta.doc_start);
-          ASSERT_EQ(meta.pos_start, read_meta.pos_start);
-          ASSERT_EQ(meta.pos_end, read_meta.pos_end);
-          ASSERT_EQ(meta.pay_start, read_meta.pay_start);
-          ASSERT_EQ(meta.e_single_doc, read_meta.e_single_doc);
-          ASSERT_EQ(meta.e_skip_start, read_meta.e_skip_start);
+          ASSERT_EQ(meta->docs_count, read_meta->docs_count);
+          ASSERT_EQ(meta->doc_start, read_meta->doc_start);
+          ASSERT_EQ(meta->pos_start, read_meta->pos_start);
+          ASSERT_EQ(meta->pos_end, read_meta->pos_end);
+          ASSERT_EQ(meta->pay_start, read_meta->pay_start);
+          ASSERT_EQ(meta->e_single_doc, read_meta->e_single_doc);
+          ASSERT_EQ(meta->e_skip_start, read_meta->e_skip_start);
         }
 
         /* read documents */
@@ -291,13 +291,13 @@ class format_10_test_case : public tests::format_test_case_base {
         {
           auto& meta = *attrs1.get<ir::version10::term_meta>();
           auto& read_meta = *read_attrs.get<ir::version10::term_meta>();
-          ASSERT_EQ(meta.docs_count, read_meta.docs_count);
-          ASSERT_EQ(meta.doc_start, read_meta.doc_start);
-          ASSERT_EQ(meta.pos_start, read_meta.pos_start);
-          ASSERT_EQ(meta.pos_end, read_meta.pos_end);
-          ASSERT_EQ(meta.pay_start, read_meta.pay_start);
-          ASSERT_EQ(meta.e_single_doc, read_meta.e_single_doc);
-          ASSERT_EQ(meta.e_skip_start, read_meta.e_skip_start);
+          ASSERT_EQ(meta->docs_count, read_meta->docs_count);
+          ASSERT_EQ(meta->doc_start, read_meta->doc_start);
+          ASSERT_EQ(meta->pos_start, read_meta->pos_start);
+          ASSERT_EQ(meta->pos_end, read_meta->pos_end);
+          ASSERT_EQ(meta->pay_start, read_meta->pay_start);
+          ASSERT_EQ(meta->e_single_doc, read_meta->e_single_doc);
+          ASSERT_EQ(meta->e_skip_start, read_meta->e_skip_start);
         }
 
         /* read documents */
@@ -431,13 +431,13 @@ class format_10_test_case : public tests::format_test_case_base {
         {
           auto& meta = *attrs.get<ir::version10::term_meta>();
           auto& read_meta = *read_attrs.get<ir::version10::term_meta>();
-          ASSERT_EQ(meta.docs_count, read_meta.docs_count);
-          ASSERT_EQ(meta.doc_start, read_meta.doc_start);
-          ASSERT_EQ(meta.pos_start, read_meta.pos_start);
-          ASSERT_EQ(meta.pos_end, read_meta.pos_end);
-          ASSERT_EQ(meta.pay_start, read_meta.pay_start);
-          ASSERT_EQ(meta.e_single_doc, read_meta.e_single_doc);
-          ASSERT_EQ(meta.e_skip_start, read_meta.e_skip_start);
+          ASSERT_EQ(meta->docs_count, read_meta->docs_count);
+          ASSERT_EQ(meta->doc_start, read_meta->doc_start);
+          ASSERT_EQ(meta->pos_start, read_meta->pos_start);
+          ASSERT_EQ(meta->pos_end, read_meta->pos_end);
+          ASSERT_EQ(meta->pay_start, read_meta->pay_start);
+          ASSERT_EQ(meta->e_single_doc, read_meta->e_single_doc);
+          ASSERT_EQ(meta->e_skip_start, read_meta->e_skip_start);
         }
 
         // seek for every document 127th document in a block
@@ -832,3 +832,7 @@ TEST_F(fs_format_10_test_case, columns_meta_rw) {
 TEST_F(fs_format_10_test_case, document_mask_rw) {
   document_mask_read_write();
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
