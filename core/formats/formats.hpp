@@ -289,7 +289,7 @@ struct IRESEARCH_API document_mask_reader {
  * ------------------------------------------------------------------*/
 
 struct IRESEARCH_API segment_meta_writer {
-  DECLARE_PTR_WITH_DELETER(segment_meta_writer);
+  DECLARE_MANAGED_PTR(segment_meta_writer);
 
   virtual ~segment_meta_writer();
   virtual std::string filename(const segment_meta& meta) const = 0;
@@ -301,7 +301,7 @@ struct IRESEARCH_API segment_meta_writer {
  * ------------------------------------------------------------------*/
 
 struct IRESEARCH_API segment_meta_reader {
-  DECLARE_PTR_WITH_DELETER(segment_meta_reader);
+  DECLARE_MANAGED_PTR(segment_meta_reader);
 
   virtual ~segment_meta_reader();
 
@@ -335,7 +335,7 @@ struct IRESEARCH_API index_meta_writer {
  * ------------------------------------------------------------------*/
 
 struct IRESEARCH_API index_meta_reader {
-  DECLARE_PTR_WITH_DELETER(index_meta_reader);
+  DECLARE_MANAGED_PTR(index_meta_reader);
 
   virtual ~index_meta_reader();
 

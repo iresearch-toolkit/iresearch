@@ -75,8 +75,8 @@ iresearch::index_file_refs::ref_t load_newest_index_meta(
 
   struct {
     std::time_t mtime;
-    iresearch::index_meta_reader::ptr reader;
-    iresearch::index_file_refs::ref_t ref;
+    irs::index_meta_reader::ptr reader;
+    irs::index_file_refs::ref_t ref;
   } newest;
 
   newest.mtime = (iresearch::integer_traits<time_t>::min)();

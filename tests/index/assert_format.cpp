@@ -652,25 +652,25 @@ iresearch::index_meta_writer::ptr format::get_index_meta_writer() const {
   return iresearch::index_meta_writer::make<index_meta_writer>();
 }
 
-iresearch::index_meta_reader::ptr format::get_index_meta_reader() const {
+irs::index_meta_reader::ptr format::get_index_meta_reader() const {
   // can reuse stateless reader
   static index_meta_reader reader;
 
-  return irs::index_meta_reader::ptr(&reader, [](irs::index_meta_reader*){});
+  return irs::memory::make_managed<irs::index_meta_reader, false>(&reader);
 }
 
 iresearch::segment_meta_writer::ptr format::get_segment_meta_writer() const {
   // can reuse stateless writer
   static segment_meta_writer writer;
 
-  return irs::segment_meta_writer::ptr(&writer, [](irs::segment_meta_writer*){});
+  return irs::memory::make_managed<irs::segment_meta_writer, false>(&writer);
 }
 
 iresearch::segment_meta_reader::ptr format::get_segment_meta_reader() const {
   // can reuse stateless reader
   static segment_meta_reader reader;
 
-  return irs::segment_meta_reader::ptr(&reader, [](irs::segment_meta_reader*){});
+  return irs::memory::make_managed<irs::segment_meta_reader, false>(&reader);
 }
 
 iresearch::document_mask_reader::ptr format::get_document_mask_reader() const {

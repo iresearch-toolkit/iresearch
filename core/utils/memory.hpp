@@ -211,6 +211,57 @@ class allocator_array_deleter : public compact_ref<0, Alloc> {
 }; // allocator_array_deleter
 
 // ----------------------------------------------------------------------------
+// --SECTION--                                                   managed unique
+// ----------------------------------------------------------------------------
+
+template<typename T>
+struct managed_deleter {
+ public:
+  managed_deleter(T* ptr = nullptr) NOEXCEPT
+    : ptr_(ptr) {
+  }
+
+  managed_deleter(managed_deleter&& rhs) NOEXCEPT
+    : ptr_(rhs.ptr_) {
+    rhs.ptr_ = nullptr;
+  }
+
+  managed_deleter& operator=(managed_deleter&& rhs) NOEXCEPT {
+    if (this != &rhs) {
+      ptr_ = rhs.ptr_;
+      rhs.ptr_ = nullptr;
+    }
+    return *this;
+  }
+
+  void operator()(T*) NOEXCEPT {
+    delete ptr_;
+  }
+
+ private:
+  T* ptr_;
+}; // managed_deleter
+
+template <typename T, bool Manage = true>
+inline typename std::enable_if<
+  !std::is_array<T>::value,
+  std::unique_ptr<T, managed_deleter<T>>
+>::type make_managed(T* ptr) NOEXCEPT {
+  return std::unique_ptr<T, managed_deleter<T>>(ptr, Manage ? ptr : nullptr);
+}
+
+template <typename T, bool Manage = true>
+inline typename std::enable_if<
+  !std::is_array<T>::value,
+  std::unique_ptr<T, managed_deleter<T>>
+>::type make_managed(std::unique_ptr<T>& ptr) NOEXCEPT {
+  auto* p = ptr.release();
+  return std::unique_ptr<T, managed_deleter<T>>(p, Manage ? p : nullptr);
+}
+
+#define DECLARE_MANAGED_PTR(class_name) typedef std::unique_ptr<class_name, memory::managed_deleter<class_name> > ptr
+
+// ----------------------------------------------------------------------------
 // --SECTION--                                                      make_unique
 // ----------------------------------------------------------------------------
 
@@ -374,7 +425,6 @@ NS_END // ROOT
 
 #define DECLARE_SPTR(class_name) typedef std::shared_ptr<class_name> ptr
 #define DECLARE_PTR(class_name) typedef std::unique_ptr<class_name> ptr
-#define DECLARE_PTR_WITH_DELETER(class_name) typedef std::unique_ptr<class_name, std::function<void(class_name*)>> ptr;
 #define DECLARE_REF(class_name) typedef std::reference_wrapper<class_name> ref
 #define DECLARE_CREF(class_name) typedef std::reference_wrapper<const class_name> cref
 

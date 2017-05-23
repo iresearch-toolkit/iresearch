@@ -79,7 +79,7 @@ TEST(directory_reader_test, open_newest_index) {
     test_format(const ir::format::type_id& type): ir::format(type) {}
     virtual ir::index_meta_writer::ptr get_index_meta_writer() const override { return nullptr; }
     virtual ir::index_meta_reader::ptr get_index_meta_reader() const override {
-      return irs::index_meta_reader::ptr(&index_meta_reader, [](irs::index_meta_reader*){});
+      return irs::memory::make_managed<irs::index_meta_reader, false>(&index_meta_reader);
     }
     virtual ir::segment_meta_writer::ptr get_segment_meta_writer() const override { return nullptr; }
     virtual ir::segment_meta_reader::ptr get_segment_meta_reader() const override { return nullptr; }

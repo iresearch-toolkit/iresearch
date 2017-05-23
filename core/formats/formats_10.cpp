@@ -3804,7 +3804,6 @@ features& features::operator&=(const flags& in) NOEXCEPT {
 // --SECTION--                                                           format 
 // ----------------------------------------------------------------------------
 
-template<typename T> void empty_deleter(T*) { }
 
 format::format(): iresearch::format(format::type()) {}
 
@@ -3816,21 +3815,21 @@ index_meta_reader::ptr format::get_index_meta_reader() const {
   // can reuse stateless reader
   static index_meta_reader reader;
 
-  return index_meta_reader::ptr(&reader, &empty_deleter<irs::index_meta_reader>);
+  return memory::make_managed<irs::index_meta_reader, false>(&reader);
 }
 
 segment_meta_writer::ptr format::get_segment_meta_writer() const {
   // can reuse stateless writer
   static segment_meta_writer writer;
 
-  return segment_meta_writer::ptr(&writer, &empty_deleter<irs::segment_meta_writer>);
+  return memory::make_managed<irs::segment_meta_writer, false>(&writer);
 }
 
 segment_meta_reader::ptr format::get_segment_meta_reader() const {
   // can reuse stateless writer
   static segment_meta_reader reader;
 
-  return segment_meta_reader::ptr(&reader, &empty_deleter<irs::segment_meta_reader>);
+  return memory::make_managed<irs::segment_meta_reader, false>(&reader);
 }
 
 document_mask_writer::ptr format::get_document_mask_writer() const {
