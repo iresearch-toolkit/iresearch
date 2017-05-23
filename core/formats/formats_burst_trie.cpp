@@ -1766,16 +1766,19 @@ bool field_reader::prepare(
   return true;
 }
 
-const iresearch::term_reader* field_reader::field(const string_ref& field) const {
+const irs::term_reader* field_reader::field(const string_ref& field) const {
   auto it = name_to_field_.find(make_hashed_ref(field, std::hash<irs::string_ref>()));
   return it == name_to_field_.end() ? nullptr : it->second;
 }
 
-iresearch::field_iterator::ptr field_reader::iterator() const {
+irs::field_iterator::ptr field_reader::iterator() const {
   const auto* begin = fields_.data() - 1;
-  return iresearch::field_iterator::make<iterator_adapter<decltype(begin), field_iterator>>(
+
+  auto it = new iterator_adapter<decltype(begin), field_iterator>(
     begin, begin + fields_.size()
   );
+
+  return memory::make_managed<irs::field_iterator, true>(it);
 }
 
 size_t field_reader::size() const {

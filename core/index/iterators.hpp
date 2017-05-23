@@ -75,8 +75,7 @@ T seek(Iterator& it, const T& target, Less less = Less()) {
 struct term_reader;
 
 struct IRESEARCH_API field_iterator : iterator<const term_reader&> {
-  DECLARE_PTR(field_iterator);
-  DECLARE_FACTORY(field_iterator);
+  DECLARE_MANAGED_PTR(field_iterator);
 
   static field_iterator::ptr empty();
 };
@@ -84,8 +83,7 @@ struct IRESEARCH_API field_iterator : iterator<const term_reader&> {
 struct column_meta;
 
 struct IRESEARCH_API column_iterator : iterator<const column_meta&> {
-  DECLARE_PTR(column_iterator);
-  DECLARE_FACTORY(column_iterator);
+  DECLARE_MANAGED_PTR(column_iterator);
   
   static column_iterator::ptr empty();
 };

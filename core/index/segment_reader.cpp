@@ -334,9 +334,12 @@ const column_meta* segment_reader::segment_reader_impl::column(
 
 column_iterator::ptr segment_reader::segment_reader_impl::columns() const {
   const auto* begin = columns_.data() - 1;
-  return column_iterator::make<iterator_adapter<decltype(begin), column_iterator>>(
+
+  auto it = new iterator_adapter<decltype(begin), column_iterator>(
     begin, begin + columns_.size()
   );
+
+  return memory::make_managed<column_iterator>(it);
 }
 
 const directory& segment_reader::segment_reader_impl::dir() const NOEXCEPT {

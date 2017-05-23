@@ -133,7 +133,9 @@ score_doc_iterator::ptr score_doc_iterator::empty() {
 // ----------------------------------------------------------------------------
 
 field_iterator::ptr field_iterator::empty() {
-  return field_iterator::make<empty_field_iterator>();
+  static empty_field_iterator instance;
+
+  return memory::make_managed<irs::field_iterator, false>(&instance);
 }
 
 // ----------------------------------------------------------------------------
@@ -141,7 +143,9 @@ field_iterator::ptr field_iterator::empty() {
 // ----------------------------------------------------------------------------
 
 column_iterator::ptr column_iterator::empty() {
-  return column_iterator::make<empty_column_iterator>();
+  static empty_column_iterator instance;
+
+  return memory::make_managed<irs::column_iterator, false>(&instance);
 }
 
 NS_END // ROOT 
