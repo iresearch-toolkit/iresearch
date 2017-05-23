@@ -107,7 +107,13 @@ attributes& attributes::operator=(attributes&& rhs) NOEXCEPT {
 
       buf_.clear(); // empty buffer since empty map
     } else {
-      buf_.resize(rhs.buf_.size()); // resize only after original map_ cleared
+      try {
+        buf_.resize(rhs.buf_.size()); // resize only after original map_ cleared
+      } catch (std::bad_alloc&) {
+        buf_.swap(rhs.buf_); // buffer definitely allocated on heap so safe to just swap
+
+        return *this;
+      }
 
       for (auto& entry: map_) {
         entry.second.move(buf_);
