@@ -207,9 +207,9 @@ void memory_index_output::write_byte( byte_type byte ) {
 }
 
 void memory_index_output::write_bytes( const byte_type* b, size_t len ) {
-  assert( b );
+  assert(b || !len);
 
-  for(size_t to_copy = 0; len; len -= to_copy) {
+  for (size_t to_copy = 0; len; len -= to_copy) {
     if (pos_ >= buf_.size) {
       switch_buffer();
     }
