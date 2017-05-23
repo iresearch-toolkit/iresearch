@@ -63,7 +63,7 @@ struct template_traits_t<First, Second...> {
 
   static CONSTEXPR size_t size_max_aligned(size_t start = 0, size_t max = 0) NOEXCEPT {
     return template_traits_t<Second...>::size_max_aligned(
-      start, irstd::max(max, offset_aligned(start))
+      start, (irstd::max)(max, offset_aligned(start))
     );
   }
 
