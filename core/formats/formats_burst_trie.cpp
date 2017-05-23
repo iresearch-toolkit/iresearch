@@ -228,21 +228,33 @@ class fst_buffer : public vector_byte_fst {
 // --SECTION--                                              entry implementation
 // -----------------------------------------------------------------------------
 
-entry::entry(const iresearch::bytes_ref& term, iresearch::attributes&& attrs)
-  : data_(term.c_str(), term.size()),
-    type_(ET_TERM) {
+entry::entry(
+    const irs::bytes_ref& term,
+    irs::attributes&& attrs,
+    bool volatile_term)
+  : type_(ET_TERM) {
+  if (volatile_term) {
+    data_.assign<true>(term);
+  } else {
+    data_.assign<false>(term);
+  }
+
   mem_.construct<irs::attributes>(std::move(attrs));
 }
 
 entry::entry(
-    const iresearch::bytes_ref& prefix,
+    const irs::bytes_ref& prefix,
     uint64_t block_start,
     byte_type meta,
-    int16_t label)
-  : data_(prefix.c_str(), prefix.size()),
-    type_(ET_BLOCK) {
+    int16_t label,
+    bool volatile_term)
+  : type_(ET_BLOCK) {
   if (block_t::INVALID_LABEL != label) {
-    data_.append(1, static_cast<byte_type>(label & 0xFF));
+    data_.assign(prefix, static_cast<byte_type>(label & 0xFF));
+  } else if (volatile_term) {
+    data_.assign<true>(prefix);
+  } else {
+    data_.assign<false>(prefix);
   }
 
   mem_.construct<block_t>(block_start, meta, label);
@@ -1200,7 +1212,7 @@ const string_ref field_writer::TERMS_INDEX_EXT = "ti";
 void field_writer::write_term_entry(const detail::entry& e, size_t prefix, bool leaf) {
   using namespace detail;
 
-  const auto& data = e.data();
+  const irs::bytes_ref& data = e.data();
   const size_t suf_size = data.size() - prefix;
   suffix.stream.write_vlong(leaf ? suf_size : shift_pack_64(suf_size, false));
   suffix.stream.write_bytes(data.c_str() + prefix, suf_size);
@@ -1212,7 +1224,7 @@ void field_writer::write_block_entry(
     const detail::entry& e,
     size_t prefix,
     uint64_t block_start) {
-  const auto& data = e.data();
+  const irs::bytes_ref& data = e.data();
   const size_t suf_size = data.size() - prefix;
   suffix.stream.write_vlong(shift_pack_64(suf_size, true));
   suffix.stream.write_bytes(data.c_str() + prefix, suf_size);
@@ -1224,40 +1236,40 @@ void field_writer::write_block_entry(
 }
 
 void field_writer::write_block(
-    std::list< detail::entry >& blocks, size_t prefix,
+    std::list<detail::entry>& blocks,
+    size_t prefix,
     size_t begin, size_t end,
     irs::byte_type meta,
-    int16_t label ) {
-  assert( end > begin );
-  using namespace detail;
+    int16_t label) {
+  assert(end > begin);
 
-  /* begin of the block */
+  // begin of the block
   const uint64_t block_start = terms_out->file_pointer();
 
-  /* write block header */
+  // write block header
   terms_out->write_vint( 
-    shift_pack_32( static_cast< uint32_t >( end - begin ),
-                end == stack.size() ) 
+    shift_pack_32(static_cast<uint32_t>(end - begin),
+                  end == stack.size())
   );
 
-  /* write block entries */
-  const uint64_t leaf = !block_meta::blocks(meta);
+  // write block entries
+  const uint64_t leaf = !detail::block_meta::blocks(meta);
 
-  std::list< detail::block_t::prefixed_output > index;
+  std::list<detail::block_t::prefixed_output> index;
 
   pw->begin_block();
 
-  for ( size_t i = begin; i < end; ++i ) {
-    entry& e = stack[i];
-    assert(starts_with(e.data(), bytes_ref(last_term.c_str(), prefix)));
+  for (size_t i = begin; i < end; ++i) {
+    auto& e = stack[i];
+    assert(starts_with(static_cast<const bytes_ref&>(e.data()), bytes_ref(last_term, prefix)));
 
     switch (e.type()) {
       case detail::ET_TERM:
-        write_term_entry( e, prefix, leaf > 0 );
+        write_term_entry(e, prefix, leaf > 0);
         break;
       case detail::ET_BLOCK: {
-        write_block_entry( e, prefix, block_start );
-        index.splice( index.end(), e.block().index );
+        write_block_entry(e, prefix, block_start);
+        index.splice(index.end(), e.block().index);
       } break;
       default:
         assert(false);
@@ -1268,7 +1280,7 @@ void field_writer::write_block(
   suffix.stream.flush();
   stats.stream.flush();
 
-  terms_out->write_vlong( shift_pack_64(static_cast<uint64_t>(suffix.stream.file_pointer()), leaf > 0 ) );
+  terms_out->write_vlong(shift_pack_64(static_cast<uint64_t>(suffix.stream.file_pointer()), leaf > 0));
   suffix.file >> *terms_out;
 
   terms_out->write_vlong(static_cast<uint64_t>(stats.stream.file_pointer()));
@@ -1277,22 +1289,24 @@ void field_writer::write_block(
   suffix.stream.reset();
   stats.stream.reset();
 
-  /* add new block to the list of created blocks */
-  blocks.emplace_back(bytes_ref(last_term.c_str(), prefix), block_start, meta, label);
+  // add new block to the list of created blocks
+  blocks.emplace_back(bytes_ref(last_term, prefix), block_start, meta, label, volatile_state_);
 
-  if ( !index.empty() ) {
-    blocks.back().block().index = std::move( index );
+  if (!index.empty()) {
+    blocks.back().block().index = std::move(index);
   }
 }
 
-void field_writer::merge_blocks( std::list< detail::entry >& blocks ) {
-  assert( !blocks.empty() );
-  using namespace detail;
+/*static*/ void field_writer::merge_blocks(std::list<detail::entry>& blocks) {
+  assert(!blocks.empty());
 
-  std::list<entry>::iterator it = blocks.begin();
-  entry& root = *it;
+  auto it = blocks.begin();
 
-  root.block().index.emplace_front(std::move(root.data()));
+  auto& root = *it;
+  auto& root_block = root.block();
+  auto& root_index = root_block.index;
+
+  root_index.emplace_front(std::move(root.data()));
 
   // First byte in block header must not be equal to fst::kStringInfinity
   // Consider the following:
@@ -1301,36 +1315,30 @@ void field_writer::merge_blocks( std::list< detail::entry >& blocks ) {
   //   CommonPrefix = fst::Plus(StringWeight0, StringWeight1) -> { fst::kStringInfinity }
   //   Suffix = fst::Divide(StringWeight1, CommonPrefix) -> { fst::kStringBad }
   // But actually Suffix should be equal to { 0x22 ... }
-  assert(static_cast<byte_type>(root.block().meta) != fst::kStringInfinity);
+  assert(static_cast<byte_type>(root_block.meta) != fst::kStringInfinity);
 
-  /* will be just several bytes here */
-  block_t::prefixed_output& out = *root.block().index.begin();
-  out.write_byte(static_cast<byte_type>(root.block().meta)); // block metadata
-  out.write_vlong(root.block().start); // start pointer of the block
+  // will store just several bytes here
+  auto& out = *root_index.begin();
+  out.write_byte(static_cast<byte_type>(root_block.meta)); // block metadata
+  out.write_vlong(root_block.start); // start pointer of the block
 
-  if (block_meta::floor(root.block().meta)) {
+  if (detail::block_meta::floor(root_block.meta)) {
     out.write_vlong(static_cast< uint64_t >(blocks.size()-1));
-    for ( ++it; it != blocks.end(); ++it ) {
-      const block_t* block = &it->block();
-      assert( block->label != block_t::INVALID_LABEL );
-      assert( block->start > root.block().start );
+    for (++it; it != blocks.end(); ++it ) {
+      const auto* block = &it->block();
+      assert(block->label != detail::block_t::INVALID_LABEL);
+      assert(block->start > root_block.start);
 
-      const uint64_t start_delta = it->block().start - root.block().start;
-      out.write_byte( static_cast< byte_type >( block->label & 0xFF ) );
+      const uint64_t start_delta = it->block().start - root_block.start;
+      out.write_byte( static_cast< byte_type >(block->label & 0xFF));
       out.write_vlong( start_delta );
-      out.write_byte( static_cast< byte_type >( block->meta ) );
+      out.write_byte( static_cast< byte_type >(block->meta));
 
-      root.block().index.splice(
-        root.block().index.end(),
-        it->block().index
-      );
+      root_index.splice(root_index.end(), it->block().index);
     }
   } else {
-    for ( ++it; it != blocks.end(); ++it ) {
-      root.block().index.splice(
-        root.block().index.end(),
-        it->block().index
-      );
+    for (++it; it != blocks.end(); ++it ) {
+      root_index.splice(root_index.end(), it->block().index);
     }
   }
 }
@@ -1355,7 +1363,7 @@ void field_writer::write_blocks( size_t prefix, size_t count ) {
   int16_t next_label = block_t::INVALID_LABEL; /* next lead suffix label in current block */
   for ( size_t i = begin; i < end; ++i ) {
     const entry& e = stack[i];
-    const auto& data = e.data();
+    const irs::bytes_ref& data = e.data();
 
     const int16_t label = data.size() == prefix
       ? block_t::INVALID_LABEL
@@ -1400,15 +1408,16 @@ void field_writer::write_blocks( size_t prefix, size_t count ) {
 }
 
 void field_writer::push( const bytes_ref& term ) {
-  const size_t limit = std::min( last_term.size(), term.size() );
+  const irs::bytes_ref& last = last_term;
+  const size_t limit = std::min(last.size(), term.size());
 
   /* find common prefix */
   size_t pos = 0;
-  while ( pos < limit && term[pos] == last_term[pos] ) {
+  while (pos < limit && term[pos] == last[pos]) {
     ++pos;
   }
 
-  for ( size_t i = last_term.empty() ? 0 : last_term.size() - 1; i > pos; ) {
+  for (size_t i = last.empty() ? 0 : last.size() - 1; i > pos;) {
     --i; /* should use it here as we use size_t */
     const size_t top = stack.size() - prefixes[i];
     if (top > min_block_size) {
@@ -1419,27 +1428,31 @@ void field_writer::push( const bytes_ref& term ) {
 
   prefixes.resize(term.size());
   std::fill(prefixes.begin() + pos, prefixes.end(), stack.size());
-  last_term.assign(term.c_str(), term.size());
+  if (volatile_state_) {
+    last_term.assign<true>(term);
+  } else {
+    last_term.assign<false>(term);
+  }
 }
 
 field_writer::field_writer(
     iresearch::postings_writer::ptr&& pw,
+    bool volatile_state,
     uint32_t min_block_size,
-    uint32_t max_block_size )
+    uint32_t max_block_size)
   : pw(std::move(pw)),
     fst_buf_(memory::make_unique<detail::fst_buffer>()),
-    prefixes( DEFAULT_SIZE, 0 ),
-    term_count( 0 ),
-    min_block_size( min_block_size ),
-    max_block_size( max_block_size ) {
-  assert( this->pw );
-  assert( min_block_size > 1 );
-  assert( min_block_size <= max_block_size );
-  assert( 2 * ( min_block_size - 1 ) <= max_block_size );
+    prefixes(DEFAULT_SIZE, 0),
+    term_count(0),
+    min_block_size(min_block_size),
+    max_block_size(max_block_size),
+    volatile_state_(volatile_state) {
+  assert(this->pw);
+  assert(min_block_size > 1);
+  assert(min_block_size <= max_block_size);
+  assert(2 * (min_block_size - 1) <= max_block_size);
   min_term.first = false;
 }
-
-field_writer::~field_writer() { }
 
 void field_writer::prepare( const iresearch::flush_state& state ) {
   // reset writer state
@@ -1496,18 +1509,26 @@ void field_writer::write(
     if (meta->docs_count) {
       sum_dfreq += meta->docs_count;
 
-      const bytes_ref &term = terms.value();
+      const bytes_ref& term = terms.value();
       push(term);
 
       /* push term to the top of the stack */
-      stack.emplace_back(term, std::move(attrs));
+      stack.emplace_back(term, std::move(attrs), volatile_state_);
 
       if (!min_term.first) {
         min_term.first = true;
-        min_term.second = term;
+        if (volatile_state_) {
+          min_term.second.assign<true>(term);
+        } else {
+          min_term.second.assign<false>(term);
+        }
       }
 
-      max_term.assign(term.c_str(), term.size());
+      if (volatile_state_) {
+        max_term.assign<true>(term);
+      } else {
+        max_term.assign<false>(term);
+      }
 
       /* increase processed term count */
       ++term_count;
@@ -1589,8 +1610,8 @@ void field_writer::end_field(
   index_out->write_vlong(term_count);
   index_out->write_vlong(doc_count);
   index_out->write_vlong(total_doc_freq);
-  write_string(*index_out, min_term.second);
-  write_string(*index_out, max_term);
+  write_string<irs::bytes_ref>(*index_out, min_term.second);
+  write_string<irs::bytes_ref>(*index_out, max_term);
   if (features.check<frequency>()) {
     index_out->write_vlong(total_term_freq);
   }

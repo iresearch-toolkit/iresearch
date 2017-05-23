@@ -54,7 +54,7 @@ class fst_builder : util::noncopyable {
  public:
   typedef Fst fst_t;
   typedef Char char_t;
-  typedef bytes_ref key_t;
+  typedef basic_string_ref<char_t> key_t;
   typedef typename fst_t::Weight weight_t;
   typedef typename fst_t::Arc arc_t;
   typedef typename fst_t::StateId stateid_t;

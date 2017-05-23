@@ -532,7 +532,7 @@ class format_test_case_base : public index_test_base {
       // should use sorted terms on write
       terms<sorted_terms_t::iterator> terms(sorted_terms.begin(), sorted_terms.end());
 
-      auto writer = codec()->get_field_writer();
+      auto writer = codec()->get_field_writer(false);
       writer->prepare(state);
       writer->write(field.name, field.norm, field.features, terms);
       writer->end();

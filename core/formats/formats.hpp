@@ -391,7 +391,7 @@ class IRESEARCH_API format {
   virtual document_mask_writer::ptr get_document_mask_writer() const = 0;
   virtual document_mask_reader::ptr get_document_mask_reader() const = 0;
 
-  virtual field_writer::ptr get_field_writer(bool volatile_attributes = false) const = 0;
+  virtual field_writer::ptr get_field_writer(bool volatile_state) const = 0;
   virtual field_reader::ptr get_field_reader() const = 0;
 
   virtual column_meta_writer::ptr get_column_meta_writer() const = 0;

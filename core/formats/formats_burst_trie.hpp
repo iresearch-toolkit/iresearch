@@ -64,17 +64,78 @@ class term_iterator;
 
 typedef std::vector<const attribute::type_id*> feature_map_t;
 
+template<typename Char>
+class volatile_ref : util::noncopyable {
+ public:
+  typedef irs::basic_string_ref<Char> ref_t;
+  typedef std::basic_string<Char> str_t;
+
+  volatile_ref() = default;
+
+  volatile_ref(volatile_ref&& rhs) NOEXCEPT
+   : str_(std::move(rhs.str_)),
+     ref_(str_.empty() ? rhs.ref_ : ref_t(str_)) {
+    rhs.ref_ = ref_;
+  }
+
+  volatile_ref& operator=(volatile_ref&& rhs) NOEXCEPT {
+    if (this != &rhs) {
+      str_ = std::move(rhs.str_);
+      ref_ = (str_.empty() ? rhs.ref_ : ref_t(str_));
+      rhs.ref_ = ref_;
+    }
+    return *this;
+  }
+
+  void clear() {
+    str_.clear();
+    ref_ = ref_t::nil;
+  }
+
+  template<bool Volatile>
+  void assign(const ref_t& str) {
+    if (Volatile) {
+      str_.assign(str.c_str(), str.size());
+      ref_ = str_;
+    } else {
+      ref_ = str;
+    }
+  }
+
+  void assign(const ref_t& str, Char label) {
+    str_.resize(str.size() + 1);
+    std::memcpy(&str_[0], str.c_str(), str.size() * sizeof(Char));
+    str_[str.size()] = label;
+    ref_ = str_;
+  }
+
+  operator const ref_t&() const NOEXCEPT {
+    return ref_;
+  }
+
+ private:
+  str_t str_;
+  ref_t ref_;
+}; // volatile_ref
+
+typedef volatile_ref<byte_type> volatile_byte_ref;
+
 ///////////////////////////////////////////////////////////////////////////////
 /// @class block_t
 /// @brief block of terms
 ///////////////////////////////////////////////////////////////////////////////
 struct block_t : private util::noncopyable {
-  struct prefixed_output final : iresearch::byte_weight_output {
-    explicit prefixed_output(bstring&& prefix) NOEXCEPT
-      : prefix(prefix) {
+  struct prefixed_output final : irs::byte_weight_output {
+//    explicit prefixed_output(const irs::bytes_ref& prefix) NOEXCEPT
+//     : prefix(prefix.c_str(), prefix.size()) {
+//    }
+    explicit prefixed_output(volatile_byte_ref&& prefix) NOEXCEPT
+     : prefix(std::move(prefix)) {
     }
 
-    bstring prefix;
+    volatile_byte_ref prefix;
+//    irs::bytes_ref prefix;
+//    irs::bstring prefix; // TODO: find a way to avoid copy
   }; // prefixed_output
 
   static const int16_t INVALID_LABEL = -1;
@@ -123,9 +184,9 @@ enum EntryType : byte_type {
 ///////////////////////////////////////////////////////////////////////////////
 class entry : private util::noncopyable {
  public:
-  entry(const iresearch::bytes_ref& term, iresearch::attributes&& attrs);
-  entry(const iresearch::bytes_ref& prefix, uint64_t block_start,
-        byte_type meta, int16_t label);
+  entry(const irs::bytes_ref& term, irs::attributes&& attrs, bool volatile_term);
+  entry(const irs::bytes_ref& prefix, uint64_t block_start,
+        byte_type meta, int16_t label, bool volatile_term);
   entry(entry&& rhs) NOEXCEPT;
   entry& operator=(entry&& rhs) NOEXCEPT;
   ~entry() NOEXCEPT;
@@ -136,8 +197,8 @@ class entry : private util::noncopyable {
   const block_t& block() const NOEXCEPT { return *mem_.as<block_t>(); }
   block_t& block() NOEXCEPT { return *mem_.as<block_t>(); }
 
-  const irs::bstring& data() const NOEXCEPT { return data_; }
-  irs::bstring& data() NOEXCEPT { return data_; }
+  const volatile_byte_ref& data() const NOEXCEPT { return data_; }
+  volatile_byte_ref& data() NOEXCEPT { return data_; }
 
   EntryType type() const NOEXCEPT { return type_; }
 
@@ -145,7 +206,7 @@ class entry : private util::noncopyable {
   void destroy() NOEXCEPT;
   void move_union(entry&& rhs) NOEXCEPT;
 
-  iresearch::bstring data_; // block prefix or term
+  volatile_byte_ref data_; // block prefix or term
   memory::aligned_type<irs::attributes, block_t> mem_; // storage
   EntryType type_; // entry type
 }; // entry
@@ -211,11 +272,11 @@ class field_writer final : public iresearch::field_writer {
   static const string_ref FORMAT_TERMS_INDEX;
   static const string_ref TERMS_INDEX_EXT;
 
-  field_writer( iresearch::postings_writer::ptr&& pw,
-                uint32_t min_block_size = DEFAULT_MIN_BLOCK_SIZE,
-                uint32_t max_block_size = DEFAULT_MAX_BLOCK_SIZE );
+  field_writer(iresearch::postings_writer::ptr&& pw,
+               bool volatile_state,
+               uint32_t min_block_size = DEFAULT_MIN_BLOCK_SIZE,
+               uint32_t max_block_size = DEFAULT_MAX_BLOCK_SIZE);
 
-  virtual ~field_writer();
   virtual void prepare( const iresearch::flush_state& state ) override;
   virtual void end() override;
   virtual void write( 
@@ -226,6 +287,10 @@ class field_writer final : public iresearch::field_writer {
   ) override;
 
  private:
+  static const size_t DEFAULT_SIZE = 8;
+
+  static void merge_blocks(std::list< detail::entry >& blocks);
+
   void write_segment_features(data_output& out, const flags& features);
   void write_field_features(data_output& out, const flags& features) const;
 
@@ -241,7 +306,6 @@ class field_writer final : public iresearch::field_writer {
 
   void write_term_entry( const detail::entry& e, size_t prefix, bool leaf );
   void write_block_entry( const detail::entry& e, size_t prefix, uint64_t block_start );
-  static void merge_blocks( std::list< detail::entry >& blocks );
   /* prefix - prefix length ( in last_term )
   * begin - index of the first entry in the block
   * end - index of the last entry in the block
@@ -256,8 +320,6 @@ class field_writer final : public iresearch::field_writer {
   void write_blocks( size_t prefix, size_t count );
   void push( const iresearch::bytes_ref& term );
 
-  static const size_t DEFAULT_SIZE = 8;
-
   std::unordered_map<const attribute::type_id*, size_t> feature_map_;
   iresearch::memory_output suffix; /* term suffix column */
   iresearch::memory_output stats; /* term stats column */
@@ -266,14 +328,15 @@ class field_writer final : public iresearch::field_writer {
   iresearch::postings_writer::ptr pw; /* postings writer */
   std::vector< detail::entry > stack;
   std::unique_ptr<detail::fst_buffer> fst_buf_; // pimpl buffer used for building FST for fields
-  bstring last_term; // last pushed term
+  detail::volatile_byte_ref last_term; // last pushed term
   std::vector<size_t> prefixes;
-  std::pair<bool, bstring> min_term; // current min term in a block
-  bstring max_term; // current max term in a block
+  std::pair<bool, detail::volatile_byte_ref> min_term; // current min term in a block
+  detail::volatile_byte_ref max_term; // current max term in a block
   uint64_t term_count;    /* count of terms */
   size_t fields_count{};
   uint32_t min_block_size;
   uint32_t max_block_size;
+  const bool volatile_state_;
 }; // field_writer
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -351,7 +351,7 @@ class format : public iresearch::format {
   virtual document_mask_writer::ptr get_document_mask_writer() const override;
   virtual iresearch::document_mask_reader::ptr get_document_mask_reader() const override;
 
-  virtual iresearch::field_writer::ptr get_field_writer(bool volatile_attributes = false) const override;
+  virtual iresearch::field_writer::ptr get_field_writer(bool volatile_attributes) const override;
   virtual iresearch::field_reader::ptr get_field_reader() const override;
 
   virtual iresearch::column_meta_writer::ptr get_column_meta_writer() const override;

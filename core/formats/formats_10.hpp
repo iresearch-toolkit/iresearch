@@ -380,7 +380,7 @@ class IRESEARCH_PLUGIN format final : public iresearch::format {
   virtual document_mask_writer::ptr get_document_mask_writer() const override;
   virtual document_mask_reader::ptr get_document_mask_reader() const override;
 
-  virtual field_writer::ptr get_field_writer(bool volatile_attributes = false) const override;
+  virtual field_writer::ptr get_field_writer(bool volatile_state) const override;
   virtual field_reader::ptr get_field_reader() const override;
   
   virtual column_meta_writer::ptr get_column_meta_writer() const override;

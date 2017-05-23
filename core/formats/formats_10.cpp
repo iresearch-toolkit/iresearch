@@ -3830,9 +3830,10 @@ document_mask_reader::ptr format::get_document_mask_reader() const {
   return iresearch::document_mask_reader::make<document_mask_reader>();
 }
 
-field_writer::ptr format::get_field_writer(bool volatile_attributes /*=false*/) const {
+field_writer::ptr format::get_field_writer(bool volatile_state) const {
   return iresearch::field_writer::make<burst_trie::field_writer>(
-    iresearch::postings_writer::make<version10::postings_writer>(volatile_attributes)
+    iresearch::postings_writer::make<version10::postings_writer>(volatile_state),
+    volatile_state
   );
 }
 

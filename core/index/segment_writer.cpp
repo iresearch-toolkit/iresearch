@@ -190,7 +190,7 @@ void segment_writer::reset(const segment_meta& meta) {
   seg_name_ = meta.name;
 
   if (!field_writer_) {
-    field_writer_ = meta.codec->get_field_writer();
+    field_writer_ = meta.codec->get_field_writer(false);
   }
 
   if (!col_meta_writer_) {

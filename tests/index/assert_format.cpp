@@ -680,7 +680,7 @@ iresearch::document_mask_writer::ptr format::get_document_mask_writer() const {
   return iresearch::document_mask_writer::make<tests::document_mask_writer>(data_);
 }
 
-iresearch::field_writer::ptr format::get_field_writer(bool volatile_attributes /*=false*/) const {
+iresearch::field_writer::ptr format::get_field_writer(bool volatile_attributes) const {
   return iresearch::field_writer::make<tests::field_writer>(data_);
 }
 
