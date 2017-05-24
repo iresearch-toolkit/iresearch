@@ -377,12 +377,10 @@ irs::doc_iterator::ptr compound_term_iterator::postings(const irs::flags& /*feat
 /// @struct compound_field_iterator
 /// @brief iterator over field_ids over all readers
 //////////////////////////////////////////////////////////////////////////////
-class compound_field_iterator {
+class compound_field_iterator : public irs::basic_term_reader {
  public:
   void add(const irs::sub_reader& reader, const doc_id_map_t& doc_id_map);
-  const irs::field_meta& meta() const;
   bool next();
-  irs::term_iterator& terms();
   size_t size() const { return field_iterators_.size(); }
 
   // visit matched iterators
@@ -396,6 +394,25 @@ class compound_field_iterator {
     }
     return true;
   }
+
+  virtual const irs::field_meta& meta() const NOEXCEPT override {
+    assert(current_meta_);
+    return *current_meta_;
+  }
+
+  virtual const irs::bytes_ref& (min)() const NOEXCEPT override {
+    return *min_;
+  }
+
+  virtual const irs::bytes_ref& (max)() const NOEXCEPT override {
+    return *max_;
+  }
+
+  virtual const irs::attributes& attributes() const NOEXCEPT override {
+    return irs::attributes::empty_instance();
+  }
+
+  virtual irs::term_iterator::ptr iterator() const override;
 
  private:
   struct field_iterator_t {
@@ -423,10 +440,12 @@ class compound_field_iterator {
     const irs::term_reader* reader;
   };
   irs::string_ref current_field_;
-  const irs::field_meta* current_meta_{};
+  const irs::field_meta* current_meta_{ &irs::field_meta::EMPTY };
+  const irs::bytes_ref* min_{ &irs::bytes_ref::nil };
+  const irs::bytes_ref* max_{ &irs::bytes_ref::nil };
   std::vector<term_iterator_t> field_iterator_mask_; // valid iterators for current field
   std::vector<field_iterator_t> field_iterators_; // all segment iterators
-  compound_term_iterator term_itr_;
+  mutable compound_term_iterator term_itr_;
 }; // compound_field_iterator
 
 typedef compound_iterator<irs::column_iterator::ptr> compound_column_iterator_t;
@@ -447,11 +466,6 @@ void compound_field_iterator::add(
   );
 }
 
-const irs::field_meta& compound_field_iterator::meta() const {
-  static const irs::field_meta empty;
-  return current_meta_ ? *current_meta_ : empty;
-}
-
 bool compound_field_iterator::next() {
   // advance all used iterators
   for (auto& entry : field_iterator_mask_) {
@@ -461,7 +475,9 @@ bool compound_field_iterator::next() {
     }
   }
 
-  field_iterator_mask_.clear(); // reset for next pass
+  // reset for next pass
+  field_iterator_mask_.clear();
+  max_ = min_ = &irs::bytes_ref::nil;
 
   for (size_t i = 0, count = field_iterators_.size(); i < count; ++i) {
     auto& field_itr = field_iterators_[i];
@@ -486,8 +502,12 @@ bool compound_field_iterator::next() {
       current_meta_ = &field_meta;
     }
 
-    assert(field_meta.features.is_subset_of(current_meta_->features)); // validated by caller
+    assert(field_meta.features.is_subset_of(meta().features)); // validated by caller
     field_iterator_mask_.emplace_back(term_iterator_t{i, &field_meta, field_terms});
+
+    // update min and max terms
+    min_ = &std::min(*min_, field_terms->min());
+    max_ = &std::max(*max_, field_terms->max());
   }
 
   if (!field_iterator_mask_.empty()) {
@@ -499,14 +519,14 @@ bool compound_field_iterator::next() {
   return false;
 }
 
-irs::term_iterator& compound_field_iterator::terms() {
+irs::term_iterator::ptr compound_field_iterator::iterator() const {
   term_itr_.reset(meta());
 
   for (auto& segment : field_iterator_mask_) {
     term_itr_.add(*(segment.reader), *(field_iterators_[segment.itr_id].doc_id_map));
   }
 
-  return term_itr_;
+  return irs::memory::make_managed<irs::term_iterator, false>(&term_itr_);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -718,7 +738,7 @@ bool write(
     return true;
   };
 
-  while(field_itr.next()) {
+  while (field_itr.next()) {
     cs.reset();
 
     auto& field_meta = field_itr.meta();
@@ -728,11 +748,13 @@ bool write(
     field_itr.visit(merge_norms); 
    
     // write field terms
+    auto terms = field_itr.iterator();
+
     fw->write(
       field_meta.name,
       cs.empty() ? irs::type_limits<irs::type_t::field_id_t>::invalid() : cs.id(),
       field_features,
-      field_itr.terms()
+      *terms
     );
   }
 

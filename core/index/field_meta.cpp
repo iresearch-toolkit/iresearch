@@ -18,6 +18,8 @@ NS_ROOT
 // --SECTION--                                         field_meta implementation
 // -----------------------------------------------------------------------------
 
+/*static*/ const field_meta field_meta::EMPTY;
+
 field_meta::field_meta(field_meta&& rhs) NOEXCEPT
   : features(std::move(rhs.features)),
     name(std::move(rhs.name)),

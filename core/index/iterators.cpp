@@ -62,8 +62,7 @@ struct empty_term_iterator : term_iterator {
 struct empty_term_reader : singleton<empty_term_reader>, term_reader {
   virtual iresearch::seek_term_iterator::ptr iterator() const { return nullptr; }
   virtual const iresearch::field_meta& meta() const { 
-    static iresearch::field_meta EMPTY;
-    return EMPTY;
+    return irs::field_meta::EMPTY;
   }
 
   virtual const iresearch::attributes& attributes() const NOEXCEPT {
@@ -115,8 +114,9 @@ NS_END // LOCAL
 // ----------------------------------------------------------------------------
 
 term_iterator::ptr term_iterator::empty() {
-  //TODO: make singletone
-  return term_iterator::make<empty_term_iterator>();
+  static empty_term_iterator instance;
+
+  return memory::make_managed<irs::term_iterator, false>(&instance);
 }
 
 // ----------------------------------------------------------------------------

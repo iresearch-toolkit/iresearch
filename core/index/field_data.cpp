@@ -40,16 +40,16 @@
 
 NS_ROOT
 
-NS_BEGIN( detail )
+NS_BEGIN(detail)
 
-using iresearch::field_data;
-using iresearch::bytes_ref;
+using irs::field_data;
+using irs::bytes_ref;
 
 /* -------------------------------------------------------------------
  * doc_iterator
  * ------------------------------------------------------------------*/
 
-class payload : public iresearch::payload {
+class payload : public irs::payload {
  public:
   inline byte_type* data() {
     return &(value_[0]);
@@ -64,7 +64,7 @@ class payload : public iresearch::payload {
    bstring value_;
 };
 
-class pos_iterator : public iresearch::position::impl {
+class pos_iterator : public irs::position::impl {
  public:
   pos_iterator(
       const field_data& field, const attribute_ref<frequency>& freq,
@@ -143,14 +143,14 @@ class pos_iterator : public iresearch::position::impl {
 
 const byte_block_pool EMPTY_POOL;
 
-class doc_iterator : public iresearch::doc_iterator {
+class doc_iterator : public irs::doc_iterator {
  public:
   doc_iterator()
     : freq_in_(EMPTY_POOL.begin(), 0) {
     attrs_.reserve<document, frequency, position>();
   }
 
-  virtual const iresearch::attributes& attributes() const NOEXCEPT override {
+  virtual const irs::attributes& attributes() const NOEXCEPT override {
     return attrs_;
   }
 
@@ -183,7 +183,7 @@ class doc_iterator : public iresearch::doc_iterator {
   }
 
   virtual doc_id_t seek(doc_id_t doc) override {
-    return iresearch::seek(*this, doc);
+    return irs::seek(*this, doc);
   }
 
   virtual doc_id_t value() const override {
@@ -240,7 +240,7 @@ class doc_iterator : public iresearch::doc_iterator {
  * term_iterator
  * ------------------------------------------------------------------*/
 
-class term_iterator : public iresearch::term_iterator {
+class term_iterator : public irs::term_iterator {
  public:
   void reset(const field_data& field) {
     // refill postings
@@ -258,7 +258,7 @@ class term_iterator : public iresearch::term_iterator {
     return term_;
   }
 
-  virtual const iresearch::attributes& attributes() const NOEXCEPT {
+  virtual const irs::attributes& attributes() const NOEXCEPT {
     return irs::attributes::empty_instance();
   }
 
@@ -266,7 +266,7 @@ class term_iterator : public iresearch::term_iterator {
     // Does nothing now
   }
 
-  virtual iresearch::doc_iterator::ptr postings(const flags& /*features*/) const override {
+  virtual irs::doc_iterator::ptr postings(const flags& /*features*/) const override {
     REGISTER_TIMER_DETAILED();
     assert(itr_ != postings_.end());
 
@@ -308,6 +308,8 @@ class term_iterator : public iresearch::term_iterator {
   }
 
  private:
+  friend class term_reader;
+
   struct utf8_less_t {
     bool operator()(const bytes_ref& lhs, const bytes_ref& rhs) const {
       return utf8_less(lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size());
@@ -322,14 +324,53 @@ class term_iterator : public iresearch::term_iterator {
 
   map_t postings_;
   map_t::iterator itr_{ postings_.end() };
-  iresearch::bytes_ref term_;
+  irs::bytes_ref term_;
   const field_data* field_;
   mutable detail::doc_iterator doc_itr_;
   irs::doc_iterator::ptr pdoc_itr_{ &doc_itr_, [](irs::doc_iterator*){} }; // TODO: remove, use unuqie_ptr with std::function instead
   bool itr_increment_{ false };
-};
+}; // term_iterator
 
-NS_END
+class term_reader final : public irs::basic_term_reader, util::noncopyable {
+ public:
+  void reset(const field_data& field) {
+    it_.reset(field);
+
+    const auto& postings = it_.postings_;
+
+    if (!postings.empty()) {
+      min_ = &(postings.begin()->first);
+      max_ = &((--postings.end())->first);
+    }
+  }
+
+  virtual const irs::bytes_ref& (min)() const NOEXCEPT override {
+    return *min_;
+  }
+
+  virtual const irs::bytes_ref& (max)() const NOEXCEPT override {
+    return *max_;
+  }
+
+  virtual const irs::field_meta& meta() const NOEXCEPT override {
+    return it_.field_->meta();
+  }
+
+  virtual irs::term_iterator::ptr iterator() const NOEXCEPT override {
+    return memory::make_managed<irs::term_iterator, false>(&it_);
+  }
+
+  virtual const irs::attributes& attributes() const NOEXCEPT override {
+    return irs::attributes::empty_instance();
+  }
+
+ private:
+  mutable detail::term_iterator it_;
+  const irs::bytes_ref* min_{ &irs::bytes_ref::nil };
+  const irs::bytes_ref* max_{ &irs::bytes_ref::nil };
+}; // term_reader
+
+NS_END // detail
 
 /* -------------------------------------------------------------------
  * field_data
@@ -641,16 +682,17 @@ void fields_data::flush(field_writer& fw, flush_state& state) {
 
     fw.prepare(state);
 
-    detail::term_iterator terms;
+    detail::term_reader terms;
 
     for (auto* field : fields) {
       auto& meta = field->meta();
 
-      // reset iterator
+      // reset reader
       terms.reset(*field);
 
       // write inverted data
-      fw.write(meta.name, meta.norm, meta.features, terms);
+      auto it = terms.iterator();
+      fw.write(meta.name, meta.norm, meta.features, *it);
     }
 
     fw.end();

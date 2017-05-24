@@ -23,6 +23,8 @@ NS_ROOT
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API field_meta { 
  public:
+  static const field_meta EMPTY;
+
   field_meta() = default;
   field_meta(const field_meta&) = default;
   field_meta(field_meta&& rhs) NOEXCEPT;

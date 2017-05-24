@@ -44,6 +44,7 @@ postings_writer::~postings_writer() {}
 field_writer::~field_writer() {}
 
 postings_reader::~postings_reader() {}
+basic_term_reader::~basic_term_reader() {}
 term_reader::~term_reader() {}
 field_reader::~field_reader() {}
 

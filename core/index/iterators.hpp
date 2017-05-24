@@ -92,10 +92,10 @@ struct IRESEARCH_API column_iterator : iterator<const column_meta&> {
 // --SECTION--                                                   term iterators 
 // ----------------------------------------------------------------------------
 
-struct IRESEARCH_API term_iterator:
-  iterator<const bytes_ref&>, public util::const_attributes_provider {
-  DECLARE_PTR(term_iterator);
-  DECLARE_FACTORY(term_iterator);
+struct IRESEARCH_API term_iterator
+    : iterator<const bytes_ref&>,
+      util::const_attributes_provider {
+  DECLARE_MANAGED_PTR(term_iterator);
 
   static term_iterator::ptr empty();
 

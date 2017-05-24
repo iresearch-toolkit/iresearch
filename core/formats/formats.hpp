@@ -110,6 +110,21 @@ struct IRESEARCH_API postings_reader {
  * term_reader
  * ------------------------------------------------------------------*/
 
+struct IRESEARCH_API basic_term_reader : util::const_attributes_provider {
+  virtual ~basic_term_reader();
+
+  virtual term_iterator::ptr iterator() const = 0;
+
+  // returns field metadata
+  virtual const field_meta& meta() const = 0;
+
+  // least significant term
+  virtual const bytes_ref& (min)() const = 0;
+
+  // most significant term
+  virtual const bytes_ref& (max)() const = 0;
+}; // basic_term_reader
+
 struct IRESEARCH_API term_reader : util::const_attributes_provider {
   DECLARE_PTR( term_reader );
   DECLARE_FACTORY( term_reader );
