@@ -95,6 +95,10 @@ attributes::attributes(attributes&& rhs) NOEXCEPT {
   *this = std::move(rhs);
 }
 
+attributes::~attributes() {
+  map_.clear();
+}
+
 attributes& attributes::operator=(attributes&& rhs) NOEXCEPT {
   if ( this != &rhs ) {
     map_ = std::move( rhs.map_ );
