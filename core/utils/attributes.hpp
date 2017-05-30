@@ -145,7 +145,7 @@ class IRESEARCH_API flags {
     map_.insert( &type );
     return *this;
   }
-  
+
   template< typename T >
   flags& remove() {
     typedef typename std::enable_if< 
@@ -159,7 +159,7 @@ class IRESEARCH_API flags {
     map_.erase( &type );
     return *this;
   }
-  
+
   bool empty() const { return map_.empty(); }
   size_t size() const { return map_.size(); }
   void clear() NOEXCEPT { map_.clear(); }
@@ -201,7 +201,7 @@ class IRESEARCH_API flags {
     if (lhs_map->size() > rhs_map->size()) {
       std::swap(lhs_map, rhs_map);
     }
-    
+
     flags out;
     out.reserve(lhs_map->size());
 
@@ -263,15 +263,15 @@ class IRESEARCH_API_TEMPLATE attribute_ref: private util::noncopyable {
  private:
   struct type_traits_t {
     void(*destruct)(void* ptr);
-    attribute*(*move)(void* dst, void* src);
+    void*(*move)(void* dst, void* src);
   };
 
   friend attributes; // for in-buffer allocated attribute constructor and move
   size_t buf_offset_;
-  T* ptr_;
+  void* ptr_;
   const type_traits_t* type_traits_;
 
-  attribute_ref(bstring& buf, size_t buf_offset, const type_traits_t& traits) NOEXCEPT;
+  attribute_ref(void* ptr, size_t buf_offset, const type_traits_t& traits) NOEXCEPT;
   void move(bstring& dst) NOEXCEPT;
   static const type_traits_t& traits_instance(); // instance of traits for use with external references
 };
@@ -289,14 +289,13 @@ attribute_ref<T>::attribute_ref(attribute_ref<T>&& other) NOEXCEPT
 
 template <typename T>
 attribute_ref<T>::attribute_ref(
-    bstring& buf,
+    void* ptr,
     size_t buf_offset,
     const type_traits_t& traits
 ) NOEXCEPT
   : buf_offset_(buf_offset),
-    ptr_(reinterpret_cast<attribute*>(&buf[buf_offset])),
+    ptr_(ptr),
     type_traits_(&traits) {
-  assert(buf_offset_ + sizeof(T) <= buf.size()); // value within boundaries of the new buf
 }
 
 template <typename T>
@@ -331,12 +330,12 @@ attribute_ref<T>& attribute_ref<T>::operator=(attribute_ref<T>&& other) NOEXCEPT
 
 template <typename T>
 typename std::add_lvalue_reference<T>::type attribute_ref<T>::operator*() const NOEXCEPT {
-  return *ptr_;
+  return *reinterpret_cast<T*>(ptr_);
 }
 
 template <typename T>
 T* attribute_ref<T>::operator->() const NOEXCEPT {
-  return ptr_;
+  return reinterpret_cast<T*>(ptr_);
 }
 
 template <typename T>
@@ -353,7 +352,10 @@ template <typename T>
 
 template <typename T>
 void attribute_ref<T>::move(bstring& dst) NOEXCEPT {
-  ptr_ = type_traits_->move(&dst[buf_offset_], ptr_);
+  auto* ptr = type_traits_->move(&dst[buf_offset_], ptr_);
+
+  type_traits_->destruct(ptr_);
+  ptr_ = ptr;
 }
 
 template <typename T>
@@ -361,7 +363,7 @@ template <typename T>
   static const struct type_traits_impl: public type_traits_t {
     type_traits_impl() {
       type_traits_t::destruct = [](void*)->void {};
-      type_traits_t::move = [](void*, void* src)->attribute* { return reinterpret_cast<attribute*>(src); };
+      type_traits_t::move = [](void*, void* src)->void* { return reinterpret_cast<attribute*>(src); };
     }
   } type_traits;
 
@@ -378,6 +380,7 @@ class IRESEARCH_API attributes : private util::noncopyable {
 
   attributes() = default;
   attributes(attributes&& rhs) NOEXCEPT;
+  ~attributes();
 
   attributes& operator=(attributes&& rhs) NOEXCEPT;
 
@@ -493,17 +496,17 @@ class IRESEARCH_API attributes : private util::noncopyable {
       }
 
       auto type_start = buf_.size() - template_traits_t<type>::size();
+      auto* ptr = new(&buf_[type_start]) type();
       static const struct type_traits_impl: public attribute_ref<attribute>::type_traits_t {
         type_traits_impl() NOEXCEPT {
           destruct = [](void* ptr)->void { if (ptr) { reinterpret_cast<type*>(ptr)->~type(); } };
-          move = [](void* dst, void* src)->attribute* { return new(dst) type(std::move(*reinterpret_cast<type*>(src))); };
+          move = [](void* dst, void* src)->void* { return new(dst) type(std::move(*reinterpret_cast<type*>(src))); };
         }
       } traits_instance;
 
-      new(&buf_[type_start]) type();
       it = map_.emplace(
         type_id,
-        attribute_ref<attribute>(buf_, type_start, traits_instance)
+        attribute_ref<attribute>(ptr, type_start, traits_instance)
       ).first;
     }
 
@@ -520,12 +523,12 @@ class IRESEARCH_API attributes : private util::noncopyable {
 
     remove(type::type());
   }
-  
+
   template<typename Visitor>
   bool visit(const Visitor& visitor) {
     return visit(*this, visitor);
   }
-  
+
   template<typename Visitor>
   bool visit(const Visitor& visitor) const {
     return visit(*this, visitor);
