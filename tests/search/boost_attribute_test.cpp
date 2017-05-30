@@ -36,7 +36,7 @@ TEST(boost_attribute_test, apply_extract) {
   {
     ir::boost::apply(attrs, value);
     ASSERT_EQ(value, ir::boost::extract(attrs));
-    auto& boost = *attrs.get<ir::boost>();
+    auto& boost = attrs.get<ir::boost>();
     ASSERT_FALSE(!boost);
     ASSERT_EQ(value, boost->value);
   }
@@ -45,12 +45,8 @@ TEST(boost_attribute_test, apply_extract) {
     ir::boost::boost_t new_value = 15;
     ir::boost::apply(attrs, new_value);
     ASSERT_EQ(value*new_value, ir::boost::extract(attrs));
-    auto& boost = *attrs.get<ir::boost>();
+    auto& boost = attrs.get<ir::boost>();
     ASSERT_FALSE(!boost);
     ASSERT_EQ(value*new_value, boost->value);
   }
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

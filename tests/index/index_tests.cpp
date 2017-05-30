@@ -34,6 +34,7 @@ namespace tests {
 
 struct incompatible_attribute : irs::attribute {
   DECLARE_ATTRIBUTE_TYPE();
+  DECLARE_FACTORY_DEFAULT();
 
   incompatible_attribute() NOEXCEPT;
 
@@ -42,6 +43,7 @@ struct incompatible_attribute : irs::attribute {
 
 REGISTER_ATTRIBUTE(incompatible_attribute);
 DEFINE_ATTRIBUTE_TYPE(incompatible_attribute);
+DEFINE_FACTORY_DEFAULT(incompatible_attribute);
 
 incompatible_attribute::incompatible_attribute() NOEXCEPT
   : irs::attribute(incompatible_attribute::type()) {
@@ -117,15 +119,15 @@ token_stream_payload::token_stream_payload(ir::token_stream* impl)
     ir::attributes& attrs = const_cast<ir::attributes&>(impl_->attributes());
     term_ = attrs.get<ir::term_attribute>();
     assert(term_);
-    pay_ = &attrs.add<ir::payload>();
+    pay_ = attrs.add<ir::payload>();
 }
 
 bool token_stream_payload::next() {
   if (impl_->next()) {
-    (*pay_)->value = (*term_)->value();
+    pay_->value = term_->value();
     return true;
   }
-  (*pay_)->value = ir::bytes_ref::nil;
+  pay_->value = ir::bytes_ref::nil;
   return false;
 }
 

@@ -18,7 +18,6 @@
 #include "memory.hpp"
 #include "string.hpp"
 #include "timer_utils.hpp"
-#include "type_utils.hpp"
 #include "bit_utils.hpp"
 #include "type_id.hpp"
 #include "noncopyable.hpp"
@@ -33,6 +32,7 @@ NS_ROOT
 /// @brief base class for all attributes
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API attribute {
+  DECLARE_PTR(attribute);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @class type_id 
@@ -145,7 +145,7 @@ class IRESEARCH_API flags {
     map_.insert( &type );
     return *this;
   }
-
+  
   template< typename T >
   flags& remove() {
     typedef typename std::enable_if< 
@@ -159,7 +159,7 @@ class IRESEARCH_API flags {
     map_.erase( &type );
     return *this;
   }
-
+  
   bool empty() const { return map_.empty(); }
   size_t size() const { return map_.size(); }
   void clear() NOEXCEPT { map_.clear(); }
@@ -201,7 +201,7 @@ class IRESEARCH_API flags {
     if (lhs_map->size() > rhs_map->size()) {
       std::swap(lhs_map, rhs_map);
     }
-
+    
     flags out;
     out.reserve(lhs_map->size());
 
@@ -244,85 +244,58 @@ class IRESEARCH_API flags {
 /// @class attribute_ref
 /// @brief represents a reference to an attribute
 //////////////////////////////////////////////////////////////////////////////
-class attributes; // forward declaration
 template <typename T>
-class IRESEARCH_API_TEMPLATE attribute_ref: private util::noncopyable {
+class IRESEARCH_API_TEMPLATE attribute_ref {
  public:
-  attribute_ref(T* ptr = nullptr) NOEXCEPT; // a reference to an external object
+  attribute_ref(T* value = nullptr) NOEXCEPT;
+  attribute_ref(attribute::ptr&& value) NOEXCEPT;
   attribute_ref(attribute_ref<T>&& other) NOEXCEPT;
   virtual ~attribute_ref();
 
-  attribute_ref<T>& operator=(T* ptr) NOEXCEPT; // a reference to an external object
   attribute_ref<T>& operator=(attribute_ref<T>&& other) NOEXCEPT;
-
+  attribute_ref<T>& operator=(const attribute_ref<T>& other) NOEXCEPT;
   typename std::add_lvalue_reference<T>::type operator*() const NOEXCEPT;
-  T* operator->() const NOEXCEPT; // NOTE!!! ptr invalidated if attribute_ref is moved into a different underlying buffer
+  T* operator->() const NOEXCEPT;
+  operator T*() const NOEXCEPT;
   explicit operator bool() const NOEXCEPT;
   static const attribute_ref<T>& nil() NOEXCEPT;
 
  private:
-  struct type_traits_t {
-    void(*destruct)(void* ptr);
-    void*(*move)(void* dst, void* src);
-  };
-
-  friend attributes; // for in-buffer allocated attribute constructor and move
-  size_t buf_offset_;
-  void* ptr_;
-  const type_traits_t* type_traits_;
-
-  attribute_ref(void* ptr, size_t buf_offset, const type_traits_t& traits) NOEXCEPT;
-  void move(bstring& dst) NOEXCEPT;
-  static const type_traits_t& traits_instance(); // instance of traits for use with external references
+  DECLARE_SPTR(attribute);
+  ptr value_ = nullptr;
 };
 
 template <typename T>
-attribute_ref<T>::attribute_ref(T* ptr /*= nullptr*/) NOEXCEPT
-  : ptr_(ptr), type_traits_(&traits_instance()) {
+attribute_ref<T>::attribute_ref(T* value) NOEXCEPT
+  : value_(value) {
 }
 
 template <typename T>
-attribute_ref<T>::attribute_ref(attribute_ref<T>&& other) NOEXCEPT
-  : type_traits_(&traits_instance()) {
-  *this = std::move(other);
+attribute_ref<T>::attribute_ref(attribute::ptr&& value) NOEXCEPT:
+  value_(std::move(value)) {
 }
 
 template <typename T>
-attribute_ref<T>::attribute_ref(
-    void* ptr,
-    size_t buf_offset,
-    const type_traits_t& traits
-) NOEXCEPT
-  : buf_offset_(buf_offset),
-    ptr_(ptr),
-    type_traits_(&traits) {
+attribute_ref<T>::attribute_ref(attribute_ref<T>&& other) NOEXCEPT:
+  value_(std::move(other.value_)) {
 }
 
 template <typename T>
-attribute_ref<T>::~attribute_ref() {
-  type_traits_->destruct(ptr_);
-}
+attribute_ref<T>::~attribute_ref() {}
 
 template <typename T>
-attribute_ref<T>& attribute_ref<T>::operator=(T* ptr) NOEXCEPT {
-  if (ptr_ != ptr) {
-    type_traits_->destruct(ptr_);
-    ptr_ = ptr;
-    type_traits_ = &traits_instance();
+attribute_ref<T>& attribute_ref<T>::operator=(attribute_ref<T>&& other) NOEXCEPT {
+  if (this != &other) {
+    value_ = std::move(other.value_);
   }
 
   return *this;
 }
 
 template <typename T>
-attribute_ref<T>& attribute_ref<T>::operator=(attribute_ref<T>&& other) NOEXCEPT {
+attribute_ref<T>& attribute_ref<T>::operator=(const attribute_ref<T>& other) NOEXCEPT {
   if (this != &other) {
-    type_traits_->destruct(ptr_);
-    buf_offset_ = std::move(other.buf_offset_);
-    ptr_ = std::move(other.ptr_);
-    type_traits_ = std::move(other.type_traits_);
-    other.ptr_ = nullptr;
-    other.type_traits_ = &traits_instance();
+    value_ = other.value_;
   }
 
   return *this;
@@ -330,17 +303,30 @@ attribute_ref<T>& attribute_ref<T>::operator=(attribute_ref<T>&& other) NOEXCEPT
 
 template <typename T>
 typename std::add_lvalue_reference<T>::type attribute_ref<T>::operator*() const NOEXCEPT {
-  return *reinterpret_cast<T*>(ptr_);
+  #ifdef IRESEARCH_DEBUG
+    return dynamic_cast<T&>(*value_);
+  #else
+    return static_cast<T&>(*value_);
+  #endif
 }
 
 template <typename T>
 T* attribute_ref<T>::operator->() const NOEXCEPT {
-  return reinterpret_cast<T*>(ptr_);
+  #ifdef IRESEARCH_DEBUG
+    return dynamic_cast<T*>(value_.get());
+  #else
+    return static_cast<T*>(value_.get());
+  #endif
+}
+
+template <typename T>
+attribute_ref<T>::operator T*() const NOEXCEPT {
+  return attribute_ref<T>::operator->();
 }
 
 template <typename T>
 attribute_ref<T>::operator bool() const NOEXCEPT {
-  return nullptr != ptr_;
+  return value_ ? true : false;
 }
 
 template <typename T>
@@ -348,26 +334,6 @@ template <typename T>
   static const attribute_ref<T> nil;
 
   return nil;
-}
-
-template <typename T>
-void attribute_ref<T>::move(bstring& dst) NOEXCEPT {
-  auto* ptr = type_traits_->move(&dst[buf_offset_], ptr_);
-
-  type_traits_->destruct(ptr_);
-  ptr_ = ptr;
-}
-
-template <typename T>
-/*static*/ const typename attribute_ref<T>::type_traits_t& attribute_ref<T>::traits_instance() {
-  static const struct type_traits_impl: public type_traits_t {
-    type_traits_impl() {
-      type_traits_t::destruct = [](void*)->void {};
-      type_traits_t::move = [](void*, void* src)->void* { return reinterpret_cast<attribute*>(src); };
-    }
-  } type_traits;
-
-  return type_traits;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -379,26 +345,14 @@ class IRESEARCH_API attributes : private util::noncopyable {
   static const attributes& empty_instance();
 
   attributes() = default;
+  attributes(size_t reserve);
   attributes(attributes&& rhs) NOEXCEPT;
-  ~attributes();
 
   attributes& operator=(attributes&& rhs) NOEXCEPT;
 
-  attribute_ref<attribute>* get(const attribute::type_id& type);
-  attribute_ref<attribute>& get(const attribute::type_id& type, attribute_ref<attribute>& fallback);
-  const attribute_ref<attribute>& get(const attribute::type_id& type, const attribute_ref<attribute>& fallback = attribute_ref<attribute>::nil()) const;
+  const attribute_ref<attribute>& get(const attribute::type_id& type) const;
+  attribute_ref<attribute>& get(const attribute::type_id& type);
   void remove( const attribute::type_id& type );
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief ordered list of types to reserve space for
-  ///        type order should match calls to add<type>(...)
-  //////////////////////////////////////////////////////////////////////////////
-  template<typename... Types>
-  void reserve() {
-    buf_.reserve((std::max)(buf_.capacity(), template_traits_t<Types...>::size_aligned()));
-    //map_.reserve((std::max)(map_.capacity(), template_traits_t<Types...>::count()));
-  }
-
   void clear();
 
   size_t size() const { return map_.size(); }
@@ -428,30 +382,25 @@ class IRESEARCH_API attributes : private util::noncopyable {
     return contains(type::type());
   }
 
-  template<typename T>
-  inline attribute_ref<T>* get() {
-    typedef typename std::enable_if<std::is_base_of<attribute, T>::value, T>::type type;
-    auto* value = get(type::type());
+  template< typename T >
+  inline attribute_ref<T>& get() {
+    typedef typename std::enable_if< 
+      std::is_base_of< attribute, T >::value, T 
+    >::type type;
 
-    // safe to reinterpret because layout/size is identical
-    return reinterpret_cast<attribute_ref<type>*>(value);
-  }
-
-  template<typename T>
-  inline attribute_ref<T>& get(attribute_ref<T>& fallback) {
-    typedef typename std::enable_if<std::is_base_of<attribute, T>::value, T>::type type;
-    auto& value = get(type::type(), reinterpret_cast<attribute_ref<attribute>&>(fallback));
+    auto& value = get(type::type());
 
     // safe to reinterpret because layout/size is identical
     return reinterpret_cast<attribute_ref<type>&>(value);
   }
 
-  template<typename T>
-  inline const attribute_ref<T>& get(
-      const attribute_ref<T>& fallback = attribute_ref<T>::nil()
-  ) const {
-    typedef typename std::enable_if<std::is_base_of<attribute, T>::value, T>::type type;
-    auto& value = get(type::type(), reinterpret_cast<const attribute_ref<attribute>&>(fallback));
+  template< typename T >
+  inline const attribute_ref<T>& get() const {
+    typedef typename std::enable_if< 
+      std::is_base_of< attribute, T >::value, T 
+    >::type type;
+
+    auto& value = get(type::type());
 
     // safe to reinterpret because layout/size is identical
     return reinterpret_cast<const attribute_ref<type>&>(value);
@@ -459,7 +408,6 @@ class IRESEARCH_API attributes : private util::noncopyable {
 
   template< typename T >
   inline attribute_ref<T>& add() {
-    static_assert(ALIGNOF(T) <= ALIGNOF(bstring), "alignof(T) > alignof(string), use smaller allignment for T, e.g. allocate complex types on heap");
     typedef typename std::enable_if< 
       std::is_base_of< attribute, T >::value, T 
     >::type type;
@@ -469,45 +417,7 @@ class IRESEARCH_API attributes : private util::noncopyable {
 
     if (map_.end() == it) {
       REGISTER_TIMER_DETAILED();
-      auto size = template_traits_t<type>::size_aligned(buf_.size());
-
-      if (buf_.capacity() >= size) {
-        // underlying buffer will not get reallocated
-        #ifdef IRESEARCH_DEBUG
-          auto* ptr = buf_.data();
-          buf_.resize(size);
-          assert(buf_.data() == ptr);
-        #else
-          buf_.resize(size);
-        #endif // IRESEARCH_DEBUG
-      } else {
-        // buffer needs to grow (should not happen if size properly reserved via constructor)
-        bstring buf;
-
-        buf.resize(size);
-
-        // move all existing attributes to newly allocated storage
-        // underlying array garanteed not to be changed during swap since already larger than short-string optimization
-        for (auto& entry: map_) {
-          entry.second.move(buf);
-        }
-
-        buf_.swap(buf);
-      }
-
-      auto type_start = buf_.size() - template_traits_t<type>::size();
-      auto* ptr = new(&buf_[type_start]) type();
-      static const struct type_traits_impl: public attribute_ref<attribute>::type_traits_t {
-        type_traits_impl() NOEXCEPT {
-          destruct = [](void* ptr)->void { if (ptr) { reinterpret_cast<type*>(ptr)->~type(); } };
-          move = [](void* dst, void* src)->void* { return new(dst) type(std::move(*reinterpret_cast<type*>(src))); };
-        }
-      } traits_instance;
-
-      it = map_.emplace(
-        type_id,
-        attribute_ref<attribute>(ptr, type_start, traits_instance)
-      ).first;
+      it = map_.emplace(type_id, type::make()).first;
     }
 
     auto& value = it->second;
@@ -523,12 +433,12 @@ class IRESEARCH_API attributes : private util::noncopyable {
 
     remove(type::type());
   }
-
+  
   template<typename Visitor>
   bool visit(const Visitor& visitor) {
     return visit(*this, visitor);
   }
-
+  
   template<typename Visitor>
   bool visit(const Visitor& visitor) const {
     return visit(*this, visitor);
@@ -555,10 +465,24 @@ class IRESEARCH_API attributes : private util::noncopyable {
   }
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  bstring buf_;
   attributes_map map_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 };
+
+template< typename T >
+inline T* copy_attribute( attributes& dst, const attributes& src ) {
+  typedef typename std::enable_if <
+    std::is_base_of< attribute, T >::value, T
+  > ::type type;
+
+  type* dsta = nullptr;
+  const type* srca = src.get<type>();
+  if( srca) {
+    *(dsta = dst.add<type>()) = *srca;
+  }
+
+  return dsta;
+}
 
 NS_END
 

@@ -44,6 +44,7 @@ const flags FEATURES{ frequency::type(), norm::type() };
 
 struct stats final : attribute {
   DECLARE_ATTRIBUTE_TYPE();
+  DECLARE_FACTORY_DEFAULT();
 
   stats() : attribute(stats::type()) { }
 
@@ -59,11 +60,14 @@ struct stats final : attribute {
 }; // stats
 
 DEFINE_ATTRIBUTE_TYPE(iresearch::bm25::stats);
+DEFINE_FACTORY_DEFAULT(stats);
 
 typedef bm25_sort::score_t score_t;
 
 class scorer : public iresearch::sort::scorer_base<bm25::score_t> {
  public:
+  DECLARE_FACTORY(scorer);
+
   scorer(
       float_t k, 
       iresearch::boost::boost_t boost,
@@ -207,8 +211,8 @@ class sort final : iresearch::sort::prepared_base<bm25::score_t> {
       return bm25::scorer::make<bm25::norm_scorer>(      
         k_, 
         boost::extract(query_attrs),
-        &*(query_attrs.get<bm25::stats>()),
-        &*(doc_attrs.get<frequency>()),
+        query_attrs.get<bm25::stats>(),
+        doc_attrs.get<frequency>(),
         &*norm
       );
     }
@@ -216,8 +220,8 @@ class sort final : iresearch::sort::prepared_base<bm25::score_t> {
     return bm25::scorer::make<bm25::scorer>(      
       k_, 
       boost::extract(query_attrs),
-      &*(query_attrs.get<bm25::stats>()),
-      &*(doc_attrs.get<frequency>())
+      query_attrs.get<bm25::stats>(),
+      doc_attrs.get<frequency>()
     );
   }
 

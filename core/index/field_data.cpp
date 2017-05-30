@@ -51,6 +51,8 @@ using irs::bytes_ref;
 
 class payload : public irs::payload {
  public:
+  DECLARE_FACTORY_DEFAULT();
+
   inline byte_type* data() {
     return &(value_[0]);
   }
@@ -63,13 +65,15 @@ class payload : public irs::payload {
  private:
    bstring value_;
 };
+DEFINE_FACTORY_DEFAULT(payload);
 
 class pos_iterator : public irs::position::impl {
  public:
   pos_iterator(
-      const field_data& field, const attribute_ref<frequency>& freq,
+      const field_data& field, const frequency& freq,
       const byte_block_pool::sliced_reader& prox)
-    : prox_in_(prox),
+    : iresearch::position::impl(2), // offset + payload
+      prox_in_(prox),
       freq_(freq),
       pos_{},
       pay_{},
@@ -78,15 +82,11 @@ class pos_iterator : public irs::position::impl {
       val_{} {
     auto& attrs = this->attributes();
     auto& features = field_.meta().features;
-
-    attrs.reserve<offset, payload>();
-
     if (features.check< offset >()) {
-      offs_ = &attrs.add<offset>();
+      offs_ = attrs.add< offset >();
     }
-
     if (features.check< payload >()) {
-      pay_ = &attrs.add<payload>();
+      pay_ = attrs.add< payload >();
     }
   }
 
@@ -101,38 +101,34 @@ class pos_iterator : public irs::position::impl {
   }
 
   virtual bool next() {
-    if (pos_ == freq_->value) {
+    if ( pos_ == freq_.value ) {
       val_ = position::INVALID;
       return false;
     }
 
     uint32_t pos;
-
     if ( shift_unpack_32( bytes_io< uint32_t >::vread( prox_in_ ), pos ) ) {
       assert(pay_);
       const size_t size = bytes_io<size_t>::vread( prox_in_ );
-      (*pay_)->resize(size);
-      prox_in_.read((*pay_)->data(), size);
+      pay_->resize( size );
+      prox_in_.read( pay_->data(), size );
     }
-
     val_ += pos;
 
     if ( offs_ ) {
-      (*offs_)->start += bytes_io<uint32_t>::vread(prox_in_);
-      (*offs_)->end = (*offs_)->start + bytes_io<uint32_t>::vread(prox_in_);
+      offs_->start += bytes_io< uint32_t >::vread( prox_in_ );
+      offs_->end = offs_->start + bytes_io< uint32_t >::vread( prox_in_ );
     }
-
     ++pos_;
-
     return true;
   }
 
  private:
   byte_block_pool::sliced_reader prox_in_;
-  const attribute_ref<frequency>& freq_; // number of terms position in a document
+  const frequency& freq_; /* number of terms position in a document */
   uint64_t pos_; /* current position */
-  attribute_ref<payload>* pay_;
-  attribute_ref<offset>* offs_;
+  payload* pay_;
+  offset* offs_;
   const field_data& field_;
   uint32_t val_;
 };
@@ -146,8 +142,8 @@ const byte_block_pool EMPTY_POOL;
 class doc_iterator : public irs::doc_iterator {
  public:
   doc_iterator()
-    : freq_in_(EMPTY_POOL.begin(), 0) {
-    attrs_.reserve<document, frequency, position>();
+    : attrs_(3), // document + frequency + position
+      freq_in_(EMPTY_POOL.begin(), 0) {
   }
 
   virtual const irs::attributes& attributes() const NOEXCEPT override {
@@ -166,13 +162,13 @@ class doc_iterator : public irs::doc_iterator {
 
     attrs_.clear();
 
-    doc_ = &attrs_.add<document>();
-    (*doc_)->value = 0;
+    doc_ = attrs_.add<document>();
+    doc_->value = 0;
 
     const auto& features = field_->meta().features;
     if (features.check<frequency>()) {
-      freq_ = &attrs_.add<frequency>();
-      (*freq_)->value = 0;
+      freq_ = attrs_.add<frequency>();
+      freq_->value = 0;
 
       if (features.check<position>()) {
         auto& pos = attrs_.add<position>();
@@ -180,6 +176,7 @@ class doc_iterator : public irs::doc_iterator {
         pos->prepare(pos_ = pos_it.release());
       }
     }
+
   }
 
   virtual doc_id_t seek(doc_id_t doc) override {
@@ -187,7 +184,7 @@ class doc_iterator : public irs::doc_iterator {
   }
 
   virtual doc_id_t value() const override {
-    return (*doc_)->value;
+    return doc_->value;
   }
 
   virtual bool next() override {
@@ -196,10 +193,10 @@ class doc_iterator : public irs::doc_iterator {
         return false;
       }
 
-      (*doc_)->value = posting_->doc;
+      doc_->value = posting_->doc;
 
       if (field_->meta().features.check<frequency>()) {
-        (*freq_)->value = posting_->freq; 
+        freq_->value = posting_->freq; 
       }
 
       const_cast<posting*>(posting_)->doc_code = type_limits<type_t::doc_id_t>::invalid();
@@ -208,17 +205,17 @@ class doc_iterator : public irs::doc_iterator {
         doc_id_t delta;
 
         if (shift_unpack_64( bytes_io<uint64_t>::vread(freq_in_), delta)) {
-          (*freq_)->value = 1U;
+          freq_->value = 1U;
         } else {
-          (*freq_)->value = bytes_io<uint32_t>::vread(freq_in_);
+          freq_->value = bytes_io< uint32_t >::vread( freq_in_ );
         }
 
-        (*doc_)->value += delta;
+        doc_->value += delta;
       } else {
-        (*doc_)->value += bytes_io<uint64_t>::vread(freq_in_);
+        doc_->value += bytes_io<uint64_t>::vread(freq_in_);
       }
 
-      assert((*doc_)->value != posting_->doc);
+      assert(doc_->value != posting_->doc);
     }
 
     if (pos_) pos_->clear();
@@ -229,8 +226,8 @@ class doc_iterator : public irs::doc_iterator {
  private:
   irs::attributes attrs_;
   byte_block_pool::sliced_reader freq_in_;
-  attribute_ref<document>* doc_;
-  attribute_ref<frequency>* freq_;
+  document* doc_;
+  frequency* freq_;
   position::impl* pos_;
   const posting* posting_;
   const field_data* field_;
@@ -568,12 +565,10 @@ bool field_data::invert(
   auto& inc = attrs.get<increment>();
   const offset* offs = nullptr;
   const payload* pay = nullptr;
-
   if (meta_.features.check<offset>()) {
-    offs = &*(attrs.get<offset>()); // ptr will not change in a const object
-
+    offs = attrs.get<offset>();
     if (offs) {
-      pay = &*(attrs.get<payload>()); // ptr will not change in a const object
+      pay = attrs.get<payload>();
     }
   } 
 
@@ -581,12 +576,10 @@ bool field_data::invert(
 
   while (stream.next()) {
     pos_ += inc->value;
-
     if (pos_ < last_pos_) {
       IR_FRMT_ERROR("invalid position %u < %u", pos_, last_pos_);
       return false;
     }
-
     last_pos_ = pos_;
 
     if (0 == inc->value) {

@@ -21,6 +21,7 @@ NS_ROOT
 // ----------------------------------------------------------------------------
 
 DEFINE_ATTRIBUTE_TYPE(iresearch::boost);
+DEFINE_FACTORY_DEFAULT(boost);
 
 boost::boost()
   : basic_attribute<boost::boost_t>(boost::type(), boost_t(boost::no_boost())) {

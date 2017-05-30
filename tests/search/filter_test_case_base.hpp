@@ -116,6 +116,7 @@ struct frequency_sort: public iresearch::sort {
       size_t value;
       count(): iresearch::basic_attribute<size_t>(count::type()), value(0) {}
       DECLARE_ATTRIBUTE_TYPE();
+      DECLARE_FACTORY_DEFAULT();
     };
 
     class collector: public iresearch::sort::collector {
@@ -127,8 +128,8 @@ struct frequency_sort: public iresearch::sort {
       }
 
       virtual void term(const iresearch::attributes& term_attrs) override {
-        meta_attr = &term_attrs.get<iresearch::term_meta>();
-        docs_count += (*meta_attr)->docs_count;
+        meta_attr = term_attrs.get<iresearch::term_meta>();
+        docs_count += meta_attr->docs_count;
       }
 
       virtual void finish(
@@ -140,7 +141,7 @@ struct frequency_sort: public iresearch::sort {
 
      private:
       size_t docs_count{};
-      const irs::attribute_ref<irs::term_meta>* meta_attr;
+      iresearch::attribute_ref<iresearch::term_meta> meta_attr;
     };
 
     class scorer: public iresearch::sort::scorer_base<score_t> {

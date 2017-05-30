@@ -32,7 +32,7 @@ class IRESEARCH_API score_doc_iterator_base: public score_doc_iterator {
   score_doc_iterator_base(const order::prepared& ord);
 
   iresearch::attributes attrs_;
-  attribute_ref<irs::score>* scr_; // attr_ref because attrs_ modified
+  iresearch::score* scr_;
   const order::prepared* ord_;
 }; // score_doc_iterator_base
 
@@ -51,7 +51,7 @@ class basic_score_iterator final : public score_doc_iterator_base {
      cost::cost_t estimation) NOEXCEPT;
 
   virtual void score() override {
-    scorers_.score(*ord_, (*scr_)->leak());
+    scorers_.score(*ord_, scr_->leak());
   }
 
   virtual doc_id_t value() const override {

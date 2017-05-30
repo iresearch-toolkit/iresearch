@@ -16,7 +16,6 @@ NS_LOCAL
 
 // placeholder for empty score
 irs::score EMPTY_SCORE;
-irs::attribute_ref<irs::score> EMPTY_SCORE_REF(&EMPTY_SCORE);
 
 NS_END
 
@@ -25,7 +24,7 @@ NS_ROOT
 score_doc_iterator_base::score_doc_iterator_base(const order::prepared& ord)
   : ord_(&ord) {
   auto* score = iresearch::score::apply(attrs_, ord);
-  scr_ = score ? score : &EMPTY_SCORE_REF;
+  scr_ = score ? score : &EMPTY_SCORE;
 }
 
 #if defined(_MSC_VER)

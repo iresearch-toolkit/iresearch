@@ -42,7 +42,7 @@ class IRESEARCH_API cost : public attribute {
   }
 
   DECLARE_ATTRIBUTE_TYPE();
-
+  DECLARE_FACTORY_DEFAULT();
   cost();
 
   //////////////////////////////////////////////////////////////////////////////

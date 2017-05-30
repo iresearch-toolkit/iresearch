@@ -15,6 +15,7 @@
 NS_ROOT
 
 DEFINE_ATTRIBUTE_TYPE(iresearch::cost);
+DEFINE_FACTORY_DEFAULT(cost);
 
 cost::cost()
   : attribute(cost::type()),

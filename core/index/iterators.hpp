@@ -113,19 +113,14 @@ enum class SeekResult {
 struct IRESEARCH_API seek_term_iterator : term_iterator {
   DECLARE_PTR(seek_term_iterator);
   DECLARE_FACTORY(seek_term_iterator);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief an empty struct tag type, parent for all seek_term_iterator cookies
-  //////////////////////////////////////////////////////////////////////////////
-  struct seek_cookie {
-    virtual ~seek_cookie() {}
-  };
-
-  typedef std::unique_ptr<seek_cookie> cookie_ptr;
+  typedef std::unique_ptr<attribute> cookie_ptr;
 
   virtual SeekResult seek_ge(const bytes_ref& value) = 0;
   virtual bool seek(const bytes_ref& value) = 0;
-  virtual bool seek(const bytes_ref& term, const seek_cookie& cookie) = 0;
+
+  virtual bool seek(
+    const bytes_ref& term,
+    const iresearch::attribute& cookie) = 0;
   virtual cookie_ptr cookie() const = 0;
 };
 

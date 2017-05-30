@@ -59,16 +59,10 @@ template<typename... Types>
 struct aligned_type {
   template<typename T>
   T* as() NOEXCEPT {
-    #if defined(_MSC_VER) && (_MSC_VER < 1900)
-      const bool result = irs::is_convertible<T, Types...>();
-      assert(result);
-    #else
-      static_assert(
-        irs::is_convertible<T, Types...>(),
-        "T must be convertible to the specified Types"
-      );
-    #endif
-
+    static_assert(
+      irs::is_convertible<T, Types...>(),
+      "T must be convertible to the specified Types"
+    );
     return reinterpret_cast<T*>(&storage);
   }
 
@@ -79,31 +73,19 @@ struct aligned_type {
 
   template<typename T, typename... Args>
   void construct(Args&&... args) {
-    #if defined(_MSC_VER) && (_MSC_VER < 1900)
-      const bool result = irs::in_list<T, Types...>();
-      assert(result);
-    #else
-      static_assert(
-        irs::in_list<T, Types...>(),
-        "T must be in the specified list of Types"
-      );
-    #endif
-
+    static_assert(
+      irs::in_list<T, Types...>(),
+      "T must be in the specified list of Types"
+    );
     new (as<T>()) T(std::forward<Args>(args)...);
   }
 
   template<typename T>
   void destroy() NOEXCEPT {
-    #if defined(_MSC_VER) && (_MSC_VER < 1900)
-      const bool result = irs::is_convertible<T, Types...>();
-      assert(result);
-    #else
-      static_assert(
-        irs::is_convertible<T, Types...>(),
-        "T must be convertible to the specified Types"
-      );
-    #endif
-
+    static_assert(
+      irs::is_convertible<T, Types...>(),
+      "T must be convertible to the specified Types"
+    );
     as<T>()->~T();
   }
 

@@ -25,7 +25,7 @@ NS_ROOT
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API fd_pool_size: public attribute {
   DECLARE_ATTRIBUTE_TYPE();
-
+  DECLARE_FACTORY_DEFAULT();
   size_t size;
 
   fd_pool_size();
@@ -37,16 +37,14 @@ struct IRESEARCH_API fd_pool_size: public attribute {
 /// @brief represents a ref_counter for index related files
 //////////////////////////////////////////////////////////////////////////////
 
-class IRESEARCH_API index_file_refs: public attribute, private util::noncopyable {  // noncopyable because ref_counter is noncopyable
+class IRESEARCH_API index_file_refs: public attribute {
  public:
   typedef attribute_ref<index_file_refs> attribute_t;
   typedef ref_counter<std::string> counter_t;
   typedef counter_t::ref_t ref_t;
   DECLARE_ATTRIBUTE_TYPE();
-
+  DECLARE_FACTORY_DEFAULT();
   index_file_refs();
-  index_file_refs(index_file_refs&& other) NOEXCEPT;
-
   ref_t add(const std::string& key);
   ref_t add(std::string&& key);
   virtual void clear() override;

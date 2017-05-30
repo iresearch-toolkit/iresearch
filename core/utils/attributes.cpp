@@ -87,67 +87,29 @@ flags& flags::operator=( std::initializer_list<const attribute::type_id* > flags
 // -----------------------------------------------------------------------------
  
 const attributes& attributes::empty_instance() {
-  static attributes instance;
+  static attributes instance(0);
   return instance;
 }
 
-attributes::attributes(attributes&& rhs) NOEXCEPT {
-  *this = std::move(rhs);
+attributes::attributes(size_t /*reserve*/) {
 }
 
-attributes::~attributes() {
-  map_.clear();
+attributes::attributes(attributes&& rhs) NOEXCEPT
+  : map_(std::move(rhs.map_)) {
 }
 
 attributes& attributes::operator=(attributes&& rhs) NOEXCEPT {
   if ( this != &rhs ) {
     map_ = std::move( rhs.map_ );
-
-    if (map_.empty()) {
-      // optimization for reuse of the larger buffer
-      if (buf_.capacity() < rhs.buf_.capacity()) {
-        buf_.swap(rhs.buf_);
-      }
-
-      buf_.clear(); // empty buffer since empty map
-    } else {
-      try {
-        buf_.resize(rhs.buf_.size()); // resize only after original map_ cleared
-      } catch (std::bad_alloc&) {
-        buf_.swap(rhs.buf_); // buffer definitely allocated on heap so safe to just swap
-
-        return *this;
-      }
-
-      for (auto& entry: map_) {
-        entry.second.move(buf_);
-      }
-    }
-
-    rhs.buf_.clear(); // invalidate just in case
   }
 
   return *this;
 }
 
-attribute_ref<attribute>* attributes::get(const attribute::type_id& type) {
-  attributes_map::iterator it = map_.find(&type);
-  return map_.end() == it ? nullptr : &(it->second);
-}
-
-attribute_ref<attribute>& attributes::get(
-    const attribute::type_id& type,
-    attribute_ref<attribute>& fallback
-) {
-  attributes_map::iterator it = map_.find(&type);
-  return map_.end() == it ? fallback : it->second;
-}
-
-const attribute_ref<attribute>& attributes::get(
-    const attribute::type_id& type,
-    const attribute_ref<attribute>& fallback /*= attribute_ref<attribute>::nil()*/
-) const {
-  return const_cast<attributes*>(this)->get(type, const_cast<attribute_ref<attribute>&>(fallback));
+attribute_ref<attribute>& attributes::get( const attribute::type_id& type ) {
+  static attribute_ref<attribute> EMPTY; // const because no declared modifier methods
+  attributes_map::iterator it = map_.find( &type );
+  return map_.end() == it ? EMPTY : it->second;
 }
 
 void attributes::remove( const attribute::type_id& type ) {
@@ -156,7 +118,10 @@ void attributes::remove( const attribute::type_id& type ) {
   
 void attributes::clear() {
   map_.clear();
-  buf_.clear(); // clear attribute buffer after clearing attribute map to ensure destructors called
+}
+
+const attribute_ref<attribute>& attributes::get(const attribute::type_id& type) const {
+  return const_cast< attributes* >( this )->get(type);
 }
 
 void attributes::clear_state() {

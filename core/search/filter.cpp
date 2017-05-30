@@ -35,6 +35,7 @@ class empty_query final : public filter::prepared {
 // ----------------------------------------------------------------------------
 
 DEFINE_ATTRIBUTE_TYPE(iresearch::score);
+DEFINE_FACTORY_DEFAULT(score);
 
 score::score() : attribute(score::type()) {}
 
@@ -161,10 +162,10 @@ class all_query : public filter::prepared {
  public:
   class all_iterator : public score_doc_iterator {
    public:
-    all_iterator(uint64_t docs_count)
-      : max_doc_(doc_id_t(type_limits<type_t::doc_id_t>::min() + docs_count - 1)),
-        doc_(type_limits<type_t::doc_id_t>::invalid()) {
-      attrs_.reserve<cost>();
+    all_iterator(uint64_t docs_count):
+      attrs_(1), // cost
+      max_doc_(doc_id_t(type_limits<type_t::doc_id_t>::min() + docs_count - 1)),
+      doc_(type_limits<type_t::doc_id_t>::invalid()) {
       attrs_.add<cost>()->value(max_doc_);
     }
 

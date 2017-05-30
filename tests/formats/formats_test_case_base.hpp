@@ -40,11 +40,11 @@ class format_test_case_base : public index_test_base {
    public:
     position(const ir::flags& features) { 
       if (features.check<ir::offset>()) {
-        offs_ = &attrs_.add<ir::offset>();
+        offs_ = attrs_.add<ir::offset>();
       }
 
       if (features.check<ir::payload>()) {
-        pay_ = &attrs_.add<ir::payload>();
+        pay_ = attrs_.add<ir::payload>();
       }
     }
 
@@ -62,19 +62,19 @@ class format_test_case_base : public index_test_base {
 
       if (pay_) {
         pay_data_ = std::to_string(begin_);
-        (*pay_)->value = ir::ref_cast<ir::byte_type>(ir::string_ref(pay_data_));
+        pay_->value = ir::ref_cast<ir::byte_type>(ir::string_ref(pay_data_));
       }
 
       if (offs_) {
-        (*offs_)->start = begin_;
-        (*offs_)->end = (*offs_)->start + pay_data_.size();
+        offs_->start = begin_;
+        offs_->end = offs_->start + pay_data_.size();
       }
       return true;
     }
 
     void clear() override {
-      if (pay_) (*pay_)->clear();
-      if (offs_) (*offs_)->clear();
+      if (pay_) pay_->clear();
+      if (offs_) offs_->clear();
     }
 
    private:
@@ -82,8 +82,8 @@ class format_test_case_base : public index_test_base {
 
     uint32_t begin_{ ir::position::INVALID };
     uint32_t end_;
-    irs::attribute_ref<irs::offset>* offs_{};
-    irs::attribute_ref<irs::payload>* pay_{};
+    ir::offset* offs_{};
+    ir::payload* pay_{};
     std::string pay_data_;
   };
 

@@ -84,7 +84,7 @@ class basic_doc_iterator: public iresearch::score_doc_iterator {
 
   virtual void score() override {
     if (score_) {
-      scorers_.score(*ord_, (*score_)->leak());
+      scorers_.score(*ord_, score_->leak());
     }
   }
 
@@ -111,7 +111,7 @@ class basic_doc_iterator: public iresearch::score_doc_iterator {
   docids_t::const_iterator last_;
   const iresearch::attributes* stats_;
   const iresearch::order::prepared* ord_;
-  irs::attribute_ref<irs::score>* score_;
+  iresearch::score* score_;
   iresearch::doc_id_t doc_;
 }; // basic_doc_iterator
 
@@ -474,7 +474,7 @@ TEST(boolean_query_boost, and) {
       iresearch::order::prepared::unordered()
     );
 
-    auto& boost = const_cast<const irs::attributes&>(prep->attributes()).get<irs::boost>();
+    auto& boost = prep->attributes().get<iresearch::boost>();
     ASSERT_TRUE(!boost);
   }
 
@@ -490,7 +490,7 @@ TEST(boolean_query_boost, and) {
       iresearch::order::prepared::unordered()
     );
 
-    auto& boost = const_cast<const irs::attributes&>(prep->attributes()).get<iresearch::boost>();
+    auto& boost = prep->attributes().get<iresearch::boost>();
     ASSERT_FALSE(!boost);
     ASSERT_EQ(value, boost->value);
   }
@@ -748,7 +748,7 @@ TEST(boolean_query_boost, or) {
       iresearch::order::prepared::unordered()
     );
 
-    auto& boost = const_cast<const irs::attributes&>(prep->attributes()).get<irs::boost>();
+    auto& boost = prep->attributes().get<iresearch::boost>();
     ASSERT_TRUE(!boost);
   }
 
@@ -764,7 +764,7 @@ TEST(boolean_query_boost, or) {
       iresearch::order::prepared::unordered()
     );
 
-    auto& boost = const_cast<const irs::attributes&>(prep->attributes()).get<iresearch::boost>();
+    auto& boost = prep->attributes().get<iresearch::boost>();
     ASSERT_FALSE(!boost);
     ASSERT_EQ(value, boost->value);
   }
@@ -4200,7 +4200,3 @@ TEST_F( fs_boolean_filter_test_case, mixed ) {
 }
 
 } // tests
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

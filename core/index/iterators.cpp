@@ -20,11 +20,8 @@ NS_ROOT
 NS_LOCAL
 
 iresearch::attributes empty_doc_iterator_attributes() {
-  irs::attributes attrs;
-
-  attrs.reserve<irs::cost>();
+  iresearch::attributes attrs(1); // cost
   attrs.add<cost>()->value(0);
-
   return attrs;
 }
 

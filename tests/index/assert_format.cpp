@@ -356,7 +356,7 @@ class doc_iterator : public iresearch::doc_iterator {
                       const tests::term& data );
 
   iresearch::doc_id_t value() const override {
-    return (*doc_)->value;
+    return doc_->value;
   }
 
   const iresearch::attributes& attributes() const NOEXCEPT override {
@@ -365,13 +365,13 @@ class doc_iterator : public iresearch::doc_iterator {
 
   virtual bool next() override {
     if ( next_ == data_.postings.end() ) {
-      (*doc_)->clear();
+      doc_->clear();
       return false;
     }
 
     prev_ = next_, ++next_;
-    (*doc_)->value = prev_->id();
-    if ( freq_ ) (*freq_)->value = prev_->positions().size();
+    doc_->value = prev_->id();
+    if ( freq_ ) freq_->value = prev_->positions().size();
     if ( pos_ ) pos_->clear();
     return true;
   }
@@ -387,19 +387,19 @@ class doc_iterator : public iresearch::doc_iterator {
 
     prev_ = it;
     next_ = ++it;
-    (*doc_)->value = prev_->id();
+    doc_->value = prev_->id();
     if ( pos_ ) {
       pos_->clear();
     }
-    return (*doc_)->value;
+    return doc_->value;
   }
 
  private:
   friend class pos_iterator;
 
   iresearch::attributes attrs_;
-  irs::attribute_ref<irs::document>* doc_;
-  irs::attribute_ref<irs::frequency>* freq_;
+  iresearch::document* doc_;
+  iresearch::frequency* freq_;
   const iresearch::flags& features_;
   iresearch::position::impl* pos_;
   const tests::term& data_;
@@ -416,18 +416,18 @@ class pos_iterator : public iresearch::position::impl {
     owner_( owner ) {
 
     if (owner_.features_.check<iresearch::offset>()) {
-      offs_ = &attributes().add<iresearch::offset>();
+      offs_ = attributes().add<iresearch::offset>();
     }
     if (owner_.features_.check<iresearch::payload>()) {
-      pay_ = &attributes().add<iresearch::payload>();
+      pay_ = attributes().add<iresearch::payload>();
     }
   }
 
   void clear() override {
     next_ = owner_.prev_->positions().begin();
     value_ = iresearch::type_limits<iresearch::type_t::pos_t>::invalid();
-    if ( offs_ ) (*offs_)->clear();
-    if ( pay_ ) (*pay_)->clear();
+    if ( offs_ ) offs_->clear();
+    if ( pay_ ) pay_->clear();
   }
 
   bool next() override {
@@ -438,12 +438,12 @@ class pos_iterator : public iresearch::position::impl {
     value_ = next_->pos;
 
     if ( offs_ ) {
-      (*offs_)->start = next_->start;
-      (*offs_)->end = next_->end;
+      offs_->start = next_->start;
+      offs_->end = next_->end;
     }
 
     if ( pay_ ) {
-      (*pay_)->value = next_->payload;
+      pay_->value = next_->payload;
     }
 
     ++next_;
@@ -457,8 +457,8 @@ class pos_iterator : public iresearch::position::impl {
  private:
   std::set<position>::const_iterator next_;
   uint32_t value_;
-  irs::attribute_ref<irs::offset>* offs_;
-  irs::attribute_ref<irs::payload>* pay_;
+  iresearch::offset* offs_;
+  iresearch::payload* pay_;
   const doc_iterator& owner_;
 };
 
@@ -469,9 +469,9 @@ doc_iterator::doc_iterator(const iresearch::flags& features, const tests::term& 
     data_( data ) {
   next_ = data_.postings.begin();
 
-  doc_ = &attrs_.add <iresearch::document>();
+  doc_ = attrs_.add <iresearch::document>();
   if ( features.check<iresearch::frequency>() ) {
-    freq_ = &attrs_.add<iresearch::frequency>();
+    freq_ = attrs_.add<iresearch::frequency>();
   }
 
   if ( features.check< iresearch::position >() ) {
@@ -522,13 +522,6 @@ class term_iterator : public iresearch::seek_term_iterator {
     return true;
   }
 
-  virtual bool seek(
-      const irs::bytes_ref& term,
-      const seek_cookie& cookie
-  ) override {
-    return false;
-  }
-
   virtual iresearch::SeekResult seek_ge(const iresearch::bytes_ref& value) override {
     auto it = data_.terms.lower_bound(value);
     if (it == data_.terms.end()) {
@@ -552,6 +545,12 @@ class term_iterator : public iresearch::seek_term_iterator {
 
   virtual doc_iterator::ptr postings(const iresearch::flags& features) const override {
     return doc_iterator::make< detail::doc_iterator >( features, *prev_ );
+  }
+
+  virtual bool seek(
+      const iresearch::bytes_ref& term,
+      const iresearch::attribute& cookie) {
+    return false;
   }
 
   virtual irs::seek_term_iterator::cookie_ptr cookie() const {
@@ -979,7 +978,3 @@ void assert_index(
 }
 
 } // tests
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

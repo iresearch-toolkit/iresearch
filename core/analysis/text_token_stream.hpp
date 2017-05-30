@@ -56,8 +56,8 @@ class text_token_stream: public analyzer {
     bool utf8;
   } locale_;
   const std::unordered_set<std::string>& ignored_words_;
-  attribute_ref<offset>* offs_;
-  attribute_ref<term_attribute>* term_;
+  iresearch::offset* offs_;
+  iresearch::term_attribute* term_;
 };
 
 NS_END // analysis

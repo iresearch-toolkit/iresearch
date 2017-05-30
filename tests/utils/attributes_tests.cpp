@@ -12,30 +12,13 @@
 #include "tests_shared.hpp"
 #include "utils/attributes.hpp"
 
-NS_LOCAL
-
-template<typename T>
-inline T* copy_attribute(irs::attributes& dst, const irs::attributes& src) {
-  typedef typename std::enable_if<std::is_base_of<irs::attribute, T>::value, T>::type type;
-
-  type* dsta = nullptr;
-  const type* srca = &*src.get<type>();
-
-  if(srca) {
-    *(dsta = &*dst.add<type>()) = *srca;
-  }
-
-  return dsta;
-}
-
-NS_END
-
 using namespace iresearch;
 
 namespace tests {
 
 struct attribute : iresearch::attribute {
   DECLARE_ATTRIBUTE_TYPE();
+  DECLARE_FACTORY_DEFAULT();
 
   virtual void clear() { value = 0; }
 
@@ -49,9 +32,11 @@ struct attribute : iresearch::attribute {
 };
 
 DEFINE_ATTRIBUTE_TYPE(tests::attribute);
+DEFINE_FACTORY_DEFAULT(attribute);
 
 struct invalid_attribute : iresearch::attribute {
   DECLARE_ATTRIBUTE_TYPE();
+  DECLARE_FACTORY_DEFAULT();
 
   virtual void clear() { value = 0; }
 
@@ -61,6 +46,7 @@ struct invalid_attribute : iresearch::attribute {
 };
 
 DEFINE_ATTRIBUTE_TYPE(tests::invalid_attribute);
+DEFINE_FACTORY_DEFAULT(invalid_attribute);
 
 } // tests
 
@@ -133,9 +119,9 @@ TEST( attributes_tests, add_get_clear_state_clear) {
 
   /* get attribute */
   {
-    auto& added1 = *attrs.get(added->type());
+    auto& added1 = attrs.get(added->type());
     ASSERT_FALSE(!added1);
-    auto& added2 = *attrs.get<tests::attribute>();
+    auto& added2 = attrs.get<tests::attribute>();
     ASSERT_FALSE(!added2);
     ASSERT_EQ(&*added, &*added2);
     ASSERT_EQ(&*added1, &*added2);
@@ -193,7 +179,3 @@ TEST(attributes_tests, visit) {
     ASSERT_TRUE(expected.empty());
   }
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

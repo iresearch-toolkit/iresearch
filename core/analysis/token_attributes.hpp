@@ -32,6 +32,7 @@ struct IRESEARCH_API offset : attribute {
   static const uint32_t INVALID_OFFSET = integer_traits< uint32_t >::const_max;
 
   DECLARE_ATTRIBUTE_TYPE();   
+  DECLARE_FACTORY_DEFAULT();
 
   offset() NOEXCEPT;
 
@@ -50,6 +51,7 @@ struct IRESEARCH_API offset : attribute {
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API increment : basic_attribute<uint32_t> {
   DECLARE_ATTRIBUTE_TYPE();
+  DECLARE_FACTORY_DEFAULT();
 
   increment() NOEXCEPT;
 
@@ -79,6 +81,7 @@ struct IRESEARCH_API term_attribute : attribute {
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API payload : basic_attribute<bytes_ref> {
   DECLARE_ATTRIBUTE_TYPE();
+  DECLARE_FACTORY_DEFAULT();
 
   payload() NOEXCEPT;
 };
@@ -89,6 +92,7 @@ struct IRESEARCH_API payload : basic_attribute<bytes_ref> {
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API document: basic_attribute<doc_id_t> {
   DECLARE_ATTRIBUTE_TYPE();
+  DECLARE_FACTORY_DEFAULT();
 
   document() NOEXCEPT;
 
@@ -101,6 +105,7 @@ struct IRESEARCH_API document: basic_attribute<doc_id_t> {
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API frequency : basic_attribute<uint64_t> {
   DECLARE_ATTRIBUTE_TYPE();
+  DECLARE_FACTORY_DEFAULT();
 
   frequency() NOEXCEPT;
 }; // frequency
@@ -114,6 +119,7 @@ struct IRESEARCH_API frequency : basic_attribute<uint64_t> {
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API granularity_prefix: attribute {
   DECLARE_ATTRIBUTE_TYPE();
+  DECLARE_FACTORY_DEFAULT();
 
   granularity_prefix() NOEXCEPT;
   virtual void clear() override {
@@ -128,6 +134,7 @@ struct IRESEARCH_API granularity_prefix: attribute {
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API norm : attribute {
   DECLARE_ATTRIBUTE_TYPE();
+  DECLARE_FACTORY_DEFAULT();
 
   FORCE_INLINE static CONSTEXPR float_t DEFAULT() {
     return 1.f;
@@ -156,6 +163,7 @@ struct IRESEARCH_API norm : attribute {
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API term_meta : attribute {
   DECLARE_ATTRIBUTE_TYPE();
+  DECLARE_FACTORY_DEFAULT();
 
   term_meta() NOEXCEPT;
 
@@ -181,14 +189,11 @@ class IRESEARCH_API position : public attribute {
     DECLARE_PTR(impl);
 
     impl() = default;
+    impl(size_t reserve_attrs);
     virtual void clear() = 0;
     using util::attributes_provider::attributes;
     virtual iresearch::attributes& attributes() NOEXCEPT override final {
       return attrs_;
-    }
-    template<typename... Types>
-    void reserve() {
-      attrs_.reserve<Types...>();
     }
 
    protected:
@@ -200,9 +205,9 @@ class IRESEARCH_API position : public attribute {
   
   DECLARE_CREF(position);
   DECLARE_TYPE_ID(attribute::type_id);
+  DECLARE_FACTORY_DEFAULT();
 
   position() NOEXCEPT;
-  position(position&& other) NOEXCEPT;
 
   virtual void clear() override { /* does nothing */ }
 
@@ -229,7 +234,7 @@ class IRESEARCH_API position : public attribute {
   }
 
   const attribute* get( attribute::type_id id ) const { 
-    return &*const_cast<const irs::attributes&>(impl_->attributes()).get(id);
+    return impl_->attributes().get(id); 
   }  
 
   template< typename A > 

@@ -28,7 +28,7 @@ NS_ROOT
 /*static*/ size_t directory_cleaner::clean(
   directory& dir, const removal_acceptor_t& acceptor
 ) {
-  auto& ref_attr = const_cast<const attributes&>(dir.attributes()).get<index_file_refs>();
+  auto& ref_attr = dir.attributes().get<index_file_refs>();
 
   if (!ref_attr) {
     return 0; // nothing to do

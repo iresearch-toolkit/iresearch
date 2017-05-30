@@ -27,11 +27,13 @@ NS_BEGIN(version10)
 //////////////////////////////////////////////////////////////////////////////
 struct documents : basic_attribute<bitset*> {
   DECLARE_ATTRIBUTE_TYPE();
-
+  DECLARE_FACTORY_DEFAULT();
   documents() NOEXCEPT;
 };
 
 struct term_meta : iresearch::term_meta {
+  DECLARE_FACTORY_DEFAULT();
+
   virtual void clear() override {
     iresearch::term_meta::clear();
     doc_start = pos_start = pay_start = 0;
