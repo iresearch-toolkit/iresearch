@@ -30,7 +30,7 @@ inline std::pair<typename Container::iterator, bool> try_emplace(
   Args&&... args
 ) {
   #if (defined(_MSC_VER) && _MSC_VER >= 1900) \
-       || (defined(__GNUC__) && __GNUC__ >= 6)
+       || (defined(__GNUC__) && __GNUC__ >= 6 && defined(__cpp_lib_unordered_map_try_emplace) && defined(__cpp_lib_map_try_emplace))
     return container.try_emplace(key, std::forward<Args>(args)...);
   #else
     const auto it = container.find(key);
@@ -57,7 +57,7 @@ inline std::pair<typename Container::iterator, bool> try_emplace(
   Args&&... args
 ) {
   #if (defined(_MSC_VER) && _MSC_VER >= 1900) \
-       || (defined(__GNUC__) && __GNUC__ >= 6)
+       || (defined(__GNUC__) && __GNUC__ >= 6 && defined(__cpp_lib_unordered_map_try_emplace) && defined(__cpp_lib_map_try_emplace))
     return container.try_emplace(key, std::forward<Args>(args)...);
   #else
     const auto it = container.find(key);
