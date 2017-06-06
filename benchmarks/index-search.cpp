@@ -21,7 +21,6 @@
 #include "utils/async_utils.hpp"
 #include "utils/memory_pool.hpp"
 
-#include <boost/program_options.hpp>
 #include <boost/chrono.hpp>
 #include <boost/thread.hpp>
 #include <unicode/uclean.h>
@@ -29,6 +28,8 @@
 #include <random>
 #include <fstream>
 #include <iostream>
+
+#include <cmdline.h>
 
 // std::regex support only starting from GCC 4.9
 #if !defined(__GNUC__) || (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ > 8))
@@ -45,30 +46,28 @@
   NS_END // std
 #endif
 
-namespace {
+NS_LOCAL
 
-namespace po = boost::program_options;
-
-}
-
-static const std::string INDEX_DIR = "index-dir";
-static const std::string OUTPUT = "out";
-static const std::string INPUT = "in";
-static const std::string MAX = "max-tasks";
-static const std::string THR = "threads";
-static const std::string TOPN = "topN";
-static const std::string RND = "random";
-static const std::string RPT = "repeat";
-static const std::string CSV = "csv";
-static const std::string SCORED_TERMS_LIMIT = "scored-terms-limit";
+const std::string HELP = "help";
+const std::string MODE = "mode";
+const std::string MODE_SEARCH = "search";
+const std::string INDEX_DIR = "index-dir";
+const std::string OUTPUT = "out";
+const std::string INPUT = "in";
+const std::string MAX = "max-tasks";
+const std::string THR = "threads";
+const std::string TOPN = "topN";
+const std::string RND = "random";
+const std::string RPT = "repeat";
+const std::string CSV = "csv";
+const std::string SCORED_TERMS_LIMIT = "scored-terms-limit";
 
 static bool v = false;
 
 typedef std::unique_ptr<std::string> ustringp;
 
-/**
- *
- */
+NS_END
+
 struct Line {
     typedef std::shared_ptr<Line> ptr;
     std::string category;
@@ -1028,142 +1027,100 @@ int search(
   return 0;
 }
 
-/**
- *
- * @param vm
- * @return
- */
-static int search(const po::variables_map& vm) {
-    if (!vm.count(INDEX_DIR) || !vm.count(INPUT)) {
-        return 1;
-    }
+int search(const cmdline::parser& args) {
+  if (!args.exist(INDEX_DIR) || !args.exist(INPUT)) {
+    return 1;
+  }
 
-    auto& path = vm[INDEX_DIR].as<std::string>();
+  const auto& path = args.get<std::string>(INDEX_DIR);
 
-    if (path.empty()) {
-        return 1;
-    }
+  if (path.empty()) {
+    return 1;
+  }
 
-    size_t maxtasks = 1;
-    if (vm.count(MAX)) {
-        maxtasks = vm[MAX].as<size_t>();
-    }
-    std::cout << "Max tasks in category=" << maxtasks << std::endl;
+  const size_t maxtasks = args.get<size_t>(MAX);
+  const size_t repeat = args.get<size_t>(RPT);
+  const bool shuffle = args.exist(RND);
+  const size_t thrs = args.get<size_t>(THR);
+  const size_t topN = args.get<size_t>(TOPN);
+  const bool csv = args.exist(CSV);
+  const size_t scored_terms_limit = args.get<size_t>(SCORED_TERMS_LIMIT);
 
-    size_t repeat = 20;
-    if (vm.count(RPT)) {
-        repeat = vm[RPT].as<size_t>();
-    }
-    std::cout << "Task repeat count=" << repeat << std::endl;
+  std::cout << "Max tasks in category="                      << maxtasks << '\n'
+            << "Task repeat count="                          << repeat   << '\n'
+            << "Do task list shuffle="                       << shuffle  << '\n'
+            << "Search threads="                             << thrs     << '\n'
+            << "Number of top documents to collect="         << topN     << '\n'
+            << "Number of terms to in range/prefix queries=" << topN     << '\n'
+            << "Output CSV="                                 << shuffle  << std::endl;
 
-    bool shuffle = false;
-    if (vm.count(RND)) {
-        shuffle = true;
-    }
-    std::cout << "Do task list shuffle=" << shuffle << std::endl;
+  const auto& file = args.get<std::string>(INPUT);
+  std::fstream in(file, std::fstream::in);
 
-    size_t thrs = 1;
-    if (vm.count(THR)) {
-        thrs = vm[THR].as<size_t>();
-    }
-    std::cout << "Search threads=" << thrs << std::endl;
+  if (!in) {
+    return 1;
+  }
 
-    size_t topN = 10;
-    if (vm.count(TOPN)) {
-        topN = vm[TOPN].as<size_t>();
-    }
-    std::cout << "Number of top documents to collect=" << topN << std::endl;
+  if (args.exist(OUTPUT)) {
+    const auto& file = args.get<std::string>(OUTPUT);
+    std::fstream out(file, std::fstream::out | std::fstream::trunc);
 
-    bool csv = false;
-    if (vm.count(CSV)) {
-        csv = true;
-    }
-    std::cout << "Output CSV=" << shuffle << std::endl;
-
-    size_t scored_terms_limit = 1024;
-    if (vm.count(SCORED_TERMS_LIMIT)) {
-      scored_terms_limit = vm[SCORED_TERMS_LIMIT].as<size_t>();
-    }
-
-    auto& file = vm[INPUT].as<std::string>();
-    std::fstream in(file, std::fstream::in);
-    if (!in) {
+    if (!out) {
       return 1;
     }
 
-    if (vm.count(OUTPUT)) {
-      auto& file = vm[OUTPUT].as<std::string>();
-      std::fstream out(file, std::fstream::out | std::fstream::trunc);
-      if (!out) {
-        return 1;
-      }
+    return search(path, in, out, maxtasks, repeat, thrs, topN, shuffle, csv);
+  }
 
-      return search(path, in, out, maxtasks, repeat, thrs, topN, shuffle, csv);
-    }
-
-    return search(path, in, std::cout, maxtasks, repeat, thrs, topN, shuffle, csv);
+  return search(path, in, std::cout, maxtasks, repeat, thrs, topN, shuffle, csv);
 }
 
-/**
- *
- * @param argc
- * @param argv
- * @return
- */
 int main(int argc, char* argv[]) {
     //    irs::logger::output_le(iresearch::logger::IRL_ERROR, stderr);
 
-    po::variables_map vm;
+  // general description
+  cmdline::parser cmdroot;
+  cmdroot.add(HELP, '?', "Produce help message");
+  cmdroot.add<std::string>(MODE, 'm', "Select mode: " + MODE_SEARCH, true);
 
-    // general description
-    std::string mode;
-    po::options_description desc("\n[IReSearch-benchmarks-search] General options");
-    desc.add_options()
-            ("help,h", "produce help message")
-            ("mode,m", po::value<std::string>(&mode), "Select mode: search");
+  // mode search
+  cmdline::parser cmdsearch;
+  cmdsearch.add<std::string>(INDEX_DIR, 0, "Path to index directory", true);
+  cmdsearch.add<std::string>(INPUT, 0, "Task file", true);
+  cmdsearch.add<std::string>(OUTPUT, 0, "Stats file", false);
+  cmdsearch.add<size_t>(MAX, 0, "Maximum tasks per category", false, size_t(1));
+  cmdsearch.add<size_t>(RPT, 0, "Task repeat count", false, size_t(20));
+  cmdsearch.add<size_t>(THR, 0, "Number of search threads", false, size_t(1));
+  cmdsearch.add<size_t>(TOPN, 0, "Number of top search results", false, size_t(10));
+  cmdsearch.add<size_t>(SCORED_TERMS_LIMIT, 0, "Number of terms to score in range/prefix queries", false, size_t(1024));
+  cmdsearch.add(RND, 0, "Shuffle tasks");
+  cmdsearch.add(CSV, 0, "CSV output");
 
-    // stats mode description
-    po::options_description put_desc("Search mode options");
-    put_desc.add_options()
-            (INDEX_DIR.c_str(), po::value<std::string>(), "Path to index directory")
-            (INPUT.c_str(), po::value<std::string>(), "Task file")
-            (OUTPUT.c_str(), po::value<std::string>(), "Stats file")
-            (MAX.c_str(), po::value<size_t>(), "Maximum tasks per category")
-            (RPT.c_str(), po::value<size_t>(), "Task repeat count")
-            (THR.c_str(), po::value<size_t>(), "Number of search threads")
-            (TOPN.c_str(), po::value<size_t>(), "Number of top search results")
-            (SCORED_TERMS_LIMIT.c_str(), po::value<size_t>(), "Number of document to score in range/prefix queries")
-            (RND.c_str(), "Shuffle tasks")
-            (CSV.c_str(), "CSV output");
+  cmdroot.parse(argc, argv);
 
-    po::command_line_parser parser(argc, argv);
-    parser.options(desc).allow_unregistered();
-    po::parsed_options options = parser.run();
-    po::store(options, vm);
-    po::notify(vm);
-
-    // show help
-    if (vm.count("help")) {
-        desc.add(put_desc);
-        std::cout << desc << std::endl;
-        return 0;
-    }
-
-    irs::timer_utils::init_stats(true);
-    auto output_stats = irs::make_finally([]()->void {
-      irs::timer_utils::visit([](const std::string& key, size_t count, size_t time)->bool {
-        std::cout << key << " calls:" << count << ", time: " << time/1000 << " us, avg call: " << time/1000/(double)count << " us"<< std::endl;
-        return true;
-      });
-    });
-
-    // enter dump mode
-    if ("search" == mode) {
-        desc.add(put_desc);
-        po::store(po::parse_command_line(argc, argv, desc), vm);
-
-        return search(vm);
-    }
-
+  if (!cmdroot.exist(MODE) || cmdroot.exist(HELP)) {
+    std::cout << cmdroot.usage() << "\n"
+              << "Mode " << MODE_SEARCH << ":\n"
+              << cmdsearch.usage() << std::endl;
     return 0;
+  }
+
+  irs::timer_utils::init_stats(true);
+  auto output_stats = irs::make_finally([]()->void {
+    irs::timer_utils::visit([](const std::string& key, size_t count, size_t time)->bool {
+      std::cout << key << " calls:" << count << ", time: " << time/1000 << " us, avg call: " << time/1000/(double)count << " us"<< std::endl;
+      return true;
+    });
+  });
+
+  const auto& mode = cmdroot.get<std::string>(MODE);
+
+  if (MODE_SEARCH == mode) {
+    // enter search mode
+    cmdsearch.parse(argc, argv);
+
+    return search(cmdsearch);
+  }
+
+  return 0;
 }

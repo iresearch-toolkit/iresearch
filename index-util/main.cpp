@@ -14,20 +14,23 @@
 #include "store/fs_directory.hpp"
 #include "analysis/token_attributes.hpp"
 
-#include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
 #include <fstream>
 #include <iostream>
 
-namespace {
+#include <cmdline.h>
 
-namespace po = boost::program_options;
+NS_LOCAL
+
 namespace fs = boost::filesystem;
 
-}
+const std::string HELP = "help";
+const std::string MODE = "mode";
+const std::string MODE_DUMP = "dump";
+const std::string INDEX_DIR = "index-dir";
+const std::string OUTPUT = "out";
 
-static const std::string INDEX_DIR = "index-dir";
-static const std::string OUTPUT = "out";
+NS_END
 
 int dump(const std::string& path, std::ostream& stream) {
   irs::fs_directory dir(path);
@@ -70,19 +73,19 @@ int dump(const std::string& path, std::ostream& stream) {
   return 0;
 }
 
-int dump(const po::variables_map& vm) {
-  if (!vm.count(INDEX_DIR)) {
+int dump(const cmdline::parser& args) {
+  if (!args.exist(INDEX_DIR)) {
     return 1;
   }
 
-  auto& path = vm[INDEX_DIR].as<std::string>();
+  const auto& path = args.get<std::string>(INDEX_DIR);
 
   if (path.empty()) {
     return 1;
   }
 
-  if (vm.count(OUTPUT)) {
-    auto& file = vm[OUTPUT].as<std::string>();
+  if (args.exist(OUTPUT)) {
+    const auto& file = args.get<std::string>(OUTPUT);
     std::fstream out(file, std::fstream::out | std::fstream::trunc);
     if (!out) {
       return 1;
@@ -95,40 +98,32 @@ int dump(const po::variables_map& vm) {
 }
 
 int main(int argc, char* argv[]) {
-  po::variables_map vm;
-  
   // general description
-  std::string mode;
-  po::options_description desc("\n[IReSearch-index-util] General options");
-  desc.add_options()
-    ("help,h", "produce help message")
-    ("mode,m", po::value<std::string>(&mode), "Select mode: dump");
+  cmdline::parser cmdroot;
+  cmdroot.add(HELP, '?', "Produce help message");
+  cmdroot.add<std::string>(MODE, 'm', "Select mode: " + MODE_DUMP, true);
 
-  // stats mode description
-  po::options_description stats_desc("Dump mode options");
-  stats_desc.add_options()
-    (INDEX_DIR.c_str(), po::value<std::string>(), "Path to index directory")
-    (OUTPUT.c_str(), po::value<std::string>(), "Output file");
+  // dump mode description
+  cmdline::parser cmddump;
+  cmddump.add<std::string>(INDEX_DIR, 0, "Path to index directory", true);
+  cmddump.add<std::string>(OUTPUT, 0, "Output file", false);
 
-  po::command_line_parser parser(argc, argv);
-  parser.options(desc).allow_unregistered();
-  po::parsed_options options = parser.run();
-  po::store(options, vm);
-  po::notify(vm);
+  cmdroot.parse(argc, argv);
 
-  // show help
-  if (vm.count("help")) {
-    desc.add(stats_desc);
-    std::cout << desc << std::endl;
+  if (!cmdroot.exist(MODE) || cmdroot.exist(HELP)) {
+    std::cout << cmdroot.usage() << "\n"
+              << "Mode " << MODE_DUMP << ":\n"
+              << cmddump.usage() << std::endl;
     return 0;
   }
 
-  // enter dump mode
-  if ("dump" == mode) {
-    desc.add(stats_desc);
-    po::store(po::parse_command_line(argc, argv, desc), vm);
+  const auto& mode = cmdroot.get<std::string>(MODE);
 
-    return dump(vm);
+  if (MODE_DUMP == mode) {
+    // enter dump mode
+    cmddump.parse(argc, argv);
+
+    return dump(cmddump);
   }
 
   return 0;

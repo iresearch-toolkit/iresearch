@@ -19,14 +19,16 @@
 #include <cstdio>
 
 #include <boost/filesystem.hpp>
-#include <boost/program_options.hpp>
 #include <boost/property_tree/ptree.hpp>
 
 namespace {
   namespace fs = boost::filesystem;
   namespace pt = boost::property_tree;
-  namespace po = boost::program_options;
 }
+
+NS_BEGIN(cmdline)
+class parser;
+NS_END // cmdline
 
 inline void TODO_IMPLEMENT() {
   std::cerr << "\x1b[31mTODO: implement me" << std::endl;
@@ -54,12 +56,12 @@ class test_base : public ::testing::Test {
   const fs::path& test_case_dir() { return test_case_dir_; }
 
   template<typename T>
-  void add_option( const std::string& name, const T& value ) {
-    opt_.put( name, value );
+  void add_option(const std::string& name, const T& value) {
+    opt_.put(name, value);
   }
 
   template<typename T>
-  std::string get_option( const std::string& name ) {
+  std::string get_option(const std::string& name) {
     return opt_.get_value<T>( name );
   }
 
@@ -68,9 +70,9 @@ class test_base : public ::testing::Test {
   virtual void SetUp() override;
 
  private:
-  static void make_directories( );
-  static void parse_command_line( po::variables_map& vm );
-  static void prepare( const po::variables_map& vm );
+  static void make_directories();
+  static void parse_command_line(cmdline::parser& vm);
+  static void prepare(const cmdline::parser& vm );
 
   static int argc_;
   static char** argv_;

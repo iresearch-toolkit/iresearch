@@ -23,6 +23,11 @@ set(RAPIDJSON_INCLUDE_DIR
   ${EXTERNAL_INCLUDE_DIRS}/rapidjson
 )
 
+# set cmdline directories
+set(CMDLINE_INCLUDE_DIR
+  ${EXTERNAL_INCLUDE_DIRS}/cmdline
+)
+
 # set test resource directory
 set(IResearch_test_resource_dir
   ${CMAKE_CURRENT_SOURCE_DIR}/resources
@@ -236,6 +241,7 @@ include_directories(${IResearchTests_TARGET_NAME}-static
   ${GTEST_INCLUDE_DIR}
   ${Boost_INCLUDE_DIRS}
   ${RAPIDJSON_INCLUDE_DIR}
+  ${CMDLINE_INCLUDE_DIR}
 )
 
 ################################################################################

@@ -15,7 +15,6 @@
 #include "store/fs_directory.hpp"
 #include "analysis/token_attributes.hpp"
 
-#include <boost/program_options.hpp>
 #include <boost/thread.hpp>
 #include <boost/chrono.hpp>
 #include <unicode/uclean.h>
@@ -23,48 +22,47 @@
 #include <fstream>
 #include <iostream>
 
-namespace {
-
-namespace po = boost::program_options;
-
-}
-
-static const std::string BATCH_SIZE = "batch-size";
-static const std::string CONSOLIDATE = "consolidate";
-static const std::string INDEX_DIR = "index-dir";
-static const std::string OUTPUT = "out";
-static const std::string INPUT = "in";
-static const std::string MAX = "max-lines";
-static const std::string THR = "threads";
-static const std::string CPR = "commit-period";
-
-typedef std::unique_ptr<std::string> ustringp;
+#include <cmdline.h>
 
 #if defined(_MSC_VER) && (_MSC_VER < 1900)
   #define snprintf _snprintf
 #endif
 
-static const std::string n_id = "id";
-static const std::string n_title = "title";
-static const std::string n_date = "date";
-static const std::string n_timesecnum = "timesecnum";
-static const std::string n_body = "body";
+NS_LOCAL
 
-static const irs::flags text_features{
+const std::string HELP = "help";
+const std::string MODE = "mode";
+const std::string MODE_PUT = "put";
+const std::string BATCH_SIZE = "batch-size";
+const std::string CONSOLIDATE = "consolidate";
+const std::string INDEX_DIR = "index-dir";
+const std::string OUTPUT = "out";
+const std::string INPUT = "in";
+const std::string MAX = "max-lines";
+const std::string THR = "threads";
+const std::string CPR = "commit-period";
+
+typedef std::unique_ptr<std::string> ustringp;
+
+const std::string n_id = "id";
+const std::string n_title = "title";
+const std::string n_date = "date";
+const std::string n_timesecnum = "timesecnum";
+const std::string n_body = "body";
+
+const irs::flags text_features{
   irs::frequency::type(),
   irs::position::type(),
   irs::offset::type(),
   irs::norm::type()
 };
 
-static const irs::flags numeric_features{
+const irs::flags numeric_features{
   irs::granularity_prefix::type()
 };
 
+NS_END
 
-/**
- * Document
- */
 struct Doc {
   static std::atomic<uint64_t> next_id;
 
@@ -468,98 +466,80 @@ int put(
   return 0;
 }
 
-/**
- * 
- * @param vm
- * @return 
- */
-int put(const po::variables_map& vm) {
-    if (!vm.count(INDEX_DIR)) {
-        return 1;
+int put(const cmdline::parser& args) {
+  if (!args.exist(INDEX_DIR)) {
+    return 1;
+  }
+
+  const auto& path = args.get<std::string>(INDEX_DIR);
+
+  if (path.empty()) {
+    return 1;
+  }
+
+  auto batch_size = args.exist(BATCH_SIZE) ? args.get<size_t>(BATCH_SIZE) : size_t(0);
+  auto consolidate = args.exist(CONSOLIDATE) ? args.get<bool>(CONSOLIDATE) : false;
+  auto commit_interval_ms = args.exist(CPR) ? args.get<size_t>(CPR) : size_t(0);
+  auto indexer_threads = args.exist(THR) ? args.get<size_t>(THR) : size_t(0);
+  auto lines_max = args.exist(MAX) ? args.get<size_t>(MAX) : size_t(0);
+
+  if (args.exist(INPUT)) {
+    const auto& file = args.get<std::string>(INPUT);
+    std::fstream in(file, std::fstream::in);
+
+    if (!in) {
+      return 1;
     }
 
-    auto& path = vm[INDEX_DIR].as<std::string>();
+    return put(path, in, lines_max, indexer_threads, commit_interval_ms, batch_size, consolidate);
+  }
 
-    if (path.empty()) {
-        return 1;
-    }
-
-    auto batch_size = vm.count(BATCH_SIZE) ? vm[BATCH_SIZE].as<size_t>() : size_t(0);
-    auto consolidate = vm.count(CONSOLIDATE) ? vm[CONSOLIDATE].as<bool>() : false;
-    auto commit_interval_ms = vm.count(CPR) ? vm[CPR].as<size_t>() : size_t(0);
-    auto indexer_threads = vm.count(THR) ? vm[THR].as<size_t>() : size_t(0);
-    auto lines_max = vm.count(MAX) ? vm[MAX].as<size_t>() : size_t(0);
-
-    if (vm.count(INPUT)) {
-        auto& file = vm[INPUT].as<std::string>();
-        std::fstream in(file, std::fstream::in);
-        if (!in) {
-            return 1;
-        }
-
-        return put(path, in, lines_max, indexer_threads, commit_interval_ms, batch_size, consolidate);
-    }
-
-    return put(path, std::cin, lines_max, indexer_threads, commit_interval_ms, batch_size, consolidate);
+  return put(path, std::cin, lines_max, indexer_threads, commit_interval_ms, batch_size, consolidate);
 }
 
-/**
- * 
- * @param argc
- * @param argv
- * @return 
- */
 int main(int argc, char* argv[]) {
-    irs::logger::output_le(iresearch::logger::IRL_ERROR, stderr);
+  irs::logger::output_le(iresearch::logger::IRL_ERROR, stderr);
 
-    po::variables_map vm;
+  // general description
+  cmdline::parser cmdroot;
+  cmdroot.add(HELP, '?', "Produce help message");
+  cmdroot.add<std::string>(MODE, 'm', "Select mode: " + MODE_PUT, true);
 
-    // general description
-    std::string mode;
-    po::options_description desc("\n[IReSearch-benchmarks-index] General options");
-    desc.add_options()
-            ("help,h", "produce help message")
-            ("mode,m", po::value<std::string>(&mode), "Select mode: put");
+  // mode put
+  cmdline::parser cmdput;
+  cmdput.add(INDEX_DIR, 0, "Path to index directory", true, std::string());
+  cmdput.add(INPUT, 0, "Input file", true, std::string());
+  cmdput.add(BATCH_SIZE, 0, "Lines per batch", false, size_t(0));
+  cmdput.add(CONSOLIDATE, 0, "Consolidate segments", false, false);
+  cmdput.add(MAX, 0, "Maximum lines", false, size_t(0));
+  cmdput.add(THR, 0, "Number of insert threads", false, size_t(0));
+  cmdput.add(CPR, 0, "Commit period in lines", false, size_t(0));
 
-    // stats mode description
-    po::options_description put_desc("Put mode options");
-    put_desc.add_options()
-            (INDEX_DIR.c_str(), po::value<std::string>(), "Path to index directory")
-            (INPUT.c_str(), po::value<std::string>(), "Input file")
-            (BATCH_SIZE.c_str(), po::value<size_t>(), "Lines per batch")
-            (CONSOLIDATE.c_str(), po::value<bool>(), "Consolidate segments")
-            (MAX.c_str(), po::value<size_t>(), "Maximum lines")
-            (THR.c_str(), po::value<size_t>(), "Number of insert threads")
-            (CPR.c_str(), po::value<size_t>(), "Commit period in lines");
+  cmdroot.parse(argc, argv);
 
-    po::command_line_parser parser(argc, argv);
-    parser.options(desc).allow_unregistered();
-    po::parsed_options options = parser.run();
-    po::store(options, vm);
-    po::notify(vm);
-
-    // show help
-    if (vm.count("help")) {
-        desc.add(put_desc);
-        std::cout << desc << std::endl;
-        return 0;
-    }
-
-    irs::timer_utils::init_stats(true);
-    auto output_stats = irs::make_finally([]()->void {
-      irs::timer_utils::visit([](const std::string& key, size_t count, size_t time)->bool {
-        std::cout << key << " calls:" << count << ", time: " << time/1000 << " us, avg call: " << time/1000/(double)count << " us"<< std::endl;
-        return true;
-      });
-    });
-
-    // enter dump mode
-    if ("put" == mode) {
-        desc.add(put_desc);
-        po::store(po::parse_command_line(argc, argv, desc), vm);
-
-        return put(vm);
-    }
-
+  if (!cmdroot.exist(MODE) || cmdroot.exist(HELP)) {
+    std::cout << cmdroot.usage() << "\n"
+              << "Mode " << MODE_PUT << ":\n"
+              << cmdput.usage() << std::endl;
     return 0;
+  }
+
+  irs::timer_utils::init_stats(true);
+  auto output_stats = irs::make_finally([]()->void {
+    irs::timer_utils::visit([](const std::string& key, size_t count, size_t time)->bool {
+      std::cout << key << " calls:" << count << ", time: " << time/1000 << " us, avg call: " << time/1000/(double)count << " us"<< std::endl;
+      return true;
+    });
+  });
+
+  const auto& mode = cmdroot.get<std::string>(MODE);
+
+  if (MODE_PUT == mode) {
+    // enter put mode
+    cmdput.parse(argc, argv);
+
+    return put(cmdput);
+  }
+
+  return 0;
 }

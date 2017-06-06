@@ -4,6 +4,11 @@ set (IResearchUtil_TARGET_NAME
   ""
 )
 
+# set cmdline directories
+set(CMDLINE_INCLUDE_DIR
+  ${EXTERNAL_INCLUDE_DIRS}/cmdline
+)
+
 set(IReSearch_util_sources
   ./main.cpp
 )
@@ -43,4 +48,5 @@ include_directories(${IResearchUtil_TARGET_NAME}
   ${IReSearch_generated_INCLUDE_DIR}
   ${IResearch_INCLUDE_DIR}
   ${Boost_INCLUDE_DIRS}
+  ${CMDLINE_INCLUDE_DIR}
 )

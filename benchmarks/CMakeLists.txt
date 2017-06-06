@@ -4,6 +4,11 @@ set (IResearchBencmarks_TARGET_NAME
   ""
 )
 
+# set cmdline directories
+set(CMDLINE_INCLUDE_DIR
+  ${EXTERNAL_INCLUDE_DIRS}/cmdline
+)
+
 if (MSVC)
   # disable "checked iterators" feature
   add_definitions(-D_SCL_SECURE_NO_WARNINGS) 
@@ -49,6 +54,7 @@ include_directories(${IResearchBencmarks_TARGET_NAME}-index
   ${IResearch_INCLUDE_DIR}
   ${ICU_INCLUDE_DIR}
   ${Boost_INCLUDE_DIRS}
+  ${CMDLINE_INCLUDE_DIR}
 )
 
 ################################################################################
@@ -97,4 +103,5 @@ include_directories(${IResearchBencmarks_TARGET_NAME}-search
   ${IResearch_INCLUDE_DIR}
   ${ICU_INCLUDE_DIR}
   ${Boost_INCLUDE_DIRS}
+  ${CMDLINE_INCLUDE_DIR}
 )
