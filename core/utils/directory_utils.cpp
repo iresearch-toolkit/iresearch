@@ -25,7 +25,7 @@ index_file_refs::ref_t reference(
     const std::string& name,
     bool include_missing /*= false*/) {
   if (include_missing) {
-    return dir.attributes().add<index_file_refs>()->add(name);
+    return dir.attributes().emplace<index_file_refs>()->add(name);
   }
 
   bool exists;
@@ -35,7 +35,7 @@ index_file_refs::ref_t reference(
     return nullptr;
   }
 
-  auto ref = dir.attributes().add<index_file_refs>()->add(name);
+  auto ref = dir.attributes().emplace<index_file_refs>()->add(name);
 
   return dir.exists(exists, name) && exists
     ? ref : index_file_refs::ref_t(nullptr);
@@ -54,7 +54,7 @@ bool reference(
     const std::function<bool(index_file_refs::ref_t&& ref)>& visitor,
     bool include_missing /*= false*/
 ) {
-  auto& attribute = dir.attributes().add<index_file_refs>();
+  auto& attribute = dir.attributes().emplace<index_file_refs>();
 
   for (const std::string* file; file = source();) {
     if (include_missing) {
@@ -99,7 +99,7 @@ bool reference(
     return true;
   }
 
-  auto& attribute = dir.attributes().add<index_file_refs>();
+  auto& attribute = dir.attributes().emplace<index_file_refs>();
 
   return meta.visit_files([include_missing, &attribute, &dir, &visitor](const std::string& file) {
     if (include_missing) {
@@ -136,7 +136,7 @@ bool reference(
     return true;
   }
 
-  auto& attribute = dir.attributes().add<index_file_refs>();
+  auto& attribute = dir.attributes().emplace<index_file_refs>();
 
   for (auto& file: files) {
     if (include_missing) {
@@ -165,7 +165,7 @@ bool reference(
 }
 
 void remove_all_unreferenced(directory& dir) {
-  auto& attribute = dir.attributes().add<index_file_refs>();
+  auto& attribute = dir.attributes().emplace<index_file_refs>();
 
   dir.visit([&attribute] (std::string& name) {
     attribute->add(std::move(name)); // ensure all files in dir are tracked
@@ -227,7 +227,7 @@ directory& tracking_directory::operator*() NOEXCEPT {
   return impl_;
 }
 
-attributes& tracking_directory::attributes() NOEXCEPT {
+attribute_store& tracking_directory::attributes() NOEXCEPT {
   return impl_.attributes();
 }
 
@@ -364,7 +364,7 @@ bool tracking_directory::sync(const std::string& name) NOEXCEPT {
 ref_tracking_directory::ref_tracking_directory(
   directory& impl, bool track_open /*= false*/
 ):
-  attribute_(impl.attributes().add<index_file_refs>()),
+  attribute_(impl.attributes().emplace<index_file_refs>()),
   impl_(impl),
   track_open_(track_open) {
 }
@@ -384,7 +384,7 @@ directory& ref_tracking_directory::operator*() NOEXCEPT {
   return impl_;
 }
 
-attributes& ref_tracking_directory::attributes() NOEXCEPT {
+attribute_store& ref_tracking_directory::attributes() NOEXCEPT {
   return impl_.attributes();
 }
 

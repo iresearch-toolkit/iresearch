@@ -53,7 +53,7 @@ filter::prepared::ptr by_term::prepare(
     const order::prepared& ord,
     boost_t boost) const {
   term_query::states_t states(rdr.size());
-  attributes attrs;
+  attribute_store attrs;
 
   /* iterate over the segments */
   const string_ref field = fld_;

@@ -143,7 +143,7 @@ class collector final : public iresearch::sort::collector {
     docs_count += field.docs_count();
   }
 
-  virtual void term(const attributes& term_attrs) override {
+  virtual void term(const attribute_store& term_attrs) override {
     auto& meta = term_attrs.get<iresearch::term_meta>();
 
     if (meta) {
@@ -153,8 +153,9 @@ class collector final : public iresearch::sort::collector {
 
   virtual void finish(
       const iresearch::index_reader& index_reader, 
-      iresearch::attributes& query_attrs) override {
-    auto& bm25stats = query_attrs.add<stats>();
+      attribute_store& query_attrs
+  ) override {
+    auto& bm25stats = query_attrs.emplace<stats>();
 
     // precomputed idf value
     bm25stats->idf = 1 + static_cast<float_t>(
@@ -169,9 +170,9 @@ class collector final : public iresearch::sort::collector {
       const auto avg_doc_len = static_cast<float_t>(total_term_freq) / docs_count;
       bm25stats->norm_length /= avg_doc_len;
     }
-    
+
     // add norm attribute
-    query_attrs.add<norm>();
+    query_attrs.emplace<norm>();
   }
 
  private:
@@ -203,16 +204,17 @@ class sort final : iresearch::sort::prepared_base<bm25::score_t> {
   virtual scorer::ptr prepare_scorer(
       const sub_reader& segment,
       const term_reader& field,
-      const attributes& query_attrs, 
-      const attributes& doc_attrs) const override {
+      const attribute_store& query_attrs,
+      const attribute_store& doc_attrs
+  ) const override {
     auto& norm = query_attrs.get<iresearch::norm>();
 
     if (norm && norm->reset(segment, field.meta().norm, *doc_attrs.get<document>())) {
       return bm25::scorer::make<bm25::norm_scorer>(      
         k_, 
         boost::extract(query_attrs),
-        query_attrs.get<bm25::stats>(),
-        doc_attrs.get<frequency>(),
+        query_attrs.get<bm25::stats>().get(),
+        doc_attrs.get<frequency>().get(),
         &*norm
       );
     }
@@ -220,8 +222,8 @@ class sort final : iresearch::sort::prepared_base<bm25::score_t> {
     return bm25::scorer::make<bm25::scorer>(      
       k_, 
       boost::extract(query_attrs),
-      query_attrs.get<bm25::stats>(),
-      doc_attrs.get<frequency>()
+      query_attrs.get<bm25::stats>().get(),
+      doc_attrs.get<frequency>().get()
     );
   }
 

@@ -36,16 +36,17 @@ class IRESEARCH_API score : public attribute {
   /// @brief applies score to the specified attributes collection ("src")
   /// @return pointer to the attribute
   //////////////////////////////////////////////////////////////////////////////
-  static iresearch::score* apply(attributes& src, const order::prepared& ord) {
+  static score* apply(attribute_store& src, const order::prepared& ord) {
     if (ord.empty()) {
       return nullptr;
     }
-    auto& attr = src.add<score>();
+
+    auto& attr = src.emplace<score>();
 
     attr->order_ = &ord;
     attr->value_.resize(ord.size());
 
-    return attr;
+    return attr.get();
   }
 
   DECLARE_ATTRIBUTE_TYPE();
@@ -138,7 +139,7 @@ class IRESEARCH_API filter {
   /// @class query
   /// @brief base class for all prepared(compiled) queries
   //////////////////////////////////////////////////////////////////////////////
-  class IRESEARCH_API prepared: public util::attributes_provider {
+  class IRESEARCH_API prepared: public util::attribute_store_provider {
    public:
     DECLARE_SPTR(prepared);
     DECLARE_FACTORY(prepared);
@@ -146,15 +147,15 @@ class IRESEARCH_API filter {
     static prepared::ptr empty();
 
     prepared() = default;
-    explicit prepared(iresearch::attributes&& attrs);
+    explicit prepared(attribute_store&& attrs);
     virtual ~prepared();
 
     score_doc_iterator::ptr execute(const sub_reader& rdr) const {
       return execute(rdr, order::prepared::unordered());
     }
 
-    using util::attributes_provider::attributes;
-    virtual iresearch::attributes& attributes() NOEXCEPT override final {
+    using util::attribute_store_provider::attributes;
+    virtual attribute_store& attributes() NOEXCEPT override final {
       return attrs_;
     }
 
@@ -166,7 +167,7 @@ class IRESEARCH_API filter {
     friend class filter;
 
    private:
-    iresearch::attributes attrs_;
+    attribute_store attrs_;
   }; // prepared
 
   DECLARE_PTR(filter);

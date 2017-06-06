@@ -62,7 +62,7 @@ class basic_disjunction final : public score_doc_iterator_base {
       lhs_(std::move(lhs)), rhs_(std::move(rhs)), 
       doc_(type_limits<type_t::doc_id_t>::invalid()) {
     // estimate disjunction
-    attrs_.add<cost>()->rule([this](){
+    attrs_.emplace<cost>()->rule([this](){
       cost::cost_t est = 0;
       est += traits_t::estimate(lhs_, 0);
       est += traits_t::estimate(rhs_, 0);
@@ -154,7 +154,7 @@ public:
   typedef IteratorWrapper doc_iterator;
   typedef IteratorTraits traits_t;
   typedef std::vector<doc_iterator> doc_iterators_t;
-  
+
   //TODO: remove delegating ctor
   disjunction(
       doc_iterators_t&& itrs, 
@@ -162,7 +162,7 @@ public:
       cost::cost_t est) 
     : disjunction(std::move(itrs), ord) {
     /* estimate disjunction */
-    attrs_.add<cost>()->value(est);
+    attrs_.emplace<cost>()->value(est);
   }
 
   explicit disjunction(
@@ -177,9 +177,9 @@ public:
     // in order to avoid useless make_heap call we expect that all
     // iterators are equal here */
     //assert(irstd::all_equal(itrs_.begin(), itrs_.end()));
-    
+
     // estimate disjunction
-    attrs_.add<cost>()->rule([this](){
+    attrs_.emplace<cost>()->rule([this](){
       return std::accumulate(
         itrs_.begin(), itrs_.end(), cost::cost_t(0),
         [](cost::cost_t lhs, const doc_iterator& rhs) {
@@ -366,7 +366,7 @@ template<
     });
 
     // estimate disjunction
-    attrs_.add<cost>()->rule([this](){
+    attrs_.emplace<cost>()->rule([this](){
       return std::accumulate(
         // estimate only first min_match_count_ subnodes
         itrs_.begin(), itrs_.end(), cost::cost_t(0),
@@ -753,7 +753,7 @@ score_doc_iterator::ptr make_disjunction(
     /* pure conjunction */
     return make_conjunction<conjunction_t>(rdr, ord, begin, end, std::forward<Args>(args)...); 
   }
-  
+
   /* min_match_count <= size */
   min_match_count = std::min(size, min_match_count);
 

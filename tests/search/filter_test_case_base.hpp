@@ -36,8 +36,8 @@ struct boost : public iresearch::sort {
     DECLARE_FACTORY(scorer);
 
     scorer(
-      const iresearch::attribute_ref<iresearch::boost>& boost,
-      const iresearch::attributes& attrs
+        const irs::attribute_store::ref<irs::boost>& boost,
+        const irs::attribute_store& attrs
     ): attrs_(attrs), boost_(boost) {
     }
 
@@ -46,8 +46,8 @@ struct boost : public iresearch::sort {
     }
 
    private:
-    const iresearch::attributes& attrs_;
-    const iresearch::attribute_ref<iresearch::boost>& boost_;
+    const irs::attribute_store& attrs_;
+    const irs::attribute_store::ref<irs::boost>& boost_;
   }; // sort::boost::scorer
 
   class prepared: public iresearch::sort::prepared_base<iresearch::boost::boost_t> {
@@ -70,8 +70,9 @@ struct boost : public iresearch::sort {
     virtual scorer::ptr prepare_scorer(
         const iresearch::sub_reader&,
         const iresearch::term_reader&,
-        const iresearch::attributes& query_attrs, 
-        const iresearch::attributes& doc_attrs) const override {
+        const irs::attribute_store& query_attrs, 
+        const irs::attribute_store& doc_attrs
+    ) const override {
       return boost::scorer::make<boost::scorer>(
         query_attrs.get<iresearch::boost>(), query_attrs
        );
@@ -127,26 +128,27 @@ struct frequency_sort: public iresearch::sort {
         // NOOP
       }
 
-      virtual void term(const iresearch::attributes& term_attrs) override {
+      virtual void term(const irs::attribute_store& term_attrs) override {
         meta_attr = term_attrs.get<iresearch::term_meta>();
         docs_count += meta_attr->docs_count;
       }
 
       virtual void finish(
-        const iresearch::index_reader& idx_reader, iresearch::attributes& query_attrs
+          const iresearch::index_reader& idx_reader,
+          irs::attribute_store& query_attrs
       ) override {
-        query_attrs.add<count>()->value = docs_count;
+        query_attrs.emplace<count>()->value = docs_count;
         docs_count = 0;
       }
 
      private:
       size_t docs_count{};
-      iresearch::attribute_ref<iresearch::term_meta> meta_attr;
+      irs::attribute_store::ref<irs::term_meta> meta_attr;
     };
 
     class scorer: public iresearch::sort::scorer_base<score_t> {
      public:
-      scorer(const size_t* v_docs_count, const iresearch::attribute_ref<iresearch::document>& doc_id_t):
+      scorer(const size_t* v_docs_count, const irs::attribute_store::ref<irs::document>& doc_id_t):
         doc_id_t_attr(doc_id_t), docs_count(v_docs_count) {
       }
 
@@ -156,7 +158,7 @@ struct frequency_sort: public iresearch::sort {
       }
 
      private:
-      const iresearch::attribute_ref<iresearch::document>& doc_id_t_attr;
+      const irs::attribute_store::ref<irs::document>& doc_id_t_attr;
       const size_t* docs_count;
     };
 
@@ -175,8 +177,9 @@ struct frequency_sort: public iresearch::sort {
     virtual scorer::ptr prepare_scorer(
         const iresearch::sub_reader&,
         const iresearch::term_reader&,
-        const iresearch::attributes& query_attrs, 
-        const iresearch::attributes& doc_attrs) const override {
+        const irs::attribute_store& query_attrs,
+        const irs::attribute_store& doc_attrs
+    ) const override {
       auto& doc_id_t = doc_attrs.get<iresearch::document>();
       auto& count = query_attrs.get<prepared::count>();
       const size_t* docs_count = count ? &(count->value) : nullptr;
@@ -376,8 +379,8 @@ struct empty_term_reader : iresearch::singleton<empty_term_reader>, iresearch::t
     return EMPTY;
   }
 
-  virtual const iresearch::attributes& attributes() const NOEXCEPT {
-    return iresearch::attributes::empty_instance();
+  virtual const irs::attribute_store& attributes() const NOEXCEPT {
+    return irs::attribute_store::empty_instance();
   }
 
   // total number of terms

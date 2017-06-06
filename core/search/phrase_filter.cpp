@@ -68,7 +68,7 @@ class phrase_query : public filter::prepared {
  public:
   typedef states_cache<phrase_state> states_t;
   typedef std::pair<
-    iresearch::attributes, // term level statistic 
+    attribute_store, // term level statistic
     position::value_t // expected term position
   > term_stats_t;
   typedef std::vector<term_stats_t> phrase_stats_t;

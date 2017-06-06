@@ -43,8 +43,9 @@ namespace tests {
       virtual scorer::ptr prepare_scorer(
           const iresearch::sub_reader&,
           const iresearch::term_reader&,
-          const iresearch::attributes& query_attrs, 
-          const iresearch::attributes& doc_attrs) const override { 
+          const irs::attribute_store& query_attrs,
+          const irs::attribute_store& doc_attrs
+      ) const override {
         return nullptr; 
       }
       virtual const iresearch::flags& features() const override { 

@@ -67,7 +67,7 @@ struct range_state {
   size_t count{}; // number of terms to process from start term
 
   // scored states/stats by their offset in range_state
-  typedef std::unordered_map<size_t, attributes> scored_states_t;
+  typedef std::unordered_map<size_t, attribute_store> scored_states_t;
   scored_states_t scored_states;
 }; // reader_state
 

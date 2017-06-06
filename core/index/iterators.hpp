@@ -34,7 +34,7 @@ NS_ROOT
 /// "next()" call. After that "value()" should always return NO_MORE_DOCS.
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API doc_iterator:
-  iterator<doc_id_t>, public util::const_attributes_provider {
+  iterator<doc_id_t>, public util::const_attribute_store_provider {
   DECLARE_SPTR(doc_iterator);
   DECLARE_FACTORY(doc_iterator);
 
@@ -94,7 +94,7 @@ struct IRESEARCH_API column_iterator : iterator<const column_meta&> {
 
 struct IRESEARCH_API term_iterator
     : iterator<const bytes_ref&>,
-      util::const_attributes_provider {
+      public util::const_attribute_store_provider {
   DECLARE_MANAGED_PTR(term_iterator);
 
   static term_iterator::ptr empty();

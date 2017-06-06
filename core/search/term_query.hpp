@@ -51,7 +51,7 @@ class term_query : public filter::prepared {
 
   DECLARE_SPTR(term_query);
 
-  explicit term_query(states_t&& states, iresearch::attributes&& attrs);
+  explicit term_query(states_t&& states, attribute_store&& attrs);
 
   virtual score_doc_iterator::ptr execute(
       const sub_reader& rdr,

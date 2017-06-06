@@ -159,12 +159,12 @@ class conjunction : public score_doc_iterator_base {
       [](const doc_iterator& lhs, const doc_iterator& rhs) {
         return traits_t::estimate(lhs) < traits_t::estimate(rhs);
     });
-    
+
     // set front iterator 
     front_ = &itrs_.front();
-    
+
     // estimate iterator
-    attrs_.add<cost>()->value(traits_t::estimate(*front_));
+    attrs_.emplace<cost>()->value(traits_t::estimate(*front_));
   }
 
   iterator begin() const { return itrs_.begin(); }

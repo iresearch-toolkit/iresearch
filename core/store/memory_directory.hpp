@@ -202,7 +202,7 @@ class IRESEARCH_API memory_directory final : public directory {
 
   using directory::attributes;
 
-  virtual iresearch::attributes& attributes() NOEXCEPT override;
+  virtual attribute_store& attributes() NOEXCEPT override;
 
   virtual void close() NOEXCEPT override;
 
@@ -244,7 +244,7 @@ class IRESEARCH_API memory_directory final : public directory {
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   mutable std::mutex flock_;
   std::mutex llock_;
-  iresearch::attributes attributes_;
+  attribute_store attributes_;
   file_map files_;
   lock_map locks_;
   IRESEARCH_API_PRIVATE_VARIABLES_END

@@ -38,18 +38,19 @@ struct IRESEARCH_API boost : basic_attribute<float_t> {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief applies boost to the specified attributes collection ("src")
   //////////////////////////////////////////////////////////////////////////////
-  static void apply(attributes& src, boost_t value) {
+  static void apply(attribute_store& src, boost_t value) {
     if (boost::no_boost() == value) {
       return;
     }
-    src.add<iresearch::boost>()->value *= value;
+
+    src.emplace<irs::boost>()->value *= value;
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @returns a value of the "boost" attribute in the specified "src"
   /// collection, or NO_BOOST value if there is no "boost" attribute in "src"
   //////////////////////////////////////////////////////////////////////////////
-  static boost_t extract(const attributes& src) {
+  static boost_t extract(const attribute_store& src) {
     boost_t value = no_boost();
     auto& attr = src.get<iresearch::boost>();
 
@@ -103,7 +104,7 @@ class IRESEARCH_API sort {
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief compute term level statistics, e.g. from current attribute values
     ////////////////////////////////////////////////////////////////////////////////
-    virtual void term(const attributes& /* term */) {
+    virtual void term(const attribute_store& /*term*/) {
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -112,7 +113,8 @@ class IRESEARCH_API sort {
     ////////////////////////////////////////////////////////////////////////////////
     virtual void finish(
       const iresearch::index_reader& /* index */,
-      iresearch::attributes& /*query_context*/) {
+      attribute_store& /*query_context*/
+    ) {
     }
   }; // collector
 
@@ -176,8 +178,8 @@ class IRESEARCH_API sort {
     virtual scorer::ptr prepare_scorer(
       const sub_reader& segment,
       const term_reader& field,
-      const attributes& query_attrs, 
-      const attributes& doc_attrs
+      const attribute_store& query_attrs,
+      const attribute_store& doc_attrs
     ) const = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -331,9 +333,9 @@ public:
 
       void field(const sub_reader& segment, const term_reader& field) const;
 
-      void term(const attributes& term) const;
+      void term(const attribute_store& term) const;
 
-      void finish(const index_reader& index, attributes& query_context) const;
+      void finish(const index_reader& index, attribute_store& query_context) const;
 
      private:
       IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
@@ -387,8 +389,8 @@ public:
     prepared::scorers prepare_scorers(
       const sub_reader& segment,
       const term_reader& field,
-      const attributes& stats,
-      const attributes& doc
+      const attribute_store& stats,
+      const attribute_store& doc
     ) const;
 
     bool less(const byte_type* lhs, const byte_type* rhs) const;

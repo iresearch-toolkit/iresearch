@@ -58,7 +58,7 @@ position::position(
 
 posting::posting(iresearch::doc_id_t id): id_(id) {}
 
-void posting::add(uint32_t pos, uint32_t offs_start, const iresearch::attributes& attrs) {
+void posting::add(uint32_t pos, uint32_t offs_start, const irs::attribute_store& attrs) {
   auto& offs = attrs.get<iresearch::offset>();
   auto& pay = attrs.get<iresearch::payload>();
 
@@ -158,7 +158,7 @@ void index_segment::add(const ifield& f) {
 
   auto& stream = f.get_tokens();
 
-  const iresearch::attributes& attrs = stream.attributes();
+  auto& attrs = stream.attributes();
   auto& term = attrs.get<iresearch::term_attribute>();
   auto& inc = attrs.get<iresearch::increment>();
   auto& offs = attrs.get<iresearch::offset>();
@@ -359,7 +359,7 @@ class doc_iterator : public iresearch::doc_iterator {
     return doc_->value;
   }
 
-  const iresearch::attributes& attributes() const NOEXCEPT override {
+  const irs::attribute_store& attributes() const NOEXCEPT override {
     return attrs_;
   }
 
@@ -397,7 +397,7 @@ class doc_iterator : public iresearch::doc_iterator {
  private:
   friend class pos_iterator;
 
-  iresearch::attributes attrs_;
+  irs::attribute_store attrs_;
   iresearch::document* doc_;
   iresearch::frequency* freq_;
   const iresearch::flags& features_;
@@ -416,10 +416,11 @@ class pos_iterator : public iresearch::position::impl {
     owner_( owner ) {
 
     if (owner_.features_.check<iresearch::offset>()) {
-      offs_ = attributes().add<iresearch::offset>();
+      offs_ = attributes().emplace<irs::offset>().get();
     }
+
     if (owner_.features_.check<iresearch::payload>()) {
-      pay_ = attributes().add<iresearch::payload>();
+      pay_ = attributes().emplace<irs::payload>().get();
     }
   }
 
@@ -469,13 +470,14 @@ doc_iterator::doc_iterator(const iresearch::flags& features, const tests::term& 
     data_( data ) {
   next_ = data_.postings.begin();
 
-  doc_ = attrs_.add <iresearch::document>();
+  doc_ = attrs_.emplace <irs::document>().get();
+
   if ( features.check<iresearch::frequency>() ) {
-    freq_ = attrs_.add<iresearch::frequency>();
+    freq_ = attrs_.emplace<irs::frequency>().get();
   }
 
   if ( features.check< iresearch::position >() ) {
-    attrs_.add<iresearch::position>()->prepare(pos_ = new detail::pos_iterator(*this));
+    attrs_.emplace<irs::position>()->prepare(pos_ = new detail::pos_iterator(*this));
   }
 }
 
@@ -486,7 +488,7 @@ class term_iterator : public iresearch::seek_term_iterator {
     next_ = data_.terms.begin();
   }
 
-  const iresearch::attributes& attributes() const NOEXCEPT override {
+  const irs::attribute_store& attributes() const NOEXCEPT override {
     return attrs_;
   }
 
@@ -558,7 +560,7 @@ class term_iterator : public iresearch::seek_term_iterator {
   }
 
  private:
-  iresearch::attributes attrs_;
+  irs::attribute_store attrs_;
   const tests::field& data_;
   std::set< tests::term >::const_iterator prev_;
   std::set< tests::term >::const_iterator next_;
@@ -591,8 +593,8 @@ const iresearch::field_meta& term_reader::meta() const {
   return data_;
 }
 
-const iresearch::attributes& term_reader::attributes() const NOEXCEPT {
-  return iresearch::attributes::empty_instance();
+const irs::attribute_store& term_reader::attributes() const NOEXCEPT {
+  return irs::attribute_store::empty_instance();
 }
 
 NS_END

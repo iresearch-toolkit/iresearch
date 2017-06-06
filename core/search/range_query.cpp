@@ -71,7 +71,7 @@ void limited_sample_scorer::score(order::prepared::stats& stats) {
   for (auto& entry: scored_states_) {
     auto& scored_term_state = entry.second;
     auto terms = scored_term_state.state.reader->iterator();
-   
+
     // find term using cached state
     // use bytes_ref::nil here since we just "jump" to cached state,
     // and we are not interested in term value itself
@@ -82,18 +82,18 @@ void limited_sample_scorer::score(order::prepared::stats& stats) {
     auto& term = terms->attributes();
     auto& segment = scored_term_state.sub_reader;
     auto& field = *scored_term_state.state.reader;
-    
+
     // collect field level statistic 
     stats.field(segment, field);
 
     // collect term level statistics
     stats.term(term);
 
-    attributes scored_term_attributes;
+    attribute_store scored_term_attributes;
 
     // apply/store order stats
     stats.finish(scored_term_state.sub_reader, scored_term_attributes);
-   
+
     scored_term_state.state.scored_states.emplace(
       scored_term_state.state_offset, std::move(scored_term_attributes)
     );
@@ -142,7 +142,7 @@ score_doc_iterator::ptr range_query::execute(
       itrs.emplace_back(score_doc_iterator::make<basic_score_iterator>(
         rdr,
         *state->reader,
-        attributes::empty_instance(),
+        attribute_store::empty_instance(),
         std::move(terms->postings(features)),
         ord,
         state->estimation

@@ -19,9 +19,11 @@
 NS_ROOT
 NS_LOCAL
 
-iresearch::attributes empty_doc_iterator_attributes() {
-  iresearch::attributes attrs(1); // cost
-  attrs.add<cost>()->value(0);
+irs::attribute_store empty_doc_iterator_attributes() {
+  irs::attribute_store attrs(1); // cost
+
+  attrs.emplace<cost>()->value(0);
+
   return attrs;
 }
 
@@ -34,8 +36,8 @@ struct empty_doc_iterator : score_doc_iterator {
   virtual bool next() override { return false; }
   virtual doc_id_t seek(doc_id_t) override { return type_limits<type_t::doc_id_t>::eof(); }
   virtual void score() override { }
-  virtual const iresearch::attributes& attributes() const NOEXCEPT override {
-    static iresearch::attributes empty = empty_doc_iterator_attributes();
+  virtual const irs::attribute_store& attributes() const NOEXCEPT override {
+    static irs::attribute_store empty = empty_doc_iterator_attributes();
     return empty;
   }
 };
@@ -51,8 +53,8 @@ struct empty_term_iterator : term_iterator {
   }
   virtual void read() { }
   virtual bool next() override { return false; }
-  virtual const iresearch::attributes& attributes() const NOEXCEPT override {
-    return iresearch::attributes::empty_instance();
+  virtual const irs::attribute_store& attributes() const NOEXCEPT override {
+    return irs::attribute_store::empty_instance();
   }
 };
 
@@ -62,8 +64,8 @@ struct empty_term_reader : singleton<empty_term_reader>, term_reader {
     return irs::field_meta::EMPTY;
   }
 
-  virtual const iresearch::attributes& attributes() const NOEXCEPT {
-    return iresearch::attributes::empty_instance();
+  virtual const irs::attribute_store& attributes() const NOEXCEPT {
+    return irs::attribute_store::empty_instance();
   }
 
   // total number of terms

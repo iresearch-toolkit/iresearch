@@ -80,7 +80,7 @@ struct IRESEARCH_API tracking_directory: public directory {
   virtual ~tracking_directory();
   directory& operator*() NOEXCEPT;
   using directory::attributes;
-  virtual iresearch::attributes& attributes() NOEXCEPT override;
+  virtual attribute_store& attributes() NOEXCEPT override;
   virtual void close() NOEXCEPT override;
   virtual index_output::ptr create(const std::string& name) NOEXCEPT override;
   virtual bool exists(
@@ -127,7 +127,7 @@ struct IRESEARCH_API ref_tracking_directory: public directory {
   virtual ~ref_tracking_directory();
   directory& operator*() NOEXCEPT;
   using directory::attributes;
-  virtual iresearch::attributes& attributes() NOEXCEPT override;
+  virtual attribute_store& attributes() NOEXCEPT override;
   void clear_refs() const NOEXCEPT;
   virtual void close() NOEXCEPT override;
   virtual index_output::ptr create(const std::string &name) NOEXCEPT override;

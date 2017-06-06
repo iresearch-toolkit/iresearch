@@ -42,12 +42,12 @@ class text_token_stream: public analyzer {
     const std::locale& locale,
     const std::unordered_set<std::string>& ignored_words
   );
-  virtual const iresearch::attributes& attributes() const NOEXCEPT override;
+  virtual const irs::attribute_store& attributes() const NOEXCEPT override;
   virtual bool next() override;
   virtual bool reset(const string_ref& data) override;
 
  private:
-  iresearch::attributes attrs_;
+  irs::attribute_store attrs_;
   std::shared_ptr<state_t> state_;
   struct {
     std::string country;

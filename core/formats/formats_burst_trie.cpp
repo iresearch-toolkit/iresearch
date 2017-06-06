@@ -230,7 +230,7 @@ class fst_buffer : public vector_byte_fst {
 
 entry::entry(
     const irs::bytes_ref& term,
-    irs::attributes&& attrs,
+    irs::attribute_store&& attrs,
     bool volatile_term)
   : type_(ET_TERM) {
   if (volatile_term) {
@@ -239,7 +239,7 @@ entry::entry(
     data_.assign<false>(term);
   }
 
-  mem_.construct<irs::attributes>(std::move(attrs));
+  mem_.construct<irs::attribute_store>(std::move(attrs));
 }
 
 entry::entry(
@@ -279,7 +279,7 @@ entry& entry::operator=(entry&& rhs) NOEXCEPT{
 
 void entry::move_union(entry&& rhs) NOEXCEPT {
   switch (rhs.type_) {
-    case ET_TERM  : mem_.construct<irs::attributes>(std::move(rhs.term())); break;
+    case ET_TERM: mem_.construct<irs::attribute_store>(std::move(rhs.term())); break;
     case ET_BLOCK : mem_.construct<block_t>(std::move(rhs.block()));        break;
     default: break;
   }
@@ -290,7 +290,7 @@ void entry::move_union(entry&& rhs) NOEXCEPT {
 
 void entry::destroy() NOEXCEPT {
   switch (type_) {
-    case ET_TERM  : mem_.destroy<irs::attributes>(); break;
+    case ET_TERM: mem_.destroy<irs::attribute_store>(); break;
     case ET_BLOCK : mem_.destroy<block_t>();         break;
     default: break;
   }
@@ -422,7 +422,7 @@ class term_iterator : public iresearch::seek_term_iterator {
 
   virtual void read() override;
   virtual bool next() override;
-  const iresearch::attributes& attributes() const NOEXCEPT override {
+  const irs::attribute_store& attributes() const NOEXCEPT override {
     return attrs_;
   }
   const bytes_ref& value() const override { return term_; }
@@ -521,7 +521,7 @@ class term_iterator : public iresearch::seek_term_iterator {
 
   const term_reader* owner_;
   matcher_t matcher_;
-  iresearch::attributes attrs_;
+  irs::attribute_store attrs_;
   seek_state_t sstate_;
   block_stack_t block_stack_;
   block_iterator* cur_block_;
@@ -872,9 +872,10 @@ term_iterator::term_iterator(const term_reader* owner)
     cur_block_(nullptr),
     freq_(nullptr) {
   assert(owner_);
-  state_ = attrs_.add<version10::term_meta>();
+  state_ = attrs_.emplace<version10::term_meta>().get();
+
   if (owner_->field_.features.check<frequency>()) {
-    freq_ = attrs_.add<frequency>();
+    freq_ = attrs_.emplace<frequency>().get();
   }
 }
 
@@ -1186,7 +1187,7 @@ bool term_reader::prepare(
   max_term_ref_ = max_term_;
 
   if (field_.features.check<frequency>()) {
-    auto& freq = attrs_.add<frequency>();
+    auto& freq = attrs_.emplace<frequency>();
     freq->value = meta_in.read_vlong();
   }
 
@@ -1492,17 +1493,17 @@ void field_writer::write(
   auto& docs = pw->attributes().get<version10::documents>();
   assert(docs);
 
-  /* aggregated by postings writer term attributes */
-  attributes attrs;
+  // aggregated by postings writer term attributes
+  attribute_store attrs;
 
   for (; terms.next();) {
     auto postings = terms.postings(features);
     pw->write(*postings, attrs);
 
-    auto& meta = attrs.add<term_meta>();
+    auto& meta = attrs.emplace<term_meta>();
 
     if (freq_exists) {
-      auto& tfreq = attrs.add<frequency>();
+      auto& tfreq = attrs.emplace<frequency>();
       sum_tfreq += tfreq->value;
     }
 

@@ -184,15 +184,15 @@ enum EntryType : byte_type {
 ///////////////////////////////////////////////////////////////////////////////
 class entry : private util::noncopyable {
  public:
-  entry(const irs::bytes_ref& term, irs::attributes&& attrs, bool volatile_term);
+  entry(const irs::bytes_ref& term, irs::attribute_store&& attrs, bool volatile_term);
   entry(const irs::bytes_ref& prefix, uint64_t block_start,
         byte_type meta, int16_t label, bool volatile_term);
   entry(entry&& rhs) NOEXCEPT;
   entry& operator=(entry&& rhs) NOEXCEPT;
   ~entry() NOEXCEPT;
 
-  const irs::attributes& term() const NOEXCEPT { return *mem_.as<irs::attributes>(); }
-  irs::attributes& term() NOEXCEPT { return *mem_.as<irs::attributes>(); }
+  const irs::attribute_store& term() const NOEXCEPT { return *mem_.as<irs::attribute_store>(); }
+  irs::attribute_store& term() NOEXCEPT { return *mem_.as<irs::attribute_store>(); }
 
   const block_t& block() const NOEXCEPT { return *mem_.as<block_t>(); }
   block_t& block() NOEXCEPT { return *mem_.as<block_t>(); }
@@ -207,7 +207,7 @@ class entry : private util::noncopyable {
   void move_union(entry&& rhs) NOEXCEPT;
 
   volatile_byte_ref data_; // block prefix or term
-  memory::aligned_type<irs::attributes, block_t> mem_; // storage
+  memory::aligned_type<irs::attribute_store, block_t> mem_; // storage
   EntryType type_; // entry type
 }; // entry
 
@@ -233,7 +233,7 @@ class term_reader : public iresearch::term_reader,
   virtual uint64_t docs_count() const override { return doc_count_; }
   virtual const bytes_ref& min() const override { return min_term_ref_; }
   virtual const bytes_ref& max() const override { return max_term_ref_; }
-  virtual const iresearch::attributes& attributes() const NOEXCEPT override {
+  virtual const irs::attribute_store& attributes() const NOEXCEPT override {
     return attrs_; 
   }
 
@@ -241,7 +241,7 @@ class term_reader : public iresearch::term_reader,
   typedef fst::VectorFst<byte_arc> fst_t;
   friend class term_iterator;
 
-  iresearch::attributes attrs_;
+  irs::attribute_store attrs_;
   bstring min_term_;
   bstring max_term_;
   bytes_ref min_term_ref_;

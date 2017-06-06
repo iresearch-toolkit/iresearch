@@ -33,7 +33,7 @@ class IRESEARCH_API fs_directory : public directory {
 
   using directory::attributes;
 
-  virtual iresearch::attributes& attributes() NOEXCEPT override;
+  virtual attribute_store& attributes() NOEXCEPT override;
 
   virtual void close() NOEXCEPT override;
 
@@ -71,7 +71,7 @@ class IRESEARCH_API fs_directory : public directory {
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  iresearch::attributes attributes_;
+  attribute_store attributes_;
   std::string dir_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 };
