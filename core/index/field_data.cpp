@@ -247,12 +247,20 @@ class doc_iterator : public irs::doc_iterator {
 
 class term_iterator : public irs::term_iterator {
  public:
-  void reset(const field_data& field) {
+  void reset(const field_data& field, const bytes_ref*& min, const bytes_ref*& max) {
     // refill postings
     postings_.clear();
     postings_.insert(field.terms_.begin(), field.terms_.end());
+
+    max = min = &irs::bytes_ref::nil;
+    if (!postings_.empty()) {
+      min = &(postings_.begin()->first);
+      max = &((--postings_.end())->first);
+    }
+
     // set field
     field_ = &field;
+
     // reset state
     itr_ = postings_.begin();
     itr_increment_ = false;
@@ -312,9 +320,11 @@ class term_iterator : public irs::term_iterator {
     return true;
   }
 
- private:
-  friend class term_reader;
+  const field_meta& meta() const NOEXCEPT {
+    return field_->meta();
+  }
 
+ private:
   struct utf8_less_t {
     bool operator()(const bytes_ref& lhs, const bytes_ref& rhs) const {
       return utf8_less(lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size());
@@ -339,14 +349,7 @@ class term_iterator : public irs::term_iterator {
 class term_reader final : public irs::basic_term_reader, util::noncopyable {
  public:
   void reset(const field_data& field) {
-    it_.reset(field);
-
-    const auto& postings = it_.postings_;
-
-    if (!postings.empty()) {
-      min_ = &(postings.begin()->first);
-      max_ = &((--postings.end())->first);
-    }
+    it_.reset(field, min_, max_);
   }
 
   virtual const irs::bytes_ref& (min)() const NOEXCEPT override {
@@ -358,7 +361,7 @@ class term_reader final : public irs::basic_term_reader, util::noncopyable {
   }
 
   virtual const irs::field_meta& meta() const NOEXCEPT override {
-    return it_.field_->meta();
+    return it_.meta();
   }
 
   virtual irs::term_iterator::ptr iterator() const NOEXCEPT override {
