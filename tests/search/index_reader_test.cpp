@@ -138,11 +138,11 @@ TEST(directory_reader_test, open_newest_index) {
 TEST(directory_reader_test, open) {
   tests::json_doc_generator gen(
     test_base::resource("simple_sequential.json"),
-    [] (tests::document& doc, const std::string& name, const tests::json::json_value& data) {
-    if (data.quoted) {
+    [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+    if (tests::json_doc_generator::ValueType::STRING == data.vt) {
       doc.insert(std::make_shared<tests::templates::string_field>(
         ir::string_ref(name),
-        ir::string_ref(data.value)
+        data.str
       ));
     }
   });

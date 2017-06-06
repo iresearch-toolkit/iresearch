@@ -58,6 +58,10 @@ number of components produced by third parties
    - Copyright: Google Inc.
    - License: [BSD 3-clause](https://github.com/google/googletest/blob/master/googletest/LICENSE)
    - How it's used: Unit testing tool
+9. Title: RapidJSON
+   - Copyright: THL A29 Limited, a Tencent company, and Milo Yip
+   - License: [MIT license](https://opensource.org/licenses/MIT)
+   - How it's used: JSON parser
 
 ## Third Party Open Source Software licenses
 

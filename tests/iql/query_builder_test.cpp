@@ -127,48 +127,68 @@ namespace tests {
     static auto analyzed_field_factory = [](
         tests::document& doc,
         const std::string& name,
-        const tests::json::json_value& value) {
-      doc.insert(std::make_shared<analyzed_string_field>(
-        iresearch::string_ref(name),
-        iresearch::string_ref(value.value)
-      ));
+        const tests::json_doc_generator::json_value& value) {
+      if (value.is_string()) {
+        doc.insert(std::make_shared<analyzed_string_field>(
+          iresearch::string_ref(name),
+          value.str
+        ));
+      } else if (value.is_null()) {
+        doc.insert(std::make_shared<analyzed_string_field>(
+          iresearch::string_ref(name),
+          "null"
+        ));
+      } else if (value.is_bool() && value.b) {
+        doc.insert(std::make_shared<analyzed_string_field>(
+          iresearch::string_ref(name),
+          "true"
+        ));
+      } else if (value.is_bool() && !value.b) {
+        doc.insert(std::make_shared<analyzed_string_field>(
+          iresearch::string_ref(name),
+          "false"
+        ));
+      } else if (value.is_number()) {
+        const auto str = std::to_string(value.as_number<uint64_t>());
+        doc.insert(std::make_shared<analyzed_string_field>(
+          iresearch::string_ref(name),
+          str
+        ));
+      }
     };
 
     static auto generic_field_factory = [](
         tests::document& doc,
         const std::string& name,
-        const tests::json::json_value& data) {
-      if (data.quoted) {
+        const tests::json_doc_generator::json_value& data) {
+      if (data.is_string()) {
         doc.insert(std::make_shared<templates::string_field>(
           ir::string_ref(name),
-          ir::string_ref(data.value)
+          data.str
         ));
-      } else if ("null" == data.value) {
+      } else if (data.is_null()) {
         doc.insert(std::make_shared<tests::binary_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
         field.name(iresearch::string_ref(name));
         field.value(ir::null_token_stream::value_null());
-      } else if ("true" == data.value) {
+      } else if (data.is_bool() && data.b) {
         doc.insert(std::make_shared<tests::binary_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
         field.name(iresearch::string_ref(name));
         field.value(ir::boolean_token_stream::value_true());
-      } else if ("false" == data.value) {
+      } else if (data.is_bool() && !data.b) {
         doc.insert(std::make_shared<tests::binary_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
         field.name(iresearch::string_ref(name));
         field.value(ir::boolean_token_stream::value_true());
-      } else {
-        char* czSuffix;
-        double dValue = strtod(data.value.c_str(), &czSuffix);
+      } else if (data.is_number()) {
+        const double dValue = data.as_number<double_t>();
 
         // 'value' can be interpreted as a double
-        if (!czSuffix[0]) {
-          doc.insert(std::make_shared<tests::double_field>());
-          auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
-          field.name(iresearch::string_ref(name));
-          field.value(dValue);
-        }
+        doc.insert(std::make_shared<tests::double_field>());
+        auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
+        field.name(iresearch::string_ref(name));
+        field.value(dValue);
       }
     };
 

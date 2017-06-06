@@ -232,7 +232,7 @@ class string_field : public tests::field_base {
 void generic_json_field_factory(
   tests::document& doc,
   const std::string& name,
-  const tests::json::json_value& data);
+  const json_doc_generator::json_value& data);
 
 } // tests 
 

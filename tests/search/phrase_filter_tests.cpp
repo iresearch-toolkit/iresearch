@@ -24,7 +24,7 @@ namespace tests {
 void analyzed_json_field_factory(
     tests::document& doc,
     const std::string& name,
-    const tests::json::json_value& data) {
+    const tests::json_doc_generator::json_value& data) {
   typedef templates::text_field<std::string> text_field;
  
   class string_field : public templates::string_field {
@@ -39,17 +39,17 @@ void analyzed_json_field_factory(
     }
   }; // string_field
 
-  if (data.quoted) {
+  if (data.is_string()) {
     // analyzed field
     doc.indexed.push_back(std::make_shared<text_field>(
       std::string(name.c_str()) + "_anl",
-      ir::string_ref(data.value)
+      data.str
     ));
 
     // not analyzed field
     doc.insert(std::make_shared<string_field>(
       ir::string_ref(name),
-      ir::string_ref(data.value)
+      data.str
     ));
   }
 }

@@ -16,7 +16,12 @@ if("${GTEST_ROOT}" STREQUAL "")
 endif()
 find_package(GTest
   REQUIRED
-) 
+)
+
+# set rapidjson directories
+set(RAPIDJSON_INCLUDE_DIR
+  ${EXTERNAL_INCLUDE_DIRS}/rapidjson
+)
 
 # set test resource directory
 set(IResearch_test_resource_dir
@@ -116,7 +121,6 @@ set(IReSearch_tests_headers
   ./unicode/utf8/unchecked.h
   ./unicode/utf8/core.h
   ./tests_config.hpp
-  ./json_parser.hpp
   ${IReSearch_generated_INCLUDE_DIR}/tests_config.hpp # auto generated
 )
 
@@ -231,6 +235,7 @@ include_directories(${IResearchTests_TARGET_NAME}-static
   ${ICU_INCLUDE_DIR}
   ${GTEST_INCLUDE_DIR}
   ${Boost_INCLUDE_DIRS}
+  ${RAPIDJSON_INCLUDE_DIR}
 )
 
 ################################################################################

@@ -252,91 +252,82 @@ class europarl_doc_template : public delim_doc_generator::doc_template {
 void generic_json_field_factory(
     tests::document& doc,
     const std::string& name,
-    const tests::json::json_value& data) {
-  if (data.quoted) {
+    const json_doc_generator::json_value& data) {
+  if (json_doc_generator::ValueType::STRING == data.vt) {
     doc.insert(std::make_shared<templates::string_field>(
       ir::string_ref(name),
-      ir::string_ref(data.value)
+      data.str
     ));
-  } else if ("null" == data.value) {
+  } else if (json_doc_generator::ValueType::NIL == data.vt) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
     field.name(iresearch::string_ref(name));
     field.value(ir::null_token_stream::value_null());
-  } else if ("true" == data.value) {
+  } else if (json_doc_generator::ValueType::BOOL == data.vt && data.b) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
     field.name(iresearch::string_ref(name));
     field.value(ir::boolean_token_stream::value_true());
-  } else if ("false" == data.value) {
+  } else if (json_doc_generator::ValueType::BOOL == data.vt && !data.b) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
     field.name(iresearch::string_ref(name));
     field.value(ir::boolean_token_stream::value_true());
-  } else {
-    char* czSuffix;
-    double dValue = strtod(data.value.c_str(), &czSuffix);
-
+  } else if (data.is_number()) {
     // 'value' can be interpreted as a double
-    if (!czSuffix[0]) {
-      doc.insert(std::make_shared<tests::double_field>());
-      auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
-      field.name(iresearch::string_ref(name));
-      field.value(dValue);
-    }
+    doc.insert(std::make_shared<tests::double_field>());
+    auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
+    field.name(iresearch::string_ref(name));
+    field.value(data.as_number<double_t>());
   }
 }
 
 void payloaded_json_field_factory(
     tests::document& doc,
     const std::string& name,
-    const tests::json::json_value& data) {
+    const json_doc_generator::json_value& data) {
   typedef templates::text_field<std::string> text_field;
 
-  if (data.quoted) {
+  if (json_doc_generator::ValueType::STRING == data.vt) {
     // analyzed && pyaloaded
     doc.indexed.push_back(std::make_shared<text_field>(
       std::string(name.c_str()) + "_anl_pay",
-      ir::string_ref(data.value),
+      data.str,
       true
     ));
 
     // analyzed field
     doc.indexed.push_back(std::make_shared<text_field>(
       std::string(name.c_str()) + "_anl",
-      ir::string_ref(data.value)
+      data.str
     ));
 
     // not analyzed field
     doc.insert(std::make_shared<templates::string_field>(
       ir::string_ref(name),
-      ir::string_ref(data.value)
+      data.str
     ));
-  } else if ("null" == data.value) {
+  } else if (json_doc_generator::ValueType::NIL == data.vt) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
     field.name(iresearch::string_ref(name));
     field.value(ir::null_token_stream::value_null());
-  } else if ("true" == data.value) {
+  } else if (json_doc_generator::ValueType::BOOL == data.vt && data.b) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
     field.name(iresearch::string_ref(name));
     field.value(ir::boolean_token_stream::value_true());
-  } else if ("false" == data.value) {
+  } else if (json_doc_generator::ValueType::BOOL == data.vt && !data.b) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
     field.name(iresearch::string_ref(name));
     field.value(ir::boolean_token_stream::value_false());
-  } else {
-    char* czSuffix;
-    double dValue = strtod(data.value.c_str(), &czSuffix);
-    if (!czSuffix[0]) {
-      // 'value' can be interpreted as a double
-      doc.insert(std::make_shared<tests::double_field>());
-      auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
-      field.name(iresearch::string_ref(name));
-      field.value(dValue);
-    }
+  } else if (data.is_number()) {
+    // 'value' can be interpreted as a double
+    doc.insert(std::make_shared<tests::double_field>());
+    auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
+    field.name(iresearch::string_ref(name));
+    field.value(data.as_number<double_t>());
   }
 }
 
@@ -973,11 +964,11 @@ class index_test_case_base : public tests::index_test_base {
   void writer_transaction_isolation() {
     tests::json_doc_generator gen(
       resource("simple_sequential.json"),
-      [] (tests::document& doc, const std::string& name, const tests::json::json_value& data) {
-        if (data.quoted) {
+      [] (tests::document& doc, const std::string& name, const json_doc_generator::json_value& data) {
+        if (json_doc_generator::ValueType::STRING == data.vt) {
           doc.insert(std::make_shared<templates::string_field>(
             ir::string_ref(name),
-            ir::string_ref(data.value)
+            data.str
           ));
         }
       });
@@ -2839,12 +2830,12 @@ TEST_F(memory_index_test, concurrent_add) {
 TEST_F(memory_index_test, concurrent_add_remove) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    [] (tests::document& doc, const std::string& name, const tests::json::json_value& data) {
-    if (data.quoted) {
+    [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+    if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
         ir::string_ref(name),
-        ir::string_ref(data.value))
-      );
+        data.str
+      ));
     }
   });
   std::vector<const tests::document*> docs;
@@ -2918,11 +2909,11 @@ TEST_F(memory_index_test, concurrent_add_remove) {
 TEST_F(memory_index_test, doc_removal) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    [] (tests::document& doc, const std::string& name, const tests::json::json_value& data) {
-    if (data.quoted) {
+    [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+    if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
         ir::string_ref(name),
-        ir::string_ref(data.value)
+        data.str
       ));
     }
   });
@@ -3406,11 +3397,11 @@ TEST_F(memory_index_test, doc_removal) {
 TEST_F(memory_index_test, doc_update) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    [] (tests::document& doc, const std::string& name, const tests::json::json_value& data) {
-    if (data.quoted) {
+    [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+    if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
         ir::string_ref(name),
-        ir::string_ref(data.value)
+        data.str
       ));
     }
   });
@@ -4039,11 +4030,11 @@ TEST_F(memory_index_test, doc_update) {
 TEST_F(memory_index_test, import_reader) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    [] (tests::document& doc, const std::string& name, const tests::json::json_value& data) {
-    if (data.quoted) {
+    [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+    if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
         ir::string_ref(name),
-        ir::string_ref(data.value)
+        data.str
       ));
     }
   });
@@ -4398,11 +4389,11 @@ TEST_F(memory_index_test, profile_bulk_index_multithread_update_batched) {
 TEST_F(memory_index_test, refresh_reader) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    [] (tests::document& doc, const std::string& name, const tests::json::json_value& data) {
-    if (data.quoted) {
+    [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+    if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
         ir::string_ref(name),
-        ir::string_ref(data.value)
+        data.str
       ));
     }
   });
@@ -4715,11 +4706,11 @@ TEST_F(memory_index_test, reuse_segment_writer) {
 TEST_F(memory_index_test, segment_consolidate) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    [] (tests::document& doc, const std::string& name, const tests::json::json_value& data) {
-      if (data.quoted) {
+    [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+      if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
           ir::string_ref(name),
-          ir::string_ref(data.value)
+          data.str
         ));
       }
   });
@@ -5391,11 +5382,11 @@ TEST_F(memory_index_test, segment_consolidate) {
     // add 2nd segment
     tests::json_doc_generator gen(
       resource("simple_sequential_upper_case.json"),
-      [] (tests::document& doc, const std::string& name, const tests::json::json_value& data) {
-        if (data.quoted) {
+      [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+        if (data.is_string()) {
           doc.insert(std::make_shared<tests::templates::string_field>(
             ir::string_ref(name),
-            ir::string_ref(data.value)
+            data.str
           ));
         }
     });
@@ -5475,11 +5466,11 @@ TEST_F(memory_index_test, segment_consolidate) {
     // add 2nd segment
     tests::json_doc_generator gen(
       resource("simple_sequential_upper_case.json"),
-      [] (tests::document& doc, const std::string& name, const tests::json::json_value& data) {
-        if (data.quoted) {
+      [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+        if (data.is_string()) {
           doc.insert(std::make_shared<tests::templates::string_field>(
             ir::string_ref(name),
-            ir::string_ref(data.value)
+            data.str
           ));
         }
     });
@@ -5543,11 +5534,11 @@ TEST_F(memory_index_test, segment_consolidate) {
 TEST_F(memory_index_test, segment_consolidate_policy) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    [] (tests::document& doc, const std::string& name, const tests::json::json_value& data) {
-    if (data.quoted) {
+    [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+    if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
         ir::string_ref(name),
-        ir::string_ref(data.value)
+        data.str
       ));
     }
   });

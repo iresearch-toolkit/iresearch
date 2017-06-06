@@ -503,10 +503,10 @@ class format_test_case_base : public index_test_base {
 
     tests::json_doc_generator gen(
       resource("fst_prefixes.json"),
-      [&sorted_terms, &unsorted_terms] (tests::document& doc, const std::string& name, const tests::json::json_value& data) {
+      [&sorted_terms, &unsorted_terms] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
         doc.insert(std::make_shared<tests::templates::string_field>(
           ir::string_ref(name),
-          ir::string_ref(data.value)
+          data.str
         ));
 
         auto ref = ir::ref_cast<ir::byte_type>((doc.indexed.end() - 1).as<tests::templates::string_field>().value());
@@ -1764,45 +1764,42 @@ class format_test_case_base : public index_test_base {
     std::deque<Value> values;
     tests::json_doc_generator gen(
       resource("simple_sequential_33.json"),
-      [&values](tests::document& doc, const std::string& name, const tests::json::json_value& data) {
-      if (data.quoted) {
+      [&values](tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+      if (data.is_string()) {
         doc.insert(std::make_shared<templates::string_field>(
           ir::string_ref(name),
-          ir::string_ref(data.value)
+          data.str
         ));
 
         auto& field = (doc.indexed.end() - 1).as<templates::string_field>();
         values.emplace_back(field.name(), field.value());
-      } else if ("null" == data.value) {
+      } else if (data.is_null()) {
         doc.insert(std::make_shared<tests::binary_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
         field.name(iresearch::string_ref(name));
         field.value(ir::null_token_stream::value_null());
         values.emplace_back(field.name(), field.value());
-      } else if ("true" == data.value) {
+      } else if (data.is_bool() && data.b) {
         doc.insert(std::make_shared<tests::binary_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
         field.name(iresearch::string_ref(name));
         field.value(ir::boolean_token_stream::value_true());
         values.emplace_back(field.name(), field.value());
-      } else if ("false" == data.value) {
+      } else if (data.is_bool() && !data.b) {
         doc.insert(std::make_shared<tests::binary_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
         field.name(iresearch::string_ref(name));
         field.value(ir::boolean_token_stream::value_true());
         values.emplace_back(field.name(), field.value());
-      } else {
-        char* czSuffix;
-        double dValue = strtod(data.value.c_str(), &czSuffix);
+      } else if (data.is_number()) {
+        const double dValue = data.as_number<double_t>();
 
         // 'value' can be interpreted as a double
-        if (!czSuffix[0]) {
-          doc.insert(std::make_shared<tests::double_field>());
-          auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
-          field.name(iresearch::string_ref(name));
-          field.value(dValue);
-          values.emplace_back(field.name(), field.value());
-        }
+        doc.insert(std::make_shared<tests::double_field>());
+        auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
+        field.name(iresearch::string_ref(name));
+        field.value(dValue);
+        values.emplace_back(field.name(), field.value());
       }
     });
 

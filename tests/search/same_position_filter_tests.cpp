@@ -28,23 +28,20 @@ class same_position_filter_test_case : public filter_test_case_base {
     // add segment
     tests::json_doc_generator gen(
       resource("same_position.json"),
-      [] (tests::document& doc, const std::string& name, const tests::json::json_value& data) {
+      [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
         typedef templates::text_field<std::string> text_field;
-        if (data.quoted) {
+        if (data.is_string()) {
           // a || b || c
-          doc.indexed.push_back(std::make_shared<text_field>(name, ir::string_ref(data.value)));
-        } else {
+          doc.indexed.push_back(std::make_shared<text_field>(name, data.str));
+        } else if (data.is_number()) {
           // _id
-          char* czSuffix;
-          auto lValue = strtoll(data.value.c_str(), &czSuffix, 10);
+          const auto lValue = data.as_number<uint64_t>();
 
           // 'value' can be interpreted as a double
-          if (!czSuffix[0]) {
-            doc.insert(std::make_shared<tests::long_field>());
-            auto& field = (doc.indexed.end() - 1).as<tests::long_field>();
-            field.name(name);
-            field.value(lValue);
-          }
+          doc.insert(std::make_shared<tests::long_field>());
+          auto& field = (doc.indexed.end() - 1).as<tests::long_field>();
+          field.name(name);
+          field.value(lValue);
         }
 
     });
