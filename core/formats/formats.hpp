@@ -41,7 +41,7 @@ typedef std::unordered_set<doc_id_t> document_mask;
  * postings_writer
  * ------------------------------------------------------------------*/
 
-struct IRESEARCH_API postings_writer : util::const_attributes_provider {
+struct IRESEARCH_API postings_writer : util::const_attribute_store_provider {
   DECLARE_PTR( postings_writer );
   DECLARE_FACTORY( postings_writer );
 
@@ -49,13 +49,13 @@ struct IRESEARCH_API postings_writer : util::const_attributes_provider {
   /* out - corresponding terms utils/utstream */
   virtual void prepare( index_output& out, const flush_state& state ) = 0;  
   virtual void begin_field(const flags& features) = 0;
-  virtual void write(doc_iterator& docs, iresearch::attributes& out ) = 0;
+  virtual void write(doc_iterator& docs, attribute_store& out) = 0;
   virtual void begin_block() = 0;
-  virtual void encode( data_output& out, const iresearch::attributes& attrs ) = 0;
+  virtual void encode(data_output& out, const attribute_store& attrs) = 0;
   virtual void end() = 0;
 
-  virtual const iresearch::attributes& attributes() const NOEXCEPT override {
-    return iresearch::attributes::empty_instance();
+  virtual const attribute_store& attributes() const NOEXCEPT override {
+    return attribute_store::empty_instance();
   }
 };
 
@@ -96,12 +96,12 @@ struct IRESEARCH_API postings_reader {
   virtual void decode(
     data_input& in, 
     const flags& features,
-    attributes& attrs
+    attribute_store& attrs
   ) = 0;
 
   virtual doc_iterator::ptr iterator( 
     const flags& field,
-    const attributes& attrs,
+    const attribute_store& attrs,
     const flags& features 
   ) = 0;
 };
@@ -110,7 +110,7 @@ struct IRESEARCH_API postings_reader {
  * term_reader
  * ------------------------------------------------------------------*/
 
-struct IRESEARCH_API basic_term_reader : util::const_attributes_provider {
+struct IRESEARCH_API basic_term_reader: public util::const_attribute_store_provider {
   virtual ~basic_term_reader();
 
   virtual term_iterator::ptr iterator() const = 0;
@@ -125,7 +125,7 @@ struct IRESEARCH_API basic_term_reader : util::const_attributes_provider {
   virtual const bytes_ref& (max)() const = 0;
 }; // basic_term_reader
 
-struct IRESEARCH_API term_reader : util::const_attributes_provider {
+struct IRESEARCH_API term_reader: public util::const_attribute_store_provider {
   DECLARE_PTR( term_reader );
   DECLARE_FACTORY( term_reader );
 

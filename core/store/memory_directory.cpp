@@ -247,7 +247,7 @@ void memory_index_output::operator>>( data_output& out ) {
 
 memory_directory::~memory_directory() { }
 
-iresearch::attributes& memory_directory::attributes() NOEXCEPT {
+attribute_store& memory_directory::attributes() NOEXCEPT {
   return attributes_;
 }
 

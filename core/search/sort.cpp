@@ -136,7 +136,7 @@ void order::prepared::stats::field(
   }
 }
 
-void order::prepared::stats::term(const attributes& term) const {
+void order::prepared::stats::term(const attribute_store& term) const {
   for (auto& collector : colls_) {
     collector->term(term);
   }
@@ -144,7 +144,8 @@ void order::prepared::stats::term(const attributes& term) const {
 
 void order::prepared::stats::finish(
     const index_reader& index,
-    attributes& query_context) const {
+    attribute_store& query_context
+) const {
   for (auto& collector : colls_) {
     collector->finish(index, query_context);
   }
@@ -205,8 +206,9 @@ order::prepared::scorers
 order::prepared::prepare_scorers(
     const sub_reader& segment,
     const term_reader& field,
-    const attributes& stats,
-    const attributes& doc) const {
+    const attribute_store& stats,
+    const attribute_store& doc
+) const {
   scorers::scorers_t scrs;
   scrs.reserve(size());
   for_each([&segment, &field, &stats, &doc, &scrs] (const order::prepared::prepared_sort& ps) {

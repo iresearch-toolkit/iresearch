@@ -82,18 +82,26 @@ class pos_iterator : public irs::position::impl {
       val_{} {
     auto& attrs = this->attributes();
     auto& features = field_.meta().features;
+
     if (features.check< offset >()) {
-      offs_ = attrs.add< offset >();
+      offs_ = attrs.emplace<offset>().get();
     }
+
     if (features.check< payload >()) {
-      pay_ = attrs.add< payload >();
+      pay_ = attrs.emplace<payload>().get();
     }
   }
 
   virtual void clear() override {
     pos_ = 0;
     val_ = 0;
-    attributes().clear_state();
+    attributes().visit([](
+        const attribute::type_id&,
+        attribute_store::ref<void>& ref
+    )->bool {
+      reinterpret_cast<attribute*>(ref.get())->clear();
+      return true;
+    });
   }
 
   virtual uint32_t value() const override {
@@ -146,7 +154,7 @@ class doc_iterator : public irs::doc_iterator {
       freq_in_(EMPTY_POOL.begin(), 0) {
   }
 
-  virtual const irs::attributes& attributes() const NOEXCEPT override {
+  virtual const attribute_store& attributes() const NOEXCEPT override {
     return attrs_;
   }
 
@@ -162,16 +170,16 @@ class doc_iterator : public irs::doc_iterator {
 
     attrs_.clear();
 
-    doc_ = attrs_.add<document>();
+    doc_ = attrs_.emplace<document>().get();
     doc_->value = 0;
 
     const auto& features = field_->meta().features;
     if (features.check<frequency>()) {
-      freq_ = attrs_.add<frequency>();
+      freq_ = attrs_.emplace<frequency>().get();
       freq_->value = 0;
 
       if (features.check<position>()) {
-        auto& pos = attrs_.add<position>();
+        auto& pos = attrs_.emplace<position>();
         auto pos_it = memory::make_unique<pos_iterator>(field, *freq_, prox);
         pos->prepare(pos_ = pos_it.release());
       }
@@ -224,7 +232,7 @@ class doc_iterator : public irs::doc_iterator {
   }
 
  private:
-  irs::attributes attrs_;
+  attribute_store attrs_;
   byte_block_pool::sliced_reader freq_in_;
   document* doc_;
   frequency* freq_;
@@ -255,8 +263,8 @@ class term_iterator : public irs::term_iterator {
     return term_;
   }
 
-  virtual const irs::attributes& attributes() const NOEXCEPT {
-    return irs::attributes::empty_instance();
+  virtual const attribute_store& attributes() const NOEXCEPT {
+    return attribute_store::empty_instance();
   }
 
   virtual void read() {
@@ -357,8 +365,8 @@ class term_reader final : public irs::basic_term_reader, util::noncopyable {
     return memory::make_managed<irs::term_iterator, false>(&it_);
   }
 
-  virtual const irs::attributes& attributes() const NOEXCEPT override {
-    return irs::attributes::empty_instance();
+  virtual const attribute_store& attributes() const NOEXCEPT override {
+    return attribute_store::empty_instance();
   }
 
  private:
@@ -560,15 +568,17 @@ bool field_data::invert(
   // TODO: should check feature consistency 
   // among features & meta_.features()
 
-  const attributes& attrs = stream.attributes();
+  auto& attrs = stream.attributes();
   auto& term = attrs.get<term_attribute>();
   auto& inc = attrs.get<increment>();
   const offset* offs = nullptr;
   const payload* pay = nullptr;
+
   if (meta_.features.check<offset>()) {
-    offs = attrs.get<offset>();
+    offs = attrs.get<offset>().get();
+
     if (offs) {
-      pay = attrs.get<payload>();
+      pay = attrs.get<payload>().get();
     }
   } 
 
@@ -576,10 +586,12 @@ bool field_data::invert(
 
   while (stream.next()) {
     pos_ += inc->value;
+
     if (pos_ < last_pos_) {
       IR_FRMT_ERROR("invalid position %u < %u", pos_, last_pos_);
       return false;
     }
+
     last_pos_ = pos_;
 
     if (0 == inc->value) {

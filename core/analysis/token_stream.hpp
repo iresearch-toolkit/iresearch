@@ -17,7 +17,7 @@
 
 NS_ROOT
 
-class IRESEARCH_API token_stream : public util::const_attributes_provider {
+class IRESEARCH_API token_stream: public util::const_attribute_store_provider {
  public:
   DECLARE_PTR(token_stream);
   virtual ~token_stream();

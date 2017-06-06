@@ -69,8 +69,8 @@ boolean_token_stream::boolean_token_stream(bool value /*= false*/)
   : attrs_(1), // increment
     in_use_(false), 
     value_(value) {
-  term_ = attrs_.add<basic_term>();
-  attrs_.add<increment>(); // required by field_data::invert(...)
+  term_ = attrs_.emplace<basic_term>().get();
+  attrs_.emplace<increment>(); // required by field_data::invert(...)
 }
 
 boolean_token_stream::boolean_token_stream(
@@ -112,9 +112,9 @@ bool boolean_token_stream::next() {
 string_token_stream::string_token_stream()
   : attrs_(3), // offset + basic_term + increment
     in_use_(false) {
-  offset_ = attrs_.add<offset>();
-  term_ = attrs_.add<basic_term>();
-  attrs_.add<increment>();
+  offset_ = attrs_.emplace<offset>().get();
+  term_ = attrs_.emplace<basic_term>().get();
+  attrs_.emplace<increment>();
 }
 
 string_token_stream::string_token_stream(string_token_stream&& other) NOEXCEPT
@@ -289,8 +289,8 @@ DEFINE_FACTORY_DEFAULT(numeric_term);
 
 numeric_token_stream::numeric_token_stream() 
   : attrs_(2) { // numeric_term + increment
-  num_ = attrs_.add<numeric_term>();
-  inc_ = attrs_.add<increment>();
+  num_ = attrs_.emplace<numeric_term>().get();
+  inc_ = attrs_.emplace<increment>().get();
 }
 
 numeric_token_stream::numeric_token_stream(
@@ -301,7 +301,7 @@ numeric_token_stream::numeric_token_stream(
     inc_(std::move(other.inc_)) {
 }
 
-const irs::attributes& numeric_token_stream::attributes() const NOEXCEPT {
+const attribute_store& numeric_token_stream::attributes() const NOEXCEPT {
   return attrs_;
 }
 
@@ -360,8 +360,8 @@ void numeric_token_stream::reset(
 null_token_stream::null_token_stream():
   attrs_(2), // basic_term + increment
   in_use_(false) {
-  term_ = attrs_.add<basic_term>();
-  attrs_.add<increment>(); // required by field_data::invert(...)
+  term_ = attrs_.emplace<basic_term>().get();
+  attrs_.emplace<increment>(); // required by field_data::invert(...)
 }
 
 null_token_stream::null_token_stream(null_token_stream&& other) NOEXCEPT

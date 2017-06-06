@@ -20,7 +20,7 @@ irs::score EMPTY_SCORE;
 NS_END
 
 NS_ROOT
-  
+
 score_doc_iterator_base::score_doc_iterator_base(const order::prepared& ord)
   : ord_(&ord) {
   auto* score = iresearch::score::apply(attrs_, ord);
@@ -36,7 +36,7 @@ score_doc_iterator_base::score_doc_iterator_base(const order::prepared& ord)
 basic_score_iterator::basic_score_iterator(
     const sub_reader& segment,
     const term_reader& field,
-    const iresearch::attributes& stats, 
+    const attribute_store& stats,
     doc_iterator::ptr&& it,
     const order::prepared& ord,
     cost::cost_t estimation) NOEXCEPT
@@ -45,7 +45,7 @@ basic_score_iterator::basic_score_iterator(
     stats_(&stats) {
   assert( it_ );
   // set estimation value
-  attrs_.add<cost>()->value(estimation);
+  attrs_.emplace<cost>()->value(estimation);
 
   // set scorers
   scorers_ = ord_->prepare_scorers(

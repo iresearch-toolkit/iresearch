@@ -53,7 +53,7 @@ filter::prepared::ptr filter::prepared::empty() {
   return filter::prepared::make<empty_query>();
 }
 
-filter::prepared::prepared(iresearch::attributes&& attrs)
+filter::prepared::prepared(attribute_store&& attrs)
   : attrs_(std::move(attrs)) {
 }
 
@@ -74,7 +74,7 @@ public:
     return it_->value();
   }
 
-  virtual const iresearch::attributes& attributes() const NOEXCEPT override {
+  virtual const attribute_store& attributes() const NOEXCEPT override {
     return it_->attributes();
   }
 
@@ -166,14 +166,14 @@ class all_query : public filter::prepared {
       attrs_(1), // cost
       max_doc_(doc_id_t(type_limits<type_t::doc_id_t>::min() + docs_count - 1)),
       doc_(type_limits<type_t::doc_id_t>::invalid()) {
-      attrs_.add<cost>()->value(max_doc_);
+      attrs_.emplace<cost>()->value(max_doc_);
     }
 
     virtual doc_id_t value() const {
       return doc_;
     }
 
-    virtual const iresearch::attributes& attributes() const NOEXCEPT {
+    virtual const attribute_store& attributes() const NOEXCEPT {
       return attrs_;
     }
 
@@ -189,7 +189,7 @@ class all_query : public filter::prepared {
     virtual void score() override { }
 
    private:
-    iresearch::attributes attrs_;
+    attribute_store attrs_;
     doc_id_t max_doc_; // largest valid doc_id
     doc_id_t doc_;
   };

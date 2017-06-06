@@ -52,7 +52,7 @@ incompatible_attribute::incompatible_attribute() NOEXCEPT
 struct directory_mock : public ir::directory {
   directory_mock(ir::directory& impl) : impl_(impl) {}
   using directory::attributes;
-  virtual iresearch::attributes& attributes() NOEXCEPT override {
+  virtual irs::attribute_store& attributes() NOEXCEPT override {
     return impl_.attributes();
   }
   virtual void close() NOEXCEPT override {
@@ -116,10 +116,10 @@ namespace templates {
 token_stream_payload::token_stream_payload(ir::token_stream* impl)
   : impl_(impl) {
     assert(impl_);
-    ir::attributes& attrs = const_cast<ir::attributes&>(impl_->attributes());
-    term_ = attrs.get<ir::term_attribute>();
+    auto& attrs = const_cast<irs::attribute_store&>(impl_->attributes());
+    term_ = const_cast<const irs::attribute_store&>(attrs).get<irs::term_attribute>().get();
     assert(term_);
-    pay_ = attrs.add<ir::payload>();
+    pay_ = attrs.emplace<irs::payload>().get();
 }
 
 bool token_stream_payload::next() {

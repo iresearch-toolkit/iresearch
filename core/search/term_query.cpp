@@ -21,7 +21,7 @@ NS_ROOT
 // --SECTION--                                         term_query implementation
 // -----------------------------------------------------------------------------
 
-term_query::term_query(term_query::states_t&& states, iresearch::attributes&& attrs)
+term_query::term_query(term_query::states_t&& states, attribute_store&& attrs)
   : filter::prepared(std::move(attrs)), states_(std::move(states)) {
 }
 

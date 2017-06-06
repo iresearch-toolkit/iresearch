@@ -25,10 +25,10 @@ TEST(cost_attribute_test, consts) {
 }
 
 TEST(cost_attribute_test, estimation) {
-  iresearch::attributes attrs;
-  auto& cost = attrs.add<ir::cost>();
+  irs::attribute_store attrs;
+  auto& cost = attrs.emplace<irs::cost>();
   ASSERT_FALSE(bool(cost->rule()));
-  
+
   // explicit estimation
   {
     auto est = 7;
@@ -67,8 +67,8 @@ TEST(cost_attribute_test, estimation) {
 }
 
 TEST(cost_attribute_test, lazy_estimation) {
-  iresearch::attributes attrs;
-  auto& cost = attrs.add<ir::cost>();
+  irs::attribute_store attrs;
+  auto& cost = attrs.emplace<irs::cost>();
   ASSERT_FALSE(bool(cost->rule()));
 
   auto evaluated = false;
@@ -110,7 +110,7 @@ TEST(cost_attribute_test, lazy_estimation) {
 }
 
 TEST(cost_attribute_test, extract) {
-  iresearch::attributes attrs;
+  irs::attribute_store attrs;
 
   ASSERT_EQ(
     ir::cost::cost_t(ir::cost::MAX),
@@ -119,7 +119,7 @@ TEST(cost_attribute_test, extract) {
 
   ASSERT_EQ(5, ir::cost::extract(attrs, 5));
 
-  auto& cost = attrs.add<ir::cost>();
+  auto& cost = attrs.emplace<irs::cost>();
   ASSERT_FALSE(bool(cost->rule()));
 
   auto est = 7;

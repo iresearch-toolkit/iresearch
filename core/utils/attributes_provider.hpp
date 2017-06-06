@@ -16,29 +16,54 @@
 
 NS_ROOT
 
-class attributes;
+class attribute_store;
+class attribute_view;
 
 NS_BEGIN(util)
 
 //////////////////////////////////////////////////////////////////////////////
-/// @class const_attributes_provider
-/// @brief base class for all objects with externally visible attributes
+/// @class const_attribute_store_provider
+/// @brief base class for all objects with externally visible attribute_store
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API const_attributes_provider {
+class IRESEARCH_API const_attribute_store_provider {
  public:
-  virtual ~const_attributes_provider() {}
-  virtual const iresearch::attributes& attributes() const NOEXCEPT = 0;
+  virtual ~const_attribute_store_provider() {}
+  virtual const irs::attribute_store& attributes() const NOEXCEPT = 0;
+};
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class attribute_store_provider
+/// @brief base class for all objects with externally visible attribute-store
+//////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API attribute_store_provider: public const_attribute_store_provider {
+ public:
+  virtual ~attribute_store_provider() {}
+  virtual irs::attribute_store& attributes() NOEXCEPT = 0;
+  virtual const irs::attribute_store& attributes() const NOEXCEPT override final {
+    return const_cast<attribute_store_provider*>(this)->attributes();
+  };
+};
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class const_attribute_view_provider
+/// @brief base class for all objects with externally visible attribute_view
+//////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API const_attribute_view_provider {
+ public:
+  virtual ~const_attribute_view_provider() {}
+  virtual const irs::attribute_view& attributes() const NOEXCEPT = 0;
 };
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class attributes_provider
-/// @brief base class for all objects with externally visible attributes
+/// @brief base class for all objects with externally visible attribute_view
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API attributes_provider: public const_attributes_provider {
+class IRESEARCH_API attribute_view_provider: public const_attribute_view_provider {
  public:
-  virtual iresearch::attributes& attributes() NOEXCEPT = 0;
-  virtual const iresearch::attributes& attributes() const NOEXCEPT override final {
-    return const_cast<attributes_provider*>(this)->attributes();
+  virtual ~attribute_view_provider() {}
+  virtual irs::attribute_view& attributes() NOEXCEPT = 0;
+  virtual const irs::attribute_view& attributes() const NOEXCEPT override final {
+    return const_cast<attribute_view_provider*>(this)->attributes();
   };
 };
 

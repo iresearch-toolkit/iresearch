@@ -83,58 +83,6 @@ flags& flags::operator=( std::initializer_list<const attribute::type_id* > flags
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                        attributes
-// -----------------------------------------------------------------------------
- 
-const attributes& attributes::empty_instance() {
-  static attributes instance(0);
-  return instance;
-}
-
-attributes::attributes(size_t /*reserve*/) {
-}
-
-attributes::attributes(attributes&& rhs) NOEXCEPT
-  : map_(std::move(rhs.map_)) {
-}
-
-attributes& attributes::operator=(attributes&& rhs) NOEXCEPT {
-  if ( this != &rhs ) {
-    map_ = std::move( rhs.map_ );
-  }
-
-  return *this;
-}
-
-attribute_ref<attribute>& attributes::get( const attribute::type_id& type ) {
-  static attribute_ref<attribute> EMPTY; // const because no declared modifier methods
-  attributes_map::iterator it = map_.find( &type );
-  return map_.end() == it ? EMPTY : it->second;
-}
-
-void attributes::remove( const attribute::type_id& type ) {
-  map_.erase( &type );
-}
-  
-void attributes::clear() {
-  map_.clear();
-}
-
-const attribute_ref<attribute>& attributes::get(const attribute::type_id& type) const {
-  return const_cast< attributes* >( this )->get(type);
-}
-
-void attributes::clear_state() {
-  for (auto& key_val : map_) {
-    key_val.second->clear();
-  }
-}
-
-attribute_ref<attribute>& attributes::add(const attribute::type_id& type) {
-  return map_[&type];
-}
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                            attribute registration
 // -----------------------------------------------------------------------------
 
@@ -153,6 +101,30 @@ attribute_registrar::attribute_registrar(const attribute::type_id& type)
 
 attribute_registrar::operator bool() const NOEXCEPT {
   return registered_;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   attribute_store
+// -----------------------------------------------------------------------------
+
+attribute_store::attribute_store(size_t /*reserve = 0*/) {
+}
+
+/*static*/ const attribute_store& attribute_store::empty_instance() {
+  static attribute_store instance(0);
+  return instance;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    attribute_view
+// -----------------------------------------------------------------------------
+
+attribute_view::attribute_view(size_t /*reserve = 0*/) {
+}
+
+/*static*/ const attribute_view& attribute_view::empty_instance() {
+  static attribute_view instance(0);
+  return instance;
 }
 
 NS_END

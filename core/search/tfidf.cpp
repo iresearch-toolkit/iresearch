@@ -52,8 +52,8 @@ class collector final : public iresearch::sort::collector {
   collector(bool normalize)
     : normalize_(normalize) {
   }
-  
-  virtual void term(const attributes& term_attrs) {
+
+  virtual void term(const attribute_store& term_attrs) {
     auto& meta = term_attrs.get<iresearch::term_meta>();
 
     if (meta) {
@@ -63,14 +63,15 @@ class collector final : public iresearch::sort::collector {
 
   virtual void finish(
       const iresearch::index_reader& index, 
-      iresearch::attributes& query_attrs) override {
-    query_attrs.add<tfidf::idf>()->value = 1 + static_cast<float_t>(
+      attribute_store& query_attrs
+  ) override {
+    query_attrs.emplace<tfidf::idf>()->value = 1 + static_cast<float_t>(
       std::log(index.docs_count() / double_t(docs_count + 1))
     );
 
     if (normalize_) {
       // add norm attribute if requested
-      query_attrs.add<norm>();
+      query_attrs.emplace<norm>();
     }
   }
 
@@ -150,23 +151,24 @@ class sort final: iresearch::sort::prepared_base<tfidf::score_t> {
   virtual scorer::ptr prepare_scorer(
       const sub_reader& segment,
       const term_reader& field,
-      const attributes& query_attrs, 
-      const attributes& doc_attrs) const override {
+      const attribute_store& query_attrs, 
+      const attribute_store& doc_attrs
+  ) const override {
     auto& norm = query_attrs.get<iresearch::norm>();
 
     if (norm && norm->reset(segment, field.meta().norm, *doc_attrs.get<document>())) {
       return tfidf::scorer::make<tfidf::norm_scorer>(
         &*norm,
         boost::extract(query_attrs),
-        query_attrs.get<tfidf::idf>(),
-        doc_attrs.get<frequency>()
+        query_attrs.get<tfidf::idf>().get(),
+        doc_attrs.get<frequency>().get()
       );
     }
 
     return tfidf::scorer::make<tfidf::scorer>(
       boost::extract(query_attrs),
-      query_attrs.get<tfidf::idf>(),
-      doc_attrs.get<frequency>()
+      query_attrs.get<tfidf::idf>().get(),
+      doc_attrs.get<frequency>().get()
     );
   }
 

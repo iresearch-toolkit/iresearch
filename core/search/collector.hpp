@@ -18,10 +18,10 @@
 NS_ROOT
 
 struct IRESEARCH_API collector {
-  typedef std::function<void(collector&, const attributes&)> prepare_f;
+  typedef std::function<void(collector&, const attribute_store&)> prepare_f;
   typedef std::function<void(collector&, doc_id_t)> collect_f;
 
-  static void empty_prepare(collector&, const attributes&) {}
+  static void empty_prepare(collector&, const attribute_store&) {}
   static void empty_collect(collector&, doc_id_t) {}
 
   prepare_f prepare = &empty_prepare;
@@ -30,7 +30,7 @@ struct IRESEARCH_API collector {
 
 NS_END
 
-MSVC_ONLY(template class IRESEARCH_API std::function<void(iresearch::collector&, const iresearch::attributes&)>); // collector::prepare_f
+MSVC_ONLY(template class IRESEARCH_API std::function<void(irs::collector&, const irs::attributes_store&)>); // collector::prepare_f
 MSVC_ONLY(template class IRESEARCH_API std::function<void(iresearch::collector&, iresearch::doc_id_t)>); // collector::collect_f
 
 NS_ROOT

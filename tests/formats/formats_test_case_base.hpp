@@ -40,11 +40,11 @@ class format_test_case_base : public index_test_base {
    public:
     position(const ir::flags& features) { 
       if (features.check<ir::offset>()) {
-        offs_ = attrs_.add<ir::offset>();
+        offs_ = attrs_.emplace<irs::offset>().get();
       }
 
       if (features.check<ir::payload>()) {
-        pay_ = attrs_.add<ir::payload>();
+        pay_ = attrs_.emplace<irs::payload>().get();
       }
     }
 
@@ -96,11 +96,11 @@ class format_test_case_base : public index_test_base {
              const ir::flags& features = ir::flags::empty_instance())
       : next_(begin), end_(end) {
       if (features.check<ir::frequency>()) {
-        auto& freq = attrs_.add<ir::frequency>();
+        auto& freq = attrs_.emplace<irs::frequency>();
         freq->value = 10;
 
         if (features.check<ir::position>()) {
-          auto& pos = attrs_.add<ir::position>();
+          auto& pos = attrs_.emplace<irs::position>();
           pos->prepare(pos_ = new position(features));
         }
       }
@@ -113,6 +113,7 @@ class format_test_case_base : public index_test_base {
       }
 
       doc_ = *next_;
+
       if (pos_) {
         pos_->begin_ = doc_;
         pos_->end_ = pos_->begin_ + 10;
@@ -131,12 +132,12 @@ class format_test_case_base : public index_test_base {
       return ir::seek(*this, target);
     }
 
-    const ir::attributes& attributes() const NOEXCEPT {
+    const irs::attribute_store& attributes() const NOEXCEPT {
       return attrs_;
     }
 
    private:
-    ir::attributes attrs_;
+    irs::attribute_store attrs_;
     docs_t::const_iterator next_;
     docs_t::const_iterator end_;
     position* pos_{};
@@ -179,8 +180,8 @@ class format_test_case_base : public index_test_base {
 
     void read() { }
 
-    const ir::attributes& attributes() const NOEXCEPT {
-      return ir::attributes::empty_instance();
+    const irs::attribute_store& attributes() const NOEXCEPT {
+      return irs::attribute_store::empty_instance();
     }
 
   private:

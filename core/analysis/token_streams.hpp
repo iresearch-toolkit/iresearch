@@ -35,13 +35,13 @@ class IRESEARCH_API boolean_token_stream final:
     value_ = value;
     in_use_ = false; 
   }
-  virtual const iresearch::attributes& attributes() const NOEXCEPT override {
+  virtual const attribute_store& attributes() const NOEXCEPT override {
     return attrs_;
   }
   static const bytes_ref& value_false();
   static const bytes_ref& value_true();
  private:
-  iresearch::attributes attrs_;
+  attribute_store attrs_;
   basic_term* term_;
   bool in_use_;
   bool value_;
@@ -64,16 +64,18 @@ class IRESEARCH_API string_token_stream final:
     value_ = value;
     in_use_ = false; 
   }
+
   void reset(const string_ref& value) {
     value_ = ref_cast<byte_type>(value);
     in_use_ = false;
   }
-  virtual const iresearch::attributes& attributes() const NOEXCEPT override {
+
+  virtual const attribute_store& attributes() const NOEXCEPT override {
     return attrs_;
   }
 
  private:
-  iresearch::attributes attrs_;
+  attribute_store attrs_;
   offset* offset_;
   basic_term* term_;
   bytes_ref value_;
@@ -98,7 +100,7 @@ class IRESEARCH_API numeric_token_stream final:
   numeric_token_stream();
   numeric_token_stream(numeric_token_stream&& other) NOEXCEPT;
 
-  virtual const irs::attributes& attributes() const NOEXCEPT override;
+  virtual const attribute_store& attributes() const NOEXCEPT override;
   virtual bool next() override;
 
   void reset(int32_t value, uint32_t step = PRECISION_STEP_DEF);
@@ -119,7 +121,7 @@ class IRESEARCH_API numeric_token_stream final:
   static bytes_ref value(bstring& buf, double_t value);
 
  private:
-  iresearch::attributes attrs_;
+  attribute_store attrs_;
   numeric_term* num_;
   increment* inc_;
 }; // numeric_token_stream 
@@ -138,13 +140,13 @@ class IRESEARCH_API null_token_stream final:
   void reset() { 
     in_use_ = false; 
   }
-  virtual const iresearch::attributes& attributes() const NOEXCEPT override {
+  virtual const attribute_store& attributes() const NOEXCEPT override {
     return attrs_;
   }
   static const bytes_ref& value_null();
 
  private:
-  iresearch::attributes attrs_;
+  attribute_store attrs_;
   basic_term* term_;
   bool in_use_;
 };

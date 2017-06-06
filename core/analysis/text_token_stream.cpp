@@ -459,9 +459,9 @@ text_token_stream::text_token_stream(
     attrs_(3), // offset + bytes_term + increment
     state_(memory::make_unique<state_t>()),
     ignored_words_(ignored_words) {
-  offs_ = attrs_.add<offset>();
-  term_ = attrs_.add<bytes_term>();
-  attrs_.add<increment>();
+  offs_ = attrs_.emplace<offset>().get();
+  term_ = attrs_.emplace<bytes_term>().get();
+  attrs_.emplace<increment>();
   locale_.country = locale_utils::country(locale);
   locale_.encoding = locale_utils::encoding(locale);
   locale_.language = locale_utils::language(locale);
@@ -472,7 +472,7 @@ text_token_stream::text_token_stream(
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
-const iresearch::attributes& text_token_stream::attributes() const NOEXCEPT {
+const irs::attribute_store& text_token_stream::attributes() const NOEXCEPT {
   return attrs_;
 }
 

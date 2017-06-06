@@ -436,7 +436,7 @@ fs_directory::fs_directory(const std::string& dir)
   : dir_(dir) {
 }
 
-iresearch::attributes& fs_directory::attributes() NOEXCEPT {
+attribute_store& fs_directory::attributes() NOEXCEPT {
   return attributes_;
 }
 
@@ -510,7 +510,7 @@ index_input::ptr fs_directory::open(const std::string& name) const NOEXCEPT {
   try {
     utf8_path path;
     auto pool_size =
-      const_cast<fs_directory*>(this)->attributes().add<fd_pool_size>()->size;
+      const_cast<attribute_store&>(attributes()).emplace<fd_pool_size>()->size;
 
     path/dir_/name;
 

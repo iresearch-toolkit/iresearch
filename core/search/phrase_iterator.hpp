@@ -33,7 +33,7 @@ class phrase_iterator final : public Conjunction {
     position::value_t // desired offset in the phrase
   > position_t;
   typedef std::vector<position_t> positions_t;
-   
+
   phrase_iterator(
       typename conjunction_t::doc_iterators_t&& itrs,
       const order::prepared& ord, 
@@ -45,7 +45,7 @@ class phrase_iterator final : public Conjunction {
     assert(!pos_.empty());
 
     // add phrase frequency
-    phrase_freq_ = conjunction_t::attrs_.template add<frequency>();
+    phrase_freq_ = conjunction_t::attrs_.template emplace<frequency>().get();
   }  
 
   virtual void score_impl(byte_type* lhs) override {

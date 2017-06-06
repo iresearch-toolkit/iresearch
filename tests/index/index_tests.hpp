@@ -99,7 +99,7 @@ class index_test_base : public virtual test_base {
     }
     writer.commit();
   }
-  
+
   void add_segment(tests::doc_generator_base& gen, ir::OPEN_MODE mode = ir::OPEN_MODE::OM_CREATE) {
     auto writer = open_writer(mode);
     add_segment(*writer, gen);
@@ -122,7 +122,7 @@ class token_stream_payload : public ir::token_stream {
   explicit token_stream_payload(ir::token_stream* impl);
   bool next(); 
 
-  const ir::attributes& attributes() const NOEXCEPT {
+  const irs::attribute_store& attributes() const NOEXCEPT {
     return impl_->attributes();
   }
 

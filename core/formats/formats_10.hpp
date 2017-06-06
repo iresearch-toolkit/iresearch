@@ -212,7 +212,7 @@ class IRESEARCH_PLUGIN postings_writer final: public iresearch::postings_writer 
   static const string_ref TERMS_FORMAT_NAME;
   static const int32_t TERMS_FORMAT_MIN = 0;
   static const int32_t TERMS_FORMAT_MAX = TERMS_FORMAT_MIN;
-   
+
   static const string_ref DOC_FORMAT_NAME;
   static const string_ref DOC_EXT;
   static const string_ref POS_FORMAT_NAME;
@@ -229,12 +229,12 @@ class IRESEARCH_PLUGIN postings_writer final: public iresearch::postings_writer 
 
   postings_writer(bool volatile_attributes);
   virtual ~postings_writer();
-  
+
   /*------------------------------------------
   * const_attributes_provider 
   * ------------------------------------------*/
-  
-  virtual const iresearch::attributes& attributes() const NOEXCEPT override final {
+
+  virtual const irs::attribute_store& attributes() const NOEXCEPT override final {
     return attrs_;
   }
 
@@ -244,9 +244,9 @@ class IRESEARCH_PLUGIN postings_writer final: public iresearch::postings_writer 
 
   virtual void prepare(index_output& out, const iresearch::flush_state& state) override;
   virtual void begin_field(const iresearch::flags& meta) override;
-  virtual void write(doc_iterator& docs, iresearch::attributes& out) override;
+  virtual void write(doc_iterator& docs, irs::attribute_store& out) override;
   virtual void begin_block() override;
-  virtual void encode(data_output& out, const iresearch::attributes& attrs) override;
+  virtual void encode(data_output& out, const irs::attribute_store& attrs) override;
   virtual void end() override;
 
  private:
@@ -315,7 +315,7 @@ class IRESEARCH_PLUGIN postings_writer final: public iresearch::postings_writer 
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   skip_writer skip_;
-  iresearch::attributes attrs_;
+  irs::attribute_store attrs_;
   uint64_t buf[BLOCK_SIZE]; // buffer for encoding (worst case)
   version10::term_meta last_state;    /* last final term state*/
   doc_stream doc;           /* document stream */
@@ -343,12 +343,12 @@ class IRESEARCH_PLUGIN postings_reader final: public iresearch::postings_reader 
   virtual void decode(
     data_input& in, 
     const flags& field,
-    attributes& attrs
+    attribute_store& attrs
   ) override;
 
   virtual doc_iterator::ptr iterator(
     const flags& field,
-    const attributes& attrs,
+    const attribute_store& attrs,
     const flags& features
   ) override;
 

@@ -104,10 +104,10 @@ typedef std::vector<reader_term_state> terms_states_t;
 class same_position_query final : public filter::prepared {
  public:
   typedef states_cache<terms_states_t> states_t;
-  typedef std::vector<iresearch::attributes> stats_t;
+  typedef std::vector<attribute_store> stats_t;
 
   DECLARE_SPTR(same_position_query);
-  
+
   explicit same_position_query(states_t&& states, stats_t&& stats)
     : states_(std::move(states)), stats_(std::move(stats)) {
   }
@@ -128,7 +128,7 @@ class same_position_query final : public filter::prepared {
       // invalid state 
       return score_doc_iterator::empty();
     }
-    
+
     // get features required for query & order
     auto features = ord.features() | by_same_position::features();
 

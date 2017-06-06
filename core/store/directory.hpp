@@ -72,7 +72,7 @@ struct IRESEARCH_API index_lock : private util::noncopyable {
 /// @brief represents a flat directory of write once/read many files
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API directory 
-  : public util::attributes_provider, 
+  : public util::attribute_store_provider,
     private util::noncopyable {
   typedef std::function<bool(std::string& name)> visitor_f;
 

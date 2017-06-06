@@ -171,7 +171,7 @@ class doc_iterator : public iresearch::doc_iterator {
   void prepare(
       const version10::features& field,
       const version10::features& enabled,
-      const iresearch::attributes& attrs,
+      const irs::attribute_store& attrs,
       const index_input* doc_in,
       const index_input* pos_in,
       const index_input* pay_in) {
@@ -179,7 +179,7 @@ class doc_iterator : public iresearch::doc_iterator {
     enabled_ = enabled; // set enabled features
 
     // add mandatory attributes
-    doc_ = attrs_.add<document>();
+    doc_ = attrs_.emplace<document>().get();
 
     // get state attribute
     assert(attrs.contains<version10::term_meta>());
@@ -217,7 +217,7 @@ class doc_iterator : public iresearch::doc_iterator {
     return doc_->value;
   }
 
-  virtual const iresearch::attributes& attributes() const NOEXCEPT override {
+  virtual const irs::attribute_store& attributes() const NOEXCEPT override {
     return attrs_;
   }
 
@@ -255,13 +255,13 @@ class doc_iterator : public iresearch::doc_iterator {
  protected:
   virtual void prepare_attributes(
       const version10::features& enabled,
-      const iresearch::attributes& attrs,
+      const irs::attribute_store& attrs,
       const index_input* pos_in,
       const index_input* pay_in) {
     // term frequency attributes
     if (enabled.freq()) {
       assert(attrs.contains<frequency>());
-      freq_ = attrs_.add<frequency>();
+      freq_ = attrs_.emplace<frequency>().get();
       term_freq_ = attrs.get<frequency>()->value;
     }
   }
@@ -359,7 +359,7 @@ class doc_iterator : public iresearch::doc_iterator {
   std::vector<skip_state> skip_levels_;
   skip_reader skip_;
   skip_context* skip_ctx_; // pointer to used skip context, will be used by skip reader
-  iresearch::attributes attrs_;
+  irs::attribute_store attrs_;
   uint64_t enc_buf_[postings_writer::BLOCK_SIZE];
   doc_id_t docs_[postings_writer::BLOCK_SIZE]; // doc deltas
   uint32_t doc_freqs_[postings_writer::BLOCK_SIZE];
@@ -629,8 +629,8 @@ class offs_pay_iterator final : public pos_iterator {
   offs_pay_iterator():
     pos_iterator(2) { // offset + payload
     auto& attrs = this->attributes();
-    offs_ = attrs.add<offset>();
-    pay_ = attrs.add<payload>();
+    offs_ = attrs.emplace<offset>().get();
+    pay_ = attrs.emplace<payload>().get();
   }
 
   virtual void clear() override {
@@ -775,7 +775,7 @@ class offs_iterator final : public pos_iterator {
   offs_iterator():
     pos_iterator(1) { // offset
     auto& attrs = this->attributes();
-    offs_ = attrs.add<offset>();
+    offs_ = attrs.emplace<offset>().get();
   }
 
   virtual void clear() override {
@@ -886,7 +886,7 @@ class pay_iterator final : public pos_iterator {
   pay_iterator():
     pos_iterator(1) { // payload
     auto& attrs = this->attributes();
-    pay_ = attrs.add<payload>();
+    pay_ = attrs.emplace<payload>().get();
   }
 
   virtual void clear() override {
@@ -1068,7 +1068,7 @@ class pos_doc_iterator : public doc_iterator {
  protected:
   virtual void prepare_attributes(
     const version10::features& features,
-    const irs::attributes &attrs,
+    const irs::attribute_store &attrs,
     const index_input* pos_in,
     const index_input* pay_in
   ) final;
@@ -1085,7 +1085,7 @@ class pos_doc_iterator : public doc_iterator {
 
 void pos_doc_iterator::prepare_attributes(
     const version10::features& enabled,
-    const iresearch::attributes& attrs,
+    const irs::attribute_store& attrs,
     const index_input* pos_in,
     const index_input* pay_in) {
   doc_iterator::prepare_attributes(
@@ -1116,7 +1116,7 @@ void pos_doc_iterator::prepare_attributes(
   it->prepare(state);
 
   // finish initialization
-  position* pos = attrs_.add<position>();
+  auto* pos = attrs_.emplace<position>().get();
   pos->prepare(pos_ = it.release());
 }
 
@@ -3248,7 +3248,7 @@ void postings_writer::prepare(index_output& out, const iresearch::flush_state& s
 
   /* prepare documents bitset */
   docs_.reset(state.doc_count);
-  attrs_.add<version10::documents>()->value = &docs_;
+  attrs_.emplace<version10::documents>()->value = &docs_;
 }
 
 void postings_writer::begin_field(const iresearch::flags& field) {
@@ -3270,22 +3270,22 @@ void postings_writer::begin_block() {
   #pragma GCC diagnostic ignored "-Wparentheses"
 #endif
 
-void postings_writer::write(doc_iterator& docs, iresearch::attributes& attrs) {
+void postings_writer::write(doc_iterator& docs, irs::attribute_store& attrs) {
   REGISTER_TIMER_DETAILED();
   auto& freq = docs.attributes().get<frequency>();
-  auto& pos = freq ? docs.attributes().get<position>() : attribute_ref<position>::nil();
+  auto& pos = freq ? docs.attributes().get<position>() : irs::attribute_store::ref<position>::nil();
   const offset* offs = nullptr;
   const payload* pay = nullptr;
   frequency* tfreq = nullptr;
-  auto& meta = attrs.add<version10::term_meta>();
+  auto& meta = attrs.emplace<version10::term_meta>();
 
   if (freq) {
     if (pos && !volatile_attributes_) {
-      offs = pos->get< offset >();
-      pay = pos->get< payload >();
+      offs = pos->get<offset>().get();
+      pay = pos->get<payload>().get();
     }
 
-    tfreq = attrs.add< frequency >();
+    tfreq = attrs.emplace<frequency>().get();
   }
 
   begin_term();
@@ -3294,13 +3294,13 @@ void postings_writer::write(doc_iterator& docs, iresearch::attributes& attrs) {
     auto did = docs.value();
 
     assert(type_limits<type_t::doc_id_t>::valid(did));
-    begin_doc(did, freq);
+    begin_doc(did, freq.get());
     docs_.set(did - type_limits<type_t::doc_id_t>::min());
 
     if (pos) {
       if (volatile_attributes_) {
-        offs = pos->get<offset>();
-        pay = pos->get<payload>();
+        offs = pos->get<offset>().get();
+        pay = pos->get<payload>().get();
       }
 
       while ( pos->next() ) {
@@ -3562,7 +3562,10 @@ void postings_writer::write_skip(size_t level, index_output& out) {
   }
 }
 
-void postings_writer::encode(data_output& out, const iresearch::attributes& attrs) {
+void postings_writer::encode(
+    data_output& out,
+    const irs::attribute_store& attrs
+) {
   auto& meta = attrs.get<term_meta>();
   auto& tfreq = attrs.get<frequency>();
 
@@ -3687,9 +3690,10 @@ bool postings_reader::prepare(
 void postings_reader::decode( 
     data_input& in, 
     const flags& meta, 
-    attributes& attrs) {
-  auto& tmeta = attrs.add<version10::term_meta>();
-  auto& tfreq = attrs.get<frequency>();
+    attribute_store& attrs
+) {
+  auto& tmeta = attrs.emplace<version10::term_meta>();
+  auto& tfreq = const_cast<const attribute_store&>(attrs).get<frequency>();
 
   assert(tmeta);
 
@@ -3718,7 +3722,7 @@ void postings_reader::decode(
 
 doc_iterator::ptr postings_reader::iterator(
     const flags& field,
-    const attributes& attrs,
+    const attribute_store& attrs,
     const flags& req) {
   typedef detail::doc_iterator doc_iterator_t;
   typedef detail::pos_doc_iterator pos_doc_iterator_t;
