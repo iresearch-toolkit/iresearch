@@ -1,9 +1,3 @@
-set (IResearchBencmarks_TARGET_NAME
-  "iresearch-benchmarks"
-  CACHE INTERNAL
-  ""
-)
-
 # set cmdline directories
 set(CMDLINE_INCLUDE_DIR
   ${EXTERNAL_INCLUDE_DIRS}/cmdline
@@ -11,74 +5,90 @@ set(CMDLINE_INCLUDE_DIR
 
 if (MSVC)
   # disable "checked iterators" feature
-  add_definitions(-D_SCL_SECURE_NO_WARNINGS) 
+  add_definitions(-D_SCL_SECURE_NO_WARNINGS)
 endif()
 
 ################################################################################
-### @brief iresearch-benchmarks-index
+### iresearch-util
 ################################################################################
 
-add_executable(${IResearchBencmarks_TARGET_NAME}-index
-  ./index-put.cpp
+set (IResearchUtil_TARGET_NAME
+  "iresearch-index-util"
+  CACHE INTERNAL
+  ""
 )
 
-add_dependencies(${IResearchBencmarks_TARGET_NAME}-index
-  ${IResearch_TARGET_NAME}-analyzer-text-static
-  ${IResearch_TARGET_NAME}-format-1_0-static
-  ${IResearch_TARGET_NAME}-scorer-tfidf-static
-  ${IResearch_TARGET_NAME}-scorer-bm25-static
+add_executable(${IResearchUtil_TARGET_NAME}
+  ./index-dump.cpp
+  ./index-util.cpp
+  ./main.cpp
 )
 
-target_include_directories(${IResearchBencmarks_TARGET_NAME}-index
+target_include_directories(${IResearchUtil_TARGET_NAME}
   PRIVATE ${PROJECT_BINARY_DIR}/core
 )
 
-set_target_properties(${IResearchBencmarks_TARGET_NAME}-index
+set_target_properties(${IResearchUtil_TARGET_NAME}
   PROPERTIES
-  OUTPUT_NAME iresearch-benchmarks-index
+  OUTPUT_NAME iresearch-index-util
+  COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;BOOST_ALL_DYN_LINK"
+)
+
+set_target_properties(${IResearchUtil_TARGET_NAME}
+  PROPERTIES
+  OUTPUT_NAME iresearch-index-util
   COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
 )
 
-target_link_libraries(${IResearchBencmarks_TARGET_NAME}-index
+target_link_libraries(${IResearchUtil_TARGET_NAME}
   ${IResearch_TARGET_NAME}-static
   ${PTHREAD_LIBRARY}
 )
 
-target_compile_features(${IResearchBencmarks_TARGET_NAME}-index
+target_compile_features(${IResearchUtil_TARGET_NAME}
   PRIVATE
   cxx_final
   cxx_variadic_templates
 )
 
-include_directories(${IResearchBencmarks_TARGET_NAME}-index
+include_directories(${IResearchUtil_TARGET_NAME}
+  ${IReSearch_generated_INCLUDE_DIR}
   ${IResearch_INCLUDE_DIR}
-  ${ICU_INCLUDE_DIR}
   ${Boost_INCLUDE_DIRS}
   ${CMDLINE_INCLUDE_DIR}
 )
 
 ################################################################################
-### @brief iresearch-benchmarks-search
+### iresearch-benchmarks
 ################################################################################
 
-add_executable(${IResearchBencmarks_TARGET_NAME}-search
-  ./index-search.cpp
+set (IResearchBencmarks_TARGET_NAME
+  "iresearch-benchmarks"
+  CACHE INTERNAL
+  ""
 )
 
-add_dependencies(${IResearchBencmarks_TARGET_NAME}-search
+add_executable(${IResearchBencmarks_TARGET_NAME}
+  ./index-put.cpp
+  ./index-search.cpp
+  ./index-benchmarks.cpp
+  ./main.cpp
+)
+
+add_dependencies(${IResearchBencmarks_TARGET_NAME}
   ${IResearch_TARGET_NAME}-analyzer-text-static
   ${IResearch_TARGET_NAME}-format-1_0-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
   ${IResearch_TARGET_NAME}-scorer-bm25-static
 )
 
-target_include_directories(${IResearchBencmarks_TARGET_NAME}-search
+target_include_directories(${IResearchBencmarks_TARGET_NAME}
   PRIVATE ${PROJECT_BINARY_DIR}/core
 )
 
-set_target_properties(${IResearchBencmarks_TARGET_NAME}-search
+set_target_properties(${IResearchBencmarks_TARGET_NAME}
   PROPERTIES
-  OUTPUT_NAME iresearch-benchmarks-search
+  OUTPUT_NAME iresearch-benchmarks
   COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
 )
 
@@ -87,19 +97,19 @@ if (NOT MSVC AND GCC_VERSION VERSION_LESS 4.9)
   set(REGEX_LIBRARY ${Boost_STATIC_sharedRT_REGEX_LIBRARY_RELEASE})
 endif()
 
-target_link_libraries(${IResearchBencmarks_TARGET_NAME}-search
+target_link_libraries(${IResearchBencmarks_TARGET_NAME}
   ${IResearch_TARGET_NAME}-static
   ${PTHREAD_LIBRARY}
   ${REGEX_LIBRARY}
 )
 
-target_compile_features(${IResearchBencmarks_TARGET_NAME}-search
+target_compile_features(${IResearchBencmarks_TARGET_NAME}
   PRIVATE
   cxx_final
   cxx_variadic_templates
 )
 
-include_directories(${IResearchBencmarks_TARGET_NAME}-search
+include_directories(${IResearchBencmarks_TARGET_NAME}
   ${IResearch_INCLUDE_DIR}
   ${ICU_INCLUDE_DIR}
   ${Boost_INCLUDE_DIRS}

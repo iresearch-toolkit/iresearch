@@ -49,8 +49,6 @@
 NS_LOCAL
 
 const std::string HELP = "help";
-const std::string MODE = "mode";
-const std::string MODE_SEARCH = "search";
 const std::string INDEX_DIR = "index-dir";
 const std::string OUTPUT = "out";
 const std::string INPUT = "in";
@@ -1075,16 +1073,10 @@ int search(const cmdline::parser& args) {
   return search(path, in, std::cout, maxtasks, repeat, thrs, topN, shuffle, csv);
 }
 
-int main(int argc, char* argv[]) {
-    //    irs::logger::output_le(iresearch::logger::IRL_ERROR, stderr);
-
-  // general description
-  cmdline::parser cmdroot;
-  cmdroot.add(HELP, '?', "Produce help message");
-  cmdroot.add<std::string>(MODE, 'm', "Select mode: " + MODE_SEARCH, true);
-
+int search(int argc, char* argv[]) {
   // mode search
   cmdline::parser cmdsearch;
+  cmdsearch.add(HELP, '?', "Produce help message");
   cmdsearch.add<std::string>(INDEX_DIR, 0, "Path to index directory", true);
   cmdsearch.add<std::string>(INPUT, 0, "Task file", true);
   cmdsearch.add<std::string>(OUTPUT, 0, "Stats file", false);
@@ -1096,31 +1088,12 @@ int main(int argc, char* argv[]) {
   cmdsearch.add(RND, 0, "Shuffle tasks");
   cmdsearch.add(CSV, 0, "CSV output");
 
-  cmdroot.parse(argc, argv);
+  cmdsearch.parse(argc, argv);
 
-  if (!cmdroot.exist(MODE) || cmdroot.exist(HELP)) {
-    std::cout << cmdroot.usage() << "\n"
-              << "Mode " << MODE_SEARCH << ":\n"
-              << cmdsearch.usage() << std::endl;
+  if (cmdsearch.exist(HELP)) {
+    std::cout << cmdsearch.usage() << std::endl;
     return 0;
   }
 
-  irs::timer_utils::init_stats(true);
-  auto output_stats = irs::make_finally([]()->void {
-    irs::timer_utils::visit([](const std::string& key, size_t count, size_t time)->bool {
-      std::cout << key << " calls:" << count << ", time: " << time/1000 << " us, avg call: " << time/1000/(double)count << " us"<< std::endl;
-      return true;
-    });
-  });
-
-  const auto& mode = cmdroot.get<std::string>(MODE);
-
-  if (MODE_SEARCH == mode) {
-    // enter search mode
-    cmdsearch.parse(argc, argv);
-
-    return search(cmdsearch);
-  }
-
-  return 0;
+  return search(cmdsearch);
 }

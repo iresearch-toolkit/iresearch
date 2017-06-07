@@ -9,6 +9,7 @@
 // Agreement under which it is provided by or on behalf of EMC.
 // 
 
+#include "index-put.hpp"
 #include "index/index_writer.hpp"
 #include "analysis/token_streams.hpp"
 #include "analysis/text_token_stream.hpp"
@@ -31,8 +32,6 @@
 NS_LOCAL
 
 const std::string HELP = "help";
-const std::string MODE = "mode";
-const std::string MODE_PUT = "put";
 const std::string BATCH_SIZE = "batch-size";
 const std::string CONSOLIDATE = "consolidate";
 const std::string INDEX_DIR = "index-dir";
@@ -497,16 +496,10 @@ int put(const cmdline::parser& args) {
   return put(path, std::cin, lines_max, indexer_threads, commit_interval_ms, batch_size, consolidate);
 }
 
-int main(int argc, char* argv[]) {
-  irs::logger::output_le(iresearch::logger::IRL_ERROR, stderr);
-
-  // general description
-  cmdline::parser cmdroot;
-  cmdroot.add(HELP, '?', "Produce help message");
-  cmdroot.add<std::string>(MODE, 'm', "Select mode: " + MODE_PUT, true);
-
+int put(int argc, char* argv[]) {
   // mode put
   cmdline::parser cmdput;
+  cmdput.add(HELP, '?', "Produce help message");
   cmdput.add(INDEX_DIR, 0, "Path to index directory", true, std::string());
   cmdput.add(INPUT, 0, "Input file", true, std::string());
   cmdput.add(BATCH_SIZE, 0, "Lines per batch", false, size_t(0));
@@ -515,31 +508,12 @@ int main(int argc, char* argv[]) {
   cmdput.add(THR, 0, "Number of insert threads", false, size_t(0));
   cmdput.add(CPR, 0, "Commit period in lines", false, size_t(0));
 
-  cmdroot.parse(argc, argv);
+  cmdput.parse(argc, argv);
 
-  if (!cmdroot.exist(MODE) || cmdroot.exist(HELP)) {
-    std::cout << cmdroot.usage() << "\n"
-              << "Mode " << MODE_PUT << ":\n"
-              << cmdput.usage() << std::endl;
+  if (cmdput.exist(HELP)) {
+    std::cout << cmdput.usage() << std::endl;
     return 0;
   }
 
-  irs::timer_utils::init_stats(true);
-  auto output_stats = irs::make_finally([]()->void {
-    irs::timer_utils::visit([](const std::string& key, size_t count, size_t time)->bool {
-      std::cout << key << " calls:" << count << ", time: " << time/1000 << " us, avg call: " << time/1000/(double)count << " us"<< std::endl;
-      return true;
-    });
-  });
-
-  const auto& mode = cmdroot.get<std::string>(MODE);
-
-  if (MODE_PUT == mode) {
-    // enter put mode
-    cmdput.parse(argc, argv);
-
-    return put(cmdput);
-  }
-
-  return 0;
+  return put(cmdput);
 }

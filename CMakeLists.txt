@@ -334,8 +334,7 @@ add_definitions(-DUNICODE -D_UNICODE)
 
 add_subdirectory(core)
 add_subdirectory(tests)
-add_subdirectory(benchmarks)
-add_subdirectory(index-util)
+add_subdirectory(utils)
 
 # setup code coverage
 if (NOT MSVC AND (CMAKE_BUILD_TYPE STREQUAL "Coverage"))

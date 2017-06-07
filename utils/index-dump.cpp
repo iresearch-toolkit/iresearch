@@ -9,6 +9,8 @@
 // Agreement under which it is provided by or on behalf of EMC.
 // 
 
+#include "shared.hpp"
+#include "index-dump.hpp"
 #include "index/directory_reader.hpp"
 #include "index/field_meta.hpp"
 #include "store/fs_directory.hpp"
@@ -22,11 +24,7 @@
 
 NS_LOCAL
 
-namespace fs = boost::filesystem;
-
 const std::string HELP = "help";
-const std::string MODE = "mode";
-const std::string MODE_DUMP = "dump";
 const std::string INDEX_DIR = "index-dir";
 const std::string OUTPUT = "out";
 
@@ -97,34 +95,19 @@ int dump(const cmdline::parser& args) {
   return dump(path, std::cout);
 }
 
-int main(int argc, char* argv[]) {
-  // general description
-  cmdline::parser cmdroot;
-  cmdroot.add(HELP, '?', "Produce help message");
-  cmdroot.add<std::string>(MODE, 'm', "Select mode: " + MODE_DUMP, true);
-
+int dump(int argc, char* argv[]) {
   // dump mode description
   cmdline::parser cmddump;
+  cmddump.add(HELP, '?', "Produce help message");
   cmddump.add<std::string>(INDEX_DIR, 0, "Path to index directory", true);
   cmddump.add<std::string>(OUTPUT, 0, "Output file", false);
 
-  cmdroot.parse(argc, argv);
+  cmddump.parse(argc, argv);
 
-  if (!cmdroot.exist(MODE) || cmdroot.exist(HELP)) {
-    std::cout << cmdroot.usage() << "\n"
-              << "Mode " << MODE_DUMP << ":\n"
-              << cmddump.usage() << std::endl;
+  if (cmddump.exist(HELP)) {
+    std::cout << cmddump.usage() << std::endl;
     return 0;
   }
 
-  const auto& mode = cmdroot.get<std::string>(MODE);
-
-  if (MODE_DUMP == mode) {
-    // enter dump mode
-    cmddump.parse(argc, argv);
-
-    return dump(cmddump);
-  }
-
-  return 0;
+  return dump(cmddump);
 }
