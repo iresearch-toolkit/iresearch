@@ -167,7 +167,7 @@ void test_base::make_directories() {
 
 void test_base::parse_command_line(cmdline::parser& cmd) {
   cmd.add(IRES_HELP, '?', "print this message");
-  cmd.add(IRES_OUTPUT, 0, "generate an XML report", false, false);
+  cmd.add(IRES_OUTPUT, 0, "generate an XML report");
   cmd.add(IRES_OUTPUT_PATH, 0, "output directory", false, out_dir_);
   cmd.add(IRES_RESOURCE_DIR, 0, "resource directory", false, fs::path(IResearch_test_resource_dir));
   cmd.parse(argc_, argv_);
