@@ -17,13 +17,15 @@
 #include "unicode/utf8.h"
 #include "utils/file_utils.hpp"
 
+#include <boost/filesystem/fstream.hpp>
+
 #include <sstream>
 #include <iomanip>
 #include <numeric>
 
 #include <rapidjson/rapidjson.h>
 #include <rapidjson/reader.h>
-#include <rapidjson/filereadstream.h>
+#include <rapidjson/istreamwrapper.h>
 
 namespace utf8 {
 namespace unchecked {
@@ -425,11 +427,10 @@ class parse_json_handler : irs::util::noncopyable {
 json_doc_generator::json_doc_generator(
     const fs::path& file, 
     const json_doc_generator::factory_f& factory) {
-  irs::file_utils::handle_t handle(file_open(file.c_str(), "rb"));
+  boost::filesystem::ifstream input(file, std::ios::in | std::ios::binary);
+  assert(input);
 
-  char readBuffer[65536];
-  rapidjson::FileReadStream stream(handle.get(), readBuffer, sizeof readBuffer);
-
+  rapidjson::IStreamWrapper stream(input);
   parse_json_handler handler(factory, docs_);
   rapidjson::Reader reader;
 
