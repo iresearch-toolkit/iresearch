@@ -264,15 +264,19 @@ class IRESEARCH_API attribute_map {
     ref<T>& operator=(ref<T>&& other) NOEXCEPT { if (this != &other) { ptr_ = std::move(other.ptr_); } return *this; }
     ref<T>& operator=(const ref<T>& other) NOEXCEPT { if (this != &other) { ptr_ = other.ptr_; } return *this; } // TODO FIXME remove
     typename std::add_lvalue_reference<T>::type operator*() const NOEXCEPT { return reinterpret_cast<T&>(*ptr_); }
-    T* operator->() const NOEXCEPT { return reinterpret_cast<T*>(&*ptr_); }
+    T* operator->() const NOEXCEPT { return ptr_cast(ptr_); }
     explicit operator bool() const NOEXCEPT { return nullptr != ptr_; }
 
-    T* get() const { return reinterpret_cast<T*>(&*ptr_); }
+    T* get() const { return ptr_cast(ptr_); }
     static const ref<T>& nil() NOEXCEPT { static const ref<T> nil; return nil; }
 
    private:
     friend attribute_map<PTR_T>& attribute_map<PTR_T>::operator=(const attribute_map&);
     PTR_T ptr_;
+
+    FORCE_INLINE static T* ptr_cast(void* ptr) { return reinterpret_cast<T*>(ptr); }
+    template<typename U>
+    FORCE_INLINE static T* ptr_cast(const U& ptr) { return reinterpret_cast<T*>(ptr.get()); }
   };
 
   attribute_map() = default;
