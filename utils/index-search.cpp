@@ -785,9 +785,9 @@ int search(
     bool csv,
     size_t scored_terms_limit
 ) {
-  repeat = std::max(size_t(1), repeat);
-  search_threads = std::max(size_t(1), search_threads);
-  scored_terms_limit = std::max(size_t(1), scored_terms_limit);
+  repeat = (std::max)(size_t(1), repeat);
+  search_threads = (std::max)(size_t(1), search_threads);
+  scored_terms_limit = (std::max)(size_t(1), scored_terms_limit);
 
   SCOPED_TIMER("Total Time");
   std::cout << "Configuration: " << std::endl;
