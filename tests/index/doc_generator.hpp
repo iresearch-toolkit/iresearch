@@ -351,6 +351,8 @@ class json_doc_generator: public doc_generator_base {
     };
     ValueType vt{ ValueType::NIL };
 
+    json_value() = default;
+
     bool is_bool() const NOEXCEPT {
       return ValueType::BOOL == vt;
     }
