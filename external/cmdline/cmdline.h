@@ -124,10 +124,11 @@ static inline std::string demangle(const std::string &name)
 
 static inline std::string demangle(const std::string &name)
 {
-  TCHAR szUndecorateName[256];
-  memset(szUndecorateName, 0, 256);
-  UnDecorateSymbolName(name.c_str(), szUndecorateName, 256, 0);
-  return szUndecorateName;
+//  TCHAR szUndecorateName[256];
+//  memset(szUndecorateName, 0, 256);
+//  UnDecorateSymbolName(name.c_str(), szUndecorateName, 256, 0);
+//  return szUndecorateName;
+  return name; // FIXME
 }
 
 #endif // _MSC_VER
