@@ -39,6 +39,14 @@
 #include <cxxabi.h>
 #include <cstdlib>
 
+#ifndef _MSC_VER
+#include <cxxabi.h>
+#else
+#include <windows.h> 
+#include <Dbghelp.h>
+#pragma comment(lib,"dbghelp.lib")
+#endif // _MSC_VER
+
 namespace cmdline{
 
 namespace detail{
@@ -102,6 +110,8 @@ Target lexical_cast(const Source &arg)
   return lexical_cast_t<Target, Source, detail::is_same<Target, Source>::value>::cast(arg);
 }
 
+#ifndef _MSC_VER
+
 static inline std::string demangle(const std::string &name)
 {
   int status=0;
@@ -110,6 +120,18 @@ static inline std::string demangle(const std::string &name)
   free(p);
   return ret;
 }
+
+#else
+
+static inline std::string demangle(const std::string &name)
+{
+  TCHAR szUndecorateName[256];
+  memset(szUndecorateName, 0, 256);
+  UnDecorateSymbolName(name.c_str(), szUndecorateName, 256, 0);
+  return szUndecorateName;
+}
+
+#endif // _MSC_VER
 
 template <class T>
 std::string readable_typename()
@@ -566,7 +588,7 @@ public:
 
     size_t max_width=0;
     for (size_t i=0; i<ordered.size(); i++){
-      max_width=std::max(max_width, ordered[i]->name().length());
+      max_width=(std::max)(max_width, ordered[i]->name().length());
     }
     for (size_t i=0; i<ordered.size(); i++){
       if (ordered[i]->short_name()){
