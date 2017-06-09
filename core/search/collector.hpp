@@ -30,7 +30,7 @@ struct IRESEARCH_API collector {
 
 NS_END
 
-MSVC_ONLY(template class IRESEARCH_API std::function<void(irs::collector&, const irs::attributes_store&)>); // collector::prepare_f
+MSVC_ONLY(template class IRESEARCH_API std::function<void(irs::collector&, const irs::attribute_store&)>); // collector::prepare_f
 MSVC_ONLY(template class IRESEARCH_API std::function<void(iresearch::collector&, iresearch::doc_id_t)>); // collector::collect_f
 
 NS_ROOT
