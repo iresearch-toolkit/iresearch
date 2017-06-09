@@ -36,7 +36,6 @@
 #include <typeinfo>
 #include <cstring>
 #include <algorithm>
-#include <cxxabi.h>
 #include <cstdlib>
 
 #ifndef _MSC_VER
