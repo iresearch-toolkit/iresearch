@@ -1052,16 +1052,17 @@ int search(const cmdline::parser& args) {
             << "Number of terms to in range/prefix queries=" << topN     << '\n'
             << "Output CSV="                                 << shuffle  << std::endl;
 
-  const auto& file = args.get<std::string>(INPUT);
-  std::fstream in(file, std::fstream::in);
+  std::fstream in(args.get<std::string>(INPUT), std::fstream::in);
 
   if (!in) {
     return 1;
   }
 
   if (args.exist(OUTPUT)) {
-    const auto& file = args.get<std::string>(OUTPUT);
-    std::fstream out(file, std::fstream::out | std::fstream::trunc);
+    std::fstream out(
+      args.get<std::string>(OUTPUT),
+      std::fstream::out | std::fstream::trunc
+    );
 
     if (!out) {
       return 1;

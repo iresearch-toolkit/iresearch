@@ -369,7 +369,7 @@ int put(
     SCOPED_TIMER("Stream read total time");
     SCOPED_LOCK_NAMED(batch_provider.mutex_, lock);
 
-    for (auto i = lines_max ? lines_max : std::numeric_limits<size_t>::max(); i; --i) {
+    for (auto i = lines_max ? lines_max : (std::numeric_limits<size_t>::max)(); i; --i) {
       batch_provider.buf_.resize(batch_provider.buf_.size() + 1);
       batch_provider.cond_.notify_all();
 
