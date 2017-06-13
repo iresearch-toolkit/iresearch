@@ -39,11 +39,7 @@
 #include <cstdlib>
 
 #ifndef _MSC_VER
-#include <cxxabi.h>
-#else
-#include <windows.h> 
-#include <Dbghelp.h>
-#pragma comment(lib,"dbghelp.lib")
+  #include <cxxabi.h>
 #endif // _MSC_VER
 
 namespace cmdline{
@@ -109,29 +105,20 @@ Target lexical_cast(const Source &arg)
   return lexical_cast_t<Target, Source, detail::is_same<Target, Source>::value>::cast(arg);
 }
 
-#ifndef _MSC_VER
-
 static inline std::string demangle(const std::string &name)
 {
-  int status=0;
-  char *p=abi::__cxa_demangle(name.c_str(), 0, 0, &status);
-  std::string ret(p);
-  free(p);
-  return ret;
+  #ifndef _MSC_VER
+    int status = 0;
+    char* ptr = abi::__cxa_demangle(name.c_str(), 0, 0, &status);
+    std::string ret(ptr);
+
+    free(ptr);
+
+    return ret;
+  #else
+    return name;
+  #endif
 }
-
-#else
-
-static inline std::string demangle(const std::string &name)
-{
-//  TCHAR szUndecorateName[256];
-//  memset(szUndecorateName, 0, 256);
-//  UnDecorateSymbolName(name.c_str(), szUndecorateName, 256, 0);
-//  return szUndecorateName;
-  return name; // FIXME
-}
-
-#endif // _MSC_VER
 
 template <class T>
 std::string readable_typename()
