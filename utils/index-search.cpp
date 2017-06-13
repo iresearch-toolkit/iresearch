@@ -1044,13 +1044,13 @@ int search(const cmdline::parser& args) {
   const bool csv = args.exist(CSV);
   const size_t scored_terms_limit = args.get<size_t>(SCORED_TERMS_LIMIT);
 
-  std::cout << "Max tasks in category="                      << maxtasks << '\n'
-            << "Task repeat count="                          << repeat   << '\n'
-            << "Do task list shuffle="                       << shuffle  << '\n'
-            << "Search threads="                             << thrs     << '\n'
-            << "Number of top documents to collect="         << topN     << '\n'
-            << "Number of terms to in range/prefix queries=" << topN     << '\n'
-            << "Output CSV="                                 << shuffle  << std::endl;
+  std::cout << "Max tasks in category="                      << maxtasks           << '\n'
+            << "Task repeat count="                          << repeat             << '\n'
+            << "Do task list shuffle="                       << shuffle            << '\n'
+            << "Search threads="                             << thrs               << '\n'
+            << "Number of top documents to collect="         << topN               << '\n'
+            << "Number of terms to in range/prefix queries=" << scored_terms_limit << '\n'
+            << "Output CSV="                                 << csv                << std::endl;
 
   std::fstream in(args.get<std::string>(INPUT), std::fstream::in);
 
@@ -1068,10 +1068,10 @@ int search(const cmdline::parser& args) {
       return 1;
     }
 
-    return search(path, in, out, maxtasks, repeat, thrs, topN, shuffle, csv);
+    return search(path, in, out, maxtasks, repeat, thrs, topN, shuffle, csv, scored_terms_limit);
   }
 
-  return search(path, in, std::cout, maxtasks, repeat, thrs, topN, shuffle, csv);
+  return search(path, in, std::cout, maxtasks, repeat, thrs, topN, shuffle, csv, scored_terms_limit);
 }
 
 int search(int argc, char* argv[]) {
