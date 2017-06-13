@@ -290,13 +290,18 @@ class IRESEARCH_API attribute_map {
   }
 
   attribute_map<PTR_T>& operator=(const attribute_map& other) {
+    // valid for PTR_T types supporting copy assignment
+    typedef typename std::enable_if<
+      std::is_copy_assignable<typename std::add_lvalue_reference<PTR_T>::type>::value,
+      PTR_T
+    >::type type;
+
     if (this != &other) {
+      map_.clear();
+
       for (auto& entry: other.map_) {
-        map_.emplace(
-          std::piecewise_construct,
-          std::forward_as_tuple(entry.first),
-          std::forward_as_tuple(entry.second)
-        );
+        type& ptr = map_[entry.first].ptr_;
+        ptr = entry.second.ptr_;
       }
     }
 
