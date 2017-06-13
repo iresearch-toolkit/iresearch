@@ -79,9 +79,9 @@ class scorer : public iresearch::sort::scorer_base<bm25::score_t> {
     assert(freq_);
   }
 
-  virtual void score(score_t& score_buf) override {
+  virtual void score(byte_type* score_buf) override {
     const float_t freq = tf();
-    score_buf = num_ * freq / (norm_const_ + freq);
+    score_cast(score_buf) = num_ * freq / (norm_const_ + freq);
   }
 
  protected:
@@ -115,9 +115,9 @@ class norm_scorer final : public scorer {
     }
   }
 
-  virtual void score(score_t& score_buf) override {
+  virtual void score(byte_type* score_buf) override {
     const float_t freq = tf();
-    score_buf = num_ * freq / (norm_const_ + norm_length_ * norm_->read() + freq);
+    score_cast(score_buf) = num_ * freq / (norm_const_ + norm_length_ * norm_->read() + freq);
   }
 
  private:

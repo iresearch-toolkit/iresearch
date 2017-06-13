@@ -41,8 +41,8 @@ struct boost : public iresearch::sort {
     ): attrs_(attrs), boost_(boost) {
     }
 
-    virtual void score(score_t& score) {
-      score = boost_ ? boost_->value : 0;
+    virtual void score(irs::byte_type* score) {
+      score_cast(score) = boost_ ? boost_->value : 0;
     }
 
    private:
@@ -152,9 +152,10 @@ struct frequency_sort: public iresearch::sort {
         doc_id_t_attr(doc_id_t), docs_count(v_docs_count) {
       }
 
-      virtual void score(score_t& score_buf) override {
-        score_buf.id = doc_id_t_attr->value;
-        score_buf.value = 1. / *docs_count;
+      virtual void score(irs::byte_type* score_buf) override {
+        auto& buf = score_cast(score_buf);
+        buf.id = doc_id_t_attr->value;
+        buf.value = 1. / *docs_count;
       }
 
      private:

@@ -93,8 +93,8 @@ class scorer : public iresearch::sort::scorer_base<tfidf::score_t> {
     assert(freq_);
   }
 
-  virtual void score(score_t& score_buf) override {
-    score_buf = tfidf();
+  virtual void score(byte_type* score_buf) override {
+    score_cast(score_buf) = tfidf();
   }
 
  protected:
@@ -121,8 +121,8 @@ class norm_scorer final : public scorer {
     assert(norm_);
   }
 
-  virtual void score(score_t& score_buf) override {
-    score_buf = tfidf() * norm_->read();
+  virtual void score(byte_type* score_buf) override {
+    score_cast(score_buf) = tfidf() * norm_->read();
   }
 
  private:

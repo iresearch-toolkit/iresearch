@@ -138,17 +138,11 @@ class IRESEARCH_API sort {
   template <typename T>
   class scorer_base : public scorer {
    public:
-     typedef T score_t;
+    typedef T score_t;
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set the document score based on the stored state
-    ////////////////////////////////////////////////////////////////////////////////
-    virtual void score(byte_type* score_buf) final override {
-      assert(score_buf);
-      score(*reinterpret_cast<score_t*>(score_buf));
+    FORCE_INLINE static T& score_cast(byte_type* score_buf) {
+      return *reinterpret_cast<T*>(score_buf);
     }
-
-    virtual void score(score_t& /*score_buf*/) {}
   }; // scorer_base
 
   ////////////////////////////////////////////////////////////////////////////////
