@@ -292,7 +292,11 @@ class IRESEARCH_API attribute_map {
   attribute_map<PTR_T>& operator=(const attribute_map& other) {
     if (this != &other) {
       for (auto& entry: other.map_) {
-        map_.emplace(entry.first, entry.second.ptr_);
+        map_.emplace(
+          std::piecewise_construct,
+          std::forward_as_tuple(entry.first),
+          std::forward_as_tuple(entry.second)
+        );
       }
     }
 
