@@ -125,7 +125,7 @@ bool read_write_mutex::try_lock_read() {
 
   TRY_SCOPED_LOCK_NAMED(mutex_, lock);
 
-  if (!lock) {
+  if (!lock || exclusive_count_) {
     return false;
   }
 
