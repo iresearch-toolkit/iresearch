@@ -104,6 +104,17 @@ attribute_registrar::operator bool() const NOEXCEPT {
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                     attribute_map
+// -----------------------------------------------------------------------------
+
+#if defined(_MSC_VER) && defined(IRESEARCH_DLL)
+
+template class IRESEARCH_API attribute_map<void*>;
+template class IRESEARCH_API attribute_map<std::shared_ptr<attribute>>;
+
+#endif
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                   attribute_store
 // -----------------------------------------------------------------------------
 

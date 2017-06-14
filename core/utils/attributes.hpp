@@ -252,7 +252,7 @@ class IRESEARCH_API flags {
 /// @brief common interface for attribute storage implementations
 //////////////////////////////////////////////////////////////////////////////
 template<typename PTR_T>
-class IRESEARCH_API attribute_map {
+class IRESEARCH_API_TEMPLATE attribute_map {
  public:
   template <typename T>
   class ref: private util::noncopyable {
