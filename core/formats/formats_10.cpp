@@ -302,7 +302,7 @@ class doc_iterator : public iresearch::doc_iterator {
         if (shift_unpack_64(doc_in_->read_vlong(), docs_[i])) {
           doc_freqs_[i] = 1;
         } else {
-          doc_freqs_[i] = doc_in_->read_vint();
+          doc_freqs_[i] = doc_in_->read_vlong();
         }
       }
     } else {
@@ -331,7 +331,7 @@ class doc_iterator : public iresearch::doc_iterator {
           encode::bitpack::read_block(
             *doc_in_,
             postings_writer::BLOCK_SIZE,
-            reinterpret_cast<uint32_t*>(enc_buf_),
+            enc_buf_,
             doc_freqs_
           );
         } else {
@@ -342,10 +342,10 @@ class doc_iterator : public iresearch::doc_iterator {
         }
       }
       end_ = docs_ + postings_writer::BLOCK_SIZE;
-    } else if (1U == term_state_.docs_count) {
+    } else if (1 == term_state_.docs_count) {
       docs_[0] = term_state_.e_single_doc;
       if (term_freq_) {
-        doc_freqs_[0] = static_cast<uint32_t>(term_freq_);
+        doc_freqs_[0] = term_freq_;
       }
       end_ = docs_ + 1;
     } else {
@@ -356,8 +356,7 @@ class doc_iterator : public iresearch::doc_iterator {
     *docs_ += last; // add last doc_id before decoding
     encode::delta::decode(std::begin(docs_), end_); // decode delta encoded documents block
 
-    // postings_writer::begin_doc(doc_id_t, const frequency*) writes frequency as uint32_t
-    doc_freq_ = reinterpret_cast<uint32_t*>(docs_ + postings_writer::BLOCK_SIZE);
+    doc_freq_ = docs_ + postings_writer::BLOCK_SIZE;
 
     doc_->value = begin_ = docs_ - 1;
     --end_;
@@ -369,11 +368,11 @@ class doc_iterator : public iresearch::doc_iterator {
   irs::attribute_store attrs_;
   uint64_t enc_buf_[postings_writer::BLOCK_SIZE]; // buffer for encoding
   doc_id_t docs_[postings_writer::BLOCK_SIZE]; // doc values
-  uint32_t doc_freqs_[postings_writer::BLOCK_SIZE]; // document frequencies
+  uint64_t doc_freqs_[postings_writer::BLOCK_SIZE]; // document frequencies
   uint64_t cur_pos_{};
   const doc_id_t* begin_{docs_};
   doc_id_t* end_{docs_};
-  uint32_t* doc_freq_{}; // pointer into docs_ to the frequency attribute value for the current doc
+  uint64_t* doc_freq_{}; // pointer into docs_ to the frequency attribute value for the current doc
   uint64_t term_freq_{}; // total term frequency
   document* doc_;
   frequency* freq_{ &EMPTY_FREQ };
@@ -3162,7 +3161,7 @@ void postings_writer::doc_stream::flush(uint64_t* buf, bool freq) {
   encode::bitpack::write_block(*out, deltas, BLOCK_SIZE, buf);
 
   if (freq) {
-    encode::bitpack::write_block(*out, freqs.get(), BLOCK_SIZE, reinterpret_cast<uint32_t*>(buf));
+    encode::bitpack::write_block(*out, freqs.get(), BLOCK_SIZE, buf);
   }
 }
 
@@ -3224,20 +3223,28 @@ void postings_writer::prepare(index_output& out, const iresearch::flush_state& s
   detail::prepare_output(name, doc.out, state, DOC_EXT, DOC_FORMAT_NAME, FORMAT_MAX);
 
   auto& features = *state.features;
-  if (features.check<frequency>()) {
-    // prepare frequency stream 
-    doc.freqs = memory::make_unique<uint32_t[]>(BLOCK_SIZE);
-    std::memset(doc.freqs.get(), 0, sizeof(uint32_t) * BLOCK_SIZE);
+  if (features.check<frequency>() && !doc.freqs) {
+    // prepare frequency stream
+    doc.freqs = memory::make_unique<uint64_t[]>(BLOCK_SIZE);
+    std::memset(doc.freqs.get(), 0, sizeof(uint64_t) * BLOCK_SIZE);
   }
 
   if (features.check< position >()) {
     // prepare proximity stream
-    pos_ = memory::make_unique< pos_stream >();
+    if (!pos_) {
+      pos_ = memory::make_unique< pos_stream >();
+    }
+
+    pos_->reset();
     detail::prepare_output(name, pos_->out, state, POS_EXT, POS_FORMAT_NAME, FORMAT_MAX);
 
     if (features.check< payload >() || features.check< offset >()) {
       // prepare payload stream
-      pay_ = memory::make_unique< pay_stream >();
+      if (!pay_) {
+        pay_ = memory::make_unique<pay_stream>();
+      }
+
+      pay_->reset();
       detail::prepare_output(name, pay_->out, state, PAY_EXT, PAY_FORMAT_NAME, FORMAT_MAX);
     }
   }
@@ -3363,7 +3370,7 @@ void postings_writer::begin_doc(doc_id_t id, const frequency* freq) {
 
   doc.doc(id - doc.last);
   if (freq) {
-    doc.freq(static_cast<uint32_t>(freq->value));
+    doc.freq(freq->value);
   }
 
   doc.next(id);
@@ -3447,7 +3454,7 @@ void postings_writer::end_term(
           out.write_vint(shift_pack_32(doc_delta, true));
         } else {
           out.write_vint(shift_pack_32(doc_delta, false));
-          out.write_vint(freq);
+          out.write_vlong(freq);
         }
       }
     }

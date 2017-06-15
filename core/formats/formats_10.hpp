@@ -251,6 +251,10 @@ class IRESEARCH_PLUGIN postings_writer final: public iresearch::postings_writer 
 
  private:
   struct stream {
+    void reset() {
+      start = end = 0;
+    }
+
     uint64_t skip_ptr[MAX_SKIP_LEVELS]{};   /* skip data */
     index_output::ptr out;                  /* output stream*/
     uint64_t start{};                       /* start position of block */
@@ -261,12 +265,19 @@ class IRESEARCH_PLUGIN postings_writer final: public iresearch::postings_writer 
     void flush(uint64_t* buf, bool freq);
     bool full() const { return BLOCK_SIZE == size; }
     void next(doc_id_t id) { last = id, ++size; }
-    void doc( int32_t delta ) { deltas[size] = delta; }
-    void freq( uint32_t frq ) { freqs[size] = frq; }
+    void doc(int32_t delta) { deltas[size] = delta; }
+    void freq(uint64_t frq) { freqs[size] = frq; }
+
+    void reset() {
+      stream::reset();
+      last = type_limits<type_t::doc_id_t>::invalid();
+      block_last = 0;
+      size = 0;
+    }
 
     doc_id_t deltas[BLOCK_SIZE]{}; // document deltas
     doc_id_t skip_doc[MAX_SKIP_LEVELS]{};
-    std::unique_ptr<uint32_t[]> freqs; /* document frequencies */
+    std::unique_ptr<uint64_t[]> freqs; /* document frequencies */
     doc_id_t last{ type_limits<type_t::doc_id_t>::invalid() }; // last buffered document id
     doc_id_t block_last{}; // last document id in a block
     uint32_t size{};            /* number of buffered elements */
@@ -278,8 +289,15 @@ class IRESEARCH_PLUGIN postings_writer final: public iresearch::postings_writer 
     void flush(uint32_t* buf);
 
     bool full() const { return BLOCK_SIZE == size; }
-    void next( int32_t pos ) { last = pos, ++size; }
-    void pos( int32_t pos ) { buf[size] = pos; }
+    void next(uint32_t pos) { last = pos, ++size; }
+    void pos(uint32_t pos) { buf[size] = pos; }
+
+    void reset() {
+      stream::reset();
+      last = 0;
+      block_last = 0;
+      size = 0;
+    }
 
     uint32_t buf[BLOCK_SIZE]{};        /* buffer to store position deltas */
     uint32_t last{};                   /* last buffered position */
@@ -295,6 +313,13 @@ class IRESEARCH_PLUGIN postings_writer final: public iresearch::postings_writer 
 
     void payload(uint32_t i, const bytes_ref& pay);
     void offsets(uint32_t i, uint32_t start, uint32_t end);
+
+    void reset() {
+      stream::reset();
+      pay_buf_.clear();
+      block_last = 0;
+      last = 0;
+    }
 
     bstring pay_buf_; // buffer for payload
     uint32_t pay_sizes[BLOCK_SIZE]{};             /* buffer to store payloads sizes */

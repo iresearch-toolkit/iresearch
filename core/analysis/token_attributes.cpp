@@ -15,7 +15,7 @@
 
 NS_LOCAL
 
-const irs::doc_id_t INVALID_DOCUMENT = type_limits<type_t::doc_id_t>::invalid();
+const irs::doc_id_t INVALID_DOCUMENT = irs::type_limits<irs::type_t::doc_id_t>::invalid();
 
 NS_END
 
