@@ -356,7 +356,7 @@ class doc_iterator : public iresearch::doc_iterator {
                       const tests::term& data );
 
   iresearch::doc_id_t value() const override {
-    return doc_->value;
+    return *(doc_->value);
   }
 
   const irs::attribute_store& attributes() const NOEXCEPT override {
@@ -370,7 +370,7 @@ class doc_iterator : public iresearch::doc_iterator {
     }
 
     prev_ = next_, ++next_;
-    doc_->value = prev_->id();
+    *(const_cast<irs::doc_id_t*>(doc_->value)) = prev_->id();
     if ( freq_ ) freq_->value = prev_->positions().size();
     if ( pos_ ) pos_->clear();
     return true;
@@ -387,21 +387,22 @@ class doc_iterator : public iresearch::doc_iterator {
 
     prev_ = it;
     next_ = ++it;
-    doc_->value = prev_->id();
+    *(const_cast<irs::doc_id_t*>(doc_->value)) = prev_->id();
     if ( pos_ ) {
       pos_->clear();
     }
-    return doc_->value;
+    return *(doc_->value);
   }
 
  private:
   friend class pos_iterator;
 
+  irs::doc_id_t docv_{};
   irs::attribute_store attrs_;
-  iresearch::document* doc_;
-  iresearch::frequency* freq_;
-  const iresearch::flags& features_;
-  iresearch::position::impl* pos_;
+  irs::document* doc_;
+  irs::frequency* freq_;
+  const irs::flags& features_;
+  irs::position::impl* pos_;
   const tests::term& data_;
   std::set<posting>::const_iterator prev_;
   std::set<posting>::const_iterator next_;
@@ -471,6 +472,7 @@ doc_iterator::doc_iterator(const iresearch::flags& features, const tests::term& 
   next_ = data_.postings.begin();
 
   doc_ = attrs_.emplace <irs::document>().get();
+  doc_->value = &docv_;
 
   if ( features.check<iresearch::frequency>() ) {
     freq_ = attrs_.emplace<irs::frequency>().get();
@@ -716,12 +718,21 @@ void assert_term(
     const iresearch::flags& features) {
   ASSERT_EQ(expected_term.value(), actual_term.value());
 
+  if (irs::ref_cast<irs::byte_type>(irs::string_ref("a")) == expected_term.value()) {
+    int i  = 5;
+  }
+
   const iresearch::doc_iterator::ptr expected_docs = expected_term.postings(features);
   const iresearch::doc_iterator::ptr actual_docs = actual_term.postings(features);
 
   // check docs
   for (; expected_docs->next();) {
     ASSERT_TRUE(actual_docs->next());
+
+    if (expected_docs->value() != actual_docs->value()) {
+      int i = 5;
+    }
+
     ASSERT_EQ(expected_docs->value(), actual_docs->value());
 
     // check document attributes

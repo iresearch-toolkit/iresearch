@@ -154,7 +154,7 @@ struct frequency_sort: public iresearch::sort {
 
       virtual void score(irs::byte_type* score_buf) override {
         auto& buf = score_cast(score_buf);
-        buf.id = doc_id_t_attr->value;
+        buf.id = *(doc_id_t_attr->value);
         buf.value = 1. / *docs_count;
       }
 

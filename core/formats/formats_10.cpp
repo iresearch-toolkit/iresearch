@@ -180,6 +180,8 @@ class doc_iterator : public iresearch::doc_iterator {
 
     // add mandatory attributes
     doc_ = attrs_.emplace<document>().get();
+    doc_->value = begin_ = end_ = docs_;
+    *docs_ = type_limits<type_t::doc_id_t>::invalid();
 
     // get state attribute
     assert(attrs.contains<version10::term_meta>());
@@ -205,8 +207,8 @@ class doc_iterator : public iresearch::doc_iterator {
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
-    if (target <= doc_->value) {
-      return doc_->value;
+    if (target <= *(doc_->value)) {
+      return *(doc_->value);
     }
 
     seek_to_block(target);
@@ -214,7 +216,7 @@ class doc_iterator : public iresearch::doc_iterator {
   }
 
   virtual doc_id_t value() const override {
-    return doc_->value;
+    return *(doc_->value);
   }
 
   virtual const irs::attribute_store& attributes() const NOEXCEPT override {
@@ -228,19 +230,19 @@ class doc_iterator : public iresearch::doc_iterator {
 #endif
 
   virtual bool next() override {
-    if (begin_ == end_) {
+    if (doc_->value == end_) {
       cur_pos_ += relative_pos();
 
       if (cur_pos_ == term_state_.docs_count) {
-        doc_->value = type_limits<type_t::doc_id_t>::eof();
-        begin_ = end_ = docs_; // seal the iterator
+        *docs_ = type_limits<type_t::doc_id_t>::eof();
+        doc_->value = begin_ = end_ = docs_; // seal the iterator
         return false;
       }
 
       refill();
     }
 
-    doc_->value += *begin_++;
+    ++(doc_->value);
     freq_->value = *doc_freq_++;
 
     return true;
@@ -273,8 +275,8 @@ class doc_iterator : public iresearch::doc_iterator {
 
   // returns current position in the document block 'docs_'
   size_t relative_pos() NOEXCEPT {
-    assert(begin_ >= docs_);
-    return begin_ - docs_;
+    assert(doc_->value >= begin_);
+    return doc_->value - begin_;
   }
 
   doc_id_t read_skip(skip_state& state, index_input& in) {
@@ -312,6 +314,12 @@ class doc_iterator : public iresearch::doc_iterator {
 
   void refill() {
     const auto left = term_state_.docs_count - cur_pos_;
+
+    // if this is the initial doc_id then set it to min() for proper delta value
+    const doc_id_t last = type_limits<type_t::doc_id_t>::valid(*docs_)
+      ? *end_
+      : (type_limits<type_t::doc_id_t>::min)();
+
     if (left >= postings_writer::BLOCK_SIZE) {
       // read doc deltas
       encode::bitpack::read_block(*doc_in_, postings_writer::BLOCK_SIZE, enc_buf_, docs_);
@@ -345,26 +353,25 @@ class doc_iterator : public iresearch::doc_iterator {
       end_ = docs_ + left;
     }
 
-    begin_ = docs_;
-
-    // if this is the initial doc_id then set it to min() for proper delta value
-    if (!type_limits<type_t::doc_id_t>::valid(doc_->value)) {
-      doc_->value = type_limits<type_t::doc_id_t>::min(); // next() will add delta
-    }
+    *docs_ += last; // add last doc_id before decoding
+    encode::delta::decode(std::begin(docs_), end_); // decode delta encoded documents block
 
     // postings_writer::begin_doc(doc_id_t, const frequency*) writes frequency as uint32_t
-    doc_freq_ = reinterpret_cast<uint32_t*>(begin_ + postings_writer::BLOCK_SIZE);
+    doc_freq_ = reinterpret_cast<uint32_t*>(docs_ + postings_writer::BLOCK_SIZE);
+
+    doc_->value = begin_ = docs_ - 1;
+    --end_;
   }
 
   std::vector<skip_state> skip_levels_;
   skip_reader skip_;
   skip_context* skip_ctx_; // pointer to used skip context, will be used by skip reader
   irs::attribute_store attrs_;
-  uint64_t enc_buf_[postings_writer::BLOCK_SIZE];
-  doc_id_t docs_[postings_writer::BLOCK_SIZE]; // doc deltas
-  uint32_t doc_freqs_[postings_writer::BLOCK_SIZE];
+  uint64_t enc_buf_[postings_writer::BLOCK_SIZE]; // buffer for encoding
+  doc_id_t docs_[postings_writer::BLOCK_SIZE]; // doc values
+  uint32_t doc_freqs_[postings_writer::BLOCK_SIZE]; // document frequencies
   uint64_t cur_pos_{};
-  doc_id_t* begin_{docs_};
+  const doc_id_t* begin_{docs_};
   doc_id_t* end_{docs_};
   uint32_t* doc_freq_{}; // pointer into docs_ to the frequency attribute value for the current doc
   uint64_t term_freq_{}; // total term frequency
@@ -428,9 +435,9 @@ void doc_iterator::seek_to_block(doc_id_t target) {
     const size_t skipped = skip_.seek(target);
     if (skipped > (cur_pos_ + relative_pos())) {
       doc_in_->seek(last.doc_ptr);
-      doc_->value = last.doc;
+      *docs_ = last.doc;
       cur_pos_ = skipped;
-      begin_ = end_ = docs_; // will trigger refill in "next"
+      doc_->value = begin_ = end_ = docs_; // will trigger refill in "next"
       seek_notify(last); // notifies derivatives
     }
   }
@@ -1039,19 +1046,19 @@ class pay_iterator final : public pos_iterator {
 class pos_doc_iterator : public doc_iterator {
  public:
   virtual bool next() override {
-    if (begin_ == end_) {
+    if (doc_->value == end_) {
       cur_pos_ += relative_pos();
 
       if (cur_pos_ == term_state_.docs_count) {
-        doc_->value = type_limits<type_t::doc_id_t>::eof();
-        begin_ = end_ = docs_; // seal the iterator
+        *docs_ = type_limits<type_t::doc_id_t>::eof();
+        doc_->value = end_ = docs_; // seal the iterator
         return false;
       }
 
       refill();
     }
 
-    doc_->value += *begin_++;
+    ++(doc_->value);
 
     // update frequency attribute
     auto& freq = freq_->value;

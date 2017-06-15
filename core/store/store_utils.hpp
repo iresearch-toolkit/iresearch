@@ -596,12 +596,14 @@ NS_BEGIN(delta)
 
 template<typename Iterator>
 inline void decode(Iterator begin, Iterator end) {
-  assert(std::distance(begin, end) > 0 && std::is_sorted(begin, end));
+  assert(std::distance(begin, end) > 0);
 
   typedef typename std::iterator_traits<Iterator>::value_type value_type;
   const auto second = begin+1;
 
   std::transform(second, end, begin, second, std::plus<value_type>());
+
+  assert(std::is_sorted(begin, end));
 }
 
 template<typename Iterator>
