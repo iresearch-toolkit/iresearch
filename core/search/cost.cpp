@@ -18,9 +18,7 @@ DEFINE_ATTRIBUTE_TYPE(iresearch::cost);
 DEFINE_FACTORY_DEFAULT(cost);
 
 cost::cost()
-  : attribute(cost::type()),
-    value_(0),
-    init_(false) {
+  : value_(0), init_(false) {
 }
 
 NS_END // ROOT

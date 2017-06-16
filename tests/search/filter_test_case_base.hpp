@@ -115,7 +115,7 @@ struct frequency_sort: public iresearch::sort {
    public:
     struct count: public iresearch::basic_attribute<size_t> {
       size_t value;
-      count(): iresearch::basic_attribute<size_t>(count::type()), value(0) {}
+      count(): iresearch::basic_attribute<size_t>(), value(0) {}
       DECLARE_ATTRIBUTE_TYPE();
       DECLARE_FACTORY_DEFAULT();
     };

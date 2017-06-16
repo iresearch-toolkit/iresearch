@@ -21,14 +21,14 @@ NS_ROOT
 DEFINE_ATTRIBUTE_TYPE(fd_pool_size);
 DEFINE_FACTORY_DEFAULT(fd_pool_size);
 
+const size_t FD_POOL_DEFAULT_SIZE = 8;
+
 fd_pool_size::fd_pool_size()
-  : iresearch::attribute(fd_pool_size::type()), size(8) { // arbitary size
+  : size(FD_POOL_DEFAULT_SIZE) { // arbitary size
 }
 
 void fd_pool_size::clear() {
-  static auto default_size = fd_pool_size().size;
-
-  size = default_size;
+  size = FD_POOL_DEFAULT_SIZE;
 }
 
 // -----------------------------------------------------------------------------
@@ -38,8 +38,7 @@ void fd_pool_size::clear() {
 DEFINE_ATTRIBUTE_TYPE(index_file_refs);
 DEFINE_FACTORY_DEFAULT(index_file_refs);
 
-index_file_refs::index_file_refs():
-  iresearch::attribute(index_file_refs::type()) {
+index_file_refs::index_file_refs() {
 }
 
 index_file_refs::ref_t index_file_refs::add(const std::string& key) {

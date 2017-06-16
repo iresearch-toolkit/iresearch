@@ -30,8 +30,7 @@ DEFINE_ATTRIBUTE_TYPE(offset);
 DEFINE_FACTORY_DEFAULT(offset);
 
 offset::offset() NOEXCEPT
-  : attribute(offset::type()), 
-    start( 0 ), end( 0 ) {
+  : start(0), end(0) {
 }
 
 // -----------------------------------------------------------------------------
@@ -43,7 +42,7 @@ DEFINE_ATTRIBUTE_TYPE(increment);
 DEFINE_FACTORY_DEFAULT(increment);
 
 increment::increment() NOEXCEPT
-  : basic_attribute< uint32_t >(increment::type(), 1U) {
+  : basic_attribute<uint32_t>(1U) {
 }
 
 // -----------------------------------------------------------------------------
@@ -53,8 +52,7 @@ increment::increment() NOEXCEPT
 REGISTER_ATTRIBUTE(iresearch::term_attribute);
 DEFINE_ATTRIBUTE_TYPE(term_attribute);
 
-term_attribute::term_attribute() NOEXCEPT
-  : attribute(term_attribute::type()) {
+term_attribute::term_attribute() NOEXCEPT {
 }
 
 // -----------------------------------------------------------------------------
@@ -66,7 +64,7 @@ DEFINE_ATTRIBUTE_TYPE(payload);
 DEFINE_FACTORY_DEFAULT(payload);
 
 payload::payload() NOEXCEPT
-  : basic_attribute< bytes_ref >(payload::type()) {
+  : basic_attribute<bytes_ref>() {
 }
 
 // -----------------------------------------------------------------------------
@@ -78,7 +76,7 @@ DEFINE_ATTRIBUTE_TYPE(document);
 DEFINE_FACTORY_DEFAULT(document);
 
 document::document() NOEXCEPT:
-  basic_attribute<const doc_id_t*>(document::type(), &INVALID_DOCUMENT) {
+  basic_attribute<const doc_id_t*>(&INVALID_DOCUMENT) {
 }
 
 // -----------------------------------------------------------------------------
@@ -89,8 +87,7 @@ REGISTER_ATTRIBUTE(iresearch::term_meta);
 DEFINE_ATTRIBUTE_TYPE(iresearch::term_meta);
 DEFINE_FACTORY_DEFAULT(term_meta);
 
-term_meta::term_meta() NOEXCEPT
-  : attribute(term_meta::type()) {
+term_meta::term_meta() NOEXCEPT {
 }
 
 // -----------------------------------------------------------------------------
@@ -102,7 +99,7 @@ DEFINE_ATTRIBUTE_TYPE(frequency);
 DEFINE_FACTORY_DEFAULT(frequency);
 
 frequency::frequency() NOEXCEPT
-  : basic_attribute<uint64_t>(frequency::type()) {
+  : basic_attribute<uint64_t>() {
 }
 
 // -----------------------------------------------------------------------------
@@ -114,7 +111,7 @@ DEFINE_ATTRIBUTE_TYPE(granularity_prefix);
 DEFINE_FACTORY_DEFAULT(granularity_prefix);
 
 granularity_prefix::granularity_prefix() NOEXCEPT:
-  attribute(granularity_prefix::type()) {
+  attribute() {
 }
 
 // -----------------------------------------------------------------------------
@@ -126,7 +123,7 @@ DEFINE_ATTRIBUTE_TYPE(norm);
 DEFINE_FACTORY_DEFAULT(norm);
 
 norm::norm() NOEXCEPT
-  : attribute(norm::type()) {
+  : attribute() {
   reset();
 }
 
@@ -170,8 +167,7 @@ REGISTER_ATTRIBUTE(iresearch::position);
 DEFINE_ATTRIBUTE_TYPE(position);
 DEFINE_FACTORY_DEFAULT(position);
 
-position::position() NOEXCEPT
-  : attribute(position::type()) {
+position::position() NOEXCEPT {
 }
 
 position::impl::impl(size_t reserve_attrs): attrs_(reserve_attrs) {}

@@ -40,8 +40,6 @@ struct attribute : iresearch::attribute {
 
   virtual void clear() { value = 0; }
 
-  attribute() : iresearch::attribute(attribute::type()) { }
-
   int value = 5;
 
   bool operator==(const attribute& rhs ) const {
@@ -58,8 +56,6 @@ struct invalid_attribute : iresearch::attribute {
 
   virtual void clear() { value = 0; }
 
-  invalid_attribute() : attribute(invalid_attribute::type()) { }
-
   int value = 5;
 };
 
@@ -71,7 +67,6 @@ DEFINE_FACTORY_DEFAULT(invalid_attribute);
 TEST(attributes_tests, duplicate_register) {
   struct dummy_attribute: public irs::attribute {
     DECLARE_ATTRIBUTE_TYPE() { static irs::attribute::type_id type("dummy_attribute"); return type; }
-    dummy_attribute(): irs::attribute(dummy_attribute::type()) { }
   };
 
   static bool initial_expected = true;

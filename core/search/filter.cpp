@@ -37,7 +37,7 @@ class empty_query final : public filter::prepared {
 DEFINE_ATTRIBUTE_TYPE(iresearch::score);
 DEFINE_FACTORY_DEFAULT(score);
 
-score::score() : attribute(score::type()) {}
+score::score() { }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            filter

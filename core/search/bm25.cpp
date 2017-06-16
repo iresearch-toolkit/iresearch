@@ -46,7 +46,7 @@ struct stats final : attribute {
   DECLARE_ATTRIBUTE_TYPE();
   DECLARE_FACTORY_DEFAULT();
 
-  stats() : attribute(stats::type()) { }
+  stats() = default;
 
   virtual void clear() { 
     idf = 1.f;

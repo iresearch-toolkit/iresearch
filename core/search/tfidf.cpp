@@ -37,7 +37,7 @@ const flags& features(bool normalize) {
 struct idf : basic_attribute<float_t> {
   DECLARE_ATTRIBUTE_TYPE();
   DECLARE_FACTORY_DEFAULT();
-  idf() : basic_attribute(idf::type(), 1.f) { }
+  idf() : basic_attribute(1.f) { }
 
   virtual void clear() { value = 1.f; }
 };

@@ -24,7 +24,7 @@ DEFINE_ATTRIBUTE_TYPE(documents);
 DEFINE_FACTORY_DEFAULT(documents);
 
 documents::documents() NOEXCEPT
-  : basic_attribute<bitset*>( documents::type()) {
+  : basic_attribute<bitset*>() {
 }
 
 // -----------------------------------------------------------------------------

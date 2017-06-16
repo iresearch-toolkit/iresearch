@@ -43,8 +43,7 @@ REGISTER_ATTRIBUTE(incompatible_attribute);
 DEFINE_ATTRIBUTE_TYPE(incompatible_attribute);
 DEFINE_FACTORY_DEFAULT(incompatible_attribute);
 
-incompatible_attribute::incompatible_attribute() NOEXCEPT
-  : irs::attribute(incompatible_attribute::type()) {
+incompatible_attribute::incompatible_attribute() NOEXCEPT {
 }
 
 struct directory_mock : public ir::directory {

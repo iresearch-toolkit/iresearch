@@ -56,14 +56,7 @@ struct IRESEARCH_API attribute {
     string_ref name_;
   }; // type_id
 
-  attribute( const type_id& type ) : type_( &type ) {}
-
-  const type_id& type() const { return *type_; }
-
   virtual ~attribute();
-
- private:
-   const type_id* type_;
 };
 
 // -----------------------------------------------------------------------------
@@ -101,15 +94,15 @@ template< typename T >
 struct IRESEARCH_API_TEMPLATE basic_attribute : attribute {
   typedef T value_t;
 
-  basic_attribute( const attribute::type_id& type, const T& value = T() )
-    : attribute(type), value( value ) { 
+  explicit basic_attribute(const T& value = T())
+    : value(value) {
   }
 
-  bool operator==( const basic_attribute& rhs ) const {
+  bool operator==(const basic_attribute& rhs) const {
     return value == rhs.value;
   }
   
-  bool operator==( const T& rhs ) const {
+  bool operator==(const T& rhs) const {
     return value == rhs;
   }
 
