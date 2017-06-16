@@ -552,12 +552,12 @@ class term_iterator : public iresearch::seek_term_iterator {
   }
 
   virtual bool seek(
-      const iresearch::bytes_ref& term,
-      const iresearch::attribute& cookie) {
+      const irs::bytes_ref& term,
+      const irs::seek_term_iterator::seek_cookie& cookie) {
     return false;
   }
 
-  virtual irs::seek_term_iterator::cookie_ptr cookie() const {
+  virtual irs::seek_term_iterator::seek_cookie::ptr cookie() const {
     return nullptr;
   }
 
@@ -718,21 +718,12 @@ void assert_term(
     const iresearch::flags& features) {
   ASSERT_EQ(expected_term.value(), actual_term.value());
 
-  if (irs::ref_cast<irs::byte_type>(irs::string_ref("a")) == expected_term.value()) {
-    int i  = 5;
-  }
-
   const iresearch::doc_iterator::ptr expected_docs = expected_term.postings(features);
   const iresearch::doc_iterator::ptr actual_docs = actual_term.postings(features);
 
   // check docs
   for (; expected_docs->next();) {
     ASSERT_TRUE(actual_docs->next());
-
-    if (expected_docs->value() != actual_docs->value()) {
-      int i = 5;
-    }
-
     ASSERT_EQ(expected_docs->value(), actual_docs->value());
 
     // check document attributes
@@ -844,7 +835,7 @@ void assert_terms_seek(
     }
 
     // seek without state, iterate forward
-    irs::seek_term_iterator::cookie_ptr cookie; // cookie
+    irs::seek_term_iterator::seek_cookie::ptr cookie; // cookie
     {
       auto actual_term = actual_term_reader.iterator();
       ASSERT_TRUE(actual_term->seek(expected_term->value()));

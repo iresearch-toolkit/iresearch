@@ -62,7 +62,7 @@ struct range_state {
 
   const term_reader* reader{}; // reader using for iterate over the terms
   bstring min_term; // minimum term to start from
-  seek_term_iterator::cookie_ptr min_cookie; // cookie corresponding to the start term
+  seek_term_iterator::seek_cookie::ptr min_cookie; // cookie corresponding to the start term
   cost::cost_t estimation{}; // per-segment query estimation
   size_t count{}; // number of terms to process from start term
 
@@ -82,7 +82,7 @@ class limited_sample_scorer {
     size_t scored_state_id, // state identifier used for querying of attributes
     iresearch::range_state& scored_state, // state containing this scored term
     const iresearch::sub_reader& reader, // segment reader for the current term
-    seek_term_iterator::cookie_ptr&& cookie // term-reader term offset cache
+    seek_term_iterator::seek_cookie::ptr&& cookie // term-reader term offset cache
   );
   void score(order::prepared::stats& stats);
 
@@ -100,7 +100,7 @@ class limited_sample_scorer {
       const iresearch::sub_reader& sr,
       iresearch::range_state& scored_state,
       size_t scored_state_offset,
-      seek_term_iterator::cookie_ptr&& scored_cookie
+      seek_term_iterator::seek_cookie::ptr&& scored_cookie
     ):
       cookie(std::move(scored_cookie)),
       state(scored_state),

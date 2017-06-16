@@ -385,33 +385,21 @@ class block_iterator : util::noncopyable {
 ///////////////////////////////////////////////////////////////////////////////
 /// @struct cookie
 ///////////////////////////////////////////////////////////////////////////////
-struct cookie : attribute {
-  DECLARE_ATTRIBUTE_TYPE();
-
-  cookie(const version10::term_meta& meta,
-         uint64_t term_freq)
-    : attribute(cookie::type()),
-      meta(meta),
-      term_freq(term_freq) {
-  }
-
-  virtual void clear() override {
-    meta.clear();
-    term_freq = 0;
+struct cookie : irs::seek_term_iterator::seek_cookie {
+  cookie(const version10::term_meta& meta, uint64_t term_freq)
+    : meta(meta), term_freq(term_freq) {
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief declaration/implementation of DECLARE_FACTORY_DEFAULT()
   //////////////////////////////////////////////////////////////////////////////
-  static seek_term_iterator::cookie_ptr make(const version10::term_meta& meta, uint64_t term_freq) {
+  static seek_term_iterator::seek_cookie::ptr make(const version10::term_meta& meta, uint64_t term_freq) {
     return memory::make_unique<cookie>(meta, term_freq);
   }
 
-  version10::term_meta meta; /* term metadata */
-  uint64_t term_freq; /* length of the positions list */
+  version10::term_meta meta; // term metadata
+  uint64_t term_freq; // length of the positions list
 }; // cookie
-
-DEFINE_ATTRIBUTE_TYPE(cookie);
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class term_iterator
@@ -430,24 +418,31 @@ class term_iterator : public iresearch::seek_term_iterator {
   virtual bool seek(const bytes_ref& term) override;
   virtual bool seek(
       const bytes_ref& term,
-      const iresearch::attribute& cookie) override {
-    assert(detail::cookie::type() == cookie.type());
-    /* copy state */
-    auto& state = static_cast<const detail::cookie&>(cookie);
+      const irs::seek_term_iterator::seek_cookie& cookie) override {
+#ifdef IRESEARCH_DEBUG
+    const auto& state = dynamic_cast<const detail::cookie&>(cookie);
+#else
+    const auto& state = static_cast<const detail::cookie&>(cookie);
+#endif // IRESEARCH_DEBUG
+
+    // copy state
     *state_ = state.meta;
     if (freq_) {
       freq_->value = state.term_freq;
     }
-    /* copy term */
+
+    // copy term
     term_.reset();
     term_ += term;
-    /* reset seek state */
+
+    // reset seek state
     sstate_.resize(0);
-    /* mark block as invalid */
+
+    // mark block as invalid
     cur_block_ = nullptr;
     return true;
   }
-  virtual seek_term_iterator::cookie_ptr cookie() const override {
+  virtual seek_term_iterator::seek_cookie::ptr cookie() const override {
     return detail::cookie::make(
       *state_, freq_ ? freq_->value : 0
     );

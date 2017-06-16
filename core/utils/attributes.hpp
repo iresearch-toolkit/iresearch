@@ -282,7 +282,7 @@ class IRESEARCH_API attribute_map {
   attribute_map() = default;
 
   attribute_map(const attribute_map& other) {
-    *this = std::move(other);
+    *this = other;
   }
 
   attribute_map(attribute_map&& other) NOEXCEPT {
