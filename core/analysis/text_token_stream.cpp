@@ -103,7 +103,7 @@ class bytes_term: public iresearch::term_attribute {
 
   virtual ~bytes_term() {}
 
-  virtual void clear() override {
+  void clear() {
     buf_.clear();
     value_ = iresearch::bytes_ref::nil;
   }

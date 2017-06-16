@@ -365,7 +365,7 @@ class doc_iterator : public iresearch::doc_iterator {
 
   virtual bool next() override {
     if ( next_ == data_.postings.end() ) {
-      doc_->clear();
+      docv_ = irs::type_limits<irs::type_t::doc_id_t>::invalid();
       return false;
     }
 

@@ -61,7 +61,6 @@ struct IRESEARCH_API attribute {
   const type_id& type() const { return *type_; }
 
   virtual ~attribute();
-  virtual void clear() = 0;
 
  private:
    const type_id* type_;
@@ -105,8 +104,6 @@ struct IRESEARCH_API_TEMPLATE basic_attribute : attribute {
   basic_attribute( const attribute::type_id& type, const T& value = T() )
     : attribute(type), value( value ) { 
   }
-
-  virtual void clear() { value = T(); }
 
   bool operator==( const basic_attribute& rhs ) const {
     return value == rhs.value;

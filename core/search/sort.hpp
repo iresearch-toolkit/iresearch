@@ -64,7 +64,7 @@ struct IRESEARCH_API boost : basic_attribute<float_t> {
 
   boost();
 
-  virtual void clear() override {
+  void clear() {
     value = no_boost();
   }
 }; // boost

@@ -36,7 +36,7 @@ struct IRESEARCH_API offset : attribute {
 
   offset() NOEXCEPT;
 
-  virtual void clear() override {
+  void clear() {
     start = 0;
     end = 0;
   }
@@ -55,7 +55,7 @@ struct IRESEARCH_API increment : basic_attribute<uint32_t> {
 
   increment() NOEXCEPT;
 
-  virtual void clear() override { value = 1U; }
+  void clear() { value = 1U; }
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -71,7 +71,9 @@ struct IRESEARCH_API term_attribute : attribute {
     return bytes_ref::nil;
   }
 
-  virtual void clear() { }
+  virtual void clear() {
+    // NOOP
+  }
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -84,6 +86,10 @@ struct IRESEARCH_API payload : basic_attribute<bytes_ref> {
   DECLARE_FACTORY_DEFAULT();
 
   payload() NOEXCEPT;
+
+  virtual void clear() {
+    // NOOP
+  }
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -95,8 +101,6 @@ struct IRESEARCH_API document: basic_attribute<const doc_id_t*> {
   DECLARE_FACTORY_DEFAULT();
 
   document() NOEXCEPT;
-
-  virtual void clear() { /*value = type_limits<type_t::doc_id_t>::invalid();*/ }
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -122,9 +126,6 @@ struct IRESEARCH_API granularity_prefix: attribute {
   DECLARE_FACTORY_DEFAULT();
 
   granularity_prefix() NOEXCEPT;
-  virtual void clear() override {
-    // NOOP
-  }
 }; // granularity_prefix
 
 //////////////////////////////////////////////////////////////////////////////
@@ -146,7 +147,7 @@ struct IRESEARCH_API norm : attribute {
   float_t read() const;
   bool empty() const;
 
-  virtual void clear() override {
+  void clear() {
     reset();
   }
 
@@ -167,7 +168,7 @@ struct IRESEARCH_API term_meta : attribute {
 
   term_meta() NOEXCEPT;
 
-  virtual void clear() override {
+  void clear() {
     docs_count = 0;
   }
 
@@ -209,7 +210,7 @@ class IRESEARCH_API position : public attribute {
 
   position() NOEXCEPT;
 
-  virtual void clear() override { /* does nothing */ }
+  virtual void clear() { /* does nothing */ }
 
   void prepare(impl* impl) NOEXCEPT { impl_.reset(impl); }  
 

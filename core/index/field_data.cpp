@@ -67,7 +67,7 @@ class payload : public irs::payload {
 };
 DEFINE_FACTORY_DEFAULT(payload);
 
-class pos_iterator : public irs::position::impl {
+class pos_iterator final : public irs::position::impl {
  public:
   pos_iterator(
       const field_data& field, const frequency& freq,
@@ -95,13 +95,8 @@ class pos_iterator : public irs::position::impl {
   virtual void clear() override {
     pos_ = 0;
     val_ = 0;
-    attributes().visit([](
-        const attribute::type_id&,
-        attribute_store::ref<void>& ref
-    )->bool {
-      reinterpret_cast<attribute*>(ref.get())->clear();
-      return true;
-    });
+    if (offs_) offs_->clear();
+    if (pay_) pay_->clear();
   }
 
   virtual uint32_t value() const override {

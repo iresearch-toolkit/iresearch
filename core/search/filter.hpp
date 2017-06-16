@@ -72,7 +72,7 @@ class IRESEARCH_API score : public attribute {
     return value_;
   }
 
-  virtual void clear() override { 
+  void clear() {
     if (order_) {
       for (auto& ord: *order_) {
         ord.bucket->prepare_score(&(value_[0]) + ord.offset);

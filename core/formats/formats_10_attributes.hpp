@@ -34,7 +34,7 @@ struct documents : basic_attribute<bitset*> {
 struct term_meta : iresearch::term_meta {
   DECLARE_FACTORY_DEFAULT();
 
-  virtual void clear() override {
+  void clear() {
     iresearch::term_meta::clear();
     doc_start = pos_start = pay_start = 0;
     pos_end = type_limits<type_t::address_t>::invalid();

@@ -145,15 +145,15 @@ TEST(attributes_tests, store_add_get_clear_state_clear) {
     ASSERT_EQ(reinterpret_cast<attribute*>(added1.get()), added2.get());
   }
 
-  // clear state
-  attrs.visit([](
-      const attribute::type_id&,
-      attribute_store::ref<void>& ref
-  )->bool {
-    reinterpret_cast<attribute*>(ref.get())->clear();
-    return true;
-  });
-  ASSERT_EQ(0, added->value);
+//  // clear state
+//  attrs.visit([](
+//      const attribute::type_id&,
+//      attribute_store::ref<void>& ref
+//  )->bool {
+//    reinterpret_cast<attribute*>(ref.get())->clear();
+//    return true;
+//  });
+//  ASSERT_EQ(0, added->value);
 
   //add attribute
   attrs.emplace<tests::invalid_attribute>();
@@ -255,15 +255,15 @@ TEST(attributes_tests, view_add_get_clear_state_clear) {
     ASSERT_EQ(reinterpret_cast<attribute*>(added1.get()), added2.get());
   }
 
-  // clear state
-  attrs.visit([](
-      const attribute::type_id&,
-      attribute_view::ref<void>& ref
-  )->bool {
-    reinterpret_cast<attribute*>(ref.get())->clear();
-    return true;
-  });
-  ASSERT_EQ(0, added->value);
+//  // clear state
+//  attrs.visit([](
+//      const attribute::type_id&,
+//      attribute_view::ref<void>& ref
+//  )->bool {
+//    reinterpret_cast<attribute*>(ref.get())->clear();
+//    return true;
+//  });
+//  ASSERT_EQ(0, added->value);
 
   // add attribute
   tests::invalid_attribute value1;

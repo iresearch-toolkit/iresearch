@@ -37,8 +37,6 @@ struct incompatible_attribute : irs::attribute {
   DECLARE_FACTORY_DEFAULT();
 
   incompatible_attribute() NOEXCEPT;
-
-  virtual void clear() override { }
 };
 
 REGISTER_ATTRIBUTE(incompatible_attribute);

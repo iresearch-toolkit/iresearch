@@ -29,7 +29,7 @@ struct IRESEARCH_API fd_pool_size: public attribute {
   size_t size;
 
   fd_pool_size();
-  virtual void clear() override;
+  void clear();
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -47,7 +47,7 @@ class IRESEARCH_API index_file_refs: public attribute {
   index_file_refs();
   ref_t add(const std::string& key);
   ref_t add(std::string&& key);
-  virtual void clear() override;
+  void clear();
   counter_t& refs();
 
  private:

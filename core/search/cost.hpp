@@ -79,7 +79,7 @@ class IRESEARCH_API cost : public attribute {
     return const_cast<cost*>(this)->estimate_impl();
   }
 
-  virtual void clear() override {
+  void clear() {
     init_ = false;
   }
 
