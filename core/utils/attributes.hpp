@@ -242,7 +242,7 @@ class IRESEARCH_API flags {
 /// @brief common interface for attribute storage implementations
 //////////////////////////////////////////////////////////////////////////////
 template<typename PTR_T>
-class IRESEARCH_API attribute_map {
+class IRESEARCH_API_TEMPLATE attribute_map {
  public:
   template <typename T>
   class ref: private util::noncopyable {
@@ -253,7 +253,11 @@ class IRESEARCH_API attribute_map {
     ref<T>& operator=(PTR_T&& ptr) NOEXCEPT { ptr_ = std::move(ptr); return *this; }
     ref<T>& operator=(ref<T>&& other) NOEXCEPT { if (this != &other) { ptr_ = std::move(other.ptr_); } return *this; }
     ref<T>& operator=(const ref<T>& other) NOEXCEPT { if (this != &other) { ptr_ = other.ptr_; } return *this; } // TODO FIXME remove
-    typename std::add_lvalue_reference<T>::type operator*() const NOEXCEPT { return reinterpret_cast<T&>(*ptr_); }
+    typename std::add_lvalue_reference<T>::type operator*() const NOEXCEPT {
+      // valid for T types other than 'void'
+      typedef typename std::enable_if<!std::is_same<void, T>::value, T>::type type;
+      return reinterpret_cast<type&>(*ptr_);
+    }
     T* operator->() const NOEXCEPT { return ptr_cast(ptr_); }
     explicit operator bool() const NOEXCEPT { return nullptr != ptr_; }
 
