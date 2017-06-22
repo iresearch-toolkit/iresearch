@@ -47,7 +47,7 @@ class compound_attributes: public irs::attribute_store {
   void add(const irs::attribute_store& attributes) {
     auto visitor = [this](
         const irs::attribute::type_id& type_id,
-        const irs::attribute_store::ref<void>&
+        const irs::attribute_store::ref<irs::attribute>&
     ) ->bool {
       bool inserted;
       attribute_map::emplace(inserted, type_id);
@@ -60,14 +60,14 @@ class compound_attributes: public irs::attribute_store {
   void set(const irs::attribute_store& attributes) {
     auto visitor_unset = [](
       const irs::attribute::type_id&,
-      irs::attribute_store::ref<void>& value
+      irs::attribute_store::ref<irs::attribute>& value
     )->bool {
       value = nullptr;
       return true;
     };
     auto visitor_update = [this](
       const irs::attribute::type_id& type_id,
-      const irs::attribute_store::ref<void>& value
+      const irs::attribute_store::ref<irs::attribute>& value
     )->bool {
       bool inserted;
       attribute_map::emplace(inserted, type_id) = value;
