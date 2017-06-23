@@ -19,11 +19,8 @@
 #include <cstdio>
 
 #include <boost/filesystem.hpp>
-#include <boost/property_tree/ptree.hpp>
-
 namespace {
   namespace fs = boost::filesystem;
-  namespace pt = boost::property_tree;
 }
 
 NS_BEGIN(cmdline)
@@ -55,16 +52,6 @@ class test_base : public ::testing::Test {
   const fs::path& test_dir() { return test_dir_; }
   const fs::path& test_case_dir() { return test_case_dir_; }
 
-  template<typename T>
-  void add_option(const std::string& name, const T& value) {
-    opt_.put(name, value);
-  }
-
-  template<typename T>
-  std::string get_option(const std::string& name) {
-    return opt_.get_value<T>( name );
-  }
-
  protected:
   test_base() = default;
   virtual void SetUp() override;
@@ -89,7 +76,6 @@ class test_base : public ::testing::Test {
   static fs::path res_dir_; /* output_dir_/test_name_YYYY_mm_dd_HH_mm_ss_XXXXXX */ 
   static fs::path res_path_; /* res_dir_/test_detail.xml */
 
-  pt::ptree opt_; /* arbitrary user defined options */
   fs::path test_dir_; /* res_dir_/<test-name>*/
   fs::path test_case_dir_; /* test_dir/<test-case-name> */    
   bool artifacts_;
