@@ -19,7 +19,16 @@
 #include "utils/process_utils.hpp"
 #include "utils/network_utils.hpp"
 
-#include <boost/locale.hpp>
+#if defined (__GNUC__)
+  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
+  #include <boost/locale.hpp>
+
+#if defined (__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
+
 #include <boost/locale/generator.hpp>
 #include <boost/locale/conversion.hpp>
 

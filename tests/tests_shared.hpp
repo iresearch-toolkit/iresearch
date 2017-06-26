@@ -18,10 +18,19 @@
 #include <memory>
 #include <cstdio>
 
-#include <boost/filesystem.hpp>
-namespace {
+#if defined (__GNUC__)
+  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
+  #include <boost/filesystem.hpp>
+
+#if defined (__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
+
+NS_LOCAL
   namespace fs = boost::filesystem;
-}
+NS_END
 
 NS_BEGIN(cmdline)
 class parser;

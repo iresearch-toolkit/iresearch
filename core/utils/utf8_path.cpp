@@ -9,7 +9,16 @@
 // Agreement under which it is provided by or on behalf of EMC.
 // 
 
-#include <boost/filesystem/operations.hpp>
+#if defined (__GNUC__)
+  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
+  #include <boost/filesystem/operations.hpp>
+
+#if defined (__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
+
 #include <boost/locale/encoding.hpp>
 
 #include "locale_utils.hpp"
