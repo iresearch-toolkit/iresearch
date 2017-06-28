@@ -209,7 +209,7 @@ class fs_index_input : public buffered_index_input {
     // convert file descriptor to POSIX
     auto size = file_utils::file_size(file_no(*handle));
 
-    if (handle->size < 0) {
+    if (size < 0) {
       auto path = boost::locale::conv::utf_to_utf<char>(name);
       #ifdef _WIN32
         auto error = GetLastError();
