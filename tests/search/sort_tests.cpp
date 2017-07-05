@@ -40,7 +40,6 @@ TEST(sort_tests, order_equal) {
     virtual prepared::ptr prepare() const override { return nullptr; }
   };
 
-
   // empty == empty
   {
     irs::order ord0;
