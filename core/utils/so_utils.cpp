@@ -162,7 +162,7 @@ void load_libraries(
       continue; // filename does not match
     }
 
-    auto u8path = (utf8_path(file.parent_path())/stem).utf8(); // strip extension
+    auto u8path = (utf8_path(file.parent_path())/=stem).utf8(); // strip extension
 
     // FIMXE check double-load of same dll
     void* handle = load_library(u8path.c_str(), 1);

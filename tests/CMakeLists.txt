@@ -112,6 +112,7 @@ set(IReSearch_tests_sources
   ./utils/math_utils_test.cpp
   ./utils/std_test.cpp
   ./utils/type_utils_tests.cpp
+  ./utils/utf8_path_tests.cpp
   ./tests_main.cpp
 )
 
