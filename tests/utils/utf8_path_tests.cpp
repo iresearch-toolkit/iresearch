@@ -21,6 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <fstream>
+
 #include "tests_shared.hpp"
 #include "utils/utf8_path.hpp"
 
@@ -62,7 +64,7 @@ TEST_F(utf8_path_tests, current) {
   ASSERT_TRUE(test_dir().native() == path.native());
   ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
   ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
-  ASSERT_FALSE(path.file_mtime(tmpTime));
+  ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
   ASSERT_FALSE(path.file_size(tmpUint));
 
   path/=directory;
@@ -71,7 +73,7 @@ TEST_F(utf8_path_tests, current) {
   ASSERT_TRUE(path.native() == irs::utf8_path(true).native());
   ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
   ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
-  ASSERT_FALSE(path.file_mtime(tmpTime));
+  ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
   ASSERT_FALSE(path.file_size(tmpUint));
 }
 
@@ -82,9 +84,9 @@ TEST_F(utf8_path_tests, empty) {
   std::time_t tmpTime;
   uint64_t tmpUint;
 
-  ASSERT_FALSE(path.exists(tmpBool));
+  ASSERT_TRUE(path.exists(tmpBool) && !tmpBool);
   ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
-  ASSERT_FALSE(path.file_mtime(tmpTime));
+  ASSERT_FALSE(path.mtime(tmpTime));
   ASSERT_FALSE(path.file_size(tmpUint));
   path/=empty;
   ASSERT_FALSE(path.mkdir());
@@ -101,13 +103,13 @@ TEST_F(utf8_path_tests, file) {
 
   ASSERT_TRUE(path.exists(tmpBool) && !tmpBool);
   ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
-  ASSERT_FALSE(path.file_mtime(tmpTime));
+  ASSERT_FALSE(path.mtime(tmpTime));
   ASSERT_FALSE(path.file_size(tmpUint));
 
   path/=file1;
   ASSERT_TRUE(path.exists(tmpBool) && !tmpBool);
   ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
-  ASSERT_FALSE(path.file_mtime(tmpTime));
+  ASSERT_FALSE(path.mtime(tmpTime));
   ASSERT_FALSE(path.file_size(tmpUint));
 
   std::string data("data");
@@ -116,7 +118,7 @@ TEST_F(utf8_path_tests, file) {
   out1.close();
   ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
   ASSERT_TRUE(path.exists_file(tmpBool) && tmpBool);
-  ASSERT_TRUE(path.file_mtime(tmpTime) && tmpTime > 0);
+  ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
   ASSERT_TRUE(path.file_size(tmpUint) && tmpUint == data.size());
 
   ASSERT_FALSE(path.mkdir());
@@ -124,7 +126,7 @@ TEST_F(utf8_path_tests, file) {
   path+=suffix;
   ASSERT_TRUE(path.exists(tmpBool) && !tmpBool);
   ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
-  ASSERT_FALSE(path.file_mtime(tmpTime));
+  ASSERT_FALSE(path.mtime(tmpTime));
   ASSERT_FALSE(path.file_size(tmpUint));
 
   std::ofstream out2(file2.c_str());
@@ -132,7 +134,7 @@ TEST_F(utf8_path_tests, file) {
   out2.close();
   ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
   ASSERT_TRUE(path.exists_file(tmpBool) && tmpBool);
-  ASSERT_TRUE(path.file_mtime(tmpTime) && tmpTime > 0);
+  ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
   ASSERT_TRUE(path.file_size(tmpUint) && tmpUint == data.size() * 2);
 }
 
@@ -145,19 +147,19 @@ TEST_F(utf8_path_tests, directory) {
 
   ASSERT_TRUE(path.exists(tmpBool) && !tmpBool);
   ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
-  ASSERT_FALSE(path.file_mtime(tmpTime));
+  ASSERT_FALSE(path.mtime(tmpTime));
   ASSERT_FALSE(path.file_size(tmpUint));
 
   path/=directory;
   ASSERT_TRUE(path.exists(tmpBool) && !tmpBool);
   ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
-  ASSERT_FALSE(path.file_mtime(tmpTime));
+  ASSERT_FALSE(path.mtime(tmpTime));
   ASSERT_FALSE(path.file_size(tmpUint));
 
   ASSERT_TRUE(path.mkdir());
   ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
   ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
-  ASSERT_FALSE(path.file_mtime(tmpTime));
+  ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
   ASSERT_FALSE(path.file_size(tmpUint));
 }
 

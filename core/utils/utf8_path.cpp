@@ -184,8 +184,8 @@ bool utf8_path::exists(bool& result) const NOEXCEPT {
 
   result = boost::filesystem::exists(path_, code);
 
-  return (result && boost::system::errc::success == code.value())
-      || (!result && boost::system::errc::no_such_file_or_directory == code.value());
+  return boost::system::errc::success == code.value()
+      || boost::system::errc::no_such_file_or_directory == code.value();
 }
 
 bool utf8_path::exists_file(bool& result) const NOEXCEPT {
@@ -193,21 +193,8 @@ bool utf8_path::exists_file(bool& result) const NOEXCEPT {
 
   result = boost::filesystem::is_regular_file(path_, code);
 
-  return boost::system::errc::success == code.value();
-}
-
-bool utf8_path::file_mtime(std::time_t& result) const NOEXCEPT {
-  boost::system::error_code code;
-
-  try {
-    result = boost::filesystem::last_write_time(path_, code);
-
-    return boost::system::errc::success == code.value();
-  } catch(...) { // boost::filesystem::last_write_time(...) is not noexcept
-    IR_FRMT_ERROR("Caught exception at: %s code: %d for path: %s", __FUNCTION__, code.value(), path_.c_str());
-  }
-
-  return false;
+  return boost::system::errc::success == code.value()
+      || boost::system::errc::no_such_file_or_directory == code.value();
 }
 
 bool utf8_path::file_size(uint64_t& result) const NOEXCEPT {
@@ -218,6 +205,20 @@ bool utf8_path::file_size(uint64_t& result) const NOEXCEPT {
 
     return boost::system::errc::success == code.value();
   } catch(...) { // boost::filesystem::file_size(...) is not noexcept
+    IR_FRMT_ERROR("Caught exception at: %s code: %d for path: %s", __FUNCTION__, code.value(), path_.c_str());
+  }
+
+  return false;
+}
+
+bool utf8_path::mtime(std::time_t& result) const NOEXCEPT {
+  boost::system::error_code code;
+
+  try {
+    result = boost::filesystem::last_write_time(path_, code);
+
+    return boost::system::errc::success == code.value();
+  } catch(...) { // boost::filesystem::last_write_time(...) is not noexcept
     IR_FRMT_ERROR("Caught exception at: %s code: %d for path: %s", __FUNCTION__, code.value(), path_.c_str());
   }
 

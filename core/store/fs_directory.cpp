@@ -489,7 +489,7 @@ index_lock::ptr fs_directory::make_lock(const std::string& name) NOEXCEPT {
 bool fs_directory::mtime(
   std::time_t& result, const std::string& name
 ) const NOEXCEPT {
-  return ((utf8_path()/=dir_)/=name).file_mtime(result);
+  return ((utf8_path()/=dir_)/=name).mtime(result);
 }
 
 bool fs_directory::remove(const std::string& name) NOEXCEPT {

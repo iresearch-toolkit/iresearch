@@ -36,9 +36,9 @@ class utf8_path {
   bool chdir() const NOEXCEPT;
   bool exists(bool& result) const NOEXCEPT;
   bool exists_file(bool& result) const NOEXCEPT;
-  bool file_mtime(std::time_t& result) const NOEXCEPT;
   bool file_size(uint64_t& result) const NOEXCEPT;
   bool mkdir() const NOEXCEPT;
+  bool mtime(std::time_t& result) const NOEXCEPT;
   bool remove() const NOEXCEPT;
   bool rename(const utf8_path& destination) const NOEXCEPT;
   bool rmdir() const;
