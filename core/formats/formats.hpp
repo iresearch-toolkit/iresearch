@@ -41,23 +41,72 @@ typedef std::unordered_set<doc_id_t> document_mask;
  * postings_writer
  * ------------------------------------------------------------------*/
 
+struct postings_writer;
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class term_meta
+/// @brief represents metadata associated with the term
+//////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API term_meta : attribute {
+  DECLARE_ATTRIBUTE_TYPE();
+
+  term_meta() = default;
+  virtual ~term_meta() = default;
+
+  virtual void clear() {
+    docs_count = 0;
+    freq = 0;
+  }
+
+  uint64_t docs_count = 0; // how many documents a particular term contains
+  uint64_t freq = 0; // FIXME check whether we can move freq to another place
+}; // term_meta
+
 struct IRESEARCH_API postings_writer : util::const_attribute_store_provider {
-  DECLARE_PTR( postings_writer );
-  DECLARE_FACTORY( postings_writer );
+  DECLARE_PTR(postings_writer);
+  DECLARE_FACTORY(postings_writer);
+
+  class releaser {
+   public:
+    explicit releaser(postings_writer* owner = nullptr) NOEXCEPT
+      : owner_(owner) {
+    }
+
+    inline void operator()(term_meta* meta) const NOEXCEPT;
+
+   private:
+    postings_writer* owner_;
+  }; // releaser
+
+  typedef std::unique_ptr<term_meta, releaser> state;
 
   virtual ~postings_writer();
   /* out - corresponding terms utils/utstream */
   virtual void prepare( index_output& out, const flush_state& state ) = 0;  
   virtual void begin_field(const flags& features) = 0;
-  virtual void write(doc_iterator& docs, attribute_store& out) = 0;
+  virtual state write(doc_iterator& docs) = 0;
   virtual void begin_block() = 0;
-  virtual void encode(data_output& out, const attribute_store& attrs) = 0;
+  virtual void encode(data_output& out, const term_meta& attrs) = 0;
   virtual void end() = 0;
 
   virtual const attribute_store& attributes() const NOEXCEPT override {
     return attribute_store::empty_instance();
   }
+
+ protected:
+  friend class term_meta;
+
+  state make_state(term_meta& meta) NOEXCEPT {
+    return state(&meta, releaser(this));
+  }
+
+  virtual void release(term_meta* meta) NOEXCEPT = 0;
 };
+
+void postings_writer::releaser::operator()(term_meta* meta) const NOEXCEPT {
+  assert(owner_ && meta);
+  owner_->release(meta);
+}
 
 /* -------------------------------------------------------------------
  * field_writer

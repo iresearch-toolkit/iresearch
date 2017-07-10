@@ -472,7 +472,7 @@ TEST_F(memory_same_position_filter_test_case, by_same_position) {
 // --SECTION--                               fs_directory + iresearch_format_10
 // ----------------------------------------------------------------------------
 
-class fs_phrase_filter_test_case : public tests::same_position_filter_test_case {
+class fs_same_position_filter_test_case : public tests::same_position_filter_test_case {
 protected:
   virtual ir::directory* get_directory() override {
     return new ir::memory_directory();
@@ -484,6 +484,6 @@ protected:
   }
 };
 
-TEST_F(fs_phrase_filter_test_case, by_same_position) {
+TEST_F(fs_same_position_filter_test_case, by_same_position) {
   sub_objects_unordered();
 }

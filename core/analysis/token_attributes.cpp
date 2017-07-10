@@ -80,17 +80,6 @@ document::document() NOEXCEPT:
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                        term_meta
-// -----------------------------------------------------------------------------
-
-REGISTER_ATTRIBUTE(iresearch::term_meta);
-DEFINE_ATTRIBUTE_TYPE(iresearch::term_meta);
-DEFINE_FACTORY_DEFAULT(term_meta);
-
-term_meta::term_meta() NOEXCEPT {
-}
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                         frequency
 // -----------------------------------------------------------------------------
 

@@ -1050,7 +1050,7 @@ class pos_doc_iterator : public doc_iterator {
 
       if (cur_pos_ == term_state_.docs_count) {
         *docs_ = type_limits<type_t::doc_id_t>::eof();
-        doc_->value = end_ = docs_; // seal the iterator
+        doc_->value = begin_ = end_ = docs_; // seal the iterator
         return false;
       }
 
@@ -3284,14 +3284,16 @@ void postings_writer::begin_block() {
   #pragma GCC diagnostic ignored "-Wparentheses"
 #endif
 
-void postings_writer::write(doc_iterator& docs, irs::attribute_store& attrs) {
+irs::postings_writer::state postings_writer::write(doc_iterator& docs) {
   REGISTER_TIMER_DETAILED();
   auto& freq = docs.attributes().get<frequency>();
   auto& pos = freq ? docs.attributes().get<position>() : irs::attribute_store::ref<position>::nil();
   const offset* offs = nullptr;
   const payload* pay = nullptr;
-  frequency* tfreq = nullptr;
-  auto& meta = attrs.emplace<version10::term_meta>();
+
+  uint64_t* tfreq = nullptr;
+
+  auto meta = memory::allocate_unique<version10::term_meta>(alloc_);
 
   if (freq) {
     if (pos && !volatile_attributes_) {
@@ -3299,13 +3301,13 @@ void postings_writer::write(doc_iterator& docs, irs::attribute_store& attrs) {
       pay = pos->get<payload>().get();
     }
 
-    tfreq = attrs.emplace<frequency>().get();
+    tfreq = &meta->freq;
   }
 
   begin_term();
 
   while (docs.next()) {
-    auto did = docs.value();
+    const auto did = docs.value();
 
     assert(type_limits<type_t::doc_id_t>::valid(did));
     begin_doc(did, freq.get());
@@ -3317,20 +3319,34 @@ void postings_writer::write(doc_iterator& docs, irs::attribute_store& attrs) {
         pay = pos->get<payload>().get();
       }
 
-      while ( pos->next() ) {
-        add_position( pos->value(), offs, pay );
+      while (pos->next()) {
+        add_position(pos->value(), offs, pay);
       }
     }
 
     ++meta->docs_count;
     if (tfreq) {
-      tfreq->value += freq->value;
+      (*tfreq) += freq->value;
     }
 
     end_doc();
   }
 
   end_term(*meta, tfreq);
+
+  return make_state(*meta.release());
+}
+
+void postings_writer::release(irs::term_meta *meta) NOEXCEPT {
+#ifdef IRESEARCH_DEBUG
+  auto* state = dynamic_cast<version10::term_meta*>(meta);
+#else
+  auto* state = static_cast<version10::term_meta*>(meta);
+#endif // IRESEARCH_DEBUG
+  assert(state);
+
+  alloc_.destroy(state);
+  alloc_.deallocate(state);
 }
 
 #if defined(_MSC_VER)
@@ -3429,9 +3445,7 @@ void postings_writer::end_doc() {
   }
 }
 
-void postings_writer::end_term(
-    version10::term_meta& meta,
-    const frequency* tfreq) {
+void postings_writer::end_term(version10::term_meta& meta, const uint64_t* tfreq) {
   if (docs_count == 0) {
     return; // no documents to write
   }
@@ -3462,11 +3476,15 @@ void postings_writer::end_term(
 
   meta.pos_end = type_limits<type_t::address_t>::invalid();
 
+  if (!tfreq) {
+    meta.freq = integer_traits<uint64_t>::const_max;
+  }
+
   /* write remaining position using
    * variable length encoding */
   if (features_.position()) {
 
-    if (tfreq->value > BLOCK_SIZE) {
+    if (*tfreq > BLOCK_SIZE) {
       meta.pos_end = pos_->out->file_pointer() - pos_->start;
     }
 
@@ -3578,33 +3596,35 @@ void postings_writer::write_skip(size_t level, index_output& out) {
 
 void postings_writer::encode(
     data_output& out,
-    const irs::attribute_store& attrs
-) {
-  auto& meta = attrs.get<term_meta>();
-  auto& tfreq = attrs.get<frequency>();
+    const irs::term_meta& state) {
+#ifdef IRESEARCH_DEBUG
+  const auto& meta = dynamic_cast<const version10::term_meta&>(state);
+#else
+  const auto& meta = static_cast<const version10::term_meta&>(state);
+#endif // IRESEARCH_DEBUG
 
-  out.write_vlong(meta->docs_count);
-  if (tfreq) {
-    assert(tfreq->value >= meta->docs_count);
-    out.write_vlong(tfreq->value - meta->docs_count);
+  out.write_vlong(meta.docs_count);
+  if (meta.freq != integer_traits<uint64_t>::const_max) {
+    assert(meta.freq >= meta.docs_count);
+    out.write_vlong(meta.freq - meta.docs_count);
   }
 
-  out.write_vlong(meta->doc_start - last_state.doc_start);
+  out.write_vlong(meta.doc_start - last_state.doc_start);
   if (features_.position()) {
-    out.write_vlong(meta->pos_start - last_state.pos_start);
-    if (type_limits<type_t::address_t>::valid(meta->pos_end)) {
-      out.write_vlong(meta->pos_end);
+    out.write_vlong(meta.pos_start - last_state.pos_start);
+    if (type_limits<type_t::address_t>::valid(meta.pos_end)) {
+      out.write_vlong(meta.pos_end);
     }
     if (features_.payload() || features_.offset()) {
-      out.write_vlong(meta->pay_start - last_state.pay_start);
+      out.write_vlong(meta.pay_start - last_state.pay_start);
     }
   }
 
-  if (1U == meta->docs_count || meta->docs_count > postings_writer::BLOCK_SIZE) {
-    out.write_vlong(meta->e_skip_start);
+  if (1U == meta.docs_count || meta.docs_count > postings_writer::BLOCK_SIZE) {
+    out.write_vlong(meta.e_skip_start);
   }
 
-  last_state = *meta;
+  last_state = meta;
 }
 
 void postings_writer::end() {

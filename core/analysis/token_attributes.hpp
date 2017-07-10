@@ -159,23 +159,6 @@ struct IRESEARCH_API norm : attribute {
 }; // norm
 
 //////////////////////////////////////////////////////////////////////////////
-/// @class term_meta
-/// @brief represents metadata associated with the term
-//////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API term_meta : attribute {
-  DECLARE_ATTRIBUTE_TYPE();
-  DECLARE_FACTORY_DEFAULT();
-
-  term_meta() NOEXCEPT;
-
-  void clear() {
-    docs_count = 0;
-  }
-
-  uint64_t docs_count = 0; /* how many documents contain a particular term */
-}; // term_meta
-
-//////////////////////////////////////////////////////////////////////////////
 /// @class position 
 /// @brief represents a term positions in document (iterator)
 //////////////////////////////////////////////////////////////////////////////

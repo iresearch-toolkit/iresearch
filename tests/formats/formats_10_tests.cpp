@@ -36,6 +36,9 @@ class format_10_test_case : public tests::format_test_case_base {
     std::vector<ir::doc_id_t> docs1{ 6 };
     irs::attribute_store attrs1;
 
+    ir::version10::postings_writer writer(false);
+    irs::postings_writer::state meta0, meta1;
+
     // write postings
     {
       ir::flush_state state;
@@ -50,7 +53,6 @@ class format_10_test_case : public tests::format_test_case_base {
       ASSERT_FALSE(!out);
 
       // prepare writer
-      ir::version10::postings_writer writer(false);
       writer.prepare(*out, state);
 
       // begin field
@@ -59,46 +61,44 @@ class format_10_test_case : public tests::format_test_case_base {
       // write postings for term0
       {
         postings docs(docs0.begin(), docs0.end());
-        writer.write(docs, attrs0);
-        ASSERT_TRUE(attrs0.contains<ir::version10::term_meta>());
+        meta0 = writer.write(docs);
 
         // check term_meta
         {
-          auto& meta = **attrs0.get<irs::version10::term_meta>();
+          auto& meta = dynamic_cast<irs::version10::term_meta&>(*meta0);
           ASSERT_EQ(1, meta.docs_count);
           ASSERT_EQ(2, meta.e_single_doc);
         }
 
         // write term0 attributes to out
-        writer.encode(*out, attrs0);
+        writer.encode(*out, *meta0);
       }
 
       // write postings for term0
       {
         postings docs(docs1.begin(), docs1.end());
-        writer.write(docs, attrs1);
-        ASSERT_TRUE(attrs1.contains<ir::version10::term_meta>());
+        meta1 = writer.write(docs);
 
         // check term_meta
         {
-          auto& meta = **attrs1.get<irs::version10::term_meta>();
+          auto& meta = dynamic_cast<irs::version10::term_meta&>(*meta1);
           ASSERT_EQ(1, meta.docs_count);
           ASSERT_EQ(5, meta.e_single_doc);
         }
 
         // write term0 attributes to out
-        writer.encode(*out, attrs1);
+        writer.encode(*out, *meta1);
       }
 
       // check doc positions for term0 & term1
       {
-        auto& meta0 = **attrs0.get<irs::version10::term_meta>();
-        auto& meta1 = **attrs1.get<irs::version10::term_meta>();
-        ASSERT_EQ(meta0.docs_count, meta1.docs_count);
-        ASSERT_EQ(meta0.doc_start, meta1.doc_start);
-        ASSERT_EQ(meta0.pos_start, meta1.pos_start);
-        ASSERT_EQ(meta0.pos_end, meta1.pos_end);
-        ASSERT_EQ(meta0.pay_start, meta1.pay_start);
+        auto& typed_meta0 = dynamic_cast<irs::version10::term_meta&>(*meta0);
+        auto& typed_meta1 = dynamic_cast<irs::version10::term_meta&>(*meta1);
+        ASSERT_EQ(typed_meta0.docs_count, typed_meta1.docs_count);
+        ASSERT_EQ(typed_meta0.doc_start,  typed_meta1.doc_start);
+        ASSERT_EQ(typed_meta0.pos_start,  typed_meta1.pos_start);
+        ASSERT_EQ(typed_meta0.pos_end,    typed_meta1.pos_end);
+        ASSERT_EQ(typed_meta0.pay_start,  typed_meta1.pay_start);
       }
 
       // finish writing
@@ -130,15 +130,15 @@ class format_10_test_case : public tests::format_test_case_base {
 
         // check term_meta for term0
         {
-          auto& meta = **attrs0.get<irs::version10::term_meta>();
+          auto& typed_meta0 = dynamic_cast<const irs::version10::term_meta&>(*meta0);
           auto& read_meta = **read_attrs.get<irs::version10::term_meta>();
-          ASSERT_EQ(meta.docs_count, read_meta.docs_count);
-          ASSERT_EQ(meta.doc_start, read_meta.doc_start);
-          ASSERT_EQ(meta.pos_start, read_meta.pos_start);
-          ASSERT_EQ(meta.pos_end, read_meta.pos_end);
-          ASSERT_EQ(meta.pay_start, read_meta.pay_start);
-          ASSERT_EQ(meta.e_single_doc, read_meta.e_single_doc);
-          ASSERT_EQ(meta.e_skip_start, read_meta.e_skip_start);
+          ASSERT_EQ(typed_meta0.docs_count, read_meta.docs_count);
+          ASSERT_EQ(typed_meta0.doc_start, read_meta.doc_start);
+          ASSERT_EQ(typed_meta0.pos_start, read_meta.pos_start);
+          ASSERT_EQ(typed_meta0.pos_end, read_meta.pos_end);
+          ASSERT_EQ(typed_meta0.pay_start, read_meta.pay_start);
+          ASSERT_EQ(typed_meta0.e_single_doc, read_meta.e_single_doc);
+          ASSERT_EQ(typed_meta0.e_skip_start, read_meta.e_skip_start);
         }
 
         // read documents
@@ -155,15 +155,15 @@ class format_10_test_case : public tests::format_test_case_base {
         ASSERT_TRUE(read_attrs.contains<ir::version10::term_meta>());
 
         {
-          auto& meta = **attrs1.get<irs::version10::term_meta>();
+          auto& typed_meta1 = dynamic_cast<const irs::version10::term_meta&>(*meta1);
           auto& read_meta = **read_attrs.get<irs::version10::term_meta>();
-          ASSERT_EQ(meta.docs_count, read_meta.docs_count);
+          ASSERT_EQ(typed_meta1.docs_count, read_meta.docs_count);
           ASSERT_EQ(0, read_meta.doc_start); /* we don't read doc start in case of singleton */
-          ASSERT_EQ(meta.pos_start, read_meta.pos_start);
-          ASSERT_EQ(meta.pos_end, read_meta.pos_end);
-          ASSERT_EQ(meta.pay_start, read_meta.pay_start);
-          ASSERT_EQ(meta.e_single_doc, read_meta.e_single_doc);
-          ASSERT_EQ(meta.e_skip_start, read_meta.e_skip_start);
+          ASSERT_EQ(typed_meta1.pos_start, read_meta.pos_start);
+          ASSERT_EQ(typed_meta1.pos_end, read_meta.pos_end);
+          ASSERT_EQ(typed_meta1.pay_start, read_meta.pay_start);
+          ASSERT_EQ(typed_meta1.e_single_doc, read_meta.e_single_doc);
+          ASSERT_EQ(typed_meta1.e_skip_start, read_meta.e_skip_start);
         }
 
         // read documents
@@ -186,6 +186,9 @@ class format_10_test_case : public tests::format_test_case_base {
     irs::attribute_store attrs1;
     std::vector<ir::doc_id_t> docs1{ 2, 7, 9, 19 };
 
+    ir::version10::postings_writer writer(false);
+    irs::postings_writer::state meta0, meta1; // must be destroyed before writer
+
     // write postings
     {
       ir::flush_state state;
@@ -200,7 +203,6 @@ class format_10_test_case : public tests::format_test_case_base {
       ASSERT_FALSE(!out);
 
       // prepare writer
-      ir::version10::postings_writer writer(false);
       writer.prepare(*out, state);
 
       // begin field
@@ -209,27 +211,25 @@ class format_10_test_case : public tests::format_test_case_base {
       // write postings for term0
       {
         postings docs(docs0.begin(), docs0.end());
-        writer.write(docs, attrs0);
-        ASSERT_TRUE(attrs0.contains<ir::version10::term_meta>());
+        meta0 = writer.write(docs);
 
         // write attributes to out
-        writer.encode(*out, attrs0);
+        writer.encode(*out, *meta0);
       }
       // write postings for term1
       {
         postings docs(docs1.begin(), docs1.end());
-        writer.write(docs, attrs1);
-        ASSERT_TRUE(attrs1.contains<ir::version10::term_meta>());
+        meta1 = writer.write(docs);
 
         // write attributes to out
-        writer.encode(*out, attrs1);
+        writer.encode(*out, *meta1);
       }
 
       // check doc positions for term0 & term1
       {
-        auto& meta0 = **attrs0.get<irs::version10::term_meta>();
-        auto& meta1 = **attrs1.get<irs::version10::term_meta>();
-        ASSERT_GT(meta1.doc_start, meta0.doc_start);
+        auto& typed_meta0 = dynamic_cast<irs::version10::term_meta&>(*meta0);
+        auto& typed_meta1 = dynamic_cast<irs::version10::term_meta&>(*meta1);
+        ASSERT_GT(typed_meta1.doc_start, typed_meta0.doc_start);
       }
 
       // finish writing
@@ -263,7 +263,7 @@ class format_10_test_case : public tests::format_test_case_base {
 
         // check term_meta
         {
-          auto& meta = **attrs0.get<irs::version10::term_meta>();
+          auto& meta = dynamic_cast<irs::version10::term_meta&>(*meta0);
           auto& read_meta = **read_attrs.get<irs::version10::term_meta>();
           ASSERT_EQ(meta.docs_count, read_meta.docs_count);
           ASSERT_EQ(meta.doc_start, read_meta.doc_start);
@@ -288,7 +288,7 @@ class format_10_test_case : public tests::format_test_case_base {
 
         // check term_meta
         {
-          auto& meta = **attrs1.get<irs::version10::term_meta>();
+          auto& meta = dynamic_cast<irs::version10::term_meta&>(*meta1);
           auto& read_meta = **read_attrs.get<irs::version10::term_meta>();
           ASSERT_EQ(meta.docs_count, read_meta.docs_count);
           ASSERT_EQ(meta.doc_start, read_meta.doc_start);
@@ -347,6 +347,8 @@ class format_10_test_case : public tests::format_test_case_base {
 
     // attributes for term
     irs::attribute_store attrs;
+    ir::version10::postings_writer writer(false);
+    irs::postings_writer::state term_meta; // must be destroyed before the writer
 
     // write postings for field
     {
@@ -362,41 +364,38 @@ class format_10_test_case : public tests::format_test_case_base {
       ASSERT_FALSE(!out);
       ir::write_string(*out, ir::string_ref("file_header"));
 
-      /* prepare writer */
-      ir::version10::postings_writer writer(false);
+      // prepare writer
       writer.prepare(*out, state);
 
-      /* begin field */
+      // begin field
       writer.begin_field(field.features);
-      /* write postings for term */
+      // write postings for term
       {
         postings it(docs.begin(), docs.end(), field.features);
-        writer.write(it, attrs);
-        ASSERT_TRUE(attrs.contains<ir::version10::term_meta>());
+        term_meta = writer.write(it);
 
         /* write attributes to out */
-//        writer.encode(*out, attrs);
+//      writer.encode(*out, attrs);
       }
 
       attrs.clear();
 
-      /* begin field */
+      // begin field
       writer.begin_field(field.features);
-      /* write postings for term */
+      // write postings for term
       {
         postings it(docs.begin(), docs.end(), field.features);
-        writer.write(it, attrs);
-        ASSERT_TRUE(attrs.contains<ir::version10::term_meta>());
+        term_meta = writer.write(it);
 
-        /* write attributes to out */
-        writer.encode(*out, attrs);
+        // write attributes to out
+        writer.encode(*out, *term_meta);
       }
 
-      /* finish writing */
+      // finish writing
       writer.end();
     }
 
-    /* read postings */
+    // read postings
     {
       ir::segment_meta meta;
       meta.name = "segment_name";
@@ -428,15 +427,15 @@ class format_10_test_case : public tests::format_test_case_base {
 
         // check term_meta
         {
-          auto& meta = **attrs.get<irs::version10::term_meta>();
+          auto& typed_meta = dynamic_cast<irs::version10::term_meta&>(*term_meta);
           auto& read_meta = **read_attrs.get<irs::version10::term_meta>();
-          ASSERT_EQ(meta.docs_count, read_meta.docs_count);
-          ASSERT_EQ(meta.doc_start, read_meta.doc_start);
-          ASSERT_EQ(meta.pos_start, read_meta.pos_start);
-          ASSERT_EQ(meta.pos_end, read_meta.pos_end);
-          ASSERT_EQ(meta.pay_start, read_meta.pay_start);
-          ASSERT_EQ(meta.e_single_doc, read_meta.e_single_doc);
-          ASSERT_EQ(meta.e_skip_start, read_meta.e_skip_start);
+          ASSERT_EQ(typed_meta.docs_count, read_meta.docs_count);
+          ASSERT_EQ(typed_meta.doc_start, read_meta.doc_start);
+          ASSERT_EQ(typed_meta.pos_start, read_meta.pos_start);
+          ASSERT_EQ(typed_meta.pos_end, read_meta.pos_end);
+          ASSERT_EQ(typed_meta.pay_start, read_meta.pay_start);
+          ASSERT_EQ(typed_meta.e_single_doc, read_meta.e_single_doc);
+          ASSERT_EQ(typed_meta.e_skip_start, read_meta.e_skip_start);
         }
 
         // seek for every document 127th document in a block

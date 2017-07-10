@@ -40,6 +40,8 @@ NS_END
 
 NS_ROOT
 
+DEFINE_ATTRIBUTE_TYPE(iresearch::term_meta);
+
 postings_writer::~postings_writer() {}
 field_writer::~field_writer() {}
 
