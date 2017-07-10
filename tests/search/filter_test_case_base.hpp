@@ -109,6 +109,7 @@ struct frequency_sort: public iresearch::sort {
   struct score_t {
     iresearch::doc_id_t id;
     double value;
+    bool prepared{}; // initialized to false
   };
 
   class prepared: public iresearch::sort::prepared_base<score_t> {
@@ -190,9 +191,13 @@ struct frequency_sort: public iresearch::sort {
     virtual void prepare_score(score_t& score) const {
       score.id = ir::type_limits<ir::type_t::doc_id_t>::invalid();
       score.value = std::numeric_limits<double>::infinity();
+      score.prepared = true;
     }
 
     virtual void add(score_t& dst, const score_t& src) const override {
+      ASSERT_TRUE(src.prepared);
+      ASSERT_TRUE(dst.prepared);
+
       if (std::numeric_limits<double>::infinity()) {
         dst.id = src.id;
         dst.value = 0;

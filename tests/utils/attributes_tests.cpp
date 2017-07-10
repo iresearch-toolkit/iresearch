@@ -132,7 +132,7 @@ TEST(attributes_tests, store_add_get_clear_state_clear) {
 
   // get attribute
   {
-    auto& added1 = const_cast<const irs::attribute_store&>(attrs).get(added->type());
+    auto& added1 = added; //const_cast<const irs::attribute_store&>(attrs).get(added->type());
     ASSERT_FALSE(!added1);
     auto& added2 = const_cast<const irs::attribute_store&>(attrs).get<tests::attribute>();
     ASSERT_FALSE(!added2);
@@ -187,7 +187,7 @@ TEST(attributes_tests, store_visit) {
   // visit 2 attributes
   {
     std::unordered_set<const attribute::type_id*> expected;
-    auto visitor = [&expected](const attribute::type_id& type_id, const attribute_store::ref<void>&)->bool {
+    auto visitor = [&expected](const attribute::type_id& type_id, const attribute_store::ref<attribute>&)->bool {
       return 1 == expected.erase(&type_id);
     };
 
@@ -206,7 +206,7 @@ TEST(attributes_tests, view_ctor) {
 
   {
     tests::attribute value;
-    attrs.emplace(tests::attribute::type(), value);
+    attrs.emplace(value);
     irs::attribute_view attrs1(std::move(attrs));
     ASSERT_EQ(1, attrs1.size());
     ASSERT_EQ(flags{tests::attribute::type()}, attrs1.features());
@@ -222,7 +222,7 @@ TEST(attributes_tests, view_ctor) {
 TEST(attributes_tests, view_add_get_clear_state_clear) {
   irs::attribute_view attrs;
   tests::attribute value0;
-  auto& added = attrs.emplace(tests::attribute::type(), value0);
+  auto& added = attrs.emplace(value0);
   ASSERT_FALSE(!added);
   ASSERT_EQ(1, attrs.size());
   ASSERT_TRUE(attrs.contains<tests::attribute>());
@@ -232,7 +232,7 @@ TEST(attributes_tests, view_add_get_clear_state_clear) {
   // add attribute
   {
     tests::attribute value;
-    auto& added1 = attrs.emplace(tests::attribute::type(), value);
+    auto& added1 = attrs.emplace(value);
     ASSERT_EQ(added.get(), added1.get());
     ASSERT_EQ(1, attrs.size());
     ASSERT_TRUE(attrs.contains<tests::attribute>());
@@ -242,7 +242,7 @@ TEST(attributes_tests, view_add_get_clear_state_clear) {
 
   // get attribute
   {
-    auto& added1 = const_cast<const irs::attribute_view&>(attrs).get(added->type());
+    auto& added1 = added; //const_cast<const irs::attribute_view&>(attrs).get(added->type());
     ASSERT_FALSE(!added1);
     auto& added2 = const_cast<const irs::attribute_view&>(attrs).get<tests::attribute>();
     ASSERT_FALSE(!added2);
@@ -262,7 +262,7 @@ TEST(attributes_tests, view_add_get_clear_state_clear) {
 
   // add attribute
   tests::invalid_attribute value1;
-  attrs.emplace(tests::invalid_attribute::type(), value1);
+  attrs.emplace(value1);
   ASSERT_EQ(2, attrs.size());
   ASSERT_TRUE(attrs.contains<tests::invalid_attribute>());
   ASSERT_EQ(&value1, attrs.get<tests::invalid_attribute>()->get());
@@ -287,14 +287,14 @@ TEST(attributes_tests, view_visit) {
   tests::invalid_attribute value1;
 
   // add first attribute
-  ASSERT_FALSE(!attrs.emplace(tests::attribute::type(), value0));
+  ASSERT_FALSE(!attrs.emplace(value0));
   ASSERT_EQ(1, attrs.size());
   ASSERT_TRUE(attrs.contains<tests::attribute>());
   ASSERT_EQ(&value0, attrs.get<tests::attribute>()->get());
   ASSERT_EQ(flags{tests::attribute::type()}, attrs.features());
 
   // add second attribute
-  ASSERT_FALSE(!attrs.emplace(tests::invalid_attribute::type(), value1));
+  ASSERT_FALSE(!attrs.emplace(value1));
   ASSERT_EQ(2, attrs.size());
   ASSERT_TRUE(attrs.contains<tests::invalid_attribute>());
   ASSERT_EQ(&value1, attrs.get<tests::invalid_attribute>()->get());
@@ -303,7 +303,7 @@ TEST(attributes_tests, view_visit) {
   // visit 2 attributes
   {
     std::unordered_set<const attribute::type_id*> expected;
-    auto visitor = [&expected](const attribute::type_id& type_id, const attribute_view::ref<void>&)->bool {
+    auto visitor = [&expected](const attribute::type_id& type_id, const attribute_view::ref<attribute>&)->bool {
       return 1 == expected.erase(&type_id);
     };
 

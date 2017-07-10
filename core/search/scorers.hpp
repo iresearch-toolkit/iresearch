@@ -21,9 +21,9 @@ NS_ROOT
 // --SECTION--                                                 scorer definition
 // -----------------------------------------------------------------------------
 
-#define DECLARE_SORT_TYPE() DECLARE_TYPE_ID(iresearch::sort::type_id)
-#define DEFINE_SORT_TYPE_NAMED(class_type, class_name) DEFINE_TYPE_ID(class_type, iresearch::sort::type_id) { \
-  static iresearch::sort::type_id type(class_name); \
+#define DECLARE_SORT_TYPE() DECLARE_TYPE_ID(::iresearch::sort::type_id)
+#define DEFINE_SORT_TYPE_NAMED(class_type, class_name) DEFINE_TYPE_ID(class_type, ::iresearch::sort::type_id) { \
+  static ::iresearch::sort::type_id type(class_name); \
   return type; \
 }
 #define DEFINE_SORT_TYPE(class_type) DEFINE_SORT_TYPE_NAMED(class_type, #class_type)
@@ -43,7 +43,7 @@ class IRESEARCH_API scorer_registrar {
   bool registered_;
 };
 
-#define REGISTER_SCORER__(scorer_name, line) static iresearch::scorer_registrar scorer_registrar ## _ ## line(scorer_name::type(), &scorer_name::make)
+#define REGISTER_SCORER__(scorer_name, line) static ::iresearch::scorer_registrar scorer_registrar ## _ ## line(scorer_name::type(), &scorer_name::make)
 #define REGISTER_SCORER_EXPANDER__(scorer_name, line) REGISTER_SCORER__(scorer_name, line)
 #define REGISTER_SCORER(scorer_name) REGISTER_SCORER_EXPANDER__(scorer_name, __LINE__)
 

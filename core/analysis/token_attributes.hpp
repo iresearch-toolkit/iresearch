@@ -216,11 +216,6 @@ class IRESEARCH_API position : public attribute {
   const attribute_store& attributes() const {
     return impl_->attributes(); 
   }
-
-  const attribute* get( attribute::type_id id ) const { 
-    return reinterpret_cast<attribute*>(impl_->attributes().get(id)->get());
-  }  
-
   template< typename A > 
   const attribute_store::ref<A>& get() const {
     return this->attributes().get<A>(); 

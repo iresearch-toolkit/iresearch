@@ -99,8 +99,14 @@ memory_index_input::memory_index_input(const memory_file& file) NOEXCEPT
 }
 
 index_input::ptr memory_index_input::dup() const NOEXCEPT {
-  PTR_NAMED(memory_index_input, ptr, *this);
-  return ptr;
+  try {
+    PTR_NAMED(memory_index_input, ptr, *this);
+    return ptr;
+  } catch(...) {
+    IR_EXCEPTION();
+  }
+
+  return nullptr;
 }
 
 bool memory_index_input::eof() const {

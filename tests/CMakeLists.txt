@@ -78,6 +78,7 @@ set(IReSearch_tests_sources
   ./search/granular_range_filter_tests.cpp
   ./search/index_reader_test.cpp
   ./search/scorers_tests.cpp
+  ./search/sort_tests.cpp
   ./search/tfidf_test.cpp
   ./search/bm25_test.cpp
   ./search/cost_attribute_test.cpp
@@ -111,6 +112,7 @@ set(IReSearch_tests_sources
   ./utils/math_utils_test.cpp
   ./utils/std_test.cpp
   ./utils/type_utils_tests.cpp
+  ./utils/utf8_path_tests.cpp
   ./tests_main.cpp
 )
 
