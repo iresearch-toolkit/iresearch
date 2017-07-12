@@ -551,7 +551,7 @@ bool fs_directory::visit(const directory::visitor_f& visitor) const {
   utf8_path path;
   auto dir_visitor = [&path, &visitor] (const file_path_t name) {
     path.clear();
-    path / name;
+    path /= name;
 
     auto filename = path.utf8();
     return visitor(filename);
