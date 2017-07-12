@@ -130,14 +130,15 @@ void test_base::make_directories() {
   exec_path_ = fs::path( argv_[0] );
   exec_file_ = exec_path_.filename();
   exec_dir_ = exec_path_.parent_path();
-  
   test_name_ = exec_file_.replace_extension().string();
 
   if (out_dir_.empty()) {
     out_dir_ = exec_dir_;
   }
 
+  out_dir_ = ::boost::filesystem::canonical(out_dir_);
   (res_dir_ = out_dir_).append( test_name_ );  
+
   // add timestamp to res_dir_
   {
     std::tm tinfo;
@@ -188,7 +189,7 @@ int test_base::initialize(int argc, char* argv[]) {
   cmdline::parser cmd;
   parse_command_line(cmd);
   prepare(cmd);
-  
+
   ::testing::AddGlobalTestEnvironment( new iteration_tracker() );
   ::testing::InitGoogleTest( &argc_, argv_ ); 
 
