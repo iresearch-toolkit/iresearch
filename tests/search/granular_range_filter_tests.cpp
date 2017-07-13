@@ -262,6 +262,30 @@ class granular_range_filter_test_case: public filter_test_case_base {
       ASSERT_EQ(expected, actual);
     }
 
+    // double - value => 20007 (largest value)
+    {
+      irs::numeric_token_stream min_stream;
+      min_stream.reset(double_t(20007));
+
+      irs::by_granular_range query;
+      query.field("value")
+           .include<irs::Bound::MIN>(true)
+           .insert<irs::Bound::MIN>(min_stream);
+
+      auto prepared = query.prepare(rdr);
+
+      std::vector<irs::doc_id_t> expected { 8 };
+      std::vector<irs::doc_id_t> actual;
+
+      for (const auto& sub: rdr) {
+        auto docs = prepared->execute(sub);
+        for (;docs->next();) {
+          actual.push_back(docs->value());
+        }
+      }
+      ASSERT_EQ(expected, actual);
+    }
+
     // double - value < 10000.123
     {
       ir::numeric_token_stream max_stream;
@@ -405,6 +429,34 @@ class granular_range_filter_test_case: public filter_test_case_base {
       ASSERT_EQ(expected, actual);
     }
 
+    // long - seq >= 31 (match largest value)
+    {
+      irs::numeric_token_stream min_stream;
+      min_stream.reset(INT64_C(31));
+      auto& min_term = min_stream.attributes().get<irs::term_attribute>();
+      ASSERT_TRUE(min_stream.next());
+
+      irs::by_granular_range query;
+      query.field("seq")
+           .include<irs::Bound::MIN>(true)
+           .insert<irs::Bound::MIN>(min_term->value())
+           .include<irs::Bound::MAX>(true)
+           .insert<irs::Bound::MAX>((irs::numeric_utils::numeric_traits<int64_t>::max)());
+
+      auto prepared = query.prepare(rdr);
+
+      std::vector<irs::doc_id_t> expected { 32 };
+      std::vector<irs::doc_id_t> actual;
+
+      for (const auto& sub: rdr) {
+        auto docs = prepared->execute(sub);
+        for (;docs->next();) {
+          actual.push_back(docs->value());
+        }
+      }
+      ASSERT_EQ(expected, actual);
+    }
+
     // long - seq <= 5
     {
       ir::numeric_token_stream max_stream;
@@ -487,6 +539,34 @@ class granular_range_filter_test_case: public filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
+        for (;docs->next();) {
+          actual.push_back(docs->value());
+        }
+      }
+      ASSERT_EQ(expected, actual);
+    }
+
+    // int - seq >= 31 (match largest value)
+    {
+      irs::numeric_token_stream min_stream;
+      min_stream.reset(INT32_C(31));
+      auto& min_term = min_stream.attributes().get<irs::term_attribute>();
+      ASSERT_TRUE(min_stream.next());
+
+      irs::by_granular_range query;
+      query.field("seq")
+           .include<irs::Bound::MIN>(true)
+           .insert<irs::Bound::MIN>(min_term->value())
+           .include<irs::Bound::MAX>(true)
+           .insert<irs::Bound::MAX>((irs::numeric_utils::numeric_traits<int32_t>::max)());
+
+      auto prepared = query.prepare(rdr);
+
+      std::vector<irs::doc_id_t> expected { 32 };
+      std::vector<irs::doc_id_t> actual;
+
+      for (const auto& sub: rdr) {
+        auto docs = prepared->execute(sub);
         for (;docs->next();) {
           actual.push_back(docs->value());
         }
@@ -611,6 +691,34 @@ class granular_range_filter_test_case: public filter_test_case_base {
       ASSERT_EQ(expected, actual);
     }
 
+    // float - value >= 31 (largest value)
+    {
+      irs::numeric_token_stream min_stream;
+      min_stream.reset(float_t(31));
+      auto& min_term = min_stream.attributes().get<irs::term_attribute>();
+      ASSERT_TRUE(min_stream.next());
+
+      irs::by_granular_range query;
+      query.field("seq")
+           .include<irs::Bound::MIN>(true)
+           .insert<irs::Bound::MIN>(min_term->value())
+           .include<ir::Bound::MAX>(true)
+           .insert<ir::Bound::MAX>(irs::numeric_utils::numeric_traits<float_t>::inf());
+
+      auto prepared = query.prepare(rdr);
+
+      std::vector<irs::doc_id_t> expected{ 32 };
+      std::vector<irs::doc_id_t> actual;
+
+      for (const auto& sub: rdr) {
+        auto docs = prepared->execute(sub);
+        for (;docs->next();) {
+          actual.push_back(docs->value());
+        }
+      }
+      ASSERT_EQ(expected, actual);
+    }
+
     // double - value = (-40; 90.564]
     {
       ir::numeric_token_stream min_stream;
@@ -692,6 +800,34 @@ class granular_range_filter_test_case: public filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
+        for (;docs->next();) {
+          actual.push_back(docs->value());
+        }
+      }
+      ASSERT_EQ(expected, actual);
+    }
+
+    // double - value >= 31 (largest value)
+    {
+      irs::numeric_token_stream min_stream;
+      min_stream.reset(double_t(31));
+      auto& min_term = min_stream.attributes().get<irs::term_attribute>();
+      ASSERT_TRUE(min_stream.next());
+
+      irs::by_granular_range query;
+      query.field("seq")
+           .include<irs::Bound::MIN>(true)
+           .insert<irs::Bound::MIN>(min_term->value())
+           .include<ir::Bound::MAX>(true)
+           .insert<ir::Bound::MAX>(irs::numeric_utils::numeric_traits<double_t>::inf());
+
+      auto prepared = query.prepare(rdr);
+
+      std::vector<irs::doc_id_t> expected{ 32 };
+      std::vector<irs::doc_id_t> actual;
+
+      for (const auto& sub: rdr) {
+        auto docs = prepared->execute(sub);
         for (;docs->next();) {
           actual.push_back(docs->value());
         }
