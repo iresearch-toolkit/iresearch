@@ -136,10 +136,10 @@ void test_base::make_directories() {
     out_dir_ = exec_dir_;
   }
 
-  std::cout << "launching: " << exec_path_.native() << std::endl;
+  std::cout << "launching: " << exec_path_.string() << std::endl;
   std::cout << "options:" << std::endl;
-  std::cout << "\t" << IRES_OUTPUT_PATH << ": " << out_dir_.native() << std::endl;
-  std::cout << "\t" << IRES_RESOURCE_DIR << ": " << resource_dir_.native() << std::endl;
+  std::cout << "\t" << IRES_OUTPUT_PATH << ": " << out_dir_.string() << std::endl;
+  std::cout << "\t" << IRES_RESOURCE_DIR << ": " << resource_dir_.string() << std::endl;
 
   out_dir_ = ::boost::filesystem::canonical(out_dir_);
   (res_dir_ = out_dir_).append( test_name_ );  
