@@ -43,7 +43,6 @@ struct score_wrapper : BaseWrapper {
     : BaseWrapper(std::move(base)) {
     auto& scr = (*this)->attributes().template get<iresearch::score>();
     if (scr) {
-      scr->clear();
       score = scr->c_str();
     }
   }
