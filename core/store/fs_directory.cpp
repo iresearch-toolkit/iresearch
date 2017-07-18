@@ -163,10 +163,9 @@ class fs_index_output : public buffered_index_output {
     auto len_written = fwrite(b, sizeof(byte_type), len, handle.get());
 
     if (len && len_written != len) {
-      std::stringstream ss;
-      ss << "Failed to write buffer, written " << len_written 
-         << " out of " << len << " bytes.", 
-      throw detailed_io_error(ss.str());
+      throw detailed_io_error("Failed to write buffer, written ")
+              << std::to_string(len_written) << " out of "
+              << std::to_string(len) << " bytes.";
     }
   }
 
@@ -242,10 +241,9 @@ class fs_index_input : public buffered_index_input {
  protected:
   virtual void seek_internal(size_t pos) override {
     if (pos >= handle_->size) {
-      std::stringstream ss;
-      ss << "Seek out of range for input file, length " << handle_->size 
-         << ", position " << pos;
-      throw detailed_io_error(ss.str());
+      throw detailed_io_error("Seek out of range for input file, length ")
+              << std::to_string(handle_->size)
+              << ", position " << std::to_string(pos);
     }
 
     pos_ = pos;
@@ -259,11 +257,9 @@ class fs_index_input : public buffered_index_input {
 
     if (handle_->pos != pos_) {
       if (fseek(stream, static_cast<long>(pos_), SEEK_SET) != 0) {
-
-        std::stringstream ss;
-        ss << "Failed to seek to " << pos_ 
-           << " for input file, error " << ferror(stream);
-        throw detailed_io_error(ss.str());
+        throw detailed_io_error("Failed to seek to ")
+                << std::to_string(pos_)
+                << " for input file, error " << std::to_string(ferror(stream));
       }
 
       handle_->pos = pos_;
@@ -280,11 +276,10 @@ class fs_index_input : public buffered_index_input {
       }
 
       // read error
-      std::stringstream ss;
-      ss << "Failed to read from input file, read " << read 
-         << " out of " << len 
-         << " bytes, error " << ferror(stream);
-      throw detailed_io_error(ss.str());
+      throw detailed_io_error("Failed to read from input file, read ")
+              << std::to_string(read)
+              << " out of " << std::to_string(len)
+              << " bytes, error " << std::to_string(ferror(stream));
     }
 
     assert(handle_->pos == pos_);
