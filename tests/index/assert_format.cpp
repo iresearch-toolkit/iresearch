@@ -18,7 +18,6 @@
 #include "index/field_meta.hpp"
 #include "index/directory_reader.hpp"
 
-#include "search/collector.hpp"
 #include "search/term_filter.hpp"
 #include "search/boolean_filter.hpp"
 #include "search/tfidf.hpp"

@@ -109,7 +109,6 @@ set(IResearch_core_sources
   ./search/range_query.cpp
   ./search/term_query.cpp
   ./search/boolean_filter.cpp
-  ./search/collector.cpp
   ./store/data_input.cpp 
   ./store/data_output.cpp 
   ./store/directory.cpp 
@@ -174,7 +173,6 @@ set(IResearch_core_headers
   ./search/range_query.hpp
   ./search/term_query.hpp
   ./search/boolean_filter.hpp
-  ./search/collector.hpp
   ./search/disjunction.hpp
   ./search/conjunction.hpp
   ./search/exclusion.hpp

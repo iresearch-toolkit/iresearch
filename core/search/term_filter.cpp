@@ -11,7 +11,6 @@
 
 #include "term_filter.hpp"
 #include "term_query.hpp"
-#include "collector.hpp"
 #include "cost.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
