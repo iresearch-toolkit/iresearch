@@ -19,56 +19,98 @@ NS_ROOT
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief interface for a segment reader
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API segment_reader final: public sub_reader {
+class IRESEARCH_API segment_reader final : public sub_reader {
  public:
   typedef segment_reader element_type; // type same as self
   typedef segment_reader ptr; // pointer to self
+
+  template<typename T>
+  static bool has(const segment_meta& meta) NOEXCEPT;
+
+  static segment_reader open(const directory& dir, const segment_meta& meta);
+
   segment_reader() = default; // required for context<segment_reader>
   segment_reader(const segment_reader& other);
   segment_reader(segment_reader&& other) NOEXCEPT;
   segment_reader& operator=(const segment_reader& other);
   segment_reader& operator=(segment_reader&& other) NOEXCEPT;
-  explicit operator bool() const NOEXCEPT;
-  segment_reader& operator*() NOEXCEPT;
-  const segment_reader& operator*() const NOEXCEPT;
-  segment_reader* operator->() NOEXCEPT;
-  const segment_reader* operator->() const NOEXCEPT;
+
+  explicit operator bool() const NOEXCEPT { return bool(impl_); }
+
+  segment_reader& operator*() NOEXCEPT { return *this; }
+  const segment_reader& operator*() const NOEXCEPT { return *this; }
+  segment_reader* operator->() NOEXCEPT { return this; }
+  const segment_reader* operator->() const NOEXCEPT { return this; }
+
   virtual index_reader::reader_iterator begin() const override;
-  virtual const column_meta* column(const string_ref& name) const override;
-  virtual column_iterator::ptr columns() const override;
-  using sub_reader::docs_count;
-  virtual uint64_t docs_count() const override;
-  virtual docs_iterator_t::ptr docs_iterator() const override;
   virtual index_reader::reader_iterator end() const override;
-  virtual const term_reader* field(const string_ref& name) const override;
-  virtual field_iterator::ptr fields() const override;
 
-  template<typename T>
-  static bool has(const segment_meta& meta) NOEXCEPT;
+  virtual const column_meta* column(const string_ref& name) const override {
+    return impl_->column(name);
+  }
 
-  virtual uint64_t live_docs_count() const override;
-  static segment_reader open(const directory& dir, const segment_meta& meta);
+  virtual column_iterator::ptr columns() const override {
+    return impl_->columns();
+  }
+
+  using sub_reader::docs_count;
+  virtual uint64_t docs_count() const override {
+    return impl_->docs_count();
+  }
+
+  virtual docs_iterator_t::ptr docs_iterator() const override {
+    return impl_->docs_iterator();
+  }
+
+  virtual const term_reader* field(const string_ref& name) const override {
+    return impl_->field(name);
+  }
+
+  virtual field_iterator::ptr fields() const override {
+    return impl_->fields();
+  }
+
+  virtual uint64_t live_docs_count() const override {
+    return impl_->live_docs_count();
+  }
+
   segment_reader reopen(const segment_meta& meta) const;
-  void reset() NOEXCEPT;
-  virtual size_t size() const override;
+
+  void reset() NOEXCEPT {
+    impl_.reset();
+  }
+
+  virtual size_t size() const override {
+    return impl_->size();
+  }
+
   using sub_reader::values;
-  virtual columnstore_reader::values_reader_f values(field_id field) const override;
-  virtual columnstore_reader::column_iterator_t::ptr iterator(field_id field) const override;
+  virtual columnstore_reader::values_reader_f values(
+      field_id field) const override {
+    return impl_->values(field);
+  }
+
+  virtual columnstore_reader::column_iterator_t::ptr iterator(
+      field_id field) const override {
+    return impl_->iterator(field);
+  }
+
   virtual bool visit(
-    field_id field, const columnstore_reader::values_visitor_f& reader
-  ) const override;
+      field_id field,
+      const columnstore_reader::values_visitor_f& reader) const override {
+    return impl_->visit(field, reader);
+  }
 
  private:
   class atomic_helper;
-  class segment_reader_impl;
-  typedef std::shared_ptr<segment_reader_impl> impl_ptr;
+  typedef std::shared_ptr<sub_reader> impl_ptr;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   impl_ptr impl_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 
-  segment_reader(const impl_ptr& impl);
-};
+  segment_reader(impl_ptr&& impl);
+}; // segment_reade
 
 template<>
 /*static*/ IRESEARCH_API bool segment_reader::has<columnstore_reader>(

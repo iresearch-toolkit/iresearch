@@ -18,6 +18,7 @@
 #endif
 
 #include "formats.hpp"
+#include "utils/type_limits.hpp"
 
 NS_LOCAL
 
