@@ -160,6 +160,7 @@ class segment_reader::segment_reader_impl: public sub_reader {
   static segment_reader open(const directory& dir, const segment_meta& meta);
   virtual size_t size() const override;
   virtual columnstore_reader::values_reader_f values(field_id field) const override;
+  virtual columnstore_reader::column_iterator_t::ptr iterator(field_id field) const override;
   virtual bool visit(
     field_id field, const columnstore_reader::values_visitor_f& reader
   ) const override;
@@ -307,9 +308,14 @@ columnstore_reader::values_reader_f segment_reader::values(field_id field) const
 }
 
 bool segment_reader::visit(
-  field_id field, const columnstore_reader::values_visitor_f& reader
-) const {
+    field_id field, 
+    const columnstore_reader::values_visitor_f& reader) const {
   return impl_->visit(field, reader);
+}
+
+columnstore_reader::column_iterator_t::ptr segment_reader::iterator(
+    field_id field) const {
+  return impl_->iterator(field);
 }
 
 // -------------------------------------------------------------------
@@ -424,8 +430,7 @@ size_t segment_reader::segment_reader_impl::size() const {
 }
 
 columnstore_reader::values_reader_f segment_reader::segment_reader_impl::values(
-  field_id field
-) const {
+    field_id field) const {
   if (!columnstore_reader_) {
     // NOOP reader
     return [](doc_id_t, bytes_ref&) { return false; };
@@ -435,10 +440,18 @@ columnstore_reader::values_reader_f segment_reader::segment_reader_impl::values(
 }
 
 bool segment_reader::segment_reader_impl::visit(
-  field_id field, const columnstore_reader::values_visitor_f& reader
-) const {
+    field_id field,
+    const columnstore_reader::values_visitor_f& reader) const {
   return columnstore_reader_
-    ? columnstore_reader_->visit(field, reader) : false;
+    ? columnstore_reader_->visit(field, reader) 
+    : false;
+}
+
+columnstore_reader::column_iterator_t::ptr segment_reader::segment_reader_impl::iterator(
+    field_id field) const {
+  return columnstore_reader_
+    ? columnstore_reader_->iterator(field)
+    : columnstore_reader::empty_iterator();
 }
 
 NS_END

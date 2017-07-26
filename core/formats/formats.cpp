@@ -23,7 +23,7 @@ NS_LOCAL
 
 const std::string FILENAME_PREFIX("libformat-");
 
-class format_register:
+class format_register :
   public iresearch::generic_register<iresearch::string_ref, iresearch::format::ptr(*)(), format_register> {
  protected:
   virtual std::string key_to_filename(const key_type& key) const override {
@@ -34,6 +34,20 @@ class format_register:
 
     return filename;
   }
+}; // format_register
+
+struct empty_column_iterator final : irs::columnstore_reader::column_iterator_t {
+ public:
+  typedef std::pair<irs::doc_id_t, irs::bytes_ref> value_t;
+
+  static value_t EMPTY;
+
+  virtual const value_t& value() const override { return EMPTY; }
+  virtual bool next() override { return false; }
+}; // empty_column_iterator
+
+empty_column_iterator::value_t empty_column_iterator::EMPTY {
+  irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::bytes_ref::nil
 };
 
 NS_END
@@ -61,6 +75,10 @@ column_meta_reader::~column_meta_reader() {}
 
 columnstore_writer::~columnstore_writer() {}
 columnstore_reader::~columnstore_reader() {}
+
+/* static */ columnstore_reader::column_iterator_t::ptr columnstore_reader::empty_iterator() {
+  return column_iterator_t::make<empty_column_iterator>();
+}
 
 index_meta_writer::~index_meta_writer() {}
 /* static */void index_meta_writer::complete(index_meta& meta) NOEXCEPT {

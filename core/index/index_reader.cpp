@@ -19,6 +19,7 @@
 #include "index_meta.hpp"
 
 NS_LOCAL
+
 irs::columnstore_reader::values_reader_f NOOP_VISITOR =
   [] (iresearch::doc_id_t, irs::bytes_ref&) { return false; };
 
@@ -57,6 +58,17 @@ bool sub_reader::visit(
   }
 
   return visit(meta->id, visitor);
+}
+
+columnstore_reader::column_iterator_t::ptr sub_reader::iterator(
+    const string_ref& field) const {
+  auto* meta = column(field);
+
+  if (!meta) {
+    return columnstore_reader::empty_iterator();
+  }
+
+  return iterator(meta->id);
 }
 
 // -------------------------------------------------------------------

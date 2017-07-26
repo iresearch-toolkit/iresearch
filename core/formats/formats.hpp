@@ -284,6 +284,9 @@ struct IRESEARCH_API columnstore_reader {
 
   typedef std::function<bool(doc_id_t, bytes_ref&)> values_reader_f;
   typedef std::function<bool(doc_id_t, const bytes_ref&)> values_visitor_f;
+  typedef iresearch::iterator<const std::pair<doc_id_t, bytes_ref>&> column_iterator_t;
+
+  static column_iterator_t::ptr empty_iterator();
 
   virtual ~columnstore_reader();
 
@@ -299,6 +302,7 @@ struct IRESEARCH_API columnstore_reader {
 
   virtual values_reader_f values(field_id field) const = 0;
   virtual bool visit(field_id field, const values_visitor_f& visitor) const = 0;
+  virtual column_iterator_t::ptr iterator(field_id field) const = 0;
 }; // columnstore_reader
 
 NS_END

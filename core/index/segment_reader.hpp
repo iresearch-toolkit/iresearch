@@ -53,6 +53,7 @@ class IRESEARCH_API segment_reader final: public sub_reader {
   virtual size_t size() const override;
   using sub_reader::values;
   virtual columnstore_reader::values_reader_f values(field_id field) const override;
+  virtual columnstore_reader::column_iterator_t::ptr iterator(field_id field) const override;
   virtual bool visit(
     field_id field, const columnstore_reader::values_visitor_f& reader
   ) const override;
