@@ -43,7 +43,10 @@ class IRESEARCH_API segment_reader final : public sub_reader {
   const segment_reader* operator->() const NOEXCEPT { return this; }
 
   virtual index_reader::reader_iterator begin() const override;
-  virtual index_reader::reader_iterator end() const override;
+
+  virtual index_reader::reader_iterator end() const override {
+    return impl_->end();
+  }
 
   virtual const column_meta* column(const string_ref& name) const override {
     return impl_->column(name);
@@ -109,7 +112,7 @@ class IRESEARCH_API segment_reader final : public sub_reader {
   impl_ptr impl_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 
-  segment_reader(impl_ptr&& impl);
+  segment_reader(impl_ptr&& impl) NOEXCEPT;
 }; // segment_reade
 
 template<>

@@ -216,7 +216,7 @@ class segment_reader_impl : public sub_reader {
   );
 };
 
-segment_reader::segment_reader(impl_ptr&& impl)
+segment_reader::segment_reader(impl_ptr&& impl) NOEXCEPT
   : impl_(std::move(impl)) {
 }
 
@@ -248,10 +248,6 @@ segment_reader& segment_reader::operator=(segment_reader&& other) NOEXCEPT {
 
 index_reader::reader_iterator segment_reader::begin() const {
   return index_reader::reader_iterator(new iterator_impl(this));
-}
-
-index_reader::reader_iterator segment_reader::end() const {
-  return index_reader::reader_iterator(new iterator_impl());
 }
 
 template<>
