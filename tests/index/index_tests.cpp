@@ -1179,15 +1179,35 @@ class index_test_case_base : public tests::index_test_base {
         return true;
       };
 
+      std::mutex mutex;
+      bool ready = false;
+      std::condition_variable ready_cv;
+
+      auto wait_for_all = [&mutex, &ready, &ready_cv]() {
+        // wait for all threads to be registered
+        std::unique_lock<std::mutex> lock(mutex);
+        while (!ready) {
+          ready_cv.wait(lock);
+        }
+      };
+
       const auto thread_count = 10;
       std::vector<int> results(thread_count, 0);
       std::vector<std::thread> pool;
 
       for (size_t i = 0; i < thread_count; ++i) {
         auto& result = results[i];
-        pool.emplace_back(std::thread([&result, &read_columns] () {
+        pool.emplace_back(std::thread([&wait_for_all, &result, &read_columns] () {
+          wait_for_all();
           result = static_cast<int>(read_columns());
         }));
+      }
+
+      // all threads registered... go, go, go...
+      {
+        std::lock_guard<decltype(mutex)> lock(mutex);
+        ready = true;
+        ready_cv.notify_all();
       }
 
       for (auto& thread : pool) {
@@ -1325,31 +1345,111 @@ class index_test_case_base : public tests::index_test_base {
         return true;
       };
 
-      const auto thread_count = 5;
+      auto iterate_column = [&segment](const irs::string_ref& column_name) {
+        auto* meta = segment.column(column_name);
+        if (!meta) {
+          return false;
+        }
+
+        ir::doc_id_t expected_id = 0;
+        csv_doc_template_t csv_doc_template;
+        tests::delim_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template, ',');
+        const tests::document* doc = nullptr;
+
+        auto it = segment.values_iterator(meta->id);
+        auto& value = it->value();
+        auto& value_str = value.second;
+
+        doc = gen.next();
+
+        if (!doc) {
+          return false;
+        }
+
+        while (doc) {
+          if (!it->next()) {
+            return false;
+          }
+
+          if (++expected_id != value.first) {
+            return false;
+          }
+
+          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+
+          if (!field) {
+            return false;
+          }
+
+          if (field->value() != irs::to_string<irs::string_ref>(value_str.c_str())) {
+            return false;
+          }
+
+          doc = gen.next();
+        }
+
+        return true;
+      };
+
+      const auto thread_count = 9;
       std::vector<int> results(thread_count, 0);
       std::vector<std::thread> pool;
 
       const iresearch::string_ref id_column = "id";
       const iresearch::string_ref label_column = "label";
+
+      std::mutex mutex;
+      bool ready = false;
+      std::condition_variable ready_cv;
+
+      auto wait_for_all = [&mutex, &ready, &ready_cv]() {
+        // wait for all threads to be registered
+        std::unique_lock<std::mutex> lock(mutex);
+        while (!ready) {
+          ready_cv.wait(lock);
+        }
+      };
+
+      // add visiting threads
       auto i = 0;
-      for (auto max = thread_count/2; i < max; ++i) {
+      for (auto max = thread_count/3; i < max; ++i) {
         auto& result = results[i];
         auto& column_name = i % 2 ? id_column : label_column;
-        pool.emplace_back(std::thread([&result, &visit_column, column_name] () {
+        pool.emplace_back(std::thread([&wait_for_all, &result, &visit_column, column_name] () {
+          wait_for_all();
           result = static_cast<int>(visit_column(column_name));
         }));
       }
 
+      // add reading threads
       ir::doc_id_t skip = 0;
-      for (; i < thread_count; ++i) {
+      for (; i < 2*(thread_count/3); ++i) {
         auto& result = results[i];
         auto& column_name = i % 2 ? id_column : label_column;
-        pool.emplace_back(std::thread([&result, &read_column_offset, column_name, skip] () {
+        pool.emplace_back(std::thread([&wait_for_all, &result, &read_column_offset, column_name, skip] () {
+          wait_for_all();
           result = static_cast<int>(read_column_offset(column_name, skip));
         }));
         skip += 10000;
       }
-      
+
+      // add iterating threads
+      for (; i < thread_count; ++i) {
+        auto& result = results[i];
+        auto& column_name = i % 2 ? id_column : label_column;
+        pool.emplace_back(std::thread([&wait_for_all, &result, &iterate_column, column_name] () {
+          wait_for_all();
+          result = static_cast<int>(iterate_column(column_name));
+        }));
+      }
+
+      // all threads registered... go, go, go...
+      {
+        std::lock_guard<decltype(mutex)> lock(mutex);
+        ready = true;
+        ready_cv.notify_all();
+      }
+
       for (auto& thread : pool) {
         thread.join();
       }
