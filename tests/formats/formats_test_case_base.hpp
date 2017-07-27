@@ -1124,12 +1124,44 @@ class format_test_case_base : public index_test_base {
       {
         auto column = reader->values(column0_id);
         ASSERT_FALSE(column(0, actual_value));
+
+        // try to iterate over empty column
+        auto it = reader->iterator(column0_id);
+        ASSERT_NE(nullptr, it);
+
+        auto& value = it->value();
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, value.second);
+
+        ASSERT_FALSE(it->next());
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, value.second);
+
+        ASSERT_FALSE(it->next());
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, value.second);
       }
 
       // check column 0
       {
         auto column = reader->values(column1_id);
         ASSERT_FALSE(column(0, actual_value));
+
+        // try to iterate over empty column
+        auto it = reader->iterator(column1_id);
+        ASSERT_NE(nullptr, it);
+
+        auto& value = it->value();
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, value.second);
+
+        ASSERT_FALSE(it->next());
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, value.second);
+
+        ASSERT_FALSE(it->next());
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, value.second);
       }
     }
   }
@@ -1173,6 +1205,24 @@ class format_test_case_base : public index_test_base {
         ASSERT_FALSE(column(2, actual_value));
         ASSERT_FALSE(column(3, actual_value));
         ASSERT_FALSE(column(56, actual_value));
+      }
+
+      // try to iterate over invalid column
+      {
+        auto it = reader->iterator(ir::type_limits<ir::type_t::field_id_t>::invalid());
+        ASSERT_NE(nullptr, it);
+
+        auto& value = it->value();
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, value.second);
+
+        ASSERT_FALSE(it->next());
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, value.second);
+
+        ASSERT_FALSE(it->next());
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, value.second);
       }
     }
 
@@ -1359,6 +1409,24 @@ class format_test_case_base : public index_test_base {
         ASSERT_FALSE(column(56, actual_value));
       }
 
+      // try to iterate over invalid column
+      {
+        auto it = reader->iterator(ir::type_limits<ir::type_t::field_id_t>::invalid());
+        ASSERT_NE(nullptr, it);
+
+        auto& value = it->value();
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, value.second);
+
+        ASSERT_FALSE(it->next());
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, value.second);
+
+        ASSERT_FALSE(it->next());
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, value.second);
+      }
+
       // check field3
       // {
       //   std::string expected_value;
@@ -1423,6 +1491,33 @@ class format_test_case_base : public index_test_base {
 
         ASSERT_TRUE(reader->visit(segment0_field0_id, visitor));
         ASSERT_TRUE(expected_values.empty());
+      }
+
+      // iterate over field0 values (not cached)
+      {
+        auto it = reader->iterator(segment0_field0_id);
+        ASSERT_NE(nullptr, it);
+
+        auto& actual_value = it->value();
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), actual_value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
+
+        std::vector<std::pair<irs::string_ref, irs::doc_id_t>> expected_values = {
+          {"field0_doc0", 0},
+          {"field0_doc2", 2},
+          {"field0_doc33", 33}
+        };
+
+        size_t i = 0;
+        for (; it->next(); ++i) {
+          const auto& expected_value = expected_values[i];
+          const auto actual_str_value = irs::to_string<irs::string_ref>(actual_value.second.c_str());
+
+          ASSERT_EQ(expected_value.second, actual_value.first);
+          ASSERT_EQ(expected_value.first, actual_str_value);
+        }
+        ASSERT_FALSE(it->next());
+        ASSERT_EQ(i, expected_values.size());
       }
 
       // partailly visit field0 values (not cached)
@@ -1521,6 +1616,33 @@ class format_test_case_base : public index_test_base {
         ASSERT_TRUE(expected_values.empty());
       }
 
+      // iterate over field0 values (cached)
+      {
+        auto it = reader->iterator(segment0_field0_id);
+        ASSERT_NE(nullptr, it);
+
+        auto& actual_value = it->value();
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), actual_value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
+
+        std::vector<std::pair<irs::string_ref, irs::doc_id_t>> expected_values = {
+          {"field0_doc0", 0},
+          {"field0_doc2", 2},
+          {"field0_doc33", 33}
+        };
+
+        size_t i = 0;
+        for (; it->next(); ++i) {
+          const auto& expected_value = expected_values[i];
+          const auto actual_str_value = irs::to_string<irs::string_ref>(actual_value.second.c_str());
+
+          ASSERT_EQ(expected_value.second, actual_value.first);
+          ASSERT_EQ(expected_value.first, actual_str_value);
+        }
+        ASSERT_FALSE(it->next());
+        ASSERT_EQ(i, expected_values.size());
+      }
+
       // check field1 (multiple values per document)
       {
         irs::bytes_ref actual_value;
@@ -1543,6 +1665,37 @@ class format_test_case_base : public index_test_base {
         ASSERT_FALSE(column(iresearch::type_limits<iresearch::type_t::doc_id_t>::eof(), actual_value));
       }
 
+      // iterate over field1 values (cached)
+      {
+        auto it = reader->iterator(segment0_field1_id);
+        ASSERT_NE(nullptr, it);
+
+        auto& actual_value = it->value();
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), actual_value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
+
+        std::vector<std::pair<std::vector<irs::string_ref>, irs::doc_id_t>> expected_values = {
+          { { "field1_doc0", "field1_doc0_1" }, 0},
+          { { "field1_doc12_1", "field1_doc12_2" }, 12 }
+        };
+
+        size_t i = 0;
+        for (; it->next(); ++i) {
+          const auto& expected_value = expected_values[i];
+
+          std::vector<irs::string_ref> actual_str_values;
+          actual_str_values.push_back(irs::to_string<irs::string_ref>(actual_value.second.c_str()));
+          actual_str_values.push_back(irs::to_string<irs::string_ref>(
+            reinterpret_cast<const irs::byte_type*>(actual_str_values.back().c_str() + actual_str_values.back().size())
+          ));
+
+          ASSERT_EQ(expected_value.second, actual_value.first);
+          ASSERT_EQ(expected_value.first, actual_str_values);
+        }
+        ASSERT_FALSE(it->next());
+        ASSERT_EQ(i, expected_values.size());
+      }
+
       // visit empty column
       {
         size_t calls_count = 0;
@@ -1555,7 +1708,25 @@ class format_test_case_base : public index_test_base {
         ASSERT_EQ(0, calls_count);
       }
 
-      // visit field2 values (field after an empty field)
+      // iterate over empty column
+      {
+        auto it = reader->iterator(segment0_empty_column_id);
+        ASSERT_NE(nullptr, it);
+
+        auto& value = it->value();
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, value.second);
+
+        ASSERT_FALSE(it->next());
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, value.second);
+
+        ASSERT_FALSE(it->next());
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, value.second);
+      }
+
+      // visit field2 values (field after an the field)
       {
         std::unordered_map<irs::string_ref, iresearch::doc_id_t> expected_values = {
           {"field2_doc1", 1},
@@ -1582,6 +1753,31 @@ class format_test_case_base : public index_test_base {
         ASSERT_TRUE(reader->visit(segment0_field2_id, visitor));
         ASSERT_TRUE(expected_values.empty());
       }
+
+      // iterate over field2 values
+      {
+        auto it = reader->iterator(segment0_field2_id);
+        ASSERT_NE(nullptr, it);
+
+        auto& actual_value = it->value();
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), actual_value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
+
+        std::vector<std::pair<irs::string_ref, irs::doc_id_t>> expected_values = {
+          {"field2_doc1", 1}
+        };
+
+        size_t i = 0;
+        for (; it->next(); ++i) {
+          const auto& expected_value = expected_values[i];
+          const auto actual_str_value = irs::to_string<irs::string_ref>(actual_value.second.c_str());
+
+          ASSERT_EQ(expected_value.second, actual_value.first);
+          ASSERT_EQ(expected_value.first, actual_str_value);
+        }
+        ASSERT_FALSE(it->next());
+        ASSERT_EQ(i, expected_values.size());
+      }
     }
 
     // read columns values from segment _2
@@ -1599,15 +1795,67 @@ class format_test_case_base : public index_test_base {
         ASSERT_FALSE(column(56, actual_value));
       }
 
+      // iterate over field0 values (not cached)
+      {
+        auto it = reader->iterator(segment1_field0_id);
+        ASSERT_NE(nullptr, it);
+
+        auto& actual_value = it->value();
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), actual_value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
+
+        std::vector<std::pair<irs::string_ref, irs::doc_id_t>> expected_values = {
+          {"segment_2_field1_doc0", 0},
+          {"segment_2_field1_doc12", 12}
+        };
+
+        size_t i = 0;
+        for (; it->next(); ++i) {
+          const auto& expected_value = expected_values[i];
+          const auto actual_str_value = irs::to_string<irs::string_ref>(actual_value.second.c_str());
+
+          ASSERT_EQ(expected_value.second, actual_value.first);
+          ASSERT_EQ(expected_value.first, actual_str_value);
+        }
+        ASSERT_FALSE(it->next());
+        ASSERT_EQ(i, expected_values.size());
+      }
+
       // check field0
       {
-        auto column = reader->values(0);
+        auto column = reader->values(segment1_field0_id);
         ASSERT_TRUE(column(0, actual_value)); // check doc==0, column==field0
         ASSERT_EQ("segment_2_field1_doc0", irs::to_string<irs::string_ref>(actual_value.c_str()));
         ASSERT_TRUE(column(12, actual_value)); // check doc==12, column==field1
         ASSERT_EQ("segment_2_field1_doc12", irs::to_string<irs::string_ref>(actual_value.c_str()));
         ASSERT_FALSE(column(5, actual_value)); // doc without value in field0
         ASSERT_EQ("segment_2_field1_doc12", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      }
+
+      // iterate over field0 values (cached)
+      {
+        auto it = reader->iterator(segment1_field0_id);
+        ASSERT_NE(nullptr, it);
+
+        auto& actual_value = it->value();
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), actual_value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
+
+        std::vector<std::pair<irs::string_ref, irs::doc_id_t>> expected_values = {
+          {"segment_2_field1_doc0", 0},
+          {"segment_2_field1_doc12", 12}
+        };
+
+        size_t i = 0;
+        for (; it->next(); ++i) {
+          const auto& expected_value = expected_values[i];
+          const auto actual_str_value = irs::to_string<irs::string_ref>(actual_value.second.c_str());
+
+          ASSERT_EQ(expected_value.second, actual_value.first);
+          ASSERT_EQ(expected_value.first, actual_str_value);
+        }
+        ASSERT_FALSE(it->next());
+        ASSERT_EQ(i, expected_values.size());
       }
     }
   }
@@ -1641,21 +1889,68 @@ class format_test_case_base : public index_test_base {
       auto reader = codec()->get_columnstore_reader();
       ASSERT_TRUE(reader->prepare(dir(), segment));
 
-      auto mask = reader->values(id);
-      ASSERT_TRUE(mask(0, actual_value));
-      ASSERT_EQ(irs::bytes_ref::nil, actual_value);
-      ASSERT_FALSE(mask(1, actual_value));
-      ASSERT_EQ(irs::bytes_ref::nil, actual_value);
-      ASSERT_FALSE(mask(1, actual_value));
-      ASSERT_EQ(irs::bytes_ref::nil, actual_value);
-      ASSERT_TRUE(mask(4, actual_value));
-      ASSERT_EQ(irs::bytes_ref::nil, actual_value);
-      ASSERT_FALSE(mask(6, actual_value));
-      ASSERT_EQ(irs::bytes_ref::nil, actual_value);
-      ASSERT_TRUE(mask(8, actual_value));
-      ASSERT_EQ(irs::bytes_ref::nil, actual_value);
-      ASSERT_TRUE(mask(9, actual_value));
-      ASSERT_EQ(irs::bytes_ref::nil, actual_value);
+      // iterate over field values (not cached)
+      {
+        auto it = reader->iterator(id);
+        ASSERT_NE(nullptr, it);
+
+        auto& actual_value = it->value();
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), actual_value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
+
+        std::vector<irs::doc_id_t> expected_values = {
+          0, 4, 8, 9
+        };
+
+        size_t i = 0;
+        for (; it->next(); ++i) {
+          ASSERT_EQ(expected_values[i], actual_value.first);
+          ASSERT_EQ(irs::bytes_ref::nil, actual_value.second);
+        }
+        ASSERT_FALSE(it->next());
+        ASSERT_EQ(i, expected_values.size());
+      }
+
+      // read field values
+      {
+        auto mask = reader->values(id);
+        ASSERT_TRUE(mask(0, actual_value));
+        ASSERT_EQ(irs::bytes_ref::nil, actual_value);
+        ASSERT_FALSE(mask(1, actual_value));
+        ASSERT_EQ(irs::bytes_ref::nil, actual_value);
+        ASSERT_FALSE(mask(1, actual_value));
+        ASSERT_EQ(irs::bytes_ref::nil, actual_value);
+        ASSERT_TRUE(mask(4, actual_value));
+        ASSERT_EQ(irs::bytes_ref::nil, actual_value);
+        ASSERT_FALSE(mask(6, actual_value));
+        ASSERT_EQ(irs::bytes_ref::nil, actual_value);
+        ASSERT_TRUE(mask(8, actual_value));
+        ASSERT_EQ(irs::bytes_ref::nil, actual_value);
+        ASSERT_TRUE(mask(9, actual_value));
+        ASSERT_EQ(irs::bytes_ref::nil, actual_value);
+      }
+
+      // iterate over field values (cached)
+      {
+        auto it = reader->iterator(id);
+        ASSERT_NE(nullptr, it);
+
+        auto& actual_value = it->value();
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), actual_value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
+
+        std::vector<irs::doc_id_t> expected_values = {
+          0, 4, 8, 9
+        };
+
+        size_t i = 0;
+        for (; it->next(); ++i) {
+          ASSERT_EQ(expected_values[i], actual_value.first);
+          ASSERT_EQ(irs::bytes_ref::nil, actual_value.second);
+        }
+        ASSERT_FALSE(it->next());
+        ASSERT_EQ(i, expected_values.size());
+      }
     }
   }
 
@@ -1707,26 +2002,57 @@ class format_test_case_base : public index_test_base {
 
     // read big document
     {
-      irs::bytes_ref actual_value;
       auto reader = codec()->get_columnstore_reader();
       ASSERT_TRUE(reader->prepare(dir(), segment));
 
-      stream.clear(); // clear eof flag if set
-      stream.seekg(0, stream.beg); // seek to the beginning of the file
+      {
+        irs::bytes_ref actual_value;
 
-      auto values = reader->values(id);
+        stream.clear(); // clear eof flag if set
+        stream.seekg(0, stream.beg); // seek to the beginning of the file
 
-      std::memset(field.buf, 0, sizeof field.buf); // clear buffer
-      stream.read(field.buf, sizeof field.buf);
-      ASSERT_TRUE(bool(stream));
-      ASSERT_TRUE(values(0, actual_value));
-      ASSERT_EQ(irs::string_ref(field.buf, sizeof field.buf), irs::ref_cast<char>(actual_value));
+        auto values = reader->values(id);
 
-      std::memset(field.buf, 0, sizeof field.buf); // clear buffer
-      stream.read(field.buf, sizeof field.buf);
-      ASSERT_TRUE(bool(stream));
-      ASSERT_TRUE(values(1, actual_value));
-      ASSERT_EQ(irs::string_ref(field.buf, sizeof field.buf), irs::ref_cast<char>(actual_value));
+        std::memset(field.buf, 0, sizeof field.buf); // clear buffer
+        stream.read(field.buf, sizeof field.buf);
+        ASSERT_TRUE(bool(stream));
+        ASSERT_TRUE(values(0, actual_value));
+        ASSERT_EQ(irs::string_ref(field.buf, sizeof field.buf), irs::ref_cast<char>(actual_value));
+
+        std::memset(field.buf, 0, sizeof field.buf); // clear buffer
+        stream.read(field.buf, sizeof field.buf);
+        ASSERT_TRUE(bool(stream));
+        ASSERT_TRUE(values(1, actual_value));
+        ASSERT_EQ(irs::string_ref(field.buf, sizeof field.buf), irs::ref_cast<char>(actual_value));
+      }
+
+      {
+        stream.clear(); // clear eof flag if set
+        stream.seekg(0, stream.beg); // seek to the beginning of the file
+
+        auto it = reader->iterator(id);
+        ASSERT_NE(nullptr, it);
+
+        auto& actual_value = it->value();
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), actual_value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
+
+        ASSERT_TRUE(it->next());
+        std::memset(field.buf, 0, sizeof field.buf); // clear buffer
+        stream.read(field.buf, sizeof field.buf);
+        ASSERT_TRUE(bool(stream));
+        ASSERT_EQ(0, actual_value.first);
+        ASSERT_EQ(irs::string_ref(field.buf, sizeof field.buf), irs::ref_cast<char>(actual_value.second));
+
+        ASSERT_TRUE(it->next());
+        std::memset(field.buf, 0, sizeof field.buf); // clear buffer
+        stream.read(field.buf, sizeof field.buf);
+        ASSERT_TRUE(bool(stream));
+        ASSERT_EQ(1, actual_value.first);
+        ASSERT_EQ(irs::string_ref(field.buf, sizeof field.buf), irs::ref_cast<char>(actual_value.second));
+
+        ASSERT_FALSE(it->next());
+      }
     }
   }
 
@@ -1840,11 +2166,10 @@ class format_test_case_base : public index_test_base {
       writer->flush();
     }
 
-    gen.reset();
-
     // read stored documents
     {
-      iresearch::document_mask mask;
+      gen.reset();
+
       auto reader = codec()->get_columnstore_reader();
       ASSERT_TRUE(reader->prepare(dir(), meta));
 
@@ -1853,10 +2178,11 @@ class format_test_case_base : public index_test_base {
       irs::bytes_ref actual_value;
       irs::bytes_ref_input in;
       iresearch::doc_id_t i = 0;
+      size_t value_id = 0;
       for (const document* doc; doc = gen.next();) {
         ++i;
         for (size_t size = doc->stored.size(); size; --size) {
-          auto& expected_field = values.front(); 
+          auto& expected_field = values[value_id++];
           const std::string name(expected_field.name);
           const auto res = readers.emplace(
             std::piecewise_construct,
@@ -1869,7 +2195,7 @@ class format_test_case_base : public index_test_base {
           }
 
           auto& column_reader = res.first->second;
-          ASSERT_TRUE(column_reader(iresearch::doc_id_t(i), actual_value)); in.reset(actual_value);
+          ASSERT_TRUE(column_reader(i, actual_value)); in.reset(actual_value);
 
           switch (expected_field.type) {
             case Value::Type::String: {
@@ -1885,8 +2211,63 @@ class format_test_case_base : public index_test_base {
               ASSERT_TRUE(false);
               break;
           };
+        }
+      }
+      ASSERT_EQ(meta.docs_count, i);
+    }
 
-          values.pop_front();
+    // iterate over stored columns
+    {
+      gen.reset();
+
+      auto reader = codec()->get_columnstore_reader();
+      ASSERT_TRUE(reader->prepare(dir(), meta));
+
+      std::unordered_map<std::string, iresearch::columnstore_reader::column_iterator_t::ptr> readers;
+
+      irs::bytes_ref actual_value;
+      irs::bytes_ref_input in;
+      iresearch::doc_id_t i = 0;
+      size_t value_id = 0;
+      for (const document* doc; doc = gen.next();) {
+        ++i;
+        for (size_t size = doc->stored.size(); size; --size) {
+          auto& expected_field = values[value_id++];
+          const std::string name(expected_field.name);
+          const auto res = readers.emplace(
+            std::piecewise_construct,
+            std::forward_as_tuple(name),
+            std::forward_as_tuple()
+          );
+
+          if (res.second) {
+            auto& it = res.first->second;
+            res.first->second = reader->iterator(columns[name].first);
+            ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value().first);
+            ASSERT_EQ(irs::bytes_ref::nil, it->value().second);
+          }
+
+          auto& it = res.first->second;
+          auto& actual_value = it->value();
+          it->next();
+
+          ASSERT_EQ(i, actual_value.first);
+          in.reset(actual_value.second);
+
+          switch (expected_field.type) {
+            case Value::Type::String: {
+              ASSERT_EQ(expected_field.value.sValue, ir::read_string<std::string>(in));
+            } break;
+            case Value::Type::Binary: {
+              ASSERT_EQ(expected_field.value.binValue, ir::read_string<irs::bstring>(in));
+            } break;
+            case Value::Type::Double: {
+              ASSERT_EQ(expected_field.value.dblValue, ir::read_zvdouble(in));
+            } break;
+            default:
+              ASSERT_TRUE(false);
+              break;
+          };
         }
       }
       ASSERT_EQ(meta.docs_count, i);

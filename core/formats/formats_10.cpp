@@ -2209,11 +2209,11 @@ class sparse_block : util::noncopyable {
         return false;
       }
 
+      value_.first = begin_->key;
       const auto vbegin = begin_->offset;
       const auto vend = (++begin_ == end_ ? data_->size() : begin_->offset);
 
       assert(vend >= vbegin);
-      value_.first = begin_->key;
       value_.second = bytes_ref(
         data_->c_str() + vbegin, // start
         vend - vbegin // length
@@ -2343,7 +2343,7 @@ class dense_block : util::noncopyable {
     iterator() = default;
 
     explicit iterator(const dense_block& block) NOEXCEPT 
-      : value_(block.base_, bytes_ref::nil),
+      : value_(block.base_ - 1, bytes_ref::nil),
         begin_(std::begin(block.index_)), end_(block.end_), data_(&block.data_) {
     }
 
@@ -2370,7 +2370,9 @@ class dense_block : util::noncopyable {
     }
 
    private:
-    std::pair<doc_id_t, bytes_ref> value_;
+    std::pair<doc_id_t, bytes_ref> value_ {
+      type_limits<type_t::doc_id_t>::invalid(), bytes_ref::nil
+    };
     const uint64_t* begin_{};
     const uint64_t* end_{};
     const bstring* data_{};
@@ -2480,7 +2482,7 @@ class dense_fixed_length_block : util::noncopyable {
     iterator() = default;
 
     explicit iterator(const dense_fixed_length_block& block) NOEXCEPT 
-      : value_(block.base_key_, bytes_ref::nil),
+      : value_(block.base_key_ - 1, bytes_ref::nil),
         offset_(block.base_offset_),
         avg_length_(block.avg_length_),
         left_(block.size_),
@@ -2492,7 +2494,7 @@ class dense_fixed_length_block : util::noncopyable {
     }
 
     bool next() {
-      if (!left_--) {
+      if (!left_) {
         return false;
       }
 
@@ -2500,12 +2502,15 @@ class dense_fixed_length_block : util::noncopyable {
       value_.second = bytes_ref(data_->c_str() + offset_, avg_length_);
 
       offset_ += avg_length_;
+      --left_;
 
       return true;
     }
 
    private:
-    std::pair<doc_id_t, bytes_ref> value_;
+    std::pair<doc_id_t, bytes_ref> value_ {
+      type_limits<type_t::doc_id_t>::invalid(), bytes_ref::nil
+    };
     uint64_t offset_{};
     uint64_t avg_length_{};
     uint64_t left_{};
@@ -2593,8 +2598,7 @@ class sparse_mask_block : util::noncopyable {
     iterator() = default;
 
     explicit iterator(const sparse_mask_block& block) NOEXCEPT
-      : value_(type_limits<type_t::doc_id_t>::invalid(), bytes_ref::nil),
-        begin_(std::begin(block.keys_)), end_(begin_ + block.size_) {
+      : begin_(std::begin(block.keys_)), end_(begin_ + block.size_) {
     }
 
     const value_t& value() const {
@@ -2611,7 +2615,9 @@ class sparse_mask_block : util::noncopyable {
     }
 
    private:
-    std::pair<doc_id_t, bytes_ref> value_;
+    std::pair<doc_id_t, bytes_ref> value_ {
+      type_limits<type_t::doc_id_t>::invalid(), bytes_ref::nil
+    };
     const doc_id_t* begin_{};
     const doc_id_t* end_{};
   }; // iterator
@@ -2684,7 +2690,7 @@ class dense_mask_block {
     iterator() = default;
 
     explicit iterator(const dense_mask_block& block) NOEXCEPT
-      : value_(block.min_, bytes_ref::nil),
+      : value_(block.min_ - 1, bytes_ref::nil),
         left_(block.size_) {
     }
 
@@ -2693,16 +2699,19 @@ class dense_mask_block {
     }
 
     bool next() {
-      if (left_--) {
+      if (!left_) {
         return false;
       }
 
+      --left_;
       ++value_.first;
       return true;
     }
 
    private:
-    std::pair<doc_id_t, bytes_ref> value_;
+    std::pair<doc_id_t, bytes_ref> value_ {
+      type_limits<type_t::doc_id_t>::invalid(), bytes_ref::nil
+    };
     size_t left_{};
   }; // iterator
 
@@ -3033,7 +3042,7 @@ class sparse_column final : public column {
 
     explicit iterator(const sparse_column& column) NOEXCEPT
       : begin_(column.refs_.begin()),
-        end_(column.refs_.end()),
+        end_(column.refs_.end() - 1), // -1 for upper bound
         ctxs_(column.ctxs_) {
     }
 
@@ -3064,8 +3073,9 @@ class sparse_column final : public column {
       }
 
       it_ = typename block_t::iterator(*cached);
+      ++begin_;
 
-      return true;
+      return it_.next();
     }
 
    private:
@@ -3259,8 +3269,9 @@ class dense_fixed_length_column final : public column {
       }
 
       it_ = typename block_t::iterator(*cached);
+      ++begin_;
 
-      return true;
+      return it_.next();
     }
 
    private:

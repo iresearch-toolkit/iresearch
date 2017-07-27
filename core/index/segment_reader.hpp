@@ -93,9 +93,9 @@ class IRESEARCH_API segment_reader final : public sub_reader {
     return impl_->values(field);
   }
 
-  virtual columnstore_reader::column_iterator_t::ptr iterator(
+  virtual columnstore_reader::column_iterator_t::ptr values_iterator(
       field_id field) const override {
-    return impl_->iterator(field);
+    return impl_->values_iterator(field);
   }
 
   virtual bool visit(

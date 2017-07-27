@@ -96,7 +96,7 @@ struct IRESEARCH_API sub_reader : index_reader {
   virtual columnstore_reader::values_reader_f values(field_id id) const = 0;
 
   // returns corresponding column iterator by the specified field
-  virtual columnstore_reader::column_iterator_t::ptr iterator(field_id id) const = 0;
+  virtual columnstore_reader::column_iterator_t::ptr values_iterator(field_id id) const = 0;
 
   virtual bool visit(
     field_id id,
@@ -110,7 +110,7 @@ struct IRESEARCH_API sub_reader : index_reader {
     const columnstore_reader::values_visitor_f& reader
   ) const;
 
-  columnstore_reader::column_iterator_t::ptr iterator(const string_ref& field) const;
+  columnstore_reader::column_iterator_t::ptr values_iterator(const string_ref& field) const;
 }; // sub_reader
 
 NS_END

@@ -60,7 +60,7 @@ bool sub_reader::visit(
   return visit(meta->id, visitor);
 }
 
-columnstore_reader::column_iterator_t::ptr sub_reader::iterator(
+columnstore_reader::column_iterator_t::ptr sub_reader::values_iterator(
     const string_ref& field) const {
   auto* meta = column(field);
 
@@ -68,7 +68,7 @@ columnstore_reader::column_iterator_t::ptr sub_reader::iterator(
     return columnstore_reader::empty_iterator();
   }
 
-  return iterator(meta->id);
+  return values_iterator(meta->id);
 }
 
 // -------------------------------------------------------------------
