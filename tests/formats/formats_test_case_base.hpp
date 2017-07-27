@@ -1125,7 +1125,7 @@ class format_test_case_base : public index_test_base {
         auto column = reader->values(column0_id);
         ASSERT_FALSE(column(0, actual_value));
 
-        // try to iterate over empty column
+        // iterate over empty column
         auto it = reader->iterator(column0_id);
         ASSERT_NE(nullptr, it);
 
@@ -1147,7 +1147,7 @@ class format_test_case_base : public index_test_base {
         auto column = reader->values(column1_id);
         ASSERT_FALSE(column(0, actual_value));
 
-        // try to iterate over empty column
+        // iterate over empty column
         auto it = reader->iterator(column1_id);
         ASSERT_NE(nullptr, it);
 
@@ -1207,7 +1207,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_FALSE(column(56, actual_value));
       }
 
-      // try to iterate over invalid column
+      // iterate over invalid column
       {
         auto it = reader->iterator(ir::type_limits<ir::type_t::field_id_t>::invalid());
         ASSERT_NE(nullptr, it);
@@ -1409,7 +1409,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_FALSE(column(56, actual_value));
       }
 
-      // try to iterate over invalid column
+      // iterate over invalid column
       {
         auto it = reader->iterator(ir::type_limits<ir::type_t::field_id_t>::invalid());
         ASSERT_NE(nullptr, it);
