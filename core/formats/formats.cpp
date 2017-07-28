@@ -51,6 +51,9 @@ empty_column_iterator::value_t empty_column_iterator::EMPTY {
   irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::bytes_ref::nil
 };
 
+iresearch::columnstore_reader::values_reader_f INVALID_COLUMN =
+  [] (irs::doc_id_t, irs::bytes_ref&) { return false; };
+
 NS_END
 
 NS_ROOT
@@ -79,6 +82,10 @@ columnstore_reader::~columnstore_reader() {}
 
 /* static */ columnstore_reader::column_iterator_t::ptr columnstore_reader::empty_iterator() {
   return column_iterator_t::make<empty_column_iterator>();
+}
+
+/* static */ const columnstore_reader::values_reader_f& columnstore_reader::empty_reader() {
+  return INVALID_COLUMN;
 }
 
 index_meta_writer::~index_meta_writer() {}

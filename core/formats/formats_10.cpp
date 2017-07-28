@@ -2113,39 +2113,6 @@ void writer::flush() {
   data_out_.reset();
 }
 
-NS_LOCAL
-
-iresearch::columnstore_reader::values_reader_f INVALID_COLUMN =
-  [] (doc_id_t, bytes_ref&) { return false; };
-
-template<typename Context, typename Block>
-const Block* load_block(
-    Context& ctx,
-    uint64_t offset,
-    std::atomic<const Block*>& pblock) {
-  // load block
-  const auto* block = ctx.template emplace_back<Block>(offset);
-
-  if (!block) {
-    // failed to load block
-    return nullptr;
-  }
-
-  const Block* cached = nullptr;
-
-  // mark block as loaded
-  if (pblock.compare_exchange_strong(cached, block)) {
-    cached = block;
-  } else {
-    // already cached by another thread
-    ctx.template pop_back<Block>();
-  }
-
-  return cached;
-}
-
-NS_END
-
 template<typename Block, typename Allocator>
 class block_cache : irs::util::noncopyable {
  public:
@@ -2193,13 +2160,6 @@ class sparse_block : util::noncopyable {
    public:
     typedef std::pair<doc_id_t, bytes_ref> value_t;
 
-    iterator() = default;
-
-    explicit iterator(const sparse_block& block) NOEXCEPT 
-      : value_(type_limits<type_t::doc_id_t>::invalid(), bytes_ref::nil),
-        begin_(std::begin(block.index_)), end_(block.end_), data_(&block.data_) {
-    }
-
     const value_t& value() const {
       return value_;
     }
@@ -2220,6 +2180,14 @@ class sparse_block : util::noncopyable {
       );
 
       return true;
+    }
+
+    void reset(const sparse_block& block) NOEXCEPT {
+      value_.first = type_limits<type_t::doc_id_t>::invalid();
+      value_.second = bytes_ref::nil;
+      begin_ = std::begin(block.index_);
+      end_ = block.end_;
+      data_ = &block.data_;
     }
 
    private:
@@ -2340,13 +2308,6 @@ class dense_block : util::noncopyable {
    public:
     typedef std::pair<doc_id_t, bytes_ref> value_t;
 
-    iterator() = default;
-
-    explicit iterator(const dense_block& block) NOEXCEPT 
-      : value_(block.base_ - 1, bytes_ref::nil),
-        begin_(std::begin(block.index_)), end_(block.end_), data_(&block.data_) {
-    }
-
     const value_t& value() const {
       return value_;
     }
@@ -2369,9 +2330,18 @@ class dense_block : util::noncopyable {
       return true;
     }
 
+    void reset(const dense_block& block) NOEXCEPT {
+      value_.first = block.base_ - 1;
+      value_.second = bytes_ref::nil;
+      begin_ = std::begin(block.index_);
+      end_ = block.end_;
+      data_ = &block.data_;
+    }
+
    private:
     std::pair<doc_id_t, bytes_ref> value_ {
-      type_limits<type_t::doc_id_t>::invalid(), bytes_ref::nil
+      type_limits<type_t::doc_id_t>::invalid(),
+      bytes_ref::nil
     };
     const uint64_t* begin_{};
     const uint64_t* end_{};
@@ -2479,16 +2449,6 @@ class dense_fixed_length_block : util::noncopyable {
    public:
     typedef std::pair<doc_id_t, bytes_ref> value_t;
 
-    iterator() = default;
-
-    explicit iterator(const dense_fixed_length_block& block) NOEXCEPT 
-      : value_(block.base_key_ - 1, bytes_ref::nil),
-        offset_(block.base_offset_),
-        avg_length_(block.avg_length_),
-        left_(block.size_),
-        data_(&block.data_) {
-    }
-
     const value_t& value() const {
       return value_;
     }
@@ -2507,9 +2467,19 @@ class dense_fixed_length_block : util::noncopyable {
       return true;
     }
 
+    void reset(const dense_fixed_length_block& block) NOEXCEPT {
+      value_.first = block.base_key_ - 1;
+      value_.second = bytes_ref::nil;
+      offset_ = block.base_offset_;
+      avg_length_ = block.avg_length_;
+      left_ = block.size_;
+      data_ = &block.data_;
+    }
+
    private:
     std::pair<doc_id_t, bytes_ref> value_ {
-      type_limits<type_t::doc_id_t>::invalid(), bytes_ref::nil
+      type_limits<type_t::doc_id_t>::invalid(),
+      bytes_ref::nil
     };
     uint64_t offset_{};
     uint64_t avg_length_{};
@@ -2595,12 +2565,6 @@ class sparse_mask_block : util::noncopyable {
    public:
     typedef std::pair<doc_id_t, bytes_ref> value_t;
 
-    iterator() = default;
-
-    explicit iterator(const sparse_mask_block& block) NOEXCEPT
-      : begin_(std::begin(block.keys_)), end_(begin_ + block.size_) {
-    }
-
     const value_t& value() const {
       return value_;
     }
@@ -2612,6 +2576,13 @@ class sparse_mask_block : util::noncopyable {
 
       value_.first = *begin_++;
       return true;
+    }
+
+    void reset(const sparse_mask_block& block) NOEXCEPT {
+      value_.first = type_limits<type_t::doc_id_t>::invalid();
+      value_.second = bytes_ref::nil;
+      begin_ = std::begin(block.keys_);
+      end_ = begin_ + block.size_;
     }
 
    private:
@@ -2689,11 +2660,6 @@ class dense_mask_block {
 
     iterator() = default;
 
-    explicit iterator(const dense_mask_block& block) NOEXCEPT
-      : value_(block.min_ - 1, bytes_ref::nil),
-        left_(block.size_) {
-    }
-
     const value_t& value() const {
       return value_;
     }
@@ -2708,9 +2674,16 @@ class dense_mask_block {
       return true;
     }
 
+    void reset(const dense_mask_block& block) NOEXCEPT {
+      value_.first = block.min_ - 1;
+      value_.second = bytes_ref::nil;
+      left_ = block.size_;
+    }
+
    private:
     std::pair<doc_id_t, bytes_ref> value_ {
-      type_limits<type_t::doc_id_t>::invalid(), bytes_ref::nil
+      type_limits<type_t::doc_id_t>::invalid(),
+      bytes_ref::nil
     };
     size_t left_{};
   }; // iterator
@@ -2841,6 +2814,65 @@ class context_provider : private util::noncopyable {
   const directory* dir_;
 }; // context_provider
 
+// in case of success caches block pointed
+// by 'ref' and retuns a pointer to cached
+// instance, nullptr otherwise
+template<typename BlockRef>
+const typename BlockRef::block_t* load_block(
+    const context_provider& ctxs,
+    BlockRef& ref) {
+  typedef typename BlockRef::block_t block_t;
+
+  const auto* cached = ref.pblock.load();
+
+  if (!cached) {
+    auto ctx = ctxs.get_context();
+
+    // load block
+    const auto* block = ctx->template emplace_back<block_t>(ref.offset);
+
+    if (!block) {
+      // failed to load block
+      return nullptr;
+    }
+
+    // mark block as loaded
+    if (ref.pblock.compare_exchange_strong(cached, block)) {
+      cached = block;
+    } else {
+      // already cached by another thread
+      ctx->template pop_back<block_t>();
+    }
+  }
+
+  return cached;
+}
+
+// in case of success caches block pointed
+// by 'ref' in the specified 'block' and
+// retuns a pointer to cached instance,
+// nullptr otherwise
+template<typename BlockRef>
+const typename BlockRef::block_t* load_block(
+    const context_provider& ctxs,
+    const BlockRef& ref,
+    typename BlockRef::block_t& block) {
+  const auto* cached = ref.pblock.load();
+
+  if (!cached) {
+    auto ctx = ctxs.get_context();
+
+    if (!ctx->load(block, ref.offset)) {
+      // unable to load block
+      return nullptr;
+    }
+
+    cached = &block;
+  }
+
+  return cached;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @class column
 ////////////////////////////////////////////////////////////////////////////////
@@ -2896,10 +2928,11 @@ class column : private util::noncopyable {
 template<typename Block>
 class sparse_column final : public column {
  public:
+  typedef sparse_column column_t;
   typedef Block block_t;
 
   static column::ptr make(const context_provider& ctxs, ColumnProperty props) {
-    return memory::make_unique<sparse_column>(ctxs, props);
+    return memory::make_unique<column_t>(ctxs, props);
   }
 
   sparse_column(const context_provider& ctxs, ColumnProperty props)
@@ -2979,16 +3012,11 @@ class sparse_column final : public column {
       return false;
     }
 
-    const auto* cached = it->pblock.load();
+    const auto* cached = load_block(*ctxs_, *it);
 
     if (!cached) {
-      auto ctx = ctxs_->get_context();
-
-      auto& ref = const_cast<block_ref&>(*it);
-      if (!(cached = load_block(*ctx, ref.offset, ref.pblock))) {
-        // unable to load block
-        return false;
-      }
+      // unable to load block
+      return false;
     }
 
     assert(cached);
@@ -2998,18 +3026,15 @@ class sparse_column final : public column {
   virtual bool visit(const columnstore_reader::values_reader_f& visitor) const {
     block_t block; // don't cache new blocks
     for (auto begin = refs_.begin(), end = refs_.end()-1; begin != end; ++begin) { // -1 for upper bound
-      const auto* cached = begin->pblock.load();
-      if (!cached) {
-        auto ctx = ctxs_->get_context();
+      const auto* cached = load_block(*ctxs_, *begin, block);
 
-        if (!ctx->load(block, begin->offset)) {
-          // unable to load block
-          return false;
-        }
-        cached = &block;
+      if (!cached) {
+        // unable to load block
+        return false;
       }
 
       assert(cached);
+
       if (!cached->visit(visitor)) {
         return false;
       }
@@ -3021,6 +3046,8 @@ class sparse_column final : public column {
 
  private:
   struct block_ref : util::noncopyable {
+    typedef typename column_t::block_t block_t;
+
     block_ref() = default;
 
     block_ref(block_ref&& other) NOEXCEPT
@@ -3030,7 +3057,7 @@ class sparse_column final : public column {
 
     doc_id_t key; // min key in a block
     uint64_t offset; // block offset
-    std::atomic<const block_t*> pblock; // pointer to cached block
+    mutable std::atomic<const block_t*> pblock; // pointer to cached block
   }; // block_ref
 
   typedef std::vector<block_ref> refs_t;
@@ -3040,7 +3067,7 @@ class sparse_column final : public column {
     typedef typename block_t::iterator block_iterator_t;
     typedef typename block_iterator_t::value_t value_t;
 
-    explicit iterator(const sparse_column& column) NOEXCEPT
+    explicit iterator(const column_t& column) NOEXCEPT
       : begin_(column.refs_.begin()),
         end_(column.refs_.end() - 1), // -1 for upper bound
         ctxs_(column.ctxs_) {
@@ -3059,27 +3086,22 @@ class sparse_column final : public column {
         return false;
       }
 
-      const auto* cached = begin_->pblock.load();
-      if (!cached) {
-        auto ctx = ctxs_->get_context();
+      const auto* cached = load_block(*ctxs_, *begin_);
 
-        if (!ctx->load(block, begin_->offset)) {
-          // unable to load block, seal the iterator
-          it_ = typename block_t::iterator();
-          begin_ = end_;
-          return false;
-        }
-        cached = &block;
+      if (!cached) {
+        // unable to load block, seal the iterator
+        it_ = typename block_t::iterator();
+        begin_ = end_;
+        return false;
       }
 
-      it_ = typename block_t::iterator(*cached);
+      it_.reset(*cached);
       ++begin_;
 
       return it_.next();
     }
 
    private:
-    block_t block; // don't cache new blocks
     block_iterator_t it_;
     typename refs_t::const_iterator begin_;
     typename refs_t::const_iterator end_;
@@ -3103,10 +3125,11 @@ columnstore_reader::column_iterator_t::ptr sparse_column<Block>::iterator() cons
 template<typename Block>
 class dense_fixed_length_column final : public column {
  public:
+  typedef dense_fixed_length_column column_t;
   typedef Block block_t;
 
   static column::ptr make(const context_provider& ctxs, ColumnProperty props) {
-    return memory::make_unique<dense_fixed_length_column>(ctxs, props);
+    return memory::make_unique<column_t>(ctxs, props);
   }
 
   dense_fixed_length_column(const context_provider& ctxs, ColumnProperty prop)
@@ -3175,15 +3198,12 @@ class dense_fixed_length_column final : public column {
     assert(block_idx < refs_.size());
 
     auto& ref = const_cast<block_ref&>(refs_[block_idx]);
-    const auto* cached = ref.pblock.load();
+
+    const auto* cached = load_block(*ctxs_, ref);
 
     if (!cached) {
-      auto ctx = ctxs_->get_context();
-
-      if (!(cached = load_block(*ctx, ref.offset, ref.pblock))) {
-        // unable to load block
-        return false;
-      }
+      // unable to load block
+      return false;
     }
 
     assert(cached);
@@ -3193,19 +3213,15 @@ class dense_fixed_length_column final : public column {
   virtual bool visit(const columnstore_reader::values_reader_f& visitor) const {
     block_t block; // don't cache new blocks
     for (auto& ref : refs_) {
-      const auto* cached = ref.pblock.load();
+      const auto* cached = load_block(*ctxs_, ref, block);
+
       if (!cached) {
-        auto ctx = ctxs_->get_context();
-
-        if (!ctx->load(block, ref.offset)) {
-          // unable to load block
-          return false;
-        }
-
-        cached = &block;
+        // unable to load block
+        return false;
       }
 
       assert(cached);
+
       if (!cached->visit(visitor)) {
         return false;
       }
@@ -3218,6 +3234,8 @@ class dense_fixed_length_column final : public column {
 
  private:
   struct block_ref {
+    typedef typename column_t::block_t block_t;
+
     block_ref() = default;
 
     block_ref(block_ref&& other) NOEXCEPT
@@ -3226,7 +3244,7 @@ class dense_fixed_length_column final : public column {
     }
 
     uint64_t offset; // need to store base offset since blocks may not be located sequentially
-    std::atomic<const block_t*> pblock;
+    mutable std::atomic<const block_t*> pblock;
   }; // block_ref
 
   typedef std::vector<block_ref> refs_t;
@@ -3236,7 +3254,7 @@ class dense_fixed_length_column final : public column {
     typedef typename block_t::iterator block_iterator_t;
     typedef typename block_iterator_t::value_t value_t;
 
-    explicit iterator(const dense_fixed_length_column& column) NOEXCEPT
+    explicit iterator(const column_t& column) NOEXCEPT
       : begin_(column.refs_.begin()),
         end_(column.refs_.end()),
         ctxs_(column.ctxs_) {
@@ -3255,27 +3273,22 @@ class dense_fixed_length_column final : public column {
         return false;
       }
 
-      const auto* cached = begin_->pblock.load();
-      if (!cached) {
-        auto ctx = ctxs_->get_context();
+      const auto* cached = load_block(*ctxs_, *begin_);
 
-        if (!ctx->load(block, begin_->offset)) {
-          // unable to load block, seal the iterator
-          it_ = typename block_t::iterator();
-          begin_ = end_;
-          return false;
-        }
-        cached = &block;
+      if (!cached) {
+        // unable to load block, seal the iterator
+        it_ = typename block_t::iterator();
+        begin_ = end_;
+        return false;
       }
 
-      it_ = typename block_t::iterator(*cached);
+      it_.reset(*cached);
       ++begin_;
 
       return it_.next();
     }
 
    private:
-    block_t block; // don't cache new blocks
     block_iterator_t it_;
     typename refs_t::const_iterator begin_;
     typename refs_t::const_iterator end_;
@@ -3442,7 +3455,7 @@ bool reader::prepare(
 reader::values_reader_f reader::values(field_id field) const {
   if (field >= columns_.size()) {
     // can't find attribute with the specified name
-    return INVALID_COLUMN;
+    return empty_reader();
   }
 
   auto& column = *columns_[field];

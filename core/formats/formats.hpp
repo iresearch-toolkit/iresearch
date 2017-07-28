@@ -287,6 +287,7 @@ struct IRESEARCH_API columnstore_reader {
   typedef iresearch::iterator<const std::pair<doc_id_t, bytes_ref>&> column_iterator_t;
 
   static column_iterator_t::ptr empty_iterator();
+  static const values_reader_f& empty_reader();
 
   virtual ~columnstore_reader();
 
