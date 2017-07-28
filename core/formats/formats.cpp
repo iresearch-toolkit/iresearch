@@ -37,19 +37,12 @@ class format_register :
   }
 }; // format_register
 
-struct empty_column_iterator final : irs::columnstore_reader::column_iterator_t {
+struct empty_column_iterator final : irs::columnstore_reader::column_iterator {
  public:
-  typedef std::pair<irs::doc_id_t, irs::bytes_ref> value_t;
-
-  static value_t EMPTY;
-
-  virtual const value_t& value() const override { return EMPTY; }
+  virtual const value_type& value() const override { return MAX; }
+  virtual const value_type& seek(irs::doc_id_t doc) override { return MAX; }
   virtual bool next() override { return false; }
 }; // empty_column_iterator
-
-empty_column_iterator::value_t empty_column_iterator::EMPTY {
-  irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::bytes_ref::nil
-};
 
 iresearch::columnstore_reader::values_reader_f INVALID_COLUMN =
   [] (irs::doc_id_t, irs::bytes_ref&) { return false; };
@@ -80,8 +73,18 @@ column_meta_reader::~column_meta_reader() {}
 columnstore_writer::~columnstore_writer() {}
 columnstore_reader::~columnstore_reader() {}
 
-/* static */ columnstore_reader::column_iterator_t::ptr columnstore_reader::empty_iterator() {
-  return column_iterator_t::make<empty_column_iterator>();
+/* static */ const columnstore_reader::column_iterator::value_type columnstore_reader::column_iterator::INVALID{
+  type_limits<type_t::doc_id_t>::invalid(),
+  bytes_ref::nil
+};
+
+/* static */ const columnstore_reader::column_iterator::value_type columnstore_reader::column_iterator::MAX{
+  type_limits<type_t::doc_id_t>::eof(),
+  bytes_ref::nil
+};
+
+/* static */ columnstore_reader::column_iterator::ptr columnstore_reader::empty_iterator() {
+  return column_iterator::make<empty_column_iterator>();
 }
 
 /* static */ const columnstore_reader::values_reader_f& columnstore_reader::empty_reader() {

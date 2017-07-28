@@ -192,7 +192,7 @@ class segment_reader_impl : public sub_reader {
     field_id field
   ) const override;
 
-  virtual columnstore_reader::column_iterator_t::ptr values_iterator(
+  virtual columnstore_reader::column_iterator::ptr values_iterator(
     field_id field
   ) const override;
 
@@ -386,7 +386,7 @@ bool segment_reader_impl::visit(
     : false;
 }
 
-columnstore_reader::column_iterator_t::ptr segment_reader_impl::values_iterator(
+columnstore_reader::column_iterator::ptr segment_reader_impl::values_iterator(
     field_id field) const {
   return columnstore_reader_
     ? columnstore_reader_->iterator(field)

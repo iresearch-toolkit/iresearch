@@ -53,7 +53,7 @@ bool sub_reader::visit(
   return visit(meta->id, visitor);
 }
 
-columnstore_reader::column_iterator_t::ptr sub_reader::values_iterator(
+columnstore_reader::column_iterator::ptr sub_reader::values_iterator(
     const string_ref& field) const {
   auto* meta = column(field);
 

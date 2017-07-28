@@ -2158,7 +2158,7 @@ class sparse_block : util::noncopyable {
  public:
   class iterator {
    public:
-    typedef std::pair<doc_id_t, bytes_ref> value_t;
+    typedef columnstore_reader::column_iterator::value_type value_t;
 
     const value_t& value() const {
       return value_;
@@ -2182,16 +2182,20 @@ class sparse_block : util::noncopyable {
       return true;
     }
 
+    void seal() NOEXCEPT {
+      value_ = columnstore_reader::column_iterator::EOFMAX;
+      begin_ = end_ = nullptr;
+    }
+
     void reset(const sparse_block& block) NOEXCEPT {
-      value_.first = type_limits<type_t::doc_id_t>::invalid();
-      value_.second = bytes_ref::nil;
+      value_ = columnstore_reader::column_iterator::INVALID;
       begin_ = std::begin(block.index_);
       end_ = block.end_;
       data_ = &block.data_;
     }
 
    private:
-    std::pair<doc_id_t, bytes_ref> value_;
+    value_t value_{ columnstore_reader::column_iterator::INVALID };
     const sparse_block::ref* begin_{};
     const sparse_block::ref* end_{};
     const bstring* data_{};
@@ -2306,7 +2310,7 @@ class dense_block : util::noncopyable {
  public:
   class iterator {
    public:
-    typedef std::pair<doc_id_t, bytes_ref> value_t;
+    typedef columnstore_reader::column_iterator::value_type value_t;
 
     const value_t& value() const {
       return value_;
@@ -2330,6 +2334,11 @@ class dense_block : util::noncopyable {
       return true;
     }
 
+    void seal() NOEXCEPT {
+      value_ = columnstore_reader::column_iterator::EOFMAX;
+      begin_ = end_ = nullptr;
+    }
+
     void reset(const dense_block& block) NOEXCEPT {
       value_.first = block.base_ - 1;
       value_.second = bytes_ref::nil;
@@ -2339,10 +2348,7 @@ class dense_block : util::noncopyable {
     }
 
    private:
-    std::pair<doc_id_t, bytes_ref> value_ {
-      type_limits<type_t::doc_id_t>::invalid(),
-      bytes_ref::nil
-    };
+    value_t value_{ columnstore_reader::column_iterator::INVALID };
     const uint64_t* begin_{};
     const uint64_t* end_{};
     const bstring* data_{};
@@ -2447,7 +2453,7 @@ class dense_fixed_length_block : util::noncopyable {
  public:
   class iterator {
    public:
-    typedef std::pair<doc_id_t, bytes_ref> value_t;
+    typedef columnstore_reader::column_iterator::value_type value_t;
 
     const value_t& value() const {
       return value_;
@@ -2467,6 +2473,11 @@ class dense_fixed_length_block : util::noncopyable {
       return true;
     }
 
+    void seal() NOEXCEPT {
+      value_ = columnstore_reader::column_iterator::EOFMAX;
+      left_ = 0;
+    }
+
     void reset(const dense_fixed_length_block& block) NOEXCEPT {
       value_.first = block.base_key_ - 1;
       value_.second = bytes_ref::nil;
@@ -2477,10 +2488,7 @@ class dense_fixed_length_block : util::noncopyable {
     }
 
    private:
-    std::pair<doc_id_t, bytes_ref> value_ {
-      type_limits<type_t::doc_id_t>::invalid(),
-      bytes_ref::nil
-    };
+    value_t value_{ columnstore_reader::column_iterator::INVALID };
     uint64_t offset_{};
     uint64_t avg_length_{};
     uint64_t left_{};
@@ -2563,7 +2571,7 @@ class sparse_mask_block : util::noncopyable {
  public:
   class iterator {
    public:
-    typedef std::pair<doc_id_t, bytes_ref> value_t;
+    typedef columnstore_reader::column_iterator::value_type value_t;
 
     const value_t& value() const {
       return value_;
@@ -2578,17 +2586,19 @@ class sparse_mask_block : util::noncopyable {
       return true;
     }
 
+    void seal() NOEXCEPT {
+      value_ = columnstore_reader::column_iterator::EOFMAX;
+      begin_ = end_ = nullptr;
+    }
+
     void reset(const sparse_mask_block& block) NOEXCEPT {
-      value_.first = type_limits<type_t::doc_id_t>::invalid();
-      value_.second = bytes_ref::nil;
+      value_ = columnstore_reader::column_iterator::INVALID;
       begin_ = std::begin(block.keys_);
       end_ = begin_ + block.size_;
     }
 
    private:
-    std::pair<doc_id_t, bytes_ref> value_ {
-      type_limits<type_t::doc_id_t>::invalid(), bytes_ref::nil
-    };
+    value_t value_{ columnstore_reader::column_iterator::INVALID };
     const doc_id_t* begin_{};
     const doc_id_t* end_{};
   }; // iterator
@@ -2656,7 +2666,7 @@ class dense_mask_block {
  public:
   class iterator {
    public:
-    typedef std::pair<doc_id_t, bytes_ref> value_t;
+    typedef columnstore_reader::column_iterator::value_type value_t;
 
     iterator() = default;
 
@@ -2674,6 +2684,11 @@ class dense_mask_block {
       return true;
     }
 
+    void seal() NOEXCEPT {
+      value_ = columnstore_reader::column_iterator::EOFMAX;
+      left_ = 0;
+    }
+
     void reset(const dense_mask_block& block) NOEXCEPT {
       value_.first = block.min_ - 1;
       value_.second = bytes_ref::nil;
@@ -2681,10 +2696,7 @@ class dense_mask_block {
     }
 
    private:
-    std::pair<doc_id_t, bytes_ref> value_ {
-      type_limits<type_t::doc_id_t>::invalid(),
-      bytes_ref::nil
-    };
+    value_t value_ { columnstore_reader::column_iterator::INVALID };
     size_t left_{};
   }; // iterator
 
@@ -2902,7 +2914,7 @@ class column : private util::noncopyable {
     const columnstore_reader::values_reader_f& visitor
   ) const = 0;
 
-  virtual columnstore_reader::column_iterator_t::ptr iterator() const = 0;
+  virtual columnstore_reader::column_iterator::ptr iterator() const = 0;
 
   doc_id_t max() const { return max_; }
   doc_id_t size() const { return count_; }
@@ -2917,6 +2929,69 @@ class column : private util::noncopyable {
   size_t avg_block_count_{};
   ColumnProperty props_{ CP_SPARSE };
 }; // column
+
+template<typename Column>
+class column_iterator final : public irs::columnstore_reader::column_iterator {
+ public:
+  typedef Column column_t;
+  typedef typename Column::block_t block_t;
+  typedef typename block_t::iterator block_iterator_t;
+  typedef typename block_iterator_t::value_t value_t;
+
+  explicit column_iterator(const column_t& column, size_t tail_offset = 0) NOEXCEPT
+    : begin_(column.refs_.begin()),
+      end_(column.refs_.end() - tail_offset),
+      column_(&column) {
+  }
+
+  virtual const value_t& value() const override {
+    return it_.value();
+  }
+
+  virtual const value_t& seek(irs::doc_id_t doc) override {
+    //auto it = column_->seek_to_block(doc);
+
+    //if (it == column_.refs_.end()) {
+    //  it_.reset();
+    //} else {
+
+    //}
+
+    return value();
+  }
+
+  virtual bool next() override {
+    if (it_.next()) {
+      return true;
+    }
+
+    if (begin_ == end_) {
+      return false;
+    }
+
+    const auto* cached = load_block(*column_->ctxs_, *begin_);
+
+    if (!cached) {
+      // unable to load block, seal the iterator
+      it_ = typename block_t::iterator();
+      begin_ = end_;
+      return false;
+    }
+
+    it_.reset(*cached);
+    ++begin_;
+
+    return it_.next();
+  }
+
+private:
+  typedef typename column_t::refs_t refs_t;
+
+  block_iterator_t it_;
+  typename refs_t::const_iterator begin_;
+  typename refs_t::const_iterator end_;
+  const column_t* column_;
+}; // column_iterator
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           Columns
@@ -3042,9 +3117,17 @@ class sparse_column final : public column {
     return true;
   }
 
-  virtual columnstore_reader::column_iterator_t::ptr iterator() const;
+  virtual columnstore_reader::column_iterator::ptr iterator() const {
+    typedef column_iterator<column_t> iterator_t;
+
+    return columnstore_reader::column_iterator::make<iterator_t>(
+      *this, 1 // -1 for upper bound
+    );
+  }
 
  private:
+  friend class column_iterator<column_t>;
+
   struct block_ref : util::noncopyable {
     typedef typename column_t::block_t block_t;
 
@@ -3062,62 +3145,25 @@ class sparse_column final : public column {
 
   typedef std::vector<block_ref> refs_t;
 
-  class iterator final : public columnstore_reader::column_iterator_t {
-   public:
-    typedef typename block_t::iterator block_iterator_t;
-    typedef typename block_iterator_t::value_t value_t;
+  typename refs_t::const_iterator seek_to_block(doc_id_t key) const NOEXCEPT {
+    const auto rbegin = refs_.rbegin(); // upper bound
+    const auto rend = refs_.rend();
+    const auto it = std::lower_bound(
+      rbegin, rend, key,
+      [] (const block_ref& lhs, doc_id_t rhs) {
+        return lhs.key > rhs;
+    });
 
-    explicit iterator(const column_t& column) NOEXCEPT
-      : begin_(column.refs_.begin()),
-        end_(column.refs_.end() - 1), // -1 for upper bound
-        ctxs_(column.ctxs_) {
+    if (it == rend || it == rbegin) {
+      return refs_.end();
     }
 
-    virtual const value_t& value() const override {
-      return it_.value();
-    }
-
-    virtual bool next() override {
-      if (it_.next()) {
-        return true;
-      }
-
-      if (begin_ == end_) {
-        return false;
-      }
-
-      const auto* cached = load_block(*ctxs_, *begin_);
-
-      if (!cached) {
-        // unable to load block, seal the iterator
-        it_ = typename block_t::iterator();
-        begin_ = end_;
-        return false;
-      }
-
-      it_.reset(*cached);
-      ++begin_;
-
-      return it_.next();
-    }
-
-   private:
-    block_iterator_t it_;
-    typename refs_t::const_iterator begin_;
-    typename refs_t::const_iterator end_;
-    const context_provider* ctxs_;
-  }; // iterator
+    return irstd::to_forward(it);
+  }
 
   const context_provider* ctxs_;
   refs_t refs_; // blocks index
 }; // sparse_column
-
-template<typename Block>
-columnstore_reader::column_iterator_t::ptr sparse_column<Block>::iterator() const {
-  typedef typename sparse_column<Block>::iterator iterator_t;
-
-  return columnstore_reader::column_iterator_t::make<iterator_t>(*this);
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class dense_fixed_length_column
@@ -3230,9 +3276,15 @@ class dense_fixed_length_column final : public column {
     return true;
   }
 
-  virtual columnstore_reader::column_iterator_t::ptr iterator() const;
+  virtual columnstore_reader::column_iterator::ptr iterator() const {
+    typedef column_iterator<column_t> iterator_t;
+
+    return columnstore_reader::column_iterator::make<iterator_t>(*this);
+  }
 
  private:
+  friend class column_iterator<column_t>;
+
   struct block_ref {
     typedef typename column_t::block_t block_t;
 
@@ -3249,63 +3301,10 @@ class dense_fixed_length_column final : public column {
 
   typedef std::vector<block_ref> refs_t;
 
-  class iterator final : public columnstore_reader::column_iterator_t {
-   public:
-    typedef typename block_t::iterator block_iterator_t;
-    typedef typename block_iterator_t::value_t value_t;
-
-    explicit iterator(const column_t& column) NOEXCEPT
-      : begin_(column.refs_.begin()),
-        end_(column.refs_.end()),
-        ctxs_(column.ctxs_) {
-    }
-
-    virtual const value_t& value() const override {
-      return it_.value();
-    }
-
-    virtual bool next() override {
-      if (it_.next()) {
-        return true;
-      }
-
-      if (begin_ == end_) {
-        return false;
-      }
-
-      const auto* cached = load_block(*ctxs_, *begin_);
-
-      if (!cached) {
-        // unable to load block, seal the iterator
-        it_ = typename block_t::iterator();
-        begin_ = end_;
-        return false;
-      }
-
-      it_.reset(*cached);
-      ++begin_;
-
-      return it_.next();
-    }
-
-   private:
-    block_iterator_t it_;
-    typename refs_t::const_iterator begin_;
-    typename refs_t::const_iterator end_;
-    const context_provider* ctxs_;
-  }; // iterator
-
   const context_provider* ctxs_;
   refs_t refs_;
   doc_id_t min_{}; // min key
 }; // dense_fixed_length_column
-
-template<typename Block>
-columnstore_reader::column_iterator_t::ptr dense_fixed_length_column<Block>::iterator() const {
-  typedef typename dense_fixed_length_column<Block>::iterator iterator_t;
-
-  return columnstore_reader::column_iterator_t::make<iterator_t>(*this);
-}
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                 column factories
@@ -3367,7 +3366,7 @@ class reader final : public columnstore_reader, public context_provider {
 
   virtual values_reader_f values(field_id field) const override;
   virtual bool visit(field_id field, const values_visitor_f& visitor) const override;
-  virtual column_iterator_t::ptr iterator(field_id field) const override;
+  virtual column_iterator::ptr iterator(field_id field) const override;
 
  private:
   std::vector<column::ptr> columns_;
@@ -3472,7 +3471,7 @@ bool reader::visit(field_id field, const values_visitor_f& visitor) const {
   return column.visit(visitor);
 }
 
-columnstore_reader::column_iterator_t::ptr reader::iterator(field_id field) const {
+columnstore_reader::column_iterator::ptr reader::iterator(field_id field) const {
   if (field >= columns_.size()) {
     // can't find attribute with the specified id
     return empty_iterator();
@@ -4000,7 +3999,7 @@ bool postings_reader::prepare(
     postings_writer::DOC_EXT, 
     postings_writer::DOC_FORMAT_NAME, 
     postings_writer::FORMAT_MIN, 
-    postings_writer::FORMAT_MAX 
+    postings_writer::FORMAT_MAX
   );
     
   /* Since terms doc postings too large
@@ -4051,7 +4050,7 @@ bool postings_reader::prepare(
   format_utils::check_header(in,
     postings_writer::TERMS_FORMAT_NAME, 
     postings_writer::TERMS_FORMAT_MIN, 
-    postings_writer::TERMS_FORMAT_MAX 
+    postings_writer::TERMS_FORMAT_MAX
   );
 
   const uint64_t block_size = in.read_vlong();

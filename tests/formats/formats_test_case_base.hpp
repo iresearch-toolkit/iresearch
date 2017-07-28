@@ -2223,7 +2223,7 @@ class format_test_case_base : public index_test_base {
       auto reader = codec()->get_columnstore_reader();
       ASSERT_TRUE(reader->prepare(dir(), meta));
 
-      std::unordered_map<std::string, iresearch::columnstore_reader::column_iterator_t::ptr> readers;
+      std::unordered_map<std::string, iresearch::columnstore_reader::column_iterator::ptr> readers;
 
       irs::bytes_ref actual_value;
       irs::bytes_ref_input in;
