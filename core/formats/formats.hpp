@@ -286,6 +286,9 @@ struct IRESEARCH_API columnstore_reader {
   typedef std::function<bool(doc_id_t, const bytes_ref&)> values_visitor_f;
 
   struct column_iterator : irs::iterator<const std::pair<doc_id_t, bytes_ref>&> {
+    DECLARE_PTR(column_iterator);
+    DECLARE_FACTORY(column_iterator);
+
     typedef std::pair<doc_id_t, bytes_ref> value_type;
 
     static const value_type INVALID;

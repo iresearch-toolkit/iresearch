@@ -828,6 +828,22 @@ class format_test_case_base : public index_test_base {
     }
   }
 
+  void column_iterator_constants() {
+    // INVALID
+    {
+      auto& value = irs::columnstore_reader::column_iterator::INVALID;
+      ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), value.first);
+      ASSERT_EQ(ir::bytes_ref::nil, value.second);
+    }
+
+    // EOF
+    {
+      auto& value = irs::columnstore_reader::column_iterator::EOFMAX;
+      ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), value.first);
+      ASSERT_EQ(ir::bytes_ref::nil, value.second);
+    }
+  }
+
   void columns_read_write_reuse() {
     struct csv_doc_template : delim_doc_generator::doc_template {
       virtual void init() {

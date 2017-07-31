@@ -2328,8 +2328,26 @@ class dense_block : util::noncopyable {
     }
 
     bool seek(doc_id_t doc) NOEXCEPT {
-      it_ = begin_ + (doc -= base_);
-      return next();
+      const auto relative = doc - base_;
+
+      if (relative >= std::distance(begin_, end_)) {
+        seal();
+        return false;
+      }
+
+      it_ = begin_ + relative;
+
+      const auto vbegin = *it_;
+      const auto vend = (++it_ == end_ ? data_->size() : *it_);
+
+      assert(vend >= vbegin);
+      value_.first = doc;
+      value_.second = bytes_ref(
+        data_->c_str() + vbegin, // start
+        vend - vbegin // length
+      );
+
+      return true;
     }
 
     bool next() NOEXCEPT {
@@ -2480,8 +2498,22 @@ class dense_fixed_length_block : util::noncopyable {
     }
 
     bool seek(doc_id_t doc) NOEXCEPT {
-      left_ = (doc -= base_);
-      return next();
+      const auto relative = doc - base_;
+
+      if (relative >= size_) {
+        seal();
+        return false;
+      }
+
+      offset_ = relative*avg_length_;
+
+      value_.first = doc;
+      value_.second = bytes_ref(data_->c_str() + offset_, avg_length_);
+
+      offset_ += avg_length_;
+      left_ = size_ - relative;
+
+      return true;
     }
 
     bool next() NOEXCEPT {
@@ -2509,7 +2541,7 @@ class dense_fixed_length_block : util::noncopyable {
       value_.second = bytes_ref::nil;
       offset_ = block.base_offset_;
       avg_length_ = block.avg_length_;
-      left_ = block.size_;
+      left_ = size_ = block.size_;
       data_ = &block.data_;
       base_ = block.base_key_;
     }
@@ -2518,7 +2550,8 @@ class dense_fixed_length_block : util::noncopyable {
     value_t value_{ columnstore_reader::column_iterator::INVALID };
     uint64_t offset_{};
     uint64_t avg_length_{};
-    uint64_t left_{};
+    size_t left_{};
+    size_t size_{};
     doc_id_t base_{};
     const bstring* data_{};
   }; // iterator
@@ -2710,8 +2743,15 @@ class dense_mask_block {
     }
 
     bool seek(doc_id_t doc) NOEXCEPT {
-      left_ = (doc -= min_);
-      return next();
+      if ((doc - min_) >= size_) {
+        seal();
+        return false;
+      }
+
+      left_ = size_ - doc;
+      value_.first = doc;
+
+      return true;
     }
 
     bool next() NOEXCEPT {
@@ -2721,6 +2761,7 @@ class dense_mask_block {
 
       --left_;
       ++value_.first;
+
       return true;
     }
 
@@ -2733,7 +2774,7 @@ class dense_mask_block {
     void reset(const dense_mask_block& block) NOEXCEPT {
       value_.first = block.min_ - 1;
       value_.second = bytes_ref::nil;
-      left_ = block.size_;
+      left_ = size_ = block.size_;
       min_ = block.min_;
     }
 
@@ -2741,6 +2782,7 @@ class dense_mask_block {
     value_t value_ { columnstore_reader::column_iterator::INVALID };
     size_t left_{};
     size_t min_{};
+    size_t size_{};
   }; // iterator
 
   bool load(index_input& in, decompressor& /*decomp*/, bstring& /*buf*/) {
@@ -2996,13 +3038,27 @@ class column_iterator final : public irs::columnstore_reader::column_iterator {
   virtual const value_t& seek(irs::doc_id_t doc) override {
     begin_ = column_->seek_to_block(doc);
 
-    refresh_block() && block_.seek(doc);
+    if (!refresh_block()) {
+      // reached the end of the column
+      return value();
+    }
+
+    if (!block_.seek(doc)) {
+      // reached the end of block
+      next();
+    }
 
     return value();
   }
 
   virtual bool next() override {
-    return block_.next() || (refresh_block() && block_.next());
+    while (!block_.next()) {
+      if (!refresh_block()) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
  private:
@@ -3197,7 +3253,7 @@ class sparse_column final : public column {
     });
 
     if (it == rend || it == rbegin) {
-      return refs_.end();
+      return refs_.end() - 1; // -1 for upper bound
     }
 
     return irstd::to_forward(it);
@@ -3345,7 +3401,7 @@ class dense_fixed_length_column final : public column {
 
   typedef std::vector<block_ref> refs_t;
 
-  typename refs_t::const_iterator seek_to_block(doc_id_t& key) const NOEXCEPT {
+  typename refs_t::const_iterator seek_to_block(doc_id_t key) const NOEXCEPT {
     if ((key -= min_) >= this->size()) {
       return refs_.end();
     }
