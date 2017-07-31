@@ -1493,35 +1493,6 @@ class format_test_case_base : public index_test_base {
         ASSERT_TRUE(expected_values.empty());
       }
 
-      // iterate over field0 values (not cached)
-      {
-        auto it = reader->iterator(segment0_field0_id);
-        ASSERT_NE(nullptr, it);
-
-        auto& actual_value = it->value();
-        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), actual_value.first);
-        ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
-
-        std::vector<std::pair<irs::string_ref, irs::doc_id_t>> expected_values = {
-          {"field0_doc0", 0},
-          {"field0_doc2", 2},
-          {"field0_doc33", 33}
-        };
-
-        size_t i = 0;
-        for (; it->next(); ++i) {
-          const auto& expected_value = expected_values[i];
-          const auto actual_str_value = irs::to_string<irs::string_ref>(actual_value.second.c_str());
-
-          ASSERT_EQ(expected_value.second, actual_value.first);
-          ASSERT_EQ(expected_value.first, actual_str_value);
-        }
-        ASSERT_FALSE(it->next());
-        ASSERT_EQ(i, expected_values.size());
-        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), actual_value.first);
-        ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
-      }
-
       // partailly visit field0 values (not cached)
       {
         std::unordered_map<irs::string_ref, iresearch::doc_id_t> expected_values = {
@@ -1647,29 +1618,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
       }
 
-      // check field1 (multiple values per document)
-      {
-        irs::bytes_ref actual_value;
-        irs::bytes_ref_input in;
-        auto column = reader->values(segment0_field1_id);
-
-        // read compound column value
-        // check doc==0, column==field1
-        ASSERT_TRUE(column(0, actual_value)); in.reset(actual_value);
-        ASSERT_EQ("field1_doc0", irs::read_string<std::string>(in));
-        ASSERT_EQ("field1_doc0_1", irs::read_string<std::string>(in));
-
-        // read overwritten compund value
-        // check doc==12, column==field1
-        ASSERT_TRUE(column(12, actual_value)); in.reset(actual_value);
-        ASSERT_EQ("field1_doc12_1", irs::read_string<std::string>(in));
-        ASSERT_EQ("field1_doc12_2", irs::read_string<std::string>(in));
-
-        // read by invalid key
-        ASSERT_FALSE(column(iresearch::type_limits<iresearch::type_t::doc_id_t>::eof(), actual_value));
-      }
-
-      // iterate over field1 values (cached)
+      // iterate over field1 values (not cached)
       {
         auto it = reader->iterator(segment0_field1_id);
         ASSERT_NE(nullptr, it);
@@ -1700,6 +1649,28 @@ class format_test_case_base : public index_test_base {
         ASSERT_EQ(i, expected_values.size());
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), actual_value.first);
         ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
+      }
+
+      // check field1 (multiple values per document - cached)
+      {
+        irs::bytes_ref actual_value;
+        irs::bytes_ref_input in;
+        auto column = reader->values(segment0_field1_id);
+
+        // read compound column value
+        // check doc==0, column==field1
+        ASSERT_TRUE(column(0, actual_value)); in.reset(actual_value);
+        ASSERT_EQ("field1_doc0", irs::read_string<std::string>(in));
+        ASSERT_EQ("field1_doc0_1", irs::read_string<std::string>(in));
+
+        // read overwritten compund value
+        // check doc==12, column==field1
+        ASSERT_TRUE(column(12, actual_value)); in.reset(actual_value);
+        ASSERT_EQ("field1_doc12_1", irs::read_string<std::string>(in));
+        ASSERT_EQ("field1_doc12_2", irs::read_string<std::string>(in));
+
+        // read by invalid key
+        ASSERT_FALSE(column(iresearch::type_limits<iresearch::type_t::doc_id_t>::eof(), actual_value));
       }
 
       // visit empty column
@@ -1760,7 +1731,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_TRUE(expected_values.empty());
       }
 
-      // iterate over field2 values
+      // iterate over field2 values (not cached)
       {
         auto it = reader->iterator(segment0_field2_id);
         ASSERT_NE(nullptr, it);
@@ -1831,7 +1802,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
       }
 
-      // check field0
+      // check field0 (cached)
       {
         auto column = reader->values(segment1_field0_id);
         ASSERT_TRUE(column(0, actual_value)); // check doc==0, column==field0
@@ -1896,13 +1867,13 @@ class format_test_case_base : public index_test_base {
     }
 
     // check previously written mask
-    {
+    for (auto i = 0; i < 2; ++i) {
       irs::bytes_ref actual_value;
       auto reader = codec()->get_columnstore_reader();
       ASSERT_TRUE(reader->prepare(dir(), segment));
 
-      // iterate over field values (not cached)
-      {
+      if (0 == i) {
+        // iterate over field values (not cached)
         auto it = reader->iterator(id);
         ASSERT_NE(nullptr, it);
 
@@ -1925,7 +1896,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
       }
 
-      // read field values
+      // read field values (0 == i -> cached, 1 == i, not cached)
       {
         auto mask = reader->values(id);
         ASSERT_TRUE(mask(0, actual_value));

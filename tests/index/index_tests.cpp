@@ -1552,7 +1552,9 @@ class index_test_case_base : public tests::index_test_base {
     }
 
     // check inserted values
-    {
+    // 0 == i, cached random access
+    // 1 == i, not cached random access
+    for (auto i = 0; i < 2; ++i) {
       auto reader = ir::directory_reader::open(this->dir(), this->codec());
       ASSERT_EQ(1, reader.size());
 
@@ -1584,8 +1586,8 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
       }
 
-      // iterate over column (not cached)
-      {
+      if (0 == i) {
+        // iterate over column (not cached)
         auto it = segment.values_iterator(column_name);
         ASSERT_NE(nullptr, it);
 
@@ -1699,7 +1701,9 @@ class index_test_case_base : public tests::index_test_base {
     }
 
     // check inserted values
-    {
+    // 0 == i, cached random access
+    // 1 == i, not cached random access
+    for (auto i = 0; i < 2; ++i) {
       auto reader = ir::directory_reader::open(this->dir(), this->codec());
       ASSERT_EQ(1, reader.size());
 
@@ -1731,8 +1735,8 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
       }
 
-      // iterate over column (not cached)
-      {
+      if (0 == i) {
+        // iterate over column (not cached)
         auto it = segment.values_iterator(column_name);
         ASSERT_NE(nullptr, it);
 
@@ -1854,7 +1858,9 @@ class index_test_case_base : public tests::index_test_base {
     }
 
     // check inserted values
-    {
+    // 0 == i, cached random access
+    // 1 == i, not cached random access
+    for (auto i = 0; i < 2; ++i) {
       auto reader = ir::directory_reader::open(this->dir(), this->codec());
       ASSERT_EQ(1, reader.size());
 
@@ -1886,8 +1892,8 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_TRUE(segment.visit(column_name, visitor));
       }
 
-      // iterate over column (not cached)
-      {
+      if (0 == i) {
+        // iterate over column (not cached)
         auto it = segment.values_iterator(column_name);
         ASSERT_NE(nullptr, it);
 
@@ -2017,7 +2023,9 @@ class index_test_case_base : public tests::index_test_base {
     }
 
     // check inserted values
-    {
+    // 0 == i, cached random access
+    // 1 == i, not cached random access
+    for (auto i = 0; i < 2; ++i) {
       auto reader = ir::directory_reader::open(this->dir(), this->codec());
       ASSERT_EQ(1, reader.size());
 
@@ -2055,8 +2063,8 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_TRUE(segment.visit(column_name, visitor));
       }
 
-      // iterate over column (not cached)
-      {
+      if (0 == i) {
+        // iterate over column (not cached)
         auto it = segment.values_iterator(column_name);
         ASSERT_NE(nullptr, it);
 
@@ -2214,7 +2222,9 @@ class index_test_case_base : public tests::index_test_base {
     }
 
     // check inserted values
-    {
+    // 0 == i, cached random access
+    // 1 == i, not cached random access
+    for (auto i = 0; i < 2; ++i) {
       auto reader = ir::directory_reader::open(this->dir(), this->codec());
       ASSERT_EQ(1, reader.size());
 
@@ -2252,8 +2262,8 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_TRUE(segment.visit(column_name, visitor));
       }
 
-      // iterate over column (not cached)
-      {
+      if (0 == i) {
+        // iterate over column (not cached)
         auto it = segment.values_iterator(column_name);
         ASSERT_NE(nullptr, it);
 
@@ -2410,159 +2420,163 @@ class index_test_case_base : public tests::index_test_base {
       writer->commit();
     }
 
-    auto reader = ir::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader.size());
-    auto& segment = *(reader.begin());
+    // 0 == i, cached random access
+    // 1 == i, not cached random access
+    for (auto i = 0; i < 2; ++i) {
+      auto reader = ir::directory_reader::open(dir(), codec());
+      ASSERT_EQ(1, reader.size());
+      auto& segment = *(reader.begin());
 
-    // read attribute from invalid column
-    {
-      irs::bytes_ref actual_value;
-      auto value_reader = segment.values("invalid_column");
-      ASSERT_FALSE(value_reader(0, actual_value));
-      ASSERT_FALSE(value_reader(1, actual_value));
-      ASSERT_FALSE(value_reader(2, actual_value));
-      ASSERT_FALSE(value_reader(3, actual_value));
-      ASSERT_FALSE(value_reader(4, actual_value));
-    }
-
-    // iterate over 'name' column (not cached)
-    {
-      auto it = segment.values_iterator("name");
-      ASSERT_NE(nullptr, it);
-
-      auto& actual_value = it->value();
-      ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), actual_value.first);
-      ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
-
-      std::vector<std::pair<irs::doc_id_t, irs::string_ref>> expected_values = {
-        { 1, "A" }, { 2, "B" }, { 3, "C" }, { 4, "D" }
-      };
-
-      size_t i = 0;
-      for (; it->next(); ++i) {
-        const auto& expected_value = expected_values[i];
-        const auto actual_str_value = irs::to_string<irs::string_ref>(actual_value.second.c_str());
-
-        ASSERT_EQ(expected_value.first, actual_value.first);
-        ASSERT_EQ(expected_value.second, actual_str_value);
+      // read attribute from invalid column
+      {
+        irs::bytes_ref actual_value;
+        auto value_reader = segment.values("invalid_column");
+        ASSERT_FALSE(value_reader(0, actual_value));
+        ASSERT_FALSE(value_reader(1, actual_value));
+        ASSERT_FALSE(value_reader(2, actual_value));
+        ASSERT_FALSE(value_reader(3, actual_value));
+        ASSERT_FALSE(value_reader(4, actual_value));
       }
-      ASSERT_FALSE(it->next());
-      ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), actual_value.first);
-      ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
-      ASSERT_EQ(i, expected_values.size());
-    }
 
-    // read attributes from 'name' column (dense)
-    {
-      irs::bytes_ref actual_value;
-      auto value_reader = segment.values("name");
-      ASSERT_TRUE(value_reader(2, actual_value));
-      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
-      ASSERT_TRUE(value_reader(4, actual_value));
-      ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
-      ASSERT_TRUE(value_reader(1, actual_value));
-      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
-      ASSERT_TRUE(value_reader(3, actual_value));
-      ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
-      ASSERT_FALSE(value_reader(5, actual_value)); // invalid document id
-      ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // same as 'name' value in doc3
-    }
+      if (i == 0) {
+        // iterate over 'name' column (not cached)
+        auto it = segment.values_iterator("name");
+        ASSERT_NE(nullptr, it);
 
-    // iterate over 'name' column (cached)
-    {
-      auto it = segment.values_iterator("name");
-      ASSERT_NE(nullptr, it);
+        auto& actual_value = it->value();
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), actual_value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
 
-      auto& actual_value = it->value();
-      ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), actual_value.first);
-      ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
+        std::vector<std::pair<irs::doc_id_t, irs::string_ref>> expected_values = {
+          { 1, "A" }, { 2, "B" }, { 3, "C" }, { 4, "D" }
+        };
 
-      std::vector<std::pair<irs::doc_id_t, irs::string_ref>> expected_values = {
-        { 1, "A" }, { 2, "B" }, { 3, "C" }, { 4, "D" }
-      };
+        size_t i = 0;
+        for (; it->next(); ++i) {
+          const auto& expected_value = expected_values[i];
+          const auto actual_str_value = irs::to_string<irs::string_ref>(actual_value.second.c_str());
 
-      size_t i = 0;
-      for (; it->next(); ++i) {
-        const auto& expected_value = expected_values[i];
-        const auto actual_str_value = irs::to_string<irs::string_ref>(actual_value.second.c_str());
-
-        ASSERT_EQ(expected_value.first, actual_value.first);
-        ASSERT_EQ(expected_value.second, actual_str_value);
+          ASSERT_EQ(expected_value.first, actual_value.first);
+          ASSERT_EQ(expected_value.second, actual_str_value);
+        }
+        ASSERT_FALSE(it->next());
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), actual_value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
+        ASSERT_EQ(i, expected_values.size());
       }
-      ASSERT_FALSE(it->next());
-      ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), actual_value.first);
-      ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
-      ASSERT_EQ(i, expected_values.size());
-    }
 
-    // iterate over 'prefix' column (not cached)
-    {
-      auto it = segment.values_iterator("prefix");
-      ASSERT_NE(nullptr, it);
-
-      auto& actual_value = it->value();
-      ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), actual_value.first);
-      ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
-
-      std::vector<std::pair<irs::doc_id_t, irs::string_ref>> expected_values = {
-        { 1, "abcd" }, { 4, "abcde" }
-      };
-
-      size_t i = 0;
-      for (; it->next(); ++i) {
-        const auto& expected_value = expected_values[i];
-        const auto actual_str_value = irs::to_string<irs::string_ref>(actual_value.second.c_str());
-
-        ASSERT_EQ(expected_value.first, actual_value.first);
-        ASSERT_EQ(expected_value.second, actual_str_value);
+      // read attributes from 'name' column (dense)
+      {
+        irs::bytes_ref actual_value;
+        auto value_reader = segment.values("name");
+        ASSERT_TRUE(value_reader(2, actual_value));
+        ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
+        ASSERT_TRUE(value_reader(4, actual_value));
+        ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
+        ASSERT_TRUE(value_reader(1, actual_value));
+        ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+        ASSERT_TRUE(value_reader(3, actual_value));
+        ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+        ASSERT_FALSE(value_reader(5, actual_value)); // invalid document id
+        ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // same as 'name' value in doc3
       }
-      ASSERT_FALSE(it->next());
-      ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), actual_value.first);
-      ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
-      ASSERT_EQ(i, expected_values.size());
-    }
 
-    // read attributes from 'prefix' column (sparse)
-    {
-      irs::bytes_ref actual_value;
-      auto value_reader = segment.values("prefix");
-      ASSERT_TRUE(value_reader(1, actual_value));
-      ASSERT_EQ("abcd", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'prefix' value in doc1
-      ASSERT_FALSE(value_reader(2, actual_value)); // doc2 does not contain 'prefix' column
-      ASSERT_EQ("abcd", irs::to_string<irs::string_ref>(actual_value.c_str())); // same as 'prefix' value in doc1
-      ASSERT_TRUE(value_reader(4, actual_value));
-      ASSERT_EQ("abcde", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'prefix' value in doc4
-      ASSERT_FALSE(value_reader(3, actual_value)); // doc3 does not contain 'prefix' column
-      ASSERT_EQ("abcde", irs::to_string<irs::string_ref>(actual_value.c_str())); // same as 'prefix' value in doc4
-      ASSERT_FALSE(value_reader(5, actual_value)); // invalid document id
-      ASSERT_EQ("abcde", irs::to_string<irs::string_ref>(actual_value.c_str())); // same as 'prefix' value in doc4
-    }
+      // iterate over 'name' column (cached)
+      {
+        auto it = segment.values_iterator("name");
+        ASSERT_NE(nullptr, it);
 
-    // iterate over 'prefix' column (cached)
-    {
-      auto it = segment.values_iterator("prefix");
-      ASSERT_NE(nullptr, it);
+        auto& actual_value = it->value();
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), actual_value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
 
-      auto& actual_value = it->value();
-      ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), actual_value.first);
-      ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
+        std::vector<std::pair<irs::doc_id_t, irs::string_ref>> expected_values = {
+          { 1, "A" }, { 2, "B" }, { 3, "C" }, { 4, "D" }
+        };
 
-      std::vector<std::pair<irs::doc_id_t, irs::string_ref>> expected_values = {
-        { 1, "abcd" }, { 4, "abcde" }
-      };
+        size_t i = 0;
+        for (; it->next(); ++i) {
+          const auto& expected_value = expected_values[i];
+          const auto actual_str_value = irs::to_string<irs::string_ref>(actual_value.second.c_str());
 
-      size_t i = 0;
-      for (; it->next(); ++i) {
-        const auto& expected_value = expected_values[i];
-        const auto actual_str_value = irs::to_string<irs::string_ref>(actual_value.second.c_str());
-
-        ASSERT_EQ(expected_value.first, actual_value.first);
-        ASSERT_EQ(expected_value.second, actual_str_value);
+          ASSERT_EQ(expected_value.first, actual_value.first);
+          ASSERT_EQ(expected_value.second, actual_str_value);
+        }
+        ASSERT_FALSE(it->next());
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), actual_value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
+        ASSERT_EQ(i, expected_values.size());
       }
-      ASSERT_FALSE(it->next());
-      ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), actual_value.first);
-      ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
-      ASSERT_EQ(i, expected_values.size());
+
+      if (i == 0) {
+        // iterate over 'prefix' column (not cached)
+        auto it = segment.values_iterator("prefix");
+        ASSERT_NE(nullptr, it);
+
+        auto& actual_value = it->value();
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), actual_value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
+
+        std::vector<std::pair<irs::doc_id_t, irs::string_ref>> expected_values = {
+          { 1, "abcd" }, { 4, "abcde" }
+        };
+
+        size_t i = 0;
+        for (; it->next(); ++i) {
+          const auto& expected_value = expected_values[i];
+          const auto actual_str_value = irs::to_string<irs::string_ref>(actual_value.second.c_str());
+
+          ASSERT_EQ(expected_value.first, actual_value.first);
+          ASSERT_EQ(expected_value.second, actual_str_value);
+        }
+        ASSERT_FALSE(it->next());
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), actual_value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
+        ASSERT_EQ(i, expected_values.size());
+      }
+
+      // read attributes from 'prefix' column (sparse)
+      {
+        irs::bytes_ref actual_value;
+        auto value_reader = segment.values("prefix");
+        ASSERT_TRUE(value_reader(1, actual_value));
+        ASSERT_EQ("abcd", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'prefix' value in doc1
+        ASSERT_FALSE(value_reader(2, actual_value)); // doc2 does not contain 'prefix' column
+        ASSERT_EQ("abcd", irs::to_string<irs::string_ref>(actual_value.c_str())); // same as 'prefix' value in doc1
+        ASSERT_TRUE(value_reader(4, actual_value));
+        ASSERT_EQ("abcde", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'prefix' value in doc4
+        ASSERT_FALSE(value_reader(3, actual_value)); // doc3 does not contain 'prefix' column
+        ASSERT_EQ("abcde", irs::to_string<irs::string_ref>(actual_value.c_str())); // same as 'prefix' value in doc4
+        ASSERT_FALSE(value_reader(5, actual_value)); // invalid document id
+        ASSERT_EQ("abcde", irs::to_string<irs::string_ref>(actual_value.c_str())); // same as 'prefix' value in doc4
+      }
+
+      // iterate over 'prefix' column (cached)
+      {
+        auto it = segment.values_iterator("prefix");
+        ASSERT_NE(nullptr, it);
+
+        auto& actual_value = it->value();
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), actual_value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
+
+        std::vector<std::pair<irs::doc_id_t, irs::string_ref>> expected_values = {
+          { 1, "abcd" }, { 4, "abcde" }
+        };
+
+        size_t i = 0;
+        for (; it->next(); ++i) {
+          const auto& expected_value = expected_values[i];
+          const auto actual_str_value = irs::to_string<irs::string_ref>(actual_value.second.c_str());
+
+          ASSERT_EQ(expected_value.first, actual_value.first);
+          ASSERT_EQ(expected_value.second, actual_str_value);
+        }
+        ASSERT_FALSE(it->next());
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), actual_value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
+        ASSERT_EQ(i, expected_values.size());
+      }
     }
   }
 
@@ -2603,7 +2617,9 @@ class index_test_case_base : public tests::index_test_base {
     }
 
     // read attributes
-    {
+    // 0 == i, cached random access
+    // 1 == i, not cached random access
+    for (auto i = 0; i < 2; ++i) {
       auto reader = ir::directory_reader::open(dir());
       ASSERT_EQ(1, reader.size());
 
@@ -2651,8 +2667,8 @@ class index_test_case_base : public tests::index_test_base {
           ASSERT_TRUE(segment.visit(meta->id, visitor));
         }
 
-        // iterate over column (not cached)
-        {
+        if (i == 0) {
+          // iterate over column (not cached)
           gen.reset();
           ir::doc_id_t expected_id = 0;
 
@@ -2790,8 +2806,8 @@ class index_test_case_base : public tests::index_test_base {
           ASSERT_TRUE(segment.visit(meta->id, visitor));
         }
 
-        // iterate over 'label' column (not cached)
-        {
+        if (i == 0) {
+          // iterate over 'label' column (not cached)
           gen.reset();
           ir::doc_id_t expected_id = 0;
 
