@@ -39,8 +39,8 @@ class format_register :
 
 struct empty_column_iterator final : irs::columnstore_reader::column_iterator {
  public:
-  virtual const value_type& value() const override { return MAX; }
-  virtual const value_type& seek(irs::doc_id_t doc) override { return MAX; }
+  virtual const value_type& value() const override { return EOFMAX; }
+  virtual const value_type& seek(irs::doc_id_t doc) override { return EOFMAX; }
   virtual bool next() override { return false; }
 }; // empty_column_iterator
 
@@ -78,7 +78,7 @@ columnstore_reader::~columnstore_reader() {}
   bytes_ref::nil
 };
 
-/* static */ const columnstore_reader::column_iterator::value_type columnstore_reader::column_iterator::MAX{
+/* static */ const columnstore_reader::column_iterator::value_type columnstore_reader::column_iterator::EOFMAX{
   type_limits<type_t::doc_id_t>::eof(),
   bytes_ref::nil
 };

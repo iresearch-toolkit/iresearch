@@ -2966,6 +2966,7 @@ class column_iterator final : public irs::columnstore_reader::column_iterator {
     }
 
     if (begin_ == end_) {
+      it_.seal();
       return false;
     }
 
@@ -2973,7 +2974,7 @@ class column_iterator final : public irs::columnstore_reader::column_iterator {
 
     if (!cached) {
       // unable to load block, seal the iterator
-      it_ = typename block_t::iterator();
+      it_.seal();
       begin_ = end_;
       return false;
     }
@@ -3279,7 +3280,9 @@ class dense_fixed_length_column final : public column {
   virtual columnstore_reader::column_iterator::ptr iterator() const {
     typedef column_iterator<column_t> iterator_t;
 
-    return columnstore_reader::column_iterator::make<iterator_t>(*this);
+    return 0 == size()
+      ? columnstore_reader::empty_iterator()
+      : columnstore_reader::column_iterator::make<iterator_t>(*this);
   }
 
  private:

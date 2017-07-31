@@ -1130,15 +1130,15 @@ class format_test_case_base : public index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& value = it->value();
-        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), value.first);
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), value.first);
         ASSERT_EQ(ir::bytes_ref::nil, value.second);
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), value.first);
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), value.first);
         ASSERT_EQ(ir::bytes_ref::nil, value.second);
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), value.first);
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), value.first);
         ASSERT_EQ(ir::bytes_ref::nil, value.second);
       }
 
@@ -1152,15 +1152,15 @@ class format_test_case_base : public index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& value = it->value();
-        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), value.first);
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), value.first);
         ASSERT_EQ(ir::bytes_ref::nil, value.second);
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), value.first);
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), value.first);
         ASSERT_EQ(ir::bytes_ref::nil, value.second);
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), value.first);
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), value.first);
         ASSERT_EQ(ir::bytes_ref::nil, value.second);
       }
     }
@@ -1213,15 +1213,15 @@ class format_test_case_base : public index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& value = it->value();
-        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), value.first);
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), value.first);
         ASSERT_EQ(ir::bytes_ref::nil, value.second);
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), value.first);
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), value.first);
         ASSERT_EQ(ir::bytes_ref::nil, value.second);
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), value.first);
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), value.first);
         ASSERT_EQ(ir::bytes_ref::nil, value.second);
       }
     }
@@ -1415,15 +1415,15 @@ class format_test_case_base : public index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& value = it->value();
-        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), value.first);
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), value.first);
         ASSERT_EQ(ir::bytes_ref::nil, value.second);
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), value.first);
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), value.first);
         ASSERT_EQ(ir::bytes_ref::nil, value.second);
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), value.first);
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), value.first);
         ASSERT_EQ(ir::bytes_ref::nil, value.second);
       }
 
@@ -1518,6 +1518,8 @@ class format_test_case_base : public index_test_base {
         }
         ASSERT_FALSE(it->next());
         ASSERT_EQ(i, expected_values.size());
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), actual_value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
       }
 
       // partailly visit field0 values (not cached)
@@ -1641,6 +1643,8 @@ class format_test_case_base : public index_test_base {
         }
         ASSERT_FALSE(it->next());
         ASSERT_EQ(i, expected_values.size());
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), actual_value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
       }
 
       // check field1 (multiple values per document)
@@ -1694,6 +1698,8 @@ class format_test_case_base : public index_test_base {
         }
         ASSERT_FALSE(it->next());
         ASSERT_EQ(i, expected_values.size());
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), actual_value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
       }
 
       // visit empty column
@@ -1714,15 +1720,15 @@ class format_test_case_base : public index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& value = it->value();
-        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), value.first);
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), value.first);
         ASSERT_EQ(ir::bytes_ref::nil, value.second);
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), value.first);
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), value.first);
         ASSERT_EQ(ir::bytes_ref::nil, value.second);
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), value.first);
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), value.first);
         ASSERT_EQ(ir::bytes_ref::nil, value.second);
       }
 
@@ -1777,6 +1783,8 @@ class format_test_case_base : public index_test_base {
         }
         ASSERT_FALSE(it->next());
         ASSERT_EQ(i, expected_values.size());
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), actual_value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
       }
     }
 
@@ -1819,6 +1827,8 @@ class format_test_case_base : public index_test_base {
         }
         ASSERT_FALSE(it->next());
         ASSERT_EQ(i, expected_values.size());
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), actual_value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
       }
 
       // check field0
@@ -1856,6 +1866,8 @@ class format_test_case_base : public index_test_base {
         }
         ASSERT_FALSE(it->next());
         ASSERT_EQ(i, expected_values.size());
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), actual_value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
       }
     }
   }
@@ -1909,6 +1921,8 @@ class format_test_case_base : public index_test_base {
         }
         ASSERT_FALSE(it->next());
         ASSERT_EQ(i, expected_values.size());
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), actual_value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
       }
 
       // read field values
@@ -1950,6 +1964,8 @@ class format_test_case_base : public index_test_base {
         }
         ASSERT_FALSE(it->next());
         ASSERT_EQ(i, expected_values.size());
+        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), actual_value.first);
+        ASSERT_EQ(ir::bytes_ref::nil, actual_value.second);
       }
     }
   }
