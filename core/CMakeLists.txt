@@ -105,6 +105,7 @@ set(IResearch_core_sources
   ./search/prefix_filter.cpp
   ./search/range_filter.cpp
   ./search/phrase_filter.cpp
+  ./search/column_existence_filter.cpp
   ./search/same_position_filter.cpp
   ./search/range_query.cpp
   ./search/term_query.cpp
@@ -170,6 +171,7 @@ set(IResearch_core_headers
   ./search/same_position_filter.hpp
   ./search/prefix_filter.hpp
   ./search/range_filter.hpp
+  ./search/column_existence_filter.hpp
   ./search/range_query.hpp
   ./search/term_query.hpp
   ./search/boolean_filter.hpp
