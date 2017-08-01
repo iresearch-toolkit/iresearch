@@ -2202,6 +2202,12 @@ class sparse_block : util::noncopyable {
       it_ = begin_ = std::begin(block.index_);
       end_ = block.end_;
       data_ = &block.data_;
+
+      assert(std::is_sorted(
+        begin_, end_,
+        [](const sparse_block::ref& lhs, const sparse_block::ref& rhs) {
+          return lhs.key < rhs.key;
+      }));
     }
 
    private:
@@ -2330,7 +2336,7 @@ class dense_block : util::noncopyable {
     bool seek(doc_id_t doc) NOEXCEPT {
       const auto relative = doc - base_;
 
-      if (relative >= std::distance(begin_, end_)) {
+      if (relative >= size_) {
         seal();
         return false;
       }
@@ -2371,6 +2377,7 @@ class dense_block : util::noncopyable {
     void seal() NOEXCEPT {
       value_ = columnstore_reader::column_iterator::EOFMAX;
       it_ = begin_ = end_ = nullptr;
+      size_ = 0;
       base_ = 0;
     }
 
@@ -2379,6 +2386,7 @@ class dense_block : util::noncopyable {
       value_.second = bytes_ref::nil;
       it_ = begin_ = std::begin(block.index_);
       end_ = block.end_;
+      size_ = std::distance(begin_, end_);
       data_ = &block.data_;
       base_ = block.base_;
     }
@@ -2389,6 +2397,7 @@ class dense_block : util::noncopyable {
     const uint64_t* it_{};
     const uint64_t* begin_{};
     const uint64_t* end_{};
+    size_t size_{ std::distance(begin_, end_) };
     const bstring* data_{};
   }; // iterator
 
@@ -2511,7 +2520,7 @@ class dense_fixed_length_block : util::noncopyable {
       value_.second = bytes_ref(data_->c_str() + offset_, avg_length_);
 
       offset_ += avg_length_;
-      left_ = size_ - relative;
+      left_ = size_ - relative - 1;
 
       return true;
     }
@@ -2662,6 +2671,8 @@ class sparse_mask_block : util::noncopyable {
       value_ = columnstore_reader::column_iterator::INVALID;
       it_ = begin_ = std::begin(block.keys_);
       end_ = begin_ + block.size_;
+
+      assert(std::is_sorted(begin_, end_));
     }
 
    private:
@@ -2730,107 +2741,15 @@ class sparse_mask_block : util::noncopyable {
   doc_id_t size_{}; // number of documents in a block
 }; // sparse_mask_block
 
-class dense_mask_block {
- public:
-  class iterator {
-   public:
-    typedef columnstore_reader::column_iterator::value_type value_t;
-
-    iterator() = default;
-
-    const value_t& value() const NOEXCEPT {
-      return value_;
-    }
-
-    bool seek(doc_id_t doc) NOEXCEPT {
-      if ((doc - min_) >= size_) {
-        seal();
-        return false;
-      }
-
-      left_ = size_ - doc;
-      value_.first = doc;
-
-      return true;
-    }
-
-    bool next() NOEXCEPT {
-      if (!left_) {
-        return false;
-      }
-
-      --left_;
-      ++value_.first;
-
-      return true;
-    }
-
-    void seal() NOEXCEPT {
-      value_ = columnstore_reader::column_iterator::EOFMAX;
-      left_ = 0;
-      min_ = 0;
-    }
-
-    void reset(const dense_mask_block& block) NOEXCEPT {
-      value_.first = block.min_ - 1;
-      value_.second = bytes_ref::nil;
-      left_ = size_ = block.size_;
-      min_ = block.min_;
-    }
-
-   private:
-    value_t value_ { columnstore_reader::column_iterator::INVALID };
-    size_t left_{};
-    size_t min_{};
-    size_t size_{};
-  }; // iterator
-
-  bool load(index_input& in, decompressor& /*decomp*/, bstring& /*buf*/) {
-    size_ = in.read_vlong(); // total number of elements in a block
-    assert(size_);
-
-    // dense block must be encoded with RL encoding, avg must be equal to 1
-    uint64_t avg;
-    if (!encode::avg::read_block_rl64(in, min_, avg) || 1 != avg) {
-      // invalid block type
-      return false;
-    }
-
-    // mask block has no data, so all offsets must be equal to 0
-    if (!encode::avg::check_block_rl64(in, 0)) {
-      // invalid block type
-      return false;
-    }
-
-    return true;
-  }
-
-  bool value(doc_id_t key, bytes_ref& /*reader*/) const {
-    // expect 0-based key
-    return key < size_;
-  }
-
-  bool visit(const columnstore_reader::values_reader_f& visitor) const {
-    doc_id_t key = min_;
-    for (const auto max = min_ + size_; key < max; ++key) {
-      if (!visitor(key, DUMMY)) {
-        return false;
-      }
-    }
-    return true;
-  }
-
- private:
-  doc_id_t min_{}; // min key
-  doc_id_t size_{}; // number of documents in a block
-}; // dense_mask_block
+// placeholder for 'dense_fixed_length_column' specialization
+// doesn't store any data
+struct dense_mask_block;
 
 template<typename Allocator = std::allocator<sparse_block>>
 class read_context
   : public block_cache_traits<sparse_block, Allocator>::cache_t,
     public block_cache_traits<dense_block, Allocator>::cache_t,
     public block_cache_traits<dense_fixed_length_block, Allocator>::cache_t,
-    public block_cache_traits<dense_mask_block, Allocator>::cache_t,
     public block_cache_traits<sparse_mask_block, Allocator>::cache_t {
  public:
   DECLARE_SPTR(read_context);
@@ -2843,7 +2762,6 @@ class read_context
     : block_cache_traits<sparse_block, Allocator>::cache_t(typename block_cache_traits<sparse_block, Allocator>::allocator_t(alloc)),
       block_cache_traits<dense_block, Allocator>::cache_t(typename block_cache_traits<dense_block, Allocator>::allocator_t(alloc)),
       block_cache_traits<dense_fixed_length_block, Allocator>::cache_t(typename block_cache_traits<dense_fixed_length_block, Allocator>::allocator_t(alloc)),
-      block_cache_traits<dense_mask_block, Allocator>::cache_t(typename block_cache_traits<dense_mask_block, Allocator>::allocator_t(alloc)),
       block_cache_traits<sparse_mask_block, Allocator>::cache_t(typename block_cache_traits<sparse_mask_block, Allocator>::allocator_t(alloc)),
       buf_(INDEX_BLOCK_SIZE*sizeof(uint64_t), 0),
       stream_(std::move(in)) {
@@ -2996,7 +2914,7 @@ class column : private util::noncopyable {
   virtual bool value(doc_id_t key, bytes_ref& out) const = 0;
 
   virtual bool visit(
-    const columnstore_reader::values_reader_f& visitor
+    const columnstore_reader::values_visitor_f& visitor
   ) const = 0;
 
   virtual columnstore_reader::column_iterator::ptr iterator() const {
@@ -3196,7 +3114,7 @@ class sparse_column final : public column {
     return cached->value(key, value);
   };
 
-  virtual bool visit(const columnstore_reader::values_reader_f& visitor) const {
+  virtual bool visit(const columnstore_reader::values_visitor_f& visitor) const {
     block_t block; // don't cache new blocks
     for (auto begin = refs_.begin(), end = refs_.end()-1; begin != end; ++begin) { // -1 for upper bound
       const auto* cached = load_block(*ctxs_, *begin, block);
@@ -3244,6 +3162,10 @@ class sparse_column final : public column {
   typedef std::vector<block_ref> refs_t;
 
   typename refs_t::const_iterator seek_to_block(doc_id_t key) const NOEXCEPT {
+    if (key <= refs_.front().key) {
+      return refs_.begin();
+    }
+
     const auto rbegin = refs_.rbegin(); // upper bound
     const auto rend = refs_.rend();
     const auto it = std::lower_bound(
@@ -3252,7 +3174,7 @@ class sparse_column final : public column {
         return lhs.key > rhs;
     });
 
-    if (it == rend || it == rbegin) {
+    if (it == rend) {
       return refs_.end() - 1; // -1 for upper bound
     }
 
@@ -3354,7 +3276,7 @@ class dense_fixed_length_column final : public column {
     return cached->value(key -= block_idx*this->avg_block_count(), value);
   }
 
-  virtual bool visit(const columnstore_reader::values_reader_f& visitor) const {
+  virtual bool visit(const columnstore_reader::values_visitor_f& visitor) const {
     block_t block; // don't cache new blocks
     for (auto& ref : refs_) {
       const auto* cached = load_block(*ctxs_, ref, block);
@@ -3402,6 +3324,10 @@ class dense_fixed_length_column final : public column {
   typedef std::vector<block_ref> refs_t;
 
   typename refs_t::const_iterator seek_to_block(doc_id_t key) const NOEXCEPT {
+    if (key < min_) {
+      return refs_.begin();
+    }
+
     if ((key -= min_) >= this->size()) {
       return refs_.end();
     }
@@ -3416,6 +3342,139 @@ class dense_fixed_length_column final : public column {
   refs_t refs_;
   doc_id_t min_{}; // min key
 }; // dense_fixed_length_column
+
+template<>
+class dense_fixed_length_column<dense_mask_block> final : public column {
+ public:
+  typedef dense_fixed_length_column column_t;
+
+  static column::ptr make(const context_provider&, ColumnProperty props) {
+    return memory::make_unique<column_t>(props);
+  }
+
+  dense_fixed_length_column(ColumnProperty prop) NOEXCEPT
+    : column(prop) {
+  }
+
+  virtual bool read(data_input& in, uint64_t* buf) override {
+    // we treat data in blocks as "garbage" which could be
+    // potentially removed on merge, so we don't validate
+    // column properties using such blocks
+
+    if (!column::read(in, buf)) {
+      return false;
+    }
+
+    size_t blocks_count = in.read_vlong(); // total number of column index blocks
+
+    while (blocks_count >= INDEX_BLOCK_SIZE) {
+      if (!encode::avg::check_block_rl64(in, this->avg_block_count())) {
+        // invalid column type
+        return false;
+      }
+
+      // skip offsets, they point to "garbage" data
+      encode::avg::visit_block_packed(
+        in, INDEX_BLOCK_SIZE, buf,
+        [](uint64_t ) {}
+      );
+
+      blocks_count -= INDEX_BLOCK_SIZE;
+    }
+
+    // tail block
+    if (blocks_count) {
+      const auto avg_block_count = blocks_count > 1
+        ? this->avg_block_count()
+        : 0; // in this case avg == 0
+
+      if (!encode::avg::check_block_rl64(in, avg_block_count)) {
+        // invalid column type
+        return false;
+      }
+
+      // skip offsets, they point to "garbage" data
+      encode::avg::visit_block_packed_tail(
+        in, INDEX_BLOCK_SIZE, buf,
+        [](uint64_t ) { }
+      );
+    }
+
+
+    min_ = this->max() - this->size();
+
+    return true;
+  }
+
+  virtual bool value(doc_id_t key, bytes_ref& value) const NOEXCEPT {
+    value = bytes_ref::nil;
+    return key > min_ && key <= this->max();
+  }
+
+  virtual bool visit(const columnstore_reader::values_visitor_f& visitor) const {
+    auto doc = min_;
+
+    for (auto left = this->size(); left; --left) {
+      if (!visitor(++doc, bytes_ref::nil)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  virtual columnstore_reader::column_iterator::ptr iterator() const;
+ private:
+  class column_iterator final : public columnstore_reader::column_iterator {
+   public:
+    explicit column_iterator(const dense_fixed_length_column& column) NOEXCEPT
+      : min_(column.min_), max_(column.max()), column_(&column) {
+    }
+
+    virtual const value_type& value() const NOEXCEPT override {
+      return value_;
+    }
+
+    virtual const value_type& seek(irs::doc_id_t doc) NOEXCEPT override {
+      auto min = column_->min_;
+
+      if (doc < min) {
+        min_ = min;
+      } else if (doc > max_) {
+        min_ = type_limits<type_t::doc_id_t>::eof();
+      } else {
+        min_ = doc;
+      }
+
+      value_.first = min_;
+      return value();
+    }
+
+    virtual bool next() NOEXCEPT override {
+      if (min_ >= max_) {
+        value_.first = type_limits<type_t::doc_id_t>::eof();
+        return false;
+      }
+
+      value_.first = ++min_;
+      return true;
+    }
+
+   private:
+    value_type value_{ columnstore_reader::column_iterator::INVALID };
+    doc_id_t min_{ type_limits<type_t::doc_id_t>::invalid() };
+    doc_id_t max_{ type_limits<type_t::doc_id_t>::invalid() };
+    const dense_fixed_length_column* column_;
+  }; // column_iterator
+
+  doc_id_t min_{}; // min key
+}; // dense_fixed_length_column
+
+columnstore_reader::column_iterator::ptr dense_fixed_length_column<dense_mask_block>::iterator() const {
+  return 0 == size()
+    ? column::iterator()
+    : columnstore_reader::column_iterator::make<column_iterator>(*this);
+}
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                 column factories
