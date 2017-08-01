@@ -2397,7 +2397,7 @@ class dense_block : util::noncopyable {
     const uint64_t* it_{};
     const uint64_t* begin_{};
     const uint64_t* end_{};
-    size_t size_{ std::distance(begin_, end_) };
+    size_t size_{ size_t(std::distance(begin_, end_)) };
     const bstring* data_{};
   }; // iterator
 
@@ -3438,8 +3438,8 @@ class dense_fixed_length_column<dense_mask_block> final : public column {
     virtual const value_type& seek(irs::doc_id_t doc) NOEXCEPT override {
       auto min = column_->min_;
 
-      if (doc < min) {
-        min_ = min;
+      if (doc <= min) {
+        min_ = ++min;
       } else if (doc > max_) {
         min_ = type_limits<type_t::doc_id_t>::eof();
       } else {
