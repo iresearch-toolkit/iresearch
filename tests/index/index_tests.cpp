@@ -1864,8 +1864,10 @@ class index_test_case_base : public tests::index_test_base {
         irs::doc_id_t expected_doc = 2;
         for (; expected_doc <= MAX_DOCS; ) {
           ASSERT_EQ(&actual_value, &(it->seek(expected_doc)));
-          ASSERT_EQ(&actual_value, &(it->seek(expected_doc-1))); // seek before the existing key (value should remain the same)
+          ASSERT_EQ(expected_doc, actual_value.first);
+          ASSERT_EQ(irs::bytes_ref::nil, actual_value.second);
 
+          ASSERT_EQ(&actual_value, &(it->seek(expected_doc-1))); // seek before the existing key (value should remain the same)
           ASSERT_EQ(expected_doc, actual_value.first);
           ASSERT_EQ(irs::bytes_ref::nil, actual_value.second);
 
@@ -1896,8 +1898,10 @@ class index_test_case_base : public tests::index_test_base {
         size_t docs_count = 0;
         for (; expected_doc <= MAX_DOCS; ) {
           ASSERT_EQ(&actual_value, &(it->seek(expected_doc-1)));
-          ASSERT_EQ(&actual_value, &(it->seek(expected_doc))); // seek to the existing key (value should remain the same)
+          ASSERT_EQ(expected_doc, actual_value.first);
+          ASSERT_EQ(irs::bytes_ref::nil, actual_value.second);
 
+          ASSERT_EQ(&actual_value, &(it->seek(expected_doc))); // seek to the existing key (value should remain the same)
           ASSERT_EQ(expected_doc, actual_value.first);
           ASSERT_EQ(irs::bytes_ref::nil, actual_value.second);
 
@@ -4624,15 +4628,18 @@ class index_test_case_base : public tests::index_test_base {
         irs::doc_id_t expected_value = 1;
         size_t docs = 0;
         for (; expected_doc <= MAX_DOCS; ) {
-          ASSERT_EQ(&actual_value, &(it->seek(expected_doc)));
-          ASSERT_EQ(&actual_value, &(it->seek(expected_value))); // seek before the existing key (value should remain the same)
-          const auto actual_str_value = irs::to_string<irs::string_ref>(actual_value.second.c_str());
-
           auto expected_value_str  = std::to_string(expected_value);
           if (expected_value % 3) {
             expected_value_str.append(column_name.c_str(), column_name.size());
           }
 
+          ASSERT_EQ(&actual_value, &(it->seek(expected_doc)));
+          auto actual_str_value = irs::to_string<irs::string_ref>(actual_value.second.c_str());
+          ASSERT_EQ(expected_doc, actual_value.first);
+          ASSERT_EQ(expected_value_str, actual_str_value);
+
+          ASSERT_EQ(&actual_value, &(it->seek(expected_value))); // seek before the existing key (value should remain the same)
+          actual_str_value = irs::to_string<irs::string_ref>(actual_value.second.c_str());
           ASSERT_EQ(expected_doc, actual_value.first);
           ASSERT_EQ(expected_value_str, actual_str_value);
 
@@ -4664,15 +4671,18 @@ class index_test_case_base : public tests::index_test_base {
         irs::doc_id_t expected_value = 1;
         size_t docs = 0;
         for (; expected_doc <= MAX_DOCS; ) {
-          ASSERT_EQ(&actual_value, &(it->seek(expected_value)));
-          ASSERT_EQ(&actual_value, &(it->seek(expected_doc))); // seek to the existing key (value should remain the same)
-          const auto actual_str_value = irs::to_string<irs::string_ref>(actual_value.second.c_str());
-
           auto expected_value_str  = std::to_string(expected_value);
           if (expected_value % 3) {
             expected_value_str.append(column_name.c_str(), column_name.size());
           }
 
+          ASSERT_EQ(&actual_value, &(it->seek(expected_value)));
+          auto actual_str_value = irs::to_string<irs::string_ref>(actual_value.second.c_str());
+          ASSERT_EQ(expected_doc, actual_value.first);
+          ASSERT_EQ(expected_value_str, actual_str_value);
+
+          ASSERT_EQ(&actual_value, &(it->seek(expected_doc))); // seek to the existing key (value should remain the same)
+          actual_str_value = irs::to_string<irs::string_ref>(actual_value.second.c_str());
           ASSERT_EQ(expected_doc, actual_value.first);
           ASSERT_EQ(expected_value_str, actual_str_value);
 
