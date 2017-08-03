@@ -3230,16 +3230,19 @@ class index_test_case_base : public tests::index_test_base {
         auto& actual_value = it->value();
         ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
 
-        auto expected_value = MAX_DOCS-1;
-        ASSERT_EQ(&actual_value, &it->seek(expected_value));
+        auto expected_doc = MAX_DOCS-1;
+        auto expected_value = expected_doc-1;
+        ASSERT_EQ(&actual_value, &it->seek(expected_doc));
         auto actual_value_str = irs::to_string<irs::string_ref>(actual_value.second.c_str());
 
-        ASSERT_EQ(expected_value, actual_value.first);
+        ASSERT_EQ(expected_doc, actual_value.first);
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
 
-        expected_value = MAX_DOCS;
+        ++expected_doc;
+        ++expected_value;
         ASSERT_TRUE(it->next());
-        ASSERT_EQ(expected_value, actual_value.first);
+        actual_value_str = irs::to_string<irs::string_ref>(actual_value.second.c_str());
+        ASSERT_EQ(expected_doc, actual_value.first);
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
 
         ASSERT_FALSE(it->next());
@@ -3959,24 +3962,26 @@ class index_test_case_base : public tests::index_test_base {
         auto& actual_value = it->value();
         ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
 
-        auto expected_value = MAX_DOCS-1;
-        ASSERT_EQ(&actual_value, &it->seek(expected_value));
+        auto expected_doc = MAX_DOCS-1;
+        auto expected_value = expected_doc-1;
+        ASSERT_EQ(&actual_value, &it->seek(expected_doc));
         auto actual_value_str = irs::to_string<irs::string_ref>(actual_value.second.c_str());
 
         auto expected_value_str  = std::to_string(expected_value);
         if (expected_value % 2) {
           expected_value_str.append(column_name.c_str(), column_name.size());
         }
-        ASSERT_EQ(expected_value, actual_value.first);
+        ASSERT_EQ(expected_doc, actual_value.first);
         ASSERT_EQ(expected_value_str, actual_value_str);
 
-        expected_value = MAX_DOCS;
+        ++expected_doc;
+        ++expected_value;
         expected_value_str  = std::to_string(expected_value);
         if (expected_value % 2) {
           expected_value_str.append(column_name.c_str(), column_name.size());
         }
         ASSERT_TRUE(it->next());
-        ASSERT_EQ(expected_value, actual_value.first);
+        ASSERT_EQ(expected_doc, actual_value.first);
         ASSERT_EQ(expected_value_str, irs::to_string<irs::string_ref>(actual_value.second.c_str()));
 
         ASSERT_FALSE(it->next());
@@ -9748,6 +9753,7 @@ TEST_F(fs_index_test, open_writer) {
 }
 
 TEST_F(fs_index_test, read_write_doc_attributes) {
+  //static_assert(false, "add check: seek to the end, seek backwards, seek to the end again");
   read_write_doc_attributes_sparse_variable_length();
   read_write_doc_attributes_sparse_mask();
   read_write_doc_attributes_dense_variable_length();
