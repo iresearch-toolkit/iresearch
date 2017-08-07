@@ -129,7 +129,8 @@ class format_test_case_base : public index_test_base {
     }
 
     ir::doc_id_t seek(ir::doc_id_t target) {
-      return ir::seek(*this, target);
+      ir::seek(*this, target);
+      return value();
     }
 
     const irs::attribute_store& attributes() const NOEXCEPT {
