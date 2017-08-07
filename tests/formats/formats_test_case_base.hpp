@@ -2038,7 +2038,7 @@ class format_test_case_base : public index_test_base {
           { 5, 8 },
           { 9, 9 },
           { 10, irs::type_limits<irs::type_t::doc_id_t>::eof() },
-          { 6, 8 },
+          { 6, irs::type_limits<irs::type_t::doc_id_t>::eof() },
           { 10, irs::type_limits<irs::type_t::doc_id_t>::eof() }
         };
 
