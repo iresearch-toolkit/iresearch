@@ -2165,7 +2165,7 @@ class sparse_block : util::noncopyable {
     }
 
     bool seek(doc_id_t doc) NOEXCEPT {
-      it_ = std::lower_bound(
+      next_ = std::lower_bound(
         begin_, end_, doc,
         [](const ref& lhs, doc_id_t rhs) {
           return lhs.key < rhs;
@@ -2175,14 +2175,15 @@ class sparse_block : util::noncopyable {
     }
 
     bool next() NOEXCEPT {
-      if (it_ == end_) {
+      if (next_ == end_) {
         return false;
       }
 
-      value_.first = it_->key;
-      const auto vbegin = it_->offset;
-      begin_ = it_;
-      const auto vend = (++it_ == end_ ? data_->size() : it_->offset);
+      value_.first = next_->key;
+      const auto vbegin = next_->offset;
+
+      begin_ = next_;
+      const auto vend = (++next_ == end_ ? data_->size() : next_->offset);
 
       assert(vend >= vbegin);
       value_.second = bytes_ref(
@@ -2195,12 +2196,12 @@ class sparse_block : util::noncopyable {
 
     void seal() NOEXCEPT {
       value_ = columnstore_reader::column_iterator::EOFMAX;
-      it_ = begin_ = end_ = nullptr;
+      next_ = begin_ = end_;
     }
 
     void reset(const sparse_block& block) NOEXCEPT {
       value_ = columnstore_reader::column_iterator::INVALID;
-      it_ = begin_ = std::begin(block.index_);
+      next_ = begin_ = std::begin(block.index_);
       end_ = block.end_;
       data_ = &block.data_;
 
@@ -2221,7 +2222,7 @@ class sparse_block : util::noncopyable {
 
    private:
     value_t value_{ columnstore_reader::column_iterator::INVALID };
-    const sparse_block::ref* it_{}; // current position
+    const sparse_block::ref* next_{}; // next position
     const sparse_block::ref* begin_{};
     const sparse_block::ref* end_{};
     const bstring* data_{};
@@ -2344,10 +2345,9 @@ class dense_block : util::noncopyable {
 
     bool seek(doc_id_t doc) NOEXCEPT {
       if (doc <= value_.first) {
-        // before the next element
+        // before the current element
         doc = value_.first;
       }
-
 
       // FIXME refactor
       it_ = begin_ + doc - base_;
@@ -2358,7 +2358,6 @@ class dense_block : util::noncopyable {
     bool next() NOEXCEPT {
       if (it_ >= end_) {
         // after the last element
-        seal();
         return false;
       }
 
@@ -2370,7 +2369,7 @@ class dense_block : util::noncopyable {
 
     void seal() NOEXCEPT {
       value_ = columnstore_reader::column_iterator::EOFMAX;
-      it_ = begin_ = end_ = nullptr;
+      it_ = begin_ = end_;
     }
 
     void reset(const dense_block& block) NOEXCEPT {
@@ -2521,6 +2520,7 @@ class dense_fixed_length_block : util::noncopyable {
         doc = value_.first;
       }
 
+      // FIXME refactor
       begin_ = avg_length_*(doc-base_);
 
       return next();
@@ -2528,7 +2528,6 @@ class dense_fixed_length_block : util::noncopyable {
 
     bool next() NOEXCEPT {
       if (begin_ >= end_) {
-        seal();
         return false;
       }
 
@@ -2540,15 +2539,14 @@ class dense_fixed_length_block : util::noncopyable {
 
     void seal() NOEXCEPT {
       value_ = columnstore_reader::column_iterator::EOFMAX;
-      base_ = 0;
-      end_ = 0;
+      begin_ = end_ = 0;
     }
 
     void reset(const dense_fixed_length_block& block) NOEXCEPT {
-      value_.first = block.base_key_; // before the first value
+      value_.first = block.base_key_;
       value_.second = bytes_ref::nil;
-      begin_ = 0; //block.base_offset_;
-      end_ = begin_ + block.avg_length_*block.size_;
+      begin_ = 0;
+      end_ = block.avg_length_*block.size_;
       avg_length_ = block.avg_length_;
       base_ = block.base_key_;
       data_ = &block.data_;
@@ -2563,7 +2561,7 @@ class dense_fixed_length_block : util::noncopyable {
     }
 
    private:
-    // note that function increases 'offset_' value
+    // note that function increases 'begin_' value
     void next_value() NOEXCEPT {
       value_.second = bytes_ref(data_->c_str() + begin_, avg_length_);
       begin_ += avg_length_;
@@ -3008,6 +3006,7 @@ class column_iterator final : public irs::columnstore_reader::column_iterator {
     if (begin_ == end_) {
       // reached the end of the column
       block_.seal();
+      seek_origin_ = end_;
       return false;
     }
 
