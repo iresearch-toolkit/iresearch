@@ -212,7 +212,8 @@ class doc_iterator : public iresearch::doc_iterator {
     }
 
     seek_to_block(target);
-    return iresearch::seek(*this, target);
+    iresearch::seek(*this, target);
+    return value();
   }
 
   virtual doc_id_t value() const override {

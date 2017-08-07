@@ -62,11 +62,13 @@ struct IRESEARCH_API score_doc_iterator: doc_iterator {
 //////////////////////////////////////////////////////////////////////////////
 /// @brief jumps iterator to the specified target and returns current value
 /// of the iterator
+/// @returns 'false' if iterator exhausted, true otherwise
 //////////////////////////////////////////////////////////////////////////////
 template<typename Iterator, typename T, typename Less = std::less<T>>
-T seek(Iterator& it, const T& target, Less less = Less()) {
-  while (less(it.value(), target) && it.next());
-  return it.value();
+bool seek(Iterator& it, const T& target, Less less = Less()) {
+  bool next = true;
+  while (less(it.value(), target) && (next = it.next()));
+  return next;
 }
 
 // ----------------------------------------------------------------------------

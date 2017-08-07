@@ -110,7 +110,8 @@ struct compound_doc_iterator : public irs::doc_iterator {
   virtual bool next() override;
 
   virtual irs::doc_id_t seek(irs::doc_id_t target) override {
-    return irs::seek(*this, target);
+    irs::seek(*this, target);
+    return value();
   }
 
   virtual irs::doc_id_t value() const override {

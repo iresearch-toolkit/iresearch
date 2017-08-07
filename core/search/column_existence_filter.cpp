@@ -22,26 +22,32 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "column_existence_filter.hpp"
-#include "index/index_reader.hpp"
+#include "index/field_meta.hpp"
 #include "search/score_doc_iterators.hpp"
+#include "search/disjunction.hpp"
 
 #include <boost/functional/hash.hpp>
 
 NS_LOCAL
 
-class colum_existence_iterator final : public irs::score_doc_iterator_base {
+class column_existence_iterator final : public irs::score_doc_iterator_base {
  public:
-  explicit colum_existence_iterator(
-      irs::columnstore_reader::column_iterator::ptr&& it) NOEXCEPT
-    : score_doc_iterator_base(irs::order::prepared::unordered()),
-      it_(std::move(it)),
-      value_(it->value().first) {
+  explicit column_existence_iterator(
+      irs::columnstore_reader::column_iterator::ptr&& it,
+      const irs::order::prepared& ord,
+      irs::cost::cost_t estimation) NOEXCEPT
+    : score_doc_iterator_base(ord),
+      it_(std::move(it)) {
+    assert(it_);
+
+    // set estimation value
+    attrs_.emplace<irs::cost>()->value(estimation);
   }
 
   virtual void score() override { }
 
-  virtual irs::doc_id_t value() const override {
-    return value_;
+  virtual irs::doc_id_t value() const NOEXCEPT override {
+    return it_->value().first;
   }
 
   virtual bool next() override {
@@ -50,13 +56,12 @@ class colum_existence_iterator final : public irs::score_doc_iterator_base {
 
   virtual irs::doc_id_t seek(irs::doc_id_t target) override {
     it_->seek(target);
-    return value_;
+    return value();
   }
 
  private:
   irs::columnstore_reader::column_iterator::ptr it_;
-  const irs::doc_id_t& value_;
-}; // colum_existence_iterator
+}; // column_existence_iterator
 
 class column_existence_query final : public irs::filter::prepared {
  public:
@@ -66,15 +71,57 @@ class column_existence_query final : public irs::filter::prepared {
 
   virtual irs::score_doc_iterator::ptr execute(
       const irs::sub_reader& rdr,
-      const irs::order::prepared&) const override {
-    return irs::score_doc_iterator::make<colum_existence_iterator>(
-      rdr.values_iterator(field_)
+      const irs::order::prepared& ord) const override {
+    return irs::score_doc_iterator::make<column_existence_iterator>(
+      rdr.values_iterator(field_), ord, 0 // FIXME cost estimation
     );
   }
 
  private:
   std::string field_;
 }; // column_existence_query
+
+class column_prefix_existence_query final : public irs::filter::prepared {
+ public:
+  explicit column_prefix_existence_query(const std::string& prefix)
+    : prefix_(prefix) {
+  }
+
+  virtual irs::score_doc_iterator::ptr execute(
+      const irs::sub_reader& rdr,
+      const irs::order::prepared& ord) const override {
+    auto it = rdr.columns();
+
+    // FIXME seek
+    irs::seek(
+      *it, prefix_,
+      [](const irs::column_meta& lhs, const std::string& rhs) {
+        return lhs.name < rhs;
+    });
+
+    const auto& name = it->value().name;
+
+    std::vector<column_existence_iterator::ptr> itrs;
+    while (irs::starts_with(name, prefix_) && it->next()) {
+      auto it = irs::memory::make_unique<column_existence_iterator>(
+        rdr.values_iterator(name), ord, 0 // FIXME cost estimation
+      );
+
+      itrs.emplace_back(std::move(it));
+    }
+
+    typedef irs::detail::disjunction<
+      column_existence_iterator::ptr
+    > disjunction_t;
+
+    return irs::detail::make_disjunction<disjunction_t>(
+      std::move(itrs), 1, ord
+    );
+  }
+
+ private:
+  std::string prefix_;
+}; // column_prefix_existence_query
 
 NS_END
 
@@ -87,19 +134,23 @@ NS_ROOT
 DEFINE_FILTER_TYPE(by_column_existence);
 DEFINE_FACTORY_DEFAULT(by_column_existence);
 
-by_column_existence::by_column_existence()
+by_column_existence::by_column_existence() NOEXCEPT
   : filter(by_column_existence::type()) {
 }
 
 bool by_column_existence::equals(const filter& rhs) const {
-  const by_column_existence& trhs = static_cast<const by_column_existence&>(rhs);
-  return filter::equals(rhs) && field_ == trhs.field_;
+  const auto& trhs = static_cast<const by_column_existence&>(rhs);
+
+  return filter::equals(rhs)
+    && field_ == trhs.field_
+    && prefix_match_ == trhs.prefix_match_;
 }
 
 size_t by_column_existence::hash() const {
   size_t seed = 0;
   ::boost::hash_combine(seed, filter::hash());
   ::boost::hash_combine(seed, field_);
+  ::boost::hash_combine(seed, prefix_match_);
   return seed;
 }
 
@@ -107,6 +158,10 @@ filter::prepared::ptr by_column_existence::prepare(
     const index_reader&,
     const order::prepared&,
     boost_t) const {
+  if (prefix_match_) {
+    return memory::make_unique<column_prefix_existence_query>(field_);
+  }
+
   return memory::make_unique<column_existence_query>(field_);
 }
 

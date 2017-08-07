@@ -12,10 +12,11 @@
 #include "tests_shared.hpp"
 #include "filter_test_case_base.hpp"
 #include "formats/formats_10.hpp" 
-#include "store/memory_directory.hpp"
 #include "filter_test_case_base.hpp"
 #include "analysis/token_attributes.hpp"
 #include "search/phrase_filter.hpp"
+#include "store/memory_directory.hpp"
+#include "store/fs_directory.hpp"
 
 namespace ir = iresearch;
 
@@ -566,12 +567,13 @@ TEST(by_phrase_test, equal) {
     q0.field("name");
     q0.push_back("quick");
     q0.push_back("brown");
-    
+
     ir::by_phrase q1;
     q1.field("name");
     q1.push_back("quick");
     q1.push_back("brown");
     ASSERT_EQ(q0, q1);
+    ASSERT_EQ(q0.hash(), q1.hash());
   }
 
   {
@@ -579,32 +581,32 @@ TEST(by_phrase_test, equal) {
     q0.field("name");
     q0.push_back("quick");
     q0.push_back("squirrel");
-    
+
     ir::by_phrase q1;
     q1.field("name");
     q1.push_back("quick");
     q1.push_back("brown");
     ASSERT_NE(q0, q1);
   }
-  
+
   {
     ir::by_phrase q0;
     q0.field("name1");
     q0.push_back("quick");
     q0.push_back("brown");
-    
+
     ir::by_phrase q1;
     q1.field("name");
     q1.push_back("quick");
     q1.push_back("brown");
     ASSERT_NE(q0, q1);
   }
-  
+
   {
     ir::by_phrase q0;
     q0.field("name");
     q0.push_back("quick");
-    
+
     ir::by_phrase q1;
     q1.field("name");
     q1.push_back("quick");
@@ -619,13 +621,13 @@ TEST(by_phrase_test, equal) {
 
 class memory_phrase_filter_test_case : public tests::phrase_filter_test_case {
 protected:
-  virtual ir::directory* get_directory() override {
-    return new ir::memory_directory();
+  virtual irs::directory* get_directory() override {
+    return new irs::memory_directory();
   }
 
-  virtual ir::format::ptr get_codec() override {
-    static ir::version10::format FORMAT;
-    return ir::format::ptr(&FORMAT, [](ir::format*)->void{});
+  virtual irs::format::ptr get_codec() override {
+    static irs::version10::format FORMAT;
+    return irs::format::ptr(&FORMAT, [](irs::format*)->void{});
   }
 };
 
@@ -639,13 +641,14 @@ TEST_F(memory_phrase_filter_test_case, by_phrase) {
 
 class fs_phrase_filter_test_case : public tests::phrase_filter_test_case {
 protected:
-  virtual ir::directory* get_directory() override {
-    return new ir::memory_directory();
+  virtual irs::directory* get_directory() override {
+    const fs::path dir = fs::path(test_dir()).append("index");
+    return new irs::fs_directory(dir.string());
   }
 
-  virtual ir::format::ptr get_codec() override {
-    static ir::version10::format FORMAT;
-    return ir::format::ptr(&FORMAT, [](ir::format*)->void{});
+  virtual irs::format::ptr get_codec() override {
+    static irs::version10::format FORMAT;
+    return irs::format::ptr(&FORMAT, [](irs::format*)->void{});
   }
 };
 

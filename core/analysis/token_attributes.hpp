@@ -208,7 +208,8 @@ class IRESEARCH_API position : public attribute {
     };
 
     typedef skewed_comparer pos_less;
-    return iresearch::seek(*impl_, target, pos_less()); 
+    iresearch::seek(*impl_, target, pos_less());
+    return impl_->value();
   }
 
   value_t value() const { return impl_->value(); }

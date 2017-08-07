@@ -38,25 +38,29 @@ class IRESEARCH_API by_column_existence final : public filter {
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY_DEFAULT();
 
-  by_column_existence();
-
-  by_column_existence& field(const string_ref& field) {
-    field_ = field;
-    return *this;
-  }
+  by_column_existence() NOEXCEPT;
 
   by_column_existence& field(const std::string& field) {
     field_ = field;
     return *this;
   }
 
-  by_column_existence& field(std::string&& field) {
+  by_column_existence& field(std::string&& field) NOEXCEPT {
     field_ = std::move(field);
     return *this;
   }
 
-  const std::string& field() const {
+  const std::string& field() const NOEXCEPT {
     return field_;
+  }
+
+  bool prefix_match() const NOEXCEPT {
+    return prefix_match_;
+  }
+
+  by_column_existence& prefix_match(bool value) NOEXCEPT {
+    prefix_match_ = value;
+    return *this;
   }
 
   using filter::prepare;
@@ -75,6 +79,7 @@ class IRESEARCH_API by_column_existence final : public filter {
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::string field_;
+  bool prefix_match_{};
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // by_column_existence
 
