@@ -93,21 +93,25 @@ class column_prefix_existence_query final : public irs::filter::prepared {
     auto it = rdr.columns();
 
     // FIXME seek
-    irs::seek(
-      *it, prefix_,
-      [](const irs::column_meta& lhs, const std::string& rhs) {
-        return lhs.name < rhs;
-    });
+    bool next;
+    while ((next = it->next()) && it->value().name < prefix_);
 
-    const auto& name = it->value().name;
+    if (!next) {
+      // reached the end
+      return irs::score_doc_iterator::empty();
+    }
 
     std::vector<column_existence_iterator::ptr> itrs;
-    while (irs::starts_with(name, prefix_) && it->next()) {
-      auto it = irs::memory::make_unique<column_existence_iterator>(
-        rdr.values_iterator(name), ord, 0 // FIXME cost estimation
+    while (irs::starts_with(it->value().name, prefix_)) {
+      auto column_it = irs::memory::make_unique<column_existence_iterator>(
+        rdr.values_iterator(it->value().name), ord, 0 // FIXME cost estimation
       );
 
-      itrs.emplace_back(std::move(it));
+      itrs.emplace_back(std::move(column_it));
+
+      if (!it->next()) {
+        break;
+      }
     }
 
     typedef irs::detail::disjunction<

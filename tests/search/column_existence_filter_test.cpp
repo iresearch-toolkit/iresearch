@@ -258,35 +258,197 @@ class column_existence_filter_test_case
     // add segment
     {
       tests::json_doc_generator gen(
-        resource("simple_sequential.json"),
+        resource("simple_sequential_common_prefix.json"),
         &tests::generic_json_field_factory);
       add_segment(gen);
     }
 
     auto rdr = open_reader();
 
-    // 'name' column
+    // looking for 'foo*' columns
     {
-//      const std::string column_prefix = "name";
-//
-//      irs::by_column_existence filter;
-//      filter.prefix_match(true);
-//      filter.field(column_name);
-//
-//      auto prepared = filter.prepare(
-//        *rdr, irs::order::prepared::unordered()
-//      );
-//
-//      ASSERT_EQ(1, rdr->size());
-//      auto& segment = (*rdr)[0];
-//
-//      auto filter_it = prepared->execute(segment);
-//
-//      while (filter_it->next()) {
-//        ASSERT_TRUE(column_it->next());
-//        ASSERT_EQ(filter_it->value(), column_it->value().first);
-//      }
-//      ASSERT_FALSE(column_it->next());
+      const std::string column_prefix = "foo";
+
+      irs::by_column_existence filter;
+      filter.prefix_match(true);
+      filter.field(column_prefix);
+
+      auto prepared = filter.prepare(
+        *rdr, irs::order::prepared::unordered()
+      );
+
+      ASSERT_EQ(1, rdr->size());
+      auto& segment = (*rdr)[0];
+      auto values = segment.values("name");
+
+      irs::bytes_ref value;
+      auto it = prepared->execute(segment);
+      ASSERT_TRUE(it->next());
+      ASSERT_TRUE(values(it->value(), value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(value.c_str()));
+      ASSERT_TRUE(it->next());
+      ASSERT_TRUE(values(it->value(), value));
+      ASSERT_EQ("C", irs::to_string<irs::string_ref>(value.c_str()));
+      ASSERT_TRUE(it->next());
+      ASSERT_TRUE(values(it->value(), value));
+      ASSERT_EQ("D", irs::to_string<irs::string_ref>(value.c_str()));
+      ASSERT_TRUE(it->next());
+      ASSERT_TRUE(values(it->value(), value));
+      ASSERT_EQ("J", irs::to_string<irs::string_ref>(value.c_str()));
+      ASSERT_TRUE(it->next());
+      ASSERT_TRUE(values(it->value(), value));
+      ASSERT_EQ("K", irs::to_string<irs::string_ref>(value.c_str()));
+      ASSERT_TRUE(it->next());
+      ASSERT_TRUE(values(it->value(), value));
+      ASSERT_EQ("L", irs::to_string<irs::string_ref>(value.c_str()));
+      ASSERT_TRUE(it->next());
+      ASSERT_TRUE(values(it->value(), value));
+      ASSERT_EQ("R", irs::to_string<irs::string_ref>(value.c_str()));
+      ASSERT_TRUE(it->next());
+      ASSERT_TRUE(values(it->value(), value));
+      ASSERT_EQ("S", irs::to_string<irs::string_ref>(value.c_str()));
+      ASSERT_TRUE(it->next());
+      ASSERT_TRUE(values(it->value(), value));
+      ASSERT_EQ("T", irs::to_string<irs::string_ref>(value.c_str()));
+      ASSERT_TRUE(it->next());
+      ASSERT_TRUE(values(it->value(), value));
+      ASSERT_EQ("U", irs::to_string<irs::string_ref>(value.c_str()));
+      ASSERT_TRUE(it->next());
+      ASSERT_TRUE(values(it->value(), value));
+      ASSERT_EQ("V", irs::to_string<irs::string_ref>(value.c_str()));
+      ASSERT_TRUE(it->next());
+      ASSERT_TRUE(values(it->value(), value));
+      ASSERT_EQ("!", irs::to_string<irs::string_ref>(value.c_str()));
+      ASSERT_TRUE(it->next());
+      ASSERT_TRUE(values(it->value(), value));
+      ASSERT_EQ("%", irs::to_string<irs::string_ref>(value.c_str()));
+      ASSERT_FALSE(it->next());
+    }
+
+    // looking for 'foo*' columns
+    {
+      const std::string column_prefix = "koob";
+
+      irs::by_column_existence filter;
+      filter.prefix_match(true);
+      filter.field(column_prefix);
+
+      auto prepared = filter.prepare(
+        *rdr, irs::order::prepared::unordered()
+      );
+
+      ASSERT_EQ(1, rdr->size());
+      auto& segment = (*rdr)[0];
+      auto values = segment.values("name");
+
+      irs::bytes_ref value;
+      auto it = prepared->execute(segment);
+      ASSERT_TRUE(it->next());
+      ASSERT_TRUE(values(it->value(), value));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(value.c_str()));
+      ASSERT_TRUE(it->next());
+      ASSERT_TRUE(values(it->value(), value));
+      ASSERT_EQ("U", irs::to_string<irs::string_ref>(value.c_str()));
+      ASSERT_TRUE(it->next());
+      ASSERT_TRUE(values(it->value(), value));
+      ASSERT_EQ("V", irs::to_string<irs::string_ref>(value.c_str()));
+      ASSERT_TRUE(it->next());
+      ASSERT_TRUE(values(it->value(), value));
+      ASSERT_EQ("X", irs::to_string<irs::string_ref>(value.c_str()));
+      ASSERT_TRUE(it->next());
+      ASSERT_TRUE(values(it->value(), value));
+      ASSERT_EQ("Z", irs::to_string<irs::string_ref>(value.c_str()));
+      ASSERT_FALSE(it->next());
+    }
+
+    // looking for 'oo*' columns
+    {
+      const std::string column_prefix = "oob";
+
+      irs::by_column_existence filter;
+      filter.prefix_match(true);
+      filter.field(column_prefix);
+
+      auto prepared = filter.prepare(
+        *rdr, irs::order::prepared::unordered()
+      );
+
+      ASSERT_EQ(1, rdr->size());
+      auto& segment = (*rdr)[0];
+      auto values = segment.values("name");
+
+      irs::bytes_ref value;
+      auto it = prepared->execute(segment);
+      ASSERT_TRUE(it->next());
+      ASSERT_TRUE(values(it->value(), value));
+      ASSERT_EQ("Z", irs::to_string<irs::string_ref>(value.c_str()));
+      ASSERT_TRUE(it->next());
+      ASSERT_TRUE(values(it->value(), value));
+      ASSERT_EQ("~", irs::to_string<irs::string_ref>(value.c_str()));
+      ASSERT_TRUE(it->next());
+      ASSERT_TRUE(values(it->value(), value));
+      ASSERT_EQ("@", irs::to_string<irs::string_ref>(value.c_str()));
+      ASSERT_TRUE(it->next());
+      ASSERT_TRUE(values(it->value(), value));
+      ASSERT_EQ("#", irs::to_string<irs::string_ref>(value.c_str()));
+      ASSERT_TRUE(it->next());
+      ASSERT_TRUE(values(it->value(), value));
+      ASSERT_EQ("$", irs::to_string<irs::string_ref>(value.c_str()));
+      ASSERT_FALSE(it->next());
+    }
+
+    // looking for 'collection*' columns
+    {
+      const std::string column_prefix = "collection";
+
+      irs::by_column_existence filter;
+      filter.prefix_match(true);
+      filter.field(column_prefix);
+
+      auto prepared = filter.prepare(
+        *rdr, irs::order::prepared::unordered()
+      );
+
+      ASSERT_EQ(1, rdr->size());
+      auto& segment = (*rdr)[0];
+      auto values = segment.values("name");
+
+      irs::bytes_ref value;
+      auto it = prepared->execute(segment);
+      ASSERT_TRUE(it->next());
+      ASSERT_TRUE(values(it->value(), value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(value.c_str()));
+      ASSERT_TRUE(it->next());
+      ASSERT_TRUE(values(it->value(), value));
+      ASSERT_EQ("J", irs::to_string<irs::string_ref>(value.c_str()));
+      ASSERT_TRUE(it->next());
+      ASSERT_TRUE(values(it->value(), value));
+      ASSERT_EQ("L", irs::to_string<irs::string_ref>(value.c_str()));
+      ASSERT_TRUE(it->next());
+      ASSERT_TRUE(values(it->value(), value));
+      ASSERT_EQ("N", irs::to_string<irs::string_ref>(value.c_str()));
+      ASSERT_FALSE(it->next());
+    }
+
+    // invalid prefix
+    {
+      const std::string column_prefix = "invalid_prefix";
+
+      irs::by_column_existence filter;
+      filter.prefix_match(true);
+      filter.field(column_prefix);
+
+      auto prepared = filter.prepare(
+        *rdr, irs::order::prepared::unordered()
+      );
+
+      ASSERT_EQ(1, rdr->size());
+      auto& segment = (*rdr)[0];
+
+      auto filter_it = prepared->execute(segment);
+
+      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), filter_it->value());
+      ASSERT_FALSE(filter_it->next());
     }
   }
 }; // column_existence_filter_test_case
@@ -302,6 +464,10 @@ TEST(by_column_existence, ctor) {
 }
 
 TEST(by_column_existence, boost) {
+  // FIXME
+}
+
+TEST(by_column_existence, cost) {
   // FIXME
 }
 
@@ -359,6 +525,7 @@ protected:
 
 TEST_F(memory_column_existence_filter_test_case, by_column_existence) {
   simple_sequential_exact_match();
+  simple_sequential_prefix_match();
 }
 
 // ----------------------------------------------------------------------------
@@ -381,4 +548,5 @@ protected:
 
 TEST_F(fs_column_existence_test_case, by_column_existence) {
   simple_sequential_exact_match();
+  simple_sequential_prefix_match();
 }
