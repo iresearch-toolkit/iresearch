@@ -1572,6 +1572,14 @@ class index_test_case_base : public tests::index_test_base {
       auto* meta = segment.column(column_name);
       ASSERT_NE(nullptr, meta);
 
+      // check number of documents in the column
+      {
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_EQ(MAX_DOCS/2, column->size());
+      }
+
       // visit values (not cached)
       {
         irs::doc_id_t docs_count = 0;
@@ -2346,6 +2354,14 @@ class index_test_case_base : public tests::index_test_base {
       auto* meta = segment.column(column_name);
       ASSERT_NE(nullptr, meta);
 
+      // check number of documents in the column
+      {
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_EQ(MAX_DOCS, column->size());
+      }
+
       // visit values (not cached)
       {
         irs::doc_id_t docs_count = 0;
@@ -3031,6 +3047,14 @@ class index_test_case_base : public tests::index_test_base {
 
       auto* meta = segment.column(column_name);
       ASSERT_NE(nullptr, meta);
+
+      // check number of documents in the column
+      {
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_EQ(MAX_DOCS, column->size());
+      }
 
       // visit values (not cached)
       {
@@ -3777,6 +3801,14 @@ class index_test_case_base : public tests::index_test_base {
 
       auto* meta = segment.column(column_name);
       ASSERT_NE(nullptr, meta);
+
+      // check number of documents in the column
+      {
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_EQ(MAX_DOCS, column->size());
+      }
 
       // visit values (not cached)
       {
@@ -4674,6 +4706,14 @@ class index_test_case_base : public tests::index_test_base {
 
       auto* meta = segment.column(column_name);
       ASSERT_NE(nullptr, meta);
+
+      // check number of documents in the column
+      {
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_EQ(MAX_DOCS/2, column->size());
+      }
 
       // visit values (not cached)
       {
@@ -5669,8 +5709,14 @@ class index_test_case_base : public tests::index_test_base {
 
       // read attribute from invalid column
       {
-        irs::bytes_ref actual_value;
         ASSERT_EQ(nullptr, segment.column_reader("invalid_column"));
+      }
+
+      // check number of values in the column
+      {
+        const auto* column = segment.column_reader("name");
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(4, column->size());
       }
 
       // read attributes from 'name' column (dense)

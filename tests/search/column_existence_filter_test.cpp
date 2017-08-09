@@ -64,6 +64,7 @@ class column_existence_filter_test_case
       ASSERT_NE(nullptr, column);
       auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
+      ASSERT_EQ(column->size(), ir::cost::extract(filter_it->attributes()));
 
       while (filter_it->next()) {
         ASSERT_TRUE(column_it->next());
@@ -91,6 +92,7 @@ class column_existence_filter_test_case
       ASSERT_NE(nullptr, column);
       auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
+      ASSERT_EQ(column->size(), ir::cost::extract(filter_it->attributes()));
 
       size_t docs_count = 0;
       while (filter_it->next()) {
@@ -122,6 +124,7 @@ class column_existence_filter_test_case
       ASSERT_NE(nullptr, column);
       auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
+      ASSERT_EQ(column->size(), ir::cost::extract(filter_it->attributes()));
 
       size_t docs_count = 0;
       while (filter_it->next()) {
@@ -153,6 +156,7 @@ class column_existence_filter_test_case
       ASSERT_NE(nullptr, column);
       auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
+      ASSERT_EQ(column->size(), ir::cost::extract(filter_it->attributes()));
 
       size_t docs_count = 0;
       while (filter_it->next()) {
@@ -184,6 +188,7 @@ class column_existence_filter_test_case
       ASSERT_NE(nullptr, column);
       auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
+      ASSERT_EQ(column->size(), ir::cost::extract(filter_it->attributes()));
 
       while (filter_it->next()) {
         ASSERT_TRUE(column_it->next());
@@ -211,33 +216,7 @@ class column_existence_filter_test_case
       ASSERT_NE(nullptr, column);
       auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
-
-      while (filter_it->next()) {
-        ASSERT_TRUE(column_it->next());
-        ASSERT_EQ(filter_it->value(), column_it->value().first);
-      }
-      ASSERT_FALSE(column_it->next());
-    }
-
-    // 'prefix' column
-    {
-      const std::string column_name = "prefix";
-
-      irs::by_column_existence filter;
-      filter.prefix_match(false);
-      filter.field(column_name);
-
-      auto prepared = filter.prepare(
-        *rdr, irs::order::prepared::unordered()
-      );
-
-      ASSERT_EQ(1, rdr->size());
-      auto& segment = (*rdr)[0];
-
-      auto column = segment.column_reader(column_name);
-      ASSERT_NE(nullptr, column);
-      auto column_it = column->iterator();
-      auto filter_it = prepared->execute(segment);
+      ASSERT_EQ(column->size(), ir::cost::extract(filter_it->attributes()));
 
       while (filter_it->next()) {
         ASSERT_TRUE(column_it->next());
@@ -262,6 +241,7 @@ class column_existence_filter_test_case
       auto& segment = (*rdr)[0];
 
       auto filter_it = prepared->execute(segment);
+      ASSERT_EQ(0, ir::cost::extract(filter_it->attributes()));
 
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), filter_it->value());
       ASSERT_FALSE(filter_it->next());
@@ -299,6 +279,10 @@ class column_existence_filter_test_case
 
       irs::bytes_ref value;
       auto it = prepared->execute(segment);
+
+      // #(foo) + #(foobar) + #(foobaz) + #(fookar)
+      ASSERT_EQ(8+9+1+10, irs::cost::extract(it->attributes()));
+
       ASSERT_TRUE(it->next());
       ASSERT_TRUE(values(it->value(), value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(value.c_str()));
@@ -341,7 +325,7 @@ class column_existence_filter_test_case
       ASSERT_FALSE(it->next());
     }
 
-    // looking for 'foo*' columns
+    // looking for 'koob*' columns
     {
       const std::string column_prefix = "koob";
 
@@ -361,6 +345,10 @@ class column_existence_filter_test_case
 
       irs::bytes_ref value;
       auto it = prepared->execute(segment);
+
+      // #(koobar) + #(koobaz)
+      ASSERT_EQ(4+2, irs::cost::extract(it->attributes()));
+
       ASSERT_TRUE(it->next());
       ASSERT_TRUE(values(it->value(), value));
       ASSERT_EQ("B", irs::to_string<irs::string_ref>(value.c_str()));
@@ -379,7 +367,7 @@ class column_existence_filter_test_case
       ASSERT_FALSE(it->next());
     }
 
-    // looking for 'oo*' columns
+    // looking for 'oob*' columns
     {
       const std::string column_prefix = "oob";
 
@@ -399,6 +387,10 @@ class column_existence_filter_test_case
 
       irs::bytes_ref value;
       auto it = prepared->execute(segment);
+
+      // #(oobar) + #(oobaz)
+      ASSERT_EQ(5+3, irs::cost::extract(it->attributes()));
+
       ASSERT_TRUE(it->next());
       ASSERT_TRUE(values(it->value(), value));
       ASSERT_EQ("Z", irs::to_string<irs::string_ref>(value.c_str()));
@@ -437,6 +429,10 @@ class column_existence_filter_test_case
 
       irs::bytes_ref value;
       auto it = prepared->execute(segment);
+
+      // #(collection)
+      ASSERT_EQ(4, irs::cost::extract(it->attributes()));
+
       ASSERT_TRUE(it->next());
       ASSERT_TRUE(values(it->value(), value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(value.c_str()));
@@ -468,6 +464,7 @@ class column_existence_filter_test_case
       auto& segment = (*rdr)[0];
 
       auto filter_it = prepared->execute(segment);
+      ASSERT_EQ(0, irs::cost::extract(filter_it->attributes()));
 
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), filter_it->value());
       ASSERT_FALSE(filter_it->next());
@@ -486,10 +483,6 @@ TEST(by_column_existence, ctor) {
 }
 
 TEST(by_column_existence, boost) {
-  // FIXME
-}
-
-TEST(by_column_existence, cost) {
   // FIXME
 }
 
@@ -545,7 +538,7 @@ protected:
   }
 };
 
-TEST_F(memory_column_existence_filter_test_case, by_column_existence) {
+TEST_F(memory_column_existence_filter_test_case, exact_prefix_match) {
   simple_sequential_exact_match();
   simple_sequential_prefix_match();
 }
@@ -568,7 +561,7 @@ protected:
   }
 };
 
-TEST_F(fs_column_existence_test_case, by_column_existence) {
+TEST_F(fs_column_existence_test_case, exact_prefix_match) {
   simple_sequential_exact_match();
   simple_sequential_prefix_match();
 }
