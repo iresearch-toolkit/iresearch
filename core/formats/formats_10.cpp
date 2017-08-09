@@ -2778,8 +2778,16 @@ class read_context
  public:
   DECLARE_SPTR(read_context);
 
-  static ptr make(const directory& dir, const std::string& name) {
-    return std::make_shared<read_context>(dir.open(name));
+  static ptr make(const index_input& stream) {
+    auto clone = stream.reopen();
+
+    if (!clone) {
+      IR_FRMT_FATAL("Failed to reopen document input in: %s", __FUNCTION__);
+
+      return nullptr;
+    }
+
+    return std::make_shared<read_context>(std::move(clone));
   }
 
   read_context(index_input::ptr&& in = index_input::ptr(), const Allocator& alloc = Allocator())
@@ -2838,19 +2846,17 @@ class context_provider : private util::noncopyable {
     : pool_(std::max(size_t(1), max_pool_size)) {
   }
 
-  void prepare(const directory& dir, std::string&& name) NOEXCEPT {
-    dir_ = &dir;
-    name_ = std::move(name);
+  void prepare(index_input::ptr&& stream) NOEXCEPT {
+    stream_ = std::move(stream);
   }
 
   bounded_object_pool<read_context_t>::ptr get_context() const {
-    return pool_.emplace(*dir_, name_);
+    return pool_.emplace(*stream_);
   }
 
  private:
   mutable bounded_object_pool<read_context_t> pool_;
-  std::string name_;
-  const directory* dir_;
+  index_input::ptr stream_;
 }; // context_provider
 
 // in case of success caches block pointed
@@ -2866,6 +2872,11 @@ const typename BlockRef::block_t* load_block(
 
   if (!cached) {
     auto ctx = ctxs.get_context();
+
+    if (!ctx) {
+      // unable to get context
+      return nullptr;
+    }
 
     // load block
     const auto* block = ctx->template emplace_back<block_t>(ref.offset);
@@ -2900,6 +2911,11 @@ const typename BlockRef::block_t* load_block(
 
   if (!cached) {
     auto ctx = ctxs.get_context();
+
+    if (!ctx) {
+      // unable to get context
+      return nullptr;
+    }
 
     if (!ctx->load(block, ref.offset)) {
       // unable to load block
@@ -3686,7 +3702,7 @@ bool reader::prepare(
   }
 
   // noexcept
-  context_provider::prepare(dir, std::move(filename));
+  context_provider::prepare(std::move(stream));
   columns_ = std::move(columns);
 
   if (seen) {
