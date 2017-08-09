@@ -1021,7 +1021,9 @@ class index_test_case_base : public tests::index_test_base {
         // segment #1
         {
           auto& segment = reader[0];
-          auto values = segment.values("name");
+          const auto* column = segment.column_reader("name");
+          ASSERT_NE(nullptr, column);
+          auto values = column->values();
           auto terms = segment.field("same");
           ASSERT_NE(nullptr, terms);
           auto termItr = terms->iterator();
@@ -1036,7 +1038,9 @@ class index_test_case_base : public tests::index_test_base {
         // segment #1
         {
           auto& segment = reader[1];
-          auto values = segment.values("name");
+          auto* column = segment.column_reader("name");
+          ASSERT_NE(nullptr, column);
+          auto values = column->values();
           auto terms = segment.field("same");
           ASSERT_NE(nullptr, terms);
           auto termItr = terms->iterator();
@@ -1122,7 +1126,9 @@ class index_test_case_base : public tests::index_test_base {
       auto reader = ir::directory_reader::open(dir(), codec());
       ASSERT_EQ(1, reader.size());
       auto& segment = reader[0]; // assume 0 is id of first/only segment
-      auto values = segment.values("name");
+      auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -1159,7 +1165,11 @@ class index_test_case_base : public tests::index_test_base {
         size_t i = 0;
         irs::bytes_ref actual_value;
         for (auto& segment: reader) {
-          auto values = segment.values("name");
+          auto* column = segment.column_reader("name");
+          if (!column) {
+            return false;
+          }
+          auto values = column->values();
           const auto docs = segment.docs_count();
           for (iresearch::doc_id_t doc = (iresearch::type_limits<iresearch::type_t::doc_id_t>::min)(), max = segment.docs_count(); doc <= max; ++doc) {
             if (!values(doc, actual_value)) {
@@ -1309,7 +1319,12 @@ class index_test_case_base : public tests::index_test_base {
         tests::delim_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template, ',');
         const tests::document* doc = nullptr;
 
-        auto reader = segment.values(meta->id);
+        auto column = segment.column_reader(meta->id);
+        if (!column) {
+          return false;
+        }
+        auto reader = column->values();
+
         irs::bytes_ref actual_value;
 
         // skip first 'offset' docs
@@ -1486,56 +1501,8 @@ class index_test_case_base : public tests::index_test_base {
     ASSERT_EQ(1, reader.size());
     auto& segment = *(reader.begin());
 
-    // read attributes
-    {
-      irs::bytes_ref value;
-      auto column = segment.values("name");
-      ASSERT_FALSE(column(0, value));
-      ASSERT_FALSE(column(1, value));
-      ASSERT_FALSE(column(2, value));
-      ASSERT_FALSE(column(3, value));
-    }
-
-    // visit empty column
-    {
-      size_t calls_count = 0;
-      auto visitor = [&calls_count] (iresearch::doc_id_t doc, const irs::bytes_ref& in) {
-        ++calls_count;
-        return true;
-      };
-
-      ASSERT_FALSE(segment.visit("name", visitor));
-      ASSERT_EQ(0, calls_count);
-    }
-
-    // iterate over empty column
-    {
-      auto it = segment.values_iterator("name");
-      ASSERT_NE(nullptr, it);
-
-      auto& value = it->value();
-      ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, value);
-
-      ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, value);
-
-      ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, value);
-    }
-
-    // seek over empty column
-    {
-      auto it = segment.values_iterator("name");
-      ASSERT_NE(nullptr, it);
-
-      auto& value = it->value();
-
-      ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, it->seek(0));
-      ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, value);
-
-      ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, value);
-    }
+    const auto* column = segment.column_reader("name");
+    ASSERT_EQ(nullptr, column);
   }
 
   void read_write_doc_attributes_sparse_mask() {
@@ -1602,7 +1569,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // read values
       {
-        irs::columnstore_reader::values_reader_f values = segment.values(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto values = column->values();
         irs::bytes_ref actual_value;
 
         // read (not cached)
@@ -1727,7 +1696,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // read values
       {
-        irs::columnstore_reader::values_reader_f values = segment.values(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto values = column->values();
         irs::bytes_ref actual_value;
 
         // read (cached)
@@ -2199,7 +2170,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // read values
       {
-        irs::columnstore_reader::values_reader_f values = segment.values(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto values = column->values();
         irs::bytes_ref actual_value;
 
         // read (cached)
@@ -2320,7 +2293,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // read values
       {
-        irs::columnstore_reader::values_reader_f values = segment.values(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto values = column->values();
         irs::bytes_ref actual_value;
 
         // not cached
@@ -2449,7 +2424,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // read values
       {
-        irs::columnstore_reader::values_reader_f values = segment.values(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto values = column->values();
         irs::bytes_ref actual_value;
 
         // cached
@@ -2827,7 +2804,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // read values
       {
-        irs::columnstore_reader::values_reader_f values = segment.values(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto values = column->values();
         irs::bytes_ref actual_value;
 
         // cached
@@ -2957,7 +2936,9 @@ class index_test_case_base : public tests::index_test_base {
       // read values
       {
         irs::bytes_ref actual_value;
-        irs::columnstore_reader::values_reader_f values = segment.values(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto values = column->values();
 
         // not cached
         for (irs::doc_id_t i = 0; i < MAX_DOCS; ++i) {
@@ -3092,7 +3073,9 @@ class index_test_case_base : public tests::index_test_base {
       // read values
       {
         irs::bytes_ref actual_value;
-        irs::columnstore_reader::values_reader_f values = segment.values(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto values = column->values();
 
         // cached
         for (irs::doc_id_t i = 0; i < MAX_DOCS; ++i) {
@@ -3519,7 +3502,9 @@ class index_test_case_base : public tests::index_test_base {
       // read values
       {
         irs::bytes_ref actual_value;
-        irs::columnstore_reader::values_reader_f values = segment.values(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto values = column->values();
 
         // cached
         for (irs::doc_id_t i = 0; i < MAX_DOCS; ++i) {
@@ -3659,7 +3644,9 @@ class index_test_case_base : public tests::index_test_base {
       // read values
       {
         irs::bytes_ref actual_value;
-        irs::columnstore_reader::values_reader_f values = segment.values(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto values = column->values();
 
         // not cached
         for (irs::doc_id_t i = 0; i < MAX_DOCS; ++i) {
@@ -3824,7 +3811,9 @@ class index_test_case_base : public tests::index_test_base {
       // read values
       {
         irs::bytes_ref actual_value;
-        irs::columnstore_reader::values_reader_f values = segment.values(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto values = column->values();
 
         // cached
         for (irs::doc_id_t i = 0; i < MAX_DOCS; ++i) {
@@ -4347,7 +4336,9 @@ class index_test_case_base : public tests::index_test_base {
       // read values
       {
         irs::bytes_ref actual_value;
-        irs::columnstore_reader::values_reader_f values = segment.values(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto values = column->values();
 
         // cached
         for (irs::doc_id_t i = 0; i < MAX_DOCS; ++i) {
@@ -4506,7 +4497,9 @@ class index_test_case_base : public tests::index_test_base {
       // read values
       {
         irs::bytes_ref actual_value;
-        irs::columnstore_reader::values_reader_f values = segment.values(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto values = column->values();
 
         // not cached
         for (irs::doc_id_t i = 0; i < MAX_DOCS; ++i) {
@@ -4685,7 +4678,9 @@ class index_test_case_base : public tests::index_test_base {
       // read values
       {
         irs::bytes_ref actual_value;
-        irs::columnstore_reader::values_reader_f values = segment.values(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto values = column->values();
 
         // cached
         for (irs::doc_id_t i = 0; i < MAX_DOCS; ++i) {
@@ -5300,7 +5295,9 @@ class index_test_case_base : public tests::index_test_base {
       // read values
       {
         irs::bytes_ref actual_value;
-        irs::columnstore_reader::values_reader_f values = segment.values(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto values = column->values();
 
         // cached
         for (irs::doc_id_t i = 0; i < MAX_DOCS; ++i) {
@@ -5416,18 +5413,17 @@ class index_test_case_base : public tests::index_test_base {
       // read attribute from invalid column
       {
         irs::bytes_ref actual_value;
-        auto value_reader = segment.values("invalid_column");
-        ASSERT_FALSE(value_reader(0, actual_value));
-        ASSERT_FALSE(value_reader(1, actual_value));
-        ASSERT_FALSE(value_reader(2, actual_value));
-        ASSERT_FALSE(value_reader(3, actual_value));
-        ASSERT_FALSE(value_reader(4, actual_value));
+        ASSERT_EQ(nullptr, segment.column_reader("invalid_column"));
       }
 
       // read attributes from 'name' column (dense)
       {
         irs::bytes_ref actual_value;
-        auto value_reader = segment.values("name");
+
+        const auto* column = segment.column_reader("name");
+        ASSERT_NE(nullptr, column);
+        auto value_reader = column->values();
+
         ASSERT_TRUE(value_reader(2, actual_value));
         ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
         ASSERT_TRUE(value_reader(4, actual_value));
@@ -5470,7 +5466,9 @@ class index_test_case_base : public tests::index_test_base {
       // read attributes from 'prefix' column (sparse)
       {
         irs::bytes_ref actual_value;
-        auto value_reader = segment.values("prefix");
+        const auto* column = segment.column_reader("prefix");
+        ASSERT_NE(nullptr, column);
+        auto value_reader = column->values();
         ASSERT_TRUE(value_reader(1, actual_value));
         ASSERT_EQ("abcd", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'prefix' value in doc1
         ASSERT_FALSE(value_reader(2, actual_value)); // doc2 does not contain 'prefix' column
@@ -5522,13 +5520,7 @@ class index_test_case_base : public tests::index_test_base {
 
       // read attribute from invalid column
       {
-        irs::bytes_ref actual_value;
-        auto value_reader = segment.values("invalid_column");
-        ASSERT_FALSE(value_reader(0, actual_value));
-        ASSERT_FALSE(value_reader(1, actual_value));
-        ASSERT_FALSE(value_reader(2, actual_value));
-        ASSERT_FALSE(value_reader(3, actual_value));
-        ASSERT_FALSE(value_reader(4, actual_value));
+        ASSERT_EQ(nullptr, segment.column_reader("invalid_column"));
       }
 
       {
@@ -5561,7 +5553,9 @@ class index_test_case_base : public tests::index_test_base {
       // read attributes from 'name' column (dense)
       {
         irs::bytes_ref actual_value;
-        auto value_reader = segment.values("name");
+        const auto* column = segment.column_reader("name");
+        ASSERT_NE(nullptr, column);
+        auto value_reader = column->values();
         ASSERT_TRUE(value_reader(2, actual_value));
         ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
         ASSERT_TRUE(value_reader(4, actual_value));
@@ -5631,7 +5625,9 @@ class index_test_case_base : public tests::index_test_base {
       // read attributes from 'prefix' column (sparse)
       {
         irs::bytes_ref actual_value;
-        auto value_reader = segment.values("prefix");
+        const auto* column = segment.column_reader("prefix");
+        ASSERT_NE(nullptr, column);
+        auto value_reader = column->values();
         ASSERT_TRUE(value_reader(1, actual_value));
         ASSERT_EQ("abcd", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'prefix' value in doc1
         ASSERT_FALSE(value_reader(2, actual_value)); // doc2 does not contain 'prefix' column
@@ -5766,7 +5762,9 @@ class index_test_case_base : public tests::index_test_base {
         {
           const tests::document* doc = nullptr;
           irs::bytes_ref actual_value;
-          auto reader = segment.values(meta->id);
+          auto column = segment.column_reader(meta->id);
+          ASSERT_NE(nullptr, column);
+          auto reader = column->values();
 
           ir::doc_id_t id = 0;
           gen.reset();
@@ -5876,7 +5874,9 @@ class index_test_case_base : public tests::index_test_base {
           const tests::document* doc = nullptr;
 
           irs::bytes_ref actual_value;
-          auto reader = segment.values(meta->id);
+          auto column = segment.column_reader(meta->id);
+          ASSERT_NE(nullptr, column);
+          auto reader = column->values();
 
           ir::doc_id_t id = 0;
           while (doc = gen.next()) {
@@ -6034,7 +6034,9 @@ class index_test_case_base : public tests::index_test_base {
         {
           const tests::document* doc = nullptr;
           irs::bytes_ref actual_value;
-          auto reader = segment.values(meta->id);
+          auto column = segment.column_reader(meta->id);
+          ASSERT_NE(nullptr, column);
+          auto reader = column->values();
 
           ir::doc_id_t id = 0;
           gen.reset();
@@ -6174,7 +6176,9 @@ class index_test_case_base : public tests::index_test_base {
           const tests::document* doc = nullptr;
 
           irs::bytes_ref actual_value;
-          auto reader = segment.values(meta->id);
+          auto column = segment.column_reader(meta->id);
+          ASSERT_NE(nullptr, column);
+          auto reader = column->values();
 
           ir::doc_id_t id = 0;
           while (doc = gen.next()) {
@@ -6508,7 +6512,11 @@ class index_test_case_base : public tests::index_test_base {
       };
 
       irs::bytes_ref value;
-      auto column = segment.values("stored");
+
+      const auto* column_reader = segment.column_reader("stored");
+      ASSERT_NE(nullptr, column_reader);
+      auto column = column_reader->values();
+
       auto it = segment.docs_iterator();
       while (it->next()) {
         ASSERT_TRUE(column(it->value(), value));
@@ -6874,7 +6882,9 @@ TEST_F(memory_index_test, concurrent_add_remove) {
     irs::bytes_ref actual_value;
     for (size_t i = 0, count = reader.size(); i < count; ++i) {
       auto& segment = reader[i];
-      auto values = segment.values("name");
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -6927,7 +6937,9 @@ TEST_F(memory_index_test, doc_removal) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -6958,7 +6970,9 @@ TEST_F(memory_index_test, doc_removal) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -6989,7 +7003,9 @@ TEST_F(memory_index_test, doc_removal) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -7020,7 +7036,9 @@ TEST_F(memory_index_test, doc_removal) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -7051,7 +7069,9 @@ TEST_F(memory_index_test, doc_removal) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -7085,7 +7105,9 @@ TEST_F(memory_index_test, doc_removal) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -7123,7 +7145,9 @@ TEST_F(memory_index_test, doc_removal) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -7159,7 +7183,9 @@ TEST_F(memory_index_test, doc_removal) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -7197,7 +7223,9 @@ TEST_F(memory_index_test, doc_removal) {
 
     {
       auto& segment = reader[0]; // assume 0 is id of old segment
-      auto values = segment.values("name");
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -7211,7 +7239,9 @@ TEST_F(memory_index_test, doc_removal) {
 
     {
       auto& segment = reader[1]; // assume 1 is id of new segment
-      auto values = segment.values("name");
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -7254,7 +7284,9 @@ TEST_F(memory_index_test, doc_removal) {
 
     {
       auto& segment = reader[0]; // assume 0 is id of old segment
-      auto values = segment.values("name");
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -7268,7 +7300,9 @@ TEST_F(memory_index_test, doc_removal) {
 
     {
       auto& segment = reader[1]; // assume 1 is id of new segment
-      auto values = segment.values("name");
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -7336,7 +7370,9 @@ TEST_F(memory_index_test, doc_removal) {
 
     {
       auto& segment = reader[0]; // assume 0 is id of old-old segment
-      auto values = segment.values("name");
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -7350,7 +7386,9 @@ TEST_F(memory_index_test, doc_removal) {
 
     {
       auto& segment = reader[1]; // assume 1 is id of old segment
-      auto values = segment.values("name");
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -7364,7 +7402,9 @@ TEST_F(memory_index_test, doc_removal) {
 
     {
       auto& segment = reader[2]; // assume 2 is id of new segment
-      auto values = segment.values("name");
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -7416,7 +7456,9 @@ TEST_F(memory_index_test, doc_update) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -7447,7 +7489,9 @@ TEST_F(memory_index_test, doc_update) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -7478,7 +7522,9 @@ TEST_F(memory_index_test, doc_update) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -7517,7 +7563,9 @@ TEST_F(memory_index_test, doc_update) {
     {
       auto& segment = reader[0]; // assume 0 is id of old segment
       auto terms = segment.field("same");
-      auto values = segment.values("name");
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
@@ -7530,7 +7578,9 @@ TEST_F(memory_index_test, doc_update) {
 
     {
       auto& segment = reader[1]; // assume 1 is id of new segment
-      auto values = segment.values("name");
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -7574,7 +7624,9 @@ TEST_F(memory_index_test, doc_update) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -7620,7 +7672,9 @@ TEST_F(memory_index_test, doc_update) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -7652,7 +7706,9 @@ TEST_F(memory_index_test, doc_update) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -7688,7 +7744,9 @@ TEST_F(memory_index_test, doc_update) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -7731,7 +7789,9 @@ TEST_F(memory_index_test, doc_update) {
 
     {
       auto& segment = reader[0]; // assume 0 is id of old segment
-      auto values = segment.values("name");
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -7745,7 +7805,9 @@ TEST_F(memory_index_test, doc_update) {
 
     {
       auto& segment = reader[1]; // assume 1 is id of new segment
-      auto values = segment.values("name");
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -7782,7 +7844,9 @@ TEST_F(memory_index_test, doc_update) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -7820,7 +7884,9 @@ TEST_F(memory_index_test, doc_update) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -7862,7 +7928,9 @@ TEST_F(memory_index_test, doc_update) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -7907,7 +7975,9 @@ TEST_F(memory_index_test, doc_update) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -7995,7 +8065,9 @@ TEST_F(memory_index_test, doc_update) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -8052,7 +8124,9 @@ TEST_F(memory_index_test, import_reader) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count());
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -8091,7 +8165,9 @@ TEST_F(memory_index_test, import_reader) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(1, segment.docs_count());
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -8134,7 +8210,9 @@ TEST_F(memory_index_test, import_reader) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(4, segment.docs_count());
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -8188,7 +8266,9 @@ TEST_F(memory_index_test, import_reader) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count());
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -8236,7 +8316,9 @@ TEST_F(memory_index_test, import_reader) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(3, segment.docs_count());
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -8284,7 +8366,9 @@ TEST_F(memory_index_test, import_reader) {
     {
       auto& segment = reader[0]; // assume 0 is id of imported segment
       ASSERT_EQ(2, segment.docs_count());
-      auto values = segment.values("name");
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -8302,7 +8386,9 @@ TEST_F(memory_index_test, import_reader) {
     {
       auto& segment = reader[1]; // assume 1 is id of original segment
       ASSERT_EQ(1, segment.docs_count());
-      auto values = segment.values("name");
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -8411,7 +8497,9 @@ TEST_F(memory_index_test, refresh_reader) {
   {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -8440,7 +8528,9 @@ TEST_F(memory_index_test, refresh_reader) {
     {
       ASSERT_EQ(1, reader.size());
       auto& segment = reader[0]; // assume 0 is id of first/only segment
-      auto values = segment.values("name");
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -8459,7 +8549,9 @@ TEST_F(memory_index_test, refresh_reader) {
       reader = reader.reopen();
       ASSERT_EQ(1, reader.size());
       auto& segment = reader[0]; // assume 0 is id of first/only segment
-      auto values = segment.values("name");
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -8491,7 +8583,9 @@ TEST_F(memory_index_test, refresh_reader) {
   {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -8507,7 +8601,9 @@ TEST_F(memory_index_test, refresh_reader) {
 
     {
       auto& segment = reader[0]; // assume 0 is id of first segment
-      auto values = segment.values("name");
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -8521,7 +8617,9 @@ TEST_F(memory_index_test, refresh_reader) {
 
     {
       auto& segment = reader[1]; // assume 1 is id of second segment
-      auto values = segment.values("name");
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -8552,7 +8650,9 @@ TEST_F(memory_index_test, refresh_reader) {
 
     {
       auto& segment = reader[0]; // assume 0 is id of first segment
-      auto values = segment.values("name");
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -8566,7 +8666,9 @@ TEST_F(memory_index_test, refresh_reader) {
 
     {
       auto& segment = reader[1]; // assume 1 is id of second segment
-      auto values = segment.values("name");
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
@@ -8584,7 +8686,9 @@ TEST_F(memory_index_test, refresh_reader) {
     reader = reader.reopen();
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of second segment
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -8777,7 +8881,9 @@ TEST_F(memory_index_test, segment_consolidate) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     ASSERT_EQ(1, segment.docs_count()); // total count of documents
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
@@ -8822,7 +8928,9 @@ TEST_F(memory_index_test, segment_consolidate) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     ASSERT_EQ(1, segment.docs_count()); // total count of documents
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
@@ -8868,7 +8976,9 @@ TEST_F(memory_index_test, segment_consolidate) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(1, segment.docs_count()); // total count of documents
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -8914,7 +9024,9 @@ TEST_F(memory_index_test, segment_consolidate) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(1, segment.docs_count()); // total count of documents
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -9037,7 +9149,9 @@ TEST_F(memory_index_test, segment_consolidate) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count()); // total count of documents
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -9090,7 +9204,9 @@ TEST_F(memory_index_test, segment_consolidate) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count()); // total count of documents
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -9143,7 +9259,9 @@ TEST_F(memory_index_test, segment_consolidate) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count()); // total count of documents
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -9197,7 +9315,9 @@ TEST_F(memory_index_test, segment_consolidate) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count()); // total count of documents
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -9260,7 +9380,9 @@ TEST_F(memory_index_test, segment_consolidate) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(3, segment.docs_count()); // total count of documents
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -9327,7 +9449,9 @@ TEST_F(memory_index_test, segment_consolidate) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(3, segment.docs_count()); // total count of documents
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -9400,8 +9524,14 @@ TEST_F(memory_index_test, segment_consolidate) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(6, segment.docs_count()); // total count of documents
-    auto values = segment.values("name");
-    auto upper_case_values = segment.values("NAME");
+
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
+
+    const auto* upper_case_column = segment.column_reader("NAME");
+    ASSERT_NE(nullptr, upper_case_column);
+    auto upper_case_values = upper_case_column->values();
 
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
@@ -9485,8 +9615,14 @@ TEST_F(memory_index_test, segment_consolidate) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(6, segment.docs_count()); // total count of documents
-    auto values = segment.values("name");
-    auto upper_case_values = segment.values("NAME");
+
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
+
+    const auto* upper_case_column = segment.column_reader("NAME");
+    ASSERT_NE(nullptr, upper_case_column);
+    auto upper_case_values = upper_case_column->values();
 
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
@@ -9568,7 +9704,9 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
@@ -9627,7 +9765,9 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
 
-      auto values = segment.values("name");
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
       for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
@@ -9647,7 +9787,9 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
 
-      auto values = segment.values("name");
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
       for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
@@ -9687,7 +9829,9 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
 
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
@@ -9727,7 +9871,9 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
 
-      auto values = segment.values("name");
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
       for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
@@ -9747,7 +9893,9 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
 
-      auto values = segment.values("name");
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
       for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
@@ -9800,7 +9948,9 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
 
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
@@ -9854,7 +10004,9 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
 
-      auto values = segment.values("name");
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
       for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
@@ -9874,7 +10026,9 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
 
-      auto values = segment.values("name");
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
       for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
@@ -9924,7 +10078,9 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
 
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
     for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
@@ -9975,7 +10131,9 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
 
-      auto values = segment.values("name");
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
       for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
@@ -9995,7 +10153,9 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
 
-      auto values = segment.values("name");
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
       for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
         ASSERT_TRUE(values(docsItr->value(), actual_value));
         ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));

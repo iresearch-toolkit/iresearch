@@ -188,10 +188,6 @@ class segment_reader_impl : public sub_reader {
     return 1; // only 1 segment
   }
 
-  virtual columnstore_reader::values_reader_f values(
-    field_id field
-  ) const override;
-
   virtual columnstore_reader::column_iterator::ptr values_iterator(
     field_id field
   ) const override;
@@ -199,6 +195,10 @@ class segment_reader_impl : public sub_reader {
   virtual bool visit(
     field_id field,
     const columnstore_reader::values_visitor_f& reader
+  ) const override;
+
+  virtual const columnstore_reader::column_reader* column_reader(
+    field_id field
   ) const override;
 
  private:
@@ -368,16 +368,6 @@ sub_reader::docs_iterator_t::ptr segment_reader_impl::docs_iterator() const {
   return reader;
 }
 
-columnstore_reader::values_reader_f segment_reader_impl::values(
-    field_id field) const {
-  if (!columnstore_reader_) {
-    // NOOP reader
-    return [](doc_id_t, bytes_ref&) { return false; };
-  }
-
-  return columnstore_reader_->values(field);
-}
-
 bool segment_reader_impl::visit(
     field_id field,
     const columnstore_reader::values_visitor_f& reader) const {
@@ -391,6 +381,13 @@ columnstore_reader::column_iterator::ptr segment_reader_impl::values_iterator(
   return columnstore_reader_
     ? columnstore_reader_->iterator(field)
     : columnstore_reader::empty_iterator();
+}
+
+const columnstore_reader::column_reader* segment_reader_impl::column_reader(
+    field_id field) const {
+  return columnstore_reader_
+    ? columnstore_reader_->column(field)
+    : nullptr;
 }
 
 NS_END

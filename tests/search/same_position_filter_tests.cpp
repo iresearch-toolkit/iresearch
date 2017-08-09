@@ -54,7 +54,9 @@ class same_position_filter_test_case : public filter_test_case_base {
 
     ir::bytes_ref actual_value;
     ir::bytes_ref_input in;
-    auto values = segment.values("_id");
+    auto column = segment.column_reader("_id");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
 
     // empty query
     {

@@ -72,8 +72,14 @@ class column_existence_query final : public irs::filter::prepared {
   virtual irs::score_doc_iterator::ptr execute(
       const irs::sub_reader& rdr,
       const irs::order::prepared& ord) const override {
+    const auto* column = rdr.column_reader(field_);
+
+    if (!column) {
+      return irs::score_doc_iterator::empty();
+    }
+
     return irs::score_doc_iterator::make<column_existence_iterator>(
-      rdr.values_iterator(field_), ord, 0 // FIXME cost estimation
+      column->iterator(), ord, column->size()
     );
   }
 
@@ -103,8 +109,14 @@ class column_prefix_existence_query final : public irs::filter::prepared {
 
     std::vector<column_existence_iterator::ptr> itrs;
     while (irs::starts_with(it->value().name, prefix_)) {
+      const auto* column = rdr.column_reader(it->value().id);
+
+      if (!column) {
+        continue;
+      }
+
       auto column_it = irs::memory::make_unique<column_existence_iterator>(
-        rdr.values_iterator(it->value().name), ord, 0 // FIXME cost estimation
+        column->iterator(), ord, column->size()
       );
 
       itrs.emplace_back(std::move(column_it));

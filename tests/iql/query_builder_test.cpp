@@ -262,7 +262,9 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
   // single string term
   {
     irs::bytes_ref actual_value;
-    auto values = segment.values("name");
+    auto column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
 
     auto query = query_builder().build("name==A", std::locale::classic());
     ASSERT_NE(nullptr, query.filter.get());
@@ -310,7 +312,9 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
   {
     irs::bytes_ref actual_value;
     irs::bytes_ref_input in;
-    auto values = segment.values("name");
+    auto column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
 
     auto query = query_builder().build("name!=A", std::locale::classic());
     ASSERT_NE(nullptr, query.filter.get());
@@ -335,7 +339,9 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
   // term union
   {
     irs::bytes_ref actual_value;
-    auto values = segment.values("name");
+    auto column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
 
     auto query = query_builder().build("name==A || name==B OR name==C", std::locale::classic());
     ASSERT_NE(nullptr, query.filter.get());
@@ -390,8 +396,12 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     std::unordered_set<irs::string_ref> expected = { "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z" };
 
     double_t seq;
-    auto seq_values = segment.values("seq");
-    auto name_values = segment.values("name");
+    auto seq_column = segment.column_reader("seq");
+    ASSERT_NE(nullptr, seq_column);
+    auto seq_values = seq_column->values();
+    auto name_column = segment.column_reader("name");
+    ASSERT_NE(nullptr, name_column);
+    auto name_values = name_column->values();
 
     auto query = query_builder().build("name > M", std::locale::classic());
     ASSERT_NE(nullptr, query.filter.get());
@@ -424,8 +434,12 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     std::unordered_set<irs::string_ref> expected = { "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z" };
 
     double_t seq;
-    auto seq_values = segment.values("seq");
-    auto name_values = segment.values("name");
+    auto seq_column = segment.column_reader("seq");
+    ASSERT_NE(nullptr, seq_column);
+    auto seq_values = seq_column->values();
+    auto name_column = segment.column_reader("name");
+    ASSERT_NE(nullptr, name_column);
+    auto name_values = name_column->values();
 
     auto query = query_builder().build("name >= M", std::locale::classic());
     ASSERT_NE(nullptr, query.filter.get());
@@ -458,8 +472,12 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     std::unordered_set<irs::string_ref> expected = { "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N" };
 
     double_t seq;
-    auto seq_values = segment.values("seq");
-    auto name_values = segment.values("name");
+    auto seq_column = segment.column_reader("seq");
+    ASSERT_NE(nullptr, seq_column);
+    auto seq_values = seq_column->values();
+    auto name_column = segment.column_reader("name");
+    ASSERT_NE(nullptr, name_column);
+    auto name_values = name_column->values();
 
     auto query = query_builder().build("name <= N", std::locale::classic());
     ASSERT_NE(nullptr, query.filter.get());
@@ -492,8 +510,12 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     std::unordered_set<irs::string_ref> expected = { "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M" };
 
     double_t seq;
-    auto seq_values = segment.values("seq");
-    auto name_values = segment.values("name");
+    auto seq_column = segment.column_reader("seq");
+    ASSERT_NE(nullptr, seq_column);
+    auto seq_values = seq_column->values();
+    auto name_column = segment.column_reader("name");
+    ASSERT_NE(nullptr, name_column);
+    auto name_values = name_column->values();
 
     auto query = query_builder().build("name < N", std::locale::classic());
     ASSERT_NE(nullptr, query.filter.get());
@@ -522,7 +544,9 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
   // limit
   {
     irs::bytes_ref actual_value;
-    auto values = segment.values("name");
+    auto column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
 
     auto query = query_builder().build("name==A limit 42", std::locale::classic());
     ASSERT_NE(nullptr, query.filter.get());
@@ -602,7 +626,9 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
   auto reader = load_json(dir, "simple_sequential.json");
   ASSERT_EQ(1, reader.size());
   auto& segment = reader[0]; // assume 0 is id of first/only segment
-  auto values = segment.values("name");
+  auto column = segment.column_reader("name");
+  ASSERT_NE(nullptr, column);
+  auto values = column->values();
 
   // default range builder functr ()
   {
@@ -690,7 +716,9 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
 
     ASSERT_EQ(1, analyzed_reader.size());
     auto& analyzed_segment = analyzed_reader[0]; // assume 0 is id of first/only segment
-    auto analyzed_segment_values = analyzed_segment.values("name");
+    auto column = analyzed_segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto analyzed_segment_values = column->values();
 
     query_builder::branch_builders builders;
     auto locale = boost::locale::generator().generate("en"); // a locale that exists in tests
@@ -741,7 +769,9 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_custom) {
   auto reader = load_json(dir, "simple_sequential.json");
   ASSERT_EQ(1, reader.size());
   auto& segment = reader[0]; // assume 0 is id of first/only segment
-  auto values = segment.values("name");
+  auto column = segment.column_reader("name");
+  ASSERT_NE(nullptr, column);
+  auto values = column->values();
 
   // custom range builder functr ()
   {
@@ -864,7 +894,9 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
   // user supplied boolean_function
   {
     irs::bytes_ref actual_value;
-    auto values = segment.values("name");
+    auto column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
 
     boolean_function bool_function(fnEqual, 2);
     boolean_functions bool_functions = {
@@ -891,7 +923,9 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
   {
     irs::bytes_ref actual_value;
     irs::bytes_ref_input in;
-    auto values = segment.values("name");
+    auto column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
 
     boolean_function bool_function(fnEqual, 2);
     boolean_functions bool_functions = {
@@ -960,7 +994,9 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
     auto docsItr = pQuery->execute(segment);
     ASSERT_NE(nullptr, docsItr.get());
     std::unordered_set<irs::string_ref> expected = { "A", "C", "D", "E" };
-    auto values = segment.values("name");
+    auto column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
 
     while (docsItr->next()) {
       ASSERT_TRUE(values(docsItr->value(), actual_value));
@@ -988,7 +1024,9 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_sequence_fns) {
   auto reader = load_json(dir, "simple_sequential.json");
   ASSERT_EQ(1, reader.size());
   auto& segment = reader[0]; // assume 0 is id of first/only segment
-  auto values = segment.values("name");
+  auto column = segment.column_reader("name");
+  ASSERT_NE(nullptr, column);
+  auto values = column->values();
 
   // user supplied sequence_function
   {
@@ -1085,7 +1123,9 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_order) {
   // custom contextual order function
   {
     irs::bytes_ref actual_value;
-    auto values = segment.values("name");
+    auto column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
 
     std::vector<std::pair<bool, std::string>> direction;
     sequence_function::deterministic_function_t fnTestSeq = [](

@@ -1315,17 +1315,29 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     // validate documents
     // ...........................................................................
     std::unordered_set<iresearch::bytes_ref> expected_bytes;
-    auto bytes_values = segment.values("doc_bytes");
+    auto column = segment.column_reader("doc_bytes");
+    ASSERT_NE(nullptr, column);
+    auto bytes_values = column->values();
     std::unordered_set<double> expected_double;
-    auto double_values = segment.values("doc_double");
+    column = segment.column_reader("doc_double");
+    ASSERT_NE(nullptr, column);
+    auto double_values = column->values();
     std::unordered_set<float> expected_float;
-    auto float_values = segment.values("doc_float");
+    column = segment.column_reader("doc_float");
+    ASSERT_NE(nullptr, column);
+    auto float_values = column->values();
     std::unordered_set<int> expected_int;
-    auto int_values = segment.values("doc_int");
+    column = segment.column_reader("doc_int");
+    ASSERT_NE(nullptr, column);
+    auto int_values = column->values();
     std::unordered_set<int64_t> expected_long;
-    auto long_values = segment.values("doc_long");
+    column = segment.column_reader("doc_long");
+    ASSERT_NE(nullptr, column);
+    auto long_values = column->values();
     std::unordered_set<std::string> expected_string;
-    auto string_values = segment.values("doc_string");
+    column = segment.column_reader("doc_string");
+    ASSERT_NE(nullptr, column);
+    auto string_values = column->values();
 
     expected_bytes = { iresearch::bytes_ref(bytes1), iresearch::bytes_ref(bytes2) };
     expected_double = { 2.718281828 * 1, 2.718281828 * 2 };
@@ -1634,17 +1646,29 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     // validate documents
     // ...........................................................................
     std::unordered_set<iresearch::bytes_ref> expected_bytes;
-    auto bytes_values = segment.values("doc_bytes");
+    auto column = segment.column_reader("doc_bytes");
+    ASSERT_NE(nullptr, column);
+    auto bytes_values = column->values();
     std::unordered_set<double> expected_double;
-    auto double_values = segment.values("doc_double");
+    column = segment.column_reader("doc_double");
+    ASSERT_NE(nullptr, column);
+    auto double_values = column->values();
     std::unordered_set<float> expected_float;
-    auto float_values = segment.values("doc_float");
+    column = segment.column_reader("doc_float");
+    ASSERT_NE(nullptr, column);
+    auto float_values = column->values();
     std::unordered_set<int> expected_int;
-    auto int_values = segment.values("doc_int");
+    column = segment.column_reader("doc_int");
+    ASSERT_NE(nullptr, column);
+    auto int_values = column->values();
     std::unordered_set<int64_t> expected_long;
-    auto long_values = segment.values("doc_long");
+    column = segment.column_reader("doc_long");
+    ASSERT_NE(nullptr, column);
+    auto long_values = column->values();
     std::unordered_set<std::string> expected_string;
-    auto string_values = segment.values("doc_string");
+    column = segment.column_reader("doc_string");
+    ASSERT_NE(nullptr, column);
+    auto string_values = column->values();
 
     expected_bytes = { iresearch::bytes_ref(bytes3) };
     expected_double = { 2.718281828 * 3 };
@@ -2015,17 +2039,29 @@ TEST_F(merge_writer_tests, test_merge_writer) {
   // validate documents
   // ...........................................................................
   std::unordered_set<iresearch::bytes_ref> expected_bytes;
-  auto bytes_values = segment.values("doc_bytes");
+  auto column = segment.column_reader("doc_bytes");
+  ASSERT_NE(nullptr, column);
+  auto bytes_values = column->values();
   std::unordered_set<double> expected_double;
-  auto double_values = segment.values("doc_double");
+  column = segment.column_reader("doc_double");
+  ASSERT_NE(nullptr, column);
+  auto double_values = column->values();
   std::unordered_set<float> expected_float;
-  auto float_values = segment.values("doc_float");
+  column = segment.column_reader("doc_float");
+  ASSERT_NE(nullptr, column);
+  auto float_values = column->values();
   std::unordered_set<int> expected_int;
-  auto int_values = segment.values("doc_int");
+  column = segment.column_reader("doc_int");
+  ASSERT_NE(nullptr, column);
+  auto int_values = column->values();
   std::unordered_set<int64_t> expected_long;
-  auto long_values = segment.values("doc_long");
+  column = segment.column_reader("doc_long");
+  ASSERT_NE(nullptr, column);
+  auto long_values = column->values();
   std::unordered_set<std::string> expected_string;
-  auto string_values = segment.values("doc_string");
+  column = segment.column_reader("doc_string");
+  ASSERT_NE(nullptr, column);
+  auto string_values = column->values();
 
   expected_bytes = { iresearch::bytes_ref(bytes1), iresearch::bytes_ref(bytes2), iresearch::bytes_ref(bytes3) };
   expected_double = { 2.718281828 * 1, 2.718281828 * 2, 2.718281828 * 3 };

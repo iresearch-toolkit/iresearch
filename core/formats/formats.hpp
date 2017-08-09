@@ -297,6 +297,20 @@ struct IRESEARCH_API columnstore_reader {
     virtual const value_type& seek(doc_id_t doc) = 0;
   }; // column_iterator
 
+  struct column_reader {
+    virtual ~column_reader() = default;
+
+    // returns corresponding column reader
+    virtual columnstore_reader::values_reader_f values() const = 0;
+
+    // returns corresponding column iterator
+    virtual columnstore_reader::column_iterator::ptr iterator() const = 0;
+
+    virtual bool visit(const columnstore_reader::values_visitor_f& reader) const = 0;
+
+    virtual size_t size() const = 0;
+  };
+
   static column_iterator::ptr empty_iterator();
   static const values_reader_f& empty_reader();
 
@@ -311,6 +325,11 @@ struct IRESEARCH_API columnstore_reader {
     const segment_meta& meta,
     bool* seen = nullptr
   ) = 0;
+
+  virtual const column_reader* column(field_id field) const = 0;
+
+  // @returns total number of columns
+  virtual size_t size() const = 0;
 
   virtual values_reader_f values(field_id field) const = 0;
   virtual bool visit(field_id field, const values_visitor_f& visitor) const = 0;

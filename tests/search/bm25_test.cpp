@@ -97,7 +97,9 @@ TEST_F(bm25_test, test_query) {
 
   auto reader = iresearch::directory_reader::open(dir(), codec());
   auto& segment = *(reader.begin());
-  auto values = segment.values("seq");
+  const auto* column = segment.column_reader("seq");
+  ASSERT_NE(nullptr, column);
+  auto values = column->values();
 
   // by_term
   {
@@ -270,7 +272,9 @@ TEST_F(bm25_test, test_order) {
   };
 
   uint64_t seq = 0;
-  auto values = segment.values("seq");
+  const auto* column = segment.column_reader("seq");
+  ASSERT_NE(nullptr, column);
+  auto values = column->values();
 
   {
     query.term("7");

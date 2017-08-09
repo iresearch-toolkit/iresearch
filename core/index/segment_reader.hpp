@@ -87,10 +87,10 @@ class IRESEARCH_API segment_reader final : public sub_reader {
     return impl_->size();
   }
 
-  using sub_reader::values;
-  virtual columnstore_reader::values_reader_f values(
+  using sub_reader::column_reader;
+  virtual const columnstore_reader::column_reader* column_reader(
       field_id field) const override {
-    return impl_->values(field);
+    return impl_->column_reader(field);
   }
 
   virtual columnstore_reader::column_iterator::ptr values_iterator(

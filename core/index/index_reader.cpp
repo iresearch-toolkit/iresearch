@@ -30,17 +30,6 @@ index_reader::~index_reader() { }
 // sub_reader
 // -------------------------------------------------------------------
 
-columnstore_reader::values_reader_f sub_reader::values(
-    const string_ref& field) const {
-  auto* meta = column(field);
-
-  if (!meta) {
-    return columnstore_reader::empty_reader();
-  }
-
-  return values(meta->id);
-}
-
 bool sub_reader::visit(
     const string_ref& field,
     const columnstore_reader::values_visitor_f& visitor) const {
@@ -62,6 +51,12 @@ columnstore_reader::column_iterator::ptr sub_reader::values_iterator(
   }
 
   return values_iterator(meta->id);
+}
+
+const columnstore_reader::column_reader* sub_reader::column_reader(
+    const string_ref& field) const {
+  const auto* meta = column(field);
+  return meta ? column_reader(meta->id) : nullptr;
 }
 
 // -------------------------------------------------------------------

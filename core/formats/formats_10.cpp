@@ -2911,13 +2911,16 @@ const typename BlockRef::block_t* load_block(
 ////////////////////////////////////////////////////////////////////////////////
 /// @class column
 ////////////////////////////////////////////////////////////////////////////////
-class column : private util::noncopyable {
+class column
+    : public irs::columnstore_reader::column_reader,
+      private util::noncopyable {
  public:
   DECLARE_PTR(column);
 
   column(ColumnProperty props)
     : props_(props) {
   }
+
   virtual ~column() { }
 
   virtual bool read(data_input& in, uint64_t* /*buf*/) {
@@ -2931,21 +2934,12 @@ class column : private util::noncopyable {
     return true;
   }
 
-  virtual bool value(doc_id_t key, bytes_ref& out) const = 0;
-
-  virtual bool visit(
-    const columnstore_reader::values_visitor_f& visitor
-  ) const = 0;
-
-  virtual columnstore_reader::column_iterator::ptr iterator() const {
-    return columnstore_reader::empty_iterator();
-  }
-
-  doc_id_t max() const { return max_; }
-  doc_id_t size() const { return count_; }
-  size_t avg_block_size() const { return avg_block_size_; }
-  size_t avg_block_count() const { return avg_block_count_; }
-  ColumnProperty props() const { return props_; }
+  doc_id_t max() const NOEXCEPT { return max_; }
+  virtual doc_id_t size() const NOEXCEPT override { return count_; }
+  bool empty() const NOEXCEPT { return 0 == size(); }
+  size_t avg_block_size() const NOEXCEPT { return avg_block_size_; }
+  size_t avg_block_count() const NOEXCEPT { return avg_block_count_; }
+  ColumnProperty props() const NOEXCEPT { return props_; }
 
  private:
   doc_id_t max_{ type_limits<type_t::doc_id_t>::eof() };
@@ -3040,6 +3034,17 @@ class column_iterator final : public irs::columnstore_reader::column_iterator {
 // --SECTION--                                                           Columns
 // -----------------------------------------------------------------------------
 
+template<typename Column>
+columnstore_reader::values_reader_f column_values(const Column& column) {
+if (column.empty()) {
+    return columnstore_reader::empty_reader();
+  }
+
+  return [&column](doc_id_t key, bytes_ref& value) {
+    return column.value(key, value);
+  };
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @class sparse_column
 ////////////////////////////////////////////////////////////////////////////////
@@ -3116,7 +3121,7 @@ class sparse_column final : public column {
     return true;
   }
 
-  virtual bool value(doc_id_t key, bytes_ref& value) const {
+  bool value(doc_id_t key, bytes_ref& value) const {
     // find the right block
     const auto rbegin = refs_.rbegin(); // upper bound
     const auto rend = refs_.rend();
@@ -3163,13 +3168,17 @@ class sparse_column final : public column {
   virtual columnstore_reader::column_iterator::ptr iterator() const {
     typedef column_iterator<column_t> iterator_t;
 
-    return 0 == size()
-      ? column::iterator()
+    return empty()
+      ? columnstore_reader::empty_iterator()
       : columnstore_reader::column_iterator::make<iterator_t>(
           *this,
           refs_.data(),
           refs_.data() + refs_.size() - 1 // -1 for upper bound
         );
+  }
+
+  virtual columnstore_reader::values_reader_f values() const {
+    return column_values<column_t>(*this);
   }
 
  private:
@@ -3309,7 +3318,7 @@ class dense_fixed_length_column final : public column {
     return true;
   }
 
-  virtual bool value(doc_id_t key, bytes_ref& value) const {
+  bool value(doc_id_t key, bytes_ref& value) const {
     if ((key -= min_) >= this->size()) {
       return false;
     }
@@ -3353,13 +3362,17 @@ class dense_fixed_length_column final : public column {
   virtual columnstore_reader::column_iterator::ptr iterator() const {
     typedef column_iterator<column_t> iterator_t;
 
-    return 0 == size()
-      ? column::iterator()
+    return empty()
+      ? columnstore_reader::empty_iterator()
       : columnstore_reader::column_iterator::make<iterator_t>(
           *this,
           refs_.data(),
           refs_.data() + refs_.size()
         );
+  }
+
+  virtual columnstore_reader::values_reader_f values() const {
+    return column_values<column_t>(*this);
   }
 
  private:
@@ -3484,7 +3497,7 @@ class dense_fixed_length_column<dense_mask_block> final : public column {
     return true;
   }
 
-  virtual bool value(doc_id_t key, bytes_ref& value) const NOEXCEPT {
+  bool value(doc_id_t key, bytes_ref& value) const NOEXCEPT {
     value = bytes_ref::nil;
     return key > min_ && key <= this->max();
   }
@@ -3502,10 +3515,15 @@ class dense_fixed_length_column<dense_mask_block> final : public column {
   }
 
   virtual columnstore_reader::column_iterator::ptr iterator() const;
+
+  virtual columnstore_reader::values_reader_f values() const {
+    return column_values<column_t>(*this);
+  }
+
  private:
   class column_iterator final : public columnstore_reader::column_iterator {
    public:
-    explicit column_iterator(const dense_fixed_length_column& column) NOEXCEPT
+    explicit column_iterator(const column_t& column) NOEXCEPT
       : min_(1 + column.min_), max_(column.max()) {
     }
 
@@ -3546,8 +3564,8 @@ class dense_fixed_length_column<dense_mask_block> final : public column {
 }; // dense_fixed_length_column
 
 columnstore_reader::column_iterator::ptr dense_fixed_length_column<dense_mask_block>::iterator() const {
-  return 0 == size()
-    ? column::iterator()
+  return empty()
+    ? columnstore_reader::empty_iterator()
     : columnstore_reader::column_iterator::make<column_iterator>(*this);
 }
 
@@ -3609,9 +3627,13 @@ class reader final : public columnstore_reader, public context_provider {
     bool* seen = nullptr
   ) override;
 
+  virtual const column_reader* column(field_id field) const override;
   virtual values_reader_f values(field_id field) const override;
   virtual bool visit(field_id field, const values_visitor_f& visitor) const override;
   virtual column_iterator::ptr iterator(field_id field) const override;
+  virtual size_t size() const NOEXCEPT {
+    return columns_.size();
+  }
 
  private:
   std::vector<column::ptr> columns_;
@@ -3694,6 +3716,12 @@ bool reader::prepare(
   }
 
   return true;
+}
+
+const reader::column_reader* reader::column(field_id field) const {
+  return field >= columns_.size()
+    ? nullptr // can't find column with the specified identifier
+    : columns_[field].get();
 }
 
 reader::values_reader_f reader::values(field_id field) const {

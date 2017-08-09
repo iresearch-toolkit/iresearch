@@ -279,7 +279,9 @@ class column_existence_filter_test_case
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
-      auto values = segment.values("name");
+      auto column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
 
       irs::bytes_ref value;
       auto it = prepared->execute(segment);
@@ -339,7 +341,9 @@ class column_existence_filter_test_case
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
-      auto values = segment.values("name");
+      auto column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
 
       irs::bytes_ref value;
       auto it = prepared->execute(segment);
@@ -375,7 +379,9 @@ class column_existence_filter_test_case
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
-      auto values = segment.values("name");
+      auto column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
 
       irs::bytes_ref value;
       auto it = prepared->execute(segment);
@@ -411,7 +417,9 @@ class column_existence_filter_test_case
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
-      auto values = segment.values("name");
+      auto column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
 
       irs::bytes_ref value;
       auto it = prepared->execute(segment);

@@ -102,7 +102,9 @@ class phrase_filter_test_case : public filter_test_case_base {
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
-      auto values = sub->values("name");
+      auto column = sub->column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
 
       auto docs = prepared->execute(*sub);
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(docs->value()));
@@ -173,7 +175,9 @@ class phrase_filter_test_case : public filter_test_case_base {
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
-      auto values = sub->values("name");
+      auto column = sub->column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
 
       auto docs = prepared->execute(*sub);
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(docs->value()));
@@ -231,7 +235,9 @@ class phrase_filter_test_case : public filter_test_case_base {
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
-      auto values = sub->values("name");
+      auto column = sub->column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
 
       auto docs = prepared->execute(*sub);
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(docs->value()));
@@ -276,8 +282,10 @@ class phrase_filter_test_case : public filter_test_case_base {
       auto prepared = q.prepare(rdr);
 
       auto sub = rdr.begin();
-      auto values = sub->values("name");
-      auto docs = prepared->execute(*sub); 
+      auto column = sub->column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      auto docs = prepared->execute(*sub);
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(docs->value()));
       auto docs_seek = prepared->execute(*sub);
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(docs_seek->value()));
@@ -307,8 +315,10 @@ class phrase_filter_test_case : public filter_test_case_base {
       auto prepared = q.prepare(rdr);
 
       auto sub = rdr.begin();
-      auto values = sub->values("name");
-      auto docs = prepared->execute(*sub); 
+      auto column = sub->column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      auto docs = prepared->execute(*sub);
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid( docs->value()));
       auto docs_seek = prepared->execute(*sub);
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(docs_seek->value()));
@@ -353,8 +363,10 @@ class phrase_filter_test_case : public filter_test_case_base {
       auto prepared = q.prepare(rdr);
 
       auto sub = rdr.begin();
-      auto values = sub->values("name");
-      auto docs = prepared->execute(*sub); 
+      auto column = sub->column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      auto docs = prepared->execute(*sub);
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(docs->value()));
       auto docs_seek = prepared->execute(*sub);
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(docs_seek->value()));
@@ -388,8 +400,10 @@ class phrase_filter_test_case : public filter_test_case_base {
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
-      auto values = sub->values("name");
-      auto docs = prepared->execute(*sub); 
+      auto column = sub->column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      auto docs = prepared->execute(*sub);
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(docs->value()));
       auto docs_seek = prepared->execute(*sub);
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(docs_seek->value()));
