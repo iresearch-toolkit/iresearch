@@ -793,8 +793,14 @@ class index_test_case_base : public tests::index_test_base {
 
     for (size_t i = 0, count = reader.size(); i < count; ++i) {
       indexed_docs_count += reader[i].live_docs_count();
-      reader[i].visit("same", imported_visitor); // field present in all docs from simple_sequential.json
-      reader[i].visit("updated", updated_visitor); // field insterted by updater threads
+
+      auto* same_column = reader[i].column_reader("same");
+      ASSERT_NE(nullptr, same_column);
+      ASSERT_TRUE(same_column->visit(imported_visitor)); // field present in all docs from simple_sequential.json
+
+      auto* updated_column = reader[i].column_reader("updated");
+      ASSERT_NE(nullptr, updated_column);
+      ASSERT_TRUE(updated_column->visit(updated_visitor)); // field insterted by updater threads
     }
 
     ASSERT_EQ(parsed_docs_count + imported_docs_count, indexed_docs_count);
@@ -1305,7 +1311,13 @@ class index_test_case_base : public tests::index_test_base {
           return true;
         };
 
-        return segment.visit(meta->id, visitor);
+        auto* column = segment.column_reader(meta->id);
+
+        if (!column) {
+          return false;
+        }
+
+        return column->visit(visitor);
       };
 
       auto read_column_offset = [&segment] (const iresearch::string_ref& column_name, ir::doc_id_t offset) {
@@ -1563,7 +1575,9 @@ class index_test_case_base : public tests::index_test_base {
           return true;
         };
 
-        ASSERT_TRUE(segment.visit(column_name, visitor));
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_TRUE(column->visit(visitor));
         ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
       }
 
@@ -1607,7 +1621,10 @@ class index_test_case_base : public tests::index_test_base {
           return true;
         };
 
-        ASSERT_TRUE(segment.visit(column_name, visitor));
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_TRUE(column->visit(visitor));
         ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
       }
 
@@ -1667,7 +1684,10 @@ class index_test_case_base : public tests::index_test_base {
           return true;
         };
 
-        ASSERT_TRUE(segment.visit(column_name, visitor));
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_TRUE(column->visit(visitor));
         ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
       }
 
@@ -1727,7 +1747,10 @@ class index_test_case_base : public tests::index_test_base {
           return true;
         };
 
-        ASSERT_TRUE(segment.visit(column_name, visitor));
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_TRUE(column->visit(visitor));
         ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
       }
 
@@ -1789,7 +1812,10 @@ class index_test_case_base : public tests::index_test_base {
           return true;
         };
 
-        ASSERT_TRUE(segment.visit(column_name, visitor));
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_TRUE(column->visit(visitor));
         ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
       }
 
@@ -2201,7 +2227,10 @@ class index_test_case_base : public tests::index_test_base {
           return true;
         };
 
-        ASSERT_TRUE(segment.visit(column_name, visitor));
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_TRUE(column->visit(visitor));
         ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
       }
 
@@ -2287,7 +2316,10 @@ class index_test_case_base : public tests::index_test_base {
           return true;
         };
 
-        ASSERT_TRUE(segment.visit(column_name, visitor));
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_TRUE(column->visit(visitor));
         ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
       }
 
@@ -2331,7 +2363,10 @@ class index_test_case_base : public tests::index_test_base {
           return true;
         };
 
-        ASSERT_TRUE(segment.visit(column_name, visitor));
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_TRUE(column->visit(visitor));
         ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
       }
 
@@ -2394,7 +2429,10 @@ class index_test_case_base : public tests::index_test_base {
           return true;
         };
 
-        ASSERT_TRUE(segment.visit(column_name, visitor));
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_TRUE(column->visit(visitor));
         ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
       }
 
@@ -2455,7 +2493,10 @@ class index_test_case_base : public tests::index_test_base {
           return true;
         };
 
-        ASSERT_TRUE(segment.visit(column_name, visitor));
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_TRUE(column->visit(visitor));
         ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
       }
 
@@ -2518,7 +2559,10 @@ class index_test_case_base : public tests::index_test_base {
           return true;
         };
 
-        ASSERT_TRUE(segment.visit(column_name, visitor));
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_TRUE(column->visit(visitor));
         ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
       }
 
@@ -2835,7 +2879,10 @@ class index_test_case_base : public tests::index_test_base {
           return true;
         };
 
-        ASSERT_TRUE(segment.visit(column_name, visitor));
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_TRUE(column->visit(visitor));
         ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
       }
 
@@ -2930,7 +2977,10 @@ class index_test_case_base : public tests::index_test_base {
           return true;
         };
 
-        ASSERT_TRUE(segment.visit(column_name, visitor));
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_TRUE(column->visit(visitor));
       }
 
       // read values
@@ -2976,7 +3026,10 @@ class index_test_case_base : public tests::index_test_base {
           return true;
         };
 
-        ASSERT_TRUE(segment.visit(column_name, visitor));
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_TRUE(column->visit(visitor));
       }
 
       // iterate over column (cached)
@@ -3041,7 +3094,10 @@ class index_test_case_base : public tests::index_test_base {
           return true;
         };
 
-        ASSERT_TRUE(segment.visit(column_name, visitor));
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_TRUE(column->visit(visitor));
       }
 
       {
@@ -3105,7 +3161,10 @@ class index_test_case_base : public tests::index_test_base {
           return true;
         };
 
-        ASSERT_TRUE(segment.visit(column_name, visitor));
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_TRUE(column->visit(visitor));
       }
 
       // iterate over column (cached)
@@ -3170,7 +3229,10 @@ class index_test_case_base : public tests::index_test_base {
           return true;
         };
 
-        ASSERT_TRUE(segment.visit(column_name, visitor));
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_TRUE(column->visit(visitor));
       }
 
       // seek over column (not cached)
@@ -3534,7 +3596,10 @@ class index_test_case_base : public tests::index_test_base {
           return true;
         };
 
-        ASSERT_TRUE(segment.visit(column_name, visitor));
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_TRUE(column->visit(visitor));
       }
 
       // iterate over column (cached)
@@ -3638,7 +3703,10 @@ class index_test_case_base : public tests::index_test_base {
           return true;
         };
 
-        ASSERT_TRUE(segment.visit(column_name, visitor));
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_TRUE(column->visit(visitor));
       }
 
       // read values
@@ -3698,7 +3766,10 @@ class index_test_case_base : public tests::index_test_base {
           return true;
         };
 
-        ASSERT_TRUE(segment.visit(column_name, visitor));
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_TRUE(column->visit(visitor));
       }
 
       // iterate over column (cached)
@@ -3774,7 +3845,10 @@ class index_test_case_base : public tests::index_test_base {
           return true;
         };
 
-        ASSERT_TRUE(segment.visit(column_name, visitor));
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_TRUE(column->visit(visitor));
       }
 
       {
@@ -3853,7 +3927,10 @@ class index_test_case_base : public tests::index_test_base {
           return true;
         };
 
-        ASSERT_TRUE(segment.visit(column_name, visitor));
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_TRUE(column->visit(visitor));
       }
 
       // iterate over column (cached)
@@ -3929,7 +4006,10 @@ class index_test_case_base : public tests::index_test_base {
           return true;
         };
 
-        ASSERT_TRUE(segment.visit(column_name, visitor));
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_TRUE(column->visit(visitor));
       }
 
       // seek over column (not cached)
@@ -4378,7 +4458,10 @@ class index_test_case_base : public tests::index_test_base {
           return true;
         };
 
-        ASSERT_TRUE(segment.visit(column_name, visitor));
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_TRUE(column->visit(visitor));
       }
 
       // iterate over column (cached)
@@ -4491,7 +4574,10 @@ class index_test_case_base : public tests::index_test_base {
           return true;
         };
 
-        ASSERT_TRUE(segment.visit(column_name, visitor));
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_TRUE(column->visit(visitor));
       }
 
       // read values
@@ -4561,7 +4647,10 @@ class index_test_case_base : public tests::index_test_base {
           return true;
         };
 
-        ASSERT_TRUE(segment.visit(column_name, visitor));
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_TRUE(column->visit(visitor));
       }
 
       // iterate over column (cached)
@@ -4639,7 +4728,10 @@ class index_test_case_base : public tests::index_test_base {
           return true;
         };
 
-        ASSERT_TRUE(segment.visit(column_name, visitor));
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_TRUE(column->visit(visitor));
       }
 
       {
@@ -4725,7 +4817,10 @@ class index_test_case_base : public tests::index_test_base {
           return true;
         };
 
-        ASSERT_TRUE(segment.visit(column_name, visitor));
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_TRUE(column->visit(visitor));
       }
 
       // iterate over column (cached)
@@ -4803,7 +4898,10 @@ class index_test_case_base : public tests::index_test_base {
           return true;
         };
 
-        ASSERT_TRUE(segment.visit(column_name, visitor));
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_TRUE(column->visit(visitor));
       }
 
       // seek over column (not cached)
@@ -5342,7 +5440,10 @@ class index_test_case_base : public tests::index_test_base {
           return true;
         };
 
-        ASSERT_TRUE(segment.visit(column_name, visitor));
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_TRUE(column->visit(visitor));
       }
 
       // iterate over column (cached)
@@ -5755,7 +5856,10 @@ class index_test_case_base : public tests::index_test_base {
             return true;
           };
 
-          ASSERT_TRUE(segment.visit(meta->id, visitor));
+          auto column = segment.column_reader(column_name);
+          ASSERT_NE(nullptr, column);
+          ASSERT_EQ(column, segment.column_reader(meta->id));
+          ASSERT_TRUE(column->visit(visitor));
         }
 
         // random access
@@ -5803,7 +5907,10 @@ class index_test_case_base : public tests::index_test_base {
             return true;
           };
 
-          ASSERT_TRUE(segment.visit(meta->id, visitor));
+          auto column = segment.column_reader(column_name);
+          ASSERT_NE(nullptr, column);
+          ASSERT_EQ(column, segment.column_reader(meta->id));
+          ASSERT_TRUE(column->visit(visitor));
         }
 
         // iterate over column (cached)
@@ -5866,7 +5973,10 @@ class index_test_case_base : public tests::index_test_base {
             return true;
           };
 
-          ASSERT_TRUE(segment.visit(meta->id, visitor));
+          auto column = segment.column_reader(column_name);
+          ASSERT_NE(nullptr, column);
+          ASSERT_EQ(column, segment.column_reader(meta->id));
+          ASSERT_TRUE(column->visit(visitor));
         }
 
         // random access
@@ -5911,7 +6021,10 @@ class index_test_case_base : public tests::index_test_base {
             return true;
           };
 
-          ASSERT_TRUE(segment.visit(meta->id, visitor));
+          auto column = segment.column_reader(column_name);
+          ASSERT_NE(nullptr, column);
+          ASSERT_EQ(column, segment.column_reader(meta->id));
+          ASSERT_TRUE(column->visit(visitor));
         }
 
         // iterate over 'label' column (cached)
@@ -5997,7 +6110,10 @@ class index_test_case_base : public tests::index_test_base {
             return true;
           };
 
-          ASSERT_TRUE(segment.visit(meta->id, visitor));
+          auto column = segment.column_reader(column_name);
+          ASSERT_NE(nullptr, column);
+          ASSERT_EQ(column, segment.column_reader(meta->id));
+          ASSERT_TRUE(column->visit(visitor));
         }
 
         // iterate over column (not cached)
@@ -6075,7 +6191,10 @@ class index_test_case_base : public tests::index_test_base {
             return true;
           };
 
-          ASSERT_TRUE(segment.visit(meta->id, visitor));
+          auto column = segment.column_reader(column_name);
+          ASSERT_NE(nullptr, column);
+          ASSERT_EQ(column, segment.column_reader(meta->id));
+          ASSERT_TRUE(column->visit(visitor));
         }
 
         // iterate over column (cached)
@@ -6138,7 +6257,10 @@ class index_test_case_base : public tests::index_test_base {
             return true;
           };
 
-          ASSERT_TRUE(segment.visit(meta->id, visitor));
+          auto column = segment.column_reader(column_name);
+          ASSERT_NE(nullptr, column);
+          ASSERT_EQ(column, segment.column_reader(meta->id));
+          ASSERT_TRUE(column->visit(visitor));
         }
 
         // iterate over 'label' column (not cached)
@@ -6213,7 +6335,10 @@ class index_test_case_base : public tests::index_test_base {
             return true;
           };
 
-          ASSERT_TRUE(segment.visit(meta->id, visitor));
+          auto column = segment.column_reader(column_name);
+          ASSERT_NE(nullptr, column);
+          ASSERT_EQ(column, segment.column_reader(meta->id));
+          ASSERT_TRUE(column->visit(visitor));
         }
 
         // iterate over 'label' column (cached)

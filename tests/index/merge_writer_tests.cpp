@@ -204,7 +204,10 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       // read values for 'doc_int'
       auto* meta = segment.column("doc_int");
       ASSERT_NE(nullptr, meta);
-      ASSERT_TRUE(segment.visit(meta->id, reader));
+      auto* column = segment.column_reader(meta->id);
+      ASSERT_NE(nullptr, column);
+      ASSERT_EQ(column, segment.column_reader(meta->name));
+      ASSERT_TRUE(column->visit(reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
 
@@ -235,26 +238,21 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
         return true;
       };
 
+
       // read values for 'doc_string'
       auto* meta = segment.column("doc_string");
       ASSERT_NE(nullptr, meta);
-      ASSERT_TRUE(segment.visit(meta->id, reader));
+      auto* column = segment.column_reader(meta->id);
+      ASSERT_NE(nullptr, column);
+      ASSERT_EQ(column, segment.column_reader(meta->name));
+      ASSERT_TRUE(column->visit(reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
 
     // check wrong column
     {
-      size_t calls_count = 0;
-      auto reader = [&calls_count] (irs::doc_id_t doc, const irs::bytes_ref& in) {
-        ++calls_count;
-        return true;
-      };
-
       ASSERT_EQ(nullptr, segment.column("invalid_column"));
-      ASSERT_FALSE(
-        segment.visit(irs::type_limits<irs::type_t::field_id_t>::invalid(), reader)
-      );
-      ASSERT_EQ(0, calls_count);
+      ASSERT_EQ(nullptr, segment.column_reader("invalid_column"));
     }
   }
   
@@ -303,7 +301,10 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       // read values for 'doc_int'
       auto* meta = segment.column("doc_int");
       ASSERT_NE(nullptr, meta);
-      ASSERT_TRUE(segment.visit(meta->id, reader));
+      auto* column = segment.column_reader(meta->id);
+      ASSERT_NE(nullptr, column);
+      ASSERT_EQ(column, segment.column_reader(meta->name));
+      ASSERT_TRUE(column->visit(reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
 
@@ -337,7 +338,10 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       // read values for 'doc_string'
       auto* meta = segment.column("doc_string");
       ASSERT_NE(nullptr, meta);
-      ASSERT_TRUE(segment.visit(meta->id, reader));
+      auto* column = segment.column_reader(meta->id);
+      ASSERT_NE(nullptr, column);
+      ASSERT_EQ(column, segment.column_reader(meta->name));
+      ASSERT_TRUE(column->visit(reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
 
@@ -370,23 +374,17 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       // read values for 'another_column'
       auto* meta = segment.column("another_column");
       ASSERT_NE(nullptr, meta);
-      ASSERT_TRUE(segment.visit(meta->id, reader));
+      auto* column = segment.column_reader(meta->id);
+      ASSERT_NE(nullptr, column);
+      ASSERT_EQ(column, segment.column_reader(meta->name));
+      ASSERT_TRUE(column->visit(reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
 
     // check invalid column 
     {
-      size_t calls_count = 0;
-      auto reader = [&calls_count] (iresearch::doc_id_t, const irs::bytes_ref&) {
-        ++calls_count;
-        return true;
-      };
-
       ASSERT_EQ(nullptr, segment.column("invalid_column"));
-      ASSERT_FALSE(
-        segment.visit(iresearch::type_limits<iresearch::type_t::field_id_t>::invalid(), reader)
-      );
-      ASSERT_EQ(0, calls_count);
+      ASSERT_EQ(nullptr, segment.column_reader("invalid_column"));
     }
   }
   
@@ -445,7 +443,10 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       // read values for 'doc_int'
       auto* meta = segment.column("doc_int");
       ASSERT_NE(nullptr, meta);
-      ASSERT_TRUE(segment.visit(meta->id, reader));
+      auto* column = segment.column_reader(meta->id);
+      ASSERT_NE(nullptr, column);
+      ASSERT_EQ(column, segment.column_reader(meta->name));
+      ASSERT_TRUE(column->visit(reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
 
@@ -482,21 +483,17 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       // read values for 'doc_string'
       auto* meta = segment.column("doc_string");
       ASSERT_NE(nullptr, meta);
-      ASSERT_TRUE(segment.visit(meta->id, reader));
+      auto* column = segment.column_reader(meta->id);
+      ASSERT_NE(nullptr, column);
+      ASSERT_EQ(column, segment.column_reader(meta->name));
+      ASSERT_TRUE(column->visit(reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
 
     // check that 'another_column' has been removed
     {
-      size_t calls_count = 0;
-      auto reader = [&calls_count] (irs::doc_id_t, const irs::bytes_ref&) {
-        ++calls_count;
-        return true;
-      };
-
       ASSERT_EQ(nullptr, segment.column("another_column"));
-      ASSERT_FALSE(segment.visit(2, reader));
-      ASSERT_EQ(0, calls_count);
+      ASSERT_EQ(nullptr, segment.column_reader("another_column"));
     }
   }
 }
@@ -612,7 +609,10 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       // read values for 'doc_int'
       auto* meta = segment.column("doc_int");
       ASSERT_NE(nullptr, meta);
-      ASSERT_TRUE(segment.visit(meta->id, reader));
+      auto* column = segment.column_reader(meta->id);
+      ASSERT_NE(nullptr, column);
+      ASSERT_EQ(column, segment.column_reader(meta->name));
+      ASSERT_TRUE(column->visit(reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
 
@@ -646,23 +646,17 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       // read values for 'doc_string'
       auto* meta = segment.column("doc_string");
       ASSERT_NE(nullptr, meta);
-      ASSERT_TRUE(segment.visit(meta->id, reader));
+      auto* column = segment.column_reader(meta->id);
+      ASSERT_NE(nullptr, column);
+      ASSERT_EQ(column, segment.column_reader(meta->name));
+      ASSERT_TRUE(column->visit(reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
 
     // check wrong column
     {
-      size_t calls_count = 0;
-      auto reader = [&calls_count] (irs::doc_id_t, const irs::bytes_ref&) {
-        ++calls_count;
-        return true;
-      };
-
       ASSERT_EQ(nullptr, segment.column("invalid_column"));
-      ASSERT_FALSE(
-        segment.visit(iresearch::type_limits<iresearch::type_t::field_id_t>::invalid(), reader)
-      );
-      ASSERT_EQ(0, calls_count);
+      ASSERT_EQ(nullptr, segment.column_reader("invalid_column"));
     }
   }
 
@@ -708,7 +702,10 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       // read values for 'doc_int'
       auto* meta = segment.column("doc_int");
       ASSERT_NE(nullptr, meta);
-      ASSERT_TRUE(segment.visit(meta->id, reader));
+      auto* column = segment.column_reader(meta->id);
+      ASSERT_NE(nullptr, column);
+      ASSERT_EQ(column, segment.column_reader(meta->name));
+      ASSERT_TRUE(column->visit(reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
 
@@ -742,23 +739,17 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       // read values for 'doc_string'
       auto* meta = segment.column("doc_string");
       ASSERT_NE(nullptr, meta);
-      ASSERT_TRUE(segment.visit(meta->id, reader));
+      auto* column = segment.column_reader(meta->id);
+      ASSERT_NE(nullptr, column);
+      ASSERT_EQ(column, segment.column_reader(meta->name));
+      ASSERT_TRUE(column->visit(reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
 
     // check wrong column
     {
-      size_t calls_count = 0;
-      auto reader = [&calls_count] (irs::doc_id_t, const irs::bytes_ref&) {
-        ++calls_count;
-        return true;
-      };
-
       ASSERT_EQ(nullptr, segment.column("invalid_column"));
-      ASSERT_FALSE(
-        segment.visit(iresearch::type_limits<iresearch::type_t::field_id_t>::invalid(), reader)
-      );
-      ASSERT_EQ(0, calls_count);
+      ASSERT_EQ(nullptr, segment.column_reader("invalid_column"));
     }
   }
 
@@ -817,7 +808,10 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       // read values for 'doc_int'
       auto* meta = segment.column("doc_int");
       ASSERT_NE(nullptr, meta);
-      ASSERT_TRUE(segment.visit(meta->id, reader));
+      auto* column = segment.column_reader(meta->id);
+      ASSERT_NE(nullptr, column);
+      ASSERT_EQ(column, segment.column_reader(meta->name));
+      ASSERT_TRUE(column->visit(reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
 
@@ -855,7 +849,10 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       // read values for 'doc_string'
       auto* meta = segment.column("doc_string");
       ASSERT_NE(nullptr, meta);
-      ASSERT_TRUE(segment.visit(meta->id, reader));
+      auto* column = segment.column_reader(meta->id);
+      ASSERT_NE(nullptr, column);
+      ASSERT_EQ(column, segment.column_reader(meta->name));
+      ASSERT_TRUE(column->visit(reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
   }
@@ -1084,7 +1081,10 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         return true;
       };
 
-      ASSERT_TRUE(segment.visit(field.norm, reader));
+      auto* column = segment.column_reader(field.norm);
+      ASSERT_NE(nullptr, column);
+      ASSERT_EQ(column, segment.column_reader(field.name));
+      ASSERT_TRUE(column->visit(reader));
       ASSERT_TRUE(expected_values.empty());
     }
 
@@ -1439,7 +1439,10 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         return true;
       };
 
-      ASSERT_TRUE(segment.visit(field.norm, reader));
+      auto* column = segment.column_reader(field.norm);
+      ASSERT_NE(nullptr, column);
+      ASSERT_EQ(column, segment.column_reader(field.name));
+      ASSERT_TRUE(column->visit(reader));
       ASSERT_TRUE(expected_values.empty());
     }
 
@@ -1782,7 +1785,10 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       return true;
     };
 
-    ASSERT_TRUE(segment.visit(field.norm, reader));
+    auto* column = segment.column_reader(field.norm);
+    ASSERT_NE(nullptr, column);
+    ASSERT_EQ(column, segment.column_reader(field.name));
+    ASSERT_TRUE(column->visit(reader));
     ASSERT_TRUE(expected_values.empty());
   }
 

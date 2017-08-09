@@ -621,22 +621,27 @@ class columnstore {
       const irs::sub_reader& reader,
       irs::field_id column,
       const doc_id_map_t& doc_id_map) {
-    return reader.visit(
-        column,
-        [this, &doc_id_map](irs::doc_id_t doc, const irs::bytes_ref& in) {
-          const auto mapped_doc = doc_id_map[doc];
-          if (MASKED_DOC_ID == mapped_doc) {
-            // skip deleted document
-            return true;
-          }
+    const auto column_reader = reader.column_reader(column);
 
-          empty_ = false;
-          empty_writer_ = false;
+    if (!column_reader) {
+      return false;
+    }
 
-          auto& out = column_.second(mapped_doc);
-          out.write_bytes(in.c_str(), in.size());
+    return column_reader->visit(
+      [this, &doc_id_map](irs::doc_id_t doc, const irs::bytes_ref& in) {
+        const auto mapped_doc = doc_id_map[doc];
+        if (MASKED_DOC_ID == mapped_doc) {
+          // skip deleted document
           return true;
-        });
+        }
+
+        empty_ = false;
+        empty_writer_ = false;
+
+        auto& out = column_.second(mapped_doc);
+        out.write_bytes(in.c_str(), in.size());
+        return true;
+    });
   }
 
   void reset() {

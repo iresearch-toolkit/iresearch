@@ -30,18 +30,6 @@ index_reader::~index_reader() { }
 // sub_reader
 // -------------------------------------------------------------------
 
-bool sub_reader::visit(
-    const string_ref& field,
-    const columnstore_reader::values_visitor_f& visitor) const {
-  auto* meta = column(field);
-
-  if (!meta) {
-    return false;
-  }
-
-  return visit(meta->id, visitor);
-}
-
 columnstore_reader::column_iterator::ptr sub_reader::values_iterator(
     const string_ref& field) const {
   auto* meta = column(field);

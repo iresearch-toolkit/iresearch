@@ -339,14 +339,6 @@ struct empty_sub_reader : iresearch::singleton<empty_sub_reader>, iresearch::sub
     return nullptr;
   }
 
-  using iresearch::sub_reader::visit;
-
-  virtual bool visit(
-      iresearch::field_id field,
-      const iresearch::columnstore_reader::values_visitor_f& reader) const {
-    return false;
-  }
-
   virtual irs::columnstore_reader::column_iterator::ptr values_iterator(iresearch::field_id field) const {
     return irs::columnstore_reader::empty_iterator();
   }

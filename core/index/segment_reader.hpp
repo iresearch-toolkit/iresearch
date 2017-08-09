@@ -98,12 +98,6 @@ class IRESEARCH_API segment_reader final : public sub_reader {
     return impl_->values_iterator(field);
   }
 
-  virtual bool visit(
-      field_id field,
-      const columnstore_reader::values_visitor_f& reader) const override {
-    return impl_->visit(field, reader);
-  }
-
  private:
   class atomic_helper;
   typedef std::shared_ptr<sub_reader> impl_ptr;
