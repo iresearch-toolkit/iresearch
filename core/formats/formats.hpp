@@ -330,10 +330,6 @@ struct IRESEARCH_API columnstore_reader {
 
   // @returns total number of columns
   virtual size_t size() const = 0;
-
-  virtual values_reader_f values(field_id field) const = 0;
-  virtual bool visit(field_id field, const values_visitor_f& visitor) const = 0;
-  virtual column_iterator::ptr iterator(field_id field) const = 0;
 }; // columnstore_reader
 
 NS_END

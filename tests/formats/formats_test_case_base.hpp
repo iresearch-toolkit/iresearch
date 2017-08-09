@@ -973,8 +973,13 @@ class format_test_case_base : public index_test_base {
         auto reader_1 = codec()->get_columnstore_reader();
         ASSERT_TRUE(reader_1->prepare(dir(), seg_1));
 
-        auto id_values = reader_1->values(columns_1["id"].first);
-        auto name_values = reader_1->values(columns_1["name"].first);
+        auto id_column = reader_1->column(columns_1["id"].first);
+        ASSERT_NE(nullptr, id_column);
+        auto id_values = id_column->values();
+
+        auto name_column = reader_1->column(columns_1["name"].first);
+        ASSERT_NE(nullptr, name_column);
+        auto name_values = name_column->values();
 
         gen.reset();
         ir::doc_id_t i = 0;
@@ -990,8 +995,13 @@ class format_test_case_base : public index_test_base {
         auto reader_2 = codec()->get_columnstore_reader();
         ASSERT_TRUE(reader_2->prepare(dir(), seg_2));
 
-        auto id_values_2 = reader_2->values(columns_2["id"].first);
-        auto name_values_2 = reader_2->values(columns_2["name"].first);
+        auto id_column_2 = reader_2->column(columns_2["id"].first);
+        ASSERT_NE(nullptr, id_column_2);
+        auto id_values_2 = id_column_2->values();
+
+        auto name_column_2 = reader_2->column(columns_2["name"].first);
+        ASSERT_NE(nullptr, name_column_2);
+        auto name_values_2 = name_column_2->values();
 
         // check for equality
         irs::bytes_ref value;
@@ -1011,8 +1021,13 @@ class format_test_case_base : public index_test_base {
         auto reader = codec()->get_columnstore_reader();
         ASSERT_TRUE(reader->prepare(dir(), seg_3));
 
-        auto id_values = reader->values(columns_3["id"].first);
-        auto name_values = reader->values(columns_3["name"].first);
+        auto id_column = reader->column(columns_3["id"].first);
+        ASSERT_NE(nullptr, id_column);
+        auto id_values = id_column->values();
+
+        auto name_column = reader->column(columns_3["name"].first);
+        ASSERT_NE(nullptr, name_column);
+        auto name_values = name_column->values();
 
         ir::doc_id_t i = 0;
         for (const document* doc; i < seg_3.docs_count && (doc = gen.next());) {
@@ -1140,49 +1155,10 @@ class format_test_case_base : public index_test_base {
 
       irs::bytes_ref actual_value;
 
-      // check column 1
-      {
-        auto column = reader->values(column0_id);
-        ASSERT_FALSE(column(0, actual_value));
-
-        // iterate over empty column
-        auto it = reader->iterator(column0_id);
-        ASSERT_NE(nullptr, it);
-
-        auto& value = it->value();
-        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), value.first);
-        ASSERT_EQ(ir::bytes_ref::nil, value.second);
-
-        ASSERT_FALSE(it->next());
-        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), value.first);
-        ASSERT_EQ(ir::bytes_ref::nil, value.second);
-
-        ASSERT_FALSE(it->next());
-        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), value.first);
-        ASSERT_EQ(ir::bytes_ref::nil, value.second);
-      }
-
-      // check column 0
-      {
-        auto column = reader->values(column1_id);
-        ASSERT_FALSE(column(0, actual_value));
-
-        // iterate over empty column
-        auto it = reader->iterator(column1_id);
-        ASSERT_NE(nullptr, it);
-
-        auto& value = it->value();
-        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), value.first);
-        ASSERT_EQ(ir::bytes_ref::nil, value.second);
-
-        ASSERT_FALSE(it->next());
-        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), value.first);
-        ASSERT_EQ(ir::bytes_ref::nil, value.second);
-
-        ASSERT_FALSE(it->next());
-        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), value.first);
-        ASSERT_EQ(ir::bytes_ref::nil, value.second);
-      }
+      // check empty column 0
+      ASSERT_EQ(nullptr, reader->column(column0_id));
+      // check empty column 1
+      ASSERT_EQ(nullptr, reader->column(column1_id));
     }
   }
 
@@ -1216,52 +1192,8 @@ class format_test_case_base : public index_test_base {
       ASSERT_TRUE(reader->prepare(dir(), meta1, &seen));
       ASSERT_FALSE(seen); // no attributes found
 
-      irs::bytes_ref actual_value;
-
-      // try to read invalild column
-      {
-        auto column = reader->values(iresearch::type_limits<iresearch::type_t::field_id_t>::invalid());
-        ASSERT_FALSE(column(0, actual_value));
-        ASSERT_FALSE(column(2, actual_value));
-        ASSERT_FALSE(column(3, actual_value));
-        ASSERT_FALSE(column(56, actual_value));
-      }
-
-      // iterate over invalid column
-      {
-        auto it = reader->iterator(ir::type_limits<ir::type_t::field_id_t>::invalid());
-        ASSERT_NE(nullptr, it);
-
-        auto& value = it->value();
-        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), value.first);
-        ASSERT_EQ(ir::bytes_ref::nil, value.second);
-
-        ASSERT_FALSE(it->next());
-        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), value.first);
-        ASSERT_EQ(ir::bytes_ref::nil, value.second);
-
-        ASSERT_FALSE(it->next());
-        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), value.first);
-        ASSERT_EQ(ir::bytes_ref::nil, value.second);
-      }
-
-      // seek over invalid column
-      {
-        auto it = reader->iterator(ir::type_limits<ir::type_t::field_id_t>::invalid());
-        ASSERT_NE(nullptr, it);
-
-        auto& value = it->value();
-        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), value.first);
-        ASSERT_EQ(ir::bytes_ref::nil, value.second);
-
-        ASSERT_EQ(&it->value(), &it->seek(1));
-        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), value.first);
-        ASSERT_EQ(ir::bytes_ref::nil, value.second);
-
-        ASSERT_FALSE(it->next());
-        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), value.first);
-        ASSERT_EQ(ir::bytes_ref::nil, value.second);
-      }
+      // try to get invalild column
+      ASSERT_EQ(nullptr, reader->column(iresearch::type_limits<iresearch::type_t::field_id_t>::invalid()));
     }
 
     // write columns values
@@ -1430,39 +1362,15 @@ class format_test_case_base : public index_test_base {
       auto reader = codec()->get_columnstore_reader();
       ASSERT_TRUE(reader->prepare(dir(), meta0));
 
-      // try to read invalild column
-      {
-        irs::bytes_ref actual_value;
-
-        auto column = reader->values(ir::type_limits<ir::type_t::field_id_t>::invalid());
-        ASSERT_FALSE(column(0, actual_value));
-        ASSERT_FALSE(column(2, actual_value));
-        ASSERT_FALSE(column(3, actual_value));
-        ASSERT_FALSE(column(56, actual_value));
-      }
-
-      // iterate over invalid column
-      {
-        auto it = reader->iterator(ir::type_limits<ir::type_t::field_id_t>::invalid());
-        ASSERT_NE(nullptr, it);
-
-        auto& value = it->value();
-        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), value.first);
-        ASSERT_EQ(ir::bytes_ref::nil, value.second);
-
-        ASSERT_FALSE(it->next());
-        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), value.first);
-        ASSERT_EQ(ir::bytes_ref::nil, value.second);
-
-        ASSERT_FALSE(it->next());
-        ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), value.first);
-        ASSERT_EQ(ir::bytes_ref::nil, value.second);
-      }
+      // try to get invalild column
+      ASSERT_EQ(nullptr, reader->column(ir::type_limits<ir::type_t::field_id_t>::invalid()));
 
       // check field4
       {
         irs::bytes_ref actual_value;
-        auto column = reader->values(segment0_field4_id);
+        auto column_reader = reader->column(segment0_field4_id);
+        ASSERT_NE(nullptr, column_reader);
+        auto column = column_reader->values();
 
         ASSERT_TRUE(column((std::numeric_limits<ir::doc_id_t>::min)(), actual_value)); // check doc==min, column==field4
         ASSERT_EQ("field4_doc_min", irs::to_string<irs::string_ref>(actual_value.c_str()));
@@ -1494,7 +1402,9 @@ class format_test_case_base : public index_test_base {
           return true;
         };
 
-        ASSERT_TRUE(reader->visit(segment0_field0_id, visitor));
+        auto column = reader->column(segment0_field0_id);
+        ASSERT_NE(nullptr, column);
+        ASSERT_TRUE(column->visit(visitor));
         ASSERT_TRUE(expected_values.empty());
       }
 
@@ -1532,7 +1442,9 @@ class format_test_case_base : public index_test_base {
           return true;
         };
 
-        ASSERT_FALSE(reader->visit(segment0_field0_id, visitor));
+        auto column = reader->column(segment0_field0_id);
+        ASSERT_NE(nullptr, column);
+        ASSERT_FALSE(column->visit(visitor));
         ASSERT_FALSE(expected_values.empty());
         ASSERT_EQ(1, expected_values.size());
         ASSERT_NE(expected_values.end(), expected_values.find("field0_doc33"));
@@ -1541,7 +1453,9 @@ class format_test_case_base : public index_test_base {
       // check field0
       {
         irs::bytes_ref actual_value;
-        auto column = reader->values(segment0_field0_id);
+        auto column_reader = reader->column(segment0_field0_id);
+        ASSERT_NE(nullptr, column_reader);
+        auto column = column_reader->values();
 
         // read (not cached)
         {
@@ -1590,13 +1504,17 @@ class format_test_case_base : public index_test_base {
           return true;
         };
 
-        ASSERT_TRUE(reader->visit(segment0_field0_id, visitor));
+        auto column_reader = reader->column(segment0_field0_id);
+        ASSERT_NE(nullptr, column_reader);
+        ASSERT_TRUE(column_reader->visit(visitor));
         ASSERT_TRUE(expected_values.empty());
       }
 
       // iterate over field0 values (cached)
       {
-        auto it = reader->iterator(segment0_field0_id);
+        auto column_reader = reader->column(segment0_field0_id);
+        ASSERT_NE(nullptr, column_reader);
+        auto it = column_reader->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -1625,7 +1543,9 @@ class format_test_case_base : public index_test_base {
 
       // seek over field0 values (cached)
       {
-        auto it = reader->iterator(segment0_field0_id);
+        auto column_reader = reader->column(segment0_field0_id);
+        ASSERT_NE(nullptr, column_reader);
+        auto it = column_reader->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -1656,7 +1576,9 @@ class format_test_case_base : public index_test_base {
 
       // iterate over field1 values (not cached)
       {
-        auto it = reader->iterator(segment0_field1_id);
+        auto column_reader = reader->column(segment0_field1_id);
+        ASSERT_NE(nullptr, column_reader);
+        auto it = column_reader->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -1689,7 +1611,9 @@ class format_test_case_base : public index_test_base {
 
       // seek over field1 values (cached)
       {
-        auto it = reader->iterator(segment0_field1_id);
+        auto column_reader = reader->column(segment0_field1_id);
+        ASSERT_NE(nullptr, column_reader);
+        auto it = column_reader->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -1726,7 +1650,9 @@ class format_test_case_base : public index_test_base {
       {
         irs::bytes_ref actual_value;
         irs::bytes_ref_input in;
-        auto column = reader->values(segment0_field1_id);
+        auto column_reader = reader->column(segment0_field1_id);
+        ASSERT_NE(nullptr, column_reader);
+        auto column = column_reader->values();
 
         // read compound column value
         // check doc==0, column==field1
@@ -1752,13 +1678,17 @@ class format_test_case_base : public index_test_base {
           return true;
         };
 
-        ASSERT_TRUE(reader->visit(segment0_empty_column_id, visitor));
+        auto column_reader = reader->column(segment0_empty_column_id);
+        ASSERT_NE(nullptr, column_reader);
+        ASSERT_TRUE(column_reader->visit(visitor));
         ASSERT_EQ(0, calls_count);
       }
 
       // iterate over empty column
       {
-        auto it = reader->iterator(segment0_empty_column_id);
+        auto column_reader = reader->column(segment0_empty_column_id);
+        ASSERT_NE(nullptr, column_reader);
+        auto it = column_reader->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& value = it->value();
@@ -1798,13 +1728,17 @@ class format_test_case_base : public index_test_base {
           return true;
         };
 
-        ASSERT_TRUE(reader->visit(segment0_field2_id, visitor));
+        auto column_reader = reader->column(segment0_field2_id);
+        ASSERT_NE(nullptr, column_reader);
+        ASSERT_TRUE(column_reader->visit(visitor));
         ASSERT_TRUE(expected_values.empty());
       }
 
       // iterate over field2 values (not cached)
       {
-        auto it = reader->iterator(segment0_field2_id);
+        auto column_reader = reader->column(segment0_field2_id);
+        ASSERT_NE(nullptr, column_reader);
+        auto it = column_reader->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -1831,7 +1765,9 @@ class format_test_case_base : public index_test_base {
 
       // seek over field2 values (cached)
       {
-        auto it = reader->iterator(segment0_field2_id);
+        auto column_reader = reader->column(segment0_field2_id);
+        ASSERT_NE(nullptr, column_reader);
+        auto it = column_reader->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -1867,16 +1803,14 @@ class format_test_case_base : public index_test_base {
 
       // try to read invalild column
       {
-        auto column = reader->values(ir::type_limits<ir::type_t::field_id_t>::invalid());
-        ASSERT_FALSE(column(0, actual_value));
-        ASSERT_FALSE(column(2, actual_value));
-        ASSERT_FALSE(column(3, actual_value));
-        ASSERT_FALSE(column(56, actual_value));
+        ASSERT_EQ(nullptr, reader->column(ir::type_limits<ir::type_t::field_id_t>::invalid()));
       }
 
       // iterate over field0 values (not cached)
       {
-        auto it = reader->iterator(segment1_field0_id);
+        auto column_reader = reader->column(segment1_field0_id);
+        ASSERT_NE(nullptr, column_reader);
+        auto it = column_reader->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -1904,7 +1838,9 @@ class format_test_case_base : public index_test_base {
 
       // seek over field0 values (cached)
       {
-        auto it = reader->iterator(segment1_field0_id);
+        auto column_reader = reader->column(segment1_field0_id);
+        ASSERT_NE(nullptr, column_reader);
+        auto it = column_reader->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -1938,7 +1874,9 @@ class format_test_case_base : public index_test_base {
 
       // check field0 (cached)
       {
-        auto column = reader->values(segment1_field0_id);
+        auto column_reader = reader->column(segment1_field0_id);
+        ASSERT_NE(nullptr, column_reader);
+        auto column = column_reader->values();
         ASSERT_TRUE(column(0, actual_value)); // check doc==0, column==field0
         ASSERT_EQ("segment_2_field1_doc0", irs::to_string<irs::string_ref>(actual_value.c_str()));
         ASSERT_TRUE(column(12, actual_value)); // check doc==12, column==field1
@@ -1949,7 +1887,9 @@ class format_test_case_base : public index_test_base {
 
       // iterate over field0 values (cached)
       {
-        auto it = reader->iterator(segment1_field0_id);
+        auto column_reader = reader->column(segment1_field0_id);
+        ASSERT_NE(nullptr, column_reader);
+        auto it = column_reader->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -2010,7 +1950,9 @@ class format_test_case_base : public index_test_base {
 
       // read field values (not cached)
       {
-        auto mask = reader->values(id);
+        auto column = reader->column(id);
+        ASSERT_NE(nullptr, column);
+        auto mask = column->values();
         ASSERT_TRUE(mask(0, actual_value));
         ASSERT_EQ(irs::bytes_ref::nil, actual_value);
         ASSERT_FALSE(mask(1, actual_value));
@@ -2029,7 +1971,9 @@ class format_test_case_base : public index_test_base {
 
       // seek over field values (cached)
       {
-        auto it = reader->iterator(id);
+        auto column = reader->column(id);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -2062,7 +2006,9 @@ class format_test_case_base : public index_test_base {
 
       // iterate over field values (cached)
       {
-        auto it = reader->iterator(id);
+        auto column = reader->column(id);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -2096,7 +2042,9 @@ class format_test_case_base : public index_test_base {
 
       {
         // iterate over field values (not cached)
-        auto it = reader->iterator(id);
+        auto column = reader->column(id);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -2120,7 +2068,9 @@ class format_test_case_base : public index_test_base {
 
       // read field values (cached)
       {
-        auto mask = reader->values(id);
+        auto column = reader->column(id);
+        ASSERT_NE(nullptr, column);
+        auto mask = column->values();
         ASSERT_TRUE(mask(0, actual_value));
         ASSERT_EQ(irs::bytes_ref::nil, actual_value);
         ASSERT_FALSE(mask(1, actual_value));
@@ -2139,7 +2089,9 @@ class format_test_case_base : public index_test_base {
 
       // iterate over field values (cached)
       {
-        auto it = reader->iterator(id);
+        auto column = reader->column(id);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -2221,7 +2173,9 @@ class format_test_case_base : public index_test_base {
         stream.clear(); // clear eof flag if set
         stream.seekg(0, stream.beg); // seek to the beginning of the file
 
-        auto values = reader->values(id);
+        auto column = reader->column(id);
+        ASSERT_NE(nullptr, column);
+        auto values = column->values();
 
         std::memset(field.buf, 0, sizeof field.buf); // clear buffer
         stream.read(field.buf, sizeof field.buf);
@@ -2241,7 +2195,9 @@ class format_test_case_base : public index_test_base {
         stream.clear(); // clear eof flag if set
         stream.seekg(0, stream.beg); // seek to the beginning of the file
 
-        auto it = reader->iterator(id);
+        auto column = reader->column(id);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -2269,7 +2225,9 @@ class format_test_case_base : public index_test_base {
         stream.clear(); // clear eof flag if set
         stream.seekg(0, stream.beg); // seek to the beginning of the file
 
-        auto it = reader->iterator(id);
+        auto column = reader->column(id);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -2430,7 +2388,9 @@ class format_test_case_base : public index_test_base {
           );
 
           if (res.second) {
-            res.first->second = reader->values(columns[name].first);
+            auto column = reader->column(columns[name].first);
+            ASSERT_NE(nullptr, column);
+            res.first->second = column->values();
           }
 
           auto& column_reader = res.first->second;
@@ -2480,8 +2440,11 @@ class format_test_case_base : public index_test_base {
           );
 
           if (res.second) {
+            auto column = reader->column(columns[name].first);
+            ASSERT_NE(nullptr, column);
+
             auto& it = res.first->second;
-            res.first->second = reader->iterator(columns[name].first);
+            it = column->iterator();
             ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value().first);
             ASSERT_EQ(irs::bytes_ref::nil, it->value().second);
           }
@@ -2544,8 +2507,11 @@ class format_test_case_base : public index_test_base {
           );
 
           if (res.second) {
+            auto column = reader->column(columns[name].first);
+            ASSERT_NE(nullptr, column);
+
             auto& it = res.first->second;
-            res.first->second = reader->iterator(columns[name].first);
+            it = column->iterator();
             ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value().first);
             ASSERT_EQ(irs::bytes_ref::nil, it->value().second);
           }
