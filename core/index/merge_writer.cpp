@@ -624,7 +624,8 @@ class columnstore {
     const auto column_reader = reader.column_reader(column);
 
     if (!column_reader) {
-      return false;
+      // nothing to do
+      return true;
     }
 
     return column_reader->visit(

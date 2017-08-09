@@ -188,10 +188,6 @@ class segment_reader_impl : public sub_reader {
     return 1; // only 1 segment
   }
 
-  virtual columnstore_reader::column_iterator::ptr values_iterator(
-    field_id field
-  ) const override;
-
   virtual const columnstore_reader::column_reader* column_reader(
     field_id field
   ) const override;
@@ -361,13 +357,6 @@ sub_reader::docs_iterator_t::ptr segment_reader_impl::docs_iterator() const {
   );
 
   return reader;
-}
-
-columnstore_reader::column_iterator::ptr segment_reader_impl::values_iterator(
-    field_id field) const {
-  return columnstore_reader_
-    ? columnstore_reader_->iterator(field)
-    : columnstore_reader::empty_iterator();
 }
 
 const columnstore_reader::column_reader* segment_reader_impl::column_reader(

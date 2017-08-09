@@ -60,7 +60,9 @@ class column_existence_filter_test_case
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
 
-      auto column_it = segment.values_iterator(column_name);
+      auto column = segment.column_reader(column_name);
+      ASSERT_NE(nullptr, column);
+      auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
 
       while (filter_it->next()) {
@@ -85,7 +87,9 @@ class column_existence_filter_test_case
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
 
-      auto column_it = segment.values_iterator(column_name);
+      auto column = segment.column_reader(column_name);
+      ASSERT_NE(nullptr, column);
+      auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
 
       size_t docs_count = 0;
@@ -114,7 +118,9 @@ class column_existence_filter_test_case
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
 
-      auto column_it = segment.values_iterator(column_name);
+      auto column = segment.column_reader(column_name);
+      ASSERT_NE(nullptr, column);
+      auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
 
       size_t docs_count = 0;
@@ -143,7 +149,9 @@ class column_existence_filter_test_case
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
 
-      auto column_it = segment.values_iterator(column_name);
+      auto column = segment.column_reader(column_name);
+      ASSERT_NE(nullptr, column);
+      auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
 
       size_t docs_count = 0;
@@ -172,7 +180,9 @@ class column_existence_filter_test_case
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
 
-      auto column_it = segment.values_iterator(column_name);
+      auto column = segment.column_reader(column_name);
+      ASSERT_NE(nullptr, column);
+      auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
 
       while (filter_it->next()) {
@@ -197,7 +207,9 @@ class column_existence_filter_test_case
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
 
-      auto column_it = segment.values_iterator(column_name);
+      auto column = segment.column_reader(column_name);
+      ASSERT_NE(nullptr, column);
+      auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
 
       while (filter_it->next()) {
@@ -222,7 +234,9 @@ class column_existence_filter_test_case
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
 
-      auto column_it = segment.values_iterator(column_name);
+      auto column = segment.column_reader(column_name);
+      ASSERT_NE(nullptr, column);
+      auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
 
       while (filter_it->next()) {

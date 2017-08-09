@@ -339,10 +339,6 @@ struct empty_sub_reader : iresearch::singleton<empty_sub_reader>, iresearch::sub
     return nullptr;
   }
 
-  virtual irs::columnstore_reader::column_iterator::ptr values_iterator(iresearch::field_id field) const {
-    return irs::columnstore_reader::empty_iterator();
-  }
-
   virtual uint64_t live_docs_count() const { return 0; }
 
   virtual uint64_t docs_count(const iresearch::string_ref&) const { return 0; }

@@ -1083,7 +1083,6 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
       auto* column = segment.column_reader(field.norm);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(field.name));
       ASSERT_TRUE(column->visit(reader));
       ASSERT_TRUE(expected_values.empty());
     }
@@ -1441,7 +1440,6 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
       auto* column = segment.column_reader(field.norm);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(field.name));
       ASSERT_TRUE(column->visit(reader));
       ASSERT_TRUE(expected_values.empty());
     }
@@ -1787,7 +1785,6 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
     auto* column = segment.column_reader(field.norm);
     ASSERT_NE(nullptr, column);
-    ASSERT_EQ(column, segment.column_reader(field.name));
     ASSERT_TRUE(column->visit(reader));
     ASSERT_TRUE(expected_values.empty());
   }

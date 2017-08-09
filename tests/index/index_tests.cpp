@@ -794,13 +794,17 @@ class index_test_case_base : public tests::index_test_base {
     for (size_t i = 0, count = reader.size(); i < count; ++i) {
       indexed_docs_count += reader[i].live_docs_count();
 
-      auto* same_column = reader[i].column_reader("same");
-      ASSERT_NE(nullptr, same_column);
-      ASSERT_TRUE(same_column->visit(imported_visitor)); // field present in all docs from simple_sequential.json
+      const auto* column = reader[i].column_reader("same");
+      if (column) {
+        // field present in all docs from simple_sequential.json
+        column->visit(imported_visitor);
+      }
 
-      auto* updated_column = reader[i].column_reader("updated");
-      ASSERT_NE(nullptr, updated_column);
-      ASSERT_TRUE(updated_column->visit(updated_visitor)); // field insterted by updater threads
+      column = reader[i].column_reader("updated");
+      if (column) {
+        // field insterted by updater threads
+        column->visit(updated_visitor);
+      }
     }
 
     ASSERT_EQ(parsed_docs_count + imported_docs_count, indexed_docs_count);
@@ -1383,7 +1387,18 @@ class index_test_case_base : public tests::index_test_base {
         tests::delim_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template, ',');
         const tests::document* doc = nullptr;
 
-        auto it = segment.values_iterator(meta->id);
+        auto column = segment.column_reader(meta->id);
+
+        if (!column) {
+          return false;
+        }
+
+        auto it = column->iterator();
+
+        if (!it) {
+          return false;
+        }
+
         auto& value = it->value();
         auto& value_str = value.second;
 
@@ -1630,7 +1645,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // iterate over column (cached)
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
         auto& actual_value = it->value();
         ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
@@ -1693,7 +1710,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // iterate over column (not cached)
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -1756,7 +1775,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // iterate over column (cached)
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -1821,7 +1842,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // seek over column (not cached)
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -1851,7 +1874,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // seek over column (not cached)
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -1885,7 +1910,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // seek over column (cached)
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -1919,7 +1946,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // seek to the begin + next
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -1950,7 +1979,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // seek before the begin + next
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -1980,7 +2011,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // seek to the end + next
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -1996,7 +2029,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // seek to before the end + next
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -2012,7 +2047,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // seek to after the end + next
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -2033,7 +2070,9 @@ class index_test_case_base : public tests::index_test_base {
       {
         const size_t steps_forward = 5;
 
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -2084,8 +2123,11 @@ class index_test_case_base : public tests::index_test_base {
         irs::doc_id_t expected_doc = MAX_DOCS;
         size_t docs_count = 0;
 
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+
         for (; expected_doc >= min_doc && expected_doc <= MAX_DOCS;) {
-          auto it = segment.values_iterator(column_name);
+          auto it = column->iterator();
           ASSERT_NE(nullptr, it);
 
           auto& actual_value = it->value();
@@ -2111,7 +2153,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_EQ(MAX_DOCS/2, docs_count);
 
         // seek before the first document
-        auto it = segment.values_iterator(column_name);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -2137,7 +2179,9 @@ class index_test_case_base : public tests::index_test_base {
       {
         const size_t steps_forward = 5;
 
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -2165,7 +2209,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // seek over column (cached)
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -2236,7 +2282,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // iterate over column (cached)
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -2372,7 +2420,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // iterate over column (cached)
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -2438,7 +2488,9 @@ class index_test_case_base : public tests::index_test_base {
 
       {
         // iterate over column (not cached)
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -2502,7 +2554,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // iterate over column (cached)
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -2568,7 +2622,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // seek over column (not cached)
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -2598,7 +2654,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // seek to the begin + next
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -2628,7 +2686,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // seek before the begin + next
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -2658,7 +2718,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // seek to the end + next
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -2674,7 +2736,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // seek to before the end + next
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -2694,7 +2758,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // seek to after the end + next + seek before end
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -2715,7 +2781,9 @@ class index_test_case_base : public tests::index_test_base {
       {
         const size_t steps_forward = 5;
 
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -2766,8 +2834,10 @@ class index_test_case_base : public tests::index_test_base {
         irs::doc_id_t expected_doc = MAX_DOCS;
         size_t docs_count = 0;
 
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
         for (; expected_doc >= min_doc && expected_doc <= MAX_DOCS;) {
-          auto it = segment.values_iterator(column_name);
+          auto it = column->iterator();
           ASSERT_NE(nullptr, it);
 
           auto& actual_value = it->value();
@@ -2793,7 +2863,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_EQ(MAX_DOCS, docs_count);
 
         // seek before the first document
-        auto it = segment.values_iterator(column_name);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -2820,7 +2890,9 @@ class index_test_case_base : public tests::index_test_base {
       {
         const size_t steps_forward = 5;
 
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -2888,7 +2960,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // iterate over column (cached)
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -3034,7 +3108,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // iterate over column (cached)
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -3102,7 +3178,9 @@ class index_test_case_base : public tests::index_test_base {
 
       {
         // iterate over column (not cached)
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -3169,7 +3247,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // iterate over column (cached)
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -3237,7 +3317,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // seek over column (not cached)
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -3269,7 +3351,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // seek to the begin + next
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -3303,7 +3387,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // seek before the begin + next
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -3337,7 +3423,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // seek to the end + next
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -3358,7 +3446,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // seek to before the end + next
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -3385,7 +3475,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // seek to after the end + next
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -3406,7 +3498,9 @@ class index_test_case_base : public tests::index_test_base {
       {
         const size_t steps_forward = 5;
 
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -3462,8 +3556,10 @@ class index_test_case_base : public tests::index_test_base {
         irs::doc_id_t expected_value = expected_doc - 1;
         size_t docs_count = 0;
 
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
         for (; expected_doc >= min_doc && expected_doc <= MAX_DOCS;) {
-          auto it = segment.values_iterator(column_name);
+          auto it = column->iterator();
           ASSERT_NE(nullptr, it);
 
           auto& actual_value = it->value();
@@ -3496,7 +3592,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_EQ(MAX_DOCS, docs_count);
 
         // seek before the first document
-        auto it = segment.values_iterator(column_name);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -3528,7 +3624,9 @@ class index_test_case_base : public tests::index_test_base {
       {
         const size_t steps_forward = 5;
 
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -3604,7 +3702,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // iterate over column (cached)
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -3774,7 +3874,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // iterate over column (cached)
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -3853,7 +3955,9 @@ class index_test_case_base : public tests::index_test_base {
 
       {
         // iterate over column (not cached)
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -3935,7 +4039,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // iterate over column (cached)
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -4014,7 +4120,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // seek over column (not cached)
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -4052,7 +4160,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // seek to the begin + next
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -4096,7 +4206,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // seek before the begin + next
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -4139,7 +4251,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // seek to the end + next
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -4164,7 +4278,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // seek to before the end + next
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -4198,7 +4314,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // seek to after the end + next
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -4219,7 +4337,9 @@ class index_test_case_base : public tests::index_test_base {
       {
         const size_t steps_forward = 5;
 
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -4285,8 +4405,10 @@ class index_test_case_base : public tests::index_test_base {
         irs::doc_id_t expected_value = expected_doc - 1;
         size_t docs_count = 0;
 
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
         for (; expected_doc >= min_doc && expected_doc <= MAX_DOCS;) {
-          auto it = segment.values_iterator(column_name);
+          auto it = column->iterator();
           ASSERT_NE(nullptr, it);
 
           auto& actual_value = it->value();
@@ -4329,7 +4451,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_EQ(MAX_DOCS, docs_count);
 
         // seek before the first document
-        auto it = segment.values_iterator(column_name);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -4370,7 +4492,9 @@ class index_test_case_base : public tests::index_test_base {
       {
         const size_t steps_forward = 5;
 
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -4466,7 +4590,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // iterate over column (cached)
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -4655,7 +4781,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // iterate over column (cached)
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -4736,7 +4864,9 @@ class index_test_case_base : public tests::index_test_base {
 
       {
         // iterate over column (not cached)
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -4825,7 +4955,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // iterate over column (cached)
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -4906,7 +5038,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // seek over column (not cached)
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -4949,7 +5083,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // seek over column (cached)
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -4992,7 +5128,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // seek to the begin + next
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -5039,7 +5177,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // seek before the begin + next
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -5086,7 +5226,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // seek to the end + next
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -5110,7 +5252,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // seek to before the end + next
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -5133,7 +5277,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // seek to after the end + next
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -5154,7 +5300,9 @@ class index_test_case_base : public tests::index_test_base {
       {
         const size_t steps_forward = 5;
 
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -5224,8 +5372,10 @@ class index_test_case_base : public tests::index_test_base {
         irs::doc_id_t expected_value = expected_doc - 1;
         size_t docs = 0;
 
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
         for (; expected_doc >= min_doc && expected_doc <= MAX_DOCS;) {
-          auto it = segment.values_iterator(column_name);
+          auto it = column->iterator();
           ASSERT_NE(nullptr, it);
 
           auto& actual_value = it->value();
@@ -5268,7 +5418,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_EQ(inserted, docs);
 
         // seek before the first document
-        auto it = segment.values_iterator(column_name);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -5309,7 +5459,9 @@ class index_test_case_base : public tests::index_test_base {
       {
         const size_t steps_forward = 5;
 
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -5354,7 +5506,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // seek over column (cached)
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -5448,7 +5602,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // iterate over column (cached)
       {
-        auto it = segment.values_iterator(column_name);
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -5539,7 +5695,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // iterate over 'name' column (cached)
       {
-        auto it = segment.values_iterator("name");
+        auto column = segment.column_reader("name");
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -5584,7 +5742,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // iterate over 'prefix' column (cached)
       {
-        auto it = segment.values_iterator("prefix");
+        auto column = segment.column_reader("prefix");
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -5626,7 +5786,9 @@ class index_test_case_base : public tests::index_test_base {
 
       {
         // iterate over 'name' column (not cached)
-        auto it = segment.values_iterator("name");
+        auto column = segment.column_reader("name");
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -5671,7 +5833,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // iterate over 'name' column (cached)
       {
-        auto it = segment.values_iterator("name");
+        auto column = segment.column_reader("name");
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -5698,7 +5862,9 @@ class index_test_case_base : public tests::index_test_base {
 
       {
         // iterate over 'prefix' column (not cached)
-        auto it = segment.values_iterator("prefix");
+        auto column = segment.column_reader("prefix");
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -5743,7 +5909,9 @@ class index_test_case_base : public tests::index_test_base {
 
       // iterate over 'prefix' column (cached)
       {
-        auto it = segment.values_iterator("prefix");
+        auto column = segment.column_reader("prefix");
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
@@ -5918,7 +6086,9 @@ class index_test_case_base : public tests::index_test_base {
           gen.reset();
           ir::doc_id_t expected_id = 0;
 
-          auto it = segment.values_iterator(column_name);
+          auto column = segment.column_reader(column_name);
+          ASSERT_NE(nullptr, column);
+          auto it = column->iterator();
           ASSERT_NE(nullptr, it);
 
           auto& actual_value = it->value();
@@ -6032,7 +6202,9 @@ class index_test_case_base : public tests::index_test_base {
           gen.reset();
           ir::doc_id_t expected_id = 0;
 
-          auto it = segment.values_iterator(column_name);
+          auto column = segment.column_reader(column_name);
+          ASSERT_NE(nullptr, column);
+          auto it = column->iterator();
           ASSERT_NE(nullptr, it);
 
           auto& actual_value = it->value();
@@ -6121,7 +6293,9 @@ class index_test_case_base : public tests::index_test_base {
           gen.reset();
           ir::doc_id_t expected_id = 0;
 
-          auto it = segment.values_iterator(column_name);
+          auto column = segment.column_reader(column_name);
+          ASSERT_NE(nullptr, column);
+          auto it = column->iterator();
           ASSERT_NE(nullptr, it);
 
           auto& actual_value = it->value();
@@ -6202,7 +6376,9 @@ class index_test_case_base : public tests::index_test_base {
           gen.reset();
           ir::doc_id_t expected_id = 0;
 
-          auto it = segment.values_iterator(column_name);
+          auto column = segment.column_reader(column_name);
+          ASSERT_NE(nullptr, column);
+          auto it = column->iterator();
           ASSERT_NE(nullptr, it);
 
           auto& actual_value = it->value();
@@ -6268,7 +6444,9 @@ class index_test_case_base : public tests::index_test_base {
           gen.reset();
           ir::doc_id_t expected_id = 0;
 
-          auto it = segment.values_iterator(column_name);
+          auto column = segment.column_reader(column_name);
+          ASSERT_NE(nullptr, column);
+          auto it = column->iterator();
           ASSERT_NE(nullptr, it);
 
           auto& actual_value = it->value();
@@ -6346,7 +6524,9 @@ class index_test_case_base : public tests::index_test_base {
           gen.reset();
           ir::doc_id_t expected_id = 0;
 
-          auto it = segment.values_iterator(column_name);
+          auto column = segment.column_reader(column_name);
+          ASSERT_NE(nullptr, column);
+          auto it = column->iterator();
           ASSERT_NE(nullptr, it);
 
           auto& actual_value = it->value();

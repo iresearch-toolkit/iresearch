@@ -90,14 +90,9 @@ struct IRESEARCH_API sub_reader : index_reader {
 
   virtual column_iterator::ptr columns() const = 0;
 
-  virtual const columnstore_reader::column_reader* column_reader(field_id field) const = 0;
-
   virtual const column_meta* column(const string_ref& name) const = 0;
 
-  // returns corresponding column iterator by the specified field
-  virtual columnstore_reader::column_iterator::ptr values_iterator(field_id id) const = 0;
-
-  columnstore_reader::column_iterator::ptr values_iterator(const string_ref& field) const;
+  virtual const columnstore_reader::column_reader* column_reader(field_id field) const = 0;
 
   const columnstore_reader::column_reader* column_reader(const string_ref& field) const;
 }; // sub_reader
