@@ -1886,7 +1886,7 @@ class writer final : public iresearch::columnstore_writer {
 
   virtual bool prepare(directory& dir, const segment_meta& meta) override;
   virtual column_t push_column() override;
-  virtual void flush() override;
+  virtual bool flush() override;
 
  private:
   class column final : public iresearch::columnstore_writer::column_output {
@@ -2075,7 +2075,7 @@ columnstore_writer::column_t writer::push_column() {
   });
 }
 
-void writer::flush() {
+bool writer::flush() {
   // trigger commit for each pending key
   for (auto& column : columns_) {
     column.prepare(irs::type_limits<irs::type_t::doc_id_t>::eof());
@@ -2094,7 +2094,7 @@ void writer::flush() {
       IR_FRMT_ERROR("Failed to remove file, path: %s", filename_.c_str());
     }
 
-    return;
+    return false; // nothing to flush
   }
 
   // flush all remain data including possible empty columns among filled columns
@@ -2104,7 +2104,9 @@ void writer::flush() {
   }
 
   const auto block_index_ptr = data_out_->file_pointer(); // where blocks index start
+
   data_out_->write_vlong(columns_.size()); // number of columns
+
   for (auto& column : columns_) {
     column.finish(); // column blocks index
   }
@@ -2112,6 +2114,8 @@ void writer::flush() {
   data_out_->write_long(block_index_ptr);
   format_utils::write_footer(*data_out_);
   data_out_.reset();
+
+  return true;
 }
 
 template<typename Block, typename Allocator>

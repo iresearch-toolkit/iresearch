@@ -608,20 +608,12 @@ class columnstore {
     writer_ = std::move(writer);
   }
 
-  ~columnstore() {
-    try {
-      writer_->flush();
-    } catch (...) {
-      // NOOP
-    }
-  }
-
   // inserts live values from the specified 'column' and 'reader' into column
   bool insert(
       const irs::sub_reader& reader,
       irs::field_id column,
       const doc_id_map_t& doc_id_map) {
-    const auto column_reader = reader.column_reader(column);
+    const auto* column_reader = reader.column_reader(column);
 
     if (!column_reader) {
       // nothing to do
@@ -637,7 +629,6 @@ class columnstore {
         }
 
         empty_ = false;
-        empty_writer_ = false;
 
         auto& out = column_.second(mapped_doc);
         out.write_bytes(in.c_str(), in.size());
@@ -660,8 +651,8 @@ class columnstore {
   // returns 'true' if no data has been written to columnstore
   bool empty() const { return empty_; }
 
-  // @return if column data has been written to columnstore writer (any column)
-  bool empty_writer() const { return empty_writer_; }
+  // @return was anything actually flushed
+  bool flush() { return writer_->flush(); }
 
   // returns current column identifier
   irs::field_id id() const { return column_.first; }
@@ -670,7 +661,6 @@ class columnstore {
   irs::columnstore_writer::ptr writer_;
   irs::columnstore_writer::column_t column_{};
   bool empty_{ false };
-  bool empty_writer_{ false };
 }; // columnstore
 
 bool write_columns(
@@ -842,7 +832,7 @@ bool merge_writer::flush(std::string& filename, segment_meta& meta) {
     return false; // flush failure
   }
 
-  meta.column_store = !cs.empty_writer();
+  meta.column_store = cs.flush();
 
   // ...........................................................................
   // write segment meta
