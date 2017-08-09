@@ -904,7 +904,8 @@ class format_test_case_base : public index_test_base {
         }
         ++seg_1.docs_count;
       }
-      writer->flush();
+
+      ASSERT_TRUE(writer->flush());
 
       gen.reset();
 
@@ -932,7 +933,8 @@ class format_test_case_base : public index_test_base {
         }
         ++seg_2.docs_count;
       }
-      writer->flush();
+
+      ASSERT_TRUE(writer->flush());
 
       // write 3rd segment
       id = 0;
@@ -958,7 +960,8 @@ class format_test_case_base : public index_test_base {
         }
         ++seg_3.docs_count;
       }
-      writer->flush();
+
+      ASSERT_TRUE(writer->flush());
     }
 
     // read documents
@@ -1122,9 +1125,9 @@ class format_test_case_base : public index_test_base {
       ASSERT_EQ(0, column0_id);
       column1_id = writer->push_column().first;
       ASSERT_EQ(1, column1_id);
-      writer->flush(); // flush empty columns
+      ASSERT_FALSE(writer->flush()); // flush empty columns
     }
-  
+
     files.clear();
     ASSERT_TRUE(dir().visit(list_files));
     ASSERT_TRUE(files.empty()); // must be empty after flush
@@ -1360,7 +1363,7 @@ class format_test_case_base : public index_test_base {
         }
       }
 
-      writer->flush();
+      ASSERT_TRUE(writer->flush());
     }
 
     // write _2 segment, reuse writer
@@ -1419,7 +1422,7 @@ class format_test_case_base : public index_test_base {
         stream.reset(); // rollback
       }
 
-      writer->flush();
+      ASSERT_TRUE(writer->flush());
     }
 
     // read columns values from segment _1
@@ -1994,7 +1997,7 @@ class format_test_case_base : public index_test_base {
       handle(8); ++segment.docs_count;
       handle(9); ++segment.docs_count;
 
-      writer->flush();
+      ASSERT_TRUE(writer->flush());
     }
 
     // check previously written mask
@@ -2203,7 +2206,7 @@ class format_test_case_base : public index_test_base {
         ++segment.docs_count;
       }
 
-      writer->flush();
+      ASSERT_TRUE(writer->flush());
     }
 
     // read big document
@@ -2398,7 +2401,8 @@ class format_test_case_base : public index_test_base {
         }
         ++meta.docs_count;
       }
-      writer->flush();
+
+      ASSERT_TRUE(writer->flush());
     }
 
     // read stored documents

@@ -238,7 +238,7 @@ struct IRESEARCH_API columnstore_writer {
 
   virtual bool prepare(directory& dir, const segment_meta& meta) = 0;
   virtual column_t push_column() = 0;
-  virtual void flush() = 0;
+  virtual bool flush() = 0; // @return was anything actually flushed
 }; // columnstore_writer
 
 NS_END
