@@ -21,6 +21,7 @@
 #include <iostream>
 
 #include <cmdline.h>
+#include <unicode/uclean.h>
 
 NS_LOCAL
 
@@ -68,6 +69,9 @@ int dump(const std::string& path, std::ostream& stream) {
     }
     ++i;
   }
+
+  u_cleanup();
+
   return 0;
 }
 
