@@ -80,23 +80,23 @@ class pos_iterator final : public irs::position::impl {
       offs_{},
       field_(field),
       val_{} {
-    auto& attrs = this->attributes();
     auto& features = field_.meta().features;
 
-    if (features.check< offset >()) {
-      offs_ = attrs.emplace<offset>().get();
+    if (features.check<offset>()) {
+      attrs_.emplace(offs_);
+      has_offs_ = true;
     }
 
-    if (features.check< payload >()) {
-      pay_ = attrs.emplace<payload>().get();
+    if (features.check<payload>()) {
+      attrs_.emplace(pay_);
     }
   }
 
   virtual void clear() override {
     pos_ = 0;
     val_ = 0;
-    if (offs_) offs_->clear();
-    if (pay_) pay_->clear();
+    offs_.clear();
+    pay_.clear();
   }
 
   virtual uint32_t value() const override {
@@ -104,23 +104,22 @@ class pos_iterator final : public irs::position::impl {
   }
 
   virtual bool next() {
-    if ( pos_ == freq_.value ) {
+    if (pos_ == freq_.value) {
       val_ = position::INVALID;
       return false;
     }
 
     uint32_t pos;
-    if ( shift_unpack_32( bytes_io< uint32_t >::vread( prox_in_ ), pos ) ) {
-      assert(pay_);
-      const size_t size = bytes_io<size_t>::vread( prox_in_ );
-      pay_->resize( size );
-      prox_in_.read( pay_->data(), size );
+    if (shift_unpack_32(bytes_io<uint32_t>::vread(prox_in_), pos)) {
+      const size_t size = bytes_io<size_t>::vread(prox_in_);
+      pay_.resize(size);
+      prox_in_.read(pay_.data(), size);
     }
     val_ += pos;
 
-    if ( offs_ ) {
-      offs_->start += bytes_io< uint32_t >::vread( prox_in_ );
-      offs_->end = offs_->start + bytes_io< uint32_t >::vread( prox_in_ );
+    if (has_offs_) {
+      offs_.start += bytes_io<uint32_t>::vread(prox_in_);
+      offs_.end = offs_.start + bytes_io<uint32_t>::vread(prox_in_);
     }
     ++pos_;
     return true;
@@ -128,12 +127,13 @@ class pos_iterator final : public irs::position::impl {
 
  private:
   byte_block_pool::sliced_reader prox_in_;
-  const frequency& freq_; /* number of terms position in a document */
-  uint64_t pos_; /* current position */
-  payload* pay_;
-  offset* offs_;
+  const frequency& freq_; // number of terms position in a document
+  uint64_t pos_; // current position
+  payload pay_;
+  offset offs_;
   const field_data& field_;
   uint32_t val_;
+  bool has_offs_{false}; // FIXME find a better way to handle presence of offsets
 };
 
 /* -------------------------------------------------------------------

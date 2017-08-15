@@ -452,13 +452,13 @@ class index_test_case_base : public tests::index_test_base {
                 ASSERT_EQ(exp_docs_itr->value(), act_docs_itr->value());
                 ASSERT_EQ(expected_freq->value, actual_freq->value);
 
-                auto& actual_offs = actual_pos->get<irs::offset>();
-                auto& expected_offs = expected_pos->get<irs::offset>();
+                auto& actual_offs = actual_pos->attributes().get<irs::offset>();
+                auto& expected_offs = expected_pos->attributes().get<irs::offset>();
                 ASSERT_FALSE(!actual_offs);
                 ASSERT_FALSE(!expected_offs);
 
-                auto& actual_pay = actual_pos->get<irs::payload>();
-                auto& expected_pay = expected_pos->get<irs::payload>();
+                auto& actual_pay = actual_pos->attributes().get<irs::payload>();
+                auto& expected_pay = expected_pos->attributes().get<irs::payload>();
                 ASSERT_FALSE(!actual_pay);
                 ASSERT_FALSE(!expected_pay);
 

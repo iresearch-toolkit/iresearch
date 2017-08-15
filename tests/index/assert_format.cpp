@@ -411,24 +411,21 @@ class pos_iterator : public iresearch::position::impl {
  public:
   pos_iterator(const doc_iterator& owner):
     value_(iresearch::type_limits<iresearch::type_t::pos_t>::invalid()),
-    offs_(nullptr),
-    pay_(nullptr),
-    owner_( owner ) {
-
+    owner_(owner) {
     if (owner_.features_.check<iresearch::offset>()) {
-      offs_ = attributes().emplace<irs::offset>().get();
+      attrs_.emplace(offs_);
     }
 
     if (owner_.features_.check<iresearch::payload>()) {
-      pay_ = attributes().emplace<irs::payload>().get();
+      attrs_.emplace(pay_);
     }
   }
 
   void clear() override {
     next_ = owner_.prev_->positions().begin();
     value_ = iresearch::type_limits<iresearch::type_t::pos_t>::invalid();
-    if ( offs_ ) offs_->clear();
-    if ( pay_ ) pay_->clear();
+    offs_.clear();
+    pay_.clear();
   }
 
   bool next() override {
@@ -438,14 +435,10 @@ class pos_iterator : public iresearch::position::impl {
 
     value_ = next_->pos;
 
-    if ( offs_ ) {
-      offs_->start = next_->start;
-      offs_->end = next_->end;
-    }
+    offs_.start = next_->start;
+    offs_.end = next_->end;
 
-    if ( pay_ ) {
-      pay_->value = next_->payload;
-    }
+    pay_.value = next_->payload;
 
     ++next_;
     return true;
@@ -454,12 +447,12 @@ class pos_iterator : public iresearch::position::impl {
   uint32_t value() const override {
     return value_;
   }
-  
+
  private:
   std::set<position>::const_iterator next_;
   uint32_t value_;
-  iresearch::offset* offs_;
-  iresearch::payload* pay_;
+  irs::offset offs_;
+  irs::payload pay_;
   const doc_iterator& owner_;
 };
 
@@ -744,12 +737,12 @@ void assert_term(
       if (expected_pos) {
         ASSERT_FALSE(!actual_pos);
 
-        auto& expected_offs = expected_pos->get<iresearch::offset>();
-        auto& actual_offs = actual_pos->get<iresearch::offset>();
+        auto& expected_offs = expected_pos->attributes().get<iresearch::offset>();
+        auto& actual_offs = actual_pos->attributes().get<iresearch::offset>();
         if (expected_offs) ASSERT_FALSE(!actual_offs);
 
-        auto& expected_pay = expected_pos->get<iresearch::payload>();
-        auto& actual_pay = actual_pos->get<iresearch::payload>();
+        auto& expected_pay = expected_pos->attributes().get<iresearch::payload>();
+        auto& actual_pay = actual_pos->attributes().get<iresearch::payload>();
         if (expected_pay) ASSERT_FALSE(!actual_pay);
 
         for (; expected_pos->next();) {

@@ -38,13 +38,13 @@ class format_test_case_base : public index_test_base {
 
   class position : public ir::position::impl {
    public:
-    position(const ir::flags& features) { 
+    position(const ir::flags& features) {
       if (features.check<ir::offset>()) {
-        offs_ = attrs_.emplace<irs::offset>().get();
+        attrs_.emplace(offs_);
       }
 
       if (features.check<ir::payload>()) {
-        pay_ = attrs_.emplace<irs::payload>().get();
+        attrs_.emplace(pay_);
       }
     }
 
@@ -60,21 +60,17 @@ class format_test_case_base : public index_test_base {
 
       ++begin_;
 
-      if (pay_) {
-        pay_data_ = std::to_string(begin_);
-        pay_->value = ir::ref_cast<ir::byte_type>(ir::string_ref(pay_data_));
-      }
+      const auto written = sprintf(pay_data_, "%d", begin_);
+      pay_.value = irs::bytes_ref(reinterpret_cast<const irs::byte_type*>(pay_data_), written);
 
-      if (offs_) {
-        offs_->start = begin_;
-        offs_->end = offs_->start + pay_data_.size();
-      }
+      offs_.start = begin_;
+      offs_.end = offs_.start + written;
       return true;
     }
 
     void clear() override {
-      if (pay_) pay_->clear();
-      if (offs_) offs_->clear();
+      pay_.clear();
+      offs_.clear();
     }
 
    private:
@@ -82,9 +78,9 @@ class format_test_case_base : public index_test_base {
 
     uint32_t begin_{ ir::position::INVALID };
     uint32_t end_;
-    ir::offset* offs_{};
-    ir::payload* pay_{};
-    std::string pay_data_;
+    ir::offset offs_{};
+    ir::payload pay_{};
+    char pay_data_[21]; // enough to hold numbers up to max of uint64_t
   };
 
   class postings : public ir::doc_iterator {

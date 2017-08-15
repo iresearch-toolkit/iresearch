@@ -168,25 +168,25 @@ class IRESEARCH_API position : public attribute {
 
   class IRESEARCH_API impl : 
       public iterator<value_t>, 
-      public util::attribute_store_provider {
+      public util::const_attribute_view_provider {
    public:
     DECLARE_PTR(impl);
 
     impl() = default;
     impl(size_t reserve_attrs);
     virtual void clear() = 0;
-    using util::attribute_store_provider::attributes;
-    virtual attribute_store& attributes() NOEXCEPT override final {
+
+    virtual const attribute_view& attributes() const NOEXCEPT final {
       return attrs_;
     }
 
    protected:
-    attribute_store attrs_;
+    attribute_view attrs_;
   };
-  
+
   static const uint32_t INVALID = integer_traits<value_t>::const_max;
   static const uint32_t NO_MORE = INVALID - 1;
-  
+
   DECLARE_CREF(position);
   DECLARE_TYPE_ID(attribute::type_id);
   DECLARE_FACTORY_DEFAULT();
@@ -231,12 +231,8 @@ class IRESEARCH_API position : public attribute {
     return impl_.get();
   }
 
-  const attribute_store& attributes() const {
-    return impl_->attributes(); 
-  }
-  template< typename A > 
-  const attribute_store::ref<A>& get() const {
-    return this->attributes().get<A>(); 
+  const attribute_view& attributes() const NOEXCEPT {
+    return impl_->attributes();
   }
 
  private:

@@ -631,19 +631,18 @@ class pos_iterator : public position::impl {
 ///////////////////////////////////////////////////////////////////////////////
 class offs_pay_iterator final : public pos_iterator {
  public:
-  DECLARE_PTR( offs_pay_iterator );
+  DECLARE_PTR(offs_pay_iterator);
 
-  offs_pay_iterator():
-    pos_iterator(2) { // offset + payload
-    auto& attrs = this->attributes();
-    offs_ = attrs.emplace<offset>().get();
-    pay_ = attrs.emplace<payload>().get();
+  offs_pay_iterator()
+    : pos_iterator(2) { // offset + payload
+    attrs_.emplace(offs_);
+    attrs_.emplace(pay_);
   }
 
   virtual void clear() override {
     pos_iterator::clear();
-    offs_->clear();
-    pay_->clear();
+    offs_.clear();
+    pay_.clear();
   }
 
  protected:
@@ -667,10 +666,10 @@ class offs_pay_iterator final : public pos_iterator {
   }
 
   virtual void read_attributes() override {
-    offs_->start += offs_start_deltas_[buf_pos_];
-    offs_->end = offs_->start + offs_lengts_[buf_pos_];
+    offs_.start += offs_start_deltas_[buf_pos_];
+    offs_.end = offs_.start + offs_lengts_[buf_pos_];
 
-    pay_->value = bytes_ref(
+    pay_.value = bytes_ref(
       pay_data_.c_str() + pay_data_pos_,
       pay_lengths_[buf_pos_]);
     pay_data_pos_ += pay_lengths_[buf_pos_];
@@ -763,8 +762,8 @@ class offs_pay_iterator final : public pos_iterator {
   }
 
   index_input::ptr pay_in_;
-  offset* offs_;
-  payload* pay_;
+  offset offs_;
+  payload pay_;
   uint32_t offs_start_deltas_[postings_writer::BLOCK_SIZE]{}; /* buffer to store offset starts */
   uint32_t offs_lengts_[postings_writer::BLOCK_SIZE]{}; /* buffer to store offset lengths */
   uint32_t pay_lengths_[postings_writer::BLOCK_SIZE]{}; /* buffer to store payload lengths */
@@ -779,15 +778,14 @@ class offs_iterator final : public pos_iterator {
  public:
   DECLARE_PTR(offs_iterator);
 
-  offs_iterator():
-    pos_iterator(1) { // offset
-    auto& attrs = this->attributes();
-    offs_ = attrs.emplace<offset>().get();
+  offs_iterator()
+    : pos_iterator(1) { // offset
+    attrs_.emplace(offs_);
   }
 
   virtual void clear() override {
     pos_iterator::clear();
-    offs_->clear();
+    offs_.clear();
   }
 
  protected:
@@ -810,8 +808,8 @@ class offs_iterator final : public pos_iterator {
   }
 
   virtual void read_attributes() override {
-    offs_->start += offs_start_deltas_[buf_pos_];
-    offs_->end = offs_->start + offs_lengts_[buf_pos_];
+    offs_.start += offs_start_deltas_[buf_pos_];
+    offs_.end = offs_.start + offs_lengts_[buf_pos_];
   }
 
   virtual void refill() override {
@@ -878,7 +876,7 @@ class offs_iterator final : public pos_iterator {
   }
 
   index_input::ptr pay_in_;
-  offset* offs_;
+  offset offs_;
   uint32_t offs_start_deltas_[postings_writer::BLOCK_SIZE]; /* buffer to store offset starts */
   uint32_t offs_lengts_[postings_writer::BLOCK_SIZE]; /* buffer to store offset lengths */
 }; // offs_iterator
@@ -890,15 +888,14 @@ class pay_iterator final : public pos_iterator {
  public:
   DECLARE_PTR(pay_iterator);
 
-  pay_iterator():
-    pos_iterator(1) { // payload
-    auto& attrs = this->attributes();
-    pay_ = attrs.emplace<payload>().get();
+  pay_iterator()
+    : pos_iterator(1) { // payload
+    attrs_.emplace(pay_);
   }
 
   virtual void clear() override {
     pos_iterator::clear();
-    pay_->clear();
+    pay_.clear();
   }
 
  protected:
@@ -922,8 +919,10 @@ class pay_iterator final : public pos_iterator {
   }
 
   virtual void read_attributes() override {
-    pay_->value = bytes_ref( pay_data_.data() + pay_data_pos_,
-                             pay_lengths_[buf_pos_] );
+    pay_.value = bytes_ref(
+      pay_data_.data() + pay_data_pos_,
+      pay_lengths_[buf_pos_]
+    );
     pay_data_pos_ += pay_lengths_[buf_pos_];
   }
 
@@ -1018,7 +1017,7 @@ class pay_iterator final : public pos_iterator {
   }
 
   index_input::ptr pay_in_;
-  payload* pay_;
+  payload pay_;
   uint32_t pay_lengths_[postings_writer::BLOCK_SIZE]{}; /* buffer to store payload lengths */
   uint64_t pay_data_pos_{}; /* current postition in payload buffer */
   bstring pay_data_; // buffer to store payload data
@@ -3876,8 +3875,9 @@ irs::postings_writer::state postings_writer::write(doc_iterator& docs) {
 
   if (freq) {
     if (pos && !volatile_attributes_) {
-      offs = pos->get<offset>().get();
-      pay = pos->get<payload>().get();
+      auto& attrs = pos->attributes();
+      offs = attrs.get<offset>().get();
+      pay = attrs.get<payload>().get();
     }
 
     tfreq = &meta->freq;
@@ -3894,8 +3894,9 @@ irs::postings_writer::state postings_writer::write(doc_iterator& docs) {
 
     if (pos) {
       if (volatile_attributes_) {
-        offs = pos->get<offset>().get();
-        pay = pos->get<payload>().get();
+        auto& attrs = pos->attributes();
+        offs = attrs.get<offset>().get();
+        pay = attrs.get<payload>().get();
       }
 
       while (pos->next()) {
