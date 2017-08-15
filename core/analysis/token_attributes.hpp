@@ -193,10 +193,6 @@ class IRESEARCH_API position : public attribute {
 
   position() NOEXCEPT;
 
-  virtual void clear() { /* does nothing */ }
-
-  void prepare(impl* impl) NOEXCEPT { impl_.reset(impl); }  
-
   bool next() const { return impl_->next(); }
 
   value_t seek(value_t target) const {
@@ -213,6 +209,27 @@ class IRESEARCH_API position : public attribute {
   }
 
   value_t value() const { return impl_->value(); }
+
+  void clear() {
+    assert(impl_);
+    impl_->clear();
+  }
+
+  void reset(impl::ptr&& impl = nullptr) NOEXCEPT {
+    impl_ = std::move(impl);
+  }
+
+  explicit operator bool() const NOEXCEPT {
+    return impl_.get();
+  }
+
+  impl* get() NOEXCEPT {
+    return impl_.get();
+  }
+
+  const impl* get() const NOEXCEPT {
+    return impl_.get();
+  }
 
   const attribute_store& attributes() const {
     return impl_->attributes(); 

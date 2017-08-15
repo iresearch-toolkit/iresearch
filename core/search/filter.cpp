@@ -70,18 +70,19 @@ class all_query : public filter::prepared {
  public:
   class all_iterator : public score_doc_iterator {
    public:
-    all_iterator(uint64_t docs_count):
-      attrs_(1), // cost
-      max_doc_(doc_id_t(type_limits<type_t::doc_id_t>::min() + docs_count - 1)),
-      doc_(type_limits<type_t::doc_id_t>::invalid()) {
-      attrs_.emplace<cost>()->value(max_doc_);
+    all_iterator(uint64_t docs_count)
+      : attrs_(1), // cost
+        max_doc_(doc_id_t(type_limits<type_t::doc_id_t>::min() + docs_count - 1)),
+        doc_(type_limits<type_t::doc_id_t>::invalid()) {
+      est_.value(max_doc_);
+      attrs_.emplace(est_);
     }
 
     virtual doc_id_t value() const {
       return doc_;
     }
 
-    virtual const attribute_store& attributes() const NOEXCEPT {
+    virtual const attribute_view& attributes() const NOEXCEPT {
       return attrs_;
     }
 
@@ -97,7 +98,8 @@ class all_query : public filter::prepared {
     virtual void score() override { }
 
    private:
-    attribute_store attrs_;
+    attribute_view attrs_;
+    irs::cost est_;
     doc_id_t max_doc_; // largest valid doc_id
     doc_id_t doc_;
   };

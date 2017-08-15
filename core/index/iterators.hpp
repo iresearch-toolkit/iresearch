@@ -35,7 +35,7 @@ NS_ROOT
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API doc_iterator
     : iterator<doc_id_t>,
-      util::const_attribute_store_provider {
+      util::const_attribute_view_provider {
   DECLARE_SPTR(doc_iterator);
   DECLARE_FACTORY(doc_iterator);
 

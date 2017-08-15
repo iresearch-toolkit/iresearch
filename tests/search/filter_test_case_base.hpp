@@ -71,7 +71,7 @@ struct boost : public iresearch::sort {
         const iresearch::sub_reader&,
         const iresearch::term_reader&,
         const irs::attribute_store& query_attrs, 
-        const irs::attribute_store& doc_attrs
+        const irs::attribute_view& doc_attrs
     ) const override {
       return boost::scorer::make<boost::scorer>(
         query_attrs.get<iresearch::boost>(), query_attrs
@@ -149,7 +149,7 @@ struct frequency_sort: public iresearch::sort {
 
     class scorer: public iresearch::sort::scorer_base<score_t> {
      public:
-      scorer(const size_t* v_docs_count, const irs::attribute_store::ref<irs::document>& doc_id_t):
+      scorer(const size_t* v_docs_count, const irs::attribute_view::ref<irs::document>& doc_id_t):
         doc_id_t_attr(doc_id_t), docs_count(v_docs_count) {
       }
 
@@ -160,7 +160,7 @@ struct frequency_sort: public iresearch::sort {
       }
 
      private:
-      const irs::attribute_store::ref<irs::document>& doc_id_t_attr;
+      const irs::attribute_view::ref<irs::document>& doc_id_t_attr;
       const size_t* docs_count;
     };
 
@@ -180,7 +180,7 @@ struct frequency_sort: public iresearch::sort {
         const iresearch::sub_reader&,
         const iresearch::term_reader&,
         const irs::attribute_store& query_attrs,
-        const irs::attribute_store& doc_attrs
+        const irs::attribute_view& doc_attrs
     ) const override {
       auto& doc_id_t = doc_attrs.get<iresearch::document>();
       auto& count = query_attrs.get<prepared::count>();

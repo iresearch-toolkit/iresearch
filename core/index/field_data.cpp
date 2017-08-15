@@ -149,7 +149,7 @@ class doc_iterator : public irs::doc_iterator {
       freq_in_(EMPTY_POOL.begin(), 0) {
   }
 
-  virtual const attribute_store& attributes() const NOEXCEPT override {
+  virtual const attribute_view& attributes() const NOEXCEPT override {
     return attrs_;
   }
 
@@ -157,27 +157,25 @@ class doc_iterator : public irs::doc_iterator {
       const field_data& field, const irs::posting& posting,
       const byte_block_pool::sliced_reader& freq,
       const byte_block_pool::sliced_reader& prox) {
-    freq_ = nullptr;
-    pos_ = nullptr;
+    pos_.reset();
     freq_in_ = freq;
     posting_ = &posting;
     field_ = &field;
 
     attrs_.clear();
 
-    auto& doc = attrs_.emplace<document>();
-    doc->value = &docv_;
+    attrs_.emplace(doc_);
+    doc_.value = &docv_;
     docv_ = 0;
 
     const auto& features = field_->meta().features;
-    if (features.check<frequency>()) {
-      freq_ = attrs_.emplace<frequency>().get();
-      freq_->value = 0;
+    if ((has_freq_ = features.check<frequency>())) {
+      attrs_.emplace(freq_);
+      freq_.value = 0;
 
       if (features.check<position>()) {
-        auto& pos = attrs_.emplace<position>();
-        auto pos_it = memory::make_unique<pos_iterator>(field, *freq_, prox);
-        pos->prepare(pos_ = pos_it.release());
+        pos_.reset(memory::make_unique<pos_iterator>(field, freq_, prox));
+        attrs_.emplace(pos_);
       }
     }
 
@@ -201,18 +199,19 @@ class doc_iterator : public irs::doc_iterator {
       docv_ = posting_->doc;
 
       if (field_->meta().features.check<frequency>()) {
-        freq_->value = posting_->freq; 
+        freq_.value = posting_->freq; 
       }
 
       const_cast<posting*>(posting_)->doc_code = type_limits<type_t::doc_id_t>::invalid();
     } else {
-      if (freq_) {
+      //if (freq_) {
+      if (has_freq_) {
         doc_id_t delta;
 
         if (shift_unpack_64( bytes_io<uint64_t>::vread(freq_in_), delta)) {
-          freq_->value = 1U;
+          freq_.value = 1U;
         } else {
-          freq_->value = bytes_io< uint32_t >::vread( freq_in_ );
+          freq_.value = bytes_io< uint32_t >::vread( freq_in_ );
         }
 
         docv_ += delta;
@@ -223,19 +222,23 @@ class doc_iterator : public irs::doc_iterator {
       assert(docv_ != posting_->doc);
     }
 
-    if (pos_) pos_->clear();
+    if (pos_) {
+      pos_.clear();
+    }
 
     return true;
   }
 
  private:
   doc_id_t docv_;
-  frequency* freq_;
-  attribute_store attrs_;
+  document doc_;
+  frequency freq_;
+  position pos_;
+  attribute_view attrs_;
   byte_block_pool::sliced_reader freq_in_;
-  position::impl* pos_;
   const posting* posting_;
   const field_data* field_;
+  bool has_freq_{false};
 };
 
 /* -------------------------------------------------------------------

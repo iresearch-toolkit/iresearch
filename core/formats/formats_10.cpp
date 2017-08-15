@@ -179,8 +179,8 @@ class doc_iterator : public iresearch::doc_iterator {
     enabled_ = enabled; // set enabled features
 
     // add mandatory attributes
-    doc_ = attrs_.emplace<document>().get();
-    doc_->value = begin_ = end_ = docs_;
+    attrs_.emplace(doc_);
+    doc_.value = begin_ = end_ = docs_;
     *docs_ = type_limits<type_t::doc_id_t>::invalid();
 
     // get state attribute
@@ -207,8 +207,8 @@ class doc_iterator : public iresearch::doc_iterator {
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
-    if (target <= *(doc_->value)) {
-      return *(doc_->value);
+    if (target <= *(doc_.value)) {
+      return *(doc_.value);
     }
 
     seek_to_block(target);
@@ -217,10 +217,10 @@ class doc_iterator : public iresearch::doc_iterator {
   }
 
   virtual doc_id_t value() const override {
-    return *(doc_->value);
+    return *(doc_.value);
   }
 
-  virtual const irs::attribute_store& attributes() const NOEXCEPT override {
+  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
     return attrs_;
   }
 
@@ -231,20 +231,20 @@ class doc_iterator : public iresearch::doc_iterator {
 #endif
 
   virtual bool next() override {
-    if (doc_->value == end_) {
+    if (doc_.value == end_) {
       cur_pos_ += relative_pos();
 
       if (cur_pos_ == term_state_.docs_count) {
         *docs_ = type_limits<type_t::doc_id_t>::eof();
-        doc_->value = begin_ = end_ = docs_; // seal the iterator
+        doc_.value = begin_ = end_ = docs_; // seal the iterator
         return false;
       }
 
       refill();
     }
 
-    ++(doc_->value);
-    freq_->value = *doc_freq_++;
+    ++(doc_.value);
+    freq_.value = *doc_freq_++;
 
     return true;
   }
@@ -264,7 +264,7 @@ class doc_iterator : public iresearch::doc_iterator {
     // term frequency attributes
     if (enabled.freq()) {
       assert(attrs.contains<frequency>());
-      freq_ = attrs_.emplace<frequency>().get();
+      attrs_.emplace(freq_);
       term_freq_ = attrs.get<frequency>()->value;
     }
   }
@@ -276,8 +276,8 @@ class doc_iterator : public iresearch::doc_iterator {
 
   // returns current position in the document block 'docs_'
   size_t relative_pos() NOEXCEPT {
-    assert(doc_->value >= begin_);
-    return doc_->value - begin_;
+    assert(doc_.value >= begin_);
+    return doc_.value - begin_;
   }
 
   doc_id_t read_skip(skip_state& state, index_input& in) {
@@ -359,14 +359,14 @@ class doc_iterator : public iresearch::doc_iterator {
 
     doc_freq_ = docs_ + postings_writer::BLOCK_SIZE;
 
-    doc_->value = begin_ = docs_ - 1;
+    doc_.value = begin_ = docs_ - 1;
     --end_;
   }
 
   std::vector<skip_state> skip_levels_;
   skip_reader skip_;
   skip_context* skip_ctx_; // pointer to used skip context, will be used by skip reader
-  irs::attribute_store attrs_;
+  irs::attribute_view attrs_;
   uint64_t enc_buf_[postings_writer::BLOCK_SIZE]; // buffer for encoding
   doc_id_t docs_[postings_writer::BLOCK_SIZE]; // doc values
   uint64_t doc_freqs_[postings_writer::BLOCK_SIZE]; // document frequencies
@@ -375,8 +375,8 @@ class doc_iterator : public iresearch::doc_iterator {
   doc_id_t* end_{docs_};
   uint64_t* doc_freq_{}; // pointer into docs_ to the frequency attribute value for the current doc
   uint64_t term_freq_{}; // total term frequency
-  document* doc_;
-  frequency* freq_{ &EMPTY_FREQ };
+  document doc_;
+  frequency freq_;
   index_input::ptr doc_in_;
   version10::term_meta term_state_;
   features features_; // field features
@@ -437,7 +437,7 @@ void doc_iterator::seek_to_block(doc_id_t target) {
       doc_in_->seek(last.doc_ptr);
       *docs_ = last.doc;
       cur_pos_ = skipped;
-      doc_->value = begin_ = end_ = docs_; // will trigger refill in "next"
+      doc_.value = begin_ = end_ = docs_; // will trigger refill in "next"
       seek_notify(last); // notifies derivatives
     }
   }
@@ -1046,27 +1046,26 @@ class pay_iterator final : public pos_iterator {
 class pos_doc_iterator : public doc_iterator {
  public:
   virtual bool next() override {
-    if (doc_->value == end_) {
+    if (doc_.value == end_) {
       cur_pos_ += relative_pos();
 
       if (cur_pos_ == term_state_.docs_count) {
         *docs_ = type_limits<type_t::doc_id_t>::eof();
-        doc_->value = begin_ = end_ = docs_; // seal the iterator
+        doc_.value = begin_ = end_ = docs_; // seal the iterator
         return false;
       }
 
       refill();
     }
 
-    ++(doc_->value);
+    ++(doc_.value);
 
     // update frequency attribute
-    auto& freq = freq_->value;
-    freq = *doc_freq_++;
+    freq_.value = *doc_freq_++;
 
     // update position attribute
     assert(pos_);
-    pos_->pend_pos_ += freq;
+    pos_->pend_pos_ += freq_.value;
     pos_->clear();
 
     return true;
@@ -1087,6 +1086,7 @@ class pos_doc_iterator : public doc_iterator {
   }
 
  private:
+  position position_;
   pos_iterator* pos_{};
 }; // pos_doc_iterator
 
@@ -1104,12 +1104,13 @@ void pos_doc_iterator::prepare_attributes(
 
   // position attribute
   pos_iterator::ptr it = pos_iterator::make(enabled);
+  pos_ = it.get();
 
   doc_state state;
   state.pos_in = pos_in;
   state.pay_in = pay_in;
   state.term_state = &term_state_;
-  state.freq = &freq_->value;
+  state.freq = &freq_.value;
   state.features = features_;
   state.enc_buf = enc_buf_;
   if (term_freq_ < postings_writer::BLOCK_SIZE) {
@@ -1123,8 +1124,8 @@ void pos_doc_iterator::prepare_attributes(
   it->prepare(state);
 
   // finish initialization
-  auto* pos = attrs_.emplace<position>().get();
-  pos->prepare(pos_ = it.release());
+  attrs_.emplace(position_);
+  position_.reset(std::move(it));
 }
 
 NS_END // detail
@@ -3865,7 +3866,7 @@ void postings_writer::begin_block() {
 irs::postings_writer::state postings_writer::write(doc_iterator& docs) {
   REGISTER_TIMER_DETAILED();
   auto& freq = docs.attributes().get<frequency>();
-  auto& pos = freq ? docs.attributes().get<position>() : irs::attribute_store::ref<position>::nil();
+  auto& pos = freq ? docs.attributes().get<position>() : irs::attribute_view::ref<position>::nil();
   const offset* offs = nullptr;
   const payload* pay = nullptr;
 

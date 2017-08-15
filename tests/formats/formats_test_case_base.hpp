@@ -96,12 +96,13 @@ class format_test_case_base : public index_test_base {
              const ir::flags& features = ir::flags::empty_instance())
       : next_(begin), end_(end) {
       if (features.check<ir::frequency>()) {
-        auto& freq = attrs_.emplace<irs::frequency>();
-        freq->value = 10;
+        freq_.value = 10;
+        attrs_.emplace<irs::frequency>(freq_);
 
         if (features.check<ir::position>()) {
-          auto& pos = attrs_.emplace<irs::position>();
-          pos->prepare(pos_ = new position(features));
+          position_.reset(irs::memory::make_unique<position>(features));
+          attrs_.emplace(position_);
+          pos_ = static_cast<position*>(position_.get());
         }
       }
     }
@@ -133,15 +134,17 @@ class format_test_case_base : public index_test_base {
       return value();
     }
 
-    const irs::attribute_store& attributes() const NOEXCEPT {
+    const irs::attribute_view& attributes() const NOEXCEPT {
       return attrs_;
     }
 
    private:
-    irs::attribute_store attrs_;
+    irs::attribute_view attrs_;
     docs_t::const_iterator next_;
     docs_t::const_iterator end_;
     position* pos_{};
+    irs::frequency freq_;
+    irs::position position_;
     ir::doc_id_t doc_{ ir::type_limits<ir::type_t::doc_id_t>::invalid() };
   }; // postings 
 

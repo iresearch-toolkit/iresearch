@@ -229,7 +229,7 @@ order::prepared::prepare_scorers(
     const sub_reader& segment,
     const term_reader& field,
     const attribute_store& stats,
-    const attribute_store& doc
+    const attribute_view& doc
 ) const {
   scorers::scorers_t scrs;
   scrs.reserve(size());

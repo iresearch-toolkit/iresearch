@@ -355,10 +355,10 @@ class doc_iterator : public iresearch::doc_iterator {
                       const tests::term& data );
 
   iresearch::doc_id_t value() const override {
-    return *(doc_->value);
+    return *(doc_.value);
   }
 
-  const irs::attribute_store& attributes() const NOEXCEPT override {
+  const irs::attribute_view& attributes() const NOEXCEPT override {
     return attrs_;
   }
 
@@ -369,9 +369,9 @@ class doc_iterator : public iresearch::doc_iterator {
     }
 
     prev_ = next_, ++next_;
-    *(const_cast<irs::doc_id_t*>(doc_->value)) = prev_->id();
-    if ( freq_ ) freq_->value = prev_->positions().size();
-    if ( pos_ ) pos_->clear();
+    *(const_cast<irs::doc_id_t*>(doc_.value)) = prev_->id();
+    freq_.value = prev_->positions().size();
+    if (pos_) pos_.clear();
     return true;
   }
 
@@ -386,22 +386,22 @@ class doc_iterator : public iresearch::doc_iterator {
 
     prev_ = it;
     next_ = ++it;
-    *(const_cast<irs::doc_id_t*>(doc_->value)) = prev_->id();
-    if ( pos_ ) {
-      pos_->clear();
+    *(const_cast<irs::doc_id_t*>(doc_.value)) = prev_->id();
+    if (pos_) {
+      pos_.clear();
     }
-    return *(doc_->value);
+    return *(doc_.value);
   }
 
  private:
   friend class pos_iterator;
 
   irs::doc_id_t docv_{};
-  irs::attribute_store attrs_;
-  irs::document* doc_;
-  irs::frequency* freq_;
+  irs::attribute_view attrs_;
+  irs::document doc_;
+  irs::frequency freq_;
+  irs::position pos_;
   const irs::flags& features_;
-  irs::position::impl* pos_;
   const tests::term& data_;
   std::set<posting>::const_iterator prev_;
   std::set<posting>::const_iterator next_;
@@ -464,21 +464,20 @@ class pos_iterator : public iresearch::position::impl {
 };
 
 doc_iterator::doc_iterator(const iresearch::flags& features, const tests::term& data)
-  : freq_( nullptr ),
-    pos_( nullptr ),
-    features_( features ),
+  : features_( features ),
     data_( data ) {
   next_ = data_.postings.begin();
 
-  doc_ = attrs_.emplace <irs::document>().get();
-  doc_->value = &docv_;
+  attrs_.emplace(doc_);
+  doc_.value = &docv_;
 
-  if ( features.check<iresearch::frequency>() ) {
-    freq_ = attrs_.emplace<irs::frequency>().get();
+  if (features.check<iresearch::frequency>()) {
+    attrs_.emplace(freq_);
   }
 
-  if ( features.check< iresearch::position >() ) {
-    attrs_.emplace<irs::position>()->prepare(pos_ = new detail::pos_iterator(*this));
+  if (features.check< iresearch::position >()) {
+    pos_.reset(irs::memory::make_unique<detail::pos_iterator>(*this));
+    attrs_.emplace(pos_);
   }
 }
 

@@ -19,10 +19,17 @@
 NS_ROOT
 NS_LOCAL
 
-irs::attribute_store empty_doc_iterator_attributes() {
-  irs::attribute_store attrs(1); // cost
+irs::cost empty_cost() NOEXCEPT {
+  irs::cost cost;
+  cost.value(0);
+  return cost;
+}
 
-  attrs.emplace<cost>()->value(0);
+irs::attribute_view empty_doc_iterator_attributes() {
+  static irs::cost cost = empty_cost();
+
+  irs::attribute_view attrs(1); // cost
+  attrs.emplace(cost);
 
   return attrs;
 }
@@ -36,8 +43,8 @@ struct empty_doc_iterator : score_doc_iterator {
   virtual bool next() override { return false; }
   virtual doc_id_t seek(doc_id_t) override { return type_limits<type_t::doc_id_t>::eof(); }
   virtual void score() override { }
-  virtual const irs::attribute_store& attributes() const NOEXCEPT override {
-    static irs::attribute_store empty = empty_doc_iterator_attributes();
+  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+    static irs::attribute_view empty = empty_doc_iterator_attributes();
     return empty;
   }
 };

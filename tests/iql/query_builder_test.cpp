@@ -52,7 +52,7 @@ namespace tests {
           const iresearch::sub_reader&,
           const iresearch::term_reader&,
           const irs::attribute_store& query_attrs,
-          const irs::attribute_store& doc_attrs
+          const irs::attribute_view& doc_attrs
       ) const override {
         return nullptr; 
       }

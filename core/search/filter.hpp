@@ -34,20 +34,22 @@ class IRESEARCH_API score : public attribute {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief applies score to the specified attributes collection ("src")
-  /// @return pointer to the attribute
   //////////////////////////////////////////////////////////////////////////////
-  static score* apply(attribute_store& src, const order::prepared& ord) {
+  static bool apply(
+      attribute_view& src,
+      irs::score& score,
+      const order::prepared& ord) {
     if (ord.empty()) {
-      return nullptr;
+      return false;
     }
 
-    auto& attr = src.emplace<score>();
+    src.emplace(score);
 
-    attr->order_ = &ord;
-    attr->value_.resize(ord.size());
-    attr->clear();
+    score.order_ = &ord;
+    score.value_.resize(ord.size());
+    score.clear();
 
-    return attr.get();
+    return true;
   }
 
   DECLARE_ATTRIBUTE_TYPE();
@@ -79,6 +81,10 @@ class IRESEARCH_API score : public attribute {
         ord.bucket->prepare_score(&(value_[0]) + ord.offset);
       }
     }
+  }
+
+  bool empty() const NOEXCEPT {
+    return value_.empty();
   }
 
  private:

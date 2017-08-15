@@ -41,7 +41,8 @@ class column_existence_iterator final : public irs::score_doc_iterator_base {
     assert(it_);
 
     // set estimation value
-    attrs_.emplace<irs::cost>()->value(estimation);
+    est_.value(estimation);
+    attrs_.emplace(est_);
   }
 
   virtual void score() override { }
@@ -60,6 +61,7 @@ class column_existence_iterator final : public irs::score_doc_iterator_base {
   }
 
  private:
+  irs::cost est_;
   irs::columnstore_reader::column_iterator::ptr it_;
 }; // column_existence_iterator
 

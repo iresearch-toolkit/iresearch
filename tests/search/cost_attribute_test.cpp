@@ -110,7 +110,7 @@ TEST(cost_attribute_test, lazy_estimation) {
 }
 
 TEST(cost_attribute_test, extract) {
-  irs::attribute_store attrs;
+  irs::attribute_view attrs;
 
   ASSERT_EQ(
     ir::cost::cost_t(ir::cost::MAX),
@@ -119,41 +119,43 @@ TEST(cost_attribute_test, extract) {
 
   ASSERT_EQ(5, ir::cost::extract(attrs, 5));
 
-  auto& cost = attrs.emplace<irs::cost>();
-  ASSERT_FALSE(bool(cost->rule()));
+
+  irs::cost cost;
+  attrs.emplace(cost);
+  ASSERT_FALSE(bool(cost.rule()));
 
   auto est = 7;
   auto evaluated = false;
 
-  /* set estimation function and evaluate */
+  // set estimation function and evaluate
   {
-    cost->rule([&evaluated, est]() {
+    cost.rule([&evaluated, est]() {
       evaluated = true;
       return est;
     });
-    ASSERT_TRUE(bool(cost->rule()));
+    ASSERT_TRUE(bool(cost.rule()));
     ASSERT_FALSE(evaluated);
     ASSERT_EQ(est, ir::cost::extract(attrs));
     ASSERT_TRUE(evaluated);
   }
 
-  /* change estimation func */
+  // change estimation func
   {
     evaluated = false;
-    cost->rule([&evaluated, est]() {
+    cost.rule([&evaluated, est]() {
       evaluated = true;
       return est+1;
     });
-    ASSERT_TRUE(bool(cost->rule()));
+    ASSERT_TRUE(bool(cost.rule()));
     ASSERT_FALSE(evaluated);
     ASSERT_EQ(est+1, ir::cost::extract(attrs, 3));
     ASSERT_TRUE(evaluated);
   }
 
-  /* clear */
+  // clear
   {
     evaluated = false;
-    cost->clear();
+    cost.clear();
     ASSERT_EQ(est+1, ir::cost::extract(attrs, 3));
     /* evaluate again */
     ASSERT_TRUE(evaluated);

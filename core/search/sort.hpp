@@ -173,7 +173,7 @@ class IRESEARCH_API sort {
       const sub_reader& segment,
       const term_reader& field,
       const attribute_store& query_attrs,
-      const attribute_store& doc_attrs
+      const attribute_view& doc_attrs
     ) const = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -384,7 +384,7 @@ public:
       const sub_reader& segment,
       const term_reader& field,
       const attribute_store& stats,
-      const attribute_store& doc
+      const attribute_view& doc
     ) const;
 
     bool less(const byte_type* lhs, const byte_type* rhs) const;

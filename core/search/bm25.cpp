@@ -205,7 +205,7 @@ class sort final : iresearch::sort::prepared_base<bm25::score_t> {
       const sub_reader& segment,
       const term_reader& field,
       const attribute_store& query_attrs,
-      const attribute_store& doc_attrs
+      const attribute_view& doc_attrs
   ) const override {
     auto& norm = query_attrs.get<iresearch::norm>();
 
