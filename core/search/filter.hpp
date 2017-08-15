@@ -14,15 +14,8 @@
 
 #include "shared.hpp"
 #include "sort.hpp"
-#include "index/iterators.hpp"
-#include "utils/memory.hpp"
-#include "utils/string.hpp"
-#include "utils/type_id.hpp"
-#include "utils/attributes_provider.hpp"
 
 #include <unordered_map>
-#include <vector>
-#include <boost/iterator/iterator_facade.hpp>
 
 NS_ROOT
 
@@ -233,23 +226,6 @@ class IRESEARCH_API filter {
 #define DEFINE_FILTER_TYPE(class_name) DEFINE_TYPE_ID(class_name,iresearch::type_id) { \
   static iresearch::type_id type; \
   return type; }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @class all
-/// @brief filter that returns all documents
-////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API all: public filter {
- public:
-  DECLARE_FILTER_TYPE();
-  DECLARE_FACTORY_DEFAULT();
-
-  all();
-
-  virtual filter::prepared::ptr prepare(
-    const index_reader& rdr,
-    const order::prepared& ord,
-    boost_t) const override;
-}; // all
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class empty

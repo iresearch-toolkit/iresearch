@@ -10,6 +10,7 @@
 // 
 
 #include "tests_shared.hpp"
+#include "search/all_filter.hpp"
 #include "search/boolean_filter.hpp"
 #include "search/disjunction.hpp"
 #include "search/exclusion.hpp"
