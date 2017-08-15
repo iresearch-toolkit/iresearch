@@ -13,7 +13,6 @@
 #include <unordered_map>
 
 #include "merge_writer.hpp"
-#include "index/doc_header.hpp"
 #include "index/field_meta.hpp"
 #include "index/index_meta.hpp"
 #include "index/segment_reader.hpp"
