@@ -39,6 +39,9 @@ sort::collector::~collector() { }
 
 sort::scorer::~scorer() { }
 
+sort::prepared::prepared(attribute_store&& attrs): attrs_(std::move(attrs)) {
+}
+
 sort::prepared::~prepared() { }
 
 // ----------------------------------------------------------------------------
@@ -289,3 +292,7 @@ order& order::operator=(order&& rhs) NOEXCEPT {
 }
 
 NS_END
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
