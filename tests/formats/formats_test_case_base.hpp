@@ -180,8 +180,8 @@ class format_test_case_base : public index_test_base {
 
     void read() { }
 
-    const irs::attribute_store& attributes() const NOEXCEPT {
-      return irs::attribute_store::empty_instance();
+    const irs::attribute_view& attributes() const NOEXCEPT {
+      return irs::attribute_view::empty_instance();
     }
 
   private:

@@ -60,8 +60,8 @@ struct empty_term_iterator : term_iterator {
   }
   virtual void read() { }
   virtual bool next() override { return false; }
-  virtual const irs::attribute_store& attributes() const NOEXCEPT override {
-    return irs::attribute_store::empty_instance();
+  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+    return irs::attribute_view::empty_instance();
   }
 };
 
@@ -71,8 +71,8 @@ struct empty_term_reader : singleton<empty_term_reader>, term_reader {
     return irs::field_meta::EMPTY;
   }
 
-  virtual const irs::attribute_store& attributes() const NOEXCEPT {
-    return irs::attribute_store::empty_instance();
+  virtual const irs::attribute_view& attributes() const NOEXCEPT {
+    return irs::attribute_view::empty_instance();
   }
 
   // total number of terms

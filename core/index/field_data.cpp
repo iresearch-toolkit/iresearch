@@ -271,8 +271,8 @@ class term_iterator : public irs::term_iterator {
     return term_;
   }
 
-  virtual const attribute_store& attributes() const NOEXCEPT {
-    return attribute_store::empty_instance();
+  virtual const attribute_view& attributes() const NOEXCEPT {
+    return attribute_view::empty_instance();
   }
 
   virtual void read() {
@@ -368,8 +368,8 @@ class term_reader final : public irs::basic_term_reader, util::noncopyable {
     return memory::make_managed<irs::term_iterator, false>(&it_);
   }
 
-  virtual const attribute_store& attributes() const NOEXCEPT override {
-    return attribute_store::empty_instance();
+  virtual const attribute_view& attributes() const NOEXCEPT override {
+    return attribute_view::empty_instance();
   }
 
  private:

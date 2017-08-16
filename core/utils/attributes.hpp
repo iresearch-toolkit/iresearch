@@ -102,7 +102,7 @@ class IRESEARCH_API attribute_registrar {
 /// @class basic_attribute
 /// @brief represents simple attribute holds a single value 
 //////////////////////////////////////////////////////////////////////////////
-template< typename T > 
+template<typename T>
 struct IRESEARCH_API_TEMPLATE basic_attribute : attribute {
   typedef T value_t;
 

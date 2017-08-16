@@ -158,7 +158,7 @@ void order::prepared::stats::field(
   }
 }
 
-void order::prepared::stats::term(const attribute_store& term) const {
+void order::prepared::stats::term(const attribute_view& term) const {
   for (auto& collector : colls_) {
     collector->term(term);
   }

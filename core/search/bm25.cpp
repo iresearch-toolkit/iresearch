@@ -143,7 +143,7 @@ class collector final : public iresearch::sort::collector {
     docs_count += field.docs_count();
   }
 
-  virtual void term(const attribute_store& term_attrs) override {
+  virtual void term(const attribute_view& term_attrs) override {
     auto& meta = term_attrs.get<iresearch::term_meta>();
 
     if (meta) {

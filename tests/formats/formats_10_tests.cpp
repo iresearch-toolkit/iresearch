@@ -30,11 +30,9 @@ class format_10_test_case : public tests::format_test_case_base {
 
     // docs & attributes for term0
     std::vector<ir::doc_id_t> docs0{ 3 };
-    irs::attribute_store attrs0;
 
     // docs & attributes for term0
     std::vector<ir::doc_id_t> docs1{ 6 };
-    irs::attribute_store attrs1;
 
     ir::version10::postings_writer writer(false);
     irs::postings_writer::state meta0, meta1;
@@ -124,14 +122,14 @@ class format_10_test_case : public tests::format_test_case_base {
 
       // read term0 attributes & postings
       {
-        irs::attribute_store read_attrs;
-        reader.decode(*in, field.features, read_attrs);
-        ASSERT_TRUE(read_attrs.contains<ir::version10::term_meta>());
+        irs::version10::term_meta read_meta;
+        irs::attribute_view read_attrs;
+        read_attrs.emplace(read_meta);
+        reader.decode(*in, field.features, read_attrs, read_meta);
 
         // check term_meta for term0
         {
           auto& typed_meta0 = dynamic_cast<const irs::version10::term_meta&>(*meta0);
-          auto& read_meta = **read_attrs.get<irs::version10::term_meta>();
           ASSERT_EQ(typed_meta0.docs_count, read_meta.docs_count);
           ASSERT_EQ(typed_meta0.doc_start, read_meta.doc_start);
           ASSERT_EQ(typed_meta0.pos_start, read_meta.pos_start);
@@ -150,9 +148,10 @@ class format_10_test_case : public tests::format_test_case_base {
 
       // check term_meta for term1
       {
-        irs::attribute_store read_attrs;
-        reader.decode(*in, field.features, read_attrs);
-        ASSERT_TRUE(read_attrs.contains<ir::version10::term_meta>());
+        irs::version10::term_meta read_meta;
+        irs::attribute_view read_attrs;
+        read_attrs.emplace(read_meta);
+        reader.decode(*in, field.features, read_attrs, read_meta);
 
         {
           auto& typed_meta1 = dynamic_cast<const irs::version10::term_meta&>(*meta1);
@@ -179,11 +178,9 @@ class format_10_test_case : public tests::format_test_case_base {
     ir::field_meta field;
 
     // docs & attributes for term0
-    irs::attribute_store attrs0;
     std::vector<ir::doc_id_t> docs0{ 1, 3, 5, 7, 79, 101, 124 };
 
     // docs & attributes for term1
-    irs::attribute_store attrs1;
     std::vector<ir::doc_id_t> docs1{ 2, 7, 9, 19 };
 
     ir::version10::postings_writer writer(false);
@@ -253,18 +250,18 @@ class format_10_test_case : public tests::format_test_case_base {
       ir::version10::postings_reader reader;
       reader.prepare(*in, state, field.features);
 
-      // cumulative attributes
-      irs::attribute_store read_attrs;
+      // cumulative attribute
+      irs::version10::term_meta read_meta;
+      irs::attribute_view read_attrs;
+      read_attrs.emplace(read_meta);
 
-      /* read term0 attributes */
+      // read term0 attributes
       {
-        reader.decode(*in, field.features, read_attrs);
-        ASSERT_TRUE(read_attrs.contains<ir::version10::term_meta>());
+        reader.decode(*in, field.features, read_attrs, read_meta);
 
         // check term_meta
         {
           auto& meta = dynamic_cast<irs::version10::term_meta&>(*meta0);
-          auto& read_meta = **read_attrs.get<irs::version10::term_meta>();
           ASSERT_EQ(meta.docs_count, read_meta.docs_count);
           ASSERT_EQ(meta.doc_start, read_meta.doc_start);
           ASSERT_EQ(meta.pos_start, read_meta.pos_start);
@@ -283,13 +280,11 @@ class format_10_test_case : public tests::format_test_case_base {
 
       // read term1 attributes
       {
-        reader.decode(*in, field.features, read_attrs);
-        ASSERT_TRUE(read_attrs.contains<ir::version10::term_meta>());
+        reader.decode(*in, field.features, read_attrs, read_meta);
 
         // check term_meta
         {
           auto& meta = dynamic_cast<irs::version10::term_meta&>(*meta1);
-          auto& read_meta = **read_attrs.get<irs::version10::term_meta>();
           ASSERT_EQ(meta.docs_count, read_meta.docs_count);
           ASSERT_EQ(meta.doc_start, read_meta.doc_start);
           ASSERT_EQ(meta.pos_start, read_meta.pos_start);
@@ -414,21 +409,23 @@ class format_10_test_case : public tests::format_test_case_base {
       reader.prepare(*in, state, field.features);
 
       // cumulative attributes
-      irs::attribute_store read_attrs;
+      irs::frequency freq;
+      freq.value = 10;
+
+      irs::attribute_view read_attrs;
       if (field.features.check<ir::frequency>()) {
-        read_attrs.emplace<irs::frequency>()->value = 10;
+        read_attrs.emplace(freq);
       }
 
       // read term attributes
       {
-        reader.decode(*in, field.features, read_attrs);
-      //  reader.decode(*in, field, read_attrs);
-        ASSERT_TRUE(read_attrs.contains<ir::version10::term_meta>());
+        irs::version10::term_meta read_meta;
+        read_attrs.emplace(read_meta);
+        reader.decode(*in, field.features, read_attrs, read_meta);
 
         // check term_meta
         {
           auto& typed_meta = dynamic_cast<irs::version10::term_meta&>(*term_meta);
-          auto& read_meta = **read_attrs.get<irs::version10::term_meta>();
           ASSERT_EQ(typed_meta.docs_count, read_meta.docs_count);
           ASSERT_EQ(typed_meta.doc_start, read_meta.doc_start);
           ASSERT_EQ(typed_meta.pos_start, read_meta.pos_start);

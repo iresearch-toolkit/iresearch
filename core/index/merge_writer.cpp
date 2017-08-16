@@ -290,10 +290,11 @@ class compound_term_iterator : public irs::term_iterator {
   compound_term_iterator& operator=(const compound_term_iterator&) = delete; // due to references
   const irs::field_meta& meta() const NOEXCEPT { return *meta_; }
   void add(const irs::term_reader& reader, const doc_id_map_t& doc_id_map);
-  virtual const irs::attribute_store& attributes() const NOEXCEPT override {
+  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
     // no way to merge attributes for the same term spread over multiple iterators
     // would require API change for attributes
-    throw irs::not_impl_error();
+    assert(false);
+    return irs::attribute_view::empty_instance();
   }
   virtual bool next() override;
   virtual irs::doc_iterator::ptr postings(const irs::flags& features) const override;
@@ -410,8 +411,8 @@ class compound_field_iterator : public irs::basic_term_reader {
     return *max_;
   }
 
-  virtual const irs::attribute_store& attributes() const NOEXCEPT override {
-    return irs::attribute_store::empty_instance();
+  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+    return irs::attribute_view::empty_instance();
   }
 
   virtual irs::term_iterator::ptr iterator() const override;

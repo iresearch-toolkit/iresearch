@@ -481,7 +481,7 @@ class term_iterator : public iresearch::seek_term_iterator {
     next_ = data_.terms.begin();
   }
 
-  const irs::attribute_store& attributes() const NOEXCEPT override {
+  const irs::attribute_view& attributes() const NOEXCEPT override {
     return attrs_;
   }
 
@@ -553,7 +553,7 @@ class term_iterator : public iresearch::seek_term_iterator {
   }
 
  private:
-  irs::attribute_store attrs_;
+  irs::attribute_view attrs_;
   const tests::field& data_;
   std::set< tests::term >::const_iterator prev_;
   std::set< tests::term >::const_iterator next_;
@@ -586,8 +586,8 @@ const iresearch::field_meta& term_reader::meta() const {
   return data_;
 }
 
-const irs::attribute_store& term_reader::attributes() const NOEXCEPT {
-  return irs::attribute_store::empty_instance();
+const irs::attribute_view& term_reader::attributes() const NOEXCEPT {
+  return irs::attribute_view::empty_instance();
 }
 
 NS_END

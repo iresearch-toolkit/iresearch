@@ -104,7 +104,7 @@ class IRESEARCH_API sort {
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief compute term level statistics, e.g. from current attribute values
     ////////////////////////////////////////////////////////////////////////////////
-    virtual void term(const attribute_store& /*term*/) {
+    virtual void term(const attribute_view& /*term*/) {
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -327,7 +327,7 @@ public:
 
       void field(const sub_reader& segment, const term_reader& field) const;
 
-      void term(const attribute_store& term) const;
+      void term(const attribute_view& term) const;
 
       void finish(const index_reader& index, attribute_store& query_context) const;
 

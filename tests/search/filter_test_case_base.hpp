@@ -129,7 +129,7 @@ struct frequency_sort: public iresearch::sort {
         // NOOP
       }
 
-      virtual void term(const irs::attribute_store& term_attrs) override {
+      virtual void term(const irs::attribute_view& term_attrs) override {
         meta_attr = term_attrs.get<iresearch::term_meta>();
         docs_count += meta_attr->docs_count;
       }
@@ -144,7 +144,7 @@ struct frequency_sort: public iresearch::sort {
 
      private:
       size_t docs_count{};
-      irs::attribute_store::ref<irs::term_meta> meta_attr;
+      irs::attribute_view::ref<irs::term_meta> meta_attr;
     };
 
     class scorer: public iresearch::sort::scorer_base<score_t> {
@@ -375,8 +375,8 @@ struct empty_term_reader : iresearch::singleton<empty_term_reader>, iresearch::t
     return EMPTY;
   }
 
-  virtual const irs::attribute_store& attributes() const NOEXCEPT {
-    return irs::attribute_store::empty_instance();
+  virtual const irs::attribute_view& attributes() const NOEXCEPT {
+    return irs::attribute_view::empty_instance();
   }
 
   // total number of terms
