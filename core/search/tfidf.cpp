@@ -154,6 +154,10 @@ class sort final: iresearch::sort::prepared_base<tfidf::score_t> {
       const attribute_store& query_attrs, 
       const attribute_view& doc_attrs
   ) const override {
+    if (!doc_attrs.contains<frequency>()) {
+      return nullptr; // if there is no frequency then all the scores will be the same (e.g. filter irs::all)
+    }
+
     auto& norm = query_attrs.get<iresearch::norm>();
 
     if (norm && norm->reset(segment, field.meta().norm, *doc_attrs.get<document>())) {
@@ -210,3 +214,7 @@ sort::prepared::ptr tfidf_sort::prepare() const {
 }
 
 NS_END // ROOT
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
