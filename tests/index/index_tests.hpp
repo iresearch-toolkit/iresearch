@@ -122,13 +122,13 @@ class token_stream_payload : public ir::token_stream {
   explicit token_stream_payload(ir::token_stream* impl);
   bool next(); 
 
-  const irs::attribute_store& attributes() const NOEXCEPT {
+  const irs::attribute_view& attributes() const NOEXCEPT {
     return impl_->attributes();
   }
 
  private:
   ir::term_attribute* term_;
-  ir::payload* pay_;
+  ir::payload pay_;
   ir::token_stream* impl_;
 }; // token_stream_payload
 

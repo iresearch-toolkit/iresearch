@@ -47,7 +47,7 @@ class posting {
  public:
   posting(iresearch::doc_id_t id);
 
-  void add(uint32_t pos, uint32_t offs_start, const irs::attribute_store& attrs);
+  void add(uint32_t pos, uint32_t offs_start, const iresearch::attribute_view& attrs);
 
   const std::set<position>& positions() const { return positions_; }
   iresearch::doc_id_t id() const { return id_; }

@@ -57,7 +57,7 @@ position::position(
 
 posting::posting(iresearch::doc_id_t id): id_(id) {}
 
-void posting::add(uint32_t pos, uint32_t offs_start, const irs::attribute_store& attrs) {
+void posting::add(uint32_t pos, uint32_t offs_start, const irs::attribute_view& attrs) {
   auto& offs = attrs.get<iresearch::offset>();
   auto& pay = attrs.get<iresearch::payload>();
 

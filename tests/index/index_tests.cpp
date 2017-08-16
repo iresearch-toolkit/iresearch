@@ -113,18 +113,18 @@ namespace templates {
 token_stream_payload::token_stream_payload(ir::token_stream* impl)
   : impl_(impl) {
     assert(impl_);
-    auto& attrs = const_cast<irs::attribute_store&>(impl_->attributes());
-    term_ = const_cast<const irs::attribute_store&>(attrs).get<irs::term_attribute>().get();
+    auto& attrs = const_cast<irs::attribute_view&>(impl_->attributes());
+    term_ = const_cast<const irs::attribute_view&>(attrs).get<irs::term_attribute>().get();
     assert(term_);
-    pay_ = attrs.emplace<irs::payload>().get();
+    attrs.emplace(pay_);
 }
 
 bool token_stream_payload::next() {
   if (impl_->next()) {
-    pay_->value = term_->value();
+    pay_.value = term_->value();
     return true;
   }
-  pay_->value = ir::bytes_ref::nil;
+  pay_.value = ir::bytes_ref::nil;
   return false;
 }
 
