@@ -163,7 +163,6 @@ set(IResearch_core_headers
   ./index/segment_reader.hpp
   ./index/segment_writer.hpp
   ./index/index_writer.hpp
-  ./iql/parser.hh
   ./iql/parser_common.hpp
   ./iql/parser_context.hpp
   ./iql/query_builder.hpp
