@@ -355,7 +355,7 @@ class doc_iterator : public iresearch::doc_iterator {
                       const tests::term& data );
 
   iresearch::doc_id_t value() const override {
-    return *(doc_.value);
+    return doc_.value;
   }
 
   const irs::attribute_view& attributes() const NOEXCEPT override {
@@ -363,13 +363,13 @@ class doc_iterator : public iresearch::doc_iterator {
   }
 
   virtual bool next() override {
-    if ( next_ == data_.postings.end() ) {
-      docv_ = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+    if (next_ == data_.postings.end()) {
+      doc_.value = irs::type_limits<irs::type_t::doc_id_t>::invalid();
       return false;
     }
 
     prev_ = next_, ++next_;
-    *(const_cast<irs::doc_id_t*>(doc_.value)) = prev_->id();
+    doc_.value = prev_->id();
     freq_.value = prev_->positions().size();
     if (pos_) pos_.clear();
     return true;
@@ -386,17 +386,16 @@ class doc_iterator : public iresearch::doc_iterator {
 
     prev_ = it;
     next_ = ++it;
-    *(const_cast<irs::doc_id_t*>(doc_.value)) = prev_->id();
+    doc_.value = prev_->id();
     if (pos_) {
       pos_.clear();
     }
-    return *(doc_.value);
+    return doc_.value;
   }
 
  private:
   friend class pos_iterator;
 
-  irs::doc_id_t docv_{};
   irs::attribute_view attrs_;
   irs::document doc_;
   irs::frequency freq_;
@@ -462,7 +461,6 @@ doc_iterator::doc_iterator(const iresearch::flags& features, const tests::term& 
   next_ = data_.postings.begin();
 
   attrs_.emplace(doc_);
-  doc_.value = &docv_;
 
   if (features.check<iresearch::frequency>()) {
     attrs_.emplace(freq_);
@@ -709,11 +707,19 @@ void assert_term(
     const iresearch::flags& features) {
   ASSERT_EQ(expected_term.value(), actual_term.value());
 
+  if (irs::ref_cast<char>(expected_term.value()) == irs::string_ref("a")) {
+    int i = 5;
+  }
+
   const iresearch::doc_iterator::ptr expected_docs = expected_term.postings(features);
   const iresearch::doc_iterator::ptr actual_docs = actual_term.postings(features);
 
   // check docs
   for (; expected_docs->next();) {
+    if (expected_docs->value() == 430) {
+      int i = 5;
+    }
+
     ASSERT_TRUE(actual_docs->next());
     ASSERT_EQ(expected_docs->value(), actual_docs->value());
 

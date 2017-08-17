@@ -88,7 +88,7 @@ struct IRESEARCH_API payload : basic_attribute<bytes_ref> {
 /// @class document 
 /// @brief contains a document identifier
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API document: basic_attribute<const doc_id_t*> {
+struct IRESEARCH_API document: basic_attribute<doc_id_t> {
   DECLARE_ATTRIBUTE_TYPE();
 
   document() NOEXCEPT;
@@ -143,7 +143,7 @@ struct IRESEARCH_API norm : stored_attribute {
   void reset();
 
   columnstore_reader::values_reader_f column_;
-  const doc_id_t* doc_;
+  const document* doc_;
 }; // norm
 
 //////////////////////////////////////////////////////////////////////////////

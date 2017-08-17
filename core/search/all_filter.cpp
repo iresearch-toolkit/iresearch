@@ -28,7 +28,7 @@
 
 NS_LOCAL
 
-class all_iterator: public irs::score_doc_iterator_base {
+class all_iterator final : public irs::score_doc_iterator_base {
  public:
   all_iterator(
       const irs::sub_reader& reader,
@@ -36,15 +36,13 @@ class all_iterator: public irs::score_doc_iterator_base {
       const irs::order::prepared& order,
       uint64_t docs_count)
     : score_doc_iterator_base(order),
-      doc_(irs::type_limits<irs::type_t::doc_id_t>::invalid()), // before first next() must return invalid()
       max_doc_(irs::doc_id_t(irs::type_limits<irs::type_t::doc_id_t>::min() + docs_count - 1)) {
     // set estimation value
     est_.value(max_doc_);
     attrs_.emplace(est_);
 
     // make doc_id accessible via attribute
-    document_.value = &doc_;
-    attrs_.emplace(document_);
+    attrs_.emplace(doc_);
 
     // set scorers
     scorers_ = ord_->prepare_scorers(
@@ -56,7 +54,7 @@ class all_iterator: public irs::score_doc_iterator_base {
   }
 
   virtual bool next() override {
-    return !irs::type_limits<irs::type_t::doc_id_t>::eof(seek(doc_ + 1));
+    return !irs::type_limits<irs::type_t::doc_id_t>::eof(seek(doc_.value + 1));
   }
 
   virtual void score() override {
@@ -64,19 +62,18 @@ class all_iterator: public irs::score_doc_iterator_base {
   }
 
   virtual irs::doc_id_t seek(irs::doc_id_t target) override {
-    doc_ = target <= max_doc_ ? target : irs::type_limits<irs::type_t::doc_id_t>::eof();
+    doc_.value = target <= max_doc_ ? target : irs::type_limits<irs::type_t::doc_id_t>::eof();
 
-    return doc_;
+    return doc_.value;
   }
 
   virtual irs::doc_id_t value() const NOEXCEPT override {
-    return doc_;
+    return doc_.value;
   }
 
  private:
-  irs::document document_;
+  irs::document doc_;
   irs::cost est_;
-  irs::doc_id_t doc_;
   irs::doc_id_t max_doc_; // largest valid doc_id
   irs::order::prepared::scorers scorers_;
 };

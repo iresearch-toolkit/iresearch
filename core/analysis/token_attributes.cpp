@@ -13,12 +13,6 @@
 #include "token_attributes.hpp"
 #include "store/store_utils.hpp"
 
-NS_LOCAL
-
-const irs::doc_id_t INVALID_DOCUMENT = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-
-NS_END
-
 NS_ROOT
 
 // -----------------------------------------------------------------------------
@@ -64,7 +58,7 @@ REGISTER_ATTRIBUTE(iresearch::document);
 DEFINE_ATTRIBUTE_TYPE(document);
 
 document::document() NOEXCEPT:
-  basic_attribute<const doc_id_t*>(&INVALID_DOCUMENT) {
+  basic_attribute<doc_id_t>(type_limits<type_t::doc_id_t>::invalid()) {
 }
 
 // -----------------------------------------------------------------------------
@@ -89,6 +83,8 @@ REGISTER_ATTRIBUTE(iresearch::norm);
 DEFINE_ATTRIBUTE_TYPE(norm);
 DEFINE_FACTORY_DEFAULT(norm);
 
+const document INVALID_DOCUMENT;
+
 norm::norm() NOEXCEPT {
   reset();
 }
@@ -103,8 +99,6 @@ bool norm::empty() const {
 }
 
 bool norm::reset(const sub_reader& reader, field_id column, const document& doc) {
-  assert(doc.value);
-
   const auto* column_reader = reader.column_reader(column);
 
   if (!column_reader) {
@@ -112,13 +106,13 @@ bool norm::reset(const sub_reader& reader, field_id column, const document& doc)
   }
 
   column_ = column_reader->values();
-  doc_ = doc.value;
+  doc_ = &doc;
   return true;
 }
 
 float_t norm::read() const {
   bytes_ref value;
-  if (!column_(*doc_, value)) {
+  if (!column_(doc_->value, value)) {
     return DEFAULT();
   }
 

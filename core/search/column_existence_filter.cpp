@@ -40,7 +40,6 @@ class column_existence_iterator final : public irs::score_doc_iterator_base {
       const irs::order::prepared& ord,
       uint64_t docs_count)
     : score_doc_iterator_base(ord),
-      doc_(irs::type_limits<irs::type_t::doc_id_t>::invalid()), // before first next() must return invalid()
       it_(std::move(it)) {
     assert(it_);
 
@@ -49,8 +48,7 @@ class column_existence_iterator final : public irs::score_doc_iterator_base {
     attrs_.emplace(est_);
 
     // make doc_id accessible via attribute
-    document_.value = &doc_;
-    attrs_.emplace(document_);
+    attrs_.emplace(doc_);
 
     // set scorers
     scorers_ = ord_->prepare_scorers(
@@ -77,15 +75,14 @@ class column_existence_iterator final : public irs::score_doc_iterator_base {
   }
 
   virtual irs::doc_id_t value() const NOEXCEPT override {
-    doc_ = it_->value().first;
+    doc_.value = it_->value().first;
 
-    return doc_;
+    return doc_.value;
   }
 
  private:
-  irs::document document_;
+  mutable irs::document doc_; // modified during value()
   irs::cost est_;
-  mutable irs::doc_id_t doc_; // modified during value()
   irs::columnstore_reader::column_iterator::ptr it_;
   irs::order::prepared::scorers scorers_;
 }; // column_existence_iterator

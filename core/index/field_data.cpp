@@ -162,8 +162,7 @@ class doc_iterator : public irs::doc_iterator {
     attrs_.clear();
 
     attrs_.emplace(doc_);
-    doc_.value = &docv_;
-    docv_ = 0;
+    doc_.value = 0;
 
     const auto& features = field_->meta().features;
     if ((has_freq_ = features.check<frequency>())) {
@@ -184,7 +183,7 @@ class doc_iterator : public irs::doc_iterator {
   }
 
   virtual doc_id_t value() const override {
-    return docv_;
+    return doc_.value;
   }
 
   virtual bool next() override {
@@ -193,7 +192,7 @@ class doc_iterator : public irs::doc_iterator {
         return false;
       }
 
-      docv_ = posting_->doc;
+      doc_.value = posting_->doc;
 
       if (field_->meta().features.check<frequency>()) {
         freq_.value = posting_->freq; 
@@ -211,12 +210,12 @@ class doc_iterator : public irs::doc_iterator {
           freq_.value = bytes_io< uint32_t >::vread( freq_in_ );
         }
 
-        docv_ += delta;
+        doc_.value += delta;
       } else {
-        docv_ += bytes_io<uint64_t>::vread(freq_in_);
+        doc_.value += bytes_io<uint64_t>::vread(freq_in_);
       }
 
-      assert(docv_ != posting_->doc);
+      assert(doc_.value != posting_->doc);
     }
 
     if (pos_) {
@@ -227,7 +226,6 @@ class doc_iterator : public irs::doc_iterator {
   }
 
  private:
-  doc_id_t docv_;
   document doc_;
   frequency freq_;
   position pos_;
@@ -235,7 +233,7 @@ class doc_iterator : public irs::doc_iterator {
   byte_block_pool::sliced_reader freq_in_;
   const posting* posting_;
   const field_data* field_;
-  bool has_freq_{false};
+  bool has_freq_{false}; // FIXME remove
 };
 
 /* -------------------------------------------------------------------

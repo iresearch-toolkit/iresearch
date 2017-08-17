@@ -146,7 +146,7 @@ struct custom_sort: public irs::sort {
       virtual void score(irs::byte_type* score_buf) override {
         auto& doc_id = *reinterpret_cast<irs::doc_id_t*>(score_buf);
 
-        doc_id = *(document_attrs_.get<irs::document>()->value);
+        doc_id = document_attrs_.get<irs::document>()->value;
 
         if (sort_.scorer_score) {
           sort_.scorer_score(doc_id);
@@ -296,7 +296,7 @@ struct frequency_sort: public iresearch::sort {
 
       virtual void score(irs::byte_type* score_buf) override {
         auto& buf = score_cast(score_buf);
-        buf.id = *(doc_id_t_attr->value);
+        buf.id = doc_id_t_attr->value;
         buf.value = 1. / *docs_count;
       }
 
