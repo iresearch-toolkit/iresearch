@@ -58,7 +58,7 @@ struct IRESEARCH_API increment : basic_attribute<uint32_t> {
 /// @class term_attribute 
 /// @brief represents term value in a stream 
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API term_attribute final : attribute {
+struct IRESEARCH_API term_attribute : attribute {
   DECLARE_ATTRIBUTE_TYPE();
 
   term_attribute() NOEXCEPT;
@@ -161,10 +161,10 @@ class IRESEARCH_API position : public attribute {
     DECLARE_PTR(impl);
 
     impl() = default;
-    impl(size_t reserve_attrs);
+    explicit impl(size_t reserve_attrs);
     virtual void clear() = 0;
 
-    virtual const attribute_view& attributes() const NOEXCEPT final {
+    const attribute_view& attributes() const NOEXCEPT {
       return attrs_;
     }
 
