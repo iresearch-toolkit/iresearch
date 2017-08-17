@@ -707,19 +707,11 @@ void assert_term(
     const iresearch::flags& features) {
   ASSERT_EQ(expected_term.value(), actual_term.value());
 
-  if (irs::ref_cast<char>(expected_term.value()) == irs::string_ref("a")) {
-    int i = 5;
-  }
-
   const iresearch::doc_iterator::ptr expected_docs = expected_term.postings(features);
   const iresearch::doc_iterator::ptr actual_docs = actual_term.postings(features);
 
   // check docs
   for (; expected_docs->next();) {
-    if (expected_docs->value() == 430) {
-      int i = 5;
-    }
-
     ASSERT_TRUE(actual_docs->next());
     ASSERT_EQ(expected_docs->value(), actual_docs->value());
 

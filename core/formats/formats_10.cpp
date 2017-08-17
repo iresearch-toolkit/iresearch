@@ -347,8 +347,6 @@ class doc_iterator : public iresearch::doc_iterator {
       end_ = docs_ + left;
     }
 
-    begin_ = docs_;
-
     // if this is the initial doc_id then set it to min() for proper delta value
     // add last doc_id before decoding
     *docs_ += type_limits<type_t::doc_id_t>::valid(doc_.value)
@@ -358,6 +356,7 @@ class doc_iterator : public iresearch::doc_iterator {
     // decode delta encoded documents block
     encode::delta::decode(std::begin(docs_), end_);
 
+    begin_ = docs_;
     doc_freq_ = docs_ + postings_writer::BLOCK_SIZE;
   }
 
