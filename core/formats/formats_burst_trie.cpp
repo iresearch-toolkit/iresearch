@@ -37,6 +37,7 @@
   // NOOP
 #elif defined (__GNUC__)
   #pragma GCC diagnostic ignored "-Wunused-local-typedefs"
+  #pragma GCC diagnostic ignored "-Wmisleading-indentation"
 #endif
 
 #include <fst/equivalent.h>
