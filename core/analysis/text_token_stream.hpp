@@ -31,10 +31,6 @@ class text_token_stream : public analyzer, util::noncopyable {
       value_ = irs::bytes_ref::nil;
     }
 
-    virtual const irs::bytes_ref& value() const {
-      return value_;
-    }
-
     void value(irs::bstring&& data) {
       buf_ = std::move(data);
       value(buf_);
@@ -46,7 +42,6 @@ class text_token_stream : public analyzer, util::noncopyable {
 
    private:
     irs::bstring buf_; // buffer for value if value cannot be referenced directly
-    irs::bytes_ref value_;
   };
 
   static char const* STOPWORD_PATH_ENV_VARIABLE;

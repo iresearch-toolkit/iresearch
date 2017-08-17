@@ -58,16 +58,17 @@ struct IRESEARCH_API increment : basic_attribute<uint32_t> {
 /// @class term_attribute 
 /// @brief represents term value in a stream 
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API term_attribute : attribute {
+struct IRESEARCH_API term_attribute final : attribute {
   DECLARE_ATTRIBUTE_TYPE();
 
   term_attribute() NOEXCEPT;
 
-  virtual ~term_attribute() = default;
-
-  virtual const bytes_ref& value() const {
-    return bytes_ref::nil;
+  const bytes_ref& value() const {
+    return value_;
   }
+
+ protected:
+  bytes_ref value_;
 };
 
 //////////////////////////////////////////////////////////////////////////////

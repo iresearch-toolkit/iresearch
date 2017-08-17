@@ -24,16 +24,9 @@ NS_ROOT
 //////////////////////////////////////////////////////////////////////////////
 class basic_term final : public term_attribute {
  public:
-  void value( const bytes_ref* value ) {
+  void value(const bytes_ref& value) {
     value_ = value;
   }
-
-  virtual const bytes_ref& value() const {
-    return nullptr == value_ ? bytes_ref::nil : *value_;
-  }
-
- private:
-  const bytes_ref* value_{};
 }; // basic_term
 
 //////////////////////////////////////////////////////////////////////////////
@@ -209,7 +202,7 @@ class IRESEARCH_API numeric_token_stream final
         return false;
       }
 
-      data_ref_ = value(data_, type_, val_, shift_);
+      value_ = value(data_, type_, val_, shift_);
       shift_ += step_;
       inc.value = step_ == shift_ ? 1 : 0;
 
@@ -246,15 +239,10 @@ class IRESEARCH_API numeric_token_stream final
       shift_ = 0;
     }
 
-    virtual const bytes_ref& value() const override {
-      return data_ref_;
-    }
-
    private:
     enum NumericType { NT_LONG = 0, NT_DBL, NT_INT, NT_FLOAT };
 
     bstring data_;
-    bytes_ref data_ref_;
     union {
       uint64_t i64;
       uint32_t i32;

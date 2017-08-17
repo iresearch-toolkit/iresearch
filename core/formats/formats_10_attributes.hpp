@@ -24,7 +24,7 @@ NS_BEGIN(version10)
 /// @class documents
 /// @brief document set
 //////////////////////////////////////////////////////////////////////////////
-struct documents : attribute {
+struct documents final : attribute {
   DECLARE_ATTRIBUTE_TYPE();
 
   documents() = default;
@@ -32,7 +32,7 @@ struct documents : attribute {
   bitset value;
 }; // documents
 
-struct term_meta : irs::term_meta {
+struct term_meta final : irs::term_meta {
   void clear() {
     irs::term_meta::clear();
     doc_start = pos_start = pay_start = 0;

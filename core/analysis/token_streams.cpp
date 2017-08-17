@@ -59,7 +59,7 @@ bool boolean_token_stream::next() {
   }
 
   in_use_ = true;
-  term_.value(value_ ? &value_true() : &value_false());
+  term_.value(value_ ? value_true() : value_false());
 
   return true;
 }
@@ -100,7 +100,7 @@ bool string_token_stream::next() {
     return false;
   }
 
-  term_.value(&value_);
+  term_.value(value_);
   offset_.start = 0;
   offset_.end = static_cast<uint32_t>(value_.size());
   return (in_use_ = true);
@@ -231,7 +231,7 @@ bool null_token_stream::next() {
   }
 
   in_use_ = true;
-  term_.value(&value_null());
+  term_.value(value_null());
 
   return true;
 }
