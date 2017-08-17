@@ -24,7 +24,7 @@ DEFINE_ATTRIBUTE_TYPE(iresearch::boost);
 DEFINE_FACTORY_DEFAULT(boost);
 
 boost::boost()
-  : basic_attribute<boost::boost_t>(boost_t(boost::no_boost())) {
+  : basic_stored_attribute<boost::boost_t>(boost_t(boost::no_boost())) {
 }
 
 // ----------------------------------------------------------------------------

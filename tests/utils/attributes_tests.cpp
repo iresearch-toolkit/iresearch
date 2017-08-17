@@ -34,7 +34,7 @@ using namespace iresearch;
 
 namespace tests {
 
-struct attribute : iresearch::attribute {
+struct attribute : iresearch::stored_attribute {
   DECLARE_ATTRIBUTE_TYPE();
   DECLARE_FACTORY_DEFAULT();
 
@@ -50,7 +50,7 @@ struct attribute : iresearch::attribute {
 DEFINE_ATTRIBUTE_TYPE(tests::attribute);
 DEFINE_FACTORY_DEFAULT(attribute);
 
-struct invalid_attribute : iresearch::attribute {
+struct invalid_attribute : iresearch::stored_attribute {
   DECLARE_ATTRIBUTE_TYPE();
   DECLARE_FACTORY_DEFAULT();
 

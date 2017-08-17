@@ -26,7 +26,6 @@ NS_BEGIN(version10)
 //////////////////////////////////////////////////////////////////////////////
 struct documents : attribute {
   DECLARE_ATTRIBUTE_TYPE();
-  DECLARE_FACTORY_DEFAULT();
 
   documents() = default;
 
@@ -34,8 +33,6 @@ struct documents : attribute {
 }; // documents
 
 struct term_meta : irs::term_meta {
-  DECLARE_FACTORY_DEFAULT();
-
   void clear() {
     irs::term_meta::clear();
     doc_start = pos_start = pay_start = 0;

@@ -32,17 +32,14 @@ struct IRESEARCH_API offset : attribute {
   static const uint32_t INVALID_OFFSET = integer_traits< uint32_t >::const_max;
 
   DECLARE_ATTRIBUTE_TYPE();   
-  DECLARE_FACTORY_DEFAULT();
-
-  offset() NOEXCEPT;
 
   void clear() {
     start = 0;
     end = 0;
   }
 
-  uint32_t start;
-  uint32_t end;
+  uint32_t start{ 0 };
+  uint32_t end{ 0 };
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -51,7 +48,6 @@ struct IRESEARCH_API offset : attribute {
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API increment : basic_attribute<uint32_t> {
   DECLARE_ATTRIBUTE_TYPE();
-  DECLARE_FACTORY_DEFAULT();
 
   increment() NOEXCEPT;
 
@@ -67,12 +63,10 @@ struct IRESEARCH_API term_attribute : attribute {
 
   term_attribute() NOEXCEPT;
 
+  virtual ~term_attribute() = default;
+
   virtual const bytes_ref& value() const {
     return bytes_ref::nil;
-  }
-
-  virtual void clear() {
-    // NOOP
   }
 };
 
@@ -83,12 +77,9 @@ struct IRESEARCH_API term_attribute : attribute {
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API payload : basic_attribute<bytes_ref> {
   DECLARE_ATTRIBUTE_TYPE();
-  DECLARE_FACTORY_DEFAULT();
 
-  payload() NOEXCEPT;
-
-  virtual void clear() {
-    // NOOP
+  void clear() {
+    value = bytes_ref::nil;
   }
 };
 
@@ -98,7 +89,6 @@ struct IRESEARCH_API payload : basic_attribute<bytes_ref> {
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API document: basic_attribute<const doc_id_t*> {
   DECLARE_ATTRIBUTE_TYPE();
-  DECLARE_FACTORY_DEFAULT();
 
   document() NOEXCEPT;
 };
@@ -109,9 +99,8 @@ struct IRESEARCH_API document: basic_attribute<const doc_id_t*> {
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API frequency : basic_attribute<uint64_t> {
   DECLARE_ATTRIBUTE_TYPE();
-  DECLARE_FACTORY_DEFAULT();
 
-  frequency() NOEXCEPT;
+  frequency() = default;
 }; // frequency
 
 //////////////////////////////////////////////////////////////////////////////
@@ -121,11 +110,9 @@ struct IRESEARCH_API frequency : basic_attribute<uint64_t> {
 ///        exact values are prefixed with 0
 ///        the less precise the token the greater its granularity prefix value
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API granularity_prefix: attribute {
+struct IRESEARCH_API granularity_prefix : attribute {
   DECLARE_ATTRIBUTE_TYPE();
-  DECLARE_FACTORY_DEFAULT();
-
-  granularity_prefix() NOEXCEPT;
+  granularity_prefix() = default;
 }; // granularity_prefix
 
 //////////////////////////////////////////////////////////////////////////////
@@ -133,7 +120,7 @@ struct IRESEARCH_API granularity_prefix: attribute {
 /// @brief this is marker attribute only used in field::features in order to
 ///        allow evaluation of the field normalization factor 
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API norm : attribute {
+struct IRESEARCH_API norm : stored_attribute {
   DECLARE_ATTRIBUTE_TYPE();
   DECLARE_FACTORY_DEFAULT();
 
@@ -189,9 +176,8 @@ class IRESEARCH_API position : public attribute {
 
   DECLARE_CREF(position);
   DECLARE_TYPE_ID(attribute::type_id);
-  DECLARE_FACTORY_DEFAULT();
 
-  position() NOEXCEPT;
+  position() = default;
 
   bool next() const { return impl_->next(); }
 

@@ -24,10 +24,6 @@ NS_ROOT
 //////////////////////////////////////////////////////////////////////////////
 class basic_term final : public term_attribute {
  public:
-  virtual void clear() override {
-    value_ = nullptr;
-  }
-
   void value( const bytes_ref* value ) {
     value_ = value;
   }
@@ -248,10 +244,6 @@ class IRESEARCH_API numeric_token_stream final
       type_ = NT_DBL;
       step_ = step;
       shift_ = 0;
-    }
-
-    virtual void clear() override {
-      data_ref_ = bytes_ref::nil;
     }
 
     virtual const bytes_ref& value() const override {

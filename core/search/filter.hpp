@@ -46,9 +46,8 @@ class IRESEARCH_API score : public attribute {
   }
 
   DECLARE_ATTRIBUTE_TYPE();
-  DECLARE_FACTORY_DEFAULT();
 
-  score();
+  score() = default;
 
   template<typename T>
   const T& get(size_t i) const {

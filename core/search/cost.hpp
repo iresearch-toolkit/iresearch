@@ -42,8 +42,7 @@ class IRESEARCH_API cost : public attribute {
   }
 
   DECLARE_ATTRIBUTE_TYPE();
-  DECLARE_FACTORY_DEFAULT();
-  cost();
+  cost() = default;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @returns the estimation rule 
@@ -96,8 +95,8 @@ class IRESEARCH_API cost : public attribute {
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   /* evaluation function */
   cost_f func_;
-  cost_t value_;
-  bool init_;
+  cost_t value_ { 0 };
+  bool init_{ false };
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // cost
 

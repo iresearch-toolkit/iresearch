@@ -51,21 +51,18 @@ using irs::bytes_ref;
 
 class payload : public irs::payload {
  public:
-  DECLARE_FACTORY_DEFAULT();
-
-  inline byte_type* data() {
+  byte_type* data() {
     return &(value_[0]);
   }
 
-  inline void resize( size_t size ) {
+  void resize( size_t size ) {
     value_.resize(size);
     value = value_;
   }
 
  private:
-   bstring value_;
+  bstring value_;
 };
-DEFINE_FACTORY_DEFAULT(payload);
 
 class pos_iterator final : public irs::position::impl {
  public:

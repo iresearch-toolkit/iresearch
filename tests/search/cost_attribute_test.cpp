@@ -25,9 +25,8 @@ TEST(cost_attribute_test, consts) {
 }
 
 TEST(cost_attribute_test, estimation) {
-  irs::attribute_store attrs;
-  auto& cost = attrs.emplace<irs::cost>();
-  ASSERT_FALSE(bool(cost->rule()));
+  irs::cost cost;
+  ASSERT_FALSE(bool(cost.rule()));
 
   // explicit estimation
   {
@@ -35,18 +34,18 @@ TEST(cost_attribute_test, estimation) {
 
     // set estimation value and check
     {
-      cost->value(est);
-      ASSERT_TRUE(bool(cost->rule()));
-      ASSERT_EQ(est, cost->estimate());
-      ASSERT_EQ(est, cost->rule()());
+      cost.value(est);
+      ASSERT_TRUE(bool(cost.rule()));
+      ASSERT_EQ(est, cost.estimate());
+      ASSERT_EQ(est, cost.rule()());
     }
 
     // clear
     {
-      cost->clear();
-      ASSERT_TRUE(bool(cost->rule()));
-      ASSERT_EQ(est, cost->estimate());
-      ASSERT_EQ(est, cost->rule()());
+      cost.clear();
+      ASSERT_TRUE(bool(cost.rule()));
+      ASSERT_EQ(est, cost.estimate());
+      ASSERT_EQ(est, cost.rule()());
     }
   }
   
@@ -55,55 +54,54 @@ TEST(cost_attribute_test, estimation) {
     auto evaluated = false;
     auto est = 7;
   
-    cost->rule([&evaluated, est]() {
+    cost.rule([&evaluated, est]() {
       evaluated = true;
       return est;
     });
-    ASSERT_TRUE(bool(cost->rule()));
+    ASSERT_TRUE(bool(cost.rule()));
     ASSERT_FALSE(evaluated);
-    ASSERT_EQ(est, cost->estimate());
+    ASSERT_EQ(est, cost.estimate());
     ASSERT_TRUE(evaluated);
   }
 }
 
 TEST(cost_attribute_test, lazy_estimation) {
-  irs::attribute_store attrs;
-  auto& cost = attrs.emplace<irs::cost>();
-  ASSERT_FALSE(bool(cost->rule()));
+  irs::cost cost;
+  ASSERT_FALSE(bool(cost.rule()));
 
   auto evaluated = false;
   auto est = 7;
 
   /* set estimation function and evaluate */
   {
-    cost->rule([&evaluated, est]() {
+    cost.rule([&evaluated, est]() {
       evaluated = true;
       return est;
     });
-    ASSERT_TRUE(bool(cost->rule()));
+    ASSERT_TRUE(bool(cost.rule()));
     ASSERT_FALSE(evaluated);
-    ASSERT_EQ(est, cost->estimate());
+    ASSERT_EQ(est, cost.estimate());
     ASSERT_TRUE(evaluated);
   }
 
   /* change estimation func */
   {
     evaluated = false;
-    cost->rule([&evaluated, est]() {
+    cost.rule([&evaluated, est]() {
       evaluated = true;
       return est+1;
     });
-    ASSERT_TRUE(bool(cost->rule()));
+    ASSERT_TRUE(bool(cost.rule()));
     ASSERT_FALSE(evaluated);
-    ASSERT_EQ(est+1, cost->estimate());
+    ASSERT_EQ(est+1, cost.estimate());
     ASSERT_TRUE(evaluated);
   }
 
   /* clear */
   {
     evaluated = false;
-    cost->clear();
-    ASSERT_EQ(est+1, cost->estimate());
+    cost.clear();
+    ASSERT_EQ(est+1, cost.estimate());
     /* evaluate again */
     ASSERT_TRUE(evaluated);
   }

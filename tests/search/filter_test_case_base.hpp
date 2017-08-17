@@ -256,11 +256,10 @@ struct frequency_sort: public iresearch::sort {
 
   class prepared: public iresearch::sort::prepared_base<score_t> {
    public:
-    struct count: public iresearch::basic_attribute<size_t> {
-      size_t value;
-      count(): iresearch::basic_attribute<size_t>(), value(0) {}
+    struct count: public iresearch::basic_stored_attribute<size_t> {
       DECLARE_ATTRIBUTE_TYPE();
       DECLARE_FACTORY_DEFAULT();
+      size_t value{};
     };
 
     class collector: public iresearch::sort::collector {

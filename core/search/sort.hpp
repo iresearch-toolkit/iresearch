@@ -30,7 +30,7 @@ NS_ROOT
 /// @class boost
 /// @brief represents a boost related to the particular query
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API boost : basic_attribute<float_t> {
+struct IRESEARCH_API boost : basic_stored_attribute<float_t> {
   typedef float_t boost_t;
 
   static CONSTEXPR boost_t no_boost() { return 1.f; }

@@ -42,7 +42,7 @@ const frequency EMPTY_FREQ;
 // set of features required for bm25 model
 const flags FEATURES{ frequency::type(), norm::type() };
 
-struct stats final : attribute {
+struct stats final : stored_attribute {
   DECLARE_ATTRIBUTE_TYPE();
   DECLARE_FACTORY_DEFAULT();
 

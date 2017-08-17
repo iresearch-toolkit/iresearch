@@ -34,12 +34,12 @@ const flags& features(bool normalize) {
   return NORM_FEATURES;
 }
 
-struct idf : basic_attribute<float_t> {
+struct idf final : basic_stored_attribute<float_t> {
   DECLARE_ATTRIBUTE_TYPE();
   DECLARE_FACTORY_DEFAULT();
-  idf() : basic_attribute(1.f) { }
+  idf() : basic_stored_attribute(1.f) { }
 
-  virtual void clear() { value = 1.f; }
+  void clear() { value = 1.f; }
 };
 
 DEFINE_ATTRIBUTE_TYPE(iresearch::tfidf::idf);

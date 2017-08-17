@@ -34,14 +34,12 @@ namespace tests {
 
 struct incompatible_attribute : irs::attribute {
   DECLARE_ATTRIBUTE_TYPE();
-  DECLARE_FACTORY_DEFAULT();
 
   incompatible_attribute() NOEXCEPT;
 };
 
 REGISTER_ATTRIBUTE(incompatible_attribute);
 DEFINE_ATTRIBUTE_TYPE(incompatible_attribute);
-DEFINE_FACTORY_DEFAULT(incompatible_attribute);
 
 incompatible_attribute::incompatible_attribute() NOEXCEPT {
 }

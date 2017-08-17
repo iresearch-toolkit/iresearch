@@ -26,25 +26,11 @@ NS_END
 NS_ROOT
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                         attribute
-// -----------------------------------------------------------------------------
-
-attribute::~attribute() { }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  stored_attribute
-// -----------------------------------------------------------------------------
-
-stored_attribute::~stored_attribute() {
-}
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                attribute::type_id
 // -----------------------------------------------------------------------------
 
 /*static*/ const attribute::type_id* attribute::type_id::get(
-  const string_ref& name
-) {
+    const string_ref& name) {
   return attribute_register::instance().get(name);
 }
 
@@ -60,32 +46,32 @@ const flags& flags::empty_instance() {
 flags::flags() { }
 
 flags::flags(flags&& rhs) NOEXCEPT
-  : map_( std::move( rhs.map_ ) ) {
+  : map_(std::move(rhs.map_)) {
 }
 
 flags& flags::operator=(flags&& rhs) NOEXCEPT {
-  if ( this != &rhs ) {
-    map_ = std::move( rhs.map_ );
+  if (this != &rhs) {
+    map_ = std::move(rhs.map_);
   }
 
   return *this;
 }
 
-flags::flags( std::initializer_list<const attribute::type_id* > flags ) {
+flags::flags(std::initializer_list<const attribute::type_id*> flags) {
   std::for_each( 
     flags.begin(), flags.end(), 
-    [this]( const attribute::type_id* type) {
-      add( *type );
+    [this](const attribute::type_id* type) {
+      add(*type);
   } );
 }
 
-flags& flags::operator=( std::initializer_list<const attribute::type_id* > flags ) {
+flags& flags::operator=(std::initializer_list<const attribute::type_id*> flags) {
   map_.clear();
   std::for_each( 
     flags.begin(), flags.end(), 
-    [this]( const attribute::type_id* type) {
-      add( *type );
-  } );
+    [this](const attribute::type_id* type) {
+      add(*type);
+  });
   return *this;
 }
 
