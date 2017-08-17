@@ -53,7 +53,7 @@ class collector final : public iresearch::sort::collector {
     : normalize_(normalize) {
   }
 
-  virtual void term(const attribute_store& term_attrs) {
+  virtual void term(const attribute_view& term_attrs) override {
     auto& meta = term_attrs.get<iresearch::term_meta>();
 
     if (meta) {
