@@ -80,13 +80,21 @@ struct term_reader;
 struct IRESEARCH_API field_iterator : iterator<const term_reader&> {
   DECLARE_MANAGED_PTR(field_iterator);
 
+  virtual bool seek(const string_ref& name) = 0;
+
   static field_iterator::ptr empty();
 };
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                                 column iterators
+// ----------------------------------------------------------------------------
 
 struct column_meta;
 
 struct IRESEARCH_API column_iterator : iterator<const column_meta&> {
   DECLARE_MANAGED_PTR(column_iterator);
+
+  virtual bool seek(const string_ref& name) = 0;
   
   static column_iterator::ptr empty();
 };

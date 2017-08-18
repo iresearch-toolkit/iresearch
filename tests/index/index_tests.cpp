@@ -5675,6 +5675,411 @@ class index_test_case_base : public tests::index_test_base {
     }
   }
 
+  void iterate_fields() {
+    std::vector<irs::string_ref> names {
+     "06D36", "0OY4F", "1DTSP", "1KCSY", "2NGZD", "3ME9S", "4UIR7",
+     "68QRT", "6XTTH", "7NDWJ", "9QXBA", "A8MSE", "CNH1B", "I4EWS",
+     "JXQKH", "KPQ7R", "LK1MG", "M47KP", "NWCBQ", "OEKKW", "RI1QG",
+     "TD7H7", "U56E5", "UKETS", "UZWN7", "V4DLA", "W54FF", "Z4K42",
+     "ZKQCU", "ZPNXJ"
+    };
+
+    ASSERT_TRUE(std::is_sorted(names.begin(), names.end()));
+
+    struct {
+      const irs::string_ref& name() const {
+        return name_;
+      }
+
+      float_t boost() const {
+        return 1.f;
+      }
+
+      const irs::flags& features() const {
+        return irs::flags::empty_instance();
+      }
+
+      irs::token_stream& get_tokens() const {
+        stream_.reset(name_);
+        return stream_;
+      }
+
+      irs::string_ref name_;
+      mutable irs::string_token_stream stream_;
+    } field;
+
+    // insert attributes
+    {
+      auto writer = ir::index_writer::make(dir(), codec(), ir::OM_CREATE);
+      ASSERT_NE(nullptr, writer);
+
+      auto inserter = [&field, &names](irs::index_writer::document& doc) {
+        for (auto& name : names) {
+          field.name_ = name;
+          doc.insert<irs::Action::INDEX>(field);
+        }
+        return false; // break the loop
+      };
+
+      ASSERT_TRUE(writer->insert(inserter));
+
+      writer->commit();
+    }
+
+    // iterate over fields
+    {
+      auto reader = ir::directory_reader::open(dir(), codec());
+      ASSERT_EQ(1, reader.size());
+      auto& segment = *(reader.begin());
+
+      auto actual = segment.fields();
+
+      for (auto expected = names.begin(); expected != names.end();) {
+        ASSERT_TRUE(actual->next());
+        ASSERT_EQ(*expected, actual->value().meta().name);
+        ++expected;
+      }
+      ASSERT_FALSE(actual->next());
+      ASSERT_FALSE(actual->next());
+    }
+
+    // seek over fields
+    {
+      auto reader = ir::directory_reader::open(dir(), codec());
+      ASSERT_EQ(1, reader.size());
+      auto& segment = *(reader.begin());
+
+      auto actual = segment.fields();
+
+      for (auto expected = names.begin(), prev = expected; expected != names.end();) {
+        ASSERT_TRUE(actual->seek(*expected));
+        ASSERT_EQ(*expected, actual->value().meta().name);
+
+        if (prev != expected) {
+          ASSERT_TRUE(actual->seek(*prev)); // can't seek backwards
+          ASSERT_EQ(*expected, actual->value().meta().name);
+        }
+
+        // seek to the same value
+        ASSERT_TRUE(actual->seek(*expected));
+        ASSERT_EQ(*expected, actual->value().meta().name);
+
+        prev = expected;
+        ++expected;
+      }
+      ASSERT_FALSE(actual->next()); // reached the end
+      ASSERT_FALSE(actual->seek(names.front())); // can't seek backwards
+      ASSERT_FALSE(actual->next());
+    }
+
+    // seek before the first element
+    {
+      auto reader = ir::directory_reader::open(dir(), codec());
+      ASSERT_EQ(1, reader.size());
+      auto& segment = *(reader.begin());
+
+      auto actual = segment.fields();
+      auto expected = names.begin();
+
+      const auto key = irs::string_ref("0");
+      ASSERT_TRUE(key < names.front());
+      ASSERT_TRUE(actual->seek(key));
+      ASSERT_EQ(*expected, actual->value().meta().name);
+
+      ++expected;
+      for (auto prev = names.begin(); expected != names.end();) {
+        ASSERT_TRUE(actual->next());
+        ASSERT_EQ(*expected, actual->value().meta().name);
+
+        if (prev != expected) {
+          ASSERT_TRUE(actual->seek(*prev)); // can't seek backwards
+          ASSERT_EQ(*expected, actual->value().meta().name);
+        }
+
+        // seek to the same value
+        ASSERT_TRUE(actual->seek(*expected));
+        ASSERT_EQ(*expected, actual->value().meta().name);
+
+        prev = expected;
+        ++expected;
+      }
+      ASSERT_FALSE(actual->next()); // reached the end
+      ASSERT_FALSE(actual->seek(names.front())); // can't seek backwards
+      ASSERT_FALSE(actual->next());
+    }
+
+    // seek after the last element
+    {
+      auto reader = ir::directory_reader::open(dir(), codec());
+      ASSERT_EQ(1, reader.size());
+      auto& segment = *(reader.begin());
+
+      auto actual = segment.fields();
+
+      const auto key = irs::string_ref("~");
+      ASSERT_TRUE(key > names.back());
+      ASSERT_FALSE(actual->seek(key));
+      ASSERT_FALSE(actual->next()); // reached the end
+      ASSERT_FALSE(actual->seek(names.front())); // can't seek backwards
+    }
+
+    // seek in between
+    {
+      std::vector<std::pair<irs::string_ref, irs::string_ref>> seeks {
+        { "0B", names[1] }, { names[1], names[1] }, { "0", names[1] },
+        { "D", names[13] }, { names[13], names[13] }, { names[12], names[13] },
+        { "P", names[20] }, { "Z", names[27] }
+      };
+
+      auto reader = ir::directory_reader::open(dir(), codec());
+      ASSERT_EQ(1, reader.size());
+      auto& segment = *(reader.begin());
+
+      auto actual = segment.fields();
+
+      for (auto& seek : seeks) {
+        auto& key = seek.first;
+        auto& expected = seek.second;
+
+        ASSERT_TRUE(actual->seek(key));
+        ASSERT_EQ(expected, actual->value().meta().name);
+      }
+
+      const auto key = irs::string_ref("~");
+      ASSERT_TRUE(key > names.back());
+      ASSERT_FALSE(actual->seek(key));
+      ASSERT_FALSE(actual->next()); // reached the end
+      ASSERT_FALSE(actual->seek(names.front())); // can't seek backwards
+    }
+
+    // seek in between + next
+    {
+      std::vector<std::pair<irs::string_ref, size_t>> seeks {
+        { "0B", 1 },  { "D", 13 }, { "O", 19 }, { "P", 20 }, { "Z", 27 }
+      };
+
+      auto reader = ir::directory_reader::open(dir(), codec());
+      ASSERT_EQ(1, reader.size());
+      auto& segment = *(reader.begin());
+
+      for (auto& seek : seeks) {
+        auto& key = seek.first;
+        auto expected = names.begin() + seek.second;
+
+        auto actual = segment.fields();
+
+        ASSERT_TRUE(actual->seek(key));
+        ASSERT_EQ(*expected, actual->value().meta().name);
+
+        for (++expected; expected != names.end(); ++expected) {
+          ASSERT_TRUE(actual->next());
+          ASSERT_EQ(*expected, actual->value().meta().name);
+        }
+
+        ASSERT_FALSE(actual->next()); // reached the end
+        ASSERT_FALSE(actual->seek(names.front())); // can't seek backwards
+      }
+    }
+  }
+
+  void iterate_attributes() {
+    std::vector<irs::string_ref> names {
+     "06D36", "0OY4F", "1DTSP", "1KCSY", "2NGZD", "3ME9S", "4UIR7",
+     "68QRT", "6XTTH", "7NDWJ", "9QXBA", "A8MSE", "CNH1B", "I4EWS",
+     "JXQKH", "KPQ7R", "LK1MG", "M47KP", "NWCBQ", "OEKKW", "RI1QG",
+     "TD7H7", "U56E5", "UKETS", "UZWN7", "V4DLA", "W54FF", "Z4K42",
+     "ZKQCU", "ZPNXJ"
+    };
+
+    ASSERT_TRUE(std::is_sorted(names.begin(), names.end()));
+
+    struct {
+      const irs::string_ref& name() const {
+        return name_;
+      }
+
+      bool write(irs::data_output&) const NOEXCEPT {
+        return true;
+      }
+
+      irs::string_ref name_;
+
+    } field;
+
+    // insert attributes
+    {
+      auto writer = ir::index_writer::make(dir(), codec(), ir::OM_CREATE);
+      ASSERT_NE(nullptr, writer);
+
+      auto inserter = [&field, &names](irs::index_writer::document& doc) {
+        for (auto& name : names) {
+          field.name_ = name;
+          doc.insert<irs::Action::STORE>(field);
+        }
+        return false; // break the loop
+      };
+
+      ASSERT_TRUE(writer->insert(inserter));
+
+      writer->commit();
+    }
+
+    // iterate over attributes
+    {
+      auto reader = ir::directory_reader::open(dir(), codec());
+      ASSERT_EQ(1, reader.size());
+      auto& segment = *(reader.begin());
+
+      auto actual = segment.columns();
+
+      for (auto expected = names.begin(); expected != names.end();) {
+        ASSERT_TRUE(actual->next());
+        ASSERT_EQ(*expected, actual->value().name);
+        ++expected;
+      }
+      ASSERT_FALSE(actual->next());
+      ASSERT_FALSE(actual->next());
+    }
+
+    // seek over attributes
+    {
+      auto reader = ir::directory_reader::open(dir(), codec());
+      ASSERT_EQ(1, reader.size());
+      auto& segment = *(reader.begin());
+
+      auto actual = segment.columns();
+
+      for (auto expected = names.begin(), prev = expected; expected != names.end();) {
+        ASSERT_TRUE(actual->seek(*expected));
+        ASSERT_EQ(*expected, actual->value().name);
+
+        if (prev != expected) {
+          ASSERT_TRUE(actual->seek(*prev)); // can't seek backwards
+          ASSERT_EQ(*expected, actual->value().name);
+        }
+
+        // seek to the same value
+        ASSERT_TRUE(actual->seek(*expected));
+        ASSERT_EQ(*expected, actual->value().name);
+
+        prev = expected;
+        ++expected;
+      }
+      ASSERT_FALSE(actual->next()); // reached the end
+      ASSERT_FALSE(actual->seek(names.front())); // can't seek backwards
+      ASSERT_FALSE(actual->next());
+    }
+
+    // seek before the first element
+    {
+      auto reader = ir::directory_reader::open(dir(), codec());
+      ASSERT_EQ(1, reader.size());
+      auto& segment = *(reader.begin());
+
+      auto actual = segment.columns();
+      auto expected = names.begin();
+
+      const auto key = irs::string_ref("0");
+      ASSERT_TRUE(key < names.front());
+      ASSERT_TRUE(actual->seek(key));
+      ASSERT_EQ(*expected, actual->value().name);
+
+      ++expected;
+      for (auto prev = names.begin(); expected != names.end();) {
+        ASSERT_TRUE(actual->next());
+        ASSERT_EQ(*expected, actual->value().name);
+
+        if (prev != expected) {
+          ASSERT_TRUE(actual->seek(*prev)); // can't seek backwards
+          ASSERT_EQ(*expected, actual->value().name);
+        }
+
+        // seek to the same value
+        ASSERT_TRUE(actual->seek(*expected));
+        ASSERT_EQ(*expected, actual->value().name);
+
+        prev = expected;
+        ++expected;
+      }
+      ASSERT_FALSE(actual->next()); // reached the end
+      ASSERT_FALSE(actual->seek(names.front())); // can't seek backwards
+      ASSERT_FALSE(actual->next());
+    }
+
+    // seek after the last element
+    {
+      auto reader = ir::directory_reader::open(dir(), codec());
+      ASSERT_EQ(1, reader.size());
+      auto& segment = *(reader.begin());
+
+      auto actual = segment.columns();
+
+      const auto key = irs::string_ref("~");
+      ASSERT_TRUE(key > names.back());
+      ASSERT_FALSE(actual->seek(key));
+      ASSERT_FALSE(actual->next()); // reached the end
+      ASSERT_FALSE(actual->seek(names.front())); // can't seek backwards
+    }
+
+    // seek in between
+    {
+      std::vector<std::pair<irs::string_ref, irs::string_ref>> seeks {
+        { "0B", names[1] }, { names[1], names[1] }, { "0", names[1] },
+        { "D", names[13] }, { names[13], names[13] }, { names[12], names[13] },
+        { "P", names[20] }, { "Z", names[27] }
+      };
+
+      auto reader = ir::directory_reader::open(dir(), codec());
+      ASSERT_EQ(1, reader.size());
+      auto& segment = *(reader.begin());
+
+      auto actual = segment.columns();
+
+      for (auto& seek : seeks) {
+        auto& key = seek.first;
+        auto& expected = seek.second;
+
+        ASSERT_TRUE(actual->seek(key));
+        ASSERT_EQ(expected, actual->value().name);
+      }
+
+      const auto key = irs::string_ref("~");
+      ASSERT_TRUE(key > names.back());
+      ASSERT_FALSE(actual->seek(key));
+      ASSERT_FALSE(actual->next()); // reached the end
+      ASSERT_FALSE(actual->seek(names.front())); // can't seek backwards
+    }
+
+    // seek in between + next
+    {
+      std::vector<std::pair<irs::string_ref, size_t>> seeks {
+        { "0B", 1 },  { "D", 13 }, { "O", 19 }, { "P", 20 }, { "Z", 27 }
+      };
+
+      auto reader = ir::directory_reader::open(dir(), codec());
+      ASSERT_EQ(1, reader.size());
+      auto& segment = *(reader.begin());
+
+      for (auto& seek : seeks) {
+        auto& key = seek.first;
+        auto expected = names.begin() + seek.second;
+
+        auto actual = segment.columns();
+
+        ASSERT_TRUE(actual->seek(key));
+        ASSERT_EQ(*expected, actual->value().name);
+
+        for (++expected; expected != names.end(); ++expected) {
+          ASSERT_TRUE(actual->next());
+          ASSERT_EQ(*expected, actual->value().name);
+        }
+
+        ASSERT_FALSE(actual->next()); // reached the end
+        ASSERT_FALSE(actual->seek(names.front())); // can't seek backwards
+      }
+    }
+  }
+
   void read_write_doc_attributes() {
     tests::json_doc_generator gen(
       resource("simple_sequential.json"),
@@ -7061,6 +7466,14 @@ TEST_F(memory_index_test, arango_demo_docs) {
     add_segment(gen);
   }
   assert_index();
+}
+
+TEST_F(memory_index_test, check_fields_order) {
+  iterate_fields();
+}
+
+TEST_F(memory_index_test, check_attributes_order) {
+  iterate_attributes();
 }
 
 TEST_F(memory_index_test, read_write_doc_attributes) {
@@ -10525,6 +10938,14 @@ class fs_index_test
 
 TEST_F(fs_index_test, open_writer) {
   open_writer_check_lock();
+}
+
+TEST_F(fs_index_test, check_fields_order) {
+  iterate_fields();
+}
+
+TEST_F(fs_index_test, check_attributes_order) {
+  iterate_attributes();
 }
 
 TEST_F(fs_index_test, read_write_doc_attributes) {

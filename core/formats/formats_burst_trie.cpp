@@ -1754,13 +1754,23 @@ const irs::term_reader* field_reader::field(const string_ref& field) const {
 }
 
 irs::field_iterator::ptr field_reader::iterator() const {
-  const auto* begin = fields_.data() - 1;
+  struct less {
+    bool operator()(
+        const irs::term_reader& lhs,
+        const string_ref& rhs) const NOEXCEPT {
+      return lhs.meta().name < rhs;
+    }
+  }; // less
 
-  auto it = new iterator_adapter<decltype(begin), field_iterator>(
-    begin, begin + fields_.size()
+  typedef iterator_adaptor<
+    string_ref, detail::term_reader, irs::field_iterator, less
+  > iterator_t;
+
+  auto it = memory::make_unique<iterator_t>(
+    fields_.data(), fields_.data() + fields_.size()
   );
 
-  return memory::make_managed<irs::field_iterator, true>(it);
+  return memory::make_managed<irs::field_iterator, true>(it.release());
 }
 
 size_t field_reader::size() const {

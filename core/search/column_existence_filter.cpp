@@ -132,11 +132,7 @@ class column_prefix_existence_query final : public irs::filter::prepared {
   ) const override {
     auto it = rdr.columns();
 
-    // FIXME seek
-    bool next;
-    while ((next = it->next()) && it->value().name < prefix_);
-
-    if (!next) {
+    if (!it->seek(prefix_)) {
       // reached the end
       return irs::score_doc_iterator::empty();
     }

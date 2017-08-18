@@ -254,8 +254,8 @@ template <typename T, bool Manage = true>
 inline typename std::enable_if<
   !std::is_array<T>::value,
   std::unique_ptr<T, managed_deleter<T>>
->::type make_managed(std::unique_ptr<T>& ptr) NOEXCEPT {
-  auto* p = ptr.release();
+>::type make_managed(std::unique_ptr<T>&& ptr) NOEXCEPT {
+  auto* p = Manage ? ptr.release() : ptr.get();
   return std::unique_ptr<T, managed_deleter<T>>(p, Manage ? p : nullptr);
 }
 
