@@ -513,7 +513,7 @@ class IRESEARCH_API attribute_view: public attribute_map<attribute*> {
     auto& attr = attribute_map::emplace(inserted, type::type());
 
     if (inserted) {
-      reinterpret_cast<ref<type>&>(attr) = value;
+      reinterpret_cast<ref<type>&>(attr) = std::move(value);
     }
 
     return reinterpret_cast<ref<T>&>(attr);
