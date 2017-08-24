@@ -464,7 +464,7 @@ class IRESEARCH_API_TEMPLATE attribute_map {
 //////////////////////////////////////////////////////////////////////////////
 /// @brief storage of shared_ptr to attributes
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API attribute_store: public attribute_map<stored_attribute::ptr> {
+class IRESEARCH_API attribute_store: public attribute_map<std::shared_ptr<stored_attribute>> {
  public:
   attribute_store(size_t reserve = 0);
 

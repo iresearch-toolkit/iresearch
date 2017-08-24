@@ -45,7 +45,7 @@ class phrase_iterator final : public Conjunction {
     assert(!pos_.empty());
 
     // add phrase frequency
-    conjunction_t::attrs_.template emplace(phrase_freq_);
+    conjunction_t::attrs_.emplace(phrase_freq_);
   }
 
   virtual void score_impl(byte_type* lhs) override {
