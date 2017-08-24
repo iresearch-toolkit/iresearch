@@ -106,7 +106,7 @@ attribute_registrar::operator bool() const NOEXCEPT {
 #if defined(_MSC_VER) && defined(IRESEARCH_DLL)
 
   template class IRESEARCH_API attribute_map<attribute*>;
-  template class IRESEARCH_API attribute_map<stored_attribute::ptr>;
+  template class IRESEARCH_API attribute_map<std::shared_ptr<stored_attribute>>;
 
 #endif
 
