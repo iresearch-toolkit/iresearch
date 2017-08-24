@@ -176,6 +176,12 @@ target_include_directories(${IResearchTests_TARGET_NAME}-static
   PRIVATE ${PROJECT_BINARY_DIR}/core
 )
 
+if(MSVC)
+  target_compile_options(${IResearchTests_TARGET_NAME}-static
+    PRIVATE "/bigobj"
+  )
+endif()
+
 set_target_properties(${IResearchTests_TARGET_NAME}-shared
   PROPERTIES
   OUTPUT_NAME iresearch-tests

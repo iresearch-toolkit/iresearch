@@ -73,12 +73,12 @@ column_meta_reader::~column_meta_reader() {}
 columnstore_writer::~columnstore_writer() {}
 columnstore_reader::~columnstore_reader() {}
 
-/* static */ const columnstore_reader::column_iterator::value_type columnstore_reader::column_iterator::INVALID{
+/*static*/ const columnstore_reader::column_iterator::value_type columnstore_reader::column_iterator::INVALID = {
   type_limits<type_t::doc_id_t>::invalid(),
   bytes_ref::nil
 };
 
-/* static */ const columnstore_reader::column_iterator::value_type columnstore_reader::column_iterator::EOFMAX{
+/*static*/ const columnstore_reader::column_iterator::value_type columnstore_reader::column_iterator::EOFMAX = {
   type_limits<type_t::doc_id_t>::eof(),
   bytes_ref::nil
 };
