@@ -27,6 +27,8 @@
 #include "store/mmap_directory.hpp"
 #include "utils/locale_utils.hpp"
 
+#include <fstream>
+
 class mmap_directory_test : public directory_test_case,
   public test_base {
   public:
