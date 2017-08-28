@@ -21,25 +21,44 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_MMAP_DIRECTORY_H
-#define IRESEARCH_MMAP_DIRECTORY_H
+#ifndef IRESEARCH_MMAP_UTILS_H
+#define IRESEARCH_MMAP_UTILS_H
 
-#include "fs_directory.hpp"
+#include "file_utils.hpp"
 
 NS_ROOT
+NS_BEGIN(mmap_utils)
 
 //////////////////////////////////////////////////////////////////////////////
-/// @class mmap_directory
+/// @class mmap_handle
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API mmap_directory : public fs_directory {
+class mmap_handle {
  public:
-  explicit mmap_directory(const std::string& dir);
+  mmap_handle() NOEXCEPT {
+    init();
+  }
 
-  virtual index_input::ptr open(
-    const std::string& name
-  ) const NOEXCEPT final;
-}; // mmap_directory
+  ~mmap_handle() {
+    close();
+  }
 
+  bool open(const file_path_t file) NOEXCEPT;
+  void close() NOEXCEPT;
+  explicit operator bool() const NOEXCEPT;
+
+  void* addr() const NOEXCEPT { return addr_; }
+  size_t size() const NOEXCEPT { return size_; }
+  ptrdiff_t fd() const NOEXCEPT { return fd_; }
+
+ private:
+  void init() NOEXCEPT;
+
+  void* addr_; // the beginning of mmapped region
+  size_t size_; // file size
+  ptrdiff_t fd_; // file descriptor
+}; // mmap_handle
+
+NS_END // mmap_utils
 NS_END // ROOT
 
-#endif // IRESEARCH_MMAP_DIRECTORY_H
+#endif // IRESEARCH_MMAP_UTILS_H
