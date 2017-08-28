@@ -17,6 +17,7 @@
 #include "utils/log.hpp"
 #include "utils/object_pool.hpp"
 #include "utils/utf8_path.hpp"
+#include "utils/file_utils.hpp"
 
 #ifdef _WIN32
   #include <Windows.h> // for GetLastError()

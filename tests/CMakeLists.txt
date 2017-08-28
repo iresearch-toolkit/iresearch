@@ -64,6 +64,7 @@ set(IReSearch_tests_sources
   ./store/directory_test_case.cpp
   ./store/directory_cleaner_tests.cpp
   ./store/fs_directory_tests.cpp
+  ./store/mmap_directory_tests.cpp
   ./store/memory_directory_tests.cpp
   ./store/memory_index_output_tests.cpp
   ./store/store_utils_tests.cpp
