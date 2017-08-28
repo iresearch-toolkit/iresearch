@@ -33,6 +33,22 @@ MSVC_ONLY(__pragma(warning(disable:4245)))
 #include <boost/crc.hpp>
 MSVC_ONLY(__pragma(warning(pop)))
 
+NS_LOCAL
+
+inline size_t buffer_size(FILE* file) NOEXCEPT {
+  return 1024;
+//  auto block_size = irs::file_utils::block_size(file_no(file));
+//
+//  if (block_size < 0) {
+//    // fallback to default value
+//    block_size = 1024;
+//  }
+//
+//  return block_size;
+}
+
+NS_END
+
 NS_ROOT
 MSVC_ONLY(__pragma(warning(push)))
 MSVC_ONLY(__pragma(warning(disable: 4996))) // the compiler encountered a deprecated declaration
@@ -139,8 +155,13 @@ class fs_index_output : public buffered_index_output {
       return nullptr;
     }
 
+    const auto buf_size = buffer_size(handle.get());
+
     try {
-      return fs_index_output::make<fs_index_output>(std::move(handle));
+      return fs_index_output::make<fs_index_output>(
+        std::move(handle),
+        buf_size
+      );
     } catch(...) {
       IR_EXCEPTION();
     }
@@ -173,8 +194,9 @@ class fs_index_output : public buffered_index_output {
  private:
   DECLARE_FACTORY(index_output);
 
-  fs_index_output(file_utils::handle_t&& handle) NOEXCEPT
-    : handle(std::move(handle)) {
+  fs_index_output(file_utils::handle_t&& handle, size_t buf_size) NOEXCEPT
+    : buffered_index_output(buf_size),
+      handle(std::move(handle)) {
   }
 
   file_utils::handle_t handle;
@@ -224,8 +246,14 @@ class fs_index_input : public buffered_index_input {
 
     handle->size = size;
 
+    const auto buf_size = ::buffer_size(handle->handle.get());
+
     try {
-      return fs_index_input::make<fs_index_input>(std::move(handle), pool_size);
+      return fs_index_input::make<fs_index_input>(
+        std::move(handle),
+        buf_size,
+        pool_size
+      );
     } catch(...) {
       IR_EXCEPTION();
     }
@@ -306,12 +334,24 @@ class fs_index_input : public buffered_index_input {
 
   DECLARE_FACTORY(index_input);
 
-  fs_index_input(file_handle::ptr&& handle, size_t pool_size) NOEXCEPT
-    : handle_(std::move(handle)), pool_size_(pool_size), pos_(0) {
+  fs_index_input(
+      file_handle::ptr&& handle,
+      size_t buffer_size,
+      size_t pool_size) NOEXCEPT
+    : buffered_index_input(buffer_size),
+      handle_(std::move(handle)),
+      pool_size_(pool_size),
+      pos_(0) {
     assert(handle_);
   }
 
-  fs_index_input(const fs_index_input&) = default;
+  fs_index_input(const fs_index_input& rhs)
+    : buffered_index_input(rhs.buffer_size()),
+      handle_(rhs.handle_),
+      pool_size_(rhs.pool_size_),
+      pos_(rhs.pos_) {
+  }
+
   fs_index_input& operator=(const fs_index_input&) = delete;
 
   file_handle::ptr handle_; /* shared file handle */

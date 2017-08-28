@@ -56,8 +56,9 @@ bool verify_lock_file(const file_path_t file);
 // --SECTION--                                                             stats
 // -----------------------------------------------------------------------------
 
-ptrdiff_t file_size(const file_path_t file);
-ptrdiff_t file_size(int fd);
+ptrdiff_t file_size(const file_path_t file) NOEXCEPT;
+ptrdiff_t file_size(int fd) NOEXCEPT;
+ptrdiff_t block_size(int fd) NOEXCEPT;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         open file
