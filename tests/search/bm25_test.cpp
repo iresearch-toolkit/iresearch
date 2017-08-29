@@ -307,4 +307,4 @@ TEST_F(bm25_test, test_order) {
   }
 }
 
-#endif
+#endif // IRESEARCH_DLL

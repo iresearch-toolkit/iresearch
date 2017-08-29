@@ -755,7 +755,7 @@ TEST(boolean_query_boost, or) {
     ASSERT_TRUE(!boost);
   }
 
-  // single boosted query
+  // empty single boosted query
   {
     const iresearch::boost::boost_t value = 5;
 
@@ -768,11 +768,10 @@ TEST(boolean_query_boost, or) {
     );
 
     auto& boost = const_cast<const irs::attribute_store&>(prep->attributes()).get<irs::boost>();
-    ASSERT_FALSE(!boost);
-    ASSERT_EQ(value, boost->value);
+    ASSERT_FALSE(boost);
   }
 
-  // boosted single query
+  // boosted empty single query
   {
     const iresearch::boost::boost_t value = 5;
 
@@ -4228,6 +4227,8 @@ TEST(And_test, equal) {
   }
 }
 
+#ifndef IRESEARCH_DLL
+
 TEST(And_test, optimize_double_negation) {
   irs::And root;
   auto& term = root.add<irs::Not>().filter<irs::Not>().filter<irs::by_term>();
@@ -4258,6 +4259,8 @@ TEST(And_test, optimize_single_node) {
     ASSERT_NE(nullptr, dynamic_cast<irs::term_query*>(prepared.get()));
   }
 }
+
+#endif // IRESEARCH_DLL
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                    Or base tests 
@@ -4322,6 +4325,8 @@ TEST(Or_test, equal) {
   }
 }
 
+#ifndef IRESEARCH_DLL
+
 TEST(Or_test, optimize_double_negation) {
   irs::Or root;
   auto& term = root.add<irs::Not>().filter<irs::Not>().filter<irs::by_term>();
@@ -4352,6 +4357,8 @@ TEST(Or_test, optimize_single_node) {
     ASSERT_NE(nullptr, dynamic_cast<irs::term_query*>(prepared.get()));
   }
 }
+
+#endif // IRESEARCH_DLL
 
 // ----------------------------------------------------------------------------
 // --SECTION--                           memory_directory + iresearch_format_10
