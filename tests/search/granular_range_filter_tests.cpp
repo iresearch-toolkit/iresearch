@@ -120,6 +120,9 @@ class granular_range_filter_test_case: public filter_test_case_base {
     }
 
     auto rdr = open_reader();
+    ASSERT_EQ(1, rdr->size());
+
+    auto& segment = (*rdr)[0];
 
     // without boost
     {
@@ -141,7 +144,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
        .include<ir::Bound::MAX>(true).insert<ir::Bound::MAX>("M");
       q.boost(boost);
 
-      auto prepared = q.prepare(tests::empty_index_reader::instance());
+      auto prepared = q.prepare(segment);
       ASSERT_EQ(boost, ir::boost::extract(prepared->attributes()));
     }
   }
