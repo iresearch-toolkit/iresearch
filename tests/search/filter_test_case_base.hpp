@@ -144,6 +144,7 @@ struct custom_sort: public irs::sort {
     class scorer: public irs::sort::scorer_base<irs::doc_id_t> {
      public:
       virtual void score(irs::byte_type* score_buf) override {
+        ASSERT_TRUE(score_buf);
         auto& doc_id = *reinterpret_cast<irs::doc_id_t*>(score_buf);
 
         doc_id = document_attrs_.get<irs::document>()->value;
