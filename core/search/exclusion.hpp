@@ -61,8 +61,8 @@ class exclusion final : public score_doc_iterator {
   }
 
  private:
-  /* moves iterator to next not excluded
-   * document not less than "target" */
+  // moves iterator to next not excluded
+  // document not less than "target"
   doc_id_t next(doc_id_t target) {
     auto excl = excl_->value();
 

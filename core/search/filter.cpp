@@ -36,7 +36,7 @@ DEFINE_ATTRIBUTE_TYPE(iresearch::score);
 // --SECTION--                                                            filter
 // -----------------------------------------------------------------------------
 
-filter::filter(const type_id& type)
+filter::filter(const type_id& type) NOEXCEPT
   : boost_(boost::no_boost()), type_(&type) {
 }
 

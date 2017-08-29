@@ -33,7 +33,7 @@ NS_ROOT
 struct IRESEARCH_API boost : basic_stored_attribute<float_t> {
   typedef float_t boost_t;
 
-  static CONSTEXPR boost_t no_boost() { return 1.f; }
+  static CONSTEXPR boost_t no_boost() NOEXCEPT { return 1.f; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief applies boost to the specified attributes collection ("src")

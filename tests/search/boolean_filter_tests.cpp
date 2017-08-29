@@ -21,6 +21,7 @@
 #include "formats/formats.hpp"
 #include "store/fs_directory.hpp"
 #include "search/term_filter.hpp"
+#include "search/term_query.hpp"
 #include "utils/singleton.hpp"
 
 #include <functional>
@@ -481,7 +482,7 @@ TEST(boolean_query_boost, and) {
     ASSERT_TRUE(!boost);
   }
 
-  // boosted boolean query
+  // boosted empty boolean query
   {
     const iresearch::boost::boost_t value = 5;
 
@@ -494,8 +495,7 @@ TEST(boolean_query_boost, and) {
     );
 
     auto& boost = const_cast<const irs::attribute_store&>(prep->attributes()).get<irs::boost>();
-    ASSERT_FALSE(!boost);
-    ASSERT_EQ(value, boost->value);
+    ASSERT_FALSE(boost);
   }
 
   // single boosted subquery
@@ -3878,6 +3878,82 @@ protected:
     }
   }
 
+  void not_sequential_ordered() {
+    // add segment
+    {
+      tests::json_doc_generator gen(
+        resource("simple_sequential.json"),
+        &tests::generic_json_field_factory);
+      add_segment(gen);
+    }
+
+    auto rdr = open_reader();
+
+    // reverse order
+    {
+      const std::string column_name = "duplicated";
+
+      std::vector<irs::doc_id_t> expected = { 32, 30, 29, 28, 26, 25, 24, 23, 22, 20, 19, 18, 17, 16, 15, 14, 13, 12, 10, 9, 8, 7, 6, 4, 3, 2 };
+
+      irs::And root;
+      root.add<irs::Not>().filter<irs::by_term>().field(column_name).term("abcd");
+
+      irs::order order;
+      size_t collector_field_count = 0;
+      size_t collector_finish_count = 0;
+      size_t collector_term_count = 0;
+      size_t scorer_score_count = 0;
+      auto& sort = order.add<sort::custom_sort>();
+
+      sort.collector_field = [&collector_field_count](const irs::sub_reader&, const irs::term_reader&)->void { ++collector_field_count; };
+      sort.collector_finish = [&collector_finish_count](const irs::index_reader&, irs::attribute_store&)->void { ++collector_finish_count; };
+      sort.collector_term = [&collector_term_count](const irs::attribute_view&)->void { ++collector_term_count; };
+      sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { ASSERT_TRUE(&dst); ASSERT_TRUE(&src); dst = src; };
+      sort.scorer_less = [](const irs::doc_id_t& lhs, const irs::doc_id_t& rhs)->bool { return (lhs > rhs); }; // reverse order
+      sort.scorer_score = [&scorer_score_count](irs::doc_id_t& score)->void { ASSERT_TRUE(&score); ++scorer_score_count; };
+
+      auto prepared_order = order.prepare();
+      auto prepared_filter = root.prepare(*rdr, prepared_order);
+      auto score_less = [&prepared_order](
+        const iresearch::bytes_ref& lhs, const iresearch::bytes_ref& rhs
+      )->bool {
+        return prepared_order.less(lhs.c_str(), rhs.c_str());
+      };
+      std::multimap<iresearch::bstring, iresearch::doc_id_t, decltype(score_less)> scored_result(score_less);
+
+      ASSERT_EQ(1, rdr->size());
+      auto& segment = (*rdr)[0];
+
+      auto filter_itr = prepared_filter->execute(segment, prepared_order);
+      ASSERT_EQ(32, irs::cost::extract(filter_itr->attributes()));
+
+      size_t docs_count = 0;
+      auto& score = filter_itr->attributes().get<irs::score>();
+
+      while (filter_itr->next()) {
+        filter_itr->score();
+        ASSERT_FALSE(!score);
+        scored_result.emplace(score->value(), filter_itr->value());
+        ++docs_count;
+      }
+
+      ASSERT_EQ(expected.size(), docs_count);
+
+      ASSERT_EQ(1, collector_field_count); // should not be executed
+      ASSERT_EQ(2, collector_finish_count); // term + all
+      ASSERT_EQ(1, collector_term_count); // should not be executed
+      ASSERT_EQ(expected.size(), scorer_score_count);
+
+      std::vector<irs::doc_id_t> actual;
+
+      for (auto& entry: scored_result) {
+        actual.emplace_back(entry.second);
+      }
+
+      ASSERT_EQ(expected, actual);
+    }
+  }
+
   void or_sequential_multiple_segments() {
     // populate index
     {
@@ -4053,6 +4129,44 @@ protected:
 };
 
 // ----------------------------------------------------------------------------
+// --SECTION--                                                   Not base tests
+// ----------------------------------------------------------------------------
+
+TEST(Not_test, ctor) {
+  irs::Not q;
+  ASSERT_EQ(irs::Not::type(), q.type());
+  ASSERT_EQ(nullptr, q.filter());
+  ASSERT_EQ(irs::boost::no_boost(), q.boost());
+}
+
+TEST(Not_test, equal) {
+  {
+    irs::Not lhs, rhs;
+    ASSERT_EQ(lhs, rhs);
+    ASSERT_EQ(lhs.hash(), rhs.hash());
+  }
+
+  {
+    irs::Not lhs;
+    lhs.filter<irs::by_term>().field("abc").term("def");
+
+    irs::Not rhs;
+    rhs.filter<irs::by_term>().field("abc").term("def");
+    ASSERT_EQ(lhs, rhs);
+    ASSERT_EQ(lhs.hash(), rhs.hash());
+  }
+
+  {
+    irs::Not lhs;
+    lhs.filter<irs::by_term>().field("abc").term("def");
+
+    irs::Not rhs;
+    rhs.filter<irs::by_term>().field("abcd").term("def");
+    ASSERT_NE(lhs, rhs);
+  }
+}
+
+// ----------------------------------------------------------------------------
 // --SECTION--                                                   And base tests 
 // ----------------------------------------------------------------------------
 
@@ -4073,6 +4187,76 @@ TEST(And_test, add_clear) {
   q.clear();
   ASSERT_TRUE(q.empty());
   ASSERT_EQ(0, q.size());
+}
+
+TEST(And_test, equal) {
+  ir::And lhs;
+  lhs.add<ir::by_term>().field("field").term("term");
+  lhs.add<ir::by_term>().field("field1").term("term1");
+  {
+    ir::And& subq = lhs.add<ir::And>();
+    subq.add<ir::by_term>().field("field123").term("dfterm");
+    subq.add<ir::by_term>().field("fieasfdld1").term("term1");
+  }
+
+  {
+    ir::And rhs;
+    rhs.add<ir::by_term>().field("field").term("term");
+    rhs.add<ir::by_term>().field("field1").term("term1");
+    {
+      ir::And& subq = rhs.add<ir::And>();
+      subq.add<ir::by_term>().field("field123").term("dfterm");
+      subq.add<ir::by_term>().field("fieasfdld1").term("term1");
+    }
+
+    ASSERT_EQ(lhs, rhs);
+    ASSERT_EQ(lhs.hash(), rhs.hash());
+  }
+
+  {
+    ir::And rhs;
+    rhs.add<ir::by_term>().field("field").term("term");
+    rhs.add<ir::by_term>().field("field1").term("term1");
+    {
+      ir::And& subq = rhs.add<ir::And>();
+      subq.add<ir::by_term>().field("field123").term("dfterm");
+      subq.add<ir::by_term>().field("fieasfdld1").term("term1");
+      subq.add<ir::by_term>().field("fieasfdld1").term("term1");
+    }
+
+    ASSERT_NE(lhs, rhs);
+  }
+}
+
+TEST(And_test, optimize_double_negation) {
+  irs::And root;
+  auto& term = root.add<irs::Not>().filter<irs::Not>().filter<irs::by_term>();
+  term.field("test_field").term("test_term");
+
+  auto prepared = root.prepare(empty_index_reader::instance());
+  ASSERT_NE(nullptr, dynamic_cast<irs::term_query*>(prepared.get()));
+}
+
+TEST(And_test, optimize_single_node) {
+  // simple hierarchy
+  {
+    irs::And root;
+    auto& term = root.add<irs::by_term>();
+    term.field("test_field").term("test_term");
+
+    auto prepared = root.prepare(empty_index_reader::instance());
+    ASSERT_NE(nullptr, dynamic_cast<irs::term_query*>(prepared.get()));
+  }
+
+  // complex hierarchy
+  {
+    irs::And root;
+    auto& term = root.add<irs::And>().add<irs::And>().add<irs::by_term>();
+    term.field("test_field").term("test_term");
+
+    auto prepared = root.prepare(empty_index_reader::instance());
+    ASSERT_NE(nullptr, dynamic_cast<irs::term_query*>(prepared.get()));
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -4099,7 +4283,7 @@ TEST(Or_test, add_clear) {
   ASSERT_EQ(0, q.size());
 }
 
-TEST(Or_test, equal) { 
+TEST(Or_test, equal) {
   ir::Or lhs;
   lhs.add<ir::by_term>().field("field").term("term");
   lhs.add<ir::by_term>().field("field1").term("term1");
@@ -4120,6 +4304,7 @@ TEST(Or_test, equal) {
     }
 
     ASSERT_EQ(lhs, rhs);
+    ASSERT_EQ(lhs.hash(), rhs.hash());
   }
 
   {
@@ -4134,6 +4319,37 @@ TEST(Or_test, equal) {
     }
 
     ASSERT_NE(lhs, rhs);
+  }
+}
+
+TEST(Or_test, optimize_double_negation) {
+  irs::Or root;
+  auto& term = root.add<irs::Not>().filter<irs::Not>().filter<irs::by_term>();
+  term.field("test_field").term("test_term");
+
+  auto prepared = root.prepare(empty_index_reader::instance());
+  ASSERT_NE(nullptr, dynamic_cast<irs::term_query*>(prepared.get()));
+}
+
+TEST(Or_test, optimize_single_node) {
+  // simple hierarchy
+  {
+    irs::Or root;
+    auto& term = root.add<irs::by_term>();
+    term.field("test_field").term("test_term");
+
+    auto prepared = root.prepare(empty_index_reader::instance());
+    ASSERT_NE(nullptr, dynamic_cast<irs::term_query*>(prepared.get()));
+  }
+
+  // complex hierarchy
+  {
+    irs::Or root;
+    auto& term = root.add<irs::Or>().add<irs::Or>().add<irs::by_term>();
+    term.field("test_field").term("test_term");
+
+    auto prepared = root.prepare(empty_index_reader::instance());
+    ASSERT_NE(nullptr, dynamic_cast<irs::term_query*>(prepared.get()));
   }
 }
 
@@ -4152,21 +4368,22 @@ protected:
   }
 };
 
-TEST_F( memory_boolean_test_case, or ) {
+TEST_F(memory_boolean_test_case, or) {
   or_sequential_multiple_segments();
   or_sequential();
 }
 
-TEST_F( memory_boolean_test_case, and ) {
+TEST_F( memory_boolean_test_case, and) {
   and_schemas();
   and_sequential();
 }
 
-TEST_F( memory_boolean_test_case, not ) {
+TEST_F(memory_boolean_test_case, not) {
   not_sequential();
+  not_sequential_ordered();
 }
 
-TEST_F( memory_boolean_test_case, mixed ) {
+TEST_F(memory_boolean_test_case, mixed) {
   mixed_sequential();
 }
 
@@ -4177,7 +4394,7 @@ TEST_F( memory_boolean_test_case, mixed ) {
 class fs_boolean_filter_test_case : public tests::boolean_filter_test_case {
 protected:
   virtual ir::directory* get_directory() override {
-    const fs::path dir = fs::path( test_dir() ).append( "index" );
+    const fs::path dir = fs::path(test_dir()).append("index");
     return new iresearch::fs_directory(dir.string());
   }
 
@@ -4186,21 +4403,22 @@ protected:
   }
 };
 
-TEST_F( fs_boolean_filter_test_case, or ) {
+TEST_F(fs_boolean_filter_test_case, or) {
   or_sequential_multiple_segments();
   or_sequential();
 }
 
-TEST_F( fs_boolean_filter_test_case, and ) {
+TEST_F(fs_boolean_filter_test_case, and ) {
   and_sequential();
   and_schemas();
 }
 
-TEST_F( fs_boolean_filter_test_case, not ) {
+TEST_F(fs_boolean_filter_test_case, not) {
   not_sequential();
+  not_sequential_ordered();
 }
 
-TEST_F( fs_boolean_filter_test_case, mixed ) {
+TEST_F(fs_boolean_filter_test_case, mixed) {
   mixed_sequential();
 }
 

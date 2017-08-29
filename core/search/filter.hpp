@@ -172,7 +172,7 @@ class IRESEARCH_API filter {
   DECLARE_PTR(filter);
   DECLARE_FACTORY(filter);
 
-  filter(const type_id& type);
+  filter(const type_id& type) NOEXCEPT;
   virtual ~filter();
 
   virtual size_t hash() const {
