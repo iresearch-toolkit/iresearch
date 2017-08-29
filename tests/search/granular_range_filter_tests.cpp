@@ -109,6 +109,43 @@ class granular_range_filter_test_case: public filter_test_case_base {
     }
   }
 
+  void by_range_granularity_boost() {
+    // add segment
+    {
+      tests::json_doc_generator gen(
+        resource("granular_sequential.json"),
+        &by_range_json_field_factory
+      );
+      add_segment(gen);
+    }
+
+    auto rdr = open_reader();
+
+    // without boost
+    {
+      ir::by_granular_range q;
+      q.field("name")
+       .include<ir::Bound::MIN>(true).insert<ir::Bound::MIN>("A")
+       .include<ir::Bound::MAX>(true).insert<ir::Bound::MAX>("M");
+
+      auto prepared = q.prepare(tests::empty_index_reader::instance());
+      ASSERT_EQ(irs::boost::no_boost(), ir::boost::extract(prepared->attributes()));
+    }
+
+    // with boost
+    {
+      iresearch::boost::boost_t boost = 1.5f;
+      ir::by_granular_range q;
+      q.field("name")
+       .include<ir::Bound::MIN>(true).insert<ir::Bound::MIN>("A")
+       .include<ir::Bound::MAX>(true).insert<ir::Bound::MAX>("M");
+      q.boost(boost);
+
+      auto prepared = q.prepare(tests::empty_index_reader::instance());
+      ASSERT_EQ(boost, ir::boost::extract(prepared->attributes()));
+    }
+  }
+
   void by_range_granularity_level() {
     // add segment
     {
@@ -1254,7 +1291,7 @@ TEST(by_granular_range_test, boost) {
     ASSERT_EQ(ir::boost::no_boost(), ir::boost::extract(prepared->attributes()));
   }
 
-  // with boost
+  // with boost, empty query
   {
     iresearch::boost::boost_t boost = 1.5f;
     ir::by_granular_range q;
@@ -1264,7 +1301,7 @@ TEST(by_granular_range_test, boost) {
     q.boost(boost);
 
     auto prepared = q.prepare(tests::empty_index_reader::instance());
-    ASSERT_EQ(boost, ir::boost::extract(prepared->attributes()));
+    ASSERT_EQ(irs::boost::no_boost(), ir::boost::extract(prepared->attributes()));
   }
 }
 
@@ -1290,6 +1327,10 @@ TEST_F(memory_granular_range_filter_test_case, by_range) {
 
 TEST_F(memory_granular_range_filter_test_case, by_range_granularity) {
   by_range_granularity_level();
+}
+
+TEST_F(memory_granular_range_filter_test_case, by_range_granularity_boost) {
+  by_range_granularity_boost();
 }
 
 TEST_F(memory_granular_range_filter_test_case, by_range_numeric) {
