@@ -23,6 +23,10 @@
 
 #include "tests_shared.hpp"
 
+#ifdef _WIN32
+  #include <boost/locale/encoding.hpp> // for boost::locale::conv::utf_to_utf()
+#endif
+
 #include "directory_test_case.hpp"
 #include "store/mmap_directory.hpp"
 #include "utils/locale_utils.hpp"
@@ -121,3 +125,7 @@ TEST_F(mmap_directory_test, lock_obtain_release) {
   lock_obtain_release();
 }
 
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
