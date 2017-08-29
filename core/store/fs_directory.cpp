@@ -345,13 +345,7 @@ class fs_index_input : public buffered_index_input {
     assert(handle_);
   }
 
-  fs_index_input(const fs_index_input& rhs)
-    : buffered_index_input(rhs.buffer_size()),
-      handle_(rhs.handle_),
-      pool_size_(rhs.pool_size_),
-      pos_(rhs.pos_) {
-  }
-
+  fs_index_input(const fs_index_input&) = default;
   fs_index_input& operator=(const fs_index_input&) = delete;
 
   file_handle::ptr handle_; /* shared file handle */
