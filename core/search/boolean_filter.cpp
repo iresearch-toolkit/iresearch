@@ -16,23 +16,24 @@
 #include "exclusion.hpp"
 #include <boost/functional/hash.hpp>
 
-NS_ROOT
-NS_BEGIN(detail)
+NS_LOCAL
 
-/* first - pointer to the innermost not "not" node 
- * second - optimized inversion */
-std::pair<const filter*, bool> optimize_not( const Not& node ) {
+// first - pointer to the innermost not "not" node
+// second - collapsed negation mark
+std::pair<const irs::filter*, bool> optimize_not(const irs::Not& node) {
   bool neg = true;
-  const filter* inner = node.filter();
-  for ( ; inner && inner->type() == Not::type(); ) {
+  const irs::filter* inner = node.filter();
+  while (inner && inner->type() == irs::Not::type()) {
     neg = !neg;
-    inner = static_cast< const Not* >( inner )->filter();
+    inner = static_cast<const irs::Not*>(inner)->filter();
   }
 
-  return std::make_pair( inner, neg );
+  return std::make_pair(inner, neg);
 }
 
-NS_END // detail
+NS_END // LOCAL
+
+NS_ROOT
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class boolean_query
@@ -264,7 +265,8 @@ void boolean_filter::group_filters(
   for (auto begin = this->begin(), end = this->end(); begin != end; ++begin) {
     const Not* not_node = begin.safe_as<Not>();
     if (not_node) {
-      auto res = detail::optimize_not(*not_node);
+      const auto res = optimize_not(*not_node);
+
       if (!res.first) {
         continue;
       }
@@ -343,33 +345,52 @@ DEFINE_FILTER_TYPE(Not);
 DEFINE_FACTORY_DEFAULT(Not);
 
 Not::Not() NOEXCEPT
-  : iresearch::filter(Not::type()) {
+  : irs::filter(Not::type()) {
 }
 
 filter::prepared::ptr Not::prepare(
-    const index_reader&,
-    const order::prepared&,
-    boost_t) const {
-  return filter::prepared::empty();
+    const index_reader& rdr,
+    const order::prepared& ord,
+    boost_t boost) const {
+  const auto res = optimize_not(*this);
+
+  if (!res.first) {
+    return prepared::empty();
+  }
+
+  boost *= this->boost();
+
+  if (res.second) {
+    all all_docs;
+    const std::vector<const irs::filter*> incl { &all_docs };
+    const std::vector<const irs::filter*> excl { res.first };
+
+    auto q = and_query::make<and_query>();
+    q->prepare(rdr, ord, boost, incl, excl);
+    return q;
+  }
+
+  // negation has been optimized out
+  return res.first->prepare(rdr, ord, boost);
 }
 
 size_t Not::hash() const {
   size_t seed = 0;
   ::boost::hash_combine(seed, filter::hash());
   if (filter_) {
-    ::boost::hash_combine<const iresearch::filter&>(seed, *filter_);
+    ::boost::hash_combine<const irs::filter&>(seed, *filter_);
   }
   return seed;
 }
 
-bool Not::equals( const iresearch::filter& rhs ) const {
-  const Not& typed_rhs = static_cast< const Not& >( rhs );
-  return filter::equals( rhs ) 
+bool Not::equals(const irs::filter& rhs) const {
+  const Not& typed_rhs = static_cast<const Not&>(rhs);
+  return filter::equals(rhs)
     && ((!empty() && !typed_rhs.empty() && *filter_ == *typed_rhs.filter_)
        || (empty() && typed_rhs.empty()));
 }
 
-NS_END // root
+NS_END // ROOT
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

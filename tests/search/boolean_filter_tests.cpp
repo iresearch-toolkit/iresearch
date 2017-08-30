@@ -3679,6 +3679,54 @@ protected:
     }
   }
 
+  void not_standalone_sequential() {
+    // add segment
+    {
+      tests::json_doc_generator gen(
+        resource("simple_sequential.json"),
+        &tests::generic_json_field_factory);
+      add_segment( gen );
+    }
+
+    auto rdr = open_reader();
+
+    // empty query
+    {
+      check_query(iresearch::Not(), docs_t{}, rdr);
+    }
+
+    // single not statement - empty result
+    {
+      iresearch::Not not_node;
+      not_node.filter<iresearch::by_term>().field("same").term("xyz"),
+
+      check_query(not_node, docs_t{}, rdr);
+    }
+
+    // single not statement - all docs
+    {
+      iresearch::Not not_node;
+      not_node.filter<iresearch::by_term>().field("same").term("invalid_term"),
+
+      check_query(not_node, docs_t{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 }, rdr);
+    }
+
+    // (NOT (NOT name=A))
+    {
+      iresearch::Not not_node;
+      not_node.filter<iresearch::Not>().filter<iresearch::by_term>().field("name").term("A");
+      check_query(not_node, docs_t{ 1 }, rdr);
+    }
+
+    // (NOT (NOT (NOT (NOT (NOT name=A)))))
+    {
+      iresearch::Not not_node;
+      not_node.filter<iresearch::Not>().filter<iresearch::Not>().filter<iresearch::Not>().filter<iresearch::Not>().filter<iresearch::by_term>().field("name").term("A");
+
+      check_query(not_node, docs_t{ 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 }, rdr);
+    }
+  }
+
   void not_sequential() {
     // add segment
     {
@@ -3874,6 +3922,82 @@ protected:
       root.add<iresearch::by_term>().field("same").term("xyz"); // 1..32
       root.add<iresearch::by_term>().field("name").term("B"); // 2
       check_query(root, docs_t{}, rdr);
+    }
+  }
+
+  void not_standalone_sequential_ordered() {
+    // add segment
+    {
+      tests::json_doc_generator gen(
+        resource("simple_sequential.json"),
+        &tests::generic_json_field_factory);
+      add_segment(gen);
+    }
+
+    auto rdr = open_reader();
+
+    // reverse order
+    {
+      const std::string column_name = "duplicated";
+
+      std::vector<irs::doc_id_t> expected = { 32, 30, 29, 28, 26, 25, 24, 23, 22, 20, 19, 18, 17, 16, 15, 14, 13, 12, 10, 9, 8, 7, 6, 4, 3, 2 };
+
+      irs::Not not_node;
+      not_node.filter<irs::by_term>().field(column_name).term("abcd");
+
+      irs::order order;
+      size_t collector_field_count = 0;
+      size_t collector_finish_count = 0;
+      size_t collector_term_count = 0;
+      size_t scorer_score_count = 0;
+      auto& sort = order.add<sort::custom_sort>();
+
+      sort.collector_field = [&collector_field_count](const irs::sub_reader&, const irs::term_reader&)->void { ++collector_field_count; };
+      sort.collector_finish = [&collector_finish_count](const irs::index_reader&, irs::attribute_store&)->void { ++collector_finish_count; };
+      sort.collector_term = [&collector_term_count](const irs::attribute_view&)->void { ++collector_term_count; };
+      sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { ASSERT_TRUE(&dst); ASSERT_TRUE(&src); dst = src; };
+      sort.scorer_less = [](const irs::doc_id_t& lhs, const irs::doc_id_t& rhs)->bool { return (lhs > rhs); }; // reverse order
+      sort.scorer_score = [&scorer_score_count](irs::doc_id_t& score)->void { ASSERT_TRUE(&score); ++scorer_score_count; };
+
+      auto prepared_order = order.prepare();
+      auto prepared_filter = not_node.prepare(*rdr, prepared_order);
+      auto score_less = [&prepared_order](
+        const iresearch::bytes_ref& lhs, const iresearch::bytes_ref& rhs
+      )->bool {
+        return prepared_order.less(lhs.c_str(), rhs.c_str());
+      };
+      std::multimap<iresearch::bstring, iresearch::doc_id_t, decltype(score_less)> scored_result(score_less);
+
+      ASSERT_EQ(1, rdr->size());
+      auto& segment = (*rdr)[0];
+
+      auto filter_itr = prepared_filter->execute(segment, prepared_order);
+      ASSERT_EQ(32, irs::cost::extract(filter_itr->attributes()));
+
+      size_t docs_count = 0;
+      auto& score = filter_itr->attributes().get<irs::score>();
+
+      while (filter_itr->next()) {
+        filter_itr->score();
+        ASSERT_FALSE(!score);
+        scored_result.emplace(score->value(), filter_itr->value());
+        ++docs_count;
+      }
+
+      ASSERT_EQ(expected.size(), docs_count);
+
+      ASSERT_EQ(0, collector_field_count); // should not be executed
+      ASSERT_EQ(1, collector_finish_count); // from "all" query
+      ASSERT_EQ(0, collector_term_count); // should not be executed
+      ASSERT_EQ(expected.size(), scorer_score_count);
+
+      std::vector<irs::doc_id_t> actual;
+
+      for (auto& entry: scored_result) {
+        actual.emplace_back(entry.second);
+      }
+
+      ASSERT_EQ(expected, actual);
     }
   }
 
@@ -4386,6 +4510,8 @@ TEST_F( memory_boolean_test_case, and) {
 }
 
 TEST_F(memory_boolean_test_case, not) {
+  not_standalone_sequential();
+  not_standalone_sequential_ordered();
   not_sequential();
   not_sequential_ordered();
 }
@@ -4421,6 +4547,8 @@ TEST_F(fs_boolean_filter_test_case, and ) {
 }
 
 TEST_F(fs_boolean_filter_test_case, not) {
+  not_standalone_sequential();
+  not_standalone_sequential_ordered();
   not_sequential();
   not_sequential_ordered();
 }

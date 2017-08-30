@@ -112,7 +112,8 @@ class all_query: public filter::prepared {
 DEFINE_FILTER_TYPE(irs::all);
 DEFINE_FACTORY_DEFAULT(irs::all);
 
-all::all(): filter(all::type()) {
+all::all() NOEXCEPT
+  : filter(all::type()) {
 }
 
 filter::prepared::ptr all::prepare(

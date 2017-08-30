@@ -176,10 +176,13 @@ class IRESEARCH_API Not: public filter {
   void clear() { filter_.reset(); }
   bool empty() const { return nullptr == filter_; }
 
+  using filter::prepare;
+
   virtual filter::prepared::ptr prepare( 
-      const index_reader& rdr, 
-      const order::prepared& ord,
-      boost_t) const override;
+    const index_reader& rdr,
+    const order::prepared& ord,
+    boost_t
+  ) const override;
 
   virtual size_t hash() const override;
 
