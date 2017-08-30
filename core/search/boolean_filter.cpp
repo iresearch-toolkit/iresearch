@@ -59,8 +59,10 @@ class boolean_query : public filter::prepared {
 
     assert(excl_);
     auto incl = execute(rdr, ord, begin(), begin() + excl_);
+
+    // exclusion part does not affect scoring at all
     auto excl = detail::make_disjunction<disjunction_t>(
-      rdr, ord, begin() + excl_, end(), 1 
+      rdr, order::prepared::unordered(), begin() + excl_, end(), 1
     );
 
     // got empty iterator for excluded
@@ -83,10 +85,10 @@ class boolean_query : public filter::prepared {
     boolean_query::queries_t queries;
     queries.reserve(incl.size() + excl.size());
 
-    /* apply boost to the current node */
+    // apply boost to the current node
     boost::apply(this->attributes(), boost);
 
-    /* prepare included */
+    // prepare included
     std::transform(
       incl.begin(), incl.end(),
       irstd::back_emplacer(queries),
@@ -94,15 +96,16 @@ class boolean_query : public filter::prepared {
         return sub->prepare(rdr, ord, boost);
     });
 
-    /* prepare excluded */
+    // prepare excluded
     std::transform(
       excl.begin(), excl.end(),
       irstd::back_emplacer(queries),
       [&rdr, &ord] (const filter* sub) {
-        return sub->prepare(rdr, ord);
+        // exclusion part does not affect scoring at all
+        return sub->prepare(rdr, order::prepared::unordered());
     });
 
-    /* nothrow block */
+    // nothrow block
     queries_ = std::move(queries);
     excl_ = incl.size();
   }
@@ -122,10 +125,10 @@ protected:
       iterator end) const = 0;
 
  private:
-  /* 0..excl_-1 - included queries
-   * excl_..queries.end() - excluded queries */
+  // 0..excl_-1 - included queries
+  // excl_..queries.end() - excluded queries
   queries_t queries_;
-  /* index of the first excluded query */
+  // index of the first excluded query
   size_t excl_;
 };
 
@@ -339,7 +342,9 @@ filter::prepared::ptr Or::prepare(
 DEFINE_FILTER_TYPE(Not);
 DEFINE_FACTORY_DEFAULT(Not);
 
-Not::Not() : iresearch::filter(Not::type()) {}
+Not::Not() NOEXCEPT
+  : iresearch::filter(Not::type()) {
+}
 
 filter::prepared::ptr Not::prepare(
     const index_reader&,

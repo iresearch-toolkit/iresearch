@@ -3938,9 +3938,9 @@ protected:
 
       ASSERT_EQ(expected.size(), docs_count);
 
-      ASSERT_EQ(1, collector_field_count); // should not be executed
-      ASSERT_EQ(2, collector_finish_count); // term + all
-      ASSERT_EQ(1, collector_term_count); // should not be executed
+      ASSERT_EQ(0, collector_field_count); // should not be executed
+      ASSERT_EQ(1, collector_finish_count); // from "all" query
+      ASSERT_EQ(0, collector_term_count); // should not be executed
       ASSERT_EQ(expected.size(), scorer_score_count);
 
       std::vector<irs::doc_id_t> actual;

@@ -148,7 +148,7 @@ class IRESEARCH_API Not: public filter {
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY_DEFAULT();
 
-  Not();
+  Not() NOEXCEPT;
 
   const iresearch::filter* filter() const { 
     return filter_.get(); 
