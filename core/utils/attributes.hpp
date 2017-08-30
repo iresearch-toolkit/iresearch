@@ -84,15 +84,18 @@ struct IRESEARCH_API stored_attribute : attribute {
 
 class IRESEARCH_API attribute_registrar {
  public:
-  attribute_registrar(const attribute::type_id& type);
+  attribute_registrar(
+    const attribute::type_id& type,
+    const char* source = nullptr
+  );
   operator bool() const NOEXCEPT;
  private:
   bool registered_;
 };
 
-#define REGISTER_ATTRIBUTE__(attribute_name, line) static ::iresearch::attribute_registrar attribute_registrar ## _ ## line(attribute_name::type())
-#define REGISTER_ATTRIBUTE_EXPANDER__(attribute_name, line) REGISTER_ATTRIBUTE__(attribute_name, line)
-#define REGISTER_ATTRIBUTE(attribute_name) REGISTER_ATTRIBUTE_EXPANDER__(attribute_name, __LINE__)
+#define REGISTER_ATTRIBUTE__(attribute_name, line, source) static ::iresearch::attribute_registrar attribute_registrar ## _ ## line(attribute_name::type(), source)
+#define REGISTER_ATTRIBUTE_EXPANDER__(attribute_name, file, line) REGISTER_ATTRIBUTE__(attribute_name, line, file ":" TOSTRING(line))
+#define REGISTER_ATTRIBUTE(attribute_name) REGISTER_ATTRIBUTE_EXPANDER__(attribute_name, __FILE__, __LINE__)
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class basic_attribute
