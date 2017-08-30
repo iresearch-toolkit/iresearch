@@ -141,19 +141,28 @@ format::~format() {}
 // -----------------------------------------------------------------------------
 
 format_registrar::format_registrar(
-  const format::type_id& type, format::ptr(*factory)()
+    const format::type_id& type,
+    format::ptr(*factory)(),
+    const char* source /*= nullptr*/
 ) {
   auto entry = format_register::instance().set(type.name(), factory);
 
   registered_ = entry.second;
 
   if (!registered_ && factory != entry.first) {
-    IR_FRMT_WARN(
-      "type name collision detected while registering format, ignoring: type '%s' from %s:%d",
-      type.name().c_str(),
-      __FILE__,
-      __LINE__
-    );
+    if (source) {
+      IR_FRMT_WARN(
+        "type name collision detected while registering format, ignoring: type '%s' from %s",
+        type.name().c_str(),
+        source
+      );
+    } else {
+      IR_FRMT_WARN(
+        "type name collision detected while registering format, ignoring: type '%s'",
+        type.name().c_str()
+      );
+    }
+
     IR_STACK_TRACE();
   }
 }
