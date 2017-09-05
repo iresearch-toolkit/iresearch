@@ -12,6 +12,7 @@
 #include "tests_shared.hpp"
 #include "index/index_tests.hpp"
 #include "store/memory_directory.hpp"
+#include "search/phrase_filter.hpp"
 #include "search/range_filter.hpp"
 #include "search/scorers.hpp"
 #include "search/sort.hpp"
@@ -236,6 +237,49 @@ TEST_F(bm25_test, test_query) {
 
     for (auto& entry: sorted) {
       ASSERT_EQ(expected[i++], entry.second);
+    }
+  }
+
+  // by phrase
+  {
+    irs::by_phrase filter;
+
+    filter.field("field").push_back("7");
+
+    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
+    std::vector<std::pair<float_t, uint64_t>> expected = {
+      { -1, 0 },
+      { -1, 1 },
+      { -1, 5 },
+      { -1, 7 },
+    };
+
+    irs::bytes_ref actual_value;
+    irs::bytes_ref_input in;
+    auto prepared_filter = filter.prepare(reader, prepared_order);
+    auto docs = prepared_filter->execute(segment, prepared_order);
+    auto& score = docs->attributes().get<irs::score>();
+
+    while(docs->next()) {
+      docs->score();
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      in.reset(actual_value);
+
+      auto str_seq = irs::read_string<std::string>(in);
+      auto seq = strtoull(str_seq.c_str(), nullptr, 10);
+      sorted.emplace(score->value(), seq);
+    }
+
+    ASSERT_EQ(expected.size(), sorted.size());
+    size_t i = 0;
+
+    for (auto& entry: sorted) {
+      auto& expected_entry = expected[i++];
+      ASSERT_TRUE(
+        sizeof(float_t) == entry.first.size()
+        //&& expected_entry.first == *reinterpret_cast<const float_t*>(&entry.first[0])
+      );
+      ASSERT_EQ(expected_entry.second, entry.second);
     }
   }
 }
