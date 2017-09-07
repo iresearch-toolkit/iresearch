@@ -186,8 +186,7 @@ class sort final : iresearch::sort::prepared_base<bm25::score_t> {
  public:
   DECLARE_FACTORY(prepared);
 
-  sort(float_t k, float_t b, bool reverse)
-    : k_(k), b_(b) {
+  sort(float_t k, float_t b, bool reverse): k_(k), b_(b) {
     static const std::function<bool(score_t, score_t)> greater = std::greater<score_t>();
     static const std::function<bool(score_t, score_t)> less = std::less<score_t>();
     less_ = reverse ? &greater : &less;
@@ -239,7 +238,7 @@ class sort final : iresearch::sort::prepared_base<bm25::score_t> {
     return (*less_)(lhs, rhs);
   }
 
- private: 
+ private:
   const std::function<bool(score_t, score_t)>* less_;
   float_t k_;
   float_t b_;

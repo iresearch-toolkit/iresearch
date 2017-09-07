@@ -133,8 +133,7 @@ class sort final: iresearch::sort::prepared_base<tfidf::score_t> {
  public:
   DECLARE_FACTORY(prepared);
 
-  sort(bool normalize, bool reverse)
-    : normalize_(normalize) {
+  sort(bool normalize, bool reverse): normalize_(normalize) {
     static const std::function<bool(score_t, score_t)> greater = std::greater<score_t>();
     static const std::function<bool(score_t, score_t)> less = std::less<score_t>();
     less_ = reverse ? &greater : &less;
