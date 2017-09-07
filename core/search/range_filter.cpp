@@ -11,11 +11,34 @@
 
 #include "shared.hpp"
 #include "range_filter.hpp"
+#include "multiterm_filter.hpp"
 #include "range_query.hpp"
 #include "index/index_reader.hpp"
 #include "analysis/token_attributes.hpp"
 
 #include <boost/functional/hash.hpp>
+
+NS_LOCAL
+
+template<typename Selector, typename Comparer>
+void collect_terms(
+    Selector& selector,
+    const irs::sub_reader& segment,
+    const irs::term_reader& field,
+    irs::seek_term_iterator& terms,
+    Comparer cmp) {
+  while (cmp(terms)) {
+    // read attributes
+    terms.read();
+    selector.insert(segment, field, terms);
+
+    if (!terms.next()) {
+      return;
+    }
+  }
+}
+
+NS_END // LOCAL
 
 NS_ROOT
 NS_BEGIN(detail)
@@ -66,8 +89,8 @@ NS_END // detail
 DEFINE_FILTER_TYPE(by_range)
 DEFINE_FACTORY_DEFAULT(by_range)
 
-by_range::by_range():
-  filter(by_range::type()) {
+by_range::by_range() NOEXCEPT
+  : filter(by_range::type()) {
 }
 
 bool by_range::equals(const filter& rhs) const {
@@ -84,6 +107,61 @@ size_t by_range::hash() const {
   ::boost::hash_combine(seed, rng_.max);
   ::boost::hash_combine(seed, rng_.max_type);
   return seed;
+}
+
+void by_range::collect_terms(
+    term_selector& selector,
+    const sub_reader& segment,
+    const term_reader& field,
+    seek_term_iterator& terms) const {
+  bool res = false;
+
+  // seek to min
+  switch (rng_.min_type) {
+    case Bound_Type::UNBOUNDED:
+      res = terms.next();
+      break;
+    case Bound_Type::INCLUSIVE:
+      res = seek_min<true>(terms, rng_.min);
+      break;
+    case Bound_Type::EXCLUSIVE:
+      res = seek_min<false>(terms, rng_.min);
+      break;
+    default:
+      assert(false);
+  }
+
+  if (!res) {
+    // reached the end, nothing to collect
+    return;
+  }
+
+  // now we are on the target term or
+  // the next term after the target term
+  const irs::bytes_ref max = rng_.max;
+
+  switch (rng_.min_type) {
+    case Bound_Type::UNBOUNDED:
+      ::collect_terms(
+        selector, segment, field, terms, [](const term_iterator&) {
+        return true;
+      });
+      break;
+    case Bound_Type::INCLUSIVE:
+      ::collect_terms(
+        selector, segment, field, terms, [max](const term_iterator& terms) {
+        return terms.value() <= max;
+      });
+      break;
+    case Bound_Type::EXCLUSIVE:
+      ::collect_terms(
+        selector, segment, field, terms, [max](const term_iterator& terms) {
+        return terms.value() < max;
+      });
+      break;
+  }
+
+  assert(false);
 }
 
 filter::prepared::ptr by_range::prepare(

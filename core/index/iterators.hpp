@@ -144,6 +144,20 @@ struct IRESEARCH_API seek_term_iterator : term_iterator {
   virtual seek_cookie::ptr cookie() const = 0;
 };
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief position iterator to the specified min term or to the next term
+///        after the min term depending on the specified 'Include' value
+/// @returns true in case if iterator has been succesfully positioned,
+///          false otherwise
+//////////////////////////////////////////////////////////////////////////////
+template<bool Include>
+inline bool seek_min(seek_term_iterator& it, const bytes_ref& min) {
+  const auto res = it.seek_ge(min);
+
+  return SeekResult::END != res
+      && (Include || SeekResult::FOUND != res || it.next());
+}
+
 NS_END
 
 #endif
