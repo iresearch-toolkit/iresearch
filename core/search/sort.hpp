@@ -22,7 +22,6 @@
 
 #include <vector>
 #include <functional>
-#include <boost/iterator/iterator_facade.hpp>
 
 NS_ROOT
 

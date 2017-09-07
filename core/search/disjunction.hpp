@@ -17,7 +17,6 @@
 #include "utils/type_limits.hpp"
 #include "index/iterators.hpp"
 #include <queue>
-#include <boost/compressed_pair.hpp>
 
 NS_ROOT
 NS_LOCAL
