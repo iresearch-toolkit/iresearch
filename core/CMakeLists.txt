@@ -97,6 +97,7 @@ set(IResearch_core_sources
   ./iql/query_builder.cpp
   ./search/all_filter.cpp
   ./search/granular_range_filter.cpp
+  ./search/multiterm_filter.cpp
   ./search/scorers.cpp
   ./search/sort.cpp
   ./search/cost.cpp
@@ -170,6 +171,7 @@ set(IResearch_core_headers
   ./iql/query_builder.hpp
   ./search/all_filter.hpp
   ./search/granular_range_filter.hpp
+  ./search/multiterm_filter.hpp
   ./search/scorers.hpp
   ./search/sort.hpp
   ./search/cost.hpp

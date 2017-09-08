@@ -29,27 +29,109 @@
 
 NS_ROOT
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief base class for implementations selecting which terms get included
+///        while collecting index statistics
+//////////////////////////////////////////////////////////////////////////////
 class term_selector {
  public:
-  term_selector(
-      const index_reader& index,
-      const order::prepared& ord) {
+  term_selector(const index_reader& index, const order::prepared& order)
+    : index_(index), order_(order) {
   }
 
-  void insert(
-      const sub_reader& segment,
-      const term_reader& field,
-      const term_iterator& term) {
-  }
+  virtual ~term_selector() {}
 
-  filter::prepared::ptr build(
-      filter::boost_t /* boost */) {
-    return nullptr;
-  }
+  virtual filter::prepared::ptr build(filter::boost_t boost) const = 0;
+
+  virtual void insert(
+    const sub_reader& segment,
+    const term_reader& field,
+    const term_iterator& term
+  ) = 0;
+
+ protected:
+  const index_reader& index_;
+  const order::prepared& order_;
 };
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief class for selecting all terms for inclusion into index statistics
+//////////////////////////////////////////////////////////////////////////////
+class all_term_selector: public term_selector {
+ public:
+  all_term_selector(const index_reader& index, const order::prepared& order);
+
+  virtual filter::prepared::ptr build(filter::boost_t boost) const override;
+
+  virtual void insert(
+    const sub_reader& segment,
+    const term_reader& field,
+    const term_iterator& term
+  ) override;
+};
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief class for selecting terms from fields with the highest term count
+///        for inclusion included into index statistics
+//////////////////////////////////////////////////////////////////////////////
+class limited_term_selector_by_field_size: public term_selector {
+ public:
+  limited_term_selector_by_field_size(
+    const index_reader& index, const order::prepared& order
+  );
+
+  virtual filter::prepared::ptr build(filter::boost_t boost) const override;
+
+  virtual void insert(
+    const sub_reader& segment,
+    const term_reader& field,
+    const term_iterator& term
+  ) override;
+};
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief class for selecting terms with the longest postings list for
+///        inclusion into index statistics
+//////////////////////////////////////////////////////////////////////////////
+class limited_term_selector_by_postings_size: public term_selector {
+ public:
+  limited_term_selector_by_postings_size(
+    const index_reader& index, const order::prepared& order
+  );
+
+  virtual filter::prepared::ptr build(filter::boost_t boost) const override;
+
+  virtual void insert(
+    const sub_reader& segment,
+    const term_reader& field,
+    const term_iterator& term
+  ) override;
+};
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief class for selecting terms from segments with the highest document
+///        count for inclusion included into index statistics
+//////////////////////////////////////////////////////////////////////////////
+class limited_term_selector_by_segment_size: public term_selector {
+ public:
+  limited_term_selector_by_segment_size(
+    const index_reader& index, const order::prepared& order
+  );
+
+  virtual filter::prepared::ptr build(filter::boost_t boost) const override;
+
+  virtual void insert(
+    const sub_reader& segment,
+    const term_reader& field,
+    const term_iterator& term
+  ) override;
+};
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief base class for term filters e.g. by_prefix/by_range/by_term
+//////////////////////////////////////////////////////////////////////////////
 template<typename Selector>
-class multiterm_filter : filter {
+class multiterm_filter: public filter {
  public:
   explicit multiterm_filter(const type_id& type) NOEXCEPT;
 
@@ -59,27 +141,26 @@ class multiterm_filter : filter {
 
   virtual filter::prepared::ptr prepare(
       const index_reader& index,
-      const order::prepared& ord,
-      boost_t boost) const override {
-    const irs::string_ref field_ref = field_; // avoid casting to irs::string_ref
+      const order::prepared& order,
+      boost_t boost
+  ) const override {
+    const irs::string_ref field_ref(field_); // avoid casting to irs::string_ref
+    Selector selector(index, order);
 
-    Selector selector(index, ord);
-
-    for (auto& segment : index) {
+    for (auto& segment: index) {
       const auto* field = segment.field(field_ref);
 
       if (!field) {
-        // unable to find field in a segment
-        continue;
+        continue; // no such field in the segment
       }
 
       auto terms = field->iterator();
 
       if (!terms) {
-        // got invalid term iterator
-        continue;
+        continue; // no terms in the field
       }
 
+      // FIXME TODO why is seek_term_iterator passed in instead of getting it by caller?
       collect_terms(selector, segment, *field, *terms);
     }
 
@@ -94,10 +175,22 @@ class multiterm_filter : filter {
     seek_term_iterator& terms
   ) const = 0;
 
+  multiterm_filter<Selector>& field(irs::string_ref const& field) {
+    field_ = field_;
+
+    return *this;
+  }
+
+  multiterm_filter<Selector>& field(std::string&& field) {
+    field_ = std::move(field_);
+
+    return *this;
+  }
+
+ private:
   std::string field_;
 }; // multiterm_filter
 
 NS_END // ROOT
 
-#endif // IRESEARCH_MULTITERM_FILTER_H
-
+#endif
