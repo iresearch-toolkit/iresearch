@@ -189,38 +189,33 @@ class multiterm_filter: public filter {
         continue; // no such field in the segment
       }
 
-      auto terms = field->iterator();
-
-      if (!terms) {
-        continue; // no terms in the field
-      }
-
-      // FIXME TODO why is seek_term_iterator passed in instead of getting it by caller?
-      collect_terms(selector, segment, *field, *terms);
+      collect_terms(selector, segment, *field);
     }
 
     attribute_store attrs;
 
     irs::boost::apply(attrs, this->boost() * boost); // apply boost
+    selector.build(attrs);
 
-    return selector.build(boost*this->boost());
+    return build(std::move(attrs));
   }
 
  protected:
+  virtual filter::prepared::ptr build(attribute_store&& attrs) = 0;
+
   virtual void collect_terms(
     Selector& selector,
     const sub_reader& segment,
-    const term_reader& field,
-    seek_term_iterator& terms
+    const term_reader& field
   ) const = 0;
 
-  multiterm_filter<Selector>& field(irs::string_ref const& field) {
+  multiterm_filter& field(irs::string_ref const& field) {
     field_ = field_;
 
     return *this;
   }
 
-  multiterm_filter<Selector>& field(std::string&& field) {
+  multiterm_filter& field(std::string&& field) {
     field_ = std::move(field_);
 
     return *this;
