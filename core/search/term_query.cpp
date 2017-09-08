@@ -21,6 +21,67 @@ NS_ROOT
 // --SECTION--                                         term_query implementation
 // -----------------------------------------------------------------------------
 
+term_query::ptr term_query::make(
+    const index_reader& index,
+    const order::prepared& ord,
+    filter::boost_t boost,
+    const string_ref& field,
+    const bytes_ref& term) {
+  term_query::states_t states(index.size());
+  attribute_store attrs;
+
+  auto stats = ord.prepare_stats();
+
+  // iterate over the segments
+  for (const auto& segment : index) {
+    // get field
+    const auto* reader = segment.field(field);
+
+    if (!reader) {
+      continue;
+    }
+
+    // collect field level stats
+    stats.field(segment, *reader);
+
+    // find term
+    auto terms = reader->iterator();
+
+    if (!terms->seek(term)) {
+      continue;
+    }
+
+    // get term metadata
+    auto& meta = terms->attributes().get<term_meta>();
+
+    // read term attributes
+    terms->read();
+
+    // Cache term state in prepared query attributes.
+    // Later, using cached state we could easily "jump" to
+    // postings without relatively expensive FST traversal
+    auto& state = states.insert(segment);
+    state.reader = reader;
+    state.cookie = terms->cookie();
+
+    // collect cost
+    if (meta) {
+      state.estimation = meta->docs_count;
+    }
+
+    // collect term level stats
+    stats.term(terms->attributes());
+  }
+  stats.finish(index, attrs);
+
+  // apply boost
+  irs::boost::apply(attrs, boost);
+
+  return std::make_shared<term_query>(
+    std::move(states), std::move(attrs)
+  );
+}
+
 term_query::term_query(term_query::states_t&& states, attribute_store&& attrs)
   : filter::prepared(std::move(attrs)), states_(std::move(states)) {
 }

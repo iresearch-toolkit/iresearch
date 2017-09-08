@@ -13,6 +13,7 @@
 #include "range_filter.hpp"
 #include "multiterm_filter.hpp"
 #include "range_query.hpp"
+#include "term_query.hpp"
 #include "index/index_reader.hpp"
 #include "analysis/token_attributes.hpp"
 
@@ -168,6 +169,20 @@ filter::prepared::ptr by_range::prepare(
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost) const {
+  if (rng_.min_type != Bound_Type::UNBOUNDED
+      && rng_.max_type != Bound_Type::UNBOUNDED
+      && rng_.min == rng_.max) {
+
+    if (rng_.min_type == rng_.max_type && rng_.min_type == Bound_Type::INCLUSIVE) {
+      // degenerated case
+      return term_query::make(rdr, ord, boost*this->boost(), fld_, rng_.min);
+    }
+
+    // can't satisfy conditon
+    return prepared::empty();
+  }
+
+
   limited_sample_scorer scorer_instance(scored_terms_limit_); // object for collecting order stats
   limited_sample_scorer* scorer = ord.empty() ? nullptr : &scorer_instance;
   range_query::states_t states(rdr.size());

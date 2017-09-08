@@ -14,6 +14,7 @@
 #include "boolean_filter.hpp"
 #include "range_filter.hpp"
 #include "range_query.hpp"
+#include "term_query.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
 #include "index/field_meta.hpp"
@@ -515,6 +516,22 @@ filter::prepared::ptr by_granular_range::prepare(
   const order::prepared& ord,
   boost_t boost
 ) const {
+  if (!rng_.min.empty() && !rng_.max.empty()) {
+    const auto& min = rng_.min.rbegin()->second;
+    const auto& max = rng_.max.rbegin()->second;
+
+    if (min == max) { 
+      if (rng_.min_type == rng_.max_type && rng_.min_type == Bound_Type::INCLUSIVE) {
+        // degenerated case
+        return term_query::make(rdr, ord, boost*this->boost(), fld_, min);
+      }
+
+      // can't satisfy condition
+      return prepared::empty();
+    }
+  }
+
+
   limited_sample_scorer scorer_instance(scored_terms_limit_); // object for collecting order stats
   limited_sample_scorer* scorer = ord.empty() ? nullptr : &scorer_instance;
   granular_states_t states(rdr.size());

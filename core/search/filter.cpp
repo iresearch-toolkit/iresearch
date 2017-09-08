@@ -67,7 +67,8 @@ filter::prepared::ptr empty::prepare(
     const order::prepared&,
     boost_t
 ) const {
-  return filter::prepared::empty();
+  static filter::prepared::ptr instance = std::make_shared<empty_query>();
+  return instance;
 }
 
 NS_END // ROOT
