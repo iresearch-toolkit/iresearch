@@ -517,10 +517,10 @@ filter::prepared::ptr by_granular_range::prepare(
   boost_t boost
 ) const {
   if (!rng_.min.empty() && !rng_.max.empty()) {
-    const auto& min = rng_.min.rbegin()->second;
-    const auto& max = rng_.max.rbegin()->second;
+    const auto& min = rng_.min.begin()->second;
+    const auto& max = rng_.max.begin()->second;
 
-    if (min == max) { 
+    if (min == max) { // compare the most precise terms
       if (rng_.min_type == rng_.max_type && rng_.min_type == Bound_Type::INCLUSIVE) {
         // degenerated case
         return term_query::make(rdr, ord, boost*this->boost(), fld_, min);
