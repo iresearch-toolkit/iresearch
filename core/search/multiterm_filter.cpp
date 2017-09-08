@@ -28,13 +28,22 @@ NS_ROOT
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 all_term_selector
 // -----------------------------------------------------------------------------
+
 all_term_selector::all_term_selector(
     const index_reader& index, const order::prepared& order
 ): term_selector(index, order) {
 }
 
-filter::prepared::ptr all_term_selector::build(filter::boost_t boost) const {
-  return nullptr; // FIXME TODO implement
+void all_term_selector::build(attribute_store& attrs) {
+  for (auto entry: fields_) {
+    auto& field = *(entry.first);
+    auto& segment = *(entry.second);
+
+    collector_.field(segment, field); // collect field level statistics
+  }
+
+  fields_.clear();
+  collector_.finish(index_, attrs);
 }
 
 void all_term_selector::insert(
@@ -42,21 +51,38 @@ void all_term_selector::insert(
     const term_reader& field,
     const term_iterator& term
 ) {
-  // FIXME TODO implement
+  fields_.emplace(&field, &segment);
+  collector_.term(term.attributes()); // collect term level statistics
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                               limited_term_selector_by_field_size
 // -----------------------------------------------------------------------------
+
 limited_term_selector_by_field_size::limited_term_selector_by_field_size(
-    const index_reader& index, const order::prepared& order
-): term_selector(index, order) {
+    const index_reader& index, const order::prepared& order, size_t limit
+): term_selector(index, order), limit_(limit) {
 }
 
-filter::prepared::ptr limited_term_selector_by_field_size::build(
-    filter::boost_t boost
-) const {
-  return nullptr; // FIXME TODO implement
+void limited_term_selector_by_field_size::build(attribute_store& attrs) {
+  std::unordered_map<const term_reader*, const sub_reader*> fields;
+
+  // iterate over the scoring candidates
+  for (auto& entry: states_) {
+    auto& state = entry.second;
+
+    fields.emplace(&(state.field), &(state.segment));
+    collector_.term(state.term->attributes()); // collect term level statistics
+  }
+
+  for (auto entry: fields) {
+    auto& field = *(entry.first);
+    auto& segment = *(entry.second);
+
+    collector_.field(segment, field); // collect field level statistics
+  }
+
+  collector_.finish(index_, attrs);
 }
 
 void limited_term_selector_by_field_size::insert(
@@ -64,21 +90,55 @@ void limited_term_selector_by_field_size::insert(
     const term_reader& field,
     const term_iterator& term
 ) {
-  // FIXME TODO implement
+  auto terms = field.iterator();
+
+  if (!terms || !terms->seek(term.value())) {
+    return; // nothing to do
+  }
+
+  if (states_.find(&field) == states_.end()) {
+    candidates_.emplace(field.size(), &field);
+  }
+
+  states_.emplace(&field, state_t{segment, field, std::move(terms)});
+
+  // if there are too many candidates then remove the least significant
+  if (candidates_.size() > limit_) {
+    auto itr = candidates_.begin();
+
+    states_.erase(itr->second);
+    candidates_.erase(itr);
+  }
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                            limited_term_selector_by_postings_size
 // -----------------------------------------------------------------------------
+
 limited_term_selector_by_postings_size::limited_term_selector_by_postings_size(
-    const index_reader& index, const order::prepared& order
-): term_selector(index, order) {
+    const index_reader& index, const order::prepared& order, size_t limit
+): term_selector(index, order), limit_(limit) {
 }
 
-filter::prepared::ptr limited_term_selector_by_postings_size::build(
-    filter::boost_t boost
-) const {
-  return nullptr; // FIXME TODO implement
+void limited_term_selector_by_postings_size::build(attribute_store& attrs) {
+  std::unordered_map<const term_reader*, const sub_reader*> fields;
+
+  // iterate over the scoring candidates
+  for (auto& entry: states_) {
+    auto& state = entry.second;
+
+    fields.emplace(&(state.field), &(state.segment));
+    collector_.term(state.term->attributes()); // collect term level statistics
+  }
+
+  for (auto entry: fields) {
+    auto& field = *(entry.first);
+    auto& segment = *(entry.second);
+
+    collector_.field(segment, field); // collect field level statistics
+  }
+
+  collector_.finish(index_, attrs);
 }
 
 void limited_term_selector_by_postings_size::insert(
@@ -86,29 +146,79 @@ void limited_term_selector_by_postings_size::insert(
     const term_reader& field,
     const term_iterator& term
 ) {
-  // FIXME TODO implement
+  auto terms = field.iterator();
+
+  if (!terms || !terms->seek(term.value())) {
+    return; // nothing to do
+  }
+
+  terms->read(); // update attribute values
+
+  auto& meta = terms->attributes().get<term_meta>();
+  auto significance = meta ? meta->docs_count : 0;
+
+  states_.emplace(significance, state_t{segment, field, std::move(terms)});
+
+  // if there are too many candidates then remove the least significant
+  if (states_.size() > limit_) {
+    states_.erase(states_.begin());
+  }
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                             limited_term_selector_by_segment_size
 // -----------------------------------------------------------------------------
-limited_term_selector_by_segment_size::limited_term_selector_by_segment_size(
-    const index_reader& index, const order::prepared& order
-): term_selector(index, order) {
+
+limited_term_selector_by_segment_live_docs::limited_term_selector_by_segment_live_docs(
+    const index_reader& index, const order::prepared& order, size_t limit
+): term_selector(index, order), limit_(limit) {
 }
 
-filter::prepared::ptr limited_term_selector_by_segment_size::build(
-    filter::boost_t boost
-) const {
-  return nullptr; // FIXME TODO implement
+void limited_term_selector_by_segment_live_docs::build(attribute_store& attrs) {
+  std::unordered_map<const term_reader*, const sub_reader*> fields;
+
+  // iterate over the scoring candidates
+  for (auto& entry: states_) {
+    auto& state = entry.second;
+
+    fields.emplace(&(state.field), &(state.segment));
+    collector_.term(state.term->attributes()); // collect term level statistics
+  }
+
+  for (auto entry: fields) {
+    auto& field = *(entry.first);
+    auto& segment = *(entry.second);
+
+    collector_.field(segment, field); // collect field level statistics
+  }
+
+  collector_.finish(index_, attrs);
 }
 
-void limited_term_selector_by_segment_size::insert(
+void limited_term_selector_by_segment_live_docs::insert(
     const sub_reader& segment,
     const term_reader& field,
     const term_iterator& term
 ) {
-  // FIXME TODO implement
+  auto terms = field.iterator();
+
+  if (!terms || !terms->seek(term.value())) {
+    return; // nothing to do
+  }
+
+  if (states_.find(&segment) == states_.end()) {
+    candidates_.emplace(segment.live_docs_count(), &segment);
+  }
+
+  states_.emplace(&segment, state_t{segment, field, std::move(terms)});
+
+  // if there are too many candidates then remove the least significant
+  if (candidates_.size() > limit_) {
+    auto itr = candidates_.begin();
+
+    states_.erase(itr->second);
+    candidates_.erase(itr);
+  }
 }
 
 NS_END // ROOT

@@ -36,12 +36,12 @@ NS_ROOT
 class term_selector {
  public:
   term_selector(const index_reader& index, const order::prepared& order)
-    : index_(index), order_(order) {
+    : collector_(order.prepare_stats()), index_(index) {
   }
 
   virtual ~term_selector() {}
 
-  virtual filter::prepared::ptr build(filter::boost_t boost) const = 0;
+  virtual void build(attribute_store& attrs) = 0;
 
   virtual void insert(
     const sub_reader& segment,
@@ -50,8 +50,8 @@ class term_selector {
   ) = 0;
 
  protected:
+  const order::prepared::stats collector_;
   const index_reader& index_;
-  const order::prepared& order_;
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -61,13 +61,16 @@ class all_term_selector: public term_selector {
  public:
   all_term_selector(const index_reader& index, const order::prepared& order);
 
-  virtual filter::prepared::ptr build(filter::boost_t boost) const override;
+  virtual void build(attribute_store& attrs) override;
 
   virtual void insert(
     const sub_reader& segment,
     const term_reader& field,
     const term_iterator& term
   ) override;
+
+ private:
+  std::unordered_map<const term_reader*, const sub_reader*> fields_;
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -77,16 +80,27 @@ class all_term_selector: public term_selector {
 class limited_term_selector_by_field_size: public term_selector {
  public:
   limited_term_selector_by_field_size(
-    const index_reader& index, const order::prepared& order
+    const index_reader& index, const order::prepared& order, size_t limit
   );
 
-  virtual filter::prepared::ptr build(filter::boost_t boost) const override;
+  virtual void build(attribute_store& attrs) override;
 
   virtual void insert(
     const sub_reader& segment,
     const term_reader& field,
     const term_iterator& term
   ) override;
+
+ private:
+  struct state_t {
+    const sub_reader& segment;
+    const term_reader& field;
+    seek_term_iterator::ptr term;
+  };
+
+  std::unordered_multimap<size_t, const term_reader*> candidates_; // map by significance
+  size_t limit_;
+  std::unordered_multimap<const term_reader*, state_t> states_;
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -96,35 +110,56 @@ class limited_term_selector_by_field_size: public term_selector {
 class limited_term_selector_by_postings_size: public term_selector {
  public:
   limited_term_selector_by_postings_size(
-    const index_reader& index, const order::prepared& order
+    const index_reader& index, const order::prepared& order, size_t limit
   );
 
-  virtual filter::prepared::ptr build(filter::boost_t boost) const override;
+  virtual void build(attribute_store& attrs) override;
 
   virtual void insert(
     const sub_reader& segment,
     const term_reader& field,
     const term_iterator& term
   ) override;
+
+ private:
+  struct state_t {
+    const sub_reader& segment;
+    const term_reader& field;
+    seek_term_iterator::ptr term;
+  };
+
+  size_t limit_;
+  std::unordered_multimap<size_t, state_t> states_; // map by significance
 };
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief class for selecting terms from segments with the highest document
 ///        count for inclusion included into index statistics
 //////////////////////////////////////////////////////////////////////////////
-class limited_term_selector_by_segment_size: public term_selector {
+class limited_term_selector_by_segment_live_docs: public term_selector {
  public:
-  limited_term_selector_by_segment_size(
-    const index_reader& index, const order::prepared& order
+  limited_term_selector_by_segment_live_docs(
+    const index_reader& index, const order::prepared& order, size_t limit
   );
 
-  virtual filter::prepared::ptr build(filter::boost_t boost) const override;
+  virtual void build(attribute_store& attrs) override;
 
   virtual void insert(
     const sub_reader& segment,
     const term_reader& field,
     const term_iterator& term
   ) override;
+
+ private:
+  struct state_t {
+    const sub_reader& segment;
+    const term_reader& field;
+    seek_term_iterator::ptr term;
+  };
+
+  std::unordered_multimap<size_t, const sub_reader*> candidates_; // map by significance
+  size_t limit_;
+  std::unordered_multimap<const sub_reader*, state_t> states_;
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -163,6 +198,10 @@ class multiterm_filter: public filter {
       // FIXME TODO why is seek_term_iterator passed in instead of getting it by caller?
       collect_terms(selector, segment, *field, *terms);
     }
+
+    attribute_store attrs;
+
+    irs::boost::apply(attrs, this->boost() * boost); // apply boost
 
     return selector.build(boost*this->boost());
   }
