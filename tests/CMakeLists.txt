@@ -80,6 +80,7 @@ set(IReSearch_tests_sources
   ./search/granular_range_filter_tests.cpp
   ./search/index_reader_test.cpp
   ./search/scorers_tests.cpp
+  ./search/bitset_doc_iterator_test.cpp
   ./search/sort_tests.cpp
   ./search/tfidf_test.cpp
   ./search/bm25_test.cpp
