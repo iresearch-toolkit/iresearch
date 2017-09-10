@@ -31,6 +31,16 @@ class IRESEARCH_API score_doc_iterator_base: public score_doc_iterator {
  protected:
   score_doc_iterator_base(const order::prepared& ord);
 
+  template<typename Func>
+  bool prepare_score(Func func) {
+    if (scr_.prepare(*ord_, std::move(func))) {
+      attrs_.emplace(scr_);
+      return true;
+    }
+
+    return false;
+  }
+
   attribute_view attrs_;
   irs::score scr_;
   const order::prepared* ord_;

@@ -51,6 +51,11 @@ class all_iterator final : public irs::score_doc_iterator_base {
       prepared_filter_attrs,
       attributes() // doc_iterator attributes
     );
+
+    // set score
+    prepare_score([this](irs::byte_type* score) {
+      scorers_.score(*ord_, scr_.leak());
+    });
   }
 
   virtual bool next() override {

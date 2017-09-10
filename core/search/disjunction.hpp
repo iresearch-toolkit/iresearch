@@ -68,6 +68,13 @@ class basic_disjunction final : public score_doc_iterator_base {
       return est;
     });
     attrs_.emplace(est_);
+
+    // set score
+    prepare_score([this](byte_type* score) {
+      scr_.clear();
+      score_iterator_impl(lhs_, score);
+      score_iterator_impl(rhs_, score);
+    });
   }
 
   virtual void score() override {
@@ -189,6 +196,43 @@ public:
       });
     });
     attrs_.emplace(est_);
+
+    // set score
+    prepare_score([this](byte_type* score) {
+      assert(!itrs_.empty());
+      scr_.clear();
+
+      // hitch all iterators in head to the lead (current doc_)
+      auto begin = itrs_.begin(), end = itrs_.end()-1;
+
+      while (begin != end && top()->value() < doc_) {
+        const auto doc = top()->seek(doc_);
+
+        if (type_limits<type_t::doc_id_t>::eof(doc)) {
+          // remove top
+          pop(begin,end);
+          std::swap(*--end, itrs_.back());
+          itrs_.pop_back();
+        } else {
+          // refresh top
+          pop(begin,end);
+          push(begin,end);
+        }
+      }
+
+      score_add_impl(score, lead());
+
+      if (top()->value() == doc_) {
+        irstd::heap::for_each_if(
+          begin, end,
+          [this](const doc_iterator& it) {
+            return it->value() == doc_;
+          },
+          [this, score](doc_iterator& it) {
+            score_add_impl(score, it);
+        });
+      }
+    });
   }
 
   virtual void score() override {
@@ -379,6 +423,40 @@ template<
       });
     });
     attrs_.emplace(est_);
+
+    // set score
+    prepare_score([this](byte_type* score) {
+      assert(!itrs_.empty());
+
+      scr_.clear();
+
+      // push all valid iterators to lead
+      {
+        for(auto lead = this->lead(), begin = itrs_.begin();
+            lead != begin && top()->value() <= doc_;) {
+          // hitch head
+          if (top()->value() == doc_) {
+            // got hit here
+            add_lead();
+            --lead;
+          } else {
+            if (type_limits<type_t::doc_id_t>::eof(top()->seek(doc_))) {
+              // iterator exhausted
+              remove_top();
+            } else {
+              refresh_top();
+            }
+          }
+        }
+      }
+
+      // score lead iterators
+      std::for_each(
+        lead(), itrs_.end(),
+        [this, score](doc_iterator& it) {
+        ord_->add(score, traits_t::score(it));
+      });
+    });
   }
 
   virtual void score() override {

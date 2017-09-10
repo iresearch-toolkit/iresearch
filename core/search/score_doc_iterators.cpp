@@ -16,7 +16,7 @@ NS_ROOT
 
 score_doc_iterator_base::score_doc_iterator_base(const order::prepared& ord)
   : ord_(&ord) {
-  irs::score::apply(attrs_, scr_, ord);
+//  irs::score::apply(attrs_, scr_, ord);
 }
 
 #if defined(_MSC_VER)
@@ -44,6 +44,11 @@ basic_score_iterator::basic_score_iterator(
   scorers_ = ord_->prepare_scorers(
     segment, field, *stats_, it_->attributes()
   );
+
+  // prepare score
+  prepare_score([this](byte_type* score) {
+    scorers_.score(*ord_, score);
+  });
 }
 
 #if defined(_MSC_VER)

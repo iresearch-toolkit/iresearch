@@ -56,13 +56,19 @@ class basic_doc_iterator: public iresearch::score_doc_iterator {
     est_.value(std::distance(first_, last_));
     attrs_.emplace(est_);
 
-    if (iresearch::score::apply(attrs_, score_, *ord_)) {
+    if (!ord.empty()) {
       scorers_ = ord_->prepare_scorers(
         empty_sub_reader::instance(),
         empty_term_reader::instance(),
         *stats_,
         attrs_
       );
+
+      score_.prepare(ord, [this] (irs::byte_type* score) {
+        scorers_.score(*ord_, score);
+      });
+
+      attrs_.emplace(score_);
     }
   }
 

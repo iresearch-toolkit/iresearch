@@ -16,6 +16,7 @@
 #include "sort.hpp"
 
 #include <unordered_map>
+#include <functional>
 
 NS_ROOT
 
@@ -25,6 +26,8 @@ NS_ROOT
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API score : public attribute {
  public:
+  typedef std::function<void(byte_type*)> score_f;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief applies score to the specified attributes collection ("src")
   //////////////////////////////////////////////////////////////////////////////
@@ -68,10 +71,9 @@ class IRESEARCH_API score : public attribute {
   }
 
   void clear() {
-    if (order_) {
-      for (auto& ord: *order_) {
-        ord.bucket->prepare_score(&(value_[0]) + ord.offset);
-      }
+    auto* begin = leak();
+    for (auto& ord : *order_) {
+      ord.bucket->prepare_score(begin + ord.offset);
     }
   }
 
@@ -79,10 +81,29 @@ class IRESEARCH_API score : public attribute {
     return value_.empty();
   }
 
+  void evaluate() {
+    func_(leak());
+  }
+
+  template<typename Func>
+  bool prepare(const order::prepared& ord, Func func) {
+    if (ord.empty()) {
+      return false;
+    }
+
+    order_ = &ord;
+    value_.resize(ord.size());
+    clear();
+
+    func_ = std::move(func);
+    return true;
+  }
+
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   const order::prepared* order_;
   bstring value_;
+  score_f func_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // score
 

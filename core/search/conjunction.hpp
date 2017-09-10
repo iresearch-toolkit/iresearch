@@ -41,10 +41,7 @@ struct score_wrapper : BaseWrapper {
   // implicit conversion
   score_wrapper(BaseWrapper&& base) NOEXCEPT 
     : BaseWrapper(std::move(base)) {
-    auto& scr = (*this)->attributes().template get<iresearch::score>();
-    if (scr) {
-      score = scr->c_str();
-    }
+    score = (*this)->attributes().template get<iresearch::score>().get();
   }
 
   score_wrapper(score_wrapper&& rhs) NOEXCEPT 
@@ -61,7 +58,7 @@ struct score_wrapper : BaseWrapper {
     return *this;
   }
 
-  const byte_type* score{};
+  irs::score* score{};
 }; // score_wrapper
 
 template<typename DocIterator>
@@ -73,8 +70,9 @@ struct iterator_traits<score_wrapper<DocIterator>> {
   }
 
   static const byte_type* score(wrapper_t& it) {
-    it->score();
-    return it.score;
+    auto* score = it.score;
+    score->evaluate();
+    return score->c_str();
   }
 
   static bool greater(const wrapper_t& lhs, const wrapper_t& rhs) {
@@ -147,25 +145,33 @@ class conjunction : public score_doc_iterator_base {
   typedef std::vector<doc_iterator> doc_iterators_t;
   typedef typename doc_iterators_t::const_iterator iterator;
 
-  conjunction( 
-      doc_iterators_t&& itrs, 
+  conjunction(
+      doc_iterators_t&& itrs,
       const order::prepared& ord = order::prepared::unordered())
-    : score_doc_iterator_base(ord), 
+    : score_doc_iterator_base(ord),
       itrs_(std::move(itrs)) {
     assert(!itrs_.empty());
 
-    // sort subnodes in ascending order by their cost 
-    std::sort(itrs_.begin(), itrs_.end(), 
+    // sort subnodes in ascending order by their cost
+    std::sort(itrs_.begin(), itrs_.end(),
       [](const doc_iterator& lhs, const doc_iterator& rhs) {
         return traits_t::estimate(lhs) < traits_t::estimate(rhs);
     });
 
-    // set front iterator 
+    // set front iterator
     front_ = &itrs_.front();
 
     // estimate iterator
     est_.value(traits_t::estimate(*front_));
     attrs_.emplace(est_);
+
+    // set score
+    prepare_score([this](byte_type* score) {
+      scr_.clear();
+      for(auto& it : itrs_) {
+        ord_->add(score, traits_t::score(it));
+      }
+    });
   }
 
   iterator begin() const { return itrs_.begin(); }
