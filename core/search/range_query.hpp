@@ -82,9 +82,9 @@ class limited_sample_scorer {
     size_t scored_state_id, // state identifier used for querying of attributes
     iresearch::range_state& scored_state, // state containing this scored term
     const iresearch::sub_reader& reader, // segment reader for the current term
-    seek_term_iterator::seek_cookie::ptr&& cookie // term-reader term offset cache
+    const seek_term_iterator& term_itr // term-iterator positioned at the current term
   );
-  void score(order::prepared::stats& stats);
+  void score(const index_reader& index, const order::prepared& order);
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -94,18 +94,20 @@ class limited_sample_scorer {
     seek_term_iterator::cookie_ptr cookie; // term offset cache
     iresearch::range_state& state; // state containing this scored term
     size_t state_offset;
-
     const iresearch::sub_reader& sub_reader; // segment reader for the current term
+    bstring term; // actual term value this state is for
+
     scored_term_state_t(
       const iresearch::sub_reader& sr,
       iresearch::range_state& scored_state,
       size_t scored_state_offset,
-      seek_term_iterator::seek_cookie::ptr&& scored_cookie
+      const seek_term_iterator& term_itr
     ):
-      cookie(std::move(scored_cookie)),
+      cookie(term_itr.cookie()),
       state(scored_state),
       state_offset(scored_state_offset),
-      sub_reader(sr) {
+      sub_reader(sr),
+      term(term_itr.value()) {
     }
   };
 

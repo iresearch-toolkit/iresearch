@@ -61,7 +61,7 @@ filter::prepared::ptr by_prefix::prepare(
       do {
         // fill scoring candidates
         if (!ord.empty()) {
-          scorer.collect(meta ? meta->docs_count : 0, state.count, state, sr, terms->cookie());
+          scorer.collect(meta ? meta->docs_count : 0, state.count, state, sr, *terms);
         }
 
         ++state.count;
@@ -81,9 +81,7 @@ filter::prepared::ptr by_prefix::prepare(
   }
 
   if (!ord.empty()) {
-    auto stats = ord.prepare_stats();
-
-    scorer.score(stats);
+    scorer.score(rdr, ord);
   }
 
   auto q = memory::make_unique<range_query>(std::move(states));
@@ -130,3 +128,7 @@ void by_prefix::collect_terms(
 }
 
 NS_END // ROOT
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
