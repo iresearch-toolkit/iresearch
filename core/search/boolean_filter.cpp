@@ -11,8 +11,9 @@
 
 #include "all_filter.hpp"
 #include "boolean_filter.hpp"
-#include "disjunction.hpp"
 #include "conjunction.hpp"
+#include "disjunction.hpp"
+#include "min_match_disjunction.hpp"
 #include "exclusion.hpp"
 #include <boost/functional/hash.hpp>
 

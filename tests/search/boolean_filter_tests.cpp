@@ -13,6 +13,7 @@
 #include "search/all_filter.hpp"
 #include "search/boolean_filter.hpp"
 #include "search/disjunction.hpp"
+#include "search/min_match_disjunction.hpp"
 #include "search/exclusion.hpp"
 #include "filter_test_case_base.hpp"
 #include "formats/formats_10.hpp"
