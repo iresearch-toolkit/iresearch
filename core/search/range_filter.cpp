@@ -66,7 +66,7 @@ void collect_terms(
     do {
       // fill scoring candidates
       if (scorer) {
-        scorer->collect(meta ? meta->docs_count : 0, state.count, state, reader, terms.cookie());
+        scorer->collect(meta ? meta->docs_count : 0, state.count, state, reader, terms);
       }
 
       ++state.count;
@@ -238,9 +238,7 @@ filter::prepared::ptr by_range::prepare(
   }
 
   if (scorer) {
-    auto stats = ord.prepare_stats();
-
-    scorer->score(stats);
+    scorer->score(rdr, ord);
   }
 
   auto q = memory::make_unique<range_query>(std::move(states));
@@ -252,3 +250,7 @@ filter::prepared::ptr by_range::prepare(
 }
 
 NS_END // ROOT
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

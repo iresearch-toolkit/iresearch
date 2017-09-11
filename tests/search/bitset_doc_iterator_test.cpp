@@ -25,6 +25,8 @@
 #include "utils/bitset.hpp"
 #include "search/bitset_doc_iterator.hpp"
 
+#ifndef IRESEARCH_DLL
+
 TEST(bitset_iterator_test, sequential) {
   // empty bitset
   {
@@ -122,3 +124,5 @@ TEST(bitset_iterator_test, sequential) {
 //
 //  }
 }
+
+#endif

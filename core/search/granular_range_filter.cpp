@@ -99,7 +99,7 @@ iresearch::range_state& collect_terms(
         state.count, // current term offset in state
         state,
         reader,
-        terms.cookie()
+        terms
       );
     }
 
@@ -585,9 +585,7 @@ filter::prepared::ptr by_granular_range::prepare(
   }
 
   if (scorer) {
-    auto stats = ord.prepare_stats();
-
-    scorer->score(stats);
+    scorer->score(rdr, ord);
   }
 
   // ...........................................................................

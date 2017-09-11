@@ -139,8 +139,6 @@ class collector final : public iresearch::sort::collector {
     if (freq) {
       total_term_freq += freq->value;
     }
-
-    docs_count += field.docs_count();
   }
 
   virtual void term(const attribute_view& term_attrs) override {

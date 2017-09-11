@@ -14,6 +14,7 @@
 #include "disjunction.hpp"
 #include "score_doc_iterators.hpp"
 #include "index/index_reader.hpp"
+#include "utils/hash_utils.hpp"
 
 namespace {
   template<
@@ -52,12 +53,12 @@ void limited_sample_scorer::collect(
   size_t scored_state_id, // state identifier used for querying of attributes
   iresearch::range_state& scored_state, // state containing this scored term
   const iresearch::sub_reader& reader, // segment reader for the current term
-  seek_term_iterator::cookie_ptr&& cookie // term-reader term offset cache
+  const seek_term_iterator& term_itr // term-iterator positioned at the current term
 ) {
   scored_states_.emplace(
     std::piecewise_construct,
     std::forward_as_tuple(priority),
-    std::forward_as_tuple(reader, scored_state, scored_state_id, std::move(cookie))
+    std::forward_as_tuple(reader, scored_state, scored_state_id, term_itr)
   );
 
   // if too many candidates then remove least significant
@@ -66,36 +67,62 @@ void limited_sample_scorer::collect(
   }
 }
 
-void limited_sample_scorer::score(order::prepared::stats& stats) {
-  // iterate over the scoring candidates
-  for (auto& entry: scored_states_) {
-    auto& scored_term_state = entry.second;
-    auto terms = scored_term_state.state.reader->iterator();
+void limited_sample_scorer::score(
+    const index_reader& index, const order::prepared& order
+) {
+  struct state_t {
+    attribute_store filter_attrs; // filter attributes for a the current state/term
+    order::prepared::stats stats;
+    state_t(const order::prepared& order): stats(order.prepare_stats()) {}
+  };
+  std::unordered_map<hashed_bytes_ref, state_t> term_stats; // stats for a specific term
+  std::unordered_map<scored_term_state_t*, state_t*> state_stats; // stats for a specific state
 
-    // find term using cached state
+  // iterate over all the states from which statistcis should be collected
+  for (auto& entry: scored_states_) {
+    auto& scored_state = entry.second;
+    auto term_itr = scored_state.state.reader->iterator();
+
+    // find term attributes using cached state
     // use bytes_ref::nil here since we just "jump" to cached state,
     // and we are not interested in term value itself
-    if (!terms->seek(bytes_ref::nil, *scored_term_state.cookie)) {
+    if (!term_itr || !term_itr->seek(bytes_ref::nil, *scored_state.cookie)) {
       continue; // some internal error that caused the term to disapear
     }
 
-    auto& term = terms->attributes();
-    auto& segment = scored_term_state.sub_reader;
-    auto& field = *scored_term_state.state.reader;
+    // find the stats for the current term
+    auto& stats_entry = map_utils::try_emplace(
+      term_stats,
+      make_hashed_ref(bytes_ref(scored_state.term), std::hash<irs::bytes_ref>()),
+      order
+    ).first->second;
 
-    // collect field level statistic 
+    auto& stats = stats_entry.stats;
+    auto& field = *scored_state.state.reader;
+    auto& segment = scored_state.sub_reader;
+    auto& term_attrs = term_itr->attributes();
+
+    // collect statistics
     stats.field(segment, field);
+    stats.term(term_attrs);
 
-    // collect term level statistics
-    stats.term(term);
+    state_stats.emplace(&scored_state, &stats_entry); // associate states to a state
+  }
 
-    attribute_store scored_term_attributes;
+  // iterate over all stats and apply/store order stats
+  for (auto& entry: term_stats) {
+    entry.second.stats.finish(index, entry.second.filter_attrs);
+  }
 
-    // apply/store order stats
-    stats.finish(scored_term_state.sub_reader, scored_term_attributes);
+  // set filter attributes for each corresponding term
+  for (auto& entry: scored_states_) {
+    auto& scored_state = entry.second;
+    auto itr = state_stats.find(&scored_state);
+    assert(itr != state_stats.end() && itr->second); // values set just above
 
-    scored_term_state.state.scored_states.emplace(
-      scored_term_state.state_offset, std::move(scored_term_attributes)
+    // filter attribute_store is copied since it's shared among multiple states
+    scored_state.state.scored_states.emplace(
+      scored_state.state_offset, itr->second->filter_attrs
     );
   }
 }
@@ -173,3 +200,7 @@ doc_iterator::ptr range_query::execute(
 }
 
 NS_END // ROOT
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
