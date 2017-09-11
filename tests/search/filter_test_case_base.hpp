@@ -417,7 +417,7 @@ class filter_test_case_base : public index_test_base {
       auto& score = docs->attributes().get<ir::score>();
 
       while(docs->next()) {
-        docs->score();
+        score->evaluate();
         ASSERT_FALSE(!score);
         scored_result.emplace(score->value(), docs->value());
       }
@@ -440,10 +440,14 @@ class filter_test_case_base : public index_test_base {
       std::vector<ir::doc_id_t>& result,
       std::vector<ir::cost::cost_t>& result_costs) {
     for (const auto& sub : rdr) {
-      auto docs = q->execute(sub); 
+      auto docs = q->execute(sub);
+      auto& score = docs->attributes().get<ir::score>();
+
       result_costs.push_back(ir::cost::extract(docs->attributes()));
       for (;docs->next();) {
-        docs->score();
+        if (score) {
+          score->evaluate();
+        }
         /* put score attributes to iterator */
         result.push_back(docs->value());
       }

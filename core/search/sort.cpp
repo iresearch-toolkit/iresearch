@@ -227,6 +227,12 @@ order::prepared::prepare_stats() const {
   return prepared::stats(std::move(colls));
 }
 
+void order::prepared::prepare_score(byte_type* score) const {
+  for (auto& sort : order_) {
+    sort.bucket->prepare_score(score + sort.offset);
+  }
+}
+
 order::prepared::scorers 
 order::prepared::prepare_scorers(
     const sub_reader& segment,

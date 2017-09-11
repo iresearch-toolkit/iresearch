@@ -69,11 +69,6 @@ class column_existence_iterator final : public irs::score_doc_iterator_base {
     return it_->next();
   }
 
-  virtual void score() override {
-    value(); // ensure doc_id is updated before scoring
-    scorers_.score(*ord_, scr_.leak());
-  }
-
   virtual irs::doc_id_t seek(irs::doc_id_t target) override {
     it_->seek(target);
 

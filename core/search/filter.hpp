@@ -20,6 +20,8 @@
 
 NS_ROOT
 
+
+// FIXME move to separate file
 //////////////////////////////////////////////////////////////////////////////
 /// @class score
 /// @brief represents a score related for the particular document
@@ -41,9 +43,8 @@ class IRESEARCH_API score : public attribute {
 
     src.emplace(score);
 
-    score.order_ = &ord;
     score.value_.resize(ord.size());
-    score.clear();
+    ord.prepare_score(score.leak());
 
     return true;
   }
@@ -51,12 +52,6 @@ class IRESEARCH_API score : public attribute {
   DECLARE_ATTRIBUTE_TYPE();
 
   score() = default;
-
-  template<typename T>
-  const T& get(size_t i) const {
-    assert(order_ && sizeof(T) == (*order_)[i].bucket->size());
-    return reinterpret_cast<const T&>(*(value_.c_str() + (*order_)[i].offset));
-  }
 
   byte_type* leak() {
     return &(value_[0]);
@@ -70,30 +65,23 @@ class IRESEARCH_API score : public attribute {
     return value_;
   }
 
-  void clear() {
-    auto* begin = leak();
-    for (auto& ord : *order_) {
-      ord.bucket->prepare_score(begin + ord.offset);
-    }
-  }
-
   bool empty() const NOEXCEPT {
     return value_.empty();
   }
 
-  void evaluate() {
-    func_(leak());
+  void evaluate() const {
+    func_(const_cast<score&>(*this).leak());
   }
 
   template<typename Func>
   bool prepare(const order::prepared& ord, Func func) {
+    //FIXME
     if (ord.empty()) {
       return false;
     }
 
-    order_ = &ord;
     value_.resize(ord.size());
-    clear();
+    ord.prepare_score(leak());
 
     func_ = std::move(func);
     return true;
@@ -101,7 +89,6 @@ class IRESEARCH_API score : public attribute {
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  const order::prepared* order_;
   bstring value_;
   score_f func_;
   IRESEARCH_API_PRIVATE_VARIABLES_END

@@ -524,9 +524,10 @@ class column_existence_filter_test_case
 
       size_t docs_count = 0;
       auto& score = filter_itr->attributes().get<irs::score>();
+      ASSERT_TRUE(score);
 
       while (filter_itr->next()) {
-        filter_itr->score();
+        score->evaluate();
         ASSERT_FALSE(!score);
         scored_result.emplace(score->value(), filter_itr->value());
         ASSERT_TRUE(column_itr->next());
@@ -595,9 +596,10 @@ class column_existence_filter_test_case
 
       size_t docs_count = 0;
       auto& score = filter_itr->attributes().get<irs::score>();
+      ASSERT_TRUE(score);
 
       while (filter_itr->next()) {
-        filter_itr->score();
+        score->evaluate();
         ASSERT_FALSE(!score);
         scored_result.emplace(score->value(), filter_itr->value());
         ASSERT_TRUE(column_itr->next());
@@ -667,9 +669,10 @@ class column_existence_filter_test_case
 
       size_t docs_count = 0;
       auto& score = filter_itr->attributes().get<irs::score>();
+      ASSERT_TRUE(score);
 
       while (filter_itr->next()) {
-        filter_itr->score();
+        score->evaluate();
         ASSERT_FALSE(!score);
         scored_result.emplace(score->value(), filter_itr->value());
         ASSERT_TRUE(column_itr->next());

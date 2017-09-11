@@ -397,6 +397,13 @@ public:
 
     bool less(const byte_type* lhs, const byte_type* rhs) const;
     void add(byte_type* lhs, const byte_type* rhs) const;
+    void prepare_score(byte_type* score) const;
+
+    template<typename T>
+    const T& get(const byte_type* score, size_t i) const {
+      assert(sizeof(T) == order_[i].bucket->size());
+      return reinterpret_cast<const T&>(*(score + order_[i].offset));
+    }
 
   private:
     friend class order;

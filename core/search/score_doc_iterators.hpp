@@ -60,10 +60,6 @@ class basic_score_iterator final : public score_doc_iterator_base {
      const order::prepared& ord,
      cost::cost_t estimation) NOEXCEPT;
 
-  virtual void score() override {
-    scorers_.score(*ord_, scr_.leak());
-  }
-
   virtual doc_id_t value() const override {
     return it_->value();
   }

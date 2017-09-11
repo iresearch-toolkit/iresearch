@@ -48,8 +48,6 @@ class bitset_doc_iterator final : public score_doc_iterator, util::noncopyable {
     return attrs_;
   }
 
-  virtual void score() NOEXCEPT override { }
-
  private:
   doc_id_t next_from(doc_id_t target) NOEXCEPT;
 

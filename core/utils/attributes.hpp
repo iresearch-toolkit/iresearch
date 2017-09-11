@@ -290,6 +290,8 @@ class IRESEARCH_API_TEMPLATE attribute_map {
     T& operator*() const NOEXCEPT { return reinterpret_cast<T&>(*ptr_); }
     T* operator->() const NOEXCEPT { return ptr_cast(ptr_); }
     explicit operator bool() const NOEXCEPT { return nullptr != ptr_; }
+    operator T*() NOEXCEPT { return get(); }
+    operator const T*() const NOEXCEPT { return get(); }
 
     T* get() const { return ptr_cast(ptr_); }
     static const ref<T>& nil() NOEXCEPT { static const ref<T> nil; return nil; }

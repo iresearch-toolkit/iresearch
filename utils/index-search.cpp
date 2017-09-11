@@ -152,7 +152,7 @@ struct SearchTask : public Task {
             order.add<irs::bm25_sort>(irs::string_ref::nil);
             auto prepared_order = order.prepare();
             irs::score_doc_iterator::ptr docs = prepared->execute(segment, prepared_order); // query segment
-            auto& score = docs->attributes().get<iresearch::score>();
+            const irs::score* score = docs->attributes().get<iresearch::score>();
             auto comparer = [&prepared_order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
               return prepared_order.less(lhs.c_str(), rhs.c_str());
             };
@@ -161,7 +161,7 @@ struct SearchTask : public Task {
             while (docs->next()) {
               SCOPED_TIMER("Result processing time");
               ++totalHitCount;
-              docs->score();
+              score->evaluate();
               sorted.emplace(
                 std::piecewise_construct,
                 std::forward_as_tuple(score->value()),
@@ -964,13 +964,13 @@ int search(
 
           for (auto& segment: reader) {
             auto docs = filter->execute(segment, order); // query segment
-            auto& score = docs->attributes().get<irs::score>();
+            const irs::score* score = docs->attributes().get<irs::score>();
             const auto& score_value = score ? score->get<float>(0) : EMPTY_SCORE;
 
             while (docs->next()) {
               ++doc_count;
 
-              docs->score();
+              score->evaluate();
 
 #ifdef IRESEARCH_COMPLEX_SCORING
               sorted.emplace(

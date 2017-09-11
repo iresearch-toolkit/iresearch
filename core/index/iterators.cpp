@@ -42,7 +42,6 @@ struct empty_doc_iterator : score_doc_iterator {
   virtual doc_id_t value() const override { return type_limits<type_t::doc_id_t>::eof(); }
   virtual bool next() override { return false; }
   virtual doc_id_t seek(doc_id_t) override { return type_limits<type_t::doc_id_t>::eof(); }
-  virtual void score() override { }
   virtual const irs::attribute_view& attributes() const NOEXCEPT override {
     static irs::attribute_view empty = empty_doc_iterator_attributes();
     return empty;

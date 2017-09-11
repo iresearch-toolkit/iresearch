@@ -459,8 +459,8 @@ class phrase_filter_test_case : public filter_test_case_base {
       ASSERT_FALSE(!score);
 
       ASSERT_TRUE(docs->next());
-      docs->score();
-      ASSERT_EQ(docs->value(),score->get<irs::doc_id_t>(0));
+      score->evaluate();
+      ASSERT_EQ(docs->value(),pord.get<irs::doc_id_t>(score->c_str(), 0));
       ASSERT_TRUE(values(docs->value(), actual_value));
       ASSERT_EQ("H", irs::to_string<irs::string_ref>(actual_value.c_str()));
       ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));

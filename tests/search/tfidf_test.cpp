@@ -118,7 +118,7 @@ TEST_F(tfidf_test, test_query) {
     auto& score = docs->attributes().get<irs::score>();
 
     while(docs->next()) {
-      docs->score();
+      score->evaluate();
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 
@@ -153,7 +153,7 @@ TEST_F(tfidf_test, test_query) {
     auto& score = docs->attributes().get<irs::score>();
 
     while(docs->next()) {
-      docs->score();
+      score->evaluate();
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 
@@ -188,7 +188,7 @@ TEST_F(tfidf_test, test_query) {
     auto& score = docs->attributes().get<irs::score>();
 
     while(docs->next()) {
-      docs->score();
+      score->evaluate();
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 
@@ -223,7 +223,7 @@ TEST_F(tfidf_test, test_query) {
     auto& score = docs->attributes().get<irs::score>();
 
     while(docs->next()) {
-      docs->score();
+      score->evaluate();
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 
@@ -261,7 +261,7 @@ TEST_F(tfidf_test, test_query) {
     auto& score = docs->attributes().get<irs::score>();
 
     while(docs->next()) {
-      docs->score();
+      score->evaluate();
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 
@@ -332,7 +332,7 @@ TEST_F(tfidf_test, test_order) {
     auto docs = prepared->execute(segment, prepared_order);
     auto& score = docs->attributes().get<iresearch::score>();
     for (; docs->next();) {
-      docs->score();
+      score->evaluate();
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 

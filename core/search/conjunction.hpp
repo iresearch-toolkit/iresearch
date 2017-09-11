@@ -167,7 +167,7 @@ class conjunction : public score_doc_iterator_base {
 
     // set score
     prepare_score([this](byte_type* score) {
-      scr_.clear();
+      ord_->prepare_score(score);
       for(auto& it : itrs_) {
         ord_->add(score, traits_t::score(it));
       }
@@ -179,12 +179,6 @@ class conjunction : public score_doc_iterator_base {
 
   // size of conjunction
   size_t size() const { return itrs_.size(); }
-
-  virtual void score() override final {
-    if (scr_.empty()) return;
-    scr_.clear();
-    score_impl(scr_.leak());
-  }
 
   virtual doc_id_t value() const override {
     return (*front_)->value();
@@ -204,13 +198,6 @@ class conjunction : public score_doc_iterator_base {
     }
 
     return converge(target);
-  }
-
- protected: 
-  virtual void score_impl(byte_type* lhs) {
-    for(auto& it : itrs_) {
-      ord_->add(lhs, traits_t::score(it));
-    }
   }
 
  private:

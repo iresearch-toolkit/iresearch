@@ -62,10 +62,6 @@ class all_iterator final : public irs::score_doc_iterator_base {
     return !irs::type_limits<irs::type_t::doc_id_t>::eof(seek(doc_.value + 1));
   }
 
-  virtual void score() override {
-    scorers_.score(*ord_, scr_.leak());
-  }
-
   virtual irs::doc_id_t seek(irs::doc_id_t target) override {
     doc_.value = target <= max_doc_ ? target : irs::type_limits<irs::type_t::doc_id_t>::eof();
 

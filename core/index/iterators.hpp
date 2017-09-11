@@ -55,8 +55,6 @@ struct IRESEARCH_API score_doc_iterator: doc_iterator {
   DECLARE_FACTORY(score_doc_iterator);
 
   static score_doc_iterator::ptr empty();
-
-  virtual void score() = 0;
 }; // score_doc_iterator
 
 //////////////////////////////////////////////////////////////////////////////

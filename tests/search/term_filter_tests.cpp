@@ -105,8 +105,8 @@ protected:
       // first hit
       {
         ASSERT_TRUE(docs->next());
-        docs->score();
-        auto doc_boost = scr->get<tests::sort::boost::score_t>(0);
+        scr->evaluate();
+        auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
         ASSERT_EQ(iresearch::boost::boost_t(0), doc_boost);
       }
 
@@ -127,8 +127,9 @@ protected:
       // first hit
       {
         ASSERT_TRUE(docs->next());
-        docs->score();
-        auto doc_boost = scr->get<tests::sort::boost::score_t>(0);
+        scr->evaluate();
+
+        auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
         ASSERT_EQ(iresearch::boost::boost_t(value), doc_boost);
       }
 

@@ -91,12 +91,6 @@ class basic_doc_iterator: public iresearch::score_doc_iterator {
     return true;
   }
 
-  virtual void score() override {
-    if (!score_.empty()) {
-      scorers_.score(*ord_, score_.leak());
-    }
-  }
-
   virtual const irs::attribute_view& attributes() const NOEXCEPT {
     return attrs_;
   }
@@ -272,8 +266,8 @@ TEST(boolean_query_boost, hierarchy) {
      * exists in all results */
     {
       ASSERT_TRUE(docs->next());
-      docs->score();
-      auto doc_boost = scr->get<tests::sort::boost::score_t>(0);
+      scr->evaluate();
+      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
       ASSERT_EQ(4*value*value*value+value*value, doc_boost);
     }
 
@@ -281,8 +275,8 @@ TEST(boolean_query_boost, hierarchy) {
      * exists in all results */
     {
       ASSERT_TRUE(docs->next());
-      docs->score();
-      auto doc_boost = scr->get<tests::sort::boost::score_t>(0);
+      scr->evaluate();
+      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
       ASSERT_EQ(4*value*value*value+value*value, doc_boost);
     }
 
@@ -358,8 +352,8 @@ TEST(boolean_query_boost, hierarchy) {
      * since it exists in all results */
     {
       ASSERT_TRUE(docs->next());
-      docs->score();
-      auto doc_boost = scr->get<tests::sort::boost::score_t>(0);
+      scr->evaluate();
+      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
       ASSERT_EQ(2*value*value*value+4*value*value+value, doc_boost);
     }
 
@@ -367,8 +361,8 @@ TEST(boolean_query_boost, hierarchy) {
      * exists in all results */
     {
       ASSERT_TRUE(docs->next());
-      docs->score();
-      auto doc_boost = scr->get<tests::sort::boost::score_t>(0);
+      scr->evaluate();
+      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
       ASSERT_EQ(value*value*value+3*value*value+value, doc_boost);
     }
 
@@ -376,8 +370,8 @@ TEST(boolean_query_boost, hierarchy) {
      * exists in all results */
     {
       ASSERT_TRUE(docs->next());
-      docs->score();
-      auto doc_boost = scr->get<tests::sort::boost::score_t>(0);
+      scr->evaluate();
+      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
       ASSERT_EQ(value*value*value+value*value+value, doc_boost);
     }
 
@@ -449,24 +443,24 @@ TEST(boolean_query_boost, hierarchy) {
     // the first hit should be scored as value^3+2*value^2+3*value^2+value
     {
       ASSERT_TRUE(docs->next());
-      docs->score();
-      auto doc_boost = scr->get<tests::sort::boost::score_t>(0);
+      scr->evaluate();
+      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
       ASSERT_EQ(value*value*value+5*value*value+value, doc_boost);
     }
 
     // the second hit should be scored as value
     {
       ASSERT_TRUE(docs->next());
-      docs->score();
-      auto doc_boost = scr->get<tests::sort::boost::score_t>(0);
+      scr->evaluate();
+      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
       ASSERT_EQ(value, doc_boost);
     }
 
     // the third hit should be scored as value
     {
       ASSERT_TRUE(docs->next());
-      docs->score();
-      auto doc_boost = scr->get<tests::sort::boost::score_t>(0);
+      scr->evaluate();
+      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
       ASSERT_EQ(value, doc_boost);
     }
 
@@ -529,8 +523,8 @@ TEST(boolean_query_boost, and) {
     auto& scr = docs->attributes().get<iresearch::score>();
     ASSERT_FALSE(!scr);
     ASSERT_TRUE(docs->next());
-    docs->score();
-    auto doc_boost = scr->get<tests::sort::boost::score_t>(0) ;
+    scr->evaluate();
+    auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0) ;
     ASSERT_EQ(value, doc_boost);
     ASSERT_FALSE(docs->next());
   }
@@ -561,8 +555,8 @@ TEST(boolean_query_boost, and) {
     auto& scr = docs->attributes().get<iresearch::score>();
     ASSERT_FALSE(!scr);
     ASSERT_TRUE(docs->next());
-    docs->score();
-    auto doc_boost = scr->get<tests::sort::boost::score_t>(0) ;
+    scr->evaluate();
+    auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0) ;
     ASSERT_EQ(value*value, doc_boost);
     ASSERT_FALSE(docs->next());
   }
@@ -600,8 +594,8 @@ TEST(boolean_query_boost, and) {
     auto& scr = docs->attributes().get<iresearch::score>();
     ASSERT_FALSE(!scr);
     ASSERT_TRUE(docs->next());
-    docs->score();
-    auto doc_boost = scr->get<tests::sort::boost::score_t>(0) ;
+    scr->evaluate();
+    auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0) ;
     ASSERT_EQ(2*value*value, doc_boost);
 
     ASSERT_FALSE(docs->next());
@@ -647,8 +641,8 @@ TEST(boolean_query_boost, and) {
     auto& scr = docs->attributes().get<iresearch::score>();
     ASSERT_FALSE(!scr);
     ASSERT_TRUE(docs->next());
-    docs->score();
-    auto doc_boost = scr->get<tests::sort::boost::score_t>(0) ;
+    scr->evaluate();
+    auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0) ;
     ASSERT_EQ(3*value*value+value, doc_boost);
 
     ASSERT_FALSE(docs->next());
@@ -693,8 +687,8 @@ TEST(boolean_query_boost, and) {
     auto& scr = docs->attributes().get<iresearch::score>();
     ASSERT_FALSE(!scr);
     ASSERT_TRUE(docs->next());
-    docs->score();
-    auto doc_boost = scr->get<tests::sort::boost::score_t>(0) ;
+    scr->evaluate();
+    auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0) ;
     ASSERT_EQ(3*value, doc_boost);
 
     ASSERT_FALSE(docs->next());
@@ -737,8 +731,8 @@ TEST(boolean_query_boost, and) {
     auto& scr = docs->attributes().get<iresearch::score>();
     ASSERT_FALSE(!scr);
     ASSERT_TRUE(docs->next());
-    docs->score();
-    auto doc_boost = scr->get<tests::sort::boost::score_t>(0) ;
+    scr->evaluate();
+    auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0) ;
     ASSERT_EQ(iresearch::boost::boost_t(0), doc_boost);
 
     ASSERT_FALSE(docs->next());
@@ -802,8 +796,8 @@ TEST(boolean_query_boost, or) {
     auto& scr = docs->attributes().get<iresearch::score>();
     ASSERT_FALSE(!scr);
     ASSERT_TRUE(docs->next());
-    docs->score();
-    auto doc_boost = scr->get<tests::sort::boost::score_t>(0) ;
+    scr->evaluate();
+    auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
     ASSERT_EQ(value, doc_boost);
     ASSERT_FALSE(docs->next());
   }
@@ -834,8 +828,8 @@ TEST(boolean_query_boost, or) {
     auto& scr = docs->attributes().get<iresearch::score>();
     ASSERT_FALSE(!scr);
     ASSERT_TRUE(docs->next());
-    docs->score();
-    auto doc_boost = scr->get<tests::sort::boost::score_t>(0) ;
+    scr->evaluate();
+    auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
     ASSERT_EQ(value*value, doc_boost);
     ASSERT_FALSE(docs->next());
   }
@@ -875,8 +869,8 @@ TEST(boolean_query_boost, or) {
      * exists in both results */
     {
       ASSERT_TRUE(docs->next());
-      docs->score();
-      auto doc_boost = scr->get<tests::sort::boost::score_t>(0);
+      scr->evaluate();
+      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
       ASSERT_EQ(2 * value * value, doc_boost);
     }
 
@@ -884,8 +878,8 @@ TEST(boolean_query_boost, or) {
      * exists in second result only */
     {
       ASSERT_TRUE(docs->next());
-      docs->score();
-      auto doc_boost = scr->get<tests::sort::boost::score_t>(0);
+      scr->evaluate();
+      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
       ASSERT_EQ(value * value, doc_boost);
     }
 
@@ -936,16 +930,16 @@ TEST(boolean_query_boost, or) {
     // first hit
     {
       ASSERT_TRUE(docs->next());
-      docs->score();
-      auto doc_boost = scr->get<tests::sort::boost::score_t>(0);
+      scr->evaluate();
+      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
       ASSERT_EQ(3*value*value + value, doc_boost);
     }
 
     // second hit
     {
       ASSERT_TRUE(docs->next());
-      docs->score();
-      auto doc_boost = scr->get<tests::sort::boost::score_t>(0);
+      scr->evaluate();
+      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
       ASSERT_EQ(2*value*value + value, doc_boost);
     }
 
@@ -995,16 +989,16 @@ TEST(boolean_query_boost, or) {
     // first hit
     {
       ASSERT_TRUE(docs->next());
-      docs->score();
-      auto doc_boost = scr->get<tests::sort::boost::score_t>(0);
+      scr->evaluate();
+      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
       ASSERT_EQ(3*value, doc_boost);
     }
 
     // second hit
     {
       ASSERT_TRUE(docs->next());
-      docs->score();
-      auto doc_boost = scr->get<tests::sort::boost::score_t>(0);
+      scr->evaluate();
+      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
       ASSERT_EQ(2*value, doc_boost);
     }
 
@@ -1050,16 +1044,16 @@ TEST(boolean_query_boost, or) {
     // first hit
     {
       ASSERT_TRUE(docs->next());
-      docs->score();
-      auto doc_boost = scr->get<tests::sort::boost::score_t>(0);
+      scr->evaluate();
+      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
       ASSERT_EQ(iresearch::boost::boost_t(0), doc_boost);
     }
 
     // second hit
     {
       ASSERT_TRUE(docs->next());
-      docs->score();
-      auto doc_boost = scr->get<tests::sort::boost::score_t>(0);
+      scr->evaluate();
+      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
       ASSERT_EQ(iresearch::boost::boost_t(0), doc_boost);
     }
 
@@ -1084,7 +1078,6 @@ struct unestimated: public iresearch::filter {
       // prevent iterator to filter out
       return iresearch::type_limits<iresearch::type_t::doc_id_t>::invalid();
     }
-    virtual void score() override { }
     virtual const irs::attribute_view& attributes() const NOEXCEPT override {
       return irs::attribute_view::empty_instance();
     }
@@ -1133,7 +1126,6 @@ struct estimated: public iresearch::filter {
       // prevent iterator to filter out
       return iresearch::type_limits<iresearch::type_t::doc_id_t>::invalid();
     }
-    virtual void score() override { }
     virtual const irs::attribute_view& attributes() const NOEXCEPT override {
       return attrs;
     }
@@ -3984,7 +3976,7 @@ protected:
       auto& score = filter_itr->attributes().get<irs::score>();
 
       while (filter_itr->next()) {
-        filter_itr->score();
+        score->evaluate();
         ASSERT_FALSE(!score);
         scored_result.emplace(score->value(), filter_itr->value());
         ++docs_count;
@@ -4060,7 +4052,7 @@ protected:
       auto& score = filter_itr->attributes().get<irs::score>();
 
       while (filter_itr->next()) {
-        filter_itr->score();
+        score->evaluate();
         ASSERT_FALSE(!score);
         scored_result.emplace(score->value(), filter_itr->value());
         ++docs_count;
