@@ -23,11 +23,24 @@ NS_ROOT
 /// @class score_iterator_adapter
 /// @brief adapter to use doc_iterator with conjunction and disjunction
 ////////////////////////////////////////////////////////////////////////////////
-struct score_iterator_adapter {
+struct score_iterator_adapter : util::noncopyable {
   score_iterator_adapter(doc_iterator::ptr&& it) NOEXCEPT
     : it(std::move(it)) {
     score = &irs::score::extract(this->it->attributes());
   }
+
+  score_iterator_adapter(score_iterator_adapter&& rhs) NOEXCEPT
+    : it(std::move(rhs.it)), score(rhs.score) {
+  }
+
+  score_iterator_adapter& operator=(score_iterator_adapter&& rhs) NOEXCEPT {
+    if (this != &rhs) {
+      it = std::move(rhs.it);
+      score = rhs.score;
+    }
+    return *this;
+  }
+
 
   doc_iterator* operator->() const NOEXCEPT {
     return it.get();
@@ -35,10 +48,6 @@ struct score_iterator_adapter {
 
   operator doc_iterator::ptr&() NOEXCEPT {
     return it;
-  }
-
-  bool operator>(const score_iterator_adapter& rhs) const NOEXCEPT {
-    return it->value() > rhs->value();
   }
 
   doc_iterator::ptr it;

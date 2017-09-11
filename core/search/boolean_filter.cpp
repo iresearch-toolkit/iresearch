@@ -255,11 +255,6 @@ class min_match_query final : public boolean_query {
       const order::prepared& ord,
       iterator begin,
       iterator end) const override {
-//   typedef score_wrapper<doc_iterator::ptr> score_wrapper_t;
-//   typedef cost_wrapper<score_wrapper_t> cost_wrapper_t;
-//   typedef detail::disjunction<cost_wrapper_t> disjunction_t;
-//   return detail::make_disjunction<disjunction_t>(
-
     assert(std::distance(begin, end) >= 0);
     const size_t size = size_t(std::distance(begin, end));
 
@@ -315,8 +310,10 @@ class min_match_query final : public boolean_query {
     if (min_match_count == size) {
       // pure conjunction
       return doc_iterator::make<conjunction>(
-        conjunction::doc_iterators_t(itrs.begin(), itrs.end()),
-        ord
+        conjunction::doc_iterators_t(
+          std::make_move_iterator(itrs.begin()),
+          std::make_move_iterator(itrs.end())
+        ), ord
       );
     }
 

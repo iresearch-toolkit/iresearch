@@ -346,10 +346,17 @@ class min_match_disjunction : public doc_iterator_base {
       est = cost::extract(this->it->attributes(), cost::MAX);
     }
 
-//    bool operator>(const cost_iterator_adapter& rhs) const NOEXCEPT {
-//      return score_iterator_adapter::operator>(rhs)
-//        || (it->value() == rhs->value() && est > rhs.est);
-//    }
+    cost_iterator_adapter(cost_iterator_adapter&& rhs) NOEXCEPT
+      : score_iterator_adapter(std::move(rhs)), est(rhs.est) {
+    }
+
+    cost_iterator_adapter& operator=(cost_iterator_adapter&& rhs) NOEXCEPT {
+      if (this != &rhs) {
+        score_iterator_adapter::operator=(std::move(rhs));
+        est = rhs.est;
+      }
+      return *this;
+    }
 
     cost::cost_t est;
   }; // cost_iterator_adapter
@@ -508,9 +515,9 @@ class min_match_disjunction : public doc_iterator_base {
         }
       }
 
-      /* can't find enough iterators equal to target here.
-       * start next iteration. execute next for all lead iterators
-       * and move them to head */
+      // can't find enough iterators equal to target here.
+      // start next iteration. execute next for all lead iterators
+      // and move them to head
       if (!pop_lead()) {
         return doc_ = type_limits<type_t::doc_id_t>::eof();
       }
@@ -683,9 +690,9 @@ class min_match_disjunction : public doc_iterator_base {
     });
   }
 
-  doc_iterators_t itrs_; /* sub iterators */
-  size_t min_match_count_; /* minimum number of hits */
-  size_t lead_; /* number of iterators in lead group */
+  doc_iterators_t itrs_; // sub iterators
+  size_t min_match_count_; // minimum number of hits
+  size_t lead_; // number of iterators in lead group
   doc_id_t doc_; // current doc
 }; // min_match_disjunction
 
