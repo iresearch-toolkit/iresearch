@@ -85,11 +85,6 @@ class phrase_query : public filter::prepared {
   virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord) const override {
-    typedef detail::conjunction<score_wrapper<
-      doc_iterator::ptr>
-    > conjunction_t;
-    typedef phrase_iterator<conjunction_t> phrase_iterator_t;
-
     // get phrase state for the specified reader
     auto phrase_state = states_.find(rdr);
     if (!phrase_state) {
@@ -100,10 +95,10 @@ class phrase_query : public filter::prepared {
     // get features required for query & order
     auto features = ord.features() | by_phrase::required();
 
-    phrase_iterator_t::doc_iterators_t itrs;
+    phrase_iterator::doc_iterators_t itrs;
     itrs.reserve(phrase_state->terms.size());
 
-    phrase_iterator_t::positions_t positions;
+    phrase_iterator::positions_t positions;
     positions.reserve(phrase_state->terms.size());
 
     // find term using cached state
@@ -140,7 +135,7 @@ class phrase_query : public filter::prepared {
       ++term_stats;
     }
 
-    return detail::make_conjunction<phrase_iterator_t>(
+    return make_conjunction<phrase_iterator>(
       std::move(itrs), ord, std::move(positions)
     );
   }

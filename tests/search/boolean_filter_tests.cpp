@@ -131,10 +131,11 @@ std::vector<iresearch::doc_id_t> union_all(
   return result;
 }
 
-std::vector<ir::doc_iterator::ptr> execute_all(
+template<typename DocIterator>
+std::vector<DocIterator> execute_all(
     const std::vector<std::vector<iresearch::doc_id_t>>& docs
 ) {
-  std::vector<ir::doc_iterator::ptr> itrs;
+  std::vector<DocIterator> itrs;
   itrs.reserve( docs.size() );
   std::transform(
     docs.begin(), docs.end(),
@@ -1453,7 +1454,7 @@ TEST( boolean_query_estimation, and ) {
 // ----------------------------------------------------------------------------
 
 TEST(basic_disjunction, next) {
-  typedef iresearch::detail::basic_disjunction<ir::doc_iterator::ptr> disjunction;
+  typedef iresearch::basic_disjunction disjunction;
   // simple case
   {
     std::vector<iresearch::doc_id_t> first{ 1, 2, 5, 7, 9, 11, 45 };
@@ -1580,7 +1581,7 @@ TEST(basic_disjunction, next) {
 }
 
 TEST(basic_disjunction_test, seek) {
-  typedef iresearch::detail::basic_disjunction<iresearch::doc_iterator::ptr> disjunction;
+  typedef iresearch::basic_disjunction disjunction;
   // simple case
   {
     std::vector<iresearch::doc_id_t> first{ 1, 2, 5, 7, 9, 11, 45 };
@@ -1681,7 +1682,7 @@ TEST(basic_disjunction_test, seek) {
 // ----------------------------------------------------------------------------
 
 TEST(disjunction_test, next) {
-  using disjunction = iresearch::detail::disjunction<iresearch::doc_iterator::ptr>;
+  using disjunction = iresearch::disjunction;
 
   // simple case
   {
@@ -1694,7 +1695,7 @@ TEST(disjunction_test, next) {
     std::vector<iresearch::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 45 };
     std::vector<iresearch::doc_id_t> result;
     {
-      disjunction it(detail::execute_all(docs));
+      disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
@@ -1718,7 +1719,7 @@ TEST(disjunction_test, next) {
     std::vector<iresearch::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 45, 79, 101, 141, 256, 1025, 1101 };
     std::vector<iresearch::doc_id_t> result;
     {
-      disjunction it(detail::execute_all(docs));
+      disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
@@ -1740,7 +1741,7 @@ TEST(disjunction_test, next) {
     std::vector<iresearch::doc_id_t> expected{ 1, 2, 3 };
     std::vector<iresearch::doc_id_t> result;
     {
-      disjunction it(detail::execute_all(docs));
+      disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
@@ -1759,7 +1760,7 @@ TEST(disjunction_test, next) {
 
     std::vector<iresearch::doc_id_t> result;
     {
-      disjunction it(detail::execute_all(docs));
+      disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
@@ -1780,7 +1781,7 @@ TEST(disjunction_test, next) {
 
     std::vector<iresearch::doc_id_t> result;
     {
-      disjunction it(detail::execute_all(docs));
+      disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
@@ -1800,7 +1801,7 @@ TEST(disjunction_test, next) {
     std::vector<iresearch::doc_id_t> expected{ };
     std::vector<iresearch::doc_id_t> result;
     {
-      disjunction it(detail::execute_all(docs));
+      disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
@@ -1813,7 +1814,7 @@ TEST(disjunction_test, next) {
 }
 
 TEST(disjunction_test, seek) {
-  using disjunction = iresearch::detail::disjunction<iresearch::doc_iterator::ptr>;
+  using disjunction = iresearch::disjunction;
 
   // simple case
   {
@@ -1836,7 +1837,7 @@ TEST(disjunction_test, seek) {
         {57, ir::type_limits<ir::type_t::doc_id_t>::eof()}
     };
 
-    disjunction it(detail::execute_all(docs));
+    disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
     for (const auto& target : expected) {
       ASSERT_EQ(target.expected, it.seek(target.target));
     }
@@ -1866,7 +1867,7 @@ TEST(disjunction_test, seek) {
         {2001, ir::type_limits<ir::type_t::doc_id_t>::eof()}
     };
 
-    disjunction it(detail::execute_all(docs));
+    disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
     for (const auto& target : expected) {
       ASSERT_EQ(target.expected, it.seek(target.target));
     }
@@ -1883,7 +1884,7 @@ TEST(disjunction_test, seek) {
       {ir::type_limits<ir::type_t::doc_id_t>::invalid(), ir::type_limits<ir::type_t::doc_id_t>::eof()}
     };
 
-    disjunction it(detail::execute_all(docs));
+    disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
     for (const auto& target : expected) {
       ASSERT_EQ(target.expected, it.seek(target.target));
     }
@@ -1909,7 +1910,7 @@ TEST(disjunction_test, seek) {
       {57, ir::type_limits<ir::type_t::doc_id_t>::eof()}
     };
 
-    disjunction it(detail::execute_all(docs));
+    disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
     for (const auto& target : expected) {
       ASSERT_EQ(target.expected, it.seek(target.target));
     }
@@ -1934,7 +1935,7 @@ TEST(disjunction_test, seek) {
         {1201, ir::type_limits<ir::type_t::doc_id_t>::eof()}
     };
 
-    disjunction it(detail::execute_all(docs));
+    disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
     for (const auto& target : expected) {
       ASSERT_EQ(target.expected, it.seek(target.target));
     }
@@ -1946,7 +1947,7 @@ TEST(disjunction_test, seek) {
 // ----------------------------------------------------------------------------
 
 TEST(min_match_disjunction_test, next) {
-  using disjunction = ir::detail::min_match_disjunction<ir::doc_iterator::ptr>;
+  using disjunction = ir::min_match_disjunction;
   // single dataset
   {
     std::vector<std::vector<iresearch::doc_id_t>> docs{
@@ -1958,7 +1959,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<iresearch::doc_id_t> result;
       {
         disjunction it(
-          detail::execute_all(docs),
+          detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
           min_match_count
         );
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), it.value());
@@ -1976,7 +1977,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<iresearch::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all(docs),
+            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
             min_match_count
         );
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), it.value());
@@ -1995,7 +1996,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<iresearch::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all(docs),
+            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
             min_match_count
         );
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), it.value());
@@ -2014,7 +2015,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<iresearch::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all(docs),
+            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
             min_match_count
         );
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), it.value());
@@ -2033,7 +2034,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<iresearch::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all(docs),
+            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
             min_match_count
         );
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), it.value());
@@ -2062,7 +2063,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<iresearch::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all(docs),
+            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
             min_match_count
         );
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), it.value());
@@ -2081,7 +2082,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<iresearch::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all(docs),
+            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
             min_match_count
         );
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), it.value());
@@ -2100,7 +2101,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<iresearch::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all(docs),
+            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
             min_match_count
         );
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), it.value());
@@ -2119,7 +2120,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<iresearch::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all(docs),
+            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
             min_match_count
         );
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), it.value());
@@ -2139,7 +2140,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<iresearch::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all(docs),
+            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
             min_match_count
         );
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), it.value());
@@ -2159,7 +2160,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<iresearch::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all(docs),
+            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
             min_match_count
         );
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), it.value());
@@ -2179,7 +2180,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<iresearch::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all(docs),
+            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
             min_match_count
         );
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), it.value());
@@ -2208,7 +2209,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<iresearch::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all(docs),
+            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
             min_match_count
         );
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), it.value());
@@ -2227,7 +2228,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<iresearch::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all(docs),
+            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
             min_match_count
         );
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), it.value());
@@ -2246,7 +2247,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<iresearch::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all(docs),
+            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
             min_match_count
         );
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), it.value());
@@ -2265,7 +2266,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<iresearch::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all(docs),
+            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
             min_match_count
         );
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), it.value());
@@ -2285,7 +2286,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<iresearch::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all(docs),
+            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
             min_match_count
         );
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), it.value());
@@ -2305,7 +2306,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<iresearch::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all(docs),
+            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
             min_match_count
         );
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), it.value());
@@ -2325,7 +2326,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<iresearch::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all(docs),
+            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
             min_match_count
         );
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), it.value());
@@ -2354,7 +2355,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<iresearch::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all(docs),
+            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
             min_match_count
         );
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), it.value());
@@ -2373,7 +2374,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<iresearch::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all(docs),
+            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
             min_match_count
         );
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), it.value());
@@ -2391,7 +2392,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<iresearch::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all(docs),
+            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
             min_match_count
         );
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), it.value());
@@ -2409,7 +2410,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<iresearch::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all(docs),
+            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
             min_match_count
         );
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), it.value());
@@ -2428,7 +2429,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<iresearch::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all(docs),
+            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
             min_match_count
         );
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), it.value());
@@ -2447,7 +2448,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<iresearch::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all(docs),
+            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
             min_match_count
         );
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), it.value());
@@ -2466,7 +2467,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<iresearch::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all(docs),
+            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
             min_match_count
         );
         ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), it.value());
@@ -2493,7 +2494,7 @@ TEST(min_match_disjunction_test, next) {
         std::vector<iresearch::doc_id_t> result;
         {
           disjunction it(
-              detail::execute_all(docs), 0
+              detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs), 0
           );
           ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), it.value());
           for ( ; it.next(); ) {
@@ -2509,7 +2510,7 @@ TEST(min_match_disjunction_test, next) {
         std::vector<iresearch::doc_id_t> result;
         {
           disjunction it(
-              detail::execute_all(docs), 1
+              detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs), 1
           );
           ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), it.value());
           for ( ; it.next(); ) {
@@ -2525,7 +2526,7 @@ TEST(min_match_disjunction_test, next) {
         std::vector<iresearch::doc_id_t> result;
         {
           disjunction it(
-              detail::execute_all(docs), ir::integer_traits<size_t>::const_max
+              detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs), ir::integer_traits<size_t>::const_max
           );
           ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), it.value());
           for ( ; it.next(); ) {
@@ -2541,7 +2542,7 @@ TEST(min_match_disjunction_test, next) {
 }
 
 TEST(min_match_disjunction_test, seek) {
-  using disjunction = ir::detail::min_match_disjunction<ir::doc_iterator::ptr>;
+  using disjunction = ir::min_match_disjunction;
 
   // simple case
   {
@@ -2567,7 +2568,7 @@ TEST(min_match_disjunction_test, seek) {
       };
 
       disjunction it(
-        detail::execute_all(docs),
+        detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
         min_match_count
       );
       for (const auto& target : expected) {
@@ -2591,7 +2592,7 @@ TEST(min_match_disjunction_test, seek) {
       };
 
       disjunction it(
-          detail::execute_all(docs),
+          detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
           min_match_count
       );
       for (const auto& target : expected) {
@@ -2613,7 +2614,7 @@ TEST(min_match_disjunction_test, seek) {
       };
 
       disjunction it(
-          detail::execute_all(docs),
+          detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
           min_match_count
       );
       for (const auto& target : expected) {
@@ -2631,7 +2632,7 @@ TEST(min_match_disjunction_test, seek) {
       };
 
       disjunction it(
-          detail::execute_all(docs),
+          detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
           min_match_count
       );
       for (const auto& target : expected) {
@@ -2649,7 +2650,7 @@ TEST(min_match_disjunction_test, seek) {
       };
 
       disjunction it(
-          detail::execute_all(docs),
+          detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
           min_match_count
       );
       for (const auto& target : expected) {
@@ -2685,7 +2686,7 @@ TEST(min_match_disjunction_test, seek) {
       };
 
       disjunction it(
-          detail::execute_all(docs),
+          detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
           min_match_count
       );
       for (const auto& target : expected) {
@@ -2710,7 +2711,7 @@ TEST(min_match_disjunction_test, seek) {
       };
 
       disjunction it(
-          detail::execute_all(docs),
+          detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
           min_match_count
       );
       for (const auto& target : expected) {
@@ -2732,7 +2733,7 @@ TEST(min_match_disjunction_test, seek) {
       };
 
       disjunction it(
-          detail::execute_all(docs),
+          detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
           min_match_count
       );
       for (const auto& target : expected) {
@@ -2749,7 +2750,7 @@ TEST(min_match_disjunction_test, seek) {
       };
 
       disjunction it(
-          detail::execute_all(docs),
+          detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
           min_match_count
       );
       for (const auto& target : expected) {
@@ -2767,7 +2768,7 @@ TEST(min_match_disjunction_test, seek) {
       };
 
       disjunction it(
-          detail::execute_all(docs),
+          detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
           min_match_count
       );
       for (const auto& target : expected) {
@@ -2790,7 +2791,7 @@ TEST(min_match_disjunction_test, seek) {
 
     {
       disjunction it(
-          detail::execute_all(docs), 0
+          detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs), 0
       );
       for (const auto& target : expected) {
         ASSERT_EQ(target.expected, it.seek(target.target));
@@ -2799,7 +2800,7 @@ TEST(min_match_disjunction_test, seek) {
 
     {
       disjunction it(
-          detail::execute_all(docs), 1
+          detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs), 1
       );
       for (const auto& target : expected) {
         ASSERT_EQ(target.expected, it.seek(target.target));
@@ -2808,7 +2809,7 @@ TEST(min_match_disjunction_test, seek) {
 
     {
       disjunction it(
-          detail::execute_all(docs), ir::integer_traits<size_t>::const_max
+          detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs), ir::integer_traits<size_t>::const_max
       );
       for (const auto& target : expected) {
         ASSERT_EQ(target.expected, it.seek(target.target));
@@ -2839,7 +2840,7 @@ TEST(min_match_disjunction_test, seek) {
 
     {
       disjunction it(
-          detail::execute_all(docs), 0
+          detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs), 0
       );
       for (const auto& target : expected) {
         ASSERT_EQ(target.expected, it.seek(target.target));
@@ -2848,7 +2849,7 @@ TEST(min_match_disjunction_test, seek) {
 
     {
       disjunction it(
-          detail::execute_all(docs), 1
+          detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs), 1
       );
       for (const auto& target : expected) {
         ASSERT_EQ(target.expected, it.seek(target.target));
@@ -2857,7 +2858,7 @@ TEST(min_match_disjunction_test, seek) {
 
     {
       disjunction it(
-          detail::execute_all(docs), 2
+          detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs), 2
       );
       for (const auto& target : expected) {
         ASSERT_EQ(target.expected, it.seek(target.target));
@@ -2866,7 +2867,7 @@ TEST(min_match_disjunction_test, seek) {
 
     {
       disjunction it(
-          detail::execute_all(docs), ir::integer_traits<size_t>::const_max
+          detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs), ir::integer_traits<size_t>::const_max
       );
       for (const auto& target : expected) {
         ASSERT_EQ(target.expected, it.seek(target.target));
@@ -2898,7 +2899,7 @@ TEST(min_match_disjunction_test, seek) {
 
       {
         disjunction it(
-            detail::execute_all(docs), 0
+            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs), 0
         );
         for (const auto& target : expected) {
           ASSERT_EQ(target.expected, it.seek(target.target));
@@ -2907,7 +2908,7 @@ TEST(min_match_disjunction_test, seek) {
 
       {
         disjunction it(
-            detail::execute_all(docs), 1
+            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs), 1
         );
         for (const auto& target : expected) {
           ASSERT_EQ(target.expected, it.seek(target.target));
@@ -2925,7 +2926,7 @@ TEST(min_match_disjunction_test, seek) {
 
       {
         disjunction it(
-            detail::execute_all(docs), 2
+            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs), 2
         );
         for (const auto& target : expected) {
           ASSERT_EQ(target.expected, it.seek(target.target));
@@ -2942,7 +2943,7 @@ TEST(min_match_disjunction_test, seek) {
 
       {
         disjunction it(
-            detail::execute_all(docs), 3
+            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs), 3
         );
         for (const auto& target : expected) {
           ASSERT_EQ(target.expected, it.seek(target.target));
@@ -2960,7 +2961,7 @@ TEST(min_match_disjunction_test, seek) {
 
       {
         disjunction it(
-            detail::execute_all(docs), 5
+            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs), 5
         );
         for (const auto& target : expected) {
           ASSERT_EQ(target.expected, it.seek(target.target));
@@ -2969,7 +2970,7 @@ TEST(min_match_disjunction_test, seek) {
 
       {
         disjunction it(
-            detail::execute_all(docs), ir::integer_traits<size_t>::const_max
+            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs), ir::integer_traits<size_t>::const_max
         );
         for (const auto& target : expected) {
           ASSERT_EQ(target.expected, it.seek(target.target));
@@ -2984,7 +2985,7 @@ TEST(min_match_disjunction_test, seek) {
 // ----------------------------------------------------------------------------
 
 TEST(conjunction_test, next) {
-  using conjunction = ir::detail::conjunction<ir::doc_iterator::ptr>;
+  using conjunction = ir::conjunction;
 
   // simple case
   {
@@ -2998,7 +2999,7 @@ TEST(conjunction_test, next) {
     std::vector<iresearch::doc_id_t> expected{ 1, 5 };
     std::vector<iresearch::doc_id_t> result;
     {
-      conjunction it(detail::execute_all(docs));
+      conjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
       ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), it.value());
       for ( ; it.next(); ) {
         result.push_back( it.value() );
@@ -3019,7 +3020,7 @@ TEST(conjunction_test, next) {
     std::vector<iresearch::doc_id_t> expected{ 1, 5, 11, 21, 27, 31 };
     std::vector<iresearch::doc_id_t> result;
     {
-      conjunction it(detail::execute_all(docs));
+      conjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
       ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), it.value());
       for ( ; it.next(); ) {
         result.push_back( it.value() );
@@ -3040,7 +3041,7 @@ TEST(conjunction_test, next) {
     std::vector<iresearch::doc_id_t> expected{ 1, 5, 11, 21, 27, 31 };
     std::vector<iresearch::doc_id_t> result;
     {
-      conjunction it(detail::execute_all(docs));
+      conjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
       ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), it.value());
       for ( ; it.next(); ) {
         result.push_back( it.value() );
@@ -3063,7 +3064,7 @@ TEST(conjunction_test, next) {
     std::vector<iresearch::doc_id_t> expected{ 1, 5 };
     std::vector<iresearch::doc_id_t> result;
     {
-      conjunction it(detail::execute_all(docs));
+      conjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
       ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), it.value());
       for ( ; it.next(); ) {
         result.push_back( it.value() );
@@ -3085,7 +3086,7 @@ TEST(conjunction_test, next) {
 
     std::vector<iresearch::doc_id_t> result;
     {
-      conjunction it(detail::execute_all(docs));
+      conjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
       ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), it.value());
       for ( ; it.next(); ) {
         result.push_back( it.value() );
@@ -3104,7 +3105,7 @@ TEST(conjunction_test, next) {
 
     std::vector<iresearch::doc_id_t> result;
     {
-      conjunction it(detail::execute_all(docs));
+      conjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
       ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), it.value());
       for ( ; it.next(); ) {
         result.push_back(it.value());
@@ -3127,7 +3128,7 @@ TEST(conjunction_test, next) {
     std::vector<iresearch::doc_id_t> expected{ };
     std::vector<iresearch::doc_id_t> result;
     {
-      conjunction it(detail::execute_all(docs));
+      conjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
       ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), it.value());
       for ( ; it.next(); ) {
         result.push_back( it.value() );
@@ -3147,7 +3148,7 @@ TEST(conjunction_test, next) {
     std::vector<iresearch::doc_id_t> expected{};
     std::vector<iresearch::doc_id_t> result;
     {
-      conjunction it(detail::execute_all(docs));
+      conjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
       ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), it.value());
       for ( ; it.next(); ) {
         result.push_back( it.value() );
@@ -3160,7 +3161,7 @@ TEST(conjunction_test, next) {
 }
 
 TEST(conjunction_test, seek) {
-  using conjunction = ir::detail::conjunction<ir::doc_iterator::ptr>;
+  using conjunction = ir::conjunction;
 
   // simple case
   {
@@ -3184,7 +3185,7 @@ TEST(conjunction_test, seek) {
       {257, ir::type_limits<ir::type_t::doc_id_t>::eof()}
     };
 
-    conjunction it(detail::execute_all(docs));
+    conjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
     for (const auto& target : expected) {
       ASSERT_EQ(target.expected, it.seek(target.target));
     }
@@ -3212,7 +3213,7 @@ TEST(conjunction_test, seek) {
         {257, ir::type_limits<ir::type_t::doc_id_t>::eof()}
     };
 
-    conjunction it(detail::execute_all(docs));
+    conjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
     for (const auto& target : expected) {
       ASSERT_EQ(target.expected, it.seek(target.target));
     }
@@ -3229,7 +3230,7 @@ TEST(conjunction_test, seek) {
       {ir::type_limits<ir::type_t::doc_id_t>::invalid(), ir::type_limits<ir::type_t::doc_id_t>::eof()}
     };
 
-    conjunction it(detail::execute_all(docs));
+    conjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
     for (const auto& target : expected) {
       ASSERT_EQ(target.expected, it.seek(target.target));
     }
@@ -3255,7 +3256,7 @@ TEST(conjunction_test, seek) {
       {57, ir::type_limits<ir::type_t::doc_id_t>::eof()}
     };
 
-    conjunction it(detail::execute_all(docs));
+    conjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
     for (const auto& target : expected) {
       ASSERT_EQ(target.expected, it.seek(target.target));
     }
@@ -3280,7 +3281,7 @@ TEST(conjunction_test, seek) {
       {257, ir::type_limits<ir::type_t::doc_id_t>::eof()}
     };
 
-    conjunction it(detail::execute_all(docs));
+    conjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
     for (const auto& target : expected) {
       ASSERT_EQ(target.expected, it.seek(target.target));
     }
@@ -3299,7 +3300,7 @@ TEST(exclusion_test, next) {
     std::vector<iresearch::doc_id_t> expected{ 2, 7, 9, 11, 45 };
     std::vector<iresearch::doc_id_t> result;
     {
-      iresearch::detail::exclusion it(
+      iresearch::exclusion it(
         iresearch::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
         iresearch::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
       );
@@ -3319,7 +3320,7 @@ TEST(exclusion_test, next) {
     std::vector<iresearch::doc_id_t> excluded{};
     std::vector<iresearch::doc_id_t> result;
     {
-      iresearch::detail::exclusion it(
+      iresearch::exclusion it(
         iresearch::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
         iresearch::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
       );
@@ -3339,7 +3340,7 @@ TEST(exclusion_test, next) {
     std::vector<iresearch::doc_id_t> excluded{ 1, 5, 6, 12, 29 };
     std::vector<iresearch::doc_id_t> result;
     {
-      iresearch::detail::exclusion it(
+      iresearch::exclusion it(
         iresearch::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
         iresearch::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
       );
@@ -3360,7 +3361,7 @@ TEST(exclusion_test, next) {
     std::vector<iresearch::doc_id_t> expected{};
     std::vector<iresearch::doc_id_t> result;
     {
-      iresearch::detail::exclusion it(
+      iresearch::exclusion it(
         iresearch::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
         iresearch::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
       );
@@ -3380,7 +3381,7 @@ TEST(exclusion_test, next) {
     std::vector<iresearch::doc_id_t> excluded{};
     std::vector<iresearch::doc_id_t> result;
     {
-      iresearch::detail::exclusion it(
+      iresearch::exclusion it(
         iresearch::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
         iresearch::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
       );
@@ -3401,7 +3402,7 @@ TEST(exclusion_test, next) {
     std::vector<iresearch::doc_id_t> expected{};
     std::vector<iresearch::doc_id_t> result;
     {
-      iresearch::detail::exclusion it(
+      iresearch::exclusion it(
         iresearch::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
         iresearch::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
       );
@@ -3432,7 +3433,7 @@ TEST(exclusion_test, seek) {
         {43, 45},
         {57, ir::type_limits<ir::type_t::doc_id_t>::eof()}
     };
-    iresearch::detail::exclusion it(
+    iresearch::exclusion it(
       iresearch::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
       iresearch::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
     );
@@ -3451,7 +3452,7 @@ TEST(exclusion_test, seek) {
       {6, ir::type_limits<ir::type_t::doc_id_t>::eof()},
       {ir::type_limits<ir::type_t::doc_id_t>::invalid(), ir::type_limits<ir::type_t::doc_id_t>::eof()}
     };
-    iresearch::detail::exclusion it(
+    iresearch::exclusion it(
       iresearch::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
       iresearch::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
     );
@@ -3475,7 +3476,7 @@ TEST(exclusion_test, seek) {
       {45, ir::type_limits<ir::type_t::doc_id_t>::eof()},
       {57, ir::type_limits<ir::type_t::doc_id_t>::eof()}
     };
-    iresearch::detail::exclusion it(
+    iresearch::exclusion it(
       iresearch::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
       iresearch::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
     );
@@ -3498,7 +3499,7 @@ TEST(exclusion_test, seek) {
       {45, 45},
       {57, ir::type_limits<ir::type_t::doc_id_t>::eof()}
     };
-    iresearch::detail::exclusion it(
+    iresearch::exclusion it(
       iresearch::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
       iresearch::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
     );

@@ -39,7 +39,14 @@ class IRESEARCH_API score : public attribute {
 
   DECLARE_ATTRIBUTE_TYPE();
 
-  score() = default;
+  static const irs::score& no_score() NOEXCEPT;
+
+  static const irs::score& extract(const attribute_view& attrs) NOEXCEPT {
+    const irs::score* score = attrs.get<irs::score>();
+    return score ? *score : no_score();
+  }
+
+  score() NOEXCEPT;
 
   const byte_type* c_str() const {
     return value_.c_str();
@@ -54,7 +61,8 @@ class IRESEARCH_API score : public attribute {
   }
 
   void evaluate() const {
-    func_(const_cast<score&>(*this).leak());
+    assert(func_);
+    func_(leak());
   }
 
   bool prepare(const order::prepared& ord, score_f&& func) {
@@ -70,7 +78,9 @@ class IRESEARCH_API score : public attribute {
   }
 
  private:
-  byte_type* leak() { return &(value_[0]); }
+  byte_type* leak() const {
+    return const_cast<byte_type*>(&(value_[0]));
+  }
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   bstring value_;

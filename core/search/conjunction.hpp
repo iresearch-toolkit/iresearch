@@ -19,113 +19,31 @@
 
 NS_ROOT
 
-template<typename IteratorWrapper>
-struct iterator_traits {
-  typedef IteratorWrapper wrapper_t;
-  
-  static cost::cost_t estimate(const wrapper_t& it, cost::cost_t def = cost::MAX) {
-    return cost::extract(it->attributes(), def);
+////////////////////////////////////////////////////////////////////////////////
+/// @class score_iterator_adapter
+/// @brief adapter to use doc_iterator with conjunction and disjunction
+////////////////////////////////////////////////////////////////////////////////
+struct score_iterator_adapter {
+  score_iterator_adapter(doc_iterator::ptr&& it) NOEXCEPT
+    : it(std::move(it)) {
+    score = &irs::score::extract(this->it->attributes());
   }
 
-  static const byte_type* score(wrapper_t&) {
-    return nullptr;
+  doc_iterator* operator->() const NOEXCEPT {
+    return it.get();
   }
 
-  static bool greater(const wrapper_t& lhs, const wrapper_t& rhs) {
-    return lhs->value() > rhs->value();
-  }
-}; // iterator_traits 
-
-template<typename BaseWrapper>
-struct score_wrapper : BaseWrapper {
-  // implicit conversion
-  score_wrapper(BaseWrapper&& base) NOEXCEPT 
-    : BaseWrapper(std::move(base)) {
-    score = (*this)->attributes().template get<iresearch::score>().get();
+  operator doc_iterator::ptr&() NOEXCEPT {
+    return it;
   }
 
-  score_wrapper(score_wrapper&& rhs) NOEXCEPT 
-    : BaseWrapper(std::move(rhs)), score(rhs.score) {
-    rhs.score = nullptr;
-  }  
-
-  score_wrapper& operator=(score_wrapper&& rhs) NOEXCEPT {
-    if (this != &rhs) {
-      BaseWrapper::operator=(std::move(rhs));
-      score = rhs.score;
-      rhs.score = nullptr;
-    }
-    return *this;
+  bool operator>(const score_iterator_adapter& rhs) const NOEXCEPT {
+    return it->value() > rhs->value();
   }
 
-  irs::score* score{};
-}; // score_wrapper
-
-template<typename DocIterator>
-struct iterator_traits<score_wrapper<DocIterator>> {
-  typedef score_wrapper<DocIterator> wrapper_t;
-
-  static cost::cost_t estimate(const wrapper_t& it, cost::cost_t def = cost::MAX) {
-    return cost::extract(it->attributes(), def);
-  }
-
-  static const byte_type* score(wrapper_t& it) {
-    auto* score = it.score;
-    score->evaluate();
-    return score->c_str();
-  }
-
-  static bool greater(const wrapper_t& lhs, const wrapper_t& rhs) {
-    return lhs->value() > rhs->value();
-  }
-}; // iterator_traits 
-
-template<typename BaseWrapper>
-struct cost_wrapper : BaseWrapper {
-  // implicit conversion
-  cost_wrapper(BaseWrapper&& it) 
-    : BaseWrapper(std::move(it)) {      
-    cost = iterator_traits<BaseWrapper>::estimate(*this);
-  } 
-
-  cost_wrapper(cost_wrapper&& rhs) NOEXCEPT
-    : BaseWrapper(std::move(rhs)),
-      cost(rhs.cost) {
-     cost = cost::MAX;    
-  }
-
-  cost_wrapper& operator=(cost_wrapper&& rhs) NOEXCEPT {
-    if (this != &rhs) {
-      BaseWrapper::operator=(std::move(rhs));
-      cost = rhs.cost;
-      rhs.cost = cost::MAX;
-    }
-    return *this;
-  }
-
-  iresearch::cost::cost_t cost;
-}; // cost_wrapper
-
-template<typename BaseWrapper>
-struct iterator_traits<cost_wrapper<BaseWrapper>> {
-  typedef cost_wrapper<BaseWrapper> wrapper_t;
-
-  static cost::cost_t estimate(const wrapper_t& it, cost::cost_t def = cost::MAX) {
-    UNUSED(def);
-    return it.cost; 
-  }
-
-  static const byte_type* score(wrapper_t& it) {
-    return iterator_traits<BaseWrapper>::score(it);
-  }
-
-  static bool greater(const wrapper_t& lhs, const wrapper_t& rhs) {    
-    return iterator_traits<BaseWrapper>::greater(lhs, rhs) 
-      || (lhs->value() == rhs->value() && lhs.cost > rhs.cost);
-  }
-}; // iterator_traits 
-
-NS_BEGIN(detail)
+  doc_iterator::ptr it;
+  const irs::score* score;
+}; // score_iterator_adapter
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class conjunction
@@ -137,12 +55,10 @@ NS_BEGIN(detail)
 ///   V  [n] <-- end
 ///-----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
-template<typename IteratorWrapper, typename IteratorTraits = iterator_traits<IteratorWrapper>> 
 class conjunction : public doc_iterator_base {
  public:
-  typedef IteratorWrapper doc_iterator;
-  typedef IteratorTraits traits_t;
-  typedef std::vector<doc_iterator> doc_iterators_t;
+  typedef score_iterator_adapter doc_iterator_t;
+  typedef std::vector<doc_iterator_t> doc_iterators_t;
   typedef typename doc_iterators_t::const_iterator iterator;
 
   conjunction(
@@ -154,21 +70,23 @@ class conjunction : public doc_iterator_base {
 
     // sort subnodes in ascending order by their cost
     std::sort(itrs_.begin(), itrs_.end(),
-      [](const doc_iterator& lhs, const doc_iterator& rhs) {
-        return traits_t::estimate(lhs) < traits_t::estimate(rhs);
+      [](const doc_iterator_t& lhs, const doc_iterator_t& rhs) {
+        return cost::extract(lhs->attributes(), cost::MAX) < cost::extract(rhs->attributes(), cost::MAX);
     });
 
     // set front iterator
-    front_ = &itrs_.front();
+    front_ = itrs_.front().it.get();
 
-    // estimate iterator
-    estimate(traits_t::estimate(*front_));
+    // estimate iterator (front's cost is already cached)
+    estimate(cost::extract(front_->attributes(), cost::MAX));
 
     // prepare score
     prepare_score([this](byte_type* score) {
       ord_->prepare_score(score);
-      for(auto& it : itrs_) {
-        ord_->add(score, traits_t::score(it));
+      for (auto& it : itrs_) {
+        const auto* it_score = it.score;
+        it_score->evaluate();
+        ord_->add(score, it_score->c_str());
       }
     });
   }
@@ -180,19 +98,19 @@ class conjunction : public doc_iterator_base {
   size_t size() const { return itrs_.size(); }
 
   virtual doc_id_t value() const override {
-    return (*front_)->value();
+    return front_->value();
   }
 
-  virtual bool next() override {      
-    if (!(*front_)->next()) {
+  virtual bool next() override {
+    if (!front_->next()) {
       return false;
     }
 
-    return !type_limits<type_t::doc_id_t>::eof(converge((*front_)->value()));
+    return !type_limits<type_t::doc_id_t>::eof(converge(front_->value()));
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
-    if (type_limits<type_t::doc_id_t>::eof(target = (*front_)->seek(target))) {
+    if (type_limits<type_t::doc_id_t>::eof(target = front_->seek(target))) {
       return target;
     }
 
@@ -204,7 +122,7 @@ class conjunction : public doc_iterator_base {
   // if it impossible tries to find first convergence place
   doc_id_t converge(doc_id_t target) {
     for (auto rest = seek_rest(target); target != rest;) {
-      target = (*front_)->seek(rest);
+      target = front_->seek(rest);
       rest = seek_rest(target);
     }
 
@@ -230,7 +148,7 @@ class conjunction : public doc_iterator_base {
   }
 
   doc_iterators_t itrs_;
-  doc_iterator* front_;
+  irs::doc_iterator* front_;
 }; // conjunction
 
 //////////////////////////////////////////////////////////////////////////////
@@ -240,64 +158,21 @@ template<typename Conjunction, typename... Args>
 doc_iterator::ptr make_conjunction(
     typename Conjunction::doc_iterators_t&& itrs,
     Args&&... args) {
-  typedef Conjunction conjunction_t;
-
-  /* check the size after execution */
-  const size_t size = itrs.size();
-  if (size < 1) {
-    return doc_iterator::empty();
-  } else if (size < 2) {
-    return std::move(itrs.front());
-  }
-
-  return doc_iterator::make<conjunction_t>(
-    std::move(itrs), std::forward<Args>(args)...
-  );
-}
-
-//////////////////////////////////////////////////////////////////////////////
-/// @returns conjunction iterator created from the specified sub queries 
-//////////////////////////////////////////////////////////////////////////////
-template<typename Conjunction, typename QueryIterator, typename... Args>
-doc_iterator::ptr make_conjunction(
-    const sub_reader& rdr, const order::prepared& ord, 
-    QueryIterator begin, QueryIterator end,
-    Args&&... args) {
-  typedef typename Conjunction::doc_iterator doc_iterator_t;
-  typedef typename Conjunction::traits_t traits_t;
-  typedef typename std::enable_if<
-    std::is_base_of<conjunction<doc_iterator_t, traits_t>, Conjunction>::value, Conjunction
-  >::type conjunction_t;
-
-  assert(std::distance(begin, end) >= 0);
-  size_t size = size_t(std::distance(begin, end));
-    
-  /* check the size before the execution */
-  if (size < 1) {
-    return doc_iterator::empty();
-  } else if (size < 2) {
-    return begin->execute(rdr, ord);
-  }
-
-  typename conjunction_t::doc_iterators_t itrs;
-  itrs.reserve(size_t(size));
-  for(;begin != end; ++begin) {
-    auto docs = begin->execute(rdr, ord);
-
-    if (type_limits<type_t::doc_id_t>::eof(docs->value())) {
-      // filter out empty iterators
+  switch (itrs.size()) {
+    case 0:
+      // empty or unreachable search criteria
       return doc_iterator::empty();
-    }
-
-    itrs.emplace_back(std::move(docs));
+    case 1:
+      // single sub-query
+      return std::move(itrs.front());
   }
 
-  return make_conjunction<conjunction_t>(
-    std::move(itrs), ord, std::forward<Args>(args)...
+  // conjunction
+  return doc_iterator::make<Conjunction>(
+      std::move(itrs), std::forward<Args>(args)...
   );
 }
 
-NS_END // detail
 NS_END // ROOT
 
 #endif // IRESEARCH_CONJUNCTION_H

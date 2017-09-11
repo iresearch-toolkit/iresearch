@@ -22,25 +22,15 @@
 
 NS_ROOT
 
-template<typename Conjunction>
-class same_position_iterator final : public Conjunction {
+class same_position_iterator final : public conjunction {
  public:
-  typedef typename Conjunction::doc_iterator doc_iterator_t;
-  typedef typename Conjunction::traits_t traits_t;
-  typedef typename std::enable_if<
-    std::is_base_of<
-      detail::conjunction<doc_iterator_t, traits_t>, 
-      Conjunction
-    >::value, Conjunction
-  >::type conjunction_t;
-
   typedef std::vector<position::cref> positions_t;
 
   same_position_iterator(
-      typename conjunction_t::doc_iterators_t&& itrs,
+      typename conjunction::doc_iterators_t&& itrs,
       const order::prepared& ord,
       positions_t&& pos)
-    : conjunction_t(std::move(itrs), ord),
+    : conjunction(std::move(itrs), ord),
       pos_(std::move(pos)) {
     assert(!pos_.empty());
   }
@@ -53,7 +43,7 @@ class same_position_iterator final : public Conjunction {
 
   virtual bool next() override {
     bool next = false;
-    while(true == (next = conjunction_t::next()) && !find_same_position()) {}
+    while (true == (next = conjunction::next()) && !find_same_position()) {}
     return next;
   }
 
@@ -64,7 +54,7 @@ class same_position_iterator final : public Conjunction {
 #endif
 
   virtual doc_id_t seek(doc_id_t target) override {
-    const auto doc = conjunction_t::seek(target);
+    const auto doc = conjunction::seek(target);
 
     if (type_limits<type_t::doc_id_t>::eof(doc) || find_same_position()) {
       return doc; 
@@ -117,11 +107,6 @@ class same_position_query final : public filter::prepared {
   virtual doc_iterator::ptr execute(
       const sub_reader& segment,
       const order::prepared& ord) const override {
-    typedef detail::conjunction<score_wrapper<
-      doc_iterator::ptr>
-    > conjunction_t;
-    typedef same_position_iterator<conjunction_t> same_position_iterator_t;
-
     // get query state for the specified reader
     auto query_state = states_.find(segment);
     if (!query_state) {
@@ -132,10 +117,10 @@ class same_position_query final : public filter::prepared {
     // get features required for query & order
     auto features = ord.features() | by_same_position::features();
 
-    same_position_iterator_t::doc_iterators_t itrs;
+    same_position_iterator::doc_iterators_t itrs;
     itrs.reserve(query_state->size());
 
-    same_position_iterator_t::positions_t positions;
+    same_position_iterator::positions_t positions;
     positions.reserve(itrs.size());
 
     auto term_stats = stats_.begin();
@@ -172,7 +157,7 @@ class same_position_query final : public filter::prepared {
       ++term_stats;
     }
 
-    return detail::make_conjunction<same_position_iterator_t>(
+    return make_conjunction<same_position_iterator>(
       std::move(itrs), ord, std::move(positions)
     );
   }

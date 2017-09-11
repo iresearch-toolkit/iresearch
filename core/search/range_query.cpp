@@ -15,31 +15,33 @@
 #include "score_doc_iterators.hpp"
 #include "index/index_reader.hpp"
 
-namespace {
-  template<
-    typename IteratorWrapper,
-    typename IteratorTraits = iresearch::iterator_traits<IteratorWrapper>
-  >
-  class masking_disjunction: public iresearch::detail::disjunction<IteratorWrapper, IteratorTraits> {
-    typedef iresearch::detail::disjunction<IteratorWrapper, IteratorTraits> parent;
-   public:
-    typedef std::unordered_set<typename parent::doc_iterator::element_type*> doc_itr_score_mask_t;
-    masking_disjunction(
+NS_LOCAL
+
+class masking_disjunction final : public irs::disjunction {
+  typedef irs::disjunction parent;
+ public:
+  typedef std::unordered_set<irs::doc_iterator*> doc_itr_score_mask_t;
+
+  masking_disjunction(
       typename parent::doc_iterators_t&& doc_itrs,
       doc_itr_score_mask_t&& doc_itr_score_mask, //score only these itrs
       const iresearch::order::prepared& order,
-      iresearch::cost::cost_t estimation
-    ): parent(std::move(doc_itrs), order, estimation), doc_itr_score_mask_(doc_itr_score_mask) {
+      iresearch::cost::cost_t estimation)
+    : parent(std::move(doc_itrs), order, estimation),
+      doc_itr_score_mask_(std::move(doc_itr_score_mask)) {
+  }
+
+  virtual void score_add_impl(iresearch::byte_type* dst, irs::score_iterator_adapter& src) {
+    if (doc_itr_score_mask_.find(src.operator->()) != doc_itr_score_mask_.end()) {
+      parent::score_add_impl(dst, src);
     }
-    virtual void score_add_impl(iresearch::byte_type* dst, typename parent::doc_iterator& src) {
-      if (doc_itr_score_mask_.find(src.get()) != doc_itr_score_mask_.end()) {
-        parent::score_add_impl(dst, src);
-      }
-    }
-   private:
-    doc_itr_score_mask_t doc_itr_score_mask_;
-  };
-}
+  }
+
+ private:
+  doc_itr_score_mask_t doc_itr_score_mask_;
+};
+
+NS_END
 
 NS_ROOT
 
@@ -107,8 +109,6 @@ range_query::range_query(states_t&& states)
 doc_iterator::ptr range_query::execute(
     const sub_reader& rdr,
     const order::prepared& ord) const {
-  typedef masking_disjunction<score_wrapper<doc_iterator::ptr>> disjunction_t;
-
   /* get term state for the specified reader */
   auto state = states_.find(rdr);
   if (!state) {
@@ -125,14 +125,14 @@ doc_iterator::ptr range_query::execute(
   }
 
   /* prepared disjunction */
-  disjunction_t::doc_iterators_t itrs;
+  masking_disjunction::doc_iterators_t itrs;
   itrs.reserve(state->count);
 
   /* get required features for order */
   auto& features = ord.features();
 
   // set of doc_iterators that should be scored
-  disjunction_t::doc_itr_score_mask_t doc_itr_score_mask;
+  masking_disjunction::doc_itr_score_mask_t doc_itr_score_mask;
 
   /* iterator for next "state.count" terms */
   for (size_t i = 0, end = state->count; i < end; ++i) {
@@ -157,7 +157,7 @@ doc_iterator::ptr range_query::execute(
         ord,
         state->estimation
       ));
-      doc_itr_score_mask.emplace(itrs.back().get());
+      doc_itr_score_mask.emplace(itrs.back().operator->());
     }
 
     terms->next();
@@ -167,7 +167,7 @@ doc_iterator::ptr range_query::execute(
     return doc_iterator::empty();
   }
 
-  return doc_iterator::make<disjunction_t>(
+  return doc_iterator::make<masking_disjunction>(
     std::move(itrs), std::move(doc_itr_score_mask), ord, state->estimation
   );
 }

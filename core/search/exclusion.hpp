@@ -15,7 +15,6 @@
 #include "index/iterators.hpp"
 
 NS_ROOT
-NS_BEGIN(detail)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class exclusion
@@ -85,7 +84,6 @@ class exclusion final : public doc_iterator {
   doc_iterator::ptr excl_;
 }; // exclusion
 
-NS_END // detail
 NS_END // ROOT
 
 #endif // IRESEARCH_EXCLUSION_H
