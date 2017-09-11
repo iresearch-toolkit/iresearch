@@ -30,32 +30,9 @@ class IRESEARCH_API score : public attribute {
  public:
   typedef std::function<void(byte_type*)> score_f;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief applies score to the specified attributes collection ("src")
-  //////////////////////////////////////////////////////////////////////////////
-  static bool apply(
-      attribute_view& src,
-      irs::score& score,
-      const order::prepared& ord) {
-    if (ord.empty()) {
-      return false;
-    }
-
-    src.emplace(score);
-
-    score.value_.resize(ord.size());
-    ord.prepare_score(score.leak());
-
-    return true;
-  }
-
   DECLARE_ATTRIBUTE_TYPE();
 
   score() = default;
-
-  byte_type* leak() {
-    return &(value_[0]);
-  };
 
   const byte_type* c_str() const {
     return value_.c_str();
@@ -73,9 +50,7 @@ class IRESEARCH_API score : public attribute {
     func_(const_cast<score&>(*this).leak());
   }
 
-  template<typename Func>
-  bool prepare(const order::prepared& ord, Func func) {
-    //FIXME
+  bool prepare(const order::prepared& ord, score_f&& func) {
     if (ord.empty()) {
       return false;
     }
@@ -88,6 +63,8 @@ class IRESEARCH_API score : public attribute {
   }
 
  private:
+  byte_type* leak() { return &(value_[0]); }
+
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   bstring value_;
   score_f func_;

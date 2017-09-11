@@ -61,15 +61,14 @@ class basic_disjunction final : public doc_iterator_base {
       lhs_(std::move(lhs)), rhs_(std::move(rhs)), 
       doc_(type_limits<type_t::doc_id_t>::invalid()) {
     // estimate disjunction
-    est_.rule([this](){
+    estimate([this](){
       cost::cost_t est = 0;
       est += traits_t::estimate(lhs_, 0);
       est += traits_t::estimate(rhs_, 0);
       return est;
     });
-    attrs_.emplace(est_);
 
-    // set score
+    // prepare score
     prepare_score([this](byte_type* score) {
       ord_->prepare_score(score);
       score_impl(score);
@@ -130,7 +129,6 @@ class basic_disjunction final : public doc_iterator_base {
     score_iterator_impl(rhs_, lhs);
   }
 
-  irs::cost est_;
   doc_iterator lhs_;
   doc_iterator rhs_;
   doc_id_t doc_;
@@ -163,8 +161,7 @@ public:
       cost::cost_t est) 
     : disjunction(std::move(itrs), ord) {
     // estimate disjunction
-    est_.value(est);
-    attrs_.emplace(est_);
+    estimate(est);
   }
 
   explicit disjunction(
@@ -181,16 +178,15 @@ public:
     //assert(irstd::all_equal(itrs_.begin(), itrs_.end()));
 
     // estimate disjunction
-    est_.rule([this](){
+    estimate([this](){
       return std::accumulate(
         itrs_.begin(), itrs_.end(), cost::cost_t(0),
         [](cost::cost_t lhs, const doc_iterator& rhs) {
           return lhs + traits_t::estimate(rhs, 0);
       });
     });
-    attrs_.emplace(est_);
 
-    // set score
+    // prepare score
     prepare_score([this](byte_type* score) {
       ord_->prepare_score(score);
       score_impl(score);
@@ -322,7 +318,6 @@ public:
     }
   }
 
-  irs::cost est_;
   doc_iterators_t itrs_;
   doc_id_t doc_;
 }; // disjunction
@@ -370,7 +365,7 @@ template<
     });
 
     // estimate disjunction
-    est_.rule([this](){
+    estimate([this](){
       return std::accumulate(
         // estimate only first min_match_count_ subnodes
         itrs_.begin(), itrs_.end(), cost::cost_t(0),
@@ -378,9 +373,8 @@ template<
           return lhs + traits_t::estimate(rhs, 0);
       });
     });
-    attrs_.emplace(est_);
 
-    // set score
+    // prepare score
     prepare_score([this](byte_type* score) {
       ord_->prepare_score(score);
       score_impl(score);
@@ -666,7 +660,6 @@ template<
     });
   }
 
-  cost est_;
   doc_iterators_t itrs_; /* sub iterators */
   size_t min_match_count_; /* minimum number of hits */
   size_t lead_; /* number of iterators in lead group */

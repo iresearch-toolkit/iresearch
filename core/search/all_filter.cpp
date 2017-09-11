@@ -37,12 +37,11 @@ class all_iterator final : public irs::doc_iterator_base {
       uint64_t docs_count)
     : doc_iterator_base(order),
       max_doc_(irs::doc_id_t(irs::type_limits<irs::type_t::doc_id_t>::min() + docs_count - 1)) {
-    // set estimation value
-    est_.value(max_doc_);
-    attrs_.emplace(est_);
-
     // make doc_id accessible via attribute
     attrs_.emplace(doc_);
+
+    // set estimation value
+    estimate(max_doc_);
 
     // set scorers
     scorers_ = ord_->prepare_scorers(
@@ -52,9 +51,8 @@ class all_iterator final : public irs::doc_iterator_base {
       attributes() // doc_iterator attributes
     );
 
-    // set score
     prepare_score([this](irs::byte_type* score) {
-      scorers_.score(*ord_, scr_.leak());
+      scorers_.score(*ord_, score);
     });
   }
 
@@ -63,7 +61,9 @@ class all_iterator final : public irs::doc_iterator_base {
   }
 
   virtual irs::doc_id_t seek(irs::doc_id_t target) override {
-    doc_.value = target <= max_doc_ ? target : irs::type_limits<irs::type_t::doc_id_t>::eof();
+    doc_.value = target <= max_doc_
+      ? target
+      : irs::type_limits<irs::type_t::doc_id_t>::eof();
 
     return doc_.value;
   }
@@ -74,7 +74,6 @@ class all_iterator final : public irs::doc_iterator_base {
 
  private:
   irs::document doc_;
-  irs::cost est_;
   irs::doc_id_t max_doc_; // largest valid doc_id
   irs::order::prepared::scorers scorers_;
 };

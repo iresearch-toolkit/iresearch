@@ -162,10 +162,9 @@ class conjunction : public doc_iterator_base {
     front_ = &itrs_.front();
 
     // estimate iterator
-    est_.value(traits_t::estimate(*front_));
-    attrs_.emplace(est_);
+    estimate(traits_t::estimate(*front_));
 
-    // set score
+    // prepare score
     prepare_score([this](byte_type* score) {
       ord_->prepare_score(score);
       for(auto& it : itrs_) {
@@ -201,8 +200,8 @@ class conjunction : public doc_iterator_base {
   }
 
  private:
-  /* tries to converge front_ and other iterators to the specified target.
-   * if it impossible tries to find first convergence place */
+  // tries to converge front_ and other iterators to the specified target.
+  // if it impossible tries to find first convergence place
   doc_id_t converge(doc_id_t target) {
     for (auto rest = seek_rest(target); target != rest;) {
       target = (*front_)->seek(rest);
@@ -212,8 +211,8 @@ class conjunction : public doc_iterator_base {
     return target;
   }
 
-  /* seeks all iterators except the 
-   * first to the specified target */
+  // seeks all iterators except the
+  // first to the specified target
   doc_id_t seek_rest(doc_id_t target) {
     if (type_limits<type_t::doc_id_t>::eof(target)) {
       return target;
@@ -230,7 +229,6 @@ class conjunction : public doc_iterator_base {
     return target;
   }
 
-  irs::cost est_;
   doc_iterators_t itrs_;
   doc_iterator* front_;
 }; // conjunction

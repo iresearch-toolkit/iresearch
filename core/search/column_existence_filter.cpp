@@ -42,13 +42,11 @@ class column_existence_iterator final : public irs::doc_iterator_base {
     : doc_iterator_base(ord),
       it_(std::move(it)) {
     assert(it_);
-
-    // set estimation value
-    est_.value(docs_count);
-    attrs_.emplace(est_);
-
     // make doc_id accessible via attribute
     attrs_.emplace(doc_);
+
+    // set estimation value
+    estimate(docs_count);
 
     // set scorers
     scorers_ = ord_->prepare_scorers(
@@ -58,10 +56,9 @@ class column_existence_iterator final : public irs::doc_iterator_base {
       attributes() // doc_iterator attributes
     );
 
-    // set score
     prepare_score([this](irs::byte_type* score) {
       value(); // ensure doc_id is updated before scoring
-      scorers_.score(*ord_, scr_.leak());
+      scorers_.score(*ord_, score);
     });
   }
 
@@ -83,7 +80,6 @@ class column_existence_iterator final : public irs::doc_iterator_base {
 
  private:
   mutable irs::document doc_; // modified during value()
-  irs::cost est_;
   irs::columnstore_reader::column_iterator::ptr it_;
   irs::order::prepared::scorers scorers_;
 }; // column_existence_iterator

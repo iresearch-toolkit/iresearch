@@ -34,17 +34,16 @@ basic_doc_iterator::basic_doc_iterator(
   : doc_iterator_base(ord),
     it_(std::move(it)), 
     stats_(&stats) {
-  assert( it_ );
+  assert(it_);
+
   // set estimation value
-  est_.value(estimation);
-  attrs_.emplace(est_);
+  estimate(estimation);
 
   // set scorers
   scorers_ = ord_->prepare_scorers(
     segment, field, *stats_, it_->attributes()
   );
 
-  // prepare score
   prepare_score([this](byte_type* score) {
     scorers_.score(*ord_, score);
   });
