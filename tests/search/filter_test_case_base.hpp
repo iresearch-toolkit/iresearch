@@ -15,6 +15,7 @@
 #include "tests_shared.hpp"
 #include "analysis/token_attributes.hpp"
 #include "search/cost.hpp"
+#include "search/score.hpp"
 #include "search/filter.hpp"
 #include "search/tfidf.hpp"
 #include "utils/singleton.hpp"

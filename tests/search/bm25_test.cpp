@@ -16,6 +16,7 @@
 #include "search/range_filter.hpp"
 #include "search/scorers.hpp"
 #include "search/sort.hpp"
+#include "search/score.hpp"
 #include "search/bm25.hpp"
 #include "search/term_filter.hpp"
 #include "utils/utf8_path.hpp"

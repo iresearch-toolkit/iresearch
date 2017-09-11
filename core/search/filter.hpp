@@ -20,57 +20,6 @@
 
 NS_ROOT
 
-
-// FIXME move to separate file
-//////////////////////////////////////////////////////////////////////////////
-/// @class score
-/// @brief represents a score related for the particular document
-//////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API score : public attribute {
- public:
-  typedef std::function<void(byte_type*)> score_f;
-
-  DECLARE_ATTRIBUTE_TYPE();
-
-  score() = default;
-
-  const byte_type* c_str() const {
-    return value_.c_str();
-  }
-
-  const bstring& value() const {
-    return value_;
-  }
-
-  bool empty() const NOEXCEPT {
-    return value_.empty();
-  }
-
-  void evaluate() const {
-    func_(const_cast<score&>(*this).leak());
-  }
-
-  bool prepare(const order::prepared& ord, score_f&& func) {
-    if (ord.empty()) {
-      return false;
-    }
-
-    value_.resize(ord.size());
-    ord.prepare_score(leak());
-
-    func_ = std::move(func);
-    return true;
-  }
-
- private:
-  byte_type* leak() { return &(value_[0]); }
-
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  bstring value_;
-  score_f func_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
-}; // score
-
 template<typename State>
 class states_cache {
 public:

@@ -14,7 +14,7 @@
 
 #include "index/iterators.hpp"
 #include "analysis/token_attributes.hpp"
-#include "filter.hpp"
+#include "score.hpp"
 #include "cost.hpp"
 
 NS_ROOT
