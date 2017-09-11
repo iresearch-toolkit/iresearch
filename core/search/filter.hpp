@@ -157,7 +157,7 @@ class IRESEARCH_API filter {
     explicit prepared(attribute_store&& attrs);
     virtual ~prepared();
 
-    score_doc_iterator::ptr execute(const sub_reader& rdr) const {
+    doc_iterator::ptr execute(const sub_reader& rdr) const {
       return execute(rdr, order::prepared::unordered());
     }
 
@@ -166,7 +166,7 @@ class IRESEARCH_API filter {
       return attrs_;
     }
 
-    virtual score_doc_iterator::ptr execute(
+    virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord) const = 0;
 

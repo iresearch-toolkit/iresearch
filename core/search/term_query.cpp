@@ -86,27 +86,27 @@ term_query::term_query(term_query::states_t&& states, attribute_store&& attrs)
   : filter::prepared(std::move(attrs)), states_(std::move(states)) {
 }
 
-score_doc_iterator::ptr term_query::execute(
+doc_iterator::ptr term_query::execute(
     const sub_reader& rdr,
     const order::prepared& ord) const {
-  /* get term state for the specified reader */
+  // get term state for the specified reader
   auto state = states_.find(rdr);
   if (!state) {
-    /* invalid state */
-    return score_doc_iterator::empty();
+    // invalid state
+    return doc_iterator::empty();
   }
 
-  /* find term using cached state */
+  // find term using cached state
   auto terms = state->reader->iterator();
 
-  /* use bytes_ref::nil here since we need just to "jump" to the cached state,
-   * and we are not interested in term value itself */
+  // use bytes_ref::nil here since we need just to "jump" to the cached state,
+  // and we are not interested in term value itself
   if (!terms->seek(bytes_ref::nil, *state->cookie)) {
-    return score_doc_iterator::empty();
+    return doc_iterator::empty();
   }
 
-  /* return iterator */
-  return score_doc_iterator::make<basic_score_iterator>(
+  // return iterator
+  return doc_iterator::make<basic_doc_iterator>(
     rdr, 
     *state->reader,
     this->attributes(), 

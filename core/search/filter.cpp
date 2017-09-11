@@ -19,10 +19,10 @@ NS_ROOT
 //////////////////////////////////////////////////////////////////////////////
 class empty_query final : public filter::prepared {
  public:
-  virtual score_doc_iterator::ptr execute(
+  virtual doc_iterator::ptr execute(
       const sub_reader&,
       const order::prepared& ) const override {
-    return score_doc_iterator::empty();
+    return doc_iterator::empty();
   }    
 }; // empty_query
 

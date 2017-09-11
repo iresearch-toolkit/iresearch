@@ -82,11 +82,11 @@ class phrase_query : public filter::prepared {
 
   using filter::prepared::execute;
 
-  virtual score_doc_iterator::ptr execute(
+  virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord) const override {
     typedef detail::conjunction<score_wrapper<
-      score_doc_iterator::ptr>
+      doc_iterator::ptr>
     > conjunction_t;
     typedef phrase_iterator<conjunction_t> phrase_iterator_t;
 
@@ -94,7 +94,7 @@ class phrase_query : public filter::prepared {
     auto phrase_state = states_.find(rdr);
     if (!phrase_state) {
       // invalid state 
-      return score_doc_iterator::empty();
+      return doc_iterator::empty();
     }
 
     // get features required for query & order
@@ -113,7 +113,7 @@ class phrase_query : public filter::prepared {
       // use bytes_ref::nil here since we do not need just to "jump"
       // to cached state, and we are not interested in term value itself */
       if (!terms->seek(bytes_ref::nil, *term_state.first)) {
-        return score_doc_iterator::empty();
+        return doc_iterator::empty();
       }
 
       // get postings
@@ -123,12 +123,12 @@ class phrase_query : public filter::prepared {
       auto& pos = docs->attributes().get<position>();
       if (!pos) {
         // positions not found
-        return score_doc_iterator::empty();
+        return doc_iterator::empty();
       }
       positions.emplace_back(std::cref(*pos), term_stats->second);
 
       // add base iterator
-      itrs.emplace_back(score_doc_iterator::make<basic_score_iterator>(
+      itrs.emplace_back(doc_iterator::make<basic_doc_iterator>(
         rdr,
         *phrase_state->reader,
         term_stats->first, 

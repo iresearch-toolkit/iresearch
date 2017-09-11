@@ -49,13 +49,13 @@ class boolean_query : public filter::prepared {
 
   boolean_query() : excl_(0)  { }
 
-  virtual score_doc_iterator::ptr execute(
+  virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord ) const override {
-    typedef detail::disjunction<score_doc_iterator::ptr> disjunction_t;
+    typedef detail::disjunction<doc_iterator::ptr> disjunction_t;
 
     if (empty()) {
-      return score_doc_iterator::empty();
+      return doc_iterator::empty();
     }
 
     assert(excl_);
@@ -72,7 +72,7 @@ class boolean_query : public filter::prepared {
       return incl;
     }
 
-    return score_doc_iterator::make<detail::exclusion>(
+    return doc_iterator::make<detail::exclusion>(
       std::move(incl), std::move(excl) 
     );
   }
@@ -119,7 +119,7 @@ class boolean_query : public filter::prepared {
   size_t size() const { return queries_.size(); }
 
 protected:
-  virtual score_doc_iterator::ptr execute(
+  virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord,
       iterator begin,
@@ -139,12 +139,12 @@ protected:
 //////////////////////////////////////////////////////////////////////////////
 class and_query final : public boolean_query {
 public:
-  virtual score_doc_iterator::ptr execute(
+  virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord,
       iterator begin, 
       iterator end) const override {
-    typedef score_wrapper<score_doc_iterator::ptr> score_wrapper_t;
+    typedef score_wrapper<doc_iterator::ptr> score_wrapper_t;
     typedef detail::conjunction<score_wrapper_t> conjunction_t;
 
     return detail::make_conjunction<conjunction_t>(
@@ -159,12 +159,12 @@ public:
 //////////////////////////////////////////////////////////////////////////////
 class or_query final : public boolean_query {
  public:
-  virtual score_doc_iterator::ptr execute(
+  virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord,
       iterator begin,
       iterator end) const override {
-    typedef score_wrapper<score_doc_iterator::ptr> score_wrapper_t;
+    typedef score_wrapper<doc_iterator::ptr> score_wrapper_t;
     typedef detail::disjunction<score_wrapper_t> disjunction_t;
 
     return detail::make_disjunction<disjunction_t>(
@@ -185,11 +185,11 @@ class min_match_query final : public boolean_query {
     assert(min_match_count_ > 1);
   }
 
-  virtual score_doc_iterator::ptr execute(
+  virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord,
       iterator begin, iterator end) const override {
-   typedef score_wrapper<score_doc_iterator::ptr> score_wrapper_t;
+   typedef score_wrapper<doc_iterator::ptr> score_wrapper_t;
    typedef cost_wrapper<score_wrapper_t> cost_wrapper_t;
    typedef detail::disjunction<cost_wrapper_t> disjunction_t;
 

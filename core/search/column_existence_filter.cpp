@@ -31,7 +31,7 @@
 
 NS_LOCAL
 
-class column_existence_iterator final : public irs::score_doc_iterator_base {
+class column_existence_iterator final : public irs::doc_iterator_base {
  public:
   explicit column_existence_iterator(
       const irs::sub_reader& reader,
@@ -39,7 +39,7 @@ class column_existence_iterator final : public irs::score_doc_iterator_base {
       irs::columnstore_reader::column_iterator::ptr&& it,
       const irs::order::prepared& ord,
       uint64_t docs_count)
-    : score_doc_iterator_base(ord),
+    : doc_iterator_base(ord),
       it_(std::move(it)) {
     assert(it_);
 
@@ -96,17 +96,17 @@ class column_existence_query final : public irs::filter::prepared {
   ): irs::filter::prepared(std::move(attrs)), field_(field) {
   }
 
-  virtual irs::score_doc_iterator::ptr execute(
+  virtual irs::doc_iterator::ptr execute(
       const irs::sub_reader& rdr,
       const irs::order::prepared& ord
   ) const override {
     const auto* column = rdr.column_reader(field_);
 
     if (!column) {
-      return irs::score_doc_iterator::empty();
+      return irs::doc_iterator::empty();
     }
 
-    return irs::score_doc_iterator::make<column_existence_iterator>(
+    return irs::doc_iterator::make<column_existence_iterator>(
       rdr,
       attributes(), // prepared_filter attributes
       column->iterator(),
@@ -127,7 +127,7 @@ class column_prefix_existence_query final : public irs::filter::prepared {
   ): irs::filter::prepared(std::move(attrs)), prefix_(prefix) {
   }
 
-  virtual irs::score_doc_iterator::ptr execute(
+  virtual irs::doc_iterator::ptr execute(
       const irs::sub_reader& rdr,
       const irs::order::prepared& ord
   ) const override {
@@ -135,7 +135,7 @@ class column_prefix_existence_query final : public irs::filter::prepared {
 
     if (!it->seek(prefix_)) {
       // reached the end
-      return irs::score_doc_iterator::empty();
+      return irs::doc_iterator::empty();
     }
 
     typedef irs::detail::disjunction<

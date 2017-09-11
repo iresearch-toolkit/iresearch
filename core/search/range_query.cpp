@@ -104,16 +104,16 @@ range_query::range_query(states_t&& states)
   : states_(std::move(states)) {
 }
 
-score_doc_iterator::ptr range_query::execute(
+doc_iterator::ptr range_query::execute(
     const sub_reader& rdr,
     const order::prepared& ord) const {
-  typedef masking_disjunction<score_wrapper<score_doc_iterator::ptr>> disjunction_t;
+  typedef masking_disjunction<score_wrapper<doc_iterator::ptr>> disjunction_t;
 
   /* get term state for the specified reader */
   auto state = states_.find(rdr);
   if (!state) {
     /* invalid state */
-    return score_doc_iterator::empty();
+    return doc_iterator::empty();
   }
 
   /* get terms iterator */
@@ -121,7 +121,7 @@ score_doc_iterator::ptr range_query::execute(
 
   /* find min term using cached state */
   if (!terms->seek(state->min_term, *(state->min_cookie))) {
-    return score_doc_iterator::empty();
+    return doc_iterator::empty();
   }
 
   /* prepared disjunction */
@@ -139,7 +139,7 @@ score_doc_iterator::ptr range_query::execute(
     auto scored_state_itr = state->scored_states.find(i);
 
     if (scored_state_itr == state->scored_states.end()) {
-      itrs.emplace_back(score_doc_iterator::make<basic_score_iterator>(
+      itrs.emplace_back(doc_iterator::make<basic_doc_iterator>(
         rdr,
         *state->reader,
         attribute_store::empty_instance(),
@@ -149,7 +149,7 @@ score_doc_iterator::ptr range_query::execute(
       ));
     }
     else {
-      itrs.emplace_back(score_doc_iterator::make<basic_score_iterator>(
+      itrs.emplace_back(doc_iterator::make<basic_doc_iterator>(
         rdr,
         *state->reader,
         scored_state_itr->second,
@@ -164,10 +164,10 @@ score_doc_iterator::ptr range_query::execute(
   }
 
   if (itrs.empty()) {
-    return score_doc_iterator::empty();
+    return doc_iterator::empty();
   }
 
-  return score_doc_iterator::make<disjunction_t>(
+  return doc_iterator::make<disjunction_t>(
     std::move(itrs), std::move(doc_itr_score_mask), ord, state->estimation
   );
 }

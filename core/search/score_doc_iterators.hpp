@@ -20,16 +20,16 @@
 NS_ROOT
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @class score_doc_iterator_base
+/// @class doc_iterator_base
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API score_doc_iterator_base: public score_doc_iterator {
+class IRESEARCH_API doc_iterator_base: public doc_iterator {
  public:
   virtual const attribute_view& attributes() const NOEXCEPT override final {
     return attrs_;
   }
 
  protected:
-  score_doc_iterator_base(const order::prepared& ord);
+  doc_iterator_base(const order::prepared& ord);
 
   template<typename Func>
   bool prepare_score(Func func) {
@@ -44,15 +44,15 @@ class IRESEARCH_API score_doc_iterator_base: public score_doc_iterator {
   attribute_view attrs_;
   irs::score scr_;
   const order::prepared* ord_;
-}; // score_doc_iterator_base
+}; // doc_iterator_base
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @class basic_score_iterator 
+/// @class basic_doc_iterator
 /// @brief basic implementation of scoring iterator for single term queries
 ////////////////////////////////////////////////////////////////////////////////
-class basic_score_iterator final : public score_doc_iterator_base {
+class basic_doc_iterator final : public doc_iterator_base {
  public:
-   basic_score_iterator(
+   basic_doc_iterator(
      const sub_reader& segment,
      const term_reader& field,
      const attribute_store& stats,
@@ -77,7 +77,7 @@ class basic_score_iterator final : public score_doc_iterator_base {
   doc_iterator::ptr it_;
   cost est_;
   const attribute_store* stats_;
-}; // basic_score_iterator
+}; // basic_doc_iterator
 
 NS_END // ROOT
 

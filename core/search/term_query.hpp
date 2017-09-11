@@ -61,7 +61,7 @@ class term_query : public filter::prepared {
 
   explicit term_query(states_t&& states, attribute_store&& attrs);
 
-  virtual score_doc_iterator::ptr execute(
+  virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord) const override;
 

@@ -33,7 +33,7 @@
 namespace tests {
 namespace detail {
 
-class basic_doc_iterator: public iresearch::score_doc_iterator {
+class basic_doc_iterator: public iresearch::doc_iterator {
  public:
   typedef std::vector<iresearch::doc_id_t> docids_t;
 
@@ -131,16 +131,16 @@ std::vector<iresearch::doc_id_t> union_all(
   return result;
 }
 
-std::vector<ir::score_doc_iterator::ptr> execute_all(
+std::vector<ir::doc_iterator::ptr> execute_all(
     const std::vector<std::vector<iresearch::doc_id_t>>& docs
 ) {
-  std::vector<ir::score_doc_iterator::ptr> itrs;
+  std::vector<ir::doc_iterator::ptr> itrs;
   itrs.reserve( docs.size() );
   std::transform(
     docs.begin(), docs.end(),
     iresearch::irstd::back_emplacer(itrs),
     [](const std::vector<iresearch::doc_id_t>& docs) {
-      return iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(
+      return iresearch::doc_iterator::make<detail::basic_doc_iterator>(
         docs.begin(), docs.end()
       );
   });
@@ -169,11 +169,11 @@ struct boosted: public iresearch::filter {
       iresearch::boost::apply(this->attributes(), boost);
     }
 
-    virtual iresearch::score_doc_iterator::ptr execute(
+    virtual iresearch::doc_iterator::ptr execute(
       const iresearch::sub_reader& rdr,
       const iresearch::order::prepared& ord
     ) const override {
-      return iresearch::score_doc_iterator::make<basic_doc_iterator>(
+      return iresearch::doc_iterator::make<basic_doc_iterator>(
         docs.begin(), docs.end(), this->attributes(), ord
       );
     }
@@ -1068,7 +1068,7 @@ TEST(boolean_query_boost, or) {
 namespace detail {
 
 struct unestimated: public iresearch::filter {
-  struct doc_iterator : iresearch::score_doc_iterator {
+  struct doc_iterator : iresearch::doc_iterator {
     virtual iresearch::doc_id_t value() const override {
       // prevent iterator to filter out
       return iresearch::type_limits<iresearch::type_t::doc_id_t>::invalid();
@@ -1084,11 +1084,11 @@ struct unestimated: public iresearch::filter {
   }; // doc_iterator
 
   struct prepared: public iresearch::filter::prepared {
-    virtual iresearch::score_doc_iterator::ptr execute(
+    virtual iresearch::doc_iterator::ptr execute(
       const iresearch::sub_reader&, 
       const iresearch::order::prepared&
     ) const override {
-      return iresearch::score_doc_iterator::make<unestimated::doc_iterator>(); 
+      return iresearch::doc_iterator::make<unestimated::doc_iterator>();
     }
   }; // prepared
 
@@ -1109,7 +1109,7 @@ DEFINE_FILTER_TYPE(unestimated);
 DEFINE_FACTORY_DEFAULT(unestimated);
 
 struct estimated: public iresearch::filter {
-  struct doc_iterator : iresearch::score_doc_iterator {
+  struct doc_iterator : iresearch::doc_iterator {
     doc_iterator(iresearch::cost::cost_t est, bool* evaluated) {
       cost.rule([est, evaluated]() {
         *evaluated = true;
@@ -1139,11 +1139,11 @@ struct estimated: public iresearch::filter {
       : evaluated(evaluated), est(est) {
     }
 
-    virtual iresearch::score_doc_iterator::ptr execute(
+    virtual iresearch::doc_iterator::ptr execute(
       const iresearch::sub_reader&,
       const iresearch::order::prepared&
     ) const override {
-      return iresearch::score_doc_iterator::make<estimated::doc_iterator>(
+      return iresearch::doc_iterator::make<estimated::doc_iterator>(
         est, evaluated
       );
     }
@@ -1453,7 +1453,7 @@ TEST( boolean_query_estimation, and ) {
 // ----------------------------------------------------------------------------
 
 TEST(basic_disjunction, next) {
-  typedef iresearch::detail::basic_disjunction<ir::score_doc_iterator::ptr> disjunction;
+  typedef iresearch::detail::basic_disjunction<ir::doc_iterator::ptr> disjunction;
   // simple case
   {
     std::vector<iresearch::doc_id_t> first{ 1, 2, 5, 7, 9, 11, 45 };
@@ -1462,8 +1462,8 @@ TEST(basic_disjunction, next) {
     std::vector<iresearch::doc_id_t> result;
     {
       disjunction it(
-        iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
-        iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
+        iresearch::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
+        iresearch::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
       );
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(it.value()));
       for ( ; it.next(); ) {
@@ -1483,8 +1483,8 @@ TEST(basic_disjunction, next) {
     std::vector<iresearch::doc_id_t> result;
     {
       disjunction it(
-        iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
-        iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
+        iresearch::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
+        iresearch::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
       );
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(it.value()));
       for ( ; it.next(); ) {
@@ -1504,8 +1504,8 @@ TEST(basic_disjunction, next) {
     std::vector<iresearch::doc_id_t> result;
     {
       disjunction it(
-        iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
-        iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
+        iresearch::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
+        iresearch::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
       );
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(it.value()));
       for ( ; it.next(); ) {
@@ -1524,8 +1524,8 @@ TEST(basic_disjunction, next) {
     std::vector<iresearch::doc_id_t> result;
     {
       disjunction it(
-        iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
-        iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
+        iresearch::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
+        iresearch::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
       );
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(it.value()));
       for ( ; it.next(); ) {
@@ -1544,8 +1544,8 @@ TEST(basic_disjunction, next) {
     std::vector<iresearch::doc_id_t> result;
     {
       disjunction it(
-        iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
-        iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
+        iresearch::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
+        iresearch::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
       );
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(it.value()));
       for ( ; it.next(); ) {
@@ -1565,8 +1565,8 @@ TEST(basic_disjunction, next) {
     std::vector<iresearch::doc_id_t> result;
     {
       disjunction it(
-        iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
-        iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
+        iresearch::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
+        iresearch::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
       );
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(it.value()));
       for ( ; it.next(); ) {
@@ -1580,7 +1580,7 @@ TEST(basic_disjunction, next) {
 }
 
 TEST(basic_disjunction_test, seek) {
-  typedef iresearch::detail::basic_disjunction<iresearch::score_doc_iterator::ptr> disjunction; 
+  typedef iresearch::detail::basic_disjunction<iresearch::doc_iterator::ptr> disjunction;
   // simple case
   {
     std::vector<iresearch::doc_id_t> first{ 1, 2, 5, 7, 9, 11, 45 };
@@ -1599,8 +1599,8 @@ TEST(basic_disjunction_test, seek) {
     };
 
       disjunction it(
-        iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
-        iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
+        iresearch::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
+        iresearch::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
       );
 
     for (const auto& target : expected) {
@@ -1619,8 +1619,8 @@ TEST(basic_disjunction_test, seek) {
     };
 
     disjunction it(
-      iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
-      iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
+      iresearch::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
+      iresearch::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
     );
 
     for (const auto& target : expected) {
@@ -1643,8 +1643,8 @@ TEST(basic_disjunction_test, seek) {
     };
 
     disjunction it(
-      iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
-      iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
+      iresearch::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
+      iresearch::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
     );
 
     for (const auto& target : expected) {
@@ -1666,8 +1666,8 @@ TEST(basic_disjunction_test, seek) {
     };
 
     disjunction it(
-      iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
-      iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
+      iresearch::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
+      iresearch::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
     );
 
     for (const auto& target : expected) {
@@ -1681,7 +1681,7 @@ TEST(basic_disjunction_test, seek) {
 // ----------------------------------------------------------------------------
 
 TEST(disjunction_test, next) {
-  using disjunction = iresearch::detail::disjunction<iresearch::score_doc_iterator::ptr>;
+  using disjunction = iresearch::detail::disjunction<iresearch::doc_iterator::ptr>;
 
   // simple case
   {
@@ -1813,7 +1813,7 @@ TEST(disjunction_test, next) {
 }
 
 TEST(disjunction_test, seek) {
-  using disjunction = iresearch::detail::disjunction<iresearch::score_doc_iterator::ptr>;
+  using disjunction = iresearch::detail::disjunction<iresearch::doc_iterator::ptr>;
 
   // simple case
   {
@@ -1946,7 +1946,7 @@ TEST(disjunction_test, seek) {
 // ----------------------------------------------------------------------------
 
 TEST(min_match_disjunction_test, next) {
-  using disjunction = ir::detail::min_match_disjunction<ir::score_doc_iterator::ptr>;
+  using disjunction = ir::detail::min_match_disjunction<ir::doc_iterator::ptr>;
   // single dataset
   {
     std::vector<std::vector<iresearch::doc_id_t>> docs{
@@ -2541,7 +2541,7 @@ TEST(min_match_disjunction_test, next) {
 }
 
 TEST(min_match_disjunction_test, seek) {
-  using disjunction = ir::detail::min_match_disjunction<ir::score_doc_iterator::ptr>;
+  using disjunction = ir::detail::min_match_disjunction<ir::doc_iterator::ptr>;
 
   // simple case
   {
@@ -2984,7 +2984,7 @@ TEST(min_match_disjunction_test, seek) {
 // ----------------------------------------------------------------------------
 
 TEST(conjunction_test, next) {
-  using conjunction = ir::detail::conjunction<ir::score_doc_iterator::ptr>;
+  using conjunction = ir::detail::conjunction<ir::doc_iterator::ptr>;
 
   // simple case
   {
@@ -3160,7 +3160,7 @@ TEST(conjunction_test, next) {
 }
 
 TEST(conjunction_test, seek) {
-  using conjunction = ir::detail::conjunction<ir::score_doc_iterator::ptr>;
+  using conjunction = ir::detail::conjunction<ir::doc_iterator::ptr>;
 
   // simple case
   {
@@ -3300,8 +3300,8 @@ TEST(exclusion_test, next) {
     std::vector<iresearch::doc_id_t> result;
     {
       iresearch::detail::exclusion it(
-        iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
-        iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
+        iresearch::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
+        iresearch::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
       );
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(it.value()));
       for ( ; it.next(); ) {
@@ -3320,8 +3320,8 @@ TEST(exclusion_test, next) {
     std::vector<iresearch::doc_id_t> result;
     {
       iresearch::detail::exclusion it(
-        iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
-        iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
+        iresearch::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
+        iresearch::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
       );
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(it.value()));
       for ( ; it.next(); ) {
@@ -3340,8 +3340,8 @@ TEST(exclusion_test, next) {
     std::vector<iresearch::doc_id_t> result;
     {
       iresearch::detail::exclusion it(
-        iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
-        iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
+        iresearch::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
+        iresearch::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
       );
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(it.value()));
       for ( ; it.next(); ) {
@@ -3361,8 +3361,8 @@ TEST(exclusion_test, next) {
     std::vector<iresearch::doc_id_t> result;
     {
       iresearch::detail::exclusion it(
-        iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
-        iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
+        iresearch::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
+        iresearch::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
       );
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(it.value()));
       for ( ; it.next(); ) {
@@ -3381,8 +3381,8 @@ TEST(exclusion_test, next) {
     std::vector<iresearch::doc_id_t> result;
     {
       iresearch::detail::exclusion it(
-        iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
-        iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
+        iresearch::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
+        iresearch::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
       );
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(it.value()));
       for ( ; it.next(); ) {
@@ -3402,8 +3402,8 @@ TEST(exclusion_test, next) {
     std::vector<iresearch::doc_id_t> result;
     {
       iresearch::detail::exclusion it(
-        iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
-        iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
+        iresearch::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
+        iresearch::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
       );
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(it.value()));
       for ( ; it.next(); ) {
@@ -3433,8 +3433,8 @@ TEST(exclusion_test, seek) {
         {57, ir::type_limits<ir::type_t::doc_id_t>::eof()}
     };
     iresearch::detail::exclusion it(
-      iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
-      iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
+      iresearch::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
+      iresearch::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
     );
 
     for (const auto& target : expected) {
@@ -3452,8 +3452,8 @@ TEST(exclusion_test, seek) {
       {ir::type_limits<ir::type_t::doc_id_t>::invalid(), ir::type_limits<ir::type_t::doc_id_t>::eof()}
     };
     iresearch::detail::exclusion it(
-      iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
-      iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
+      iresearch::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
+      iresearch::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
     );
 
     for (const auto& target : expected) {
@@ -3476,8 +3476,8 @@ TEST(exclusion_test, seek) {
       {57, ir::type_limits<ir::type_t::doc_id_t>::eof()}
     };
     iresearch::detail::exclusion it(
-      iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
-      iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
+      iresearch::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
+      iresearch::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
     );
 
     for (const auto& target : expected) {
@@ -3499,8 +3499,8 @@ TEST(exclusion_test, seek) {
       {57, ir::type_limits<ir::type_t::doc_id_t>::eof()}
     };
     iresearch::detail::exclusion it(
-      iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
-      iresearch::score_doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
+      iresearch::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
+      iresearch::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
     );
 
     for (const auto& target : expected) {

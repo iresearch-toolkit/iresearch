@@ -138,7 +138,7 @@ NS_BEGIN(detail)
 ///-----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
 template<typename IteratorWrapper, typename IteratorTraits = iterator_traits<IteratorWrapper>> 
-class conjunction : public score_doc_iterator_base {
+class conjunction : public doc_iterator_base {
  public:
   typedef IteratorWrapper doc_iterator;
   typedef IteratorTraits traits_t;
@@ -148,7 +148,7 @@ class conjunction : public score_doc_iterator_base {
   conjunction(
       doc_iterators_t&& itrs,
       const order::prepared& ord = order::prepared::unordered())
-    : score_doc_iterator_base(ord),
+    : doc_iterator_base(ord),
       itrs_(std::move(itrs)) {
     assert(!itrs_.empty());
 
@@ -239,7 +239,7 @@ class conjunction : public score_doc_iterator_base {
 /// @returns conjunction iterator created from the specified sub iterators 
 //////////////////////////////////////////////////////////////////////////////
 template<typename Conjunction, typename... Args>
-score_doc_iterator::ptr make_conjunction(
+doc_iterator::ptr make_conjunction(
     typename Conjunction::doc_iterators_t&& itrs,
     Args&&... args) {
   typedef Conjunction conjunction_t;
@@ -247,12 +247,12 @@ score_doc_iterator::ptr make_conjunction(
   /* check the size after execution */
   const size_t size = itrs.size();
   if (size < 1) {
-    return score_doc_iterator::empty();
+    return doc_iterator::empty();
   } else if (size < 2) {
     return std::move(itrs.front());
   }
 
-  return score_doc_iterator::make<conjunction_t>(
+  return doc_iterator::make<conjunction_t>(
     std::move(itrs), std::forward<Args>(args)...
   );
 }
@@ -261,7 +261,7 @@ score_doc_iterator::ptr make_conjunction(
 /// @returns conjunction iterator created from the specified sub queries 
 //////////////////////////////////////////////////////////////////////////////
 template<typename Conjunction, typename QueryIterator, typename... Args>
-score_doc_iterator::ptr make_conjunction(
+doc_iterator::ptr make_conjunction(
     const sub_reader& rdr, const order::prepared& ord, 
     QueryIterator begin, QueryIterator end,
     Args&&... args) {
@@ -276,7 +276,7 @@ score_doc_iterator::ptr make_conjunction(
     
   /* check the size before the execution */
   if (size < 1) {
-    return score_doc_iterator::empty();
+    return doc_iterator::empty();
   } else if (size < 2) {
     return begin->execute(rdr, ord);
   }
@@ -288,7 +288,7 @@ score_doc_iterator::ptr make_conjunction(
 
     if (type_limits<type_t::doc_id_t>::eof(docs->value())) {
       // filter out empty iterators
-      return score_doc_iterator::empty();
+      return doc_iterator::empty();
     }
 
     itrs.emplace_back(std::move(docs));

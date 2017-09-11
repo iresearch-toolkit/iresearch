@@ -28,14 +28,14 @@
 
 NS_LOCAL
 
-class all_iterator final : public irs::score_doc_iterator_base {
+class all_iterator final : public irs::doc_iterator_base {
  public:
   all_iterator(
       const irs::sub_reader& reader,
       const irs::attribute_store& prepared_filter_attrs,
       const irs::order::prepared& order,
       uint64_t docs_count)
-    : score_doc_iterator_base(order),
+    : doc_iterator_base(order),
       max_doc_(irs::doc_id_t(irs::type_limits<irs::type_t::doc_id_t>::min() + docs_count - 1)) {
     // set estimation value
     est_.value(max_doc_);
@@ -97,11 +97,11 @@ class all_query: public filter::prepared {
     : filter::prepared(std::move(attrs)) {
   }
 
-  virtual score_doc_iterator::ptr execute(
+  virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& order
   ) const override {
-    return score_doc_iterator::make<all_iterator>(
+    return doc_iterator::make<all_iterator>(
       rdr,
       attributes(), // prepared_filter attributes
       order,

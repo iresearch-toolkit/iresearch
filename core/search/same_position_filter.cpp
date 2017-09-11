@@ -114,11 +114,11 @@ class same_position_query final : public filter::prepared {
 
   using filter::prepared::execute;
 
-  virtual score_doc_iterator::ptr execute(
+  virtual doc_iterator::ptr execute(
       const sub_reader& segment,
       const order::prepared& ord) const override {
     typedef detail::conjunction<score_wrapper<
-      score_doc_iterator::ptr>
+      doc_iterator::ptr>
     > conjunction_t;
     typedef same_position_iterator<conjunction_t> same_position_iterator_t;
 
@@ -126,7 +126,7 @@ class same_position_query final : public filter::prepared {
     auto query_state = states_.find(segment);
     if (!query_state) {
       // invalid state 
-      return score_doc_iterator::empty();
+      return doc_iterator::empty();
     }
 
     // get features required for query & order
@@ -145,7 +145,7 @@ class same_position_query final : public filter::prepared {
       // use bytes_ref::nil here since we do not need just to "jump"
       // to cached state, and we are not interested in term value itself */
       if (!term->seek(bytes_ref::nil, *term_state.cookie)) {
-        return score_doc_iterator::empty();
+        return doc_iterator::empty();
       }
 
       // get postings
@@ -155,12 +155,12 @@ class same_position_query final : public filter::prepared {
       auto& pos = docs->attributes().get<position>();
       if (!pos) {
         // positions not found
-        return score_doc_iterator::empty();
+        return doc_iterator::empty();
       }
       positions.emplace_back(std::cref(*pos));
 
       // add base iterator
-      itrs.emplace_back(score_doc_iterator::make<basic_score_iterator>(
+      itrs.emplace_back(doc_iterator::make<basic_doc_iterator>(
         segment,
         *term_state.reader,
         *term_stats,

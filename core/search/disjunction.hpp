@@ -49,7 +49,7 @@ NS_BEGIN(detail)
 /// @class basic_disjunction
 ////////////////////////////////////////////////////////////////////////////////
 template<typename IteratorWrapper, typename IteratorTraits = iterator_traits<IteratorWrapper>>
-class basic_disjunction final : public score_doc_iterator_base {
+class basic_disjunction final : public doc_iterator_base {
  public:
   typedef IteratorWrapper doc_iterator;
   typedef IteratorTraits traits_t;
@@ -57,7 +57,7 @@ class basic_disjunction final : public score_doc_iterator_base {
   basic_disjunction(
       doc_iterator&& lhs, doc_iterator&& rhs,
       const order::prepared& ord = order::prepared::unordered()) NOEXCEPT
-    : score_doc_iterator_base(ord),
+    : doc_iterator_base(ord),
       lhs_(std::move(lhs)), rhs_(std::move(rhs)), 
       doc_(type_limits<type_t::doc_id_t>::invalid()) {
     // estimate disjunction
@@ -150,7 +150,7 @@ class basic_disjunction final : public score_doc_iterator_base {
 template<
   typename IteratorWrapper, 
   typename IteratorTraits = iterator_traits<IteratorWrapper>
-> class disjunction : public score_doc_iterator_base {
+> class disjunction : public doc_iterator_base {
 public:
   typedef IteratorWrapper doc_iterator;
   typedef IteratorTraits traits_t;
@@ -170,7 +170,7 @@ public:
   explicit disjunction(
       doc_iterators_t&& itrs, 
       const order::prepared& ord = order::prepared::unordered())
-    : score_doc_iterator_base(ord),
+    : doc_iterator_base(ord),
       itrs_(std::move(itrs)),
       doc_(type_limits<type_t::doc_id_t>::invalid()) {
     assert(!itrs_.empty());
@@ -344,7 +344,7 @@ public:
 template<
   typename IteratorWrapper, 
   typename IteratorTraits = iterator_traits<IteratorWrapper>
-> class min_match_disjunction : public score_doc_iterator_base {
+> class min_match_disjunction : public doc_iterator_base {
  public:
   typedef IteratorTraits traits_t;
   typedef disjunction<IteratorWrapper, IteratorTraits> disjunction_t;
@@ -355,7 +355,7 @@ template<
       doc_iterators_t&& itrs,
       size_t min_match_count = 1,
       const order::prepared& ord = order::prepared::unordered())
-    : score_doc_iterator_base(ord), itrs_(std::move(itrs)),
+    : doc_iterator_base(ord), itrs_(std::move(itrs)),
       min_match_count_(
         std::min(itrs_.size(), std::max(size_t(1), min_match_count))),
       lead_(itrs_.size()), doc_(type_limits<type_t::doc_id_t>::invalid()) {
@@ -677,7 +677,7 @@ template<
 /// @returns disjunction iterator created from the specified sub iterators
 //////////////////////////////////////////////////////////////////////////////
 template<typename Disjunction, typename... Args>
-score_doc_iterator::ptr make_disjunction(
+doc_iterator::ptr make_disjunction(
     typename Disjunction::doc_iterators_t&& itrs,
     size_t min_match_count,
     Args&&... args) {
@@ -694,13 +694,13 @@ score_doc_iterator::ptr make_disjunction(
   /* check the size after execution */
   if (0 == size || min_match_count > size) {
     /* empty or unreachable search criteria */
-    return score_doc_iterator::empty();
+    return doc_iterator::empty();
   } else if (1 == size) {
     /* single sub-query */
     return std::move(itrs.front());
   } else if (min_match_count == size) {
     /* pure conjunction */
-    return score_doc_iterator::make<conjunction_t>(
+    return doc_iterator::make<conjunction_t>(
       std::move(itrs), std::forward<Args>(args)...
     );
   }
@@ -708,7 +708,7 @@ score_doc_iterator::ptr make_disjunction(
   if (min_match_count > 1) {
     /* min match disjunction */
     assert(min_match_count < size);
-    return score_doc_iterator::make<min_match_disjunction_t>(
+    return doc_iterator::make<min_match_disjunction_t>(
       std::move(itrs), min_match_count, std::forward<Args>(args)...
     );
   }
@@ -718,13 +718,13 @@ score_doc_iterator::ptr make_disjunction(
     auto begin = itrs.begin();
     auto first = std::move(*begin); ++begin;
     auto second = std::move(*begin);
-    return score_doc_iterator::make<basic_disjunction_t>(
+    return doc_iterator::make<basic_disjunction_t>(
       std::move(first), std::move(second), std::forward<Args>(args)...
     );
   }
 
   /* disjunction */
-  return score_doc_iterator::make<disjunction_t>(
+  return doc_iterator::make<disjunction_t>(
     std::move(itrs), std::forward<Args>(args)...
   );
 }
@@ -733,7 +733,7 @@ score_doc_iterator::ptr make_disjunction(
 /// @returns disjunction iterator created from the specified sub queries 
 //////////////////////////////////////////////////////////////////////////////
 template<typename Disjunction, typename QueryIterator, typename... Args>
-score_doc_iterator::ptr make_disjunction(
+doc_iterator::ptr make_disjunction(
     const sub_reader& rdr, const order::prepared& ord,
     QueryIterator begin, QueryIterator end,
     size_t min_match_count,
@@ -754,7 +754,7 @@ score_doc_iterator::ptr make_disjunction(
   /* check the size before the execution */
   if (0 == size || min_match_count > size) {
     /* empty or unreachable search criteria */
-    return score_doc_iterator::empty();
+    return doc_iterator::empty();
   } else if (min_match_count == size) {
     /* pure conjunction */
     return make_conjunction<conjunction_t>(rdr, ord, begin, end, std::forward<Args>(args)...); 

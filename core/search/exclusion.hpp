@@ -20,9 +20,9 @@ NS_BEGIN(detail)
 ////////////////////////////////////////////////////////////////////////////////
 /// @class exclusion
 ////////////////////////////////////////////////////////////////////////////////
-class exclusion final : public score_doc_iterator {
+class exclusion final : public doc_iterator {
  public:
-  exclusion(score_doc_iterator::ptr&& incl, score_doc_iterator::ptr&& excl)
+  exclusion(doc_iterator::ptr&& incl, doc_iterator::ptr&& excl)
     : incl_(std::move(incl)), excl_(std::move(excl)) {
     assert(incl_);
     assert(excl_);
@@ -81,8 +81,8 @@ class exclusion final : public score_doc_iterator {
     return target;
   }
 
-  score_doc_iterator::ptr incl_;
-  score_doc_iterator::ptr excl_;
+  doc_iterator::ptr incl_;
+  doc_iterator::ptr excl_;
 }; // exclusion
 
 NS_END // detail

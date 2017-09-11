@@ -39,6 +39,8 @@ struct IRESEARCH_API doc_iterator
   DECLARE_SPTR(doc_iterator);
   DECLARE_FACTORY(doc_iterator);
 
+  static doc_iterator::ptr empty();
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief jumps to the specified target and returns current value
   /// of the iterator.
@@ -49,13 +51,6 @@ struct IRESEARCH_API doc_iterator
   //////////////////////////////////////////////////////////////////////////////
   virtual doc_id_t seek(doc_id_t target) = 0;
 }; // doc_iterator
-
-struct IRESEARCH_API score_doc_iterator: doc_iterator {
-  DECLARE_PTR(score_doc_iterator);
-  DECLARE_FACTORY(score_doc_iterator);
-
-  static score_doc_iterator::ptr empty();
-}; // score_doc_iterator
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief jumps iterator to the specified target and returns current value
