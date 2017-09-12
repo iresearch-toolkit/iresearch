@@ -27,9 +27,9 @@
 
 #ifndef IRESEARCH_DLL
 
-TEST(bitset_iterator_test, sequential) {
-  // empty bitset
+TEST(bitset_iterator_test, next) {
   {
+    // empty bitset
     irs::bitset bs;
     irs::bitset_doc_iterator it(bs);
     ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
@@ -95,34 +95,208 @@ TEST(bitset_iterator_test, sequential) {
 
   }
 
-//  // sparse bitset
-//  {
-//    const size_t size = 176;
-//    irs::bitset bs(size);
-//
-//
-//
-//    // set all bits
-//    for (auto begin = bs.data(), end = begin + bs.words(); begin < end; ++begin) {
-//      *begin = ~irs::bitset::word_t(0);
-//    }
-//
-//    irs::bitset_doc_iterator it(bs);
-//    ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::invalid(it.value()));
-//
-//    auto& attrs = it.attributes();
-//    auto& cost = attrs.get<irs::cost>();
-//    ASSERT_TRUE(bool(cost));
-//    ASSERT_EQ(size, cost->estimate());
-//
-//    for (auto i = 0; i < size; ++i) {
-//      ASSERT_TRUE(it.next());
-//      ASSERT_EQ(i, it.value());
-//    }
-//    ASSERT_FALSE(it.next());
-//    ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
-//
-//  }
+  // sparse bitset
+  {
+    const size_t size = 176;
+    irs::bitset bs(size);
+
+    // set every second bit
+    for (auto i = 0; i < size; ++i) {
+      bs.reset(i, i%2);
+    }
+
+    irs::bitset_doc_iterator it(bs);
+    ASSERT_TRUE(!irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+
+    auto& attrs = it.attributes();
+    auto& cost = attrs.get<irs::cost>();
+    ASSERT_TRUE(bool(cost));
+    ASSERT_EQ(size/2, cost->estimate());
+
+    for (auto i = 1; i < size; i+=2) {
+      ASSERT_TRUE(it.next());
+      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::min() + i, it.value());
+    }
+    ASSERT_FALSE(it.next());
+    ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+  }
+}
+
+TEST(bitset_iterator_test, seek) {
+  {
+    // empty bitset
+    irs::bitset bs;
+    irs::bitset_doc_iterator it(bs);
+    ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+
+    auto& attrs = it.attributes();
+    auto& cost = attrs.get<irs::cost>();
+    ASSERT_TRUE(bool(cost));
+    ASSERT_EQ(0, cost->estimate());
+
+    ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.seek(1)));
+    ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+
+    ASSERT_FALSE(it.next());
+    ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+  }
+
+  // non-empty bitset
+  {
+    irs::bitset bs(13);
+    irs::bitset_doc_iterator it(bs);
+    ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+
+    auto& attrs = it.attributes();
+    auto& cost = attrs.get<irs::cost>();
+    ASSERT_TRUE(bool(cost));
+    ASSERT_EQ(0, cost->estimate());
+
+    ASSERT_FALSE(it.next());
+    ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+
+    ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.seek(1)));
+    ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+  }
+
+  // dense bitset
+  {
+    const size_t size = 173;
+    irs::bitset bs(size);
+
+    // set all bits
+    irs::bitset::word_t data[] {
+      ~irs::bitset::word_t(0),
+      ~irs::bitset::word_t(0),
+      ~irs::bitset::word_t(0)
+    };
+
+    bs.memset(data);
+
+    irs::bitset_doc_iterator it(bs);
+    ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+
+    auto& attrs = it.attributes();
+    auto& cost = attrs.get<irs::cost>();
+    ASSERT_TRUE(bool(cost));
+    ASSERT_EQ(size, cost->estimate());
+
+    for (auto expected_doc = irs::type_limits<irs::type_t::doc_id_t>::min(); expected_doc <= size; ++expected_doc) {
+      ASSERT_EQ(expected_doc, it.seek(expected_doc));
+      ASSERT_EQ(expected_doc, it.value());
+    }
+    ASSERT_FALSE(it.next());
+    ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+  }
+
+  // seek after the last document
+  {
+    const size_t size = 173;
+    irs::bitset bs(size);
+
+    // set all bits
+    irs::bitset::word_t data[] {
+      ~irs::bitset::word_t(0),
+      ~irs::bitset::word_t(0),
+      ~irs::bitset::word_t(0)
+    };
+
+    bs.memset(data);
+
+    irs::bitset_doc_iterator it(bs);
+    ASSERT_TRUE(!irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+
+    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.seek(size+1));
+  }
+
+  // seek to the last document
+  {
+    const size_t size = 173;
+    irs::bitset bs(size);
+
+    // set all bits
+    irs::bitset::word_t data[] {
+      ~irs::bitset::word_t(0),
+      ~irs::bitset::word_t(0),
+      ~irs::bitset::word_t(0)
+    };
+
+    bs.memset(data);
+
+    irs::bitset_doc_iterator it(bs);
+    ASSERT_TRUE(!irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+
+    ASSERT_EQ(size, it.seek(size));
+  }
+
+  // seek to 'eof'
+  {
+    const size_t size = 173;
+    irs::bitset bs(size);
+
+    // set all bits
+    irs::bitset::word_t data[] {
+      ~irs::bitset::word_t(0),
+      ~irs::bitset::word_t(0),
+      ~irs::bitset::word_t(0)
+    };
+
+    bs.memset(data);
+
+    irs::bitset_doc_iterator it(bs);
+    ASSERT_TRUE(!irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+
+    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.seek(irs::type_limits<irs::type_t::doc_id_t>::eof()));
+  }
+
+  // seek before the first document
+  {
+    const size_t size = 173;
+    irs::bitset bs(size);
+
+    // set all bits
+    irs::bitset::word_t data[] {
+      ~irs::bitset::word_t(0),
+      ~irs::bitset::word_t(0),
+      ~irs::bitset::word_t(0)
+    };
+
+    bs.memset(data);
+
+    irs::bitset_doc_iterator it(bs);
+    ASSERT_TRUE(!irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+
+    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::min(), it.seek(irs::type_limits<irs::type_t::doc_id_t>::invalid()));
+  }
+
+  // sparse bitset
+  {
+    const size_t size = 176;
+    irs::bitset bs(size);
+
+    // set every second bit
+    for (auto i = 0; i < size; ++i) {
+      bs.reset(i, i%2);
+    }
+
+    irs::bitset_doc_iterator it(bs);
+    ASSERT_TRUE(!irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+
+    auto& attrs = it.attributes();
+    auto& cost = attrs.get<irs::cost>();
+    ASSERT_TRUE(bool(cost));
+    ASSERT_EQ(size/2, cost->estimate());
+
+    for (auto i = 1; i < size; i+=2) {
+      const auto expected_doc = irs::type_limits<irs::type_t::doc_id_t>::min() + i;
+      ASSERT_EQ(expected_doc, it.seek(i));
+      ASSERT_EQ(expected_doc, it.seek(i));
+      ASSERT_EQ(expected_doc, it.seek(expected_doc));
+      ASSERT_EQ(expected_doc, it.value());
+    }
+    ASSERT_FALSE(it.next());
+    ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+  }
 }
 
 #endif

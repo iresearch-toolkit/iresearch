@@ -48,21 +48,22 @@ bool bitset_doc_iterator::next() NOEXCEPT {
     return false;
   }
 
-  return !type_limits<type_t::doc_id_t>::eof(next_from(++doc_));
+  return !type_limits<type_t::doc_id_t>::eof(doc_ = next_from(doc_));
 }
 
 doc_id_t bitset_doc_iterator::seek(doc_id_t target) NOEXCEPT {
-  if (target >= set_.size()) {
+  target = std::max(target, type_limits<type_t::doc_id_t>::min());
+
+  if (target > set_.size()) {
     // seal iterator
-    return (doc_ = type_limits<type_t::doc_id_t>::eof());
+    return doc_ = type_limits<type_t::doc_id_t>::eof();
   }
 
-  return next_from(target);
+  target -= type_limits<type_t::doc_id_t>::min();
+  return doc_ = next_from(target);
 }
 
 doc_id_t bitset_doc_iterator::next_from(doc_id_t target) NOEXCEPT {
-  target -= type_limits<type_t::doc_id_t>::min();
-
   const auto* pword = &set_.word(target);
   auto word = ((*pword) >> bitset::bit(target));
 
@@ -70,7 +71,7 @@ doc_id_t bitset_doc_iterator::next_from(doc_id_t target) NOEXCEPT {
 
   if (word) {
     // current word contains the specified 'target'
-    return doc_ = (type_limits<type_t::doc_id_t>::min() + target + math::math_traits<word_t>::ctz(word));
+    return (type_limits<type_t::doc_id_t>::min() + target + math::math_traits<word_t>::ctz(word));
   }
 
   const auto* end = set_.data() + set_.words();
@@ -81,10 +82,13 @@ doc_id_t bitset_doc_iterator::next_from(doc_id_t target) NOEXCEPT {
 
   assert(pword >= set_.data());
 
-  return doc_ = (word
-    ? type_limits<type_t::doc_id_t>::min() + bitset::bit_offset(std::distance(set_.data(), pword)) + math::math_traits<word_t>::ctz(word)
-    : type_limits<type_t::doc_id_t>::eof()
-  );
+  if (word) {
+    return type_limits<type_t::doc_id_t>::min()
+      + bitset::bit_offset(std::distance(set_.data(), pword))
+      + math::math_traits<word_t>::ctz(word);
+  }
+
+  return type_limits<type_t::doc_id_t>::eof();
 }
 
 NS_END // ROOT
