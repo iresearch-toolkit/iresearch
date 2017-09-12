@@ -32,7 +32,7 @@ NS_ROOT
 // |doc| = index_time_doc_boost / sqrt(# of terms in a field within a document)
 
 // average document length
-// avgDL = total_term_frequency / total_docs_count;
+// avgDL = sum(field_term_count) / (# documents with this field)
 
 NS_BEGIN(bm25)
 
@@ -137,6 +137,7 @@ class collector final : public iresearch::sort::collector {
     auto& freq = field.attributes().get<frequency>();
 
     if (freq) {
+      field_count += field.docs_count();
       total_term_freq += freq->value;
     }
   }
@@ -165,7 +166,7 @@ class collector final : public iresearch::sort::collector {
     bm25stats->norm_const = k_ - kb;
     bm25stats->norm_length = kb;
     if (total_term_freq && docs_count) {
-      const auto avg_doc_len = static_cast<float_t>(total_term_freq) / docs_count;
+      const auto avg_doc_len = static_cast<float_t>(total_term_freq) / field_count;
       bm25stats->norm_length /= avg_doc_len;
     }
 
@@ -175,6 +176,7 @@ class collector final : public iresearch::sort::collector {
 
  private:
   uint64_t docs_count = 0; // number of documents that have at least one term for processed fields
+  uint64_t field_count = 0; // number of documents with the specified field
   uint64_t total_term_freq = 0; // number of tokens for processed fields
   float_t k_;
   float_t b_;

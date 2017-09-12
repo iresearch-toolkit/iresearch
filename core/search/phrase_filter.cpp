@@ -194,11 +194,15 @@ filter::prepared::ptr by_phrase::prepare(
   phrase_terms.reserve(phrase_.size());
 
   // prepare phrase stats
-  std::vector<order::prepared::stats> phrase_stats;
-  phrase_stats.reserve(phrase_.size());
+  struct state_t {
+    attribute_store filter_attrs; // filter attributes for a the current state/term
+    order::prepared::stats stats;
+    state_t(const order::prepared& order): stats(order.prepare_stats()) {}
+  };
+  std::unordered_map<const bstring*, state_t> term_stats; // stats for each individual term in the phrase
+
   for(auto& word : phrase_) {
-    UNUSED(word);
-    phrase_stats.emplace_back(ord.prepare_stats());
+    term_stats.emplace(&(word.second), ord);
   }
 
   // iterate over the segments
@@ -220,9 +224,6 @@ filter::prepared::ptr by_phrase::prepare(
     // get term metadata
     auto& meta = term->attributes().get<term_meta>();
 
-    auto term_stats = phrase_stats.begin();
-    term_stats->field(sr, *tr);
-
     for(auto& word: phrase_) {
       if (!term->seek(word.second)) {
         if (ord.empty()) {
@@ -243,11 +244,13 @@ filter::prepared::ptr by_phrase::prepare(
         : cost::MAX;
       phrase_terms.emplace_back(term->cookie(), term_estimation);
 
-      // collect stats
-      term_stats->term(term->attributes());
-      ++term_stats;
+      // collect statistics
+      auto itr = term_stats.find(&(word.second));
+      assert(itr != term_stats.end()); // each term added above
+      auto& stats = itr->second.stats;
+      stats.field(sr, *tr);
+      stats.term(term->attributes());
     }
-    
 
     // we have not found all needed terms
     if (phrase_terms.size() != phrase_.size()) {
@@ -262,6 +265,11 @@ filter::prepared::ptr by_phrase::prepare(
     phrase_terms.reserve(phrase_.size());
   }
 
+  // iterate over all stats and apply/store order stats
+  for (auto& entry: term_stats) {
+    entry.second.stats.finish(rdr, entry.second.filter_attrs);
+  }
+
   // offset of the first term in a phrase
   size_t base_offset = first_pos();
 
@@ -269,15 +277,15 @@ filter::prepared::ptr by_phrase::prepare(
   phrase_query::phrase_stats_t stats;
   stats.reserve(phrase_.size());
 
-  auto term_stats = phrase_stats.begin();
   for(auto& word : phrase_) {
     stats.emplace_back();
 
     auto& stat = stats.back();
-    term_stats->finish(rdr, stat.first);
-    stat.second = position::value_t(word.first-base_offset);
+    auto itr = term_stats.find(&(word.second));
+    assert(itr != term_stats.end()); // each term added above
 
-    ++term_stats;
+    stat.first = itr->second.filter_attrs; // filter attribute_store is copied since it's shared among multiple states
+    stat.second = position::value_t(word.first-base_offset);
   }
 
   auto q = memory::make_unique<phrase_query>(
