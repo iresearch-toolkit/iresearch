@@ -131,22 +131,28 @@ bool token_stream_payload::next() {
 // --SECTION--                                       string_field implemntation
 // ----------------------------------------------------------------------------
 
-string_field::string_field(const ir::string_ref& name) {
+string_field::string_field(
+    const irs::string_ref& name,
+    const irs::flags& extra_features /*= irs::flags::empty_instance()*/
+): features_({ irs::frequency::type(), irs::position::type() }) {
+  features_ |= extra_features;
   this->name(name);
 }
 
 string_field::string_field(
     const ir::string_ref& name, 
-    const ir::string_ref& value) 
-  : value_(value) {
+    const irs::string_ref& value,
+    const irs::flags& extra_features /*= irs::flags::empty_instance()*/
+  ): features_({ irs::frequency::type(), irs::position::type() }),
+     value_(value) {
+  features_ |= extra_features;
   this->name(name);
 }
 
 const ir::flags& string_field::features() const {
-  static ir::flags features{ ir::frequency::type(), ir::position::type() };
-  return features;
+  return features_;
 }
-  
+
 // reject too long terms
 void string_field::value(const ir::string_ref& str) {
   const auto size_len = ir::vencode_size_32(ir::byte_block_pool::block_type::SIZE);
