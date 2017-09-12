@@ -42,8 +42,8 @@ DEFINE_ATTRIBUTE_TYPE(iresearch::score);
   return EMPTY_SCORE;
 }
 
-score::score() NOEXCEPT {
-//  : func_([](byte_type*){}) {
+score::score() NOEXCEPT
+  : func_([](byte_type*){}) {
 }
 
 NS_END // ROOT

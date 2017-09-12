@@ -27,10 +27,13 @@ class bitset : util::noncopyable {
   typedef size_t word_t;
   typedef size_t index_t;
 
+  // returns corresponding bit index within a word for the
+  // specified offset in bits
   CONSTEXPR FORCE_INLINE static size_t bit(size_t i) NOEXCEPT {
     return i % bits_required<word_t>();
   }
 
+  // returns corresponding offset in bits for the specified word index
   CONSTEXPR FORCE_INLINE static size_t bit_offset(size_t i) NOEXCEPT {
     return i * bits_required<word_t>();
   }
@@ -141,6 +144,8 @@ class bitset : util::noncopyable {
     });
   }
 
+  // returns corresponding word for the
+  // specified bit offset
   FORCE_INLINE word_t& word(size_t i) NOEXCEPT {
     assert(i < bits_);
     return data_[i / bits_required<word_t>()];
