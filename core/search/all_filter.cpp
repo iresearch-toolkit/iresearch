@@ -52,7 +52,6 @@ class all_iterator final : public irs::doc_iterator_base {
     );
 
     prepare_score([this](irs::byte_type* score) {
-      std::cerr << "scored" << std::endl;
       scorers_.score(*ord_, score);
     });
   }
