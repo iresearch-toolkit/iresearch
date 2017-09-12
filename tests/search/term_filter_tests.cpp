@@ -398,6 +398,54 @@ protected:
     }
   }
 
+  void by_term_sequential_order() {
+    // add segment
+    {
+      tests::json_doc_generator gen(
+        resource("simple_sequential.json"),
+        &tests::generic_json_field_factory);
+      add_segment(gen);
+    }
+
+    // read segment
+    auto rdr = open_reader();
+
+    {
+      // create filter
+      irs::by_term filter;
+      filter.field("prefix").term("abcy");
+
+      // create order
+      size_t field_count = 0;
+      size_t finish_count = 0;
+      size_t term_count = 0;
+      iresearch::order ord;
+      auto& scorer = ord.add<sort::custom_sort>();
+      scorer.collector_field = [&field_count](const irs::sub_reader&, const irs::term_reader&)->void{ ++field_count; };
+      scorer.collector_finish = [&finish_count](const irs::index_reader&, irs::attribute_store&)->void{ ++finish_count; };
+      scorer.collector_term = [&term_count](const irs::attribute_view&)->void{ ++term_count; };
+      scorer.prepare_collector = [&scorer]()->irs::sort::collector::ptr{ return irs::memory::make_unique<sort::custom_sort::prepared::collector>(scorer); };
+
+      std::set<irs::doc_id_t> expected{ 31, 32 };
+      auto pord = ord.prepare();
+      auto prep = filter.prepare(rdr, pord);
+      auto docs = prep->execute(*(rdr.begin()), pord);
+
+      auto& scr = docs->attributes().get<iresearch::score>();
+      ASSERT_FALSE(!scr);
+
+      while (docs->next()) {
+        scr->evaluate();
+        ASSERT_EQ(1, expected.erase(docs->value()));
+      }
+
+      ASSERT_TRUE(expected.empty());
+      ASSERT_EQ(1, field_count);
+      ASSERT_EQ(1, term_count);
+      ASSERT_EQ(1, finish_count); // 1 unique term
+    }
+  }
+
   void by_term_sequential() {
     // add segment
     {
@@ -544,6 +592,10 @@ TEST_F(memory_term_filter_test_case, by_term_numeric) {
   by_term_sequential_numeric();
 }
 
+TEST_F(memory_term_filter_test_case, by_term_order) {
+  by_term_sequential_order();
+}
+
 TEST_F(memory_term_filter_test_case, by_term_boost) {
   by_term_sequential_boost();
 }
@@ -579,6 +631,10 @@ TEST_F(fs_term_filter_test_case, by_term_boost) {
 
 TEST_F(fs_term_filter_test_case, by_term_numeric) {
   by_term_sequential_numeric();
+}
+
+TEST_F(fs_term_filter_test_case, by_term_order) {
+  by_term_sequential_order();
 }
 
 TEST_F(fs_term_filter_test_case, by_term_cost) {

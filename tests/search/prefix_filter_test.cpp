@@ -35,6 +35,26 @@ class prefix_filter_test_case : public filter_test_case_base {
     // empty query
     check_query(ir::by_prefix(), docs_t{}, costs_t{0}, rdr);
 
+    // empty prefix test collector call count for field/term/finish
+    {
+      docs_t docs{ 1, 4, 9, 16, 21, 24, 26, 29, 31, 32 };
+      costs_t costs{ docs.size() };
+      irs::order order;
+
+      size_t field_count = 0;
+      size_t finish_count = 0;
+      size_t term_count = 0;
+      auto& scorer = order.add<sort::custom_sort>();
+      scorer.collector_field = [&field_count](const irs::sub_reader&, const irs::term_reader&)->void{ ++field_count; };
+      scorer.collector_finish = [&finish_count](const irs::index_reader&, irs::attribute_store&)->void{ ++finish_count; };
+      scorer.collector_term = [&term_count](const irs::attribute_view&)->void{ ++term_count; };
+      scorer.prepare_collector = [&scorer]()->irs::sort::collector::ptr{ return irs::memory::make_unique<sort::custom_sort::prepared::collector>(scorer); };
+      check_query(irs::by_prefix().field("prefix"), order, docs, rdr);
+      ASSERT_EQ(9, field_count);
+      ASSERT_EQ(9, term_count);
+      ASSERT_EQ(9, finish_count); // 9 unque terms
+    }
+
     // empty prefix
     {
       docs_t docs{ 31, 32, 1, 4, 9, 16, 21, 24, 26, 29 };

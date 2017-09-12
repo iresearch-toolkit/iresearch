@@ -1323,6 +1323,32 @@ class granular_range_filter_test_case: public filter_test_case_base {
     // empty query
     check_query(ir::by_granular_range(), docs_t{}, rdr);
 
+    // value = (..;..) test collector call count for field/term/finish
+    {
+      docs_t docs{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
+      costs_t costs{ docs.size() };
+      irs::order order;
+
+      size_t field_count = 0;
+      size_t finish_count = 0;
+      size_t term_count = 0;
+      auto& scorer = order.add<sort::custom_sort>();
+      scorer.collector_field = [&field_count](const irs::sub_reader&, const irs::term_reader&)->void{ ++field_count; };
+      scorer.collector_finish = [&finish_count](const irs::index_reader&, irs::attribute_store&)->void{ ++finish_count; };
+      scorer.collector_term = [&term_count](const irs::attribute_view&)->void{ ++term_count; };
+      scorer.prepare_collector = [&scorer]()->irs::sort::collector::ptr{ return irs::memory::make_unique<sort::custom_sort::prepared::collector>(scorer); };
+      check_query(
+        irs::by_granular_range()
+          .field("value")
+          .insert<irs::Bound::MIN>(irs::numeric_utils::numeric_traits<double_t>::ninf())
+          .insert<irs::Bound::MAX>(irs::numeric_utils::numeric_traits<double_t>::inf())
+        , order, docs, rdr
+      );
+      ASSERT_EQ(11, field_count);
+      ASSERT_EQ(11, term_count);
+      ASSERT_EQ(11, finish_count); // 11 different terms
+    }
+
     // value = (..;..)
     {
       docs_t docs{ 1, 5, 7, 9, 10, 3, 4, 8, 11, 2, 6, 12, 13, 14, 15, 16, 17 };
