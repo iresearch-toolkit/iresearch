@@ -15,6 +15,7 @@
 #include "store/memory_directory.hpp"
 #include "store/fs_directory.hpp"
 #include "formats/formats.hpp"
+#include "search/score.hpp"
 
 namespace ir = iresearch;
 
@@ -72,35 +73,63 @@ protected:
       auto& sort = order.add<sort::custom_sort>();
 
       sort.collector_field = [&collector_field_count](const irs::sub_reader&, const irs::term_reader&)->void { 
-        std::cerr << "collector_field" << std::endl;
         ++collector_field_count; 
       };
       sort.collector_finish = [&collector_finish_count](const irs::index_reader&, irs::attribute_store&)->void { 
-        std::cerr << "collector_finish" << std::endl;
         ++collector_finish_count; 
       };
       sort.collector_term = [&collector_term_count](const irs::attribute_view&)->void { 
-        std::cerr << "collector_term" << std::endl;
         ++collector_term_count; 
       };
       sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { 
-        std::cerr << "add" << std::endl;
         dst = src; 
       };
       sort.scorer_less = [](const irs::doc_id_t& lhs, const irs::doc_id_t& rhs)->bool { 
-        std::cerr << "less" << std::endl;
         return (lhs & 0xAAAAAAAAAAAAAAAA) < (rhs & 0xAAAAAAAAAAAAAAAA); 
       };
       sort.scorer_score = [&scorer_score_count](irs::doc_id_t)->void { 
-        std::cerr << "score" << std::endl;
         ++scorer_score_count;
       };
 
+      {
+        auto prepared_order = order.prepare();
+        auto prepared_filter = irs::all().prepare(rdr, prepared_order, 1);
+        auto score_less = [&prepared_order](
+          const iresearch::bytes_ref& lhs, const iresearch::bytes_ref& rhs
+        ) {
+          return prepared_order.less(lhs.c_str(), rhs.c_str());
+        };
+        std::multimap<irs::bstring, irs::doc_id_t, decltype(score_less)> scored_result(score_less);
+
+        for (const auto& sub: rdr) {
+          auto docs = prepared_filter->execute(sub, prepared_order);
+          auto& score = docs->attributes().get<irs::score>();
+
+          while (docs->next()) {
+            score->evaluate();
+            ASSERT_FALSE(!score);
+            scored_result.emplace(score->value(), docs->value());
+          }
+        }
+
+        for (auto& entry : scored_result) {
+          std::cerr << prepared_order.get<irs::doc_id_t>(entry.first.c_str(), 0) << " " << entry.second << std::endl;
+        }
+
+        std::vector<iresearch::doc_id_t> result;
+
+        for (auto& entry: scored_result) {
+          result.emplace_back(entry.second);
+        }
+
+//        ASSERT_EQ(expected, result);
+      }
+
       check_query(irs::all(), order, docs, rdr);
       ASSERT_EQ(0, collector_field_count); // should not be executed
-      ASSERT_EQ(1, collector_finish_count);
+      ASSERT_EQ(2*1, collector_finish_count);
       ASSERT_EQ(0, collector_term_count); // should not be executed
-      ASSERT_EQ(32, scorer_score_count);
+      ASSERT_EQ(2*32, scorer_score_count);
     }
 
     // custom order (no scorer)
