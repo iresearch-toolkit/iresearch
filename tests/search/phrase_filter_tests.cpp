@@ -270,6 +270,75 @@ class phrase_filter_test_case : public filter_test_case_base {
       ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs_seek->seek(ir::type_limits<ir::type_t::doc_id_t>::eof())));
     }
 
+    // "quick brown fox" with order
+    {
+      irs::bytes_ref actual_value;
+
+      irs::by_phrase q;
+      q.field("phrase_anl")
+       .push_back("quick")
+       .push_back("brown")
+       .push_back("fox");
+
+      size_t field_count = 0;
+      size_t finish_count = 0;
+      size_t term_count = 0;
+      irs::order ord;
+      auto& sort = ord.add<tests::sort::custom_sort>();
+      sort.collector_field = [&field_count](const irs::sub_reader&, const irs::term_reader&)->void{ ++field_count; };
+      sort.collector_finish = [&finish_count](const irs::index_reader&, irs::attribute_store&)->void{ ++finish_count; };
+      sort.collector_term = [&term_count](const irs::attribute_view&)->void{ ++term_count; };
+      sort.prepare_collector = [&sort]()->irs::sort::collector::ptr { return irs::memory::make_unique<sort::custom_sort::prepared::collector>(sort); };
+      sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void {
+        ASSERT_TRUE(
+          irs::type_limits<irs::type_t::doc_id_t>::invalid() == dst
+          || dst == src
+        );
+        dst = src;
+      };
+
+      auto pord = ord.prepare();
+      auto prepared = q.prepare(rdr, pord);
+      ASSERT_EQ(3, field_count);
+      ASSERT_EQ(3, term_count);
+      ASSERT_EQ(3, finish_count); // 3 sub-terms in phrase
+      auto sub = rdr.begin();
+      auto column = sub->column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      auto docs = prepared->execute(*sub, pord);
+      ASSERT_FALSE(iresearch::type_limits<irs::type_t::doc_id_t>::valid(docs->value()));
+      auto docs_seek = prepared->execute(*sub);
+      ASSERT_FALSE(iresearch::type_limits<irs::type_t::doc_id_t>::valid(docs_seek->value()));
+      auto& score = docs->attributes().get<irs::score>();
+      ASSERT_FALSE(!score);
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_FALSE(docs->next());
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs_seek->seek(irs::type_limits<ir::type_t::doc_id_t>::eof())));
+    }
+
     // "fox ... quick"
     {
       irs::bytes_ref actual_value;
