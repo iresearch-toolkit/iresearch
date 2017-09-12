@@ -71,12 +71,30 @@ protected:
       size_t scorer_score_count = 0;
       auto& sort = order.add<sort::custom_sort>();
 
-      sort.collector_field = [&collector_field_count](const irs::sub_reader&, const irs::term_reader&)->void { ++collector_field_count; };
-      sort.collector_finish = [&collector_finish_count](const irs::index_reader&, irs::attribute_store&)->void { ++collector_finish_count; };
-      sort.collector_term = [&collector_term_count](const irs::attribute_view&)->void { ++collector_term_count; };
-      sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { dst = src; };
-      sort.scorer_less = [](const irs::doc_id_t& lhs, const irs::doc_id_t& rhs)->bool { return (lhs & 0xAAAAAAAAAAAAAAAA) < (rhs & 0xAAAAAAAAAAAAAAAA); };
-      sort.scorer_score = [&scorer_score_count](irs::doc_id_t)->void { ++scorer_score_count; };
+      sort.collector_field = [&collector_field_count](const irs::sub_reader&, const irs::term_reader&)->void { 
+        std::cerr << "collector_field" << std::endl;
+        ++collector_field_count; 
+      };
+      sort.collector_finish = [&collector_finish_count](const irs::index_reader&, irs::attribute_store&)->void { 
+        std::cerr << "collector_finish" << std::endl;
+        ++collector_finish_count; 
+      };
+      sort.collector_term = [&collector_term_count](const irs::attribute_view&)->void { 
+        std::cerr << "collector_term" << std::endl;
+        ++collector_term_count; 
+      };
+      sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { 
+        std::cerr << "add" << std::endl;
+        dst = src; 
+      };
+      sort.scorer_less = [](const irs::doc_id_t& lhs, const irs::doc_id_t& rhs)->bool { 
+        std::cerr << "less" << std::endl;
+        return (lhs & 0xAAAAAAAAAAAAAAAA) < (rhs & 0xAAAAAAAAAAAAAAAA); 
+      };
+      sort.scorer_score = [&scorer_score_count](irs::doc_id_t)->void { 
+        std::cerr << "score" << std::endl;
+        ++scorer_score_count;
+      };
 
       check_query(irs::all(), order, docs, rdr);
       ASSERT_EQ(0, collector_field_count); // should not be executed

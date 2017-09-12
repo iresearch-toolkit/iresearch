@@ -40,23 +40,23 @@ env:
     ############################################################################
     # Debug build, static library
     ############################################################################
-    - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
+    - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*all*" # TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
     # Release build, static library
     ############################################################################
-    - BUILD_TYPE="Release" STATIC_LIB="true"
-    
+    - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*all*"
+
     ############################################################################
     # Debug build, shared library
     ############################################################################
-    - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
+    - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*all*" # TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
     # Release build, shared library
     ############################################################################
-    - BUILD_TYPE="Release"
-          
+    - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*all*"
+
 before_install:
   sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 60 --slave /usr/bin/g++ g++ /usr/bin/g++-5
 
