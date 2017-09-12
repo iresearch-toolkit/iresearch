@@ -43,6 +43,7 @@ class IRESEARCH_API doc_iterator_base : public doc_iterator {
 
   void prepare_score(score::score_f&& func) {
     if (scr_.prepare(*ord_, std::move(func))) {
+      std::cerr << "emplaced" << std::endl;
       attrs_.emplace(scr_);
     }
   }
