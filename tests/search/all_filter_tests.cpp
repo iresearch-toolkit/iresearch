@@ -80,7 +80,9 @@ protected:
       sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { 
         dst = src; 
       };
-      sort.scorer_less = [](const irs::doc_id_t& lhs, const irs::doc_id_t& rhs)->bool { 
+      sort.scorer_less = [](const irs::doc_id_t& lhs, const irs::doc_id_t& rhs)->bool {
+        std::cout << "Less (" << lhs << " < " << rhs << ") :" << (lhs & 0xAAAAAAAAAAAAAAAA) << " < " << (rhs & 0xAAAAAAAAAAAAAAAA) << std::endl;
+
         return (lhs & 0xAAAAAAAAAAAAAAAA) < (rhs & 0xAAAAAAAAAAAAAAAA); 
       };
       sort.scorer_score = [&scorer_score_count](irs::doc_id_t)->void { 
