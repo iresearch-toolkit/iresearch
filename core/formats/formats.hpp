@@ -336,6 +336,7 @@ struct IRESEARCH_API columnstore_reader {
 NS_END
 
 MSVC_ONLY(template class IRESEARCH_API std::function<bool(iresearch::data_input&)>); // columnstore_reader::value_reader_f
+MSVC_ONLY(template class IRESEARCH_API std::pair<iresearch::doc_id_t, iresearch::bytes_ref>); // columnstore_reader::value_type
 
 NS_ROOT
 
