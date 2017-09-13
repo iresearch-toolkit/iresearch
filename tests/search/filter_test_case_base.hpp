@@ -143,7 +143,9 @@ struct custom_sort: public irs::sort {
         ASSERT_TRUE(score_buf);
         auto& doc_id = *reinterpret_cast<irs::doc_id_t*>(score_buf);
 
+        std::cerr << "Before: " << doc_id << std::endl;
         doc_id = document_attrs_.get<irs::document>()->value;
+        std::cerr << "After: " << doc_id << std::endl;
 
         if (sort_.scorer_score) {
           sort_.scorer_score(doc_id);
