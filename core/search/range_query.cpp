@@ -104,16 +104,14 @@ void limited_sample_scorer::score(
     auto& segment = scored_state.sub_reader;
     auto& term_attrs = term_itr->attributes();
 
-    // collect statistics
-    stats.field(segment, field);
-    stats.term(term_attrs);
+    stats.collect(segment, field, term_attrs); // collect statistics
 
     state_stats.emplace(&scored_state, &stats_entry); // associate states to a state
   }
 
   // iterate over all stats and apply/store order stats
   for (auto& entry: term_stats) {
-    entry.second.stats.finish(index, entry.second.filter_attrs);
+    entry.second.stats.finish(entry.second.filter_attrs, index);
   }
 
   // set filter attributes for each corresponding term

@@ -239,15 +239,19 @@ filter::prepared::ptr by_same_position::prepare(
   term_states.reserve(terms_.size());
 
   // prepare phrase stats (collector for each term)
-  std::vector<order::prepared::stats> query_stats;
-  query_stats.reserve(terms_.size());
+  std::vector<order::prepared::stats> term_stats;
+  term_stats.reserve(terms_.size());
+
   for(auto size = terms_.size(); size; --size) {
-    query_stats.emplace_back(ord.prepare_stats());
+    term_stats.emplace_back(ord.prepare_stats());
   }
-  
+
   for (const auto& segment : index) {
-    auto term_stats = query_stats.begin();
+    auto term_itr = term_stats.begin();
+
     for (const auto& branch : terms_) {
+      auto next_stats = irs::make_finally([&term_itr]()->void{ ++term_itr; });
+
       // get term dictionary for field
       const term_reader* field = segment.field(branch.first);
       if (!field) {
@@ -273,18 +277,15 @@ filter::prepared::ptr by_same_position::prepare(
           continue;
         }
       }
-      
+
       term->read(); // read term attributes
-      term_stats->field(segment, *field); // collect field stats
-      term_stats->term(term->attributes()); // collect term stats
+      term_itr->collect(segment, *field, term->attributes()); // collect statistics
 
       term_states.emplace_back();
       auto& state = term_states.back();
       state.cookie = term->cookie();
       state.estimation = meta ? meta->docs_count : cost::MAX;
       state.reader = field;
-
-      ++term_stats;
     }
 
     if (term_states.size() != terms_.size()) {
@@ -295,21 +296,27 @@ filter::prepared::ptr by_same_position::prepare(
 
     auto& state = query_states.insert(segment);
     state = std::move(term_states);
+
     term_states.reserve(terms_.size());
   }
 
   // finish stats
   same_position_query::stats_t stats(terms_.size());
-  auto term_stats = query_stats.begin();
-  for(auto& stat : stats) {
-    term_stats->finish(index, stat);
-    ++term_stats;
+  auto stat_itr = stats.begin();
+  auto term_itr = term_stats.begin();
+  assert(term_stats.size() == terms_.size()); // initialized above
+
+  for(auto& term: terms_) {
+    term_itr->finish(*stat_itr, index);
+    ++stat_itr;
+    ++term_itr;
   }
 
   auto q = memory::make_unique<same_position_query>(
-    std::move(query_states), std::move(stats)
+    std::move(query_states),
+    std::move(stats)
   );
-  
+
   // apply boost
   iresearch::boost::apply(q->attributes(), this->boost() * boost);
 
@@ -317,3 +324,7 @@ filter::prepared::ptr by_same_position::prepare(
 }
 
 NS_END // ROOT
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

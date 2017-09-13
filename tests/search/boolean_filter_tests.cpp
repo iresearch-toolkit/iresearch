@@ -3946,15 +3946,17 @@ protected:
       not_node.filter<irs::by_term>().field(column_name).term("abcd");
 
       irs::order order;
-      size_t collector_field_count = 0;
+      size_t collector_collect_count = 0;
       size_t collector_finish_count = 0;
-      size_t collector_term_count = 0;
       size_t scorer_score_count = 0;
       auto& sort = order.add<sort::custom_sort>();
 
-      sort.collector_field = [&collector_field_count](const irs::sub_reader&, const irs::term_reader&)->void { ++collector_field_count; };
-      sort.collector_finish = [&collector_finish_count](const irs::index_reader&, irs::attribute_store&)->void { ++collector_finish_count; };
-      sort.collector_term = [&collector_term_count](const irs::attribute_view&)->void { ++collector_term_count; };
+      sort.collector_collect = [&collector_collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
+        ++collector_collect_count;
+      };
+      sort.collector_finish = [&collector_finish_count](irs::attribute_store&, const irs::index_reader&)->void {
+        ++collector_finish_count;
+      };
       sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { ASSERT_TRUE(&dst); ASSERT_TRUE(&src); dst = src; };
       sort.scorer_less = [](const irs::doc_id_t& lhs, const irs::doc_id_t& rhs)->bool { return (lhs > rhs); }; // reverse order
       sort.scorer_score = [&scorer_score_count](irs::doc_id_t& score)->void { ASSERT_TRUE(&score); ++scorer_score_count; };
@@ -3986,9 +3988,8 @@ protected:
 
       ASSERT_EQ(expected.size(), docs_count);
 
-      ASSERT_EQ(0, collector_field_count); // should not be executed
+      ASSERT_EQ(0, collector_collect_count); // should not be executed
       ASSERT_EQ(1, collector_finish_count); // from "all" query
-      ASSERT_EQ(0, collector_term_count); // should not be executed
       ASSERT_EQ(expected.size(), scorer_score_count);
 
       std::vector<irs::doc_id_t> actual;
@@ -4022,15 +4023,17 @@ protected:
       root.add<irs::Not>().filter<irs::by_term>().field(column_name).term("abcd");
 
       irs::order order;
-      size_t collector_field_count = 0;
+      size_t collector_collect_count = 0;
       size_t collector_finish_count = 0;
-      size_t collector_term_count = 0;
       size_t scorer_score_count = 0;
       auto& sort = order.add<sort::custom_sort>();
 
-      sort.collector_field = [&collector_field_count](const irs::sub_reader&, const irs::term_reader&)->void { ++collector_field_count; };
-      sort.collector_finish = [&collector_finish_count](const irs::index_reader&, irs::attribute_store&)->void { ++collector_finish_count; };
-      sort.collector_term = [&collector_term_count](const irs::attribute_view&)->void { ++collector_term_count; };
+      sort.collector_collect = [&collector_collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
+        ++collector_collect_count;
+      };
+      sort.collector_finish = [&collector_finish_count](irs::attribute_store&, const irs::index_reader&)->void {
+        ++collector_finish_count;
+      };
       sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { ASSERT_TRUE(&dst); ASSERT_TRUE(&src); dst = src; };
       sort.scorer_less = [](const irs::doc_id_t& lhs, const irs::doc_id_t& rhs)->bool { return (lhs > rhs); }; // reverse order
       sort.scorer_score = [&scorer_score_count](irs::doc_id_t& score)->void { ASSERT_TRUE(&score); ++scorer_score_count; };
@@ -4062,9 +4065,8 @@ protected:
 
       ASSERT_EQ(expected.size(), docs_count);
 
-      ASSERT_EQ(0, collector_field_count); // should not be executed
+      ASSERT_EQ(0, collector_collect_count); // should not be executed
       ASSERT_EQ(1, collector_finish_count); // from "all" query
-      ASSERT_EQ(0, collector_term_count); // should not be executed
       ASSERT_EQ(expected.size(), scorer_score_count);
 
       std::vector<irs::doc_id_t> actual;

@@ -68,9 +68,6 @@ class all_term_selector: public term_selector {
     const term_reader& field,
     const term_iterator& term
   ) override;
-
- private:
-  std::unordered_map<const term_reader*, const sub_reader*> fields_;
 };
 
 //////////////////////////////////////////////////////////////////////////////

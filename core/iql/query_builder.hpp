@@ -31,7 +31,7 @@ namespace iresearch {
           std::is_base_of<iresearch::filter, T>::value, T
         >::type type;
 
-        filter_.reset(new type(std::forward<Args>(args)...));
+        filter_ = type::make(std::forward<Args>(args)...);
 
         return static_cast<type&>(*filter_);
       }
@@ -47,8 +47,6 @@ namespace iresearch {
         return filter_->prepare(rdr, ord, boost);
       };
 
-      typedef PTR ptr;
-
      protected:
       virtual bool equals(const iresearch::filter& rhs) const override {
         const auto& typed_rhs =
@@ -58,7 +56,6 @@ namespace iresearch {
       }
 
      protected:
-
       IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
       PTR filter_;
       IRESEARCH_API_PRIVATE_VARIABLES_END

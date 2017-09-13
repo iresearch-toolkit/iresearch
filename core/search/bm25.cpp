@@ -131,19 +131,19 @@ class collector final : public iresearch::sort::collector {
     : k_(k), b_(b) {
   }
 
-  virtual void field(
-      const sub_reader& /* segment */,
-      const term_reader& field) override {
+  virtual void collect(
+      const sub_reader& segment,
+      const term_reader& field,
+      const attribute_view& term_attrs
+  ) override {
+    UNUSED(segment);
     auto& freq = field.attributes().get<frequency>();
+    auto& meta = term_attrs.get<term_meta>();
 
     if (freq) {
       field_count += field.docs_count();
       total_term_freq += freq->value;
     }
-  }
-
-  virtual void term(const attribute_view& term_attrs) override {
-    auto& meta = term_attrs.get<iresearch::term_meta>();
 
     if (meta) {
       docs_count += meta->docs_count;
@@ -151,27 +151,26 @@ class collector final : public iresearch::sort::collector {
   }
 
   virtual void finish(
-      const iresearch::index_reader& index_reader, 
-      attribute_store& query_attrs
+      attribute_store& filter_attrs,
+      const index_reader& index
   ) override {
-    auto& bm25stats = query_attrs.emplace<stats>();
+    auto& bm25stats = filter_attrs.emplace<stats>();
 
     // precomputed idf value
-    bm25stats->idf = 1 + static_cast<float_t>(
-      std::log(index_reader.docs_count() / double_t(docs_count + 1))
-    ); 
+    bm25stats->idf =
+      1 + float_t(std::log(index.docs_count() / double_t(docs_count + 1)));
 
     // precomputed length norm
     const float_t kb = k_ * b_;
     bm25stats->norm_const = k_ - kb;
     bm25stats->norm_length = kb;
     if (total_term_freq && docs_count) {
-      const auto avg_doc_len = static_cast<float_t>(total_term_freq) / field_count;
+      const auto avg_doc_len = float_t(total_term_freq) / field_count;
       bm25stats->norm_length /= avg_doc_len;
     }
 
     // add norm attribute
-    query_attrs.emplace<norm>();
+    filter_attrs.emplace<norm>();
   }
 
  private:

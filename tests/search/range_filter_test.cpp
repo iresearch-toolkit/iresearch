@@ -909,14 +909,18 @@ class range_filter_test_case : public filter_test_case_base {
       costs_t costs{ docs.size() };
       irs::order order;
 
-      size_t field_count = 0;
+      size_t collect_count = 0;
       size_t finish_count = 0;
-      size_t term_count = 0;
       auto& scorer = order.add<sort::custom_sort>();
-      scorer.collector_field = [&field_count](const irs::sub_reader&, const irs::term_reader&)->void{ ++field_count; };
-      scorer.collector_finish = [&finish_count](const irs::index_reader&, irs::attribute_store&)->void{ ++finish_count; };
-      scorer.collector_term = [&term_count](const irs::attribute_view&)->void{ ++term_count; };
-      scorer.prepare_collector = [&scorer]()->irs::sort::collector::ptr{ return irs::memory::make_unique<sort::custom_sort::prepared::collector>(scorer); };
+      scorer.collector_collect = [&collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
+        ++collect_count;
+      };
+      scorer.collector_finish = [&finish_count](irs::attribute_store&, const irs::index_reader&)->void{
+        ++finish_count;
+      };
+      scorer.prepare_collector = [&scorer]()->irs::sort::collector::ptr{
+        return irs::memory::make_unique<sort::custom_sort::prepared::collector>(scorer);
+      };
       check_query(
         irs::by_range()
           .field("value")
@@ -924,8 +928,7 @@ class range_filter_test_case : public filter_test_case_base {
           .term<irs::Bound::MAX>(irs::numeric_utils::numeric_traits<double_t>::inf())
         , order, docs, rdr
       );
-      ASSERT_EQ(11, field_count);
-      ASSERT_EQ(11, term_count);
+      ASSERT_EQ(11, collect_count);
       ASSERT_EQ(11, finish_count); // 11 different terms
     }
 

@@ -111,27 +111,22 @@ struct custom_sort: public irs::sort {
    public:
     class collector: public irs::sort::collector {
      public:
-      virtual void field(
-        const irs::sub_reader& sub_reader,
-        const irs::term_reader& term_reader
+      virtual void collect(
+        const irs::sub_reader& segment,
+        const irs::term_reader& field,
+        const irs::attribute_view& term_attrs
       ) override {
-        if (sort_.collector_field) {
-          sort_.collector_field(sub_reader, term_reader);
-        }
-      }
-
-      virtual void term(const irs::attribute_view& term_attrs) override {
-        if (sort_.collector_term) {
-          sort_.collector_term(term_attrs);
+        if (sort_.collector_collect) {
+          sort_.collector_collect(segment, field, term_attrs);
         }
       }
 
       virtual void finish(
-          const irs::index_reader& index_reader,
-          irs::attribute_store& filter_node_attrs
+          irs::attribute_store& filter_attrs,
+          const irs::index_reader& index
       ) override {
         if (sort_.collector_finish) {
-          sort_.collector_finish(index_reader, filter_node_attrs);
+          sort_.collector_finish(filter_attrs, index);
         }
       }
 
@@ -228,9 +223,8 @@ struct custom_sort: public irs::sort {
     const custom_sort& sort_;
   };
 
-  std::function<void(const irs::sub_reader&, const irs::term_reader&)> collector_field;
-  std::function<void(const irs::index_reader&, irs::attribute_store&)> collector_finish;
-  std::function<void(const irs::attribute_view&)> collector_term;
+  std::function<void(const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)> collector_collect;
+  std::function<void(irs::attribute_store&, const irs::index_reader&)> collector_finish;
   std::function<collector::ptr()> prepare_collector;
   std::function<scorer::ptr(const irs::sub_reader&, const irs::term_reader&, const irs::attribute_store&, const irs::attribute_view&)> prepare_scorer;
   std::function<void(irs::doc_id_t&, const irs::doc_id_t&)> scorer_add;
@@ -266,22 +260,20 @@ struct frequency_sort: public iresearch::sort {
 
     class collector: public iresearch::sort::collector {
      public:
-      virtual void field(
-          const iresearch::sub_reader& sub_reader, 
-          const iresearch::term_reader& term_reader) {
-        // NOOP
-      }
-
-      virtual void term(const irs::attribute_view& term_attrs) override {
+      virtual void collect(
+          const iresearch::sub_reader& segment,
+          const iresearch::term_reader& field,
+          const irs::attribute_view& term_attrs
+      ) {
         meta_attr = term_attrs.get<iresearch::term_meta>();
         docs_count += meta_attr->docs_count;
       }
 
       virtual void finish(
-          const iresearch::index_reader& idx_reader,
-          irs::attribute_store& query_attrs
+          irs::attribute_store& filter_attrs,
+          const irs::index_reader& index
       ) override {
-        query_attrs.emplace<count>()->value = docs_count;
+        filter_attrs.emplace<count>()->value = docs_count;
         docs_count = 0;
       }
 
