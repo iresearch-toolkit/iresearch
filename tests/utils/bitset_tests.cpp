@@ -15,6 +15,11 @@
 using namespace iresearch;
 
 TEST(bitset_tests, static_functions) {
+  // word index for the specified bit
+  ASSERT_EQ(0, bitset::word(0));
+  ASSERT_EQ(64 / (sizeof(bitset::word_t)*8), bitset::word(64));
+  ASSERT_EQ(376 / (sizeof(bitset::word_t)*8), bitset::word(376));
+
   // bit index for the specified number
   ASSERT_EQ(7, bitset::bit(7));
   ASSERT_EQ(65 % (sizeof(bitset::word_t)*8), bitset::bit(65));
@@ -31,8 +36,11 @@ TEST(bitset_tests, ctor) {
     const bitset::index_t size = 0;
     const bitset bs(size);
     ASSERT_EQ(nullptr, bs.data());
+    ASSERT_EQ(bs.data(), bs.begin());
+    ASSERT_EQ(bs.data() + words, bs.end());
     ASSERT_EQ(size, bs.size());
     ASSERT_EQ(words, bs.words());
+    ASSERT_EQ(words, std::distance(bs.begin(), bs.end()));
     ASSERT_EQ(0, bs.capacity());
     ASSERT_EQ(0, bs.count());
     ASSERT_TRUE(bs.none());
@@ -46,8 +54,11 @@ TEST(bitset_tests, ctor) {
     const bitset::index_t size = 32;
     const bitset bs( size );
     ASSERT_NE(nullptr, bs.data());
+    ASSERT_EQ(bs.data(), bs.begin());
+    ASSERT_EQ(bs.data() + words, bs.end());
     ASSERT_EQ(size, bs.size());
     ASSERT_EQ(words, bs.words());
+    ASSERT_EQ(words, std::distance(bs.begin(), bs.end()));
     ASSERT_EQ(sizeof(bitset::word_t)*8*words, bs.capacity());
     ASSERT_EQ(0, bs.count());
     ASSERT_TRUE(bs.none());
@@ -61,8 +72,11 @@ TEST(bitset_tests, ctor) {
     const bitset::index_t words = 1;
     const bitset bs(size);
     ASSERT_NE(nullptr, bs.data());
+    ASSERT_EQ(bs.data(), bs.begin());
+    ASSERT_EQ(bs.data() + words, bs.end());
     ASSERT_EQ(size, bs.size());
     ASSERT_EQ(words, bs.words());
+    ASSERT_EQ(words, std::distance(bs.begin(), bs.end()));
     ASSERT_EQ(size, bs.capacity());
     ASSERT_EQ(0, bs.count());
     ASSERT_TRUE(bs.none());
@@ -76,8 +90,11 @@ TEST(bitset_tests, ctor) {
     const bitset::index_t size = 78;
     const bitset bs( size );
     ASSERT_NE(nullptr, bs.data());
+    ASSERT_EQ(bs.data(), bs.begin());
+    ASSERT_EQ(bs.data() + words, bs.end());
     ASSERT_EQ(size, bs.size());
     ASSERT_EQ(words, bs.words());
+    ASSERT_EQ(bs.data() + words, bs.end());
     ASSERT_EQ(sizeof(bitset::word_t)*8*words, bs.capacity());
     ASSERT_EQ(0, bs.count());
     ASSERT_TRUE(bs.none());
@@ -91,6 +108,7 @@ TEST(bitset_tests, set_unset) {
   const bitset::index_t size = 155;
   bitset bs(size);
   ASSERT_NE(nullptr, bs.data());
+  ASSERT_EQ(bs.data(), bs.begin());
   ASSERT_EQ(size, bs.size());
   ASSERT_EQ(words, bs.words());
   ASSERT_EQ(sizeof(bitset::word_t)*8*words, bs.capacity());
@@ -121,6 +139,7 @@ TEST(bitset_tests, set_unset) {
 TEST(bitset_tests, reset) {
   bitset bs;
   ASSERT_EQ(nullptr, bs.data());
+  ASSERT_EQ(bs.data(), bs.begin());
   ASSERT_EQ(0, bs.size());
   ASSERT_EQ(0, bs.words());
   ASSERT_EQ(0, bs.capacity());
@@ -162,7 +181,7 @@ TEST(bitset_tests, reset) {
   ASSERT_EQ(size, bs.size());
   ASSERT_EQ(words, bs.words());
   ASSERT_EQ(prev_data, bs.data()); // storage haven't changed
-  ASSERT_EQ(sizeof(bitset::word_t)*8*words, bs.capacity());
+  ASSERT_EQ(sizeof(bitset::word_t)*8*words, bs.capacity());;
   ASSERT_EQ(0, bs.count());
   ASSERT_TRUE(bs.none()); // content cleared
   ASSERT_FALSE(bs.any()); // content cleared
@@ -291,7 +310,7 @@ TEST(bitset_tests, memset) {
     bs.memset(value);
 
     ASSERT_EQ(6, bs.count()); // only first 15 bits from 'value' are set
-    ASSERT_EQ(bs.word(0), value & 0x7FFF);
+    ASSERT_EQ(*bs.begin(), value & 0x7FFF);
     ASSERT_FALSE(bs.none());
     ASSERT_TRUE(bs.any());
     ASSERT_FALSE(bs.all());
@@ -300,7 +319,7 @@ TEST(bitset_tests, memset) {
     bs.memset(value); // set another value
 
     ASSERT_EQ(size, bs.count()); // only first 15 bits from 'value' are set
-    ASSERT_EQ(bs.word(0), value& 0x7FFF);
+    ASSERT_EQ(*bs.begin(), value& 0x7FFF);
     ASSERT_FALSE(bs.none());
     ASSERT_TRUE(bs.any());
     ASSERT_TRUE(bs.all());
@@ -325,8 +344,8 @@ TEST(bitset_tests, memset) {
     bs.memset(value);
 
     ASSERT_EQ(58, bs.count()); // only first 15 bits from 'value' are set
-    ASSERT_EQ(bs.word(0), value); // 1st word
-    ASSERT_EQ(bs.word(64), 0); // 2nd word
+    ASSERT_EQ(*(bs.begin() + bitset::word(0)), value); // 1st word
+    ASSERT_EQ(*(bs.begin() + bitset::word(64)), 0); // 2nd word
     ASSERT_FALSE(bs.none());
     ASSERT_TRUE(bs.any());
     ASSERT_FALSE(bs.all());

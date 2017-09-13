@@ -24,13 +24,12 @@
 #ifndef IRESEARCH_BITSET_DOC_ITERATOR_H
 #define IRESEARCH_BITSET_DOC_ITERATOR_H
 
+#include "cost.hpp"
 #include "index/iterators.hpp"
 #include "utils/type_limits.hpp"
-#include "cost.hpp"
+#include "utils/bitset.hpp"
 
 NS_ROOT
-
-class bitset;
 
 class bitset_doc_iterator final : public doc_iterator, util::noncopyable {
  public:
@@ -49,12 +48,11 @@ class bitset_doc_iterator final : public doc_iterator, util::noncopyable {
   }
 
  private:
-  doc_id_t next_from(doc_id_t target) NOEXCEPT;
-
   attribute_view attrs_;
   doc_id_t doc_{ type_limits<type_t::doc_id_t>::invalid() };
   cost est_;
-  const bitset& set_;
+  const bitset::word_t* begin_;
+  const bitset::word_t* end_;
   size_t size_;
 }; // bitset_doc_iterator
 

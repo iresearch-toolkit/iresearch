@@ -86,9 +86,6 @@ TEST(bitset_iterator_test, next) {
     ASSERT_TRUE(bool(cost));
     ASSERT_EQ(size, cost->estimate());
 
-//    ASSERT_TRUE(it.next()); // 0 bit is set
-//    ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
-
     for (auto i = 1; i < size; ++i) {
       ASSERT_TRUE(it.next());
       ASSERT_EQ(i, it.value());

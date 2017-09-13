@@ -33,6 +33,11 @@ class bitset : util::noncopyable {
     return i % bits_required<word_t>();
   }
 
+  // returns corresponding word index specified offset in bits
+  CONSTEXPR FORCE_INLINE static size_t word(size_t i) NOEXCEPT {
+    return i / bits_required<word_t>();
+  }
+
   // returns corresponding offset in bits for the specified word index
   CONSTEXPR FORCE_INLINE static size_t bit_offset(size_t i) NOEXCEPT {
     return i * bits_required<word_t>();
@@ -88,6 +93,9 @@ class bitset : util::noncopyable {
 
   const word_t* data() const NOEXCEPT { return data_.get(); }
 
+  const word_t* begin() const NOEXCEPT { return data(); }
+  const word_t* end() const NOEXCEPT { return data() + words_; }
+
   template<typename T>
   void memset(const T& value) NOEXCEPT {
     memset(&value, sizeof(value));
@@ -99,25 +107,24 @@ class bitset : util::noncopyable {
   }
 
   void set(size_t i) NOEXCEPT {
-    set_bit(word(i), bit(i));
+    set_bit(data_[word(i)], bit(i));
   }
 
   void unset(size_t i) NOEXCEPT {
-    unset_bit(word(i), bit(i));
+    unset_bit(data_[word(i)], bit(i));
   }
 
   void reset(size_t i, bool set) NOEXCEPT {
-    set_bit(word(i), bit(i), set);
+    set_bit(data_[word(i)], bit(i), set);
   }
 
   bool test(size_t i) const NOEXCEPT {
-    return check_bit(word(i), bit(i));
+    return check_bit(data_[word(i)], bit(i));
   }
 
   bool any() const NOEXCEPT {
-    auto* data = data_.get();
     return std::any_of(
-      data, data + words_,
+      begin(), end(),
       [] (word_t w) { return w != 0; }
     );
   }
@@ -136,23 +143,11 @@ class bitset : util::noncopyable {
 
   // counts bits set
   word_t count() const NOEXCEPT {
-    auto* data = data_.get();
     return std::accumulate(
-      data, data + words_, word_t(0),
+      begin(), end(), word_t(0),
       [] (word_t v, word_t w) {
         return v + math::math_traits<word_t>::pop(w);
     });
-  }
-
-  // returns corresponding word for the
-  // specified bit offset
-  FORCE_INLINE word_t& word(size_t i) NOEXCEPT {
-    assert(i < bits_);
-    return data_[i / bits_required<word_t>()];
-  }
-
-  FORCE_INLINE const word_t& word(size_t i) const NOEXCEPT {
-    return const_cast<bitset&>(*this).word(i);
   }
 
  private:
