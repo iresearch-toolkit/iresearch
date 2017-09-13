@@ -17,6 +17,8 @@
 #include "utils/attributes_provider.hpp"
 #include "utils/iterator.hpp"
 
+#include <vector>
+
 NS_ROOT
 
 //////////////////////////////////////////////////////////////////////////////

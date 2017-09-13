@@ -306,7 +306,7 @@ filter::prepared::ptr by_same_position::prepare(
   auto term_itr = term_stats.begin();
   assert(term_stats.size() == terms_.size()); // initialized above
 
-  for(auto& term: terms_) {
+  for (size_t i = 0, size = terms_.size(); i < size; ++i) {
     term_itr->finish(*stat_itr, index);
     ++stat_itr;
     ++term_itr;
