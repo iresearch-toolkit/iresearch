@@ -18,6 +18,7 @@
 #include "search/boolean_filter.hpp"
 #include "search/phrase_filter.hpp"
 #include "search/bm25.hpp"
+#include "search/score.hpp"
 #include "utils/async_utils.hpp"
 #include "utils/memory_pool.hpp"
 
@@ -151,7 +152,7 @@ struct SearchTask : public Task {
             irs::order order;
             order.add<irs::bm25_sort>(irs::string_ref::nil);
             auto prepared_order = order.prepare();
-            irs::score_doc_iterator::ptr docs = prepared->execute(segment, prepared_order); // query segment
+            auto docs = prepared->execute(segment, prepared_order); // query segment
             const irs::score* score = docs->attributes().get<iresearch::score>();
             auto comparer = [&prepared_order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
               return prepared_order.less(lhs.c_str(), rhs.c_str());
@@ -165,7 +166,7 @@ struct SearchTask : public Task {
               sorted.emplace(
                 std::piecewise_construct,
                 std::forward_as_tuple(score->value()),
-                std::forward_as_tuple(docs->value(), score ? score->get<float>(0) : .0)
+                std::forward_as_tuple(docs->value(), score ? prepared_order.get<float>(score->c_str(), 0) : .0)
               );
 
               if (sorted.size() > topN) {
@@ -965,7 +966,7 @@ int search(
           for (auto& segment: reader) {
             auto docs = filter->execute(segment, order); // query segment
             const irs::score* score = docs->attributes().get<irs::score>();
-            const auto& score_value = score ? score->get<float>(0) : EMPTY_SCORE;
+            const auto& score_value = score ? order.get<float>(score->c_str(), 0) : EMPTY_SCORE;
 
             while (docs->next()) {
               ++doc_count;
