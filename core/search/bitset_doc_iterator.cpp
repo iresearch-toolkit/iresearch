@@ -28,7 +28,7 @@
 NS_ROOT
 
 bitset_doc_iterator::bitset_doc_iterator(const bitset& set)
-  : set_(set) {
+  : set_(set), size_(set.size()) {
   const auto cardinality = set_.count();
 
   // set estimation value
@@ -43,27 +43,21 @@ bitset_doc_iterator::bitset_doc_iterator(const bitset& set)
 
 bool bitset_doc_iterator::next() NOEXCEPT {
   if (doc_ >= set_.size()) {
-    // seal iterator
-    doc_ = type_limits<type_t::doc_id_t>::eof();
     return false;
   }
 
-  return !type_limits<type_t::doc_id_t>::eof(doc_ = next_from(doc_));
+  return !type_limits<type_t::doc_id_t>::eof(doc_ = next_from(1 + doc_));
 }
 
 doc_id_t bitset_doc_iterator::seek(doc_id_t target) NOEXCEPT {
-  target = std::max(target, type_limits<type_t::doc_id_t>::min());
-
-  if (target > set_.size()) {
-    // seal iterator
-    return doc_ = type_limits<type_t::doc_id_t>::eof();
-  }
-
-  target -= type_limits<type_t::doc_id_t>::min();
   return doc_ = next_from(target);
 }
 
 doc_id_t bitset_doc_iterator::next_from(doc_id_t target) NOEXCEPT {
+  if (target >= set_.size()) {
+    return type_limits<type_t::doc_id_t>::eof();
+  }
+
   const auto* pword = &set_.word(target);
   auto word = ((*pword) >> bitset::bit(target));
 
@@ -71,7 +65,7 @@ doc_id_t bitset_doc_iterator::next_from(doc_id_t target) NOEXCEPT {
 
   if (word) {
     // current word contains the specified 'target'
-    return (type_limits<type_t::doc_id_t>::min() + target + math::math_traits<word_t>::ctz(word));
+    return (target + math::math_traits<word_t>::ctz(word));
   }
 
   const auto* end = set_.data() + set_.words();
@@ -83,8 +77,7 @@ doc_id_t bitset_doc_iterator::next_from(doc_id_t target) NOEXCEPT {
   assert(pword >= set_.data());
 
   if (word) {
-    return type_limits<type_t::doc_id_t>::min()
-      + bitset::bit_offset(std::distance(set_.data(), pword))
+    return bitset::bit_offset(std::distance(set_.data(), pword))
       + math::math_traits<word_t>::ctz(word);
   }
 

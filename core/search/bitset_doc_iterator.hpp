@@ -55,6 +55,7 @@ class bitset_doc_iterator final : public doc_iterator, util::noncopyable {
   doc_id_t doc_{ type_limits<type_t::doc_id_t>::invalid() };
   cost est_;
   const bitset& set_;
+  size_t size_;
 }; // bitset_doc_iterator
 
 NS_END // ROOT
