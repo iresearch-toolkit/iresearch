@@ -237,18 +237,24 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
   ////////////////////////////////////////////////////////////////////////////////
   class LinkNode: public irs::iql::proxy_filter_t<std::shared_ptr<iresearch::filter>> {
    public:
-    DECLARE_FILTER_TYPE();
-
-    LinkNode(iresearch::filter* link)
-      : proxy_filter_t(LinkNode::type()) {
+    LinkNode(iresearch::filter* link): proxy_filter_t(LinkNode::type()) {
       filter_ = std::move(ptr(link));
     }
 
-    LinkNode(const LinkNode& other)
-      : proxy_filter_t(LinkNode::type()) {
+    LinkNode(const LinkNode& other): proxy_filter_t(LinkNode::type()) {
       filter_ = other.filter_;
     }
+
+    template<typename... Args>
+    static ptr make(Args&&... args) {
+      PTR_NAMED(LinkNode, ptr, std::forward<Args>(args)...);
+      return ptr;
+    }
+
+   private:
+    DECLARE_FILTER_TYPE();
   };
+
   DEFINE_FILTER_TYPE(LinkNode);
 
   class RootNode: public iresearch::Or {
@@ -921,7 +927,7 @@ query query_builder::build(
     auto& link = root->proxy<LinkNode>(result.filter.get());
     result.filter.release();
 
-    result.filter = irs::memory::make_unique<LinkNode>(link);
+    result.filter = LinkNode::make(link);
   }
 
   return result;
