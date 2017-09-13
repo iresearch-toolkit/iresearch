@@ -105,6 +105,7 @@ protected:
         };
         std::multimap<irs::bstring, irs::doc_id_t, decltype(score_less)> scored_result(score_less);
 
+        size_t i = 0;
         for (const auto& sub: rdr) {
           auto docs = prepared_filter->execute(sub, prepared_order);
           auto& score = docs->attributes().get<irs::score>();
@@ -113,7 +114,14 @@ protected:
             score->evaluate();
             ASSERT_FALSE(!score);
             std::cerr << "Got: " << prepared_order.get<irs::doc_id_t>(score->value().c_str(), 0) << std::endl;
-            scored_result.emplace(std::make_pair(score->value(), docs->value()));
+            scored_result.emplace(score->value(), docs->value());
+
+            std::cerr << "============RESULT STEP " << i << "================" << std::endl;
+            for (auto& entry : scored_result) {
+              std::cout << prepared_order.get<irs::doc_id_t>(entry.first.c_str(), 0) << " " << entry.second << std::endl;
+            }
+            std::cerr << "===================================================" << std::endl;
+            ++i;
           }
         }
 
