@@ -185,7 +185,7 @@ before_script:
 script:
     - if [[ "${STATIC_LIB}" == "true" ]]; then BUILD_TYPE_SUFFIX="-static" TEST_EXECUTABLE_SUFFIX="-s"; fi  
     - cd ${TRAVIS_BUILD_DIR}/build
-    - make iresearch-tests${BUILD_TYPE_SUFFIX}
+    - make iresearch-tests${BUILD_TYPE_SUFFIX} -j8
     - travis_wait 60 ./bin/iresearch-tests${TEST_EXECUTABLE_SUFFIX} ${TEST_PARAMS}
     - tar -czf iresearch-${TRAVIS_OS_NAME}-${BUILD_TYPE}${BUILD_TYPE_SUFFIX}-${TRAVIS_BUILD_NUMBER}.tar.gz bin 
     
