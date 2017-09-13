@@ -94,7 +94,7 @@ struct IRESEARCH_API postings_writer : util::const_attribute_view_provider {
   }
 
  protected:
-  friend class term_meta;
+  friend struct term_meta;
 
   state make_state(term_meta& meta) NOEXCEPT {
     return state(&meta, releaser(this));

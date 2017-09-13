@@ -473,7 +473,7 @@ NS_END // ROOT
 #define DECLARE_CREF(class_name) typedef std::reference_wrapper<const class_name> cref
 
 #define DECLARE_FACTORY(class_name) \
-template<bool> friend class irs::memory::maker; \
+template<typename Class, bool> friend struct irs::memory::maker; \
 template<typename _T, typename... _Args> \
 static ptr make(_Args&&... args) { \
   typedef typename std::enable_if<std::is_base_of<class_name, _T>::value, _T>::type type; \

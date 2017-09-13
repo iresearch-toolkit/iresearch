@@ -96,7 +96,7 @@ struct empty_field_iterator : field_iterator {
     return empty_term_reader::instance();
   }
 
-  virtual bool seek(const string_ref &name) override {
+  virtual bool seek(const string_ref&) override {
     return false;
   }
 
@@ -111,7 +111,7 @@ struct empty_column_iterator : column_iterator {
     return empty;
   }
 
-  virtual bool seek(const string_ref& name) override {
+  virtual bool seek(const string_ref&) override {
     return false;
   }
 

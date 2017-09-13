@@ -13,7 +13,10 @@
 #define IRESEARCH_MATH_UTILS_H
 
 #ifdef _MSC_VER
+  #include <intrin.h>
+  
   #pragma intrinsic(_BitScanReverse)
+  #pragma intrinsic(_BitScanForward)  
 #endif
 
 #include "shared.hpp"
@@ -153,7 +156,7 @@ FORCE_INLINE uint64_t ctz64(uint64_t v) NOEXCEPT {
 #if  __GNUC__ >= 4
   return __builtin_ffsll(v) - 1; // __builit_ffsll returns `index`+1
 #elif defined(_MSC_VER)
-  unsigned __int64 idx;
+  unsigned long idx;
   _BitScanForward64(&idx, v);
   return idx;
 #else
@@ -179,7 +182,7 @@ FORCE_INLINE uint64_t clz64(uint64_t v) NOEXCEPT {
 #if  __GNUC__ >= 4
   return __builtin_clzll(v);
 #elif defined(_MSC_VER)
-  unsigned __int64 idx;
+  unsigned long idx;
   _BitScanReverse64(&idx, v);
   return 63 - idx;
 #else

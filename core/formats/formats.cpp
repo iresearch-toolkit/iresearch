@@ -40,7 +40,7 @@ class format_register :
 struct empty_column_iterator final : irs::columnstore_reader::column_iterator {
  public:
   virtual const value_type& value() const override { return EOFMAX; }
-  virtual const value_type& seek(irs::doc_id_t doc) override { return EOFMAX; }
+  virtual const value_type& seek(irs::doc_id_t) override { return EOFMAX; }
   virtual bool next() override { return false; }
 }; // empty_column_iterator
 

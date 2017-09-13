@@ -166,21 +166,15 @@ class boolean_query : public filter::prepared {
     boost::apply(this->attributes(), boost);
 
     // prepare included
-    std::transform(
-      incl.begin(), incl.end(),
-      irstd::back_emplacer(queries),
-      [&rdr, &ord, boost] (const filter* sub) {
-        return sub->prepare(rdr, ord, boost);
-    });
+    for (const auto* filter : incl) {
+      queries.emplace_back(filter->prepare(rdr, ord, boost));
+    }
 
     // prepare excluded
-    std::transform(
-      excl.begin(), excl.end(),
-      irstd::back_emplacer(queries),
-      [&rdr, &ord] (const filter* sub) {
-        // exclusion part does not affect scoring at all
-        return sub->prepare(rdr, order::prepared::unordered());
-    });
+    for (const auto* filter : excl) {
+      // exclusion part does not affect scoring at all
+      queries.emplace_back(filter->prepare(rdr, order::prepared::unordered()));
+    }
 
     // nothrow block
     queries_ = std::move(queries);
