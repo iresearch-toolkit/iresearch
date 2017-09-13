@@ -206,7 +206,7 @@ filter::prepared::ptr by_column_existence::prepare(
   attribute_store attrs;
 
   // skip filed-level/term-level statistics because there are no fields/terms
-  order.prepare_stats().finish(reader, attrs);
+  order.prepare_stats().finish(attrs, reader);
 
   irs::boost::apply(attrs, boost() * filter_boost); // apply boost
 

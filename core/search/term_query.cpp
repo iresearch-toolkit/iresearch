@@ -41,9 +41,6 @@ term_query::ptr term_query::make(
       continue;
     }
 
-    // collect field level stats
-    stats.field(segment, *reader);
-
     // find term
     auto terms = reader->iterator();
 
@@ -69,10 +66,10 @@ term_query::ptr term_query::make(
       state.estimation = meta->docs_count;
     }
 
-    // collect term level stats
-    stats.term(terms->attributes());
+    stats.collect(segment, *reader, terms->attributes()); // collect statistics
   }
-  stats.finish(index, attrs);
+
+  stats.finish(attrs, index);
 
   // apply boost
   irs::boost::apply(attrs, boost);
@@ -117,3 +114,7 @@ doc_iterator::ptr term_query::execute(
 }
 
 NS_END // ROOT
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

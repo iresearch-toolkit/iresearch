@@ -14,6 +14,7 @@
 
 #include "shared.hpp"
 #include "sort.hpp"
+#include "index/iterators.hpp"
 
 #include <unordered_map>
 #include <functional>

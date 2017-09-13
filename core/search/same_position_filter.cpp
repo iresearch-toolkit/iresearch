@@ -275,8 +275,7 @@ filter::prepared::ptr by_same_position::prepare(
       }
       
       term->read(); // read term attributes
-      term_stats->field(segment, *field); // collect field stats
-      term_stats->term(term->attributes()); // collect term stats
+      term_stats->collect(segment, *field, term->attributes()); // collect statistics
 
       term_states.emplace_back();
       auto& state = term_states.back();
@@ -302,7 +301,7 @@ filter::prepared::ptr by_same_position::prepare(
   same_position_query::stats_t stats(terms_.size());
   auto term_stats = query_stats.begin();
   for(auto& stat : stats) {
-    term_stats->finish(index, stat);
+    term_stats->finish(stat, index);
     ++term_stats;
   }
 
@@ -317,3 +316,7 @@ filter::prepared::ptr by_same_position::prepare(
 }
 
 NS_END // ROOT
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

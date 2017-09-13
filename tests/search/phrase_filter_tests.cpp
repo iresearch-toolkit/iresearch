@@ -280,15 +280,19 @@ class phrase_filter_test_case : public filter_test_case_base {
        .push_back("brown")
        .push_back("fox");
 
-      size_t field_count = 0;
+      size_t collect_count = 0;
       size_t finish_count = 0;
-      size_t term_count = 0;
       irs::order ord;
       auto& sort = ord.add<tests::sort::custom_sort>();
-      sort.collector_field = [&field_count](const irs::sub_reader&, const irs::term_reader&)->void{ ++field_count; };
-      sort.collector_finish = [&finish_count](const irs::index_reader&, irs::attribute_store&)->void{ ++finish_count; };
-      sort.collector_term = [&term_count](const irs::attribute_view&)->void{ ++term_count; };
-      sort.prepare_collector = [&sort]()->irs::sort::collector::ptr { return irs::memory::make_unique<sort::custom_sort::prepared::collector>(sort); };
+      sort.collector_collect = [&collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
+        ++collect_count;
+      };
+      sort.collector_finish = [&finish_count](irs::attribute_store&, const irs::index_reader&)->void{
+        ++finish_count;
+      };
+      sort.prepare_collector = [&sort]()->irs::sort::collector::ptr {
+        return irs::memory::make_unique<sort::custom_sort::prepared::collector>(sort);
+      };
       sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void {
         ASSERT_TRUE(
           irs::type_limits<irs::type_t::doc_id_t>::invalid() == dst
@@ -299,8 +303,7 @@ class phrase_filter_test_case : public filter_test_case_base {
 
       auto pord = ord.prepare();
       auto prepared = q.prepare(rdr, pord);
-      ASSERT_EQ(3, field_count);
-      ASSERT_EQ(3, term_count);
+      ASSERT_EQ(3, collect_count);
       ASSERT_EQ(3, finish_count); // 3 sub-terms in phrase
       auto sub = rdr.begin();
       auto column = sub->column_reader("name");

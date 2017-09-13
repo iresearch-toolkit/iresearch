@@ -416,15 +416,19 @@ protected:
       filter.field("prefix").term("abcy");
 
       // create order
-      size_t field_count = 0;
+      size_t collect_count = 0;
       size_t finish_count = 0;
-      size_t term_count = 0;
       iresearch::order ord;
       auto& scorer = ord.add<sort::custom_sort>();
-      scorer.collector_field = [&field_count](const irs::sub_reader&, const irs::term_reader&)->void{ ++field_count; };
-      scorer.collector_finish = [&finish_count](const irs::index_reader&, irs::attribute_store&)->void{ ++finish_count; };
-      scorer.collector_term = [&term_count](const irs::attribute_view&)->void{ ++term_count; };
-      scorer.prepare_collector = [&scorer]()->irs::sort::collector::ptr{ return irs::memory::make_unique<sort::custom_sort::prepared::collector>(scorer); };
+      scorer.collector_collect = [&collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
+        ++collect_count;
+      };
+      scorer.collector_finish = [&finish_count](irs::attribute_store&, const irs::index_reader&)->void{
+        ++finish_count;
+      };
+      scorer.prepare_collector = [&scorer]()->irs::sort::collector::ptr{
+        return irs::memory::make_unique<sort::custom_sort::prepared::collector>(scorer);
+      };
 
       std::set<irs::doc_id_t> expected{ 31, 32 };
       auto pord = ord.prepare();
@@ -440,8 +444,7 @@ protected:
       }
 
       ASSERT_TRUE(expected.empty());
-      ASSERT_EQ(1, field_count);
-      ASSERT_EQ(1, term_count);
+      ASSERT_EQ(1, collect_count);
       ASSERT_EQ(1, finish_count); // 1 unique term
     }
   }

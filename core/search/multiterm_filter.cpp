@@ -35,15 +35,7 @@ all_term_selector::all_term_selector(
 }
 
 void all_term_selector::build(attribute_store& attrs) {
-  for (auto entry: fields_) {
-    auto& field = *(entry.first);
-    auto& segment = *(entry.second);
-
-    collector_.field(segment, field); // collect field level statistics
-  }
-
-  fields_.clear();
-  collector_.finish(index_, attrs);
+  collector_.finish(attrs, index_);
 }
 
 void all_term_selector::insert(
@@ -51,8 +43,8 @@ void all_term_selector::insert(
     const term_reader& field,
     const term_iterator& term
 ) {
-  fields_.emplace(&field, &segment);
-  collector_.term(term.attributes()); // collect term level statistics
+
+  collector_.collect(segment, field, term.attributes()); // collect statistics
 }
 
 // -----------------------------------------------------------------------------
@@ -65,24 +57,13 @@ limited_term_selector_by_field_size::limited_term_selector_by_field_size(
 }
 
 void limited_term_selector_by_field_size::build(attribute_store& attrs) {
-  std::unordered_map<const term_reader*, const sub_reader*> fields;
-
   // iterate over the scoring candidates
   for (auto& entry: states_) {
     auto& state = entry.second;
-
-    fields.emplace(&(state.field), &(state.segment));
-    collector_.term(state.term->attributes()); // collect term level statistics
+    collector_.collect(state.segment, state.field, state.term->attributes()); // collect statistics
   }
 
-  for (auto entry: fields) {
-    auto& field = *(entry.first);
-    auto& segment = *(entry.second);
-
-    collector_.field(segment, field); // collect field level statistics
-  }
-
-  collector_.finish(index_, attrs);
+  collector_.finish(attrs, index_);
 }
 
 void limited_term_selector_by_field_size::insert(
@@ -121,24 +102,13 @@ limited_term_selector_by_postings_size::limited_term_selector_by_postings_size(
 }
 
 void limited_term_selector_by_postings_size::build(attribute_store& attrs) {
-  std::unordered_map<const term_reader*, const sub_reader*> fields;
-
   // iterate over the scoring candidates
   for (auto& entry: states_) {
     auto& state = entry.second;
-
-    fields.emplace(&(state.field), &(state.segment));
-    collector_.term(state.term->attributes()); // collect term level statistics
+    collector_.collect(state.segment, state.field, state.term->attributes()); // collect statistics
   }
 
-  for (auto entry: fields) {
-    auto& field = *(entry.first);
-    auto& segment = *(entry.second);
-
-    collector_.field(segment, field); // collect field level statistics
-  }
-
-  collector_.finish(index_, attrs);
+  collector_.finish(attrs, index_);
 }
 
 void limited_term_selector_by_postings_size::insert(
@@ -175,24 +145,13 @@ limited_term_selector_by_segment_live_docs::limited_term_selector_by_segment_liv
 }
 
 void limited_term_selector_by_segment_live_docs::build(attribute_store& attrs) {
-  std::unordered_map<const term_reader*, const sub_reader*> fields;
-
   // iterate over the scoring candidates
   for (auto& entry: states_) {
     auto& state = entry.second;
-
-    fields.emplace(&(state.field), &(state.segment));
-    collector_.term(state.term->attributes()); // collect term level statistics
+    collector_.collect(state.segment, state.field, state.term->attributes()); // collect statistics
   }
 
-  for (auto entry: fields) {
-    auto& field = *(entry.first);
-    auto& segment = *(entry.second);
-
-    collector_.field(segment, field); // collect field level statistics
-  }
-
-  collector_.finish(index_, attrs);
+  collector_.finish(attrs, index_);
 }
 
 void limited_term_selector_by_segment_live_docs::insert(

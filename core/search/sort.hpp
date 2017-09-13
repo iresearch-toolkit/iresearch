@@ -13,15 +13,9 @@
 #define IRESEARCH_SORT_H
 
 #include "shared.hpp"
-#include "index/iterators.hpp"
-#include "utils/memory.hpp"
-#include "utils/string.hpp"
 #include "utils/attributes.hpp"
-#include "utils/type_id.hpp"
+#include "utils/attributes_provider.hpp"
 #include "utils/iterator.hpp"
-
-#include <vector>
-#include <functional>
 
 NS_ROOT
 
@@ -82,8 +76,8 @@ class IRESEARCH_API sort {
   DECLARE_SPTR(sort);
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief object used for collecting index statistics required to be used by
-  ///        the scorer for scoring individual documents
+  /// @brief object used for collecting index statistics for a specific term
+  ///        that are required by the scorer for scoring individual documents
   ////////////////////////////////////////////////////////////////////////////////
   class IRESEARCH_API collector {
    public:
@@ -91,30 +85,25 @@ class IRESEARCH_API sort {
     DECLARE_FACTORY(collector);
 
     virtual ~collector();
-    
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief compute term level statistics, e.g. from current attribute values
-    ////////////////////////////////////////////////////////////////////////////////
-    virtual void field(
-      const sub_reader& /* segment */,
-      const term_reader& /* field */) {
-    } 
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief compute term level statistics, e.g. from current attribute values
+    /// @brief collect term level statistics, e.g. from current attribute values
+    ///        called for the same term once for every segment
     ////////////////////////////////////////////////////////////////////////////////
-    virtual void term(const attribute_view& /*term*/) {
-    }
+    virtual void collect(
+      const sub_reader& segment,
+      const term_reader& field,
+      const attribute_view& term_attrs
+    ) = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief store collected index statistics into attributes for the current
-    ///        query node
+    ///        filter node
     ////////////////////////////////////////////////////////////////////////////////
     virtual void finish(
-      const iresearch::index_reader& /* index */,
-      attribute_store& /*query_context*/
-    ) {
-    }
+      attribute_store& filter_attrs,
+      const index_reader& index
+    ) = 0;
   }; // collector
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -333,11 +322,24 @@ public:
 
       stats& operator=(stats&& rhs) NOEXCEPT;
 
-      void field(const sub_reader& segment, const term_reader& field) const;
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief collect term level statistics, e.g. from current attribute values
+      ///        called for the same term once for every segment
+      ////////////////////////////////////////////////////////////////////////////////
+      void collect(
+        const sub_reader& segment,
+        const term_reader& field,
+        const attribute_view& term_attrs
+      ) const;
 
-      void term(const attribute_view& term) const;
-
-      void finish(const index_reader& index, attribute_store& query_context) const;
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief store collected index statistics into attributes for the current
+      ///        filter node
+      ////////////////////////////////////////////////////////////////////////////////
+      void finish(
+        attribute_store& filter_attrs,
+        const index_reader& index
+      ) const;
 
      private:
       IRESEARCH_API_PRIVATE_VARIABLES_BEGIN

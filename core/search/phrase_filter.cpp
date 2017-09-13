@@ -247,9 +247,7 @@ filter::prepared::ptr by_phrase::prepare(
       // collect statistics
       auto itr = term_stats.find(&(word.second));
       assert(itr != term_stats.end()); // each term added above
-      auto& stats = itr->second.stats;
-      stats.field(sr, *tr);
-      stats.term(term->attributes());
+      itr->second.stats.collect(sr, *tr, term->attributes()); // collect statistics
     }
 
     // we have not found all needed terms
@@ -267,7 +265,7 @@ filter::prepared::ptr by_phrase::prepare(
 
   // iterate over all stats and apply/store order stats
   for (auto& entry: term_stats) {
-    entry.second.stats.finish(rdr, entry.second.filter_attrs);
+    entry.second.stats.finish(entry.second.filter_attrs, rdr);
   }
 
   // offset of the first term in a phrase
@@ -300,3 +298,7 @@ filter::prepared::ptr by_phrase::prepare(
 }
 
 NS_END // ROOT
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
