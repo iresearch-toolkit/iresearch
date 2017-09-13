@@ -104,6 +104,7 @@ protected:
           while (docs->next()) {
             score->evaluate();
             ASSERT_FALSE(!score);
+            std::cerr << "Got: " << prepared_order.get<irs::doc_id_t>(score->value().c_str(), 0) << std::endl;
             scored_result.emplace(score->value(), docs->value());
           }
         }
@@ -120,6 +121,7 @@ protected:
 
 //        ASSERT_EQ(expected, result);
       }
+      std::cerr << "finished" << std::endl;
 
       check_query(irs::all(), order, docs, rdr);
       ASSERT_EQ(0, collector_collect_count); // should not be executed
