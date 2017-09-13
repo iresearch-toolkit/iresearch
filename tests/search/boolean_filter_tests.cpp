@@ -137,15 +137,13 @@ std::vector<DocIterator> execute_all(
     const std::vector<std::vector<iresearch::doc_id_t>>& docs
 ) {
   std::vector<DocIterator> itrs;
-  itrs.reserve( docs.size() );
-  std::transform(
-    docs.begin(), docs.end(),
-    iresearch::irstd::back_emplacer(itrs),
-    [](const std::vector<iresearch::doc_id_t>& docs) {
-      return iresearch::doc_iterator::make<detail::basic_doc_iterator>(
-        docs.begin(), docs.end()
-      );
-  });
+  itrs.reserve(docs.size());
+  for (const auto& doc : docs) {
+    itrs.emplace_back(irs::doc_iterator::make<detail::basic_doc_iterator>(
+      doc.begin(), doc.end()
+    ));
+  }
+
   return itrs;
 }
 
