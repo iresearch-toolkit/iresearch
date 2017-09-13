@@ -70,7 +70,7 @@ doc_id_t bitset_doc_iterator::next_from(doc_id_t target) NOEXCEPT {
 
   const auto* end = set_.data() + set_.words();
 
-  for (++pword; !word && pword < end; ++pword) {
+  while (!word && ++pword < end) {
     word = *pword;
   }
 

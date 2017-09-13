@@ -125,6 +125,92 @@ TEST(bitset_iterator_test, next) {
     ASSERT_FALSE(it.next());
     ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
   }
+
+  // sparse bitset with dense region
+  {
+    const size_t size = 173;
+    irs::bitset bs(size);
+
+    // set bits
+    irs::bitset::word_t data[] {
+      irs::bitset::word_t(0),
+      ~irs::bitset::word_t(UINT64_C(0x8000000000000000)),
+      irs::bitset::word_t(0)
+    };
+
+    bs.memset(data);
+
+    irs::bitset_doc_iterator it(bs);
+    ASSERT_TRUE(!irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+
+    irs::doc_id_t expected_doc = 64;
+    while (it.next()) {
+      ASSERT_EQ(expected_doc, it.value());
+      ++expected_doc;
+    }
+    ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+    ASSERT_FALSE(it.next());
+    ASSERT_FALSE(it.next());
+    ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+  }
+
+  // sparse bitset with sparse region
+  {
+    const size_t size = 173;
+    irs::bitset bs(size);
+
+    // set bits
+    irs::bitset::word_t data[] {
+      irs::bitset::word_t(0),
+      irs::bitset::word_t(UINT64_C(0x420200A020440480)),
+      irs::bitset::word_t(0)
+    };
+
+    bs.memset(data);
+
+    irs::bitset_doc_iterator it(bs);
+    ASSERT_TRUE(!irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+
+    std::vector<irs::doc_id_t> docs {
+      71, 74, 82, 86, 93, 101, 103, 113, 121, 126
+    };
+
+    auto begin = docs.begin();
+    while (it.next()) {
+      ASSERT_EQ(*begin, it.value());
+      ++begin;
+    }
+    ASSERT_EQ(begin, docs.end());
+    ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+    ASSERT_FALSE(it.next());
+    ASSERT_FALSE(it.next());
+    ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+  }
+
+  // sparse bitset
+  {
+    const size_t size = 189;
+    irs::bitset bs(size);
+
+    // set bits
+    irs::bitset::word_t data[] {
+      irs::bitset::word_t(0),
+      irs::bitset::word_t(0),
+      irs::bitset::word_t(UINT64_C(0x200000000000000))
+    };
+
+    bs.memset(data);
+
+    irs::bitset_doc_iterator it(bs);
+    ASSERT_TRUE(!irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(185, it.value());
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+  }
 }
 
 TEST(bitset_iterator_test, seek) {
@@ -361,6 +447,163 @@ TEST(bitset_iterator_test, seek) {
       ASSERT_EQ(i, it.value());
     }
   }
+
+  // sparse bitset with dense region
+  {
+    const size_t size = 173;
+    irs::bitset bs(size);
+
+    // set bits
+    irs::bitset::word_t data[] {
+      irs::bitset::word_t(0),
+      ~irs::bitset::word_t(UINT64_C(0x8000000000000000)),
+      irs::bitset::word_t(0)
+    };
+
+    bs.memset(data);
+
+    irs::bitset_doc_iterator it(bs);
+    ASSERT_TRUE(!irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+
+    std::vector<std::pair<irs::doc_id_t, irs::doc_id_t>> seeks {
+      { 64, 43 }, { 64, 43 },
+      { 64, 64 }, { 68, 68 },
+      { 78, 78 },
+      { irs::type_limits<irs::type_t::doc_id_t>::eof(), 128 },
+      { irs::type_limits<irs::type_t::doc_id_t>::eof(), irs::type_limits<irs::type_t::doc_id_t>::eof() }
+    };
+
+    for (auto& seek : seeks) {
+      ASSERT_EQ(seek.first, it.seek(seek.second));
+      ASSERT_EQ(seek.first, it.value());
+    }
+  }
+
+  // sparse bitset with sparse region
+  {
+    const size_t size = 173;
+    irs::bitset bs(size);
+
+    // set bits
+    irs::bitset::word_t data[] {
+      irs::bitset::word_t(0),
+      irs::bitset::word_t(UINT64_C(0x420200A020440480)),
+      irs::bitset::word_t(0)
+    };
+
+    bs.memset(data);
+
+    irs::bitset_doc_iterator it(bs);
+    ASSERT_TRUE(!irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+
+    std::vector<std::pair<irs::doc_id_t, irs::doc_id_t>> seeks {
+      { 71, 70 }, { 74, 72 }, { 126, 125 },
+      { irs::type_limits<irs::type_t::doc_id_t>::eof(), 128 },
+      { irs::type_limits<irs::type_t::doc_id_t>::eof(), irs::type_limits<irs::type_t::doc_id_t>::eof() }
+    };
+
+    for (auto& seek : seeks) {
+      ASSERT_EQ(seek.first, it.seek(seek.second));
+      ASSERT_EQ(seek.first, it.value());
+    }
+  }
+
+  // sparse bitset with sparse region
+  {
+    const size_t size = 189;
+    irs::bitset bs(size);
+
+    // set bits
+    irs::bitset::word_t data[] {
+      irs::bitset::word_t(0),
+      irs::bitset::word_t(UINT64_C(0x420200A020440480)),
+      irs::bitset::word_t(UINT64_C(0x4440000000000000))
+    };
+
+    bs.memset(data);
+
+    irs::bitset_doc_iterator it(bs);
+    ASSERT_TRUE(!irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+
+    std::vector<std::pair<irs::doc_id_t, irs::doc_id_t>> seeks {
+      { irs::type_limits<irs::type_t::doc_id_t>::eof(), 187 }
+    };
+
+    for (auto& seek : seeks) {
+      ASSERT_EQ(seek.first, it.seek(seek.second));
+      ASSERT_EQ(seek.first, it.value());
+    }
+  }
+
+  // sparse bitset with sparse region
+  {
+    const size_t size = 189;
+    irs::bitset bs(size);
+
+    // set bits
+    irs::bitset::word_t data[] {
+      irs::bitset::word_t(0),
+      irs::bitset::word_t(UINT64_C(0x420200A020440480)),
+      irs::bitset::word_t(UINT64_C(0x4440000000000000))
+    };
+    bs.memset(data);
+
+    irs::bitset_doc_iterator it(bs);
+    ASSERT_TRUE(!irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+
+    std::vector<std::pair<irs::doc_id_t, irs::doc_id_t>> seeks {
+      { 186, 186 },
+      { irs::type_limits<irs::type_t::doc_id_t>::eof(), 187 }
+    };
+
+    for (auto& seek : seeks) {
+      ASSERT_EQ(seek.first, it.seek(seek.second));
+      ASSERT_EQ(seek.first, it.value());
+    }
+  }
+
+  // sparse bitset with sparse region
+  {
+    const size_t size = 189;
+    irs::bitset bs(size);
+
+    // set bits
+    irs::bitset::word_t data[] {
+      irs::bitset::word_t(0),
+      irs::bitset::word_t(UINT64_C(0x420200A020440480)),
+      irs::bitset::word_t(UINT64_C(0x4440000000000000))
+    };
+
+    bs.memset(data);
+
+    irs::bitset_doc_iterator it(bs);
+    ASSERT_TRUE(!irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+
+    ASSERT_EQ(182 , it.seek(181));
+    ASSERT_EQ(186 , it.seek(186));
+    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.seek(187));
+  }
+
+  // sparse bitset
+  {
+    const size_t size = 189;
+    irs::bitset bs(size);
+
+    // set bits
+    irs::bitset::word_t data[] {
+      irs::bitset::word_t(0),
+      irs::bitset::word_t(0),
+      irs::bitset::word_t(UINT64_C(0x200000000000000))
+    };
+
+    bs.memset(data);
+
+    irs::bitset_doc_iterator it(bs);
+    ASSERT_TRUE(!irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+
+    ASSERT_EQ(185 , it.seek(2));
+    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.seek(187));
+  }
 }
 
 TEST(bitset_iterator_test, seek_next) {
@@ -498,6 +741,37 @@ TEST(bitset_iterator_test, seek_next) {
       }
     }
     ASSERT_EQ(2*steps+1, it.value());
+  }
+
+  // sparse bitset with sparse region
+  {
+    const size_t size = 189;
+    irs::bitset bs(size);
+
+    // set bits
+    irs::bitset::word_t data[] {
+      irs::bitset::word_t(0),
+      irs::bitset::word_t(UINT64_C(0x420200A020440480)),
+      irs::bitset::word_t(UINT64_C(0x4440000000000000))
+    };
+
+    bs.memset(data);
+
+    irs::bitset_doc_iterator it(bs);
+    ASSERT_TRUE(!irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+
+    ASSERT_EQ(71 , it.seek(68));
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(74, it.value());
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(82, it.value());
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(86, it.value());
+    ASSERT_EQ(182 , it.seek(181));
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(186, it.value());
+    ASSERT_FALSE(it.next());
+    ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
   }
 }
 
