@@ -95,6 +95,9 @@ protected:
         auto score_less = [&prepared_order](
           const iresearch::bytes_ref& lhs, const iresearch::bytes_ref& rhs
         ) {
+          if (lhs.c_str() == rhs.c_str()) {
+            std::cout << "Equals!!!" << std::endl;
+          }
           auto a = prepared_order.get<irs::doc_id_t>(lhs.c_str(), 0);
           auto b = prepared_order.get<irs::doc_id_t>(rhs.c_str(), 0);
           std::cout << "Less :" << a << " < " << b << std::endl;
