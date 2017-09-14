@@ -157,7 +157,7 @@ protected:
 
             ASSERT_FALSE(!score);
             std::cerr << "Got: " << prepared_order.get<irs::doc_id_t>(score->value().c_str(), 0) << std::endl;
-            scored_result.emplace(score->value(), docs->value());
+            scored_result.emplace(irs::bytes_ref(score->value()), docs->value());
 
             ++i;
           }
