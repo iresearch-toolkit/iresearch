@@ -113,10 +113,10 @@ protected:
           }
 
           auto it = scored_result.begin();
-          auto* first_key = &(it->first);
+          auto* first_key = it->first.c_str();
 
           for (++it; it != scored_result.end(); ++it) {
-            if (first_key != &(it->first)) {
+            if (first_key != it->first.c_str()) {
               return;
             }
           }
