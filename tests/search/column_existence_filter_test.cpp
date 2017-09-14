@@ -528,10 +528,13 @@ class column_existence_filter_test_case
       auto& score = filter_itr->attributes().get<irs::score>();
       ASSERT_TRUE(score);
 
+      // ensure that we avoid COW for pre c++11 std::basic_string
+      const irs::bytes_ref score_value = score->value();
+
       while (filter_itr->next()) {
         score->evaluate();
         ASSERT_FALSE(!score);
-        scored_result.emplace(score->value(), filter_itr->value());
+        scored_result.emplace(score_value, filter_itr->value());
         ASSERT_TRUE(column_itr->next());
         ASSERT_EQ(filter_itr->value(), column_itr->value().first);
         ++docs_count;
