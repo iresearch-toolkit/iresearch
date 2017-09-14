@@ -26,7 +26,7 @@ class phrase_iterator final : public conjunction {
   typedef std::vector<position_t> positions_t;
 
   phrase_iterator(
-      typename conjunction::doc_iterators_t&& itrs,
+      conjunction::doc_iterators_t&& itrs,
       const order::prepared& ord,
       positions_t&& pos)
     : conjunction(std::move(itrs), ord),

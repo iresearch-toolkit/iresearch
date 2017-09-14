@@ -27,7 +27,7 @@ class same_position_iterator final : public conjunction {
   typedef std::vector<position::cref> positions_t;
 
   same_position_iterator(
-      typename conjunction::doc_iterators_t&& itrs,
+      conjunction::doc_iterators_t&& itrs,
       const order::prepared& ord,
       positions_t&& pos)
     : conjunction(std::move(itrs), ord),

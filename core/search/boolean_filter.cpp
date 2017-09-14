@@ -268,7 +268,7 @@ class min_match_query final : public boolean_query {
     // min_match_count <= size
     min_match_count = std::min(size, min_match_count);
 
-    typename min_match_disjunction::doc_iterators_t itrs;
+    min_match_disjunction::doc_iterators_t itrs;
     itrs.reserve(size);
 
     for (;begin != end; ++begin) {

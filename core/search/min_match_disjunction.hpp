@@ -349,7 +349,7 @@ class min_match_disjunction : public doc_iterator_base {
   //////////////////////////////////////////////////////////////////////////////
   /// @returns the first iterator in the lead group
   //////////////////////////////////////////////////////////////////////////////
-  inline typename doc_iterators_t::iterator lead() {
+  inline doc_iterators_t::iterator lead() {
     return itrs_.end() - lead_;
   }
 

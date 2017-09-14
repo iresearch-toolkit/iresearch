@@ -68,7 +68,7 @@ class conjunction : public doc_iterator_base {
  public:
   typedef score_iterator_adapter doc_iterator_t;
   typedef std::vector<doc_iterator_t> doc_iterators_t;
-  typedef typename doc_iterators_t::const_iterator iterator;
+  typedef doc_iterators_t::const_iterator iterator;
 
   conjunction(
       doc_iterators_t&& itrs,
