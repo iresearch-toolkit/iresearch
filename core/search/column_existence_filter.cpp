@@ -36,7 +36,7 @@ class column_existence_iterator final : public irs::doc_iterator_base {
   explicit column_existence_iterator(
       const irs::sub_reader& reader,
       const irs::attribute_store& prepared_filter_attrs,
-      irs::columnstore_reader::column_iterator::ptr&& it,
+      irs::columnstore_iterator::ptr&& it,
       const irs::order::prepared& ord,
       uint64_t docs_count)
     : doc_iterator_base(ord),
@@ -80,7 +80,7 @@ class column_existence_iterator final : public irs::doc_iterator_base {
 
  private:
   mutable irs::document doc_; // modified during value()
-  irs::columnstore_reader::column_iterator::ptr it_;
+  irs::columnstore_iterator::ptr it_;
   irs::order::prepared::scorers scorers_;
 }; // column_existence_iterator
 

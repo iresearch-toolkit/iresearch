@@ -24,6 +24,16 @@ NS_LOCAL
 
 const std::string FILENAME_PREFIX("libformat-");
 
+const irs::columnstore_iterator::value_type INVALID {
+  irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+  irs::bytes_ref::nil
+};
+
+const irs::columnstore_iterator::value_type EOFMAX {
+  irs::type_limits<irs::type_t::doc_id_t>::eof(),
+  irs::bytes_ref::nil
+};
+
 class format_register :
   public iresearch::generic_register<iresearch::string_ref, iresearch::format::ptr(*)(), format_register> {
  protected:
@@ -37,7 +47,7 @@ class format_register :
   }
 }; // format_register
 
-struct empty_column_iterator final : irs::columnstore_reader::column_iterator {
+struct empty_column_iterator final : irs::columnstore_iterator {
  public:
   virtual const value_type& value() const override { return EOFMAX; }
   virtual const value_type& seek(irs::doc_id_t) override { return EOFMAX; }
@@ -73,18 +83,8 @@ column_meta_reader::~column_meta_reader() {}
 columnstore_writer::~columnstore_writer() {}
 columnstore_reader::~columnstore_reader() {}
 
-/*static*/ const columnstore_reader::column_iterator::value_type columnstore_reader::column_iterator::INVALID = {
-  type_limits<type_t::doc_id_t>::invalid(),
-  bytes_ref::nil
-};
-
-/*static*/ const columnstore_reader::column_iterator::value_type columnstore_reader::column_iterator::EOFMAX = {
-  type_limits<type_t::doc_id_t>::eof(),
-  bytes_ref::nil
-};
-
-/* static */ columnstore_reader::column_iterator::ptr columnstore_reader::empty_iterator() {
-  return column_iterator::make<empty_column_iterator>();
+/* static */ columnstore_iterator::ptr columnstore_reader::empty_iterator() {
+  return columnstore_iterator::make<empty_column_iterator>();
 }
 
 /* static */ const columnstore_reader::values_reader_f& columnstore_reader::empty_reader() {
