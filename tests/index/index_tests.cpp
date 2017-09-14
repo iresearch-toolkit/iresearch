@@ -333,6 +333,16 @@ void payloaded_json_field_factory(
   }
 }
 
+const irs::columnstore_iterator::value_type INVALID{
+  irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+  irs::bytes_ref::nil
+};
+
+const irs::columnstore_iterator::value_type EOFMAX{
+  irs::type_limits<irs::type_t::doc_id_t>::eof(),
+  irs::bytes_ref::nil
+};
+
 class index_test_case_base : public tests::index_test_base {
  public:
   void concurrent_read_index() {
@@ -1663,7 +1673,7 @@ class index_test_case_base : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         irs::doc_id_t docs_count = 0;
         irs::doc_id_t expected_doc = 2;
@@ -1675,7 +1685,7 @@ class index_test_case_base : public tests::index_test_base {
           ++docs_count;
         }
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
         ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
       }
     }
@@ -1742,7 +1752,7 @@ class index_test_case_base : public tests::index_test_base {
           ++docs_count;
         }
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
         ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
       }
 
@@ -1807,7 +1817,7 @@ class index_test_case_base : public tests::index_test_base {
           ++docs_count;
         }
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
         ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
       }
     }
@@ -1861,7 +1871,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         irs::doc_id_t docs_count = 0;
         irs::doc_id_t expected_doc = 2;
@@ -1874,14 +1884,14 @@ class index_test_case_base : public tests::index_test_base {
           ++docs_count;
         }
 
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, it->seek(expected_doc));
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, it->seek(expected_doc));
+        ASSERT_EQ(EOFMAX, actual_value);
 
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, it->seek(MAX_DOCS + 1));
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, it->seek(MAX_DOCS + 1));
+        ASSERT_EQ(EOFMAX, actual_value);
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
         ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
       }
 
@@ -1893,7 +1903,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         irs::doc_id_t docs_count = 0;
         irs::doc_id_t expected_doc = 2;
@@ -1910,14 +1920,14 @@ class index_test_case_base : public tests::index_test_base {
           ++docs_count;
         }
 
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, it->seek(expected_doc));
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, it->seek(expected_doc));
+        ASSERT_EQ(EOFMAX, actual_value);
 
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, it->seek(MAX_DOCS + 1));
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, it->seek(MAX_DOCS + 1));
+        ASSERT_EQ(EOFMAX, actual_value);
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
         ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
       }
 
@@ -1929,7 +1939,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         irs::doc_id_t expected_doc = 2;
         size_t docs_count = 0;
@@ -1946,14 +1956,14 @@ class index_test_case_base : public tests::index_test_base {
           ++docs_count;
         }
 
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, it->seek(expected_doc));
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, it->seek(expected_doc));
+        ASSERT_EQ(EOFMAX, actual_value);
 
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, it->seek(MAX_DOCS + 1));
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, it->seek(MAX_DOCS + 1));
+        ASSERT_EQ(EOFMAX, actual_value);
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
         ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
       }
 
@@ -1965,7 +1975,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         irs::doc_id_t expected_doc = 2;
         size_t docs_count = 0;
@@ -1998,7 +2008,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         irs::doc_id_t expected_doc = 2;
         size_t docs_count = 0;
@@ -2018,7 +2028,7 @@ class index_test_case_base : public tests::index_test_base {
           ++docs_count;
         }
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
         ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
       }
 
@@ -2030,14 +2040,14 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         ASSERT_EQ(&actual_value, &it->seek(MAX_DOCS));
         ASSERT_EQ(MAX_DOCS, actual_value.first);
         ASSERT_EQ(irs::bytes_ref::nil, actual_value.second);
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
       }
 
       // seek to before the end + next
@@ -2048,14 +2058,14 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         ASSERT_EQ(&actual_value, &it->seek(MAX_DOCS-1));
         ASSERT_EQ(MAX_DOCS, actual_value.first);
         ASSERT_EQ(irs::bytes_ref::nil, actual_value.second);
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
       }
 
       // seek to after the end + next
@@ -2066,17 +2076,17 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         ASSERT_EQ(&actual_value, &it->seek(MAX_DOCS+1));
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
 
         // can't seek backwards
         ASSERT_EQ(&actual_value, &it->seek(MAX_DOCS-1));
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
       }
 
       // seek + next(x5)
@@ -2089,7 +2099,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         irs::doc_id_t expected_doc = 2;
         size_t docs_count = 0;
@@ -2097,7 +2107,7 @@ class index_test_case_base : public tests::index_test_base {
         for (;;) {
           ASSERT_EQ(&actual_value, &it->seek(expected_doc));
 
-          if (irs::columnstore_reader::column_iterator::EOFMAX == actual_value) {
+          if (EOFMAX == actual_value) {
             break;
           }
 
@@ -2124,7 +2134,7 @@ class index_test_case_base : public tests::index_test_base {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
         ASSERT_EQ(MAX_DOCS/2, docs_count);
       }
 
@@ -2144,7 +2154,7 @@ class index_test_case_base : public tests::index_test_base {
           ASSERT_NE(nullptr, it);
 
           auto& actual_value = it->value();
-          ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+          ASSERT_EQ(INVALID, actual_value);
 
           ASSERT_EQ(&actual_value, &it->seek(expected_doc));
 
@@ -2170,7 +2180,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         ASSERT_EQ(&actual_value, &it->seek(expected_doc));
         expected_doc = min_doc;
@@ -2198,7 +2208,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         irs::doc_id_t expected_doc = MAX_DOCS;
 
@@ -2217,7 +2227,7 @@ class index_test_case_base : public tests::index_test_base {
 
         expected_doc -= 2;
         ASSERT_EQ(&actual_value, &it->seek(expected_doc));
-        ASSERT_EQ(actual_value, irs::columnstore_reader::column_iterator::EOFMAX);
+        ASSERT_EQ(actual_value, EOFMAX);
       }
 
       // seek over column (cached)
@@ -2228,7 +2238,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         irs::doc_id_t expected_doc = 2;
         size_t docs_count = 0;
@@ -2242,14 +2252,14 @@ class index_test_case_base : public tests::index_test_base {
           ++docs_count;
         }
 
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, it->seek(expected_doc));
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, it->seek(expected_doc));
+        ASSERT_EQ(EOFMAX, actual_value);
 
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, it->seek(MAX_DOCS + 1));
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, it->seek(MAX_DOCS + 1));
+        ASSERT_EQ(EOFMAX, actual_value);
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
         ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
       }
 
@@ -2649,7 +2659,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         irs::doc_id_t docs_count = 0;
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
@@ -2662,14 +2672,14 @@ class index_test_case_base : public tests::index_test_base {
           ++docs_count;
         }
 
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, it->seek(expected_doc));
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, it->seek(expected_doc));
+        ASSERT_EQ(EOFMAX, actual_value);
 
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, it->seek(MAX_DOCS + 1));
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, it->seek(MAX_DOCS + 1));
+        ASSERT_EQ(EOFMAX, actual_value);
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
         ASSERT_EQ(MAX_DOCS, docs_count);
       }
 
@@ -2681,7 +2691,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         size_t docs_count = 0;
@@ -2701,7 +2711,7 @@ class index_test_case_base : public tests::index_test_base {
           ++docs_count;
         }
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
         ASSERT_EQ(MAX_DOCS, docs_count);
       }
 
@@ -2713,7 +2723,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         size_t docs_count = 0;
@@ -2733,7 +2743,7 @@ class index_test_case_base : public tests::index_test_base {
           ++docs_count;
         }
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
         ASSERT_EQ(MAX_DOCS, docs_count);
       }
 
@@ -2745,14 +2755,14 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         ASSERT_EQ(&actual_value, &it->seek(MAX_DOCS));
         ASSERT_EQ(MAX_DOCS, actual_value.first);
         ASSERT_EQ(irs::bytes_ref::nil, actual_value.second);
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
       }
 
       // seek to before the end + next
@@ -2763,7 +2773,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         ASSERT_EQ(&actual_value, &it->seek(MAX_DOCS-1));
         ASSERT_EQ(MAX_DOCS-1, actual_value.first);
@@ -2774,7 +2784,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_EQ(irs::bytes_ref::nil, actual_value.second);
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
       }
 
       // seek to after the end + next + seek before end
@@ -2785,17 +2795,17 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         it->seek(MAX_DOCS+1);
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
 
         // can't seek backwards
         ASSERT_EQ(&actual_value, &it->seek(MAX_DOCS - 1));
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
       }
 
       // seek + next(x5)
@@ -2808,7 +2818,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         size_t docs_count = 0;
@@ -2816,7 +2826,7 @@ class index_test_case_base : public tests::index_test_base {
         for (;;) {
           ASSERT_EQ(&actual_value, &it->seek(expected_doc));
 
-          if (irs::columnstore_reader::column_iterator::EOFMAX == actual_value) {
+          if (EOFMAX == actual_value) {
             break;
           }
 
@@ -2843,7 +2853,7 @@ class index_test_case_base : public tests::index_test_base {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
         ASSERT_EQ(MAX_DOCS, docs_count);
       }
 
@@ -2862,7 +2872,7 @@ class index_test_case_base : public tests::index_test_base {
           ASSERT_NE(nullptr, it);
 
           auto& actual_value = it->value();
-          ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+          ASSERT_EQ(INVALID, actual_value);
 
           ASSERT_EQ(&actual_value, &it->seek(expected_doc));
 
@@ -2888,7 +2898,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         ASSERT_EQ(&actual_value, &it->seek(expected_doc));
         expected_doc = min_doc;
@@ -2917,7 +2927,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         irs::doc_id_t expected_doc = MAX_DOCS;
 
@@ -3352,7 +3362,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         irs::doc_id_t expected_value = 0;
@@ -3367,14 +3377,14 @@ class index_test_case_base : public tests::index_test_base {
           ++expected_value;
         }
 
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, it->seek(expected_doc));
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, it->seek(expected_doc));
+        ASSERT_EQ(EOFMAX, actual_value);
 
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, it->seek(MAX_DOCS + 1));
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, it->seek(MAX_DOCS + 1));
+        ASSERT_EQ(EOFMAX, actual_value);
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
         ASSERT_EQ(MAX_DOCS, expected_value);
       }
 
@@ -3386,7 +3396,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         irs::doc_id_t expected_value = 0;
@@ -3410,7 +3420,7 @@ class index_test_case_base : public tests::index_test_base {
           ++expected_value;
         }
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
         ASSERT_EQ(MAX_DOCS, expected_value);
       }
 
@@ -3422,7 +3432,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         irs::doc_id_t expected_value = 0;
@@ -3446,7 +3456,7 @@ class index_test_case_base : public tests::index_test_base {
           ++expected_value;
         }
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
         ASSERT_EQ(MAX_DOCS, expected_value);
       }
 
@@ -3458,7 +3468,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         auto expected_doc = MAX_DOCS;
         auto expected_value = MAX_DOCS-1;
@@ -3470,7 +3480,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
       }
 
       // seek to before the end + next
@@ -3481,7 +3491,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         auto expected_doc = MAX_DOCS-1;
         auto expected_value = expected_doc-1;
@@ -3499,7 +3509,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
       }
 
       // seek to after the end + next
@@ -3510,17 +3520,17 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         ASSERT_EQ(&actual_value, &it->seek(MAX_DOCS + 1));
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
 
         // can't seek backwards
         ASSERT_EQ(&actual_value, &it->seek(MAX_DOCS - 1));
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
       }
 
       // seek + next(x5)
@@ -3533,7 +3543,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         irs::doc_id_t expected_value = 0;
@@ -3541,7 +3551,7 @@ class index_test_case_base : public tests::index_test_base {
         for (;;) {
           ASSERT_EQ(&actual_value, &it->seek(expected_doc));
 
-          if (irs::columnstore_reader::column_iterator::EOFMAX == actual_value) {
+          if (EOFMAX == actual_value) {
             break;
           }
 
@@ -3572,7 +3582,7 @@ class index_test_case_base : public tests::index_test_base {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
         ASSERT_EQ(MAX_DOCS, expected_value);
       }
 
@@ -3592,7 +3602,7 @@ class index_test_case_base : public tests::index_test_base {
           ASSERT_NE(nullptr, it);
 
           auto& actual_value = it->value();
-          ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+          ASSERT_EQ(INVALID, actual_value);
 
           ASSERT_EQ(&actual_value, &it->seek(expected_doc));
 
@@ -3625,7 +3635,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         ASSERT_EQ(&actual_value, &it->seek(expected_doc));
         expected_doc = min_doc;
@@ -3659,7 +3669,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         irs::doc_id_t expected_doc = MAX_DOCS;
         irs::doc_id_t expected_value = expected_doc - 1;
@@ -3685,7 +3695,7 @@ class index_test_case_base : public tests::index_test_base {
 
         --expected_doc;
         ASSERT_EQ(&actual_value, &it->seek(expected_doc));
-        ASSERT_EQ(actual_value, irs::columnstore_reader::column_iterator::EOFMAX);
+        ASSERT_EQ(actual_value, EOFMAX);
       }
 
       // read values
@@ -4163,7 +4173,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         irs::doc_id_t expected_value = 0;
@@ -4183,14 +4193,14 @@ class index_test_case_base : public tests::index_test_base {
           ++expected_value;
         }
 
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, it->seek(expected_doc));
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, it->seek(expected_doc));
+        ASSERT_EQ(EOFMAX, actual_value);
 
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, it->seek(MAX_DOCS + 1));
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, it->seek(MAX_DOCS + 1));
+        ASSERT_EQ(EOFMAX, actual_value);
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
         ASSERT_EQ(MAX_DOCS, expected_value);
       }
 
@@ -4203,7 +4213,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         irs::doc_id_t expected_value = 0;
@@ -4237,7 +4247,7 @@ class index_test_case_base : public tests::index_test_base {
           ++expected_value;
         }
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
         ASSERT_EQ(MAX_DOCS, expected_value);
       }
 
@@ -4249,7 +4259,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         irs::doc_id_t expected_value = 0;
@@ -4282,7 +4292,7 @@ class index_test_case_base : public tests::index_test_base {
           ++expected_value;
         }
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
         ASSERT_EQ(MAX_DOCS, expected_value);
       }
 
@@ -4294,7 +4304,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         auto expected_doc = MAX_DOCS;
         auto expected_value = MAX_DOCS-1;
@@ -4310,7 +4320,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_EQ(expected_value_str, actual_value_str);
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
       }
 
       // seek to before the end + next
@@ -4321,7 +4331,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         auto expected_doc = MAX_DOCS-1;
         auto expected_value = expected_doc-1;
@@ -4346,7 +4356,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_EQ(expected_value_str, irs::to_string<irs::string_ref>(actual_value.second.c_str()));
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
       }
 
       // seek to after the end + next
@@ -4357,17 +4367,17 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         ASSERT_EQ(&actual_value, &it->seek(MAX_DOCS + 1));
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
 
         // can't seek backwards
         ASSERT_EQ(&actual_value, &it->seek(MAX_DOCS - 1));
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
       }
 
       // seek + next(x5)
@@ -4380,7 +4390,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         irs::doc_id_t expected_value = 0;
@@ -4388,7 +4398,7 @@ class index_test_case_base : public tests::index_test_base {
         for (;;) {
           ASSERT_EQ(&actual_value, &it->seek(expected_doc));
 
-          if (irs::columnstore_reader::column_iterator::EOFMAX == actual_value) {
+          if (EOFMAX == actual_value) {
             break;
           }
 
@@ -4429,7 +4439,7 @@ class index_test_case_base : public tests::index_test_base {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
         ASSERT_EQ(MAX_DOCS, expected_value);
       }
 
@@ -4449,7 +4459,7 @@ class index_test_case_base : public tests::index_test_base {
           ASSERT_NE(nullptr, it);
 
           auto& actual_value = it->value();
-          ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+          ASSERT_EQ(INVALID, actual_value);
 
           ASSERT_EQ(&actual_value, &it->seek(expected_doc));
 
@@ -4492,7 +4502,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         ASSERT_EQ(&actual_value, &it->seek(expected_doc));
         expected_doc = min_doc;
@@ -4535,7 +4545,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         irs::doc_id_t expected_doc = MAX_DOCS;
         irs::doc_id_t expected_value = expected_doc - 1;
@@ -4571,7 +4581,7 @@ class index_test_case_base : public tests::index_test_base {
 
         --expected_doc;
         ASSERT_EQ(&actual_value, &it->seek(expected_doc));
-        ASSERT_EQ(actual_value, irs::columnstore_reader::column_iterator::EOFMAX);
+        ASSERT_EQ(actual_value, EOFMAX);
       }
 
       // read values
@@ -5089,7 +5099,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         irs::doc_id_t expected_doc = 2;
         irs::doc_id_t expected_value = 1;
@@ -5115,14 +5125,14 @@ class index_test_case_base : public tests::index_test_base {
           ++docs;
         }
 
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, it->seek(expected_doc));
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, it->seek(expected_doc));
+        ASSERT_EQ(EOFMAX, actual_value);
 
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, it->seek(MAX_DOCS + 1));
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, it->seek(MAX_DOCS + 1));
+        ASSERT_EQ(EOFMAX, actual_value);
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
         ASSERT_EQ(inserted, docs);
       }
 
@@ -5134,7 +5144,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         irs::doc_id_t expected_doc = 2;
         irs::doc_id_t expected_value = 1;
@@ -5160,14 +5170,14 @@ class index_test_case_base : public tests::index_test_base {
           ++docs;
         }
 
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, it->seek(expected_doc));
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, it->seek(expected_doc));
+        ASSERT_EQ(EOFMAX, actual_value);
 
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, it->seek(MAX_DOCS + 1));
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, it->seek(MAX_DOCS + 1));
+        ASSERT_EQ(EOFMAX, actual_value);
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
         ASSERT_EQ(inserted, docs);
       }
 
@@ -5179,7 +5189,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         irs::doc_id_t expected_doc = 2;
         irs::doc_id_t expected_value = 1;
@@ -5228,7 +5238,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         irs::doc_id_t expected_doc = 2;
         irs::doc_id_t expected_value = 1;
@@ -5277,7 +5287,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         auto expected_doc = MAX_DOCS;
         auto expected_value = MAX_DOCS-1;
@@ -5292,7 +5302,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_EQ(expected_value_str, actual_value_str);
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
       }
 
       // seek to before the end + next
@@ -5303,7 +5313,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         auto expected_value = MAX_DOCS-1;
         auto expected_value_str  = std::to_string(expected_value);
@@ -5317,7 +5327,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_EQ(expected_value_str, actual_value_str);
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
       }
 
       // seek to after the end + next
@@ -5328,17 +5338,17 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         ASSERT_EQ(&actual_value, &it->seek(MAX_DOCS+1));
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
 
         // can't seek backwards
         ASSERT_EQ(&actual_value, &it->seek(MAX_DOCS-1));
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
       }
 
       // seek + next(x5)
@@ -5351,7 +5361,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         irs::doc_id_t expected_doc = 2;
         irs::doc_id_t expected_value = 1;
@@ -5360,7 +5370,7 @@ class index_test_case_base : public tests::index_test_base {
         for (;;) {
           ASSERT_EQ(&actual_value, &it->seek(expected_doc));
 
-          if (irs::columnstore_reader::column_iterator::EOFMAX == actual_value) {
+          if (EOFMAX == actual_value) {
             break;
           }
 
@@ -5404,7 +5414,7 @@ class index_test_case_base : public tests::index_test_base {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
         ASSERT_EQ(inserted, docs);
       }
 
@@ -5424,7 +5434,7 @@ class index_test_case_base : public tests::index_test_base {
           ASSERT_NE(nullptr, it);
 
           auto& actual_value = it->value();
-          ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+          ASSERT_EQ(INVALID, actual_value);
 
           ASSERT_EQ(&actual_value, &it->seek(expected_doc));
 
@@ -5467,7 +5477,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         ASSERT_EQ(&actual_value, &it->seek(expected_doc));
         expected_doc = min_doc;
@@ -5510,7 +5520,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         irs::doc_id_t expected_doc = MAX_DOCS;
         irs::doc_id_t expected_value = expected_doc - 1;
@@ -5546,7 +5556,7 @@ class index_test_case_base : public tests::index_test_base {
 
         expected_doc -= 2;
         ASSERT_EQ(&actual_value, &it->seek(expected_doc));
-        ASSERT_EQ(actual_value, irs::columnstore_reader::column_iterator::EOFMAX);
+        ASSERT_EQ(actual_value, EOFMAX);
       }
 
       // seek over column (cached)
@@ -5557,7 +5567,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         irs::doc_id_t expected_doc = 2;
         irs::doc_id_t expected_value = 1;
@@ -5579,14 +5589,14 @@ class index_test_case_base : public tests::index_test_base {
           ++docs;
         }
 
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, it->seek(expected_doc));
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, it->seek(expected_doc));
+        ASSERT_EQ(EOFMAX, actual_value);
 
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, it->seek(MAX_DOCS + 1));
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, it->seek(MAX_DOCS + 1));
+        ASSERT_EQ(EOFMAX, actual_value);
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, actual_value);
+        ASSERT_EQ(EOFMAX, actual_value);
       }
 
       // read values
