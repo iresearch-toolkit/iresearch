@@ -259,6 +259,7 @@ before_install:
 #  sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 60 --slave /usr/bin/g++ g++ /usr/bin/g++-5
 
 install:
+  - cmake --version
   - g++ --version
 
   ############################################################################
@@ -271,20 +272,6 @@ install:
   # Setup default versions and override compiler if needed
   ############################################################################  
   - if [[ "${BOOST_VERSION}" == "default" ]]; then BOOST_VERSION=1.58.0; fi  
-#  - if [[ "${COMPILER}" != "" ]]; then export CXX=${COMPILER}; fi
-
-  ############################################################################
-  # Install a recent CMake
-  ############################################################################
-#  - |
-#    if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
-#      CMAKE_URL="https://cmake.org/files/v3.7/cmake-3.7.2-Linux-x86_64.tar.gz"
-#      mkdir cmake && travis_retry wget --no-check-certificate --quiet -O - ${CMAKE_URL} | tar --strip-components=1 -xz -C cmake
-#      export PATH=${DEPS_DIR}/cmake/bin:${PATH}
-#    else
-#      brew upgrade cmake || brew install cmake
-#    fi
-  - cmake --version
 
   ############################################################################
   # Install ICU
