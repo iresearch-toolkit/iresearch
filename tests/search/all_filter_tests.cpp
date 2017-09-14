@@ -121,7 +121,7 @@ protected:
             }
           }
 
-          std::cerr << "All keys are EQUAL!!!!" << std::endl;
+          std::cerr << "All keys are EQUAL!!!! " << (void*)first_key << std::endl;
         };
 
         size_t i = 0;
@@ -131,6 +131,7 @@ protected:
 
           while (docs->next()) {
             std::cerr << "============RESULT STEP BEFORE EVALUATE" << i << "================" << std::endl;
+            std::cerr << "Score addr: " << (void*)score->value().c_str() << std::endl;
             for (auto& entry : scored_result) {
               std::cout << prepared_order.get<irs::doc_id_t>(entry.first.c_str(), 0) << " " << entry.second << std::endl;
             }
@@ -143,6 +144,7 @@ protected:
             all_keys_equal();
 
             std::cerr << "============RESULT STEP AFTER EVALUATE" << i << "================" << std::endl;
+            std::cerr << "Score addr: " << (void*)score->value().c_str() << std::endl;
             for (auto& entry : scored_result) {
               std::cout << prepared_order.get<irs::doc_id_t>(entry.first.c_str(), 0) << " " << entry.second << std::endl;
             }
