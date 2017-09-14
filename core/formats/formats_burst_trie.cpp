@@ -37,7 +37,7 @@
   // NOOP
 #elif defined (__GNUC__)
   #pragma GCC diagnostic ignored "-Wunused-local-typedefs"
-  #if (__GNUC__ >= 5)
+  #if (__GNUC__ >= 6)
     #pragma GCC diagnostic ignored "-Wmisleading-indentation"
   #endif
 #endif

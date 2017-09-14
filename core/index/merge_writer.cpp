@@ -48,8 +48,8 @@ class compound_attributes: public irs::attribute_view {
         const irs::attribute::type_id& type_id,
         const irs::attribute_view::ref<irs::attribute>&
     ) ->bool {
-#if defined(__GNUC__) && (__GNUC__ < 5)
-      // GCCs before 5 are unable to call protected
+#if defined(__GNUC__) && (__GNUC__ < 6)
+      // GCCs before 6 are unable to call protected
       // member of base class from lambda
       this->insert(type_id);
 #else
@@ -75,8 +75,8 @@ class compound_attributes: public irs::attribute_view {
       const irs::attribute::type_id& type_id,
       const irs::attribute_view::ref<irs::attribute>& value
     )->bool {
-#if defined(__GNUC__) && (__GNUC__ < 5)
-      // GCCs before 5 are unable to call protected
+#if defined(__GNUC__) && (__GNUC__ < 6)
+      // GCCs before 6 are unable to call protected
       // member of base class from lambda
       this->insert(type_id, value);
 #else
@@ -90,7 +90,7 @@ class compound_attributes: public irs::attribute_view {
     attributes.visit(visitor_update); // set
   }
 
-#if defined(__GNUC__) && (__GNUC__ < 5)
+#if defined(__GNUC__) && (__GNUC__ < 6)
  private:
   void insert(const irs::attribute::type_id& type_id) {
     bool inserted;
