@@ -105,6 +105,25 @@ protected:
         };
         std::multimap<irs::bstring, irs::doc_id_t, decltype(score_less)> scored_result(score_less);
 
+        auto all_keys_equal = [&scored_result](){
+          std::cerr << "Addr: " << &scored_result << std::endl;
+
+          if (scored_result.size() < 2) {
+            return;
+          }
+
+          auto it = scored_result.begin();
+          auto* first_key = &(it->first);
+
+          for (++it; it != scored_result.end(); ++it) {
+            if (first_key != &(it->first)) {
+              return;
+            }
+          }
+
+          std::cerr << "All keys are EQUAL!!!!" << std::endl;
+        };
+
         size_t i = 0;
         for (const auto& sub: rdr) {
           auto docs = prepared_filter->execute(sub, prepared_order);
@@ -117,7 +136,11 @@ protected:
             }
             std::cerr << "===================================================" << std::endl;
 
+            all_keys_equal();
+
             score->evaluate();
+
+            all_keys_equal();
 
             std::cerr << "============RESULT STEP AFTER EVALUATE" << i << "================" << std::endl;
             for (auto& entry : scored_result) {
