@@ -293,7 +293,7 @@ TEST_F(tfidf_test, test_query) {
 
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(score_value(), seq);
+      sorted.emplace(score_value, seq);
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -334,7 +334,7 @@ TEST_F(tfidf_test, test_query) {
 
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(score_value(), seq);
+      sorted.emplace(score_value, seq);
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
