@@ -47,7 +47,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
-        - MAKE_ARGS="2>/dev/null" # travis is unable to handle log files > 4MB
+        - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
     # Release build, static library
@@ -66,7 +66,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
         - BUILD_TYPE="Release" STATIC_LIB="true"
-        - MAKE_ARGS="2>/dev/null" # travis is unable to handle log files > 4MB
+        - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
     # Debug build, shared library
@@ -85,7 +85,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
-        - MAKE_ARGS="2>/dev/null" # travis is unable to handle log files > 4MB
+        - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
     # Release build, shared library
@@ -104,7 +104,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
         - BUILD_TYPE="Release"
-        - MAKE_ARGS="2>/dev/null" # travis is unable to handle log files > 4MB
+        - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
     # GCC 4.9
@@ -127,7 +127,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
-        - MAKE_ARGS="2>/dev/null" # travis is unable to handle log files > 4MB
+        - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
     # Release build, static library
@@ -146,7 +146,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
         - BUILD_TYPE="Release" STATIC_LIB="true"
-        - MAKE_ARGS="2>/dev/null" # travis is unable to handle log files > 4MB
+        - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
     # Debug build, shared library
@@ -165,7 +165,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
-        - MAKE_ARGS="2>/dev/null" # travis is unable to handle log files > 4MB
+        - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
     # Release build, shared library
@@ -184,7 +184,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
         - BUILD_TYPE="Release"
-        - MAKE_ARGS="2>/dev/null" # travis is unable to handle log files > 4MB
+        - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
     # GCC 5
@@ -452,7 +452,12 @@ before_script:
 script:
     - if [[ "${STATIC_LIB}" == "true" ]]; then BUILD_TYPE_SUFFIX="-static" TEST_EXECUTABLE_SUFFIX="-s"; fi
     - cd ${TRAVIS_BUILD_DIR}/build
-    - make iresearch-tests${BUILD_TYPE_SUFFIX} ${MAKE_ARGS}
+    - |
+      if [[ "${SUPPRESS_MAKE_ERRORS}" == true ]]; then
+        make iresearch-tests${BUILD_TYPE_SUFFIX} 2>/dev/null
+      else
+        make iresearch-tests${BUILD_TYPE_SUFFIX}
+      fi
     - travis_wait 60 ./bin/iresearch-tests${TEST_EXECUTABLE_SUFFIX} ${TEST_PARAMS}
     - tar -czf iresearch-${TRAVIS_OS_NAME}-${BUILD_TYPE}${BUILD_TYPE_SUFFIX}-${TRAVIS_BUILD_NUMBER}.tar.gz bin
 
