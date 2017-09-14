@@ -48,8 +48,12 @@ class compound_attributes: public irs::attribute_view {
         const irs::attribute::type_id& type_id,
         const irs::attribute_view::ref<irs::attribute>&
     ) ->bool {
+#if defined(__GNUC__) && (__GNUC__ < 5)
+      this->insert(type_id);
+#else
       bool inserted;
-      attribute_map::emplace(inserted, type_id);
+      irs::attribute_view::emplace(inserted, type_id);
+#endif // defined(__GNUC__) && (__GNUC__ < 5)
       return true;
     };
 
@@ -64,18 +68,38 @@ class compound_attributes: public irs::attribute_view {
       value = nullptr;
       return true;
     };
+
     auto visitor_update = [this](
       const irs::attribute::type_id& type_id,
       const irs::attribute_view::ref<irs::attribute>& value
     )->bool {
+#if defined(__GNUC__) && (__GNUC__ < 5)
+      this->insert(type_id, value);
+#else
       bool inserted;
       attribute_map::emplace(inserted, type_id) = value;
+#endif // defined(__GNUC__) && (__GNUC__ < 5)
       return true;
     };
 
     visit(visitor_unset); // unset
     attributes.visit(visitor_update); // set
   }
+
+#if defined(__GNUC__) && (__GNUC__ < 5)
+ private:
+  void insert(const irs::attribute::type_id& type_id) {
+    bool inserted;
+    attribute_map::emplace(inserted, type_id);
+  }
+
+  void insert(
+      const irs::attribute::type_id& type_id,
+      const irs::attribute_view::ref<irs::attribute>& value) {
+    bool inserted;
+    attribute_map::emplace(inserted, type_id) = value;
+  }
+#endif // defined(__GNUC__) && (__GNUC__ < 5)
 }; // compound_attributes
 
 //////////////////////////////////////////////////////////////////////////////
