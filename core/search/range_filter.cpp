@@ -48,7 +48,7 @@ template<typename Comparer>
 void collect_terms(
     const sub_reader& reader, const term_reader& tr, 
     seek_term_iterator& terms, range_query::states_t& states, 
-    limited_sample_scorer* scorer,
+    limited_sample_scorer& scorer,
     Comparer cmp) {
   if (cmp(terms)) {
     /* read attributes */
@@ -59,16 +59,14 @@ void collect_terms(
     state.reader = &tr;
     state.min_term = terms.value();
     state.min_cookie = terms.cookie();
+    state.unscored_docs.reset((type_limits<type_t::doc_id_t>::min)() + reader.docs_count()); // highest valid doc_id in reader
 
     // get term metadata
     auto& meta = terms.attributes().get<term_meta>();
 
     do {
       // fill scoring candidates
-      if (scorer) {
-        scorer->collect(meta ? meta->docs_count : 0, state.count, state, reader, terms);
-      }
-
+      scorer.collect(meta ? meta->docs_count : 0, state.count, state, reader, terms);
       ++state.count;
 
       if (meta) {
@@ -183,8 +181,7 @@ filter::prepared::ptr by_range::prepare(
   }
 
 
-  limited_sample_scorer scorer_instance(scored_terms_limit_); // object for collecting order stats
-  limited_sample_scorer* scorer = ord.empty() ? nullptr : &scorer_instance;
+  limited_sample_scorer scorer(ord.empty() ? 0 : scored_terms_limit_); // object for collecting order stats
   range_query::states_t states(rdr.size());
 
   /* iterate over the segments */
@@ -237,9 +234,7 @@ filter::prepared::ptr by_range::prepare(
     }
   }
 
-  if (scorer) {
-    scorer->score(rdr, ord);
-  }
+  scorer.score(rdr, ord);
 
   auto q = memory::make_unique<range_query>(std::move(states));
 

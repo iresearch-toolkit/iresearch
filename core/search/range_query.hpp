@@ -17,6 +17,7 @@
 
 #include "filter.hpp"
 #include "cost.hpp"
+#include "utils/bitset.hpp"
 #include "utils/string.hpp"
 
 NS_ROOT
@@ -30,16 +31,8 @@ struct term_reader;
 struct range_state {
   range_state() = default;
 
-  range_state(range_state&& rhs) NOEXCEPT
-    : reader(rhs.reader),
-      min_term(std::move(rhs.min_term)),
-      min_cookie(std::move(rhs.min_cookie)),
-      estimation(rhs.estimation),
-      count(std::move(rhs.count)),
-      scored_states(std::move(rhs.scored_states)) {
-    rhs.reader = nullptr;
-    rhs.count = 0;
-    rhs.estimation = 0;
+  range_state(range_state&& rhs) NOEXCEPT {
+    *this = std::move(rhs);
   }
 
   range_state& operator=(range_state&& other) NOEXCEPT {
@@ -53,6 +46,7 @@ struct range_state {
     estimation = std::move(other.estimation);
     count = std::move(other.count);
     scored_states = std::move(other.scored_states);
+    unscored_docs = std::move(other.unscored_docs);
     other.reader = nullptr;
     other.count = 0;
     other.estimation = 0;
@@ -66,9 +60,12 @@ struct range_state {
   cost::cost_t estimation{}; // per-segment query estimation
   size_t count{}; // number of terms to process from start term
 
-  // scored states/stats by their offset in range_state
-  typedef std::unordered_map<size_t, attribute_store> scored_states_t;
-  scored_states_t scored_states;
+  // scored states/stats by their offset in range_state (i.e. offset from min_term)
+  // range_query::execute(...) expects an orderd map
+  std::map<size_t, attribute_store> scored_states;
+
+  // matching doc_ids that may have been skipped while collecting statistics and should not be scored by the disjunction
+  bitset unscored_docs;
 }; // reader_state
 
 //////////////////////////////////////////////////////////////////////////////

@@ -237,13 +237,6 @@ class disjunction : public doc_iterator_base {
     return doc_ = lead()->value();
   }
 
- protected:
-  virtual void score_add_impl(byte_type* dst, doc_iterator_t& src) {
-    const auto* score = src.score;
-    score->evaluate();
-    ord_->add(dst, score->c_str());
-  }
-
  private:
   template<typename Iterator>
   inline void push(Iterator begin, Iterator end) {
@@ -319,6 +312,33 @@ class disjunction : public doc_iterator_base {
           score_add_impl(lhs, it);
       });
     }
+  }
+
+  void score_add_impl(byte_type* dst, doc_iterator_t& src) {
+    typedef void(*add_score_fn_t)(const order::prepared& order, const irs::score& score, byte_type* dst);
+    static const add_score_fn_t add_score_fns[] = {
+      &add_score, // score != iresearch::score::no_score()
+      &add_no_score, // score == iresearch::score::no_score()
+    };
+    const auto* score = src.score;
+    assert(ord_);
+    assert(score);
+
+    // do not merge scores for irs::score::no_score()
+    add_score_fns[&irs::score::no_score() == score](*ord_, *score, dst);
+  }
+
+  static void add_no_score(
+      const order::prepared& order, const irs::score& score, byte_type* dst
+  ) {
+    // NOOP
+  }
+
+  static void add_score(
+      const order::prepared& order, const irs::score& score, byte_type* dst
+  ) {
+    score.evaluate();
+    order.add(dst, score.c_str());
   }
 
   doc_iterators_t itrs_;

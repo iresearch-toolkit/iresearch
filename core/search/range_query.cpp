@@ -9,6 +9,7 @@
 // Agreement under which it is provided by or on behalf of EMC.
 // 
 
+#include "bitset_doc_iterator.hpp"
 #include "shared.hpp"
 #include "range_query.hpp"
 #include "disjunction.hpp"
@@ -18,29 +19,17 @@
 
 NS_LOCAL
 
-class masking_disjunction final : public irs::disjunction {
-  typedef irs::disjunction parent;
- public:
-  typedef std::unordered_set<irs::doc_iterator*> doc_itr_score_mask_t;
+void set_doc_ids(irs::bitset& buf, const irs::term_iterator& term) {
+  auto itr = term.postings(irs::flags::empty_instance());
 
-  masking_disjunction(
-      typename parent::doc_iterators_t&& doc_itrs,
-      doc_itr_score_mask_t&& doc_itr_score_mask, //score only these itrs
-      const iresearch::order::prepared& order,
-      iresearch::cost::cost_t estimation)
-    : parent(std::move(doc_itrs), order, estimation),
-      doc_itr_score_mask_(std::move(doc_itr_score_mask)) {
+  if (!itr) {
+    return; // no doc_ids in iterator
   }
 
-  virtual void score_add_impl(iresearch::byte_type* dst, irs::score_iterator_adapter& src) {
-    if (doc_itr_score_mask_.find(src.operator->()) != doc_itr_score_mask_.end()) {
-      parent::score_add_impl(dst, src);
-    }
+  while(itr->next()) {
+    buf.set(itr->value());
   }
-
- private:
-  doc_itr_score_mask_t doc_itr_score_mask_;
-};
+}
 
 NS_END
 
@@ -57,21 +46,45 @@ void limited_sample_scorer::collect(
   const iresearch::sub_reader& reader, // segment reader for the current term
   const seek_term_iterator& term_itr // term-iterator positioned at the current term
 ) {
+  if (!scored_terms_limit_) {
+    assert(scored_state.unscored_docs.size() >= (type_limits<type_t::doc_id_t>::min)() + reader.docs_count()); // otherwise set will fail
+    set_doc_ids(scored_state.unscored_docs, term_itr);
+
+    return; // nothing to collect (optimization)
+  }
+
   scored_states_.emplace(
     std::piecewise_construct,
     std::forward_as_tuple(priority),
     std::forward_as_tuple(reader, scored_state, scored_state_id, term_itr)
   );
 
-  // if too many candidates then remove least significant
-  if (scored_states_.size() > scored_terms_limit_) {
-    scored_states_.erase(scored_states_.begin());
+  if (scored_states_.size() <= scored_terms_limit_) {
+    return; // have not reached the scored state limit yet
   }
+
+  auto itr = scored_states_.begin(); // least significant state to be removed
+  auto& entry = itr->second;
+  auto state_term_itr = entry.state.reader->iterator();
+
+  // add all doc_ids from the doc_iterator to the unscored_docs
+  if (state_term_itr
+      && entry.cookie
+      && state_term_itr->seek(bytes_ref::nil, *(entry.cookie))) {
+    assert(entry.state.unscored_docs.size() >= (type_limits<type_t::doc_id_t>::min)() + entry.sub_reader.docs_count()); // otherwise set will fail
+    set_doc_ids(entry.state.unscored_docs, *state_term_itr);
+  }
+
+  scored_states_.erase(itr);
 }
 
 void limited_sample_scorer::score(
     const index_reader& index, const order::prepared& order
 ) {
+  if (!scored_terms_limit_) {
+    return; // nothing to score (optimization)
+  }
+
   struct state_t {
     attribute_store filter_attrs; // filter attributes for a the current state/term
     order::prepared::stats stats;
@@ -88,7 +101,9 @@ void limited_sample_scorer::score(
     // find term attributes using cached state
     // use bytes_ref::nil here since we just "jump" to cached state,
     // and we are not interested in term value itself
-    if (!term_itr || !term_itr->seek(bytes_ref::nil, *scored_state.cookie)) {
+    if (!term_itr
+        || !scored_state.cookie
+        || !term_itr->seek(bytes_ref::nil, *(scored_state.cookie))) {
       continue; // some internal error that caused the term to disapear
     }
 
@@ -150,51 +165,46 @@ doc_iterator::ptr range_query::execute(
   }
 
   /* prepared disjunction */
-  masking_disjunction::doc_iterators_t itrs;
-  itrs.reserve(state->count);
+  disjunction::doc_iterators_t itrs;
+  itrs.reserve(state->count + 1); // +1 for possible bitset_doc_iterator
 
   /* get required features for order */
   auto& features = ord.features();
 
-  // set of doc_iterators that should be scored
-  masking_disjunction::doc_itr_score_mask_t doc_itr_score_mask;
-
-  /* iterator for next "state.count" terms */
-  for (size_t i = 0, end = state->count; i < end; ++i) {
-    auto scored_state_itr = state->scored_states.find(i);
-
-    if (scored_state_itr == state->scored_states.end()) {
-      itrs.emplace_back(doc_iterator::make<basic_doc_iterator>(
-        rdr,
-        *state->reader,
-        attribute_store::empty_instance(),
-        std::move(terms->postings(features)),
-        ord,
-        state->estimation
-      ));
-    }
-    else {
-      itrs.emplace_back(doc_iterator::make<basic_doc_iterator>(
-        rdr,
-        *state->reader,
-        scored_state_itr->second,
-        std::move(terms->postings(features)),
-        ord,
-        state->estimation
-      ));
-      doc_itr_score_mask.emplace(itrs.back().operator->());
-    }
-
-    terms->next();
+  // add an iterator for the unscored docs
+  if (state->unscored_docs.any()) {
+    itrs.emplace_back(
+      doc_iterator::make<bitset_doc_iterator>(state->unscored_docs)
+    );
   }
 
-  if (itrs.empty()) {
-    return doc_iterator::empty();
+  size_t last_offset = 0;
+
+  // add an iterator for each of the scored states
+  for (auto& entry: state->scored_states) {
+    auto offset = entry.first;
+    auto& stats = entry.second;
+    assert(offset >= last_offset);
+
+    if (!skip(*terms, offset - last_offset)) {
+      continue; // reached end of iterator
+    }
+
+    last_offset = offset;
+    itrs.emplace_back(doc_iterator::make<basic_doc_iterator>(
+      rdr,
+      *state->reader,
+      stats,
+      terms->postings(features),
+      ord,
+      state->estimation
+    ));
   }
 
-  return doc_iterator::make<masking_disjunction>(
-    std::move(itrs), std::move(doc_itr_score_mask), ord, state->estimation
-  );
+  return itrs.empty()
+    ? doc_iterator::empty()
+    : doc_iterator::make<disjunction>(std::move(itrs), ord, state->estimation)
+    ;
 }
 
 NS_END // ROOT

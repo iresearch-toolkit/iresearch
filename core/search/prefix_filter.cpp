@@ -25,7 +25,7 @@ filter::prepared::ptr by_prefix::prepare(
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost) const {
-  limited_sample_scorer scorer(scored_terms_limit_); // object for collecting order stats
+  limited_sample_scorer scorer(ord.empty() ? 0 : scored_terms_limit_); // object for collecting order stats
   range_query::states_t states(rdr.size());  
 
   auto& prefix = term();
@@ -57,13 +57,11 @@ filter::prepared::ptr by_prefix::prepare(
       state.reader = tr;
       state.min_term = terms->value();
       state.min_cookie = terms->cookie();
+      state.unscored_docs.reset((type_limits<type_t::doc_id_t>::min)() + sr.docs_count()); // highest valid doc_id in reader
 
       do {
         // fill scoring candidates
-        if (!ord.empty()) {
-          scorer.collect(meta ? meta->docs_count : 0, state.count, state, sr, *terms);
-        }
-
+        scorer.collect(meta ? meta->docs_count : 0, state.count, state, sr, *terms);
         ++state.count;
 
         /* collect cost */
@@ -80,9 +78,7 @@ filter::prepared::ptr by_prefix::prepare(
     }
   }
 
-  if (!ord.empty()) {
-    scorer.score(rdr, ord);
-  }
+  scorer.score(rdr, ord);
 
   auto q = memory::make_unique<range_query>(std::move(states));
 

@@ -68,7 +68,7 @@ iresearch::range_state& collect_terms(
   const iresearch::sub_reader& reader,
   const iresearch::term_reader& tr,
   iresearch::seek_term_iterator& terms,
-  iresearch::limited_sample_scorer* scorer,
+  irs::limited_sample_scorer& scorer,
   const Comparer& cmp
 ) {
   auto& state = states.emplace(
@@ -82,6 +82,7 @@ iresearch::range_state& collect_terms(
   state.reader = &tr;
   state.min_term = terms.value();
   state.min_cookie = terms.cookie();
+  state.unscored_docs.reset((irs::type_limits<irs::type_t::doc_id_t>::min)() + reader.docs_count()); // highest valid doc_id in reader
 
   auto& meta = terms.attributes().get<iresearch::term_meta>(); // get term metadata
 
@@ -92,17 +93,15 @@ iresearch::range_state& collect_terms(
       break; // terminate traversal
     }
 
-    if (scorer) {
-      // fill scoring candidates
-      scorer->collect(
-        meta ? meta->docs_count : 0,
-        state.count, // current term offset in state
-        state,
-        reader,
-        terms
-      );
-    }
 
+    // fill scoring candidates
+    scorer.collect(
+      meta ? meta->docs_count : 0,
+      state.count, // current term offset in state
+      state,
+      reader,
+      terms
+    );
     ++(state.count);
 
     if (meta) {
@@ -121,7 +120,7 @@ void collect_terms_between(
   const iresearch::term_reader& tr,
   iresearch::seek_term_iterator& terms,
   size_t prefix_size,
-  iresearch::limited_sample_scorer* scorer,
+  irs::limited_sample_scorer& scorer,
   const iresearch::bytes_ref& begin_term,
   const iresearch::bytes_ref& end_term, // granularity level for end_term is ingored during comparison
   bool include_begin_term, // should begin_term also be included
@@ -184,7 +183,7 @@ void collect_terms_from(
   size_t prefix_size,
   const iresearch::by_granular_range::terms_t& min_term,
   bool min_term_inclusive,
-  iresearch::limited_sample_scorer* scorer
+  irs::limited_sample_scorer& scorer
 ) {
   auto min_term_itr = min_term.rbegin(); // start with least granular
 
@@ -265,7 +264,7 @@ void collect_terms_until(
   size_t prefix_size,
   const iresearch::by_granular_range::terms_t& max_term,
   bool max_term_inclusive,
-  iresearch::limited_sample_scorer* scorer
+  irs::limited_sample_scorer& scorer
 ) {
   auto max_term_itr = max_term.rbegin(); // start with least granular
 
@@ -346,7 +345,7 @@ void collect_terms_within(
   const iresearch::by_granular_range::terms_t& max_term,
   bool min_term_inclusive,
   bool max_term_inclusive,
-  iresearch::limited_sample_scorer* scorer
+  irs::limited_sample_scorer& scorer
 ) {
   auto min_term_itr = min_term.rbegin(); // start with least granular
 
@@ -532,8 +531,7 @@ filter::prepared::ptr by_granular_range::prepare(
   }
 
 
-  limited_sample_scorer scorer_instance(scored_terms_limit_); // object for collecting order stats
-  limited_sample_scorer* scorer = ord.empty() ? nullptr : &scorer_instance;
+  limited_sample_scorer scorer(ord.empty() ? 0 : scored_terms_limit_); // object for collecting order stats
   granular_states_t states(rdr.size());
 
   // iterate over the segments
@@ -584,9 +582,7 @@ filter::prepared::ptr by_granular_range::prepare(
     collect_terms_within(states, sr, *tr, *terms, prefix_size, rng_.min, rng_.max, Bound_Type::INCLUSIVE == rng_.min_type, Bound_Type::INCLUSIVE == rng_.max_type, scorer);
   }
 
-  if (scorer) {
-    scorer->score(rdr, ord);
-  }
+  scorer.score(rdr, ord);
 
   // ...........................................................................
   // group the range states into a minimal number of groups per sub_reader
