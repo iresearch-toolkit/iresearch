@@ -24,7 +24,6 @@
 #endif
 
 #include <boost/filesystem/operations.hpp>
-#include <boost/system/error_code.hpp>
 #include <boost/locale/encoding.hpp>
 
 MSVC_ONLY(__pragma(warning(push)))
@@ -623,3 +622,7 @@ bool fs_directory::sync(const std::string& name) NOEXCEPT {
 
 MSVC_ONLY(__pragma(warning(pop)))
 NS_END
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
