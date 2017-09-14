@@ -49,10 +49,10 @@ NS_END // detail
 class term_selector;
 
 //////////////////////////////////////////////////////////////////////////////
-/// @class by_range 
+/// @class by_range
 /// @brief user-side term range filter
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API by_range : public filter { /* public multiterm_filter<limited_term_selector> { */
+class IRESEARCH_API by_range : public filter {
  public:
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY_DEFAULT();
@@ -139,13 +139,6 @@ class IRESEARCH_API by_range : public filter { /* public multiterm_filter<limite
 
  protected:
   virtual bool equals(const filter& rhs) const override;
-
-  virtual void collect_terms(
-    term_selector& selector,
-    const sub_reader& segment,
-    const term_reader& field,
-    seek_term_iterator& terms
-  ) const;
 
  private: 
   typedef detail::range<bstring> range_t;

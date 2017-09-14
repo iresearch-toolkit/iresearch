@@ -21,52 +21,33 @@
 
 NS_LOCAL
 
-template<typename Selector, typename Comparer>
+template<typename Comparer>
 void collect_terms(
-    Selector& selector,
     const irs::sub_reader& segment,
     const irs::term_reader& field,
     irs::seek_term_iterator& terms,
-    Comparer cmp) {
-  while (cmp(terms)) {
-    // read attributes
-    terms.read();
-    selector.insert(segment, field, terms);
-
-    if (!terms.next()) {
-      return;
-    }
-  }
-}
-
-NS_END // LOCAL
-
-NS_ROOT
-NS_BEGIN(detail)
-
-template<typename Comparer>
-void collect_terms(
-    const sub_reader& reader, const term_reader& tr, 
-    seek_term_iterator& terms, range_query::states_t& states, 
-    limited_sample_scorer& scorer,
+    irs::range_query::states_t& states,
+    irs::limited_sample_scorer& scorer,
     Comparer cmp) {
   if (cmp(terms)) {
-    /* read attributes */
+    // read attributes
     terms.read();
 
-    /* get state for current segment */
-    auto& state = states.insert(reader);
-    state.reader = &tr;
+    // get state for current segment
+    auto& state = states.insert(segment);
+    state.reader = &field;
     state.min_term = terms.value();
     state.min_cookie = terms.cookie();
-    state.unscored_docs.reset((type_limits<type_t::doc_id_t>::min)() + reader.docs_count()); // highest valid doc_id in reader
+    state.unscored_docs.reset(
+      (irs::type_limits<irs::type_t::doc_id_t>::min)() + segment.docs_count()
+    ); // highest valid doc_id in segment
 
     // get term metadata
-    auto& meta = terms.attributes().get<term_meta>();
+    auto& meta = terms.attributes().get<irs::term_meta>();
 
     do {
       // fill scoring candidates
-      scorer.collect(meta ? meta->docs_count : 0, state.count, state, reader, terms);
+      scorer.collect(meta ? meta->docs_count : 0, state.count, state, segment, terms);
       ++state.count;
 
       if (meta) {
@@ -77,13 +58,15 @@ void collect_terms(
         break;
       }
 
-      /* read attributes */
+      // read attributes
       terms.read();
     } while (cmp(terms));
   }
 }
 
-NS_END // detail
+NS_END // LOCAL
+
+NS_ROOT
 
 DEFINE_FILTER_TYPE(by_range)
 DEFINE_FACTORY_DEFAULT(by_range)
@@ -108,138 +91,99 @@ size_t by_range::hash() const {
   return seed;
 }
 
-void by_range::collect_terms(
-    term_selector& selector,
-    const sub_reader& segment,
-    const term_reader& field,
-    seek_term_iterator& terms) const {
-  bool res = false;
-
-  // seek to min
-  switch (rng_.min_type) {
-    case Bound_Type::UNBOUNDED:
-      res = terms.next();
-      break;
-    case Bound_Type::INCLUSIVE:
-      res = seek_min<true>(terms, rng_.min);
-      break;
-    case Bound_Type::EXCLUSIVE:
-      res = seek_min<false>(terms, rng_.min);
-      break;
-    default:
-      assert(false);
-  }
-
-  if (!res) {
-    // reached the end, nothing to collect
-    return;
-  }
-
-  // now we are on the target term or
-  // the next term after the target term
-  const irs::bytes_ref max = rng_.max;
-
-  switch (rng_.min_type) {
-    case Bound_Type::UNBOUNDED:
-      ::collect_terms(
-        selector, segment, field, terms, [](const term_iterator&) {
-        return true;
-      });
-      break;
-    case Bound_Type::INCLUSIVE:
-      ::collect_terms(
-        selector, segment, field, terms, [max](const term_iterator& terms) {
-        return terms.value() <= max;
-      });
-      break;
-    case Bound_Type::EXCLUSIVE:
-      ::collect_terms(
-        selector, segment, field, terms, [max](const term_iterator& terms) {
-        return terms.value() < max;
-      });
-      break;
-  }
-
-  assert(false);
-}
-
 filter::prepared::ptr by_range::prepare(
-    const index_reader& rdr,
+    const index_reader& index,
     const order::prepared& ord,
     boost_t boost) const {
+  //TODO: optimize unordered case
+  // - seek to min
+  // - get ordinal position of the term
+  // - seek to max
+  // - get ordinal position of the term
+
   if (rng_.min_type != Bound_Type::UNBOUNDED
       && rng_.max_type != Bound_Type::UNBOUNDED
       && rng_.min == rng_.max) {
 
     if (rng_.min_type == rng_.max_type && rng_.min_type == Bound_Type::INCLUSIVE) {
       // degenerated case
-      return term_query::make(rdr, ord, boost*this->boost(), fld_, rng_.min);
+      return term_query::make(index, ord, boost*this->boost(), fld_, rng_.min);
     }
 
     // can't satisfy conditon
     return prepared::empty();
   }
 
-
   limited_sample_scorer scorer(ord.empty() ? 0 : scored_terms_limit_); // object for collecting order stats
-  range_query::states_t states(rdr.size());
+  range_query::states_t states(index.size());
 
-  /* iterate over the segments */
-  const string_ref field = fld_;
-  for (const auto& sr : rdr) {
-    /* get term dictionary for field */
-    const term_reader* tr = sr.field(field);
-    if (!tr) {
+  // iterate over the segments
+  const string_ref field_name = fld_;
+  for (const auto& segment : index) {
+    // get term dictionary for field
+    const auto* field = segment.field(field_name);
+
+    if (!field) {
+      // can't find field with the specified name
       continue;
     }
 
-    /* seek to min */
-    seek_term_iterator::ptr terms = tr->iterator();
+    auto terms = field->iterator();
+    bool res = false;
 
-    //TODO: optimize empty unordered case. seek to min, 
-    //get ordinal position of the term, seek max, 
-    //get ordinal position of the term.
+    // seek to min
+    switch (rng_.min_type) {
+      case Bound_Type::UNBOUNDED:
+        res = terms->next();
+        break;
+      case Bound_Type::INCLUSIVE:
+        res = seek_min<true>(*terms, rng_.min);
+        break;
+      case Bound_Type::EXCLUSIVE:
+        res = seek_min<false>(*terms, rng_.min);
+        break;
+      default:
+        assert(false);
+    }
 
-    auto res = terms->seek_ge(rng_.min);
-    if (SeekResult::END == res) {
-      /* have reached the end of the segment */
+    if (!res) {
+      // reached the end, nothing to collect
       continue;
     }
 
-    if (SeekResult::FOUND == res) {
-      if (Bound_Type::EXCLUSIVE == rng_.min_type && !terms->next()) {
-        continue;
-      }
-    }
+    // now we are on the target or the next term
+    const irs::bytes_ref max = rng_.max;
 
-    /* now we are on the target term 
-     * or on the next term after the target term */
-    auto& max = rng_.max;
-
-    if (Bound_Type::UNBOUNDED == rng_.max_type) {
-      detail::collect_terms(
-        sr, *tr, *terms, states, scorer, [](const term_iterator&)->bool {
-          return true; 
-      });
-    } else if (Bound_Type::INCLUSIVE == rng_.max_type) {
-      detail::collect_terms(
-        sr, *tr, *terms, states, scorer, [&max](const term_iterator& terms)->bool {
-          return terms.value() <= max;
-      });
-    } else { // Bound_Type::EXCLUSIVE == rng_.max_type
-      detail::collect_terms(
-        sr, *tr, *terms, states, scorer, [&max](const term_iterator& terms)->bool {
-          return terms.value() < max;
-      });
+    switch (rng_.max_type) {
+      case Bound_Type::UNBOUNDED:
+        ::collect_terms(
+          segment, *field, *terms, states, scorer, [](const term_iterator&) {
+            return true;
+        });
+        break;
+      case Bound_Type::INCLUSIVE:
+        ::collect_terms(
+          segment, *field, *terms, states, scorer, [max](const term_iterator& terms) {
+            return terms.value() <= max;
+        });
+        break;
+      case Bound_Type::EXCLUSIVE:
+        ::collect_terms(
+          segment, *field, *terms, states, scorer, [max](const term_iterator& terms) {
+            return terms.value() < max;
+        });
+        break;
+      default:
+        assert(false);
     }
   }
 
-  scorer.score(rdr, ord);
+  scorer.score(index, ord);
 
   auto q = memory::make_unique<range_query>(std::move(states));
 
-  /* apply boost */
-  iresearch::boost::apply(q->attributes(), this->boost() * boost);
+  // apply boost
+  irs::boost::apply(q->attributes(), this->boost() * boost);
 
   return std::move(q);
 }
