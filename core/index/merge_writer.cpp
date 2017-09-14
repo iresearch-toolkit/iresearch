@@ -54,7 +54,7 @@ class compound_attributes: public irs::attribute_view {
       this->insert(type_id);
 #else
       bool inserted;
-      irs::attribute_view::emplace(inserted, type_id);
+      attribute_map::emplace(inserted, type_id);
 #endif // defined(__GNUC__) && (__GNUC__ < 5)
       return true;
     };
