@@ -118,6 +118,9 @@ TEST_F(tfidf_test, test_query) {
     auto docs = prepared_filter->execute(segment, prepared_order);
     auto& score = docs->attributes().get<irs::score>();
 
+    // ensure that we avoid COW for pre c++11 std::basic_string
+    const irs::bytes_ref score_value = score->value();
+
     while(docs->next()) {
       score->evaluate();
       ASSERT_TRUE(values(docs->value(), actual_value));
@@ -125,7 +128,7 @@ TEST_F(tfidf_test, test_query) {
 
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(score->value(), seq);
+      sorted.emplace(score_value, seq);
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -153,6 +156,9 @@ TEST_F(tfidf_test, test_query) {
     auto docs = prepared_filter->execute(segment, prepared_order);
     auto& score = docs->attributes().get<irs::score>();
 
+    // ensure that we avoid COW for pre c++11 std::basic_string
+    const irs::bytes_ref score_value = score->value();
+
     while(docs->next()) {
       score->evaluate();
       ASSERT_TRUE(values(docs->value(), actual_value));
@@ -160,7 +166,7 @@ TEST_F(tfidf_test, test_query) {
 
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(score->value(), seq);
+      sorted.emplace(score_value, seq);
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -188,6 +194,9 @@ TEST_F(tfidf_test, test_query) {
     auto docs = prepared_filter->execute(segment, prepared_order);
     auto& score = docs->attributes().get<irs::score>();
 
+    // ensure that we avoid COW for pre c++11 std::basic_string
+    const irs::bytes_ref score_value = score->value();
+
     while(docs->next()) {
       score->evaluate();
       ASSERT_TRUE(values(docs->value(), actual_value));
@@ -195,7 +204,7 @@ TEST_F(tfidf_test, test_query) {
 
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(score->value(), seq);
+      sorted.emplace(score_value, seq);
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -274,6 +283,9 @@ TEST_F(tfidf_test, test_query) {
     auto docs = prepared_filter->execute(segment, prepared_order);
     auto& score = docs->attributes().get<irs::score>();
 
+    // ensure that we avoid COW for pre c++11 std::basic_string
+    const irs::bytes_ref score_value = score->value();
+
     while(docs->next()) {
       score->evaluate();
       ASSERT_TRUE(values(docs->value(), actual_value));
@@ -281,7 +293,7 @@ TEST_F(tfidf_test, test_query) {
 
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(score->value(), seq);
+      sorted.emplace(score_value(), seq);
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -312,6 +324,9 @@ TEST_F(tfidf_test, test_query) {
     auto docs = prepared_filter->execute(segment, prepared_order);
     auto& score = docs->attributes().get<irs::score>();
 
+    // ensure that we avoid COW for pre c++11 std::basic_string
+    const irs::bytes_ref score_value = score->value();
+
     while(docs->next()) {
       score->evaluate();
       ASSERT_TRUE(values(docs->value(), actual_value));
@@ -319,7 +334,7 @@ TEST_F(tfidf_test, test_query) {
 
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(score->value(), seq);
+      sorted.emplace(score_value(), seq);
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -383,6 +398,10 @@ TEST_F(tfidf_test, test_order) {
     auto prepared = query.prepare(reader, prepared_order);
     auto docs = prepared->execute(segment, prepared_order);
     auto& score = docs->attributes().get<iresearch::score>();
+
+    // ensure that we avoid COW for pre c++11 std::basic_string
+    const irs::bytes_ref score_value = score->value();
+
     for (; docs->next();) {
       score->evaluate();
       ASSERT_TRUE(values(docs->value(), actual_value));
@@ -390,7 +409,7 @@ TEST_F(tfidf_test, test_order) {
 
       auto str_seq = iresearch::read_string<std::string>(in);
       seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(score->value(), seq);
+      sorted.emplace(score_value, seq);
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
