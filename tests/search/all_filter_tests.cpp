@@ -81,106 +81,16 @@ protected:
         dst = src; 
       };
       sort.scorer_less = [](const irs::doc_id_t& lhs, const irs::doc_id_t& rhs)->bool {
-        std::cout << "Less (" << lhs << " < " << rhs << ") :" << (lhs & 0xAAAAAAAAAAAAAAAA) << " < " << (rhs & 0xAAAAAAAAAAAAAAAA) << std::endl;
-
         return (lhs & 0xAAAAAAAAAAAAAAAA) < (rhs & 0xAAAAAAAAAAAAAAAA); 
       };
       sort.scorer_score = [&scorer_score_count](irs::doc_id_t)->void { 
         ++scorer_score_count;
       };
 
-      {
-        auto prepared_order = order.prepare();
-        auto prepared_filter = irs::all().prepare(rdr, prepared_order, 1);
-        auto score_less = [&prepared_order](
-          const iresearch::bytes_ref& lhs, const iresearch::bytes_ref& rhs
-        ) {
-          if (lhs.c_str() == rhs.c_str()) {
-            std::cout << "Equals!!!" << std::endl;
-          }
-          auto a = prepared_order.get<irs::doc_id_t>(lhs.c_str(), 0);
-          auto b = prepared_order.get<irs::doc_id_t>(rhs.c_str(), 0);
-          std::cout << "Less :" << a << " < " << b << std::endl;
-          return prepared_order.less(lhs.c_str(), rhs.c_str());
-        };
-        std::multimap<irs::bstring, irs::doc_id_t, decltype(score_less)> scored_result(score_less);
-
-        auto all_keys_equal = [&scored_result](){
-          std::cerr << "Addr: " << &scored_result << std::endl;
-
-          if (scored_result.size() < 2) {
-            return;
-          }
-
-          auto it = scored_result.begin();
-          auto* first_key = it->first.c_str();
-
-          std::cerr << "Key type: " << typeid(it->first).name() << std::endl;
-          std::cerr << "Value type: " << typeid(it->second).name() << std::endl;
-
-          for (++it; it != scored_result.end(); ++it) {
-            if (first_key != it->first.c_str()) {
-              return;
-            }
-          }
-
-          std::cerr << "All keys are EQUAL!!!! " << (void*)first_key << std::endl;
-        };
-
-        size_t i = 0;
-        for (const auto& sub: rdr) {
-          auto docs = prepared_filter->execute(sub, prepared_order);
-          auto& score = docs->attributes().get<irs::score>();
-
-          while (docs->next()) {
-            std::cerr << "============RESULT STEP BEFORE EVALUATE" << i << "================" << std::endl;
-            std::cerr << "Score addr: " << (void*)score->value().c_str() << std::endl;
-            std::cerr << "Score value type: " << typeid(score->value()).name() << std::endl;
-            for (auto& entry : scored_result) {
-              std::cout << prepared_order.get<irs::doc_id_t>(entry.first.c_str(), 0) << " " << entry.second << std::endl;
-            }
-            std::cerr << "===================================================" << std::endl;
-
-            all_keys_equal();
-
-            score->evaluate();
-
-            all_keys_equal();
-
-            std::cerr << "============RESULT STEP AFTER EVALUATE" << i << "================" << std::endl;
-            std::cerr << "Score addr: " << (void*)score->value().c_str() << std::endl;
-            std::cerr << "Score value type: " << typeid(score->value()).name() << std::endl;
-            for (auto& entry : scored_result) {
-              std::cout << prepared_order.get<irs::doc_id_t>(entry.first.c_str(), 0) << " " << entry.second << std::endl;
-            }
-            std::cerr << "===================================================" << std::endl;
-
-            ASSERT_FALSE(!score);
-            std::cerr << "Got: " << prepared_order.get<irs::doc_id_t>(score->value().c_str(), 0) << std::endl;
-            scored_result.emplace(irs::bytes_ref(score->value()), docs->value());
-
-            ++i;
-          }
-        }
-
-        for (auto& entry : scored_result) {
-          std::cerr << prepared_order.get<irs::doc_id_t>(entry.first.c_str(), 0) << " " << entry.second << std::endl;
-        }
-
-        std::vector<iresearch::doc_id_t> result;
-
-        for (auto& entry: scored_result) {
-          result.emplace_back(entry.second);
-        }
-
-//        ASSERT_EQ(expected, result);
-      }
-      std::cerr << "finished" << std::endl;
-
       check_query(irs::all(), order, docs, rdr);
       ASSERT_EQ(0, collector_collect_count); // should not be executed
-      ASSERT_EQ(2*1, collector_finish_count);
-      ASSERT_EQ(2*32, scorer_score_count);
+      ASSERT_EQ(1, collector_finish_count);
+      ASSERT_EQ(32, scorer_score_count);
     }
 
     // custom order (no scorer)

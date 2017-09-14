@@ -143,9 +143,7 @@ struct custom_sort: public irs::sort {
         ASSERT_TRUE(score_buf);
         auto& doc_id = *reinterpret_cast<irs::doc_id_t*>(score_buf);
 
-        std::cerr << "Before: " << doc_id << std::endl;
         doc_id = document_attrs_.get<irs::document>()->value;
-        std::cerr << "After: " << doc_id << std::endl;
 
         if (sort_.scorer_score) {
           sort_.scorer_score(doc_id);
@@ -410,11 +408,14 @@ class filter_test_case_base : public index_test_base {
     for (const auto& sub: rdr) {
       auto docs = prepared_filter->execute(sub, prepared_order);
       auto& score = docs->attributes().get<ir::score>();
+      ASSERT_TRUE(score);
+
+      // ensure that we avoid COW for pre c++11 std::basic_string
+      const irs::bytes_ref score_value = score->value();
 
       while(docs->next()) {
         score->evaluate();
-        ASSERT_FALSE(!score);
-        scored_result.emplace(score->value(), docs->value());
+        scored_result.emplace(score_value, docs->value());
       }
     }
 
