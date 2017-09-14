@@ -115,6 +115,9 @@ protected:
           auto it = scored_result.begin();
           auto* first_key = it->first.c_str();
 
+          std::cerr << "Key type: " << typeid(it->first).name() << std::endl;
+          std::cerr << "Value type: " << typeid(it->second).name() << std::endl;
+
           for (++it; it != scored_result.end(); ++it) {
             if (first_key != it->first.c_str()) {
               return;
@@ -132,6 +135,7 @@ protected:
           while (docs->next()) {
             std::cerr << "============RESULT STEP BEFORE EVALUATE" << i << "================" << std::endl;
             std::cerr << "Score addr: " << (void*)score->value().c_str() << std::endl;
+            std::cerr << "Score value type: " << typeid(score->value()).name() << std::endl;
             for (auto& entry : scored_result) {
               std::cout << prepared_order.get<irs::doc_id_t>(entry.first.c_str(), 0) << " " << entry.second << std::endl;
             }
@@ -145,6 +149,7 @@ protected:
 
             std::cerr << "============RESULT STEP AFTER EVALUATE" << i << "================" << std::endl;
             std::cerr << "Score addr: " << (void*)score->value().c_str() << std::endl;
+            std::cerr << "Score value type: " << typeid(score->value()).name() << std::endl;
             for (auto& entry : scored_result) {
               std::cout << prepared_order.get<irs::doc_id_t>(entry.first.c_str(), 0) << " " << entry.second << std::endl;
             }
