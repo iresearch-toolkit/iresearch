@@ -52,11 +52,10 @@ class basic_disjunction final : public doc_iterator_base {
   typedef score_iterator_adapter doc_iterator_t;
 
   basic_disjunction(
-      doc_iterator_t&& lhs, doc_iterator_t&& rhs,
-      const order::prepared& ord = order::prepared::unordered()) NOEXCEPT
-    : doc_iterator_base(ord),
-      lhs_(std::move(lhs)), rhs_(std::move(rhs)),
-      doc_(type_limits<type_t::doc_id_t>::invalid()) {
+      doc_iterator_t&& lhs,
+      doc_iterator_t&& rhs,
+      const order::prepared& ord = order::prepared::unordered())
+    : basic_disjunction(std::move(lhs), std::move(rhs), ord, resolve_overload_tag()) {
     // estimate disjunction
     estimate([this](){
       cost::cost_t est = 0;
@@ -64,12 +63,16 @@ class basic_disjunction final : public doc_iterator_base {
       est += cost::extract(rhs_->attributes(), 0);
       return est;
     });
+  }
 
-    // prepare score
-    prepare_score([this](byte_type* score) {
-      ord_->prepare_score(score);
-      score_impl(score);
-    });
+  basic_disjunction(
+      doc_iterator_t&& lhs,
+      doc_iterator_t&& rhs,
+      const order::prepared& ord,
+      cost::cost_t est)
+    : basic_disjunction(std::move(lhs), std::move(rhs), ord, resolve_overload_tag()) {
+    // estimate disjunction
+    estimate(est);
   }
 
   virtual doc_id_t value() const override {
@@ -95,6 +98,23 @@ class basic_disjunction final : public doc_iterator_base {
   }
 
  private:
+  struct resolve_overload_tag { };
+
+  basic_disjunction(
+      doc_iterator_t&& lhs,
+      doc_iterator_t&& rhs,
+      const order::prepared& ord,
+      resolve_overload_tag)
+    : doc_iterator_base(ord),
+      lhs_(std::move(lhs)), rhs_(std::move(rhs)),
+      doc_(type_limits<type_t::doc_id_t>::invalid()) {
+    // prepare score
+    prepare_score([this](byte_type* score) {
+      ord_->prepare_score(score);
+      score_impl(score);
+    });
+  }
+
   bool seek_iterator_impl(doc_iterator_t& it, doc_id_t target) {
     return it->value() < target && target == it->seek(target);
   }
@@ -117,7 +137,7 @@ class basic_disjunction final : public doc_iterator_base {
     }
 
     if (doc == doc_) {
-      const auto* rhs = lhs_.score;
+      const auto* rhs = it.score;
       rhs->evaluate();
       ord_->add(lhs, rhs->c_str());
     }
@@ -146,15 +166,15 @@ class basic_disjunction final : public doc_iterator_base {
 ////////////////////////////////////////////////////////////////////////////////
 class disjunction : public doc_iterator_base {
  public:
+  typedef basic_disjunction basic_disjunction_t;
   typedef score_iterator_adapter doc_iterator_t;
   typedef std::vector<doc_iterator_t> doc_iterators_t;
 
-  //TODO: remove delegating ctor
   disjunction(
       doc_iterators_t&& itrs,
       const order::prepared& ord,
       cost::cost_t est)
-    : disjunction(std::move(itrs), ord) {
+    : disjunction(std::move(itrs), ord, resolve_overload_tag()) {
     // estimate disjunction
     estimate(est);
   }
@@ -162,16 +182,7 @@ class disjunction : public doc_iterator_base {
   explicit disjunction(
       doc_iterators_t&& itrs,
       const order::prepared& ord = order::prepared::unordered())
-    : doc_iterator_base(ord),
-      itrs_(std::move(itrs)),
-      doc_(type_limits<type_t::doc_id_t>::invalid()) {
-    assert(!itrs_.empty());
-
-    // since we are using heap in order to determine next document,
-    // in order to avoid useless make_heap call we expect that all
-    // iterators are equal here */
-    //assert(irstd::all_equal(itrs_.begin(), itrs_.end()));
-
+    : disjunction(std::move(itrs), ord, resolve_overload_tag()) {
     // estimate disjunction
     estimate([this](){
       return std::accumulate(
@@ -179,12 +190,6 @@ class disjunction : public doc_iterator_base {
         [](cost::cost_t lhs, const doc_iterator_t& rhs) {
           return lhs + cost::extract(rhs->attributes(), 0);
       });
-    });
-
-    // prepare score
-    prepare_score([this](byte_type* score) {
-      ord_->prepare_score(score);
-      score_impl(score);
     });
   }
 
@@ -238,6 +243,29 @@ class disjunction : public doc_iterator_base {
   }
 
  private:
+  struct resolve_overload_tag{};
+
+  disjunction(
+      doc_iterators_t&& itrs,
+      const order::prepared& ord,
+      resolve_overload_tag)
+    : doc_iterator_base(ord),
+      itrs_(std::move(itrs)),
+      doc_(type_limits<type_t::doc_id_t>::invalid()) {
+    assert(!itrs_.empty());
+
+    // since we are using heap in order to determine next document,
+    // in order to avoid useless make_heap call we expect that all
+    // iterators are equal here */
+    //assert(irstd::all_equal(itrs_.begin(), itrs_.end()));
+
+    // prepare score
+    prepare_score([this](byte_type* score) {
+      ord_->prepare_score(score);
+      score_impl(score);
+    });
+  }
+
   template<typename Iterator>
   inline void push(Iterator begin, Iterator end) {
     // lambda here gives ~20% speedup on GCC
@@ -362,12 +390,14 @@ doc_iterator::ptr make_disjunction(
       // single sub-query
       return std::move(itrs.front());
     case 2: {
+      typedef typename Disjunction::basic_disjunction_t basic_disjunction_t;
+
       // simple disjunction
       auto first = itrs.begin();
       auto second = first;
       std::advance(second, 1);
 
-      return doc_iterator::make<basic_disjunction>(
+      return doc_iterator::make<basic_disjunction_t>(
         std::move(*first),
         std::move(*second),
         std::forward<Args>(args)...
@@ -376,7 +406,7 @@ doc_iterator::ptr make_disjunction(
   }
 
   // disjunction
-  return doc_iterator::make<disjunction>(
+  return doc_iterator::make<Disjunction>(
     std::move(itrs), std::forward<Args>(args)...
   );
 }
