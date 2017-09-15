@@ -201,10 +201,9 @@ doc_iterator::ptr range_query::execute(
     ));
   }
 
-  return itrs.empty()
-    ? doc_iterator::empty()
-    : doc_iterator::make<disjunction>(std::move(itrs), ord, state->estimation)
-    ;
+  return make_disjunction<irs::disjunction>(
+    std::move(itrs), ord, state->estimation
+  );
 }
 
 NS_END // ROOT
