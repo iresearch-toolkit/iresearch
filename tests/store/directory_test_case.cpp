@@ -996,7 +996,7 @@ void directory_test_case::smoke_store() {
 
     // read from file
     {
-      byte_type buf[1715]{}; // 1715 == 1024 + 691 from above
+      byte_type buf[1024 + 691 + 1]{}; // 1024 + 691 from above, +1 to allow GCC to set last byte to EOF
       auto in = dir_->open("nonempty_file");
       ASSERT_FALSE(!in);
       ASSERT_EQ(sizeof buf, in->read_bytes(buf, sizeof buf));
