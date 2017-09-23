@@ -2332,7 +2332,9 @@ class index_test_case_base : public tests::index_test_base {
   }
 
   void read_write_doc_attributes_dense_mask() {
-    static const irs::doc_id_t MAX_DOCS = 1500;
+    static const irs::doc_id_t MAX_DOCS
+      = 1024*1024 // full index block
+      + 2051;     // tail index block
     static const iresearch::string_ref column_name = "id";
 
     // write documents
