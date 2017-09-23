@@ -339,6 +339,22 @@ class json_doc_generator: public doc_generator_base {
     RAWNUM
   }; // ValueType
 
+  // an irs::string_ref for union inclusion without a user-defined constructor
+  // and non-trivial default constructor for compatibility with MSVC 2013
+  struct json_string {
+    const char* data;
+    size_t size;
+
+    json_string& operator=(const irs::string_ref& ref) {
+      data = ref.c_str();
+      size = ref.size();
+      return *this;
+    }
+
+    operator irs::string_ref() const { return irs::string_ref(data, size); };
+    operator std::string() const { return std::string(data, size); };
+  };
+
   struct json_value {
     union {
       bool b;
@@ -347,8 +363,9 @@ class json_doc_generator: public doc_generator_base {
       int64_t i64;
       uint64_t ui64;
       double_t dbl;
-      irs::string_ref str{};
+      json_string str;
     };
+
     ValueType vt{ ValueType::NIL };
 
     json_value() NOEXCEPT { }

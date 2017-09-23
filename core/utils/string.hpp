@@ -267,6 +267,8 @@ NS_END // NS_ROOT
 
 NS_BEGIN(std)
 
+// MSVC++ > v14.0 (Visual Studio >2015) already implements this in <xstring>
+#if !defined(_MSC_VER) || (_MSC_VER <= 1900)
 template<>
 struct char_traits<::iresearch::byte_type> {
   typedef ::iresearch::byte_type char_type;
@@ -321,6 +323,7 @@ struct char_traits<::iresearch::byte_type> {
 
   MSVC_ONLY(static void _Copy_s(char_type* /*dst*/, size_t /*dst_size*/, const char_type* /*src*/, size_t /*src_size*/) { assert(false); });
 }; // char_traits
+#endif
 
 template<>
 struct hash<char*> {
