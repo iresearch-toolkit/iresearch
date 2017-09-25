@@ -11,7 +11,6 @@
 
 #include "composite_reader_impl.hpp"
 #include "utils/directory_utils.hpp"
-#include "utils/object_pool.hpp"
 #include "utils/singleton.hpp"
 #include "utils/type_limits.hpp"
 
@@ -157,11 +156,6 @@ struct context<segment_reader> {
 // directory_reader
 // -------------------------------------------------------------------
 
-class directory_reader::atomic_helper:
-  public atomic_base<directory_reader::impl_ptr>,
-  public singleton<directory_reader::atomic_helper> {
-};
-
 class directory_reader_impl :
   public composite_reader_impl<segment_reader> {
  public:
@@ -211,9 +205,9 @@ directory_reader& directory_reader::operator=(
     const directory_reader& other) NOEXCEPT {
   if (this != &other) {
     // make a copy
-    impl_ptr impl = atomic_helper::instance().atomic_load(&other.impl_);
+    impl_ptr impl = atomic_utils::atomic_load(&other.impl_);
 
-    atomic_helper::instance().atomic_store(&impl_, impl);
+    atomic_utils::atomic_store(&impl_, impl);
   }
 
   return *this;

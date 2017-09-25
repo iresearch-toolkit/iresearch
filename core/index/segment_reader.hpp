@@ -13,14 +13,18 @@
 #define IRESEARCH_SEGMENT_READER_H
 
 #include "index_reader.hpp"
+#include "utils/object_pool.hpp"
 
 NS_ROOT
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief interface for a segment reader
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API segment_reader final : public sub_reader {
+class IRESEARCH_API segment_reader final
+    : public sub_reader,
+      private atomic_base<std::shared_ptr<sub_reader>> {
  public:
+  typedef atomic_base<std::shared_ptr<sub_reader>> atomic_utils;
   typedef segment_reader element_type; // type same as self
   typedef segment_reader ptr; // pointer to self
 
@@ -92,7 +96,6 @@ class IRESEARCH_API segment_reader final : public sub_reader {
   }
 
  private:
-  class atomic_helper;
   typedef std::shared_ptr<sub_reader> impl_ptr;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN

@@ -144,11 +144,6 @@ NS_ROOT
 // segment_reader
 // -------------------------------------------------------------------
 
-class segment_reader::atomic_helper:
-  public atomic_base<segment_reader::impl_ptr>,
-  public singleton<segment_reader::atomic_helper> {
-};
-
 class segment_reader_impl : public sub_reader {
  public:
   static sub_reader::ptr open(
@@ -228,9 +223,9 @@ segment_reader& segment_reader::operator=(
     const segment_reader& other) NOEXCEPT {
   if (this != &other) {
     // make a copy
-    impl_ptr impl = atomic_helper::instance().atomic_load(&other.impl_);
+    impl_ptr impl = atomic_utils::atomic_load(&other.impl_);
 
-    atomic_helper::instance().atomic_store(&impl_, impl);
+    atomic_utils::atomic_store(&impl_, impl);
   }
 
   return *this;
