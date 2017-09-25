@@ -203,30 +203,17 @@ directory_reader::directory_reader(impl_ptr&& impl) NOEXCEPT
   : impl_(std::move(impl)) {
 }
 
-directory_reader::directory_reader(const directory_reader& other) {
+directory_reader::directory_reader(const directory_reader& other) NOEXCEPT {
   *this = other;
 }
 
-directory_reader::directory_reader(
-    directory_reader&& other) NOEXCEPT {
-  *this = std::move(other);
-}
-
 directory_reader& directory_reader::operator=(
-    const directory_reader& other) {
+    const directory_reader& other) NOEXCEPT {
   if (this != &other) {
-    auto impl = atomic_helper::instance().atomic_load(&(other.impl_));
+    // make a copy
+    impl_ptr impl = atomic_helper::instance().atomic_load(&other.impl_);
 
-    atomic_helper::instance().atomic_exchange(&impl_, impl);
-  }
-
-  return *this;
-}
-
-directory_reader& directory_reader::operator=(
-    directory_reader&& other) NOEXCEPT {
-  if (this != &other) {
-    atomic_helper::instance().atomic_exchange(&impl_, other.impl_);
+    atomic_helper::instance().atomic_store(&impl_, impl);
   }
 
   return *this;

@@ -26,10 +26,8 @@ class IRESEARCH_API directory_reader final : public composite_reader {
   typedef directory_reader ptr; // pointer to self
 
   directory_reader() = default; // allow creation of an uninitialized ptr
-  directory_reader(const directory_reader& other);
-  directory_reader(directory_reader&& other) NOEXCEPT;
-  directory_reader& operator=(const directory_reader& other);
-  directory_reader& operator=(directory_reader&& other) NOEXCEPT;
+  directory_reader(const directory_reader& other) NOEXCEPT;
+  directory_reader& operator=(const directory_reader& other) NOEXCEPT;
 
   explicit operator bool() const NOEXCEPT { return bool(impl_); }
 

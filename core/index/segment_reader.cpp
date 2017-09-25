@@ -220,27 +220,17 @@ segment_reader::segment_reader(impl_ptr&& impl) NOEXCEPT
   : impl_(std::move(impl)) {
 }
 
-segment_reader::segment_reader(const segment_reader& other) {
+segment_reader::segment_reader(const segment_reader& other) NOEXCEPT {
   *this = other;
 }
 
-segment_reader::segment_reader(segment_reader&& other) NOEXCEPT {
-  *this = std::move(other);
-}
-
-segment_reader& segment_reader::operator=(const segment_reader& other) {
+segment_reader& segment_reader::operator=(
+    const segment_reader& other) NOEXCEPT {
   if (this != &other) {
-    auto impl = atomic_helper::instance().atomic_load(&(other.impl_));
+    // make a copy
+    impl_ptr impl = atomic_helper::instance().atomic_load(&other.impl_);
 
-    atomic_helper::instance().atomic_exchange(&impl_, impl);
-  }
-
-  return *this;
-}
-
-segment_reader& segment_reader::operator=(segment_reader&& other) NOEXCEPT {
-  if (this != &other) {
-    atomic_helper::instance().atomic_exchange(&impl_, other.impl_);
+    atomic_helper::instance().atomic_store(&impl_, impl);
   }
 
   return *this;

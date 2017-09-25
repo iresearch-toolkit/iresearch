@@ -30,10 +30,8 @@ class IRESEARCH_API segment_reader final : public sub_reader {
   static segment_reader open(const directory& dir, const segment_meta& meta);
 
   segment_reader() = default; // required for context<segment_reader>
-  segment_reader(const segment_reader& other);
-  segment_reader(segment_reader&& other) NOEXCEPT;
-  segment_reader& operator=(const segment_reader& other);
-  segment_reader& operator=(segment_reader&& other) NOEXCEPT;
+  segment_reader(const segment_reader& other) NOEXCEPT;
+  segment_reader& operator=(const segment_reader& other) NOEXCEPT;
 
   explicit operator bool() const NOEXCEPT { return bool(impl_); }
 
