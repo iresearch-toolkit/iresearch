@@ -316,7 +316,7 @@ make
 #### install (win32)
 ```bash
 mkdir build && cd build
-cmake -g "Visual studio 12" -Ax64 -Dgtest_force_shared_crt=ON ..
+cmake -g "Visual studio 12" -Ax64 -Dgtest_force_shared_crt=ON -DCMAKE_DEBUG_POSTFIX="" ..
 cmake --build .
 mv Debug ../lib
 ```
