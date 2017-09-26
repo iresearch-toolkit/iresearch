@@ -140,7 +140,7 @@ if (ICU_INCLUDE_DIR AND ICU_SHARED_LIBRARY_DT AND ICU_STATIC_LIBRARY_DT AND ICU_
   # build a list of shared libraries (staticRT)
   foreach(ELEMENT ${ICU_SHARED_LIBS})
     get_filename_component(ELEMENT_FILENAME ${ELEMENT} NAME)
-    string(REGEX MATCH "^(.*)\\.(lib|so)$" ELEMENT_MATCHES ${ELEMENT_FILENAME})
+    string(REGEX MATCH "^(.*)\\.(dylib|lib|so)$" ELEMENT_MATCHES ${ELEMENT_FILENAME})
 
     if(NOT ELEMENT_MATCHES)
       continue()
