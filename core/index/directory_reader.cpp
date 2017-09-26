@@ -24,7 +24,7 @@ MSVC_ONLY(__pragma(warning(disable:4457))) // variable hides function param
 iresearch::index_file_refs::ref_t load_newest_index_meta(
   iresearch::index_meta& meta,
   const iresearch::directory& dir,
-  const iresearch::format::ptr& codec
+  const iresearch::format* codec
 ) NOEXCEPT {
   // if a specific codec was specified
   if (codec) {
@@ -170,7 +170,7 @@ class directory_reader_impl :
   // if cached != nullptr then try to reuse its segments
   static composite_reader::ptr open(
     const directory& dir,
-    const format::ptr& codec = format::ptr(nullptr),
+    const format* codec = nullptr,
     const composite_reader::ptr& cached = nullptr
   );
 
@@ -178,12 +178,10 @@ class directory_reader_impl :
   typedef std::unordered_set<index_file_refs::ref_t> segment_file_refs_t;
   typedef std::vector<segment_file_refs_t> reader_file_refs_t;
 
-  format::ptr codec_;
   const directory& dir_;
   reader_file_refs_t file_refs_;
 
   directory_reader_impl(
-    const format::ptr& codec,
     const directory& dir,
     reader_file_refs_t&& file_refs,
     index_meta&& meta,
@@ -214,13 +212,13 @@ directory_reader& directory_reader::operator=(
 }
 
 /*static*/ directory_reader directory_reader::open(
-    const directory& dir, 
-    const format::ptr& codec /*= format::ptr(nullptr)*/) {
-  return directory_reader_impl::open(dir, codec);
+    const directory& dir,
+    format::ptr codec /*= nullptr*/) {
+  return directory_reader_impl::open(dir, codec.get());
 }
 
 directory_reader directory_reader::reopen(
-    const format::ptr& codec /*= format::ptr(nullptr)*/) const {
+    format::ptr codec /*= nullptr*/) const {
   // make a copy
   impl_ptr impl = atomic_utils::atomic_load(&impl_);
 
@@ -230,7 +228,9 @@ directory_reader directory_reader::reopen(
   auto& reader_impl = static_cast<directory_reader_impl&>(*impl);
 #endif
 
-  return directory_reader_impl::open(reader_impl.dir(), codec, impl);
+  return directory_reader_impl::open(
+    reader_impl.dir(), codec.get(), impl
+  );
 }
 
 // -------------------------------------------------------------------
@@ -238,7 +238,6 @@ directory_reader directory_reader::reopen(
 // -------------------------------------------------------------------
 
 directory_reader_impl::directory_reader_impl(
-    const format::ptr& codec,
     const directory& dir,
     reader_file_refs_t&& file_refs,
     index_meta&& meta,
@@ -246,14 +245,13 @@ directory_reader_impl::directory_reader_impl(
     uint64_t docs_count,
     uint64_t docs_max)
   : composite_reader_impl(std::move(meta), std::move(ctxs), docs_count, docs_max),
-    codec_(codec),
     dir_(dir),
     file_refs_(std::move(file_refs)) {
 }
 
 /*static*/ composite_reader::ptr directory_reader_impl::open(
     const directory& dir,
-    const format::ptr& codec /*= format::ptr(nullptr)*/,
+    const format* codec /*= nullptr*/,
     const composite_reader::ptr& cached /*= nullptr*/) {
   index_meta meta;
   index_file_refs::ref_t meta_file_ref = load_newest_index_meta(meta, dir, codec);
@@ -328,7 +326,6 @@ directory_reader_impl::directory_reader_impl(
   PTR_NAMED(
     directory_reader_impl,
     reader,
-    codec,
     dir,
     std::move(file_refs),
     std::move(meta),

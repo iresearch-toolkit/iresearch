@@ -87,7 +87,7 @@ class masked_docs_iterator
 };
 
 bool read_columns_meta(
-    const iresearch::format& codec, 
+    const iresearch::format& codec,
     const iresearch::directory& dir,
     const irs::segment_meta& meta,
     std::vector<iresearch::column_meta>& columns,

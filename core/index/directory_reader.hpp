@@ -78,7 +78,7 @@ class IRESEARCH_API directory_reader final
   ////////////////////////////////////////////////////////////////////////////////
   static directory_reader open(
     const directory& dir,
-    const format::ptr& codec = format::ptr(nullptr)
+    format::ptr codec = nullptr
   );
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -87,7 +87,7 @@ class IRESEARCH_API directory_reader final
   ///        if codec == nullptr then use the latest file for all known codecs
   ////////////////////////////////////////////////////////////////////////////////
   virtual directory_reader reopen(
-    const format::ptr& codec = format::ptr(nullptr)
+    format::ptr codec = nullptr
   ) const;
 
   void reset() NOEXCEPT {
