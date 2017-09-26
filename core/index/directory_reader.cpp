@@ -221,13 +221,16 @@ directory_reader& directory_reader::operator=(
 
 directory_reader directory_reader::reopen(
     const format::ptr& codec /*= format::ptr(nullptr)*/) const {
+  // make a copy
+  impl_ptr impl = atomic_utils::atomic_load(&impl_);
+
 #ifdef IRESEARCH_DEBUG
-  auto& impl = dynamic_cast<directory_reader_impl&>(*impl_);
+  auto& reader_impl = dynamic_cast<directory_reader_impl&>(*impl);
 #else
-  auto& impl = static_cast<directory_reader_impl&>(*impl_);
+  auto& reader_impl = static_cast<directory_reader_impl&>(*impl);
 #endif
 
-  return directory_reader_impl::open(impl.dir(), codec, impl_);
+  return directory_reader_impl::open(reader_impl.dir(), codec, impl);
 }
 
 // -------------------------------------------------------------------

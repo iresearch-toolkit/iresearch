@@ -254,16 +254,19 @@ template<>
 }
 
 segment_reader segment_reader::reopen(const segment_meta& meta) const {
+  // make a copy
+  impl_ptr impl = atomic_utils::atomic_load(&impl_);
+
 #ifdef IRESEARCH_DEBUG
-  auto& impl = dynamic_cast<segment_reader_impl&>(*impl_);
+  auto& reader_impl = dynamic_cast<segment_reader_impl&>(*impl);
 #else
-  auto& impl = static_cast<segment_reader_impl&>(*impl_);
+  auto& reader_impl = static_cast<segment_reader_impl&>(*impl);
 #endif
 
   // reuse self if no changes to meta
-  return impl.meta_version() == meta.version
+  return reader_impl.meta_version() == meta.version
     ? *this
-    : segment_reader_impl::open(impl.dir(), meta);
+    : segment_reader_impl::open(reader_impl.dir(), meta);
 }
 
 // -------------------------------------------------------------------
