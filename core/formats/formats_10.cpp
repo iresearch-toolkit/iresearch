@@ -2963,7 +2963,7 @@ class column
   }
 
   doc_id_t max() const NOEXCEPT { return max_; }
-  virtual doc_id_t size() const NOEXCEPT override { return count_; }
+  virtual size_t size() const NOEXCEPT override { return count_; }
   bool empty() const NOEXCEPT { return 0 == size(); }
   size_t avg_block_size() const NOEXCEPT { return avg_block_size_; }
   size_t avg_block_count() const NOEXCEPT { return avg_block_count_; }
@@ -2971,7 +2971,7 @@ class column
 
  private:
   doc_id_t max_{ type_limits<type_t::doc_id_t>::eof() };
-  doc_id_t count_{};
+  size_t count_{};
   size_t avg_block_size_{};
   size_t avg_block_count_{};
   ColumnProperty props_{ CP_SPARSE };

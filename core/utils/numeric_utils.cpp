@@ -14,9 +14,17 @@
 #include "bit_utils.hpp"
 
 #include <cmath>
-#ifdef _WIN32
+
+#if defined(_MSC_VER)
   #include <Winsock2.h>
   #pragma comment(lib,"Ws2_32.lib")
+#elif defined(__APPLE__)
+  #include <arpa/inet.h>
+  #include <machine/endian.h>
+  #include <libkern/OSByteOrder.h>
+
+  #define htonll OSSwapHostToBigInt64
+  #define ntohll OSSwapBigToHostInt64
 #else
   #include <arpa/inet.h>
   #include <endian.h>
