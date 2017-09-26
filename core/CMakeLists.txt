@@ -671,6 +671,33 @@ elseif (MSVC)
     TARGET ${IResearch_TARGET_NAME}-static-scrt POST_BUILD
     COMMAND ${IResearch_STATIC_SCRT_LIBRARIES_CMD}
   )
+elseif (APPLE)
+  unset(IResearch_STATIC_LIBRARIES)
+
+  foreach(ELEMENT
+    ${BFD_STATIC_LIBS}
+    ${Boost_STATIC_sharedRT_FILESYSTEM_LIBRARY_DEBUG}
+    ${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}
+    ${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}
+    ${Boost_STATIC_sharedRT_THREAD_LIBRARY_DEBUG}
+    ${ICU_STATIC_LIBS}
+    ${Lz4_STATIC_LIB}
+    ${Snowball_STATIC_LIB}
+    ${Unwind_STATIC_LIBS}
+    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"
+    "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
+    "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
+    "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-bm25-static>"
+  )
+    set(IResearch_STATIC_LIBRARIES "${IResearch_STATIC_LIBRARIES} '${ELEMENT}'")
+  endforeach ()
+
+  set(IResearch_STATIC_LIBRARIES_CMD "ar -q $<TARGET_FILE:${IResearch_TARGET_NAME}-static> ${IResearch_STATIC_LIBRARIES}")
+  add_custom_command(
+    TARGET ${IResearch_TARGET_NAME}-static POST_BUILD
+    COMMAND sh -c ${IResearch_STATIC_LIBRARIES_CMD}
+    VERBATIM
+  )
 else()
   unset(IResearch_STATIC_LIBRARIES)
 
