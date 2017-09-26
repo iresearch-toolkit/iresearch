@@ -19,7 +19,7 @@ NS_LOCAL
 union big_endian_check {
   char raw[2] = { '\0', '\xff' };
   uint16_t num; // big endian: num < 0x100
-  CONSTEXPR operator bool() { return num < 0x100; }
+  CONSTEXPR operator bool() const { return num < 0x100; }
 };
 
 NS_END

@@ -21,10 +21,6 @@
 #elif defined(__APPLE__)
   #include <arpa/inet.h>
   #include <machine/endian.h>
-  #include <libkern/OSByteOrder.h>
-
-  #define htonll OSSwapHostToBigInt64
-  #define ntohll OSSwapBigToHostInt64
 #else
   #include <arpa/inet.h>
   #include <endian.h>
