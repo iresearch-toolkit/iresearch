@@ -2348,7 +2348,7 @@ class format_test_case_base : public index_test_base {
 
       ir::doc_id_t id = 0;
 
-      for (const document* doc; doc = gen.next();) {
+      for (const document* doc; (doc = gen.next());) {
         ++id;
         for (const auto& field : doc->stored) {
           const auto res = columns.emplace(
@@ -2385,7 +2385,7 @@ class format_test_case_base : public index_test_base {
       irs::bytes_ref_input in;
       iresearch::doc_id_t i = 0;
       size_t value_id = 0;
-      for (const document* doc; doc = gen.next();) {
+      for (const document* doc; (doc = gen.next());) {
         ++i;
         for (size_t size = doc->stored.size(); size; --size) {
           auto& expected_field = values[value_id++];
@@ -2437,7 +2437,7 @@ class format_test_case_base : public index_test_base {
       irs::bytes_ref_input in;
       iresearch::doc_id_t i = 0;
       size_t value_id = 0;
-      for (const document* doc; doc = gen.next();) {
+      for (const document* doc; (doc = gen.next());) {
         ++i;
         for (size_t size = doc->stored.size(); size; --size) {
           auto& expected_field = values[value_id++];
@@ -2504,7 +2504,7 @@ class format_test_case_base : public index_test_base {
       irs::bytes_ref_input in;
       iresearch::doc_id_t i = 0;
       size_t value_id = 0;
-      for (const document* doc; doc = gen.next();) {
+      for (const document* doc; (doc = gen.next();)) {
         ++i;
         for (size_t size = doc->stored.size(); size; --size) {
           auto& expected_field = values[value_id++];

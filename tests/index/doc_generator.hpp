@@ -121,7 +121,7 @@ class int_field: public field_base {
   value_t value() const { return value_; }
 
   bool write(ir::data_output& out) const override;
-  ir::token_stream& get_tokens() const;
+  ir::token_stream& get_tokens() const override;
 
  private:
   mutable ir::numeric_token_stream stream_;
@@ -142,7 +142,7 @@ class double_field: public field_base {
   value_t value() const { return value_; }
 
   bool write(ir::data_output& out) const override;
-  ir::token_stream& get_tokens() const;
+  ir::token_stream& get_tokens() const override;
 
  private:
   mutable ir::numeric_token_stream stream_;
@@ -163,7 +163,7 @@ class float_field: public field_base {
   value_t value() const { return value_; }
 
   bool write(ir::data_output& out) const override;
-  ir::token_stream& get_tokens() const;
+  ir::token_stream& get_tokens() const override;
 
  private:
   mutable ir::numeric_token_stream stream_;
@@ -188,7 +188,7 @@ class binary_field: public field_base {
   }
   
   bool write(ir::data_output& out) const override;
-  ir::token_stream& get_tokens() const;
+  ir::token_stream& get_tokens() const override;
 
  private:
   mutable ir::string_token_stream stream_;
