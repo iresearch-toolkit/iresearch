@@ -180,6 +180,10 @@ target_include_directories(${IResearchTests_TARGET_NAME}-static
 )
 
 if(MSVC)
+  target_compile_options(${IResearchTests_TARGET_NAME}-shared
+    PRIVATE "/bigobj"
+  )
+
   target_compile_options(${IResearchTests_TARGET_NAME}-static
     PRIVATE "/bigobj"
   )
