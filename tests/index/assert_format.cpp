@@ -546,7 +546,7 @@ class term_iterator : public iresearch::seek_term_iterator {
     return false;
   }
 
-  virtual irs::seek_term_iterator::seek_cookie::ptr cookie() const {
+  virtual irs::seek_term_iterator::seek_cookie::ptr cookie() const override {
     return nullptr;
   }
 
@@ -971,3 +971,7 @@ void assert_index(
 }
 
 } // tests
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

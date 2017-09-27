@@ -503,7 +503,7 @@ struct empty_sub_reader : iresearch::singleton<empty_sub_reader>, iresearch::sub
     return nullptr;
   }
 
-  virtual size_t size() const { return 0; }
+  virtual size_t size() const override { return 0; }
 
   virtual iresearch::field_iterator::ptr fields() const override {
     return iresearch::field_iterator::empty();

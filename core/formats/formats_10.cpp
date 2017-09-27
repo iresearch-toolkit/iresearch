@@ -3174,7 +3174,9 @@ class sparse_column final : public column {
     return cached->value(key, value);
   };
 
-  virtual bool visit(const columnstore_reader::values_visitor_f& visitor) const {
+  virtual bool visit(
+      const columnstore_reader::values_visitor_f& visitor
+  ) const override {
     block_t block; // don't cache new blocks
     for (auto begin = refs_.begin(), end = refs_.end()-1; begin != end; ++begin) { // -1 for upper bound
       const auto* cached = load_block(*ctxs_, *begin, block);
@@ -3193,7 +3195,7 @@ class sparse_column final : public column {
     return true;
   }
 
-  virtual columnstore_iterator::ptr iterator() const {
+  virtual columnstore_iterator::ptr iterator() const override {
     typedef column_iterator<column_t> iterator_t;
 
     return empty()
@@ -3205,7 +3207,7 @@ class sparse_column final : public column {
         );
   }
 
-  virtual columnstore_reader::values_reader_f values() const {
+  virtual columnstore_reader::values_reader_f values() const override {
     return column_values<column_t>(*this);
   }
 
@@ -3367,7 +3369,9 @@ class dense_fixed_length_column final : public column {
     return cached->value(key -= block_idx*this->avg_block_count(), value);
   }
 
-  virtual bool visit(const columnstore_reader::values_visitor_f& visitor) const {
+  virtual bool visit(
+      const columnstore_reader::values_visitor_f& visitor
+  ) const override {
     block_t block; // don't cache new blocks
     for (auto& ref : refs_) {
       const auto* cached = load_block(*ctxs_, ref, block);
@@ -3387,7 +3391,7 @@ class dense_fixed_length_column final : public column {
     return true;
   }
 
-  virtual columnstore_iterator::ptr iterator() const {
+  virtual columnstore_iterator::ptr iterator() const override {
     typedef column_iterator<column_t> iterator_t;
 
     return empty()
@@ -3399,7 +3403,7 @@ class dense_fixed_length_column final : public column {
         );
   }
 
-  virtual columnstore_reader::values_reader_f values() const {
+  virtual columnstore_reader::values_reader_f values() const override {
     return column_values<column_t>(*this);
   }
 
@@ -3633,7 +3637,7 @@ class IRESEARCH_PLUGIN reader final : public columnstore_reader, public context_
 
   virtual const column_reader* column(field_id field) const override;
 
-  virtual size_t size() const NOEXCEPT {
+  virtual size_t size() const NOEXCEPT override {
     return columns_.size();
   }
 
@@ -3865,6 +3869,7 @@ void postings_writer::begin_block() {
 #if defined(_MSC_VER)
   #pragma warning( disable : 4706 )
 #elif defined (__GNUC__)
+  #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wparentheses"
 #endif
 
