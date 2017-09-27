@@ -13,13 +13,6 @@ if ("${SNOWBALL_ROOT}" STREQUAL "")
   endif()
 endif()
 
-if ("${SNOWBALL_ROOT_SUFFIX}" STREQUAL "")
-  set(SNOWBALL_ROOT_SUFFIX "$ENV{SNOWBALL_ROOT_SUFFIX}")
-  if (NOT "${SNOWBALL_ROOT_SUFFIX}" STREQUAL "") 
-    string(REPLACE "\"" "" SNOWBALL_ROOT_SUFFIX ${SNOWBALL_ROOT_SUFFIX})
-  endif()
-endif()
-
 set(Snowball_SEARCH_HEADER_PATHS
   ${SNOWBALL_ROOT}/include
 )
@@ -34,18 +27,25 @@ set(Snowball_SEARCH_LIB_PATH
 )
 
 if(NOT MSVC)
-  set(UNIX_DEFAULT_INCLUDE "/usr/include")
+  set(UNIX_DEFAULT_INCLUDE
+      "/usr/include"
+      "/usr/include/x86_64-linux-gnu"
+  )
 endif()
 find_path(Snowball_INCLUDE_DIR
   libstemmer.h
   PATHS ${Snowball_SEARCH_HEADER_PATHS} ${UNIX_DEFAULT_INCLUDE}
-  PATH_SUFFIXES ${SNOWBALL_ROOT_SUFFIX}
   NO_DEFAULT_PATH # make sure we don't accidentally pick up a different version
 )
 
 include(Utils)
 if(NOT MSVC)
-    set(UNIX_DEFAULT_LIB "/usr/lib")
+  set(UNIX_DEFAULT_LIB
+      "/lib"
+      "/lib/x86_64-linux-gnu"
+      "/usr/lib"
+      "/usr/lib/x86_64-linux-gnu"
+  )
 endif()
 
 
@@ -66,7 +66,6 @@ set_find_library_options("${Snowball_LIBRARY_PREFIX}" "${Snowball_LIBRARY_SUFFIX
 find_library(Snowball_SHARED_LIB
   NAMES stemmer
   PATHS ${Snowball_SEARCH_LIB_PATH} ${UNIX_DEFAULT_LIB}
-  PATH_SUFFIXES ${SNOWBALL_ROOT_SUFFIX}
   NO_DEFAULT_PATH
 )
 
@@ -88,7 +87,6 @@ set_find_library_options("${Snowball_LIBRARY_PREFIX}" "${Snowball_LIBRARY_SUFFIX
 find_library(Snowball_STATIC_LIB
   NAMES stemmer
   PATHS ${Snowball_SEARCH_LIB_PATH} ${UNIX_DEFAULT_LIB}
-  PATH_SUFFIXES ${SNOWBALL_ROOT_SUFFIX}
   NO_DEFAULT_PATH
 )
 
@@ -103,6 +101,18 @@ if (Snowball_INCLUDE_DIR AND Snowball_SHARED_LIB AND Snowball_STATIC_LIB)
     CACHE PATH
     "Directory containing Snowball libraries"
     FORCE
+  )
+
+  add_library(snowball-shared IMPORTED SHARED)
+  set_target_properties(snowball-shared PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${Snowball_INCLUDE_DIR}"
+    IMPORTED_LOCATION "${Snowball_SHARED_LIB}"
+  )
+
+  add_library(snowball-static IMPORTED STATIC)
+  set_target_properties(snowball-static PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${Snowball_INCLUDE_DIR}"
+    IMPORTED_LOCATION "${Snowball_STATIC_LIB}"
   )
 else ()
   set(Snowball_FOUND FALSE)

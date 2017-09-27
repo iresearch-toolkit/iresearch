@@ -14,13 +14,6 @@ if ("${BFD_ROOT}" STREQUAL "")
   endif()
 endif()
 
-if ("${BFD_ROOT_SUFFIX}" STREQUAL "")
-  set(BFD_ROOT_SUFFIX "$ENV{BFD_ROOT_SUFFIX}")
-  if (NOT "${BFD_ROOT_SUFFIX}" STREQUAL "")
-    string(REPLACE "\"" "" BFD_ROOT_SUFFIX ${BFD_ROOT_SUFFIX})
-  endif()
-endif()
-
 set(BFD_SEARCH_HEADER_PATHS
   ${BFD_ROOT}/bfd
   ${BFD_ROOT}/include
@@ -34,7 +27,10 @@ set(BFD_SEARCH_LIB_PATH
 )
 
 if(NOT MSVC)
-  set(UNIX_DEFAULT_INCLUDE "/usr/include")
+  set(UNIX_DEFAULT_INCLUDE
+      "/usr/include"
+      "/usr/include/x86_64-linux-gnu"
+  )
 endif()
 find_path(BFD_INCLUDE_DIR_ANSIDECL
   ansidecl.h
@@ -49,7 +45,12 @@ find_path(BFD_INCLUDE_DIR_BFD
 
 include(Utils)
 if(NOT MSVC)
-  set(UNIX_DEFAULT_LIB "/usr/lib")
+  set(UNIX_DEFAULT_LIB
+      "/lib"
+      "/lib/x86_64-linux-gnu"
+      "/usr/lib"
+      "/usr/lib/x86_64-linux-gnu"
+  )
 endif()
 
 
@@ -67,7 +68,6 @@ set_find_library_options("${BFD_LIBRARY_PREFIX}" "${BFD_LIBRARY_SUFFIX}")
 find_library(BFD_SHARED_LIB
   NAMES bfd
   PATHS ${BFD_SEARCH_LIB_PATH} ${UNIX_DEFAULT_LIB}
-  PATH_SUFFIXES ${BFD_ROOT_SUFFIX}
   NO_DEFAULT_PATH
 )
 
@@ -89,19 +89,16 @@ set_find_library_options("${BFD_LIBRARY_PREFIX}" "${BFD_LIBRARY_SUFFIX}")
 find_library(BFD_STATIC_LIB
   NAMES bfd
   PATHS ${BFD_SEARCH_LIB_PATH} ${UNIX_DEFAULT_LIB}
-  PATH_SUFFIXES ${BFD_ROOT_SUFFIX}
   NO_DEFAULT_PATH
 )
 find_library(BFD_STATIC_LIB_IBERTY
   NAMES iberty
   PATHS ${BFD_SEARCH_LIB_PATH} ${UNIX_DEFAULT_LIB}
-  PATH_SUFFIXES ${BFD_ROOT_SUFFIX}
   NO_DEFAULT_PATH
 )
 find_library(BFD_STATIC_LIB_Z
   NAMES z
   PATHS ${BFD_SEARCH_LIB_PATH} ${UNIX_DEFAULT_LIB}
-  PATH_SUFFIXES ${BFD_ROOT_SUFFIX}
   NO_DEFAULT_PATH
 )
 
@@ -114,6 +111,19 @@ if (BFD_INCLUDE_DIR_ANSIDECL AND BFD_INCLUDE_DIR_BFD AND BFD_SHARED_LIB AND BFD_
   list(APPEND BFD_INCLUDE_DIR ${BFD_INCLUDE_DIR_ANSIDECL} ${BFD_INCLUDE_DIR_BFD})
   list(APPEND BFD_SHARED_LIBS ${BFD_SHARED_LIB})
   list(APPEND BFD_STATIC_LIBS ${BFD_STATIC_LIB} ${BFD_STATIC_LIB_IBERTY} ${BFD_STATIC_LIB_Z})
+
+  add_library(bfd-shared IMPORTED SHARED)
+  set_target_properties(bfd-shared PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${BFD_INCLUDE_DIR}"
+    IMPORTED_LOCATION "${BFD_SHARED_LIBS}"
+  )
+
+  add_library(bfd-static IMPORTED STATIC)
+  set_target_properties(bfd-static PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${BFD_INCLUDE_DIR}"
+    IMPORTED_LOCATION "${BFD_STATIC_LIBS}"
+  )
+
   set(BFD_LIBRARY_DIR
     "${BFD_SEARCH_LIB_PATH}"
     CACHE PATH

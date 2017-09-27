@@ -13,13 +13,6 @@ if ("${LZ4_ROOT}" STREQUAL "")
   endif()
 endif()
 
-if ("${LZ4_ROOT_SUFFIX}" STREQUAL "")
-  set(LZ4_ROOT_SUFFIX "$ENV{LZ4_ROOT_SUFFIX}")
-  if (NOT "${LZ4_ROOT_SUFFIX}" STREQUAL "")
-    string(REPLACE "\"" "" LZ4_ROOT_SUFFIX ${LZ4_ROOT_SUFFIX})
-  endif()
-endif()
-
 set(LZ4_SEARCH_HEADER_PATHS
   ${LZ4_ROOT}/include
 )
@@ -29,7 +22,10 @@ set(LZ4_SEARCH_LIB_PATH
 )
 
 if(NOT MSVC)
-  set(UNIX_DEFAULT_INCLUDE "/usr/include")
+  set(UNIX_DEFAULT_INCLUDE
+      "/usr/include"
+      "/usr/include/x86_64-linux-gnu"
+  )
 endif()
 find_path(Lz4_INCLUDE_DIR 
   lz4.h 
@@ -39,7 +35,12 @@ find_path(Lz4_INCLUDE_DIR
 
 include(Utils)
 if(NOT MSVC)
-    set(UNIX_DEFAULT_LIB "/usr/lib")
+  set(UNIX_DEFAULT_LIB
+      "/lib"
+      "/lib/x86_64-linux-gnu"
+      "/usr/lib"
+      "/usr/lib/x86_64-linux-gnu"
+  )
 endif()
 
 
@@ -60,7 +61,6 @@ set_find_library_options("${LZ4_LIBRARY_PREFIX}" "${LZ4_LIBRARY_SUFFIX}")
 find_library(Lz4_SHARED_LIB
   NAMES lz4
   PATHS ${LZ4_SEARCH_LIB_PATH} ${UNIX_DEFAULT_LIB}
-  PATH_SUFFIXES ${LZ4_ROOT_SUFFIX}
   NO_DEFAULT_PATH
 )
 
@@ -82,7 +82,6 @@ set_find_library_options("${LZ4_LIBRARY_PREFIX}" "${LZ4_LIBRARY_SUFFIX}")
 find_library(Lz4_STATIC_LIB
   NAMES lz4
   PATHS ${LZ4_SEARCH_LIB_PATH} ${UNIX_DEFAULT_LIB}
-  PATH_SUFFIXES ${LZ4_ROOT_SUFFIX}
   NO_DEFAULT_PATH
 )
 
@@ -97,6 +96,18 @@ if (Lz4_INCLUDE_DIR AND Lz4_SHARED_LIB AND Lz4_STATIC_LIB)
     CACHE PATH
     "Directory containing lz4 libraries"
     FORCE
+  )
+
+  add_library(lz4-shared IMPORTED SHARED)
+  set_target_properties(lz4-shared PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${Lz4_INCLUDE_DIR}"
+    IMPORTED_LOCATION "${Lz4_SHARED_LIB}"
+  )
+
+  add_library(lz4-static IMPORTED STATIC)
+  set_target_properties(lz4-static PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${Lz4_INCLUDE_DIR}"
+    IMPORTED_LOCATION "${Lz4_STATIC_LIB}"
   )
 else ()
   set(Lz4_FOUND FALSE)
