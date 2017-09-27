@@ -26,12 +26,13 @@ set(BFD_SEARCH_LIB_PATH
   ${BFD_ROOT}/zlib
 )
 
-if(NOT MSVC)
+if(NOT MSVC AND "${BFD_ROOT}" STREQUAL "")
   set(UNIX_DEFAULT_INCLUDE
       "/usr/include"
       "/usr/include/x86_64-linux-gnu"
   )
 endif()
+
 find_path(BFD_INCLUDE_DIR_ANSIDECL
   ansidecl.h
   PATHS ${BFD_SEARCH_HEADER_PATHS} ${UNIX_DEFAULT_INCLUDE}
@@ -44,7 +45,8 @@ find_path(BFD_INCLUDE_DIR_BFD
 )
 
 include(Utils)
-if(NOT MSVC)
+
+if(NOT MSVC AND "${BFD_ROOT}" STREQUAL "")
   set(UNIX_DEFAULT_LIB
       "/lib"
       "/lib/x86_64-linux-gnu"

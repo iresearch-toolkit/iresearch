@@ -386,6 +386,7 @@ mark_as_advanced(
 add_definitions(-DUNICODE -D_UNICODE)
 
 add_subdirectory(core)
+add_subdirectory(external)
 add_subdirectory(tests)
 add_subdirectory(utils)
 

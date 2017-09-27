@@ -25,12 +25,13 @@ set(ICU_SEARCH_LIB_PATH
   ${ICU_ROOT}/lib64
 )
 
-if(NOT MSVC)
+if(NOT MSVC AND "${ICU_ROOT}" STREQUAL "")
   set(UNIX_DEFAULT_INCLUDE
       "/usr/include"
       "/usr/include/x86_64-linux-gnu"
   )
 endif()
+
 find_path(ICU_INCLUDE_DIR
   unicode/uversion.h
   PATHS ${ICU_SEARCH_HEADER_PATHS} ${UNIX_DEFAULT_INCLUDE}
@@ -38,7 +39,8 @@ find_path(ICU_INCLUDE_DIR
 )
 
 include(Utils)
-if(NOT MSVC)
+
+if(NOT MSVC AND "${ICU_ROOT}" STREQUAL "")
   set(UNIX_DEFAULT_LIB
       "/lib"
       "/lib/x86_64-linux-gnu"

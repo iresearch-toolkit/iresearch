@@ -26,12 +26,13 @@ set(Snowball_SEARCH_LIB_PATH
   ${SNOWBALL_ROOT}/build/Debug
 )
 
-if(NOT MSVC)
+if(NOT MSVC AND "${SNOWBALL_ROOT}" STREQUAL "")
   set(UNIX_DEFAULT_INCLUDE
       "/usr/include"
       "/usr/include/x86_64-linux-gnu"
   )
 endif()
+
 find_path(Snowball_INCLUDE_DIR
   libstemmer.h
   PATHS ${Snowball_SEARCH_HEADER_PATHS} ${UNIX_DEFAULT_INCLUDE}
@@ -39,7 +40,8 @@ find_path(Snowball_INCLUDE_DIR
 )
 
 include(Utils)
-if(NOT MSVC)
+
+if(NOT MSVC AND "${SNOWBALL_ROOT}" STREQUAL "")
   set(UNIX_DEFAULT_LIB
       "/lib"
       "/lib/x86_64-linux-gnu"

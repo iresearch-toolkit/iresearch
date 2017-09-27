@@ -28,25 +28,6 @@ set(IResearch_INCLUDE_DIR
   ""
 )
 
-# set openfst directories
-set(OpenFST_ROOT 
-  ${EXTERNAL_INCLUDE_DIRS}/openfst
-)
-
-set(OpenFST_INCLUDE_DIR 
-  ${OpenFST_ROOT}
-)
-
-set(OpenFST_sources
-  ${OpenFST_ROOT}/compat.cc
-  ${OpenFST_ROOT}/flags.cc
-  ${OpenFST_ROOT}/fst.cc
-  ${OpenFST_ROOT}/mapped-file.cc
-  ${OpenFST_ROOT}/properties.cc
-  ${OpenFST_ROOT}/symbol-table.cc
-  ${OpenFST_ROOT}/symbol-table-ops.cc
-  ${OpenFST_ROOT}/util.cc
-)
 
 if (MSVC)
   add_definitions(/W4)
@@ -248,107 +229,6 @@ include_directories(
   ${Unwind_INCLUDE_DIR}
 )
 
-include_directories(
-  ${OpenFST_INCLUDE_DIR} SYSTEM
-)
-
-add_library(
-  ${IResearch_TARGET_NAME}-ofst
-  OBJECT
-  ${OpenFST_sources}
-)
-
-# setup CRT
-if(MSVC)
-  add_library(
-    ${IResearch_TARGET_NAME}-ofst-scrt
-    OBJECT
-    ${OpenFST_sources}
-  )
-endif()
-
-target_compile_features(
-  ${IResearch_TARGET_NAME}-ofst
-  PRIVATE
-  cxx_final
-  cxx_variadic_templates
-)
-
-# setup CRT
-if(MSVC)
-  target_compile_features(
-    ${IResearch_TARGET_NAME}-ofst-scrt
-    PRIVATE
-    cxx_final
-    cxx_variadic_templates
-  )
-endif()
-
-# disable warnings for 3rd-party libs for a cleaner build
-if (MSVC)
-  target_compile_options(
-    ${IResearch_TARGET_NAME}-ofst
-    # MSVC requires listing each warning code individually
-    # /W0 and /w cannot be used because the produce a single warning themselves
-    PRIVATE "/wd4018"
-    PRIVATE "/wd4100"
-    PRIVATE "/wd4127"
-    PRIVATE "/wd4244"
-    PRIVATE "/wd4245"
-    PRIVATE "/wd4267"
-    PRIVATE "/wd4291"
-    PRIVATE "/wd4305"
-    PRIVATE "/wd4389"
-    PRIVATE "/wd4510"
-    PRIVATE "/wd4512"
-    PRIVATE "/wd4610"
-    PRIVATE "/wd4706"
-    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
-  )
-
-  target_compile_options(
-    ${IResearch_TARGET_NAME}-ofst-scrt
-    # MSVC requires listing each warning code individually
-    # /W0 and /w cannot be used because the produce a single warning themselves
-    PRIVATE "/wd4018"
-    PRIVATE "/wd4100"
-    PRIVATE "/wd4127"
-    PRIVATE "/wd4244"
-    PRIVATE "/wd4245"
-    PRIVATE "/wd4267"
-    PRIVATE "/wd4291"
-    PRIVATE "/wd4305"
-    PRIVATE "/wd4389"
-    PRIVATE "/wd4510"
-    PRIVATE "/wd4512"
-    PRIVATE "/wd4610"
-    PRIVATE "/wd4706"
-    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
-  )
-else()
-  target_compile_options(
-    ${IResearch_TARGET_NAME}-ofst
-    PRIVATE "-Wno-all"
-    PRIVATE "-fPIC"
-  )
-endif()
-
-set_target_properties(
-  ${IResearch_TARGET_NAME}-ofst
-  PROPERTIES
-  PREFIX lib
-  COMPILE_DEFINITIONS "FST_NO_DYNAMIC_LINKING"
-)
-
-# setup CRT
-if(MSVC)
-  set_target_properties(
-    ${IResearch_TARGET_NAME}-ofst-scrt
-    PROPERTIES
-    PREFIX lib
-    COMPILE_DEFINITIONS "FST_NO_DYNAMIC_LINKING"
-  )
-endif()
 
 add_library(${IResearch_TARGET_NAME}-shared
   SHARED
@@ -979,7 +859,7 @@ set_target_properties(${IResearch_TARGET_NAME}-format-1_0-shared
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME format-1_0
-  COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN;FST_NO_DYNAMIC_LINKING"
+  COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN"
 )
 
 set_target_properties(${IResearch_TARGET_NAME}-format-1_0-static
@@ -987,7 +867,7 @@ set_target_properties(${IResearch_TARGET_NAME}-format-1_0-static
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME format-1_0-s
-  COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;FST_NO_DYNAMIC_LINKING"
+  COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"#;FST_NO_DYNAMIC_LINKING"
 )
 
 # setup CRT
@@ -997,7 +877,7 @@ if(MSVC)
     PREFIX lib
     IMPORT_PREFIX lib
     OUTPUT_NAME format-1_0-scrt
-    COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN;FST_NO_DYNAMIC_LINKING"
+    COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN"
   )
 
   set_target_properties(${IResearch_TARGET_NAME}-format-1_0-static-scrt
@@ -1005,7 +885,30 @@ if(MSVC)
     PREFIX lib
     IMPORT_PREFIX lib
     OUTPUT_NAME format-1_0-scrt-s
-    COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;FST_NO_DYNAMIC_LINKING"
+    COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
+  )
+endif()
+
+target_include_directories(${IResearch_TARGET_NAME}-format-1_0-shared
+  SYSTEM
+  PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES> # used by formats_burst_trie
+)
+
+target_include_directories(${IResearch_TARGET_NAME}-format-1_0-static
+  SYSTEM
+  PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES> # used by formats_burst_trie
+)
+
+# setup CRT
+if(MSVC)
+  target_include_directories(${IResearch_TARGET_NAME}-format-1_0-shared-scrt
+    SYSTEM
+    PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst-scrt,INTERFACE_INCLUDE_DIRECTORIES> # used by formats_burst_trie
+  )
+
+  target_include_directories(${IResearch_TARGET_NAME}-format-1_0-static-scrt
+    SYSTEM
+    PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst-scrt,INTERFACE_INCLUDE_DIRECTORIES> # used by formats_burst_trie
   )
 endif()
 
