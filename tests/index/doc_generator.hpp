@@ -95,7 +95,7 @@ class long_field: public field_base {
   void value(value_t value) { value_ = value; }
   value_t value() const { return value_; }
   bool write(ir::data_output& out) const override;
-  ir::token_stream& get_tokens() const;
+  ir::token_stream& get_tokens() const override;
 
  private:
   mutable ir::numeric_token_stream stream_;

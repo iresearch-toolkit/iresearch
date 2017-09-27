@@ -1033,7 +1033,7 @@ void directory_test_case::directory_size() {
     size_t accumulated_size = 0;
 
     auto visitor = [this, &accumulated_size](const std::string& name) {
-      size_t size = 0;
+      uint64_t size = 0;
 
       if (!dir_->length(size, name)) {
         return false;
@@ -1047,3 +1047,7 @@ void directory_test_case::directory_size() {
     ASSERT_EQ(sizeof(uint32_t), accumulated_size);
   }
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

@@ -100,7 +100,7 @@ class pos_iterator final : public irs::position::impl {
     return val_;
   }
 
-  virtual bool next() {
+  virtual bool next() override {
     if (pos_ == freq_.value) {
       val_ = position::INVALID;
       return false;
@@ -262,15 +262,15 @@ class term_iterator : public irs::term_iterator {
     term_ = irs::bytes_ref::nil;
   }
 
-  virtual const bytes_ref& value() const {
+  virtual const bytes_ref& value() const override {
     return term_;
   }
 
-  virtual const attribute_view& attributes() const NOEXCEPT {
+  virtual const attribute_view& attributes() const NOEXCEPT override {
     return attribute_view::empty_instance();
   }
 
-  virtual void read() {
+  virtual void read() override {
     // Does nothing now
   }
 
