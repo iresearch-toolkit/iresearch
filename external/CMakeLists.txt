@@ -222,6 +222,6 @@ add_library(
 target_include_directories(
   ${IResearch_TARGET_NAME}-rapidjson
   SYSTEM
-  INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/rapidjson/rapidjson
+  INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/rapidjson
 )
 
