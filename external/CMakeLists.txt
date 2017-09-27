@@ -1,4 +1,92 @@
 ################################################################################
+### CmdLine library
+################################################################################
+
+add_library(
+  ${IResearch_TARGET_NAME}-cmdline
+  INTERFACE
+)
+
+target_include_directories(
+  ${IResearch_TARGET_NAME}-cmdline
+  SYSTEM
+  INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/cmdline
+)
+
+################################################################################
+### MurMurHash library
+################################################################################
+
+set(MurMurHash_sources
+  ${CMAKE_CURRENT_SOURCE_DIR}/MurmurHash/MurmurHash3.cpp ${CMAKE_CURRENT_SOURCE_DIR}/MurmurHash/MurmurHash3.h
+)
+
+add_library(
+  ${IResearch_TARGET_NAME}-murmurhash
+  OBJECT
+  ${MurMurHash_sources}
+)
+
+# setup CRT
+if(MSVC)
+  add_library(
+    ${IResearch_TARGET_NAME}-murmurhash-scrt
+    OBJECT
+    ${MurMurHash_sources}
+  )
+endif()
+
+target_compile_features(
+  ${IResearch_TARGET_NAME}-murmurhash
+  PRIVATE
+  cxx_final
+  cxx_variadic_templates
+)
+
+# setup CRT
+if(MSVC)
+  target_compile_features(
+    ${IResearch_TARGET_NAME}-murmurhash-scrt
+    PRIVATE
+    cxx_final
+    cxx_variadic_templates
+  )
+endif()
+
+if (MSVC)
+  target_compile_options(
+    ${IResearch_TARGET_NAME}-murmurhash
+    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
+  )
+
+  target_compile_options(
+    ${IResearch_TARGET_NAME}-murmurhash-scrt
+    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
+  )
+else()
+  target_compile_options(
+    ${IResearch_TARGET_NAME}-murmurhash
+    PRIVATE "-Wno-all"
+    PRIVATE "-fPIC"
+  )
+endif()
+
+target_include_directories(
+  ${IResearch_TARGET_NAME}-murmurhash
+  SYSTEM
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/murmurhash
+)
+
+# setup CRT
+if(MSVC)
+  target_include_directories(
+    ${IResearch_TARGET_NAME}-murmurhash-scrt
+    SYSTEM
+    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/murmurhash
+  )
+endif()
+
+################################################################################
 ### OpenFST library
 ################################################################################
 
@@ -121,4 +209,19 @@ if(MSVC)
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/openfst
   )
 endif()
+
+################################################################################
+### RapidJSON library
+################################################################################
+
+add_library(
+  ${IResearch_TARGET_NAME}-rapidjson
+  INTERFACE
+)
+
+target_include_directories(
+  ${IResearch_TARGET_NAME}-rapidjson
+  SYSTEM
+  INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/rapidjson/rapidjson
+)
 

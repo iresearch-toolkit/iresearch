@@ -124,7 +124,6 @@ set(IResearch_core_sources
   ./utils/network_utils.cpp
   ./utils/cpuinfo.cpp
   ./utils/numeric_utils.cpp
-  ${EXTERNAL_INCLUDE_DIRS}/MurmurHash/MurmurHash3.cpp
 )
 
 set(IResearch_core_headers
@@ -212,7 +211,6 @@ set(IResearch_core_headers
   ./utils/type_id.hpp
   ./shared.hpp
   ./types.hpp
-  ${EXTERNAL_INCLUDE_DIRS}/MurmurHash/MurmurHash3.h
 )
 
 # TODO: use FindLibDL and check linux distr version
@@ -233,11 +231,13 @@ include_directories(
 add_library(${IResearch_TARGET_NAME}-shared
   SHARED
   ${IResearch_core_sources} ${IResearch_core_headers}
+  $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-murmurhash>
 )
 
 add_library(${IResearch_TARGET_NAME}-static
   STATIC
   ${IResearch_core_sources} ${IResearch_core_headers}
+  $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-murmurhash>
 )
 
 # setup CRT
@@ -245,11 +245,13 @@ if(MSVC)
   add_library(${IResearch_TARGET_NAME}-shared-scrt
     SHARED
     ${IResearch_core_sources} ${IResearch_core_headers}
+  $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-murmurhash-scrt>
   )
 
   add_library(${IResearch_TARGET_NAME}-static-scrt
     STATIC
     ${IResearch_core_sources} ${IResearch_core_headers}
+    $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-murmurhash-scrt>
   )
 endif()
 
