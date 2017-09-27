@@ -9,11 +9,11 @@
 // Agreement under which it is provided by or on behalf of EMC.
 // 
 
-#if defined(_MSC_VER)
-  #include <signal.h> // for signal(...)/raise(...)
-#else
+#if !defined(_MSC_VER)
   #include <dlfcn.h> // for RTLD_NEXT
 #endif
+
+#include <signal.h> // for signal(...)/raise(...)
 
 #include "tests_shared.hpp"
 #include "tests_config.hpp"
