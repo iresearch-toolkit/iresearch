@@ -235,6 +235,7 @@ class doc_iterator : public iresearch::doc_iterator {
 #if defined(_MSC_VER)
   #pragma warning( disable : 4706 )
 #elif defined (__GNUC__)
+  #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wparentheses"
 #endif
 
@@ -505,7 +506,7 @@ class pos_iterator : public position::impl {
   pos_iterator(size_t reserve_attrs): position::impl(reserve_attrs) {
   }
 
-  virtual void clear() {
+  virtual void clear() override {
     value_ = position::INVALID;
   }
 
@@ -538,7 +539,7 @@ class pos_iterator : public position::impl {
     return true;
   }
 
-  virtual uint32_t value() const { return value_; }
+  virtual uint32_t value() const override { return value_; }
 
  protected:
   // prepares iterator to work
@@ -3534,7 +3535,9 @@ class dense_fixed_length_column<dense_mask_block> final : public column {
     return key > min_ && key <= this->max();
   }
 
-  virtual bool visit(const columnstore_reader::values_visitor_f& visitor) const {
+  virtual bool visit(
+      const columnstore_reader::values_visitor_f& visitor
+  ) const override {
     auto doc = min_;
 
     for (auto left = this->size(); left; --left) {
@@ -3548,7 +3551,7 @@ class dense_fixed_length_column<dense_mask_block> final : public column {
 
   virtual columnstore_iterator::ptr iterator() const;
 
-  virtual columnstore_reader::values_reader_f values() const {
+  virtual columnstore_reader::values_reader_f values() const override {
     return column_values<column_t>(*this);
   }
 

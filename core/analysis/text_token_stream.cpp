@@ -15,6 +15,7 @@
 #include <unordered_map>
 
 #if !defined(_MSC_VER)
+  #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wunused-variable"
 #endif
 
