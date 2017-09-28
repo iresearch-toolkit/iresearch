@@ -574,7 +574,7 @@ elseif (APPLE)
     set(IResearch_STATIC_LIBRARIES "${IResearch_STATIC_LIBRARIES} '${ELEMENT}'")
   endforeach ()
 
-  set(IResearch_STATIC_LIBRARIES_CMD "ar -q $<TARGET_FILE:${IResearch_TARGET_NAME}-static> ${IResearch_STATIC_LIBRARIES}")
+  set(IResearch_STATIC_LIBRARIES_CMD "ar -q -s $<TARGET_FILE:${IResearch_TARGET_NAME}-static> ${IResearch_STATIC_LIBRARIES}")
   add_custom_command(
     TARGET ${IResearch_TARGET_NAME}-static POST_BUILD
     COMMAND sh -c ${IResearch_STATIC_LIBRARIES_CMD}

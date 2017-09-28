@@ -21,7 +21,16 @@
 #include <atomic>
 #include <functional>
 
-#include <boost/filesystem.hpp>
+#if !defined(_MSC_VER)
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
+  #include <boost/filesystem.hpp>
+
+#if !defined(_MSC_VER)
+  #pragma GCC diagnostic pop
+#endif
 
 namespace iresearch {
 
