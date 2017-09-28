@@ -14,25 +14,25 @@ if ("${GTEST_ROOT}" STREQUAL "")
   endif()
 endif()
 
-set(GTEST_SEARCH_HEADER_PATHS
-  ${GTEST_ROOT}
-  ${GTEST_ROOT}/include
-  ${GTEST_ROOT}/include/gtest
-)
+if (NOT "${GTEST_ROOT}" STREQUAL "")
+  set(GTEST_SEARCH_HEADER_PATHS
+    ${GTEST_ROOT}
+    ${GTEST_ROOT}/include
+    ${GTEST_ROOT}/include/gtest
+  )
 
-set(GTEST_SEARCH_LIB_PATHS
-  ${GTEST_ROOT}
-  ${GTEST_ROOT}/lib
-)
+  set(GTEST_SEARCH_LIB_PATHS
+    ${GTEST_ROOT}
+    ${GTEST_ROOT}/lib
+  )
 
-set(GTEST_SEARCH_SRC_PATHS
-  ${GTEST_ROOT}
-  ${GTEST_ROOT}/src
-  ${GTEST_ROOT}/src/gtest
-  ${GTEST_ROOT}/src/gtest/src
-)
-
-if (NOT MSVC AND "${GTEST_ROOT}" STREQUAL "")
+  set(GTEST_SEARCH_SRC_PATHS
+    ${GTEST_ROOT}
+    ${GTEST_ROOT}/src
+    ${GTEST_ROOT}/src/gtest
+    ${GTEST_ROOT}/src/gtest/src
+  )
+elseif (NOT MSVC)
   set(UNIX_DEFAULT_INCLUDE
       "/usr/include"
       "/usr/include/gtest"
@@ -54,7 +54,7 @@ if (NOT MSVC AND "${GTEST_ROOT}" STREQUAL "")
   )
 endif()
 
-find_path(GTEST_INCLUDE_DIR_GTEST
+find_path(GTEST_INCLUDE_DIR
   gtest.h
   PATHS ${GTEST_SEARCH_HEADER_PATHS} ${UNIX_DEFAULT_INCLUDE}
   NO_DEFAULT_PATH # make sure we don't accidentally pick up a different version
@@ -77,7 +77,7 @@ if (GTEST_SRC_DIR_GTEST)
 endif()
 
 # found the cmake enabled source directory
-if (GTEST_INCLUDE_DIR_GTEST AND GTEST_SRC_DIR_GTEST AND GTEST_SRC_DIR_CMAKE)
+if (GTEST_INCLUDE_DIR AND GTEST_SRC_DIR_GTEST AND GTEST_SRC_DIR_CMAKE)
   set(GTEST_FOUND TRUE)
 
   add_subdirectory(
@@ -97,7 +97,7 @@ if (GTEST_INCLUDE_DIR_GTEST AND GTEST_SRC_DIR_GTEST AND GTEST_SRC_DIR_CMAKE)
   )
 
   target_include_directories(${IResearch_TARGET_NAME}-gtest-shared
-    PRIVATE ${GTEST_INCLUDE_DIR_GTEST}
+    PRIVATE ${GTEST_INCLUDE_DIR}
     PRIVATE ${GTEST_SRC_DIR_CMAKE}
   )
 

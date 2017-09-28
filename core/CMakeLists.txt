@@ -511,8 +511,8 @@ elseif (MSVC)
     "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_RELEASE}>"
     ${ICU_STATIC_LIBS}
     "${Lz4_STATIC_LIB}"
-    "${Snowball_STATIC_LIB}"
     ${Unwind_STATIC_LIBS}
+    "$<TARGET_FILE:stemmer-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
@@ -537,8 +537,8 @@ elseif (MSVC)
     "$<$<CONFIG:Debug>:${Boost_STATIC_staticRT_SYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_staticRT_SYSTEM_LIBRARY_RELEASE}>"
     ${ICU_STATIC_LIBS}
     "${Lz4_STATIC_LIB}"
-    "${Snowball_STATIC_LIB}"
     ${Unwind_STATIC_LIBS}
+    "$<TARGET_FILE:stemmer-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static-scrt>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static-scrt>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static-scrt>"
@@ -564,8 +564,8 @@ elseif (APPLE)
     ${Boost_STATIC_sharedRT_THREAD_LIBRARY_DEBUG}
     ${ICU_STATIC_LIBS}
     ${Lz4_STATIC_LIB}
-    ${Snowball_STATIC_LIB}
     ${Unwind_STATIC_LIBS}
+    "$<TARGET_FILE:stemmer-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
@@ -591,8 +591,8 @@ else()
     ${Boost_STATIC_sharedRT_THREAD_LIBRARY_DEBUG}
     ${ICU_STATIC_LIBS}
     ${Lz4_STATIC_LIB}
-    ${Snowball_STATIC_LIB}
     ${Unwind_STATIC_LIBS}
+    "$<TARGET_FILE:stemmer-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
