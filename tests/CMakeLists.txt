@@ -4,17 +4,7 @@ set (IResearchTests_TARGET_NAME
   ""
 )
 
-# find Google Test Framework
-if("${GTEST_ROOT}" STREQUAL "")
-  if(NOT "$ENV{GTEST_ROOT}" STREQUAL "")
-    set(GTEST_ROOT "$ENV{GTEST_ROOT}")
-  else()
-    if(NOT MSVC AND EXISTS "/usr/include/gtest/gtest.h")
-      set(GTEST_ROOT "/usr")
-    endif()
-  endif()
-endif()
-find_package(GTest
+find_package(GTestLocal
   REQUIRED
 )
 
@@ -196,14 +186,14 @@ target_link_libraries(${IResearchTests_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-analyzer-text-shared
   ${IResearch_TARGET_NAME}-format-1_0-shared
-  ${GTEST_BOTH_LIBRARIES}
+  ${GTEST_SHARED_LIBS}
   ${PTHREAD_LIBRARY}
 )
 
 target_link_libraries(${IResearchTests_TARGET_NAME}-static
   ${GCOV_LIBRARY}
   ${IResearch_TARGET_NAME}-static
-  ${GTEST_BOTH_LIBRARIES}
+  ${GTEST_STATIC_LIBS}
   ${PTHREAD_LIBRARY}
 )
 
