@@ -542,7 +542,8 @@ class term_iterator : public iresearch::seek_term_iterator {
 
   virtual bool seek(
       const irs::bytes_ref& term,
-      const irs::seek_term_iterator::seek_cookie& cookie) {
+      const irs::seek_term_iterator::seek_cookie& cookie
+  ) override {
     return false;
   }
 

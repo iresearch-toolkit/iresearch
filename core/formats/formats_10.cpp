@@ -3549,7 +3549,7 @@ class dense_fixed_length_column<dense_mask_block> final : public column {
     return true;
   }
 
-  virtual columnstore_iterator::ptr iterator() const;
+  virtual columnstore_iterator::ptr iterator() const override;
 
   virtual columnstore_reader::values_reader_f values() const override {
     return column_values<column_t>(*this);

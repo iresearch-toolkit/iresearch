@@ -262,19 +262,25 @@ void install_stack_trace_handler() {
 #ifndef _MSC_VER
   // override GCC 'throw' handler to print stack trace before throw
   extern "C" {
-    void __cxa_throw(void* ex, void* info, void(*dest)(void*)) {
-      #if defined(__APPLE__)
-        static void(*rethrow)(void*,void*,void(*)(void*)) =
+    #if defined(__APPLE__)
+      void __cxa_throw(void* ex, struct std::type_info* info, void(*dest)(void *)) {
+        static void(*rethrow)(void*,struct std::type_info*,void(*)(void*)) __attribute__ ((noreturn)) =
           (void(*)(void*,void*,void(*)(void*)))dlsym(RTLD_NEXT, "__cxa_throw");
-      #else
+
+        IR_FRMT_DEBUG("exception type: %s", reinterpret_cast<const std::type_info*>(info)->name());
+        IR_STACK_TRACE();
+        rethrow(ex, info, dest);
+      }
+    #else
+      void __cxa_throw(void* ex, void* info, void(*dest)(void*)) {
         static void(*rethrow)(void*,void*,void(*)(void*)) __attribute__ ((noreturn)) =
           (void(*)(void*,void*,void(*)(void*)))dlsym(RTLD_NEXT, "__cxa_throw");
-      #endif
 
-      IR_FRMT_DEBUG("exception type: %s", reinterpret_cast<const std::type_info*>(info)->name());
-      IR_STACK_TRACE();
-      rethrow(ex, info, dest);
-    }
+        IR_FRMT_DEBUG("exception type: %s", reinterpret_cast<const std::type_info*>(info)->name());
+        IR_STACK_TRACE();
+        rethrow(ex, info, dest);
+      }
+    #endif
   }
 #endif
 
