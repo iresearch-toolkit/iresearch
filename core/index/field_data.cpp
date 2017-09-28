@@ -638,7 +638,7 @@ bool field_data::invert(
     }
 
     if (0 == ++len_) {
-      IR_FRMT_ERROR("too many token in field, document '%llu'", id);
+      IR_FRMT_ERROR("too many token in field, document '" IR_UINT64_T_SPECIFIER "'", id);
       return false;
     }
   }

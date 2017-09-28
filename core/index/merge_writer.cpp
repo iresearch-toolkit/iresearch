@@ -572,7 +572,7 @@ irs::doc_id_t compute_doc_ids(
     doc_id_map.resize(reader.docs_count() + irs::type_limits<irs::type_t::doc_id_t>::min(), MASKED_DOC_ID);
   } catch (...) {
     IR_FRMT_ERROR(
-      "Failed to resize merge_writer::doc_id_map to accommodate element: %llu",
+      "Failed to resize merge_writer::doc_id_map to accommodate element: " IR_UINT64_T_SPECIFIER,
       reader.docs_count() + irs::type_limits<irs::type_t::doc_id_t>::min()
     );
     return irs::type_limits<irs::type_t::doc_id_t>::invalid();
@@ -882,7 +882,7 @@ bool merge_writer::flush(std::string& filename, segment_meta& meta) {
 }
 
 NS_END // ROOT
-+
-+// -----------------------------------------------------------------------------
-+// --SECTION--                                                       END-OF-FILE
-+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
