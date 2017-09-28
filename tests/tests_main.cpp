@@ -265,7 +265,7 @@ void install_stack_trace_handler() {
     #if defined(__APPLE__)
       void __cxa_throw(void* ex, struct std::type_info* info, void(*dest)(void *)) {
         static void(*rethrow)(void*,struct std::type_info*,void(*)(void*)) __attribute__ ((noreturn)) =
-          (void(*)(void*,void*,void(*)(void*)))dlsym(RTLD_NEXT, "__cxa_throw");
+          (void(*)(void*,struct std::type_info*,void(*)(void*)))dlsym(RTLD_NEXT, "__cxa_throw");
 
         IR_FRMT_DEBUG("exception type: %s", reinterpret_cast<const std::type_info*>(info)->name());
         IR_STACK_TRACE();

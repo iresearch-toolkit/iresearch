@@ -58,7 +58,7 @@ class format_test_case_base : public index_test_base {
       }
     }
 
-    uint32_t value() const {
+    uint32_t value() const override {
       return begin_;
     }
 
