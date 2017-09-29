@@ -416,12 +416,13 @@ install:
       cd ${DEPS_DIR}
       travis_retry git clone --quiet ${SNOWBALL_URL} ${SNOWBALL_DIR} || exit 1
       cd ${SNOWBALL_DIR}
-      git reset --hard 9e0a8340d58c70f91e8a0233b985242dc69c6fb8
-      mkdir build && cd build
-      cmake -DENABLE_STATIC=OFF -DNO_SHARED=OFF -g "Unix Makefiles" ..
-      cmake --build .
-      cmake -DENABLE_STATIC=OFF -DNO_SHARED=ON -g "Unix Makefiles" ..
-      cmake --build .
+      git reset --hard 5137019d68befd633ce8b1cd48065f41e77ed43e
+      #git reset --hard 9e0a8340d58c70f91e8a0233b985242dc69c6fb8
+      #mkdir build && cd build
+      #cmake -DENABLE_STATIC=OFF -DNO_SHARED=OFF -g "Unix Makefiles" ..
+      #cmake --build .
+      #cmake -DENABLE_STATIC=OFF -DNO_SHARED=ON -g "Unix Makefiles" ..
+      #cmake --build .
     fi
     export SNOWBALL_ROOT=${SNOWBALL_DIR}
 
