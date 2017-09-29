@@ -14,22 +14,29 @@ if ("${BFD_ROOT}" STREQUAL "")
   endif()
 endif()
 
-set(BFD_SEARCH_HEADER_PATHS
-  ${BFD_ROOT}/bfd
-  ${BFD_ROOT}/include
-)
+if (NOT "${BFD_ROOT}" STREQUAL "")
+  set(BFD_SEARCH_HEADER_PATHS
+    ${BFD_ROOT}/bfd
+    ${BFD_ROOT}/include
+  )
 
-set(BFD_SEARCH_LIB_PATH
-  ${BFD_ROOT}/lib
-  ${BFD_ROOT}/bfd/.libs
-  ${BFD_ROOT}/libiberty
-  ${BFD_ROOT}/zlib
-)
-
-if(NOT MSVC AND "${BFD_ROOT}" STREQUAL "")
+  set(BFD_SEARCH_LIB_PATH
+    ${BFD_ROOT}/lib
+    ${BFD_ROOT}/bfd/.libs
+    ${BFD_ROOT}/libiberty
+    ${BFD_ROOT}/zlib
+  )
+elseif (NOT MSVC)
   set(UNIX_DEFAULT_INCLUDE
       "/usr/include"
       "/usr/include/x86_64-linux-gnu"
+  )
+
+  set(UNIX_DEFAULT_LIB
+      "/lib"
+      "/lib/x86_64-linux-gnu"
+      "/usr/lib"
+      "/usr/lib/x86_64-linux-gnu"
   )
 endif()
 
@@ -45,16 +52,6 @@ find_path(BFD_INCLUDE_DIR_BFD
 )
 
 include(Utils)
-
-if(NOT MSVC AND "${BFD_ROOT}" STREQUAL "")
-  set(UNIX_DEFAULT_LIB
-      "/lib"
-      "/lib/x86_64-linux-gnu"
-      "/usr/lib"
-      "/usr/lib/x86_64-linux-gnu"
-  )
-endif()
-
 
 # set options for: shared
 if (MSVC)

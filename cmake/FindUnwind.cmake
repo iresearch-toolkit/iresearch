@@ -14,19 +14,26 @@ if ("${UNWIND_ROOT}" STREQUAL "")
   endif()
 endif()
 
-set(UNWIND_SEARCH_HEADER_PATHS
-  ${UNWIND_ROOT}/include
-)
+if (NOT "${UNWIND_ROOT}" STREQUAL "")
+  set(UNWIND_SEARCH_HEADER_PATHS
+    ${UNWIND_ROOT}/include
+  )
 
-set(UNWIND_SEARCH_LIB_PATH
-  ${UNWIND_ROOT}/lib
-  ${UNWIND_ROOT}/src/.libs
-)
-
-if(NOT MSVC AND "${UNWIND_ROOT}" STREQUAL "")
+  set(UNWIND_SEARCH_LIB_PATH
+    ${UNWIND_ROOT}/lib
+    ${UNWIND_ROOT}/src/.libs
+  )
+elseif (NOT MSVC)
   set(UNIX_DEFAULT_INCLUDE
       "/usr/include"
       "/usr/include/x86_64-linux-gnu"
+  )
+
+  set(UNIX_DEFAULT_LIB
+      "/lib"
+      "/lib/x86_64-linux-gnu"
+      "/usr/lib"
+      "/usr/lib/x86_64-linux-gnu"
   )
 endif()
 
@@ -37,16 +44,6 @@ find_path(Unwind_INCLUDE_DIR
 )
 
 include(Utils)
-
-if(NOT MSVC AND "${UNWIND_ROOT}" STREQUAL "")
-  set(UNIX_DEFAULT_LIB
-      "/lib"
-      "/lib/x86_64-linux-gnu"
-      "/usr/lib"
-      "/usr/lib/x86_64-linux-gnu"
-  )
-endif()
-
 
 # set options for: shared
 if (MSVC)
