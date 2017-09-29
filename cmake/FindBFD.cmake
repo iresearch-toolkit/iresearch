@@ -20,19 +20,19 @@ if (NOT "${BFD_ROOT}" STREQUAL "")
     ${BFD_ROOT}/include
   )
 
-  set(BFD_SEARCH_LIB_PATH
+  set(BFD_SEARCH_LIB_PATHS
     ${BFD_ROOT}/lib
     ${BFD_ROOT}/bfd/.libs
     ${BFD_ROOT}/libiberty
     ${BFD_ROOT}/zlib
   )
 elseif (NOT MSVC)
-  set(UNIX_DEFAULT_INCLUDE
+  set(BFD_SEARCH_HEADER_PATHS
       "/usr/include"
       "/usr/include/x86_64-linux-gnu"
   )
 
-  set(UNIX_DEFAULT_LIB
+  set(BFD_SEARCH_LIB_PATHS
       "/lib"
       "/lib/x86_64-linux-gnu"
       "/usr/lib"
@@ -42,12 +42,12 @@ endif()
 
 find_path(BFD_INCLUDE_DIR_ANSIDECL
   ansidecl.h
-  PATHS ${BFD_SEARCH_HEADER_PATHS} ${UNIX_DEFAULT_INCLUDE}
+  PATHS ${BFD_SEARCH_HEADER_PATHS}
   NO_DEFAULT_PATH # make sure we don't accidentally pick up a different version
 )
 find_path(BFD_INCLUDE_DIR_BFD
   bfd.h
-  PATHS ${BFD_SEARCH_HEADER_PATHS} ${UNIX_DEFAULT_INCLUDE}
+  PATHS ${BFD_SEARCH_HEADER_PATHS}
   NO_DEFAULT_PATH # make sure we don't accidentally pick up a different version
 )
 
@@ -66,7 +66,7 @@ set_find_library_options("${BFD_LIBRARY_PREFIX}" "${BFD_LIBRARY_SUFFIX}")
 # find library
 find_library(BFD_SHARED_LIB
   NAMES bfd
-  PATHS ${BFD_SEARCH_LIB_PATH} ${UNIX_DEFAULT_LIB}
+  PATHS ${BFD_SEARCH_LIB_PATHS}
   NO_DEFAULT_PATH
 )
 
@@ -87,17 +87,17 @@ set_find_library_options("${BFD_LIBRARY_PREFIX}" "${BFD_LIBRARY_SUFFIX}")
 # find library
 find_library(BFD_STATIC_LIB
   NAMES bfd
-  PATHS ${BFD_SEARCH_LIB_PATH} ${UNIX_DEFAULT_LIB}
+  PATHS ${BFD_SEARCH_LIB_PATHS}
   NO_DEFAULT_PATH
 )
 find_library(BFD_STATIC_LIB_IBERTY
   NAMES iberty
-  PATHS ${BFD_SEARCH_LIB_PATH} ${UNIX_DEFAULT_LIB}
+  PATHS ${BFD_SEARCH_LIB_PATHS}
   NO_DEFAULT_PATH
 )
 find_library(BFD_STATIC_LIB_Z
   NAMES z
-  PATHS ${BFD_SEARCH_LIB_PATH} ${UNIX_DEFAULT_LIB}
+  PATHS ${BFD_SEARCH_LIB_PATHS}
   NO_DEFAULT_PATH
 )
 
@@ -124,7 +124,7 @@ if (BFD_INCLUDE_DIR_ANSIDECL AND BFD_INCLUDE_DIR_BFD AND BFD_SHARED_LIB AND BFD_
   )
 
   set(BFD_LIBRARY_DIR
-    "${BFD_SEARCH_LIB_PATH}"
+    "${BFD_SEARCH_LIB_PATHS}"
     CACHE PATH
     "Directory containing bfd libraries"
     FORCE

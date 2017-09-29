@@ -37,21 +37,21 @@ if (NOT "${SNOWBALL_ROOT}" STREQUAL "")
     ${SNOWBALL_ROOT}/src/libstemmer/libstemmer
   )
 elseif (NOT MSVC)
-  set(UNIX_DEFAULT_INCLUDE
+  set(Snowball_SEARCH_HEADER_PATHS
       "/usr/include"
       "/usr/include/libstemmer"
       "/usr/include/x86_64-linux-gnu"
       "/usr/include/x86_64-linux-gnu/libstemmer"
   )
 
-  set(UNIX_DEFAULT_LIB
+  set(Snowball_SEARCH_LIB_PATHS
       "/lib"
       "/lib/x86_64-linux-gnu"
       "/usr/lib"
       "/usr/lib/x86_64-linux-gnu"
   )
 
-  set(UNIX_DEFAULT_SRC
+  set(Snowball_SEARCH_SRC_PATHS
       "/usr/src"
       "/usr/src/libstemmer"
       "/usr/src/libstemmer/libstemmer"
@@ -60,13 +60,13 @@ endif()
 
 find_path(Snowball_INCLUDE_DIR
   libstemmer.h
-  PATHS ${Snowball_SEARCH_HEADER_PATHS} ${UNIX_DEFAULT_INCLUDE}
+  PATHS ${Snowball_SEARCH_HEADER_PATHS}
   NO_DEFAULT_PATH # make sure we don't accidentally pick up a different version
 )
 
 find_path(Snowball_SRC_DIR_LIBSTEMMER
   libstemmer_c.in
-  PATHS ${Snowball_SEARCH_SRC_PATHS} ${UNIX_DEFAULT_SRC}
+  PATHS ${Snowball_SEARCH_SRC_PATHS}
   NO_DEFAULT_PATH # make sure we don't accidentally pick up a different version
 )
 
@@ -101,7 +101,7 @@ set_find_library_options("${Snowball_LIBRARY_PREFIX}" "${Snowball_LIBRARY_SUFFIX
 # find library
 find_library(Snowball_SHARED_LIB
   NAMES stemmer
-  PATHS ${Snowball_SEARCH_LIB_PATHS} ${UNIX_DEFAULT_LIB}
+  PATHS ${Snowball_SEARCH_LIB_PATHS}
   NO_DEFAULT_PATH
 )
 
@@ -122,7 +122,7 @@ set_find_library_options("${Snowball_LIBRARY_PREFIX}" "${Snowball_LIBRARY_SUFFIX
 # find library
 find_library(Snowball_STATIC_LIB
   NAMES stemmer
-  PATHS ${Snowball_SEARCH_LIB_PATHS} ${UNIX_DEFAULT_LIB}
+  PATHS ${Snowball_SEARCH_LIB_PATHS}
   NO_DEFAULT_PATH
 )
 

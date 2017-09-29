@@ -19,17 +19,17 @@ if (NOT "${UNWIND_ROOT}" STREQUAL "")
     ${UNWIND_ROOT}/include
   )
 
-  set(UNWIND_SEARCH_LIB_PATH
+  set(UNWIND_SEARCH_LIB_PATHS
     ${UNWIND_ROOT}/lib
     ${UNWIND_ROOT}/src/.libs
   )
 elseif (NOT MSVC)
-  set(UNIX_DEFAULT_INCLUDE
+  set(UNWIND_SEARCH_HEADER_PATHS
       "/usr/include"
       "/usr/include/x86_64-linux-gnu"
   )
 
-  set(UNIX_DEFAULT_LIB
+  set(UNWIND_SEARCH_LIB_PATHS
       "/lib"
       "/lib/x86_64-linux-gnu"
       "/usr/lib"
@@ -39,7 +39,7 @@ endif()
 
 find_path(Unwind_INCLUDE_DIR
   libunwind.h
-  PATHS ${UNWIND_SEARCH_HEADER_PATHS} ${UNIX_DEFAULT_INCLUDE}
+  PATHS ${UNWIND_SEARCH_HEADER_PATHS}
   NO_DEFAULT_PATH # make sure we don't accidentally pick up a different version
 )
 
@@ -58,17 +58,17 @@ set_find_library_options("${UNWIND_LIBRARY_PREFIX}" "${UNWIND_LIBRARY_SUFFIX}")
 # find library
 find_library(UNWIND_SHARED_LIBRARY_CORE
   NAMES unwind
-  PATHS ${UNWIND_SEARCH_LIB_PATH} ${UNIX_DEFAULT_LIB}
+  PATHS ${UNWIND_SEARCH_LIB_PATHS}
   NO_DEFAULT_PATH
 )
 find_library(UNWIND_SHARED_LIBRARY_LZMA
   NAMES lzma
-  PATHS ${UNWIND_SEARCH_LIB_PATH} ${UNIX_DEFAULT_LIB}
+  PATHS ${UNWIND_SEARCH_LIB_PATHS}
   NO_DEFAULT_PATH
 )
 find_library(UNWIND_SHARED_LIBRARY_PLATFORM
   NAMES unwind-x86_64
-  PATHS ${UNWIND_SEARCH_LIB_PATH} ${UNIX_DEFAULT_LIB}
+  PATHS ${UNWIND_SEARCH_LIB_PATHS}
   NO_DEFAULT_PATH
 )
 
@@ -89,17 +89,17 @@ set_find_library_options("${UNWIND_LIBRARY_PREFIX}" "${UNWIND_LIBRARY_SUFFIX}")
 # find library
 find_library(UNWIND_STATIC_LIBRARY_CORE
   NAMES unwind
-  PATHS ${UNWIND_SEARCH_LIB_PATH} ${UNIX_DEFAULT_LIB}
+  PATHS ${UNWIND_SEARCH_LIB_PATHS}
   NO_DEFAULT_PATH
 )
 find_library(UNWIND_STATIC_LIBRARY_LZMA
   NAMES lzma
-  PATHS ${UNWIND_SEARCH_LIB_PATH} ${UNIX_DEFAULT_LIB}
+  PATHS ${UNWIND_SEARCH_LIB_PATHS}
   NO_DEFAULT_PATH
 )
 find_library(UNWIND_STATIC_LIBRARY_PLATFORM
   NAMES unwind-x86_64
-  PATHS ${UNWIND_SEARCH_LIB_PATH} ${UNIX_DEFAULT_LIB}
+  PATHS ${UNWIND_SEARCH_LIB_PATHS}
   NO_DEFAULT_PATH
 )
 
@@ -138,7 +138,7 @@ if (Unwind_INCLUDE_DIR
   )
 
   set(Unwind_LIBRARY_DIR
-    "${UNWIND_SEARCH_LIB_PATH}"
+    "${UNWIND_SEARCH_LIB_PATHS}"
     CACHE PATH
     "Directory containing unwind libraries"
     FORCE

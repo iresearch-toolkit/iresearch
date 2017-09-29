@@ -14,40 +14,38 @@ if ("${ICU_ROOT}" STREQUAL "")
   endif()
 endif()
 
-set(ICU_SEARCH_HEADER_PATHS
-  ${ICU_ROOT}/include
-)
+if (NOT "${ICU_ROOT}" STREQUAL "")
+  set(ICU_SEARCH_HEADER_PATHS
+    ${ICU_ROOT}/include
+  )
 
-set(ICU_SEARCH_LIB_PATH
-  ${ICU_ROOT}/bin
-  ${ICU_ROOT}/bin64
-  ${ICU_ROOT}/lib
-  ${ICU_ROOT}/lib64
-)
-
-if(NOT MSVC AND "${ICU_ROOT}" STREQUAL "")
-  set(UNIX_DEFAULT_INCLUDE
+  set(ICU_SEARCH_LIB_PATHS
+    ${ICU_ROOT}/bin
+    ${ICU_ROOT}/bin64
+    ${ICU_ROOT}/lib
+    ${ICU_ROOT}/lib64
+  )
+elseif (NOT MSVC)
+  set(ICU_SEARCH_HEADER_PATHS
       "/usr/include"
       "/usr/include/x86_64-linux-gnu"
   )
-endif()
 
-find_path(ICU_INCLUDE_DIR
-  unicode/uversion.h
-  PATHS ${ICU_SEARCH_HEADER_PATHS} ${UNIX_DEFAULT_INCLUDE}
-  NO_DEFAULT_PATH # make sure we don't accidentally pick up a different version
-)
-
-include(Utils)
-
-if(NOT MSVC AND "${ICU_ROOT}" STREQUAL "")
-  set(UNIX_DEFAULT_LIB
+  set(ICU_SEARCH_LIB_PATHS
       "/lib"
       "/lib/x86_64-linux-gnu"
       "/usr/lib"
       "/usr/lib/x86_64-linux-gnu"
   )
 endif()
+
+find_path(ICU_INCLUDE_DIR
+  unicode/uversion.h
+  PATHS ${ICU_SEARCH_HEADER_PATHS}
+  NO_DEFAULT_PATH # make sure we don't accidentally pick up a different version
+)
+
+include(Utils)
 
 
 # set options for: shared
@@ -66,17 +64,17 @@ set_find_library_options("${ICU_LIBRARY_PREFIX}" "${ICU_LIBRARY_SUFFIX}")
 # find libraries
 find_library(ICU_SHARED_LIBRARY_DT
   NAMES icudt icudata
-  PATHS ${ICU_SEARCH_LIB_PATH} ${UNIX_DEFAULT_LIB}
+  PATHS ${ICU_SEARCH_LIB_PATHS}
   NO_DEFAULT_PATH
 )
 find_library(ICU_SHARED_LIBRARY_IN
   NAMES icuin icui18n
-  PATHS ${ICU_SEARCH_LIB_PATH} ${UNIX_DEFAULT_LIB}
+  PATHS ${ICU_SEARCH_LIB_PATHS}
   NO_DEFAULT_PATH
 )
 find_library(ICU_SHARED_LIBRARY_UC
   NAMES icuuc
-  PATHS ${ICU_SEARCH_LIB_PATH} ${UNIX_DEFAULT_LIB}
+  PATHS ${ICU_SEARCH_LIB_PATHS}
   NO_DEFAULT_PATH
 )
 
@@ -97,17 +95,17 @@ set_find_library_options("${ICU_LIBRARY_PREFIX}" "${ICU_LIBRARY_SUFFIX}")
 # find libraries
 find_library(ICU_STATIC_LIBRARY_DT
   NAMES icudt icudata
-  PATHS ${ICU_SEARCH_LIB_PATH} ${UNIX_DEFAULT_LIB}
+  PATHS ${ICU_SEARCH_LIB_PATHS}
   NO_DEFAULT_PATH
 )
 find_library(ICU_STATIC_LIBRARY_IN
   NAMES icuin icui18n
-  PATHS ${ICU_SEARCH_LIB_PATH} ${UNIX_DEFAULT_LIB}
+  PATHS ${ICU_SEARCH_LIB_PATHS}
   NO_DEFAULT_PATH
 )
 find_library(ICU_STATIC_LIBRARY_UC
   NAMES icuuc
-  PATHS ${ICU_SEARCH_LIB_PATH} ${UNIX_DEFAULT_LIB}
+  PATHS ${ICU_SEARCH_LIB_PATHS}
   NO_DEFAULT_PATH
 )
 
@@ -146,7 +144,7 @@ if (ICU_INCLUDE_DIR
   )
 
   set(ICU_LIBRARY_DIR
-    "${ICU_SEARCH_LIB_PATH}"
+    "${ICU_SEARCH_LIB_PATHS}"
     CACHE PATH
     "Directory containing ICU libraries"
     FORCE

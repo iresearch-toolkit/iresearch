@@ -34,21 +34,21 @@ if (NOT "${LZ4_ROOT}" STREQUAL "")
     ${LZ4_ROOT}/src/lz4/lib
   )
 elseif (NOT MSVC)
-  set(UNIX_DEFAULT_INCLUDE
+  set(LZ4_SEARCH_HEADER_PATHS
       "/usr/include"
       "/usr/include/lz4"
       "/usr/include/x86_64-linux-gnu"
       "/usr/include/x86_64-linux-gnu/lz4"
   )
 
-  set(UNIX_DEFAULT_LIB
+  set(LZ4_SEARCH_LIB_PATHS
       "/lib"
       "/lib/x86_64-linux-gnu"
       "/usr/lib"
       "/usr/lib/x86_64-linux-gnu"
   )
 
-  set(UNIX_DEFAULT_SRC
+  set(LZ4_SEARCH_SRC_PATHS
       "/usr/src"
       "/usr/src/lz4"
       "/usr/src/lz4/lib"
@@ -57,13 +57,13 @@ endif()
 
 find_path(Lz4_INCLUDE_DIR
   lz4.h
-  PATHS ${LZ4_SEARCH_HEADER_PATHS} ${UNIX_DEFAULT_INCLUDE}
+  PATHS ${LZ4_SEARCH_HEADER_PATHS}
   NO_DEFAULT_PATH # make sure we don't accidentally pick up a different version
 )
 
 find_path(Lz4_SRC_DIR_LZ4
   lz4.c
-  PATHS ${LZ4_SEARCH_SRC_PATHS} ${UNIX_DEFAULT_SRC}
+  PATHS ${LZ4_SEARCH_SRC_PATHS}
   NO_DEFAULT_PATH # make sure we don't accidentally pick up a different version
 )
 
@@ -117,7 +117,7 @@ set_find_library_options("${LZ4_LIBRARY_PREFIX}" "${LZ4_LIBRARY_SUFFIX}")
 # find library
 find_library(Lz4_SHARED_LIB
   NAMES lz4
-  PATHS ${LZ4_SEARCH_LIB_PATHS} ${UNIX_DEFAULT_LIB}
+  PATHS ${LZ4_SEARCH_LIB_PATHS}
   NO_DEFAULT_PATH
 )
 
@@ -138,7 +138,7 @@ set_find_library_options("${LZ4_LIBRARY_PREFIX}" "${LZ4_LIBRARY_SUFFIX}")
 # find library
 find_library(Lz4_STATIC_LIB
   NAMES lz4
-  PATHS ${LZ4_SEARCH_LIB_PATHS} ${UNIX_DEFAULT_LIB}
+  PATHS ${LZ4_SEARCH_LIB_PATHS}
   NO_DEFAULT_PATH
 )
 

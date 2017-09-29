@@ -33,21 +33,21 @@ if (NOT "${GTEST_ROOT}" STREQUAL "")
     ${GTEST_ROOT}/src/gtest/src
   )
 elseif (NOT MSVC)
-  set(UNIX_DEFAULT_INCLUDE
+  set(GTEST_SEARCH_HEADER_PATHS
       "/usr/include"
       "/usr/include/gtest"
       "/usr/include/x86_64-linux-gnu"
       "/usr/include/x86_64-linux-gnu/gtest"
   )
 
-  set(UNIX_DEFAULT_LIB
+  set(GTEST_SEARCH_LIB_PATHS
       "/lib"
       "/lib/x86_64-linux-gnu"
       "/usr/lib"
       "/usr/lib/x86_64-linux-gnu"
   )
 
-  set(UNIX_DEFAULT_SRC
+  set(GTEST_SEARCH_SRC_PATHS
       "/usr/src"
       "/usr/src/gtest"
       "/usr/src/gtest/src"
@@ -56,13 +56,13 @@ endif()
 
 find_path(GTEST_INCLUDE_DIR
   gtest/gtest.h
-  PATHS ${GTEST_SEARCH_HEADER_PATHS} ${UNIX_DEFAULT_INCLUDE}
+  PATHS ${GTEST_SEARCH_HEADER_PATHS}
   NO_DEFAULT_PATH # make sure we don't accidentally pick up a different version
 )
 
 find_path(GTEST_SRC_DIR_GTEST
   gtest.cc
-  PATHS ${GTEST_SEARCH_SRC_PATHS} ${UNIX_DEFAULT_SRC}
+  PATHS ${GTEST_SEARCH_SRC_PATHS}
   NO_DEFAULT_PATH # make sure we don't accidentally pick up a different version
 )
 
