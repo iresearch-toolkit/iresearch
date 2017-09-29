@@ -55,7 +55,7 @@ elseif (NOT MSVC)
 endif()
 
 find_path(GTEST_INCLUDE_DIR
-  gtest.h
+  gtest/gtest.h
   PATHS ${GTEST_SEARCH_HEADER_PATHS} ${UNIX_DEFAULT_INCLUDE}
   NO_DEFAULT_PATH # make sure we don't accidentally pick up a different version
 )
