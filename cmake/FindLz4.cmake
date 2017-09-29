@@ -81,9 +81,12 @@ endif()
 if (Lz4_INCLUDE_DIR AND Lz4_SRC_DIR_LZ4 AND Lz4_SRC_DIR_CMAKE)
   set(Lz4_FOUND TRUE)
 
-  # use of BUILD_SHARED_LIBS BUILD_STATIC_LIBS has no effect
+  # for lz4_shared must set LZ4_BUNDLED_MODE=OFF + BUILD_STATIC_LIBS=ON CACHE FORCE
+  # for lz4_static must set BUILD_SHARED_LIBS=ON CACHE FORCE
   set(LZ4_BUNDLED_MODE OFF) # enable lz4_shared
-  set(BUILD_SHARED_LIBS ON) # enable lz4_static
+  set(BUILD_SHARED_LIBS ON CACHE BOOL "" FORCE) # enable lz4_static
+  set(BUILD_STATIC_LIBS ON CACHE BOOL "" FORCE) # enable lz4_shared
+  set(LZ4_POSITION_INDEPENDENT_LIB ON)
   add_subdirectory(
     ${Lz4_SRC_DIR_CMAKE}
     ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/iresearch-lz4.dir
