@@ -149,6 +149,8 @@ BOOST_ROOT=<path-to>/boost_1_57_0
 make
 make install
 ```
+or
+point LZ4_ROOT at the source directory to build together with iResearch
 
 #### install (win32)
 
@@ -162,6 +164,8 @@ cmake -DCMAKE_INSTALL_PREFIX=<install-path> -DBUILD_LIBS=on -g "Visual studio 12
 cmake --build .
 cmake --build . --target install
 ```
+or
+point LZ4_ROOT at the source directory to build together with iResearch
 
 #### set environment
 ```bash
@@ -202,12 +206,12 @@ ICU_ROOT_SUFFIX is set (e.g. ICU_ROOT_SUFFIX=x86_64-linux-gnu for Ubuntu)
 
 #### install (*nix)
 
-> use revision no later than 9e0a8340d58c70f91e8a0233b985242dc69c6fb8 (Sep 2, 2015)
-> because the next revision (06565ab26f361de836c505b6dcb8c7fa9542d970) removes support for > > cmake
+> the custom CMakeLists.txt was based on revision 5137019d68befd633ce8b1cd48065f41e77ed43e
+> later versions may be used at your own risk of compilation failure
 
 ```bash
 git clone https://github.com/snowballstem/snowball.git
-git reset --hard 9e0a8340d58c70f91e8a0233b985242dc69c6fb8
+git reset --hard 5137019d68befd633ce8b1cd48065f41e77ed43e
 mkdir build && cd build
 cmake -DENABLE_STATIC=OFF -DNO_SHARED=OFF -g "Unix Makefiles" ..
 cmake --build .
@@ -215,16 +219,18 @@ cmake -DENABLE_STATIC=OFF -DNO_SHARED=ON -g "Unix Makefiles" ..
 cmake --build .
 ```
 or
+point SNOWBALL_ROOT at the source directory to build together with iResearch
+or
 via the distributions' package manager: libstemmer
 
 #### install (win32)
 
-> use revision no later than 9e0a8340d58c70f91e8a0233b985242dc69c6fb8 (Sep 2, 2015) 
-> because the next revision (06565ab26f361de836c505b6dcb8c7fa9542d970) removes support for > > cmake
+> the custom CMakeLists.txt was based on revision 5137019d68befd633ce8b1cd48065f41e77ed43e
+> later versions may be used at your own risk of compilation failure
 
 ```bash
 git clone https://github.com/snowballstem/snowball.git
-git reset --hard 9e0a8340d58c70f91e8a0233b985242dc69c6fb8
+git reset --hard 5137019d68befd633ce8b1cd48065f41e77ed43e
 mkdir build && cd build
 set PATH=%PATH%;<path-to>/build/Debug
 cmake -DENABLE_STATIC=OFF -DNO_SHARED=OFF -g "Visual studio 12" -Ax64 ..
@@ -232,6 +238,8 @@ cmake --build .
 cmake -DENABLE_STATIC=OFF -DNO_SHARED=ON -g "Visual studio 12" -Ax64 ..
 cmake --build .
 ```
+or
+point SNOWBALL_ROOT at the source directory to build together with iResearch
 
 > For static builds:
 > 1. in MSVC open: build/snowball.sln
@@ -300,6 +308,8 @@ mkdir build && cd build
 cmake ..
 make
 ```
+or
+point GTEST_ROOT at the source directory to build together with iResearch
 
 #### install (win32)
 ```bash
@@ -308,6 +318,8 @@ cmake -g "Visual studio 12" -Ax64 -Dgtest_force_shared_crt=ON -DCMAKE_DEBUG_POST
 cmake --build .
 mv Debug ../lib
 ```
+or
+point GTEST_ROOT at the source directory to build together with iResearch
 
 #### set environment
 ```bash
