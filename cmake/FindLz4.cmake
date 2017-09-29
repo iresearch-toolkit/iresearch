@@ -19,6 +19,7 @@ if (NOT "${LZ4_ROOT}" STREQUAL "")
     ${LZ4_ROOT}/include
     ${LZ4_ROOT}/include/lz4
     ${LZ4_ROOT}/include
+    ${LZ4_ROOT}/lib
   )
 
   set(LZ4_SEARCH_LIB_PATHS
