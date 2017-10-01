@@ -8,7 +8,7 @@
 [AppveyorMasterBadge]: https://ci.appveyor.com/api/projects/status/umr1pa805v7xa54a/branch/master?svg=true "Windows"
 [AppveyorLink]: https://ci.appveyor.com/project/gnusi/iresearch/branch/master "Windows"
 
-# EMC IResearch search engine
+# IResearch search engine
 ### Version 1.0
 
 ## Table of contents
@@ -23,7 +23,7 @@
 - [License](#license)
 
 ## Overview
-The iResearch library is meant to be treated as a standalone index that is capable of both indexing and storing individual values verbatim.
+The IResearch library is meant to be treated as a standalone index that is capable of both indexing and storing individual values verbatim.
 Indexed data is treated on a per-version/per-revision basis, i.e. existing data version/revision is never modified and updates/removals
 are treated as new versions/revisions of the said data. This allows for trivial multi-threaded read/write operations on the index.
 The index exposes its data processing functionality via a multi-threaded 'writer' interface that treats each document abstraction as a
@@ -33,7 +33,7 @@ The queries themselves are constructed from either string IQL (index query langu
 building blocks available in the API.
 The querying infrastructure provides the capability of ordering the result set by one or more ranking/scoring implementations.
 The ranking/scoring implementation logic is plugin-based and lazy-initialized during runtime as needed, allowing for addition of custom
-ranking/scoring logic without the need to even recompile the iResearch library.
+ranking/scoring logic without the need to even recompile the IResearch library.
 
 
 ## High level architecture and main concepts
@@ -150,11 +150,11 @@ make
 make install
 ```
 or
-point LZ4_ROOT at the source directory to build together with iResearch
+point LZ4_ROOT at the source directory to build together with IResearch
 
 #### install (win32)
 
-> If compiling iResearch with /MT add add_definitions("/MTd") to the end of
+> If compiling IResearch with /MT add add_definitions("/MTd") to the end of
 > cmake_unofficial/CMakeLists.txt since cmake will ignore the command line argument
 > -DCMAKE_C_FLAGS=/MTd
 
@@ -165,7 +165,7 @@ cmake --build .
 cmake --build . --target install
 ```
 or
-point LZ4_ROOT at the source directory to build together with iResearch
+point LZ4_ROOT at the source directory to build together with IResearch
 
 #### set environment
 ```bash
@@ -219,7 +219,7 @@ cmake -DENABLE_STATIC=OFF -DNO_SHARED=ON -g "Unix Makefiles" ..
 cmake --build .
 ```
 or
-point SNOWBALL_ROOT at the source directory to build together with iResearch
+point SNOWBALL_ROOT at the source directory to build together with IResearch
 or
 via the distributions' package manager: libstemmer
 
@@ -239,7 +239,7 @@ cmake -DENABLE_STATIC=OFF -DNO_SHARED=ON -g "Visual studio 12" -Ax64 ..
 cmake --build .
 ```
 or
-point SNOWBALL_ROOT at the source directory to build together with iResearch
+point SNOWBALL_ROOT at the source directory to build together with IResearch
 
 > For static builds:
 > 1. in MSVC open: build/snowball.sln
@@ -309,7 +309,7 @@ cmake ..
 make
 ```
 or
-point GTEST_ROOT at the source directory to build together with iResearch
+point GTEST_ROOT at the source directory to build together with IResearch
 
 #### install (win32)
 ```bash
@@ -319,7 +319,7 @@ cmake --build .
 mv Debug ../lib
 ```
 or
-point GTEST_ROOT at the source directory to build together with iResearch
+point GTEST_ROOT at the source directory to build together with IResearch
 
 #### set environment
 ```bash
@@ -349,7 +349,7 @@ IRESEARCH_TEXT_STOPWORD_PATH=<path-to-stopword-lists>
 
 ## Build
 ```bash
-git clone <iResearch code repository>/iresearch.git iresearch
+git clone <IResearch code repository>/iresearch.git iresearch
 cd iresearch
 mkdir build && cd build
 ```
@@ -407,7 +407,7 @@ used to generate very compact term dictionary prefix tries which can to be loade
 in memory even for huge dictionaries
 
 ## External 3rd party dependencies
-External 3rd party dependencies must be made available to the iResearch library separately.
+External 3rd party dependencies must be made available to the IResearch library separately.
 They may either be installed through the distribution package management system or build
 from source and the appropriate environment variables set accordingly.
 
@@ -430,7 +430,7 @@ used by analysis::text_analyzer for computing word stems (i.e. roots) for more f
 matching of words from languages not supported by 'snowball' are done verbatim
 
 ### [Google Test](https://code.google.com/p/googletest)
-used for writing tests for the iResearch library
+used for writing tests for the IResearch library
 
 ### Stopword list
 used by analysis::text_analyzer for filtering out noise words that should not impact text ranging
@@ -458,7 +458,7 @@ the first whitespace is ignored), in the directory corresponding to its language
 |iresearch::Not|boolean negation of multiple filters
 
 ## Index Query Language
-The iResearch index may be queries either via query trees built directly using the query building blocks available
+The IResearch index may be queries either via query trees built directly using the query building blocks available
 in the API or via the IQL query builder that generates a comparable query from a string representation of the query
 expressed using the IQL syntax.
 
@@ -566,9 +566,10 @@ The following grammar is currently defined via Bison (the root is <query>):
 ```
 
 ## License
+Copyright (c) 2017 ArangoDB GmbH
 Copyright (c) 2016 EMC Corporation
-  
+
 This software is provided under the Apache 2.0 Software license provided in the
 [LICENSE.md](LICENSE.md) file. Licensing information for third-party products used
-by EMC IResearch search engine can be found in
+by IResearch search engine can be found in
 [THIRD_PARTY_README.md](THIRD_PARTY_README.md)
