@@ -97,21 +97,20 @@ versions/revisions of data in the said directory.
 v3.2 or later
 
 ### [Boost](http://www.boost.org/doc/libs/1_57_0/more/getting_started/index.html)
-v1.57.0 or later (filesystem locale system program_options thread)
+v1.57.0 or later (filesystem locale system thread)
 
 #### install (*nix)
 > It looks like it is important to pass arguments to the bootstrap script in one 
 > line
 
 ```bash
-./bootstrap.sh --with-libraries=filesystem,locale,program_options,system,regex,thread
+./bootstrap.sh --with-libraries=filesystem,locale,system,regex,thread
 ./b2
 ```
 
 #### install (win32)
 ```bash
 bootstrap.bat --with-libraries=filesystem
-bootstrap.bat --with-libraries=program_options
 bootstrap.bat --with-libraries=test
 bootstrap.bat --with-libraries=thread
 b2 --build-type=complete stage address-model=64
@@ -392,7 +391,7 @@ They may either be installed through the distribution package management system 
 from source and the appropriate environment variables set accordingly.
 
 ### [Boost](http://www.boost.org/doc/libs/1_57_0/more/getting_started/index.html)
-v1.57.0 or later (filesystem locale system program_options thread) 
+v1.57.0 or later (filesystem locale system thread)
 used for functionality not available in the STL (excluding functionality available in ICU)
 
 ### [Lz4](https://code.google.com/p/lz4)
