@@ -548,7 +548,7 @@ The following grammar is currently defined via Bison (the root is <query>):
 ## License
 Copyright (c) 2017 ArangoDB GmbH
 
-Copyright (c) 2016 EMC Corporation
+Copyright (c) 2016-2017 EMC Corporation
 
 This software is provided under the Apache 2.0 Software license provided in the
 [LICENSE.md](LICENSE.md) file. Licensing information for third-party products used

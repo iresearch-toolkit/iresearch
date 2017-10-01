@@ -5,7 +5,7 @@ Third Party Software Read Me
 Copyright© 2017 ArangoDB GmbH. All rights reserved.
 Published October, 2017
 
-Copyright© 2016 EMC Corporation. All rights reserved.
+Copyright© 2016-2017 EMC Corporation. All rights reserved.
 Published October, 2016
 
 EMC believes the information in this publication is accurate as of its
