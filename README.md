@@ -38,8 +38,8 @@ ranking/scoring logic without the need to even recompile the IResearch library.
 
 ## High level architecture and main concepts
 ### Index
-An index consists of multiple independent parts, called segments and index metadata. Index metadata stores information about 
-active index segments for the particular index version/revision.  Each index segment is an index itself and consists of the 
+An index consists of multiple independent parts, called segments and index metadata. Index metadata stores information about
+active index segments for the particular index version/revision.  Each index segment is an index itself and consists of the
 following logical components:
 
 - segment metadata
@@ -47,26 +47,33 @@ following logical components:
 - term dictionary
 - postings lists
 - list of deleted documents
-- stored values 
+- stored values
 
 Read/write access to the components carried via plugin-based formats. Index may contain segments created using different formats.
 
 ### Document
 A database record is represented as an abstraction called a document.
 A document is actually a collection of indexed/stored fields.
-In order to be processed each field should satisfy the Field concept.
- 
-#### Field concept
-For type T to be Field, the following conditions have to be satisfied for an object m of type T:
+In order to be processed each field should satisfy at least `IndexedField` or `StoredField` concept.
+
+#### IndexedField concept
+For type `T` to be `IndexedField`, the following conditions have to be satisfied for an object m of type `T`:
 
 |Expression|Requires|Effects|
 |----|----|----|
-|m.name()|The output type must be convertible to iresearch::string_ref|A value uses as a key name.|
-|m.boost()|The output type must be convertible to float_t|A value uses as a boost factor for a document.|
-|m.get_tokens()|The output type must be convertible to iresearch::token_stream*|A token stream uses for populating in invert procedure. If value is nullptr field is treated as non-indexed.| 
-|m.features()|The output type must be convertible to const iresearch::flags&|A set of features requested for evaluation during indexing. E.g. it may contain request of processing positions and frequencies. Later the evaluated information can be used during querying.| 
-|m.serializer()|The output type must be convertible to const iresearch::serializer*|A serializer uses for storing arbitrary value in the index. Later one can retrieve stored value using index_reader API. If value is nullptr field is treated as non-stored.| 
-  
+|`m.name()`|The output type must be convertible to `iresearch::string_ref`|A value uses as a key name.|
+|`m.boost()`|The output type must be convertible to `float_t`|A value uses as a boost factor for a document.|
+|`m.get_tokens()`|The output type must be convertible to `iresearch::token_stream*`|A token stream uses for populating in invert procedure. If value is `nullptr` field is treated as non-indexed.|
+|`m.features()`|The output type must be convertible to `const iresearch::flags&`|A set of features requested for evaluation during indexing. E.g. it may contain request of processing positions and frequencies. Later the evaluated information can be used during querying.|
+
+#### StoredField concpet
+For type `T` to be `StoredField`, the following conditions have to be satisfied for an object m of type `T`:
+
+|Expression|Requires|Effects|
+|----|----|----|
+|`m.name()`|The output type must be convertible to `iresearch::string_ref`|A value uses as a key name.|
+|`m.write(iresearch::data_output& out)`|The output type must be convertible to bool.|One may write arbitrary data to stream denoted by `out` in order to retrieve written value using index_reader API later. If nothing has written but returned value is `true` then stored value is treated as flag. If returned value is `false` then nothing is stored even if something has been written to `out` stream.|
+
 ### Directory
 A data storage abstraction that can either store data in memory or on the filesystem depending on which implementation is instantiated.
 A directory stores at least all the currently in-use index data versions/revisions. For the case where there are no active users of the
@@ -76,40 +83,14 @@ A single version/revision of the index is composed of one or more segments assoc
 ### Writer
 A single instance per-directory object that is used for indexing data. Data may be indexed in a per-document basis or sourced from
 another reader for trivial directory merge functionality.
-Each commit() of a writer produces a new version/revision of the view of the data in the corresponding directory.
+Each `commit()` of a writer produces a new version/revision of the view of the data in the corresponding directory.
 Additionally the interface also provides directory defragmentation capabilities to allow compacting multiple smaller version/revision
 segments into larger more compact representations.
-A writer supports two-phase transactions via begin()/commit()/rollback() methods. 
+A writer supports two-phase transactions via `begin()`/`commit()`/`rollback()` methods.
 
 ### Reader
 A reusable/refreshable view of an index at a given point in time. Multiple readers can use the same directory and may point to different
 versions/revisions of data in the said directory.
-
-## Project structure
-
-|Path|Description|
-|----|---|
-|core|IResearch library source code|
-|core/analysis|indexed field token streams, indexed fields with additional processing logic|
-|core/document|interfaces and classes required to represent an indexed document abstraction|
-|core/error|definitions of errors that can be thrown|
-|core/formats|interfaces and classes representing indexed data encoding and storage formats, both for memory and filesystem storage|
-|core/index|interfaces and classes required to represent document field metadata, index structure and index data-flow (i.e. read, write, merge)|
-|core/iql|interfaces and classes implementing the 'index query language' processing and query tree generation|
-|core/search|interfaces and classes implementing the search query tree compilation processing and document matching|
-|core/store|interfaces and classes implementing index data persistence (i.e. in-memory and filesystem storage) and storage maintenance functionality|
-|core/utils|utility classes used by the library|
-|external|included 3rd party dependencies (i.e. murmurhash, openfst)|
-|tests|IResearch library tests|
-|tests/analysis|tests for code in core/analysis|
-|tests/formats|tests for code in core/formats|
-|tests/index|tests for code in core/index|
-|tests/iql|tests for code in core/iql|
-|tests/resources|test data used by the test suite|
-|tests/search|tests for code in core/search|
-|tests/store|tests for code in core/store|
-|tests/unicode|utf8 helpers use by the test suite|
-|tests/utils|tests for code in core/utils|
 
 ## Build prerequisites
 
