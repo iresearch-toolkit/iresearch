@@ -14,7 +14,6 @@
 ## Table of contents
 - [Overview](#overview)
 - [High level architecture and main concepts](#high-level-architecture-and-main-concepts)
-- [Project structure](#project-structure)
 - [Build](#build)
 - [Included 3rd party dependencies](#included-3rd-party-dependencies)
 - [External 3rd party dependencies](#external-3rd-party-dependencies)
@@ -66,7 +65,7 @@ For type `T` to be `IndexedField`, the following conditions have to be satisfied
 |`m.get_tokens()`|The output type must be convertible to `iresearch::token_stream*`|A token stream uses for populating in invert procedure. If value is `nullptr` field is treated as non-indexed.|
 |`m.features()`|The output type must be convertible to `const iresearch::flags&`|A set of features requested for evaluation during indexing. E.g. it may contain request of processing positions and frequencies. Later the evaluated information can be used during querying.|
 
-#### StoredField concpet
+#### StoredField concept
 For type `T` to be `StoredField`, the following conditions have to be satisfied for an object m of type `T`:
 
 |Expression|Requires|Effects|
@@ -548,6 +547,7 @@ The following grammar is currently defined via Bison (the root is <query>):
 
 ## License
 Copyright (c) 2017 ArangoDB GmbH
+
 Copyright (c) 2016 EMC Corporation
 
 This software is provided under the Apache 2.0 Software license provided in the
