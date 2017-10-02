@@ -79,6 +79,11 @@ class IRESEARCH_API segment_reader final
     return impl_->docs_iterator();
   }
 
+  // FIXME find a better way to mask documents
+  virtual doc_iterator::ptr mask(doc_iterator::ptr&& it) const override {
+    return impl_->mask(std::move(it));
+  }
+
   virtual const term_reader* field(const string_ref& name) const override {
     return impl_->field(name);
   }

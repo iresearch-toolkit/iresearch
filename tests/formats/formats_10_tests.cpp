@@ -121,7 +121,6 @@ class format_10_test_case : public tests::format_test_case_base {
       meta.name = "segment_name";
 
       ir::reader_state state;
-      state.docs_mask = nullptr;
       state.dir = &dir();
       state.meta = &meta;
 
@@ -251,7 +250,6 @@ class format_10_test_case : public tests::format_test_case_base {
       meta.name = "segment_name";
 
       ir::reader_state state;
-      state.docs_mask = nullptr;
       state.dir = &dir();
       state.meta = &meta;
 
@@ -408,7 +406,6 @@ class format_10_test_case : public tests::format_test_case_base {
       meta.name = "segment_name";
 
       ir::reader_state state;
-      state.docs_mask = nullptr;
       state.dir = &dir();
       state.meta = &meta;
 

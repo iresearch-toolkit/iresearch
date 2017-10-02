@@ -42,6 +42,7 @@ namespace tests {
 
   template<typename T>
   void validate_terms(
+    const iresearch::sub_reader& segment,
     const iresearch::term_reader& terms,
     uint64_t doc_count,
     const iresearch::bytes_ref& min,
@@ -63,7 +64,7 @@ namespace tests {
 
       ASSERT_NE(expected_terms.end(), itr);
 
-      for (auto docs_itr = term_itr->postings(term_features); docs_itr->next();) {
+      for (auto docs_itr = segment.mask(term_itr->postings(term_features)); docs_itr->next();) {
         auto& attrs = docs_itr->attributes();
 
         ASSERT_EQ(1, itr->second.erase(docs_itr->value()));
@@ -1061,6 +1062,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       ASSERT_TRUE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // 'norm' attribute has been specified
       ASSERT_EQ(features, field.features);
       validate_terms(
+        segment,
         *terms,
         2,
         bytes1,
@@ -1130,6 +1132,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       ASSERT_TRUE(max.next() && max.next() && max.next() && max.next()); // skip to last value
       ASSERT_TRUE(min.next()); // skip to first value
       validate_terms(
+        segment,
         *terms,
         2,
         min.attributes().get<iresearch::term_attribute>()->value(),
@@ -1171,6 +1174,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       ASSERT_TRUE(max.next() && max.next()); // skip to last value
       ASSERT_TRUE(min.next()); // skip to first value
       validate_terms(
+        segment,
         *terms,
         2,
         min.attributes().get<iresearch::term_attribute>()->value(),
@@ -1212,6 +1216,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       ASSERT_TRUE(max.next() && max.next()); // skip to last value
       ASSERT_TRUE(min.next()); // skip to first value
       validate_terms(
+        segment,
         *terms,
         2,
         min.attributes().get<iresearch::term_attribute>()->value(),
@@ -1252,6 +1257,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       ASSERT_TRUE(max.next() && max.next() && max.next() && max.next()); // skip to last value
       ASSERT_TRUE(min.next()); // skip to first value
       validate_terms(
+        segment,
         *terms,
         2,
         min.attributes().get<iresearch::term_attribute>()->value(),
@@ -1280,6 +1286,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
       validate_terms(
+        segment,
         *terms,
         2,
         iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref(string1)),
@@ -1310,6 +1317,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
       validate_terms(
+        segment,
         *terms,
         2,
         iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref(text1)),
@@ -1418,6 +1426,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
       validate_terms(
+        segment,
         *terms,
         1,
         bytes3,
@@ -1481,6 +1490,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       ASSERT_TRUE(max.next() && max.next() && max.next() && max.next()); // skip to last value
       ASSERT_TRUE(min.next()); // skip to first value
       validate_terms(
+        segment,
         *terms,
         1,
         min.attributes().get<iresearch::term_attribute>()->value(),
@@ -1516,6 +1526,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       ASSERT_TRUE(max.next() && max.next()); // skip to last value
       ASSERT_TRUE(min.next()); // skip to first value
       validate_terms(
+        segment,
         *terms,
         1,
         min.attributes().get<iresearch::term_attribute>()->value(),
@@ -1551,6 +1562,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       ASSERT_TRUE(max.next() && max.next()); // skip to last value
       ASSERT_TRUE(min.next()); // skip to first value
       validate_terms(
+        segment,
         *terms,
         1,
         min.attributes().get<iresearch::term_attribute>()->value(),
@@ -1586,6 +1598,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       ASSERT_TRUE(max.next() && max.next() && max.next() && max.next()); // skip to last value
       ASSERT_TRUE(min.next()); // skip to first value
       validate_terms(
+        segment,
         *terms,
         1,
         min.attributes().get<iresearch::term_attribute>()->value(),
@@ -1614,6 +1627,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
       validate_terms(
+        segment,
         *terms,
         2,
         iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref(string3)),
@@ -1643,6 +1657,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
       validate_terms(
+        segment,
         *terms,
         1,
         iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref(text3)),
@@ -1762,6 +1777,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     ASSERT_EQ(features, field.features);
     ASSERT_NE(nullptr, terms);
     validate_terms(
+      segment,
       *terms,
       3,
       bytes1,
@@ -1838,6 +1854,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     ASSERT_TRUE(max.next() && max.next() && max.next() && max.next()); // skip to last value
     ASSERT_TRUE(min.next()); // skip to first value
     validate_terms(
+      segment,
       *terms,
       3,
       min.attributes().get<iresearch::term_attribute>()->value(),
@@ -1885,6 +1902,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     ASSERT_TRUE(max.next() && max.next()); // skip to last value
     ASSERT_TRUE(min.next()); // skip to first value
     validate_terms(
+      segment,
       *terms,
       3,
       min.attributes().get<iresearch::term_attribute>()->value(),
@@ -1932,6 +1950,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     ASSERT_TRUE(max.next() && max.next()); // skip to last value
     ASSERT_TRUE(min.next()); // skip to first value
     validate_terms(
+      segment,
       *terms,
       3,
       min.attributes().get<iresearch::term_attribute>()->value(),
@@ -1979,6 +1998,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     ASSERT_TRUE(max.next() && max.next() && max.next() && max.next()); // skip to last value
     ASSERT_TRUE(min.next()); // skip to first value
     validate_terms(
+      segment,
       *terms,
       3,
       min.attributes().get<iresearch::term_attribute>()->value(),
@@ -2008,6 +2028,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     ASSERT_EQ(features, field.features);
     ASSERT_NE(nullptr, terms);
     validate_terms(
+      segment,
       *terms,
       3,
       iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref(string1)),
@@ -2038,6 +2059,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     ASSERT_EQ(features, field.features);
     ASSERT_NE(nullptr, terms);
     validate_terms(
+      segment,
       *terms,
       3,
       iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref(text1)),

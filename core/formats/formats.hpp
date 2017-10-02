@@ -527,7 +527,6 @@ struct IRESEARCH_API flush_state {
 
 struct IRESEARCH_API reader_state {
   const directory* dir;
-  const document_mask* docs_mask;
   const segment_meta* meta;
 };
 

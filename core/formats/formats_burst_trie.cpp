@@ -1654,7 +1654,7 @@ field_reader::field_reader(iresearch::postings_reader::ptr&& pr)
 bool field_reader::prepare(
     const directory& dir,
     const segment_meta& meta,
-    const document_mask& mask
+    const document_mask& /*mask*/
 ) {
   std::string str;
 
@@ -1667,7 +1667,6 @@ bool field_reader::prepare(
   reader_state state;
 
   state.dir = &dir;
-  state.docs_mask = &mask;
   state.meta = &meta;
 
   // check index header 

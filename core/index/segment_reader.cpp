@@ -56,6 +56,49 @@ class iterator_impl: public iresearch::index_reader::reader_iterator_impl {
   const iresearch::sub_reader* rdr_;
 };
 
+class mask_doc_iterator final : public irs::doc_iterator {
+ public:
+  explicit mask_doc_iterator(
+      irs::doc_iterator::ptr&& it,
+      const irs::document_mask& mask) NOEXCEPT
+    : mask_(mask), it_(std::move(it))  {
+  }
+
+  virtual bool next() override {
+    while (it_->next()) {
+      if (mask_.find(value()) == mask_.end()) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  virtual irs::doc_id_t seek(irs::doc_id_t target) override {
+    const auto doc = it_->seek(target);
+
+    if (mask_.find(doc) == mask_.end()) {
+      return doc;
+    }
+
+    next();
+
+    return value();
+  }
+
+  virtual irs::doc_id_t value() const override {
+    return it_->value();
+  }
+
+  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+    return it_->attributes();
+  }
+
+ private:
+  const irs::document_mask& mask_; // excluded document ids
+  irs::doc_iterator::ptr it_;
+}; // mask_doc_iterator
+
 class masked_docs_iterator 
     : public iresearch::segment_reader::docs_iterator_t,
       private iresearch::util::noncopyable {
@@ -180,6 +223,16 @@ class segment_reader_impl : public sub_reader {
   }
 
   virtual docs_iterator_t::ptr docs_iterator() const override;
+
+  virtual doc_iterator::ptr mask(doc_iterator::ptr&& it) const override {
+    if (docs_mask_.empty()) {
+      return std::move(it);
+    }
+
+    return doc_iterator::make<mask_doc_iterator>(
+      std::move(it), docs_mask_
+    );
+  }
 
   virtual const term_reader* field(const string_ref& name) const override {
     return field_reader_->field(name);

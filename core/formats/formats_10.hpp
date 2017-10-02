@@ -395,7 +395,6 @@ class IRESEARCH_PLUGIN postings_reader final: public iresearch::postings_reader 
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  const document_mask* docs_mask_{};
   index_input::ptr doc_in_;
   index_input::ptr pos_in_;
   index_input::ptr pay_in_;

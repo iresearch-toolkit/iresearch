@@ -95,6 +95,10 @@ struct IRESEARCH_API sub_reader : index_reader {
 
   virtual field_iterator::ptr fields() const = 0;
 
+  virtual doc_iterator::ptr mask(doc_iterator::ptr&& it) const {
+    return std::move(it);
+  }
+
   // returns corresponding term_reader by the specified field
   virtual const term_reader* field(
     const string_ref& field
