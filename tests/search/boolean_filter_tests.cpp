@@ -4231,6 +4231,26 @@ protected:
       check_query(root, docs_t{ 1, 17, 26 }, rdr);
     }
 
+    // name=A OR name=Q OR same!=xyz
+    {
+      irs::Or root;
+      root.add<irs::by_term>().field("name").term("A"); // 1
+      root.add<irs::by_term>().field("name").term("Q"); // 17
+      root.add<irs::Or>().add<irs::Not>().filter<irs::by_term>().field("same").term("xyz"); // none (not within an OR must be wrapped inside a single-branch OR)
+
+      check_query(root, docs_t{ 1, 17 }, rdr);
+    }
+
+    // (name=A OR name=Q) OR same!=xyz
+    {
+      irs::Or root;
+      root.add<irs::by_term>().field("name").term("A"); // 1
+      root.add<irs::by_term>().field("name").term("Q"); // 17
+      root.add<irs::Or>().add<irs::Not>().filter<irs::by_term>().field("same").term("xyz"); // none (not within an OR must be wrapped inside a single-branch OR)
+
+      check_query(root, docs_t{ 1, 17 }, rdr);
+    }
+
     // name=A OR name=Q OR name=Z OR same=invalid_term OR invalid_field=V
     {
       iresearch::Or root;
