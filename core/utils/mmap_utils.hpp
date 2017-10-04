@@ -26,6 +26,22 @@
 
 #include "file_utils.hpp"
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constants for madvise
+/// NOTE: It's important to define constants BEFORE the next include
+////////////////////////////////////////////////////////////////////////////////
+#define IR_MADVISE_SEQUENTIAL 0
+#define IR_MADVISE_RANDOM 0
+#define IR_MADVISE_WILLNEED 0
+#define IR_MADVISE_DONTNEED 0
+#define IR_MADVISE_DONTDUMP 0
+
+#if defined(_MSC_VER)
+#include "mman_win32.hpp"
+#else
+#include "mman_posix.hpp"
+#endif
+
 NS_ROOT
 NS_BEGIN(mmap_utils)
 
