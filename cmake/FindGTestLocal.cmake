@@ -83,6 +83,7 @@ if (GTEST_INCLUDE_DIR AND GTEST_SRC_DIR_GTEST AND GTEST_SRC_DIR_CMAKE)
   add_subdirectory(
     ${GTEST_SRC_DIR_CMAKE}
     ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/iresearch-gtest.dir
+    EXCLUDE_FROM_ALL # do not build unused targets
   )
 
   # prepend source directory to files since can't switch to source directory
