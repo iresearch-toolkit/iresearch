@@ -35,7 +35,7 @@ NS_LOCAL
 const std::string FILENAME_PREFIX("libanalyzer-");
 
 class analyzer_register:
-  public iresearch::generic_register<iresearch::string_ref, iresearch::analysis::analyzer::ptr(*)(const iresearch::string_ref& args), analyzer_register> {
+  public irs::tagged_generic_register<irs::string_ref, irs::analysis::analyzer::ptr(*)(const irs::string_ref& args), irs::string_ref, analyzer_register> {
  protected:
   virtual std::string key_to_filename(const key_type& key) const override {
     std::string filename(FILENAME_PREFIX.size() + key.size(), 0);
@@ -84,16 +84,36 @@ analyzer_registrar::analyzer_registrar(
     analyzer::ptr(*factory)(const iresearch::string_ref& args),
     const char* source /*= nullptr*/
 ) {
-  auto entry = analyzer_register::instance().set(type.name(), factory);
+  irs::string_ref source_ref(source);
+  auto entry = analyzer_register::instance().set(
+    type.name(),
+    factory,
+    source_ref.null() ? nullptr : &source_ref
+  );
 
   registered_ = entry.second;
 
   if (!registered_ && factory != entry.first) {
-    if (source) {
+    auto* registered_source = analyzer_register::instance().tag(type.name());
+
+    if (source && registered_source) {
+      IR_FRMT_WARN(
+        "type name collision detected while registering analyzer, ignoring: type '%s' from %s, previously from %s",
+        type.name().c_str(),
+        source,
+        registered_source->c_str()
+      );
+    } else if (source) {
       IR_FRMT_WARN(
         "type name collision detected while registering analyzer, ignoring: type '%s' from %s",
         type.name().c_str(),
         source
+      );
+    } else if (registered_source) {
+      IR_FRMT_WARN(
+        "type name collision detected while registering analyzer, ignoring: type '%s', previously from %s",
+        type.name().c_str(),
+        registered_source->c_str()
       );
     } else {
       IR_FRMT_WARN(
