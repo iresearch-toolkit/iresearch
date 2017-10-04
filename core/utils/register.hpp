@@ -161,6 +161,46 @@ class generic_register: public singleton<RegisterType> {
   std::vector<std::unique_ptr<void, std::function<void(void*)>>> so_handles_;
 }; // generic_register
 
+// A generic_registrar capable of storing an associated tag for each entry
+template<typename KeyType, typename EntryType, typename TagType, typename RegisterType>
+class tagged_generic_register: public generic_register<KeyType, EntryType, RegisterType> {
+ public:
+  typedef typename irs::generic_register<KeyType, EntryType, RegisterType> parent_type;
+  typedef typename parent_type::key_type key_type;
+  typedef typename parent_type::entry_type entry_type;
+  typedef TagType tag_type;
+
+  virtual ~tagged_generic_register() { }
+
+  // @return the entry registered under the key and if an insertion took place
+  std::pair<entry_type, bool> set(
+      const key_type& key,
+      const entry_type& entry,
+      const tag_type* tag = nullptr
+  ) {
+    auto itr = parent_type::set(key, entry);
+
+    if (tag && itr.second) {
+      std::lock_guard<mutex_t> lock(mutex_);
+      tag_map_.emplace(key, *tag);
+    }
+
+    return itr;
+  }
+
+  const tag_type* tag(const key_type& key) const {
+    std::lock_guard<mutex_t> lock(mutex_);
+    auto itr = tag_map_.find(key);
+
+   return itr == tag_map_.end() ? nullptr : &(itr->second);
+  }
+
+  private:
+   typedef std::unordered_map<key_type, tag_type> tag_map_t;
+   mutable mutex_t mutex_;
+   tag_map_t tag_map_;
+};
+
 NS_END
 
 #endif
