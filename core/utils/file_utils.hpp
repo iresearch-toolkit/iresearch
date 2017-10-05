@@ -27,23 +27,32 @@
 #include <memory>
 #include <cstdio>
 #include <functional>
+#include <fcntl.h> // open/_wopen
 
-#ifdef _WIN32
+#ifdef _WIN32  
   #include <tchar.h>
+  #include <io.h> // _close
   #define file_path_t wchar_t*
+  #define IR_FILEPATH_SPECIFIER "%ws"
   #define file_stat _wstat
   #define file_fstat _fstat
   #define file_stat_t struct _stat
   #define file_no _fileno
   #define mode_t unsigned short
   #define file_open(name, mode) iresearch::file_utils::open(name, _T(mode))
-#else
+  #define posix_open _wopen
+  #define posix_close _close
+#else  
+  #include <unistd.h> // close
   #define file_path_t char*
+  #define IR_FILEPATH_SPECIFIER "%s"
   #define file_stat stat
   #define file_fstat fstat
   #define file_stat_t struct stat    
   #define file_no fileno
   #define file_open(name, mode) iresearch::file_utils::open(name, mode)
+  #define posix_open open
+  #define posix_clone close
 #endif
 
 #include "shared.hpp"
@@ -104,6 +113,7 @@ bool visit_directory(
 // -----------------------------------------------------------------------------
 
 bool file_sync(const file_path_t name) NOEXCEPT;
+bool file_sync(int fd) NOEXCEPT;
 
 NS_END
 NS_END

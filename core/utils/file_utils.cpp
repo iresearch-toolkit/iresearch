@@ -364,6 +364,10 @@ bool file_sync(const file_path_t file) NOEXCEPT {
   return res;
 }
 
+bool file_sync(int fd) NOEXCEPT {
+  return 0 == fsync(fd);
+}
+
 #endif // _WIN32
 
 ptrdiff_t file_size(const file_path_t file) NOEXCEPT {
@@ -380,6 +384,7 @@ ptrdiff_t file_size(int fd) NOEXCEPT {
 ptrdiff_t block_size(int fd) NOEXCEPT {
 #ifdef _WIN32
   // fixme
+  UNUSED(fd);
   return 512;
 #else
   file_stat_t info;
@@ -508,6 +513,18 @@ bool visit_directory(
 
     return !terminate;
   #endif
+}
+
+bool file_sync(int fd) NOEXCEPT {  
+  // Attempt to convert file descriptor into an operating system file handle  
+  HANDLE handle = reinterpret_cast<HANDLE>(_get_osfhandle(fd));
+  
+  // An invalid file system handle was returned.
+  if (handle == INVALID_HANDLE_VALUE) {
+    return false;
+  }
+
+  return !FlushFileBuffers(handle);  
 }
 
 NS_END
