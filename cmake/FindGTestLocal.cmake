@@ -132,5 +132,6 @@ find_package(GTest
   REQUIRED
 )
 
-# shared libraries not built for GTest by default, so nothing to set
+# shared libraries not built for GTest by default, so fallback to static versions
+set(GTEST_SHARED_LIBS ${GTEST_BOTH_LIBRARIES})
 set(GTEST_STATIC_LIBS ${GTEST_BOTH_LIBRARIES})
