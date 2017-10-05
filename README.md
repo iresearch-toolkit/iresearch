@@ -96,6 +96,25 @@ versions/revisions of data in the said directory.
 ### [CMake](https://cmake.org)
 v3.2 or later
 
+### [GNU bunutils](https://www.gnu.org/software/binutils)
+
+#### install (*nix)
+via the distributions' package manager: binutils
+or
+build from source via:
+```bash
+./configure
+./make
+```
+
+#### install (win32)
+not required
+
+#### set environment
+```bash
+PATH=<path-to>/ar:$PATH
+```
+
 ### [Boost](http://www.boost.org/doc/libs/1_57_0/more/getting_started/index.html)
 v1.57.0 or later (filesystem locale system thread)
 
