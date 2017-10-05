@@ -51,7 +51,7 @@ class mmap_index_input : public irs::bytes_ref_input {
     }
 
     if (!handle->open(file)) {
-      IR_FRMT_ERROR("Failed to open mmapped input file, path: %s", file);
+      IR_FRMT_ERROR("Failed to open mmapped input file, path: " IR_FILEPATH_SPECIFIER, file);
       return nullptr;
     }
 

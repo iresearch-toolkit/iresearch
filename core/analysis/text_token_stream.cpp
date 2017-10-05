@@ -59,6 +59,7 @@
 
 #include "utils/hash_utils.hpp"
 #include "utils/locale_utils.hpp"
+#include "utils/file_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/misc.hpp"
 #include "utils/runtime_utils.hpp"
@@ -142,7 +143,7 @@ bool get_ignored_words(
   try {
     if (!boost::filesystem::is_directory(stopword_path) ||
         !boost::filesystem::is_directory(stopword_path.append(language))) {
-      IR_FRMT_ERROR("Failed to load stopwords from path: %s", stopword_path.c_str());
+      IR_FRMT_ERROR("Failed to load stopwords from path: " IR_FILEPATH_SPECIFIER, stopword_path.c_str());
 
       return false;
     }
@@ -157,7 +158,7 @@ bool get_ignored_words(
       std::ifstream in(dir_itr->path().native());
 
       if (!in) {
-        IR_FRMT_ERROR("Failed to load stopwords from path: %s", dir_itr->path().c_str());
+        IR_FRMT_ERROR("Failed to load stopwords from path: " IR_FILEPATH_SPECIFIER, dir_itr->path().c_str());
 
         return false;
       }
@@ -179,7 +180,7 @@ bool get_ignored_words(
 
     return true;
   } catch (...) {
-    IR_FRMT_ERROR("Caught error while loading stopwords from path: %s", stopword_path.c_str());
+    IR_FRMT_ERROR("Caught error while loading stopwords from path: " IR_FILEPATH_SPECIFIER, stopword_path.c_str());
     IR_EXCEPTION();
   }
 
