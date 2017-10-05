@@ -571,10 +571,11 @@ elseif (APPLE)
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-bm25-static>"
   )
-    set(IResearch_STATIC_LIBRARIES "${IResearch_STATIC_LIBRARIES} '${ELEMENT}'")
+    # MacOS does not have GNU binutils so have to extract archives to the filesystem and recreate the archive manually
+    set(IResearch_STATIC_LIBRARIES "${IResearch_STATIC_LIBRARIES} && (rm -r ar || true) && mkdir ar && cd ar && ar -t '${ELEMENT}' | sort | uniq -c | while read count element\; do for i in `seq 1 $count`\; do ar -xN $i '${ELEMENT}' $element && mv $element $element.$i\; done\; done && ar -c -m '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>' * && cd ..")
   endforeach ()
 
-  set(IResearch_STATIC_LIBRARIES_CMD "ar -q -s $<TARGET_FILE:${IResearch_TARGET_NAME}-static> ${IResearch_STATIC_LIBRARIES}")
+  set(IResearch_STATIC_LIBRARIES_CMD "cp '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>' '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>'.base ${IResearch_STATIC_LIBRARIES} || rm '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>'")
   add_custom_command(
     TARGET ${IResearch_TARGET_NAME}-static POST_BUILD
     COMMAND sh -c ${IResearch_STATIC_LIBRARIES_CMD}
