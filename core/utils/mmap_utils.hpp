@@ -46,6 +46,11 @@ NS_ROOT
 NS_BEGIN(mmap_utils)
 
 //////////////////////////////////////////////////////////////////////////////
+/// @brief flushes changes made in memory back to disk
+//////////////////////////////////////////////////////////////////////////////
+int flush(int fd, void* addr, size_t size, int flags) NOEXCEPT;
+
+//////////////////////////////////////////////////////////////////////////////
 /// @class mmap_handle
 //////////////////////////////////////////////////////////////////////////////
 class mmap_handle {
@@ -60,11 +65,20 @@ class mmap_handle {
 
   bool open(const file_path_t file) NOEXCEPT;
   void close() NOEXCEPT;
-  explicit operator bool() const NOEXCEPT;
+
+  explicit operator bool() const NOEXCEPT {
+    return fd_ >= 0;
+  }
 
   void* addr() const NOEXCEPT { return addr_; }
   size_t size() const NOEXCEPT { return size_; }
   ptrdiff_t fd() const NOEXCEPT { return fd_; }
+
+  bool flush(int flags) NOEXCEPT {
+    return !mmap_utils::flush(
+      static_cast<int>(fd_), addr_, size_, flags
+    );
+  }
 
  private:
   void init() NOEXCEPT;
