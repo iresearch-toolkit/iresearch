@@ -553,6 +553,34 @@ elseif (MSVC)
     TARGET ${IResearch_TARGET_NAME}-static-scrt POST_BUILD
     COMMAND ${IResearch_STATIC_SCRT_LIBRARIES_CMD}
   )
+elseif (APPLE)
+  unset(IResearch_STATIC_LIBRARIES)
+
+  foreach(ELEMENT
+    ${BFD_STATIC_LIBS}
+    ${Boost_STATIC_sharedRT_FILESYSTEM_LIBRARY_DEBUG}
+    ${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}
+    ${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}
+    ${Boost_STATIC_sharedRT_THREAD_LIBRARY_DEBUG}
+    ${ICU_STATIC_LIBS}
+    ${Unwind_STATIC_LIBS}
+    "$<TARGET_FILE:lz4_static>"
+    "$<TARGET_FILE:stemmer-static>"
+    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"
+    "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
+    "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
+    "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-bm25-static>"
+  )
+    # MacOS does not have GNU binutils so have to extract archives to the filesystem and recreate the archive manually
+    set(IResearch_STATIC_LIBRARIES "${IResearch_STATIC_LIBRARIES} && (rm -r ar || true) && mkdir ar && cd ar && ar -t '${ELEMENT}' | sort | uniq -c | while read count element\; do for i in `seq 1 $count`\; do ar -xN $i '${ELEMENT}' $element && mv $element $element.$i\; done\; done && ar -c -m '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>' * && cd ..")
+  endforeach ()
+
+  set(IResearch_STATIC_LIBRARIES_CMD "cp '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>' '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>'.base ${IResearch_STATIC_LIBRARIES} || rm '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>'")
+  add_custom_command(
+    TARGET ${IResearch_TARGET_NAME}-static POST_BUILD
+    COMMAND sh -c ${IResearch_STATIC_LIBRARIES_CMD}
+    VERBATIM
+  )
 else()
   unset(IResearch_STATIC_LIBRARIES)
 
