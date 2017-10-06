@@ -369,14 +369,16 @@ class disjunction : public doc_iterator_base {
   }
 
   static void add_no_score(
-      const order::prepared& order, const irs::score& score, byte_type* dst
-  ) {
+    const order::prepared&, 
+    const irs::score&, 
+    byte_type*) {
     // NOOP
   }
 
   static void add_score(
-      const order::prepared& order, const irs::score& score, byte_type* dst
-  ) {
+      const order::prepared& order, 
+      const irs::score& score, 
+      byte_type* dst) {
     score.evaluate();
     order.add(dst, score.c_str());
   }
