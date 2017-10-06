@@ -186,7 +186,7 @@ target_link_libraries(${IResearchTests_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-analyzer-text-shared
   ${IResearch_TARGET_NAME}-format-1_0-shared
-  ${GTEST_SHARED_LIBS}
+  ${GTEST_STATIC_LIBS}
   ${PTHREAD_LIBRARY}
 )
 
