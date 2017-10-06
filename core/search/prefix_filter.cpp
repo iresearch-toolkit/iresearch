@@ -97,7 +97,7 @@ filter::prepared::ptr by_prefix::prepare(
   /* apply boost */
   iresearch::boost::apply(q->attributes(), this->boost() * boost);
 
-  return std::move(q);
+  return q;
 }
 
 DEFINE_FILTER_TYPE(by_prefix)

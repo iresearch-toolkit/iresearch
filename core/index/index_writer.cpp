@@ -889,7 +889,7 @@ index_writer::pending_context_t index_writer::flush_all() {
   segments = pending_context.meta->segments_; // create copy
   meta_.segments_.swap(segments); // noexcept op
 
-  return std::move(pending_context);
+  return pending_context;
 }
 
 /*static*/ segment_writer::update_context index_writer::make_update_context(

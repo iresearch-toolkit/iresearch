@@ -197,7 +197,7 @@ filter::prepared::ptr by_range::prepare(
   // apply boost
   irs::boost::apply(q->attributes(), this->boost() * boost);
 
-  return std::move(q);
+  return q;
 }
 
 NS_END // ROOT

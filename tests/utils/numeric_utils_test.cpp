@@ -36,7 +36,7 @@ iresearch::bstring encode(T value, size_t offset = 0) {
   iresearch::bstring data;
   data.resize(traits_t::size());
   traits_t::encode(traits_t::integral(value), &(data[0]), offset);
-  return std::move(data);
+  return data;
 }
 
 NS_END

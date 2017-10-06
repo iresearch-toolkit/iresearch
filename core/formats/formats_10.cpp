@@ -204,7 +204,7 @@ class doc_iterator : public iresearch::doc_iterator {
     begin_ = end_ = docs_;
 
     // get state attribute
-    assert(attrs.contains<version10::term_meta>());
+    assert(attrs.contains<version10::term_meta>());    
     term_state_ = *attrs.get<version10::term_meta>();
 
     // init document stream
@@ -4396,7 +4396,7 @@ doc_iterator::ptr postings_reader::iterator(
     doc_in_.get(), pos_in_.get(), pay_in_.get() 
   );
 
-  return std::move(it);
+  return it;
 }
 
 // ----------------------------------------------------------------------------
