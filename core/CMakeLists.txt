@@ -32,10 +32,25 @@ set(IResearch_INCLUDE_DIR
 if (MSVC)
   add_definitions(/W4)
   # disable "checked iterators" feature
-  add_definitions(-D_SCL_SECURE_NO_WARNINGS) 
+  add_definitions(-D_SCL_SECURE_NO_WARNINGS)
+
+  # set OS specific sources
+  set(IResearch_core_os_specific_sources
+    ./utils/mman_win32.cpp
+  )
+
+  # set OS specific headers
+  set(IResearch_core_os_specific_headers
+    ./utils/mman_win32.hpp
+  )
 else()
   add_definitions(-fvisibility=hidden -Wall)
   set(CMAKE_CXX_FLAGS_RELEASE "-s ${CMAKE_CXX_FLAGS_RELEASE}")
+
+  # set OS specific headers
+  set(IResearch_core_os_specific_headers
+    ./utils/mman_posix.hpp
+  )
 endif()
 
 source_group("analysis" ./analysis/*)
@@ -124,6 +139,7 @@ set(IResearch_core_sources
   ./utils/network_utils.cpp
   ./utils/cpuinfo.cpp
   ./utils/numeric_utils.cpp
+  ${IResearch_core_os_specific_sources}
 )
 
 set(IResearch_core_headers
@@ -185,6 +201,7 @@ set(IResearch_core_headers
   ./utils/fst.hpp
   ./utils/fst_decl.hpp
   ./utils/fst_utils.hpp
+  ./utils/mmap_utils.hpp 
   ./utils/integer.hpp
   ./utils/io_utils.hpp
   ./utils/iterator.hpp

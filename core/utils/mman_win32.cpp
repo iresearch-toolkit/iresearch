@@ -85,7 +85,7 @@ DWORD file_protection(int prot) NOEXCEPT {
 
 NS_END
 
-void* mmap(void *addr, size_t len, int prot, int flags, int fd, OffsetType off) {
+void* mmap(void* /*addr*/, size_t len, int prot, int flags, int fd, OffsetType off) {
   const OffsetType maxSize = off + static_cast<OffsetType>(len);
 
   const DWORD dwFileOffsetLow = (sizeof(OffsetType) <= sizeof(DWORD))
@@ -121,12 +121,12 @@ void* mmap(void *addr, size_t len, int prot, int flags, int fd, OffsetType off) 
       ? (HANDLE)_get_osfhandle(fd)
       : INVALID_HANDLE_VALUE;
 
-  if ((flags & MAP_ANONYMOUS) == 0 && h == INVALID_HANDLE_VALUE) {
+  if ((flags & MAP_ANONYMOUS) == 0 && handle == INVALID_HANDLE_VALUE) {
     errno = EBADF;
     return MAP_FAILED;
   }
 
-  HANDLE mapping = CreateFileMapping(h, NULL, protect, dwMaxSizeHigh, dwMaxSizeLow, NULL);
+  HANDLE mapping = CreateFileMapping(handle, NULL, protect, dwMaxSizeHigh, dwMaxSizeLow, NULL);
 
   if (NULL == mapping) {
     errno = GetLastError();
@@ -174,7 +174,7 @@ int mprotect(void *addr, size_t len, int prot) {
   return -1;
 }
 
-int msync(void *addr, size_t len, int flags) {
+int msync(void *addr, size_t len, int /*flags*/) {
   if (FlushViewOfFile(addr, len)) {
     return 0;
   }
@@ -185,7 +185,7 @@ int msync(void *addr, size_t len, int flags) {
 }
 
 int mlock(const void *addr, size_t len) {
-  if (VirtualLock(static_cast<LPVOID>(addr), len)) {
+  if (VirtualLock(LPVOID(addr), len)) {
     return 0;
   }
 
@@ -195,7 +195,7 @@ int mlock(const void *addr, size_t len) {
 }
 
 int munlock(const void *addr, size_t len) {
-  if (VirtualUnlock(static_cast<LPVOID>(addr), len)) {
+  if (VirtualUnlock(LPVOID(addr), len)) {
     return 0;
   }
 
@@ -204,7 +204,7 @@ int munlock(const void *addr, size_t len) {
   return -1;
 }
 
-int madvise(void, size_t, int) {
+int madvise(void*, size_t, int) {
   return 0;
 }
 

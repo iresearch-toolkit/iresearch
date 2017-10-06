@@ -100,9 +100,6 @@ mmap_directory::mmap_directory(const std::string& path)
 }
 
 index_input::ptr mmap_directory::open(const std::string& name) const NOEXCEPT {
-#ifdef _WIN32
-  return fs_directory::open(name); // FIXME TODO
-#else
   utf8_path path;
 
   try {
@@ -113,7 +110,6 @@ index_input::ptr mmap_directory::open(const std::string& name) const NOEXCEPT {
   }
 
   return mmap_index_input::open(path.c_str());
-#endif // _WIN32
 }
 
 NS_END // ROOT
