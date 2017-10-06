@@ -574,7 +574,7 @@ elseif (APPLE)
     set(IResearch_STATIC_LIBRARIES "${IResearch_STATIC_LIBRARIES} \"${ELEMENT}\"")
   endforeach ()
 
-  set(IResearch_STATIC_LIBRARIES_CMD "mv '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>' '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>'.base && libtool -static -o '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>' -a '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>'.base ${IResearch_STATIC_LIBRARIES} || rm '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>'")
+  set(IResearch_STATIC_LIBRARIES_CMD "mv '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>' '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>'.base && libtool -static -o '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>' -a -arch_only x86_64 '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>'.base ${IResearch_STATIC_LIBRARIES} || rm '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>'")
   add_custom_command(
     TARGET ${IResearch_TARGET_NAME}-static POST_BUILD
     COMMAND sh -c ${IResearch_STATIC_LIBRARIES_CMD}
