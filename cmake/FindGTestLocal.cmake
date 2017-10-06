@@ -85,13 +85,22 @@ if (GTEST_INCLUDE_DIR AND GTEST_SRC_DIR_GTEST AND GTEST_SRC_DIR_CMAKE)
     ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/iresearch-gtest.dir
     EXCLUDE_FROM_ALL # do not build unused targets
   )
-s unset(IResearch_gtest_source)
+  unset(IResearch_gtest_source)
 
   # prepend source directory to files since can't switch to source directory
   # during add_library(...)
-  foreach(ELEMENT $<TARGET_PROPERTY:gtest,SOURCES> $<TARGET_PROPERTY:gtest_main,SOURCES>)
-    list(APPEND IResearch_gtest_source "${GTEST_SRC_DIR_CMAKE}/${ELEMENT}")
-  endforeach()
+  if (MSVC)
+    list(APPEND IResearch_gtest_source
+      "${GTEST_SRC_DIR_CMAKE}/src/gtest-all.cc"
+      "${GTEST_SRC_DIR_CMAKE}/src/gtest_main.cc"
+    )
+    message("GTEST_SRC_DIR_CMAKE: ${GTEST_SRC_DIR_CMAKE}")
+    message("IResearch_gtest_source: ${IResearch_gtest_source}")
+  else()
+    foreach(ELEMENT "$<TARGET_PROPERTY:gtest,SOURCES>" "$<TARGET_PROPERTY:gtest_main,SOURCES>")
+      list(APPEND IResearch_gtest_source "${GTEST_SRC_DIR_CMAKE}/${ELEMENT}")
+    endforeach()
+  endif()
 
   add_library(${IResearch_TARGET_NAME}-gtest-shared
     SHARED
