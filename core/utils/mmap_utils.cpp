@@ -65,7 +65,7 @@ void mmap_handle::close() NOEXCEPT {
   }
  
   if (fd_ >= 0) {
-    posix_close(static_cast<int>(fd_));
+    ::posix_close(static_cast<int>(fd_));
   }
 }
 
@@ -81,7 +81,7 @@ bool mmap_handle::open(const file_path_t path) NOEXCEPT {
   close();
   init();
 
-  const int fd = posix_open(path, O_RDONLY);
+  const int fd = ::posix_open(path, O_RDONLY);
 
   if (fd < 0) {
     IR_FRMT_ERROR("Failed to open input file, error: %d, path: " IR_FILEPATH_SPECIFIER, errno, path);

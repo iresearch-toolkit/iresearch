@@ -227,6 +227,18 @@ bool file_sync(const file_path_t file) NOEXCEPT {
   return res;
 }
 
+bool file_sync(int fd) NOEXCEPT {
+  // Attempt to convert file descriptor into an operating system file handle
+  HANDLE handle = reinterpret_cast<HANDLE>(_get_osfhandle(fd));
+
+  // An invalid file system handle was returned.
+  if (handle == INVALID_HANDLE_VALUE) {
+    return false;
+  }
+
+  return !FlushFileBuffers(handle);
+}
+
 #else
 
 void lock_file_deleter::operator()(void* handle) const {
@@ -513,18 +525,6 @@ bool visit_directory(
 
     return !terminate;
   #endif
-}
-
-bool file_sync(int fd) NOEXCEPT {  
-  // Attempt to convert file descriptor into an operating system file handle  
-  HANDLE handle = reinterpret_cast<HANDLE>(_get_osfhandle(fd));
-  
-  // An invalid file system handle was returned.
-  if (handle == INVALID_HANDLE_VALUE) {
-    return false;
-  }
-
-  return !FlushFileBuffers(handle);  
 }
 
 NS_END

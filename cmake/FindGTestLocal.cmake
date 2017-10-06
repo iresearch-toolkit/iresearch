@@ -84,6 +84,7 @@ if (GTEST_INCLUDE_DIR AND GTEST_SRC_DIR_GTEST AND GTEST_SRC_DIR_CMAKE)
     EXCLUDE_FROM_ALL # do not build unused targets
   )
 
+if (MSVC)
   target_compile_options(gtest
     PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"    
   )
@@ -91,6 +92,7 @@ if (GTEST_INCLUDE_DIR AND GTEST_SRC_DIR_GTEST AND GTEST_SRC_DIR_CMAKE)
   target_compile_options(gtest_main
     PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"    
   )
+endif()
 
   set(GTEST_LIBRARIES gtest)
   set(GTEST_MAIN_LIBRARIES gtest_main)
