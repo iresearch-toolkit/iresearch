@@ -40,6 +40,7 @@
   #define file_no _fileno
   #define mode_t unsigned short
   #define file_open(name, mode) iresearch::file_utils::open(name, _T(mode))
+  #define posix_create _wcreat
   #define posix_open _wopen
   #define posix_close _close
 #else  
@@ -51,8 +52,9 @@
   #define file_stat_t struct stat    
   #define file_no fileno
   #define file_open(name, mode) iresearch::file_utils::open(name, mode)
+  #define posix_create creat
   #define posix_open open
-  #define posix_clone close
+  #define posix_close close
 #endif
 
 #include "shared.hpp"
