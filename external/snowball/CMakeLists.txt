@@ -237,7 +237,14 @@ INCLUDE_DIRECTORIES(
   ${CMAKE_CURRENT_SOURCE_DIR}/libstemmer
   ${CMAKE_CURRENT_BINARY_DIR}/libstemmer
 )
-ADD_LIBRARY(stemmer-shared SHARED ${SNOWBALL_RUNTIME} ${STEMMER_SOURCES})
+
+# on MSVC Snowball does not export any symbols hence no proxy is ever created
+if (MSVC)
+  ADD_LIBRARY(stemmer-shared STATIC ${SNOWBALL_RUNTIME} ${STEMMER_SOURCES})
+else()
+  ADD_LIBRARY(stemmer-shared SHARED ${SNOWBALL_RUNTIME} ${STEMMER_SOURCES})
+endif()
+
 ADD_LIBRARY(stemmer-static STATIC ${SNOWBALL_RUNTIME} ${STEMMER_SOURCES})
 
 ADD_DEPENDENCIES(stemmer-shared stemmer_deps)
