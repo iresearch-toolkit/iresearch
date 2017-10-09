@@ -165,11 +165,14 @@ struct SearchTask : public Task {
             order.add<irs::bm25_sort>(irs::string_ref::nil);
             auto prepared_order = order.prepare();
             auto docs = prepared->execute(segment, prepared_order); // query segment
-            const irs::score* score = docs->attributes().get<iresearch::score>();
+            const irs::score* score = docs->attributes().get<iresearch::score>().get();
             auto comparer = [&prepared_order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
               return prepared_order.less(lhs.c_str(), rhs.c_str());
             };
             std::multimap<irs::bstring, Entry, decltype(comparer)> sorted(comparer);
+
+            // ensure we avoid COW for pre c++11 std::basic_string
+            const irs::bytes_ref score_value = score->value();
 
             while (docs->next()) {
               SCOPED_TIMER("Result processing time");
@@ -177,8 +180,8 @@ struct SearchTask : public Task {
               score->evaluate();
               sorted.emplace(
                 std::piecewise_construct,
-                std::forward_as_tuple(score->value()),
-                std::forward_as_tuple(docs->value(), score ? prepared_order.get<float>(score->c_str(), 0) : .0)
+                std::forward_as_tuple(score_value),
+                std::forward_as_tuple(docs->value(), score ? prepared_order.get<float>(score_value.c_str(), 0) : .0)
               );
 
               if (sorted.size() > topN) {
@@ -977,9 +980,16 @@ int search(
 
           for (auto& segment: reader) {
             auto docs = filter->execute(segment, order); // query segment
-            const irs::score* score = docs->attributes().get<irs::score>();
-            const auto& score_value = score ? order.get<float>(score->c_str(), 0) : EMPTY_SCORE;
+            const irs::score* score = docs->attributes().get<irs::score>().get();            
 
+#ifdef IRESEARCH_COMPLEX_SCORING
+            // ensure we avoid COW for pre c++11 std::basic_string
+            const irs::bytes_ref raw_score_value = score->value();                        
+#endif
+            const auto& score_value = score
+              ? order.get<float>(score->c_str(), 0)
+              : EMPTY_SCORE;
+            
             while (docs->next()) {
               ++doc_count;
 
@@ -988,7 +998,7 @@ int search(
 #ifdef IRESEARCH_COMPLEX_SCORING
               sorted.emplace(
                 std::piecewise_construct,
-                std::forward_as_tuple(score->value()),
+                std::forward_as_tuple(raw_score_value),
                 std::forward_as_tuple(docs->value(), score_value)
               );
 #else
