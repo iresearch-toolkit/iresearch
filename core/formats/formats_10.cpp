@@ -4396,7 +4396,7 @@ doc_iterator::ptr postings_reader::iterator(
     doc_in_.get(), pos_in_.get(), pay_in_.get() 
   );
 
-  return it;
+  return std::move(it);
 }
 
 // ----------------------------------------------------------------------------
