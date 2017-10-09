@@ -293,7 +293,7 @@ filter::prepared::ptr by_phrase::prepare(
   // apply boost
   iresearch::boost::apply(q->attributes(), this->boost() * boost);
 
-  return q;
+  return std::move(q);
 }
 
 NS_END // ROOT
