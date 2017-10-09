@@ -140,6 +140,23 @@ b2 --build-type=complete stage address-model=64
 BOOST_ROOT=<path-to>/boost_1_57_0
 ```
 
+### [iconv](https://www.gnu.org/software/libiconv/) MacOS only
+Required when linking against Boost locale
+
+#### install (*nix)
+```bash
+./configure --enable-static
+make install
+```
+
+#### set environment
+```bash
+ICONV_ROOT=<path-to>/iconv
+```
+
+#### install (win32)
+not required
+
 ### [Lz4](https://code.google.com/p/lz4)
 
 #### install (*nix)
