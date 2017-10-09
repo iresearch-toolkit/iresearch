@@ -523,7 +523,8 @@ class IRESEARCH_API attribute_view
     auto& attr = attribute_map::emplace(inserted, type::type());
 
     if (inserted) {
-      attr.reset(&value);
+      // reinterpret_cast to avoid layout related problems
+      attr.reset(reinterpret_cast<attribute*>(&value));
     }
 
     return reinterpret_cast<typename ref<T>::type&>(attr);
