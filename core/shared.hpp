@@ -47,6 +47,7 @@
 #if _MSC_VER < 1900 // prior the vc14    
   #define CONSTEXPR
   #define NOEXCEPT throw()
+  #define MOVE_WORKAROUND_MSVC2013(x) std::move(x)
 #else
   #define CONSTEXPR constexpr
   #define NOEXCEPT noexcept 
@@ -78,6 +79,17 @@
   #define NO_INLINE __attribute__ ((noinline))
   #define RESTRICT __restrict__
   #define ALIGNED_VALUE(_value, _type) _value alignas( _type );
+#endif
+
+// MSVC2013 doesn't support c++11 in a proper way
+// sometimes it can't choose move constructor for
+// move-only types while returning a value.
+// The following macro tries to avoid potentiol
+// performance problems on other compilers since
+// 'return std::move(x)' prevents such compiler
+// optimizations like 'copy elision'
+#ifndef MOVE_WORKAROUND_MSVC2013
+#define MOVE_WORKAROUND_MSVC2013(x) x
 #endif
 
 // hook for MSVC-only code

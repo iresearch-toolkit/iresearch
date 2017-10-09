@@ -291,9 +291,9 @@ filter::prepared::ptr by_phrase::prepare(
   );
 
   // apply boost
-  iresearch::boost::apply(q->attributes(), this->boost() * boost);
+  irs::boost::apply(q->attributes(), this->boost() * boost);
 
-  return std::move(q);
+  return MOVE_WORKAROUND_MSVC2013(q);
 }
 
 NS_END // ROOT

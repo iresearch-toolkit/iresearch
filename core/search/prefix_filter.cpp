@@ -94,10 +94,10 @@ filter::prepared::ptr by_prefix::prepare(
 
   auto q = memory::make_unique<range_query>(std::move(states));
 
-  /* apply boost */
-  iresearch::boost::apply(q->attributes(), this->boost() * boost);
+  // apply boost
+  irs::boost::apply(q->attributes(), this->boost() * boost);
 
-  return std::move(q);
+  return MOVE_WORKAROUND_MSVC2013(q);
 }
 
 DEFINE_FILTER_TYPE(by_prefix)
