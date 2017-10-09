@@ -51,7 +51,7 @@ struct IRESEARCH_API fd_pool_size: public stored_attribute {
 
 class IRESEARCH_API index_file_refs: public stored_attribute {
  public:
-  typedef attribute_store::ref<index_file_refs> attribute_t;
+  typedef attribute_store::ref<index_file_refs>::type attribute_t;
   typedef ref_counter<std::string> counter_t;
   typedef counter_t::ref_t ref_t;
   DECLARE_ATTRIBUTE_TYPE();

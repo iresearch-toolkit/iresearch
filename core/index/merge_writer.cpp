@@ -58,7 +58,7 @@ class compound_attributes: public irs::attribute_view {
   void add(const irs::attribute_view& attributes) {
     auto visitor = [this](
         const irs::attribute::type_id& type_id,
-        const irs::attribute_view::ref<irs::attribute>&
+        const irs::attribute_view::ref<irs::attribute>::type&
     ) ->bool {
 #if defined(__GNUC__) && (__GNUC__ < 5)
       // GCCs before 5 are unable to call protected
@@ -77,14 +77,14 @@ class compound_attributes: public irs::attribute_view {
   void set(const irs::attribute_view& attributes) {
     auto visitor_unset = [](
       const irs::attribute::type_id&,
-      irs::attribute_view::ref<irs::attribute>& value
+      irs::attribute_view::ref<irs::attribute>::type& value
     )->bool {
       value = nullptr;
       return true;
     };
     auto visitor_update = [this](
       const irs::attribute::type_id& type_id,
-      const irs::attribute_view::ref<irs::attribute>& value
+      const irs::attribute_view::ref<irs::attribute>::type& value
     )->bool {
 #if defined(__GNUC__) && (__GNUC__ < 5)
       // GCCs before 5 are unable to call protected
@@ -92,7 +92,7 @@ class compound_attributes: public irs::attribute_view {
       this->insert(type_id, value);
 #else
       bool inserted;
-      attribute_map::emplace(inserted, type_id) = value;
+      attribute_map::emplace(inserted, type_id).reset(value.get());
 #endif // defined(__GNUC__) && (__GNUC__ < 5)
       return true;
     };
@@ -110,9 +110,9 @@ class compound_attributes: public irs::attribute_view {
 
   void insert(
       const irs::attribute::type_id& type_id,
-      const irs::attribute_view::ref<irs::attribute>& value) {
+      const irs::attribute_view::ref<irs::attribute>::type& value) {
     bool inserted;
-    attribute_map::emplace(inserted, type_id) = value;
+    attribute_map::emplace(inserted, type_id).reset(value.get());
   }
 #endif // defined(__GNUC__) && (__GNUC__ < 5)
 }; // compound_attributes

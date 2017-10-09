@@ -49,7 +49,7 @@ struct boost : public iresearch::sort {
     DECLARE_FACTORY(scorer);
 
     scorer(
-        const irs::attribute_store::ref<irs::boost>& boost,
+        const irs::attribute_store::ref<irs::boost>::type& boost,
         const irs::attribute_store& attrs
     ): attrs_(attrs), boost_(boost) {
     }
@@ -60,7 +60,7 @@ struct boost : public iresearch::sort {
 
    private:
     const irs::attribute_store& attrs_;
-    const irs::attribute_store::ref<irs::boost>& boost_;
+    const irs::attribute_store::ref<irs::boost>::type& boost_;
   }; // sort::boost::scorer
 
   class prepared: public iresearch::sort::prepared_base<iresearch::boost::boost_t> {
@@ -277,7 +277,7 @@ struct frequency_sort: public iresearch::sort {
           const iresearch::term_reader& field,
           const irs::attribute_view& term_attrs
       ) override {
-        meta_attr = term_attrs.get<iresearch::term_meta>();
+        meta_attr.reset(term_attrs.get<iresearch::term_meta>().get());
         docs_count += meta_attr->docs_count;
       }
 
@@ -291,12 +291,12 @@ struct frequency_sort: public iresearch::sort {
 
      private:
       size_t docs_count{};
-      irs::attribute_view::ref<irs::term_meta> meta_attr;
+      irs::attribute_view::ref<irs::term_meta>::type meta_attr;
     };
 
     class scorer: public iresearch::sort::scorer_base<score_t> {
      public:
-      scorer(const size_t* v_docs_count, const irs::attribute_view::ref<irs::document>& doc_id_t):
+      scorer(const size_t* v_docs_count, const irs::attribute_view::ref<irs::document>::type& doc_id_t):
         doc_id_t_attr(doc_id_t), docs_count(v_docs_count) {
       }
 
@@ -307,7 +307,7 @@ struct frequency_sort: public iresearch::sort {
       }
 
      private:
-      const irs::attribute_view::ref<irs::document>& doc_id_t_attr;
+      const irs::attribute_view::ref<irs::document>::type& doc_id_t_attr;
       const size_t* docs_count;
     };
 
@@ -420,7 +420,7 @@ class filter_test_case_base : public index_test_base {
     for (const auto& sub: rdr) {
       auto docs = prepared_filter->execute(sub, prepared_order);
       auto& score = docs->attributes().get<ir::score>();
-      ASSERT_TRUE(score);
+      ASSERT_TRUE(bool(score));
 
       // ensure that we avoid COW for pre c++11 std::basic_string
       const irs::bytes_ref score_value = score->value();

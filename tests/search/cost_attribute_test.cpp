@@ -129,7 +129,6 @@ TEST(cost_attribute_test, extract) {
 
   ASSERT_EQ(5, ir::cost::extract(attrs, 5));
 
-
   irs::cost cost;
   attrs.emplace(cost);
   ASSERT_FALSE(bool(cost.rule()));

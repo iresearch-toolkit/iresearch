@@ -232,6 +232,11 @@ class allocator_array_deleter : public compact_ref<0, Alloc> {
   size_t size_;
 }; // allocator_array_deleter
 
+struct noop_deleter {
+  template<typename T>
+  void operator()(T*) { }
+};
+
 // ----------------------------------------------------------------------------
 // --SECTION--                                                   managed unique
 // ----------------------------------------------------------------------------

@@ -139,7 +139,7 @@ class token_stream_payload : public ir::token_stream {
   }
 
  private:
-  ir::term_attribute* term_;
+  const ir::term_attribute* term_;
   ir::payload pay_;
   ir::token_stream* impl_;
 }; // token_stream_payload

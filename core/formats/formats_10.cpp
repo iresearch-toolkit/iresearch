@@ -3891,7 +3891,11 @@ void postings_writer::begin_block() {
 irs::postings_writer::state postings_writer::write(doc_iterator& docs) {
   REGISTER_TIMER_DETAILED();
   auto& freq = docs.attributes().get<frequency>();
-  auto& pos = freq ? docs.attributes().get<position>() : irs::attribute_view::ref<position>::nil();
+
+  auto& pos = freq
+    ? docs.attributes().get<position>()
+    : irs::attribute_view::ref<position>::nil;
+
   const offset* offs = nullptr;
   const payload* pay = nullptr;
 
