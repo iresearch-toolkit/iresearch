@@ -197,12 +197,6 @@ target_link_libraries(${IResearchTests_TARGET_NAME}-static
   ${PTHREAD_LIBRARY}
 )
 
-if (APPLE)
-  target_link_libraries(${IResearchTests_TARGET_NAME}-static
-    ${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}
-  )
-endif()
-
 target_compile_features(${IResearchTests_TARGET_NAME}-shared
   PRIVATE
   cxx_final
