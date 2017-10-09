@@ -246,6 +246,30 @@ struct vencode_traits<uint64_t>: ::detail::vencode_traits_base<size_t, 10> {
   }
 }; // vencode_traits<uint64_t>
 
+// MacOS size_t is a different type from any of the above
+#if defined(__APPLE__)
+  template<>
+  struct vencode_traits<size_t>: ::detail::vencode_traits_base<size_t, 10> {
+    typedef size_t type;
+
+    static size_t size(type v) {
+      return vencode_size_64(v);
+    }
+
+    CONSTEXPR static size_t max_size() {
+      return const_max_size; // may take up to 10 bytes
+    }
+
+    static byte_type* write(type v, byte_type* begin) {
+      return write_vlong(v, begin);
+    }
+
+    static std::pair<type, const byte_type*> read(const byte_type* begin) {
+      return read_vlong(begin);
+    }
+  };
+#endif
+
 // ----------------------------------------------------------------------------
 // --SECTION--                                               read/write helpers
 // ----------------------------------------------------------------------------
