@@ -588,7 +588,7 @@ elseif (APPLE)
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-bm25-static>"
   )
-    set(IResearch_STATIC_LIBRARIES "${IResearch_STATIC_LIBRARIES} && mv '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>' dst0.a && lipo -extract x86_64 '${ELEMENT}' -output dst1.a && libtool -static -o '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>' -a dst0.a dst1.a")
+    set(IResearch_STATIC_LIBRARIES "${IResearch_STATIC_LIBRARIES} && mv '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>' dst0.a && (lipo -extract x86_64 '${ELEMENT}' -output dst1.a || cp '${ELEMENT}' dst1.a) && libtool -static -o '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>' -a dst0.a dst1.a")
   endforeach ()
 
   set(IResearch_STATIC_LIBRARIES_CMD "cp '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>' '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>'.base ${IResearch_STATIC_LIBRARIES} || rm '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>'")
