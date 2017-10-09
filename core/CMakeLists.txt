@@ -571,7 +571,7 @@ elseif (MSVC)
     COMMAND ${IResearch_STATIC_SCRT_LIBRARIES_CMD}
   )
 elseif (APPLE)
-  find_package(Iconv REQUIRED)
+#  find_package(Iconv REQUIRED)
   unset(IResearch_STATIC_LIBRARIES)
 
   foreach(ELEMENT
@@ -580,7 +580,7 @@ elseif (APPLE)
     ${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}
     ${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}
     ${Boost_STATIC_sharedRT_THREAD_LIBRARY_DEBUG}
-    ${ICONV_LIBRARIES}
+#    ${ICONV_LIBRARIES}
     ${ICU_STATIC_LIBS}
     ${Unwind_STATIC_LIBS}
     "$<TARGET_FILE:lz4_static>"
