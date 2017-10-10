@@ -277,7 +277,7 @@ struct frequency_sort: public iresearch::sort {
           const iresearch::term_reader& field,
           const irs::attribute_view& term_attrs
       ) override {
-        meta_attr.reset(term_attrs.get<iresearch::term_meta>().get());
+        meta_attr = term_attrs.get<iresearch::term_meta>();
         docs_count += meta_attr->docs_count;
       }
 

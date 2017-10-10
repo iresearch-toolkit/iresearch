@@ -502,10 +502,36 @@ class IRESEARCH_API attribute_store
 }; // attribute_store
 
 //////////////////////////////////////////////////////////////////////////////
+/// @brief Contains a pointer to an object of type `T`.
+/// An adaptor for `attribute_map` container.
+///
+/// Can't use `std::unique_ptr<T, memory::noop_deleter>` becuase of
+/// the bugs in MSVC2013-2015 related to move semantic in std::map
+//////////////////////////////////////////////////////////////////////////////
+template<typename T>
+class pointer_wrapper {
+ public:
+  FORCE_INLINE pointer_wrapper(T* p = nullptr) NOEXCEPT : p_(p) { }
+  FORCE_INLINE T* get() const NOEXCEPT { return p_; }
+  FORCE_INLINE T* operator->() const NOEXCEPT { return get(); }
+  FORCE_INLINE T& operator*() const NOEXCEPT { return *get(); }
+  FORCE_INLINE pointer_wrapper& operator=(T* p) NOEXCEPT {
+    p_ = p;
+    return *this;
+  }
+  FORCE_INLINE operator bool() const NOEXCEPT {
+    return p_ != nullptr;
+  }
+
+ private:
+  T* p_;
+}; // pointer_wrapper
+
+//////////////////////////////////////////////////////////////////////////////
 /// @brief storage of data pointers to attributes
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API attribute_view
-    : public attribute_map<attribute, std::unique_ptr, memory::noop_deleter> {
+    : public attribute_map<attribute, pointer_wrapper> {
  public:
   static const attribute_view& empty_instance();
 
@@ -524,7 +550,7 @@ class IRESEARCH_API attribute_view
 
     if (inserted) {
       // reinterpret_cast to avoid layout related problems
-      attr.reset(reinterpret_cast<attribute*>(&value));
+      attr = reinterpret_cast<attribute*>(&value);
     }
 
     return reinterpret_cast<typename ref<T>::type&>(attr);

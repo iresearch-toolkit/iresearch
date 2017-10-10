@@ -92,7 +92,7 @@ class compound_attributes: public irs::attribute_view {
       this->insert(type_id, value);
 #else
       bool inserted;
-      attribute_map::emplace(inserted, type_id).reset(value.get());
+      attribute_map::emplace(inserted, type_id) = value;
 #endif // defined(__GNUC__) && (__GNUC__ < 5)
       return true;
     };
@@ -112,7 +112,7 @@ class compound_attributes: public irs::attribute_view {
       const irs::attribute::type_id& type_id,
       const irs::attribute_view::ref<irs::attribute>::type& value) {
     bool inserted;
-    attribute_map::emplace(inserted, type_id).reset(value.get());
+    attribute_map::emplace(inserted, type_id) = value;
   }
 #endif // defined(__GNUC__) && (__GNUC__ < 5)
 }; // compound_attributes
