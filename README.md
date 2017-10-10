@@ -96,25 +96,6 @@ versions/revisions of data in the said directory.
 ### [CMake](https://cmake.org)
 v3.2 or later
 
-### [GNU bunutils](https://www.gnu.org/software/binutils)
-
-#### install (*nix)
-via the distributions' package manager: binutils
-or
-build from source via:
-```bash
-./configure
-./make
-```
-
-#### install (win32)
-not required
-
-#### set environment
-```bash
-PATH=<path-to>/ar:$PATH
-```
-
 ### [Boost](http://www.boost.org/doc/libs/1_57_0/more/getting_started/index.html)
 v1.57.0 or later (filesystem locale system thread)
 
@@ -125,6 +106,15 @@ v1.57.0 or later (filesystem locale system thread)
 ```bash
 ./bootstrap.sh --with-libraries=filesystem,locale,system,regex,thread
 ./b2
+```
+
+#### install (MacOS)
+> Do not link Boost against 'iconv' because on MacOS it causes problems when
+> linking against Boost locale. Unfortunately this requires linking against ICU.
+
+```bash
+./bootstrap.sh --with-libraries=filesystem,locale,system,regex,thread
+./b2 -sICU_PATH="${ICU_ROOT}" boost.locale.iconv=off boost.locale.icu=on
 ```
 
 #### install (win32)
@@ -139,23 +129,6 @@ b2 --build-type=complete stage address-model=64
 ```bash
 BOOST_ROOT=<path-to>/boost_1_57_0
 ```
-
-### [iconv](https://www.gnu.org/software/libiconv/) MacOS only
-Required when linking against Boost locale
-
-#### install (*nix)
-```bash
-./configure --enable-static
-make install
-```
-
-#### set environment
-```bash
-ICONV_ROOT=<path-to>/iconv
-```
-
-#### install (win32)
-not required
 
 ### [Lz4](https://code.google.com/p/lz4)
 
