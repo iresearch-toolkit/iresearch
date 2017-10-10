@@ -33,6 +33,9 @@ class attribute_register:
   public iresearch::generic_register<iresearch::string_ref, const iresearch::attribute::type_id*, attribute_register> {
 };
 
+const iresearch::attribute_store EMPTY_ATTRIBUTE_STORE(0);
+const iresearch::attribute_view  EMPTY_ATTRIBUTE_VIEW(0);
+
 NS_END
 
 NS_ROOT
@@ -122,26 +125,14 @@ attribute_registrar::operator bool() const NOEXCEPT {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                     attribute_map
-// -----------------------------------------------------------------------------
-
-#if defined(_MSC_VER) && defined(IRESEARCH_DLL)
-
-  template class IRESEARCH_API attribute_map<attribute*>;
-  template class IRESEARCH_API attribute_map<std::shared_ptr<stored_attribute>>;
-
-#endif
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                   attribute_store
 // -----------------------------------------------------------------------------
 
 attribute_store::attribute_store(size_t /*reserve = 0*/) {
 }
 
-/*static*/ const attribute_store& attribute_store::empty_instance() {
-  static attribute_store instance(0);
-  return instance;
+/*static*/ const attribute_store& attribute_store::empty_instance() {  
+  return EMPTY_ATTRIBUTE_STORE;
 }
 
 // -----------------------------------------------------------------------------
@@ -151,9 +142,8 @@ attribute_store::attribute_store(size_t /*reserve = 0*/) {
 attribute_view::attribute_view(size_t /*reserve = 0*/) {
 }
 
-/*static*/ const attribute_view& attribute_view::empty_instance() {
-  static attribute_view instance(0);
-  return instance;
+/*static*/ const attribute_view& attribute_view::empty_instance() {  
+  return EMPTY_ATTRIBUTE_VIEW;
 }
 
 NS_END
