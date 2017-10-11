@@ -338,6 +338,48 @@ matrix:
         - SET_ENV="CC=gcc-6 && CXX=g++-6"
         - BUILD_TYPE="Release"
 
+    ############################################################################
+    # OSX
+    ############################################################################
+
+    allow_failures: # FIXME
+
+    ############################################################################
+    # Debug build, static library
+    ############################################################################
+    - os: osx
+      osx_image: xcode9
+      compiler: clang
+      env:
+        - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
+
+    ############################################################################
+    # Release build, static library
+    ############################################################################
+    - os: osx
+      osx_image: xcode9
+      compiler: clang
+      env:
+        - BUILD_TYPE="Release" STATIC_LIB="true"
+
+    ############################################################################
+    # Debug build, shared library
+    ############################################################################
+    - os: osx
+      osx_image: xcode9
+      compiler: clang
+      env:
+        - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
+
+    ############################################################################
+    # Release build, shared library
+    ############################################################################
+    - os: osx
+      osx_image: xcode9
+      compiler: clang
+      env:
+        - BUILD_TYPE="Release"
+
 before_install:
   - eval "${SET_ENV}"
 
@@ -417,12 +459,6 @@ install:
       travis_retry git clone --quiet ${SNOWBALL_URL} ${SNOWBALL_DIR} || exit 1
       cd ${SNOWBALL_DIR}
       git reset --hard 5137019d68befd633ce8b1cd48065f41e77ed43e
-      #git reset --hard 9e0a8340d58c70f91e8a0233b985242dc69c6fb8
-      #mkdir build && cd build
-      #cmake -DENABLE_STATIC=OFF -DNO_SHARED=OFF -g "Unix Makefiles" ..
-      #cmake --build .
-      #cmake -DENABLE_STATIC=OFF -DNO_SHARED=ON -g "Unix Makefiles" ..
-      #cmake --build .
     fi
     export SNOWBALL_ROOT=${SNOWBALL_DIR}
 
