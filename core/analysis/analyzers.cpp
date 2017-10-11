@@ -25,6 +25,7 @@
 
 // list of statically loaded scorers via init()
 #ifndef IRESEARCH_DLL
+  #include "delimited_token_stream.hpp"
   #include "text_token_stream.hpp"
 #endif
 
@@ -61,6 +62,7 @@ NS_BEGIN(analysis)
 
 /*static*/ void analyzers::init() {
   #ifndef IRESEARCH_DLL
+    REGISTER_ANALYZER(irs::analysis::delimited_token_stream);
     REGISTER_ANALYZER(iresearch::analysis::text_token_stream);
   #endif
 }
