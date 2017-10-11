@@ -24,37 +24,96 @@
 #include "gtest/gtest.h"
 #include "utils/object_pool.hpp"
 
-namespace tests {
-  struct test_sobject {
-    DECLARE_SPTR(test_sobject);
-    int id;
-    test_sobject(int i): id(i) {}
-    static ptr make(int i) { return ptr(new test_sobject(i)); }
-  };
+NS_BEGIN(tests)
 
-  struct test_uobject {
-    DECLARE_PTR(test_uobject);
-    int id;
-    test_uobject(int i): id(i) {}
-    static ptr make(int i) { return ptr(new test_uobject(i)); }
-  };
+struct test_slow_sobject {
+  DECLARE_SPTR(test_slow_sobject);
+  int id;
+  test_slow_sobject (int i): id(i) {
+    ++TOTAL_COUNT;
+  }
+  static std::atomic<size_t> TOTAL_COUNT; // # number of objects created
+  static ptr make(int i) {
+    ::sleep(2);
+    return ptr(new test_slow_sobject(i));
+  }
+};
 
-  class object_pool_tests: public ::testing::Test {
-    virtual void SetUp() {
-      // Code here will be called immediately after the constructor (right before each test).
-    }
+std::atomic<size_t> test_slow_sobject::TOTAL_COUNT{};
 
-    virtual void TearDown() {
-      // Code here will be called immediately after each test (right before the destructor).
-    }
-  };
-}
+struct test_sobject {
+  DECLARE_SPTR(test_sobject);
+  int id;
+  test_sobject(int i): id(i) { }
+  static ptr make(int i) { return ptr(new test_sobject(i)); }
+};
+
+struct test_uobject {
+  DECLARE_PTR(test_uobject);
+  int id;
+  test_uobject(int i): id(i) {}
+  static ptr make(int i) { return ptr(new test_uobject(i)); }
+};
+
+class object_pool_tests: public ::testing::Test {
+  virtual void SetUp() {
+    // Code here will be called immediately after the constructor (right before each test).
+  }
+
+  virtual void TearDown() {
+    // Code here will be called immediately after each test (right before the destructor).
+  }
+};
+
+NS_END
 
 using namespace tests;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
+
+TEST_F(object_pool_tests, check_total_number_of_instances) {
+  const size_t MAX_COUNT = 2;
+  iresearch::bounded_object_pool<test_slow_sobject> pool(MAX_COUNT);
+
+  std::mutex mutex;
+  std::condition_variable ready_cv;
+  bool ready{false};
+
+  std::atomic<size_t> id{};
+  test_slow_sobject::TOTAL_COUNT = 0;
+
+  auto job = [&mutex, &ready_cv, &pool, &ready, &id](){
+    // wait for all threads to be ready
+    {
+      SCOPED_LOCK_NAMED(mutex, lock);
+
+      while (!ready) {
+        ready_cv.wait(lock);
+      }
+    }
+
+    pool.emplace(id++);
+  };
+
+  const size_t THREADS_COUNT = 32;
+  std::vector<std::thread> threads;
+
+  for (size_t i = 0; i < THREADS_COUNT; ++i) {
+    threads.emplace_back(job);
+  }
+
+  // ready
+  ready = true;
+  ready_cv.notify_all();
+
+  for (auto& thread : threads) {
+    thread.join();
+  }
+
+  ASSERT_LE(test_slow_sobject::TOTAL_COUNT.load(), MAX_COUNT);
+}
 
 TEST_F(object_pool_tests, bounded_sobject_pool) {
   // block on full pool
