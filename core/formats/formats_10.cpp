@@ -4373,17 +4373,6 @@ doc_iterator::ptr postings_reader::iterator(
     const flags& req) {
   typedef detail::doc_iterator doc_iterator_t;
   typedef detail::pos_doc_iterator pos_doc_iterator_t;
-  typedef std::function<doc_iterator_t::ptr()> factory_t;
-
-  static const factory_t FACTORIES[] {
-    []() {
-      return doc_iterator_t::make<detail::doc_iterator>();
-    },
-
-    []() {
-      return doc_iterator_t::make<pos_doc_iterator_t>();
-    },
-  };
 
   // compile field features
   const auto features = version10::features(field);
@@ -4391,9 +4380,9 @@ doc_iterator::ptr postings_reader::iterator(
   // find intersection between requested and available features
   const auto enabled = features & req;
 
-  const auto& factory = FACTORIES[enabled.position()];
-
-  auto it = factory();
+  auto it = enabled.position()
+    ? doc_iterator_t::make<pos_doc_iterator_t>()
+    : doc_iterator_t::make<doc_iterator_t>();
 
   it->prepare(
     features, enabled, attrs,
