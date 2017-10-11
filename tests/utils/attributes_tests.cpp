@@ -149,7 +149,7 @@ TEST(attributes_tests, store_add_get_clear_state_clear) {
     auto& added2 = const_cast<const irs::attribute_store&>(attrs).get<tests::attribute>();
     ASSERT_FALSE(!added2);
     ASSERT_EQ(added.get(), added2.get());
-    ASSERT_EQ(reinterpret_cast<attribute*>(added1.get()), added2.get());
+    ASSERT_EQ(reinterpret_cast<void*>(added1.get()), added2.get());
   }
 
 //  // clear state
@@ -259,7 +259,7 @@ TEST(attributes_tests, view_add_get_clear_state_clear) {
     auto& added2 = const_cast<const irs::attribute_view&>(attrs).get<tests::attribute>();
     ASSERT_FALSE(!added2);
     ASSERT_EQ(added.get(), added2.get());
-    ASSERT_EQ(reinterpret_cast<const attribute*>(added1.get()), added2.get());
+    ASSERT_EQ(reinterpret_cast<const void*>(added1.get()), added2.get());
   }
 
 //  // clear state

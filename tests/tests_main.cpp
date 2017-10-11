@@ -153,7 +153,7 @@ void test_base::make_directories() {
   std::cout << "\t" << IRES_OUTPUT_PATH << ": " << out_dir_.string() << std::endl;
   std::cout << "\t" << IRES_RESOURCE_DIR << ": " << resource_dir_.string() << std::endl;
 
-  out_dir_ = ::boost::filesystem::canonical(out_dir_);
+  out_dir_ = ::boost::filesystem::canonical(out_dir_).make_preferred();
   (res_dir_ = out_dir_).append( test_name_ );  
 
   // add timestamp to res_dir_

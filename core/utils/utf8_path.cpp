@@ -199,7 +199,15 @@ bool utf8_path::exists(bool& result) const NOEXCEPT {
   result = boost::filesystem::exists(path_, code);
 
   return boost::system::errc::success == code.value()
-      || boost::system::errc::no_such_file_or_directory == code.value();
+      || boost::system::errc::no_such_file_or_directory == code.value()
+#ifdef _MSC_VER      
+      // on error boost put output from ::GetLastError() directly
+      // to `error_code` without any suitable conversion, so that            
+      // boost::system::errc::no_such_process == ERROR_PATH_NOT_FOUND      
+
+      || boost::system::errc::no_such_process == code.value()
+#endif // _MSC_VER
+      ;      
 }
 
 bool utf8_path::exists_file(bool& result) const NOEXCEPT {
@@ -208,7 +216,15 @@ bool utf8_path::exists_file(bool& result) const NOEXCEPT {
   result = boost::filesystem::is_regular_file(path_, code);
 
   return boost::system::errc::success == code.value()
-      || boost::system::errc::no_such_file_or_directory == code.value();
+    || boost::system::errc::no_such_file_or_directory == code.value()
+#ifdef _MSC_VER      
+    // on error boost put output from ::GetLastError() directly
+    // to `error_code` without any suitable conversion, so that            
+    // boost::system::errc::no_such_process == ERROR_PATH_NOT_FOUND      
+
+    || boost::system::errc::no_such_process == code.value()
+#endif // _MSC_VER
+    ;
 }
 
 bool utf8_path::file_size(uint64_t& result) const NOEXCEPT {
