@@ -42,6 +42,10 @@
   #include <sys/wait.h> // for waitpid(...)
 #endif
 
+#if defined(__APPLE__)
+  #include <libproc.h> // for proc_pidpath(...)
+#endif
+
 #if defined(USE_LIBBFD)
   #include <bfd.h>
 #endif
@@ -239,7 +243,27 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
 #else
   #if defined(__APPLE__)
     bool file_line_addr2line(iresearch::logger::level_t level, const char* obj, const char* addr) {
-      return false; // on MacOS there is no access to the executable file path from a diffierent process 
+      auto fd = fileno(output(level));
+      auto pid = fork();
+
+      if (!pid) {
+        char name_buf[PROC_PIDPATHINFO_MAXSIZE]; // buffer size requirement for proc_pidpath(...)
+        auto ppid = getppid();
+
+        if (0 < proc_pidpath(ppid, name_buf, sizeof(name_buf))) {
+          // The exec() family of functions replaces the current process image with a new process image.
+          // The exec() functions only return if an error has occurred.
+          dup2(fd, 1); // redirect stdout to fd
+          dup2(fd, 2); // redirect stderr to fd
+          execlp("addr2line", "addr2line", "-e", obj, addr, NULL);
+        }
+
+        exit(1);
+      }
+
+      int status;
+
+      return 0 < waitpid(pid, &status, 0) && !WEXITSTATUS(status);
     }
   #else
     bool file_line_addr2line(iresearch::logger::level_t level, const char* obj, const char* addr) {
@@ -287,32 +311,62 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
     return buf && !status ? std::move(buf) : nullptr;
   }
 
-  bool stack_trace_gdb(iresearch::logger::level_t level) {
-    auto fd = fileno(output(level));
-    auto pid = fork();
+  #if defined(__APPLE__)
+    bool stack_trace_gdb(iresearch::logger::level_t level) {
+      auto fd = fileno(output(level));
+      auto pid = fork();
 
-    if (!pid) {
-      size_t pid_size = sizeof(pid_t)*3 + 1; // approximately 3 chars per byte +1 for \0
-      size_t name_size = strlen("/proc//exe") + pid_size + 1; // +1 for \0
-      char pid_buf[pid_size];
-      char name_buf[name_size];
-      auto ppid = getppid();
+      if (!pid) {
+        size_t pid_size = sizeof(pid_t)*3 + 1; // approximately 3 chars per byte +1 for \0
+        char pid_buf[pid_size];
+        char name_buf[PROC_PIDPATHINFO_MAXSIZE]; // buffer size requirement for proc_pidpath(...)
+        auto ppid = getppid();
 
-      snprintf(pid_buf, pid_size, "%d", ppid);
-      snprintf(name_buf, name_size, "/proc/%d/exe", ppid);
+        snprintf(pid_buf, pid_size, "%d", ppid);
 
-      // The exec() family of functions replaces the current process image with a new process image.
-      // The exec() functions only return if an error has occurred.
-      dup2(fd, 1); // redirect stdout to fd
-      dup2(fd, 2); // redirect stderr to fd
-      execlp("gdb", "gdb", "-n", "-nx", "-return-child-result", "-batch", "-ex", "thread", "-ex", "bt", name_buf, pid_buf, NULL);
-      exit(1);
+        if (0 < proc_pidpath(ppid, name_buf, sizeof(name_buf))) {
+          // The exec() family of functions replaces the current process image with a new process image.
+          // The exec() functions only return if an error has occurred.
+          dup2(fd, 1); // redirect stdout to fd
+          dup2(fd, 2); // redirect stderr to fd
+          execlp("gdb", "gdb", "-n", "-nx", "-return-child-result", "-batch", "-ex", "thread", "-ex", "bt", name_buf, pid_buf, NULL);
+        }
+
+        exit(1);
+      }
+
+      int status;
+
+      return 0 < waitpid(pid, &status, 0) && !WEXITSTATUS(status);
     }
+  #else
+    bool stack_trace_gdb(iresearch::logger::level_t level) {
+      auto fd = fileno(output(level));
+      auto pid = fork();
 
-    int status;
+      if (!pid) {
+        size_t pid_size = sizeof(pid_t)*3 + 1; // approximately 3 chars per byte +1 for \0
+        size_t name_size = strlen("/proc//exe") + pid_size + 1; // +1 for \0
+        char pid_buf[pid_size];
+        char name_buf[name_size];
+        auto ppid = getppid();
 
-    return 0 < waitpid(pid, &status, 0) && !WEXITSTATUS(status);
-  }
+        snprintf(pid_buf, pid_size, "%d", ppid);
+        snprintf(name_buf, name_size, "/proc/%d/exe", ppid);
+
+        // The exec() family of functions replaces the current process image with a new process image.
+        // The exec() functions only return if an error has occurred.
+        dup2(fd, 1); // redirect stdout to fd
+        dup2(fd, 2); // redirect stderr to fd
+        execlp("gdb", "gdb", "-n", "-nx", "-return-child-result", "-batch", "-ex", "thread", "-ex", "bt", name_buf, pid_buf, NULL);
+        exit(1);
+      }
+
+      int status;
+
+      return 0 < waitpid(pid, &status, 0) && !WEXITSTATUS(status);
+    }
+  #endif
 
   void stack_trace_posix(iresearch::logger::level_t level) {
     auto* out = output(level);

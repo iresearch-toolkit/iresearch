@@ -87,6 +87,8 @@ NS_LOCAL
 
 #if defined(_MSC_VER) // Microsoft compiler
   const std::string FILENAME_EXTENSION(".dll");
+#elif defined(__APPLE__) // MacOS
+  const std::string FILENAME_EXTENSION(".dylib");
 #elif defined(__GNUC__) // GNU compiler
   const std::string FILENAME_EXTENSION(".so");
 #else
@@ -187,3 +189,7 @@ void load_libraries(
 }
 
 NS_END // ROOT
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
