@@ -719,7 +719,13 @@ class index_test_case_base : public tests::index_test_base {
     }
   }
 
-  void profile_bulk_index(size_t num_insert_threads, size_t num_import_threads, size_t num_update_threads, size_t batch_size, ir::index_writer::ptr writer = nullptr, std::atomic<size_t>* commit_count = nullptr) {
+  void profile_bulk_index(
+      size_t num_insert_threads,
+      size_t num_import_threads,
+      size_t num_update_threads,
+      size_t batch_size,
+      ir::index_writer::ptr writer = nullptr,
+      std::atomic<size_t>* commit_count = nullptr) {
     struct csv_doc_template_t: public tests::delim_doc_generator::doc_template {
       virtual void init() {
         clear();
@@ -867,7 +873,8 @@ class index_test_case_base : public tests::index_test_base {
             std::lock_guard<std::mutex> lock(mutex);
           }
 
-          while (import_again.load()) {
+          // ensure there will be at least 1 commit if scheduled
+          do {
             import_docs_count += import_reader.docs_count();
 
             {
@@ -877,7 +884,7 @@ class index_test_case_base : public tests::index_test_base {
 
             ++writer_import_count;
             std::this_thread::sleep_for(std::chrono::milliseconds(import_interval));
-          }
+          } while (import_again.load());
         });
       }
 
@@ -970,6 +977,9 @@ class index_test_case_base : public tests::index_test_base {
     }
 
     thread_pool.stop();
+
+    // ensure all data have been commited
+    writer->commit();
 
     auto path = fs::path(test_dir()).append("profile_bulk_index.log");
     std::ofstream out(path.native());
