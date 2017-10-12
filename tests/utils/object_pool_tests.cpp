@@ -23,6 +23,7 @@
 
 #include "gtest/gtest.h"
 #include "utils/object_pool.hpp"
+#include "utils/thread_utils.hpp"
 
 NS_BEGIN(tests)
 
@@ -34,7 +35,7 @@ struct test_slow_sobject {
   }
   static std::atomic<size_t> TOTAL_COUNT; // # number of objects created
   static ptr make(int i) {
-    ::sleep(2);
+    irs::sleep_ms(2000);
     return ptr(new test_slow_sobject(i));
   }
 };
