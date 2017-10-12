@@ -712,6 +712,7 @@ set_target_properties(${IResearch_TARGET_NAME}-analyzer-delimited-shared
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME analyzer-delimited
+  DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
   COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN"
 )
 
@@ -863,6 +864,7 @@ set_target_properties(${IResearch_TARGET_NAME}-analyzer-text-shared
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME analyzer-text
+  DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
   COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN;BOOST_ALL_DYN_LINK"
 )
 
@@ -1013,6 +1015,7 @@ set_target_properties(${IResearch_TARGET_NAME}-format-1_0-shared
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME format-1_0
+  DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
   COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN;FST_NO_DYNAMIC_LINKING"
 )
 
@@ -1168,6 +1171,7 @@ set_target_properties(${IResearch_TARGET_NAME}-scorer-tfidf-shared
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME scorer-tfidf
+  DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
   COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_IMPORTS;IRESEARCH_DLL_PLUGIN"
 )
 
@@ -1293,6 +1297,7 @@ set_target_properties(${IResearch_TARGET_NAME}-scorer-bm25-shared
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME scorer-bm25
+  DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
   COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_IMPORTS;IRESEARCH_DLL_PLUGIN"
 )
 
