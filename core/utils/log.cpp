@@ -317,8 +317,12 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
       auto pid = fork();
 
       if (!pid) {
+        size_t pid_size = sizeof(pid_t)*3 + 1; // approximately 3 chars per byte +1 for \0
+        char pid_buf[pid_size];
         char name_buf[PROC_PIDPATHINFO_MAXSIZE]; // buffer size requirement for proc_pidpath(...)
         auto ppid = getppid();
+
+        snprintf(pid_buf, pid_size, "%d", ppid);
 
         if (0 < proc_pidpath(ppid, name_buf, sizeof(name_buf))) {
           // The exec() family of functions replaces the current process image with a new process image.
