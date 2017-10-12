@@ -32,6 +32,27 @@
 
 NS_ROOT
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Cross-platform 'COUNTOF' implementation
+////////////////////////////////////////////////////////////////////////////////
+#if __cplusplus >= 201103L || _MSC_VER >= 1900 || IRESEARCH_COMPILER_HAS_FEATURE(cxx_constexpr) // C++ 11 implementation
+  NS_BEGIN(detail)
+  template <typename T, std::size_t N>
+  CONSTEXPR std::size_t countof(T const (&)[N]) noexcept { return N; }
+  NS_END // detail
+  #define IRESEARCH_COUNTOF(x) iresearch::detail::countof(x)
+#elif _MSC_VER // Visual C++ fallback
+  #define IRESEARCH_COUNTOF(x) _countof(x)
+#elif __cplusplus >= 199711L && ( // C++ 98 trick
+      defined(__clang__) ||
+      (defined(__GNUC__) && ((__GNUC__ > 4) || (__GNUC__ == 4 && __GNUC_MINOR__ >= 4)))
+  template <typename T, std::size_t N>
+  char(&COUNTOF_ARRAY_ARGUMENT(T(&)[N]))[N];
+  #define IRESEARCH_COUNTOF(x) sizeof(COUNTOF_ARRAY_ARGUMENT(x))
+#else
+  #define IRESEARCH_COUNTOF(x) sizeof(x) / sizeof(x[0])
+#endif
+
 template<typename Func>
 class finally {
  public:

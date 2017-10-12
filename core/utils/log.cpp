@@ -37,7 +37,6 @@
   #include <cxxabi.h> // for abi::__cxa_demangle(...)
   #include <dlfcn.h> // for dladdr(...)
   #include <execinfo.h>
-  #include <string.h> // for strlen(...)
   #include <unistd.h> // for STDIN_FILENO/STDOUT_FILENO/STDERR_FILENO
   #include <sys/wait.h> // for waitpid(...)
 #endif
@@ -59,12 +58,10 @@
 #include "singleton.hpp"
 #include "thread_utils.hpp"
 
+#include "misc.hpp"
 #include "log.hpp"
 
 NS_LOCAL
-
-template <typename T, size_t Size>
-inline CONSTEXPR size_t array_size(const T(&)[Size]) { return Size; }
 
 MSVC_ONLY(__pragma(warning(push)))
 MSVC_ONLY(__pragma(warning(disable: 4996))) // the compiler encountered a deprecated declaration
@@ -117,7 +114,7 @@ class logger_ctx: public iresearch::singleton<logger_ctx> {
     return *this;
   }
   logger_ctx& output_le(iresearch::logger::level_t level, FILE* out) {
-    for (size_t i = 0, count = array_size(out_); i < count; ++i) {
+    for (size_t i = 0, count = IRESEARCH_COUNTOF(out_); i < count; ++i) {
       output(static_cast<iresearch::logger::level_t>(i), i > level ? nullptr : out);
     }
     return *this;
@@ -271,8 +268,9 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
       auto pid = fork();
 
       if (!pid) {
-        size_t pid_size = sizeof(pid_t)*3 + 1; // aproximately 3 chars per byte +1 for \0
-        size_t name_size = strlen("/proc//exe") + pid_size + 1; // +1 for \0
+        CONSTEXPR const size_t pid_size = sizeof(pid_t)*3 + 1; // aproximately 3 chars per byte +1 for \0
+        CONSTEXPR const char PROC_EXE[] = { "/proc//exe" };
+        CONSTEXPR const size_t name_size = IRESEARCH_COUNTOF(PROC_EXE) + pid_size + 1; // +1 for \0
         char pid_buf[pid_size];
         char name_buf[name_size];
         auto ppid = getppid();
@@ -317,7 +315,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
       auto pid = fork();
 
       if (!pid) {
-        size_t pid_size = sizeof(pid_t)*3 + 1; // approximately 3 chars per byte +1 for \0
+        CONSTEXPR const size_t pid_size = sizeof(pid_t)*3 + 1; // approximately 3 chars per byte +1 for \0
         char pid_buf[pid_size];
         char name_buf[PROC_PIDPATHINFO_MAXSIZE]; // buffer size requirement for proc_pidpath(...)
         auto ppid = getppid();
@@ -345,8 +343,9 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
       auto pid = fork();
 
       if (!pid) {
-        size_t pid_size = sizeof(pid_t)*3 + 1; // approximately 3 chars per byte +1 for \0
-        size_t name_size = strlen("/proc//exe") + pid_size + 1; // +1 for \0
+        CONSTEXPR const size_t pid_size = sizeof(pid_t)*3 + 1; // approximately 3 chars per byte +1 for \0
+        CONSTEXPR const char PROC_EXE[] = { "/proc//exe" };
+        CONSTEXPR const size_t name_size = IRESEARCH_COUNTOF(PROC_EXE) + pid_size + 1; // +1 for \0
         char pid_buf[pid_size];
         char name_buf[name_size];
         auto ppid = getppid();
@@ -370,7 +369,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
 
   void stack_trace_posix(iresearch::logger::level_t level) {
     auto* out = output(level);
-    static const size_t frames_max = 128; // arbitrary size
+    CONSTEXPR const size_t frames_max = 128; // arbitrary size
     void* frames_buf[frames_max];
     auto frames_count = backtrace(frames_buf, frames_max);
 
@@ -391,7 +390,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
     }
 
     size_t buf_len = 0;
-    size_t buf_size = 1024; // arbitrary size
+    CONSTEXPR const size_t buf_size = 1024; // arbitrary size
     char buf[buf_size];
     std::thread thread([&pipefd, level, out, &buf, &buf_len, buf_size]()->void {
       for (char ch; read(pipefd[0], &ch, 1) > 0;) {
@@ -533,7 +532,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
       return false;
     }
 
-    size_t symbols_size = 1048576; // arbitrary size (4K proved too small)
+    CONSTEXPR const size_t symbols_size = 1048576; // arbitrary size (4K proved too small)
     auto symbol_bytes = bfd_get_symtab_upper_bound(file_bfd);
 
     if (symbol_bytes <= 0 || symbols_size < size_t(symbol_bytes)) {
@@ -668,7 +667,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
         continue;
       }
 
-      size_t proc_size = 1024; // arbitrary size
+      CONSTEXPR const size_t proc_size = 1024; // arbitrary size
       char proc_buf[proc_size];
       unw_word_t offset;
 
@@ -772,7 +771,7 @@ void stack_trace(level_t level, const std::exception_ptr& eptr) {
       return; // skip generating trace if logging is disabled for this level altogether
     }
 
-    static const size_t frames_max = 128; // arbitrary size
+    CONSTEXPR const size_t frames_max = 128; // arbitrary size
     void* frames_buf[frames_max];
     auto frames_count = backtrace(frames_buf, frames_max);
 

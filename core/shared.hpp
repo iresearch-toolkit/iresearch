@@ -33,7 +33,7 @@
 #include <string> //need to include this really early...
 
 //////////////////////////////////////////////////////////
-// Export/Import definition
+/// Export/Import definitions
 //////////////////////////////////////////////////////////
 
 // Generic helper definitions for shared library support
@@ -180,6 +180,12 @@
   #define CURRENT_FUNCTION __PRETTY_FUNCTION__
 #elif defined(_MSC_VER)
   #define CURRENT_FUNCTION __FUNCSIG__
+#endif
+
+#ifndef __has_feature
+  #define IRESEARCH_COMPILER_HAS_FEATURE(x) 0 // Compatibility with non-clang compilers.
+#else
+  #define IRESEARCH_COMPILER_HAS_FEATURE(x) __has_feature(x)
 #endif
 
 //////////////////////////////////////////////////////////
