@@ -67,7 +67,7 @@ IRESEARCH_API timer_stat_t& get_stat(const std::string& key);
 #define REGISTER_TIMER_EXPANDER__(timer_name, line) REGISTER_TIMER__(timer_name, line)
 #define SCOPED_TIMER(timer_name) REGISTER_TIMER_EXPANDER__(timer_name, __LINE__)
 
-#ifdef IRESEARCH_DEBUG
+#if defined(IRESEARCH_DEBUG) && !defined(IRESEARCH_VALGRIND)
   #define REGISTER_TIMER(timer_name) REGISTER_TIMER_EXPANDER__(timer_name, __LINE__)
   #define REGISTER_TIMER_DETAILED() REGISTER_TIMER(std::string(CURRENT_FUNCTION) + ":" + TOSTRING(__LINE__))
   #define REGISTER_TIMER_DETAILED_VERBOSE() REGISTER_TIMER(std::string(__FILE__) + ":" + TOSTRING(__LINE__) + " -> " + std::string(CURRENT_FUNCTION))
