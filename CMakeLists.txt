@@ -17,6 +17,16 @@ if (NOT MSVC)
 endif()
 
 ################################################################################
+### compile options
+################################################################################
+
+option(USE_VALGRIND "Use workarounds to avoid false positives in valgrind" OFF)
+
+if (USE_VALGRIND)
+  add_definitions(-DIRESEARCH_VALGRIND)
+endif()
+
+################################################################################
 ### find 3rd party libraries
 ################################################################################
 
