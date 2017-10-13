@@ -110,13 +110,7 @@ environment:
       BOOST_ROOT: C:/Libraries/boost_1_64_0
       CONFIGURATION: Release
 
-install:
-  ############################################################################
-  # Setup bison
-  ############################################################################
-  - set PATH=%PATH%;C:\cygwin64\bin
-  - bison --version
-
+install:  
   ############################################################################
   # All the dependencies are installed in %APPVEYOR_BUILD_FOLDER%\deps
   ############################################################################
@@ -132,13 +126,6 @@ install:
   - appveyor-retry git clone --quiet %SNOWBALL_URL% %SNOWBALL_DIR%
   - cd %SNOWBALL_DIR%
   - git reset --hard 5137019d68befd633ce8b1cd48065f41e77ed43e
-#  - git reset --hard 9e0a8340d58c70f91e8a0233b985242dc69c6fb8
-#  - mkdir build && cd build
-#  - set PATH=%PATH%;%SNOWBALL_DIR%\build\%CONFIGURATION%
-#  - cmake %CMAKE_OPTIONS% -DENABLE_STATIC=OFF -DNO_SHARED=ON -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 ..
-#  - cmake --build . %CMAKE_BUILD_OPTIONS%
-#  - cmake %CMAKE_OPTIONS% -DENABLE_STATIC=OFF -DNO_SHARED=OFF -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 ..
-#  - cmake --build . %CMAKE_BUILD_OPTIONS%
   - set SNOWBALL_ROOT=%SNOWBALL_DIR%
 
   ############################################################################
@@ -188,6 +175,12 @@ install:
   - cmake --build . %CMAKE_BUILD_OPTIONS%
   - cmake --build . --target install
   - set LZ4_ROOT=%LZ4_ROOT%\build
+  
+  ############################################################################
+  # Setup bison
+  ############################################################################
+  - set PATH=C:\cygwin64\bin;%PATH%
+  - bison --version
 
 before_build:
   - C:\"Program Files (x86)"\"%VSINSTALL%"\vcvarsall.bat amd64
