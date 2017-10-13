@@ -54,7 +54,7 @@ namespace tests {
 
 using namespace tests;
 
-TEST_F(async_utils_tests, test_busywait_mutex) {
+TEST_F(async_utils_tests, test_busywait_mutex_mt) {
   typedef iresearch::async_utils::busywait_mutex mutex_t;
   // lock + unlock
   {
@@ -102,7 +102,7 @@ TEST_F(async_utils_tests, test_busywait_mutex) {
   }
 }
 
-TEST_F(async_utils_tests, test_read_write_mutex) {
+TEST_F(async_utils_tests, test_read_write_mutex_mt) {
   typedef iresearch::async_utils::read_write_mutex mutex_t;
   typedef iresearch::async_utils::read_write_mutex::read_mutex r_mutex_t;
   typedef iresearch::async_utils::read_write_mutex::write_mutex w_mutex_t;
@@ -336,7 +336,7 @@ TEST_F(async_utils_tests, test_read_write_mutex) {
   }
 }
 
-TEST_F(async_utils_tests, test_thread_pool_run) {
+TEST_F(async_utils_tests, test_thread_pool_run_mt) {
   // test schedule 1 task
   {
     iresearch::async_utils::thread_pool pool(1, 0);
@@ -408,7 +408,7 @@ TEST_F(async_utils_tests, test_thread_pool_run) {
   }
 }
 
-TEST_F(async_utils_tests, test_thread_pool_bound) {
+TEST_F(async_utils_tests, test_thread_pool_bound_mt) {
   // test max threads
   {
     iresearch::async_utils::thread_pool pool(0, 0);
@@ -523,7 +523,7 @@ TEST_F(async_utils_tests, test_thread_pool_bound) {
   }
 }
 
-TEST_F(async_utils_tests, test_thread_pool_stop) {
+TEST_F(async_utils_tests, test_thread_pool_stop_mt) {
   // test stop run pending
   {
     iresearch::async_utils::thread_pool pool(1, 0);
