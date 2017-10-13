@@ -253,24 +253,12 @@ add_custom_target(iresearch-tests-memleak-s-shallow-fast
 
 # setup target for thread race detection
 add_custom_target(iresearch-tests-threadrace
-  COMMAND valgrind --xml=yes --xml-file=valgrind.xml --tool=helgrind --read-var-info=yes --num-callers=64 ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --ires_output
+  COMMAND valgrind --xml=yes --xml-file=valgrind.xml --tool=helgrind --read-var-info=yes --num-callers=64 ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*_mt --ires_output
   DEPENDS iresearch-tests
 )
 
 # setup target for thread race detection
 add_custom_target(iresearch-tests-threadrace-s
-  COMMAND valgrind --xml=yes --xml-file=valgrind.xml --tool=helgrind --read-var-info=yes --num-callers=64 ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --ires_output
-  DEPENDS iresearch-tests-static
-)
-
-# setup target for thread race detection
-add_custom_target(iresearch-tests-threadrace-fast
-  COMMAND valgrind --xml=yes --xml-file=valgrind.xml --tool=helgrind --read-var-info=yes --num-callers=64 ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*profile*:*concurrent* --ires_output
-  DEPENDS iresearch-tests
-)
-
-# setup target for thread race detection
-add_custom_target(iresearch-tests-threadrace-s-fast
-  COMMAND valgrind --xml=yes --xml-file=valgrind.xml --tool=helgrind --read-var-info=yes --num-callers=64 ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*profile*:*concurrent* --ires_output
+  COMMAND valgrind --xml=yes --xml-file=valgrind.xml --tool=helgrind --read-var-info=yes --num-callers=64 ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*_mt --ires_output
   DEPENDS iresearch-tests-static
 )
