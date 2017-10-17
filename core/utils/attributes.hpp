@@ -478,9 +478,24 @@ const attribute_map<T, Ref, Args...>::ref<U>::nil;
 class IRESEARCH_API attribute_store
     : public attribute_map<stored_attribute, std::shared_ptr> {
  public:
+  typedef attribute_map<stored_attribute, std::shared_ptr> base_t;
+
   static const attribute_store& empty_instance();
 
   explicit attribute_store(size_t reserve = 0);
+
+  attribute_store(const attribute_store&) = default;
+
+  attribute_store(attribute_store&& rhs) NOEXCEPT
+    : base_t(std::move(rhs)) {
+  }
+
+  attribute_store& operator=(const attribute_store&) = default;
+
+  attribute_store& operator=(attribute_store&& rhs) NOEXCEPT {
+    base_t::operator=(std::move(rhs));
+    return *this;
+  }
 
   template<typename T, typename... Args>
   typename ref<T>::type& emplace(Args&&... args) {
@@ -533,9 +548,20 @@ class pointer_wrapper {
 class IRESEARCH_API attribute_view
     : public attribute_map<attribute, pointer_wrapper> {
  public:
+  typedef attribute_map<attribute, pointer_wrapper> base_t;
+
   static const attribute_view& empty_instance();
 
   explicit attribute_view(size_t reserve = 0);
+
+  attribute_view(attribute_view&& rhs) NOEXCEPT
+    : base_t(std::move(rhs)) {
+  }
+
+  attribute_view& operator=(attribute_view&& rhs) NOEXCEPT {
+    base_t::operator=(std::move(rhs));
+    return *this;
+  }
 
   template<typename T>
   typename ref<T>::type& emplace(T& value) {
