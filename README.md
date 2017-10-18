@@ -170,24 +170,22 @@ win32 binaries also available in:
 
 ### [ICU](http://site.icu-project.org/download)
 
-#### install
-look for link: "ICU4C Binaries"
+#### install (*nix)
+```bash
+./configure --disable-samples --disable-tests --enable-static --srcdir="$(pwd)" --prefix=<install-path> --exec-prefix=<install-path>
+make install
+```
+or
+point ICU_ROOT at the source directory to build together with IResearch
 or
 via the distributions' package manager: libicu<version>
-or
-build from source via:
-```bash
-configure --enable-static
-make
-```
+
+#### install (win32)
+look for link: "ICU4C Binaries"
 
 #### set environment
 ```bash
-ICU_ROOT=<path-to>/ICU_<version>
-```
-or
-```bash
-ICU_ROOT_SUFFIX is set (e.g. ICU_ROOT_SUFFIX=x86_64-linux-gnu for Ubuntu)
+ICU_ROOT=<path-to-icu>
 ```
 
 ### [Snowball](http://snowball.tartarus.org)

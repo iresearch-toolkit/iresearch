@@ -530,8 +530,8 @@ elseif (MSVC)
     "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_FILESYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_FILESYSTEM_LIBRARY_RELEASE}>"
     "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_LOCALE_LIBRARY_RELEASE}>"
     "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_RELEASE}>"
-    ${ICU_STATIC_LIBS}
     ${Unwind_STATIC_LIBS}
+    $<TARGET_FILE:icu-static>
     "$<TARGET_FILE:lz4_static>"
     "$<TARGET_FILE:stemmer-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimited-static>"
@@ -557,8 +557,8 @@ elseif (MSVC)
     "$<$<CONFIG:Debug>:${Boost_STATIC_staticRT_FILESYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_staticRT_FILESYSTEM_LIBRARY_RELEASE}>"
     "$<$<CONFIG:Debug>:${Boost_STATIC_staticRT_LOCALE_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_staticRT_LOCALE_LIBRARY_RELEASE}>"
     "$<$<CONFIG:Debug>:${Boost_STATIC_staticRT_SYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_staticRT_SYSTEM_LIBRARY_RELEASE}>"
-    ${ICU_STATIC_LIBS}
     ${Unwind_STATIC_LIBS}
+    $<TARGET_FILE:icu-static>
     "$<TARGET_FILE:lz4_static>"
     "$<TARGET_FILE:stemmer-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimited-static-scrt>"
@@ -585,10 +585,11 @@ elseif (APPLE)
     ${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}
     ${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}
     ${Boost_STATIC_sharedRT_THREAD_LIBRARY_DEBUG}
-    ${ICU_STATIC_LIBS}
     ${Unwind_STATIC_LIBS}
+    $<TARGET_FILE:icu-static>
     "$<TARGET_FILE:lz4_static>"
     "$<TARGET_FILE:stemmer-static>"
+    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimited-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
@@ -612,8 +613,8 @@ else()
     ${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}
     ${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}
     ${Boost_STATIC_sharedRT_THREAD_LIBRARY_DEBUG}
-    ${ICU_STATIC_LIBS}
     ${Unwind_STATIC_LIBS}
+    $<TARGET_FILE:icu-static>
     "$<TARGET_FILE:lz4_static>"
     "$<TARGET_FILE:stemmer-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimited-static>"
@@ -898,14 +899,14 @@ endif()
 target_link_libraries(${IResearch_TARGET_NAME}-analyzer-text-shared
   ${IResearch_TARGET_NAME}-shared
   ${Boost_SHARED_sharedRT_LIBRARIES}
-  ${ICU_SHARED_LIBS}
-  ${Snowball_SHARED_LIB}
+  icu-shared
+  stemmer-shared
 )
 
 target_link_libraries(${IResearch_TARGET_NAME}-analyzer-text-static
   ${IResearch_TARGET_NAME}-static
-  ${ICU_STATIC_LIBS}
-  ${Snowball_STATIC_LIB}
+  icu-static
+  stemmer-static
 )
 
 # setup CRT
@@ -913,14 +914,14 @@ if(MSVC)
   target_link_libraries(${IResearch_TARGET_NAME}-analyzer-text-shared-scrt
     ${IResearch_TARGET_NAME}-shared-scrt
     ${Boost_SHARED_sharedRT_LIBRARIES}
-    ${ICU_SHARED_LIBS}
-    ${Snowball_SHARED_LIB}
+    icu-shared
+    snowball-shared
   )
 
   target_link_libraries(${IResearch_TARGET_NAME}-analyzer-text-static-scrt
     ${IResearch_TARGET_NAME}-static-scrt
-    ${ICU_STATIC_LIBS}
-    ${Snowball_STATIC_LIB}
+    icu-static
+    snowball-static
   )
 endif()
 
