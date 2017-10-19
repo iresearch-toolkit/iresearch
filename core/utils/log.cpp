@@ -98,7 +98,9 @@ class file_streambuf: public std::streambuf {
 
 class logger_ctx: public iresearch::singleton<logger_ctx> {
  public:
-  logger_ctx(): singleton() {
+  logger_ctx()
+    : singleton(),
+      stack_trace_level_(irs::logger::level_t::IRL_DEBUG) {
     // set everything up to and including INFO to stderr
     for (size_t i = 0, last = iresearch::logger::IRL_INFO; i <= last; ++i) {
       out_[i].file_ = stderr;
@@ -119,6 +121,11 @@ class logger_ctx: public iresearch::singleton<logger_ctx> {
     }
     return *this;
   }
+  irs::logger::level_t stack_trace_level() { return stack_trace_level_; }
+  logger_ctx& stack_trace_level(irs::logger::level_t level) {
+    stack_trace_level_ = level;
+    return *this;
+  }
   std::ostream& stream(iresearch::logger::level_t level) { return out_[level].stream_; }
 
  private:
@@ -130,6 +137,7 @@ class logger_ctx: public iresearch::singleton<logger_ctx> {
   };
 
   level_ctx_t out_[iresearch::logger::IRL_TRACE + 1]; // IRL_TRACE is the last value, +1 for 0'th id
+  irs::logger::level_t stack_trace_level_;
 };
 
 typedef std::function<void(const char* file, size_t line, const char* fn)> bfd_callback_type_t;
@@ -782,6 +790,14 @@ void stack_trace(level_t level, const std::exception_ptr& eptr) {
     }
   }
 #endif
+
+irs::logger::level_t stack_trace_level() {
+  return logger_ctx::instance().stack_trace_level();
+}
+
+void stack_trace_level(level_t level) {
+  logger_ctx::instance().stack_trace_level(level);
+}
 
 std::ostream& stream(level_t level) {
   return logger_ctx::instance().stream(level);

@@ -73,6 +73,8 @@ namespace {
 }
 
 const std::string IRES_HELP("help");
+const std::string IRES_LOG_LEVEL("ires_log_level");
+const std::string IRES_LOG_STACK("ires_log_stack");
 const std::string IRES_OUTPUT("ires_output");
 const std::string IRES_OUTPUT_PATH("ires_output_path");
 const std::string IRES_RESOURCE_DIR("ires_resource_dir");
@@ -125,6 +127,16 @@ void test_base::prepare(const cmdline::parser& parser) {
   }
 
   make_directories();
+
+  {
+    auto log_level = parser.get<irs::logger::level_t>(IRES_LOG_LEVEL);
+
+    irs::logger::output_le(log_level, stderr); // set desired log level
+
+    if (parser.get<bool>(IRES_LOG_STACK)) {
+      irs::logger::stack_trace_level(log_level); // force enable stack trace
+    }
+  }
 
   if (parser.exist(IRES_OUTPUT)) {
     std::unique_ptr<char*[]> argv(new char*[2 + argc_]);
@@ -184,11 +196,36 @@ void test_base::make_directories() {
 }
 
 void test_base::parse_command_line(cmdline::parser& cmd) {
+  static const auto log_level_reader = [](const std::string &s)->irs::logger::level_t {
+    static const std::map<std::string, irs::logger::level_t> log_levels = {
+      { "FATAL", irs::logger::level_t::IRL_FATAL },
+      { "ERROR", irs::logger::level_t::IRL_ERROR },
+      { "WARN", irs::logger::level_t::IRL_WARN },
+      { "INFO", irs::logger::level_t::IRL_INFO },
+      { "DEBUG", irs::logger::level_t::IRL_DEBUG },
+      { "TRACE", irs::logger::level_t::IRL_TRACE },
+    };
+    auto itr = log_levels.find(s);
+
+    if (itr == log_levels.end()) {
+      throw std::invalid_argument(s);
+    }
+
+    return itr->second;
+  };
+
   cmd.add(IRES_HELP, '?', "print this message");
+  cmd.add(IRES_LOG_LEVEL, 0, "threshold log level <FATAL|ERROR|WARN|INFO|DEBUG|TRACE>", false, irs::logger::level_t::IRL_FATAL, log_level_reader);
+  cmd.add(IRES_LOG_STACK, 0, "always log stack trace", false, false);
   cmd.add(IRES_OUTPUT, 0, "generate an XML report");
   cmd.add(IRES_OUTPUT_PATH, 0, "output directory", false, out_dir_);
   cmd.add(IRES_RESOURCE_DIR, 0, "resource directory", false, fs::path(IResearch_test_resource_dir));
-  cmd.parse(argc_, argv_);
+
+  if (!cmd.parse(argc_, argv_)) {
+    std::cout << cmd.error_full() << std::endl;
+    std::cout << cmd.usage() << std::endl;
+    exit(1);
+  }
 
   if (cmd.exist(IRES_HELP)) {
     std::cout << cmd.usage() << std::endl;
@@ -202,16 +239,13 @@ void test_base::parse_command_line(cmdline::parser& cmd) {
 int test_base::initialize(int argc, char* argv[]) {
   argc_ = argc;
   argv_ = argv;
+  ::testing::AddGlobalTestEnvironment(new iteration_tracker());
+  ::testing::InitGoogleTest(&argc_, argv_);
 
   cmdline::parser cmd;
+
   parse_command_line(cmd);
   prepare(cmd);
-
-  ::testing::AddGlobalTestEnvironment( new iteration_tracker() );
-  ::testing::InitGoogleTest( &argc_, argv_ ); 
-
-  // suppress log messages since tests check error conditions
-  iresearch::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
   return RUN_ALL_TESTS();
 }

@@ -66,6 +66,8 @@ IRESEARCH_API void output(level_t level, FILE* out); // nullptr == /dev/null
 IRESEARCH_API void output_le(level_t level, FILE* out); // nullptr == /dev/null
 IRESEARCH_API void stack_trace(level_t level);
 IRESEARCH_API void stack_trace(level_t level, const std::exception_ptr& eptr);
+IRESEARCH_API irs::logger::level_t stack_trace_level(); // stack trace output level
+IRESEARCH_API void stack_trace_level(level_t level); // stack trace output level
 IRESEARCH_API std::ostream& stream(level_t level);
 
 #ifndef _MSC_VER
@@ -74,14 +76,6 @@ IRESEARCH_API std::ostream& stream(level_t level);
 #endif
 
 NS_END // logger
-NS_END
-
-NS_LOCAL
-
-FORCE_INLINE CONSTEXPR iresearch::logger::level_t exception_stack_trace_level() {
-  return iresearch::logger::IRL_DEBUG;
-}
-
 NS_END
 
 #define IR_LOG_FORMATED(level, prefix, format, ...) \
@@ -104,10 +98,10 @@ NS_END
 #define IR_STRM_TRACE() IR_LOG_STREM(::iresearch::logger::IRL_TRACE, "TRACE")
 
 #define IR_EXCEPTION() \
-  IR_LOG_FORMATED(exception_stack_trace_level(), "EXCEPTION", "@%s\nstack trace:", __FUNCTION__); \
-  ::iresearch::logger::stack_trace(exception_stack_trace_level(), std::current_exception());
+  IR_LOG_FORMATED(::iresearch::logger::stack_trace_level(), "EXCEPTION", "@%s\nstack trace:", __FUNCTION__); \
+  ::iresearch::logger::stack_trace(::iresearch::logger::stack_trace_level(), std::current_exception());
 #define IR_STACK_TRACE() \
-  IR_LOG_FORMATED(exception_stack_trace_level(), "STACK_TRACE", "@%s\nstack trace:", __FUNCTION__); \
-  ::iresearch::logger::stack_trace(exception_stack_trace_level());
+  IR_LOG_FORMATED(::iresearch::logger::stack_trace_level(), "STACK_TRACE", "@%s\nstack trace:", __FUNCTION__); \
+  ::iresearch::logger::stack_trace(::iresearch::logger::stack_trace_level());
 
 #endif
