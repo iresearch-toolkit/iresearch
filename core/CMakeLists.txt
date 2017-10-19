@@ -896,12 +896,26 @@ if(MSVC)
   )
 endif()
 
+if(MSVC)
+  message("IMPORTED_LOCATION: " $<TARGET_PROPERTY:icu-shared,IMPORTED_LOCATION>)
+  message("IMPORTED_LOCATION: |$<TARGET_PROPERTY:icu-shared,IMPORTED_LOCATION>|")
+  message("INTERFACE_LINK_LIBRARIES: " $<TARGET_PROPERTY:icu-shared,INTERFACE_LINK_LIBRARIES>)
+  message("INTERFACE_LINK_LIBRARIES: |$<TARGET_PROPERTY:icu-shared,INTERFACE_LINK_LIBRARIES>|")
+  target_link_libraries(${IResearch_TARGET_NAME}-analyzer-text-shared
+    ${IResearch_TARGET_NAME}-shared
+    ${Boost_SHARED_sharedRT_LIBRARIES}
+    $<TARGET_PROPERTY:icu-shared,IMPORTED_LOCATION>
+    $<TARGET_PROPERTY:icu-shared,INTERFACE_LINK_LIBRARIES>
+    stemmer-shared
+  )
+else()
 target_link_libraries(${IResearch_TARGET_NAME}-analyzer-text-shared
   ${IResearch_TARGET_NAME}-shared
   ${Boost_SHARED_sharedRT_LIBRARIES}
   icu-shared
   stemmer-shared
 )
+endif()
 
 target_link_libraries(${IResearch_TARGET_NAME}-analyzer-text-static
   ${IResearch_TARGET_NAME}-static
