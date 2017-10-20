@@ -21,6 +21,17 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#if defined(__GNUC__)
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
+#include <boost/thread.hpp>
+
+#if defined(__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
+
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/directory_reader.hpp"
@@ -35,7 +46,6 @@
 #include "utils/memory_pool.hpp"
 
 #include <boost/chrono.hpp>
-#include <boost/thread.hpp>
 #include <unicode/uclean.h>
 
 #include <random>
@@ -1121,3 +1131,7 @@ int search(int argc, char* argv[]) {
 
   return search(cmdsearch);
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

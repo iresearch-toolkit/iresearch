@@ -21,6 +21,17 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#if defined(__GNUC__)
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
+#include <boost/thread.hpp>
+
+#if defined(__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
+
 #include "index-put.hpp"
 #include "index/index_writer.hpp"
 #include "analysis/token_streams.hpp"
@@ -29,7 +40,6 @@
 #include "store/store_utils.hpp"
 #include "analysis/token_attributes.hpp"
 
-#include <boost/thread.hpp>
 #include <boost/chrono.hpp>
 #include <unicode/uclean.h>
 

@@ -24,6 +24,7 @@
 #if defined (__GNUC__)
   #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+  #pragma GCC diagnostic ignored "-Wunused-variable"
 #endif
 
   #include <boost/filesystem/operations.hpp>
