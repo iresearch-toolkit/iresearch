@@ -29,6 +29,7 @@
 #include "string.hpp"
 #include "error/error.hpp"
 #include "utils/log.hpp"
+#include "utils/memory.hpp"
 
 #if defined(__APPLE__)
   #include <sys/param.h> // for MAXPATHLEN
@@ -455,21 +456,45 @@ handle_t open(FILE* file, const file_path_t mode) NOEXCEPT {
       return nullptr;
     }
 
-    const auto size = sizeof(FILE_NAME_INFO) + sizeof(WCHAR)*MAX_PATH + 1; // +1 for \0
-    char info_buf[size];
-    PFILE_NAME_INFO info = reinterpret_cast<PFILE_NAME_INFO>(info_buf);
+    const auto size = MAX_PATH + 1; // +1 for \0
+    TCHAR path[size];
+    auto length = GetFinalPathNameByHandle(handle, path, size - 1, VOLUME_NAME_DOS); // -1 for \0
 
-    if (!GetFileInformationByHandleEx(handle, FileNameInfo, info, size)) {
+    if (!length) {
       IR_FRMT_ERROR("Failed to get filename from file handle, error %d", GetLastError());
+
       return nullptr;
     }
 
-    auto path = info->FileName;
-    auto length = info->FileNameLength >> (sizeof(path[0]) - 1); // FileNameLength is in bytes
+    if(length < size) {
+      path[length] = '\0';
 
-    path[length] = '\0';
+      return open(path, mode);
+    }
 
-    return open(path, mode);
+    IR_FRMT_WARN(
+      "Required file path buffer size of %d is greater than the expected size of %d, malloc necessary",
+      length + 1, size // +1 for \0
+    );
+
+    size = length + 1; // +1 for \0
+
+    auto buf = irs::memory::make_unique<TCHAR[]>(size);
+
+    length = GetFinalPathNameByHandle(handle, buf.get(), size - 1, VOLUME_NAME_DOS); // -1 for \0
+
+    if(length && length < size) {
+      buf.get()[length] = '\0';
+
+      return open(buf.get(), mode);
+    }
+
+    IR_FRMT_ERROR(
+      "Failed to get filename from file handle, inconsistent length detected, first %d then %d",
+      size, length + 1 // +1 for \0
+    );
+
+    return nullptr;
   #elif defined(__APPLE__)
     // MacOS approach is to open the original file via the file descriptor link under /dev/fd
     // the link is garanteed to point to the original inode even if the original file was removed
