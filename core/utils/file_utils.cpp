@@ -429,11 +429,19 @@ bool is_directory(const file_path_t name) NOEXCEPT {
 handle_t open(const file_path_t path, const file_path_t mode) NOEXCEPT {
   #ifdef _WIN32
     #pragma warning(disable: 4996) // '_wfopen': This function or variable may be unsafe.
-    return handle_t(::_wfopen(path ? path : _T("NUL:"), mode));
+    handle_t handle(::_wfopen(path ? path : _T("NUL:"), mode));
     #pragma warning(default: 4996)
   #else
-    return handle_t(::fopen(path ? path : "/dev/null", mode));
+    handle_t handle(::fopen(path ? path : "/dev/null", mode));
   #endif
+
+  if (!handle) {
+    // even win32 uses 'errno' for error codes in calls to _wfopen(...)
+    IR_FRMT_ERROR("Failed to open file, error: %d, path: " IR_FILEPATH_SPECIFIER, errno, path);
+    IR_STACK_TRACE();
+  }
+
+  return handle;
 }
 
 handle_t open(FILE* file, const file_path_t mode) NOEXCEPT {
