@@ -27,14 +27,15 @@
 #include "file_utils.hpp"
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constants for madvise
+/// @brief constants for madviсe
 /// NOTE: It's important to define constants BEFORE the next include
 ////////////////////////////////////////////////////////////////////////////////
-#define IR_MADVISE_SEQUENTIAL 0
-#define IR_MADVISE_RANDOM 0
-#define IR_MADVISE_WILLNEED 0
-#define IR_MADVISE_DONTNEED 0
-#define IR_MADVISE_DONTDUMP 0
+#define IR_MADVICE_NORMAL 0
+#define IR_MADVICE_SEQUENTIAL 0
+#define IR_MADVICE_RANDOM 0
+#define IR_MADVICE_WILLNEED 0
+#define IR_MADVICE_DONTNEED 0
+#define IR_MADVICE_DONTDUMP 0
 
 #if defined(_MSC_VER)
 #include "mman_win32.hpp"
@@ -78,6 +79,10 @@ class mmap_handle {
     return !mmap_utils::flush(
       static_cast<int>(fd_), addr_, size_, flags
     );
+  }
+
+  bool advise(int adv) {
+    return 0 == ::madvise(addr_, size_, adv);
   }
 
  private:
