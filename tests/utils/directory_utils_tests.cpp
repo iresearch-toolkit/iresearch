@@ -481,7 +481,7 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
     file1->write_byte(42);
     file1->flush();
 
-    auto file2 = track_dir.open("abc");
+    auto file2 = track_dir.open("abc", irs::IOAdvice::NORMAL);
 
     ASSERT_FALSE(!file2);
     ASSERT_TRUE(track_dir.sync("abc")); // does nothing in memory_directory, but adds line coverage
@@ -580,7 +580,7 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
     iresearch::ref_tracking_directory track_dir(dir);
     auto file1 = dir.create("abc");
     ASSERT_FALSE(!file1);
-    auto file2 = track_dir.open("abc");
+    auto file2 = track_dir.open("abc", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!file2);
     size_t count = 0;
     auto visitor = [&count](const iresearch::index_file_refs::ref_t& ref)->bool { ++count; return true; };
@@ -595,7 +595,7 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
     iresearch::ref_tracking_directory track_dir(dir, true);
     auto file1 = dir.create("abc");
     ASSERT_FALSE(!file1);
-    auto file2 = track_dir.open("abc");
+    auto file2 = track_dir.open("abc", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!file2);
     size_t count = 0;
     auto visitor = [&count](const iresearch::index_file_refs::ref_t& ref)->bool { ++count; return true; };
@@ -633,7 +633,7 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
     virtual bool visit(const visitor_f&) const override { return false; }
     virtual iresearch::index_lock::ptr make_lock(const std::string&) NOEXCEPT override { return nullptr; }
     virtual bool mtime(std::time_t& result, const std::string& name) const NOEXCEPT override { return false; }
-    virtual iresearch::index_input::ptr open(const std::string&) const NOEXCEPT override { return nullptr; }
+    virtual iresearch::index_input::ptr open(const std::string&, irs::IOAdvice) const NOEXCEPT override { return nullptr; }
     virtual bool remove(const std::string&) NOEXCEPT override { return false; }
     virtual bool rename(const std::string&, const std::string&) NOEXCEPT override { return false; }
     virtual bool sync(const std::string& name) NOEXCEPT override { return false; }
@@ -660,7 +660,7 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
 
     iresearch::ref_tracking_directory track_dir(error_dir, true);
 
-    ASSERT_FALSE(track_dir.open("abc"));
+    ASSERT_FALSE(track_dir.open("abc", irs::IOAdvice::NORMAL));
 
     std::set<std::string> refs;
     auto visitor = [&refs](const iresearch::index_file_refs::ref_t& ref)->bool { refs.insert(*ref); return true; };
@@ -705,7 +705,7 @@ TEST_F(directory_utils_tests, test_tracking_dir) {
     file1->write_byte(42);
     file1->flush();
 
-    auto file2 = track_dir.open("abc");
+    auto file2 = track_dir.open("abc", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!file2);
 
     ASSERT_TRUE(track_dir.sync("abc")); // does nothing in memory_directory, but adds line coverage
@@ -727,7 +727,7 @@ TEST_F(directory_utils_tests, test_tracking_dir) {
     iresearch::tracking_directory track_dir(dir);
     auto file1 = dir.create("abc");
     ASSERT_FALSE(!file1);
-    auto file2 = track_dir.open("abc");
+    auto file2 = track_dir.open("abc", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!file2);
     iresearch::tracking_directory::file_set files;
 
@@ -741,7 +741,7 @@ TEST_F(directory_utils_tests, test_tracking_dir) {
     iresearch::tracking_directory track_dir(dir, true);
     auto file1 = dir.create("abc");
     ASSERT_FALSE(!file1);
-    auto file2 = track_dir.open("abc");
+    auto file2 = track_dir.open("abc", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!file2);
     iresearch::tracking_directory::file_set files;
 

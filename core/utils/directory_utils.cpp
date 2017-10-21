@@ -301,7 +301,8 @@ bool tracking_directory::mtime(
 }
 
 index_input::ptr tracking_directory::open(
-  const std::string& name
+  const std::string& name,
+  IOAdvice advice
 ) const NOEXCEPT {
   if (track_open_) {
     try {
@@ -313,7 +314,7 @@ index_input::ptr tracking_directory::open(
     }
   }
 
-  return impl_.open(name);
+  return impl_.open(name, advice);
 }
 
 bool tracking_directory::remove(const std::string& name) NOEXCEPT {
@@ -456,13 +457,14 @@ bool ref_tracking_directory::mtime(
 }
 
 index_input::ptr ref_tracking_directory::open(
-  const std::string& name
+  const std::string& name,
+  IOAdvice advice
 ) const NOEXCEPT {
   if (!track_open_) {
-    return impl_.open(name);
+    return impl_.open(name, advice);
   }
 
-  auto result = impl_.open(name);
+  auto result = impl_.open(name, advice);
 
   // only track ref on successful call to impl_
   if (result) {

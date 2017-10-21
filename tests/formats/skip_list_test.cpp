@@ -79,7 +79,7 @@ void write_flush(size_t count, size_t max_levels, size_t skip) {
   // check data in stream
   // we write levels in reverse order into a stream (from n downto 0)
   {
-    auto in = dir.open("docs");
+    auto in = dir.open("docs", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!in);
 
     // skip number of levels
@@ -234,7 +234,7 @@ TEST(skip_writer_test, reset) {
     // check data in stream
     // we write levels in reverse order into a stream (from n downto 0)
     {
-      auto in = dir.open(file);
+      auto in = dir.open(file, irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
 
       // skip number of levels
@@ -307,7 +307,7 @@ TEST(skip_writer_test, reset) {
     // check data in stream
     // we write levels in reverse order into a stream (from n downto 0)
     {
-      auto in = dir.open(file);
+      auto in = dir.open(file, irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
 
       // skip number of levels
@@ -361,7 +361,7 @@ TEST(skip_reader_test, prepare) {
     ir::skip_reader reader(skip, skip);
     ASSERT_FALSE(reader);
     {
-      auto in = dir.open("docs");
+      auto in = dir.open("docs", irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
       reader.prepare(std::move(in));
     }
@@ -403,7 +403,7 @@ TEST(skip_reader_test, prepare) {
 
     ir::skip_reader reader(skip, skip);
     ASSERT_FALSE(reader);
-    auto in = dir.open("docs");
+    auto in = dir.open("docs", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!in);
     reader.prepare(std::move(in));
     ASSERT_TRUE(static_cast<bool>(reader));
@@ -467,7 +467,7 @@ TEST(skip_reader_test, seek) {
 
       ir::skip_reader reader(skip_0, skip_n);
       ASSERT_FALSE(reader);
-      auto in = dir.open(file);
+      auto in = dir.open(file, irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
       reader.prepare(
         std::move(in), [&lower, &upper, &calls_count](size_t level, ir::index_input& in) {
@@ -763,7 +763,7 @@ TEST(skip_reader_test, seek) {
 
       ir::skip_reader reader(skip_0, skip_n);
       ASSERT_FALSE(reader);
-      auto in = dir.open(file);
+      auto in = dir.open(file, irs::IOAdvice::RANDOM);
       ASSERT_FALSE(!in);
       reader.prepare(
         std::move(in), [&lower, &upper, &calls_count](size_t level, ir::index_input& in) {
@@ -968,7 +968,7 @@ TEST(skip_reader_test, seek) {
 
       ir::skip_reader reader(skip_0, skip_n);
       ASSERT_FALSE(reader);
-      auto in = dir.open(file);
+      auto in = dir.open(file, irs::IOAdvice::RANDOM);
       ASSERT_FALSE(!in);
       reader.prepare(
         std::move(in), [&lower, &last_level, &upper, &calls_count](size_t level, ir::index_input& in) {
@@ -1145,7 +1145,7 @@ TEST(skip_reader_test, seek) {
 
       ir::skip_reader reader(skip_0, skip_n);
       ASSERT_FALSE(reader);
-      auto in = dir.open(file);
+      auto in = dir.open(file, irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
       reader.prepare(
         std::move(in), [&lower, &last_level, &upper, &calls_count](size_t level, ir::index_input &in) {

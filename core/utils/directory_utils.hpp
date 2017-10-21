@@ -106,7 +106,8 @@ struct IRESEARCH_API tracking_directory: public directory {
     std::time_t& result, const std::string& name
   ) const NOEXCEPT override;
   virtual index_input::ptr open(
-    const std::string& name
+    const std::string& name,
+    IOAdvice advice
   ) const NOEXCEPT override;
   virtual bool remove(const std::string& name) NOEXCEPT override;
   virtual bool rename(
@@ -153,7 +154,10 @@ struct IRESEARCH_API ref_tracking_directory: public directory {
   virtual bool mtime(
     std::time_t& result, const std::string& name
   ) const NOEXCEPT override;
-  virtual index_input::ptr open(const std::string& name) const NOEXCEPT override;
+  virtual index_input::ptr open(
+    const std::string& name,
+    IOAdvice advice
+  ) const NOEXCEPT override;
   virtual bool remove(const std::string& name) NOEXCEPT override;
   virtual bool rename(const std::string& src, const std::string& dst) NOEXCEPT override;
   virtual bool sync(const std::string& name) NOEXCEPT override;

@@ -236,7 +236,8 @@ class IRESEARCH_API memory_directory final : public directory {
   ) const NOEXCEPT override;
 
   virtual index_input::ptr open(
-    const std::string& name
+    const std::string& name,
+    IOAdvice advice
   ) const NOEXCEPT override;
 
   virtual bool remove(const std::string& name) NOEXCEPT override;

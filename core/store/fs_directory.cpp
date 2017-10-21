@@ -547,7 +547,9 @@ bool fs_directory::remove(const std::string& name) NOEXCEPT {
   return false;
 }
 
-index_input::ptr fs_directory::open(const std::string& name) const NOEXCEPT {
+index_input::ptr fs_directory::open(
+    const std::string& name,
+    IOAdvice /*advice*/) const NOEXCEPT {
   try {
     utf8_path path;
     auto pool_size =

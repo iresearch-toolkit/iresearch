@@ -118,10 +118,10 @@ void directory_test_case::read_multiple_streams() {
 
   // read data
   {
-    auto in0 = dir_->open("test");
+    auto in0 = dir_->open("test", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!in0);
     ASSERT_FALSE(in0->eof());
-    auto in1 = dir_->open("test");
+    auto in1 = dir_->open("test", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!in1);
     ASSERT_FALSE(in1->eof());
     ASSERT_EQ(0, in0->read_vint());
@@ -152,7 +152,7 @@ void directory_test_case::read_multiple_streams() {
 
   // read data using dup
   {
-    auto in0 = dir_->open("test");
+    auto in0 = dir_->open("test", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!in0);
     auto in1 = in0->dup();
     ASSERT_FALSE(!in1);
@@ -186,7 +186,7 @@ void directory_test_case::read_multiple_streams() {
 
   // read data using reopen
   {
-    auto in0 = dir_->open("test");
+    auto in0 = dir_->open("test", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!in0);
     auto in1 = in0->reopen();
     ASSERT_FALSE(!in1);
@@ -229,7 +229,7 @@ void directory_test_case::read_multiple_streams() {
       }
     }
 
-    auto in = dir_->open("test_async");
+    auto in = dir_->open("test_async", irs::IOAdvice::NORMAL);
     std::mutex in_mtx;
     std::mutex mutex;
     irs::async_utils::thread_pool pool(16, 16);
@@ -340,7 +340,7 @@ void directory_test_case::string_read_write() {
     
     // read strings
     {
-      auto in = dir_->open("test");
+      auto in = dir_->open("test", irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
       ASSERT_FALSE(in->eof());
       EXPECT_EQ(strings.size(), in->read_vint());
@@ -471,7 +471,7 @@ void directory_test_case::string_read_write() {
   
     // read strings
     {
-      auto in = dir_->open("test");
+      auto in = dir_->open("test", irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
       ASSERT_FALSE(in->eof());
       EXPECT_EQ(strings.size(), in->read_vint());
@@ -602,7 +602,7 @@ void directory_test_case::string_read_write() {
   
     // read strings
     {
-      auto in = dir_->open("test");
+      auto in = dir_->open("test", irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
       ASSERT_FALSE(in->eof());
       EXPECT_EQ(strings.size(), in->read_vint());
@@ -767,7 +767,7 @@ void directory_test_case::smoke_index_io() {
 
   // read from file
   {
-    auto in = dir_->open(name);
+    auto in = dir_->open(name, irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!in);
     EXPECT_FALSE(in->eof());
 
@@ -919,7 +919,7 @@ void directory_test_case::smoke_store() {
     uint64_t length;
     EXPECT_TRUE(dir_->length(length, name) && length == it->size());
 
-    auto in = dir_->open(name);
+    auto in = dir_->open(name, irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!in);
     checksum_index_input<boost::crc_32_type> file(std::move(in));
     EXPECT_FALSE(file.eof());
@@ -952,7 +952,7 @@ void directory_test_case::smoke_store() {
   EXPECT_EQ(0, files.size());
 
   // Try to open non existing input
-  ASSERT_FALSE(dir_->open("invalid_file_name"));
+  ASSERT_FALSE(dir_->open("invalid_file_name", irs::IOAdvice::NORMAL));
 
   // Check locking logic
   auto l = dir_->make_lock("sample_lock");
@@ -975,7 +975,7 @@ void directory_test_case::smoke_store() {
 
     // read from file
     {
-      auto in = dir_->open("empty_file");
+      auto in = dir_->open("empty_file", irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
 
       size_t read = std::numeric_limits<size_t>::max();
@@ -1009,7 +1009,7 @@ void directory_test_case::smoke_store() {
     // read from file
     {
       byte_type buf[1024 + 691 + 1]{}; // 1024 + 691 from above, +1 to allow GCC to set last byte to EOF
-      auto in = dir_->open("nonempty_file");
+      auto in = dir_->open("nonempty_file", irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
       ASSERT_EQ(sizeof buf, in->read_bytes(buf, sizeof buf));
 

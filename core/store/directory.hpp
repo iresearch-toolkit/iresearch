@@ -80,6 +80,15 @@ struct IRESEARCH_API index_lock : private util::noncopyable {
   virtual bool unlock() NOEXCEPT = 0;
 }; // unique_lock
 
+enum class IOAdvice : uint32_t {
+  NORMAL = 0,
+  READONCE = 1,
+  SEQUENTIAL = 2,
+  RANDOM = 4
+}; // IOAdvice
+
+ENABLE_BITMASK_ENUM(IOAdvice);
+
 //////////////////////////////////////////////////////////////////////////////
 /// @struct directory 
 /// @brief represents a flat directory of write once/read many files
@@ -151,7 +160,10 @@ struct IRESEARCH_API directory
   /// @param[in] name   name of the file to open
   /// @returns input stream associated with the file with the specified name
   ////////////////////////////////////////////////////////////////////////////
-  virtual index_input::ptr open(const std::string& name) const NOEXCEPT = 0;
+  virtual index_input::ptr open(
+    const std::string& name,
+    IOAdvice advice
+  ) const NOEXCEPT = 0;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief removes the file specified by the given name from directory

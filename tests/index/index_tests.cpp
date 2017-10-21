@@ -95,9 +95,10 @@ struct directory_mock : public ir::directory {
     return impl_.mtime(result, name);
   }
   virtual ir::index_input::ptr open(
-    const std::string& name
+    const std::string& name,
+    irs::IOAdvice advice
   ) const NOEXCEPT override {
-    return impl_.open(name);
+    return impl_.open(name, advice);
   }
   virtual bool remove(const std::string& name) NOEXCEPT override {
     return impl_.remove(name);

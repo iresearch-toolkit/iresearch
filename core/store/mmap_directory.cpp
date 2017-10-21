@@ -33,12 +33,40 @@ using irs::mmap_utils::mmap_handle;
 typedef std::shared_ptr<mmap_handle> mmap_handle_ptr;
 
 //////////////////////////////////////////////////////////////////////////////
+/// @brief converts the specified IOAdvice to corresponding posix madvice
+//////////////////////////////////////////////////////////////////////////////
+inline int get_posix_advice(irs::IOAdvice advice) {
+  switch (uint32_t(advice)) {
+    case uint32_t(irs::IOAdvice::NORMAL):
+    case uint32_t(irs::IOAdvice::READONCE):
+      return IR_MADVISE_NORMAL;
+
+    case uint32_t(irs::IOAdvice::SEQUENTIAL):
+    case uint32_t(irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE):
+      return IR_MADVISE_SEQUENTIAL;
+
+    case uint32_t(irs::IOAdvice::RANDOM):
+    case uint32_t(irs::IOAdvice::RANDOM | irs::IOAdvice::READONCE):
+      return IR_MADVISE_RANDOM;
+  }
+
+  IR_FRMT_ERROR(
+    "madvice '%d' is not valid (RANDOM|SEQUENTIAL), fallback to NORMAL",
+    uint32_t(advice)
+  );
+
+  return IR_MADVISE_NORMAL;
+}
+
+//////////////////////////////////////////////////////////////////////////////
 /// @struct mmap_index_input
 /// @brief input stream for memory mapped directory
 //////////////////////////////////////////////////////////////////////////////
 class mmap_index_input : public irs::bytes_ref_input {
  public:
-  static irs::index_input::ptr open(const file_path_t file) NOEXCEPT {
+  static irs::index_input::ptr open(
+      const file_path_t file,
+      irs::IOAdvice advice) NOEXCEPT {
     assert(file);
 
     mmap_handle_ptr handle;
@@ -55,7 +83,15 @@ class mmap_index_input : public irs::bytes_ref_input {
       return nullptr;
     }
 
-    return mmap_index_input::make<mmap_index_input>(std::move(handle));
+    const int padvice = get_posix_advice(advice);
+
+    if (IR_MADVISE_NORMAL != padvice && !handle->advise(padvice)) {
+      IR_FRMT_ERROR("Failed to madvise input file, path: " IR_FILEPATH_SPECIFIER ", error %d", file, errno);
+    }
+
+    return mmap_index_input::make<mmap_index_input>(
+      std::move(handle), bool(advice & irs::IOAdvice::READONCE)
+    );
   }
 
   virtual ptr dup() const NOEXCEPT override {
@@ -69,8 +105,8 @@ class mmap_index_input : public irs::bytes_ref_input {
  private:
   DECLARE_FACTORY(index_input);
 
-  mmap_index_input(mmap_handle_ptr&& handle) NOEXCEPT
-    : handle_(std::move(handle)) {
+  mmap_index_input(mmap_handle_ptr&& handle, bool readonce) NOEXCEPT
+    : handle_(std::move(handle)), readonce_(readonce) {
     if (handle_) {
       const auto* begin = reinterpret_cast<irs::byte_type*>(handle_->addr());
       bytes_ref_input::reset(begin, handle_->size());
@@ -84,7 +120,14 @@ class mmap_index_input : public irs::bytes_ref_input {
 
   mmap_index_input& operator=(const mmap_index_input&) = delete;
 
+  ~mmap_index_input() {
+    if (readonce_) {
+      handle_->advise(IR_MADVICE_DONTNEED);
+    }
+  }
+
   mmap_handle_ptr handle_;
+  bool readonce_;
 }; // mmap_index_input
 
 NS_END // LOCAL
@@ -99,7 +142,9 @@ mmap_directory::mmap_directory(const std::string& path)
   : fs_directory(path) {
 }
 
-index_input::ptr mmap_directory::open(const std::string& name) const NOEXCEPT {
+index_input::ptr mmap_directory::open(
+    const std::string& name,
+    IOAdvice advice) const NOEXCEPT {
   utf8_path path;
 
   try {
@@ -109,7 +154,7 @@ index_input::ptr mmap_directory::open(const std::string& name) const NOEXCEPT {
     return nullptr;
   }
 
-  return mmap_index_input::open(path.c_str());
+  return mmap_index_input::open(path.c_str(), advice);
 }
 
 NS_END // ROOT

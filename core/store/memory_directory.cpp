@@ -367,7 +367,8 @@ bool memory_directory::mtime(
 }
 
 index_input::ptr memory_directory::open(
-    const std::string& name
+    const std::string& name,
+    IOAdvice /*advice*/
 ) const NOEXCEPT {
   try {
     async_utils::read_write_mutex::read_mutex mutex(flock_);
