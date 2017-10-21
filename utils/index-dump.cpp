@@ -89,6 +89,23 @@ int dump(
                << std::endl;
       }
     }
+
+    for (auto columns = segment.columns(); columns->next();) {
+      auto& meta = columns->value();
+      stream << "Column id=" << meta.id
+             << " name=" << meta.name
+             << std::endl;
+
+      auto visitor = [&stream](irs::doc_id_t doc, const irs::bytes_ref& value) {
+        stream << "doc=" << doc
+               << " value=" << irs::ref_cast<char>(value)
+               << std::endl;
+        return true;
+      };
+
+      auto column = segment.column_reader(meta.id);
+      column->visit(visitor);
+    }
     ++i;
   }
 
