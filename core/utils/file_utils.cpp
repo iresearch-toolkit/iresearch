@@ -456,7 +456,7 @@ handle_t open(FILE* file, const file_path_t mode) NOEXCEPT {
       return nullptr;
     }
 
-    const auto size = MAX_PATH + 1; // +1 for \0
+    auto size = MAX_PATH + 1; // +1 for \0
     TCHAR path[size];
     auto length = GetFinalPathNameByHandle(handle, path, size - 1, VOLUME_NAME_DOS); // -1 for \0
 
@@ -484,7 +484,7 @@ handle_t open(FILE* file, const file_path_t mode) NOEXCEPT {
     length = GetFinalPathNameByHandle(handle, buf.get(), size - 1, VOLUME_NAME_DOS); // -1 for \0
 
     if(length && length < size) {
-      buf.get()[length] = '\0';
+      buf[length] = '\0';
 
       return open(buf.get(), mode);
     }
