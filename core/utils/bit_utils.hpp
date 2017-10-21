@@ -125,34 +125,51 @@ struct enum_bitwise_traits {
     typename std::underlying_type<T>::type
   >::type underlying_type_t;
 
-  CONSTEXPR static T Or(T lhs, T rhs) {
+  CONSTEXPR static T Or(T lhs, T rhs) NOEXCEPT {
     return static_cast<T>(static_cast<underlying_type_t>(lhs) | static_cast<underlying_type_t>(rhs));
   }
 
-  CONSTEXPR static T Xor(T lhs, T rhs) {
+  CONSTEXPR static T Xor(T lhs, T rhs) NOEXCEPT {
     return static_cast<T>(static_cast<underlying_type_t>(lhs) ^ static_cast<underlying_type_t>(rhs));
   }
 
-  CONSTEXPR static T And(T lhs, T rhs) {
+  CONSTEXPR static T And(T lhs, T rhs) NOEXCEPT {
     return static_cast<T>(static_cast<underlying_type_t>(lhs) & static_cast<underlying_type_t>(rhs));
+  }
+
+  CONSTEXPR static T Not(T v) NOEXCEPT {
+    return static_cast<T>(~static_cast<underlying_type_t>(v));
   }
 }; // enum_bitwise_traits
 
 template<typename T>
-CONSTEXPR T enum_bitwise_or(T lhs, T rhs) { 
+inline CONSTEXPR T enum_bitwise_or(T lhs, T rhs) NOEXCEPT {
   return enum_bitwise_traits<T>::Or(lhs, rhs);
 }
 
 template<typename T>
-CONSTEXPR T enum_bitwise_xor(T lhs, T rhs) { 
+inline CONSTEXPR T enum_bitwise_xor(T lhs, T rhs) NOEXCEPT {
   return enum_bitwise_traits<T>::Xor(lhs, rhs);
 }
 
 template<typename T>
-CONSTEXPR T enum_bitwise_and(T lhs, T rhs) { 
+inline CONSTEXPR T enum_bitwise_and(T lhs, T rhs) NOEXCEPT {
   return enum_bitwise_traits<T>::And(lhs, rhs);
 }
 
+template<typename T>
+inline CONSTEXPR T enum_bitwise_not(T v) NOEXCEPT {
+  return enum_bitwise_traits<T>::Not(v);
+}
+
+#define ENABLE_BITMASK_ENUM(x) \
+inline CONSTEXPR x operator&(x lhs, x rhs) NOEXCEPT { return enum_bitwise_and(lhs, rhs); } \
+inline x& operator&=(x& lhs, x rhs)        NOEXCEPT { return lhs = enum_bitwise_and(lhs, rhs); }   \
+inline CONSTEXPR x operator|(x lhs, x rhs) NOEXCEPT { return enum_bitwise_or(lhs, rhs); }  \
+inline x& operator|=(x& lhs, x rhs)        NOEXCEPT { return lhs = enum_bitwise_or(lhs, rhs); } \
+inline CONSTEXPR x operator^(x lhs, x rhs) NOEXCEPT { return enum_bitwise_xor(lhs, rhs); } \
+inline x& operator^=(x& lhs, x rhs)        NOEXCEPT { return lhs = enum_bitwise_xor(lhs, rhs); }   \
+inline CONSTEXPR x operator~(x v)          NOEXCEPT { return enum_bitwise_not(v); }
 
 NS_END
 
