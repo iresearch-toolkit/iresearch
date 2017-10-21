@@ -19,6 +19,7 @@ set (IResearchUtil_TARGET_NAME
 )
 
 add_executable(${IResearchUtil_TARGET_NAME}
+  ./common.cpp
   ./index-dump.cpp
   ./index-util.cpp
   ./main.cpp
@@ -69,6 +70,7 @@ set (IResearchBencmarks_TARGET_NAME
 )
 
 add_executable(${IResearchBencmarks_TARGET_NAME}
+  ./common.cpp
   ./index-put.cpp
   ./index-search.cpp
   ./index-benchmarks.cpp

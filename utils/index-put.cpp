@@ -33,10 +33,10 @@
 #endif
 
 #include "index-put.hpp"
+#include "common.hpp"
 #include "index/index_writer.hpp"
 #include "analysis/token_streams.hpp"
 #include "analysis/text_token_stream.hpp"
-#include "store/fs_directory.hpp"
 #include "store/store_utils.hpp"
 #include "analysis/token_attributes.hpp"
 
@@ -63,6 +63,7 @@ const std::string INPUT = "in";
 const std::string MAX = "max-lines";
 const std::string THR = "threads";
 const std::string CPR = "commit-period";
+const std::string DIR_TYPE = "dir-type";
 
 typedef std::unique_ptr<std::string> ustringp;
 
@@ -329,6 +330,7 @@ struct WikiDoc : Doc {
 
 int put(
     const std::string& path,
+    const std::string& dir_type,
     std::istream& stream,
     size_t lines_max,
     size_t indexer_threads,
@@ -336,8 +338,14 @@ int put(
     size_t batch_size,
     bool consolidate
 ) {
-  irs::fs_directory dir(path);
-  auto writer = irs::index_writer::make(dir, irs::formats::get("1_0"), irs::OPEN_MODE::OM_CREATE);
+  auto dir = create_directory(dir_type, path);
+
+  if (!dir) {
+    std::cerr << "Unable to create directory of type '" << dir_type << "'" << std::endl;
+    return 1;
+  }
+
+  auto writer = irs::index_writer::make(*dir, irs::formats::get("1_0"), irs::OPEN_MODE::OM_CREATE);
 
   indexer_threads = (std::max)(size_t(1), (std::min)(indexer_threads, (std::numeric_limits<size_t>::max)() - 1 - 1)); // -1 for commiter thread -1 for stream reader thread
 
@@ -346,6 +354,7 @@ int put(
   SCOPED_TIMER("Total Time");
   std::cout << "Configuration: " << std::endl;
   std::cout << INDEX_DIR << "=" << path << std::endl;
+  std::cout << DIR_TYPE << "=" << dir_type << std::endl;
   std::cout << MAX << "=" << lines_max << std::endl;
   std::cout << THR << "=" << indexer_threads << std::endl;
   std::cout << CPR << "=" << commit_interval_ms << std::endl;
@@ -480,7 +489,7 @@ int put(
     SCOPED_TIMER("Merge time");
     std::cout << "Merging segments:" << std::endl;
     writer->commit();
-    irs::directory_utils::remove_all_unreferenced(dir);
+    irs::directory_utils::remove_all_unreferenced(*dir);
   }
 
   u_cleanup();
@@ -504,6 +513,7 @@ int put(const cmdline::parser& args) {
   auto commit_interval_ms = args.exist(CPR) ? args.get<size_t>(CPR) : size_t(0);
   auto indexer_threads = args.exist(THR) ? args.get<size_t>(THR) : size_t(0);
   auto lines_max = args.exist(MAX) ? args.get<size_t>(MAX) : size_t(0);
+  auto dir_type = args.exist(DIR_TYPE) ? args.get<std::string>(DIR_TYPE) : std::string("fs");
 
   if (args.exist(INPUT)) {
     const auto& file = args.get<std::string>(INPUT);
@@ -513,10 +523,10 @@ int put(const cmdline::parser& args) {
       return 1;
     }
 
-    return put(path, in, lines_max, indexer_threads, commit_interval_ms, batch_size, consolidate);
+    return put(path, dir_type, in, lines_max, indexer_threads, commit_interval_ms, batch_size, consolidate);
   }
 
-  return put(path, std::cin, lines_max, indexer_threads, commit_interval_ms, batch_size, consolidate);
+  return put(path, dir_type, std::cin, lines_max, indexer_threads, commit_interval_ms, batch_size, consolidate);
 }
 
 int put(int argc, char* argv[]) {
@@ -524,6 +534,7 @@ int put(int argc, char* argv[]) {
   cmdline::parser cmdput;
   cmdput.add(HELP, '?', "Produce help message");
   cmdput.add(INDEX_DIR, 0, "Path to index directory", true, std::string());
+  cmdput.add(DIR_TYPE, 0, "Directory type (fs|mmap)", false, std::string("fs"));
   cmdput.add(INPUT, 0, "Input file", true, std::string());
   cmdput.add(BATCH_SIZE, 0, "Lines per batch", false, size_t(0));
   cmdput.add(CONSOLIDATE, 0, "Consolidate segments", false, false);

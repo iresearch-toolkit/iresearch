@@ -32,6 +32,7 @@
   #pragma GCC diagnostic pop
 #endif
 
+#include "common.hpp"
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/directory_reader.hpp"
@@ -82,6 +83,7 @@ const std::string RND = "random";
 const std::string RPT = "repeat";
 const std::string CSV = "csv";
 const std::string SCORED_TERMS_LIMIT = "scored-terms-limit";
+const std::string DIR_TYPE = "dir-type";
 
 static bool v = false;
 
@@ -801,6 +803,7 @@ static int search(const std::string& path, std::istream& in, std::ostream& out,
 
 int search(
     const std::string& path,
+    const std::string& dir_type,
     std::istream& in,
     std::ostream& out,
     size_t tasks_max,
@@ -811,6 +814,13 @@ int search(
     bool csv,
     size_t scored_terms_limit
 ) {
+  auto dir = create_directory(dir_type, path);
+
+  if (!dir) {
+    std::cerr << "Unable to create directory of type '" << dir_type << "'" << std::endl;
+    return 1;
+  }
+
   repeat = (std::max)(size_t(1), repeat);
   search_threads = (std::max)(size_t(1), search_threads);
   scored_terms_limit = (std::max)(size_t(1), scored_terms_limit);
@@ -826,14 +836,13 @@ int search(
   std::cout << CSV << "=" << csv << std::endl;
   std::cout << SCORED_TERMS_LIMIT << "=" << scored_terms_limit << std::endl;
 
-  irs::fs_directory dir(path);
   irs::directory_reader reader;
   irs::order::prepared order;
   irs::async_utils::thread_pool thread_pool(search_threads);
 
   {
     SCOPED_TIMER("Index read time");
-    reader = irs::directory_reader::open(dir, irs::formats::get("1_0"));
+    reader = irs::directory_reader::open(*dir, irs::formats::get("1_0"));
   }
 
   {
@@ -1076,6 +1085,7 @@ int search(const cmdline::parser& args) {
   const size_t topN = args.get<size_t>(TOPN);
   const bool csv = args.exist(CSV);
   const size_t scored_terms_limit = args.get<size_t>(SCORED_TERMS_LIMIT);
+  const auto dir_type = args.exist(DIR_TYPE) ? args.get<std::string>(DIR_TYPE) : std::string("fs");
 
   std::cout << "Max tasks in category="                      << maxtasks           << '\n'
             << "Task repeat count="                          << repeat             << '\n'
@@ -1101,10 +1111,10 @@ int search(const cmdline::parser& args) {
       return 1;
     }
 
-    return search(path, in, out, maxtasks, repeat, thrs, topN, shuffle, csv, scored_terms_limit);
+    return search(path, dir_type, in, out, maxtasks, repeat, thrs, topN, shuffle, csv, scored_terms_limit);
   }
 
-  return search(path, in, std::cout, maxtasks, repeat, thrs, topN, shuffle, csv, scored_terms_limit);
+  return search(path, dir_type, in, std::cout, maxtasks, repeat, thrs, topN, shuffle, csv, scored_terms_limit);
 }
 
 int search(int argc, char* argv[]) {
@@ -1112,6 +1122,7 @@ int search(int argc, char* argv[]) {
   cmdline::parser cmdsearch;
   cmdsearch.add(HELP, '?', "Produce help message");
   cmdsearch.add<std::string>(INDEX_DIR, 0, "Path to index directory", true);
+  cmdsearch.add<std::string>(DIR_TYPE, 0, "Directory type (fs|mmap)", false, std::string("fs"));
   cmdsearch.add<std::string>(INPUT, 0, "Task file", true);
   cmdsearch.add<std::string>(OUTPUT, 0, "Stats file", false);
   cmdsearch.add<size_t>(MAX, 0, "Maximum tasks per category", false, size_t(1));

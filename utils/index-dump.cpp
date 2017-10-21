@@ -22,10 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shared.hpp"
+#include "common.hpp"
 #include "index-dump.hpp"
 #include "index/directory_reader.hpp"
 #include "index/field_meta.hpp"
-#include "store/fs_directory.hpp"
 #include "analysis/token_attributes.hpp"
 
 #include <boost/filesystem.hpp>
@@ -39,13 +39,23 @@ NS_LOCAL
 
 const std::string HELP = "help";
 const std::string INDEX_DIR = "index-dir";
+const std::string DIR_TYPE = "dir-type";
 const std::string OUTPUT = "out";
 
 NS_END
 
-int dump(const std::string& path, std::ostream& stream) {
-  irs::fs_directory dir(path);
-  auto reader = irs::directory_reader::open(dir, irs::formats::get("1_0"));
+int dump(
+    const std::string& path,
+    const std::string& dir_type,
+    std::ostream& stream) {
+  auto dir = create_directory(dir_type, path);
+
+  if (!dir) {
+    std::cerr << "Unable to create directory of type '" << dir_type << "'" << std::endl;
+    return 1;
+  }
+
+  auto reader = irs::directory_reader::open(*dir, irs::formats::get("1_0"));
 
   stream << "Index" 
          << " segmentsCount=" << reader.size()
@@ -98,6 +108,10 @@ int dump(const cmdline::parser& args) {
     return 1;
   }
 
+  const auto dir_type = args.exist(DIR_TYPE)
+    ? args.get<std::string>(DIR_TYPE) 
+    : std::string("fs");
+
   if (args.exist(OUTPUT)) {
     const auto& file = args.get<std::string>(OUTPUT);
     std::fstream out(file, std::fstream::out | std::fstream::trunc);
@@ -105,10 +119,10 @@ int dump(const cmdline::parser& args) {
       return 1;
     }
 
-    return dump(path, out);
+    return dump(path, dir_type, out);
   }
 
-  return dump(path, std::cout);
+  return dump(path, dir_type, std::cout);
 }
 
 int dump(int argc, char* argv[]) {
@@ -116,6 +130,7 @@ int dump(int argc, char* argv[]) {
   cmdline::parser cmddump;
   cmddump.add(HELP, '?', "Produce help message");
   cmddump.add<std::string>(INDEX_DIR, 0, "Path to index directory", true);
+  cmddump.add<std::string>(DIR_TYPE, 0, "Directory type (fs|mmap)", false, std::string("fs"));
   cmddump.add<std::string>(OUTPUT, 0, "Output file", false);
 
   cmddump.parse(argc, argv);
