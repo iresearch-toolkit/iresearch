@@ -43,7 +43,13 @@
   #define posix_create _wcreat
   #define posix_open _wopen
   #define posix_close _close
-#else  
+
+  #define IR_FADVISE_NORMAL 0
+  #define IR_FADVISE_SEQUENTIAL 1
+  #define IR_FADVISE_RANDOM 2
+  #define IR_FADVISE_DONTNEED 4
+  #define IR_FADVISE_NOREUSE 5
+#else
   #include <unistd.h> // close
   #define file_path_t char*
   #define IR_FILEPATH_SPECIFIER "%s"
@@ -55,6 +61,12 @@
   #define posix_create creat
   #define posix_open open
   #define posix_close close
+
+  #define IR_FADVISE_NORMAL POSIX_FADV_NORMAL
+  #define IR_FADVISE_SEQUENTIAL POSIX_FADV_SEQUENTIAL
+  #define IR_FADVISE_RANDOM POSIX_FADV_RANDOM
+  #define IR_FADVISE_DONTNEED POSIX_FADV_DONTNEED
+  #define IR_FADVISE_NOREUSE POSIX_FADV_NOREUSE
 #endif
 
 #include "shared.hpp"

@@ -38,14 +38,15 @@ typedef std::shared_ptr<mmap_handle> mmap_handle_ptr;
 inline int get_posix_advice(irs::IOAdvice advice) {
   switch (uint32_t(advice)) {
     case uint32_t(irs::IOAdvice::NORMAL):
+      return IR_MADVISE_NORMAL;
+    case uint32_t(irs::IOAdvice::SEQUENTIAL):
+      return IR_MADVISE_SEQUENTIAL;
+    case uint32_t(irs::IOAdvice::RANDOM):
+      return IR_MADVISE_RANDOM;
     case uint32_t(irs::IOAdvice::READONCE):
       return IR_MADVISE_NORMAL;
-
-    case uint32_t(irs::IOAdvice::SEQUENTIAL):
     case uint32_t(irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE):
       return IR_MADVISE_SEQUENTIAL;
-
-    case uint32_t(irs::IOAdvice::RANDOM):
     case uint32_t(irs::IOAdvice::RANDOM | irs::IOAdvice::READONCE):
       return IR_MADVISE_RANDOM;
   }

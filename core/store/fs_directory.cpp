@@ -58,6 +58,33 @@ inline size_t buffer_size(FILE* file) NOEXCEPT {
 //  return block_size;
 }
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief converts the specified IOAdvice to corresponding posix fadvice
+//////////////////////////////////////////////////////////////////////////////
+inline int get_posix_fadvice(irs::IOAdvice advice) {
+  switch (uint32_t(advice)) {
+    case uint32_t(irs::IOAdvice::NORMAL):
+      return IR_FADVISE_NORMAL;
+    case uint32_t(irs::IOAdvice::SEQUENTIAL):
+      return IR_FADVISE_SEQUENTIAL;
+    case uint32_t(irs::IOAdvice::RANDOM):
+      return IR_FADVISE_RANDOM;
+    case uint32_t(irs::IOAdvice::READONCE):
+      return IR_FADVISE_DONTNEED;
+    case uint32_t(irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE):
+      return IR_FADVISE_SEQUENTIAL | IR_FADVISE_NOREUSE;
+    case uint32_t(irs::IOAdvice::RANDOM | irs::IOAdvice::READONCE):
+      return IR_FADVISE_RANDOM | IR_FADVISE_NOREUSE;
+  }
+
+  IR_FRMT_ERROR(
+    "fadvice '%d' is not valid (RANDOM|SEQUENTIAL), fallback to NORMAL",
+    uint32_t(advice)
+  );
+
+  return IR_FADVISE_NORMAL;
+}
+
 NS_END
 
 NS_ROOT
@@ -222,7 +249,7 @@ class fs_index_input : public buffered_index_input {
   virtual ptr dup() const NOEXCEPT override;
 
   static index_input::ptr open(
-    const file_path_t name, size_t pool_size
+    const file_path_t name, size_t pool_size, IOAdvice /*advice*/
   ) NOEXCEPT {
     assert(name);
 
@@ -549,7 +576,7 @@ bool fs_directory::remove(const std::string& name) NOEXCEPT {
 
 index_input::ptr fs_directory::open(
     const std::string& name,
-    IOAdvice /*advice*/) const NOEXCEPT {
+    IOAdvice advice) const NOEXCEPT {
   try {
     utf8_path path;
     auto pool_size =
@@ -557,7 +584,7 @@ index_input::ptr fs_directory::open(
 
     (path/=dir_)/=name;
 
-    return fs_index_input::open(path.c_str(), pool_size);
+    return fs_index_input::open(path.c_str(), pool_size, advice);
   } catch(...) {
     IR_EXCEPTION();
   }
