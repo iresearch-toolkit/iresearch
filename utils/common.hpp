@@ -22,8 +22,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_INDEX_UTILS_H
-#define IRESEARCH_INDEX_UTILS_H
+#ifndef IRESEARCH_UTILS_COMMON_H
+#define IRESEARCH_UTILS_COMMON_H
 
 #include "store/directory.hpp"
 
@@ -32,4 +32,4 @@ irs::directory::ptr create_directory(
   const std::string& path
 );
 
-#endif // IRESEARCH_INDEX_UTILS_H
+#endif // IRESEARCH_UTILS_COMMON_H

@@ -21,6 +21,7 @@ set (IResearchUtil_TARGET_NAME
 add_executable(${IResearchUtil_TARGET_NAME}
   ./common.cpp
   ./index-dump.cpp
+  ./index-convert.cpp
   ./index-util.cpp
   ./main.cpp
 )

@@ -22,10 +22,10 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_INDEX_DUMP_H
-#define IRESEARCH_INDEX_DUMP_H
+#ifndef IRESEARCH_INDEX_CONVERT_H
+#define IRESEARCH_INDEX_CONVERT_H
 
-int dump(int argc, char* argv[]);
+int convert(int argc, char* argv[]);
 
-#endif // IRESEARCH_INDEX_DUMP_H
+#endif // IRESEARCH_INDEX_CONVERT_H
 

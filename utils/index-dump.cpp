@@ -33,7 +33,6 @@
 #include <iostream>
 
 #include <cmdline.h>
-#include <unicode/uclean.h>
 
 NS_LOCAL
 
@@ -108,8 +107,6 @@ int dump(
     }
     ++i;
   }
-
-  u_cleanup();
 
   return 0;
 }
