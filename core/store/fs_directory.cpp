@@ -62,18 +62,18 @@ inline size_t buffer_size(FILE* file) NOEXCEPT {
 /// @brief converts the specified IOAdvice to corresponding posix fadvice
 //////////////////////////////////////////////////////////////////////////////
 inline int get_posix_fadvice(irs::IOAdvice advice) {
-  switch (uint32_t(advice)) {
-    case uint32_t(irs::IOAdvice::NORMAL):
+  switch (advice) {
+    case irs::IOAdvice::NORMAL:
       return IR_FADVISE_NORMAL;
-    case uint32_t(irs::IOAdvice::SEQUENTIAL):
+    case irs::IOAdvice::SEQUENTIAL:
       return IR_FADVISE_SEQUENTIAL;
-    case uint32_t(irs::IOAdvice::RANDOM):
+    case irs::IOAdvice::RANDOM:
       return IR_FADVISE_RANDOM;
-    case uint32_t(irs::IOAdvice::READONCE):
+    case irs::IOAdvice::READONCE:
       return IR_FADVISE_DONTNEED;
-    case uint32_t(irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE):
+    case irs::IOAdvice::READONCE_SEQUENTIAL:
       return IR_FADVISE_SEQUENTIAL | IR_FADVISE_NOREUSE;
-    case uint32_t(irs::IOAdvice::RANDOM | irs::IOAdvice::READONCE):
+    case irs::IOAdvice::READONCE_RANDOM:
       return IR_FADVISE_RANDOM | IR_FADVISE_NOREUSE;
   }
 

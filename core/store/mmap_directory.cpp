@@ -38,18 +38,18 @@ typedef std::shared_ptr<mmap_handle> mmap_handle_ptr;
 /// @brief converts the specified IOAdvice to corresponding posix madvice
 //////////////////////////////////////////////////////////////////////////////
 inline int get_posix_advice(irs::IOAdvice advice) {
-  switch (uint32_t(advice)) {
-    case uint32_t(irs::IOAdvice::NORMAL):
+  switch (advice) {
+    case irs::IOAdvice::NORMAL:
       return IR_MADVISE_NORMAL;
-    case uint32_t(irs::IOAdvice::SEQUENTIAL):
+    case irs::IOAdvice::SEQUENTIAL:
       return IR_MADVISE_SEQUENTIAL;
-    case uint32_t(irs::IOAdvice::RANDOM):
+    case irs::IOAdvice::RANDOM:
       return IR_MADVISE_RANDOM;
-    case uint32_t(irs::IOAdvice::READONCE):
+    case irs::IOAdvice::READONCE:
       return IR_MADVISE_NORMAL;
-    case uint32_t(irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE):
+    case irs::IOAdvice::READONCE_SEQUENTIAL:
       return IR_MADVISE_SEQUENTIAL;
-    case uint32_t(irs::IOAdvice::RANDOM | irs::IOAdvice::READONCE):
+    case irs::IOAdvice::READONCE_RANDOM:
       return IR_MADVISE_RANDOM;
   }
 
