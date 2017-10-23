@@ -456,7 +456,7 @@ handle_t open(FILE* file, const file_path_t mode) NOEXCEPT {
       return nullptr;
     }
 
-    auto size = MAX_PATH + 1; // +1 for \0
+    const auto size = MAX_PATH + 1; // +1 for \0
     TCHAR path[size];
     auto length = GetFinalPathNameByHandle(handle, path, size - 1, VOLUME_NAME_DOS); // -1 for \0
 
@@ -477,13 +477,12 @@ handle_t open(FILE* file, const file_path_t mode) NOEXCEPT {
       length + 1, size // +1 for \0
     );
 
-    size = length + 1; // +1 for \0
+    auto buf_size = length + 1; // +1 for \0
+    auto buf = irs::memory::make_unique<TCHAR[]>(buf_size);
 
-    auto buf = irs::memory::make_unique<TCHAR[]>(size);
+    length = GetFinalPathNameByHandle(handle, buf.get(), buf_size - 1, VOLUME_NAME_DOS); // -1 for \0
 
-    length = GetFinalPathNameByHandle(handle, buf.get(), size - 1, VOLUME_NAME_DOS); // -1 for \0
-
-    if(length && length < size) {
+    if(length && length < buf_size) {
       buf[length] = '\0';
 
       return open(buf.get(), mode);
@@ -491,7 +490,7 @@ handle_t open(FILE* file, const file_path_t mode) NOEXCEPT {
 
     IR_FRMT_ERROR(
       "Failed to get filename from file handle, inconsistent length detected, first %d then %d",
-      size, length + 1 // +1 for \0
+      buf_size, length + 1 // +1 for \0
     );
 
     return nullptr;
