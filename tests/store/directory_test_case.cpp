@@ -1008,7 +1008,12 @@ void directory_test_case::smoke_store() {
 
     // read from file
     {
-      byte_type buf[1024 + 691 + 1]{}; // 1024 + 691 from above, +1 to allow GCC to set last byte to EOF
+      #if defined(IRESEARCH_VALGRIND)
+        auto buf_size = 1024 + 691 + 4096; // 1024 + 691 from above, +4096 to avoid valgrind invalid read
+      #else
+        auto buf_size = 1024 + 691; // 1024 + 691 from above
+      #endif
+      byte_type buf[buf_size]{};
       auto in = dir_->open("nonempty_file", irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
       ASSERT_EQ(sizeof buf, in->read_bytes(buf, sizeof buf));
