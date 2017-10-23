@@ -58,6 +58,8 @@ inline size_t buffer_size(FILE* file) NOEXCEPT {
 //  return block_size;
 }
 
+#if !defined(__APPLE__)
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief converts the specified IOAdvice to corresponding posix fadvice
 //////////////////////////////////////////////////////////////////////////////
@@ -84,6 +86,8 @@ inline int get_posix_fadvice(irs::IOAdvice advice) {
 
   return IR_FADVICE_NORMAL;
 }
+
+#endif
 
 NS_END
 
