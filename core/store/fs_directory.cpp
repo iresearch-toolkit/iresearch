@@ -64,17 +64,17 @@ inline size_t buffer_size(FILE* file) NOEXCEPT {
 inline int get_posix_fadvice(irs::IOAdvice advice) {
   switch (advice) {
     case irs::IOAdvice::NORMAL:
-      return IR_FADVISE_NORMAL;
+      return IR_FADVICE_NORMAL;
     case irs::IOAdvice::SEQUENTIAL:
-      return IR_FADVISE_SEQUENTIAL;
+      return IR_FADVICE_SEQUENTIAL;
     case irs::IOAdvice::RANDOM:
-      return IR_FADVISE_RANDOM;
+      return IR_FADVICE_RANDOM;
     case irs::IOAdvice::READONCE:
-      return IR_FADVISE_DONTNEED;
+      return IR_FADVICE_DONTNEED;
     case irs::IOAdvice::READONCE_SEQUENTIAL:
-      return IR_FADVISE_SEQUENTIAL | IR_FADVISE_NOREUSE;
+      return IR_FADVICE_SEQUENTIAL | IR_FADVICE_NOREUSE;
     case irs::IOAdvice::READONCE_RANDOM:
-      return IR_FADVISE_RANDOM | IR_FADVISE_NOREUSE;
+      return IR_FADVICE_RANDOM | IR_FADVICE_NOREUSE;
   }
 
   IR_FRMT_ERROR(
@@ -82,7 +82,7 @@ inline int get_posix_fadvice(irs::IOAdvice advice) {
     uint32_t(advice)
   );
 
-  return IR_FADVISE_NORMAL;
+  return IR_FADVICE_NORMAL;
 }
 
 NS_END

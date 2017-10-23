@@ -25,10 +25,14 @@
 #define IRESEARCH_MMAP_UTILS_H
 
 #include "file_utils.hpp"
+#include "noncopyable.hpp"
+
+#if defined(_MSC_VER)
+
+#include "mman_win32.hpp"
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constants for madviсe
-/// NOTE: It's important to define constants BEFORE the next include
+/// @brief constants for madvice
 ////////////////////////////////////////////////////////////////////////////////
 #define IR_MADVICE_NORMAL 0
 #define IR_MADVICE_SEQUENTIAL 0
@@ -37,11 +41,44 @@
 #define IR_MADVICE_DONTNEED 0
 #define IR_MADVICE_DONTDUMP 0
 
-#if defined(_MSC_VER)
-#include "mman_win32.hpp"
 #else
-#include "mman_posix.hpp"
+
+#include <sys/mman.h>
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a wrapper for MAP_ANONYMOUS / MAP_ANON
+///
+///               MAP_ANON  MAP_ANONYMOUS
+///    OpenBSD         Y         Y(*)
+///    Linux           Y(*)      Y
+///    FreeBSD         Y         Y
+///    NetBSD          Y         N
+///    OSX             Y         N
+///    Solaris         Y         N
+///    HP-UX           N         Y
+///    AIX             N         Y
+///    IRIX            N         N
+///    (*) synonym to other
+///
+////////////////////////////////////////////////////////////////////////////////
+#ifndef MAP_ANON
+#ifdef MAP_ANONYMOUS
+#define MAP_ANON MAP_ANONYMOUS
+#else
+#error "System does not support mapping anonymous pages?"
 #endif
+#endif // MAP_ANON
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constants for madvice
+////////////////////////////////////////////////////////////////////////////////
+#define IR_MADVICE_NORMAL MADV_NORMAL
+#define IR_MADVICE_SEQUENTIAL MADV_SEQUENTIAL
+#define IR_MADVICE_RANDOM MADV_RANDOM
+#define IR_MADVICE_WILLNEED MADV_WILLNEED
+#define IR_MADVICE_DONTNEED MADV_DONTNEED
+
+#endif // _MSC_VER
 
 NS_ROOT
 NS_BEGIN(mmap_utils)
@@ -54,13 +91,13 @@ int flush(int fd, void* addr, size_t size, int flags) NOEXCEPT;
 //////////////////////////////////////////////////////////////////////////////
 /// @class mmap_handle
 //////////////////////////////////////////////////////////////////////////////
-class mmap_handle {
+class mmap_handle : private util::noncopyable {
  public:
   mmap_handle() NOEXCEPT {
     init();
   }
 
-  ~mmap_handle() {
+  ~mmap_handle() NOEXCEPT {
     close();
   }
 
@@ -81,8 +118,12 @@ class mmap_handle {
     );
   }
 
-  bool advise(int adv) {
-    return 0 == ::madvise(addr_, size_, adv);
+  bool advise(int advice) NOEXCEPT {
+    return 0 == ::madvise(addr_, size_, advice);
+  }
+
+  void dontneed(bool value) NOEXCEPT {
+    dontneed_ = value;
   }
 
  private:
@@ -91,6 +132,7 @@ class mmap_handle {
   void* addr_; // the beginning of mmapped region
   size_t size_; // file size
   ptrdiff_t fd_; // file descriptor
+  bool dontneed_; // request to free pages on close
 }; // mmap_handle
 
 NS_END // mmap_utils

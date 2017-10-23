@@ -61,6 +61,9 @@ int flush(int fd, void* addr, size_t size, int flags) NOEXCEPT {
 
 void mmap_handle::close() NOEXCEPT {
   if (addr_ != MAP_FAILED) {
+    if (dontneed_) {
+      advise(IR_MADVICE_DONTNEED);
+    }
     munmap(addr_, size_);
   }
  
@@ -73,6 +76,7 @@ void mmap_handle::init() NOEXCEPT {
   fd_ = -1;
   addr_ = MAP_FAILED;
   size_ = 0;
+  dontneed_ = false;
 }
 
 bool mmap_handle::open(const file_path_t path) NOEXCEPT {
