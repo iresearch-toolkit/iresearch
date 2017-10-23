@@ -1009,9 +1009,9 @@ void directory_test_case::smoke_store() {
     // read from file
     {
       #if defined(IRESEARCH_VALGRIND)
-        auto buf_size = 1024 + 691 + 4096; // 1024 + 691 from above, +4096 to avoid valgrind invalid read
+        const auto buf_size = 1024 + 691 + 4096; // 1024 + 691 from above, +4096 to avoid valgrind invalid read
       #else
-        auto buf_size = 1024 + 691; // 1024 + 691 from above
+        const auto buf_size = 1024 + 691; // 1024 + 691 from above
       #endif
       byte_type buf[buf_size]{};
       auto in = dir_->open("nonempty_file", irs::IOAdvice::NORMAL);
