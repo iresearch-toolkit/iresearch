@@ -32,6 +32,8 @@ using irs::mmap_utils::mmap_handle;
 
 typedef std::shared_ptr<mmap_handle> mmap_handle_ptr;
 
+#if !defined(_MSC_VER)
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief converts the specified IOAdvice to corresponding posix madvice
 //////////////////////////////////////////////////////////////////////////////
@@ -59,6 +61,8 @@ inline int get_posix_advice(irs::IOAdvice advice) {
   return IR_MADVISE_NORMAL;
 }
 
+#endif
+
 //////////////////////////////////////////////////////////////////////////////
 /// @struct mmap_index_input
 /// @brief input stream for memory mapped directory
@@ -84,11 +88,15 @@ class mmap_index_input : public irs::bytes_ref_input {
       return nullptr;
     }
 
+#if !defined(_MSC_VER)
+
     const int padvice = get_posix_advice(advice);
 
     if (IR_MADVISE_NORMAL != padvice && !handle->advise(padvice)) {
       IR_FRMT_ERROR("Failed to madvise input file, path: " IR_FILEPATH_SPECIFIER ", error %d", file, errno);
     }
+
+#endif
 
     return mmap_index_input::make<mmap_index_input>(
       std::move(handle), bool(advice & irs::IOAdvice::READONCE)
@@ -159,3 +167,7 @@ index_input::ptr mmap_directory::open(
 }
 
 NS_END // ROOT
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
