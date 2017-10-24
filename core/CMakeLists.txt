@@ -917,13 +917,13 @@ if(MSVC)
     ${Boost_SHARED_sharedRT_LIBRARIES}
     $<TARGET_PROPERTY:icu-shared,IMPORTED_LOCATION> # cmake on MSVC does not properly expand dependencies for 'icu-shared'
     $<TARGET_PROPERTY:icu-shared,INTERFACE_LINK_LIBRARIES> # cmake on MSVC does not properly expand dependencies for 'icu-shared'
-    snowball-shared
+    stemmer-shared
   )
 
   target_link_libraries(${IResearch_TARGET_NAME}-analyzer-text-static-scrt
     ${IResearch_TARGET_NAME}-static-scrt
     icu-static
-    snowball-static
+    stemmer-static
   )
 endif()
 
