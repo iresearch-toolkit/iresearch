@@ -1008,20 +1008,17 @@ void directory_test_case::smoke_store() {
 
     // read from file
     {
-      #if defined(IRESEARCH_VALGRIND)
-        const auto buf_size = 1024 + 691 + 4096; // 1024 + 691 from above, +4096 to avoid valgrind invalid read
-      #else
-        const auto buf_size = 1024 + 691; // 1024 + 691 from above
-      #endif
-      byte_type buf[buf_size]{};
+      byte_type buf[1024 + 691]{}; // 1024 + 691 from above
       auto in = dir_->open("nonempty_file", irs::IOAdvice::NORMAL);
+      size_t expected = sizeof buf;
       ASSERT_FALSE(!in);
-      ASSERT_EQ(sizeof buf, in->read_bytes(buf, sizeof buf));
+      ASSERT_EQ(expected, in->read_bytes(buf, sizeof buf));
 
       size_t read = std::numeric_limits<size_t>::max();
       try {
-        read = in->read_bytes(buf, 67872);
-        ASSERT_EQ(in->length() - sizeof buf, read);
+        expected = in->length() - sizeof buf; // 'sizeof buf' already read above
+        read = in->read_bytes(buf, sizeof buf);
+        ASSERT_EQ(expected, read);
       } catch (const io_error&) {
         // TODO: rework stream logic, stream should not throw an error
       } catch (...) {
