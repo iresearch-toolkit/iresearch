@@ -60,7 +60,7 @@ class atomic_base {
 };
 
 // GCC prior the 5.0 does not support std::atomic_exchange(std::shared_ptr<T>*, std::shared_ptr<T>)
-#if !defined(__GNUC__) || (__GNUC__ >= 5)
+#if !defined(IRESEARCH_VALGRIND) && (!defined(__GNUC__) || (__GNUC__ >= 5))
 template<typename T>
 class atomic_base<std::shared_ptr<T>> {
  public:
