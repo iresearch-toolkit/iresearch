@@ -60,22 +60,43 @@ class atomic_base {
 };
 
 // GCC prior the 5.0 does not support std::atomic_exchange(std::shared_ptr<T>*, std::shared_ptr<T>)
-#if !defined(IRESEARCH_VALGRIND) && (!defined(__GNUC__) || (__GNUC__ >= 5))
-template<typename T>
-class atomic_base<std::shared_ptr<T>> {
- public:
-  static std::shared_ptr<T> atomic_exchange(std::shared_ptr<T>* p, std::shared_ptr<T> r) {
-    return std::atomic_exchange(p, r);
-  }
+#if !defined(__GNUC__) || (__GNUC__ >= 5)
+  template<typename T>
+  class atomic_base<std::shared_ptr<T>> {
+    #if defined(IRESEARCH_VALGRIND) // suppress valgrind false-positives related to std::atomic_*
+     public:
+      std::shared_ptr<T> atomic_exchange(std::shared_ptr<T>* p, std::shared_ptr<T> r) const {
+        SCOPED_LOCK(mutex_);
+        return std::atomic_exchange(p, r);
+      }
 
-  static void atomic_store(std::shared_ptr<T>* p, std::shared_ptr<T> r) {
-    std::atomic_store(p, r);
-  }
+      void atomic_store(std::shared_ptr<T>* p, std::shared_ptr<T> r) const {
+        SCOPED_LOCK(mutex_);
+        std::atomic_store(p, r);
+      }
 
-  static std::shared_ptr<T> atomic_load(const std::shared_ptr<T>* p) {
-    return std::atomic_load(p);
-  }
-};
+      std::shared_ptr<T> atomic_load(const std::shared_ptr<T>* p) const {
+        SCOPED_LOCK(mutex_);
+        return std::atomic_load(p);
+      }
+
+     private:
+      mutable std::mutex mutex_;
+    #else
+     public:
+      static std::shared_ptr<T> atomic_exchange(std::shared_ptr<T>* p, std::shared_ptr<T> r) {
+        return std::atomic_exchange(p, r);
+      }
+
+      static void atomic_store(std::shared_ptr<T>* p, std::shared_ptr<T> r) {
+        std::atomic_store(p, r);
+      }
+
+      static std::shared_ptr<T> atomic_load(const std::shared_ptr<T>* p) {
+        return std::atomic_load(p);
+      }
+    #endif // defined(IRESEARCH_VALGRIND)
+  };
 #endif
 
 template<typename T>
