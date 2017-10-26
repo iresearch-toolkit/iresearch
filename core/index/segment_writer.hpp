@@ -36,7 +36,12 @@ struct segment_meta;
 
 class IRESEARCH_API segment_writer: util::noncopyable {
  public:
+// try workaround for SEGFAULT at utils\misc.hpp:81 on MSVC2017 v15.3 (v15.2 works fine) FIXME TODO
+#if defined(_MSC_VER) && _MSC_VER >= 1910
+  DECLARE_SPTR(segment_writer);
+#else
   DECLARE_PTR(segment_writer);
+#endif
   DECLARE_FACTORY_DEFAULT(directory& dir);
 
   struct update_context {
