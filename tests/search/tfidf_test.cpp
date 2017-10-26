@@ -411,6 +411,22 @@ TEST_F(tfidf_test, test_query) {
 
 #ifndef IRESEARCH_DLL
 
+TEST_F(tfidf_test, test_make) {
+  // default values
+  {
+    auto scorer = irs::scorers::get("tfidf", irs::string_ref::nil);
+    ASSERT_NE(nullptr, scorer);
+    auto& scr = dynamic_cast<irs::tfidf_sort&>(*scorer);
+    UNUSED(scr);
+  }
+
+  // invalid args
+  {
+    auto scorer = irs::scorers::get("tfidf", "\"12345");
+    ASSERT_EQ(nullptr, scorer);
+  }
+}
+
 TEST_F(tfidf_test, test_order) {
   {
     tests::json_doc_generator gen(
@@ -482,3 +498,7 @@ TEST_F(tfidf_test, test_order) {
 }
 
 #endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

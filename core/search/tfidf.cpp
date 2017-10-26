@@ -21,6 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <rapidjson/rapidjson/document.h> // for rapidjson::Document
+
 #include "tfidf.hpp"
 
 #include "scorers.hpp"
@@ -214,7 +216,41 @@ DEFINE_FACTORY_DEFAULT(irs::tfidf_sort);
 
 /*static*/ sort::ptr tfidf_sort::make(const string_ref& args) {
   static PTR_NAMED(tfidf_sort, ptr);
-  UNUSED(args);
+
+  if (args.null()) {
+    return ptr;
+  }
+
+  rapidjson::Document json;
+
+  if (json.Parse(args.c_str(), args.size()).HasParseError() || !json.IsObject()) {
+    IR_FRMT_ERROR("Invalid jSON arguments passed while constructing bm25 scorer, arguments: %s", args.c_str());
+
+    return nullptr;
+  }
+
+  #ifdef IRESEARCH_DEBUG
+    auto& scorer = dynamic_cast<tfidf_sort&>(*ptr);
+  #else
+    auto& scorer = static_cast<tfidf_sort&>(*ptr);
+  #endif
+
+  {
+    // optional bool
+    const auto* key= "with-norms";
+
+    if (json.HasMember(key)) {
+      if (!json[key].IsBool()) {
+        IR_FRMT_ERROR("Non-boolean value in '%s' while constructing tfidf scorer from jSON arguments: %s", key, args.c_str());
+
+        return nullptr;
+      }
+
+      IR_FRMT_ERROR("Note: tfidf scorer config argument 'with-norms' not yet implemented, ignoring");
+      UNUSED(scorer);
+      // FIXME TODO implement
+    }
+  }
 
   return ptr;
 }
