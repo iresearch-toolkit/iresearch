@@ -83,6 +83,8 @@ const std::string RND = "random";
 const std::string RPT = "repeat";
 const std::string CSV = "csv";
 const std::string SCORED_TERMS_LIMIT = "scored-terms-limit";
+const std::string SCORER = "scorer";
+const std::string SCORER_ARG = "scorer-arg";
 const std::string DIR_TYPE = "dir-type";
 
 static bool v = false;
@@ -812,8 +814,21 @@ int search(
     size_t limit,
     bool shuffle,
     bool csv,
-    size_t scored_terms_limit
+    size_t scored_terms_limit,
+    const std::string& scorer,
+    const irs::string_ref& scorer_arg
 ) {
+  auto scr = irs::scorers::get(scorer, scorer_arg);
+
+  if (!scr) {
+    if (scorer_arg.null()) {
+      std::cerr << "Unable to instantiate scorer '" << scorer << "' with nil arguments" << std::endl;
+    } else {
+      std::cerr << "Unable to instantiate scorer '" << scorer << "' with arguments '" << scorer_arg << "'" << std::endl;
+    }
+    return 1;
+  }
+
   auto dir = create_directory(dir_type, path);
 
   if (!dir) {
@@ -835,6 +850,8 @@ int search(
   std::cout << RND << "=" << shuffle << std::endl;
   std::cout << CSV << "=" << csv << std::endl;
   std::cout << SCORED_TERMS_LIMIT << "=" << scored_terms_limit << std::endl;
+  std::cout << SCORER << "=" << scorer << std::endl;
+  std::cout << SCORER_ARG << "=" << scorer_arg << std::endl;
 
   irs::directory_reader reader;
   irs::order::prepared order;
@@ -849,7 +866,7 @@ int search(
     SCOPED_TIMER("Order build time");
     irs::order sort;
 
-    sort.add(irs::scorers::get("bm25", irs::string_ref::nil));
+    sort.add(scr);
     order = sort.prepare();
   }
 
@@ -1085,6 +1102,8 @@ int search(const cmdline::parser& args) {
   const size_t topN = args.get<size_t>(TOPN);
   const bool csv = args.exist(CSV);
   const size_t scored_terms_limit = args.get<size_t>(SCORED_TERMS_LIMIT);
+  const auto scorer = args.get<std::string>(SCORER);
+  const auto scorer_arg = args.exist(SCORER_ARG) ? irs::string_ref(args.get<std::string>(SCORER_ARG)) : irs::string_ref::nil;
   const auto dir_type = args.exist(DIR_TYPE) ? args.get<std::string>(DIR_TYPE) : std::string("fs");
 
   std::cout << "Max tasks in category="                      << maxtasks           << '\n'
@@ -1093,6 +1112,8 @@ int search(const cmdline::parser& args) {
             << "Search threads="                             << thrs               << '\n'
             << "Number of top documents to collect="         << topN               << '\n'
             << "Number of terms to in range/prefix queries=" << scored_terms_limit << '\n'
+            << "Scorer used for ranking query results="      << scorer             << '\n'
+            << "Configuration argument for query scorer="    << scorer_arg         << '\n'
             << "Output CSV="                                 << csv                << std::endl;
 
   std::fstream in(args.get<std::string>(INPUT), std::fstream::in);
@@ -1111,10 +1132,10 @@ int search(const cmdline::parser& args) {
       return 1;
     }
 
-    return search(path, dir_type, in, out, maxtasks, repeat, thrs, topN, shuffle, csv, scored_terms_limit);
+    return search(path, dir_type, in, out, maxtasks, repeat, thrs, topN, shuffle, csv, scored_terms_limit, scorer, scorer_arg);
   }
 
-  return search(path, dir_type, in, std::cout, maxtasks, repeat, thrs, topN, shuffle, csv, scored_terms_limit);
+  return search(path, dir_type, in, std::cout, maxtasks, repeat, thrs, topN, shuffle, csv, scored_terms_limit, scorer, scorer_arg);
 }
 
 int search(int argc, char* argv[]) {
@@ -1130,6 +1151,8 @@ int search(int argc, char* argv[]) {
   cmdsearch.add<size_t>(THR, 0, "Number of search threads", false, size_t(1));
   cmdsearch.add<size_t>(TOPN, 0, "Number of top search results", false, size_t(10));
   cmdsearch.add<size_t>(SCORED_TERMS_LIMIT, 0, "Number of terms to score in range/prefix queries", false, size_t(1024));
+  cmdsearch.add<std::string>(SCORER, 0, "Scorer used for ranking query results", false, "bm25");
+  cmdsearch.add<std::string>(SCORER_ARG, 0, "Configuration argument for query scorer", false);
   cmdsearch.add(RND, 0, "Shuffle tasks");
   cmdsearch.add(CSV, 0, "CSV output");
 
