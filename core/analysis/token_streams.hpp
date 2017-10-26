@@ -51,6 +51,7 @@ class IRESEARCH_API boolean_token_stream final
  public:
   static const bytes_ref& value_false();
   static const bytes_ref& value_true();
+  static const bytes_ref& value(bool val);
 
   explicit boolean_token_stream(bool value = false);
   boolean_token_stream(boolean_token_stream&& other) NOEXCEPT;

@@ -42,6 +42,10 @@ irs::bstring const& value_true() {
   return value;
 }
 
+const irs::bytes_ref BOOLEAN_VALUES[] {
+  value_false(), value_true()
+};
+
 NS_END
 
 NS_ROOT
@@ -77,15 +81,15 @@ bool boolean_token_stream::next() {
 }
 
 /*static*/ const bytes_ref& boolean_token_stream::value_false() {
-  static const bytes_ref value(::value_false());
-
-  return value;
+  return BOOLEAN_VALUES[0];
 }
 
 /*static*/ const bytes_ref& boolean_token_stream::value_true() {
-  static const bytes_ref value(::value_true());
+  return BOOLEAN_VALUES[1];
+}
 
-  return value;
+/*static*/ const bytes_ref& boolean_token_stream::value(bool val) {
+  return BOOLEAN_VALUES[val];
 }
 
 // -----------------------------------------------------------------------------
