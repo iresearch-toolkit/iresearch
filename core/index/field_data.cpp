@@ -127,8 +127,22 @@ class pos_iterator final : public irs::position::impl {
     val_ += pos;
 
     if (has_offs_) {
+// add logs to try to trace SEGFAULT at utils\misc.hpp:81 on MSVC2017 v15.3 (v15.2 works fine) FIXME TODO
+#if defined(_MSC_VER) && _MSC_VER >= 1910
+      size_t x = *prox_in_;
+      IR_FRMT_TRACE(IR_SIZE_T_SPECIFIER, x);
+      auto s = bytes_io<uint32_t>::vread(prox_in_);
+      IR_FRMT_TRACE(IR_SIZE_T_SPECIFIER, size_t(s));
+      auto e = bytes_io<uint32_t>::vread(prox_in_);
+      IR_FRMT_TRACE(IR_SIZE_T_SPECIFIER, size_t(e));
+      offs_.start += s;
+      IR_FRMT_TRACE(IR_SIZE_T_SPECIFIER, size_t(offs_.start));
+      offs_.end += offs_.start + e;
+      IR_FRMT_TRACE(IR_SIZE_T_SPECIFIER, size_t(offs_.end));
+#else
       offs_.start += bytes_io<uint32_t>::vread(prox_in_);
       offs_.end = offs_.start + bytes_io<uint32_t>::vread(prox_in_);
+#endif
     }
     ++pos_;
     return true;
