@@ -531,6 +531,44 @@ TEST_F(bm25_test, test_query_norms) {
 
 #ifndef IRESEARCH_DLL
 
+TEST_F(bm25_test, test_make) {
+  // default values
+  {
+    auto scorer = irs::scorers::get("bm25", irs::string_ref::nil);
+    ASSERT_NE(nullptr, scorer);
+    auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
+    ASSERT_EQ(0.75f, scr.b());
+    ASSERT_EQ(1.2f, scr.k());
+  }
+
+  // custom values
+  {
+    auto scorer = irs::scorers::get("bm25", "{\"b\": 123.456, \"k\": 78.9}");
+    ASSERT_NE(nullptr, scorer);
+    auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
+    ASSERT_EQ(123.456f, scr.b());
+    ASSERT_EQ(78.9f, scr.k());
+  }
+
+  // invalid args
+  {
+    auto scorer = irs::scorers::get("bm25", "\"12345");
+    ASSERT_EQ(nullptr, scorer);
+  }
+
+  // invalid values (b)
+  {
+    auto scorer = irs::scorers::get("bm25", "{\"b\": false, \"k\": 78.9}");
+    ASSERT_EQ(nullptr, scorer);
+  }
+
+  // invalid values (k)
+  {
+    auto scorer = irs::scorers::get("bm25", "{\"b\": 123.456, \"k\": true}");
+    ASSERT_EQ(nullptr, scorer);
+  }
+}
+
 TEST_F(bm25_test, test_order) {
   {
     tests::json_doc_generator gen(
@@ -602,3 +640,7 @@ TEST_F(bm25_test, test_order) {
 }
 
 #endif // IRESEARCH_DLL
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

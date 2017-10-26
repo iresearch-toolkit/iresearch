@@ -21,6 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <rapidjson/rapidjson/document.h> // for rapidjson::Document
+
 #include "bm25.hpp"
 
 #include "scorers.hpp"
@@ -264,7 +266,70 @@ DEFINE_FACTORY_DEFAULT(irs::bm25_sort);
 
 /*static*/ sort::ptr bm25_sort::make(const string_ref& args) {
   static PTR_NAMED(bm25_sort, ptr);
-  UNUSED(args);
+
+  if (args.null()) {
+    return ptr;
+  }
+
+  rapidjson::Document json;
+
+  if (json.Parse(args.c_str(), args.size()).HasParseError() || !json.IsObject()) {
+    IR_FRMT_ERROR("Invalid jSON arguments passed while constructing bm25 scorer, arguments: %s", args.c_str());
+
+    return nullptr;
+  }
+
+  #ifdef IRESEARCH_DEBUG
+    auto& scorer = dynamic_cast<bm25_sort&>(*ptr);
+  #else
+    auto& scorer = static_cast<bm25_sort&>(*ptr);
+  #endif
+
+  {
+    // optional float
+    const auto* key = "b";
+
+    if (json.HasMember(key)) {
+      if (!json[key].IsFloat()) {
+        IR_FRMT_ERROR("Non-float value in '%s' while constructing bm25 scorer from jSON arguments: %s", key, args.c_str());
+
+        return nullptr;
+      }
+
+      scorer.b(json[key].GetFloat());
+    }
+  }
+
+  {
+    // optional float
+    const auto* key = "k";
+
+    if (json.HasMember(key)) {
+      if (!json[key].IsFloat()) {
+        IR_FRMT_ERROR("Non-float value in '%s' while constructing bm25 scorer from jSON arguments: %s", key, args.c_str());
+
+        return nullptr;
+      }
+
+      scorer.k(json[key].GetFloat());
+    }
+  }
+
+  {
+    // optional bool
+    const auto* key= "with-norms";
+
+    if (json.HasMember(key)) {
+      if (!json[key].IsBool()) {
+        IR_FRMT_ERROR("Non-boolean value in '%s' while constructing bm25 scorer from jSON arguments: %s", key, args.c_str());
+
+        return nullptr;
+      }
+
+      IR_FRMT_ERROR("Note: bm25 scorer config argument 'with-norms' not yet implemented, ignoring");
+      // FIXME TODO implement
+    }
+  }
 
   return ptr;
 }
