@@ -85,6 +85,35 @@ TEST_F(bm25_test, test_load) {
   ASSERT_EQ(1, order.add(scorer).size());
 }
 
+TEST_F(bm25_test, test_normalize_features) {
+  // default norms
+  {
+    auto scorer = irs::scorers::get("bm25", irs::string_ref::nil);
+    ASSERT_NE(nullptr, scorer);
+    auto prepared = scorer->prepare();
+    ASSERT_NE(nullptr, prepared);
+    ASSERT_EQ(irs::flags({irs::frequency::type(), irs::norm::type()}), prepared->features());
+  }
+
+  // with norms
+  {
+    auto scorer = irs::scorers::get("bm25", "{\"with-norms\": true}");
+    ASSERT_NE(nullptr, scorer);
+    auto prepared = scorer->prepare();
+    ASSERT_NE(nullptr, prepared);
+    ASSERT_EQ(irs::flags({irs::frequency::type(), irs::norm::type()}), prepared->features());
+  }
+
+  // without norms
+  {
+    auto scorer = irs::scorers::get("bm25", "{\"with-norms\": false}");
+    ASSERT_NE(nullptr, scorer);
+    auto prepared = scorer->prepare();
+    ASSERT_NE(nullptr, prepared);
+    ASSERT_EQ(irs::flags({irs::frequency::type()}), prepared->features());
+  }
+}
+
 TEST_F(bm25_test, test_query) {
   {
     tests::json_doc_generator gen(
@@ -539,15 +568,17 @@ TEST_F(bm25_test, test_make) {
     auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(0.75f, scr.b());
     ASSERT_EQ(1.2f, scr.k());
+    ASSERT_EQ(true, scr.normalize());
   }
 
   // custom values
   {
-    auto scorer = irs::scorers::get("bm25", "{\"b\": 123.456, \"k\": 78.9}");
+    auto scorer = irs::scorers::get("bm25", "{\"b\": 123.456, \"k\": 78.9, \"with-norms\": false}");
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(123.456f, scr.b());
     ASSERT_EQ(78.9f, scr.k());
+    ASSERT_EQ(false, scr.normalize());
   }
 
   // invalid args
@@ -565,6 +596,12 @@ TEST_F(bm25_test, test_make) {
   // invalid values (k)
   {
     auto scorer = irs::scorers::get("bm25", "{\"b\": 123.456, \"k\": true}");
+    ASSERT_EQ(nullptr, scorer);
+  }
+
+  // invalid values (with-norms)
+  {
+    auto scorer = irs::scorers::get("bm25", "{\"b\": 123.456, \"k\": 78.9, \"with-norms\": 42}");
     ASSERT_EQ(nullptr, scorer);
   }
 }

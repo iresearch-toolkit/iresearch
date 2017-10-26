@@ -42,6 +42,9 @@ public:
 
   explicit tfidf_sort(bool normalize = false);
 
+  bool normalize() const { return normalize_; }
+  void normalize(bool value) { normalize_ = value; }
+
   virtual sort::prepared::ptr prepare() const;
 
 private:

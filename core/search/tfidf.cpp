@@ -36,18 +36,6 @@ NS_BEGIN(tfidf)
 // empty frequency
 const frequency EMPTY_FREQ;
 
-const flags& features(bool normalize) {
-  if (normalize) {
-    // set of features required for tf-idf model without normalization
-    static const flags FEATURES{ frequency::type() };
-    return FEATURES;
-  }
-
-  // set of features required for tf-idf model with normalization
-  static const flags NORM_FEATURES{ frequency::type(), norm::type() };
-  return NORM_FEATURES;
-}
-
 struct idf final : basic_stored_attribute<float_t> {
   DECLARE_ATTRIBUTE_TYPE();
   DECLARE_FACTORY_DEFAULT();
@@ -159,7 +147,12 @@ class sort final: iresearch::sort::prepared_base<tfidf::score_t> {
   }
 
   virtual const flags& features() const override {
-    return tfidf::features(normalize_); 
+    static const irs::flags FEATURES[] = {
+      irs::flags({ irs::frequency::type() }), // without normalization
+      irs::flags({ irs::frequency::type(), irs::norm::type() }), // with normalization
+    };
+
+    return FEATURES[normalize_];
   }
 
   virtual collector::ptr prepare_collector() const override {
@@ -223,7 +216,8 @@ DEFINE_FACTORY_DEFAULT(irs::tfidf_sort);
 
   rapidjson::Document json;
 
-  if (json.Parse(args.c_str(), args.size()).HasParseError() || !json.IsObject()) {
+  if (json.Parse(args.c_str(), args.size()).HasParseError()
+      || !(json.IsObject() || json.IsBool())) {
     IR_FRMT_ERROR("Invalid jSON arguments passed while constructing bm25 scorer, arguments: %s", args.c_str());
 
     return nullptr;
@@ -234,6 +228,12 @@ DEFINE_FACTORY_DEFAULT(irs::tfidf_sort);
   #else
     auto& scorer = static_cast<tfidf_sort&>(*ptr);
   #endif
+
+  if (json.IsBool()) {
+    scorer.normalize(json.GetBool());
+
+    return ptr;
+  }
 
   {
     // optional bool
@@ -246,9 +246,7 @@ DEFINE_FACTORY_DEFAULT(irs::tfidf_sort);
         return nullptr;
       }
 
-      IR_FRMT_ERROR("Note: tfidf scorer config argument 'with-norms' not yet implemented, ignoring");
-      UNUSED(scorer);
-      // FIXME TODO implement
+      scorer.normalize(json[key].GetBool());
     }
   }
 

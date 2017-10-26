@@ -85,6 +85,53 @@ TEST_F(tfidf_test, test_load) {
   ASSERT_EQ(1, order.add(scorer).size());
 }
 
+TEST_F(tfidf_test, test_normalize_features) {
+  // default norms
+  {
+    auto scorer = irs::scorers::get("tfidf", irs::string_ref::nil);
+    ASSERT_NE(nullptr, scorer);
+    auto prepared = scorer->prepare();
+    ASSERT_NE(nullptr, prepared);
+    ASSERT_EQ(irs::flags({irs::frequency::type()}), prepared->features());
+  }
+
+  // with norms (as args)
+  {
+    auto scorer = irs::scorers::get("tfidf", "true");
+    ASSERT_NE(nullptr, scorer);
+    auto prepared = scorer->prepare();
+    ASSERT_NE(nullptr, prepared);
+    ASSERT_EQ(irs::flags({irs::frequency::type(), irs::norm::type()}), prepared->features());
+  }
+
+  // with norms
+  {
+    auto scorer = irs::scorers::get("tfidf", "{\"with-norms\": true}");
+    ASSERT_NE(nullptr, scorer);
+    auto prepared = scorer->prepare();
+    ASSERT_NE(nullptr, prepared);
+    ASSERT_EQ(irs::flags({irs::frequency::type(), irs::norm::type()}), prepared->features());
+  }
+
+  // without norms (as args)
+  {
+    auto scorer = irs::scorers::get("tfidf", "false");
+    ASSERT_NE(nullptr, scorer);
+    auto prepared = scorer->prepare();
+    ASSERT_NE(nullptr, prepared);
+    ASSERT_EQ(irs::flags({irs::frequency::type()}), prepared->features());
+  }
+
+  // without norms
+  {
+    auto scorer = irs::scorers::get("tfidf", "{\"with-norms\": false}");
+    ASSERT_NE(nullptr, scorer);
+    auto prepared = scorer->prepare();
+    ASSERT_NE(nullptr, prepared);
+    ASSERT_EQ(irs::flags({irs::frequency::type()}), prepared->features());
+  }
+}
+
 TEST_F(tfidf_test, test_query) {
   {
     tests::json_doc_generator gen(
@@ -417,12 +464,40 @@ TEST_F(tfidf_test, test_make) {
     auto scorer = irs::scorers::get("tfidf", irs::string_ref::nil);
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::tfidf_sort&>(*scorer);
-    UNUSED(scr);
+    ASSERT_EQ(false, scr.normalize());
   }
 
   // invalid args
   {
     auto scorer = irs::scorers::get("tfidf", "\"12345");
+    ASSERT_EQ(nullptr, scorer);
+  }
+
+  // custom value
+  {
+    auto scorer = irs::scorers::get("tfidf", "true");
+    ASSERT_NE(nullptr, scorer);
+    auto& scr = dynamic_cast<irs::tfidf_sort&>(*scorer);
+    ASSERT_EQ(true, scr.normalize());
+  }
+
+  // invalid value (non-bool)
+  {
+    auto scorer = irs::scorers::get("tfidf", "42");
+    ASSERT_EQ(nullptr, scorer);
+  }
+
+  // custom values
+  {
+    auto scorer = irs::scorers::get("tfidf", "{\"with-norms\": true}");
+    ASSERT_NE(nullptr, scorer);
+    auto& scr = dynamic_cast<irs::tfidf_sort&>(*scorer);
+    ASSERT_EQ(true, scr.normalize());
+  }
+
+  // invalid values (with-norms)
+  {
+    auto scorer = irs::scorers::get("tfidf", "{\"with-norms\": 42}");
     ASSERT_EQ(nullptr, scorer);
   }
 }

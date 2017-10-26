@@ -53,9 +53,6 @@ NS_BEGIN(bm25)
 // empty frequency
 const frequency EMPTY_FREQ;
 
-// set of features required for bm25 model
-const flags FEATURES{ frequency::type(), norm::type() };
-
 struct stats final : stored_attribute {
   DECLARE_ATTRIBUTE_TYPE();
   DECLARE_FACTORY_DEFAULT();
@@ -141,8 +138,8 @@ class norm_scorer final : public scorer {
 
 class collector final : public iresearch::sort::collector {
  public:
-  explicit collector(float_t k, float_t b) 
-    : k_(k), b_(b) {
+  explicit collector(float_t k, float_t b, bool normalize)
+    : k_(k), b_(b), normalize_(normalize) {
   }
 
   virtual void collect(
@@ -174,6 +171,10 @@ class collector final : public iresearch::sort::collector {
     bm25stats->idf =
       1 + float_t(std::log(index.docs_count() / double_t(docs_count + 1)));
 
+    if (!normalize_) {
+      return; // nothing more to do
+    }
+
     // precomputed length norm
     const float_t kb = k_ * b_;
     bm25stats->norm_const = k_ - kb;
@@ -193,24 +194,33 @@ class collector final : public iresearch::sort::collector {
   uint64_t total_term_freq = 0; // number of tokens for processed fields
   float_t k_;
   float_t b_;
+  bool normalize_;
 }; // collector
 
 class sort final : iresearch::sort::prepared_base<bm25::score_t> {
  public:
   DECLARE_FACTORY(prepared);
 
-  sort(float_t k, float_t b, bool reverse): k_(k), b_(b) {
+  sort(float_t k, float_t b, bool normalize, bool reverse)
+    : k_(k),
+      b_(b),
+      normalize_(normalize) {
     static const std::function<bool(score_t, score_t)> greater = std::greater<score_t>();
     static const std::function<bool(score_t, score_t)> less = std::less<score_t>();
     less_ = reverse ? &greater : &less;
   }
 
   virtual const flags& features() const override {
-    return bm25::FEATURES;
+    static const irs::flags FEATURES[] = {
+      irs::flags({ irs::frequency::type() }), // without normalization
+      irs::flags({ irs::frequency::type(), irs::norm::type() }), // with normalization
+    };
+
+    return FEATURES[normalize_];
   }
 
   virtual iresearch::sort::collector::ptr prepare_collector() const override {
-    return iresearch::sort::collector::make<bm25::collector>(k_, b_);
+    return irs::sort::collector::make<bm25::collector>(k_, b_, normalize_);
   }
 
   virtual scorer::ptr prepare_scorer(
@@ -255,6 +265,7 @@ class sort final : iresearch::sort::prepared_base<bm25::score_t> {
   const std::function<bool(score_t, score_t)>* less_;
   float_t k_;
   float_t b_;
+  bool normalize_;
 }; // sort
 
 NS_END // bm25 
@@ -326,21 +337,23 @@ DEFINE_FACTORY_DEFAULT(irs::bm25_sort);
         return nullptr;
       }
 
-      IR_FRMT_ERROR("Note: bm25 scorer config argument 'with-norms' not yet implemented, ignoring");
-      // FIXME TODO implement
+      scorer.normalize(json[key].GetBool());
     }
   }
 
   return ptr;
 }
 
-bm25_sort::bm25_sort(float_t k, float_t b) 
-  : sort(bm25_sort::type()), k_(k), b_(b) {
+bm25_sort::bm25_sort(
+    float_t k /*= 1.2f*/,
+    float_t b /*= 0.75f*/,
+    bool normalize /*= false*/
+): sort(bm25_sort::type()), k_(k), b_(b), normalize_(normalize) {
   reverse(true); // return the most relevant results first
 }
 
 sort::prepared::ptr bm25_sort::prepare() const {
-  return bm25::sort::make<bm25::sort>(k_, b_, reverse());
+  return bm25::sort::make<bm25::sort>(k_, b_, normalize_, reverse());
 }
 
 NS_END // ROOT
