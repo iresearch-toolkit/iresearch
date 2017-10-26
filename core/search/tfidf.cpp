@@ -21,6 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <rapidjson/rapidjson/document.h> // for rapidjson::Document
+
 #include "tfidf.hpp"
 
 #include "scorers.hpp"
@@ -33,18 +35,6 @@ NS_BEGIN(tfidf)
 
 // empty frequency
 const frequency EMPTY_FREQ;
-
-const flags& features(bool normalize) {
-  if (normalize) {
-    // set of features required for tf-idf model without normalization
-    static const flags FEATURES{ frequency::type() };
-    return FEATURES;
-  }
-
-  // set of features required for tf-idf model with normalization
-  static const flags NORM_FEATURES{ frequency::type(), norm::type() };
-  return NORM_FEATURES;
-}
 
 struct idf final : basic_stored_attribute<float_t> {
   DECLARE_ATTRIBUTE_TYPE();
@@ -157,7 +147,12 @@ class sort final: iresearch::sort::prepared_base<tfidf::score_t> {
   }
 
   virtual const flags& features() const override {
-    return tfidf::features(normalize_); 
+    static const irs::flags FEATURES[] = {
+      irs::flags({ irs::frequency::type() }), // without normalization
+      irs::flags({ irs::frequency::type(), irs::norm::type() }), // with normalization
+    };
+
+    return FEATURES[normalize_];
   }
 
   virtual collector::ptr prepare_collector() const override {
@@ -214,7 +209,46 @@ DEFINE_FACTORY_DEFAULT(irs::tfidf_sort);
 
 /*static*/ sort::ptr tfidf_sort::make(const string_ref& args) {
   static PTR_NAMED(tfidf_sort, ptr);
-  UNUSED(args);
+
+  if (args.null()) {
+    return ptr;
+  }
+
+  rapidjson::Document json;
+
+  if (json.Parse(args.c_str(), args.size()).HasParseError()
+      || !(json.IsObject() || json.IsBool())) {
+    IR_FRMT_ERROR("Invalid jSON arguments passed while constructing bm25 scorer, arguments: %s", args.c_str());
+
+    return nullptr;
+  }
+
+  #ifdef IRESEARCH_DEBUG
+    auto& scorer = dynamic_cast<tfidf_sort&>(*ptr);
+  #else
+    auto& scorer = static_cast<tfidf_sort&>(*ptr);
+  #endif
+
+  if (json.IsBool()) {
+    scorer.normalize(json.GetBool());
+
+    return ptr;
+  }
+
+  {
+    // optional bool
+    const auto* key= "with-norms";
+
+    if (json.HasMember(key)) {
+      if (!json[key].IsBool()) {
+        IR_FRMT_ERROR("Non-boolean value in '%s' while constructing tfidf scorer from jSON arguments: %s", key, args.c_str());
+
+        return nullptr;
+      }
+
+      scorer.normalize(json[key].GetBool());
+    }
+  }
 
   return ptr;
 }
