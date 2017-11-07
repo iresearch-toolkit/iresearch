@@ -101,6 +101,14 @@ class pos_iterator final : public irs::position::impl {
     }
   }
 
+// add logs to try to trace SEGFAULT at utils\misc.hpp:81 on MSVC2017 v15.3 (v15.2 works fine) FIXME TODO
+#if defined(_MSC_VER) && _MSC_VER >= 1910
+  virtual ~pos_iterator() {
+    IR_FRMT_TRACE("destruct &prox_in_: " IR_SIZE_T_SPECIFIER, size_t(&prox_in_));
+    IR_STACK_TRACE();
+  }
+#endif
+
   virtual void clear() override {
     pos_ = 0;
     val_ = 0;
