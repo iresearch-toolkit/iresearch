@@ -383,6 +383,18 @@ class block_pool_sliced_reader : public std::iterator < std::input_iterator_tag,
   typedef typename container::const_reference const_reference;
   typedef typename container::value_type value_type;
 
+// add logs to try to trace SEGFAULT at utils\misc.hpp:81 on MSVC2017 v15.3 (v15.2 works fine) FIXME TODO
+#if defined(_MSC_VER) && _MSC_VER >= 1910
+  block_pool_sliced_reader(const block_pool_sliced_reader& other)
+    : where_(other.where_),
+      level_(other.level_),
+      end_(other.end_),
+      left_(other.left_) {
+    IR_FRMT_TRACE("construct block_pool_sliced_reader: " IR_SIZE_T_SPECIFIER " from &other: " IR_SIZE_T_SPECIFIER, size_t(this), size_t(&other));
+    IR_STACK_TRACE();
+  }
+#endif
+
   block_pool_sliced_reader(const container& pool)
     : where_(pool) {}
 
@@ -396,7 +408,15 @@ class block_pool_sliced_reader : public std::iterator < std::input_iterator_tag,
     init();
   }
 
+// add logs to try to trace SEGFAULT at utils\misc.hpp:81 on MSVC2017 v15.3 (v15.2 works fine) FIXME TODO
+#if defined(_MSC_VER) && _MSC_VER >= 1910
+  ~block_pool_sliced_reader() {
+    IR_FRMT_TRACE("destruct block_pool_sliced_reader: " IR_SIZE_T_SPECIFIER, size_t(this));
+    IR_STACK_TRACE();
+  }
+#else
   ~block_pool_sliced_reader() {}
+#endif
 
   const_reference operator*() const {
     assert(!eof());
