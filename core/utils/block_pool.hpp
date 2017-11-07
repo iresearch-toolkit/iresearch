@@ -419,8 +419,20 @@ class block_pool_sliced_reader : public std::iterator < std::input_iterator_tag,
 #endif
 
   const_reference operator*() const {
+// add logs to try to trace SEGFAULT at utils\misc.hpp:81 on MSVC2017 v15.3 (v15.2 works fine) FIXME TODO
+#if defined(_MSC_VER) && _MSC_VER >= 1910
+    if (eof()) {
+      IR_FRMT_TRACE("eof() block_pool_sliced_reader: " IR_SIZE_T_SPECIFIER " where_.pool_offset(): " IR_SIZE_T_SPECIFIER "end_: " IR_SIZE_T_SPECIFIER, size_t(this), where_.pool_offset(), end_);
+      IR_STACK_TRACE();
+    }
+
+    const_reference x = *where_;
+    IR_FRMT_TRACE("*where_: " IR_SIZE_T_SPECIFIER, size_t(&x));
+    return x;
+#else
     assert(!eof());
     return *where_;
+#endif
   }
 
   const_pointer operator->() const { return &(operator*()); };
