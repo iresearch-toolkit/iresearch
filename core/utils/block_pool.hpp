@@ -173,7 +173,7 @@ class block_pool_const_iterator : public std::iterator < std::random_access_iter
       IR_FRMT_TRACE("pool_->size(): " IR_SIZE_T_SPECIFIER, size_t(pool_->size()));
       IR_FRMT_TRACE("pos_: " IR_SIZE_T_SPECIFIER, size_t(pos_));
       IR_FRMT_TRACE("block_offset(): " IR_SIZE_T_SPECIFIER, size_t(this->block_offset()));
-      if (block_) {
+      if (block_ && pool_->size()) {
         IR_FRMT_TRACE("block_->begin: " IR_SIZE_T_SPECIFIER, size_t(block_->begin));
         IR_FRMT_TRACE("block_->end: " IR_SIZE_T_SPECIFIER, size_t(block_->end));
         //IR_FRMT_TRACE("remain(): " IR_SIZE_T_SPECIFIER, size_t(this->remain()));
@@ -210,10 +210,10 @@ class block_pool_const_iterator : public std::iterator < std::random_access_iter
     }
   }
 
-  container* pool_{};
-  typename container::block_type* block_{};
-  pointer pos_{};
-  size_t block_start_{};
+  container* pool_;
+  typename container::block_type* block_;
+  pointer pos_;
+  size_t block_start_;
 }; // block_pool_const_iterator 
 
 template< typename ContType >
