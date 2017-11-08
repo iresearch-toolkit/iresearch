@@ -210,10 +210,10 @@ class block_pool_const_iterator : public std::iterator < std::random_access_iter
     }
   }
 
-  container* pool_;
-  typename container::block_type* block_;
-  pointer pos_;
-  size_t block_start_;
+  container* pool_{};
+  typename container::block_type* block_{};
+  pointer pos_{};
+  size_t block_start_{};
 }; // block_pool_const_iterator 
 
 template< typename ContType >
