@@ -171,13 +171,15 @@ class block_pool_const_iterator : public std::iterator < std::random_access_iter
 #if defined(_MSC_VER) && _MSC_VER >= 1910
       IR_FRMT_TRACE("offset: " IR_SIZE_T_SPECIFIER, size_t(offset));
       IR_FRMT_TRACE("pool_->size(): " IR_SIZE_T_SPECIFIER, size_t(pool_->size()));
-      IR_FRMT_TRACE("block_->begin: " IR_SIZE_T_SPECIFIER, size_t(block_->begin));
-      IR_FRMT_TRACE("block_->end: " IR_SIZE_T_SPECIFIER, size_t(block_->end));
       IR_FRMT_TRACE("pos_: " IR_SIZE_T_SPECIFIER, size_t(pos_));
-      //IR_FRMT_TRACE("remain(): " IR_SIZE_T_SPECIFIER, size_t(this->remain()));
-      IR_FRMT_TRACE("offset(): " IR_SIZE_T_SPECIFIER, size_t(this->offset()));
       IR_FRMT_TRACE("block_offset(): " IR_SIZE_T_SPECIFIER, size_t(this->block_offset()));
-      IR_FRMT_TRACE("pool_offset(): " IR_SIZE_T_SPECIFIER, size_t(this->pool_offset()));
+      if (block_) {
+        IR_FRMT_TRACE("block_->begin: " IR_SIZE_T_SPECIFIER, size_t(block_->begin));
+        IR_FRMT_TRACE("block_->end: " IR_SIZE_T_SPECIFIER, size_t(block_->end));
+        //IR_FRMT_TRACE("remain(): " IR_SIZE_T_SPECIFIER, size_t(this->remain()));
+        IR_FRMT_TRACE("offset(): " IR_SIZE_T_SPECIFIER, size_t(this->offset()));
+        IR_FRMT_TRACE("pool_offset(): " IR_SIZE_T_SPECIFIER, size_t(this->pool_offset()));
+      }
       IR_STACK_TRACE();
 #endif
       block_start_ = pool_->size();
