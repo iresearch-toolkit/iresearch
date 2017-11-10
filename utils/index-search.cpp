@@ -1029,7 +1029,9 @@ int search(
             while (docs->next()) {
               ++doc_count;
 
-              score->evaluate();
+              if (score) {
+                score->evaluate();
+              }
 
 #ifdef IRESEARCH_COMPLEX_SCORING
               sorted.emplace(
