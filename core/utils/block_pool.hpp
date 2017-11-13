@@ -678,6 +678,11 @@ class block_pool_sliced_inserter : public std::iterator < std::output_iterator_t
 
   block_pool_sliced_inserter& operator++() { return *this; }
 
+  // MSVC 2017.4 incorectly counts offsets if this function is inlined during optimization
+  // MSVC 2017.3 and below work correctly for both debug and release
+  #if defined(_MSC_VER) && (_MSC_FULL_VER >= 191125542) && (_MSC_FULL_VER <= 191125547) && !defined(_DEBUG)
+    __declspec(noinline)
+  #endif
   void write(const_pointer b, size_t len) {
     // find end of the slice
     for (; 0 == *where_ && len; --len, ++where_, ++b) {
