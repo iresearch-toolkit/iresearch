@@ -209,7 +209,7 @@ TEST_F(object_pool_tests, bounded_uobject_pool) {
     {
       SCOPED_LOCK_NAMED(mutex, lock);
       std::thread thread([&cond, &mutex, &pool]()->void{ auto obj = pool.emplace(2); SCOPED_LOCK(mutex); cond.notify_all(); });
-      ASSERT_NE(std::cv_status::no_timeout, cond.wait_for(lock, std::chrono::milliseconds(6000))); // assume thread blocks in 6000ms (3000ms is not enough for MSVC2017@appveyor, 5000ms is not enough for MSVC2017@jenkins)
+      ASSERT_NE(std::cv_status::no_timeout, cond.wait_for(lock, std::chrono::milliseconds(7000))); // assume thread blocks in 7000ms (3000ms is not enough for MSVC2017@appveyor, 6000ms is not enough for MSVC2017@jenkins)
       obj.reset();
       obj.reset();
       lock.unlock();
