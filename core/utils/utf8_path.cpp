@@ -50,6 +50,24 @@ const boost::filesystem::path::codecvt_type& fs_codecvt() {
   return std::use_facet<boost::filesystem::path::codecvt_type>(default_locale);
 }
 
+// check if the error code matches the system specific not-found errors
+// error code list taken from Boost
+bool fs_error_not_found(int err) {
+  #ifdef _WIN32
+    return err == ERROR_FILE_NOT_FOUND
+      || err == ERROR_PATH_NOT_FOUND
+      || err == ERROR_INVALID_NAME      // "tools/jam/src/:sys:stat.h", "//foo"
+      || err == ERROR_INVALID_DRIVE     // USB card reader with no card inserted
+      || err == ERROR_NOT_READY         // CD/DVD drive with no disc inserted
+      || err == ERROR_INVALID_PARAMETER // ":sys:stat.h"
+      || err == ERROR_BAD_PATHNAME      // "//nosuch" on Win64
+      || err == ERROR_BAD_NETPATH       // "//nosuch" on Win32
+      ;
+  #else // POSIX
+    return err == ENOENT || err == ENOTDIR;
+  #endif
+}
+
 static auto& fs_cvt = fs_codecvt();
 
 NS_END
@@ -200,15 +218,7 @@ bool utf8_path::exists(bool& result) const NOEXCEPT {
   result = boost::filesystem::exists(path_, code);
 
   return boost::system::errc::success == code.value()
-      || boost::system::errc::no_such_file_or_directory == code.value()
-#ifdef _MSC_VER      
-      // on error boost put output from ::GetLastError() directly
-      // to `error_code` without any suitable conversion, so that            
-      // boost::system::errc::no_such_process == ERROR_PATH_NOT_FOUND      
-
-      || boost::system::errc::no_such_process == code.value()
-#endif // _MSC_VER
-      ;      
+    || fs_error_not_found(code.value());
 }
 
 bool utf8_path::exists_file(bool& result) const NOEXCEPT {
@@ -217,15 +227,7 @@ bool utf8_path::exists_file(bool& result) const NOEXCEPT {
   result = boost::filesystem::is_regular_file(path_, code);
 
   return boost::system::errc::success == code.value()
-    || boost::system::errc::no_such_file_or_directory == code.value()
-#ifdef _MSC_VER      
-    // on error boost put output from ::GetLastError() directly
-    // to `error_code` without any suitable conversion, so that            
-    // boost::system::errc::no_such_process == ERROR_PATH_NOT_FOUND      
-
-    || boost::system::errc::no_such_process == code.value()
-#endif // _MSC_VER
-    ;
+    || fs_error_not_found(code.value());
 }
 
 bool utf8_path::file_size(uint64_t& result) const NOEXCEPT {
