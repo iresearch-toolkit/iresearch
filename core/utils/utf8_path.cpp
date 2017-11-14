@@ -40,7 +40,6 @@
 #include <boost/locale/encoding.hpp>
 
 #include "locale_utils.hpp"
-#include "file_utils.hpp"
 #include "log.hpp"
 #include "utf8_path.hpp"
 

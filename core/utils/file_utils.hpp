@@ -33,7 +33,6 @@
   #include <tchar.h>
   #include <io.h> // _close
   #define file_path_t wchar_t*
-  #define IR_FILEPATH_SPECIFIER "%ws"
   #define file_stat _wstat
   #define file_fstat _fstat
   #define file_stat_t struct _stat
@@ -52,7 +51,6 @@
 #else
   #include <unistd.h> // close
   #define file_path_t char*
-  #define IR_FILEPATH_SPECIFIER "%s"
   #define file_stat stat
   #define file_fstat fstat
   #define file_stat_t struct stat    
