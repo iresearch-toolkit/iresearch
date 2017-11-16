@@ -11,7 +11,7 @@ build:
 
 environment:
   BOOST_VERSION: default
-  CMAKE_OPTIONS: -DCMAKE_BUILD_TYPE=%CONFIGURATION% -DCMAKE_C_FLAGS="/MP" -DCMAKE_CXX_FLAGS="/MP"
+  CMAKE_OPTIONS: -DCMAKE_BUILD_TYPE=%CONFIGURATION%
   CMAKE_BUILD_OPTIONS: --config %CONFIGURATION%
   matrix:
   ############################################################################
