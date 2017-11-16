@@ -21,6 +21,18 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#if defined(_MSC_VER)
+  #pragma warning(disable: 4101)
+  #pragma warning(disable: 4267)
+#endif
+
+  #include <cmdline.h>
+
+#if defined(_MSC_VER)
+  #pragma warning(default: 4267)
+  #pragma warning(default: 4101)
+#endif
+
 #include "shared.hpp"
 #include "common.hpp"
 #include "index-dump.hpp"
@@ -31,8 +43,6 @@
 #include <boost/filesystem.hpp>
 #include <fstream>
 #include <iostream>
-
-#include <cmdline.h>
 
 NS_LOCAL
 

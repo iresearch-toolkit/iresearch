@@ -32,7 +32,15 @@
   #pragma GCC diagnostic pop
 #endif
 
-#include <unicode/uclean.h> // for u_cleanup
+#if defined(_MSC_VER)
+  #pragma warning(disable: 4229)
+#endif
+
+  #include <unicode/uclean.h> // for u_cleanup
+
+#if defined(_MSC_VER)
+  #pragma warning(default: 4229)
+#endif
 
 #include "gtest/gtest.h"
 #include "tests_config.hpp"

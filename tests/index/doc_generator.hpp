@@ -428,7 +428,7 @@ class json_doc_generator: public doc_generator_base {
       }
 
       assert(false);
-      return 0.;
+      return T(0.);
     }
   }; // json_value
 

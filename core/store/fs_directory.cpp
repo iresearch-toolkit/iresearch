@@ -47,6 +47,7 @@ MSVC_ONLY(__pragma(warning(pop)))
 NS_LOCAL
 
 inline size_t buffer_size(FILE* file) NOEXCEPT {
+  UNUSED(file);
   return 1024;
 //  auto block_size = irs::file_utils::block_size(file_no(file));
 //

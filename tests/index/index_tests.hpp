@@ -24,7 +24,15 @@
 #ifndef IRESEARCH_INDEX_TESTS_H
 #define IRESEARCH_INDEX_TESTS_H
 
-#include <unicode/uclean.h> // for u_cleanup
+#if defined(_MSC_VER)
+  #pragma warning(disable: 4229)
+#endif
+
+  #include <unicode/uclean.h> // for u_cleanup
+
+#if defined(_MSC_VER)
+  #pragma warning(default: 4229)
+#endif
 
 #include "tests_shared.hpp"
 #include "assert_format.hpp"

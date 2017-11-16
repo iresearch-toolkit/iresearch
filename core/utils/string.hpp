@@ -31,9 +31,6 @@
 #include <cassert>
 #include <algorithm>
 
-MSVC_ONLY(template class IRESEARCH_API std::basic_string<char>); // std::string
-MSVC_ONLY(template class IRESEARCH_API std::basic_string<iresearch::byte_type>); // bstring
-
 // ----------------------------------------------------------------------------
 // --SECTION--                                                   std extensions
 // ----------------------------------------------------------------------------
