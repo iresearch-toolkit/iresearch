@@ -87,7 +87,7 @@ struct IRESEARCH_API eof_error: io_error {
 // ----------------------------------------------------------------------------
 //                                                            detailed_io_error
 // ----------------------------------------------------------------------------
-class IRESEARCH_API detailed_io_error: io_error {
+class IRESEARCH_API detailed_io_error: public io_error {
  public:
   DECLARE_ERROR_CODE(io_error);
   explicit detailed_io_error(const irs::string_ref& error = irs::string_ref::nil);
@@ -107,7 +107,7 @@ class IRESEARCH_API detailed_io_error: io_error {
 // ----------------------------------------------------------------------------
 //                                                           lock_obtain_failed
 // ----------------------------------------------------------------------------
-class IRESEARCH_API lock_obtain_failed: error_base {
+class IRESEARCH_API lock_obtain_failed: public error_base {
  public:
   DECLARE_ERROR_CODE( lock_obtain_failed );
   explicit lock_obtain_failed(const irs::string_ref& filename = irs::string_ref::nil);
@@ -122,7 +122,7 @@ class IRESEARCH_API lock_obtain_failed: error_base {
 // ----------------------------------------------------------------------------
 //                                                               file_not_found
 // ----------------------------------------------------------------------------
-class IRESEARCH_API file_not_found: error_base {
+class IRESEARCH_API file_not_found: public error_base {
  public:
   DECLARE_ERROR_CODE( file_not_found );
   explicit file_not_found(const irs::string_ref& filename = irs::string_ref::nil);
