@@ -48,6 +48,7 @@ typedef std::shared_ptr<format> format_ptr;
 NS_END
 
 MSVC_ONLY(template class IRESEARCH_API std::shared_ptr<iresearch::format>); // format_ptr
+MSVC_ONLY(template class IRESEARCH_API std::unordered_set<std::string>); // file_set
 
 NS_ROOT
 

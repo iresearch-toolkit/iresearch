@@ -28,6 +28,8 @@
 
 #include <exception>
 
+MSVC_ONLY(class IRESEARCH_API std::exception);
+
 NS_ROOT
 
 enum class ErrorCode : uint32_t {

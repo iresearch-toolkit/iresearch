@@ -73,11 +73,13 @@ class IRESEARCH_API boolean_token_stream final
     attrs_.emplace(inc_); // required by field_data::invert(...)
   }
 
+  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   attribute_view attrs_;
   basic_term term_;
   increment inc_;
   bool in_use_;
   bool value_;
+  IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -116,12 +118,14 @@ class IRESEARCH_API string_token_stream final
     attrs_.emplace(term_);
   }
 
+  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   attribute_view attrs_;
   offset offset_;
   increment inc_;
   basic_term term_;
   bytes_ref value_;
   bool in_use_;
+  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // string_token_stream 
 
 struct increment;
@@ -297,10 +301,12 @@ class IRESEARCH_API null_token_stream final
     attrs_.emplace(inc_); // required by field_data::invert(...)
   }
 
+  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   attribute_view attrs_;
   basic_term term_;
   increment inc_;
   bool in_use_;
+  IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
 NS_END
