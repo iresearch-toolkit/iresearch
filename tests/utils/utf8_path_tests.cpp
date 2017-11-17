@@ -24,6 +24,7 @@
 #include <fstream>
 
 #include "tests_shared.hpp"
+#include "utils/file_utils.hpp"
 #include "utils/utf8_path.hpp"
 
 NS_LOCAL
@@ -395,6 +396,98 @@ TEST_F(utf8_path_tests, directory) {
   ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
   ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
   ASSERT_FALSE(path.file_size(tmpUint));
+}
+
+TEST_F(utf8_path_tests, visit) {
+  irs::utf8_path path;
+  std::string data("data");
+  std::string file1("deleteme.file1");
+  std::string file2("deleteme.file2");
+  std::string directory("deleteme.dir");
+  bool tmpBool;
+  std::time_t tmpTime;
+  uint64_t tmpUint;
+  size_t actual_count = 0;
+  auto visit_max = irs::integer_traits<size_t>::max();
+  auto visitor = [&actual_count, &visit_max](const file_path_t name)->bool {
+    ++actual_count;
+
+    return --visit_max;
+  };
+
+  // create file
+  {
+    std::ofstream out1(file1.c_str());
+    std::ofstream out2(file2.c_str());
+    out1 << data;
+    out2 << data << data;
+    out1.close();
+    out2.close();
+  }
+
+  ASSERT_TRUE(path.exists(tmpBool) && !tmpBool);
+  ASSERT_TRUE(path.exists_directory(tmpBool) && !tmpBool);
+  ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
+  ASSERT_FALSE(path.mtime(tmpTime));
+  ASSERT_FALSE(path.file_size(tmpUint));
+  ASSERT_FALSE(path.visit_directory(visitor));
+
+  path = irs::utf8_path(true);
+  ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
+  ASSERT_TRUE(path.exists_directory(tmpBool) && tmpBool);
+  ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
+  ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
+  ASSERT_FALSE(path.file_size(tmpUint));
+  actual_count = 0;
+  visit_max = irs::integer_traits<size_t>::max();
+  ASSERT_TRUE(path.visit_directory(visitor) && actual_count > 1);
+  actual_count = 0;
+  visit_max = 1;
+  ASSERT_TRUE(path.visit_directory(visitor) && actual_count == 1);
+
+  path/=directory;
+  ASSERT_TRUE(path.exists(tmpBool) && !tmpBool);
+  ASSERT_TRUE(path.exists_directory(tmpBool) && !tmpBool);
+  ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
+  ASSERT_FALSE(path.mtime(tmpTime));
+  ASSERT_FALSE(path.file_size(tmpUint));
+  ASSERT_FALSE(path.visit_directory(visitor));
+
+  ASSERT_TRUE(path.mkdir());
+  ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
+  ASSERT_TRUE(path.exists_directory(tmpBool) && tmpBool);
+  ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
+  ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
+  ASSERT_FALSE(path.file_size(tmpUint));
+  actual_count = 0;
+  visit_max = irs::integer_traits<size_t>::max();
+  ASSERT_TRUE(path.visit_directory(visitor, false) && actual_count == 0);
+
+  // create file
+  {
+    irs::utf8_path filepath = path;
+    filepath /= file1;
+    std::ofstream out(filepath.utf8().c_str());
+    out << data << data << data;
+    out.close();
+  }
+
+  ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
+  ASSERT_TRUE(path.exists_directory(tmpBool) && tmpBool);
+  ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
+  ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
+  ASSERT_FALSE(path.file_size(tmpUint));
+  actual_count = 0;
+  visit_max = irs::integer_traits<size_t>::max();
+  ASSERT_TRUE(path.visit_directory(visitor, false) && actual_count > 0);
+
+  path /= file1;
+  ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
+  ASSERT_TRUE(path.exists_directory(tmpBool) && !tmpBool);
+  ASSERT_TRUE(path.exists_file(tmpBool) && tmpBool);
+  ASSERT_TRUE(path.mtime(tmpTime));
+  ASSERT_TRUE(path.file_size(tmpUint));
+  ASSERT_FALSE(path.visit_directory(visitor));
 }
 
 // -----------------------------------------------------------------------------

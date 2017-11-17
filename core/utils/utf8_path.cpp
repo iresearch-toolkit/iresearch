@@ -303,6 +303,12 @@ bool utf8_path::exists(bool& result) const NOEXCEPT {
 bool utf8_path::exists_directory(bool& result) const NOEXCEPT {
   result = irs::file_utils::is_directory(native().c_str());
 
+  if (!result) {
+    bool res;
+
+    return exists(res); // check for FS error
+  }
+
   return true;
 }
 
@@ -390,6 +396,24 @@ bool utf8_path::rmdir() const {
   boost::filesystem::remove_all(path_, code);
 
   return boost::system::errc::success == code.value();
+}
+
+bool utf8_path::visit_directory(
+    const directory_visitor& visitor,
+    bool include_dot_dir /*= true*/
+) {
+  if (!irs::file_utils::visit_directory(
+        native().c_str(),
+        visitor,
+        include_dot_dir
+      )
+  ) {
+    bool result;
+
+    return !(!exists_directory(result) || !result); // check for FS error, treat non-directory as error
+  }
+
+  return true;
 }
 
 void utf8_path::clear() {
