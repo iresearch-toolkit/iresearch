@@ -130,7 +130,7 @@ utf8_path::utf8_path(const irs::basic_string_ref<wchar_t>& ucs2_path) {
   }
 
   #ifdef _WIN32
-    path_.assign(ucs2_path, fs_cvt);
+    path_.assign(ucs2_path.c_str(), ucs2_path.c_str() + ucs2_path.size() , fs_cvt);
   #else
     auto native_path = boost::locale::conv::utf_to_utf<char>(
       ucs2_path.c_str(), ucs2_path.c_str() + ucs2_path.size()
@@ -193,7 +193,7 @@ utf8_path& utf8_path::operator+=(const wchar_t* ucs2_name) {
 
 utf8_path& utf8_path::operator+=(const irs::basic_string_ref<wchar_t>& ucs2_name) {
   #ifdef _WIN32
-    path_.concat(ucs2_name.c_str(),ucs2_name.c_str() + ucs2_name.size() , fs_cvt);
+    path_.concat(ucs2_name.c_str(), ucs2_name.c_str() + ucs2_name.size() , fs_cvt);
   #else
     auto native_name = boost::locale::conv::utf_to_utf<char>(
       ucs2_name.c_str(), ucs2_name.c_str() + ucs2_name.size()
