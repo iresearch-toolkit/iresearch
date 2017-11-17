@@ -35,7 +35,6 @@
   #include <Windows.h> // for GetLastError()
 #endif
 
-#include <boost/filesystem/operations.hpp>
 #include <boost/locale/encoding.hpp>
 
 MSVC_ONLY(__pragma(warning(push)))

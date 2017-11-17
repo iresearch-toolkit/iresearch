@@ -40,7 +40,6 @@
 #include "index/field_meta.hpp"
 #include "analysis/token_attributes.hpp"
 
-#include <boost/filesystem.hpp>
 #include <fstream>
 #include <iostream>
 
