@@ -185,9 +185,12 @@ doc_iterator::ptr range_query::execute(
 
   // add an iterator for the unscored docs
   if (state->unscored_docs.any()) {
-    itrs.emplace_back(
-      doc_iterator::make<bitset_doc_iterator>(state->unscored_docs)
-    );
+    itrs.emplace_back(doc_iterator::make<bitset_doc_iterator>(
+      rdr,
+      attribute_store::empty_instance(), // no attributes for this filter
+      state->unscored_docs,
+      ord
+    ));
   }
 
   size_t last_offset = 0;

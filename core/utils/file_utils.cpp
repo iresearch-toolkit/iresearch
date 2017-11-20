@@ -532,6 +532,10 @@ bool visit_directory(
   #ifdef _WIN32
     std::wstring dirname(name);
 
+    if (dirname.empty()) {
+      return false; // match Posix behaviour for empty-string directory
+    }
+
     dirname += L"\\*"; // FindFirstFile requires name to end with '\*'
 
     WIN32_FIND_DATA direntry;

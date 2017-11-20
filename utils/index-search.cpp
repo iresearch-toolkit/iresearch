@@ -1046,10 +1046,8 @@ int search(
             
             while (docs->next()) {
               ++doc_count;
-
-              if (score) {
-                score->evaluate();
-              }
+              assert(score); // score must exist for any ordered doc_iterator::next() == true
+              score->evaluate();
 
 #ifdef IRESEARCH_COMPLEX_SCORING
               sorted.emplace(
