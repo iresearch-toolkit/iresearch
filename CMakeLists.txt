@@ -29,7 +29,7 @@ endif()
 if (MSVC AND MSVC_BUILD_THREADS)
   set(CMAKE_C_FLAGS "/MP${MSVC_BUILD_THREADS} ${CMAKE_C_FLAGS}")
   set(CMAKE_CXX_FLAGS "/MP${MSVC_BUILD_THREADS} ${CMAKE_CXX_FLAGS}")
-endif
+endif()
 
 ################################################################################
 ### find 3rd party libraries
