@@ -553,7 +553,7 @@ bool visit_directory(
           (direntry.cFileName[0] == L'.' && direntry.cFileName[1] == L'.' && direntry.cFileName[2] == L'\0'))) {
         terminate = !visitor(direntry.cFileName);
       }
-    } while(::FindNextFile(dir, &direntry)); 
+    } while(!terminate && ::FindNextFile(dir, &direntry));
 
     ::FindClose(dir);
 
