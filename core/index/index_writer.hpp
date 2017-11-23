@@ -85,21 +85,33 @@ NS_BEGIN(action)
 /// @note Field must satisfy 'Field' concept
 ////////////////////////////////////////////////////////////////////////////
 struct index_t{};
-CONSTEXPR index_t index = index_t();
+#if defined(_MSC_VER) && (_MSC_VER < 1900)
+  static const index_t index = index_t();
+#else
+  CONSTEXPR const index_t index = index_t();
+#endif
 
 ////////////////////////////////////////////////////////////////////////////
 /// @brief Field should be indexed and stored
 /// @note Field must satisfy 'Field' and 'Attribute' concepts
 ////////////////////////////////////////////////////////////////////////////
 struct index_store_t{};
-CONSTEXPR index_store_t index_store = index_store_t();
+#if defined(_MSC_VER) && (_MSC_VER < 1900)
+  static const index_store_t index_store = index_store_t();
+#else
+  CONSTEXPR const index_store_t index_store = index_store_t();
+#endif
 
 ////////////////////////////////////////////////////////////////////////////
 /// @brief Field should be stored only
 /// @note Field must satisfy 'Attribute' concept
 ////////////////////////////////////////////////////////////////////////////
 struct store_t{};
-CONSTEXPR const store_t store = store_t();
+#if defined(_MSC_VER) && (_MSC_VER < 1900)
+  static const store_t store = store_t();
+#else
+  CONSTEXPR const store_t store = store_t();
+#endif
 
 NS_END // action
 

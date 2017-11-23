@@ -468,11 +468,11 @@ int put(
           doc.fill(&(buf[i]));
 
           for (auto& field: doc.elements) {
-            builder.insert<irs::Action::INDEX>(*field);
+            builder.insert(irs::action::index, *field);
           }
 
           for (auto& field : doc.store) {
-            builder.insert<irs::Action::STORE>(*field);
+            builder.insert(irs::action::store, *field);
           }
 
           return ++i < buf.size();
