@@ -450,7 +450,7 @@ bool insert(
     irs::index_writer& writer,
     Indexed ibegin, Indexed iend) {
   auto inserter = [&](irs::index_writer::document& doc) {
-    doc.insert<irs::Action::INDEX>(ibegin, iend);
+    doc.insert(irs::action::index, ibegin, iend);
     return false; // break the loop
   };
 
@@ -463,8 +463,8 @@ bool insert(
     Indexed ibegin, Indexed iend,
     Stored sbegin, Stored send) {
   auto inserter = [&](irs::index_writer::document& doc) {
-    doc.insert<irs::Action::INDEX>(ibegin, iend);
-    doc.insert<irs::Action::STORE>(sbegin, send);
+    doc.insert(irs::action::index, ibegin, iend);
+    doc.insert(irs::action::store, sbegin, send);
     return false; // break the loop
   };
 
@@ -477,7 +477,7 @@ bool update(
     const irs::filter& filter,
     Indexed ibegin, Indexed iend) {
   auto inserter = [&](irs::index_writer::document& doc) {
-    doc.insert<irs::Action::INDEX>(ibegin, iend);
+    doc.insert(irs::action::index, ibegin, iend);
     return false; // break the loop
   };
 
@@ -491,8 +491,8 @@ bool update(
     Indexed ibegin, Indexed iend,
     Stored sbegin, Stored send) {
   auto inserter = [&](irs::index_writer::document& doc) {
-    doc.insert<irs::Action::INDEX>(ibegin, iend);
-    doc.insert<irs::Action::STORE>(sbegin, send);
+    doc.insert(irs::action::index, ibegin, iend);
+    doc.insert(irs::action::store, sbegin, send);
     return false; // break the loop
   };
 
@@ -505,7 +505,7 @@ bool update(
     irs::filter::ptr&& filter,
     Indexed ibegin, Indexed iend) {
   auto inserter = [&](irs::index_writer::document& doc) {
-    doc.insert<irs::Action::INDEX>(ibegin, iend);
+    doc.insert(irs::action::index, ibegin, iend);
     return false; // break the loop
   };
 
@@ -519,8 +519,8 @@ bool update(
     Indexed ibegin, Indexed iend,
     Stored sbegin, Stored send) {
   auto inserter = [&](irs::index_writer::document& doc) {
-    doc.insert<irs::Action::INDEX>(ibegin, iend);
-    doc.insert<irs::Action::STORE>(sbegin, send);
+    doc.insert(irs::action::index, ibegin, iend);
+    doc.insert(irs::action::store, sbegin, send);
     return false; // break the loop
   };
 
@@ -533,7 +533,7 @@ bool update(
     const std::shared_ptr<irs::filter>& filter,
     Indexed ibegin, Indexed iend) {
   auto inserter = [&](irs::index_writer::document& doc) {
-    doc.insert<irs::Action::INDEX>(ibegin, iend);
+    doc.insert(irs::action::index, ibegin, iend);
     return false; // break the loop
   };
 
@@ -547,8 +547,8 @@ bool update(
     Indexed ibegin, Indexed iend,
     Stored sbegin, Stored send) {
   auto inserter = [&](irs::index_writer::document& doc) {
-    doc.insert<irs::Action::INDEX>(ibegin, iend);
-    doc.insert<irs::Action::STORE>(sbegin, send);
+    doc.insert(irs::action::index, ibegin, iend);
+    doc.insert(irs::action::store, sbegin, send);
     return false; // break the loop
   };
 

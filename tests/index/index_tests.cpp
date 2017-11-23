@@ -1761,7 +1761,7 @@ class index_test_case_base : public tests::index_test_base {
       irs::doc_id_t docs_count = 0;
       auto inserter = [&docs_count, &field](const irs::index_writer::document& doc) {
         if (docs_count % 2) {
-          doc.insert<irs::Action::STORE>(field);
+          doc.insert(irs::action::store, field);
         }
         return ++docs_count < MAX_DOCS;
       };
@@ -2546,7 +2546,7 @@ class index_test_case_base : public tests::index_test_base {
 
       irs::doc_id_t docs_count = 0;
       auto inserter = [&docs_count, &field](const irs::index_writer::document& doc) {
-        doc.insert<irs::Action::STORE>(field);
+        doc.insert(irs::action::store, field);
         return ++docs_count < MAX_DOCS;
       };
 
@@ -3240,7 +3240,7 @@ class index_test_case_base : public tests::index_test_base {
       } field;
 
       auto inserter = [&field](const irs::index_writer::document& doc) {
-        doc.insert<irs::Action::STORE>(field);
+        doc.insert(irs::action::store, field);
         return ++field.value < MAX_DOCS;
       };
 
@@ -3994,7 +3994,7 @@ class index_test_case_base : public tests::index_test_base {
       } field;
 
       auto inserter = [&field](const irs::index_writer::document& doc) {
-        doc.insert<irs::Action::STORE>(field);
+        doc.insert(irs::action::store, field);
         return ++field.value < MAX_DOCS;
       };
 
@@ -4897,7 +4897,7 @@ class index_test_case_base : public tests::index_test_base {
 
       auto inserter = [&inserted, &field](const irs::index_writer::document& doc) {
         if (field.value % 2 ) {
-          doc.insert<irs::Action::STORE>(field);
+          doc.insert(irs::action::store, field);
           ++inserted;
         }
         return ++field.value < MAX_DOCS;
@@ -5935,7 +5935,7 @@ class index_test_case_base : public tests::index_test_base {
       auto inserter = [&field, &names](irs::index_writer::document& doc) {
         for (auto& name : names) {
           field.name_ = name;
-          doc.insert<irs::Action::INDEX>(field);
+          doc.insert(irs::action::index, field);
         }
         return false; // break the loop
       };
@@ -6133,7 +6133,7 @@ class index_test_case_base : public tests::index_test_base {
       auto inserter = [&field, &names](irs::index_writer::document& doc) {
         for (auto& name : names) {
           field.name_ = name;
-          doc.insert<irs::Action::STORE>(field);
+          doc.insert(irs::action::store, field);
         }
         return false; // break the loop
       };
@@ -7410,48 +7410,48 @@ class index_test_case_base : public tests::index_test_base {
       switch (i) {
         case 0: { // doc0
           indexed_field indexed("indexed", "doc0");
-          state &= doc.insert<irs::Action::INDEX>(indexed);
+          state &= doc.insert(irs::action::index, indexed);
           stored_field stored("stored", "doc0");
-          state &= doc.insert<irs::Action::STORE>(stored);
+          state &= doc.insert(irs::action::store, stored);
           indexed_and_stored_field indexed_and_stored("indexed_and_stored", "doc0");
-          state &= doc.insert<irs::Action::INDEX_STORE>(indexed_and_stored);
+          state &= doc.insert(irs::action::index_store, indexed_and_stored);
         } break;
         case 1: { // doc1
           // indexed and stored fields can be indexed/stored only
           indexed_and_stored_field indexed("indexed", "doc1");
-          state &= doc.insert<irs::Action::INDEX>(indexed);
+          state &= doc.insert(irs::action::index, indexed);
           indexed_and_stored_field stored("stored", "doc1");
-          state &= doc.insert<irs::Action::STORE>(stored);
+          state &= doc.insert(irs::action::store, stored);
         } break;
         case 2: { // doc2 (will be dropped since it contains invalid stored field)
           indexed_and_stored_field indexed("indexed", "doc2");
-          state &= doc.insert<irs::Action::INDEX>(indexed);
+          state &= doc.insert(irs::action::index, indexed);
           stored_field stored("stored", "doc2", false);
-          state &= doc.insert<irs::Action::STORE>(stored);
+          state &= doc.insert(irs::action::store, stored);
         } break;
         case 3: { // doc3 (will be dropped since it contains invalid indexed field)
           indexed_field indexed("indexed", "doc3", false);
-          state &= doc.insert<irs::Action::INDEX>(indexed);
+          state &= doc.insert(irs::action::index, indexed);
           stored_field stored("stored", "doc3");
-          state &= doc.insert<irs::Action::STORE>(stored);
+          state &= doc.insert(irs::action::store, stored);
         } break;
         case 4: { // doc4 (will be dropped since it contains invalid indexed and stored field)
           indexed_and_stored_field indexed_and_stored("indexed", "doc4", false, false);
-          state &= doc.insert<irs::Action::INDEX_STORE>(indexed_and_stored);
+          state &= doc.insert(irs::action::index_store, indexed_and_stored);
           stored_field stored("stored", "doc4");
-          state &= doc.insert<irs::Action::STORE>(stored);
+          state &= doc.insert(irs::action::store, stored);
         } break;
         case 5: { // doc5
           indexed_and_stored_field indexed_and_stored("indexed_and_stored", "doc5", false); // will not be stored, but will be indexed
-          state &= doc.insert<irs::Action::INDEX_STORE>(indexed_and_stored);
+          state &= doc.insert(irs::action::index_store, indexed_and_stored);
           stored_field stored("stored", "doc5");
-          state &= doc.insert<irs::Action::STORE>(stored);
+          state &= doc.insert(irs::action::store, stored);
         } break;
         case 6: { // doc6
           indexed_and_stored_field indexed_and_stored("indexed_and_stored", "doc6", true, false); // will not be indexed, but will be stored
-          state &= doc.insert<irs::Action::INDEX_STORE>(indexed_and_stored);
+          state &= doc.insert(irs::action::index_store, indexed_and_stored);
           stored_field stored("stored", "doc6");
-          state &= doc.insert<irs::Action::STORE>(stored);
+          state &= doc.insert(irs::action::store, stored);
         } break;
       }
 
