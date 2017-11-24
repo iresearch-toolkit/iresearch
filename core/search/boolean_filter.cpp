@@ -51,6 +51,7 @@ template<typename QueryIterator, typename... Args>
 irs::doc_iterator::ptr make_disjunction(
     const irs::sub_reader& rdr,
     const irs::order::prepared& ord,
+    const irs::attribute_view& ctx,
     QueryIterator begin,
     QueryIterator end,
     Args&&... args) {
@@ -68,7 +69,7 @@ irs::doc_iterator::ptr make_disjunction(
 
   for (;begin != end; ++begin) {
     // execute query - get doc iterator
-    auto docs = begin->execute(rdr, ord);
+    auto docs = begin->execute(rdr, ord, ctx);
 
     // filter out empty iterators
     if (!irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value())) {
@@ -88,6 +89,7 @@ template<typename QueryIterator, typename... Args>
 irs::doc_iterator::ptr make_conjunction(
     const irs::sub_reader& rdr,
     const irs::order::prepared& ord,
+    const irs::attribute_view& ctx,
     QueryIterator begin,
     QueryIterator end,
     Args&&... args) {
@@ -99,14 +101,14 @@ irs::doc_iterator::ptr make_conjunction(
     case 0:
       return irs::doc_iterator::empty();
     case 1:
-      return begin->execute(rdr, ord);
+      return begin->execute(rdr, ord, ctx);
   }
 
   irs::conjunction::doc_iterators_t itrs;
   itrs.reserve(size);
 
   for (;begin != end; ++begin) {
-    auto docs = begin->execute(rdr, ord);
+    auto docs = begin->execute(rdr, ord, ctx);
 
     // filter out empty iterators
     if (irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value())) {
@@ -141,17 +143,18 @@ class boolean_query : public filter::prepared {
 
   virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
-      const order::prepared& ord ) const override {
+      const order::prepared& ord,
+      const attribute_view& ctx) const override {
     if (empty()) {
       return doc_iterator::empty();
     }
 
     assert(excl_);
-    auto incl = execute(rdr, ord, begin(), begin() + excl_);
+    auto incl = execute(rdr, ord, ctx, begin(), begin() + excl_);
 
     // exclusion part does not affect scoring at all
     auto excl = ::make_disjunction(
-      rdr, order::prepared::unordered(), begin() + excl_, end()
+      rdr, order::prepared::unordered(), ctx, begin() + excl_, end()
     );
 
     // got empty iterator for excluded
@@ -202,10 +205,12 @@ class boolean_query : public filter::prepared {
 
 protected:
   virtual doc_iterator::ptr execute(
-      const sub_reader& rdr,
-      const order::prepared& ord,
-      iterator begin,
-      iterator end) const = 0;
+    const sub_reader& rdr,
+    const order::prepared& ord,
+    const attribute_view& ctx,
+    iterator begin,
+    iterator end
+  ) const = 0;
 
  private:
   // 0..excl_-1 - included queries
@@ -224,9 +229,10 @@ public:
   virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord,
+      const attribute_view& ctx,
       iterator begin,
       iterator end) const override {
-    return ::make_conjunction(rdr, ord, begin, end);
+    return ::make_conjunction(rdr, ord, ctx, begin, end);
   }
 };
 
@@ -239,9 +245,10 @@ class or_query final : public boolean_query {
   virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord,
+      const attribute_view& ctx,
       iterator begin,
       iterator end) const override {
-    return ::make_disjunction(rdr, ord, begin, end);
+    return ::make_disjunction(rdr, ord, ctx, begin, end);
   }
 }; // or_query
 
@@ -260,6 +267,7 @@ class min_match_query final : public boolean_query {
   virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord,
+      const attribute_view& ctx,
       iterator begin,
       iterator end) const override {
     assert(std::distance(begin, end) >= 0);
@@ -274,7 +282,7 @@ class min_match_query final : public boolean_query {
       return doc_iterator::empty();
     } else if (min_match_count == size) {
       // pure conjunction
-      return ::make_conjunction(rdr, ord, begin, end);
+      return ::make_conjunction(rdr, ord, ctx, begin, end);
     }
 
     // min_match_count <= size
@@ -285,7 +293,7 @@ class min_match_query final : public boolean_query {
 
     for (;begin != end; ++begin) {
       // execute query - get doc iterator
-      auto docs = begin->execute(rdr, ord);
+      auto docs = begin->execute(rdr, ord, ctx);
 
       // filter out empty iterators
       if (!type_limits<type_t::doc_id_t>::eof(docs->value())) {

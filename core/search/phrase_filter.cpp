@@ -97,7 +97,8 @@ class phrase_query : public filter::prepared {
 
   virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
-      const order::prepared& ord) const override {
+      const order::prepared& ord,
+      const attribute_view& /*ctx*/) const override {
     // get phrase state for the specified reader
     auto phrase_state = states_.find(rdr);
     if (!phrase_state) {

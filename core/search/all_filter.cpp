@@ -98,7 +98,8 @@ class all_query: public filter::prepared {
 
   virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
-      const order::prepared& order
+      const order::prepared& order,
+      const attribute_view& /*ctx*/
   ) const override {
     return doc_iterator::make<all_iterator>(
       rdr,

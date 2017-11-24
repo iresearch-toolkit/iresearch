@@ -94,7 +94,8 @@ class column_existence_query final : public irs::filter::prepared {
 
   virtual irs::doc_iterator::ptr execute(
       const irs::sub_reader& rdr,
-      const irs::order::prepared& ord
+      const irs::order::prepared& ord,
+      const irs::attribute_view& /*ctx*/
   ) const override {
     const auto* column = rdr.column_reader(field_);
 
@@ -125,7 +126,8 @@ class column_prefix_existence_query final : public irs::filter::prepared {
 
   virtual irs::doc_iterator::ptr execute(
       const irs::sub_reader& rdr,
-      const irs::order::prepared& ord
+      const irs::order::prepared& ord,
+      const irs::attribute_view& /*ctx*/
   ) const override {
     auto it = rdr.columns();
 

@@ -33,7 +33,8 @@ class empty_query final : public irs::filter::prepared {
  public:
   virtual irs::doc_iterator::ptr execute(
       const irs::sub_reader&,
-      const irs::order::prepared&) const override {
+      const irs::order::prepared&,
+      const irs::attribute_view&) const override {
     return irs::doc_iterator::empty();
   }
 }; // empty_query

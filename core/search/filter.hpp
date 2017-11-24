@@ -96,18 +96,27 @@ class IRESEARCH_API filter {
     explicit prepared(attribute_store&& attrs);
     virtual ~prepared();
 
-    doc_iterator::ptr execute(const sub_reader& rdr) const {
-      return execute(rdr, order::prepared::unordered());
-    }
-
     using util::attribute_store_provider::attributes;
     virtual attribute_store& attributes() NOEXCEPT override final {
       return attrs_;
     }
 
+    doc_iterator::ptr execute(
+        const sub_reader& rdr) const {
+      return execute(rdr, order::prepared::unordered());
+    }
+
+    doc_iterator::ptr execute(
+        const sub_reader& rdr,
+        const order::prepared& ord) const {
+      return execute(rdr, ord, attribute_view::empty_instance());
+    }
+
     virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
-      const order::prepared& ord) const = 0;
+      const order::prepared& ord,
+      const attribute_view& ctx
+    ) const = 0;
 
    protected:
     friend class filter;

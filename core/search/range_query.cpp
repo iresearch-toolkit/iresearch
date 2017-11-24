@@ -160,7 +160,8 @@ range_query::range_query(states_t&& states)
 
 doc_iterator::ptr range_query::execute(
     const sub_reader& rdr,
-    const order::prepared& ord) const {
+    const order::prepared& ord,
+    const attribute_view& /*ctx*/) const {
   /* get term state for the specified reader */
   auto state = states_.find(rdr);
   if (!state) {
