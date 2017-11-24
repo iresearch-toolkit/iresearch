@@ -154,17 +154,17 @@ class IRESEARCH_API index_writer : util::noncopyable {
     /// @return true, if field was successfully insterted
     ////////////////////////////////////////////////////////////////////////////
     template<typename Field>
-    bool insert(const action::index_t&, Field& field) const {
+    bool insert(action::index_t, Field& field) const {
       return writer_.index(field);
     }
 
     template<typename Field>
-    bool insert(const action::index_store_t&, Field& field) const {
+    bool insert(action::index_store_t, Field& field) const {
       return writer_.index_and_store(field);
     }
 
     template<typename Field>
-    bool insert(const action::store_t&, Field& field) const {
+    bool insert(action::store_t, Field& field) const {
       return writer_.store(field);
     }
 
@@ -177,7 +177,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
     /// @return true, if field was successfully insterted
     ////////////////////////////////////////////////////////////////////////////
     template<typename Action, typename Field>
-    bool insert(Action& action, Field* field) const {
+    bool insert(Action action, Field* field) const {
       assert(field);
       return insert(action, *field);
     }
@@ -191,7 +191,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
     /// @return true, if the range was successfully insterted
     ////////////////////////////////////////////////////////////////////////////
     template<typename Action, typename Iterator>
-    bool insert(Action& action, Iterator begin, Iterator end) const {
+    bool insert(Action action, Iterator begin, Iterator end) const {
       for (; valid() && begin != end; ++begin) {
         insert(action, *begin);
       }
