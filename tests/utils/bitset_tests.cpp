@@ -366,13 +366,13 @@ TEST(bitset_tests, memset) {
   // multiple words bitset (all set)
   {
     const bitset::index_t words = 2;
-    const bitset::index_t size = 2 * irs::bits_required<bitset::word_t>();
+    const bitset::index_t size = 2 * irs::bits_required<irs::bitset::word_t>();
 
-    bitset bs(size);
+    irs::bitset bs(size);
     ASSERT_NE(nullptr, bs.data());
     ASSERT_EQ(size, bs.size());
     ASSERT_EQ(words, bs.words());
-    ASSERT_EQ(words *irs::bits_required<bitset::word_t>(), bs.capacity());
+    ASSERT_EQ(words * irs::bits_required<irs::bitset::word_t>(), bs.capacity());
     ASSERT_EQ(0, bs.count());
     ASSERT_TRUE(bs.none());
     ASSERT_FALSE(bs.any());
