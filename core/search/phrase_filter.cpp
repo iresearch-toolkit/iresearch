@@ -194,7 +194,8 @@ size_t by_phrase::hash() const {
 filter::prepared::ptr by_phrase::prepare(
     const index_reader& rdr,
     const order::prepared& ord,
-    boost_t boost) const {
+    boost_t boost,
+    const attribute_view& /*ctx*/) const {
   if (fld_.empty() || phrase_.empty()) {
     // empty field or phrase
     return filter::prepared::empty();

@@ -76,7 +76,8 @@ empty::empty(): filter(empty::type()) {
 filter::prepared::ptr empty::prepare(
     const index_reader&,
     const order::prepared&,
-    boost_t
+    boost_t,
+    const attribute_view&
 ) const {
   static filter::prepared::ptr instance = std::make_shared<empty_query>();
   return instance;

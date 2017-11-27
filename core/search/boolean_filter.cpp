@@ -172,6 +172,7 @@ class boolean_query : public filter::prepared {
       const index_reader& rdr,
       const order::prepared& ord,
       boost::boost_t boost,
+      const attribute_view& ctx,
       const std::vector<const filter*>& incl,
       const std::vector<const filter*>& excl) {
     boolean_query::queries_t queries;
@@ -182,13 +183,15 @@ class boolean_query : public filter::prepared {
 
     // prepare included
     for (const auto* filter : incl) {
-      queries.emplace_back(filter->prepare(rdr, ord, boost));
+      queries.emplace_back(filter->prepare(rdr, ord, boost, ctx));
     }
 
     // prepare excluded
     for (const auto* filter : excl) {
       // exclusion part does not affect scoring at all
-      queries.emplace_back(filter->prepare(rdr, order::prepared::unordered()));
+      queries.emplace_back(filter->prepare(
+        rdr, order::prepared::unordered(), boost::no_boost(), ctx
+      ));
     }
 
     // nothrow block
@@ -363,18 +366,19 @@ size_t boolean_filter::hash() const {
   return seed;
 }
 
-bool boolean_filter::equals( const filter& rhs ) const {
+bool boolean_filter::equals(const filter& rhs) const {
   const boolean_filter& typed_rhs = static_cast< const boolean_filter& >( rhs );
 
   return filter::equals(rhs)
     && filters_.size() == typed_rhs.size()
-    && std::equal(begin(), end(), typed_rhs.begin() );
+    && std::equal(begin(), end(), typed_rhs.begin());
 }
 
 filter::prepared::ptr boolean_filter::prepare(
     const index_reader& rdr,
     const order::prepared& ord,
-    boost_t boost) const {
+    boost_t boost,
+    const attribute_view& ctx) const {
   // determine incl/excl parts
   std::vector<const filter*> incl;
   std::vector<const filter*> excl;
@@ -391,10 +395,10 @@ filter::prepared::ptr boolean_filter::prepare(
     return prepared::empty();
   } else if (1 == incl.size() && excl.empty()) {
     // single node case
-    return incl[0]->prepare(rdr, ord, this->boost()*boost);
+    return incl[0]->prepare(rdr, ord, this->boost()*boost, ctx);
   }
 
-  return prepare(incl, excl, rdr, ord, boost);
+  return prepare(incl, excl, rdr, ord, boost, ctx);
 }
 
 void boolean_filter::group_filters(
@@ -438,9 +442,10 @@ filter::prepared::ptr And::prepare(
     const std::vector<const filter*>& excl,
     const index_reader& rdr,
     const order::prepared& ord,
-    boost_t boost) const {
+    boost_t boost,
+    const attribute_view& ctx) const {
   auto q = and_query::make<and_query>();
-  q->prepare(rdr, ord, this->boost()*boost, incl, excl);
+  q->prepare(rdr, ord, this->boost()*boost, ctx, incl, excl);
   return q;
 }
 
@@ -461,7 +466,8 @@ filter::prepared::ptr Or::prepare(
     const std::vector<const filter*>& excl,
     const index_reader& rdr,
     const order::prepared& ord,
-    boost_t boost) const {
+    boost_t boost,
+    const attribute_view& ctx) const {
   size_t min_match_count = std::max(size_t(1), min_match_count_);
 
   boolean_query::ptr q;
@@ -473,7 +479,7 @@ filter::prepared::ptr Or::prepare(
     q = boolean_query::make<min_match_query>(min_match_count);
   }
 
-  q->prepare(rdr, ord, this->boost()*boost, incl, excl);
+  q->prepare(rdr, ord, this->boost()*boost, ctx, incl, excl);
   return q;
 }
 
@@ -491,7 +497,8 @@ Not::Not() NOEXCEPT
 filter::prepared::ptr Not::prepare(
     const index_reader& rdr,
     const order::prepared& ord,
-    boost_t boost) const {
+    boost_t boost,
+    const attribute_view& ctx) const {
   const auto res = optimize_not(*this);
 
   if (!res.first) {
@@ -506,12 +513,12 @@ filter::prepared::ptr Not::prepare(
     const std::vector<const irs::filter*> excl { res.first };
 
     auto q = and_query::make<and_query>();
-    q->prepare(rdr, ord, boost, incl, excl);
+    q->prepare(rdr, ord, boost, ctx, incl, excl);
     return q;
   }
 
   // negation has been optimized out
-  return res.first->prepare(rdr, ord, boost);
+  return res.first->prepare(rdr, ord, boost, ctx);
 }
 
 size_t Not::hash() const {

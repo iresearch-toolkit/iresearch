@@ -200,7 +200,8 @@ struct boosted: public iresearch::filter {
   virtual iresearch::filter::prepared::ptr prepare(
       const iresearch::index_reader&,
       const iresearch::order::prepared&,
-      boost_t boost) const override {
+      boost_t boost,
+      const iresearch::attribute_view& /*ctx*/) const override {
     return filter::prepared::make<boosted::prepared>(docs, this->boost()*boost);
   }
 
@@ -1108,7 +1109,8 @@ struct unestimated: public iresearch::filter {
   virtual filter::prepared::ptr prepare(
       const iresearch::index_reader&,
       const iresearch::order::prepared&,
-      boost_t ) const override {
+      boost_t,
+      const irs::attribute_view& ) const override {
     return filter::prepared::make<unestimated::prepared>();
   }
 
@@ -1169,7 +1171,8 @@ struct estimated: public iresearch::filter {
   virtual filter::prepared::ptr prepare(
       const iresearch::index_reader&,
       const iresearch::order::prepared&,
-      boost_t ) const override {
+      boost_t,
+      const irs::attribute_view&) const override {
     return filter::prepared::make<estimated::prepared>(est,&evaluated);
   }
 

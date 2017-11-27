@@ -203,7 +203,8 @@ size_t by_column_existence::hash() const {
 filter::prepared::ptr by_column_existence::prepare(
     const index_reader& reader,
     const order::prepared& order,
-    boost_t filter_boost
+    boost_t filter_boost,
+    const attribute_view& /*ctx*/
 ) const {
   attribute_store attrs;
 

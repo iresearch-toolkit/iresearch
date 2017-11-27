@@ -239,7 +239,8 @@ by_same_position& by_same_position::push_back(
 filter::prepared::ptr by_same_position::prepare(
     const index_reader& index,
     const order::prepared& ord,
-    boost_t boost) const {
+    boost_t boost,
+    const attribute_view& /*ctx*/) const {
   if (terms_.empty()) {
     // empty field or phrase
     return filter::prepared::empty();

@@ -120,7 +120,8 @@ all::all() NOEXCEPT
 filter::prepared::ptr all::prepare(
     const index_reader& reader,
     const order::prepared& order,
-    boost_t filter_boost
+    boost_t filter_boost,
+    const attribute_view& /*ctx*/
 ) const {
   attribute_store attrs;
 
