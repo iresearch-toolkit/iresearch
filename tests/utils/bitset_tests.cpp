@@ -379,9 +379,11 @@ TEST(bitset_tests, memset) {
     ASSERT_FALSE(bs.all());
 
     struct value_t {
-      uint64_t value0 = UINT64_C(0xFFFFFFFFFFFFFFFF);
-      uint64_t value1 = UINT64_C(0xFFFFFFFFFFFFFFFF);
+      uint64_t value0;
+      uint64_t value1;
     } value;
+    value.value0 = UINT64_C(0xFFFFFFFFFFFFFFFF);
+    value.value1 = UINT64_C(0xFFFFFFFFFFFFFFFF);
     bs.memset(value);
 
     ASSERT_EQ(sizeof(value_t) * irs::bits_required<uint8_t>(), bs.size()); // full size of bitset

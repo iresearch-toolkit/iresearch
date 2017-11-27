@@ -45,7 +45,7 @@ class bitvector final: util::noncopyable {
   const word_t* begin() const NOEXCEPT { return set_.data(); }
   size_t capacity() const NOEXCEPT { return set_.capacity(); }
   void clear() NOEXCEPT { set_.clear(); }
-  word_t count() const NOEXCEPT { set_.count(); }
+  word_t count() const NOEXCEPT { return set_.count(); }
   const word_t* data() const NOEXCEPT { return set_.data(); }
   const word_t* end() const NOEXCEPT { return set_.end(); }
 
