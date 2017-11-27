@@ -127,7 +127,8 @@ TEST_F(object_pool_tests, bounded_sobject_pool) {
     {
       SCOPED_LOCK_NAMED(mutex, lock);
       std::thread thread([&cond, &mutex, &pool]()->void{ auto obj = pool.emplace(2); SCOPED_LOCK(mutex); cond.notify_all(); });
-      ASSERT_NE(std::cv_status::no_timeout, cond.wait_for(lock, std::chrono::milliseconds(50000))); // assume thread blocks in 50000ms (8000ms is not enough for MSVC2017@appveyor, 40000ms is not enough for MSVC2017@jenkins)
+      ASSERT_EQ(std::cv_status::timeout, cond.wait_for(lock, std::chrono::milliseconds(1000))); // assume thread blocks in 1000ms
+      // ^^^ expecting timeout because pool should block indefinitely
       obj.reset();
       lock.unlock();
       thread.join();
@@ -209,7 +210,8 @@ TEST_F(object_pool_tests, bounded_uobject_pool) {
     {
       SCOPED_LOCK_NAMED(mutex, lock);
       std::thread thread([&cond, &mutex, &pool]()->void{ auto obj = pool.emplace(2); SCOPED_LOCK(mutex); cond.notify_all(); });
-      ASSERT_NE(std::cv_status::no_timeout, cond.wait_for(lock, std::chrono::milliseconds(9000))); // assume thread blocks in 9000ms (8000ms is not enough for MSVC2017@appveyor, 7000ms is not enough for MSVC2017@jenkins)
+      ASSERT_EQ(std::cv_status::timeout, cond.wait_for(lock, std::chrono::milliseconds(1000))); // assume thread blocks in 1000ms
+      // ^^^ expecting timeout because pool should block indefinitely
       obj.reset();
       obj.reset();
       lock.unlock();
