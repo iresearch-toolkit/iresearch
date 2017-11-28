@@ -37,8 +37,108 @@ class bitvector final: util::noncopyable {
 
   bitvector() = default;
   explicit bitvector(size_t bits): size_(bits) { resize(bits); }
+  bitvector(const bitvector& other) { *this = other; }
+  bitvector(bitvector&& other) NOEXCEPT { *this = std::move(other); }
 
   operator const bitset&() { return set_; }
+
+  bitvector& operator=(const bitvector& other) {
+    if (this != &other) {
+      if (set_.words() < other.set_.words()) {
+        bitset set(other.set_.words() * bits_required<word_t>());
+
+        set.memset(other.set_.begin(), other.set_.words() * sizeof(word_t));
+        set_ = std::move(set);
+      } else { // optimization, reuse existing container
+        set_.clear();
+        set_.memset(other.set_.begin(), other.set_.words() * sizeof(word_t));
+      }
+
+      size_ = other.size_;
+    }
+
+    return *this;
+  }
+
+  bitvector& operator=(bitvector&& other) NOEXCEPT {
+    if (this != &other) {
+      set_ = std::move(other.set_);
+      size_ = std::move(other.size_);
+      other.size_ = 0;
+    }
+
+    return *this;
+  }
+
+  bitvector& operator&=(const bitvector& other) {
+    if (this == &other || !other.size()) {
+      return *this; // nothing to do
+    }
+
+    reserve(other.size_);
+    size_ = std::max(size_, other.size_);
+
+    auto* data = const_cast<word_t*>(begin());
+    auto last_word = bitset::word(other.size() - 1); // -1 for bit offset
+
+    for (size_t i = 0; i < last_word; ++i) {
+      *(data + i) &= *(other.data() + i);
+    }
+
+    // for the last word consider only those bits included in 'other.size()'
+    auto last_word_bits = other.size() % bits_required<word_t>();
+    const auto mask = (word_t(1) << last_word_bits) - 1; // set all bits that are not part of 'other.size()'
+
+    *(data + last_word) &= (*(other.data() + last_word) | mask);
+
+    return *this;
+  }
+
+  bitvector& operator|=(const bitvector& other) {
+    if (this == &other) {
+      return *this; // nothing to do
+    }
+
+    reserve(other.size_);
+    size_ = std::max(size_, other.size_);
+
+    auto* data = const_cast<word_t*>(begin());
+
+    for (size_t i = 0, count = other.set_.words(); i < count; ++i) {
+      *(data + i) |= *(other.data() + i);
+    }
+
+    return *this;
+  }
+
+  bitvector& operator^=(const bitvector& other) {
+    if (!other.size()) {
+      return *this; // nothing to do
+    }
+
+    reserve(other.size_);
+    size_ = std::max(size_, other.size_);
+
+    auto* data = const_cast<word_t*>(begin());
+    auto last_word = bitset::word(other.size() - 1); // -1 for bit offset
+
+    for (size_t i = 0; i < last_word; ++i) {
+      *(data + i) ^= *(other.data() + i);
+    }
+
+    // for the last word consider only those bits included in 'other.size()'
+    auto last_word_bits = other.size() % bits_required<word_t>();
+    auto mask = ~word_t(0);
+
+    // clear trailing bits
+    if (last_word_bits) {
+      mask = ~(mask << last_word_bits); // unset all bits that are not part of 'other.size()'
+    }
+
+    *(data + last_word) ^= (*(other.data() + last_word) & mask);
+
+    return *this;
+  }
 
   bool all() const NOEXCEPT { return set_.count() == size(); }
   bool any() const NOEXCEPT { return set_.any(); }
