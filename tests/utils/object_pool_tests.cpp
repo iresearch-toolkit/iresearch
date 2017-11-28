@@ -186,7 +186,7 @@ TEST_F(object_pool_tests, bounded_sobject_pool) {
       SCOPED_LOCK(mutex);
       cond.notify_all();
     });
-    auto result = cond.wait_for(lock, std::chrono::milliseconds(5000)); // assume thread finishes in 5000ms (3000ms is not enough for MSVC2017@appveyor, 4000ms is not enough for MSVC2017@jenkins)
+    auto result = cond.wait_for(lock, std::chrono::milliseconds(1000)); // assume thread finishes in 1000ms
 
     obj.reset();
 
@@ -270,7 +270,7 @@ TEST_F(object_pool_tests, bounded_uobject_pool) {
       SCOPED_LOCK(mutex);
       cond.notify_all();
     });
-    auto result = cond.wait_for(lock, std::chrono::milliseconds(3000)); // assume thread finishes in 3000ms (2000ms is not enough for MSVC2017@appveyor)
+    auto result = cond.wait_for(lock, std::chrono::milliseconds(1000)); // assume thread finishes in 1000ms
     obj.reset();
 
     if (lock) {
