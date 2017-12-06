@@ -908,6 +908,79 @@ TEST(bitvector_tests, resize) {
   ASSERT_FALSE(bv.none());
   ASSERT_TRUE(bv.any());
   ASSERT_FALSE(bv.all());
+  prev_data = bv.data();
+
+  // reset to smaller size preserving capacity
+  words = 5;
+  size = 73;
+
+  bv.resize(size, true); // reset to smaller size while preserving capacity
+  ASSERT_NE(nullptr, bv.data());
+  ASSERT_EQ(size, bv.size());
+  ASSERT_EQ(prev_data, bv.data()); // storage was not reallocated
+  ASSERT_EQ(words * irs::bits_required<irs::bitset::word_t>(), bv.capacity());;
+  ASSERT_EQ(3, bv.count());
+  ASSERT_FALSE(bv.none()); // content not cleared
+  ASSERT_TRUE(bv.any()); // content not cleared
+  ASSERT_FALSE(bv.all()); // content not cleared
+  bv.set(45);
+  ASSERT(4, bv.count());
+  bv.set(45);
+  ASSERT(4, bv.count());
+  bv.set(72);
+  ASSERT(5, bv.count());
+  ASSERT_FALSE(bv.none());
+  ASSERT_TRUE(bv.any());
+  ASSERT_FALSE(bv.all());
+  prev_data = bv.data();
+
+  // reset to same size preserving capacity
+  words = 5;
+  size = 73;
+
+  bv.resize(size, true); // reset to smaller size while preserving capacity
+  ASSERT_NE(nullptr, bv.data());
+  ASSERT_EQ(size, bv.size());
+  ASSERT_EQ(prev_data, bv.data()); // storage was not reallocated
+  ASSERT_EQ(words * irs::bits_required<irs::bitset::word_t>(), bv.capacity());;
+  ASSERT_EQ(5, bv.count());
+  ASSERT_FALSE(bv.none()); // content not cleared
+  ASSERT_TRUE(bv.any()); // content not cleared
+  ASSERT_FALSE(bv.all()); // content not cleared
+  bv.set(46);
+  ASSERT(6, bv.count());
+  bv.set(46);
+  ASSERT(6, bv.count());
+  bv.set(71);
+  ASSERT(7, bv.count());
+  ASSERT_FALSE(bv.none());
+  ASSERT_TRUE(bv.any());
+  ASSERT_FALSE(bv.all());
+  prev_data = bv.data();
+
+  // reset to bigger size preserving capacity
+  words = 6;
+  size = 383;
+
+  bv.resize(size, true); // reset to bigger size
+  ASSERT_NE(nullptr, bv.data());
+  ASSERT_EQ(size, bv.size());
+  ASSERT_NE(prev_data, bv.data()); // storage was reallocated
+  ASSERT_EQ(words * irs::bits_required<irs::bitset::word_t>(), bv.capacity());
+  ASSERT_EQ(7, bv.count());
+  ASSERT_FALSE(bv.none()); // content not cleared
+  ASSERT_TRUE(bv.any()); // content not cleared
+  ASSERT_FALSE(bv.all()); // content not cleared
+  bv.set(47);
+  ASSERT(8, bv.count());
+  bv.set(47);
+  ASSERT(8, bv.count());
+  bv.set(76);
+  ASSERT(9, bv.count());
+  ASSERT_FALSE(bv.none());
+  ASSERT_TRUE(bv.any());
+  ASSERT_FALSE(bv.all());
+  prev_data = bv.data();
 }
 
 TEST(bitvector_tests, clear_count) {

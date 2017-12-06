@@ -179,7 +179,7 @@ class bitvector final: util::noncopyable {
     set_ = std::move(set);
   }
 
-  void resize(size_t bits) {
+  void resize(size_t bits, bool preserve_capacity = false) {
     const auto words = bitset::word(bits) + 1; // +1 for count instead of offset
 
     size_ = bits;
@@ -190,7 +190,9 @@ class bitvector final: util::noncopyable {
       return;
     }
 
-    if (words < set_.words()) {
+    if (preserve_capacity) {
+      std::memset(const_cast<word_t*>(begin()) + words, 0, (set_.words() - words) * sizeof(word_t)); // clear trailing words
+    } else if (words < set_.words()) {
       auto set = bitset(words * bits_required<word_t>());
 
       set.memset(begin(), set.words() * sizeof(word_t)); // copy original
@@ -215,7 +217,7 @@ class bitvector final: util::noncopyable {
       return; // nothing to do
     }
 
-    resize(std::max(size(), i + 1)); // ensure capacity
+    resize(std::max(size(), i + 1), true); // ensure capacity
     set_.reset(i, set);
   }
 
