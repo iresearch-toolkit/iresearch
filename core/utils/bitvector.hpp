@@ -166,7 +166,7 @@ class bitvector final: util::noncopyable {
   void reserve(size_t bits) {
     const auto words = bitset::word(bits - 1) + 1;
 
-    if (words <= set_.words()) {
+    if (!bits || words <= set_.words()) {
       return; // nothing to do
     }
 

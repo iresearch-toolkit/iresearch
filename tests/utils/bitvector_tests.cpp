@@ -1124,6 +1124,13 @@ TEST(bitvector_tests, reserve) {
   ASSERT_TRUE(bv.any());
   ASSERT_TRUE(bv.all());
   ASSERT_EQ(prev_data, bv.data());
+
+  bv.reserve(0);
+  ASSERT_EQ(1, bv.count());
+  ASSERT_FALSE(bv.none());
+  ASSERT_TRUE(bv.any());
+  ASSERT_TRUE(bv.all());
+  ASSERT_EQ(prev_data, bv.data());
 }
 
 TEST(bitvector_tests, set_unset_pas_end) {
