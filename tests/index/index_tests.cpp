@@ -7401,7 +7401,7 @@ class index_test_case_base : public tests::index_test_base {
     auto writer = ir::index_writer::make(dir(), codec(), ir::OM_CREATE);
 
     size_t i = 0;
-    const size_t max = 7;
+    const size_t max = 8;
     bool states[max];
     std::fill(std::begin(states), std::end(states), true);
 
@@ -7441,16 +7441,22 @@ class index_test_case_base : public tests::index_test_base {
           stored_field stored("stored", "doc4");
           state &= doc.insert(irs::action::store, stored);
         } break;
-        case 5: { // doc5
-          indexed_and_stored_field indexed_and_stored("indexed_and_stored", "doc5", false); // will not be stored, but will be indexed
+        case 5: { // doc5 (will be dropped since it contains failed stored field)
+          indexed_and_stored_field indexed_and_stored("indexed_and_stored", "doc5", false); // will fail on store, but will pass on index
           state &= doc.insert(irs::action::index_store, indexed_and_stored);
           stored_field stored("stored", "doc5");
           state &= doc.insert(irs::action::store, stored);
         } break;
-        case 6: { // doc6
-          indexed_and_stored_field indexed_and_stored("indexed_and_stored", "doc6", true, false); // will not be indexed, but will be stored
+        case 6: { // doc6 (will be dropped since it contains failed indexed field)
+          indexed_and_stored_field indexed_and_stored("indexed_and_stored", "doc6", true, false); // will fail on index, but will pass on store
           state &= doc.insert(irs::action::index_store, indexed_and_stored);
           stored_field stored("stored", "doc6");
+          state &= doc.insert(irs::action::store, stored);
+        } break;
+        case 7: { // valid insertion of last doc will mark bulk insert result as valid
+          indexed_and_stored_field indexed_and_stored("indexed_and_stored", "doc7", true, true); // will be indexed, and will be stored
+          state &= doc.insert(irs::action::index_store, indexed_and_stored);
+          stored_field stored("stored", "doc7");
           state &= doc.insert(irs::action::store, stored);
         } break;
       }
@@ -7464,8 +7470,9 @@ class index_test_case_base : public tests::index_test_base {
     ASSERT_FALSE(states[2]); // skipped
     ASSERT_FALSE(states[3]); // skipped
     ASSERT_FALSE(states[4]); // skipped
-    ASSERT_TRUE(states[5]); // successfully inserted
-    ASSERT_TRUE(states[6]); // successfully inserted
+    ASSERT_FALSE(states[5]); // skipped
+    ASSERT_FALSE(states[6]); // skipped
+    ASSERT_TRUE(states[7]); // successfully inserted
 
     writer->commit();
 
@@ -7474,16 +7481,11 @@ class index_test_case_base : public tests::index_test_base {
       auto reader = ir::directory_reader::open(dir());
       ASSERT_EQ(1, reader.size());
       auto& segment = reader[0];
-      ASSERT_EQ(7, reader->docs_count()); // we have 7 documents in total
-      ASSERT_EQ(4, reader->live_docs_count()); // 3 of which marked as deleted
+      ASSERT_EQ(8, reader->docs_count()); // we have 8 documents in total
+      ASSERT_EQ(3, reader->live_docs_count()); // 5 of which marked as deleted
 
-      std::unordered_set<std::string> expected_values { "doc0", "doc1", "doc5", "doc6" };
+      std::unordered_set<std::string> expected_values { "doc0", "doc1", "doc7" };
       std::unordered_set<std::string> actual_values;
-
-      auto visitor = [&actual_values](irs::doc_id_t doc, const irs::bytes_ref& value) {
-        return true;
-      };
-
       irs::bytes_ref value;
 
       const auto* column_reader = segment.column_reader("stored");
