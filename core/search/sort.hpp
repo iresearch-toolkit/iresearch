@@ -28,7 +28,6 @@
 #include "utils/attributes.hpp"
 #include "utils/attributes_provider.hpp"
 #include "utils/iterator.hpp"
-#include "utils/bitvector.hpp"
 
 #include <vector>
 
