@@ -40,7 +40,7 @@ class bitvector final: util::noncopyable {
   bitvector(const bitvector& other) { *this = other; }
   bitvector(bitvector&& other) NOEXCEPT { *this = std::move(other); }
 
-  operator const bitset&() { return set_; }
+  operator const bitset&() const { return set_; }
 
   bitvector& operator=(const bitvector& other) {
     if (this != &other) {
@@ -136,6 +136,34 @@ class bitvector final: util::noncopyable {
     }
 
     *(data + last_word) ^= (*(other.data() + last_word) & mask);
+
+    return *this;
+  }
+
+  bitvector& operator-=(const bitvector& other) {
+    if (!other.size()) {
+      return *this; // nothing to do
+    }
+
+    reserve(other.size_);
+    size_ = std::max(size_, other.size_);
+    auto* data = const_cast<word_t*>(begin());
+    auto last_word = bitset::word(other.size() - 1); // -1 for bit offset
+
+    for (size_t i = 0; i < last_word; ++i) {
+      *(data + i) &= ~(*(other.data() + i));
+    }
+
+    // for the last word consider only those bits included in 'other.size()'
+    auto last_word_bits = other.size() % bits_required<word_t>();
+    auto mask = ~word_t(0);
+
+    // clear trailing bits
+    if (last_word_bits) {
+      mask = ~(mask << last_word_bits); // unset all bits that are not part of 'other.size()'
+    }
+
+    *(data + last_word) &= ~(*(other.data() + last_word) & mask);
 
     return *this;
   }

@@ -116,7 +116,7 @@ struct directory_mock : public ir::directory {
   ir::directory& impl_;
 }; // directory_mock 
 
-namespace templates {
+NS_BEGIN(templates)
 
 // ----------------------------------------------------------------------------
 // --SECTION--                               token_stream_payload implemntation
@@ -187,82 +187,72 @@ ir::token_stream& string_field::get_tokens() const {
   return stream_;
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class europarl_doc_template
-/// @brief document template for europarl.subset.text
-//////////////////////////////////////////////////////////////////////////////
-class europarl_doc_template : public delim_doc_generator::doc_template {
- public:
-  typedef templates::text_field<ir::string_ref> text_field;
+// ----------------------------------------------------------------------------
+// --SECTION--                                            europarl_doc_template
+// ----------------------------------------------------------------------------
 
-  virtual void init() {
-    clear();
-    indexed.push_back(std::make_shared<tests::templates::string_field>("title"));
-    indexed.push_back(std::make_shared<text_field>("title_anl", false));
-    indexed.push_back(std::make_shared<text_field>("title_anl_pay", true));
-    indexed.push_back(std::make_shared<text_field>("body_anl", false));
-    indexed.push_back(std::make_shared<text_field>("body_anl_pay", true));
-    {
-      insert(std::make_shared<tests::long_field>());
-      auto& field = static_cast<tests::long_field&>(indexed.back());
-      field.name(ir::string_ref("date"));
-    }
-    insert(std::make_shared<tests::templates::string_field>("datestr"));
-    insert(std::make_shared<tests::templates::string_field>("body"));
-    {
-      insert(std::make_shared<tests::int_field>());
-      auto& field = static_cast<tests::int_field&>(indexed.back());
-      field.name(ir::string_ref("id"));
-    }
-    insert(std::make_shared<string_field>("idstr"));
+void europarl_doc_template::init() {
+  clear();
+  indexed.push_back(std::make_shared<tests::templates::string_field>("title"));
+  indexed.push_back(std::make_shared<text_field>("title_anl", false));
+  indexed.push_back(std::make_shared<text_field>("title_anl_pay", true));
+  indexed.push_back(std::make_shared<text_field>("body_anl", false));
+  indexed.push_back(std::make_shared<text_field>("body_anl_pay", true));
+  {
+    insert(std::make_shared<tests::long_field>());
+    auto& field = static_cast<tests::long_field&>(indexed.back());
+    field.name(irs::string_ref("date"));
   }
-
-  virtual void value(size_t idx, const std::string& value) {
-    static auto get_time = [](const std::string& src) {
-      std::istringstream ss(src);
-      std::tm tmb{};
-      char c;
-      ss >> tmb.tm_year >> c >> tmb.tm_mon >> c >> tmb.tm_mday;
-      return std::mktime( &tmb );
-    };
-
-    switch (idx) {
-      case 0: // title
-        title_ = value;
-        indexed.get<tests::templates::string_field>("title")->value(title_);
-        indexed.get<text_field>("title_anl")->value(title_);
-        indexed.get<text_field>("title_anl_pay")->value(title_);
-        break;
-      case 1: // dateA
-        indexed.get<tests::long_field>("date")->value(get_time(value));
-        indexed.get<tests::templates::string_field>("datestr")->value(value);
-        break;
-      case 2: // body
-        body_ = value;
-        indexed.get<tests::templates::string_field>("body")->value(body_);
-        indexed.get<text_field>("body_anl")->value(body_);
-        indexed.get<text_field>("body_anl_pay")->value(body_);
-        break;
-    }
+  insert(std::make_shared<tests::templates::string_field>("datestr"));
+  insert(std::make_shared<tests::templates::string_field>("body"));
+  {
+    insert(std::make_shared<tests::int_field>());
+    auto& field = static_cast<tests::int_field&>(indexed.back());
+    field.name(irs::string_ref("id"));
   }
+  insert(std::make_shared<string_field>("idstr"));
+}
 
-  virtual void end() {
-    ++idval_;
-    indexed.get<tests::int_field>("id")->value(idval_);
-    indexed.get<tests::templates::string_field>("idstr")->value(std::to_string(idval_));
+void europarl_doc_template::value(size_t idx, const std::string& value) {
+  static auto get_time = [](const std::string& src) {
+    std::istringstream ss(src);
+    std::tm tmb{};
+    char c;
+    ss >> tmb.tm_year >> c >> tmb.tm_mon >> c >> tmb.tm_mday;
+    return std::mktime( &tmb );
+  };
+
+  switch (idx) {
+    case 0: // title
+      title_ = value;
+      indexed.get<tests::templates::string_field>("title")->value(title_);
+      indexed.get<text_field>("title_anl")->value(title_);
+      indexed.get<text_field>("title_anl_pay")->value(title_);
+      break;
+    case 1: // dateA
+      indexed.get<tests::long_field>("date")->value(get_time(value));
+      indexed.get<tests::templates::string_field>("datestr")->value(value);
+      break;
+    case 2: // body
+      body_ = value;
+      indexed.get<tests::templates::string_field>("body")->value(body_);
+      indexed.get<text_field>("body_anl")->value(body_);
+      indexed.get<text_field>("body_anl_pay")->value(body_);
+      break;
   }
+}
 
-  virtual void reset() {
-    idval_ = 0;
-  }
+void europarl_doc_template::end() {
+  ++idval_;
+  indexed.get<tests::int_field>("id")->value(idval_);
+  indexed.get<tests::templates::string_field>("idstr")->value(std::to_string(idval_));
+}
 
- private:
-  std::string title_; // current title
-  std::string body_; // current body
-  ir::doc_id_t idval_ = 0;
-}; // europarl_doc_template
+void europarl_doc_template::reset() {
+  idval_ = 0;
+}
 
-} // templates
+NS_END // templates
 
 void generic_json_field_factory(
     tests::document& doc,
