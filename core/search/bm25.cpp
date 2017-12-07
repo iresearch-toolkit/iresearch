@@ -349,11 +349,10 @@ bm25_sort::bm25_sort(
     float_t b /*= 0.75f*/,
     bool normalize /*= false*/
 ): sort(bm25_sort::type()), k_(k), b_(b), normalize_(normalize) {
-  reverse(true); // return the most relevant results first
 }
 
-sort::prepared::ptr bm25_sort::prepare() const {
-  return bm25::sort::make<bm25::sort>(k_, b_, normalize_, reverse());
+sort::prepared::ptr bm25_sort::prepare(bool reverse) const {
+  return bm25::sort::make<bm25::sort>(k_, b_, normalize_, reverse);
 }
 
 NS_END // ROOT

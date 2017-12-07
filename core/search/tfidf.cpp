@@ -256,11 +256,10 @@ DEFINE_FACTORY_DEFAULT(irs::tfidf_sort);
 tfidf_sort::tfidf_sort(bool normalize) 
   : sort(tfidf_sort::type()),
     normalize_(normalize) {
-  reverse(true); // return the most relevant results first
 }
 
-sort::prepared::ptr tfidf_sort::prepare() const {
-  return tfidf::sort::make<tfidf::sort>(normalize_, reverse());
+sort::prepared::ptr tfidf_sort::prepare(bool reverse) const {
+  return tfidf::sort::make<tfidf::sort>(normalize_, reverse);
 }
 
 NS_END // ROOT

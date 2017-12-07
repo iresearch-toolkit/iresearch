@@ -45,7 +45,7 @@ public:
   bool normalize() const { return normalize_; }
   void normalize(bool value) { normalize_ = value; }
 
-  virtual sort::prepared::ptr prepare() const;
+  virtual sort::prepared::ptr prepare(bool reverse) const;
 
 private:
   bool normalize_;

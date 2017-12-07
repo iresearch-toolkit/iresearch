@@ -82,7 +82,7 @@ TEST_F(tfidf_test, test_load) {
   auto scorer = irs::scorers::get("tfidf", irs::string_ref::nil);
 
   ASSERT_NE(nullptr, scorer);
-  ASSERT_EQ(1, order.add(scorer).size());
+  ASSERT_EQ(1, order.add(true, scorer).size());
 }
 
 TEST_F(tfidf_test, test_normalize_features) {
@@ -90,7 +90,7 @@ TEST_F(tfidf_test, test_normalize_features) {
   {
     auto scorer = irs::scorers::get("tfidf", irs::string_ref::nil);
     ASSERT_NE(nullptr, scorer);
-    auto prepared = scorer->prepare();
+    auto prepared = scorer->prepare(true);
     ASSERT_NE(nullptr, prepared);
     ASSERT_EQ(irs::flags({irs::frequency::type()}), prepared->features());
   }
@@ -99,7 +99,7 @@ TEST_F(tfidf_test, test_normalize_features) {
   {
     auto scorer = irs::scorers::get("tfidf", "true");
     ASSERT_NE(nullptr, scorer);
-    auto prepared = scorer->prepare();
+    auto prepared = scorer->prepare(true);
     ASSERT_NE(nullptr, prepared);
     ASSERT_EQ(irs::flags({irs::frequency::type(), irs::norm::type()}), prepared->features());
   }
@@ -108,7 +108,7 @@ TEST_F(tfidf_test, test_normalize_features) {
   {
     auto scorer = irs::scorers::get("tfidf", "{\"with-norms\": true}");
     ASSERT_NE(nullptr, scorer);
-    auto prepared = scorer->prepare();
+    auto prepared = scorer->prepare(true);
     ASSERT_NE(nullptr, prepared);
     ASSERT_EQ(irs::flags({irs::frequency::type(), irs::norm::type()}), prepared->features());
   }
@@ -117,7 +117,7 @@ TEST_F(tfidf_test, test_normalize_features) {
   {
     auto scorer = irs::scorers::get("tfidf", "false");
     ASSERT_NE(nullptr, scorer);
-    auto prepared = scorer->prepare();
+    auto prepared = scorer->prepare(true);
     ASSERT_NE(nullptr, prepared);
     ASSERT_EQ(irs::flags({irs::frequency::type()}), prepared->features());
   }
@@ -126,7 +126,7 @@ TEST_F(tfidf_test, test_normalize_features) {
   {
     auto scorer = irs::scorers::get("tfidf", "{\"with-norms\": false}");
     ASSERT_NE(nullptr, scorer);
-    auto prepared = scorer->prepare();
+    auto prepared = scorer->prepare(true);
     ASSERT_NE(nullptr, prepared);
     ASSERT_EQ(irs::flags({irs::frequency::type()}), prepared->features());
   }
@@ -149,7 +149,7 @@ TEST_F(tfidf_test, test_query) {
 
   irs::order order;
 
-  order.add(irs::scorers::get("tfidf", irs::string_ref::nil));
+  order.add(true, irs::scorers::get("tfidf", irs::string_ref::nil));
 
   auto prepared_order = order.prepare();
   auto comparer = [&prepared_order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
@@ -524,7 +524,7 @@ TEST_F(tfidf_test, test_order) {
   query.field("field");
 
   iresearch::order ord;
-  ord.add<iresearch::tfidf_sort>();
+  ord.add<iresearch::tfidf_sort>(true);
   auto prepared_order = ord.prepare();
 
   auto comparer = [&prepared_order] (const iresearch::bstring& lhs, const iresearch::bstring& rhs) {

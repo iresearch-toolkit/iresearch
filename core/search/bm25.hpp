@@ -51,7 +51,7 @@ class bm25_sort : public sort {
   bool normalize() const { return normalize_; }
   void normalize(bool value) { normalize_ = value; }
 
-  virtual sort::prepared::ptr prepare() const;
+  virtual sort::prepared::ptr prepare(bool reverse) const;
 
  private:
   float_t k_; // [1.2 .. 2.0]
