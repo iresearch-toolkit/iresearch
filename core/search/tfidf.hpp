@@ -32,6 +32,10 @@ class tfidf_sort : public sort {
 public:
   DECLARE_SORT_TYPE();
 
+  static CONSTEXPR bool WITH_NORMS() NOEXCEPT {
+    return false;
+  }
+
   // for use with irs::order::add<T>() and default args (static build)
   DECLARE_FACTORY_DEFAULT();
 
@@ -40,7 +44,7 @@ public:
 
   typedef float_t score_t;
 
-  explicit tfidf_sort(bool normalize = false);
+  explicit tfidf_sort(bool normalize = WITH_NORMS());
 
   bool normalize() const { return normalize_; }
   void normalize(bool value) { normalize_ = value; }

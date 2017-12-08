@@ -85,6 +85,54 @@ TEST_F(tfidf_test, test_load) {
   ASSERT_EQ(1, order.add(true, scorer).size());
 }
 
+TEST_F(tfidf_test, make_from_bool) {
+  // `with-norms` argument
+  {
+    auto scorer = irs::scorers::get("tfidf", "true");
+    ASSERT_NE(nullptr, scorer);
+    auto& tfidf = dynamic_cast<irs::tfidf_sort&>(*scorer);
+    ASSERT_EQ(true, tfidf.normalize());
+  }
+
+  // invalid `with-norms` argument
+  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", "\"false\""));
+  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", "null"));
+  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", "1"));
+}
+
+TEST_F(tfidf_test, make_from_array) {
+  // default args
+  {
+    auto scorer = irs::scorers::get("tfidf", irs::string_ref::nil);
+    ASSERT_NE(nullptr, scorer);
+    auto& tfidf = dynamic_cast<irs::tfidf_sort&>(*scorer);
+    ASSERT_EQ(irs::tfidf_sort::WITH_NORMS(), tfidf.normalize());
+  }
+
+  // default args
+  {
+    auto scorer = irs::scorers::get("tfidf", "[]");
+    ASSERT_NE(nullptr, scorer);
+    auto& tfidf = dynamic_cast<irs::tfidf_sort&>(*scorer);
+    ASSERT_EQ(irs::tfidf_sort::WITH_NORMS(), tfidf.normalize());
+  }
+
+  // `with-norms` argument
+  {
+    auto scorer = irs::scorers::get("tfidf", "[ true ]");
+    ASSERT_NE(nullptr, scorer);
+    auto& tfidf = dynamic_cast<irs::tfidf_sort&>(*scorer);
+    ASSERT_EQ(true, tfidf.normalize());
+  }
+
+  // invalid `with-norms` argument
+  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", "[ \"false\" ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", "[ null]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", "[ 1 ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", "[ {} ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", "[ [] ]"));
+}
+
 TEST_F(tfidf_test, test_normalize_features) {
   // default norms
   {
