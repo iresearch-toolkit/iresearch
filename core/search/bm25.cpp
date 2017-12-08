@@ -35,7 +35,7 @@ NS_LOCAL
 irs::sort::ptr make_from_object(
     const rapidjson::Document& json,
     const irs::string_ref& args) {
-  assert(obj.IsObject());
+  assert(json.IsObject());
 
   PTR_NAMED(irs::bm25_sort, ptr);
 
@@ -96,7 +96,7 @@ irs::sort::ptr make_from_object(
 irs::sort::ptr make_from_array(
     const rapidjson::Document& json,
     const irs::string_ref& args) {
-  assert(obj.IsArray());
+  assert(json.IsArray());
 
   const auto array = json.GetArray();
   const auto size = array.Size();
