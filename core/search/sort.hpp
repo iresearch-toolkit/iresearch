@@ -483,9 +483,9 @@ class IRESEARCH_API order final {
       return reinterpret_cast<const T&>(*(score + order_[i].offset));
     }
 
-    template<typename StringType>
+    template<typename StringType, typename Traits = typename StringType::traits_type>
     CONSTEXPR StringType to_string(const byte_type* score, size_t i) const NOEXCEPT {
-      typedef typename StringType::traits_type::char_type char_type;
+      typedef typename Traits::char_type char_type;
 
       const auto& entry = order_[i];
 
