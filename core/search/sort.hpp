@@ -496,11 +496,14 @@ class IRESEARCH_API order final {
       return reinterpret_cast<const T&>(*(score + order_[i].offset));
     }
 
-    template<typename StringType>
-    CONSTEXPR StringType to_string(
+    template<
+      typename StringType,
+      typename TraitsType = typename StringType::traits_type
+    > CONSTEXPR StringType to_string(
         const byte_type* score, size_t i
-    ) const NOEXCEPT {
-      typedef typename StringType::traits_type::char_type char_type;
+    ) const {
+      typedef typename TraitsType::char_type char_type;
+
       return StringType(
         reinterpret_cast<const char_type*>(score + order_[i].offset),
         order_[i].bucket->size()
