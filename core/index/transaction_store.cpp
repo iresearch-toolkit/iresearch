@@ -1656,11 +1656,15 @@ void store_writer::remove(const filter& filter) {
 }
 
 void store_writer::remove(filter::ptr&& filter) {
-  modification_queries_.emplace_back(std::move(filter), next_doc_id_);
+  if (filter) {
+    modification_queries_.emplace_back(std::move(filter), next_doc_id_); // skip empty filters
+  }
 }
 
 void store_writer::remove(const std::shared_ptr<filter>& filter) {
-  modification_queries_.emplace_back(filter, next_doc_id_);
+  if (filter) {
+    modification_queries_.emplace_back(filter, next_doc_id_); // skip empty filters
+  }
 }
 
 bool store_writer::store(

@@ -290,9 +290,9 @@ class IRESEARCH_API sort {
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API order final {
  public:
-  class entry : private util::noncopyable {
+  class entry {
    public:
-    entry(const sort::ptr& sort, bool reverse)
+    entry(sort::ptr&& sort, bool reverse) NOEXCEPT
       : sort_(std::move(sort)), reverse_(reverse) {
       assert(sort);
     }
@@ -479,19 +479,20 @@ class IRESEARCH_API order final {
 
     template<typename T>
     CONSTEXPR const T& get(const byte_type* score, size_t i) const NOEXCEPT {
-      assert(sizeof(T) == order_[i].bucket->size());
+      #if !defined(__APPLE__) || defined(IRESEARCH_DEBUG) // MacOS can't handle asserts in non-debug CONSTEXPR functions
+        assert(sizeof(T) == order_[i].bucket->size());
+      #endif
       return reinterpret_cast<const T&>(*(score + order_[i].offset));
     }
 
     template<typename StringType>
-    CONSTEXPR StringType to_string(const byte_type* score, size_t i) const NOEXCEPT {
+    CONSTEXPR StringType to_string(
+        const byte_type* score, size_t i
+    ) const NOEXCEPT {
       typedef typename StringType::traits_type::char_type char_type;
-
-      const auto& entry = order_[i];
-
       return StringType(
-        reinterpret_cast<const char_type*>(score + entry.offset),
-        entry.bucket->size()
+        reinterpret_cast<const char_type*>(score + order_[i].offset),
+        order_[i].bucket->size()
       );
     }
 
