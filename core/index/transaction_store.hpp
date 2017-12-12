@@ -557,7 +557,7 @@ class IRESEARCH_API store_writer final: private util::noncopyable {
       : filter_(&match_filter, [](const filter*)->void{}), generation_(generation) {}
     modification_context(const std::shared_ptr<filter>& match_filter, doc_id_t generation)
       : filter_(match_filter), generation_(generation) {}
-    modification_context(filter::ptr&& match_filter, size_t generation)
+    modification_context(filter::ptr&& match_filter, doc_id_t generation)
       : filter_(std::move(match_filter)), generation_(generation) {}
     modification_context(modification_context&& other) NOEXCEPT
       : documents_(std::move(other.documents_)), filter_(std::move(other.filter_)), generation_(other.generation_) {}

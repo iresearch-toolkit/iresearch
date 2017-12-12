@@ -292,9 +292,14 @@ class IRESEARCH_API order final {
  public:
   class entry {
    public:
-    entry(sort::ptr&& sort, bool reverse) NOEXCEPT
+    entry(const irs::sort::ptr& sort, bool reverse) NOEXCEPT
+      : sort_(sort), reverse_(reverse) {
+      assert(sort_);
+    }
+
+    entry(irs::sort::ptr&& sort, bool reverse) NOEXCEPT
       : sort_(std::move(sort)), reverse_(reverse) {
-      assert(sort);
+      assert(sort_);
     }
 
     entry(entry&& rhs) NOEXCEPT
