@@ -332,6 +332,7 @@ class transaction_store_tests: public test_base {
     }
 
     ASSERT_TRUE(skip_docs_count_check || parsed_docs_count == indexed_docs_count);
+    ASSERT_TRUE(!num_update_threads || column); // at least some updates took place if update enabled
     ASSERT_TRUE(!num_update_threads || updated_docs_count); // at least some updates took place if update enabled
   }
 
