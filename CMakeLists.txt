@@ -126,11 +126,6 @@ mark_as_advanced(
 
 add_definitions(-DUNICODE -D_UNICODE)
 
-# suppress useless warnings on GCC7
-if (NOT MSVC)
-  add_definitions(-Wimplicit-fallthrough=0)
-endif()
-
 add_subdirectory(core)
 add_subdirectory(external)
 add_subdirectory(tests)
