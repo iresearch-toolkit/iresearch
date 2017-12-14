@@ -89,7 +89,7 @@ class bitvector final {
     auto last_word_bits = other.size() % bits_required<word_t>();
     const auto mask = (word_t(1) << last_word_bits) - 1; // set all bits that are not part of 'other.size()'
 
-    *(data + last_word) &= (*(other.data() + last_word) | mask);
+    *(data + last_word) &= (*(other.data() + last_word) & mask);
 
     return *this;
   }
