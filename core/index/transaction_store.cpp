@@ -137,80 +137,6 @@ class single_reader_iterator_impl final
   const iresearch::sub_reader* reader_;
 };
 
-template<typename M>
-class store_column_iterator final: public irs::column_iterator {
- public:
-  store_column_iterator(const M& map)
-    : itr_(map.begin()), map_(map), value_(nullptr) {}
-
-  virtual bool next() override {
-    if (map_.end() == itr_) {
-      value_ = nullptr;
-
-      return false; // already at end
-    }
-
-    value_ = itr_->second.meta_.get();
-    ++itr_;
-
-    return true;
-  }
-
-  virtual bool seek(const irs::string_ref& name) override {
-    itr_ = map_.lower_bound(name);
-
-    return next();
-  }
-
-  virtual const irs::column_meta& value() const override {
-    static const irs::column_meta invalid;
-
-    return value_ ? *value_ : invalid;
-  }
-
- private:
-  typename M::const_iterator itr_;
-  const M& map_;
-  const irs::column_meta* value_;
-};
-
-template<typename M>
-class store_field_iterator final: public irs::field_iterator {
- public:
-  store_field_iterator(const M& map)
-    : itr_(map.begin()), map_(map), value_(nullptr) {}
-
-  virtual bool next() override {
-    if (map_.end() == itr_) {
-      value_ = nullptr;
-
-      return false; // already at end
-    }
-
-    value_ = &(itr_->second);
-    ++itr_;
-
-    return true;
-  };
-
-  virtual bool seek(const irs::string_ref& name) override {
-    itr_ = map_.lower_bound(name);
-
-    return next();
-  }
-
-  virtual const irs::term_reader& value() const override {
-    assert(value_);
-
-    return *value_;
-  }
-
- private:
-  typename M::const_iterator itr_;
-  const M& map_;
-  const irs::term_reader* value_;
-};
-
 // ----------------------------------------------------------------------------
 // --SECTION--                                      store_reader implementation
 // ----------------------------------------------------------------------------
@@ -294,8 +220,9 @@ class store_reader_impl final: public irs::sub_reader {
 
  private:
   friend irs::store_reader irs::store_reader::reopen() const;
-  friend irs::store_reader irs::transaction_store::reader() const;
+  friend bool irs::store_writer::commit();
   friend bool irs::transaction_store::flush(irs::index_writer&); // to allow use of private constructor
+  friend irs::store_reader irs::transaction_store::reader() const;
   typedef std::unordered_map<irs::field_id, const column_reader_t*> column_by_id_t;
 
   const columns_named_t columns_named_;
@@ -316,14 +243,51 @@ class store_reader_impl final: public irs::sub_reader {
   );
 };
 
-class store_col_iterator: public irs::columnstore_iterator {
+class store_column_iterator final: public irs::column_iterator {
  public:
-  store_col_iterator(const store_reader_impl::document_entries_t& entries)
-    : entry_(nullptr),
-      entries_(entries),
-      next_itr_(entries.begin()),
-      next_offset_(EOFOFFSET),
-      value_(INVALID) {
+  store_column_iterator(const store_reader_impl::columns_named_t& map)
+    : itr_(map.begin()), map_(map), value_(nullptr) {}
+
+  virtual bool next() override {
+    if (map_.end() == itr_) {
+      value_ = nullptr;
+
+      return false; // already at end
+    }
+
+    value_ = itr_->second.meta_.get();
+    ++itr_;
+
+    return true;
+  }
+
+  virtual bool seek(const irs::string_ref& name) override {
+    itr_ = map_.lower_bound(name);
+
+    return next();
+  }
+
+  virtual const irs::column_meta& value() const override {
+    static const irs::column_meta invalid;
+
+    return value_ ? *value_ : invalid;
+  }
+
+ private:
+  typename store_reader_impl::columns_named_t::const_iterator itr_;
+  const store_reader_impl::columns_named_t& map_;
+  const irs::column_meta* value_;
+};
+
+class store_columnstore_iterator: public irs::columnstore_iterator {
+ public:
+  store_columnstore_iterator(
+      const store_reader_impl::document_entries_t& entries
+  ): entry_(nullptr),
+     entries_(entries),
+     next_itr_(entries.begin()),
+     next_offset_(EOFOFFSET),
+     value_(INVALID) {
   }
 
   virtual bool next() override {
@@ -392,12 +356,12 @@ class store_col_iterator: public irs::columnstore_iterator {
   value_type value_;
 };
 
-/*static*/ const irs::columnstore_iterator::value_type store_col_iterator::EOFMAX {
+/*static*/ const irs::columnstore_iterator::value_type store_columnstore_iterator::EOFMAX {
   irs::type_limits<irs::type_t::doc_id_t>::eof(),
   irs::bytes_ref::nil
 };
 
-/*static*/ const irs::columnstore_iterator::value_type store_col_iterator::INVALID {
+/*static*/ const irs::columnstore_iterator::value_type store_columnstore_iterator::INVALID {
   irs::type_limits<irs::type_t::doc_id_t>::invalid(),
   irs::bytes_ref::nil
 };
@@ -563,6 +527,42 @@ class store_doc_iterator: public irs::doc_iterator {
   store_reader_impl::document_entries_t::const_iterator next_itr_;
 };
 
+class store_field_iterator final: public irs::field_iterator {
+ public:
+  store_field_iterator(const store_reader_impl::fields_t& map)
+    : itr_(map.begin()), map_(map), value_(nullptr) {}
+
+  virtual bool next() override {
+    if (map_.end() == itr_) {
+      value_ = nullptr;
+
+      return false; // already at end
+    }
+
+    value_ = &(itr_->second);
+    ++itr_;
+
+    return true;
+  };
+
+  virtual bool seek(const irs::string_ref& name) override {
+    itr_ = map_.lower_bound(name);
+
+    return next();
+  }
+
+  virtual const irs::term_reader& value() const override {
+    assert(value_);
+
+    return *value_;
+  }
+
+ private:
+  typename store_reader_impl::fields_t::const_iterator itr_;
+  const store_reader_impl::fields_t& map_;
+  const irs::term_reader* value_;
+};
+
 class store_term_iterator: public irs::seek_term_iterator {
  public:
   store_term_iterator(
@@ -681,7 +681,7 @@ class store_term_iterator: public irs::seek_term_iterator {
 irs::columnstore_iterator::ptr store_reader_impl::column_reader_t::iterator() const {
   return entries_.empty()
     ? irs::columnstore_reader::empty_iterator()
-    : irs::columnstore_iterator::make<store_col_iterator>(entries_);
+    : irs::columnstore_iterator::make<store_columnstore_iterator>(entries_);
 }
 
 irs::columnstore_reader::values_reader_f store_reader_impl::column_reader_t::values() const {
@@ -804,7 +804,7 @@ const irs::column_meta* store_reader_impl::column(
 }
 
 irs::column_iterator::ptr store_reader_impl::columns() const {
-  auto ptr = irs::memory::make_unique<store_column_iterator<columns_named_t>>(columns_named_);
+  auto ptr = irs::memory::make_unique<store_column_iterator>(columns_named_);
 
   return irs::memory::make_managed<irs::column_iterator, true>(std::move(ptr));
 }
@@ -844,299 +844,7 @@ const irs::term_reader* store_reader_impl::field(
 }
 
 irs::field_iterator::ptr store_reader_impl::fields() const {
-  auto ptr = irs::memory::make_unique<store_field_iterator<fields_t>>(fields_);
-
-  return irs::memory::make_managed<irs::field_iterator, true>(std::move(ptr));
-}
-
-// ----------------------------------------------------------------------------
-// --SECTION--                              masking_store_reader implementation
-// ----------------------------------------------------------------------------
-
-class masking_store_reader final: public irs::sub_reader {
- public:
-  typedef store_reader_impl::document_entries_t document_entries_t;
-
-  struct column_reader_t: public store_reader_impl::column_reader_t {
-    const irs::bitvector* documents_;
-    column_reader_t(document_entries_t&& entries) NOEXCEPT
-      : store_reader_impl::column_reader_t(std::move(entries)), documents_(nullptr) {}
-    virtual irs::columnstore_iterator::ptr iterator() const override;
-    virtual irs::columnstore_reader::values_reader_f values() const override;
-    virtual bool visit(
-      const irs::columnstore_reader::values_visitor_f& visitor
-    ) const override;
-  };
-
-  struct named_column_reader_t: public column_reader_t {
-    const irs::transaction_store::column_meta_builder::ptr meta_;
-    named_column_reader_t(
-        const irs::transaction_store::column_meta_builder::ptr& meta,
-        document_entries_t&& entries
-    ): column_reader_t(std::move(entries)), meta_(meta) { assert(meta_); }
-  };
-
-  typedef std::map<irs::string_ref, named_column_reader_t> columns_named_t;
-  typedef std::map<irs::field_id, column_reader_t> columns_unnamed_t;
-  typedef store_reader_impl::term_entry_t term_entry_t;
-
-  struct term_reader_t: public store_reader_impl::term_reader_t {
-    const irs::bitvector* documents_;
-
-    term_reader_t(const irs::transaction_store::field_meta_builder::ptr& meta)
-      : store_reader_impl::term_reader_t(meta), documents_(nullptr) {}
-    virtual irs::seek_term_iterator::ptr iterator() const override;
-  };
-
-  typedef std::map<irs::string_ref, term_reader_t> fields_t;
-
-  masking_store_reader(
-      const irs::bitvector& documents,
-      fields_t&& fields,
-      columns_named_t&& columns_named,
-      columns_unnamed_t&& columns_unnamed
-  );
-  virtual index_reader::reader_iterator begin() const override;
-  virtual const irs::column_meta* column(const irs::string_ref& name) const override;
-  virtual irs::column_iterator::ptr columns() const override;
-  virtual const irs::columnstore_reader::column_reader* column_reader(irs::field_id field) const override;
-  virtual uint64_t docs_count() const override { return documents_.size(); } // +1 for invalid doc if non empty
-  virtual docs_iterator_t::ptr docs_iterator() const override;
-  virtual index_reader::reader_iterator end() const override;
-  virtual const irs::term_reader* field(const irs::string_ref& field) const override;
-  virtual irs::field_iterator::ptr fields() const override;
-  virtual uint64_t live_docs_count() const override { return documents_.count(); }
-  virtual size_t size() const override { return 1; } // only 1 segment
-
- private:
-  typedef std::unordered_map<irs::field_id, const column_reader_t*> column_by_id_t;
-
-  const columns_named_t columns_named_;
-  const columns_unnamed_t columns_unnamed_;
-  const column_by_id_t column_by_id_;
-  const irs::bitvector& documents_;
-  const fields_t fields_;
-};
-
-class masking_store_col_iterator: public store_col_iterator {
- public:
-  masking_store_col_iterator(
-      const irs::bitvector& documents,
-      const store_reader_impl::document_entries_t& entries
-  ): store_col_iterator(entries), documents_(documents) {}
-
-  virtual bool next() override {
-    while (store_col_iterator::next()) {
-      if (documents_.test(value().first)) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
- private:
-  const irs::bitvector& documents_;
-};
-
-class masking_store_doc_iterator: public store_doc_iterator {
- public:
-  masking_store_doc_iterator(
-      const irs::bitvector& documents,
-      const store_reader_impl::document_entries_t& entries,
-      const irs::flags& field_features,
-      const irs::flags& requested_features
-  ): store_doc_iterator(entries, field_features, requested_features),
-     documents_(documents) {
-  }
-
-  virtual bool next() override {
-    while (store_doc_iterator::next()) {
-      if (documents_.test(value())) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
- private:
-  const irs::bitvector& documents_;
-};
-
-class masking_store_term_iterator: public store_term_iterator {
- public:
-  masking_store_term_iterator(
-      const irs::bitvector& documents,
-      const irs::flags& field_features,
-      const store_reader_impl::term_entries_t& terms
-  ): store_term_iterator(field_features, terms), documents_(documents) {}
-
-  virtual irs::doc_iterator::ptr postings(
-      const irs::flags& features
-  ) const override {
-    return !term_entry_ || term_entry_->entries_.empty()
-      ? irs::doc_iterator::empty()
-      : irs::doc_iterator::make<masking_store_doc_iterator>(
-          documents_,
-          term_entry_->entries_,
-          field_features_,
-          features
-        )
-      ;
-  }
-
- private:
-  const irs::bitvector& documents_;
-};
-
-irs::columnstore_iterator::ptr masking_store_reader::column_reader_t::iterator() const {
-  return !documents_ || entries_.empty()
-    ? irs::columnstore_reader::empty_iterator()
-    : irs::columnstore_iterator::make<masking_store_col_iterator>(*documents_, entries_);
-}
-
-irs::columnstore_reader::values_reader_f masking_store_reader::column_reader_t::values() const {
-  if (!documents_ || entries_.empty()) {
-    return irs::columnstore_reader::empty_reader();
-  }
-
-  auto& documents = *documents_;
-  auto reader = store_reader_impl::column_reader_t::values();
-
-  return [&documents, reader](irs::doc_id_t key,irs::bytes_ref& value)->bool {
-    return documents.test(key) && reader(key, value);
-  };
-}
-
-bool masking_store_reader::column_reader_t::visit(
-  const irs::columnstore_reader::values_visitor_f& visitor
-) const {
-  if (!documents_) {
-    return false;
-  }
-
-  for (auto& entry: entries_) {
-    if (!(entry.buf_) || !documents_->test(entry.doc_id_)) {
-      continue;
-    }
-
-    irs::bytes_ref_input in(*(entry.buf_));
-
-    for(auto next_offset = entry.offset_; next_offset;) {
-      auto offset = next_offset;
-
-      in.seek(next_offset);
-      next_offset = in.read_long(); // read next value offset
-
-      auto size = in.read_vlong(); // read value size
-      auto start = offset - size;
-
-      if (offset < size) {
-        break; // invalid data size
-      }
-
-      if (!visitor(entry.doc_id_, irs::bytes_ref(entry.buf_->data() + start, size))) {
-        return false;
-      }
-    }
-  }
-
-  return true;
-}
-
-irs::seek_term_iterator::ptr masking_store_reader::term_reader_t::iterator() const {
-  return !documents_ || terms_ .empty()
-    ? irs::seek_term_iterator::make<empty_seek_term_iterator>()
-    : irs::seek_term_iterator::make<masking_store_term_iterator>(*documents_, meta_->features, terms_);
-}
-
-masking_store_reader::masking_store_reader(
-    const irs::bitvector& documents,
-    fields_t&& fields,
-    columns_named_t&& columns_named,
-    columns_unnamed_t&& columns_unnamed
-): columns_named_(std::move(columns_named)),
-   columns_unnamed_(std::move(columns_unnamed)),
-   documents_(documents),
-   fields_(std::move(fields)) {
-  auto& column_by_id = const_cast<column_by_id_t&>(column_by_id_); // initialize map
-
-  for (auto& entry: columns_named_) {
-    auto& column = entry.second;
-
-    column_by_id.emplace(column.meta_->id, &column);
-    const_cast<named_column_reader_t&>(column).documents_ = &documents_; // update document mask
-  }
-
-  for (auto& entry: columns_unnamed_) {
-    auto& column = entry.second;
-
-    column_by_id.emplace(entry.first, &column);
-    const_cast<column_reader_t&>(column).documents_ = &documents_; // update document mask
-  }
-
-  for (auto& entry: fields_) {
-    const_cast<term_reader_t&>(entry.second).documents_ = &documents_; // update document mask
-  }
-}
-
-irs::index_reader::reader_iterator masking_store_reader::begin() const {
-  PTR_NAMED(single_reader_iterator_impl, itr, this);
-
-  return index_reader::reader_iterator(itr.release());
-}
-
-const irs::column_meta* masking_store_reader::column(
-    const irs::string_ref& name
-) const {
-  auto itr = columns_named_.find(name);
-
-  return itr == columns_named_.end() ? nullptr : itr->second.meta_.get();
-}
-
-irs::column_iterator::ptr masking_store_reader::columns() const {
-  auto ptr = irs::memory::make_unique<store_column_iterator<columns_named_t>>(columns_named_);
-
-  return irs::memory::make_managed<irs::column_iterator, true>(std::move(ptr));
-}
-
-const irs::columnstore_reader::column_reader* masking_store_reader::column_reader(
-    irs::field_id field
-) const {
-  auto itr = column_by_id_.find(field);
-
-  return itr == column_by_id_.end() ? nullptr : itr->second;
-}
-
-irs::sub_reader::docs_iterator_t::ptr masking_store_reader::docs_iterator() const {
-  auto ptr =
-    irs::memory::make_unique<irs::bitset_doc_iterator>(
-      *this,
-      irs::attribute_store::empty_instance(),
-      documents_,
-      irs::order::prepared::unordered()
-    );
-
-  return irs::sub_reader::docs_iterator_t::ptr(ptr.release());
-}
-
-irs::index_reader::reader_iterator masking_store_reader::end() const {
-  PTR_NAMED(single_reader_iterator_impl, itr);
-
-  return index_reader::reader_iterator(itr.release());
-}
-
-const irs::term_reader* masking_store_reader::field(
-    const irs::string_ref& field
-) const {
-  auto itr = fields_.find(field);
-
-  return itr == fields_.end() ? nullptr : &(itr->second);
-}
-
-irs::field_iterator::ptr masking_store_reader::fields() const {
-  auto ptr = irs::memory::make_unique<store_field_iterator<fields_t>>(fields_);
+  auto ptr = irs::memory::make_unique<store_field_iterator>(fields_);
 
   return irs::memory::make_managed<irs::field_iterator, true>(std::move(ptr));
 }
@@ -1150,11 +858,10 @@ class transaction_store::store_reader_helper {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill reader state only for the specified documents
   ////////////////////////////////////////////////////////////////////////////////
-  template<typename Reader>
   static size_t get_reader_state(
-      typename Reader::fields_t& fields,
-      typename Reader::columns_named_t& columns_named,
-      typename Reader::columns_unnamed_t& columns_unnamed,
+      typename store_reader_impl::fields_t& fields,
+      typename store_reader_impl::columns_named_t& columns_named,
+      typename store_reader_impl::columns_unnamed_t& columns_unnamed,
       const transaction_store& store,
       const bitvector& documents
   ) {
@@ -1167,7 +874,7 @@ class transaction_store::store_reader_helper {
 
     // copy over non-empty columns into an ordered map
     for (auto& columns_entry: store.columns_named_) {
-      typename Reader::document_entries_t entries;
+      typename store_reader_impl::document_entries_t entries;
 
       // copy over valid documents
       for (auto& entry: columns_entry.second.entries_) {
@@ -1190,7 +897,7 @@ class transaction_store::store_reader_helper {
 
     // copy over non-empty columns into an ordered map
     for (auto& columns_entry: store.columns_unnamed_) {
-      typename Reader::document_entries_t entries;
+      typename store_reader_impl::document_entries_t entries;
 
       // copy over valid documents
       for (auto& entry: columns_entry.second.entries_) {
@@ -1214,11 +921,11 @@ class transaction_store::store_reader_helper {
     // copy over non-empty fields into an ordered map
     for (auto& field_entry: store.fields_) {
       bitvector field_docs;
-      typename Reader::term_reader_t terms(field_entry.second.meta_);
+      typename store_reader_impl::term_reader_t terms(field_entry.second.meta_);
 
       // copy over non-empty terms into an ordered map
       for (auto& term_entry: field_entry.second.terms_) {
-        typename Reader::document_entries_t postings;
+        typename store_reader_impl::document_entries_t postings;
 
         // copy over valid postings
         for (auto& entry: term_entry.second.entries_) {
@@ -1353,24 +1060,25 @@ bool store_writer::commit() {
 
   // apply removals
   if (!modification_queries_.empty()) {
-    masking_store_reader::columns_named_t columns_named;
-    masking_store_reader::columns_unnamed_t columns_unnamed;
-    bitvector documents = used_doc_ids_; // all documents since some of them might be updates
-    masking_store_reader::fields_t fields;
+    bitvector candidate_documents = used_doc_ids_; // all documents since some of them might be updates
 
-    documents |= store_.visible_docs_;
-    transaction_store::store_reader_helper::get_reader_state<masking_store_reader>(
-      fields, columns_named, columns_unnamed, store_, documents
+    candidate_documents |= store_.visible_docs_; // all documents used by writer + all visible documents in store
+
+    store_reader_impl::columns_named_t columns_named;
+    store_reader_impl::columns_unnamed_t columns_unnamed;
+    bitvector documents = store_.visible_docs_; // all visible doc ids from store + all visible doc ids from writer up to the current update generation
+    store_reader_impl::fields_t fields;
+    auto generation = transaction_store::store_reader_helper::get_reader_state(
+      fields, columns_named, columns_unnamed, store_, candidate_documents
     );
-    documents.clear();
-    documents |= store_.visible_docs_; // all visible doc ids from store + all visible doc ids from writer up to the current update generation
-
     bitvector processed_documents; // all visible doc ids from writer up to the current update generation
-    masking_store_reader reader(
-      documents,
+    store_reader_impl reader(
+      store_,
+      std::move(candidate_documents),
       std::move(fields),
       std::move(columns_named),
-      std::move(columns_unnamed)
+      std::move(columns_unnamed),
+      generation
     );
 
     for (auto& entry: modification_queries_) {
@@ -1397,11 +1105,13 @@ bool store_writer::commit() {
       documents |= processed_documents; // include all visible documents from writer < entry.generation_
 
       while (itr->next()) {
-        // FIXME TODO mask documents here after a regular store_reader_impl instead of using masking_store_reader
         auto doc_id = itr->value(); // match was found
 
-        seen = true; // mark query as seen if at least one document matched
-        invalid_doc_ids.set(doc_id); // mark doc_id as no longer visible/used
+        // consider only documents visible up to this point in time
+        if (documents.test(doc_id)) {
+          seen = true; // mark query as seen if at least one document matched
+          invalid_doc_ids.set(doc_id); // mark doc_id as no longer visible/used
+        }
       }
 
       documents -= invalid_doc_ids; // clear no longer visible doc_ids from next generation pass
@@ -1782,7 +1492,7 @@ bool transaction_store::flush(index_writer& writer) {
   SCOPED_LOCK(commit_flush_mutex_); // obtain lock before obtaining reader
   REGISTER_TIMER_DETAILED();
 
-  transaction_store::store_reader_helper::get_reader_state<store_reader_impl>(
+  transaction_store::store_reader_helper::get_reader_state(
     fields, columns_named, columns_unnamed, *this, visible_docs_
   );
 
@@ -2077,7 +1787,7 @@ store_reader transaction_store::reader() const {
     async_utils::read_write_mutex::read_mutex mutex(mutex_);
     SCOPED_LOCK(mutex);
     documents = visible_docs_;
-    generation= transaction_store::store_reader_helper::get_reader_state<store_reader_impl>(
+    generation = transaction_store::store_reader_helper::get_reader_state(
        fields, columns_named, columns_unnamed, *this, documents
      );
   }
