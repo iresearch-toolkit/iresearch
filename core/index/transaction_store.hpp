@@ -540,7 +540,7 @@ class IRESEARCH_API store_writer final: private util::noncopyable {
 
  private:
   // a bstring implementation of data_output
-  class bstring_output final: public data_output {
+  class IRESEARCH_API bstring_output final: public data_output {
    public:
     bstring_output(bstring& buf): buf_(buf), pos_(0) {}
     bstring_output(bstring& buf, size_t pos): buf_(buf), pos_(pos) {}
