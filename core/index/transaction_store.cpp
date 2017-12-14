@@ -826,7 +826,7 @@ irs::sub_reader::docs_iterator_t::ptr store_reader_impl::docs_iterator() const {
       irs::order::prepared::unordered()
     );
 
-  return ptr;
+  return irs::sub_reader::docs_iterator_t::ptr(ptr.release());
 }
 
 irs::index_reader::reader_iterator store_reader_impl::end() const {
@@ -1118,7 +1118,7 @@ irs::sub_reader::docs_iterator_t::ptr masking_store_reader::docs_iterator() cons
       irs::order::prepared::unordered()
     );
 
-  return ptr;
+  return irs::sub_reader::docs_iterator_t::ptr(ptr.release());
 }
 
 irs::index_reader::reader_iterator masking_store_reader::end() const {
@@ -1299,7 +1299,7 @@ store_reader store_reader::reopen() const {
     SCOPED_LOCK(mutex);
 
     if (reader_impl.store_.generation_ == reader_impl.generation_) {
-      return impl; // reuse same reader since there were no changes in store
+      return store_reader(std::move(impl)); // reuse same reader since there were no changes in store
     }
   }
 
@@ -1316,6 +1316,9 @@ void store_writer::bstring_output::write_bytes(
 
 store_writer::store_writer(transaction_store& store) NOEXCEPT
   : next_doc_id_(type_limits<type_t::doc_id_t>::min()), store_(store) {
+  async_utils::read_write_mutex::write_mutex mutex(store_.mutex_);
+  SCOPED_LOCK(mutex);
+  const_cast<transaction_store::reusable_t&>(reusable_) = store.reusable_; // init under lock
 }
 
 store_writer::~store_writer() {
@@ -1338,6 +1341,7 @@ bool store_writer::commit() {
 
     // invalidate in 'store_.valid_doc_ids_' anything still in 'used_doc_ids_'
     store_.valid_doc_ids_ -= used_doc_ids_; // free reserved doc_ids
+    // cannot remove from 'store_.used_doc_ids_' because docs are still in postings
 
     // reset for next run
     modification_queries_.clear();
@@ -1393,6 +1397,7 @@ bool store_writer::commit() {
       documents |= processed_documents; // include all visible documents from writer < entry.generation_
 
       while (itr->next()) {
+        // FIXME TODO mask documents here after a regular store_reader_impl instead of using masking_store_reader
         auto doc_id = itr->value(); // match was found
 
         seen = true; // mark query as seen if at least one document matched
@@ -1413,11 +1418,15 @@ bool store_writer::commit() {
   async_utils::read_write_mutex::write_mutex mutex(store_.mutex_);
   SCOPED_LOCK(mutex); // modifying 'store_.visible_docs_'
 
+  if (!*reusable_) {
+    return false; // this writer should not commit since store has been cleared
+  }
+
   // ensure modification operations below are noexcept
   store_.visible_docs_.reserve(std::max(valid_doc_ids_.size(), invalid_doc_ids.size()));
   used_doc_ids_.reserve(std::max(valid_doc_ids_.size(), invalid_doc_ids.size()));
 
-  ++(store_.generation_); // // mark store state as modified
+  ++(store_.generation_); // mark store state as modified
   store_.visible_docs_ |= valid_doc_ids_; // commit doc_ids
   store_.visible_docs_ -= invalid_doc_ids; // commit removals
   used_doc_ids_ -= valid_doc_ids_; // exclude 'valid' from 'used' (so commited docs would remain valid when transaction is cleaned up)
@@ -1748,9 +1757,20 @@ transaction_store::transaction_store(size_t pool_size /*= DEFAULT_POOL_SIZE*/)
     column_meta_pool_(pool_size),
     field_meta_pool_(pool_size),
     generation_(0),
+    reusable_(memory::make_unique<bool>(true)),
     used_doc_ids_(type_limits<type_t::doc_id_t>::invalid() + 1),
     visible_docs_(type_limits<type_t::doc_id_t>::invalid() + 1) { // same size as used_doc_ids_
   used_doc_ids_.set(type_limits<type_t::doc_id_t>::invalid()); // mark as always in-use
+}
+
+void transaction_store::clear() {
+  async_utils::read_write_mutex::write_mutex mutex(mutex_);
+  SCOPED_LOCK(mutex);
+  auto reusable = memory::make_unique<bool>(true); // create marker for next generation
+
+  *reusable_ = false; // prevent existing writers from commiting into the store
+  reusable_ = std::move(reusable); // mark new generation
+  visible_docs_.clear(); // mark all documents are non-visible
 }
 
 bool transaction_store::flush(index_writer& writer) {
@@ -1790,6 +1810,8 @@ bool transaction_store::flush(index_writer& writer) {
   //...........................................................................
   // remove no longer used records from internal maps
   //...........................................................................
+
+  used_doc_ids_ &= valid_doc_ids_; // remove invalid ids from 'used'
 
   // remove unused records from named user columns
   for (auto itr = columns_named_.begin(), end = columns_named_.end(); itr != end;) {
@@ -2073,7 +2095,7 @@ store_reader transaction_store::reader() const {
     generation
   );
 
-  return reader;
+  return store_reader(std::move(reader));
 }
 
 NS_END // ROOT

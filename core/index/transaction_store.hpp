@@ -133,7 +133,7 @@ class IRESEARCH_API store_reader final
 class IRESEARCH_API transaction_store: private util::noncopyable {
  public:
   // 'make(...)' method wrapper for irs::bstring for use with object pools
-  struct bstring_builder {
+  struct IRESEARCH_API bstring_builder {
     typedef std::shared_ptr<irs::bstring> ptr;
     DECLARE_FACTORY_DEFAULT();
   };
@@ -164,6 +164,12 @@ class IRESEARCH_API transaction_store: private util::noncopyable {
   };
 
   transaction_store(size_t pool_size = DEFAULT_POOL_SIZE);
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// @brief remove all unused entries in internal data structures
+  /// @note  in-progress transactions will not be able to commit succesfully
+  ////////////////////////////////////////////////////////////////////////////
+  void clear();
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief export all completed transactions into the specified writer
@@ -262,6 +268,7 @@ class IRESEARCH_API transaction_store: private util::noncopyable {
 
   typedef ref_t<column_named_t> column_ref_t;
   typedef ref_t<terms_t> field_ref_t;
+  typedef std::shared_ptr<bool> reusable_t;
 
   static const size_t DEFAULT_POOL_SIZE = 128; // arbitrary value
   bstring_pool_t bstring_pool_;
@@ -273,6 +280,7 @@ class IRESEARCH_API transaction_store: private util::noncopyable {
   size_t generation_; // current commit generation
   std::mutex commit_flush_mutex_; // prevent concurent commits and flushes to ensure obtained reader matches internal state
   mutable async_utils::read_write_mutex mutex_; // mutex for 'columns_', 'fields_', 'generation_', 'visible_docs_'
+  reusable_t reusable_;
   bitvector used_column_ids_; // true == column id is in use by some column
 
   // doc_id states: used -> valid -> visible
@@ -567,6 +575,7 @@ class IRESEARCH_API store_writer final: private util::noncopyable {
 
   modification_requests_t modification_queries_; // sequential list of modification requests (remove/update)
   doc_id_t next_doc_id_; // next potential minimal doc_id, also the current modification/update generation, i.e. removals applied to all doc_ids < generation
+  const transaction_store::reusable_t reusable_; // marker to allow commit into store
   transaction_store& store_;
   bitvector used_doc_ids_; // true == doc_id allocated to this writer, false == doc_id not allocated to this writer
   bitvector valid_doc_ids_; // true == commit pending, false == do not commit
