@@ -25,28 +25,22 @@
 
 #include "text_format.hpp"
 
+NS_LOCAL
+
+static const irs::text_format::type_id CSV("csv");
+static const irs::text_format::type_id JSON("json");
+static const irs::text_format::type_id TEXT("text");
+static const irs::text_format::type_id XML("xml");
+
+NS_END // NS_LOCAL
+
 NS_ROOT
 NS_BEGIN(text_format)
 
-const type_id& csv_t() {
-  static const type_id format("csv");
-  return format;
-}
-
-const type_id& json_t() {
-  static const type_id format("json");
-  return format;
-}
-
-const type_id& text_t() {
-  static const type_id format("text");
-  return format;
-}
-
-const type_id& xml_t() {
-  static const type_id format("xml");
-  return format;
-}
+const type_id& csv_t() { return CSV; }
+const type_id& json_t() { return JSON; }
+const type_id& text_t() { return TEXT; }
+const type_id& xml_t() { return XML; }
 
 NS_END // text_format
 NS_END // ROOT
