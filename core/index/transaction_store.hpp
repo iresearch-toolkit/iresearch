@@ -197,16 +197,27 @@ class IRESEARCH_API transaction_store: private util::noncopyable {
     ref_t(): value_(nullptr) {}
     ref_t(T& value): value_(&value) { ++(value.refs_); }
     ~ref_t() { if (value_) { --(value_->refs_); } }
-    ref_t(ref_t&& other) NOEXCEPT { *this = std::move(other); }
-    ref_t(const ref_t& other): value_(other.value_) {
-      if (value_) {
-        ++(value_->refs_);
+    ref_t(ref_t&& other) NOEXCEPT: value_(nullptr) { *this = std::move(other); }
+    ref_t(const ref_t& other) NOEXCEPT: value_(nullptr) { *this = other; }
+    ref_t& operator=(const ref_t& other) {
+      if (this != &other) {
+        if (value_) {
+          --(value_->refs_);
+        }
+
+        value_ = other.value_;
+
+        if (value_) {
+          ++(value_->refs_);
+        }
       }
+
+      return *this;
     }
     ref_t& operator=(ref_t&& other) {
       if (this != &other) {
         if (value_) {
-          ++(value_->refs_);
+          --(value_->refs_);
         }
 
         value_ = other.value_;

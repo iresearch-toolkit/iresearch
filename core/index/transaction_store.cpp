@@ -90,17 +90,15 @@ struct empty_seek_term_iterator: public irs::seek_term_iterator {
   }
 
   virtual void read() override { }
-  virtual bool seek(const irs::bytes_ref& value) override { return false; }
+  virtual bool seek(const irs::bytes_ref&) override { return false; }
 
-  virtual bool seek(
-      const irs::bytes_ref& term, const seek_cookie& cookie
-  ) override {
+  virtual bool seek(const irs::bytes_ref&, const seek_cookie&) override {
     return false;
   }
 
   virtual seek_cookie::ptr cookie() const { return nullptr; }
 
-  virtual irs::SeekResult seek_ge(const irs::bytes_ref& value) {
+  virtual irs::SeekResult seek_ge(const irs::bytes_ref&) {
     return irs::SeekResult::END;
   }
 
@@ -1676,7 +1674,7 @@ field_id transaction_store::get_column_id() {
 
     // optimization to skip over words with all bits set
     start = *(used_column_ids_.begin() + bitset::word(start)) == bitset::word_t(-1)
-      ? bitset::bit_offset(bitset::word(start) + 1) // set to first bit of next word
+      ? field_id(bitset::bit_offset(bitset::word(start) + 1)) // set to first bit of next word (will not overflow due toc heck above)
       : (start + 1)
       ;
   }
