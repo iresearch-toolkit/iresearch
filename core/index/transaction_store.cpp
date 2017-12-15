@@ -274,7 +274,7 @@ class store_column_iterator final: public irs::column_iterator {
   }
 
  private:
-  typename store_reader_impl::columns_named_t::const_iterator itr_;
+  store_reader_impl::columns_named_t::const_iterator itr_;
   const store_reader_impl::columns_named_t& map_;
   const irs::column_meta* value_;
 };
@@ -558,7 +558,7 @@ class store_field_iterator final: public irs::field_iterator {
   }
 
  private:
-  typename store_reader_impl::fields_t::const_iterator itr_;
+  store_reader_impl::fields_t::const_iterator itr_;
   const store_reader_impl::fields_t& map_;
   const irs::term_reader* value_;
 };
@@ -859,9 +859,9 @@ class transaction_store::store_reader_helper {
   /// @brief fill reader state only for the specified documents
   ////////////////////////////////////////////////////////////////////////////////
   static size_t get_reader_state(
-      typename store_reader_impl::fields_t& fields,
-      typename store_reader_impl::columns_named_t& columns_named,
-      typename store_reader_impl::columns_unnamed_t& columns_unnamed,
+      store_reader_impl::fields_t& fields,
+      store_reader_impl::columns_named_t& columns_named,
+      store_reader_impl::columns_unnamed_t& columns_unnamed,
       const transaction_store& store,
       const bitvector& documents
   ) {
@@ -874,7 +874,7 @@ class transaction_store::store_reader_helper {
 
     // copy over non-empty columns into an ordered map
     for (auto& columns_entry: store.columns_named_) {
-      typename store_reader_impl::document_entries_t entries;
+      store_reader_impl::document_entries_t entries;
 
       // copy over valid documents
       for (auto& entry: columns_entry.second.entries_) {
@@ -897,7 +897,7 @@ class transaction_store::store_reader_helper {
 
     // copy over non-empty columns into an ordered map
     for (auto& columns_entry: store.columns_unnamed_) {
-      typename store_reader_impl::document_entries_t entries;
+      store_reader_impl::document_entries_t entries;
 
       // copy over valid documents
       for (auto& entry: columns_entry.second.entries_) {
@@ -921,11 +921,11 @@ class transaction_store::store_reader_helper {
     // copy over non-empty fields into an ordered map
     for (auto& field_entry: store.fields_) {
       bitvector field_docs;
-      typename store_reader_impl::term_reader_t terms(field_entry.second.meta_);
+      store_reader_impl::term_reader_t terms(field_entry.second.meta_);
 
       // copy over non-empty terms into an ordered map
       for (auto& term_entry: field_entry.second.terms_) {
-        typename store_reader_impl::document_entries_t postings;
+        store_reader_impl::document_entries_t postings;
 
         // copy over valid postings
         for (auto& entry: term_entry.second.entries_) {
