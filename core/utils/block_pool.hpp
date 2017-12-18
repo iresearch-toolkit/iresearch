@@ -680,7 +680,7 @@ class block_pool_sliced_inserter : public std::iterator < std::output_iterator_t
 
   // MSVC 2017.3 and 2017.4 incorectly count offsets if this function is inlined during optimization
   // MSVC 2017.2 and below work correctly for both debug and release
-  MSVC2017_OPTIMIZED_ONLY(__declspec(noinline))
+  MSVC2017_OPTIMIZED_WORKAROUND(__declspec(noinline))
   void write(const_pointer b, size_t len) {
     // find end of the slice
     for (; 0 == *where_ && len; --len, ++where_, ++b) {
