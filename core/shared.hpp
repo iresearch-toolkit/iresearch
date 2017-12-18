@@ -92,6 +92,17 @@
 #define MOVE_WORKAROUND_MSVC2013(x) x
 #endif
 
+// hook for MSVC2017.3 and MSVC2017.4 optimized code
+// these versions produce incorrect code when inlining optimizations are enabled
+#if defined(_MSC_VER) \
+    && !defined(_DEBUG) \
+    && (((_MSC_FULL_VER >= 191125506) && (_MSC_FULL_VER <= 191125508)) \
+        || ((_MSC_FULL_VER >= 191125542) && (_MSC_FULL_VER <= 191125547)))
+  #define MSVC2017_OPTIMIZED_ONLY(...) __VA_ARGS__
+#else
+  #define MSVC2017_OPTIMIZED_ONLY(...)
+#endif
+
 // hook for MSVC-only code
 #if defined(_MSC_VER)
   #define MSVC_ONLY(...) __VA_ARGS__
