@@ -47,7 +47,6 @@
 #if _MSC_VER < 1900 // prior the vc14    
   #define CONSTEXPR
   #define NOEXCEPT throw()
-  #define MOVE_WORKAROUND_MSVC2013(x) std::move(x)
 #else
   #define CONSTEXPR constexpr
   #define NOEXCEPT noexcept 
@@ -84,11 +83,13 @@
 // MSVC2013 doesn't support c++11 in a proper way
 // sometimes it can't choose move constructor for
 // move-only types while returning a value.
-// The following macro tries to avoid potentiol
+// The following macro tries to avoid potential
 // performance problems on other compilers since
 // 'return std::move(x)' prevents such compiler
 // optimizations like 'copy elision'
-#ifndef MSVC2013_MOVE_WORKAROUND
+#if defined(_MSC_VER) && _MSC_VER < 1900
+  #define MSVC2013_MOVE_WORKAROUND(x) std::move(x)
+#else
   #define MSVC2013_MOVE_WORKAROUND(x) x
 #endif
 
