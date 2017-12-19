@@ -126,8 +126,15 @@ TEST_F(object_pool_tests, bounded_sobject_pool) {
 
     {
       SCOPED_LOCK_NAMED(mutex, lock);
-      std::thread thread([&cond, &mutex, &pool]()->void{ auto obj = pool.emplace(2); SCOPED_LOCK(mutex); cond.notify_all(); });
-      ASSERT_EQ(std::cv_status::timeout, cond.wait_for(lock, std::chrono::milliseconds(1000))); // assume thread blocks in 1000ms
+      std::atomic<bool> emplace(false);
+      std::thread thread([&cond, &mutex, &pool, &emplace]()->void{ auto obj = pool.emplace(2); emplace = true; SCOPED_LOCK(mutex); cond.notify_all(); });
+
+      auto result = cond.wait_for(lock, std::chrono::milliseconds(1000)); // assume thread blocks in 1000ms
+
+      // MSVC 2017.3 and 2017.4 optimized code seems to sporadically notify condition variables without explicit request
+      MSVC2017_OPTIMIZED_WORKAROUND(while(!emplace && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
+
+      ASSERT_EQ(std::cv_status::timeout, result);
       // ^^^ expecting timeout because pool should block indefinitely
       obj.reset();
       lock.unlock();
@@ -209,8 +216,15 @@ TEST_F(object_pool_tests, bounded_uobject_pool) {
 
     {
       SCOPED_LOCK_NAMED(mutex, lock);
-      std::thread thread([&cond, &mutex, &pool]()->void{ auto obj = pool.emplace(2); SCOPED_LOCK(mutex); cond.notify_all(); });
-      ASSERT_EQ(std::cv_status::timeout, cond.wait_for(lock, std::chrono::milliseconds(1000))); // assume thread blocks in 1000ms
+      std::atomic<bool> emplace(false);
+      std::thread thread([&cond, &mutex, &pool, &emplace]()->void{ auto obj = pool.emplace(2); emplace = true; SCOPED_LOCK(mutex); cond.notify_all(); });
+
+      auto result = cond.wait_for(lock, std::chrono::milliseconds(1000)); // assume thread blocks in 1000ms
+
+      // MSVC 2017.3 and 2017.4 optimized code seems to sporadically notify condition variables without explicit request
+      MSVC2017_OPTIMIZED_WORKAROUND(while(!emplace && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
+
+      ASSERT_EQ(std::cv_status::timeout, result);
       // ^^^ expecting timeout because pool should block indefinitely
       obj.reset();
       obj.reset();
