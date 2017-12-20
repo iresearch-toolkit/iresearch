@@ -599,8 +599,9 @@ TEST_F(async_utils_tests, test_thread_pool_stop_mt) {
 
     auto result = cond.wait_for(lock2, std::chrono::milliseconds(1000)); // assume thread blocks in 1000ms
 
-    // MSVC 2017.3 and 2017.4 optimized code seems to sporadically notify condition variables without explicit request
-    MSVC2017_OPTIMIZED_WORKAROUND(while(!stop && result == std::cv_status::no_timeout) result = cond2.wait_for(lock2, std::chrono::milliseconds(1000)));
+    // MSVC 2015/2017 optimized code seems to sporadically notify condition variables without explicit request
+    MSVC2015_OPTIMIZED_ONLY(while(!stop && result == std::cv_status::no_timeout) result = cond2.wait_for(lock2, std::chrono::milliseconds(1000)));
+    MSVC2017_OPTIMIZED_ONLY(while(!stop && result == std::cv_status::no_timeout) result = cond2.wait_for(lock2, std::chrono::milliseconds(1000)));
 
     ASSERT_EQ(std::cv_status::timeout, result);
     // ^^^ expecting timeout because pool should block indefinitely

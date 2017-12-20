@@ -95,13 +95,14 @@
 
 // hook for MSVC2017.3 and MSVC2017.4 optimized code
 // these versions produce incorrect code when inlining optimizations are enabled
+// for versions @see https://github.com/lordmulder/MUtilities/blob/master/include/MUtils/Version.h
 #if defined(_MSC_VER) \
     && !defined(_DEBUG) \
     && (((_MSC_FULL_VER >= 191125506) && (_MSC_FULL_VER <= 191125508)) \
         || ((_MSC_FULL_VER >= 191125542) && (_MSC_FULL_VER <= 191125547)))
-  #define MSVC2017_OPTIMIZED_WORKAROUND(...) __VA_ARGS__
+  #define MSVC2017_34_OPTIMIZED_WORKAROUND(...) __VA_ARGS__
 #else
-  #define MSVC2017_OPTIMIZED_WORKAROUND(...)
+  #define MSVC2017_34_OPTIMIZED_WORKAROUND(...)
 #endif
 
 // hook for MSVC-only code
@@ -109,6 +110,21 @@
   #define MSVC_ONLY(...) __VA_ARGS__
 #else
   #define MSVC_ONLY(...)
+#endif
+
+// hook for MSVC2015 optimized-only code
+#if defined(_MSC_VER) && !defined(_DEBUG) && _MSC_VER == 1900
+  #define MSVC2015_OPTIMIZED_ONLY(...) __VA_ARGS__
+#else
+  #define MSVC2015_OPTIMIZED_ONLY(...)
+#endif
+
+// hook for MSVC2017 optimized-only code (2017.2 || 2017.3/2017.4 || 2017.5)
+#if defined(_MSC_VER) && !defined(_DEBUG) \
+    && (_MSC_VER == 1910 || _MSC_VER == 1911 || _MSC_VER == 1912)
+  #define MSVC2017_OPTIMIZED_ONLY(...) __VA_ARGS__
+#else
+  #define MSVC2017_OPTIMIZED_ONLY(...)
 #endif
 
 // hook for GCC-only code
