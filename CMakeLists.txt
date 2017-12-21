@@ -50,6 +50,11 @@ if (NOT MSVC AND (CMAKE_BUILD_TYPE STREQUAL "Coverage"))
   set(GCOV_LIBRARY gcov)
 endif()
 
+# set sanitizers
+if (NOT MSVC)
+  find_package(Sanitizers)
+endif()
+
 #find BFD
 find_package(BFD
   #OPTIONAL
