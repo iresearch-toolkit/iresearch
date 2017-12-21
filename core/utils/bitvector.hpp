@@ -285,7 +285,9 @@ class bitvector final {
       set_ = std::move(set);
     }
 
-    size_ = bits_required<word_t>() - math::math_traits<word_t>::clz(*(begin() + set_.words() - 1));
+    size_ = (set_.words() * bits_required<word_t>())
+          - math::math_traits<word_t>::clz(*(begin() + set_.words() - 1))
+          ;
   }
 
   void set(size_t i) { reset(i, true); }

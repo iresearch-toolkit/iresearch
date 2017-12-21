@@ -2631,6 +2631,40 @@ TEST(bitvector_tests, shrink_to_fit) {
     ASSERT_EQ(prev_data, bv.data());
   }
 
+  // shrink none (only size for non-first word)
+  {
+    irs::bitvector bv;
+    bv.set(irs::bits_required<irs::bitset::word_t>() + 2);
+    bv.set(irs::bits_required<irs::bitset::word_t>() * 2 - 1);
+    ASSERT_NE(nullptr, bv.data());
+    ASSERT_EQ(irs::bits_required<irs::bitset::word_t>() * 2, bv.size());
+    ASSERT_EQ(irs::bits_required<irs::bitset::word_t>() * 2, bv.capacity());
+    ASSERT_EQ(2, bv.count());
+    ASSERT_FALSE(bv.none());
+    ASSERT_TRUE(bv.any());
+    ASSERT_FALSE(bv.all());
+    auto* prev_data = bv.data();
+
+    bv.unset(irs::bits_required<irs::bitset::word_t>() * 2 - 1);
+    ASSERT_EQ(irs::bits_required<irs::bitset::word_t>() * 2, bv.size());
+    ASSERT_EQ(irs::bits_required<irs::bitset::word_t>() * 2, bv.capacity());
+    ASSERT_EQ(1, bv.count());
+    ASSERT_FALSE(bv.none());
+    ASSERT_TRUE(bv.any());
+    ASSERT_FALSE(bv.all());
+    ASSERT_EQ(prev_data, bv.data());
+
+    bv.shrink_to_fit();
+    ASSERT_NE(nullptr, bv.data());
+    ASSERT_EQ(irs::bits_required<irs::bitset::word_t>() + 3, bv.size());
+    ASSERT_EQ(irs::bits_required<irs::bitset::word_t>() * 2, bv.capacity());
+    ASSERT_EQ(1, bv.count());
+    ASSERT_FALSE(bv.none());
+    ASSERT_TRUE(bv.any());
+    ASSERT_FALSE(bv.all());
+    ASSERT_EQ(prev_data, bv.data());
+  }
+
   // shrink none (noop)
   {
     irs::bitvector bv;
