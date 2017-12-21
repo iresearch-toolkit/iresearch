@@ -111,7 +111,7 @@ namespace tests {
         auto locale = boost::locale::generator().generate("en");
         const std::string tmp_str;
 
-        iresearch::analysis::analyzers::get("text", "en"); // stream needed only to load stopwords
+        irs::analysis::analyzers::get("text", irs::text_format::text, "en"); // stream needed only to load stopwords
 
         if (czOldStopwordPath) {
           iresearch::setenv(text_stopword_path_var, sOldStopwordPath.c_str(), true);
@@ -130,7 +130,7 @@ namespace tests {
    public:
     analyzed_string_field(const iresearch::string_ref& name, const iresearch::string_ref& value)
       : templates::string_field(name, value),
-        token_stream_(ir::analysis::analyzers::get("text", "en")) {
+        token_stream_(irs::analysis::analyzers::get("text", irs::text_format::text, "en")) {
       if (!token_stream_) {
         throw std::runtime_error("Failed to get 'text' analyzer for args: en");
       }

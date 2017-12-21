@@ -246,7 +246,7 @@ class text_field : public tests::field_base {
  public:
   text_field(
       const irs::string_ref& name, bool payload = false
-  ): token_stream_(irs::analysis::analyzers::get("text", "{\"locale\":\"C\", \"ignored_words\":[]}")) {
+  ): token_stream_(irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"C\", \"ignored_words\":[]}")) {
     if (payload) {
       if (!token_stream_->reset(value_)) {
          throw irs::illegal_state();
@@ -258,7 +258,7 @@ class text_field : public tests::field_base {
 
   text_field(
       const irs::string_ref& name, const T& value, bool payload = false
-  ): token_stream_(irs::analysis::analyzers::get("text", "{\"locale\":\"C\", \"ignored_words\":[]}")),
+  ): token_stream_(irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"C\", \"ignored_words\":[]}")),
      value_(value) {
     if (payload) {
       if (!token_stream_->reset(value_)) {
