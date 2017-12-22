@@ -24,16 +24,6 @@
 #ifndef IRESEARCH_INDEX_TESTS_H
 #define IRESEARCH_INDEX_TESTS_H
 
-#if defined(_MSC_VER)
-  #pragma warning(disable: 4229)
-#endif
-
-  #include <unicode/uclean.h> // for u_cleanup
-
-#if defined(_MSC_VER)
-  #pragma warning(default: 4229)
-#endif
-
 #include "tests_shared.hpp"
 #include "assert_format.hpp"
 #include "analysis/analyzers.hpp"
@@ -164,8 +154,6 @@ class index_test_base : public virtual test_base {
   virtual void TearDown() {
     test_base::TearDown();
     iresearch::timer_utils::init_stats(); // disable profile state tracking
-
-    u_cleanup(); // release/free all memory used by ICU
   }
 
   void write_segment(
