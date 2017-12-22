@@ -708,17 +708,17 @@ class index_test_case_base : public tests::index_test_base {
       virtual void init() {
         clear();
         reserve(2);
-        insert(std::make_shared<tests::templates::string_ref_field>("id"));
-        insert(std::make_shared<tests::templates::string_ref_field>("label"));
+        insert(std::make_shared<tests::templates::string_field>("id"));
+        insert(std::make_shared<tests::templates::string_field>("label"));
       }
 
       virtual void value(size_t idx, const irs::string_ref& value) {
         switch(idx) {
          case 0:
-          indexed.get<tests::templates::string_ref_field>("id")->value(value);
+          indexed.get<tests::templates::string_field>("id")->value(value);
           break;
          case 1:
-          indexed.get<tests::templates::string_ref_field>("label")->value(value);
+          indexed.get<tests::templates::string_field>("label")->value(value);
         }
       }
     };
