@@ -346,7 +346,7 @@ matrix:
     # Debug build, static library
     ############################################################################
     - os: linux
-      dist: trusty
+      dist: trusty # gcc7 is not available in `precise`
       addons:
         apt:
           sources:
@@ -365,6 +365,7 @@ matrix:
     # Release build, static library
     ############################################################################
     - os: linux
+      dist: trusty # gcc7 is not available in `precise`
       addons:
         apt:
           sources:
@@ -383,6 +384,7 @@ matrix:
     # Debug build, shared library
     ############################################################################
     - os: linux
+      dist: trusty # gcc7 is not available in `precise`
       addons:
         apt:
           sources:
@@ -401,6 +403,7 @@ matrix:
     # Release build, shared library
     ############################################################################
     - os: linux
+      dist: trusty # gcc7 is not available in `precise`
       addons:
         apt:
           sources:
