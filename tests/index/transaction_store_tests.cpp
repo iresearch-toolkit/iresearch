@@ -105,21 +105,21 @@ class transaction_store_tests: public test_base {
       size_t batch_size,
       bool skip_docs_count_check = false // sued by profile_bulk_index_dedicated_flush(...)
   ) {
-    struct csv_doc_template_t: public tests::delim_doc_generator::doc_template {
+    struct csv_doc_template_t: public tests::csv_doc_generator::doc_template {
       virtual void init() {
         clear();
         reserve(2);
-        insert(std::make_shared<tests::templates::string_field>("id"));
-        insert(std::make_shared<tests::templates::string_field>("label"));
+        insert(std::make_shared<tests::templates::string_ref_field>("id"));
+        insert(std::make_shared<tests::templates::string_ref_field>("label"));
       }
 
-      virtual void value(size_t idx, const std::string& value) {
+      virtual void value(size_t idx, const irs::string_ref& value) {
         switch(idx) {
          case 0:
-          indexed.get<tests::templates::string_field>("id")->value(value);
+          indexed.get<tests::templates::string_ref_field>("id")->value(value);
           break;
          case 1:
-          indexed.get<tests::templates::string_field>("label")->value(value);
+          indexed.get<tests::templates::string_ref_field>("label")->value(value);
         }
       }
     };
@@ -149,7 +149,12 @@ class transaction_store_tests: public test_base {
 
           irs::store_writer writer(store);
           csv_doc_template_t csv_doc_template;
-          tests::delim_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template, ',');
+          auto csv_doc_inserter = [&csv_doc_template](irs::store_writer::document& doc)->bool {
+            doc.insert(irs::action::index, csv_doc_template.indexed.begin(), csv_doc_template.indexed.end());
+            doc.insert(irs::action::store, csv_doc_template.stored.begin(), csv_doc_template.stored.end());
+            return false;
+          };
+          tests::csv_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template);
           size_t gen_skip = i;
 
           for(size_t count = 0;; ++count) {
@@ -177,11 +182,7 @@ class transaction_store_tests: public test_base {
 
             {
               REGISTER_TIMER_NAMED_DETAILED("load");
-              ASSERT_TRUE(writer.insert([&csv_doc_template](irs::store_writer::document& doc)->bool {
-                doc.insert(irs::action::index, csv_doc_template.indexed.begin(), csv_doc_template.indexed.end());
-                doc.insert(irs::action::store, csv_doc_template.stored.begin(), csv_doc_template.stored.end());
-                return false;
-              }));
+              ASSERT_TRUE(writer.insert(csv_doc_inserter));
             }
 
             if (count >= writer_batch_size) {
@@ -226,7 +227,7 @@ class transaction_store_tests: public test_base {
 
           irs::store_writer writer(store);
           csv_doc_template_t csv_doc_template;
-          tests::delim_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template, ',');
+          tests::csv_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template);
           size_t doc_skip = update_skip;
           size_t gen_skip = i;
 
@@ -375,12 +376,12 @@ class transaction_store_tests: public test_base {
       dir_writer->commit();
     }
 
-    struct dummy_doc_template_t: public tests::delim_doc_generator::doc_template {
+    struct dummy_doc_template_t: public tests::csv_doc_generator::doc_template {
       virtual void init() {}
-      virtual void value(size_t idx, const std::string& value) {};
+      virtual void value(size_t idx, const irs::string_ref& value) {};
     };
     dummy_doc_template_t dummy_doc_template;
-    tests::delim_doc_generator gen(resource("simple_two_column.csv"), dummy_doc_template, ',');
+    tests::csv_doc_generator gen(resource("simple_two_column.csv"), dummy_doc_template);
     size_t docs_count = 0;
 
     // determine total number of docs in source data
@@ -1053,30 +1054,28 @@ TEST_F(transaction_store_tests, read_write_doc_attributes) {
 }
 
 TEST_F(transaction_store_tests, read_write_doc_attributes_big) {
-  struct csv_doc_template_t: public tests::delim_doc_generator::doc_template {
+  struct csv_doc_template_t: public tests::csv_doc_generator::doc_template {
     virtual void init() {
       clear();
       reserve(2);
-      insert(std::make_shared<tests::templates::string_field>("id"));
-      insert(std::make_shared<tests::templates::string_field>("label"));
+      insert(std::make_shared<tests::templates::string_ref_field>("id"));
+      insert(std::make_shared<tests::templates::string_ref_field>("label"));
     }
 
-    virtual void value(size_t idx, const std::string& value) {
+    virtual void value(size_t idx, const irs::string_ref& value) {
       switch(idx) {
        case 0:
-        indexed.get<tests::templates::string_field>("id")->value(value);
+        indexed.get<tests::templates::string_ref_field>("id")->value(value);
         break;
        case 1:
-        indexed.get<tests::templates::string_field>("label")->value(value);
+        indexed.get<tests::templates::string_ref_field>("label")->value(value);
       }
     }
   };
 
   irs::transaction_store store;
   csv_doc_template_t csv_doc_template;
-  tests::delim_doc_generator gen(
-    resource("simple_two_column.csv"), csv_doc_template, ','
-  );
+  tests::csv_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template);
   size_t docs_count = 0;
 
   // write attributes
@@ -2592,21 +2591,21 @@ TEST_F(transaction_store_tests, concurrent_read_single_column_smoke_mt) {
 }
 
 TEST_F(transaction_store_tests, concurrent_read_multiple_columns_mt) {
-  struct csv_doc_template_t: public tests::delim_doc_generator::doc_template {
+  struct csv_doc_template_t: public tests::csv_doc_generator::doc_template {
     virtual void init() {
       clear();
       reserve(2);
-      insert(std::make_shared<tests::templates::string_field>("id"));
-      insert(std::make_shared<tests::templates::string_field>("label"));
+      insert(std::make_shared<tests::templates::string_ref_field>("id"));
+      insert(std::make_shared<tests::templates::string_ref_field>("label"));
     }
 
-    virtual void value(size_t idx, const std::string& value) {
+    virtual void value(size_t idx, const irs::string_ref& value) {
       switch(idx) {
        case 0:
-        indexed.get<tests::templates::string_field>("id")->value(value);
+        indexed.get<tests::templates::string_ref_field>("id")->value(value);
         break;
        case 1:
-        indexed.get<tests::templates::string_field>("label")->value(value);
+        indexed.get<tests::templates::string_ref_field>("label")->value(value);
       }
     }
   };
@@ -2616,9 +2615,7 @@ TEST_F(transaction_store_tests, concurrent_read_multiple_columns_mt) {
   // write columns
   {
     csv_doc_template_t csv_doc_template;
-    tests::delim_doc_generator gen(
-          resource("simple_two_column.csv"), csv_doc_template, ','
-    );
+    tests::csv_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template);
     irs::store_writer writer(store);
     const tests::document* src;
 
@@ -2647,7 +2644,7 @@ TEST_F(transaction_store_tests, concurrent_read_multiple_columns_mt) {
 
       irs::doc_id_t expected_id = 0;
       csv_doc_template_t csv_doc_template;
-      tests::delim_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template, ',');
+      tests::csv_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template);
       auto visitor = [&gen, &column_name, &expected_id](irs::doc_id_t id, const irs::bytes_ref& actual_value) {
         if (id != ++expected_id) {
           return false;
@@ -2689,7 +2686,7 @@ TEST_F(transaction_store_tests, concurrent_read_multiple_columns_mt) {
 
       irs::doc_id_t expected_id = 0;
       csv_doc_template_t csv_doc_template;
-      tests::delim_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template, ',');
+      tests::csv_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template);
       const tests::document* doc = nullptr;
 
       auto column = segment.column_reader(meta->id);
@@ -2741,7 +2738,7 @@ TEST_F(transaction_store_tests, concurrent_read_multiple_columns_mt) {
 
       irs::doc_id_t expected_id = 0;
       csv_doc_template_t csv_doc_template;
-      tests::delim_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template, ',');
+      tests::csv_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template);
       const tests::document* doc = nullptr;
 
       auto column = segment.column_reader(meta->id);

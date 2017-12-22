@@ -326,6 +326,35 @@ class string_field : public tests::field_base {
 }; // string_field
 
 //////////////////////////////////////////////////////////////////////////////
+/// @class string_ref field
+/// @brief field which uses simple analyzer without tokenization
+//////////////////////////////////////////////////////////////////////////////
+class string_ref_field : public tests::field_base {
+ public:
+  string_ref_field(
+    const irs::string_ref& name,
+    const irs::flags& extra_features = irs::flags::empty_instance()
+  );
+  string_ref_field(
+    const irs::string_ref& name,
+    const irs::string_ref& value,
+    const irs::flags& extra_features = irs::flags::empty_instance()
+  );
+
+  void value(const irs::string_ref& str);
+  irs::string_ref value() const { return value_; }
+
+  virtual const irs::flags& features() const override;
+  virtual irs::token_stream& get_tokens() const override;
+  virtual bool write(irs::data_output& out) const override;
+
+ private:
+  irs::flags features_;
+  mutable irs::string_token_stream stream_;
+  irs::string_ref value_;
+}; // string_field
+
+//////////////////////////////////////////////////////////////////////////////
 /// @class europarl_doc_template
 /// @brief document template for europarl.subset.text
 //////////////////////////////////////////////////////////////////////////////

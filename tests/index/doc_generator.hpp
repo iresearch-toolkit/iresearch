@@ -334,6 +334,26 @@ class delim_doc_generator : public doc_generator_base {
   uint32_t delim_;
 }; // delim_doc_generator
 
+// Generates documents from a CSV file
+class csv_doc_generator: public doc_generator_base {
+ public:
+  struct doc_template: document {
+    virtual void init() = 0;
+    virtual void value(size_t idx, const irs::string_ref& value) = 0;
+    virtual void end() {}
+    virtual void reset() {}
+  }; // doc_template
+
+  csv_doc_generator(const irs::utf8_path& file, doc_template& doc);
+  virtual const tests::document* next() override;
+  virtual void reset() override;
+
+ private:
+  doc_template& doc_;
+  std::ifstream ifs_;
+  std::string line_;
+};
+
 /* Generates documents from json file based on type of JSON value */
 class json_doc_generator: public doc_generator_base {
  public:

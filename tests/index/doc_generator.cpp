@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "doc_generator.hpp"
+#include "analysis/analyzers.hpp"
 #include "index/field_data.hpp"
 #include "utils/block_pool.hpp"
 #include "analysis/token_streams.hpp"
@@ -309,6 +310,50 @@ void delim_doc_generator::reset() {
   ifs_.clear();
   ifs_.seekg(ifs_.beg);
   doc_->reset();
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                  csv_doc_generator implementation
+// -----------------------------------------------------------------------------
+
+csv_doc_generator::csv_doc_generator(
+    const irs::utf8_path& file, doc_template& doc
+): ifs_(file.native(), std::ifstream::in | std::ifstream::binary),
+   doc_(doc) {
+  doc_.init();
+  doc_.reset();
+}
+
+const tests::document* csv_doc_generator::next() {
+  if (!getline(ifs_, line_)) {
+    return nullptr;
+  }
+
+  static const irs::string_ref type("delimited");
+  static const irs::string_ref delim(",");
+  auto stream = irs::analysis::analyzers::get(type, irs::text_format::text, delim);
+
+  if (!stream) {
+    return nullptr;
+  }
+
+  auto& term = stream->attributes().get<irs::term_attribute>();
+
+  if (!term || !stream->reset(line_)) {
+    return nullptr;
+  }
+
+  for (size_t i = 0; stream->next(); ++i) {
+    doc_.value(i, irs::ref_cast<char>(term->value()));
+  }
+
+  return &doc_;
+}
+
+void csv_doc_generator::reset() {
+  ifs_.clear();
+  ifs_.seekg(ifs_.beg);
+  doc_.reset();
 }
 
 //////////////////////////////////////////////////////////////////////////////
