@@ -167,15 +167,21 @@ class IRESEARCH_API transaction_store: private util::noncopyable {
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief remove all unused entries in internal data structures
+  ////////////////////////////////////////////////////////////////////////////
+  void cleanup();
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// @brief remove all unused entries in internal data structures
   /// @note  in-progress transactions will not be able to commit succesfully
   ////////////////////////////////////////////////////////////////////////////
   void clear();
 
   ////////////////////////////////////////////////////////////////////////////
-  /// @brief export all completed transactions into the specified writer
-  /// @return if export was successful, upon failure state is not modified
+  /// @brief export all completed transactions into the reader
+  /// @note in-progress transaction commit() will fail
+  /// @return reader with the flushed state or false on flush failure
   ////////////////////////////////////////////////////////////////////////////
-  bool flush(index_writer& writer);
+  store_reader flush();
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create an index reader over already commited documents in the store
@@ -289,7 +295,6 @@ class IRESEARCH_API transaction_store: private util::noncopyable {
   field_meta_pool_t field_meta_pool_;
   std::unordered_map<hashed_string_ref, terms_t> fields_;
   size_t generation_; // current commit generation
-  std::mutex commit_flush_mutex_; // prevent concurent commits and flushes to ensure obtained reader matches internal state
   mutable async_utils::read_write_mutex mutex_; // mutex for 'columns_', 'fields_', 'generation_', 'visible_docs_'
   reusable_t reusable_;
   bitvector used_column_ids_; // true == column id is in use by some column

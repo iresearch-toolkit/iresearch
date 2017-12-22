@@ -219,7 +219,6 @@ class store_reader_impl final: public irs::sub_reader {
  private:
   friend irs::store_reader irs::store_reader::reopen() const;
   friend bool irs::store_writer::commit();
-  friend bool irs::transaction_store::flush(irs::index_writer&); // to allow use of private constructor
   friend irs::store_reader irs::transaction_store::reader() const;
   typedef std::unordered_map<irs::field_id, const column_reader_t*> column_by_id_t;
 
@@ -1035,8 +1034,6 @@ store_writer::~store_writer() {
 }
 
 bool store_writer::commit() {
-  // ensure documents will not be considered for removal if they are being flushed
-  SCOPED_LOCK(store_.commit_flush_mutex_); // obtain lock before obtaining reader
   REGISTER_TIMER_DETAILED();
 
   // ensure doc_ids held by the transaction are always released
@@ -1055,6 +1052,7 @@ bool store_writer::commit() {
     valid_doc_ids_.clear();
   });
   bitvector invalid_doc_ids;
+  size_t generation;
 
   // apply removals
   if (!modification_queries_.empty()) {
@@ -1066,7 +1064,8 @@ bool store_writer::commit() {
     store_reader_impl::columns_unnamed_t columns_unnamed;
     bitvector documents = store_.visible_docs_; // all visible doc ids from store + all visible doc ids from writer up to the current update generation
     store_reader_impl::fields_t fields;
-    auto generation = transaction_store::store_reader_helper::get_reader_state(
+
+    generation = transaction_store::store_reader_helper::get_reader_state(
       fields, columns_named, columns_unnamed, store_, candidate_documents
     );
     bitvector processed_documents; // all visible doc ids from writer up to the current update generation
@@ -1126,8 +1125,9 @@ bool store_writer::commit() {
   async_utils::read_write_mutex::write_mutex mutex(store_.mutex_);
   SCOPED_LOCK(mutex); // modifying 'store_.visible_docs_'
 
-  if (!*reusable_) {
-    return false; // this writer should not commit since store has been cleared
+  if (!*reusable_
+      || (!modification_queries_.empty() && generation != store_.generation_)) {
+    return false; // this writer should not commit since store has been cleared or flushed with removals/updates applied by writer
   }
 
   // ensure modification operations below are noexcept
@@ -1471,53 +1471,9 @@ transaction_store::transaction_store(size_t pool_size /*= DEFAULT_POOL_SIZE*/)
   used_doc_ids_.set(type_limits<type_t::doc_id_t>::invalid()); // mark as always in-use
 }
 
-void transaction_store::clear() {
+void transaction_store::cleanup() {
   async_utils::read_write_mutex::write_mutex mutex(mutex_);
   SCOPED_LOCK(mutex);
-  auto reusable = memory::make_unique<bool>(true); // create marker for next generation
-
-  *reusable_ = false; // prevent existing writers from commiting into the store
-  reusable_ = std::move(reusable); // mark new generation
-  visible_docs_.clear(); // mark all documents are non-visible
-}
-
-bool transaction_store::flush(index_writer& writer) {
-  store_reader_impl::columns_named_t columns_named;
-  store_reader_impl::columns_unnamed_t columns_unnamed;
-  store_reader_impl::fields_t fields;
-
-  // ensure flush is not called concurrently and partial commit/flush are not visible
-  SCOPED_LOCK(commit_flush_mutex_); // obtain lock before obtaining reader
-  REGISTER_TIMER_DETAILED();
-
-  transaction_store::store_reader_helper::get_reader_state(
-    fields, columns_named, columns_unnamed, *this, visible_docs_
-  );
-
-  store_reader_impl reader(
-    *this,
-    irs::bitvector(visible_docs_),
-    std::move(fields),
-    std::move(columns_named),
-    std::move(columns_unnamed),
-    generation_
-  );
-
-  if (!writer.import(reader)) {
-    return false;
-  }
-
-  async_utils::read_write_mutex::write_mutex mutex(mutex_);
-  SCOPED_LOCK(mutex);
-
-  ++generation_; // mark state as modified
-  used_doc_ids_ -= visible_docs_; // remove flushed ids from 'used'
-  valid_doc_ids_ -= visible_docs_; // remove flushed ids from 'valid'
-  visible_docs_.clear(); // remove flushed ids from 'visible'
-
-  //...........................................................................
-  // remove no longer used records from internal maps
-  //...........................................................................
 
   used_doc_ids_ &= valid_doc_ids_; // remove invalid ids from 'used'
 
@@ -1608,9 +1564,33 @@ bool transaction_store::flush(index_writer& writer) {
 
     itr = fields_.erase(itr);
   }
-
-  return true;
 }
+
+void transaction_store::clear() {
+  async_utils::read_write_mutex::write_mutex mutex(mutex_);
+  SCOPED_LOCK(mutex);
+  auto reusable = memory::make_unique<bool>(true); // create marker for next generation
+
+  *reusable_ = false; // prevent existing writers from commiting into the store
+  reusable_ = std::move(reusable); // mark new generation
+  visible_docs_.clear(); // mark all documents are non-visible
+}
+
+store_reader transaction_store::flush() {
+  async_utils::read_write_mutex::write_mutex mutex(mutex_);
+  SCOPED_LOCK(mutex);
+  auto reader = transaction_store::reader();
+
+  // if a reader with a flushed state was created successfully
+  if (reader) {
+    ++generation_; // mark state as modified
+    valid_doc_ids_ -= visible_docs_; // remove flushed ids from 'valid'
+    visible_docs_.clear(); // remove flushed ids from 'visible'
+  }
+
+  return reader;
+}
+
 
 transaction_store::column_ref_t transaction_store::get_column(
     const hashed_string_ref& name
