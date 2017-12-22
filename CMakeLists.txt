@@ -51,9 +51,7 @@ if (NOT MSVC AND (CMAKE_BUILD_TYPE STREQUAL "Coverage"))
 endif()
 
 # set sanitizers
-if (NOT MSVC)
-  find_package(Sanitizers)
-endif()
+find_package(Sanitizers)
 
 #find BFD
 find_package(BFD
