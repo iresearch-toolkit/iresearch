@@ -346,6 +346,7 @@ matrix:
     # Debug build, static library
     ############################################################################
     - os: linux
+      dist: trusty
       addons:
         apt:
           sources:
