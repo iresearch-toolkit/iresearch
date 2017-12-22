@@ -576,7 +576,10 @@ script:
         TEST_EXECUTABLE_SUFFIX=""
       fi
       if [[ "${SUPPRESS_MAKE_ERRORS}" == true ]]; then
-        make iresearch-tests${BUILD_TYPE_SUFFIX} 2>/dev/null
+        if ! make -j 1 iresearch-tests${BUILD_TYPE_SUFFIX} 2> stderr.log; then
+          head --bytes=2097152 stderr.log
+          exit 1
+        fi
       else
         make iresearch-tests${BUILD_TYPE_SUFFIX}
       fi
