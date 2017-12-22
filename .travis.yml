@@ -339,6 +339,82 @@ matrix:
         - BUILD_TYPE="Release"
 
     ############################################################################
+    # GCC 7
+    ############################################################################
+
+    ############################################################################
+    # Debug build, static library
+    ############################################################################
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - george-edison55-precise-backports
+          packages:
+            - g++-7
+            - valgrind
+            - cmake-data
+            - cmake
+      env:
+        - SET_ENV="CC=gcc-7 && CXX=g++-7"
+        - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
+
+    ############################################################################
+    # Release build, static library
+    ############################################################################
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - george-edison55-precise-backports
+          packages:
+            - g++-7
+            - valgrind
+            - cmake-data
+            - cmake
+      env:
+        - SET_ENV="CC=gcc-7 && CXX=g++-7"
+        - BUILD_TYPE="Release" STATIC_LIB="true"
+
+    ############################################################################
+    # Debug build, shared library
+    ############################################################################
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - george-edison55-precise-backports
+          packages:
+            - g++-7
+            - valgrind
+            - cmake-data
+            - cmake
+      env:
+        - SET_ENV="CC=gcc-7 && CXX=g++-7"
+        - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
+
+    ############################################################################
+    # Release build, shared library
+    ############################################################################
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - george-edison55-precise-backports
+          packages:
+            - g++-7
+            - valgrind
+            - cmake-data
+            - cmake
+      env:
+        - SET_ENV="CC=gcc-7 && CXX=g++-7"
+        - BUILD_TYPE="Release"
+
+    ############################################################################
     # OSX
     ############################################################################
 
