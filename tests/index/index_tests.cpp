@@ -159,7 +159,7 @@ void string_ref_field::value(const irs::string_ref& str) {
   const auto size_len = irs::vencode_size_32(irs::byte_block_pool::block_type::SIZE);
   const auto max_len = (std::min)(str.size(), size_t(irs::byte_block_pool::block_type::SIZE - size_len));
 
-  value_ = std::string(str.c_str(), max_len);
+  value_ = irs::string_ref(str.c_str(), max_len);
 }
 
 bool string_ref_field::write(irs::data_output& out) const {
