@@ -110,11 +110,11 @@ NS_ROOT
 /*static*/ bool scorers::visit(
   const std::function<bool(const string_ref&, const irs::text_format::type_id&)>& visitor
 ) {
-  return scorer_register::instance().visit(
-    [&visitor](const entry_key_t& key)->bool {
-      return visitor(key.name_, key.args_format_);
-    }
-  );
+  scorer_register::visitor_t wrapper = [&visitor](const entry_key_t& key)->bool {
+    return visitor(key.name_, key.args_format_);
+  };
+
+  return scorer_register::instance().visit(wrapper);
 }
 
 // -----------------------------------------------------------------------------

@@ -113,11 +113,11 @@ NS_BEGIN(analysis)
 /*static*/ bool analyzers::visit(
   const std::function<bool(const string_ref&, const irs::text_format::type_id&)>& visitor
 ) {
-  return analyzer_register::instance().visit(
-    [&visitor](const entry_key_t& key)->bool {
-      return visitor(key.name_, key.args_format_);
-    }
-  );
+  analyzer_register::visitor_t wrapper = [&visitor](const entry_key_t& key)->bool {
+    return visitor(key.name_, key.args_format_);
+  };
+
+  return analyzer_register::instance().visit(wrapper);
 }
 
 // -----------------------------------------------------------------------------
