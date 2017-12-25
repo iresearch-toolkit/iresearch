@@ -80,6 +80,9 @@
   #define ALIGNED_VALUE(_value, _type) _value alignas( _type );
 #endif
 
+// GCC before v5 does not implicitly call the move constructor on local values
+// returned from functions, e.g. std::unique_ptr
+//
 // MSVC2013 doesn't support c++11 in a proper way
 // sometimes it can't choose move constructor for
 // move-only types while returning a value.
@@ -87,10 +90,11 @@
 // performance problems on other compilers since
 // 'return std::move(x)' prevents such compiler
 // optimizations like 'copy elision'
-#if defined(_MSC_VER) && _MSC_VER < 1900
-  #define MSVC2013_MOVE_WORKAROUND(x) std::move(x)
+#if (defined(__GNUC__) && (__GNUC__ < 5)) \
+    || (defined(_MSC_VER) && _MSC_VER < 1900)
+  #define IMPLICIT_MOVE_WORKAROUND(x) std::move(x)
 #else
-  #define MSVC2013_MOVE_WORKAROUND(x) x
+  #define IMPLICIT_MOVE_WORKAROUND(x) x
 #endif
 
 // hook for MSVC2017.3, MSVC2017.4 MSVC2017.5 optimized code

@@ -295,7 +295,7 @@ filter::prepared::ptr by_phrase::prepare(
   // apply boost
   irs::boost::apply(q->attributes(), this->boost() * boost);
 
-  return MSVC2013_MOVE_WORKAROUND(q);
+  return IMPLICIT_MOVE_WORKAROUND(q);
 }
 
 NS_END // ROOT
