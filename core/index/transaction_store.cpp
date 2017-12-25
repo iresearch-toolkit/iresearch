@@ -1125,10 +1125,19 @@ bool store_writer::commit() {
   async_utils::read_write_mutex::write_mutex mutex(store_.mutex_);
   SCOPED_LOCK(mutex); // modifying 'store_.visible_docs_'
 
-  if (!*reusable_
-      || (!modification_queries_.empty() && generation != store_.generation_)) {
-    return false; // this writer should not commit since store has been cleared or flushed with removals/updates applied by writer
-  }
+  #if defined (__GNUC__)
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+  #endif
+
+    if (!*reusable_
+        || (!modification_queries_.empty() && generation != store_.generation_)) {
+      return false; // this writer should not commit since store has been cleared or flushed with removals/updates applied by writer
+    }
+
+  #if defined (__GNUC__)
+    #pragma GCC diagnostic pop
+  #endif
 
   // ensure modification operations below are noexcept
   store_.visible_docs_.reserve(std::max(valid_doc_ids_.size(), invalid_doc_ids.size()));
