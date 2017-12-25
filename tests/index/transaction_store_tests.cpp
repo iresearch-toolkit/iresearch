@@ -1058,17 +1058,17 @@ TEST_F(transaction_store_tests, read_write_doc_attributes_big) {
     virtual void init() {
       clear();
       reserve(2);
-      insert(std::make_shared<tests::templates::string_ref_field>("id"));
-      insert(std::make_shared<tests::templates::string_ref_field>("label"));
+      insert(std::make_shared<tests::templates::string_field>("id"));
+      insert(std::make_shared<tests::templates::string_field>("label"));
     }
 
     virtual void value(size_t idx, const irs::string_ref& value) {
       switch(idx) {
        case 0:
-        indexed.get<tests::templates::string_ref_field>("id")->value(value);
+        indexed.get<tests::templates::string_field>("id")->value(value);
         break;
        case 1:
-        indexed.get<tests::templates::string_ref_field>("label")->value(value);
+        indexed.get<tests::templates::string_field>("label")->value(value);
       }
     }
   };
@@ -2595,17 +2595,17 @@ TEST_F(transaction_store_tests, concurrent_read_multiple_columns_mt) {
     virtual void init() {
       clear();
       reserve(2);
-      insert(std::make_shared<tests::templates::string_ref_field>("id"));
-      insert(std::make_shared<tests::templates::string_ref_field>("label"));
+      insert(std::make_shared<tests::templates::string_field>("id"));
+      insert(std::make_shared<tests::templates::string_field>("label"));
     }
 
     virtual void value(size_t idx, const irs::string_ref& value) {
       switch(idx) {
        case 0:
-        indexed.get<tests::templates::string_ref_field>("id")->value(value);
+        indexed.get<tests::templates::string_field>("id")->value(value);
         break;
        case 1:
-        indexed.get<tests::templates::string_ref_field>("label")->value(value);
+        indexed.get<tests::templates::string_field>("label")->value(value);
       }
     }
   };
