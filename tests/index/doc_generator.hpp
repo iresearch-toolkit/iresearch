@@ -24,6 +24,7 @@
 #ifndef IRESEARCH_DOCUMENT_GENERATOR_H
 #define IRESEARCH_DOCUMENT_GENERATOR_H
 
+#include "analysis/analyzer.hpp"
 #include "analysis/token_streams.hpp"
 #include "utils/iterator.hpp"
 #include "utils/utf8_path.hpp"
@@ -352,6 +353,7 @@ class csv_doc_generator: public doc_generator_base {
   doc_template& doc_;
   std::ifstream ifs_;
   std::string line_;
+  irs::analysis::analyzer::ptr stream_;
 };
 
 /* Generates documents from json file based on type of JSON value */

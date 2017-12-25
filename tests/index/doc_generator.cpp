@@ -318,32 +318,25 @@ void delim_doc_generator::reset() {
 
 csv_doc_generator::csv_doc_generator(
     const irs::utf8_path& file, doc_template& doc
-): ifs_(file.native(), std::ifstream::in | std::ifstream::binary),
-   doc_(doc) {
+): doc_(doc),
+   ifs_(file.native(), std::ifstream::in | std::ifstream::binary),
+   stream_(irs::analysis::analyzers::get("delimited", irs::text_format::text, ",")) {
   doc_.init();
   doc_.reset();
 }
 
 const tests::document* csv_doc_generator::next() {
-  if (!getline(ifs_, line_)) {
+  if (!getline(ifs_, line_) || !stream_) {
     return nullptr;
   }
 
-  static const irs::string_ref type("delimited");
-  static const irs::string_ref delim(",");
-  auto stream = irs::analysis::analyzers::get(type, irs::text_format::text, delim);
+  auto& term = stream_->attributes().get<irs::term_attribute>();
 
-  if (!stream) {
+  if (!term || !stream_->reset(line_)) {
     return nullptr;
   }
 
-  auto& term = stream->attributes().get<irs::term_attribute>();
-
-  if (!term || !stream->reset(line_)) {
-    return nullptr;
-  }
-
-  for (size_t i = 0; stream->next(); ++i) {
+  for (size_t i = 0; stream_->next(); ++i) {
     doc_.value(i, irs::ref_cast<char>(term->value()));
   }
 
