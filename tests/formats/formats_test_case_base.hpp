@@ -871,12 +871,12 @@ class format_test_case_base : public index_test_base {
       virtual void init() {
         clear();
         reserve(2);
-        insert(std::make_shared<tests::templates::string_ref_field>("id"));
-        insert(std::make_shared<tests::templates::string_ref_field>("name"));
+        insert(std::make_shared<tests::templates::string_field>("id"));
+        insert(std::make_shared<tests::templates::string_field>("name"));
       }
 
       virtual void value(size_t idx, const irs::string_ref& value) {
-        auto& field = indexed.get<tests::templates::string_ref_field>(idx);
+        auto& field = indexed.get<tests::templates::string_field>(idx);
         field.value(value);
       }
       virtual void end() {}
