@@ -124,12 +124,12 @@
   #define MSVC2015_OPTIMIZED_ONLY(...)
 #endif
 
-// hook for MSVC2017 optimized-only code (2017.2 || 2017.3/2017.4 || 2017.5)
-#if defined(_MSC_VER) && !defined(_DEBUG) \
+// hook for MSVC2017-only code (2017.2 || 2017.3/2017.4 || 2017.5)
+#if defined(_MSC_VER) \
     && (_MSC_VER == 1910 || _MSC_VER == 1911 || _MSC_VER == 1912)
-  #define MSVC2017_OPTIMIZED_ONLY(...) __VA_ARGS__
+  #define MSVC2017_ONLY(...) __VA_ARGS__
 #else
-  #define MSVC2017_OPTIMIZED_ONLY(...)
+  #define MSVC2017_ONLY(...)
 #endif
 
 // hook for GCC-only code

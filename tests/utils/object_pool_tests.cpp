@@ -133,7 +133,7 @@ TEST_F(object_pool_tests, bounded_sobject_pool) {
 
       // MSVC 2015/2017 optimized code seems to sporadically notify condition variables without explicit request
       MSVC2015_OPTIMIZED_ONLY(while(!emplace && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
-      MSVC2017_OPTIMIZED_ONLY(while(!emplace && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
+      MSVC2017_ONLY(while(!emplace && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
 
       ASSERT_EQ(std::cv_status::timeout, result);
       // ^^^ expecting timeout because pool should block indefinitely
@@ -200,7 +200,7 @@ TEST_F(object_pool_tests, bounded_sobject_pool) {
 
     // MSVC 2015/2017 optimized code seems to sporadically notify condition variables without explicit request
     MSVC2015_OPTIMIZED_ONLY(while(!visit && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
-    MSVC2017_OPTIMIZED_ONLY(while(!visit && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
+    MSVC2017_ONLY(while(!visit && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
 
     obj.reset();
 
@@ -231,7 +231,7 @@ TEST_F(object_pool_tests, bounded_uobject_pool) {
 
       // MSVC 2015/2017 optimized code seems to sporadically notify condition variables without explicit request
       MSVC2015_OPTIMIZED_ONLY(while(!emplace && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
-      MSVC2017_OPTIMIZED_ONLY(while(!emplace && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
+      MSVC2017_ONLY(while(!emplace && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
 
       ASSERT_EQ(std::cv_status::timeout, result);
       // ^^^ expecting timeout because pool should block indefinitely
@@ -299,7 +299,7 @@ TEST_F(object_pool_tests, bounded_uobject_pool) {
 
     // MSVC 2015/2017 optimized code seems to sporadically notify condition variables without explicit request
     MSVC2015_OPTIMIZED_ONLY(while(!visit && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
-    MSVC2017_OPTIMIZED_ONLY(while(!visit && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
+    MSVC2017_ONLY(while(!visit && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
 
     obj.reset();
 
