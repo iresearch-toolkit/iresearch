@@ -3214,7 +3214,7 @@ TEST_F(transaction_store_tests, concurrent_add_remove_mt) {
         doc.insert(irs::action::store, src->stored.begin(), src->stored.end());
         return false;
       }));
-      writer.commit();
+      ASSERT_TRUE(writer.commit());
       first_doc = true;
 
       for (size_t i = 2, count = docs.size(); i < count; i += 2) { // skip first doc
@@ -3226,11 +3226,11 @@ TEST_F(transaction_store_tests, concurrent_add_remove_mt) {
         }));
 
         if (!(++records % 4)) {
-          writer.commit();
+          ASSERT_TRUE(writer.commit());
         }
       }
 
-      writer.commit();
+      ASSERT_TRUE(writer.commit());
     });
     std::thread thread1([&store, docs](){
       irs::store_writer writer(store);
@@ -3245,17 +3245,17 @@ TEST_F(transaction_store_tests, concurrent_add_remove_mt) {
         }));
 
         if (!(++records % 4)) {
-          writer.commit();
+          ASSERT_TRUE(writer.commit());
         }
       }
 
-      writer.commit();
+      ASSERT_TRUE(writer.commit());
     });
     std::thread thread2([&store, &query_doc1, &first_doc](){
       irs::store_writer writer(store);
       while(!first_doc); // busy-wait until first document loaded
       writer.remove(std::move(query_doc1.filter));
-      writer.commit();
+      ASSERT_TRUE(writer.commit());
     });
 
     thread0.join();

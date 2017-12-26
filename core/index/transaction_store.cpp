@@ -1053,6 +1053,7 @@ bool store_writer::commit() {
   });
   bitvector invalid_doc_ids;
   size_t generation;
+  SCOPED_LOCK(store_.generation_mutex_); // lock generation modification until end of commit (or in-progress writer commit will fail)
 
   // apply removals
   if (!modification_queries_.empty()) {
@@ -1586,6 +1587,7 @@ void transaction_store::clear() {
 }
 
 store_reader transaction_store::flush() {
+  SCOPED_LOCK(generation_mutex_); // lock generation modification until end of flush (or in-progress writer commit will fail)
   async_utils::read_write_mutex::write_mutex mutex(mutex_);
   SCOPED_LOCK(mutex);
   auto reader = transaction_store::reader();

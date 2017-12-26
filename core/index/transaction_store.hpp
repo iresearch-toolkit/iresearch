@@ -295,6 +295,7 @@ class IRESEARCH_API transaction_store: private util::noncopyable {
   field_meta_pool_t field_meta_pool_;
   std::unordered_map<hashed_string_ref, terms_t> fields_;
   size_t generation_; // current commit generation
+  std::mutex generation_mutex_; // prevent generation modification during writer commit
   mutable async_utils::read_write_mutex mutex_; // mutex for 'columns_', 'fields_', 'generation_', 'visible_docs_'
   reusable_t reusable_;
   bitvector used_column_ids_; // true == column id is in use by some column
