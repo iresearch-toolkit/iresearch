@@ -854,8 +854,9 @@ class transaction_store::store_reader_helper {
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill reader state only for the specified documents
+  /// @note caller must have read lock on store.mutex_
   ////////////////////////////////////////////////////////////////////////////////
-  static size_t get_reader_state(
+  static size_t get_reader_state_unsafe(
       store_reader_impl::fields_t& fields,
       store_reader_impl::columns_named_t& columns_named,
       store_reader_impl::columns_unnamed_t& columns_unnamed,
@@ -865,9 +866,6 @@ class transaction_store::store_reader_helper {
     fields.clear();
     columns_named.clear();
     columns_unnamed.clear();
-
-    async_utils::read_write_mutex::read_mutex mutex(store.mutex_);
-    SCOPED_LOCK(mutex);
 
     // copy over non-empty columns into an ordered map
     for (auto& columns_entry: store.columns_named_) {
@@ -1052,11 +1050,14 @@ bool store_writer::commit() {
     valid_doc_ids_.clear();
   });
   bitvector invalid_doc_ids;
-  size_t generation;
-  SCOPED_LOCK(store_.generation_mutex_); // lock generation modification until end of commit (or in-progress writer commit will fail)
+  DEFER_SCOPED_LOCK_NAMED(store_.generation_mutex_, modified_lock); // prevent concurrent removals/updates and flush
 
   // apply removals
   if (!modification_queries_.empty()) {
+    modified_lock.lock(); // prevent concurrent removals/updates (ensure reader stays valid until store state update is complete)
+
+    async_utils::read_write_mutex::read_mutex mutex(store_.mutex_);
+    SCOPED_LOCK(mutex); // reading 'store_.visible_docs_' and get_reader_state_unsafe(...)
     bitvector candidate_documents = used_doc_ids_; // all documents since some of them might be updates
 
     candidate_documents |= store_.visible_docs_; // all documents used by writer + all visible documents in store
@@ -1065,8 +1066,7 @@ bool store_writer::commit() {
     store_reader_impl::columns_unnamed_t columns_unnamed;
     bitvector documents = store_.visible_docs_; // all visible doc ids from store + all visible doc ids from writer up to the current update generation
     store_reader_impl::fields_t fields;
-
-    generation = transaction_store::store_reader_helper::get_reader_state(
+    auto generation = transaction_store::store_reader_helper::get_reader_state_unsafe(
       fields, columns_named, columns_unnamed, store_, candidate_documents
     );
     bitvector processed_documents; // all visible doc ids from writer up to the current update generation
@@ -1126,19 +1126,9 @@ bool store_writer::commit() {
   async_utils::read_write_mutex::write_mutex mutex(store_.mutex_);
   SCOPED_LOCK(mutex); // modifying 'store_.visible_docs_'
 
-  #if defined (__GNUC__)
-    #pragma GCC diagnostic push
-    #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-  #endif
-
-    if (!*reusable_
-        || (!modification_queries_.empty() && generation != store_.generation_)) {
-      return false; // this writer should not commit since store has been cleared or flushed with removals/updates applied by writer
-    }
-
-  #if defined (__GNUC__)
-    #pragma GCC diagnostic pop
-  #endif
+  if (!*reusable_) {
+    return false; // this writer should not commit since store has been cleared or flushed with removals/updates applied by writer
+  }
 
   // ensure modification operations below are noexcept
   store_.visible_docs_.reserve(std::max(valid_doc_ids_.size(), invalid_doc_ids.size()));
@@ -1587,7 +1577,7 @@ void transaction_store::clear() {
 }
 
 store_reader transaction_store::flush() {
-  SCOPED_LOCK(generation_mutex_); // lock generation modification until end of flush (or in-progress writer commit will fail)
+  SCOPED_LOCK(generation_mutex_); // lock generation modification until end of flush (or in-progress writer commit with removals/updates will have an inconsistent reader)
   async_utils::read_write_mutex::write_mutex mutex(mutex_);
   SCOPED_LOCK(mutex);
   auto reader = transaction_store::reader();
@@ -1601,7 +1591,6 @@ store_reader transaction_store::flush() {
 
   return reader;
 }
-
 
 transaction_store::column_ref_t transaction_store::get_column(
     const hashed_string_ref& name
@@ -1776,9 +1765,9 @@ store_reader transaction_store::reader() const {
     async_utils::read_write_mutex::read_mutex mutex(mutex_);
     SCOPED_LOCK(mutex);
     documents = visible_docs_;
-    generation = transaction_store::store_reader_helper::get_reader_state(
-       fields, columns_named, columns_unnamed, *this, documents
-     );
+    generation = transaction_store::store_reader_helper::get_reader_state_unsafe(
+      fields, columns_named, columns_unnamed, *this, documents
+    );
   }
 
   documents.shrink_to_fit();

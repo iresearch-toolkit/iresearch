@@ -59,7 +59,7 @@ void add_segment(
 
   expected.emplace_back();
   add_segment(expected.back(), writer, gen);
-  writer.commit();
+  ASSERT_TRUE(writer.commit());
 }
 
 void assert_index(
@@ -195,7 +195,7 @@ class transaction_store_tests: public test_base {
 
               {
                 REGISTER_TIMER_NAMED_DETAILED("commit");
-                writer.commit();
+                ASSERT_TRUE(writer.commit());
               }
 
               count = 0;
@@ -205,7 +205,7 @@ class transaction_store_tests: public test_base {
 
           {
             REGISTER_TIMER_NAMED_DETAILED("commit");
-            writer.commit();
+            ASSERT_TRUE(writer.commit());
           }
 
           start_update = true;
@@ -292,7 +292,7 @@ class transaction_store_tests: public test_base {
 
               {
                 REGISTER_TIMER_NAMED_DETAILED("commit");
-                writer.commit();
+                ASSERT_TRUE(writer.commit());
               }
 
               count = 0;
@@ -301,7 +301,7 @@ class transaction_store_tests: public test_base {
 
           {
             REGISTER_TIMER_NAMED_DETAILED("commit");
-            writer.commit();
+            ASSERT_TRUE(writer.commit());
           }
         });
       }
@@ -452,7 +452,7 @@ TEST_F(transaction_store_tests, check_fields_order) {
     };
 
     ASSERT_TRUE(writer.insert(inserter));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
   }
 
   // iterate over fields
@@ -635,7 +635,7 @@ TEST_F(transaction_store_tests, check_attributes_order) {
     };
 
     ASSERT_TRUE(writer.insert(inserter));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
   }
 
   // iterate over attributes
@@ -824,7 +824,7 @@ TEST_F(transaction_store_tests, read_write_doc_attributes) {
       doc.insert(irs::action::store, doc4->stored.begin(), doc4->stored.end());
       return false;
     }));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
   }
 
   // check inserted values:
@@ -1094,7 +1094,7 @@ TEST_F(transaction_store_tests, read_write_doc_attributes_big) {
       ++docs_count;
     }
 
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
   }
 
   // check inserted values:
@@ -1772,7 +1772,7 @@ TEST_F(transaction_store_tests, flush_store) {
       doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
   }
 
   auto reader0 = store.reader();
@@ -1808,7 +1808,7 @@ TEST_F(transaction_store_tests, flush_store) {
       doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
   }
 
   // check documents
@@ -1908,7 +1908,7 @@ TEST_F(transaction_store_tests, read_empty_doc_attributes) {
       doc.insert(irs::action::index, doc4->indexed.begin(), doc4->indexed.end());
       return false;
     }));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
   }
 
   auto reader = store.reader();
@@ -1931,7 +1931,7 @@ TEST_F(transaction_store_tests, open_writer) {
   // open multiple writers with commit
   {
     irs::store_writer writer0(store);
-    writer0.commit();
+    ASSERT_TRUE(writer0.commit());
     irs::store_writer writer1(store);
   }
 }
@@ -1942,7 +1942,7 @@ TEST_F(transaction_store_tests, check_writer_open_modes) {
   // create empty index
   {
     irs::store_writer writer(store);
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
   }
 
   // read empty index, it should not fail
@@ -1966,7 +1966,7 @@ TEST_F(transaction_store_tests, check_writer_open_modes) {
       doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
   }
 
   // read index
@@ -2007,7 +2007,7 @@ TEST_F(transaction_store_tests, writer_transaction_isolation) {
     doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
     return false;
   }));
-  writer1.commit(); // finish transaction #1
+  ASSERT_TRUE(writer1.commit()); // finish transaction #1
 
   // check index, 1 document in 1 segment
   {
@@ -2040,7 +2040,7 @@ TEST_F(transaction_store_tests, writer_transaction_isolation) {
     }
   }
 
-  writer0.commit(); // transaction #0
+  ASSERT_TRUE(writer0.commit()); // transaction #0
 
   // check index, 2 documents in 1 segment
   {
@@ -2238,7 +2238,7 @@ TEST_F(transaction_store_tests, writer_bulk_insert) {
     ASSERT_TRUE(states[5]); // skipped (not reached in bulk operation)
     ASSERT_TRUE(states[6]); // skipped (not reached in bulk operation)
     ASSERT_TRUE(states[7]); // skipped (not reached in bulk operation)
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
 
     auto reader = store.reader();
     ASSERT_EQ(1, reader.size());
@@ -2250,7 +2250,7 @@ TEST_F(transaction_store_tests, writer_bulk_insert) {
     max = 8;
     ASSERT_TRUE(writer.insert(bulk_inserter));
     ASSERT_TRUE(states[7]); // successfully inserted
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
 
     reader = reader.reopen();
     ASSERT_EQ(1, reader.size());
@@ -2285,7 +2285,7 @@ TEST_F(transaction_store_tests, writer_bulk_insert) {
   ASSERT_TRUE(states[1]); // successfully inserted
   ASSERT_TRUE(states[2]); // skipped (not reached in bulk operation)
 
-  writer.commit();
+  ASSERT_TRUE(writer.commit());
 
   // check index
   {
@@ -2350,7 +2350,7 @@ TEST_F(transaction_store_tests, writer_begin_rollback) {
       return false;
     }));
 
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
 
     ASSERT_TRUE(writer.insert([doc3](irs::store_writer::document& doc)->bool {
       doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end());
@@ -2427,7 +2427,7 @@ TEST_F(transaction_store_tests, insert_null_empty_term) {
       return false;
     }));
 
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
   }
 
   // check fields with empty terms
@@ -2518,7 +2518,7 @@ TEST_F(transaction_store_tests, concurrent_read_single_column_smoke_mt) {
       expected_docs.push_back(src);
     }
 
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
   }
 
   auto reader = store.reader();
@@ -2627,7 +2627,7 @@ TEST_F(transaction_store_tests, concurrent_read_multiple_columns_mt) {
       }));
     }
 
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
   }
 
   auto reader = store.reader();
@@ -3040,11 +3040,11 @@ TEST_F(transaction_store_tests, concurrent_add_mt) {
         }));
 
         if (!(++records % 4)) {
-          writer.commit();
+          ASSERT_TRUE(writer.commit());
         }
       }
 
-      writer.commit();
+      ASSERT_TRUE(writer.commit());
     });
     std::thread thread1([&store, docs](){
       irs::store_writer writer(store);
@@ -3060,11 +3060,11 @@ TEST_F(transaction_store_tests, concurrent_add_mt) {
         }));
 
         if (!(++records % 4)) {
-          writer.commit();
+          ASSERT_TRUE(writer.commit());
         }
       }
 
-      writer.commit();
+      ASSERT_TRUE(writer.commit());
     });
 
     thread0.join();
@@ -3108,11 +3108,11 @@ TEST_F(transaction_store_tests, concurrent_add_flush_mt) {
         }));
 
         if (!(++records % 4)) {
-          writer.commit();
+          ASSERT_TRUE(writer.commit());
         }
       }
 
-      writer.commit();
+      ASSERT_TRUE(writer.commit());
     });
     std::thread thread1a([&store, docs]()->void{
       irs::store_writer writer(store);
@@ -3128,11 +3128,11 @@ TEST_F(transaction_store_tests, concurrent_add_flush_mt) {
         }));
 
         if (!(++records % 4)) {
-          writer.commit();
+          ASSERT_TRUE(writer.commit());
         }
       }
 
-      writer.commit();
+      ASSERT_TRUE(writer.commit());
     });
     std::thread thread0f([&dir_writer, &store, &done]()->void{
       while(!done) {
@@ -3321,7 +3321,7 @@ TEST_F(transaction_store_tests, doc_removal) {
       doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
 
     auto reader = store.reader();
     ASSERT_EQ(1, reader.size());
@@ -3357,7 +3357,7 @@ TEST_F(transaction_store_tests, doc_removal) {
       return false;
     }));
     writer.remove(*(query_doc1.filter.get()));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
 
     auto reader = store.reader();
     ASSERT_EQ(1, reader.size());
@@ -3393,7 +3393,7 @@ TEST_F(transaction_store_tests, doc_removal) {
       return false;
     }));
     writer.remove(std::move(query_doc1.filter));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
 
     auto reader = store.reader();
     ASSERT_EQ(1, reader.size());
@@ -3429,7 +3429,7 @@ TEST_F(transaction_store_tests, doc_removal) {
       return false;
     }));
     writer.remove(std::shared_ptr<irs::filter>(std::move(query_doc1.filter)));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
 
     auto reader = store.reader();
     ASSERT_EQ(1, reader.size());
@@ -3465,7 +3465,7 @@ TEST_F(transaction_store_tests, doc_removal) {
       doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
 
     auto reader = store.reader();
     ASSERT_EQ(1, reader.size());
@@ -3504,7 +3504,7 @@ TEST_F(transaction_store_tests, doc_removal) {
       doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
 
     auto reader = store.reader();
     ASSERT_EQ(1, reader.size());
@@ -3546,9 +3546,9 @@ TEST_F(transaction_store_tests, doc_removal) {
       return false;
     }));
     writer.remove(std::move(query_doc3.filter));
-    writer.commit(); // document mask with 'doc3' created
+    ASSERT_TRUE(writer.commit()); // document mask with 'doc3' created
     writer.remove(std::move(query_doc2.filter));
-    writer.commit(); // new document mask with 'doc2','doc3' created
+    ASSERT_TRUE(writer.commit()); // new document mask with 'doc2','doc3' created
 
     auto reader = store.reader();
     ASSERT_EQ(1, reader.size());
@@ -3583,14 +3583,14 @@ TEST_F(transaction_store_tests, doc_removal) {
       doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
     writer.remove(std::move(query_doc1_doc2.filter));
     ASSERT_TRUE(writer.insert([doc3](irs::store_writer::document& doc)->bool {
       doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end());
       doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end());
       return false;
     }));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
 
     auto reader = store.reader();
     ASSERT_EQ(1, reader.size());
@@ -3625,14 +3625,14 @@ TEST_F(transaction_store_tests, doc_removal) {
       doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
     ASSERT_TRUE(writer.insert([doc3](irs::store_writer::document& doc)->bool {
       doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end());
       doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end());
       return false;
     }));
     writer.remove(std::move(query_doc2.filter));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
 
     auto reader = store.reader();
     ASSERT_EQ(1, reader.size());
@@ -3670,7 +3670,7 @@ TEST_F(transaction_store_tests, doc_removal) {
       doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
     ASSERT_TRUE(writer.insert([doc3](irs::store_writer::document& doc)->bool {
       doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end());
       doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end());
@@ -3682,7 +3682,7 @@ TEST_F(transaction_store_tests, doc_removal) {
       return false;
     }));
     writer.remove(std::move(query_doc1_doc3.filter));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
 
     auto reader = store.reader();
     ASSERT_EQ(1, reader.size());
@@ -3733,7 +3733,7 @@ TEST_F(transaction_store_tests, doc_removal) {
       return false;
     })); // D
     writer.remove(std::move(query_doc4.filter));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
     ASSERT_TRUE(writer.insert([doc5](irs::store_writer::document& doc)->bool {
       doc.insert(irs::action::index, doc5->indexed.begin(), doc5->indexed.end());
       doc.insert(irs::action::store, doc5->stored.begin(), doc5->stored.end());
@@ -3750,7 +3750,7 @@ TEST_F(transaction_store_tests, doc_removal) {
       return false;
     })); // G
     writer.remove(std::move(query_doc3_doc7.filter));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
     ASSERT_TRUE(writer.insert([doc8](irs::store_writer::document& doc)->bool {
       doc.insert(irs::action::index, doc8->indexed.begin(), doc8->indexed.end());
       doc.insert(irs::action::store, doc8->stored.begin(), doc8->stored.end());
@@ -3762,7 +3762,7 @@ TEST_F(transaction_store_tests, doc_removal) {
       return false;
     })); // I
     writer.remove(std::move(query_doc2_doc6_doc9.filter));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
 
     auto reader = store.reader();
     ASSERT_EQ(1, reader.size());
@@ -3826,7 +3826,7 @@ TEST_F(transaction_store_tests, doc_update) {
         return false;
       }
     ));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
 
     auto reader = store.reader();
     ASSERT_EQ(1, reader.size());
@@ -3864,7 +3864,7 @@ TEST_F(transaction_store_tests, doc_update) {
         return false;
       }
     ));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
 
     auto reader = store.reader();
     ASSERT_EQ(1, reader.size());
@@ -3902,7 +3902,7 @@ TEST_F(transaction_store_tests, doc_update) {
         return false;
       }
     ));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
 
     auto reader = store.reader();
     ASSERT_EQ(1, reader.size());
@@ -3937,7 +3937,7 @@ TEST_F(transaction_store_tests, doc_update) {
       doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
     ASSERT_TRUE(writer.update(
       std::move(query_doc1.filter),
       [doc3](irs::store_writer::document& doc)->bool {
@@ -3946,7 +3946,7 @@ TEST_F(transaction_store_tests, doc_update) {
         return false;
       }
     ));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
 
     auto reader = store.reader();
     ASSERT_EQ(1, reader.size());
@@ -4005,7 +4005,7 @@ TEST_F(transaction_store_tests, doc_update) {
         return false;
       }
     ));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
 
     auto reader = store.reader();
     ASSERT_EQ(1, reader.size());
@@ -4037,7 +4037,7 @@ TEST_F(transaction_store_tests, doc_update) {
       doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
     ASSERT_TRUE(writer.update(
       std::move(query_doc1.filter),
       [doc2](irs::store_writer::document& doc)->bool {
@@ -4046,7 +4046,7 @@ TEST_F(transaction_store_tests, doc_update) {
         return false;
       }
     ));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
     ASSERT_TRUE(writer.update(
       std::move(query_doc2.filter),
       [doc3](irs::store_writer::document& doc)->bool {
@@ -4055,7 +4055,7 @@ TEST_F(transaction_store_tests, doc_update) {
         return false;
       }
     ));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
     ASSERT_TRUE(writer.update(
       std::move(query_doc3.filter),
       [doc4](irs::store_writer::document& doc)->bool {
@@ -4064,7 +4064,7 @@ TEST_F(transaction_store_tests, doc_update) {
         return false;
       }
     ));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
 
     auto reader = store.reader();
     ASSERT_EQ(1, reader.size());
@@ -4094,7 +4094,7 @@ TEST_F(transaction_store_tests, doc_update) {
       doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
     ASSERT_TRUE(writer.update(
       std::move(query_doc2.filter),
       [doc2](irs::store_writer::document& doc)->bool {
@@ -4103,7 +4103,7 @@ TEST_F(transaction_store_tests, doc_update) {
         return false;
       }
     )); // non-existent document
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
 
     auto reader = store.reader();
     ASSERT_EQ(1, reader.size());
@@ -4147,7 +4147,7 @@ TEST_F(transaction_store_tests, doc_update) {
       }
     ));
     writer.remove(*(query_doc2.filter)); // remove no longer existent
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
 
     auto reader = store.reader();
     ASSERT_EQ(1, reader.size());
@@ -4185,7 +4185,7 @@ TEST_F(transaction_store_tests, doc_update) {
       doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
     ASSERT_TRUE(writer.update(
       *(query_doc2.filter),
       [doc3](irs::store_writer::document& doc)->bool {
@@ -4194,9 +4194,9 @@ TEST_F(transaction_store_tests, doc_update) {
         return false;
       }
     ));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
     writer.remove(*(query_doc2.filter)); // remove no longer existent
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
 
     auto reader = store.reader();
     ASSERT_EQ(1, reader.size());
@@ -4243,7 +4243,7 @@ TEST_F(transaction_store_tests, doc_update) {
         return false;
       }
     )); // update no longer existent
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
 
     auto reader = store.reader();
     ASSERT_EQ(1, reader.size());
@@ -4278,9 +4278,9 @@ TEST_F(transaction_store_tests, doc_update) {
       doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
     writer.remove(*(query_doc2.filter));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
     ASSERT_TRUE(writer.update(
       *(query_doc2.filter),
       [doc3](irs::store_writer::document& doc)->bool {
@@ -4289,7 +4289,7 @@ TEST_F(transaction_store_tests, doc_update) {
         return false;
       }
     )); // update no longer existent
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
 
     auto reader = store.reader();
     ASSERT_EQ(1, reader.size());
@@ -4342,7 +4342,7 @@ TEST_F(transaction_store_tests, doc_update) {
         return false;
       }
     ));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
 
     auto reader = store.reader();
     ASSERT_EQ(1, reader.size());
@@ -4378,9 +4378,9 @@ TEST_F(transaction_store_tests, doc_update) {
       doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
     writer.remove(*(query_doc2.filter));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
     ASSERT_TRUE(writer.update(
       *(query_doc2.filter),
       [doc3](irs::store_writer::document& doc)->bool {
@@ -4389,7 +4389,7 @@ TEST_F(transaction_store_tests, doc_update) {
         return false;
       }
     ));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
     ASSERT_TRUE(writer.update(
       *(query_doc3.filter),
       [doc4](irs::store_writer::document& doc)->bool {
@@ -4398,7 +4398,7 @@ TEST_F(transaction_store_tests, doc_update) {
         return false;
       }
     ));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
 
     auto reader = store.reader();
     ASSERT_EQ(1, reader.size());
@@ -4502,7 +4502,7 @@ TEST_F(transaction_store_tests, doc_update) {
         return !doc53.empty();
       }
     ));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
 
     auto reader = store.reader();
     ASSERT_EQ(1, reader.size());
@@ -4601,7 +4601,7 @@ TEST_F(transaction_store_tests, refresh_reader) {
       doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
   }
 
   // refreshable reader
@@ -4634,7 +4634,7 @@ TEST_F(transaction_store_tests, refresh_reader) {
     auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
 
     writer.remove(std::move(query_doc2.filter));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
   }
 
   // validate state pre/post refresh (existing segment changed)
@@ -4692,7 +4692,7 @@ TEST_F(transaction_store_tests, refresh_reader) {
       doc.insert(irs::action::store, doc4->stored.begin(), doc4->stored.end());
       return false;
     }));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
   }
 
   // validate state pre/post refresh (new segment added)
@@ -4745,7 +4745,7 @@ TEST_F(transaction_store_tests, refresh_reader) {
     auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
 
     writer.remove(std::move(query_doc1.filter));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
   }
 
   // validate state pre/post refresh (old segment removed)
@@ -4813,7 +4813,7 @@ TEST_F(transaction_store_tests, reuse_segment_writer) {
       irs::store_writer writer(store);
       gen1.reset();
       add_segment(expected.back(), writer, gen1);
-      writer.commit();
+      ASSERT_TRUE(writer.commit());
     }
   }
 
@@ -4824,7 +4824,7 @@ TEST_F(transaction_store_tests, reuse_segment_writer) {
     add_segment(expected.back(), writer, gen0);
     gen1.reset();
     add_segment(expected.back(), writer, gen1);
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
   }
 
   // populate initial large segment
@@ -4838,7 +4838,7 @@ TEST_F(transaction_store_tests, reuse_segment_writer) {
       add_segment(expected.back(), writer, gen1);
     }
 
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
   }
 
   irs::store_writer writer(store);
@@ -4860,7 +4860,7 @@ TEST_F(transaction_store_tests, reuse_segment_writer) {
       }
     }
 
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
   }
 
   assert_index(expected, store.reader());
@@ -5233,7 +5233,7 @@ TEST_F(transaction_store_tests, rollback_uncommited) {
       doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
 
     // read index
     {
@@ -5308,7 +5308,7 @@ TEST_F(transaction_store_tests, read_old_generation) {
       doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
   }
 
   // read 1st generation
@@ -5334,7 +5334,7 @@ TEST_F(transaction_store_tests, read_old_generation) {
       doc.insert(irs::action::store, doc4->stored.begin(), doc4->stored.end());
       return false;
     }));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
   }
 
   // read 2nd generation
@@ -5409,7 +5409,7 @@ TEST_F(transaction_store_tests, read_reopen) {
       doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
   }
 
   auto reader = store.reader();
@@ -5450,7 +5450,7 @@ TEST_F(transaction_store_tests, read_reopen) {
       doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end());
       return false;
     }));
-    writer.commit();
+    ASSERT_TRUE(writer.commit());
   }
 
   // read 2nd generation (via reopen)
