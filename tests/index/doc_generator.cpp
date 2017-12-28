@@ -122,15 +122,13 @@ document::document(document&& rhs) NOEXCEPT
 
 field_base::field_base(field_base&& rhs) NOEXCEPT
   : features_(std::move(rhs.features_)),
-    name_(std::move(rhs.name_)),
-    boost_(rhs.boost_) {
+    name_(std::move(rhs.name_)) {
 }
 
 field_base& field_base::operator=(field_base&& rhs) NOEXCEPT {
   if (this != &rhs) {
     features_ = std::move(features_);
     name_ = std::move(rhs.name_);
-    boost_ = rhs.boost_;
   }
 
   return *this;

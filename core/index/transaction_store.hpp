@@ -664,10 +664,9 @@ class IRESEARCH_API store_writer final: private util::noncopyable {
 
     auto& tokens = static_cast<token_stream&>(field.get_tokens());
     const auto& features = static_cast<const flags&>(field.features());
-    const auto boost = static_cast<float_t>(field.boost());
     auto start = out.file_pointer();
 
-    if (index(out, state, name, features, doc, tokens, boost)) {
+    if (index(out, state, name, features, doc, tokens)) {
       return true;
     }
 
@@ -692,12 +691,11 @@ class IRESEARCH_API store_writer final: private util::noncopyable {
 
     auto& tokens = static_cast<token_stream&>(field.get_tokens());
     const auto& features = static_cast<const flags&>(field.features());
-    const auto boost = static_cast<float_t>(field.boost());
     auto start = out.file_pointer();
 
     if (field.write(out)
         && store(out, state, name, doc, start)
-        && index(out, state, name, features, doc, tokens, boost)) {
+        && index(out, state, name, features, doc, tokens)) {
       return true;
     }
 
@@ -738,8 +736,7 @@ class IRESEARCH_API store_writer final: private util::noncopyable {
     const hashed_string_ref& field_name,
     const flags& field_features,
     transaction_store::document_t& doc,
-    token_stream& tokens,
-    float_t boost
+    token_stream& tokens
   );
 
   bool store(

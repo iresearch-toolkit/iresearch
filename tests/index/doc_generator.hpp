@@ -56,7 +56,6 @@ struct ifield {
   virtual ~ifield() {};
 
   virtual ir::string_ref name() const = 0;
-  virtual float_t boost() const = 0;
   virtual bool write(ir::data_output& out) const = 0;
   virtual ir::token_stream& get_tokens() const = 0;
   virtual const ir::flags& features() const = 0;
@@ -81,16 +80,12 @@ class field_base : public ifield {
   void name(std::string&& name) { name_ = std::move(name); }
   void name(const std::string& name) { name_ = name; }
 
-  void boost(float_t value) { boost_ = value; }
-  float_t boost() const { return boost_; }
-
   const ir::flags& features() const { return features_; };
   ir::flags& features() { return features_; }
 
  private:
   iresearch::flags features_;
   std::string name_;
-  float_t boost_{ 1.f };
 }; // field_base
 
 //////////////////////////////////////////////////////////////////////////////

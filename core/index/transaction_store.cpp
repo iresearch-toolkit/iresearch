@@ -44,7 +44,6 @@ struct doc_stats_t {
 
 // state at start of each unique field (for all terms)
 struct field_stats_t {
-  float_t boost = 1.f;
   uint32_t pos = irs::integer_traits<uint32_t>::const_max; // current term position
   uint32_t pos_last = 0; // previous term position
   uint32_t max_term_freq = 0; // highest term frequency in a field across all terms/documents
@@ -1149,8 +1148,7 @@ bool store_writer::index(
     const hashed_string_ref& field_name,
     const flags& field_features,
     transaction_store::document_t& doc,
-    token_stream& tokens,
-    float_t boost
+    token_stream& tokens
 ) {
   REGISTER_TIMER_DETAILED();
   auto& attrs = tokens.attributes();
@@ -1354,15 +1352,13 @@ bool store_writer::index(
   auto& document_state = *reinterpret_cast<doc_stats_t*>(state.out_[doc_state_offset]);
   auto& field_state = *reinterpret_cast<field_stats_t*>(state.out_[field_state_offset]);
 
-  field_state.boost *= boost;
-
   if (offs) {
     field_state.offs_start_base += offs->end; // ending offset of last term
   }
 
   if (field->meta_->features.check<norm>()) {
     document_state.norm =
-      field_state.boost / float_t(std::sqrt(double_t(document_state.term_count)));
+      1.f / float_t(std::sqrt(double_t(document_state.term_count)));
   }
 
   return true;
