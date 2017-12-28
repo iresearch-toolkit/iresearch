@@ -24,7 +24,6 @@
 #include "tests_shared.hpp" 
 #include "analysis/token_attributes.hpp"
 #include "analysis/token_streams.hpp"
-#include "document/field.hpp"
 #include "iql/query_builder.hpp"
 #include "formats/formats_10.hpp"
 #include "search/filter.hpp"

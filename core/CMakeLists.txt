@@ -70,7 +70,6 @@ set(IResearch_core_sources
   ./analysis/token_attributes.cpp 
   ./analysis/token_stream.cpp 
   ./analysis/token_streams.cpp 
-  ./document/field.cpp 
   ./error/error.cpp 
   ./formats/formats.cpp 
   ./formats/format_utils.cpp 
@@ -151,7 +150,6 @@ set(IResearch_core_headers
   ./analysis/token_attributes.hpp
   ./analysis/token_stream.hpp
   ./analysis/token_streams.hpp
-  ./document/field.hpp
   ./error/error.hpp
   ./formats/formats.hpp
   ./formats/format_utils.hpp
