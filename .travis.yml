@@ -583,7 +583,9 @@ script:
       else
         make iresearch-tests${BUILD_TYPE_SUFFIX}
       fi
-      travis_wait 60 ./bin/iresearch-tests${TEST_EXECUTABLE_SUFFIX} ${TEST_PARAMS}
+      if ! travis_wait 60 ./bin/iresearch-tests${TEST_EXECUTABLE_SUFFIX} ${TEST_PARAMS}; then
+        exit 1
+      fi
       tar -czf iresearch-${TRAVIS_OS_NAME}-${BUILD_TYPE}${BUILD_TYPE_SUFFIX}-${TRAVIS_BUILD_NUMBER}.tar.gz bin
 
 deploy:
