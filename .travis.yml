@@ -428,6 +428,12 @@ matrix:
     - os: osx
       osx_image: xcode9
       compiler: clang
+      before_install:
+        - brew update || true;
+          brew install bison || true;
+      before_script:
+        - which bison
+        - bison --version
       env:
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
 
