@@ -444,6 +444,7 @@ matrix:
       osx_image: xcode9
       compiler: clang
       env:
+        - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
         - BUILD_TYPE="Release" STATIC_LIB="true"
 
     ############################################################################
@@ -453,6 +454,7 @@ matrix:
       osx_image: xcode9
       compiler: clang
       env:
+        - SET_ENV='PATH="/usr/local/opt/bison/bin:$PATH"'
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
@@ -468,6 +470,9 @@ before_install:
   - eval "${SET_ENV}"
 
 install:
+  - which bison
+  - bison --version
+  - which cmake
   - cmake --version
 
   ############################################################################
