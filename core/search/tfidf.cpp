@@ -156,7 +156,7 @@ class collector final : public iresearch::sort::collector {
       const iresearch::index_reader& index
   ) override {
     filter_attrs.emplace<tfidf::idf>()->value =
-      1 + float_t(std::log(index.docs_count() / double_t(docs_count + 1)));
+      1 + float_t(std::log((index.docs_count()+1) / double_t(docs_count + 1)));
 
     // add norm attribute if requested
     if (normalize_) {
