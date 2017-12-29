@@ -470,8 +470,10 @@ before_install:
   - eval "${SET_ENV}"
 
 install:
+  - set
   - which bison
   - bison --version
+  - find / -name bison
   - which cmake
   - cmake --version
 
