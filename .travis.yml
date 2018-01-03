@@ -431,7 +431,7 @@ matrix:
       before_install:
         - brew update || true;
           brew install bison || true;
-       env:
+      env:
         - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
 
