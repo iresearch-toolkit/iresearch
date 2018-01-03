@@ -114,7 +114,7 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
     return irs::analysis::delimited_token_stream::make(json.GetString());
    case rapidjson::kObjectType:
     if (json.HasMember("delimiter") && json["delimiter"].IsString()) {
-      return irs::analysis::delimited_token_stream::make(json["locale"].GetString());
+      return irs::analysis::delimited_token_stream::make(json["delimiter"].GetString());
     }
    default: {} // fall through
   }

@@ -391,7 +391,7 @@ TEST_F(delimited_token_stream_tests, test_load) {
   // load jSON object
   {
     irs::string_ref data("abc,def,ghi"); // quoted terms should be honoured
-    auto stream = irs::analysis::analyzers::get("delimited", irs::text_format::text, "{\"delimiter\":\",\"}");
+    auto stream = irs::analysis::analyzers::get("delimited", irs::text_format::json, "{\"delimiter\":\",\"}");
 
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));
@@ -420,11 +420,11 @@ TEST_F(delimited_token_stream_tests, test_load) {
 
   // load jSON invalid
   {
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimited", irs::text_format::text, irs::string_ref::nil));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimited", irs::text_format::text, "1"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimited", irs::text_format::text, "[]"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimited", irs::text_format::text, "{}"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimited", irs::text_format::text, "{\"delimiter\":1}"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimited", irs::text_format::json, irs::string_ref::nil));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimited", irs::text_format::json, "1"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimited", irs::text_format::json, "[]"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimited", irs::text_format::json, "{}"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimited", irs::text_format::json, "{\"delimiter\":1}"));
   }
 
   // load text
