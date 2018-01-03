@@ -431,11 +431,8 @@ matrix:
       before_install:
         - brew update || true;
           brew install bison || true;
-      before_script:
-        - which bison
-        - bison --version
-      env:
-        - SET_ENV='PATH="/usr/local/opt/bison/bin:$PATH"'
+       env:
+        - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
@@ -448,7 +445,7 @@ matrix:
         - brew update || true;
           brew install bison || true;
       env:
-        - SET_ENV="PATH/usr/local/Cellar/bison/3.0.4_1/bin/bison:$PATH"
+        - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
         - BUILD_TYPE="Release" STATIC_LIB="true"
 
     ############################################################################
@@ -457,8 +454,11 @@ matrix:
     - os: osx
       osx_image: xcode9
       compiler: clang
+      before_install:
+        - brew update || true;
+          brew install bison || true;
       env:
-        - SET_ENV='PATH="/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin:$PATH"'
+        - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
@@ -467,8 +467,11 @@ matrix:
     - os: osx
       osx_image: xcode9
       compiler: clang
+      before_install:
+        - brew update || true;
+          brew install bison || true;
       env:
-        - SET_ENV='PATH="/Library/Developer/CommandLineTools/usr/bin:$PATH"'
+        - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
         - BUILD_TYPE="Release"
 
 before_install:
@@ -478,12 +481,6 @@ install:
   - set
   - which bison
   - bison --version
-  - /usr/bin/bison --version
-  - /usr/local/Cellar/bison/3.0.4_1/bin/bison --version
-  - /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bison --version
-  - /Library/Developer/CommandLineTools/usr/bin/bison --version
-  - ls -la /usr/local/opt/bison
-  - /usr/local/opt/bison --version
   - which cmake
   - cmake --version
 
