@@ -547,6 +547,8 @@ install:
       make install DESTDIR=${LZ4_DIR}/build PREFIX=""
     fi
     export LZ4_ROOT=${LZ4_DIR}/build
+    export DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH}:${LZ4_DIR}/build # required for MacOS
+    find ${LZ4_DIR} -name liblz4.1.dylib || true
 
   ############################################################################
   # Install snowball
