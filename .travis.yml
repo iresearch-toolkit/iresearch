@@ -479,7 +479,6 @@ before_install:
 
 install:
   - eval "${SET_ENV}"
-  - set
   - which bison
   - bison --version
   - which cmake
@@ -532,8 +531,7 @@ install:
         (cd ${BOOST_DIR} && ./bootstrap.sh --with-libraries=filesystem,locale,system,thread,regex && ./b2 install --libdir=lib)
       fi
       export BOOST_ROOT=${BOOST_DIR}
-      export DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH}:${BOOST_DIR}/stage/lib" # required for MacOS
-      find / -name libboost_locale.dylib
+      export DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH}:${BOOST_DIR}/lib" # required for MacOS
     fi
 
   ############################################################################
