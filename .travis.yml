@@ -428,7 +428,12 @@ matrix:
     - os: osx
       osx_image: xcode9
       compiler: clang
+      before_install:
+        - brew update || true;
+          brew install bison || true;
       env:
+        - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
+        - BOOST_B2_ARGS="boost.locale.iconv=off"
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
@@ -437,7 +442,12 @@ matrix:
     - os: osx
       osx_image: xcode9
       compiler: clang
+      before_install:
+        - brew update || true;
+          brew install bison || true;
       env:
+        - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
+        - BOOST_B2_ARGS="boost.locale.iconv=off"
         - BUILD_TYPE="Release" STATIC_LIB="true"
 
     ############################################################################
@@ -446,7 +456,12 @@ matrix:
     - os: osx
       osx_image: xcode9
       compiler: clang
+      before_install:
+        - brew update || true;
+          brew install bison || true;
       env:
+        - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
+        - BOOST_B2_ARGS="boost.locale.iconv=off"
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
@@ -455,13 +470,22 @@ matrix:
     - os: osx
       osx_image: xcode9
       compiler: clang
+      before_install:
+        - brew update || true;
+          brew install bison || true;
       env:
+        - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
+        - BOOST_B2_ARGS="boost.locale.iconv=off"
         - BUILD_TYPE="Release"
 
 before_install:
   - eval "${SET_ENV}"
 
 install:
+  - eval "${SET_ENV}"
+  - which bison
+  - bison --version
+  - which cmake
   - cmake --version
 
   ############################################################################
@@ -508,9 +532,10 @@ install:
           mkdir -p ${BOOST_DIR}
           { travis_retry wget --quiet -O - ${BOOST_URL} | tar --strip-components=1 -xz -C ${BOOST_DIR}; } || exit 1
         fi
-        (cd ${BOOST_DIR} && ./bootstrap.sh --with-libraries=filesystem,locale,system,thread,regex && ./b2 install --libdir=lib)
+        (cd ${BOOST_DIR} && ./bootstrap.sh --with-libraries=filesystem,locale,system,thread,regex && ./b2 install --libdir=lib ${BOOST_B2_ARGS})
       fi
       export BOOST_ROOT=${BOOST_DIR}
+      export DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH}:${BOOST_ROOT}/lib" # required for MacOS
     fi
 
   ############################################################################
@@ -526,6 +551,7 @@ install:
       make install DESTDIR=${LZ4_DIR}/build PREFIX=""
     fi
     export LZ4_ROOT=${LZ4_DIR}/build
+    export DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH}:${LZ4_ROOT}/lib" # required for MacOS
 
   ############################################################################
   # Install snowball
