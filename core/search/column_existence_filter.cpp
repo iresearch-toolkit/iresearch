@@ -184,7 +184,7 @@ by_column_existence::by_column_existence() NOEXCEPT
   : filter(by_column_existence::type()) {
 }
 
-bool by_column_existence::equals(const filter& rhs) const {
+bool by_column_existence::equals(const filter& rhs) const NOEXCEPT {
   const auto& trhs = static_cast<const by_column_existence&>(rhs);
 
   return filter::equals(rhs)
@@ -192,7 +192,7 @@ bool by_column_existence::equals(const filter& rhs) const {
     && prefix_match_ == trhs.prefix_match_;
 }
 
-size_t by_column_existence::hash() const {
+size_t by_column_existence::hash() const NOEXCEPT {
   size_t seed = 0;
   ::boost::hash_combine(seed, filter::hash());
   ::boost::hash_combine(seed, field_);
