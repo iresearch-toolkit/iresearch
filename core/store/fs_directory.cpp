@@ -255,6 +255,9 @@ class fs_index_input : public buffered_index_input {
   static index_input::ptr open(
     const file_path_t name, size_t pool_size, IOAdvice /*advice*/
   ) NOEXCEPT {
+    // FIXME honor IOAdvice
+    // FIXME On Windows use FILE_FLAG_SEQUENTIAL_SCAN in CreateFile
+
     assert(name);
 
     auto handle = file_handle::make();
