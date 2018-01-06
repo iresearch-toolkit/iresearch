@@ -46,6 +46,7 @@
 
 #include "index/index_reader.hpp"
 #include "index/field_meta.hpp"
+#include "utils/misc.hpp"
 
 #include <boost/functional/hash.hpp>
 

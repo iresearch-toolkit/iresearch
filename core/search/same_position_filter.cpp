@@ -29,6 +29,7 @@
 #include "index/field_meta.hpp"
 
 #include "analysis/token_attributes.hpp"
+#include "utils/misc.hpp"
 
 #include <boost/functional/hash.hpp>
 
