@@ -44,58 +44,35 @@ NS_LOCAL
 using iresearch::data_input;
 using iresearch::data_output;
 
-template<typename T>
-struct read_write_helper {
+template<typename T, size_t N = sizeof(T)>
+struct read_write_helper{
   static T read(data_input& in);
   static T write(data_output& out, T size);
 };
 
-template<>
-struct read_write_helper<uint32_t> {
-  inline static uint32_t read( data_input& in ) { 
+template<typename T>
+struct read_write_helper<T, sizeof(uint32_t)> {
+  inline static T read(data_input& in) {
     return in.read_vint();
   }
 
-  inline static void write( data_output& out, uint32_t size ) {
-    out.write_vint(size);
+  inline static void write(data_output& out, T in) {
+    out.write_vint(in);
   }
 };
 
-template<>
-struct read_write_helper<uint64_t> {
-  inline static uint64_t read( data_input& in ) {
+template<typename T>
+struct read_write_helper<T, sizeof(uint64_t)> {
+  inline static T read(data_input& in) {
     return in.read_vlong();
   }
 
-  inline static void write( data_output& out, uint64_t size ) {
-    out.write_vlong(size);
+  inline static void write(data_output& out, T in) {
+    out.write_vlong(in);
   }
 };
 
-// MacOS size_t is a different type from any of the above
-#if defined(__APPLE__)
-  template<>
-  struct read_write_helper<size_t> {
-    inline static size_t read(data_input& in) {
-      return in.read_vlong();
-    }
-
-    inline static void write(data_output& out, size_t size) {
-      out.write_vlong(size);
-    }
-  };
-#endif
-
 NS_END // LOCAL
-
-NS_BEGIN(detail)
-
-template<class T, T max_size_val>
-struct vencode_traits_base {
-    static const T const_max_size = max_size_val;
-};
-
-NS_END // detail
 
 NS_ROOT
 
@@ -204,17 +181,22 @@ FORCE_INLINE uint64_t vencode_size_64(uint64_t value) {
   return (73 + 9*log2) >> 6;
 }
 
-template<typename T>
+template<class T, T max_size_val>
+struct vencode_traits_base {
+  static const T const_max_size = max_size_val;
+};
+
+template<typename T, size_t N = sizeof(T)>
 struct vencode_traits {
   static size_t size(T value);
   CONSTEXPR static size_t max_size();
   static byte_type* write(T value, byte_type* dst);
   static std::pair<T, const byte_type*> read(const byte_type* begin);
-}; // vencode_traits
+}; // vencode_traits_impl
 
-template<>
-struct vencode_traits<uint32_t>: ::detail::vencode_traits_base<size_t, 5> {
-  typedef uint32_t type;
+template<typename T>
+struct vencode_traits<T, sizeof(uint32_t)> : vencode_traits_base<size_t, 5> {
+  typedef T type;
 
   static size_t size(type v) {
     return vencode_size_32(v);
@@ -233,9 +215,9 @@ struct vencode_traits<uint32_t>: ::detail::vencode_traits_base<size_t, 5> {
   }
 }; // vencode_traits<uint32_t>
 
-template<>
-struct vencode_traits<uint64_t>: ::detail::vencode_traits_base<size_t, 10> {
-  typedef uint64_t type;
+template<typename T>
+struct vencode_traits<T, sizeof(uint64_t)>: vencode_traits_base<size_t, 10> {
+  typedef T type;
 
   static size_t size(type v) {
     return vencode_size_64(v);
@@ -253,30 +235,6 @@ struct vencode_traits<uint64_t>: ::detail::vencode_traits_base<size_t, 10> {
     return read_vlong(begin);
   }
 }; // vencode_traits<uint64_t>
-
-// MacOS size_t is a different type from any of the above
-#if defined(__APPLE__)
-  template<>
-  struct vencode_traits<size_t>: ::detail::vencode_traits_base<size_t, 10> {
-    typedef size_t type;
-
-    static size_t size(type v) {
-      return vencode_size_64(v);
-    }
-
-    CONSTEXPR static size_t max_size() {
-      return const_max_size; // may take up to 10 bytes
-    }
-
-    static byte_type* write(type v, byte_type* begin) {
-      return write_vlong(v, begin);
-    }
-
-    static std::pair<type, const byte_type*> read(const byte_type* begin) {
-      return read_vlong(begin);
-    }
-  };
-#endif
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                               read/write helpers
@@ -318,12 +276,12 @@ T read_enum(data_input& in) {
   );
 }
 
-inline void write_size( data_output& out, size_t size ) {
-  ::read_write_helper<size_t>::write( out, size );
+inline void write_size(data_output& out, size_t size) {
+  ::read_write_helper<size_t>::write(out, size);
 }
 
-inline size_t read_size( data_input& in ) {
-  return ::read_write_helper<size_t>::read( in );
+inline size_t read_size(data_input& in) {
+  return ::read_write_helper<size_t>::read(in);
 }
 
 void IRESEARCH_API write_zvfloat(data_output& out, float_t v);
