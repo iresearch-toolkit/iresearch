@@ -127,11 +127,11 @@ class transaction_store_tests: public test_base {
     irs::timer_utils::init_stats(true);
 
     std::atomic<size_t> parsed_docs_count(0);
-    size_t writer_batch_size = batch_size ? batch_size : (std::numeric_limits<size_t>::max)();
     auto thread_count = (std::max)((size_t)1, num_insert_threads);
     auto total_threads = thread_count + num_update_threads;
     irs::async_utils::thread_pool thread_pool(total_threads, total_threads);
-    size_t update_skip = (writer_batch_size / thread_count / 3) * 3; // round to modulo prime number (ensure first update thread is garanteed to match at least 1 record, e.g. for batch 10000, 16 insert threads -> commit every 10000/16=625 inserts, therefore update_skip must be less than this number)
+    size_t update_skip = (std::min)((size_t)10000, (batch_size / thread_count / 3) * 3); // round to modulo prime number (ensure first update thread is garanteed to match at least 1 record, e.g. for batch 10000, 16 insert threads -> commit every 10000/16=625 inserts, therefore update_skip must be less than this number)
+    size_t writer_batch_size = batch_size ? batch_size : (std::numeric_limits<size_t>::max)();
     std::mutex mutex;
     std::mutex commit_mutex;
     std::atomic<bool> start_update(false);
