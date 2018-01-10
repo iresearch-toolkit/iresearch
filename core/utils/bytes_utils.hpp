@@ -24,15 +24,20 @@
 #ifndef IRESEARCH_BYTES_UTILS_H
 #define IRESEARCH_BYTES_UTILS_H
 
+#include "shared.hpp"
+#include "utils/math_utils.hpp"
+
 NS_ROOT
 
-template<typename T, size_t N>
+template<typename T, size_t N = sizeof(T)>
 struct bytes_io;
 
 template<typename T>
 struct bytes_io<T, sizeof(uint32_t)> {
+  static const T const_max_vsize = 5;
+
   template<typename OutputIterator>
-  static void vwrite(OutputIterator& out, T in, std::output_iterator_tag) {
+  static void vwrite(OutputIterator& out, T in) {
     while (in >= 0x80) {
       *out = static_cast<irs::byte_type>(in | 0x80); ++out;
       in >>= 7;
@@ -42,7 +47,7 @@ struct bytes_io<T, sizeof(uint32_t)> {
   }
 
   template<typename OutputIterator>
-  static void write(OutputIterator& out, T in, std::output_iterator_tag) {
+  static void write(OutputIterator& out, T in) {
     *out = static_cast<irs::byte_type>(in >> 24); ++out;
     *out = static_cast<irs::byte_type>(in >> 16); ++out;
     *out = static_cast<irs::byte_type>(in >> 8);  ++out;
@@ -76,12 +81,27 @@ struct bytes_io<T, sizeof(uint32_t)> {
 
     return out;
   }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @returns number of bytes required to store value in variable length format
+  ////////////////////////////////////////////////////////////////////////////////
+  FORCE_INLINE static uint32_t vsize(uint32_t value) {
+    // compute 0 == value ? 1 : 1 + floor(log2(value)) / 7
+
+    // OR 0x1 since log2_floor_32 does not accept 0
+    const uint32_t log2 = math::log2_floor_32(value | 0x1);
+
+    // division within range [1;31]
+    return (73 + 9*log2) >> 6;
+  }
 }; // bytes_io<T, sizeof(uint32_t)>
 
 template<typename T>
 struct bytes_io<T, sizeof(uint64_t)> {
+  static const T const_max_vsize = 10;
+
   template<typename OutputIterator>
-  static void vwrite(OutputIterator& out, T in, std::output_iterator_tag) {
+  static void vwrite(OutputIterator& out, T in) {
     while (in >= T(0x80)) {
       *out = static_cast<irs::byte_type>(in | T(0x80)); ++out;
       in >>= 7;
@@ -91,7 +111,7 @@ struct bytes_io<T, sizeof(uint64_t)> {
   }
 
   template<typename OutputIterator>
-  static void write(OutputIterator& out, T in, std::output_iterator_tag) {
+  static void write(OutputIterator& out, T in) {
     typedef bytes_io<uint32_t, sizeof(uint32_t)> bytes_io_t;
 
     bytes_io_t::write(out, static_cast<uint32_t>(in >> 32), std::output_iterator_tag{});
@@ -134,16 +154,29 @@ struct bytes_io<T, sizeof(uint64_t)> {
     T out = static_cast<T>(bytes_io_t::read(in, std::input_iterator_tag{})) << 32;
     return out | static_cast<T>(bytes_io_t::read(in, std::input_iterator_tag{}));
   }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @returns number of bytes required to store value in variable length format
+  ////////////////////////////////////////////////////////////////////////////////
+  FORCE_INLINE static uint64_t vsize(uint64_t value) {
+    // compute 0 == value ? 1 : 1 + floor(log2(value)) / 7
+
+    // OR 0x1 since log2_floor_64 does not accept 0
+    const uint64_t log2 = math::log2_floor_64(value | 0x1);
+
+    // division within range [1;63]
+    return (73 + 9*log2) >> 6;
+  }
 }; // bytes_io<T, sizeof(uint64_t)>
 
 template<typename T, typename Iterator>
 inline void write(Iterator& out, T in) {
-  bytes_io<T, sizeof(T)>::write(out, in, typename std::iterator_traits<Iterator>::iterator_category());
+  bytes_io<T, sizeof(T)>::write(out, in);
 }
 
 template<typename T, typename Iterator>
 inline void vwrite(Iterator& out, T in) {
-  bytes_io<T, sizeof(T)>::vwrite(out, in, typename std::iterator_traits<Iterator>::iterator_category());
+  bytes_io<T, sizeof(T)>::vwrite(out, in);
 }
 
 template<typename T, typename Iterator>

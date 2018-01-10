@@ -31,6 +31,7 @@
 #include "utils/thread_utils.hpp"
 #include "utils/std.hpp"
 #include "utils/utf8_path.hpp"
+#include "utils/bytes_utils.hpp"
 
 #include <cassert>
 #include <cstring>
@@ -193,6 +194,18 @@ size_t memory_index_input::read_bytes(byte_type* b, size_t left) {
   return length - left;
 }
 
+uint32_t memory_index_input::read_vint() {
+  return begin_ + bytes_io<uint32_t>::const_max_vsize >= end_
+    ? data_input::read_vint()
+    : irs::vread<uint32_t>(begin_);
+}
+
+uint64_t memory_index_input::read_vlong() {
+  return begin_ + bytes_io<uint64_t>::const_max_vsize >= end_
+    ? data_input::read_vlong()
+    : irs::vread<uint64_t>(begin_);
+}
+
 /* -------------------------------------------------------------------
  * memory_index_output
  * ------------------------------------------------------------------*/
@@ -206,34 +219,52 @@ void memory_index_output::reset() {
   buf_.data = nullptr;
   buf_.offset = 0;
   buf_.size = 0;
-  pos_ = 0;
+  pos_ = nullptr;
+  end_ = nullptr;
 }
 
 void memory_index_output::switch_buffer() {
   auto idx = file_.buffer_offset(file_pointer());
 
   buf_ = idx < file_.buffer_count() ? file_.get_buffer(idx) : file_.push_buffer();
-  pos_ = 0;
+  pos_ = buf_.data;
+  end_ = buf_.data + buf_.size;
+}
+
+void memory_index_output::write_vint(uint32_t v) {
+  if (pos_ + bytes_io<uint32_t>::const_max_vsize < end_) {
+    irs::bytes_io<uint32_t>::vwrite(pos_, v);
+  } else {
+    index_output::write_vint(v);
+  }
+}
+
+void memory_index_output::write_vlong(uint64_t v) {
+  if (pos_ + bytes_io<uint64_t>::const_max_vsize < end_) {
+    irs::bytes_io<uint64_t>::vwrite(pos_, v);
+  } else {
+    index_output::write_vlong(v);
+  }
 }
 
 void memory_index_output::write_byte( byte_type byte ) {
-  if (pos_ >= buf_.size) {
+  if (pos_ >= end_) {
     switch_buffer();
   }
 
-  buf_.data[pos_++] = byte;
+  *pos_++ = byte;
 }
 
 void memory_index_output::write_bytes( const byte_type* b, size_t len ) {
   assert(b || !len);
 
   for (size_t to_copy = 0; len; len -= to_copy) {
-    if (pos_ >= buf_.size) {
+    if (pos_ >= end_) {
       switch_buffer();
     }
 
-    to_copy = std::min(buf_.size - pos_, len);
-    std::memcpy(buf_.data + pos_, b, sizeof(byte_type) * to_copy);
+    to_copy = std::min(size_t(std::distance(pos_, end_)), len);
+    std::memcpy(pos_, b, sizeof(byte_type) * to_copy);
     b += to_copy;
     pos_ += to_copy;
   }
@@ -248,7 +279,7 @@ void memory_index_output::flush() {
 }
 
 size_t memory_index_output::file_pointer() const {
-  return buf_.offset + pos_;
+  return buf_.offset + std::distance(buf_.data, pos_);
 }
 
 int64_t memory_index_output::checksum() const {

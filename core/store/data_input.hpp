@@ -48,7 +48,7 @@ struct IRESEARCH_API data_input {
   virtual size_t read_bytes(byte_type* b, size_t count) = 0;
 
   virtual size_t file_pointer() const = 0;
-  
+
   virtual size_t length() const = 0;
 
   virtual bool eof() const = 0;
@@ -60,11 +60,11 @@ struct IRESEARCH_API data_input {
 
   int32_t read_int();
 
-  uint32_t read_vint();
+  virtual uint32_t read_vint();
 
   int64_t read_long();
 
-  uint64_t read_vlong();
+  virtual uint64_t read_vlong();
 };
 
 /* -------------------------------------------------------------------
@@ -131,6 +131,10 @@ class IRESEARCH_API buffered_index_input : public index_input {
   virtual void seek(size_t pos) final;
 
   size_t buffer_size() const { return buf_size_; }
+
+  virtual uint32_t read_vint() final;
+
+  virtual uint64_t read_vlong() final;
 
  protected:
   explicit buffered_index_input(size_t buf_size = 1024);

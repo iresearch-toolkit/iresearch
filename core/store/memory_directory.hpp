@@ -156,6 +156,9 @@ class IRESEARCH_API memory_index_input final : public index_input {
 
   virtual void seek(size_t pos) override;
 
+  virtual uint32_t read_vint() override;
+  virtual uint64_t read_vlong() override;
+
  private:
   memory_index_input(const memory_index_input&) = default;
 
@@ -198,12 +201,17 @@ class IRESEARCH_API memory_index_output final : public index_output {
 
   void operator>>( data_output& out );
 
+  virtual void write_vint(uint32_t v) override;
+
+  virtual void write_vlong(uint64_t v) override;
+
  private:
   void switch_buffer();
 
   memory_file& file_; // underlying file
   memory_file::buffer_t buf_; // current buffer
-  size_t pos_; /* position in current buffer */
+  byte_type* pos_; /* position in current buffer */
+  byte_type* end_;
 };
 
 // -------------------------------------------------------------------

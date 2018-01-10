@@ -400,7 +400,7 @@ class fs_index_input : public buffered_index_input {
 
 DEFINE_FACTORY_DEFAULT(fs_index_input::file_handle);
 
-class pooled_fs_index_input: public fs_index_input {
+class pooled_fs_index_input final : public fs_index_input {
  public:
   explicit pooled_fs_index_input(const fs_index_input& in);
   virtual ~pooled_fs_index_input();

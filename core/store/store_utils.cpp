@@ -302,48 +302,38 @@ NS_END // encode
 /* bytes_output */
 
 bytes_output::bytes_output(size_t capacity) {
-  oversize(buf_, capacity);
+  buf_.reserve(capacity);
 }
 
 bytes_output::bytes_output(bytes_output&& other) NOEXCEPT
   : buf_(std::move(other.buf_)) {
-  this->data_ = buf_.data();
-  this->size_ = other.size();
-
 }
 
 bytes_output& bytes_output::operator=(bytes_output&& other) NOEXCEPT {
   if (this != &other) {
     buf_ = std::move(other.buf_);
-    this->data_ = buf_.data();
-    this->size_ = other.size();
-    other.size_ = 0;
   }
 
   return *this;
 }
 
-/* bytes_ref_input */
-
-bytes_ref_input::bytes_ref_input() : pos_(0) {}
+// ----------------------------------------------------------------------------
+// --SECTION--                                   bytes_ref_input implementation
+// ----------------------------------------------------------------------------
 
 bytes_ref_input::bytes_ref_input(const bytes_ref& ref)
-  : data_(ref), pos_(0) {
+  : data_(ref), pos_(data_.begin()) {
 }
 
-byte_type bytes_ref_input::read_byte() {
-  assert(pos_ <= data_.size());
-  return this->data_[pos_++];
-}
+size_t bytes_ref_input::read_bytes(byte_type* b, size_t size) {
+    size = std::min(size, size_t(std::distance(pos_, data_.end())));
+    std::memcpy(b, pos_, sizeof(byte_type) * size);
+    pos_ += size;
+    return size;
+    //assert( pos_ + size <= data_.size() );
+  }
 
-size_t bytes_ref_input::read_bytes( byte_type* b, size_t size) {
-  size = std::min(size, data_.size() - pos_);
-  std::memcpy( b, data_.c_str() + pos_, sizeof( byte_type ) * size );
-  pos_ += size;
-  return size;
-  //assert( pos_ + size <= data_.size() );
-}
-
+// append to buf
 void bytes_ref_input::read_bytes(bstring& buf, size_t size) {
   auto used = buf.size();
 
@@ -357,30 +347,32 @@ void bytes_ref_input::read_bytes(bstring& buf, size_t size) {
   #endif // IRESEARCH_DEBUG
 }
 
-/* bytes_input */
+// ----------------------------------------------------------------------------
+// --SECTION--                                       bytes_input implementation
+// ----------------------------------------------------------------------------
 
-bytes_input::bytes_input() : pos_(0) {}
-
-bytes_input::bytes_input(const bytes_ref& data):
-  buf_(data.c_str(), data.size()), pos_(0) {
+bytes_input::bytes_input(const bytes_ref& data)
+  : buf_(data.c_str(), data.size()),
+    pos_(this->buf_.c_str()) {
   this->data_ = buf_.data();
   this->size_ = data.size();
 }
 
 bytes_input::bytes_input(bytes_input&& other) NOEXCEPT
-  : buf_(std::move(other.buf_)), pos_(other.pos_) {
+  : buf_(std::move(other.buf_)),
+    pos_(other.pos_) {
   this->data_ = buf_.data();
   this->size_ = other.size();
-  other.pos_ = 0;
+  other.pos_ = other.buf_.c_str();
   other.size_ = 0;
 }
 
 bytes_input& bytes_input::operator=(const bytes_ref& data) {
   if (this != &data) {
     buf_.assign(data.c_str(), data.size());
+    pos_ = this->buf_.c_str();
     this->data_ = buf_.data();
     this->size_ = data.size();
-    pos_ = 0;
   }
 
   return *this;
@@ -389,9 +381,10 @@ bytes_input& bytes_input::operator=(const bytes_ref& data) {
 bytes_input& bytes_input::operator=(bytes_input&& other) NOEXCEPT {
   if (this != &other) {
     buf_ = std::move(other.buf_);
+    pos_ = buf_.c_str();
     this->data_ = buf_.data();
     this->size_ = other.size();
-    other.pos_ = 0;
+    other.pos_ = other.buf_.c_str();
     other.size_ = 0;
   }
 
@@ -411,20 +404,6 @@ void bytes_input::read_bytes(bstring& buf, size_t size) {
   #endif // IRESEARCH_DEBUG
 }
 
-byte_type bytes_input::read_byte() {
-  assert(pos_ <= size());
-  return this->data_[pos_++];
-}
-
-size_t bytes_input::read_bytes(byte_type* b, size_t size) {
-  assert(pos_ + size <= this->size());
-  size = std::min(size, this->size() - pos_);
-  std::memcpy(b, this->data_ + pos_, sizeof(byte_type) * size);
-  pos_ += size;
-  return size;
-
-}
-
 void bytes_input::read_from(data_input& in, size_t size) {
   if (!size) {
     /* nothing to read*/
@@ -436,13 +415,21 @@ void bytes_input::read_from(data_input& in, size_t size) {
 #ifdef IRESEARCH_DEBUG
   const auto read = in.read_bytes(&(buf_[0]), size);
   assert(read == size);
-#else 
+#else
   in.read_bytes(&(buf_[0]), size);
 #endif // IRESEARCH_DEBUG
 
   this->data_ = buf_.data();
   this->size_ = size;
-  pos_ = 0;
+  pos_ = this->data_;
+}
+
+size_t bytes_input::read_bytes(byte_type* b, size_t size) {
+  assert(pos_ + size <= this->end());
+  size = std::min(size, size_t(std::distance(pos_, this->end())));
+  std::memcpy(b, pos_, sizeof(byte_type) * size);
+  pos_ += size;
+  return size;
 }
 
 NS_END

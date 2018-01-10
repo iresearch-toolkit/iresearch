@@ -108,7 +108,7 @@ const ir::flags& string_field::features() const {
 
 // reject too long terms
 void string_field::value(const ir::string_ref& str) {
-  const auto size_len = ir::vencode_size_32(ir::byte_block_pool::block_type::SIZE);
+  const auto size_len = irs::bytes_io<uint32_t>::vsize(ir::byte_block_pool::block_type::SIZE);
   const auto max_len = (std::min)(str.size(), size_t(ir::byte_block_pool::block_type::SIZE - size_len));
   auto begin = str.begin();
   auto end = str.begin() + max_len;
@@ -155,7 +155,7 @@ const irs::flags& string_ref_field::features() const {
 
 // truncate very long terms
 void string_ref_field::value(const irs::string_ref& str) {
-  const auto size_len = irs::vencode_size_32(irs::byte_block_pool::block_type::SIZE);
+  const auto size_len = irs::bytes_io<uint32_t>::vsize(irs::byte_block_pool::block_type::SIZE);
   const auto max_len = (std::min)(str.size(), size_t(irs::byte_block_pool::block_type::SIZE - size_len));
 
   value_ = irs::string_ref(str.c_str(), max_len);

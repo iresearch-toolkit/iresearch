@@ -27,6 +27,7 @@
 #include "error/error.hpp"
 #include "utils/memory.hpp"
 #include "utils/std.hpp"
+#include "utils/bytes_utils.hpp"
 
 #include <memory>
 
@@ -155,6 +156,18 @@ byte_type buffered_index_input::read_byte() {
   }
 
   return *begin_++;
+}
+
+uint32_t buffered_index_input::read_vint() {
+  return remain() < bytes_io<uint32_t>::const_max_vsize
+    ? data_input::read_vint()
+    : irs::vread<uint32_t>(begin_);
+}
+
+uint64_t buffered_index_input::read_vlong() {
+  return remain() < bytes_io<uint64_t>::const_max_vsize
+    ? data_input::read_vlong()
+    : irs::vread<uint64_t>(begin_);
 }
 
 size_t buffered_index_input::read_bytes(byte_type* b, size_t count) {

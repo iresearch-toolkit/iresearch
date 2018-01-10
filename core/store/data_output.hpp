@@ -53,11 +53,11 @@ struct IRESEARCH_API data_output {
 
   void write_short( int16_t i );
 
-  void write_vint( uint32_t i );
-
   void write_long( int64_t i );
 
-  void write_vlong( uint64_t i );
+  virtual void write_vint(uint32_t i);
+
+  virtual void write_vlong(uint64_t i);
 };
 
 /* -------------------------------------------------------------------
@@ -107,7 +107,7 @@ class IRESEARCH_API buffered_index_output : public index_output, util::noncopyab
  public:
   static const size_t DEF_BUFFER_SIZE = 1024;
 
-  buffered_index_output( size_t buf_size = DEF_BUFFER_SIZE );
+  buffered_index_output(size_t buf_size = DEF_BUFFER_SIZE);
 
   virtual ~buffered_index_output();
 
@@ -117,18 +117,23 @@ class IRESEARCH_API buffered_index_output : public index_output, util::noncopyab
 
   virtual size_t file_pointer() const override;
 
-  virtual void write_byte( byte_type b ) override;
+  virtual void write_byte(byte_type b) final;
 
-  virtual void write_bytes( const byte_type* b, size_t length ) override;
+  virtual void write_bytes(const byte_type* b, size_t length) final;
+
+  virtual void write_vint(uint32_t v) final;
+
+  virtual void write_vlong(uint64_t v) final;
 
  protected:
-  virtual void flush_buffer( const byte_type* b, size_t len ) = 0;
+  virtual void flush_buffer(const byte_type* b, size_t len) = 0;
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  std::unique_ptr< byte_type[] > buf;
+  std::unique_ptr<byte_type[]> buf;
   size_t start; // position of buffer in a file
-  size_t pos;   // position in buffer
+  byte_type* pos;   // position in buffer
+  byte_type* end;
   size_t buf_size;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 };
