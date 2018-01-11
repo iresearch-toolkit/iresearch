@@ -26,44 +26,64 @@
 
 #include "utils/string.hpp"
 #include "utils/io_utils.hpp"
+#include "utils/bytes_utils.hpp"
 #include "utils/noncopyable.hpp"
 
 #include <streambuf>
 
 NS_ROOT
 
-/* -------------------------------------------------------------------
-* data_output
-* ------------------------------------------------------------------*/
+//////////////////////////////////////////////////////////////////////////////
+/// @struct data_output
+/// @brief base interface for all low-level output data streams
+//////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API data_output
+    : std::iterator<std::output_iterator_tag, byte_type, void, void, void> {
 
-struct IRESEARCH_API data_output {
   virtual ~data_output();
 
   // TODO: remove close method
   virtual void close() = 0;
 
-  virtual void write_byte( byte_type b ) = 0;
+  virtual void write_byte(byte_type b) = 0;
 
-  virtual void write_bytes( const byte_type* b, size_t len ) = 0;
+  virtual void write_bytes(const byte_type* b, size_t len) = 0;
 
   // TODO: make functions virtual and override it in subclass in 
   // order to achieve better performance
 
-  void write_int( int32_t i );
+  void write_short(int16_t i) {
+    irs::write<uint16_t>(*this, i);
+  }
 
-  void write_short( int16_t i );
+  void write_int(int32_t i) {
+    irs::write<int32_t>(*this, i);
+  }
 
-  void write_long( int64_t i );
+  void write_long(int64_t i) {
+    irs::write<int64_t>(*this, i);
+  }
 
-  virtual void write_vint(uint32_t i);
+  virtual void write_vint(uint32_t i) {
+    irs::vwrite<uint32_t>(*this, i);
+  }
 
-  virtual void write_vlong(uint64_t i);
-};
+  virtual void write_vlong(uint64_t i) {
+    irs::vwrite<uint64_t>(*this, i);
+  }
 
-/* -------------------------------------------------------------------
-* index_output
-* ------------------------------------------------------------------*/
+  data_output& operator=(byte_type b) {
+    write_byte(b);
+    return *this;
+  }
+  data_output& operator*() NOEXCEPT { return *this; }
+  data_output& operator++() NOEXCEPT { return *this; }
+  data_output& operator++(int) NOEXCEPT { return *this; }
+}; // data_output
 
+//////////////////////////////////////////////////////////////////////////////
+/// @struct index_output
+//////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API index_output : public data_output {
  public:
   DECLARE_IO_PTR(index_output, close);
@@ -77,32 +97,32 @@ struct IRESEARCH_API index_output : public data_output {
   virtual size_t file_pointer() const = 0;
 
   virtual int64_t checksum() const = 0;
-};
+}; // index_output
 
-/* -------------------------------------------------------------------
-* output_buf
-* ------------------------------------------------------------------*/
-
-class IRESEARCH_API output_buf: public std::streambuf, util::noncopyable {
+//////////////////////////////////////////////////////////////////////////////
+/// @class output_buf
+//////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API output_buf final : public std::streambuf, util::noncopyable {
  public:
   typedef std::streambuf::char_type char_type;
   typedef std::streambuf::int_type int_type;
 
-  output_buf( index_output* out );
+  explicit output_buf(index_output* out);
 
-  virtual std::streamsize xsputn( const char_type* c,
-                                  std::streamsize size ) override;
+  virtual std::streamsize xsputn(
+    const char_type* c,
+    std::streamsize size
+  ) override;
 
-  virtual int_type overflow( int_type c ) override;
+  virtual int_type overflow(int_type c) override;
 
  private:
   index_output* out_;
-};
+}; // output_buf
 
-/* -------------------------------------------------------------------
-* buffered_index_output
-* ------------------------------------------------------------------*/
-
+//////////////////////////////////////////////////////////////////////////////
+/// @class buffered_index_output
+//////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API buffered_index_output : public index_output, util::noncopyable {
  public:
   static const size_t DEF_BUFFER_SIZE = 1024;
@@ -136,7 +156,7 @@ class IRESEARCH_API buffered_index_output : public index_output, util::noncopyab
   byte_type* end;
   size_t buf_size;
   IRESEARCH_API_PRIVATE_VARIABLES_END
-};
+}; // buffered_index_output
 
 NS_END
 

@@ -114,8 +114,8 @@ struct bytes_io<T, sizeof(uint64_t)> {
   static void write(OutputIterator& out, T in) {
     typedef bytes_io<uint32_t, sizeof(uint32_t)> bytes_io_t;
 
-    bytes_io_t::write(out, static_cast<uint32_t>(in >> 32), std::output_iterator_tag{});
-    bytes_io_t::write(out, static_cast<uint32_t>(in), std::output_iterator_tag{});
+    bytes_io_t::write(out, static_cast<uint32_t>(in >> 32));
+    bytes_io_t::write(out, static_cast<uint32_t>(in));
   }
 
   template<typename InputIterator>
@@ -168,6 +168,23 @@ struct bytes_io<T, sizeof(uint64_t)> {
     return (73 + 9*log2) >> 6;
   }
 }; // bytes_io<T, sizeof(uint64_t)>
+
+template<typename T>
+struct bytes_io<T, sizeof(uint16_t)> {
+  template<typename OutputIterator>
+  static void write(OutputIterator& out, T in) {
+    *out = static_cast<irs::byte_type>(in >> 8);  ++out;
+    *out = static_cast<irs::byte_type>(in);       ++out;
+  }
+
+  template<typename InputIterator>
+  static T read(InputIterator& in, std::input_iterator_tag) {
+    T out = static_cast<T>(*in) << 8; ++in;
+    out |= static_cast<T>(*in);       ++in;
+
+    return out;
+  }
+}; // bytes_io<T, sizeof(uint16_t)>
 
 template<typename T, typename Iterator>
 inline void write(Iterator& out, T in) {

@@ -77,82 +77,18 @@ NS_END // LOCAL
 
 NS_ROOT
 
-inline byte_type* write_vint(uint32_t v, byte_type* begin) {
-  while (v >= 0x80) {
-    *begin++ = static_cast<byte_type>(v | 0x80);
-    v >>= 7;
-  }
-
-  *begin = static_cast<byte_type>(v);
-  return begin + 1;
-}
-
-inline byte_type* write_vlong(uint64_t v, byte_type* begin) {
-  while (v >= uint64_t(0x80)) {
-    *begin++ = static_cast<byte_type>(v | uint64_t(0x80));
-    v >>= 7;
-  }
-
-  *begin = static_cast<byte_type>(v);
-  return begin + 1;
-}
-
-inline std::pair<uint32_t, const byte_type*> read_vint(const byte_type* begin) {
-  uint32_t out = *begin++; if (!(out & 0x80)) return std::make_pair(out, begin);
-
-  uint32_t b;
-  out -= 0x80;
-  b = *begin++; out += b << 7; if (!(b & 0x80)) return std::make_pair(out, begin);
-  out -= 0x80 << 7;
-  b = *begin++; out += b << 14; if (!(b & 0x80)) return std::make_pair(out, begin);
-  out -= 0x80 << 14;
-  b = *begin++; out += b << 21; if (!(b & 0x80)) return std::make_pair(out, begin);
-  out -= 0x80 << 21;
-  b = *begin++; out += b << 28;
-  // last byte always has MSB == 0, so we don't need to subtract 0x80
-
-  return std::make_pair(out, begin);
-}
-
-inline std::pair<uint64_t, const byte_type*> read_vlong(const byte_type* begin) {
-  const uint64_t MASK = 0x80;
-  uint64_t out = *begin++; if (!(out & MASK)) return std::make_pair(out, begin);
-
-  uint64_t b;
-  out -= MASK;
-  b = *begin++; out += b << 7; if (!(b & MASK)) return std::make_pair(out, begin);
-  out -= MASK << 7;
-  b = *begin++; out += b << 14; if (!(b & MASK)) return std::make_pair(out, begin);
-  out -= MASK << 14;
-  b = *begin++; out += b << 21; if (!(b & MASK)) return std::make_pair(out, begin);
-  out -= MASK << 21;
-  b = *begin++; out += b << 28; if (!(b & MASK)) return std::make_pair(out, begin);
-  out -= MASK << 28;
-  b = *begin++; out += b << 35; if (!(b & MASK)) return std::make_pair(out, begin);
-  out -= MASK << 35;
-  b = *begin++; out += b << 42; if (!(b & MASK)) return std::make_pair(out, begin);
-  out -= MASK << 42;
-  b = *begin++; out += b << 49; if (!(b & MASK)) return std::make_pair(out, begin);
-  out -= MASK << 49;
-  b = *begin++; out += b << 56; if (!(b & MASK)) return std::make_pair(out, begin);
-  out -= MASK << 56;
-  b = *begin++; out += b << 63;
-  // last byte always has MSB == 0, so we don't need to subtract MASK
-
-  return std::make_pair(out, begin);
-}
 
 template<
   typename StringType,
   typename TraitsType = typename StringType::traits_type
-> StringType to_string(const byte_type* const begin) {
+> StringType to_string(const byte_type* begin) {
   typedef typename TraitsType::char_type char_type;
 
-  const auto res = read_vint(begin);
+  const auto size = irs::vread<uint32_t>(begin);
 
   return StringType(
-    reinterpret_cast<const char_type*>(res.second),
-    res.first
+    reinterpret_cast<const char_type*>(begin),
+    size
   );
 }
 
@@ -212,23 +148,23 @@ void IRESEARCH_API write_zvdouble(data_output& out, double_t v);
 
 double_t IRESEARCH_API read_zvdouble(data_input& in);
 
-inline void write_zvint( data_output& out, int32_t v ) {
-  out.write_vint( zig_zag_encode32( v ) );
+inline void write_zvint(data_output& out, int32_t v) {
+  out.write_vint(zig_zag_encode32(v));
 }
 
-inline int32_t read_zvint( data_input& in ) {
-  return zig_zag_decode32( in.read_vint() );
+inline int32_t read_zvint(data_input& in) {
+  return zig_zag_decode32(in.read_vint());
 }
 
-inline void write_zvlong( data_output& out, int64_t v ) {
-  out.write_vlong( zig_zag_encode64( v ) );
+inline void write_zvlong(data_output& out, int64_t v) {
+  out.write_vlong(zig_zag_encode64(v));
 }
 
-inline int64_t read_zvlong( data_input& in ) {
-  return zig_zag_decode64( in.read_vlong() );
+inline int64_t read_zvlong(data_input& in) {
+  return zig_zag_decode64(in.read_vlong());
 }
 
-inline void write_string( data_output& out, const char* s, size_t len ) {
+inline void write_string(data_output& out, const char* s, size_t len) {
   assert(len < integer_traits<uint32_t>::const_max);
   out.write_vint(uint32_t(len));
   out.write_bytes(reinterpret_cast<const byte_type*>(s), len);
@@ -285,7 +221,7 @@ inline ContType read_strings(data_input& in) {
 }
 
 // ----------------------------------------------------------------------------
-// --SECTION--                                                     skip helpers 
+// --SECTION--                                                     skip helpers
 // ----------------------------------------------------------------------------
 
 const uint64_t SKIP_BUFFER_SIZE = 1024U;
@@ -300,12 +236,12 @@ IRESEARCH_API void skip(
 // ----------------------------------------------------------------------------
 
 FORCE_INLINE uint64_t shift_pack_64(uint64_t val, bool b) {
-  assert(val <= 0x7FFFFFFFFFFFFFFFLL);
+  assert(val <= UINT64_C(0x7FFFFFFFFFFFFFFF));
   return (val << 1) | (b ? 1 : 0);
 }
 
 FORCE_INLINE uint32_t shift_pack_32(uint32_t val, bool b) {
-  assert(val <= 0x7FFFFFFF);
+  assert(val <= UINT32_C(0x7FFFFFFF));
   return (val << 1) | (b ? 1 : 0);
 }
 

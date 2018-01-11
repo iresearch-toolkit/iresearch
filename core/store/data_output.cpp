@@ -39,41 +39,6 @@ NS_ROOT
 
 data_output::~data_output() {}
 
-void data_output::write_short(int16_t i) {
-  write_byte(static_cast< byte_type >(i >> 8));
-  write_byte(static_cast< byte_type >(i));
-}
-
-void data_output::write_int(int32_t i) {
-  write_byte(static_cast<byte_type>(i >> 24));
-  write_byte(static_cast<byte_type>(i >> 16));
-  write_byte(static_cast<byte_type>(i >> 8));
-  write_byte(static_cast<byte_type>(i));
-}
-
-void data_output::write_vint(uint32_t i) {
-  while (i >= 0x80) {
-    write_byte(static_cast<byte_type>(i | 0x80));
-    i >>= 7;
-  }
-
-  write_byte(static_cast<byte_type>(i));
-}
-
-void data_output::write_long(int64_t i) {
-  write_int(static_cast<int32_t >(i>> 32));
-  write_int(static_cast<int32_t >(i));
-}
-
-void data_output::write_vlong(uint64_t i) {
-  while (i >= uint64_t(0x80)) {
-    write_byte(static_cast<byte_type>(i | uint64_t(0x80)));
-    i >>= 7;
-  }
-
-  write_byte(static_cast<byte_type>(i));
-}
-
 /* -------------------------------------------------------------------
 * index_output
 * ------------------------------------------------------------------*/
