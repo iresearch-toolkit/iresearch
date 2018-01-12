@@ -26,6 +26,7 @@
 
 #include "shared.hpp"
 #include "utils/math_utils.hpp"
+#include "utils/numeric_utils.hpp"
 
 NS_ROOT
 
@@ -54,6 +55,15 @@ struct bytes_io<T, sizeof(uint32_t)> {
     *out = static_cast<irs::byte_type>(in);       ++out;
   }
 
+  static void write(byte_type*& out, T in) {
+    if (!numeric_utils::is_big_endian()) {
+      in = numeric_utils::hton32(in);
+    }
+
+    *reinterpret_cast<T*>(out) = in;
+    out += sizeof(T);
+  }
+
   template<typename InputIterator>
   static T vread(InputIterator& in, std::input_iterator_tag) {
     T out = *in; ++in; if (!(out & 0x80)) return out;
@@ -80,6 +90,17 @@ struct bytes_io<T, sizeof(uint32_t)> {
     out |= static_cast<T>(*in);        ++in;
 
     return out;
+  }
+
+  static T read(byte_type*& in) {
+    auto value = *reinterpret_cast<T*>(in);
+
+    if (!numeric_utils::is_big_endian()) {
+      value = numeric_utils::ntoh32(value);
+    }
+
+    in += sizeof(uint32_t);
+    return value;
   }
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -118,6 +139,15 @@ struct bytes_io<T, sizeof(uint64_t)> {
     bytes_io_t::write(out, static_cast<uint32_t>(in));
   }
 
+  static void write(byte_type*& out, T in) {
+    if (!numeric_utils::is_big_endian()) {
+      in = numeric_utils::hton64(in);
+    }
+
+    *reinterpret_cast<T*>(out) = in;
+    out += sizeof(T);
+  }
+
   template<typename InputIterator>
   static T vread(InputIterator& in, std::input_iterator_tag) {
     const T MASK = 0x80;
@@ -153,6 +183,17 @@ struct bytes_io<T, sizeof(uint64_t)> {
 
     T out = static_cast<T>(bytes_io_t::read(in, std::input_iterator_tag{})) << 32;
     return out | static_cast<T>(bytes_io_t::read(in, std::input_iterator_tag{}));
+  }
+
+  static T read(byte_type*& in) {
+    auto value = *reinterpret_cast<T*>(in);
+
+    if (!numeric_utils::is_big_endian()) {
+      value = numeric_utils::ntoh64(value);
+    }
+
+    in += sizeof(uint64_t);
+    return value;
   }
 
   ////////////////////////////////////////////////////////////////////////////////

@@ -49,18 +49,15 @@ struct IRESEARCH_API data_output
 
   virtual void write_bytes(const byte_type* b, size_t len) = 0;
 
-  // TODO: make functions virtual and override it in subclass in 
-  // order to achieve better performance
-
   void write_short(int16_t i) {
     irs::write<uint16_t>(*this, i);
   }
 
-  void write_int(int32_t i) {
+  virtual void write_int(int32_t i) {
     irs::write<int32_t>(*this, i);
   }
 
-  void write_long(int64_t i) {
+  virtual void write_long(int64_t i) {
     irs::write<int64_t>(*this, i);
   }
 
@@ -144,6 +141,10 @@ class IRESEARCH_API buffered_index_output : public index_output, util::noncopyab
   virtual void write_vint(uint32_t v) final;
 
   virtual void write_vlong(uint64_t v) final;
+
+  virtual void write_int(int32_t v) final;
+
+  virtual void write_long(int64_t v) final;
 
  protected:
   virtual void flush_buffer(const byte_type* b, size_t len) = 0;

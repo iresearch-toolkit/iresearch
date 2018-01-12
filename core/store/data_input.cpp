@@ -26,6 +26,7 @@
 
 #include "error/error.hpp"
 #include "utils/memory.hpp"
+#include "utils/numeric_utils.hpp"
 #include "utils/std.hpp"
 
 #include <memory>
@@ -93,6 +94,18 @@ byte_type buffered_index_input::read_byte() {
   }
 
   return *begin_++;
+}
+
+int32_t buffered_index_input::read_int() {
+  return remain() < sizeof(uint32_t)
+    ? data_input::read_int()
+    : irs::read<uint32_t>(begin_);
+}
+
+int64_t buffered_index_input::read_long() {
+  return remain() < sizeof(uint64_t)
+    ? data_input::read_long()
+    : irs::read<uint64_t>(begin_);
 }
 
 uint32_t buffered_index_input::read_vint() {

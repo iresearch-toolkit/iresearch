@@ -156,6 +156,8 @@ class IRESEARCH_API memory_index_input final : public index_input {
 
   virtual void seek(size_t pos) override;
 
+  virtual int32_t read_int() override;
+  virtual int64_t read_long() override;
   virtual uint32_t read_vint() override;
   virtual uint64_t read_vlong() override;
 
@@ -200,6 +202,10 @@ class IRESEARCH_API memory_index_output final : public index_output {
   virtual int64_t checksum() const override;
 
   void operator>>( data_output& out );
+
+  virtual void write_int(int32_t v) override;
+
+  virtual void write_long(int64_t v) override;
 
   virtual void write_vint(uint32_t v) override;
 

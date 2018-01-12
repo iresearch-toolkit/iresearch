@@ -358,6 +358,14 @@ class IRESEARCH_API bytes_ref_input : public index_input {
     return dup();
   }
 
+  virtual int32_t read_int() final {
+    return irs::read<uint32_t>(pos_);
+  }
+
+  virtual int64_t read_long() final {
+    return irs::read<uint64_t>(pos_);
+  }
+
   virtual uint64_t read_vlong() final {
     return irs::vread<uint64_t>(pos_);
   }
@@ -415,6 +423,14 @@ class IRESEARCH_API bytes_input final: public data_input, public bytes_ref {
 
   // append to buf
   void read_bytes(bstring& buf, size_t size);
+
+  virtual int32_t read_int() final {
+    return irs::read<uint32_t>(pos_);
+  }
+
+  virtual int64_t read_long() final {
+    return irs::read<uint64_t>(pos_);
+  }
 
   virtual uint32_t read_vint() final {
     return irs::vread<uint32_t>(pos_);

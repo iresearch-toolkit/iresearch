@@ -48,7 +48,7 @@ struct IRESEARCH_API data_input
 
   virtual ~data_input();
 
-  virtual uint8_t read_byte() = 0;
+  virtual byte_type read_byte() = 0;
 
   virtual size_t read_bytes(byte_type* b, size_t count) = 0;
 
@@ -58,20 +58,17 @@ struct IRESEARCH_API data_input
 
   virtual bool eof() const = 0;
 
-  // TODO: make functions virtual and override it in subclass in 
-  // order to achieve better performance
-
   int16_t read_short() {
     // important to read as unsigned
     return irs::read<uint16_t>(*this);
   }
 
-  int32_t read_int() {
+  virtual int32_t read_int() {
     // important to read as unsigned
     return irs::read<uint32_t>(*this);
   }
 
-  int64_t read_long() {
+  virtual int64_t read_long() {
     // important to read as unsigned
     return irs::read<uint64_t>(*this);
   }
@@ -150,6 +147,10 @@ class IRESEARCH_API buffered_index_input : public index_input {
   virtual void seek(size_t pos) final;
 
   size_t buffer_size() const { return buf_size_; }
+
+  virtual int32_t read_int() final;
+
+  virtual int64_t read_long() final;
 
   virtual uint32_t read_vint() final;
 
