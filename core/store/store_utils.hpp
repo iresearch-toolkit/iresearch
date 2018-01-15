@@ -393,12 +393,12 @@ class IRESEARCH_API bytes_input final: public data_input, public bytes_ref {
   void read_from(data_input& in, size_t size);
 
   void skip(size_t size) {
-    assert(pos_ + size < this->end());
+    assert(pos_ + size <= this->end());
     pos_ += size;
   }
 
   void seek(size_t pos) {
-    assert(pos_ + pos < this->end());
+    assert(pos_ + pos <= this->end());
     pos_ = this->begin() + pos;
   }
 
