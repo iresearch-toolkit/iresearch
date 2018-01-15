@@ -7981,6 +7981,7 @@ TEST_F(memory_index_test, doc_removal) {
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->remove(std::move(query_doc1.filter));
+    writer->remove(std::unique_ptr<irs::filter>(nullptr)); // test nullptr filter ignored
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -8014,6 +8015,7 @@ TEST_F(memory_index_test, doc_removal) {
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->remove(std::shared_ptr<iresearch::filter>(std::move(query_doc1.filter)));
+    writer->remove(std::shared_ptr<irs::filter>(nullptr)); // test nullptr filter ignored
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -8199,6 +8201,7 @@ TEST_F(memory_index_test, doc_removal) {
       doc3->stored.begin(), doc3->stored.end()
     ));
     writer->remove(std::move(query_doc2.filter));
+    writer->remove(std::unique_ptr<irs::filter>(nullptr)); // test nullptr filter ignored
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -8260,6 +8263,7 @@ TEST_F(memory_index_test, doc_removal) {
       doc4->stored.begin(), doc4->stored.end()
     ));
     writer->remove(std::move(query_doc1_doc3.filter));
+    writer->remove(std::shared_ptr<irs::filter>(nullptr)); // test nullptr filter ignored
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
