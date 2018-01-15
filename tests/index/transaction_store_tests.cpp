@@ -3393,6 +3393,7 @@ TEST_F(transaction_store_tests, doc_removal) {
       return false;
     }));
     writer.remove(std::move(query_doc1.filter));
+    writer.remove(std::unique_ptr<irs::filter>(nullptr)); // test nullptr filter ignored
     ASSERT_TRUE(writer.commit());
 
     auto reader = store.reader();
@@ -3429,6 +3430,7 @@ TEST_F(transaction_store_tests, doc_removal) {
       return false;
     }));
     writer.remove(std::shared_ptr<irs::filter>(std::move(query_doc1.filter)));
+    writer.remove(std::shared_ptr<irs::filter>(nullptr)); // test nullptr filter ignored
     ASSERT_TRUE(writer.commit());
 
     auto reader = store.reader();
@@ -3632,6 +3634,7 @@ TEST_F(transaction_store_tests, doc_removal) {
       return false;
     }));
     writer.remove(std::move(query_doc2.filter));
+    writer.remove(std::unique_ptr<irs::filter>(nullptr)); // test nullptr filter ignored
     ASSERT_TRUE(writer.commit());
 
     auto reader = store.reader();
@@ -3682,6 +3685,7 @@ TEST_F(transaction_store_tests, doc_removal) {
       return false;
     }));
     writer.remove(std::move(query_doc1_doc3.filter));
+    writer.remove(std::shared_ptr<irs::filter>(nullptr)); // test nullptr filter ignored
     ASSERT_TRUE(writer.commit());
 
     auto reader = store.reader();
