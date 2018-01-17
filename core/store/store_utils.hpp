@@ -306,12 +306,12 @@ class IRESEARCH_API bytes_ref_input : public index_input {
   explicit bytes_ref_input(const bytes_ref& data);
 
   void skip(size_t size) NOEXCEPT {
-    assert(pos_ + size < data_.end());
+    assert(pos_ + size <= data_.end());
     pos_ += size;
   }
 
   virtual void seek(size_t pos) NOEXCEPT override {
-    assert(pos_ + pos < data_.end());
+    assert(data_.begin() + pos <= data_.end());
     pos_ = data_.begin() + pos;
   }
 
@@ -398,7 +398,7 @@ class IRESEARCH_API bytes_input final: public data_input, public bytes_ref {
   }
 
   void seek(size_t pos) {
-    assert(pos_ + pos <= this->end());
+    assert(this->begin() + pos <= this->end());
     pos_ = this->begin() + pos;
   }
 

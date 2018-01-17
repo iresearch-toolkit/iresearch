@@ -196,47 +196,27 @@ size_t memory_index_input::read_bytes(byte_type* b, size_t left) {
 }
 
 int32_t memory_index_input::read_int() {
-  if (begin_ + sizeof(uint32_t) >= end_) {
-    return data_input::read_int();
-  }
-
-  auto value = *reinterpret_cast<const uint32_t*>(begin_);
-
-  if (!numeric_utils::is_big_endian()) {
-    value = numeric_utils::ntoh32(value);
-  }
-
-  begin_ += sizeof(uint32_t);
-
-  return value;
+  return begin_ + sizeof(uint32_t) < end_
+    ? irs::read<uint32_t>(begin_)
+    : data_input::read_int();
 }
 
 int64_t memory_index_input::read_long() {
-  if (begin_ + sizeof(uint64_t) >= end_) {
-    return data_input::read_long();
-  }
-
-  auto value = *reinterpret_cast<const uint64_t*>(begin_);
-
-  if (!numeric_utils::is_big_endian()) {
-    value = numeric_utils::ntoh64(value);
-  }
-
-  begin_ += sizeof(uint64_t);
-
-  return value;
+  return begin_ + sizeof(uint64_t) < end_
+    ? irs::read<uint64_t>(begin_)
+    : data_input::read_long();
 }
 
 uint32_t memory_index_input::read_vint() {
-  return begin_ + bytes_io<uint32_t>::const_max_vsize >= end_
-    ? data_input::read_vint()
-    : irs::vread<uint32_t>(begin_);
+  return begin_ + bytes_io<uint32_t>::const_max_vsize < end_
+    ? irs::vread<uint32_t>(begin_)
+    : data_input::read_vint();
 }
 
 uint64_t memory_index_input::read_vlong() {
-  return begin_ + bytes_io<uint64_t>::const_max_vsize >= end_
-    ? data_input::read_vlong()
-    : irs::vread<uint64_t>(begin_);
+  return begin_ + bytes_io<uint64_t>::const_max_vsize < end_
+    ? irs::vread<uint64_t>(begin_)
+    : data_input::read_vlong();
 }
 
 /* -------------------------------------------------------------------
