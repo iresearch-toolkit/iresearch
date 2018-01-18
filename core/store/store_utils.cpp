@@ -60,12 +60,12 @@ float_t read_zvfloat(data_input& in) {
     return float_t((b & 0x7F) - 1);
   }
 
-  // positive float
-  const uint32_t iv = (b << 24U)
-    | (static_cast<uint32_t>(static_cast<uint16_t>(in.read_short())) << 8U)
-    | static_cast<uint32_t>(in.read_byte());
+  // positive float (ensure read order)
+  const auto part = uint32_t(uint16_t(in.read_short())) << 8;
 
-  return numeric_utils::i32tof(iv);
+  return numeric_utils::i32tof(
+    (b << 24) | part | uint32_t(in.read_byte())
+  );
 }
 
 void write_zvdouble(data_output& out, double_t v) {
@@ -102,16 +102,16 @@ double_t read_zvdouble(data_input& in) {
     return numeric_utils::i32tof(in.read_int());
   } else if (0 != (b & 0x80)) {
     // small signed value
-    return double_t((b & 0x7F) - 1U);
+    return double_t((b & 0x7F) - 1);
   }
 
-  // positive double
-  const uint64_t lv = (b << 56U)
-    | (static_cast<uint64_t>(static_cast<uint32_t>(in.read_int())) << 24U)
-    | (static_cast<uint64_t>(static_cast<uint16_t>(in.read_short())) << 8U)
-    | static_cast<uint64_t>(in.read_byte());
+  // positive double (ensure read order)
+  const auto part1 = uint64_t(uint32_t(in.read_int())) << 24;
+  const auto part2 = uint64_t(uint16_t(in.read_short())) << 8;
 
-  return numeric_utils::i64tod(lv);
+  return numeric_utils::i64tod(
+    (b << 56) | part1 | part2 | uint64_t(in.read_byte())
+  );
 }
 
 /* -------------------------------------------------------------------

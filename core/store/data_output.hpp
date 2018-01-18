@@ -54,11 +54,11 @@ struct IRESEARCH_API data_output
   }
 
   virtual void write_int(int32_t i) {
-    irs::write<int32_t>(*this, i);
+    irs::write<uint32_t>(*this, i);
   }
 
   virtual void write_long(int64_t i) {
-    irs::write<int64_t>(*this, i);
+    irs::write<uint64_t>(*this, i);
   }
 
   virtual void write_vint(uint32_t i) {
