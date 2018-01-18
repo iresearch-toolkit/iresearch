@@ -166,6 +166,11 @@ class IRESEARCH_API memory_index_input final : public index_input {
 
   void switch_buffer(size_t pos);
 
+  // returns number of reamining bytes in the buffer
+  FORCE_INLINE size_t remain() const {
+    return std::distance(begin_, end_);
+  }
+
   const memory_file* file_; // underline file
   const byte_type* buf_{}; // current buffer
   const byte_type* begin_{ buf_ }; // current position
@@ -213,6 +218,11 @@ class IRESEARCH_API memory_index_output final : public index_output {
 
  private:
   void switch_buffer();
+
+  // returns number of reamining bytes in the buffer
+  FORCE_INLINE size_t remain() const {
+    return std::distance(pos_, end_);
+  }
 
   memory_file& file_; // underlying file
   memory_file::buffer_t buf_; // current buffer

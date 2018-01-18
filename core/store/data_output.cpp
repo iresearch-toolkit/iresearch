@@ -78,34 +78,34 @@ buffered_index_output::buffered_index_output(size_t buf_size)
 buffered_index_output::~buffered_index_output() {}
 
 void buffered_index_output::write_int(int32_t value) {
-  if (pos + sizeof(uint32_t) < end) {
-    irs::write<uint32_t>(pos, value);
-  } else {
+  if (remain() < sizeof(uint32_t)) {
     index_output::write_int(value);
+  } else {
+    irs::write<uint32_t>(pos, value);
   }
 }
 
 void buffered_index_output::write_long(int64_t value) {
-  if (pos + sizeof(uint64_t) < end) {
-    irs::write<uint64_t>(pos, value);
-  } else {
+  if (remain() < sizeof(uint64_t)) {
     index_output::write_long(value);
+  } else {
+    irs::write<uint64_t>(pos, value);
   }
 }
 
 void buffered_index_output::write_vint(uint32_t v) {
-  if (pos + bytes_io<uint32_t>::const_max_vsize < end) {
-    irs::vwrite<uint32_t>(pos, v);
-  } else {
+  if (remain() < bytes_io<uint32_t>::const_max_vsize) {
     index_output::write_vint(v);
+  } else {
+    irs::vwrite<uint32_t>(pos, v);
   }
 }
 
 void buffered_index_output::write_vlong(uint64_t v) {
-  if (pos + bytes_io<uint64_t>::const_max_vsize < end) {
-    irs::vwrite<uint64_t>(pos, v);
-  } else {
+  if (remain() < bytes_io<uint64_t>::const_max_vsize) {
     index_output::write_vlong(v);
+  } else {
+    irs::vwrite<uint64_t>(pos, v);
   }
 }
 

@@ -196,27 +196,27 @@ size_t memory_index_input::read_bytes(byte_type* b, size_t left) {
 }
 
 int32_t memory_index_input::read_int() {
-  return begin_ + sizeof(uint32_t) < end_
-    ? irs::read<uint32_t>(begin_)
-    : data_input::read_int();
+  return remain() < sizeof(uint32_t)
+    ? data_input::read_int()
+    : irs::read<uint32_t>(begin_);
 }
 
 int64_t memory_index_input::read_long() {
-  return begin_ + sizeof(uint64_t) < end_
-    ? irs::read<uint64_t>(begin_)
-    : data_input::read_long();
+  return remain() < sizeof(uint64_t)
+    ? data_input::read_long()
+    : irs::read<uint64_t>(begin_);
 }
 
 uint32_t memory_index_input::read_vint() {
-  return begin_ + bytes_io<uint32_t>::const_max_vsize < end_
-    ? irs::vread<uint32_t>(begin_)
-    : data_input::read_vint();
+  return remain() < bytes_io<uint32_t>::const_max_vsize
+    ? data_input::read_vint()
+    : irs::vread<uint32_t>(begin_);
 }
 
 uint64_t memory_index_input::read_vlong() {
-  return begin_ + bytes_io<uint64_t>::const_max_vsize < end_
-    ? irs::vread<uint64_t>(begin_)
-    : data_input::read_vlong();
+  return remain() < bytes_io<uint64_t>::const_max_vsize
+    ? data_input::read_vlong()
+    : irs::vread<uint64_t>(begin_);
 }
 
 /* -------------------------------------------------------------------
@@ -245,34 +245,34 @@ void memory_index_output::switch_buffer() {
 }
 
 void memory_index_output::write_long(int64_t value) {
-  if (pos_ + sizeof(uint64_t) < end_) {
-    irs::write<uint64_t>(pos_, value);
-  } else {
+  if (remain() < sizeof(uint64_t)) {
     index_output::write_long(value);
+  } else {
+    irs::write<uint64_t>(pos_, value);
   }
 }
 
 void memory_index_output::write_int(int32_t value) {
-  if (pos_ + sizeof(uint32_t) < end_) {
-    irs::write<uint32_t>(pos_, value);
-  } else {
+  if (remain() < sizeof(uint32_t)) {
     index_output::write_long(value);
+  } else {
+    irs::write<uint32_t>(pos_, value);
   }
 }
 
 void memory_index_output::write_vlong(uint64_t v) {
-  if (pos_ + bytes_io<uint64_t>::const_max_vsize < end_) {
-    irs::vwrite<uint64_t>(pos_, v);
-  } else {
+  if (remain() < bytes_io<uint64_t>::const_max_vsize) {
     index_output::write_vlong(v);
+  } else {
+    irs::vwrite<uint64_t>(pos_, v);
   }
 }
 
 void memory_index_output::write_vint(uint32_t v) {
-  if (pos_ + bytes_io<uint32_t>::const_max_vsize < end_) {
-    irs::vwrite<uint32_t>(pos_, v);
-  } else {
+  if (remain() < bytes_io<uint32_t>::const_max_vsize) {
     index_output::write_vint(v);
+  } else {
+    irs::vwrite<uint32_t>(pos_, v);
   }
 }
 

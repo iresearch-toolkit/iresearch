@@ -150,6 +150,11 @@ class IRESEARCH_API buffered_index_output : public index_output, util::noncopyab
   virtual void flush_buffer(const byte_type* b, size_t len) = 0;
 
  private:
+  // returns number of reamining bytes in the buffer
+  FORCE_INLINE size_t remain() const {
+    return std::distance(pos, end);
+  }
+
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::unique_ptr<byte_type[]> buf;
   size_t start; // position of buffer in a file
