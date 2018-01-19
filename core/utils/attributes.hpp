@@ -301,7 +301,7 @@ template<
   struct ref {
     typedef Ref<U, Args...> type;
 
-    static const type nil;
+    IRESEARCH_HELPER_DLL_LOCAL static const type nil;
 
     static_assert(
       sizeof(typename ref<T>::type) == sizeof(type),

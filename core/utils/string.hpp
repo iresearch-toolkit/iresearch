@@ -126,7 +126,7 @@ class basic_string_ref {
   typedef Traits traits_type;
   typedef Elem char_type;
 
-  static const basic_string_ref nil;
+  IRESEARCH_HELPER_DLL_LOCAL static const basic_string_ref nil;
 
   CONSTEXPR basic_string_ref() NOEXCEPT
     : data_(nullptr), size_(0) {

@@ -58,11 +58,11 @@
   #define RESTRICT __restrict 
   #define ALIGNED_VALUE(_value, _type) union { _value; _type ___align; }
 #else
-  #if __GNUC__ >= 4
+  #if defined(__GNUC__) && __GNUC__ >= 4
     #define IRESEARCH_HELPER_DLL_IMPORT __attribute__ ((visibility ("default")))
     #define IRESEARCH_HELPER_DLL_EXPORT __attribute__ ((visibility ("default")))
     #define IRESEARCH_HELPER_DLL_LOCAL  __attribute__ ((visibility ("hidden")))
-    #define	CONSTEXPR constexpr
+    #define CONSTEXPR constexpr
   #else
     #define IRESEARCH_HELPER_DLL_IMPORT
     #define IRESEARCH_HELPER_DLL_EXPORT
