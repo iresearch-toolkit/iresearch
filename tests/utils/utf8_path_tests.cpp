@@ -64,7 +64,7 @@ TEST_F(utf8_path_tests, current) {
   ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
   ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
   ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
-  ASSERT_FALSE(path.file_size(tmpUint));
+  ASSERT_TRUE(path.file_size(tmpUint));
 
   path/=directory;
   ASSERT_TRUE(path.mkdir());
@@ -73,7 +73,7 @@ TEST_F(utf8_path_tests, current) {
   ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
   ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
   ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
-  ASSERT_FALSE(path.file_size(tmpUint));
+  ASSERT_TRUE(path.file_size(tmpUint));
 }
 
 TEST_F(utf8_path_tests, empty) {
@@ -162,7 +162,7 @@ TEST_F(utf8_path_tests, path) {
     ASSERT_TRUE(dir1.exists_directory(tmpBool) && tmpBool);
     ASSERT_TRUE(dir1.exists_file(tmpBool) && !tmpBool);
     ASSERT_TRUE(dir1.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_FALSE(dir1.file_size(tmpUint));
+    ASSERT_TRUE(dir1.file_size(tmpUint));
 
     ASSERT_TRUE(dir2.exists(tmpBool) && !tmpBool);
     ASSERT_TRUE(dir2.exists_directory(tmpBool) && !tmpBool);
@@ -211,7 +211,7 @@ TEST_F(utf8_path_tests, path) {
     ASSERT_TRUE(dir1.exists_directory(tmpBool) && tmpBool);
     ASSERT_TRUE(dir1.exists_file(tmpBool) && !tmpBool);
     ASSERT_TRUE(dir1.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_FALSE(dir1.file_size(tmpUint));
+    ASSERT_TRUE(dir1.file_size(tmpUint));
 
     ASSERT_TRUE(dir2.exists(tmpBool) && !tmpBool);
     ASSERT_TRUE(dir2.exists_directory(tmpBool) && !tmpBool);
@@ -260,7 +260,7 @@ TEST_F(utf8_path_tests, path) {
     ASSERT_TRUE(dir1.exists_directory(tmpBool) && tmpBool);
     ASSERT_TRUE(dir1.exists_file(tmpBool) && !tmpBool);
     ASSERT_TRUE(dir1.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_FALSE(dir1.file_size(tmpUint));
+    ASSERT_TRUE(dir1.file_size(tmpUint));
 
     ASSERT_TRUE(dir2.exists(tmpBool) && !tmpBool);
     ASSERT_TRUE(dir2.exists_directory(tmpBool) && !tmpBool);
@@ -309,7 +309,7 @@ TEST_F(utf8_path_tests, path) {
     ASSERT_TRUE(dir1.exists_directory(tmpBool) && tmpBool);
     ASSERT_TRUE(dir1.exists_file(tmpBool) && !tmpBool);
     ASSERT_TRUE(dir1.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_FALSE(dir1.file_size(tmpUint));
+    ASSERT_TRUE(dir1.file_size(tmpUint));
 
     ASSERT_TRUE(dir2.exists(tmpBool) && !tmpBool);
     ASSERT_TRUE(dir2.exists_directory(tmpBool) && !tmpBool);
@@ -395,7 +395,7 @@ TEST_F(utf8_path_tests, directory) {
   ASSERT_TRUE(path.exists_directory(tmpBool) && tmpBool);
   ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
   ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
-  ASSERT_FALSE(path.file_size(tmpUint));
+  ASSERT_TRUE(path.file_size(tmpUint));
 }
 
 TEST_F(utf8_path_tests, visit) {
@@ -437,7 +437,7 @@ TEST_F(utf8_path_tests, visit) {
   ASSERT_TRUE(path.exists_directory(tmpBool) && tmpBool);
   ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
   ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
-  ASSERT_FALSE(path.file_size(tmpUint));
+  ASSERT_TRUE(path.file_size(tmpUint));
   actual_count = 0;
   visit_max = irs::integer_traits<size_t>::max();
   ASSERT_TRUE(path.visit_directory(visitor) && actual_count > 1);
@@ -458,7 +458,7 @@ TEST_F(utf8_path_tests, visit) {
   ASSERT_TRUE(path.exists_directory(tmpBool) && tmpBool);
   ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
   ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
-  ASSERT_FALSE(path.file_size(tmpUint));
+  ASSERT_TRUE(path.file_size(tmpUint));
   actual_count = 0;
   visit_max = irs::integer_traits<size_t>::max();
   ASSERT_TRUE(path.visit_directory(visitor, false) && actual_count == 0);
@@ -476,7 +476,7 @@ TEST_F(utf8_path_tests, visit) {
   ASSERT_TRUE(path.exists_directory(tmpBool) && tmpBool);
   ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
   ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
-  ASSERT_FALSE(path.file_size(tmpUint));
+  ASSERT_TRUE(path.file_size(tmpUint));
   actual_count = 0;
   visit_max = irs::integer_traits<size_t>::max();
   ASSERT_TRUE(path.visit_directory(visitor, false) && actual_count > 0);

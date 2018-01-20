@@ -387,45 +387,158 @@ bool file_sync(int fd) NOEXCEPT {
 
 #endif // _WIN32
 
-ptrdiff_t file_size(const file_path_t file) NOEXCEPT {
+// -----------------------------------------------------------------------------
+// --SECTION--                                                             stats
+// -----------------------------------------------------------------------------
+
+bool block_size(blksize_t& result, const file_path_t file) NOEXCEPT {
   assert(file != nullptr);
-  file_stat_t info;
-  return 0 == file_stat(file, &info) ? info.st_size : -1;
-}
-
-ptrdiff_t file_size(int fd) NOEXCEPT {
-  file_stat_t info;
-  return 0 == file_fstat(fd, &info) ? info.st_size : -1;
-}
-
-ptrdiff_t block_size(int fd) NOEXCEPT {
 #ifdef _WIN32
-  // fixme
+  // TODO FIXME find a workaround
   UNUSED(fd);
-  return 512;
+  result = 512;
+
+  return true;
 #else
   file_stat_t info;
-  return 0 == file_fstat(fd, &info) ? info.st_blksize : -1;
+
+  if (0 != file_stat(file, &info)) {
+    return false;
+  }
+
+  result = info.st_blksize;
+
+  return true;
 #endif // _WIN32
 }
 
-bool is_directory(const file_path_t name) NOEXCEPT {
+bool block_size(blksize_t& result, int fd) NOEXCEPT {
+#ifdef _WIN32
+  // TODO FIXME find a workaround
+  UNUSED(fd);
+  result = 512;
+
+  return true;
+#else
   file_stat_t info;
 
-  if (file_stat(name, &info) != 0) {
+  if (0 != file_fstat(fd, &info)) {
+    return false;
+  }
+
+  result = info.st_blksize;
+
+  return true;
+#endif // _WIN32
+}
+
+bool byte_size(uint64_t& result, const file_path_t file) NOEXCEPT {
+  assert(file != nullptr);
+  file_stat_t info;
+
+  if (0 != file_stat(file, &info)) {
+    return false;
+  }
+
+  result = info.st_size;
+
+  return true;
+}
+
+bool byte_size(uint64_t& result, int fd) NOEXCEPT {
+  file_stat_t info;
+
+  if (0 != file_fstat(fd, &info)) {
+    return false;
+  }
+
+  result = info.st_size;
+
+  return true;
+}
+
+bool exists(bool& result, const file_path_t file) NOEXCEPT {
+  file_stat_t info;
+
+  result = 0 == file_stat(file, &info);
+
+  if (!result) {
+    auto path = boost::locale::conv::utf_to_utf<char>(file);
+
+    IR_FRMT_ERROR("Failed to get stat, error %d path: %s", errno, path.c_str());
+  }
+
+  return true;
+}
+
+bool exists_directory(bool& result, const file_path_t name) NOEXCEPT {
+  file_stat_t info;
+
+  result = 0 == file_stat(name, &info);
+
+  if (!result) {
     auto path = boost::locale::conv::utf_to_utf<char>(name);
 
     IR_FRMT_ERROR("Failed to get stat, error %d path: %s", errno, path.c_str());
-
-    return false; 
+  } else {
+    #ifdef _WIN32
+      result = (info.st_mode & _S_IFDIR) > 0;
+    #else
+      result = (info.st_mode & S_IFDIR) > 0;
+    #endif
   }
 
-#ifdef _WIN32
-  return (info.st_mode & _S_IFDIR) > 0;
-#else
-  return (info.st_mode & S_IFDIR) > 0;
-#endif
+  return true;
 }
+
+bool exists_file(bool& result, const file_path_t name) NOEXCEPT {
+  file_stat_t info;
+
+  result = 0 == file_stat(name, &info);
+
+  if (!result) {
+    auto path = boost::locale::conv::utf_to_utf<char>(name);
+
+    IR_FRMT_ERROR("Failed to get stat, error %d path: %s", errno, path.c_str());
+  } else {
+    #ifdef _WIN32
+      result = (info.st_mode & _S_IFREG) > 0;
+    #else
+      result = (info.st_mode & S_IFREG) > 0;
+    #endif
+  }
+
+  return true;
+}
+
+bool mtime(time_t& result, const file_path_t file) NOEXCEPT {
+  assert(file != nullptr);
+  file_stat_t info;
+
+  if (0 != file_stat(file, &info)) {
+    return false;
+  }
+
+  result = info.st_mtime;
+
+  return true;
+}
+
+bool mtime(time_t& result, int fd) NOEXCEPT {
+  file_stat_t info;
+
+  if (0 != file_fstat(fd, &info)) {
+    return false;
+  }
+
+  result = info.st_mtime;
+
+  return true;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                         open file
+// -----------------------------------------------------------------------------
 
 handle_t open(const file_path_t path, const file_path_t mode) NOEXCEPT {
   #ifdef _WIN32
@@ -523,6 +636,10 @@ handle_t open(FILE* file, const file_path_t mode) NOEXCEPT {
     return open(path, mode);
   #endif
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   directory utils
+// -----------------------------------------------------------------------------
 
 bool visit_directory(
   const file_path_t name,

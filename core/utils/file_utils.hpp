@@ -33,8 +33,8 @@
   #include <tchar.h>
   #include <io.h> // _close
   #define file_path_t wchar_t*
-  #define file_stat _wstat
-  #define file_fstat _fstat
+  #define file_stat _wstat64
+  #define file_fstat _fstat64
   #define file_stat_t struct _stat
   #define file_no _fileno
   #define mode_t unsigned short
@@ -89,9 +89,18 @@ bool verify_lock_file(const file_path_t file);
 // --SECTION--                                                             stats
 // -----------------------------------------------------------------------------
 
-ptrdiff_t file_size(const file_path_t file) NOEXCEPT;
-ptrdiff_t file_size(int fd) NOEXCEPT;
-ptrdiff_t block_size(int fd) NOEXCEPT;
+bool block_size(blksize_t& result, const file_path_t file) NOEXCEPT;
+bool block_size(blksize_t& result, int fd) NOEXCEPT;
+
+bool byte_size(uint64_t& result, const file_path_t file) NOEXCEPT;
+bool byte_size(uint64_t& result, int fd) NOEXCEPT;
+
+bool exists(bool& result, const file_path_t file) NOEXCEPT;
+bool exists_directory(bool& result, const file_path_t file) NOEXCEPT;
+bool exists_file(bool& result, const file_path_t file) NOEXCEPT;
+
+bool mtime(time_t& result, const file_path_t file) NOEXCEPT;
+bool mtime(time_t& result, int fd) NOEXCEPT;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         open file
@@ -111,8 +120,6 @@ handle_t open(FILE* file, const file_path_t mode) NOEXCEPT;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   directory utils
 // -----------------------------------------------------------------------------
-
-bool is_directory(const file_path_t name) NOEXCEPT;
 
 bool visit_directory(
   const file_path_t name,

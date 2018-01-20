@@ -274,9 +274,9 @@ class fs_index_input : public buffered_index_input {
     }
 
     // convert file descriptor to POSIX
-    auto size = file_utils::file_size(file_no(*handle));
+    uint64_t size;
 
-    if (size < 0) {
+    if (!file_utils::byte_size(size, file_no(*handle))) {
       auto path = boost::locale::conv::utf_to_utf<char>(name);
       #ifdef _WIN32
         auto error = GetLastError();
@@ -619,8 +619,9 @@ bool fs_directory::rename(
 
 bool fs_directory::visit(const directory::visitor_f& visitor) const {
   auto directory = (utf8_path()/=dir_).native();
+  bool exists;
 
-  if (!file_utils::is_directory(directory.c_str())) {
+  if (!file_utils::exists_directory(exists, directory.c_str()) || !exists) {
     return false;
   }
 

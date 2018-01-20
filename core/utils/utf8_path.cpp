@@ -292,61 +292,23 @@ bool utf8_path::chdir() const NOEXCEPT {
 }
 
 bool utf8_path::exists(bool& result) const NOEXCEPT {
-  boost::system::error_code code;
-
-  result = boost::filesystem::exists(path_, code);
-
-  return boost::system::errc::success == code.value()
-    || fs_error_not_found(code.value());
+  return irs::file_utils::exists(result, native().c_str());
 }
 
 bool utf8_path::exists_directory(bool& result) const NOEXCEPT {
-  result = irs::file_utils::is_directory(native().c_str());
-
-  if (!result) {
-    bool res;
-
-    return exists(res); // check for FS error
-  }
-
-  return true;
+  return irs::file_utils::exists_directory(result, native().c_str());
 }
 
 bool utf8_path::exists_file(bool& result) const NOEXCEPT {
-  boost::system::error_code code;
-
-  result = boost::filesystem::is_regular_file(path_, code);
-
-  return boost::system::errc::success == code.value()
-    || fs_error_not_found(code.value());
+  return irs::file_utils::exists_file(result, native().c_str());
 }
 
 bool utf8_path::file_size(uint64_t& result) const NOEXCEPT {
-  boost::system::error_code code;
-
-  try {
-    result = boost::filesystem::file_size(path_, code);
-
-    return boost::system::errc::success == code.value();
-  } catch(...) { // boost::filesystem::file_size(...) is not noexcept
-    IR_FRMT_ERROR("Caught exception at: %s code: %d for path: " IR_FILEPATH_SPECIFIER, __FUNCTION__, code.value(), path_.c_str());
-  }
-
-  return false;
+  return irs::file_utils::byte_size(result, native().c_str());
 }
 
 bool utf8_path::mtime(std::time_t& result) const NOEXCEPT {
-  boost::system::error_code code;
-
-  try {
-    result = boost::filesystem::last_write_time(path_, code);
-
-    return boost::system::errc::success == code.value();
-  } catch(...) { // boost::filesystem::last_write_time(...) is not noexcept
-    IR_FRMT_ERROR("Caught exception at: %s code: %d for path: " IR_FILEPATH_SPECIFIER, __FUNCTION__, code.value(), path_.c_str());
-  }
-
-  return false;
+  return irs::file_utils::mtime(result, native().c_str());
 }
 
 bool utf8_path::mkdir() const NOEXCEPT {
