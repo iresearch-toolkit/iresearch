@@ -391,7 +391,7 @@ bool file_sync(int fd) NOEXCEPT {
 // --SECTION--                                                             stats
 // -----------------------------------------------------------------------------
 
-bool block_size(blksize_t& result, const file_path_t file) NOEXCEPT {
+bool block_size(file_blksize_t& result, const file_path_t file) NOEXCEPT {
   assert(file != nullptr);
 #ifdef _WIN32
   // TODO FIXME find a workaround
@@ -412,7 +412,7 @@ bool block_size(blksize_t& result, const file_path_t file) NOEXCEPT {
 #endif // _WIN32
 }
 
-bool block_size(blksize_t& result, int fd) NOEXCEPT {
+bool block_size(file_blksize_t& result, int fd) NOEXCEPT {
 #ifdef _WIN32
   // TODO FIXME find a workaround
   UNUSED(fd);

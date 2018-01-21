@@ -32,6 +32,7 @@
 #ifdef _WIN32  
   #include <tchar.h>
   #include <io.h> // _close
+  #define file_blksize_t uint32_t // DWORD (same as GetDriveGeometry(...) DISK_GEOMETRY::BytesPerSector)
   #define file_path_t wchar_t*
   #define file_stat _wstat64
   #define file_fstat _fstat64
@@ -50,6 +51,7 @@
   #define IR_FADVICE_NOREUSE 5
 #else
   #include <unistd.h> // close
+  #define file_blksize_t blksize_t
   #define file_path_t char*
   #define file_stat stat
   #define file_fstat fstat
@@ -89,8 +91,8 @@ bool verify_lock_file(const file_path_t file);
 // --SECTION--                                                             stats
 // -----------------------------------------------------------------------------
 
-bool block_size(blksize_t& result, const file_path_t file) NOEXCEPT;
-bool block_size(blksize_t& result, int fd) NOEXCEPT;
+bool block_size(file_blksize_t& result, const file_path_t file) NOEXCEPT;
+bool block_size(file_blksize_t& result, int fd) NOEXCEPT;
 
 bool byte_size(uint64_t& result, const file_path_t file) NOEXCEPT;
 bool byte_size(uint64_t& result, int fd) NOEXCEPT;
