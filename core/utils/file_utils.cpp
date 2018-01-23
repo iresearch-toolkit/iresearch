@@ -395,7 +395,7 @@ bool block_size(file_blksize_t& result, const file_path_t file) NOEXCEPT {
   assert(file != nullptr);
 #ifdef _WIN32
   // TODO FIXME find a workaround
-  UNUSED(fd);
+  UNUSED(file);
   result = 512;
 
   return true;

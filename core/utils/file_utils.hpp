@@ -36,7 +36,7 @@
   #define file_path_t wchar_t*
   #define file_stat _wstat64
   #define file_fstat _fstat64
-  #define file_stat_t struct _stat
+  #define file_stat_t struct _stat64
   #define file_no _fileno
   #define mode_t unsigned short
   #define file_open(name, mode) iresearch::file_utils::open(name, _T(mode))
