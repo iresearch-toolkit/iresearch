@@ -637,6 +637,72 @@ handle_t open(FILE* file, const file_path_t mode) NOEXCEPT {
   #endif
 }
 
+bool read_cwd(
+    std::basic_string<std::remove_pointer<file_path_t>::type>& result
+) NOEXCEPT {
+  try {
+    #ifdef _WIN32
+      auto size = GetCurrentDirectory(0, nullptr);
+
+      if (!size) {
+        IR_FRMT_ERROR("Failed to get length of the current working directory, error %d", GetLastError());
+
+        return false;
+      }
+
+      if (size >= result.size()) {
+        result.resize(size + 1); // allocate space for cwd, +1 for '\0'
+      }
+
+      size = GetCurrentDirectory(size, &result[0]);
+
+      // if error or more space required than available
+      if (!size || size >= result.size()) {
+        IR_FRMT_ERROR("Failed to get the current working directory, error %d", GetLastError());
+
+        return false;
+      }
+
+      result.resize(size); // truncate buffer to size of cwd
+    #else
+      result.resize(result.capacity()); // use up the entire buffer (noexcept)
+
+      if (nullptr != getcwd(&result[0], result.size() - 1)) {
+        result.resize(std::strlen(&result[0])); // truncate buffer to size of cwd
+
+        return true;
+      }
+
+      if (ERANGE != errno) {
+        IR_FRMT_ERROR("Failed to get the current working directory, error %d", errno);
+
+        return false;
+      }
+
+      struct deleter_t {
+        void operator()(char* ptr) const { free(ptr); }
+      };
+      std::unique_ptr<char, deleter_t> pcwd(getcwd(nullptr, 0));
+
+      if (!pcwd) {
+        IR_FRMT_ERROR("Failed to allocate the current working directory, error %d", errno);
+
+        return false;
+      }
+
+      result.assign(pcwd.get());
+    #endif
+
+    return true;
+  } catch (std::bad_alloc& e) {
+    IR_FRMT_ERROR("Memory allocation failure while getting the current working directory: %s", e.what());
+  } catch (std::exception& e) {
+    IR_FRMT_ERROR("Caught exception while getting the current working directory: %s", e.what());
+  }
+
+  return false;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   directory utils
 // -----------------------------------------------------------------------------

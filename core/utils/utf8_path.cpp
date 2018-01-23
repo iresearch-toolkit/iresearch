@@ -54,24 +54,6 @@ const boost::filesystem::path::codecvt_type& fs_codecvt() {
   return std::use_facet<boost::filesystem::path::codecvt_type>(default_locale);
 }
 
-// check if the error code matches the system specific not-found errors
-// error code list taken from Boost
-bool fs_error_not_found(int err) {
-  #ifdef _WIN32
-    return err == ERROR_FILE_NOT_FOUND
-      || err == ERROR_PATH_NOT_FOUND
-      || err == ERROR_INVALID_NAME      // "tools/jam/src/:sys:stat.h", "//foo"
-      || err == ERROR_INVALID_DRIVE     // USB card reader with no card inserted
-      || err == ERROR_NOT_READY         // CD/DVD drive with no disc inserted
-      || err == ERROR_INVALID_PARAMETER // ":sys:stat.h"
-      || err == ERROR_BAD_PATHNAME      // "//nosuch" on Win64
-      || err == ERROR_BAD_NETPATH       // "//nosuch" on Win32
-      ;
-  #else // POSIX
-    return err == ENOENT || err == ENOTDIR;
-  #endif
-}
-
 static auto& fs_cvt = fs_codecvt();
 
 NS_END
@@ -80,7 +62,12 @@ NS_ROOT
 
 utf8_path::utf8_path(bool current_working_path /*= false*/) {
   if (current_working_path) {
-    path_ = ::boost::filesystem::current_path();
+    std::basic_string<::boost::filesystem::path::value_type> buf;
+
+    // emulate boost::filesystem behaviour by leaving path_ unset in case of error
+    if (irs::file_utils::read_cwd(buf)) {
+      *this += buf;
+    }
   }
 }
 

@@ -119,6 +119,10 @@ typedef std::unique_ptr<FILE, file_deleter> handle_t;
 handle_t open(const file_path_t path, const file_path_t mode) NOEXCEPT;
 handle_t open(FILE* file, const file_path_t mode) NOEXCEPT;
 
+bool read_cwd(
+  std::basic_string<std::remove_pointer<file_path_t>::type>& result
+) NOEXCEPT;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   directory utils
 // -----------------------------------------------------------------------------
