@@ -499,14 +499,6 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
 // --SECTION--                                       fs_directory implementation
 // -----------------------------------------------------------------------------
 
-/*static*/ bool fs_directory::create_directory(const string_ref& dir) {
-  return (utf8_path()/=dir).mkdir();
-}
-
-/*static*/ bool fs_directory::remove_directory(const string_ref& dir) {
-  return (utf8_path()/=dir).rmdir();
-}
-
 fs_directory::fs_directory(const std::string& dir)
   : dir_(dir) {
 }
