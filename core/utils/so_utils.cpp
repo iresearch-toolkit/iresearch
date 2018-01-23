@@ -69,7 +69,7 @@
 #elif defined(__GNUC__) // GNU compiler
   #include <dlfcn.h>
 #else
-  #error define your copiler
+  #error define your compiler
 #endif
 
 NS_LOCAL

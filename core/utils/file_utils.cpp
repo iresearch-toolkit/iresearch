@@ -637,6 +637,65 @@ handle_t open(FILE* file, const file_path_t mode) NOEXCEPT {
   #endif
 }
 
+path_parts_t path_parts(const file_path_t path) NOEXCEPT {
+  if (!path) {
+    return path_parts_t();
+  }
+
+  bool have_extension = false;
+  irs::string_ref parent;
+  size_t stem_end = 0;
+
+  for(size_t i = 0;; ++i) {
+    switch (*(path + i)) {
+    #ifdef _WIN32
+     case L'\\': // fall through
+     case L'/':
+    #else
+     case '/':
+    #endif
+      have_extension = false;
+      parent = irs::string_ref(path, i);
+      break;
+    #ifdef _WIN32
+     case L'.':
+    #else
+     case '.':
+    #endif
+      have_extension = true;
+      stem_end = i;
+      break;
+    #ifdef _WIN32
+     case L'\0': {
+    #else
+     case '\0': {
+    #endif
+      path_parts_t result;
+
+      if (have_extension) {
+        result.extension =
+          irs::string_ref(path + stem_end + 1, i - stem_end - 1); // +1/-1 for delimiter
+      } else {
+        stem_end = i;
+      }
+
+      if (parent.null()) {
+        result.stem = irs::string_ref(path, stem_end);
+      } else {
+        auto stem_start = parent.size() + 1; // +1 for delimiter
+
+        result.stem = irs::string_ref(path + stem_start, stem_end - stem_start);
+      }
+
+      result.parent = std::move(parent);
+
+      return result;
+     }
+     default: {} // NOOP
+    }
+  }
+}
+
 bool read_cwd(
     std::basic_string<std::remove_pointer<file_path_t>::type>& result
 ) NOEXCEPT {
@@ -701,6 +760,22 @@ bool read_cwd(
   }
 
   return false;
+}
+
+bool set_cwd(const file_path_t path) NOEXCEPT {
+  #ifdef _WIN32
+    if (PathIsRelative(path)) {
+      return SetCurrentDirectory(path);
+    }
+
+    std::wstring fullpath(L"\\\\?\\"); // workaround for path MAX_PATH
+
+    fullpath += path;
+
+    return SetCurrentDirectory(fullpath.c_str());
+  #else
+    return 0 == chdir(path);
+  #endif
 }
 
 // -----------------------------------------------------------------------------

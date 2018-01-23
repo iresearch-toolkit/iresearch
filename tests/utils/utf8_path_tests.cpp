@@ -59,7 +59,16 @@ TEST_F(utf8_path_tests, current) {
   bool tmpBool;
   std::time_t tmpTime;
   uint64_t tmpUint;
-if (test_dir().native() != path.native()) std::cerr << "|" << test_dir().native() << "|" << path.native() << "|" << std::endl; // FIXME TODO remove
+// FIXME TODO remove
+if (test_dir().native() != path.native()) {
+  std::basic_string<std::remove_pointer<file_path_t>::type> buf;
+  auto success = irs::file_utils::read_cwd(buf);
+  std::cerr << "|" << test_dir().native()
+            << "|" << path.native()
+            << "|" << success
+            << "|" << buf
+            << "|" << std::endl;
+}
   ASSERT_TRUE(test_dir().native() == path.native());
   ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
   ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);

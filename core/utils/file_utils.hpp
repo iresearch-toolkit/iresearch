@@ -70,6 +70,7 @@
 #endif
 
 #include "shared.hpp"
+#include "string.hpp"
 
 NS_ROOT
 NS_BEGIN(file_utils)
@@ -119,9 +120,20 @@ typedef std::unique_ptr<FILE, file_deleter> handle_t;
 handle_t open(const file_path_t path, const file_path_t mode) NOEXCEPT;
 handle_t open(FILE* file, const file_path_t mode) NOEXCEPT;
 
-bool read_cwd(
+struct path_parts_t {
+  typedef irs::basic_string_ref<std::remove_pointer<file_path_t>::type> ref_t;
+  ref_t parent;    // parent path (ref_t::nil if not present)
+  ref_t stem;      // path name without extension (ref_t::nil if not present)
+  ref_t extension; // path extension (ref_t::nil if not present)
+};
+
+IRESEARCH_API path_parts_t path_parts(const file_path_t path) NOEXCEPT;
+
+IRESEARCH_API bool read_cwd(
   std::basic_string<std::remove_pointer<file_path_t>::type>& result
 ) NOEXCEPT;
+
+bool set_cwd(const file_path_t path) NOEXCEPT;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   directory utils
