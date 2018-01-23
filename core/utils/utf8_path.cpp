@@ -62,7 +62,7 @@ NS_ROOT
 
 utf8_path::utf8_path(bool current_working_path /*= false*/) {
   if (current_working_path) {
-    std::basic_string<::boost::filesystem::path::value_type> buf;
+    std::basic_string<native_char_type> buf;
 
     // emulate boost::filesystem behaviour by leaving path_ unset in case of error
     if (irs::file_utils::read_cwd(buf)) {
@@ -89,7 +89,12 @@ utf8_path::utf8_path(const std::string& utf8_path) {
 
 utf8_path::utf8_path(const irs::string_ref& utf8_path) {
   if (utf8_path.null()) {
-    path_ = ::boost::filesystem::current_path();
+    std::basic_string<native_char_type> buf;
+
+    // emulate boost::filesystem behaviour by leaving path_ unset in case of error
+    if (irs::file_utils::read_cwd(buf)) {
+      *this += buf;
+    }
 
     return;
   }
@@ -111,7 +116,12 @@ utf8_path::utf8_path(const wchar_t* ucs2_path)
 
 utf8_path::utf8_path(const irs::basic_string_ref<wchar_t>& ucs2_path) {
   if (ucs2_path.null()) {
-    path_ = ::boost::filesystem::current_path();
+    std::basic_string<native_char_type> buf;
+
+    // emulate boost::filesystem behaviour by leaving path_ unset in case of error
+    if (irs::file_utils::read_cwd(buf)) {
+      *this += buf;
+    }
 
     return;
   }
@@ -270,6 +280,10 @@ utf8_path& utf8_path::operator/=(const std::wstring &ucs2_name) {
 return *this;
 }
 
+bool utf8_path::absolute() const NOEXCEPT {
+  return path_.is_absolute();
+}
+
 bool utf8_path::chdir() const NOEXCEPT {
   boost::system::error_code code;
 
@@ -369,11 +383,11 @@ void utf8_path::clear() {
   path_.clear();
 }
 
-const boost::filesystem::path::value_type* utf8_path::c_str() const NOEXCEPT {
+const utf8_path::native_char_type* utf8_path::c_str() const NOEXCEPT {
   return path_.c_str();
 }
 
-const boost::filesystem::path::string_type& utf8_path::native() const NOEXCEPT {
+const std::basic_string<utf8_path::native_char_type>& utf8_path::native() const NOEXCEPT {
   return path_.native();
 }
 

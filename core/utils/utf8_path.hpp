@@ -42,7 +42,8 @@ NS_ROOT
 
 class IRESEARCH_API utf8_path {
  public:
-  typedef std::function<bool(const ::boost::filesystem::path::value_type* name)> directory_visitor;
+  typedef ::boost::filesystem::path::value_type native_char_type;
+  typedef std::function<bool(const native_char_type* name)> directory_visitor;
 
   utf8_path(bool current_working_path = false);
   utf8_path(const char* utf8_path);
@@ -65,6 +66,7 @@ class IRESEARCH_API utf8_path {
   utf8_path& operator/=(const irs::basic_string_ref<wchar_t>& ucs2_name);
   utf8_path& operator/=(const std::wstring& ucs2_name);
 
+  bool absolute() const NOEXCEPT;
   bool chdir() const NOEXCEPT;
   bool exists(bool& result) const NOEXCEPT;
   bool exists_directory(bool& result) const NOEXCEPT;
@@ -80,8 +82,8 @@ class IRESEARCH_API utf8_path {
     bool include_dot_dir = true
   );
 
-  const ::boost::filesystem::path::string_type& native() const NOEXCEPT;
-  const ::boost::filesystem::path::value_type* c_str() const NOEXCEPT;
+  const native_char_type* c_str() const NOEXCEPT;
+  const std::basic_string<native_char_type>& native() const NOEXCEPT;
   std::string utf8() const;
 
   void clear();

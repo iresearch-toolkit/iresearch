@@ -21,18 +21,6 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#if defined (__GNUC__)
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-  #pragma GCC diagnostic ignored "-Wunused-variable"
-#endif
-
-  #include <boost/filesystem/operations.hpp>
-
-#if defined (__GNUC__)
-  #pragma GCC diagnostic pop
-#endif
-
 #include "log.hpp"
 #include "utils/utf8_path.hpp"
 
@@ -148,26 +136,38 @@ void load_libraries(
   const std::string& prefix,
   const std::string& suffix
 ) {
-  ::boost::filesystem::path pluginPath(path);
+  utf8_path plugin_path(path);
+  bool result;
 
-  if (!::boost::filesystem::is_directory(pluginPath)) {
-    auto u8path = (utf8_path(pluginPath)).utf8();
-
-    IR_FRMT_INFO("library load failed, not a plugin path: %s", u8path.c_str());
+  if (!plugin_path.exists_directory(result) || !result) {
+    IR_FRMT_INFO("library load failed, not a plugin path: %s", plugin_path.utf8().c_str());
 
     return; // no plugins directory
   }
 
-  for (::boost::filesystem::directory_iterator itr(pluginPath), end; itr != end; ++itr) {
-    if (::boost::filesystem::is_directory(itr->status())) {
-      continue;
+  auto visitor = [&plugin_path, &prefix, &suffix](
+      const utf8_path::native_char_type* name
+  )->bool {
+    auto path = plugin_path;
+    bool result;
+
+    path /= name;
+
+    if (!path.exists_file(result)) {
+      IR_FRMT_ERROR("Failed to identify plugin file: %s", path.utf8().c_str());
+
+      return false;
     }
 
-    auto& file = itr->path();
+    if (!result) {
+      return true; // skip non-files
+    }
+
+    ::boost::filesystem::path file(name);
     auto extension = utf8_path(file.extension()).utf8();
 
     if (FILENAME_EXTENSION != extension.c_str()) {
-      continue; // skip non-library extensions
+      return true; // skip non-library extensions
     }
 
     auto stem = utf8_path(file.stem()).utf8();
@@ -175,18 +175,24 @@ void load_libraries(
     if (stem.size() < prefix.size() + suffix.size() ||
         strncmp(stem.c_str(), prefix.c_str(), prefix.size()) != 0 ||
         strncmp(stem.c_str() + stem.size() - suffix.size(), suffix.c_str(), suffix.size()) != 0) {
-      continue; // filename does not match
+      return true; // filename does not match
     }
 
-    auto u8path = (utf8_path(file.parent_path())/=stem).utf8(); // strip extension
+    auto path_stem = plugin_path;
 
-    // FIMXE check double-load of same dll
-    void* handle = load_library(u8path.c_str(), 1);
+    path_stem /= stem; // strip extension
+
+    // FIXME TODO check double-load of same dll
+    void* handle = load_library(path_stem.utf8().c_str(), 1);
 
     if (!handle) {
-      IR_FRMT_ERROR("library load failed for path: %s", u8path.c_str());
+      IR_FRMT_ERROR("library load failed for path: %s", path_stem.utf8().c_str());
     }
-  }
+
+    return true;
+  };
+
+  plugin_path.visit_directory(visitor, false);
 }
 
 NS_END // ROOT

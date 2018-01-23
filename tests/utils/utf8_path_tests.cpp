@@ -59,7 +59,7 @@ TEST_F(utf8_path_tests, current) {
   bool tmpBool;
   std::time_t tmpTime;
   uint64_t tmpUint;
-
+if (test_dir().native() != path.native()) std::cerr << "|" << test_dir().native() << "|" << path.native() << "|" << std::endl; // FIXME TODO remove
   ASSERT_TRUE(test_dir().native() == path.native());
   ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
   ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
@@ -89,6 +89,35 @@ TEST_F(utf8_path_tests, empty) {
   ASSERT_FALSE(path.file_size(tmpUint));
   path/=empty;
   ASSERT_FALSE(path.mkdir());
+}
+
+TEST_F(utf8_path_tests, absolute) {
+  // empty
+  {
+    irs::utf8_path path;
+    ASSERT_FALSE(path.absolute());
+  }
+
+  // cwd
+  {
+    irs::utf8_path path(true);
+    ASSERT_TRUE(path.absolute());
+  }
+
+  // relative
+  {
+    irs::utf8_path path;
+    path += "deleteme";
+    ASSERT_FALSE(path.absolute());
+  }
+
+  // absolute
+  {
+    irs::utf8_path cwd(true);
+    irs::utf8_path path;
+    path += cwd.native();
+    ASSERT_TRUE(path.absolute());
+  }
 }
 
 TEST_F(utf8_path_tests, path) {
