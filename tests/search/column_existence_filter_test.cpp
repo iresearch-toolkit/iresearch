@@ -792,8 +792,11 @@ class fs_column_existence_test_case
     : public tests::column_existence_filter_test_case {
 protected:
   virtual irs::directory* get_directory() override {
-    const fs::path dir = fs::path(test_dir()).append("index");
-    return new irs::fs_directory(dir.string());
+    auto dir = test_dir();
+
+    dir /= "index";
+
+    return new irs::fs_directory(dir.utf8());
   }
 
   virtual irs::format::ptr get_codec() override {
@@ -807,3 +810,7 @@ TEST_F(fs_column_existence_test_case, exact_prefix_match) {
   simple_sequential_prefix_match();
   simple_sequential_order();
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

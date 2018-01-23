@@ -61,7 +61,8 @@ class fs_directory_test : public directory_test_case,
 
     test_base::SetUp();
     codecvt_ = &std::use_facet<boost::filesystem::path::codecvt_type>(utf8_locale);
-    path_ = test_case_dir();
+    path_ = test_case_dir().native();
+
 #ifdef _WIN32
     // convert utf8->ucs2
     auto native_name = boost::locale::conv::utf_to_utf<wchar_t>(

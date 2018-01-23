@@ -21,6 +21,17 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#if defined (__GNUC__)
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
+  #include <boost/filesystem.hpp>
+
+#if defined (__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
+
 #include <fstream>
 
 #include "tests_shared.hpp"
@@ -38,8 +49,8 @@ class utf8_path_tests: public test_base {
     test_base::SetUp();
 
     cwd_ = ::boost::filesystem::current_path();
-    ::boost::filesystem::create_directories(test_dir()); // ensure path exists
-    ::boost::filesystem::current_path(test_dir()); // ensure all files/directories created in a valid place
+    ::boost::filesystem::create_directories(test_dir().native()); // ensure path exists
+    ::boost::filesystem::current_path(test_dir().native()); // ensure all files/directories created in a valid place
   }
 
   virtual void TearDown() {
@@ -59,16 +70,26 @@ TEST_F(utf8_path_tests, current) {
   bool tmpBool;
   std::time_t tmpTime;
   uint64_t tmpUint;
-// FIXME TODO remove
+// FIXME TODO remove, for debug of tavis only
+#ifndef _WIN32
 if (test_dir().native() != path.native()) {
   std::basic_string<std::remove_pointer<file_path_t>::type> buf;
   auto success = irs::file_utils::read_cwd(buf);
+  auto err = errno;
+  auto* pcwd0 = getcwd(nullptr, 1024);
+  auto* pcwd1 = getcwd(nullptr, 0);
   std::cerr << "|" << test_dir().native()
             << "|" << path.native()
             << "|" << success
             << "|" << buf
+            << "|" << err
+            << "|" << pcwd0
+            << "|" << pcwd1
             << "|" << std::endl;
+  free(pcwd0);
+  free(pcwd1);
 }
+#endif
   ASSERT_TRUE(test_dir().native() == path.native());
   ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
   ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);

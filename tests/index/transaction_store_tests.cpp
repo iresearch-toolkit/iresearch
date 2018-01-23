@@ -21,6 +21,17 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#if defined (__GNUC__)
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
+  #include <boost/filesystem.hpp>
+
+#if defined (__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
+
 #include "assert_format.hpp"
 #include "index_tests.hpp"
 #include "tests_shared.hpp"
@@ -309,12 +320,12 @@ class transaction_store_tests: public test_base {
 
     thread_pool.stop();
 
-    auto path = fs::path(test_dir()).append("profile_bulk_index.log");
+    auto path = ::boost::filesystem::path(test_dir().native()).append("profile_bulk_index.log");
     std::ofstream out(path.native());
 
     flush_timers(out);
     out.close();
-    std::cout << "Path to timing log: " << fs::absolute(path).string() << std::endl;
+    std::cout << "Path to timing log: " << ::boost::filesystem::absolute(path).string() << std::endl;
 
     auto reader = store.reader();
     ASSERT_EQ(1, reader.size());

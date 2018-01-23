@@ -818,8 +818,11 @@ TEST_F(memory_phrase_filter_test_case, by_phrase) {
 class fs_phrase_filter_test_case : public tests::phrase_filter_test_case {
 protected:
   virtual irs::directory* get_directory() override {
-    const fs::path dir = fs::path(test_dir()).append("index");
-    return new irs::fs_directory(dir.string());
+    auto dir = test_dir();
+
+    dir /= "index";
+
+    return new irs::fs_directory(dir.utf8());
   }
 
   virtual irs::format::ptr get_codec() override {
@@ -831,3 +834,7 @@ protected:
 TEST_F(fs_phrase_filter_test_case, by_phrase) {
   sequential();
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

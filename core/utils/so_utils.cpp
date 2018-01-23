@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "log.hpp"
+#include "utils/file_utils.hpp"
 #include "utils/utf8_path.hpp"
 
 #include "so_utils.hpp"
@@ -75,7 +76,7 @@
 NS_LOCAL
 
 #if defined(_MSC_VER) // Microsoft compiler
-  const std::string FILENAME_EXTENSION(".dll");
+  const std::wstring FILENAME_EXTENSION(L".dll");
 #elif defined(__APPLE__) // MacOS
   const std::string FILENAME_EXTENSION(".dylib");
 #elif defined(__GNUC__) // GNU compiler
@@ -93,13 +94,13 @@ void* load_library(const char* soname, int mode /* = 2 */) {
     return nullptr;
   }
 
-  std::string name(soname);
+  utf8_path name(soname);
 
   name += FILENAME_EXTENSION;
 
 #if defined(_MSC_VER) // Microsoft compiler
   UNUSED(mode);
-  auto handle = static_cast<void*>(::LoadLibraryA(name.c_str()));
+  auto handle = static_cast<void*>(::LoadLibraryW(name.c_str()));
 #elif defined(__GNUC__) // GNU compiler
   auto handle = dlopen(name.c_str(), mode);
 #endif
@@ -163,14 +164,13 @@ void load_libraries(
       return true; // skip non-files
     }
 
-    ::boost::filesystem::path file(name);
-    auto extension = utf8_path(file.extension()).utf8();
+    auto path_parts = irs::file_utils::path_parts(name);
 
-    if (FILENAME_EXTENSION != extension.c_str()) {
+    if (FILENAME_EXTENSION != path_parts.extension) {
       return true; // skip non-library extensions
     }
 
-    auto stem = utf8_path(file.stem()).utf8();
+    auto stem = utf8_path(path_parts.stem).utf8();
 
     if (stem.size() < prefix.size() + suffix.size() ||
         strncmp(stem.c_str(), prefix.c_str(), prefix.size()) != 0 ||

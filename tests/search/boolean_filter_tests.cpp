@@ -4627,8 +4627,11 @@ TEST_F(memory_boolean_test_case, mixed) {
 class fs_boolean_filter_test_case : public tests::boolean_filter_test_case {
 protected:
   virtual ir::directory* get_directory() override {
-    const fs::path dir = fs::path(test_dir()).append("index");
-    return new iresearch::fs_directory(dir.string());
+    auto dir = test_dir();
+
+    dir /= "index";
+
+    return new iresearch::fs_directory(dir.utf8());
   }
 
   virtual ir::format::ptr get_codec() override {

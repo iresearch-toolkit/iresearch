@@ -626,8 +626,11 @@ TEST_F(memory_term_filter_test_case, by_term_cost) {
 class fs_term_filter_test_case : public tests::term_filter_test_case {
 protected:
   virtual ir::directory* get_directory() override {
-    const fs::path dir = fs::path( test_dir() ).append( "index" );
-    return new iresearch::fs_directory(dir.string());
+    auto dir = test_dir();
+
+    dir /= "index";
+
+    return new iresearch::fs_directory(dir.utf8());
   }
 
   virtual ir::format::ptr get_codec() override {
@@ -655,3 +658,7 @@ TEST_F(fs_term_filter_test_case, by_term_order) {
 TEST_F(fs_term_filter_test_case, by_term_cost) {
   by_term_sequential_cost();
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

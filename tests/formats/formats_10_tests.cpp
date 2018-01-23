@@ -776,9 +776,12 @@ TEST_F(memory_format_10_test_case, document_mask_rw) {
 class fs_format_10_test_case : public format_10_test_case {
 protected:
   virtual ir::directory* get_directory() override {
-    const fs::path dir = fs::path(test_dir()).append("index");
-    ir::fs_directory::create_directory(dir.string());
-    return new ir::fs_directory(dir.string());
+    auto dir = test_dir();
+
+    dir /= "index";
+    dir.mkdir();
+
+    return new ir::fs_directory(dir.utf8());
   }
 };
 
@@ -826,3 +829,7 @@ TEST_F(fs_format_10_test_case, columns_meta_rw) {
 TEST_F(fs_format_10_test_case, document_mask_rw) {
   document_mask_read_write();
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

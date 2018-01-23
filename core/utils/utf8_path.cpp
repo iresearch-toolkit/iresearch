@@ -285,31 +285,27 @@ bool utf8_path::absolute() const NOEXCEPT {
 }
 
 bool utf8_path::chdir() const NOEXCEPT {
-  boost::system::error_code code;
-
-  boost::filesystem::current_path(path_, code);
-
-  return boost::system::errc::success == code.value();
+  return irs::file_utils::set_cwd(c_str());
 }
 
 bool utf8_path::exists(bool& result) const NOEXCEPT {
-  return irs::file_utils::exists(result, native().c_str());
+  return irs::file_utils::exists(result, c_str());
 }
 
 bool utf8_path::exists_directory(bool& result) const NOEXCEPT {
-  return irs::file_utils::exists_directory(result, native().c_str());
+  return irs::file_utils::exists_directory(result, c_str());
 }
 
 bool utf8_path::exists_file(bool& result) const NOEXCEPT {
-  return irs::file_utils::exists_file(result, native().c_str());
+  return irs::file_utils::exists_file(result, c_str());
 }
 
 bool utf8_path::file_size(uint64_t& result) const NOEXCEPT {
-  return irs::file_utils::byte_size(result, native().c_str());
+  return irs::file_utils::byte_size(result, c_str());
 }
 
 bool utf8_path::mtime(std::time_t& result) const NOEXCEPT {
-  return irs::file_utils::mtime(result, native().c_str());
+  return irs::file_utils::mtime(result, c_str());
 }
 
 bool utf8_path::mkdir() const NOEXCEPT {
@@ -365,12 +361,7 @@ bool utf8_path::visit_directory(
     const directory_visitor& visitor,
     bool include_dot_dir /*= true*/
 ) {
-  if (!irs::file_utils::visit_directory(
-        native().c_str(),
-        visitor,
-        include_dot_dir
-      )
-  ) {
+  if (!irs::file_utils::visit_directory(c_str(), visitor, include_dot_dir)) {
     bool result;
 
     return !(!exists_directory(result) || !result); // check for FS error, treat non-directory as error

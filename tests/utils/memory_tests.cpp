@@ -21,6 +21,17 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#if defined (__GNUC__)
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
+  #include <boost/filesystem.hpp>
+
+#if defined (__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
+
 #include "tests_shared.hpp"
 #include "utils/memory_pool.hpp"
 #include "utils/memory.hpp"
@@ -372,12 +383,12 @@ TEST_F(memory_pool_allocator_test, profile_std_map) {
     }
   }
 
-  auto path = fs::path(test_dir()).append("profile_memory_pool_allocator.log");
+  auto path = ::boost::filesystem::path(test_dir().native()).append("profile_memory_pool_allocator.log");
   std::ofstream out(path.native());
 
   flush_timers(out);
   out.close();
-  std::cout << "Path to timing log: " << fs::absolute(path).string() << std::endl;
+  std::cout << "Path to timing log: " << ::boost::filesystem::absolute(path).string() << std::endl;
 }
 
 TEST_F(memory_pool_allocator_test, profile_std_multimap) {
@@ -568,12 +579,12 @@ TEST_F(memory_pool_allocator_test, profile_std_multimap) {
     }
   }
 
-  auto path = fs::path(test_dir()).append("profile_memory_pool_allocator.log");
+  auto path = ::boost::filesystem::path(test_dir().native()).append("profile_memory_pool_allocator.log");
   std::ofstream out(path.native());
 
   flush_timers(out);
   out.close();
-  std::cout << "Path to timing log: " << fs::absolute(path).string() << std::endl;
+  std::cout << "Path to timing log: " << ::boost::filesystem::absolute(path).string() << std::endl;
 }
 
 TEST_F(memory_pool_allocator_test, profile_std_list) {
@@ -709,12 +720,12 @@ TEST_F(memory_pool_allocator_test, profile_std_list) {
     }
   }
 
-  auto path = fs::path(test_dir()).append("profile_memory_pool_allocator.log");
+  auto path = ::boost::filesystem::path(test_dir().native()).append("profile_memory_pool_allocator.log");
   std::ofstream out(path.native());
 
   flush_timers(out);
   out.close();
-  std::cout << "Path to timing log: " << fs::absolute(path).string() << std::endl;
+  std::cout << "Path to timing log: " << ::boost::filesystem::absolute(path).string() << std::endl;
 }
 
 TEST_F(memory_pool_allocator_test, profile_std_set) {
@@ -876,12 +887,12 @@ TEST_F(memory_pool_allocator_test, profile_std_set) {
     }
   }
 
-  auto path = fs::path(test_dir()).append("profile_memory_pool_allocator.log");
+  auto path = ::boost::filesystem::path(test_dir().native()).append("profile_memory_pool_allocator.log");
   std::ofstream out(path.native());
 
   flush_timers(out);
   out.close();
-  std::cout << "Path to timing log: " << fs::absolute(path).string() << std::endl;
+  std::cout << "Path to timing log: " << ::boost::filesystem::absolute(path).string() << std::endl;
 }
 
 TEST_F(memory_pool_allocator_test, allocate_unique) {

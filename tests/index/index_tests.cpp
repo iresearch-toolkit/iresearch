@@ -21,6 +21,17 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#if defined (__GNUC__)
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
+  #include <boost/filesystem.hpp>
+
+#if defined (__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
+
 #include "tests_shared.hpp" 
 #include "analysis/token_attributes.hpp"
 #include "analysis/token_streams.hpp"
@@ -961,13 +972,13 @@ class index_test_case_base : public tests::index_test_base {
     // ensure all data have been commited
     writer->commit();
 
-    auto path = fs::path(test_dir()).append("profile_bulk_index.log");
+    auto path = ::boost::filesystem::path(test_dir().native()).append("profile_bulk_index.log");
     std::ofstream out(path.native());
 
     flush_timers(out);
 
     out.close();
-    std::cout << "Path to timing log: " << fs::absolute(path).string() << std::endl;
+    std::cout << "Path to timing log: " << ::boost::filesystem::absolute(path).string() << std::endl;
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(true, 1 <= reader.size()); // not all commits might produce a new segment, some might merge with concurrent commits
@@ -7618,8 +7629,11 @@ protected:
   }
 
   virtual ir::directory* get_directory() override {
-    const fs::path dir = fs::path( test_dir() ).append( "index" );
-    return new iresearch::fs_directory(dir.string());
+    auto dir = test_dir();
+
+    dir /= "index";
+
+    return new iresearch::fs_directory(dir.utf8());
   }
 
   virtual ir::format::ptr get_codec() override {
@@ -7635,8 +7649,11 @@ protected:
   }
 
   virtual ir::directory* get_directory() override {
-    const fs::path dir = fs::path( test_dir() ).append( "index" );
-    return new iresearch::mmap_directory(dir.string());
+    auto dir = test_dir();
+
+    dir /= "index";
+
+    return new iresearch::mmap_directory(dir.utf8());
   }
 
   virtual ir::format::ptr get_codec() override {

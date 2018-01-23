@@ -175,8 +175,11 @@ TEST_F( memory_all_filter_test_case, all ) {
 class fs_all_filter_test_case : public tests::all_filter_test_case {
 protected:
   virtual ir::directory* get_directory() override {
-    const fs::path dir = fs::path( test_dir() ).append( "index" );
-    return new iresearch::fs_directory(dir.string());
+    auto dir = test_dir();
+
+    dir /= "index";
+
+    return new iresearch::fs_directory(dir.utf8());
   }
 
   virtual ir::format::ptr get_codec() override {
