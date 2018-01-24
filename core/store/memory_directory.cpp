@@ -23,7 +23,6 @@
 
 #include "shared.hpp"
 #include "memory_directory.hpp"
-#include "checksum_io.hpp"
 
 #include "error/error.hpp"
 #include "utils/log.hpp"
@@ -223,6 +222,37 @@ uint64_t memory_index_input::read_vlong() {
  * memory_index_output
  * ------------------------------------------------------------------*/
 
+class checksum_memory_index_output final : public memory_index_output {
+ public:
+  explicit checksum_memory_index_output(memory_file& file) NOEXCEPT
+    : memory_index_output(file) {
+    crc_begin_ = pos_;
+  }
+
+  virtual void flush() override {
+    crc_.process_block(crc_begin_, pos_);
+    crc_begin_ = pos_;
+    memory_index_output::flush();
+  }
+
+  virtual int64_t checksum() const NOEXCEPT override {
+    crc_.process_block(crc_begin_, pos_);
+    crc_begin_ = pos_;
+    return crc_.checksum();
+  }
+
+ protected:
+  void switch_buffer() override {
+    crc_.process_block(crc_begin_, pos_);
+    memory_index_output::switch_buffer();
+    crc_begin_ = pos_;
+  }
+
+ private:
+  mutable byte_type* crc_begin_;
+  mutable boost::crc_32_type crc_;
+}; // checksum_memory_index_output
+
 memory_index_output::memory_index_output(memory_file& file) NOEXCEPT
   : file_(file) {
   reset();
@@ -254,7 +284,7 @@ void memory_index_output::write_long(int64_t value) {
 
 void memory_index_output::write_int(int32_t value) {
   if (remain() < sizeof(uint32_t)) {
-    index_output::write_long(value);
+    index_output::write_int(value);
   } else {
     irs::write<uint32_t>(pos_, value);
   }
@@ -348,8 +378,6 @@ bool memory_directory::exists(
 }
 
 index_output::ptr memory_directory::create(const std::string& name) NOEXCEPT {
-  typedef checksum_index_output<boost::crc_32_type> checksum_output_t;
-
   try {
     async_utils::read_write_mutex::write_mutex mutex(flock_);
     SCOPED_LOCK(mutex);
@@ -368,9 +396,7 @@ index_output::ptr memory_directory::create(const std::string& name) NOEXCEPT {
       file = memory::make_unique<memory_file>();
     }
 
-    PTR_NAMED(memory_index_output, out, *file);
-
-    return index_output::make<checksum_output_t>(std::move(out));
+    return index_output::make<checksum_memory_index_output>(*file);
   } catch(...) {
     IR_EXCEPTION();
   }

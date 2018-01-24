@@ -24,7 +24,6 @@
 #include "shared.hpp"
 #include "directory_attributes.hpp"
 #include "fs_directory.hpp"
-#include "checksum_io.hpp"
 #include "error/error.hpp"
 #include "utils/log.hpp"
 #include "utils/object_pool.hpp"
@@ -217,14 +216,16 @@ class fs_index_output : public buffered_index_output {
   }
 
   virtual int64_t checksum() const override {
-    throw not_supported();
+    const_cast<fs_index_output*>(this)->flush();
+    return crc.checksum();
   }
 
  protected:
   virtual void flush_buffer(const byte_type* b, size_t len) override {
     assert(handle);
 
-    auto len_written = fwrite(b, sizeof(byte_type), len, handle.get());
+    const auto len_written = fwrite(b, sizeof(byte_type), len, handle.get());
+    crc.process_bytes(b, len_written);
 
     if (len && len_written != len) {
       throw detailed_io_error("Failed to write buffer, written ")
@@ -242,6 +243,7 @@ class fs_index_output : public buffered_index_output {
   }
 
   file_utils::handle_t handle;
+  boost::crc_32_type crc;
 }; // fs_index_output
 
 //////////////////////////////////////////////////////////////////////////////
@@ -510,8 +512,6 @@ attribute_store& fs_directory::attributes() NOEXCEPT {
 void fs_directory::close() NOEXCEPT { }
 
 index_output::ptr fs_directory::create(const std::string& name) NOEXCEPT {
-  typedef checksum_index_output<boost::crc_32_type> checksum_output_t;
-
   try {
     utf8_path path;
 
@@ -519,13 +519,11 @@ index_output::ptr fs_directory::create(const std::string& name) NOEXCEPT {
 
     auto out = fs_index_output::open(path.c_str());
 
-    if (out) {
-      return index_output::make<checksum_output_t>(std::move(out));
+    if (!out) {
+      IR_FRMT_ERROR("Failed to open output file, path: %s", name.c_str());
     }
 
-    IR_FRMT_ERROR("Failed to open output file, path: %s", name.c_str());
-
-    return nullptr;
+    return out;
   } catch(...) {
     IR_EXCEPTION();
   }

@@ -182,7 +182,7 @@ class IRESEARCH_API memory_index_input final : public index_input {
  * memory_index_output
  * ------------------------------------------------------------------*/
 
-class IRESEARCH_API memory_index_output final : public index_output {
+class IRESEARCH_API memory_index_output : public index_output {
  public:
   explicit memory_index_output(memory_file& file) NOEXCEPT;
   memory_index_output(const memory_index_output&) = default; 
@@ -192,41 +192,44 @@ class IRESEARCH_API memory_index_output final : public index_output {
 
   // data_output
 
-  virtual void close() override;
+  virtual void close() override final;
 
-  virtual void write_byte( byte_type b ) override;
+  virtual void write_byte(byte_type b) override final;
 
-  virtual void write_bytes( const byte_type* b, size_t len ) override;
+  virtual void write_bytes(const byte_type* b, size_t len) override final;
 
   // index_output
 
   virtual void flush() override; // deprecated
 
-  virtual size_t file_pointer() const override;
+  virtual size_t file_pointer() const override final;
 
   virtual int64_t checksum() const override;
 
-  void operator>>( data_output& out );
+  void operator>>(data_output& out);
 
-  virtual void write_int(int32_t v) override;
+  virtual void write_int(int32_t v) override final;
 
-  virtual void write_long(int64_t v) override;
+  virtual void write_long(int64_t v) override final;
 
-  virtual void write_vint(uint32_t v) override;
+  virtual void write_vint(uint32_t v) override final;
 
-  virtual void write_vlong(uint64_t v) override;
+  virtual void write_vlong(uint64_t v) override final;
+
+ protected:
+  virtual void switch_buffer();
 
  private:
-  void switch_buffer();
-
   // returns number of reamining bytes in the buffer
   FORCE_INLINE size_t remain() const {
     return std::distance(pos_, end_);
   }
 
-  memory_file& file_; // underlying file
+ protected:
   memory_file::buffer_t buf_; // current buffer
-  byte_type* pos_; /* position in current buffer */
+  byte_type* pos_; // position in current buffer
+ private:
+  memory_file& file_; // underlying file
   byte_type* end_;
 };
 
