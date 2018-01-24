@@ -24,6 +24,12 @@
 #include "tests_shared.hpp"
 #include "utils/file_utils.hpp"
 
+#ifdef _WIN32
+  #define STRING(str) L ## str
+#else
+  #define STRING(str) str
+#endif
+
 TEST(file_utils_tests, path_parts) {
   typedef irs::file_utils::path_parts_t::ref_t ref_t;
 
@@ -41,65 +47,65 @@ TEST(file_utils_tests, path_parts) {
 
   // no parent, stem(empty), no extension
   {
-    auto data = MSVC_ONLY(L)"";
+    auto data = STRING("");
     auto parts = irs::file_utils::path_parts(data);
     ASSERT_EQ(ref_t::nil, parts.parent);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)""), parts.stem);
+    ASSERT_EQ(ref_t(STRING("")), parts.stem);
     ASSERT_EQ(ref_t::nil, parts.extension);
   }
 
   // no parent, stem(empty), extension(empty)
   {
-    auto data = MSVC_ONLY(L)".";
+    auto data = STRING(".");
     auto parts = irs::file_utils::path_parts(data);
     ASSERT_EQ(ref_t::nil, parts.parent);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)""), parts.stem);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)""), parts.extension);
+    ASSERT_EQ(ref_t(STRING("")), parts.stem);
+    ASSERT_EQ(ref_t(STRING("")), parts.extension);
   }
 
   // no parent, stem(empty), extension(non-empty)
   {
-    auto data = MSVC_ONLY(L)".xyz";
+    auto data = STRING(".xyz");
     auto parts = irs::file_utils::path_parts(data);
     ASSERT_EQ(ref_t::nil, parts.parent);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)""), parts.stem);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)"xyz"), parts.extension);
+    ASSERT_EQ(ref_t(STRING("")), parts.stem);
+    ASSERT_EQ(ref_t(STRING("xyz")), parts.extension);
   }
 
   // no parent, stem(non-empty), no extension
   {
-    auto data = MSVC_ONLY(L)"abc";
+    auto data = STRING("abc");
     auto parts = irs::file_utils::path_parts(data);
     ASSERT_EQ(ref_t::nil, parts.parent);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)"abc"), parts.stem);
+    ASSERT_EQ(ref_t(STRING("abc")), parts.stem);
     ASSERT_EQ(ref_t::nil, parts.extension);
   }
   
   // no parent, stem(non-empty), extension(empty)
   {
-    auto data = MSVC_ONLY(L)"abc.";
+    auto data = STRING("abc.");
     auto parts = irs::file_utils::path_parts(data);
     ASSERT_EQ(ref_t::nil, parts.parent);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)"abc"), parts.stem);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)""), parts.extension);
+    ASSERT_EQ(ref_t(STRING("abc")), parts.stem);
+    ASSERT_EQ(ref_t(STRING("")), parts.extension);
   }
 
   // no parent, stem(non-empty), extension(non-empty)
   {
-    auto data = MSVC_ONLY(L)"abc.xyz";
+    auto data = STRING("abc.xyz");
     auto parts = irs::file_utils::path_parts(data);
     ASSERT_EQ(ref_t::nil, parts.parent);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)"abc"), parts.stem);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)"xyz"), parts.extension);
+    ASSERT_EQ(ref_t(STRING("abc")), parts.stem);
+    ASSERT_EQ(ref_t(STRING("xyz")), parts.extension);
   }
 
   // no parent, stem(non-empty), extension(non-empty) (multi-extension)
   {
-    auto data = MSVC_ONLY(L)"abc.def..xyz";
+    auto data = STRING("abc.def..xyz");
     auto parts = irs::file_utils::path_parts(data);
     ASSERT_EQ(ref_t::nil, parts.parent);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)"abc.def."), parts.stem);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)"xyz"), parts.extension);
+    ASSERT_EQ(ref_t(STRING("abc.def.")), parts.stem);
+    ASSERT_EQ(ref_t(STRING("xyz")), parts.extension);
   }
 
   // ...........................................................................
@@ -108,65 +114,65 @@ TEST(file_utils_tests, path_parts) {
 
   // parent(empty), stem(empty), no extension
   {
-    auto data = MSVC_ONLY(L)"/";
+    auto data = STRING("/");
     auto parts = irs::file_utils::path_parts(data);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)""), parts.parent);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)""), parts.stem);
+    ASSERT_EQ(ref_t(STRING("")), parts.parent);
+    ASSERT_EQ(ref_t(STRING("")), parts.stem);
     ASSERT_EQ(ref_t::nil, parts.extension);
   }
 
   // parent(empty), stem(empty), extension(empty)
   {
-    auto data = MSVC_ONLY(L)"/.";
+    auto data = STRING("/.");
     auto parts = irs::file_utils::path_parts(data);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)""), parts.parent);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)""), parts.stem);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)""), parts.extension);
+    ASSERT_EQ(ref_t(STRING("")), parts.parent);
+    ASSERT_EQ(ref_t(STRING("")), parts.stem);
+    ASSERT_EQ(ref_t(STRING("")), parts.extension);
   }
 
   // parent(empty), stem(empty), extension(non-empty)
   {
-    auto data = MSVC_ONLY(L)"/.xyz";
+    auto data = STRING("/.xyz");
     auto parts = irs::file_utils::path_parts(data);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)""), parts.parent);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)""), parts.stem);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)"xyz"), parts.extension);
+    ASSERT_EQ(ref_t(STRING("")), parts.parent);
+    ASSERT_EQ(ref_t(STRING("")), parts.stem);
+    ASSERT_EQ(ref_t(STRING("xyz")), parts.extension);
   }
 
   // parent(empty), stem(non-empty), no extension
   {
-    auto data = MSVC_ONLY(L)"/abc";
+    auto data = STRING("/abc");
     auto parts = irs::file_utils::path_parts(data);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)""), parts.parent);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)"abc"), parts.stem);
+    ASSERT_EQ(ref_t(STRING("")), parts.parent);
+    ASSERT_EQ(ref_t(STRING("abc")), parts.stem);
     ASSERT_EQ(ref_t::nil, parts.extension);
   }
 
   // parent(empty), stem(non-empty), extension(empty)
   {
-    auto data = MSVC_ONLY(L)"/abc.";
+    auto data = STRING("/abc.");
     auto parts = irs::file_utils::path_parts(data);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)""), parts.parent);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)"abc"), parts.stem);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)""), parts.extension);
+    ASSERT_EQ(ref_t(STRING("")), parts.parent);
+    ASSERT_EQ(ref_t(STRING("abc")), parts.stem);
+    ASSERT_EQ(ref_t(STRING("")), parts.extension);
   }
 
   // parent(empty), stem(non-empty), extension(non-empty)
   {
-    auto data = MSVC_ONLY(L)"/abc.xyz";
+    auto data = STRING("/abc.xyz");
     auto parts = irs::file_utils::path_parts(data);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)""), parts.parent);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)"abc"), parts.stem);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)"xyz"), parts.extension);
+    ASSERT_EQ(ref_t(STRING("")), parts.parent);
+    ASSERT_EQ(ref_t(STRING("abc")), parts.stem);
+    ASSERT_EQ(ref_t(STRING("xyz")), parts.extension);
   }
 
   // parent(empty), stem(non-empty), extension(non-empty) (multi-extension)
   {
-    auto data = MSVC_ONLY(L)"/abc.def..xyz";
+    auto data = STRING("/abc.def..xyz");
     auto parts = irs::file_utils::path_parts(data);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)""), parts.parent);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)"abc.def."), parts.stem);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)"xyz"), parts.extension);
+    ASSERT_EQ(ref_t(STRING("")), parts.parent);
+    ASSERT_EQ(ref_t(STRING("abc.def.")), parts.stem);
+    ASSERT_EQ(ref_t(STRING("xyz")), parts.extension);
   }
 
   // ...........................................................................
@@ -175,74 +181,74 @@ TEST(file_utils_tests, path_parts) {
 
   // parent(non-empty), stem(empty), no extension
   {
-    auto data = MSVC_ONLY(L)"klm/";
+    auto data = STRING("klm/");
     auto parts = irs::file_utils::path_parts(data);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)"klm"), parts.parent);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)""), parts.stem);
+    ASSERT_EQ(ref_t(STRING("klm")), parts.parent);
+    ASSERT_EQ(ref_t(STRING("")), parts.stem);
     ASSERT_EQ(ref_t::nil, parts.extension);
   }
 
   // parent(non-empty), stem(empty), extension(empty)
   {
-    auto data = MSVC_ONLY(L)"klm/.";
+    auto data = STRING("klm/.");
     auto parts = irs::file_utils::path_parts(data);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)"klm"), parts.parent);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)""), parts.stem);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)""), parts.extension);
+    ASSERT_EQ(ref_t(STRING("klm")), parts.parent);
+    ASSERT_EQ(ref_t(STRING("")), parts.stem);
+    ASSERT_EQ(ref_t(STRING("")), parts.extension);
   }
 
   // parent(non-empty), stem(empty), extension(non-empty)
   {
-    auto data = MSVC_ONLY(L)"klm/.xyz";
+    auto data = STRING("klm/.xyz");
     auto parts = irs::file_utils::path_parts(data);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)"klm"), parts.parent);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)""), parts.stem);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)"xyz"), parts.extension);
+    ASSERT_EQ(ref_t(STRING("klm")), parts.parent);
+    ASSERT_EQ(ref_t(STRING("")), parts.stem);
+    ASSERT_EQ(ref_t(STRING("xyz")), parts.extension);
   }
 
   // parent(non-empty), stem(non-empty), no extension
   {
-    auto data = MSVC_ONLY(L)"klm/abc";
+    auto data = STRING("klm/abc");
     auto parts = irs::file_utils::path_parts(data);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)"klm"), parts.parent);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)"abc"), parts.stem);
+    ASSERT_EQ(ref_t(STRING("klm")), parts.parent);
+    ASSERT_EQ(ref_t(STRING("abc")), parts.stem);
     ASSERT_EQ(ref_t::nil, parts.extension);
   }
 
   // parent(non-empty), stem(non-empty), extension(empty)
   {
-    auto data = MSVC_ONLY(L)"klm/abc.";
+    auto data = STRING("klm/abc.");
     auto parts = irs::file_utils::path_parts(data);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)"klm"), parts.parent);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)"abc"), parts.stem);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)""), parts.extension);
+    ASSERT_EQ(ref_t(STRING("klm")), parts.parent);
+    ASSERT_EQ(ref_t(STRING("abc")), parts.stem);
+    ASSERT_EQ(ref_t(STRING("")), parts.extension);
   }
 
   // parent(non-empty), stem(non-empty), extension(non-empty)
   {
-    auto data = MSVC_ONLY(L)"klm/abc.xyz";
+    auto data = STRING("klm/abc.xyz");
     auto parts = irs::file_utils::path_parts(data);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)"klm"), parts.parent);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)"abc"), parts.stem);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)"xyz"), parts.extension);
+    ASSERT_EQ(ref_t(STRING("klm")), parts.parent);
+    ASSERT_EQ(ref_t(STRING("abc")), parts.stem);
+    ASSERT_EQ(ref_t(STRING("xyz")), parts.extension);
   }
 
   // parent(non-empty), stem(non-empty), extension(non-empty) (multi-extension)
   {
-    auto data = MSVC_ONLY(L)"klm/abc.def..xyz";
+    auto data = STRING("klm/abc.def..xyz");
     auto parts = irs::file_utils::path_parts(data);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)"klm"), parts.parent);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)"abc.def."), parts.stem);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)"xyz"), parts.extension);
+    ASSERT_EQ(ref_t(STRING("klm")), parts.parent);
+    ASSERT_EQ(ref_t(STRING("abc.def.")), parts.stem);
+    ASSERT_EQ(ref_t(STRING("xyz")), parts.extension);
   }
 
   // parent(non-empty), stem(non-empty), extension(non-empty) (multi-parent, multi-extension)
   {
-    auto data = MSVC_ONLY(L)"/123/klm/abc.def..xyz";
+    auto data = STRING("/123/klm/abc.def..xyz");
     auto parts = irs::file_utils::path_parts(data);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)"/123/klm"), parts.parent);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)"abc.def."), parts.stem);
-    ASSERT_EQ(ref_t(MSVC_ONLY(L)"xyz"), parts.extension);
+    ASSERT_EQ(ref_t(STRING("/123/klm")), parts.parent);
+    ASSERT_EQ(ref_t(STRING("abc.def.")), parts.stem);
+    ASSERT_EQ(ref_t(STRING("xyz")), parts.extension);
   }
 
   #ifdef _WIN32
@@ -252,74 +258,74 @@ TEST(file_utils_tests, path_parts) {
 
     // parent(non-empty), stem(empty), no extension
     {
-      auto data = MSVC_ONLY(L)"klm\\";
+      auto data = STRING("klm\\");
       auto parts = irs::file_utils::path_parts(data);
-      ASSERT_EQ(ref_t(MSVC_ONLY(L)"klm"), parts.parent);
-      ASSERT_EQ(ref_t(MSVC_ONLY(L)""), parts.stem);
+      ASSERT_EQ(ref_t(STRING("klm")), parts.parent);
+      ASSERT_EQ(ref_t(STRING("")), parts.stem);
       ASSERT_EQ(ref_t::nil, parts.extension);
     }
 
     // parent(non-empty), stem(empty), extension(empty)
     {
-      auto data = MSVC_ONLY(L)"klm\\.";
+      auto data = STRING("klm\\.");
       auto parts = irs::file_utils::path_parts(data);
-      ASSERT_EQ(ref_t(MSVC_ONLY(L)"klm"), parts.parent);
-      ASSERT_EQ(ref_t(MSVC_ONLY(L)""), parts.stem);
-      ASSERT_EQ(ref_t(MSVC_ONLY(L)""), parts.extension);
+      ASSERT_EQ(ref_t(STRING("klm")), parts.parent);
+      ASSERT_EQ(ref_t(STRING("")), parts.stem);
+      ASSERT_EQ(ref_t(STRING("")), parts.extension);
     }
 
     // parent(non-empty), stem(empty), extension(non-empty)
     {
-      auto data = MSVC_ONLY(L)"klm\\.xyz";
+      auto data = STRING("klm\\.xyz");
       auto parts = irs::file_utils::path_parts(data);
-      ASSERT_EQ(ref_t(MSVC_ONLY(L)"klm"), parts.parent);
-      ASSERT_EQ(ref_t(MSVC_ONLY(L)""), parts.stem);
-      ASSERT_EQ(ref_t(MSVC_ONLY(L)"xyz"), parts.extension);
+      ASSERT_EQ(ref_t(STRING("klm")), parts.parent);
+      ASSERT_EQ(ref_t(STRING("")), parts.stem);
+      ASSERT_EQ(ref_t(STRING("xyz")), parts.extension);
     }
 
     // parent(non-empty), stem(non-empty), no extension
     {
-      auto data = MSVC_ONLY(L)"klm\\abc";
+      auto data = STRING("klm\\abc");
       auto parts = irs::file_utils::path_parts(data);
-      ASSERT_EQ(ref_t(MSVC_ONLY(L)"klm"), parts.parent);
-      ASSERT_EQ(ref_t(MSVC_ONLY(L)"abc"), parts.stem);
+      ASSERT_EQ(ref_t(STRING("klm")), parts.parent);
+      ASSERT_EQ(ref_t(STRING("abc")), parts.stem);
       ASSERT_EQ(ref_t::nil, parts.extension);
     }
 
     // parent(non-empty), stem(non-empty), extension(empty)
     {
-      auto data = MSVC_ONLY(L)"klm\\abc.";
+      auto data = STRING("klm\\abc.");
       auto parts = irs::file_utils::path_parts(data);
-      ASSERT_EQ(ref_t(MSVC_ONLY(L)"klm"), parts.parent);
-      ASSERT_EQ(ref_t(MSVC_ONLY(L)"abc"), parts.stem);
-      ASSERT_EQ(ref_t(MSVC_ONLY(L)""), parts.extension);
+      ASSERT_EQ(ref_t(STRING("klm")), parts.parent);
+      ASSERT_EQ(ref_t(STRING("abc")), parts.stem);
+      ASSERT_EQ(ref_t(STRING("")), parts.extension);
     }
 
     // parent(non-empty), stem(non-empty), extension(non-empty)
     {
-      auto data = MSVC_ONLY(L)"klm\\abc.xyz";
+      auto data = STRING("klm\\abc.xyz");
       auto parts = irs::file_utils::path_parts(data);
-      ASSERT_EQ(ref_t(MSVC_ONLY(L)"klm"), parts.parent);
-      ASSERT_EQ(ref_t(MSVC_ONLY(L)"abc"), parts.stem);
-      ASSERT_EQ(ref_t(MSVC_ONLY(L)"xyz"), parts.extension);
+      ASSERT_EQ(ref_t(STRING("klm")), parts.parent);
+      ASSERT_EQ(ref_t(STRING("abc")), parts.stem);
+      ASSERT_EQ(ref_t(STRING("xyz")), parts.extension);
     }
 
     // parent(non-empty), stem(non-empty), extension(non-empty) (multi-extension)
     {
-      auto data = MSVC_ONLY(L)"klm\\abc.def..xyz";
+      auto data = STRING("klm\\abc.def..xyz");
       auto parts = irs::file_utils::path_parts(data);
-      ASSERT_EQ(ref_t(MSVC_ONLY(L)"klm"), parts.parent);
-      ASSERT_EQ(ref_t(MSVC_ONLY(L)"abc.def."), parts.stem);
-      ASSERT_EQ(ref_t(MSVC_ONLY(L)"xyz"), parts.extension);
+      ASSERT_EQ(ref_t(STRING("klm")), parts.parent);
+      ASSERT_EQ(ref_t(STRING("abc.def.")), parts.stem);
+      ASSERT_EQ(ref_t(STRING("xyz")), parts.extension);
     }
 
     // parent(non-empty), stem(non-empty), extension(non-empty) (multi-parent, multi-extension)
     {
-      auto data = MSVC_ONLY(L)"/123\\klm/abc.def..xyz";
+      auto data = STRING("/123\\klm/abc.def..xyz");
       auto parts = irs::file_utils::path_parts(data);
-      ASSERT_EQ(ref_t(MSVC_ONLY(L)"/123\\klm"), parts.parent);
-      ASSERT_EQ(ref_t(MSVC_ONLY(L)"abc.def."), parts.stem);
-      ASSERT_EQ(ref_t(MSVC_ONLY(L)"xyz"), parts.extension);
+      ASSERT_EQ(ref_t(STRING("/123\\klm")), parts.parent);
+      ASSERT_EQ(ref_t(STRING("abc.def.")), parts.stem);
+      ASSERT_EQ(ref_t(STRING("xyz")), parts.extension);
     }
   #endif
 }

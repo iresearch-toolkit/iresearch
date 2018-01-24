@@ -738,7 +738,7 @@ bool read_cwd(
 
         return false;
       }
-
+{
       struct deleter_t {
         void operator()(char* ptr) const { free(ptr); }
       };
@@ -751,6 +751,23 @@ bool read_cwd(
       }
 
       result.assign(pcwd.get());
+// FIXME TODO remove, for debug of tavis only
+#ifndef _WIN32
+  std::cerr << "~" << size_t(&result[0])
+            << "~" << result
+            << "~" << result.size()
+            << "~" << errno
+            << "~" << pcwd.get()
+            << "~" << strlen(pcwd.get())
+            << "~" << std::endl;
+#endif
+}
+#ifndef _WIN32
+  std::cerr << "~" << size_t(&result[0])
+            << "~" << result
+            << "~" << result.size()
+            << "~" << std::endl;
+#endif
     #endif
 
     return true;

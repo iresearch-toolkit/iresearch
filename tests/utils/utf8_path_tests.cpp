@@ -89,6 +89,7 @@ if (test_dir().native() != path.native()) {
   std::cerr << "|" << test_dir().native()
             << "|" << path.native()
             << "|" << success
+            << "|" << size_t(&buf[0])
             << "|" << buf
             << "|" << buf.size()
             << "|" << err
