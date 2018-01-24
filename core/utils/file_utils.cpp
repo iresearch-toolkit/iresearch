@@ -643,7 +643,7 @@ path_parts_t path_parts(const file_path_t path) NOEXCEPT {
   }
 
   bool have_extension = false;
-  irs::string_ref parent;
+  path_parts_t::ref_t parent;
   size_t stem_end = 0;
 
   for(size_t i = 0;; ++i) {
@@ -655,7 +655,7 @@ path_parts_t path_parts(const file_path_t path) NOEXCEPT {
      case '/':
     #endif
       have_extension = false;
-      parent = irs::string_ref(path, i);
+      parent = path_parts_t::ref_t(path, i);
       break;
     #ifdef _WIN32
      case L'.':
@@ -674,17 +674,18 @@ path_parts_t path_parts(const file_path_t path) NOEXCEPT {
 
       if (have_extension) {
         result.extension =
-          irs::string_ref(path + stem_end + 1, i - stem_end - 1); // +1/-1 for delimiter
+          path_parts_t::ref_t(path + stem_end + 1, i - stem_end - 1); // +1/-1 for delimiter
       } else {
         stem_end = i;
       }
 
       if (parent.null()) {
-        result.stem = irs::string_ref(path, stem_end);
+        result.stem = path_parts_t::ref_t(path, stem_end);
       } else {
         auto stem_start = parent.size() + 1; // +1 for delimiter
 
-        result.stem = irs::string_ref(path + stem_start, stem_end - stem_start);
+        result.stem =
+          path_parts_t::ref_t(path + stem_start, stem_end - stem_start);
       }
 
       result.parent = std::move(parent);

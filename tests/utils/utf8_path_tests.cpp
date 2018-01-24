@@ -80,21 +80,25 @@ if (test_dir().native() != path.native()) {
   auto* pcwd1 = getcwd(nullptr, 0);
   std::basic_string<std::remove_pointer<file_path_t>::type> buf0;
   std::basic_string<std::remove_pointer<file_path_t>::type> buf1;
-  buf0.assign(pcwd0);
-  buf1.assign(pcwd0, strlen(pcwd0));
+  std::basic_string<std::remove_pointer<file_path_t>::type> buf2;
+  buf0.assign(pcwd1);
+  buf1.assign(pcwd1, strlen(pcwd1));
+  buf2.assign(pcwd1, pcwd1 + strlen(pcwd1));
+  free(pcwd0);
+  free(pcwd1);
   std::cerr << "|" << test_dir().native()
             << "|" << path.native()
             << "|" << success
             << "|" << buf
+            << "|" << buf.size()
             << "|" << err
-            << "|" << pcwd0
-            << "|" << pcwd1
-            << "|" << strlen(pcwd0)
+//            << "|" << pcwd0
+//            << "|" << pcwd1
+//            << "|" << strlen(pcwd0)
             << "|" << buf0
             << "|" << buf1
+            << "|" << buf2
             << "|" << std::endl;
-  free(pcwd0);
-  free(pcwd1);
 }
 #endif
   ASSERT_TRUE(test_dir().native() == path.native());
