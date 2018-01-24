@@ -643,7 +643,7 @@ path_parts_t path_parts(const file_path_t path) NOEXCEPT {
   }
 
   bool have_extension = false;
-  path_parts_t::ref_t parent;
+  path_parts_t::ref_t dirname;
   size_t stem_end = 0;
 
   for(size_t i = 0;; ++i) {
@@ -655,7 +655,7 @@ path_parts_t path_parts(const file_path_t path) NOEXCEPT {
      case '/':
     #endif
       have_extension = false;
-      parent = path_parts_t::ref_t(path, i);
+      dirname = path_parts_t::ref_t(path, i);
       break;
     #ifdef _WIN32
      case L'.':
@@ -679,16 +679,19 @@ path_parts_t path_parts(const file_path_t path) NOEXCEPT {
         stem_end = i;
       }
 
-      if (parent.null()) {
+      if (dirname.null()) {
+        result.basename = path_parts_t::ref_t(path, i);
         result.stem = path_parts_t::ref_t(path, stem_end);
       } else {
-        auto stem_start = parent.size() + 1; // +1 for delimiter
+        auto stem_start = dirname.size() + 1; // +1 for delimiter
 
+        result.basename =
+          path_parts_t::ref_t(path + stem_start, i - stem_start);
         result.stem =
           path_parts_t::ref_t(path + stem_start, stem_end - stem_start);
       }
 
-      result.parent = std::move(parent);
+      result.dirname = std::move(dirname);
 
       return result;
      }
@@ -700,6 +703,13 @@ path_parts_t path_parts(const file_path_t path) NOEXCEPT {
 bool read_cwd(
     std::basic_string<std::remove_pointer<file_path_t>::type>& result
 ) NOEXCEPT {
+// FIXME TODO remove, for debug of tavis only
+#ifndef _WIN32
+  std::cerr << "@" << size_t(&result[0])
+            << "@" << result
+            << "@" << result.size()
+            << "@" << std::endl;
+#endif
   try {
     #ifdef _WIN32
       auto size = GetCurrentDirectory(0, nullptr);
@@ -726,7 +736,13 @@ bool read_cwd(
       result.resize(size); // truncate buffer to size of cwd
     #else
       result.resize(result.capacity()); // use up the entire buffer (noexcept)
-
+// FIXME TODO remove, for debug of tavis only
+#ifndef _WIN32
+  std::cerr << "$" << size_t(&result[0])
+            << "$" << result
+            << "$" << result.size()
+            << "$" << std::endl;
+#endif
       if (nullptr != getcwd(&result[0], result.size())) {
 // FIXME TODO remove, for debug of tavis only
 #ifndef _WIN32

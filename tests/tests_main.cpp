@@ -60,6 +60,7 @@
 #include <utils/attributes.hpp>
 
 #include "index/doc_generator.hpp"
+#include "utils/file_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/network_utils.hpp"
 #include "utils/bitset.hpp"
@@ -143,7 +144,7 @@ void test_base::SetUp() {
 
   (test_case_dir_ = iter_dir) /= ti->test_case_name();
   (test_dir_ = test_case_dir_) /= ti->name();
-  fs::create_directories(test_dir_.native());
+  test_dir_.mkdir();
 }
 
 void test_base::prepare(const cmdline::parser& parser) {
@@ -176,13 +177,14 @@ void test_base::prepare(const cmdline::parser& parser) {
 }
 
 void test_base::make_directories() {
-  auto exec_path = fs::path(argv_[0]);
-  auto exec_file = exec_path.filename();
+  irs::utf8_path exec_path(argv_[0]);
+  auto exec_native = exec_path.native();
+  auto path_parts = irs::file_utils::path_parts(&exec_native[0]);
 
   exec_path_ = exec_path;
-  exec_file_ = exec_file;
-  exec_dir_ = exec_path.parent_path();
-  test_name_ = exec_file.replace_extension().string();
+  exec_file_ = path_parts.basename;
+  exec_dir_ = path_parts.dirname;
+  test_name_ = path_parts.stem;
 
   if (out_dir_.native().empty()) {
     out_dir_ = exec_dir_;

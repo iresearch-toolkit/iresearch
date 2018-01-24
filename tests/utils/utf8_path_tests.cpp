@@ -67,6 +67,7 @@ NS_END
 TEST_F(utf8_path_tests, current) {
   irs::utf8_path path(true);
   std::string directory("deleteme");
+  std::string directory2("deleteme2");
   bool tmpBool;
   std::time_t tmpTime;
   uint64_t tmpUint;
@@ -117,6 +118,16 @@ if (test_dir().native() != path.native()) {
   #else
     std::string prefix;
   #endif
+
+  ASSERT_TRUE((prefix + path.native()) == irs::utf8_path(true).native());
+  ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
+  ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
+  ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
+  ASSERT_TRUE(path.file_size(tmpUint));
+
+  path /= directory2;
+  ASSERT_TRUE(path.mkdir());
+  ASSERT_TRUE(path.chdir());
 
   ASSERT_TRUE((prefix + path.native()) == irs::utf8_path(true).native());
   ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
