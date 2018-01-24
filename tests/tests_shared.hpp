@@ -54,10 +54,8 @@ class test_base : public ::testing::Test {
   /* returns path to resource with the specified name */
   static std::string resource( const std::string& name );
 
-  static std::string temp_file();
-
   static uint32_t iteration();
- 
+
   const irs::utf8_path& test_dir() { return test_dir_; }
   const irs::utf8_path& test_case_dir() { return test_case_dir_; }
 

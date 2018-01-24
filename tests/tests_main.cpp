@@ -89,10 +89,6 @@ uint32_t iteration_tracker::iteration = (std::numeric_limits<uint32_t>::max)();
 * test_base
 * ------------------------------------------------------------------*/
 
-namespace {
-  namespace fs = boost::filesystem;
-}
-
 const std::string IRES_HELP("help");
 const std::string IRES_LOG_LEVEL("ires_log_level");
 const std::string IRES_LOG_STACK("ires_log_stack");
@@ -114,10 +110,6 @@ int test_base::argc_;
 char** test_base::argv_;
 decltype(test_base::argv_ires_output_) test_base::argv_ires_output_;
 
-std::string test_base::temp_file() {
-  return fs::unique_path().string();
-}
-
 uint32_t test_base::iteration() {
   return iteration_tracker::iteration;
 }
@@ -134,15 +126,14 @@ void test_base::SetUp() {
   namespace tst = ::testing;
   const tst::TestInfo* ti = tst::UnitTest::GetInstance()->current_test_info();
 
-  ::boost::filesystem::path iter_dir(res_dir_.native());
+  test_case_dir_ = res_dir_;
 
   if (::testing::FLAGS_gtest_repeat > 1 || ::testing::FLAGS_gtest_repeat < 0) {
-    iter_dir.append(
-      std::string("iteration ").append(std::to_string(iteration()))
-    );
+    test_case_dir_ /=
+      std::string("iteration ").append(std::to_string(iteration()));
   }
 
-  (test_case_dir_ = iter_dir) /= ti->test_case_name();
+  test_case_dir_ /= ti->test_case_name();
   (test_dir_ = test_case_dir_) /= ti->name();
   test_dir_.mkdir();
 }
@@ -184,7 +175,7 @@ void test_base::make_directories() {
   exec_path_ = exec_path;
   exec_file_ = path_parts.basename;
   exec_dir_ = path_parts.dirname;
-  test_name_ = path_parts.stem;
+  test_name_ = irs::utf8_path(path_parts.stem).utf8();
 
   if (out_dir_.native().empty()) {
     out_dir_ = exec_dir_;
