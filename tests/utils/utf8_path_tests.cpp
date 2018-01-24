@@ -111,7 +111,14 @@ if (test_dir().native() != path.native()) {
   path/=directory;
   ASSERT_TRUE(path.mkdir());
   ASSERT_TRUE(path.chdir());
-  ASSERT_TRUE(path.native() == irs::utf8_path(true).native());
+
+  #ifdef _WIN32
+    std::wstring prefix(L"\\\\?\\"); // prepended by chdir() and returned by win32
+  #else
+    std::string prefix;
+  #endif
+
+  ASSERT_TRUE((prefix + path.native()) == irs::utf8_path(true).native());
   ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
   ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
   ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);

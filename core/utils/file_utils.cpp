@@ -727,8 +727,23 @@ bool read_cwd(
     #else
       result.resize(result.capacity()); // use up the entire buffer (noexcept)
 
-      if (nullptr != getcwd(&result[0], result.size() - 1)) {
+      if (nullptr != getcwd(&result[0], result.size())) {
+// FIXME TODO remove, for debug of tavis only
+#ifndef _WIN32
+  std::cerr << "!" << size_t(&result[0])
+            << "!" << result
+            << "!" << result.size()
+            << "!" << errno
+            << "!" << std::strlen(&result[0])
+            << "!" << std::endl;
+#endif
         result.resize(std::strlen(&result[0])); // truncate buffer to size of cwd
+#ifndef _WIN32
+  std::cerr << "#" << size_t(&result[0])
+            << "#" << result
+            << "#" << result.size()
+            << "#" << std::endl;
+#endif
 
         return true;
       }
