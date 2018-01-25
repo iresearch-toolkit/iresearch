@@ -73,7 +73,7 @@ TEST_F(utf8_path_tests, current) {
   uint64_t tmpUint;
 // FIXME TODO remove, for debug of tavis only
 #ifndef _WIN32
-if (test_dir().native() != path.native()) {
+//if (test_dir().native() != path.native()) {
   std::basic_string<std::remove_pointer<file_path_t>::type> buf;
   auto success = irs::file_utils::read_cwd(buf);
   auto err = errno;
@@ -103,17 +103,17 @@ if (test_dir().native() != path.native()) {
             << "|" << std::endl;
   char w[2];
   getcwd(w, 2);
-  std::cerr << "buffer 2" << std::endl;
+  std::cerr << "buffer 2, errno: " << errno << std::endl;
   char x;
   getcwd(&x, 1);
-  std::cerr << "buffer 1" << std::endl;
+  std::cerr << "buffer 1, errno: " << errno << std::endl;
   getcwd(&x, 0);
-  std::cerr << "buffer 0" << std::endl;
+  std::cerr << "buffer 0, errno: " << errno << std::endl;
   std::basic_string<std::remove_pointer<file_path_t>::type> b;
   b.resize(b.capacity());
   getcwd(&b[0], b.size());
-  std::cerr << "buffer s" << std::endl;
-}
+  std::cerr << "buffer s, errno: " << errno << std::endl;
+//}
 #endif
   ASSERT_TRUE(test_dir().native() == path.native());
   ASSERT_TRUE(path.exists(tmpBool) && tmpBool);

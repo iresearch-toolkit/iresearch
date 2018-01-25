@@ -743,7 +743,16 @@ bool read_cwd(
             << "$" << result.size()
             << "$" << std::endl;
 #endif
-      if (nullptr != getcwd(&result[0], result.size())) {
+      if (result.empty()) {
+        // workaround for implementations of std::basic_string without a buffer
+        char buf[PATH_MAX];
+
+        if (nullptr != getcwd(buf, PATH_MAX)) {
+          result.assign(buf);
+
+          return true;
+        }
+      } else if (nullptr != getcwd(&result[0], result.size())) {
 // FIXME TODO remove, for debug of tavis only
 #ifndef _WIN32
   std::cerr << "!" << size_t(&result[0])
