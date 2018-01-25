@@ -101,6 +101,18 @@ if (test_dir().native() != path.native()) {
             << "|" << buf1
             << "|" << buf2
             << "|" << std::endl;
+  char w[2];
+  getcwd(w, 2);
+  std::cerr << "buffer 2" << std::endl;
+  char x;
+  getcwd(&x, 1);
+  std::cerr << "buffer 1" << std::endl;
+  getcwd(&x, 0);
+  std::cerr << "buffer 0" << std::endl;
+  std::basic_string<std::remove_pointer<file_path_t>::type> b;
+  b.resize(b.capacity());
+  getcwd(&b[0], b.size());
+  std::cerr << "buffer s" << std::endl;
 }
 #endif
   ASSERT_TRUE(test_dir().native() == path.native());

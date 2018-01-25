@@ -765,6 +765,7 @@ bool read_cwd(
       }
 
       if (ERANGE != errno) {
+std::cerr << "Failed to get the current working directory, error " << errno << std::endl;
         IR_FRMT_ERROR("Failed to get the current working directory, error %d", errno);
 
         return false;
@@ -773,14 +774,16 @@ bool read_cwd(
       struct deleter_t {
         void operator()(char* ptr) const { free(ptr); }
       };
+std::cerr << "getcwd(nullptr, 0)" << std::endl;
       std::unique_ptr<char, deleter_t> pcwd(getcwd(nullptr, 0));
 
       if (!pcwd) {
+std::cerr << "Failed to allocate the current working directory, error " << errno << std::endl;
         IR_FRMT_ERROR("Failed to allocate the current working directory, error %d", errno);
 
         return false;
       }
-
+std::cerr << "result.assign(pcwd.get())" << std::endl;
       result.assign(pcwd.get());
 // FIXME TODO remove, for debug of tavis only
 #ifndef _WIN32
@@ -803,9 +806,14 @@ bool read_cwd(
 
     return true;
   } catch (std::bad_alloc& e) {
+std::cerr << "Memory allocation failure while getting the current working directory: " << e.what() << std::endl;
     IR_FRMT_ERROR("Memory allocation failure while getting the current working directory: %s", e.what());
   } catch (std::exception& e) {
+std::cerr << "Caught exception while getting the current working directory: " << e.what() << std::endl;
     IR_FRMT_ERROR("Caught exception while getting the current working directory: %s", e.what());
+  } catch (...) {
+std::cerr << "Caught exception while getting the current working directory" << std::endl;
+    IR_FRMT_ERROR("Caught exception while getting the current working directory");
   }
 
   return false;
