@@ -21,17 +21,6 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#if defined (__GNUC__)
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
-
-  #include <boost/filesystem.hpp>
-
-#if defined (__GNUC__)
-  #pragma GCC diagnostic pop
-#endif
-
 #include <fstream>
 
 #include "tests_shared.hpp"
@@ -41,23 +30,21 @@
 NS_LOCAL
 
 class utf8_path_tests: public test_base {
-  ::boost::filesystem::path cwd_;
+  irs::utf8_path cwd_;
 
   virtual void SetUp() {
     // Code here will be called immediately after the constructor (right before each test).
 
     test_base::SetUp();
-
-    cwd_ = ::boost::filesystem::current_path();
-    ::boost::filesystem::create_directories(test_dir().native()); // ensure path exists
-    ::boost::filesystem::current_path(test_dir().native()); // ensure all files/directories created in a valid place
+    cwd_ = irs::utf8_path(true);
+    test_dir().mkdir(); // ensure path exists
+    test_dir().chdir(); // ensure all files/directories created in a valid place
   }
 
   virtual void TearDown() {
     // Code here will be called immediately after each test (right before the destructor).
 
-    ::boost::filesystem::current_path(cwd_);
-
+    cwd_.chdir();
     test_base::TearDown();
   }
 };
@@ -72,7 +59,15 @@ TEST_F(utf8_path_tests, current) {
   std::time_t tmpTime;
   uint64_t tmpUint;
 
-  ASSERT_TRUE(test_dir().native() == path.native());
+  #ifdef _WIN32
+    wchar_t buf[PATH_MAX];
+    std::basic_string<wchar_t> current_dir(_wgetcwd(buf, PATH_MAX));
+  #else
+    char buf[PATH_MAX];
+    std::basic_string<char> current_dir(getcwd(buf, PATH_MAX));
+  #endif
+
+  ASSERT_TRUE(current_dir == path.native());
   ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
   ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
   ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);

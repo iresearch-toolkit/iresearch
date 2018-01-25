@@ -52,8 +52,6 @@
 #include "tests_shared.hpp"
 #include "tests_config.hpp"
 
-#include <boost/filesystem.hpp>
-
 #include <ctime>
 #include <formats/formats.hpp>
 
@@ -186,7 +184,7 @@ void test_base::make_directories() {
   std::cout << "\t" << IRES_OUTPUT_PATH << ": " << out_dir_.utf8() << std::endl;
   std::cout << "\t" << IRES_RESOURCE_DIR << ": " << resource_dir_.utf8() << std::endl;
 
-  out_dir_ = ::boost::filesystem::canonical(out_dir_.native()).make_preferred();
+  out_dir_ = out_dir_.utf8_absolute();
   (res_dir_ = out_dir_) /= test_name_;
 
   // add timestamp to res_dir_
