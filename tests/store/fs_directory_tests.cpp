@@ -276,10 +276,10 @@ TEST_F(fs_directory_test, utf8_chars) {
   // create directory via native functions
   {
     #ifdef _WIN32
-      auto native_path = test_case_dir().native() + boost::filesystem::path::preferred_separator + path.native();
+      auto native_path = test_case_dir().native() + L'\\' + path.native();
       ASSERT_EQ(0, _wmkdir(native_path.c_str()));
     #else
-      auto native_path = test_case_dir().native() + boost::filesystem::path::preferred_separator + path.utf8();
+      auto native_path = test_case_dir().native() + '/' + path.utf8();
       ASSERT_EQ(0, mkdir(native_path.c_str(), S_IRWXU | S_IRWXG | S_IRWXO));
     #endif
 

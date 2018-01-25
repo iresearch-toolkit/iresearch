@@ -149,9 +149,6 @@ utf8_path::utf8_path(const std::wstring& ucs2_path) {
   #endif
 }
 
-utf8_path::utf8_path(const ::boost::filesystem::path& path): path_(path) {
-}
-
 utf8_path& utf8_path::operator+=(const char* utf8_name) {
   return (*this) += irs::string_ref(utf8_name);
 }
