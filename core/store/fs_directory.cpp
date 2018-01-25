@@ -252,6 +252,22 @@ class fs_index_output : public buffered_index_output {
 class pooled_fs_index_input; // predeclaration used by fs_index_input
 class fs_index_input : public buffered_index_input {
  public:
+  virtual int64_t checksum(size_t offset) const final {
+    const auto begin = handle_->pos;
+    const auto end = std::min(begin + offset, handle_->size);
+
+    boost::crc_32_type crc;
+    byte_type buf[1024];
+
+    for (auto pos = begin; pos < end; ) {
+      const auto to_read = std::min(end - pos, sizeof buf);
+      pos += const_cast<fs_index_input*>(this)->read_internal(buf, to_read);
+      crc.process_bytes(buf, to_read);
+    }
+
+    return crc.checksum();
+  }
+
   virtual ptr dup() const NOEXCEPT override;
 
   static index_input::ptr open(

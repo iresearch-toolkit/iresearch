@@ -65,7 +65,7 @@ class IRESEARCH_API memory_file:
  public:
   DECLARE_PTR(memory_file);
 
-  explicit memory_file() {
+  memory_file() {
     touch(meta_.mtime);
   }
 
@@ -78,7 +78,7 @@ class IRESEARCH_API memory_file:
     auto length = len_;
 
     for (size_t i = 0, count = buffer_count(); i < count && length; ++i) {
-      auto buffer = get_buffer(i);
+      auto& buffer = get_buffer(i);
       auto to_copy = (std::min)(length, buffer.size);
 
       out.write_bytes(buffer.data, to_copy);
@@ -102,7 +102,7 @@ class IRESEARCH_API memory_file:
     auto last_buf = buffer_offset(len_);
 
     if (i == last_buf) {
-      auto buffer = get_buffer(i);
+      auto& buffer = get_buffer(i);
 
       // %size for the case if the last buffer is not one of the precomputed buckets
       return (len_ - buffer.offset) % buffer.size;
@@ -146,6 +146,7 @@ class IRESEARCH_API memory_index_input final : public index_input {
   explicit memory_index_input(const memory_file& file) NOEXCEPT;
 
   virtual ptr dup() const NOEXCEPT override;
+  virtual int64_t checksum(size_t offset) const override;
   virtual bool eof() const override;
   virtual byte_type read_byte() override;
   virtual size_t read_bytes(byte_type* b, size_t len) override;

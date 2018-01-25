@@ -207,6 +207,10 @@ void skip_reader::level::seek(size_t pos) {
   return stream->seek(begin + pos);
 }
 
+int64_t skip_reader::level::checksum(size_t offset) const {
+  return stream->checksum(std::min(offset, end - stream->file_pointer()));
+}
+
 skip_reader::skip_reader(
     size_t skip_0, 
     size_t skip_n) NOEXCEPT

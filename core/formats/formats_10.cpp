@@ -1319,34 +1319,34 @@ void index_meta_reader::read(
     throw detailed_io_error(ss.str());
   }
 
-  checksum_index_input<boost::crc_32_type> check_in(std::move(in));
+  const auto checksum = format_utils::checksum(*in);
 
   // check header
   format_utils::check_header(
-    check_in,
+    *in,
     index_meta_writer::FORMAT_NAME,
     index_meta_writer::FORMAT_MIN,
     index_meta_writer::FORMAT_MAX
   );
 
   // read data from segments file
-  auto gen = check_in.read_vlong();
-  auto cnt = check_in.read_long();
-  auto seg_count = check_in.read_vint();
+  auto gen = in->read_vlong();
+  auto cnt = in->read_long();
+  auto seg_count = in->read_vint();
   index_meta::index_segments_t segments(seg_count);
 
   for (size_t i = 0, count = segments.size(); i < count; ++i) {
     auto& segment = segments[i];
 
-    segment.filename = read_string<std::string>(check_in);
-    segment.meta.codec = formats::get(read_string<std::string>(check_in));
+    segment.filename = read_string<std::string>(*in);
+    segment.meta.codec = formats::get(read_string<std::string>(*in));
 
     auto reader = segment.meta.codec->get_segment_meta_reader();
 
     reader->read(dir, segment.meta, segment.filename);
   }
 
-  format_utils::check_footer(check_in);
+  format_utils::check_footer(*in, checksum);
   complete(meta, gen, cnt, std::move(segments));
 }
 
@@ -1413,21 +1413,21 @@ void segment_meta_reader::read(
     throw detailed_io_error(ss.str());
   }
 
-  checksum_index_input<boost::crc_32_type> check_in(std::move(in));
+  const auto checksum = format_utils::checksum(*in);
 
   format_utils::check_header(
-    check_in,
+    *in,
     segment_meta_writer::FORMAT_NAME,
     segment_meta_writer::FORMAT_MIN,
     segment_meta_writer::FORMAT_MAX
   );
 
-  auto name = read_string<std::string>(check_in);
-  auto version = check_in.read_vlong();
-  int64_t count = check_in.read_vlong();
-  auto flags = check_in.read_byte();
+  auto name = read_string<std::string>(*in);
+  const auto version = in->read_vlong();
+  const int64_t count = in->read_vlong();
+  const auto flags = in->read_byte();
 
-  if ( count < 0 ) {
+  if (count < 0) {
     // corrupted index
     throw index_error();
   }
@@ -1441,9 +1441,9 @@ void segment_meta_reader::read(
   meta.version = version;
   meta.column_store = flags & segment_meta_writer::flags_t::HAS_COLUMN_STORE;
   meta.docs_count = count;
-  meta.files = read_strings<segment_meta::file_set>(check_in);
+  meta.files = read_strings<segment_meta::file_set>(*in);
 
-  format_utils::check_footer(check_in);
+  format_utils::check_footer(*in, checksum);
 }
 
 // ----------------------------------------------------------------------------
@@ -1507,10 +1507,6 @@ bool document_mask_reader::prepare(
 
   // possible that the file does not exist since document_mask is optional
   if (dir.exists(exists, in_name) && !exists) {
-    checksum_index_input<boost::crc_32_type> empty_in;
-
-    in_.swap(empty_in);
-
     if (!seen) {
       IR_FRMT_ERROR("Failed to open file, path: %s", in_name.c_str());
 
@@ -1527,45 +1523,42 @@ bool document_mask_reader::prepare(
   );
 
   if (!in) {
-    checksum_index_input<boost::crc_32_type> empty_in;
-
     IR_FRMT_ERROR("Failed to open file, path: %s", in_name.c_str());
-    in_.swap(empty_in);
 
     return false;
   }
 
-  checksum_index_input<boost::crc_32_type> check_in(std::move(in));
-
-  in_.swap(check_in);
+  checksum_ = format_utils::checksum(*in);
 
   if (seen) {
     *seen = true;
   }
+
+  in_ = std::move(in);
 
   return true;
 }
 
 uint32_t document_mask_reader::begin() {
   format_utils::check_header(
-    in_,
+    *in_,
     document_mask_writer::FORMAT_NAME,
     document_mask_writer::FORMAT_MIN,
     document_mask_writer::FORMAT_MAX
   );
 
-  return in_.read_vint();
+  return in_->read_vint();
 }
 
 void document_mask_reader::read(doc_id_t& doc_id) {
-  auto id = in_.read_vlong();
+  auto id = in_->read_vlong();
 
   static_assert(sizeof(doc_id_t) == sizeof(decltype(id)), "sizeof(doc_id) != sizeof(decltype(id))");
   doc_id = id;
 }
 
 void document_mask_reader::end() {
-  format_utils::check_footer(in_);
+  format_utils::check_footer(*in_, checksum_);
 }
 
 // ----------------------------------------------------------------------------
@@ -1629,8 +1622,8 @@ void meta_writer::write(const std::string& name, field_id id) {
 }
 
 void meta_writer::flush() {
-  format_utils::write_footer(*out_);
   out_->write_int(count_); // write total number of written objects
+  format_utils::write_footer(*out_);
   out_.reset();
   count_ = 0;
 }
@@ -1645,7 +1638,7 @@ class meta_reader final : public iresearch::column_meta_reader {
   virtual bool read(column_meta& column) override;
 
  private:
-  checksum_index_input<boost::crc_32_type> in_;
+  index_input::ptr in_;
   field_id count_{0};
 }; // meta_writer
 
@@ -1665,21 +1658,25 @@ bool meta_reader::prepare(
     return false;
   }
 
-  // read number of objects to read 
-  in->seek(in->length() - sizeof(field_id));
+  const auto checksum = format_utils::checksum(*in);
+
+  in->seek(in->length() - sizeof(field_id) - format_utils::FOOTER_LEN);
+
+  // read number of objects to read
   count = in->read_int();
+
+  format_utils::check_footer(*in, checksum);
+
   in->seek(0);
 
-  checksum_index_input<boost::crc_32_type> check_in(std::move(in));
-
   format_utils::check_header(
-    check_in, 
+    *in,
     meta_writer::FORMAT_NAME,
     meta_writer::FORMAT_MIN,
     meta_writer::FORMAT_MAX
   );
 
-  in_.swap(check_in);
+  in_ = std::move(in);
   count_ = count;
   return true;
 }
@@ -1689,8 +1686,8 @@ bool meta_reader::read(column_meta& column) {
     return false;
   }
 
-  const auto id = in_.read_vint();
-  column.name = read_string<std::string>(in_);
+  const auto id = in_->read_vint();
+  column.name = read_string<std::string>(*in_);
   column.id = id;
   --count_;
   return true;

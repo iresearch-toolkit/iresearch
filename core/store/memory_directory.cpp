@@ -122,6 +122,45 @@ index_input::ptr memory_index_input::dup() const NOEXCEPT {
   return nullptr;
 }
 
+int64_t memory_index_input::checksum(size_t offset) const {
+  boost::crc_32_type crc;
+
+  auto buffer_idx = file_->buffer_offset(file_pointer());
+  size_t to_process;
+
+  // process current buffer if exists
+  if (begin_) {
+    to_process = std::min(offset, remain());
+    crc.process_bytes(begin_, to_process);
+    offset -= to_process;
+    ++buffer_idx;
+  }
+
+  // process intermediate buffers
+  auto last_buffer_idx = file_->buffer_count();
+
+  if (last_buffer_idx) {
+    --last_buffer_idx;
+  }
+
+  for (; offset && buffer_idx < last_buffer_idx; ++buffer_idx) {
+    auto& buf = file_->get_buffer(buffer_idx);
+    to_process = std::min(offset, buf.size);
+    crc.process_bytes(buf.data, to_process);
+    offset -= to_process;
+  }
+
+  // process the last buffer
+  if (offset && buffer_idx == last_buffer_idx) {
+    auto& buf = file_->get_buffer(last_buffer_idx);
+    to_process = std::min(offset, file_->length() - buf.offset);
+    crc.process_bytes(buf.data, to_process);
+    offset -= to_process;
+  }
+
+  return crc.checksum();
+}
+
 bool memory_index_input::eof() const {
   return file_pointer() >= file_->length();
 }
@@ -133,7 +172,7 @@ index_input::ptr memory_index_input::reopen() const NOEXCEPT {
 void memory_index_input::switch_buffer(size_t pos) {
   auto idx = file_->buffer_offset(pos);
   assert(idx < file_->buffer_count());
-  auto buf = file_->get_buffer(idx);
+  auto& buf = file_->get_buffer(idx);
 
   if (buf.data != buf_) {
     buf_ = buf.data;

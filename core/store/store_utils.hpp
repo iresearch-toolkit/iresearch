@@ -374,6 +374,8 @@ class IRESEARCH_API bytes_ref_input : public index_input {
     return irs::vread<uint32_t>(pos_);
   }
 
+  virtual int64_t checksum(size_t offset) const final;
+
  private:
   bytes_ref data_;
   const byte_type* pos_{ data_.begin() };

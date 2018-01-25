@@ -27,6 +27,8 @@
 #include "utils/std.hpp"
 #include "utils/memory.hpp"
 
+#include <boost/crc.hpp>
+
 NS_ROOT
 
 // ----------------------------------------------------------------------------
@@ -345,6 +347,14 @@ void bytes_ref_input::read_bytes(bstring& buf, size_t size) {
   #else
     read_bytes(&(buf[0]) + used, size);
   #endif // IRESEARCH_DEBUG
+}
+
+int64_t bytes_ref_input::checksum(size_t offset) const {
+  boost::crc_32_type crc;
+
+  crc.process_block(pos_, std::min(pos_ + offset, data_.end()));
+
+  return crc.checksum();
 }
 
 // ----------------------------------------------------------------------------

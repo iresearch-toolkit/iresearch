@@ -31,7 +31,6 @@
 #include "utils/bit_utils.hpp"
 #include "utils/bytes_utils.hpp"
 #include "utils/io_utils.hpp"
-#include "utils/checksum.hpp"
 #include "utils/string.hpp"
 #include "utils/noncopyable.hpp"
 
@@ -98,6 +97,10 @@ struct IRESEARCH_API index_input : public data_input {
   virtual ptr dup() const NOEXCEPT = 0; // non-thread-safe fd copy (offset preserved)
   virtual ptr reopen() const NOEXCEPT = 0; // thread-safe new low-level-fd (offset preserved)
   virtual void seek(size_t pos) = 0;
+
+  // returns checksum from the current position to a
+  // specified offset without changing current position
+  virtual int64_t checksum(size_t offset) const = 0;
 
  private:
   index_input& operator=( const index_input& ) = delete;

@@ -210,7 +210,6 @@ set(IResearch_core_headers
   ./utils/bit_packing.hpp
   ./utils/bit_utils.hpp
   ./utils/block_pool.hpp
-  ./utils/checksum.hpp
   ./utils/compression.hpp
   ./utils/file_utils.hpp
   ./utils/fst.hpp
