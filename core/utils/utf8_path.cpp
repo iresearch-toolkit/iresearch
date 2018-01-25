@@ -390,6 +390,22 @@ std::string utf8_path::utf8() const {
   #endif
 }
 
+std::string utf8_path::utf8_absolute() const {
+  #ifdef _WIN32
+    return absolute()
+      ? utf8()
+      : boost::locale::conv::utf_to_utf<char>(
+          ::boost::filesystem::absolute(path_).native()
+        )
+      ;
+  #else
+    return absolute()
+      ? utf8()
+      : ::boost::filesystem::absolute(path_).native()
+      ;
+  #endif
+}
+
 NS_END
 
 // -----------------------------------------------------------------------------

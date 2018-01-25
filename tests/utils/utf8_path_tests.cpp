@@ -456,6 +456,34 @@ TEST_F(utf8_path_tests, directory) {
   ASSERT_TRUE(path.file_size(tmpUint));
 }
 
+TEST_F(utf8_path_tests, utf8_absolute) {
+  // relative -> absolute
+  {
+    std::string directory("deleteme");
+    irs::utf8_path expected(true);
+    irs::utf8_path path;
+
+    expected /= directory;
+    path /= directory;
+
+    ASSERT_TRUE(expected.absolute()); // tests below assume expected is absolute
+    ASSERT_TRUE(!path.absolute());
+    ASSERT_TRUE(expected.utf8() == path.utf8_absolute());
+    ASSERT_TRUE(irs::utf8_path(path.utf8_absolute()).absolute());
+  }
+
+  // absolute -> absolute
+  {
+    std::basic_string<std::remove_pointer<file_path_t>::type> expected;
+    irs::utf8_path path(true);
+
+    ASSERT_TRUE(irs::file_utils::read_cwd(expected));
+    ASSERT_TRUE(path.absolute());
+    ASSERT_TRUE(expected == path.utf8_absolute());
+    ASSERT_TRUE(path.utf8() == path.utf8_absolute());
+  }
+}
+
 TEST_F(utf8_path_tests, visit) {
   irs::utf8_path path;
   std::string data("data");

@@ -21,17 +21,6 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#if defined (__GNUC__)
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
-
-  #include <boost/filesystem.hpp>
-
-#if defined (__GNUC__)
-  #pragma GCC diagnostic pop
-#endif
-
 #include "tests_shared.hpp" 
 #include "analysis/token_attributes.hpp"
 #include "analysis/token_streams.hpp"
@@ -972,13 +961,16 @@ class index_test_case_base : public tests::index_test_base {
     // ensure all data have been commited
     writer->commit();
 
-    auto path = ::boost::filesystem::path(test_dir().native()).append("profile_bulk_index.log");
+    auto path = test_dir();
+
+    path /= "profile_bulk_index.log";
+
     std::ofstream out(path.native());
 
     flush_timers(out);
 
     out.close();
-    std::cout << "Path to timing log: " << ::boost::filesystem::absolute(path).string() << std::endl;
+    std::cout << "Path to timing log: " << path.utf8_absolute() << std::endl;
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(true, 1 <= reader.size()); // not all commits might produce a new segment, some might merge with concurrent commits

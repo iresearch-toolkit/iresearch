@@ -86,6 +86,12 @@ class IRESEARCH_API utf8_path {
   const std::basic_string<native_char_type>& native() const NOEXCEPT;
   std::string utf8() const;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief IFF absolute(): same as utf8()
+  ///        IFF !absolute(): same as utf8_path(true) /= utf8()
+  //////////////////////////////////////////////////////////////////////////////
+  std::string utf8_absolute() const;
+
   void clear();
 
  private:
