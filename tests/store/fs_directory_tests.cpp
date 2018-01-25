@@ -262,8 +262,6 @@ TEST_F(fs_directory_test, orphaned_lock) {
 TEST_F(fs_directory_test, utf8_chars) {
   std::wstring path_ucs2 = L"\u0442\u0435\u0441\u0442\u043E\u0432\u0430\u044F_\u0434\u0438\u0440\u0435\u043A\u0442\u043E\u0440\u0438\u044F";
   irs::utf8_path path(path_ucs2);
-  //auto path_utf8 = boost::locale::conv::utf_to_utf<char>(path_ucs2);
-  //string_ref path_utf8x((char*) path_ucs2.c_str(), path_ucs2.size() * 2);
   fs_directory_test dir(path.utf8());
 
   // create directory via iResearch functions

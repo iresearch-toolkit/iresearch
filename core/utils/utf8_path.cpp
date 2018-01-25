@@ -383,7 +383,11 @@ const std::basic_string<utf8_path::native_char_type>& utf8_path::native() const 
 }
 
 std::string utf8_path::utf8() const {
-  return path_.string(fs_cvt);
+  #ifdef _WIN32
+    return boost::locale::conv::utf_to_utf<char>(path_.native());
+  #else
+    return path_.native();
+  #endif
 }
 
 NS_END

@@ -71,50 +71,7 @@ TEST_F(utf8_path_tests, current) {
   bool tmpBool;
   std::time_t tmpTime;
   uint64_t tmpUint;
-// FIXME TODO remove, for debug of tavis only
-#ifndef _WIN32
-//if (test_dir().native() != path.native()) {
-  std::basic_string<std::remove_pointer<file_path_t>::type> buf;
-  auto success = irs::file_utils::read_cwd(buf);
-  auto err = errno;
-  auto* pcwd0 = getcwd(nullptr, 1024);
-  auto* pcwd1 = getcwd(nullptr, 0);
-  std::basic_string<std::remove_pointer<file_path_t>::type> buf0;
-  std::basic_string<std::remove_pointer<file_path_t>::type> buf1;
-  std::basic_string<std::remove_pointer<file_path_t>::type> buf2;
-  buf0.assign(pcwd1);
-  buf1.assign(pcwd1, strlen(pcwd1));
-  buf2.assign(pcwd1, pcwd1 + strlen(pcwd1));
-  free(pcwd0);
-  free(pcwd1);
-  std::cerr << "|" << test_dir().native()
-            << "|" << path.native()
-            << "|" << success
-            << "|" << size_t(&buf[0])
-            << "|" << buf
-            << "|" << buf.size()
-            << "|" << err
-//            << "|" << pcwd0
-//            << "|" << pcwd1
-//            << "|" << strlen(pcwd0)
-            << "|" << buf0
-            << "|" << buf1
-            << "|" << buf2
-            << "|" << std::endl;
-  char w[2];
-  getcwd(w, 2);
-  std::cerr << "buffer 2, errno: " << errno << std::endl;
-  char x;
-  getcwd(&x, 1);
-  std::cerr << "buffer 1, errno: " << errno << std::endl;
-  getcwd(&x, 0);
-  std::cerr << "buffer 0, errno: " << errno << std::endl;
-  std::basic_string<std::remove_pointer<file_path_t>::type> b;
-  b.resize(b.capacity());
-  getcwd(&b[0], b.size());
-  std::cerr << "buffer s, errno: " << errno << std::endl;
-//}
-#endif
+
   ASSERT_TRUE(test_dir().native() == path.native());
   ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
   ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
