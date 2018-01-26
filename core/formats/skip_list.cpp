@@ -208,7 +208,9 @@ void skip_reader::level::seek(size_t pos) {
 }
 
 int64_t skip_reader::level::checksum(size_t offset) const {
-  return stream->checksum(std::min(offset, end - stream->file_pointer()));
+  return stream->checksum(
+    std::min(offset, size_t(end) - stream->file_pointer())
+  );
 }
 
 skip_reader::skip_reader(
@@ -363,3 +365,7 @@ void skip_reader::prepare(index_input::ptr&& in, const read_f& read /* = nop */)
 }
 
 NS_END
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
