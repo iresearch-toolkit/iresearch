@@ -60,8 +60,8 @@ TEST_F(utf8_path_tests, current) {
   uint64_t tmpUint;
 
   #ifdef _WIN32
-    wchar_t buf[PATH_MAX];
-    std::basic_string<wchar_t> current_dir(_wgetcwd(buf, PATH_MAX));
+    wchar_t buf[MAX_PATH];
+    std::basic_string<wchar_t> current_dir(_wgetcwd(buf, MAX_PATH));
   #else
     char buf[PATH_MAX];
     std::basic_string<char> current_dir(getcwd(buf, PATH_MAX));
@@ -474,7 +474,7 @@ TEST_F(utf8_path_tests, utf8_absolute) {
 
     ASSERT_TRUE(irs::file_utils::read_cwd(expected));
     ASSERT_TRUE(path.absolute());
-    ASSERT_TRUE(expected == path.utf8_absolute());
+    ASSERT_TRUE(irs::utf8_path(expected).utf8() == path.utf8_absolute());
     ASSERT_TRUE(path.utf8() == path.utf8_absolute());
   }
 }
