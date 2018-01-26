@@ -58,27 +58,10 @@ source_group("document" ./document/*)
 source_group("error" ./error/*)
 source_group("formats" ./formats/*)
 source_group("index" ./index/*)
-if (USE_IQL)
-  source_group("iql" ./iql/*)
-endif()
+source_group("iql" ./iql/*)
 source_group("search" ./search/*)
 source_group("store" ./store/*)
 source_group("utils" ./utils/*)
-
-if (USE_IQL)
-  set(IResearch_core_iql_sources
-    ./iql/parser.cc
-    ./iql/parser_common.cpp
-    ./iql/parser_context.cpp
-    ./iql/query_builder.cpp
-  )
-
-  set(IResearch_core_iql_headers
-    ./iql/parser_common.hpp
-    ./iql/parser_context.hpp
-    ./iql/query_builder.hpp
-  )
-endif()
 
 set(IResearch_core_sources
   ./utils/string.cpp 
@@ -104,7 +87,10 @@ set(IResearch_core_sources
   ./index/segment_reader.cpp 
   ./index/segment_writer.cpp 
   ./index/transaction_store.cpp
-  ${IResearch_core_iql_sources}
+  ./iql/parser.cc
+  ./iql/parser_common.cpp
+  ./iql/parser_context.cpp
+  ./iql/query_builder.cpp
   ./search/all_filter.cpp
   ./search/all_iterator.cpp
   ./search/granular_range_filter.cpp
@@ -179,7 +165,9 @@ set(IResearch_core_headers
   ./index/segment_writer.hpp
   ./index/transaction_store.hpp
   ./index/index_writer.hpp
-  ${IResearch_core_iql_headers}
+  ./iql/parser_common.hpp
+  ./iql/parser_context.hpp
+  ./iql/query_builder.hpp
   ./search/all_filter.hpp
   ./search/all_iterator.hpp
   ./search/granular_range_filter.hpp
@@ -292,20 +280,25 @@ if(MSVC)
   )
 endif()
 
-if (USE_IQL)
-  add_custom_command(
-    OUTPUT iql/parser.cc
-    MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
-    DEPENDS iql ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
-    COMMAND bison --graph --report=all -o parser.cc ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
-    WORKING_DIRECTORY iql
-  )
+add_custom_command(
+  OUTPUT iql/parser.cc
+  MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
+  DEPENDS iql ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy touch_iql_parser.cc
+  COMMAND bison --graph --report=all -o parser.cc ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
+  WORKING_DIRECTORY iql
+)
 
-  add_custom_command(
-    OUTPUT iql
-    COMMAND ${CMAKE_COMMAND} -E make_directory iql
-  )
-endif()
+# ensure that 'parser.cc', if exists, is newer that the 'iql' directory
+add_custom_target(touch_iql_parser.cc
+  DEPENDS iql
+  COMMAND ${CMAKE_COMMAND} -E touch_nocreate parser.cc
+  WORKING_DIRECTORY iql
+)
+
+add_custom_command(
+  OUTPUT iql
+  COMMAND ${CMAKE_COMMAND} -E make_directory iql
+)
 
 add_custom_command(
   OUTPUT utils

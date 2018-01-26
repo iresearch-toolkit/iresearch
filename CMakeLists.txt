@@ -21,7 +21,6 @@ endif()
 ################################################################################
 
 option(USE_TESTS "Build tests" OFF)
-option(USE_IQL "Build IQL" ON)
 option(USE_VALGRIND "Use workarounds to avoid false positives in valgrind" OFF)
 
 if (USE_VALGRIND)
@@ -141,11 +140,6 @@ configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/tests/tests_config.hpp.in"
   "${CMAKE_CURRENT_BINARY_DIR}/tests/tests_config.hpp"
 )
-
-# need iql for tests
-if (USE_TESTS AND NOT USE_IQL)
-  set(USE_IQL ON CACHE BOOL "Use IQL" FORCE)
-endif()
 
 add_subdirectory(core)
 add_subdirectory(external)

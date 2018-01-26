@@ -95,9 +95,9 @@ struct empty_seek_term_iterator: public irs::seek_term_iterator {
     return false;
   }
 
-  virtual seek_cookie::ptr cookie() const { return nullptr; }
+  virtual seek_cookie::ptr cookie() const override { return nullptr; }
 
-  virtual irs::SeekResult seek_ge(const irs::bytes_ref&) {
+  virtual irs::SeekResult seek_ge(const irs::bytes_ref&) override {
     return irs::SeekResult::END;
   }
 
@@ -207,6 +207,7 @@ class store_reader_impl final: public irs::sub_reader {
   virtual const irs::column_meta* column(const irs::string_ref& name) const override;
   virtual irs::column_iterator::ptr columns() const override;
   virtual const irs::columnstore_reader::column_reader* column_reader(irs::field_id field) const override;
+  using irs::sub_reader::docs_count;
   virtual uint64_t docs_count() const override { return documents_.size(); } // +1 for invalid doc if non empty
   virtual docs_iterator_t::ptr docs_iterator() const override;
   virtual index_reader::reader_iterator end() const override;
