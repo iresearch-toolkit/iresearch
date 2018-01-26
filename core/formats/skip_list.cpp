@@ -208,6 +208,7 @@ void skip_reader::level::seek(size_t pos) {
 }
 
 int64_t skip_reader::level::checksum(size_t offset) const {
+  static_assert(sizeof(decltype(end)) == sizeof(size_t), "sizeof(decltype(end)) != sizeof(size_t)");
   return stream->checksum(
     std::min(offset, size_t(end) - stream->file_pointer())
   );

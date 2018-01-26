@@ -60,8 +60,8 @@ TEST_F(utf8_path_tests, current) {
   uint64_t tmpUint;
 
   #ifdef _WIN32
-    wchar_t buf[MAX_PATH];
-    std::basic_string<wchar_t> current_dir(_wgetcwd(buf, MAX_PATH));
+    wchar_t buf[_MAX_PATH];
+    std::basic_string<wchar_t> current_dir(_wgetcwd(buf, _MAX_PATH));
   #else
     char buf[PATH_MAX];
     std::basic_string<char> current_dir(getcwd(buf, PATH_MAX));
