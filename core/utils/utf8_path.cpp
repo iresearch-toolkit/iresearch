@@ -392,14 +392,11 @@ std::string utf8_path::utf8_absolute() const {
     return absolute()
       ? utf8()
       : boost::locale::conv::utf_to_utf<char>(
-          ::boost::filesystem::absolute(path_).native()
+          (utf8_path(true) /= path_.native()).native()
         )
       ;
   #else
-    return absolute()
-      ? utf8()
-      : ::boost::filesystem::absolute(path_).native()
-      ;
+    return absolute() ? utf8() : (utf8_path(true) /= path_.native()).native();
   #endif
 }
 

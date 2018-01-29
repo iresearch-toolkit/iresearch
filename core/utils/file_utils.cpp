@@ -56,6 +56,17 @@
 
 #endif // _WIN32
 
+NS_LOCAL
+
+#ifdef _WIN32
+
+  // workaround for path MAX_PATH
+  const std::basic_string<wchar_t> path_prefix(L"\\\\?\\");
+
+#endif
+
+NS_END
+
 NS_ROOT
 NS_BEGIN(file_utils)
 
@@ -726,6 +737,12 @@ bool read_cwd(
         return false;
       }
 
+      if (result.size() >= path_prefix.size() &&
+          !result.compare(0, path_prefix.size(), path_prefix)) {
+        result = result.substr(path_prefix.size());
+        size -= uint32_t(dir_prefix.size()); // path_prefix size <= DWORD max
+      }
+
       result.resize(size); // truncate buffer to size of cwd
     #else
       result.resize(result.capacity()); // use up the entire buffer (noexcept)
@@ -781,9 +798,7 @@ bool set_cwd(const file_path_t path) NOEXCEPT {
       return SetCurrentDirectory(path);
     }
 
-    std::wstring fullpath(L"\\\\?\\"); // workaround for path MAX_PATH
-
-    fullpath += path;
+    auto fullpath = path_prefix + path;
 
     return SetCurrentDirectory(fullpath.c_str());
   #else
