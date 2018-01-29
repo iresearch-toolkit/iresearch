@@ -540,9 +540,11 @@ install:
       tar -zxf icu4c-57_1-src.tgz
       cd icu/source
       ./configure --enable-static
+      mkdir -P ${ICU_DIR}/build
+      make install DESTDIR=${ICU_DIR}/build
     fi
-    sudo make install #DESTDIR=${ICU_DIR}
-    export ICU_ROOT=/usr/local  
+    # sudo make install DESTDIR=${ICU_DIR}
+    export ICU_ROOT=${ICU_DIR}/build/usr/local
 
   ############################################################################
   # Install Boost
