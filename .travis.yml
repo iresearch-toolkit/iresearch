@@ -8,7 +8,7 @@ cache:
     - ${TRAVIS_BUILD_DIR}/deps/gtest
     - ${TRAVIS_BUILD_DIR}/deps/snowball
     - ${TRAVIS_BUILD_DIR}/deps/lz4
-    - ${TRAVIS_BUILD_DIR}/deps/boost-1.58.0
+#    - ${TRAVIS_BUILD_DIR}/deps/boost-1.58.0
 #    - ${TRAVIS_BUILD_DIR}/deps/boost-1.59.0
 #    - ${TRAVIS_BUILD_DIR}/deps/boost-1.60.0
 #    - ${TRAVIS_BUILD_DIR}/deps/boost-1.61.0
