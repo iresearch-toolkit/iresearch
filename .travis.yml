@@ -437,7 +437,7 @@ matrix:
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
-    # Release build, static library
+    # Release build, static library (long-running tests)
     ############################################################################
     - os: osx
       osx_image: xcode9
@@ -448,7 +448,21 @@ matrix:
       env:
         - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
         - BOOST_B2_ARGS="boost.locale.iconv=off"
-        - BUILD_TYPE="Release" STATIC_LIB="true"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*europarl_docs*:*monarch_eco_onthology*"
+
+    ############################################################################
+    # Release build, static library (remaining tests)
+    ############################################################################
+    - os: osx
+      osx_image: xcode9
+      compiler: clang
+      before_install:
+        - brew update || true;
+          brew install bison || true;
+      env:
+        - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
+        - BOOST_B2_ARGS="boost.locale.iconv=off"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*europarl_docs*:-:*monarch_eco_onthology*"
 
     ############################################################################
     # Debug build, shared library
@@ -465,7 +479,7 @@ matrix:
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
-    # Release build, shared library
+    # Release build, shared library (long-running tests)
     ############################################################################
     - os: osx
       osx_image: xcode9
@@ -476,7 +490,21 @@ matrix:
       env:
         - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
         - BOOST_B2_ARGS="boost.locale.iconv=off"
-        - BUILD_TYPE="Release"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*europarl_docs*:*monarch_eco_onthology*"
+
+    ############################################################################
+    # Release build, shared library (remaining tests)
+    ############################################################################
+    - os: osx
+      osx_image: xcode9
+      compiler: clang
+      before_install:
+        - brew update || true;
+          brew install bison || true;
+      env:
+        - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
+        - BOOST_B2_ARGS="boost.locale.iconv=off"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:*europarl_docs*:-:*monarch_eco_onthology*"
 
 before_install:
   - eval "${SET_ENV}"
