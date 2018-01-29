@@ -740,7 +740,7 @@ bool read_cwd(
       if (result.size() >= path_prefix.size() &&
           !result.compare(0, path_prefix.size(), path_prefix)) {
         result = result.substr(path_prefix.size());
-        size -= uint32_t(dir_prefix.size()); // path_prefix size <= DWORD max
+        size -= uint32_t(path_prefix.size()); // path_prefix size <= DWORD max
       }
 
       result.resize(size); // truncate buffer to size of cwd
