@@ -171,8 +171,8 @@ class StringWeightIterator {
  private:
   const Label &first_;
   const decltype(Weight::rest_) &rest_;
-  bool init_;  // In the initialized state?
-  typename decltype(Weight::rest_)::const_iterator iter_;
+  bool init_;  // In the initialized state?  
+  typename std::remove_reference<decltype (Weight::rest_)>::type::const_iterator iter_;
 };
 
 // Traverses string in backward direction.
@@ -209,7 +209,7 @@ class StringWeightReverseIterator {
   const Label &first_;
   const decltype(Weight::rest_) &rest_;
   bool fin_;  // In the final state?
-  typename decltype(Weight::rest_)::const_reverse_iterator iter_;
+  typename std::remove_reference<decltype (Weight::rest_)>::type::const_reverse_iterator iter_;
 };
 
 // StringWeight member functions follow that require

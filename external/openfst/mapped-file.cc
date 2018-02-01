@@ -6,8 +6,12 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#ifdef HAVE_SYS_MMAN
 #include <sys/mman.h>
+#endif  // HAVE_SYS_MMAN
+#ifndef _MSC_VER
 #include <unistd.h>
+#endif  // _MSC_VER
 
 #include <algorithm>
 #include <ios>
@@ -21,12 +25,15 @@ MappedFile::MappedFile(const MemoryRegion &region) : region_(region) {}
 
 MappedFile::~MappedFile() {
   if (region_.size != 0) {
+#ifdef HAVE_SYS_MMAN
     if (region_.mmap) {
       VLOG(1) << "munmap'ed " << region_.size << " bytes at " << region_.mmap;
       if (munmap(region_.mmap, region_.size) != 0) {
         LOG(ERROR) << "Failed to unmap region: " << strerror(errno);
       }
-    } else {
+    } else 
+#endif  // HAVE_SYS_MMAN    
+    {
       if (region_.data) {
         operator delete(static_cast<char *>(region_.data) - region_.offset);
       }
@@ -36,6 +43,9 @@ MappedFile::~MappedFile() {
 
 MappedFile *MappedFile::Map(std::istream *istrm, bool memorymap,
                             const string &source, size_t size) {
+  (void) memorymap;
+  const auto spos = istrm->tellg();
+#ifdef HAVE_SYS_MMAN
   const auto spos = istrm->tellg();
   VLOG(1) << "memorymap: " << (memorymap ? "true" : "false") << " source: \""
           << source << "\""
@@ -73,6 +83,8 @@ MappedFile *MappedFile::Map(std::istream *istrm, bool memorymap,
     LOG(WARNING) << "File mapping at offset " << spos << " of file " << source
                  << " could not be honored, reading instead";
   }
+#endif  // HAVE_SYS_MMAN
+
   // Reads the file into the buffer in chunks not larger than kMaxReadChunk.
   std::unique_ptr<MappedFile> mf(Allocate(size));
   auto *buffer = reinterpret_cast<char *>(mf->mutable_data());
