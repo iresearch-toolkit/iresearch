@@ -1532,34 +1532,46 @@ class UnweightedCompactor {
   }
 };
 
-template <class Arc, class Unsigned /* = uint32 */>
-using CompactStringFst = CompactFst<Arc, StringCompactor<Arc>, Unsigned>;
+// Useful aliases when using StdArc
+typedef CompactFst<StdArc, StringCompactor<StdArc> >
+StdCompactStringFst;
+typedef CompactFst<StdArc, WeightedStringCompactor<StdArc> >
+StdCompactWeightedStringFst;
+typedef CompactFst<StdArc, AcceptorCompactor<StdArc> >
+StdCompactAcceptorFst;
+typedef CompactFst<StdArc, UnweightedCompactor<StdArc> >
+StdCompactUnweightedFst;
+typedef CompactFst<StdArc, UnweightedAcceptorCompactor<StdArc> >
+StdCompactUnweightedAcceptorFst;
 
-template <class Arc, class Unsigned /* = uint32 */>
-using CompactWeightedStringFst =
-    CompactFst<Arc, WeightedStringCompactor<Arc>, Unsigned>;
-
-template <class Arc, class Unsigned /* = uint32 */>
-using CompactAcceptorFst = CompactFst<Arc, AcceptorCompactor<Arc>, Unsigned>;
-
-template <class Arc, class Unsigned /* = uint32 */>
-using CompactUnweightedFst =
-    CompactFst<Arc, UnweightedCompactor<Arc>, Unsigned>;
-
-template <class Arc, class Unsigned /* = uint32 */>
-using CompactUnweightedAcceptorFst =
-    CompactFst<Arc, UnweightedAcceptorCompactor<Arc>, Unsigned>;
-
-using StdCompactStringFst = CompactStringFst<StdArc, uint32>;
-
-using StdCompactWeightedStringFst = CompactWeightedStringFst<StdArc, uint32>;
-
-using StdCompactAcceptorFst = CompactAcceptorFst<StdArc, uint32>;
-
-using StdCompactUnweightedFst = CompactUnweightedFst<StdArc, uint32>;
-
-using StdCompactUnweightedAcceptorFst =
-    CompactUnweightedAcceptorFst<StdArc, uint32>;
+//template <class Arc, class Unsigned /* = uint32 */>
+//using CompactStringFst = CompactFst<Arc, StringCompactor<Arc>, Unsigned>;
+//
+//template <class Arc, class Unsigned /* = uint32 */>
+//using CompactWeightedStringFst =
+//    CompactFst<Arc, WeightedStringCompactor<Arc>, Unsigned>;
+//
+//template <class Arc, class Unsigned /* = uint32 */>
+//using CompactAcceptorFst = CompactFst<Arc, AcceptorCompactor<Arc>, Unsigned>;
+//
+//template <class Arc, class Unsigned /* = uint32 */>
+//using CompactUnweightedFst =
+//    CompactFst<Arc, UnweightedCompactor<Arc>, Unsigned>;
+//
+//template <class Arc, class Unsigned /* = uint32 */>
+//using CompactUnweightedAcceptorFst =
+//    CompactFst<Arc, UnweightedAcceptorCompactor<Arc>, Unsigned>;
+//
+//using StdCompactStringFst = CompactStringFst<StdArc, uint32>;
+//
+//using StdCompactWeightedStringFst = CompactWeightedStringFst<StdArc, uint32>;
+//
+//using StdCompactAcceptorFst = CompactAcceptorFst<StdArc, uint32>;
+//
+//using StdCompactUnweightedFst = CompactUnweightedFst<StdArc, uint32>;
+//
+//using StdCompactUnweightedAcceptorFst =
+//    CompactUnweightedAcceptorFst<StdArc, uint32>;
 
 }  // namespace fst
 
