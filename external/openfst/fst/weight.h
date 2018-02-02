@@ -94,28 +94,28 @@ namespace fst {
 // CONSTANT DEFINITIONS
 
 // A representable float near .001.
-constexpr float kDelta = 1.0F / 1024.0F;
+FST_CONSTEXPR const float kDelta = 1.0F / 1024.0F;
 
 // For all a, b, c: Times(c, Plus(a, b)) = Plus(Times(c, a), Times(c, b)).
-constexpr uint64 kLeftSemiring = 0x0000000000000001ULL;
+FST_CONSTEXPR const uint64 kLeftSemiring = 0x0000000000000001ULL;
 
 // For all a, b, c: Times(Plus(a, b), c) = Plus(Times(a, c), Times(b, c)).
-constexpr uint64 kRightSemiring = 0x0000000000000002ULL;
+FST_CONSTEXPR const uint64 kRightSemiring = 0x0000000000000002ULL;
 
-constexpr uint64 kSemiring = kLeftSemiring | kRightSemiring;
+FST_CONSTEXPR const uint64 kSemiring = kLeftSemiring | kRightSemiring;
 
 // For all a, b: Times(a, b) = Times(b, a).
-constexpr uint64 kCommutative = 0x0000000000000004ULL;
+FST_CONSTEXPR const uint64 kCommutative = 0x0000000000000004ULL;
 
 // For all a: Plus(a, a) = a.
-constexpr uint64 kIdempotent = 0x0000000000000008ULL;
+FST_CONSTEXPR const uint64 kIdempotent = 0x0000000000000008ULL;
 
 // For all a, b: Plus(a, b) = a or Plus(a, b) = b.
-constexpr uint64 kPath = 0x0000000000000010ULL;
+FST_CONSTEXPR const uint64 kPath = 0x0000000000000010ULL;
 
 // For random weight generation: default number of distinct weights.
 // This is also used for a few other weight generation defaults.
-constexpr size_t kNumRandomWeights = 5;
+FST_CONSTEXPR const size_t kNumRandomWeights = 5;
 
 // Determines direction of division.
 enum DivideType {

@@ -59,9 +59,9 @@ class MappedFile {
   // are not aligned upon a 128-bit boundary are read from the file instead.
   // This is consistent with the alignment boundary set in ConstFst and
   // CompactFst.
-  static constexpr int kArchAlignment = 16;
+  static FST_CONSTEXPR const int kArchAlignment = 16;
 
-  static constexpr size_t kMaxReadChunk = 256 * 1024 * 1024;  // 256 MB.
+  static FST_CONSTEXPR const size_t kMaxReadChunk = 256 * 1024 * 1024;  // 256 MB.
 
  private:
   explicit MappedFile(const MemoryRegion &region);

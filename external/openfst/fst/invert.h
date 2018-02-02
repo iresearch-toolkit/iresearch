@@ -24,15 +24,15 @@ struct InvertMapper {
     return ToArc(arc.olabel, arc.ilabel, arc.weight, arc.nextstate);
   }
 
-  constexpr MapFinalAction FinalAction() const {
+  FST_CONSTEXPR MapFinalAction FinalAction() const {
      return MAP_NO_SUPERFINAL;
   }
 
-  constexpr MapSymbolsAction InputSymbolsAction() const {
+  FST_CONSTEXPR MapSymbolsAction InputSymbolsAction() const {
     return MAP_CLEAR_SYMBOLS;
   }
 
-  constexpr MapSymbolsAction OutputSymbolsAction() const {
+  FST_CONSTEXPR MapSymbolsAction OutputSymbolsAction() const {
     return MAP_CLEAR_SYMBOLS;
   }
 

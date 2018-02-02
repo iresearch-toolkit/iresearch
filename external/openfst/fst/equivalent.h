@@ -41,10 +41,10 @@ struct EquivalenceUtil {
   using MappedId = StateId;  // ID for an equivalence class.
 
   // MappedId for an implicit dead state.
-  static constexpr MappedId kDeadState = 0;
+  static FST_CONSTEXPR const MappedId kDeadState = 0;
 
   // MappedId for lookup failure.
-  static constexpr MappedId kInvalidId = -1;
+  static FST_CONSTEXPR const MappedId kInvalidId = -1;
 
   // Maps state ID to the representative of the corresponding
   // equivalence class. The parameter 'which_fst' takes the values 1
@@ -79,11 +79,11 @@ struct EquivalenceUtil {
 };
 
 template <class Arc>
-constexpr
+FST_CONSTEXPR
     typename EquivalenceUtil<Arc>::MappedId EquivalenceUtil<Arc>::kDeadState;
 
 template <class Arc>
-constexpr
+FST_CONSTEXPR
     typename EquivalenceUtil<Arc>::MappedId EquivalenceUtil<Arc>::kInvalidId;
 
 }  // namespace internal
@@ -124,7 +124,7 @@ bool Equivalent(const Fst<Arc> &fst1, const Fst<Arc> &fst2,
     return false;
   }
   // Check properties first.
-  static constexpr auto props = kNoEpsilons | kIDeterministic | kAcceptor;
+  static FST_CONSTEXPR const auto props = kNoEpsilons | kIDeterministic | kAcceptor;
   if (fst1.Properties(props, true) != props) {
     FSTERROR() << "Equivalent: 1st argument not an"
                << " epsilon-free deterministic acceptor";

@@ -21,10 +21,10 @@
 
 namespace fst {
 
-constexpr int kSetEmpty = 0;         // Label for the empty set.
-constexpr int kSetUniv = -1;         // Label for the universal set.
-constexpr int kSetBad = -2;          // Label for a non-set.
-constexpr char kSetSeparator = '_';  // Label separator in sets.
+FST_CONSTEXPR const int kSetEmpty = 0;         // Label for the empty set.
+FST_CONSTEXPR const int kSetUniv = -1;         // Label for the universal set.
+FST_CONSTEXPR const int kSetBad = -2;          // Label for a non-set.
+FST_CONSTEXPR const char kSetSeparator = '_';  // Label separator in sets.
 
 // Determines whether to use (intersect, union) or (union, intersect)
 // as (+, *) for the semiring. SET_INTERSECT_UNION_RESTRICTED is a
@@ -100,7 +100,7 @@ class SetWeight {
 
   ReverseWeight Reverse() const;
 
-  static constexpr uint64 Properties() {
+  static FST_CONSTEXPR uint64 Properties() {
     return kIdempotent | kLeftSemiring | kRightSemiring | kCommutative;
   }
 

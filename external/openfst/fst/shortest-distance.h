@@ -21,7 +21,7 @@
 namespace fst {
 
 // A representable float for shortest distance and shortest path algorithms.
-constexpr float kShortestDelta = 1e-6;
+FST_CONSTEXPR const float kShortestDelta = 1e-6;
 
 template <class Arc, class Queue, class ArcFilter>
 struct ShortestDistanceOptions {

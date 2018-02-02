@@ -20,8 +20,8 @@
 
 namespace fst {
 
-constexpr uint32 kFactorFinalWeights = 0x00000001;
-constexpr uint32 kFactorArcWeights = 0x00000002;
+FST_CONSTEXPR const uint32 kFactorFinalWeights = 0x00000001;
+FST_CONSTEXPR const uint32 kFactorArcWeights = 0x00000002;
 
 template <class Arc>
 struct FactorWeightOptions : CacheOptions {
@@ -384,7 +384,7 @@ class FactorWeightFstImpl : public CacheImpl<Arc> {
   class ElementKey {
    public:
     size_t operator()(const Element &x) const {
-      static constexpr auto prime = 7853;
+      static FST_CONSTEXPR const auto prime = 7853;
       return static_cast<size_t>(x.state * prime + x.weight.Hash());
     }
   };

@@ -92,13 +92,13 @@ struct IdentityMapper {
 
   ToArc operator()(const FromArc &arc) const { return arc; }
 
-  constexpr MapFinalAction FinalAction() const { return MAP_NO_SUPERFINAL; }
+  FST_CONSTEXPR MapFinalAction FinalAction() const { return MAP_NO_SUPERFINAL; }
 
-  constexpr MapSymbolsAction InputSymbolsAction() const {
+  FST_CONSTEXPR MapSymbolsAction InputSymbolsAction() const {
     return MAP_COPY_SYMBOLS;
   }
 
-  constexpr MapSymbolsAction OutputSymbolsAction() const {
+  FST_CONSTEXPR MapSymbolsAction OutputSymbolsAction() const {
     return MAP_COPY_SYMBOLS;
   }
 

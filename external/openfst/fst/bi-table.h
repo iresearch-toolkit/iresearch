@@ -177,9 +177,9 @@ class CompactHashBiTable {
   }
 
  private:
-  static constexpr I kCurrentKey = -1;
-  static constexpr I kEmptyKey = -2;
-  static constexpr I kDeletedKey = -3;
+  static FST_CONSTEXPR const I kCurrentKey = -1;
+  static FST_CONSTEXPR const I kEmptyKey = -2;
+  static FST_CONSTEXPR const I kDeletedKey = -3;
 
   class HashFunc {
    public:
@@ -235,13 +235,13 @@ class CompactHashBiTable {
 };
 
 template <class I, class T, class H, class E, HSType HS>
-constexpr I CompactHashBiTable<I, T, H, E, HS>::kCurrentKey;
+FST_CONSTEXPR const I CompactHashBiTable<I, T, H, E, HS>::kCurrentKey;
 
 template <class I, class T, class H, class E, HSType HS>
-constexpr I CompactHashBiTable<I, T, H, E, HS>::kEmptyKey;
+FST_CONSTEXPR const I CompactHashBiTable<I, T, H, E, HS>::kEmptyKey;
 
 template <class I, class T, class H, class E, HSType HS>
-constexpr I CompactHashBiTable<I, T, H, E, HS>::kDeletedKey;
+FST_CONSTEXPR const I CompactHashBiTable<I, T, H, E, HS>::kDeletedKey;
 
 // An implementation using a vector for the entry to ID mapping. It is passed a
 // function object FP that should fingerprint entries uniquely to an integer
@@ -359,8 +359,8 @@ class VectorHashBiTable {
   const H &Hash() const { return *h_; }
 
  private:
-  static constexpr I kCurrentKey = -1;
-  static constexpr I kEmptyKey = -2;
+  static FST_CONSTEXPR const I kCurrentKey = -1;
+  static FST_CONSTEXPR const I kEmptyKey = -2;
 
   class HashFunc {
    public:
@@ -420,10 +420,10 @@ class VectorHashBiTable {
 };
 
 template <class I, class T, class S, class FP, class H, HSType HS>
-constexpr I VectorHashBiTable<I, T, S, FP, H, HS>::kCurrentKey;
+FST_CONSTEXPR const I VectorHashBiTable<I, T, S, FP, H, HS>::kCurrentKey;
 
 template <class I, class T, class S, class FP, class H, HSType HS>
-constexpr I VectorHashBiTable<I, T, S, FP, H, HS>::kEmptyKey;
+FST_CONSTEXPR const I VectorHashBiTable<I, T, S, FP, H, HS>::kEmptyKey;
 
 // An implementation using a hash map for the entry to ID mapping. This version
 // permits erasing of arbitrary states. The entry T must have == defined and

@@ -336,8 +336,8 @@ class DefaultDeterminizeStateTable {
       size_t h = tuple->filter_state.Hash();
       for (auto it = tuple->subset.begin(); it != tuple->subset.end(); ++it) {
         const size_t h1 = it->state_id;
-        static constexpr auto lshift = 5;
-        static constexpr auto rshift = CHAR_BIT * sizeof(size_t) - 5;
+        static FST_CONSTEXPR const auto lshift = 5;
+        static FST_CONSTEXPR const auto rshift = CHAR_BIT * sizeof(size_t) - 5;
         h ^= h << 1 ^ h1 << lshift ^ h1 >> rshift ^ it->weight.Hash();
       }
       return h;

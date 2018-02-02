@@ -43,7 +43,7 @@ class SparseTupleWeight {
   using Weight = W;
   using Index = K;
 
-  constexpr static K kNoKey = -1;
+  FST_CONSTEXPR const static K kNoKey = -1;
 
   SparseTupleWeight() { Init(); }
 
@@ -265,7 +265,7 @@ class SparseTupleWeight {
 
 // Declare storage for kNoKey since it is passed by reference.
 template <class W, class K>
-constexpr K SparseTupleWeight<W, K>::kNoKey;
+FST_CONSTEXPR const K SparseTupleWeight<W, K>::kNoKey;
 
 template <class W, class K>
 class SparseTupleWeightIterator {

@@ -19,9 +19,9 @@
 
 namespace fst {
 
-constexpr int kStringInfinity = -1;     // Label for the infinite string.
-constexpr int kStringBad = -2;          // Label for a non-string.
-constexpr char kStringSeparator = '_';  // Label separator in strings.
+FST_CONSTEXPR const int kStringInfinity = -1;     // Label for the infinite string.
+FST_CONSTEXPR const int kStringBad = -2;          // Label for a non-string.
+FST_CONSTEXPR const char kStringSeparator = '_';  // Label separator in strings.
 
 // Determines whether to use left or right string semiring.  Includes a
 // 'restricted' version that signals an error if proper prefixes/suffixes
@@ -30,7 +30,7 @@ constexpr char kStringSeparator = '_';  // Label separator in strings.
 // string semirings.
 enum StringType { STRING_LEFT = 0, STRING_RIGHT = 1, STRING_RESTRICT = 2 };
 
-constexpr StringType ReverseStringType(StringType s) {
+FST_CONSTEXPR StringType ReverseStringType(StringType s) {
   return s == STRING_LEFT ? STRING_RIGHT
                           : (s == STRING_RIGHT ? STRING_LEFT : STRING_RESTRICT);
 }
@@ -96,7 +96,7 @@ class StringWeight {
 
   ReverseWeight Reverse() const;
 
-  static constexpr uint64 Properties() {
+  static FST_CONSTEXPR uint64 Properties() {
     return kIdempotent |
            (S == STRING_LEFT ? kLeftSemiring
                              : (S == STRING_RIGHT
@@ -535,13 +535,13 @@ enum GallicType {
   GALLIC = 4
 };
 
-constexpr StringType GallicStringType(GallicType g) {
+FST_CONSTEXPR StringType GallicStringType(GallicType g) {
   return g == GALLIC_LEFT
              ? STRING_LEFT
              : (g == GALLIC_RIGHT ? STRING_RIGHT : STRING_RESTRICT);
 }
 
-constexpr GallicType ReverseGallicType(GallicType g) {
+FST_CONSTEXPR GallicType ReverseGallicType(GallicType g) {
   return g == GALLIC_LEFT
              ? GALLIC_RIGHT
              : (g == GALLIC_RIGHT

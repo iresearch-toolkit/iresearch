@@ -30,7 +30,7 @@ class ProjectMapper {
     return ToArc(label, label, arc.weight, arc.nextstate);
   }
 
-  constexpr MapFinalAction FinalAction() const {
+  FST_CONSTEXPR MapFinalAction FinalAction() const {
     return MAP_NO_SUPERFINAL;
   }
 

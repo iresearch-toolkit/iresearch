@@ -146,8 +146,8 @@ class PairFilterState {
 
   size_t Hash() const {
     const auto h1 = fs1_.Hash();
-    static constexpr auto lshift = 5;
-    static constexpr auto rshift = CHAR_BIT * sizeof(size_t) - 5;
+    static FST_CONSTEXPR const auto lshift = 5;
+    static FST_CONSTEXPR const auto rshift = CHAR_BIT * sizeof(size_t) - 5;
     return h1 << lshift ^ h1 >> rshift ^ fs2_.Hash();
   }
 

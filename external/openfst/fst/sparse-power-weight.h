@@ -113,7 +113,7 @@ class SparsePowerWeight : public SparseTupleWeight<W, K> {
     return *type;
   }
 
-  static constexpr uint64 Properties() {
+  static FST_CONSTEXPR uint64 Properties() {
     return W::Properties() &
            (kLeftSemiring | kRightSemiring | kCommutative | kIdempotent);
   }

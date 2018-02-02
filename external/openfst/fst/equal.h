@@ -14,11 +14,11 @@
 
 namespace fst {
 
-constexpr uint32 kEqualFsts = 0x0001;
-constexpr uint32 kEqualFstTypes = 0x0002;
-constexpr uint32 kEqualCompatProperties = 0x0004;
-constexpr uint32 kEqualCompatSymbols = 0x0008;
-constexpr uint32 kEqualAll =
+FST_CONSTEXPR const uint32 kEqualFsts = 0x0001;
+FST_CONSTEXPR const uint32 kEqualFstTypes = 0x0002;
+FST_CONSTEXPR const uint32 kEqualCompatProperties = 0x0004;
+FST_CONSTEXPR const uint32 kEqualCompatSymbols = 0x0008;
+FST_CONSTEXPR const uint32 kEqualAll =
     kEqualFsts | kEqualFstTypes | kEqualCompatProperties | kEqualCompatSymbols;
 
 // Tests if two Fsts have the same states and arcs in the same order (when

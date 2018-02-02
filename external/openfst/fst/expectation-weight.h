@@ -88,7 +88,7 @@ class ExpectationWeight : public PairWeight<X1, X2> {
 
   bool Member() const { return PairWeight<X1, X2>::Member(); }
 
-  static constexpr uint64 Properties() {
+  static FST_CONSTEXPR uint64 Properties() {
     return X1::Properties() & X2::Properties() &
            (kLeftSemiring | kRightSemiring | kCommutative | kIdempotent);
   }

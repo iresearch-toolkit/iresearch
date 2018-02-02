@@ -102,9 +102,9 @@ void DfsVisit(const FST &fst, Visitor *visitor, ArcFilter filter,
     return;
   }
   // An FST state's DFS status
-  static constexpr uint8 kDfsWhite = 0;  // Undiscovered.
-  static constexpr uint8 kDfsGrey = 1;   // Discovered but unfinished.
-  static constexpr uint8 kDfsBlack = 2;  // Finished.
+  static FST_CONSTEXPR const uint8 kDfsWhite = 0;  // Undiscovered.
+  static FST_CONSTEXPR const uint8 kDfsGrey = 1;   // Discovered but unfinished.
+  static FST_CONSTEXPR const uint8 kDfsBlack = 2;  // Finished.
   std::vector<uint8> state_color;
   std::stack<internal::DfsState<FST> *> state_stack;  // DFS execution stack.
   MemoryPool<internal::DfsState<FST>> state_pool;     // Pool for DFSStates.

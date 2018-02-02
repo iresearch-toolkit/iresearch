@@ -39,7 +39,9 @@
 
 // MSVC2013 doesn't support 'constexpr'
 #if defined _MSC_VER && _MSC_VER < 1900
-  #define constexpr const
+  #define FST_CONSTEXPR
+#else
+  #define FST_CONSTEXPR constexpr
 #endif
 
 #include <fst/config.h>

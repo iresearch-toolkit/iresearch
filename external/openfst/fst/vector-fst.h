@@ -345,18 +345,18 @@ class VectorFstImpl : public VectorFstBaseImpl<S> {
   }
 
   // Properties always true of this FST class
-  static constexpr uint64 kStaticProperties = kExpanded | kMutable;
+  static FST_CONSTEXPR const uint64 kStaticProperties = kExpanded | kMutable;
 
  private:
   // Minimum file format version supported.
-  static constexpr int kMinFileVersion = 2;
+  static FST_CONSTEXPR const int kMinFileVersion = 2;
 };
 
 template <class S>
-constexpr uint64 VectorFstImpl<S>::kStaticProperties;
+FST_CONSTEXPR const uint64 VectorFstImpl<S>::kStaticProperties;
 
 template <class S>
-constexpr int VectorFstImpl<S>::kMinFileVersion;
+FST_CONSTEXPR const int VectorFstImpl<S>::kMinFileVersion;
 
 template <class S>
 VectorFstImpl<S>::VectorFstImpl(const Fst<Arc> &fst) {
@@ -524,7 +524,7 @@ template <class Arc, class State>
 template <class FST>
 bool VectorFst<Arc, State>::WriteFst(const FST &fst, std::ostream &strm,
                                      const FstWriteOptions &opts) {
-  static constexpr int file_version = 2;
+  static FST_CONSTEXPR const int file_version = 2;
   bool update_header = true;
   FstHeader hdr;
   hdr.SetStart(fst.Start());
@@ -620,7 +620,7 @@ class ArcIterator<VectorFst<Arc, State>> {
 
   size_t Position() const { return i_; }
 
-  constexpr uint32 Flags() const { return kArcValueFlags; }
+  FST_CONSTEXPR uint32 Flags() const { return kArcValueFlags; }
 
   void SetFlags(uint32, uint32) {}
 

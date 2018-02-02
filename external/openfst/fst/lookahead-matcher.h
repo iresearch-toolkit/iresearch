@@ -87,35 +87,35 @@ namespace fst {
 
 // Look-ahead flags.
 // Matcher is a lookahead matcher when match_type is MATCH_INPUT.
-constexpr uint32 kInputLookAheadMatcher = 0x00000010;
+FST_CONSTEXPR const uint32 kInputLookAheadMatcher = 0x00000010;
 
 // Matcher is a lookahead matcher when match_type is MATCH_OUTPUT.
-constexpr uint32 kOutputLookAheadMatcher = 0x00000020;
+FST_CONSTEXPR const uint32 kOutputLookAheadMatcher = 0x00000020;
 
 // Is a non-trivial implementation of LookAheadWeight() method defined and
 // if so, should it be used?
-constexpr uint32 kLookAheadWeight = 0x00000040;
+FST_CONSTEXPR const uint32 kLookAheadWeight = 0x00000040;
 
 // Is a non-trivial implementation of LookAheadPrefix() method defined and
 // if so, should it be used?
-constexpr uint32 kLookAheadPrefix = 0x00000080;
+FST_CONSTEXPR const uint32 kLookAheadPrefix = 0x00000080;
 
 // Look-ahead of matcher FST non-epsilon arcs?
-constexpr uint32 kLookAheadNonEpsilons = 0x00000100;
+FST_CONSTEXPR const uint32 kLookAheadNonEpsilons = 0x00000100;
 
 // Look-ahead of matcher FST epsilon arcs?
-constexpr uint32 kLookAheadEpsilons = 0x00000200;
+FST_CONSTEXPR const uint32 kLookAheadEpsilons = 0x00000200;
 
 // Ignore epsilon paths for the lookahead prefix? This gives correct results in
 // composition only with an appropriate composition filter since it depends on
 // the filter blocking the ignored paths.
-constexpr uint32 kLookAheadNonEpsilonPrefix = 0x00000400;
+FST_CONSTEXPR const uint32 kLookAheadNonEpsilonPrefix = 0x00000400;
 
 // For LabelLookAheadMatcher, save relabeling data to file?
-constexpr uint32 kLookAheadKeepRelabelData = 0x00000800;
+FST_CONSTEXPR const uint32 kLookAheadKeepRelabelData = 0x00000800;
 
 // Flags used for lookahead matchers.
-constexpr uint32 kLookAheadFlags = 0x00000ff0;
+FST_CONSTEXPR const uint32 kLookAheadFlags = 0x00000ff0;
 
 // LookAhead Matcher interface, templated on the Arc definition; used
 // for lookahead matcher specializations that are returned by the

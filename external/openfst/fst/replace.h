@@ -121,8 +121,8 @@ template <typename S, typename P>
 class ReplaceHash {
  public:
   size_t operator()(const ReplaceStateTuple<S, P>& t) const {
-    static constexpr auto prime0 = 7853;
-    static constexpr auto prime1 = 7867;
+    static FST_CONSTEXPR const auto prime0 = 7853;
+    static FST_CONSTEXPR const auto prime1 = 7867;
     return t.prefix_id + t.fst_id * prime0 + t.fst_state * prime1;
   }
 };
@@ -179,7 +179,7 @@ class ReplaceStackPrefixHash {
   size_t operator()(const ReplaceStackPrefix<Label, StateId> &prefix) const {
     size_t sum = 0;
     for (const auto &pair : prefix.prefix_) {
-      static constexpr auto prime = 7863;
+      static FST_CONSTEXPR const auto prime = 7863;
       sum += pair.fst_id + pair.nextstate * prime;
     }
     return sum;

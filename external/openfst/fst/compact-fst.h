@@ -930,7 +930,7 @@ class CompactFstImpl
   }
 
   // Properties always true of this FST class.
-  static constexpr uint64 kStaticProperties = kExpanded;
+  static FST_CONSTEXPR const uint64 kStaticProperties = kExpanded;
 
  protected:
   template <class OtherArc, class OtherCompactor, class OtherCacheStore>
@@ -950,27 +950,27 @@ class CompactFstImpl
   friend class ::fst::CompactFst;  // allow access during write.
 
   // Current unaligned file format version.
-  static constexpr int kFileVersion = 2;
+  static FST_CONSTEXPR const int kFileVersion = 2;
   // Current aligned file format version.
-  static constexpr int kAlignedFileVersion = 1;
+  static FST_CONSTEXPR const int kAlignedFileVersion = 1;
   // Minimum file format version supported.
-  static constexpr int kMinFileVersion = 1;
+  static FST_CONSTEXPR const int kMinFileVersion = 1;
 
   std::shared_ptr<Compactor> compactor_;
   typename Compactor::State state_;
 };
 
 template <class Arc, class Compactor, class CacheStore>
-constexpr uint64 CompactFstImpl<Arc, Compactor, CacheStore>::kStaticProperties;
+FST_CONSTEXPR const uint64 CompactFstImpl<Arc, Compactor, CacheStore>::kStaticProperties;
 
 template <class Arc, class Compactor, class CacheStore>
-constexpr int CompactFstImpl<Arc, Compactor, CacheStore>::kFileVersion;
+FST_CONSTEXPR const int CompactFstImpl<Arc, Compactor, CacheStore>::kFileVersion;
 
 template <class Arc, class Compactor, class CacheStore>
-constexpr int CompactFstImpl<Arc, Compactor, CacheStore>::kAlignedFileVersion;
+FST_CONSTEXPR const int CompactFstImpl<Arc, Compactor, CacheStore>::kAlignedFileVersion;
 
 template <class Arc, class Compactor, class CacheStore>
-constexpr int CompactFstImpl<Arc, Compactor, CacheStore>::kMinFileVersion;
+FST_CONSTEXPR const int CompactFstImpl<Arc, Compactor, CacheStore>::kMinFileVersion;
 
 }  // namespace internal
 
@@ -1346,9 +1346,9 @@ class StringCompactor {
     return Arc(p, p, Weight::One(), p != kNoLabel ? s + 1 : kNoStateId);
   }
 
-  constexpr ssize_t Size() const { return 1; }
+  FST_CONSTEXPR ssize_t Size() const { return 1; }
 
-  constexpr uint64 Properties() const {
+  FST_CONSTEXPR uint64 Properties() const {
     return kString | kAcceptor | kUnweighted;
   }
 
@@ -1389,9 +1389,9 @@ class WeightedStringCompactor {
                p.first != kNoLabel ? s + 1 : kNoStateId);
   }
 
-  constexpr ssize_t Size() const { return 1; }
+  FST_CONSTEXPR ssize_t Size() const { return 1; }
 
-  constexpr uint64 Properties() const { return kString | kAcceptor; }
+  FST_CONSTEXPR uint64 Properties() const { return kString | kAcceptor; }
 
   bool Compatible(const Fst<Arc> &fst) const {
     const auto props = Properties();
@@ -1429,9 +1429,9 @@ class UnweightedAcceptorCompactor {
     return Arc(p.first, p.first, Weight::One(), p.second);
   }
 
-  constexpr ssize_t Size() const { return -1; }
+  FST_CONSTEXPR ssize_t Size() const { return -1; }
 
-  constexpr uint64 Properties() const { return kAcceptor | kUnweighted; }
+  FST_CONSTEXPR uint64 Properties() const { return kAcceptor | kUnweighted; }
 
   bool Compatible(const Fst<Arc> &fst) const {
     const auto props = Properties();
@@ -1470,9 +1470,9 @@ class AcceptorCompactor {
     return Arc(p.first.first, p.first.first, p.first.second, p.second);
   }
 
-  constexpr ssize_t Size() const { return -1; }
+  FST_CONSTEXPR ssize_t Size() const { return -1; }
 
-  constexpr uint64 Properties() const { return kAcceptor; }
+  FST_CONSTEXPR uint64 Properties() const { return kAcceptor; }
 
   bool Compatible(const Fst<Arc> &fst) const {
     const auto props = Properties();
@@ -1511,9 +1511,9 @@ class UnweightedCompactor {
     return Arc(p.first.first, p.first.second, Weight::One(), p.second);
   }
 
-  constexpr ssize_t Size() const { return -1; }
+  FST_CONSTEXPR ssize_t Size() const { return -1; }
 
-  constexpr uint64 Properties() const { return kUnweighted; }
+  FST_CONSTEXPR uint64 Properties() const { return kUnweighted; }
 
   bool Compatible(const Fst<Arc> &fst) const {
     const auto props = Properties();

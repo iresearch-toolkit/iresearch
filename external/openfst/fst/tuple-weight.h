@@ -65,7 +65,7 @@ class TupleWeight {
     return no_weight;
   }
 
-  constexpr static size_t Length() { return n; }
+  FST_CONSTEXPR static size_t Length() { return n; }
 
   std::istream &Read(std::istream &istrm) {
     for (size_t i = 0; i < n; ++i) values_[i].Read(istrm);

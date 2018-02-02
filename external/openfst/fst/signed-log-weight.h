@@ -70,7 +70,7 @@ class SignedLogWeightTpl : public PairWeight<TropicalWeight, LogWeightTpl<T>> {
   bool Member() const { return PairWeight<X1, X2>::Member(); }
 
   // Neither idempotent nor path.
-  static constexpr uint64 Properties() {
+  static FST_CONSTEXPR uint64 Properties() {
     return kLeftSemiring | kRightSemiring | kCommutative;
   }
 
@@ -82,8 +82,8 @@ class SignedLogWeightTpl : public PairWeight<TropicalWeight, LogWeightTpl<T>> {
       h1 = TropicalWeight(-1.0).Hash();
     }
     size_t h2 = Value2().Hash();
-    static constexpr int lshift = 5;
-    static constexpr int rshift = CHAR_BIT * sizeof(size_t) - 5;
+    static FST_CONSTEXPR const int lshift = 5;
+    static FST_CONSTEXPR const int rshift = CHAR_BIT * sizeof(size_t) - 5;
     return h1 << lshift ^ h1 >> rshift ^ h2;
   }
 };

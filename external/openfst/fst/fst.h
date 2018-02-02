@@ -177,8 +177,8 @@ enum MatchType {
   MATCH_UNKNOWN = 5
 };  // Otherwise, match type unknown.
 
-constexpr int kNoStateId = -1;  // Not a valid state ID.
-constexpr int kNoLabel = -1;    // Not a valid label.
+FST_CONSTEXPR const int kNoStateId = -1;  // Not a valid state ID.
+FST_CONSTEXPR const int kNoLabel = -1;    // Not a valid label.
 
 // A generic FST, templated on the arc definition, with common-demoninator
 // methods (use StateIterator and ArcIterator to iterate over its states and
@@ -409,18 +409,18 @@ class StateIterator {
 };
 
 // Flags to control the behavior on an arc iterator.
-static constexpr uint32 kArcILabelValue =
+static FST_CONSTEXPR const uint32 kArcILabelValue =
     0x0001;  // Value() gives valid ilabel.
-static constexpr uint32 kArcOLabelValue = 0x0002;  //  "       "     " olabel.
-static constexpr uint32 kArcWeightValue = 0x0004;  //  "       "     " weight.
-static constexpr uint32 kArcNextStateValue =
+static FST_CONSTEXPR const uint32 kArcOLabelValue = 0x0002;  //  "       "     " olabel.
+static FST_CONSTEXPR const uint32 kArcWeightValue = 0x0004;  //  "       "     " weight.
+static FST_CONSTEXPR const uint32 kArcNextStateValue =
     0x0008;                                    //  "       "     " nextstate.
-static constexpr uint32 kArcNoCache = 0x0010;  // No need to cache arcs.
+static FST_CONSTEXPR const uint32 kArcNoCache = 0x0010;  // No need to cache arcs.
 
-static constexpr uint32 kArcValueFlags =
+static FST_CONSTEXPR const uint32 kArcValueFlags =
     kArcILabelValue | kArcOLabelValue | kArcWeightValue | kArcNextStateValue;
 
-static constexpr uint32 kArcFlags = kArcValueFlags | kArcNoCache;
+static FST_CONSTEXPR const uint32 kArcFlags = kArcValueFlags | kArcNoCache;
 
 // Arc iterator interface, templated on the arc definition; used for arc
 // iterator specializations that are returned by the InitArcIterator FST method.

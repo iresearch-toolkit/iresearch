@@ -318,7 +318,7 @@ class GenericComposeStateTable : public StateTable {
                            size_t table_size)
       : StateTable(table_size) {}
 
-  constexpr bool Error() const { return false; }
+  FST_CONSTEXPR bool Error() const { return false; }
 
  private:
   GenericComposeStateTable &operator=(const GenericComposeStateTable &table) =
@@ -386,7 +386,7 @@ class ProductComposeStateTable
       const ProductComposeStateTable<Arc, StateTuple> &table)
       : StateTable(new ComposeFingerprint<StateTuple>(table.Fingerprint())) {}
 
-  constexpr bool Error() const { return false; }
+  FST_CONSTEXPR bool Error() const { return false; }
 
  private:
   ProductComposeStateTable &operator=(const ProductComposeStateTable &table) =
@@ -409,7 +409,7 @@ class StringDetComposeStateTable
 
   StringDetComposeStateTable(const Fst<Arc> &fst1, const Fst<Arc> &fst2)
       : error_(false) {
-    static constexpr auto props2 = kIDeterministic | kNoIEpsilons;
+    static FST_CONSTEXPR const auto props2 = kIDeterministic | kNoIEpsilons;
     if (fst1.Properties(kString, true) != kString) {
       FSTERROR() << "StringDetComposeStateTable: 1st FST is not a string";
       error_ = true;
@@ -449,7 +449,7 @@ class DetStringComposeStateTable
 
   DetStringComposeStateTable(const Fst<Arc> &fst1, const Fst<Arc> &fst2)
       : error_(false) {
-    static constexpr auto props = kODeterministic | kNoOEpsilons;
+    static FST_CONSTEXPR const auto props = kODeterministic | kNoOEpsilons;
     if (fst1.Properties(props, true) != props) {
       FSTERROR() << "StringDetComposeStateTable: 1st FST is not "
                  << "input-deterministic and epsilon-free";
@@ -482,7 +482,7 @@ class ErasableComposeStateTable
  public:
   ErasableComposeStateTable(const Fst<Arc> &fst1, const Fst<Arc> &fst2) {}
 
-  constexpr bool Error() const { return false; }
+  FST_CONSTEXPR bool Error() const { return false; }
 
  private:
   ErasableComposeStateTable &operator=(const ErasableComposeStateTable &table) =

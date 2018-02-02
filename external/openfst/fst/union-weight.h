@@ -109,7 +109,7 @@ class UnionWeight {
     return *type;
   }
 
-  static constexpr uint64 Properties() {
+  static FST_CONSTEXPR uint64 Properties() {
     return W::Properties() &
            (kLeftSemiring | kRightSemiring | kCommutative | kIdempotent);
   }
@@ -313,8 +313,8 @@ inline typename UnionWeight<W, O>::ReverseWeight UnionWeight<W, O>::Reverse()
 template <class W, class O>
 inline size_t UnionWeight<W, O>::Hash() const {
   size_t h = 0;
-  static constexpr int lshift = 5;
-  static constexpr int rshift = CHAR_BIT * sizeof(size_t) - lshift;
+  static FST_CONSTEXPR const int lshift = 5;
+  static FST_CONSTEXPR const int rshift = CHAR_BIT * sizeof(size_t) - lshift;
   for (UnionWeightIterator<W, O> it(*this); !it.Done(); it.Next()) {
     h = h << lshift ^ h >> rshift ^ it.Value().Hash();
   }

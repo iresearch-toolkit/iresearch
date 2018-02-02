@@ -53,11 +53,11 @@ struct CacheImplOptions {
 };
 
 // Cache flags.
-constexpr uint32 kCacheFinal = 0x0001;   // Final weight has been cached.
-constexpr uint32 kCacheArcs = 0x0002;    // Arcs have been cached.
-constexpr uint32 kCacheInit = 0x0004;    // Initialized by GC.
-constexpr uint32 kCacheRecent = 0x0008;  // Visited since GC.
-constexpr uint32 kCacheFlags =
+FST_CONSTEXPR const uint32 kCacheFinal = 0x0001;   // Final weight has been cached.
+FST_CONSTEXPR const uint32 kCacheArcs = 0x0002;    // Arcs have been cached.
+FST_CONSTEXPR const uint32 kCacheInit = 0x0004;    // Initialized by GC.
+FST_CONSTEXPR const uint32 kCacheRecent = 0x0008;  // Visited since GC.
+FST_CONSTEXPR const uint32 kCacheFlags =
     kCacheFinal | kCacheArcs | kCacheInit | kCacheRecent;
 
 // Cache state, with arcs stored in a per-state std::vector.
@@ -719,7 +719,7 @@ class GCCacheStore {
   size_t CacheLimit() const { return cache_limit_; }
 
  private:
-  static constexpr size_t kMinCacheLimit = 8096;  // Minimum cache limit.
+  static FST_CONSTEXPR const size_t kMinCacheLimit = 8096;  // Minimum cache limit.
 
   CacheStore store_;       // Underlying store.
   bool cache_gc_request_;  // GC requested but possibly not yet enabled.
@@ -773,7 +773,7 @@ void GCCacheStore<CacheStore>::GC(const State *current, bool free_recent,
 }
 
 template <class CacheStore>
-constexpr size_t GCCacheStore<CacheStore>::kMinCacheLimit;
+FST_CONSTEXPR const size_t GCCacheStore<CacheStore>::kMinCacheLimit;
 
 // This class is the default cache state and store used by CacheBaseImpl.
 // It uses VectorCacheStore for storage decorated by FirstCacheStore
@@ -872,7 +872,7 @@ class CacheBaseImpl : public FstImpl<typename State::Arc> {
   void SetFinal(StateId s, Weight weight) {
     auto *state = cache_store_->GetMutableState(s);
     state->SetFinal(std::move(weight));
-    static constexpr auto flags = kCacheFinal | kCacheRecent;
+    static FST_CONSTEXPR const auto flags = kCacheFinal | kCacheRecent;
     state->SetFlags(flags, flags);
   }
 
@@ -888,7 +888,7 @@ class CacheBaseImpl : public FstImpl<typename State::Arc> {
     if (arc.nextstate >= nknown_states_)
       nknown_states_ = arc.nextstate + 1;
     SetExpandedState(s);
-    static constexpr auto flags = kCacheArcs | kCacheRecent;
+    static FST_CONSTEXPR const auto flags = kCacheArcs | kCacheRecent;
     state->SetFlags(flags, flags);
   }
 #endif
@@ -912,7 +912,7 @@ class CacheBaseImpl : public FstImpl<typename State::Arc> {
       if (arc.nextstate >= nknown_states_) nknown_states_ = arc.nextstate + 1;
     }
     SetExpandedState(s);
-    static constexpr auto flags = kCacheArcs | kCacheRecent;
+    static FST_CONSTEXPR const auto flags = kCacheArcs | kCacheRecent;
     state->SetFlags(flags, flags);
   }
 
@@ -1170,7 +1170,7 @@ class CacheArcIterator {
 
   void Seek(size_t a) { i_ = a; }
 
-  constexpr uint32 Flags() const { return kArcValueFlags; }
+  FST_CONSTEXPR uint32 Flags() const { return kArcValueFlags; }
 
   void SetFlags(uint32 flags, uint32 mask) {}
 

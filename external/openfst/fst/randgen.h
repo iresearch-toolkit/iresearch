@@ -662,7 +662,7 @@ class RandGenVisitor {
     path_.clear();
   }
 
-  constexpr bool InitState(StateId, StateId) const { return true; }
+  FST_CONSTEXPR bool InitState(StateId, StateId) const { return true; }
 
   bool TreeArc(StateId, const ToArc &arc) {
     if (ifst_->Final(arc.nextstate) == Weight::Zero()) {

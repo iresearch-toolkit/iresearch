@@ -646,13 +646,13 @@ class IdentityArcMapper {
 
   ToArc operator()(const FromArc &arc) const { return arc; }
 
-  constexpr MapFinalAction FinalAction() const { return MAP_NO_SUPERFINAL; }
+  FST_CONSTEXPR MapFinalAction FinalAction() const { return MAP_NO_SUPERFINAL; }
 
-  constexpr MapSymbolsAction InputSymbolsAction() const {
+  FST_CONSTEXPR MapSymbolsAction InputSymbolsAction() const {
     return MAP_COPY_SYMBOLS;
   }
 
-  constexpr MapSymbolsAction OutputSymbolsAction() const {
+  FST_CONSTEXPR MapSymbolsAction OutputSymbolsAction() const {
     return MAP_COPY_SYMBOLS;
   }
 
@@ -670,13 +670,13 @@ class InputEpsilonMapper {
     return ToArc(0, arc.olabel, arc.weight, arc.nextstate);
   }
 
-  constexpr MapFinalAction FinalAction() const { return MAP_NO_SUPERFINAL; }
+  FST_CONSTEXPR MapFinalAction FinalAction() const { return MAP_NO_SUPERFINAL; }
 
-  constexpr MapSymbolsAction InputSymbolsAction() const {
+  FST_CONSTEXPR MapSymbolsAction InputSymbolsAction() const {
     return MAP_CLEAR_SYMBOLS;
   }
 
-  constexpr MapSymbolsAction OutputSymbolsAction() const {
+  FST_CONSTEXPR MapSymbolsAction OutputSymbolsAction() const {
     return MAP_COPY_SYMBOLS;
   }
 
@@ -696,13 +696,13 @@ class OutputEpsilonMapper {
     return ToArc(arc.ilabel, 0, arc.weight, arc.nextstate);
   }
 
-  constexpr MapFinalAction FinalAction() const { return MAP_NO_SUPERFINAL; }
+  FST_CONSTEXPR MapFinalAction FinalAction() const { return MAP_NO_SUPERFINAL; }
 
-  constexpr MapSymbolsAction InputSymbolsAction() const {
+  FST_CONSTEXPR MapSymbolsAction InputSymbolsAction() const {
     return MAP_COPY_SYMBOLS;
   }
 
-  constexpr MapSymbolsAction OutputSymbolsAction() const {
+  FST_CONSTEXPR MapSymbolsAction OutputSymbolsAction() const {
     return MAP_CLEAR_SYMBOLS;
   }
 
@@ -734,15 +734,15 @@ class SuperFinalMapper {
     }
   }
 
-  constexpr MapFinalAction FinalAction() const {
+  FST_CONSTEXPR MapFinalAction FinalAction() const {
     return MAP_REQUIRE_SUPERFINAL;
   }
 
-  constexpr MapSymbolsAction InputSymbolsAction() const {
+  FST_CONSTEXPR MapSymbolsAction InputSymbolsAction() const {
     return MAP_COPY_SYMBOLS;
   }
 
-  constexpr MapSymbolsAction OutputSymbolsAction() const {
+  FST_CONSTEXPR MapSymbolsAction OutputSymbolsAction() const {
     return MAP_COPY_SYMBOLS;
   }
 
@@ -781,13 +781,13 @@ class WeightConvertMapper {
                  arc.nextstate);
   }
 
-  constexpr MapFinalAction FinalAction() const { return MAP_NO_SUPERFINAL; }
+  FST_CONSTEXPR MapFinalAction FinalAction() const { return MAP_NO_SUPERFINAL; }
 
-  constexpr MapSymbolsAction InputSymbolsAction() const {
+  FST_CONSTEXPR MapSymbolsAction InputSymbolsAction() const {
     return MAP_COPY_SYMBOLS;
   }
 
-  constexpr MapSymbolsAction OutputSymbolsAction() const {
+  FST_CONSTEXPR MapSymbolsAction OutputSymbolsAction() const {
     return MAP_COPY_SYMBOLS;
   }
 
@@ -843,13 +843,13 @@ class ToGallicMapper {
     }
   }
 
-  constexpr MapFinalAction FinalAction() const { return MAP_NO_SUPERFINAL; }
+  FST_CONSTEXPR MapFinalAction FinalAction() const { return MAP_NO_SUPERFINAL; }
 
-  constexpr MapSymbolsAction InputSymbolsAction() const {
+  FST_CONSTEXPR MapSymbolsAction InputSymbolsAction() const {
     return MAP_COPY_SYMBOLS;
   }
 
-  constexpr MapSymbolsAction OutputSymbolsAction() const {
+  FST_CONSTEXPR MapSymbolsAction OutputSymbolsAction() const {
     return MAP_CLEAR_SYMBOLS;
   }
 
@@ -893,13 +893,13 @@ class FromGallicMapper {
     }
   }
 
-  constexpr MapFinalAction FinalAction() const { return MAP_ALLOW_SUPERFINAL; }
+  FST_CONSTEXPR MapFinalAction FinalAction() const { return MAP_ALLOW_SUPERFINAL; }
 
-  constexpr MapSymbolsAction InputSymbolsAction() const {
+  FST_CONSTEXPR MapSymbolsAction InputSymbolsAction() const {
     return MAP_COPY_SYMBOLS;
   }
 
-  constexpr MapSymbolsAction OutputSymbolsAction() const {
+  FST_CONSTEXPR MapSymbolsAction OutputSymbolsAction() const {
     return MAP_CLEAR_SYMBOLS;
   }
 
@@ -1013,13 +1013,13 @@ class GallicToNewSymbolsMapper {
     return ToArc(arc.ilabel, l, w2, arc.nextstate);
   }
 
-  constexpr MapFinalAction FinalAction() const { return MAP_ALLOW_SUPERFINAL; }
+  FST_CONSTEXPR MapFinalAction FinalAction() const { return MAP_ALLOW_SUPERFINAL; }
 
-  constexpr MapSymbolsAction InputSymbolsAction() const {
+  FST_CONSTEXPR MapSymbolsAction InputSymbolsAction() const {
     return MAP_COPY_SYMBOLS;
   }
 
-  constexpr MapSymbolsAction OutputSymbolsAction() const {
+  FST_CONSTEXPR MapSymbolsAction OutputSymbolsAction() const {
     return MAP_CLEAR_SYMBOLS;
   }
 
@@ -1063,13 +1063,13 @@ class PlusMapper {
                  arc.nextstate);
   }
 
-  constexpr MapFinalAction FinalAction() const { return MAP_NO_SUPERFINAL; }
+  FST_CONSTEXPR MapFinalAction FinalAction() const { return MAP_NO_SUPERFINAL; }
 
-  constexpr MapSymbolsAction InputSymbolsAction() const {
+  FST_CONSTEXPR MapSymbolsAction InputSymbolsAction() const {
     return MAP_COPY_SYMBOLS;
   }
 
-  constexpr MapSymbolsAction OutputSymbolsAction() const {
+  FST_CONSTEXPR MapSymbolsAction OutputSymbolsAction() const {
     return MAP_COPY_SYMBOLS;
   }
 
@@ -1097,13 +1097,13 @@ class TimesMapper {
                  arc.nextstate);
   }
 
-  constexpr MapFinalAction FinalAction() const { return MAP_NO_SUPERFINAL; }
+  FST_CONSTEXPR MapFinalAction FinalAction() const { return MAP_NO_SUPERFINAL; }
 
-  constexpr MapSymbolsAction InputSymbolsAction() const {
+  FST_CONSTEXPR MapSymbolsAction InputSymbolsAction() const {
     return MAP_COPY_SYMBOLS;
   }
 
-  constexpr MapSymbolsAction OutputSymbolsAction() const {
+  FST_CONSTEXPR MapSymbolsAction OutputSymbolsAction() const {
     return MAP_COPY_SYMBOLS;
   }
 
@@ -1158,13 +1158,13 @@ class InvertWeightMapper {
                  arc.nextstate);
   }
 
-  constexpr MapFinalAction FinalAction() const { return MAP_NO_SUPERFINAL; }
+  FST_CONSTEXPR MapFinalAction FinalAction() const { return MAP_NO_SUPERFINAL; }
 
-  constexpr MapSymbolsAction InputSymbolsAction() const {
+  FST_CONSTEXPR MapSymbolsAction InputSymbolsAction() const {
     return MAP_COPY_SYMBOLS;
   }
 
-  constexpr MapSymbolsAction OutputSymbolsAction() const {
+  FST_CONSTEXPR MapSymbolsAction OutputSymbolsAction() const {
     return MAP_COPY_SYMBOLS;
   }
 
@@ -1189,13 +1189,13 @@ class RmWeightMapper {
                  arc.nextstate);
   }
 
-  constexpr MapFinalAction FinalAction() const { return MAP_NO_SUPERFINAL; }
+  FST_CONSTEXPR MapFinalAction FinalAction() const { return MAP_NO_SUPERFINAL; }
 
-  constexpr MapSymbolsAction InputSymbolsAction() const {
+  FST_CONSTEXPR MapSymbolsAction InputSymbolsAction() const {
     return MAP_COPY_SYMBOLS;
   }
 
-  constexpr MapSymbolsAction OutputSymbolsAction() const {
+  FST_CONSTEXPR MapSymbolsAction OutputSymbolsAction() const {
     return MAP_COPY_SYMBOLS;
   }
 
@@ -1222,13 +1222,13 @@ class QuantizeMapper {
                  arc.nextstate);
   }
 
-  constexpr MapFinalAction FinalAction() const { return MAP_NO_SUPERFINAL; }
+  FST_CONSTEXPR MapFinalAction FinalAction() const { return MAP_NO_SUPERFINAL; }
 
-  constexpr MapSymbolsAction InputSymbolsAction() const {
+  FST_CONSTEXPR MapSymbolsAction InputSymbolsAction() const {
     return MAP_COPY_SYMBOLS;
   }
 
-  constexpr MapSymbolsAction OutputSymbolsAction() const {
+  FST_CONSTEXPR MapSymbolsAction OutputSymbolsAction() const {
     return MAP_COPY_SYMBOLS;
   }
 
@@ -1257,13 +1257,13 @@ class ReverseWeightMapper {
     return ToArc(arc.ilabel, arc.olabel, arc.weight.Reverse(), arc.nextstate);
   }
 
-  constexpr MapFinalAction FinalAction() const { return MAP_NO_SUPERFINAL; }
+  FST_CONSTEXPR MapFinalAction FinalAction() const { return MAP_NO_SUPERFINAL; }
 
-  constexpr MapSymbolsAction InputSymbolsAction() const {
+  FST_CONSTEXPR MapSymbolsAction InputSymbolsAction() const {
     return MAP_COPY_SYMBOLS;
   }
 
-  constexpr MapSymbolsAction OutputSymbolsAction() const {
+  FST_CONSTEXPR MapSymbolsAction OutputSymbolsAction() const {
     return MAP_COPY_SYMBOLS;
   }
 

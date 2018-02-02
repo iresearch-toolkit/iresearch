@@ -100,13 +100,13 @@ namespace fst {
 
 // Matcher needs to be used as the matching side in composition for
 // at least one state (has kRequirePriority).
-constexpr uint32 kRequireMatch = 0x00000001;
+FST_CONSTEXPR const uint32 kRequireMatch = 0x00000001;
 
 // Flags used for basic matchers (see also lookahead.h).
-constexpr uint32 kMatcherFlags = kRequireMatch;
+FST_CONSTEXPR const uint32 kMatcherFlags = kRequireMatch;
 
 // Matcher priority that is mandatory.
-constexpr ssize_t kRequirePriority = -1;
+FST_CONSTEXPR const ssize_t kRequirePriority = -1;
 
 // Matcher interface, templated on the Arc definition; used for matcher
 // specializations that are returned by the InitMatcher FST method.

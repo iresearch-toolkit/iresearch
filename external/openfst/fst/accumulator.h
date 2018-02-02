@@ -48,7 +48,7 @@ class DefaultAccumulator {
     return adder.Sum();
   }
 
-  constexpr bool Error() const { return false; }
+  FST_CONSTEXPR bool Error() const { return false; }
 
  private:
   DefaultAccumulator &operator=(const DefaultAccumulator &) = delete;
@@ -83,7 +83,7 @@ class LogAccumulator {
     return sum;
   }
 
-  constexpr bool Error() const { return false; }
+  FST_CONSTEXPR bool Error() const { return false; }
 
  private:
   Weight LogPlus(Weight w, Weight v) {

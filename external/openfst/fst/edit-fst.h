@@ -523,11 +523,11 @@ class EditFstImpl : public FstImpl<A> {
 
  private:
   // Properties always true of this FST class.
-  static constexpr uint64 kStaticProperties = kExpanded | kMutable;
+  static FST_CONSTEXPR const uint64 kStaticProperties = kExpanded | kMutable;
   // Current file format version.
-  static constexpr int kFileVersion = 2;
+  static FST_CONSTEXPR const int kFileVersion = 2;
   // Minimum file format version supported
-  static constexpr int kMinFileVersion = 2;
+  static FST_CONSTEXPR const int kMinFileVersion = 2;
 
   // Causes this FST to inherit all the properties from its wrapped FST, except
   // for the two properties that always apply to EditFst instances: kExpanded
@@ -565,13 +565,13 @@ class EditFstImpl : public FstImpl<A> {
 };
 
 template <typename Arc, typename WrappedFstT, typename MutableFstT>
-constexpr uint64 EditFstImpl<Arc, WrappedFstT, MutableFstT>::kStaticProperties;
+FST_CONSTEXPR const uint64 EditFstImpl<Arc, WrappedFstT, MutableFstT>::kStaticProperties;
 
 template <typename Arc, typename WrappedFstT, typename MutableFstT>
-constexpr int EditFstImpl<Arc, WrappedFstT, MutableFstT>::kFileVersion;
+FST_CONSTEXPR const int EditFstImpl<Arc, WrappedFstT, MutableFstT>::kFileVersion;
 
 template <typename Arc, typename WrappedFstT, typename MutableFstT>
-constexpr int EditFstImpl<Arc, WrappedFstT, MutableFstT>::kMinFileVersion;
+FST_CONSTEXPR const int EditFstImpl<Arc, WrappedFstT, MutableFstT>::kMinFileVersion;
 
 template <typename Arc, typename WrappedFstT, typename MutableFstT>
 inline void EditFstImpl<Arc, WrappedFstT, MutableFstT>::DeleteStates() {

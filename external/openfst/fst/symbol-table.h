@@ -216,7 +216,7 @@ class SymbolTableImpl {
 // table with the lexical representation L o G.
 class SymbolTable {
  public:
-  static constexpr int64 kNoSymbol = -1;
+  static FST_CONSTEXPR const int64 kNoSymbol = -1;
 
   // Constructs symbol table with an unspecified name.
   SymbolTable() :

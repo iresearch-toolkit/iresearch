@@ -57,7 +57,7 @@ struct ShortestPathOptions
 
 namespace internal {
 
-constexpr size_t kNoArc = -1;
+FST_CONSTEXPR const size_t kNoArc = -1;
 
 // Helper function for SingleShortestPath building the shortest path as a left-
 // to-right machine backwards from the best final state. It takes the input

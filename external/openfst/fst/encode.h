@@ -24,14 +24,14 @@ namespace fst {
 
 enum EncodeType { ENCODE = 1, DECODE = 2 };
 
-static constexpr uint32 kEncodeLabels = 0x0001;
-static constexpr uint32 kEncodeWeights = 0x0002;
-static constexpr uint32 kEncodeFlags = 0x0003;
+static FST_CONSTEXPR const uint32 kEncodeLabels = 0x0001;
+static FST_CONSTEXPR const uint32 kEncodeWeights = 0x0002;
+static FST_CONSTEXPR const uint32 kEncodeFlags = 0x0003;
 
 namespace internal {
 
-static constexpr uint32 kEncodeHasISymbols = 0x0004;
-static constexpr uint32 kEncodeHasOSymbols = 0x0008;
+static FST_CONSTEXPR const uint32 kEncodeHasISymbols = 0x0004;
+static FST_CONSTEXPR const uint32 kEncodeHasOSymbols = 0x0008;
 
 // Identifies stream data as an encode table (and its endianity)
 static const int32 kEncodeMagicNumber = 2129983209;
@@ -84,8 +84,8 @@ class EncodeTable {
 
     size_t operator()(const Tuple *x) const {
       size_t hash = x->ilabel;
-      static constexpr int lshift = 5;
-      static constexpr int rshift = CHAR_BIT * sizeof(size_t) - 5;
+      static FST_CONSTEXPR const int lshift = 5;
+      static FST_CONSTEXPR const int rshift = CHAR_BIT * sizeof(size_t) - 5;
       if (encode_flags_ & kEncodeLabels) {
         hash = hash << lshift ^ hash >> rshift ^ x->olabel;
       }
@@ -289,11 +289,11 @@ class EncodeMapper {
                : MAP_NO_SUPERFINAL;
   }
 
-  constexpr MapSymbolsAction InputSymbolsAction() const {
+  FST_CONSTEXPR MapSymbolsAction InputSymbolsAction() const {
     return MAP_CLEAR_SYMBOLS;
   }
 
-  constexpr MapSymbolsAction OutputSymbolsAction() const {
+  FST_CONSTEXPR MapSymbolsAction OutputSymbolsAction() const {
     return MAP_CLEAR_SYMBOLS;
   }
 

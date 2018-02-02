@@ -26,13 +26,13 @@ namespace fst {
 template <class T>
 class FloatLimits {
  public:
-  static constexpr T PosInfinity() {
+  static FST_CONSTEXPR T PosInfinity() {
     return std::numeric_limits<T>::infinity();
   }
 
-  static constexpr T NegInfinity() { return -PosInfinity(); }
+  static FST_CONSTEXPR T NegInfinity() { return -PosInfinity(); }
 
-  static constexpr T NumberBad() { return std::numeric_limits<T>::quiet_NaN(); }
+  static FST_CONSTEXPR T NumberBad() { return std::numeric_limits<T>::quiet_NaN(); }
 };
 
 // Weight class to be templated on floating-points types.
@@ -73,7 +73,7 @@ class FloatWeightTpl {
  protected:
   void SetValue(const T &f) { value_ = f; }
 
-  static constexpr const char *GetPrecisionString() {
+  static FST_CONSTEXPR const char *GetPrecisionString() {
     return sizeof(T) == 4
                ? ""
                : sizeof(T) == 1
@@ -178,11 +178,11 @@ class TropicalWeightTpl : public FloatWeightTpl<T> {
   using ReverseWeight = TropicalWeightTpl<T>;
   using Limits = FloatLimits<T>;
 
-  constexpr TropicalWeightTpl() : FloatWeightTpl<T>() {}
+  FST_CONSTEXPR TropicalWeightTpl() : FloatWeightTpl<T>() {}
 
-  constexpr TropicalWeightTpl(T f) : FloatWeightTpl<T>(f) {}
+  FST_CONSTEXPR TropicalWeightTpl(T f) : FloatWeightTpl<T>(f) {}
 
-  constexpr TropicalWeightTpl(const TropicalWeightTpl<T> &weight)
+  FST_CONSTEXPR TropicalWeightTpl(const TropicalWeightTpl<T> &weight)
       : FloatWeightTpl<T>(weight) {}
 
   static const TropicalWeightTpl<T> &Zero() {
@@ -222,7 +222,7 @@ class TropicalWeightTpl : public FloatWeightTpl<T> {
 
   TropicalWeightTpl<T> Reverse() const { return *this; }
 
-  static constexpr uint64 Properties() {
+  static FST_CONSTEXPR uint64 Properties() {
     return kLeftSemiring | kRightSemiring | kCommutative | kPath | kIdempotent;
   }
 };
@@ -319,11 +319,11 @@ class LogWeightTpl : public FloatWeightTpl<T> {
   using ReverseWeight = LogWeightTpl;
   using Limits = FloatLimits<T>;
 
-  constexpr LogWeightTpl() : FloatWeightTpl<T>() {}
+  FST_CONSTEXPR LogWeightTpl() : FloatWeightTpl<T>() {}
 
-  constexpr LogWeightTpl(T f) : FloatWeightTpl<T>(f) {}
+  FST_CONSTEXPR LogWeightTpl(T f) : FloatWeightTpl<T>(f) {}
 
-  constexpr LogWeightTpl(const LogWeightTpl<T> &weight)
+  FST_CONSTEXPR LogWeightTpl(const LogWeightTpl<T> &weight)
       : FloatWeightTpl<T>(weight) {}
 
   static const LogWeightTpl &Zero() {
@@ -362,7 +362,7 @@ class LogWeightTpl : public FloatWeightTpl<T> {
 
   LogWeightTpl<T> Reverse() const { return *this; }
 
-  static constexpr uint64 Properties() {
+  static FST_CONSTEXPR uint64 Properties() {
     return kLeftSemiring | kRightSemiring | kCommutative;
   }
 };
@@ -590,7 +590,7 @@ class MinMaxWeightTpl : public FloatWeightTpl<T> {
 
   MinMaxWeightTpl<T> Reverse() const { return *this; }
 
-  static constexpr uint64 Properties() {
+  static FST_CONSTEXPR uint64 Properties() {
     return kLeftSemiring | kRightSemiring | kCommutative | kIdempotent | kPath;
   }
 };

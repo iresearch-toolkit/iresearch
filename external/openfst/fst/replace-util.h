@@ -64,14 +64,14 @@ struct ReplaceUtilOptions {
 // Every non-terminal on a path appears as the first label on that path in every
 // FST associated with a given SCC of the replace dependency graph. This would
 // be true if the SCC were formed from left-linear grammar rules.
-constexpr uint8 kReplaceSCCLeftLinear = 0x01;
+FST_CONSTEXPR const uint8 kReplaceSCCLeftLinear = 0x01;
 // Every non-terminal on a path appears as the final label on that path in every
 // FST associated with a given SCC of the replace dependency graph. This would
 // be true if the SCC were formed from right-linear grammar rules.
-constexpr uint8 kReplaceSCCRightLinear = 0x02;
+FST_CONSTEXPR const uint8 kReplaceSCCRightLinear = 0x02;
 // The SCC in the replace dependency graph has more than one state or a
 // self-loop.
-constexpr uint8 kReplaceSCCNonTrivial = 0x04;
+FST_CONSTEXPR const uint8 kReplaceSCCNonTrivial = 0x04;
 
 // Defined in replace.h.
 template <class Arc>
@@ -419,7 +419,7 @@ void ReplaceUtil<Arc>::CheckMutableFsts() {
 template <class Arc>
 void ReplaceUtil<Arc>::Connect() {
   CheckMutableFsts();
-  static constexpr auto props = kAccessible | kCoAccessible;
+  static FST_CONSTEXPR const auto props = kAccessible | kCoAccessible;
   for (auto *mutable_fst : mutable_fst_array_) {
     if (!mutable_fst) continue;
     if (mutable_fst->Properties(props, false) != props) {

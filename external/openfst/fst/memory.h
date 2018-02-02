@@ -18,10 +18,10 @@
 namespace fst {
 
 // Default block allocation size.
-constexpr int kAllocSize = 64;
+FST_CONSTEXPR const int kAllocSize = 64;
 
 // Minimum number of allocations per block.
-constexpr int kAllocFit = 4;
+FST_CONSTEXPR const int kAllocFit = 4;
 
 // Base class for MemoryArena that allows (e.g.) MemoryArenaCollection to
 // easily manipulate collections of variously sized arenas.

@@ -21,7 +21,7 @@
 namespace fst {
 
 // Identifies stream data as an add-on FST.
-static constexpr int32 kAddOnMagicNumber = 446681434;
+static FST_CONSTEXPR const int32 kAddOnMagicNumber = 446681434;
 
 // Nothing to save.
 class NullAddOn {
@@ -226,9 +226,9 @@ class AddOnImpl : public FstImpl<typename FST::Arc> {
   }
 
   // Current file format version.
-  static constexpr int kFileVersion = 1;
+  static FST_CONSTEXPR const int kFileVersion = 1;
   // Minimum file format version supported.
-  static constexpr int kMinFileVersion = 1;
+  static FST_CONSTEXPR const int kMinFileVersion = 1;
 
   FST fst_;
   std::shared_ptr<T> t_;
@@ -237,10 +237,10 @@ class AddOnImpl : public FstImpl<typename FST::Arc> {
 };
 
 template <class FST, class T>
-constexpr int AddOnImpl<FST, T>::kFileVersion;
+FST_CONSTEXPR const int AddOnImpl<FST, T>::kFileVersion;
 
 template <class FST, class T>
-constexpr int AddOnImpl<FST, T>::kMinFileVersion;
+FST_CONSTEXPR const int AddOnImpl<FST, T>::kMinFileVersion;
 
 }  // namespace internal
 }  // namespace fst

@@ -110,14 +110,14 @@ class ConstFstImpl : public FstImpl<A> {
   };
 
   // Properties always true of this FST class.
-  static constexpr uint64 kStaticProperties = kExpanded;
+  static FST_CONSTEXPR const uint64 kStaticProperties = kExpanded;
   // Current unaligned file format version. The unaligned version was added and
   // made the default since the aligned version does not work on pipes.
-  static constexpr int kFileVersion = 2;
+  static FST_CONSTEXPR const int kFileVersion = 2;
   // Current aligned file format version.
-  static constexpr int kAlignedFileVersion = 1;
+  static FST_CONSTEXPR const int kAlignedFileVersion = 1;
   // Minimum file format version supported.
-  static constexpr int kMinFileVersion = 1;
+  static FST_CONSTEXPR const int kMinFileVersion = 1;
 
   std::unique_ptr<MappedFile> states_region_;  // Mapped file for states.
   std::unique_ptr<MappedFile> arcs_region_;    // Mapped file for arcs.
@@ -132,16 +132,16 @@ class ConstFstImpl : public FstImpl<A> {
 };
 
 template <class Arc, class Unsigned>
-constexpr uint64 ConstFstImpl<Arc, Unsigned>::kStaticProperties;
+FST_CONSTEXPR const uint64 ConstFstImpl<Arc, Unsigned>::kStaticProperties;
 
 template <class Arc, class Unsigned>
-constexpr int ConstFstImpl<Arc, Unsigned>::kFileVersion;
+FST_CONSTEXPR const int ConstFstImpl<Arc, Unsigned>::kFileVersion;
 
 template <class Arc, class Unsigned>
-constexpr int ConstFstImpl<Arc, Unsigned>::kAlignedFileVersion;
+FST_CONSTEXPR const int ConstFstImpl<Arc, Unsigned>::kAlignedFileVersion;
 
 template <class Arc, class Unsigned>
-constexpr int ConstFstImpl<Arc, Unsigned>::kMinFileVersion;
+FST_CONSTEXPR const int ConstFstImpl<Arc, Unsigned>::kMinFileVersion;
 
 template <class Arc, class Unsigned>
 ConstFstImpl<Arc, Unsigned>::ConstFstImpl(const Fst<Arc> &fst)
@@ -470,7 +470,7 @@ class ArcIterator<ConstFst<Arc, Unsigned>> {
 
   void Seek(size_t a) { i_ = a; }
 
-  constexpr uint32 Flags() const { return kArcValueFlags; }
+  FST_CONSTEXPR uint32 Flags() const { return kArcValueFlags; }
 
   void SetFlags(uint32, uint32) {}
 

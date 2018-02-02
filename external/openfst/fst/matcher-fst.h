@@ -322,11 +322,11 @@ using StdArcLookAheadFst =
 extern const char ilabel_lookahead_fst_type[];
 extern const char olabel_lookahead_fst_type[];
 
-constexpr auto ilabel_lookahead_flags =
+FST_CONSTEXPR const auto ilabel_lookahead_flags =
     kInputLookAheadMatcher | kLookAheadWeight | kLookAheadPrefix |
     kLookAheadEpsilons | kLookAheadNonEpsilonPrefix;
 
-constexpr auto olabel_lookahead_flags =
+FST_CONSTEXPR const auto olabel_lookahead_flags =
     kOutputLookAheadMatcher | kLookAheadWeight | kLookAheadPrefix |
     kLookAheadEpsilons | kLookAheadNonEpsilonPrefix;
 

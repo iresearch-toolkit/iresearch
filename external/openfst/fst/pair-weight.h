@@ -69,8 +69,8 @@ class PairWeight {
   size_t Hash() const {
     const auto h1 = value1_.Hash();
     const auto h2 = value2_.Hash();
-    static constexpr int lshift = 5;
-    static constexpr int rshift = CHAR_BIT * sizeof(size_t) - 5;
+    static FST_CONSTEXPR const int lshift = 5;
+    static FST_CONSTEXPR const int rshift = CHAR_BIT * sizeof(size_t) - 5;
     return h1 << lshift ^ h1 >> rshift ^ h2;
   }
 

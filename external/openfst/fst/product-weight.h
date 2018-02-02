@@ -51,7 +51,7 @@ class ProductWeight : public PairWeight<W1, W2> {
     return *type;
   }
 
-  static constexpr uint64 Properties() {
+  static FST_CONSTEXPR uint64 Properties() {
     return W1::Properties() & W2::Properties() &
            (kLeftSemiring | kRightSemiring | kCommutative | kIdempotent);
   }
