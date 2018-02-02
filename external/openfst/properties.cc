@@ -305,7 +305,7 @@ uint64 ReplaceProperties(const std::vector<uint64>& inprops, ssize_t root,
 
 // Properties for a relabeled FST.
 uint64 RelabelProperties(uint64 inprops) {
-  static constexpr auto outprops =
+  static FST_CONSTEXPR const auto outprops =
       kExpanded | kMutable | kError | kWeighted | kUnweighted |
       kWeightedCycles | kUnweightedCycles | kCyclic | kAcyclic |
       kInitialCyclic | kInitialAcyclic | kTopSorted | kNotTopSorted |

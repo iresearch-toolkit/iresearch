@@ -19,10 +19,10 @@ DEFINE_string(fst_field_separator, "\t ",
 namespace fst {
 
 // Maximum line length in textual symbols file.
-static constexpr int kLineLen = 8096;
+static FST_CONSTEXPR const int kLineLen = 8096;
 
 // Identifies stream data as a symbol table (and its endianity).
-static constexpr int32 kSymbolTableMagicNumber = 2125658996;
+static FST_CONSTEXPR const int32 kSymbolTableMagicNumber = 2125658996;
 
 SymbolTableTextOptions::SymbolTableTextOptions(bool allow_negative_labels)
     : allow_negative_labels(allow_negative_labels),
@@ -221,7 +221,7 @@ bool SymbolTableImpl::Write(std::ostream &strm) const {
 
 }  // namespace internal
 
-constexpr int64 SymbolTable::kNoSymbol;
+FST_CONSTEXPR const int64 SymbolTable::kNoSymbol;
 
 void SymbolTable::AddTable(const SymbolTable &table) {
   MutateCheck();
@@ -275,7 +275,7 @@ DenseSymbolMap::~DenseSymbolMap() {
 }
 
 std::pair<int64, bool> DenseSymbolMap::InsertOrFind(const string &key) {
-  static constexpr float kMaxOccupancyRatio = 0.75;  // Grows when 75% full.
+  static FST_CONSTEXPR const float kMaxOccupancyRatio = 0.75;  // Grows when 75% full.
   if (symbols_.size() >= kMaxOccupancyRatio * buckets_.size()) {
     Rehash(buckets_.size() * 2);
   }

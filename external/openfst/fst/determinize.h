@@ -85,7 +85,7 @@ class GallicCommonDivisor {
   }
 
  private:
-  LabelCommonDivisor<Label, GallicStringType(G)> label_common_divisor_;
+  LabelCommonDivisor<Label, GALLIC_STRING_TYPE(G)> label_common_divisor_;
   CommonDivisor weight_common_divisor_;
 };
 

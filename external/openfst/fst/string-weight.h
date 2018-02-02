@@ -551,13 +551,29 @@ FST_CONSTEXPR GallicType ReverseGallicType(GallicType g) {
                            : (g == GALLIC_MIN ? GALLIC_MIN : GALLIC)));
 }
 
+// MSVC2013 doesn't support 'constexpr'
+#if defined _MSC_VER && _MSC_VER < 1900
+  #define GALLIC_STRING_TYPE(G)                                   \
+     ((G) == GALLIC_LEFT ? STRING_LEFT :                          \
+      ((G) == GALLIC_RIGHT ? STRING_RIGHT : STRING_RESTRICT))
+
+  #define REVERSE_GALLIC_TYPE(G)                                  \
+   ((G) == GALLIC_LEFT ? GALLIC_RIGHT :                           \
+    ((G) == GALLIC_RIGHT ? GALLIC_LEFT :                          \
+     ((G) == GALLIC_RESTRICT ? GALLIC_RESTRICT :                  \
+      ((G) == GALLIC_MIN ? GALLIC_MIN : GALLIC))))
+#else
+  #define GALLIC_STRING_TYPE(G) GallicStringType(G)
+  #define REVERSE_GALLIC_TYPE(G) ReverseGallicType(G)
+#endif
+
 // Product of string weight and an arbitraryy weight.
 template <class Label, class W, GallicType G = GALLIC_LEFT>
 struct GallicWeight
-    : public ProductWeight<StringWeight<Label, GallicStringType(G)>, W> {
+    : public ProductWeight<StringWeight<Label, GALLIC_STRING_TYPE(G)>, W> {
   using ReverseWeight =
-      GallicWeight<Label, typename W::ReverseWeight, ReverseGallicType(G)>;
-  using SW = StringWeight<Label, GallicStringType(G)>;
+      GallicWeight<Label, typename W::ReverseWeight, REVERSE_GALLIC_TYPE(G)>;
+  using SW = StringWeight<Label, GALLIC_STRING_TYPE(G)>;
 
   using ProductWeight<SW, W>::Properties;
 
@@ -644,11 +660,11 @@ inline GallicWeight<Label, W, G> Divide(const GallicWeight<Label, W, G> &w,
 template <class Label, class W, GallicType G>
 class WeightGenerate<GallicWeight<Label, W, G>>
     : public WeightGenerate<
-          ProductWeight<StringWeight<Label, GallicStringType(G)>, W>> {
+          ProductWeight<StringWeight<Label, GALLIC_STRING_TYPE(G)>, W>> {
  public:
   using Weight = GallicWeight<Label, W, G>;
   using Generate = WeightGenerate<
-      ProductWeight<StringWeight<Label, GallicStringType(G)>, W>>;
+      ProductWeight<StringWeight<Label, GALLIC_STRING_TYPE(G)>, W>>;
 
   explicit WeightGenerate(bool allow_zero = true) : generate_(allow_zero) {}
 
@@ -663,7 +679,7 @@ template <class Label, class W>
 struct GallicUnionWeightOptions {
   using ReverseOptions = GallicUnionWeightOptions<Label, W>;
   using GW = GallicWeight<Label, W, GALLIC_RESTRICT>;
-  using SW = StringWeight<Label, GallicStringType(GALLIC_RESTRICT)>;
+  using SW = StringWeight<Label, GALLIC_STRING_TYPE(GALLIC_RESTRICT)>;
   using SI = StringWeightIterator<SW>;
 
   // Military order.
@@ -701,7 +717,7 @@ struct GallicWeight<Label, W, GALLIC>
     : public UnionWeight<GallicWeight<Label, W, GALLIC_RESTRICT>,
                          GallicUnionWeightOptions<Label, W>> {
   using GW = GallicWeight<Label, W, GALLIC_RESTRICT>;
-  using SW = StringWeight<Label, GallicStringType(GALLIC_RESTRICT)>;
+  using SW = StringWeight<Label, GALLIC_STRING_TYPE(GALLIC_RESTRICT)>;
   using SI = StringWeightIterator<SW>;
   using UW = UnionWeight<GW, GallicUnionWeightOptions<Label, W>>;
   using UI = UnionWeightIterator<GW, GallicUnionWeightOptions<Label, W>>;

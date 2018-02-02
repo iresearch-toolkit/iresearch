@@ -127,8 +127,8 @@ MappedFile *MappedFile::Borrow(void *data) {
   return new MappedFile(region);
 }
 
-constexpr int MappedFile::kArchAlignment;
+FST_CONSTEXPR const int MappedFile::kArchAlignment;
 
-constexpr size_t MappedFile::kMaxReadChunk;
+FST_CONSTEXPR const size_t MappedFile::kMaxReadChunk;
 
 }  // namespace fst

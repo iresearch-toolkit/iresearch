@@ -37,7 +37,7 @@ const char ilabel_lookahead_fst_type[] = "ilabel_lookahead";
 const char olabel_lookahead_fst_type[] = "olabel_lookahead";
 
 // Identifies stream data as an FST (and its endianity).
-constexpr int32 kFstMagicNumber = 2125659606;
+FST_CONSTEXPR const int32 kFstMagicNumber = 2125659606;
 
 // Checks for FST magic number in stream, to indicate caller function that the
 // stream content is an FST header.

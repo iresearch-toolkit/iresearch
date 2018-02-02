@@ -132,7 +132,7 @@ void Push(const Fst<Arc> &ifst, MutableFst<Arc> *ofst, uint32 ptype,
       total_weight = GallicWeight(
           ptype & kPushRemoveCommonAffix
               ? total_weight.Value1()
-              : StringWeight<Label, GallicStringType(gtype)>::One(),
+              : StringWeight<Label, GALLIC_STRING_TYPE(gtype)>::One(),
           ptype & kPushRemoveTotalWeight ? total_weight.Value2()
                                          : Weight::One());
     }
