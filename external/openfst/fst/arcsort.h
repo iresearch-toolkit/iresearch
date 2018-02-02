@@ -199,8 +199,16 @@ class OLabelCompare {
 
 // Useful aliases when using StdArc.
 
+#if defined _MSC_VER && _MSC_VER < 1900
+template<class C> class StdArcSortFst : public ArcSortFst<StdArc, C> {
+ public:
+  typedef StdArc Arc;
+  typedef C Compare;
+};
+#else
 template <class Compare>
 using StdArcSortFst = ArcSortFst<StdArc, Compare>;
+#endif
 
 using StdILabelCompare = ILabelCompare<StdArc>;
 
