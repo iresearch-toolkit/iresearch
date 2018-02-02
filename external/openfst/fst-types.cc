@@ -21,15 +21,35 @@ REGISTER_FST(EditFst, LogArc);
 REGISTER_FST(EditFst, Log64Arc);
 
 // Register CompactFst for common arcs with the default (uint32) size type
-REGISTER_FST(CompactStringFst, StdArc);
-REGISTER_FST(CompactStringFst, LogArc);
-REGISTER_FST(CompactWeightedStringFst, StdArc);
-REGISTER_FST(CompactWeightedStringFst, LogArc);
-REGISTER_FST(CompactAcceptorFst, StdArc);
-REGISTER_FST(CompactAcceptorFst, LogArc);
-REGISTER_FST(CompactUnweightedFst, StdArc);
-REGISTER_FST(CompactUnweightedFst, LogArc);
-REGISTER_FST(CompactUnweightedAcceptorFst, StdArc);
-REGISTER_FST(CompactUnweightedAcceptorFst, LogArc);
+static FstRegisterer<
+  CompactFst<StdArc, StringCompactor<StdArc> > >
+CompactFst_StdArc_StringCompactor_registerer;
+static FstRegisterer<
+  CompactFst<LogArc, StringCompactor<LogArc> > >
+CompactFst_LogArc_StringCompactor_registerer;
+static FstRegisterer<
+  CompactFst<StdArc, WeightedStringCompactor<StdArc> > >
+CompactFst_StdArc_WeightedStringCompactor_registerer;
+static FstRegisterer<
+  CompactFst<LogArc, WeightedStringCompactor<LogArc> > >
+CompactFst_LogArc_WeightedStringCompactor_registerer;
+static FstRegisterer<
+  CompactFst<StdArc, AcceptorCompactor<StdArc> > >
+CompactFst_StdArc_AcceptorCompactor_registerer;
+static FstRegisterer<
+  CompactFst<LogArc, AcceptorCompactor<LogArc> > >
+CompactFst_LogArc_AcceptorCompactor_registerer;
+static FstRegisterer<
+  CompactFst<StdArc, UnweightedCompactor<StdArc> > >
+CompactFst_StdArc_UnweightedCompactor_registerer;
+static FstRegisterer<
+  CompactFst<LogArc, UnweightedCompactor<LogArc> > >
+CompactFst_LogArc_UnweightedCompactor_registerer;
+static FstRegisterer<
+  CompactFst<StdArc, UnweightedAcceptorCompactor<StdArc> > >
+CompactFst_StdArc_UnweightedAcceptorCompactor_registerer;
+static FstRegisterer<
+  CompactFst<LogArc, UnweightedAcceptorCompactor<LogArc> > >
+CompactFst_LogArc_UnweightedAcceptorCompactor_registerer;
 
 }  // namespace fst
