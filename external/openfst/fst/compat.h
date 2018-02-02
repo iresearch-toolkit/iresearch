@@ -37,6 +37,11 @@
 #define OPENFST_DEPRECATED(message)
 #endif
 
+// MSVC2013 doesn't support 'constexpr'
+#if defined _MSC_VER && _MSC_VER < 1900
+  #define constexpr
+#endif
+
 #include <fst/config.h>
 #include <fst/types.h>
 #include <fst/lock.h>
