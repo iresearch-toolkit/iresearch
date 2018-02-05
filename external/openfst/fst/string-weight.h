@@ -30,7 +30,7 @@ FST_CONSTEXPR const char kStringSeparator = '_';  // Label separator in strings.
 // string semirings.
 enum StringType { STRING_LEFT = 0, STRING_RIGHT = 1, STRING_RESTRICT = 2 };
 
-FST_CONSTEXPR StringType ReverseStringType(StringType s) {
+inline FST_CONSTEXPR StringType ReverseStringType(StringType s) {
   return s == STRING_LEFT ? STRING_RIGHT
                           : (s == STRING_RIGHT ? STRING_LEFT : STRING_RESTRICT);
 }
@@ -545,13 +545,13 @@ enum GallicType {
   GALLIC = 4
 };
 
-FST_CONSTEXPR StringType GallicStringType(GallicType g) {
+inline FST_CONSTEXPR StringType GallicStringType(GallicType g) {
   return g == GALLIC_LEFT
              ? STRING_LEFT
              : (g == GALLIC_RIGHT ? STRING_RIGHT : STRING_RESTRICT);
 }
 
-FST_CONSTEXPR GallicType ReverseGallicType(GallicType g) {
+inline FST_CONSTEXPR GallicType ReverseGallicType(GallicType g) {
   return g == GALLIC_LEFT
              ? GALLIC_RIGHT
              : (g == GALLIC_RIGHT
