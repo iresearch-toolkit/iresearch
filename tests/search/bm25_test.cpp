@@ -42,7 +42,7 @@ class bm25_test: public index_test_base {
    }
 
   virtual iresearch::format::ptr get_codec() {
-    return ir::formats::get("1_0");
+    return irs::formats::get("1_0");
   }
 };
 
