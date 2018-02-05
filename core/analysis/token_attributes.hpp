@@ -215,15 +215,11 @@ class IRESEARCH_API position : public attribute {
   void reset(impl::ptr&& impl = nullptr) NOEXCEPT { impl_ = std::move(impl); }
 
   value_t seek(value_t target) const {
-    struct skewed_comparer: std::less<value_t> {
-      bool operator()(value_t lhs, value_t rhs) {
-        typedef std::less<value_t> Pred;
-        return Pred::operator()(1 + lhs, 1 + rhs);
-      }
-    };
-
-    typedef skewed_comparer pos_less;
-    iresearch::seek(*impl_, target, pos_less());
+    iresearch::seek(
+      *impl_, target,
+      [](value_t lhs, value_t rhs) {
+        return 1 + lhs < 1 + rhs;
+    });
     return impl_->value();
   }
 
