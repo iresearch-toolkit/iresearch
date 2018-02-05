@@ -176,7 +176,7 @@ void index_segment::add(const ifield& f) {
   auto& pay = attrs.get<iresearch::payload>();
 
   bool empty = true;
-  auto doc_id = (ir::type_limits<ir::type_t::doc_id_t>::min)() + count_;
+  auto doc_id = (irs::type_limits<irs::type_t::doc_id_t>::min)() + count_;
 
   while (stream.next()) {
     tests::term& trm = fld.add(term->value());
@@ -393,7 +393,7 @@ class doc_iterator : public iresearch::doc_iterator {
 
     if ( it == data_.postings.end() ) {
       prev_ = next_ = it;
-      return ir::type_limits<ir::type_t::doc_id_t>::eof();
+      return irs::type_limits<irs::type_t::doc_id_t>::eof();
     }
 
     prev_ = it;
