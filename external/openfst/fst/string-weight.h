@@ -35,6 +35,16 @@ FST_CONSTEXPR StringType ReverseStringType(StringType s) {
                           : (s == STRING_RIGHT ? STRING_LEFT : STRING_RESTRICT);
 }
 
+// MSVC2013 doesn't support 'constexpr'
+#if defined _MSC_VER && _MSC_VER < 1900
+  #define REVERSE_STRING_TYPE(S)                               \
+   ((S) == STRING_LEFT ? STRING_RIGHT :                        \
+   ((S) == STRING_RIGHT ? STRING_LEFT :                        \
+     STRING_RESTRICT))
+#else
+  #define REVERSE_STRING_TYPE(S) ReverseStringType(S)
+#endif
+
 template <class>
 class StringWeightIterator;
 template <class>
@@ -45,7 +55,7 @@ template <typename Label_, StringType S = STRING_LEFT>
 class StringWeight {
  public:
   using Label = Label_;
-  using ReverseWeight = StringWeight<Label, ReverseStringType(S)>;
+  using ReverseWeight = StringWeight<Label, REVERSE_STRING_TYPE(S)>;
   using Iterator = StringWeightIterator<StringWeight>;
   using ReverseIterator = StringWeightReverseIterator<StringWeight>;
 
