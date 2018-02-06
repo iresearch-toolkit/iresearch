@@ -202,7 +202,7 @@ struct IRESEARCH_API term_reader: public util::const_attribute_view_provider {
   // total number of terms
   virtual size_t size() const = 0;
 
-  // total number of documents
+  // total number of documents with at least 1 term in a field
   virtual uint64_t docs_count() const = 0;
 
   // less significant term

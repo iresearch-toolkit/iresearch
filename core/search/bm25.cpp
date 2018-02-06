@@ -314,25 +314,26 @@ class collector final : public iresearch::sort::collector {
     auto& freq = field.attributes().get<frequency>();
     auto& meta = term_attrs.get<term_meta>();
 
+    docs_with_field += field.docs_count();
+
     if (freq) {
-      field_count += field.docs_count();
       total_term_freq += freq->value;
     }
 
     if (meta) {
-      docs_count += meta->docs_count;
+      docs_with_term += meta->docs_count;
     }
   }
 
   virtual void finish(
       attribute_store& filter_attrs,
-      const index_reader& index
+      const index_reader& /*index*/
   ) override {
     auto& bm25stats = filter_attrs.emplace<stats>();
 
     // precomputed idf value
     bm25stats->idf =
-      1 + float_t(std::log(index.docs_count() / double_t(docs_count + 1)));
+      float_t(std::log(1 + ((docs_with_field - docs_with_term + 0.5)/(docs_with_term + 0.5))));
 
     if (!normalize_) {
       return; // nothing more to do
@@ -342,8 +343,8 @@ class collector final : public iresearch::sort::collector {
     const float_t kb = k_ * b_;
     bm25stats->norm_const = k_ - kb;
     bm25stats->norm_length = kb;
-    if (total_term_freq && docs_count) {
-      const auto avg_doc_len = float_t(total_term_freq) / field_count;
+    if (total_term_freq && docs_with_field) {
+      const auto avg_doc_len = float_t(total_term_freq) / docs_with_field;
       bm25stats->norm_length /= avg_doc_len;
     }
 
@@ -352,9 +353,9 @@ class collector final : public iresearch::sort::collector {
   }
 
  private:
-  uint64_t docs_count = 0; // number of documents that have at least one term for processed fields
-  uint64_t field_count = 0; // number of documents with the specified field
-  uint64_t total_term_freq = 0; // number of tokens for processed fields
+  uint64_t docs_with_term = 0; // number of documents containing processed term
+  uint64_t docs_with_field = 0; // number of documents containing at least one term for processed field
+  uint64_t total_term_freq = 0; // number of terms for processed field
   float_t k_;
   float_t b_;
   bool normalize_;
