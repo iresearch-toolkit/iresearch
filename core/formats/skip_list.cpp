@@ -168,7 +168,7 @@ index_input::ptr skip_reader::level::dup() const NOEXCEPT {
   try {
     return index_input::make<skip_reader::level>(*this);
   } catch(...) {
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   return nullptr;

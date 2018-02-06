@@ -198,7 +198,7 @@ bool get_ignored_words(
     return true;
   } catch (...) {
     IR_FRMT_ERROR("Caught error while loading stopwords from path: %s", stopword_path.utf8().c_str());
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   return false;

@@ -151,7 +151,7 @@ class fs_lock : public index_lock {
 
       return true;
     } catch (...) {
-      IR_EXCEPTION();
+      IR_LOG_EXCEPTION();
     }
 
     return false;
@@ -204,7 +204,7 @@ class fs_index_output : public buffered_index_output {
         buf_size
       );
     } catch(...) {
-      IR_EXCEPTION();
+      IR_LOG_EXCEPTION();
     }
 
     return nullptr;
@@ -318,7 +318,7 @@ class fs_index_input : public buffered_index_input {
         pool_size
       );
     } catch(...) {
-      IR_EXCEPTION();
+      IR_LOG_EXCEPTION();
     }
 
     return nullptr;
@@ -438,7 +438,7 @@ index_input::ptr fs_index_input::dup() const NOEXCEPT {
     PTR_NAMED(fs_index_input, ptr, *this);
     return ptr;
   } catch(...) {
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -470,7 +470,7 @@ index_input::ptr pooled_fs_index_input::dup() const NOEXCEPT {
     PTR_NAMED(pooled_fs_index_input, ptr, *this);
     return ptr;
   } catch(...) {
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -541,7 +541,7 @@ index_output::ptr fs_directory::create(const std::string& name) NOEXCEPT {
 
     return out;
   } catch(...) {
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -581,7 +581,7 @@ bool fs_directory::remove(const std::string& name) NOEXCEPT {
 
     return path.remove();
   } catch (...) {
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   return false;
@@ -599,7 +599,7 @@ index_input::ptr fs_directory::open(
 
     return fs_index_input::open(path.c_str(), pool_size, advice);
   } catch(...) {
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -617,7 +617,7 @@ bool fs_directory::rename(
 
     return src_path.rename(dst_path);
   } catch (...) {
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   return false;
@@ -669,7 +669,7 @@ bool fs_directory::sync(const std::string& name) NOEXCEPT {
 
     IR_FRMT_ERROR("Failed to sync file, error: %d, path: %s", error, path.utf8().c_str());
   } catch (...) {
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   return false;

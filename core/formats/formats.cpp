@@ -199,7 +199,7 @@ format_registrar::format_registrar(
       );
     }
 
-    IR_STACK_TRACE();
+    IR_LOG_STACK_TRACE();
   }
 }
 

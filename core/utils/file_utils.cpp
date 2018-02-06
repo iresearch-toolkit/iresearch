@@ -563,7 +563,7 @@ handle_t open(const file_path_t path, const file_path_t mode) NOEXCEPT {
   if (!handle) {
     // even win32 uses 'errno' for error codes in calls to _wfopen(...)
     IR_FRMT_ERROR("Failed to open file, error: %d, path: " IR_FILEPATH_SPECIFIER, errno, path);
-    IR_STACK_TRACE();
+    IR_LOG_STACK_TRACE();
   }
 
   return handle;
