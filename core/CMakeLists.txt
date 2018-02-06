@@ -280,13 +280,27 @@ if(MSVC)
   )
 endif()
 
-add_custom_command(
-  OUTPUT iql/parser.cc
-  MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
-  DEPENDS iql ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy touch_iql_parser.cc
-  COMMAND bison --graph --report=all -o parser.cc ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
-  WORKING_DIRECTORY iql
-)
+# generate IQL grammar
+if(MSVC)
+  # force dependency modification validation by comparing with local copy of the
+  # source file to suppress file regeneration by scripts generated for MSVC
+  add_custom_command(
+    OUTPUT iql/parser.cc
+    MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
+    DEPENDS iql ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy touch_iql_parser.cc
+    COMMAND ${CMAKE_COMMAND} -E compare_files ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy parser.yy || bison --graph --report=all -o parser.cc ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy parser.yy
+    WORKING_DIRECTORY iql
+  )
+else()
+  add_custom_command(
+    OUTPUT iql/parser.cc
+    MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
+    DEPENDS iql ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy touch_iql_parser.cc
+    COMMAND bison --graph --report=all -o parser.cc ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
+    WORKING_DIRECTORY iql
+  )
+endif()
 
 # ensure that 'parser.cc', if exists, is newer that the 'iql' directory
 add_custom_target(touch_iql_parser.cc

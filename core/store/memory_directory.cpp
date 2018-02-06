@@ -80,7 +80,7 @@ class single_instance_lock : public index_lock {
 
       return true;
     } catch (...) {
-      IR_EXCEPTION();
+      IR_LOG_EXCEPTION();
     }
 
     return false;
@@ -92,7 +92,7 @@ class single_instance_lock : public index_lock {
 
       return parent->locks_.erase(name) > 0;
     } catch (...) {
-      IR_EXCEPTION();
+      IR_LOG_EXCEPTION();
     }
 
     return false;
@@ -116,7 +116,7 @@ index_input::ptr memory_index_input::dup() const NOEXCEPT {
     PTR_NAMED(memory_index_input, ptr, *this);
     return ptr;
   } catch(...) {
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -437,7 +437,7 @@ index_output::ptr memory_directory::create(const std::string& name) NOEXCEPT {
 
     return index_output::make<checksum_memory_index_output>(*file);
   } catch(...) {
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -466,7 +466,7 @@ index_lock::ptr memory_directory::make_lock(
   try {
     return index_lock::make<single_instance_lock>(name, this);
   } catch (...) {
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   assert(false);
@@ -509,7 +509,7 @@ index_input::ptr memory_directory::open(
 
     return nullptr;
   } catch(...) {
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -522,7 +522,7 @@ bool memory_directory::remove(const std::string& name) NOEXCEPT {
 
     return files_.erase(name) > 0;
   } catch (...) {
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   return false;
@@ -547,7 +547,7 @@ bool memory_directory::rename(
 
     return true;
   } catch (...) {
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   return false;
@@ -575,3 +575,7 @@ bool memory_directory::visit(const directory::visitor_f& visitor) const {
 }
 
 NS_END
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

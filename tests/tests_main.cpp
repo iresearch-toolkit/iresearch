@@ -342,7 +342,7 @@ void install_stack_trace_handler() {
           (void(*)(void*,void*,void(*)(void*)))dlsym(RTLD_NEXT, "__cxa_throw");
 
         IR_FRMT_DEBUG("exception type: %s", reinterpret_cast<const std::type_info*>(info)->name());
-        IR_STACK_TRACE();
+        IR_LOG_STACK_TRACE();
         rethrow(ex, info, dest);
       }
     #endif
