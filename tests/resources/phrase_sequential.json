@@ -10,5 +10,6 @@
   {"name":"I","phrase":"quick brown fox moved forward"},
   {"name":"K","phrase":"fox"},
   {"name":"L","phrase":"fox brown quick"},
-  {"name":"M","phrase":"big brown eye"}
+  {"name":"M","phrase":"big brown eye"},
+  {"name":"N","phrase":"fox fox fox quick quick quick quick fox quick"}
 ]
