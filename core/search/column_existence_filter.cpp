@@ -36,14 +36,19 @@ class column_existence_iterator final : public irs::doc_iterator_base {
   explicit column_existence_iterator(
       const irs::sub_reader& reader,
       const irs::attribute_store& prepared_filter_attrs,
-      irs::columnstore_iterator::ptr&& it,
+      irs::doc_iterator::ptr&& it,
       const irs::order::prepared& ord,
       uint64_t docs_count)
     : doc_iterator_base(ord),
       it_(std::move(it)) {
     assert(it_);
+
     // make doc_id accessible via attribute
     attrs_.emplace(doc_);
+
+    // make doc_payload accessible via attribute
+    attrs_.emplace<irs::payload_iterator>() =
+      it_->attributes().get<irs::payload_iterator>();
 
     // set estimation value
     estimate(docs_count);
@@ -73,14 +78,14 @@ class column_existence_iterator final : public irs::doc_iterator_base {
   }
 
   virtual irs::doc_id_t value() const NOEXCEPT override {
-    doc_.value = it_->value().first;
+    doc_.value = it_->value();
 
     return doc_.value;
   }
 
  private:
   mutable irs::document doc_; // modified during value()
-  irs::columnstore_iterator::ptr it_;
+  irs::doc_iterator::ptr it_;
   irs::order::prepared::scorers scorers_;
 }; // column_existence_iterator
 

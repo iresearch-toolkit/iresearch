@@ -68,7 +68,7 @@ class column_existence_filter_test_case
 
       while (filter_it->next()) {
         ASSERT_TRUE(column_it->next());
-        ASSERT_EQ(filter_it->value(), column_it->value().first);
+        ASSERT_EQ(filter_it->value(), column_it->value());
       }
       ASSERT_FALSE(column_it->next());
     }
@@ -97,7 +97,7 @@ class column_existence_filter_test_case
       size_t docs_count = 0;
       while (filter_it->next()) {
         ASSERT_TRUE(column_it->next());
-        ASSERT_EQ(filter_it->value(), column_it->value().first);
+        ASSERT_EQ(filter_it->value(), column_it->value());
         ++docs_count;
       }
       ASSERT_FALSE(column_it->next());
@@ -129,7 +129,7 @@ class column_existence_filter_test_case
       size_t docs_count = 0;
       while (filter_it->next()) {
         ASSERT_TRUE(column_it->next());
-        ASSERT_EQ(filter_it->value(), column_it->value().first);
+        ASSERT_EQ(filter_it->value(), column_it->value());
         ++docs_count;
       }
       ASSERT_FALSE(column_it->next());
@@ -161,7 +161,7 @@ class column_existence_filter_test_case
       size_t docs_count = 0;
       while (filter_it->next()) {
         ASSERT_TRUE(column_it->next());
-        ASSERT_EQ(filter_it->value(), column_it->value().first);
+        ASSERT_EQ(filter_it->value(), column_it->value());
         ++docs_count;
       }
       ASSERT_FALSE(column_it->next());
@@ -192,7 +192,7 @@ class column_existence_filter_test_case
 
       while (filter_it->next()) {
         ASSERT_TRUE(column_it->next());
-        ASSERT_EQ(filter_it->value(), column_it->value().first);
+        ASSERT_EQ(filter_it->value(), column_it->value());
       }
       ASSERT_FALSE(column_it->next());
     }
@@ -220,7 +220,7 @@ class column_existence_filter_test_case
 
       while (filter_it->next()) {
         ASSERT_TRUE(column_it->next());
-        ASSERT_EQ(filter_it->value(), column_it->value().first);
+        ASSERT_EQ(filter_it->value(), column_it->value());
       }
       ASSERT_FALSE(column_it->next());
     }
@@ -536,7 +536,7 @@ class column_existence_filter_test_case
         ASSERT_FALSE(!score);
         scored_result.emplace(score_value, filter_itr->value());
         ASSERT_TRUE(column_itr->next());
-        ASSERT_EQ(filter_itr->value(), column_itr->value().first);
+        ASSERT_EQ(filter_itr->value(), column_itr->value());
         ++docs_count;
       }
 
@@ -612,7 +612,7 @@ class column_existence_filter_test_case
         ASSERT_FALSE(!score);
         scored_result.emplace(score_value, filter_itr->value());
         ASSERT_TRUE(column_itr->next());
-        ASSERT_EQ(filter_itr->value(), column_itr->value().first);
+        ASSERT_EQ(filter_itr->value(), column_itr->value());
         ++docs_count;
       }
 
@@ -689,7 +689,7 @@ class column_existence_filter_test_case
         ASSERT_FALSE(!score);
         scored_result.emplace(score_value, filter_itr->value());
         ASSERT_TRUE(column_itr->next());
-        ASSERT_EQ(filter_itr->value(), column_itr->value().first);
+        ASSERT_EQ(filter_itr->value(), column_itr->value());
         ++docs_count;
       }
 

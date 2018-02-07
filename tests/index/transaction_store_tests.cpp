@@ -877,9 +877,11 @@ TEST_F(transaction_store_tests, read_write_doc_attributes) {
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
 
-      auto& actual_value = it->value();
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), actual_value.first);
-      ASSERT_EQ(irs::bytes_ref::nil, actual_value.second);
+      auto& payload = it->attributes().get<irs::payload_iterator>();
+      ASSERT_FALSE(!payload);
+      ASSERT_FALSE(payload->next());
+      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
+      ASSERT_EQ(irs::bytes_ref::nil, payload->value());
 
       std::vector<std::pair<irs::doc_id_t, irs::string_ref>> expected_values = {
         { 1, "A" }, { 2, "B" }, { 3, "C" }, { 4, "D" }
@@ -887,15 +889,18 @@ TEST_F(transaction_store_tests, read_write_doc_attributes) {
 
       size_t i = 0;
       for (; it->next(); ++i) {
+        ASSERT_TRUE(payload->next());
         const auto& expected_value = expected_values[i];
-        const auto actual_str_value = irs::to_string<irs::string_ref>(actual_value.second.c_str());
+        const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value().c_str());
 
-        ASSERT_EQ(expected_value.first, actual_value.first);
+        ASSERT_EQ(expected_value.first, it->value());
         ASSERT_EQ(expected_value.second, actual_str_value);
       }
+
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), actual_value.first);
-      ASSERT_EQ(irs::bytes_ref::nil, actual_value.second);
+      ASSERT_FALSE(payload->next());
+      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::bytes_ref::nil, payload->value());
       ASSERT_EQ(i, expected_values.size());
     }
 
@@ -924,9 +929,11 @@ TEST_F(transaction_store_tests, read_write_doc_attributes) {
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
 
-      auto& actual_value = it->value();
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), actual_value.first);
-      ASSERT_EQ(irs::bytes_ref::nil, actual_value.second);
+      auto& payload = it->attributes().get<irs::payload_iterator>();
+      ASSERT_FALSE(!payload);
+      ASSERT_FALSE(payload->next());
+      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
+      ASSERT_EQ(irs::bytes_ref::nil, payload->value());
 
       std::vector<std::pair<irs::doc_id_t, irs::string_ref>> expected_values = {
         { 1, "abcd" }, { 4, "abcde" }
@@ -934,15 +941,18 @@ TEST_F(transaction_store_tests, read_write_doc_attributes) {
 
       size_t i = 0;
       for (; it->next(); ++i) {
+        ASSERT_TRUE(payload->next());
         const auto& expected_value = expected_values[i];
-        const auto actual_str_value = irs::to_string<irs::string_ref>(actual_value.second.c_str());
+        const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value().c_str());
 
-        ASSERT_EQ(expected_value.first, actual_value.first);
+        ASSERT_EQ(expected_value.first, it->value());
         ASSERT_EQ(expected_value.second, actual_str_value);
       }
+
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), actual_value.first);
-      ASSERT_EQ(irs::bytes_ref::nil, actual_value.second);
+      ASSERT_FALSE(payload->next());
+      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::bytes_ref::nil, payload->value());
       ASSERT_EQ(i, expected_values.size());
     }
   }
@@ -985,9 +995,11 @@ TEST_F(transaction_store_tests, read_write_doc_attributes) {
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
 
-      auto& actual_value = it->value();
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), actual_value.first);
-      ASSERT_EQ(irs::bytes_ref::nil, actual_value.second);
+      auto& payload = it->attributes().get<irs::payload_iterator>();
+      ASSERT_FALSE(!payload);
+      ASSERT_FALSE(payload->next());
+      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
+      ASSERT_EQ(irs::bytes_ref::nil, payload->value());
 
       std::vector<std::pair<irs::doc_id_t, irs::string_ref>> expected_values = {
         { 1, "A" }, { 2, "B" }, { 3, "C" }, { 4, "D" }
@@ -995,15 +1007,18 @@ TEST_F(transaction_store_tests, read_write_doc_attributes) {
 
       size_t i = 0;
       for (; it->next(); ++i) {
+        ASSERT_TRUE(payload->next());
         const auto& expected_value = expected_values[i];
-        const auto actual_str_value = irs::to_string<irs::string_ref>(actual_value.second.c_str());
+        const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value().c_str());
 
-        ASSERT_EQ(expected_value.first, actual_value.first);
+        ASSERT_EQ(expected_value.first, it->value());
         ASSERT_EQ(expected_value.second, actual_str_value);
       }
+
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), actual_value.first);
-      ASSERT_EQ(irs::bytes_ref::nil, actual_value.second);
+      ASSERT_FALSE(payload->next());
+      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::bytes_ref::nil, payload->value());
       ASSERT_EQ(i, expected_values.size());
     }
 
@@ -1032,9 +1047,11 @@ TEST_F(transaction_store_tests, read_write_doc_attributes) {
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
 
-      auto& actual_value = it->value();
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), actual_value.first);
-      ASSERT_EQ(irs::bytes_ref::nil, actual_value.second);
+      auto& payload = it->attributes().get<irs::payload_iterator>();
+      ASSERT_FALSE(!payload);
+      ASSERT_FALSE(payload->next());
+      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
+      ASSERT_EQ(irs::bytes_ref::nil, payload->value());
 
       std::vector<std::pair<irs::doc_id_t, irs::string_ref>> expected_values = {
         { 1, "abcd" }, { 4, "abcde" }
@@ -1042,15 +1059,18 @@ TEST_F(transaction_store_tests, read_write_doc_attributes) {
 
       size_t i = 0;
       for (; it->next(); ++i) {
+        ASSERT_TRUE(payload->next());
         const auto& expected_value = expected_values[i];
-        const auto actual_str_value = irs::to_string<irs::string_ref>(actual_value.second.c_str());
+        const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value().c_str());
 
-        ASSERT_EQ(expected_value.first, actual_value.first);
+        ASSERT_EQ(expected_value.first, it->value());
         ASSERT_EQ(expected_value.second, actual_str_value);
       }
+
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), actual_value.first);
-      ASSERT_EQ(irs::bytes_ref::nil, actual_value.second);
+      ASSERT_FALSE(payload->next());
+      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::bytes_ref::nil, payload->value());
       ASSERT_EQ(i, expected_values.size());
     }
   }
@@ -1186,25 +1206,30 @@ TEST_F(transaction_store_tests, read_write_doc_attributes_big) {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& actual_value = it->value();
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), actual_value.first);
-        ASSERT_EQ(irs::bytes_ref::nil, actual_value.second);
+        auto& payload = it->attributes().get<irs::payload_iterator>();
+        ASSERT_FALSE(!payload);
+        ASSERT_FALSE(payload->next());
+        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
+        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
 
         for (; it->next(); ) {
+          ASSERT_TRUE(payload->next());
           ++expected_id;
 
           auto* doc = gen.next();
           auto* field = doc->stored.get<tests::templates::string_field>(column_name);
           ASSERT_NE(nullptr, field);
 
-          const auto actual_value_str = irs::to_string<irs::string_ref>(actual_value.second.c_str());
+          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
 
-          ASSERT_EQ(expected_id, actual_value.first);
+          ASSERT_EQ(expected_id, it->value());
           ASSERT_EQ(field->value(), actual_value_str);
         }
+
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), actual_value.first);
-        ASSERT_EQ(irs::bytes_ref::nil, actual_value.second);
+        ASSERT_FALSE(payload->next());
+        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
         ASSERT_EQ(docs_count, expected_id);
       }
     }
@@ -1273,25 +1298,30 @@ TEST_F(transaction_store_tests, read_write_doc_attributes_big) {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& actual_value = it->value();
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), actual_value.first);
-        ASSERT_EQ(irs::bytes_ref::nil, actual_value.second);
+        auto& payload = it->attributes().get<irs::payload_iterator>();
+        ASSERT_FALSE(!payload);
+        ASSERT_FALSE(payload->next());
+        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
+        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
 
         for (; it->next(); ) {
+          ASSERT_TRUE(payload->next());
           ++expected_id;
 
           auto* doc = gen.next();
           auto* field = doc->stored.get<tests::templates::string_field>(column_name);
           ASSERT_NE(nullptr, field);
 
-          const auto actual_value_str = irs::to_string<irs::string_ref>(actual_value.second.c_str());
+          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
 
-          ASSERT_EQ(expected_id, actual_value.first);
+          ASSERT_EQ(expected_id, it->value());
           ASSERT_EQ(field->value(), actual_value_str);
         }
+
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), actual_value.first);
-        ASSERT_EQ(irs::bytes_ref::nil, actual_value.second);
+        ASSERT_FALSE(payload->next());
+        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
         ASSERT_EQ(docs_count, expected_id);
       }
     }
@@ -1383,25 +1413,30 @@ TEST_F(transaction_store_tests, read_write_doc_attributes_big) {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& actual_value = it->value();
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), actual_value.first);
-        ASSERT_EQ(irs::bytes_ref::nil, actual_value.second);
+        auto& payload = it->attributes().get<irs::payload_iterator>();
+        ASSERT_FALSE(!payload);
+        ASSERT_FALSE(payload->next());
+        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
+        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
 
         for (; it->next(); ) {
+          ASSERT_TRUE(payload->next());
           ++expected_id;
 
           auto* doc = gen.next();
           auto* field = doc->stored.get<tests::templates::string_field>(column_name);
           ASSERT_NE(nullptr, field);
 
-          const auto actual_value_str = irs::to_string<irs::string_ref>(actual_value.second.c_str());
+          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
 
-          ASSERT_EQ(expected_id, actual_value.first);
+          ASSERT_EQ(expected_id, it->value());
           ASSERT_EQ(field->value(), actual_value_str);
         }
+
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), actual_value.first);
-        ASSERT_EQ(irs::bytes_ref::nil, actual_value.second);
+        ASSERT_FALSE(payload->next());
+        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
         ASSERT_EQ(docs_count, expected_id);
       }
     }
@@ -1470,25 +1505,30 @@ TEST_F(transaction_store_tests, read_write_doc_attributes_big) {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& actual_value = it->value();
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), actual_value.first);
-        ASSERT_EQ(irs::bytes_ref::nil, actual_value.second);
+        auto& payload = it->attributes().get<irs::payload_iterator>();
+        ASSERT_FALSE(!payload);
+        ASSERT_FALSE(payload->next());
+        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
+        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
 
         for (; it->next(); ) {
+          ASSERT_TRUE(payload->next());
           ++expected_id;
 
           auto* doc = gen.next();
           auto* field = doc->stored.get<tests::templates::string_field>(column_name);
           ASSERT_NE(nullptr, field);
 
-          const auto actual_value_str = irs::to_string<irs::string_ref>(actual_value.second.c_str());
+          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
 
-          ASSERT_EQ(expected_id, actual_value.first);
+          ASSERT_EQ(expected_id, it->value());
           ASSERT_EQ(field->value(), actual_value_str);
         }
+
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), actual_value.first);
-        ASSERT_EQ(irs::bytes_ref::nil, actual_value.second);
+        ASSERT_FALSE(payload->next());
+        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
         ASSERT_EQ(docs_count, expected_id);
       }
     }
@@ -2756,8 +2796,11 @@ TEST_F(transaction_store_tests, concurrent_read_multiple_columns_mt) {
         return false;
       }
 
-      auto& value = it->value();
-      auto& value_str = value.second;
+      auto& payload = it->attributes().get<irs::payload_iterator>();
+
+      if (!payload || payload->next()) {
+        return false;
+      }
 
       doc = gen.next();
 
@@ -2770,7 +2813,11 @@ TEST_F(transaction_store_tests, concurrent_read_multiple_columns_mt) {
           return false;
         }
 
-        if (++expected_id != value.first) {
+        if (!payload->next()) {
+          return false;
+        }
+
+        if (++expected_id != it->value()) {
           return false;
         }
 
@@ -2780,7 +2827,7 @@ TEST_F(transaction_store_tests, concurrent_read_multiple_columns_mt) {
           return false;
         }
 
-        if (field->value() != irs::to_string<irs::string_ref>(value_str.c_str())) {
+        if (field->value() != irs::to_string<irs::string_ref>(payload->value().c_str())) {
           return false;
         }
 

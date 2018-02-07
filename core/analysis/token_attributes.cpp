@@ -63,6 +63,13 @@ REGISTER_ATTRIBUTE(iresearch::payload);
 DEFINE_ATTRIBUTE_TYPE(payload);
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                  payload_iterator
+// -----------------------------------------------------------------------------
+
+REGISTER_ATTRIBUTE(irs::payload_iterator);
+DEFINE_ATTRIBUTE_TYPE(payload_iterator);
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                          document
 // -----------------------------------------------------------------------------
 

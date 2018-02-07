@@ -147,7 +147,7 @@ class store_reader_impl final: public irs::sub_reader {
     document_entries_t entries_;
     column_reader_t(document_entries_t&& entries) NOEXCEPT
       : entries_(std::move(entries)) {}
-    virtual irs::columnstore_iterator::ptr iterator() const override;
+    virtual irs::doc_iterator::ptr iterator() const override;
     virtual size_t size() const override { return entries_.size(); }
     virtual irs::columnstore_reader::values_reader_f values() const override;
     virtual bool visit(
@@ -276,15 +276,22 @@ class store_column_iterator final: public irs::column_iterator {
   const irs::column_meta* value_;
 };
 
-class store_columnstore_iterator: public irs::columnstore_iterator {
+// FIXME TODO merge with store_doc_iterator below
+class store_columnstore_iterator: public irs::doc_iterator {
  public:
   store_columnstore_iterator(
       const store_reader_impl::document_entries_t& entries
-  ): entry_(nullptr),
+  ): attrs_(1), // payload_iterator
+     entry_(nullptr),
      entries_(entries),
      next_itr_(entries.begin()),
      next_offset_(EOFOFFSET),
-     value_(INVALID) {
+     value_(irs::type_limits<irs::type_t::doc_id_t>::invalid()) {
+    attrs_.emplace(payload_);
+  }
+
+  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+    return attrs_;
   }
 
   virtual bool next() override {
@@ -292,14 +299,15 @@ class store_columnstore_iterator: public irs::columnstore_iterator {
       if (next_itr_ == entries_.end()) {
         entry_ = nullptr;
         next_offset_ = EOFOFFSET;
-        value_ = EOFMAX; // invalid data size
+        payload_.value_ = nullptr;
+        value_ = irs::type_limits<irs::type_t::doc_id_t>::eof(); // invalid data size
 
         return false;
       }
 
       entry_ = &*next_itr_;
       next_offset_ = next_itr_->offset_;
-      value_.first = next_itr_->doc_id_;
+      value_ = next_itr_->doc_id_;
       ++next_itr_;
     } while (!(entry_->buf_) || !next_value()); // skip invalid doc ids
 
@@ -322,45 +330,46 @@ class store_columnstore_iterator: public irs::columnstore_iterator {
 
     if (offset < size) {
       next_offset_ = EOFOFFSET;
-      value_ = EOFMAX; // invalid data size
+      payload_.value_ = nullptr;
+      value_ = irs::type_limits<irs::type_t::doc_id_t>::eof(); // invalid data size
 
       return false;
     }
 
-    value_.second = irs::bytes_ref(entry_->buf_->data() + start, size);
+    payload_.value_ = &value_payload_;
+    value_payload_ = irs::bytes_ref(entry_->buf_->data() + start, size);
 
     return true;
   }
 
-  virtual const value_type& seek(irs::doc_id_t doc) override {
+  virtual irs::doc_id_t seek(irs::doc_id_t doc) override {
     next_itr_ = std::lower_bound(entries_.begin(), entries_.end(), doc, DOC_LESS);
     next();
 
     return value();
   }
 
-  virtual const value_type& value() const override { return value_; }
+  virtual irs::doc_id_t value() const override { return value_; }
 
  private:
-  static const columnstore_iterator::value_type EOFMAX;
-  static const size_t EOFOFFSET = irs::integer_traits<size_t>::const_max;
-  static const columnstore_iterator::value_type INVALID;
+  struct payload_iterator: public irs::payload_iterator {
+    const irs::bytes_ref* value_{ nullptr };
+    virtual bool next() { return nullptr != value_; }
+    virtual const irs::bytes_ref& value() const {
+      return value_ ? *value_ : irs::bytes_ref::nil;
+    }
+  };
 
+  static const size_t EOFOFFSET = irs::integer_traits<size_t>::const_max;
+
+  irs::attribute_view attrs_;
   const store_reader_impl::document_entry_t* entry_;
   const store_reader_impl::document_entries_t& entries_;
   store_reader_impl::document_entries_t::const_iterator next_itr_;
   size_t next_offset_;
-  value_type value_;
-};
-
-/*static*/ const irs::columnstore_iterator::value_type store_columnstore_iterator::EOFMAX {
-  irs::type_limits<irs::type_t::doc_id_t>::eof(),
-  irs::bytes_ref::nil
-};
-
-/*static*/ const irs::columnstore_iterator::value_type store_columnstore_iterator::INVALID {
-  irs::type_limits<irs::type_t::doc_id_t>::invalid(),
-  irs::bytes_ref::nil
+  payload_iterator payload_;
+  irs::doc_id_t value_;
+  irs::bytes_ref value_payload_;
 };
 
 class store_doc_iterator: public irs::doc_iterator {
@@ -675,10 +684,11 @@ class store_term_iterator: public irs::seek_term_iterator {
   const store_reader_impl::term_entries_t& terms_;
 };
 
-irs::columnstore_iterator::ptr store_reader_impl::column_reader_t::iterator() const {
+irs::doc_iterator::ptr store_reader_impl::column_reader_t::iterator() const {
   return entries_.empty()
-    ? irs::columnstore_reader::empty_iterator()
-    : irs::columnstore_iterator::make<store_columnstore_iterator>(entries_);
+    ? irs::doc_iterator::empty()
+    : irs::doc_iterator::make<store_columnstore_iterator>(entries_)
+    ;
 }
 
 irs::columnstore_reader::values_reader_f store_reader_impl::column_reader_t::values() const {
