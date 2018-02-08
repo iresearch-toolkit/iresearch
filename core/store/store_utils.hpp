@@ -221,6 +221,94 @@ inline ContType read_strings(data_input& in) {
 }
 
 // ----------------------------------------------------------------------------
+// --SECTION--                                                    bytes helpers
+// ----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write to 'out' array of data pointed by 'value' of length 'size'
+/// @return bytes written
+////////////////////////////////////////////////////////////////////////////////
+template<typename OutputIterator, typename T>
+size_t write_bytes(OutputIterator& out, const T* value, size_t size) {
+  auto start = out;
+
+  size = sizeof(T) * size;
+  out += size; // reserve space
+  std::memcpy(&(*start), value, size);
+
+  return size;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write to 'out' raw byte representation of data in 'value'
+/// @return bytes written
+////////////////////////////////////////////////////////////////////////////////
+template<typename OutputIterator, typename T>
+size_t write_bytes(OutputIterator& out, const T& value) {
+  return write_bytes(out, &value, 1);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read a value of the specified type from 'in'
+////////////////////////////////////////////////////////////////////////////////
+template<typename T, typename InputIterator>
+T& read_ref(InputIterator& in) {
+  auto& data = reinterpret_cast<T&>(*in);
+
+  in += sizeof(T); // increment past value
+
+  return data;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read an array of the specified type and length of 'size' from 'in'
+////////////////////////////////////////////////////////////////////////////////
+template<typename T, typename InputIterator>
+T* read_ref(InputIterator& in, size_t size) {
+  auto* data = reinterpret_cast<T*>(&(*in));
+
+  in += sizeof(T) * size; // increment past value
+
+  return data;
+}
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                                   string helpers
+// ----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write to 'out' size + data pointed by 'value' of length 'size'
+////////////////////////////////////////////////////////////////////////////////
+template<typename OutputIterator, typename CharType>
+void vwrite_string(OutputIterator& out, const CharType* value, size_t size) {
+  vwrite<uint64_t>(out, size);
+  write_bytes(out, value, size);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write to 'out' data in 'value'
+////////////////////////////////////////////////////////////////////////////////
+template<typename OutputIterator, typename StringType>
+void vwrite_string(OutputIterator& out, const StringType& value) {
+  vwrite_string(out, value.c_str(), value.size());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read a string + size into a value of type 'StringType' from 'in'
+////////////////////////////////////////////////////////////////////////////////
+template<
+  typename StringType,
+  typename InputIterator,
+  typename TraitsType = typename StringType::traits_type
+>
+StringType vread_string(InputIterator& in) {
+  typedef typename TraitsType::char_type char_type;
+  const auto size = vread<uint64_t>(in);
+
+  return StringType(read_ref<const char_type>(in, size), size);
+}
+
+// ----------------------------------------------------------------------------
 // --SECTION--                                                     skip helpers
 // ----------------------------------------------------------------------------
 

@@ -507,7 +507,7 @@ class store_doc_iterator final: public store_doc_iterator_base {
 
       pay_.value = !irs::read<uint8_t>(ptr)
         ? irs::bytes_ref::nil
-        : irs::to_string<irs::bytes_ref>(ptr);
+        : irs::vread_string<irs::bytes_ref>(ptr);
         ;
 
       return true;
@@ -1027,12 +1027,10 @@ store_reader store_reader::reopen() const {
   return reader_impl.store_.reader(); // store changed, create new reader
 }
 
-void store_writer::bstring_output::write_bytes(
-    const byte_type* b, size_t size
-) {
-  oversize(buf_, std::max((pos_ + size) << 1, buf_.size()));
-  std::memcpy(&buf_[pos_], b, size);
-  pos_ += size;
+void store_writer::bstring_output::ensure(size_t pos) {
+  if (pos >= buf_.size()) {
+    oversize(buf_, irs::math::roundup_power2(pos + 1)); // 2*size growth policy, +1 for offset->size
+  }
 }
 
 store_writer::store_writer(transaction_store& store) NOEXCEPT
@@ -1218,7 +1216,7 @@ bool store_writer::index(
     static const doc_stats_t initial;
 
     doc_state_offset = state.out_.file_pointer();
-    state.out_.write_bytes(reinterpret_cast<const byte_type*>(&initial), sizeof(decltype(initial)));
+    irs::write_bytes(state.out_, initial);
   }
 
   auto& field_state_offset = map_utils::try_emplace(
@@ -1232,7 +1230,7 @@ bool store_writer::index(
     static const field_stats_t initial;
 
     field_state_offset = state.out_.file_pointer();
-    state.out_.write_bytes(reinterpret_cast<const byte_type*>(&initial), sizeof(decltype(initial)));
+    irs::write_bytes(state.out_, initial);
   }
 
   while (tokens.next()) {
@@ -1282,16 +1280,16 @@ bool store_writer::index(
         static const term_stats_t initial;
 
         term_state_offset_ref = state.out_.file_pointer();
-        state.out_.write_bytes(reinterpret_cast<const byte_type*>(&initial), sizeof(decltype(initial)));
-        ++(reinterpret_cast<field_stats_t*>(state.out_[field_state_offset])->unq_term_count);
+        irs::write_bytes(state.out_, initial);
+        ++(reinterpret_cast<field_stats_t&>(state.out_[field_state_offset]).unq_term_count);
       }
 
       term_state_offset = term_state_offset_ref; // remember offset outside this block
     }
 
     // get references to meta once state is no longer resized
-    auto& document_state = *reinterpret_cast<doc_stats_t*>(state.out_[doc_state_offset]);
-    auto& field_state = *reinterpret_cast<field_stats_t*>(state.out_[field_state_offset]);
+    auto& document_state = reinterpret_cast<doc_stats_t&>(state.out_[doc_state_offset]);
+    auto& field_state = reinterpret_cast<field_stats_t&>(state.out_[field_state_offset]);
 
     field_state.pos += inc->value;
 
@@ -1325,7 +1323,7 @@ bool store_writer::index(
       return false; // doc_id will be marked not valid by caller, hence in rollback state
     }
 
-    auto& term_state = *reinterpret_cast<term_stats_t*>(state.out_[term_state_offset]);
+    auto& term_state = reinterpret_cast<term_stats_t&>(state.out_[term_state_offset]);
     auto term_start = out.file_pointer(); // remeber start of current term
 
     //...........................................................................
@@ -1340,37 +1338,37 @@ bool store_writer::index(
     // byte   - 0 => nullptr payload, !0 => payload follows next
     // string - size + payload (present if previous byte != 0)
     //...........................................................................
-    out.write_long(0); // write out placeholder for next entry
+    irs::write<uint64_t>(out, 0); // write out placeholder for next entry
     field_state.max_term_freq = std::max(++term_state.term_freq, field_state.max_term_freq);
 
     if (has_pos) {
-      out.write_vint(field_state.pos); // write out position
+      irs::vwrite<uint32_t>(out, field_state.pos); // write out position
     }
 
     if (has_offs) {
       // add field_state.offs_start_base to shift offsets for repeating terms (no offset overlap)
-      out.write_vint(field_state.offs_start_base + offs->start); // write offset start
-      out.write_vint(field_state.offs_start_base + offs->end); // write offset end
+      irs::vwrite<uint32_t>(out, field_state.offs_start_base + offs->start); // write offset start
+      irs::vwrite<uint32_t>(out, field_state.offs_start_base + offs->end); // write offset end
     }
 
-    out.write_byte(has_pay ? 1 : 0); // write has-payload flag
+    irs::write<uint8_t>(out, has_pay ? 1 : 0); // write has-payload flag
 
     if (has_pay) {
-      write_string(out, pay->value.c_str(), pay->value.size());
+      irs::vwrite_string(out, pay->value);
     }
 
     if (term_state.offset) {
-      bstring_output prev_out(*out, term_state.offset);
+      auto* ptr = &(out[term_state.offset]);
 
-      prev_out.write_long(term_start); // update 'next-pointer' of previous entry
+      irs::write<uint64_t>(ptr, term_start); // update 'next-pointer' of previous entry
     }
 
     term_state.offset = term_start; // remeber start of current term
   }
 
   // get references to meta once state is no longer resized
-  auto& document_state = *reinterpret_cast<doc_stats_t*>(state.out_[doc_state_offset]);
-  auto& field_state = *reinterpret_cast<field_stats_t*>(state.out_[field_state_offset]);
+  auto& document_state = reinterpret_cast<doc_stats_t&>(state.out_[doc_state_offset]);
+  auto& field_state = reinterpret_cast<field_stats_t&>(state.out_[field_state_offset]);
 
   if (offs) {
     field_state.offs_start_base += offs->end; // ending offset of last term
@@ -1435,10 +1433,10 @@ bool store_writer::store(
     static const column_stats_t initial;
 
     column_state_offset = state.out_.file_pointer(); // same as in 'entries_'
-    state.out_.write_bytes(reinterpret_cast<const byte_type*>(&initial), sizeof(decltype(initial)));
+    irs::write_bytes(state.out_, initial);
   }
 
-  auto& column_state = *reinterpret_cast<column_stats_t*>(state.out_[column_state_offset]);
+  auto& column_state = reinterpret_cast<column_stats_t&>(state.out_[column_state_offset]);
   auto column_start = out.file_pointer(); // remeber start of current column
 
   //...........................................................................
@@ -1450,13 +1448,13 @@ bool store_writer::store(
   // long   - pointer to the next entry (points at its 'next-pointer') for same doc-term, last == 0 (length of linked list == column frequency in current document)
   // vlong  - delta length of user data up to 'next-pointer'
   //...........................................................................
-  out.write_long(0); // write out placeholder for next entry
-  out.write_vlong(column_start - buf_offset); // write out delta to start of data
+  irs::write<uint64_t>(out, 0); // write out placeholder for next entry
+  irs::vwrite<uint64_t>(out, column_start - buf_offset); // write out delta to start of data
 
   if (column_state.offset) {
-    bstring_output prev_out(*out, column_state.offset);
+    auto* ptr = &(out[column_state.offset]);
 
-    prev_out.write_long(column_start); // update 'next-pointer' of previous entry
+    irs::write<uint64_t>(ptr, column_start); // update 'next-pointer' of previous entry
   }
 
   column_state.offset = column_start; // remeber start of current column
