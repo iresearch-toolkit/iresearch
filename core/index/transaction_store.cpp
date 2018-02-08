@@ -276,160 +276,20 @@ class store_column_iterator final: public irs::column_iterator {
   const irs::column_meta* value_;
 };
 
-// FIXME TODO merge with store_doc_iterator below
-class store_columnstore_iterator: public irs::doc_iterator {
+class store_doc_iterator_base: public irs::doc_iterator {
  public:
-  store_columnstore_iterator(
-      const store_reader_impl::document_entries_t& entries
-  ): attrs_(1), // payload_iterator
+  store_doc_iterator_base(
+      const store_reader_impl::document_entries_t& entries,
+      size_t attr_count = 0
+  ): attrs_(attr_count),
      entry_(nullptr),
      entries_(entries),
-     next_itr_(entries.begin()),
-     next_offset_(EOFOFFSET),
-     value_(irs::type_limits<irs::type_t::doc_id_t>::invalid()) {
-    attrs_.emplace(payload_);
-  }
-
-  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
-    return attrs_;
-  }
-
-  virtual bool next() override {
-    do {
-      if (next_itr_ == entries_.end()) {
-        entry_ = nullptr;
-        next_offset_ = EOFOFFSET;
-        payload_.value_ = nullptr;
-        value_ = irs::type_limits<irs::type_t::doc_id_t>::eof(); // invalid data size
-
-        return false;
-      }
-
-      entry_ = &*next_itr_;
-      next_offset_ = next_itr_->offset_;
-      value_ = next_itr_->doc_id_;
-      ++next_itr_;
-    } while (!next_value()); // skip invalid doc ids
-
-    return true;
-  }
-
-  bool next_value() {
-    if (!entry_ || !(entry_->buf_) || next_offset_ == EOFOFFSET) {
-      return false;
-    }
-
-    payload_.data_ = *(entry_->buf_);
-    payload_.offset_ = next_offset_;
-
-    return true;
-  }
-
-  virtual irs::doc_id_t seek(irs::doc_id_t doc) override {
-    next_itr_ = std::lower_bound(entries_.begin(), entries_.end(), doc, DOC_LESS);
-    next();
-
-    return value();
-  }
-
-  virtual irs::doc_id_t value() const override { return value_; }
-
- private:
-  struct payload_iterator: public irs::payload_iterator {
-    irs::bytes_ref data_;
-    size_t offset_ = 0; // initially no data
-    irs::bytes_ref value_;
-
-    virtual bool next() {
-      if (!offset_) {
-        value_ = irs::bytes_ref::nil;
-
-        return false;
-      }
-
-      auto* ptr = data_.c_str() + offset_;
-      auto next_offset = irs::read<int64_t>(ptr); // read next value offset
-      auto size = irs::vread<uint64_t>(ptr); // read value size
-      auto start = offset_ - size;
-
-      assert(offset_ >= size); // otherwise there is an error somewhere in the code
-      assert(data_.size() >= start + size); // otherwise there is an error somewhere in the code
-      offset_ = next_offset;
-      value_ = irs::bytes_ref(data_.c_str() + start, size);
-
-      return true;
-    }
-
-    virtual const irs::bytes_ref& value() const { return value_; }
-  };
-
-  static const size_t EOFOFFSET = irs::integer_traits<size_t>::const_max;
-
-  irs::attribute_view attrs_;
-  const store_reader_impl::document_entry_t* entry_;
-  const store_reader_impl::document_entries_t& entries_;
-  store_reader_impl::document_entries_t::const_iterator next_itr_;
-  size_t next_offset_;
-  payload_iterator payload_;
-  irs::doc_id_t value_;
-  irs::bytes_ref value_payload_;
-};
-
-class store_doc_iterator: public irs::doc_iterator {
- public:
-  store_doc_iterator(
-      const store_reader_impl::document_entries_t& entries,
-      const irs::flags& field_features,
-      const irs::flags& requested_features
-  ): entry_(nullptr),
-     entries_(entries),
-     load_frequency_(requested_features.check<irs::frequency>()),
      next_itr_(entries.begin()) {
-    attrs_.emplace(doc_);
     doc_.value = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-
-    if (load_frequency_) {
-      attrs_.emplace(doc_freq_);
-    }
-
-    if (requested_features.check<irs::position>()
-        && field_features.check<irs::position>()) {
-      attrs_.emplace(doc_pos_);
-      doc_pos_.reset(irs::memory::make_unique<position_t>(
-        field_features, requested_features, entry_
-      ));
-    }
   }
 
   virtual const irs::attribute_view& attributes() const NOEXCEPT override {
     return attrs_;
-  }
-
-  bool load_attributes() {
-    if (!load_frequency_ && !doc_pos_) {
-      return true; // nothing to do
-    }
-
-    if (!(entry_->buf_)) {
-      return false;
-    }
-
-    // @see store_writer::index(...) for format definition
-    auto next = entry_->offset_;
-
-    doc_freq_.value = 0; // reset for new entry
-
-    // length of linked list == term frequency in current document
-    for (irs::bytes_ref_input in(*(entry_->buf_)); next; next = in.read_long()) {
-      ++doc_freq_.value;
-      in.seek(next);
-    }
-
-    if (doc_pos_) {
-      doc_pos_.clear(); // reset impl to new doc
-    }
-
-    return true;
   }
 
   virtual bool next() override {
@@ -457,6 +317,134 @@ class store_doc_iterator: public irs::doc_iterator {
   }
 
   virtual irs::doc_id_t value() const override { return doc_.value; }
+
+ protected:
+  irs::attribute_view attrs_;
+  irs::document doc_;
+  const store_reader_impl::document_entry_t* entry_;
+  const store_reader_impl::document_entries_t& entries_;
+  store_reader_impl::document_entries_t::const_iterator next_itr_;
+
+  virtual bool load_attributes() = 0;
+};
+
+class store_columnstore_iterator final: public store_doc_iterator_base {
+ public:
+  store_columnstore_iterator(
+      const store_reader_impl::document_entries_t& entries
+  ): store_doc_iterator_base(entries, 1) { // +1 for payload_iterator
+    attrs_.emplace(doc_payload_);
+  }
+
+  virtual bool next() override {
+    if (store_doc_iterator_base::next()) {
+      return true;
+    }
+
+    doc_payload_.value_ = nullptr;
+
+    return false;
+  }
+
+ protected:
+  bool load_attributes() override {
+    if (!entry_ || !(entry_->buf_)) {
+      return false;
+    }
+
+    // @see store_writer::store(...) for format definition
+    doc_payload_.data_ = *(entry_->buf_);
+    doc_payload_.offset_ = entry_->offset_;
+
+    return true;
+  }
+
+ private:
+  struct payload_iterator: public irs::payload_iterator {
+    irs::bytes_ref data_;
+    size_t offset_ = 0; // initially no data
+    irs::bytes_ref value_;
+
+    virtual bool next() {
+      if (!offset_) {
+        value_ = irs::bytes_ref::nil;
+
+        return false;
+      }
+
+      auto* ptr = data_.c_str() + offset_;
+      auto next_offset = irs::read<uint64_t>(ptr); // read next value offset
+      auto size = irs::vread<uint64_t>(ptr); // read value size
+      auto start = offset_ - size;
+
+      assert(offset_ >= size); // otherwise there is an error somewhere in the code
+      assert(data_.size() >= start + size); // otherwise there is an error somewhere in the code
+      offset_ = next_offset;
+      value_ = irs::bytes_ref(data_.c_str() + start, size);
+
+      return true;
+    }
+
+    virtual const irs::bytes_ref& value() const { return value_; }
+  };
+
+  payload_iterator doc_payload_;
+};
+
+class store_doc_iterator final: public store_doc_iterator_base {
+ public:
+  store_doc_iterator(
+      const store_reader_impl::document_entries_t& entries,
+      const irs::flags& field_features,
+      const irs::flags& requested_features
+  ): store_doc_iterator_base(entries, 3), // +1 for document, +1 for frequency, +1 for position
+     load_frequency_(requested_features.check<irs::frequency>()) {
+
+    attrs_.emplace(doc_);
+
+    if (load_frequency_) {
+      attrs_.emplace(doc_freq_);
+    }
+
+    if (requested_features.check<irs::position>()
+        && field_features.check<irs::position>()) {
+      attrs_.emplace(doc_pos_);
+      doc_pos_.reset(irs::memory::make_unique<position_t>(
+        field_features, requested_features, entry_
+      ));
+    }
+  }
+
+ protected:
+  bool load_attributes() override {
+    if (!load_frequency_ && !doc_pos_) {
+      return true; // nothing to do
+    }
+
+    if (!entry_ || !(entry_->buf_)) {
+      return false;
+    }
+
+    // @see store_writer::index(...) for format definition
+    auto next_offset = entry_->offset_;
+
+    doc_freq_.value = 0; // reset for new entry
+
+    // length of linked list == term frequency in current document
+    do {
+      assert(entry_->buf_->size() >= next_offset); // otherwise there is an error somewhere in the code
+      auto* ptr = &((*(entry_->buf_))[next_offset]);
+
+      ++doc_freq_.value;
+      next_offset = irs::read<uint64_t>(ptr);
+    } while (next_offset);
+
+    if (doc_pos_) {
+      doc_pos_.clear(); // reset impl to new doc
+    }
+
+    return true;
+  }
 
  private:
   struct position_t: public irs::position::impl {
@@ -506,34 +494,29 @@ class store_doc_iterator: public irs::doc_iterator {
       }
 
       // @see store_writer::index(...) for format definition
-      irs::bytes_ref_input in(*(entry_->buf_));
+      assert(entry_->buf_->size() > next_);
+      auto* ptr = entry_->buf_->c_str() + next_;
 
-      in.seek(next_);
-      next_ = in.read_long(); // read 'next-pointer'
-      pos_ = read_zvint(in);
+      next_ = irs::read<uint64_t>(ptr); // read 'next-pointer'
+      pos_ = irs::vread<uint32_t>(ptr);
 
       if (has_offs_) {
-        offs_.start = read_zvint(in);
-        offs_.end = read_zvint(in);
+        offs_.start = irs::vread<uint32_t>(ptr);
+        offs_.end = irs::vread<uint32_t>(ptr);
       }
 
-      pay_.value = !in.read_byte()
+      pay_.value = !irs::read<uint8_t>(ptr)
         ? irs::bytes_ref::nil
-        : irs::to_string<irs::bytes_ref>(entry_->buf_->data() + in.file_pointer());
+        : irs::to_string<irs::bytes_ref>(ptr);
         ;
 
       return true;
     }
   };
 
-  irs::attribute_view attrs_;
-  irs::document doc_;
   irs::frequency doc_freq_;
   irs::position doc_pos_;
-  const store_reader_impl::document_entry_t* entry_;
-  const store_reader_impl::document_entries_t& entries_;
   bool load_frequency_; // should the frequency attribute be updated (optimization)
-  store_reader_impl::document_entries_t::const_iterator next_itr_;
 };
 
 class store_field_iterator final: public irs::field_iterator {
@@ -709,8 +692,6 @@ irs::columnstore_reader::values_reader_f store_reader_impl::column_reader_t::val
       return false; // no entry >= doc
     }
 
-    auto& buf = *(itr->buf_);
-    irs::bytes_ref_input in(buf);
     bool multi_valued = false;
     auto next_offset = itr->offset_;
 
@@ -718,9 +699,10 @@ irs::columnstore_reader::values_reader_f store_reader_impl::column_reader_t::val
     value_buf.clear();
 
     while(next_offset) {
-      in.seek(next_offset);
-      auto offset = in.read_long(); // read next value offset
-      auto size = in.read_vlong(); // read value size
+      assert(itr->buf_->size() >= next_offset); // otherwise there is an error somewhere in the code
+      auto* ptr = &((*(itr->buf_))[next_offset]);
+      auto offset = irs::read<uint64_t>(ptr); // read next value offset
+      auto size = irs::vread<uint64_t>(ptr); // read value size
       auto start = next_offset - size;
 
       if (next_offset < size) {
@@ -731,10 +713,10 @@ irs::columnstore_reader::values_reader_f store_reader_impl::column_reader_t::val
       next_offset = offset;
 
       if (multi_valued) {
-        value_buf.append(buf.data() + start, size); // concatinate multi_valued attributes
+        value_buf.append(itr->buf_->data() + start, size); // concatinate multi_valued attributes
         value = value_buf;
       } else {
-        value = irs::bytes_ref(buf.data() + start, size);
+        value = irs::bytes_ref(itr->buf_->data() + start, size);
       }
     }
 
@@ -758,15 +740,15 @@ bool store_reader_impl::column_reader_t::visit(
     }
 
     auto doc_id = entry.doc_id_;
-    irs::bytes_ref_input in(*(entry.buf_));
 
     for(auto next_offset = entry.offset_; next_offset;) {
+      assert(entry.buf_->size() >= next_offset); // otherwise there is an error somewhere in the code
+      auto* ptr = &((*(entry.buf_))[next_offset]);
       auto offset = next_offset;
 
-      in.seek(next_offset);
-      next_offset = in.read_long(); // read next value offset
+      next_offset = irs::read<uint64_t>(ptr); // read next value offset
 
-      auto size = in.read_vlong(); // read value size
+      auto size = irs::vread<uint64_t>(ptr); // read value size
       auto start = offset - size;
 
       if (offset < size) {
@@ -1352,9 +1334,9 @@ bool store_writer::index(
     //
     // encoded block format definition:
     // long   - pointer to the next entry for same doc-term, last == 0 (length of linked list == term frequency in current document)
-    // zvint  - position     (present if field.meta.features.check<position>() == true)
-    // zvint  - offset start (present if field.meta.features.check<offset>() == true)
-    // zvint  - offset end   (present if field.meta.features.check<offset>() == true)
+    // vint   - position     (present if field.meta.features.check<position>() == true)
+    // vint   - offset start (present if field.meta.features.check<offset>() == true)
+    // vint   - offset end   (present if field.meta.features.check<offset>() == true)
     // byte   - 0 => nullptr payload, !0 => payload follows next
     // string - size + payload (present if previous byte != 0)
     //...........................................................................
@@ -1362,13 +1344,13 @@ bool store_writer::index(
     field_state.max_term_freq = std::max(++term_state.term_freq, field_state.max_term_freq);
 
     if (has_pos) {
-      write_zvint(out, field_state.pos); // write out position
+      out.write_vint(field_state.pos); // write out position
     }
 
     if (has_offs) {
       // add field_state.offs_start_base to shift offsets for repeating terms (no offset overlap)
-      write_zvint(out, field_state.offs_start_base + offs->start); // write offset start
-      write_zvint(out, field_state.offs_start_base + offs->end); // write offset end
+      out.write_vint(field_state.offs_start_base + offs->start); // write offset start
+      out.write_vint(field_state.offs_start_base + offs->end); // write offset end
     }
 
     out.write_byte(has_pay ? 1 : 0); // write has-payload flag

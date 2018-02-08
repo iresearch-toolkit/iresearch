@@ -25,6 +25,7 @@
 #define IRESEARCH_BYTES_UTILS_H
 
 #include "shared.hpp"
+#include "utils/bit_utils.hpp"
 #include "utils/math_utils.hpp"
 #include "utils/numeric_utils.hpp"
 
@@ -32,6 +33,66 @@ NS_ROOT
 
 template<typename T, size_t N = sizeof(T)>
 struct bytes_io;
+
+template<typename T>
+struct bytes_io<T, sizeof(uint8_t)> {
+  static const T const_max_vsize = 1;
+
+  template<typename InputIterator>
+  static T read(InputIterator& in, std::input_iterator_tag) {
+    T out = static_cast<T>(*in);       ++in;
+
+    return out;
+  }
+
+  template<typename InputIterator>
+  static T vread(InputIterator& in, std::input_iterator_tag) {
+    // read direct same as writen in vwrite(...)
+    return read(in, typename std::iterator_traits<InputIterator>::iterator_category());
+  }
+
+  template<typename OutputIterator>
+  static void write(OutputIterator& out, T value) {
+    *out = static_cast<irs::byte_type>(value);       ++out;
+  }
+
+  template<typename OutputIterator>
+  static void vwrite(OutputIterator& out, T value) {
+    // write direct since no benefit from variable-size encoding
+    write(out, value);
+  }
+}; // bytes_io<T, sizeof(uint8_t)>
+
+template<typename T>
+struct bytes_io<T, sizeof(uint16_t)> {
+  static const T const_max_vsize = 2;
+
+  template<typename InputIterator>
+  static T read(InputIterator& in, std::input_iterator_tag) {
+    T out = static_cast<T>(*in) << 8; ++in;
+    out |= static_cast<T>(*in);       ++in;
+
+    return out;
+  }
+
+  template<typename InputIterator>
+  static T vread(InputIterator& in, std::input_iterator_tag) {
+    // read direct same as writen in vwrite(...)
+    return read(in, typename std::iterator_traits<InputIterator>::iterator_category());
+  }
+
+  template<typename OutputIterator>
+  static void write(OutputIterator& out, T value) {
+    *out = static_cast<irs::byte_type>(value >> 8);  ++out;
+    *out = static_cast<irs::byte_type>(value);       ++out;
+  }
+
+  template<typename OutputIterator>
+  static void vwrite(OutputIterator& out, T value) {
+    // write direct since no benefit from variable-size encoding
+    write(out, value);
+  }
+}; // bytes_io<T, sizeof(uint16_t)>
 
 template<typename T>
 struct bytes_io<T, sizeof(uint32_t)> {
@@ -114,6 +175,18 @@ struct bytes_io<T, sizeof(uint32_t)> {
 
     // division within range [1;31]
     return (73 + 9*log2) >> 6;
+  }
+
+  template<typename InputIterator>
+  static int32_t zvread(InputIterator& in, std::input_iterator_tag) {
+    return irs::zig_zag_decode32(vread(
+      in, typename std::iterator_traits<InputIterator>::iterator_category()
+    ));
+  }
+
+  template<typename OutputIterator>
+  static void zvwrite(OutputIterator& out, int32_t value) {
+    vwrite(out, zig_zag_encode32(value));
   }
 }; // bytes_io<T, sizeof(uint32_t)>
 
@@ -208,43 +281,82 @@ struct bytes_io<T, sizeof(uint64_t)> {
     // division within range [1;63]
     return (73 + 9*log2) >> 6;
   }
-}; // bytes_io<T, sizeof(uint64_t)>
-
-template<typename T>
-struct bytes_io<T, sizeof(uint16_t)> {
-  template<typename OutputIterator>
-  static void write(OutputIterator& out, T in) {
-    *out = static_cast<irs::byte_type>(in >> 8);  ++out;
-    *out = static_cast<irs::byte_type>(in);       ++out;
-  }
 
   template<typename InputIterator>
-  static T read(InputIterator& in, std::input_iterator_tag) {
-    T out = static_cast<T>(*in) << 8; ++in;
-    out |= static_cast<T>(*in);       ++in;
-
-    return out;
+  static int64_t zvread(InputIterator& in, std::input_iterator_tag) {
+    return zig_zag_decode64(vread(
+      in, typename std::iterator_traits<InputIterator>::iterator_category()
+    ));
   }
-}; // bytes_io<T, sizeof(uint16_t)>
 
-template<typename T, typename Iterator>
-inline void write(Iterator& out, T in) {
-  bytes_io<T, sizeof(T)>::write(out, in);
-}
+  template<typename OutputIterator>
+  static void zvwrite(OutputIterator& out, int64_t value) {
+    vwrite(out, zig_zag_encode64(value));
+  }
+}; // bytes_io<T, sizeof(uint64_t)>
 
-template<typename T, typename Iterator>
-inline void vwrite(Iterator& out, T in) {
-  bytes_io<T, sizeof(T)>::vwrite(out, in);
-}
+// -----------------------------------------------------------------------------
+// --SECTION--                              exported functions for reading bytes
+// -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read a raw value of type T from 'in'
+///        will increment 'in' to position after the end of the read value
+////////////////////////////////////////////////////////////////////////////////
 template<typename T, typename Iterator>
 inline T read(Iterator& in) {
   return bytes_io<T, sizeof(T)>::read(in, typename std::iterator_traits<Iterator>::iterator_category());
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read a variable-size encoded value of type T from 'in'
+///        will increment 'in' to position after the end of the read value
+///        variable-size encoding allows using less bytes for small values
+////////////////////////////////////////////////////////////////////////////////
 template<typename T, typename Iterator>
 inline T vread(Iterator& in) {
   return bytes_io<T, sizeof(T)>::vread(in, typename std::iterator_traits<Iterator>::iterator_category());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read a variable-size zig-zag encoded value of type T from 'in'
+///        will increment 'in' to position after the end of the read value
+///        variable-size encoding allows using less bytes for small values
+////////////////////////////////////////////////////////////////////////////////
+template<typename T, typename Iterator>
+inline T zvread(Iterator& in) {
+  return bytes_io<T, sizeof(T)>::zvread(in, typename std::iterator_traits<Iterator>::iterator_category());
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                              exported functions for writing bytes
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write a raw value 'value' to 'out'
+///        will increment 'out' to position after the end of the written value
+////////////////////////////////////////////////////////////////////////////////
+template<typename T, typename Iterator>
+inline void write(Iterator& out, T value) {
+  bytes_io<T, sizeof(T)>::write(out, value);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write a variable-size encoded value 'value' to 'out'
+///        will increment 'out' to position after the end of the written value
+////////////////////////////////////////////////////////////////////////////////
+template<typename T, typename Iterator>
+inline void vwrite(Iterator& out, T value) {
+  bytes_io<T, sizeof(T)>::vwrite(out, value);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write a variable-size zig-zag encoded value 'value' to 'out'
+///        will increment 'out' to position after the end of the written value
+////////////////////////////////////////////////////////////////////////////////
+template<typename T, typename Iterator>
+inline void zvwrite(Iterator& out, T value) {
+  bytes_io<T, sizeof(T)>::zvwrite(out, value);
 }
 
 NS_END
