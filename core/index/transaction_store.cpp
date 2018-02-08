@@ -309,35 +309,18 @@ class store_columnstore_iterator: public irs::doc_iterator {
       next_offset_ = next_itr_->offset_;
       value_ = next_itr_->doc_id_;
       ++next_itr_;
-    } while (!(entry_->buf_) || !next_value()); // skip invalid doc ids
+    } while (!next_value()); // skip invalid doc ids
 
     return true;
   }
 
   bool next_value() {
-    if (!entry_ || next_offset_ == EOFOFFSET) {
+    if (!entry_ || !(entry_->buf_) || next_offset_ == EOFOFFSET) {
       return false;
     }
 
-    irs::bytes_ref_input in(*(entry_->buf_)); // buf_ validity checked in next()
-    auto offset = next_offset_;
-
-    in.seek(offset);
-    next_offset_ = in.read_long(); // read next value offset
-
-    auto size = in.read_vlong(); // read value size
-    auto start = offset - size;
-
-    if (offset < size) {
-      next_offset_ = EOFOFFSET;
-      payload_.value_ = nullptr;
-      value_ = irs::type_limits<irs::type_t::doc_id_t>::eof(); // invalid data size
-
-      return false;
-    }
-
-    payload_.value_ = &value_payload_;
-    value_payload_ = irs::bytes_ref(entry_->buf_->data() + start, size);
+    payload_.data_ = *(entry_->buf_);
+    payload_.offset_ = next_offset_;
 
     return true;
   }
@@ -353,11 +336,31 @@ class store_columnstore_iterator: public irs::doc_iterator {
 
  private:
   struct payload_iterator: public irs::payload_iterator {
-    const irs::bytes_ref* value_{ nullptr };
-    virtual bool next() { return nullptr != value_; }
-    virtual const irs::bytes_ref& value() const {
-      return value_ ? *value_ : irs::bytes_ref::nil;
+    irs::bytes_ref data_;
+    size_t offset_ = 0; // initially no data
+    irs::bytes_ref value_;
+
+    virtual bool next() {
+      if (!offset_) {
+        value_ = irs::bytes_ref::nil;
+
+        return false;
+      }
+
+      auto* ptr = data_.c_str() + offset_;
+      auto next_offset = irs::read<int64_t>(ptr); // read next value offset
+      auto size = irs::vread<uint64_t>(ptr); // read value size
+      auto start = offset_ - size;
+
+      assert(offset_ >= size); // otherwise there is an error somewhere in the code
+      assert(data_.size() >= start + size); // otherwise there is an error somewhere in the code
+      offset_ = next_offset;
+      value_ = irs::bytes_ref(data_.c_str() + start, size);
+
+      return true;
     }
+
+    virtual const irs::bytes_ref& value() const { return value_; }
   };
 
   static const size_t EOFOFFSET = irs::integer_traits<size_t>::const_max;
@@ -696,7 +699,10 @@ irs::columnstore_reader::values_reader_f store_reader_impl::column_reader_t::val
     return irs::columnstore_reader::empty_reader();
   }
 
-  return [this](irs::doc_id_t key, irs::bytes_ref& value)->bool {
+  // FIXME TODO find a better way to concatinate values, or modify API to return separate values
+  auto reader = [this](
+      irs::doc_id_t key, irs::bytes_ref& value, irs::bstring& value_buf
+  )->bool {
     auto itr = std::lower_bound(entries_.begin(), entries_.end(), key, DOC_LESS);
 
     if (itr == entries_.end() || itr->doc_id_ != key || !itr->buf_) {
@@ -705,21 +711,42 @@ irs::columnstore_reader::values_reader_f store_reader_impl::column_reader_t::val
 
     auto& buf = *(itr->buf_);
     irs::bytes_ref_input in(buf);
+    bool multi_valued = false;
+    auto next_offset = itr->offset_;
 
-    in.seek(itr->offset_);
-    in.read_long(); // read next value offset
+    value = irs::bytes_ref::nil;
+    value_buf.clear();
 
-    auto size = in.read_vlong(); // read value size
-    auto start = itr->offset_ - size;
+    while(next_offset) {
+      in.seek(next_offset);
+      auto offset = in.read_long(); // read next value offset
+      auto size = in.read_vlong(); // read value size
+      auto start = next_offset - size;
 
-    if (itr->offset_ < size) {
-      return false; // invalid data size
+      if (next_offset < size) {
+        return false; // invalid data size
+      }
+
+      multi_valued |= offset > 0; // if have another value part
+      next_offset = offset;
+
+      if (multi_valued) {
+        value_buf.append(buf.data() + start, size); // concatinate multi_valued attributes
+        value = value_buf;
+      } else {
+        value = irs::bytes_ref(buf.data() + start, size);
+      }
     }
-
-    value = irs::bytes_ref(buf.data() + start, size);
 
     return true;
   };
+
+  return std::bind(
+    std::move(reader),
+    std::placeholders::_1,
+    std::placeholders::_2,
+    irs::bstring()
+  );
 }
 
 bool store_reader_impl::column_reader_t::visit(
