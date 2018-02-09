@@ -33,9 +33,7 @@
 #include "search/term_query.hpp"
 #endif
 
-namespace ir = iresearch;
-
-namespace tests {
+NS_BEGIN(tests)
 
 void analyzed_json_field_factory(
     tests::document& doc,
@@ -45,12 +43,12 @@ void analyzed_json_field_factory(
  
   class string_field : public templates::string_field {
    public:
-    string_field(const ir::string_ref& name, const ir::string_ref& value)
+    string_field(const irs::string_ref& name, const irs::string_ref& value)
       : templates::string_field(name, value) {
     }
 
-    const ir::flags& features() const {
-      static ir::flags features{ ir::frequency::type() };
+    const irs::flags& features() const {
+      static irs::flags features{ irs::frequency::type() };
       return features;
     }
   }; // string_field
@@ -64,7 +62,7 @@ void analyzed_json_field_factory(
 
     // not analyzed field
     doc.insert(std::make_shared<string_field>(
-      ir::string_ref(name),
+      irs::string_ref(name),
       data.str
     ));
   }
@@ -86,32 +84,32 @@ class phrase_filter_test_case : public filter_test_case_base {
 
     // empty field 
     {
-      ir::by_phrase q;
+      irs::by_phrase q;
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
 
       auto docs = prepared->execute(*sub);
-      ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs->value()));
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
     }
 
     // empty phrase
     {
-      ir::by_phrase q;
+      irs::by_phrase q;
       q.field("phrase_anl");
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
 
       auto docs = prepared->execute(*sub);
-      ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs->value()));
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
     }
 
     // equals to term_filter "fox"
     {
       irs::bytes_ref actual_value;
 
-      ir::by_phrase q;
+      irs::by_phrase q;
       q.field("phrase_anl")
        .push_back("fox");
 
@@ -169,13 +167,13 @@ class phrase_filter_test_case : public filter_test_case_base {
       ASSERT_EQ("N", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
       ASSERT_FALSE(docs->next());
-      ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs->value()));
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
     }
 
     // search "fox" on field without positions
     // which is ok for single word phrases
     {
-      ir::by_phrase q;
+      irs::by_phrase q;
       q.field("phrase").push_back("fox");
 
       auto prepared = q.prepare(rdr);
@@ -202,7 +200,7 @@ class phrase_filter_test_case : public filter_test_case_base {
       ASSERT_EQ("K", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
       ASSERT_FALSE(docs->next());
-      ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs->value()));
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
     }
 
     // equals to term_filter "fox" with phrase offset
@@ -210,9 +208,9 @@ class phrase_filter_test_case : public filter_test_case_base {
     {
       irs::bytes_ref actual_value;
 
-      ir::by_phrase q;
+      irs::by_phrase q;
       q.field("phrase_anl")
-       .push_back("fox", ir::integer_traits<size_t>::const_max);
+       .push_back("fox", irs::integer_traits<size_t>::const_max);
 
       auto prepared = q.prepare(rdr);
 #ifndef IRESEARCH_DLL
@@ -272,14 +270,14 @@ class phrase_filter_test_case : public filter_test_case_base {
       ASSERT_EQ("N", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
       ASSERT_FALSE(docs->next());
-      ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs->value()));
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
     }
 
     // "quick brown fox"
     {
       irs::bytes_ref actual_value;
 
-      ir::by_phrase q;
+      irs::by_phrase q;
       q.field("phrase_anl")
        .push_back("quick")
        .push_back("brown")
@@ -318,8 +316,8 @@ class phrase_filter_test_case : public filter_test_case_base {
       ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
       ASSERT_FALSE(docs->next());
-      ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs->value()));
-      ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs_seek->seek(ir::type_limits<ir::type_t::doc_id_t>::eof())));
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs_seek->seek(irs::type_limits<irs::type_t::doc_id_t>::eof())));
     }
 
     // "quick brown fox" with order
@@ -391,14 +389,14 @@ class phrase_filter_test_case : public filter_test_case_base {
 
       ASSERT_FALSE(docs->next());
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs_seek->seek(irs::type_limits<ir::type_t::doc_id_t>::eof())));
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs_seek->seek(irs::type_limits<irs::type_t::doc_id_t>::eof())));
     }
 
     // "fox ... quick"
     {
       irs::bytes_ref actual_value;
 
-      ir::by_phrase q;
+      irs::by_phrase q;
       q.field("phrase_anl")
        .push_back("fox")
        .push_back("quick", 1);
@@ -429,8 +427,8 @@ class phrase_filter_test_case : public filter_test_case_base {
       ASSERT_EQ("N", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
       ASSERT_FALSE(docs->next());
-      ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs->value()));
-      ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs_seek->seek(ir::type_limits<ir::type_t::doc_id_t>::eof())));
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs_seek->seek(irs::type_limits<irs::type_t::doc_id_t>::eof())));
     }
 
     // "fox ... quick" with phrase offset
@@ -438,9 +436,9 @@ class phrase_filter_test_case : public filter_test_case_base {
     {
       irs::bytes_ref actual_value;
 
-      ir::by_phrase q;
+      irs::by_phrase q;
       q.field("phrase_anl")
-       .push_back("fox", ir::integer_traits<size_t>::const_max)
+       .push_back("fox", irs::integer_traits<size_t>::const_max)
        .push_back("quick", 1);
 
       auto prepared = q.prepare(rdr);
@@ -469,13 +467,13 @@ class phrase_filter_test_case : public filter_test_case_base {
       ASSERT_EQ("N", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
       ASSERT_FALSE(docs->next());
-      ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs->value()));
-      ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs_seek->seek(ir::type_limits<ir::type_t::doc_id_t>::eof())));
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs_seek->seek(irs::type_limits<irs::type_t::doc_id_t>::eof())));
     }
 
     // "fox ... ... ... ... ... ... ... ... ... ... quick"
     {
-      ir::by_phrase q;
+      irs::by_phrase q;
       q.field("phrase_anl")
        .push_back("fox")
        .push_back("quick", 10);
@@ -486,14 +484,14 @@ class phrase_filter_test_case : public filter_test_case_base {
       auto docs = prepared->execute(*sub);
       ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(docs->value()));
       ASSERT_FALSE(docs->next());
-      ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs->value()));
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
     }
 
     // "eye ... eye"
     {
       irs::bytes_ref actual_value;
 
-      ir::by_phrase q;
+      irs::by_phrase q;
       q.field("phrase_anl")
        .push_back("eye")
        .push_back("eye", 1);
@@ -517,15 +515,15 @@ class phrase_filter_test_case : public filter_test_case_base {
       ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
       ASSERT_FALSE(docs->next());
-      ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs->value()));
-      ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs_seek->seek(ir::type_limits<ir::type_t::doc_id_t>::eof())));
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs_seek->seek(irs::type_limits<irs::type_t::doc_id_t>::eof())));
     }
 
     // "as in the past we are looking forward"
     {
       irs::bytes_ref actual_value;
 
-      ir::by_phrase q;
+      irs::by_phrase q;
       q.field("phrase_anl")
        .push_back("as")
        .push_back("in")
@@ -554,8 +552,8 @@ class phrase_filter_test_case : public filter_test_case_base {
       ASSERT_EQ("H", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
       ASSERT_FALSE(docs->next());
-      ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs->value()));
-      ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs_seek->seek(ir::type_limits<ir::type_t::doc_id_t>::eof())));
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs_seek->seek(irs::type_limits<irs::type_t::doc_id_t>::eof())));
     }
 
     // "as in the past we are looking forward" with order
@@ -607,14 +605,14 @@ class phrase_filter_test_case : public filter_test_case_base {
 
       ASSERT_FALSE(docs->next());
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs_seek->seek(irs::type_limits<ir::type_t::doc_id_t>::eof())));
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs_seek->seek(irs::type_limits<irs::type_t::doc_id_t>::eof())));
     }
 
     // fox quick
     {
       irs::bytes_ref actual_value;
 
-      ir::by_phrase q;
+      irs::by_phrase q;
       q.field("phrase_anl")
        .push_back("fox")
        .push_back("quick");
@@ -638,8 +636,8 @@ class phrase_filter_test_case : public filter_test_case_base {
       ASSERT_EQ("N", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
       ASSERT_FALSE(docs->next());
-      ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs->value()));
-      ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs_seek->seek(ir::type_limits<ir::type_t::doc_id_t>::eof())));
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs_seek->seek(irs::type_limits<irs::type_t::doc_id_t>::eof())));
     }
 
     // fox quick with order
@@ -657,7 +655,7 @@ class phrase_filter_test_case : public filter_test_case_base {
       };
       auto pord = ord.prepare();
 
-      ir::by_phrase q;
+      irs::by_phrase q;
       q.field("phrase_anl")
        .push_back("fox")
        .push_back("quick");
@@ -681,31 +679,31 @@ class phrase_filter_test_case : public filter_test_case_base {
       ASSERT_EQ("N", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
       ASSERT_FALSE(docs->next());
-      ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs->value()));
-      ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs_seek->seek(ir::type_limits<ir::type_t::doc_id_t>::eof())));
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs_seek->seek(irs::type_limits<irs::type_t::doc_id_t>::eof())));
     }
   }
 }; // phrase_filter_test_case
 
-} // tests
+NS_END // tests
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                             by_phrase base tests 
 // ----------------------------------------------------------------------------
 
 TEST(by_phrase_test, ctor) {
-  ir::by_phrase q;
-  ASSERT_EQ(ir::by_phrase::type(), q.type());
+  irs::by_phrase q;
+  ASSERT_EQ(irs::by_phrase::type(), q.type());
   ASSERT_EQ("", q.field());
   ASSERT_TRUE(q.empty());
   ASSERT_EQ(0, q.size());
   ASSERT_EQ(q.begin(), q.end());
-  ASSERT_EQ(ir::boost::no_boost(), q.boost());
+  ASSERT_EQ(irs::boost::no_boost(), q.boost());
 
-  auto& features = ir::by_phrase::required();
+  auto& features = irs::by_phrase::required();
   ASSERT_EQ(2, features.size());
-  ASSERT_TRUE(features.check<ir::frequency>());
-  ASSERT_TRUE(features.check<ir::position>());
+  ASSERT_TRUE(features.check<irs::frequency>());
+  ASSERT_TRUE(features.check<irs::position>());
 }
 
 TEST(by_phrase_test, boost) {
@@ -713,29 +711,29 @@ TEST(by_phrase_test, boost) {
   {
     // no terms
     {
-      ir::by_phrase q;
+      irs::by_phrase q;
       q.field("field");
 
       auto prepared = q.prepare(tests::empty_index_reader::instance());
-      ASSERT_EQ(ir::boost::no_boost(), ir::boost::extract(prepared->attributes()));
+      ASSERT_EQ(irs::boost::no_boost(), irs::boost::extract(prepared->attributes()));
     }
 
     // single term
     {
-      ir::by_phrase q;
+      irs::by_phrase q;
       q.field("field").push_back("quick");
 
       auto prepared = q.prepare(tests::empty_index_reader::instance());
-      ASSERT_EQ(ir::boost::no_boost(), ir::boost::extract(prepared->attributes()));
+      ASSERT_EQ(irs::boost::no_boost(), irs::boost::extract(prepared->attributes()));
     }
 
     // multiple terms
     {
-      ir::by_phrase q;
+      irs::by_phrase q;
       q.field("field").push_back("quick").push_back("brown");
 
       auto prepared = q.prepare(tests::empty_index_reader::instance());
-      ASSERT_EQ(ir::boost::no_boost(), ir::boost::extract(prepared->attributes()));
+      ASSERT_EQ(irs::boost::no_boost(), irs::boost::extract(prepared->attributes()));
     }
   }
 
@@ -745,109 +743,109 @@ TEST(by_phrase_test, boost) {
     
     // no terms, return empty query
     {
-      ir::by_phrase q;
+      irs::by_phrase q;
       q.field("field");
       q.boost(boost);
 
       auto prepared = q.prepare(tests::empty_index_reader::instance());
-      ASSERT_EQ(ir::boost::no_boost(), ir::boost::extract(prepared->attributes()));
+      ASSERT_EQ(irs::boost::no_boost(), irs::boost::extract(prepared->attributes()));
     }
 
     // single term
     {
-      ir::by_phrase q;
+      irs::by_phrase q;
       q.field("field").push_back("quick");
       q.boost(boost);
 
       auto prepared = q.prepare(tests::empty_index_reader::instance());
-      ASSERT_EQ(boost, ir::boost::extract(prepared->attributes()));
+      ASSERT_EQ(boost, irs::boost::extract(prepared->attributes()));
     }
     
     // single multiple terms 
     {
-      ir::by_phrase q;
+      irs::by_phrase q;
       q.field("field").push_back("quick").push_back("brown");
       q.boost(boost);
 
       auto prepared = q.prepare(tests::empty_index_reader::instance());
-      ASSERT_EQ(boost, ir::boost::extract(prepared->attributes()));
+      ASSERT_EQ(boost, irs::boost::extract(prepared->attributes()));
     }
   }
 }
 
 TEST(by_phrase_test, push_back_insert) {
-  ir::by_phrase q;
+  irs::by_phrase q;
 
   // push_back 
   {
     q.push_back("quick");
-    q.push_back(ir::ref_cast<ir::byte_type>(ir::string_ref("brown")), 1);
-    q.push_back(ir::bstring(ir::ref_cast<ir::byte_type>(ir::string_ref("fox"))));
+    q.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("brown")), 1);
+    q.push_back(irs::bstring(irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))));
     ASSERT_FALSE(q.empty());
     ASSERT_EQ(3, q.size());
 
     // check elements via positions
     {
-      ASSERT_EQ(ir::ref_cast<ir::byte_type>(ir::string_ref("quick")), q[0]); 
-      ASSERT_EQ(ir::ref_cast<ir::byte_type>(ir::string_ref("brown")), q[2]); 
-      ASSERT_EQ(ir::ref_cast<ir::byte_type>(ir::string_ref("fox")), q[3]); 
+      ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("quick")), q[0]); 
+      ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("brown")), q[2]); 
+      ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("fox")), q[3]); 
     }
-    
+
     // check elements via iterators 
     {
       auto it = q.begin();
       ASSERT_NE(q.end(), it); 
       ASSERT_EQ(0, it->first);
-      ASSERT_EQ(ir::ref_cast<ir::byte_type>(ir::string_ref("quick")), it->second);
+      ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("quick")), it->second);
 
       ++it;
       ASSERT_NE(q.end(), it); 
       ASSERT_EQ(2, it->first);
-      ASSERT_EQ(ir::ref_cast<ir::byte_type>(ir::string_ref("brown")), it->second);
+      ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("brown")), it->second);
 
       ++it;
       ASSERT_NE(q.end(), it); 
       ASSERT_EQ(3, it->first);
-      ASSERT_EQ(ir::ref_cast<ir::byte_type>(ir::string_ref("fox")), it->second);
+      ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("fox")), it->second);
 
       ++it;
       ASSERT_EQ(q.end(), it); 
     }
-   
+
     // push term 
     {
       q.push_back("squirrel", 0);
-      ASSERT_EQ(ir::ref_cast<ir::byte_type>(ir::string_ref("squirrel")), q[4]); 
+      ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("squirrel")), q[4]); 
     }
     ASSERT_EQ(4, q.size());
   }
 
   // insert
   {
-    q[3] = ir::ref_cast<ir::byte_type>(ir::string_ref("jumps"));
-    ASSERT_EQ(ir::ref_cast<ir::byte_type>(ir::string_ref("jumps")), q[3]); 
+    q[3] = irs::ref_cast<irs::byte_type>(irs::string_ref("jumps"));
+    ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("jumps")), q[3]);
     ASSERT_EQ(4, q.size());
 
     q.insert(5, "lazy");
-    ASSERT_EQ(ir::ref_cast<ir::byte_type>(ir::string_ref("lazy")), q[5]); 
+    ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("lazy")), q[5]);
     ASSERT_EQ(5, q.size());
     
-    q.insert(28, ir::bstring(ir::ref_cast<ir::byte_type>(ir::string_ref("dog"))));
-    ASSERT_EQ(ir::ref_cast<ir::byte_type>(ir::string_ref("dog")), q[28]); 
+    q.insert(28, irs::bstring(irs::ref_cast<irs::byte_type>(irs::string_ref("dog"))));
+    ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("dog")), q[28]); 
     ASSERT_EQ(6, q.size());
   }
 }
 
 TEST(by_phrase_test, equal) {
-  ASSERT_EQ(ir::by_phrase(), ir::by_phrase());
+  ASSERT_EQ(irs::by_phrase(), irs::by_phrase());
 
   {
-    ir::by_phrase q0;
+    irs::by_phrase q0;
     q0.field("name");
     q0.push_back("quick");
     q0.push_back("brown");
 
-    ir::by_phrase q1;
+    irs::by_phrase q1;
     q1.field("name");
     q1.push_back("quick");
     q1.push_back("brown");
@@ -856,12 +854,12 @@ TEST(by_phrase_test, equal) {
   }
 
   {
-    ir::by_phrase q0;
+    irs::by_phrase q0;
     q0.field("name");
     q0.push_back("quick");
     q0.push_back("squirrel");
 
-    ir::by_phrase q1;
+    irs::by_phrase q1;
     q1.field("name");
     q1.push_back("quick");
     q1.push_back("brown");
@@ -869,12 +867,12 @@ TEST(by_phrase_test, equal) {
   }
 
   {
-    ir::by_phrase q0;
+    irs::by_phrase q0;
     q0.field("name1");
     q0.push_back("quick");
     q0.push_back("brown");
 
-    ir::by_phrase q1;
+    irs::by_phrase q1;
     q1.field("name");
     q1.push_back("quick");
     q1.push_back("brown");
@@ -882,11 +880,11 @@ TEST(by_phrase_test, equal) {
   }
 
   {
-    ir::by_phrase q0;
+    irs::by_phrase q0;
     q0.field("name");
     q0.push_back("quick");
 
-    ir::by_phrase q1;
+    irs::by_phrase q1;
     q1.field("name");
     q1.push_back("quick");
     q1.push_back("brown");

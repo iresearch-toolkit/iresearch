@@ -64,7 +64,7 @@ class column_existence_filter_test_case
       ASSERT_NE(nullptr, column);
       auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
-      ASSERT_EQ(column->size(), ir::cost::extract(filter_it->attributes()));
+      ASSERT_EQ(column->size(), irs::cost::extract(filter_it->attributes()));
 
       while (filter_it->next()) {
         ASSERT_TRUE(column_it->next());
@@ -92,7 +92,7 @@ class column_existence_filter_test_case
       ASSERT_NE(nullptr, column);
       auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
-      ASSERT_EQ(column->size(), ir::cost::extract(filter_it->attributes()));
+      ASSERT_EQ(column->size(), irs::cost::extract(filter_it->attributes()));
 
       size_t docs_count = 0;
       while (filter_it->next()) {
@@ -124,7 +124,7 @@ class column_existence_filter_test_case
       ASSERT_NE(nullptr, column);
       auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
-      ASSERT_EQ(column->size(), ir::cost::extract(filter_it->attributes()));
+      ASSERT_EQ(column->size(), irs::cost::extract(filter_it->attributes()));
 
       size_t docs_count = 0;
       while (filter_it->next()) {
@@ -156,7 +156,7 @@ class column_existence_filter_test_case
       ASSERT_NE(nullptr, column);
       auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
-      ASSERT_EQ(column->size(), ir::cost::extract(filter_it->attributes()));
+      ASSERT_EQ(column->size(), irs::cost::extract(filter_it->attributes()));
 
       size_t docs_count = 0;
       while (filter_it->next()) {
@@ -188,7 +188,7 @@ class column_existence_filter_test_case
       ASSERT_NE(nullptr, column);
       auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
-      ASSERT_EQ(column->size(), ir::cost::extract(filter_it->attributes()));
+      ASSERT_EQ(column->size(), irs::cost::extract(filter_it->attributes()));
 
       while (filter_it->next()) {
         ASSERT_TRUE(column_it->next());
@@ -216,7 +216,7 @@ class column_existence_filter_test_case
       ASSERT_NE(nullptr, column);
       auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
-      ASSERT_EQ(column->size(), ir::cost::extract(filter_it->attributes()));
+      ASSERT_EQ(column->size(), irs::cost::extract(filter_it->attributes()));
 
       while (filter_it->next()) {
         ASSERT_TRUE(column_it->next());
@@ -241,7 +241,7 @@ class column_existence_filter_test_case
       auto& segment = (*rdr)[0];
 
       auto filter_it = prepared->execute(segment);
-      ASSERT_EQ(0, ir::cost::extract(filter_it->attributes()));
+      ASSERT_EQ(0, irs::cost::extract(filter_it->attributes()));
 
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), filter_it->value());
       ASSERT_FALSE(filter_it->next());
@@ -728,7 +728,7 @@ TEST(by_column_existence, boost) {
 }
 
 TEST(by_column_existence, equal) {
-  ASSERT_EQ(ir::by_column_existence(), ir::by_column_existence());
+  ASSERT_EQ(irs::by_column_existence(), irs::by_column_existence());
 
   {
     irs::by_column_existence q0;
