@@ -546,6 +546,9 @@ install:
     fi
     # sudo make install DESTDIR=${ICU_DIR}
     export ICU_ROOT=${ICU_DIR}/build/usr/local
+    export DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH}:${ICU_ROOT}/lib" # required for MacOS
+    find / -name libicui18n.57.dylib
+    set
 
   ############################################################################
   # Install Boost
