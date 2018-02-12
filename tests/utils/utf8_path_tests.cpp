@@ -533,11 +533,11 @@ TEST_F(utf8_path_tests, directory) {
     ASSERT_FALSE(path2.mkdir());
 
     ASSERT_TRUE(path1.remove()); // file remove successful
-    ASSERT_TRUE(path1.exists(tmpBool) && tmpBool);
+    ASSERT_TRUE(path1.exists(tmpBool) && !tmpBool);
     ASSERT_TRUE(path1.exists_directory(tmpBool) && !tmpBool);
-    ASSERT_TRUE(path1.exists_file(tmpBool) && tmpBool);
-    ASSERT_TRUE(path1.mtime(tmpTime) && tmpTime > 0);
-    ASSERT_TRUE(path1.file_size(tmpUint) && tmpUint == data.size());
+    ASSERT_TRUE(path1.exists_file(tmpBool) && !tmpBool);
+    ASSERT_FALSE(path1.mtime(tmpTime));
+    ASSERT_FALSE(path1.file_size(tmpUint));
   }
 }
 
