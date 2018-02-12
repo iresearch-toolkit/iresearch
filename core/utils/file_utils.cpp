@@ -65,6 +65,12 @@ NS_LOCAL
 
 #endif
 
+#ifdef _WIN32
+  const std::basic_string<wchar_t> path_separator(L"\\");
+#else
+  const std::basic_string<char> path_separator("/");
+#endif
+
 NS_END
 
 NS_ROOT
@@ -648,6 +654,50 @@ handle_t open(FILE* file, const file_path_t mode) NOEXCEPT {
   #endif
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                        path utils
+// -----------------------------------------------------------------------------
+
+bool mkdir(const file_path_t path) NOEXCEPT {
+  bool result;
+
+  if (!exists_directory(result, path)) {
+    return false; // failure checking directory existence
+  }
+
+  if (result) {
+    return true; // already exists
+  }
+
+  if (!exists(result, path) || result) {
+    return false; // failure checking existence or something else exists with the same name
+  }
+
+  auto parts = path_parts(path);
+
+  if (!parts.dirname.empty()) {
+    // need a null terminated string for use with ::mkdir()/::CreateDirectoryW()
+    std::basic_string<std::remove_pointer<file_path_t>::type> parent(parts.dirname);
+
+    if (!mkdir(parent.c_str())) {
+      return false; // failed to create parent
+    }
+  }
+
+  #ifdef _WIN32
+    // workaround for path MAX_PATH
+    auto dirname = path_prefix + path;
+
+    if (dirname.size() == path_prefix) {
+      return false; // match Posix behaviour for empty-string directory
+    }
+
+    return 0 != ::CreateDirectoryW(dirname.c_str(), nullptr);
+  #else
+    return 0 == ::mkdir(path, S_IRWXU|S_IRWXG|S_IRWXO);
+  #endif
+}
+
 path_parts_t path_parts(const file_path_t path) NOEXCEPT {
   if (!path) {
     return path_parts_t();
@@ -790,6 +840,48 @@ bool read_cwd(
   }
 
   return false;
+}
+
+bool remove(const file_path_t path) NOEXCEPT {
+  try {
+    // a reusable buffer for a full path used during recursive removal
+    std::basic_string<std::remove_pointer<file_path_t>::type> buf;
+
+    // must remove each directory entry recursively (ignore result, check final ::remove() instead)
+    visit_directory(
+      path,
+      [path, &buf](const file_path_t name)->bool {
+        buf.assign(path);
+        buf += path_separator;
+        buf += name;
+        remove(buf.c_str());
+
+        return true;
+      },
+      false
+    );
+  } catch(...) {
+    return false; // possibly a malloc error
+  }
+
+  #ifdef _WIN32
+    // workaround for path MAX_PATH
+    auto long_path = path_prefix + path;
+
+    if (long_path.size() == path_prefix) {
+      return false; // match Posix behaviour for empty-string directory
+    }
+
+    bool result;
+    auto res = exists_directory(result, path) && result
+             ? ::RemoveDirectoryW(long_path.c_str())
+             : ::DeleteFileW(long_path.c_str())
+             ;
+
+    return 0 != res;
+  #else
+    return 0 == ::remove(path);
+  #endif
 }
 
 bool set_cwd(const file_path_t path) NOEXCEPT {

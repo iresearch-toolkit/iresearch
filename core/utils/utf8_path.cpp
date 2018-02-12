@@ -306,30 +306,11 @@ bool utf8_path::mtime(std::time_t& result) const NOEXCEPT {
 }
 
 bool utf8_path::mkdir() const NOEXCEPT {
-  boost::system::error_code code;
-
-  try {
-    return !path_.empty() // at least Boost v1.62 cannot handle empty paths SIGSEGV
-           && boost::filesystem::create_directories(path_, code)
-           && boost::system::errc::success == code.value();
-  } catch(...) { // boost::filesystem::create_directories(...) is not noexcept
-    IR_FRMT_ERROR("Caught exception at: %s code: %d for path: " IR_FILEPATH_SPECIFIER, __FUNCTION__, code.value(), path_.c_str());
-  }
-
-  return false;
+  return irs::file_utils::mkdir(c_str());
 }
 
 bool utf8_path::remove() const NOEXCEPT {
-  boost::system::error_code code;
-
-  try {
-    return boost::filesystem::remove_all(path_, code) > 0
-           && boost::system::errc::success == code.value();
-  } catch(...) { // boost::filesystem::remove_all(...) is not noexcept
-    IR_FRMT_ERROR("Caught exception at: %s code: %d for path: " IR_FILEPATH_SPECIFIER, __FUNCTION__, code.value(), path_.c_str());
-  }
-
-  return false;
+  return irs::file_utils::remove(c_str());
 }
 
 bool utf8_path::rename(const utf8_path& destination) const NOEXCEPT {

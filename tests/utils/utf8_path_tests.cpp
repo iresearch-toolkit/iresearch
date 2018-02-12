@@ -445,6 +445,100 @@ TEST_F(utf8_path_tests, directory) {
   ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
   ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
   ASSERT_TRUE(path.file_size(tmpUint));
+
+  // recursive path creation
+  {
+    std::string directory1("deleteme1");
+    std::string directory2("deleteme2");
+    irs::utf8_path path1;
+    irs::utf8_path path2;
+
+    path1 /= directory1;
+    path2 /= directory1;
+    path2 /= directory2;
+
+    ASSERT_TRUE(path1.exists(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path1.exists_directory(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path1.exists_file(tmpBool) && !tmpBool);
+    ASSERT_FALSE(path1.mtime(tmpTime));
+    ASSERT_FALSE(path1.file_size(tmpUint));
+
+    ASSERT_TRUE(path2.exists(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path2.exists_directory(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path2.exists_file(tmpBool) && !tmpBool);
+    ASSERT_FALSE(path2.mtime(tmpTime));
+    ASSERT_FALSE(path2.file_size(tmpUint));
+
+    ASSERT_TRUE(path2.mkdir());
+
+    ASSERT_TRUE(path1.exists(tmpBool) && tmpBool);
+    ASSERT_TRUE(path1.exists_directory(tmpBool) && tmpBool);
+    ASSERT_TRUE(path1.exists_file(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path1.mtime(tmpTime) && tmpTime > 0);
+    ASSERT_TRUE(path1.file_size(tmpUint));
+
+    ASSERT_TRUE(path2.exists(tmpBool) && tmpBool);
+    ASSERT_TRUE(path2.exists_directory(tmpBool) && tmpBool);
+    ASSERT_TRUE(path2.exists_file(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path2.mtime(tmpTime) && tmpTime > 0);
+    ASSERT_TRUE(path2.file_size(tmpUint));
+
+    ASSERT_TRUE(path1.remove()); // recursive remove successful
+
+    ASSERT_TRUE(path1.exists(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path1.exists_directory(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path1.exists_file(tmpBool) && !tmpBool);
+    ASSERT_FALSE(path1.mtime(tmpTime));
+    ASSERT_FALSE(path1.file_size(tmpUint));
+
+    ASSERT_TRUE(path2.exists(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path2.exists_directory(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path2.exists_file(tmpBool) && !tmpBool);
+    ASSERT_FALSE(path2.mtime(tmpTime));
+    ASSERT_FALSE(path2.file_size(tmpUint));
+
+    ASSERT_FALSE(path2.remove()); // path already removed
+  }
+
+  // recursive path creation failure
+  {
+    std::string data("data");
+    std::string file("deleteme.file");
+    irs::utf8_path path1;
+    irs::utf8_path path2;
+
+    path1 /= file;
+    path2 /= file;
+    path2 /= directory;
+
+    // create file
+    {
+      std::ofstream out(file.c_str());
+      out << data;
+      out.close();
+    }
+
+    ASSERT_TRUE(path1.exists(tmpBool) && tmpBool);
+    ASSERT_TRUE(path1.exists_directory(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path1.exists_file(tmpBool) && tmpBool);
+    ASSERT_TRUE(path1.mtime(tmpTime) && tmpTime > 0);
+    ASSERT_TRUE(path1.file_size(tmpUint) && tmpUint == data.size());
+
+    ASSERT_TRUE(path2.exists(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path2.exists_directory(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path2.exists_file(tmpBool) && !tmpBool);
+    ASSERT_FALSE(path2.mtime(tmpTime));
+    ASSERT_FALSE(path2.file_size(tmpUint));
+
+    ASSERT_FALSE(path2.mkdir());
+
+    ASSERT_TRUE(path1.remove()); // file remove successful
+    ASSERT_TRUE(path1.exists(tmpBool) && tmpBool);
+    ASSERT_TRUE(path1.exists_directory(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path1.exists_file(tmpBool) && tmpBool);
+    ASSERT_TRUE(path1.mtime(tmpTime) && tmpTime > 0);
+    ASSERT_TRUE(path1.file_size(tmpUint) && tmpUint == data.size());
+  }
 }
 
 TEST_F(utf8_path_tests, utf8_absolute) {
