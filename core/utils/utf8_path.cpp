@@ -48,10 +48,12 @@ NS_LOCAL
 
 // in some situations codecvt returned from boost::filesystem::path seems to get corrupted
 // always use UTF-8 locale for reading/writing filesystem paths
-const boost::filesystem::path::codecvt_type& fs_codecvt() {
+const std::codecvt<wchar_t, char, std::mbstate_t>& fs_codecvt() {
   static auto default_locale = iresearch::locale_utils::locale("", true);
 
-  return std::use_facet<boost::filesystem::path::codecvt_type>(default_locale);
+  return std::use_facet<std::codecvt<wchar_t, char, std::mbstate_t>>(
+    default_locale
+  );
 }
 
 static auto& fs_cvt = fs_codecvt();
@@ -277,8 +279,8 @@ utf8_path& utf8_path::operator/=(const std::wstring &ucs2_name) {
 return *this;
 }
 
-bool utf8_path::absolute() const NOEXCEPT {
-  return path_.is_absolute();
+bool utf8_path::absolute(bool& result) const NOEXCEPT {
+  return irs::file_utils::absolute(result, c_str());
 }
 
 bool utf8_path::chdir() const NOEXCEPT {
@@ -327,14 +329,6 @@ bool utf8_path::rename(const utf8_path& destination) const NOEXCEPT {
   return false;
 }
 
-bool utf8_path::rmdir() const {
-  boost::system::error_code code;
-
-  boost::filesystem::remove_all(path_, code);
-
-  return boost::system::errc::success == code.value();
-}
-
 bool utf8_path::visit_directory(
     const directory_visitor& visitor,
     bool include_dot_dir /*= true*/
@@ -369,15 +363,18 @@ std::string utf8_path::utf8() const {
 }
 
 std::string utf8_path::utf8_absolute() const {
+  bool abs;
+
+  if (absolute(abs) && abs) {
+    return utf8(); // already absolute (on failure assume relative path)
+  }
+
   #ifdef _WIN32
-    return absolute()
-      ? utf8()
-      : boost::locale::conv::utf_to_utf<char>(
-          (utf8_path(true) /= path_.native()).native()
-        )
-      ;
+    return boost::locale::conv::utf_to_utf<char>(
+      (utf8_path(true) /= path_.native()).native()
+    );
   #else
-    return absolute() ? utf8() : (utf8_path(true) /= path_.native()).native();
+    return (utf8_path(true) /= path_.native()).native();
   #endif
 }
 

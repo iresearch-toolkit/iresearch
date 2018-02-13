@@ -62,12 +62,12 @@ class mmap_directory_test : public directory_test_case,
 
   virtual void SetUp() override {
     dir_ = irs::directory::make<irs::mmap_directory>(path_.utf8());
-    path_.rmdir();
+    path_.remove();
     path_.mkdir();
   }
 
   virtual void TearDown() override {
-    path_.rmdir();
+    path_.remove();
   }
 
   virtual void TestBody() override {}
@@ -107,7 +107,6 @@ TEST_F(mmap_directory_test, index_io) {
 TEST_F(mmap_directory_test, lock_obtain_release) {
   lock_obtain_release();
 }
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

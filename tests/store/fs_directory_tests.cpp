@@ -71,12 +71,12 @@ class fs_directory_test : public directory_test_case,
 
   virtual void SetUp() override {
     dir_ = directory::make<fs_directory>(path_.utf8());
-    path_.rmdir();
+    path_.remove();
     path_.mkdir();
   }
 
   virtual void TearDown() override {
-    path_.rmdir();
+    path_.remove();
   }
 
   virtual void TestBody() override {}

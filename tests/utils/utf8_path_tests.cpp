@@ -115,28 +115,32 @@ TEST_F(utf8_path_tests, absolute) {
   // empty
   {
     irs::utf8_path path;
-    ASSERT_FALSE(path.absolute());
+    bool tmpBool;
+    ASSERT_TRUE(path.absolute(tmpBool) && !tmpBool);
   }
 
   // cwd
   {
     irs::utf8_path path(true);
-    ASSERT_TRUE(path.absolute());
+    bool tmpBool;
+    ASSERT_TRUE(path.absolute(tmpBool) && tmpBool);
   }
 
   // relative
   {
     irs::utf8_path path;
+    bool tmpBool;
     path += "deleteme";
-    ASSERT_FALSE(path.absolute());
+    ASSERT_TRUE(path.absolute(tmpBool) && !tmpBool);
   }
 
   // absolute
   {
     irs::utf8_path cwd(true);
     irs::utf8_path path;
+    bool tmpBool;
     path += cwd.native();
-    ASSERT_TRUE(path.absolute());
+    ASSERT_TRUE(path.absolute(tmpBool) && tmpBool);
   }
 }
 
@@ -547,23 +551,25 @@ TEST_F(utf8_path_tests, utf8_absolute) {
     std::string directory("deleteme");
     irs::utf8_path expected(true);
     irs::utf8_path path;
+    bool tmpBool;
 
     expected /= directory;
     path /= directory;
 
-    ASSERT_TRUE(expected.absolute()); // tests below assume expected is absolute
-    ASSERT_TRUE(!path.absolute());
+    ASSERT_TRUE(expected.absolute(tmpBool) && tmpBool); // tests below assume expected is absolute
+    ASSERT_TRUE(path.absolute(tmpBool) && !tmpBool);
     ASSERT_TRUE(expected.utf8() == path.utf8_absolute());
-    ASSERT_TRUE(irs::utf8_path(path.utf8_absolute()).absolute());
+    ASSERT_TRUE(irs::utf8_path(path.utf8_absolute()).absolute(tmpBool) && tmpBool);
   }
 
   // absolute -> absolute
   {
     std::basic_string<std::remove_pointer<file_path_t>::type> expected;
     irs::utf8_path path(true);
+    bool tmpBool;
 
     ASSERT_TRUE(irs::file_utils::read_cwd(expected));
-    ASSERT_TRUE(path.absolute());
+    ASSERT_TRUE(path.absolute(tmpBool) && tmpBool);
     ASSERT_TRUE(irs::utf8_path(expected).utf8() == path.utf8_absolute());
     ASSERT_TRUE(path.utf8() == path.utf8_absolute());
   }

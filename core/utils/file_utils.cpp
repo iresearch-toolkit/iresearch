@@ -408,6 +408,28 @@ bool file_sync(int fd) NOEXCEPT {
 // --SECTION--                                                             stats
 // -----------------------------------------------------------------------------
 
+bool absolute(bool& result, const file_path_t path) NOEXCEPT {
+  if (!path) {
+    return false;
+  }
+
+  #ifdef _WIN32
+    if (MAX_PATH > wcslen(path)) {
+      result = !PathIsRelativeW(path);
+    } else {
+      // ensure that PathIsRelativeW(...) is given a value shorter than MAX_PATH
+      // still ok since to determine if absolute only need the start of the path
+      std::basic_string<wchar_t> buf(path, MAX_PATH - 1); // -1 for '\0'
+
+      result = !PathIsRelativeW(buf.c_str());
+    }
+  #else
+    result = path[0] == '/'; // a null terminated string is at least size 1
+  #endif
+
+  return true;
+}
+
 bool block_size(file_blksize_t& result, const file_path_t file) NOEXCEPT {
   assert(file != nullptr);
 #ifdef _WIN32
@@ -688,7 +710,7 @@ bool mkdir(const file_path_t path) NOEXCEPT {
     // workaround for path MAX_PATH
     auto dirname = path_prefix + path;
 
-    if (dirname.size() == path_prefix) {
+    if (dirname.size() == path_prefix.size()) {
       return false; // match Posix behaviour for empty-string directory
     }
 
@@ -868,7 +890,7 @@ bool remove(const file_path_t path) NOEXCEPT {
     // workaround for path MAX_PATH
     auto long_path = path_prefix + path;
 
-    if (long_path.size() == path_prefix) {
+    if (long_path.size() == path_prefix.size()) {
       return false; // match Posix behaviour for empty-string directory
     }
 
@@ -887,12 +909,12 @@ bool remove(const file_path_t path) NOEXCEPT {
 bool set_cwd(const file_path_t path) NOEXCEPT {
   #ifdef _WIN32
     if (PathIsRelative(path)) {
-      return SetCurrentDirectory(path);
+      return 0 != SetCurrentDirectory(path);
     }
 
     auto fullpath = path_prefix + path;
 
-    return SetCurrentDirectory(fullpath.c_str());
+    return 0 != SetCurrentDirectory(fullpath.c_str());
   #else
     return 0 == chdir(path);
   #endif

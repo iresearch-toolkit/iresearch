@@ -126,9 +126,17 @@ bool get_ignored_words(
     ;
 
   if (custom_stopword_path) {
+    bool absolute;
+
     stopword_path = irs::utf8_path(custom_stopword_path);
 
-    if (!stopword_path.absolute()) {
+    if (!stopword_path.absolute(absolute)) {
+      IR_FRMT_ERROR("Failed to determine absoluteness of path: %s", stopword_path.utf8().c_str());
+
+      return false;
+    }
+
+    if (!absolute) {
       stopword_path = irs::utf8_path(true) /= custom_stopword_path;
     }
   }

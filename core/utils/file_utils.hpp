@@ -92,6 +92,8 @@ bool verify_lock_file(const file_path_t file);
 // --SECTION--                                                             stats
 // -----------------------------------------------------------------------------
 
+bool absolute(bool& result, const file_path_t path) NOEXCEPT;
+
 bool block_size(file_blksize_t& result, const file_path_t file) NOEXCEPT;
 bool block_size(file_blksize_t& result, int fd) NOEXCEPT;
 
