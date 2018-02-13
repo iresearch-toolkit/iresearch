@@ -39,7 +39,7 @@ matrix:
         apt:
           sources:
             - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
+            #- george-edison55-precise-backports
           packages:
             - g++-4.8
             - valgrind
@@ -58,7 +58,7 @@ matrix:
         apt:
           sources:
             - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
+            #- george-edison55-precise-backports
           packages:
             - g++-4.8
             - valgrind
@@ -77,7 +77,7 @@ matrix:
         apt:
           sources:
             - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
+            #- george-edison55-precise-backports
           packages:
             - g++-4.8
             - valgrind
@@ -96,7 +96,7 @@ matrix:
         apt:
           sources:
             - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
+            #- george-edison55-precise-backports
           packages:
             - g++-4.8
             - valgrind
@@ -119,7 +119,7 @@ matrix:
         apt:
           sources:
             - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
+            #- george-edison55-precise-backports
           packages:
             - g++-4.9
             - valgrind
@@ -138,7 +138,7 @@ matrix:
         apt:
           sources:
             - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
+            #- george-edison55-precise-backports
           packages:
             - g++-4.9
             - valgrind
@@ -157,7 +157,7 @@ matrix:
         apt:
           sources:
             - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
+            #- george-edison55-precise-backports
           packages:
             - g++-4.9
             - valgrind
@@ -176,7 +176,7 @@ matrix:
         apt:
           sources:
             - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
+            #- george-edison55-precise-backports
           packages:
             - g++-4.9
             - valgrind
@@ -199,7 +199,7 @@ matrix:
         apt:
           sources:
             - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
+            #- george-edison55-precise-backports
           packages:
             - g++-5
             - valgrind
@@ -217,7 +217,7 @@ matrix:
         apt:
           sources:
             - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
+            #- george-edison55-precise-backports
           packages:
             - g++-5
             - valgrind
@@ -235,7 +235,7 @@ matrix:
         apt:
           sources:
             - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
+            #- george-edison55-precise-backports
           packages:
             - g++-5
             - valgrind
@@ -253,7 +253,7 @@ matrix:
         apt:
           sources:
             - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
+            #- george-edison55-precise-backports
           packages:
             - g++-5
             - valgrind
@@ -275,7 +275,7 @@ matrix:
         apt:
           sources:
             - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
+            #- george-edison55-precise-backports
           packages:
             - g++-6
             - valgrind
@@ -293,7 +293,7 @@ matrix:
         apt:
           sources:
             - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
+            #- george-edison55-precise-backports
           packages:
             - g++-6
             - valgrind
@@ -311,7 +311,7 @@ matrix:
         apt:
           sources:
             - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
+            #- george-edison55-precise-backports
           packages:
             - g++-6
             - valgrind
@@ -329,7 +329,7 @@ matrix:
         apt:
           sources:
             - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
+            #- george-edison55-precise-backports
           packages:
             - g++-6
             - valgrind
@@ -352,7 +352,7 @@ matrix:
         apt:
           sources:
             - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
+            #- george-edison55-precise-backports
           packages:
             - g++-7
             - valgrind
@@ -371,7 +371,7 @@ matrix:
         apt:
           sources:
             - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
+            #- george-edison55-precise-backports
           packages:
             - g++-7
             - valgrind
@@ -390,7 +390,7 @@ matrix:
         apt:
           sources:
             - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
+            #- george-edison55-precise-backports
           packages:
             - g++-7
             - valgrind
@@ -409,7 +409,7 @@ matrix:
         apt:
           sources:
             - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
+            #- george-edison55-precise-backports
           packages:
             - g++-7
             - valgrind
