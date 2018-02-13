@@ -348,16 +348,19 @@ matrix:
     ############################################################################
     - os: linux
       dist: trusty # gcc7 is not available in `precise`
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            #- george-edison55-precise-backports
-          packages:
-            - g++-7
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
+#      addons:
+#        apt:
+#          sources:
+#            - ubuntu-toolchain-r-test
+#            #- george-edison55-precise-backports
+#          packages:
+#            - g++-7
+#            - valgrind
+#            - cmake-data
+#            - cmake
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
@@ -367,16 +370,19 @@ matrix:
     ############################################################################
     - os: linux
       dist: trusty # gcc7 is not available in `precise`
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            #- george-edison55-precise-backports
-          packages:
-            - g++-7
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
+#      addons:
+#        apt:
+#          sources:
+#            - ubuntu-toolchain-r-test
+#            #- george-edison55-precise-backports
+#          packages:
+#            - g++-7
+#            - valgrind
+#            - cmake-data
+#            - cmake
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
         - BUILD_TYPE="Release" STATIC_LIB="true"
@@ -386,16 +392,19 @@ matrix:
     ############################################################################
     - os: linux
       dist: trusty # gcc7 is not available in `precise`
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            #- george-edison55-precise-backports
-          packages:
-            - g++-7
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
+#      addons:
+#        apt:
+#          sources:
+#            - ubuntu-toolchain-r-test
+#            #- george-edison55-precise-backports
+#          packages:
+#            - g++-7
+#            - valgrind
+#            - cmake-data
+#            - cmake
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
@@ -405,16 +414,19 @@ matrix:
     ############################################################################
     - os: linux
       dist: trusty # gcc7 is not available in `precise`
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            #- george-edison55-precise-backports
-          packages:
-            - g++-7
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
+#      addons:
+#        apt:
+#          sources:
+#            - ubuntu-toolchain-r-test
+#            #- george-edison55-precise-backports
+#          packages:
+#            - g++-7
+#            - valgrind
+#            - cmake-data
+#            - cmake
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
         - BUILD_TYPE="Release"
@@ -508,7 +520,6 @@ matrix:
         - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:*europarl_docs*:-:*monarch_eco_onthology*"
 
 before_install:
-  - travis_retry sudo apt-get update
   - eval "${SET_ENV}"
 
 install:
