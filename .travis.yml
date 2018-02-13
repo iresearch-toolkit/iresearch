@@ -508,6 +508,7 @@ matrix:
         - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:*europarl_docs*:-:*monarch_eco_onthology*"
 
 before_install:
+  - travis_retry sudo apt-get update
   - eval "${SET_ENV}"
 
 install:
@@ -641,6 +642,7 @@ script:
       else
         make iresearch-tests${BUILD_TYPE_SUFFIX}
       fi
+      ulimit -n 1024 # required for MacOS
       if ! travis_wait 60 ./bin/iresearch-tests${TEST_EXECUTABLE_SUFFIX} ${TEST_PARAMS}; then
         exit 1
       fi
