@@ -349,6 +349,7 @@ matrix:
     - os: linux
       dist: trusty # gcc7 is not available in `precise`
       before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
         - travis_retry sudo apt-get update
         - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
 #      addons:
@@ -371,6 +372,7 @@ matrix:
     - os: linux
       dist: trusty # gcc7 is not available in `precise`
       before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
         - travis_retry sudo apt-get update
         - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
 #      addons:
@@ -393,6 +395,7 @@ matrix:
     - os: linux
       dist: trusty # gcc7 is not available in `precise`
       before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
         - travis_retry sudo apt-get update
         - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
 #      addons:
@@ -415,6 +418,7 @@ matrix:
     - os: linux
       dist: trusty # gcc7 is not available in `precise`
       before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
         - travis_retry sudo apt-get update
         - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
 #      addons:
