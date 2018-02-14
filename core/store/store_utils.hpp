@@ -234,6 +234,7 @@ size_t write_bytes(OutputIterator& out, const T* value, size_t size) {
 
   size = sizeof(T) * size;
   out += size; // reserve space
+  assert(size_t(std::distance(&(*start), &(*out))) == size); // std::memcpy() only valid for contiguous blocks
   std::memcpy(&(*start), value, size);
 
   return size;

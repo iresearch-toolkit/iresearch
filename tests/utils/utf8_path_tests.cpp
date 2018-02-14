@@ -52,48 +52,94 @@ class utf8_path_tests: public test_base {
 NS_END
 
 TEST_F(utf8_path_tests, current) {
-  irs::utf8_path path(true);
-  std::string directory("deleteme");
-  std::string directory2("deleteme2");
-  bool tmpBool;
-  std::time_t tmpTime;
-  uint64_t tmpUint;
+  // absolute path
+  {
+    irs::utf8_path path(true);
+    std::string directory("deleteme");
+    std::string directory2("deleteme2");
+    bool tmpBool;
+    std::time_t tmpTime;
+    uint64_t tmpUint;
 
-  #ifdef _WIN32
-    wchar_t buf[_MAX_PATH];
-    std::basic_string<wchar_t> current_dir(_wgetcwd(buf, _MAX_PATH));
-    std::basic_string<wchar_t> prefix(L"\\\\?\\"); // prepended by chdir() and returned by win32
-  #else
-    char buf[PATH_MAX];
-    std::basic_string<char> current_dir(getcwd(buf, PATH_MAX));
-    std::basic_string<char> prefix;
-  #endif
+    #ifdef _WIN32
+      wchar_t buf[_MAX_PATH];
+      std::basic_string<wchar_t> current_dir(_wgetcwd(buf, _MAX_PATH));
+      std::basic_string<wchar_t> prefix(L"\\\\?\\"); // prepended by chdir() and returned by win32
+    #else
+      char buf[PATH_MAX];
+      std::basic_string<char> current_dir(getcwd(buf, PATH_MAX));
+      std::basic_string<char> prefix;
+    #endif
 
-  ASSERT_TRUE(current_dir == (prefix + path.native()));
-  ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
-  ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
-  ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
-  ASSERT_TRUE(path.file_size(tmpUint));
+    ASSERT_TRUE(current_dir == (prefix + path.native()));
+    ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
+    ASSERT_TRUE(path.exists_directory(tmpBool) && tmpBool);
+    ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
+    ASSERT_TRUE(path.file_size(tmpUint));
 
-  path/=directory;
-  ASSERT_TRUE(path.mkdir());
-  ASSERT_TRUE(path.chdir());
+    path /= directory;
+    ASSERT_TRUE(path.mkdir());
+    ASSERT_TRUE(path.chdir());
 
-  ASSERT_TRUE(path.native() == irs::utf8_path(true).native());
-  ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
-  ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
-  ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
-  ASSERT_TRUE(path.file_size(tmpUint));
+    ASSERT_TRUE(path.native() == irs::utf8_path(true).native());
+    ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
+    ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
+    ASSERT_TRUE(path.file_size(tmpUint));
 
-  path /= directory2;
-  ASSERT_TRUE(path.mkdir());
-  ASSERT_TRUE(path.chdir());
+    path /= directory2;
+    ASSERT_TRUE(path.mkdir());
+    ASSERT_TRUE(path.chdir());
 
-  ASSERT_TRUE(path.native() == irs::utf8_path(true).native());
-  ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
-  ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
-  ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
-  ASSERT_TRUE(path.file_size(tmpUint));
+    ASSERT_TRUE(path.native() == irs::utf8_path(true).native());
+    ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
+    ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
+    ASSERT_TRUE(path.file_size(tmpUint));
+  }
+
+  // relative path
+  {
+    irs::utf8_path path;
+    std::string directory("deleteme");
+    std::string directory2("deleteme2");
+    bool tmpBool;
+    std::time_t tmpTime;
+    uint64_t tmpUint;
+
+    #ifdef _WIN32
+      wchar_t buf[_MAX_PATH];
+      std::basic_string<wchar_t> current_dir(_wgetcwd(buf, _MAX_PATH));
+      std::basic_string<wchar_t> prefix(L"\\\\?\\"); // prepended by chdir() and returned by win32
+    #else
+      char buf[PATH_MAX];
+      std::basic_string<char> current_dir(getcwd(buf, PATH_MAX));
+      std::basic_string<char> prefix;
+    #endif
+
+    ASSERT_TRUE(path.exists(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path.exists_directory(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
+    ASSERT_FALSE(path.mtime(tmpTime));
+    ASSERT_FALSE(path.file_size(tmpUint));
+
+    path /= directory;
+    ASSERT_TRUE(path.mkdir());
+
+    ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
+    ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
+    ASSERT_TRUE(path.file_size(tmpUint));
+
+    path /= directory2;
+    ASSERT_TRUE(path.mkdir());
+
+    ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
+    ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
+    ASSERT_TRUE(path.file_size(tmpUint));
+  }
 }
 
 TEST_F(utf8_path_tests, empty) {
@@ -424,33 +470,117 @@ TEST_F(utf8_path_tests, file) {
 }
 
 TEST_F(utf8_path_tests, directory) {
-  irs::utf8_path path;
-  std::string directory("deleteme");
   bool tmpBool;
   std::time_t tmpTime;
   uint64_t tmpUint;
 
-  ASSERT_TRUE(path.exists(tmpBool) && !tmpBool);
-  ASSERT_TRUE(path.exists_directory(tmpBool) && !tmpBool);
-  ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
-  ASSERT_FALSE(path.mtime(tmpTime));
-  ASSERT_FALSE(path.file_size(tmpUint));
+  // absolute path creation
+  {
+    irs::utf8_path path(true);
+    std::string directory("deletemeA");
 
-  path/=directory;
-  ASSERT_TRUE(path.exists(tmpBool) && !tmpBool);
-  ASSERT_TRUE(path.exists_directory(tmpBool) && !tmpBool);
-  ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
-  ASSERT_FALSE(path.mtime(tmpTime));
-  ASSERT_FALSE(path.file_size(tmpUint));
+    ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
+    ASSERT_TRUE(path.exists_directory(tmpBool) && tmpBool);
+    ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path.mtime(tmpTime));
+    ASSERT_TRUE(path.file_size(tmpUint));
 
-  ASSERT_TRUE(path.mkdir());
-  ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
-  ASSERT_TRUE(path.exists_directory(tmpBool) && tmpBool);
-  ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
-  ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
-  ASSERT_TRUE(path.file_size(tmpUint));
+    path /= directory;
+    ASSERT_TRUE(path.exists(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path.exists_directory(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
+    ASSERT_FALSE(path.mtime(tmpTime));
+    ASSERT_FALSE(path.file_size(tmpUint));
 
-  // recursive path creation
+    ASSERT_TRUE(path.mkdir());
+    ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
+    ASSERT_TRUE(path.exists_directory(tmpBool) && tmpBool);
+    ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
+    ASSERT_TRUE(path.file_size(tmpUint));
+  }
+
+  // relative path creation
+  {
+    irs::utf8_path path;
+    std::string directory("deletemeR");
+
+    ASSERT_TRUE(path.exists(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path.exists_directory(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
+    ASSERT_FALSE(path.mtime(tmpTime));
+    ASSERT_FALSE(path.file_size(tmpUint));
+
+    path /= directory;
+    ASSERT_TRUE(path.exists(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path.exists_directory(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
+    ASSERT_FALSE(path.mtime(tmpTime));
+    ASSERT_FALSE(path.file_size(tmpUint));
+
+    ASSERT_TRUE(path.mkdir());
+    ASSERT_TRUE(path.exists(tmpBool) && tmpBool);
+    ASSERT_TRUE(path.exists_directory(tmpBool) && tmpBool);
+    ASSERT_TRUE(path.exists_file(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
+    ASSERT_TRUE(path.file_size(tmpUint));
+  }
+
+  // recursive path creation (absolute)
+  {
+    std::string directory1("deleteme1");
+    std::string directory2("deleteme2");
+    irs::utf8_path path1(true);
+    irs::utf8_path path2(true);
+
+    path1 /= directory1;
+    path2 /= directory1;
+    path2 /= directory2;
+
+    ASSERT_TRUE(path1.exists(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path1.exists_directory(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path1.exists_file(tmpBool) && !tmpBool);
+    ASSERT_FALSE(path1.mtime(tmpTime));
+    ASSERT_FALSE(path1.file_size(tmpUint));
+
+    ASSERT_TRUE(path2.exists(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path2.exists_directory(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path2.exists_file(tmpBool) && !tmpBool);
+    ASSERT_FALSE(path2.mtime(tmpTime));
+    ASSERT_FALSE(path2.file_size(tmpUint));
+
+    ASSERT_TRUE(path2.mkdir());
+
+    ASSERT_TRUE(path1.exists(tmpBool) && tmpBool);
+    ASSERT_TRUE(path1.exists_directory(tmpBool) && tmpBool);
+    ASSERT_TRUE(path1.exists_file(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path1.mtime(tmpTime) && tmpTime > 0);
+    ASSERT_TRUE(path1.file_size(tmpUint));
+
+    ASSERT_TRUE(path2.exists(tmpBool) && tmpBool);
+    ASSERT_TRUE(path2.exists_directory(tmpBool) && tmpBool);
+    ASSERT_TRUE(path2.exists_file(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path2.mtime(tmpTime) && tmpTime > 0);
+    ASSERT_TRUE(path2.file_size(tmpUint));
+
+    ASSERT_TRUE(path1.remove()); // recursive remove successful
+
+    ASSERT_TRUE(path1.exists(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path1.exists_directory(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path1.exists_file(tmpBool) && !tmpBool);
+    ASSERT_FALSE(path1.mtime(tmpTime));
+    ASSERT_FALSE(path1.file_size(tmpUint));
+
+    ASSERT_TRUE(path2.exists(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path2.exists_directory(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path2.exists_file(tmpBool) && !tmpBool);
+    ASSERT_FALSE(path2.mtime(tmpTime));
+    ASSERT_FALSE(path2.file_size(tmpUint));
+
+    ASSERT_FALSE(path2.remove()); // path already removed
+  }
+
+  // recursive path creation (relative)
   {
     std::string directory1("deleteme1");
     std::string directory2("deleteme2");
@@ -507,6 +637,7 @@ TEST_F(utf8_path_tests, directory) {
   // recursive path creation failure
   {
     std::string data("data");
+    std::string directory("deleteme");
     std::string file("deleteme.file");
     irs::utf8_path path1;
     irs::utf8_path path2;
