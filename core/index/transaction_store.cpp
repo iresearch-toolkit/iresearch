@@ -31,6 +31,54 @@ NS_LOCAL
 
 static const size_t DEFAULT_BUFFER_SIZE = 512; // arbitrary value
 
+///////////////////////////////////////////////////////////////////////////////
+/// @brief write to 'out' array of data pointed by 'value' of length 'size'
+///        optimization for writing to a contiguous memory block
+/// @note OutputIterator::operator*() must return byte_type& to a contiguous
+///       block of memory
+/// @return bytes written
+////////////////////////////////////////////////////////////////////////////////
+template<typename OutputIterator, typename T>
+size_t write_bytes_block(OutputIterator& out, const T* value, size_t size) {
+  // ensure the following is defined: byte_type& OutputIterator::operator*()
+  typedef typename std::enable_if<
+    std::is_same<decltype(((OutputIterator*)(nullptr))->operator*()), irs::byte_type&>::value,
+    irs::byte_type&
+  >::type ref_type;
+  auto start = out; // do not dereference yet since space reservation could change address
+
+  size = sizeof(T) * size;
+  out += size; // reserve space
+
+  ref_type dst = *start; // assign to ensure std::enable_if<..> is applied
+
+  assert(size_t(std::distance(&(*start), &(*out))) == size); // std::memcpy() only valid for contiguous blocks
+  std::memcpy(&dst, value, size); // optimization for writing to a contiguous memory block
+
+  return size;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write to 'out' raw byte representation of data in 'value'
+///        optimization for writing to a contiguous memory block
+/// @return bytes written
+////////////////////////////////////////////////////////////////////////////////
+template<typename OutputIterator, typename T>
+size_t write_bytes_block(OutputIterator& out, const T& value) {
+  return write_bytes_block(out, &value, 1);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write to 'out' data in 'value'
+///        optimization for writing to a contiguous memory block
+///        same output format as irs::vwrite_string
+////////////////////////////////////////////////////////////////////////////////
+template<typename OutputIterator, typename StringType>
+void vwrite_string_block(OutputIterator& out, const StringType& value) {
+  irs::vwrite<uint64_t>(out, value.size());
+  write_bytes_block(out, value.c_str(), value.size());
+}
+
 // state at start of each unique column
 struct column_stats_t {
   size_t offset = 0; // offset to previous column data start in buffer
@@ -1027,6 +1075,12 @@ store_reader store_reader::reopen() const {
   return reader_impl.store_.reader(); // store changed, create new reader
 }
 
+void store_writer::bstring_data_output::write_bytes(
+  const byte_type* b, size_t size
+) {
+  write_bytes_block(out_, b, size);
+}
+
 void store_writer::bstring_output::ensure(size_t pos) {
   if (pos >= buf_.size()) {
     oversize(buf_, irs::math::roundup_power2(pos + 1)); // 2*size growth policy, +1 for offset->size
@@ -1216,7 +1270,7 @@ bool store_writer::index(
     static const doc_stats_t initial;
 
     doc_state_offset = state.out_.file_pointer();
-    irs::write_bytes(state.out_, initial);
+    write_bytes_block(state.out_, initial);
   }
 
   auto& field_state_offset = map_utils::try_emplace(
@@ -1230,7 +1284,7 @@ bool store_writer::index(
     static const field_stats_t initial;
 
     field_state_offset = state.out_.file_pointer();
-    irs::write_bytes(state.out_, initial);
+    write_bytes_block(state.out_, initial);
   }
 
   while (tokens.next()) {
@@ -1280,7 +1334,7 @@ bool store_writer::index(
         static const term_stats_t initial;
 
         term_state_offset_ref = state.out_.file_pointer();
-        irs::write_bytes(state.out_, initial);
+        write_bytes_block(state.out_, initial);
         ++(reinterpret_cast<field_stats_t&>(state.out_[field_state_offset]).unq_term_count);
       }
 
@@ -1354,7 +1408,7 @@ bool store_writer::index(
     irs::write<uint8_t>(out, has_pay ? 1 : 0); // write has-payload flag
 
     if (has_pay) {
-      irs::vwrite_string(out, pay->value);
+      vwrite_string_block(out, pay->value);
     }
 
     if (term_state.offset) {
@@ -1433,7 +1487,7 @@ bool store_writer::store(
     static const column_stats_t initial;
 
     column_state_offset = state.out_.file_pointer(); // same as in 'entries_'
-    irs::write_bytes(state.out_, initial);
+    write_bytes(state.out_, initial);
   }
 
   auto& column_state = reinterpret_cast<column_stats_t&>(state.out_[column_state_offset]);
