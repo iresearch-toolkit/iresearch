@@ -707,12 +707,19 @@ bool mkdir(const file_path_t path) NOEXCEPT {
   }
 
   #ifdef _WIN32
+    bool abs;
+
+    if (!absolute(abs, path)) {
+      return false;
+    }
+
+    // '\\?\' cannot be used with relative paths
+    if (!abs) {
+      return 0 != CreateDirectoryW(path, nullptr);
+    }
+
     // workaround for path MAX_PATH
     auto dirname = path_prefix + path;
-
-    if (dirname.size() == path_prefix.size()) {
-      return false; // match Posix behaviour for empty-string directory
-    }
 
     return 0 != ::CreateDirectoryW(dirname.c_str(), nullptr);
   #else
@@ -887,17 +894,30 @@ bool remove(const file_path_t path) NOEXCEPT {
   }
 
   #ifdef _WIN32
-    // workaround for path MAX_PATH
-    auto long_path = path_prefix + path;
+    bool abs;
 
-    if (long_path.size() == path_prefix.size()) {
-      return false; // match Posix behaviour for empty-string directory
+    if (!absolute(abs, path)) {
+      return false;
     }
+
+    // '\\?\' cannot be used with relative paths
+    if (!abs) {
+      bool result;
+      auto res = exists_directory(result, path) && result
+               ? ::RemoveDirectoryW(path)
+               : ::DeleteFileW(path)
+               ;
+
+      return 0 != res;
+    }
+
+    // workaround for path MAX_PATH
+    auto fullpath = path_prefix + path;
 
     bool result;
     auto res = exists_directory(result, path) && result
-             ? ::RemoveDirectoryW(long_path.c_str())
-             : ::DeleteFileW(long_path.c_str())
+             ? ::RemoveDirectoryW(fullpath.c_str())
+             : ::DeleteFileW(fullpath.c_str())
              ;
 
     return 0 != res;
@@ -908,10 +928,18 @@ bool remove(const file_path_t path) NOEXCEPT {
 
 bool set_cwd(const file_path_t path) NOEXCEPT {
   #ifdef _WIN32
-    if (PathIsRelative(path)) {
+    bool abs;
+
+    if (!absolute(abs, path)) {
+      return false;
+    }
+
+    // '\\?\' cannot be used with relative paths
+    if (!abs) {
       return 0 != SetCurrentDirectory(path);
     }
 
+    // workaround for path MAX_PATH
     auto fullpath = path_prefix + path;
 
     return 0 != SetCurrentDirectory(fullpath.c_str());

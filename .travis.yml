@@ -35,16 +35,10 @@ matrix:
     # Debug build, static library
     ############################################################################
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-4.8
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
       env:
         - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
@@ -54,16 +48,10 @@ matrix:
     # Release build, static library
     ############################################################################
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-4.8
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
       env:
         - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
         - BUILD_TYPE="Release" STATIC_LIB="true"
@@ -73,16 +61,10 @@ matrix:
     # Debug build, shared library
     ############################################################################
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-4.8
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
       env:
         - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
@@ -92,16 +74,10 @@ matrix:
     # Release build, shared library
     ############################################################################
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-4.8
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
       env:
         - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
         - BUILD_TYPE="Release"
@@ -115,16 +91,10 @@ matrix:
     # Debug build, static library
     ############################################################################
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-4.9
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-4.9 valgrind
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
@@ -134,16 +104,10 @@ matrix:
     # Release build, static library
     ############################################################################
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-4.9
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-4.9 valgrind
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
         - BUILD_TYPE="Release" STATIC_LIB="true"
@@ -153,16 +117,10 @@ matrix:
     # Debug build, shared library
     ############################################################################
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-4.9
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-4.9 valgrind
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
@@ -172,16 +130,10 @@ matrix:
     # Release build, shared library
     ############################################################################
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-4.9
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-4.9 valgrind
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
         - BUILD_TYPE="Release"
@@ -195,16 +147,10 @@ matrix:
     # Debug build, static library
     ############################################################################
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-5
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-5 valgrind
       env:
         - SET_ENV="CC=gcc-5 && CXX=g++-5"
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
@@ -213,16 +159,10 @@ matrix:
     # Release build, static library
     ############################################################################
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-5
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-5 valgrind
       env:
         - SET_ENV="CC=gcc-5 && CXX=g++-5"
         - BUILD_TYPE="Release" STATIC_LIB="true"
@@ -231,16 +171,10 @@ matrix:
     # Debug build, shared library
     ############################################################################
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-5
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-5 valgrind
       env:
         - SET_ENV="CC=gcc-5 && CXX=g++-5"
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
@@ -249,16 +183,10 @@ matrix:
     # Release build, shared library
     ############################################################################
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-5
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-5 valgrind
       env:
         - SET_ENV="CC=gcc-5 && CXX=g++-5"
         - BUILD_TYPE="Release"
@@ -271,16 +199,10 @@ matrix:
     # Debug build, static library
     ############################################################################
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-6
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-6 valgrind
       env:
         - SET_ENV="CC=gcc-6 && CXX=g++-6"
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
@@ -289,16 +211,10 @@ matrix:
     # Release build, static library
     ############################################################################
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-6
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-6 valgrind
       env:
         - SET_ENV="CC=gcc-6 && CXX=g++-6"
         - BUILD_TYPE="Release" STATIC_LIB="true"
@@ -307,16 +223,10 @@ matrix:
     # Debug build, shared library
     ############################################################################
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-6
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-6 valgrind
       env:
         - SET_ENV="CC=gcc-6 && CXX=g++-6"
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
@@ -325,16 +235,10 @@ matrix:
     # Release build, shared library
     ############################################################################
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-6
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-6 valgrind
       env:
         - SET_ENV="CC=gcc-6 && CXX=g++-6"
         - BUILD_TYPE="Release"
@@ -348,16 +252,10 @@ matrix:
     ############################################################################
     - os: linux
       dist: trusty # gcc7 is not available in `precise`
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-7
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
@@ -367,16 +265,10 @@ matrix:
     ############################################################################
     - os: linux
       dist: trusty # gcc7 is not available in `precise`
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-7
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
         - BUILD_TYPE="Release" STATIC_LIB="true"
@@ -386,16 +278,10 @@ matrix:
     ############################################################################
     - os: linux
       dist: trusty # gcc7 is not available in `precise`
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-7
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
@@ -405,16 +291,10 @@ matrix:
     ############################################################################
     - os: linux
       dist: trusty # gcc7 is not available in `precise`
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-7
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
         - BUILD_TYPE="Release"
@@ -641,6 +521,7 @@ script:
       else
         make iresearch-tests${BUILD_TYPE_SUFFIX}
       fi
+      ulimit -n 1024 # required for MacOS
       if ! travis_wait 60 ./bin/iresearch-tests${TEST_EXECUTABLE_SUFFIX} ${TEST_PARAMS}; then
         exit 1
       fi

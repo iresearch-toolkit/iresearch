@@ -321,7 +321,7 @@ bool utf8_path::rename(const utf8_path& destination) const NOEXCEPT {
   try {
     boost::filesystem::rename(path_, destination.path_, code);
 
-    return true;
+    return boost::system::errc::success == code.value();
   } catch (...) {
     IR_FRMT_ERROR("Caught exception at: %s code: %d for path: " IR_FILEPATH_SPECIFIER, __FUNCTION__,code.value(), path_.c_str());
   }

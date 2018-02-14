@@ -230,11 +230,16 @@ inline ContType read_strings(data_input& in) {
 ////////////////////////////////////////////////////////////////////////////////
 template<typename OutputIterator, typename T>
 size_t write_bytes(OutputIterator& out, const T* value, size_t size) {
-  auto start = out;
+  auto* data = reinterpret_cast<const byte_type*>(value);
 
   size = sizeof(T) * size;
-  out += size; // reserve space
-  std::memcpy(&(*start), value, size);
+
+  // write data out byte-by-byte
+  for (auto i = size; i; --i) {
+    *out = *data;
+    ++out;
+    ++data;
+  }
 
   return size;
 }
@@ -251,8 +256,8 @@ size_t write_bytes(OutputIterator& out, const T& value) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read a value of the specified type from 'in'
 ////////////////////////////////////////////////////////////////////////////////
-template<typename T, typename InputIterator>
-T& read_ref(InputIterator& in) {
+template<typename T>
+T& read_ref(const byte_type*& in) {
   auto& data = reinterpret_cast<T&>(*in);
 
   in += sizeof(T); // increment past value
@@ -263,8 +268,8 @@ T& read_ref(InputIterator& in) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read an array of the specified type and length of 'size' from 'in'
 ////////////////////////////////////////////////////////////////////////////////
-template<typename T, typename InputIterator>
-T* read_ref(InputIterator& in, size_t size) {
+template<typename T>
+T* read_ref(const byte_type*& in, size_t size) {
   auto* data = reinterpret_cast<T*>(&(*in));
 
   in += sizeof(T) * size; // increment past value
@@ -298,10 +303,9 @@ void vwrite_string(OutputIterator& out, const StringType& value) {
 ////////////////////////////////////////////////////////////////////////////////
 template<
   typename StringType,
-  typename InputIterator,
   typename TraitsType = typename StringType::traits_type
 >
-StringType vread_string(InputIterator& in) {
+StringType vread_string(const byte_type*& in) {
   typedef typename TraitsType::char_type char_type;
   const auto size = vread<uint64_t>(in);
 
