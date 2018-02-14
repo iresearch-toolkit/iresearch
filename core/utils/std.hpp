@@ -216,27 +216,20 @@ template<typename Stream>
 class input_stream_iterator
     : public std::iterator<std::input_iterator_tag, typename Stream::char_type> {
   public:
-   typedef typename Stream::char_type char_type;
+   typedef typename Stream::int_type int_type;
 
    explicit input_stream_iterator(Stream& strm) NOEXCEPT
      : strm_(&strm) {
    }
 
-    char_type operator*() const NOEXCEPT {
-      return strm_->peek();
+    int_type operator*() const NOEXCEPT {
+      return strm_->get();
     }
 
-    input_stream_iterator& operator++() {
-      read();
-      return *this;
-    }
+    input_stream_iterator& operator++() NOEXCEPT { return *this; }
+    input_stream_iterator& operator++(int) NOEXCEPT { return *this; }
 
   private:
-   FORCE_INLINE void read() {
-     char_type tmp;
-     strm_->get(tmp);
-   }
-
    Stream* strm_;
 }; // input_stream_iterator
 

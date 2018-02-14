@@ -59,7 +59,7 @@ std::streamsize output_buf::xsputn(const char_type* c, std::streamsize size) {
 }
 
 output_buf::int_type output_buf::overflow(int_type c) {
-  out_->write_int(c);
+  out_->write_byte(traits_type::to_char_type(c));
   return c;
 }
 

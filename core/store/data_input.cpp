@@ -65,7 +65,7 @@ std::streamsize input_buf::xsgetn(input_buf::char_type* c, std::streamsize size)
 }
 
 input_buf::int_type input_buf::uflow() {
-  return in_->read_int();
+  return traits_type::to_int_type(in_->read_byte());
 }
 
 std::streamsize input_buf::showmanyc() {
