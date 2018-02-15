@@ -33,6 +33,7 @@
   #include <tchar.h>
   #include <io.h> // _close
   #define file_blksize_t uint32_t // DWORD (same as GetDriveGeometry(...) DISK_GEOMETRY::BytesPerSector)
+  #define file_path_delimiter L'\\'
   #define file_path_t wchar_t*
   #define file_stat _wstat64
   #define file_fstat _fstat64
@@ -52,6 +53,7 @@
 #else
   #include <unistd.h> // close
   #define file_blksize_t blksize_t
+  #define file_path_delimiter '/'
   #define file_path_t char*
   #define file_stat stat
   #define file_fstat fstat

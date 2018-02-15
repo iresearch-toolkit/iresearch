@@ -24,18 +24,6 @@
 #ifndef IRESEARCH_UTF8_PATH_H
 #define IRESEARCH_UTF8_PATH_H
 
-#if !defined(_MSC_VER)
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-  #pragma GCC diagnostic ignored "-Wunused-variable"
-#endif
-
-  #include <boost/filesystem/path.hpp>
-
-#if !defined(_MSC_VER)
-  #pragma GCC diagnostic pop
-#endif
-
 #include "string.hpp"
 
 NS_ROOT
@@ -43,12 +31,13 @@ NS_ROOT
 class IRESEARCH_API utf8_path {
  public:
   #ifdef _WIN32
-    typedef wchar_t native_char_type;
+    typedef wchar_t native_char_t;
   #else
-    typedef char native_char_type;
+    typedef char native_char_t;
   #endif
 
-  typedef std::function<bool(const native_char_type* name)> directory_visitor;
+  typedef std::function<bool(const native_char_t* name)> directory_visitor;
+  typedef std::basic_string<native_char_t> native_str_t;
 
   utf8_path(bool current_working_path = false);
   utf8_path(const char* utf8_path);
@@ -77,7 +66,7 @@ class IRESEARCH_API utf8_path {
   bool exists_file(bool& result) const NOEXCEPT;
   bool file_size(uint64_t& result) const NOEXCEPT;
   bool mkdir() const NOEXCEPT;
-  bool mtime(std::time_t& result) const NOEXCEPT;
+  bool mtime(time_t& result) const NOEXCEPT;
   bool remove() const NOEXCEPT;
   bool rename(const utf8_path& destination) const NOEXCEPT;
   bool visit_directory(
@@ -85,8 +74,8 @@ class IRESEARCH_API utf8_path {
     bool include_dot_dir = true
   );
 
-  const native_char_type* c_str() const NOEXCEPT;
-  const std::basic_string<native_char_type>& native() const NOEXCEPT;
+  const native_char_t* c_str() const NOEXCEPT;
+  const native_str_t& native() const NOEXCEPT;
   std::string utf8() const;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -98,7 +87,7 @@ class IRESEARCH_API utf8_path {
   void clear();
 
  private:
-  ::boost::filesystem::path path_;
+  native_str_t path_;
 };
 
 NS_END

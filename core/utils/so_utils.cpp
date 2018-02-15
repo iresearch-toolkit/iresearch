@@ -147,7 +147,7 @@ void load_libraries(
   }
 
   auto visitor = [&plugin_path, &prefix, &suffix](
-      const utf8_path::native_char_type* name
+      const utf8_path::native_char_t* name
   )->bool {
     auto path = plugin_path;
     bool result;

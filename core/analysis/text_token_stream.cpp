@@ -157,7 +157,7 @@ bool get_ignored_words(
 
     ignored_words_t ignored_words;
     auto visitor = [&ignored_words, &stopword_path](
-        const irs::utf8_path::native_char_type* name
+        const irs::utf8_path::native_char_t* name
     )->bool {
       auto path = stopword_path;
       bool result;
