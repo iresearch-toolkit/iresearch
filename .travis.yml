@@ -444,7 +444,7 @@ install:
           mkdir -p ${BOOST_DIR}
           { travis_retry wget --quiet -O - ${BOOST_URL} | tar --strip-components=1 -xz -C ${BOOST_DIR}; } || exit 1
         fi
-        (cd ${BOOST_DIR} && ./bootstrap.sh --with-libraries=filesystem,locale,system,thread,regex && ./b2 install -sICU_PATH=${ICU_ROOT} --libdir=lib ${BOOST_B2_ARGS})
+        (cd ${BOOST_DIR} && ./bootstrap.sh --with-libraries=locale,system,thread,regex && ./b2 install -sICU_PATH=${ICU_ROOT} --libdir=lib ${BOOST_B2_ARGS})
       fi
       export BOOST_ROOT=${BOOST_DIR}
       export DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH}:${BOOST_ROOT}/lib" # required for MacOS

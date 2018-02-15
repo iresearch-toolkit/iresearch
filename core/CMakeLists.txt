@@ -537,7 +537,6 @@ elseif (MSVC)
 
   foreach(ELEMENT
     ${BFD_STATIC_LIBS}
-    "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_FILESYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_FILESYSTEM_LIBRARY_RELEASE}>"
     "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_LOCALE_LIBRARY_RELEASE}>"
     "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_RELEASE}>"
     ${Unwind_STATIC_LIBS}
@@ -564,7 +563,6 @@ elseif (MSVC)
 
   foreach(ELEMENT
     ${BFD_STATIC_LIBS}
-    "$<$<CONFIG:Debug>:${Boost_STATIC_staticRT_FILESYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_staticRT_FILESYSTEM_LIBRARY_RELEASE}>"
     "$<$<CONFIG:Debug>:${Boost_STATIC_staticRT_LOCALE_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_staticRT_LOCALE_LIBRARY_RELEASE}>"
     "$<$<CONFIG:Debug>:${Boost_STATIC_staticRT_SYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_staticRT_SYSTEM_LIBRARY_RELEASE}>"
     ${Unwind_STATIC_LIBS}
@@ -591,7 +589,6 @@ elseif (APPLE)
 
   foreach(ELEMENT
     ${BFD_STATIC_LIBS}
-    ${Boost_STATIC_sharedRT_FILESYSTEM_LIBRARY_DEBUG}
     ${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}
     ${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}
     ${Boost_STATIC_sharedRT_THREAD_LIBRARY_DEBUG}
@@ -619,7 +616,6 @@ else()
 
   foreach(ELEMENT
     ${BFD_STATIC_LIBS}
-    ${Boost_STATIC_sharedRT_FILESYSTEM_LIBRARY_DEBUG}
     ${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}
     ${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}
     ${Boost_STATIC_sharedRT_THREAD_LIBRARY_DEBUG}
