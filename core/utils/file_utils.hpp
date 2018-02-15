@@ -128,6 +128,8 @@ handle_t open(FILE* file, const file_path_t mode) NOEXCEPT;
 
 bool mkdir(const file_path_t path) NOEXCEPT; // recursive directory creation
 
+bool move(const file_path_t src_path, const file_path_t dst_path) NOEXCEPT;
+
 struct path_parts_t {
   typedef irs::basic_string_ref<std::remove_pointer<file_path_t>::type> ref_t;
   ref_t basename;  // path component after the last path delimiter (ref_t::nil if not present)

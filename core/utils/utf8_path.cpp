@@ -21,22 +21,6 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef _WIN32
-  #include <WinError.h>
-#endif
-
-#if defined (__GNUC__)
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-  #pragma GCC diagnostic ignored "-Wunused-variable"
-#endif
-
-  #include <boost/filesystem/operations.hpp>
-
-#if defined (__GNUC__)
-  #pragma GCC diagnostic pop
-#endif
-
 #include <boost/locale/encoding.hpp>
 
 #include "file_utils.hpp"
@@ -316,17 +300,7 @@ bool utf8_path::remove() const NOEXCEPT {
 }
 
 bool utf8_path::rename(const utf8_path& destination) const NOEXCEPT {
-  boost::system::error_code code;
-
-  try {
-    boost::filesystem::rename(path_, destination.path_, code);
-
-    return boost::system::errc::success == code.value();
-  } catch (...) {
-    IR_FRMT_ERROR("Caught exception at: %s code: %d for path: " IR_FILEPATH_SPECIFIER, __FUNCTION__,code.value(), path_.c_str());
-  }
-
-  return false;
+  return irs::file_utils::move(c_str(), destination.c_str());
 }
 
 bool utf8_path::visit_directory(

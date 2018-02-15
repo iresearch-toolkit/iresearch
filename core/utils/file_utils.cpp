@@ -727,6 +727,15 @@ bool mkdir(const file_path_t path) NOEXCEPT {
   #endif
 }
 
+bool move(const file_path_t src_path, const file_path_t dst_path) NOEXCEPT {
+  // FIXME TODO ensure both functions lead to the same result in all cases @see utf8_path_tests::rename() tests
+  #ifdef _WIN32
+    return 0 != ::MoveFileExW(src_path, dst_path, MOVEFILE_REPLACE_EXISTING|MOVEFILE_COPY_ALLOWED);
+  #else
+    return 0 == ::rename(src_path, dst_path);
+  #endif
+}
+
 path_parts_t path_parts(const file_path_t path) NOEXCEPT {
   if (!path) {
     return path_parts_t();
