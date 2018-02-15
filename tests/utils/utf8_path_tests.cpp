@@ -956,6 +956,10 @@ void validate_move(bool src_abs, bool dst_abs) {
     ASSERT_FALSE(dst_path_expected.mtime(tmpTime));
     ASSERT_FALSE(dst_path_expected.file_size(tmpUint));
 
+#ifdef _WIN32
+    // Boost fails to rename on win32
+    ASSERT_FALSE(src_path.rename(dst_path));
+#else
     ASSERT_TRUE(src_path.rename(dst_path));
 
     ASSERT_TRUE(src_path.exists(tmpBool) && !tmpBool);
@@ -969,6 +973,7 @@ void validate_move(bool src_abs, bool dst_abs) {
     ASSERT_TRUE(dst_path_expected.exists_file(tmpBool) && !tmpBool);
     ASSERT_FALSE(dst_path_expected.mtime(tmpTime));
     ASSERT_FALSE(dst_path_expected.file_size(tmpUint));
+#endif
   }
 
   // directory -> directory/non-existent
@@ -1048,6 +1053,10 @@ void validate_move(bool src_abs, bool dst_abs) {
     ASSERT_TRUE(dst_path.mtime(tmpTime) && tmpTime > 0);
     ASSERT_TRUE(dst_path.file_size(tmpUint) && tmpUint == dst_data.size());
 
+#ifdef _WIN32
+    // Boost forces overwrite on win32
+    ASSERT_TRUE(src_path.rename(dst_path));
+#else
     ASSERT_FALSE(src_path.rename(dst_path));
 
     ASSERT_TRUE(src_path.exists(tmpBool) && tmpBool);
@@ -1061,11 +1070,13 @@ void validate_move(bool src_abs, bool dst_abs) {
     ASSERT_TRUE(dst_path.exists_file(tmpBool) && tmpBool);
     ASSERT_TRUE(dst_path.mtime(tmpTime) && tmpTime > 0);
     ASSERT_TRUE(dst_path.file_size(tmpUint) && tmpUint == dst_data.size());
+#endif
   }
 
   // directory -> directory/directory
   {
-    std::string directory("deleteme");
+    std::string src_dir("deleteme.src");
+    std::string dst_dir("deleteme.dst");
     std::string src("deleteme.src9");
     std::string dst("deleteme.dst9");
     irs::utf8_path src_path(src_abs);
@@ -1076,13 +1087,13 @@ void validate_move(bool src_abs, bool dst_abs) {
     src_path/=src;
     dst_path/=dst;
     ASSERT_TRUE(dst_path.mkdir());
-    dst_path/=directory;
+    dst_path/=dst_dir;
     src_path_expected/=src;
-    src_path_expected/=directory;
-    src_path_expected/=directory; // another nested directory
+    src_path_expected/=src_dir;
+    src_path_expected/=src_dir; // another nested directory
     dst_path_expected/=dst;
-    dst_path_expected/=directory;
-    dst_path_expected/=directory; // another nested directory
+    dst_path_expected/=dst_dir;
+    dst_path_expected/=src_dir; // expected another nested directory from src
 
     ASSERT_TRUE(src_path.mkdir());
     ASSERT_TRUE(dst_path.mkdir());
@@ -1100,6 +1111,10 @@ void validate_move(bool src_abs, bool dst_abs) {
     ASSERT_FALSE(dst_path_expected.mtime(tmpTime));
     ASSERT_FALSE(dst_path_expected.file_size(tmpUint));
 
+#ifdef _WIN32
+    ASSERT_FALSE(src_path.rename(dst_path));
+#else
+    // Boost on Posix merges directories
     ASSERT_TRUE(src_path.rename(dst_path));
 
     ASSERT_TRUE(src_path_expected.exists(tmpBool) && !tmpBool);
@@ -1113,6 +1128,7 @@ void validate_move(bool src_abs, bool dst_abs) {
     ASSERT_TRUE(dst_path_expected.exists_file(tmpBool) && !tmpBool);
     ASSERT_TRUE(dst_path_expected.mtime(tmpTime) && tmpTime > 0);
     ASSERT_TRUE(dst_path_expected.file_size(tmpUint));
+#endif
   }
 
   // file -> non-existent/non-existent

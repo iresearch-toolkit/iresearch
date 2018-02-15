@@ -1075,16 +1075,14 @@ store_reader store_reader::reopen() const {
   return reader_impl.store_.reader(); // store changed, create new reader
 }
 
-void store_writer::bstring_data_output::write_bytes(
-  const byte_type* b, size_t size
-) {
-  write_bytes_block(out_, b, size);
-}
-
 void store_writer::bstring_output::ensure(size_t pos) {
   if (pos >= buf_.size()) {
     oversize(buf_, irs::math::roundup_power2(pos + 1)); // 2*size growth policy, +1 for offset->size
   }
+}
+
+void store_writer::bstring_output::write(const byte_type* value, size_t size) {
+  write_bytes_block(*this, value, size);
 }
 
 store_writer::store_writer(transaction_store& store) NOEXCEPT

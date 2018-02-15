@@ -562,7 +562,9 @@ class IRESEARCH_API store_writer final: private util::noncopyable {
     bstring_data_output(bstring_output& out): out_(out) {}
     virtual void close() override {}
     virtual void write_byte(byte_type b) override { write_bytes(&b, 1); }
-    virtual void write_bytes(const byte_type* b, size_t size) override;
+    virtual void write_bytes(const byte_type* b, size_t size) override {
+      out_.write(b, size);
+    }
   };
 
   // an output_iterator implementation backed by a bstring
@@ -576,6 +578,7 @@ class IRESEARCH_API store_writer final: private util::noncopyable {
     bstring_output& operator+=(size_t i) { ensure(pos_ += i); return *this; }
     size_t file_pointer() const NOEXCEPT { return pos_; }
     void seek(size_t pos) NOEXCEPT { pos_ = pos; }
+    void write(const byte_type* value, size_t size);
 
    private:
     bstring& buf_;
