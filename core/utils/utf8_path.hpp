@@ -26,6 +26,8 @@
 
 #include "string.hpp"
 
+#include <functional>
+
 NS_ROOT
 
 class IRESEARCH_API utf8_path {

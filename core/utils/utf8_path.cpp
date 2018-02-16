@@ -43,17 +43,12 @@ const std::codecvt<wchar_t, char, std::mbstate_t>& fs_codecvt() {
 
 typedef irs::basic_string_ref<wchar_t> wstring_ref;
 
-template<typename FromCh>
-bool append_path(std::string& buf, const irs::basic_string_ref<FromCh>& value);
-
-template<>
 bool append_path(std::string& buf, const irs::string_ref& value) {
   buf.append(value.c_str(), value.size());
 
   return true;
 }
 
-template<>
 bool append_path(std::string& buf, const wstring_ref& value) {
   static auto& fs_cvt = fs_codecvt();
   auto size = value.size() * 4; // same ratio as boost::filesystem
@@ -85,10 +80,6 @@ bool append_path(std::string& buf, const wstring_ref& value) {
   return true;
 }
 
-template<typename FromCh>
-bool append_path(std::wstring& buf, const irs::basic_string_ref<FromCh>& value);
-
-template<>
 bool append_path(std::wstring& buf, const irs::string_ref& value) {
   static auto& fs_cvt = fs_codecvt();
   auto size = value.size() * 3; // same ratio as boost::filesystem
@@ -120,7 +111,6 @@ bool append_path(std::wstring& buf, const irs::string_ref& value) {
   return true;
 }
 
-template<>
 bool append_path(std::wstring& buf, const wstring_ref& value) {
   buf.append(value.c_str(), value.size());
 
