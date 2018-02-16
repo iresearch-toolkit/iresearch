@@ -64,6 +64,13 @@ std::streamsize input_buf::xsgetn(input_buf::char_type* c, std::streamsize size)
   return size;
 }
 
+input_buf::int_type input_buf::underflow() {
+  // FIXME add 'peek()' function to 'index_input'
+  const auto ch = uflow();
+  in_->seek(in_->file_pointer() - 1);
+  return ch;
+}
+
 input_buf::int_type input_buf::uflow() {
   return traits_type::to_int_type(in_->read_byte());
 }

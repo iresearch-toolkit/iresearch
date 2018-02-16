@@ -122,6 +122,8 @@ class IRESEARCH_API input_buf final : public std::streambuf, util::noncopyable {
 
   virtual int_type uflow() override;
 
+  virtual int_type underflow() override;
+
   operator index_input&() { return *in_; }
 
  private:
