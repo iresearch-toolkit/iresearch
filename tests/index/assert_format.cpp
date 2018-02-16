@@ -324,8 +324,8 @@ void field_writer::write(
   const iresearch::term_reader* expected_term_reader = readers_.field(fld->name);
   ASSERT_NE(nullptr, expected_term_reader);
 
-  iresearch::bytes_ref actual_min;
-  iresearch::bytes_ref actual_max;
+  iresearch::bytes_ref actual_min{ irs::bytes_ref::nil };
+  iresearch::bytes_ref actual_max{ irs::bytes_ref::nil };
   iresearch::bstring actual_min_buf;
   iresearch::bstring actual_max_buf;
   size_t actual_size = 0;
@@ -788,8 +788,8 @@ void assert_terms_next(
   ASSERT_EQ(expected_term_reader.size(), actual_term_reader.size());
   ASSERT_EQ(expected_term_reader.docs_count(), actual_term_reader.docs_count());
 
-  iresearch::bytes_ref actual_min;
-  iresearch::bytes_ref actual_max;
+  iresearch::bytes_ref actual_min{ irs::bytes_ref::nil };
+  iresearch::bytes_ref actual_max{ irs::bytes_ref::nil };
   iresearch::bstring actual_min_buf;
   iresearch::bstring actual_max_buf;
   size_t actual_size = 0;

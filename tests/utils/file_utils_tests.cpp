@@ -51,8 +51,8 @@ TEST(file_utils_tests, path_parts) {
     auto data = STRING("");
     auto parts = irs::file_utils::path_parts(data);
     ASSERT_EQ(ref_t::nil, parts.dirname);
-    ASSERT_EQ(ref_t(STRING("")), parts.basename);
-    ASSERT_EQ(ref_t(STRING("")), parts.stem);
+    ASSERT_EQ(ref_t(), parts.basename);
+    ASSERT_EQ(ref_t(), parts.stem);
     ASSERT_EQ(ref_t::nil, parts.extension);
   }
 

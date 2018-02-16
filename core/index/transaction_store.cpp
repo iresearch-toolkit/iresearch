@@ -230,9 +230,9 @@ class store_reader_impl final: public irs::sub_reader {
   struct term_reader_t: public irs::term_reader {
     irs::attribute_view attrs_;
     uint64_t doc_count_;
-    irs::bytes_ref max_term_;
+    irs::bytes_ref max_term_{ irs::bytes_ref::nil };
     const irs::transaction_store::field_meta_builder::ptr meta_; // copy from 'store' because field in store may disapear
-    irs::bytes_ref min_term_;
+    irs::bytes_ref min_term_{ irs::bytes_ref::nil };
     term_entries_t terms_;
 
     term_reader_t(const irs::transaction_store::field_meta_builder::ptr& meta)

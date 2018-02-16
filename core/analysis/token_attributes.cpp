@@ -52,7 +52,8 @@ increment::increment() NOEXCEPT
 REGISTER_ATTRIBUTE(iresearch::term_attribute);
 DEFINE_ATTRIBUTE_TYPE(term_attribute);
 
-term_attribute::term_attribute() NOEXCEPT {
+term_attribute::term_attribute() NOEXCEPT
+  : value_(bytes_ref::nil) {
 }
 
 // -----------------------------------------------------------------------------

@@ -410,7 +410,7 @@ void field_data::write_prox( posting& p, int_block_pool::iterator& where,
                              uint32_t prox, const payload* pay ) {
   byte_block_pool::sliced_inserter out( byte_writer_, *where );
 
-  if ( !pay || pay->value.null() ) {
+  if (!pay || pay->value.empty()) {
     irs::vwrite<uint32_t>(out, shift_pack_32(prox, false));
   } else {
     irs::vwrite<uint32_t>(out, shift_pack_32(prox, true));
