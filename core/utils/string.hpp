@@ -126,11 +126,7 @@ class basic_string_ref {
   typedef Traits traits_type;
   typedef Elem char_type;
 
-  IRESEARCH_HELPER_DLL_LOCAL static CONSTEXPR const basic_string_ref nil
-#if !(defined(_MSC_VER) && _MSC_VER < 1900) // MSVC 2013 has no constexpr support
-  { nullptr, 0 }
-#endif
-  ;
+  IRESEARCH_HELPER_DLL_LOCAL static const basic_string_ref nil;
 
   CONSTEXPR basic_string_ref() NOEXCEPT
     : data_(EMPTY), size_(0) {
@@ -271,12 +267,8 @@ class basic_string_ref {
   ;
 }; // basic_string_ref
 
-template <typename _Elem, typename _Traits> 
-/*static*/ CONSTEXPR const basic_string_ref<_Elem, _Traits> basic_string_ref< _Elem, _Traits >::nil
-#if (defined(_MSC_VER) && _MSC_VER < 1900) // MSVC 2013 has no constexpr support
-  { nullptr, 0 }
-#endif
-  ;
+template<typename Elem, typename Traits>
+/*static*/ const basic_string_ref<Elem, Traits> basic_string_ref<Elem, Traits >::nil;
 
 template <typename _Elem, typename _Traits> 
 /*static*/ CONSTEXPR const _Elem  basic_string_ref< _Elem, _Traits >::EMPTY[1]
