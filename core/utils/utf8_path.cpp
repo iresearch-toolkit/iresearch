@@ -80,6 +80,11 @@ bool append_path(std::string& buf, const wstring_ref& value) {
   return true;
 }
 
+#if defined (__GNUC__)
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wunused-function"
+#endif
+
 bool append_path(std::wstring& buf, const irs::string_ref& value) {
   static auto& fs_cvt = fs_codecvt();
   auto size = value.size() * 3; // same ratio as boost::filesystem
@@ -116,6 +121,10 @@ bool append_path(std::wstring& buf, const wstring_ref& value) {
 
   return true;
 }
+
+#if defined (__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
 
 NS_END
 
