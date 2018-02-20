@@ -483,8 +483,8 @@ class compound_field_iterator : public irs::basic_term_reader {
   };
   irs::string_ref current_field_;
   const irs::field_meta* current_meta_{ &irs::field_meta::EMPTY };
-  const irs::bytes_ref* min_{ &irs::bytes_ref::nil };
-  const irs::bytes_ref* max_{ &irs::bytes_ref::nil };
+  const irs::bytes_ref* min_{ &irs::bytes_ref::blank };
+  const irs::bytes_ref* max_{ &irs::bytes_ref::blank };
   std::vector<term_iterator_t> field_iterator_mask_; // valid iterators for current field
   std::vector<field_iterator_t> field_iterators_; // all segment iterators
   mutable compound_term_iterator term_itr_;
