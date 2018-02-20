@@ -519,7 +519,7 @@ bool compound_field_iterator::next() {
 
   // reset for next pass
   field_iterator_mask_.clear();
-  max_ = min_ = &irs::bytes_ref::nil;
+  max_ = min_ = &irs::bytes_ref::blank;
 
   for (size_t i = 0, count = field_iterators_.size(); i < count; ++i) {
     auto& field_itr = field_iterators_[i];
