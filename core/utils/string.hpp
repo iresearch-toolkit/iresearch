@@ -50,14 +50,17 @@ struct char_traits<::iresearch::byte_type> {
   static void assign(char_type& dst, const char_type& src) { dst = src; }
 
   static char_type* assign(char_type* ptr, size_t count, char_type ch) {
+    assert(ptr);
     return reinterpret_cast<char_type*>(std::memset(ptr, ch, count));
   }
 
   static int compare(const char_type* lhs, const char_type* rhs, size_t count) {
+    assert(lhs && rhs);
     return std::memcmp(lhs, rhs, count);
   }
 
   static char_type* copy(char_type* dst, const char_type* src, size_t count) {
+    assert(dst && src);
     return reinterpret_cast<char_type*>(std::memcpy(dst, src, count));
   }
 
@@ -68,6 +71,7 @@ struct char_traits<::iresearch::byte_type> {
   static bool eq_int_type(int_type lhs, int_type rhs) { return lhs == rhs; }
 
   static const char_type* find(const char_type* ptr, size_t count, const char_type& ch) {
+    assert(ptr);
     return reinterpret_cast<char_type const*>(std::memchr(ptr, ch, count));
   }
 
@@ -80,6 +84,7 @@ struct char_traits<::iresearch::byte_type> {
   static bool lt(char_type lhs, char_type rhs) { return lhs < rhs; }
 
   static char_type* move(char_type* dst, const char_type* src, size_t count) {
+    assert(dst && src);
     return reinterpret_cast<char_type*>(std::memmove(dst, src, count));
   }
 
