@@ -1606,7 +1606,7 @@ void field_writer::end_field(
   }
 
   // cause creation of all final blocks
-  push(bytes_ref::NIL);
+  push(bytes_ref::EMPTY);
 
   // write root block with empty prefix
   write_blocks(0, stack.size());
