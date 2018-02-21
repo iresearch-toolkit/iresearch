@@ -280,7 +280,7 @@ template<typename Elem, typename Traits>
 /*static*/ const basic_string_ref<Elem, Traits> basic_string_ref<Elem, Traits >::blank;
 
 template<typename Elem, typename Traits>
-/*static*/ CONSTEXPR const Elem basic_string_ref<Elem, Traits>::EMPTY[1] MSVC2013_ONLY({ Elem() });
+/*static*/ CONSTEXPR const Elem basic_string_ref<Elem, Traits>::EMPTY[1] MSVC2013_ONLY( = { Elem() });
 
 template class IRESEARCH_API basic_string_ref<char>;
 template class IRESEARCH_API basic_string_ref<byte_type>;
