@@ -120,7 +120,9 @@ class pos_iterator final: public irs::position {
   }
 
   virtual bool next() override {
-    if (!freq_  || pos_ == freq_->value) {
+    assert(freq_);
+
+    if (pos_ == freq_->value) {
       val_ = position::INVALID;
       return false;
     }
