@@ -46,9 +46,9 @@ class format_test_case_base : public index_test_base {
  public:  
   class postings;
 
-  class position: public irs::position::impl {
+  class position: public irs::position {
    public:
-    position(const irs::flags& features) {
+    position(const irs::flags& features): irs::position(2) {
       if (features.check<irs::offset>()) {
         attrs_.emplace(offs_);
       }
@@ -98,37 +98,34 @@ class format_test_case_base : public index_test_base {
     typedef std::vector<irs::doc_id_t> docs_t;
     typedef std::vector<irs::cost::cost_t> costs_t;
 
-    postings(const docs_t::const_iterator& begin, const docs_t::const_iterator& end, 
+    postings(
+        const docs_t::const_iterator& begin,
+        const docs_t::const_iterator& end,
         const irs::flags& features = irs::flags::empty_instance()
     )
-      : next_(begin), end_(end) {
+      : next_(begin), end_(end), pos_(features) {
       if (features.check<irs::frequency>()) {
         freq_.value = 10;
         attrs_.emplace<irs::frequency>(freq_);
 
         if (features.check<irs::position>()) {
-          position_.reset(irs::memory::make_unique<position>(features));
-          attrs_.emplace(position_);
-          pos_ = static_cast<position*>(position_.get());
+          attrs_.emplace(pos_);
         }
       }
     }
 
-    bool next() {      
+    bool next() override {
       if (next_ == end_) {
         doc_ = irs::type_limits<irs::type_t::doc_id_t>::eof();
         return false;
       }
 
       doc_ = *next_;
-
-      if (pos_) {
-        pos_->begin_ = doc_;
-        pos_->end_ = pos_->begin_ + 10;
-        pos_->clear();
-      }
-
+      pos_.begin_ = doc_;
+      pos_.end_ = pos_.begin_ + 10;
+      pos_.clear();
       ++next_;
+
       return true;
     }
 
@@ -149,9 +146,8 @@ class format_test_case_base : public index_test_base {
     irs::attribute_view attrs_;
     docs_t::const_iterator next_;
     docs_t::const_iterator end_;
-    position* pos_{};
     irs::frequency freq_;
-    irs::position position_;
+    tests::format_test_case_base::position pos_;
     irs::doc_id_t doc_{ irs::type_limits<irs::type_t::doc_id_t>::invalid() };
   }; // postings 
 

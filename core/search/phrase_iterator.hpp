@@ -32,7 +32,7 @@ NS_ROOT
 class phrase_iterator final : public conjunction {
  public:
   typedef std::pair<
-    position::cref, // position attribute
+    position::ref, // position attribute
     position::value_t // desired offset in the phrase
   > position_t;
   typedef std::vector<position_t> positions_t;
@@ -69,11 +69,11 @@ class phrase_iterator final : public conjunction {
 
  private:
   // returns frequency of the phrase
-  frequency::value_t phrase_freq() const {
+  frequency::value_t phrase_freq() {
     frequency::value_t freq = 0;
     bool match;
 
-    const position& lead = pos_.front().first;
+    position& lead = pos_.front().first;
     lead.next();
 
     const auto end = pos_.end();
@@ -82,7 +82,7 @@ class phrase_iterator final : public conjunction {
 
       match = true;
       for (auto it = pos_.begin() + 1; it != end; ++it) {
-        const position& pos = it->first;
+        position& pos = it->first;
         const auto term_offset = base_offset + it->second;
         const auto seeked = pos.seek(term_offset);
 

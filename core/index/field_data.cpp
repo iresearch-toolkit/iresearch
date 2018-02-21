@@ -75,20 +75,35 @@ class payload : public irs::payload {
   bstring value_;
 };
 
-class pos_iterator final : public irs::position::impl {
+const byte_block_pool EMPTY_POOL;
+
+class pos_iterator final: public irs::position {
  public:
-  pos_iterator(
-      const field_data& field, const frequency& freq,
-      const byte_block_pool::sliced_reader& prox)
-    : iresearch::position::impl(2), // offset + payload
-      prox_in_(prox),
-      freq_(freq),
-      pos_{},
-      pay_{},
-      offs_{},
-      field_(field),
-      val_{} {
-    auto& features = field_.meta().features;
+  pos_iterator()
+    : irs::position(2), // offset + payload
+      prox_in_(EMPTY_POOL.begin(), 0) {
+  }
+
+  virtual void clear() override {
+    pos_ = 0;
+    val_ = 0;
+    offs_.clear();
+    pay_.clear();
+  }
+
+  void init(
+      const field_data& field,
+      const frequency& freq,
+      const byte_block_pool::sliced_reader& prox
+  ) {
+    auto& features = field.meta().features;
+
+    attrs_.clear();
+    clear();
+    has_offs_ = false;
+    field_ = &field;
+    freq_ = &freq;
+    prox_in_ = prox;
 
     if (features.check<offset>()) {
       attrs_.emplace(offs_);
@@ -100,55 +115,50 @@ class pos_iterator final : public irs::position::impl {
     }
   }
 
-  virtual void clear() override {
-    pos_ = 0;
-    val_ = 0;
-    offs_.clear();
-    pay_.clear();
-  }
-
   virtual uint32_t value() const override {
     return val_;
   }
 
   virtual bool next() override {
-    if (pos_ == freq_.value) {
+    if (!freq_  || pos_ == freq_->value) {
       val_ = position::INVALID;
       return false;
     }
 
     uint32_t pos;
+
     if (shift_unpack_32(irs::vread<uint32_t>(prox_in_), pos)) {
       const size_t size = irs::vread<size_t>(prox_in_);
       pay_.resize(size);
       prox_in_.read(pay_.data(), size);
     }
+
     val_ += pos;
 
     if (has_offs_) {
       offs_.start += irs::vread<uint32_t>(prox_in_);
       offs_.end = offs_.start + irs::vread<uint32_t>(prox_in_);
     }
+
     ++pos_;
+
     return true;
   }
 
  private:
   byte_block_pool::sliced_reader prox_in_;
-  const frequency& freq_; // number of terms position in a document
-  uint64_t pos_; // current position
-  payload pay_;
-  offset offs_;
-  const field_data& field_;
-  uint32_t val_;
+  const frequency* freq_{}; // number of terms position in a document
+  uint64_t pos_{}; // current position
+  payload pay_{};
+  offset offs_{};
+  const field_data* field_{};
+  uint32_t val_{};
   bool has_offs_{false}; // FIXME find a better way to handle presence of offsets
 };
 
 /* -------------------------------------------------------------------
  * doc_iterator
  * ------------------------------------------------------------------*/
-
-const byte_block_pool EMPTY_POOL;
 
 class doc_iterator : public irs::doc_iterator {
  public:
@@ -165,23 +175,21 @@ class doc_iterator : public irs::doc_iterator {
       const field_data& field, const irs::posting& posting,
       const byte_block_pool::sliced_reader& freq,
       const byte_block_pool::sliced_reader& prox) {
-    pos_.reset();
+    attrs_.clear();
+    attrs_.emplace(doc_);
+    doc_.value = 0;
     freq_in_ = freq;
     posting_ = &posting;
     field_ = &field;
 
-    attrs_.clear();
-
-    attrs_.emplace(doc_);
-    doc_.value = 0;
-
     const auto& features = field_->meta().features;
+
     if (true == (has_freq_ = features.check<frequency>())) {
       attrs_.emplace(freq_);
       freq_.value = 0;
 
       if (features.check<position>()) {
-        pos_.reset(memory::make_unique<pos_iterator>(field, freq_, prox));
+        pos_.init(field, freq_, prox);
         attrs_.emplace(pos_);
       }
     }
@@ -229,9 +237,7 @@ class doc_iterator : public irs::doc_iterator {
       assert(doc_.value != posting_->doc);
     }
 
-    if (pos_) {
-      pos_.clear();
-    }
+    pos_.clear();
 
     return true;
   }
@@ -239,7 +245,7 @@ class doc_iterator : public irs::doc_iterator {
  private:
   document doc_;
   frequency freq_;
-  position pos_;
+  pos_iterator pos_;
   attribute_view attrs_;
   byte_block_pool::sliced_reader freq_in_;
   const posting* posting_;
