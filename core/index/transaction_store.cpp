@@ -446,6 +446,7 @@ class store_doc_iterator final: public store_doc_iterator_base {
       const irs::flags& field_features,
       const irs::flags& requested_features
   ): store_doc_iterator_base(entries, 3), // +1 for document, +1 for frequency, +1 for position
+     doc_pos_(field_features, requested_features, entry_),
      load_frequency_(requested_features.check<irs::frequency>()) {
 
     attrs_.emplace(doc_);
@@ -457,15 +458,12 @@ class store_doc_iterator final: public store_doc_iterator_base {
     if (requested_features.check<irs::position>()
         && field_features.check<irs::position>()) {
       attrs_.emplace(doc_pos_);
-      doc_pos_.reset(irs::memory::make_unique<position_t>(
-        field_features, requested_features, entry_
-      ));
     }
   }
 
  protected:
   bool load_attributes() override {
-    if (!load_frequency_ && !doc_pos_) {
+    if (!load_frequency_) {
       return true; // nothing to do
     }
 
@@ -487,15 +485,13 @@ class store_doc_iterator final: public store_doc_iterator_base {
       next_offset = irs::read<uint64_t>(ptr);
     } while (next_offset);
 
-    if (doc_pos_) {
-      doc_pos_.clear(); // reset impl to new doc
-    }
+    doc_pos_.clear(); // reset impl to new doc
 
     return true;
   }
 
  private:
-  struct position_t: public irs::position::impl {
+  struct position_t: public irs::position {
     const store_reader_impl::document_entry_t*& entry_;
     bool has_offs_;
     bool has_pay_;
@@ -508,7 +504,8 @@ class store_doc_iterator final: public store_doc_iterator_base {
         const irs::flags& field_features,
         const irs::flags& requested_features,
         const store_reader_impl::document_entry_t*& entry
-    ): entry_(entry),
+    ): position(2), // offset + payload
+       entry_(entry),
        has_offs_(field_features.check<irs::offset>()),
        has_pay_(field_features.check<irs::payload>()) {
       if (has_offs_ && requested_features.check<irs::offset>()) {
@@ -563,7 +560,7 @@ class store_doc_iterator final: public store_doc_iterator_base {
   };
 
   irs::frequency doc_freq_;
-  irs::position doc_pos_;
+  position_t doc_pos_;
   bool load_frequency_; // should the frequency attribute be updated (optimization)
 };
 

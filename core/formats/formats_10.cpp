@@ -503,14 +503,11 @@ class mask_doc_iterator final: public DocIterator {
 ///////////////////////////////////////////////////////////////////////////////
 /// @class pos_iterator
 ///////////////////////////////////////////////////////////////////////////////
-class pos_iterator : public position::impl {
+class pos_iterator: public position {
  public:
   DECLARE_PTR(pos_iterator);
 
-  pos_iterator() = default;
-
-  pos_iterator(size_t reserve_attrs): position::impl(reserve_attrs) {
-  }
+  pos_iterator(size_t reserve_attrs = 0): position(reserve_attrs) {}
 
   virtual void clear() override {
     value_ = position::INVALID;
@@ -545,9 +542,6 @@ class pos_iterator : public position::impl {
     return true;
   }
 
-  virtual uint32_t value() const override { return value_; }
-
- protected:
   // prepares iterator to work
   virtual void prepare(const doc_state& state) {
     pos_in_ = state.pos_in->reopen();
@@ -573,6 +567,9 @@ class pos_iterator : public position::impl {
     buf_pos_ = postings_writer::BLOCK_SIZE;
   }
 
+  virtual uint32_t value() const override { return value_; }
+
+ protected:
   virtual void read_attributes() { }
 
   virtual void refill() {
@@ -633,17 +630,16 @@ class pos_iterator : public position::impl {
   uint32_t buf_pos_{ postings_writer::BLOCK_SIZE } ; /* current position in pos_deltas_ buffer */
   index_input::ptr pos_in_;
   features features_; /* field features */
- 
- private:
-  friend class pos_doc_iterator;
 
-  static pos_iterator::ptr make(const features& enabled);
+ private:
+  template<typename T>
+  friend class pos_doc_iterator;
 }; // pos_iterator
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class offs_pay_iterator
 ///////////////////////////////////////////////////////////////////////////////
-class offs_pay_iterator final : public pos_iterator {
+class offs_pay_iterator final: public pos_iterator {
  public:
   DECLARE_PTR(offs_pay_iterator);
 
@@ -659,7 +655,6 @@ class offs_pay_iterator final : public pos_iterator {
     pay_.clear();
   }
 
- protected:
   virtual void prepare(const doc_state& state) override {
     pos_iterator::prepare(state);
     pay_in_ = state.pay_in->reopen();
@@ -679,6 +674,7 @@ class offs_pay_iterator final : public pos_iterator {
     pay_data_pos_ = state.pay_pos;
   }
 
+ protected:
   virtual void read_attributes() override {
     offs_.start += offs_start_deltas_[buf_pos_];
     offs_.end = offs_.start + offs_lengts_[buf_pos_];
@@ -802,7 +798,6 @@ class offs_iterator final : public pos_iterator {
     offs_.clear();
   }
 
- protected:
   virtual void prepare(const doc_state& state) override {
     pos_iterator::prepare(state);
     pay_in_ = state.pay_in->reopen();
@@ -821,6 +816,7 @@ class offs_iterator final : public pos_iterator {
     pay_in_->seek(state.pay_ptr);
   }
 
+ protected:
   virtual void read_attributes() override {
     offs_.start += offs_start_deltas_[buf_pos_];
     offs_.end = offs_.start + offs_lengts_[buf_pos_];
@@ -912,7 +908,6 @@ class pay_iterator final : public pos_iterator {
     pay_.clear();
   }
 
- protected:
   virtual void prepare(const doc_state& state) override {
     pos_iterator::prepare(state);
     pay_in_ = state.pay_in->reopen();
@@ -932,6 +927,7 @@ class pay_iterator final : public pos_iterator {
     pay_data_pos_ = state.pay_pos;
   }
 
+ protected:
   virtual void read_attributes() override {
     pay_.value = bytes_ref(
       pay_data_.data() + pay_data_pos_,
@@ -1037,26 +1033,11 @@ class pay_iterator final : public pos_iterator {
   bstring pay_data_; // buffer to store payload data
 }; // pay_iterator
 
-/* static */ pos_iterator::ptr pos_iterator::make(const features& enabled) {
-  switch (enabled) {
-    case features::POS : 
-      return memory::make_unique<pos_iterator>(); 
-    case features::POS_OFFS :
-      return memory::make_unique<offs_iterator>();
-    case features::POS_PAY :
-      return memory::make_unique<pay_iterator>();
-    case features::POS_OFFS_PAY :
-      return memory::make_unique<offs_pay_iterator>();
-  }
-
-  assert(false);
-  return nullptr;
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 /// @class pos_doc_iterator
 ///////////////////////////////////////////////////////////////////////////////
-class pos_doc_iterator : public doc_iterator {
+template<typename PosItrType>
+class pos_doc_iterator final: public doc_iterator {
  public:
   virtual bool next() override {
     if (begin_ == end_) {
@@ -1078,9 +1059,8 @@ class pos_doc_iterator : public doc_iterator {
     freq_.value = *doc_freq_++;
 
     // update position attribute
-    assert(pos_);
-    pos_->pend_pos_ += freq_.value;
-    pos_->clear();
+    pos_.pend_pos_ += freq_.value;
+    pos_.clear();
 
     return true;
   }
@@ -1094,31 +1074,27 @@ class pos_doc_iterator : public doc_iterator {
   ) final;
 
   virtual void seek_notify(const skip_context &ctx) final {
-    assert(pos_);
-    // notify positions
-    pos_->prepare(ctx);
+    pos_.prepare(ctx); // notify positions
   }
 
  private:
-  position position_;
-  pos_iterator* pos_{};
+  PosItrType pos_;
 }; // pos_doc_iterator
 
-void pos_doc_iterator::prepare_attributes(
+template<typename PosItrType>
+void pos_doc_iterator<PosItrType>::prepare_attributes(
     const version10::features& enabled,
     const irs::attribute_view& attrs,
     const index_input* pos_in,
     const index_input* pay_in) {
-  doc_iterator::prepare_attributes(
-    enabled, attrs, pos_in, pay_in
-  );
-
   assert(attrs.contains<frequency>());
   assert(enabled.position());
+  attrs_.emplace(freq_);
+  term_freq_ = attrs.get<frequency>()->value;
 
+  // ...........................................................................
   // position attribute
-  pos_iterator::ptr it = pos_iterator::make(enabled);
-  pos_ = it.get();
+  // ...........................................................................
 
   doc_state state;
   state.pos_in = pos_in;
@@ -1127,6 +1103,7 @@ void pos_doc_iterator::prepare_attributes(
   state.freq = &freq_.value;
   state.features = features_;
   state.enc_buf = enc_buf_;
+
   if (term_freq_ < postings_writer::BLOCK_SIZE) {
     state.tail_start = term_state_.pos_start;
   } else if (term_freq_ == postings_writer::BLOCK_SIZE) {
@@ -1134,12 +1111,10 @@ void pos_doc_iterator::prepare_attributes(
   } else {
     state.tail_start = term_state_.pos_start + term_state_.pos_end;
   }
-  state.tail_length = term_freq_ % postings_writer::BLOCK_SIZE;
-  it->prepare(state);
 
-  // finish initialization
-  attrs_.emplace(position_);
-  position_.reset(std::move(it));
+  state.tail_length = term_freq_ % postings_writer::BLOCK_SIZE;
+  pos_.prepare(state);
+  attrs_.emplace(pos_);
 }
 
 NS_END // detail
@@ -4404,18 +4379,29 @@ doc_iterator::ptr postings_reader::iterator(
     const flags& field,
     const attribute_view& attrs,
     const flags& req) {
-  typedef detail::doc_iterator doc_iterator_t;
-  typedef detail::pos_doc_iterator pos_doc_iterator_t;
-
   // compile field features
   const auto features = version10::features(field);
   // get enabled features:
   // find intersection between requested and available features
   const auto enabled = features & req;
+  detail::doc_iterator::ptr it;
 
-  auto it = enabled.position()
-    ? doc_iterator_t::make<pos_doc_iterator_t>()
-    : doc_iterator_t::make<doc_iterator_t>();
+  switch(enabled) {
+   case features::POS_OFFS_PAY:
+    it = detail::doc_iterator::make<detail::pos_doc_iterator<detail::offs_pay_iterator>>();
+    break;
+   case features::POS_OFFS:
+    it = detail::doc_iterator::make<detail::pos_doc_iterator<detail::offs_iterator>>();
+    break;
+   case features::POS_PAY:
+    it = detail::doc_iterator::make<detail::pos_doc_iterator<detail::pay_iterator>>();
+    break;
+   case features::POS:
+    it = detail::doc_iterator::make<detail::pos_doc_iterator<detail::pos_iterator>>();
+    break;
+   default:
+    it = detail::doc_iterator::make<detail::doc_iterator>();
+  }
 
   it->prepare(
     features, enabled, attrs,

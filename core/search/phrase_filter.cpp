@@ -135,7 +135,7 @@ class phrase_query : public filter::prepared {
         // positions not found
         return doc_iterator::empty();
       }
-      positions.emplace_back(std::cref(*pos), term_stats->second);
+      positions.emplace_back(std::ref(*pos), term_stats->second);
 
       // add base iterator
       itrs.emplace_back(doc_iterator::make<basic_doc_iterator>(

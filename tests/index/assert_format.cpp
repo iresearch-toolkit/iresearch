@@ -383,7 +383,8 @@ class doc_iterator : public iresearch::doc_iterator {
     prev_ = next_, ++next_;
     doc_.value = prev_->id();
     freq_.value = prev_->positions().size();
-    if (pos_) pos_.clear();
+    pos_.clear();
+
     return true;
   }
 
@@ -399,77 +400,74 @@ class doc_iterator : public iresearch::doc_iterator {
     prev_ = it;
     next_ = ++it;
     doc_.value = prev_->id();
-    if (pos_) {
-      pos_.clear();
-    }
+    pos_.clear();
+
     return doc_.value;
   }
 
  private:
-  friend class pos_iterator;
+  class pos_iterator: public irs::position {
+   public:
+    pos_iterator(const doc_iterator& owner, const irs::flags& features)
+      : irs::position(2), // offset + payload
+        value_(irs::type_limits<irs::type_t::pos_t>::invalid()),
+        owner_(owner) {
+      if (features.check<irs::offset>()) {
+        attrs_.emplace(offs_);
+      }
+
+      if (features.check<irs::payload>()) {
+        attrs_.emplace(pay_);
+      }
+    }
+
+    void clear() override {
+      next_ = owner_.prev_->positions().begin();
+      value_ = irs::type_limits<irs::type_t::pos_t>::invalid();
+      offs_.clear();
+      pay_.clear();
+    }
+
+    bool next() override {
+      if ( next_ == owner_.prev_->positions().end() ) {
+        return false;
+      }
+
+      value_ = next_->pos;
+      offs_.start = next_->start;
+      offs_.end = next_->end;
+      pay_.value = next_->payload;
+      ++next_;
+
+      return true;
+    }
+
+    uint32_t value() const override {
+      return value_;
+    }
+
+   private:
+    std::set<tests::position>::const_iterator next_;
+    uint32_t value_;
+    irs::offset offs_;
+    irs::payload pay_;
+    const doc_iterator& owner_;
+  };
 
   irs::attribute_view attrs_;
   irs::document doc_;
   irs::frequency freq_;
-  irs::position pos_;
+  pos_iterator pos_;
   const irs::flags& features_;
   const tests::term& data_;
   std::set<posting>::const_iterator prev_;
   std::set<posting>::const_iterator next_;
 };
 
-class pos_iterator : public iresearch::position::impl {
- public:
-  pos_iterator(const doc_iterator& owner):
-    value_(iresearch::type_limits<iresearch::type_t::pos_t>::invalid()),
-    owner_(owner) {
-    if (owner_.features_.check<iresearch::offset>()) {
-      attrs_.emplace(offs_);
-    }
-
-    if (owner_.features_.check<iresearch::payload>()) {
-      attrs_.emplace(pay_);
-    }
-  }
-
-  void clear() override {
-    next_ = owner_.prev_->positions().begin();
-    value_ = iresearch::type_limits<iresearch::type_t::pos_t>::invalid();
-    offs_.clear();
-    pay_.clear();
-  }
-
-  bool next() override {
-    if ( next_ == owner_.prev_->positions().end() ) {
-      return false;
-    }
-
-    value_ = next_->pos;
-
-    offs_.start = next_->start;
-    offs_.end = next_->end;
-
-    pay_.value = next_->payload;
-
-    ++next_;
-    return true;
-  }
-
-  uint32_t value() const override {
-    return value_;
-  }
-
- private:
-  std::set<position>::const_iterator next_;
-  uint32_t value_;
-  irs::offset offs_;
-  irs::payload pay_;
-  const doc_iterator& owner_;
-};
-
-doc_iterator::doc_iterator(const iresearch::flags& features, const tests::term& data)
+doc_iterator::doc_iterator(const irs::flags& features, const tests::term& data)
   : features_( features ),
-    data_( data ) {
+    data_(data),
+    pos_(*this, features) {
   next_ = data_.postings.begin();
 
   attrs_.emplace(doc_);
@@ -479,7 +477,6 @@ doc_iterator::doc_iterator(const iresearch::flags& features, const tests::term& 
   }
 
   if (features.check< iresearch::position >()) {
-    pos_.reset(irs::memory::make_unique<detail::pos_iterator>(*this));
     attrs_.emplace(pos_);
   }
 }
