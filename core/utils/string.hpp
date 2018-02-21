@@ -147,7 +147,7 @@ class basic_string_ref {
   typedef Traits traits_type;
   typedef Elem char_type;
 
-  IRESEARCH_HELPER_DLL_LOCAL static const basic_string_ref nil; // null string
+  IRESEARCH_HELPER_DLL_LOCAL static const basic_string_ref NIL; // null string
 
   CONSTEXPR basic_string_ref() NOEXCEPT
     : data_(nullptr), size_(0) {
@@ -274,7 +274,7 @@ class basic_string_ref {
 }; // basic_string_ref
 
 template<typename Elem, typename Traits>
-/*static*/ const basic_string_ref<Elem, Traits> basic_string_ref<Elem, Traits >::nil(nullptr, 0);
+/*static*/ const basic_string_ref<Elem, Traits> basic_string_ref<Elem, Traits >::NIL(nullptr, 0);
 
 template class IRESEARCH_API basic_string_ref<char>;
 template class IRESEARCH_API basic_string_ref<byte_type>;
