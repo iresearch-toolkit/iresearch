@@ -76,17 +76,17 @@ class phrase_iterator final : public conjunction {
     position& lead = pos_.front().first;
     lead.next();
 
-    const auto end = pos_.end();
-    while (position::NO_MORE != lead.value()) {
+    for (auto end = pos_.end(); !type_limits<type_t::pos_t>::eof(lead.value());) {
       const position::value_t base_offset = lead.value();
 
       match = true;
+
       for (auto it = pos_.begin() + 1; it != end; ++it) {
         position& pos = it->first;
         const auto term_offset = base_offset + it->second;
         const auto seeked = pos.seek(term_offset);
 
-        if (position::NO_MORE == seeked) {
+        if (irs::type_limits<irs::type_t::pos_t>::eof(seeked)) {
           // exhausted
           return freq;
         } else if (seeked != term_offset) {

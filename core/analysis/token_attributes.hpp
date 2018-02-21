@@ -176,10 +176,6 @@ class IRESEARCH_API position
  public:
   typedef uint32_t value_t;
 
-  // FIXME TODO convert to type_limits<type_t::pos_t>
-  static const uint32_t INVALID = integer_traits<value_t>::const_max;
-  static const uint32_t NO_MORE = INVALID - 1;
-
   DECLARE_REF(position);
   DECLARE_TYPE_ID(attribute::type_id);
 
@@ -191,7 +187,7 @@ class IRESEARCH_API position
     irs::seek(
       *this,
       target,
-      [](value_t lhs, value_t rhs) { return 1 + lhs < 1 + rhs; }
+      [](value_t lhs, value_t rhs) { return 1 + lhs < 1 + rhs; } // FIXME TODO: make INVALID = 0, remove this
     );
 
     return value();

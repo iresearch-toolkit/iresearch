@@ -86,7 +86,7 @@ class pos_iterator final: public irs::position {
 
   virtual void clear() override {
     pos_ = 0;
-    val_ = 0;
+    val_ = 0; // FIXME TODO change to invalid when invalid() == 0
     offs_.clear();
     pay_.clear();
   }
@@ -123,7 +123,8 @@ class pos_iterator final: public irs::position {
     assert(freq_);
 
     if (pos_ == freq_->value) {
-      val_ = position::INVALID;
+      val_ = irs::type_limits<irs::type_t::pos_t>::eof();
+
       return false;
     }
 

@@ -510,16 +510,18 @@ class pos_iterator: public position {
   pos_iterator(size_t reserve_attrs = 0): position(reserve_attrs) {}
 
   virtual void clear() override {
-    value_ = position::INVALID;
+    value_ = irs::type_limits<irs::type_t::pos_t>::invalid();
   }
 
   virtual bool next() override {
     if (0 == pend_pos_) {
-      value_ = position::NO_MORE;
+      value_ = irs::type_limits<irs::type_t::pos_t>::eof();
+
       return false;
     }
 
     const uint64_t freq = *freq_;
+
     if (pend_pos_ > freq) {
       skip(pend_pos_ - freq);
       pend_pos_ = freq;
@@ -530,8 +532,8 @@ class pos_iterator: public position {
       buf_pos_ = 0;
     }
 
-    // TODO: make INVALID = 0, remove this
-    if (value_ == position::INVALID) {
+    // FIXME TODO: make INVALID = 0, remove this
+    if (!irs::type_limits<irs::type_t::pos_t>::valid(value_)) {
       value_ = 0;
     } 
 
@@ -626,7 +628,7 @@ class pos_iterator: public position {
   uint64_t pend_pos_{}; /* how many positions "behind" we are */
   uint64_t tail_start_; /* file pointer where the last (vInt encoded) pos delta block is */
   size_t tail_length_; /* number of positions in the last (vInt encoded) pos delta block */
-  uint32_t value_{ position::INVALID }; /* current position */
+  uint32_t value_{ irs::type_limits<irs::type_t::pos_t>::invalid() }; // current position
   uint32_t buf_pos_{ postings_writer::BLOCK_SIZE } ; /* current position in pos_deltas_ buffer */
   index_input::ptr pos_in_;
   features features_; /* field features */

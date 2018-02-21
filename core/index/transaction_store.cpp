@@ -522,7 +522,7 @@ class store_doc_iterator final: public store_doc_iterator_base {
     virtual void clear() override {
       next_ = entry_ ? entry_->offset_ : 0; // 0 indicates end of list in format definition
       offs_.clear();
-      pos_ = irs::position::INVALID;
+      pos_ = irs::type_limits<irs::type_t::pos_t>::invalid();
       pay_.clear();
     }
 
@@ -532,7 +532,7 @@ class store_doc_iterator final: public store_doc_iterator_base {
       if (!next_ || !entry_ || !entry_->buf_ || next_ >= entry_->buf_->size()) {
         next_ = 0; // 0 indicates end of list in format definition
         offs_.clear();
-        pos_ = irs::position::INVALID;
+        pos_ = irs::type_limits<irs::type_t::pos_t>::eof();
         pay_.clear();
 
         return false;

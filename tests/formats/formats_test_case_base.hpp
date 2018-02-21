@@ -64,7 +64,8 @@ class format_test_case_base : public index_test_base {
 
     bool next() override {
       if (begin_ == end_) {
-        begin_ = irs::position::NO_MORE;
+        begin_ = irs::type_limits<irs::type_t::pos_t>::eof();
+
         return false;
       }
 
@@ -86,7 +87,7 @@ class format_test_case_base : public index_test_base {
    private:
     friend class postings;
 
-    uint32_t begin_{ irs::position::INVALID };
+    uint32_t begin_{ irs::type_limits<irs::type_t::pos_t>::invalid() };
     uint32_t end_;
     irs::offset offs_{};
     irs::payload pay_{};
