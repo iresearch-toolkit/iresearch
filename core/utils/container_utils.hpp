@@ -50,27 +50,34 @@ struct bucket_size_t {
 MSVC_ONLY(__pragma(warning(push)))
 MSVC_ONLY(__pragma(warning(disable:4127))) // constexp conditionals are intended to be optimized out
 template<size_t num_buckets, size_t skip_bits>
-std::vector<bucket_size_t> compute_bucket_meta() {
-  std::vector<bucket_size_t> bucket_meta(num_buckets);
-
-  if (!num_buckets) {
-    return std::move(bucket_meta);
+class bucket_meta {
+ public:
+  static const std::array<bucket_size_t, num_buckets>& get() NOEXCEPT {
+    static const bucket_meta buckets;
+    return buckets.buckets_;
   }
 
-  bucket_meta[0].size = 1 << skip_bits;
-  bucket_meta[0].offset = 0;
+ private:
+  bucket_meta() NOEXCEPT {
+    if (!num_buckets) {
+      return;
+    }
 
-  for (size_t i = 1; i < num_buckets; ++i) {
-    bucket_meta[i - 1].next = &bucket_meta[i];
-    bucket_meta[i].offset = bucket_meta[i - 1].offset + bucket_meta[i - 1].size;
-    bucket_meta[i].size = bucket_meta[i - 1].size << 1;
+    buckets_[0].size = 1 << skip_bits;
+    buckets_[0].offset = 0;
+
+    for (size_t i = 1; i < num_buckets; ++i) {
+      buckets_[i - 1].next = &buckets_[i];
+      buckets_[i].offset = buckets_[i - 1].offset + buckets_[i - 1].size;
+      buckets_[i].size = buckets_[i - 1].size << 1;
+    }
+
+    // all subsequent buckets_ should have the same meta as the last bucket
+    buckets_.back().next = &(buckets_.back());
   }
 
-  // all subsequent buckets should have the same meta as the last bucket
-  bucket_meta.back().next = &(bucket_meta.back());
-
-  return std::move(bucket_meta);
-}
+  std::array<bucket_size_t, num_buckets> buckets_;
+};
 MSVC_ONLY(__pragma(warning(pop)))
 
 //////////////////////////////////////////////////////////////////////////////
@@ -85,40 +92,22 @@ size_t compute_bucket_offset(size_t position) NOEXCEPT {
   return 63 - math::clz64((position>>skip_bits) + 1);
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief a container allowing raw access to internal storage, and
-///        using an allocation strategy similar to an std::deque
-//////////////////////////////////////////////////////////////////////////////
-template<typename T, size_t num_buckets, size_t skip_bits>
-class IRESEARCH_API_TEMPLATE raw_block_vector: util::noncopyable {
+class raw_block_vector_base : util::noncopyable {
  public:
-  typedef raw_block_vector<T, num_buckets, skip_bits> raw_block_vector_t;
-
   struct buffer_t {
     byte_type* data; // pointer at the actual data
     size_t offset; // sum of bucket sizes up to but excluding this buffer
     size_t size; // total buffer size
   };
 
-  raw_block_vector() = default;
+  raw_block_vector_base() = default;
 
-  raw_block_vector(raw_block_vector&& other) NOEXCEPT
-    : buffers_(std::move(other.buffers_)) {
+  raw_block_vector_base(raw_block_vector_base&& rhs) NOEXCEPT
+    : buffers_(std::move(rhs.buffers_)) {
   }
 
   FORCE_INLINE size_t buffer_count() const NOEXCEPT {
     return buffers_.size();
-  }
-
-  FORCE_INLINE size_t buffer_offset(size_t position) const NOEXCEPT {
-    static const auto& last_buffer = get_bucket_meta().back();
-    static const auto last_buffer_id = get_bucket_meta().size() - 1;
-
-    // non-precomputed bucket size is the same as the last precomputed bucket size
-    return position < last_buffer.offset
-      ? get_bucket_offset(position)
-      : (last_buffer_id + (position - last_buffer.offset) / last_buffer.size)
-      ;
   }
 
   FORCE_INLINE void clear() NOEXCEPT {
@@ -133,48 +122,69 @@ class IRESEARCH_API_TEMPLATE raw_block_vector: util::noncopyable {
     return buffers_[i];
   }
 
-  buffer_t& push_buffer() {
-    static const auto& meta = get_bucket_meta();
-
-    if (buffers_.size() < meta.size()) { // one of the precomputed buckets
-      auto& bucket = meta[buffers_.size()];
-      buffers_.emplace_back(bucket.offset, bucket.size);
-    } else { // non-precomputed buckets, offset is the sum of previous buckets
-      assert(!buffers_.empty()); // otherwise do not know what size buckets to create
-      auto& bucket = buffers_.back(); // most of the meta from last computed bucket
-      auto offset = bucket.offset + bucket.size;
-      auto size = bucket.size;
-      buffers_.emplace_back(offset, size);
+ protected:
+  struct buffer_entry_t: buffer_t, util::noncopyable {
+    buffer_entry_t(size_t bucket_offset, size_t bucket_size)
+      : ptr(memory::make_unique<byte_type[]>(bucket_size)) {
+      buffer_t::data = ptr.get();
+      buffer_t::offset = bucket_offset;
+      buffer_t::size = bucket_size;
     }
 
+    buffer_entry_t(buffer_entry_t&& other) NOEXCEPT
+      : buffer_t(std::move(other)), ptr(std::move(other.ptr)) {
+    }
+
+    std::unique_ptr<byte_type[]> ptr;
+  };
+
+  buffer_t& push_buffer(size_t offset, size_t size) {
+    buffers_.emplace_back(offset, size);
     return buffers_.back();
   }
 
- private:
-   struct buffer_entry_t: buffer_t, util::noncopyable {
-     std::unique_ptr<T[]> ptr;
-     buffer_entry_t(size_t bucket_offset, size_t bucket_size)
-       : ptr(memory::make_unique<T[]>(bucket_size)) {
-       buffer_t::data = ptr.get();
-       buffer_t::offset = bucket_offset;
-       buffer_t::size = bucket_size;
-     }
-     buffer_entry_t(buffer_entry_t&& other) NOEXCEPT
-       : buffer_t(std::move(other)), ptr(std::move(other.ptr)) {
-     }
-   };
+  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
+  std::vector<buffer_entry_t> buffers_;
+  IRESEARCH_API_PRIVATE_VARIABLES_END
+};
 
-   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-   std::vector<buffer_entry_t> buffers_;
-   IRESEARCH_API_PRIVATE_VARIABLES_END
+//////////////////////////////////////////////////////////////////////////////
+/// @brief a container allowing raw access to internal storage, and
+///        using an allocation strategy similar to an std::deque
+//////////////////////////////////////////////////////////////////////////////
+template<size_t num_buckets, size_t skip_bits>
+class IRESEARCH_API_TEMPLATE raw_block_vector : public raw_block_vector_base {
+ public:
+  raw_block_vector() = default;
 
-  static const std::vector<bucket_size_t>& get_bucket_meta() {
-    static auto bucket_meta = compute_bucket_meta<num_buckets, skip_bits>();
-    return bucket_meta;
+  raw_block_vector(raw_block_vector&& other) NOEXCEPT
+    : raw_block_vector_base(std::move(other)) {
   }
 
-  FORCE_INLINE static size_t get_bucket_offset(size_t position) NOEXCEPT {
-    return compute_bucket_offset<skip_bits>(position);
+  FORCE_INLINE size_t buffer_offset(size_t position) const NOEXCEPT {
+    static const auto& last_buffer = bucket_meta<num_buckets, skip_bits>::get().back();
+    static const auto last_buffer_id = bucket_meta<num_buckets, skip_bits>::get().size() - 1;
+
+    // non-precomputed bucket size is the same as the last precomputed bucket size
+    return position < last_buffer.offset
+      ? compute_bucket_offset<skip_bits>(position)
+      : (last_buffer_id + (position - last_buffer.offset) / last_buffer.size);
+  }
+
+  buffer_t& push_buffer() {
+    static const auto& meta = bucket_meta<num_buckets, skip_bits>::get();
+
+    if (buffers_.size() < meta.size()) { // one of the precomputed buckets
+      const auto& bucket = meta[buffers_.size()];
+      return raw_block_vector_base::push_buffer(bucket.offset, bucket.size);
+    }
+
+    // non-precomputed buckets, offset is the sum of previous buckets
+    assert(!buffers_.empty()); // otherwise do not know what size buckets to create
+    const auto& bucket = buffers_.back(); // most of the meta from last computed bucket
+    return raw_block_vector_base::push_buffer(
+      bucket.offset + bucket.size, bucket.size
+    );
   }
 };
 

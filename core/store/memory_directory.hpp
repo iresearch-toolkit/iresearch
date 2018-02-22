@@ -36,7 +36,7 @@
 
 NS_LOCAL
 
-inline void touch(std::time_t& time) {
+inline void touch(std::time_t& time) NOEXCEPT {
   time = std::chrono::system_clock::to_time_t(
     std::chrono::system_clock::now()
   );
@@ -57,20 +57,23 @@ struct memory_file_meta {
 * memory_file
 * ------------------------------------------------------------------*/
 
-MSVC_ONLY(template class IRESEARCH_API iresearch::container_utils::raw_block_vector<iresearch::byte_type, 16, 8>);
+MSVC_ONLY(template class IRESEARCH_API iresearch::container_utils::raw_block_vector<16, 8>);
 
 // <16, 8> => buffer sizes 256B, 512B, 1K, 2K, 4K, 8K, 16K, 32K, 64K, 128K, 256K, 512K, 1M, 2M, 4M, 8M
-class IRESEARCH_API memory_file:
-  public container_utils::raw_block_vector<byte_type, 16, 8> {
+class IRESEARCH_API memory_file
+    : public container_utils::raw_block_vector<16, 8> {
  public:
+  typedef container_utils::raw_block_vector<16, 8> raw_block_vector_t;
+
   DECLARE_PTR(memory_file);
 
-  memory_file() {
+  memory_file() NOEXCEPT {
     touch(meta_.mtime);
   }
 
   memory_file(memory_file&& rhs) NOEXCEPT
-    : raw_block_vector_t(std::move(rhs)), len_(rhs.len_) {
+    : raw_block_vector_t(std::move(rhs)),
+      len_(rhs.len_) {
     rhs.len_ = 0;
   }
 
@@ -90,15 +93,17 @@ class IRESEARCH_API memory_file:
     return *this;
   }
 
-  size_t length() const { return len_; }
+  size_t length() const NOEXCEPT {
+    return len_;
+  }
 
-  void length(size_t length) { 
+  void length(size_t length) NOEXCEPT {
     len_ = length; 
     touch(meta_.mtime);
   }
 
   // used length of the buffer based on total length
-  size_t buffer_length(size_t i) const {
+  size_t buffer_length(size_t i) const NOEXCEPT {
     auto last_buf = buffer_offset(len_);
 
     if (i == last_buf) {
@@ -111,11 +116,15 @@ class IRESEARCH_API memory_file:
     return i < last_buf ? get_buffer(i).size : 0;
   }
 
-  std::time_t mtime() const NOEXCEPT { return meta_.mtime; }
+  std::time_t mtime() const NOEXCEPT {
+    return meta_.mtime;
+  }
 
-  void reset() { len_ = 0; }
+  void reset() NOEXCEPT {
+    len_ = 0;
+  }
 
-  void clear() {
+  void clear() NOEXCEPT {
     raw_block_vector_t::clear();
     reset();
   }

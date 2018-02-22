@@ -41,13 +41,13 @@ using namespace tests;
 TEST_F(container_utils_tests, test_compute_bucket_meta) {
   // test meta for num buckets == 0, skip bits == 0
   {
-    auto meta = iresearch::container_utils::compute_bucket_meta<0, 0>();
+    auto& meta = irs::container_utils::bucket_meta<0, 0>::get();
     ASSERT_EQ(0, meta.size());
   }
 
   // test meta for num buckets == 1, skip bits == 0
   {
-    auto meta = iresearch::container_utils::compute_bucket_meta<1, 0>();
+    auto& meta = irs::container_utils::bucket_meta<1, 0>::get();
     ASSERT_EQ(1, meta.size());
     ASSERT_EQ(&(meta[0]), meta[0].next);
     ASSERT_EQ(0, meta[0].offset);
@@ -56,7 +56,7 @@ TEST_F(container_utils_tests, test_compute_bucket_meta) {
 
   // test meta for num buckets == 2, skip bits == 0
   {
-    auto meta = iresearch::container_utils::compute_bucket_meta<2, 0>();
+    auto& meta = irs::container_utils::bucket_meta<2, 0>::get();
     ASSERT_EQ(2, meta.size());
     ASSERT_EQ(&(meta[1]), meta[0].next);
     ASSERT_EQ(0, meta[0].offset);
@@ -68,7 +68,7 @@ TEST_F(container_utils_tests, test_compute_bucket_meta) {
 
   // test meta for num buckets == 3, skip bits == 0
   {
-    auto meta = iresearch::container_utils::compute_bucket_meta<3, 0>();
+    auto& meta = irs::container_utils::bucket_meta<3, 0>::get();
     ASSERT_EQ(3, meta.size());
     ASSERT_EQ(&(meta[1]), meta[0].next);
     ASSERT_EQ(0, meta[0].offset);
@@ -83,13 +83,13 @@ TEST_F(container_utils_tests, test_compute_bucket_meta) {
 
   // test meta for num buckets == 0, skip bits == 2
   {
-    auto meta = iresearch::container_utils::compute_bucket_meta<0, 2>();
+    auto& meta = irs::container_utils::bucket_meta<0, 2>::get();
     ASSERT_EQ(0, meta.size());
   }
 
   // test meta for num buckets == 1, skip bits == 2
   {
-    auto meta = iresearch::container_utils::compute_bucket_meta<1, 2>();
+    auto& meta = irs::container_utils::bucket_meta<1, 2>::get();
     ASSERT_EQ(1, meta.size());
     ASSERT_EQ(&(meta[0]), meta[0].next);
     ASSERT_EQ(0, meta[0].offset);
@@ -98,7 +98,7 @@ TEST_F(container_utils_tests, test_compute_bucket_meta) {
 
   // test meta for num buckets == 2, skip bits == 2
   {
-    auto meta = iresearch::container_utils::compute_bucket_meta<2, 2>();
+    auto& meta = irs::container_utils::bucket_meta<2, 2>::get();
     ASSERT_EQ(2, meta.size());
     ASSERT_EQ(&(meta[1]), meta[0].next);
     ASSERT_EQ(0, meta[0].offset);
@@ -110,7 +110,7 @@ TEST_F(container_utils_tests, test_compute_bucket_meta) {
 
   // test meta for num buckets == 3, skip bits == 2
   {
-    auto meta = iresearch::container_utils::compute_bucket_meta<3, 2>();
+    auto& meta = irs::container_utils::bucket_meta<3, 2>::get();
     ASSERT_EQ(3, meta.size());
     ASSERT_EQ(&(meta[1]), meta[0].next);
     ASSERT_EQ(0, meta[0].offset);
