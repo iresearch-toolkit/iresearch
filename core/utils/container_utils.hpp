@@ -25,7 +25,7 @@
 #define IRESEARCH_CONTAINER_UTILS_H
 
 #include <memory>
-#include <vector>
+#include <array>
 
 #include "shared.hpp"
 #include "math_utils.hpp"
