@@ -31,17 +31,6 @@
 #include <cassert>
 #include <algorithm>
 
-NS_LOCAL
-
-template<typename T, typename... Args>
-const T& static_instance(Args&&... args) {
-  static const T value(std::forward<Args>(args)...);
-
-  return value;
-}
-
-NS_END
-
 // ----------------------------------------------------------------------------
 // --SECTION--                                                   std extensions
 // ----------------------------------------------------------------------------
@@ -296,7 +285,7 @@ template<typename Elem, typename Traits>
 
 template<typename Elem, typename Traits>
 /*static*/ const basic_string_ref<Elem, Traits> basic_string_ref<Elem, Traits >::EMPTY(
-  &static_instance<Elem>(), 0
+  reinterpret_cast<const Elem*>(""), 0 // FIXME
 );
 
 template class IRESEARCH_API basic_string_ref<char>;
