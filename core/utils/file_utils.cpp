@@ -499,7 +499,18 @@ bool byte_size(uint64_t& result, int fd) NOEXCEPT {
 bool exists(bool& result, const file_path_t file) NOEXCEPT {
   file_stat_t info;
 
-  result = 0 == file_stat(file, &info);
+  // MSVC2013 _wstat64(...) reports ENOENT for '\' terminated paths
+  // MSVC2015/MSVC2017 treat '\' terminated paths properly
+  #if defined(_MSC_VER) && _MSC_VER == 1800
+    auto parts = path_parts(file);
+
+    result = 0 == file_stat(
+      parts.basename.null() ? file : std::wstring(parts.dirname).c_str(),
+      &info
+    );
+  #else
+    result = 0 == file_stat(file, &info);
+  #endif
 
   if (!result) {
     auto path = boost::locale::conv::utf_to_utf<char>(file);
