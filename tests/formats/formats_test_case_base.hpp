@@ -766,6 +766,7 @@ class format_test_case_base : public index_test_base {
     iresearch::segment_meta meta;
     meta.name = "meta_name";
     meta.docs_count = 453;
+    meta.live_docs_count = 345;
     meta.version = 100;
 
     meta.files.emplace("file1");
@@ -790,6 +791,7 @@ class format_test_case_base : public index_test_base {
       ASSERT_EQ(meta.codec, read_meta.codec); // codec stays nullptr
       ASSERT_EQ(meta.name, read_meta.name);
       ASSERT_EQ(meta.docs_count, read_meta.docs_count);
+      ASSERT_EQ(meta.live_docs_count, read_meta.live_docs_count);
       ASSERT_EQ(meta.version, read_meta.version);
       ASSERT_EQ(meta.files, read_meta.files);
     }
@@ -1111,6 +1113,7 @@ class format_test_case_base : public index_test_base {
     iresearch::segment_meta meta0("_1", nullptr);
     meta0.version = 42;
     meta0.docs_count = 89;
+    meta0.live_docs_count = 67;
     meta0.codec = codec();
 
     std::vector<std::string> files;
@@ -1170,11 +1173,13 @@ class format_test_case_base : public index_test_base {
     iresearch::segment_meta meta0("_1", nullptr);
     meta0.version = 42;
     meta0.docs_count = 89;
+    meta0.live_docs_count = 67;
     meta0.codec = codec();
 
     iresearch::segment_meta meta1("_2", nullptr);
     meta1.version = 23;
     meta1.docs_count = 115;
+    meta1.live_docs_count = 111;
     meta1.codec = codec();
 
     // read attributes from empty directory

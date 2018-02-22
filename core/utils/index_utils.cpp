@@ -118,11 +118,7 @@ index_writer::consolidation_policy_t consolidate_count(float docs_threshold /*= 
 
     //for (uint32_t i = 0; i < segment_count; ++i) {
     for (auto& segment : meta) {
-      auto& segment_meta = segment.meta;
-      document_mask docs_mask;
-
-      read_document_mask(docs_mask, dir, segment_meta);
-      all_segment_docs_count += segment_meta.docs_count - docs_mask.size();
+      all_segment_docs_count += segment.meta.live_docs_count;
     }
 
     auto threshold = std::max<float>(0, std::min<float>(1, docs_threshold));
@@ -130,12 +126,8 @@ index_writer::consolidation_policy_t consolidate_count(float docs_threshold /*= 
 
     // merge segment if: {threshold} > segment_docs{valid} / (all_segment_docs{valid} / #segments)
     return [&dir, threshold_docs_avg](const segment_meta& meta)->bool {
-      document_mask docs_mask;
-
-      read_document_mask(docs_mask, dir, meta);
-
-      return meta.docs_count <= docs_mask.size() // if no valid doc_ids left in segment
-          || threshold_docs_avg > (meta.docs_count - docs_mask.size());
+      return !meta.live_docs_count // if no valid doc_ids left in segment
+          || threshold_docs_avg > meta.live_docs_count;
     };
   };
 }
@@ -148,12 +140,8 @@ index_writer::consolidation_policy_t consolidate_fill(float fill_threshold /*= 0
 
     // merge segment if: {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})
     return [&dir, threshold](const segment_meta& meta)->bool {
-      document_mask docs_mask;
-
-      read_document_mask(docs_mask, dir, meta);
-
-      return meta.docs_count <= docs_mask.size() // if no valid doc_ids left in segment
-          || meta.docs_count * threshold > (meta.docs_count - docs_mask.size());
+      return !meta.live_docs_count // if no valid doc_ids left in segment
+          || meta.docs_count * threshold > meta.live_docs_count;
     };
   };
 }
@@ -180,5 +168,9 @@ void read_document_mask(
   }
 }
 
-NS_END
-NS_END
+NS_END // index_utils
+NS_END // NS_ROOT
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

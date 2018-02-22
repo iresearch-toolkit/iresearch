@@ -287,8 +287,9 @@ segment_reader index_writer::get_segment_reader(
 bool index_writer::add_document_mask_modified_records(
     modification_requests_t& modification_queries,
     document_mask& docs_mask,
-    const segment_meta& meta,
-    size_t min_doc_id_generation /*= 0*/) {
+    segment_meta& meta,
+    size_t min_doc_id_generation /*= 0*/
+) {
   if (modification_queries.empty()) {
     return false; // nothing new to flush
   }
@@ -310,6 +311,8 @@ bool index_writer::add_document_mask_modified_records(
       // and doc_id not already masked then mark query as seen and segment as modified
       if (mod.generation >= min_doc_id_generation &&
           docs_mask.insert(doc).second) {
+        assert(meta.live_docs_count);
+        --meta.live_docs_count; // decrement count of live docs
         mod.seen = true;
         modified = true;
       }
@@ -322,7 +325,7 @@ bool index_writer::add_document_mask_modified_records(
 bool index_writer::add_document_mask_modified_records(
   modification_requests_t& modification_queries,
   segment_writer& writer,
-  const segment_meta& meta
+  segment_meta& meta
 ) {
   if (modification_queries.empty()) {
     return false; // nothing new to flush
@@ -365,6 +368,8 @@ bool index_writer::add_document_mask_modified_records(
         if (!mod.update ||
             doc_ctx.update_id == NON_UPDATE_RECORD ||
             modification_queries[doc_ctx.update_id].seen) {
+          assert(meta.live_docs_count);
+          --meta.live_docs_count; // decrement count of live docs
           mod.seen = true;
           modified = true;
         }
@@ -378,7 +383,7 @@ bool index_writer::add_document_mask_modified_records(
 /* static */ bool index_writer::add_document_mask_unused_updates(
     modification_requests_t& modification_queries,
     segment_writer& writer,
-    const segment_meta& meta
+    segment_meta& meta
 ) {
   UNUSED(meta);
 
@@ -401,8 +406,11 @@ bool index_writer::add_document_mask_modified_records(
 
     // if it's an update record placeholder who's query did not match any records
     if (doc_ctx.update_id != NON_UPDATE_RECORD
-        && !modification_queries[doc_ctx.update_id].seen) {
-      modified |= writer.remove(doc);
+        && !modification_queries[doc_ctx.update_id].seen
+        && writer.remove(doc)) {
+      assert(meta.live_docs_count);
+      --meta.live_docs_count; // decrement count of live docs
+      modified  = true;
     }
 
     ++doc;

@@ -42,19 +42,22 @@ segment_meta::segment_meta(
     std::string&& name,
     format::ptr codec,
     uint64_t docs_count,
+    uint64_t live_docs_count,
     bool column_store,
-    segment_meta::file_set&& files)
-  : files(std::move(files)),
-    name(std::move(name)),
-    docs_count(docs_count),
-    codec(codec),
-    column_store(column_store){
+    segment_meta::file_set&& files
+): files(std::move(files)),
+   name(std::move(name)),
+   docs_count(docs_count),
+   live_docs_count(live_docs_count),
+   codec(codec),
+   column_store(column_store) {
 }
 
 segment_meta::segment_meta(segment_meta&& rhs) NOEXCEPT
   : files(std::move(rhs.files)),
     name(std::move(rhs.name)),
     docs_count(rhs.docs_count),
+    live_docs_count(rhs.live_docs_count),
     codec(rhs.codec),
     column_store(rhs.column_store),
     version(rhs.version) {
@@ -67,6 +70,8 @@ segment_meta& segment_meta::operator=(segment_meta&& rhs) NOEXCEPT {
     name = std::move(rhs.name);
     docs_count = rhs.docs_count;
     rhs.docs_count = 0;
+    live_docs_count = rhs.live_docs_count;
+    rhs.live_docs_count = 0;
     codec = rhs.codec;
     rhs.codec = nullptr;
     column_store = rhs.column_store;
@@ -88,6 +93,7 @@ bool segment_meta::operator!=(const segment_meta& other) const NOEXCEPT {
   return name != other.name
     || version != other.version
     || docs_count != other.docs_count
+    || live_docs_count != other.live_docs_count
     || codec != other.codec
     || column_store != other.column_store
     || files != other.files
@@ -196,3 +202,7 @@ bool index_meta::index_segment_t::operator!=(
 }
 
 NS_END
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

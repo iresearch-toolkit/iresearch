@@ -159,7 +159,9 @@ bool segment_writer::flush(std::string& filename, segment_meta& meta) {
     fields_.flush(*field_writer_, state);
   }
 
+  assert(docs_cached() >= docs_mask().size());
   meta.docs_count = docs_cached();
+  meta.live_docs_count = meta.docs_count - docs_mask().size();
   meta.files.clear(); // prepare empy set to be swaped into dir_
 
   if (!dir_.swap_tracked(meta.files)) {

@@ -850,6 +850,7 @@ bool merge_writer::flush(std::string& filename, segment_meta& meta) {
   }
 
   meta.docs_count = next_id - type_limits<type_t::doc_id_t>::min(); // total number of doc_ids
+  meta.live_docs_count = meta.docs_count; // all merged documents are live
 
   //...........................................................................
   // write merged segment data
