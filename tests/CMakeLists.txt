@@ -91,6 +91,7 @@ set(IReSearch_tests_sources
   ./utils/std_test.cpp
   ./utils/type_utils_tests.cpp
   ./utils/utf8_path_tests.cpp
+  ./utils/fst_string_weight_test.cpp
   ./tests_main.cpp
 )
 
@@ -228,6 +229,7 @@ include_directories(${IResearchTests_TARGET_NAME}-shared
   ${ICU_INCLUDE_DIR}
   ${GTEST_INCLUDE_DIR}
   ${Boost_INCLUDE_DIRS}
+  $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 include_directories(${IResearchTests_TARGET_NAME}-static
@@ -239,6 +241,7 @@ include_directories(${IResearchTests_TARGET_NAME}-static
   ${Boost_INCLUDE_DIRS}
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-cmdline,INTERFACE_INCLUDE_DIRECTORIES>
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-rapidjson,INTERFACE_INCLUDE_DIRECTORIES>
+  $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 ################################################################################
