@@ -85,6 +85,18 @@ TEST(memory_test, make) {
   }
 }
 
+TEST(memory_test, allocate_unique_array_no_construct) {
+  std::allocator<char> alloc;
+  ASSERT_EQ(nullptr, irs::memory::allocate_unique<char[]>(alloc, 0, irs::memory::allocate_only));
+  ASSERT_NE(nullptr, irs::memory::allocate_unique<char[]>(alloc, 256, irs::memory::allocate_only));
+}
+
+TEST(memory_test, allocate_unique_array) {
+  std::allocator<char> alloc;
+  ASSERT_EQ(nullptr, irs::memory::allocate_unique<char[]>(alloc, 0));
+  ASSERT_NE(nullptr, irs::memory::allocate_unique<char[]>(alloc, 256));
+}
+
 TEST(memory_pool_test, init) {
   // default ctor
   {
