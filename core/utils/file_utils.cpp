@@ -75,7 +75,7 @@ inline int path_stats(file_stat_t& info, const file_path_t path) {
   // MSVC2013 _wstat64(...) reports ENOENT for '\' terminated paths
   // MSVC2015/MSVC2017 treat '\' terminated paths properly
   #if defined(_MSC_VER) && _MSC_VER == 1800
-    auto parts = path_parts(path);
+    auto parts = irs::file_utils::path_parts(path);
 
     return file_stat(
       parts.basename.null() ? std::wstring(parts.dirname).c_str() : path,
