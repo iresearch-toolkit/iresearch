@@ -71,6 +71,21 @@ NS_LOCAL
   const std::basic_string<char> path_separator("/");
 #endif
 
+inline int path_stats(file_stat_t& info, const file_path_t path) {
+  // MSVC2013 _wstat64(...) reports ENOENT for '\' terminated paths
+  // MSVC2015/MSVC2017 treat '\' terminated paths properly
+  #if defined(_MSC_VER) && _MSC_VER == 1800
+    auto parts = path_parts(path);
+
+    return file_stat(
+      parts.basename.null() ? path : std::wstring(parts.dirname).c_str(),
+      &info
+    );
+  #else
+    return file_stat(path, &info);
+  #endif
+}
+
 NS_END
 
 NS_ROOT
@@ -441,7 +456,7 @@ bool block_size(file_blksize_t& result, const file_path_t file) NOEXCEPT {
 #else
   file_stat_t info;
 
-  if (0 != file_stat(file, &info)) {
+  if (0 != path_stats(info, file)) {
     return false;
   }
 
@@ -475,7 +490,7 @@ bool byte_size(uint64_t& result, const file_path_t file) NOEXCEPT {
   assert(file != nullptr);
   file_stat_t info;
 
-  if (0 != file_stat(file, &info)) {
+  if (0 != path_stats(info, file)) {
     return false;
   }
 
@@ -497,20 +512,10 @@ bool byte_size(uint64_t& result, int fd) NOEXCEPT {
 }
 
 bool exists(bool& result, const file_path_t file) NOEXCEPT {
+  assert(file != nullptr);
   file_stat_t info;
 
-  // MSVC2013 _wstat64(...) reports ENOENT for '\' terminated paths
-  // MSVC2015/MSVC2017 treat '\' terminated paths properly
-  #if defined(_MSC_VER) && _MSC_VER == 1800
-    auto parts = path_parts(file);
-
-    result = 0 == file_stat(
-      parts.basename.null() ? file : std::wstring(parts.dirname).c_str(),
-      &info
-    );
-  #else
-    result = 0 == file_stat(file, &info);
-  #endif
+  result = 0 == path_stats(info, file);
 
   if (!result) {
     auto path = boost::locale::conv::utf_to_utf<char>(file);
@@ -522,9 +527,10 @@ bool exists(bool& result, const file_path_t file) NOEXCEPT {
 }
 
 bool exists_directory(bool& result, const file_path_t name) NOEXCEPT {
+  assert(name != nullptr);
   file_stat_t info;
 
-  result = 0 == file_stat(name, &info);
+  result = 0 == path_stats(info, name);
 
   if (!result) {
     auto path = boost::locale::conv::utf_to_utf<char>(name);
@@ -542,9 +548,10 @@ bool exists_directory(bool& result, const file_path_t name) NOEXCEPT {
 }
 
 bool exists_file(bool& result, const file_path_t name) NOEXCEPT {
+  assert(name != nullptr);
   file_stat_t info;
 
-  result = 0 == file_stat(name, &info);
+  result = 0 == path_stats(info, name);
 
   if (!result) {
     auto path = boost::locale::conv::utf_to_utf<char>(name);
@@ -565,7 +572,7 @@ bool mtime(time_t& result, const file_path_t file) NOEXCEPT {
   assert(file != nullptr);
   file_stat_t info;
 
-  if (0 != file_stat(file, &info)) {
+  if (0 != path_stats(info, file)) {
     return false;
   }
 
