@@ -384,11 +384,11 @@ template<
   typedef allocator_array_deleter<Alloc> deleter_t;
   typedef std::unique_ptr<T, deleter_t> unique_ptr_t;
 
-  if (!size) {
-    return unique_ptr_t(nullptr, deleter_t(alloc, size));
-  }
+  pointer p = nullptr;
 
-  pointer p;
+  if (!size) {
+    return unique_ptr_t(p, deleter_t(alloc, size));
+  }
 
   try {
     p = alloc.allocate(size); // allocate space for 'size' object
@@ -440,11 +440,11 @@ template<
   typedef allocator_array_deallocator<Alloc> deleter_t;
   typedef std::unique_ptr<T, deleter_t> unique_ptr_t;
 
-  if (!size) {
-    return unique_ptr_t(nullptr, deleter_t(alloc, size));
-  }
+  pointer p = nullptr;
 
-  pointer p;
+  if (!size) {
+    return unique_ptr_t(p, deleter_t(alloc, size));
+  }
 
   try {
     p = alloc.allocate(size); // allocate space for 'size' object
