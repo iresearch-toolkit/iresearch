@@ -738,11 +738,6 @@ void validate_move(bool src_abs, bool dst_abs) {
     ASSERT_FALSE(src_path.mtime(tmpTime));
     ASSERT_FALSE(src_path.file_size(tmpUint));
 
-MSVC2013_ONLY(std::wcerr << "|" << dst_path.c_str() << "|" << std::endl;)
-MSVC2013_ONLY(std::cerr << "-|" << dst_path.exists(tmpBool) << "|" << tmpBool << "|" << std::endl;)
-MSVC2013_ONLY(std::cerr << "=|" << (irs::utf8_path(dst_abs)/=dst).exists(tmpBool) << "|" << tmpBool << "|" << std::endl;)
-MSVC2013_ONLY(file_stat_t info;)
-MSVC2013_ONLY(std::cerr << "+|" << file_stat(dst_path.c_str(), &info) << "|" << errno << "|" << std::endl;)
     ASSERT_TRUE(dst_path.exists(tmpBool) && tmpBool);
     ASSERT_TRUE(dst_path.exists_directory(tmpBool) && tmpBool);
     ASSERT_TRUE(dst_path.exists_file(tmpBool) && !tmpBool);

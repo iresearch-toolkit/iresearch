@@ -78,7 +78,7 @@ inline int path_stats(file_stat_t& info, const file_path_t path) {
     auto parts = path_parts(path);
 
     return file_stat(
-      parts.basename.null() ? path : std::wstring(parts.dirname).c_str(),
+      parts.basename.null() ? std::wstring(parts.dirname).c_str() : path,
       &info
     );
   #else
