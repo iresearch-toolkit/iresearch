@@ -78,7 +78,7 @@ inline int path_stats(file_stat_t& info, const file_path_t path) {
     auto parts = irs::file_utils::path_parts(path);
 
     return file_stat(
-      parts.basename.null() ? std::wstring(parts.dirname).c_str() : path,
+      parts.basename.empty() ? std::wstring(parts.dirname).c_str() : path,
       &info
     );
   #else
