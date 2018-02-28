@@ -234,12 +234,18 @@ class IRESEARCH_API index_writer : util::noncopyable {
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief merges segments accepted by the specified defragment policty into
-  ///        a new segment. Frees the space occupied by the doucments marked 
-  ///        as deleted and deduplicate terms.
+  ///        a new segment. For all accepted segments frees the space occupied
+  ///        by the doucments marked as deleted and deduplicate terms.
   /// @param policy the speicified defragmentation policy
-  /// @param immediate apply the policy immediately but only to previously
-  ///        committed segments, or defer defragment until the commit stage
-  ///        and apply the policy to all segments in the commit
+  /// @param immediate
+  ///        true - apply the policy immediately but only to previously
+  ///        committed segments
+  ///        false - defer consolidation until the commit stage and apply the
+  ///                policy to all segments in the commit
+  /// @note for deffered policies during the commit stage each policy will be
+  ///       given the exact same index_meta containing all segments in the
+  ///       commit, however, the resulting acceptor will only be segments not
+  ///       yet marked for consolidation by other policies in the same commit
   ////////////////////////////////////////////////////////////////////////////
   void consolidate(const consolidation_policy_t& policy, bool immediate);
 
@@ -248,9 +254,15 @@ class IRESEARCH_API index_writer : util::noncopyable {
   ///        a new segment. Frees the space occupied by the doucments marked 
   ///        as deleted and deduplicate terms.
   /// @param policy the speicified defragmentation policy
-  /// @param immediate apply the policy immediately but only to previously
-  ///        committed segments, or defer defragment until the commit stage
-  ///        and apply the policy to all segments in the commit
+  /// @param immediate
+  ///        true - apply the policy immediately but only to previously
+  ///        committed segments
+  ///        false - defer consolidation until the commit stage and apply the
+  ///                policy to all segments in the commit
+  /// @note for deffered policies during the commit stage each policy will be
+  ///       given the exact same index_meta containing all segments in the
+  ///       commit, however, the resulting acceptor will only be segments not
+  ///       yet marked for consolidation by other policies in the same commit
   ////////////////////////////////////////////////////////////////////////////
   void consolidate(
     const std::shared_ptr<consolidation_policy_t>& policy, bool immediate
@@ -261,9 +273,15 @@ class IRESEARCH_API index_writer : util::noncopyable {
   ///        a new segment. Frees the space occupied by the doucments marked 
   ///        as deleted and deduplicate terms.
   /// @param policy the speicified defragmentation policy
-  /// @param immediate apply the policy immediately but only to previously
-  ///        committed segments, or defer defragment until the commit stage
-  ///        and apply the policy to all segments in the commit
+  /// @param immediate
+  ///        true - apply the policy immediately but only to previously
+  ///        committed segments
+  ///        false - defer consolidation until the commit stage and apply the
+  ///                policy to all segments in the commit
+  /// @note for deffered policies during the commit stage each policy will be
+  ///       given the exact same index_meta containing all segments in the
+  ///       commit, however, the resulting acceptor will only be segments not
+  ///       yet marked for consolidation by other policies in the same commit
   ////////////////////////////////////////////////////////////////////////////
   void consolidate(consolidation_policy_t&& policy, bool immediate);
 
@@ -480,10 +498,10 @@ class IRESEARCH_API index_writer : util::noncopyable {
   bool add_segment_mask_consolidated_records(
     index_meta::index_segment_t& segment, // the newly created segment
     directory& dir, // directory to create merged segment in
-    flush_context::segment_mask_t& segments_mask, // list to add masked segments to
-    const index_meta::index_segments_t& segments, // candidates to consider
-    const consolidation_acceptor_t& acceptor // functr dictating which segments to consider
-  ); // return if any new records were added (pending_segments_/segment_mask_ modified)
+    flush_context::segment_mask_t& segments_mask, // append segments marked for consolidation
+    const index_meta& meta, // current state to examine for consolidation candidates
+    const consolidation_requests_t& policies // policies dictating which segments to consider
+  ); // return if any new records were added (segment/segment_mask modified)
 
   pending_context_t flush_all();
 

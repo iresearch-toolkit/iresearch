@@ -25,6 +25,7 @@
 #include "file_names.hpp"
 #include "merge_writer.hpp"
 #include "formats/format_utils.hpp"
+#include "utils/bitset.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/index_utils.hpp"
 #include "utils/timer_utils.hpp"
@@ -422,68 +423,81 @@ bool index_writer::add_document_mask_modified_records(
 bool index_writer::add_segment_mask_consolidated_records(
     index_meta::index_segment_t& segment,
     directory& dir,
-    flush_context::segment_mask_t& segments_mask,
-    const index_meta::index_segments_t& segments, // candidates to consider
-    const consolidation_acceptor_t& acceptor // functr dictating which segments to consider
+    flush_context::segment_mask_t& segments_mask, // append segments marked for consolidation
+    const index_meta& meta, // current state to examine for consolidation candidates
+    const consolidation_requests_t& policies // policies dictating which segments to consider
 ) {
   REGISTER_TIMER_DETAILED();
-  std::vector<segment_reader> merge_candidates;
-  const index_meta::index_segment_t* merge_candindate_default = nullptr;
-  flush_context::segment_mask_t segment_mask;
+  bitset consolidation_mask(meta.size()); // consolidated segments
 
-  // find merge candidates
-  for (auto& seg: segments) {
-    if (!acceptor(seg.meta)) {
-      merge_candindate_default = &seg; // pick the last non-merged segment as default
-      continue; // fill min threshold not reached
-    }
+  // collect a list of consolidation candidates
+  for (auto& policy: policies) {
+    auto acceptor = (*(policy.policy))(dir, meta);
 
-    auto merge_candidate = get_segment_reader(seg.meta);
+    for (size_t i = 0, count = meta.size(); i < count; ++i) {
+      auto& candidate = meta.segment(i).meta;
 
-    if (!merge_candidate) {
-      continue; // skip empty readers
-    }
-
-    merge_candidates.emplace_back(std::move(merge_candidate));
-    segment_mask.insert(seg.meta.name);
-  }
-
-  if (merge_candidates.empty()) {
-    return false; // nothing to merge
-  }
-
-  if (merge_candidates.size() < 2) {
-    if (!merge_candindate_default) {
-      if (merge_candidates[0].docs_count() == merge_candidates[0].live_docs_count()) {
-        return false; // no reason to consolidate a segment without any masked documents
+      // consolidate empty segments
+      // test accepted segments excluding segments marked for consolidation
+      if (!candidate.live_docs_count
+          || (!consolidation_mask.test(i) && acceptor(candidate))) {
+        consolidation_mask.set(i);
       }
-    } else { // if only one merge candidate and another segment available then merge with other
-      auto merge_candidate = get_segment_reader(merge_candindate_default->meta);
-
-      if (!merge_candidate) {
-        return false; // failed to open segment and nothing else to merge with
-      }
-
-      merge_candidates.emplace_back(std::move(merge_candidate));
-      segment_mask.insert(merge_candindate_default->meta.name);
     }
   }
 
-  REGISTER_TIMER_DETAILED();
-  segment.meta.codec = codec_;
-  segment.meta.name = file_name(meta_.increment()); // increment active meta, not fn arg
-
-  merge_writer merge_writer(dir, segment.meta.name);
-
-  for (auto& merge_candidate: merge_candidates) {
-    merge_writer.add(merge_candidate);
+  if (consolidation_mask.none()) {
+    return false; // nothing to consolidate since no candidate segments
   }
 
-  if (!merge_writer.flush(segment.filename, segment.meta)) {
-    return false; // import failure (no files created, nothing to clean up)
+  const segment_meta* candindate_default = nullptr;
+  index_meta::index_segment_t consolidation_segment; // consolidation segment
+
+  consolidation_segment.meta.codec = codec_; // should use new codec
+  consolidation_segment.meta.name = file_name(meta_.increment()); // increment active meta, not fn arg
+  consolidation_segment.meta.version = 0; // reset version for new segment
+
+  merge_writer merge_writer(dir, consolidation_segment.meta.name);
+  std::vector<segment_reader> readers; // merge_writer holds pointers to readers
+  flush_context::segment_mask_t segment_mask(segments_mask); // consolidated segments
+
+  readers.reserve(consolidation_mask.count() + 1); // enough for all segments (+1 for possible default candidate)
+
+  // add consolidated segments to the merge_writer
+  for (size_t i = 0, count = meta.size(); i < count; ++i) {
+    auto& candidate = meta.segment(i).meta;
+
+    if (consolidation_mask.test(i)) {
+      auto reader = get_segment_reader(candidate);
+
+      if (reader) {
+        segment_mask.emplace(candidate.name);
+        readers.emplace_back(std::move(reader)); // space reserved above
+        merge_writer.add(readers.back());
+      }
+    } else {
+      candindate_default = &candidate; // pick the last non-consolidated segment as default
+    }
   }
 
-  segments_mask.insert(segment_mask.begin(), segment_mask.end());
+  // if only 1 consolidation candidate and another segment available then merge with other
+  if (readers.size() == 1 && candindate_default) {
+    auto reader = get_segment_reader(*candindate_default);
+
+    if (reader) {
+      segment_mask.emplace(candindate_default->name);
+      readers.emplace_back(std::move(reader)); // space reserved above
+      merge_writer.add(readers.back());
+    }
+  }
+
+  if (readers.empty()
+      || !merge_writer.flush(consolidation_segment.filename, consolidation_segment.meta)) {
+    return false; // nothing to consolidate or consolidation failure
+  }
+
+  segment = std::move(consolidation_segment);
+  segments_mask = std::move(segment_mask);
 
   return true;
 }
@@ -493,11 +507,11 @@ void index_writer::consolidate(
 ) {
   if (immediate) {
     REGISTER_TIMER_DETAILED();
-    auto meta = committed_state_.first;
     index_meta::index_segment_t segment;
     std::unordered_map<string_ref, const segment_meta*> segment_candidates;
     SCOPED_LOCK(commit_lock_); // ensure meta_ segments are not modified by concurrent consolidate()/commit()
     auto ctx = get_flush_context(); // can modify ctx->segment_mask_ without lock since have commit_lock_
+    auto meta = committed_state_.first;
 
     for (auto& seg: meta_) {
       if (ctx->segment_mask_.end() == ctx->segment_mask_.find(seg.meta.name)) {
@@ -506,19 +520,25 @@ void index_writer::consolidate(
     }
 
     auto acceptor = policy(*(ctx->dir_), *meta);
-    consolidation_acceptor_t acceptor_wrapper = [&acceptor, &segment_candidates](
-      const segment_meta& meta
-    )->bool {
-      auto itr = segment_candidates.find(meta.name);
+    consolidation_requests_t policies;
 
-      return segment_candidates.end() != itr
-          && meta.version == itr->second->version
-          && acceptor(meta)
-          ;
-    };
+    policies.emplace_back(
+      [&acceptor, &segment_candidates](
+        const directory& dir, const index_meta& meta
+      )->consolidation_acceptor_t {
+        return [&acceptor, &segment_candidates](const segment_meta& meta)->bool {
+          auto itr = segment_candidates.find(meta.name);
+
+          return segment_candidates.end() != itr
+            && meta.version == itr->second->version
+            && acceptor(meta)
+            ;
+        };
+      }
+    );
 
     // for immediate consolidate consider only comitted segments that are still unmodified in current meta
-    if (add_segment_mask_consolidated_records(segment, *(ctx->dir_), ctx->segment_mask_, meta->segments_, acceptor_wrapper)) {
+    if (add_segment_mask_consolidated_records(segment, *(ctx->dir_), ctx->segment_mask_, *meta, policies)) {
       consolidation_policy_t meta_ref = [meta](const directory&, const index_meta&)->consolidation_acceptor_t {
         return [](const segment_meta&)->bool { return false; };
       };
@@ -828,32 +848,33 @@ index_writer::pending_context_t index_writer::flush_all() {
     }
   }
 
-  // add segments generated by deferred merge policies to meta
-  for (auto& policy: ctx->consolidation_policies_) {
-    segments.clear();
-    segments.emplace_back();
-
-    auto acceptor = (*(policy.policy))(*(ctx->dir_), *pending_meta);
-    auto& segment = segments.back();
+  // process deferred merge policies
+  if (!ctx->consolidation_policies_.empty() && !pending_meta->empty()) {
+    index_meta::index_segment_t segment;
     flush_context::segment_mask_t segment_mask;
+    auto consolidated = add_segment_mask_consolidated_records(
+      segment,
+      *(ctx->dir_),
+      segment_mask,
+      *pending_meta,
+      ctx->consolidation_policies_
+    );
 
-    // remove empty segments
-    if (!add_segment_mask_consolidated_records(segment, *(ctx->dir_), segment_mask, pending_meta->segments_, acceptor) ||
-        !segment.meta.docs_count) {
-      continue;
-    }
+    if (consolidated) {
+      // add files from segment to list of files to sync
+      to_sync.insert(segment.meta.files.begin(), segment.meta.files.end());
 
-    // add files from segment to list of files to sync
-    to_sync.insert(segment.meta.files.begin(), segment.meta.files.end());
+      // retain list of only non-masked segments
+      pending_meta->segments_.swap(segments);
+      pending_meta->segments_.clear();
+      pending_meta->segments_.emplace_back(std::move(segment));
 
-    // retain list of only non-masked segments
-    pending_meta->segments_.swap(segments);
-
-    for (auto& seg: segments) {
-      if (segment_mask.end() == segment_mask.find(seg.meta.name)) {
-        pending_meta->segments_.emplace_back(std::move(seg));
-      } else {
-        cached_segment_readers_.erase(seg.meta.name); // no longer required
+      for (auto& segment: segments) {
+        if (segment_mask.end() == segment_mask.find(segment.meta.name)) {
+          pending_meta->segments_.emplace_back(std::move(segment));
+        } else {
+          cached_segment_readers_.erase(segment.meta.name); // no longer required
+        }
       }
     }
   }
