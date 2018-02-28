@@ -25,6 +25,7 @@
 #include "store_utils.hpp"
 #include "utils/utf8_path.hpp"
 #include "utils/mmap_utils.hpp"
+#include "utils/memory.hpp"
 
 NS_LOCAL
 
@@ -73,7 +74,7 @@ class mmap_index_input : public irs::bytes_ref_input {
     mmap_handle_ptr handle;
 
     try {
-      handle = std::make_shared<mmap_handle>();
+      handle = irs::memory::make_shared<mmap_handle>();
     } catch (...) {
       IR_LOG_EXCEPTION();
       return nullptr;

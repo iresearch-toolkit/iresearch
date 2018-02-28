@@ -1512,15 +1512,15 @@ bool store_writer::store(
 }
 
 /*static*/ transaction_store::bstring_builder::ptr transaction_store::bstring_builder::make() {
-  return irs::memory::make_unique<bstring>(DEFAULT_BUFFER_SIZE, '\0');
+  return irs::memory::make_shared<bstring>(DEFAULT_BUFFER_SIZE, '\0');
 }
 
 /*static*/ transaction_store::column_meta_builder::ptr transaction_store::column_meta_builder::make() {
-  return irs::memory::make_unique<column_meta>();
+  return irs::memory::make_shared<column_meta>();
 }
 
 /*static*/ transaction_store::field_meta_builder::ptr transaction_store::field_meta_builder::make() {
-  return irs::memory::make_unique<field_meta>();
+  return irs::memory::make_shared<field_meta>();
 }
 
 transaction_store::transaction_store(size_t pool_size /*= DEFAULT_POOL_SIZE*/)
@@ -1528,7 +1528,7 @@ transaction_store::transaction_store(size_t pool_size /*= DEFAULT_POOL_SIZE*/)
     column_meta_pool_(pool_size),
     field_meta_pool_(pool_size),
     generation_(0),
-    reusable_(memory::make_unique<bool>(true)),
+    reusable_(memory::make_shared<bool>(true)),
     used_doc_ids_(type_limits<type_t::doc_id_t>::invalid() + 1),
     visible_docs_(type_limits<type_t::doc_id_t>::invalid() + 1) { // same size as used_doc_ids_
   used_doc_ids_.set(type_limits<type_t::doc_id_t>::invalid()); // mark as always in-use
@@ -1632,7 +1632,7 @@ void transaction_store::cleanup() {
 void transaction_store::clear() {
   async_utils::read_write_mutex::write_mutex mutex(mutex_);
   SCOPED_LOCK(mutex);
-  auto reusable = memory::make_unique<bool>(true); // create marker for next generation
+  auto reusable = memory::make_shared<bool>(true); // create marker for next generation
 
   *reusable_ = false; // prevent existing writers from commiting into the store
   reusable_ = std::move(reusable); // mark new generation

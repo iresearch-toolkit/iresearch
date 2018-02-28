@@ -328,7 +328,7 @@ filter::prepared::ptr by_same_position::prepare(
     ++term_itr;
   }
 
-  auto q = memory::make_unique<same_position_query>(
+  auto q = memory::make_shared<same_position_query>(
     std::move(query_states),
     std::move(stats)
   );

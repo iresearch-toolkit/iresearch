@@ -149,7 +149,7 @@ term_iterator::ptr term_iterator::empty() {
 // ----------------------------------------------------------------------------
 
 doc_iterator::ptr doc_iterator::empty() {
-  static doc_iterator::ptr instance = std::make_shared<empty_doc_iterator>();
+  static doc_iterator::ptr instance = memory::make_shared<empty_doc_iterator>();
 
   return instance;
 }

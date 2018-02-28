@@ -283,6 +283,25 @@ inline typename std::enable_if<
 #define DECLARE_MANAGED_PTR(class_name) typedef std::unique_ptr<class_name, memory::managed_deleter<class_name> > ptr
 
 // ----------------------------------------------------------------------------
+// --SECTION--                                                      make_shared
+// ----------------------------------------------------------------------------
+
+template<typename T, typename... Args>
+inline std::shared_ptr<T> make_shared(Args&&... args) {
+  try {
+    return std::make_shared<T>(std::forward<Args>(args)...);
+  } catch (std::bad_alloc&) {
+    fprintf(
+      stderr,
+      "Memory allocation failure while creating and initializing an object of size " IR_SIZE_T_SPECIFIER " bytes\n",
+      sizeof(T)
+    );
+    dump_mem_stats_trace();
+    throw;
+  }
+}
+
+// ----------------------------------------------------------------------------
 // --SECTION--                                                      make_unique
 // ----------------------------------------------------------------------------
 

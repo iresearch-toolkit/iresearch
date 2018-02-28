@@ -316,7 +316,7 @@ class compound_iterator {
 class compound_term_iterator : public irs::term_iterator {
  public:
   compound_term_iterator()
-    : doc_itr_(std::make_shared<compound_doc_iterator>()) {
+    : doc_itr_(irs::memory::make_shared<compound_doc_iterator>()) {
   }
 
   void reset(const irs::field_meta& meta) NOEXCEPT {

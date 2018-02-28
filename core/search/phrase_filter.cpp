@@ -294,7 +294,7 @@ filter::prepared::ptr by_phrase::prepare(
     ++term_itr;
   }
 
-  auto q = memory::make_unique<phrase_query>(
+  auto q = memory::make_shared<phrase_query>(
     std::move(phrase_states),
     std::move(stats)
   );

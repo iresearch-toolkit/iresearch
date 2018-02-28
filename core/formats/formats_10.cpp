@@ -2787,7 +2787,7 @@ class read_context
       return nullptr;
     }
 
-    return std::make_shared<read_context>(std::move(clone));
+    return memory::make_shared<read_context>(std::move(clone));
   }
 
   read_context(index_input::ptr&& in = index_input::ptr(), const Allocator& alloc = Allocator())

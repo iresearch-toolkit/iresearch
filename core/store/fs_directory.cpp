@@ -457,7 +457,7 @@ index_input::ptr fs_index_input::reopen() const NOEXCEPT {
 }
 
 pooled_fs_index_input::pooled_fs_index_input(const fs_index_input& in)
-  : fs_index_input(in), fd_pool_(std::make_shared<fd_pool_t>(pool_size_)) {
+  : fs_index_input(in), fd_pool_(memory::make_shared<fd_pool_t>(pool_size_)) {
   handle_ = reopen(*handle_);
 }
 

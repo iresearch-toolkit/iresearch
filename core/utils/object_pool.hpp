@@ -412,14 +412,14 @@ class unbounded_object_pool
   };
 
   explicit unbounded_object_pool(size_t size)
-    : pool_(size), reusable_(std::make_shared<std::atomic<bool>>(true)) {
+    : pool_(size), reusable_(memory::make_shared<std::atomic<bool>>(true)) {
   }
 
   void clear() {
     auto reusable = atomic_bool_utils::atomic_load(&reusable_);
 
     reusable->store(false); // prevent existing element from returning into the pool
-    reusable = std::make_shared<std::atomic<bool>>(true); // mark new generation
+    reusable = memory::make_shared<std::atomic<bool>>(true); // mark new generation
     atomic_bool_utils::atomic_store(&reusable_, reusable);
 
     // linearly reset all cached instances
