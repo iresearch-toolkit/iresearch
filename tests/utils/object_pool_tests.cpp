@@ -98,11 +98,25 @@ TEST_F(object_pool_tests, check_total_number_of_instances) {
     pool.emplace(id++);
   };
 
+  auto job_shared = [&mutex, &ready_cv, &pool, &ready, &id](){
+    // wait for all threads to be ready
+    {
+      SCOPED_LOCK_NAMED(mutex, lock);
+
+      while (!ready) {
+        ready_cv.wait(lock);
+      }
+    }
+
+    pool.emplace_shared(id++);
+  };
+
   const size_t THREADS_COUNT = 32;
   std::vector<std::thread> threads;
 
-  for (size_t i = 0; i < THREADS_COUNT; ++i) {
+  for (size_t i = 0; i < THREADS_COUNT/2; ++i) {
     threads.emplace_back(job);
+    threads.emplace_back(job_shared);
   }
 
   // ready
@@ -122,7 +136,7 @@ TEST_F(object_pool_tests, bounded_sobject_pool) {
     std::condition_variable cond;
     std::mutex mutex;
     iresearch::bounded_object_pool<test_sobject> pool(1);
-    auto obj = pool.emplace(1);
+    auto obj = pool.emplace_shared(1);
 
     {
       SCOPED_LOCK_NAMED(mutex, lock);
@@ -151,9 +165,9 @@ TEST_F(object_pool_tests, bounded_sobject_pool) {
 
     ASSERT_EQ(1, obj->id);
     obj.reset();
-    obj = pool.emplace(2);
-    ASSERT_EQ(1, obj->id);
-    ASSERT_EQ(obj_ptr, obj.get());
+    auto obj_shared = pool.emplace_shared(2);
+    ASSERT_EQ(1, obj_shared->id);
+    ASSERT_EQ(obj_ptr, obj_shared.get());
   }
 
   // test shared visitation
@@ -319,7 +333,7 @@ TEST_F(object_pool_tests, unbounded_sobject_pool) {
     std::condition_variable cond;
     std::mutex mutex;
     iresearch::unbounded_object_pool<test_sobject> pool(1);
-    auto obj = pool.emplace(1);
+    auto obj = pool.emplace_shared(1);
 
     {
       SCOPED_LOCK_NAMED(mutex, lock);
@@ -338,16 +352,16 @@ TEST_F(object_pool_tests, unbounded_sobject_pool) {
 
     ASSERT_EQ(1, obj->id);
     obj.reset();
-    obj = pool.emplace(2);
-    ASSERT_EQ(1, obj->id);
-    ASSERT_EQ(obj_ptr, obj.get());
+    auto obj_shared = pool.emplace_shared(2);
+    ASSERT_EQ(1, obj_shared->id);
+    ASSERT_EQ(obj_ptr, obj_shared.get());
   }
 
   // ensure untracked object is not placed back in the pool
   {
     iresearch::unbounded_object_pool<test_sobject> pool(1);
     auto obj0 = pool.emplace(1);
-    auto obj1 = pool.emplace(2);
+    auto obj1 = pool.emplace_shared(2);
     auto* obj0_ptr = obj0.get();
 
     ASSERT_EQ(1, obj0->id);
@@ -356,7 +370,7 @@ TEST_F(object_pool_tests, unbounded_sobject_pool) {
     obj1.reset(); // will be placed back in pool first
     obj0.reset(); // will push obj1 out of the pool
 
-    auto obj2 = pool.emplace(3);
+    auto obj2 = pool.emplace_shared(3);
     auto obj3 = pool.emplace(4);
     ASSERT_EQ(1, obj2->id);
     ASSERT_EQ(4, obj3->id);

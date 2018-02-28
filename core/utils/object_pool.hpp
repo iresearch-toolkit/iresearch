@@ -61,65 +61,66 @@ class atomic_base {
 
 // GCC prior the 5.0 does not support std::atomic_exchange(std::shared_ptr<T>*, std::shared_ptr<T>)
 #if !defined(__GNUC__) || (__GNUC__ >= 5)
-  template<typename T>
-  class atomic_base<std::shared_ptr<T>> {
-    #if defined(IRESEARCH_VALGRIND) // suppress valgrind false-positives related to std::atomic_*
-     public:
-      std::shared_ptr<T> atomic_exchange(std::shared_ptr<T>* p, std::shared_ptr<T> r) const {
-        SCOPED_LOCK(mutex_);
-        return std::atomic_exchange(p, r);
-      }
-
-      void atomic_store(std::shared_ptr<T>* p, std::shared_ptr<T> r) const {
-        SCOPED_LOCK(mutex_);
-        std::atomic_store(p, r);
-      }
-
-      std::shared_ptr<T> atomic_load(const std::shared_ptr<T>* p) const {
-        SCOPED_LOCK(mutex_);
-        return std::atomic_load(p);
-      }
-
-     private:
-      mutable std::mutex mutex_;
-    #else
-     public:
-      static std::shared_ptr<T> atomic_exchange(std::shared_ptr<T>* p, std::shared_ptr<T> r) {
-        return std::atomic_exchange(p, r);
-      }
-
-      static void atomic_store(std::shared_ptr<T>* p, std::shared_ptr<T> r) {
-        std::atomic_store(p, r);
-      }
-
-      static std::shared_ptr<T> atomic_load(const std::shared_ptr<T>* p) {
-        return std::atomic_load(p);
-      }
-    #endif // defined(IRESEARCH_VALGRIND)
-  };
-#endif
-
 template<typename T>
-class move_on_copy { 
- public:
-  move_on_copy(T&& value) : value_(std::move(value)) {}
-  move_on_copy(const move_on_copy& rhs) : value_(std::move(rhs.value_)) {}
+class atomic_base<std::shared_ptr<T>> {
+  #if defined(IRESEARCH_VALGRIND) // suppress valgrind false-positives related to std::atomic_*
+   public:
+    std::shared_ptr<T> atomic_exchange(std::shared_ptr<T>* p, std::shared_ptr<T> r) const NOEXCEPT {
+      SCOPED_LOCK(mutex_);
+      return std::atomic_exchange(p, r);
+    }
 
-  T& value() { return value_; }
-  const T& value() const { return value_; }
+    void atomic_store(std::shared_ptr<T>* p, std::shared_ptr<T> r) const NOEXCEPT {
+      SCOPED_LOCK(mutex_);
+      std::atomic_store(p, r);
+    }
+
+    std::shared_ptr<T> atomic_load(const std::shared_ptr<T>* p) const NOEXCEPT {
+      SCOPED_LOCK(mutex_);
+      return std::atomic_load(p);
+    }
+
+   private:
+    mutable std::mutex mutex_;
+  #else
+   public:
+    static std::shared_ptr<T> atomic_exchange(std::shared_ptr<T>* p, std::shared_ptr<T> r) NOEXCEPT {
+      return std::atomic_exchange(p, r);
+    }
+
+    static void atomic_store(std::shared_ptr<T>* p, std::shared_ptr<T> r) NOEXCEPT {
+      std::atomic_store(p, r);
+    }
+
+    static std::shared_ptr<T> atomic_load(const std::shared_ptr<T>* p) NOEXCEPT {
+      return std::atomic_load(p);
+    }
+  #endif // defined(IRESEARCH_VALGRIND)
+};
+#else
+template<typename T>
+class atomic_base<std::shared_ptr<T>> {
+ public:
+  std::shared_ptr<T> atomic_exchange(std::shared_ptr<T>* p, std::shared_ptr<T> r) const NOEXCEPT {
+    SCOPED_LOCK(mutex_);
+    p->swap(r);
+    return r;
+  }
+
+  void atomic_store(std::shared_ptr<T>* p, std::shared_ptr<T> r) const NOEXCEPT {
+    SCOPED_LOCK(mutex_);
+    *p = r;
+  }
+
+  std::shared_ptr<T> atomic_load(const std::shared_ptr<T>* p) const NOEXCEPT {
+    SCOPED_LOCK(mutex_);
+    return *p;
+  }
 
  private:
-  move_on_copy& operator=(move_on_copy&&) = delete;
-  move_on_copy& operator=(const move_on_copy&) = delete;
-  
-  mutable T value_;
+  mutable std::mutex mutex_;
 };
-
-template<typename T>
-move_on_copy<T> make_move_on_copy(T&& value) {
-  static_assert(std::is_rvalue_reference<decltype(value)>::value, "parameter should be an rvalue");
-  return move_on_copy<T>(std::move(value));
-}
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief a fixed size pool of objects
@@ -137,8 +138,9 @@ class bounded_object_pool : atomic_base<typename T::ptr> {
     std::atomic_flag used;
   }; // slot_t
 
- public:
   typedef atomic_base<typename T::ptr> atomic_utils;
+
+ public:
   typedef typename T::ptr::element_type element_type;
 
   // do not use std::shared_ptr to avoid unnecessary heap allocatons
@@ -215,6 +217,41 @@ class bounded_object_pool : atomic_base<typename T::ptr> {
           }
 
           return ptr(slot);
+        }
+      }
+
+      wait_for_free_slots();
+    }
+  }
+
+  template<typename... Args>
+  std::shared_ptr<element_type> emplace_shared(Args&&... args) {
+    for(;;) {
+      // linear search for an unused slot in the pool
+      for (auto& slot : pool_) {
+        if (lock(slot)) {
+          auto& p = slot.ptr;
+
+          if (!p) {
+            try {
+              p = T::make(std::forward<Args>(args)...);
+            } catch (...) {
+              unlock(slot);
+              throw;
+            }
+          }
+
+          try {
+            return std::shared_ptr<element_type>(
+              p.get(),
+              [&slot] (element_type*) NOEXCEPT {
+                assert(slot.owner);
+                slot.owner->unlock(slot);
+            });
+          } catch (...) {
+            unlock(slot);
+            throw;
+          }
         }
       }
 
@@ -300,7 +337,7 @@ class bounded_object_pool : atomic_base<typename T::ptr> {
   // MSVC 2017.3, 2017.4 and 2017.5 incorectly decrement counter if this function is inlined during optimization
   // MSVC 2017.2 and below TODO test for both debug and release
   MSVC2017_345_OPTIMIZED_WORKAROUND(__declspec(noinline))
-  bool lock(slot_t& slot) const {
+  bool lock(slot_t& slot) const NOEXCEPT {
     if (!slot.used.test_and_set()) {
       --free_count_;
 
@@ -313,7 +350,7 @@ class bounded_object_pool : atomic_base<typename T::ptr> {
   // MSVC 2017.3, 2017.4 and 2017.5 incorectly increment counter if this function is inlined during optimization
   // MSVC 2017.2 and below TODO test for both debug and release
   MSVC2017_345_OPTIMIZED_WORKAROUND(__declspec(noinline))
-  void unlock(slot_t& slot) const {
+  void unlock(slot_t& slot) const NOEXCEPT {
     slot.used.clear();
     SCOPED_LOCK(mutex_);
     ++free_count_; // under lock to ensure cond_.wait_for(...) not triggered
@@ -339,17 +376,70 @@ class unbounded_object_pool
   : private atomic_base<typename T::ptr>,
     private atomic_base<std::shared_ptr<std::atomic<bool>>> {
  public:
-  DECLARE_SPTR(typename T::ptr::element_type);
+  typedef typename T::ptr::element_type element_type;
+  typedef std::shared_ptr<std::atomic<bool>> reusable_t;
+
+  // do not use std::shared_ptr to avoid unnecessary heap allocatons
+  class ptr : util::noncopyable {
+   public:
+    ptr(typename T::ptr&& value,
+        unbounded_object_pool& owner,
+        const reusable_t& reusable
+    ) : value_(std::move(value)),
+        owner_(&owner),
+        reusable_(std::move(reusable)) {
+    }
+
+    ptr(ptr&& rhs) NOEXCEPT
+      : value_(std::move(rhs.value_)),
+        owner_(rhs.owner_),
+        reusable_(std::move(rhs.reusable_)) {
+      rhs.owner_ = nullptr;
+    }
+
+    ptr& operator=(ptr&& rhs) NOEXCEPT {
+      if (this != &rhs) {
+        value_ = std::move(rhs.value_);
+        owner_ = rhs.owner_;
+        rhs.owner_ = nullptr;
+        reusable_ = std::move(rhs.reusable_);
+      }
+      return *this;
+    }
+
+    ~ptr() NOEXCEPT {
+      reset();
+    }
+
+    void reset() NOEXCEPT {
+      if (owner_) {
+        owner_->reset(reusable_, value_);
+        owner_ = nullptr;
+      }
+    }
+
+    element_type& operator*() const NOEXCEPT { return *value_; }
+    element_type* operator->() const NOEXCEPT { return get(); }
+    element_type* get() const NOEXCEPT { return value_.get(); }
+    operator bool() const NOEXCEPT {
+      return static_cast<bool>(value_);
+    }
+
+   private:
+    typename T::ptr value_;
+    unbounded_object_pool* owner_;
+    reusable_t reusable_;
+  };
 
   explicit unbounded_object_pool(size_t size)
-    : pool_(size), reusable_(memory::make_unique<std::atomic<bool>>(true)) {
+    : pool_(size), reusable_(std::make_shared<std::atomic<bool>>(true)) {
   }
 
   void clear() {
     auto reusable = atomic_bool_utils::atomic_load(&reusable_);
 
     reusable->store(false); // prevent existing element from returning into the pool
-    reusable = memory::make_unique<std::atomic<bool>>(true); // mark new generation
+    reusable = std::make_shared<std::atomic<bool>>(true); // mark new generation
     atomic_bool_utils::atomic_store(&reusable_, reusable);
 
     // linearly reset all cached instances
@@ -362,9 +452,10 @@ class unbounded_object_pool
   template<typename... Args>
   ptr emplace(Args&&... args) {
     auto reusable = atomic_bool_utils::atomic_load(&reusable_); // retrieve before seek/instantiate
-    typename T::ptr value = nullptr;
 
     // liniar search for an existing entry in the pool
+    typename T::ptr value = nullptr;
+
     for(size_t i = 0, count = pool_.size(); i < count && !value; ++i) {
       value = std::move(atomic_utils::atomic_exchange(&(pool_[i]), value));
     }
@@ -373,31 +464,48 @@ class unbounded_object_pool
       value = T::make(std::forward<Args>(args)...);
     }
 
-    // unique_ptr can't be copied
+    return ptr(std::move(value), *this, reusable);
+  }
+
+  template<typename... Args>
+  std::shared_ptr<element_type> emplace_shared(Args&&... args) {
+    auto reusable = atomic_bool_utils::atomic_load(&reusable_); // retrieve before seek/instantiate
+
+    // liniar search for an existing entry in the pool
+    typename T::ptr value = nullptr;
+
+    for(size_t i = 0, count = pool_.size(); i < count && !value; ++i) {
+      value = std::move(atomic_utils::atomic_exchange(&(pool_[i]), value));
+    }
+
+    if (!value) {
+      value = T::make(std::forward<Args>(args)...);
+    }
+
     auto raw = value.get();
     auto moved = make_move_on_copy(std::move(value));
 
-    return ptr(
+    return std::shared_ptr<element_type>(
       raw,
-      [this, moved, reusable](typename ptr::element_type*) mutable ->void {
-        if (!static_cast<atomic_bool_utils*>(this)->atomic_load(&reusable)->load()) {
-          return; // do not return non-reusable elements into the pool
-        }
-
-        typename T::ptr val = std::move(moved.value());
-
-        // linear search for an empty slot in the pool
-        for(size_t i = 0, count = pool_.size(); i < count && val; ++i) {
-          val = std::move(atomic_utils::atomic_exchange(&(pool_[i]), val));
-        }
-      }
-    );
+      [this, reusable, moved](element_type*) mutable {
+        reset(reusable, moved.value());
+    });
   }
 
-  size_t size() const { return pool_.size(); }
+  size_t size() const NOEXCEPT { return pool_.size(); }
 
  private:
-  typedef std::shared_ptr<std::atomic<bool>> reusable_t;
+  void reset(reusable_t& reusable, typename T::ptr& value) {
+    if (!atomic_bool_utils::atomic_load(&reusable)->load()) {
+      return; // do not return non-reusable elements into the pool
+    }
+
+    // linear search for an empty slot in the pool
+    for(size_t i = 0, count = pool_.size(); i < count && value; ++i) {
+      value = std::move(atomic_utils::atomic_exchange(&(pool_[i]), value));
+    }
+  }
+
   typedef atomic_base<typename T::ptr> atomic_utils;
   typedef atomic_base<reusable_t> atomic_bool_utils;
   std::vector<typename T::ptr> pool_;
