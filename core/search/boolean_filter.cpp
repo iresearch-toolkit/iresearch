@@ -137,9 +137,9 @@ class boolean_query : public filter::prepared {
   typedef ptr_iterator<queries_t::const_iterator> iterator;
 
   DECLARE_SPTR(boolean_query);
-  DECLARE_FACTORY(boolean_query);
+  DEFINE_FACTORY_INLINE(boolean_query);
 
-  boolean_query() : excl_(0)  { }
+  boolean_query() NOEXCEPT : excl_(0) { }
 
   virtual doc_iterator::ptr execute(
       const sub_reader& rdr,

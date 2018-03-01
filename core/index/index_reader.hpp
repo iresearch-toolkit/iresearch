@@ -45,7 +45,7 @@ struct sub_reader;
 
 struct IRESEARCH_API index_reader {
   DECLARE_SPTR(index_reader);
-  DECLARE_FACTORY(index_reader);
+  DEFINE_FACTORY_INLINE(index_reader);
 
   typedef std::function<bool(const field_meta&, data_input&)> document_visitor_f;
   typedef forward_iterator_impl<sub_reader> reader_iterator_impl;
@@ -80,7 +80,7 @@ struct IRESEARCH_API sub_reader : index_reader {
   typedef iresearch::iterator<doc_id_t> docs_iterator_t;
 
   DECLARE_SPTR(sub_reader);
-  DECLARE_FACTORY(sub_reader);
+  DEFINE_FACTORY_INLINE(sub_reader);
 
   using index_reader::docs_count;
 

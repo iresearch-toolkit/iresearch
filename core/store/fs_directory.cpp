@@ -235,7 +235,7 @@ class fs_index_output : public buffered_index_output {
   }
 
  private:
-  DECLARE_FACTORY(index_output);
+  DEFINE_FACTORY_INLINE(index_output);
 
   fs_index_output(file_utils::handle_t&& handle, size_t buf_size) NOEXCEPT
     : buffered_index_output(buf_size),
@@ -395,7 +395,7 @@ class fs_index_input : public buffered_index_input {
     size_t pos{}; /* current file position*/
   }; // file_handle
 
-  DECLARE_FACTORY(index_input);
+  DEFINE_FACTORY_INLINE(index_input);
 
   fs_index_input(
       file_handle::ptr&& handle,

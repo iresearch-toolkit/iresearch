@@ -77,7 +77,7 @@ struct IRESEARCH_API term_meta : attribute {
 
 struct IRESEARCH_API postings_writer : util::const_attribute_view_provider {
   DECLARE_PTR(postings_writer);
-  DECLARE_FACTORY(postings_writer);
+  DEFINE_FACTORY_INLINE(postings_writer);
 
   class releaser {
    public:
@@ -127,7 +127,7 @@ void postings_writer::releaser::operator()(term_meta* meta) const NOEXCEPT {
 
 struct IRESEARCH_API field_writer {
   DECLARE_PTR(field_writer);
-  DECLARE_FACTORY(field_writer);
+  DEFINE_FACTORY_INLINE(field_writer);
 
   virtual ~field_writer();
   virtual void prepare(const flush_state& state) = 0;
@@ -141,7 +141,7 @@ struct IRESEARCH_API field_writer {
 
 struct IRESEARCH_API postings_reader {
   DECLARE_PTR(postings_reader);
-  DECLARE_FACTORY(postings_reader);
+  DEFINE_FACTORY_INLINE(postings_reader);
 
   virtual ~postings_reader();
   
@@ -190,7 +190,7 @@ struct IRESEARCH_API basic_term_reader: public util::const_attribute_view_provid
 
 struct IRESEARCH_API term_reader: public util::const_attribute_view_provider {
   DECLARE_PTR( term_reader);
-  DECLARE_FACTORY(term_reader);
+  DEFINE_FACTORY_INLINE(term_reader);
 
   virtual ~term_reader();
 
@@ -218,7 +218,7 @@ struct IRESEARCH_API term_reader: public util::const_attribute_view_provider {
 
 struct IRESEARCH_API field_reader {
   DECLARE_PTR(field_reader);
-  DECLARE_FACTORY(field_reader);
+  DEFINE_FACTORY_INLINE(field_reader);
 
   virtual ~field_reader();
 
@@ -346,7 +346,7 @@ NS_ROOT
 
 struct IRESEARCH_API document_mask_writer {
   DECLARE_PTR(document_mask_writer);
-  DECLARE_FACTORY(document_mask_writer);
+  DEFINE_FACTORY_INLINE(document_mask_writer);
 
   virtual ~document_mask_writer();
   virtual std::string filename(const segment_meta& meta) const = 0;
@@ -362,7 +362,7 @@ struct IRESEARCH_API document_mask_writer {
 
 struct IRESEARCH_API document_mask_reader {
   DECLARE_PTR(document_mask_reader);
-  DECLARE_FACTORY(document_mask_reader);
+  DEFINE_FACTORY_INLINE(document_mask_reader);
 
   virtual ~document_mask_reader();
 
@@ -415,7 +415,7 @@ struct IRESEARCH_API segment_meta_reader {
 
 struct IRESEARCH_API index_meta_writer {
   DECLARE_PTR(index_meta_writer);
-  DECLARE_FACTORY(index_meta_writer);
+  DEFINE_FACTORY_INLINE(index_meta_writer);
 
   virtual ~index_meta_writer();
   virtual std::string filename(const index_meta& meta) const = 0;

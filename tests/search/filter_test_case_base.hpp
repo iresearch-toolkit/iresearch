@@ -44,7 +44,7 @@ NS_BEGIN(sort)
 struct boost : public iresearch::sort {
   class scorer: public iresearch::sort::scorer_base<iresearch::boost::boost_t> {
    public:
-    DECLARE_FACTORY(scorer);
+    DEFINE_FACTORY_INLINE(scorer);
 
     scorer(
         const irs::attribute_store::ref<irs::boost>::type& boost,
@@ -63,7 +63,7 @@ struct boost : public iresearch::sort {
 
   class prepared: public iresearch::sort::prepared_base<iresearch::boost::boost_t> {
    public:
-    DECLARE_FACTORY(prepared);
+    DEFINE_FACTORY_INLINE(prepared);
     prepared() { }
 
     virtual const iresearch::flags& features() const override {
@@ -177,7 +177,7 @@ struct custom_sort: public irs::sort {
       const irs::term_reader& term_reader_;
     };
 
-    DECLARE_FACTORY(prepared);
+    DEFINE_FACTORY_INLINE(prepared);
 
     prepared(const custom_sort& sort): sort_(sort) {
     }
@@ -309,7 +309,7 @@ struct frequency_sort: public iresearch::sort {
       const size_t* docs_count;
     };
 
-    DECLARE_FACTORY(prepared);
+    DEFINE_FACTORY_INLINE(prepared);
 
     prepared() { }
 

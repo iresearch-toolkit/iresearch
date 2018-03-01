@@ -49,7 +49,7 @@ struct IRESEARCH_API doc_iterator
     : iterator<doc_id_t>,
       util::const_attribute_view_provider {
   DECLARE_SPTR(doc_iterator);
-  DECLARE_FACTORY(doc_iterator);
+  DEFINE_FACTORY_INLINE(doc_iterator);
 
   static doc_iterator::ptr empty();
 
@@ -116,7 +116,7 @@ enum class SeekResult {
 
 struct IRESEARCH_API seek_term_iterator : term_iterator {
   DECLARE_PTR(seek_term_iterator);
-  DECLARE_FACTORY(seek_term_iterator);
+  DEFINE_FACTORY_INLINE(seek_term_iterator);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief an empty struct tag type, parent for all seek_term_iterator cookies

@@ -530,7 +530,7 @@ NS_END // ROOT
 #define DECLARE_REF(class_name) typedef std::reference_wrapper<class_name> ref
 #define DECLARE_CREF(class_name) typedef std::reference_wrapper<const class_name> cref
 
-#define DECLARE_FACTORY(class_name) \
+#define DEFINE_FACTORY_INLINE(class_name) \
 template<typename Class, bool> friend struct irs::memory::maker; \
 template<typename _T, typename... _Args> \
 static ptr make(_Args&&... args) { \

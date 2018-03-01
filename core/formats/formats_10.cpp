@@ -172,7 +172,7 @@ class doc_iterator : public iresearch::doc_iterator {
  public:
   DECLARE_PTR(doc_iterator);
 
-  DECLARE_FACTORY(doc_iterator);
+  DEFINE_FACTORY_INLINE(doc_iterator);
 
   doc_iterator() NOEXCEPT
     : skip_levels_(1),

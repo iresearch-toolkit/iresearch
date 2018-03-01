@@ -170,7 +170,7 @@ typedef tfidf_sort::score_t score_t;
 
 class collector final : public iresearch::sort::collector {
  public:
-  collector(bool normalize)
+  collector(bool normalize) NOEXCEPT
     : normalize_(normalize) {
   }
 
@@ -209,23 +209,23 @@ class collector final : public iresearch::sort::collector {
 
 class scorer : public iresearch::sort::scorer_base<tfidf::score_t> {
  public:
-  DECLARE_FACTORY(scorer);
+  DEFINE_FACTORY_INLINE(scorer);
 
   scorer(
       iresearch::boost::boost_t boost,
       const tfidf::idf* idf,
-      const frequency* freq)
+      const frequency* freq) NOEXCEPT
     : idf_(boost * (idf ? idf->value : 1.f)), 
       freq_(freq ? freq : &EMPTY_FREQ) {
     assert(freq_);
   }
 
-  virtual void score(byte_type* score_buf) override {
+  virtual void score(byte_type* score_buf) NOEXCEPT override {
     score_cast(score_buf) = tfidf();
   }
 
  protected:
-  FORCE_INLINE float_t tfidf() const {
+  FORCE_INLINE float_t tfidf() const NOEXCEPT {
    return idf_ * float_t(std::sqrt(freq_->value));
   }
 
@@ -236,19 +236,19 @@ class scorer : public iresearch::sort::scorer_base<tfidf::score_t> {
 
 class norm_scorer final : public scorer {
  public:
-  DECLARE_FACTORY(norm_scorer);
+  DEFINE_FACTORY_INLINE(norm_scorer);
 
   norm_scorer(
       const iresearch::norm* norm,
       iresearch::boost::boost_t boost,
       const tfidf::idf* idf,
-      const frequency* freq)
+      const frequency* freq) NOEXCEPT
     : scorer(boost, idf, freq),
       norm_(norm) {
     assert(norm_);
   }
 
-  virtual void score(byte_type* score_buf) override {
+  virtual void score(byte_type* score_buf) NOEXCEPT override {
     score_cast(score_buf) = tfidf() * norm_->read();
   }
 
@@ -258,7 +258,7 @@ class norm_scorer final : public scorer {
 
 class sort final: iresearch::sort::prepared_base<tfidf::score_t> {
  public:
-  DECLARE_FACTORY(prepared);
+  DEFINE_FACTORY_INLINE(prepared);
 
   sort(bool normalize) NOEXCEPT
     : normalize_(normalize) {

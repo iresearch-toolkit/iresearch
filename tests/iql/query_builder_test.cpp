@@ -56,7 +56,7 @@ namespace tests {
 
     class prepared : sort::prepared {
      public:
-      DECLARE_FACTORY(prepared);
+      DEFINE_FACTORY_INLINE(prepared);
       prepared() { }
       virtual collector::ptr prepare_collector() const override { return nullptr; }
       virtual scorer::ptr prepare_scorer(

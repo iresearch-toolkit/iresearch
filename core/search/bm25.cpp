@@ -217,26 +217,26 @@ typedef bm25_sort::score_t score_t;
 
 class scorer : public iresearch::sort::scorer_base<bm25::score_t> {
  public:
-  DECLARE_FACTORY(scorer);
+  DEFINE_FACTORY_INLINE(scorer);
 
   scorer(
       float_t k, 
       iresearch::boost::boost_t boost,
       const bm25::stats* stats,
-      const frequency* freq)
+      const frequency* freq) NOEXCEPT
     : freq_(freq ? freq : &EMPTY_FREQ),
       num_(boost * (k + 1) * (stats ? stats->idf : 1.f)),
       norm_const_(k) {
     assert(freq_);
   }
 
-  virtual void score(byte_type* score_buf) override {
+  virtual void score(byte_type* score_buf) NOEXCEPT override {
     const float_t freq = tf();
     score_cast(score_buf) = num_ * freq / (norm_const_ + freq);
   }
 
  protected:
-  FORCE_INLINE float_t tf() const {
+  FORCE_INLINE float_t tf() const NOEXCEPT {
     return float_t(std::sqrt(freq_->value));
   };
 
@@ -247,14 +247,14 @@ class scorer : public iresearch::sort::scorer_base<bm25::score_t> {
 
 class norm_scorer final : public scorer {
  public:
-  DECLARE_FACTORY(norm_scorer);
+  DEFINE_FACTORY_INLINE(norm_scorer);
 
   norm_scorer(
       float_t k, 
       iresearch::boost::boost_t boost,
       const bm25::stats* stats,
       const frequency* freq,
-      const iresearch::norm* norm)
+      const iresearch::norm* norm) NOEXCEPT
     : scorer(k, boost, stats, freq),
       norm_(norm) {
     assert(norm_);
@@ -266,7 +266,7 @@ class norm_scorer final : public scorer {
     }
   }
 
-  virtual void score(byte_type* score_buf) override {
+  virtual void score(byte_type* score_buf) NOEXCEPT override {
     const float_t freq = tf();
     score_cast(score_buf) = num_ * freq / (norm_const_ + norm_length_ * norm_->read() + freq);
   }
@@ -278,7 +278,7 @@ class norm_scorer final : public scorer {
 
 class collector final : public iresearch::sort::collector {
  public:
-  collector(float_t k, float_t b)
+  collector(float_t k, float_t b) NOEXCEPT
     : k_(k), b_(b) {
   }
 
@@ -339,9 +339,9 @@ class collector final : public iresearch::sort::collector {
 
 class sort final : iresearch::sort::prepared_base<bm25::score_t> {
  public:
-  DECLARE_FACTORY(prepared);
+  DEFINE_FACTORY_INLINE(prepared);
 
-  sort(float_t k, float_t b)
+  sort(float_t k, float_t b) NOEXCEPT
     : k_(k), b_(b) {
   }
 

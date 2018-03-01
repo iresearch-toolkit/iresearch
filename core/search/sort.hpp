@@ -98,7 +98,7 @@ class IRESEARCH_API sort {
   class IRESEARCH_API collector {
    public:
     DECLARE_PTR(collector);
-    DECLARE_FACTORY(collector);
+    DEFINE_FACTORY_INLINE(collector);
 
     virtual ~collector();
 
@@ -129,7 +129,7 @@ class IRESEARCH_API sort {
   class IRESEARCH_API scorer {
    public:
     DECLARE_PTR(scorer);
-    DECLARE_FACTORY(scorer);
+    DEFINE_FACTORY_INLINE(scorer);
 
     virtual ~scorer();
 
