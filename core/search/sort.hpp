@@ -67,7 +67,7 @@ struct IRESEARCH_API boost : basic_stored_attribute<float_t> {
   }
 
   DECLARE_ATTRIBUTE_TYPE();
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
 
   boost();
 

@@ -157,7 +157,7 @@ const frequency EMPTY_FREQ;
 
 struct idf final : basic_stored_attribute<float_t> {
   DECLARE_ATTRIBUTE_TYPE();
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
   idf() : basic_stored_attribute(1.f) { }
 
   void clear() { value = 1.f; }

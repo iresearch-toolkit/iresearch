@@ -281,7 +281,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
 
   class RootNode: public iresearch::Or {
    public:
-    DECLARE_FACTORY_DEFAULT();
+    DECLARE_FACTORY();
 
    private:
     friend parse_context;

@@ -195,7 +195,7 @@ const frequency EMPTY_FREQ;
 
 struct stats final : stored_attribute {
   DECLARE_ATTRIBUTE_TYPE();
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
 
   stats() = default;
 

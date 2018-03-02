@@ -419,7 +419,7 @@ struct cookie : irs::seek_term_iterator::seek_cookie {
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief declaration/implementation of DECLARE_FACTORY_DEFAULT()
+  /// @brief declaration/implementation of DECLARE_FACTORY()
   //////////////////////////////////////////////////////////////////////////////
   static seek_term_iterator::seek_cookie::ptr make(const version10::term_meta& meta, uint64_t term_freq) {
     return memory::make_unique<cookie>(meta, term_freq);

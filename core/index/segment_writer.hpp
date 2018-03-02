@@ -153,7 +153,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   }; // document
 
   DECLARE_SPTR(segment_writer);
-  DECLARE_FACTORY_DEFAULT(directory& dir);
+  DECLARE_FACTORY(directory& dir);
 
   struct update_context {
     size_t generation;

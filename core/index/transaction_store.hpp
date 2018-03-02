@@ -135,19 +135,19 @@ class IRESEARCH_API transaction_store: private util::noncopyable {
   // 'make(...)' method wrapper for irs::bstring for use with object pools
   struct IRESEARCH_API bstring_builder {
     typedef std::shared_ptr<irs::bstring> ptr;
-    DECLARE_FACTORY_DEFAULT();
+    DECLARE_FACTORY();
   };
 
   // 'make(...)' method wrapper for irs::column_meta for use with object pools
   struct column_meta_builder {
     typedef std::shared_ptr<irs::column_meta> ptr;
-    DECLARE_FACTORY_DEFAULT();
+    DECLARE_FACTORY();
   };
 
   // 'make(...)' method wrapper for irs::field_meta for use with object pools
   struct field_meta_builder {
     typedef std::shared_ptr<irs::field_meta> ptr;
-    DECLARE_FACTORY_DEFAULT();
+    DECLARE_FACTORY();
   };
 
   struct document_t {

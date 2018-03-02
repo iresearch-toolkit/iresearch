@@ -52,7 +52,7 @@ namespace tests {
   class test_sort: public iresearch::sort {
    public:
     DECLARE_SORT_TYPE();
-    DECLARE_FACTORY_DEFAULT();
+    DECLARE_FACTORY();
 
     class prepared : sort::prepared {
      public:

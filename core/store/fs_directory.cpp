@@ -386,7 +386,7 @@ class fs_index_input : public buffered_index_input {
   * position */
   struct file_handle {
     DECLARE_SPTR(file_handle);
-    DECLARE_FACTORY_DEFAULT();
+    DECLARE_FACTORY();
 
     operator FILE*() const { return handle.get(); }
 

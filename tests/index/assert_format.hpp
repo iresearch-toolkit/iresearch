@@ -352,7 +352,7 @@ class field_writer : public iresearch::field_writer {
 class format : public iresearch::format {
  public:
   DECLARE_FORMAT_TYPE();
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
   format();
   format(const index_segment& data);
 

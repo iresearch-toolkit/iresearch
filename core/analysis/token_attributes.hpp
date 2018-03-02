@@ -144,7 +144,7 @@ struct IRESEARCH_API granularity_prefix : attribute {
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API norm : stored_attribute {
   DECLARE_ATTRIBUTE_TYPE();
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
 
   FORCE_INLINE static CONSTEXPR float_t DEFAULT() {
     return 1.f;

@@ -99,7 +99,7 @@ struct boost : public iresearch::sort {
   }; // sort::boost::prepared
 
   DECLARE_SORT_TYPE();
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
   typedef iresearch::boost::boost_t score_t;
   boost() : sort(boost::type()) {}
   virtual sort::prepared::ptr prepare() const {
@@ -237,7 +237,7 @@ struct custom_sort: public irs::sort {
   std::function<bool(const irs::doc_id_t&, const irs::doc_id_t&)> scorer_less;
   std::function<void(irs::doc_id_t&)> scorer_score;
 
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
   custom_sort(): sort(custom_sort::type()) {}
   virtual prepared::ptr prepare() const {
     return custom_sort::prepared::make<custom_sort::prepared>(*this);
@@ -260,7 +260,7 @@ struct frequency_sort: public iresearch::sort {
    public:
     struct count: public iresearch::basic_stored_attribute<size_t> {
       DECLARE_ATTRIBUTE_TYPE();
-      DECLARE_FACTORY_DEFAULT();
+      DECLARE_FACTORY();
       size_t value{};
     };
 
@@ -358,7 +358,7 @@ struct frequency_sort: public iresearch::sort {
     }
   };
 
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
   frequency_sort(): sort(frequency_sort::type()) {}
   virtual prepared::ptr prepare() const {
     return frequency_sort::prepared::make<frequency_sort::prepared>();

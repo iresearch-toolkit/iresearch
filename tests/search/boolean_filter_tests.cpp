@@ -196,7 +196,7 @@ struct boosted: public iresearch::filter {
     basic_doc_iterator::docids_t docs;
   }; // prepared
 
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
 
   virtual iresearch::filter::prepared::ptr prepare(
       const iresearch::index_reader&,
@@ -1116,7 +1116,7 @@ struct unestimated: public iresearch::filter {
   }
 
   DECLARE_FILTER_TYPE();
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
 
   unestimated() : filter(unestimated::type()) {}
 }; // unestimated
@@ -1178,7 +1178,7 @@ struct estimated: public iresearch::filter {
   }
 
   DECLARE_FILTER_TYPE();
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
 
   explicit estimated()
     : filter(estimated::type()) {

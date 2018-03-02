@@ -408,7 +408,7 @@ class IRESEARCH_PLUGIN postings_reader final: public iresearch::postings_reader 
 class IRESEARCH_PLUGIN format final : public iresearch::format {
  public:
   DECLARE_FORMAT_TYPE();
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
   format();
 
   virtual index_meta_writer::ptr get_index_meta_writer() const override;

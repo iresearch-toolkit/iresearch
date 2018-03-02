@@ -537,7 +537,7 @@ class IRESEARCH_API formats {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief find a format by name, or nullptr if not found
   ///        indirect call to <class>::make(...)
-  ///        requires use of DECLARE_FACTORY_DEFAULT() in class definition
+  ///        requires use of DECLARE_FACTORY() in class definition
   ///        NOTE: make(...) MUST be defined in CPP to ensire proper code scope
   //////////////////////////////////////////////////////////////////////////////
   static format::ptr get(const string_ref& name);

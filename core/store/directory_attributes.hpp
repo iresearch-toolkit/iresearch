@@ -37,7 +37,7 @@ NS_ROOT
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API fd_pool_size: public stored_attribute {
   DECLARE_ATTRIBUTE_TYPE();
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
   size_t size;
 
   fd_pool_size();
@@ -55,7 +55,7 @@ class IRESEARCH_API index_file_refs: public stored_attribute {
   typedef ref_counter<std::string> counter_t;
   typedef counter_t::ref_t ref_t;
   DECLARE_ATTRIBUTE_TYPE();
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
   index_file_refs() = default;
   ref_t add(const std::string& key);
   ref_t add(std::string&& key);

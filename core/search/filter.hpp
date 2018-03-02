@@ -211,7 +211,7 @@ class IRESEARCH_API filter {
 class IRESEARCH_API empty: public filter {
  public:
   DECLARE_FILTER_TYPE();
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
 
   empty();
 

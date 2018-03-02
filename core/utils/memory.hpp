@@ -538,6 +538,10 @@ NS_END // ROOT
 #define DECLARE_REF(class_name) typedef std::reference_wrapper<class_name> ref
 #define DECLARE_CREF(class_name) typedef std::reference_wrapper<const class_name> cref
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief default inline implementation of a factory method, instantiation on
+///        heap
+//////////////////////////////////////////////////////////////////////////////
 #define DEFINE_FACTORY_INLINE(class_name) \
 template<typename Class, bool> friend struct irs::memory::maker; \
 template<typename _T, typename... _Args> \
@@ -561,7 +565,7 @@ static ptr make(_Args&&... args) { \
 /// @brief default implementation of a factory method, instantiation on heap
 ///        NOTE: make(...) MUST be defined in CPP to ensire proper code scope
 //////////////////////////////////////////////////////////////////////////////
-#define DECLARE_FACTORY_DEFAULT(...) static ptr make(__VA_ARGS__);
+#define DECLARE_FACTORY(...) static ptr make(__VA_ARGS__);
 #define DEFINE_FACTORY_DEFAULT(class_type) \
 /*static*/ class_type::ptr class_type::make() { \
   PTR_NAMED(class_type, ptr); \
