@@ -37,7 +37,7 @@ irs::sort::ptr make_from_object(
     const irs::string_ref& args) {
   assert(json.IsObject());
 
-  PTR_NAMED(irs::bm25_sort, ptr);
+  auto ptr = irs::memory::make_shared<irs::bm25_sort>();
 
   #ifdef IRESEARCH_DEBUG
     auto& scorer = dynamic_cast<irs::bm25_sort&>(*ptr);
@@ -129,15 +129,13 @@ irs::sort::ptr make_from_array(
     }
   }
 
-  PTR_NAMED(irs::bm25_sort, ptr, k, b);
-  return ptr;
+  return irs::memory::make_shared<irs::bm25_sort>(k, b);
 }
 
 irs::sort::ptr make_json(const irs::string_ref& args) {
   if (args.null()) {
     // default args
-    PTR_NAMED(irs::bm25_sort, ptr);
-    return ptr;
+    return irs::memory::make_shared<irs::bm25_sort>();
   }
 
   rapidjson::Document json;

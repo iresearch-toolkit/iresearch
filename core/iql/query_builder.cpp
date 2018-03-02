@@ -269,8 +269,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
 
     template<typename... Args>
     static ptr make(Args&&... args) {
-      PTR_NAMED(LinkNode, ptr, std::forward<Args>(args)...);
-      return ptr;
+      return irs::memory::make_unique<LinkNode>(std::forward<Args>(args)...);
     }
 
    private:

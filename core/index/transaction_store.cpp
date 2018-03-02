@@ -851,7 +851,9 @@ store_reader_impl::store_reader_impl(
 }
 
 irs::index_reader::reader_iterator store_reader_impl::begin() const {
-  PTR_NAMED(single_reader_iterator_impl, itr, this);
+  auto itr = irs::memory::make_unique<single_reader_iterator_impl>(
+    this
+  );
 
   return index_reader::reader_iterator(itr.release());
 }
@@ -891,7 +893,7 @@ irs::sub_reader::docs_iterator_t::ptr store_reader_impl::docs_iterator() const {
 }
 
 irs::index_reader::reader_iterator store_reader_impl::end() const {
-  PTR_NAMED(single_reader_iterator_impl, itr);
+  auto itr = irs::memory::make_unique<single_reader_iterator_impl>();
 
   return index_reader::reader_iterator(itr.release());
 }

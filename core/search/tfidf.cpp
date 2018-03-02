@@ -37,8 +37,9 @@ irs::sort::ptr make_from_bool(
     const irs::string_ref& args) {
   assert(json.IsBool());
 
-  PTR_NAMED(irs::tfidf_sort, ptr, json.GetBool());
-  return ptr;
+  return irs::memory::make_shared<irs::tfidf_sort>(
+    json.GetBool()
+  );
 }
 
 irs::sort::ptr make_from_object(
@@ -46,7 +47,7 @@ irs::sort::ptr make_from_object(
     const irs::string_ref& args) {
   assert(json.IsObject());
 
-  PTR_NAMED(irs::tfidf_sort, ptr);
+  auto ptr = irs::memory::make_shared<irs::tfidf_sort>();
 
   #ifdef IRESEARCH_DEBUG
     auto& scorer = dynamic_cast<irs::tfidf_sort&>(*ptr);
@@ -106,14 +107,12 @@ irs::sort::ptr make_from_array(
     norms = arg.GetBool();
   }
 
-  PTR_NAMED(irs::tfidf_sort, ptr, norms);
-  return ptr;
+  return irs::memory::make_shared<irs::tfidf_sort>(norms);
 }
 
 irs::sort::ptr make_json(const irs::string_ref& args) {
   if (args.null()) {
-    PTR_NAMED(irs::tfidf_sort, ptr);
-    return ptr;
+    return irs::memory::make_shared<irs::tfidf_sort>();
   }
 
   rapidjson::Document json;

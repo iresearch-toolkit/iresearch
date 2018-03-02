@@ -127,14 +127,16 @@ class forward_iterator
   typedef typename iterator_impl::value_type value_type;
   typedef typename iterator_impl::reference reference;
 
-  explicit forward_iterator(iterator_impl* impl = nullptr) : impl_(impl) {}
+  explicit forward_iterator(iterator_impl* impl = nullptr) NOEXCEPT
+    : impl_(impl) {
+  }
 
   forward_iterator(forward_iterator&& rhs) NOEXCEPT
     : impl_(rhs.impl_) {
     rhs.impl_ = nullptr;
   }
 
-  ~forward_iterator() { delete impl_; }
+  ~forward_iterator() NOEXCEPT { delete impl_; }
 
   forward_iterator& operator=(forward_iterator&& rhs) NOEXCEPT {
     if (this != &rhs) {
