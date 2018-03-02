@@ -709,7 +709,11 @@ iresearch::columnstore_reader::ptr format::get_columnstore_reader() const {
 
 DEFINE_FORMAT_TYPE_NAMED(tests::format, "iresearch_format_tests");
 REGISTER_FORMAT(tests::format);
-DEFINE_FACTORY_SINGLETON(format);
+
+/*static*/ irs::format::ptr format::make() {
+  static const auto instance = irs::memory::make_shared<format>();
+  return instance;
+}
 
 void assert_term(
     const iresearch::term_iterator& expected_term, 

@@ -4509,9 +4509,13 @@ columnstore_reader::ptr format::get_columnstore_reader() const {
   return memory::make_unique<columns::reader>();
 }
 
+/*static*/ irs::format::ptr format::make() {
+  static const auto instance = irs::memory::make_shared<format>();
+  return instance;
+}
+
 DEFINE_FORMAT_TYPE_NAMED(iresearch::version10::format, "1_0");
-REGISTER_FORMAT( iresearch::version10::format );
-DEFINE_FACTORY_SINGLETON(format);
+REGISTER_FORMAT(iresearch::version10::format);
 
 NS_END /* version10 */
 NS_END /* root */

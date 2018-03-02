@@ -43,7 +43,7 @@ NS_ROOT
  * ------------------------------------------------------------------*/
 
 class format;
-typedef std::shared_ptr<format> format_ptr;
+typedef std::shared_ptr<const format> format_ptr;
 
 NS_END
 

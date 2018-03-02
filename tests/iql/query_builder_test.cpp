@@ -81,7 +81,7 @@ namespace tests {
   };
 
   DEFINE_SORT_TYPE(test_sort);
-  DEFINE_FACTORY_SINGLETON(test_sort);
+  DEFINE_FACTORY_DEFAULT(test_sort);
 
   class IqlQueryBuilderTestSuite: public ::testing::Test {
     virtual void SetUp() {

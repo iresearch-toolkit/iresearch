@@ -34,7 +34,7 @@ NS_ROOT
 
 struct directory;
 class format;
-typedef std::shared_ptr<format> format_ptr;
+typedef std::shared_ptr<const format> format_ptr;
 struct segment_meta;
 struct sub_reader;
 

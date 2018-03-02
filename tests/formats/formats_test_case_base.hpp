@@ -202,7 +202,7 @@ class format_test_case_base : public index_test_base {
 
   void assert_no_directory_artifacts(
     const iresearch::directory& dir,
-    iresearch::format& codec,
+    const iresearch::format& codec,
     const std::unordered_set<std::string>& expect_additional = std::unordered_set<std::string> ()
   ) {
     std::vector<std::string> dir_files;

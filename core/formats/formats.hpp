@@ -461,7 +461,7 @@ struct IRESEARCH_API index_meta_reader {
 
 class IRESEARCH_API format {
  public:
-  DECLARE_SHARED_PTR(format);
+  typedef std::shared_ptr<const format> ptr;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @class type_id
