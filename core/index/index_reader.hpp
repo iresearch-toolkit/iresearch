@@ -44,7 +44,7 @@ NS_ROOT
 struct sub_reader;
 
 struct IRESEARCH_API index_reader {
-  DECLARE_SPTR(index_reader);
+  DECLARE_SHARED_PTR(index_reader);
   DEFINE_FACTORY_INLINE(index_reader);
 
   typedef std::function<bool(const field_meta&, data_input&)> document_visitor_f;
@@ -79,7 +79,7 @@ struct IRESEARCH_API index_reader {
 struct IRESEARCH_API sub_reader : index_reader {
   typedef iresearch::iterator<doc_id_t> docs_iterator_t;
 
-  DECLARE_SPTR(sub_reader);
+  DECLARE_SHARED_PTR(sub_reader);
   DEFINE_FACTORY_INLINE(sub_reader);
 
   using index_reader::docs_count;
@@ -125,7 +125,7 @@ NS_ROOT
 
 class IRESEARCH_API composite_reader: public index_reader {
  public:
-  DECLARE_SPTR(composite_reader);
+  DECLARE_SHARED_PTR(composite_reader);
 
   // return the i'th sub_reader
   virtual const sub_reader& operator[](size_t i) const = 0;

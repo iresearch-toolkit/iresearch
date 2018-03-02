@@ -533,10 +533,10 @@ NS_END // ROOT
     throw; \
   }
 
-#define DECLARE_SPTR(class_name) typedef std::shared_ptr<class_name> ptr
-#define DECLARE_PTR(class_name) typedef std::unique_ptr<class_name> ptr
-#define DECLARE_REF(class_name) typedef std::reference_wrapper<class_name> ref
-#define DECLARE_CREF(class_name) typedef std::reference_wrapper<const class_name> cref
+#define DECLARE_SHARED_PTR(class_name) typedef std::shared_ptr<class_name> ptr
+#define DECLARE_UNIQUE_PTR(class_name) typedef std::unique_ptr<class_name> ptr
+#define DECLARE_REFERENCE(class_name) typedef std::reference_wrapper<class_name> ref
+#define DECLARE_CONST_REFERENCE(class_name) typedef std::reference_wrapper<const class_name> cref
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief default inline implementation of a factory method, instantiation on

@@ -136,7 +136,7 @@ class boolean_query : public filter::prepared {
   typedef std::vector<filter::prepared::ptr> queries_t;
   typedef ptr_iterator<queries_t::const_iterator> iterator;
 
-  DECLARE_SPTR(boolean_query);
+  DECLARE_SHARED_PTR(boolean_query);
   DEFINE_FACTORY_INLINE(boolean_query);
 
   boolean_query() NOEXCEPT : excl_(0) { }

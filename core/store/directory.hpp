@@ -131,7 +131,7 @@ struct IRESEARCH_API directory
     private util::noncopyable {
   typedef std::function<bool(std::string& name)> visitor_f;
 
-  DECLARE_PTR(directory);
+  DECLARE_UNIQUE_PTR(directory);
   DEFINE_FACTORY_INLINE(directory);
 
   ////////////////////////////////////////////////////////////////////////////

@@ -34,14 +34,14 @@
 NS_LOCAL
 
 struct unique_base {
-  DECLARE_PTR(unique_base);
+  DECLARE_UNIQUE_PTR(unique_base);
   DEFINE_FACTORY_INLINE(unique_base);
 };
 
 struct unique : unique_base { };
 
 struct shared_base {
-  DECLARE_SPTR(shared_base);
+  DECLARE_SHARED_PTR(shared_base);
   DEFINE_FACTORY_INLINE(shared_base);
 };
 

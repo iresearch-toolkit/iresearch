@@ -110,7 +110,7 @@ class same_position_query final : public filter::prepared {
   typedef states_cache<terms_states_t> states_t;
   typedef std::vector<attribute_store> stats_t;
 
-  DECLARE_SPTR(same_position_query);
+  DECLARE_SHARED_PTR(same_position_query);
 
   explicit same_position_query(states_t&& states, stats_t&& stats)
     : states_(std::move(states)), stats_(std::move(stats)) {

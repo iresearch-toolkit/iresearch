@@ -78,7 +78,7 @@ class segment_reader_impl : public sub_reader {
   ) const override;
 
  private:
-  DECLARE_SPTR(segment_reader_impl); // required for NAMED_PTR(...)
+  DECLARE_SHARED_PTR(segment_reader_impl); // required for NAMED_PTR(...)
   std::vector<column_meta> columns_;
   columnstore_reader::ptr columnstore_reader_;
   const directory& dir_;

@@ -171,7 +171,7 @@ struct context<segment_reader> {
 class directory_reader_impl :
   public composite_reader_impl<segment_reader> {
  public:
-  DECLARE_SPTR(directory_reader_impl); // required for NAMED_PTR(...)
+  DECLARE_SHARED_PTR(directory_reader_impl); // required for NAMED_PTR(...)
 
   const directory& dir() const NOEXCEPT {
     return dir_;

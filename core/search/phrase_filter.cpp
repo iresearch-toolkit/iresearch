@@ -87,7 +87,7 @@ class phrase_query : public filter::prepared {
   > term_stats_t;
   typedef std::vector<term_stats_t> phrase_stats_t;
 
-  DECLARE_SPTR(phrase_query);
+  DECLARE_SHARED_PTR(phrase_query);
 
   phrase_query(states_t&& states, phrase_stats_t&& stats)
     : states_(std::move(states)),

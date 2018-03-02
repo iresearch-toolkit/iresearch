@@ -65,7 +65,7 @@ class IRESEARCH_API memory_file
  public:
   typedef container_utils::raw_block_vector<16, 8> raw_block_vector_t;
 
-  DECLARE_PTR(memory_file);
+  DECLARE_UNIQUE_PTR(memory_file);
 
   memory_file() NOEXCEPT {
     touch(meta_.mtime);

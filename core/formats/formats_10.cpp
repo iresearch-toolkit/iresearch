@@ -170,7 +170,7 @@ struct doc_state {
 ///////////////////////////////////////////////////////////////////////////////
 class doc_iterator : public iresearch::doc_iterator {
  public:
-  DECLARE_PTR(doc_iterator);
+  DECLARE_UNIQUE_PTR(doc_iterator);
 
   DEFINE_FACTORY_INLINE(doc_iterator);
 
@@ -505,7 +505,7 @@ class mask_doc_iterator final: public DocIterator {
 ///////////////////////////////////////////////////////////////////////////////
 class pos_iterator: public position {
  public:
-  DECLARE_PTR(pos_iterator);
+  DECLARE_UNIQUE_PTR(pos_iterator);
 
   pos_iterator(size_t reserve_attrs = 0): position(reserve_attrs) {}
 
@@ -643,7 +643,7 @@ class pos_iterator: public position {
 ///////////////////////////////////////////////////////////////////////////////
 class offs_pay_iterator final: public pos_iterator {
  public:
-  DECLARE_PTR(offs_pay_iterator);
+  DECLARE_UNIQUE_PTR(offs_pay_iterator);
 
   offs_pay_iterator()
     : pos_iterator(2) { // offset + payload
@@ -788,7 +788,7 @@ class offs_pay_iterator final: public pos_iterator {
 ///////////////////////////////////////////////////////////////////////////////
 class offs_iterator final : public pos_iterator {
  public:
-  DECLARE_PTR(offs_iterator);
+  DECLARE_UNIQUE_PTR(offs_iterator);
 
   offs_iterator()
     : pos_iterator(1) { // offset
@@ -898,7 +898,7 @@ class offs_iterator final : public pos_iterator {
 ///////////////////////////////////////////////////////////////////////////////
 class pay_iterator final : public pos_iterator {
  public:
-  DECLARE_PTR(pay_iterator);
+  DECLARE_UNIQUE_PTR(pay_iterator);
 
   pay_iterator()
     : pos_iterator(1) { // payload
@@ -2776,7 +2776,7 @@ class read_context
     public block_cache_traits<dense_fixed_length_block, Allocator>::cache_t,
     public block_cache_traits<sparse_mask_block, Allocator>::cache_t {
  public:
-  DECLARE_SPTR(read_context);
+  DECLARE_SHARED_PTR(read_context);
 
   static ptr make(const index_input& stream) {
     auto clone = stream.reopen();
@@ -2935,7 +2935,7 @@ class column
     : public irs::columnstore_reader::column_reader,
       private util::noncopyable {
  public:
-  DECLARE_PTR(column);
+  DECLARE_UNIQUE_PTR(column);
 
   column(ColumnProperty props)
     : props_(props) {

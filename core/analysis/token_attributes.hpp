@@ -176,7 +176,7 @@ class IRESEARCH_API position
  public:
   typedef uint32_t value_t;
 
-  DECLARE_REF(position);
+  DECLARE_REFERENCE(position);
   DECLARE_TYPE_ID(attribute::type_id);
 
   const irs::attribute_view& attributes() const NOEXCEPT { return attrs_; }

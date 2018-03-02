@@ -385,7 +385,7 @@ class fs_index_input : public buffered_index_input {
   * call "ftell" every time we need to know current 
   * position */
   struct file_handle {
-    DECLARE_SPTR(file_handle);
+    DECLARE_SHARED_PTR(file_handle);
     DECLARE_FACTORY();
 
     operator FILE*() const { return handle.get(); }

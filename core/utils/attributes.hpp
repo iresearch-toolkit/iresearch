@@ -76,7 +76,7 @@ struct IRESEARCH_API attribute {
 ///          via DECLARE_FACTORY()/DECLARE_FACTORY()
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API stored_attribute : attribute {
-  DECLARE_PTR(stored_attribute);
+  DECLARE_UNIQUE_PTR(stored_attribute);
   virtual ~stored_attribute() = default;
 };
 

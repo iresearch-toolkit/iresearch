@@ -40,7 +40,7 @@ struct sub_reader;
 
 class IRESEARCH_API merge_writer: public util::noncopyable {
  public:
-  DECLARE_PTR(merge_writer);
+  DECLARE_UNIQUE_PTR(merge_writer);
   merge_writer(directory& dir, const string_ref& seg_name) NOEXCEPT;
   void add(const sub_reader& reader);
   bool flush(std::string& filename, segment_meta& meta); // return merge successful

@@ -28,7 +28,7 @@
 NS_BEGIN(tests)
 
 struct test_slow_sobject {
-  DECLARE_SPTR(test_slow_sobject);
+  DECLARE_SHARED_PTR(test_slow_sobject);
   int id;
   test_slow_sobject (int i): id(i) {
     ++TOTAL_COUNT;
@@ -43,14 +43,14 @@ struct test_slow_sobject {
 std::atomic<size_t> test_slow_sobject::TOTAL_COUNT{};
 
 struct test_sobject {
-  DECLARE_SPTR(test_sobject);
+  DECLARE_SHARED_PTR(test_sobject);
   int id;
   test_sobject(int i): id(i) { }
   static ptr make(int i) { return ptr(new test_sobject(i)); }
 };
 
 struct test_uobject {
-  DECLARE_PTR(test_uobject);
+  DECLARE_UNIQUE_PTR(test_uobject);
   int id;
   test_uobject(int i): id(i) {}
   static ptr make(int i) { return ptr(new test_uobject(i)); }

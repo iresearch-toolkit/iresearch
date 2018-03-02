@@ -90,7 +90,7 @@ struct IRESEARCH_API data_input
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API index_input : public data_input {
  public:
-  DECLARE_PTR(index_input);
+  DECLARE_UNIQUE_PTR(index_input);
   DEFINE_FACTORY_INLINE(index_input);
 
   virtual ~index_input();

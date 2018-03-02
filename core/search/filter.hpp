@@ -87,7 +87,7 @@ class IRESEARCH_API filter {
   //////////////////////////////////////////////////////////////////////////////
   class IRESEARCH_API prepared: public util::attribute_store_provider {
    public:
-    DECLARE_SPTR(prepared);
+    DECLARE_SHARED_PTR(prepared);
     DEFINE_FACTORY_INLINE(prepared);
 
     static prepared::ptr empty();
@@ -125,7 +125,7 @@ class IRESEARCH_API filter {
     attribute_store attrs_;
   }; // prepared
 
-  DECLARE_PTR(filter);
+  DECLARE_UNIQUE_PTR(filter);
   DEFINE_FACTORY_INLINE(filter);
 
   filter(const type_id& type) NOEXCEPT;

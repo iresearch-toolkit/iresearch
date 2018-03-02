@@ -133,7 +133,7 @@ struct IRESEARCH_API tracking_directory: public directory {
 
 struct IRESEARCH_API ref_tracking_directory: public directory {
  public:
-  DECLARE_PTR(ref_tracking_directory);
+  DECLARE_UNIQUE_PTR(ref_tracking_directory);
   // @param track_open - track file refs for calls to open(...)
   ref_tracking_directory(directory& impl, bool track_open = false);
   ref_tracking_directory(ref_tracking_directory&& other) NOEXCEPT;

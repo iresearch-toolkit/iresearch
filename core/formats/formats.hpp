@@ -76,7 +76,7 @@ struct IRESEARCH_API term_meta : attribute {
 }; // term_meta
 
 struct IRESEARCH_API postings_writer : util::const_attribute_view_provider {
-  DECLARE_PTR(postings_writer);
+  DECLARE_UNIQUE_PTR(postings_writer);
   DEFINE_FACTORY_INLINE(postings_writer);
 
   class releaser {
@@ -126,7 +126,7 @@ void postings_writer::releaser::operator()(term_meta* meta) const NOEXCEPT {
  * ------------------------------------------------------------------*/
 
 struct IRESEARCH_API field_writer {
-  DECLARE_PTR(field_writer);
+  DECLARE_UNIQUE_PTR(field_writer);
   DEFINE_FACTORY_INLINE(field_writer);
 
   virtual ~field_writer();
@@ -140,7 +140,7 @@ struct IRESEARCH_API field_writer {
  * ------------------------------------------------------------------*/
 
 struct IRESEARCH_API postings_reader {
-  DECLARE_PTR(postings_reader);
+  DECLARE_UNIQUE_PTR(postings_reader);
   DEFINE_FACTORY_INLINE(postings_reader);
 
   virtual ~postings_reader();
@@ -189,7 +189,7 @@ struct IRESEARCH_API basic_term_reader: public util::const_attribute_view_provid
 }; // basic_term_reader
 
 struct IRESEARCH_API term_reader: public util::const_attribute_view_provider {
-  DECLARE_PTR( term_reader);
+  DECLARE_UNIQUE_PTR( term_reader);
   DEFINE_FACTORY_INLINE(term_reader);
 
   virtual ~term_reader();
@@ -217,7 +217,7 @@ struct IRESEARCH_API term_reader: public util::const_attribute_view_provider {
  * ------------------------------------------------------------------*/
 
 struct IRESEARCH_API field_reader {
-  DECLARE_PTR(field_reader);
+  DECLARE_UNIQUE_PTR(field_reader);
   DEFINE_FACTORY_INLINE(field_reader);
 
   virtual ~field_reader();
@@ -238,7 +238,7 @@ struct IRESEARCH_API field_reader {
 // -----------------------------------------------------------------------------
 
 struct IRESEARCH_API columnstore_writer {
-  DECLARE_SPTR(columnstore_writer);
+  DECLARE_SHARED_PTR(columnstore_writer);
 
   struct column_output : data_output {
     // resets stream to previous persisted state 
@@ -267,7 +267,7 @@ NS_ROOT
 // -----------------------------------------------------------------------------
 
 struct IRESEARCH_API column_meta_writer {
-  DECLARE_SPTR(column_meta_writer);
+  DECLARE_SHARED_PTR(column_meta_writer);
   virtual ~column_meta_writer();
   virtual bool prepare(directory& dir, const segment_meta& meta) = 0;
   virtual void write(const std::string& name, field_id id) = 0;
@@ -279,7 +279,7 @@ struct IRESEARCH_API column_meta_writer {
 // -----------------------------------------------------------------------------
 
 struct IRESEARCH_API column_meta_reader {
-  DECLARE_SPTR(column_meta_reader);
+  DECLARE_SHARED_PTR(column_meta_reader);
   virtual ~column_meta_reader();
   virtual bool prepare(
     const directory& dir, 
@@ -295,7 +295,7 @@ struct IRESEARCH_API column_meta_reader {
 // -----------------------------------------------------------------------------
 
 struct IRESEARCH_API columnstore_reader {
-  DECLARE_PTR(columnstore_reader);
+  DECLARE_UNIQUE_PTR(columnstore_reader);
 
   typedef std::function<bool(doc_id_t, bytes_ref&)> values_reader_f;
   typedef std::function<bool(doc_id_t, const bytes_ref&)> values_visitor_f;  
@@ -345,7 +345,7 @@ NS_ROOT
  * ------------------------------------------------------------------*/
 
 struct IRESEARCH_API document_mask_writer {
-  DECLARE_PTR(document_mask_writer);
+  DECLARE_UNIQUE_PTR(document_mask_writer);
   DEFINE_FACTORY_INLINE(document_mask_writer);
 
   virtual ~document_mask_writer();
@@ -361,7 +361,7 @@ struct IRESEARCH_API document_mask_writer {
  * ------------------------------------------------------------------*/
 
 struct IRESEARCH_API document_mask_reader {
-  DECLARE_PTR(document_mask_reader);
+  DECLARE_UNIQUE_PTR(document_mask_reader);
   DEFINE_FACTORY_INLINE(document_mask_reader);
 
   virtual ~document_mask_reader();
@@ -414,7 +414,7 @@ struct IRESEARCH_API segment_meta_reader {
  * ------------------------------------------------------------------*/
 
 struct IRESEARCH_API index_meta_writer {
-  DECLARE_PTR(index_meta_writer);
+  DECLARE_UNIQUE_PTR(index_meta_writer);
   DEFINE_FACTORY_INLINE(index_meta_writer);
 
   virtual ~index_meta_writer();
@@ -461,7 +461,7 @@ struct IRESEARCH_API index_meta_reader {
 
 class IRESEARCH_API format {
  public:
-  DECLARE_SPTR(format);
+  DECLARE_SHARED_PTR(format);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @class type_id

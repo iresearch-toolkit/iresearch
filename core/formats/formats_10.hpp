@@ -299,7 +299,7 @@ class IRESEARCH_PLUGIN postings_writer final: public iresearch::postings_writer 
   }; // doc_stream
 
   struct pos_stream : stream {
-    DECLARE_PTR(pos_stream);
+    DECLARE_UNIQUE_PTR(pos_stream);
 
     void flush(uint32_t* buf);
 
@@ -321,7 +321,7 @@ class IRESEARCH_PLUGIN postings_writer final: public iresearch::postings_writer 
   }; // pos_stream
 
   struct pay_stream : stream {
-    DECLARE_PTR(pay_stream);
+    DECLARE_UNIQUE_PTR(pay_stream);
 
     void flush_payload(uint32_t* buf);
     void flush_offsets(uint32_t* buf);

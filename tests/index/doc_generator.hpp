@@ -50,7 +50,7 @@ NS_BEGIN(tests)
 /// @brief base interface for all fields
 //////////////////////////////////////////////////////////////////////////////
 struct ifield {
-  DECLARE_SPTR(ifield);
+  DECLARE_SHARED_PTR(ifield);
   virtual ~ifield() {}
 
   virtual const irs::flags& features() const = 0;
@@ -290,7 +290,7 @@ struct document: irs::util::noncopyable {
 
 /* Base class for document generators */
 struct doc_generator_base {
-  DECLARE_PTR( doc_generator_base );
+  DECLARE_UNIQUE_PTR( doc_generator_base );
   DEFINE_FACTORY_INLINE( doc_generator_base );
 
   virtual const tests::document* next() = 0;

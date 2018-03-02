@@ -82,7 +82,7 @@ enum OPEN_MODE {
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API index_writer : util::noncopyable {
  public:
-  DECLARE_SPTR(index_writer);
+  DECLARE_SHARED_PTR(index_writer);
 
   static const size_t THREAD_COUNT = 8;
 

@@ -89,7 +89,7 @@ typedef bool (*score_less_f)(const byte_type* lhs, const byte_type* rhs);
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API sort {
  public:
-  DECLARE_SPTR(sort);
+  DECLARE_SHARED_PTR(sort);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief object used for collecting index statistics for a specific term
@@ -97,7 +97,7 @@ class IRESEARCH_API sort {
   ////////////////////////////////////////////////////////////////////////////////
   class IRESEARCH_API collector {
    public:
-    DECLARE_PTR(collector);
+    DECLARE_UNIQUE_PTR(collector);
     DEFINE_FACTORY_INLINE(collector);
 
     virtual ~collector();
@@ -128,7 +128,7 @@ class IRESEARCH_API sort {
   ////////////////////////////////////////////////////////////////////////////////
   class IRESEARCH_API scorer {
    public:
-    DECLARE_PTR(scorer);
+    DECLARE_UNIQUE_PTR(scorer);
     DEFINE_FACTORY_INLINE(scorer);
 
     virtual ~scorer();
@@ -155,7 +155,7 @@ class IRESEARCH_API sort {
   ////////////////////////////////////////////////////////////////////////////////
   class IRESEARCH_API prepared : public util::attribute_view_provider {
    public:
-    DECLARE_PTR(prepared);
+    DECLARE_UNIQUE_PTR(prepared);
 
     prepared() = default;
     explicit prepared(attribute_view&& attrs);
