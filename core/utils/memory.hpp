@@ -496,7 +496,7 @@ struct maker {
   template<typename... Args>
   static typename Class::ptr make(Args&&... args) {
     // creates shared_ptr with a single heap allocation
-    return std::make_shared<Class>(std::forward<Args>(args)...);
+    return irs::memory::make_shared<Class>(std::forward<Args>(args)...);
   }
 };
 
@@ -504,9 +504,17 @@ template<typename Class>
 struct maker<Class, false> {
   template<typename... Args>
   static typename Class::ptr make(Args&&... args) {
+    static_assert(
+      std::is_nothrow_constructible<
+        typename Class::ptr,
+        typename Class::ptr::element_type*>::value,
+      "type must be nothrow constructible"
+    );
+
     return typename Class::ptr(new Class(std::forward<Args>(args)...));
   }
 };
+
 
 NS_END // memory
 NS_END // ROOT
