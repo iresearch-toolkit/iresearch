@@ -511,10 +511,19 @@ struct maker<Class, false> {
       "type must be nothrow constructible"
     );
 
-    return typename Class::ptr(new Class(std::forward<Args>(args)...));
+    try {
+      return typename Class::ptr(new Class(std::forward<Args>(args)...));
+    } catch (std::bad_alloc&) {
+      fprintf(
+        stderr,
+        "Memory allocation failure while creating and initializing an object of size " IR_SIZE_T_SPECIFIER " bytes\n",
+        sizeof(Class)
+      );
+      ::iresearch::memory::dump_mem_stats_trace();
+      throw;
+    }
   }
 };
-
 
 NS_END // memory
 NS_END // ROOT
@@ -550,45 +559,25 @@ NS_END // ROOT
 //////////////////////////////////////////////////////////////////////////////
 #define DEFINE_FACTORY_INLINE(class_name) \
 template<typename Class, bool> friend struct irs::memory::maker; \
-template<typename _T, typename... _Args> \
-static ptr make(_Args&&... args) { \
+template<typename _T, typename... Args> \
+static ptr make(Args&&... args) { \
   typedef typename std::enable_if<std::is_base_of<class_name, _T>::value, _T>::type type; \
-  try { \
-    typedef irs::memory::maker<type> maker_t; \
-    return maker_t::template make(std::forward<_Args>(args)...); \
-  } catch (std::bad_alloc&) { \
-    fprintf( \
-      stderr, \
-      "Memory allocation failure while creating and initializing an object of size " IR_SIZE_T_SPECIFIER " bytes\n", \
-      sizeof(type) \
-    ); \
-    ::iresearch::memory::dump_mem_stats_trace(); \
-    throw; \
-  } \
+  typedef irs::memory::maker<type> maker_t; \
+  return maker_t::template make(std::forward<Args>(args)...); \
 }
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief declaration of a factory method
+//////////////////////////////////////////////////////////////////////////////
+#define DECLARE_FACTORY(...) static ptr make(__VA_ARGS__);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief default implementation of a factory method, instantiation on heap
 ///        NOTE: make(...) MUST be defined in CPP to ensire proper code scope
 //////////////////////////////////////////////////////////////////////////////
-#define DECLARE_FACTORY(...) static ptr make(__VA_ARGS__);
 #define DEFINE_FACTORY_DEFAULT(class_type) \
 /*static*/ class_type::ptr class_type::make() { \
-  PTR_NAMED(class_type, ptr); \
-  return ptr; \
-}
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief implementation of a factory method, returning a singleton instance
-///        NOTE: make(...) MUST be defined in CPP to ensire proper code scope
-//////////////////////////////////////////////////////////////////////////////
-#define DEFINE_FACTORY_SINGLETON(class_type) \
-/*static*/ class_type::ptr class_type::make() { \
-  struct make_impl_t { \
-    static class_type::ptr make() { PTR_NAMED(class_type, ptr); return ptr; } \
-  }; \
-  static auto instance = make_impl_t::make(); \
-  return instance; \
+  return irs::memory::maker<class_type>::make(); \
 }
 
 #endif
