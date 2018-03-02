@@ -411,19 +411,21 @@ class fs_index_input : public buffered_index_input {
   fs_index_input(const fs_index_input&) = default;
   fs_index_input& operator=(const fs_index_input&) = delete;
 
-  file_handle::ptr handle_; /* shared file handle */
+  file_handle::ptr handle_; // shared file handle
   size_t pool_size_; // size of pool for instances of pooled_fs_index_input
-  size_t pos_; /* current input stream position */
+  size_t pos_; // current input stream position
 }; // fs_index_input
 
 DEFINE_FACTORY_DEFAULT(fs_index_input::file_handle);
 
 class pooled_fs_index_input final : public fs_index_input {
  public:
+  DECLARE_UNIQUE_PTR(pooled_fs_index_input); // allow private construction
+
   explicit pooled_fs_index_input(const fs_index_input& in);
   virtual ~pooled_fs_index_input();
-  virtual ptr dup() const NOEXCEPT;
-  virtual ptr reopen() const NOEXCEPT;
+  virtual index_input::ptr dup() const NOEXCEPT;
+  virtual index_input::ptr reopen() const NOEXCEPT;
 
  private:
   typedef unbounded_object_pool<file_handle> fd_pool_t;
@@ -431,12 +433,11 @@ class pooled_fs_index_input final : public fs_index_input {
 
   pooled_fs_index_input(const pooled_fs_index_input& in) = default;
   file_handle::ptr reopen(const file_handle& src) const NOEXCEPT;
-};
+}; // pooled_fs_index_input
 
 index_input::ptr fs_index_input::dup() const NOEXCEPT {
   try {
-    PTR_NAMED(fs_index_input, ptr, *this);
-    return ptr;
+    return index_input::make<fs_index_input>(*this);
   } catch(...) {
     IR_LOG_EXCEPTION();
   }
@@ -467,8 +468,7 @@ pooled_fs_index_input::~pooled_fs_index_input() {
 
 index_input::ptr pooled_fs_index_input::dup() const NOEXCEPT {
   try {
-    PTR_NAMED(pooled_fs_index_input, ptr, *this);
-    return ptr;
+    return index_input::make<pooled_fs_index_input>(*this);
   } catch(...) {
     IR_LOG_EXCEPTION();
   }

@@ -157,8 +157,6 @@ struct empty_seek_term_iterator: public irs::seek_term_iterator {
 class single_reader_iterator_impl final
     : public irs::index_reader::reader_iterator_impl {
  public:
-  DECLARE_UNIQUE_PTR(single_reader_iterator_impl); // required for PTR_NAMED(...)
-
   explicit single_reader_iterator_impl(
       const irs::sub_reader* reader = nullptr
   ) NOEXCEPT: reader_(reader) {

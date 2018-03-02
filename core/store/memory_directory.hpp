@@ -152,14 +152,16 @@ struct memory_buffer;
 
 class IRESEARCH_API memory_index_input final : public index_input {
  public:
+  DECLARE_UNIQUE_PTR(memory_index_input); // allow private construction
+
   explicit memory_index_input(const memory_file& file) NOEXCEPT;
 
-  virtual ptr dup() const NOEXCEPT override;
+  virtual index_input::ptr dup() const NOEXCEPT override;
   virtual int64_t checksum(size_t offset) const override;
   virtual bool eof() const override;
   virtual byte_type read_byte() override;
   virtual size_t read_bytes(byte_type* b, size_t len) override;
-  virtual ptr reopen() const NOEXCEPT override;
+  virtual index_input::ptr reopen() const NOEXCEPT override;
   virtual size_t length() const override;
 
   virtual size_t file_pointer() const override;

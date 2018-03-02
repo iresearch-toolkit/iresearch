@@ -113,8 +113,7 @@ memory_index_input::memory_index_input(const memory_file& file) NOEXCEPT
 
 index_input::ptr memory_index_input::dup() const NOEXCEPT {
   try {
-    PTR_NAMED(memory_index_input, ptr, *this);
-    return ptr;
+    return index_input::make<memory_index_input>(*this);
   } catch(...) {
     IR_LOG_EXCEPTION();
   }
