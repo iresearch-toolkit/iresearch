@@ -501,9 +501,17 @@ TEST_F(LocaleUtilsTestSuite, test_locale_num_put) {
            << "|" << std::endl;
     }
 
-    ASSERT_EQ(std::string("|-1234|fffffffffffffb2e|1777777777777777775456|0|0|0|1234|4d2|2322|-     1234|0xfffffffffffffb2e|01777777777777777775456|+        0|         0|         0|+     1234|0x     4d2|     02322|-1234     |0xfffffffffffffb2e|01777777777777777775456|+0        |0         |0         |+1234     |0x4d2     |02322     |     -1234|0xfffffffffffffb2e|01777777777777777775456|        +0|         0|         0|     +1234|     0x4d2|     02322|\n"), de_out.str());
-    ASSERT_EQ(std::string("|-1234|fffffffffffffb2e|1777777777777777775456|0|0|0|1234|4d2|2322|-     1234|0xfffffffffffffb2e|01777777777777777775456|+        0|         0|         0|+     1234|0x     4d2|     02322|-1234     |0xfffffffffffffb2e|01777777777777777775456|+0        |0         |0         |+1234     |0x4d2     |02322     |     -1234|0xfffffffffffffb2e|01777777777777777775456|        +0|         0|         0|     +1234|     0x4d2|     02322|\n"), en_out.str());
-    ASSERT_EQ(std::string("|-1234|fffffffffffffb2e|1777777777777777775456|0|0|0|1234|4d2|2322|-     1234|0xfffffffffffffb2e|01777777777777777775456|+        0|         0|         0|+     1234|0x     4d2|     02322|-1234     |0xfffffffffffffb2e|01777777777777777775456|+0        |0         |0         |+1234     |0x4d2     |02322     |     -1234|0xfffffffffffffb2e|01777777777777777775456|        +0|         0|         0|     +1234|     0x4d2|     02322|\n"), ru_out.str());
+    // Boost on MSVC uses different values
+    // FIXME TODO remove MSVC case once Boost is no longer used
+    #if defined(_MSC_VER)
+      ASSERT_EQ(std::string("|-1234|fffffb2e|37777775456|0|0|0|1234|4d2|2322|-     1234|0xfffffb2e|037777775456|+        0|         0|         0|+     1234|0x     4d2|     02322|-1234     |0xfffffb2e|037777775456|+0        |0         |0         |+1234     |0x4d2     |02322     |     -1234|0xfffffb2e|037777775456|        +0|         0|         0|     +1234|     0x4d2|     02322|\n"), de_out.str());
+      ASSERT_EQ(std::string("|-1234|fffffb2e|37777775456|0|0|0|1234|4d2|2322|-     1234|0xfffffb2e|037777775456|+        0|         0|         0|+     1234|0x     4d2|     02322|-1234     |0xfffffb2e|037777775456|+0        |0         |0         |+1234     |0x4d2     |02322     |     -1234|0xfffffb2e|037777775456|        +0|         0|         0|     +1234|     0x4d2|     02322|\n"), en_out.str());
+      ASSERT_EQ(std::string("|-1234|fffffb2e|37777775456|0|0|0|1234|4d2|2322|-     1234|0xfffffb2e|037777775456|+        0|         0|         0|+     1234|0x     4d2|     02322|-1234     |0xfffffb2e|037777775456|+0        |0         |0         |+1234     |0x4d2     |02322     |     -1234|0xfffffb2e|037777775456|        +0|         0|         0|     +1234|     0x4d2|     02322|\n"), ru_out.str());
+    #else
+      ASSERT_EQ(std::string("|-1234|fffffffffffffb2e|1777777777777777775456|0|0|0|1234|4d2|2322|-     1234|0xfffffffffffffb2e|01777777777777777775456|+        0|         0|         0|+     1234|0x     4d2|     02322|-1234     |0xfffffffffffffb2e|01777777777777777775456|+0        |0         |0         |+1234     |0x4d2     |02322     |     -1234|0xfffffffffffffb2e|01777777777777777775456|        +0|         0|         0|     +1234|     0x4d2|     02322|\n"), de_out.str());
+      ASSERT_EQ(std::string("|-1234|fffffffffffffb2e|1777777777777777775456|0|0|0|1234|4d2|2322|-     1234|0xfffffffffffffb2e|01777777777777777775456|+        0|         0|         0|+     1234|0x     4d2|     02322|-1234     |0xfffffffffffffb2e|01777777777777777775456|+0        |0         |0         |+1234     |0x4d2     |02322     |     -1234|0xfffffffffffffb2e|01777777777777777775456|        +0|         0|         0|     +1234|     0x4d2|     02322|\n"), en_out.str());
+      ASSERT_EQ(std::string("|-1234|fffffffffffffb2e|1777777777777777775456|0|0|0|1234|4d2|2322|-     1234|0xfffffffffffffb2e|01777777777777777775456|+        0|         0|         0|+     1234|0x     4d2|     02322|-1234     |0xfffffffffffffb2e|01777777777777777775456|+0        |0         |0         |+1234     |0x4d2     |02322     |     -1234|0xfffffffffffffb2e|01777777777777777775456|        +0|         0|         0|     +1234|     0x4d2|     02322|\n"), ru_out.str());
+    #endif
   }
 
   // long long
@@ -651,7 +659,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_num_put) {
   }
 
 // GCC v4.x does not support std::defaultfloat or std::hexfloat
-#if !defined(__GNUC__) || __GNUC__ >= 4
+#if !defined(__GNUC__) || __GNUC__ > 4
   // double
   {
     std::ostringstream de_out;
