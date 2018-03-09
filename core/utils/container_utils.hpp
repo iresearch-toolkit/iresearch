@@ -83,13 +83,13 @@ MSVC_ONLY(__pragma(warning(pop)))
 //////////////////////////////////////////////////////////////////////////////
 /// @brief a function to calculate the bucket offset of the reqested position
 ///        for exponentially sized buckets, e.g. as per compute_bucket_meta()
-/// @param skip_bits 2^skip_bits is the size of the first bucket, consequently
+/// @param SkipBits 2^SkipBits is the size of the first bucket, consequently
 ///        the number of bits from a 'position' value to place into 1st bucket
 //////////////////////////////////////////////////////////////////////////////
-template<size_t skip_bits>
+template<size_t SkipBits>
 size_t compute_bucket_offset(size_t position) NOEXCEPT {
   // 63 == 64 bits per size_t - 1 for allignment, +1 == align first value to start of bucket
-  return 63 - math::clz64((position>>skip_bits) + 1);
+  return 63 - math::clz64((position >> SkipBits) + 1);
 }
 
 class raw_block_vector_base : util::noncopyable {
