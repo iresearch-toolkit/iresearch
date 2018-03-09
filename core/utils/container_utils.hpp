@@ -162,20 +162,15 @@ class IRESEARCH_API_TEMPLATE raw_block_vector : public raw_block_vector_base {
   }
 
   FORCE_INLINE size_t buffer_offset(size_t position) const NOEXCEPT {
-    static const auto& last_buffer = bucket_meta<num_buckets, skip_bits>::get().back();
-    static const auto last_buffer_id = bucket_meta<num_buckets, skip_bits>::get().size() - 1;
-
     // non-precomputed bucket size is the same as the last precomputed bucket size
-    return position < last_buffer.offset
+    return position < last_buffer_.offset
       ? compute_bucket_offset<skip_bits>(position)
-      : (last_buffer_id + (position - last_buffer.offset) / last_buffer.size);
+      : (last_buffer_id_ + (position - last_buffer_.offset) / last_buffer_.size);
   }
 
   buffer_t& push_buffer() {
-    static const auto& meta = bucket_meta<num_buckets, skip_bits>::get();
-
-    if (buffers_.size() < meta.size()) { // one of the precomputed buckets
-      const auto& bucket = meta[buffers_.size()];
+    if (buffers_.size() < meta_.size()) { // one of the precomputed buckets
+      const auto& bucket = meta_[buffers_.size()];
       return raw_block_vector_base::push_buffer(bucket.offset, bucket.size);
     }
 
@@ -186,7 +181,24 @@ class IRESEARCH_API_TEMPLATE raw_block_vector : public raw_block_vector_base {
       bucket.offset + bucket.size, bucket.size
     );
   }
+
+ private:
+  static const std::array<bucket_size_t, num_buckets>& meta_;
+  static const bucket_size_t& last_buffer_;
+  static const size_t last_buffer_id_;
 };
+
+template<size_t num_buckets, size_t skip_bits>
+/*static*/ const std::array<bucket_size_t, num_buckets>& raw_block_vector<num_buckets, skip_bits>::meta_
+  = bucket_meta<num_buckets, skip_bits>::get();
+
+template<size_t num_buckets, size_t skip_bits>
+/*static*/ const bucket_size_t&  raw_block_vector<num_buckets, skip_bits>::last_buffer_
+  = bucket_meta<num_buckets, skip_bits>::get().back();
+
+template<size_t num_buckets, size_t skip_bits>
+/*static*/ const size_t raw_block_vector<num_buckets, skip_bits>::last_buffer_id_
+  = bucket_meta<num_buckets, skip_bits>::get().size() - 1;
 
 NS_END // container_utils
 NS_END // NS_ROOT
