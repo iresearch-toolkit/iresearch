@@ -543,11 +543,11 @@ NS_END // ROOT
   }
 
 #define DECLARE_SHARED_PTR(class_name) \
-  friend class irs::memory::maker<class_name, true>; \
+  friend struct irs::memory::maker<class_name, true>; \
   typedef std::shared_ptr<class_name> ptr
 
 #define DECLARE_UNIQUE_PTR(class_name) \
-  friend class irs::memory::maker<class_name, false>; \
+  friend struct irs::memory::maker<class_name, false>; \
   typedef std::unique_ptr<class_name> ptr
 
 #define DECLARE_REFERENCE(class_name) typedef std::reference_wrapper<class_name> ref
