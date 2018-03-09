@@ -43,30 +43,30 @@ struct bucket_size_t {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief compute individual sizes and offsets of exponentially sized buckets
-/// @param num_buckets the number of bucket descriptions to generate
-/// @param skip_bits 2^skip_bits is the size of the first bucket, consequently
+/// @param NumBuckets the number of bucket descriptions to generate
+/// @param SkipBits 2^SkipBits is the size of the first bucket, consequently
 ///        the number of bits from a 'position' value to place into 1st bucket
 //////////////////////////////////////////////////////////////////////////////
 MSVC_ONLY(__pragma(warning(push)))
 MSVC_ONLY(__pragma(warning(disable:4127))) // constexp conditionals are intended to be optimized out
-template<size_t num_buckets, size_t skip_bits>
+template<size_t NumBuckets, size_t SkipBits>
 class bucket_meta {
  public:
-  static const std::array<bucket_size_t, num_buckets>& get() NOEXCEPT {
+  static const std::array<bucket_size_t, NumBuckets>& get() NOEXCEPT {
     static const bucket_meta buckets;
     return buckets.buckets_;
   }
 
  private:
   bucket_meta() NOEXCEPT {
-    if (!num_buckets) {
+    if (!NumBuckets) {
       return;
     }
 
-    buckets_[0].size = 1 << skip_bits;
+    buckets_[0].size = 1 << SkipBits;
     buckets_[0].offset = 0;
 
-    for (size_t i = 1; i < num_buckets; ++i) {
+    for (size_t i = 1; i < NumBuckets; ++i) {
       buckets_[i - 1].next = &buckets_[i];
       buckets_[i].offset = buckets_[i - 1].offset + buckets_[i - 1].size;
       buckets_[i].size = buckets_[i - 1].size << 1;
@@ -76,7 +76,7 @@ class bucket_meta {
     buckets_.back().next = &(buckets_.back());
   }
 
-  std::array<bucket_size_t, num_buckets> buckets_;
+  std::array<bucket_size_t, NumBuckets> buckets_;
 };
 MSVC_ONLY(__pragma(warning(pop)))
 
@@ -152,7 +152,7 @@ class raw_block_vector_base : util::noncopyable {
 /// @brief a container allowing raw access to internal storage, and
 ///        using an allocation strategy similar to an std::deque
 //////////////////////////////////////////////////////////////////////////////
-template<size_t num_buckets, size_t skip_bits>
+template<size_t NumBuckets, size_t SkipBits>
 class IRESEARCH_API_TEMPLATE raw_block_vector : public raw_block_vector_base {
  public:
   raw_block_vector() = default;
@@ -164,7 +164,7 @@ class IRESEARCH_API_TEMPLATE raw_block_vector : public raw_block_vector_base {
   FORCE_INLINE size_t buffer_offset(size_t position) const NOEXCEPT {
     // non-precomputed bucket size is the same as the last precomputed bucket size
     return position < last_buffer_.offset
-      ? compute_bucket_offset<skip_bits>(position)
+      ? compute_bucket_offset<SkipBits>(position)
       : (last_buffer_id_ + (position - last_buffer_.offset) / last_buffer_.size);
   }
 
@@ -183,22 +183,22 @@ class IRESEARCH_API_TEMPLATE raw_block_vector : public raw_block_vector_base {
   }
 
  private:
-  static const std::array<bucket_size_t, num_buckets>& meta_;
+  static const std::array<bucket_size_t, NumBuckets>& meta_;
   static const bucket_size_t& last_buffer_;
   static const size_t last_buffer_id_;
 };
 
-template<size_t num_buckets, size_t skip_bits>
-/*static*/ const std::array<bucket_size_t, num_buckets>& raw_block_vector<num_buckets, skip_bits>::meta_
-  = bucket_meta<num_buckets, skip_bits>::get();
+template<size_t NumBuckets, size_t SkipBits>
+/*static*/ const std::array<bucket_size_t, NumBuckets>& raw_block_vector<NumBuckets, SkipBits>::meta_
+  = bucket_meta<NumBuckets, SkipBits>::get();
 
-template<size_t num_buckets, size_t skip_bits>
-/*static*/ const bucket_size_t&  raw_block_vector<num_buckets, skip_bits>::last_buffer_
-  = bucket_meta<num_buckets, skip_bits>::get().back();
+template<size_t NumBuckets, size_t SkipBits>
+/*static*/ const bucket_size_t&  raw_block_vector<NumBuckets, SkipBits>::last_buffer_
+  = bucket_meta<NumBuckets, SkipBits>::get().back();
 
-template<size_t num_buckets, size_t skip_bits>
-/*static*/ const size_t raw_block_vector<num_buckets, skip_bits>::last_buffer_id_
-  = bucket_meta<num_buckets, skip_bits>::get().size() - 1;
+template<size_t NumBuckets, size_t SkipBits>
+/*static*/ const size_t raw_block_vector<NumBuckets, SkipBits>::last_buffer_id_
+  = bucket_meta<NumBuckets, SkipBits>::get().size() - 1;
 
 NS_END // container_utils
 NS_END // NS_ROOT
