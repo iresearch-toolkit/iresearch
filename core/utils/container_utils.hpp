@@ -39,7 +39,7 @@ struct bucket_size_t {
   bucket_size_t* next; // next bucket
   size_t offset; // sum of bucket sizes up to but excluding this bucket
   size_t size; // size of this bucket
-};
+}; // bucket_size_t
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief compute individual sizes and offsets of exponentially sized buckets
