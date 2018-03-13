@@ -38,6 +38,82 @@ namespace tests {
 
 using namespace tests;
 
+TEST_F(container_utils_tests, test_bucket_allocator) {
+  static bool WAS_MADE{};
+  static size_t ACTUAL_SIZE{};
+
+  struct bucket_builder {
+    typedef std::shared_ptr<irs::byte_type> ptr;
+
+    static ptr make(size_t size) {
+      ACTUAL_SIZE = size;
+      WAS_MADE = true;
+
+      return std::shared_ptr<irs::byte_type>(
+        irs::memory::make_unique<irs::byte_type[]>(size)
+      );
+    }
+  };
+
+  irs::container_utils::memory::bucket_allocator<bucket_builder> alloc(
+    16, // total number of levels
+    1   // how many buckets to cache for each level
+  );
+
+  irs::container_utils::raw_block_vector<
+    16, // total number of levels
+    8,  // size of the first block 2^8
+    decltype(alloc) // allocator
+  > blocks(alloc);
+
+  // just created
+  ASSERT_TRUE(blocks.empty());
+  ASSERT_EQ(0, blocks.buffer_count());
+
+  // first bucket
+  ACTUAL_SIZE = 0;
+  WAS_MADE = false;
+  blocks.push_buffer();
+  ASSERT_TRUE(WAS_MADE); // buffer was actually built by builder
+  ASSERT_EQ(256, ACTUAL_SIZE); // first bucket 2^8
+  ASSERT_TRUE(1 == blocks.buffer_count());
+  ASSERT_TRUE(!blocks.empty());
+  blocks.pop_buffer(); // pop recently pushed buffer
+  ASSERT_TRUE(blocks.empty());
+  ASSERT_TRUE(0 == blocks.buffer_count());
+  ACTUAL_SIZE = 0;
+  WAS_MADE = false;
+  blocks.push_buffer();
+  ASSERT_FALSE(WAS_MADE); // buffer has been reused from the pool
+  ASSERT_EQ(0, ACTUAL_SIZE); // didn't change
+  ASSERT_TRUE(1 == blocks.buffer_count());
+  ASSERT_TRUE(!blocks.empty());
+
+  // second bukcet
+  ACTUAL_SIZE = 0;
+  WAS_MADE = false;
+  blocks.push_buffer();
+  ASSERT_TRUE(WAS_MADE); // buffer was actually built by builder
+  ASSERT_EQ(512, ACTUAL_SIZE); // first bucket 2^9
+  ASSERT_TRUE(2 == blocks.buffer_count());
+  ASSERT_TRUE(!blocks.empty());
+  blocks.pop_buffer(); // pop recently pushed buffer
+  ASSERT_TRUE(!blocks.empty());
+  ASSERT_TRUE(1 == blocks.buffer_count());
+  ACTUAL_SIZE = 0;
+  WAS_MADE = false;
+  blocks.push_buffer();
+  ASSERT_FALSE(WAS_MADE); // buffer has been reused from the pool
+  ASSERT_EQ(0, ACTUAL_SIZE); // didn't change
+  ASSERT_TRUE(2 == blocks.buffer_count());
+  ASSERT_TRUE(!blocks.empty());
+
+  // cleanup
+  blocks.clear();
+  ASSERT_TRUE(blocks.empty());
+  ASSERT_EQ(0, blocks.buffer_count());
+}
+
 TEST_F(container_utils_tests, test_compute_bucket_meta) {
   // test meta for num buckets == 0, skip bits == 0
   {

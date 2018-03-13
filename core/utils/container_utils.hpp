@@ -30,6 +30,7 @@
 #include "shared.hpp"
 #include "math_utils.hpp"
 #include "memory.hpp"
+#include "object_pool.hpp"
 #include "noncopyable.hpp"
 
 NS_ROOT
@@ -39,6 +40,7 @@ struct bucket_size_t {
   bucket_size_t* next; // next bucket
   size_t offset; // sum of bucket sizes up to but excluding this bucket
   size_t size; // size of this bucket
+  size_t index; // bucket index
 }; // bucket_size_t
 
 //////////////////////////////////////////////////////////////////////////////
@@ -59,17 +61,19 @@ class bucket_meta {
 
  private:
   bucket_meta() NOEXCEPT {
-    if (!NumBuckets) {
+    if (buckets_.empty()) {
       return;
     }
 
     buckets_[0].size = 1 << SkipBits;
     buckets_[0].offset = 0;
+    buckets_[0].index = 0;
 
     for (size_t i = 1; i < NumBuckets; ++i) {
       buckets_[i - 1].next = &buckets_[i];
       buckets_[i].offset = buckets_[i - 1].offset + buckets_[i - 1].size;
       buckets_[i].size = buckets_[i - 1].size << 1;
+      buckets_[i].index = i;
     }
 
     // all subsequent buckets_ should have the same meta as the last bucket
@@ -79,6 +83,40 @@ class bucket_meta {
   std::array<bucket_size_t, NumBuckets> buckets_;
 };
 MSVC_ONLY(__pragma(warning(pop)))
+
+NS_BEGIN(memory)
+
+template<typename BucketFactory>
+class bucket_allocator {
+ public:
+  typedef typename unbounded_object_pool<BucketFactory>::ptr value_type;
+
+  bucket_allocator(size_t size, size_t pool_size) {
+    pools_.reserve(size);
+    while (size--) {
+      pools_.emplace_back(pool_size);
+    }
+  }
+
+  value_type allocate(const bucket_size_t& bucket) {
+    assert(bucket.index < pools_.size());
+    return pools_[bucket.index].emplace(bucket.size);
+  }
+
+ private:
+  std::vector<unbounded_object_pool<BucketFactory>> pools_;
+}; // bucket_allocator
+
+// default stateless allocator
+struct default_allocator {
+  typedef std::unique_ptr<byte_type[]> value_type;
+
+  static value_type allocate(const bucket_size_t& bucket) {
+    return irs::memory::make_unique<byte_type[]>(bucket.size);
+  }
+}; // default_allocator
+
+NS_END // memory
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief a function to calculate the bucket offset of the reqested position
@@ -92,7 +130,13 @@ size_t compute_bucket_offset(size_t position) NOEXCEPT {
   return 63 - math::clz64((position >> SkipBits) + 1);
 }
 
-class raw_block_vector_base : util::noncopyable {
+template<typename Allocator>
+class raw_block_vector_base
+    : public compact_ref<0, Allocator>,
+      private util::noncopyable {
+ private:
+  typedef compact_ref<0, Allocator> allocator_ref_t;
+
  public:
   struct buffer_t {
     byte_type* data; // pointer at the actual data
@@ -100,14 +144,21 @@ class raw_block_vector_base : util::noncopyable {
     size_t size; // total buffer size
   };
 
-  raw_block_vector_base() = default;
+  explicit raw_block_vector_base(const Allocator& alloc) NOEXCEPT
+    : allocator_ref_t(alloc) {
+  }
 
   raw_block_vector_base(raw_block_vector_base&& rhs) NOEXCEPT
-    : buffers_(std::move(rhs.buffers_)) {
+    : allocator_ref_t(std::move(rhs)),
+      buffers_(std::move(rhs.buffers_)) {
   }
 
   FORCE_INLINE size_t buffer_count() const NOEXCEPT {
     return buffers_.size();
+  }
+
+  FORCE_INLINE bool empty() const NOEXCEPT {
+    return buffers_.empty();
   }
 
   FORCE_INLINE void clear() NOEXCEPT {
@@ -122,82 +173,99 @@ class raw_block_vector_base : util::noncopyable {
     return buffers_[i];
   }
 
+  FORCE_INLINE void pop_buffer() {
+    buffers_.pop_back();
+  }
+
  protected:
-  struct buffer_entry_t: buffer_t, util::noncopyable {
-    buffer_entry_t(size_t bucket_offset, size_t bucket_size)
-      : ptr(memory::make_unique<byte_type[]>(bucket_size)) {
-      buffer_t::data = ptr.get();
+  struct buffer_entry_t : buffer_t, util::noncopyable {
+    buffer_entry_t(
+        size_t bucket_offset,
+        size_t bucket_size,
+        typename Allocator::value_type&& ptr) NOEXCEPT
+      : ptr(std::move(ptr)) {
+      buffer_t::data = this->ptr.get();
       buffer_t::offset = bucket_offset;
       buffer_t::size = bucket_size;
     }
 
     buffer_entry_t(buffer_entry_t&& other) NOEXCEPT
-      : buffer_t(std::move(other)), ptr(std::move(other.ptr)) {
+      : buffer_t(std::move(other)),
+        ptr(std::move(other.ptr)) {
     }
 
-    std::unique_ptr<byte_type[]> ptr;
+    typename Allocator::value_type ptr;
   };
 
-  buffer_t& push_buffer(size_t offset, size_t size) {
-    buffers_.emplace_back(offset, size);
+  buffer_t& push_buffer(size_t offset, const bucket_size_t& bucket) {
+    auto& allocator = allocator_ref_t::get();
+    buffers_.emplace_back(offset, bucket.size, allocator.allocate(bucket));
     return buffers_.back();
   }
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::vector<buffer_entry_t> buffers_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
-};
+}; // raw_block_vector_base
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief a container allowing raw access to internal storage, and
 ///        using an allocation strategy similar to an std::deque
 //////////////////////////////////////////////////////////////////////////////
-template<size_t NumBuckets, size_t SkipBits>
-class IRESEARCH_API_TEMPLATE raw_block_vector : public raw_block_vector_base {
+template<
+  size_t NumBuckets,
+  size_t SkipBits,
+  typename Allocator = memory::default_allocator
+> class IRESEARCH_API_TEMPLATE raw_block_vector : public raw_block_vector_base<Allocator> {
  public:
-  raw_block_vector() = default;
+  typedef raw_block_vector_base<Allocator> base_t;
+
+  explicit raw_block_vector(const Allocator& alloc = Allocator()) NOEXCEPT
+    : base_t(alloc) {
+  }
 
   raw_block_vector(raw_block_vector&& other) NOEXCEPT
-    : raw_block_vector_base(std::move(other)) {
+    : base_t(std::move(other)) {
   }
 
   FORCE_INLINE size_t buffer_offset(size_t position) const NOEXCEPT {
     // non-precomputed bucket size is the same as the last precomputed bucket size
-    return position < last_buffer_.offset
+    return position < LAST_BUFFER.offset
       ? compute_bucket_offset<SkipBits>(position)
-      : (last_buffer_id_ + (position - last_buffer_.offset) / last_buffer_.size);
+      : (LAST_BUFFER_ID + (position - LAST_BUFFER.offset) / LAST_BUFFER.size);
   }
 
-  buffer_t& push_buffer() {
-    if (buffers_.size() < meta_.size()) { // one of the precomputed buckets
-      const auto& bucket = meta_[buffers_.size()];
-      return raw_block_vector_base::push_buffer(bucket.offset, bucket.size);
+  typename base_t::buffer_t& push_buffer() {
+    if (base_t::buffers_.size() < META.size()) { // one of the precomputed buckets
+      const auto& bucket = META[base_t::buffers_.size()];
+      return base_t::push_buffer(bucket.offset, bucket);
     }
 
     // non-precomputed buckets, offset is the sum of previous buckets
-    assert(!buffers_.empty()); // otherwise do not know what size buckets to create
-    const auto& bucket = buffers_.back(); // most of the meta from last computed bucket
-    return raw_block_vector_base::push_buffer(
-      bucket.offset + bucket.size, bucket.size
-    );
+    assert(!base_t::buffers_.empty()); // otherwise do not know what size buckets to create
+    const auto& bucket = base_t::buffers_.back(); // most of the meta from last computed bucket
+    return base_t::push_buffer(bucket.offset + bucket.size, META.back());
   }
 
  private:
-  static const std::array<bucket_size_t, NumBuckets>& meta_;
-  static const bucket_size_t& last_buffer_;
-  static const size_t last_buffer_id_;
+  static const std::array<bucket_size_t, NumBuckets>& META;
+  static const bucket_size_t& LAST_BUFFER;
+  static const size_t LAST_BUFFER_ID;
 };
 
-template<size_t NumBuckets, size_t SkipBits>
-/*static*/ const std::array<bucket_size_t, NumBuckets>& raw_block_vector<NumBuckets, SkipBits>::meta_
+template<size_t NumBuckets, size_t SkipBits, typename Allocator>
+/*static*/ const std::array<bucket_size_t, NumBuckets>&
+raw_block_vector<NumBuckets, SkipBits, Allocator>::META
   = bucket_meta<NumBuckets, SkipBits>::get();
 
-template<size_t NumBuckets, size_t SkipBits>
-/*static*/ const bucket_size_t&  raw_block_vector<NumBuckets, SkipBits>::last_buffer_
+template<size_t NumBuckets, size_t SkipBits, typename Allocator>
+/*static*/ const bucket_size_t&
+raw_block_vector<NumBuckets, SkipBits, Allocator>::LAST_BUFFER
   = bucket_meta<NumBuckets, SkipBits>::get().back();
 
-template<size_t NumBuckets, size_t SkipBits>
-/*static*/ const size_t raw_block_vector<NumBuckets, SkipBits>::last_buffer_id_
+template<size_t NumBuckets, size_t SkipBits, typename Allocator>
+/*static*/ const size_t
+raw_block_vector<NumBuckets, SkipBits, Allocator>::LAST_BUFFER_ID
   = bucket_meta<NumBuckets, SkipBits>::get().size() - 1;
 
 NS_END // container_utils
