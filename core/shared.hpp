@@ -33,6 +33,28 @@
 #include <string> //need to include this really early...
 
 //////////////////////////////////////////////////////////
+/// C++ standard
+//////////////////////////////////////////////////////////
+
+#ifndef __cplusplus
+  #error C++ is required
+#endif
+
+#define IRESEARCH_CXX_11 201103L // c++11
+#define IRESEARCH_CXX_14 201402L // c++14
+#define IRESEARCH_CXX_17 201703L // c++17
+
+#if __cplusplus < IRESEARCH_CXX_11
+  #error "at least C++11 is required"
+#elif __cplusplus >= IRESEARCH_CXX_11 && __cplusplus < IRESEARCH_CXX_14
+  #define IRESEARCH_CXX IRESEARCH_CXX_11
+#elif __cplusplus >= IRESEARCH_CXX_14 && __cplusplus < IRESEARCH_CXX_17
+  #define IRESEARCH_CXX IRESEARCH_CXX_14
+#elif __cplusplus >= IRESEARCH_CXX_17
+  #define IRESEARCH_CXX IRESEARCH_CXX_17
+#endif
+
+//////////////////////////////////////////////////////////
 /// Export/Import definitions
 //////////////////////////////////////////////////////////
 
@@ -57,6 +79,7 @@
   #define NO_INLINE __declspec(noinline)
   #define RESTRICT __restrict 
   #define ALIGNED_VALUE(_value, _type) union { _value; _type ___align; }
+  #define IRESEARCH_CXX_14
 #else
   #if defined(__GNUC__) && __GNUC__ >= 4
     #define IRESEARCH_HELPER_DLL_IMPORT __attribute__ ((visibility ("default")))
