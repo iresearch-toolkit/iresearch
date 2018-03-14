@@ -40,18 +40,34 @@
   #error C++ is required
 #endif
 
+#define IRESEARCH_CXX_98 199711L // c++03/c++98
 #define IRESEARCH_CXX_11 201103L // c++11
 #define IRESEARCH_CXX_14 201402L // c++14
 #define IRESEARCH_CXX_17 201703L // c++17
 
-#if __cplusplus < IRESEARCH_CXX_11
-  #error "at least C++11 is required"
-#elif __cplusplus >= IRESEARCH_CXX_11 && __cplusplus < IRESEARCH_CXX_14
-  #define IRESEARCH_CXX IRESEARCH_CXX_11
-#elif __cplusplus >= IRESEARCH_CXX_14 && __cplusplus < IRESEARCH_CXX_17
-  #define IRESEARCH_CXX IRESEARCH_CXX_14
-#elif __cplusplus >= IRESEARCH_CXX_17
-  #define IRESEARCH_CXX IRESEARCH_CXX_17
+#if defined(_MSC_VER)
+  // MSVC doesn't honor __cplusplus macro,
+  // it always equals to IRESEARCH_CXX_98
+  // therefore we use _MSC_VER
+  #if _MSC_VER < 1800 // before MSVC2013
+    #error "at least C++11 is required"
+  #elif _MSC_VER >= 1800 && _MSC_VER < 1900 // MSVC2013
+    #define IRESEARCH_CXX IRESEARCH_CXX_11
+  #elif _MSC_VER >= 1900 // MSVC2015 and later
+    // not MSVC2015 nor MSVC2017 are not yet fully c++14
+    // compatible therefore the following is rough approximation
+    #define IRESEARCH_CXX IRESEARCH_CXX_14
+  #endif
+#else // GCC/Clang
+  #if __cplusplus < IRESEARCH_CXX_11
+    #error "at least C++11 is required"
+  #elif __cplusplus >= IRESEARCH_CXX_11 && __cplusplus < IRESEARCH_CXX_14
+    #define IRESEARCH_CXX IRESEARCH_CXX_11
+  #elif __cplusplus >= IRESEARCH_CXX_14 && __cplusplus < IRESEARCH_CXX_17
+    #define IRESEARCH_CXX IRESEARCH_CXX_14
+  #elif __cplusplus >= IRESEARCH_CXX_17
+    #define IRESEARCH_CXX IRESEARCH_CXX_17
+  #endif
 #endif
 
 //////////////////////////////////////////////////////////
