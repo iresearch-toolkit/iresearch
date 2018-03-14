@@ -49,9 +49,14 @@ TEST_F(container_utils_tests, test_bucket_allocator) {
       ACTUAL_SIZE = size;
       WAS_MADE = true;
 
-      return std::shared_ptr<irs::byte_type>(
-        irs::memory::make_unique<irs::byte_type[]>(size)
+      // starting from gcc6 it's impossible to instanciate
+      // std::shared_ptr<T> from std::unique_ptr<T[]>
+      auto buf = irs::memory::make_unique<irs::byte_type[]>(size);
+      auto p = std::shared_ptr<irs::byte_type>(
+        buf.get(), std::default_delete<irs::byte_type[]>()
       );
+      buf.release();
+      return p;
     }
   };
 
