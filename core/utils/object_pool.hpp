@@ -45,6 +45,11 @@ template<typename T>
 class atomic_base<std::shared_ptr<T>> {
   #if defined(IRESEARCH_VALGRIND) // suppress valgrind false-positives related to std::atomic_*
    public:
+    // for compatibility 'std::mutex' is not moveable
+    atomic_base() = default;
+    atomic_base(atomic_base&&) NOEXCEPT { }
+    atomic_base& operator=(atomic_base&&) NOEXCEPT { return *this; }
+
     std::shared_ptr<T> atomic_exchange(std::shared_ptr<T>* p, std::shared_ptr<T> r) const NOEXCEPT {
       SCOPED_LOCK(mutex_);
       return std::atomic_exchange(p, r);
@@ -81,6 +86,11 @@ class atomic_base<std::shared_ptr<T>> {
 template<typename T>
 class atomic_base<std::shared_ptr<T>> {
  public:
+  // for compatibility 'std::mutex' is not moveable
+  atomic_base() = default;
+  atomic_base(atomic_base&&) NOEXCEPT { }
+  atomic_base& operator=(atomic_base&&) NOEXCEPT { return *this; }
+
   std::shared_ptr<T> atomic_exchange(std::shared_ptr<T>* p, std::shared_ptr<T> r) const NOEXCEPT {
     SCOPED_LOCK(mutex_);
     p->swap(r);
