@@ -34,45 +34,34 @@
 #include <unordered_map>
 #include <unordered_set>
 
-NS_LOCAL
-
-inline void touch(std::time_t& time) NOEXCEPT {
-  time = std::chrono::system_clock::to_time_t(
-    std::chrono::system_clock::now()
-  );
-}
-
-NS_END
-
 NS_ROOT
 
-// -------------------------------------------------------------------
-// metadata for a memory_file
-// -------------------------------------------------------------------
-struct memory_file_meta {
-  std::time_t mtime;
-};
+NS_BEGIN(detail)
+
+// <16, 8> => buffer sizes 256B, 512B, 1K, 2K, 4K, 8K, 16K, 32K, 64K, 128K, 256K, 512K, 1M, 2M, 4M, 8M
+typedef container_utils::raw_block_vector<
+  16, // total number of levels
+  8  // size of the first level 2^8
+> raw_block_vector_t;
+
+NS_END // detail
 
 /* -------------------------------------------------------------------
 * memory_file
 * ------------------------------------------------------------------*/
 
-MSVC_ONLY(template class IRESEARCH_API iresearch::container_utils::raw_block_vector<16, 8>);
+MSVC_ONLY(template class IRESEARCH_API detail::raw_block_vector_t);
 
-// <16, 8> => buffer sizes 256B, 512B, 1K, 2K, 4K, 8K, 16K, 32K, 64K, 128K, 256K, 512K, 1M, 2M, 4M, 8M
-class IRESEARCH_API memory_file
-    : public container_utils::raw_block_vector<16, 8> {
+class IRESEARCH_API memory_file : public detail::raw_block_vector_t {
  public:
-  typedef container_utils::raw_block_vector<16, 8> raw_block_vector_t;
-
-  DECLARE_UNIQUE_PTR(memory_file);
+  typedef detail::raw_block_vector_t::allocator_type allocator_type;
 
   memory_file() NOEXCEPT {
     touch(meta_.mtime);
   }
 
   memory_file(memory_file&& rhs) NOEXCEPT
-    : raw_block_vector_t(std::move(rhs)),
+    : detail::raw_block_vector_t(std::move(rhs)),
       len_(rhs.len_) {
     rhs.len_ = 0;
   }
@@ -125,7 +114,7 @@ class IRESEARCH_API memory_file
   }
 
   void clear() NOEXCEPT {
-    raw_block_vector_t::clear();
+    detail::raw_block_vector_t::clear();
     reset();
   }
 
@@ -140,7 +129,18 @@ class IRESEARCH_API memory_file
   }
 
  private:
-  memory_file_meta meta_;
+  // metadata for a memory_file
+  struct meta {
+    std::time_t mtime;
+  };
+
+  static void touch(std::time_t& time) NOEXCEPT {
+    time = std::chrono::system_clock::to_time_t(
+      std::chrono::system_clock::now()
+    );
+  }
+
+  meta meta_;
   size_t len_{};
 };
 
@@ -250,6 +250,8 @@ class IRESEARCH_API memory_index_output : public index_output {
 // -------------------------------------------------------------------
 class IRESEARCH_API memory_directory final : public directory {
  public:
+  memory_directory();
+
   virtual ~memory_directory();
 
   using directory::attributes;
@@ -291,7 +293,7 @@ class IRESEARCH_API memory_directory final : public directory {
 
  private:
   friend class single_instance_lock;
-  typedef std::unordered_map<std::string, memory_file::ptr> file_map;
+  typedef std::unordered_map<std::string, memory_file> file_map; // FIXME why memory_file::ptr here???
   typedef std::unordered_set<std::string> lock_map;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
