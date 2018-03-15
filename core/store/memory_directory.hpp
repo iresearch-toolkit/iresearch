@@ -50,7 +50,7 @@ NS_END // detail
 * memory_file
 * ------------------------------------------------------------------*/
 
-MSVC_ONLY(template class IRESEARCH_API detail::raw_block_vector_t);
+MSVC_ONLY(template class IRESEARCH_API container_utils::raw_block_vector<16, 8>);
 
 class IRESEARCH_API memory_file : public detail::raw_block_vector_t {
  public:
