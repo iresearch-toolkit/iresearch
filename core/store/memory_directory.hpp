@@ -54,8 +54,6 @@ MSVC_ONLY(template class IRESEARCH_API detail::raw_block_vector_t);
 
 class IRESEARCH_API memory_file : public detail::raw_block_vector_t {
  public:
-  typedef detail::raw_block_vector_t::allocator_type allocator_type;
-
   memory_file() NOEXCEPT {
     touch(meta_.mtime);
   }
