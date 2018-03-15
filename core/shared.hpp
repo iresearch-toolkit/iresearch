@@ -95,7 +95,6 @@
   #define NO_INLINE __declspec(noinline)
   #define RESTRICT __restrict 
   #define ALIGNED_VALUE(_value, _type) union { _value; _type ___align; }
-  #define IRESEARCH_CXX_14
 #else
   #if defined(__GNUC__) && __GNUC__ >= 4
     #define IRESEARCH_HELPER_DLL_IMPORT __attribute__ ((visibility ("default")))
