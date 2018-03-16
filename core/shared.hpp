@@ -51,11 +51,10 @@
   // therefore we use _MSC_VER
   #if _MSC_VER < 1800 // before MSVC2013
     #error "at least C++11 is required"
-  #elif _MSC_VER >= 1800 && _MSC_VER < 1900 // MSVC2013
+  #elif _MSC_VER >= 1800 && _MSC_VER < 1910 // MSVC2013-2015
+    // not MSVC2015 nor MSVC2017 are not c++14 compatible
     #define IRESEARCH_CXX IRESEARCH_CXX_11
-  #elif _MSC_VER >= 1900 // MSVC2015 and later
-    // not MSVC2015 nor MSVC2017 are not yet fully c++14
-    // compatible therefore the following is rough approximation
+  #elif _MSC_VER >= 1910 // MSVC2017 and later
     #define IRESEARCH_CXX IRESEARCH_CXX_14
   #endif
 #else // GCC/Clang
