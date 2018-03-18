@@ -27,6 +27,7 @@
 #include <algorithm>
 #include <atomic>
 #include <functional>
+#include <vector>
 
 #include "memory.hpp"
 #include "shared.hpp"
@@ -423,6 +424,11 @@ class unbounded_object_pool
 
   explicit unbounded_object_pool(size_t size)
     : pool_(size), reusable_(memory::make_shared<std::atomic<bool>>(true)) {
+  }
+
+  ~unbounded_object_pool() NOEXCEPT {
+    // prevent existing elements from returning into the pool
+    atomic_bool_utils::atomic_load(&reusable_)->store(false);
   }
 
   void clear() {

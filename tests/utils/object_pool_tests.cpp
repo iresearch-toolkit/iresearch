@@ -403,6 +403,26 @@ TEST_F(object_pool_tests, unbounded_sobject_pool) {
   }
 }
 
+TEST_F(object_pool_tests, unbonded_sobject_pool_destroy_return_object) {
+  auto pool = irs::memory::make_unique<irs::unbounded_object_pool<test_sobject>>(1);
+  ASSERT_NE(nullptr, pool);
+
+  auto obj = pool->emplace(42);
+  ASSERT_TRUE(obj);
+  ASSERT_EQ(42, obj->id);
+  auto objShared = pool->emplace_shared(442);
+  ASSERT_NE(nullptr, objShared);
+  ASSERT_EQ(442, objShared->id);
+
+  // destroy pool
+  pool.reset();
+  ASSERT_EQ(nullptr, pool);
+
+  // ensure objects are still there
+  ASSERT_EQ(42, obj->id);
+  ASSERT_EQ(442, objShared->id);
+}
+
 //TEST_F(object_pool_tests, unbounded_uobject_pool) {
 //  // create new untracked object on full pool
 //  {
