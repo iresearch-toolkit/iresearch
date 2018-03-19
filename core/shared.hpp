@@ -169,9 +169,9 @@
   #define MSVC2015_OPTIMIZED_ONLY(...)
 #endif
 
-// hook for MSVC2017-only code (2017.2 || 2017.3/2017.4 || 2017.5)
+// hook for MSVC2017-only code (2017.2 || 2017.3/2017.4 || 2017.5 || 2017.6)
 #if defined(_MSC_VER) \
-    && (_MSC_VER == 1910 || _MSC_VER == 1911 || _MSC_VER == 1912)
+    && (_MSC_VER == 1910 || _MSC_VER == 1911 || _MSC_VER == 1912 || _MSC_VER == 1913)
   #define MSVC2017_ONLY(...) __VA_ARGS__
 #else
   #define MSVC2017_ONLY(...)
