@@ -90,7 +90,7 @@ class IRESEARCH_API scorers {
     const string_ref& name,
     const irs::text_format::type_id& args_format,
     const string_ref& args
-  );
+  ) noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief for static lib reference all known scorers in lib

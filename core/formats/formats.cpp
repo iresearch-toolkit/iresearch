@@ -119,9 +119,17 @@ format::~format() {}
   return format_register::instance().get(name);
 }
 
-/*static*/ format::ptr formats::get(const string_ref& name) {
-  auto* factory = format_register::instance().get(name);
-  return factory ? factory() : nullptr;
+/*static*/ format::ptr formats::get(const string_ref& name) noexcept {
+  try {
+    auto* factory = format_register::instance().get(name);
+
+    return factory ? factory() : nullptr;
+  } catch (...) {
+    IR_FRMT_ERROR("Caught exception while getting a format instance");
+    IR_LOG_EXCEPTION();
+  }
+
+  return nullptr;
 }
 
 /*static*/ void formats::init() {

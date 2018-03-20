@@ -540,7 +540,7 @@ class IRESEARCH_API formats {
   ///        requires use of DECLARE_FACTORY() in class definition
   ///        NOTE: make(...) MUST be defined in CPP to ensire proper code scope
   //////////////////////////////////////////////////////////////////////////////
-  static format::ptr get(const string_ref& name);
+  static format::ptr get(const string_ref& name) noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief for static lib reference all known formats in lib

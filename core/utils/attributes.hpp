@@ -57,7 +57,7 @@ struct IRESEARCH_API attribute {
     type_id(const string_ref& name): name_(name) {}
     operator const type_id*() const { return this; }
     static bool exists(const string_ref& name);
-    static const type_id* get(const string_ref& name);
+    static const type_id* get(const string_ref& name) noexcept;
     const string_ref& name() const { return name_; }
 
    private:
