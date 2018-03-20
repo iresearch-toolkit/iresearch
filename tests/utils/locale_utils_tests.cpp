@@ -386,17 +386,20 @@ TEST_F(LocaleUtilsTestSuite, test_locale_info) {
 }
 
 TEST_F(LocaleUtilsTestSuite, test_locale_num_put) {
+  auto c = irs::locale_utils::locale("C");
   auto de = irs::locale_utils::locale("de");
   auto en = irs::locale_utils::locale("en.IBM-943"); // EBCDIC
   auto ru = irs::locale_utils::locale("ru_RU.KOI8-R");
 
   // bool
   {
+    std::ostringstream c_out;
     std::ostringstream de_out;
     std::ostringstream en_out;
     std::ostringstream ru_out;
-    std::vector<std::ostringstream*> v = { &de_out, &en_out, &ru_out };
+    std::vector<std::ostringstream*> v = { &c_out, &de_out, &en_out, &ru_out };
 
+    c_out.imbue(c);
     de_out.imbue(de);
     en_out.imbue(en);
     ru_out.imbue(ru);
@@ -404,12 +407,18 @@ TEST_F(LocaleUtilsTestSuite, test_locale_num_put) {
     for (auto out: v) {
       *out << "|" << std::boolalpha << false
            << "|" << std::boolalpha << true
-           << "|" << std::noboolalpha << std::dec << false
-           << "|" << std::noboolalpha << std::hex << false
-           << "|" << std::noboolalpha << std::oct << false
-           << "|" << std::noboolalpha << std::dec << true
-           << "|" << std::noboolalpha << std::hex << true
-           << "|" << std::noboolalpha << std::oct << true
+           << "|" << std::noboolalpha << std::dec << std::uppercase << false
+           << "|" << std::noboolalpha << std::hex << std::uppercase << false
+           << "|" << std::noboolalpha << std::oct << std::uppercase << false
+           << "|" << std::noboolalpha << std::dec << std::uppercase << true
+           << "|" << std::noboolalpha << std::hex << std::uppercase << true
+           << "|" << std::noboolalpha << std::oct << std::uppercase << true
+           << "|" << std::noboolalpha << std::dec << std::nouppercase << false
+           << "|" << std::noboolalpha << std::hex << std::nouppercase << false
+           << "|" << std::noboolalpha << std::oct << std::nouppercase << false
+           << "|" << std::noboolalpha << std::dec << std::nouppercase << true
+           << "|" << std::noboolalpha << std::hex << std::nouppercase << true
+           << "|" << std::noboolalpha << std::oct << std::nouppercase << true
            << "|" << std::showbase << std::showpos << std::internal << std::boolalpha << std::setw(10) << false
            << "|" << std::showbase << std::showpos << std::internal << std::boolalpha << std::setw(10) << true
            << "|" << std::showbase << std::showpos << std::internal << std::noboolalpha << std::dec << std::setw(10) << false
@@ -434,43 +443,72 @@ TEST_F(LocaleUtilsTestSuite, test_locale_num_put) {
            << "|" << std::showbase << std::showpos << std::right << std::noboolalpha << std::dec << std::setw(10) << true
            << "|" << std::showbase << std::showpos << std::right << std::noboolalpha << std::hex << std::setw(10) << true
            << "|" << std::showbase << std::showpos << std::right << std::noboolalpha << std::oct << std::setw(10) << true
+           << "|" << std::showbase << std::noshowpos << std::internal << std::boolalpha << std::setw(10) << false
+           << "|" << std::showbase << std::noshowpos << std::internal << std::boolalpha << std::setw(10) << true
+           << "|" << std::showbase << std::noshowpos << std::internal << std::noboolalpha << std::dec << std::setw(10) << false
+           << "|" << std::showbase << std::noshowpos << std::internal << std::noboolalpha << std::hex << std::setw(10) << false
+           << "|" << std::showbase << std::noshowpos << std::internal << std::noboolalpha << std::oct << std::setw(10) << false
+           << "|" << std::showbase << std::noshowpos << std::internal << std::noboolalpha << std::dec << std::setw(10) << true
+           << "|" << std::showbase << std::noshowpos << std::internal << std::noboolalpha << std::hex << std::setw(10) << true
+           << "|" << std::showbase << std::noshowpos << std::internal << std::noboolalpha << std::oct << std::setw(10) << true
+           << "|" << std::showbase << std::noshowpos << std::left << std::boolalpha << std::setw(10) << false
+           << "|" << std::showbase << std::noshowpos << std::left << std::boolalpha << std::setw(10) << true
+           << "|" << std::showbase << std::noshowpos << std::left << std::noboolalpha << std::dec << std::setw(10) << false
+           << "|" << std::showbase << std::noshowpos << std::left << std::noboolalpha << std::hex << std::setw(10) << false
+           << "|" << std::showbase << std::noshowpos << std::left << std::noboolalpha << std::oct << std::setw(10) << false
+           << "|" << std::showbase << std::noshowpos << std::left << std::noboolalpha << std::dec << std::setw(10) << true
+           << "|" << std::showbase << std::noshowpos << std::left << std::noboolalpha << std::hex << std::setw(10) << true
+           << "|" << std::showbase << std::noshowpos << std::left << std::noboolalpha << std::oct << std::setw(10) << true
+           << "|" << std::showbase << std::noshowpos << std::right << std::boolalpha << std::setw(10) << false
+           << "|" << std::showbase << std::noshowpos << std::right << std::boolalpha << std::setw(10) << true
+           << "|" << std::showbase << std::noshowpos << std::right << std::noboolalpha << std::dec << std::setw(10) << false
+           << "|" << std::showbase << std::noshowpos << std::right << std::noboolalpha << std::hex << std::setw(10) << false
+           << "|" << std::showbase << std::noshowpos << std::right << std::noboolalpha << std::oct << std::setw(10) << false
+           << "|" << std::showbase << std::noshowpos << std::right << std::noboolalpha << std::dec << std::setw(10) << true
+           << "|" << std::showbase << std::noshowpos << std::right << std::noboolalpha << std::hex << std::setw(10) << true
+           << "|" << std::showbase << std::noshowpos << std::right << std::noboolalpha << std::oct << std::setw(10) << true
            << "|" << std::endl;
     }
 
-    // Boost on MacOS doesn't properly align values
-    // FIXME TODO remove MacOS case once Boost is no longer used
-    #if defined(__APPLE__)
-      ASSERT_EQ(std::string("|false|true|0|0|0|1|1|1|false         |true         |         0|         0|         0|         1|0x       1|        01|false|         true|         0         |0         |0         |1         |0x1       |01        |false         |true         |         0|         0|         0|         1|       0x1|        01|\n"), de_out.str());
-      ASSERT_EQ(std::string("|false|true|0|0|0|1|1|1|false         |true         |         0|         0|         0|         1|0x       1|        01|false|         true|         0         |0         |0         |1         |0x1       |01        |false         |true         |         0|         0|         0|         1|       0x1|        01|\n"), en_out.str());
-      ASSERT_EQ(std::string("|false|true|0|0|0|1|1|1|false         |true         |         0|         0|         0|         1|0x       1|        01|false|         true|         0         |0         |0         |1         |0x1       |01        |false         |true         |         0|         0|         0|         1|       0x1|        01|\n"), ru_out.str());
-    #else
-      ASSERT_EQ(std::string("|false|true|0|0|0|1|1|1|     false|      true|+        0|         0|         0|+        1|0x       1|        01|false     |true      |+0        |0         |0         |+1        |0x1       |01        |     false|      true|        +0|         0|         0|        +1|       0x1|        01|\n"), de_out.str());
-      ASSERT_EQ(std::string("|false|true|0|0|0|1|1|1|     false|      true|+        0|         0|         0|+        1|0x       1|        01|false     |true      |+0        |0         |0         |+1        |0x1       |01        |     false|      true|        +0|         0|         0|        +1|       0x1|        01|\n"), en_out.str());
-      ASSERT_EQ(std::string("|false|true|0|0|0|1|1|1|     false|      true|+        0|         0|         0|+        1|0x       1|        01|false     |true      |+0        |0         |0         |+1        |0x1       |01        |     false|      true|        +0|         0|         0|        +1|       0x1|        01|\n"), ru_out.str());
-    #endif
+    ASSERT_EQ(std::string("|false|true|0|0|0|1|1|1|0|0|0|1|1|1|     false|      true|+        0|+        0|+        0|+        1|+      0x1|+       01|false     |true      |+0        |+0        |+0        |+1        |+0x1      |+01       |     false|      true|        +0|        +0|        +0|        +1|      +0x1|       +01|     false|      true|         0|         0|         0|         1|0x       1|        01|false     |true      |0         |0         |0         |1         |0x1       |01        |     false|      true|         0|         0|         0|         1|       0x1|        01|\n"), c_out.str());
+    ASSERT_EQ(std::string("|false|true|0|0|0|1|1|1|0|0|0|1|1|1|     false|      true|+        0|+        0|+        0|+        1|+      0x1|+       01|false     |true      |+0        |+0        |+0        |+1        |+0x1      |+01       |     false|      true|        +0|        +0|        +0|        +1|      +0x1|       +01|     false|      true|         0|         0|         0|         1|0x       1|        01|false     |true      |0         |0         |0         |1         |0x1       |01        |     false|      true|         0|         0|         0|         1|       0x1|        01|\n"), de_out.str());
+    ASSERT_EQ(std::string("|false|true|0|0|0|1|1|1|0|0|0|1|1|1|     false|      true|+        0|+        0|+        0|+        1|+      0x1|+       01|false     |true      |+0        |+0        |+0        |+1        |+0x1      |+01       |     false|      true|        +0|        +0|        +0|        +1|      +0x1|       +01|     false|      true|         0|         0|         0|         1|0x       1|        01|false     |true      |0         |0         |0         |1         |0x1       |01        |     false|      true|         0|         0|         0|         1|       0x1|        01|\n"), en_out.str());
+    ASSERT_EQ(std::string("|false|true|0|0|0|1|1|1|0|0|0|1|1|1|     false|      true|+        0|+        0|+        0|+        1|+      0x1|+       01|false     |true      |+0        |+0        |+0        |+1        |+0x1      |+01       |     false|      true|        +0|        +0|        +0|        +1|      +0x1|       +01|     false|      true|         0|         0|         0|         1|0x       1|        01|false     |true      |0         |0         |0         |1         |0x1       |01        |     false|      true|         0|         0|         0|         1|       0x1|        01|\n"), ru_out.str());
   }
 
   // long
   {
+    std::ostringstream c_out;
     std::ostringstream de_out;
     std::ostringstream en_out;
     std::ostringstream ru_out;
-    std::vector<std::ostringstream*> v = { &de_out, &en_out, &ru_out };
+    std::vector<std::ostringstream*> v = { &c_out, &de_out, &en_out, &ru_out };
 
+    c_out.imbue(c);
     de_out.imbue(de);
     en_out.imbue(en);
     ru_out.imbue(ru);
 
     for (auto out: v) {
-      *out << "|" << std::dec << (long)(-1234)
-           << "|" << std::hex << (long)(-1234)
-           << "|" << std::oct << (long)(-1234)
-           << "|" << std::dec << (long)(0)
-           << "|" << std::hex << (long)(0)
-           << "|" << std::oct << (long)(0)
-           << "|" << std::dec << (long)(1234)
-           << "|" << std::hex << (long)(1234)
-           << "|" << std::oct << (long)(1234)
+      *out << sizeof(long)
+           << "|" << std::dec << std::uppercase << (long)(-1234)
+           << "|" << std::hex << std::uppercase << (long)(-1234)
+           << "|" << std::oct << std::uppercase << (long)(-1234)
+           << "|" << std::dec << std::uppercase << (long)(0)
+           << "|" << std::hex << std::uppercase << (long)(0)
+           << "|" << std::oct << std::uppercase << (long)(0)
+           << "|" << std::dec << std::uppercase << (long)(1234)
+           << "|" << std::hex << std::uppercase << (long)(1234)
+           << "|" << std::oct << std::uppercase << (long)(1234)
+           << "|" << std::dec << std::nouppercase << (long)(-1234)
+           << "|" << std::hex << std::nouppercase << (long)(-1234)
+           << "|" << std::oct << std::nouppercase << (long)(-1234)
+           << "|" << std::dec << std::nouppercase << (long)(0)
+           << "|" << std::hex << std::nouppercase << (long)(0)
+           << "|" << std::oct << std::nouppercase << (long)(0)
+           << "|" << std::dec << std::nouppercase << (long)(1234)
+           << "|" << std::hex << std::nouppercase << (long)(1234)
+           << "|" << std::oct << std::nouppercase << (long)(1234)
            << "|" << std::showbase << std::showpos << std::internal << std::dec << std::setw(10) << (long)(-1234)
            << "|" << std::showbase << std::showpos << std::internal << std::hex << std::setw(10) << (long)(-1234)
            << "|" << std::showbase << std::showpos << std::internal << std::oct << std::setw(10) << (long)(-1234)
@@ -498,60 +536,81 @@ TEST_F(LocaleUtilsTestSuite, test_locale_num_put) {
            << "|" << std::showbase << std::showpos << std::right << std::dec << std::setw(10) << (long)(1234)
            << "|" << std::showbase << std::showpos << std::right << std::hex << std::setw(10) << (long)(1234)
            << "|" << std::showbase << std::showpos << std::right << std::oct << std::setw(10) << (long)(1234)
+           << "|" << std::showbase << std::noshowpos << std::internal << std::dec << std::setw(10) << (long)(-1234)
+           << "|" << std::showbase << std::noshowpos << std::internal << std::hex << std::setw(10) << (long)(-1234)
+           << "|" << std::showbase << std::noshowpos << std::internal << std::oct << std::setw(10) << (long)(-1234)
+           << "|" << std::showbase << std::noshowpos << std::internal << std::dec << std::setw(10) << (long)(0)
+           << "|" << std::showbase << std::noshowpos << std::internal << std::hex << std::setw(10) << (long)(0)
+           << "|" << std::showbase << std::noshowpos << std::internal << std::oct << std::setw(10) << (long)(0)
+           << "|" << std::showbase << std::noshowpos << std::internal << std::dec << std::setw(10) << (long)(1234)
+           << "|" << std::showbase << std::noshowpos << std::internal << std::hex << std::setw(10) << (long)(1234)
+           << "|" << std::showbase << std::noshowpos << std::internal << std::oct << std::setw(10) << (long)(1234)
+           << "|" << std::showbase << std::noshowpos << std::left << std::dec << std::setw(10) << (long)(-1234)
+           << "|" << std::showbase << std::noshowpos << std::left << std::hex << std::setw(10) << (long)(-1234)
+           << "|" << std::showbase << std::noshowpos << std::left << std::oct << std::setw(10) << (long)(-1234)
+           << "|" << std::showbase << std::noshowpos << std::left << std::dec << std::setw(10) << (long)(0)
+           << "|" << std::showbase << std::noshowpos << std::left << std::hex << std::setw(10) << (long)(0)
+           << "|" << std::showbase << std::noshowpos << std::left << std::oct << std::setw(10) << (long)(0)
+           << "|" << std::showbase << std::noshowpos << std::left << std::dec << std::setw(10) << (long)(1234)
+           << "|" << std::showbase << std::noshowpos << std::left << std::hex << std::setw(10) << (long)(1234)
+           << "|" << std::showbase << std::noshowpos << std::left << std::oct << std::setw(10) << (long)(1234)
+           << "|" << std::showbase << std::noshowpos << std::right << std::dec << std::setw(10) << (long)(-1234)
+           << "|" << std::showbase << std::noshowpos << std::right << std::hex << std::setw(10) << (long)(-1234)
+           << "|" << std::showbase << std::noshowpos << std::right << std::oct << std::setw(10) << (long)(-1234)
+           << "|" << std::showbase << std::noshowpos << std::right << std::dec << std::setw(10) << (long)(0)
+           << "|" << std::showbase << std::noshowpos << std::right << std::hex << std::setw(10) << (long)(0)
+           << "|" << std::showbase << std::noshowpos << std::right << std::oct << std::setw(10) << (long)(0)
+           << "|" << std::showbase << std::noshowpos << std::right << std::dec << std::setw(10) << (long)(1234)
+           << "|" << std::showbase << std::noshowpos << std::right << std::hex << std::setw(10) << (long)(1234)
+           << "|" << std::showbase << std::noshowpos << std::right << std::oct << std::setw(10) << (long)(1234)
            << "|" << std::endl;
     }
 
-    // Boost on MSVC uses different values
-    // FIXME TODO remove MSVC case once Boost is no longer used
-    #if defined(_MSC_VER)
-      ASSERT_EQ(std::string("|-1234|fffffb2e|37777775456|0|0|0|1234|4d2|2322|-     1234|0xfffffb2e|037777775456|+        0|         0|         0|+     1234|0x     4d2|     02322|-1234     |0xfffffb2e|037777775456|+0        |0         |0         |+1234     |0x4d2     |02322     |     -1234|0xfffffb2e|037777775456|        +0|         0|         0|     +1234|     0x4d2|     02322|\n"), de_out.str());
-      ASSERT_EQ(std::string("|-1234|fffffb2e|37777775456|0|0|0|1234|4d2|2322|-     1234|0xfffffb2e|037777775456|+        0|         0|         0|+     1234|0x     4d2|     02322|-1234     |0xfffffb2e|037777775456|+0        |0         |0         |+1234     |0x4d2     |02322     |     -1234|0xfffffb2e|037777775456|        +0|         0|         0|     +1234|     0x4d2|     02322|\n"), en_out.str());
-      ASSERT_EQ(std::string("|-1234|fffffb2e|37777775456|0|0|0|1234|4d2|2322|-     1234|0xfffffb2e|037777775456|+        0|         0|         0|+     1234|0x     4d2|     02322|-1234     |0xfffffb2e|037777775456|+0        |0         |0         |+1234     |0x4d2     |02322     |     -1234|0xfffffb2e|037777775456|        +0|         0|         0|     +1234|     0x4d2|     02322|\n"), ru_out.str());
-    // Boost on MacOS doesn't properly align values
-    // FIXME TODO remove MacOS case once Boost is no longer used
-    #elif defined(__APPLE__)
-      /* FIXME TODO disable MacOS build since cannot seem to do proper comparison with strings containing null
-      auto de_expected = std::string("|-1234|fffffffffffffb2e|177777777777777777545\0|0|0|0|1234|4d2|2322|-     1234|0xfffffffffffffb2e|017777777777777777754\0\0|+        0|         0|         0|+     1234|0x     4d2|     02322|-1234     |0xfffffffffffffb2e|017777777777777777754\0\0|+0        |0         |0         |+1234     |0x4d2     |02322     |     -1234|0xfffffffffffffb2e|017777777777777777754\0\0|        +0|         0|         0|     +1234|     0x4d2|     02322|\n");
-      auto en_expected = std::string("|-1234|fffffffffffffb2e|177777777777777777545\0|0|0|0|1234|4d2|2322|-     1234|0xfffffffffffffb2e|017777777777777777754\0\0|+        0|         0|         0|+     1234|0x     4d2|     02322|-1234     |0xfffffffffffffb2e|017777777777777777754\0\0|+0        |0         |0         |+1234     |0x4d2     |02322     |     -1234|0xfffffffffffffb2e|017777777777777777754\0\0|        +0|         0|         0|     +1234|     0x4d2|     02322|\n");
-      auto ru_expected = std::string("|-1234|fffffffffffffb2e|177777777777777777545\0|0|0|0|1234|4d2|2322|-     1234|0xfffffffffffffb2e|017777777777777777754\0\0|+        0|         0|         0|+     1234|0x     4d2|     02322|-1234     |0xfffffffffffffb2e|017777777777777777754\0\0|+0        |0         |0         |+1234     |0x4d2     |02322     |     -1234|0xfffffffffffffb2e|017777777777777777754\0\0|        +0|         0|         0|     +1234|     0x4d2|     02322|\n");
-      auto de_actual = de_out.str();
-      auto en_actual = en_out.str();
-      auto ru_actual = ru_out.str();
-      auto de_result = std::memcmp(&(de_expected[0]), &(de_actual[0]), de_expected.size());
-      auto en_result = std::memcmp(&(en_expected[0]), &(en_actual[0]), en_expected.size());
-      auto ru_result = std::memcmp(&(ru_expected[0]), &(ru_actual[0]), ru_expected.size());
-      ASSERT_TRUE(de_expected.size() == de_actual.size() && !de_result);
-      ASSERT_TRUE(en_expected.size() == en_actual.size() && !en_result);
-      ASSERT_TRUE(ru_expected.size() == ru_actual.size() && !ru_result);
-      */
-    #else
-      ASSERT_EQ(std::string("|-1234|fffffffffffffb2e|1777777777777777775456|0|0|0|1234|4d2|2322|-     1234|0xfffffffffffffb2e|01777777777777777775456|+        0|         0|         0|+     1234|0x     4d2|     02322|-1234     |0xfffffffffffffb2e|01777777777777777775456|+0        |0         |0         |+1234     |0x4d2     |02322     |     -1234|0xfffffffffffffb2e|01777777777777777775456|        +0|         0|         0|     +1234|     0x4d2|     02322|\n"), de_out.str());
-      ASSERT_EQ(std::string("|-1234|fffffffffffffb2e|1777777777777777775456|0|0|0|1234|4d2|2322|-     1234|0xfffffffffffffb2e|01777777777777777775456|+        0|         0|         0|+     1234|0x     4d2|     02322|-1234     |0xfffffffffffffb2e|01777777777777777775456|+0        |0         |0         |+1234     |0x4d2     |02322     |     -1234|0xfffffffffffffb2e|01777777777777777775456|        +0|         0|         0|     +1234|     0x4d2|     02322|\n"), en_out.str());
-      ASSERT_EQ(std::string("|-1234|fffffffffffffb2e|1777777777777777775456|0|0|0|1234|4d2|2322|-     1234|0xfffffffffffffb2e|01777777777777777775456|+        0|         0|         0|+     1234|0x     4d2|     02322|-1234     |0xfffffffffffffb2e|01777777777777777775456|+0        |0         |0         |+1234     |0x4d2     |02322     |     -1234|0xfffffffffffffb2e|01777777777777777775456|        +0|         0|         0|     +1234|     0x4d2|     02322|\n"), ru_out.str());
-    #endif
+    if (4 == sizeof(long)) {
+      ASSERT_EQ(std::string("4|-1234|FFFFFFFFFFFFFB2E|1777777777777777775456|0|0|0|1234|4D2|2322|-1234|fffffffffffffb2e|1777777777777777775456|0|0|0|1234|4d2|2322|-     1234|+0xfffffffffffffb2e|+01777777777777777775456|+        0|+        0|+        0|+     1234|+    0x4d2|+    02322|-1234     |+0xfffffffffffffb2e|+01777777777777777775456|+0        |+0        |+0        |+1234     |+0x4d2    |+02322    |     -1234|+0xfffffffffffffb2e|+01777777777777777775456|        +0|        +0|        +0|     +1234|    +0x4d2|    +02322|-     1234|0xfffffffffffffb2e|01777777777777777775456|         0|         0|         0|      1234|0x     4d2|     02322|-1234     |0xfffffffffffffb2e|01777777777777777775456|0         |0         |0         |1234      |0x4d2     |02322     |     -1234|0xfffffffffffffb2e|01777777777777777775456|         0|         0|         0|      1234|     0x4d2|     02322|\n"), c_out.str());
+      ASSERT_EQ(std::string("4|-1234|FFFFFFFFFFFFFB2E|1777777777777777775456|0|0|0|1234|4D2|2322|-1234|fffffffffffffb2e|1777777777777777775456|0|0|0|1234|4d2|2322|-     1234|+0xfffffffffffffb2e|+01777777777777777775456|+        0|+        0|+        0|+     1234|+    0x4d2|+    02322|-1234     |+0xfffffffffffffb2e|+01777777777777777775456|+0        |+0        |+0        |+1234     |+0x4d2    |+02322    |     -1234|+0xfffffffffffffb2e|+01777777777777777775456|        +0|        +0|        +0|     +1234|    +0x4d2|    +02322|-     1234|0xfffffffffffffb2e|01777777777777777775456|         0|         0|         0|      1234|0x     4d2|     02322|-1234     |0xfffffffffffffb2e|01777777777777777775456|0         |0         |0         |1234      |0x4d2     |02322     |     -1234|0xfffffffffffffb2e|01777777777777777775456|         0|         0|         0|      1234|     0x4d2|     02322|\n"), de_out.str());
+      ASSERT_EQ(std::string("4|-1234|FFFFFFFFFFFFFB2E|1777777777777777775456|0|0|0|1234|4D2|2322|-1234|fffffffffffffb2e|1777777777777777775456|0|0|0|1234|4d2|2322|-     1234|+0xfffffffffffffb2e|+01777777777777777775456|+        0|+        0|+        0|+     1234|+    0x4d2|+    02322|-1234     |+0xfffffffffffffb2e|+01777777777777777775456|+0        |+0        |+0        |+1234     |+0x4d2    |+02322    |     -1234|+0xfffffffffffffb2e|+01777777777777777775456|        +0|        +0|        +0|     +1234|    +0x4d2|    +02322|-     1234|0xfffffffffffffb2e|01777777777777777775456|         0|         0|         0|      1234|0x     4d2|     02322|-1234     |0xfffffffffffffb2e|01777777777777777775456|0         |0         |0         |1234      |0x4d2     |02322     |     -1234|0xfffffffffffffb2e|01777777777777777775456|         0|         0|         0|      1234|     0x4d2|     02322|\n"), en_out.str());
+      ASSERT_EQ(std::string("4|-1234|FFFFFFFFFFFFFB2E|1777777777777777775456|0|0|0|1234|4D2|2322|-1234|fffffffffffffb2e|1777777777777777775456|0|0|0|1234|4d2|2322|-     1234|+0xfffffffffffffb2e|+01777777777777777775456|+        0|+        0|+        0|+     1234|+    0x4d2|+    02322|-1234     |+0xfffffffffffffb2e|+01777777777777777775456|+0        |+0        |+0        |+1234     |+0x4d2    |+02322    |     -1234|+0xfffffffffffffb2e|+01777777777777777775456|        +0|        +0|        +0|     +1234|    +0x4d2|    +02322|-     1234|0xfffffffffffffb2e|01777777777777777775456|         0|         0|         0|      1234|0x     4d2|     02322|-1234     |0xfffffffffffffb2e|01777777777777777775456|0         |0         |0         |1234      |0x4d2     |02322     |     -1234|0xfffffffffffffb2e|01777777777777777775456|         0|         0|         0|      1234|     0x4d2|     02322|\n"), ru_out.str());
+    } else {
+      ASSERT_EQ(std::string("8|-1234|FFFFFFFFFFFFFB2E|1777777777777777775456|0|0|0|1234|4D2|2322|-1234|fffffffffffffb2e|1777777777777777775456|0|0|0|1234|4d2|2322|-     1234|+0xfffffffffffffb2e|+01777777777777777775456|+        0|+        0|+        0|+     1234|+    0x4d2|+    02322|-1234     |+0xfffffffffffffb2e|+01777777777777777775456|+0        |+0        |+0        |+1234     |+0x4d2    |+02322    |     -1234|+0xfffffffffffffb2e|+01777777777777777775456|        +0|        +0|        +0|     +1234|    +0x4d2|    +02322|-     1234|0xfffffffffffffb2e|01777777777777777775456|         0|         0|         0|      1234|0x     4d2|     02322|-1234     |0xfffffffffffffb2e|01777777777777777775456|0         |0         |0         |1234      |0x4d2     |02322     |     -1234|0xfffffffffffffb2e|01777777777777777775456|         0|         0|         0|      1234|     0x4d2|     02322|\n"), c_out.str());
+      ASSERT_EQ(std::string("8|-1234|FFFFFFFFFFFFFB2E|1777777777777777775456|0|0|0|1234|4D2|2322|-1234|fffffffffffffb2e|1777777777777777775456|0|0|0|1234|4d2|2322|-     1234|+0xfffffffffffffb2e|+01777777777777777775456|+        0|+        0|+        0|+     1234|+    0x4d2|+    02322|-1234     |+0xfffffffffffffb2e|+01777777777777777775456|+0        |+0        |+0        |+1234     |+0x4d2    |+02322    |     -1234|+0xfffffffffffffb2e|+01777777777777777775456|        +0|        +0|        +0|     +1234|    +0x4d2|    +02322|-     1234|0xfffffffffffffb2e|01777777777777777775456|         0|         0|         0|      1234|0x     4d2|     02322|-1234     |0xfffffffffffffb2e|01777777777777777775456|0         |0         |0         |1234      |0x4d2     |02322     |     -1234|0xfffffffffffffb2e|01777777777777777775456|         0|         0|         0|      1234|     0x4d2|     02322|\n"), de_out.str());
+      ASSERT_EQ(std::string("8|-1234|FFFFFFFFFFFFFB2E|1777777777777777775456|0|0|0|1234|4D2|2322|-1234|fffffffffffffb2e|1777777777777777775456|0|0|0|1234|4d2|2322|-     1234|+0xfffffffffffffb2e|+01777777777777777775456|+        0|+        0|+        0|+     1234|+    0x4d2|+    02322|-1234     |+0xfffffffffffffb2e|+01777777777777777775456|+0        |+0        |+0        |+1234     |+0x4d2    |+02322    |     -1234|+0xfffffffffffffb2e|+01777777777777777775456|        +0|        +0|        +0|     +1234|    +0x4d2|    +02322|-     1234|0xfffffffffffffb2e|01777777777777777775456|         0|         0|         0|      1234|0x     4d2|     02322|-1234     |0xfffffffffffffb2e|01777777777777777775456|0         |0         |0         |1234      |0x4d2     |02322     |     -1234|0xfffffffffffffb2e|01777777777777777775456|         0|         0|         0|      1234|     0x4d2|     02322|\n"), en_out.str());
+      ASSERT_EQ(std::string("8|-1234|FFFFFFFFFFFFFB2E|1777777777777777775456|0|0|0|1234|4D2|2322|-1234|fffffffffffffb2e|1777777777777777775456|0|0|0|1234|4d2|2322|-     1234|+0xfffffffffffffb2e|+01777777777777777775456|+        0|+        0|+        0|+     1234|+    0x4d2|+    02322|-1234     |+0xfffffffffffffb2e|+01777777777777777775456|+0        |+0        |+0        |+1234     |+0x4d2    |+02322    |     -1234|+0xfffffffffffffb2e|+01777777777777777775456|        +0|        +0|        +0|     +1234|    +0x4d2|    +02322|-     1234|0xfffffffffffffb2e|01777777777777777775456|         0|         0|         0|      1234|0x     4d2|     02322|-1234     |0xfffffffffffffb2e|01777777777777777775456|0         |0         |0         |1234      |0x4d2     |02322     |     -1234|0xfffffffffffffb2e|01777777777777777775456|         0|         0|         0|      1234|     0x4d2|     02322|\n"), ru_out.str());
+    }
   }
 
   // long long
   {
+    std::ostringstream c_out;
     std::ostringstream de_out;
     std::ostringstream en_out;
     std::ostringstream ru_out;
-    std::vector<std::ostringstream*> v = { &de_out, &en_out, &ru_out };
+    std::vector<std::ostringstream*> v = { &c_out, &de_out, &en_out, &ru_out };
 
+    c_out.imbue(c);
     de_out.imbue(de);
     en_out.imbue(en);
     ru_out.imbue(ru);
 
     for (auto out: v) {
-      *out << "|" << std::dec << (long long)(-1234)
-           << "|" << std::hex << (long long)(-1234)
-           << "|" << std::oct << (long long)(-1234)
-           << "|" << std::dec << (long long)(0)
-           << "|" << std::hex << (long long)(0)
-           << "|" << std::oct << (long long)(0)
-           << "|" << std::dec << (long long)(1234)
-           << "|" << std::hex << (long long)(1234)
-           << "|" << std::oct << (long long)(1234)
+      *out << "|" << std::dec << std::uppercase << (long long)(-1234)
+           << "|" << std::hex << std::uppercase << (long long)(-1234)
+           << "|" << std::oct << std::uppercase << (long long)(-1234)
+           << "|" << std::dec << std::uppercase << (long long)(0)
+           << "|" << std::hex << std::uppercase << (long long)(0)
+           << "|" << std::oct << std::uppercase << (long long)(0)
+           << "|" << std::dec << std::uppercase << (long long)(1234)
+           << "|" << std::hex << std::uppercase << (long long)(1234)
+           << "|" << std::oct << std::uppercase << (long long)(1234)
+           << "|" << std::dec << std::nouppercase << (long long)(-1234)
+           << "|" << std::hex << std::nouppercase << (long long)(-1234)
+           << "|" << std::oct << std::nouppercase << (long long)(-1234)
+           << "|" << std::dec << std::nouppercase << (long long)(0)
+           << "|" << std::hex << std::nouppercase << (long long)(0)
+           << "|" << std::oct << std::nouppercase << (long long)(0)
+           << "|" << std::dec << std::nouppercase << (long long)(1234)
+           << "|" << std::hex << std::nouppercase << (long long)(1234)
+           << "|" << std::oct << std::nouppercase << (long long)(1234)
            << "|" << std::showbase << std::showpos << std::internal << std::dec << std::setw(10) << (long long)(-1234)
            << "|" << std::showbase << std::showpos << std::internal << std::hex << std::setw(10) << (long long)(-1234)
            << "|" << std::showbase << std::showpos << std::internal << std::oct << std::setw(10) << (long long)(-1234)
@@ -579,32 +638,68 @@ TEST_F(LocaleUtilsTestSuite, test_locale_num_put) {
            << "|" << std::showbase << std::showpos << std::right << std::dec << std::setw(10) << (long long)(1234)
            << "|" << std::showbase << std::showpos << std::right << std::hex << std::setw(10) << (long long)(1234)
            << "|" << std::showbase << std::showpos << std::right << std::oct << std::setw(10) << (long long)(1234)
+           << "|" << std::showbase << std::noshowpos << std::internal << std::dec << std::setw(10) << (long long)(-1234)
+           << "|" << std::showbase << std::noshowpos << std::internal << std::hex << std::setw(10) << (long long)(-1234)
+           << "|" << std::showbase << std::noshowpos << std::internal << std::oct << std::setw(10) << (long long)(-1234)
+           << "|" << std::showbase << std::noshowpos << std::internal << std::dec << std::setw(10) << (long long)(0)
+           << "|" << std::showbase << std::noshowpos << std::internal << std::hex << std::setw(10) << (long long)(0)
+           << "|" << std::showbase << std::noshowpos << std::internal << std::oct << std::setw(10) << (long long)(0)
+           << "|" << std::showbase << std::noshowpos << std::internal << std::dec << std::setw(10) << (long long)(1234)
+           << "|" << std::showbase << std::noshowpos << std::internal << std::hex << std::setw(10) << (long long)(1234)
+           << "|" << std::showbase << std::noshowpos << std::internal << std::oct << std::setw(10) << (long long)(1234)
+           << "|" << std::showbase << std::noshowpos << std::left << std::dec << std::setw(10) << (long long)(-1234)
+           << "|" << std::showbase << std::noshowpos << std::left << std::hex << std::setw(10) << (long long)(-1234)
+           << "|" << std::showbase << std::noshowpos << std::left << std::oct << std::setw(10) << (long long)(-1234)
+           << "|" << std::showbase << std::noshowpos << std::left << std::dec << std::setw(10) << (long long)(0)
+           << "|" << std::showbase << std::noshowpos << std::left << std::hex << std::setw(10) << (long long)(0)
+           << "|" << std::showbase << std::noshowpos << std::left << std::oct << std::setw(10) << (long long)(0)
+           << "|" << std::showbase << std::noshowpos << std::left << std::dec << std::setw(10) << (long long)(1234)
+           << "|" << std::showbase << std::noshowpos << std::left << std::hex << std::setw(10) << (long long)(1234)
+           << "|" << std::showbase << std::noshowpos << std::left << std::oct << std::setw(10) << (long long)(1234)
+           << "|" << std::showbase << std::noshowpos << std::right << std::dec << std::setw(10) << (long long)(-1234)
+           << "|" << std::showbase << std::noshowpos << std::right << std::hex << std::setw(10) << (long long)(-1234)
+           << "|" << std::showbase << std::noshowpos << std::right << std::oct << std::setw(10) << (long long)(-1234)
+           << "|" << std::showbase << std::noshowpos << std::right << std::dec << std::setw(10) << (long long)(0)
+           << "|" << std::showbase << std::noshowpos << std::right << std::hex << std::setw(10) << (long long)(0)
+           << "|" << std::showbase << std::noshowpos << std::right << std::oct << std::setw(10) << (long long)(0)
+           << "|" << std::showbase << std::noshowpos << std::right << std::dec << std::setw(10) << (long long)(1234)
+           << "|" << std::showbase << std::noshowpos << std::right << std::hex << std::setw(10) << (long long)(1234)
+           << "|" << std::showbase << std::noshowpos << std::right << std::oct << std::setw(10) << (long long)(1234)
            << "|" << std::endl;
     }
 
-    ASSERT_EQ(std::string("|-1234|fffffffffffffb2e|1777777777777777775456|0|0|0|1234|4d2|2322|-     1234|0xfffffffffffffb2e|01777777777777777775456|+        0|         0|         0|+     1234|0x     4d2|     02322|-1234     |0xfffffffffffffb2e|01777777777777777775456|+0        |0         |0         |+1234     |0x4d2     |02322     |     -1234|0xfffffffffffffb2e|01777777777777777775456|        +0|         0|         0|     +1234|     0x4d2|     02322|\n"), de_out.str());
-    ASSERT_EQ(std::string("|-1234|fffffffffffffb2e|1777777777777777775456|0|0|0|1234|4d2|2322|-     1234|0xfffffffffffffb2e|01777777777777777775456|+        0|         0|         0|+     1234|0x     4d2|     02322|-1234     |0xfffffffffffffb2e|01777777777777777775456|+0        |0         |0         |+1234     |0x4d2     |02322     |     -1234|0xfffffffffffffb2e|01777777777777777775456|        +0|         0|         0|     +1234|     0x4d2|     02322|\n"), en_out.str());
-    ASSERT_EQ(std::string("|-1234|fffffffffffffb2e|1777777777777777775456|0|0|0|1234|4d2|2322|-     1234|0xfffffffffffffb2e|01777777777777777775456|+        0|         0|         0|+     1234|0x     4d2|     02322|-1234     |0xfffffffffffffb2e|01777777777777777775456|+0        |0         |0         |+1234     |0x4d2     |02322     |     -1234|0xfffffffffffffb2e|01777777777777777775456|        +0|         0|         0|     +1234|     0x4d2|     02322|\n"), ru_out.str());
+    ASSERT_EQ(std::string("|-1234|FFFFFFFFFFFFFB2E|1777777777777777775456|0|0|0|1234|4D2|2322|-1234|fffffffffffffb2e|1777777777777777775456|0|0|0|1234|4d2|2322|-     1234|+0xfffffffffffffb2e|+01777777777777777775456|+        0|+        0|+        0|+     1234|+    0x4d2|+    02322|-1234     |+0xfffffffffffffb2e|+01777777777777777775456|+0        |+0        |+0        |+1234     |+0x4d2    |+02322    |     -1234|+0xfffffffffffffb2e|+01777777777777777775456|        +0|        +0|        +0|     +1234|    +0x4d2|    +02322|-     1234|0xfffffffffffffb2e|01777777777777777775456|         0|         0|         0|      1234|0x     4d2|     02322|-1234     |0xfffffffffffffb2e|01777777777777777775456|0         |0         |0         |1234      |0x4d2     |02322     |     -1234|0xfffffffffffffb2e|01777777777777777775456|         0|         0|         0|      1234|     0x4d2|     02322|\n"), c_out.str());
+    ASSERT_EQ(std::string("|-1234|FFFFFFFFFFFFFB2E|1777777777777777775456|0|0|0|1234|4D2|2322|-1234|fffffffffffffb2e|1777777777777777775456|0|0|0|1234|4d2|2322|-     1234|+0xfffffffffffffb2e|+01777777777777777775456|+        0|+        0|+        0|+     1234|+    0x4d2|+    02322|-1234     |+0xfffffffffffffb2e|+01777777777777777775456|+0        |+0        |+0        |+1234     |+0x4d2    |+02322    |     -1234|+0xfffffffffffffb2e|+01777777777777777775456|        +0|        +0|        +0|     +1234|    +0x4d2|    +02322|-     1234|0xfffffffffffffb2e|01777777777777777775456|         0|         0|         0|      1234|0x     4d2|     02322|-1234     |0xfffffffffffffb2e|01777777777777777775456|0         |0         |0         |1234      |0x4d2     |02322     |     -1234|0xfffffffffffffb2e|01777777777777777775456|         0|         0|         0|      1234|     0x4d2|     02322|\n"), de_out.str());
+    ASSERT_EQ(std::string("|-1234|FFFFFFFFFFFFFB2E|1777777777777777775456|0|0|0|1234|4D2|2322|-1234|fffffffffffffb2e|1777777777777777775456|0|0|0|1234|4d2|2322|-     1234|+0xfffffffffffffb2e|+01777777777777777775456|+        0|+        0|+        0|+     1234|+    0x4d2|+    02322|-1234     |+0xfffffffffffffb2e|+01777777777777777775456|+0        |+0        |+0        |+1234     |+0x4d2    |+02322    |     -1234|+0xfffffffffffffb2e|+01777777777777777775456|        +0|        +0|        +0|     +1234|    +0x4d2|    +02322|-     1234|0xfffffffffffffb2e|01777777777777777775456|         0|         0|         0|      1234|0x     4d2|     02322|-1234     |0xfffffffffffffb2e|01777777777777777775456|0         |0         |0         |1234      |0x4d2     |02322     |     -1234|0xfffffffffffffb2e|01777777777777777775456|         0|         0|         0|      1234|     0x4d2|     02322|\n"), en_out.str());
+    ASSERT_EQ(std::string("|-1234|FFFFFFFFFFFFFB2E|1777777777777777775456|0|0|0|1234|4D2|2322|-1234|fffffffffffffb2e|1777777777777777775456|0|0|0|1234|4d2|2322|-     1234|+0xfffffffffffffb2e|+01777777777777777775456|+        0|+        0|+        0|+     1234|+    0x4d2|+    02322|-1234     |+0xfffffffffffffb2e|+01777777777777777775456|+0        |+0        |+0        |+1234     |+0x4d2    |+02322    |     -1234|+0xfffffffffffffb2e|+01777777777777777775456|        +0|        +0|        +0|     +1234|    +0x4d2|    +02322|-     1234|0xfffffffffffffb2e|01777777777777777775456|         0|         0|         0|      1234|0x     4d2|     02322|-1234     |0xfffffffffffffb2e|01777777777777777775456|0         |0         |0         |1234      |0x4d2     |02322     |     -1234|0xfffffffffffffb2e|01777777777777777775456|         0|         0|         0|      1234|     0x4d2|     02322|\n"), ru_out.str());
   }
 
   // unsigned long
   {
+    std::ostringstream c_out;
     std::ostringstream de_out;
     std::ostringstream en_out;
     std::ostringstream ru_out;
-    std::vector<std::ostringstream*> v = { &de_out, &en_out, &ru_out };
+    std::vector<std::ostringstream*> v = { &c_out, &de_out, &en_out, &ru_out };
 
+    c_out.imbue(c);
     de_out.imbue(de);
     en_out.imbue(en);
     ru_out.imbue(ru);
 
     for (auto out: v) {
-      *out << "|" << std::dec << (unsigned long)(0)
-           << "|" << std::hex << (unsigned long)(0)
-           << "|" << std::oct << (unsigned long)(0)
-           << "|" << std::dec << (unsigned long)(1234)
-           << "|" << std::hex << (unsigned long)(1234)
-           << "|" << std::oct << (unsigned long)(1234)
+      *out << "|" << std::dec << std::uppercase << (unsigned long)(0)
+           << "|" << std::hex << std::uppercase << (unsigned long)(0)
+           << "|" << std::oct << std::uppercase << (unsigned long)(0)
+           << "|" << std::dec << std::uppercase << (unsigned long)(1234)
+           << "|" << std::hex << std::uppercase << (unsigned long)(1234)
+           << "|" << std::oct << std::uppercase << (unsigned long)(1234)
+           << "|" << std::dec << std::nouppercase << (unsigned long)(0)
+           << "|" << std::hex << std::nouppercase << (unsigned long)(0)
+           << "|" << std::oct << std::nouppercase << (unsigned long)(0)
+           << "|" << std::dec << std::nouppercase << (unsigned long)(1234)
+           << "|" << std::hex << std::nouppercase << (unsigned long)(1234)
+           << "|" << std::oct << std::nouppercase << (unsigned long)(1234)
            << "|" << std::showbase << std::showpos << std::internal << std::dec << std::setw(10) << (unsigned long)(0)
            << "|" << std::showbase << std::showpos << std::internal << std::hex << std::setw(10) << (unsigned long)(0)
            << "|" << std::showbase << std::showpos << std::internal << std::oct << std::setw(10) << (unsigned long)(0)
@@ -623,32 +718,59 @@ TEST_F(LocaleUtilsTestSuite, test_locale_num_put) {
            << "|" << std::showbase << std::showpos << std::right << std::dec << std::setw(10) << (unsigned long)(1234)
            << "|" << std::showbase << std::showpos << std::right << std::hex << std::setw(10) << (unsigned long)(1234)
            << "|" << std::showbase << std::showpos << std::right << std::oct << std::setw(10) << (unsigned long)(1234)
+           << "|" << std::showbase << std::noshowpos << std::internal << std::dec << std::setw(10) << (unsigned long)(0)
+           << "|" << std::showbase << std::noshowpos << std::internal << std::hex << std::setw(10) << (unsigned long)(0)
+           << "|" << std::showbase << std::noshowpos << std::internal << std::oct << std::setw(10) << (unsigned long)(0)
+           << "|" << std::showbase << std::noshowpos << std::internal << std::dec << std::setw(10) << (unsigned long)(1234)
+           << "|" << std::showbase << std::noshowpos << std::internal << std::hex << std::setw(10) << (unsigned long)(1234)
+           << "|" << std::showbase << std::noshowpos << std::internal << std::oct << std::setw(10) << (unsigned long)(1234)
+           << "|" << std::showbase << std::noshowpos << std::left << std::dec << std::setw(10) << (unsigned long)(0)
+           << "|" << std::showbase << std::noshowpos << std::left << std::hex << std::setw(10) << (unsigned long)(0)
+           << "|" << std::showbase << std::noshowpos << std::left << std::oct << std::setw(10) << (unsigned long)(0)
+           << "|" << std::showbase << std::noshowpos << std::left << std::dec << std::setw(10) << (unsigned long)(1234)
+           << "|" << std::showbase << std::noshowpos << std::left << std::hex << std::setw(10) << (unsigned long)(1234)
+           << "|" << std::showbase << std::noshowpos << std::left << std::oct << std::setw(10) << (unsigned long)(1234)
+           << "|" << std::showbase << std::noshowpos << std::right << std::dec << std::setw(10) << (unsigned long)(0)
+           << "|" << std::showbase << std::noshowpos << std::right << std::hex << std::setw(10) << (unsigned long)(0)
+           << "|" << std::showbase << std::noshowpos << std::right << std::oct << std::setw(10) << (unsigned long)(0)
+           << "|" << std::showbase << std::noshowpos << std::right << std::dec << std::setw(10) << (unsigned long)(1234)
+           << "|" << std::showbase << std::noshowpos << std::right << std::hex << std::setw(10) << (unsigned long)(1234)
+           << "|" << std::showbase << std::noshowpos << std::right << std::oct << std::setw(10) << (unsigned long)(1234)
            << "|" << std::endl;
     }
 
-    ASSERT_EQ(std::string("|0|0|0|1234|4d2|2322|         0|         0|         0|      1234|0x     4d2|     02322|0         |0         |0         |1234      |0x4d2     |02322     |         0|         0|         0|      1234|     0x4d2|     02322|\n"), de_out.str());
-    ASSERT_EQ(std::string("|0|0|0|1234|4d2|2322|         0|         0|         0|      1234|0x     4d2|     02322|0         |0         |0         |1234      |0x4d2     |02322     |         0|         0|         0|      1234|     0x4d2|     02322|\n"), en_out.str());
-    ASSERT_EQ(std::string("|0|0|0|1234|4d2|2322|         0|         0|         0|      1234|0x     4d2|     02322|0         |0         |0         |1234      |0x4d2     |02322     |         0|         0|         0|      1234|     0x4d2|     02322|\n"), ru_out.str());
+    ASSERT_EQ(std::string("|0|0|0|1234|4D2|2322|0|0|0|1234|4d2|2322|+        0|+        0|+        0|+     1234|+    0x4d2|+    02322|+0        |+0        |+0        |+1234     |+0x4d2    |+02322    |        +0|        +0|        +0|     +1234|    +0x4d2|    +02322|         0|         0|         0|      1234|0x     4d2|     02322|0         |0         |0         |1234      |0x4d2     |02322     |         0|         0|         0|      1234|     0x4d2|     02322|\n"), c_out.str());
+    ASSERT_EQ(std::string("|0|0|0|1234|4D2|2322|0|0|0|1234|4d2|2322|+        0|+        0|+        0|+     1234|+    0x4d2|+    02322|+0        |+0        |+0        |+1234     |+0x4d2    |+02322    |        +0|        +0|        +0|     +1234|    +0x4d2|    +02322|         0|         0|         0|      1234|0x     4d2|     02322|0         |0         |0         |1234      |0x4d2     |02322     |         0|         0|         0|      1234|     0x4d2|     02322|\n"), de_out.str());
+    ASSERT_EQ(std::string("|0|0|0|1234|4D2|2322|0|0|0|1234|4d2|2322|+        0|+        0|+        0|+     1234|+    0x4d2|+    02322|+0        |+0        |+0        |+1234     |+0x4d2    |+02322    |        +0|        +0|        +0|     +1234|    +0x4d2|    +02322|         0|         0|         0|      1234|0x     4d2|     02322|0         |0         |0         |1234      |0x4d2     |02322     |         0|         0|         0|      1234|     0x4d2|     02322|\n"), en_out.str());
+    ASSERT_EQ(std::string("|0|0|0|1234|4D2|2322|0|0|0|1234|4d2|2322|+        0|+        0|+        0|+     1234|+    0x4d2|+    02322|+0        |+0        |+0        |+1234     |+0x4d2    |+02322    |        +0|        +0|        +0|     +1234|    +0x4d2|    +02322|         0|         0|         0|      1234|0x     4d2|     02322|0         |0         |0         |1234      |0x4d2     |02322     |         0|         0|         0|      1234|     0x4d2|     02322|\n"), ru_out.str());
   }
 
   // unsigned long long
   {
+    std::ostringstream c_out;
     std::ostringstream de_out;
     std::ostringstream en_out;
     std::ostringstream ru_out;
-    std::vector<std::ostringstream*> v = { &de_out, &en_out, &ru_out };
+    std::vector<std::ostringstream*> v = { &c_out, &de_out, &en_out, &ru_out };
 
+    c_out.imbue(c);
     de_out.imbue(de);
     en_out.imbue(en);
     ru_out.imbue(ru);
 
     for (auto out: v) {
-      *out << "|" << std::dec << (unsigned long long)(0)
-           << "|" << std::hex << (unsigned long long)(0)
-           << "|" << std::oct << (unsigned long long)(0)
-           << "|" << std::dec << (unsigned long long)(1234)
-           << "|" << std::hex << (unsigned long long)(1234)
-           << "|" << std::oct << (unsigned long long)(1234)
+      *out << "|" << std::dec << std::uppercase << (unsigned long long)(0)
+           << "|" << std::hex << std::uppercase << (unsigned long long)(0)
+           << "|" << std::oct << std::uppercase << (unsigned long long)(0)
+           << "|" << std::dec << std::uppercase << (unsigned long long)(1234)
+           << "|" << std::hex << std::uppercase << (unsigned long long)(1234)
+           << "|" << std::oct << std::uppercase << (unsigned long long)(1234)
+           << "|" << std::dec << std::nouppercase << (unsigned long long)(0)
+           << "|" << std::hex << std::nouppercase << (unsigned long long)(0)
+           << "|" << std::oct << std::nouppercase << (unsigned long long)(0)
+           << "|" << std::dec << std::nouppercase << (unsigned long long)(1234)
+           << "|" << std::hex << std::nouppercase << (unsigned long long)(1234)
+           << "|" << std::oct << std::nouppercase << (unsigned long long)(1234)
            << "|" << std::showbase << std::showpos << std::internal << std::dec << std::setw(10) << (unsigned long long)(0)
            << "|" << std::showbase << std::showpos << std::internal << std::hex << std::setw(10) << (unsigned long long)(0)
            << "|" << std::showbase << std::showpos << std::internal << std::oct << std::setw(10) << (unsigned long long)(0)
@@ -667,419 +789,447 @@ TEST_F(LocaleUtilsTestSuite, test_locale_num_put) {
            << "|" << std::showbase << std::showpos << std::right << std::dec << std::setw(10) << (unsigned long long)(1234)
            << "|" << std::showbase << std::showpos << std::right << std::hex << std::setw(10) << (unsigned long long)(1234)
            << "|" << std::showbase << std::showpos << std::right << std::oct << std::setw(10) << (unsigned long long)(1234)
+           << "|" << std::showbase << std::noshowpos << std::internal << std::dec << std::setw(10) << (unsigned long long)(0)
+           << "|" << std::showbase << std::noshowpos << std::internal << std::hex << std::setw(10) << (unsigned long long)(0)
+           << "|" << std::showbase << std::noshowpos << std::internal << std::oct << std::setw(10) << (unsigned long long)(0)
+           << "|" << std::showbase << std::noshowpos << std::internal << std::dec << std::setw(10) << (unsigned long long)(1234)
+           << "|" << std::showbase << std::noshowpos << std::internal << std::hex << std::setw(10) << (unsigned long long)(1234)
+           << "|" << std::showbase << std::noshowpos << std::internal << std::oct << std::setw(10) << (unsigned long long)(1234)
+           << "|" << std::showbase << std::noshowpos << std::left << std::dec << std::setw(10) << (unsigned long long)(0)
+           << "|" << std::showbase << std::noshowpos << std::left << std::hex << std::setw(10) << (unsigned long long)(0)
+           << "|" << std::showbase << std::noshowpos << std::left << std::oct << std::setw(10) << (unsigned long long)(0)
+           << "|" << std::showbase << std::noshowpos << std::left << std::dec << std::setw(10) << (unsigned long long)(1234)
+           << "|" << std::showbase << std::noshowpos << std::left << std::hex << std::setw(10) << (unsigned long long)(1234)
+           << "|" << std::showbase << std::noshowpos << std::left << std::oct << std::setw(10) << (unsigned long long)(1234)
+           << "|" << std::showbase << std::noshowpos << std::right << std::dec << std::setw(10) << (unsigned long long)(0)
+           << "|" << std::showbase << std::noshowpos << std::right << std::hex << std::setw(10) << (unsigned long long)(0)
+           << "|" << std::showbase << std::noshowpos << std::right << std::oct << std::setw(10) << (unsigned long long)(0)
+           << "|" << std::showbase << std::noshowpos << std::right << std::dec << std::setw(10) << (unsigned long long)(1234)
+           << "|" << std::showbase << std::noshowpos << std::right << std::hex << std::setw(10) << (unsigned long long)(1234)
+           << "|" << std::showbase << std::noshowpos << std::right << std::oct << std::setw(10) << (unsigned long long)(1234)
            << "|" << std::endl;
     }
 
-    ASSERT_EQ(std::string("|0|0|0|1234|4d2|2322|         0|         0|         0|      1234|0x     4d2|     02322|0         |0         |0         |1234      |0x4d2     |02322     |         0|         0|         0|      1234|     0x4d2|     02322|\n"), de_out.str());
-    ASSERT_EQ(std::string("|0|0|0|1234|4d2|2322|         0|         0|         0|      1234|0x     4d2|     02322|0         |0         |0         |1234      |0x4d2     |02322     |         0|         0|         0|      1234|     0x4d2|     02322|\n"), en_out.str());
-    ASSERT_EQ(std::string("|0|0|0|1234|4d2|2322|         0|         0|         0|      1234|0x     4d2|     02322|0         |0         |0         |1234      |0x4d2     |02322     |         0|         0|         0|      1234|     0x4d2|     02322|\n"), ru_out.str());
+    ASSERT_EQ(std::string("|0|0|0|1234|4D2|2322|0|0|0|1234|4d2|2322|+        0|+        0|+        0|+     1234|+    0x4d2|+    02322|+0        |+0        |+0        |+1234     |+0x4d2    |+02322    |        +0|        +0|        +0|     +1234|    +0x4d2|    +02322|         0|         0|         0|      1234|0x     4d2|     02322|0         |0         |0         |1234      |0x4d2     |02322     |         0|         0|         0|      1234|     0x4d2|     02322|\n"), c_out.str());
+    ASSERT_EQ(std::string("|0|0|0|1234|4D2|2322|0|0|0|1234|4d2|2322|+        0|+        0|+        0|+     1234|+    0x4d2|+    02322|+0        |+0        |+0        |+1234     |+0x4d2    |+02322    |        +0|        +0|        +0|     +1234|    +0x4d2|    +02322|         0|         0|         0|      1234|0x     4d2|     02322|0         |0         |0         |1234      |0x4d2     |02322     |         0|         0|         0|      1234|     0x4d2|     02322|\n"), de_out.str());
+    ASSERT_EQ(std::string("|0|0|0|1234|4D2|2322|0|0|0|1234|4d2|2322|+        0|+        0|+        0|+     1234|+    0x4d2|+    02322|+0        |+0        |+0        |+1234     |+0x4d2    |+02322    |        +0|        +0|        +0|     +1234|    +0x4d2|    +02322|         0|         0|         0|      1234|0x     4d2|     02322|0         |0         |0         |1234      |0x4d2     |02322     |         0|         0|         0|      1234|     0x4d2|     02322|\n"), en_out.str());
+    ASSERT_EQ(std::string("|0|0|0|1234|4D2|2322|0|0|0|1234|4d2|2322|+        0|+        0|+        0|+     1234|+    0x4d2|+    02322|+0        |+0        |+0        |+1234     |+0x4d2    |+02322    |        +0|        +0|        +0|     +1234|    +0x4d2|    +02322|         0|         0|         0|      1234|0x     4d2|     02322|0         |0         |0         |1234      |0x4d2     |02322     |         0|         0|         0|      1234|     0x4d2|     02322|\n"), ru_out.str());
   }
 
 // GCC v4.x does not support std::defaultfloat or std::hexfloat
 #if !defined(__GNUC__) || __GNUC__ > 4
   // double
   {
+    std::ostringstream c_out;
     std::ostringstream de_out;
     std::ostringstream en_out;
     std::ostringstream ru_out;
-    std::vector<std::ostringstream*> v = { &de_out, &en_out, &ru_out };
+    std::vector<std::ostringstream*> v = { &c_out, &de_out, &en_out, &ru_out };
 
+    c_out.imbue(c);
     de_out.imbue(de);
     en_out.imbue(en);
     ru_out.imbue(ru);
 
     for (auto out: v) {
-      *out << "|" << std::defaultfloat << std::dec << (double)(-1003.1415)
-           << "|" << std::defaultfloat << std::hex << (double)(-1003.1415)
-           << "|" << std::defaultfloat << std::oct << (double)(-1003.1415)
-           << "|" << std::defaultfloat << std::dec << (double)(0.)
-           << "|" << std::defaultfloat << std::hex << (double)(0.)
-           << "|" << std::defaultfloat << std::oct << (double)(0.)
-           << "|" << std::defaultfloat << std::dec << (double)(1002.71828)
-           << "|" << std::defaultfloat << std::hex << (double)(1002.71828)
-           << "|" << std::defaultfloat << std::oct << (double)(1002.71828)
-           << "|" << std::fixed << std::dec << (double)(-1003.1415)
-           << "|" << std::fixed << std::hex << (double)(-1003.1415)
-           << "|" << std::fixed << std::oct << (double)(-1003.1415)
-           << "|" << std::fixed << std::dec << (double)(0.)
-           << "|" << std::fixed << std::hex << (double)(0.)
-           << "|" << std::fixed << std::oct << (double)(0.)
-           << "|" << std::fixed << std::dec << (double)(1002.71828)
-           << "|" << std::fixed << std::hex << (double)(1002.71828)
-           << "|" << std::fixed << std::oct << (double)(1002.71828)
-           << "|" << std::hexfloat << std::dec << (double)(-1003.1415)
-           << "|" << std::hexfloat << std::hex << (double)(-1003.1415)
-           << "|" << std::hexfloat << std::oct << (double)(-1003.1415)
-           << "|" << std::hexfloat << std::dec << (double)(0.)
-           << "|" << std::hexfloat << std::hex << (double)(0.)
-           << "|" << std::hexfloat << std::oct << (double)(0.)
-           << "|" << std::hexfloat << std::dec << (double)(1002.71828)
-           << "|" << std::hexfloat << std::hex << (double)(1002.71828)
-           << "|" << std::hexfloat << std::oct << (double)(1002.71828)
-           << "|" << std::scientific << std::dec << (double)(-1003.1415)
-           << "|" << std::scientific << std::hex << (double)(-1003.1415)
-           << "|" << std::scientific << std::oct << (double)(-1003.1415)
-           << "|" << std::scientific << std::dec << (double)(0.)
-           << "|" << std::scientific << std::hex << (double)(0.)
-           << "|" << std::scientific << std::oct << (double)(0.)
-           << "|" << std::scientific << std::dec << (double)(1002.71828)
-           << "|" << std::scientific << std::hex << (double)(1002.71828)
-           << "|" << std::scientific << std::oct << (double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::internal << std::defaultfloat << std::dec << std::setw(10) << (double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::internal << std::defaultfloat << std::hex << std::setw(10) << (double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::internal << std::defaultfloat << std::oct << std::setw(10) << (double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::internal << std::defaultfloat << std::dec << std::setw(10) << (double)(0.)
-           << "|" << std::showbase << std::showpos << std::internal << std::defaultfloat << std::hex << std::setw(10) << (double)(0.)
-           << "|" << std::showbase << std::showpos << std::internal << std::defaultfloat << std::oct << std::setw(10) << (double)(0.)
-           << "|" << std::showbase << std::showpos << std::internal << std::defaultfloat << std::dec << std::setw(10) << (double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::internal << std::defaultfloat << std::hex << std::setw(10) << (double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::internal << std::defaultfloat << std::oct << std::setw(10) << (double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::left << std::defaultfloat << std::dec << std::setw(10) << (double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::left << std::defaultfloat << std::hex << std::setw(10) << (double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::left << std::defaultfloat << std::oct << std::setw(10) << (double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::left << std::defaultfloat << std::dec << std::setw(10) << (double)(0.)
-           << "|" << std::showbase << std::showpos << std::left << std::defaultfloat << std::hex << std::setw(10) << (double)(0.)
-           << "|" << std::showbase << std::showpos << std::left << std::defaultfloat << std::oct << std::setw(10) << (double)(0.)
-           << "|" << std::showbase << std::showpos << std::left << std::defaultfloat << std::dec << std::setw(10) << (double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::left << std::defaultfloat << std::hex << std::setw(10) << (double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::left << std::defaultfloat << std::oct << std::setw(10) << (double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::right << std::defaultfloat << std::dec << std::setw(10) << (double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::right << std::defaultfloat << std::hex << std::setw(10) << (double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::right << std::defaultfloat << std::oct << std::setw(10) << (double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::right << std::defaultfloat << std::dec << std::setw(10) << (double)(0.)
-           << "|" << std::showbase << std::showpos << std::right << std::defaultfloat << std::hex << std::setw(10) << (double)(0.)
-           << "|" << std::showbase << std::showpos << std::right << std::defaultfloat << std::oct << std::setw(10) << (double)(0.)
-           << "|" << std::showbase << std::showpos << std::right << std::defaultfloat << std::dec << std::setw(10) << (double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::right << std::defaultfloat << std::hex << std::setw(10) << (double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::right << std::defaultfloat << std::oct << std::setw(10) << (double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::internal << std::fixed << std::dec << std::setw(10) << (double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::internal << std::fixed << std::hex << std::setw(10) << (double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::internal << std::fixed << std::oct << std::setw(10) << (double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::internal << std::fixed << std::dec << std::setw(10) << (double)(0.)
-           << "|" << std::showbase << std::showpos << std::internal << std::fixed << std::hex << std::setw(10) << (double)(0.)
-           << "|" << std::showbase << std::showpos << std::internal << std::fixed << std::oct << std::setw(10) << (double)(0.)
-           << "|" << std::showbase << std::showpos << std::internal << std::fixed << std::dec << std::setw(10) << (double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::internal << std::fixed << std::hex << std::setw(10) << (double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::internal << std::fixed << std::oct << std::setw(10) << (double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::left << std::fixed << std::dec << std::setw(10) << (double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::left << std::fixed << std::hex << std::setw(10) << (double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::left << std::fixed << std::oct << std::setw(10) << (double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::left << std::fixed << std::dec << std::setw(10) << (double)(0.)
-           << "|" << std::showbase << std::showpos << std::left << std::fixed << std::hex << std::setw(10) << (double)(0.)
-           << "|" << std::showbase << std::showpos << std::left << std::fixed << std::oct << std::setw(10) << (double)(0.)
-           << "|" << std::showbase << std::showpos << std::left << std::fixed << std::dec << std::setw(10) << (double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::left << std::fixed << std::hex << std::setw(10) << (double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::left << std::fixed << std::oct << std::setw(10) << (double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::right << std::fixed << std::dec << std::setw(10) << (double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::right << std::fixed << std::hex << std::setw(10) << (double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::right << std::fixed << std::oct << std::setw(10) << (double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::right << std::fixed << std::dec << std::setw(10) << (double)(0.)
-           << "|" << std::showbase << std::showpos << std::right << std::fixed << std::hex << std::setw(10) << (double)(0.)
-           << "|" << std::showbase << std::showpos << std::right << std::fixed << std::oct << std::setw(10) << (double)(0.)
-           << "|" << std::showbase << std::showpos << std::right << std::fixed << std::dec << std::setw(10) << (double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::right << std::fixed << std::hex << std::setw(10) << (double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::right << std::fixed << std::oct << std::setw(10) << (double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::internal << std::hexfloat << std::dec << std::setw(10) << (double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::internal << std::hexfloat << std::hex << std::setw(10) << (double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::internal << std::hexfloat << std::oct << std::setw(10) << (double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::internal << std::hexfloat << std::dec << std::setw(10) << (double)(0.)
-           << "|" << std::showbase << std::showpos << std::internal << std::hexfloat << std::hex << std::setw(10) << (double)(0.)
-           << "|" << std::showbase << std::showpos << std::internal << std::hexfloat << std::oct << std::setw(10) << (double)(0.)
-           << "|" << std::showbase << std::showpos << std::internal << std::hexfloat << std::dec << std::setw(10) << (double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::internal << std::hexfloat << std::hex << std::setw(10) << (double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::internal << std::hexfloat << std::oct << std::setw(10) << (double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::left << std::hexfloat << std::dec << std::setw(10) << (double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::left << std::hexfloat << std::hex << std::setw(10) << (double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::left << std::hexfloat << std::oct << std::setw(10) << (double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::left << std::hexfloat << std::dec << std::setw(10) << (double)(0.)
-           << "|" << std::showbase << std::showpos << std::left << std::hexfloat << std::hex << std::setw(10) << (double)(0.)
-           << "|" << std::showbase << std::showpos << std::left << std::hexfloat << std::oct << std::setw(10) << (double)(0.)
-           << "|" << std::showbase << std::showpos << std::left << std::hexfloat << std::dec << std::setw(10) << (double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::left << std::hexfloat << std::hex << std::setw(10) << (double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::left << std::hexfloat << std::oct << std::setw(10) << (double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::right << std::hexfloat << std::dec << std::setw(10) << (double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::right << std::hexfloat << std::hex << std::setw(10) << (double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::right << std::hexfloat << std::oct << std::setw(10) << (double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::right << std::hexfloat << std::dec << std::setw(10) << (double)(0.)
-           << "|" << std::showbase << std::showpos << std::right << std::hexfloat << std::hex << std::setw(10) << (double)(0.)
-           << "|" << std::showbase << std::showpos << std::right << std::hexfloat << std::oct << std::setw(10) << (double)(0.)
-           << "|" << std::showbase << std::showpos << std::right << std::hexfloat << std::dec << std::setw(10) << (double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::right << std::hexfloat << std::hex << std::setw(10) << (double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::right << std::hexfloat << std::oct << std::setw(10) << (double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::internal << std::scientific << std::dec << std::setw(10) << (double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::internal << std::scientific << std::hex << std::setw(10) << (double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::internal << std::scientific << std::oct << std::setw(10) << (double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::internal << std::scientific << std::dec << std::setw(10) << (double)(0.)
-           << "|" << std::showbase << std::showpos << std::internal << std::scientific << std::hex << std::setw(10) << (double)(0.)
-           << "|" << std::showbase << std::showpos << std::internal << std::scientific << std::oct << std::setw(10) << (double)(0.)
-           << "|" << std::showbase << std::showpos << std::internal << std::scientific << std::dec << std::setw(10) << (double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::internal << std::scientific << std::hex << std::setw(10) << (double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::internal << std::scientific << std::oct << std::setw(10) << (double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::left << std::scientific << std::dec << std::setw(10) << (double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::left << std::scientific << std::hex << std::setw(10) << (double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::left << std::scientific << std::oct << std::setw(10) << (double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::left << std::scientific << std::dec << std::setw(10) << (double)(0.)
-           << "|" << std::showbase << std::showpos << std::left << std::scientific << std::hex << std::setw(10) << (double)(0.)
-           << "|" << std::showbase << std::showpos << std::left << std::scientific << std::oct << std::setw(10) << (double)(0.)
-           << "|" << std::showbase << std::showpos << std::left << std::scientific << std::dec << std::setw(10) << (double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::left << std::scientific << std::hex << std::setw(10) << (double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::left << std::scientific << std::oct << std::setw(10) << (double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::right << std::scientific << std::dec << std::setw(10) << (double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::right << std::scientific << std::hex << std::setw(10) << (double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::right << std::scientific << std::oct << std::setw(10) << (double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::right << std::scientific << std::dec << std::setw(10) << (double)(0.)
-           << "|" << std::showbase << std::showpos << std::right << std::scientific << std::hex << std::setw(10) << (double)(0.)
-           << "|" << std::showbase << std::showpos << std::right << std::scientific << std::oct << std::setw(10) << (double)(0.)
-           << "|" << std::showbase << std::showpos << std::right << std::scientific << std::dec << std::setw(10) << (double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::right << std::scientific << std::hex << std::setw(10) << (double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::right << std::scientific << std::oct << std::setw(10) << (double)(1002.71828)
+      *out << sizeof(double)
+           << "|" << std::defaultfloat << std::uppercase << std::noshowpoint << (double)(-1003.1415)
+           << "|" << std::fixed        << std::uppercase << std::noshowpoint << (double)(-1003.1415)
+           << "|" << std::hexfloat     << std::uppercase << std::noshowpoint << (double)(-1003.1415)
+           << "|" << std::scientific   << std::uppercase << std::noshowpoint << (double)(-1003.1415)
+           << "|" << std::defaultfloat << std::uppercase << std::noshowpoint << (double)(-64.) // power of 2
+           << "|" << std::fixed        << std::uppercase << std::noshowpoint << (double)(-64.) // power of 2
+           << "|" << std::hexfloat     << std::uppercase << std::noshowpoint << (double)(-64.) // power of 2
+           << "|" << std::scientific   << std::uppercase << std::noshowpoint << (double)(-64.) // power of 2
+           << "|" << std::defaultfloat << std::uppercase << std::noshowpoint << (double)(0.)
+           << "|" << std::fixed        << std::uppercase << std::noshowpoint << (double)(0.)
+           << "|" << std::hexfloat     << std::uppercase << std::noshowpoint << (double)(0.)
+           << "|" << std::scientific   << std::uppercase << std::noshowpoint << (double)(0.)
+           << "|" << std::defaultfloat << std::uppercase << std::noshowpoint << (double)(32.) // power of 2
+           << "|" << std::fixed        << std::uppercase << std::noshowpoint << (double)(32.) // power of 2
+           << "|" << std::hexfloat     << std::uppercase << std::noshowpoint << (double)(32.) // power of 2
+           << "|" << std::scientific   << std::uppercase << std::noshowpoint << (double)(32.) // power of 2
+           << "|" << std::defaultfloat << std::uppercase << std::noshowpoint << (double)(1002.71828)
+           << "|" << std::fixed        << std::uppercase << std::noshowpoint << (double)(1002.71828)
+           << "|" << std::hexfloat     << std::uppercase << std::noshowpoint << (double)(1002.71828)
+           << "|" << std::scientific   << std::uppercase << std::noshowpoint << (double)(1002.71828)
+           << "|" << std::defaultfloat << std::nouppercase << std::showpoint << (double)(-1003.1415)
+           << "|" << std::fixed        << std::nouppercase << std::showpoint << (double)(-1003.1415)
+           << "|" << std::hexfloat     << std::nouppercase << std::showpoint << (double)(-1003.1415)
+           << "|" << std::scientific   << std::nouppercase << std::showpoint << (double)(-1003.1415)
+           << "|" << std::defaultfloat << std::nouppercase << std::showpoint << (double)(-64.) // power of 2
+           << "|" << std::fixed        << std::nouppercase << std::showpoint << (double)(-64.) // power of 2
+           << "|" << std::hexfloat     << std::nouppercase << std::showpoint << (double)(-64.) // power of 2
+           << "|" << std::scientific   << std::nouppercase << std::showpoint << (double)(-64.) // power of 2
+           << "|" << std::defaultfloat << std::nouppercase << std::showpoint << (double)(0.)
+           << "|" << std::fixed        << std::nouppercase << std::showpoint << (double)(0.)
+           << "|" << std::hexfloat     << std::nouppercase << std::showpoint << (double)(0.)
+           << "|" << std::scientific   << std::nouppercase << std::showpoint << (double)(0.)
+           << "|" << std::defaultfloat << std::nouppercase << std::showpoint << (double)(32.) // power of 2
+           << "|" << std::fixed        << std::nouppercase << std::showpoint << (double)(32.) // power of 2
+           << "|" << std::hexfloat     << std::nouppercase << std::showpoint << (double)(32.) // power of 2
+           << "|" << std::scientific   << std::nouppercase << std::showpoint << (double)(32.) // power of 2
+           << "|" << std::defaultfloat << std::nouppercase << std::showpoint << (double)(1002.71828)
+           << "|" << std::fixed        << std::nouppercase << std::showpoint << (double)(1002.71828)
+           << "|" << std::hexfloat     << std::nouppercase << std::showpoint << (double)(1002.71828)
+           << "|" << std::scientific   << std::nouppercase << std::showpoint << (double)(1002.71828)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::defaultfloat << std::dec << std::setw(10) << (double)(-1003.1415)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::fixed        << std::hex << std::setw(10) << (double)(-1003.1415)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::hexfloat     << std::oct << std::setw(10) << (double)(-1003.1415)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::scientific   << std::oct << std::setw(10) << (double)(-1003.1415)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::defaultfloat << std::dec << std::setw(10) << (double)(-64.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::fixed        << std::dec << std::setw(10) << (double)(-64.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::hexfloat     << std::hex << std::setw(10) << (double)(-64.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::scientific   << std::oct << std::setw(10) << (double)(-64.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::defaultfloat << std::dec << std::setw(10) << (double)(0.)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::fixed        << std::dec << std::setw(10) << (double)(0.)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::hexfloat     << std::hex << std::setw(10) << (double)(0.)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::scientific   << std::oct << std::setw(10) << (double)(0.)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::defaultfloat << std::dec << std::setw(10) << (double)(32.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::fixed        << std::dec << std::setw(10) << (double)(32.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::hexfloat     << std::hex << std::setw(10) << (double)(32.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::scientific   << std::oct << std::setw(10) << (double)(32.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::defaultfloat << std::dec << std::setw(10) << (double)(1002.71828)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::fixed        << std::dec << std::setw(10) << (double)(1002.71828)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::hexfloat     << std::hex << std::setw(10) << (double)(1002.71828)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::scientific   << std::oct << std::setw(10) << (double)(1002.71828)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::defaultfloat << std::dec << std::setw(10) << (double)(-1003.1415)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::fixed        << std::hex << std::setw(10) << (double)(-1003.1415)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::hexfloat     << std::oct << std::setw(10) << (double)(-1003.1415)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::scientific   << std::oct << std::setw(10) << (double)(-1003.1415)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::defaultfloat << std::dec << std::setw(10) << (double)(-64.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::fixed        << std::dec << std::setw(10) << (double)(-64.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::hexfloat     << std::hex << std::setw(10) << (double)(-64.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::scientific   << std::oct << std::setw(10) << (double)(-64.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::defaultfloat << std::dec << std::setw(10) << (double)(0.)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::fixed        << std::dec << std::setw(10) << (double)(0.)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::hexfloat     << std::hex << std::setw(10) << (double)(0.)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::scientific   << std::oct << std::setw(10) << (double)(0.)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::defaultfloat << std::dec << std::setw(10) << (double)(32.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::fixed        << std::dec << std::setw(10) << (double)(32.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::hexfloat     << std::hex << std::setw(10) << (double)(32.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::scientific   << std::oct << std::setw(10) << (double)(32.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::defaultfloat << std::dec << std::setw(10) << (double)(1002.71828)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::fixed        << std::dec << std::setw(10) << (double)(1002.71828)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::hexfloat     << std::hex << std::setw(10) << (double)(1002.71828)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::scientific   << std::oct << std::setw(10) << (double)(1002.71828)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::defaultfloat << std::dec << std::setw(10) << (double)(-1003.1415)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::fixed        << std::hex << std::setw(10) << (double)(-1003.1415)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::hexfloat     << std::oct << std::setw(10) << (double)(-1003.1415)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::scientific   << std::oct << std::setw(10) << (double)(-1003.1415)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::defaultfloat << std::dec << std::setw(10) << (double)(-64.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::fixed        << std::dec << std::setw(10) << (double)(-64.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::hexfloat     << std::hex << std::setw(10) << (double)(-64.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::scientific   << std::oct << std::setw(10) << (double)(-64.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::defaultfloat << std::dec << std::setw(10) << (double)(0.)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::fixed        << std::dec << std::setw(10) << (double)(0.)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::hexfloat     << std::hex << std::setw(10) << (double)(0.)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::scientific   << std::oct << std::setw(10) << (double)(0.)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::defaultfloat << std::dec << std::setw(10) << (double)(32.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::fixed        << std::dec << std::setw(10) << (double)(32.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::hexfloat     << std::hex << std::setw(10) << (double)(32.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::scientific   << std::oct << std::setw(10) << (double)(32.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::defaultfloat << std::dec << std::setw(10) << (double)(1002.71828)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::fixed        << std::dec << std::setw(10) << (double)(1002.71828)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::hexfloat     << std::hex << std::setw(10) << (double)(1002.71828)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::scientific   << std::oct << std::setw(10) << (double)(1002.71828)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::defaultfloat << std::dec << std::setw(10) << (double)(-1003.1415)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::fixed        << std::hex << std::setw(10) << (double)(-1003.1415)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::hexfloat     << std::oct << std::setw(10) << (double)(-1003.1415)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::scientific   << std::oct << std::setw(10) << (double)(-1003.1415)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::defaultfloat << std::dec << std::setw(10) << (double)(-64.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::fixed        << std::dec << std::setw(10) << (double)(-64.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::hexfloat     << std::hex << std::setw(10) << (double)(-64.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::scientific   << std::oct << std::setw(10) << (double)(-64.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::defaultfloat << std::dec << std::setw(10) << (double)(0.)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::fixed        << std::dec << std::setw(10) << (double)(0.)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::hexfloat     << std::hex << std::setw(10) << (double)(0.)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::scientific   << std::oct << std::setw(10) << (double)(0.)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::defaultfloat << std::dec << std::setw(10) << (double)(32.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::fixed        << std::dec << std::setw(10) << (double)(32.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::hexfloat     << std::hex << std::setw(10) << (double)(32.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::scientific   << std::oct << std::setw(10) << (double)(32.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::defaultfloat << std::dec << std::setw(10) << (double)(1002.71828)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::fixed        << std::dec << std::setw(10) << (double)(1002.71828)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::hexfloat     << std::hex << std::setw(10) << (double)(1002.71828)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::scientific   << std::oct << std::setw(10) << (double)(1002.71828)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::defaultfloat << std::dec << std::setw(10) << (double)(-1003.1415)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::fixed        << std::hex << std::setw(10) << (double)(-1003.1415)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::hexfloat     << std::oct << std::setw(10) << (double)(-1003.1415)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::scientific   << std::oct << std::setw(10) << (double)(-1003.1415)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::defaultfloat << std::dec << std::setw(10) << (double)(-64.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::fixed        << std::dec << std::setw(10) << (double)(-64.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::hexfloat     << std::hex << std::setw(10) << (double)(-64.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::scientific   << std::oct << std::setw(10) << (double)(-64.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::defaultfloat << std::dec << std::setw(10) << (double)(0.)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::fixed        << std::dec << std::setw(10) << (double)(0.)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::hexfloat     << std::hex << std::setw(10) << (double)(0.)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::scientific   << std::oct << std::setw(10) << (double)(0.)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::defaultfloat << std::dec << std::setw(10) << (double)(32.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::fixed        << std::dec << std::setw(10) << (double)(32.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::hexfloat     << std::hex << std::setw(10) << (double)(32.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::scientific   << std::oct << std::setw(10) << (double)(32.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::defaultfloat << std::dec << std::setw(10) << (double)(1002.71828)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::fixed        << std::dec << std::setw(10) << (double)(1002.71828)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::hexfloat     << std::hex << std::setw(10) << (double)(1002.71828)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::scientific   << std::oct << std::setw(10) << (double)(1002.71828)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::defaultfloat << std::dec << std::setw(10) << (double)(-1003.1415)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::fixed        << std::hex << std::setw(10) << (double)(-1003.1415)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::hexfloat     << std::oct << std::setw(10) << (double)(-1003.1415)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::scientific   << std::oct << std::setw(10) << (double)(-1003.1415)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::defaultfloat << std::dec << std::setw(10) << (double)(-64.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::fixed        << std::dec << std::setw(10) << (double)(-64.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::hexfloat     << std::hex << std::setw(10) << (double)(-64.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::scientific   << std::oct << std::setw(10) << (double)(-64.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::defaultfloat << std::dec << std::setw(10) << (double)(0.)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::fixed        << std::dec << std::setw(10) << (double)(0.)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::hexfloat     << std::hex << std::setw(10) << (double)(0.)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::scientific   << std::oct << std::setw(10) << (double)(0.)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::defaultfloat << std::dec << std::setw(10) << (double)(32.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::fixed        << std::dec << std::setw(10) << (double)(32.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::hexfloat     << std::hex << std::setw(10) << (double)(32.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::scientific   << std::oct << std::setw(10) << (double)(32.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::defaultfloat << std::dec << std::setw(10) << (double)(1002.71828)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::fixed        << std::dec << std::setw(10) << (double)(1002.71828)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::hexfloat     << std::hex << std::setw(10) << (double)(1002.71828)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::scientific   << std::oct << std::setw(10) << (double)(1002.71828)
            << "|" << std::endl;
     }
 
-    // Boost on MSVC uses different values
-    // FIXME TODO remove MSVC case once Boost is no longer used
-    #if defined(_MSC_VER) && _MSC_VER < 1900
-      ASSERT_EQ(std::string("|-1003.14|-1003.14|-1003.14|0|0|0|1002.72|1002.72|1002.72|-1003.141500|-1003.141500|-1003.141500|0.000000|0.000000|0.000000|1002.718280|1002.718280|1002.718280|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|0x0.000000p+0|0x0.000000p+0|0x0.000000p+0|0x1.f55bf1p+9|0x1.f55bf1p+9|0x1.f55bf1p+9|-1.003142e+003|-1.003142e+003|-1.003142e+003|0.000000e+000|0.000000e+000|0.000000e+000|1.002718e+003|1.002718e+003|1.002718e+003|-  1003.14|-  1003.14|-  1003.14|+        0|+        0|+        0|+  1002.72|+  1002.72|+  1002.72|-1003.14  |-1003.14  |-1003.14  |+0        |+0        |+0        |+1002.72  |+1002.72  |+1002.72  |  -1003.14|  -1003.14|  -1003.14|        +0|        +0|        +0|  +1002.72|  +1002.72|  +1002.72|-1003.141500|-1003.141500|-1003.141500|+ 0.000000|+ 0.000000|+ 0.000000|+1002.718280|+1002.718280|+1002.718280|-1003.141500|-1003.141500|-1003.141500|+0.000000 |+0.000000 |+0.000000 |+1002.718280|+1002.718280|+1002.718280|-1003.141500|-1003.141500|-1003.141500| +0.000000| +0.000000| +0.000000|+1002.718280|+1002.718280|+1002.718280|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|+0x0.000000p+0|+0x0.000000p+0|+0x0.000000p+0|+0x1.f55bf1p+9|+0x1.f55bf1p+9|+0x1.f55bf1p+9|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|+0x0.000000p+0|+0x0.000000p+0|+0x0.000000p+0|+0x1.f55bf1p+9|+0x1.f55bf1p+9|+0x1.f55bf1p+9|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|+0x0.000000p+0|+0x0.000000p+0|+0x0.000000p+0|+0x1.f55bf1p+9|+0x1.f55bf1p+9|+0x1.f55bf1p+9|-1.003142e+003|-1.003142e+003|-1.003142e+003|+0.000000e+000|+0.000000e+000|+0.000000e+000|+1.002718e+003|+1.002718e+003|+1.002718e+003|-1.003142e+003|-1.003142e+003|-1.003142e+003|+0.000000e+000|+0.000000e+000|+0.000000e+000|+1.002718e+003|+1.002718e+003|+1.002718e+003|-1.003142e+003|-1.003142e+003|-1.003142e+003|+0.000000e+000|+0.000000e+000|+0.000000e+000|+1.002718e+003|+1.002718e+003|+1.002718e+003|\n"), de_out.str());
-      ASSERT_EQ(std::string("|-1003.14|-1003.14|-1003.14|0|0|0|1002.72|1002.72|1002.72|-1003.141500|-1003.141500|-1003.141500|0.000000|0.000000|0.000000|1002.718280|1002.718280|1002.718280|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|0x0.000000p+0|0x0.000000p+0|0x0.000000p+0|0x1.f55bf1p+9|0x1.f55bf1p+9|0x1.f55bf1p+9|-1.003142e+003|-1.003142e+003|-1.003142e+003|0.000000e+000|0.000000e+000|0.000000e+000|1.002718e+003|1.002718e+003|1.002718e+003|-  1003.14|-  1003.14|-  1003.14|+        0|+        0|+        0|+  1002.72|+  1002.72|+  1002.72|-1003.14  |-1003.14  |-1003.14  |+0        |+0        |+0        |+1002.72  |+1002.72  |+1002.72  |  -1003.14|  -1003.14|  -1003.14|        +0|        +0|        +0|  +1002.72|  +1002.72|  +1002.72|-1003.141500|-1003.141500|-1003.141500|+ 0.000000|+ 0.000000|+ 0.000000|+1002.718280|+1002.718280|+1002.718280|-1003.141500|-1003.141500|-1003.141500|+0.000000 |+0.000000 |+0.000000 |+1002.718280|+1002.718280|+1002.718280|-1003.141500|-1003.141500|-1003.141500| +0.000000| +0.000000| +0.000000|+1002.718280|+1002.718280|+1002.718280|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|+0x0.000000p+0|+0x0.000000p+0|+0x0.000000p+0|+0x1.f55bf1p+9|+0x1.f55bf1p+9|+0x1.f55bf1p+9|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|+0x0.000000p+0|+0x0.000000p+0|+0x0.000000p+0|+0x1.f55bf1p+9|+0x1.f55bf1p+9|+0x1.f55bf1p+9|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|+0x0.000000p+0|+0x0.000000p+0|+0x0.000000p+0|+0x1.f55bf1p+9|+0x1.f55bf1p+9|+0x1.f55bf1p+9|-1.003142e+003|-1.003142e+003|-1.003142e+003|+0.000000e+000|+0.000000e+000|+0.000000e+000|+1.002718e+003|+1.002718e+003|+1.002718e+003|-1.003142e+003|-1.003142e+003|-1.003142e+003|+0.000000e+000|+0.000000e+000|+0.000000e+000|+1.002718e+003|+1.002718e+003|+1.002718e+003|-1.003142e+003|-1.003142e+003|-1.003142e+003|+0.000000e+000|+0.000000e+000|+0.000000e+000|+1.002718e+003|+1.002718e+003|+1.002718e+003|\n"), en_out.str());
-      ASSERT_EQ(std::string("|-1003.14|-1003.14|-1003.14|0|0|0|1002.72|1002.72|1002.72|-1003.141500|-1003.141500|-1003.141500|0.000000|0.000000|0.000000|1002.718280|1002.718280|1002.718280|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|0x0.000000p+0|0x0.000000p+0|0x0.000000p+0|0x1.f55bf1p+9|0x1.f55bf1p+9|0x1.f55bf1p+9|-1.003142e+003|-1.003142e+003|-1.003142e+003|0.000000e+000|0.000000e+000|0.000000e+000|1.002718e+003|1.002718e+003|1.002718e+003|-  1003.14|-  1003.14|-  1003.14|+        0|+        0|+        0|+  1002.72|+  1002.72|+  1002.72|-1003.14  |-1003.14  |-1003.14  |+0        |+0        |+0        |+1002.72  |+1002.72  |+1002.72  |  -1003.14|  -1003.14|  -1003.14|        +0|        +0|        +0|  +1002.72|  +1002.72|  +1002.72|-1003.141500|-1003.141500|-1003.141500|+ 0.000000|+ 0.000000|+ 0.000000|+1002.718280|+1002.718280|+1002.718280|-1003.141500|-1003.141500|-1003.141500|+0.000000 |+0.000000 |+0.000000 |+1002.718280|+1002.718280|+1002.718280|-1003.141500|-1003.141500|-1003.141500| +0.000000| +0.000000| +0.000000|+1002.718280|+1002.718280|+1002.718280|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|+0x0.000000p+0|+0x0.000000p+0|+0x0.000000p+0|+0x1.f55bf1p+9|+0x1.f55bf1p+9|+0x1.f55bf1p+9|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|+0x0.000000p+0|+0x0.000000p+0|+0x0.000000p+0|+0x1.f55bf1p+9|+0x1.f55bf1p+9|+0x1.f55bf1p+9|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|+0x0.000000p+0|+0x0.000000p+0|+0x0.000000p+0|+0x1.f55bf1p+9|+0x1.f55bf1p+9|+0x1.f55bf1p+9|-1.003142e+003|-1.003142e+003|-1.003142e+003|+0.000000e+000|+0.000000e+000|+0.000000e+000|+1.002718e+003|+1.002718e+003|+1.002718e+003|-1.003142e+003|-1.003142e+003|-1.003142e+003|+0.000000e+000|+0.000000e+000|+0.000000e+000|+1.002718e+003|+1.002718e+003|+1.002718e+003|-1.003142e+003|-1.003142e+003|-1.003142e+003|+0.000000e+000|+0.000000e+000|+0.000000e+000|+1.002718e+003|+1.002718e+003|+1.002718e+003|\n"), ru_out.str());
-    #elif defined(_MSC_VER)
-      ASSERT_EQ(std::string("|-1003.14|-1003.14|-1003.14|0|0|0|1002.72|1002.72|1002.72|-1003.141500|-1003.141500|-1003.141500|0.000000|0.000000|0.000000|1002.718280|1002.718280|1002.718280|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|0x0.000000p+0|0x0.000000p+0|0x0.000000p+0|0x1.f55bf1p+9|0x1.f55bf1p+9|0x1.f55bf1p+9|-1.003141e+03|-1.003141e+03|-1.003141e+03|0.000000e+00|0.000000e+00|0.000000e+00|1.002718e+03|1.002718e+03|1.002718e+03|-  1003.14|-  1003.14|-  1003.14|+        0|+        0|+        0|+  1002.72|+  1002.72|+  1002.72|-1003.14  |-1003.14  |-1003.14  |+0        |+0        |+0        |+1002.72  |+1002.72  |+1002.72  |  -1003.14|  -1003.14|  -1003.14|        +0|        +0|        +0|  +1002.72|  +1002.72|  +1002.72|-1003.141500|-1003.141500|-1003.141500|+ 0.000000|+ 0.000000|+ 0.000000|+1002.718280|+1002.718280|+1002.718280|-1003.141500|-1003.141500|-1003.141500|+0.000000 |+0.000000 |+0.000000 |+1002.718280|+1002.718280|+1002.718280|-1003.141500|-1003.141500|-1003.141500| +0.000000| +0.000000| +0.000000|+1002.718280|+1002.718280|+1002.718280|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|+0x0.000000p+0|+0x0.000000p+0|+0x0.000000p+0|+0x1.f55bf1p+9|+0x1.f55bf1p+9|+0x1.f55bf1p+9|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|+0x0.000000p+0|+0x0.000000p+0|+0x0.000000p+0|+0x1.f55bf1p+9|+0x1.f55bf1p+9|+0x1.f55bf1p+9|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|+0x0.000000p+0|+0x0.000000p+0|+0x0.000000p+0|+0x1.f55bf1p+9|+0x1.f55bf1p+9|+0x1.f55bf1p+9|-1.003141e+03|-1.003141e+03|-1.003141e+03|+0.000000e+00|+0.000000e+00|+0.000000e+00|+1.002718e+03|+1.002718e+03|+1.002718e+03|-1.003141e+03|-1.003141e+03|-1.003141e+03|+0.000000e+00|+0.000000e+00|+0.000000e+00|+1.002718e+03|+1.002718e+03|+1.002718e+03|-1.003141e+03|-1.003141e+03|-1.003141e+03|+0.000000e+00|+0.000000e+00|+0.000000e+00|+1.002718e+03|+1.002718e+03|+1.002718e+03|\n"), de_out.str());
-      ASSERT_EQ(std::string("|-1003.14|-1003.14|-1003.14|0|0|0|1002.72|1002.72|1002.72|-1003.141500|-1003.141500|-1003.141500|0.000000|0.000000|0.000000|1002.718280|1002.718280|1002.718280|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|0x0.000000p+0|0x0.000000p+0|0x0.000000p+0|0x1.f55bf1p+9|0x1.f55bf1p+9|0x1.f55bf1p+9|-1.003141e+03|-1.003141e+03|-1.003141e+03|0.000000e+00|0.000000e+00|0.000000e+00|1.002718e+03|1.002718e+03|1.002718e+03|-  1003.14|-  1003.14|-  1003.14|+        0|+        0|+        0|+  1002.72|+  1002.72|+  1002.72|-1003.14  |-1003.14  |-1003.14  |+0        |+0        |+0        |+1002.72  |+1002.72  |+1002.72  |  -1003.14|  -1003.14|  -1003.14|        +0|        +0|        +0|  +1002.72|  +1002.72|  +1002.72|-1003.141500|-1003.141500|-1003.141500|+ 0.000000|+ 0.000000|+ 0.000000|+1002.718280|+1002.718280|+1002.718280|-1003.141500|-1003.141500|-1003.141500|+0.000000 |+0.000000 |+0.000000 |+1002.718280|+1002.718280|+1002.718280|-1003.141500|-1003.141500|-1003.141500| +0.000000| +0.000000| +0.000000|+1002.718280|+1002.718280|+1002.718280|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|+0x0.000000p+0|+0x0.000000p+0|+0x0.000000p+0|+0x1.f55bf1p+9|+0x1.f55bf1p+9|+0x1.f55bf1p+9|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|+0x0.000000p+0|+0x0.000000p+0|+0x0.000000p+0|+0x1.f55bf1p+9|+0x1.f55bf1p+9|+0x1.f55bf1p+9|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|+0x0.000000p+0|+0x0.000000p+0|+0x0.000000p+0|+0x1.f55bf1p+9|+0x1.f55bf1p+9|+0x1.f55bf1p+9|-1.003141e+03|-1.003141e+03|-1.003141e+03|+0.000000e+00|+0.000000e+00|+0.000000e+00|+1.002718e+03|+1.002718e+03|+1.002718e+03|-1.003141e+03|-1.003141e+03|-1.003141e+03|+0.000000e+00|+0.000000e+00|+0.000000e+00|+1.002718e+03|+1.002718e+03|+1.002718e+03|-1.003141e+03|-1.003141e+03|-1.003141e+03|+0.000000e+00|+0.000000e+00|+0.000000e+00|+1.002718e+03|+1.002718e+03|+1.002718e+03|\n"), en_out.str());
-      ASSERT_EQ(std::string("|-1003.14|-1003.14|-1003.14|0|0|0|1002.72|1002.72|1002.72|-1003.141500|-1003.141500|-1003.141500|0.000000|0.000000|0.000000|1002.718280|1002.718280|1002.718280|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|0x0.000000p+0|0x0.000000p+0|0x0.000000p+0|0x1.f55bf1p+9|0x1.f55bf1p+9|0x1.f55bf1p+9|-1.003141e+03|-1.003141e+03|-1.003141e+03|0.000000e+00|0.000000e+00|0.000000e+00|1.002718e+03|1.002718e+03|1.002718e+03|-  1003.14|-  1003.14|-  1003.14|+        0|+        0|+        0|+  1002.72|+  1002.72|+  1002.72|-1003.14  |-1003.14  |-1003.14  |+0        |+0        |+0        |+1002.72  |+1002.72  |+1002.72  |  -1003.14|  -1003.14|  -1003.14|        +0|        +0|        +0|  +1002.72|  +1002.72|  +1002.72|-1003.141500|-1003.141500|-1003.141500|+ 0.000000|+ 0.000000|+ 0.000000|+1002.718280|+1002.718280|+1002.718280|-1003.141500|-1003.141500|-1003.141500|+0.000000 |+0.000000 |+0.000000 |+1002.718280|+1002.718280|+1002.718280|-1003.141500|-1003.141500|-1003.141500| +0.000000| +0.000000| +0.000000|+1002.718280|+1002.718280|+1002.718280|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|+0x0.000000p+0|+0x0.000000p+0|+0x0.000000p+0|+0x1.f55bf1p+9|+0x1.f55bf1p+9|+0x1.f55bf1p+9|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|+0x0.000000p+0|+0x0.000000p+0|+0x0.000000p+0|+0x1.f55bf1p+9|+0x1.f55bf1p+9|+0x1.f55bf1p+9|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|+0x0.000000p+0|+0x0.000000p+0|+0x0.000000p+0|+0x1.f55bf1p+9|+0x1.f55bf1p+9|+0x1.f55bf1p+9|-1.003141e+03|-1.003141e+03|-1.003141e+03|+0.000000e+00|+0.000000e+00|+0.000000e+00|+1.002718e+03|+1.002718e+03|+1.002718e+03|-1.003141e+03|-1.003141e+03|-1.003141e+03|+0.000000e+00|+0.000000e+00|+0.000000e+00|+1.002718e+03|+1.002718e+03|+1.002718e+03|-1.003141e+03|-1.003141e+03|-1.003141e+03|+0.000000e+00|+0.000000e+00|+0.000000e+00|+1.002718e+03|+1.002718e+03|+1.002718e+03|\n"), ru_out.str());
-    #else
-      ASSERT_EQ(std::string("|-1003.14|-1003.14|-1003.14|0|0|0|1002.72|1002.72|1002.72|-1003.141500|-1003.141500|-1003.141500|0.000000|0.000000|0.000000|1002.718280|1002.718280|1002.718280|-0x1.f5921cac08312p+9|-0x1.f5921cac08312p+9|-0x1.f5921cac08312p+9|0x0p+0|0x0p+0|0x0p+0|0x1.f55bf0995aaf8p+9|0x1.f55bf0995aaf8p+9|0x1.f55bf0995aaf8p+9|-1.003141e+03|-1.003141e+03|-1.003141e+03|0.000000e+00|0.000000e+00|0.000000e+00|1.002718e+03|1.002718e+03|1.002718e+03|-  1003.14|-  1003.14|-  1003.14|+        0|+        0|+        0|+  1002.72|+  1002.72|+  1002.72|-1003.14  |-1003.14  |-1003.14  |+0        |+0        |+0        |+1002.72  |+1002.72  |+1002.72  |  -1003.14|  -1003.14|  -1003.14|        +0|        +0|        +0|  +1002.72|  +1002.72|  +1002.72|-1003.141500|-1003.141500|-1003.141500|+ 0.000000|+ 0.000000|+ 0.000000|+1002.718280|+1002.718280|+1002.718280|-1003.141500|-1003.141500|-1003.141500|+0.000000 |+0.000000 |+0.000000 |+1002.718280|+1002.718280|+1002.718280|-1003.141500|-1003.141500|-1003.141500| +0.000000| +0.000000| +0.000000|+1002.718280|+1002.718280|+1002.718280|-0x1.f5921cac08312p+9|-0x1.f5921cac08312p+9|-0x1.f5921cac08312p+9|+   0x0p+0|+   0x0p+0|+   0x0p+0|+0x1.f55bf0995aaf8p+9|+0x1.f55bf0995aaf8p+9|+0x1.f55bf0995aaf8p+9|-0x1.f5921cac08312p+9|-0x1.f5921cac08312p+9|-0x1.f5921cac08312p+9|+0x0p+0   |+0x0p+0   |+0x0p+0   |+0x1.f55bf0995aaf8p+9|+0x1.f55bf0995aaf8p+9|+0x1.f55bf0995aaf8p+9|-0x1.f5921cac08312p+9|-0x1.f5921cac08312p+9|-0x1.f5921cac08312p+9|   +0x0p+0|   +0x0p+0|   +0x0p+0|+0x1.f55bf0995aaf8p+9|+0x1.f55bf0995aaf8p+9|+0x1.f55bf0995aaf8p+9|-1.003141e+03|-1.003141e+03|-1.003141e+03|+0.000000e+00|+0.000000e+00|+0.000000e+00|+1.002718e+03|+1.002718e+03|+1.002718e+03|-1.003141e+03|-1.003141e+03|-1.003141e+03|+0.000000e+00|+0.000000e+00|+0.000000e+00|+1.002718e+03|+1.002718e+03|+1.002718e+03|-1.003141e+03|-1.003141e+03|-1.003141e+03|+0.000000e+00|+0.000000e+00|+0.000000e+00|+1.002718e+03|+1.002718e+03|+1.002718e+03|\n"), de_out.str());
-      ASSERT_EQ(std::string("|-1003.14|-1003.14|-1003.14|0|0|0|1002.72|1002.72|1002.72|-1003.141500|-1003.141500|-1003.141500|0.000000|0.000000|0.000000|1002.718280|1002.718280|1002.718280|-0x1.f5921cac08312p+9|-0x1.f5921cac08312p+9|-0x1.f5921cac08312p+9|0x0p+0|0x0p+0|0x0p+0|0x1.f55bf0995aaf8p+9|0x1.f55bf0995aaf8p+9|0x1.f55bf0995aaf8p+9|-1.003141e+03|-1.003141e+03|-1.003141e+03|0.000000e+00|0.000000e+00|0.000000e+00|1.002718e+03|1.002718e+03|1.002718e+03|-  1003.14|-  1003.14|-  1003.14|+        0|+        0|+        0|+  1002.72|+  1002.72|+  1002.72|-1003.14  |-1003.14  |-1003.14  |+0        |+0        |+0        |+1002.72  |+1002.72  |+1002.72  |  -1003.14|  -1003.14|  -1003.14|        +0|        +0|        +0|  +1002.72|  +1002.72|  +1002.72|-1003.141500|-1003.141500|-1003.141500|+ 0.000000|+ 0.000000|+ 0.000000|+1002.718280|+1002.718280|+1002.718280|-1003.141500|-1003.141500|-1003.141500|+0.000000 |+0.000000 |+0.000000 |+1002.718280|+1002.718280|+1002.718280|-1003.141500|-1003.141500|-1003.141500| +0.000000| +0.000000| +0.000000|+1002.718280|+1002.718280|+1002.718280|-0x1.f5921cac08312p+9|-0x1.f5921cac08312p+9|-0x1.f5921cac08312p+9|+   0x0p+0|+   0x0p+0|+   0x0p+0|+0x1.f55bf0995aaf8p+9|+0x1.f55bf0995aaf8p+9|+0x1.f55bf0995aaf8p+9|-0x1.f5921cac08312p+9|-0x1.f5921cac08312p+9|-0x1.f5921cac08312p+9|+0x0p+0   |+0x0p+0   |+0x0p+0   |+0x1.f55bf0995aaf8p+9|+0x1.f55bf0995aaf8p+9|+0x1.f55bf0995aaf8p+9|-0x1.f5921cac08312p+9|-0x1.f5921cac08312p+9|-0x1.f5921cac08312p+9|   +0x0p+0|   +0x0p+0|   +0x0p+0|+0x1.f55bf0995aaf8p+9|+0x1.f55bf0995aaf8p+9|+0x1.f55bf0995aaf8p+9|-1.003141e+03|-1.003141e+03|-1.003141e+03|+0.000000e+00|+0.000000e+00|+0.000000e+00|+1.002718e+03|+1.002718e+03|+1.002718e+03|-1.003141e+03|-1.003141e+03|-1.003141e+03|+0.000000e+00|+0.000000e+00|+0.000000e+00|+1.002718e+03|+1.002718e+03|+1.002718e+03|-1.003141e+03|-1.003141e+03|-1.003141e+03|+0.000000e+00|+0.000000e+00|+0.000000e+00|+1.002718e+03|+1.002718e+03|+1.002718e+03|\n"), en_out.str());
-      ASSERT_EQ(std::string("|-1003.14|-1003.14|-1003.14|0|0|0|1002.72|1002.72|1002.72|-1003.141500|-1003.141500|-1003.141500|0.000000|0.000000|0.000000|1002.718280|1002.718280|1002.718280|-0x1.f5921cac08312p+9|-0x1.f5921cac08312p+9|-0x1.f5921cac08312p+9|0x0p+0|0x0p+0|0x0p+0|0x1.f55bf0995aaf8p+9|0x1.f55bf0995aaf8p+9|0x1.f55bf0995aaf8p+9|-1.003141e+03|-1.003141e+03|-1.003141e+03|0.000000e+00|0.000000e+00|0.000000e+00|1.002718e+03|1.002718e+03|1.002718e+03|-  1003.14|-  1003.14|-  1003.14|+        0|+        0|+        0|+  1002.72|+  1002.72|+  1002.72|-1003.14  |-1003.14  |-1003.14  |+0        |+0        |+0        |+1002.72  |+1002.72  |+1002.72  |  -1003.14|  -1003.14|  -1003.14|        +0|        +0|        +0|  +1002.72|  +1002.72|  +1002.72|-1003.141500|-1003.141500|-1003.141500|+ 0.000000|+ 0.000000|+ 0.000000|+1002.718280|+1002.718280|+1002.718280|-1003.141500|-1003.141500|-1003.141500|+0.000000 |+0.000000 |+0.000000 |+1002.718280|+1002.718280|+1002.718280|-1003.141500|-1003.141500|-1003.141500| +0.000000| +0.000000| +0.000000|+1002.718280|+1002.718280|+1002.718280|-0x1.f5921cac08312p+9|-0x1.f5921cac08312p+9|-0x1.f5921cac08312p+9|+   0x0p+0|+   0x0p+0|+   0x0p+0|+0x1.f55bf0995aaf8p+9|+0x1.f55bf0995aaf8p+9|+0x1.f55bf0995aaf8p+9|-0x1.f5921cac08312p+9|-0x1.f5921cac08312p+9|-0x1.f5921cac08312p+9|+0x0p+0   |+0x0p+0   |+0x0p+0   |+0x1.f55bf0995aaf8p+9|+0x1.f55bf0995aaf8p+9|+0x1.f55bf0995aaf8p+9|-0x1.f5921cac08312p+9|-0x1.f5921cac08312p+9|-0x1.f5921cac08312p+9|   +0x0p+0|   +0x0p+0|   +0x0p+0|+0x1.f55bf0995aaf8p+9|+0x1.f55bf0995aaf8p+9|+0x1.f55bf0995aaf8p+9|-1.003141e+03|-1.003141e+03|-1.003141e+03|+0.000000e+00|+0.000000e+00|+0.000000e+00|+1.002718e+03|+1.002718e+03|+1.002718e+03|-1.003141e+03|-1.003141e+03|-1.003141e+03|+0.000000e+00|+0.000000e+00|+0.000000e+00|+1.002718e+03|+1.002718e+03|+1.002718e+03|-1.003141e+03|-1.003141e+03|-1.003141e+03|+0.000000e+00|+0.000000e+00|+0.000000e+00|+1.002718e+03|+1.002718e+03|+1.002718e+03|\n"), ru_out.str());
-    #endif
+    if (4 == sizeof(double)) {
+      ASSERT_EQ(std::string("4|-1003.1415|-1003.141500|-0X1.F5921CAC08312P+9|-1.003140E3|-64|-64.000000|-0X1P+6|-6.400000E1|0|0.000000|0X0P+0|0.000000E0|32|32.000000|0X1P+5|3.200000E1|1002.71828|1002.718280|0X1.F55BF0995AAF8P+9|1.002720E3|-1003.1415|-1003.141500|-0x1.f5921cac08312p+9|-1.003140e3|-64.|-64.000000|-0x1.p+6|-6.400000e1|0.|0.000000|0x0.p+0|0.000000e0|32.|32.000000|0x1.p+5|3.200000e1|1002.71828|1002.718280|0x1.f55bf0995aaf8p+9|1.002720e3|-1003.1415|-1003.141500|-0x1.f5921cac08312p+9|-1.003140e3|-       64|-64.000000|-   0x1p+6|-6.400000e1|+        0|+ 0.000000|+   0x0p+0|+0.000000e0|+       32|+32.000000|+   0x1p+5|+3.200000e1|+1002.71828|+1002.718280|+0x1.f55bf0995aaf8p+9|+1.002720e3|-1003.1415|-1003.141500|-0x1.f5921cac08312p+9|-1.003140e3|-64       |-64.000000|-0x1p+6   |-6.400000e1|+0        |+0.000000 |+0x0p+0   |+0.000000e0|+32       |+32.000000|+0x1p+5   |+3.200000e1|+1002.71828|+1002.718280|+0x1.f55bf0995aaf8p+9|+1.002720e3|-1003.1415|-1003.141500|-0x1.f5921cac08312p+9|-1.003140e3|       -64|-64.000000|   -0x1p+6|-6.400000e1|        +0| +0.000000|   +0x0p+0|+0.000000e0|       +32|+32.000000|   +0x1p+5|+3.200000e1|+1002.71828|+1002.718280|+0x1.f55bf0995aaf8p+9|+1.002720e3|-1003.1415|-1003.141500|-0x1.f5921cac08312p+9|-1.003140e3|-       64|-64.000000|-   0x1p+6|-6.400000e1|         0|  0.000000|0x    0p+0|0.000000e0|        32| 32.000000|0x    1p+5|3.200000e1|1002.71828|1002.718280|0x1.f55bf0995aaf8p+9|1.002720e3|-1003.1415|-1003.141500|-0x1.f5921cac08312p+9|-1.003140e3|-64       |-64.000000|-0x1p+6   |-6.400000e1|0         |0.000000  |0x0p+0    |0.000000e0|32        |32.000000 |0x1p+5    |3.200000e1|1002.71828|1002.718280|0x1.f55bf0995aaf8p+9|1.002720e3|-1003.1415|-1003.141500|-0x1.f5921cac08312p+9|-1.003140e3|       -64|-64.000000|   -0x1p+6|-6.400000e1|         0|  0.000000|    0x0p+0|0.000000e0|        32| 32.000000|    0x1p+5|3.200000e1|1002.71828|1002.718280|0x1.f55bf0995aaf8p+9|1.002720e3|\n"), c_out.str());
+      ASSERT_EQ(std::string("4|-1003,1415|-1003,141500|-0X1.F5921CAC08312P+9|-1,003140E3|-64|-64,000000|-0X1P+6|-6,400000E1|0|0,000000|0X0P+0|0,000000E0|32|32,000000|0X1P+5|3,200000E1|1002,71828|1002,718280|0X1.F55BF0995AAF8P+9|1,002720E3|-1003,1415|-1003,141500|-0x1.f5921cac08312p+9|-1,003140e3|-64.|-64,000000|-0x1.p+6|-6,400000e1|0.|0,000000|0x0.p+0|0,000000e0|32.|32,000000|0x1.p+5|3,200000e1|1002,71828|1002,718280|0x1.f55bf0995aaf8p+9|1,002720e3|-1003,1415|-1003,141500|-0x1.f5921cac08312p+9|-1,003140e3|-       64|-64,000000|-   0x1p+6|-6,400000e1|+        0|+ 0,000000|+   0x0p+0|+0,000000e0|+       32|+32,000000|+   0x1p+5|+3,200000e1|+1002,71828|+1002,718280|+0x1.f55bf0995aaf8p+9|+1,002720e3|-1003,1415|-1003,141500|-0x1.f5921cac08312p+9|-1,003140e3|-64       |-64,000000|-0x1p+6   |-6,400000e1|+0        |+0,000000 |+0x0p+0   |+0,000000e0|+32       |+32,000000|+0x1p+5   |+3,200000e1|+1002,71828|+1002,718280|+0x1.f55bf0995aaf8p+9|+1,002720e3|-1003,1415|-1003,141500|-0x1.f5921cac08312p+9|-1,003140e3|       -64|-64,000000|   -0x1p+6|-6,400000e1|        +0| +0,000000|   +0x0p+0|+0,000000e0|       +32|+32,000000|   +0x1p+5|+3,200000e1|+1002,71828|+1002,718280|+0x1.f55bf0995aaf8p+9|+1,002720e3|-1003,1415|-1003,141500|-0x1.f5921cac08312p+9|-1,003140e3|-       64|-64,000000|-   0x1p+6|-6,400000e1|         0|  0,000000|0x    0p+0|0,000000e0|        32| 32,000000|0x    1p+5|3,200000e1|1002,71828|1002,718280|0x1.f55bf0995aaf8p+9|1,002720e3|-1003,1415|-1003,141500|-0x1.f5921cac08312p+9|-1,003140e3|-64       |-64,000000|-0x1p+6   |-6,400000e1|0         |0,000000  |0x0p+0    |0,000000e0|32        |32,000000 |0x1p+5    |3,200000e1|1002,71828|1002,718280|0x1.f55bf0995aaf8p+9|1,002720e3|-1003,1415|-1003,141500|-0x1.f5921cac08312p+9|-1,003140e3|       -64|-64,000000|   -0x1p+6|-6,400000e1|         0|  0,000000|    0x0p+0|0,000000e0|        32| 32,000000|    0x1p+5|3,200000e1|1002,71828|1002,718280|0x1.f55bf0995aaf8p+9|1,002720e3|\n"), de_out.str());
+      ASSERT_EQ(std::string("4|-1003.1415|-1003.141500|-0X1.F5921CAC08312P+9|-1.003140E3|-64|-64.000000|-0X1P+6|-6.400000E1|0|0.000000|0X0P+0|0.000000E0|32|32.000000|0X1P+5|3.200000E1|1002.71828|1002.718280|0X1.F55BF0995AAF8P+9|1.002720E3|-1003.1415|-1003.141500|-0x1.f5921cac08312p+9|-1.003140e3|-64.|-64.000000|-0x1.p+6|-6.400000e1|0.|0.000000|0x0.p+0|0.000000e0|32.|32.000000|0x1.p+5|3.200000e1|1002.71828|1002.718280|0x1.f55bf0995aaf8p+9|1.002720e3|-1003.1415|-1003.141500|-0x1.f5921cac08312p+9|-1.003140e3|-       64|-64.000000|-   0x1p+6|-6.400000e1|+        0|+ 0.000000|+   0x0p+0|+0.000000e0|+       32|+32.000000|+   0x1p+5|+3.200000e1|+1002.71828|+1002.718280|+0x1.f55bf0995aaf8p+9|+1.002720e3|-1003.1415|-1003.141500|-0x1.f5921cac08312p+9|-1.003140e3|-64       |-64.000000|-0x1p+6   |-6.400000e1|+0        |+0.000000 |+0x0p+0   |+0.000000e0|+32       |+32.000000|+0x1p+5   |+3.200000e1|+1002.71828|+1002.718280|+0x1.f55bf0995aaf8p+9|+1.002720e3|-1003.1415|-1003.141500|-0x1.f5921cac08312p+9|-1.003140e3|       -64|-64.000000|   -0x1p+6|-6.400000e1|        +0| +0.000000|   +0x0p+0|+0.000000e0|       +32|+32.000000|   +0x1p+5|+3.200000e1|+1002.71828|+1002.718280|+0x1.f55bf0995aaf8p+9|+1.002720e3|-1003.1415|-1003.141500|-0x1.f5921cac08312p+9|-1.003140e3|-       64|-64.000000|-   0x1p+6|-6.400000e1|         0|  0.000000|0x    0p+0|0.000000e0|        32| 32.000000|0x    1p+5|3.200000e1|1002.71828|1002.718280|0x1.f55bf0995aaf8p+9|1.002720e3|-1003.1415|-1003.141500|-0x1.f5921cac08312p+9|-1.003140e3|-64       |-64.000000|-0x1p+6   |-6.400000e1|0         |0.000000  |0x0p+0    |0.000000e0|32        |32.000000 |0x1p+5    |3.200000e1|1002.71828|1002.718280|0x1.f55bf0995aaf8p+9|1.002720e3|-1003.1415|-1003.141500|-0x1.f5921cac08312p+9|-1.003140e3|       -64|-64.000000|   -0x1p+6|-6.400000e1|         0|  0.000000|    0x0p+0|0.000000e0|        32| 32.000000|    0x1p+5|3.200000e1|1002.71828|1002.718280|0x1.f55bf0995aaf8p+9|1.002720e3|\n"), en_out.str());
+      ASSERT_EQ(std::string("4|-1003,1415|-1003,141500|-0X1.F5921CAC08312P+9|-1,003140E3|-64|-64,000000|-0X1P+6|-6,400000E1|0|0,000000|0X0P+0|0,000000E0|32|32,000000|0X1P+5|3,200000E1|1002,71828|1002,718280|0X1.F55BF0995AAF8P+9|1,002720E3|-1003,1415|-1003,141500|-0x1.f5921cac08312p+9|-1,003140e3|-64.|-64,000000|-0x1.p+6|-6,400000e1|0.|0,000000|0x0.p+0|0,000000e0|32.|32,000000|0x1.p+5|3,200000e1|1002,71828|1002,718280|0x1.f55bf0995aaf8p+9|1,002720e3|-1003,1415|-1003,141500|-0x1.f5921cac08312p+9|-1,003140e3|-       64|-64,000000|-   0x1p+6|-6,400000e1|+        0|+ 0,000000|+   0x0p+0|+0,000000e0|+       32|+32,000000|+   0x1p+5|+3,200000e1|+1002,71828|+1002,718280|+0x1.f55bf0995aaf8p+9|+1,002720e3|-1003,1415|-1003,141500|-0x1.f5921cac08312p+9|-1,003140e3|-64       |-64,000000|-0x1p+6   |-6,400000e1|+0        |+0,000000 |+0x0p+0   |+0,000000e0|+32       |+32,000000|+0x1p+5   |+3,200000e1|+1002,71828|+1002,718280|+0x1.f55bf0995aaf8p+9|+1,002720e3|-1003,1415|-1003,141500|-0x1.f5921cac08312p+9|-1,003140e3|       -64|-64,000000|   -0x1p+6|-6,400000e1|        +0| +0,000000|   +0x0p+0|+0,000000e0|       +32|+32,000000|   +0x1p+5|+3,200000e1|+1002,71828|+1002,718280|+0x1.f55bf0995aaf8p+9|+1,002720e3|-1003,1415|-1003,141500|-0x1.f5921cac08312p+9|-1,003140e3|-       64|-64,000000|-   0x1p+6|-6,400000e1|         0|  0,000000|0x    0p+0|0,000000e0|        32| 32,000000|0x    1p+5|3,200000e1|1002,71828|1002,718280|0x1.f55bf0995aaf8p+9|1,002720e3|-1003,1415|-1003,141500|-0x1.f5921cac08312p+9|-1,003140e3|-64       |-64,000000|-0x1p+6   |-6,400000e1|0         |0,000000  |0x0p+0    |0,000000e0|32        |32,000000 |0x1p+5    |3,200000e1|1002,71828|1002,718280|0x1.f55bf0995aaf8p+9|1,002720e3|-1003,1415|-1003,141500|-0x1.f5921cac08312p+9|-1,003140e3|       -64|-64,000000|   -0x1p+6|-6,400000e1|         0|  0,000000|    0x0p+0|0,000000e0|        32| 32,000000|    0x1p+5|3,200000e1|1002,71828|1002,718280|0x1.f55bf0995aaf8p+9|1,002720e3|\n"), ru_out.str());
+    } else {
+      ASSERT_EQ(std::string("8|-1003.1415|-1003.141500|-0X1.F5921CAC08312P+9|-1.003140E3|-64|-64.000000|-0X1P+6|-6.400000E1|0|0.000000|0X0P+0|0.000000E0|32|32.000000|0X1P+5|3.200000E1|1002.71828|1002.718280|0X1.F55BF0995AAF8P+9|1.002720E3|-1003.1415|-1003.141500|-0x1.f5921cac08312p+9|-1.003140e3|-64.|-64.000000|-0x1.p+6|-6.400000e1|0.|0.000000|0x0.p+0|0.000000e0|32.|32.000000|0x1.p+5|3.200000e1|1002.71828|1002.718280|0x1.f55bf0995aaf8p+9|1.002720e3|-1003.1415|-1003.141500|-0x1.f5921cac08312p+9|-1.003140e3|-       64|-64.000000|-   0x1p+6|-6.400000e1|+        0|+ 0.000000|+   0x0p+0|+0.000000e0|+       32|+32.000000|+   0x1p+5|+3.200000e1|+1002.71828|+1002.718280|+0x1.f55bf0995aaf8p+9|+1.002720e3|-1003.1415|-1003.141500|-0x1.f5921cac08312p+9|-1.003140e3|-64       |-64.000000|-0x1p+6   |-6.400000e1|+0        |+0.000000 |+0x0p+0   |+0.000000e0|+32       |+32.000000|+0x1p+5   |+3.200000e1|+1002.71828|+1002.718280|+0x1.f55bf0995aaf8p+9|+1.002720e3|-1003.1415|-1003.141500|-0x1.f5921cac08312p+9|-1.003140e3|       -64|-64.000000|   -0x1p+6|-6.400000e1|        +0| +0.000000|   +0x0p+0|+0.000000e0|       +32|+32.000000|   +0x1p+5|+3.200000e1|+1002.71828|+1002.718280|+0x1.f55bf0995aaf8p+9|+1.002720e3|-1003.1415|-1003.141500|-0x1.f5921cac08312p+9|-1.003140e3|-       64|-64.000000|-   0x1p+6|-6.400000e1|         0|  0.000000|0x    0p+0|0.000000e0|        32| 32.000000|0x    1p+5|3.200000e1|1002.71828|1002.718280|0x1.f55bf0995aaf8p+9|1.002720e3|-1003.1415|-1003.141500|-0x1.f5921cac08312p+9|-1.003140e3|-64       |-64.000000|-0x1p+6   |-6.400000e1|0         |0.000000  |0x0p+0    |0.000000e0|32        |32.000000 |0x1p+5    |3.200000e1|1002.71828|1002.718280|0x1.f55bf0995aaf8p+9|1.002720e3|-1003.1415|-1003.141500|-0x1.f5921cac08312p+9|-1.003140e3|       -64|-64.000000|   -0x1p+6|-6.400000e1|         0|  0.000000|    0x0p+0|0.000000e0|        32| 32.000000|    0x1p+5|3.200000e1|1002.71828|1002.718280|0x1.f55bf0995aaf8p+9|1.002720e3|\n"), c_out.str());
+      ASSERT_EQ(std::string("8|-1003,1415|-1003,141500|-0X1.F5921CAC08312P+9|-1,003140E3|-64|-64,000000|-0X1P+6|-6,400000E1|0|0,000000|0X0P+0|0,000000E0|32|32,000000|0X1P+5|3,200000E1|1002,71828|1002,718280|0X1.F55BF0995AAF8P+9|1,002720E3|-1003,1415|-1003,141500|-0x1.f5921cac08312p+9|-1,003140e3|-64.|-64,000000|-0x1.p+6|-6,400000e1|0.|0,000000|0x0.p+0|0,000000e0|32.|32,000000|0x1.p+5|3,200000e1|1002,71828|1002,718280|0x1.f55bf0995aaf8p+9|1,002720e3|-1003,1415|-1003,141500|-0x1.f5921cac08312p+9|-1,003140e3|-       64|-64,000000|-   0x1p+6|-6,400000e1|+        0|+ 0,000000|+   0x0p+0|+0,000000e0|+       32|+32,000000|+   0x1p+5|+3,200000e1|+1002,71828|+1002,718280|+0x1.f55bf0995aaf8p+9|+1,002720e3|-1003,1415|-1003,141500|-0x1.f5921cac08312p+9|-1,003140e3|-64       |-64,000000|-0x1p+6   |-6,400000e1|+0        |+0,000000 |+0x0p+0   |+0,000000e0|+32       |+32,000000|+0x1p+5   |+3,200000e1|+1002,71828|+1002,718280|+0x1.f55bf0995aaf8p+9|+1,002720e3|-1003,1415|-1003,141500|-0x1.f5921cac08312p+9|-1,003140e3|       -64|-64,000000|   -0x1p+6|-6,400000e1|        +0| +0,000000|   +0x0p+0|+0,000000e0|       +32|+32,000000|   +0x1p+5|+3,200000e1|+1002,71828|+1002,718280|+0x1.f55bf0995aaf8p+9|+1,002720e3|-1003,1415|-1003,141500|-0x1.f5921cac08312p+9|-1,003140e3|-       64|-64,000000|-   0x1p+6|-6,400000e1|         0|  0,000000|0x    0p+0|0,000000e0|        32| 32,000000|0x    1p+5|3,200000e1|1002,71828|1002,718280|0x1.f55bf0995aaf8p+9|1,002720e3|-1003,1415|-1003,141500|-0x1.f5921cac08312p+9|-1,003140e3|-64       |-64,000000|-0x1p+6   |-6,400000e1|0         |0,000000  |0x0p+0    |0,000000e0|32        |32,000000 |0x1p+5    |3,200000e1|1002,71828|1002,718280|0x1.f55bf0995aaf8p+9|1,002720e3|-1003,1415|-1003,141500|-0x1.f5921cac08312p+9|-1,003140e3|       -64|-64,000000|   -0x1p+6|-6,400000e1|         0|  0,000000|    0x0p+0|0,000000e0|        32| 32,000000|    0x1p+5|3,200000e1|1002,71828|1002,718280|0x1.f55bf0995aaf8p+9|1,002720e3|\n"), de_out.str());
+      ASSERT_EQ(std::string("8|-1003.1415|-1003.141500|-0X1.F5921CAC08312P+9|-1.003140E3|-64|-64.000000|-0X1P+6|-6.400000E1|0|0.000000|0X0P+0|0.000000E0|32|32.000000|0X1P+5|3.200000E1|1002.71828|1002.718280|0X1.F55BF0995AAF8P+9|1.002720E3|-1003.1415|-1003.141500|-0x1.f5921cac08312p+9|-1.003140e3|-64.|-64.000000|-0x1.p+6|-6.400000e1|0.|0.000000|0x0.p+0|0.000000e0|32.|32.000000|0x1.p+5|3.200000e1|1002.71828|1002.718280|0x1.f55bf0995aaf8p+9|1.002720e3|-1003.1415|-1003.141500|-0x1.f5921cac08312p+9|-1.003140e3|-       64|-64.000000|-   0x1p+6|-6.400000e1|+        0|+ 0.000000|+   0x0p+0|+0.000000e0|+       32|+32.000000|+   0x1p+5|+3.200000e1|+1002.71828|+1002.718280|+0x1.f55bf0995aaf8p+9|+1.002720e3|-1003.1415|-1003.141500|-0x1.f5921cac08312p+9|-1.003140e3|-64       |-64.000000|-0x1p+6   |-6.400000e1|+0        |+0.000000 |+0x0p+0   |+0.000000e0|+32       |+32.000000|+0x1p+5   |+3.200000e1|+1002.71828|+1002.718280|+0x1.f55bf0995aaf8p+9|+1.002720e3|-1003.1415|-1003.141500|-0x1.f5921cac08312p+9|-1.003140e3|       -64|-64.000000|   -0x1p+6|-6.400000e1|        +0| +0.000000|   +0x0p+0|+0.000000e0|       +32|+32.000000|   +0x1p+5|+3.200000e1|+1002.71828|+1002.718280|+0x1.f55bf0995aaf8p+9|+1.002720e3|-1003.1415|-1003.141500|-0x1.f5921cac08312p+9|-1.003140e3|-       64|-64.000000|-   0x1p+6|-6.400000e1|         0|  0.000000|0x    0p+0|0.000000e0|        32| 32.000000|0x    1p+5|3.200000e1|1002.71828|1002.718280|0x1.f55bf0995aaf8p+9|1.002720e3|-1003.1415|-1003.141500|-0x1.f5921cac08312p+9|-1.003140e3|-64       |-64.000000|-0x1p+6   |-6.400000e1|0         |0.000000  |0x0p+0    |0.000000e0|32        |32.000000 |0x1p+5    |3.200000e1|1002.71828|1002.718280|0x1.f55bf0995aaf8p+9|1.002720e3|-1003.1415|-1003.141500|-0x1.f5921cac08312p+9|-1.003140e3|       -64|-64.000000|   -0x1p+6|-6.400000e1|         0|  0.000000|    0x0p+0|0.000000e0|        32| 32.000000|    0x1p+5|3.200000e1|1002.71828|1002.718280|0x1.f55bf0995aaf8p+9|1.002720e3|\n"), en_out.str());
+      ASSERT_EQ(std::string("8|-1003,1415|-1003,141500|-0X1.F5921CAC08312P+9|-1,003140E3|-64|-64,000000|-0X1P+6|-6,400000E1|0|0,000000|0X0P+0|0,000000E0|32|32,000000|0X1P+5|3,200000E1|1002,71828|1002,718280|0X1.F55BF0995AAF8P+9|1,002720E3|-1003,1415|-1003,141500|-0x1.f5921cac08312p+9|-1,003140e3|-64.|-64,000000|-0x1.p+6|-6,400000e1|0.|0,000000|0x0.p+0|0,000000e0|32.|32,000000|0x1.p+5|3,200000e1|1002,71828|1002,718280|0x1.f55bf0995aaf8p+9|1,002720e3|-1003,1415|-1003,141500|-0x1.f5921cac08312p+9|-1,003140e3|-       64|-64,000000|-   0x1p+6|-6,400000e1|+        0|+ 0,000000|+   0x0p+0|+0,000000e0|+       32|+32,000000|+   0x1p+5|+3,200000e1|+1002,71828|+1002,718280|+0x1.f55bf0995aaf8p+9|+1,002720e3|-1003,1415|-1003,141500|-0x1.f5921cac08312p+9|-1,003140e3|-64       |-64,000000|-0x1p+6   |-6,400000e1|+0        |+0,000000 |+0x0p+0   |+0,000000e0|+32       |+32,000000|+0x1p+5   |+3,200000e1|+1002,71828|+1002,718280|+0x1.f55bf0995aaf8p+9|+1,002720e3|-1003,1415|-1003,141500|-0x1.f5921cac08312p+9|-1,003140e3|       -64|-64,000000|   -0x1p+6|-6,400000e1|        +0| +0,000000|   +0x0p+0|+0,000000e0|       +32|+32,000000|   +0x1p+5|+3,200000e1|+1002,71828|+1002,718280|+0x1.f55bf0995aaf8p+9|+1,002720e3|-1003,1415|-1003,141500|-0x1.f5921cac08312p+9|-1,003140e3|-       64|-64,000000|-   0x1p+6|-6,400000e1|         0|  0,000000|0x    0p+0|0,000000e0|        32| 32,000000|0x    1p+5|3,200000e1|1002,71828|1002,718280|0x1.f55bf0995aaf8p+9|1,002720e3|-1003,1415|-1003,141500|-0x1.f5921cac08312p+9|-1,003140e3|-64       |-64,000000|-0x1p+6   |-6,400000e1|0         |0,000000  |0x0p+0    |0,000000e0|32        |32,000000 |0x1p+5    |3,200000e1|1002,71828|1002,718280|0x1.f55bf0995aaf8p+9|1,002720e3|-1003,1415|-1003,141500|-0x1.f5921cac08312p+9|-1,003140e3|       -64|-64,000000|   -0x1p+6|-6,400000e1|         0|  0,000000|    0x0p+0|0,000000e0|        32| 32,000000|    0x1p+5|3,200000e1|1002,71828|1002,718280|0x1.f55bf0995aaf8p+9|1,002720e3|\n"), ru_out.str());
+    }
   }
 
   // long double
   {
+    std::ostringstream c_out;
     std::ostringstream de_out;
     std::ostringstream en_out;
     std::ostringstream ru_out;
-    std::vector<std::ostringstream*> v = { &de_out, &en_out, &ru_out };
+    std::vector<std::ostringstream*> v = { &c_out, &de_out, &en_out, &ru_out };
 
+    c_out.imbue(c);
     de_out.imbue(de);
     en_out.imbue(en);
     ru_out.imbue(ru);
 
     for (auto out: v) {
-      *out << "|" << std::defaultfloat << std::dec << (long double)(-1003.1415)
-           << "|" << std::defaultfloat << std::hex << (long double)(-1003.1415)
-           << "|" << std::defaultfloat << std::oct << (long double)(-1003.1415)
-           << "|" << std::defaultfloat << std::dec << (long double)(0.)
-           << "|" << std::defaultfloat << std::hex << (long double)(0.)
-           << "|" << std::defaultfloat << std::oct << (long double)(0.)
-           << "|" << std::defaultfloat << std::dec << (long double)(1002.71828)
-           << "|" << std::defaultfloat << std::hex << (long double)(1002.71828)
-           << "|" << std::defaultfloat << std::oct << (long double)(1002.71828)
-           << "|" << std::fixed << std::dec << (long double)(-1003.1415)
-           << "|" << std::fixed << std::hex << (long double)(-1003.1415)
-           << "|" << std::fixed << std::oct << (long double)(-1003.1415)
-           << "|" << std::fixed << std::dec << (long double)(0.)
-           << "|" << std::fixed << std::hex << (long double)(0.)
-           << "|" << std::fixed << std::oct << (long double)(0.)
-           << "|" << std::fixed << std::dec << (long double)(1002.71828)
-           << "|" << std::fixed << std::hex << (long double)(1002.71828)
-           << "|" << std::fixed << std::oct << (long double)(1002.71828)
-           << "|" << std::hexfloat << std::dec << (long double)(-1003.1415)
-           << "|" << std::hexfloat << std::hex << (long double)(-1003.1415)
-           << "|" << std::hexfloat << std::oct << (long double)(-1003.1415)
-           << "|" << std::hexfloat << std::dec << (long double)(0.)
-           << "|" << std::hexfloat << std::hex << (long double)(0.)
-           << "|" << std::hexfloat << std::oct << (long double)(0.)
-           << "|" << std::hexfloat << std::dec << (long double)(1002.71828)
-           << "|" << std::hexfloat << std::hex << (long double)(1002.71828)
-           << "|" << std::hexfloat << std::oct << (long double)(1002.71828)
-           << "|" << std::scientific << std::dec << (long double)(-1003.1415)
-           << "|" << std::scientific << std::hex << (long double)(-1003.1415)
-           << "|" << std::scientific << std::oct << (long double)(-1003.1415)
-           << "|" << std::scientific << std::dec << (long double)(0.)
-           << "|" << std::scientific << std::hex << (long double)(0.)
-           << "|" << std::scientific << std::oct << (long double)(0.)
-           << "|" << std::scientific << std::dec << (long double)(1002.71828)
-           << "|" << std::scientific << std::hex << (long double)(1002.71828)
-           << "|" << std::scientific << std::oct << (long double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::internal << std::defaultfloat << std::dec << std::setw(10) << (long double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::internal << std::defaultfloat << std::hex << std::setw(10) << (long double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::internal << std::defaultfloat << std::oct << std::setw(10) << (long double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::internal << std::defaultfloat << std::dec << std::setw(10) << (long double)(0.)
-           << "|" << std::showbase << std::showpos << std::internal << std::defaultfloat << std::hex << std::setw(10) << (long double)(0.)
-           << "|" << std::showbase << std::showpos << std::internal << std::defaultfloat << std::oct << std::setw(10) << (long double)(0.)
-           << "|" << std::showbase << std::showpos << std::internal << std::defaultfloat << std::dec << std::setw(10) << (long double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::internal << std::defaultfloat << std::hex << std::setw(10) << (long double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::internal << std::defaultfloat << std::oct << std::setw(10) << (long double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::left << std::defaultfloat << std::dec << std::setw(10) << (long double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::left << std::defaultfloat << std::hex << std::setw(10) << (long double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::left << std::defaultfloat << std::oct << std::setw(10) << (long double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::left << std::defaultfloat << std::dec << std::setw(10) << (long double)(0.)
-           << "|" << std::showbase << std::showpos << std::left << std::defaultfloat << std::hex << std::setw(10) << (long double)(0.)
-           << "|" << std::showbase << std::showpos << std::left << std::defaultfloat << std::oct << std::setw(10) << (long double)(0.)
-           << "|" << std::showbase << std::showpos << std::left << std::defaultfloat << std::dec << std::setw(10) << (long double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::left << std::defaultfloat << std::hex << std::setw(10) << (long double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::left << std::defaultfloat << std::oct << std::setw(10) << (long double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::right << std::defaultfloat << std::dec << std::setw(10) << (long double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::right << std::defaultfloat << std::hex << std::setw(10) << (long double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::right << std::defaultfloat << std::oct << std::setw(10) << (long double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::right << std::defaultfloat << std::dec << std::setw(10) << (long double)(0.)
-           << "|" << std::showbase << std::showpos << std::right << std::defaultfloat << std::hex << std::setw(10) << (long double)(0.)
-           << "|" << std::showbase << std::showpos << std::right << std::defaultfloat << std::oct << std::setw(10) << (long double)(0.)
-           << "|" << std::showbase << std::showpos << std::right << std::defaultfloat << std::dec << std::setw(10) << (long double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::right << std::defaultfloat << std::hex << std::setw(10) << (long double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::right << std::defaultfloat << std::oct << std::setw(10) << (long double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::internal << std::fixed << std::dec << std::setw(10) << (long double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::internal << std::fixed << std::hex << std::setw(10) << (long double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::internal << std::fixed << std::oct << std::setw(10) << (long double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::internal << std::fixed << std::dec << std::setw(10) << (long double)(0.)
-           << "|" << std::showbase << std::showpos << std::internal << std::fixed << std::hex << std::setw(10) << (long double)(0.)
-           << "|" << std::showbase << std::showpos << std::internal << std::fixed << std::oct << std::setw(10) << (long double)(0.)
-           << "|" << std::showbase << std::showpos << std::internal << std::fixed << std::dec << std::setw(10) << (long double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::internal << std::fixed << std::hex << std::setw(10) << (long double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::internal << std::fixed << std::oct << std::setw(10) << (long double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::left << std::fixed << std::dec << std::setw(10) << (long double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::left << std::fixed << std::hex << std::setw(10) << (long double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::left << std::fixed << std::oct << std::setw(10) << (long double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::left << std::fixed << std::dec << std::setw(10) << (long double)(0.)
-           << "|" << std::showbase << std::showpos << std::left << std::fixed << std::hex << std::setw(10) << (long double)(0.)
-           << "|" << std::showbase << std::showpos << std::left << std::fixed << std::oct << std::setw(10) << (long double)(0.)
-           << "|" << std::showbase << std::showpos << std::left << std::fixed << std::dec << std::setw(10) << (long double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::left << std::fixed << std::hex << std::setw(10) << (long double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::left << std::fixed << std::oct << std::setw(10) << (long double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::right << std::fixed << std::dec << std::setw(10) << (long double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::right << std::fixed << std::hex << std::setw(10) << (long double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::right << std::fixed << std::oct << std::setw(10) << (long double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::right << std::fixed << std::dec << std::setw(10) << (long double)(0.)
-           << "|" << std::showbase << std::showpos << std::right << std::fixed << std::hex << std::setw(10) << (long double)(0.)
-           << "|" << std::showbase << std::showpos << std::right << std::fixed << std::oct << std::setw(10) << (long double)(0.)
-           << "|" << std::showbase << std::showpos << std::right << std::fixed << std::dec << std::setw(10) << (long double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::right << std::fixed << std::hex << std::setw(10) << (long double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::right << std::fixed << std::oct << std::setw(10) << (long double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::internal << std::hexfloat << std::dec << std::setw(10) << (long double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::internal << std::hexfloat << std::hex << std::setw(10) << (long double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::internal << std::hexfloat << std::oct << std::setw(10) << (long double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::internal << std::hexfloat << std::dec << std::setw(10) << (long double)(0.)
-           << "|" << std::showbase << std::showpos << std::internal << std::hexfloat << std::hex << std::setw(10) << (long double)(0.)
-           << "|" << std::showbase << std::showpos << std::internal << std::hexfloat << std::oct << std::setw(10) << (long double)(0.)
-           << "|" << std::showbase << std::showpos << std::internal << std::hexfloat << std::dec << std::setw(10) << (long double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::internal << std::hexfloat << std::hex << std::setw(10) << (long double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::internal << std::hexfloat << std::oct << std::setw(10) << (long double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::left << std::hexfloat << std::dec << std::setw(10) << (long double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::left << std::hexfloat << std::hex << std::setw(10) << (long double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::left << std::hexfloat << std::oct << std::setw(10) << (long double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::left << std::hexfloat << std::dec << std::setw(10) << (long double)(0.)
-           << "|" << std::showbase << std::showpos << std::left << std::hexfloat << std::hex << std::setw(10) << (long double)(0.)
-           << "|" << std::showbase << std::showpos << std::left << std::hexfloat << std::oct << std::setw(10) << (long double)(0.)
-           << "|" << std::showbase << std::showpos << std::left << std::hexfloat << std::dec << std::setw(10) << (long double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::left << std::hexfloat << std::hex << std::setw(10) << (long double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::left << std::hexfloat << std::oct << std::setw(10) << (long double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::right << std::hexfloat << std::dec << std::setw(10) << (long double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::right << std::hexfloat << std::hex << std::setw(10) << (long double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::right << std::hexfloat << std::oct << std::setw(10) << (long double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::right << std::hexfloat << std::dec << std::setw(10) << (long double)(0.)
-           << "|" << std::showbase << std::showpos << std::right << std::hexfloat << std::hex << std::setw(10) << (long double)(0.)
-           << "|" << std::showbase << std::showpos << std::right << std::hexfloat << std::oct << std::setw(10) << (long double)(0.)
-           << "|" << std::showbase << std::showpos << std::right << std::hexfloat << std::dec << std::setw(10) << (long double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::right << std::hexfloat << std::hex << std::setw(10) << (long double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::right << std::hexfloat << std::oct << std::setw(10) << (long double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::internal << std::scientific << std::dec << std::setw(10) << (long double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::internal << std::scientific << std::hex << std::setw(10) << (long double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::internal << std::scientific << std::oct << std::setw(10) << (long double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::internal << std::scientific << std::dec << std::setw(10) << (long double)(0.)
-           << "|" << std::showbase << std::showpos << std::internal << std::scientific << std::hex << std::setw(10) << (long double)(0.)
-           << "|" << std::showbase << std::showpos << std::internal << std::scientific << std::oct << std::setw(10) << (long double)(0.)
-           << "|" << std::showbase << std::showpos << std::internal << std::scientific << std::dec << std::setw(10) << (long double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::internal << std::scientific << std::hex << std::setw(10) << (long double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::internal << std::scientific << std::oct << std::setw(10) << (long double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::left << std::scientific << std::dec << std::setw(10) << (long double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::left << std::scientific << std::hex << std::setw(10) << (long double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::left << std::scientific << std::oct << std::setw(10) << (long double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::left << std::scientific << std::dec << std::setw(10) << (long double)(0.)
-           << "|" << std::showbase << std::showpos << std::left << std::scientific << std::hex << std::setw(10) << (long double)(0.)
-           << "|" << std::showbase << std::showpos << std::left << std::scientific << std::oct << std::setw(10) << (long double)(0.)
-           << "|" << std::showbase << std::showpos << std::left << std::scientific << std::dec << std::setw(10) << (long double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::left << std::scientific << std::hex << std::setw(10) << (long double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::left << std::scientific << std::oct << std::setw(10) << (long double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::right << std::scientific << std::dec << std::setw(10) << (long double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::right << std::scientific << std::hex << std::setw(10) << (long double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::right << std::scientific << std::oct << std::setw(10) << (long double)(-1003.1415)
-           << "|" << std::showbase << std::showpos << std::right << std::scientific << std::dec << std::setw(10) << (long double)(0.)
-           << "|" << std::showbase << std::showpos << std::right << std::scientific << std::hex << std::setw(10) << (long double)(0.)
-           << "|" << std::showbase << std::showpos << std::right << std::scientific << std::oct << std::setw(10) << (long double)(0.)
-           << "|" << std::showbase << std::showpos << std::right << std::scientific << std::dec << std::setw(10) << (long double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::right << std::scientific << std::hex << std::setw(10) << (long double)(1002.71828)
-           << "|" << std::showbase << std::showpos << std::right << std::scientific << std::oct << std::setw(10) << (long double)(1002.71828)
+      *out << "|" << std::defaultfloat << std::uppercase << std::noshowpoint << (long double)(-1003.1415)
+           << "|" << std::fixed        << std::uppercase << std::noshowpoint << (long double)(-1003.1415)
+           << "|" << std::hexfloat     << std::uppercase << std::noshowpoint << (long double)(-1003.1415)
+           << "|" << std::scientific   << std::uppercase << std::noshowpoint << (long double)(-1003.1415)
+           << "|" << std::defaultfloat << std::uppercase << std::noshowpoint << (long double)(-64.) // power of 2
+           << "|" << std::fixed        << std::uppercase << std::noshowpoint << (long double)(-64.) // power of 2
+           << "|" << std::hexfloat     << std::uppercase << std::noshowpoint << (long double)(-64.) // power of 2
+           << "|" << std::scientific   << std::uppercase << std::noshowpoint << (long double)(-64.) // power of 2
+           << "|" << std::defaultfloat << std::uppercase << std::noshowpoint << (long double)(0.)
+           << "|" << std::fixed        << std::uppercase << std::noshowpoint << (long double)(0.)
+           << "|" << std::hexfloat     << std::uppercase << std::noshowpoint << (long double)(0.)
+           << "|" << std::scientific   << std::uppercase << std::noshowpoint << (long double)(0.)
+           << "|" << std::defaultfloat << std::uppercase << std::noshowpoint << (long double)(32.) // power of 2
+           << "|" << std::fixed        << std::uppercase << std::noshowpoint << (long double)(32.) // power of 2
+           << "|" << std::hexfloat     << std::uppercase << std::noshowpoint << (long double)(32.) // power of 2
+           << "|" << std::scientific   << std::uppercase << std::noshowpoint << (long double)(32.) // power of 2
+           << "|" << std::defaultfloat << std::uppercase << std::noshowpoint << (long double)(1002.71828)
+           << "|" << std::fixed        << std::uppercase << std::noshowpoint << (long double)(1002.71828)
+           << "|" << std::hexfloat     << std::uppercase << std::noshowpoint << (long double)(1002.71828)
+           << "|" << std::scientific   << std::uppercase << std::noshowpoint << (long double)(1002.71828)
+           << "|" << std::defaultfloat << std::nouppercase << std::showpoint << (long double)(-1003.1415)
+           << "|" << std::fixed        << std::nouppercase << std::showpoint << (long double)(-1003.1415)
+           << "|" << std::hexfloat     << std::nouppercase << std::showpoint << (long double)(-1003.1415)
+           << "|" << std::scientific   << std::nouppercase << std::showpoint << (long double)(-1003.1415)
+           << "|" << std::defaultfloat << std::nouppercase << std::showpoint << (long double)(-64.) // power of 2
+           << "|" << std::fixed        << std::nouppercase << std::showpoint << (long double)(-64.) // power of 2
+           << "|" << std::hexfloat     << std::nouppercase << std::showpoint << (long double)(-64.) // power of 2
+           << "|" << std::scientific   << std::nouppercase << std::showpoint << (long double)(-64.) // power of 2
+           << "|" << std::defaultfloat << std::nouppercase << std::showpoint << (long double)(0.)
+           << "|" << std::fixed        << std::nouppercase << std::showpoint << (long double)(0.)
+           << "|" << std::hexfloat     << std::nouppercase << std::showpoint << (long double)(0.)
+           << "|" << std::scientific   << std::nouppercase << std::showpoint << (long double)(0.)
+           << "|" << std::defaultfloat << std::nouppercase << std::showpoint << (long double)(32.) // power of 2
+           << "|" << std::fixed        << std::nouppercase << std::showpoint << (long double)(32.) // power of 2
+           << "|" << std::hexfloat     << std::nouppercase << std::showpoint << (long double)(32.) // power of 2
+           << "|" << std::scientific   << std::nouppercase << std::showpoint << (long double)(32.) // power of 2
+           << "|" << std::defaultfloat << std::nouppercase << std::showpoint << (long double)(1002.71828)
+           << "|" << std::fixed        << std::nouppercase << std::showpoint << (long double)(1002.71828)
+           << "|" << std::hexfloat     << std::nouppercase << std::showpoint << (long double)(1002.71828)
+           << "|" << std::scientific   << std::nouppercase << std::showpoint << (long double)(1002.71828)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::defaultfloat << std::dec << std::setw(10) << (long double)(-1003.1415)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::fixed        << std::hex << std::setw(10) << (long double)(-1003.1415)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::hexfloat     << std::oct << std::setw(10) << (long double)(-1003.1415)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::scientific   << std::oct << std::setw(10) << (long double)(-1003.1415)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::defaultfloat << std::dec << std::setw(10) << (long double)(-64.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::fixed        << std::dec << std::setw(10) << (long double)(-64.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::hexfloat     << std::hex << std::setw(10) << (long double)(-64.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::scientific   << std::oct << std::setw(10) << (long double)(-64.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::defaultfloat << std::dec << std::setw(10) << (long double)(0.)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::fixed        << std::dec << std::setw(10) << (long double)(0.)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::hexfloat     << std::hex << std::setw(10) << (long double)(0.)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::scientific   << std::oct << std::setw(10) << (long double)(0.)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::defaultfloat << std::dec << std::setw(10) << (long double)(32.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::fixed        << std::dec << std::setw(10) << (long double)(32.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::hexfloat     << std::hex << std::setw(10) << (long double)(32.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::scientific   << std::oct << std::setw(10) << (long double)(32.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::defaultfloat << std::dec << std::setw(10) << (long double)(1002.71828)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::fixed        << std::dec << std::setw(10) << (long double)(1002.71828)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::hexfloat     << std::hex << std::setw(10) << (long double)(1002.71828)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::internal << std::scientific   << std::oct << std::setw(10) << (long double)(1002.71828)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::defaultfloat << std::dec << std::setw(10) << (long double)(-1003.1415)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::fixed        << std::hex << std::setw(10) << (long double)(-1003.1415)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::hexfloat     << std::oct << std::setw(10) << (long double)(-1003.1415)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::scientific   << std::oct << std::setw(10) << (long double)(-1003.1415)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::defaultfloat << std::dec << std::setw(10) << (long double)(-64.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::fixed        << std::dec << std::setw(10) << (long double)(-64.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::hexfloat     << std::hex << std::setw(10) << (long double)(-64.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::scientific   << std::oct << std::setw(10) << (long double)(-64.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::defaultfloat << std::dec << std::setw(10) << (long double)(0.)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::fixed        << std::dec << std::setw(10) << (long double)(0.)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::hexfloat     << std::hex << std::setw(10) << (long double)(0.)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::scientific   << std::oct << std::setw(10) << (long double)(0.)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::defaultfloat << std::dec << std::setw(10) << (long double)(32.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::fixed        << std::dec << std::setw(10) << (long double)(32.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::hexfloat     << std::hex << std::setw(10) << (long double)(32.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::scientific   << std::oct << std::setw(10) << (long double)(32.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::defaultfloat << std::dec << std::setw(10) << (long double)(1002.71828)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::fixed        << std::dec << std::setw(10) << (long double)(1002.71828)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::hexfloat     << std::hex << std::setw(10) << (long double)(1002.71828)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::left << std::scientific   << std::oct << std::setw(10) << (long double)(1002.71828)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::defaultfloat << std::dec << std::setw(10) << (long double)(-1003.1415)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::fixed        << std::hex << std::setw(10) << (long double)(-1003.1415)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::hexfloat     << std::oct << std::setw(10) << (long double)(-1003.1415)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::scientific   << std::oct << std::setw(10) << (long double)(-1003.1415)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::defaultfloat << std::dec << std::setw(10) << (long double)(-64.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::fixed        << std::dec << std::setw(10) << (long double)(-64.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::hexfloat     << std::hex << std::setw(10) << (long double)(-64.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::scientific   << std::oct << std::setw(10) << (long double)(-64.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::defaultfloat << std::dec << std::setw(10) << (long double)(0.)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::fixed        << std::dec << std::setw(10) << (long double)(0.)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::hexfloat     << std::hex << std::setw(10) << (long double)(0.)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::scientific   << std::oct << std::setw(10) << (long double)(0.)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::defaultfloat << std::dec << std::setw(10) << (long double)(32.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::fixed        << std::dec << std::setw(10) << (long double)(32.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::hexfloat     << std::hex << std::setw(10) << (long double)(32.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::scientific   << std::oct << std::setw(10) << (long double)(32.) // power of 2
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::defaultfloat << std::dec << std::setw(10) << (long double)(1002.71828)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::fixed        << std::dec << std::setw(10) << (long double)(1002.71828)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::hexfloat     << std::hex << std::setw(10) << (long double)(1002.71828)
+           << "|" << std::showbase << std::showpos << std::noshowpoint << std::right << std::scientific   << std::oct << std::setw(10) << (long double)(1002.71828)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::defaultfloat << std::dec << std::setw(10) << (long double)(-1003.1415)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::fixed        << std::hex << std::setw(10) << (long double)(-1003.1415)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::hexfloat     << std::oct << std::setw(10) << (long double)(-1003.1415)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::scientific   << std::oct << std::setw(10) << (long double)(-1003.1415)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::defaultfloat << std::dec << std::setw(10) << (long double)(-64.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::fixed        << std::dec << std::setw(10) << (long double)(-64.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::hexfloat     << std::hex << std::setw(10) << (long double)(-64.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::scientific   << std::oct << std::setw(10) << (long double)(-64.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::defaultfloat << std::dec << std::setw(10) << (long double)(0.)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::fixed        << std::dec << std::setw(10) << (long double)(0.)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::hexfloat     << std::hex << std::setw(10) << (long double)(0.)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::scientific   << std::oct << std::setw(10) << (long double)(0.)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::defaultfloat << std::dec << std::setw(10) << (long double)(32.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::fixed        << std::dec << std::setw(10) << (long double)(32.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::hexfloat     << std::hex << std::setw(10) << (long double)(32.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::scientific   << std::oct << std::setw(10) << (long double)(32.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::defaultfloat << std::dec << std::setw(10) << (long double)(1002.71828)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::fixed        << std::dec << std::setw(10) << (long double)(1002.71828)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::hexfloat     << std::hex << std::setw(10) << (long double)(1002.71828)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::internal << std::scientific   << std::oct << std::setw(10) << (long double)(1002.71828)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::defaultfloat << std::dec << std::setw(10) << (long double)(-1003.1415)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::fixed        << std::hex << std::setw(10) << (long double)(-1003.1415)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::hexfloat     << std::oct << std::setw(10) << (long double)(-1003.1415)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::scientific   << std::oct << std::setw(10) << (long double)(-1003.1415)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::defaultfloat << std::dec << std::setw(10) << (long double)(-64.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::fixed        << std::dec << std::setw(10) << (long double)(-64.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::hexfloat     << std::hex << std::setw(10) << (long double)(-64.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::scientific   << std::oct << std::setw(10) << (long double)(-64.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::defaultfloat << std::dec << std::setw(10) << (long double)(0.)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::fixed        << std::dec << std::setw(10) << (long double)(0.)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::hexfloat     << std::hex << std::setw(10) << (long double)(0.)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::scientific   << std::oct << std::setw(10) << (long double)(0.)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::defaultfloat << std::dec << std::setw(10) << (long double)(32.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::fixed        << std::dec << std::setw(10) << (long double)(32.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::hexfloat     << std::hex << std::setw(10) << (long double)(32.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::scientific   << std::oct << std::setw(10) << (long double)(32.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::defaultfloat << std::dec << std::setw(10) << (long double)(1002.71828)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::fixed        << std::dec << std::setw(10) << (long double)(1002.71828)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::hexfloat     << std::hex << std::setw(10) << (long double)(1002.71828)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::left << std::scientific   << std::oct << std::setw(10) << (long double)(1002.71828)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::defaultfloat << std::dec << std::setw(10) << (long double)(-1003.1415)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::fixed        << std::hex << std::setw(10) << (long double)(-1003.1415)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::hexfloat     << std::oct << std::setw(10) << (long double)(-1003.1415)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::scientific   << std::oct << std::setw(10) << (long double)(-1003.1415)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::defaultfloat << std::dec << std::setw(10) << (long double)(-64.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::fixed        << std::dec << std::setw(10) << (long double)(-64.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::hexfloat     << std::hex << std::setw(10) << (long double)(-64.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::scientific   << std::oct << std::setw(10) << (long double)(-64.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::defaultfloat << std::dec << std::setw(10) << (long double)(0.)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::fixed        << std::dec << std::setw(10) << (long double)(0.)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::hexfloat     << std::hex << std::setw(10) << (long double)(0.)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::scientific   << std::oct << std::setw(10) << (long double)(0.)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::defaultfloat << std::dec << std::setw(10) << (long double)(32.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::fixed        << std::dec << std::setw(10) << (long double)(32.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::hexfloat     << std::hex << std::setw(10) << (long double)(32.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::scientific   << std::oct << std::setw(10) << (long double)(32.) // power of 2
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::defaultfloat << std::dec << std::setw(10) << (long double)(1002.71828)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::fixed        << std::dec << std::setw(10) << (long double)(1002.71828)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::hexfloat     << std::hex << std::setw(10) << (long double)(1002.71828)
+           << "|" << std::showbase << std::noshowpos << std::noshowpoint << std::right << std::scientific   << std::oct << std::setw(10) << (long double)(1002.71828)
            << "|" << std::endl;
     }
 
-    // Boost on MSVC uses different values
-    // FIXME TODO remove MSVC case once Boost is no longer used
-    #if defined(_MSC_VER) && _MSC_VER < 1900
-      ASSERT_EQ(std::string("|-1003.14|-1003.14|-1003.14|0|0|0|1002.72|1002.72|1002.72|-1003.141500|-1003.141500|-1003.141500|0.000000|0.000000|0.000000|1002.718280|1002.718280|1002.718280|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|0x0.000000p+0|0x0.000000p+0|0x0.000000p+0|0x1.f55bf1p+9|0x1.f55bf1p+9|0x1.f55bf1p+9|-1.003142e+003|-1.003142e+003|-1.003142e+003|0.000000e+000|0.000000e+000|0.000000e+000|1.002718e+003|1.002718e+003|1.002718e+003|-  1003.14|-  1003.14|-  1003.14|+        0|+        0|+        0|+  1002.72|+  1002.72|+  1002.72|-1003.14  |-1003.14  |-1003.14  |+0        |+0        |+0        |+1002.72  |+1002.72  |+1002.72  |  -1003.14|  -1003.14|  -1003.14|        +0|        +0|        +0|  +1002.72|  +1002.72|  +1002.72|-1003.141500|-1003.141500|-1003.141500|+ 0.000000|+ 0.000000|+ 0.000000|+1002.718280|+1002.718280|+1002.718280|-1003.141500|-1003.141500|-1003.141500|+0.000000 |+0.000000 |+0.000000 |+1002.718280|+1002.718280|+1002.718280|-1003.141500|-1003.141500|-1003.141500| +0.000000| +0.000000| +0.000000|+1002.718280|+1002.718280|+1002.718280|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|+0x0.000000p+0|+0x0.000000p+0|+0x0.000000p+0|+0x1.f55bf1p+9|+0x1.f55bf1p+9|+0x1.f55bf1p+9|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|+0x0.000000p+0|+0x0.000000p+0|+0x0.000000p+0|+0x1.f55bf1p+9|+0x1.f55bf1p+9|+0x1.f55bf1p+9|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|+0x0.000000p+0|+0x0.000000p+0|+0x0.000000p+0|+0x1.f55bf1p+9|+0x1.f55bf1p+9|+0x1.f55bf1p+9|-1.003142e+003|-1.003142e+003|-1.003142e+003|+0.000000e+000|+0.000000e+000|+0.000000e+000|+1.002718e+003|+1.002718e+003|+1.002718e+003|-1.003142e+003|-1.003142e+003|-1.003142e+003|+0.000000e+000|+0.000000e+000|+0.000000e+000|+1.002718e+003|+1.002718e+003|+1.002718e+003|-1.003142e+003|-1.003142e+003|-1.003142e+003|+0.000000e+000|+0.000000e+000|+0.000000e+000|+1.002718e+003|+1.002718e+003|+1.002718e+003|\n"), de_out.str());
-      ASSERT_EQ(std::string("|-1003.14|-1003.14|-1003.14|0|0|0|1002.72|1002.72|1002.72|-1003.141500|-1003.141500|-1003.141500|0.000000|0.000000|0.000000|1002.718280|1002.718280|1002.718280|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|0x0.000000p+0|0x0.000000p+0|0x0.000000p+0|0x1.f55bf1p+9|0x1.f55bf1p+9|0x1.f55bf1p+9|-1.003142e+003|-1.003142e+003|-1.003142e+003|0.000000e+000|0.000000e+000|0.000000e+000|1.002718e+003|1.002718e+003|1.002718e+003|-  1003.14|-  1003.14|-  1003.14|+        0|+        0|+        0|+  1002.72|+  1002.72|+  1002.72|-1003.14  |-1003.14  |-1003.14  |+0        |+0        |+0        |+1002.72  |+1002.72  |+1002.72  |  -1003.14|  -1003.14|  -1003.14|        +0|        +0|        +0|  +1002.72|  +1002.72|  +1002.72|-1003.141500|-1003.141500|-1003.141500|+ 0.000000|+ 0.000000|+ 0.000000|+1002.718280|+1002.718280|+1002.718280|-1003.141500|-1003.141500|-1003.141500|+0.000000 |+0.000000 |+0.000000 |+1002.718280|+1002.718280|+1002.718280|-1003.141500|-1003.141500|-1003.141500| +0.000000| +0.000000| +0.000000|+1002.718280|+1002.718280|+1002.718280|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|+0x0.000000p+0|+0x0.000000p+0|+0x0.000000p+0|+0x1.f55bf1p+9|+0x1.f55bf1p+9|+0x1.f55bf1p+9|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|+0x0.000000p+0|+0x0.000000p+0|+0x0.000000p+0|+0x1.f55bf1p+9|+0x1.f55bf1p+9|+0x1.f55bf1p+9|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|+0x0.000000p+0|+0x0.000000p+0|+0x0.000000p+0|+0x1.f55bf1p+9|+0x1.f55bf1p+9|+0x1.f55bf1p+9|-1.003142e+003|-1.003142e+003|-1.003142e+003|+0.000000e+000|+0.000000e+000|+0.000000e+000|+1.002718e+003|+1.002718e+003|+1.002718e+003|-1.003142e+003|-1.003142e+003|-1.003142e+003|+0.000000e+000|+0.000000e+000|+0.000000e+000|+1.002718e+003|+1.002718e+003|+1.002718e+003|-1.003142e+003|-1.003142e+003|-1.003142e+003|+0.000000e+000|+0.000000e+000|+0.000000e+000|+1.002718e+003|+1.002718e+003|+1.002718e+003|\n"), en_out.str());
-      ASSERT_EQ(std::string("|-1003.14|-1003.14|-1003.14|0|0|0|1002.72|1002.72|1002.72|-1003.141500|-1003.141500|-1003.141500|0.000000|0.000000|0.000000|1002.718280|1002.718280|1002.718280|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|0x0.000000p+0|0x0.000000p+0|0x0.000000p+0|0x1.f55bf1p+9|0x1.f55bf1p+9|0x1.f55bf1p+9|-1.003142e+003|-1.003142e+003|-1.003142e+003|0.000000e+000|0.000000e+000|0.000000e+000|1.002718e+003|1.002718e+003|1.002718e+003|-  1003.14|-  1003.14|-  1003.14|+        0|+        0|+        0|+  1002.72|+  1002.72|+  1002.72|-1003.14  |-1003.14  |-1003.14  |+0        |+0        |+0        |+1002.72  |+1002.72  |+1002.72  |  -1003.14|  -1003.14|  -1003.14|        +0|        +0|        +0|  +1002.72|  +1002.72|  +1002.72|-1003.141500|-1003.141500|-1003.141500|+ 0.000000|+ 0.000000|+ 0.000000|+1002.718280|+1002.718280|+1002.718280|-1003.141500|-1003.141500|-1003.141500|+0.000000 |+0.000000 |+0.000000 |+1002.718280|+1002.718280|+1002.718280|-1003.141500|-1003.141500|-1003.141500| +0.000000| +0.000000| +0.000000|+1002.718280|+1002.718280|+1002.718280|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|+0x0.000000p+0|+0x0.000000p+0|+0x0.000000p+0|+0x1.f55bf1p+9|+0x1.f55bf1p+9|+0x1.f55bf1p+9|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|+0x0.000000p+0|+0x0.000000p+0|+0x0.000000p+0|+0x1.f55bf1p+9|+0x1.f55bf1p+9|+0x1.f55bf1p+9|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|+0x0.000000p+0|+0x0.000000p+0|+0x0.000000p+0|+0x1.f55bf1p+9|+0x1.f55bf1p+9|+0x1.f55bf1p+9|-1.003142e+003|-1.003142e+003|-1.003142e+003|+0.000000e+000|+0.000000e+000|+0.000000e+000|+1.002718e+003|+1.002718e+003|+1.002718e+003|-1.003142e+003|-1.003142e+003|-1.003142e+003|+0.000000e+000|+0.000000e+000|+0.000000e+000|+1.002718e+003|+1.002718e+003|+1.002718e+003|-1.003142e+003|-1.003142e+003|-1.003142e+003|+0.000000e+000|+0.000000e+000|+0.000000e+000|+1.002718e+003|+1.002718e+003|+1.002718e+003|\n"), ru_out.str());
-    #elif defined(_MSC_VER)
-      ASSERT_EQ(std::string("|-1003.14|-1003.14|-1003.14|0|0|0|1002.72|1002.72|1002.72|-1003.141500|-1003.141500|-1003.141500|0.000000|0.000000|0.000000|1002.718280|1002.718280|1002.718280|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|0x0.000000p+0|0x0.000000p+0|0x0.000000p+0|0x1.f55bf1p+9|0x1.f55bf1p+9|0x1.f55bf1p+9|-1.003141e+03|-1.003141e+03|-1.003141e+03|0.000000e+00|0.000000e+00|0.000000e+00|1.002718e+03|1.002718e+03|1.002718e+03|-  1003.14|-  1003.14|-  1003.14|+        0|+        0|+        0|+  1002.72|+  1002.72|+  1002.72|-1003.14  |-1003.14  |-1003.14  |+0        |+0        |+0        |+1002.72  |+1002.72  |+1002.72  |  -1003.14|  -1003.14|  -1003.14|        +0|        +0|        +0|  +1002.72|  +1002.72|  +1002.72|-1003.141500|-1003.141500|-1003.141500|+ 0.000000|+ 0.000000|+ 0.000000|+1002.718280|+1002.718280|+1002.718280|-1003.141500|-1003.141500|-1003.141500|+0.000000 |+0.000000 |+0.000000 |+1002.718280|+1002.718280|+1002.718280|-1003.141500|-1003.141500|-1003.141500| +0.000000| +0.000000| +0.000000|+1002.718280|+1002.718280|+1002.718280|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|+0x0.000000p+0|+0x0.000000p+0|+0x0.000000p+0|+0x1.f55bf1p+9|+0x1.f55bf1p+9|+0x1.f55bf1p+9|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|+0x0.000000p+0|+0x0.000000p+0|+0x0.000000p+0|+0x1.f55bf1p+9|+0x1.f55bf1p+9|+0x1.f55bf1p+9|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|+0x0.000000p+0|+0x0.000000p+0|+0x0.000000p+0|+0x1.f55bf1p+9|+0x1.f55bf1p+9|+0x1.f55bf1p+9|-1.003141e+03|-1.003141e+03|-1.003141e+03|+0.000000e+00|+0.000000e+00|+0.000000e+00|+1.002718e+03|+1.002718e+03|+1.002718e+03|-1.003141e+03|-1.003141e+03|-1.003141e+03|+0.000000e+00|+0.000000e+00|+0.000000e+00|+1.002718e+03|+1.002718e+03|+1.002718e+03|-1.003141e+03|-1.003141e+03|-1.003141e+03|+0.000000e+00|+0.000000e+00|+0.000000e+00|+1.002718e+03|+1.002718e+03|+1.002718e+03|\n"), de_out.str());
-      ASSERT_EQ(std::string("|-1003.14|-1003.14|-1003.14|0|0|0|1002.72|1002.72|1002.72|-1003.141500|-1003.141500|-1003.141500|0.000000|0.000000|0.000000|1002.718280|1002.718280|1002.718280|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|0x0.000000p+0|0x0.000000p+0|0x0.000000p+0|0x1.f55bf1p+9|0x1.f55bf1p+9|0x1.f55bf1p+9|-1.003141e+03|-1.003141e+03|-1.003141e+03|0.000000e+00|0.000000e+00|0.000000e+00|1.002718e+03|1.002718e+03|1.002718e+03|-  1003.14|-  1003.14|-  1003.14|+        0|+        0|+        0|+  1002.72|+  1002.72|+  1002.72|-1003.14  |-1003.14  |-1003.14  |+0        |+0        |+0        |+1002.72  |+1002.72  |+1002.72  |  -1003.14|  -1003.14|  -1003.14|        +0|        +0|        +0|  +1002.72|  +1002.72|  +1002.72|-1003.141500|-1003.141500|-1003.141500|+ 0.000000|+ 0.000000|+ 0.000000|+1002.718280|+1002.718280|+1002.718280|-1003.141500|-1003.141500|-1003.141500|+0.000000 |+0.000000 |+0.000000 |+1002.718280|+1002.718280|+1002.718280|-1003.141500|-1003.141500|-1003.141500| +0.000000| +0.000000| +0.000000|+1002.718280|+1002.718280|+1002.718280|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|+0x0.000000p+0|+0x0.000000p+0|+0x0.000000p+0|+0x1.f55bf1p+9|+0x1.f55bf1p+9|+0x1.f55bf1p+9|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|+0x0.000000p+0|+0x0.000000p+0|+0x0.000000p+0|+0x1.f55bf1p+9|+0x1.f55bf1p+9|+0x1.f55bf1p+9|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|+0x0.000000p+0|+0x0.000000p+0|+0x0.000000p+0|+0x1.f55bf1p+9|+0x1.f55bf1p+9|+0x1.f55bf1p+9|-1.003141e+03|-1.003141e+03|-1.003141e+03|+0.000000e+00|+0.000000e+00|+0.000000e+00|+1.002718e+03|+1.002718e+03|+1.002718e+03|-1.003141e+03|-1.003141e+03|-1.003141e+03|+0.000000e+00|+0.000000e+00|+0.000000e+00|+1.002718e+03|+1.002718e+03|+1.002718e+03|-1.003141e+03|-1.003141e+03|-1.003141e+03|+0.000000e+00|+0.000000e+00|+0.000000e+00|+1.002718e+03|+1.002718e+03|+1.002718e+03|\n"), en_out.str());
-      ASSERT_EQ(std::string("|-1003.14|-1003.14|-1003.14|0|0|0|1002.72|1002.72|1002.72|-1003.141500|-1003.141500|-1003.141500|0.000000|0.000000|0.000000|1002.718280|1002.718280|1002.718280|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|0x0.000000p+0|0x0.000000p+0|0x0.000000p+0|0x1.f55bf1p+9|0x1.f55bf1p+9|0x1.f55bf1p+9|-1.003141e+03|-1.003141e+03|-1.003141e+03|0.000000e+00|0.000000e+00|0.000000e+00|1.002718e+03|1.002718e+03|1.002718e+03|-  1003.14|-  1003.14|-  1003.14|+        0|+        0|+        0|+  1002.72|+  1002.72|+  1002.72|-1003.14  |-1003.14  |-1003.14  |+0        |+0        |+0        |+1002.72  |+1002.72  |+1002.72  |  -1003.14|  -1003.14|  -1003.14|        +0|        +0|        +0|  +1002.72|  +1002.72|  +1002.72|-1003.141500|-1003.141500|-1003.141500|+ 0.000000|+ 0.000000|+ 0.000000|+1002.718280|+1002.718280|+1002.718280|-1003.141500|-1003.141500|-1003.141500|+0.000000 |+0.000000 |+0.000000 |+1002.718280|+1002.718280|+1002.718280|-1003.141500|-1003.141500|-1003.141500| +0.000000| +0.000000| +0.000000|+1002.718280|+1002.718280|+1002.718280|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|+0x0.000000p+0|+0x0.000000p+0|+0x0.000000p+0|+0x1.f55bf1p+9|+0x1.f55bf1p+9|+0x1.f55bf1p+9|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|+0x0.000000p+0|+0x0.000000p+0|+0x0.000000p+0|+0x1.f55bf1p+9|+0x1.f55bf1p+9|+0x1.f55bf1p+9|-0x1.f5921dp+9|-0x1.f5921dp+9|-0x1.f5921dp+9|+0x0.000000p+0|+0x0.000000p+0|+0x0.000000p+0|+0x1.f55bf1p+9|+0x1.f55bf1p+9|+0x1.f55bf1p+9|-1.003141e+03|-1.003141e+03|-1.003141e+03|+0.000000e+00|+0.000000e+00|+0.000000e+00|+1.002718e+03|+1.002718e+03|+1.002718e+03|-1.003141e+03|-1.003141e+03|-1.003141e+03|+0.000000e+00|+0.000000e+00|+0.000000e+00|+1.002718e+03|+1.002718e+03|+1.002718e+03|-1.003141e+03|-1.003141e+03|-1.003141e+03|+0.000000e+00|+0.000000e+00|+0.000000e+00|+1.002718e+03|+1.002718e+03|+1.002718e+03|\n"), ru_out.str());
-    #else
-      ASSERT_EQ(std::string("|-1003.14|-1003.14|-1003.14|0|0|0|1002.72|1002.72|1002.72|-1003.141500|-1003.141500|-1003.141500|0.000000|0.000000|0.000000|1002.718280|1002.718280|1002.718280|-0xf.ac90e5604189p+6|-0xf.ac90e5604189p+6|-0xf.ac90e5604189p+6|0x0p+0|0x0p+0|0x0p+0|0xf.aadf84cad57cp+6|0xf.aadf84cad57cp+6|0xf.aadf84cad57cp+6|-1.003141e+03|-1.003141e+03|-1.003141e+03|0.000000e+00|0.000000e+00|0.000000e+00|1.002718e+03|1.002718e+03|1.002718e+03|-  1003.14|-  1003.14|-  1003.14|+        0|+        0|+        0|+  1002.72|+  1002.72|+  1002.72|-1003.14  |-1003.14  |-1003.14  |+0        |+0        |+0        |+1002.72  |+1002.72  |+1002.72  |  -1003.14|  -1003.14|  -1003.14|        +0|        +0|        +0|  +1002.72|  +1002.72|  +1002.72|-1003.141500|-1003.141500|-1003.141500|+ 0.000000|+ 0.000000|+ 0.000000|+1002.718280|+1002.718280|+1002.718280|-1003.141500|-1003.141500|-1003.141500|+0.000000 |+0.000000 |+0.000000 |+1002.718280|+1002.718280|+1002.718280|-1003.141500|-1003.141500|-1003.141500| +0.000000| +0.000000| +0.000000|+1002.718280|+1002.718280|+1002.718280|-0xf.ac90e5604189p+6|-0xf.ac90e5604189p+6|-0xf.ac90e5604189p+6|+   0x0p+0|+   0x0p+0|+   0x0p+0|+0xf.aadf84cad57cp+6|+0xf.aadf84cad57cp+6|+0xf.aadf84cad57cp+6|-0xf.ac90e5604189p+6|-0xf.ac90e5604189p+6|-0xf.ac90e5604189p+6|+0x0p+0   |+0x0p+0   |+0x0p+0   |+0xf.aadf84cad57cp+6|+0xf.aadf84cad57cp+6|+0xf.aadf84cad57cp+6|-0xf.ac90e5604189p+6|-0xf.ac90e5604189p+6|-0xf.ac90e5604189p+6|   +0x0p+0|   +0x0p+0|   +0x0p+0|+0xf.aadf84cad57cp+6|+0xf.aadf84cad57cp+6|+0xf.aadf84cad57cp+6|-1.003141e+03|-1.003141e+03|-1.003141e+03|+0.000000e+00|+0.000000e+00|+0.000000e+00|+1.002718e+03|+1.002718e+03|+1.002718e+03|-1.003141e+03|-1.003141e+03|-1.003141e+03|+0.000000e+00|+0.000000e+00|+0.000000e+00|+1.002718e+03|+1.002718e+03|+1.002718e+03|-1.003141e+03|-1.003141e+03|-1.003141e+03|+0.000000e+00|+0.000000e+00|+0.000000e+00|+1.002718e+03|+1.002718e+03|+1.002718e+03|\n"), de_out.str());
-      ASSERT_EQ(std::string("|-1003.14|-1003.14|-1003.14|0|0|0|1002.72|1002.72|1002.72|-1003.141500|-1003.141500|-1003.141500|0.000000|0.000000|0.000000|1002.718280|1002.718280|1002.718280|-0xf.ac90e5604189p+6|-0xf.ac90e5604189p+6|-0xf.ac90e5604189p+6|0x0p+0|0x0p+0|0x0p+0|0xf.aadf84cad57cp+6|0xf.aadf84cad57cp+6|0xf.aadf84cad57cp+6|-1.003141e+03|-1.003141e+03|-1.003141e+03|0.000000e+00|0.000000e+00|0.000000e+00|1.002718e+03|1.002718e+03|1.002718e+03|-  1003.14|-  1003.14|-  1003.14|+        0|+        0|+        0|+  1002.72|+  1002.72|+  1002.72|-1003.14  |-1003.14  |-1003.14  |+0        |+0        |+0        |+1002.72  |+1002.72  |+1002.72  |  -1003.14|  -1003.14|  -1003.14|        +0|        +0|        +0|  +1002.72|  +1002.72|  +1002.72|-1003.141500|-1003.141500|-1003.141500|+ 0.000000|+ 0.000000|+ 0.000000|+1002.718280|+1002.718280|+1002.718280|-1003.141500|-1003.141500|-1003.141500|+0.000000 |+0.000000 |+0.000000 |+1002.718280|+1002.718280|+1002.718280|-1003.141500|-1003.141500|-1003.141500| +0.000000| +0.000000| +0.000000|+1002.718280|+1002.718280|+1002.718280|-0xf.ac90e5604189p+6|-0xf.ac90e5604189p+6|-0xf.ac90e5604189p+6|+   0x0p+0|+   0x0p+0|+   0x0p+0|+0xf.aadf84cad57cp+6|+0xf.aadf84cad57cp+6|+0xf.aadf84cad57cp+6|-0xf.ac90e5604189p+6|-0xf.ac90e5604189p+6|-0xf.ac90e5604189p+6|+0x0p+0   |+0x0p+0   |+0x0p+0   |+0xf.aadf84cad57cp+6|+0xf.aadf84cad57cp+6|+0xf.aadf84cad57cp+6|-0xf.ac90e5604189p+6|-0xf.ac90e5604189p+6|-0xf.ac90e5604189p+6|   +0x0p+0|   +0x0p+0|   +0x0p+0|+0xf.aadf84cad57cp+6|+0xf.aadf84cad57cp+6|+0xf.aadf84cad57cp+6|-1.003141e+03|-1.003141e+03|-1.003141e+03|+0.000000e+00|+0.000000e+00|+0.000000e+00|+1.002718e+03|+1.002718e+03|+1.002718e+03|-1.003141e+03|-1.003141e+03|-1.003141e+03|+0.000000e+00|+0.000000e+00|+0.000000e+00|+1.002718e+03|+1.002718e+03|+1.002718e+03|-1.003141e+03|-1.003141e+03|-1.003141e+03|+0.000000e+00|+0.000000e+00|+0.000000e+00|+1.002718e+03|+1.002718e+03|+1.002718e+03|\n"), en_out.str());
-      ASSERT_EQ(std::string("|-1003.14|-1003.14|-1003.14|0|0|0|1002.72|1002.72|1002.72|-1003.141500|-1003.141500|-1003.141500|0.000000|0.000000|0.000000|1002.718280|1002.718280|1002.718280|-0xf.ac90e5604189p+6|-0xf.ac90e5604189p+6|-0xf.ac90e5604189p+6|0x0p+0|0x0p+0|0x0p+0|0xf.aadf84cad57cp+6|0xf.aadf84cad57cp+6|0xf.aadf84cad57cp+6|-1.003141e+03|-1.003141e+03|-1.003141e+03|0.000000e+00|0.000000e+00|0.000000e+00|1.002718e+03|1.002718e+03|1.002718e+03|-  1003.14|-  1003.14|-  1003.14|+        0|+        0|+        0|+  1002.72|+  1002.72|+  1002.72|-1003.14  |-1003.14  |-1003.14  |+0        |+0        |+0        |+1002.72  |+1002.72  |+1002.72  |  -1003.14|  -1003.14|  -1003.14|        +0|        +0|        +0|  +1002.72|  +1002.72|  +1002.72|-1003.141500|-1003.141500|-1003.141500|+ 0.000000|+ 0.000000|+ 0.000000|+1002.718280|+1002.718280|+1002.718280|-1003.141500|-1003.141500|-1003.141500|+0.000000 |+0.000000 |+0.000000 |+1002.718280|+1002.718280|+1002.718280|-1003.141500|-1003.141500|-1003.141500| +0.000000| +0.000000| +0.000000|+1002.718280|+1002.718280|+1002.718280|-0xf.ac90e5604189p+6|-0xf.ac90e5604189p+6|-0xf.ac90e5604189p+6|+   0x0p+0|+   0x0p+0|+   0x0p+0|+0xf.aadf84cad57cp+6|+0xf.aadf84cad57cp+6|+0xf.aadf84cad57cp+6|-0xf.ac90e5604189p+6|-0xf.ac90e5604189p+6|-0xf.ac90e5604189p+6|+0x0p+0   |+0x0p+0   |+0x0p+0   |+0xf.aadf84cad57cp+6|+0xf.aadf84cad57cp+6|+0xf.aadf84cad57cp+6|-0xf.ac90e5604189p+6|-0xf.ac90e5604189p+6|-0xf.ac90e5604189p+6|   +0x0p+0|   +0x0p+0|   +0x0p+0|+0xf.aadf84cad57cp+6|+0xf.aadf84cad57cp+6|+0xf.aadf84cad57cp+6|-1.003141e+03|-1.003141e+03|-1.003141e+03|+0.000000e+00|+0.000000e+00|+0.000000e+00|+1.002718e+03|+1.002718e+03|+1.002718e+03|-1.003141e+03|-1.003141e+03|-1.003141e+03|+0.000000e+00|+0.000000e+00|+0.000000e+00|+1.002718e+03|+1.002718e+03|+1.002718e+03|-1.003141e+03|-1.003141e+03|-1.003141e+03|+0.000000e+00|+0.000000e+00|+0.000000e+00|+1.002718e+03|+1.002718e+03|+1.002718e+03|\n"), ru_out.str());
-    #endif
+    ASSERT_EQ(std::string("|-1003.1415|-1003.141500|-0XF.AC90E5604189P+6|-1.003140E3|-64|-64.000000|-0X8P+3|-6.400000E1|0|0.000000|0X0P+0|0.000000E0|32|32.000000|0X8P+2|3.200000E1|1002.71828|1002.718280|0XF.AADF84CAD57CP+6|1.002720E3|-1003.1415|-1003.141500|-0xf.ac90e5604189p+6|-1.003140e3|-64.|-64.000000|-0x8.p+3|-6.400000e1|0.|0.000000|0x0.p+0|0.000000e0|32.|32.000000|0x8.p+2|3.200000e1|1002.71828|1002.718280|0xf.aadf84cad57cp+6|1.002720e3|-1003.1415|-1003.141500|-0xf.ac90e5604189p+6|-1.003140e3|-       64|-64.000000|-   0x8p+3|-6.400000e1|+        0|+ 0.000000|+   0x0p+0|+0.000000e0|+       32|+32.000000|+   0x8p+2|+3.200000e1|+1002.71828|+1002.718280|+0xf.aadf84cad57cp+6|+1.002720e3|-1003.1415|-1003.141500|-0xf.ac90e5604189p+6|-1.003140e3|-64       |-64.000000|-0x8p+3   |-6.400000e1|+0        |+0.000000 |+0x0p+0   |+0.000000e0|+32       |+32.000000|+0x8p+2   |+3.200000e1|+1002.71828|+1002.718280|+0xf.aadf84cad57cp+6|+1.002720e3|-1003.1415|-1003.141500|-0xf.ac90e5604189p+6|-1.003140e3|       -64|-64.000000|   -0x8p+3|-6.400000e1|        +0| +0.000000|   +0x0p+0|+0.000000e0|       +32|+32.000000|   +0x8p+2|+3.200000e1|+1002.71828|+1002.718280|+0xf.aadf84cad57cp+6|+1.002720e3|-1003.1415|-1003.141500|-0xf.ac90e5604189p+6|-1.003140e3|-       64|-64.000000|-   0x8p+3|-6.400000e1|         0|  0.000000|0x    0p+0|0.000000e0|        32| 32.000000|0x    8p+2|3.200000e1|1002.71828|1002.718280|0xf.aadf84cad57cp+6|1.002720e3|-1003.1415|-1003.141500|-0xf.ac90e5604189p+6|-1.003140e3|-64       |-64.000000|-0x8p+3   |-6.400000e1|0         |0.000000  |0x0p+0    |0.000000e0|32        |32.000000 |0x8p+2    |3.200000e1|1002.71828|1002.718280|0xf.aadf84cad57cp+6|1.002720e3|-1003.1415|-1003.141500|-0xf.ac90e5604189p+6|-1.003140e3|       -64|-64.000000|   -0x8p+3|-6.400000e1|         0|  0.000000|    0x0p+0|0.000000e0|        32| 32.000000|    0x8p+2|3.200000e1|1002.71828|1002.718280|0xf.aadf84cad57cp+6|1.002720e3|\n"), c_out.str());
+    ASSERT_EQ(std::string("|-1003,1415|-1003,141500|-0XF.AC90E5604189P+6|-1,003140E3|-64|-64,000000|-0X8P+3|-6,400000E1|0|0,000000|0X0P+0|0,000000E0|32|32,000000|0X8P+2|3,200000E1|1002,71828|1002,718280|0XF.AADF84CAD57CP+6|1,002720E3|-1003,1415|-1003,141500|-0xf.ac90e5604189p+6|-1,003140e3|-64.|-64,000000|-0x8.p+3|-6,400000e1|0.|0,000000|0x0.p+0|0,000000e0|32.|32,000000|0x8.p+2|3,200000e1|1002,71828|1002,718280|0xf.aadf84cad57cp+6|1,002720e3|-1003,1415|-1003,141500|-0xf.ac90e5604189p+6|-1,003140e3|-       64|-64,000000|-   0x8p+3|-6,400000e1|+        0|+ 0,000000|+   0x0p+0|+0,000000e0|+       32|+32,000000|+   0x8p+2|+3,200000e1|+1002,71828|+1002,718280|+0xf.aadf84cad57cp+6|+1,002720e3|-1003,1415|-1003,141500|-0xf.ac90e5604189p+6|-1,003140e3|-64       |-64,000000|-0x8p+3   |-6,400000e1|+0        |+0,000000 |+0x0p+0   |+0,000000e0|+32       |+32,000000|+0x8p+2   |+3,200000e1|+1002,71828|+1002,718280|+0xf.aadf84cad57cp+6|+1,002720e3|-1003,1415|-1003,141500|-0xf.ac90e5604189p+6|-1,003140e3|       -64|-64,000000|   -0x8p+3|-6,400000e1|        +0| +0,000000|   +0x0p+0|+0,000000e0|       +32|+32,000000|   +0x8p+2|+3,200000e1|+1002,71828|+1002,718280|+0xf.aadf84cad57cp+6|+1,002720e3|-1003,1415|-1003,141500|-0xf.ac90e5604189p+6|-1,003140e3|-       64|-64,000000|-   0x8p+3|-6,400000e1|         0|  0,000000|0x    0p+0|0,000000e0|        32| 32,000000|0x    8p+2|3,200000e1|1002,71828|1002,718280|0xf.aadf84cad57cp+6|1,002720e3|-1003,1415|-1003,141500|-0xf.ac90e5604189p+6|-1,003140e3|-64       |-64,000000|-0x8p+3   |-6,400000e1|0         |0,000000  |0x0p+0    |0,000000e0|32        |32,000000 |0x8p+2    |3,200000e1|1002,71828|1002,718280|0xf.aadf84cad57cp+6|1,002720e3|-1003,1415|-1003,141500|-0xf.ac90e5604189p+6|-1,003140e3|       -64|-64,000000|   -0x8p+3|-6,400000e1|         0|  0,000000|    0x0p+0|0,000000e0|        32| 32,000000|    0x8p+2|3,200000e1|1002,71828|1002,718280|0xf.aadf84cad57cp+6|1,002720e3|\n"), de_out.str());
+    ASSERT_EQ(std::string("|-1003.1415|-1003.141500|-0XF.AC90E5604189P+6|-1.003140E3|-64|-64.000000|-0X8P+3|-6.400000E1|0|0.000000|0X0P+0|0.000000E0|32|32.000000|0X8P+2|3.200000E1|1002.71828|1002.718280|0XF.AADF84CAD57CP+6|1.002720E3|-1003.1415|-1003.141500|-0xf.ac90e5604189p+6|-1.003140e3|-64.|-64.000000|-0x8.p+3|-6.400000e1|0.|0.000000|0x0.p+0|0.000000e0|32.|32.000000|0x8.p+2|3.200000e1|1002.71828|1002.718280|0xf.aadf84cad57cp+6|1.002720e3|-1003.1415|-1003.141500|-0xf.ac90e5604189p+6|-1.003140e3|-       64|-64.000000|-   0x8p+3|-6.400000e1|+        0|+ 0.000000|+   0x0p+0|+0.000000e0|+       32|+32.000000|+   0x8p+2|+3.200000e1|+1002.71828|+1002.718280|+0xf.aadf84cad57cp+6|+1.002720e3|-1003.1415|-1003.141500|-0xf.ac90e5604189p+6|-1.003140e3|-64       |-64.000000|-0x8p+3   |-6.400000e1|+0        |+0.000000 |+0x0p+0   |+0.000000e0|+32       |+32.000000|+0x8p+2   |+3.200000e1|+1002.71828|+1002.718280|+0xf.aadf84cad57cp+6|+1.002720e3|-1003.1415|-1003.141500|-0xf.ac90e5604189p+6|-1.003140e3|       -64|-64.000000|   -0x8p+3|-6.400000e1|        +0| +0.000000|   +0x0p+0|+0.000000e0|       +32|+32.000000|   +0x8p+2|+3.200000e1|+1002.71828|+1002.718280|+0xf.aadf84cad57cp+6|+1.002720e3|-1003.1415|-1003.141500|-0xf.ac90e5604189p+6|-1.003140e3|-       64|-64.000000|-   0x8p+3|-6.400000e1|         0|  0.000000|0x    0p+0|0.000000e0|        32| 32.000000|0x    8p+2|3.200000e1|1002.71828|1002.718280|0xf.aadf84cad57cp+6|1.002720e3|-1003.1415|-1003.141500|-0xf.ac90e5604189p+6|-1.003140e3|-64       |-64.000000|-0x8p+3   |-6.400000e1|0         |0.000000  |0x0p+0    |0.000000e0|32        |32.000000 |0x8p+2    |3.200000e1|1002.71828|1002.718280|0xf.aadf84cad57cp+6|1.002720e3|-1003.1415|-1003.141500|-0xf.ac90e5604189p+6|-1.003140e3|       -64|-64.000000|   -0x8p+3|-6.400000e1|         0|  0.000000|    0x0p+0|0.000000e0|        32| 32.000000|    0x8p+2|3.200000e1|1002.71828|1002.718280|0xf.aadf84cad57cp+6|1.002720e3|\n"), en_out.str());
+    ASSERT_EQ(std::string("|-1003,1415|-1003,141500|-0XF.AC90E5604189P+6|-1,003140E3|-64|-64,000000|-0X8P+3|-6,400000E1|0|0,000000|0X0P+0|0,000000E0|32|32,000000|0X8P+2|3,200000E1|1002,71828|1002,718280|0XF.AADF84CAD57CP+6|1,002720E3|-1003,1415|-1003,141500|-0xf.ac90e5604189p+6|-1,003140e3|-64.|-64,000000|-0x8.p+3|-6,400000e1|0.|0,000000|0x0.p+0|0,000000e0|32.|32,000000|0x8.p+2|3,200000e1|1002,71828|1002,718280|0xf.aadf84cad57cp+6|1,002720e3|-1003,1415|-1003,141500|-0xf.ac90e5604189p+6|-1,003140e3|-       64|-64,000000|-   0x8p+3|-6,400000e1|+        0|+ 0,000000|+   0x0p+0|+0,000000e0|+       32|+32,000000|+   0x8p+2|+3,200000e1|+1002,71828|+1002,718280|+0xf.aadf84cad57cp+6|+1,002720e3|-1003,1415|-1003,141500|-0xf.ac90e5604189p+6|-1,003140e3|-64       |-64,000000|-0x8p+3   |-6,400000e1|+0        |+0,000000 |+0x0p+0   |+0,000000e0|+32       |+32,000000|+0x8p+2   |+3,200000e1|+1002,71828|+1002,718280|+0xf.aadf84cad57cp+6|+1,002720e3|-1003,1415|-1003,141500|-0xf.ac90e5604189p+6|-1,003140e3|       -64|-64,000000|   -0x8p+3|-6,400000e1|        +0| +0,000000|   +0x0p+0|+0,000000e0|       +32|+32,000000|   +0x8p+2|+3,200000e1|+1002,71828|+1002,718280|+0xf.aadf84cad57cp+6|+1,002720e3|-1003,1415|-1003,141500|-0xf.ac90e5604189p+6|-1,003140e3|-       64|-64,000000|-   0x8p+3|-6,400000e1|         0|  0,000000|0x    0p+0|0,000000e0|        32| 32,000000|0x    8p+2|3,200000e1|1002,71828|1002,718280|0xf.aadf84cad57cp+6|1,002720e3|-1003,1415|-1003,141500|-0xf.ac90e5604189p+6|-1,003140e3|-64       |-64,000000|-0x8p+3   |-6,400000e1|0         |0,000000  |0x0p+0    |0,000000e0|32        |32,000000 |0x8p+2    |3,200000e1|1002,71828|1002,718280|0xf.aadf84cad57cp+6|1,002720e3|-1003,1415|-1003,141500|-0xf.ac90e5604189p+6|-1,003140e3|       -64|-64,000000|   -0x8p+3|-6,400000e1|         0|  0,000000|    0x0p+0|0,000000e0|        32| 32,000000|    0x8p+2|3,200000e1|1002,71828|1002,718280|0xf.aadf84cad57cp+6|1,002720e3|\n"), ru_out.str());
   }
 #endif
 
   // const void*
   {
+    std::ostringstream c_out;
     std::ostringstream de_out;
     std::ostringstream en_out;
     std::ostringstream ru_out;
-    std::vector<std::ostringstream*> v = { &de_out, &en_out, &ru_out };
+    std::vector<std::ostringstream*> v = { &c_out, &de_out, &en_out, &ru_out };
 
+    c_out.imbue(c);
     de_out.imbue(de);
     en_out.imbue(en);
     ru_out.imbue(ru);
 
     for (auto out: v) {
-      *out << "|" << std::dec << (const void*)(0)
-           << "|" << std::hex << (const void*)(0)
-           << "|" << std::oct << (const void*)(0)
-           << "|" << std::dec << (const void*)(1234)
-           << "|" << std::hex << (const void*)(1234)
-           << "|" << std::oct << (const void*)(1234)
-           << "|" << std::showbase << std::showpos << std::internal << std::dec << std::setw(10) << (const void*)(0)
-           << "|" << std::showbase << std::showpos << std::internal << std::hex << std::setw(10) << (const void*)(0)
-           << "|" << std::showbase << std::showpos << std::internal << std::oct << std::setw(10) << (const void*)(0)
-           << "|" << std::showbase << std::showpos << std::internal << std::dec << std::setw(10) << (const void*)(1234)
-           << "|" << std::showbase << std::showpos << std::internal << std::hex << std::setw(10) << (const void*)(1234)
-           << "|" << std::showbase << std::showpos << std::internal << std::oct << std::setw(10) << (const void*)(1234)
-           << "|" << std::showbase << std::showpos << std::left << std::dec << std::setw(10) << (const void*)(0)
-           << "|" << std::showbase << std::showpos << std::left << std::hex << std::setw(10) << (const void*)(0)
-           << "|" << std::showbase << std::showpos << std::left << std::oct << std::setw(10) << (const void*)(0)
-           << "|" << std::showbase << std::showpos << std::left << std::dec << std::setw(10) << (const void*)(1234)
-           << "|" << std::showbase << std::showpos << std::left << std::hex << std::setw(10) << (const void*)(1234)
-           << "|" << std::showbase << std::showpos << std::left << std::oct << std::setw(10) << (const void*)(1234)
-           << "|" << std::showbase << std::showpos << std::right << std::dec << std::setw(10) << (const void*)(0)
-           << "|" << std::showbase << std::showpos << std::right << std::hex << std::setw(10) << (const void*)(0)
-           << "|" << std::showbase << std::showpos << std::right << std::oct << std::setw(10) << (const void*)(0)
-           << "|" << std::showbase << std::showpos << std::right << std::dec << std::setw(10) << (const void*)(1234)
-           << "|" << std::showbase << std::showpos << std::right << std::hex << std::setw(10) << (const void*)(1234)
-           << "|" << std::showbase << std::showpos << std::right << std::oct << std::setw(10) << (const void*)(1234)
+      *out << "|" << std::uppercase << (const void*)(0)
+           << "|" << std::uppercase << (const void*)(1234)
+           << "|" << std::nouppercase << (const void*)(0)
+           << "|" << std::nouppercase << (const void*)(1234)
+           << "|" << std::showbase << std::showpos << std::internal << std::setw(20) << (const void*)(0)
+           << "|" << std::showbase << std::showpos << std::internal << std::setw(20) << (const void*)(1234)
+           << "|" << std::showbase << std::showpos << std::left << std::setw(20) << (const void*)(0)
+           << "|" << std::showbase << std::showpos << std::left << std::setw(20) << (const void*)(1234)
+           << "|" << std::showbase << std::showpos << std::right << std::setw(20) << (const void*)(0)
+           << "|" << std::showbase << std::showpos << std::right << std::setw(20) << (const void*)(1234)
+           << "|" << std::showbase << std::noshowpos << std::internal << std::setw(20) << (const void*)(0)
+           << "|" << std::showbase << std::noshowpos << std::internal << std::setw(20) << (const void*)(1234)
+           << "|" << std::showbase << std::noshowpos << std::left << std::setw(20) << (const void*)(0)
+           << "|" << std::showbase << std::noshowpos << std::left << std::setw(20) << (const void*)(1234)
+           << "|" << std::showbase << std::noshowpos << std::right << std::setw(20) << (const void*)(0)
+           << "|" << std::showbase << std::noshowpos << std::right << std::setw(20) << (const void*)(1234)
            << "|" << std::endl;
     }
 
-    // Boost on MSVC uses different values
-    // FIXME TODO remove MSVC case once Boost is no longer used
-    #if defined(_MSC_VER)
-      ASSERT_EQ(std::string("|0000000000000000|0000000000000000|0000000000000000|00000000000004D2|00000000000004D2|00000000000004D2|0000000000000000|0000000000000000|0000000000000000|00000000000004D2|00000000000004D2|00000000000004D2|0000000000000000|0000000000000000|0000000000000000|00000000000004D2|00000000000004D2|00000000000004D2|0000000000000000|0000000000000000|0000000000000000|00000000000004D2|00000000000004D2|00000000000004D2|\n"), de_out.str());
-      ASSERT_EQ(std::string("|0000000000000000|0000000000000000|0000000000000000|00000000000004D2|00000000000004D2|00000000000004D2|0000000000000000|0000000000000000|0000000000000000|00000000000004D2|00000000000004D2|00000000000004D2|0000000000000000|0000000000000000|0000000000000000|00000000000004D2|00000000000004D2|00000000000004D2|0000000000000000|0000000000000000|0000000000000000|00000000000004D2|00000000000004D2|00000000000004D2|\n"), en_out.str());
-      ASSERT_EQ(std::string("|0000000000000000|0000000000000000|0000000000000000|00000000000004D2|00000000000004D2|00000000000004D2|0000000000000000|0000000000000000|0000000000000000|00000000000004D2|00000000000004D2|00000000000004D2|0000000000000000|0000000000000000|0000000000000000|00000000000004D2|00000000000004D2|00000000000004D2|0000000000000000|0000000000000000|0000000000000000|00000000000004D2|00000000000004D2|00000000000004D2|\n"), ru_out.str());
-    #else
-      ASSERT_EQ(std::string("|0|0|0|0x4d2|0x4d2|0x4d2|         0|         0|         0|0x     4d2|0x     4d2|0x     4d2|0         |0         |0         |0x4d2     |0x4d2     |0x4d2     |         0|         0|         0|     0x4d2|     0x4d2|     0x4d2|\n"), de_out.str());
-      ASSERT_EQ(std::string("|0|0|0|0x4d2|0x4d2|0x4d2|         0|         0|         0|0x     4d2|0x     4d2|0x     4d2|0         |0         |0         |0x4d2     |0x4d2     |0x4d2     |         0|         0|         0|     0x4d2|     0x4d2|     0x4d2|\n"), en_out.str());
-      ASSERT_EQ(std::string("|0|0|0|0x4d2|0x4d2|0x4d2|         0|         0|         0|0x     4d2|0x     4d2|0x     4d2|0         |0         |0         |0x4d2     |0x4d2     |0x4d2     |         0|         0|         0|     0x4d2|     0x4d2|     0x4d2|\n"), ru_out.str());
-    #endif
+    ASSERT_EQ(std::string("|0000000000000000|00000000000004D2|0000000000000000|00000000000004d2|+ 0x0000000000000000|+ 0x00000000000004d2|+0x0000000000000000 |+0x00000000000004d2 | +0x0000000000000000| +0x00000000000004d2|0x  0000000000000000|0x  00000000000004d2|0x0000000000000000  |0x00000000000004d2  |  0x0000000000000000|  0x00000000000004d2|\n"), c_out.str());
+    ASSERT_EQ(std::string("|0000000000000000|00000000000004D2|0000000000000000|00000000000004d2|+ 0x0000000000000000|+ 0x00000000000004d2|+0x0000000000000000 |+0x00000000000004d2 | +0x0000000000000000| +0x00000000000004d2|0x  0000000000000000|0x  00000000000004d2|0x0000000000000000  |0x00000000000004d2  |  0x0000000000000000|  0x00000000000004d2|\n"), de_out.str());
+    ASSERT_EQ(std::string("|0000000000000000|00000000000004D2|0000000000000000|00000000000004d2|+ 0x0000000000000000|+ 0x00000000000004d2|+0x0000000000000000 |+0x00000000000004d2 | +0x0000000000000000| +0x00000000000004d2|0x  0000000000000000|0x  00000000000004d2|0x0000000000000000  |0x00000000000004d2  |  0x0000000000000000|  0x00000000000004d2|\n"), en_out.str());
+    ASSERT_EQ(std::string("|0000000000000000|00000000000004D2|0000000000000000|00000000000004d2|+ 0x0000000000000000|+ 0x00000000000004d2|+0x0000000000000000 |+0x00000000000004d2 | +0x0000000000000000| +0x00000000000004d2|0x  0000000000000000|0x  00000000000004d2|0x0000000000000000  |0x00000000000004d2  |  0x0000000000000000|  0x00000000000004d2|\n"), ru_out.str());
   }
 }
 
