@@ -1822,7 +1822,7 @@ TEST(numeric_utils_test, ulong_traits) {
   }
 }
 
-TEST(numeric_utils_test, float_traits) {
+TEST(numeric_utils_test, float_t_traits) {
   typedef float_t type;
   typedef irs::numeric_utils::numeric_traits<type> traits_t;
   ASSERT_EQ(
@@ -1880,7 +1880,7 @@ TEST(numeric_utils_test, float_traits) {
   }
 }
 
-TEST(numeric_utils_test, double_traits) {
+TEST(numeric_utils_test, double_t_traits) {
   typedef double_t type;
   typedef irs::numeric_utils::numeric_traits<type> traits_t;
   ASSERT_EQ(
@@ -1936,6 +1936,27 @@ TEST(numeric_utils_test, double_traits) {
       traits_t::decode(encoded.c_str())
     );
   }
+}
+
+TEST(numeric_utils_test, float_traits) {
+  typedef float type;
+  typedef irs::numeric_utils::numeric_traits<type> traits_t;
+
+  ASSERT_EQ(1 - log(FLT_EPSILON)/log(2), traits_t::mantissa_bits()); // 24 FLT_MANT_BITS for IEEE 754
+}
+
+TEST(numeric_utils_test, double_traits) {
+  typedef double type;
+  typedef irs::numeric_utils::numeric_traits<type> traits_t;
+
+  ASSERT_EQ(1 - log(DBL_EPSILON)/log(2), traits_t::mantissa_bits()); // 53 FLT_MANT_BITS for IEEE 754
+}
+
+TEST(numeric_utils_test, long_double_traits) {
+  typedef long double type;
+  typedef irs::numeric_utils::numeric_traits<type> traits_t;
+
+  ASSERT_EQ(1 - log(LDBL_EPSILON)/log(2), traits_t::mantissa_bits()); // 64 FLT_MANT_BITS for IEEE 754
 }
 
 // -----------------------------------------------------------------------------
