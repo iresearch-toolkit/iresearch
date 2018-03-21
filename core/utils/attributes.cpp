@@ -50,7 +50,7 @@ NS_ROOT
 
 /*static*/ const attribute::type_id* attribute::type_id::get(
     const string_ref& name
-) noexcept {
+) NOEXCEPT {
   try {
     return attribute_register::instance().get(name);
   } catch (...) {

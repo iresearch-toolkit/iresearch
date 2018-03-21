@@ -119,7 +119,7 @@ format::~format() {}
   return format_register::instance().get(name);
 }
 
-/*static*/ format::ptr formats::get(const string_ref& name) noexcept {
+/*static*/ format::ptr formats::get(const string_ref& name) NOEXCEPT {
   try {
     auto* factory = format_register::instance().get(name);
 

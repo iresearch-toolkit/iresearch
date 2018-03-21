@@ -1107,13 +1107,13 @@ class locale_info_facet: public std::locale::facet {
   static std::locale::id id; // required for each class derived from std::locale::facet as per spec
 
   locale_info_facet(const irs::string_ref& name);
-  locale_info_facet(locale_info_facet&& other) noexcept { *this = std::move(other); }
-  locale_info_facet& operator=(locale_info_facet&& other) noexcept;
-  const irs::string_ref& country() const noexcept { return country_; }
-  const irs::string_ref& encoding() const noexcept { return encoding_; }
-  const irs::string_ref& language() const noexcept { return language_; }
-  const std::string& name() const noexcept { return name_; }
-  const irs::string_ref& variant() const noexcept { return variant_; }
+  locale_info_facet(locale_info_facet&& other) NOEXCEPT { *this = std::move(other); }
+  locale_info_facet& operator=(locale_info_facet&& other) NOEXCEPT;
+  const irs::string_ref& country() const NOEXCEPT { return country_; }
+  const irs::string_ref& encoding() const NOEXCEPT { return encoding_; }
+  const irs::string_ref& language() const NOEXCEPT { return language_; }
+  const std::string& name() const NOEXCEPT { return name_; }
+  const irs::string_ref& variant() const NOEXCEPT { return variant_; }
 
  private:
   std::string buf_; // the normalized locale name
@@ -1189,7 +1189,7 @@ locale_info_facet::locale_info_facet(const irs::string_ref& name)
 
 locale_info_facet& locale_info_facet::operator=(
     locale_info_facet&& other
-) noexcept {
+) NOEXCEPT {
   if (this != &other) {
     const char* start = &(other.name_[0]);
 
@@ -1263,7 +1263,7 @@ const std::locale& get_locale(const irs::string_ref& name) {
   struct less_t {
     bool operator()(
         const locale_info_facet* lhs, const locale_info_facet* rhs
-    ) const noexcept {
+    ) const NOEXCEPT {
       return (!lhs && rhs) || (lhs && rhs && lhs->name() < rhs->name());
     }
   };
