@@ -56,16 +56,6 @@ struct test_uobject {
   static ptr make(int i) { return ptr(new test_uobject(i)); }
 };
 
-class object_pool_tests: public ::testing::Test {
-  virtual void SetUp() {
-    // Code here will be called immediately after the constructor (right before each test).
-  }
-
-  virtual void TearDown() {
-    // Code here will be called immediately after each test (right before the destructor).
-  }
-};
-
 NS_END
 
 using namespace tests;
@@ -74,7 +64,7 @@ using namespace tests;
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-TEST_F(object_pool_tests, check_total_number_of_instances) {
+TEST(bounded_object_pool_tests, check_total_number_of_instances) {
   const size_t MAX_COUNT = 2;
   iresearch::bounded_object_pool<test_slow_sobject> pool(MAX_COUNT);
 
@@ -108,7 +98,7 @@ TEST_F(object_pool_tests, check_total_number_of_instances) {
       }
     }
 
-    pool.emplace_shared(id++);
+    pool.emplace(id++).release();
   };
 
   const size_t THREADS_COUNT = 32;
@@ -130,13 +120,13 @@ TEST_F(object_pool_tests, check_total_number_of_instances) {
   ASSERT_LE(test_slow_sobject::TOTAL_COUNT.load(), MAX_COUNT);
 }
 
-TEST_F(object_pool_tests, bounded_sobject_pool) {
+TEST(bounded_object_pool_tests, test_bounded_sobject_pool) {
   // block on full pool
   {
     std::condition_variable cond;
     std::mutex mutex;
     iresearch::bounded_object_pool<test_sobject> pool(1);
-    auto obj = pool.emplace_shared(1);
+    auto obj = pool.emplace(1).release();
 
     {
       SCOPED_LOCK_NAMED(mutex, lock);
@@ -165,7 +155,7 @@ TEST_F(object_pool_tests, bounded_sobject_pool) {
 
     ASSERT_EQ(1, obj->id);
     obj.reset();
-    auto obj_shared = pool.emplace_shared(2);
+    auto obj_shared = pool.emplace(2).release();
     ASSERT_EQ(1, obj_shared->id);
     ASSERT_EQ(obj_ptr, obj_shared.get());
   }
@@ -228,7 +218,7 @@ TEST_F(object_pool_tests, bounded_sobject_pool) {
   }
 }
 
-//TEST_F(object_pool_tests, bounded_uobject_pool) {
+//TEST(object_pool_tests, bounded_uobject_pool) {
 //  // block on full pool
 //  {
 //    std::condition_variable cond;
@@ -327,13 +317,18 @@ TEST_F(object_pool_tests, bounded_sobject_pool) {
 //  }
 //}
 
-TEST_F(object_pool_tests, unbounded_sobject_pool) {
+TEST(unbounded_object_pool_tests, construct) {
+  iresearch::unbounded_object_pool<test_sobject> pool(42);
+  ASSERT_EQ(42, pool.size());
+}
+
+TEST(unbounded_object_pool_tests, test_unbounded_sobject_pool) {
   // create new untracked object on full pool
   {
     std::condition_variable cond;
     std::mutex mutex;
     iresearch::unbounded_object_pool<test_sobject> pool(1);
-    auto obj = pool.emplace_shared(1);
+    auto obj = pool.emplace(1).release();
 
     {
       SCOPED_LOCK_NAMED(mutex, lock);
@@ -348,11 +343,14 @@ TEST_F(object_pool_tests, unbounded_sobject_pool) {
   {
     iresearch::unbounded_object_pool<test_sobject> pool(1);
     auto obj = pool.emplace(1);
+    ASSERT_TRUE(obj);
     auto* obj_ptr = obj.get();
 
     ASSERT_EQ(1, obj->id);
     obj.reset();
-    auto obj_shared = pool.emplace_shared(2);
+    ASSERT_FALSE(obj);
+    auto obj_shared = pool.emplace(2).release();
+    ASSERT_TRUE(bool(obj_shared));
     ASSERT_EQ(1, obj_shared->id);
     ASSERT_EQ(obj_ptr, obj_shared.get());
   }
@@ -361,17 +359,23 @@ TEST_F(object_pool_tests, unbounded_sobject_pool) {
   {
     iresearch::unbounded_object_pool<test_sobject> pool(1);
     auto obj0 = pool.emplace(1);
-    auto obj1 = pool.emplace_shared(2);
+    ASSERT_TRUE(obj0);
+    auto obj1 = pool.emplace(2).release();
+    ASSERT_TRUE(bool(obj1));
     auto* obj0_ptr = obj0.get();
 
     ASSERT_EQ(1, obj0->id);
     ASSERT_EQ(2, obj1->id);
     ASSERT_NE(obj0_ptr, obj1.get());
-    obj1.reset(); // will be placed back in pool first
-    obj0.reset(); // will push obj1 out of the pool
+    obj0.reset(); // will be placed back in pool first
+    ASSERT_FALSE(obj0);
+    obj1.reset(); // will push obj1 out of the pool
+    ASSERT_FALSE(obj1);
 
-    auto obj2 = pool.emplace_shared(3);
+    auto obj2 = pool.emplace(3).release();
+    ASSERT_TRUE(bool(obj2));
     auto obj3 = pool.emplace(4);
+    ASSERT_TRUE(obj3);
     ASSERT_EQ(1, obj2->id);
     ASSERT_EQ(4, obj3->id);
     ASSERT_EQ(obj0_ptr, obj2.get());
@@ -382,35 +386,182 @@ TEST_F(object_pool_tests, unbounded_sobject_pool) {
   // test pool clear
   {
     iresearch::unbounded_object_pool<test_sobject> pool(1);
-    auto obj_noreuse = pool.emplace(-1);
     auto obj = pool.emplace(1);
+    ASSERT_TRUE(obj);
     auto* obj_ptr = obj.get();
 
     ASSERT_EQ(1, obj->id);
     obj.reset();
+    ASSERT_FALSE(obj);
     obj = pool.emplace(2);
+    ASSERT_TRUE(obj);
     ASSERT_EQ(1, obj->id);
     ASSERT_EQ(obj_ptr, obj.get());
 
-    pool.clear();
+    pool.clear(); // will clear objects inside the pool only
     obj.reset();
-    obj = pool.emplace(2); // may return same memory address as obj_ptr, but constructor would have been called
-    ASSERT_EQ(2, obj->id);
+    ASSERT_FALSE(obj);
+    obj = pool.emplace(2);
+    ASSERT_TRUE(obj);
+    ASSERT_EQ(1, obj->id);
+    ASSERT_EQ(obj_ptr, obj.get()); // same object
 
-    obj_noreuse.reset();
-    obj = pool.emplace(3); // 'obj_noreuse' should not be reused
+    obj.reset();
+    ASSERT_FALSE(obj);
+    pool.clear(); // will clear objects inside the pool only
+    obj = pool.emplace(3); // 'obj' should not be reused
+    ASSERT_TRUE(obj);
     ASSERT_EQ(3, obj->id);
   }
 }
 
-TEST_F(object_pool_tests, unbonded_sobject_pool_destroy_return_object) {
-  auto pool = irs::memory::make_unique<irs::unbounded_object_pool<test_sobject>>(1);
+TEST(unbounded_object_pool_volatile_tests, construct) {
+  iresearch::unbounded_object_pool_volatile<test_sobject> pool(42);
+  ASSERT_EQ(42, pool.size());
+  ASSERT_EQ(0, pool.generation_size());
+}
+
+TEST(unbounded_object_pool_volatile_tests, move) {
+  // FIXME implement
+
+}
+
+TEST(unbounded_object_pool_volatile_tests, test_sobject_pool) {
+  // create new untracked object on full pool
+  {
+    std::condition_variable cond;
+    std::mutex mutex;
+    iresearch::unbounded_object_pool_volatile<test_sobject> pool(1);
+    ASSERT_EQ(0, pool.generation_size());
+    auto obj = pool.emplace(1).release();
+    ASSERT_EQ(1, pool.generation_size());
+
+    {
+      SCOPED_LOCK_NAMED(mutex, lock);
+      std::thread thread([&cond, &mutex, &pool]()->void{ auto obj = pool.emplace(2); SCOPED_LOCK(mutex); cond.notify_all(); });
+      ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, std::chrono::milliseconds(1000))); // assume threads start within 1000msec
+      lock.unlock();
+      thread.join();
+    }
+
+    ASSERT_EQ(1, pool.generation_size());
+  }
+
+  // test object reuse
+  {
+    iresearch::unbounded_object_pool_volatile<test_sobject> pool(1);
+    ASSERT_EQ(0, pool.generation_size());
+    auto obj = pool.emplace(1);
+    ASSERT_EQ(1, pool.generation_size());
+    auto* obj_ptr = obj.get();
+
+    ASSERT_EQ(1, obj->id);
+    obj.reset();
+    ASSERT_EQ(0, pool.generation_size());
+    auto obj_shared = pool.emplace(2).release();
+    ASSERT_EQ(1, pool.generation_size());
+    ASSERT_EQ(1, obj_shared->id);
+    ASSERT_EQ(obj_ptr, obj_shared.get());
+  }
+
+  // ensure untracked object is not placed back in the pool
+  {
+    iresearch::unbounded_object_pool_volatile<test_sobject> pool(1);
+    ASSERT_EQ(0, pool.generation_size());
+    auto obj0 = pool.emplace(1);
+    ASSERT_EQ(1, pool.generation_size());
+    ASSERT_TRUE(obj0);
+    auto obj1 = pool.emplace(2).release();
+    ASSERT_EQ(2, pool.generation_size());
+    ASSERT_TRUE(bool(obj1));
+    auto* obj0_ptr = obj0.get();
+
+    ASSERT_EQ(1, obj0->id);
+    ASSERT_EQ(2, obj1->id);
+    ASSERT_NE(obj0_ptr, obj1.get());
+    obj0.reset(); // will be placed back in pool first
+    ASSERT_EQ(1, pool.generation_size());
+    ASSERT_FALSE(obj0);
+    obj1.reset(); // will push obj1 out of the pool
+    ASSERT_EQ(0, pool.generation_size());
+    ASSERT_FALSE(obj1);
+
+    auto obj2 = pool.emplace(3).release();
+    ASSERT_EQ(1, pool.generation_size());
+    ASSERT_TRUE(bool(obj2));
+    auto obj3 = pool.emplace(4);
+    ASSERT_EQ(2, pool.generation_size());
+    ASSERT_TRUE(obj3);
+    ASSERT_EQ(1, obj2->id);
+    ASSERT_EQ(4, obj3->id);
+    ASSERT_EQ(obj0_ptr, obj2.get());
+    ASSERT_NE(obj0_ptr, obj3.get());
+    // obj3 may have been allocated in the same addr as obj1, so can't safely validate
+  }
+
+  // test pool clear
+  {
+    iresearch::unbounded_object_pool_volatile<test_sobject> pool(1);
+    ASSERT_EQ(0, pool.generation_size());
+    auto obj_noreuse = pool.emplace(-1);
+    ASSERT_EQ(1, pool.generation_size());
+    ASSERT_TRUE(obj_noreuse);
+    auto obj = pool.emplace(1);
+    ASSERT_EQ(2, pool.generation_size());
+    ASSERT_TRUE(obj);
+    auto* obj_ptr = obj.get();
+
+    ASSERT_EQ(1, obj->id);
+    obj.reset();
+    ASSERT_EQ(1, pool.generation_size());
+    ASSERT_FALSE(obj);
+    obj = pool.emplace(2);
+    ASSERT_EQ(2, pool.generation_size());
+    ASSERT_TRUE(obj);
+    ASSERT_EQ(1, obj->id);
+    ASSERT_EQ(obj_ptr, obj.get());
+
+    pool.clear(); // clear existing in a pool
+    ASSERT_EQ(2, pool.generation_size());
+    obj.reset();
+    ASSERT_EQ(1, pool.generation_size());
+    ASSERT_FALSE(obj);
+    obj = pool.emplace(2); // may return same memory address as obj_ptr, but constructor would have been called
+    ASSERT_EQ(2, pool.generation_size());
+    ASSERT_TRUE(obj);
+    ASSERT_EQ(1, obj->id);
+    ASSERT_EQ(obj_ptr, obj.get());
+
+    pool.clear(true); // clear existing in a pool and prevent external object from returning back
+    ASSERT_EQ(0, pool.generation_size());
+    obj.reset();
+    ASSERT_EQ(0, pool.generation_size());
+    ASSERT_FALSE(obj);
+    obj = pool.emplace(2); // may return same memory address as obj_ptr, but constructor would have been called
+    ASSERT_EQ(1, pool.generation_size());
+    ASSERT_TRUE(obj);
+    ASSERT_EQ(2, obj->id);
+
+    obj_noreuse.reset(); // reset value from previuos generation
+    ASSERT_EQ(1, pool.generation_size());
+    ASSERT_FALSE(obj_noreuse);
+    obj = pool.emplace(3); // 'obj_noreuse' should not be reused
+    ASSERT_EQ(1, pool.generation_size());
+    ASSERT_EQ(3, obj->id);
+  }
+}
+
+TEST(unbounded_object_pool_volatile_tests, return_object_after_pool_destroyed) {
+  auto pool = irs::memory::make_unique<irs::unbounded_object_pool_volatile<test_sobject>>(1);
+  ASSERT_EQ(0, pool->generation_size());
   ASSERT_NE(nullptr, pool);
 
   auto obj = pool->emplace(42);
+  ASSERT_EQ(1, pool->generation_size());
   ASSERT_TRUE(obj);
   ASSERT_EQ(42, obj->id);
-  auto objShared = pool->emplace_shared(442);
+  auto objShared = pool->emplace(442).release();
+  ASSERT_EQ(2, pool->generation_size());
   ASSERT_NE(nullptr, objShared);
   ASSERT_EQ(442, objShared->id);
 
@@ -423,7 +574,7 @@ TEST_F(object_pool_tests, unbonded_sobject_pool_destroy_return_object) {
   ASSERT_EQ(442, objShared->id);
 }
 
-//TEST_F(object_pool_tests, unbounded_uobject_pool) {
+//TEST(object_pool_tests, unbounded_uobject_pool) {
 //  // create new untracked object on full pool
 //  {
 //    std::condition_variable cond;

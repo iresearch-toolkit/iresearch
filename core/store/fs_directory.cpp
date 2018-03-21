@@ -494,7 +494,7 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
   const file_handle& src
 ) const NOEXCEPT {
   // reserve a new handle from the pool
-  auto handle = const_cast<pooled_fs_index_input*>(this)->fd_pool_->emplace_shared();
+  auto handle = const_cast<pooled_fs_index_input*>(this)->fd_pool_->emplace().release();
 
   if (!handle->handle) {
     handle->handle = file_open(src, "rb"); // same permission as in fs_index_input::open(...)

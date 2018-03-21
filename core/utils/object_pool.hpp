@@ -32,6 +32,7 @@
 #include "memory.hpp"
 #include "shared.hpp"
 #include "thread_utils.hpp"
+#include "async_utils.hpp"
 #include "misc.hpp"
 #include "noncopyable.hpp"
 
@@ -113,6 +114,10 @@ class atomic_base<std::shared_ptr<T>> {
 };
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      bounded pool
+// -----------------------------------------------------------------------------
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief a fixed size pool of objects
 ///        if the pool is empty then a new object is created via make(...)
@@ -134,10 +139,14 @@ class bounded_object_pool : atomic_base<typename T::ptr> {
  public:
   typedef typename T::ptr::element_type element_type;
 
-  // do not use std::shared_ptr to avoid unnecessary heap allocatons
+  /////////////////////////////////////////////////////////////////////////////
+  /// @class ptr
+  /// @brief represents a control object of bounded_object_pool with
+  ///        semantic similar to smart pointers
+  /////////////////////////////////////////////////////////////////////////////
   class ptr : util::noncopyable {
    public:
-    ptr(slot_t& slot) NOEXCEPT
+    explicit ptr(slot_t& slot) NOEXCEPT
       : slot_(&slot) {
     }
 
@@ -158,15 +167,26 @@ class bounded_object_pool : atomic_base<typename T::ptr> {
       reset();
     }
 
-    void reset() NOEXCEPT {
-      if (!slot_) {
-        // nothing to do
-        return;
-      }
+    FORCE_INLINE void reset() NOEXCEPT {
+      reset(slot_);
+    }
 
-      assert(slot_->owner);
-      slot_->owner->unlock(*slot_);
-      slot_ = nullptr; // release ownership
+    std::shared_ptr<element_type> release() NOEXCEPT {
+      auto* raw = get();
+      auto* slot = slot_;
+      slot_ = nullptr; // moved
+
+      try {
+        return std::shared_ptr<element_type>(
+          raw,
+          [slot] (element_type*) mutable NOEXCEPT {
+            reset(slot);
+        });
+      } catch (...) {
+        // prevent object from being malformed
+        slot_ = slot;
+        return std::shared_ptr<element_type>();
+      }
     }
 
     element_type& operator*() const NOEXCEPT { return *slot_->ptr; }
@@ -177,6 +197,17 @@ class bounded_object_pool : atomic_base<typename T::ptr> {
     }
 
    private:
+    static void reset(slot_t*& slot) NOEXCEPT {
+      if (!slot) {
+        // nothing to do
+        return;
+      }
+
+      assert(slot->owner);
+      slot->owner->unlock(*slot);
+      slot = nullptr; // release ownership
+    }
+
     slot_t* slot_;
   }; // ptr
 
@@ -208,41 +239,6 @@ class bounded_object_pool : atomic_base<typename T::ptr> {
           }
 
           return ptr(slot);
-        }
-      }
-
-      wait_for_free_slots();
-    }
-  }
-
-  template<typename... Args>
-  std::shared_ptr<element_type> emplace_shared(Args&&... args) {
-    for(;;) {
-      // linear search for an unused slot in the pool
-      for (auto& slot : pool_) {
-        if (lock(slot)) {
-          auto& p = slot.ptr;
-
-          if (!p) {
-            try {
-              p = T::make(std::forward<Args>(args)...);
-            } catch (...) {
-              unlock(slot);
-              throw;
-            }
-          }
-
-          try {
-            return std::shared_ptr<element_type>(
-              p.get(),
-              [&slot] (element_type*) NOEXCEPT {
-                assert(slot.owner);
-                slot.owner->unlock(slot);
-            });
-          } catch (...) {
-            unlock(slot);
-            throw;
-          }
         }
       }
 
@@ -354,37 +350,162 @@ class bounded_object_pool : atomic_base<typename T::ptr> {
   mutable std::vector<slot_t> pool_;
 }; // bounded_object_pool
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    unbounded pool
+// -----------------------------------------------------------------------------
+
 //////////////////////////////////////////////////////////////////////////////
+/// @class async_value
+/// @brief convenient class storing value and associated read-write lock
+//////////////////////////////////////////////////////////////////////////////
+template<typename T>
+class async_value {
+ public:
+  typedef T value_type;
+  typedef async_utils::read_write_mutex::read_mutex read_lock_type;
+  typedef async_utils::read_write_mutex::write_mutex write_lock_type;
+
+  template<typename... Args>
+  explicit async_value(Args&&... args)
+    : value_(std::forward<Args>(args)...) {
+  }
+
+  const value_type& value() const NOEXCEPT {
+    return value_;
+  }
+
+  value_type& value() NOEXCEPT {
+    return value_;
+  }
+
+  read_lock_type& read_lock() const NOEXCEPT {
+    return read_lock_;
+  }
+
+  write_lock_type& write_lock() const NOEXCEPT {
+    return write_lock_;
+  }
+
+ protected:
+  value_type value_;
+  async_utils::read_write_mutex lock_;
+  mutable read_lock_type read_lock_{ lock_ };
+  mutable write_lock_type write_lock_{ lock_ };
+}; // async_value
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class unbounded_object_pool_base
+/// @brief base class for all unbounded object pool implementations
+//////////////////////////////////////////////////////////////////////////////
+template<typename T>
+class unbounded_object_pool_base : private util::noncopyable {
+ public:
+  typedef typename T::ptr::element_type element_type;
+
+  size_t size() const NOEXCEPT { return pool_.size(); }
+
+ protected:
+  struct node {
+    typename T::ptr value;
+    node* next{};
+  };
+
+  static void swap(std::atomic<node*>& lhs, std::atomic<node*>& rhs) NOEXCEPT {
+    auto* head = rhs.load();
+    while (!rhs.compare_exchange_weak(head, nullptr)) { }
+    lhs.load(head);
+  }
+
+  static node* pop_front(std::atomic<node*>& list) NOEXCEPT {
+    auto* head = list.load();
+    while (head && !list.compare_exchange_weak(head, head->next)) { }
+    return head;
+  }
+
+  static void push_front(node* new_head, std::atomic<node*>& list) NOEXCEPT {
+    new_head->next = list.load();
+    while (!list.compare_exchange_weak(new_head->next, new_head)) { }
+  }
+
+  explicit unbounded_object_pool_base(size_t size)
+    : pool_(size) {
+    // build up linked list
+    for (auto begin = pool_.begin(), next = begin + 1, end = pool_.end();
+         next < end;
+         begin = next, ++next) {
+      begin->next = &*next;
+    }
+
+    free_slots_.store(&pool_.front());
+  }
+
+  template<typename... Args>
+  typename T::ptr acquire(Args&&... args) {
+    auto* head = pop_front(free_objects_);
+
+    if (head) {
+      auto value = std::move(head->value);
+      assert(value);
+      push_front(head, free_slots_);
+      return value;
+    }
+
+    return T::make(std::forward<Args>(args)...);
+  }
+
+  void release(typename T::ptr&& value) NOEXCEPT {
+    auto* slot = pop_front(free_slots_);
+
+    if (!slot) {
+      // no free slots
+      return;
+    }
+
+    slot->value = std::move(value);
+    push_front(slot, free_objects_);
+  }
+
+  std::atomic<node*> free_objects_{}; // list of created objects that are ready to be reused
+  std::atomic<node*> free_slots_{}; // list of free slots to be reused
+  std::vector<node> pool_;
+}; // unbounded_object_pool_base
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class unbounded_object_pool
 /// @brief a fixed size pool of objects
 ///        if the pool is empty then a new object is created via make(...)
 ///        if an object is available in a pool then in is returned and no
 ///        longer tracked by the pool
 ///        when the object is released it is placed back into the pool if
 ///        space in the pool is available
+///        pool owns produced object so it's not allowed to destroy before
+///        all acquired objects will be destroyed
 //////////////////////////////////////////////////////////////////////////////
 template<typename T>
-class unbounded_object_pool
-  : private atomic_base<typename T::ptr>,
-    private atomic_base<std::shared_ptr<std::atomic<bool>>> {
- public:
-  typedef typename T::ptr::element_type element_type;
-  typedef std::shared_ptr<std::atomic<bool>> reusable_t;
+class unbounded_object_pool : public unbounded_object_pool_base<T> {
+ private:
+  typedef unbounded_object_pool_base<T> base_t;
+  typedef typename base_t::node node;
 
-  // do not use std::shared_ptr to avoid unnecessary heap allocatons
+ public:
+  typedef typename base_t::element_type element_type;
+
+  /////////////////////////////////////////////////////////////////////////////
+  /// @class ptr
+  /// @brief represents a control object of unbounded_object_pool with
+  ///        semantic similar to smart pointers
+  /////////////////////////////////////////////////////////////////////////////
   class ptr : util::noncopyable {
    public:
     ptr(typename T::ptr&& value,
-        unbounded_object_pool& owner,
-        const reusable_t& reusable
+        unbounded_object_pool& owner
     ) : value_(std::move(value)),
-        owner_(&owner),
-        reusable_(std::move(reusable)) {
+        owner_(&owner) {
     }
 
     ptr(ptr&& rhs) NOEXCEPT
       : value_(std::move(rhs.value_)),
-        owner_(rhs.owner_),
-        reusable_(std::move(rhs.reusable_)) {
+        owner_(rhs.owner_) {
       rhs.owner_ = nullptr;
     }
 
@@ -393,7 +514,6 @@ class unbounded_object_pool
         value_ = std::move(rhs.value_);
         owner_ = rhs.owner_;
         rhs.owner_ = nullptr;
-        reusable_ = std::move(rhs.reusable_);
       }
       return *this;
     }
@@ -402,11 +522,23 @@ class unbounded_object_pool
       reset();
     }
 
-    void reset() NOEXCEPT {
-      if (owner_) {
-        owner_->reset(reusable_, value_);
-        owner_ = nullptr;
-      }
+    FORCE_INLINE void reset() NOEXCEPT {
+      reset(value_, owner_);
+    }
+
+    // FIXME handle potential bad_alloc in shared_ptr constructor
+    // mark method as NOEXCEPT and move back all the stuff in case of error
+    std::shared_ptr<element_type> release() {
+      auto* raw = get();
+      auto moved_value = make_move_on_copy(std::move(value_));
+      auto* owner = owner_;
+      owner_ = nullptr; // moved
+
+      return std::shared_ptr<element_type>(
+        raw,
+        [owner, moved_value] (element_type*) mutable NOEXCEPT {
+          reset(moved_value.value(), owner);
+      });
     }
 
     element_type& operator*() const NOEXCEPT { return *value_; }
@@ -417,96 +549,262 @@ class unbounded_object_pool
     }
 
    private:
+    static void reset(typename T::ptr& obj, unbounded_object_pool*& owner) NOEXCEPT {
+      if (!owner) {
+        // already destroyed
+        return;
+      }
+
+      owner->release(std::move(obj));
+      owner = nullptr; // mark as destroyed
+    }
+
     typename T::ptr value_;
     unbounded_object_pool* owner_;
-    reusable_t reusable_;
   };
 
   explicit unbounded_object_pool(size_t size)
-    : pool_(size), reusable_(memory::make_shared<std::atomic<bool>>(true)) {
+    : unbounded_object_pool_base<T>(size) {
   }
 
-  ~unbounded_object_pool() NOEXCEPT {
-    // prevent existing elements from returning into the pool
-    atomic_bool_utils::atomic_load(&reusable_)->store(false);
-  }
-
+  /////////////////////////////////////////////////////////////////////////////
+  /// @brief clears all cached objects
+  /////////////////////////////////////////////////////////////////////////////
   void clear() {
-    auto reusable = atomic_bool_utils::atomic_load(&reusable_);
+    node* head = nullptr;
 
-    reusable->store(false); // prevent existing element from returning into the pool
-    reusable = memory::make_shared<std::atomic<bool>>(true); // mark new generation
-    atomic_bool_utils::atomic_store(&reusable_, reusable);
-
-    // linearly reset all cached instances
-    for(size_t i = 0, count = pool_.size(); i < count; ++i) {
-      typename T::ptr empty;
-      atomic_utils::atomic_exchange(&(pool_[i]), empty);
+    // reset all cached instances
+    while (head = this->pop_front(this->free_objects_)) {
+      head->value = typename T::ptr{}; // empty instance
+      this->push_front(head, this->free_slots_);
     }
   }
 
   template<typename... Args>
   ptr emplace(Args&&... args) {
-    auto reusable = atomic_bool_utils::atomic_load(&reusable_); // retrieve before seek/instantiate
+    return ptr(this->acquire(std::forward<Args>(args)...), *this);
+  }
+}; // unbounded_object_pool
 
-    // liniar search for an existing entry in the pool
-    typename T::ptr value = nullptr;
+NS_BEGIN(detail)
 
-    for(size_t i = 0, count = pool_.size(); i < count && !value; ++i) {
-      value = std::move(atomic_utils::atomic_exchange(&(pool_[i]), value));
+template<typename Pool>
+struct unbounded_object_pool_generation {
+ protected:
+  struct pool_generation {
+    explicit pool_generation(Pool* owner) NOEXCEPT
+      : owner(owner) {
     }
 
-    if (!value) {
-      value = T::make(std::forward<Args>(args)...);
+    bool stale{false}; // stale mark
+    Pool* owner; // current owner
+  }; // pool_generation
+
+  typedef async_value<pool_generation> generation_t;
+  typedef std::shared_ptr<generation_t> generation_ptr_t;
+  typedef atomic_base<generation_ptr_t> atomic_utils;
+}; // unbounded_object_pool_generation
+
+NS_END // detail
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class unbounded_object_pool_volatile
+/// @brief a fixed size pool of objects
+///        if the pool is empty then a new object is created via make(...)
+///        if an object is available in a pool then in is returned and no
+///        longer tracked by the pool
+///        when the object is released it is placed back into the pool if
+///        space in the pool is available
+///        pool may be safely destroyed even there are some produced objects
+///        alive
+//////////////////////////////////////////////////////////////////////////////
+template<typename T>
+class unbounded_object_pool_volatile
+    : public unbounded_object_pool_base<T>,
+      private detail::unbounded_object_pool_generation<unbounded_object_pool_volatile<T>> {
+ private:
+  typedef unbounded_object_pool_base<T> base_t;
+  typedef detail::unbounded_object_pool_generation<unbounded_object_pool_volatile<T>> generation_base_t;
+
+  typedef typename generation_base_t::generation_t generation_t;
+  typedef typename generation_base_t::generation_ptr_t generation_ptr_t;
+  typedef typename generation_base_t::atomic_utils atomic_utils;
+
+  typedef std::lock_guard<typename generation_t::read_lock_type> read_guard_t;
+  typedef std::lock_guard<typename generation_t::write_lock_type> write_guard_t;
+
+ public:
+  typedef typename base_t::element_type element_type;
+
+  /////////////////////////////////////////////////////////////////////////////
+  /// @class ptr
+  /// @brief represents a control object of unbounded_object_pool with
+  ///        semantic similar to smart pointers
+  /////////////////////////////////////////////////////////////////////////////
+  class ptr : util::noncopyable {
+   public:
+    ptr(typename T::ptr&& value,
+        const generation_ptr_t& gen) NOEXCEPT
+      : value_(std::move(value)),
+        gen_(std::move(gen)) {
     }
 
-    return ptr(std::move(value), *this, reusable);
+    ptr(ptr&& rhs) NOEXCEPT
+      : value_(std::move(rhs.value_)),
+        gen_(std::move(rhs.gen_)) {
+    }
+
+    ptr& operator=(ptr&& rhs) NOEXCEPT {
+      if (this != &rhs) {
+        value_ = std::move(rhs.value_);
+        gen_ = std::move(rhs.gen_);
+      }
+      return *this;
+    }
+
+    ~ptr() NOEXCEPT {
+      reset();
+    }
+
+    FORCE_INLINE void reset() NOEXCEPT {
+      reset(value_, gen_);
+    }
+
+    // FIXME handle potential bad_alloc in shared_ptr constructor
+    // mark method as NOEXCEPT and move back all the stuff in case of error
+    std::shared_ptr<element_type> release() {
+      auto* raw = get();
+      auto moved_value = make_move_on_copy(std::move(value_));
+      auto moved_gen = make_move_on_copy(std::move(gen_));
+      assert(!gen_); // moved
+
+      return std::shared_ptr<element_type>(
+        raw,
+        [moved_gen, moved_value] (element_type*) mutable NOEXCEPT {
+          reset(moved_value.value(), moved_gen.value());
+      });
+    }
+
+    element_type& operator*() const NOEXCEPT { return *value_; }
+    element_type* operator->() const NOEXCEPT { return get(); }
+    element_type* get() const NOEXCEPT { return value_.get(); }
+    operator bool() const NOEXCEPT {
+      return static_cast<bool>(value_);
+    }
+
+   private:
+    static void reset(typename T::ptr& obj, generation_ptr_t& gen) NOEXCEPT {
+      if (!gen) {
+        // already destroyed
+        return;
+      }
+
+      // if true then prevent existing element
+      // from returning into the pool
+      bool stale = true;
+
+      // do not remove scope!!!
+      // variable 'lock' below must be destroyed before 'gen_'
+      {
+        read_guard_t lock(gen->read_lock());
+        auto& value = gen->value();
+
+        if (!value.stale) {
+          value.owner->release(std::move(obj));
+          stale = false;
+        }
+      }
+
+      if (stale) {
+        // clear object oustide the lock
+        obj = typename T::ptr{};
+      }
+
+      gen = nullptr; // mark as destroyed
+    }
+
+    typename T::ptr value_;
+    generation_ptr_t gen_;
+  }; // ptr
+
+  explicit unbounded_object_pool_volatile(size_t size)
+    : unbounded_object_pool_base<T>(size),
+      gen_(memory::make_shared<generation_t>(this)) {
+  }
+
+  // FIXME check what if
+  //
+  // unbounded_object_pool_volatile p0, p1;
+  // thread0: p0.clear();
+  // thread1: unbounded_object_pool_volatile p1(std::move(p0));
+  unbounded_object_pool_volatile(unbounded_object_pool_volatile&& rhs) NOEXCEPT {
+    this->pool_ = std::move(rhs.pool_);
+    gen_ = atomic_utils::atomic_load(&rhs.gen_);
+
+    write_guard_t lock(gen_->write_lock());
+    gen_->value().owner = this; // change owner
+
+    swap(this->free_slots_, rhs.free_slots_);
+    swap(this->free_objects_, rhs.free_objects_);
+  }
+
+  ~unbounded_object_pool_volatile() NOEXCEPT {
+    // prevent existing elements from returning into the pool
+    // if pool doesn't own generation anymore
+    const auto gen = atomic_utils::atomic_load(&gen_);
+    write_guard_t lock(gen->write_lock());
+
+    auto& value = gen->value();
+
+    if (value.owner == this) {
+      value.stale = true;
+    }
+  }
+
+  /////////////////////////////////////////////////////////////////////////////
+  /// @brief clears all cached objects and optionally prevents already created
+  ///        objects from returning into the pool
+  /// @param new_generation if true, prevents already created objects from
+  ///        returning into the pool, otherwise just clears all cached objects
+  /////////////////////////////////////////////////////////////////////////////
+  void clear(bool new_generation = false) {
+    // prevent existing elements from returning into the pool
+    if (new_generation) {
+      {
+        auto gen = atomic_utils::atomic_load(&gen_);
+        write_guard_t lock(gen->write_lock());
+        gen->value().stale = true;
+      }
+
+      // mark new generation
+      atomic_utils::atomic_store(&gen_, memory::make_shared<generation_t>(this));
+    }
+
+    typename base_t::node* head = nullptr;
+
+    // reset all cached instances
+    while (head = this->pop_front(this->free_objects_)) {
+      head->value = typename T::ptr{}; // empty instance
+      this->push_front(head, this->free_slots_);
+    }
   }
 
   template<typename... Args>
-  std::shared_ptr<element_type> emplace_shared(Args&&... args) {
-    auto reusable = atomic_bool_utils::atomic_load(&reusable_); // retrieve before seek/instantiate
+  ptr emplace(Args&&... args) {
+    const auto gen = atomic_utils::atomic_load(&gen_); // retrieve before seek/instantiate
 
-    // liniar search for an existing entry in the pool
-    typename T::ptr value = nullptr;
-
-    for(size_t i = 0, count = pool_.size(); i < count && !value; ++i) {
-      value = std::move(atomic_utils::atomic_exchange(&(pool_[i]), value));
-    }
-
-    if (!value) {
-      value = T::make(std::forward<Args>(args)...);
-    }
-
-    auto raw = value.get();
-    auto moved = make_move_on_copy(std::move(value));
-
-    return std::shared_ptr<element_type>(
-      raw,
-      [this, reusable, moved](element_type*) mutable {
-        reset(reusable, moved.value());
-    });
+    return ptr(this->acquire(std::forward<Args>(args)...), gen);
   }
 
-  size_t size() const NOEXCEPT { return pool_.size(); }
+  size_t generation_size() const NOEXCEPT {
+    const auto use_count = atomic_utils::atomic_load(&gen_).use_count();
+    assert(use_count >= 2);
+    return use_count - 2; // -1 for temporary object, -1 for this->_gen
+  }
 
  private:
-  void reset(reusable_t& reusable, typename T::ptr& value) {
-    if (!atomic_bool_utils::atomic_load(&reusable)->load()) {
-      return; // do not return non-reusable elements into the pool
-    }
-
-    // linear search for an empty slot in the pool
-    for(size_t i = 0, count = pool_.size(); i < count && value; ++i) {
-      value = std::move(atomic_utils::atomic_exchange(&(pool_[i]), value));
-    }
-  }
-
-  typedef atomic_base<typename T::ptr> atomic_utils;
-  typedef atomic_base<reusable_t> atomic_bool_utils;
-  std::vector<typename T::ptr> pool_;
-  reusable_t reusable_;
-}; // unbounded_object_pool
+  generation_ptr_t gen_; // current generation
+}; // unbounded_object_pool_volatile
 
 NS_END
 

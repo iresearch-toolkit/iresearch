@@ -26,6 +26,7 @@
 
 #include <memory>
 #include <array>
+#include <type_traits>
 
 #include "shared.hpp"
 #include "math_utils.hpp"
@@ -35,6 +36,149 @@
 
 NS_ROOT
 NS_BEGIN(container_utils)
+
+template<typename T, size_t Size>
+class array : private util::noncopyable {
+ public:
+  typedef T value_type;
+  typedef T& reference;
+  typedef const T& const_reference;
+  typedef T* iterator;
+  typedef const T* const_iterator;
+  typedef std::reverse_iterator<iterator> reverse_iterator;
+  typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
+
+  static const size_t SIZE = Size;
+
+  template<typename... Args>
+  explicit array(Args&&... args) {
+    auto begin = this->begin();
+    auto end = this->end();
+
+    for (;begin != end; ++begin) {
+      new(begin) T(std::forward<Args>(args)...);
+    }
+  }
+
+  ~array() NOEXCEPT {
+    auto begin = this->begin();
+    auto end = this->end();
+
+    for (; begin != end; ++begin) {
+      begin->~T();
+    }
+  }
+
+#if IRESEARCH_CXX > IRESEARCH_CXX_11
+  // before c++14 constexpr member function
+  // gets const implicitly
+  CONSTEXPR
+#endif
+  reference operator[](size_t i) NOEXCEPT {
+    assert(i < Size);
+    return *(begin() + i);
+  }
+
+#if IRESEARCH_CXX > IRESEARCH_CXX_11
+  // before c++14 constexpr member function
+  // gets const implicitly
+  CONSTEXPR
+#endif
+  const_reference operator[](size_t i) const NOEXCEPT {
+    return const_cast<array&>(*this)[i];
+  }
+
+#if IRESEARCH_CXX > IRESEARCH_CXX_11
+  // before c++14 constexpr member function
+  // gets const implicitly
+  CONSTEXPR
+#endif
+  reference back() NOEXCEPT {
+    return *(--end());
+  }
+
+  CONSTEXPR const_reference back() const NOEXCEPT {
+    return const_cast<array*>(this)->back();
+  }
+
+#if IRESEARCH_CXX > IRESEARCH_CXX_11
+  // before c++14 constexpr member function
+  // gets const implicitly
+  CONSTEXPR
+#endif
+  reference front() NOEXCEPT {
+    return *begin();
+  }
+
+  CONSTEXPR const_reference front() const NOEXCEPT {
+    return const_cast<array*>(this)->front();
+  }
+
+#if IRESEARCH_CXX > IRESEARCH_CXX_11
+  // before c++14 constexpr member function
+  // gets const implicitly
+  CONSTEXPR
+#endif
+  iterator begin() NOEXCEPT {
+    return reinterpret_cast<T*>(data_);
+  }
+
+#if IRESEARCH_CXX > IRESEARCH_CXX_11
+  // before c++14 constexpr member function
+  // gets const implicitly
+  CONSTEXPR
+#endif
+  iterator end() NOEXCEPT {
+    return reinterpret_cast<T*>(data_) + Size;
+  }
+
+  CONSTEXPR const_iterator begin() const NOEXCEPT {
+    return const_cast<array*>(this)->begin();
+  }
+
+  CONSTEXPR const_iterator end() const NOEXCEPT {
+    return const_cast<array*>(this)->begin();
+  }
+
+#if IRESEARCH_CXX > IRESEARCH_CXX_11
+  // before c++14 constexpr member function
+  // gets const implicitly
+  CONSTEXPR
+#endif
+  reverse_iterator rbegin() NOEXCEPT {
+    return reverse_iterator(begin());
+  }
+
+#if IRESEARCH_CXX > IRESEARCH_CXX_11
+  // before c++14 constexpr member function
+  // gets const implicitly
+  CONSTEXPR
+#endif
+  reverse_iterator rend() NOEXCEPT {
+    return reverse_iterator(end());
+  }
+
+  CONSTEXPR const_reverse_iterator rbegin() const NOEXCEPT {
+    return const_reverse_iterator(begin());
+  }
+
+  CONSTEXPR const_reverse_iterator rend() const NOEXCEPT {
+    return const_reverse_iterator(end());
+  }
+
+  CONSTEXPR size_t size() const NOEXCEPT {
+    return Size;
+  }
+
+  CONSTEXPR bool empty() const NOEXCEPT {
+    return 0 == size();
+  }
+
+ private:
+  typename std::aligned_storage<
+    sizeof(T), alignof(T)
+  >::type data_[Size];
+}; // array
 
 struct bucket_size_t {
   bucket_size_t* next; // next bucket
@@ -86,16 +230,13 @@ MSVC_ONLY(__pragma(warning(pop)))
 
 NS_BEGIN(memory)
 
-template<typename BucketFactory>
+template<typename BucketFactory, size_t Size>
 class bucket_allocator {
  public:
   typedef typename unbounded_object_pool<BucketFactory>::ptr value_type;
 
-  bucket_allocator(size_t size, size_t pool_size) {
-    pools_.reserve(size);
-    while (size--) {
-      pools_.emplace_back(pool_size);
-    }
+  explicit bucket_allocator(size_t pool_size)
+    : pools_(pool_size) {
   }
 
   value_type allocate(const bucket_size_t& bucket) {
@@ -104,7 +245,7 @@ class bucket_allocator {
   }
 
  private:
-  std::vector<unbounded_object_pool<BucketFactory>> pools_;
+  array<unbounded_object_pool<BucketFactory>, Size> pools_;
 }; // bucket_allocator
 
 // default stateless allocator

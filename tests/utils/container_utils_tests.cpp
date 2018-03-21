@@ -60,8 +60,7 @@ TEST_F(container_utils_tests, test_bucket_allocator) {
     }
   };
 
-  irs::container_utils::memory::bucket_allocator<bucket_builder> alloc(
-    16, // total number of levels
+  irs::container_utils::memory::bucket_allocator<bucket_builder, 16> alloc(
     1   // how many buckets to cache for each level
   );
 

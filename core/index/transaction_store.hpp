@@ -249,7 +249,7 @@ class IRESEARCH_API transaction_store: private util::noncopyable {
     const column_meta_builder::ptr meta_;
     column_named_t(
         column_meta_pool_t& pool, const string_ref& name, field_id id
-    ): meta_(pool.emplace_shared()) {
+    ): meta_(pool.emplace().release()) {
       if (meta_) {
         *meta_ = column_meta(name, id); // reset value
       }
@@ -262,7 +262,7 @@ class IRESEARCH_API transaction_store: private util::noncopyable {
     const bstring_builder::ptr name_;
     postings_t(
         bstring_pool_t& pool, const bytes_ref& name
-    ): name_(pool.emplace_shared()) {
+    ): name_(pool.emplace().release()) {
       if (name_) {
         *name_ = name; // reset value
       }
@@ -276,7 +276,7 @@ class IRESEARCH_API transaction_store: private util::noncopyable {
     std::unordered_map<hashed_bytes_ref, postings_t> terms_;
     terms_t(
         field_meta_pool_t& pool, const string_ref& name, const flags& features
-    ): meta_(pool.emplace_shared()) {
+    ): meta_(pool.emplace().release()) {
       if (meta_) {
         *meta_ = field_meta(name, features); // reset value
       }
@@ -618,7 +618,7 @@ class IRESEARCH_API store_writer final: private util::noncopyable {
   template<typename Func>
   bool insert(bitvector& doc_ids, Func func) {
     REGISTER_TIMER_DETAILED();
-    auto state_buf = store_.bstring_pool_.emplace_shared();
+    auto state_buf = store_.bstring_pool_.emplace().release();
 
     if (!state_buf) {
       return false; // treat as a rollback
@@ -639,7 +639,7 @@ class IRESEARCH_API store_writer final: private util::noncopyable {
       transaction_store::document_t doc(next_doc_id_);
 
       ++next_doc_id_; // prepare for next document
-      doc.buf_ = store_.bstring_pool_.emplace_shared();
+      doc.buf_ = store_.bstring_pool_.emplace().release();
 
       if (!doc.buf_) {
         return false; // treat as a rollback
