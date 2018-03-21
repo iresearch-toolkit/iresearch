@@ -180,7 +180,6 @@ struct numeric_traits<float> {
   static const bytes_ref& (min)() { return minf32(); } 
   static const bytes_ref& (max)() { return maxf32(); } 
   static const bytes_ref& inf() { return finf32(); }
-  CONSTEXPR static size_t mantissa_bits() { return 1 - log(FLT_EPSILON)/log(2); } // 24 FLT_MANT_BITS
   static float_t floating(integral_t value) { return i32tof(value); }
   static integral_t integral(float_t value) { return ftoi32(value); }
   CONSTEXPR static size_t size() { return sizeof(integral_t)+1; }
@@ -199,7 +198,6 @@ struct numeric_traits<double> {
   static const bytes_ref& (min)() { return mind64(); } 
   static const bytes_ref& (max)() { return maxd64(); } 
   static const bytes_ref& inf() { return dinf64(); }
-  CONSTEXPR static size_t mantissa_bits() { return 1 - log(DBL_EPSILON)/log(2); } // 53 DBL_MANT_BITS
   static double_t floating(integral_t value) { return i64tod(value); }
   static integral_t integral(double_t value) { return dtoi64(value); }
   CONSTEXPR static size_t size() { return sizeof(integral_t)+1; }
@@ -213,7 +211,6 @@ struct numeric_traits<double> {
 
 template<>
 struct numeric_traits<long double> {
-  CONSTEXPR static size_t mantissa_bits() { return 1 - log(LDBL_EPSILON)/log(2); } // 64 LDBL_MANT_BITS
 }; // numeric_traits
 
 NS_END // numeric_utils

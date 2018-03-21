@@ -700,7 +700,7 @@ template<typename T>
 
   str.width(0); // reset padding
 
-  static auto mantissa_bits = irs::numeric_utils::numeric_traits<type>::mantissa_bits();
+  static auto mantissa_bits = std::numeric_limits<type>::digits;
   static const char lower[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
   static const char upper[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
   auto* table = str.flags() & std::ios_base::uppercase ? upper : lower;
