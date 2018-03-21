@@ -275,13 +275,6 @@ class num_put_facet: public std::num_put<char> {
         return nullptr;
       }
 
-      // uppercase (instead of mixed case with UDisplayContext::UDISPCTX_CAPITALIZATION_NONE)
-      ctx->scientific_->setContext(UDisplayContext::UDISPCTX_CAPITALIZATION_FOR_STANDALONE, status);
-
-      if (!U_SUCCESS(status)) {
-        return nullptr;
-      }
-
       return std::move(ctx);
     }
 
@@ -624,8 +617,11 @@ num_put_facet::iter_type num_put_facet::do_put(
             ? &ctx->icu_buf1_ : &ctx->icu_buf0_;
   }
 
-  // ensure all letters are lowercased
-  if (!(str.flags() & std::ios_base::uppercase)) {
+  // ensure all letters are uppercased/lowercased
+  // not all versions of ICU support NumberFormat::setContext(...) for setting case
+  if (str.flags() & std::ios_base::uppercase) {
+    icu_buf->toUpper();
+  } else {
     icu_buf->toLower();
   }
 
