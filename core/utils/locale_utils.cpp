@@ -275,6 +275,16 @@ class num_put_facet: public std::num_put<char> {
         return nullptr;
       }
 
+      // ICU v52 does not support NumberFormat::setContext(...) for setting case
+      #if !defined(U_ICU_VERSION_MAJOR_NUM) || U_ICU_VERSION_MAJOR_NUM >= 53
+        // uppercase (instead of mixed case with UDisplayContext::UDISPCTX_CAPITALIZATION_NONE)
+        ctx->scientific_->setContext(UDisplayContext::UDISPCTX_CAPITALIZATION_FOR_STANDALONE, status);
+
+        if (!U_SUCCESS(status)) {
+          return nullptr;
+        }
+      #endif
+
       return std::move(ctx);
     }
 
@@ -550,11 +560,18 @@ num_put_facet::iter_type num_put_facet::do_put(
     throw irs::detailed_io_error("failed to retrieve ICU formatter in num_put_facet::do_put(...)");
   }
 
+  #if defined(U_ICU_VERSION_MAJOR_NUM) && U_ICU_VERSION_MAJOR_NUM < 53
+    // +1 because ICU v52 truncates to 1 fewer than the specified precision
+    static const size_t precision_extra = 1;
+  #else
+    static const size_t precision_extra = 0;
+  #endif
+
   ctx->reset(str);
-  ctx->regular_->setMinimumFractionDigits(6); // default 6 as per specification
-  ctx->regular_->setMaximumFractionDigits(6); // default 6 as per specification
-  ctx->scientific_->setMinimumFractionDigits(6); // default 6 as per specification
-  ctx->scientific_->setMaximumFractionDigits(6); // default 6 as per specification
+  ctx->regular_->setMinimumFractionDigits(6 + precision_extra); // default 6 as per specification
+  ctx->regular_->setMaximumFractionDigits(6 + precision_extra); // default 6 as per specification
+  ctx->scientific_->setMinimumFractionDigits(6 + precision_extra); // default 6 as per specification
+  ctx->scientific_->setMaximumFractionDigits(6 + precision_extra); // default 6 as per specification
 
   static const UnicodeString point(".");
   icu::UnicodeString* icu_buf;
@@ -593,9 +610,9 @@ num_put_facet::iter_type num_put_facet::do_put(
 
     // set the maximum number of significant digits to be printed (as per spec)
     ctx->regular_->setMinimumFractionDigits(0);
-    ctx->regular_->setMaximumFractionDigits(str.precision());
+    ctx->regular_->setMaximumFractionDigits(str.precision() + precision_extra);
     ctx->scientific_->setMinimumFractionDigits(0);
-    ctx->scientific_->setMaximumFractionDigits(str.precision());
+    ctx->scientific_->setMaximumFractionDigits(str.precision() + precision_extra);
 
     // Use the shortest representation:
     //  Decimal floating point
@@ -618,11 +635,12 @@ num_put_facet::iter_type num_put_facet::do_put(
   }
 
   // ensure all letters are uppercased/lowercased
-  // not all versions of ICU support NumberFormat::setContext(...) for setting case
-  if (str.flags() & std::ios_base::uppercase) {
-    icu_buf->toUpper();
-  } else {
+  if (!(str.flags() & std::ios_base::uppercase)) {
     icu_buf->toLower();
+#if defined(U_ICU_VERSION_MAJOR_NUM) && U_ICU_VERSION_MAJOR_NUM < 53
+  } else { // ICU v52 does not support NumberFormat::setContext(...) for setting case
+    icu_buf->toUpper();
+#endif
   }
 
   if (!utf8_.out(ctx->buf_, *icu_buf)) {
