@@ -38,7 +38,27 @@
 NS_ROOT
 
 template<typename Ptr>
-class atomic_base;
+class atomic_base {
+ public:
+  Ptr& atomic_exchange(Ptr* p, Ptr& r) const {
+    SCOPED_LOCK(mutex_);
+    p->swap(r);
+    return r;
+  }
+
+  void atomic_store(Ptr* p, Ptr& r) const  {
+    SCOPED_LOCK(mutex_);
+    p->swap(r); // FIXME
+  }
+
+  const Ptr& atomic_load(const Ptr* p) const {
+    SCOPED_LOCK(mutex_);
+    return *p;
+  }
+
+ private:
+  mutable std::mutex mutex_;
+};
 
 // GCC prior the 5.0 does not support std::atomic_exchange(std::shared_ptr<T>*, std::shared_ptr<T>)
 #if !defined(__GNUC__) || (__GNUC__ >= 5)
