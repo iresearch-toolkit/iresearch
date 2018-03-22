@@ -182,8 +182,9 @@ struct numeric_traits<uint64_t> {
   CONSTEXPR static size_t size() { return sizeof(integral_t) + 1; }
 };
 
+// MacOS 'unsigned long' is a different type from any of the above
 // MSVC 'unsigned long' is a different type from any of the above
-#if defined(_MSC_VER)
+#if defined (__APPLE__) || defined(_MSC_VER)
   template<>
   struct numeric_traits<unsigned long>
     : public numeric_traits<equal_size_type<unsigned long, sizeof(unsigned long)>::type> {
