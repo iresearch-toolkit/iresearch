@@ -44,6 +44,15 @@ NS_LOCAL
   };
 #endif
 
+template <typename T, size_t N>
+struct equal_size_type;
+
+template<>
+struct equal_size_type<unsigned long, 4> { typedef uint32_t type; };
+
+template<>
+struct equal_size_type<unsigned long, 8> { typedef uint64_t type; };
+
 NS_END
 
 NS_ROOT
@@ -172,6 +181,14 @@ struct numeric_traits<uint64_t> {
   }
   CONSTEXPR static size_t size() { return sizeof(integral_t) + 1; }
 };
+
+// MSVC 'unsigned long' is a different type from any of the above
+#if defined(_MSC_VER)
+  template<>
+  struct numeric_traits<unsigned long>
+    : public numeric_traits<equal_size_type<unsigned long, sizeof(unsigned long)>::type> {
+  };
+#endif
 
 template<>
 struct numeric_traits<float> {
