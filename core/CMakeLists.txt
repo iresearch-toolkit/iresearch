@@ -805,20 +805,24 @@ if(MSVC)
 endif()
 
 target_include_directories(${IResearch_TARGET_NAME}-analyzer-text-shared
+  PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
   PRIVATE ${Snowball_INCLUDE_DIR}
 )
 
 target_include_directories(${IResearch_TARGET_NAME}-analyzer-text-static
+  PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
   PRIVATE ${Snowball_INCLUDE_DIR}
 )
 
 # setup CRT
 if(MSVC)
   target_include_directories(${IResearch_TARGET_NAME}-analyzer-text-shared-scrt
+    PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
     PRIVATE ${Snowball_INCLUDE_DIR}
   )
 
   target_include_directories(${IResearch_TARGET_NAME}-analyzer-text-static-scrt
+    PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
     PRIVATE ${Snowball_INCLUDE_DIR}
   )
 endif()
