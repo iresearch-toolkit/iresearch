@@ -71,8 +71,11 @@ const size_t POOL_SIZE = 8;
 // --SECTION--                                    facets required by std::locale
 // -----------------------------------------------------------------------------
 
-class codecvt_facet: public std::codecvt<char, char, mbstate_t> {
+template<typename CharType>
+class codecvt_facet: public std::codecvt<char, CharType, mbstate_t> {
  public:
+  typedef typename std::codecvt<char, CharType, mbstate_t>::extern_type extern_type;
+
   codecvt_facet(const irs::string_ref& encoding)
     : encoding_(encoding), pool_(POOL_SIZE) {
   }
@@ -107,7 +110,8 @@ class codecvt_facet: public std::codecvt<char, char, mbstate_t> {
   mutable irs::unbounded_object_pool<builder> pool_;
 };
 
-bool codecvt_facet::out(
+template<typename CharType>
+bool codecvt_facet<CharType>::out(
     std::basic_string<extern_type>& buf, const icu::UnicodeString& value
 ) const {
   char ch_buf[1024];
@@ -213,9 +217,13 @@ class num_getw_facet: public std::num_get<wchar_t> {
   // FIXME TODO implement
 };
 
-class num_put_facet: public std::num_put<char> {
+template<typename CharType>
+class num_put_facet: public std::num_put<CharType> {
  public:
-  num_put_facet(const icu::Locale& locale, const codecvt_facet& utf8)
+  typedef typename std::num_put<CharType>::char_type char_type;
+  typedef typename std::num_put<CharType>::iter_type iter_type;
+
+  num_put_facet(const icu::Locale& locale, const codecvt_facet<char_type>& utf8)
     : locale_(locale), pool_(POOL_SIZE), utf8_(utf8) {
   }
 
@@ -275,15 +283,12 @@ class num_put_facet: public std::num_put<char> {
         return nullptr;
       }
 
-      // ICU v52 does not support NumberFormat::setContext(...) for setting case
-      #if !defined(U_ICU_VERSION_MAJOR_NUM) || U_ICU_VERSION_MAJOR_NUM >= 53
-        // uppercase (instead of mixed case with UDisplayContext::UDISPCTX_CAPITALIZATION_NONE)
-        ctx->scientific_->setContext(UDisplayContext::UDISPCTX_CAPITALIZATION_FOR_STANDALONE, status);
+      // uppercase (instead of mixed case with UDisplayContext::UDISPCTX_CAPITALIZATION_NONE)
+      ctx->scientific_->setContext(UDisplayContext::UDISPCTX_CAPITALIZATION_FOR_STANDALONE, status);
 
-        if (!U_SUCCESS(status)) {
-          return nullptr;
-        }
-      #endif
+      if (!U_SUCCESS(status)) {
+        return nullptr;
+      }
 
       return std::move(ctx);
     }
@@ -306,7 +311,7 @@ class num_put_facet: public std::num_put<char> {
 
   icu::Locale locale_;
   mutable irs::unbounded_object_pool<context> pool_;
-  const codecvt_facet& utf8_; // conversion from char->utf8
+  const codecvt_facet<char_type>& utf8_; // conversion from char->utf8
 
   template<typename T>
   static iter_type do_put_float_hex(
@@ -328,7 +333,8 @@ class num_put_facet: public std::num_put<char> {
   );
 };
 
-num_put_facet::iter_type num_put_facet::do_put(
+template<typename CharType>
+typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put(
     iter_type out, std::ios_base& str, char_type fill, bool value
 ) const {
   if (!(str.flags() & std::ios_base::boolalpha)) {
@@ -364,7 +370,8 @@ num_put_facet::iter_type num_put_facet::do_put(
   return out;
 }
 
-num_put_facet::iter_type num_put_facet::do_put(
+template<typename CharType>
+typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put(
     iter_type out, std::ios_base& str, char_type fill, long value
 ) const {
   if (str.flags() & std::ios_base::oct) {
@@ -379,7 +386,8 @@ num_put_facet::iter_type num_put_facet::do_put(
   return do_put(out, str, fill, (long long)value);
 }
 
-num_put_facet::iter_type num_put_facet::do_put(
+template<typename CharType>
+typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put(
     iter_type out, std::ios_base& str, char_type fill, long long value
 ) const {
   if (str.flags() & std::ios_base::oct) {
@@ -447,7 +455,8 @@ num_put_facet::iter_type num_put_facet::do_put(
   return out;
 }
 
-num_put_facet::iter_type num_put_facet::do_put(
+template<typename CharType>
+typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put(
     iter_type out, std::ios_base& str, char_type fill, unsigned long value
 ) const {
   if (str.flags() & std::ios_base::oct) {
@@ -462,7 +471,8 @@ num_put_facet::iter_type num_put_facet::do_put(
   return do_put(out, str, fill, (unsigned long long)value);
 }
 
-num_put_facet::iter_type num_put_facet::do_put(
+template<typename CharType>
+typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put(
     iter_type out, std::ios_base& str, char_type fill, unsigned long long value
 ) const {
   if (str.flags() & std::ios_base::oct) {
@@ -536,7 +546,8 @@ num_put_facet::iter_type num_put_facet::do_put(
   return out;
 }
 
-num_put_facet::iter_type num_put_facet::do_put(
+template<typename CharType>
+typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put(
     iter_type out, std::ios_base& str, char_type fill, double value
 ) const {
   if ((str.flags() & std::ios_base::floatfield) == (std::ios_base::fixed | std::ios_base::scientific)) {
@@ -560,18 +571,11 @@ num_put_facet::iter_type num_put_facet::do_put(
     throw irs::detailed_io_error("failed to retrieve ICU formatter in num_put_facet::do_put(...)");
   }
 
-  #if defined(U_ICU_VERSION_MAJOR_NUM) && U_ICU_VERSION_MAJOR_NUM < 53
-    // +1 because ICU v52 truncates to 1 fewer than the specified precision
-    static const size_t precision_extra = 1;
-  #else
-    static const size_t precision_extra = 0;
-  #endif
-
   ctx->reset(str);
-  ctx->regular_->setMinimumFractionDigits(6 + precision_extra); // default 6 as per specification
-  ctx->regular_->setMaximumFractionDigits(6 + precision_extra); // default 6 as per specification
-  ctx->scientific_->setMinimumFractionDigits(6 + precision_extra); // default 6 as per specification
-  ctx->scientific_->setMaximumFractionDigits(6 + precision_extra); // default 6 as per specification
+  ctx->regular_->setMinimumFractionDigits(6); // default 6 as per specification
+  ctx->regular_->setMaximumFractionDigits(6); // default 6 as per specification
+  ctx->scientific_->setMinimumFractionDigits(6); // default 6 as per specification
+  ctx->scientific_->setMaximumFractionDigits(6); // default 6 as per specification
 
   static const UnicodeString point(".");
   icu::UnicodeString* icu_buf;
@@ -610,9 +614,9 @@ num_put_facet::iter_type num_put_facet::do_put(
 
     // set the maximum number of significant digits to be printed (as per spec)
     ctx->regular_->setMinimumFractionDigits(0);
-    ctx->regular_->setMaximumFractionDigits(str.precision() + precision_extra);
+    ctx->regular_->setMaximumFractionDigits(str.precision());
     ctx->scientific_->setMinimumFractionDigits(0);
-    ctx->scientific_->setMaximumFractionDigits(str.precision() + precision_extra);
+    ctx->scientific_->setMaximumFractionDigits(str.precision());
 
     // Use the shortest representation:
     //  Decimal floating point
@@ -637,10 +641,6 @@ num_put_facet::iter_type num_put_facet::do_put(
   // ensure all letters are uppercased/lowercased
   if (!(str.flags() & std::ios_base::uppercase)) {
     icu_buf->toLower();
-#if defined(U_ICU_VERSION_MAJOR_NUM) && U_ICU_VERSION_MAJOR_NUM < 53
-  } else { // ICU v52 does not support NumberFormat::setContext(...) for setting case
-    icu_buf->toUpper();
-#endif
   }
 
   if (!utf8_.out(ctx->buf_, *icu_buf)) {
@@ -680,7 +680,8 @@ num_put_facet::iter_type num_put_facet::do_put(
   return out;
 }
 
-num_put_facet::iter_type num_put_facet::do_put(
+template<typename CharType>
+typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put(
     iter_type out, std::ios_base& str, char_type fill, long double value
 ) const {
   if ((str.flags() & std::ios_base::floatfield) == (std::ios_base::fixed | std::ios_base::scientific)) {
@@ -691,14 +692,16 @@ num_put_facet::iter_type num_put_facet::do_put(
   return do_put(out, str, fill, (double)value);
 }
 
-num_put_facet::iter_type num_put_facet::do_put(
+template<typename CharType>
+typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put(
     iter_type out, std::ios_base& str, char_type fill, const void* value
 ) const {
   return do_put_int_hex(out, str, fill, size_t(value), true);
 }
 
+template<typename CharType>
 template<typename T>
-/*static*/ num_put_facet::iter_type num_put_facet::do_put_float_hex(
+/*static*/ typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put_float_hex(
     iter_type out, std::ios_base& str, char_type fill, T value
 ) {
   typedef typename std::enable_if<std::is_floating_point<T>::value, T>::type type;
@@ -863,8 +866,9 @@ template<typename T>
   return out;
 }
 
+template<typename CharType>
 template<typename T>
-/*static*/ num_put_facet::iter_type num_put_facet::do_put_int_hex(
+/*static*/ typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put_int_hex(
     iter_type out, std::ios_base& str, char_type fill, T value, bool full_width
 ) {
   typedef typename std::enable_if<std::is_unsigned<T>::value, T>::type type;
@@ -959,8 +963,9 @@ template<typename T>
   return out;
 }
 
+template<typename CharType>
 template<typename T>
-/*static*/ num_put_facet::iter_type num_put_facet::do_put_int_oct(
+/*static*/ typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put_int_oct(
     iter_type out, std::ios_base& str, char_type fill, T value
 ) {
   typedef typename std::enable_if<std::is_unsigned<T>::value, T>::type type;
@@ -1035,7 +1040,8 @@ template<typename T>
   return out;
 }
 
-/*static*/ num_put_facet::iter_type num_put_facet::do_put_int_zero(
+template<typename CharType>
+/*static*/ typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put_int_zero(
     iter_type out, std::ios_base& str, char_type fill
 ) {
   auto ipad = (str.flags() & std::ios_base::adjustfield) == std::ios_base::internal
@@ -1250,7 +1256,7 @@ const std::locale& get_encoding(std::string&& encoding, const std::locale& base)
   }
 
   // FIXME TODO replace first implementation with second once converters are implemented
-  auto codecvt_char = irs::memory::make_unique<codecvt_facet>(encoding);
+  auto codecvt_char = irs::memory::make_unique<codecvt_facet<char>>(encoding);
   auto locale_char = std::locale(std::locale::classic(), codecvt_char.release());
   auto locale_char16 = locale_char.combine<std::codecvt<char16_t, char, mbstate_t>>(base);
   auto locale_char32 = locale_char16.combine<std::codecvt<char32_t, char, mbstate_t>>(base);
@@ -1305,13 +1311,13 @@ const std::locale& get_locale(const irs::string_ref& name) {
 
   auto boost_locale = locale_genrator.generate(info.name());
   auto encoding = get_encoding(info.encoding(), boost_locale);
-  auto& codecvt_char = static_cast<const codecvt_facet&>( // get_encoding(...) adds codecvt_facet
+  auto& codecvt_char = static_cast<const codecvt_facet<char>&>( // get_encoding(...) adds codecvt_facet<char>
     std::use_facet<std::codecvt<char, char, mbstate_t>>(encoding)
   );
   auto locale_info =
     irs::memory::make_unique<locale_info_facet>(std::move(info));
   auto* locale_info_ptr = locale_info.get();
-  auto num_put_char = irs::memory::make_unique<num_put_facet>(
+  auto num_put_char = irs::memory::make_unique<num_put_facet<char>>(
     icu_locale, codecvt_char
   );
   auto locale = std::locale(boost_locale, locale_info.release());

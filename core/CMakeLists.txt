@@ -371,21 +371,25 @@ endif()
 
 target_include_directories(${IResearch_TARGET_NAME}-shared
   PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+  PRIVATE ${ICU_INCLUDE_DIR}
 )
 
 target_include_directories(${IResearch_TARGET_NAME}-static
   PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+  PRIVATE ${ICU_INCLUDE_DIR}
 )
 
 # setup CRT
 if(MSVC)
   target_include_directories(${IResearch_TARGET_NAME}-shared-scrt
     PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+    PRIVATE ${ICU_INCLUDE_DIR}
   )
 
   target_include_directories(${IResearch_TARGET_NAME}-static-scrt
     PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
- )
+    PRIVATE ${ICU_INCLUDE_DIR}
+  )
 endif()
 
 target_compile_features(${IResearch_TARGET_NAME}-shared
@@ -801,24 +805,20 @@ if(MSVC)
 endif()
 
 target_include_directories(${IResearch_TARGET_NAME}-analyzer-text-shared
-  PRIVATE ${ICU_INCLUDE_DIR}
   PRIVATE ${Snowball_INCLUDE_DIR}
 )
 
 target_include_directories(${IResearch_TARGET_NAME}-analyzer-text-static
-  PRIVATE ${ICU_INCLUDE_DIR}
   PRIVATE ${Snowball_INCLUDE_DIR}
 )
 
 # setup CRT
 if(MSVC)
   target_include_directories(${IResearch_TARGET_NAME}-analyzer-text-shared-scrt
-    PRIVATE ${ICU_INCLUDE_DIR}
     PRIVATE ${Snowball_INCLUDE_DIR}
   )
 
   target_include_directories(${IResearch_TARGET_NAME}-analyzer-text-static-scrt
-    PRIVATE ${ICU_INCLUDE_DIR}
     PRIVATE ${Snowball_INCLUDE_DIR}
   )
 endif()
