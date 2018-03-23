@@ -50,12 +50,12 @@
 #endif
 
 #include <unicode/coll.h> // for icu::Collator
-#include <unicode/ucnv.h> // for UConverter
+#include <unicode/decimfmt.h> // for icu::DecimalFormat
 #include <unicode/numfmt.h> // for icu::NumberFormat
+#include <unicode/ucnv.h> // for UConverter
 
 #include "object_pool.hpp"
 #include "numeric_utils.hpp"
-#include "string.hpp"
 #include "error/error.hpp"
 
 #include "locale_utils.hpp"
@@ -277,11 +277,23 @@ class num_put_facet: public std::num_put<CharType> {
         return nullptr;
       }
 
-      ctx->scientific_.reset(icu::NumberFormat::createScientificInstance(locale, status));
+      // at least on ICU v55/v57/v59 createScientificInstance(...) will create different,
+      // (even on the same version but different hosts) and mostly incorrct formats,
+      // e.g. incorrect decimal or exponent precision
+      // hence use createInstance(...) and cast to DecimalFormat as per ICU documentation
+      ctx->scientific_.reset(icu::NumberFormat::createInstance(locale, status));
 
       if (!U_SUCCESS(status) && !ctx->scientific_) {
         return nullptr;
       }
+
+      auto* decimal = dynamic_cast<icu::DecimalFormat*>(ctx->scientific_.get());
+
+      if (!decimal) {
+        return nullptr; // can't set to scientific
+      }
+
+      decimal->setScientificNotation(true);
 
       // uppercase (instead of mixed case with UDisplayContext::UDISPCTX_CAPITALIZATION_NONE)
       ctx->scientific_->setContext(UDisplayContext::UDISPCTX_CAPITALIZATION_FOR_STANDALONE, status);
@@ -571,18 +583,11 @@ typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put(
     throw irs::detailed_io_error("failed to retrieve ICU formatter in num_put_facet::do_put(...)");
   }
 
-  #if defined(U_ICU_VERSION_MAJOR_NUM) && U_ICU_VERSION_MAJOR_NUM == 57
-    // +1 because ICU v57 truncates to 1 fewer than the specified precision for scientific
-    static const size_t precision_extra = 0; // should be 1 on Travis but 0 on Jenkins (on Jenkins eponent is fixed at 3 digits) TODO FIXME
-  #else
-    static const size_t precision_extra = 0;
-  #endif
-
   ctx->reset(str);
   ctx->regular_->setMinimumFractionDigits(6); // default 6 as per specification
   ctx->regular_->setMaximumFractionDigits(6); // default 6 as per specification
-  ctx->scientific_->setMinimumFractionDigits(6 + precision_extra); // default 6 as per specification
-  ctx->scientific_->setMaximumFractionDigits(6 + precision_extra); // default 6 as per specification
+  ctx->scientific_->setMinimumFractionDigits(6); // default 6 as per specification
+  ctx->scientific_->setMaximumFractionDigits(6); // default 6 as per specification
 
   static const UnicodeString point(".");
   icu::UnicodeString* icu_buf;
@@ -623,7 +628,7 @@ typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put(
     ctx->regular_->setMinimumFractionDigits(0);
     ctx->regular_->setMaximumFractionDigits(str.precision());
     ctx->scientific_->setMinimumFractionDigits(0);
-    ctx->scientific_->setMaximumFractionDigits(str.precision() + precision_extra);
+    ctx->scientific_->setMaximumFractionDigits(str.precision());
 
     // Use the shortest representation:
     //  Decimal floating point
