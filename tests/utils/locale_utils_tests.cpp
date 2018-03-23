@@ -23,6 +23,7 @@
 
 #include "gtest/gtest.h"
 #include "utils/locale_utils.hpp"
+#include "utils/misc.hpp"
 
 #if defined (__GNUC__)
   #pragma GCC diagnostic push
@@ -298,6 +299,399 @@ TEST_F(LocaleUtilsTestSuite, test_locale_build) {
       ASSERT_EQ(std::string("us-ascii"), std::use_facet<boost::locale::info>(locale).encoding());
       ASSERT_EQ(std::string(""), std::use_facet<boost::locale::info>(locale).variant());
       ASSERT_FALSE(std::use_facet<boost::locale::info>(locale).utf8());
+    }
+  }
+}
+
+TEST_F(LocaleUtilsTestSuite, test_locale_codecvt) {
+  auto c = irs::locale_utils::locale("C");
+  auto en = irs::locale_utils::locale("en.IBM-943"); // EBCDIC
+  auto ru0 = irs::locale_utils::locale("ru_RU.CP1251");
+  auto ru1 = irs::locale_utils::locale("ru_RU.KOI8-R");
+  auto zh = irs::locale_utils::locale("zh_CN.UTF-8");
+
+  // ascii (char)
+  {
+    std::istringstream in;
+    std::ostringstream out;
+    std::string buf;
+
+    in.imbue(c);
+    out.imbue(c);
+
+    in.str("in-test-data");
+    in >> buf;
+    ASSERT_EQ(std::string("in-test-data"), buf);
+
+    out << "out test data" << std::endl;
+    ASSERT_EQ(std::string("out test data\n"), out.str());
+  }
+
+  // ascii (char16)
+  {
+    auto& cvt = std::use_facet<std::codecvt<char16_t, char, mbstate_t>>(c);
+    mbstate_t state = mbstate_t();
+    std::string from("in test data");
+    const char* from_cnext;
+    char16_t buf16[12];
+    const char16_t* buf16_cnext;
+    char16_t* buf16_next;
+    char buf8[12];
+    char* buf8_next;
+
+    ASSERT_EQ(
+      //std::codecvt_base::result::partial, FIXME TODO should be partial
+      std::codecvt_base::result::ok,
+      cvt.in(state, &from[0], &from[0] + from.size(), from_cnext, buf16, buf16 + 1, buf16_next)
+    );
+    ASSERT_EQ(&from[1], from_cnext);
+    ASSERT_EQ(&buf16[1], buf16_next);
+
+    for (size_t i = 0, count = 1; i < count; ++i) {
+      ASSERT_EQ(char16_t(from[i]), buf16[i]);
+    }
+
+    ASSERT_EQ(
+      std::codecvt_base::result::ok,
+      cvt.in(state, &from[0], &from[0] + from.size(), from_cnext, buf16, buf16 + IRESEARCH_COUNTOF(buf16), buf16_next)
+    );
+
+    ASSERT_EQ(&from[0] + from.size(), from_cnext);
+    ASSERT_EQ(&buf16[0] + IRESEARCH_COUNTOF(buf16), buf16_next);
+
+    for (size_t i = 0, count = from.size(); i < count; ++i) {
+      ASSERT_EQ(char16_t(from[i]), buf16[i]);
+    }
+
+    ASSERT_EQ(
+      std::codecvt_base::result::partial,
+      cvt.out(state, buf16, buf16 + IRESEARCH_COUNTOF(buf16), buf16_cnext, buf8, buf8 + 1, buf8_next)
+    );
+    ASSERT_EQ(&buf16[1], buf16_cnext);
+    ASSERT_EQ(&buf8[1], buf8_next);
+
+    for (size_t i = 0, count = 1; i < count; ++i) {
+      ASSERT_EQ(buf16[i], char16_t(buf8[i]));
+    }
+
+    ASSERT_EQ(
+      std::codecvt_base::result::ok,
+      cvt.out(state, buf16, buf16 + IRESEARCH_COUNTOF(buf16), buf16_cnext, buf8, buf8 + IRESEARCH_COUNTOF(buf8), buf8_next)
+    );
+
+    ASSERT_EQ(&buf16[0] + IRESEARCH_COUNTOF(buf16), buf16_cnext);
+    ASSERT_EQ(&buf8[0] + IRESEARCH_COUNTOF(buf8), buf8_next);
+
+    for (size_t i = 0, count = IRESEARCH_COUNTOF(buf16); i < count; ++i) {
+      ASSERT_EQ(buf16[i], char16_t(buf8[i]));
+    }
+  }
+
+  // ascii (char32)
+  {
+    auto& cvt = std::use_facet<std::codecvt<char32_t, char, mbstate_t>>(c);
+    mbstate_t state = mbstate_t();
+    std::string from("in test data");
+    const char* from_cnext;
+    char32_t buf32[12];
+    const char32_t* buf32_cnext;
+    char32_t* buf32_next;
+    char buf8[12];
+    char* buf8_next;
+
+    ASSERT_EQ(
+      std::codecvt_base::result::partial,
+      cvt.in(state, &from[0], &from[0] + from.size(), from_cnext, buf32, buf32 + 1, buf32_next)
+    );
+    ASSERT_EQ(&from[1], from_cnext);
+    ASSERT_EQ(&buf32[1], buf32_next);
+
+    for (size_t i = 0, count = 1; i < count; ++i) {
+      ASSERT_EQ(char32_t(from[i]), buf32[i]);
+    }
+
+    ASSERT_EQ(
+      std::codecvt_base::result::ok,
+      cvt.in(state, &from[0], &from[0] + from.size(), from_cnext, buf32, buf32 + IRESEARCH_COUNTOF(buf32), buf32_next)
+    );
+
+    ASSERT_EQ(&from[0] + from.size(), from_cnext);
+    ASSERT_EQ(&buf32[0] + IRESEARCH_COUNTOF(buf32), buf32_next);
+
+    for (size_t i = 0, count = from.size(); i < count; ++i) {
+      ASSERT_EQ(char32_t(from[i]), buf32[i]);
+    }
+
+    ASSERT_EQ(
+      std::codecvt_base::result::partial,
+      cvt.out(state, buf32, buf32 + IRESEARCH_COUNTOF(buf32), buf32_cnext, buf8, buf8 + 1, buf8_next)
+    );
+    ASSERT_EQ(&buf32[1], buf32_cnext);
+    ASSERT_EQ(&buf8[1], buf8_next);
+
+    for (size_t i = 0, count = 1; i < count; ++i) {
+      ASSERT_EQ(buf32[i], char32_t(buf8[i]));
+    }
+
+    ASSERT_EQ(
+      std::codecvt_base::result::ok,
+      cvt.out(state, buf32, buf32 + IRESEARCH_COUNTOF(buf32), buf32_cnext, buf8, buf8 + IRESEARCH_COUNTOF(buf8), buf8_next)
+    );
+
+    ASSERT_EQ(&buf32[0] + IRESEARCH_COUNTOF(buf32), buf32_cnext);
+    ASSERT_EQ(&buf8[0] + IRESEARCH_COUNTOF(buf8), buf8_next);
+
+    for (size_t i = 0, count = IRESEARCH_COUNTOF(buf32); i < count; ++i) {
+      ASSERT_EQ(buf32[i], char32_t(buf8[i]));
+    }
+  }
+
+  // ascii (wchar)
+  {
+    std::wistringstream in;
+    std::wostringstream out;
+    std::wstring buf;
+
+    in.imbue(c);
+    out.imbue(c);
+
+    in.str(L"in-test-data");
+    in >> buf;
+    ASSERT_EQ(std::wstring(L"in-test-data"), buf);
+
+    out << L"out test data" << std::endl;
+    ASSERT_EQ(std::wstring(L"out test data\n"), out.str());
+  }
+
+  // koi8-r (char) uint8_t charset
+  {
+    auto& cvt_cp1251 = std::use_facet<std::codecvt<char, char, mbstate_t>>(ru0);
+    auto& cvt_koi8r = std::use_facet<std::codecvt<char, char, mbstate_t>>(ru1);
+    mbstate_t state = mbstate_t();
+    char cp1251[] = { char(0xe2), char(0xf5), char(0xee), char(0xe4), char(0xff), char(0xf9), char(0xe8), char(0xe5), ' ', char(0xe4), char(0xe0), char(0xed), char(0xed), char(0xfb), char(0xe5) };
+    char koi8r[] =  { char(0xd7), char(0xc8), char(0xcf), char(0xc4), char(0xd1), char(0xdd), char(0xc9), char(0xc5), ' ', char(0xc4), char(0xc1), char(0xce), char(0xce), char(0xd9), char(0xc5) };
+    const char* koi8r_cnext;
+    char buf[16];
+    const char* buf_cnext;
+    char* buf_next;
+    char out[16];
+    char* out_next;
+
+/* FIXME TODO Boost implementation of codecvt fails to convert from koi8
+    ASSERT_EQ(
+      std::codecvt_base::result::partial,
+      cvt_koi8r.in(state, koi8r, koi8r + strlen(koi8r), koi8r_cnext, buf, buf + 1, buf_next)
+    );
+    ASSERT_EQ(&koi8r[1], koi8r_cnext);
+    ASSERT_EQ(&buf[1], buf_next);
+
+    ASSERT_EQ(
+      std::codecvt_base::result::ok,
+      cvt_koi8r.in(state, koi8r, koi8r + strlen(koi8r), koi8r_cnext, buf, buf + IRESEARCH_COUNTOF(buf), buf_next)
+    );
+
+    ASSERT_EQ(koi8r + strlen(koi8r), koi8r_cnext);
+    ASSERT_EQ(buf + IRESEARCH_COUNTOF(buf), buf_next);
+
+    ASSERT_EQ(
+      std::codecvt_base::result::partial,
+      cvt_cp1251.out(state, buf, buf + IRESEARCH_COUNTOF(buf), buf_cnext, out, out + 1, out_next)
+    );
+    ASSERT_EQ(&buf[1], buf_cnext);
+    ASSERT_EQ(&out[1], out_next);
+
+    for (size_t i = 0, count = 1; i < count; ++i) {
+      ASSERT_EQ(cp1251[i], out[i]);
+    }
+
+    ASSERT_EQ(
+      std::codecvt_base::result::ok,
+      cvt_cp1251.out(state, buf, buf + IRESEARCH_COUNTOF(buf), buf_cnext, out, out + IRESEARCH_COUNTOF(out), out_next)
+    );
+
+    ASSERT_EQ(buf + IRESEARCH_COUNTOF(buf), buf_cnext);
+    ASSERT_EQ(out + IRESEARCH_COUNTOF(out), out_next);
+
+    for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
+      ASSERT_EQ(cp1251[i], out[i]);
+    }
+*/
+  }
+
+  // koi8-r (char16) uint8_t charset
+  {
+    auto& cvt_koi8r = std::use_facet<std::codecvt<char16_t, char, mbstate_t>>(ru1);
+    mbstate_t state = mbstate_t();
+    char koi8r[] =  { char(0xd7), char(0xc8), char(0xcf), char(0xc4), char(0xd1), char(0xdd), char(0xc9), char(0xc5), ' ', char(0xc4), char(0xc1), char(0xce), char(0xce), char(0xd9), char(0xc5) };
+    char16_t utf16[] = { 0x0432, 0x0445, 0x043E, 0x0434, 0x044F, 0x0449, 0x0438, 0x0435, 0x0020, 0x0434, 0x0430, 0x043D, 0x043D, 0x044B, 0x0435 };
+    const char* koi8r_cnext;
+    const char16_t* utf16_cnext;
+    char16_t buf[16];
+    char16_t* buf_next;
+    char out[16];
+    char* out_next;
+
+/* FIXME TODO Boost implementation of codecvt fails to convert from koi8
+    ASSERT_EQ(
+      std::codecvt_base::result::partial,
+      cvt_koi8r.in(state, koi8r, koi8r + strlen(koi8r), koi8r_cnext, buf, buf + 1, buf_next)
+    );
+    ASSERT_EQ(&koi8r[1], koi8r_cnext);
+    ASSERT_EQ(&buf[1], buf_next);
+
+    for (size_t i = 0, count = 1; i < count; ++i) {
+      ASSERT_EQ(utf16[i], buf[i]);
+    }
+
+    ASSERT_EQ(
+      std::codecvt_base::result::ok,
+      cvt_koi8r.in(state, &koi8r[0], &koi8r[0] + strlen(koi8r), koi8r_cnext, buf, buf + IRESEARCH_COUNTOF(buf), buf_next)
+    );
+
+    ASSERT_EQ(&koi8r[0] + strlen(koi8r), koi8r_cnext);
+    ASSERT_EQ(&buf[0] + IRESEARCH_COUNTOF(buf), buf_next);
+
+    for (size_t i = 0, count = IRESEARCH_COUNTOF(buf); i < count; ++i) {
+      ASSERT_EQ(utf16[i], buf[i]);
+    }
+
+    ASSERT_EQ(
+      std::codecvt_base::result::partial,
+      cvt_koi8r.out(state, utf16, utf16 + IRESEARCH_COUNTOF(utf16), utf16_cnext, out, out + 1, out_next)
+    );
+    ASSERT_EQ(&utf16[1], utf16_cnext);
+    ASSERT_EQ(&out[1], out_next);
+
+    for (size_t i = 0, count = 1; i < count; ++i) {
+      ASSERT_EQ(koi8r[i], out[i]);
+    }
+
+    ASSERT_EQ(
+      std::codecvt_base::result::ok,
+      cvt_koi8r.out(state, utf16, utf16 + IRESEARCH_COUNTOF(utf16), utf16_cnext, out, out + IRESEARCH_COUNTOF(out), out_next)
+    );
+
+    ASSERT_EQ(utf16 + IRESEARCH_COUNTOF(utf16), utf16_cnext);
+    ASSERT_EQ(out + IRESEARCH_COUNTOF(out), out_next);
+
+    for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
+      ASSERT_EQ(koi8r[i], out[i]);
+    }
+*/
+  }
+
+  // koi8-r (char32) uint8_t charset
+  {
+    auto& cvt_koi8r = std::use_facet<std::codecvt<char32_t, char, mbstate_t>>(ru1);
+    mbstate_t state = mbstate_t();
+    char koi8r[] =  { char(0xd7), char(0xc8), char(0xcf), char(0xc4), char(0xd1), char(0xdd), char(0xc9), char(0xc5), ' ', char(0xc4), char(0xc1), char(0xce), char(0xce), char(0xd9), char(0xc5) };
+    char32_t utf32[] = { 0x0432, 0x0445, 0x043E, 0x0434, 0x044F, 0x0449, 0x0438, 0x0435, 0x0020, 0x0434, 0x0430, 0x043D, 0x043D, 0x044B, 0x0435 };
+    const char* koi8r_cnext;
+    const char32_t* utf32_cnext;
+    char32_t buf[16];
+    char32_t* buf_next;
+    char out[16];
+    char* out_next;
+
+/* FIXME TODO Boost implementation of codecvt fails to convert from koi8
+    ASSERT_EQ(
+      std::codecvt_base::result::partial,
+      cvt_koi8r.in(state, koi8r, koi8r + strlen(koi8r), koi8r_cnext, buf, buf + 1, buf_next)
+    );
+    ASSERT_EQ(&koi8r[1], koi8r_cnext);
+    ASSERT_EQ(&buf[1], buf_next);
+
+    for (size_t i = 0, count = 1; i < count; ++i) {
+      ASSERT_EQ(utf32[i], buf[i]);
+    }
+
+    ASSERT_EQ(
+      std::codecvt_base::result::ok,
+      cvt_koi8r.in(state, &koi8r[0], &koi8r[0] + strlen(koi8r), koi8r_cnext, buf, buf + IRESEARCH_COUNTOF(buf), buf_next)
+    );
+
+    ASSERT_EQ(&koi8r[0] + strlen(koi8r), koi8r_cnext);
+    ASSERT_EQ(&buf[0] + IRESEARCH_COUNTOF(buf), buf_next);
+
+    for (size_t i = 0, count = IRESEARCH_COUNTOF(buf); i < count; ++i) {
+      ASSERT_EQ(utf32[i], buf[i]);
+    }
+
+    ASSERT_EQ(
+      std::codecvt_base::result::partial,
+      cvt_koi8r.out(state, utf32, utf32 + IRESEARCH_COUNTOF(utf32), utf32_cnext, out, out + 1, out_next)
+    );
+    ASSERT_EQ(&utf32[1], utf32_cnext);
+    ASSERT_EQ(&out[1], out_next);
+
+    for (size_t i = 0, count = 1; i < count; ++i) {
+      ASSERT_EQ(koi8r[i], out[i]);
+    }
+
+    ASSERT_EQ(
+      std::codecvt_base::result::ok,
+      cvt_koi8r.out(state, utf32, utf32 + IRESEARCH_COUNTOF(utf32), utf32_cnext, out, out + IRESEARCH_COUNTOF(out), out_next)
+    );
+
+    ASSERT_EQ(utf32 + IRESEARCH_COUNTOF(utf32), utf32_cnext);
+    ASSERT_EQ(out + IRESEARCH_COUNTOF(out), out_next);
+
+    for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
+      ASSERT_EQ(koi8r[i], out[i]);
+    }
+*/
+  }
+
+  // koi8-r (wchar) uint8_t charset
+  {
+    auto& cvt_cp1251 = std::use_facet<std::codecvt<wchar_t, char, mbstate_t>>(ru0);
+    auto& cvt_koi8r = std::use_facet<std::codecvt<wchar_t, char, mbstate_t>>(ru1);
+    mbstate_t state = mbstate_t();
+    char cp1251[] = { char(0xe2), char(0xf5), char(0xee), char(0xe4), char(0xff), char(0xf9), char(0xe8), char(0xe5), ' ', char(0xe4), char(0xe0), char(0xed), char(0xed), char(0xfb), char(0xe5) };
+    char koi8r[] =  { char(0xd7), char(0xc8), char(0xcf), char(0xc4), char(0xd1), char(0xdd), char(0xc9), char(0xc5), ' ', char(0xc4), char(0xc1), char(0xce), char(0xce), char(0xd9), char(0xc5) };
+    const char* koi8r_cnext;
+    wchar_t buf[16];
+    const wchar_t* buf_cnext;
+    wchar_t* buf_next;
+    char out[16];
+    char* out_next;
+
+    ASSERT_EQ(
+      std::codecvt_base::result::partial,
+      cvt_koi8r.in(state, koi8r, koi8r + strlen(koi8r), koi8r_cnext, buf, buf + 1, buf_next)
+    );
+    ASSERT_EQ(&koi8r[1], koi8r_cnext);
+    ASSERT_EQ(&buf[1], buf_next);
+
+    ASSERT_EQ(
+      std::codecvt_base::result::ok,
+      cvt_koi8r.in(state, koi8r, koi8r + strlen(koi8r), koi8r_cnext, buf, buf + IRESEARCH_COUNTOF(buf), buf_next)
+    );
+
+    ASSERT_EQ(koi8r + strlen(koi8r), koi8r_cnext);
+    ASSERT_EQ(buf + IRESEARCH_COUNTOF(buf) -1, buf_next); // FIXME TODO Boost incorrectly sets buf_next, remove -1
+
+    ASSERT_EQ(
+      std::codecvt_base::result::partial,
+      cvt_cp1251.out(state, buf, buf + IRESEARCH_COUNTOF(buf), buf_cnext, out, out + 1, out_next)
+    );
+    ASSERT_EQ(&buf[1], buf_cnext);
+    ASSERT_EQ(&out[1], out_next);
+
+    for (size_t i = 0, count = 1; i < count; ++i) {
+      ASSERT_EQ(cp1251[i], out[i]);
+    }
+
+    ASSERT_EQ(
+      std::codecvt_base::result::ok,
+      cvt_cp1251.out(state, buf, buf + IRESEARCH_COUNTOF(buf), buf_cnext, out, out + IRESEARCH_COUNTOF(out), out_next)
+    );
+
+    ASSERT_EQ(buf + IRESEARCH_COUNTOF(buf), buf_cnext);
+    ASSERT_EQ(out + IRESEARCH_COUNTOF(out), out_next);
+
+    for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
+      ASSERT_EQ(cp1251[i], out[i]);
     }
   }
 }
