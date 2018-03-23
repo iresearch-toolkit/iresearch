@@ -48,6 +48,12 @@ template <typename T, size_t N>
 struct equal_size_type;
 
 template<>
+struct equal_size_type<long, 4> { typedef int32_t type; };
+
+template<>
+struct equal_size_type<long, 8> { typedef int64_t type; };
+
+template<>
 struct equal_size_type<unsigned long, 4> { typedef uint32_t type; };
 
 template<>
