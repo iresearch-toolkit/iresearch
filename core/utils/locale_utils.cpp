@@ -573,12 +573,11 @@ typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put(
 
   #if defined(U_ICU_VERSION_MAJOR_NUM) && U_ICU_VERSION_MAJOR_NUM == 57
     // +1 because ICU v57 truncates to 1 fewer than the specified precision for scientific
-    static const size_t precision_extra = 1;
+    static const size_t precision_extra = 0; // should be 1 on Travis but 0 on Jenkins (on Jenkins eponent is fixed at 3 digits) TODO FIXME
   #else
     static const size_t precision_extra = 0;
   #endif
 
-  std::cerr << "U_ICU_VERSION_MAJOR_NUM: " << U_ICU_VERSION_MAJOR_NUM << std::endl; // FIXME TODO remove
   ctx->reset(str);
   ctx->regular_->setMinimumFractionDigits(6); // default 6 as per specification
   ctx->regular_->setMaximumFractionDigits(6); // default 6 as per specification
@@ -1140,7 +1139,7 @@ class locale_info_facet: public std::locale::facet {
   locale_info_facet(locale_info_facet&& other) NOEXCEPT { *this = std::move(other); }
   locale_info_facet& operator=(const locale_info_facet& other) = delete; // because of string_ref
   locale_info_facet& operator=(locale_info_facet&& other) NOEXCEPT;
-  bool operator<(const locale_info_facet& other) const NOEXCEPT { return buf_ < other.buf_; }
+  bool operator<(const locale_info_facet& other) const NOEXCEPT { return name_ < other.name_; }
   const irs::string_ref& country() const NOEXCEPT { return country_; }
   const irs::string_ref& encoding() const NOEXCEPT { return encoding_; }
   const irs::string_ref& language() const NOEXCEPT { return language_; }
@@ -1149,8 +1148,7 @@ class locale_info_facet: public std::locale::facet {
   const irs::string_ref& variant() const NOEXCEPT { return variant_; }
 
  private:
-  std::string buf_; // the normalized locale name
-  std::string name_; // FIXME TODO remove once all tests are modified to use normalized locale name
+  std::string name_; // the normalized locale name: language[_COUNTRY][.encoding][@variant]
   irs::string_ref country_;
   irs::string_ref encoding_;
   irs::string_ref language_;
@@ -1168,19 +1166,24 @@ class locale_info_facet: public std::locale::facet {
 /// 'variant' is backend specific variant like "euro" or "calendar=hebrew"
 //////////////////////////////////////////////////////////////////////////////
 locale_info_facet::locale_info_facet(const irs::string_ref& name)
-  : buf_(name),
-    name_(name),
+  : name_(name),
     country_(""),
     encoding_("us-ascii"),
     language_("C"),
     variant_(""),
     utf8_(false) { // us-ascii is not utf8
-  if (buf_.empty()) {
+  if (name_.empty() || name_ == "C") {
     return;
   }
 
-  auto data = &buf_[0];
-  std::transform(data, data + buf_.size(), data, ::tolower); // lowercase full string
+  if (name_ == "c") {
+    name_ = "C"; // uppercase 'classic' locale name
+
+    return;
+  }
+
+  auto data = &name_[0];
+  std::transform(data, data + name_.size(), data, ::tolower); // lowercase full string
   auto length = ::strcspn(data, "-_.@");
 
   language_ = irs::string_ref(data, length);
@@ -1191,6 +1194,7 @@ locale_info_facet::locale_info_facet(const irs::string_ref& name)
     ++data;
     length = ::strcspn(data, ".@");
     country_ = irs::string_ref(data, length);
+    std::transform(data, data + length, data, ::toupper); // uppercase country
     data += length;
   }
 
@@ -1224,41 +1228,39 @@ locale_info_facet& locale_info_facet::operator=(
     locale_info_facet&& other
 ) NOEXCEPT {
   if (this != &other) {
-    const char* start = &(other.buf_[0]);
-    const char* end = start + other.buf_.size();
+    const char* start = &(other.name_[0]);
+    const char* end = start + other.name_.size();
 
-    buf_ = std::move(other.buf_);
+    name_ = std::move(other.name_); // move first since string_ref point into it
 
     country_ = other.country_.c_str() < start || other.country_.c_str() >= end
-             ? other.country_ // does not point into 'buf_'
+             ? other.country_ // does not point into 'name_'
              : irs::string_ref(
-                 &buf_[0] + std::distance(start, other.country_.c_str()),
+                 &name_[0] + std::distance(start, other.country_.c_str()),
                  other.country_.size()
                )
              ;
 
     encoding_ = other.encoding_.c_str() < start || other.encoding_.c_str() >= end
-              ? other.encoding_ // does not point into 'buf_'
+              ? other.encoding_ // does not point into 'name_'
               : irs::string_ref(
-                  &buf_[0] + std::distance(start, other.encoding_.c_str()),
+                  &name_[0] + std::distance(start, other.encoding_.c_str()),
                   other.encoding_.size()
                 )
               ;
 
     language_ = other.language_.c_str() < start || other.language_.c_str() >= end
-              ? other.language_ // does not point into 'buf_'
+              ? other.language_ // does not point into 'name_'
               : irs::string_ref(
-                  &buf_[0] + std::distance(start, other.language_.c_str()),
+                  &name_[0] + std::distance(start, other.language_.c_str()),
                   other.language_.size()
                 )
               ;
 
-    name_ = std::move(other.name_);
-
     variant_ = other.variant_.c_str() < start || other.variant_.c_str() >= end
-             ? other.variant_ // does not point into 'buf_'
+             ? other.variant_ // does not point into 'name_'
              : irs::string_ref(
-                 &buf_[0] + std::distance(start, other.variant_.c_str()),
+                 &name_[0] + std::distance(start, other.variant_.c_str()),
                  other.variant_.size()
                )
              ;
@@ -1362,46 +1364,34 @@ NS_END
 NS_ROOT
 NS_BEGIN( locale_utils )
 
-std::string country(std::locale const& locale) {
-  try {
-    // try extracting 'info' facet from existing locale
-    return std::use_facet<boost::locale::info>(locale).country();
-  }
-  catch (...) {
-    // use Boost to parse the locale name and create a facet
-    auto locale_info = boost::locale::util::create_info(locale, locale.name());
-    auto& info_facet = std::use_facet<boost::locale::info>(locale_info);
+const irs::string_ref& country(std::locale const& locale) {
+  auto* loc = &locale;
 
-    return info_facet.country();
+  if (!std::has_facet<locale_info_facet>(*loc)) {
+    loc = &get_locale(loc->name());
   }
+
+  return std::use_facet<locale_info_facet>(*loc).country();
 }
 
-std::string encoding(std::locale const& locale){
-  try {
-    // try extracting 'info' facet from existing locale
-    return std::use_facet<boost::locale::info>(locale).encoding();
-  }
-  catch (...) {
-    // use Boost to parse the locale name and create a facet
-    auto locale_info = boost::locale::util::create_info(locale, locale.name());
-    auto& info_facet = std::use_facet<boost::locale::info>(locale_info);
+const irs::string_ref& encoding(std::locale const& locale) {
+  auto* loc = &locale;
 
-    return info_facet.encoding();
+  if (!std::has_facet<locale_info_facet>(*loc)) {
+    loc = &get_locale(loc->name());
   }
+
+  return std::use_facet<locale_info_facet>(*loc).encoding();
 }
 
-std::string language(std::locale const& locale){
-  try {
-    // try extracting 'info' facet from existing locale
-    return std::use_facet<boost::locale::info>(locale).language();
-  }
-  catch (...) {
-    // use Boost to parse the locale name and create a facet
-    auto locale_info = boost::locale::util::create_info(locale, locale.name());
-    auto& info_facet = std::use_facet<boost::locale::info>(locale_info);
+const irs::string_ref& language(std::locale const& locale) {
+  auto* loc = &locale;
 
-    return info_facet.language();
+  if (!std::has_facet<locale_info_facet>(*loc)) {
+    loc = &get_locale(loc->name());
   }
+
+  return std::use_facet<locale_info_facet>(*loc).language();
 }
 
 std::locale locale(char const* czName, bool bForceUTF8 /*= false*/) {
@@ -1460,27 +1450,24 @@ std::locale locale(std::string const& sLanguage, std::string const& sCountry, st
   return iresearch::locale_utils::locale(sName);
 }
 
-std::string name(std::locale const& locale) {
-  try {
-    return std::use_facet<boost::locale::info>(locale).name();
+const std::string& name(std::locale const& locale) {
+  auto* loc = &locale;
+
+  if (!std::has_facet<locale_info_facet>(*loc)) {
+    loc = &get_locale(loc->name());
   }
-  catch (...) {
-    return locale.name(); // fall back to default value if failed to get facet
-  }
+
+  return std::use_facet<locale_info_facet>(*loc).name();
 }
 
 bool utf8(std::locale const& locale) {
-  try {
-    // try extracting 'info' facet from existing locale
-    return std::use_facet<boost::locale::info>(locale).utf8();
-  }
-  catch (...) {
-    // use Boost to parse the locale name and create a facet
-    auto locale_info = boost::locale::util::create_info(locale, locale.name());
-    auto& info_facet = std::use_facet<boost::locale::info>(locale_info);
+  auto* loc = &locale;
 
-    return info_facet.utf8();
+  if (!std::has_facet<locale_info_facet>(*loc)) {
+    loc = &get_locale(loc->name());
   }
+
+  return std::use_facet<locale_info_facet>(*loc).utf8();
 }
 
 NS_END

@@ -21,17 +21,6 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#if defined (__GNUC__)
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
-
-  #include <boost/locale/generator.hpp>
-
-#if defined (__GNUC__)
-  #pragma GCC diagnostic pop
-#endif
-
 #include "gtest/gtest.h"
 #include "tests_config.hpp"
 #include "tests_shared.hpp"
@@ -98,7 +87,7 @@ namespace tests {
 
         iresearch::setenv(text_stopword_path_var, IResearch_test_resource_dir, true);
 
-        auto locale = boost::locale::generator().generate("en");
+        auto locale = irs::locale_utils::locale("en");
         const std::string tmp_str;
 
         irs::analysis::analyzers::get("text", irs::text_format::text, "en"); // stream needed only to load stopwords
@@ -730,7 +719,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
     auto analyzed_segment_values = column->values();
 
     query_builder::branch_builders builders;
-    auto locale = boost::locale::generator().generate("en"); // a locale that exists in tests
+    auto locale = irs::locale_utils::locale("en"); // a locale that exists in tests
     auto query = query_builder(builders).build("name~=B", locale);
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_EQ(nullptr, query.error);

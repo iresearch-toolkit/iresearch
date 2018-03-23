@@ -64,7 +64,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_create) {
   {
     std::locale locale = iresearch::locale_utils::locale(nullptr, true);
 
-    ASSERT_EQ(std::string("c.UTF-8"), std::use_facet<boost::locale::info>(locale).name());
+    ASSERT_EQ(std::string("c.utf-8"), std::use_facet<boost::locale::info>(locale).name());
     ASSERT_TRUE(std::use_facet<boost::locale::info>(locale).utf8());
   }
 
@@ -99,28 +99,28 @@ TEST_F(LocaleUtilsTestSuite, test_locale_create) {
   {
     std::locale locale = iresearch::locale_utils::locale("en_US.UTF-8");
 
-    ASSERT_EQ(std::string("en_US.UTF-8"), std::use_facet<boost::locale::info>(locale).name());
+    ASSERT_EQ(std::string("en_US.utf-8"), std::use_facet<boost::locale::info>(locale).name());
     ASSERT_TRUE(std::use_facet<boost::locale::info>(locale).utf8());
   }
 
   {
     std::locale locale = iresearch::locale_utils::locale("ru_RU.KOI8-R");
 
-    ASSERT_EQ(std::string("ru_RU.KOI8-R"), std::use_facet<boost::locale::info>(locale).name());
+    ASSERT_EQ(std::string("ru_RU.koi8-r"), std::use_facet<boost::locale::info>(locale).name());
     ASSERT_FALSE(std::use_facet<boost::locale::info>(locale).utf8());
   }
 
   {
     std::locale locale = iresearch::locale_utils::locale("ru_RU.KOI8-R", true);
 
-    ASSERT_EQ(std::string("ru_RU.UTF-8"), std::use_facet<boost::locale::info>(locale).name());
+    ASSERT_EQ(std::string("ru_RU.utf-8"), std::use_facet<boost::locale::info>(locale).name());
     ASSERT_TRUE(std::use_facet<boost::locale::info>(locale).utf8());
   }
 
   {
     std::locale locale = iresearch::locale_utils::locale("InvalidString");
 
-    ASSERT_EQ(std::string("InvalidString"), std::use_facet<boost::locale::info>(locale).name());
+    ASSERT_EQ(std::string("invalidstring"), std::use_facet<boost::locale::info>(locale).name());
   }
 }
 
@@ -163,7 +163,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_build) {
     {
       std::locale locale = iresearch::locale_utils::locale("en", "US", "ISO-8859-1");
 
-      ASSERT_EQ(std::string("en_US.ISO-8859-1"), std::use_facet<boost::locale::info>(locale).name());
+      ASSERT_EQ(std::string("en_US.iso-8859-1"), std::use_facet<boost::locale::info>(locale).name());
       ASSERT_EQ(std::string("en"), std::use_facet<boost::locale::info>(locale).language());
       ASSERT_EQ(std::string("US"), std::use_facet<boost::locale::info>(locale).country());
       ASSERT_EQ(std::string("iso-8859-1"), std::use_facet<boost::locale::info>(locale).encoding());
@@ -174,7 +174,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_build) {
     {
       std::locale locale = iresearch::locale_utils::locale("en", "US", "ISO-8859-1", "args");
 
-      ASSERT_EQ(std::string("en_US.ISO-8859-1@args"), std::use_facet<boost::locale::info>(locale).name());
+      ASSERT_EQ(std::string("en_US.iso-8859-1@args"), std::use_facet<boost::locale::info>(locale).name());
       ASSERT_EQ(std::string("en"), std::use_facet<boost::locale::info>(locale).language());
       ASSERT_EQ(std::string("US"), std::use_facet<boost::locale::info>(locale).country());
       ASSERT_EQ(std::string("iso-8859-1"), std::use_facet<boost::locale::info>(locale).encoding());
@@ -185,7 +185,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_build) {
     {
       std::locale locale = iresearch::locale_utils::locale("en", "US", "UTF-8");
 
-      ASSERT_EQ(std::string("en_US.UTF-8"), std::use_facet<boost::locale::info>(locale).name());
+      ASSERT_EQ(std::string("en_US.utf-8"), std::use_facet<boost::locale::info>(locale).name());
       ASSERT_EQ(std::string("en"), std::use_facet<boost::locale::info>(locale).language());
       ASSERT_EQ(std::string("US"), std::use_facet<boost::locale::info>(locale).country());
       ASSERT_EQ(std::string("utf-8"), std::use_facet<boost::locale::info>(locale).encoding());
@@ -211,7 +211,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_build) {
     {
       std::locale locale = iresearch::locale_utils::locale("", "US", "ISO-8859-1");
 
-      ASSERT_EQ(std::string("_US.ISO-8859-1"), std::use_facet<boost::locale::info>(locale).name());
+      ASSERT_EQ(std::string("_US.iso-8859-1"), std::use_facet<boost::locale::info>(locale).name());
       ASSERT_EQ(std::string("C"), std::use_facet<boost::locale::info>(locale).language());
       ASSERT_EQ(std::string(""), std::use_facet<boost::locale::info>(locale).country());
       ASSERT_EQ(std::string("us-ascii"), std::use_facet<boost::locale::info>(locale).encoding());
@@ -222,7 +222,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_build) {
     {
       std::locale locale = iresearch::locale_utils::locale("", "US", "ISO-8859-1", "args");
 
-      ASSERT_EQ(std::string("_US.ISO-8859-1@args"), std::use_facet<boost::locale::info>(locale).name());
+      ASSERT_EQ(std::string("_US.iso-8859-1@args"), std::use_facet<boost::locale::info>(locale).name());
       ASSERT_EQ(std::string("C"), std::use_facet<boost::locale::info>(locale).language());
       ASSERT_EQ(std::string(""), std::use_facet<boost::locale::info>(locale).country());
       ASSERT_EQ(std::string("us-ascii"), std::use_facet<boost::locale::info>(locale).encoding());
@@ -233,7 +233,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_build) {
     {
       std::locale locale = iresearch::locale_utils::locale("", "US", "UTF-8");
 
-      ASSERT_EQ(std::string("_US.UTF-8"), std::use_facet<boost::locale::info>(locale).name());
+      ASSERT_EQ(std::string("_US.utf-8"), std::use_facet<boost::locale::info>(locale).name());
       ASSERT_EQ(std::string("C"), std::use_facet<boost::locale::info>(locale).language());
       ASSERT_EQ(std::string(""), std::use_facet<boost::locale::info>(locale).country());
       ASSERT_EQ(std::string("us-ascii"), std::use_facet<boost::locale::info>(locale).encoding());
@@ -244,7 +244,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_build) {
     {
       std::locale locale = iresearch::locale_utils::locale("", "", "ISO-8859-1");
 
-      ASSERT_EQ(std::string(".ISO-8859-1"), std::use_facet<boost::locale::info>(locale).name());
+      ASSERT_EQ(std::string(".iso-8859-1"), std::use_facet<boost::locale::info>(locale).name());
       ASSERT_EQ(std::string("C"), std::use_facet<boost::locale::info>(locale).language());
       ASSERT_EQ(std::string(""), std::use_facet<boost::locale::info>(locale).country());
       ASSERT_EQ(std::string("us-ascii"), std::use_facet<boost::locale::info>(locale).encoding());
@@ -255,7 +255,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_build) {
     {
       std::locale locale = iresearch::locale_utils::locale("", "", "ISO-8859-1", "args");
 
-      ASSERT_EQ(std::string(".ISO-8859-1@args"), std::use_facet<boost::locale::info>(locale).name());
+      ASSERT_EQ(std::string(".iso-8859-1@args"), std::use_facet<boost::locale::info>(locale).name());
       ASSERT_EQ(std::string("C"), std::use_facet<boost::locale::info>(locale).language());
       ASSERT_EQ(std::string(""), std::use_facet<boost::locale::info>(locale).country());
       ASSERT_EQ(std::string("us-ascii"), std::use_facet<boost::locale::info>(locale).encoding());
@@ -266,7 +266,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_build) {
     {
       std::locale locale = iresearch::locale_utils::locale("", "", "UTF-8");
 
-      ASSERT_EQ(std::string(".UTF-8"), std::use_facet<boost::locale::info>(locale).name());
+      ASSERT_EQ(std::string(".utf-8"), std::use_facet<boost::locale::info>(locale).name());
       ASSERT_EQ(std::string("C"), std::use_facet<boost::locale::info>(locale).language());
       ASSERT_EQ(std::string(""), std::use_facet<boost::locale::info>(locale).country());
       ASSERT_EQ(std::string("us-ascii"), std::use_facet<boost::locale::info>(locale).encoding());
@@ -277,7 +277,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_build) {
     {
       std::locale locale = iresearch::locale_utils::locale("", "", "UTF-8", "args");
 
-      ASSERT_EQ(std::string(".UTF-8@args"), std::use_facet<boost::locale::info>(locale).name());
+      ASSERT_EQ(std::string(".utf-8@args"), std::use_facet<boost::locale::info>(locale).name());
       ASSERT_EQ(std::string("C"), std::use_facet<boost::locale::info>(locale).language());
       ASSERT_EQ(std::string(""), std::use_facet<boost::locale::info>(locale).country());
       ASSERT_EQ(std::string("us-ascii"), std::use_facet<boost::locale::info>(locale).encoding());
@@ -308,7 +308,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_info) {
 
     ASSERT_EQ(std::string(""), iresearch::locale_utils::country(locale));
     ASSERT_EQ(std::string("us-ascii"), iresearch::locale_utils::encoding(locale));
-    ASSERT_EQ(std::string("c"), iresearch::locale_utils::language(locale));
+    ASSERT_EQ(std::string("C"), iresearch::locale_utils::language(locale));
     ASSERT_EQ(std::string("C"), iresearch::locale_utils::name(locale));
   }
 
@@ -317,7 +317,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_info) {
 
     ASSERT_EQ(std::string(""), iresearch::locale_utils::country(locale));
     ASSERT_EQ(std::string("us-ascii"), iresearch::locale_utils::encoding(locale));
-    ASSERT_EQ(std::string("c"), iresearch::locale_utils::language(locale));
+    ASSERT_EQ(std::string("C"), iresearch::locale_utils::language(locale));
     ASSERT_EQ(std::string("C"), iresearch::locale_utils::name(locale));
   }
 
@@ -335,7 +335,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_info) {
 
     ASSERT_EQ(std::string(""), iresearch::locale_utils::country(locale));
     ASSERT_EQ(std::string("us-ascii"), iresearch::locale_utils::encoding(locale));
-    ASSERT_EQ(std::string("c"), iresearch::locale_utils::language(locale));
+    ASSERT_EQ(std::string("C"), iresearch::locale_utils::language(locale));
     ASSERT_EQ(std::string("C"), iresearch::locale_utils::name(locale));
   }
 
@@ -363,7 +363,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_info) {
     ASSERT_EQ(std::string("US"), iresearch::locale_utils::country(locale));
     ASSERT_EQ(std::string("utf-8"), iresearch::locale_utils::encoding(locale));
     ASSERT_EQ(std::string("en"), iresearch::locale_utils::language(locale));
-    ASSERT_EQ(std::string("en_US.UTF-8"), iresearch::locale_utils::name(locale));
+    ASSERT_EQ(std::string("en_US.utf-8"), iresearch::locale_utils::name(locale));
   }
 
   {
@@ -372,7 +372,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_info) {
     ASSERT_EQ(std::string("RU"), iresearch::locale_utils::country(locale));
     ASSERT_EQ(std::string("koi8-r"), iresearch::locale_utils::encoding(locale));
     ASSERT_EQ(std::string("ru"), iresearch::locale_utils::language(locale));
-    ASSERT_EQ(std::string("ru_RU.KOI8-R"), iresearch::locale_utils::name(locale));
+    ASSERT_EQ(std::string("ru_RU.koi8-r"), iresearch::locale_utils::name(locale));
   }
 
   {
@@ -381,7 +381,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_info) {
     ASSERT_EQ(std::string(""), iresearch::locale_utils::country(locale));
     ASSERT_EQ(std::string("us-ascii"), iresearch::locale_utils::encoding(locale));
     ASSERT_EQ(std::string("invalidstring"), iresearch::locale_utils::language(locale));
-    ASSERT_EQ(std::string("InvalidString"), iresearch::locale_utils::name(locale));
+    ASSERT_EQ(std::string("invalidstring"), iresearch::locale_utils::name(locale));
   }
 }
 
@@ -391,7 +391,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_num_put) {
   auto en = irs::locale_utils::locale("en.IBM-943"); // EBCDIC
   auto ru = irs::locale_utils::locale("ru_RU.KOI8-R");
 
-  // bool
+  // bool (char)
   {
     std::ostringstream c_out;
     std::ostringstream de_out;
@@ -567,10 +567,10 @@ TEST_F(LocaleUtilsTestSuite, test_locale_num_put) {
     }
 
     if (4 == sizeof(long)) {
-      ASSERT_EQ(std::string("4|-1234|FFFFFFFFFFFFFB2E|1777777777777777775456|0|0|0|1234|4D2|2322|-1234|fffffffffffffb2e|1777777777777777775456|0|0|0|1234|4d2|2322|-     1234|+0xfffffffffffffb2e|+01777777777777777775456|+        0|+        0|+        0|+     1234|+    0x4d2|+    02322|-1234     |+0xfffffffffffffb2e|+01777777777777777775456|+0        |+0        |+0        |+1234     |+0x4d2    |+02322    |     -1234|+0xfffffffffffffb2e|+01777777777777777775456|        +0|        +0|        +0|     +1234|    +0x4d2|    +02322|-     1234|0xfffffffffffffb2e|01777777777777777775456|         0|         0|         0|      1234|0x     4d2|     02322|-1234     |0xfffffffffffffb2e|01777777777777777775456|0         |0         |0         |1234      |0x4d2     |02322     |     -1234|0xfffffffffffffb2e|01777777777777777775456|         0|         0|         0|      1234|     0x4d2|     02322|\n"), c_out.str());
-      ASSERT_EQ(std::string("4|-1234|FFFFFFFFFFFFFB2E|1777777777777777775456|0|0|0|1234|4D2|2322|-1234|fffffffffffffb2e|1777777777777777775456|0|0|0|1234|4d2|2322|-     1234|+0xfffffffffffffb2e|+01777777777777777775456|+        0|+        0|+        0|+     1234|+    0x4d2|+    02322|-1234     |+0xfffffffffffffb2e|+01777777777777777775456|+0        |+0        |+0        |+1234     |+0x4d2    |+02322    |     -1234|+0xfffffffffffffb2e|+01777777777777777775456|        +0|        +0|        +0|     +1234|    +0x4d2|    +02322|-     1234|0xfffffffffffffb2e|01777777777777777775456|         0|         0|         0|      1234|0x     4d2|     02322|-1234     |0xfffffffffffffb2e|01777777777777777775456|0         |0         |0         |1234      |0x4d2     |02322     |     -1234|0xfffffffffffffb2e|01777777777777777775456|         0|         0|         0|      1234|     0x4d2|     02322|\n"), de_out.str());
-      ASSERT_EQ(std::string("4|-1234|FFFFFFFFFFFFFB2E|1777777777777777775456|0|0|0|1234|4D2|2322|-1234|fffffffffffffb2e|1777777777777777775456|0|0|0|1234|4d2|2322|-     1234|+0xfffffffffffffb2e|+01777777777777777775456|+        0|+        0|+        0|+     1234|+    0x4d2|+    02322|-1234     |+0xfffffffffffffb2e|+01777777777777777775456|+0        |+0        |+0        |+1234     |+0x4d2    |+02322    |     -1234|+0xfffffffffffffb2e|+01777777777777777775456|        +0|        +0|        +0|     +1234|    +0x4d2|    +02322|-     1234|0xfffffffffffffb2e|01777777777777777775456|         0|         0|         0|      1234|0x     4d2|     02322|-1234     |0xfffffffffffffb2e|01777777777777777775456|0         |0         |0         |1234      |0x4d2     |02322     |     -1234|0xfffffffffffffb2e|01777777777777777775456|         0|         0|         0|      1234|     0x4d2|     02322|\n"), en_out.str());
-      ASSERT_EQ(std::string("4|-1234|FFFFFFFFFFFFFB2E|1777777777777777775456|0|0|0|1234|4D2|2322|-1234|fffffffffffffb2e|1777777777777777775456|0|0|0|1234|4d2|2322|-     1234|+0xfffffffffffffb2e|+01777777777777777775456|+        0|+        0|+        0|+     1234|+    0x4d2|+    02322|-1234     |+0xfffffffffffffb2e|+01777777777777777775456|+0        |+0        |+0        |+1234     |+0x4d2    |+02322    |     -1234|+0xfffffffffffffb2e|+01777777777777777775456|        +0|        +0|        +0|     +1234|    +0x4d2|    +02322|-     1234|0xfffffffffffffb2e|01777777777777777775456|         0|         0|         0|      1234|0x     4d2|     02322|-1234     |0xfffffffffffffb2e|01777777777777777775456|0         |0         |0         |1234      |0x4d2     |02322     |     -1234|0xfffffffffffffb2e|01777777777777777775456|         0|         0|         0|      1234|     0x4d2|     02322|\n"), ru_out.str());
+      ASSERT_EQ(std::string("4|-1234|FFFFFB2E|37777775456|0|0|0|1234|4D2|2322|-1234|fffffb2e|37777775456|0|0|0|1234|4d2|2322|-     1234|+0xfffffb2e|+037777775456|+        0|+        0|+        0|+     1234|+    0x4d2|+    02322|-1234     |+0xfffffb2e|+037777775456|+0        |+0        |+0        |+1234     |+0x4d2    |+02322    |     -1234|+0xfffffb2e|+037777775456|        +0|        +0|        +0|     +1234|    +0x4d2|    +02322|-     1234|0xfffffb2e|037777775456|         0|         0|         0|      1234|0x     4d2|     02322|-1234     |0xfffffb2e|037777775456|0         |0         |0         |1234      |0x4d2     |02322     |     -1234|0xfffffb2e|037777775456|         0|         0|         0|      1234|     0x4d2|     02322|\n"), c_out.str());
+      ASSERT_EQ(std::string("4|-1234|FFFFFB2E|37777775456|0|0|0|1234|4D2|2322|-1234|fffffb2e|37777775456|0|0|0|1234|4d2|2322|-     1234|+0xfffffb2e|+037777775456|+        0|+        0|+        0|+     1234|+    0x4d2|+    02322|-1234     |+0xfffffb2e|+037777775456|+0        |+0        |+0        |+1234     |+0x4d2    |+02322    |     -1234|+0xfffffb2e|+037777775456|        +0|        +0|        +0|     +1234|    +0x4d2|    +02322|-     1234|0xfffffb2e|037777775456|         0|         0|         0|      1234|0x     4d2|     02322|-1234     |0xfffffb2e|037777775456|0         |0         |0         |1234      |0x4d2     |02322     |     -1234|0xfffffb2e|037777775456|         0|         0|         0|      1234|     0x4d2|     02322|\n"), de_out.str());
+      ASSERT_EQ(std::string("4|-1234|FFFFFB2E|37777775456|0|0|0|1234|4D2|2322|-1234|fffffb2e|37777775456|0|0|0|1234|4d2|2322|-     1234|+0xfffffb2e|+037777775456|+        0|+        0|+        0|+     1234|+    0x4d2|+    02322|-1234     |+0xfffffb2e|+037777775456|+0        |+0        |+0        |+1234     |+0x4d2    |+02322    |     -1234|+0xfffffb2e|+037777775456|        +0|        +0|        +0|     +1234|    +0x4d2|    +02322|-     1234|0xfffffb2e|037777775456|         0|         0|         0|      1234|0x     4d2|     02322|-1234     |0xfffffb2e|037777775456|0         |0         |0         |1234      |0x4d2     |02322     |     -1234|0xfffffb2e|037777775456|         0|         0|         0|      1234|     0x4d2|     02322|\n"), en_out.str());
+      ASSERT_EQ(std::string("4|-1234|FFFFFB2E|37777775456|0|0|0|1234|4D2|2322|-1234|fffffb2e|37777775456|0|0|0|1234|4d2|2322|-     1234|+0xfffffb2e|+037777775456|+        0|+        0|+        0|+     1234|+    0x4d2|+    02322|-1234     |+0xfffffb2e|+037777775456|+0        |+0        |+0        |+1234     |+0x4d2    |+02322    |     -1234|+0xfffffb2e|+037777775456|        +0|        +0|        +0|     +1234|    +0x4d2|    +02322|-     1234|0xfffffb2e|037777775456|         0|         0|         0|      1234|0x     4d2|     02322|-1234     |0xfffffb2e|037777775456|0         |0         |0         |1234      |0x4d2     |02322     |     -1234|0xfffffb2e|037777775456|         0|         0|         0|      1234|     0x4d2|     02322|\n"), ru_out.str());
     } else {
       ASSERT_EQ(std::string("8|-1234|FFFFFFFFFFFFFB2E|1777777777777777775456|0|0|0|1234|4D2|2322|-1234|fffffffffffffb2e|1777777777777777775456|0|0|0|1234|4d2|2322|-     1234|+0xfffffffffffffb2e|+01777777777777777775456|+        0|+        0|+        0|+     1234|+    0x4d2|+    02322|-1234     |+0xfffffffffffffb2e|+01777777777777777775456|+0        |+0        |+0        |+1234     |+0x4d2    |+02322    |     -1234|+0xfffffffffffffb2e|+01777777777777777775456|        +0|        +0|        +0|     +1234|    +0x4d2|    +02322|-     1234|0xfffffffffffffb2e|01777777777777777775456|         0|         0|         0|      1234|0x     4d2|     02322|-1234     |0xfffffffffffffb2e|01777777777777777775456|0         |0         |0         |1234      |0x4d2     |02322     |     -1234|0xfffffffffffffb2e|01777777777777777775456|         0|         0|         0|      1234|     0x4d2|     02322|\n"), c_out.str());
       ASSERT_EQ(std::string("8|-1234|FFFFFFFFFFFFFB2E|1777777777777777775456|0|0|0|1234|4D2|2322|-1234|fffffffffffffb2e|1777777777777777775456|0|0|0|1234|4d2|2322|-     1234|+0xfffffffffffffb2e|+01777777777777777775456|+        0|+        0|+        0|+     1234|+    0x4d2|+    02322|-1234     |+0xfffffffffffffb2e|+01777777777777777775456|+0        |+0        |+0        |+1234     |+0x4d2    |+02322    |     -1234|+0xfffffffffffffb2e|+01777777777777777775456|        +0|        +0|        +0|     +1234|    +0x4d2|    +02322|-     1234|0xfffffffffffffb2e|01777777777777777775456|         0|         0|         0|      1234|0x     4d2|     02322|-1234     |0xfffffffffffffb2e|01777777777777777775456|0         |0         |0         |1234      |0x4d2     |02322     |     -1234|0xfffffffffffffb2e|01777777777777777775456|         0|         0|         0|      1234|     0x4d2|     02322|\n"), de_out.str());
@@ -745,7 +745,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_num_put) {
     ASSERT_EQ(std::string("|0|0|0|1234|4D2|2322|0|0|0|1234|4d2|2322|+        0|+        0|+        0|+     1234|+    0x4d2|+    02322|+0        |+0        |+0        |+1234     |+0x4d2    |+02322    |        +0|        +0|        +0|     +1234|    +0x4d2|    +02322|         0|         0|         0|      1234|0x     4d2|     02322|0         |0         |0         |1234      |0x4d2     |02322     |         0|         0|         0|      1234|     0x4d2|     02322|\n"), ru_out.str());
   }
 
-  // unsigned long long
+  // unsigned long long (char)
   {
     std::ostringstream c_out;
     std::ostringstream de_out;
@@ -818,7 +818,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_num_put) {
 
 // GCC v4.x does not support std::defaultfloat or std::hexfloat
 #if !defined(__GNUC__) || __GNUC__ > 4
-  // double
+  // double (char)
   {
     std::ostringstream c_out;
     std::ostringstream de_out;
@@ -1193,7 +1193,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_num_put) {
   }
 #endif
 
-  // const void*
+  // const void* (char)
   {
     std::ostringstream c_out;
     std::ostringstream de_out;
