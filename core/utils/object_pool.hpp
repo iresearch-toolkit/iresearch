@@ -171,22 +171,18 @@ class bounded_object_pool : atomic_base<typename T::ptr> {
       reset(slot_);
     }
 
-    std::shared_ptr<element_type> release() NOEXCEPT {
+    std::shared_ptr<element_type> release() {
       auto* raw = get();
       auto* slot = slot_;
       slot_ = nullptr; // moved
 
-      try {
-        return std::shared_ptr<element_type>(
-          raw,
-          [slot] (element_type*) mutable NOEXCEPT {
-            reset(slot);
-        });
-      } catch (...) {
-        // prevent object from being malformed
-        slot_ = slot;
-        return std::shared_ptr<element_type>();
-      }
+      // in case if exception occurs
+      // destructor will be called
+      return std::shared_ptr<element_type>(
+        raw,
+        [slot] (element_type*) mutable NOEXCEPT {
+          reset(slot);
+      });
     }
 
     element_type& operator*() const NOEXCEPT { return *slot_->ptr; }
@@ -413,7 +409,7 @@ class unbounded_object_pool_base : private util::noncopyable {
   static void swap(std::atomic<node*>& lhs, std::atomic<node*>& rhs) NOEXCEPT {
     auto* head = rhs.load();
     while (!rhs.compare_exchange_weak(head, nullptr)) { }
-    lhs.load(head);
+    lhs.store(head);
   }
 
   static node* pop_front(std::atomic<node*>& list) NOEXCEPT {
@@ -437,6 +433,10 @@ class unbounded_object_pool_base : private util::noncopyable {
     }
 
     free_slots_.store(&pool_.front());
+  }
+
+  unbounded_object_pool_base(unbounded_object_pool_base&& rhs) NOEXCEPT
+    : pool_(std::move(rhs.pool_)) {
   }
 
   template<typename... Args>
@@ -534,6 +534,8 @@ class unbounded_object_pool : public unbounded_object_pool_base<T> {
       auto* owner = owner_;
       owner_ = nullptr; // moved
 
+      // in case if exception occurs
+      // destructor will be called
       return std::shared_ptr<element_type>(
         raw,
         [owner, moved_value] (element_type*) mutable NOEXCEPT {
@@ -545,7 +547,7 @@ class unbounded_object_pool : public unbounded_object_pool_base<T> {
     element_type* operator->() const NOEXCEPT { return get(); }
     element_type* get() const NOEXCEPT { return value_.get(); }
     operator bool() const NOEXCEPT {
-      return static_cast<bool>(value_);
+      return static_cast<bool>(owner_);
     }
 
    private:
@@ -556,6 +558,7 @@ class unbounded_object_pool : public unbounded_object_pool_base<T> {
       }
 
       owner->release(std::move(obj));
+      obj = typename T::ptr{}; // reset value
       owner = nullptr; // mark as destroyed
     }
 
@@ -563,8 +566,8 @@ class unbounded_object_pool : public unbounded_object_pool_base<T> {
     unbounded_object_pool* owner_;
   };
 
-  explicit unbounded_object_pool(size_t size)
-    : unbounded_object_pool_base<T>(size) {
+  explicit unbounded_object_pool(size_t size = 0)
+    : base_t(size) {
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -584,6 +587,12 @@ class unbounded_object_pool : public unbounded_object_pool_base<T> {
   ptr emplace(Args&&... args) {
     return ptr(this->acquire(std::forward<Args>(args)...), *this);
   }
+
+ private:
+  // disallow move
+  unbounded_object_pool(unbounded_object_pool&&) = delete;
+  unbounded_object_pool& operator=(unbounded_object_pool&&) = delete;
+
 }; // unbounded_object_pool
 
 NS_BEGIN(detail)
@@ -670,14 +679,14 @@ class unbounded_object_pool_volatile
       reset(value_, gen_);
     }
 
-    // FIXME handle potential bad_alloc in shared_ptr constructor
-    // mark method as NOEXCEPT and move back all the stuff in case of error
     std::shared_ptr<element_type> release() {
       auto* raw = get();
       auto moved_value = make_move_on_copy(std::move(value_));
       auto moved_gen = make_move_on_copy(std::move(gen_));
       assert(!gen_); // moved
 
+      // in case if exception occurs
+      // destructor will be called
       return std::shared_ptr<element_type>(
         raw,
         [moved_gen, moved_value] (element_type*) mutable NOEXCEPT {
@@ -689,7 +698,7 @@ class unbounded_object_pool_volatile
     element_type* operator->() const NOEXCEPT { return get(); }
     element_type* get() const NOEXCEPT { return value_.get(); }
     operator bool() const NOEXCEPT {
-      return static_cast<bool>(value_);
+      return static_cast<bool>(gen_);
     }
 
    private:
@@ -699,10 +708,6 @@ class unbounded_object_pool_volatile
         return;
       }
 
-      // if true then prevent existing element
-      // from returning into the pool
-      bool stale = true;
-
       // do not remove scope!!!
       // variable 'lock' below must be destroyed before 'gen_'
       {
@@ -711,15 +716,10 @@ class unbounded_object_pool_volatile
 
         if (!value.stale) {
           value.owner->release(std::move(obj));
-          stale = false;
         }
       }
 
-      if (stale) {
-        // clear object oustide the lock
-        obj = typename T::ptr{};
-      }
-
+      obj = typename T::ptr{}; // clear object oustide the lock
       gen = nullptr; // mark as destroyed
     }
 
@@ -727,8 +727,8 @@ class unbounded_object_pool_volatile
     generation_ptr_t gen_;
   }; // ptr
 
-  explicit unbounded_object_pool_volatile(size_t size)
-    : unbounded_object_pool_base<T>(size),
+  explicit unbounded_object_pool_volatile(size_t size = 0)
+    : base_t(size),
       gen_(memory::make_shared<generation_t>(this)) {
   }
 
@@ -737,15 +737,15 @@ class unbounded_object_pool_volatile
   // unbounded_object_pool_volatile p0, p1;
   // thread0: p0.clear();
   // thread1: unbounded_object_pool_volatile p1(std::move(p0));
-  unbounded_object_pool_volatile(unbounded_object_pool_volatile&& rhs) NOEXCEPT {
-    this->pool_ = std::move(rhs.pool_);
+  unbounded_object_pool_volatile(unbounded_object_pool_volatile&& rhs) NOEXCEPT
+    : base_t(std::move(rhs)) {
     gen_ = atomic_utils::atomic_load(&rhs.gen_);
 
     write_guard_t lock(gen_->write_lock());
     gen_->value().owner = this; // change owner
 
-    swap(this->free_slots_, rhs.free_slots_);
-    swap(this->free_objects_, rhs.free_objects_);
+    base_t::swap(this->free_slots_, rhs.free_slots_);
+    base_t::swap(this->free_objects_, rhs.free_objects_);
   }
 
   ~unbounded_object_pool_volatile() NOEXCEPT {
@@ -803,6 +803,9 @@ class unbounded_object_pool_volatile
   }
 
  private:
+  // disallow move assignment
+  unbounded_object_pool_volatile& operator=(unbounded_object_pool_volatile&&) = delete;
+
   generation_ptr_t gen_; // current generation
 }; // unbounded_object_pool_volatile
 

@@ -37,6 +37,11 @@
 NS_ROOT
 NS_BEGIN(container_utils)
 
+//////////////////////////////////////////////////////////////////////////////
+/// @class array
+/// @brief same as 'std::array' but this implementation capable of storing
+///        objects without default constructor
+//////////////////////////////////////////////////////////////////////////////
 template<typename T, size_t Size>
 class array : private util::noncopyable {
  public:
@@ -94,7 +99,7 @@ class array : private util::noncopyable {
   CONSTEXPR
 #endif
   reference back() NOEXCEPT {
-    return *(--end());
+    return *(end()-1);
   }
 
   CONSTEXPR const_reference back() const NOEXCEPT {
@@ -137,7 +142,7 @@ class array : private util::noncopyable {
   }
 
   CONSTEXPR const_iterator end() const NOEXCEPT {
-    return const_cast<array*>(this)->begin();
+    return const_cast<array*>(this)->end();
   }
 
 #if IRESEARCH_CXX > IRESEARCH_CXX_11
@@ -146,7 +151,7 @@ class array : private util::noncopyable {
   CONSTEXPR
 #endif
   reverse_iterator rbegin() NOEXCEPT {
-    return reverse_iterator(begin());
+    return reverse_iterator(end());
   }
 
 #if IRESEARCH_CXX > IRESEARCH_CXX_11
@@ -155,15 +160,15 @@ class array : private util::noncopyable {
   CONSTEXPR
 #endif
   reverse_iterator rend() NOEXCEPT {
-    return reverse_iterator(end());
+    return reverse_iterator(begin());
   }
 
   CONSTEXPR const_reverse_iterator rbegin() const NOEXCEPT {
-    return const_reverse_iterator(begin());
+    return const_reverse_iterator(end());
   }
 
   CONSTEXPR const_reverse_iterator rend() const NOEXCEPT {
-    return const_reverse_iterator(end());
+    return const_reverse_iterator(begin());
   }
 
   CONSTEXPR size_t size() const NOEXCEPT {

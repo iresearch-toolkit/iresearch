@@ -24,21 +24,7 @@
 #include "gtest/gtest.h"
 #include "utils/container_utils.hpp"
 
-namespace tests {
-  class container_utils_tests: public ::testing::Test {
-    virtual void SetUp() {
-      // Code here will be called immediately after the constructor (right before each test).
-    }
-
-    virtual void TearDown() {
-      // Code here will be called immediately after each test (right before the destructor).
-    }
-  };
-}
-
-using namespace tests;
-
-TEST_F(container_utils_tests, test_bucket_allocator) {
+TEST(container_utils_tests, test_bucket_allocator) {
   static bool WAS_MADE{};
   static size_t ACTUAL_SIZE{};
 
@@ -118,7 +104,7 @@ TEST_F(container_utils_tests, test_bucket_allocator) {
   ASSERT_EQ(0, blocks.buffer_count());
 }
 
-TEST_F(container_utils_tests, test_compute_bucket_meta) {
+TEST(container_utils_tests, test_compute_bucket_meta) {
   // test meta for num buckets == 0, skip bits == 0
   {
     auto& meta = irs::container_utils::bucket_meta<0, 0>::get();
@@ -204,7 +190,7 @@ TEST_F(container_utils_tests, test_compute_bucket_meta) {
   }
 }
 
-TEST_F(container_utils_tests, compute_bucket_offset) {
+TEST(container_utils_tests, compute_bucket_offset) {
   // test boundaries for skip bits == 0
   {
      ASSERT_EQ(0, (iresearch::container_utils::compute_bucket_offset<0>(0)));
@@ -248,6 +234,95 @@ TEST_F(container_utils_tests, compute_bucket_offset) {
      ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(26)));
      ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(27)));
      ASSERT_EQ(3, (iresearch::container_utils::compute_bucket_offset<2>(28)));
+  }
+}
+
+TEST(container_utils_array_tests, construct) {
+  static size_t DEFAULT_CTOR;
+  static size_t NON_DEFAULT_CTOR;
+
+  struct object {
+    object() {
+      ++DEFAULT_CTOR;
+    }
+
+    explicit object(int i) NOEXCEPT : i(i) {
+      ++NON_DEFAULT_CTOR;
+    }
+
+    int i{3};
+  };
+
+  // empty array
+  {
+    DEFAULT_CTOR = 0;
+    NON_DEFAULT_CTOR = 0;
+
+    irs::container_utils::array<object, 0> objects;
+
+    static_assert(
+      irs::container_utils::array<object, 0>::SIZE == 0,
+      "invalid array size"
+    );
+
+    ASSERT_EQ(0, objects.size());
+    ASSERT_TRUE(objects.empty());
+    ASSERT_EQ(0, DEFAULT_CTOR);
+    ASSERT_EQ(0, NON_DEFAULT_CTOR);
+    ASSERT_EQ(objects.begin(), objects.end());
+    ASSERT_EQ(objects.rbegin(), objects.rend());
+  }
+
+  // non empty array, default constructor
+  {
+    DEFAULT_CTOR = 0;
+    NON_DEFAULT_CTOR = 0;
+
+    irs::container_utils::array<object, 2> objects;
+
+    static_assert(
+      irs::container_utils::array<object, 2>::SIZE == 2,
+      "invalid array size"
+    );
+
+    ASSERT_EQ(2, objects.size());
+    ASSERT_FALSE(objects.empty());
+    ASSERT_EQ(objects.size(), DEFAULT_CTOR);
+    ASSERT_EQ(0, NON_DEFAULT_CTOR);
+    ASSERT_EQ(objects.begin() + objects.size(), objects.end());
+    ASSERT_EQ(objects.rbegin() + objects.size(), objects.rend());
+    ASSERT_EQ(3, objects.front().i);
+    ASSERT_EQ(3, objects.back().i);
+    ASSERT_EQ(objects.begin(), &objects.front());
+    ASSERT_EQ(objects.end()-1, &objects.back());
+    ASSERT_EQ(&objects[0], &objects.front());
+    ASSERT_EQ(&objects[1], &objects.back());
+  }
+
+  // non empty array
+  {
+    DEFAULT_CTOR = 0;
+    NON_DEFAULT_CTOR = 0;
+
+    const irs::container_utils::array<object, 2> objects(5);
+
+    static_assert(
+      irs::container_utils::array<object, 2>::SIZE == 2,
+      "invalid array size"
+    );
+
+    ASSERT_EQ(2, objects.size());
+    ASSERT_FALSE(objects.empty());
+    ASSERT_EQ(0, DEFAULT_CTOR);
+    ASSERT_EQ(objects.size(), NON_DEFAULT_CTOR);
+    ASSERT_EQ(objects.begin() + objects.size(), objects.end());
+    ASSERT_EQ(objects.rbegin() + objects.size(), objects.rend());
+    ASSERT_EQ(5, objects.front().i);
+    ASSERT_EQ(5, objects.back().i);
+    ASSERT_EQ(objects.begin(), &objects.front());
+    ASSERT_EQ(objects.end()-1, &objects.back());
+    ASSERT_EQ(&objects[0], &objects.front());
+    ASSERT_EQ(&objects[1], &objects.back());
   }
 }
 
