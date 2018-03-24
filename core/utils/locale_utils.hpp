@@ -25,6 +25,7 @@
 #define IRESEARCH_LOCALE_UTILS_H
 
 #include "shared.hpp"
+#include "string.hpp"
 
 NS_ROOT
 NS_BEGIN( locale_utils )
@@ -33,19 +34,19 @@ NS_BEGIN( locale_utils )
  * @brief extract the locale country from a locale
  * @param locale the locale from which to extract the country
  **/
-IRESEARCH_API std::string country(std::locale const& locale);
+IRESEARCH_API const irs::string_ref& country(std::locale const& locale);
 
 /**
  * @brief extract the locale encoding from a locale
  * @param locale the locale from which to extract the encoding
  **/
-IRESEARCH_API std::string encoding(std::locale const& locale);
+IRESEARCH_API const irs::string_ref& encoding(std::locale const& locale);
 
 /**
  * @brief extract the locale language from a locale
  * @param locale the locale from which to extract the language
  **/
-IRESEARCH_API std::string language(std::locale const& locale);
+IRESEARCH_API const irs::string_ref& language(std::locale const& locale);
 
 /**
  * @brief create a locale from czName
@@ -74,7 +75,7 @@ IRESEARCH_API std::locale locale(std::string const& sLanguage, std::string const
  * @brief extract the locale name from a locale
  * @param locale the locale from which to extract the name
  **/
-IRESEARCH_API std::string name(std::locale const& locale);
+IRESEARCH_API const std::string& name(std::locale const& locale);
 
 /**
  * @brief extract the locale utf8 from a locale
