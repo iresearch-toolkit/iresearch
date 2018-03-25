@@ -181,7 +181,7 @@ class array : private util::noncopyable {
 
  private:
   typename std::aligned_storage<
-    sizeof(T), alignof(T)
+    sizeof(T), ALIGNOF(T)
   >::type data_[Size];
 }; // array
 

@@ -81,15 +81,16 @@
   #define IRESEARCH_HELPER_TEMPLATE_IMPORT 
   #define IRESEARCH_HELPER_TEMPLATE_EXPORT
 
-#if _MSC_VER < 1900 // prior the vc14    
+#if _MSC_VER < 1900 // before msvc2015
   #define CONSTEXPR
   #define NOEXCEPT throw()
+  #define ALIGNOF(v) __alignof(v)
 #else
+  #define ALIGNOF(v) alignof(v)
   #define CONSTEXPR constexpr
   #define NOEXCEPT noexcept 
 #endif
 
-  #define ALIGNOF(v) __alignof(v)
   #define FORCE_INLINE inline __forceinline
   #define NO_INLINE __declspec(noinline)
   #define RESTRICT __restrict 
