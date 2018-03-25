@@ -618,21 +618,14 @@ class unbounded_object_pool : public unbounded_object_pool_base<T> {
 NS_BEGIN(detail)
 
 template<typename Pool>
-struct unbounded_object_pool_generation {
- protected:
-  struct pool_generation {
-    explicit pool_generation(Pool* owner) NOEXCEPT
-      : owner(owner) {
-    }
+struct pool_generation {
+  explicit pool_generation(Pool* owner) NOEXCEPT
+    : owner(owner) {
+  }
 
-    bool stale{false}; // stale mark
-    Pool* owner; // current owner
-  }; // pool_generation
-
-  typedef async_value<pool_generation> generation_t;
-  typedef std::shared_ptr<generation_t> generation_ptr_t;
-  typedef atomic_base<generation_ptr_t> atomic_utils;
-}; // unbounded_object_pool_generation
+  bool stale{false}; // stale mark
+  Pool* owner; // current owner
+}; // pool_generation
 
 NS_END // detail
 
@@ -650,14 +643,13 @@ NS_END // detail
 template<typename T>
 class unbounded_object_pool_volatile
     : public unbounded_object_pool_base<T>,
-      private detail::unbounded_object_pool_generation<unbounded_object_pool_volatile<T>> {
+      private atomic_base<std::shared_ptr<async_value<detail::pool_generation<unbounded_object_pool_volatile<T>>>>> {
  private:
   typedef unbounded_object_pool_base<T> base_t;
-  typedef detail::unbounded_object_pool_generation<unbounded_object_pool_volatile<T>> generation_base_t;
 
-  typedef typename generation_base_t::generation_t generation_t;
-  typedef typename generation_base_t::generation_ptr_t generation_ptr_t;
-  typedef typename generation_base_t::atomic_utils atomic_utils;
+  typedef async_value<detail::pool_generation<unbounded_object_pool_volatile<T>>> generation_t;
+  typedef std::shared_ptr<generation_t> generation_ptr_t;
+  typedef atomic_base<generation_ptr_t> atomic_utils;
 
   typedef std::lock_guard<typename generation_t::read_lock_type> read_guard_t;
   typedef std::lock_guard<typename generation_t::write_lock_type> write_guard_t;
