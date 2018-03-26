@@ -21,8 +21,6 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <locale>
-
 #include "gtest/gtest.h"
 #include "utils/locale_utils.hpp"
 #include "utils/misc.hpp"
@@ -342,8 +340,8 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt) {
     char* buf8_next;
 /* FIXME TODO Boost returns incorrect result codes on some implementations, uncomment once Boost is no longer used
     ASSERT_EQ(
-      std::codecvt_base::result::partial,
-      std::codecvt_base::result::ok,
+      std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
+
 */
       cvt.in(state, &from[0], &from[0] + from.size(), from_cnext, buf16, buf16 + 1, buf16_next)
 /*
@@ -357,7 +355,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt) {
     }
 
     ASSERT_EQ(
-      std::codecvt_base::result::ok,
+      std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
       cvt.in(state, &from[0], &from[0] + from.size(), from_cnext, buf16, buf16 + IRESEARCH_COUNTOF(buf16), buf16_next)
     );
 
@@ -369,7 +367,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt) {
     }
 
     ASSERT_EQ(
-      std::codecvt_base::result::partial,
+      std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
       cvt.out(state, buf16, buf16 + IRESEARCH_COUNTOF(buf16), buf16_cnext, buf8, buf8 + 1, buf8_next)
     );
     ASSERT_EQ(&buf16[1], buf16_cnext);
@@ -380,7 +378,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt) {
     }
 
     ASSERT_EQ(
-      std::codecvt_base::result::ok,
+      std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
       cvt.out(state, buf16, buf16 + IRESEARCH_COUNTOF(buf16), buf16_cnext, buf8, buf8 + IRESEARCH_COUNTOF(buf8), buf8_next)
     );
 
@@ -405,7 +403,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt) {
     char* buf8_next;
 
     ASSERT_EQ(
-      std::codecvt_base::result::partial,
+      std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
       cvt.in(state, &from[0], &from[0] + from.size(), from_cnext, buf32, buf32 + 1, buf32_next)
     );
     ASSERT_EQ(&from[1], from_cnext);
@@ -416,7 +414,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt) {
     }
 
     ASSERT_EQ(
-      std::codecvt_base::result::ok,
+      std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
       cvt.in(state, &from[0], &from[0] + from.size(), from_cnext, buf32, buf32 + IRESEARCH_COUNTOF(buf32), buf32_next)
     );
 
@@ -428,7 +426,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt) {
     }
 
     ASSERT_EQ(
-      std::codecvt_base::result::partial,
+      std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
       cvt.out(state, buf32, buf32 + IRESEARCH_COUNTOF(buf32), buf32_cnext, buf8, buf8 + 1, buf8_next)
     );
     ASSERT_EQ(&buf32[1], buf32_cnext);
@@ -439,7 +437,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt) {
     }
 
     ASSERT_EQ(
-      std::codecvt_base::result::ok,
+      std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
       cvt.out(state, buf32, buf32 + IRESEARCH_COUNTOF(buf32), buf32_cnext, buf8, buf8 + IRESEARCH_COUNTOF(buf8), buf8_next)
     );
 
@@ -484,14 +482,14 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt) {
 
 /* FIXME TODO Boost implementation of codecvt fails to convert from koi8
     ASSERT_EQ(
-      std::codecvt_base::result::partial,
+      std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
       cvt_koi8r.in(state, koi8r, koi8r + strlen(koi8r), koi8r_cnext, buf, buf + 1, buf_next)
     );
     ASSERT_EQ(&koi8r[1], koi8r_cnext);
     ASSERT_EQ(&buf[1], buf_next);
 
     ASSERT_EQ(
-      std::codecvt_base::result::ok,
+      std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
       cvt_koi8r.in(state, koi8r, koi8r + strlen(koi8r), koi8r_cnext, buf, buf + IRESEARCH_COUNTOF(buf), buf_next)
     );
 
@@ -499,7 +497,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt) {
     ASSERT_EQ(buf + IRESEARCH_COUNTOF(buf), buf_next);
 
     ASSERT_EQ(
-      std::codecvt_base::result::partial,
+      std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
       cvt_cp1251.out(state, buf, buf + IRESEARCH_COUNTOF(buf), buf_cnext, out, out + 1, out_next)
     );
     ASSERT_EQ(&buf[1], buf_cnext);
@@ -510,7 +508,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt) {
     }
 
     ASSERT_EQ(
-      std::codecvt_base::result::ok,
+      std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
       cvt_cp1251.out(state, buf, buf + IRESEARCH_COUNTOF(buf), buf_cnext, out, out + IRESEARCH_COUNTOF(out), out_next)
     );
 
@@ -538,7 +536,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt) {
 
 /* FIXME TODO Boost implementation of codecvt fails to convert from koi8
     ASSERT_EQ(
-      std::codecvt_base::result::partial,
+      std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
       cvt_koi8r.in(state, koi8r, koi8r + strlen(koi8r), koi8r_cnext, buf, buf + 1, buf_next)
     );
     ASSERT_EQ(&koi8r[1], koi8r_cnext);
@@ -549,7 +547,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt) {
     }
 
     ASSERT_EQ(
-      std::codecvt_base::result::ok,
+      std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
       cvt_koi8r.in(state, &koi8r[0], &koi8r[0] + strlen(koi8r), koi8r_cnext, buf, buf + IRESEARCH_COUNTOF(buf), buf_next)
     );
 
@@ -561,7 +559,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt) {
     }
 
     ASSERT_EQ(
-      std::codecvt_base::result::partial,
+      std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
       cvt_koi8r.out(state, utf16, utf16 + IRESEARCH_COUNTOF(utf16), utf16_cnext, out, out + 1, out_next)
     );
     ASSERT_EQ(&utf16[1], utf16_cnext);
@@ -572,7 +570,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt) {
     }
 
     ASSERT_EQ(
-      std::codecvt_base::result::ok,
+      std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
       cvt_koi8r.out(state, utf16, utf16 + IRESEARCH_COUNTOF(utf16), utf16_cnext, out, out + IRESEARCH_COUNTOF(out), out_next)
     );
 
@@ -600,7 +598,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt) {
 
 /* FIXME TODO Boost implementation of codecvt fails to convert from koi8
     ASSERT_EQ(
-      std::codecvt_base::result::partial,
+      std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
       cvt_koi8r.in(state, koi8r, koi8r + strlen(koi8r), koi8r_cnext, buf, buf + 1, buf_next)
     );
     ASSERT_EQ(&koi8r[1], koi8r_cnext);
@@ -611,7 +609,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt) {
     }
 
     ASSERT_EQ(
-      std::codecvt_base::result::ok,
+      std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
       cvt_koi8r.in(state, &koi8r[0], &koi8r[0] + strlen(koi8r), koi8r_cnext, buf, buf + IRESEARCH_COUNTOF(buf), buf_next)
     );
 
@@ -623,7 +621,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt) {
     }
 
     ASSERT_EQ(
-      std::codecvt_base::result::partial,
+      std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
       cvt_koi8r.out(state, utf32, utf32 + IRESEARCH_COUNTOF(utf32), utf32_cnext, out, out + 1, out_next)
     );
     ASSERT_EQ(&utf32[1], utf32_cnext);
@@ -634,7 +632,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt) {
     }
 
     ASSERT_EQ(
-      std::codecvt_base::result::ok,
+      std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
       cvt_koi8r.out(state, utf32, utf32 + IRESEARCH_COUNTOF(utf32), utf32_cnext, out, out + IRESEARCH_COUNTOF(out), out_next)
     );
 
@@ -662,14 +660,14 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt) {
     char* out_next;
 
     ASSERT_EQ(
-      std::codecvt_base::result::partial,
+      std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
       cvt_koi8r.in(state, koi8r, koi8r + strlen(koi8r), koi8r_cnext, buf, buf + 1, buf_next)
     );
     ASSERT_EQ(&koi8r[1], koi8r_cnext);
     ASSERT_EQ(&buf[1], buf_next);
 
     ASSERT_EQ(
-      std::codecvt_base::result::ok,
+      std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
       cvt_koi8r.in(state, koi8r, koi8r + strlen(koi8r), koi8r_cnext, buf, buf + IRESEARCH_COUNTOF(buf), buf_next)
     );
 
@@ -677,7 +675,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt) {
     ASSERT_EQ(buf + IRESEARCH_COUNTOF(buf) -1, buf_next); // FIXME TODO Boost incorrectly sets buf_next, remove -1
 
     ASSERT_EQ(
-      std::codecvt_base::result::partial,
+      std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
       cvt_cp1251.out(state, buf, buf + IRESEARCH_COUNTOF(buf), buf_cnext, out, out + 1, out_next)
     );
     ASSERT_EQ(&buf[1], buf_cnext);
@@ -688,7 +686,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt) {
     }
 
     ASSERT_EQ(
-      std::codecvt_base::result::ok,
+      std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
       cvt_cp1251.out(state, buf, buf + IRESEARCH_COUNTOF(buf), buf_cnext, out, out + IRESEARCH_COUNTOF(out), out_next)
     );
 /* FIXME TODO Boost incorrectly sets buf_next, uncomment once Boost is no longer used
