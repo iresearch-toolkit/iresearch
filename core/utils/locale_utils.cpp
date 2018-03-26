@@ -800,7 +800,7 @@ template<typename T>
 
   // strip leading/trailing zero half-bytes
   {
-    static_assert(std::numeric_limits<size_t>::digits < std::numeric_limits<int>::max(), "std::numeric_limits<size_t>::digits >= std::numeric_limits<int>::max()");
+    static_assert(std::numeric_limits<size_t>::digits < irs::integer_traits<int>::const_max, "std::numeric_limits<size_t>::digits >= std::numeric_limits<int>::max()");
     auto clz = int(irs::math::math_traits<size_t>::clz(mantissa_i));
     auto ctz = int(irs::math::math_traits<size_t>::ctz(mantissa_i));
 

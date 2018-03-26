@@ -21,6 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <locale>
+
 #include "gtest/gtest.h"
 #include "utils/locale_utils.hpp"
 #include "utils/misc.hpp"
