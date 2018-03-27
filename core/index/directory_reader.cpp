@@ -123,7 +123,8 @@ iresearch::index_file_refs::ref_t load_newest_index_meta(
         ));
       }
 
-      std::time_t mtime;
+      // initialize to a value that will never pass 'if' below (to make valgrind happy)
+      std::time_t mtime = std::numeric_limits<std::time_t>::min();
 
       if (ref && dir.mtime(mtime, *ref) && mtime > newest.mtime) {
         newest.mtime = std::move(mtime);
