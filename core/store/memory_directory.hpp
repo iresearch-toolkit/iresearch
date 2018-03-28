@@ -60,6 +60,7 @@ class IRESEARCH_API memory_file : public detail::raw_block_vector_t {
 
   memory_file(memory_file&& rhs) NOEXCEPT
     : detail::raw_block_vector_t(std::move(rhs)),
+      meta_(rhs.meta_),
       len_(rhs.len_) {
     rhs.len_ = 0;
   }
