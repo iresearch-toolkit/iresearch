@@ -291,7 +291,7 @@ class IRESEARCH_API memory_directory final : public directory {
 
  private:
   friend class single_instance_lock;
-  typedef std::unordered_map<std::string, memory_file> file_map; // FIXME why memory_file::ptr here???
+  typedef std::unordered_map<std::string, std::unique_ptr<memory_file>> file_map; // unique_ptr because of rename
   typedef std::unordered_set<std::string> lock_map;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN

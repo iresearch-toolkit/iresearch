@@ -428,11 +428,16 @@ index_output::ptr memory_directory::create(const std::string& name) NOEXCEPT {
       std::forward_as_tuple(name),
       std::forward_as_tuple()
     );
+
     auto& file = res.first->second;
 
-    file.reset();
+    if (res.second) {
+      file = memory::make_unique<memory_file>();
+    }
 
-    return index_output::make<checksum_memory_index_output>(file);
+    file->reset();
+
+    return index_output::make<checksum_memory_index_output>(*file);
   } catch(...) {
     IR_LOG_EXCEPTION();
   }
@@ -452,7 +457,7 @@ bool memory_directory::length(
     return false;
   }
 
-  result = it->second.length();
+  result = it->second->length();
 
   return true;
 }
@@ -483,7 +488,7 @@ bool memory_directory::mtime(
     return false;
   }
 
-  result = it->second.mtime();
+  result = it->second->mtime();
 
   return true;
 }
@@ -499,7 +504,7 @@ index_input::ptr memory_directory::open(
     const auto it = files_.find(name);
 
     if (it != files_.end()) {
-      return index_input::make<memory_index_input>(it->second);
+      return index_input::make<memory_index_input>(*it->second);
     }
 
     IR_FRMT_ERROR("Failed to open input file, error: File not found, path: %s", name.c_str());
