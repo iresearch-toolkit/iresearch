@@ -151,10 +151,12 @@ TEST(bounded_object_pool_tests, test_sobject_pool) {
   {
     iresearch::bounded_object_pool<test_sobject> pool(1);
     auto obj = pool.emplace(1);
+    ASSERT_TRUE(obj);
     auto* obj_ptr = obj.get();
 
     ASSERT_EQ(1, obj->id);
     obj.reset();
+    ASSERT_FALSE(obj);
     auto obj_shared = pool.emplace(2).release();
     ASSERT_EQ(1, obj_shared->id);
     ASSERT_EQ(obj_ptr, obj_shared.get());
@@ -189,6 +191,7 @@ TEST(bounded_object_pool_tests, test_sobject_pool) {
   {
     iresearch::bounded_object_pool<test_sobject> pool(1);
     auto obj = pool.emplace(1);
+    ASSERT_TRUE(obj);
     std::condition_variable cond;
     std::mutex mutex;
     SCOPED_LOCK_NAMED(mutex, lock);
@@ -207,6 +210,7 @@ TEST(bounded_object_pool_tests, test_sobject_pool) {
     MSVC2017_ONLY(while(!visit && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
 
     obj.reset();
+    ASSERT_FALSE(obj);
 
     if (lock) {
       lock.unlock();
@@ -944,6 +948,38 @@ TEST(unbounded_object_pool_volatile_tests, test_uobject_pool) {
     ASSERT_EQ(1, pool.generation_size());
     ASSERT_EQ(3, obj->id);
   }
+}
+
+TEST(concurrent_linked_list_test, push_pop) {
+  typedef irs::concurrent_forward_list<size_t> forward_list;
+  typedef forward_list::node_type node_type;
+
+  std::vector<node_type> nodes(10);
+
+  size_t v = 0;
+  for (auto& node : nodes) {
+    node.value = v++;
+  }
+
+  forward_list list;
+  ASSERT_TRUE(list.empty());
+  ASSERT_EQ(nullptr, list.pop_front());
+
+  for (auto& node : nodes) {
+    list.push_front(node);
+  }
+  ASSERT_FALSE(list.empty());
+
+  node_type* node = 0;
+  auto rbegin = nodes.rbegin();
+  while (node = list.pop_front()) {
+    ASSERT_EQ(&*rbegin, node);
+    list.push_front(*node);
+    node = list.pop_front();
+    ASSERT_EQ(&*rbegin, node);
+    ++rbegin;
+  }
+  ASSERT_EQ(nodes.rend(), rbegin);
 }
 
 // -----------------------------------------------------------------------------

@@ -134,6 +134,50 @@ class atomic_base<std::shared_ptr<T>> {
 };
 #endif
 
+//////////////////////////////////////////////////////////////////////////////
+/// @class concurrent_forward_list
+/// @brief lock-free single linked list
+//////////////////////////////////////////////////////////////////////////////
+template<typename T>
+class concurrent_forward_list : private util::noncopyable {
+ public:
+  typedef T element_type;
+
+  struct node_type {
+    element_type value{};
+    node_type* next{};
+  };
+
+  explicit concurrent_forward_list(node_type* head = nullptr) NOEXCEPT
+    : list_(head) {
+  }
+
+  bool empty() const NOEXCEPT {
+    return nullptr == list_.load();
+  }
+
+  node_type* pop_front() NOEXCEPT {
+    auto* head = list_.load();
+    while (head && !list_.compare_exchange_weak(head, head->next)) { }
+    return head;
+  }
+
+  void push_front(node_type& new_head) NOEXCEPT {
+    new_head.next = list_.load();
+    while (!list_.compare_exchange_weak(new_head.next, &new_head)) { }
+  }
+
+  void swap(concurrent_forward_list& rhs) NOEXCEPT {
+    auto& rhslist = rhs.list_;
+    auto* head = rhslist.load();
+    while (!rhslist.compare_exchange_weak(head, nullptr)) { }
+    list_.store(head);
+  }
+
+ private:
+  std::atomic<node_type*> list_{ nullptr };
+}; // concurrent_forward_list
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      bounded pool
 // -----------------------------------------------------------------------------
@@ -209,7 +253,7 @@ class bounded_object_pool : atomic_base<typename T::ptr> {
     element_type* operator->() const NOEXCEPT { return get(); }
     element_type* get() const NOEXCEPT { return slot_->ptr.get(); }
     operator bool() const NOEXCEPT {
-      return static_cast<bool>(slot_->ptr);
+      return static_cast<bool>(slot_);
     }
 
    private:
@@ -421,38 +465,17 @@ class unbounded_object_pool_base : private util::noncopyable {
   size_t size() const NOEXCEPT { return pool_.size(); }
 
  protected:
-  struct node {
-    typename T::ptr value;
-    node* next{};
-  };
-
-  static void swap(std::atomic<node*>& lhs, std::atomic<node*>& rhs) NOEXCEPT {
-    auto* head = rhs.load();
-    while (!rhs.compare_exchange_weak(head, nullptr)) { }
-    lhs.store(head);
-  }
-
-  static node* pop_front(std::atomic<node*>& list) NOEXCEPT {
-    auto* head = list.load();
-    while (head && !list.compare_exchange_weak(head, head->next)) { }
-    return head;
-  }
-
-  static void push_front(node* new_head, std::atomic<node*>& list) NOEXCEPT {
-    new_head->next = list.load();
-    while (!list.compare_exchange_weak(new_head->next, new_head)) { }
-  }
+  typedef concurrent_forward_list<typename T::ptr> forward_list;
+  typedef typename forward_list::node_type node;
 
   explicit unbounded_object_pool_base(size_t size)
-    : pool_(size) {
+    : pool_(size), free_slots_(pool_.data()) {
     // build up linked list
     for (auto begin = pool_.begin(), next = begin + 1, end = pool_.end();
          next < end;
          begin = next, ++next) {
       begin->next = &*next;
     }
-
-    free_slots_.store(&pool_.front());
   }
 
   unbounded_object_pool_base(unbounded_object_pool_base&& rhs) NOEXCEPT
@@ -461,12 +484,12 @@ class unbounded_object_pool_base : private util::noncopyable {
 
   template<typename... Args>
   typename T::ptr acquire(Args&&... args) {
-    auto* head = pop_front(free_objects_);
+    auto* head = free_objects_.pop_front();
 
     if (head) {
       auto value = std::move(head->value);
       assert(value);
-      push_front(head, free_slots_);
+      free_slots_.push_front(*head);
       return value;
     }
 
@@ -474,7 +497,7 @@ class unbounded_object_pool_base : private util::noncopyable {
   }
 
   void release(typename T::ptr&& value) NOEXCEPT {
-    auto* slot = pop_front(free_slots_);
+    auto* slot = free_slots_.pop_front();
 
     if (!slot) {
       // no free slots
@@ -482,12 +505,12 @@ class unbounded_object_pool_base : private util::noncopyable {
     }
 
     slot->value = std::move(value);
-    push_front(slot, free_objects_);
+    free_objects_.push_front(*slot);
   }
 
-  std::atomic<node*> free_objects_{}; // list of created objects that are ready to be reused
-  std::atomic<node*> free_slots_{}; // list of free slots to be reused
   std::vector<node> pool_;
+  forward_list free_objects_; // list of created objects that are ready to be reused
+  forward_list free_slots_; // list of free slots to be reused
 }; // unbounded_object_pool_base
 
 //////////////////////////////////////////////////////////////////////////////
@@ -597,9 +620,9 @@ class unbounded_object_pool : public unbounded_object_pool_base<T> {
     node* head = nullptr;
 
     // reset all cached instances
-    while (head = this->pop_front(this->free_objects_)) {
+    while (head = this->free_objects_.pop_front()) {
       head->value = typename T::ptr{}; // empty instance
-      this->push_front(head, this->free_slots_);
+      this->free_slots_.push_front(*head);
     }
   }
 
@@ -756,8 +779,8 @@ class unbounded_object_pool_volatile
     write_guard_t lock(gen_->write_lock());
     gen_->value().owner = this; // change owner
 
-    base_t::swap(this->free_slots_, rhs.free_slots_);
-    base_t::swap(this->free_objects_, rhs.free_objects_);
+    this->free_slots_.swap(rhs.free_slots_);
+    this->free_objects_.swap(rhs.free_objects_);
   }
 
   ~unbounded_object_pool_volatile() NOEXCEPT {
@@ -795,9 +818,9 @@ class unbounded_object_pool_volatile
     typename base_t::node* head = nullptr;
 
     // reset all cached instances
-    while (head = this->pop_front(this->free_objects_)) {
+    while (head = this->free_objects_.pop_front()) {
       head->value = typename T::ptr{}; // empty instance
-      this->push_front(head, this->free_slots_);
+      this->free_slots_.push_front(*head);
     }
   }
 
