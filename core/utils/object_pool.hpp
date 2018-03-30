@@ -149,33 +149,39 @@ class concurrent_forward_list : private util::noncopyable {
   };
 
   explicit concurrent_forward_list(node_type* head = nullptr) NOEXCEPT
-    : list_(head) {
+    : head_(head) {
+  }
+
+  concurrent_forward_list(concurrent_forward_list&& rhs) NOEXCEPT {
+    *this = std::move(rhs);
+  }
+
+  concurrent_forward_list& operator=(concurrent_forward_list&& rhs) NOEXCEPT {
+    if (this != &rhs) {
+      auto* head = rhs.head_.load();
+      while (!rhs.head_.compare_exchange_weak(head, nullptr)) { }
+      head_.store(head);
+    }
+    return *this;
   }
 
   bool empty() const NOEXCEPT {
-    return nullptr == list_.load();
+    return nullptr == head_.load();
   }
 
   node_type* pop_front() NOEXCEPT {
-    auto* head = list_.load();
-    while (head && !list_.compare_exchange_weak(head, head->next)) { }
+    auto* head = head_.load();
+    while (head && !head_.compare_exchange_weak(head, head->next)) { }
     return head;
   }
 
   void push_front(node_type& new_head) NOEXCEPT {
-    new_head.next = list_.load();
-    while (!list_.compare_exchange_weak(new_head.next, &new_head)) { }
-  }
-
-  void swap(concurrent_forward_list& rhs) NOEXCEPT {
-    auto& rhslist = rhs.list_;
-    auto* head = rhslist.load();
-    while (!rhslist.compare_exchange_weak(head, nullptr)) { }
-    list_.store(head);
+    new_head.next = head_.load();
+    while (!head_.compare_exchange_weak(new_head.next, &new_head)) { }
   }
 
  private:
-  std::atomic<node_type*> list_{ nullptr };
+  std::atomic<node_type*> head_{ nullptr };
 }; // concurrent_forward_list
 
 // -----------------------------------------------------------------------------
@@ -779,8 +785,8 @@ class unbounded_object_pool_volatile
     write_guard_t lock(gen_->write_lock());
     gen_->value().owner = this; // change owner
 
-    this->free_slots_.swap(rhs.free_slots_);
-    this->free_objects_.swap(rhs.free_objects_);
+    this->free_slots_ = std::move(rhs.free_slots_);
+    this->free_objects_ = std::move(rhs.free_objects_);
   }
 
   ~unbounded_object_pool_volatile() NOEXCEPT {

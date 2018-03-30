@@ -198,7 +198,7 @@ TEST(bounded_object_pool_tests, test_sobject_pool) {
     std::atomic<bool> visit(false);
     std::thread thread([&cond, &mutex, &pool, &visit]()->void {
       auto visitor = [](test_sobject& obj)->bool { return true; };
-      pool.visit(visitor, false);
+      pool.visit(visitor);
       visit = true;
       SCOPED_LOCK(mutex);
       cond.notify_all();
@@ -980,6 +980,140 @@ TEST(concurrent_linked_list_test, push_pop) {
     ++rbegin;
   }
   ASSERT_EQ(nodes.rend(), rbegin);
+}
+
+TEST(concurrent_linked_list_test, move) {
+  typedef irs::concurrent_forward_list<size_t> forward_list;
+
+  std::array<forward_list::node_type, 10> nodes;
+  forward_list moved;
+  ASSERT_TRUE(moved.empty());
+
+  size_t i = 0;
+  for (auto& node : nodes) {
+    node.value = i;
+    moved.push_front(node);
+  }
+  ASSERT_FALSE(moved.empty());
+
+  forward_list list(std::move(moved));
+  ASSERT_TRUE(moved.empty());
+  ASSERT_FALSE(list.empty());
+
+  auto rbegin = nodes.rbegin();
+  while (auto* node = list.pop_front()) {
+    ASSERT_EQ(rbegin->value, node->value);
+    ++rbegin;
+  }
+
+  ASSERT_EQ(nodes.rend(), rbegin);
+  ASSERT_TRUE(list.empty());
+}
+
+TEST(concurrent_linked_list_test, move_assignment) {
+  typedef irs::concurrent_forward_list<size_t> forward_list;
+
+  std::array<forward_list::node_type, 10> nodes;
+  forward_list list0;
+  ASSERT_TRUE(list0.empty());
+  forward_list list1;
+  ASSERT_TRUE(list1.empty());
+
+  size_t i = 0;
+
+  for (; i < nodes.size()/2; ++i) {
+    auto& node = nodes[i];
+    node.value = i;
+    list0.push_front(node);
+  }
+  ASSERT_FALSE(list0.empty());
+
+  for (; i < nodes.size(); ++i) {
+    auto& node = nodes[i];
+    node.value = i;
+    list1.push_front(node);
+  }
+  ASSERT_FALSE(list1.empty());
+
+  list0 = std::move(list1);
+
+  auto rbegin = nodes.rbegin();
+  while (auto* node = list0.pop_front()) {
+    ASSERT_EQ(rbegin->value, node->value);
+    ++rbegin;
+  }
+  ASSERT_TRUE(list0.empty());
+  ASSERT_TRUE(list1.empty());
+}
+
+TEST(concurrent_linked_list_test, concurrent_push_pop) {
+  const size_t NODES = 10000;
+  const size_t THREADS = 16;
+
+  typedef irs::concurrent_forward_list<size_t> forward_list;
+  std::vector<forward_list::node_type> nodes(NODES);
+
+  // build-up a list
+  forward_list list;
+  ASSERT_TRUE(list.empty());
+  size_t size = 0;
+  for (auto& node : nodes) {
+    node.value = size++;
+    list.push_front(node);
+  }
+  ASSERT_FALSE(list.empty());
+
+  std::vector<std::vector<size_t>> threads_data(THREADS);
+  std::vector<std::thread> threads;
+  threads.reserve(THREADS);
+
+  std::mutex mutex;
+  std::condition_variable ready_cv;
+  bool ready = false;
+
+  auto wait_for_all = [&mutex, &ready, &ready_cv]() {
+    // wait for all threads to be registered
+    std::unique_lock<decltype(mutex)> lock(mutex);
+    while (!ready) {
+      ready_cv.wait(lock);
+    }
+  };
+
+  // start threads
+  {
+    SCOPED_LOCK_NAMED(mutex, lock);
+    for (size_t i = 0; i < threads_data.size(); ++i) {
+      auto& thread_data = threads_data[i];
+      threads.emplace_back([&list, &wait_for_all, &thread_data]() {
+        wait_for_all();
+
+        while (auto* head = list.pop_front()) {
+          thread_data.push_back(head->value);
+        }
+      });
+    }
+  }
+
+  // all threads are registered... go, go, go...
+  {
+    std::lock_guard<decltype(mutex)> lock(mutex);
+    ready = true;
+    ready_cv.notify_all();
+  }
+
+  for (auto& thread : threads) {
+    thread.join();
+  }
+
+  ASSERT_TRUE(list.empty());
+
+  std::set<size_t> results;
+  for (auto& thread_data : threads_data) {
+    for (auto value : thread_data) {
+      ASSERT_TRUE(results.insert(value).second);
+    }
+  }
+  ASSERT_EQ(NODES, results.size());
 }
 
 // -----------------------------------------------------------------------------
