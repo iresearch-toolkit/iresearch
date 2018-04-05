@@ -118,9 +118,9 @@ iresearch::index_file_refs::ref_t load_newest_index_meta(
           break; // try the next codec
         }
 
-        ref = std::move(iresearch::directory_utils::reference(
-          const_cast<iresearch::directory&>(dir), filename
-        ));
+        ref = irs::directory_utils::reference(
+          const_cast<irs::directory&>(dir), filename
+        );
       }
 
       // initialize to a value that will never pass 'if' below (to make valgrind happy)
