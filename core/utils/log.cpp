@@ -290,7 +290,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
         // The exec() functions only return if an error has occurred.
         dup2(fd, 1); // redirect stdout to fd
         dup2(fd, 2); // redirect stderr to fd
-        execlp("addr2line", "addr2line", "-e", obj, addr, NULL);
+        execlp("addr2line", "addr2line", "-e", obj, addr, nullptr);
         exit(1);
       }
 
@@ -365,7 +365,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
         // The exec() functions only return if an error has occurred.
         dup2(fd, 1); // redirect stdout to fd
         dup2(fd, 2); // redirect stderr to fd
-        execlp("gdb", "gdb", "-n", "-nx", "-return-child-result", "-batch", "-ex", "thread", "-ex", "bt", name_buf, pid_buf, NULL);
+        execlp("gdb", "gdb", "-n", "-nx", "-return-child-result", "-batch", "-ex", "thread", "-ex", "bt", name_buf, pid_buf, nullptr);
         exit(1);
       }
 
