@@ -25,6 +25,8 @@
 #include "utils/object_pool.hpp"
 #include "utils/thread_utils.hpp"
 
+#include <array>
+
 NS_BEGIN(tests)
 
 struct test_slow_sobject {
@@ -1073,7 +1075,7 @@ TEST(concurrent_linked_list_test, concurrent_push_pop) {
 
   auto wait_for_all = [&mutex, &ready, &ready_cv]() {
     // wait for all threads to be registered
-    std::unique_lock<decltype(mutex)> lock(mutex);
+    std::unique_lock<std::remove_reference<decltype(mutex)>::type> lock(mutex);
     while (!ready) {
       ready_cv.wait(lock);
     }
