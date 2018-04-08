@@ -129,11 +129,11 @@ class concurrent_stack : private util::noncopyable {
   };
 
   explicit concurrent_stack(node_type* head = nullptr) NOEXCEPT
-    : head_(head) {
+    : head_(concurrent_node(head)) {
   }
 
   concurrent_stack(concurrent_stack&& rhs) NOEXCEPT
-    : head_(nullptr) {
+    : head_(concurrent_node(nullptr)) {
     if (this != &rhs) {
       auto rhshead = rhs.head_.load();
       while (!rhs.head_.compare_exchange_weak(rhshead, head_));
@@ -183,7 +183,7 @@ class concurrent_stack : private util::noncopyable {
     } while (!head_.compare_exchange_weak(head, new_head));
   }
 
- public:
+ private:
   struct concurrent_node {
     concurrent_node(node_type* node = nullptr)
       : node(node) {
