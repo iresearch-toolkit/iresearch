@@ -162,32 +162,7 @@ TEST(bounded_object_pool_tests, test_sobject_pool) {
     ASSERT_EQ(obj_ptr, obj_shared.get());
   }
 
-  // test shared visitation
-  {
-    iresearch::bounded_object_pool<test_sobject> pool(1);
-    auto obj = pool.emplace(1);
-    std::condition_variable cond;
-    std::mutex mutex;
-    SCOPED_LOCK_NAMED(mutex, lock);
-    std::thread thread([&cond, &mutex, &pool]()->void {
-      auto visitor = [](test_sobject& obj)->bool { return true; };
-      pool.visit(visitor, true);
-      SCOPED_LOCK(mutex);
-      cond.notify_all();
-    });
-    auto result = cond.wait_for(lock, std::chrono::milliseconds(1000)); // assume thread finishes in 1000ms
-
-    obj.reset();
-
-    if (lock) {
-      lock.unlock();
-    }
-
-    thread.join();
-    ASSERT_EQ(std::cv_status::no_timeout, result); // check only after joining with thread to avoid early exit
-  }
-
-  // test exclusive visitation
+  // test visitation
   {
     iresearch::bounded_object_pool<test_sobject> pool(1);
     auto obj = pool.emplace(1);
@@ -222,104 +197,82 @@ TEST(bounded_object_pool_tests, test_sobject_pool) {
   }
 }
 
-//TEST(object_pool_tests, bounded_uobject_pool) {
-//  // block on full pool
-//  {
-//    std::condition_variable cond;
-//    std::mutex mutex;
-//    iresearch::bounded_object_pool<test_uobject> pool(1);
-//    auto obj = pool.emplace(1);
-//
-//    {
-//      SCOPED_LOCK_NAMED(mutex, lock);
-//      std::atomic<bool> emplace(false);
-//      std::thread thread([&cond, &mutex, &pool, &emplace]()->void{ auto obj = pool.emplace(2); emplace = true; SCOPED_LOCK(mutex); cond.notify_all(); });
-//
-//      auto result = cond.wait_for(lock, std::chrono::milliseconds(1000)); // assume thread blocks in 1000ms
-//
-//      // MSVC 2015/2017 optimized code seems to sporadically notify condition variables without explicit request
-//      MSVC2015_OPTIMIZED_ONLY(while(!emplace && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
-//      MSVC2017_ONLY(while(!emplace && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
-//
-//      ASSERT_EQ(std::cv_status::timeout, result);
-//      // ^^^ expecting timeout because pool should block indefinitely
-//      obj.reset();
-//      obj.reset();
-//      lock.unlock();
-//      thread.join();
-//    }
-//  }
-//
-//  // test object reuse
-//  {
-//    iresearch::bounded_object_pool<test_uobject> pool(1);
-//    auto obj = pool.emplace(1);
-//    auto* obj_ptr = obj.get();
-//
-//    ASSERT_EQ(1, obj->id);
-//    obj.reset();
-//    obj = pool.emplace(2);
-//    ASSERT_EQ(1, obj->id);
-//    ASSERT_EQ(obj_ptr, obj.get());
-//  }
-//
-//  // test shared visitation
-//  {
-//    iresearch::bounded_object_pool<test_uobject> pool(1);
-//    auto obj = pool.emplace(1);
-//    std::condition_variable cond;
-//    std::mutex mutex;
-//    SCOPED_LOCK_NAMED(mutex, lock);
-//    std::thread thread([&cond, &mutex, &pool]()->void {
-//      auto visitor = [](test_uobject& obj)->bool { return true; };
-//      pool.visit(visitor, true);
-//      SCOPED_LOCK(mutex);
-//      cond.notify_all();
-//    });
-//    auto result = cond.wait_for(lock, std::chrono::milliseconds(1000)); // assume thread finishes in 1000ms
-//
-//    obj.reset();
-//
-//    if (lock) {
-//      lock.unlock();
-//    }
-//
-//    thread.join();
-//    ASSERT_EQ(std::cv_status::no_timeout, result); // check only after joining with thread to avoid early exit
-//  }
-//
-//  // test exclusive visitation
-//  {
-//    iresearch::bounded_object_pool<test_uobject> pool(1);
-//    auto obj = pool.emplace(1);
-//    std::condition_variable cond;
-//    std::mutex mutex;
-//    SCOPED_LOCK_NAMED(mutex, lock);
-//    std::atomic<bool> visit(false);
-//    std::thread thread([&cond, &mutex, &pool, &visit]()->void {
-//      auto visitor = [](test_uobject& obj)->bool { return true; };
-//      pool.visit(visitor, false);
-//      visit = true;
-//      SCOPED_LOCK(mutex);
-//      cond.notify_all();
-//    });
-//    auto result = cond.wait_for(lock, std::chrono::milliseconds(1000)); // assume thread finishes in 1000ms
-//
-//    // MSVC 2015/2017 optimized code seems to sporadically notify condition variables without explicit request
-//    MSVC2015_OPTIMIZED_ONLY(while(!visit && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
-//    MSVC2017_ONLY(while(!visit && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
-//
-//    obj.reset();
-//
-//    if (lock) {
-//      lock.unlock();
-//    }
-//
-//    thread.join();
-//    ASSERT_EQ(std::cv_status::timeout, result);
-//    // ^^^ expecting timeout because pool should block indefinitely
-//  }
-//}
+TEST(bounded_object_pool_tests, test_uobject_pool) {
+  // block on full pool
+  {
+    std::condition_variable cond;
+    std::mutex mutex;
+    iresearch::bounded_object_pool<test_uobject> pool(1);
+    auto obj = pool.emplace(1);
+
+    {
+      SCOPED_LOCK_NAMED(mutex, lock);
+      std::atomic<bool> emplace(false);
+      std::thread thread([&cond, &mutex, &pool, &emplace]()->void{ auto obj = pool.emplace(2); emplace = true; SCOPED_LOCK(mutex); cond.notify_all(); });
+
+      auto result = cond.wait_for(lock, std::chrono::milliseconds(1000)); // assume thread blocks in 1000ms
+
+      // MSVC 2015/2017 optimized code seems to sporadically notify condition variables without explicit request
+      MSVC2015_OPTIMIZED_ONLY(while(!emplace && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
+      MSVC2017_ONLY(while(!emplace && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
+
+      ASSERT_EQ(std::cv_status::timeout, result);
+      // ^^^ expecting timeout because pool should block indefinitely
+      obj.reset();
+      obj.reset();
+      lock.unlock();
+      thread.join();
+    }
+  }
+
+  // test object reuse
+  {
+    iresearch::bounded_object_pool<test_uobject> pool(1);
+    auto obj = pool.emplace(1);
+    ASSERT_TRUE(obj);
+    auto* obj_ptr = obj.get();
+
+    ASSERT_EQ(1, obj->id);
+    obj.reset();
+    ASSERT_FALSE(obj);
+    obj = pool.emplace(2);
+    ASSERT_TRUE(obj);
+    ASSERT_EQ(1, obj->id);
+    ASSERT_EQ(obj_ptr, obj.get());
+  }
+
+  // test visitation
+  {
+    iresearch::bounded_object_pool<test_uobject> pool(1);
+    auto obj = pool.emplace(1);
+    std::condition_variable cond;
+    std::mutex mutex;
+    SCOPED_LOCK_NAMED(mutex, lock);
+    std::atomic<bool> visit(false);
+    std::thread thread([&cond, &mutex, &pool, &visit]()->void {
+      auto visitor = [](test_uobject& obj)->bool { return true; };
+      pool.visit(visitor);
+      visit = true;
+      SCOPED_LOCK(mutex);
+      cond.notify_all();
+    });
+    auto result = cond.wait_for(lock, std::chrono::milliseconds(1000)); // assume thread finishes in 1000ms
+
+    // MSVC 2015/2017 optimized code seems to sporadically notify condition variables without explicit request
+    MSVC2015_OPTIMIZED_ONLY(while(!visit && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
+    MSVC2017_ONLY(while(!visit && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
+
+    obj.reset();
+
+    if (lock) {
+      lock.unlock();
+    }
+
+    thread.join();
+    ASSERT_EQ(std::cv_status::timeout, result);
+    // ^^^ expecting timeout because pool should block indefinitely
+  }
+}
 
 TEST(unbounded_object_pool_tests, construct) {
   iresearch::unbounded_object_pool<test_sobject> pool(42);
@@ -951,8 +904,8 @@ TEST(unbounded_object_pool_volatile_tests, test_uobject_pool) {
 }
 
 TEST(concurrent_linked_list_test, push_pop) {
-  typedef irs::concurrent_forward_list<size_t> forward_list;
-  typedef forward_list::node_type node_type;
+  typedef irs::concurrent_stack<size_t> stack;
+  typedef stack::node_type node_type;
 
   std::vector<node_type> nodes(10);
 
@@ -961,47 +914,70 @@ TEST(concurrent_linked_list_test, push_pop) {
     node.value = v++;
   }
 
-  forward_list list;
+  stack list;
   ASSERT_TRUE(list.empty());
-  ASSERT_EQ(nullptr, list.pop_front());
+  ASSERT_EQ(nullptr, list.pop());
 
   for (auto& node : nodes) {
-    list.push_front(node);
+    list.push(node);
   }
   ASSERT_FALSE(list.empty());
 
   node_type* node = 0;
   auto rbegin = nodes.rbegin();
-  while (node = list.pop_front()) {
+  while (node = list.pop()) {
     ASSERT_EQ(&*rbegin, node);
-    list.push_front(*node);
-    node = list.pop_front();
+    list.push(*node);
+    node = list.pop();
     ASSERT_EQ(&*rbegin, node);
     ++rbegin;
   }
   ASSERT_EQ(nodes.rend(), rbegin);
 }
 
-TEST(concurrent_linked_list_test, move) {
-  typedef irs::concurrent_forward_list<size_t> forward_list;
+TEST(concurrent_linked_list_test, push) {
+  typedef irs::concurrent_stack<size_t> stack;
+  typedef stack::node_type node_type;
 
-  std::array<forward_list::node_type, 10> nodes;
-  forward_list moved;
+  std::vector<node_type> nodes(10);
+  stack list;
+  ASSERT_TRUE(list.empty());
+  ASSERT_EQ(nullptr, list.pop());
+
+  for (auto& node : nodes) {
+    list.push(node);
+  }
+  ASSERT_FALSE(list.empty());
+
+  size_t count = 0;
+  while (auto* head = list.pop()) {
+    ++count;
+  }
+  ASSERT_TRUE(list.empty());
+
+  ASSERT_EQ(nodes.size(), count);
+}
+
+TEST(concurrent_linked_list_test, move) {
+  typedef irs::concurrent_stack<size_t> stack;
+
+  std::array<stack::node_type, 10> nodes;
+  stack moved;
   ASSERT_TRUE(moved.empty());
 
   size_t i = 0;
   for (auto& node : nodes) {
     node.value = i;
-    moved.push_front(node);
+    moved.push(node);
   }
   ASSERT_FALSE(moved.empty());
 
-  forward_list list(std::move(moved));
+  stack list(std::move(moved));
   ASSERT_TRUE(moved.empty());
   ASSERT_FALSE(list.empty());
 
   auto rbegin = nodes.rbegin();
-  while (auto* node = list.pop_front()) {
+  while (auto* node = list.pop()) {
     ASSERT_EQ(rbegin->value, node->value);
     ++rbegin;
   }
@@ -1011,12 +987,12 @@ TEST(concurrent_linked_list_test, move) {
 }
 
 TEST(concurrent_linked_list_test, move_assignment) {
-  typedef irs::concurrent_forward_list<size_t> forward_list;
+  typedef irs::concurrent_stack<size_t> stack;
 
-  std::array<forward_list::node_type, 10> nodes;
-  forward_list list0;
+  std::array<stack::node_type, 10> nodes;
+  stack list0;
   ASSERT_TRUE(list0.empty());
-  forward_list list1;
+  stack list1;
   ASSERT_TRUE(list1.empty());
 
   size_t i = 0;
@@ -1024,21 +1000,21 @@ TEST(concurrent_linked_list_test, move_assignment) {
   for (; i < nodes.size()/2; ++i) {
     auto& node = nodes[i];
     node.value = i;
-    list0.push_front(node);
+    list0.push(node);
   }
   ASSERT_FALSE(list0.empty());
 
   for (; i < nodes.size(); ++i) {
     auto& node = nodes[i];
     node.value = i;
-    list1.push_front(node);
+    list1.push(node);
   }
   ASSERT_FALSE(list1.empty());
 
   list0 = std::move(list1);
 
   auto rbegin = nodes.rbegin();
-  while (auto* node = list0.pop_front()) {
+  while (auto* node = list0.pop()) {
     ASSERT_EQ(rbegin->value, node->value);
     ++rbegin;
   }
@@ -1046,20 +1022,20 @@ TEST(concurrent_linked_list_test, move_assignment) {
   ASSERT_TRUE(list1.empty());
 }
 
-TEST(concurrent_linked_list_test, concurrent_push_pop) {
+TEST(concurrent_linked_list_test, concurrent_pop) {
   const size_t NODES = 10000;
   const size_t THREADS = 16;
 
-  typedef irs::concurrent_forward_list<size_t> forward_list;
-  std::vector<forward_list::node_type> nodes(NODES);
+  typedef irs::concurrent_stack<size_t> stack;
+  std::vector<stack::node_type> nodes(NODES);
 
   // build-up a list
-  forward_list list;
+  stack list;
   ASSERT_TRUE(list.empty());
   size_t size = 0;
   for (auto& node : nodes) {
     node.value = size++;
-    list.push_front(node);
+    list.push(node);
   }
   ASSERT_FALSE(list.empty());
 
@@ -1073,7 +1049,7 @@ TEST(concurrent_linked_list_test, concurrent_push_pop) {
 
   auto wait_for_all = [&mutex, &ready, &ready_cv]() {
     // wait for all threads to be registered
-    std::unique_lock<decltype(mutex)> lock(mutex);
+    SCOPED_LOCK_NAMED(mutex, lock);
     while (!ready) {
       ready_cv.wait(lock);
     }
@@ -1087,7 +1063,7 @@ TEST(concurrent_linked_list_test, concurrent_push_pop) {
       threads.emplace_back([&list, &wait_for_all, &thread_data]() {
         wait_for_all();
 
-        while (auto* head = list.pop_front()) {
+        while (auto* head = list.pop()) {
           thread_data.push_back(head->value);
         }
       });
@@ -1114,6 +1090,164 @@ TEST(concurrent_linked_list_test, concurrent_push_pop) {
     }
   }
   ASSERT_EQ(NODES, results.size());
+}
+
+TEST(concurrent_linked_list_test, concurrent_push) {
+  const size_t NODES = 10000;
+  const size_t THREADS = 16;
+
+  typedef irs::concurrent_stack<size_t> stack;
+
+  // build-up a list
+  stack list;
+  ASSERT_TRUE(list.empty());
+
+  std::vector<std::vector<stack::node_type>> threads_data(
+    THREADS, std::vector<stack::node_type>{ NODES }
+  );
+  std::vector<std::thread> threads;
+  threads.reserve(THREADS);
+
+  std::mutex mutex;
+  std::condition_variable ready_cv;
+  bool ready = false;
+
+  auto wait_for_all = [&mutex, &ready, &ready_cv]() {
+    // wait for all threads to be registered
+    SCOPED_LOCK_NAMED(mutex, lock);
+    while (!ready) {
+      ready_cv.wait(lock);
+    }
+  };
+
+  // start threads
+  {
+    SCOPED_LOCK_NAMED(mutex, lock);
+    for (size_t i = 0; i < threads_data.size(); ++i) {
+      auto& thread_data = threads_data[i];
+      threads.emplace_back([&list, &wait_for_all, &thread_data]() {
+        wait_for_all();
+
+        size_t idx = 0;
+        for (auto& node : thread_data) {
+          node.value = idx++;
+          list.push(node);
+        }
+      });
+    }
+  }
+
+  // all threads are registered... go, go, go...
+  {
+    std::lock_guard<decltype(mutex)> lock(mutex);
+    ready = true;
+    ready_cv.notify_all();
+  }
+
+  for (auto& thread : threads) {
+    thread.join();
+  }
+
+  ASSERT_FALSE(list.empty());
+
+  std::vector<size_t> results(NODES);
+
+  while (auto* node = list.pop()) {
+    ASSERT_TRUE(node->value < results.size());
+    ++results[node->value];
+  }
+
+  ASSERT_TRUE(
+    results.front() == THREADS
+    && irs::irstd::all_equal(results.begin(), results.end())
+  );
+}
+
+TEST(concurrent_linked_list_test, concurrent_pop_push) {
+  const size_t NODES = 10000;
+  const size_t THREADS = 16;
+
+  struct data {
+    bool visited{};
+    size_t num_owners{};
+    size_t value{};
+  };
+
+  typedef irs::concurrent_stack<data> stack;
+  std::vector<stack::node_type> nodes(NODES);
+
+  // build-up a list
+  stack list;
+  ASSERT_TRUE(list.empty());
+  for (auto& node : nodes) {
+    list.push(node);
+  }
+  ASSERT_FALSE(list.empty());
+
+  std::vector<std::thread> threads;
+  threads.reserve(THREADS);
+
+  std::mutex mutex;
+  std::condition_variable ready_cv;
+  bool ready = false;
+
+  auto wait_for_all = [&mutex, &ready, &ready_cv]() {
+    // wait for all threads to be registered
+    SCOPED_LOCK_NAMED(mutex, lock);
+    while (!ready) {
+      ready_cv.wait(lock);
+    }
+  };
+
+  // start threads
+  {
+    SCOPED_LOCK_NAMED(mutex, lock);
+    for (size_t i = 0; i < THREADS; ++i) {
+      threads.emplace_back([&list, &wait_for_all]() {
+        wait_for_all();
+
+        // no more than NODES
+        size_t processed = 0;
+
+        while (auto* head = list.pop()) {
+          ++processed;
+          EXPECT_LE(processed, 2*NODES);
+
+          auto& value = head->value;
+
+          if (!value.visited) {
+            ++value.num_owners;
+            ++value.value;
+            value.visited = true;
+            list.push(*head);
+          } else {
+            --value.num_owners;
+            ASSERT_EQ(0, value.num_owners);
+          }
+        }
+      });
+    }
+  }
+
+  // all threads are registered... go, go, go...
+  {
+    SCOPED_LOCK_NAMED(mutex, lock);
+    ready = true;
+    ready_cv.notify_all();
+  }
+
+  for (auto& thread : threads) {
+    thread.join();
+  }
+
+  ASSERT_TRUE(list.empty());
+
+  size_t i =0;
+  for (auto& node : nodes) {
+    ASSERT_EQ(1, node.value.value);
+    ASSERT_EQ(true, node.value.visited);
+    ASSERT_EQ(0, node.value.num_owners);
+  }
 }
 
 // -----------------------------------------------------------------------------

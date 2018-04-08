@@ -54,6 +54,7 @@ find_package(BoostLocal
 # set pthread library
 if (NOT MSVC)
   set(PTHREAD_LIBRARY pthread)
+  set(ATOMIC_LIBRARY atomic)
 endif()
 
 # set gcov library

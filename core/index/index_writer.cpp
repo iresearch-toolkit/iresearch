@@ -259,7 +259,7 @@ uint64_t index_writer::buffered_docs() const {
 
   auto ctx = const_cast<index_writer*>(this)->get_flush_context();
 
-  ctx->writers_pool_.visit(visitor, true);
+  ctx->writers_pool_.visit(visitor);
 
   return docs_in_ram;
 }

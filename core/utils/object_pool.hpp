@@ -39,27 +39,7 @@
 NS_ROOT
 
 template<typename Ptr>
-class atomic_base {
- public:
-  Ptr& atomic_exchange(Ptr* p, Ptr& r) const {
-    SCOPED_LOCK(mutex_);
-    p->swap(r);
-    return r;
-  }
-
-  void atomic_store(Ptr* p, Ptr& r) const  {
-    SCOPED_LOCK(mutex_);
-    p->swap(r); // FIXME
-  }
-
-  const Ptr& atomic_load(const Ptr* p) const {
-    SCOPED_LOCK(mutex_);
-    return *p;
-  }
-
- private:
-  mutable std::mutex mutex_;
-};
+class atomic_base;
 
 // GCC prior the 5.0 does not support std::atomic_exchange(std::shared_ptr<T>*, std::shared_ptr<T>)
 #if !defined(__GNUC__) || (__GNUC__ >= 5)
@@ -135,11 +115,11 @@ class atomic_base<std::shared_ptr<T>> {
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
-/// @class concurrent_forward_list
+/// @class concurrent_stack
 /// @brief lock-free single linked list
 //////////////////////////////////////////////////////////////////////////////
 template<typename T>
-class concurrent_forward_list : private util::noncopyable {
+class concurrent_stack : private util::noncopyable {
  public:
   typedef T element_type;
 
@@ -148,41 +128,73 @@ class concurrent_forward_list : private util::noncopyable {
     node_type* next{};
   };
 
-  explicit concurrent_forward_list(node_type* head = nullptr) NOEXCEPT
+  explicit concurrent_stack(node_type* head = nullptr) NOEXCEPT
     : head_(head) {
   }
 
-  concurrent_forward_list(concurrent_forward_list&& rhs) NOEXCEPT {
-    *this = std::move(rhs);
+  concurrent_stack(concurrent_stack&& rhs) NOEXCEPT
+    : head_(nullptr) {
+    if (this != &rhs) {
+      auto rhshead = rhs.head_.load();
+      while (!rhs.head_.compare_exchange_weak(rhshead, head_));
+      head_.store(rhshead);
+    }
   }
 
-  concurrent_forward_list& operator=(concurrent_forward_list&& rhs) NOEXCEPT {
+  concurrent_stack& operator=(concurrent_stack&& rhs) NOEXCEPT {
     if (this != &rhs) {
-      auto* head = rhs.head_.load();
-      while (!rhs.head_.compare_exchange_weak(head, nullptr)) { }
-      head_.store(head);
+      auto rhshead = rhs.head_.load();
+      const concurrent_node empty;
+      while (!rhs.head_.compare_exchange_weak(rhshead, empty));
+      head_.store(rhshead);
     }
     return *this;
   }
 
   bool empty() const NOEXCEPT {
-    return nullptr == head_.load();
+    return nullptr == head_.load().node;
   }
 
-  node_type* pop_front() NOEXCEPT {
-    auto* head = head_.load();
-    while (head && !head_.compare_exchange_weak(head, head->next)) { }
-    return head;
+  node_type* pop() NOEXCEPT {
+    concurrent_node head = head_.load();
+    concurrent_node new_head;
+
+    do {
+      if (!head.node) {
+        return nullptr;
+      }
+
+      new_head.node = head.node->next;
+      new_head.aba = head.aba + 1;
+    } while (!head_.compare_exchange_weak(head, new_head));
+
+    return head.node;
   }
 
-  void push_front(node_type& new_head) NOEXCEPT {
-    new_head.next = head_.load();
-    while (!head_.compare_exchange_weak(new_head.next, &new_head)) { }
+  void push(node_type& new_node) NOEXCEPT {
+    concurrent_node head = head_.load();
+    concurrent_node new_head;
+
+    do {
+      new_node.next = head.node;
+
+      new_head.node = &new_node;
+      new_head.aba = head.aba + 1;
+    } while (!head_.compare_exchange_weak(head, new_head));
   }
 
- private:
-  std::atomic<node_type*> head_{ nullptr };
-}; // concurrent_forward_list
+ public:
+  struct concurrent_node {
+    concurrent_node(node_type* node = nullptr)
+      : node(node) {
+    }
+
+    uintptr_t aba{ };
+    node_type* node;
+  };
+
+  std::atomic<concurrent_node> head_;
+}; // concurrent_stack
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      bounded pool
@@ -196,13 +208,15 @@ class concurrent_forward_list : private util::noncopyable {
 ///        when the object is released it is placed back into the pool
 //////////////////////////////////////////////////////////////////////////////
 template<typename T>
-class bounded_object_pool : atomic_base<typename T::ptr> {
+class bounded_object_pool {
  private:
   struct slot_t : util::noncopyable {
     bounded_object_pool* owner;
     typename T::ptr ptr;
-    std::atomic_flag used;
   }; // slot_t
+
+  typedef concurrent_stack<slot_t> stack;
+  typedef typename stack::node_type node_type;
 
   typedef atomic_base<typename T::ptr> atomic_utils;
 
@@ -216,7 +230,7 @@ class bounded_object_pool : atomic_base<typename T::ptr> {
   /////////////////////////////////////////////////////////////////////////////
   class ptr : util::noncopyable {
    public:
-    explicit ptr(slot_t& slot) NOEXCEPT
+    explicit ptr(node_type& slot) NOEXCEPT
       : slot_(&slot) {
     }
 
@@ -255,124 +269,97 @@ class bounded_object_pool : atomic_base<typename T::ptr> {
       });
     }
 
-    element_type& operator*() const NOEXCEPT { return *slot_->ptr; }
+    element_type& operator*() const NOEXCEPT { return *slot_->value.ptr; }
     element_type* operator->() const NOEXCEPT { return get(); }
-    element_type* get() const NOEXCEPT { return slot_->ptr.get(); }
+    element_type* get() const NOEXCEPT { return slot_->value.ptr.get(); }
     operator bool() const NOEXCEPT {
       return static_cast<bool>(slot_);
     }
 
    private:
-    static void reset(slot_t*& slot) NOEXCEPT {
+    static void reset(node_type*& slot) NOEXCEPT {
       if (!slot) {
         // nothing to do
         return;
       }
 
-      assert(slot->owner);
-      slot->owner->unlock(*slot);
+      assert(slot->value.owner);
+      slot->value.owner->unlock(*slot);
       slot = nullptr; // release ownership
     }
 
-    slot_t* slot_;
+    node_type* slot_;
   }; // ptr
 
   explicit bounded_object_pool(size_t size)
-    : free_count_(std::max(size_t(1), size)), 
-      pool_(std::max(size_t(1), size)) {
+    : pool_(std::max(size_t(1), size)) {
     // initialize pool
-    for (auto& slot : pool_) {
-      slot.used.clear();
+    for (auto& node : pool_) {
+      auto& slot = node.value;
       slot.owner = this;
+
+      free_list_.push(node);
     }
   }
 
   template<typename... Args>
   ptr emplace(Args&&... args) {
-    for(;;) {
-      // linear search for an unused slot in the pool
-      for (auto& slot : pool_) {
-        if (lock(slot)) {
-          auto& p = slot.ptr;
-          if (!p) {
-            try {
-              auto value = T::make(std::forward<Args>(args)...);
-              atomic_utils::atomic_store(&p, value);
-            } catch (...) {
-              unlock(slot);
-              throw;
-            }
-          }
+    node_type* head = nullptr;
 
-          return ptr(slot);
-        }
-      }
-
+    while (!(head = free_list_.pop())) {
       wait_for_free_slots();
     }
+
+    auto& slot = head->value;
+    auto& value = slot.ptr;
+
+    if (!value) {
+      try {
+        value = T::make(std::forward<Args>(args)...);
+      } catch (...) {
+        free_list_.push(*head);
+        throw;
+      }
+    }
+
+    return ptr(*head);
   }
 
   size_t size() const NOEXCEPT { return pool_.size(); }
 
   template<typename Visitor>
-  bool visit(const Visitor& visitor, bool shared = false) {
-    return const_cast<const bounded_object_pool&>(*this).visit(visitor, shared);
+  bool visit(const Visitor& visitor) {
+    return const_cast<const bounded_object_pool&>(*this).visit(visitor);
   }
 
   template<typename Visitor>
-  bool visit(const Visitor& visitor, bool shared = false) const {
-    // shared visitation does not acquire exclusive lock on object
-    // it is up to the caller to guarantee proper synchronization
-    if (shared) {
-      for (auto& slot : pool_) {
-        auto& p = slot.ptr;
-        auto* obj = atomic_utils::atomic_load(&p).get();
+  bool visit(const Visitor& visitor) const {
+    stack list;
 
-        if (obj && !visitor(*obj)) {
-          return false;
-        }
-      }
-
-      return true;
-    }
-
-    std::vector<bool> used(pool_.size(), false);
-    auto size = used.size();
-
-    auto unlock_all = make_finally([this, &used] () {
-      for (size_t i = 0, count = used.size(); i < count; ++i) {
-        if (used[i]) {
-          unlock(pool_[i]);
-        }
+    auto release_all = make_finally([this, &list] () {
+      while (auto* head = list.pop()) {
+        free_list_.push(*head);
       }
     });
 
-    for (;;) {
-      for (size_t i = 0, count = pool_.size(); i < count; ++i) {
-        if (used[i]) {
-          continue;
-        }
+    auto size = pool_.size();
 
-        auto& slot = pool_[i];
-        if (lock(slot)) {
-          used[i] = true;
+    while (size) {
+      node_type* head = nullptr;
 
-          auto& p = slot.ptr;
-          auto* obj = atomic_utils::atomic_load(&p).get();
-
-          if (obj && !visitor(*obj)) {
-            return false;
-          }
-
-          if (1 == size) {
-            return true;
-          }
-
-          --size;
-        }
+      while (!(head = free_list_.pop())) {
+        wait_for_free_slots();
       }
 
-      wait_for_free_slots();
+      list.push(*head);
+
+      auto& obj = head->value.ptr;
+
+      if (obj && !visitor(*obj)) {
+        return false;
+      }
+
+      --size;
     }
 
     return true;
@@ -382,38 +369,23 @@ class bounded_object_pool : atomic_base<typename T::ptr> {
   void wait_for_free_slots() const {
     SCOPED_LOCK_NAMED(mutex_, lock);
 
-    if (!free_count_) {
+    if (free_list_.empty()) {
       cond_.wait_for(lock, std::chrono::milliseconds(1000));
     }
-  }
-
-  // MSVC 2017.3, 2017.4 and 2017.5 incorectly decrement counter if this function is inlined during optimization
-  // MSVC 2017.2 and below TODO test for both debug and release
-  MSVC2017_3456_OPTIMIZED_WORKAROUND(__declspec(noinline))
-  bool lock(slot_t& slot) const NOEXCEPT {
-    if (!slot.used.test_and_set()) {
-      --free_count_;
-
-      return true;
-    }
-
-    return false;
   }
 
   // MSVC 2017.3, 2017.4 and 2017.5 incorectly increment counter if this function is inlined during optimization
   // MSVC 2017.2 and below TODO test for both debug and release
   MSVC2017_3456_OPTIMIZED_WORKAROUND(__declspec(noinline))
-  void unlock(slot_t& slot) const NOEXCEPT {
-    slot.used.clear();
-    SCOPED_LOCK(mutex_);
-    ++free_count_; // under lock to ensure cond_.wait_for(...) not triggered
+  void unlock(node_type& slot) const NOEXCEPT {
+    free_list_.push(slot);
     cond_.notify_all();
   }
 
   mutable std::condition_variable cond_;
-  mutable std::atomic<size_t> free_count_;
   mutable std::mutex mutex_;
-  mutable std::vector<slot_t> pool_;
+  mutable std::vector<node_type> pool_;
+  mutable stack free_list_;
 }; // bounded_object_pool
 
 // -----------------------------------------------------------------------------
@@ -471,8 +443,8 @@ class unbounded_object_pool_base : private util::noncopyable {
   size_t size() const NOEXCEPT { return pool_.size(); }
 
  protected:
-  typedef concurrent_forward_list<typename T::ptr> forward_list;
-  typedef typename forward_list::node_type node;
+  typedef concurrent_stack<typename T::ptr> stack;
+  typedef typename stack::node_type node;
 
   explicit unbounded_object_pool_base(size_t size)
     : pool_(size), free_slots_(pool_.data()) {
@@ -490,12 +462,12 @@ class unbounded_object_pool_base : private util::noncopyable {
 
   template<typename... Args>
   typename T::ptr acquire(Args&&... args) {
-    auto* head = free_objects_.pop_front();
+    auto* head = free_objects_.pop();
 
     if (head) {
       auto value = std::move(head->value);
       assert(value);
-      free_slots_.push_front(*head);
+      free_slots_.push(*head);
       return value;
     }
 
@@ -503,7 +475,7 @@ class unbounded_object_pool_base : private util::noncopyable {
   }
 
   void release(typename T::ptr&& value) NOEXCEPT {
-    auto* slot = free_slots_.pop_front();
+    auto* slot = free_slots_.pop();
 
     if (!slot) {
       // no free slots
@@ -511,12 +483,12 @@ class unbounded_object_pool_base : private util::noncopyable {
     }
 
     slot->value = std::move(value);
-    free_objects_.push_front(*slot);
+    free_objects_.push(*slot);
   }
 
   std::vector<node> pool_;
-  forward_list free_objects_; // list of created objects that are ready to be reused
-  forward_list free_slots_; // list of free slots to be reused
+  stack free_objects_; // list of created objects that are ready to be reused
+  stack free_slots_; // list of free slots to be reused
 }; // unbounded_object_pool_base
 
 //////////////////////////////////////////////////////////////////////////////
@@ -626,9 +598,9 @@ class unbounded_object_pool : public unbounded_object_pool_base<T> {
     node* head = nullptr;
 
     // reset all cached instances
-    while (head = this->free_objects_.pop_front()) {
+    while (head = this->free_objects_.pop()) {
       head->value = typename T::ptr{}; // empty instance
-      this->free_slots_.push_front(*head);
+      this->free_slots_.push(*head);
     }
   }
 
@@ -824,9 +796,9 @@ class unbounded_object_pool_volatile
     typename base_t::node* head = nullptr;
 
     // reset all cached instances
-    while (head = this->free_objects_.pop_front()) {
+    while (head = this->free_objects_.pop()) {
       head->value = typename T::ptr{}; // empty instance
-      this->free_slots_.push_front(*head);
+      this->free_slots_.push(*head);
     }
   }
 
