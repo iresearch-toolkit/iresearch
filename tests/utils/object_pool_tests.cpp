@@ -1205,7 +1205,7 @@ TEST(concurrent_linked_list_test, concurrent_pop_push) {
   {
     SCOPED_LOCK_NAMED(mutex, lock);
     for (size_t i = 0; i < THREADS; ++i) {
-      threads.emplace_back([&list, &wait_for_all]() {
+      threads.emplace_back([NODES, &list, &wait_for_all]() {
         wait_for_all();
 
         // no more than NODES

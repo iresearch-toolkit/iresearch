@@ -54,6 +54,10 @@ find_package(BoostLocal
 # set pthread library
 if (NOT MSVC)
   set(PTHREAD_LIBRARY pthread)
+endif()
+
+# set libatomic library
+if (UNIX)
   set(ATOMIC_LIBRARY atomic)
 endif()
 
