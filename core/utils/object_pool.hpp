@@ -38,19 +38,16 @@
 
 NS_ROOT
 
-template<typename Ptr>
-class atomic_base;
-
 // GCC prior the 5.0 does not support std::atomic_exchange(std::shared_ptr<T>*, std::shared_ptr<T>)
 #if !defined(__GNUC__) || (__GNUC__ >= 5)
 template<typename T>
-class atomic_base<std::shared_ptr<T>> {
+class atomic_shared_ptr_helper {
   #if defined(IRESEARCH_VALGRIND) // suppress valgrind false-positives related to std::atomic_*
    public:
     // for compatibility 'std::mutex' is not moveable
-    atomic_base() = default;
-    atomic_base(atomic_base&&) NOEXCEPT { }
-    atomic_base& operator=(atomic_base&&) NOEXCEPT { return *this; }
+    atomic_shared_ptr_helper() = default;
+    atomic_shared_ptr_helper(atomic_shared_ptr_helper&&) NOEXCEPT { }
+    atomic_shared_ptr_helper& operator=(atomic_shared_ptr_helper&&) NOEXCEPT { return *this; }
 
     std::shared_ptr<T> atomic_exchange(std::shared_ptr<T>* p, std::shared_ptr<T> r) const NOEXCEPT {
       SCOPED_LOCK(mutex_);
@@ -83,15 +80,15 @@ class atomic_base<std::shared_ptr<T>> {
       return std::atomic_load(p);
     }
   #endif // defined(IRESEARCH_VALGRIND)
-};
+}; // atomic_shared_ptr_helper
 #else
 template<typename T>
-class atomic_base<std::shared_ptr<T>> {
+class atomic_shared_ptr_helper {
  public:
   // for compatibility 'std::mutex' is not moveable
-  atomic_base() = default;
-  atomic_base(atomic_base&&) NOEXCEPT { }
-  atomic_base& operator=(atomic_base&&) NOEXCEPT { return *this; }
+  atomic_shared_ptr_helper() = default;
+  atomic_shared_ptr_helper(atomic_shared_ptr_helper&&) NOEXCEPT { }
+  atomic_shared_ptr_helper& operator=(atomic_shared_ptr_helper&&) NOEXCEPT { return *this; }
 
   std::shared_ptr<T> atomic_exchange(std::shared_ptr<T>* p, std::shared_ptr<T> r) const NOEXCEPT {
     SCOPED_LOCK(mutex_);
@@ -111,7 +108,7 @@ class atomic_base<std::shared_ptr<T>> {
 
  private:
   mutable std::mutex mutex_;
-};
+}; // atomic_shared_ptr_helper
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
@@ -219,8 +216,6 @@ class bounded_object_pool {
 
   typedef concurrent_stack<slot_t> stack;
   typedef typename stack::node_type node_type;
-
-  typedef atomic_base<typename T::ptr> atomic_utils;
 
  public:
   typedef typename T::ptr::element_type element_type;
@@ -646,13 +641,15 @@ NS_END // detail
 template<typename T>
 class unbounded_object_pool_volatile
     : public unbounded_object_pool_base<T>,
-      private atomic_base<std::shared_ptr<async_value<detail::pool_generation<unbounded_object_pool_volatile<T>>>>> {
+      private atomic_shared_ptr_helper<
+        async_value<detail::pool_generation<unbounded_object_pool_volatile<T>>>
+      > {
  private:
   typedef unbounded_object_pool_base<T> base_t;
 
   typedef async_value<detail::pool_generation<unbounded_object_pool_volatile<T>>> generation_t;
   typedef std::shared_ptr<generation_t> generation_ptr_t;
-  typedef atomic_base<generation_ptr_t> atomic_utils;
+  typedef atomic_shared_ptr_helper<generation_t> atomic_utils;
 
   typedef std::lock_guard<typename generation_t::read_lock_type> read_guard_t;
   typedef std::lock_guard<typename generation_t::write_lock_type> write_guard_t;

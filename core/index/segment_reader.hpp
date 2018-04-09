@@ -34,9 +34,9 @@ NS_ROOT
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API segment_reader final
     : public sub_reader,
-      private atomic_base<std::shared_ptr<sub_reader>> {
+      private atomic_shared_ptr_helper<sub_reader> {
  public:
-  typedef atomic_base<std::shared_ptr<sub_reader>> atomic_utils;
+  typedef atomic_shared_ptr_helper<sub_reader> atomic_utils;
   typedef segment_reader element_type; // type same as self
   typedef segment_reader ptr; // pointer to self
 
