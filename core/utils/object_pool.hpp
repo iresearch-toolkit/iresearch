@@ -36,6 +36,8 @@
 #include "misc.hpp"
 #include "noncopyable.hpp"
 
+#include <type_traits>
+
 NS_ROOT
 
 // GCC prior the 5.0 does not support std::atomic_exchange(std::shared_ptr<T>*, std::shared_ptr<T>)
@@ -162,7 +164,7 @@ class concurrent_stack : private util::noncopyable {
       }
 
       new_head.node = head.node->next;
-      new_head.aba = head.aba + 1;
+      new_head.version = head.version + 1;
     } while (!head_.compare_exchange_weak(head, new_head));
 
     return head.node;
@@ -176,24 +178,47 @@ class concurrent_stack : private util::noncopyable {
       new_node.next = head.node;
 
       new_head.node = &new_node;
-      new_head.aba = head.aba + 1;
+      new_head.version = head.version + 1;
     } while (!head_.compare_exchange_weak(head, new_head));
   }
 
  private:
   // CMPXCHG16B requires that the destination
   // (memory) operand be 16-byte aligned
-  struct alignas(2*sizeof(void*)) concurrent_node {
+  static const size_t REQ_ALIGNMENT = 2*sizeof(void*);
+
+  struct concurrent_node {
     concurrent_node(node_type* node = nullptr) NOEXCEPT
-      : node(node) {
+      : version(0), node(node) {
     }
 
-    uintptr_t aba{ };
-    node_type* node;
-  };
+// MSVC2013 does not support 'alignas'
+#if defined(_MSC_VER) && _MSC_VER < 1900
+    union {
+      struct {
+        uintptr_t version; // avoid aba problem
+        node_type* node;
+      };
+      typename std::aligned_storage<
+        sizeof(uintptr_t) + sizeof(node_type*), REQ_ALIGNMENT
+      >::type aligned;
+    };
+#else
+    struct alignas(REQ_ALIGNMENT) {
+      uintptr_t version; // avoid aba problem
+      node_type* node;
+    };
+#endif
+  }; // concurrent_node
+
+  static_assert(
+    ALIGNOF(concurrent_node) == REQ_ALIGNMENT,
+    "invalid alignment"
+  );
 
   std::atomic<concurrent_node> head_;
 }; // concurrent_stack
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      bounded pool
