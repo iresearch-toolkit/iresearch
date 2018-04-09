@@ -184,7 +184,9 @@ class concurrent_stack : private util::noncopyable {
   }
 
  private:
-  struct concurrent_node {
+  // CMPXCHG16B requires that the destination
+  // (memory) operand be 16-byte aligned
+  struct alignas(2*sizeof(void*)) concurrent_node {
     concurrent_node(node_type* node = nullptr) NOEXCEPT
       : node(node) {
     }
