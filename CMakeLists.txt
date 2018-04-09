@@ -56,8 +56,9 @@ if (NOT MSVC)
   set(PTHREAD_LIBRARY pthread)
 endif()
 
-# set libatomic library
-if (UNIX)
+# set libatomic library 
+# (not available on Windows and Mac)
+if (NOT MSVC AND NOT APPLE)
   set(ATOMIC_LIBRARY atomic)
 endif()
 
