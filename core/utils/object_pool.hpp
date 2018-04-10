@@ -38,6 +38,10 @@
 
 #include <type_traits>
 
+// CMPXCHG16B requires that the destination
+// (memory) operand be 16-byte aligned
+#define IRESEARCH_CMPXCHG16B_ALIGNMENT 16
+
 NS_ROOT
 
 // GCC prior the 5.0 does not support std::atomic_exchange(std::shared_ptr<T>*, std::shared_ptr<T>)
@@ -185,9 +189,7 @@ class concurrent_stack : private util::noncopyable {
  private:
   // CMPXCHG16B requires that the destination
   // (memory) operand be 16-byte aligned
-  static const size_t REQ_ALIGNMENT = 2*sizeof(void*);
-
-  struct ALIGNAS(16) concurrent_node {
+  struct ALIGNAS(IRESEARCH_CMPXCHG16B_ALIGNMENT) concurrent_node {
     concurrent_node(node_type* node = nullptr) NOEXCEPT
       : version(0), node(node) {
     }
@@ -197,7 +199,7 @@ class concurrent_stack : private util::noncopyable {
   }; // concurrent_node
 
   static_assert(
-    ALIGNOF(concurrent_node) == REQ_ALIGNMENT,
+    IRESEARCH_CMPXCHG16B_ALIGNMENT == ALIGNOF(concurrent_node),
     "invalid alignment"
   );
 
