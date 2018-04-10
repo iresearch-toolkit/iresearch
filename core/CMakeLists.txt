@@ -314,18 +314,24 @@ add_custom_target(
   DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/utils/build_identifier.csx
 )
 
+# trigger generation of BUILD_VERSION if needed
 add_custom_command(
   OUTPUT ${CMAKE_BINARY_DIR}/BUILD_VERSION
   COMMAND ${CMAKE_COMMAND} -E echo_append "${IResearch_version}" > ${CMAKE_BINARY_DIR}/BUILD_VERSION
+)
+
+# trigger regeneration of utils/version_utils.cpp with build_id from file: BUILD_VERSION
+add_custom_command(
+  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/utils/build_version.csx
   COMMAND ${CMAKE_COMMAND} -DSRC="${CMAKE_BINARY_DIR}/BUILD_VERSION" -DDST="${CMAKE_CURRENT_BINARY_DIR}/utils/build_version.csx" -P "${PROJECT_SOURCE_DIR}/cmake/HexEncodeFile.cmake"
   COMMAND ${CMAKE_COMMAND} -E touch_nocreate ${CMAKE_CURRENT_SOURCE_DIR}/version_utils.cpp
-  DEPENDS utils
+  DEPENDS utils ${CMAKE_BINARY_DIR}/BUILD_VERSION
   WORKING_DIRECTORY utils
 )
 
 add_custom_target(
   ${IResearch_TARGET_NAME}-build_version
-  DEPENDS ${CMAKE_BINARY_DIR}/BUILD_VERSION
+  DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/utils/build_version.csx
 )
 
 add_dependencies(${IResearch_TARGET_NAME}-shared
@@ -440,6 +446,7 @@ set_target_properties(${IResearch_TARGET_NAME}-shared
   IMPORT_PREFIX lib
   OUTPUT_NAME iresearch
   COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;BOOST_ALL_DYN_LINK;$<$<CONFIG:Debug>:YYDEBUG=1>"
+  CXX_VISIBILITY_PRESET hidden
 )
 
 set_target_properties(${IResearch_TARGET_NAME}-static
@@ -458,6 +465,7 @@ if(MSVC)
     IMPORT_PREFIX lib
     OUTPUT_NAME iresearch-scrt
     COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;BOOST_ALL_DYN_LINK"
+    CXX_VISIBILITY_PRESET hidden
   )
 
   set_target_properties(${IResearch_TARGET_NAME}-static-scrt
@@ -723,6 +731,7 @@ set_target_properties(${IResearch_TARGET_NAME}-analyzer-delimited-shared
   OUTPUT_NAME analyzer-delimited
   DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
   COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN"
+  CXX_VISIBILITY_PRESET hidden
 )
 
 set_target_properties(${IResearch_TARGET_NAME}-analyzer-delimited-static
@@ -741,6 +750,7 @@ if(MSVC)
     IMPORT_PREFIX lib
     OUTPUT_NAME analyzer-delimited-scrt
     COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN"
+    CXX_VISIBILITY_PRESET hidden
   )
 
   set_target_properties(${IResearch_TARGET_NAME}-analyzer-delimited-static-scrt
@@ -875,6 +885,7 @@ set_target_properties(${IResearch_TARGET_NAME}-analyzer-text-shared
   OUTPUT_NAME analyzer-text
   DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
   COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN;BOOST_ALL_DYN_LINK"
+  CXX_VISIBILITY_PRESET hidden
 )
 
 set_target_properties(${IResearch_TARGET_NAME}-analyzer-text-static
@@ -893,6 +904,7 @@ if(MSVC)
     IMPORT_PREFIX lib
     OUTPUT_NAME analyzer-text-scrt
     COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN;BOOST_ALL_DYN_LINK"
+    CXX_VISIBILITY_PRESET hidden
   )
 
   set_target_properties(${IResearch_TARGET_NAME}-analyzer-text-static-scrt
@@ -1021,6 +1033,7 @@ set_target_properties(${IResearch_TARGET_NAME}-format-1_0-shared
   OUTPUT_NAME format-1_0
   DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
   COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN;FST_NO_DYNAMIC_LINKING"
+  CXX_VISIBILITY_PRESET hidden
 )
 
 set_target_properties(${IResearch_TARGET_NAME}-format-1_0-static
@@ -1039,6 +1052,7 @@ if(MSVC)
     IMPORT_PREFIX lib
     OUTPUT_NAME format-1_0-scrt
     COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN;FST_NO_DYNAMIC_LINKING"
+    CXX_VISIBILITY_PRESET hidden
   )
 
   set_target_properties(${IResearch_TARGET_NAME}-format-1_0-static-scrt
@@ -1177,6 +1191,7 @@ set_target_properties(${IResearch_TARGET_NAME}-scorer-tfidf-shared
   OUTPUT_NAME scorer-tfidf
   DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
   COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_IMPORTS;IRESEARCH_DLL_PLUGIN"
+  CXX_VISIBILITY_PRESET hidden
 )
 
 set_target_properties(${IResearch_TARGET_NAME}-scorer-tfidf-static
@@ -1195,6 +1210,7 @@ if(MSVC)
     IMPORT_PREFIX lib
     OUTPUT_NAME scorer-tfidf-scrt
     COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_IMPORTS;IRESEARCH_DLL_PLUGIN"
+    CXX_VISIBILITY_PRESET hidden
   )
 
   set_target_properties(${IResearch_TARGET_NAME}-scorer-tfidf-static-scrt
@@ -1303,6 +1319,7 @@ set_target_properties(${IResearch_TARGET_NAME}-scorer-bm25-shared
   OUTPUT_NAME scorer-bm25
   DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
   COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_IMPORTS;IRESEARCH_DLL_PLUGIN"
+  CXX_VISIBILITY_PRESET hidden
 )
 
 set_target_properties(${IResearch_TARGET_NAME}-scorer-bm25-static
@@ -1321,6 +1338,7 @@ if(MSVC)
     IMPORT_PREFIX lib
     OUTPUT_NAME scorer-bm25-scrt
     COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_IMPORTS;IRESEARCH_DLL_PLUGIN"
+    CXX_VISIBILITY_PRESET hidden
   )
 
   set_target_properties(${IResearch_TARGET_NAME}-scorer-bm25-static-scrt
