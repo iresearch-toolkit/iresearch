@@ -187,7 +187,7 @@ class concurrent_stack : private util::noncopyable {
   // (memory) operand be 16-byte aligned
   static const size_t REQ_ALIGNMENT = 2*sizeof(void*);
 
-  struct ALIGNAS(REQ_ALIGNMENT) concurrent_node {
+  struct ALIGNAS(16) concurrent_node {
     concurrent_node(node_type* node = nullptr) NOEXCEPT
       : version(0), node(node) {
     }
