@@ -85,12 +85,12 @@
   #define CONSTEXPR
   #define NOEXCEPT throw()
   #define ALIGNOF(v) __alignof(v)
-  #define ALIGNED(class_or_struct, v) __declspec(align((v))) class_or_struct
+  #define ALIGNAS(v) __declspec(align(v))
 #else
   #define CONSTEXPR constexpr
   #define NOEXCEPT noexcept 
   #define ALIGNOF(v) alignof(v)
-  #define ALIGNED(class_or_struct, v) class_or_struct alignas((v))
+  #define ALIGNAS(v) alignas(v)
 #endif
 
   #define FORCE_INLINE inline __forceinline
@@ -113,7 +113,7 @@
 
   #define NOEXCEPT noexcept
   #define ALIGNOF(v) alignof(v)
-  #define ALIGNED(class_or_struct, v) class_or_struct alignas((v))
+  #define ALIGNAS(v) alignas(v)
   #define FORCE_INLINE inline __attribute__ ((always_inline))
   #define NO_INLINE __attribute__ ((noinline))
   #define RESTRICT __restrict__
