@@ -152,7 +152,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     segment_writer& writer_;
   }; // document
 
-  DECLARE_SHARED_PTR(segment_writer);
+  DECLARE_UNIQUE_PTR(segment_writer);
   DECLARE_FACTORY(directory& dir);
 
   struct update_context {

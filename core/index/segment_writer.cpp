@@ -46,8 +46,8 @@ segment_writer::column::column(
 }
 
 segment_writer::ptr segment_writer::make(directory& dir) {
-  PTR_NAMED(segment_writer, ptr, dir);
-  return ptr;
+  // can't use make_unique becuase of the private constructor
+  return memory::maker<segment_writer>::make(dir);
 }
 
 segment_writer::segment_writer(directory& dir) NOEXCEPT
