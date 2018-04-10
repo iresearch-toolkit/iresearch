@@ -85,16 +85,17 @@
   #define CONSTEXPR
   #define NOEXCEPT throw()
   #define ALIGNOF(v) __alignof(v)
+  #define ALIGNED(class_or_struct, v) __declspec(align((v))) class_or_struct
 #else
-  #define ALIGNOF(v) alignof(v)
   #define CONSTEXPR constexpr
   #define NOEXCEPT noexcept 
+  #define ALIGNOF(v) alignof(v)
+  #define ALIGNED(class_or_struct, v) class_or_struct alignas((v))
 #endif
 
   #define FORCE_INLINE inline __forceinline
   #define NO_INLINE __declspec(noinline)
   #define RESTRICT __restrict 
-  #define ALIGNED_VALUE(_value, _type) union { _value; _type ___align; }
 #else
   #if defined(__GNUC__) && __GNUC__ >= 4
     #define IRESEARCH_HELPER_DLL_IMPORT __attribute__ ((visibility ("default")))
@@ -112,10 +113,10 @@
 
   #define NOEXCEPT noexcept
   #define ALIGNOF(v) alignof(v)
+  #define ALIGNED(class_or_struct, v) class_or_struct alignas((v))
   #define FORCE_INLINE inline __attribute__ ((always_inline))
   #define NO_INLINE __attribute__ ((noinline))
   #define RESTRICT __restrict__
-  #define ALIGNED_VALUE(_value, _type) _value alignas( _type );
 #endif
 
 // GCC before v5 does not implicitly call the move constructor on local values
@@ -135,7 +136,7 @@
   #define IMPLICIT_MOVE_WORKAROUND(x) x
 #endif
 
-// hook for MSVC2017.3, MSVC2017.4, MSVC2017.5, MSVC2017.6 optimized code
+// hook for MSVC2017.3-7 optimized code
 // these versions produce incorrect code when inlining optimizations are enabled
 // for versions @see https://github.com/lordmulder/MUtilities/blob/master/include/MUtils/Version.h
 #if defined(_MSC_VER) \
@@ -143,7 +144,7 @@
     && (((_MSC_FULL_VER >= 191125506) && (_MSC_FULL_VER <= 191125508)) \
         || ((_MSC_FULL_VER >= 191125542) && (_MSC_FULL_VER <= 191125547)) \
         || ((_MSC_FULL_VER >= 191225830) && (_MSC_FULL_VER <= 191225835)) \
-        || ((_MSC_FULL_VER >= 191326128) && (_MSC_FULL_VER <= 191326128)))
+        || ((_MSC_FULL_VER >= 191326128) && (_MSC_FULL_VER <= 191326129)))
   #define MSVC2017_3456_OPTIMIZED_WORKAROUND(...) __VA_ARGS__
 #else
   #define MSVC2017_3456_OPTIMIZED_WORKAROUND(...)
