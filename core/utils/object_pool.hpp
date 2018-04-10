@@ -187,28 +187,13 @@ class concurrent_stack : private util::noncopyable {
   // (memory) operand be 16-byte aligned
   static const size_t REQ_ALIGNMENT = 2*sizeof(void*);
 
-  struct concurrent_node {
+  ALIGNED(struct, REQ_ALIGNMENT) concurrent_node {
     concurrent_node(node_type* node = nullptr) NOEXCEPT
       : version(0), node(node) {
     }
 
-// MSVC2013 does not support 'alignas'
-#if defined(_MSC_VER) && _MSC_VER < 1900
-    union {
-      struct {
-        uintptr_t version; // avoid aba problem
-        node_type* node;
-      };
-      typename std::aligned_storage<
-        sizeof(uintptr_t) + sizeof(node_type*), REQ_ALIGNMENT
-      >::type aligned;
-    };
-#else
-    struct alignas(REQ_ALIGNMENT) {
-      uintptr_t version; // avoid aba problem
-      node_type* node;
-    };
-#endif
+    uintptr_t version; // avoid aba problem
+    node_type* node;
   }; // concurrent_node
 
   static_assert(
