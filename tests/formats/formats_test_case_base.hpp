@@ -130,16 +130,16 @@ class format_test_case_base : public index_test_base {
       return true;
     }
 
-    irs::doc_id_t value() const {
+    irs::doc_id_t value() const override {
       return doc_;
     }
 
-    irs::doc_id_t seek(irs::doc_id_t target) {
+    irs::doc_id_t seek(irs::doc_id_t target) override {
       irs::seek(*this, target);
       return value();
     }
 
-    const irs::attribute_view& attributes() const NOEXCEPT {
+    const irs::attribute_view& attributes() const NOEXCEPT override {
       return attrs_;
     }
 

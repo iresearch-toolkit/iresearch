@@ -47,10 +47,10 @@ TEST(fst_string_weight_tests, read_write) {
 
   fst::StringLeftWeight<char> w0;
   w0.PushBack(1);
-  w0.PushBack(255);
+  w0.PushBack(char(255));
   w0.PushBack(3);
   w0.PushBack(3);
-  w0.PushBack(129);
+  w0.PushBack(char(129));
   w0.Write(ss);
   ASSERT_EQ(5, w0.Size());
   ASSERT_TRUE(w0.Member());

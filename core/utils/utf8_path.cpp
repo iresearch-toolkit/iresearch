@@ -21,7 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <boost/locale/encoding.hpp>
+#include <locale>
 
 #include "file_utils.hpp"
 #include "locale_utils.hpp"

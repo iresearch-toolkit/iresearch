@@ -45,7 +45,10 @@ if (MSVC)
   )
 else()
   add_definitions(-Wall)
-  set(CMAKE_CXX_FLAGS_RELEASE "-s ${CMAKE_CXX_FLAGS_RELEASE}")
+
+  if (NOT APPLE)
+    set(CMAKE_CXX_FLAGS_RELEASE "-s ${CMAKE_CXX_FLAGS_RELEASE}")
+  endif()
 
   # set OS specific headers
   set(IResearch_core_os_specific_headers
