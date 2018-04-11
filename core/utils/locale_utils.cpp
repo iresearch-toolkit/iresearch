@@ -1312,8 +1312,10 @@ const std::locale& get_encoding(std::string&& encoding, const std::locale& base)
   return encodings.emplace(std::move(encoding), locale_wchar).first->second;
 }
 
-const std::locale& get_locale(const irs::string_ref& name) {
-  if (name.null()) {
+const std::locale& get_locale(
+    const irs::string_ref& name, bool forceUnicodeSystem = true
+) {
+  if (name.null() && !forceUnicodeSystem) {
     return std::locale::classic();
   }
 
@@ -1335,6 +1337,7 @@ const std::locale& get_locale(const irs::string_ref& name) {
     return itr->second;
   }
 
+  // Boost locales always assume system is unicode
   boost::locale::generator locale_genrator; // stateful object, cannot be static
   icu::Locale icu_locale(
     std::string(info.language()).c_str(),
@@ -1432,6 +1435,33 @@ std::locale locale(std::string const& sName, bool bForceUTF8 /*= false*/) {
     "UTF-8",
     info_facet.variant()
   );
+}
+
+std::locale locale(
+    irs::string_ref const& name,
+    irs::string_ref const& encodingOverride /*= irs::string_ref::NIL*/,
+    bool forceUnicodeSystem /*= true*/
+) {
+  if (encodingOverride.null()) {
+    return get_locale(name, forceUnicodeSystem);
+  }
+
+  locale_info_facet info(name);
+  std::string locale_name = info.language();
+
+  if (!info.country().empty()) {
+    locale_name.append(1, '_').append(info.country());
+  }
+
+  if (!encodingOverride.empty()) {
+    locale_name.append(1, '.').append(encodingOverride);
+  }
+
+  if (!info.variant().empty()) {
+    locale_name.append(1, '@').append(info.variant());
+  }
+
+  return get_locale(locale_name, forceUnicodeSystem);
 }
 
 std::locale locale(std::string const& sLanguage, std::string const& sCountry, std::string const& sEncoding, std::string const& sVariant /*= ""*/) {

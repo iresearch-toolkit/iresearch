@@ -24,11 +24,39 @@
 #ifndef IRESEARCH_LOCALE_UTILS_H
 #define IRESEARCH_LOCALE_UTILS_H
 
+#include <locale>
+
 #include "shared.hpp"
 #include "string.hpp"
 
 NS_ROOT
 NS_BEGIN( locale_utils )
+
+/**
+ * @brief create a locale from name
+ * @param name name of the locale to create (nullptr == "C")
+ * @param encodingOverride force locale to have the specified output encoding (nullptr == take from 'name')
+ * @param forceUnicodeSystem force the internal system encoding to be unicode
+ **/
+IRESEARCH_API std::locale locale(
+  const irs::string_ref& name,
+  const irs::string_ref& encodingOverride = irs::string_ref::NIL,
+  bool forceUnicodeSystem = true
+);
+
+/**
+ * @param encoding the output encoding of the converter
+ * @param forceUnicodeSystem force the internal system encoding to be unicode
+ * @return the converter capable of outputing in the specified target encoding
+ **/
+template<typename Internal>
+const std::codecvt<Internal, char, std::mbstate_t>& converter(
+    const irs::string_ref& encoding, bool forceUnicodeSystem = true
+) {
+  return std::use_facet<std::codecvt<Internal, char, std::mbstate_t>>(
+    locale(irs::string_ref::NIL, encoding, forceUnicodeSystem)
+  );
+}
 
 /**
  * @brief extract the locale country from a locale

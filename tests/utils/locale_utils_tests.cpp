@@ -55,6 +55,244 @@ using namespace iresearch::locale_utils;
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
+TEST_F(LocaleUtilsTestSuite, test_get_converter) {
+  {
+    auto expected = irs::locale_utils::locale("C", true);
+
+    //ASSERT_EQ((&std::use_facet<std::codecvt<char, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<char>(nullptr)));
+    ASSERT_EQ((&std::use_facet<std::codecvt<char16_t, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<char16_t>(nullptr)));
+    ASSERT_EQ((&std::use_facet<std::codecvt<char32_t, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<char32_t>(nullptr)));
+    //ASSERT_EQ((&std::use_facet<std::codecvt<wchar_t, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<wchar_t>(nullptr)));
+  }
+
+  {
+    auto expected = irs::locale_utils::locale("C", false);
+
+    //ASSERT_EQ((&std::use_facet<std::codecvt<char, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<char>(nullptr, false)));
+    ASSERT_EQ((&std::use_facet<std::codecvt<char16_t, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<char16_t>(nullptr, false)));
+    ASSERT_EQ((&std::use_facet<std::codecvt<char32_t, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<char32_t>(nullptr, false)));
+    //ASSERT_EQ((&std::use_facet<std::codecvt<wchar_t, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<wchar_t>(nullptr, false)));
+  }
+
+  {
+    auto expected = irs::locale_utils::locale("C", true);
+
+    //ASSERT_EQ((&std::use_facet<std::codecvt<char, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<char>("")));
+    ASSERT_EQ((&std::use_facet<std::codecvt<char16_t, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<char16_t>("")));
+    ASSERT_EQ((&std::use_facet<std::codecvt<char32_t, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<char32_t>("")));
+    //ASSERT_EQ((&std::use_facet<std::codecvt<wchar_t, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<wchar_t>("")));
+  }
+
+  {
+    auto expected = irs::locale_utils::locale("C", false);
+
+    ASSERT_EQ((&std::use_facet<std::codecvt<char, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<char>("", false)));
+    ASSERT_EQ((&std::use_facet<std::codecvt<char16_t, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<char16_t>("", false)));
+    ASSERT_EQ((&std::use_facet<std::codecvt<char32_t, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<char32_t>("", false)));
+    ASSERT_EQ((&std::use_facet<std::codecvt<wchar_t, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<wchar_t>("", false)));
+  }
+
+  {
+    auto expected = irs::locale_utils::locale("C.utf-8", true);
+
+    ASSERT_EQ((&std::use_facet<std::codecvt<char, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<char>("utf-8")));
+    ASSERT_EQ((&std::use_facet<std::codecvt<char16_t, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<char16_t>("utf-8")));
+    ASSERT_EQ((&std::use_facet<std::codecvt<char32_t, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<char32_t>("utf-8")));
+    ASSERT_EQ((&std::use_facet<std::codecvt<wchar_t, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<wchar_t>("utf-8")));
+  }
+
+  {
+    auto expected = irs::locale_utils::locale("C.utf-8", false);
+
+    ASSERT_EQ((&std::use_facet<std::codecvt<char, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<char>("utf-8", false)));
+    ASSERT_EQ((&std::use_facet<std::codecvt<char16_t, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<char16_t>("utf-8", false)));
+    ASSERT_EQ((&std::use_facet<std::codecvt<char32_t, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<char32_t>("utf-8", false)));
+    ASSERT_EQ((&std::use_facet<std::codecvt<wchar_t, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<wchar_t>("utf-8", false)));
+  }
+
+  {
+    auto expected = irs::locale_utils::locale("C.koi8-r", true);
+
+    //ASSERT_EQ((&std::use_facet<std::codecvt<char, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<char>("koi8-r")));
+    ASSERT_EQ((&std::use_facet<std::codecvt<char16_t, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<char16_t>("koi8-r")));
+    ASSERT_EQ((&std::use_facet<std::codecvt<char32_t, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<char32_t>("koi8-r")));
+    //ASSERT_EQ((&std::use_facet<std::codecvt<wchar_t, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<wchar_t>("koi8-r")));
+  }
+
+  {
+    auto expected = irs::locale_utils::locale("C.koi8-r", false);
+
+    ASSERT_EQ((&std::use_facet<std::codecvt<char, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<char>("koi8-r", false)));
+    ASSERT_EQ((&std::use_facet<std::codecvt<char16_t, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<char16_t>("koi8-r", false)));
+    ASSERT_EQ((&std::use_facet<std::codecvt<char32_t, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<char32_t>("koi8-r", false)));
+    ASSERT_EQ((&std::use_facet<std::codecvt<wchar_t, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<wchar_t>("koi8-r", false)));
+  }
+
+  {
+    ASSERT_ANY_THROW(irs::locale_utils::converter<char>("invalidstring"));
+    ASSERT_ANY_THROW(irs::locale_utils::converter<char16_t>("invalidstring"));
+    ASSERT_ANY_THROW(irs::locale_utils::converter<char32_t>("invalidstring"));
+    ASSERT_ANY_THROW(irs::locale_utils::converter<wchar_t>("invalidstring"));
+  }
+
+  {
+    ASSERT_ANY_THROW(irs::locale_utils::converter<char>("invalidstring", false));
+    ASSERT_ANY_THROW(irs::locale_utils::converter<char16_t>("invalidstring", false));
+    ASSERT_ANY_THROW(irs::locale_utils::converter<char32_t>("invalidstring", false));
+    ASSERT_ANY_THROW(irs::locale_utils::converter<wchar_t>("invalidstring", false));
+  }
+}
+
+TEST_F(LocaleUtilsTestSuite, test_get_locale) {
+  {
+    auto locale = irs::locale_utils::locale(nullptr, nullptr, true);
+
+    ASSERT_EQ(std::string("*"), locale.name());
+    ASSERT_EQ(std::string("C"), irs::locale_utils::language(locale));
+    ASSERT_EQ(std::string(""), irs::locale_utils::country(locale));
+    ASSERT_EQ(std::string("us-ascii"), irs::locale_utils::encoding(locale));
+    ASSERT_FALSE(irs::locale_utils::utf8(locale));
+  }
+
+  {
+    auto locale = irs::locale_utils::locale(nullptr, nullptr, false);
+
+    ASSERT_EQ(std::string("C"), locale.name());
+    ASSERT_EQ(std::string("C"), irs::locale_utils::language(locale));
+    ASSERT_EQ(std::string(""), irs::locale_utils::country(locale));
+    ASSERT_EQ(std::string("us-ascii"), irs::locale_utils::encoding(locale));
+    ASSERT_FALSE(irs::locale_utils::utf8(locale));
+  }
+
+  {
+    auto locale = irs::locale_utils::locale(nullptr, "", true);
+
+    ASSERT_EQ(std::string("*"), locale.name());
+    ASSERT_EQ(std::string("C"), irs::locale_utils::language(locale));
+    ASSERT_EQ(std::string(""), irs::locale_utils::country(locale));
+    ASSERT_EQ(std::string("us-ascii"), irs::locale_utils::encoding(locale));
+    ASSERT_FALSE(irs::locale_utils::utf8(locale));
+  }
+
+  {
+    auto locale = irs::locale_utils::locale(nullptr, "", false);
+
+    ASSERT_EQ(std::string("*"), locale.name());
+    ASSERT_EQ(std::string("C"), irs::locale_utils::language(locale));
+    ASSERT_EQ(std::string(""), irs::locale_utils::country(locale));
+    ASSERT_EQ(std::string("us-ascii"), irs::locale_utils::encoding(locale));
+    ASSERT_FALSE(irs::locale_utils::utf8(locale));
+  }
+
+  {
+    auto locale = irs::locale_utils::locale(nullptr, "koi8-r", true);
+
+    ASSERT_EQ(std::string("*"), locale.name());
+    ASSERT_EQ(std::string("c"), irs::locale_utils::language(locale));
+    ASSERT_EQ(std::string(""), irs::locale_utils::country(locale));
+    ASSERT_EQ(std::string("koi8-r"), irs::locale_utils::encoding(locale));
+    ASSERT_FALSE(irs::locale_utils::utf8(locale));
+  }
+
+  {
+    auto locale = irs::locale_utils::locale(nullptr, "koi8-r", false);
+
+    ASSERT_EQ(std::string("*"), locale.name());
+    ASSERT_EQ(std::string("c"), irs::locale_utils::language(locale));
+    ASSERT_EQ(std::string(""), irs::locale_utils::country(locale));
+    ASSERT_EQ(std::string("koi8-r"), irs::locale_utils::encoding(locale));
+    ASSERT_FALSE(irs::locale_utils::utf8(locale));
+  }
+
+  {
+    ASSERT_ANY_THROW(irs::locale_utils::locale(nullptr, "InvalidString", true));
+  }
+
+  {
+    ASSERT_ANY_THROW(irs::locale_utils::locale(nullptr, "InvalidString", false));
+  }
+
+  {
+    auto locale = irs::locale_utils::locale("en_US", nullptr, true);
+
+    ASSERT_EQ(std::string("*"), locale.name());
+    ASSERT_EQ(std::string("en"), irs::locale_utils::language(locale));
+    ASSERT_EQ(std::string("US"), irs::locale_utils::country(locale));
+    ASSERT_EQ(std::string("us-ascii"), irs::locale_utils::encoding(locale));
+    ASSERT_FALSE(irs::locale_utils::utf8(locale));
+  }
+
+  {
+    auto locale = irs::locale_utils::locale("en_US", nullptr, false);
+
+    ASSERT_EQ(std::string("*"), locale.name());
+    ASSERT_EQ(std::string("en"), irs::locale_utils::language(locale));
+    ASSERT_EQ(std::string("US"), irs::locale_utils::country(locale));
+    ASSERT_EQ(std::string("us-ascii"), irs::locale_utils::encoding(locale));
+    ASSERT_FALSE(irs::locale_utils::utf8(locale));
+  }
+
+  {
+    auto locale = irs::locale_utils::locale("en_US", "", true);
+
+    ASSERT_EQ(std::string("*"), locale.name());
+    ASSERT_EQ(std::string("en"), irs::locale_utils::language(locale));
+    ASSERT_EQ(std::string("US"), irs::locale_utils::country(locale));
+    ASSERT_EQ(std::string("us-ascii"), irs::locale_utils::encoding(locale));
+    ASSERT_FALSE(irs::locale_utils::utf8(locale));
+  }
+
+  {
+    auto locale = irs::locale_utils::locale("en_US", "", false);
+
+    ASSERT_EQ(std::string("*"), locale.name());
+    ASSERT_EQ(std::string("en"), irs::locale_utils::language(locale));
+    ASSERT_EQ(std::string("US"), irs::locale_utils::country(locale));
+    ASSERT_EQ(std::string("us-ascii"), irs::locale_utils::encoding(locale));
+    ASSERT_FALSE(irs::locale_utils::utf8(locale));
+  }
+
+  {
+    auto locale = irs::locale_utils::locale("en_US", "koi8-r", true);
+
+    ASSERT_EQ(std::string("*"), locale.name());
+    ASSERT_EQ(std::string("en"), irs::locale_utils::language(locale));
+    ASSERT_EQ(std::string("US"), irs::locale_utils::country(locale));
+    ASSERT_EQ(std::string("koi8-r"), irs::locale_utils::encoding(locale));
+    ASSERT_FALSE(irs::locale_utils::utf8(locale));
+  }
+
+  {
+    auto locale = irs::locale_utils::locale("en_US", "koi8-r", false);
+
+    ASSERT_EQ(std::string("*"), locale.name());
+    ASSERT_EQ(std::string("en"), irs::locale_utils::language(locale));
+    ASSERT_EQ(std::string("US"), irs::locale_utils::country(locale));
+    ASSERT_EQ(std::string("koi8-r"), irs::locale_utils::encoding(locale));
+    ASSERT_FALSE(irs::locale_utils::utf8(locale));
+  }
+
+  {
+    auto locale = irs::locale_utils::locale("InvalidName", "utf-8", true);
+
+    ASSERT_EQ(std::string("*"), locale.name());
+    ASSERT_EQ(std::string("invalidname"), irs::locale_utils::language(locale));
+    ASSERT_EQ(std::string(""), irs::locale_utils::country(locale));
+    ASSERT_EQ(std::string("utf-8"), irs::locale_utils::encoding(locale));
+    ASSERT_TRUE(irs::locale_utils::utf8(locale));
+  }
+
+  {
+    auto locale = irs::locale_utils::locale("InvalidName", "utf-8", false);
+
+    ASSERT_EQ(std::string("*"), locale.name());
+    ASSERT_EQ(std::string("invalidname"), irs::locale_utils::language(locale));
+    ASSERT_EQ(std::string(""), irs::locale_utils::country(locale));
+    ASSERT_EQ(std::string("utf-8"), irs::locale_utils::encoding(locale));
+    ASSERT_TRUE(irs::locale_utils::utf8(locale));
+  }
+}
+
 TEST_F(LocaleUtilsTestSuite, test_locale_create) {
   {
     std::locale locale = iresearch::locale_utils::locale(nullptr);
@@ -129,7 +367,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_build) {
   {
     {
       std::locale expected = boost::locale::generator().generate("");
-      std::locale locale = iresearch::locale_utils::locale("", "", "");
+      auto locale = irs::locale_utils::locale("", "", std::string(""));
 
       ASSERT_EQ(std::use_facet<boost::locale::info>(expected).name(), std::use_facet<boost::locale::info>(locale).name());
       ASSERT_EQ(std::use_facet<boost::locale::info>(expected).language(), std::use_facet<boost::locale::info>(locale).language());
@@ -140,7 +378,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_build) {
     }
 
     {
-      std::locale locale = iresearch::locale_utils::locale("en", "", "");
+      auto locale = irs::locale_utils::locale("en", "", std::string(""));
 
       ASSERT_EQ(std::string("en"), std::use_facet<boost::locale::info>(locale).name());
       ASSERT_EQ(std::string("en"), std::use_facet<boost::locale::info>(locale).language());
@@ -151,7 +389,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_build) {
     }
 
     {
-      std::locale locale = iresearch::locale_utils::locale("en", "US", "");
+      auto locale = irs::locale_utils::locale("en", "US", std::string(""));
 
       ASSERT_EQ(std::string("en_US"), std::use_facet<boost::locale::info>(locale).name());
       ASSERT_EQ(std::string("en"), std::use_facet<boost::locale::info>(locale).language());
@@ -162,7 +400,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_build) {
     }
 
     {
-      std::locale locale = iresearch::locale_utils::locale("en", "US", "ISO-8859-1");
+      auto locale = irs::locale_utils::locale("en", "US", std::string("ISO-8859-1"));
 
       ASSERT_EQ(std::string("en_US.iso-8859-1"), std::use_facet<boost::locale::info>(locale).name());
       ASSERT_EQ(std::string("en"), std::use_facet<boost::locale::info>(locale).language());
@@ -184,7 +422,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_build) {
     }
 
     {
-      std::locale locale = iresearch::locale_utils::locale("en", "US", "UTF-8");
+      auto locale = irs::locale_utils::locale("en", "US", std::string("UTF-8"));
 
       ASSERT_EQ(std::string("en_US.utf-8"), std::use_facet<boost::locale::info>(locale).name());
       ASSERT_EQ(std::string("en"), std::use_facet<boost::locale::info>(locale).language());
@@ -199,7 +437,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_build) {
     // ...........................................................................
 
     {
-      std::locale locale = iresearch::locale_utils::locale("", "US", "");
+      auto locale = irs::locale_utils::locale("", "US", std::string(""));
 
       ASSERT_EQ(std::string("_US"), std::use_facet<boost::locale::info>(locale).name());
       ASSERT_EQ(std::string("C"), std::use_facet<boost::locale::info>(locale).language());
@@ -210,7 +448,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_build) {
     }
 
     {
-      std::locale locale = iresearch::locale_utils::locale("", "US", "ISO-8859-1");
+      auto locale = irs::locale_utils::locale("", "US", std::string("ISO-8859-1"));
 
       ASSERT_EQ(std::string("_US.iso-8859-1"), std::use_facet<boost::locale::info>(locale).name());
       ASSERT_EQ(std::string("C"), std::use_facet<boost::locale::info>(locale).language());
@@ -232,7 +470,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_build) {
     }
 
     {
-      std::locale locale = iresearch::locale_utils::locale("", "US", "UTF-8");
+      auto locale = irs::locale_utils::locale("", "US", std::string("UTF-8"));
 
       ASSERT_EQ(std::string("_US.utf-8"), std::use_facet<boost::locale::info>(locale).name());
       ASSERT_EQ(std::string("C"), std::use_facet<boost::locale::info>(locale).language());
@@ -243,7 +481,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_build) {
     }
 
     {
-      std::locale locale = iresearch::locale_utils::locale("", "", "ISO-8859-1");
+      auto locale = irs::locale_utils::locale("", "", std::string("ISO-8859-1"));
 
       ASSERT_EQ(std::string(".iso-8859-1"), std::use_facet<boost::locale::info>(locale).name());
       ASSERT_EQ(std::string("C"), std::use_facet<boost::locale::info>(locale).language());
@@ -265,7 +503,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_build) {
     }
 
     {
-      std::locale locale = iresearch::locale_utils::locale("", "", "UTF-8");
+      auto locale = irs::locale_utils::locale("", "", std::string("UTF-8"));
 
       ASSERT_EQ(std::string(".utf-8"), std::use_facet<boost::locale::info>(locale).name());
       ASSERT_EQ(std::string("C"), std::use_facet<boost::locale::info>(locale).language());
