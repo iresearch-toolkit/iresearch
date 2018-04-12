@@ -380,13 +380,11 @@ std::string utf8_path::utf8_absolute() const {
     return utf8(); // already absolute (on failure assume relative path)
   }
 
-  #ifdef _WIN32
-    return boost::locale::conv::utf_to_utf<char>(
-      (utf8_path(true) /= path_).native()
-    );
-  #else
-    return (utf8_path(true) /= path_).native();
-  #endif
+  utf8_path path(true);
+
+  path /= path_;
+
+  return path.utf8();
 }
 
 NS_END
