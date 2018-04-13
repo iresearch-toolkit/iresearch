@@ -101,11 +101,15 @@ class IRESEARCH_API index_writer : util::noncopyable {
   /// @param dir directory where index will be should reside
   /// @param codec format that will be used for creating new index segments
   /// @param mode specifies how to open a writer
+  /// @param memory_pool_size [expert] number of memory blocks to cache for
+  ///        internal memory pool
   ////////////////////////////////////////////////////////////////////////////
   static index_writer::ptr make(
     directory& dir,
     format::ptr codec,
-    OPEN_MODE mode);
+    OPEN_MODE mode,
+    size_t memory_pool_size = 0
+  );
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief destructor 

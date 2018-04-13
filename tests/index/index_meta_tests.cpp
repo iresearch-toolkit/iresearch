@@ -26,13 +26,14 @@
 #include "store/memory_directory.hpp"
 
 #include "index/index_meta.hpp"
+#include "index/index_tests.hpp"
 
 #include <boost/algorithm/string/predicate.hpp>
 
 using namespace iresearch;
 
-namespace tests {
-namespace detail {
+NS_BEGIN(tests)
+NS_BEGIN(detail)
 
 void index_meta_read_write(iresearch::directory& dir, iresearch::format& codec) {
   auto writer = codec.get_index_meta_writer();
@@ -86,12 +87,12 @@ void index_meta_read_write(iresearch::directory& dir, iresearch::format& codec) 
   EXPECT_EQ(meta_orig.size(), meta_read.size());
 }
 
-} // detail
-} // tests
+NS_END // detail
+NS_END // tests
 
 TEST(index_meta_tests, memory_directory_read_write) {
-  iresearch::version10::format codec;
-  iresearch::memory_directory dir;
+  irs::version10::format codec;
+  irs::memory_directory dir;
   tests::detail::index_meta_read_write(dir, codec);
 }
 
@@ -132,7 +133,7 @@ TEST(index_meta_tests, last_generation) {
   }
   
   // populate directory
-  iresearch::memory_directory dir;
+  irs::memory_directory dir;
   for (auto& name : names) {
     auto out = dir.create(name);
     ASSERT_FALSE(!out);

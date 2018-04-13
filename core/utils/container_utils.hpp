@@ -236,8 +236,11 @@ MSVC_ONLY(__pragma(warning(pop)))
 NS_BEGIN(memory)
 
 template<typename BucketFactory, size_t Size>
-class bucket_allocator {
+class IRESEARCH_API_TEMPLATE bucket_allocator {
  public:
+  // number of pools
+  static const size_t SIZE = Size;
+
   typedef typename unbounded_object_pool<BucketFactory>::ptr value_type;
 
   explicit bucket_allocator(size_t pool_size)
@@ -249,6 +252,12 @@ class bucket_allocator {
     return pools_[bucket.index].emplace(bucket.size);
   }
 
+  void clear() {
+    for (auto& pool : pools_) {
+      pool.clear();
+    }
+  }
+
  private:
   array<unbounded_object_pool<BucketFactory>, Size> pools_;
 }; // bucket_allocator
@@ -257,7 +266,7 @@ class bucket_allocator {
 struct default_allocator {
   typedef std::unique_ptr<byte_type[]> value_type;
 
-  static value_type allocate(const bucket_size_t& bucket) {
+  value_type allocate(const bucket_size_t& bucket) {
     return irs::memory::make_unique<byte_type[]>(bucket.size);
   }
 }; // default_allocator
@@ -280,10 +289,10 @@ template<typename Allocator>
 class raw_block_vector_base
     : public compact_ref<0, Allocator>,
       private util::noncopyable {
- private:
-  typedef compact_ref<0, Allocator> allocator_ref_t;
-
  public:
+  typedef compact_ref<0, Allocator> allocator_ref_t;
+  typedef typename allocator_ref_t::type allocator_type;
+
   struct buffer_t {
     byte_type* data; // pointer at the actual data
     size_t offset; // sum of bucket sizes up to but excluding this buffer
@@ -295,7 +304,7 @@ class raw_block_vector_base
   }
 
   raw_block_vector_base(raw_block_vector_base&& rhs) NOEXCEPT
-    : allocator_ref_t(std::move(rhs)),
+    : allocator_ref_t(std::move((allocator_ref_t&)rhs)),
       buffers_(std::move(rhs.buffers_)) {
   }
 
@@ -364,7 +373,12 @@ template<
   typename Allocator = memory::default_allocator
 > class IRESEARCH_API_TEMPLATE raw_block_vector : public raw_block_vector_base<Allocator> {
  public:
+  static const size_t NUM_BUCKETS = NumBuckets; // total number of buckets
+  static const size_t FIRST_BUCKET_SIZE = 1 << SkipBits; // size of the first bucket
+
   typedef raw_block_vector_base<Allocator> base_t;
+  typedef typename base_t::allocator_ref_t allocator_ref_t;
+  typedef typename base_t::allocator_type allocator_type;
 
   explicit raw_block_vector(const Allocator& alloc = Allocator()) NOEXCEPT
     : base_t(alloc) {

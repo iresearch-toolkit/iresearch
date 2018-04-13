@@ -38,6 +38,27 @@ struct segment_meta;
 
 NS_BEGIN(directory_utils)
 
+// ----------------------------------------------------------------------------
+// --SECTION--                                           memory_allocator utils
+// ----------------------------------------------------------------------------
+
+// inserts memory_allocator with a specified pool size into a provided
+// directory and returns a refernece to it
+// if size equals to 0, returns 'memory_allocator::global' allocator
+IRESEARCH_API memory_allocator& ensure_allocator(
+  directory& dir, size_t size
+);
+
+// returns a memory allocator assigned to a specified directory or
+// `memory_allocator::global()` allocator if there is no allocator assigned
+IRESEARCH_API memory_allocator& get_allocator(
+  const directory& dir
+);
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                            index_file_refs utils
+// ----------------------------------------------------------------------------
+
 // return a reference to a file or empty() if not found
 IRESEARCH_API index_file_refs::ref_t reference(
   directory& dir,
@@ -83,7 +104,6 @@ NS_END
 /// @class tracking_directory
 /// @brief track files created/opened via file names
 //////////////////////////////////////////////////////////////////////////////
-
 struct IRESEARCH_API tracking_directory: public directory {
   typedef std::unordered_set<std::string> file_set;
 

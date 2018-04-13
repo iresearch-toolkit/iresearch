@@ -33,6 +33,7 @@
 #include "index/file_names.hpp"
 #include "index/index_meta.hpp"
 
+#include "utils/directory_utils.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/fst.hpp"
 #include "utils/bit_utils.hpp"
@@ -1449,7 +1450,9 @@ field_writer::field_writer(
     bool volatile_state,
     uint32_t min_block_size,
     uint32_t max_block_size)
-  : pw(std::move(pw)),
+  : suffix(memory_allocator::global()),
+    stats(memory_allocator::global()),
+    pw(std::move(pw)),
     fst_buf_(memory::make_unique<detail::fst_buffer>()),
     prefixes(DEFAULT_SIZE, 0),
     term_count(0),
@@ -1463,7 +1466,9 @@ field_writer::field_writer(
   min_term.first = false;
 }
 
-void field_writer::prepare( const iresearch::flush_state& state ) {
+void field_writer::prepare(const iresearch::flush_state& state) {
+  assert(state.dir);
+
   // reset writer state
   last_term.clear();
   max_term.clear();
@@ -1484,6 +1489,11 @@ void field_writer::prepare( const iresearch::flush_state& state ) {
 
   // prepare postings writer
   pw->prepare(*terms_out, state);
+
+  // reset allocator from a directory
+  auto& allocator = directory_utils::get_allocator(*state.dir);
+  suffix.reset(allocator);
+  stats.reset(allocator);
 }
 
 void field_writer::write(

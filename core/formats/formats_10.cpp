@@ -37,6 +37,7 @@
 #include "store/store_utils.hpp"
 
 #include "utils/bit_utils.hpp"
+#include "utils/directory_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/std.hpp"
@@ -1897,7 +1898,8 @@ class writer final : public iresearch::columnstore_writer {
   class column final : public iresearch::columnstore_writer::column_output {
    public:
     column(writer& ctx) // compression context
-      : ctx_(&ctx) {
+      : ctx_(&ctx),
+        blocks_index_(*ctx.alloc_) {
       // initialize value offset
       // because of initial MAX_DATA_BLOCK_SIZE 'min_' will be set on the first 'write'
       offsets_[0] = MAX_DATA_BLOCK_SIZE;
@@ -2024,6 +2026,7 @@ class writer final : public iresearch::columnstore_writer {
     uint64_t avg_block_size_{}; // average size of the block (tail block has not taken into account since it may skew distribution)
   };
 
+  memory_allocator* alloc_{ &memory_allocator::global() };
   uint64_t buf_[INDEX_BLOCK_SIZE]; // reusable temporary buffer for packing
   std::deque<column> columns_; // pointers remain valid
   compressor comp_{ 2*MAX_DATA_BLOCK_SIZE };
@@ -2066,6 +2069,8 @@ bool writer::prepare(directory& dir, const segment_meta& meta) {
   }
 
   format_utils::write_header(*data_out_, FORMAT_NAME, FORMAT_MAX);
+
+  alloc_ = &directory_utils::get_allocator(dir);
 
   return true;
 }
@@ -3855,6 +3860,7 @@ postings_writer::postings_writer(bool volatile_attributes)
 }
 
 void postings_writer::prepare(index_output& out, const iresearch::flush_state& state) {
+  assert(state.dir);
   assert(!state.name.null());
 
   // reset writer state
@@ -3893,10 +3899,11 @@ void postings_writer::prepare(index_output& out, const iresearch::flush_state& s
   }
 
   skip_.prepare(
-    MAX_SKIP_LEVELS, state.doc_count,
-    [this](size_t i, index_output& out) {
-      write_skip(i, out);
-  });
+    MAX_SKIP_LEVELS,
+    state.doc_count,
+    [this] (size_t i, index_output& out) { write_skip(i, out); },
+    directory_utils::get_allocator(*state.dir)
+  );
 
   // write postings format name
   format_utils::write_header(out, TERMS_FORMAT_NAME, TERMS_FORMAT_MAX);

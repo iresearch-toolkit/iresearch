@@ -21,15 +21,40 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "directory_utils.hpp"
 #include "index/index_meta.hpp"
 #include "formats/formats.hpp"
 #include "utils/attributes.hpp"
 #include "utils/log.hpp"
 
-#include "directory_utils.hpp"
-
 NS_ROOT
 NS_BEGIN(directory_utils)
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                           memory_allocator utils
+// ----------------------------------------------------------------------------
+
+memory_allocator& ensure_allocator(
+    directory& dir, size_t size
+) {
+  return size
+    ? *dir.attributes().emplace<memory_allocator>(size)
+    : memory_allocator::global();
+}
+
+memory_allocator& get_allocator(const directory& dir) {
+  auto& allocator = dir.attributes().get<memory_allocator>();
+
+  if (allocator) {
+    return *allocator;
+  }
+
+  return memory_allocator::global();
+}
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                            index_file_refs utils
+// ----------------------------------------------------------------------------
 
 // return a reference to a file or empty() if not found
 index_file_refs::ref_t reference(

@@ -25,8 +25,8 @@
 #define IRESEARCH_MEMORYDIRECTORY_H
 
 #include "directory.hpp"
+#include "directory_attributes.hpp"
 #include "utils/attributes.hpp"
-#include "utils/container_utils.hpp"
 #include "utils/string.hpp"
 #include "utils/async_utils.hpp"
 
@@ -36,30 +36,34 @@
 
 NS_ROOT
 
-NS_BEGIN(detail)
-
 // <16, 8> => buffer sizes 256B, 512B, 1K, 2K, 4K, 8K, 16K, 32K, 64K, 128K, 256K, 512K, 1M, 2M, 4M, 8M
-typedef container_utils::raw_block_vector<
-  16, // total number of levels
-  8  // size of the first level 2^8
-> raw_block_vector_t;
+MSVC_ONLY(template class IRESEARCH_API container_utils::raw_block_vector<
+  memory_allocator::allocator_type::SIZE, // total number of levels
+  8, // size of the first level 2^8
+  memory_allocator::allocator_type
+>);
 
-NS_END // detail
+////////////////////////////////////////////////////////////////////////////////
+/// @class memory_file
+/// @brief in memory file
+////////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API memory_file
+    : public container_utils::raw_block_vector<16, 8, memory_allocator::allocator_type> {
+ private:
+  typedef container_utils::raw_block_vector<
+    memory_allocator::allocator_type::SIZE, // total number of levels
+    8, // size of the first level 2^8
+    memory_allocator::allocator_type
+  > raw_block_vector_t;
 
-/* -------------------------------------------------------------------
-* memory_file
-* ------------------------------------------------------------------*/
-
-MSVC_ONLY(template class IRESEARCH_API container_utils::raw_block_vector<16, 8>);
-
-class IRESEARCH_API memory_file : public detail::raw_block_vector_t {
  public:
-  memory_file() NOEXCEPT {
+  memory_file(const memory_allocator& alloc) NOEXCEPT
+    : raw_block_vector_t(alloc) {
     touch(meta_.mtime);
   }
 
   memory_file(memory_file&& rhs) NOEXCEPT
-    : detail::raw_block_vector_t(std::move(rhs)),
+    : raw_block_vector_t(std::move(rhs)),
       meta_(rhs.meta_),
       len_(rhs.len_) {
     rhs.len_ = 0;
@@ -112,8 +116,14 @@ class IRESEARCH_API memory_file : public detail::raw_block_vector_t {
     len_ = 0;
   }
 
+  void reset(const memory_allocator& alloc) NOEXCEPT {
+    reset();
+    // change internal allocator
+    static_cast<allocator_ref_t&>(*this) = static_cast<allocator_type&>(alloc);
+  }
+
   void clear() NOEXCEPT {
-    detail::raw_block_vector_t::clear();
+    raw_block_vector_t::clear();
     reset();
   }
 
@@ -128,6 +138,11 @@ class IRESEARCH_API memory_file : public detail::raw_block_vector_t {
   }
 
  private:
+  static_assert(
+    raw_block_vector_t::NUM_BUCKETS == memory_allocator::allocator_type::SIZE,
+    "memory allocator is not compatible with a file"
+  );
+
   // metadata for a memory_file
   struct meta {
     std::time_t mtime;
@@ -141,14 +156,12 @@ class IRESEARCH_API memory_file : public detail::raw_block_vector_t {
 
   meta meta_;
   size_t len_{};
-};
+}; // memory_file
 
-/* -------------------------------------------------------------------
- * memory_index_input 
- * ------------------------------------------------------------------*/
-
-struct memory_buffer;
-
+////////////////////////////////////////////////////////////////////////////////
+/// @class memory_index_input
+/// @brief in memory input stream
+////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API memory_index_input final : public index_input {
  public:
   DECLARE_UNIQUE_PTR(memory_index_input); // allow private construction
@@ -187,19 +200,19 @@ class IRESEARCH_API memory_index_input final : public index_input {
   const byte_type* begin_{ buf_ }; // current position
   const byte_type* end_{ buf_ }; // end of the valid bytes
   size_t start_{}; // buffer offset in file
-};
+}; // memory_index_input
 
-/* -------------------------------------------------------------------
- * memory_index_output
- * ------------------------------------------------------------------*/
-
+////////////////////////////////////////////////////////////////////////////////
+/// @class memory_index_output
+/// @brief in memory output stream
+////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API memory_index_output : public index_output {
  public:
   explicit memory_index_output(memory_file& file) NOEXCEPT;
   memory_index_output(const memory_index_output&) = default; 
   memory_index_output& operator=(const memory_index_output&) = delete;
 
-  void reset();
+  void reset() NOEXCEPT;
 
   // data_output
 
@@ -239,17 +252,20 @@ class IRESEARCH_API memory_index_output : public index_output {
  protected:
   memory_file::buffer_t buf_; // current buffer
   byte_type* pos_; // position in current buffer
+
  private:
   memory_file& file_; // underlying file
   byte_type* end_;
 };
 
-// -------------------------------------------------------------------
-//                                                    memory_directory
-// -------------------------------------------------------------------
+////////////////////////////////////////////////////////////////////////////////
+/// @class memory_directory
+/// @brief in memory index directory
+////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API memory_directory final : public directory {
  public:
-  memory_directory();
+  // 0 == pool_size -> use global allocator, noexcept
+  explicit memory_directory(size_t pool_size = 0);
 
   virtual ~memory_directory();
 
@@ -296,6 +312,7 @@ class IRESEARCH_API memory_directory final : public directory {
   typedef std::unordered_set<std::string> lock_map;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
+  const memory_allocator* alloc_;
   mutable async_utils::read_write_mutex flock_;
   std::mutex llock_;
   attribute_store attributes_;
@@ -304,25 +321,32 @@ class IRESEARCH_API memory_directory final : public directory {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
-/* -------------------------------------------------------------------
- * memory_output
- * ------------------------------------------------------------------*/
-
+////////////////////////////////////////////////////////////////////////////////
+/// @struct memory_output
+/// @brief memory_file + memory_stream
+////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API memory_output {
-  memory_output() = default;
+  explicit memory_output(const memory_allocator& alloc) NOEXCEPT
+    : file(alloc) {
+  }
 
   memory_output(memory_output&& rhs) NOEXCEPT
     : file(std::move(rhs.file)) {
   }
 
-  void reset() {
+  void reset() NOEXCEPT {
     file.reset();
+    stream.reset();
+  }
+
+  void reset(const memory_allocator& alloc) NOEXCEPT {
+    file.reset(alloc);
     stream.reset();
   }
 
   memory_file file;
   memory_index_output stream{ file };
-};
+}; // memory_output
 
 NS_END
 

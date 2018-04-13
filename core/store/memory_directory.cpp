@@ -25,6 +25,7 @@
 #include "memory_directory.hpp"
 
 #include "error/error.hpp"
+#include "utils/directory_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/string.hpp"
 #include "utils/thread_utils.hpp"
@@ -103,9 +104,9 @@ class single_instance_lock : public index_lock {
   memory_directory* parent;
 }; // single_instance_lock
 
-/* -------------------------------------------------------------------
- * memory_index_input 
- * ------------------------------------------------------------------*/
+// -----------------------------------------------------------------------------
+// --SECTION--                                 memory_index_imput implementation
+// -----------------------------------------------------------------------------
 
 memory_index_input::memory_index_input(const memory_file& file) NOEXCEPT
   : file_(&file) {
@@ -256,10 +257,13 @@ uint64_t memory_index_input::read_vlong() {
     : irs::vread<uint64_t>(begin_);
 }
 
-/* -------------------------------------------------------------------
- * memory_index_output
- * ------------------------------------------------------------------*/
+// -----------------------------------------------------------------------------
+// --SECTION--                                memory_index_output implementation
+// -----------------------------------------------------------------------------
 
+//////////////////////////////////////////////////////////////////////////////
+/// @class checksum_memory_index_output
+//////////////////////////////////////////////////////////////////////////////
 class checksum_memory_index_output final : public memory_index_output {
  public:
   explicit checksum_memory_index_output(memory_file& file) NOEXCEPT
@@ -296,7 +300,7 @@ memory_index_output::memory_index_output(memory_file& file) NOEXCEPT
   reset();
 }
 
-void memory_index_output::reset() {
+void memory_index_output::reset() NOEXCEPT {
   buf_.data = nullptr;
   buf_.offset = 0;
   buf_.size = 0;
@@ -387,11 +391,12 @@ void memory_index_output::operator>>( data_output& out ) {
   file_ >> out;
 }
 
-/* -------------------------------------------------------------------
- * memory_directory
- * ------------------------------------------------------------------*/
+// -----------------------------------------------------------------------------
+// --SECTION--                                   memory_directory implementation
+// -----------------------------------------------------------------------------
 
-memory_directory::memory_directory() {
+memory_directory::memory_directory(size_t pool_size /* = 0*/) {
+  alloc_ = &directory_utils::ensure_allocator(*this, pool_size);
 }
 
 memory_directory::~memory_directory() { }
@@ -432,10 +437,10 @@ index_output::ptr memory_directory::create(const std::string& name) NOEXCEPT {
     auto& file = res.first->second;
 
     if (res.second) {
-      file = memory::make_unique<memory_file>();
+      file = memory::make_unique<memory_file>(*alloc_);
     }
 
-    file->reset();
+    file->reset(*alloc_);
 
     return index_output::make<checksum_memory_index_output>(*file);
   } catch(...) {
@@ -577,7 +582,3 @@ bool memory_directory::visit(const directory::visitor_f& visitor) const {
 }
 
 NS_END
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

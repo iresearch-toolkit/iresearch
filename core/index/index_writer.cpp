@@ -170,7 +170,12 @@ void index_writer::clear() {
   meta_.segments_.clear(); // noexcept op (clear after finish(), to match reset of pending_state_ inside finish(), allows recovery on clear() failure)
 }
 
-index_writer::ptr index_writer::make(directory& dir, format::ptr codec, OPEN_MODE mode) {
+index_writer::ptr index_writer::make(
+    directory& dir,
+    format::ptr codec,
+    OPEN_MODE mode,
+    size_t memory_pool_size /*= 0*/
+) {
   // lock the directory
   auto lock = dir.make_lock(WRITE_LOCK_NAME);
 
@@ -178,8 +183,7 @@ index_writer::ptr index_writer::make(directory& dir, format::ptr codec, OPEN_MOD
     throw lock_obtain_failed(WRITE_LOCK_NAME);
   }
 
-  /* read from directory
-   * or create index metadata */
+  // read from directory or create index metadata
   index_meta meta;
   std::vector<index_file_refs::ref_t> file_refs;
   {
@@ -232,6 +236,7 @@ index_writer::ptr index_writer::make(directory& dir, format::ptr codec, OPEN_MOD
     std::move(comitted_state)
   );
 
+  directory_utils::ensure_allocator(dir, memory_pool_size); // ensure memory_allocator set in directory
   directory_utils::remove_all_unreferenced(dir); // remove non-index files from directory
 
   return writer;

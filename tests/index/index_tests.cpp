@@ -656,6 +656,53 @@ class index_test_case_base : public tests::index_test_base {
     }
   }
 
+  void open_writer_check_directory_allocator() {
+    // use global allocator everywhere
+    {
+      irs::memory_directory dir;
+      ASSERT_FALSE(dir.attributes().get<irs::memory_allocator>());
+      ASSERT_EQ(&irs::memory_allocator::global(), &irs::directory_utils::get_allocator(dir));
+
+      // open writer
+      auto writer = irs::index_writer::make(dir, codec(), irs::OM_CREATE);
+      ASSERT_NE(nullptr, writer);
+      ASSERT_FALSE(dir.attributes().get<irs::memory_allocator>());
+      ASSERT_EQ(&irs::memory_allocator::global(), &irs::directory_utils::get_allocator(dir));
+    }
+
+    // use global allocator in directory
+    {
+      irs::memory_directory dir;
+      ASSERT_FALSE(dir.attributes().get<irs::memory_allocator>());
+      ASSERT_EQ(&irs::memory_allocator::global(), &irs::directory_utils::get_allocator(dir));
+
+      // open writer
+      auto writer = irs::index_writer::make(dir, codec(), irs::OM_CREATE, 42);
+      ASSERT_NE(nullptr, writer);
+      auto* alloc_attr = dir.attributes().get<irs::memory_allocator>();
+      ASSERT_NE(nullptr, alloc_attr);
+      ASSERT_NE(nullptr, *alloc_attr);
+      ASSERT_NE(&irs::memory_allocator::global(), alloc_attr->get());
+    }
+
+    // use memory directory allocator everywhere
+    {
+      irs::memory_directory dir(42);
+      auto* alloc_attr_before = dir.attributes().get<irs::memory_allocator>();
+      ASSERT_NE(nullptr, alloc_attr_before);
+      ASSERT_NE(nullptr, *alloc_attr_before);
+      ASSERT_EQ(alloc_attr_before->get(), &irs::directory_utils::get_allocator(dir));
+
+      // open writer
+      auto writer = irs::index_writer::make(dir, codec(), irs::OM_CREATE);
+      ASSERT_NE(nullptr, writer);
+      auto* alloc_attr_after = dir.attributes().get<irs::memory_allocator>();
+      ASSERT_EQ(alloc_attr_after, alloc_attr_before);
+      ASSERT_EQ(*alloc_attr_after, *alloc_attr_before);
+      ASSERT_EQ(alloc_attr_after->get(), &irs::directory_utils::get_allocator(dir));
+    }
+  }
+
   void open_writer_check_lock() {
     {
       // open writer
@@ -8071,6 +8118,7 @@ TEST_F(memory_index_test, clear_writer) {
 
 TEST_F(memory_index_test, open_writer) {
   open_writer_check_lock();
+  open_writer_check_directory_allocator();
 }
 
 TEST_F(memory_index_test, check_writer_open_modes) {

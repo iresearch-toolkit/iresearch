@@ -148,9 +148,9 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
   doc4.insert(std::make_shared<tests::templates::string_field>("doc_string", string4));
   doc4.insert(std::make_shared<tests::templates::string_field>("another_column", "another_value"));
   
-  iresearch::version10::format codec;
-  iresearch::format::ptr codec_ptr(&codec, [](iresearch::format*)->void{});
-  iresearch::memory_directory dir;
+  irs::version10::format codec;
+  irs::format::ptr codec_ptr(&codec, [](iresearch::format*)->void{});
+  irs::memory_directory dir;
 
   // populate directory
   {
@@ -557,7 +557,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
 
   iresearch::version10::format codec;
   iresearch::format::ptr codec_ptr(&codec, [](iresearch::format*)->void{});
-  iresearch::memory_directory dir;
+  irs::memory_directory dir;
 
   // populate directory
   {
@@ -874,7 +874,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
 TEST_F(merge_writer_tests, test_merge_writer) {
   iresearch::version10::format codec;
   iresearch::format::ptr codec_ptr(&codec, [](iresearch::format*)->void{});
-  iresearch::memory_directory dir;
+  irs::memory_directory dir;
 
   iresearch::bstring bytes1;
   iresearch::bstring bytes2;
@@ -2190,7 +2190,7 @@ TEST_F(merge_writer_tests, test_merge_writer_field_features) {
 
   iresearch::version10::format codec;
   iresearch::format::ptr codec_ptr(&codec, [](iresearch::format*)->void{});
-  iresearch::memory_directory dir;
+  irs::memory_directory dir;
 
   // populate directory
   {

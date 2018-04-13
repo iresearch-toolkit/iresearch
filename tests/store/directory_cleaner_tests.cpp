@@ -31,27 +31,12 @@
 #include "store/memory_directory.hpp"
 #include "utils/directory_utils.hpp"
 
-namespace tests {
-  class directory_cleaner_tests: public ::testing::Test {
-
-    virtual void SetUp() {
-      // Code here will be called immediately after the constructor (right before each test).
-    }
-
-    virtual void TearDown() {
-      // Code here will be called immediately after each test (right before the destructor).
-    }
-  };
-}
-
-using namespace tests;
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-TEST_F(directory_cleaner_tests, test_directory_cleaner) {
-  iresearch::memory_directory dir;
+TEST(directory_cleaner_tests, test_directory_cleaner) {
+  irs::memory_directory dir;
 
   // add a dummy files
   {
@@ -233,7 +218,7 @@ TEST_F(directory_cleaner_tests, test_directory_cleaner) {
   ASSERT_TRUE(refs.empty());
 }
 
-TEST_F(directory_cleaner_tests, test_directory_cleaner_current_segment) {
+TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
   tests::json_doc_generator gen(
     test_base::resource("simple_sequential.json"),
     &tests::generic_json_field_factory 
@@ -241,7 +226,7 @@ TEST_F(directory_cleaner_tests, test_directory_cleaner_current_segment) {
   tests::document const* doc1 = gen.next();
   tests::document const* doc2 = gen.next();
   auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
-  iresearch::memory_directory dir;
+  irs::memory_directory dir;
   iresearch::version10::format codec;
   iresearch::format::ptr codec_ptr(&codec, [](iresearch::format*)->void{});
 
