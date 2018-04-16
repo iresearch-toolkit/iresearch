@@ -70,8 +70,9 @@ TEST_F(LocaleUtilsTestSuite, test_get_converter) {
       ASSERT_EQ((&std::use_facet<std::codecvt<char16_t, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<char16_t>(nullptr)));
       ASSERT_EQ((&std::use_facet<std::codecvt<char32_t, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<char32_t>(nullptr)));
     #endif
-  }
 */
+  }
+
   {
     auto expected = std::locale::classic();//irs::locale_utils::locale("C", irs::string_ref::NIL, false);
 /* FIXME TODO Boost returns incorrect result codes on some implementations, uncomment once Boost is no longer used
