@@ -61,7 +61,7 @@ TEST_F(LocaleUtilsTestSuite, test_get_converter) {
 /* FIXME TODO Boost returns incorrect result codes on some implementations, uncomment once Boost is no longer used
     ASSERT_EQ((&std::use_facet<std::codecvt<char, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<char>(nullptr)));
     ASSERT_EQ((&std::use_facet<std::codecvt<wchar_t, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<wchar_t>(nullptr)));
-*/
+
     // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
     // due to a missing export, as per their comment:
     //   This is an active bug in our database (VSO#143857), which we'll investigate
