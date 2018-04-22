@@ -839,6 +839,101 @@ class format_test_case_base : public index_test_base {
     }
   }
 
+  void columns_read_write_same_col_empty_repeat() {
+    struct csv_doc_template: public csv_doc_generator::doc_template {
+      virtual void init() {
+        clear();
+        reserve(3);
+        insert(std::make_shared<tests::templates::string_field>("id"));
+        insert(std::make_shared<tests::templates::string_field>("name"));
+      }
+
+      virtual void value(size_t idx, const irs::string_ref& value) {
+        auto& field = indexed.get<tests::templates::string_field>(idx);
+
+        // amount of data written per doc_id is < sizeof(doc_id)
+        field.value(irs::string_ref("x", idx)); // length 0 or 1
+      }
+      virtual void end() {}
+      virtual void reset() {}
+    } doc_template; // two_columns_doc_template
+
+    tests::csv_doc_generator gen(resource("simple_two_column.csv"), doc_template);
+    iresearch::segment_meta seg("_1", nullptr);
+
+    seg.codec = codec();
+
+    std::unordered_map<std::string, iresearch::columnstore_writer::column_t> columns;
+
+    // write documents
+    {
+      auto writer = codec()->get_columnstore_writer();
+      iresearch::doc_id_t id = 0;
+      writer->prepare(dir(), seg);
+
+      for (const document* doc; seg.docs_count < 30000 && (doc = gen.next());) {
+        ++id;
+
+        for (auto& field : doc->stored) {
+          const auto res = columns.emplace(
+            std::piecewise_construct,
+            std::forward_as_tuple(std::string(field.name())),
+            std::forward_as_tuple()
+          );
+
+          if (res.second) {
+            res.first->second = writer->push_column();
+          }
+
+          auto& column = res.first->second.second;
+          auto& stream = column(id);
+
+          field.write(stream);
+
+          // repeat requesting the same column without writing anything
+          for (size_t i = 10; i; --i) {
+            column(id);
+          }
+        }
+
+        ++seg.docs_count;
+      }
+
+      ASSERT_TRUE(writer->flush());
+
+      gen.reset();
+    }
+
+    // read documents
+    {
+      irs::bytes_ref actual_value;
+
+      // check 1st segment
+      {
+        auto reader_1 = codec()->get_columnstore_reader();
+        ASSERT_TRUE(reader_1->prepare(dir(), seg));
+
+        auto id_column = reader_1->column(columns["id"].first);
+        ASSERT_NE(nullptr, id_column);
+        auto id_values = id_column->values();
+
+        auto name_column = reader_1->column(columns["name"].first);
+        ASSERT_NE(nullptr, name_column);
+        auto name_values = name_column->values();
+
+        gen.reset();
+        irs::doc_id_t i = 0;
+        for (const document* doc; i < seg.docs_count && (doc = gen.next());) {
+          ++i;
+          ASSERT_TRUE(id_values(i, actual_value));
+          ASSERT_EQ(doc->stored.get<tests::templates::string_field>(0).value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
+          ASSERT_TRUE(name_values(i, actual_value));
+          ASSERT_EQ(doc->stored.get<tests::templates::string_field>(1).value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
+        }
+      }
+    }
+  }
+
   void columns_read_write_writer_reuse() {
     struct csv_doc_template: public csv_doc_generator::doc_template {
       virtual void init() {
