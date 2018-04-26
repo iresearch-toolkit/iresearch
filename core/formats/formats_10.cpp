@@ -1796,7 +1796,7 @@ class index_block {
  public:
   static const size_t SIZE = Size;
 
-  bool push_back(doc_id_t key, uint64_t offset) {
+  void push_back(doc_id_t key, uint64_t offset) NOEXCEPT {
     assert(key_ >= keys_);
     assert(key_ < keys_ + Size);
     *key_++ = key;
@@ -1805,22 +1805,25 @@ class index_block {
     assert(offset_ < offsets_ + Size);
     *offset_++ = offset;
     assert(offset >= offset_[-1]);
-    return key_ == std::end(keys_);
   }
 
   // returns total number of items
-  size_t total() const {
+  size_t total() const NOEXCEPT {
     return flushed_ + this->size();
   }
 
   // returns number of items to be flushed
-  size_t size() const {
+  size_t size() const NOEXCEPT {
     assert(key_ >= keys_);
     return key_ - keys_;
   }
 
-  bool empty() const {
+  bool empty() const NOEXCEPT {
     return keys_ == key_;
+  }
+
+  bool full() const NOEXCEPT {
+    return key_ == std::end(keys_);
   }
 
   ColumnProperty flush(data_output& out, uint64_t* buf) {
@@ -1900,48 +1903,35 @@ class writer final : public iresearch::columnstore_writer {
  private:
   class column final : public iresearch::columnstore_writer::column_output {
    public:
-    column(writer& ctx) // compression context
+    explicit column(writer& ctx) // compression context
       : ctx_(&ctx),
         blocks_index_(*ctx.alloc_) {
-      // initialize value offset
-      // because of initial MAX_DATA_BLOCK_SIZE 'min_' will be set on the first 'write'
-      offsets_[0] = MAX_DATA_BLOCK_SIZE;
-      offsets_[1] = MAX_DATA_BLOCK_SIZE;
     }
 
     void prepare(doc_id_t key) {
       assert(key >= max_ || irs::type_limits<irs::type_t::doc_id_t>::eof(max_));
 
-      auto& offset = offsets_[0];
-
       // commit previous key and offset unless the 'reset' method has been called
       if (max_ != pending_key_) {
-        // flush block if we've overcome INDEX_BLOCK_SIZE size (before push_back)
-        if (INDEX_BLOCK_SIZE <= block_index_.size()) {
-          flush_block();
-          min_ = key;
-          offset = block_buf_.size(); // reset offset to position in the current block
-        }
-
-        // will trigger 'flush_block' if offset >= MAX_DATA_BLOCK_SIZE
-        offset = offsets_[size_t(block_index_.push_back(pending_key_, offset))];
+        block_index_.push_back(pending_key_, offset_);
         max_ = pending_key_;
       }
 
       // flush block if we've overcome MAX_DATA_BLOCK_SIZE size
-      if (offset >= MAX_DATA_BLOCK_SIZE && key != pending_key_) {
+      // or reached end of the index block
+      if ((offset_ >= MAX_DATA_BLOCK_SIZE && key != pending_key_) || block_index_.full()) {
         flush_block();
         min_ = key;
       }
 
-      // reset key and offset (will be commited during the next 'write')
-      offset = block_buf_.size();
+      // reset key and offset (will be committed during the next 'write')
+      offset_ = block_buf_.size();
       pending_key_ = key;
 
       assert(pending_key_ >= min_);
     }
 
-    bool empty() const {
+    bool empty() const NOEXCEPT {
       return !block_index_.total();
     }
 
@@ -1982,7 +1972,7 @@ class writer final : public iresearch::columnstore_writer {
     }
 
     virtual void reset() override {
-      block_buf_.reset(offsets_[0]);
+      block_buf_.reset(offset_);
       pending_key_ = max_;
     }
 
@@ -1997,7 +1987,9 @@ class writer final : public iresearch::columnstore_writer {
       auto* buf = ctx_->buf_;
 
       // write first block key & where block starts
-      if (column_index_.push_back(min_, out.file_pointer())) {
+      column_index_.push_back(min_, out.file_pointer());
+
+      if (column_index_.full()) {
         column_index_.flush(blocks_index_.stream, buf);
       }
 
@@ -2022,7 +2014,7 @@ class writer final : public iresearch::columnstore_writer {
     }
 
     writer* ctx_; // writer context
-    uint64_t offsets_[2]; // value offset, because of initial MAX_DATA_BLOCK_SIZE 'min_' will be set on the first 'write'
+    uint64_t offset_{ MAX_DATA_BLOCK_SIZE } ; // value offset, because of initial MAX_DATA_BLOCK_SIZE 'min_' will be set on the first 'write'
     uint64_t length_{}; // size of the all column data blocks
     index_block<INDEX_BLOCK_SIZE> block_index_; // current block index (per document key/offset)
     index_block<INDEX_BLOCK_SIZE> column_index_; // column block index (per block key/offset)
