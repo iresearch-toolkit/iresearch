@@ -25,7 +25,6 @@
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
 #include "utils/string.hpp"
-#include "index/index_tests.hpp"
 
 using namespace iresearch;
 

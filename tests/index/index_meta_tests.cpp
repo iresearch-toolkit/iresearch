@@ -26,7 +26,6 @@
 #include "store/memory_directory.hpp"
 
 #include "index/index_meta.hpp"
-#include "index/index_tests.hpp"
 
 #include <boost/algorithm/string/predicate.hpp>
 

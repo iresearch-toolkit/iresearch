@@ -46,7 +46,7 @@ struct IRESEARCH_API boost : basic_stored_attribute<float_t> {
   /// @brief applies boost to the specified attributes collection ("src")
   //////////////////////////////////////////////////////////////////////////////
   static void apply(attribute_store& src, boost_t value) {
-    if (boost::no_boost() == value) {
+    if (irs::boost::no_boost() == value) {
       return;
     }
 

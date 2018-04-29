@@ -26,7 +26,7 @@
 #include "directory_test_case.hpp"
 
 #include "store/memory_directory.hpp"
-#include "index/index_tests.hpp"
+#include "utils/directory_utils.hpp"
 
 using namespace iresearch;
 
