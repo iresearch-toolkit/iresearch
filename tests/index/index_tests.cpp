@@ -10187,6 +10187,80 @@ TEST_F(memory_index_test, reuse_segment_writer) {
   }
 }
 
+TEST_F(memory_index_test, segment_column_user_system) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    [](tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+      // add 2 identical fields (without storing) to trigger non-default norm value
+      if (data.is_string()) {
+        doc.insert(std::make_shared<tests::templates::string_field>(
+          irs::string_ref(name),
+          data.str
+        ));
+      }
+  });
+
+  // document to add a system column not present in subsequent documents
+  tests::document doc0;
+
+  // add 2 identical fields (without storing) to trigger non-default norm value
+  for (size_t i = 2; i; --i) {
+    doc0.insert(std::make_shared<tests::templates::string_field>(
+      irs::string_ref("test-field"),
+      "test-value",
+      irs::flags({ irs::norm::type() }) // trigger addition of a system column
+    ), true, false);
+  }
+
+  irs::bytes_ref actual_value;
+  tests::document const* doc1 = gen.next();
+  tests::document const* doc2 = gen.next();
+  auto writer = open_writer();
+
+  ASSERT_TRUE(insert(*writer,
+    doc0.indexed.begin(), doc0.indexed.end(),
+    doc0.stored.begin(), doc0.stored.end()
+  ));
+  ASSERT_TRUE(insert(*writer,
+    doc1->indexed.begin(), doc1->indexed.end(),
+    doc1->stored.begin(), doc1->stored.end()
+  ));
+  ASSERT_TRUE(insert(*writer,
+    doc2->indexed.begin(), doc2->indexed.end(),
+    doc2->stored.begin(), doc2->stored.end()
+  ));
+  writer->commit();
+
+  std::unordered_set<irs::string_ref> expectedName = { "A", "B" };
+
+  // validate segment
+  auto reader = irs::directory_reader::open(dir(), codec());
+  ASSERT_EQ(1, reader.size());
+  auto& segment = reader[0]; // assume 0 is id of first/only segment
+  ASSERT_EQ(3, segment.docs_count()); // total count of documents
+
+  auto* field = segment.field("test-field"); // 'norm' column added by doc0 above
+  ASSERT_NE(nullptr, field);
+  auto* column = segment.column_reader(field->meta().norm); // system column
+  ASSERT_NE(nullptr, column);
+
+  column = segment.column_reader("name");
+  ASSERT_NE(nullptr, column);
+  auto values = column->values();
+  ASSERT_EQ(expectedName.size() + 1, segment.docs_count()); // total count of documents (+1 for doc0)
+  auto terms = segment.field("same");
+  ASSERT_NE(nullptr, terms);
+  auto termItr = terms->iterator();
+  ASSERT_TRUE(termItr->next());
+
+  for (auto docsItr = termItr->postings(irs::flags()); docsItr->next();) {
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
+  }
+
+  ASSERT_TRUE(expectedName.empty());
+}
+
 TEST_F(memory_index_test, segment_consolidate) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),

@@ -1158,13 +1158,15 @@ class format_test_case_base : public index_test_base {
     // read meta from segment _1
     {
       auto reader = codec()->get_column_meta_reader();
-      iresearch::field_id actual_count = 0;
+      size_t actual_count = 0;
+      irs::field_id actual_max_id = 0;
       irs::segment_meta seg_meta;
 
       seg_meta.name = "_1";
 
-      ASSERT_TRUE(reader->prepare(dir(), seg_meta, actual_count));
+      ASSERT_TRUE(reader->prepare(dir(), seg_meta, actual_count, actual_max_id));
       ASSERT_EQ(3, actual_count);
+      ASSERT_EQ(2, actual_max_id);
 
       iresearch::column_meta meta;
       ASSERT_TRUE(reader->read(meta));
@@ -1182,13 +1184,15 @@ class format_test_case_base : public index_test_base {
     // read meta from segment _2
     {
       auto reader = codec()->get_column_meta_reader();
-      iresearch::field_id actual_count = 0;
+      size_t actual_count = 0;
+      irs::field_id actual_max_id = 0;
       irs::segment_meta seg_meta;
 
       seg_meta.name = "_2";
 
-      ASSERT_TRUE(reader->prepare(dir(), seg_meta, actual_count));
+      ASSERT_TRUE(reader->prepare(dir(), seg_meta, actual_count, actual_max_id));
       ASSERT_EQ(3, actual_count);
+      ASSERT_EQ(2, actual_max_id);
 
       iresearch::column_meta meta;
       ASSERT_TRUE(reader->read(meta));
