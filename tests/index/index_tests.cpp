@@ -9498,17 +9498,115 @@ TEST_F(memory_index_test, import_reader) {
   tests::document const* doc3 = gen.next();
   tests::document const* doc4 = gen.next();
 
+  // add a reader with 1 segment no docs
+  {
+    irs::memory_directory data_dir;
+    auto data_writer = irs::index_writer::make(data_dir, codec(), irs::OM_CREATE);
+    auto writer = open_writer();
+
+    writer->commit(); // ensure the writer has an initial completed state
+
+    // check meta counter
+    {
+      irs::index_meta meta;
+      std::string filename;
+      auto meta_reader = codec()->get_index_meta_reader();
+      ASSERT_NE(nullptr, meta_reader);
+      ASSERT_TRUE(meta_reader->last_segments_file(dir(), filename));
+      meta_reader->read(dir(), meta, filename);
+      ASSERT_EQ(0, meta.counter());
+    }
+
+    data_writer->commit();
+    ASSERT_TRUE(writer->import(irs::directory_reader::open(data_dir, codec())));
+    writer->commit();
+
+    auto reader = irs::directory_reader::open(dir(), codec());
+    ASSERT_EQ(0, reader.size());
+    ASSERT_EQ(0, reader.docs_count());
+
+    // insert a document and check the meta counter again
+    {
+      ASSERT_TRUE(insert(*writer,
+        doc1->indexed.begin(), doc1->indexed.end(),
+        doc1->stored.begin(), doc1->stored.end()
+      ));
+      writer->commit();
+
+      irs::index_meta meta;
+      std::string filename;
+      auto meta_reader = codec()->get_index_meta_reader();
+      ASSERT_NE(nullptr, meta_reader);
+      ASSERT_TRUE(meta_reader->last_segments_file(dir(), filename));
+      meta_reader->read(dir(), meta, filename);
+      ASSERT_EQ(1, meta.counter());
+    }
+  }
+
+  // add a reader with 1 segment no live-docs
+  {
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    irs::memory_directory data_dir;
+    auto data_writer = irs::index_writer::make(data_dir, codec(), irs::OM_CREATE);
+    auto writer = open_writer();
+
+    writer->commit(); // ensure the writer has an initial completed state
+
+    // check meta counter
+    {
+      irs::index_meta meta;
+      std::string filename;
+      auto meta_reader = codec()->get_index_meta_reader();
+      ASSERT_NE(nullptr, meta_reader);
+      ASSERT_TRUE(meta_reader->last_segments_file(dir(), filename));
+      meta_reader->read(dir(), meta, filename);
+      ASSERT_EQ(1, meta.counter());
+    }
+
+    ASSERT_TRUE(insert(*data_writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    data_writer->commit();
+    data_writer->remove(std::move(query_doc1.filter));
+    data_writer->commit();
+    writer->commit(); // ensure the writer has an initial completed state
+    ASSERT_TRUE(writer->import(irs::directory_reader::open(data_dir, codec())));
+    writer->commit();
+
+    auto reader = irs::directory_reader::open(dir(), codec());
+    ASSERT_EQ(0, reader.size());
+    ASSERT_EQ(0, reader.docs_count());
+
+    // insert a document and check the meta counter again
+    {
+      ASSERT_TRUE(insert(*writer,
+        doc1->indexed.begin(), doc1->indexed.end(),
+        doc1->stored.begin(), doc1->stored.end()
+      ));
+      writer->commit();
+
+      irs::index_meta meta;
+      std::string filename;
+      auto meta_reader = codec()->get_index_meta_reader();
+      ASSERT_NE(nullptr, meta_reader);
+      ASSERT_TRUE(meta_reader->last_segments_file(dir(), filename));
+      meta_reader->read(dir(), meta, filename);
+      ASSERT_EQ(2, meta.counter());
+    }
+  }
+
   // add a reader with 1 full segment
   {
     iresearch::memory_directory data_dir;
     auto data_writer = iresearch::index_writer::make(data_dir, codec(), iresearch::OM_CREATE);
     auto writer = open_writer();
 
-    ASSERT_TRUE(insert(*writer,
+    ASSERT_TRUE(insert(*data_writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    ASSERT_TRUE(insert(*writer,
+    ASSERT_TRUE(insert(*data_writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
