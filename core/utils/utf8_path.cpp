@@ -39,6 +39,7 @@ bool append_path(std::string& buf, const irs::string_ref& value) {
 
 bool append_path(std::string& buf, const wstring_ref& value) {
   // always use UTF-8 locale for reading/writing filesystem paths
+  // forceUnicodeSystem since using UCS2
   static auto& fs_cvt = irs::locale_utils::converter<wchar_t>("utf8", true);
   auto size = value.size() * 4; // same ratio as boost::filesystem
   auto start = buf.size();
@@ -76,6 +77,7 @@ bool append_path(std::string& buf, const wstring_ref& value) {
 
 bool append_path(std::wstring& buf, const irs::string_ref& value) {
   // always use UTF-8 locale for reading/writing filesystem paths
+  // forceUnicodeSystem since using UTF8
   static auto& fs_cvt = irs::locale_utils::converter<wchar_t>("utf8", true);
   auto size = value.size() * 3; // same ratio as boost::filesystem
   auto start = buf.size();
