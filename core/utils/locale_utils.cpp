@@ -90,7 +90,7 @@ std::string system_encoding() {
   #ifdef _WIN32
     static std::string prefix("cp");
 
-    return prefix + to_string(GetACP());
+    return prefix + std::to_string(GetACP());
   #else
     return nl_langinfo(CODESET);
   #endif
@@ -599,8 +599,8 @@ std::codecvt_base::result codecvt32_facet::do_in(
       return std::codecvt_base::error; // error occured during final conversion
     }
 
-    from_next =
-      from_next_prev + offsets[std::min(IRESEARCH_COUNTOF(buf) + 1, size_t(to_used))]; // update successfully converted, +1 for end
+    from_next = from_next_prev
+              + offsets[(std::min)(IRESEARCH_COUNTOF(buf) + 1, size_t(to_used))]; // update successfully converted, +1 for end
 
     if (U_BUFFER_OVERFLOW_ERROR == dst_status
         || (U_BUFFER_OVERFLOW_ERROR == src_status && from_next >= from_end)) {
@@ -2053,16 +2053,18 @@ class locale_info_facet: public std::locale::facet {
   const irs::string_ref& encoding() const NOEXCEPT { return encoding_; }
   const irs::string_ref& language() const NOEXCEPT { return language_; }
   const std::string& name() const NOEXCEPT { return name_; }
-  bool utf8() const NOEXCEPT { return utf8_; }
+  bool unicode() const NOEXCEPT { return unicode_t::NONE != unicode_; }
+  bool utf8() const NOEXCEPT { return unicode_t::UTF8 == unicode_; }
   const irs::string_ref& variant() const NOEXCEPT { return variant_; }
 
  private:
+  enum class unicode_t { NONE, UTF7, UTF8, UTF16, UTF32 };
   std::string name_; // the normalized locale name: language[_COUNTRY][.encoding][@variant]
   irs::string_ref country_;
   irs::string_ref encoding_;
   irs::string_ref language_;
   irs::string_ref variant_;
-  bool utf8_;
+  unicode_t unicode_;
 };
 
 /*static*/ std::locale::id locale_info_facet::id;
@@ -2080,7 +2082,7 @@ locale_info_facet::locale_info_facet(const irs::string_ref& name)
     encoding_("us-ascii"),
     language_("C"),
     variant_(""),
-    utf8_(false) { // us-ascii is not utf8
+    unicode_(unicode_t::NONE) { // us-ascii is not unicode
   if (name_.empty() || name_ == "C") {
     return;
   }
@@ -2123,7 +2125,15 @@ locale_info_facet::locale_info_facet(const irs::string_ref& name)
     );
     irs::string_ref enc(str, std::distance(str, end));
 
-    utf8_ = enc == "utf8";
+    if (enc == "utf7") {
+      unicode_ = unicode_t::UTF7;
+    } else if (enc == "utf8") {
+      unicode_ = unicode_t::UTF8;
+    } else if (enc == "utf16") {
+      unicode_ = unicode_t::UTF16;
+    } else if (enc == "utf32") {
+      unicode_ = unicode_t::UTF32;
+    }
   }
 
   // found variant
@@ -2174,11 +2184,12 @@ locale_info_facet& locale_info_facet::operator=(
                )
              ;
 
-    utf8_ = other.utf8_;
+    unicode_ = other.unicode_;
     other.country_ = irs::string_ref::NIL;
     other.encoding_ = irs::string_ref::NIL;
     other.language_ = irs::string_ref::NIL;
     other.variant_ = irs::string_ref::NIL;
+    other.unicode_ = unicode_t::NONE;
   }
 
   return *this;
@@ -2231,8 +2242,12 @@ const std::locale& get_locale(
     }
   };
 
+  auto unicodeSystem =
+    forceUnicodeSystem || locale_info_facet(system_encoding()).unicode();
   locale_info_facet info(name);
-  static std::map<locale_info_facet*, std::locale, less_t> locales;
+  static std::map<locale_info_facet*, std::locale, less_t> locales_s;
+  static std::map<locale_info_facet*, std::locale, less_t> locales_u;
+  auto& locales = unicodeSystem ? locales_u : locales_s;
   static std::mutex mutex;
   SCOPED_LOCK(mutex);
   auto itr = locales.find(&info);
@@ -2271,7 +2286,7 @@ const std::locale& get_locale(
     locale, irs::memory::make_unique<codecvt32_facet>(converter).release()
   );
 
-  if (forceUnicodeSystem) {
+  if (unicodeSystem) {
 /* FIXME TODO enable
     locale = std::locale(
       locale, irs::memory::make_unique<codecvt8u_facet>(converter).release()
