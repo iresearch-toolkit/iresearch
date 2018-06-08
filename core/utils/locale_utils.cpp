@@ -623,7 +623,10 @@ int codecvt32_facet::do_max_length() const NOEXCEPT {
     return -1;
   }
 
-  return ucnv_getMaxCharSize(ctx->converter_.get()) * 2; // *2 for UTF16->UTF32 conversion
+  auto bytes_per_utf16 = ucnv_getMaxCharSize(ctx->converter_.get());
+
+  // *2 for UTF16->UTF32 conversion if can't fit each encoded character into a utf16 character
+  return bytes_per_utf16 <= 2 ? bytes_per_utf16 : (bytes_per_utf16 * 2);
 }
 
 std::codecvt_base::result codecvt32_facet::do_out(
