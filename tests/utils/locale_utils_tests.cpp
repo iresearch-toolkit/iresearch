@@ -633,17 +633,17 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_properties) {
     mbstate_t state = mbstate_t();
     char ch = 'x';
 
-    ASSERT_EQ(true, cvt_big5.always_noconv());
-    ASSERT_EQ(true, cvt_c.always_noconv());
-    ASSERT_EQ(true, cvt_cp1251.always_noconv());
-    ASSERT_EQ(true, cvt_koi8r.always_noconv());
-    ASSERT_EQ(true, cvt_utf8.always_noconv());
+    ASSERT_FALSE(cvt_big5.always_noconv());
+    ASSERT_FALSE(cvt_c.always_noconv());
+    ASSERT_FALSE(cvt_cp1251.always_noconv());
+    ASSERT_FALSE(cvt_koi8r.always_noconv());
+    ASSERT_FALSE(cvt_utf8.always_noconv());
 
-    ASSERT_EQ(1, cvt_big5.encoding());
-    ASSERT_EQ(1, cvt_c.encoding());
-    ASSERT_EQ(1, cvt_cp1251.encoding());
-    ASSERT_EQ(1, cvt_koi8r.encoding());
-    ASSERT_EQ(1, cvt_utf8.encoding());
+    ASSERT_EQ(0, cvt_big5.encoding()); // non-ASCII is always variable-length
+    ASSERT_EQ(0, cvt_c.encoding()); // non-ASCII is always variable-length (non-trivial to determine ASCII)
+    ASSERT_EQ(0, cvt_cp1251.encoding()); // non-ASCII is always variable-length
+    ASSERT_EQ(0, cvt_koi8r.encoding()); // non-ASCII is always variable-length
+    ASSERT_EQ(0, cvt_utf8.encoding()); // non-ASCII is always variable-length
 
     ASSERT_EQ(1, cvt_big5.length(state, &ch, &ch + 1, 1));
     ASSERT_EQ(1, cvt_c.length(state, &ch, &ch + 1, 1));
@@ -651,11 +651,11 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_properties) {
     ASSERT_EQ(1, cvt_koi8r.length(state, &ch, &ch + 1, 1));
     ASSERT_EQ(1, cvt_utf8.length(state, &ch, &ch + 1, 1));
 
-    ASSERT_EQ(1, cvt_big5.max_length());
+    ASSERT_EQ(2, cvt_big5.max_length());
     ASSERT_EQ(1, cvt_c.max_length());
     ASSERT_EQ(1, cvt_cp1251.max_length());
     ASSERT_EQ(1, cvt_koi8r.max_length());
-    ASSERT_EQ(1, cvt_utf8.max_length());
+    ASSERT_EQ(3, cvt_utf8.max_length());
   }
 
   // codecvt properties (wchar)
@@ -772,12 +772,12 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_properties) {
   #endif
 }
 
-TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion) {
-  auto c = irs::locale_utils::locale("C");
-  auto ru0 = irs::locale_utils::locale("ru_RU.CP1251");
-  auto ru1 = irs::locale_utils::locale("ru_RU.KOI8-R");
-  auto zh0 = irs::locale_utils::locale("zh_CN.BIG5");
-  auto zh1 = irs::locale_utils::locale("zh_CN.UTF-8");
+TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_ascii_non_unicode) {
+  auto c = irs::locale_utils::locale("C", false);
+  auto ru0 = irs::locale_utils::locale("ru_RU.CP1251", false);
+  auto ru1 = irs::locale_utils::locale("ru_RU.KOI8-R", false);
+  auto zh0 = irs::locale_utils::locale("zh_CN.BIG5", false);
+  auto zh1 = irs::locale_utils::locale("zh_CN.UTF-8", false);
 
   // ascii (char)
   {
@@ -794,6 +794,194 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion) {
 
     out << "out test data" << std::endl;
     ASSERT_EQ(std::string("out test data\n"), out.str());
+  }
+
+  // ascii (wchar)
+  {
+    std::wistringstream in;
+    std::wostringstream out;
+    std::wstring buf;
+
+    in.imbue(c);
+    out.imbue(c);
+
+    in.str(L"in-test-data");
+    in >> buf;
+    ASSERT_EQ(std::wstring(L"in-test-data"), buf);
+
+    out << L"out test data" << std::endl;
+    ASSERT_EQ(std::wstring(L"out test data\n"), out.str());
+  }
+
+  // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
+  // due to a missing export, as per their comment:
+  //   This is an active bug in our database (VSO#143857), which we'll investigate
+  //   for a future release, but we're currently working on higher priority things
+  #if !defined(_MSC_VER) || _MSC_VER <= 1800 || !defined(_DLL)
+
+    // ascii (char16)
+    {
+      auto& cvt = std::use_facet<std::codecvt<char16_t, char, mbstate_t>>(c);
+      mbstate_t state = mbstate_t();
+      std::string from("in test data");
+      const char* from_cnext;
+      char16_t buf16[12];
+      const char16_t* buf16_cnext;
+      char16_t* buf16_next;
+      char buf8[12];
+      char* buf8_next;
+      ASSERT_EQ(
+        std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
+        cvt.in(state, &from[0], &from[0] + from.size(), from_cnext, buf16, buf16 + 1, buf16_next)
+      );
+
+      ASSERT_EQ(&from[1], from_cnext);
+      ASSERT_EQ(&buf16[1], buf16_next);
+
+      for (size_t i = 0, count = 1; i < count; ++i) {
+        ASSERT_EQ(char16_t(from[i]), buf16[i]);
+      }
+
+      ASSERT_EQ(
+        std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
+        cvt.in(state, &from[0], &from[0] + from.size(), from_cnext, buf16, buf16 + IRESEARCH_COUNTOF(buf16), buf16_next)
+      );
+
+      ASSERT_EQ(&from[0] + from.size(), from_cnext);
+      ASSERT_EQ(&buf16[0] + IRESEARCH_COUNTOF(buf16), buf16_next);
+
+      for (size_t i = 0, count = from.size(); i < count; ++i) {
+        ASSERT_EQ(char16_t(from[i]), buf16[i]);
+      }
+
+      ASSERT_EQ(
+        std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
+        cvt.out(state, buf16, buf16 + IRESEARCH_COUNTOF(buf16), buf16_cnext, buf8, buf8 + 1, buf8_next)
+      );
+
+      ASSERT_EQ(&buf16[1], buf16_cnext);
+      ASSERT_EQ(&buf8[1], buf8_next);
+
+      for (size_t i = 0, count = 1; i < count; ++i) {
+        ASSERT_EQ(buf16[i], char16_t(buf8[i]));
+      }
+
+      ASSERT_EQ(
+        std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
+        cvt.out(state, buf16, buf16 + IRESEARCH_COUNTOF(buf16), buf16_cnext, buf8, buf8 + IRESEARCH_COUNTOF(buf8), buf8_next)
+      );
+
+      ASSERT_EQ(&buf16[0] + IRESEARCH_COUNTOF(buf16), buf16_cnext);
+      ASSERT_EQ(&buf8[0] + IRESEARCH_COUNTOF(buf8), buf8_next);
+
+      for (size_t i = 0, count = IRESEARCH_COUNTOF(buf16); i < count; ++i) {
+        ASSERT_EQ(buf16[i], char16_t(buf8[i]));
+      }
+    }
+
+    // ascii (char32)
+    {
+      auto& cvt = std::use_facet<std::codecvt<char32_t, char, mbstate_t>>(c);
+      mbstate_t state = mbstate_t();
+      std::string from("in test data");
+      const char* from_cnext;
+      char32_t buf32[12];
+      const char32_t* buf32_cnext;
+      char32_t* buf32_next;
+      char buf8[12];
+      char* buf8_next;
+
+      ASSERT_EQ(
+        std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
+        cvt.in(state, &from[0], &from[0] + from.size(), from_cnext, buf32, buf32 + 1, buf32_next)
+      );
+
+      ASSERT_EQ(&from[1], from_cnext);
+      ASSERT_EQ(&buf32[1], buf32_next);
+
+      for (size_t i = 0, count = 1; i < count; ++i) {
+        ASSERT_EQ(char32_t(from[i]), buf32[i]);
+      }
+
+      ASSERT_EQ(
+        std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
+        cvt.in(state, &from[0], &from[0] + from.size(), from_cnext, buf32, buf32 + IRESEARCH_COUNTOF(buf32), buf32_next)
+      );
+
+      ASSERT_EQ(&from[0] + from.size(), from_cnext);
+      ASSERT_EQ(&buf32[0] + IRESEARCH_COUNTOF(buf32), buf32_next);
+
+      for (size_t i = 0, count = from.size(); i < count; ++i) {
+        ASSERT_EQ(char32_t(from[i]), buf32[i]);
+      }
+
+      ASSERT_EQ(
+        std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
+        cvt.out(state, buf32, buf32 + IRESEARCH_COUNTOF(buf32), buf32_cnext, buf8, buf8 + 1, buf8_next)
+      );
+
+      ASSERT_EQ(&buf32[1], buf32_cnext);
+      ASSERT_EQ(&buf8[1], buf8_next);
+
+      for (size_t i = 0, count = 1; i < count; ++i) {
+        ASSERT_EQ(buf32[i], char32_t(buf8[i]));
+      }
+
+      ASSERT_EQ(
+        std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
+        cvt.out(state, buf32, buf32 + IRESEARCH_COUNTOF(buf32), buf32_cnext, buf8, buf8 + IRESEARCH_COUNTOF(buf8), buf8_next)
+      );
+
+      ASSERT_EQ(&buf32[0] + IRESEARCH_COUNTOF(buf32), buf32_cnext);
+      ASSERT_EQ(&buf8[0] + IRESEARCH_COUNTOF(buf8), buf8_next);
+
+      for (size_t i = 0, count = IRESEARCH_COUNTOF(buf32); i < count; ++i) {
+        ASSERT_EQ(buf32[i], char32_t(buf8[i]));
+      }
+    }
+
+  #endif
+}
+
+TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_ascii_unicode) {
+  auto c = irs::locale_utils::locale("C", true);
+  auto ru0 = irs::locale_utils::locale("ru_RU.CP1251", true);
+  auto ru1 = irs::locale_utils::locale("ru_RU.KOI8-R", true);
+  auto zh0 = irs::locale_utils::locale("zh_CN.BIG5", true);
+  auto zh1 = irs::locale_utils::locale("zh_CN.UTF-8", true);
+
+  // ascii (char)
+  {
+    std::istringstream in;
+    std::ostringstream out;
+    std::string buf;
+
+    in.imbue(c);
+    out.imbue(c);
+
+    in.str("in-test-data");
+    in >> buf;
+    ASSERT_EQ(std::string("in-test-data"), buf);
+
+    out << "out test data" << std::endl;
+    ASSERT_EQ(std::string("out test data\n"), out.str());
+  }
+
+  // ascii (wchar)
+  {
+    std::wistringstream in;
+    std::wostringstream out;
+    std::wstring buf;
+
+    in.imbue(c);
+    out.imbue(c);
+
+    in.str(L"in-test-data");
+    in >> buf;
+    ASSERT_EQ(std::wstring(L"in-test-data"), buf);
+
+    out << L"out test data" << std::endl;
+    ASSERT_EQ(std::wstring(L"out test data\n"), out.str());
   }
 
   // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
@@ -934,23 +1122,14 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion) {
     }
 
   #endif
+}
 
-  // ascii (wchar)
-  {
-    std::wistringstream in;
-    std::wostringstream out;
-    std::wstring buf;
-
-    in.imbue(c);
-    out.imbue(c);
-
-    in.str(L"in-test-data");
-    in >> buf;
-    ASSERT_EQ(std::wstring(L"in-test-data"), buf);
-
-    out << L"out test data" << std::endl;
-    ASSERT_EQ(std::wstring(L"out test data\n"), out.str());
-  }
+TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion) {
+  auto c = irs::locale_utils::locale("C");
+  auto ru0 = irs::locale_utils::locale("ru_RU.CP1251");
+  auto ru1 = irs::locale_utils::locale("ru_RU.KOI8-R");
+  auto zh0 = irs::locale_utils::locale("zh_CN.BIG5");
+  auto zh1 = irs::locale_utils::locale("zh_CN.UTF-8");
 
   // single-byte charset (char) koi8-r
   {

@@ -599,6 +599,7 @@ std::codecvt_base::result codecvt32_facet::do_in(
       return std::codecvt_base::error; // error occured during final conversion
     }
 
+    // FIXME TODO for the case where the destination buffer is too small must find the source buffer corresponding position to destination end, therefore must convert 1 char at a time
     from_next = from_next_prev
               + offsets[(std::min)(IRESEARCH_COUNTOF(buf) + 1, size_t(to_used))]; // update successfully converted, +1 for end
 
@@ -752,13 +753,12 @@ std::codecvt_base::result codecvt32_facet::do_out(
 /// @brief converter between an 'internal' utf8 representation and
 ///        an 'external' user-specified encoding and an
 ////////////////////////////////////////////////////////////////////////////////
-class codecvt8u_facet: public std::codecvt<char, char, mbstate_t> {
+class codecvt8u_facet: public codecvt_base<char> {
  public:
-  codecvt8u_facet(converter_pool& pool): pool_(pool) {}
+  codecvt8u_facet(converter_pool& converters): codecvt_base(converters) {}
 
  protected:
-  virtual bool do_always_noconv() const NOEXCEPT override;
-  virtual int do_encoding() const NOEXCEPT override;
+  virtual int do_encoding() const NOEXCEPT override { return 0; } // only non-zero for ASCII
   virtual std::codecvt_base::result do_in(
     state_type& state,
     const extern_type* from,
@@ -767,12 +767,6 @@ class codecvt8u_facet: public std::codecvt<char, char, mbstate_t> {
     intern_type* to,
     intern_type* to_end,
     intern_type*& to_next
-  ) const override;
-  virtual int do_length(
-    state_type& state,
-    const extern_type* from,
-    const extern_type* from_end,
-    std::size_t max
   ) const override;
   virtual int do_max_length() const NOEXCEPT override;
   virtual std::codecvt_base::result do_out(
@@ -784,16 +778,245 @@ class codecvt8u_facet: public std::codecvt<char, char, mbstate_t> {
     extern_type* to_end,
     extern_type*& to_next
   ) const override;
-  virtual std::codecvt_base::result do_unshift(
+};
+
+std::codecvt_base::result codecvt8u_facet::do_in(
     state_type& state,
+    const extern_type* from,
+    const extern_type* from_end,
+    const extern_type*& from_next,
+    intern_type* to,
+    intern_type* to_end,
+    intern_type*& to_next
+) const {
+  auto ctx = context();
+
+  from_next = from;
+  to_next = to;
+
+  if (!ctx) {
+    IR_FRMT_WARN(
+      "failure to get conversion context while converting encoding '%s' to unicode system encoding",
+      context_encoding().c_str()
+    );
+
+    return std::codecvt_base::error;
+  }
+
+  UChar buf[BUFFER_SIZE];
+  auto* buf_end = buf + IRESEARCH_COUNTOF(buf);
+  int32_t offsets[IRESEARCH_COUNTOF(buf) + 1]; // +1 for end
+
+  ucnv_reset(ctx->converter_.get());
+
+  // convert 'BUFFER_SIZE' at a time
+  while (from_next < from_end) {
+    auto* buf_next = buf;
+    auto* from_next_prev = from_next;
+    auto* to_next_prev = to_next;
+    UErrorCode src_status = U_ZERO_ERROR;
+    UErrorCode dst_status = U_ZERO_ERROR;
+
+    // convert from desired encoding to the intermediary representation
+    ucnv_toUnicode(
+      ctx->converter_.get(),
+      &buf_next,
+      buf_end,
+      &from_next,
+      from_end,
+      offsets,
+      true,
+      &src_status
+    );
+
+    if (!U_SUCCESS(src_status) && U_BUFFER_OVERFLOW_ERROR != src_status) {
+      from_next = from_next_prev;
+      to_next = to_next_prev;
+
+      IR_FRMT_WARN(
+        "failure to convert from locale encoding to UTF16 while converting encoding '%s' unicode system encoding",
+        context_encoding().c_str()
+      );
+
+      return std::codecvt_base::error; // error occured during final conversion
+    }
+
+    assert(buf_next >= buf && IRESEARCH_COUNTOF(buf) >= size_t(buf_next - buf)); // >= to account for past-end
+    offsets[buf_next - buf] = from_next - from_next_prev; // remember past-end position
+
+    int32_t to_used = 0;
+
+    u_strToUTF8(
+      to_next,
+      to_end - to_next,
+      &to_used, // set to the number of output units corresponding to the transformation of all the input units, even in case of a buffer overflow
+      buf,
+      buf_next - buf,
+      &dst_status
+    );
+
+    if ((U_SUCCESS(dst_status) || U_BUFFER_OVERFLOW_ERROR == dst_status)
+        && to_used < 0) {
+      dst_status = U_INTERNAL_PROGRAM_ERROR; // ICU internal error
+    }
+
+    if (!U_SUCCESS(dst_status) && U_BUFFER_OVERFLOW_ERROR != dst_status) {
+      from_next = from_next_prev;
+      to_next = to_next_prev;
+
+      IR_FRMT_WARN(
+        "failure to convert from UTF16 to UTF8 while converting encoding '%s' to unicode system encoding",
+        context_encoding().c_str()
+      );
+
+      return std::codecvt_base::error; // error occured during final conversion
+    }
+
+    // FIXME TODO for the case where the destination buffer is too small must find the source buffer corresponding position to destination end, therefore must convert 1 char at a time
+    from_next = from_next_prev
+              + offsets[(std::min)(IRESEARCH_COUNTOF(buf) + 1, size_t(to_used))]; // update successfully converted, +1 for end
+
+    if (U_BUFFER_OVERFLOW_ERROR == dst_status
+        || (U_BUFFER_OVERFLOW_ERROR == src_status && from_next >= from_end)) {
+      return std::codecvt_base::partial; // destination buffer is not large enough
+    }
+  }
+
+  return std::codecvt_base::ok;
+}
+
+int codecvt8u_facet::do_max_length() const NOEXCEPT {
+  auto ctx = context();
+
+  if (!ctx) {
+    IR_FRMT_WARN(
+      "failure to get conversion context while computing maximum number of required input characters from encoding '%s' to produce a single output character",
+      context_encoding().c_str()
+    );
+
+    return -1;
+  }
+
+  return ucnv_getMaxCharSize(ctx->converter_.get()); // fo non-ASCII this will produce 2+ UTF8 encoded chars
+}
+
+std::codecvt_base::result codecvt8u_facet::do_out(
+    state_type& state,
+    const intern_type* from,
+    const intern_type* from_end,
+    const intern_type*& from_next,
     extern_type* to,
     extern_type* to_end,
     extern_type*& to_next
-  ) const override;
+) const {
+  auto ctx = context();
 
- private:
-  converter_pool& pool_;
-};
+  from_next = from;
+  to_next = to;
+
+  if (!ctx) {
+    IR_FRMT_WARN(
+      "failure to get conversion context while converting unicode system encoding to encoding '%s'",
+      context_encoding().c_str()
+    );
+
+    return std::codecvt_base::error;
+  }
+
+  UChar buf[BUFFER_SIZE];
+  auto* buf_end = buf + IRESEARCH_COUNTOF(buf);
+  size_t offsets[IRESEARCH_COUNTOF(buf) + 1]; // +1 for end
+
+  ucnv_reset(ctx->converter_.get());
+
+  // convert 'BUFFER_SIZE' at a time
+  while (from_next < from_end) {
+    const UChar* buf_from = buf;
+    auto* buf_next = buf;
+    auto* from_next_prev = from_next;
+    auto* to_next_prev = to_next;
+    UErrorCode src_status = U_ZERO_ERROR;
+    UErrorCode dst_status = U_ZERO_ERROR;
+
+    // convert one char at a time to track source position to destination position
+    do {
+      int32_t buf_size = buf_end - buf_next;
+      int32_t buf_used = 0;
+
+      u_strFromUTF8(
+        buf_next,
+        buf_size,
+        &buf_used, // set to the number of output units corresponding to the transformation of all the input units, even in case of a buffer overflow
+        from_next,
+        1, // 1 char at a time to track source/destination position mapping
+        &src_status
+      );
+
+      if (U_BUFFER_OVERFLOW_ERROR == src_status) {
+        break; // conversion buffer not large enough to hold result
+      }
+
+      if (U_SUCCESS(src_status) && buf_used < 0) {
+        src_status = U_INTERNAL_PROGRAM_ERROR; // ICU internal error
+      }
+
+      if (!U_SUCCESS(src_status)) {
+        IR_FRMT_WARN(
+          "failure to convert from UTF8 to UTF16 while converting unicode system encoding to encoding '%s'",
+          context_encoding().c_str()
+        );
+
+        break; // finish copying all successfully converted
+      }
+
+      assert(buf_next >= buf && IRESEARCH_COUNTOF(buf) > size_t(buf_next - buf));
+      offsets[buf_next - buf] = from_next - from; // remember converted position
+      buf_next += buf_used;
+      ++from_next; // +1 for 1 char at a time
+    } while (from_next < from_end);
+
+    assert(buf_next >= buf && IRESEARCH_COUNTOF(buf) >= size_t(buf_next - buf)); // >= to account for past-end
+    offsets[buf_next - buf] = from_next - from; // remember past-end position
+
+    // convert intermediary representation to the desired encoding
+    ucnv_fromUnicode(
+      ctx->converter_.get(),
+      &to_next,
+      to_end,
+      &buf_from,
+      buf_next,
+      nullptr,
+      true,
+      &dst_status
+    );
+
+    if (!U_SUCCESS(dst_status) && U_BUFFER_OVERFLOW_ERROR != dst_status) {
+      from_next = from_next_prev;
+      to_next = to_next_prev;
+
+      IR_FRMT_WARN(
+        "failure to convert from UTF16 to locale encoding while converting unicode system encoding to encoding '%s'",
+        context_encoding().c_str()
+      );
+
+      return std::codecvt_base::error; // error occured during final conversion
+    }
+
+    assert(buf_from >= buf && IRESEARCH_COUNTOF(buf) >= size_t(buf_from - buf));
+    from_next = from + offsets[buf_from - buf]; // update successfully converted
+
+    if (!U_SUCCESS(src_status) && U_BUFFER_OVERFLOW_ERROR != src_status) {
+      return std::codecvt_base::error; // error occured during intermediary conversion
+    }
+
+    if (U_BUFFER_OVERFLOW_ERROR == dst_status
+        || (U_BUFFER_OVERFLOW_ERROR == src_status && from_next >= from_end)) {
+      return std::codecvt_base::partial; // destination buffer is not large enough
+    }
+  }
+
+  return std::codecvt_base::ok;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converter between an 'internal' utf8/utf16/uf32 representation,
@@ -2290,11 +2513,9 @@ const std::locale& get_locale(
   );
 
   if (unicodeSystem) {
-/* FIXME TODO enable
     locale = std::locale(
       locale, irs::memory::make_unique<codecvt8u_facet>(converter).release()
     );
-*/
     locale = std::locale(
       locale, irs::memory::make_unique<codecvtwu_facet>(converter).release()
     );
