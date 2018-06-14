@@ -2542,25 +2542,28 @@ const std::locale& get_locale(
     IR_FRMT_WARN("locale '%s' is not supported by ICU", info.name().c_str());
   }
 
-  std::string boost_locale_name = info.name();
+  std::locale boost_locale;
 
-  // skip encoding
   // FIXME TODO this is a workaround for boost throwning exceptions for
   // unsupported encodings which are overriden below anyway
-  // format language[_COUNTRY][.encoding][@variant]
-  if (unicodeSystem && !info.encoding.null()) { // only unicodeSystem converters implemented below FIXME TODO
-    boost_locale_name = info.language();
-
-    if (!info.country().empty()) {
-      boost_locale_name.append(1, '_').append(info.country());
+  try {
+    boost_locale = locale_genrator.generate(info.name());
+  } catch(...) {
+    if (!unicodeSystem // only unicodeSystem converters implemented below FIXME TODO
+        || info.encoding().c_str() < info.name().c_str()
+        || info.encoding().c_str() >= info.name().c_str() + info.name().size()) {
+      throw;
     }
 
-    if (!info.variant().empty()) {
-      boost_locale_name.append(1, '@').append(info.variant());
-    }
+    auto boost_locale_name = info.name();
+
+    boost_locale_name.erase(
+      info.encoding().c_str() - info.name().c_str() - 1, // -1 for '_'
+      info.encoding().size() + 1 // +1 for '_'
+    ); // skip encoding
+    boost_locale = locale_genrator.generate(boost_locale_name);
   }
 
-  auto boost_locale = locale_genrator.generate(boost_locale_name);
   auto encoding = get_encoding(info.encoding(), boost_locale);
   auto& codecvt_char = static_cast<const codecvt_facet<char>&>( // get_encoding(...) adds codecvt_facet<char>
     std::use_facet<std::codecvt<char, char, mbstate_t>>(encoding)
