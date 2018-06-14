@@ -531,7 +531,8 @@ std::codecvt_base::result codecvt32_facet::do_in(
 
   UChar buf[BUFFER_SIZE];
   auto* buf_end = buf + IRESEARCH_COUNTOF(buf);
-  int32_t offsets[IRESEARCH_COUNTOF(buf) + 1]; // +1 for end
+  int32_t src_offsets[IRESEARCH_COUNTOF(buf) + 1]; // +1 for end
+  int32_t dst_offsets[IRESEARCH_COUNTOF(buf) + 1]; // +1 for end (use same size since always: count of UTF32 chars <= count of UTF16 chars)
 
   ucnv_reset(ctx->converter_.get());
 
@@ -550,7 +551,7 @@ std::codecvt_base::result codecvt32_facet::do_in(
       buf_end,
       &from_next,
       from_end,
-      offsets,
+      src_offsets,
       true,
       &src_status
     );
@@ -567,41 +568,64 @@ std::codecvt_base::result codecvt32_facet::do_in(
       return std::codecvt_base::error; // error occured during final conversion
     }
 
-    assert(buf_next >= buf && IRESEARCH_COUNTOF(buf) >= size_t(buf_next - buf)); // >= to account for past-end
-    offsets[buf_next - buf] = from_next - from_next_prev; // remember past-end position
+    assert(buf_next >= buf && IRESEARCH_COUNTOF(src_offsets) > size_t(buf_next - buf));
+    src_offsets[buf_next - buf] = from_next - from_next_prev; // remember past-end position
 
-    int32_t to_used = 0;
+    auto* buf_dst_next = buf;
+    auto* buf_dst_end = buf_next;
 
-    static_assert(sizeof(UChar32) == sizeof(intern_type), "sizeof(UChar32) != sizeof(intern_type)");
-    u_strToUTF32(
-      reinterpret_cast<UChar32*>(to_next),
-      to_end - to_next,
-      &to_used, // set to the number of output units corresponding to the transformation of all the input units, even in case of a buffer overflow
-      buf,
-      buf_next - buf,
-      &dst_status
-    );
+    // convert one char at a time to track source position to destination position
+    do {
+      int32_t to_used = 0;
 
-    if ((U_SUCCESS(dst_status) || U_BUFFER_OVERFLOW_ERROR == dst_status)
-        && to_used < 0) {
-      dst_status = U_INTERNAL_PROGRAM_ERROR; // ICU internal error
-    }
-
-    if (!U_SUCCESS(dst_status) && U_BUFFER_OVERFLOW_ERROR != dst_status) {
-      from_next = from_next_prev;
-      to_next = to_next_prev;
-
-      IR_FRMT_WARN(
-        "failure to convert from UTF16 to UTF32 while converting encoding '%s' to unicode system encoding",
-        context_encoding().c_str()
+      static_assert(sizeof(UChar32) == sizeof(intern_type), "sizeof(UChar32) != sizeof(intern_type)");
+      u_strToUTF32(
+        reinterpret_cast<UChar32*>(to_next),
+        to_end - to_next,
+        &to_used, // set to the number of output units corresponding to the transformation of all the input units, even in case of a buffer overflow
+        buf_dst_next,
+        U_IS_SURROGATE(*buf_dst_next) ? 2 : 1, // 1 char at a time to track source/destination position mapping
+        &dst_status
       );
 
-      return std::codecvt_base::error; // error occured during final conversion
-    }
+      if (U_BUFFER_OVERFLOW_ERROR == dst_status) {
+        break; // conversion buffer not large enough to hold result
+      }
 
-    // FIXME TODO for the case where the destination buffer is too small must find the source buffer corresponding position to destination end, therefore must convert 1 char at a time
-    from_next = from_next_prev
-              + offsets[(std::min)(IRESEARCH_COUNTOF(buf) + 1, size_t(to_used))]; // update successfully converted, +1 for end
+      if (U_SUCCESS(dst_status) && to_used < 0) {
+        dst_status = U_INTERNAL_PROGRAM_ERROR; // ICU internal error
+      }
+
+      if (!U_SUCCESS(dst_status) && U_BUFFER_OVERFLOW_ERROR != dst_status) {
+        from_next = from_next_prev;
+        to_next = to_next_prev;
+
+        IR_FRMT_WARN(
+          "failure to convert from UTF16 to UTF32 while converting encoding '%s' to unicode system encoding",
+          context_encoding().c_str()
+        );
+
+        return std::codecvt_base::error; // error occured during final conversion
+      }
+
+      // all of 'to_used' since if not enough space in 'to' buffer then would have had U_BUFFER_OVERFLOW_ERROR
+      while (to_used) {
+        assert(to_next >= to_next_prev && IRESEARCH_COUNTOF(dst_offsets) > size_t(to_next - to_next_prev));
+        dst_offsets[to_next - to_next_prev] = buf_dst_next - buf; // remember converted position (start)
+        ++to_next;
+        --to_used;
+      }
+
+      buf_dst_next += U_IS_SURROGATE(*buf_dst_next) ? 2 : 1; // +1 for 1 char at a time (+2 for surrogate)
+    } while (buf_dst_next + 1 < buf_dst_end); // +1 for possible surrogate
+
+    assert(to_next >= to_next_prev && IRESEARCH_COUNTOF(dst_offsets) > size_t(to_next - to_next_prev));
+    dst_offsets[to_next - to_next_prev] = buf_dst_next - buf; // remember past-end position
+
+    auto buf_pos = dst_offsets[to_next - to_next_prev];
+
+    assert(buf_pos >= 0 && IRESEARCH_COUNTOF(src_offsets) > size_t(buf_pos));
+    from_next = from_next_prev + src_offsets[buf_pos]; // update successfully converted
 
     if (U_BUFFER_OVERFLOW_ERROR == dst_status
         || (U_BUFFER_OVERFLOW_ERROR == src_status && from_next >= from_end)) {
@@ -700,13 +724,13 @@ std::codecvt_base::result codecvt32_facet::do_out(
         break; // finish copying all successfully converted
       }
 
-      assert(buf_next >= buf && IRESEARCH_COUNTOF(buf) > size_t(buf_next - buf));
+      assert(buf_next >= buf && IRESEARCH_COUNTOF(offsets) > size_t(buf_next - buf));
       offsets[buf_next - buf] = from_next - from; // remember converted position
       buf_next += buf_used;
       ++from_next; // +1 for 1 char at a time
     } while (from_next < from_end);
 
-    assert(buf_next >= buf && IRESEARCH_COUNTOF(buf) >= size_t(buf_next - buf)); // >= to account for past-end
+    assert(buf_next >= buf && IRESEARCH_COUNTOF(offsets) > size_t(buf_next - buf));
     offsets[buf_next - buf] = from_next - from; // remember past-end position
 
     // convert intermediary representation to the desired encoding
@@ -733,7 +757,7 @@ std::codecvt_base::result codecvt32_facet::do_out(
       return std::codecvt_base::error; // error occured during final conversion
     }
 
-    assert(buf_from >= buf && IRESEARCH_COUNTOF(buf) >= size_t(buf_from - buf));
+    assert(buf_from >= buf && IRESEARCH_COUNTOF(offsets) > size_t(buf_from - buf));
     from_next = from + offsets[buf_from - buf]; // update successfully converted
 
     if (!U_SUCCESS(src_status) && U_BUFFER_OVERFLOW_ERROR != src_status) {
@@ -805,7 +829,8 @@ std::codecvt_base::result codecvt8u_facet::do_in(
 
   UChar buf[BUFFER_SIZE];
   auto* buf_end = buf + IRESEARCH_COUNTOF(buf);
-  int32_t offsets[IRESEARCH_COUNTOF(buf) + 1]; // +1 for end
+  int32_t src_offsets[IRESEARCH_COUNTOF(buf) + 1]; // +1 for end
+  int32_t dst_offsets[IRESEARCH_COUNTOF(buf) * U8_MAX_LENGTH + 1]; // +1 for end
 
   ucnv_reset(ctx->converter_.get());
 
@@ -824,7 +849,7 @@ std::codecvt_base::result codecvt8u_facet::do_in(
       buf_end,
       &from_next,
       from_end,
-      offsets,
+      src_offsets,
       true,
       &src_status
     );
@@ -841,40 +866,63 @@ std::codecvt_base::result codecvt8u_facet::do_in(
       return std::codecvt_base::error; // error occured during final conversion
     }
 
-    assert(buf_next >= buf && IRESEARCH_COUNTOF(buf) >= size_t(buf_next - buf)); // >= to account for past-end
-    offsets[buf_next - buf] = from_next - from_next_prev; // remember past-end position
+    assert(buf_next >= buf && IRESEARCH_COUNTOF(src_offsets) > size_t(buf_next - buf));
+    src_offsets[buf_next - buf] = from_next - from_next_prev; // remember past-end position
 
-    int32_t to_used = 0;
+    auto* buf_dst_next = buf;
+    auto* buf_dst_end = buf_next;
 
-    u_strToUTF8(
-      to_next,
-      to_end - to_next,
-      &to_used, // set to the number of output units corresponding to the transformation of all the input units, even in case of a buffer overflow
-      buf,
-      buf_next - buf,
-      &dst_status
-    );
+    // convert one char at a time to track source position to destination position
+    do {
+      int32_t to_used = 0;
 
-    if ((U_SUCCESS(dst_status) || U_BUFFER_OVERFLOW_ERROR == dst_status)
-        && to_used < 0) {
-      dst_status = U_INTERNAL_PROGRAM_ERROR; // ICU internal error
-    }
-
-    if (!U_SUCCESS(dst_status) && U_BUFFER_OVERFLOW_ERROR != dst_status) {
-      from_next = from_next_prev;
-      to_next = to_next_prev;
-
-      IR_FRMT_WARN(
-        "failure to convert from UTF16 to UTF8 while converting encoding '%s' to unicode system encoding",
-        context_encoding().c_str()
+      u_strToUTF8(
+        to_next,
+        to_end - to_next,
+        &to_used, // set to the number of output units corresponding to the transformation of all the input units, even in case of a buffer overflow
+        buf,
+        U_IS_SURROGATE(*buf_dst_next) ? 2 : 1, // 1 char at a time to track source/destination position mapping
+        &dst_status
       );
 
-      return std::codecvt_base::error; // error occured during final conversion
-    }
+      if (U_BUFFER_OVERFLOW_ERROR == dst_status) {
+        break; // conversion buffer not large enough to hold result
+      }
 
-    // FIXME TODO for the case where the destination buffer is too small must find the source buffer corresponding position to destination end, therefore must convert 1 char at a time
-    from_next = from_next_prev
-              + offsets[(std::min)(IRESEARCH_COUNTOF(buf) + 1, size_t(to_used))]; // update successfully converted, +1 for end
+      if (U_SUCCESS(dst_status) && to_used < 0) {
+        dst_status = U_INTERNAL_PROGRAM_ERROR; // ICU internal error
+      }
+
+      if (!U_SUCCESS(dst_status) && U_BUFFER_OVERFLOW_ERROR != dst_status) {
+        from_next = from_next_prev;
+        to_next = to_next_prev;
+
+        IR_FRMT_WARN(
+          "failure to convert from UTF16 to UTF8 while converting encoding '%s' to unicode system encoding",
+          context_encoding().c_str()
+        );
+
+        return std::codecvt_base::error; // error occured during final conversion
+      }
+
+      // all of 'to_used' since if not enough space in 'to' buffer then would have had U_BUFFER_OVERFLOW_ERROR
+      while (to_used) {
+        assert(to_next >= to_next_prev && IRESEARCH_COUNTOF(dst_offsets) > size_t(to_next - to_next_prev));
+        dst_offsets[to_next - to_next_prev] = buf_dst_next - buf; // remember converted position (start)
+        ++to_next;
+        --to_used;
+      }
+
+      buf_dst_next += U_IS_SURROGATE(*buf_dst_next) ? 2 : 1; // +1 for 1 char at a time (+2 for surrogate)
+    } while (buf_dst_next + 1 < buf_dst_end); // +1 for possible surrogate
+
+    assert(to_next >= to_next_prev && IRESEARCH_COUNTOF(dst_offsets) > size_t(to_next - to_next_prev));
+    dst_offsets[to_next - to_next_prev] = buf_dst_next - buf; // remember past-end position
+
+    auto buf_pos = dst_offsets[to_next - to_next_prev];
+
+    assert(buf_pos >= 0 && IRESEARCH_COUNTOF(src_offsets) > size_t(buf_pos));
+    from_next = from_next_prev + src_offsets[buf_pos]; // update successfully converted
 
     if (U_BUFFER_OVERFLOW_ERROR == dst_status
         || (U_BUFFER_OVERFLOW_ERROR == src_status && from_next >= from_end)) {
@@ -969,13 +1017,13 @@ std::codecvt_base::result codecvt8u_facet::do_out(
         break; // finish copying all successfully converted
       }
 
-      assert(buf_next >= buf && IRESEARCH_COUNTOF(buf) > size_t(buf_next - buf));
+      assert(buf_next >= buf && IRESEARCH_COUNTOF(offsets) > size_t(buf_next - buf));
       offsets[buf_next - buf] = from_next - from; // remember converted position
       buf_next += buf_used;
       ++from_next; // +1 for 1 char at a time
     } while (from_next < from_end);
 
-    assert(buf_next >= buf && IRESEARCH_COUNTOF(buf) >= size_t(buf_next - buf)); // >= to account for past-end
+    assert(buf_next >= buf && IRESEARCH_COUNTOF(offsets) > size_t(buf_next - buf));
     offsets[buf_next - buf] = from_next - from; // remember past-end position
 
     // convert intermediary representation to the desired encoding
@@ -1002,7 +1050,7 @@ std::codecvt_base::result codecvt8u_facet::do_out(
       return std::codecvt_base::error; // error occured during final conversion
     }
 
-    assert(buf_from >= buf && IRESEARCH_COUNTOF(buf) >= size_t(buf_from - buf));
+    assert(buf_from >= buf && IRESEARCH_COUNTOF(offsets) > size_t(buf_from - buf));
     from_next = from + offsets[buf_from - buf]; // update successfully converted
 
     if (!U_SUCCESS(src_status) && U_BUFFER_OVERFLOW_ERROR != src_status) {
