@@ -65,8 +65,14 @@ void skip_writer::prepare(
     const memory_allocator& alloc /* = memory_allocator::global() */
 ) {
   max_levels = std::max(size_t(1), max_levels);
+  max_levels = std::min(max_levels, ::max_levels(skip_0_, skip_n_, count));
 
-  levels_.reserve(std::min(max_levels, ::max_levels(skip_0_, skip_n_, count)));
+  // MSVC cannot reserve value_types without a default constructor
+  #if !defined(_MSC_VER)
+    levels_.reserve(max_levels);
+  #endif
+
+  max_levels = std::max(max_levels, levels_.capacity());
 
   // reset existing skip levels
   for (auto& level : levels_) {
@@ -74,7 +80,7 @@ void skip_writer::prepare(
   }
 
   // add new skip levels
-  for (auto size = levels_.size(); size < levels_.capacity(); ++size) {
+  for (auto size = levels_.size(); size < max_levels; ++size) {
     levels_.emplace_back(alloc);
   }
 
