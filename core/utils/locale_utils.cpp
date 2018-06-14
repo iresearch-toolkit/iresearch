@@ -2549,8 +2549,7 @@ const std::locale& get_locale(
   try {
     boost_locale = locale_genrator.generate(info.name());
   } catch(...) {
-    if (!unicodeSystem // only unicodeSystem converters implemented below FIXME TODO
-        || info.encoding().c_str() < info.name().c_str()
+    if (info.encoding().c_str() < info.name().c_str()
         || info.encoding().c_str() >= info.name().c_str() + info.name().size()) {
       throw;
     }
