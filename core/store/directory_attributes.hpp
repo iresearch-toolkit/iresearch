@@ -37,7 +37,7 @@ NS_ROOT
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API memory_allocator : public stored_attribute {
  private:
-  struct buffer {
+  struct IRESEARCH_API buffer {
     typedef std::unique_ptr<byte_type[]> ptr;
     DECLARE_FACTORY(size_t size);
   }; // buffer
