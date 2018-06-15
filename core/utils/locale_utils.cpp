@@ -2643,41 +2643,6 @@ const irs::string_ref& language(std::locale const& locale) {
   return std::use_facet<locale_info_facet>(*loc).language();
 }
 
-std::locale locale(char const* czName, bool bForceUTF8 /*= false*/) {
-  if (!czName) {
-    return bForceUTF8
-      ? locale(std::locale::classic().name(), true)
-      : std::locale::classic()
-      ;
-  }
-
-  const std::string sName(czName);
-
-  return locale(sName, bForceUTF8);
-}
-
-std::locale locale(std::string const& sName, bool bForceUTF8 /*= false*/) {
-  if (!bForceUTF8) {
-    return get_locale(sName);
-  }
-
-  // ensure boost::locale::info facet exists for 'sName' since it is used below
-  auto locale = get_locale(sName);
-  auto locale_info = boost::locale::util::create_info(locale, sName);
-  auto& info_facet = std::use_facet<boost::locale::info>(locale_info);
-
-  if (info_facet.utf8()) {
-    return locale;
-  }
-
-  return iresearch::locale_utils::locale(
-    info_facet.language(),
-    info_facet.country(),
-    "UTF-8",
-    info_facet.variant()
-  );
-}
-
 std::locale locale(
     irs::string_ref const& name,
     irs::string_ref const& encodingOverride /*= irs::string_ref::NIL*/,
@@ -2705,7 +2670,13 @@ std::locale locale(
   return get_locale(locale_name, forceUnicodeSystem);
 }
 
-std::locale locale(std::string const& sLanguage, std::string const& sCountry, std::string const& sEncoding, std::string const& sVariant /*= ""*/) {
+std::locale locale(
+    const std::string& sLanguage,
+    const std::string& sCountry,
+    const std::string& sEncoding,
+    const std::string& sVariant /*= ""*/,
+    bool forceUnicodeSystem /*= true*/
+) {
   bool bValid = sLanguage.find('_') == std::string::npos && sCountry.find('_') == std::string::npos && sEncoding.find('_') == std::string::npos && sVariant.find('_') == std::string::npos
               && sLanguage.find('.') == std::string::npos && sCountry.find('.') == std::string::npos && sEncoding.find('.') == std::string::npos && sVariant.find('.') == std::string::npos
               && sLanguage.find('@') == std::string::npos && sCountry.find('@') == std::string::npos && sEncoding.find('@') == std::string::npos && sVariant.find('@') == std::string::npos;
@@ -2723,7 +2694,9 @@ std::locale locale(std::string const& sLanguage, std::string const& sCountry, st
     sName.append(1, '@').append(sVariant);
   }
 
-  return iresearch::locale_utils::locale(sName);
+  return irs::locale_utils::locale(
+    sName, irs::string_ref::NIL, forceUnicodeSystem
+  );
 }
 
 const std::string& name(std::locale const& locale) {

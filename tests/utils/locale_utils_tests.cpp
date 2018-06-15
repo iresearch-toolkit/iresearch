@@ -220,7 +220,7 @@ TEST_F(LocaleUtilsTestSuite, test_get_converter) {
 
 TEST_F(LocaleUtilsTestSuite, test_get_locale) {
   {
-    auto locale = irs::locale_utils::locale(nullptr, nullptr, true);
+    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, irs::string_ref::NIL, true);
 
     ASSERT_EQ(std::string("*"), locale.name());
     ASSERT_EQ(std::string("C"), irs::locale_utils::language(locale));
@@ -230,7 +230,7 @@ TEST_F(LocaleUtilsTestSuite, test_get_locale) {
   }
 
   {
-    auto locale = irs::locale_utils::locale(nullptr, nullptr, false);
+    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, irs::string_ref::NIL, false);
 
     ASSERT_EQ(std::string("C"), locale.name());
     ASSERT_EQ(std::string("C"), irs::locale_utils::language(locale));
@@ -240,7 +240,7 @@ TEST_F(LocaleUtilsTestSuite, test_get_locale) {
   }
 
   {
-    auto locale = irs::locale_utils::locale(nullptr, "", true);
+    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "", true);
 
     ASSERT_EQ(std::string("*"), locale.name());
     ASSERT_EQ(std::string("C"), irs::locale_utils::language(locale));
@@ -250,7 +250,7 @@ TEST_F(LocaleUtilsTestSuite, test_get_locale) {
   }
 
   {
-    auto locale = irs::locale_utils::locale(nullptr, "", false);
+    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "", false);
 
     ASSERT_EQ(std::string("*"), locale.name());
     ASSERT_EQ(std::string("C"), irs::locale_utils::language(locale));
@@ -260,7 +260,7 @@ TEST_F(LocaleUtilsTestSuite, test_get_locale) {
   }
 
   {
-    auto locale = irs::locale_utils::locale(nullptr, "koi8-r", true);
+    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "koi8-r", true);
 
     ASSERT_EQ(std::string("*"), locale.name());
     ASSERT_EQ(std::string("c"), irs::locale_utils::language(locale));
@@ -270,7 +270,7 @@ TEST_F(LocaleUtilsTestSuite, test_get_locale) {
   }
 
   {
-    auto locale = irs::locale_utils::locale(nullptr, "koi8-r", false);
+    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "koi8-r", false);
 
     ASSERT_EQ(std::string("*"), locale.name());
     ASSERT_EQ(std::string("c"), irs::locale_utils::language(locale));
@@ -280,7 +280,7 @@ TEST_F(LocaleUtilsTestSuite, test_get_locale) {
   }
 
   {
-    auto locale = irs::locale_utils::locale(nullptr, "InvalidString", true);
+    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "InvalidString", true);
 
     ASSERT_EQ(std::string("*"), locale.name());
     ASSERT_EQ(std::string("c"), irs::locale_utils::language(locale));
@@ -290,7 +290,7 @@ TEST_F(LocaleUtilsTestSuite, test_get_locale) {
   }
 
   {
-    auto locale = irs::locale_utils::locale(nullptr, "InvalidString", false);
+    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "InvalidString", false);
 
     ASSERT_EQ(std::string("*"), locale.name());
     ASSERT_EQ(std::string("c"), irs::locale_utils::language(locale));
@@ -300,7 +300,7 @@ TEST_F(LocaleUtilsTestSuite, test_get_locale) {
   }
 
   {
-    auto locale = irs::locale_utils::locale("en_US", nullptr, true);
+    auto locale = irs::locale_utils::locale("en_US", irs::string_ref::NIL, true);
 
     ASSERT_EQ(std::string("*"), locale.name());
     ASSERT_EQ(std::string("en"), irs::locale_utils::language(locale));
@@ -310,7 +310,7 @@ TEST_F(LocaleUtilsTestSuite, test_get_locale) {
   }
 
   {
-    auto locale = irs::locale_utils::locale("en_US", nullptr, false);
+    auto locale = irs::locale_utils::locale("en_US", irs::string_ref::NIL, false);
 
     ASSERT_EQ(std::string("*"), locale.name());
     ASSERT_EQ(std::string("en"), irs::locale_utils::language(locale));
@@ -382,69 +382,75 @@ TEST_F(LocaleUtilsTestSuite, test_get_locale) {
 
 TEST_F(LocaleUtilsTestSuite, test_locale_create) {
   {
-    std::locale locale = iresearch::locale_utils::locale(nullptr);
+    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, irs::string_ref::NIL, false);
 
     ASSERT_EQ(std::locale::classic(), locale);
   }
 
   {
-    std::locale locale = iresearch::locale_utils::locale(nullptr, true);
+    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, irs::string_ref::NIL, true);
+
+    ASSERT_NE(std::locale::classic(), locale);
+  }
+
+  {
+    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "UTF-8");
 
     ASSERT_EQ(std::string("c.utf-8"), std::use_facet<boost::locale::info>(locale).name());
     ASSERT_TRUE(std::use_facet<boost::locale::info>(locale).utf8());
   }
 
   {
-    std::locale locale = iresearch::locale_utils::locale("*");
+    auto locale = irs::locale_utils::locale("*", irs::string_ref::NIL);
 
     ASSERT_EQ(std::string("*"), std::use_facet<boost::locale::info>(locale).name());
     ASSERT_FALSE(std::use_facet<boost::locale::info>(locale).utf8());
   }
 
   {
-    std::locale locale = iresearch::locale_utils::locale("C");
+    auto locale = irs::locale_utils::locale("C", irs::string_ref::NIL);
 
     ASSERT_EQ(std::string("C"), std::use_facet<boost::locale::info>(locale).name());
     ASSERT_FALSE(std::use_facet<boost::locale::info>(locale).utf8());
   }
 
   {
-    std::locale locale = iresearch::locale_utils::locale("en");
+    auto locale = irs::locale_utils::locale("en", irs::string_ref::NIL);
 
     ASSERT_EQ(std::string("en"), std::use_facet<boost::locale::info>(locale).name());
     ASSERT_FALSE(std::use_facet<boost::locale::info>(locale).utf8());
   }
 
   {
-    std::locale locale = iresearch::locale_utils::locale("en_US");
+    auto locale = irs::locale_utils::locale("en_US", irs::string_ref::NIL);
 
     ASSERT_EQ(std::string("en_US"), std::use_facet<boost::locale::info>(locale).name());
     ASSERT_FALSE(std::use_facet<boost::locale::info>(locale).utf8());
   }
 
   {
-    std::locale locale = iresearch::locale_utils::locale("en_US.UTF-8");
+    auto locale = irs::locale_utils::locale("en_US.UTF-8", irs::string_ref::NIL);
 
     ASSERT_EQ(std::string("en_US.utf-8"), std::use_facet<boost::locale::info>(locale).name());
     ASSERT_TRUE(std::use_facet<boost::locale::info>(locale).utf8());
   }
 
   {
-    std::locale locale = iresearch::locale_utils::locale("ru_RU.KOI8-R");
+    auto locale = irs::locale_utils::locale("ru_RU.KOI8-R", irs::string_ref::NIL);
 
     ASSERT_EQ(std::string("ru_RU.koi8-r"), std::use_facet<boost::locale::info>(locale).name());
     ASSERT_FALSE(std::use_facet<boost::locale::info>(locale).utf8());
   }
 
   {
-    std::locale locale = iresearch::locale_utils::locale("ru_RU.KOI8-R", true);
+    auto locale = irs::locale_utils::locale("ru_RU.KOI8-R", "UTF-8");
 
     ASSERT_EQ(std::string("ru_RU.utf-8"), std::use_facet<boost::locale::info>(locale).name());
     ASSERT_TRUE(std::use_facet<boost::locale::info>(locale).utf8());
   }
 
   {
-    std::locale locale = iresearch::locale_utils::locale("InvalidString");
+    auto locale = irs::locale_utils::locale("InvalidString", irs::string_ref::NIL);
 
     ASSERT_EQ(std::string("invalidstring"), std::use_facet<boost::locale::info>(locale).name());
   }
@@ -785,11 +791,11 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_properties) {
 }
 
 TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_ascii_non_unicode) {
-  auto c = irs::locale_utils::locale("C", false);
-  auto ru0 = irs::locale_utils::locale("ru_RU.CP1251", false);
-  auto ru1 = irs::locale_utils::locale("ru_RU.KOI8-R", false);
-  auto zh0 = irs::locale_utils::locale("zh_CN.BIG5", false);
-  auto zh1 = irs::locale_utils::locale("zh_CN.UTF-8", false);
+  auto c = irs::locale_utils::locale("C", irs::string_ref::NIL, false);
+  auto ru0 = irs::locale_utils::locale("ru_RU.CP1251", irs::string_ref::NIL, false);
+  auto ru1 = irs::locale_utils::locale("ru_RU.KOI8-R", irs::string_ref::NIL, false);
+  auto zh0 = irs::locale_utils::locale("zh_CN.BIG5", irs::string_ref::NIL, false);
+  auto zh1 = irs::locale_utils::locale("zh_CN.UTF-8", irs::string_ref::NIL, false);
 
   // ascii (char)
   {
@@ -956,11 +962,11 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_ascii_non_unicode) {
 }
 
 TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_ascii_unicode) {
-  auto c = irs::locale_utils::locale("C", true);
-  auto ru0 = irs::locale_utils::locale("ru_RU.CP1251", true);
-  auto ru1 = irs::locale_utils::locale("ru_RU.KOI8-R", true);
-  auto zh0 = irs::locale_utils::locale("zh_CN.BIG5", true);
-  auto zh1 = irs::locale_utils::locale("zh_CN.UTF-8", true);
+  auto c = irs::locale_utils::locale("C", irs::string_ref::NIL, true);
+  auto ru0 = irs::locale_utils::locale("ru_RU.CP1251", irs::string_ref::NIL, true);
+  auto ru1 = irs::locale_utils::locale("ru_RU.KOI8-R", irs::string_ref::NIL, true);
+  auto zh0 = irs::locale_utils::locale("zh_CN.BIG5", irs::string_ref::NIL, true);
+  auto zh1 = irs::locale_utils::locale("zh_CN.UTF-8", irs::string_ref::NIL, true);
 
   // ascii (char)
   {
@@ -1126,11 +1132,11 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_ascii_unicode) {
 }
 
 TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_non_unicode) {
-  auto c = irs::locale_utils::locale("C", false);
-  auto ru0 = irs::locale_utils::locale("ru_RU.CP1251", false);
-  auto ru1 = irs::locale_utils::locale("ru_RU.KOI8-R", false);
-  auto zh0 = irs::locale_utils::locale("zh_CN.BIG5", false);
-  auto zh1 = irs::locale_utils::locale("zh_CN.UTF-8", false);
+  auto c = irs::locale_utils::locale("C", irs::string_ref::NIL, false);
+  auto ru0 = irs::locale_utils::locale("ru_RU.CP1251", irs::string_ref::NIL, false);
+  auto ru1 = irs::locale_utils::locale("ru_RU.KOI8-R", irs::string_ref::NIL, false);
+  auto zh0 = irs::locale_utils::locale("zh_CN.BIG5", irs::string_ref::NIL, false);
+  auto zh1 = irs::locale_utils::locale("zh_CN.UTF-8", irs::string_ref::NIL, false);
 
   // single-byte charset (char) koi8-r
   {
@@ -1375,11 +1381,11 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_non_unic
 }
 
 TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_unicode) {
-  auto c = irs::locale_utils::locale("C", true);
-  auto ru0 = irs::locale_utils::locale("ru_RU.CP1251", true);
-  auto ru1 = irs::locale_utils::locale("ru_RU.KOI8-R", true);
-  auto zh0 = irs::locale_utils::locale("zh_CN.BIG5", true);
-  auto zh1 = irs::locale_utils::locale("zh_CN.UTF-8", true);
+  auto c = irs::locale_utils::locale("C", irs::string_ref::NIL, true);
+  auto ru0 = irs::locale_utils::locale("ru_RU.CP1251", irs::string_ref::NIL, true);
+  auto ru1 = irs::locale_utils::locale("ru_RU.KOI8-R", irs::string_ref::NIL, true);
+  auto zh0 = irs::locale_utils::locale("zh_CN.BIG5", irs::string_ref::NIL, true);
+  auto zh1 = irs::locale_utils::locale("zh_CN.UTF-8", irs::string_ref::NIL, true);
 
   // single-byte charset (char) koi8-r
   {
@@ -1624,11 +1630,11 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_unicode)
 }
 
 TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion) {
-  auto c = irs::locale_utils::locale("C");
-  auto ru0 = irs::locale_utils::locale("ru_RU.CP1251");
-  auto ru1 = irs::locale_utils::locale("ru_RU.KOI8-R");
-  auto zh0 = irs::locale_utils::locale("zh_CN.BIG5");
-  auto zh1 = irs::locale_utils::locale("zh_CN.UTF-8");
+  auto c = irs::locale_utils::locale("C", irs::string_ref::NIL);
+  auto ru0 = irs::locale_utils::locale("ru_RU.CP1251", irs::string_ref::NIL);
+  auto ru1 = irs::locale_utils::locale("ru_RU.KOI8-R", irs::string_ref::NIL);
+  auto zh0 = irs::locale_utils::locale("zh_CN.BIG5", irs::string_ref::NIL);
+  auto zh1 = irs::locale_utils::locale("zh_CN.UTF-8", irs::string_ref::NIL);
 
   // multi-byte charset (char) Chinese (from big5)
   {
@@ -2110,7 +2116,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_info) {
   }
 
   {
-    std::locale locale = iresearch::locale_utils::locale(nullptr);
+    auto locale = iresearch::locale_utils::locale(irs::string_ref::NIL);
 
     ASSERT_EQ(std::string(""), iresearch::locale_utils::country(locale));
     ASSERT_EQ(std::string("us-ascii"), iresearch::locale_utils::encoding(locale));

@@ -77,27 +77,20 @@ IRESEARCH_API const irs::string_ref& encoding(std::locale const& locale);
 IRESEARCH_API const irs::string_ref& language(std::locale const& locale);
 
 /**
- * @brief create a locale from czName
- * @param czName name of the locale to create (nullptr == "C")
- * @param bForceUTF8 force locale to have UTF8 encoding
- **/
-IRESEARCH_API std::locale locale(char const* czName, bool bForceUTF8 = false);
-
-/**
- * @brief create a locale from sName
- * @param sName name of the locale to create
- * @param bForceUTF8 force locale to have UTF8 encoding
- **/
-IRESEARCH_API std::locale locale(std::string const& sName, bool bForceUTF8 = false);
-
-/**
  * @brief build a locale from <czLanguage>_<czCountry>.<czEncoding>@<czVariant>
- * @param sLanguage locale language (required)
- * @param sCountry locale country
- * @param sEncoding locale character encoding
- * @param sVariant locale additional back-end specific parameters
+ * @param language locale language (required)
+ * @param country locale country
+ * @param encoding locale character encoding
+ * @param variant locale additional back-end specific parameters
+ * @param forceUnicodeSystem force the internal system encoding to be unicode
  **/
-IRESEARCH_API std::locale locale(std::string const& sLanguage, std::string const& sCountry, std::string const& sEncoding, std::string const& sVariant = "");
+IRESEARCH_API std::locale locale(
+  const std::string& language,
+  const std::string& country,
+  const std::string& encoding,
+  const std::string& sVariant = "",
+  bool forceUnicodeSystem = true
+);
 
 /**
  * @brief extract the locale name from a locale

@@ -63,7 +63,7 @@ using namespace iresearch::analysis;
 
 TEST_F(TextAnalyzerParserTestSuite, test_nbsp_whitespace) {
   std::unordered_set<std::string> emptySet;
-  std::locale locale = iresearch::locale_utils::locale(nullptr, true); // utf8 encoding used bellow
+  auto locale = irs::locale_utils::locale("C.UTF-8"); // utf8 encoding used bellow
   std::string sField = "test field";
   std::wstring sDataUCS2 = L"1,24\u00A0prosenttia"; // 00A0 == non-breaking whitespace
   std::string data(boost::locale::conv::utf_to_utf<char>(sDataUCS2));

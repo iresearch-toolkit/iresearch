@@ -285,11 +285,6 @@ class text_field : public tests::field_base {
  private:
   virtual bool write(irs::data_output&) const { return false; }
 
-  static std::locale& get_locale() {
-    static auto locale = iresearch::locale_utils::locale(nullptr, true);
-    return locale;
-  }
-
   std::unique_ptr<token_stream_payload> pay_stream_;
   irs::analysis::analyzer::ptr token_stream_;
   T value_;
