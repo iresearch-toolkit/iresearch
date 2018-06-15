@@ -38,7 +38,9 @@ NS_ROOT
 
 DEFINE_ATTRIBUTE_TYPE(memory_allocator);
 
-/*static*/ std::unique_ptr<byte_type[]> memory_allocator::buffer::make(size_t size) {
+/*static*/ memory_allocator::buffer::ptr memory_allocator::buffer::make(
+    size_t size
+) {
   return memory::make_unique<byte_type[]>(size);
 }
 
