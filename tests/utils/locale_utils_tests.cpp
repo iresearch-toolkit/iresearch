@@ -278,15 +278,27 @@ TEST_F(LocaleUtilsTestSuite, test_get_locale) {
     ASSERT_EQ(std::string("koi8-r"), irs::locale_utils::encoding(locale));
     ASSERT_FALSE(irs::locale_utils::utf8(locale));
   }
-/* FIXME TODO Boost returns incorrect result codes on some implementations, uncomment once Boost is no longer used
+
   {
-    ASSERT_ANY_THROW(irs::locale_utils::locale(nullptr, "InvalidString", true));
+    auto locale = irs::locale_utils::locale(nullptr, "InvalidString", true);
+
+    ASSERT_EQ(std::string("*"), locale.name());
+    ASSERT_EQ(std::string("c"), irs::locale_utils::language(locale));
+    ASSERT_EQ(std::string(""), irs::locale_utils::country(locale));
+    ASSERT_EQ(std::string("invalidstring"), irs::locale_utils::encoding(locale));
+    ASSERT_FALSE(irs::locale_utils::utf8(locale));
   }
 
   {
-    ASSERT_ANY_THROW(irs::locale_utils::locale(nullptr, "InvalidString", false));
+    auto locale = irs::locale_utils::locale(nullptr, "InvalidString", false);
+
+    ASSERT_EQ(std::string("*"), locale.name());
+    ASSERT_EQ(std::string("c"), irs::locale_utils::language(locale));
+    ASSERT_EQ(std::string(""), irs::locale_utils::country(locale));
+    ASSERT_EQ(std::string("invalidstring"), irs::locale_utils::encoding(locale));
+    ASSERT_FALSE(irs::locale_utils::utf8(locale));
   }
-*/
+
   {
     auto locale = irs::locale_utils::locale("en_US", nullptr, true);
 
@@ -1001,15 +1013,11 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_ascii_unicode) {
       char16_t* buf16_next;
       char buf8[12];
       char* buf8_next;
-  /* FIXME TODO Boost returns incorrect result codes on some implementations, uncomment once Boost is no longer used
       ASSERT_EQ(
         std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
-
-*/
         cvt.in(state, &from[0], &from[0] + from.size(), from_cnext, buf16, buf16 + 1, buf16_next)
-/*
       );
-*/;
+
       ASSERT_EQ(&from[1], from_cnext);
       ASSERT_EQ(&buf16[1], buf16_next);
 
@@ -1028,14 +1036,11 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_ascii_unicode) {
       for (size_t i = 0, count = from.size(); i < count; ++i) {
         ASSERT_EQ(char16_t(from[i]), buf16[i]);
       }
-/* FIXME TODO Boost returns incorrect result codes on some implementations, uncomment once Boost is no longer used
       ASSERT_EQ(
         std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
-*/
         cvt.out(state, buf16, buf16 + IRESEARCH_COUNTOF(buf16), buf16_cnext, buf8, buf8 + 1, buf8_next)
-/*
       );
-*/;
+
       ASSERT_EQ(&buf16[1], buf16_cnext);
       ASSERT_EQ(&buf8[1], buf8_next);
 
@@ -1067,14 +1072,12 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_ascii_unicode) {
       char32_t* buf32_next;
       char buf8[12];
       char* buf8_next;
-/* FIXME TODO Boost returns incorrect result codes on some implementations, uncomment once Boost is no longer used
+
       ASSERT_EQ(
         std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
-*/
         cvt.in(state, &from[0], &from[0] + from.size(), from_cnext, buf32, buf32 + 1, buf32_next)
-/*
       );
-*/;
+
       ASSERT_EQ(&from[1], from_cnext);
       ASSERT_EQ(&buf32[1], buf32_next);
 
@@ -1093,14 +1096,12 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_ascii_unicode) {
       for (size_t i = 0, count = from.size(); i < count; ++i) {
         ASSERT_EQ(char32_t(from[i]), buf32[i]);
       }
-/* FIXME TODO Boost returns incorrect result codes on some implementations, uncomment once Boost is no longer used
+
       ASSERT_EQ(
         std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
-*/
         cvt.out(state, buf32, buf32 + IRESEARCH_COUNTOF(buf32), buf32_cnext, buf8, buf8 + 1, buf8_next)
-/*
       );
-*/;
+
       ASSERT_EQ(&buf32[1], buf32_cnext);
       ASSERT_EQ(&buf8[1], buf8_next);
 
@@ -1124,12 +1125,12 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_ascii_unicode) {
   #endif
 }
 
-TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion) {
-  auto c = irs::locale_utils::locale("C");
-  auto ru0 = irs::locale_utils::locale("ru_RU.CP1251");
-  auto ru1 = irs::locale_utils::locale("ru_RU.KOI8-R");
-  auto zh0 = irs::locale_utils::locale("zh_CN.BIG5");
-  auto zh1 = irs::locale_utils::locale("zh_CN.UTF-8");
+TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_non_unicode) {
+  auto c = irs::locale_utils::locale("C", false);
+  auto ru0 = irs::locale_utils::locale("ru_RU.CP1251", false);
+  auto ru1 = irs::locale_utils::locale("ru_RU.KOI8-R", false);
+  auto zh0 = irs::locale_utils::locale("zh_CN.BIG5", false);
+  auto zh1 = irs::locale_utils::locale("zh_CN.UTF-8", false);
 
   // single-byte charset (char) koi8-r
   {
@@ -1160,6 +1161,60 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion) {
 
     ASSERT_EQ(koi8r + IRESEARCH_COUNTOF(koi8r), koi8r_cnext);
     ASSERT_EQ(buf + IRESEARCH_COUNTOF(buf), buf_next);
+
+    ASSERT_EQ(
+      std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
+      cvt_cp1251.out(state, buf, buf + IRESEARCH_COUNTOF(buf), buf_cnext, out, out + 1, out_next)
+    );
+    ASSERT_EQ(&buf[1], buf_cnext);
+    ASSERT_EQ(&out[1], out_next);
+
+    for (size_t i = 0, count = 1; i < count; ++i) {
+      ASSERT_EQ(cp1251[i], out[i]);
+    }
+
+    ASSERT_EQ(
+      std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
+      cvt_cp1251.out(state, buf, buf + IRESEARCH_COUNTOF(buf), buf_cnext, out, out + IRESEARCH_COUNTOF(out), out_next)
+    );
+
+    ASSERT_EQ(buf + IRESEARCH_COUNTOF(buf), buf_cnext);
+    ASSERT_EQ(out + IRESEARCH_COUNTOF(out), out_next);
+
+    for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
+      ASSERT_EQ(cp1251[i], out[i]);
+    }
+*/
+  }
+
+  // single-byte charset (wchar) koi8-r
+  {
+    auto& cvt_cp1251 = std::use_facet<std::codecvt<wchar_t, char, mbstate_t>>(ru0);
+    auto& cvt_koi8r = std::use_facet<std::codecvt<wchar_t, char, mbstate_t>>(ru1);
+    mbstate_t state = mbstate_t();
+    char cp1251[] = { char(0xe2), char(0xf5), char(0xee), char(0xe4), char(0xff), char(0xf9), char(0xe8), char(0xe5), ' ', char(0xe4), char(0xe0), char(0xed), char(0xed), char(0xfb), char(0xe5) };
+    char koi8r[] =  { char(0xd7), char(0xc8), char(0xcf), char(0xc4), char(0xd1), char(0xdd), char(0xc9), char(0xc5), ' ', char(0xc4), char(0xc1), char(0xce), char(0xce), char(0xd9), char(0xc5) };
+    const char* koi8r_cnext;
+    wchar_t buf[16];
+    const wchar_t* buf_cnext;
+    wchar_t* buf_next;
+    char out[16];
+    char* out_next;
+/* FIXME TODO MSVC Boost implementation of codecvt fail to convert from koi8, others do it incorrectly
+    ASSERT_EQ(
+      std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
+      cvt_koi8r.in(state, koi8r, koi8r + IRESEARCH_COUNTOF(koi8r), koi8r_cnext, buf, buf + 1, buf_next)
+    );
+    ASSERT_EQ(&koi8r[1], koi8r_cnext);
+    ASSERT_EQ(&buf[1], buf_next);
+
+    ASSERT_EQ(
+      std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
+      cvt_koi8r.in(state, koi8r, koi8r + IRESEARCH_COUNTOF(koi8r), koi8r_cnext, buf, buf + IRESEARCH_COUNTOF(buf), buf_next)
+    );
+
+    ASSERT_EQ(koi8r + IRESEARCH_COUNTOF(koi8r), koi8r_cnext);
+    ASSERT_EQ(buf + IRESEARCH_COUNTOF(buf) -1, buf_next); // FIXME TODO Boost incorrectly sets buf_next, remove -1
 
     ASSERT_EQ(
       std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
@@ -1317,6 +1372,69 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion) {
     }
 
   #endif
+}
+
+TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_unicode) {
+  auto c = irs::locale_utils::locale("C", true);
+  auto ru0 = irs::locale_utils::locale("ru_RU.CP1251", true);
+  auto ru1 = irs::locale_utils::locale("ru_RU.KOI8-R", true);
+  auto zh0 = irs::locale_utils::locale("zh_CN.BIG5", true);
+  auto zh1 = irs::locale_utils::locale("zh_CN.UTF-8", true);
+
+  // single-byte charset (char) koi8-r
+  {
+    auto& cvt_cp1251 = std::use_facet<std::codecvt<char, char, mbstate_t>>(ru0);
+    auto& cvt_koi8r = std::use_facet<std::codecvt<char, char, mbstate_t>>(ru1);
+    mbstate_t state = mbstate_t();
+    char cp1251[] = { char(0xe2), char(0xf5), char(0xee), char(0xe4), char(0xff), char(0xf9), char(0xe8), char(0xe5), ' ', char(0xe4), char(0xe0), char(0xed), char(0xed), char(0xfb), char(0xe5) };
+    char koi8r[] =  { char(0xd7), char(0xc8), char(0xcf), char(0xc4), char(0xd1), char(0xdd), char(0xc9), char(0xc5), ' ', char(0xc4), char(0xc1), char(0xce), char(0xce), char(0xd9), char(0xc5) };
+    const char* koi8r_cnext;
+    char buf[16];
+    const char* buf_cnext;
+    char* buf_next;
+    char out[16];
+    char* out_next;
+
+/* FIXME TODO Boost implementation of codecvt fails to convert from koi8
+    ASSERT_EQ(
+      std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
+      cvt_koi8r.in(state, koi8r, koi8r + IRESEARCH_COUNTOF(koi8r), koi8r_cnext, buf, buf + 1, buf_next)
+    );
+    ASSERT_EQ(&koi8r[1], koi8r_cnext);
+    ASSERT_EQ(&buf[1], buf_next);
+
+    ASSERT_EQ(
+      std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
+      cvt_koi8r.in(state, koi8r, koi8r + IRESEARCH_COUNTOF(koi8r), koi8r_cnext, buf, buf + IRESEARCH_COUNTOF(buf), buf_next)
+    );
+
+    ASSERT_EQ(koi8r + IRESEARCH_COUNTOF(koi8r), koi8r_cnext);
+    ASSERT_EQ(buf + IRESEARCH_COUNTOF(buf), buf_next);
+
+    ASSERT_EQ(
+      std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
+      cvt_cp1251.out(state, buf, buf + IRESEARCH_COUNTOF(buf), buf_cnext, out, out + 1, out_next)
+    );
+    ASSERT_EQ(&buf[1], buf_cnext);
+    ASSERT_EQ(&out[1], out_next);
+
+    for (size_t i = 0, count = 1; i < count; ++i) {
+      ASSERT_EQ(cp1251[i], out[i]);
+    }
+
+    ASSERT_EQ(
+      std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
+      cvt_cp1251.out(state, buf, buf + IRESEARCH_COUNTOF(buf), buf_cnext, out, out + IRESEARCH_COUNTOF(out), out_next)
+    );
+
+    ASSERT_EQ(buf + IRESEARCH_COUNTOF(buf), buf_cnext);
+    ASSERT_EQ(out + IRESEARCH_COUNTOF(out), out_next);
+
+    for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
+      ASSERT_EQ(cp1251[i], out[i]);
+    }
+*/
+  }
 
   // single-byte charset (wchar) koi8-r
   {
@@ -1371,6 +1489,146 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion) {
     }
 */
   }
+
+  // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
+  // due to a missing export, as per their comment:
+  //   This is an active bug in our database (VSO#143857), which we'll investigate
+  //   for a future release, but we're currently working on higher priority things
+  #if !defined(_MSC_VER) || _MSC_VER <= 1800 || !defined(_DLL)
+
+    // single-byte charset (char16) koi8-r
+    {
+      auto& cvt_koi8r = std::use_facet<std::codecvt<char16_t, char, mbstate_t>>(ru1);
+      mbstate_t state = mbstate_t();
+      char koi8r[] =  { char(0xd7), char(0xc8), char(0xcf), char(0xc4), char(0xd1), char(0xdd), char(0xc9), char(0xc5), ' ', char(0xc4), char(0xc1), char(0xce), char(0xce), char(0xd9), char(0xc5) };
+      char16_t utf16[] = { 0x0432, 0x0445, 0x043E, 0x0434, 0x044F, 0x0449, 0x0438, 0x0435, 0x0020, 0x0434, 0x0430, 0x043D, 0x043D, 0x044B, 0x0435 };
+      const char* koi8r_cnext;
+      const char16_t* utf16_cnext;
+      char16_t buf[16];
+      char16_t* buf_next;
+      char out[16];
+      char* out_next;
+
+/* FIXME TODO Boost implementation of codecvt fails to convert from koi8
+      ASSERT_EQ(
+        std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
+        cvt_koi8r.in(state, koi8r, koi8r + IRESEARCH_COUNTOF(koi8r), koi8r_cnext, buf, buf + 1, buf_next)
+      );
+      ASSERT_EQ(&koi8r[1], koi8r_cnext);
+      ASSERT_EQ(&buf[1], buf_next);
+
+      for (size_t i = 0, count = 1; i < count; ++i) {
+        ASSERT_EQ(utf16[i], buf[i]);
+      }
+
+      ASSERT_EQ(
+        std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
+        cvt_koi8r.in(state, &koi8r[0], &koi8r[0] + IRESEARCH_COUNTOF(koi8r), koi8r_cnext, buf, buf + IRESEARCH_COUNTOF(buf), buf_next)
+      );
+
+      ASSERT_EQ(&koi8r[0] + IRESEARCH_COUNTOF(koi8r), koi8r_cnext);
+      ASSERT_EQ(&buf[0] + IRESEARCH_COUNTOF(buf), buf_next);
+
+      for (size_t i = 0, count = IRESEARCH_COUNTOF(buf); i < count; ++i) {
+        ASSERT_EQ(utf16[i], buf[i]);
+      }
+
+      ASSERT_EQ(
+        std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
+        cvt_koi8r.out(state, utf16, utf16 + IRESEARCH_COUNTOF(utf16), utf16_cnext, out, out + 1, out_next)
+      );
+      ASSERT_EQ(&utf16[1], utf16_cnext);
+      ASSERT_EQ(&out[1], out_next);
+
+      for (size_t i = 0, count = 1; i < count; ++i) {
+        ASSERT_EQ(koi8r[i], out[i]);
+      }
+
+      ASSERT_EQ(
+        std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
+        cvt_koi8r.out(state, utf16, utf16 + IRESEARCH_COUNTOF(utf16), utf16_cnext, out, out + IRESEARCH_COUNTOF(out), out_next)
+      );
+
+      ASSERT_EQ(utf16 + IRESEARCH_COUNTOF(utf16), utf16_cnext);
+      ASSERT_EQ(out + IRESEARCH_COUNTOF(out), out_next);
+
+      for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
+        ASSERT_EQ(koi8r[i], out[i]);
+      }
+*/
+    }
+
+    // single-byte charset (char32) koi8-r
+    {
+      auto& cvt_koi8r = std::use_facet<std::codecvt<char32_t, char, mbstate_t>>(ru1);
+      mbstate_t state = mbstate_t();
+      char koi8r[] =  { char(0xd7), char(0xc8), char(0xcf), char(0xc4), char(0xd1), char(0xdd), char(0xc9), char(0xc5), ' ', char(0xc4), char(0xc1), char(0xce), char(0xce), char(0xd9), char(0xc5) };
+      char32_t utf32[] = { 0x0432, 0x0445, 0x043E, 0x0434, 0x044F, 0x0449, 0x0438, 0x0435, 0x0020, 0x0434, 0x0430, 0x043D, 0x043D, 0x044B, 0x0435 };
+      const char* koi8r_cnext;
+      const char32_t* utf32_cnext;
+      char32_t buf[16];
+      char32_t* buf_next;
+      char out[16];
+      char* out_next;
+
+/* FIXME TODO Boost implementation of codecvt fails to convert from koi8
+      ASSERT_EQ(
+        std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
+        cvt_koi8r.in(state, koi8r, koi8r + IRESEARCH_COUNTOF(koi8r), koi8r_cnext, buf, buf + 1, buf_next)
+      );
+      ASSERT_EQ(&koi8r[1], koi8r_cnext);
+      ASSERT_EQ(&buf[1], buf_next);
+
+      for (size_t i = 0, count = 1; i < count; ++i) {
+        ASSERT_EQ(utf32[i], buf[i]);
+      }
+
+      ASSERT_EQ(
+        std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
+        cvt_koi8r.in(state, &koi8r[0], &koi8r[0] + IRESEARCH_COUNTOF(koi8r), koi8r_cnext, buf, buf + IRESEARCH_COUNTOF(buf), buf_next)
+      );
+
+      ASSERT_EQ(&koi8r[0] + IRESEARCH_COUNTOF(koi8r), koi8r_cnext);
+      ASSERT_EQ(&buf[0] + IRESEARCH_COUNTOF(buf), buf_next);
+
+      for (size_t i = 0, count = IRESEARCH_COUNTOF(buf); i < count; ++i) {
+        ASSERT_EQ(utf32[i], buf[i]);
+      }
+
+      ASSERT_EQ(
+        std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
+        cvt_koi8r.out(state, utf32, utf32 + IRESEARCH_COUNTOF(utf32), utf32_cnext, out, out + 1, out_next)
+      );
+      ASSERT_EQ(&utf32[1], utf32_cnext);
+      ASSERT_EQ(&out[1], out_next);
+
+      for (size_t i = 0, count = 1; i < count; ++i) {
+        ASSERT_EQ(koi8r[i], out[i]);
+      }
+
+      ASSERT_EQ(
+        std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
+        cvt_koi8r.out(state, utf32, utf32 + IRESEARCH_COUNTOF(utf32), utf32_cnext, out, out + IRESEARCH_COUNTOF(out), out_next)
+      );
+
+      ASSERT_EQ(utf32 + IRESEARCH_COUNTOF(utf32), utf32_cnext);
+      ASSERT_EQ(out + IRESEARCH_COUNTOF(out), out_next);
+
+      for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
+        ASSERT_EQ(koi8r[i], out[i]);
+      }
+*/
+    }
+
+  #endif
+}
+
+TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion) {
+  auto c = irs::locale_utils::locale("C");
+  auto ru0 = irs::locale_utils::locale("ru_RU.CP1251");
+  auto ru1 = irs::locale_utils::locale("ru_RU.KOI8-R");
+  auto zh0 = irs::locale_utils::locale("zh_CN.BIG5");
+  auto zh1 = irs::locale_utils::locale("zh_CN.UTF-8");
 
   // multi-byte charset (char) Chinese (from big5)
   {
