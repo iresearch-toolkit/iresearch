@@ -1925,10 +1925,27 @@ TEST_F(LocaleUtilsTestSuite, test_locale_info) {
 }
 
 TEST_F(LocaleUtilsTestSuite, test_locale_num_put) {
+  struct test_numpunct: public std::numpunct<char> {
+    virtual std::string do_grouping() const { return ""; }
+  };
+  struct test_numpunctw: public std::numpunct<char> {
+    virtual std::string do_grouping() const { return ""; }
+  };
+
   auto c = irs::locale_utils::locale("C");
   auto de = irs::locale_utils::locale("de");
   auto en = irs::locale_utils::locale("en.IBM-943"); // EBCDIC
   auto ru = irs::locale_utils::locale("ru_RU.KOI8-R");
+
+  // use constant test configuration for num-punct instead of relying on system
+  c = std::locale(c, new test_numpunct());
+  c = std::locale(c, new test_numpunctw());
+  de = std::locale(de, new test_numpunct());
+  de = std::locale(de, new test_numpunctw());
+  en = std::locale(en, new test_numpunct());
+  en = std::locale(en, new test_numpunctw());
+  ru = std::locale(ru, new test_numpunct());
+  ru = std::locale(ru, new test_numpunctw());
 
   // bool (char)
   {
