@@ -66,12 +66,7 @@ void skip_writer::prepare(
 ) {
   max_levels = std::max(size_t(1), max_levels);
   max_levels = std::min(max_levels, ::max_levels(skip_0_, skip_n_, count));
-
-  // MSVC cannot reserve value_types without a default constructor
-  #if !defined(_MSC_VER)
-    levels_.reserve(max_levels);
-  #endif
-
+  levels_.reserve(max_levels);
   max_levels = std::max(max_levels, levels_.capacity());
 
   // reset existing skip levels
