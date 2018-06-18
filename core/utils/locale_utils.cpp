@@ -708,13 +708,12 @@ std::codecvt_base::result codecvt32_facet::do_out(
 
     // convert one char at a time to track source position to destination position
     do {
-      int32_t buf_size = buf_end - buf_next;
       int32_t buf_used = 0;
 
       static_assert(sizeof(UChar32) == sizeof(intern_type), "sizeof(UChar32) != sizeof(intern_type)");
       u_strFromUTF32(
         buf_next,
-        buf_size,
+        buf_end - buf_next,
         &buf_used, // set to the number of output units corresponding to the transformation of all the input units, even in case of a buffer overflow
         reinterpret_cast<const UChar32*>(from_next),
         1, // 1 char at a time to track source/destination position mapping
@@ -894,7 +893,7 @@ std::codecvt_base::result codecvt8u_facet::do_in(
         to_next,
         to_end - to_next,
         &to_used, // set to the number of output units corresponding to the transformation of all the input units, even in case of a buffer overflow
-        buf,
+        buf_dst_next,
         U_IS_SURROGATE(*buf_dst_next) ? 2 : 1, // 1 char at a time to track source/destination position mapping
         &dst_status
       );
@@ -1002,15 +1001,22 @@ std::codecvt_base::result codecvt8u_facet::do_out(
 
     // convert one char at a time to track source position to destination position
     do {
-      int32_t buf_size = buf_end - buf_next;
+      size_t from_size = 1;
       int32_t buf_used = 0;
+
+      for (auto* from_tail = from_next;
+           !U8_IS_TRAIL(*from_tail)
+           && from_size < U8_MAX_LENGTH
+           && ++from_tail < from_end;
+           ++from_size
+      ); // find tail UTF8 char if possible
 
       u_strFromUTF8(
         buf_next,
-        buf_size,
+        buf_end - buf_next,
         &buf_used, // set to the number of output units corresponding to the transformation of all the input units, even in case of a buffer overflow
         from_next,
-        1, // 1 char at a time to track source/destination position mapping
+        from_size, // 1 char at a time to track source/destination position mapping
         &src_status
       );
 
@@ -1031,11 +1037,16 @@ std::codecvt_base::result codecvt8u_facet::do_out(
         break; // finish copying all successfully converted
       }
 
-      assert(buf_next >= buf && IRESEARCH_COUNTOF(offsets) > size_t(buf_next - buf));
-      offsets[buf_next - buf] = from_next - from; // remember converted position
-      buf_next += buf_used;
-      ++from_next; // +1 for 1 char at a time
-    } while (from_next < from_end);
+      // all of 'buf_used' since if not enough space in 'buf' buffer then would have had U_BUFFER_OVERFLOW_ERROR
+      while (buf_used) {
+        assert(buf_next >= buf && IRESEARCH_COUNTOF(offsets) > size_t(buf_next - buf));
+        offsets[buf_next - buf] = from_next - from; // remember converted position
+        ++buf_next;
+        --buf_used;
+      }
+
+      from_next += from_size; // +1 for 1 char at a time
+    } while (from_next + 3 < from_end); // +3 for possible surrogates
 
     assert(buf_next >= buf && IRESEARCH_COUNTOF(offsets) > size_t(buf_next - buf));
     offsets[buf_next - buf] = from_next - from; // remember past-end position
