@@ -70,6 +70,20 @@
 
 #include "locale_utils.hpp"
 
+NS_BEGIN(std)
+
+// MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
+// due to a missing export, as per their comment:
+//   This is an active bug in our database (VSO#143857), which we'll investigate
+//   for a future release, but we're currently working on higher priority things
+// define the missing variables for at least the static-CRT implementations
+#if defined(_MSC_VER) && _MSC_VER > 1800 && !defined(_DLL)
+  std::locale::id std::codecvt<char16_t, char, _Mbstatet>::id;
+  std::locale::id std::codecvt<char32_t, char, _Mbstatet>::id;
+#endif
+
+NS_END // std
+
 NS_LOCAL
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2721,20 +2735,6 @@ bool utf8(std::locale const& locale) {
 
 NS_END // locale_utils
 NS_END
-
-NS_BEGIN(std)
-
-// MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
-// due to a missing export, as per their comment:
-//   This is an active bug in our database (VSO#143857), which we'll investigate
-//   for a future release, but we're currently working on higher priority things
-// define the missing variables for at least the static-CRT implementations
-#if defined(_MSC_VER) && _MSC_VER > 1800 && !defined(_DLL)
-  std::locale::id std::codecvt<char16_t, char, _Mbstatet>::id;
-  std::locale::id std::codecvt<char32_t, char, _Mbstatet>::id;
-#endif
-
-NS_END // std
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
