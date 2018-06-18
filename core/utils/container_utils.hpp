@@ -236,7 +236,7 @@ MSVC_ONLY(__pragma(warning(pop)))
 NS_BEGIN(memory)
 
 template<typename BucketFactory, size_t Size>
-class IRESEARCH_API_TEMPLATE bucket_allocator {
+class IRESEARCH_API_TEMPLATE bucket_allocator: private util::noncopyable { // noncopyable because of 'pools_'
  public:
   // number of pools
   static const size_t SIZE = Size;
