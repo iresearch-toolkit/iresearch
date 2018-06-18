@@ -33,7 +33,7 @@ NS_ROOT
 NS_BEGIN( locale_utils )
 
 /**
- * @brief create a locale from name
+ * @brief create a locale from name (language[_COUNTRY][.encoding][@variant])
  * @param name name of the locale to create (nullptr == "C")
  * @param encodingOverride force locale to have the specified output encoding (nullptr == take from 'name')
  * @param forceUnicodeSystem force the internal system encoding to be unicode
@@ -75,22 +75,6 @@ IRESEARCH_API const irs::string_ref& encoding(std::locale const& locale);
  * @param locale the locale from which to extract the language
  **/
 IRESEARCH_API const irs::string_ref& language(std::locale const& locale);
-
-/**
- * @brief build a locale from <czLanguage>_<czCountry>.<czEncoding>@<czVariant>
- * @param language locale language (required)
- * @param country locale country
- * @param encoding locale character encoding
- * @param variant locale additional back-end specific parameters
- * @param forceUnicodeSystem force the internal system encoding to be unicode
- **/
-IRESEARCH_API std::locale locale(
-  const std::string& language,
-  const std::string& country,
-  const std::string& encoding,
-  const std::string& sVariant = "",
-  bool forceUnicodeSystem = true
-);
 
 /**
  * @brief extract the locale name from a locale

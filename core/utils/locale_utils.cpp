@@ -2695,35 +2695,6 @@ std::locale locale(
   return get_locale(locale_name, forceUnicodeSystem);
 }
 
-std::locale locale(
-    const std::string& sLanguage,
-    const std::string& sCountry,
-    const std::string& sEncoding,
-    const std::string& sVariant /*= ""*/,
-    bool forceUnicodeSystem /*= true*/
-) {
-  bool bValid = sLanguage.find('_') == std::string::npos && sCountry.find('_') == std::string::npos && sEncoding.find('_') == std::string::npos && sVariant.find('_') == std::string::npos
-              && sLanguage.find('.') == std::string::npos && sCountry.find('.') == std::string::npos && sEncoding.find('.') == std::string::npos && sVariant.find('.') == std::string::npos
-              && sLanguage.find('@') == std::string::npos && sCountry.find('@') == std::string::npos && sEncoding.find('@') == std::string::npos && sVariant.find('@') == std::string::npos;
-  std::string sName = sLanguage;// sLanguage.empty() && sCountry.empty() && (!sEncoding.empty() || !sVariant.empty()) ? "C" : sLanguage;
-
-  if (!bValid || !sCountry.empty()) {
-    sName.append(1, '_').append(sCountry);
-  }
-
-  if (!bValid || !sEncoding.empty()) {
-    sName.append(1, '.').append(sEncoding);
-  }
-
-  if (!bValid || !sVariant.empty()) {
-    sName.append(1, '@').append(sVariant);
-  }
-
-  return irs::locale_utils::locale(
-    sName, irs::string_ref::NIL, forceUnicodeSystem
-  );
-}
-
 const std::string& name(std::locale const& locale) {
   auto* loc = &locale;
 
