@@ -530,7 +530,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_properties) {
     ASSERT_EQ(1, cvt_c.max_length());
     ASSERT_EQ(1, cvt_cp1251.max_length());
     ASSERT_EQ(1, cvt_koi8r.max_length());
-    ASSERT_EQ(sizeof(wchar_t) > 2 ? 6 : 4, cvt_utf8.max_length()); // ICU only provides max_length per char16_t, so multiply by 2
+    ASSERT_EQ(sizeof(wchar_t) > 2 ? 6 : 3, cvt_utf8.max_length()); // ICU only provides max_length per char16_t, so multiply by 2
   }
 
   // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
