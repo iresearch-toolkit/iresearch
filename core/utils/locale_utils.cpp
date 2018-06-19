@@ -78,8 +78,8 @@ NS_BEGIN(std)
 //   for a future release, but we're currently working on higher priority things
 // define the missing variables for at least the static-CRT implementations
 #if defined(_MSC_VER) && _MSC_VER > 1800 && !defined(_DLL)
-  __declspec(dllexport) std::locale::id std::codecvt<char16_t, char, _Mbstatet>::id;
-  __declspec(dllexport) std::locale::id std::codecvt<char32_t, char, _Mbstatet>::id;
+  __declspec(dllexport) std::locale::id std::codecvt<char16_t, char, struct mbstate_t>::id;
+  __declspec(dllexport) std::locale::id std::codecvt<char32_t, char, struct mbstate_t>::id;
 #endif
 
 NS_END // std

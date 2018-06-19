@@ -144,7 +144,7 @@
     && (((_MSC_FULL_VER >= 191125506) && (_MSC_FULL_VER <= 191125508)) \
         || ((_MSC_FULL_VER >= 191125542) && (_MSC_FULL_VER <= 191125547)) \
         || ((_MSC_FULL_VER >= 191225830) && (_MSC_FULL_VER <= 191225835)) \
-        || ((_MSC_FULL_VER >= 191326128) && (_MSC_FULL_VER <= 191326129)))
+        || ((_MSC_FULL_VER >= 191326128) && (_MSC_FULL_VER <= 191326132)))
   #define MSVC2017_3456_OPTIMIZED_WORKAROUND(...) __VA_ARGS__
 #else
   #define MSVC2017_3456_OPTIMIZED_WORKAROUND(...)
@@ -178,9 +178,9 @@
   #define MSVC2015_OPTIMIZED_ONLY(...)
 #endif
 
-// hook for MSVC2017-only code (2017.2 || 2017.3/2017.4 || 2017.5 || 2017.6)
+// hook for MSVC2017-only code (2017.2 || 2017.3/2017.4 || 2017.5 || 2017.6 || 2017.7)
 #if defined(_MSC_VER) \
-    && (_MSC_VER == 1910 || _MSC_VER == 1911 || _MSC_VER == 1912 || _MSC_VER == 1913)
+    && (_MSC_VER == 1910 || _MSC_VER == 1911 || _MSC_VER == 1912 || _MSC_VER == 1913 || _MSC_VER == 1914)
   #define MSVC2017_ONLY(...) __VA_ARGS__
 #else
   #define MSVC2017_ONLY(...)
