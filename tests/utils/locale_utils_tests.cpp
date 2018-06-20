@@ -54,7 +54,7 @@ using namespace iresearch::locale_utils;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
-
+/*
 TEST_F(LocaleUtilsTestSuite, test_get_converter) {
   {
     auto expected = irs::locale_utils::locale("C", irs::string_ref::NIL, true);
@@ -70,7 +70,7 @@ TEST_F(LocaleUtilsTestSuite, test_get_converter) {
       ASSERT_EQ((&std::use_facet<std::codecvt<char16_t, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<char16_t>(nullptr)));
       ASSERT_EQ((&std::use_facet<std::codecvt<char32_t, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<char32_t>(nullptr)));
     #endif
-*/
+* /
   }
 
   {
@@ -217,7 +217,7 @@ TEST_F(LocaleUtilsTestSuite, test_get_converter) {
     #endif
   }
 }
-
+*/
 TEST_F(LocaleUtilsTestSuite, test_get_locale) {
   {
     auto locale = irs::locale_utils::locale(irs::string_ref::NIL, irs::string_ref::NIL, true);
@@ -532,7 +532,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_properties) {
     ASSERT_EQ(1, cvt_koi8r.max_length());
     ASSERT_EQ(sizeof(wchar_t) > 2 ? 6 : 3, cvt_utf8.max_length()); // ICU only provides max_length per char16_t, so multiply by 2
   }
-
+/*
   // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
   // due to a missing export, as per their comment:
   //   This is an active bug in our database (VSO#143857), which we'll investigate
@@ -610,6 +610,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_properties) {
     }
 
   #endif
+*/
 }
 
 TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_ascii_non_unicode) {
@@ -652,7 +653,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_ascii_non_unicode) {
     out << L"out test data" << std::endl;
     ASSERT_EQ(std::wstring(L"out test data\n"), out.str());
   }
-
+/*
   // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
   // due to a missing export, as per their comment:
   //   This is an active bug in our database (VSO#143857), which we'll investigate
@@ -781,6 +782,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_ascii_non_unicode) {
     }
 
   #endif
+*/
 }
 
 TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_ascii_unicode) {
@@ -823,7 +825,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_ascii_unicode) {
     out << L"out test data" << std::endl;
     ASSERT_EQ(std::wstring(L"out test data\n"), out.str());
   }
-
+/*
   // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
   // due to a missing export, as per their comment:
   //   This is an active bug in our database (VSO#143857), which we'll investigate
@@ -951,6 +953,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_ascii_unicode) {
     }
 
   #endif
+*/
 }
 
 TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_non_unicode) {
@@ -1068,7 +1071,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_non_unic
     }
 */
   }
-
+/*
   // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
   // due to a missing export, as per their comment:
   //   This is an active bug in our database (VSO#143857), which we'll investigate
@@ -1134,7 +1137,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_non_unic
       for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
         ASSERT_EQ(koi8r[i], out[i]);
       }
-*/
+* /
     }
 
     // single-byte charset (char32) koi8-r
@@ -1196,10 +1199,11 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_non_unic
       for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
         ASSERT_EQ(koi8r[i], out[i]);
       }
-*/
+* /
     }
 
   #endif
+*/
 }
 
 TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_unicode) {
@@ -1314,7 +1318,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_unicode)
       ASSERT_EQ(cp1251[i], out[i]);
     }
   }
-
+/*
   // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
   // due to a missing export, as per their comment:
   //   This is an active bug in our database (VSO#143857), which we'll investigate
@@ -1442,6 +1446,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_unicode)
     }
 
   #endif
+*/
 }
 
 TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion) {
@@ -1550,7 +1555,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion) {
     }
 */
   }
-
+/*
   // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
   // due to a missing export, as per their comment:
   //   This is an active bug in our database (VSO#143857), which we'll investigate
@@ -1617,7 +1622,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion) {
       for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
         ASSERT_EQ(utf8[i], out[i]);
       }
-*/
+* /
     }
 
     // multi-byte charset (char16) Chinese (from utf8)
@@ -1680,7 +1685,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion) {
       for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
         ASSERT_EQ(big5[i], out[i]);
       }
-*/
+* /
     }
 
     // multi-byte charset (char32) Chinese (from big5)
@@ -1743,7 +1748,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion) {
       for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
         ASSERT_EQ(utf8[i], out[i]);
       }
-*/
+* /
     }
 
     // multi-byte charset (char32) Chinese (from utf8)
@@ -1806,11 +1811,11 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion) {
       for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
         ASSERT_EQ(big5[i], out[i]);
       }
-*/
+* /
     }
 
   #endif
-
+*/
   // multi-byte charset (wchar) Chinese (from big5)
   {
     auto& cvt_big5 = std::use_facet<std::codecvt<wchar_t, char, mbstate_t>>(zh0);
