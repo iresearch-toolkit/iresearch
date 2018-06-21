@@ -458,7 +458,7 @@ class unbounded_object_pool_base : private util::noncopyable {
   explicit unbounded_object_pool_base(size_t size)
     : pool_(size), free_slots_(pool_.data()) {
     // build up linked list
-    for (auto begin = pool_.begin(), next = begin + 1, end = pool_.end();
+    for (auto begin = pool_.begin(), end = pool_.end(), next = begin < end ? (begin + 1) : end;
          next < end;
          begin = next, ++next) {
       begin->next = &*next;
