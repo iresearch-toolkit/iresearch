@@ -54,7 +54,7 @@ using namespace iresearch::locale_utils;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
-/*
+
 TEST_F(LocaleUtilsTestSuite, test_get_converter) {
   {
     auto expected = irs::locale_utils::locale("C", irs::string_ref::NIL, true);
@@ -217,7 +217,7 @@ TEST_F(LocaleUtilsTestSuite, test_get_converter) {
     #endif
   }
 }
-*/
+
 TEST_F(LocaleUtilsTestSuite, test_get_locale) {
   {
     auto locale = irs::locale_utils::locale(irs::string_ref::NIL, irs::string_ref::NIL, true);

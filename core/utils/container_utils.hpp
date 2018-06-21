@@ -380,7 +380,7 @@ template<
   typedef typename base_t::allocator_ref_t allocator_ref_t;
   typedef typename base_t::allocator_type allocator_type;
 
-  explicit raw_block_vector(const Allocator& alloc/* = Allocator()*/) NOEXCEPT
+  explicit raw_block_vector(const Allocator& alloc = Allocator()) NOEXCEPT
     : base_t(alloc) {
   }
 
