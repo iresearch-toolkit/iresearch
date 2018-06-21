@@ -2603,7 +2603,7 @@ const std::locale& get_locale(
   //   This is an active bug in our database (VSO#143857), which we'll investigate
   //   for a future release, but we're currently working on higher priority things
   // do not add char16_t/char32_t 'codecvt' instances in the aforementioned case
-  #if !defined(_MSC_VER) || _MSC_VER <= 1800 || defined(_DLL)
+  #if !defined(_MSC_VER) || _MSC_VER <= 1800
     locale = std::locale(
       locale, irs::memory::make_unique<codecvt16_facet>(converter).release()
     );
