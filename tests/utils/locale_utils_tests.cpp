@@ -532,7 +532,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_properties) {
     ASSERT_EQ(1, cvt_koi8r.max_length());
     ASSERT_EQ(sizeof(wchar_t) > 2 ? 6 : 3, cvt_utf8.max_length()); // ICU only provides max_length per char16_t, so multiply by 2
   }
-/*
+
   // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
   // due to a missing export, as per their comment:
   //   This is an active bug in our database (VSO#143857), which we'll investigate
@@ -610,7 +610,6 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_properties) {
     }
 
   #endif
-*/
 }
 
 TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_ascii_non_unicode) {
@@ -653,7 +652,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_ascii_non_unicode) {
     out << L"out test data" << std::endl;
     ASSERT_EQ(std::wstring(L"out test data\n"), out.str());
   }
-/*
+
   // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
   // due to a missing export, as per their comment:
   //   This is an active bug in our database (VSO#143857), which we'll investigate
@@ -782,7 +781,6 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_ascii_non_unicode) {
     }
 
   #endif
-*/
 }
 
 TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_ascii_unicode) {
@@ -825,7 +823,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_ascii_unicode) {
     out << L"out test data" << std::endl;
     ASSERT_EQ(std::wstring(L"out test data\n"), out.str());
   }
-/*
+
   // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
   // due to a missing export, as per their comment:
   //   This is an active bug in our database (VSO#143857), which we'll investigate
@@ -953,7 +951,6 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_ascii_unicode) {
     }
 
   #endif
-*/
 }
 
 TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_non_unicode) {
