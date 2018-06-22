@@ -70,7 +70,7 @@ TEST_F(LocaleUtilsTestSuite, test_get_converter) {
       ASSERT_EQ((&std::use_facet<std::codecvt<char16_t, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<char16_t>(nullptr)));
       ASSERT_EQ((&std::use_facet<std::codecvt<char32_t, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<char32_t>(nullptr)));
     #endif
-* /
+*/
   }
 
   {
