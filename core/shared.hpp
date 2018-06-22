@@ -136,7 +136,7 @@
   #define IMPLICIT_MOVE_WORKAROUND(x) x
 #endif
 
-// hook for MSVC2017.3-7 optimized code
+// hook for MSVC2017.3-8 optimized code
 // these versions produce incorrect code when inlining optimizations are enabled
 // for versions @see https://github.com/lordmulder/MUtilities/blob/master/include/MUtils/Version.h
 #if defined(_MSC_VER) \
@@ -144,10 +144,11 @@
     && (((_MSC_FULL_VER >= 191125506) && (_MSC_FULL_VER <= 191125508)) \
         || ((_MSC_FULL_VER >= 191125542) && (_MSC_FULL_VER <= 191125547)) \
         || ((_MSC_FULL_VER >= 191225830) && (_MSC_FULL_VER <= 191225835)) \
-        || ((_MSC_FULL_VER >= 191326128) && (_MSC_FULL_VER <= 191326132)))
-  #define MSVC2017_3456_OPTIMIZED_WORKAROUND(...) __VA_ARGS__
+        || ((_MSC_FULL_VER >= 191326128) && (_MSC_FULL_VER <= 191326132)) \
+        || ((_MSC_FULL_VER >= 191426430) && (_MSC_FULL_VER <= 191426431)))
+  #define MSVC2017_34567_OPTIMIZED_WORKAROUND(...) __VA_ARGS__
 #else
-  #define MSVC2017_3456_OPTIMIZED_WORKAROUND(...)
+  #define MSVC2017_34567_OPTIMIZED_WORKAROUND(...)
 #endif
 
 // hook for MSVC-only code
