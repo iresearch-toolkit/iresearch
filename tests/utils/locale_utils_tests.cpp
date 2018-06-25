@@ -589,7 +589,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_properties) {
       ASSERT_FALSE(cvt_cp1251.always_noconv());
       ASSERT_FALSE(cvt_koi8r.always_noconv());
       ASSERT_FALSE(cvt_utf8.always_noconv());
-
+std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
       ASSERT_EQ(0, cvt_big5.encoding());
       ASSERT_EQ(1, cvt_c.encoding());
       ASSERT_EQ(1, cvt_cp1251.encoding());
@@ -1068,7 +1068,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_non_unic
     }
 */
   }
-/*
+
   // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
   // due to a missing export, as per their comment:
   //   This is an active bug in our database (VSO#143857), which we'll investigate
@@ -1134,7 +1134,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_non_unic
       for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
         ASSERT_EQ(koi8r[i], out[i]);
       }
-* /
+*/
     }
 
     // single-byte charset (char32) koi8-r
@@ -1196,11 +1196,10 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_non_unic
       for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
         ASSERT_EQ(koi8r[i], out[i]);
       }
-* /
+*/
     }
 
   #endif
-*/
 }
 
 TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_unicode) {
@@ -1315,7 +1314,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_unicode)
       ASSERT_EQ(cp1251[i], out[i]);
     }
   }
-/*
+
   // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
   // due to a missing export, as per their comment:
   //   This is an active bug in our database (VSO#143857), which we'll investigate
@@ -1443,7 +1442,6 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_unicode)
     }
 
   #endif
-*/
 }
 
 TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion) {
