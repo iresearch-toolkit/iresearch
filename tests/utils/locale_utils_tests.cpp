@@ -589,7 +589,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_properties) {
       ASSERT_FALSE(cvt_cp1251.always_noconv());
       ASSERT_FALSE(cvt_koi8r.always_noconv());
       ASSERT_FALSE(cvt_utf8.always_noconv());
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
       ASSERT_EQ(0, cvt_big5.encoding());
       ASSERT_EQ(1, cvt_c.encoding());
       ASSERT_EQ(1, cvt_cp1251.encoding());

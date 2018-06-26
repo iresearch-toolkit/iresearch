@@ -515,7 +515,7 @@ int codecvt32_facet::do_encoding() const NOEXCEPT {
   }
 
   UErrorCode status = U_ZERO_ERROR;
-std::cerr << __FILE__ << ":" << __LINE__ << " '" << context_encoding() << "' |" << ucnv_isFixedWidth(ctx->converter_.get(), &status) << "|" << status << "|" << ucnv_getMinCharSize(ctx->converter_.get()) << "|" << std::endl;
+
   // the exact number of extern_type characters that correspond to one intern_type character, if constant
   return ucnv_isFixedWidth(ctx->converter_.get(), &status)
     ? ucnv_getMinCharSize(ctx->converter_.get()) : 0;
@@ -2605,7 +2605,6 @@ const std::locale& get_locale(
   //   for a future release, but we're currently working on higher priority things
   // do not add char16_t/char32_t 'codecvt' instances in the aforementioned case
   #if !defined(_MSC_VER) || _MSC_VER <= 1800
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     locale = std::locale(
       locale, irs::memory::make_unique<codecvt16_facet>(converter).release()
     );
