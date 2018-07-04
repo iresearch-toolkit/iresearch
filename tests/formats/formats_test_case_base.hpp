@@ -839,6 +839,48 @@ class format_test_case_base : public index_test_base {
     }
   }
 
+  void columns_dense_mask() {
+    iresearch::segment_meta seg("_1", codec());
+    const irs::doc_id_t MAX_DOC = 1026;
+
+    size_t column_id;
+
+    // write docs
+    {
+      auto writer = codec()->get_columnstore_writer();
+      writer->prepare(dir(), seg);
+      auto column = writer->push_column();
+      column_id = column.first;
+      auto& column_handler = column.second;
+
+      for (auto id = irs::type_limits<irs::type_t::doc_id_t>::min(); id <= MAX_DOC; ++id, ++seg.docs_count) {
+        column_handler(id);
+      }
+
+      ASSERT_TRUE(writer->flush());
+    }
+
+    // read documents
+    {
+      irs::bytes_ref actual_value;
+
+      // check 1st segment
+      {
+        auto reader_1 = codec()->get_columnstore_reader();
+        ASSERT_TRUE(reader_1->prepare(dir(), seg));
+
+        auto column = reader_1->column(column_id);
+        ASSERT_NE(nullptr, column);
+        auto values = column->values();
+
+        for (irs::doc_id_t id = 0; id < seg.docs_count; ) {
+          ASSERT_TRUE(values(++id, actual_value));
+          ASSERT_TRUE(actual_value.null());
+        }
+      }
+    }
+  }
+
   void columns_read_write_same_col_empty_repeat() {
     struct csv_doc_template: public csv_doc_generator::doc_template {
       virtual void init() {

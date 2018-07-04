@@ -1923,13 +1923,19 @@ class writer final : public iresearch::columnstore_writer {
 
       // commit previous key and offset unless the 'reset' method has been called
       if (max_ != pending_key_) {
+        if (block_index_.size() >= INDEX_BLOCK_SIZE) {
+          flush_block();
+          min_ = pending_key_;
+          offset_ = block_buf_.size();
+        }
+
         block_index_.push_back(pending_key_, offset_);
         max_ = pending_key_;
       }
 
       // flush block if we've overcome MAX_DATA_BLOCK_SIZE size
       // or reached end of the index block
-      if ((offset_ >= MAX_DATA_BLOCK_SIZE && key != pending_key_) || block_index_.full()) {
+      if (offset_ >= MAX_DATA_BLOCK_SIZE && key != pending_key_) {
         flush_block();
         min_ = key;
       }
@@ -2034,8 +2040,8 @@ class writer final : public iresearch::columnstore_writer {
     doc_id_t max_{ type_limits<type_t::doc_id_t>::eof() }; // max key
     doc_id_t pending_key_{ type_limits<type_t::doc_id_t>::eof() }; // current pending key
     ColumnProperty props_{ CP_DENSE | CP_FIXED | CP_MASK }; // aggregated column properties
-    uint64_t avg_block_count_{}; // average number of items per block (tail block has not taken into account since it may skew distribution)
-    uint64_t avg_block_size_{}; // average size of the block (tail block has not taken into account since it may skew distribution)
+    uint64_t avg_block_count_{}; // average number of items per block (tail block is not taken into account since it may skew distribution)
+    uint64_t avg_block_size_{}; // average size of the block (tail block is not taken into account since it may skew distribution)
   };
 
   memory_allocator* alloc_{ &memory_allocator::global() };

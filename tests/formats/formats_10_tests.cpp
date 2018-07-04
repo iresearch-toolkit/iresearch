@@ -751,14 +751,36 @@ TEST_F(memory_format_10_test_case, segment_meta_rw) {
   segment_meta_read_write();
 }
 
-TEST_F(memory_format_10_test_case, columns_rw) {
-  columns_read_write_empty();
+TEST_F(memory_format_10_test_case, columns_rw_dense_mask) {
+  columns_dense_mask();
+}
+
+TEST_F(memory_format_10_test_case, columns_rw_bit_mask) {
   columns_bit_mask();
-  columns_read_write();
+}
+
+TEST_F(memory_format_10_test_case, columns_rw_empty) {
+  columns_read_write_empty();
+}
+
+TEST_F(memory_format_10_test_case, columns_rw_same_col_empty_repeat) {
   columns_read_write_same_col_empty_repeat();
+}
+
+TEST_F(memory_format_10_test_case, columns_rw_big_document) {
   columns_big_document_read_write();
+}
+
+TEST_F(memory_format_10_test_case, columns_rw_writer_reuse) {
   columns_read_write_writer_reuse();
+}
+
+TEST_F(memory_format_10_test_case, columns_rw_typed) {
   columns_read_write_typed();
+}
+
+TEST_F(memory_format_10_test_case, columns_rw) {
+  columns_read_write();
 }
 
 TEST_F(memory_format_10_test_case, columns_meta_rw) {
@@ -812,13 +834,35 @@ TEST_F(fs_format_10_test_case, segment_meta_rw) {
   segment_meta_read_write();
 }
 
-TEST_F(fs_format_10_test_case, columns_rw) {
+TEST_F(fs_format_10_test_case, columns_rw_empty) {
   columns_read_write_empty();
+}
+
+TEST_F(fs_format_10_test_case, columns_rw_dense_mask) {
+  columns_dense_mask();
+}
+
+TEST_F(fs_format_10_test_case, columns_rw_bit_mask) {
   columns_bit_mask();
+}
+
+TEST_F(fs_format_10_test_case, columns_rw) {
   columns_read_write();
+}
+
+TEST_F(fs_format_10_test_case, columns_rw_same_col_empty_repeatcolumns_rw) {
   columns_read_write_same_col_empty_repeat();
+}
+
+TEST_F(fs_format_10_test_case, columns_rw_big_document) {
   columns_big_document_read_write();
+}
+
+TEST_F(fs_format_10_test_case, columns_rw_writer_reuse) {
   columns_read_write_writer_reuse();
+}
+
+TEST_F(fs_format_10_test_case, columns_rw_typed) {
   columns_read_write_typed();
 }
 

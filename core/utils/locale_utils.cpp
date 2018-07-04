@@ -61,6 +61,7 @@
 #include <unicode/decimfmt.h> // for icu::DecimalFormat
 #include <unicode/numfmt.h> // for icu::NumberFormat
 #include <unicode/ucnv.h> // for UConverter
+#include <unicode/ustring.h> // for u_strToUTF32, u_strToUTF8
 
 #include "hash_utils.hpp"
 #include "map_utils.hpp"
