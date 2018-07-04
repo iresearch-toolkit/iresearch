@@ -1388,7 +1388,7 @@ int codecvt8_facet::do_encoding() const NOEXCEPT {
   // the exact number of externT characters that correspond to one internT character, if constant
   return ucnv_isFixedWidth(ctx->converter_ext_.get(), &status)
          && ucnv_isFixedWidth(ctx->converter_int_.get(), &status)
-    ? std::max(
+    ? (std::max)(
         ucnv_getMinCharSize(ctx->converter_ext_.get()),
         ucnv_getMinCharSize(ctx->converter_int_.get())
       )
@@ -1516,7 +1516,7 @@ int codecvt8_facet::do_max_length() const NOEXCEPT {
     return -1;
   }
 
-  return std::max(
+  return (std::max)(
     ucnv_getMaxCharSize(ctx->converter_ext_.get()),
     ucnv_getMaxCharSize(ctx->converter_int_.get())
   );
