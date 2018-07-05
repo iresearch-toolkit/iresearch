@@ -138,7 +138,7 @@ class converter_pool: private irs::util::noncopyable {
   };
 
   std::string encoding_;
-  irs::unbounded_object_pool<builder> pool_;
+  irs::unbounded_object_pool_volatile<builder> pool_;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
