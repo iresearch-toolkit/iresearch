@@ -1813,11 +1813,15 @@ class format_test_case_base : public index_test_base {
         ASSERT_EQ("field1_doc0", irs::read_string<std::string>(in));
         ASSERT_EQ("field1_doc0_1", irs::read_string<std::string>(in));
 
+        ASSERT_FALSE(column(1, actual_value));
+
         // read overwritten compund value
         // check doc==12, column==field1
         ASSERT_TRUE(column(12, actual_value)); in.reset(actual_value);
         ASSERT_EQ("field1_doc12_1", irs::read_string<std::string>(in));
         ASSERT_EQ("field1_doc12_2", irs::read_string<std::string>(in));
+
+        ASSERT_FALSE(column(13, actual_value));
 
         // read by invalid key
         ASSERT_FALSE(column(iresearch::type_limits<iresearch::type_t::doc_id_t>::eof(), actual_value));

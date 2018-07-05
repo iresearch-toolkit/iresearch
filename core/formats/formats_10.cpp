@@ -1713,7 +1713,7 @@ bool meta_reader::read(column_meta& column) {
 // |Footer|
 
 const size_t INDEX_BLOCK_SIZE = 1024;
-const size_t MAX_DATA_BLOCK_SIZE = 4096;
+const size_t MAX_DATA_BLOCK_SIZE = 8192;
 
 // By default we treat columns as a variable length sparse columns
 enum ColumnProperty : uint32_t {
@@ -1817,6 +1817,13 @@ class index_block {
     assert(offset >= offset_[-1]);
   }
 
+  void pop_back() NOEXCEPT {
+    assert(key_ > keys_);
+    --key_;
+    assert(offset_ > offsets_);
+    --offset_;
+  }
+
   // returns total number of items
   size_t total() const NOEXCEPT {
     return flushed_ + this->size();
@@ -1834,6 +1841,10 @@ class index_block {
 
   bool full() const NOEXCEPT {
     return key_ == std::end(keys_);
+  }
+
+  doc_id_t key() const NOEXCEPT {
+    return *key_;
   }
 
   ColumnProperty flush(data_output& out, uint64_t* buf) {
@@ -1921,21 +1932,20 @@ class writer final : public iresearch::columnstore_writer {
     void prepare(doc_id_t key) {
       assert(key >= max_ || irs::type_limits<irs::type_t::doc_id_t>::eof(max_));
 
-      // commit previous key and offset unless the 'reset' method has been called
-      if (max_ != pending_key_) {
-        if (block_index_.size() >= INDEX_BLOCK_SIZE) {
-          flush_block();
-          min_ = pending_key_;
-          offset_ = block_buf_.size();
-        }
+      if (key == pending_key_) {
+        // same key as previous
+        return;
+      }
 
+      // commit previous key and offset unless 'reset' has been called
+      if (max_ != pending_key_) {
         block_index_.push_back(pending_key_, offset_);
         max_ = pending_key_;
       }
 
       // flush block if we've overcome MAX_DATA_BLOCK_SIZE size
-      // or reached end of the index block
-      if (offset_ >= MAX_DATA_BLOCK_SIZE && key != pending_key_) {
+      // or reached the end of the index block
+      if (offset_ >= MAX_DATA_BLOCK_SIZE || block_index_.full()) {
         flush_block();
         min_ = key;
       }
