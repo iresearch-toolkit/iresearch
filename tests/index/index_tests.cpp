@@ -1828,7 +1828,7 @@ class index_test_case_base : public tests::index_test_base {
             return false;
           }
 
-          if (irs::bytes_ref::NIL != actual_data) {
+          if (!actual_data.null()) {
             return false;
           }
 
@@ -1874,7 +1874,7 @@ class index_test_case_base : public tests::index_test_base {
             return false;
           }
 
-          if (irs::bytes_ref::NIL != actual_data) {
+          if (!actual_data.null()) {
             return false;
           }
 
@@ -1947,7 +1947,7 @@ class index_test_case_base : public tests::index_test_base {
             return false;
           }
 
-          if (irs::bytes_ref::NIL != actual_data) {
+          if (!actual_data.null()) {
             return false;
           }
 
@@ -2018,7 +2018,7 @@ class index_test_case_base : public tests::index_test_base {
             return false;
           }
 
-          if (irs::bytes_ref::NIL != actual_data) {
+          if (!actual_data.null()) {
             return false;
           }
 
@@ -2091,7 +2091,7 @@ class index_test_case_base : public tests::index_test_base {
             return false;
           }
 
-          if (irs::bytes_ref::NIL != actual_data) {
+          if (!actual_data.null()) {
             return false;
           }
 
@@ -2613,7 +2613,7 @@ class index_test_case_base : public tests::index_test_base {
             return false;
           }
 
-          if (irs::bytes_ref::NIL != actual_data) {
+          if (!actual_data.null()) {
             return false;
           }
 
@@ -2719,7 +2719,7 @@ class index_test_case_base : public tests::index_test_base {
             return false;
           }
 
-          if (irs::bytes_ref::NIL != actual_data) {
+          if (!actual_data.null()) {
             return false;
           }
 
@@ -2766,7 +2766,7 @@ class index_test_case_base : public tests::index_test_base {
             return false;
           }
 
-          if (irs::bytes_ref::NIL != actual_data) {
+          if (!actual_data.null()) {
             return false;
           }
 
@@ -2831,7 +2831,7 @@ class index_test_case_base : public tests::index_test_base {
             return false;
           }
 
-          if (irs::bytes_ref::NIL != actual_data) {
+          if (!actual_data.null()) {
             return false;
           }
 
@@ -2894,7 +2894,7 @@ class index_test_case_base : public tests::index_test_base {
             return false;
           }
 
-          if (irs::bytes_ref::NIL != actual_data) {
+          if (!actual_data.null()) {
             return false;
           }
 
@@ -2959,7 +2959,7 @@ class index_test_case_base : public tests::index_test_base {
             return false;
           }
 
-          if (irs::bytes_ref::NIL != actual_data) {
+          if (!actual_data.null()) {
             return false;
           }
 
@@ -3256,7 +3256,7 @@ class index_test_case_base : public tests::index_test_base {
             return false;
           }
 
-          if (irs::bytes_ref::NIL != actual_data) {
+          if (!actual_data.null()) {
             return false;
           }
 
