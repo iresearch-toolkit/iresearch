@@ -39,11 +39,23 @@ NS_ROOT
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class doc_iterator 
-/// @brief base iterator for document collections. 
-/// Before the first "next()" iterator is uninitialized. In this case "value()"
-/// should return INVALID_DOC.
-/// Once iterator has finished execution it should return "false" on last 
-/// "next()" call. After that "value()" should always return NO_MORE_DOCS.
+/// @brief base iterator for document collections.
+///
+/// After creation iterator is in uninitialized state:
+///   - 'value()' returns 'type_limits<type_t>::invalid()' or
+///     'type_limits<type_t>::eof()'
+///
+/// 'seek()' to:
+///   - 'type_limits<type_t>::invalid()' is undefined
+///      and implementation dependent
+///   - 'type_limits<type_t>::eof()' must always return
+///     'type_limits<type_t>::eof()'
+///
+/// Once iterator has become exhausted:
+///   - 'next()' must constantly return 'false'
+///   - 'seek()' to any value must return 'type_limits<type_t>::eof()'
+///   - 'value()' must return 'type_limits<type_t>::eof()'
+///
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API doc_iterator
     : iterator<doc_id_t>,
@@ -54,12 +66,8 @@ struct IRESEARCH_API doc_iterator
   static doc_iterator::ptr empty();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief jumps to the specified target and returns current value
-  /// of the iterator.
-  /// If INVALID_DOC will be passed as the parameter,
-  /// return value is not defined
-  /// If NO_MORE_DOCS will be passed as the parameter, method should
-  /// return NO_MORE_DOCS
+  /// @brief moves iterator to a specified target and returns current value
+  /// (for more information see class description)
   //////////////////////////////////////////////////////////////////////////////
   virtual doc_id_t seek(doc_id_t target) = 0;
 }; // doc_iterator

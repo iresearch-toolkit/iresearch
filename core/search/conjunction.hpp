@@ -35,11 +35,14 @@ NS_ROOT
 /// @class score_iterator_adapter
 /// @brief adapter to use doc_iterator with conjunction and disjunction
 ////////////////////////////////////////////////////////////////////////////////
-struct score_iterator_adapter : util::noncopyable {
+struct score_iterator_adapter {
   score_iterator_adapter(doc_iterator::ptr&& it) NOEXCEPT
     : it(std::move(it)) {
     score = &irs::score::extract(this->it->attributes());
   }
+
+  score_iterator_adapter(const score_iterator_adapter&) = default;
+  score_iterator_adapter& operator=(const score_iterator_adapter&) = default;
 
   score_iterator_adapter(score_iterator_adapter&& rhs) NOEXCEPT
     : it(std::move(rhs.it)), score(rhs.score) {
