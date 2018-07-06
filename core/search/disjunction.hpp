@@ -311,7 +311,7 @@ class small_disjunction : public doc_iterator_base {
     // copy iterators with scores into separate container
     for (auto& it : itrs_) {
       if (&irs::score::no_score() != it.score) {
-        itrs_.emplace_back(it);
+        scored_itrs_.emplace_back(it);
       }
     }
 
@@ -320,7 +320,13 @@ class small_disjunction : public doc_iterator_base {
       ord_->prepare_score(score);
 
       for (auto& it : scored_itrs_) {
-        if (it.it->value() == doc_) {
+        auto doc = it.it->value();
+
+        if (doc < doc_) {
+          doc = it.it->seek(doc_);
+        }
+
+        if (doc == doc_) {
           it.score->evaluate();
           ord_->add(score, it.score->c_str());
         }
