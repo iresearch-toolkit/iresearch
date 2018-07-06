@@ -1819,14 +1819,19 @@ class index_block {
 
   void pop_back() NOEXCEPT {
     assert(key_ > keys_);
-    --key_;
+    *key_-- = 0;
     assert(offset_ > offsets_);
-    --offset_;
+    *offset_-- = 0;
   }
 
   // returns total number of items
   size_t total() const NOEXCEPT {
-    return flushed_ + this->size();
+    return flushed()+ size();
+  }
+
+  // returns total number of flushed items
+  size_t flushed() const NOEXCEPT {
+    return flushed_;
   }
 
   // returns number of items to be flushed
@@ -1843,8 +1848,19 @@ class index_block {
     return key_ == std::end(keys_);
   }
 
-  doc_id_t key() const NOEXCEPT {
-    return *key_;
+  doc_id_t min_key() const NOEXCEPT {
+    return *keys_;
+  }
+
+  doc_id_t max_key() const NOEXCEPT {
+    // if this->empty(), will point to last offset
+    // value which is 0 in this case
+    return *(key_-1);
+  }
+
+  uint64_t max_offset() const NOEXCEPT {
+    assert(offset_ > offsets_);
+    return *(offset_-1);
   }
 
   ColumnProperty flush(data_output& out, uint64_t* buf) {
@@ -1899,10 +1915,11 @@ class index_block {
   }
 
  private:
-  doc_id_t keys_[Size]{};
+  // order is important (see max_key())
   uint64_t offsets_[Size]{};
-  doc_id_t* key_{ keys_ };
+  doc_id_t keys_[Size]{};
   uint64_t* offset_{ offsets_ };
+  doc_id_t* key_{ keys_ };
   size_t flushed_{}; // number of flushed items
 }; // index_block
 
@@ -1924,37 +1941,26 @@ class writer final : public iresearch::columnstore_writer {
  private:
   class column final : public iresearch::columnstore_writer::column_output {
    public:
-    explicit column(writer& ctx) // compression context
+    explicit column(writer& ctx)
       : ctx_(&ctx),
         blocks_index_(*ctx.alloc_) {
     }
 
     void prepare(doc_id_t key) {
-      assert(key >= max_ || irs::type_limits<irs::type_t::doc_id_t>::eof(max_));
+      assert(key >= block_index_.max_key());
 
-      if (key == pending_key_) {
-        // same key as previous
+      if (key <= block_index_.max_key()) {
+        // less or equal to previous key
         return;
-      }
-
-      // commit previous key and offset unless 'reset' has been called
-      if (max_ != pending_key_) {
-        block_index_.push_back(pending_key_, offset_);
-        max_ = pending_key_;
       }
 
       // flush block if we've overcome MAX_DATA_BLOCK_SIZE size
       // or reached the end of the index block
-      if (offset_ >= MAX_DATA_BLOCK_SIZE || block_index_.full()) {
+      if (block_buf_.size() >= MAX_DATA_BLOCK_SIZE || block_index_.full()) {
         flush_block();
-        min_ = key;
       }
 
-      // reset key and offset (will be committed during the next 'write')
-      offset_ = block_buf_.size();
-      pending_key_ = key;
-
-      assert(pending_key_ >= min_);
+      block_index_.push_back(key, block_buf_.size());
     }
 
     bool empty() const NOEXCEPT {
@@ -1965,7 +1971,7 @@ class writer final : public iresearch::columnstore_writer {
       auto& out = *ctx_->data_out_;
       write_enum(out, props_); // column properties
       out.write_vlong(block_index_.total()); // total number of items
-      out.write_vlong(max_); // max key
+      out.write_vlong(max_); // max column key
       out.write_vlong(avg_block_size_); // avg data block size
       out.write_vlong(avg_block_count_); // avg number of elements per block
       out.write_vlong(column_index_.total()); // total number of index blocks
@@ -1973,8 +1979,9 @@ class writer final : public iresearch::columnstore_writer {
     }
 
     void flush() {
+      // do not take into account last block
       const auto blocks_count = std::max(size_t(1), column_index_.total());
-      avg_block_count_ = (block_index_.total()-block_index_.size()) / blocks_count;
+      avg_block_count_ = block_index_.flushed() / blocks_count;
       avg_block_size_ = length_ / blocks_count;
 
       // commit and flush remain blocks
@@ -1998,8 +2005,14 @@ class writer final : public iresearch::columnstore_writer {
     }
 
     virtual void reset() override {
-      block_buf_.reset(offset_);
-      pending_key_ = max_;
+      if (block_index_.empty()) {
+        // nothing to reset
+        return;
+      }
+
+      // reset to previous offset
+      block_buf_.reset(block_index_.max_offset());
+      block_index_.pop_back();
     }
 
    private:
@@ -2009,11 +2022,13 @@ class writer final : public iresearch::columnstore_writer {
         return;
       }
 
+      max_ = block_index_.max_key();
+
       auto& out = *ctx_->data_out_;
       auto* buf = ctx_->buf_;
 
       // write first block key & where block starts
-      column_index_.push_back(min_, out.file_pointer());
+      column_index_.push_back(block_index_.min_key(), out.file_pointer());
 
       if (column_index_.full()) {
         column_index_.flush(blocks_index_.stream, buf);
@@ -2040,15 +2055,12 @@ class writer final : public iresearch::columnstore_writer {
     }
 
     writer* ctx_; // writer context
-    uint64_t offset_{ MAX_DATA_BLOCK_SIZE } ; // value offset, because of initial MAX_DATA_BLOCK_SIZE 'min_' will be set on the first 'write'
     uint64_t length_{}; // size of the all column data blocks
     index_block<INDEX_BLOCK_SIZE> block_index_; // current block index (per document key/offset)
     index_block<INDEX_BLOCK_SIZE> column_index_; // column block index (per block key/offset)
     memory_output blocks_index_; // blocks index
     bytes_output block_buf_{ 2*MAX_DATA_BLOCK_SIZE }; // data buffer
-    doc_id_t min_{ type_limits<type_t::doc_id_t>::eof() }; // min key
-    doc_id_t max_{ type_limits<type_t::doc_id_t>::eof() }; // max key
-    doc_id_t pending_key_{ type_limits<type_t::doc_id_t>::eof() }; // current pending key
+    doc_id_t max_{ type_limits<type_t::doc_id_t>::invalid() }; // max key (among flushed blocks)
     ColumnProperty props_{ CP_DENSE | CP_FIXED | CP_MASK }; // aggregated column properties
     uint64_t avg_block_count_{}; // average number of items per block (tail block is not taken into account since it may skew distribution)
     uint64_t avg_block_size_{}; // average size of the block (tail block is not taken into account since it may skew distribution)
@@ -2108,8 +2120,11 @@ columnstore_writer::column_t writer::push_column() {
   columns_.emplace_back(*this);
   auto& column = columns_.back();
 
-  return std::make_pair(id, [&column, this] (doc_id_t doc) -> column_output& {
-    assert(!irs::type_limits<irs::type_t::doc_id_t>::eof(doc));
+  return std::make_pair(id, [&column] (doc_id_t doc) -> column_output& {
+    // to avoid extra (and useless in our case) check for block index
+    // emptiness in 'writer::column::prepare', we disallow passing
+    // doc <= irs::type_limits<irs::type_t::doc_id_t>::invalid() || doc >= irs::type_limits<irs::type_t::doc_id_t>::eof()
+    assert(doc > irs::type_limits<irs::type_t::doc_id_t>::invalid() && doc < irs::type_limits<irs::type_t::doc_id_t>::eof());
 
     column.prepare(doc);
     return column;
@@ -2117,11 +2132,6 @@ columnstore_writer::column_t writer::push_column() {
 }
 
 bool writer::flush() {
-  // trigger commit for each pending key
-  for (auto& column : columns_) {
-    column.prepare(irs::type_limits<irs::type_t::doc_id_t>::eof());
-  }
-
   // remove all empty columns from tail
   while (!columns_.empty() && columns_.back().empty()) {
     columns_.pop_back();

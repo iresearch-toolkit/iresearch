@@ -245,7 +245,8 @@ struct IRESEARCH_API columnstore_writer {
     virtual void reset() = 0; 
   }; // column_output
 
-  typedef std::function<column_output&(doc_id_t)> values_writer_f;
+  // NOTE: doc > type_limits<type_t::doc_id_t>::invalid() && doc < type_limits<type_t::doc_id_t>::eof()
+  typedef std::function<column_output&(doc_id_t doc)> values_writer_f;
   typedef std::pair<field_id, values_writer_f> column_t;
 
   virtual ~columnstore_writer();
