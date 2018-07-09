@@ -336,7 +336,7 @@ class collector final : public iresearch::sort::collector {
   float_t b_;
 }; // collector
 
-class sort final : iresearch::sort::prepared_base<bm25::score_t> {
+class sort final : iresearch::sort::prepared_basic<bm25::score_t> {
  public:
   DEFINE_FACTORY_INLINE(prepared);
 
@@ -388,14 +388,6 @@ class sort final : iresearch::sort::prepared_base<bm25::score_t> {
       query_attrs.get<bm25::stats>().get(),
       doc_attrs.get<frequency>().get()
     );
-  }
-
-  virtual void add(score_t& dst, const score_t& src) const override {
-    dst += src;
-  }
-
-  virtual bool less(const score_t& lhs, const score_t& rhs) const override {
-    return lhs < rhs;
   }
 
  private:

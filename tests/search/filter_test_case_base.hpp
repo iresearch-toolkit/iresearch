@@ -61,7 +61,7 @@ struct boost : public iresearch::sort {
     const irs::attribute_store::ref<irs::boost>::type& boost_;
   }; // sort::boost::scorer
 
-  class prepared: public iresearch::sort::prepared_base<iresearch::boost::boost_t> {
+  class prepared: public iresearch::sort::prepared_basic<iresearch::boost::boost_t> {
    public:
     DEFINE_FACTORY_INLINE(prepared);
     prepared() { }
@@ -83,14 +83,6 @@ struct boost : public iresearch::sort {
       return boost::scorer::make<boost::scorer>(
         query_attrs.get<iresearch::boost>(), query_attrs
        );
-    }
-
-    virtual void add(score_t& dst, const score_t& src) const override {
-      dst += src;
-    }
-
-    virtual bool less(const score_t& lhs, const score_t& rhs) const override {
-      return std::less<score_t>()(lhs, rhs);
     }
 
    private:
@@ -211,18 +203,18 @@ struct custom_sort: public irs::sort {
       );
     }
 
-    virtual void prepare_score(irs::doc_id_t& score) const override {
-      score = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+    virtual void prepare_score(irs::byte_type* score) const override {
+      score_cast(score) = irs::type_limits<irs::type_t::doc_id_t>::invalid();
     }
 
-    virtual void add(irs::doc_id_t& dst, const irs::doc_id_t& src) const override {
+    virtual void add(irs::byte_type* dst, const irs::byte_type* src) const override {
       if (sort_.scorer_add) {
-        sort_.scorer_add(dst, src);
+        sort_.scorer_add(score_cast(dst), score_cast(src));
       }
     }
 
-    virtual bool less(const irs::doc_id_t& lhs, const irs::doc_id_t& rhs) const override {
-      return sort_.scorer_less ? sort_.scorer_less(lhs, rhs) : false;
+    virtual bool less(const irs::byte_type* lhs, const irs::byte_type* rhs) const override {
+      return sort_.scorer_less ? sort_.scorer_less(score_cast(lhs), score_cast(rhs)) : false;
     }
 
    private:
@@ -333,13 +325,17 @@ struct frequency_sort: public iresearch::sort {
       return sort::scorer::make<frequency_sort::prepared::scorer>(docs_count, doc_id_t);
     }
 
-    virtual void prepare_score(score_t& score) const override {
+    virtual void prepare_score(irs::byte_type* score_buf) const override {
+      auto& score = score_cast(score_buf);
       score.id = irs::type_limits<irs::type_t::doc_id_t>::invalid();
       score.value = std::numeric_limits<double>::infinity();
       score.prepared = true;
     }
 
-    virtual void add(score_t& dst, const score_t& src) const override {
+    virtual void add(irs::byte_type* dst_buf, const irs::byte_type* src_buf) const override {
+      auto& dst = score_cast(dst_buf);
+      auto& src = score_cast(src_buf);
+
       ASSERT_TRUE(src.prepared);
       ASSERT_TRUE(dst.prepared);
 
@@ -351,7 +347,10 @@ struct frequency_sort: public iresearch::sort {
       dst.value += src.value;
     }
 
-    virtual bool less(const score_t& lhs, const score_t& rhs) const override {
+    virtual bool less(const irs::byte_type* lhs_buf, const irs::byte_type* rhs_buf) const override {
+      auto& lhs = score_cast(lhs_buf);
+      auto& rhs = score_cast(rhs_buf);
+
       return lhs.value == rhs.value
         ? std::less<iresearch::doc_id_t>()(lhs.id, rhs.id)
         : std::less<double>()(lhs.value, rhs.value);
