@@ -542,12 +542,34 @@ class pointer_wrapper {
     return *this;
   }
   FORCE_INLINE operator bool() const NOEXCEPT {
-    return p_ != nullptr;
+    return nullptr != p_;
+  }
+  FORCE_INLINE bool operator==(std::nullptr_t) const NOEXCEPT {
+    return nullptr == p_;
+  }
+  FORCE_INLINE bool operator!=(std::nullptr_t) const NOEXCEPT {
+    return !(*this == nullptr);
   }
 
  private:
   T* p_;
 }; // pointer_wrapper
+
+template<typename T>
+FORCE_INLINE bool operator==(
+    std::nullptr_t,
+    const pointer_wrapper<T>& rhs
+) NOEXCEPT {
+  return rhs == nullptr;
+}
+
+template<typename T>
+FORCE_INLINE bool operator!=(
+    std::nullptr_t,
+    const pointer_wrapper<T>& rhs
+) NOEXCEPT {
+  return rhs != nullptr;
+}
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief storage of data pointers to attributes

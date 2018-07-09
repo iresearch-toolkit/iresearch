@@ -218,6 +218,10 @@ class IRESEARCH_API sort {
    public:
     typedef T score_t;
 
+    FORCE_INLINE static T& score_cast(byte_type* score_buf) {
+      return *reinterpret_cast<T*>(score_buf);
+    }
+
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief initialize the score container and prepare it for add(...) calls
     ////////////////////////////////////////////////////////////////////////////////

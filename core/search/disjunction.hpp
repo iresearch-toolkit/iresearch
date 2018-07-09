@@ -147,11 +147,35 @@ class basic_disjunction final : public doc_iterator_base {
     : doc_iterator_base(ord),
       lhs_(std::move(lhs)), rhs_(std::move(rhs)),
       doc_(type_limits<type_t::doc_id_t>::invalid()) {
+
     // prepare score
-    prepare_score([this](byte_type* score) {
-      ord_->prepare_score(score);
-      score_impl(score);
-    });
+    if (lhs_.score != &irs::score::no_score()
+        && rhs_.score != &irs::score::no_score()) {
+      // both sub-iterators has score
+      prepare_score([this](byte_type* score) {
+        ord_->prepare_score(score);
+        score_iterator_impl(lhs_, score);
+        score_iterator_impl(rhs_, score);
+      });
+    } else if (lhs_.score != &irs::score::no_score()) {
+      // only left sub-iterator has score
+      assert(rhs_.score == &irs::score::no_score());
+      prepare_score([this](byte_type* score) {
+        ord_->prepare_score(score);
+        score_iterator_impl(lhs_, score);
+      });
+    } else if (rhs_.score != &irs::score::no_score()) {
+      // only right sub-iterator has score
+      assert(lhs_.score == &irs::score::no_score());
+      prepare_score([this](byte_type* score) {
+        ord_->prepare_score(score);
+        score_iterator_impl(rhs_, score);
+      });
+    } else {
+      assert(lhs_.score == &irs::score::no_score());
+      assert(rhs_.score == &irs::score::no_score());
+      prepare_score([](byte_type*) {/*NOOP*/});
+    }
   }
 
   bool seek_iterator_impl(doc_iterator_t& it, doc_id_t target) {
@@ -181,11 +205,6 @@ class basic_disjunction final : public doc_iterator_base {
       rhs->evaluate();
       ord_->add(lhs, rhs->c_str());
     }
-  }
-
-  void score_impl(byte_type* lhs) {
-    score_iterator_impl(lhs_, lhs);
-    score_iterator_impl(rhs_, lhs);
   }
 
   doc_iterator_t lhs_;
@@ -309,6 +328,8 @@ class small_disjunction : public doc_iterator_base {
         ? type_limits<type_t::doc_id_t>::eof()
         : type_limits<type_t::doc_id_t>::invalid()) {
     // copy iterators with scores into separate container
+    // to avoid extra checks
+    scored_itrs_.reserve(itrs_.size());
     for (auto& it : itrs_) {
       if (&irs::score::no_score() != it.score) {
         scored_itrs_.emplace_back(it);
@@ -316,22 +337,26 @@ class small_disjunction : public doc_iterator_base {
     }
 
     // prepare score
-    prepare_score([this](byte_type* score) {
-      ord_->prepare_score(score);
+    if (scored_itrs_.empty()) {
+      prepare_score([](byte_type*){ /*NOOP*/ });
+    } else {
+      prepare_score([this](byte_type* score) {
+        ord_->prepare_score(score);
 
-      for (auto& it : scored_itrs_) {
-        auto doc = it.it->value();
+        for (auto& it : scored_itrs_) {
+          auto doc = it.it->value();
 
-        if (doc < doc_) {
-          doc = it.it->seek(doc_);
+          if (doc < doc_) {
+            doc = it.it->seek(doc_);
+          }
+
+          if (doc == doc_) {
+            it.score->evaluate();
+            ord_->add(score, it.score->c_str());
+          }
         }
-
-        if (doc == doc_) {
-          it.score->evaluate();
-          ord_->add(score, it.score->c_str());
-        }
-      }
-    });
+      });
+    }
   }
 
   bool remove_iterator(doc_iterator_t& it) {
@@ -499,7 +524,7 @@ class disjunction : public doc_iterator_base {
   void score_impl(byte_type* lhs) {
     assert(!itrs_.empty());
 
-    /* hitch all iterators in head to the lead (current doc_) */
+    // hitch all iterators in head to the lead (current doc_)
     auto begin = itrs_.begin(), end = itrs_.end()-1;
 
     while(begin != end && top()->value() < doc_) {
