@@ -309,6 +309,7 @@ class collector final : public iresearch::sort::collector {
     // precomputed idf value
     bm25stats->idf =
       float_t(std::log(1 + ((docs_with_field - docs_with_term + 0.5)/(docs_with_term + 0.5))));
+    assert(bm25stats->idf >= 0);
 
     if (b_ == 0.f) {
       // BM11 without norms

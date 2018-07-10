@@ -170,7 +170,7 @@ typedef tfidf_sort::score_t score_t;
 
 class collector final : public iresearch::sort::collector {
  public:
-  collector(bool normalize) NOEXCEPT
+  explicit collector(bool normalize) NOEXCEPT
     : normalize_(normalize) {
   }
 
@@ -192,8 +192,9 @@ class collector final : public iresearch::sort::collector {
       attribute_store& filter_attrs,
       const iresearch::index_reader& /*index*/
   ) override {
-    filter_attrs.emplace<tfidf::idf>()->value =
-      float_t(std::log((docs_with_field + 1) / double_t(docs_with_term + 1)) + 1.0);
+    auto& idf = filter_attrs.emplace<tfidf::idf>();
+    idf->value = float_t(std::log((docs_with_field + 1) / double_t(docs_with_term + 1)) + 1.0);
+    assert(idf->value >= 0);
 
     // add norm attribute if requested
     if (normalize_) {
