@@ -1050,20 +1050,19 @@ int search(
 
           for (auto& segment: reader) {
             auto docs = filter->execute(segment, order); // query segment
-            const irs::score* score = docs->attributes().get<irs::score>().get();            
+            const irs::score& score = irs::score::extract(docs->attributes());
 
 #ifdef IRESEARCH_COMPLEX_SCORING
             // ensure we avoid COW for pre c++11 std::basic_string
             const irs::bytes_ref raw_score_value = score->value();                        
 #endif
-            const auto& score_value = score
-              ? order.get<float>(score->c_str(), 0)
+            const auto& score_value = &score != &irs::score::no_score()
+              ? order.get<float>(score.c_str(), 0)
               : EMPTY_SCORE;
             
             while (docs->next()) {
               ++doc_count;
-              assert(score); // score must exist for any ordered doc_iterator::next() == true
-              score->evaluate();
+              score.evaluate();
 
 #ifdef IRESEARCH_COMPLEX_SCORING
               sorted.emplace(
