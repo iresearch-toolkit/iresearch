@@ -426,6 +426,88 @@ matrix:
         - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
 
     ############################################################################
+    # GCC 8
+    ############################################################################
+
+    ############################################################################
+    # Debug build, static library
+    ############################################################################
+    - os: linux
+      dist: trusty # gcc8 is not available in `precise`
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
+        - travis_retry sudo apt-get install cmake cmake-data g++-8 valgrind
+      env:
+        - SET_ENV="CC=gcc-8 && CXX=g++-8"
+        - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
+
+    ############################################################################
+    # Release build, static library (filesystem tests)
+    ############################################################################
+    - os: linux
+      dist: trusty # gcc8 is not available in `precise`
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
+        - travis_retry sudo apt-get install cmake cmake-data g++-8 valgrind
+      env:
+        - SET_ENV="CC=gcc-8 && CXX=g++-8"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+
+    ############################################################################
+    # Release build, static library (remaining tests)
+    ############################################################################
+    - os: linux
+      dist: trusty # gcc8 is not available in `precise`
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
+        - travis_retry sudo apt-get install cmake cmake-data g++-8 valgrind
+      env:
+        - SET_ENV="CC=gcc-8 && CXX=g++-8"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
+
+    ############################################################################
+    # Debug build, shared library
+    ############################################################################
+    - os: linux
+      dist: trusty # gcc8 is not available in `precise`
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
+        - travis_retry sudo apt-get install cmake cmake-data g++-8 valgrind
+      env:
+        - SET_ENV="CC=gcc-8 && CXX=g++-8"
+        - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
+
+    ############################################################################
+    # Release build, shared library (filesystem tests)
+    ############################################################################
+    - os: linux
+      dist: trusty # gcc8 is not available in `precise`
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
+        - travis_retry sudo apt-get install cmake cmake-data g++-8 valgrind
+      env:
+        - SET_ENV="CC=gcc-8 && CXX=g++-8"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+
+    ############################################################################
+    # Release build, shared library (remaining tests)
+    ############################################################################
+    - os: linux
+      dist: trusty # gcc8 is not available in `precise`
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
+        - travis_retry sudo apt-get install cmake cmake-data g++-8 valgrind
+      env:
+        - SET_ENV="CC=gcc-8 && CXX=g++-8"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
+
+    ############################################################################
     # OSX
     ############################################################################
 
