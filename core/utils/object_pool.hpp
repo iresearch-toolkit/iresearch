@@ -261,7 +261,7 @@ class bounded_object_pool {
     }
 
     FORCE_INLINE void reset() NOEXCEPT {
-      reset(slot_);
+      reset_impl(slot_);
     }
 
     std::shared_ptr<element_type> release() {
@@ -274,7 +274,7 @@ class bounded_object_pool {
       return std::shared_ptr<element_type>(
         raw,
         [slot] (element_type*) mutable NOEXCEPT {
-          reset(slot);
+          reset_impl(slot);
       });
     }
 
@@ -286,7 +286,7 @@ class bounded_object_pool {
     }
 
    private:
-    static void reset(node_type*& slot) NOEXCEPT {
+    static void reset_impl(node_type*& slot) NOEXCEPT {
       if (!slot) {
         // nothing to do
         return;
@@ -553,7 +553,7 @@ class unbounded_object_pool : public unbounded_object_pool_base<T> {
     }
 
     FORCE_INLINE void reset() NOEXCEPT {
-      reset(value_, owner_);
+      reset_impl(value_, owner_);
     }
 
     // FIXME handle potential bad_alloc in shared_ptr constructor
@@ -569,7 +569,7 @@ class unbounded_object_pool : public unbounded_object_pool_base<T> {
       return std::shared_ptr<element_type>(
         raw,
         [owner, moved_value] (element_type*) mutable NOEXCEPT {
-          reset(moved_value.value(), owner);
+          reset_impl(moved_value.value(), owner);
       });
     }
 
@@ -581,7 +581,7 @@ class unbounded_object_pool : public unbounded_object_pool_base<T> {
     }
 
    private:
-    static void reset(typename T::ptr& obj, unbounded_object_pool*& owner) NOEXCEPT {
+    static void reset_impl(typename T::ptr& obj, unbounded_object_pool*& owner) NOEXCEPT {
       if (!owner) {
         // already destroyed
         return;
@@ -700,7 +700,7 @@ class unbounded_object_pool_volatile
     }
 
     FORCE_INLINE void reset() NOEXCEPT {
-      reset(value_, gen_);
+      reset_impl(value_, gen_);
     }
 
     std::shared_ptr<element_type> release() {
@@ -714,7 +714,7 @@ class unbounded_object_pool_volatile
       return std::shared_ptr<element_type>(
         raw,
         [moved_gen, moved_value] (element_type*) mutable NOEXCEPT {
-          reset(moved_value.value(), moved_gen.value());
+          reset_impl(moved_value.value(), moved_gen.value());
       });
     }
 
@@ -726,7 +726,7 @@ class unbounded_object_pool_volatile
     }
 
    private:
-    static void reset(typename T::ptr& obj, generation_ptr_t& gen) NOEXCEPT {
+    static void reset_impl(typename T::ptr& obj, generation_ptr_t& gen) NOEXCEPT {
       if (!gen) {
         // already destroyed
         return;
