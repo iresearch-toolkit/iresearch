@@ -1092,6 +1092,7 @@ endif()
 
 target_link_libraries(${IResearch_TARGET_NAME}-format-1_0-shared
   ${IResearch_TARGET_NAME}-shared
+  ${ATOMIC_LIBRARY}
 )
 
 target_link_libraries(${IResearch_TARGET_NAME}-format-1_0-static

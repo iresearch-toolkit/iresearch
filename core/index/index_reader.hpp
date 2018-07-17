@@ -35,13 +35,22 @@
 #include <numeric>
 #include <functional>
 
+#ifdef SWIG
+#ifdef IRESEARCH_API
+#undef IRESEARCH_API
+#define IRESEARCH_API
+#endif
+#endif
+
 NS_ROOT
 
 /* -------------------------------------------------------------------
 * index_reader
 * ------------------------------------------------------------------*/
 
+#ifndef SWIG
 struct sub_reader;
+#endif
 
 struct IRESEARCH_API index_reader {
   DECLARE_SHARED_PTR(index_reader);

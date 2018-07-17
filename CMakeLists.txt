@@ -160,6 +160,7 @@ configure_file(
 add_subdirectory(core)
 add_subdirectory(external)
 add_subdirectory(utils)
+add_subdirectory(python)
 
 if (USE_TESTS)
   add_subdirectory(tests)
