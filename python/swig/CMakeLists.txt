@@ -18,7 +18,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/.. ${IResearch_INCLUDE_DIR})
 # Files to install with Python
 set(PYTHON_INSTALL_FILES
   ${CMAKE_CURRENT_BINARY_DIR}/pyresearch.py
-  ${CMAKE_CURRENT_BINARY_DIR}/_pyresearch.so
+  ${CMAKE_BINARY_DIR}/bin/_pyresearch.so
 )
 
 # Configure setup.py and copy to output directory
@@ -26,13 +26,12 @@ set(SETUP_PY_IN ${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in)
 set(SETUP_PY_OUT ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
 configure_file(${SETUP_PY_IN} ${SETUP_PY_OUT})
 
-# Declare install target for python
-#install(TARGETS swig_example
-#        COMMAND "${PYTHON_EXECUTABLE} setup.py"
-#        COMPONENT swig-python)
-
-# Install target to call setup.py
 add_custom_target(pyresearch
-  DEPENDS _pyresearch
-  COMMAND python ${SETUP_PY_OUT} install --inplace
+  DEPENDS _pyresearch ${IResearch_TARGET_NAME}-shared
+  COMMAND python3 ${SETUP_PY_OUT} build_ext --inplace
+)
+
+add_custom_target(pyresearch-install
+  DEPENDS pyresearch
+  COMMAND python3 ${SETUP_PY_OUT} install
 )

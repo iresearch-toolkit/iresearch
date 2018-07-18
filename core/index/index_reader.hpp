@@ -35,13 +35,6 @@
 #include <numeric>
 #include <functional>
 
-#ifdef SWIG
-#ifdef IRESEARCH_API
-#undef IRESEARCH_API
-#define IRESEARCH_API
-#endif
-#endif
-
 NS_ROOT
 
 /* -------------------------------------------------------------------
