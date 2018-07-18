@@ -40,7 +40,6 @@
 NS_ROOT
 
 struct segment_meta;
-class columns_meta;
 struct field_meta;
 struct column_meta;
 struct flush_state;

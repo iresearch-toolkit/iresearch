@@ -41,9 +41,7 @@ NS_ROOT
 * index_reader
 * ------------------------------------------------------------------*/
 
-#ifndef SWIG
 struct sub_reader;
-#endif
 
 struct IRESEARCH_API index_reader {
   DECLARE_SHARED_PTR(index_reader);
