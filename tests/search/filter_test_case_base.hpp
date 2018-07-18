@@ -479,13 +479,6 @@ struct empty_index_reader : iresearch::singleton<empty_index_reader>, iresearch:
 }; // index_reader
 
 struct empty_sub_reader : iresearch::singleton<empty_sub_reader>, iresearch::sub_reader {
-  struct empty_docs_iterator: docs_iterator_t {
-    virtual bool next() { return false; }
-    virtual iresearch::doc_id_t value() const { 
-      return iresearch::type_limits<iresearch::type_t::doc_id_t>::invalid();
-    }
-  };
-
   virtual iresearch::column_iterator::ptr columns() const override {
     return iresearch::column_iterator::empty();
   }
@@ -498,8 +491,8 @@ struct empty_sub_reader : iresearch::singleton<empty_sub_reader>, iresearch::sub
 
   virtual uint64_t docs_count(const iresearch::string_ref&) const override { return 0; }
 
-  virtual docs_iterator_t::ptr docs_iterator() const override { 
-    return docs_iterator_t::make<empty_docs_iterator>(); 
+  virtual irs::doc_iterator::ptr docs_iterator() const override {
+    return irs::doc_iterator::empty();
   }
 
   virtual uint64_t docs_count() const override { return 0; }

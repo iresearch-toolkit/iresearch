@@ -79,8 +79,6 @@ struct IRESEARCH_API index_reader {
 * ------------------------------------------------------------------*/
 
 struct IRESEARCH_API sub_reader : index_reader {
-  typedef iresearch::iterator<doc_id_t> docs_iterator_t;
-
   DECLARE_SHARED_PTR(sub_reader);
   DEFINE_FACTORY_INLINE(sub_reader);
 
@@ -93,7 +91,7 @@ struct IRESEARCH_API sub_reader : index_reader {
   }
 
   // returns iterator over the live documents in current segment
-  virtual docs_iterator_t::ptr docs_iterator() const = 0;
+  virtual doc_iterator::ptr docs_iterator() const = 0;
 
   virtual field_iterator::ptr fields() const = 0;
 
