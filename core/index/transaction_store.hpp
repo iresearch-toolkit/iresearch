@@ -85,7 +85,7 @@ class IRESEARCH_API store_reader final
     return impl_->docs_count(field);
   }
 
-  virtual docs_iterator_t::ptr docs_iterator() const override {
+  virtual doc_iterator::ptr docs_iterator() const override {
     return impl_->docs_iterator();
   }
 

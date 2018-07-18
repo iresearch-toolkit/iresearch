@@ -100,7 +100,7 @@ class mask_doc_iterator final : public irs::doc_iterator {
 }; // mask_doc_iterator
 
 class masked_docs_iterator 
-    : public iresearch::segment_reader::docs_iterator_t,
+    : public iresearch::doc_iterator,
       private iresearch::util::noncopyable {
  public:
   masked_docs_iterator(
@@ -128,6 +128,14 @@ class masked_docs_iterator
     current_ = iresearch::type_limits<iresearch::type_t::doc_id_t>::eof();
 
     return false;
+  }
+
+  virtual irs::doc_id_t seek(irs::doc_id_t target) override {
+    return irs::seek(*this, target);
+  }
+
+  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+    return irs::attribute_view::empty_instance();
   }
 
   virtual iresearch::doc_id_t value() const override {
@@ -226,7 +234,7 @@ class segment_reader_impl : public sub_reader {
     return docs_count_;
   }
 
-  virtual docs_iterator_t::ptr docs_iterator() const override;
+  virtual doc_iterator::ptr docs_iterator() const override;
 
   virtual doc_iterator::ptr mask(doc_iterator::ptr&& it) const override {
     if (docs_mask_.empty()) {
@@ -386,7 +394,7 @@ column_iterator::ptr segment_reader_impl::columns() const {
   return memory::make_managed<column_iterator>(std::move(it));
 }
 
-sub_reader::docs_iterator_t::ptr segment_reader_impl::docs_iterator() const {
+doc_iterator::ptr segment_reader_impl::docs_iterator() const {
   // the implementation generates doc_ids sequentially
   return memory::make_unique<masked_docs_iterator>(
     type_limits<type_t::doc_id_t>::min(),

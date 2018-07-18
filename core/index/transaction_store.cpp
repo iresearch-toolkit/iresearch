@@ -255,7 +255,7 @@ class store_reader_impl final: public irs::sub_reader {
   virtual const irs::columnstore_reader::column_reader* column_reader(irs::field_id field) const override;
   using irs::sub_reader::docs_count;
   virtual uint64_t docs_count() const override { return documents_.size(); } // +1 for invalid doc if non empty
-  virtual docs_iterator_t::ptr docs_iterator() const override;
+  virtual irs::doc_iterator::ptr docs_iterator() const override;
   virtual index_reader::reader_iterator end() const override;
   virtual const irs::term_reader* field(const irs::string_ref& field) const override;
   virtual irs::field_iterator::ptr fields() const override;
@@ -878,16 +878,8 @@ const irs::columnstore_reader::column_reader* store_reader_impl::column_reader(
   return itr == column_by_id_.end() ? nullptr : itr->second;
 }
 
-irs::sub_reader::docs_iterator_t::ptr store_reader_impl::docs_iterator() const {
-  auto ptr =
-    irs::memory::make_unique<irs::bitset_doc_iterator>(
-      *this,
-      irs::attribute_store::empty_instance(),
-      documents_,
-      irs::order::prepared::unordered()
-    );
-
-  return irs::sub_reader::docs_iterator_t::ptr(ptr.release());
+irs::doc_iterator::ptr store_reader_impl::docs_iterator() const {
+  return irs::memory::make_shared<irs::bitset_doc_iterator>(documents_);
 }
 
 irs::index_reader::reader_iterator store_reader_impl::end() const {

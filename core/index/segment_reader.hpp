@@ -75,7 +75,7 @@ class IRESEARCH_API segment_reader final
     return impl_->docs_count();
   }
 
-  virtual docs_iterator_t::ptr docs_iterator() const override {
+  virtual doc_iterator::ptr docs_iterator() const override {
     return impl_->docs_iterator();
   }
 
