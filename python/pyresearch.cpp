@@ -53,14 +53,3 @@ segment_reader index_reader::segment(size_t i) const {
     [](irs::sub_reader*){}
   );
 }
-
-bool column_values_reader::get(uint64_t key, std::basic_string<uint8_t>& out) const {
-  irs::bytes_ref value;
-
-  if (reader_(key, value)) {
-    out = value;
-    return true;
-  }
-
-  return false;
-}

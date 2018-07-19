@@ -136,7 +136,12 @@ class column_values_reader {
  public:
   ~column_values_reader() { }
 
-  bool get(uint64_t key, std::basic_string<uint8_t>& out) const;
+  std::pair<bool, irs::bytes_ref> get(uint64_t key) {
+    irs::bytes_ref value;
+    const bool found = reader_(key, value);
+    return std::make_pair(found, value);
+  }
+
   bool has(uint64_t key) const {
     irs::bytes_ref value;
     return reader_(key, value);
