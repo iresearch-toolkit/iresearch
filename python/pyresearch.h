@@ -21,11 +21,15 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef PYRESEARCH_H
-#define PYRESEARCH_H
+#ifndef IRESEARCH_PYRESEARCH_H
+#define IRESEARCH_PYRESEARCH_H
 
 #include "index/index_reader.hpp"
 #include "index/field_meta.hpp"
+
+//FIXME
+// non null constraints
+// bytes_ref as out parameter
 
 class doc_iterator {
  public:
@@ -42,8 +46,9 @@ class doc_iterator {
   }
 
  private:
-  friend class segment_reader;
   friend class column_reader;
+  friend class term_iterator;
+  friend class segment_reader;
 
   doc_iterator(irs::doc_iterator::ptr it)
     : it_(it) {
@@ -52,11 +57,49 @@ class doc_iterator {
   irs::doc_iterator::ptr it_;
 }; // doc_iterator
 
+class term_iterator {
+ public:
+  ~term_iterator() { }
+
+  bool next() { return it_->next(); }
+  doc_iterator postings() const {
+    return it_->postings(irs::flags::empty_instance());
+  }
+  bool seek(const char* data, size_t size) {
+    const irs::string_ref value(data, size);
+    return it_->seek(irs::ref_cast<irs::byte_type>(value));
+  }
+  uint32_t seek_ge(const char* data, size_t size) {
+    typedef std::underlying_type<irs::SeekResult>::type type;
+
+    static_assert(
+      std::is_convertible<type, uint32_t>::value,
+      "types are not equal"
+    );
+
+    const irs::string_ref value(data, size);
+
+    return static_cast<type>(
+      it_->seek_ge(irs::ref_cast<irs::byte_type>(value))
+    );
+  }
+  iresearch::bytes_ref value() const { return it_->value(); }
+
+ private:
+  friend class field_reader;
+
+  term_iterator(irs::seek_term_iterator::ptr&& it)
+    : it_(std::move(it)) {
+  }
+
+  std::shared_ptr<irs::seek_term_iterator> it_;
+}; // term_iterator
+
 class column_meta {
  public:
   ~column_meta() { }
 
-  const std::string& name() const { return meta_->name; }
+  irs::string_ref name() const { return meta_->name; }
   uint64_t id() const { return meta_->id; }
 
  private:
@@ -67,14 +110,16 @@ class column_meta {
   }
 
   const irs::column_meta* meta_;
-};
+}; // column_meta
 
 class column_iterator {
  public:
   ~column_iterator() { }
 
   bool next() { return it_->next(); }
-  bool seek(const char* name) { return it_->seek(name); }
+  bool seek(const char* data, size_t size) {
+    return it_->seek(irs::string_ref(data, size));
+  }
   column_meta value() const { return &it_->value(); }
 
  private:
@@ -85,13 +130,17 @@ class column_iterator {
   }
 
   std::shared_ptr<irs::column_iterator> it_;
-};
+}; // column_iterator
 
 class column_values_reader {
  public:
   ~column_values_reader() { }
 
-  bool value(uint64_t key, std::basic_string<uint8_t>& out);
+  bool get(uint64_t key, std::basic_string<uint8_t>& out) const;
+  bool has(uint64_t key) const {
+    irs::bytes_ref value;
+    return reader_(key, value);
+  }
 
  private:
   friend class column_reader;
@@ -123,7 +172,7 @@ class column_reader {
   }
 
   const irs::columnstore_reader::column_reader* reader_;
-};
+}; // column_reader
 
 class field_reader {
  public:
@@ -131,7 +180,8 @@ class field_reader {
 
   size_t docs_count() const { return field_->docs_count(); }
   std::vector<std::string> features() const;
-  const std::string& name() const { return field_->meta().name; }
+  term_iterator iterator() const { return field_->iterator(); }
+  irs::string_ref name() const { return field_->meta().name; }
   uint64_t norm() const { return field_->meta().norm; }
   size_t size() const { return field_->size(); }
   iresearch::bytes_ref min() const { return field_->min(); }
@@ -146,13 +196,15 @@ class field_reader {
   }
 
   const irs::term_reader* field_;
-};
+}; // field_reader
 
 class field_iterator {
  public:
   ~field_iterator() { }
 
-  bool seek(const char* field) { return it_->seek(field); }
+  bool seek(const char* data, size_t size) {
+    return it_->seek(irs::string_ref(data, size));
+  }
   bool next() { return it_->next(); }
   field_reader value() const { return &it_->value(); }
 
@@ -164,7 +216,7 @@ class field_iterator {
   }
 
   std::shared_ptr<irs::field_iterator> it_;
-};
+}; // field_iterator
 
 class segment_reader {
  public:
@@ -172,11 +224,17 @@ class segment_reader {
 
   column_iterator columns() const { return reader_->columns(); }
   column_reader column(uint64_t id) const { return reader_->column_reader(id); }
-  column_reader column(const char* field) const { return reader_->column_reader(field); }
+  column_reader column(const char* data, size_t size) const {
+    return reader_->column_reader(irs::string_ref(data, size));
+  }
   size_t docs_count() const { return reader_->docs_count(); }
-  size_t docs_count(const char* field) const { return reader_->docs_count(field); }
+  size_t docs_count(const char* data, size_t size) const {
+    return reader_->docs_count(irs::string_ref(data, size));
+  }
   doc_iterator docs_iterator() const { return reader_->mask(reader_->docs_iterator()); }
-  field_reader field(const char* name) const { return reader_->field(name); }
+  field_reader field(const char* data, size_t size) const {
+    return reader_->field(irs::string_ref(data, size));
+  }
   field_iterator fields() const { return reader_->fields(); }
   size_t live_docs_count() const { return reader_->live_docs_count(); }
   doc_iterator live_docs_iterator() const { return reader_->docs_iterator(); }
@@ -189,7 +247,7 @@ class segment_reader {
   }
 
   irs::sub_reader::ptr reader_;
-}; // segment
+}; // segment_reader
 
 class index_reader {
  public:
@@ -199,7 +257,9 @@ class index_reader {
 
   segment_reader segment(size_t i) const;
   size_t docs_count() const { return reader_->docs_count(); }
-  size_t docs_count(const char* field) const { return reader_->docs_count(field); }
+  size_t docs_count(const char* data, size_t size) const {
+    return reader_->docs_count(irs::string_ref(data, size));
+  }
   size_t live_docs_count() const { return reader_->live_docs_count(); }
   size_t size() const { return reader_->size(); }
 
@@ -208,7 +268,7 @@ class index_reader {
   }
 
  private:
-  iresearch::index_reader::ptr reader_;
-}; // index
+  irs::index_reader::ptr reader_;
+}; // index_reader
 
-#endif
+#endif // IRESEARCH_PYRESEARCH_H
