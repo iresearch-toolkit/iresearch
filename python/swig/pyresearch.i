@@ -26,9 +26,27 @@
 }
 
 %typemap(out) std::pair<bool, irs::bytes_ref> {
+  // create tuple of size 2
   $result = PyTuple_New(2);
-  PyTuple_SetItem($result, 0, $1.first ? Py_True : Py_False);
-  PyTuple_SetItem($result, 1, PyBytes_FromStringAndSize(reinterpret_cast<const char*>($1.second.c_str()), $1.second.size()));
+
+  // set first value
+  PyObject* first_value = $1.first
+    ? Py_True
+    : Py_False;
+  Py_INCREF(first_value);
+  PyTuple_SetItem($result, 0, first_value);
+
+  // set second value
+  const auto& second = $1.second;
+
+  PyObject* second_value = second.null()
+    ? Py_None
+    : PyBytes_FromStringAndSize(
+        reinterpret_cast<const char*>($1.second.c_str()),
+        $1.second.size()
+      );
+  Py_INCREF(second_value);
+  PyTuple_SetItem($result, 1, second_value);
 }
 
 %apply (char* STRING, size_t LENGTH) { (const char* data, size_t size ) }
