@@ -21,6 +21,7 @@ endif()
 ################################################################################
 
 option(USE_TESTS "Build tests" OFF)
+option(USE_PYRESEARCH "Build iresearch python bridge" OFF)
 option(USE_VALGRIND "Use workarounds to avoid false positives in valgrind" OFF)
 
 if (USE_VALGRIND)
@@ -160,7 +161,10 @@ configure_file(
 add_subdirectory(core)
 add_subdirectory(external)
 add_subdirectory(utils)
-add_subdirectory(python)
+
+if (USE_PYRESEARCH)
+  add_subdirectory(python)
+endif()
 
 if (USE_TESTS)
   add_subdirectory(tests)
