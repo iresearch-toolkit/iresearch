@@ -2,17 +2,34 @@
 
 %{
 #define SWIG_FILE_WITH_INIT
-#include "pyresearch.h"
+#include "pyresearch.hpp"
 %}
 
 %include "stdint.i"
-%include "cstring.i"
+%include "std_pair.i"
 %include "std_string.i"
 %include "std_vector.i"
-%include "std_pair.i"
+
+// FIXME check for invalid return values
 
 %template(StringVector) std::vector<std::string>;
 %template(ColumnValue) std::pair<bool, irs::bytes_ref>;
+
+%typemap(in) (irs::string_ref) {
+  if (!PyBytes_Check($input)) {
+    PyErr_SetString(PyExc_ValueError, "Expected a string");
+    SWIG_fail;
+  }
+
+  $1 = irs::string_ref(
+    PyBytes_AsString($input),
+    PyBytes_Size($input)
+  );
+}
+
+%typemap(typecheck, precedence=0) irs::string_ref {
+  $1 = PyBytes_Check($input) ? 1 : 0;
+}
 
 %typemap(out) irs::bytes_ref {
   $result = PyBytes_FromStringAndSize(
@@ -49,7 +66,4 @@
   PyTuple_SetItem($result, 1, second_value);
 }
 
-%apply (char* STRING, size_t LENGTH) { (const char* data, size_t size ) }
-
-%include "../pyresearch.h"
-
+%include "../pyresearch.hpp"

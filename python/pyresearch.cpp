@@ -21,7 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "pyresearch.h"
+#include "pyresearch.hpp"
 #include "store/mmap_directory.hpp"
 #include "index/directory_reader.hpp"
 

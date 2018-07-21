@@ -27,10 +27,6 @@
 #include "index/index_reader.hpp"
 #include "index/field_meta.hpp"
 
-//FIXME
-// non null constraints
-// bytes_ref as out parameter
-
 class doc_iterator {
  public:
   ~doc_iterator() { }
@@ -65,11 +61,10 @@ class term_iterator {
   doc_iterator postings() const {
     return it_->postings(irs::flags::empty_instance());
   }
-  bool seek(const char* data, size_t size) {
-    const irs::string_ref value(data, size);
-    return it_->seek(irs::ref_cast<irs::byte_type>(value));
+  bool seek(irs::string_ref term) {
+    return it_->seek(irs::ref_cast<irs::byte_type>(term));
   }
-  uint32_t seek_ge(const char* data, size_t size) {
+  uint32_t seek_ge(irs::string_ref term) {
     typedef std::underlying_type<irs::SeekResult>::type type;
 
     static_assert(
@@ -77,10 +72,8 @@ class term_iterator {
       "types are not equal"
     );
 
-    const irs::string_ref value(data, size);
-
     return static_cast<type>(
-      it_->seek_ge(irs::ref_cast<irs::byte_type>(value))
+      it_->seek_ge(irs::ref_cast<irs::byte_type>(term))
     );
   }
   iresearch::bytes_ref value() const { return it_->value(); }
@@ -117,8 +110,8 @@ class column_iterator {
   ~column_iterator() { }
 
   bool next() { return it_->next(); }
-  bool seek(const char* data, size_t size) {
-    return it_->seek(irs::string_ref(data, size));
+  bool seek(irs::string_ref column) {
+    return it_->seek(column);
   }
   column_meta value() const { return &it_->value(); }
 
@@ -207,8 +200,8 @@ class field_iterator {
  public:
   ~field_iterator() { }
 
-  bool seek(const char* data, size_t size) {
-    return it_->seek(irs::string_ref(data, size));
+  bool seek(irs::string_ref field) {
+    return it_->seek(field);
   }
   bool next() { return it_->next(); }
   field_reader value() const { return &it_->value(); }
@@ -229,16 +222,16 @@ class segment_reader {
 
   column_iterator columns() const { return reader_->columns(); }
   column_reader column(uint64_t id) const { return reader_->column_reader(id); }
-  column_reader column(const char* data, size_t size) const {
-    return reader_->column_reader(irs::string_ref(data, size));
+  column_reader column(irs::string_ref column) const {
+    return reader_->column_reader(column);
   }
   size_t docs_count() const { return reader_->docs_count(); }
-  size_t docs_count(const char* data, size_t size) const {
-    return reader_->docs_count(irs::string_ref(data, size));
+  size_t docs_count(irs::string_ref field) {
+    return reader_->docs_count(field);
   }
   doc_iterator docs_iterator() const { return reader_->mask(reader_->docs_iterator()); }
-  field_reader field(const char* data, size_t size) const {
-    return reader_->field(irs::string_ref(data, size));
+  field_reader field(irs::string_ref field) const {
+    return reader_->field(field);
   }
   field_iterator fields() const { return reader_->fields(); }
   size_t live_docs_count() const { return reader_->live_docs_count(); }
@@ -262,8 +255,8 @@ class index_reader {
 
   segment_reader segment(size_t i) const;
   size_t docs_count() const { return reader_->docs_count(); }
-  size_t docs_count(const char* data, size_t size) const {
-    return reader_->docs_count(irs::string_ref(data, size));
+  size_t docs_count(irs::string_ref field) {
+    return reader_->docs_count(field);
   }
   size_t live_docs_count() const { return reader_->live_docs_count(); }
   size_t size() const { return reader_->size(); }
