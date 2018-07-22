@@ -9,26 +9,34 @@
 %include "std_pair.i"
 %include "std_string.i"
 %include "std_vector.i"
-
-// FIXME check for invalid return values
+%include "exception.i"
 
 %template(StringVector) std::vector<std::string>;
 %template(ColumnValue) std::pair<bool, irs::bytes_ref>;
 
 %typemap(in) (irs::string_ref) {
-  if (!PyBytes_Check($input)) {
-    PyErr_SetString(PyExc_ValueError, "Expected a string");
+  if (PyBytes_Check($input)) {
+    $1 = irs::string_ref(
+      PyBytes_AsString($input),
+      PyBytes_Size($input)
+    );
+  } else if (PyUnicode_Check($input)) {
+    Py_ssize_t size{};
+    const char* str = PyUnicode_AsUTF8AndSize($input, &size);
+    $1 = irs::string_ref(str, size);
+  } else if (PyString_Check($input)) {
+    $1 = irs::string_ref(
+      PyString_AsString($input),
+      PyString_Size($input)
+    );
+  } else {
+    PyErr_SetString(PyExc_ValueError, "Expected a string or binary");
     SWIG_fail;
   }
-
-  $1 = irs::string_ref(
-    PyBytes_AsString($input),
-    PyBytes_Size($input)
-  );
 }
 
 %typemap(typecheck, precedence=0) irs::string_ref {
-  $1 = PyBytes_Check($input) ? 1 : 0;
+  $1 = PyBytes_Check($input) || PyUnicode_Check($input) || PyString_Check($input) ? 1 : 0;
 }
 
 %typemap(out) irs::bytes_ref {
@@ -66,4 +74,51 @@
   PyTuple_SetItem($result, 1, second_value);
 }
 
+%exception index_reader::segment %{
+  try {
+    $action
+  } catch (const std::out_of_range& e) {
+    SWIG_exception(SWIG_IndexError, const_cast<char*>(e.what()));
+  } catch (const std::exception& e) {
+    SWIG_exception(SWIG_SystemError, const_cast<char*>(e.what()));
+  }
+%}
+
+%exception segment_reader::field %{
+  $action
+  if (!static_cast<field_reader&>(result)) {
+    Py_RETURN_NONE;
+  }
+%}
+
+%exception segment_reader::column %{
+  $action
+  if (!static_cast<column_reader&>(result)) {
+    Py_RETURN_NONE;
+  }
+%}
+
+%exception index_reader::open %{
+  try {
+    $action
+  } catch (const std::exception& e) {
+    SWIG_exception(SWIG_SystemError, const_cast<char*>(e.what()));
+  }
+%}
+
+%exception __next__ %{
+  try {
+    $action
+  } catch (const StopIteration&) {
+    PyErr_SetNone(PyExc_StopIteration);
+    return NULL;
+  }
+%}
+
 %include "../pyresearch.hpp"
+
+%extend index_reader {
+  segment_reader __getitem__(size_t id) {
+    return $self->segment(id);
+  }
+}

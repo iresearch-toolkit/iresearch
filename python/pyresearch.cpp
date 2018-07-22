@@ -44,12 +44,21 @@ std::vector<std::string> field_reader::features() const {
   );
 }
 
+index_reader::index_reader(std::shared_ptr<irs::index_reader> reader)
+  : reader_(std::move(reader)) {
+  assert(reader_);
+  segments_.reserve(reader_->size()); 
+
+  for (auto& segment : *reader_) {
+    segments_.push_back(&segment);
+  }
+}
+
 segment_reader index_reader::segment(size_t i) const {
-  auto begin = reader_->begin();
-  std::advance(begin, i);
+  auto* segment = segments_.at(i);
 
   return std::shared_ptr<irs::sub_reader>(
-    &*begin,
-    [](irs::sub_reader*){}
+    std::shared_ptr<irs::sub_reader>(),
+    segment
   );
 }
