@@ -106,19 +106,101 @@
   }
 %}
 
-%exception __next__ %{
-  try {
-    $action
-  } catch (const StopIteration&) {
-    PyErr_SetNone(PyExc_StopIteration);
-    return NULL;
-  }
-%}
-
 %include "../pyresearch.hpp"
 
+%extend field_iterator {
+%insert("python") %{
+  def __iter__(self) :
+    return self;
+
+  def __next__(self) :
+    if not self.next() :
+      raise StopIteration();
+
+    return self.value();
+%}
+}
+
+%extend field_reader {
+%insert("python") %{
+  def __iter__(self) :
+    return self.iterator();
+%}
+}
+
+%extend term_iterator {
+%insert("python") %{
+  def __iter__(self) :
+    return self.postings();
+
+  def __next__(self) :
+    if not self.next() :
+      raise StopIteration();
+
+    return self.value();
+%}
+}
+
+%extend column_iterator {
+%insert("python") %{
+  def __iter__(self) :
+    return self;
+
+  def __next__(self) :
+    if not self.next() :
+      raise StopIteration();
+
+    return self.value();
+%}
+}
+
+%extend column_reader {
+%insert("python") %{
+  def __iter__(self) :
+    return self;
+
+  def __next__(self) :
+    if not self.next() :
+      raise StopIteration();
+
+    return self.value();
+%}
+}
+
+%extend doc_iterator {
+%insert("python") %{
+  def __iter__(self) :
+    return self;
+
+  def __next__(self) :
+    if not self.next() :
+      raise StopIteration();
+
+    return self.value();
+%}
+}
+
+%extend segment_iterator {
+%insert("python") %{
+  def __iter__(self) :
+    return self;
+
+  def __next__(self) :
+    value = self.next();
+
+    if not value.valid():
+      raise StopIteration();
+
+    return value;
+%}
+}
+
 %extend index_reader {
-  segment_reader __getitem__(size_t id) {
-    return $self->segment(id);
-  }
+%insert("python") %{
+  def __getitem__(self, key) :
+    return self.segment(key);
+
+  def __iter__(self) :
+    return self.iterator();
+%}
 }

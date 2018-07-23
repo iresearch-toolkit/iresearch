@@ -33,8 +33,12 @@
 #define SWIG_NOEXCEPT NOEXCEPT
 #endif
 
-struct StopIteration{ };
+struct invalid_feature { };
 
+///////////////////////////////////////////////////////////////////////////////
+/// @class doc_iterator
+/// @brief python proxy for irs::doc_iterator
+///////////////////////////////////////////////////////////////////////////////
 class doc_iterator {
  public:
   ~doc_iterator() SWIG_NOEXCEPT { }
@@ -49,18 +53,6 @@ class doc_iterator {
     return it_->value();
   }
 
-  doc_iterator* __iter__() SWIG_NOEXCEPT {
-    return this;
-  }
-
-  uint64_t __next__() {
-    if (!next()) {
-      throw StopIteration();
-    }
-
-    return value();
-  }
-
  private:
   friend class column_reader;
   friend class term_iterator;
@@ -73,14 +65,18 @@ class doc_iterator {
   irs::doc_iterator::ptr it_;
 }; // doc_iterator
 
+///////////////////////////////////////////////////////////////////////////////
+/// @class term_iterator
+/// @brief python proxy for irs::term_iterator
+///////////////////////////////////////////////////////////////////////////////
 class term_iterator {
  public:
   ~term_iterator() SWIG_NOEXCEPT { }
 
   bool next() { return it_->next(); }
-  doc_iterator postings() const {
-    return it_->postings(irs::flags::empty_instance());
-  }
+  doc_iterator postings(
+    const std::vector<std::string>& features = std::vector<std::string>()
+  ) const;
   bool seek(irs::string_ref term) {
     return it_->seek(irs::ref_cast<irs::byte_type>(term));
   }
@@ -98,18 +94,6 @@ class term_iterator {
   }
   irs::bytes_ref value() const { return it_->value(); }
 
-  doc_iterator __iter__() SWIG_NOEXCEPT {
-    return postings();
-  }
-
-  irs::bytes_ref __next__() {
-    if (!next()) {
-      throw StopIteration();
-    }
-
-    return value();
-  }
-
  private:
   friend class field_reader;
 
@@ -120,6 +104,10 @@ class term_iterator {
   std::shared_ptr<irs::seek_term_iterator> it_;
 }; // term_iterator
 
+///////////////////////////////////////////////////////////////////////////////
+/// @class column_meta
+/// @brief python proxy for irs::column_meta
+///////////////////////////////////////////////////////////////////////////////
 class column_meta {
  public:
   ~column_meta() SWIG_NOEXCEPT { }
@@ -137,6 +125,10 @@ class column_meta {
   const irs::column_meta* meta_;
 }; // column_meta
 
+///////////////////////////////////////////////////////////////////////////////
+/// @class column_iterator
+/// @brief python proxy for irs::column_iterator
+///////////////////////////////////////////////////////////////////////////////
 class column_iterator {
  public:
   ~column_iterator() SWIG_NOEXCEPT { }
@@ -146,17 +138,6 @@ class column_iterator {
     return it_->seek(column);
   }
   column_meta value() const { return &it_->value(); }
-
-  column_iterator* __iter__() SWIG_NOEXCEPT {
-    return this;
-  }
-  column_meta __next__() {
-    if (!next()) {
-      throw StopIteration();
-    }
-
-    return value();
-  }
 
  private:
   friend class segment_reader;
@@ -168,6 +149,10 @@ class column_iterator {
   std::shared_ptr<irs::column_iterator> it_;
 }; // column_iterator
 
+///////////////////////////////////////////////////////////////////////////////
+/// @class column_values_reader
+/// @brief python proxy for irs::columnstore_reader::values_reader_f
+///////////////////////////////////////////////////////////////////////////////
 class column_values_reader {
  public:
   ~column_values_reader() SWIG_NOEXCEPT { }
@@ -193,6 +178,10 @@ class column_values_reader {
   irs::columnstore_reader::values_reader_f reader_;
 };
 
+///////////////////////////////////////////////////////////////////////////////
+/// @class column_reader
+/// @brief python proxy for irs::columnstore_reader::column_reader
+///////////////////////////////////////////////////////////////////////////////
 class column_reader {
  public:
   ~column_reader() SWIG_NOEXCEPT { }
@@ -211,10 +200,6 @@ class column_reader {
     return nullptr != reader_;
   }
 
-  doc_iterator __iter__() SWIG_NOEXCEPT {
-    return iterator();
-  }
-
  private:
   friend class segment_reader;
 
@@ -225,6 +210,10 @@ class column_reader {
   const irs::columnstore_reader::column_reader* reader_;
 }; // column_reader
 
+///////////////////////////////////////////////////////////////////////////////
+/// @class field_reader
+/// @brief python proxy for irs::term_reader
+///////////////////////////////////////////////////////////////////////////////
 class field_reader {
  public:
   ~field_reader() SWIG_NOEXCEPT { }
@@ -261,10 +250,6 @@ class field_reader {
     return nullptr != field_; 
   }
 
-  term_iterator __iter__() SWIG_NOEXCEPT {
-    return this->iterator();
-  }
-
  private:
   friend class segment_reader;
   friend class field_iterator;
@@ -276,6 +261,10 @@ class field_reader {
   const irs::term_reader* field_;
 }; // field_reader
 
+///////////////////////////////////////////////////////////////////////////////
+/// @class field_iterator
+/// @brief python proxy for irs::field_iterator
+///////////////////////////////////////////////////////////////////////////////
 class field_iterator {
  public:
   ~field_iterator() SWIG_NOEXCEPT { }
@@ -286,28 +275,20 @@ class field_iterator {
   bool next() { return it_->next(); }
   field_reader value() const { return &it_->value(); }
 
-  field_iterator* __iter__() SWIG_NOEXCEPT {
-    return this;
-  }
-
-  field_reader __next__() {
-    if (!this->next()) {
-      throw StopIteration();
-    }
-
-    return value();
-  }
-
  private:
   friend class segment_reader;
 
-  field_iterator(irs::field_iterator::ptr&& it) SWIG_NOEXCEPT 
+  field_iterator(irs::field_iterator::ptr&& it) SWIG_NOEXCEPT
     : it_(it.release(), std::move(it.get_deleter())) {
   }
 
   std::shared_ptr<irs::field_iterator> it_;
 }; // field_iterator
 
+///////////////////////////////////////////////////////////////////////////////
+/// @class segment_reader
+/// @brief python proxy for irs::segment_reader
+///////////////////////////////////////////////////////////////////////////////
 class segment_reader {
  public:
   ~segment_reader() SWIG_NOEXCEPT { }
@@ -330,6 +311,7 @@ class segment_reader {
   field_iterator fields() const { return reader_->fields(); }
   size_t live_docs_count() const { return reader_->live_docs_count(); }
   doc_iterator live_docs_iterator() const { return reader_->docs_iterator(); }
+  bool valid() const SWIG_NOEXCEPT { return nullptr != reader_; }
 
  private:
   friend class index_reader;
@@ -342,17 +324,15 @@ class segment_reader {
   irs::sub_reader::ptr reader_;
 }; // segment_reader
 
+///////////////////////////////////////////////////////////////////////////////
+/// @class segment_iterator
+/// @brief python iterator for index_reader proxy
+///////////////////////////////////////////////////////////////////////////////
 class segment_iterator {
  public:
-  segment_iterator(
-    std::vector<irs::sub_reader*>::iterator begin,
-    std::vector<irs::sub_reader*>::iterator end
-  ) : begin_(std::move(begin)), end_(std::move(end)) {
-  }
-
-  segment_reader __next__() {
+  segment_reader next() {
     if (begin_ == end_) {
-      throw StopIteration();
+      return segment_reader(nullptr);
     }
 
     auto* segment = *begin_;
@@ -364,16 +344,23 @@ class segment_iterator {
     );
   }
 
-  segment_iterator* __iter__() SWIG_NOEXCEPT {
-    return this; 
+ private:
+  friend class index_reader;
+
+  typedef std::vector<irs::sub_reader*>::iterator iterator_t;
+
+  segment_iterator(iterator_t begin, iterator_t end) SWIG_NOEXCEPT
+    : begin_(begin), end_(end) {
   }
 
- private:
-  segment_reader value_{ nullptr };
-  std::vector<irs::sub_reader*>::iterator begin_;
-  std::vector<irs::sub_reader*>::iterator end_;
+  iterator_t begin_;
+  iterator_t end_;
 }; // segment_iterator
 
+///////////////////////////////////////////////////////////////////////////////
+/// @class index_reader
+/// @brief python proxy for irs::index_reader
+///////////////////////////////////////////////////////////////////////////////
 class index_reader {
  public:
   static index_reader open(const char* path);
@@ -388,13 +375,15 @@ class index_reader {
   size_t live_docs_count() const { return reader_->live_docs_count(); }
   size_t size() const { return reader_->size(); }
 
-  index_reader(irs::index_reader::ptr reader);
+  segment_iterator iterator() const SWIG_NOEXCEPT {
+    auto& segments = const_cast<std::vector<irs::sub_reader*>&>(segments_);
 
-  segment_iterator __iter__() {
-    return segment_iterator(segments_.begin(), segments_.end());
+    return segment_iterator(segments.begin(), segments.end());
   }
 
  private:
+  index_reader(irs::index_reader::ptr reader);
+
   irs::index_reader::ptr reader_;
   std::vector<irs::sub_reader*> segments_;
 }; // index_reader

@@ -22,8 +22,29 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "pyresearch.hpp"
-#include "store/mmap_directory.hpp"
+#include "analysis/token_attributes.hpp"
 #include "index/directory_reader.hpp"
+#include "store/mmap_directory.hpp"
+
+NS_LOCAL
+
+irs::flags to_flags(const std::vector<std::string>& names) {
+  irs::flags features;
+
+  for (const auto& name : names) {
+    const auto* feature = irs::attribute::type_id::get(name);
+
+    if (!feature) {
+      continue;
+    }
+
+    features.add(*feature);
+  }
+
+  return features;
+}
+
+NS_END
 
 std::vector<std::string> field_reader::features() const {
   std::vector<std::string> result;
@@ -61,4 +82,10 @@ segment_reader index_reader::segment(size_t i) const {
     std::shared_ptr<irs::sub_reader>(),
     segment
   );
+}
+
+doc_iterator term_iterator::postings(
+    const std::vector<std::string>& features /*= std::vector<std::string>()*/
+) const {
+  return it_->postings(to_flags(features));
 }
