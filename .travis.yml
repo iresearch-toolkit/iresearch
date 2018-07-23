@@ -707,7 +707,11 @@ before_script:
   ############################################################################
   # Go back to the root of the project and setup the build directory
   ############################################################################
-  - CMAKE_OPTIONS="-DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DUSE_TESTS=On"
+  #  - |
+  #    if [[ "${STATIC_LIB}" == "true" ]]; then
+  #      BUILD_PYRESEARCH="-DUSE_PYRESEARCH=On"
+  #    fi
+  - CMAKE_OPTIONS="-DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DUSE_TESTS=On" ${BUILD_PYRESEARCH}
   - cd ${TRAVIS_BUILD_DIR}
   - (mkdir build && cd build && cmake .. ${CMAKE_OPTIONS})
 
@@ -721,6 +725,7 @@ script:
         BUILD_TYPE_SUFFIX="-shared"
         TEST_EXECUTABLE_SUFFIX=""
       fi
+      # build library and tests
       if [[ "${SUPPRESS_MAKE_ERRORS}" == true ]]; then
         if ! make -j 1 iresearch-tests${BUILD_TYPE_SUFFIX} 2> stderr.log; then
           head --bytes=2097152 stderr.log
@@ -729,10 +734,19 @@ script:
       else
         make iresearch-tests${BUILD_TYPE_SUFFIX}
       fi
+      # build utils
+      if [[ "${STATIC_LIB}" == "true" ]]; then
+        make iresearch-index-util
+        make iresearch-benchmarks
+#      else
+#       make pyresearch
+      fi
+      # execute tests
       ulimit -n 1024 # required for MacOS
       if ! travis_wait 60 ./bin/iresearch-tests${TEST_EXECUTABLE_SUFFIX} ${TEST_PARAMS}; then
         exit 1
       fi
+      # archive artifacts
       tar -czf iresearch-${TRAVIS_OS_NAME}-${BUILD_TYPE}${BUILD_TYPE_SUFFIX}-${TRAVIS_BUILD_NUMBER}.tar.gz bin
 
 deploy:
