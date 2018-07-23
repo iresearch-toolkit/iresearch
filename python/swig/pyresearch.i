@@ -131,7 +131,7 @@
 %extend term_iterator {
 %insert("python") %{
   def __iter__(self) :
-    return self.postings();
+    return self;
 
   def __next__(self) :
     if not self.next() :
@@ -157,13 +157,7 @@
 %extend column_reader {
 %insert("python") %{
   def __iter__(self) :
-    return self;
-
-  def __next__(self) :
-    if not self.next() :
-      raise StopIteration();
-
-    return self.value();
+    return self.iterator();
 %}
 }
 
