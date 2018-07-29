@@ -26,6 +26,7 @@
 #include "merge_writer.hpp"
 #include "formats/format_utils.hpp"
 #include "utils/bitset.hpp"
+#include "utils/bitvector.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/index_utils.hpp"
 #include "utils/timer_utils.hpp"
@@ -434,22 +435,24 @@ bool index_writer::add_segment_mask_consolidated_records(
     const consolidation_requests_t& policies // policies dictating which segments to consider
 ) {
   REGISTER_TIMER_DETAILED();
-  bitset consolidation_mask(meta.size()); // consolidated segments
+  bitvector policy_candidates(meta.size()); // candidates as deemed by individual policies
+  bitvector consolidation_mask(meta.size()); // consolidated segments
+  size_t i = 0;
+
+  // consolidate empty segments
+  for (auto& segment: meta) {
+    if (!segment.meta.live_docs_count) {
+      consolidation_mask.set(i);
+    }
+
+    ++i;
+  }
 
   // collect a list of consolidation candidates
   for (auto& policy: policies) {
-    auto acceptor = (*(policy.policy))(dir, meta);
-
-    for (size_t i = 0, count = meta.size(); i < count; ++i) {
-      auto& candidate = meta.segment(i).meta;
-
-      // consolidate empty segments
-      // test accepted segments excluding segments marked for consolidation
-      if (!candidate.live_docs_count
-          || (!consolidation_mask.test(i) && acceptor(candidate))) {
-        consolidation_mask.set(i);
-      }
-    }
+    policy_candidates = consolidation_mask;
+    (*(policy.policy))(policy_candidates, dir, meta);
+    consolidation_mask |= policy_candidates;
   }
 
   if (consolidation_mask.none()) {
@@ -517,7 +520,6 @@ void index_writer::consolidate(
     std::unordered_map<string_ref, const segment_meta*> segment_candidates;
     SCOPED_LOCK(commit_lock_); // ensure meta_ segments are not modified by concurrent consolidate()/commit()
     auto ctx = get_flush_context(); // can modify ctx->segment_mask_ without lock since have commit_lock_
-    auto meta = committed_state_.first;
 
     for (auto& seg: meta_) {
       if (ctx->segment_mask_.end() == ctx->segment_mask_.find(seg.meta.name)) {
@@ -525,34 +527,32 @@ void index_writer::consolidate(
       }
     }
 
-    auto acceptor = policy(*(ctx->dir_), *meta);
+    auto meta = *(committed_state_.first);
+
+    meta.clear();
+
+    // add segments present in both 'committed_state_.first' and 'meta_' into meta
+    for (auto& segment: *(committed_state_.first)) {
+      auto itr = segment_candidates.find(segment.meta.name);
+
+      if (segment_candidates.end() != itr
+          && segment.meta.version == itr->second->version) {
+        meta.add(&segment, &segment + 1);
+      }
+    }
+
     consolidation_requests_t policies;
 
-    policies.emplace_back(
-      [&acceptor, &segment_candidates](
-        const directory& dir, const index_meta& meta
-      )->consolidation_acceptor_t {
-        return [&acceptor, &segment_candidates](const segment_meta& meta)->bool {
-          auto itr = segment_candidates.find(meta.name);
+    policies.emplace_back(policy);
 
-          return segment_candidates.end() != itr
-            && meta.version == itr->second->version
-            && acceptor(meta)
-            ;
-        };
-      }
-    );
-
-    // for immediate consolidate consider only comitted segments that are still unmodified in current meta
-    if (add_segment_mask_consolidated_records(segment, *(ctx->dir_), ctx->segment_mask_, *meta, policies)) {
-      consolidation_policy_t meta_ref = [meta](const directory&, const index_meta&)->consolidation_acceptor_t {
-        return [](const segment_meta&)->bool { return false; };
-      };
-
+    // for immediate consolidate consider only committed segments that are still unmodified in current meta
+    if (add_segment_mask_consolidated_records(segment, *(ctx->dir_), ctx->segment_mask_, meta, policies)) {
       SCOPED_LOCK(ctx->mutex_); // lock due to context modification
 
       // add a policy to hold a reference to committed_meta so that segment refs do not disapear
-      ctx->consolidation_policies_.emplace_back(std::move(meta_ref));
+      ctx->consolidation_policies_.emplace_back(
+        [meta](bitvector&, const directory&, const index_meta&)->void {}
+      );
 
       // 0 == merged segments existed before start of tx (all removes apply)
       ctx->pending_segments_.emplace_back(std::move(segment), 0);

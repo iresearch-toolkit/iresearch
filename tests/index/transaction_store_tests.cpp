@@ -346,8 +346,10 @@ class transaction_store_tests: public test_base {
       size_t batch_size,
       size_t flush_interval
 ) {
-    auto always_merge = [](const irs::directory& dir, const irs::index_meta& meta)->irs::index_writer::consolidation_acceptor_t {
-      return [](const irs::segment_meta& meta)->bool { return true; };
+    auto always_merge = [](
+      irs::bitvector& candidates, const irs::directory& dir, const irs::index_meta& meta
+    )->void {
+      for (size_t i = meta.size(); i; candidates.set(--i)); // merge every segment
     };
     auto codec = irs::formats::get("1_0");
     irs::memory_directory dir;
@@ -3326,8 +3328,10 @@ TEST_F(transaction_store_tests, concurrent_add_flush_mt) {
 
   for (const tests::document* doc; (doc = gen.next()) != nullptr; docs.emplace_back(doc)) {}
 
-  auto always_merge = [](const irs::directory& dir, const irs::index_meta& meta)->irs::index_writer::consolidation_acceptor_t {
-    return [](const irs::segment_meta& meta)->bool { return true; };
+  auto always_merge = [](
+    irs::bitvector& candidates, const irs::directory& dir, const irs::index_meta& meta
+  )->void {
+    for (size_t i = meta.size(); i; candidates.set(--i)); // merge every segment
   };
 
   {
@@ -5130,8 +5134,10 @@ TEST_F(transaction_store_tests, segment_flush) {
   tests::document const* doc5 = gen.next();
   tests::document const* doc6 = gen.next();
 
-  auto always_merge = [](const irs::directory& dir, const irs::index_meta& meta)->irs::index_writer::consolidation_acceptor_t {
-    return [](const irs::segment_meta& meta)->bool { return true; };
+  auto always_merge = [](
+    irs::bitvector& candidates, const irs::directory& dir, const irs::index_meta& meta
+  )->void {
+    for (size_t i = meta.size(); i; candidates.set(--i)); // merge every segment
   };
   auto all_features = irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() };
 

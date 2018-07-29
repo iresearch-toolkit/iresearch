@@ -60,6 +60,7 @@
 #include "analysis/token_streams.hpp"
 #include "analysis/text_token_stream.hpp"
 #include "store/store_utils.hpp"
+#include "utils/bitvector.hpp"
 #include "analysis/token_attributes.hpp"
 
 #include <boost/chrono.hpp>
@@ -496,11 +497,13 @@ int put(
 
   // merge all segments into a single segment
   writer->consolidate(
-    [](const irs::directory&, const irs::index_meta&)->irs::index_writer::consolidation_acceptor_t {
-      return [](const irs::segment_meta& meta)->bool {
-        std::cout << meta.name << std::endl;
-        return true;
-      };
+    [](irs::bitvector& candidates, const irs::directory&, const irs::index_meta& meta)->void {
+      size_t i = 0;
+
+      for (auto& segment: meta) {
+        std::cout << segment.meta.name << std::endl;
+        candidates.set(i++);
+      }
     },
     false
   );

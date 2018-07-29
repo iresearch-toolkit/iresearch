@@ -33,6 +33,7 @@
 #include "store/memory_directory.hpp"
 #include "index/index_reader.hpp"
 #include "utils/async_utils.hpp"
+#include "utils/bitvector.hpp"
 #include "utils/index_utils.hpp"
 #include "utils/numeric_utils.hpp"
 
@@ -1097,8 +1098,10 @@ class index_test_case_base : public tests::index_test_base {
   }
 
   void profile_bulk_index_dedicated_consolidate(size_t num_threads, size_t batch_size, size_t consolidate_interval) {
-    irs::index_writer::consolidation_policy_t policy = [](const irs::directory& dir, const irs::index_meta& meta)->irs::index_writer::consolidation_acceptor_t {
-      return [](const irs::segment_meta& meta)->bool { return true; }; // merge every segment
+    irs::index_writer::consolidation_policy_t policy = [](
+      irs::bitvector& candidates, const irs::directory& dir, const irs::index_meta& meta
+    )->void {
+      for (size_t i = meta.size(); i; candidates.set(--i)); // merge every segment
     };
     auto* directory = &dir();
     std::atomic<bool> working(true);
@@ -10276,8 +10279,10 @@ TEST_F(memory_index_test, reuse_segment_writer) {
 
   // merge all segments
   {
-    auto merge_all = [](const iresearch::directory& dir, const iresearch::index_meta& meta)->iresearch::index_writer::consolidation_acceptor_t {
-      return [](const iresearch::segment_meta& meta)->bool { return true; };
+    auto merge_all = [](
+      irs::bitvector& candidates, const irs::directory& dir, const irs::index_meta& meta
+    )->void {
+      for (size_t i = meta.size(); i; candidates.set(--i)); // merge every segment
     };
 
     writer->consolidate(merge_all, true);
@@ -10380,8 +10385,10 @@ TEST_F(memory_index_test, segment_consolidate) {
   tests::document const* doc5 = gen.next();
   tests::document const* doc6 = gen.next();
 
-  auto always_merge = [](const iresearch::directory& dir, const iresearch::index_meta& meta)->iresearch::index_writer::consolidation_acceptor_t {
-    return [](const iresearch::segment_meta& meta)->bool { return true; };
+  auto always_merge = [](
+    irs::bitvector& candidates, const irs::directory& dir, const irs::index_meta& meta
+  )->void {
+    for (size_t i = meta.size(); i; candidates.set(--i)); // merge every segment
   };
   auto all_features = irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() };
 
@@ -10608,11 +10615,20 @@ TEST_F(memory_index_test, segment_consolidate) {
 
   // do defragment old segment with uncommited removal (i.e. do not consider uncomitted removals)
   {
-    auto merge_if_masked = [](const iresearch::directory& dir, const iresearch::index_meta& meta)->iresearch::index_writer::consolidation_acceptor_t {
-      return [&dir](const iresearch::segment_meta& meta)->bool { 
+    auto merge_if_masked = [](
+      irs::bitvector& candidates, const irs::directory& dir, const irs::index_meta& meta
+    )->void {
+      size_t i = 0;
+
+      for (auto& segment: meta) {
         bool seen;
-        return meta.codec->get_document_mask_reader()->prepare(dir, meta, &seen) && seen;
-      };
+
+        if (segment.meta.codec->get_document_mask_reader()->prepare(dir, segment.meta, &seen) && seen) {
+          candidates.set(i);
+        }
+
+        ++i;
+      }
     };
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
@@ -10640,11 +10656,20 @@ TEST_F(memory_index_test, segment_consolidate) {
 
   // do not defragment old segment with uncommited removal (i.e. do not consider uncomitted removals)
   {
-    auto merge_if_masked = [](const iresearch::directory& dir, const iresearch::index_meta& meta)->iresearch::index_writer::consolidation_acceptor_t {
-      return [&dir](const iresearch::segment_meta& meta)->bool { 
+    auto merge_if_masked = [](
+      irs::bitvector& candidates, const irs::directory& dir, const irs::index_meta& meta
+    )->void {
+      size_t i = 0;
+
+      for (auto& segment: meta) {
         bool seen;
-        return meta.codec->get_document_mask_reader()->prepare(dir, meta, &seen) && seen;
-      };
+
+        if (segment.meta.codec->get_document_mask_reader()->prepare(dir, segment.meta, &seen) && seen) {
+          candidates.set(i);
+        }
+
+        ++i;
+      }
     };
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
