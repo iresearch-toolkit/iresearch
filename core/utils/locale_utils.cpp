@@ -61,7 +61,6 @@
 #include <unicode/decimfmt.h> // for icu::DecimalFormat
 #include <unicode/numfmt.h> // for icu::NumberFormat
 #include <unicode/ucnv.h> // for UConverter
-#include <unicode/ustring.h> // for u_strToUTF32, u_strToUTF8
 
 #include "hash_utils.hpp"
 #include "map_utils.hpp"
@@ -305,6 +304,10 @@ class codecvt16_facet final: public codecvtu_base<char16_t> {
  public:
   codecvt16_facet(converter_pool& converters): codecvtu_base(converters) {}
 
+  bool append(
+    std::basic_string<intern_type>& buf, const icu::UnicodeString& value
+  ) const;
+
  protected:
   virtual int do_encoding() const NOEXCEPT override;
   virtual std::codecvt_base::result do_in(
@@ -327,6 +330,25 @@ class codecvt16_facet final: public codecvtu_base<char16_t> {
     extern_type*& to_next
   ) const override;
 };
+
+bool codecvt16_facet::append(
+    std::basic_string<intern_type>& buf, const icu::UnicodeString& value
+) const {
+  auto size = value.length();
+
+  if (size < 0) {
+    IR_FRMT_WARN(
+      "ICU returned invalid string size while converting unicode string to UTF16"
+    );
+
+    return false;
+  }
+
+  static_assert(sizeof(UChar) == sizeof(intern_type), "sizeof(UChar) != sizeof(intern_type)");
+  buf.append(reinterpret_cast<const intern_type*>(value.getBuffer()), size);
+
+  return true;
+}
 
 int codecvt16_facet::do_encoding() const NOEXCEPT {
   auto ctx = context();
@@ -482,6 +504,10 @@ class codecvt32_facet final: public codecvtu_base<char32_t> {
  public:
   codecvt32_facet(converter_pool& converters): codecvtu_base(converters) {}
 
+  bool append(
+    std::basic_string<intern_type>& buf, const icu::UnicodeString& value
+  ) const;
+
  protected:
   virtual int do_encoding() const NOEXCEPT final override;
   virtual std::codecvt_base::result do_in(
@@ -504,6 +530,37 @@ class codecvt32_facet final: public codecvtu_base<char32_t> {
     extern_type*& to_next
   ) const override;
 };
+
+bool codecvt32_facet::append(
+    std::basic_string<intern_type>& buf, const icu::UnicodeString& value
+) const {
+  auto size = value.countChar32();
+
+  if (size < 0) {
+    IR_FRMT_WARN(
+      "ICU returned invalid string size while converting unicode string to UTF32"
+    );
+
+    return false;
+  }
+
+  auto start = buf.size();
+  UErrorCode status = U_ZERO_ERROR;
+
+  buf.resize(buf.size() + size);
+
+  static_assert(sizeof(UChar32) == sizeof(intern_type), "sizeof(UChar32) != sizeof(intern_type)");
+  auto written =
+    value.toUTF32(reinterpret_cast<UChar32*>(&buf[start]), size, status);
+
+  if (U_SUCCESS(status) && written == size) {
+    return true;
+  }
+
+  buf.resize(start);
+
+  return false;
+}
 
 int codecvt32_facet::do_encoding() const NOEXCEPT {
   auto ctx = context();
@@ -798,6 +855,10 @@ class codecvt8u_facet: public codecvtu_base<char> {
  public:
   codecvt8u_facet(converter_pool& converters): codecvtu_base(converters) {}
 
+  bool append(
+    std::basic_string<intern_type>& buf, const icu::UnicodeString& value
+  ) const;
+
  protected:
   virtual int do_encoding() const NOEXCEPT override { return 0; } // only non-zero for ASCII
   virtual std::codecvt_base::result do_in(
@@ -820,6 +881,39 @@ class codecvt8u_facet: public codecvtu_base<char> {
     extern_type*& to_next
   ) const override;
 };
+
+bool codecvt8u_facet::append(
+    std::basic_string<intern_type>& buf, const icu::UnicodeString& value
+) const {
+  struct sink_t: public icu::ByteSink {
+    std::basic_string<intern_type>& buf_;
+    bool error_;
+    sink_t(std::basic_string<intern_type>& buf): buf_(buf), error_(false) {}
+    virtual void Append(const char* bytes, int32_t n) {
+      if (n < 0 || error_) {
+        error_ = true;
+        return;
+      }
+
+      buf_.append(bytes, n);
+    }
+  } sink(buf);
+  auto start = buf.size();
+
+  value.toUTF8(sink);
+
+  if (!sink.error_) {
+    return true;
+  }
+
+  IR_FRMT_WARN(
+    "ICU returned invalid string size while converting unicode string to UTF8"
+  );
+
+  buf.resize(start);
+
+  return false;
+}
 
 std::codecvt_base::result codecvt8u_facet::do_in(
     state_type& state,
@@ -938,7 +1032,6 @@ std::codecvt_base::result codecvt8u_facet::do_in(
     assert(to_next >= to_next_prev && IRESEARCH_COUNTOF(dst_offsets) > size_t(to_next - to_next_prev));
     dst_offsets[to_next - to_next_prev] = buf_dst_next - buf; // remember past-end position
 
-    // FIXME TODO is why is 'buf_dst_next - buf' not sufficient?
     auto buf_dst_pos = dst_offsets[to_next - to_next_prev];
 
     assert(buf_dst_pos >= 0 && IRESEARCH_COUNTOF(src_offsets) > size_t(buf_dst_pos));
@@ -1109,10 +1202,19 @@ std::codecvt_base::result codecvt8u_facet::do_out(
 ///        based on sizeof(wchar_t), and
 ///        an 'external' user-specified encoding
 ////////////////////////////////////////////////////////////////////////////////
-//fixme needs to be a template based on sizeof wchar_t
 class codecvtwu_facet: public std::codecvt<wchar_t, char, mbstate_t> {
  public:
   codecvtwu_facet(converter_pool& pool): impl_(pool) {}
+
+  bool append(
+      std::basic_string<intern_type>& buf, const icu::UnicodeString& value
+  ) const {
+    static_assert(sizeof(impl_t::intern_type) == sizeof(intern_type), "sizeof(impl_t::intern_type) != sizeof(intern_type)");
+    return impl_.append(
+      reinterpret_cast<std::basic_string<impl_t::intern_type>&>(buf),
+      value
+    );
+  }
 
  protected:
   virtual bool do_always_noconv() const NOEXCEPT override {
@@ -1234,6 +1336,10 @@ class codecvt_base: public std::codecvt<InternType, char, mbstate_t> {
     static ptr make(converter_pool& pool_int, converter_pool& pool_ext) {
       auto ctx = irs::memory::make_unique<context_t>();
 
+      if (!ctx) {
+        return nullptr;
+      }
+
       ctx->converter_ext_ = pool_ext.get();
       ctx->converter_int_ = pool_int.get();
 
@@ -1349,6 +1455,10 @@ class codecvt8_facet final: public codecvt_base<char> {
     : codecvt_base(pool_int, pool_ext) {
   }
 
+  bool append(
+    std::basic_string<intern_type>& buf, const icu::UnicodeString& value
+  ) const;
+
  protected:
   virtual int do_encoding() const NOEXCEPT override;
   virtual std::codecvt_base::result do_in(
@@ -1371,6 +1481,77 @@ class codecvt8_facet final: public codecvt_base<char> {
     extern_type*& to_next
   ) const override;
 };
+
+
+bool codecvt8_facet::append(
+    std::basic_string<intern_type>& buf, const icu::UnicodeString& value
+) const {
+  auto ctx = context();
+
+  if (!ctx) {
+    IR_FRMT_WARN(
+      "failure to get conversion context while converting unicode string to encoding '%s'",
+      context_encoding_ext().c_str()
+    );
+
+    return false;
+  }
+
+  auto size = value.length();
+
+  if (size < 0) {
+    IR_FRMT_WARN(
+      "ICU returned invalid string size while converting unicode string to encoding '%s'",
+      context_encoding_ext().c_str()
+    );
+
+    return false;
+  }
+
+  auto* from_next = value.getBuffer();
+  auto* from_end = from_next + size;
+  auto start = buf.size();
+  UErrorCode status = U_ZERO_ERROR;
+
+  ucnv_reset(ctx->converter_ext_.get());
+
+  // convert 'BUFFER_SIZE' at a time
+  do {
+    auto offset = buf.size();
+
+    buf.resize(buf.size() + BUFFER_SIZE);
+
+    auto* to_next = &buf[offset];
+    auto* to_end = to_next + BUFFER_SIZE;
+
+    status = U_ZERO_ERROR;
+    ucnv_fromUnicode(
+      ctx->converter_int_.get(),
+      &to_next,
+      to_end,
+      &from_next,
+      from_end,
+      nullptr,
+      true,
+      &status
+    );
+
+    if (U_SUCCESS(status)) {
+      buf.resize(to_next - &buf[0]); // truncate to actual data size
+
+      return true;
+    }
+  } while (status == U_BUFFER_OVERFLOW_ERROR);
+
+  IR_FRMT_WARN(
+    "failure while converting unicode string to encoding '%s'",
+    context_encoding_ext().c_str()
+  );
+
+  buf.resize(start); // truncate all appended data
+
+  return false;
+}
 
 int codecvt8_facet::do_encoding() const NOEXCEPT {
   auto ctx = context();
@@ -1645,6 +1826,10 @@ class codecvtw_facet final: public codecvt_base<wchar_t> {
     : codecvt_base(pool_int, pool_ext) {
   }
 
+  bool append(
+    std::basic_string<intern_type>& buf, const icu::UnicodeString& value
+  ) const;
+
  protected:
   virtual int do_encoding() const NOEXCEPT override;
   virtual std::codecvt_base::result do_in(
@@ -1668,82 +1853,517 @@ class codecvtw_facet final: public codecvt_base<wchar_t> {
   ) const override;
 };
 
-template<typename CharType>
-class codecvt_facet: public std::codecvt<char, CharType, mbstate_t> {
- public:
-  typedef typename std::codecvt<char, CharType, mbstate_t>::extern_type extern_type;
-
-  codecvt_facet(const irs::string_ref& encoding)
-    : encoding_(encoding), pool_(POOL_SIZE) {
-  }
-
-  // FIXME TODO implement
-
-  bool out(icu::UnicodeString& buf, icu::StringPiece) const {
-    // FIXME TODO implement
-    return false;
-  }
-
-  bool out(
-    std::basic_string<extern_type>& buf, const icu::UnicodeString& value
-  ) const;
-
- private:
-  // 'make(...)' method wrapper for icu::UConverter
-  struct builder {
-    DECLARE_SHARED_PTR(UConverter);
-    static ptr make(const std::string& encoding) {
-      UErrorCode status = U_ZERO_ERROR;
-      ptr value(
-        ucnv_open(encoding.c_str(), &status),
-        [](UConverter* ptr)->void{ ucnv_close(ptr); }
-      );
-
-      return U_SUCCESS(status) ? std::move(value) : nullptr;
-    }
-  };
-
-  std::string encoding_;
-  mutable irs::unbounded_object_pool<builder> pool_;
-};
-
-template<typename CharType>
-bool codecvt_facet<CharType>::out(
-    std::basic_string<extern_type>& buf, const icu::UnicodeString& value
+bool codecvtw_facet::append(
+    std::basic_string<intern_type>& buf, const icu::UnicodeString& value
 ) const {
-  char ch_buf[1024];
-  auto conv = pool_.emplace(encoding_);
+  auto ctx = context();
 
-  if (!conv) {
+  if (!ctx) {
+    IR_FRMT_WARN(
+      "failure to get conversion context while converting unicode string to encoding '%s'",
+      context_encoding_ext().c_str()
+    );
+
     return false;
   }
 
-  auto* dst_end = ch_buf + IRESEARCH_COUNTOF(ch_buf);
-  auto* src_begin = value.getBuffer();
-  auto* src_end = src_begin + value.length();
   UErrorCode status = U_ZERO_ERROR;
+  const auto char_size =
+    size_t(std::max(int8_t(1), ucnv_getMinCharSize(ctx->converter_int_.get())));
 
-  ucnv_reset(conv.get());
-
-  do {
-    auto* dst_begin = ch_buf;
-
-    ucnv_fromUnicode(
-      conv.get(),
-      &dst_begin, dst_end,
-      &src_begin, src_end,
-      nullptr,
-      true,
-      &status
+  // cannot support conversion to variable-width system encoding since no way to
+  // determine internal char size
+  // cannot support conversion of fixed-width system encoding where
+  // sizeof(intern_type) < sizeof(<internal char>)
+  if (!ucnv_isFixedWidth(ctx->converter_int_.get(), &status)
+      || sizeof(intern_type) < char_size) {
+    IR_FRMT_WARN(
+      "unsupported encoding while converting unicode string encoding '%s'",
+      context_encoding_ext().c_str()
     );
-    buf.append(ch_buf, dst_begin - ch_buf);
+
+    return false;
+  }
+
+  auto size = value.length();
+
+  if (size < 0) {
+    IR_FRMT_WARN(
+      "ICU returned invalid string size while converting unicode string to encoding '%s'",
+      context_encoding_ext().c_str()
+    );
+
+    return false;
+  }
+
+  auto* from_next = value.getBuffer();
+  auto* from_end = from_next + size;
+  auto start = buf.size();
+
+  ucnv_reset(ctx->converter_ext_.get());
+
+  // convert 'BUFFER_SIZE' at a time
+  do {
+    auto offset = buf.size();
+    UErrorCode status = U_ZERO_ERROR;
+
+    buf.resize(buf.size() + BUFFER_SIZE);
+
+    auto* to_next = &buf[offset];
+    auto* to_end = to_next + BUFFER_SIZE;// * sizeof(intern_type);
+    static_assert(sizeof(char) == 1, "sizeof(char) != 1"); // otherwise have to divide lower
+
+    // convert from intermediary representation to the internal encoding
+    if (sizeof(intern_type) == char_size) {
+      auto* buf_to_next = reinterpret_cast<char*>(to_next);
+      auto* buf_to_end = reinterpret_cast<char*>(to_next + BUFFER_SIZE);
+
+      ucnv_fromUnicode(
+        ctx->converter_ext_.get(),
+        &buf_to_next,
+        buf_to_end,
+        &from_next,
+        from_end,
+        nullptr,
+        true,
+        &status
+      );
+    } else {
+      intern_type ch = 0;
+      auto* buf_to = reinterpret_cast<char*>(&ch) + (sizeof(intern_type) - char_size);
+      auto* buf_to_end = reinterpret_cast<char*>(&ch + 1); // +1 for char after buf
+
+      // convert one char at a time and left pad with 0's
+      while (to_next < to_end) {
+        auto* buf_to_next = buf_to;
+
+        ucnv_fromUnicode(
+          ctx->converter_int_.get(),
+          &buf_to_next,
+          buf_to_end,
+          &from_next,
+          from_end,
+          nullptr,
+          true,
+          &status
+        );
+
+        if (!U_SUCCESS(status) && U_BUFFER_OVERFLOW_ERROR != status) {
+          break;
+        }
+
+        *to_next = ch; // copy over char
+        ++to_next;
+        ch = 0;
+
+        if (U_SUCCESS(status)) {
+          break; // nothing was converted from source to destination
+        }
+      }
+    }
 
     if (U_SUCCESS(status)) {
+      buf.resize(to_next - &buf[0]); // truncate to actual data size
+
       return true;
     }
   } while (status == U_BUFFER_OVERFLOW_ERROR);
 
+  IR_FRMT_WARN(
+    "failure while converting unicode string to encoding '%s'",
+    context_encoding_ext().c_str()
+  );
+
+  buf.resize(start); // truncate all appended data
+
   return false;
+}
+
+int codecvtw_facet::do_encoding() const NOEXCEPT {
+  auto ctx = context();
+
+  if (!ctx) {
+    IR_FRMT_WARN(
+      "failure to get conversion context while computing number of required input characters from encoding '%s' to produce a single system encoding '%s' output character",
+      context_encoding_ext().c_str(), context_encoding_int().c_str()
+    );
+
+    return -1;
+  }
+
+  UErrorCode status = U_ZERO_ERROR;
+
+  // the exact number of externT characters that correspond to one internT character, if constant
+  return ucnv_isFixedWidth(ctx->converter_ext_.get(), &status)
+    ? ucnv_getMinCharSize(ctx->converter_ext_.get()) : 0;
+}
+
+std::codecvt_base::result codecvtw_facet::do_in(
+    state_type& state,
+    const extern_type* from,
+    const extern_type* from_end,
+    const extern_type*& from_next,
+    intern_type* to,
+    intern_type* to_end,
+    intern_type*& to_next
+) const {
+  auto ctx = context();
+
+  from_next = from;
+  to_next = to;
+
+  if (!ctx) {
+    IR_FRMT_WARN(
+      "failure to get conversion context while converting encoding '%s' to system encoding '%s'",
+      context_encoding_ext().c_str(), context_encoding_int().c_str()
+    );
+
+    return std::codecvt_base::error;
+  }
+
+  UErrorCode status = U_ZERO_ERROR;
+  const auto char_size =
+    size_t(std::max(int8_t(1), ucnv_getMinCharSize(ctx->converter_int_.get())));
+
+  // cannot support conversion to variable-width system encoding since no way to
+  // determine internal char size
+  // cannot support conversion of fixed-width system encoding where
+  // sizeof(intern_type) < sizeof(<internal char>)
+  if (!ucnv_isFixedWidth(ctx->converter_int_.get(), &status)
+      || sizeof(intern_type) < char_size) {
+    IR_FRMT_WARN(
+      "unsupported encoding while converting encoding '%s' to system encoding '%s'",
+      context_encoding_ext().c_str(), context_encoding_int().c_str()
+    );
+
+    return std::codecvt_base::error;
+  }
+
+  UChar buf[BUFFER_SIZE];
+  auto* buf_end = buf + IRESEARCH_COUNTOF(buf);
+  int32_t offsets[IRESEARCH_COUNTOF(buf) + 1]; // +1 for end
+
+  ucnv_reset(ctx->converter_ext_.get());
+  ucnv_reset(ctx->converter_int_.get());
+
+  // convert 'BUFFER_SIZE' at a time
+  while (from_next < from_end) {
+    auto* buf_next = buf;
+    auto* from_next_prev = from_next;
+    auto* to_next_prev = to_next;
+    UErrorCode src_status = U_ZERO_ERROR;
+    UErrorCode dst_status = U_ZERO_ERROR;
+
+    // convert from desired encoding to the intermediary representation
+    ucnv_toUnicode(
+      ctx->converter_ext_.get(),
+      &buf_next,
+      buf_end,
+      &from_next,
+      from_end,
+      offsets,
+      true,
+      &src_status
+    );
+
+    if (!U_SUCCESS(src_status) && U_BUFFER_OVERFLOW_ERROR != src_status) {
+      from_next = from_next_prev;
+      to_next = to_next_prev;
+
+      IR_FRMT_WARN(
+        "failure to convert from locale encoding to UTF16 while converting encoding '%s' to system encoding '%s'",
+        context_encoding_ext().c_str(), context_encoding_int().c_str()
+      );
+
+      return std::codecvt_base::error; // error occured during final conversion
+    }
+
+    auto buf_pos = buf_next - buf;
+
+    assert(buf_pos >= 0 && IRESEARCH_COUNTOF(offsets) > size_t(buf_pos));
+    offsets[buf_pos] = from_next - from_next_prev; // remember past-end position
+
+    const UChar* buf_dst_next = buf;
+    auto* buf_dst_end = buf_next;
+    static_assert(sizeof(char) == 1, "sizeof(char) != 1"); // otherwise have to divide lower
+
+    // convert from intermediary representation to the internal encoding
+    if (sizeof(intern_type) == char_size) {
+      auto* buf_to_next = reinterpret_cast<char*>(to_next);
+      auto* buf_to_end =
+        buf_to_next + std::distance(to_next, to_end) * sizeof(intern_type);
+
+      ucnv_fromUnicode(
+        ctx->converter_int_.get(),
+        &buf_to_next,
+        buf_to_end,
+        &buf_dst_next,
+        buf_dst_end,
+        nullptr,
+        true,
+        &dst_status
+      );
+    } else {
+      intern_type ch = 0;
+      auto* buf_to = reinterpret_cast<char*>(&ch) + (sizeof(intern_type) - char_size);
+      auto* buf_to_end = reinterpret_cast<char*>(&ch + 1); // +1 for char after buf
+
+      // convert one char at a time and left pad with 0's
+      while (to_next < to_end) {
+        auto* buf_to_next = buf_to;
+
+        ucnv_fromUnicode(
+          ctx->converter_int_.get(),
+          &buf_to_next,
+          buf_to_end,
+          &buf_dst_next,
+          buf_dst_end,
+          nullptr,
+          true,
+          &dst_status
+        );
+
+        if (!U_SUCCESS(dst_status) && U_BUFFER_OVERFLOW_ERROR != dst_status) {
+          break;
+        }
+
+        *to_next = ch; // copy over char
+        ++to_next;
+        ch = 0;
+
+        if (U_SUCCESS(dst_status)) {
+          break; // nothing was converted from source to destination
+        }
+      }
+    }
+
+    if (!U_SUCCESS(dst_status) && U_BUFFER_OVERFLOW_ERROR != dst_status) {
+      from_next = from_next_prev;
+      to_next = to_next_prev;
+
+      IR_FRMT_WARN(
+        "failure to convert from UTF16 to internal encoding while converting encoding '%s' to system encoding '%s'",
+        context_encoding_ext().c_str(), context_encoding_int().c_str()
+      );
+
+      return std::codecvt_base::error; // error occured during final conversion
+    }
+
+    auto buf_dst_pos = buf_dst_next - buf;
+
+    assert(buf_dst_pos >= 0 && IRESEARCH_COUNTOF(offsets) > size_t(buf_dst_pos));
+    from_next = from_next_prev + offsets[buf_dst_pos]; // update successfully converted
+
+    if (U_BUFFER_OVERFLOW_ERROR == dst_status
+        || (U_BUFFER_OVERFLOW_ERROR == src_status && from_next >= from_end)) {
+      return std::codecvt_base::partial; // destination buffer is not large enough
+    }
+  }
+
+  return std::codecvt_base::ok;
+}
+
+int codecvtw_facet::do_max_length() const NOEXCEPT {
+  auto ctx = context();
+
+  if (!ctx) {
+    IR_FRMT_WARN(
+      "failure to get conversion context while computing maximum number of required input characters from encoding '%s' to produce a single system encoding '%s' output character",
+      context_encoding_ext().c_str(), context_encoding_int().c_str()
+    );
+
+    return -1;
+  }
+
+  UErrorCode status = U_ZERO_ERROR;
+  const auto char_size =
+    size_t(std::max(int8_t(1), ucnv_getMinCharSize(ctx->converter_int_.get())));
+
+  // cannot support conversion to variable-width system encoding since no way to
+  // determine internal char size
+  // cannot support conversion of fixed-width system encoding where
+  // sizeof(intern_type) < sizeof(<internal char>)
+  if (!ucnv_isFixedWidth(ctx->converter_int_.get(), &status)
+      || sizeof(intern_type) < char_size) {
+    IR_FRMT_WARN(
+      "unsupported encoding while computing maximum number of required input characters from encoding '%s' to produce a single system encoding '%s' output character",
+      context_encoding_ext().c_str(), context_encoding_int().c_str()
+    );
+
+    return -1;
+  }
+
+  return ucnv_getMaxCharSize(ctx->converter_ext_.get());
+}
+
+std::codecvt_base::result codecvtw_facet::do_out(
+    state_type& state,
+    const intern_type* from,
+    const intern_type* from_end,
+    const intern_type*& from_next,
+    extern_type* to,
+    extern_type* to_end,
+    extern_type*& to_next
+) const {
+  auto ctx = context();
+
+  from_next = from;
+  to_next = to;
+
+  if (!ctx) {
+    IR_FRMT_WARN(
+      "failure to get conversion context while converting system encoding '%s' to encoding '%s'",
+      context_encoding_int().c_str(), context_encoding_ext().c_str()
+    );
+
+    return std::codecvt_base::error;
+  }
+
+  UErrorCode status = U_ZERO_ERROR;
+  const auto char_size =
+    size_t(std::max(int8_t(1), ucnv_getMinCharSize(ctx->converter_int_.get())));
+
+  // cannot support conversion from variable-width system encoding since no way
+  // to determine internal char size
+  // cannot support conversion of fixed-width system encoding where
+  // sizeof(intern_type) < sizeof(<internal char>)
+  if (!ucnv_isFixedWidth(ctx->converter_int_.get(), &status)
+      || sizeof(intern_type) < char_size) {
+    IR_FRMT_WARN(
+      "unsupported encoding while converting system encoding '%s' to encoding '%s'",
+      context_encoding_int().c_str(), context_encoding_ext().c_str()
+    );
+
+    return std::codecvt_base::error;
+  }
+
+  UChar buf[BUFFER_SIZE];
+  auto* buf_end = buf + IRESEARCH_COUNTOF(buf);
+  int32_t offsets[IRESEARCH_COUNTOF(buf) + 1]; // +1 for end
+
+  ucnv_reset(ctx->converter_ext_.get());
+  ucnv_reset(ctx->converter_int_.get());
+
+  // convert 'BUFFER_SIZE' at a time
+  while (from_next < from_end) {
+    auto* buf_next = buf;
+    auto* from_next_prev = from_next;
+    auto* to_next_prev = to_next;
+    UErrorCode src_status = U_ZERO_ERROR;
+    UErrorCode dst_status = U_ZERO_ERROR;
+
+    static_assert(sizeof(char) == 1, "sizeof(char) != 1"); // otherwise have to divide lower
+
+    // convert from the internal encoding to the intermediary representation
+    if (sizeof(intern_type) == char_size) {
+      auto* buf_from_next = reinterpret_cast<const char*>(from_next);
+      auto* buf_from_end =
+        buf_from_next + std::distance(from_next, from_end) * sizeof(intern_type);
+
+      ucnv_toUnicode(
+        ctx->converter_int_.get(),
+        &buf_next,
+        buf_end,
+        &buf_from_next,
+        buf_from_end,
+        offsets,
+        true,
+        &src_status
+      );
+    } else {
+      auto* buf_from = reinterpret_cast<const char*>(from_next) + (sizeof(intern_type) - char_size);
+      auto* buf_from_end = reinterpret_cast<const char*>(from_next + 1); // +1 for char after buf
+
+      // convert one char at a time
+      while (buf_next < buf_end) {
+        auto* buf_next_start = buf_next;
+        auto* buf_from_next = buf_from;
+
+        ucnv_toUnicode(
+          ctx->converter_int_.get(),
+          &buf_next,
+          buf_end,
+          &buf_from_next,
+          buf_from_end,
+          nullptr,
+          true,
+          &src_status
+        );
+
+        if (!U_SUCCESS(dst_status) && U_BUFFER_OVERFLOW_ERROR != dst_status) {
+          break;
+        }
+
+        assert(buf_next >= buf && IRESEARCH_COUNTOF(offsets) > size_t(buf_next - buf));
+
+        while(buf_next_start < buf_next) {
+          offsets[buf_next - ++buf_next_start] = from_next - from; // remember converted position
+        }
+
+        ++from_next; // +1 for 1 char at a time
+      }
+    }
+
+    if (!U_SUCCESS(src_status) && U_BUFFER_OVERFLOW_ERROR != src_status) {
+      from_next = from_next_prev;
+      to_next = to_next_prev;
+
+      IR_FRMT_WARN(
+        "failure to convert from system encoding to UTF16 while converting system encoding '%s' to encoding '%s'",
+        context_encoding_int().c_str(), context_encoding_ext().c_str()
+      );
+
+      return std::codecvt_base::error; // error occured during final conversion
+    }
+
+    auto buf_pos = buf_next - buf;
+
+    assert(buf_pos >= 0 && IRESEARCH_COUNTOF(offsets) > size_t(buf_pos));
+    offsets[buf_pos] = from_next - from_next_prev; // remember past-end position
+
+    const UChar* buf_dst_next = buf;
+    auto* buf_dst_end = buf_next;
+
+    // convert intermediary representation to the desired encoding
+    ucnv_fromUnicode(
+      ctx->converter_ext_.get(),
+      &to_next,
+      to_end,
+      &buf_dst_next,
+      buf_dst_end,
+      nullptr,
+      true,
+      &dst_status
+    );
+
+    if (!U_SUCCESS(dst_status) && U_BUFFER_OVERFLOW_ERROR != dst_status) {
+      from_next = from_next_prev;
+      to_next = to_next_prev;
+
+      IR_FRMT_WARN(
+        "failure to convert from UTF16 to locale encoding while converting system encoding '%s' to encoding '%s'",
+        context_encoding_int().c_str(), context_encoding_ext().c_str()
+      );
+
+      return std::codecvt_base::error; // error occured during final conversion
+    }
+
+    auto buf_dst_pos = buf_dst_next - buf;
+
+    assert(buf_dst_pos >= 0 && IRESEARCH_COUNTOF(offsets) > size_t(buf_dst_pos));
+    from_next = from_next_prev + offsets[buf_dst_pos]; // update successfully converted
+
+    if (!U_SUCCESS(src_status) && U_BUFFER_OVERFLOW_ERROR != src_status) {
+      return std::codecvt_base::error; // error occured during intermediary conversion
+    }
+
+    if (U_BUFFER_OVERFLOW_ERROR == dst_status
+        || (U_BUFFER_OVERFLOW_ERROR == src_status && from_next >= from_end)) {
+      return std::codecvt_base::partial; // destination buffer is not large enough
+    }
+  }
+
+  return std::codecvt_base::ok;
 }
 
 class collate_facet: public std::collate<char> {
@@ -1802,14 +2422,14 @@ class num_getw_facet: public std::num_get<wchar_t> {
   // FIXME TODO implement
 };
 
-template<typename CharType>
+template<typename CharType, typename CvtType>
 class num_put_facet: public std::num_put<CharType> {
  public:
   typedef typename std::num_put<CharType>::char_type char_type;
   typedef typename std::num_put<CharType>::iter_type iter_type;
 
-  num_put_facet(const icu::Locale& locale, const codecvt_facet<char_type>& utf8)
-    : locale_(locale), pool_(POOL_SIZE), utf8_(utf8) {
+  num_put_facet(const icu::Locale& locale, const CvtType& converter)
+    : contexts_(POOL_SIZE), converter_(converter), locale_(locale) {
   }
 
  protected:
@@ -1839,8 +2459,8 @@ class num_put_facet: public std::num_put<CharType> {
   ) const override;
 
  private:
-  struct context {
-    DECLARE_UNIQUE_PTR(context);
+  struct context_t {
+    DECLARE_UNIQUE_PTR(context_t);
     std::basic_string<char_type> buf_;
     UnicodeString icu_buf0_;
     UnicodeString icu_buf1_;
@@ -1848,7 +2468,7 @@ class num_put_facet: public std::num_put<CharType> {
     std::unique_ptr<icu::NumberFormat> scientific_; // uppercase (instead of mixed case by default)
 
     static ptr make(const icu::Locale& locale) {
-      auto ctx = irs::memory::make_unique<context>();
+      auto ctx = irs::memory::make_unique<context_t>();
 
       if (!ctx) {
         return nullptr;
@@ -1906,9 +2526,15 @@ class num_put_facet: public std::num_put<CharType> {
     }
   };
 
+  typedef irs::unbounded_object_pool<context_t> context_pool;
+
+  mutable context_pool contexts_;
+  const CvtType& converter_;
   icu::Locale locale_;
-  mutable irs::unbounded_object_pool<context> pool_;
-  const codecvt_facet<char_type>& utf8_; // conversion from char->utf8
+
+  typename context_pool::ptr context() const {
+    return contexts_.emplace(locale_);
+  }
 
   template<typename T>
   static iter_type do_put_float_hex(
@@ -1930,8 +2556,8 @@ class num_put_facet: public std::num_put<CharType> {
   );
 };
 
-template<typename CharType>
-typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put(
+template<typename CharType, typename CvtType>
+typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, CvtType>::do_put(
     iter_type out, std::ios_base& str, char_type fill, bool value
 ) const {
   if (!(str.flags() & std::ios_base::boolalpha)) {
@@ -1967,8 +2593,8 @@ typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put(
   return out;
 }
 
-template<typename CharType>
-typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put(
+template<typename CharType, typename CvtType>
+typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, CvtType>::do_put(
     iter_type out, std::ios_base& str, char_type fill, long value
 ) const {
   if (str.flags() & std::ios_base::oct) {
@@ -1983,8 +2609,8 @@ typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put(
   return do_put(out, str, fill, (long long)value);
 }
 
-template<typename CharType>
-typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put(
+template<typename CharType, typename CvtType>
+typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, CvtType>::do_put(
     iter_type out, std::ios_base& str, char_type fill, long long value
 ) const {
   if (str.flags() & std::ios_base::oct) {
@@ -2011,7 +2637,7 @@ typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put(
 
   str.width(0); // reset padding
 
-  auto ctx = pool_.emplace(locale_);
+  auto ctx = context();
 
   if (!ctx) {
     throw irs::detailed_io_error("failed to retrieve ICU formatter in num_put_facet::do_put(...)");
@@ -2021,7 +2647,7 @@ typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put(
   ctx->reset(str);
   ctx->regular_->format(int64_t(0 - value), ctx->icu_buf0_);
 
-  if (!utf8_.out(ctx->buf_, ctx->icu_buf0_)) {
+  if (!converter_.append(ctx->buf_, ctx->icu_buf0_)) {
     throw irs::detailed_io_error("failed to convert data from UTF8 in num_put_facet::do_put(...)");
   }
 
@@ -2052,8 +2678,8 @@ typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put(
   return out;
 }
 
-template<typename CharType>
-typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put(
+template<typename CharType, typename CvtType>
+typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, CvtType>::do_put(
     iter_type out, std::ios_base& str, char_type fill, unsigned long value
 ) const {
   if (str.flags() & std::ios_base::oct) {
@@ -2068,8 +2694,8 @@ typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put(
   return do_put(out, str, fill, (unsigned long long)value);
 }
 
-template<typename CharType>
-typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put(
+template<typename CharType, typename CvtType>
+typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, CvtType>::do_put(
     iter_type out, std::ios_base& str, char_type fill, unsigned long long value
 ) const {
   if (str.flags() & std::ios_base::oct) {
@@ -2100,7 +2726,7 @@ typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put(
 
   str.width(0); // reset padding
 
-  auto ctx = pool_.emplace(locale_);
+  auto ctx = context();
 
   if (!ctx) {
     throw irs::detailed_io_error("failed to retrieve ICU formatter in num_put_facet::do_put(...)");
@@ -2110,7 +2736,7 @@ typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put(
   ctx->reset(str);
   ctx->regular_->format(int64_t(value), ctx->icu_buf0_);
 
-  if (!utf8_.out(ctx->buf_, ctx->icu_buf0_)) {
+  if (!converter_.append(ctx->buf_, ctx->icu_buf0_)) {
     throw irs::detailed_io_error("failed to convert data from UTF8 in num_put_facet::do_put(...)");
   }
 
@@ -2143,8 +2769,8 @@ typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put(
   return out;
 }
 
-template<typename CharType>
-typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put(
+template<typename CharType, typename CvtType>
+typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, CvtType>::do_put(
     iter_type out, std::ios_base& str, char_type fill, double value
 ) const {
   if ((str.flags() & std::ios_base::floatfield) == (std::ios_base::fixed | std::ios_base::scientific)) {
@@ -2162,7 +2788,7 @@ typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put(
 
   str.width(0); // reset padding
 
-  auto ctx = pool_.emplace(locale_);
+  auto ctx = context();
 
   if (!ctx) {
     throw irs::detailed_io_error("failed to retrieve ICU formatter in num_put_facet::do_put(...)");
@@ -2240,7 +2866,7 @@ typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put(
     icu_buf->toLower();
   }
 
-  if (!utf8_.out(ctx->buf_, *icu_buf)) {
+  if (!converter_.append(ctx->buf_, *icu_buf)) {
     throw irs::detailed_io_error("failed to convert data from UTF8 in num_put_facet::do_put(...)");
   }
 
@@ -2277,8 +2903,8 @@ typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put(
   return out;
 }
 
-template<typename CharType>
-typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put(
+template<typename CharType, typename CvtType>
+typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, CvtType>::do_put(
     iter_type out, std::ios_base& str, char_type fill, long double value
 ) const {
   if ((str.flags() & std::ios_base::floatfield) == (std::ios_base::fixed | std::ios_base::scientific)) {
@@ -2289,16 +2915,16 @@ typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put(
   return do_put(out, str, fill, (double)value);
 }
 
-template<typename CharType>
-typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put(
+template<typename CharType, typename CvtType>
+typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, CvtType>::do_put(
     iter_type out, std::ios_base& str, char_type fill, const void* value
 ) const {
   return do_put_int_hex(out, str, fill, size_t(value), true);
 }
 
-template<typename CharType>
+template<typename CharType, typename CvtType>
 template<typename T>
-/*static*/ typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put_float_hex(
+/*static*/ typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, CvtType>::do_put_float_hex(
     iter_type out, std::ios_base& str, char_type fill, T value
 ) {
   typedef typename std::enable_if<std::is_floating_point<T>::value, T>::type type;
@@ -2464,9 +3090,9 @@ template<typename T>
   return out;
 }
 
-template<typename CharType>
+template<typename CharType, typename CvtType>
 template<typename T>
-/*static*/ typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put_int_hex(
+/*static*/ typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, CvtType>::do_put_int_hex(
     iter_type out, std::ios_base& str, char_type fill, T value, bool full_width
 ) {
   typedef typename std::enable_if<std::is_unsigned<T>::value, T>::type type;
@@ -2561,9 +3187,9 @@ template<typename T>
   return out;
 }
 
-template<typename CharType>
+template<typename CharType, typename CvtType>
 template<typename T>
-/*static*/ typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put_int_oct(
+/*static*/ typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, CvtType>::do_put_int_oct(
     iter_type out, std::ios_base& str, char_type fill, T value
 ) {
   typedef typename std::enable_if<std::is_unsigned<T>::value, T>::type type;
@@ -2638,8 +3264,8 @@ template<typename T>
   return out;
 }
 
-template<typename CharType>
-/*static*/ typename num_put_facet<CharType>::iter_type num_put_facet<CharType>::do_put_int_zero(
+template<typename CharType, typename CvtType>
+/*static*/ typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, CvtType>::do_put_int_zero(
     iter_type out, std::ios_base& str, char_type fill
 ) {
   auto ipad = (str.flags() & std::ios_base::adjustfield) == std::ios_base::internal
@@ -2876,38 +3502,6 @@ locale_info_facet& locale_info_facet::operator=(
   return *this;
 }
 
-// FIXME TODO remove 'base' once converters are implemented
-const std::locale& get_encoding(std::string&& encoding, const std::locale& base) {
-  static std::map<std::string, std::locale> encodings;
-  static std::mutex mutex;
-  SCOPED_LOCK(mutex);
-  auto itr = encodings.find(encoding);
-
-  if (itr != encodings.end()) {
-    return itr->second;
-  }
-
-  // FIXME TODO replace first implementation with second once converters are implemented
-  auto codecvt_char = irs::memory::make_unique<codecvt_facet<char>>(encoding);
-  auto locale_char = std::locale(std::locale::classic(), codecvt_char.release());
-  //auto locale_char16 = locale_char.combine<std::codecvt<char16_t, char, mbstate_t>>(base);
-  //auto locale_char32 = locale_char16.combine<std::codecvt<char32_t, char, mbstate_t>>(base);
-  auto& locale_char32 = locale_char;
-  auto locale_wchar = locale_char32.combine<std::codecvt<wchar_t, char, mbstate_t>>(base);
-  /*use below
-  auto codecvt_char = irs::memory::make_unique<codecvt_facet>(encoding);
-  auto codecvt_char16 = irs::memory::make_unique<codecvt16_facet>(encoding);
-  auto codecvt_char32 = irs::memory::make_unique<codecvt32_facet>(encoding);
-  auto codecvt_wchar = irs::memory::make_unique<codecvtw_facet>(encoding);
-  auto locale_char = std::locale(std::locale::classic(), codecvt_char.release());
-  auto locale_char16 = std::locale(locale_char, codecvt_char16.release());
-  auto locale_char32 = std::locale(locale_char16, codecvt_char32.release());
-  auto locale_wchar = std::locale(locale_char32, codecvt_wchar.release());
-  */
-
-  return encodings.emplace(std::move(encoding), locale_wchar).first->second;
-}
-
 const std::locale& get_locale(
     const irs::string_ref& name, bool forceUnicodeSystem = true
 ) {
@@ -2970,10 +3564,6 @@ const std::locale& get_locale(
     boost_locale = locale_genrator.generate(boost_locale_name);
   }
 
-  auto encoding = get_encoding(info.encoding(), boost_locale);
-  auto& codecvt_char = static_cast<const codecvt_facet<char>&>( // get_encoding(...) adds codecvt_facet<char>
-    std::use_facet<std::codecvt<char, char, mbstate_t>>(encoding)
-  );
   auto locale_info =
     irs::memory::make_unique<locale_info_facet>(std::move(info));
   auto* locale_info_ptr = locale_info.get();
@@ -2995,33 +3585,35 @@ const std::locale& get_locale(
   #endif
 
   if (unicodeSystem) {
+    auto cvt8 = irs::memory::make_unique<codecvt8u_facet>(converter);
+    auto cvtw = irs::memory::make_unique<codecvtwu_facet>(converter);
+
     locale = std::locale(
-      locale, irs::memory::make_unique<codecvt8u_facet>(converter).release()
+      locale,
+      irs::memory::make_unique<num_put_facet<char,codecvt8u_facet>>(icu_locale, *cvt8).release()
     );
     locale = std::locale(
-      locale, irs::memory::make_unique<codecvtwu_facet>(converter).release()
+      locale,
+      irs::memory::make_unique<num_put_facet<wchar_t, codecvtwu_facet>>(icu_locale, *cvtw).release()
     );
+    locale = std::locale(locale, cvt8.release());
+    locale = std::locale(locale, cvtw.release());
   } else {
     auto& converter_int = get_converter(system_encoding());
+    auto cvt8 = irs::memory::make_unique<codecvt8_facet>(converter_int, converter);
+    auto cvtw = irs::memory::make_unique<codecvtw_facet>(converter_int, converter);
 
     locale = std::locale(
       locale,
-      irs::memory::make_unique<codecvt8_facet>(converter_int, converter).release()
+      irs::memory::make_unique<num_put_facet<char, codecvt8_facet>>(icu_locale, *cvt8).release()
     );
-/* FIXME TODO enable
     locale = std::locale(
       locale,
-      irs::memory::make_unique<codecvtw_facet>(converter_int, converter).release()
+      irs::memory::make_unique<num_put_facet<wchar_t, codecvtw_facet>>(icu_locale, *cvtw).release()
     );
-*/
+    locale = std::locale(locale, cvt8.release());
+    locale = std::locale(locale, cvtw.release());
   }
-
-  locale = std::locale(
-    locale,
-    irs::memory::make_unique<num_put_facet<char>>(
-      icu_locale, codecvt_char
-    ).release()
-  );
 
   return locales.emplace(locale_info_ptr, locale).first->second;
 }
