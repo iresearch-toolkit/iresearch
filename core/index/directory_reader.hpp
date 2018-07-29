@@ -106,8 +106,6 @@ class IRESEARCH_API directory_reader final
     impl_.reset();
   }
 
-  irs::index_reader* get() NOEXCEPT { return impl_.get(); }
-
  private:
   typedef std::shared_ptr<composite_reader> impl_ptr;
 
