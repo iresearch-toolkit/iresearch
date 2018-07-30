@@ -61,6 +61,7 @@
 #include <unicode/decimfmt.h> // for icu::DecimalFormat
 #include <unicode/numfmt.h> // for icu::NumberFormat
 #include <unicode/ucnv.h> // for UConverter
+#include <unicode/ustring.h> // for u_strToUTF32, u_strToUTF8
 
 #include "hash_utils.hpp"
 #include "map_utils.hpp"
@@ -331,6 +332,11 @@ class codecvt16_facet final: public codecvtu_base<char16_t> {
   ) const override;
 };
 
+#if defined (__GNUC__)
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wunused-function"
+#endif
+
 bool codecvt16_facet::append(
     std::basic_string<intern_type>& buf, const icu::UnicodeString& value
 ) const {
@@ -349,6 +355,10 @@ bool codecvt16_facet::append(
 
   return true;
 }
+
+#if defined (__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
 
 int codecvt16_facet::do_encoding() const NOEXCEPT {
   auto ctx = context();
@@ -1869,7 +1879,7 @@ bool codecvtw_facet::append(
 
   UErrorCode status = U_ZERO_ERROR;
   const auto char_size =
-    size_t(std::max(int8_t(1), ucnv_getMinCharSize(ctx->converter_int_.get())));
+    size_t((std::max)(int8_t(1), ucnv_getMinCharSize(ctx->converter_int_.get())));
 
   // cannot support conversion to variable-width system encoding since no way to
   // determine internal char size
@@ -2023,7 +2033,7 @@ std::codecvt_base::result codecvtw_facet::do_in(
 
   UErrorCode status = U_ZERO_ERROR;
   const auto char_size =
-    size_t(std::max(int8_t(1), ucnv_getMinCharSize(ctx->converter_int_.get())));
+    size_t((std::max)(int8_t(1), ucnv_getMinCharSize(ctx->converter_int_.get())));
 
   // cannot support conversion to variable-width system encoding since no way to
   // determine internal char size
@@ -2177,7 +2187,7 @@ int codecvtw_facet::do_max_length() const NOEXCEPT {
 
   UErrorCode status = U_ZERO_ERROR;
   const auto char_size =
-    size_t(std::max(int8_t(1), ucnv_getMinCharSize(ctx->converter_int_.get())));
+    size_t((std::max)(int8_t(1), ucnv_getMinCharSize(ctx->converter_int_.get())));
 
   // cannot support conversion to variable-width system encoding since no way to
   // determine internal char size
@@ -2221,7 +2231,7 @@ std::codecvt_base::result codecvtw_facet::do_out(
 
   UErrorCode status = U_ZERO_ERROR;
   const auto char_size =
-    size_t(std::max(int8_t(1), ucnv_getMinCharSize(ctx->converter_int_.get())));
+    size_t((std::max)(int8_t(1), ucnv_getMinCharSize(ctx->converter_int_.get())));
 
   // cannot support conversion from variable-width system encoding since no way
   // to determine internal char size

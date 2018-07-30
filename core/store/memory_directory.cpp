@@ -565,15 +565,23 @@ bool memory_directory::sync(const std::string& /*name*/) NOEXCEPT {
 }
 
 bool memory_directory::visit(const directory::visitor_f& visitor) const {
-  std::string filename;
+  std::vector<std::string> files;
 
-  // note that using non const functions in 'visitor' will cuase deadlock
-  async_utils::read_write_mutex::read_mutex mutex(flock_);
-  SCOPED_LOCK(mutex);
+  // take a snapshot of existing files in directory
+  // to avoid potential recursive read locks in visitor
+  {
+    async_utils::read_write_mutex::read_mutex mutex(flock_);
+    SCOPED_LOCK(mutex);
 
-  for (auto& entry : files_) {
-    filename = entry.first;
-    if (!visitor(filename)) {
+    files.reserve(files_.size());
+
+    for (auto& entry : files_) {
+      files.emplace_back(entry.first);
+    }
+  }
+
+  for (auto& file : files) {
+    if (!visitor(file)) {
       return false;
     }
   }

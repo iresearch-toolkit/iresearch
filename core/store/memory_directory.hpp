@@ -299,7 +299,8 @@ class IRESEARCH_API memory_directory final : public directory {
   virtual bool remove(const std::string& name) NOEXCEPT override;
 
   virtual bool rename(
-    const std::string& src, const std::string& dst
+    const std::string& src,
+    const std::string& dst
   ) NOEXCEPT override;
 
   virtual bool sync(const std::string& name) NOEXCEPT override;
