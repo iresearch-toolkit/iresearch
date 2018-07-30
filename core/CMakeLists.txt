@@ -28,7 +28,6 @@ set(IResearch_INCLUDE_DIR
   ""
 )
 
-
 if (MSVC)
   add_definitions(/W4)
   # disable "checked iterators" feature
@@ -944,7 +943,7 @@ if(MSVC)
 endif()
 
 ################################################################################
-### format plugins
+### format plugin: format-1_0
 ################################################################################
 
 set(IResearch_format-1_0_source
@@ -1106,6 +1105,175 @@ if(MSVC)
   )
 
   target_link_libraries(${IResearch_TARGET_NAME}-format-1_0-static-scrt
+    ${IResearch_TARGET_NAME}-static-scrt
+  )
+endif()
+
+################################################################################
+### format plugin: format-1_0-optimized
+################################################################################
+
+set(IResearch_format-1_0_source
+  ./formats/formats_10.cpp
+  ./formats/formats_10_attributes.cpp
+  ./formats/formats_burst_trie.cpp
+  ./formats/formats_10.hpp
+  ./formats/formats_10_attributes.hpp
+  ./formats/formats_burst_trie.hpp
+)
+
+add_library(${IResearch_TARGET_NAME}-format-1_0-optimized-shared
+  SHARED
+  ${IResearch_format-1_0_source}
+  $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst> # used by formats_burst_trie
+)
+
+add_library(${IResearch_TARGET_NAME}-format-1_0-optimized-static
+  STATIC
+  ${IResearch_format-1_0_source}
+  $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst> # used by formats_burst_trie
+)
+
+# setup CRT
+if(MSVC)
+  add_library(${IResearch_TARGET_NAME}-format-1_0-optimized-shared-scrt
+    SHARED
+    ${IResearch_format-1_0_source}
+    $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst-scrt> # used by formats_burst_trie
+  )
+
+  add_library(${IResearch_TARGET_NAME}-format-1_0-optimized-static-scrt
+    STATIC
+    ${IResearch_format-1_0_source}
+    $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst-scrt> # used by formats_burst_trie
+  )
+endif()
+
+target_compile_features(${IResearch_TARGET_NAME}-format-1_0-optimized-shared
+  PRIVATE
+  cxx_final
+  cxx_variadic_templates
+)
+
+target_compile_features(${IResearch_TARGET_NAME}-format-1_0-optimized-static
+  PRIVATE
+  cxx_final
+  cxx_variadic_templates
+)
+
+# setup CRT
+if(MSVC)
+  target_compile_features(${IResearch_TARGET_NAME}-format-1_0-optimized-shared-scrt
+    PRIVATE
+    cxx_final
+    cxx_variadic_templates
+  )
+
+  target_compile_features(${IResearch_TARGET_NAME}-format-1_0-optimized-static-scrt
+    PRIVATE
+    cxx_final
+    cxx_variadic_templates
+  )
+endif()
+
+# setup CRT
+if(MSVC)
+  target_compile_options(${IResearch_TARGET_NAME}-format-1_0-optimized-shared
+    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
+  )
+
+  target_compile_options(${IResearch_TARGET_NAME}-format-1_0-optimized-static
+    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
+  )
+
+  target_compile_options(${IResearch_TARGET_NAME}-format-1_0-optimized-shared-scrt
+    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
+  )
+
+  target_compile_options(${IResearch_TARGET_NAME}-format-1_0-optimized-static-scrt
+    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
+  )
+endif()
+
+set_target_properties(${IResearch_TARGET_NAME}-format-1_0-optimized-shared
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME format-1_0-optimized
+  DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
+  COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN;FST_NO_DYNAMIC_LINKING"
+  CXX_VISIBILITY_PRESET hidden
+)
+
+set_target_properties(${IResearch_TARGET_NAME}-format-1_0-optimized-static
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME format-1_0-optimized-s
+  COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;FST_NO_DYNAMIC_LINKING"
+)
+
+# setup CRT
+if(MSVC)
+  set_target_properties(${IResearch_TARGET_NAME}-format-1_0-optimized-shared-scrt
+    PROPERTIES
+    PREFIX lib
+    IMPORT_PREFIX lib
+    OUTPUT_NAME format-1_0-optimized-scrt
+    COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN;FST_NO_DYNAMIC_LINKING"
+    CXX_VISIBILITY_PRESET hidden
+  )
+
+  set_target_properties(${IResearch_TARGET_NAME}-format-1_0-optimized-static-scrt
+    PROPERTIES
+    PREFIX lib
+    IMPORT_PREFIX lib
+    OUTPUT_NAME format-1_0-optimized-scrt-s
+    COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;FST_NO_DYNAMIC_LINKING"
+  )
+endif()
+
+target_include_directories(${IResearch_TARGET_NAME}-format-1_0-optimized-shared
+  SYSTEM
+  PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES> # used by formats_burst_trie
+)
+
+target_include_directories(${IResearch_TARGET_NAME}-format-1_0-optimized-static
+  SYSTEM
+  PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES> # used by formats_burst_trie
+)
+
+# setup CRT
+if(MSVC)
+  target_include_directories(${IResearch_TARGET_NAME}-format-1_0-optimized-shared-scrt
+    SYSTEM
+    PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst-scrt,INTERFACE_INCLUDE_DIRECTORIES> # used by formats_burst_trie
+  )
+
+  target_include_directories(${IResearch_TARGET_NAME}-format-1_0-optimized-static-scrt
+    SYSTEM
+    PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst-scrt,INTERFACE_INCLUDE_DIRECTORIES> # used by formats_burst_trie
+  )
+endif()
+
+target_link_libraries(${IResearch_TARGET_NAME}-format-1_0-optimized-shared
+  ${IResearch_TARGET_NAME}-shared
+  ${ATOMIC_LIBRARY}
+  simdcomp
+)
+
+target_link_libraries(${IResearch_TARGET_NAME}-format-1_0-optimized-static
+  ${IResearch_TARGET_NAME}-static
+  simdcomp_static
+)
+
+# setup CRT
+if(MSVC)
+  target_link_libraries(${IResearch_TARGET_NAME}-format-1_0-optimized-shared-scrt
+    ${IResearch_TARGET_NAME}-shared-scrt
+  )
+
+  target_link_libraries(${IResearch_TARGET_NAME}-format-1_0-optimized-static-scrt
     ${IResearch_TARGET_NAME}-static-scrt
   )
 endif()

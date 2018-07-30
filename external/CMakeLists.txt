@@ -227,3 +227,4 @@ target_include_directories(
   INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/rapidjson
 )
 
+add_subdirectory(simdcomp)
