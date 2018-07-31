@@ -1,0 +1,153 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Andrey Abramov
+/// @author Vasiliy Nabatchikov
+////////////////////////////////////////////////////////////////////////////////
+
+#include "shared.hpp"
+#include "store_utils_optimized.hpp"
+
+#ifndef IRESEARCH_SSE2
+  #error "SSE2 is required"
+#endif
+
+#include "store_utils.hpp"
+#include "utils/std.hpp"
+
+extern "C" {
+#include <simdcomp/include/simdcomputil.h>
+void simdpack(const uint32_t*  in, __m128i*  out, const uint32_t bit);
+void simdunpack(const __m128i*  in, uint32_t*  out, const uint32_t bit);
+}
+
+NS_LOCAL
+
+bool all_equal(
+    const uint64_t* RESTRICT begin,
+    const uint64_t* RESTRICT end
+) NOEXCEPT {
+  assert(0 == (std::distance(begin, end) % irs::packed::BLOCK_SIZE_64));
+
+  if (begin == end) {
+    return true;
+  }
+
+  const __m128i* mbegin = reinterpret_cast<const __m128i*>(begin);
+  const __m128i* mend = reinterpret_cast<const __m128i*>(end);
+
+  const __m128i first = _mm_loadu_si128(mbegin);
+
+  for (++mbegin; mbegin != mend; ++mbegin) {
+    const __m128i eq = _mm_cmpeq_epi32(first, _mm_loadu_si128(mbegin));
+
+    if (_mm_movemask_epi8(eq) != 0xFFFF) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+NS_END
+
+NS_ROOT
+NS_BEGIN(encode)
+NS_BEGIN(bitpack)
+
+void read_block_optimized(
+    data_input& in,
+    uint32_t size,
+    uint32_t* RESTRICT encoded,
+    uint32_t* RESTRICT decoded) {
+  assert(size);
+  assert(encoded);
+  assert(decoded);
+
+  const uint32_t bits = in.read_vint();
+  if (ALL_EQUAL == bits) {
+    std::fill(decoded, decoded + size, in.read_vint());
+  } else {
+    const size_t reqiured = packed::bytes_required_32(size, bits);
+
+#ifdef IRESEARCH_DEBUG
+    const auto read = in.read_bytes(
+      reinterpret_cast<byte_type*>(encoded),
+      reqiured 
+    );
+    assert(read == reqiured);
+#else 
+    in.read_bytes(
+      reinterpret_cast<byte_type*>(encoded),
+      reqiured 
+    );
+#endif // IRESEARCH_DEBUG
+
+    const auto* decoded_end = decoded + size;
+    const size_t step = 4*bits;
+
+    while (decoded != decoded_end) {
+      ::simdunpack(reinterpret_cast<const __m128i*>(encoded), decoded, bits);
+      decoded += SIMDBlockSize;
+      encoded += step;
+    }
+  }
+}
+
+uint32_t write_block_optimized(
+    data_output& out,
+    const uint32_t* RESTRICT decoded,
+    uint32_t size,
+    uint32_t* RESTRICT encoded) {
+  assert(size);
+  assert(encoded);
+  assert(decoded);
+  assert(0 == size % SIMDBlockSize);
+
+  if (irstd::all_equal(decoded, decoded + size)) {
+    out.write_vint(ALL_EQUAL);
+    out.write_vint(*decoded);
+    return ALL_EQUAL;
+  }
+
+  const auto bits = ::maxbits_length(decoded, size);
+
+  std::memset(encoded, 0, sizeof(uint32_t) * size);
+
+  const auto* decoded_end = decoded + size;
+  const size_t step = 4*bits;
+
+  for (const auto* begin = encoded; decoded != decoded_end;) {
+    ::simdpack(decoded, reinterpret_cast<__m128i*>(encoded), bits);
+    decoded += SIMDBlockSize;
+    begin += step;
+  }
+
+  out.write_vint(bits);
+  out.write_bytes(
+    reinterpret_cast<const byte_type*>(encoded),
+    size/SIMDBlockSize*4*step
+  );
+
+  return bits;
+}
+
+NS_END // encode
+NS_END // bitpack
+NS_END // ROOT

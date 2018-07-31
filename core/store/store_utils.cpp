@@ -39,42 +39,6 @@
 #include "utils/std.hpp"
 #include "utils/memory.hpp"
 
-#ifdef IRESEARCH_SSE2
-
-NS_LOCAL
-
-#include <emmintrin.h>
-
-bool all_equal_simd(
-    const uint64_t* RESTRICT begin,
-    const uint64_t* RESTRICT end
-) NOEXCEPT {
-  assert(0 == (std::distance(begin, end) % irs::packed::BLOCK_SIZE_64));
-
-  if (begin == end) {
-    return true;
-  }
-
-  const __m128i* mbegin = reinterpret_cast<const __m128i*>(begin);
-  const __m128i* mend = reinterpret_cast<const __m128i*>(end);
-
-  const __m128i first = _mm_loadu_si128(mbegin);
-
-  for (++mbegin; mbegin != mend; ++mbegin) {
-    const __m128i eq = _mm_cmpeq_epi32(first, _mm_loadu_si128(mbegin));
-
-    if (_mm_movemask_epi8(eq) != 0xFFFF) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-#endif
-
-NS_END
-
 NS_ROOT
 
 // ----------------------------------------------------------------------------
@@ -296,10 +260,6 @@ uint32_t write_block(
     decoded, decoded + size
   );
 
-  const auto bits1 = packed::bits_required_32(
-    *std::max_element(decoded, decoded + size)
-  );
-
   std::memset(encoded, 0, sizeof(uint32_t) * size);
   packed::pack(decoded, decoded + size, encoded, bits);
 
@@ -327,10 +287,6 @@ uint32_t write_block(
     return ALL_EQUAL;
   }
 
-  const auto bits1 = packed::bits_required_64(
-    *std::max_element(decoded, decoded + size)
-  );
-
   const auto bits = packed::bits_required_64(
     decoded, decoded + size
   );
@@ -346,7 +302,6 @@ uint32_t write_block(
 
   return bits;
 }
-
 
 NS_END // bitpack
 NS_END // encode

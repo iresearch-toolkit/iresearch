@@ -10,8 +10,9 @@
 /* SSE2 is required */
 #include <emmintrin.h>
 
-
-
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* returns the integer logarithm of v (bit width) */
 uint32_t bits(const uint32_t v);
@@ -49,6 +50,9 @@ uint32_t simdmaxbitsd1(uint32_t initvalue, const uint32_t * in);
 uint32_t simdmaxbitsd1_length(uint32_t initvalue, const uint32_t * in,
                 uint32_t length);
 
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif /* SIMDCOMPUTIL_H_ */

@@ -18,6 +18,10 @@
 
 #include "simdcomputil.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 enum{ AVXBlockSize = 256};
 
 /* max integer logarithm over a range of AVXBlockSize integers (256 integer) */
@@ -32,8 +36,9 @@ void avxpackwithoutmask(const uint32_t *  in,__m256i *  out, const uint32_t bit)
 /* reads  "bit" 256-bit vectors from "in", writes  256 values to "out" */
 void avxunpack(const __m256i *  in,uint32_t *  out, const uint32_t bit);
 
-
-
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __AVX2__ */
 

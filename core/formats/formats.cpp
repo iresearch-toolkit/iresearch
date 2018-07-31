@@ -27,6 +27,9 @@
 // list of statically loaded formats via init()
 #ifndef IRESEARCH_DLL
   #include "formats_10.hpp"
+#ifdef IRESEARCH_SSE2
+  #include "formats_10_optimized.hpp"
+#endif
 #endif
 
 #include "formats.hpp"
@@ -133,9 +136,12 @@ format::~format() {}
 }
 
 /*static*/ void formats::init() {
-  #ifndef IRESEARCH_DLL
+#ifndef IRESEARCH_DLL
     REGISTER_FORMAT(iresearch::version10::format);
-  #endif
+#ifdef IRESEARCH_SSE2
+    REGISTER_FORMAT(iresearch::version10::format_optimized);
+#endif
+#endif
 }
 
 /*static*/ void formats::load_all(const std::string& path) {

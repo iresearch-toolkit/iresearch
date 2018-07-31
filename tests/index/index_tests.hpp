@@ -142,12 +142,11 @@ class index_test_base : public virtual test_base {
 
     // set directory
     dir_.reset(get_directory());
+    ASSERT_NE(nullptr, dir_);
 
     // set codec
     codec_ = get_codec();
-
-    assert(dir_);
-    assert(codec_);
+    ASSERT_NE(nullptr, codec_);
   }
 
   virtual void TearDown() {

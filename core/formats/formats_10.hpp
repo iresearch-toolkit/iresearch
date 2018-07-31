@@ -64,25 +64,7 @@ class IRESEARCH_PLUGIN format : public irs::format {
   explicit format(const irs::format::type_id& type) NOEXCEPT;
 }; // format
 
-#ifdef IRESEARCH_SSE2
-
-//////////////////////////////////////////////////////////////////////////////
-/// @class format_optimized
-//////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_PLUGIN format_optimized final : public format {
- public:
-  DECLARE_FORMAT_TYPE();
-  DECLARE_FACTORY();
-
-  format_optimized() NOEXCEPT;
-
-  virtual postings_writer::ptr get_postings_writer(bool volatile_state) const override;
-  virtual postings_reader::ptr get_postings_reader() const override;
-}; // format_optimized
-
-#endif
-
-NS_END
-NS_END
+NS_END // version10
+NS_END // ROOT
 
 #endif

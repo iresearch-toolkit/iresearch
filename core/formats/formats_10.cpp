@@ -69,9 +69,9 @@
 
 NS_LOCAL
 
-using namespace iresearch;
-
 irs::bytes_ref DUMMY; // placeholder for visiting logic in columnstore
+
+using namespace iresearch;
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                         features
@@ -4898,38 +4898,8 @@ irs::postings_reader::ptr format::get_postings_reader() const {
 DEFINE_FORMAT_TYPE_NAMED(iresearch::version10::format, "1_0");
 REGISTER_FORMAT(iresearch::version10::format);
 
-#ifdef IRESEARCH_SSE2
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  format_optimized
-// -----------------------------------------------------------------------------
-
-format_optimized::format_optimized() NOEXCEPT
-  : format(format_optimized::type()) {
-}
-
-irs::postings_writer::ptr format_optimized::get_postings_writer(bool volatile_state) const {
-  return irs::postings_writer::make<::postings_writer>(volatile_state);
-}
-
-irs::postings_reader::ptr format_optimized::get_postings_reader() const {
-  return irs::postings_reader::make<::postings_reader>();
-}
-
-/*static*/ irs::format::ptr format_optimized::make() {
-  static format_optimized INSTANCE;
-
-  // aliasing constructor
-  return irs::format::ptr(irs::format::ptr(), &INSTANCE);
-}
-
-DEFINE_FORMAT_TYPE_NAMED(iresearch::version10::format_optimized, "1_0-optimized");
-REGISTER_FORMAT(iresearch::version10::format_optimized);
-
-#endif
-
-NS_END /* version10 */
-NS_END /* root */
+NS_END // version10
+NS_END // root
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

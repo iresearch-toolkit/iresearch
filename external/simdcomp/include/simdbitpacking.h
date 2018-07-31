@@ -11,14 +11,16 @@
 /* for memset */
 #include <string.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "simdcomputil.h"
 
 /***
 * Please see example.c for various examples on how to make good use
 * of these functions.
 */
-
-
 
 /* reads 128 values from "in", writes  "bit" 128-bit vectors to "out".
  * The input values are masked so that only the least significant "bit" bits are used. */
@@ -68,5 +70,9 @@ const __m128i * simdunpack_shortlength(const __m128i *   in, int length, uint32_
 
 /* given a block of 128 packed values, this function sets the value at index "index" to "value" */
 void simdfastset(__m128i * in128, uint32_t b, uint32_t value, size_t index);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* SIMDBITPACKING_H_ */

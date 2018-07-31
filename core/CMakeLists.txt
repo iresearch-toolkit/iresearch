@@ -510,6 +510,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
   ${Unwind_STATIC_LIBS}
   ${DL_LIBRARY}
   ${MSVC_ONLY_LIBRARIES}
+  
 )
 
 # setup CRT
@@ -948,11 +949,13 @@ endif()
 
 set(IResearch_format-1_0_source
   ./formats/formats_10.cpp
+  ./formats/formats_10_optimized.cpp
   ./formats/formats_10_attributes.cpp
   ./formats/formats_burst_trie.cpp
   ./formats/formats_10.hpp
   ./formats/formats_10_attributes.hpp
   ./formats/formats_burst_trie.hpp
+  ./store/store_utils_optimized.cpp
 )
 
 add_library(${IResearch_TARGET_NAME}-format-1_0-shared
@@ -1092,10 +1095,12 @@ endif()
 target_link_libraries(${IResearch_TARGET_NAME}-format-1_0-shared
   ${IResearch_TARGET_NAME}-shared
   ${ATOMIC_LIBRARY}
+  simdcomp-shared
 )
 
 target_link_libraries(${IResearch_TARGET_NAME}-format-1_0-static
   ${IResearch_TARGET_NAME}-static
+  simdcomp-static
 )
 
 # setup CRT
