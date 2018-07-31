@@ -86,40 +86,34 @@ class features {
 
   features() = default;
 
-  explicit features(const irs::flags& in) NOEXCEPT;
+  explicit features(const irs::flags& in) NOEXCEPT {
+    irs::set_bit<0>(in.check<irs::frequency>(), mask_);
+    irs::set_bit<1>(in.check<irs::position>(), mask_);
+    irs::set_bit<2>(in.check<irs::offset>(), mask_);
+    irs::set_bit<3>(in.check<irs::payload>(), mask_);
+  }
 
-  features operator&(const irs::flags& in) const NOEXCEPT;
-  features& operator&=(const irs::flags& in) NOEXCEPT;
+  features operator&(const irs::flags& in) const NOEXCEPT {
+    return features(*this) &= in;
+  }
 
-  bool freq() const { return irs::check_bit<0>(mask_); }
-  bool position() const { return irs::check_bit<1>(mask_); }
-  bool offset() const { return irs::check_bit<2>(mask_); }
-  bool payload() const { return irs::check_bit<3>(mask_); }
-  operator Mask() const { return static_cast<Mask>(mask_); }
+  features& operator&=(const irs::flags& in) NOEXCEPT {
+    irs::unset_bit<0>(!in.check<irs::frequency>(), mask_);
+    irs::unset_bit<1>(!in.check<irs::position>(), mask_);
+    irs::unset_bit<2>(!in.check<irs::offset>(), mask_);
+    irs::unset_bit<3>(!in.check<irs::payload>(), mask_);
+    return *this;
+  }
+
+  bool freq() const NOEXCEPT { return irs::check_bit<0>(mask_); }
+  bool position() const NOEXCEPT { return irs::check_bit<1>(mask_); }
+  bool offset() const NOEXCEPT { return irs::check_bit<2>(mask_); }
+  bool payload() const NOEXCEPT { return irs::check_bit<3>(mask_); }
+  operator Mask() const NOEXCEPT { return static_cast<Mask>(mask_); }
 
  private:
   irs::byte_type mask_{};
 }; // features
-
-features::features(const irs::flags& in) NOEXCEPT {
-  irs::set_bit<0>(in.check<irs::frequency>(), mask_);
-  irs::set_bit<1>(in.check<irs::position>(), mask_);
-  irs::set_bit<2>(in.check<irs::offset>(), mask_);
-  irs::set_bit<3>(in.check<irs::payload>(), mask_);
-}
-
-features features::operator&(const irs::flags& in) const NOEXCEPT {
-  return features(*this) &= in;
-}
-
-features& features::operator&=(const irs::flags& in) NOEXCEPT {
-  irs::unset_bit<0>(!in.check<irs::frequency>(), mask_);
-  irs::unset_bit<1>(!in.check<irs::position>(), mask_);
-  irs::unset_bit<2>(!in.check<irs::offset>(), mask_);
-  irs::unset_bit<3>(!in.check<irs::payload>(), mask_);
-
-  return *this;
-}
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                             forward declarations
@@ -181,9 +175,6 @@ inline void prepare_input(
 // ----------------------------------------------------------------------------
 // --SECTION--                                                  postings_writer
 // ----------------------------------------------------------------------------
-
-// ----------------------------------------------------------------------------
-// postings_writer
 //
 // Assume that doc_count = 28, skip_n = skip_0 = 12
 //
@@ -214,17 +205,17 @@ class postings_writer final: public irs::postings_writer {
 
   explicit postings_writer(bool volatile_attributes);
 
-  /*------------------------------------------
-  * const_attributes_provider
-  * ------------------------------------------*/
+  // ------------------------------------------
+  // const_attributes_provider
+  // ------------------------------------------
 
   virtual const irs::attribute_view& attributes() const NOEXCEPT override final {
     return attrs_;
   }
 
-  /*------------------------------------------
-  * postings_writer
-  * ------------------------------------------*/
+  // ------------------------------------------
+  // postings_writer
+  // ------------------------------------------
 
   virtual void prepare(index_output& out, const iresearch::flush_state& state) override;
   virtual void begin_field(const iresearch::flags& meta) override;
@@ -242,10 +233,10 @@ class postings_writer final: public irs::postings_writer {
       start = end = 0;
     }
 
-    uint64_t skip_ptr[MAX_SKIP_LEVELS]{};   /* skip data */
-    index_output::ptr out;                  /* output stream*/
-    uint64_t start{};                       /* start position of block */
-    uint64_t end{};                         /* end position of block */
+    uint64_t skip_ptr[MAX_SKIP_LEVELS]{}; // skip data
+    index_output::ptr out;                // output stream
+    uint64_t start{};                     // start position of block
+    uint64_t end{};                       // end position of block
   }; // stream
 
   struct doc_stream : stream {
@@ -286,10 +277,10 @@ class postings_writer final: public irs::postings_writer {
       size = 0;
     }
 
-    uint32_t buf[BLOCK_SIZE]{};        /* buffer to store position deltas */
-    uint32_t last{};                   /* last buffered position */
-    uint32_t block_last{};             /* last position in a block */
-    uint32_t size{};                   /* number of buffered elements */
+    uint32_t buf[BLOCK_SIZE]{}; // buffer to store position deltas
+    uint32_t last{};            // last buffered position
+    uint32_t block_last{};      // last position in a block
+    uint32_t size{};            // number of buffered elements
   }; // pos_stream
 
   struct pay_stream : stream {
@@ -308,12 +299,12 @@ class postings_writer final: public irs::postings_writer {
       last = 0;
     }
 
-    bstring pay_buf_; // buffer for payload
-    uint32_t pay_sizes[BLOCK_SIZE]{};             /* buffer to store payloads sizes */
-    uint32_t offs_start_buf[BLOCK_SIZE]{};        /* buffer to store start offsets */
-    uint32_t offs_len_buf[BLOCK_SIZE]{};          /* buffer to store offset lengths */
-    size_t block_last{};                          /* last payload buffer length in a block */
-    uint32_t last{};                              /* last start offset */
+    bstring pay_buf_;                       // buffer for payload
+    uint32_t pay_sizes[BLOCK_SIZE]{};       // buffer to store payloads sizes
+    uint32_t offs_start_buf[BLOCK_SIZE]{};  // buffer to store start offsets
+    uint32_t offs_len_buf[BLOCK_SIZE]{};    // buffer to store offset lengths
+    size_t block_last{};                    // last payload buffer length in a block
+    uint32_t last{};                        // last start offset
   }; // pay_stream
 
   void write_skip(size_t level, index_output& out);
@@ -323,21 +314,19 @@ class postings_writer final: public irs::postings_writer {
   void end_doc();
   void end_term(version10::term_meta& state, const uint64_t* tfreq);
 
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   memory::memory_pool<> meta_pool_;
   memory::memory_pool_allocator<version10::term_meta, decltype(meta_pool_)> alloc_{ meta_pool_ };
   skip_writer skip_;
   irs::attribute_view attrs_;
-  uint64_t buf[BLOCK_SIZE]; // buffer for encoding (worst case)
-  version10::term_meta last_state;    /* last final term state*/
-  doc_stream doc;           /* document stream */
-  pos_stream::ptr pos_;      /* proximity stream */
-  pay_stream::ptr pay_;      /* payloads and offsets stream */
-  uint64_t docs_count{};      /* count of processed documents */
-  version10::documents docs_; /* bit set of all processed documents */
-  features features_; /* features supported by current field */
-  bool volatile_attributes_; // attribute value memory locations may change after next()
-  IRESEARCH_API_PRIVATE_VARIABLES_END
+  uint64_t buf[BLOCK_SIZE];        // buffer for encoding (worst case)
+  version10::term_meta last_state; // last final term state
+  doc_stream doc;                  // document stream
+  pos_stream::ptr pos_;            // proximity stream
+  pay_stream::ptr pay_;            // payloads and offsets stream
+  uint64_t docs_count{};           // count of processed documents
+  version10::documents docs_;      // bit set of all processed documents
+  features features_;              // features supported by current field
+  bool volatile_attributes_;       // attribute value memory locations may change after next()
 }; // postings_writer
 
 MSVC2015_ONLY(__pragma(warning(push)))
@@ -659,8 +648,8 @@ void postings_writer::end_term(version10::term_meta& meta, const uint64_t* tfreq
   if (1 == meta.docs_count) {
     meta.e_single_doc = doc.deltas[0];
   } else {
-    /* write remaining documents using
-     * variable length encoding */
+    // write remaining documents using
+    // variable length encoding
     data_output& out = *doc.out;
 
     for (uint32_t i = 0; i < doc.size; ++i) {
@@ -4662,11 +4651,9 @@ class postings_reader final: public irs::postings_reader {
   ) override;
 
  private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   index_input::ptr doc_in_;
   index_input::ptr pos_in_;
   index_input::ptr pay_in_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // postings_reader
 
 bool postings_reader::prepare(

@@ -32,7 +32,7 @@
 #include <iterator>
 
 NS_ROOT
-NS_BEGIN( packed )
+NS_BEGIN(packed)
 
 const uint32_t BLOCK_SIZE_32 = sizeof(uint32_t) * 8; // block size is tied to number of bits in value
 const uint32_t BLOCK_SIZE_64 = sizeof(uint64_t) * 8; // block size is tied to number of bits in value
@@ -40,11 +40,39 @@ const uint32_t BLOCK_SIZE_64 = sizeof(uint64_t) * 8; // block size is tied to nu
 const uint32_t VERSION = 1U;
 
 inline uint32_t bits_required_64(uint64_t val) {
-  return 1 + iresearch::math::log2_64(val);
+  return 0 == val ? 0 : 64 - uint32_t(irs::math::clz64(val));
+}
+
+inline uint32_t bits_required_64(
+    const uint64_t* begin,
+    const uint64_t* end
+) NOEXCEPT {
+  uint64_t accum = 0;
+
+  while (begin != end) {
+    accum |= *begin++;
+  }
+
+//  return 0 == accum ? 0 : 64 - uint32_t(irs::math::clz64(accum));
+  return bits_required_64(accum);
 }
 
 inline uint32_t bits_required_32(uint32_t val) {
-  return 1 + iresearch::math::log2_32(val);
+  return 0 == val ? 0 : 32 - irs::math::clz32(val);
+}
+
+inline uint32_t bits_required_32(
+    const uint32_t* begin,
+    const uint32_t* end
+) NOEXCEPT {
+  uint32_t accum = 0;
+
+  while (begin != end) {
+    accum |= *begin++;
+  }
+
+//  return 0 == accum ? 0 : 32 - irs::math::clz32(accum);
+  return bits_required_32(accum);
 }
 
 inline uint32_t bytes_required_32(uint32_t count, uint32_t bits) {

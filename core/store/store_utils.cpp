@@ -293,6 +293,10 @@ uint32_t write_block(
   }
 
   const auto bits = packed::bits_required_32(
+    decoded, decoded + size
+  );
+
+  const auto bits1 = packed::bits_required_32(
     *std::max_element(decoded, decoded + size)
   );
 
@@ -323,8 +327,12 @@ uint32_t write_block(
     return ALL_EQUAL;
   }
 
-  const auto bits = packed::bits_required_64(
+  const auto bits1 = packed::bits_required_64(
     *std::max_element(decoded, decoded + size)
+  );
+
+  const auto bits = packed::bits_required_64(
+    decoded, decoded + size
   );
 
   std::memset(encoded, 0, sizeof(uint64_t) * size);
