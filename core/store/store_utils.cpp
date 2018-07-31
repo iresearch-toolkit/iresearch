@@ -49,7 +49,7 @@ bool all_equal_simd(
     const uint64_t* RESTRICT begin,
     const uint64_t* RESTRICT end
 ) NOEXCEPT {
-  assert(0 == (std::distance(begin, end) % packed::BLOCK_SIZE_64));
+  assert(0 == (std::distance(begin, end) % irs::packed::BLOCK_SIZE_64));
 
   if (begin == end) {
     return true;
@@ -72,31 +72,6 @@ bool all_equal_simd(
 }
 
 #endif
-
-inline bool all_equal(
-    const uint64_t* RESTRICT begin,
-    const uint64_t* RESTRICT end
-) NOEXCEPT {
-  assert(0 == (std::distance(begin, end) % packed::BLOCK_SIZE_64));
-
-#ifdef IRESEARCH_SSE2
-  return all_equal_simd(begin, end);
-#else
-  return irstd::all_equal(begin, end);
-#endif
-}
-
-inline bool all_equal(
-    const uint32_t* RESTRICT begin,
-    const uint32_t* RESTRICT end
-) NOEXCEPT {
-  assert(0 == (std::distance(begin, end) % packed::BLOCK_SIZE_64));
-
-  return all_equal(
-    reinterpret_cast<const uint64_t*>(begin),
-    reinterpret_cast<const uint64_t*>(end)
-  );
-}
 
 NS_END
 
@@ -311,7 +286,7 @@ uint32_t write_block(
   assert(encoded);
   assert(decoded);
 
-  if (all_equal(decoded, decoded + size)) {
+  if (irstd::all_equal(decoded, decoded + size)) {
     out.write_vint(ALL_EQUAL);
     out.write_vint(*decoded);
     return ALL_EQUAL;
@@ -342,7 +317,7 @@ uint32_t write_block(
   assert(encoded);
   assert(decoded);
 
-  if (all_equal(decoded, decoded + size)) {
+  if (irstd::all_equal(decoded, decoded + size)) {
     out.write_vint(ALL_EQUAL);
     out.write_vlong(*decoded);
     return ALL_EQUAL;

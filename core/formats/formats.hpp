@@ -477,7 +477,7 @@ class IRESEARCH_API format {
     string_ref name_;
   };
 
-  format(const type_id& type): type_(&type) {}
+  format(const type_id& type) NOEXCEPT : type_(&type) {}
   virtual ~format();
 
   virtual index_meta_writer::ptr get_index_meta_writer() const = 0;

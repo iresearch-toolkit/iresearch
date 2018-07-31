@@ -27,6 +27,7 @@
 #include "analysis/analyzers.hpp"
 #include "analysis/token_streams.hpp"
 #include "formats/formats_10.hpp"
+#include "store/memory_directory.hpp"
 #include "index/doc_generator.hpp"
 #include "index/index_reader.hpp"
 #include "index/index_writer.hpp"
