@@ -101,6 +101,7 @@
   #define FORCE_INLINE inline __forceinline
   #define NO_INLINE __declspec(noinline)
   #define RESTRICT __restrict 
+  #define IRESEARCH_IGNORE_UNUSED /* unused */
 #else
   #if defined(__GNUC__) && __GNUC__ >= 4
     #define IRESEARCH_HELPER_DLL_IMPORT __attribute__ ((visibility ("default")))
@@ -122,6 +123,7 @@
   #define FORCE_INLINE inline __attribute__ ((always_inline))
   #define NO_INLINE __attribute__ ((noinline))
   #define RESTRICT __restrict__
+  #define IRESEARCH_IGNORE_UNUSED __attribute__ ((unused))
 #endif
 
 // GCC before v5 does not implicitly call the move constructor on local values

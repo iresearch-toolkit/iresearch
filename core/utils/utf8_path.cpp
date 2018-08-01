@@ -31,13 +31,20 @@ NS_LOCAL
 
 typedef irs::basic_string_ref<wchar_t> wstring_ref;
 
-bool append_path(std::string& buf, const irs::string_ref& value) {
+#if defined (__GNUC__)
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wunused-function"
+#endif
+
+// use inline to avoid GCC warning
+inline bool append_path(std::string& buf, const irs::string_ref& value) {
   buf.append(value.c_str(), value.size());
 
   return true;
 }
 
-bool append_path(std::string& buf, const wstring_ref& value) {
+// use inline to avoid GCC warning
+inline bool append_path(std::string& buf, const wstring_ref& value) {
   // always use UTF-8 locale for reading/writing filesystem paths
   // forceUnicodeSystem since using UCS2
   static auto& fs_cvt = irs::locale_utils::converter<wchar_t>("utf8", true);
@@ -70,12 +77,8 @@ bool append_path(std::string& buf, const wstring_ref& value) {
   return true;
 }
 
-#if defined (__GNUC__)
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wunused-function"
-#endif
-
-bool append_path(std::wstring& buf, const irs::string_ref& value) {
+// use inline to avoid GCC warning
+inline bool append_path(std::wstring& buf, const irs::string_ref& value) {
   // always use UTF-8 locale for reading/writing filesystem paths
   // forceUnicodeSystem since using UTF8
   static auto& fs_cvt = irs::locale_utils::converter<wchar_t>("utf8", true);
@@ -108,7 +111,8 @@ bool append_path(std::wstring& buf, const irs::string_ref& value) {
   return true;
 }
 
-bool append_path(std::wstring& buf, const wstring_ref& value) {
+// use inline to avoid GCC warning
+inline bool append_path(std::wstring& buf, const wstring_ref& value) {
   buf.append(value.c_str(), value.size());
 
   return true;
