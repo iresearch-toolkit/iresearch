@@ -121,6 +121,7 @@ set(IResearch_core_sources
   ./store/mmap_directory.cpp
   ./store/memory_directory.cpp 
   ./store/store_utils.cpp 
+  ./store/store_utils_optimized.cpp
   ./utils/async_utils.cpp
   ./utils/attributes.cpp 
   ./utils/bit_packing.cpp 
@@ -955,7 +956,6 @@ set(IResearch_format-1_0_source
   ./formats/formats_10.hpp
   ./formats/formats_10_attributes.hpp
   ./formats/formats_burst_trie.hpp
-  ./store/store_utils_optimized.cpp
 )
 
 add_library(${IResearch_TARGET_NAME}-format-1_0-shared

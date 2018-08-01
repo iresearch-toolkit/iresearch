@@ -223,7 +223,7 @@ class postings_writer final: public irs::postings_writer {
   }; // stream
 
   struct doc_stream : stream {
-    void doc(doc_id_t delta) { deltas[size] = delta; }
+    void doc(doc_id_t delta) { deltas[size] = uint32_t(delta); }
     void flush(uint64_t* buf, bool freq);
     bool full() const { return BLOCK_SIZE == size; }
     void next(doc_id_t id) { last = id, ++size; }
@@ -236,9 +236,9 @@ class postings_writer final: public irs::postings_writer {
       size = 0;
     }
 
-    doc_id_t deltas[BLOCK_SIZE]{}; // document deltas
+    uint32_t deltas[BLOCK_SIZE]{}; // document deltas
     doc_id_t skip_doc[MAX_SKIP_LEVELS]{};
-    std::unique_ptr<uint64_t[]> freqs; /* document frequencies */
+    std::unique_ptr<uint32_t[]> freqs; /* document frequencies */
     doc_id_t last{ type_limits<type_t::doc_id_t>::invalid() }; // last buffered document id
     doc_id_t block_last{}; // last document id in a block
     uint32_t size{};            /* number of buffered elements */
@@ -329,15 +329,16 @@ const string_ref postings_writer::PAY_EXT = "pay";
 MSVC2015_ONLY(__pragma(warning(pop)))
 
 void postings_writer::doc_stream::flush(uint64_t* buf, bool freq) {
-  encode::bitpack::write_block(*out, deltas, BLOCK_SIZE, buf);
+  auto* buf32 = reinterpret_cast<uint32_t*>(buf);
+  encode::bitpack::write_block32_optimized(*out, deltas, BLOCK_SIZE, buf32);
 
   if (freq) {
-    encode::bitpack::write_block(*out, freqs.get(), BLOCK_SIZE, buf);
+    encode::bitpack::write_block32_optimized(*out, freqs.get(), BLOCK_SIZE, buf32);
   }
 }
 
 void postings_writer::pos_stream::flush(uint32_t* comp_buf) {
-  encode::bitpack::write_block_optimized(*out, this->buf, BLOCK_SIZE, comp_buf);
+  encode::bitpack::write_block32_optimized(*out, this->buf, BLOCK_SIZE, comp_buf);
   size = 0;
 }
 
@@ -365,14 +366,14 @@ void postings_writer::pay_stream::flush_payload(uint32_t* buf) {
   if (pay_buf_.empty()) {
     return;
   }
-  encode::bitpack::write_block_optimized(*out, pay_sizes, BLOCK_SIZE, buf);
+  encode::bitpack::write_block32_optimized(*out, pay_sizes, BLOCK_SIZE, buf);
   out->write_bytes(pay_buf_.c_str(), pay_buf_.size());
   pay_buf_.clear();
 }
 
 void postings_writer::pay_stream::flush_offsets(uint32_t* buf) {
-  encode::bitpack::write_block_optimized(*out, offs_start_buf, BLOCK_SIZE, buf);
-  encode::bitpack::write_block_optimized(*out, offs_len_buf, BLOCK_SIZE, buf);
+  encode::bitpack::write_block32_optimized(*out, offs_start_buf, BLOCK_SIZE, buf);
+  encode::bitpack::write_block32_optimized(*out, offs_len_buf, BLOCK_SIZE, buf);
 }
 
 postings_writer::postings_writer(bool volatile_attributes)
@@ -396,8 +397,8 @@ void postings_writer::prepare(index_output& out, const iresearch::flush_state& s
   auto& features = *state.features;
   if (features.check<frequency>() && !doc.freqs) {
     // prepare frequency stream
-    doc.freqs = memory::make_unique<uint64_t[]>(BLOCK_SIZE);
-    std::memset(doc.freqs.get(), 0, sizeof(uint64_t) * BLOCK_SIZE);
+    doc.freqs = memory::make_unique<uint32_t[]>(BLOCK_SIZE);
+    std::memset(doc.freqs.get(), 0, sizeof(uint32_t) * BLOCK_SIZE);
   }
 
   if (features.check< position >()) {
@@ -636,19 +637,19 @@ void postings_writer::end_term(version10::term_meta& meta, const uint64_t* tfreq
     data_output& out = *doc.out;
 
     for (uint32_t i = 0; i < doc.size; ++i) {
-      const uint64_t doc_delta = doc.deltas[i];
+      const uint32_t doc_delta = doc.deltas[i];
 
       if (!features_.freq()) {
-        out.write_vlong(doc_delta);
+        out.write_vint(doc_delta);
       } else {
         assert(doc.freqs);
-        const uint64_t freq = doc.freqs[i];
+        const uint32_t freq = doc.freqs[i];
 
         if (1 == freq) {
-          out.write_vlong(shift_pack_64(doc_delta, true));
+          out.write_vint(shift_pack_32(doc_delta, true));
         } else {
-          out.write_vlong(shift_pack_64(doc_delta, false));
-          out.write_vlong(freq);
+          out.write_vint(shift_pack_32(doc_delta, false));
+          out.write_vint(freq);
         }
       }
     }
@@ -1021,15 +1022,15 @@ class doc_iterator : public iresearch::doc_iterator {
   void read_end_block(uint64_t size) {
     if (features_.freq()) {
       for (uint64_t i = 0; i < size; ++i) {
-        if (shift_unpack_64(doc_in_->read_vlong(), docs_[i])) {
+        if (shift_unpack_32(doc_in_->read_vint(), docs_[i])) {
           doc_freqs_[i] = 1;
         } else {
-          doc_freqs_[i] = doc_in_->read_vlong();
+          doc_freqs_[i] = doc_in_->read_vint();
         }
       }
     } else {
       for (uint64_t i = 0; i < size; ++i) {
-        docs_[i] = doc_in_->read_vlong();
+        docs_[i] = doc_in_->read_vint();
       }
     }
   }
@@ -1039,16 +1040,21 @@ class doc_iterator : public iresearch::doc_iterator {
 
     if (left >= postings_writer::BLOCK_SIZE) {
       // read doc deltas
-      encode::bitpack::read_block(*doc_in_, postings_writer::BLOCK_SIZE, enc_buf_, docs_);
+      encode::bitpack::read_block32_optimized(
+        *doc_in_,
+         postings_writer::BLOCK_SIZE,
+         reinterpret_cast<uint32_t*>(enc_buf_),
+         docs_
+      );
 
       if (features_.freq()) {
         // read frequency it is required by
         // the iterator or just skip it otherwise
         if (enabled_.freq()) {
-          encode::bitpack::read_block(
+          encode::bitpack::read_block32_optimized(
             *doc_in_,
             postings_writer::BLOCK_SIZE,
-            enc_buf_,
+            reinterpret_cast<uint32_t*>(enc_buf_),
             doc_freqs_
           );
         } else {
@@ -1088,12 +1094,12 @@ class doc_iterator : public iresearch::doc_iterator {
   skip_context* skip_ctx_; // pointer to used skip context, will be used by skip reader
   irs::attribute_view attrs_;
   uint64_t enc_buf_[postings_writer::BLOCK_SIZE]; // buffer for encoding
-  doc_id_t docs_[postings_writer::BLOCK_SIZE]; // doc values
-  uint64_t doc_freqs_[postings_writer::BLOCK_SIZE]; // document frequencies
+  uint32_t docs_[postings_writer::BLOCK_SIZE]; // doc values
+  uint32_t doc_freqs_[postings_writer::BLOCK_SIZE]; // document frequencies
   uint64_t cur_pos_{};
-  const doc_id_t* begin_{docs_};
-  doc_id_t* end_{docs_};
-  uint64_t* doc_freq_{}; // pointer into docs_ to the frequency attribute value for the current doc
+  const uint32_t* begin_{docs_};
+  uint32_t* end_{docs_};
+  uint32_t* doc_freq_{}; // pointer into docs_ to the frequency attribute value for the current doc
   uint64_t term_freq_{}; // total term frequency
   document doc_;
   frequency freq_;
@@ -1303,7 +1309,7 @@ class pos_iterator: public position {
         }
       }
     } else {
-      encode::bitpack::read_block_optimized(
+      encode::bitpack::read_block32_optimized(
         *pos_in_, postings_writer::BLOCK_SIZE, enc_buf_, pos_deltas_
       );
     }
@@ -1458,12 +1464,12 @@ class offs_pay_iterator final: public pos_iterator {
         }
       }
     } else {
-      encode::bitpack::read_block_optimized(*pos_in_, postings_writer::BLOCK_SIZE, enc_buf_, pos_deltas_);
+      encode::bitpack::read_block32_optimized(*pos_in_, postings_writer::BLOCK_SIZE, enc_buf_, pos_deltas_);
 
       // read payloads
       const uint32_t size = pay_in_->read_vint();
       if (size) {
-        encode::bitpack::read_block_optimized(*pay_in_, postings_writer::BLOCK_SIZE, enc_buf_, pay_lengths_);
+        encode::bitpack::read_block32_optimized(*pay_in_, postings_writer::BLOCK_SIZE, enc_buf_, pay_lengths_);
         oversize(pay_data_, size);
 
         #ifdef IRESEARCH_DEBUG
@@ -1475,8 +1481,8 @@ class offs_pay_iterator final: public pos_iterator {
       }
 
       // read offsets
-      encode::bitpack::read_block_optimized(*pay_in_, postings_writer::BLOCK_SIZE, enc_buf_, offs_start_deltas_);
-      encode::bitpack::read_block_optimized(*pay_in_, postings_writer::BLOCK_SIZE, enc_buf_, offs_lengts_);
+      encode::bitpack::read_block32_optimized(*pay_in_, postings_writer::BLOCK_SIZE, enc_buf_, offs_start_deltas_);
+      encode::bitpack::read_block32_optimized(*pay_in_, postings_writer::BLOCK_SIZE, enc_buf_, offs_lengts_);
     }
     pay_data_pos_ = 0;
   }
@@ -1557,7 +1563,7 @@ class offs_iterator final : public pos_iterator {
         }
       }
     } else {
-      encode::bitpack::read_block_optimized(*pos_in_, postings_writer::BLOCK_SIZE, enc_buf_, pos_deltas_);
+      encode::bitpack::read_block32_optimized(*pos_in_, postings_writer::BLOCK_SIZE, enc_buf_, pos_deltas_);
 
       // skip payload
       if (features_.payload()) {
@@ -1565,8 +1571,8 @@ class offs_iterator final : public pos_iterator {
       }
 
       // read offsets
-      encode::bitpack::read_block_optimized(*pay_in_, postings_writer::BLOCK_SIZE, enc_buf_, offs_start_deltas_);
-      encode::bitpack::read_block_optimized(*pay_in_, postings_writer::BLOCK_SIZE, enc_buf_, offs_lengts_);
+      encode::bitpack::read_block32_optimized(*pay_in_, postings_writer::BLOCK_SIZE, enc_buf_, offs_start_deltas_);
+      encode::bitpack::read_block32_optimized(*pay_in_, postings_writer::BLOCK_SIZE, enc_buf_, offs_lengts_);
     }
   }
 
@@ -1712,12 +1718,12 @@ class pay_iterator final : public pos_iterator {
         }
       }
     } else {
-      encode::bitpack::read_block_optimized(*pos_in_, postings_writer::BLOCK_SIZE, enc_buf_, pos_deltas_);
+      encode::bitpack::read_block32_optimized(*pos_in_, postings_writer::BLOCK_SIZE, enc_buf_, pos_deltas_);
 
       /* read payloads */
       const uint32_t size = pay_in_->read_vint();
       if (size) {
-        encode::bitpack::read_block_optimized(*pay_in_, postings_writer::BLOCK_SIZE, enc_buf_, pay_lengths_);
+        encode::bitpack::read_block32_optimized(*pay_in_, postings_writer::BLOCK_SIZE, enc_buf_, pay_lengths_);
         oversize(pay_data_, size);
 
         #ifdef IRESEARCH_DEBUG

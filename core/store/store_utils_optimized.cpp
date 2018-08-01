@@ -33,7 +33,7 @@
 
 extern "C" {
 #include <simdcomp/include/simdcomputil.h>
-void simdpack(const uint32_t*  in, __m128i*  out, const uint32_t bit);
+void simdpackwithoutmask(const uint32_t*  in, __m128i*  out, const uint32_t bit);
 void simdunpack(const __m128i*  in, uint32_t*  out, const uint32_t bit);
 }
 
@@ -71,12 +71,12 @@ NS_ROOT
 NS_BEGIN(encode)
 NS_BEGIN(bitpack)
 
-void read_block_optimized(
+void read_block32_optimized(
     data_input& in,
     uint32_t size,
     uint32_t* RESTRICT encoded,
     uint32_t* RESTRICT decoded) {
-  assert(size);
+  assert(size && 0 == size % SIMDBlockSize);
   assert(encoded);
   assert(decoded);
 
@@ -110,15 +110,14 @@ void read_block_optimized(
   }
 }
 
-uint32_t write_block_optimized(
+uint32_t write_block32_optimized(
     data_output& out,
     const uint32_t* RESTRICT decoded,
     uint32_t size,
     uint32_t* RESTRICT encoded) {
-  assert(size);
+  assert(size && 0 == size % SIMDBlockSize);
   assert(encoded);
   assert(decoded);
-  assert(0 == size % SIMDBlockSize);
 
   if (irstd::all_equal(decoded, decoded + size)) {
     out.write_vint(ALL_EQUAL);
@@ -134,7 +133,7 @@ uint32_t write_block_optimized(
   const size_t step = 4*bits;
 
   for (const auto* begin = encoded; decoded != decoded_end;) {
-    ::simdpack(decoded, reinterpret_cast<__m128i*>(encoded), bits);
+    ::simdpackwithoutmask(decoded, reinterpret_cast<__m128i*>(encoded), bits);
     decoded += SIMDBlockSize;
     begin += step;
   }
