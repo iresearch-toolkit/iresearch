@@ -184,23 +184,23 @@ void read_write_block(const std::vector<uint32_t>& source) {
 }
 
 #ifdef IRESEARCH_SSE2
-void read_write_block32_optimized(const std::vector<uint32_t>& source, std::vector<uint32_t>& enc_dec_buf) {
+void read_write_block_optimized(const std::vector<uint32_t>& source, std::vector<uint32_t>& enc_dec_buf) {
   // write block
   iresearch::bytes_output out;
-  irs::encode::bitpack::write_block32_optimized(out, &source[0], source.size(), &enc_dec_buf[0]);
+  irs::encode::bitpack::write_block_optimized(out, &source[0], source.size(), &enc_dec_buf[0]);
 
   // read block
   iresearch::bytes_input in(out);
   std::vector<uint32_t> read(source.size());
-  irs::encode::bitpack::read_block32_optimized(in, source.size(), &enc_dec_buf[0], read.data());
+  irs::encode::bitpack::read_block_optimized(in, source.size(), &enc_dec_buf[0], read.data());
 
   ASSERT_EQ(source, read);
 }
 
-void read_write_block32_optimized(const std::vector<uint32_t>& source) {
+void read_write_block_optimized(const std::vector<uint32_t>& source) {
   // intermediate buffer for encoding/decoding
   std::vector<uint32_t> enc_dec_buf(source.size());
-  read_write_block32_optimized(source, enc_dec_buf);
+  read_write_block_optimized(source, enc_dec_buf);
 }
 #endif
 
@@ -661,14 +661,14 @@ TEST(store_utils_tests, read_write_block32_optimized) {
     916491807,	629745928,	217677834,	787133498,	167330024,
     793647012,	474689745,	228759450
   };
-  tests::detail::read_write_block32_optimized(data);
+  tests::detail::read_write_block_optimized(data);
   // all equals
-  tests::detail::read_write_block32_optimized(std::vector<uint32_t>(block_size, 5));
+  tests::detail::read_write_block_optimized(std::vector<uint32_t>(block_size, 5));
   // all except first are equal, dirty buffer
   {
     std::vector<uint32_t> end_dec_buf(block_size, std::numeric_limits<uint32_t>::max());
     std::vector<uint32_t> src(block_size, 1); src[0] = 0;
-    tests::detail::read_write_block32_optimized(src, end_dec_buf);
+    tests::detail::read_write_block_optimized(src, end_dec_buf);
   }
 }
 #endif

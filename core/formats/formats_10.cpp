@@ -241,7 +241,7 @@ class postings_writer final: public irs::postings_writer {
 
   struct doc_stream : stream {
     void doc(doc_id_t delta) { deltas[size] = delta; }
-    void flush(uint64_t* buf, bool freq);
+    void flush(uint32_t* buf, bool freq);
     bool full() const { return BLOCK_SIZE == size; }
     void next(doc_id_t id) { last = id, ++size; }
     void freq(uint64_t frq) { freqs[size] = frq; }
@@ -255,10 +255,10 @@ class postings_writer final: public irs::postings_writer {
 
     doc_id_t deltas[BLOCK_SIZE]{}; // document deltas
     doc_id_t skip_doc[MAX_SKIP_LEVELS]{};
-    std::unique_ptr<uint64_t[]> freqs; /* document frequencies */
+    std::unique_ptr<uint32_t[]> freqs; // document frequencies
     doc_id_t last{ type_limits<type_t::doc_id_t>::invalid() }; // last buffered document id
     doc_id_t block_last{}; // last document id in a block
-    uint32_t size{};            /* number of buffered elements */
+    uint32_t size{}; // number of buffered elements
   }; // doc_stream
 
   struct pos_stream : stream {
@@ -345,7 +345,7 @@ const string_ref postings_writer::PAY_EXT = "pay";
 
 MSVC2015_ONLY(__pragma(warning(pop)))
 
-void postings_writer::doc_stream::flush(uint64_t* buf, bool freq) {
+void postings_writer::doc_stream::flush(uint32_t* buf, bool freq) {
   encode::bitpack::write_block(*out, deltas, BLOCK_SIZE, buf);
 
   if (freq) {
@@ -413,8 +413,8 @@ void postings_writer::prepare(index_output& out, const iresearch::flush_state& s
   auto& features = *state.features;
   if (features.check<frequency>() && !doc.freqs) {
     // prepare frequency stream
-    doc.freqs = memory::make_unique<uint64_t[]>(BLOCK_SIZE);
-    std::memset(doc.freqs.get(), 0, sizeof(uint64_t) * BLOCK_SIZE);
+    doc.freqs = memory::make_unique<uint32_t[]>(BLOCK_SIZE);
+    std::memset(doc.freqs.get(), 0, sizeof(uint32_t) * BLOCK_SIZE);
   }
 
   if (features.check< position >()) {
@@ -586,7 +586,8 @@ void postings_writer::begin_doc(doc_id_t id, const frequency* freq) {
 
   doc.next(id);
   if (doc.full()) {
-    doc.flush(buf, freq != nullptr);
+    auto* buf32 = reinterpret_cast<uint32_t*>(buf);
+    doc.flush(buf32, freq != nullptr);
   }
 
   if (pos_) pos_->last = 0;
@@ -653,19 +654,19 @@ void postings_writer::end_term(version10::term_meta& meta, const uint64_t* tfreq
     data_output& out = *doc.out;
 
     for (uint32_t i = 0; i < doc.size; ++i) {
-      const uint64_t doc_delta = doc.deltas[i];
+      const doc_id_t doc_delta = doc.deltas[i];
 
       if (!features_.freq()) {
         out.write_vlong(doc_delta);
       } else {
         assert(doc.freqs);
-        const uint64_t freq = doc.freqs[i];
+        const uint32_t freq = doc.freqs[i];
 
         if (1 == freq) {
-          out.write_vlong(shift_pack_64(doc_delta, true));
+          out.write_vint(shift_pack_32(doc_delta, true));
         } else {
-          out.write_vlong(shift_pack_64(doc_delta, false));
-          out.write_vlong(freq);
+          out.write_vint(shift_pack_32(doc_delta, false));
+          out.write_vint(freq);
         }
       }
     }
@@ -756,7 +757,7 @@ void postings_writer::end_term(version10::term_meta& meta, const uint64_t* tfreq
 }
 
 void postings_writer::write_skip(size_t level, index_output& out) {
-  const uint64_t doc_delta = doc.block_last; //- doc.skip_doc[level];
+  const doc_id_t doc_delta = doc.block_last; //- doc.skip_doc[level];
   const uint64_t doc_ptr = doc.out->file_pointer();
 
   out.write_vlong(doc_delta);
@@ -1038,15 +1039,15 @@ class doc_iterator : public iresearch::doc_iterator {
   void read_end_block(uint64_t size) {
     if (features_.freq()) {
       for (uint64_t i = 0; i < size; ++i) {
-        if (shift_unpack_64(doc_in_->read_vlong(), docs_[i])) {
+        if (shift_unpack_32(doc_in_->read_vint(), docs_[i])) {
           doc_freqs_[i] = 1;
         } else {
-          doc_freqs_[i] = doc_in_->read_vlong();
+          doc_freqs_[i] = doc_in_->read_vint();
         }
       }
     } else {
       for (uint64_t i = 0; i < size; ++i) {
-        docs_[i] = doc_in_->read_vlong();
+        docs_[i] = doc_in_->read_vint();
       }
     }
   }
@@ -1056,7 +1057,12 @@ class doc_iterator : public iresearch::doc_iterator {
 
     if (left >= postings_writer::BLOCK_SIZE) {
       // read doc deltas
-      encode::bitpack::read_block(*doc_in_, postings_writer::BLOCK_SIZE, enc_buf_, docs_);
+      encode::bitpack::read_block(
+        *doc_in_,
+        postings_writer::BLOCK_SIZE,
+        reinterpret_cast<uint32_t*>(enc_buf_),
+        docs_
+      );
 
       if (features_.freq()) {
         // read frequency it is required by
@@ -1065,7 +1071,7 @@ class doc_iterator : public iresearch::doc_iterator {
           encode::bitpack::read_block(
             *doc_in_,
             postings_writer::BLOCK_SIZE,
-            enc_buf_,
+            reinterpret_cast<uint32_t*>(enc_buf_),
             doc_freqs_
           );
         } else {
@@ -1106,11 +1112,11 @@ class doc_iterator : public iresearch::doc_iterator {
   irs::attribute_view attrs_;
   uint64_t enc_buf_[postings_writer::BLOCK_SIZE]; // buffer for encoding
   doc_id_t docs_[postings_writer::BLOCK_SIZE]; // doc values
-  uint64_t doc_freqs_[postings_writer::BLOCK_SIZE]; // document frequencies
+  uint32_t doc_freqs_[postings_writer::BLOCK_SIZE]; // document frequencies
   uint64_t cur_pos_{};
   const doc_id_t* begin_{docs_};
   doc_id_t* end_{docs_};
-  uint64_t* doc_freq_{}; // pointer into docs_ to the frequency attribute value for the current doc
+  uint32_t* doc_freq_{}; // pointer into docs_ to the frequency attribute value for the current doc
   uint64_t term_freq_{}; // total term frequency
   document doc_;
   frequency freq_;
@@ -2254,7 +2260,7 @@ void document_mask_writer::begin(uint32_t count) {
 }
 
 void document_mask_writer::write(const doc_id_t& mask) {
-  out_->write_vlong(mask);
+  out_->write_vint(mask);
 }
 
 void document_mask_writer::end() {
@@ -2338,7 +2344,7 @@ uint32_t document_mask_reader::begin() {
 }
 
 void document_mask_reader::read(doc_id_t& doc_id) {
-  auto id = in_->read_vlong();
+  auto id = in_->read_vint();
 
   static_assert(sizeof(doc_id_t) == sizeof(decltype(id)), "sizeof(doc_id) != sizeof(decltype(id))");
   doc_id = id;
@@ -2684,7 +2690,7 @@ class index_block {
       const auto stats = encode::avg::encode(keys_, key_);
       const auto bits = encode::avg::write_block(
         out, stats.first, stats.second,
-        keys_, block_size, buf
+        keys_, block_size, reinterpret_cast<uint32_t*>(buf)
       );
 
       if (1 == stats.second && 0 == keys_[0] && encode::bitpack::rl(bits)) {
@@ -3279,8 +3285,8 @@ class dense_block : util::noncopyable {
     assert(size);
 
     // dense block must be encoded with RL encoding, avg must be equal to 1
-    uint64_t avg;
-    if (!encode::avg::read_block_rl64(in, base_, avg) || 1 != avg) {
+    uint32_t avg;
+    if (!encode::avg::read_block_rl32(in, base_, avg) || 1 != avg) {
       // invalid block type
       return false;
     }
@@ -3447,14 +3453,14 @@ class dense_fixed_length_block : util::noncopyable {
     assert(size_);
 
     // dense block must be encoded with RL encoding, avg must be equal to 1
-    uint64_t avg;
-    if (!encode::avg::read_block_rl64(in, base_key_, avg) || 1 != avg) {
+    uint32_t avg;
+    if (!encode::avg::read_block_rl32(in, base_key_, avg) || 1 != avg) {
       // invalid block type
       return false;
     }
 
     // fixed length block must be encoded with RL encoding
-    if (!encode::avg::read_block_rl64(in, base_offset_, avg_length_)) {
+    if (!encode::avg::read_block_rl32(in, base_offset_, avg_length_)) {
       // invalid block type
       return false;
     }
@@ -3508,8 +3514,8 @@ class dense_fixed_length_block : util::noncopyable {
 
  private:
   doc_id_t base_key_{}; // base key
-  uint64_t base_offset_{}; // base offset
-  uint64_t avg_length_{}; // entry length
+  uint32_t base_offset_{}; // base offset
+  uint32_t avg_length_{}; // entry length
   doc_id_t size_{}; // total number of entries
   bstring data_;
 }; // dense_fixed_length_block

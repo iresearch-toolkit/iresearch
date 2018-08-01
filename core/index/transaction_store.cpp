@@ -1360,7 +1360,7 @@ bool store_writer::index(
     }
 
     if (0 == ++(document_state.term_count)) {
-      IR_FRMT_ERROR("too many token in field, document '" IR_UINT64_T_SPECIFIER "'", doc.doc_id_);
+      IR_FRMT_ERROR("too many token in field, document '" IR_UINT32_T_SPECIFIER "'", doc.doc_id_);
       return false; // doc_id will be marked not valid by caller, hence in rollback state
     }
 
