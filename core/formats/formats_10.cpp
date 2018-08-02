@@ -2633,19 +2633,19 @@ class index_block {
   }
 
   // returns total number of items
-  size_t total() const NOEXCEPT {
+  uint32_t total() const NOEXCEPT {
     return flushed()+ size();
   }
 
   // returns total number of flushed items
-  size_t flushed() const NOEXCEPT {
+  uint32_t flushed() const NOEXCEPT {
     return flushed_;
   }
 
   // returns number of items to be flushed
-  size_t size() const NOEXCEPT {
+  uint32_t size() const NOEXCEPT {
     assert(key_ >= keys_);
-    return key_ - keys_;
+    return uint32_t(key_ - keys_);
   }
 
   bool empty() const NOEXCEPT {
@@ -2678,15 +2678,15 @@ class index_block {
 
     const auto size = this->size();
 
-    // adjust number of elements to pack to the nearest value
-    // that is multiple to the block size
-    const auto block_size = math::ceil64(size, packed::BLOCK_SIZE_64);
-    assert(block_size >= size);
-
     ColumnProperty props = CP_SPARSE;
 
     // write keys
     {
+      // adjust number of elements to pack to the nearest value
+      // that is multiple to the block size
+      const auto block_size = math::ceil32(size, packed::BLOCK_SIZE_32);
+      assert(block_size >= size);
+
       const auto stats = encode::avg::encode(keys_, key_);
       const auto bits = encode::avg::write_block(
         out, stats.first, stats.second,
@@ -2700,6 +2700,11 @@ class index_block {
 
     // write offsets
     {
+      // adjust number of elements to pack to the nearest value
+      // that is multiple to the block size
+      const auto block_size = math::ceil64(size, packed::BLOCK_SIZE_64);
+      assert(block_size >= size);
+
       const auto stats = encode::avg::encode(offsets_, offset_);
       const auto bits = encode::avg::write_block(
         out, stats.first, stats.second,
@@ -2728,7 +2733,7 @@ class index_block {
   doc_id_t keys_[Size]{};
   uint64_t* offset_{ offsets_ };
   doc_id_t* key_{ keys_ };
-  size_t flushed_{}; // number of flushed items
+  uint32_t flushed_{}; // number of flushed items
 }; // index_block
 
 //////////////////////////////////////////////////////////////////////////////
@@ -2778,17 +2783,17 @@ class writer final : public iresearch::columnstore_writer {
     void finish() {
       auto& out = *ctx_->data_out_;
       write_enum(out, props_); // column properties
-      out.write_vlong(block_index_.total()); // total number of items
-      out.write_vlong(max_); // max column key
-      out.write_vlong(avg_block_size_); // avg data block size
-      out.write_vlong(avg_block_count_); // avg number of elements per block
-      out.write_vlong(column_index_.total()); // total number of index blocks
+      out.write_vint(block_index_.total()); // total number of items
+      out.write_vint(max_); // max column key
+      out.write_vint(avg_block_size_); // avg data block size
+      out.write_vint(avg_block_count_); // avg number of elements per block
+      out.write_vint(column_index_.total()); // total number of index blocks
       blocks_index_.file >> out; // column blocks index
     }
 
     void flush() {
       // do not take into account last block
-      const auto blocks_count = std::max(size_t(1), column_index_.total());
+      const auto blocks_count = std::max(1U, column_index_.total());
       avg_block_count_ = block_index_.flushed() / blocks_count;
       avg_block_size_ = length_ / blocks_count;
 
@@ -2845,7 +2850,7 @@ class writer final : public iresearch::columnstore_writer {
       // flush current block
 
       // write total number of elements in the block
-      out.write_vlong(block_index_.size());
+      out.write_vint(block_index_.size());
 
       // write block index, compressed data and aggregate block properties
       // note that order of calls is important here, since it is not defined
@@ -2863,16 +2868,16 @@ class writer final : public iresearch::columnstore_writer {
     }
 
     writer* ctx_; // writer context
-    uint64_t length_{}; // size of the all column data blocks
+    uint64_t length_{}; // size of all data blocks in the column
     index_block<INDEX_BLOCK_SIZE> block_index_; // current block index (per document key/offset)
     index_block<INDEX_BLOCK_SIZE> column_index_; // column block index (per block key/offset)
     memory_output blocks_index_; // blocks index
     bytes_output block_buf_{ 2*MAX_DATA_BLOCK_SIZE }; // data buffer
     doc_id_t max_{ type_limits<type_t::doc_id_t>::invalid() }; // max key (among flushed blocks)
     ColumnProperty props_{ CP_DENSE | CP_FIXED | CP_MASK }; // aggregated column properties
-    uint64_t avg_block_count_{}; // average number of items per block (tail block is not taken into account since it may skew distribution)
-    uint64_t avg_block_size_{}; // average size of the block (tail block is not taken into account since it may skew distribution)
-  };
+    uint32_t avg_block_count_{}; // average number of items per block (tail block is not taken into account since it may skew distribution)
+    uint32_t avg_block_size_{}; // average size of the block (tail block is not taken into account since it may skew distribution)
+  }; // column
 
   memory_allocator* alloc_{ &memory_allocator::global() };
   uint64_t buf_[INDEX_BLOCK_SIZE]; // reusable temporary buffer for packing
@@ -3096,15 +3101,15 @@ class sparse_block : util::noncopyable {
   }; // iterator
 
   bool load(index_input& in, decompressor& decomp, bstring& buf) {
-    const size_t size = in.read_vlong(); // total number of entries in a block
+    const size_t size = in.read_vint(); // total number of entries in a block
     assert(size);
 
     auto begin = std::begin(index_);
 
     // read keys
     encode::avg::visit_block_packed_tail(
-      in, size, reinterpret_cast<uint64_t*>(&buf[0]),
-      [begin](uint64_t key) mutable {
+      in, size, reinterpret_cast<uint32_t*>(&buf[0]),
+      [begin](uint32_t key) mutable {
         begin->key = key;
         ++begin;
     });
@@ -3281,7 +3286,7 @@ class dense_block : util::noncopyable {
   }; // iterator
 
   bool load(index_input& in, decompressor& decomp, bstring& buf) {
-    const size_t size = in.read_vlong(); // total number of entries in a block
+    const size_t size = in.read_vint(); // total number of entries in a block
     assert(size);
 
     // dense block must be encoded with RL encoding, avg must be equal to 1
@@ -3449,7 +3454,7 @@ class dense_fixed_length_block : util::noncopyable {
   }; // iterator
 
   bool load(index_input& in, decompressor& decomp, bstring& buf) {
-    size_ = in.read_vlong(); // total number of entries in a block
+    size_ = in.read_vint(); // total number of entries in a block
     assert(size_);
 
     // dense block must be encoded with RL encoding, avg must be equal to 1
@@ -3577,7 +3582,7 @@ class sparse_mask_block : util::noncopyable {
     const doc_id_t* end_{};
   }; // iterator
 
-  sparse_mask_block() {
+  sparse_mask_block() NOEXCEPT {
     std::fill(
       std::begin(keys_), std::end(keys_),
       type_limits<type_t::doc_id_t>::eof()
@@ -3585,14 +3590,14 @@ class sparse_mask_block : util::noncopyable {
   }
 
   bool load(index_input& in, decompressor& /*decomp*/, bstring& buf) {
-    size_ = in.read_vlong(); // total number of entries in a block
+    size_ = in.read_vint(); // total number of entries in a block
     assert(size_);
 
     auto begin = std::begin(keys_);
 
     encode::avg::visit_block_packed_tail(
-      in, size_, reinterpret_cast<uint64_t*>(&buf[0]),
-      [begin](uint64_t key) mutable {
+      in, size_, reinterpret_cast<uint32_t*>(&buf[0]),
+      [begin](uint32_t key) mutable {
         *begin++ = key;
     });
 
@@ -3808,17 +3813,17 @@ class column
  public:
   DECLARE_UNIQUE_PTR(column);
 
-  column(ColumnProperty props)
+  explicit column(ColumnProperty props) NOEXCEPT
     : props_(props) {
   }
 
   virtual ~column() { }
 
   virtual bool read(data_input& in, uint64_t* /*buf*/) {
-    count_ = in.read_vlong();
-    max_ = in.read_vlong();
-    avg_block_size_ = in.read_vlong();
-    avg_block_count_ = in.read_vlong();
+    count_ = in.read_vint();
+    max_ = in.read_vint();
+    avg_block_size_ = in.read_vint();
+    avg_block_count_ = in.read_vint();
     if (!avg_block_count_) {
       avg_block_count_ = count_;
     }
@@ -3828,15 +3833,19 @@ class column
   doc_id_t max() const NOEXCEPT { return max_; }
   virtual size_t size() const NOEXCEPT override { return count_; }
   bool empty() const NOEXCEPT { return 0 == size(); }
-  size_t avg_block_size() const NOEXCEPT { return avg_block_size_; }
-  size_t avg_block_count() const NOEXCEPT { return avg_block_count_; }
+  uint32_t avg_block_size() const NOEXCEPT { return avg_block_size_; }
+  uint32_t avg_block_count() const NOEXCEPT { return avg_block_count_; }
   ColumnProperty props() const NOEXCEPT { return props_; }
+
+ protected:
+  // same as size() but returns uint32_t to avoid type convertions
+  uint32_t count() const NOEXCEPT { return count_; }
 
  private:
   doc_id_t max_{ type_limits<type_t::doc_id_t>::eof() };
-  size_t count_{};
-  size_t avg_block_size_{};
-  size_t avg_block_count_{};
+  uint32_t count_{};
+  uint32_t avg_block_size_{};
+  uint32_t avg_block_count_{};
   ColumnProperty props_{ CP_SPARSE };
 }; // column
 
@@ -3980,15 +3989,15 @@ class sparse_column final : public column {
     if (!column::read(in, buf)) {
       return false;
     }
-    size_t blocks_count = in.read_vlong(); // total number of column index blocks
+    size_t blocks_count = in.read_vint(); // total number of column index blocks
 
     std::vector<block_ref> refs(blocks_count + 1); // +1 for upper bound
 
     auto begin = refs.begin();
     while (blocks_count >= INDEX_BLOCK_SIZE) {
       encode::avg::visit_block_packed(
-        in, INDEX_BLOCK_SIZE, buf,
-        [begin](uint64_t key) mutable {
+        in, INDEX_BLOCK_SIZE, reinterpret_cast<uint32_t*>(buf),
+        [begin](uint32_t key) mutable {
           begin->key = key;
           ++begin;
       });
@@ -4007,8 +4016,8 @@ class sparse_column final : public column {
     // tail block
     if (blocks_count) {
       encode::avg::visit_block_packed_tail(
-        in, blocks_count, buf,
-        [begin](uint64_t key) mutable {
+        in, blocks_count, reinterpret_cast<uint32_t*>(buf),
+        [begin](uint32_t key) mutable {
           begin->key = key;
           ++begin;
       });
@@ -4187,13 +4196,13 @@ class dense_fixed_length_column final : public column {
     if (!column::read(in, buf)) {
       return false;
     }
-    size_t blocks_count = in.read_vlong(); // total number of column index blocks
+    size_t blocks_count = in.read_vint(); // total number of column index blocks
 
     std::vector<block_ref> refs(blocks_count);
 
     auto begin = refs.begin();
     while (blocks_count >= INDEX_BLOCK_SIZE) {
-      if (!encode::avg::check_block_rl64(in, this->avg_block_count())) {
+      if (!encode::avg::check_block_rl32(in, this->avg_block_count())) {
         // invalid column type
         return false;
       }
@@ -4213,9 +4222,9 @@ class dense_fixed_length_column final : public column {
     if (blocks_count) {
       const auto avg_block_count = blocks_count > 1
         ? this->avg_block_count()
-        : 0; // in this case avg == 0
+        : 0U; // in this case avg == 0
 
-      if (!encode::avg::check_block_rl64(in, avg_block_count)) {
+      if (!encode::avg::check_block_rl32(in, avg_block_count)) {
         // invalid column type
         return false;
       }
@@ -4231,13 +4240,13 @@ class dense_fixed_length_column final : public column {
     }
 
     refs_ = std::move(refs);
-    min_ = this->max() - this->size() + 1;
+    min_ = this->max() - this->count() + 1;
 
     return true;
   }
 
   bool value(doc_id_t key, bytes_ref& value) const {
-    if ((key -= min_) >= this->size()) {
+    if ((key -= min_) >= this->count()) {
       return false;
     }
 
@@ -4325,7 +4334,7 @@ class dense_fixed_length_column final : public column {
       return begin;
     }
 
-    if ((key -= min_) >= this->size()) {
+    if ((key -= min_) >= this->count()) {
       return end;
     }
 
@@ -4340,7 +4349,7 @@ class dense_fixed_length_column final : public column {
       return refs_.begin();
     }
 
-    if ((key -= min_) >= this->size()) {
+    if ((key -= min_) >= this->count()) {
       return refs_.end();
     }
 
@@ -4364,7 +4373,7 @@ class dense_fixed_length_column<dense_mask_block> final : public column {
     return memory::make_unique<column_t>(props);
   }
 
-  dense_fixed_length_column(ColumnProperty prop) NOEXCEPT
+  explicit dense_fixed_length_column(ColumnProperty prop) NOEXCEPT
     : column(prop) {
   }
 
@@ -4377,10 +4386,10 @@ class dense_fixed_length_column<dense_mask_block> final : public column {
       return false;
     }
 
-    size_t blocks_count = in.read_vlong(); // total number of column index blocks
+    size_t blocks_count = in.read_vint(); // total number of column index blocks
 
     while (blocks_count >= INDEX_BLOCK_SIZE) {
-      if (!encode::avg::check_block_rl64(in, this->avg_block_count())) {
+      if (!encode::avg::check_block_rl32(in, this->avg_block_count())) {
         // invalid column type
         return false;
       }
@@ -4388,7 +4397,7 @@ class dense_fixed_length_column<dense_mask_block> final : public column {
       // skip offsets, they point to "garbage" data
       encode::avg::visit_block_packed(
         in, INDEX_BLOCK_SIZE, buf,
-        [](uint64_t ) {}
+        [](uint64_t) {}
       );
 
       blocks_count -= INDEX_BLOCK_SIZE;
@@ -4400,7 +4409,7 @@ class dense_fixed_length_column<dense_mask_block> final : public column {
         ? this->avg_block_count()
         : 0; // in this case avg == 0
 
-      if (!encode::avg::check_block_rl64(in, avg_block_count)) {
+      if (!encode::avg::check_block_rl32(in, avg_block_count)) {
         // invalid column type
         return false;
       }
@@ -4408,12 +4417,12 @@ class dense_fixed_length_column<dense_mask_block> final : public column {
       // skip offsets, they point to "garbage" data
       encode::avg::visit_block_packed_tail(
         in, blocks_count, buf,
-        [](uint64_t ) { }
+        [](uint64_t) { }
       );
     }
 
 
-    min_ = this->max() - this->size();
+    min_ = this->max() - this->count();
 
     return true;
   }
