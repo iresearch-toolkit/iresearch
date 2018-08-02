@@ -323,7 +323,7 @@ class postings_writer final: public irs::postings_writer {
   doc_stream doc;                  // document stream
   pos_stream::ptr pos_;            // proximity stream
   pay_stream::ptr pay_;            // payloads and offsets stream
-  uint64_t docs_count{};           // count of processed documents
+  size_t docs_count{};             // count of processed documents
   version10::documents docs_;      // bit set of all processed documents
   features features_;              // features supported by current field
   bool volatile_attributes_;       // attribute value memory locations may change after next()
@@ -4736,7 +4736,7 @@ bool postings_reader::prepare(
     postings_writer::TERMS_FORMAT_MAX
   );
 
-  const uint64_t block_size = in.read_vlong();
+  const uint64_t block_size = in.read_vint();
   if (block_size != postings_writer::BLOCK_SIZE) {
     // invalid block size
     throw index_error();
@@ -4759,9 +4759,9 @@ void postings_reader::decode(
 
   auto& term_freq = attrs.get<frequency>();
 
-  term_meta.docs_count = in.read_vlong();
+  term_meta.docs_count = in.read_vint();
   if (term_freq) {
-    term_freq->value = term_meta.docs_count + in.read_vlong();
+    term_freq->value = term_meta.docs_count + in.read_vint();
   }
 
   term_meta.doc_start += in.read_vlong();
