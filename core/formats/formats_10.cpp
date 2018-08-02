@@ -318,7 +318,7 @@ class postings_writer final: public irs::postings_writer {
   memory::memory_pool_allocator<version10::term_meta, decltype(meta_pool_)> alloc_{ meta_pool_ };
   skip_writer skip_;
   irs::attribute_view attrs_;
-  uint64_t buf[BLOCK_SIZE];        // buffer for encoding (worst case)
+  uint32_t buf[BLOCK_SIZE];        // buffer for encoding (worst case)
   version10::term_meta last_state; // last final term state
   doc_stream doc;                  // document stream
   pos_stream::ptr pos_;            // proximity stream
@@ -857,7 +857,7 @@ struct doc_state {
   const index_input* pay_in;
   version10::term_meta* term_state;
   uint32_t* freq;
-  uint64_t* enc_buf;
+  uint32_t* enc_buf;
   uint64_t tail_start;
   size_t tail_length;
   ::features features;
@@ -1110,7 +1110,7 @@ class doc_iterator : public iresearch::doc_iterator {
   skip_reader skip_;
   skip_context* skip_ctx_; // pointer to used skip context, will be used by skip reader
   irs::attribute_view attrs_;
-  uint64_t enc_buf_[postings_writer::BLOCK_SIZE]; // buffer for encoding
+  uint32_t enc_buf_[postings_writer::BLOCK_SIZE]; // buffer for encoding
   doc_id_t docs_[postings_writer::BLOCK_SIZE]; // doc values
   uint32_t doc_freqs_[postings_writer::BLOCK_SIZE]; // document frequencies
   uint32_t cur_pos_{};
@@ -3278,9 +3278,9 @@ class dense_block : util::noncopyable {
       );
     }
 
-    const uint64_t* begin_{};
-    const uint64_t* it_{};
-    const uint64_t* end_{};
+    const uint32_t* begin_{};
+    const uint32_t* it_{};
+    const uint32_t* end_{};
     const bstring* data_{};
     doc_id_t base_{};
   }; // iterator
@@ -3374,9 +3374,9 @@ class dense_block : util::noncopyable {
   // so we don't track size of each block here since we could
   // waste just INDEX_BLOCK_SIZE*sizeof(ref)-1 per column
   // in the worst case
-  uint64_t index_[INDEX_BLOCK_SIZE];
+  uint32_t index_[INDEX_BLOCK_SIZE];
   bstring data_;
-  uint64_t* end_{ index_ };
+  uint32_t* end_{ index_ };
   doc_id_t base_{ };
 }; // dense_block
 
@@ -3671,7 +3671,7 @@ class read_context
       block_cache_traits<dense_block, Allocator>::cache_t(typename block_cache_traits<dense_block, Allocator>::allocator_t(alloc)),
       block_cache_traits<dense_fixed_length_block, Allocator>::cache_t(typename block_cache_traits<dense_fixed_length_block, Allocator>::allocator_t(alloc)),
       block_cache_traits<sparse_mask_block, Allocator>::cache_t(typename block_cache_traits<sparse_mask_block, Allocator>::allocator_t(alloc)),
-      buf_(INDEX_BLOCK_SIZE*sizeof(uint64_t), 0),
+      buf_(INDEX_BLOCK_SIZE*sizeof(uint32_t), 0),
       stream_(std::move(in)) {
   }
 
