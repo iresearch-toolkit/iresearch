@@ -121,7 +121,7 @@ set(IResearch_core_sources
   ./store/mmap_directory.cpp
   ./store/memory_directory.cpp 
   ./store/store_utils.cpp 
-  ./store/store_utils_optimized.cpp
+  #  ./store/store_utils_optimized.cpp
   ./utils/async_utils.cpp
   ./utils/attributes.cpp 
   ./utils/bit_packing.cpp 
@@ -950,7 +950,7 @@ endif()
 
 set(IResearch_format-1_0_source
   ./formats/formats_10.cpp
-  ./formats/formats_10_optimized.cpp
+  #  ./formats/formats_10_optimized.cpp
   ./formats/formats_10_attributes.cpp
   ./formats/formats_burst_trie.cpp
   ./formats/formats_10.hpp

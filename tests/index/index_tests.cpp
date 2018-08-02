@@ -8056,29 +8056,29 @@ protected:
   }
 }; // mmap_test_case_base
 
-#ifdef IRESEARCH_SSE2
-
-class mmap_test_case_optimized_base : public index_test_case_base {
-protected:
-  virtual void SetUp() override {
-    index_test_case_base::SetUp();
-    MSVC_ONLY(_setmaxstdio(2048)); // workaround for error: EMFILE - Too many open files
-  }
-
-  virtual irs::directory* get_directory() override {
-    auto dir = test_dir();
-
-    dir /= "index";
-
-    return new iresearch::mmap_directory(dir.utf8());
-  }
-
-  virtual irs::format::ptr get_codec() override {
-    return irs::formats::get("1_0-optimized");
-  }
-}; // mmap_test_case_optimized_base 
-
-#endif
+//#ifdef IRESEARCH_SSE2
+//
+//class mmap_test_case_optimized_base : public index_test_case_base {
+//protected:
+//  virtual void SetUp() override {
+//    index_test_case_base::SetUp();
+//    MSVC_ONLY(_setmaxstdio(2048)); // workaround for error: EMFILE - Too many open files
+//  }
+//
+//  virtual irs::directory* get_directory() override {
+//    auto dir = test_dir();
+//
+//    dir /= "index";
+//
+//    return new iresearch::mmap_directory(dir.utf8());
+//  }
+//
+//  virtual irs::format::ptr get_codec() override {
+//    return irs::formats::get("1_0-optimized");
+//  }
+//}; // mmap_test_case_optimized_base 
+//
+//#endif
 
 namespace cases {
 
@@ -12138,184 +12138,184 @@ TEST_F(mmap_index_test, profile_bulk_index_multithread_update_batched_mt) {
 
 #ifdef IRESEARCH_SSE2
 
-// ----------------------------------------------------------------------------
-// --SECTION--                   mmap_directory + iresearch_format_10_optimized
-// ----------------------------------------------------------------------------
-
-class mmap_optimized_index_test
-  : public tests::cases::tfidf<tests::mmap_test_case_optimized_base>{
-}; // mmap_index_test
-
-TEST_F(mmap_optimized_index_test, open_writer) {
-  open_writer_check_lock();
-}
-
-TEST_F(mmap_optimized_index_test, check_fields_order) {
-  iterate_fields();
-}
-
-TEST_F(mmap_optimized_index_test, check_attributes_order) {
-  iterate_attributes();
-}
-
-TEST_F(mmap_optimized_index_test, read_write_doc_attributes) {
-  //static_assert(false, "add check: seek to the end, seek backwards, seek to the end again");
-  read_write_doc_attributes_sparse_variable_length();
-  read_write_doc_attributes_sparse_mask();
-  read_write_doc_attributes_dense_variable_length();
-  read_write_doc_attributes_dense_fixed_length();
-  read_write_doc_attributes_dense_mask();
-  read_write_doc_attributes_big();
-  read_write_doc_attributes();
-  read_empty_doc_attributes();
-}
-
-TEST_F(mmap_optimized_index_test, writer_transaction_isolation) {
-  writer_transaction_isolation();
-}
-
-TEST_F(mmap_optimized_index_test, create_empty_index) {
-  writer_check_open_modes();
-}
-
-TEST_F(mmap_optimized_index_test, concurrent_read_column_mt) {
-  concurrent_read_single_column_smoke();
-  concurrent_read_multiple_columns();
-}
-
-TEST_F(mmap_optimized_index_test, concurrent_read_index_mt) {
-  concurrent_read_index();
-}
-
-TEST_F(mmap_optimized_index_test, writer_atomicity_check) {
-  writer_atomicity_check();
-}
-
-TEST_F(mmap_optimized_index_test, insert_null_empty_term) {
-  insert_doc_with_null_empty_term();
-}
-
-TEST_F(mmap_optimized_index_test, writer_begin_rollback) {
-  writer_begin_rollback();
-}
-
-TEST_F(mmap_optimized_index_test, arango_demo_docs) {
-  {
-    tests::json_doc_generator gen(
-      resource("arango_demo.json"), 
-      &tests::generic_json_field_factory
-    );
-    add_segment(gen);
-  }
-  assert_index();
-}
-
-TEST_F(mmap_optimized_index_test, europarl_docs) {
-  {
-    tests::templates::europarl_doc_template doc;
-    tests::delim_doc_generator gen(resource("europarl.subset.txt"), doc);
-    add_segment(gen);
-  }
-  assert_index();
-}
-
-TEST_F(mmap_optimized_index_test, monarch_eco_onthology) {
-  {
-    tests::json_doc_generator gen(
-      resource("ECO_Monarch.json"),
-      &tests::payloaded_json_field_factory);
-    add_segment(gen);
-  }
-  assert_index();
-}
-
-TEST_F(mmap_optimized_index_test, writer_close) {
-  tests::json_doc_generator gen(
-    resource("simple_sequential.json"), 
-    &tests::generic_json_field_factory
-  );
-  auto& directory = dir();
-  auto* doc = gen.next();
-  auto writer = open_writer();
-
-  ASSERT_TRUE(insert(*writer,
-    doc->indexed.begin(), doc->indexed.end(),
-    doc->stored.begin(), doc->stored.end()
-  ));
-  writer->commit();
-  writer->close();
-
-  std::vector<std::string> files;
-  auto list_files = [&files] (std::string& name) {
-    files.emplace_back(std::move(name));
-    return true;
-  };
-  ASSERT_TRUE(directory.visit(list_files));
-
-  // file removal should pass for all files (especially valid for Microsoft Windows)
-  for (auto& file: files) {
-    ASSERT_TRUE(directory.remove(file));
-  }
-
-  // validate that all files have been removed
-  files.clear();
-  ASSERT_TRUE(directory.visit(list_files));
-  ASSERT_TRUE(files.empty());
-}
-
-TEST_F(mmap_optimized_index_test, profile_bulk_index_singlethread_full_mt) {
-  profile_bulk_index(0, 0, 0, 0);
-}
-
-TEST_F(mmap_optimized_index_test, profile_bulk_index_singlethread_batched_mt) {
-  profile_bulk_index(0, 0, 0, 10000);
-}
-
-TEST_F(mmap_optimized_index_test, profile_bulk_index_multithread_cleanup_mt) {
-  profile_bulk_index_dedicated_cleanup(16, 10000, 100);
-}
-
-TEST_F(mmap_optimized_index_test, profile_bulk_index_multithread_consolidate_mt) {
-  // a lot of threads cause a lot of contention for the segment pool
-  // small consolidate_interval causes too many policies to be added and slows down test
-  profile_bulk_index_dedicated_consolidate(8, 10000, 5000);
-}
-
-TEST_F(mmap_optimized_index_test, profile_bulk_index_multithread_dedicated_commit_mt) {
-  profile_bulk_index_dedicated_commit(16, 1, 1000);
-}
-
-TEST_F(mmap_optimized_index_test, profile_bulk_index_multithread_full_mt) {
-  profile_bulk_index(16, 0, 0, 0);
-}
-
-TEST_F(mmap_optimized_index_test, profile_bulk_index_multithread_batched_mt) {
-  profile_bulk_index(16, 0, 0, 10000);
-}
-
-TEST_F(mmap_optimized_index_test, profile_bulk_index_multithread_import_full_mt) {
-  profile_bulk_index(12, 4, 0, 0);
-}
-
-TEST_F(mmap_optimized_index_test, profile_bulk_index_multithread_import_batched_mt) {
-  profile_bulk_index(12, 4, 0, 10000);
-}
-
-TEST_F(mmap_optimized_index_test, profile_bulk_index_multithread_import_update_full_mt) {
-  profile_bulk_index(9, 7, 5, 0); // 5 does not divide evenly into 9 or 7
-}
-
-TEST_F(mmap_optimized_index_test, profile_bulk_index_multithread_import_update_batched_mt) {
-  profile_bulk_index(9, 7, 5, 10000); // 5 does not divide evenly into 9 or 7
-}
-
-TEST_F(mmap_optimized_index_test, profile_bulk_index_multithread_update_full_mt) {
-  profile_bulk_index(16, 0, 5, 0); // 5 does not divide evenly into 16
-}
-
-TEST_F(mmap_optimized_index_test, profile_bulk_index_multithread_update_batched_mt) {
-  profile_bulk_index(16, 0, 5, 10000); // 5 does not divide evenly into 16
-}
+//// ----------------------------------------------------------------------------
+//// --SECTION--                   mmap_directory + iresearch_format_10_optimized
+//// ----------------------------------------------------------------------------
+//
+//class mmap_optimized_index_test
+//  : public tests::cases::tfidf<tests::mmap_test_case_optimized_base>{
+//}; // mmap_index_test
+//
+//TEST_F(mmap_optimized_index_test, open_writer) {
+//  open_writer_check_lock();
+//}
+//
+//TEST_F(mmap_optimized_index_test, check_fields_order) {
+//  iterate_fields();
+//}
+//
+//TEST_F(mmap_optimized_index_test, check_attributes_order) {
+//  iterate_attributes();
+//}
+//
+//TEST_F(mmap_optimized_index_test, read_write_doc_attributes) {
+//  //static_assert(false, "add check: seek to the end, seek backwards, seek to the end again");
+//  read_write_doc_attributes_sparse_variable_length();
+//  read_write_doc_attributes_sparse_mask();
+//  read_write_doc_attributes_dense_variable_length();
+//  read_write_doc_attributes_dense_fixed_length();
+//  read_write_doc_attributes_dense_mask();
+//  read_write_doc_attributes_big();
+//  read_write_doc_attributes();
+//  read_empty_doc_attributes();
+//}
+//
+//TEST_F(mmap_optimized_index_test, writer_transaction_isolation) {
+//  writer_transaction_isolation();
+//}
+//
+//TEST_F(mmap_optimized_index_test, create_empty_index) {
+//  writer_check_open_modes();
+//}
+//
+//TEST_F(mmap_optimized_index_test, concurrent_read_column_mt) {
+//  concurrent_read_single_column_smoke();
+//  concurrent_read_multiple_columns();
+//}
+//
+//TEST_F(mmap_optimized_index_test, concurrent_read_index_mt) {
+//  concurrent_read_index();
+//}
+//
+//TEST_F(mmap_optimized_index_test, writer_atomicity_check) {
+//  writer_atomicity_check();
+//}
+//
+//TEST_F(mmap_optimized_index_test, insert_null_empty_term) {
+//  insert_doc_with_null_empty_term();
+//}
+//
+//TEST_F(mmap_optimized_index_test, writer_begin_rollback) {
+//  writer_begin_rollback();
+//}
+//
+//TEST_F(mmap_optimized_index_test, arango_demo_docs) {
+//  {
+//    tests::json_doc_generator gen(
+//      resource("arango_demo.json"), 
+//      &tests::generic_json_field_factory
+//    );
+//    add_segment(gen);
+//  }
+//  assert_index();
+//}
+//
+//TEST_F(mmap_optimized_index_test, europarl_docs) {
+//  {
+//    tests::templates::europarl_doc_template doc;
+//    tests::delim_doc_generator gen(resource("europarl.subset.txt"), doc);
+//    add_segment(gen);
+//  }
+//  assert_index();
+//}
+//
+//TEST_F(mmap_optimized_index_test, monarch_eco_onthology) {
+//  {
+//    tests::json_doc_generator gen(
+//      resource("ECO_Monarch.json"),
+//      &tests::payloaded_json_field_factory);
+//    add_segment(gen);
+//  }
+//  assert_index();
+//}
+//
+//TEST_F(mmap_optimized_index_test, writer_close) {
+//  tests::json_doc_generator gen(
+//    resource("simple_sequential.json"), 
+//    &tests::generic_json_field_factory
+//  );
+//  auto& directory = dir();
+//  auto* doc = gen.next();
+//  auto writer = open_writer();
+//
+//  ASSERT_TRUE(insert(*writer,
+//    doc->indexed.begin(), doc->indexed.end(),
+//    doc->stored.begin(), doc->stored.end()
+//  ));
+//  writer->commit();
+//  writer->close();
+//
+//  std::vector<std::string> files;
+//  auto list_files = [&files] (std::string& name) {
+//    files.emplace_back(std::move(name));
+//    return true;
+//  };
+//  ASSERT_TRUE(directory.visit(list_files));
+//
+//  // file removal should pass for all files (especially valid for Microsoft Windows)
+//  for (auto& file: files) {
+//    ASSERT_TRUE(directory.remove(file));
+//  }
+//
+//  // validate that all files have been removed
+//  files.clear();
+//  ASSERT_TRUE(directory.visit(list_files));
+//  ASSERT_TRUE(files.empty());
+//}
+//
+//TEST_F(mmap_optimized_index_test, profile_bulk_index_singlethread_full_mt) {
+//  profile_bulk_index(0, 0, 0, 0);
+//}
+//
+//TEST_F(mmap_optimized_index_test, profile_bulk_index_singlethread_batched_mt) {
+//  profile_bulk_index(0, 0, 0, 10000);
+//}
+//
+//TEST_F(mmap_optimized_index_test, profile_bulk_index_multithread_cleanup_mt) {
+//  profile_bulk_index_dedicated_cleanup(16, 10000, 100);
+//}
+//
+//TEST_F(mmap_optimized_index_test, profile_bulk_index_multithread_consolidate_mt) {
+//  // a lot of threads cause a lot of contention for the segment pool
+//  // small consolidate_interval causes too many policies to be added and slows down test
+//  profile_bulk_index_dedicated_consolidate(8, 10000, 5000);
+//}
+//
+//TEST_F(mmap_optimized_index_test, profile_bulk_index_multithread_dedicated_commit_mt) {
+//  profile_bulk_index_dedicated_commit(16, 1, 1000);
+//}
+//
+//TEST_F(mmap_optimized_index_test, profile_bulk_index_multithread_full_mt) {
+//  profile_bulk_index(16, 0, 0, 0);
+//}
+//
+//TEST_F(mmap_optimized_index_test, profile_bulk_index_multithread_batched_mt) {
+//  profile_bulk_index(16, 0, 0, 10000);
+//}
+//
+//TEST_F(mmap_optimized_index_test, profile_bulk_index_multithread_import_full_mt) {
+//  profile_bulk_index(12, 4, 0, 0);
+//}
+//
+//TEST_F(mmap_optimized_index_test, profile_bulk_index_multithread_import_batched_mt) {
+//  profile_bulk_index(12, 4, 0, 10000);
+//}
+//
+//TEST_F(mmap_optimized_index_test, profile_bulk_index_multithread_import_update_full_mt) {
+//  profile_bulk_index(9, 7, 5, 0); // 5 does not divide evenly into 9 or 7
+//}
+//
+//TEST_F(mmap_optimized_index_test, profile_bulk_index_multithread_import_update_batched_mt) {
+//  profile_bulk_index(9, 7, 5, 10000); // 5 does not divide evenly into 9 or 7
+//}
+//
+//TEST_F(mmap_optimized_index_test, profile_bulk_index_multithread_update_full_mt) {
+//  profile_bulk_index(16, 0, 5, 0); // 5 does not divide evenly into 16
+//}
+//
+//TEST_F(mmap_optimized_index_test, profile_bulk_index_multithread_update_batched_mt) {
+//  profile_bulk_index(16, 0, 5, 10000); // 5 does not divide evenly into 16
+//}
 
 #endif // IRESEARCH_SSE2
 

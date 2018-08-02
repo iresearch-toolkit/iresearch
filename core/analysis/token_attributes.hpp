@@ -119,7 +119,7 @@ struct IRESEARCH_API document: basic_attribute<doc_id_t> {
 /// @class frequency 
 /// @brief how many times term appears in a document
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API frequency : basic_attribute<uint64_t> {
+struct IRESEARCH_API frequency : basic_attribute<uint32_t> {
   DECLARE_ATTRIBUTE_TYPE();
 
   frequency() = default;

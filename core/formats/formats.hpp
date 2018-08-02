@@ -70,8 +70,8 @@ struct IRESEARCH_API term_meta : attribute {
     freq = 0;
   }
 
-  uint64_t docs_count = 0; // how many documents a particular term contains
-  uint64_t freq = 0; // FIXME check whether we can move freq to another place
+  uint32_t docs_count = 0; // how many documents a particular term contains
+  uint32_t freq = 0; // FIXME check whether we can move freq to another place
 }; // term_meta
 
 struct IRESEARCH_API postings_writer : util::const_attribute_view_provider {

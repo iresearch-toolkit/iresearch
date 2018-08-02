@@ -244,7 +244,7 @@ class postings_writer final: public irs::postings_writer {
     void flush(uint32_t* buf, bool freq);
     bool full() const { return BLOCK_SIZE == size; }
     void next(doc_id_t id) { last = id, ++size; }
-    void freq(uint64_t frq) { freqs[size] = frq; }
+    void freq(uint32_t frq) { freqs[size] = frq; }
 
     void reset() {
       stream::reset();
@@ -312,7 +312,7 @@ class postings_writer final: public irs::postings_writer {
   void begin_doc(doc_id_t id, const frequency* freq);
   void add_position( uint32_t pos, const offset* offs, const payload* pay );
   void end_doc();
-  void end_term(version10::term_meta& state, const uint64_t* tfreq);
+  void end_term(version10::term_meta& state, const uint32_t* tfreq);
 
   memory::memory_pool<> meta_pool_;
   memory::memory_pool_allocator<version10::term_meta, decltype(meta_pool_)> alloc_{ meta_pool_ };
@@ -484,7 +484,7 @@ irs::postings_writer::state postings_writer::write(irs::doc_iterator& docs) {
   const offset* offs = nullptr;
   const payload* pay = nullptr;
 
-  uint64_t* tfreq = nullptr;
+  uint32_t* tfreq = nullptr;
 
   auto meta = memory::allocate_unique<version10::term_meta>(alloc_);
 
@@ -641,7 +641,7 @@ void postings_writer::end_doc() {
   }
 }
 
-void postings_writer::end_term(version10::term_meta& meta, const uint64_t* tfreq) {
+void postings_writer::end_term(version10::term_meta& meta, const uint32_t* tfreq) {
   if (docs_count == 0) {
     return; // no documents to write
   }
@@ -657,7 +657,7 @@ void postings_writer::end_term(version10::term_meta& meta, const uint64_t* tfreq
       const doc_id_t doc_delta = doc.deltas[i];
 
       if (!features_.freq()) {
-        out.write_vlong(doc_delta);
+        out.write_vint(doc_delta);
       } else {
         assert(doc.freqs);
         const uint32_t freq = doc.freqs[i];
@@ -726,7 +726,7 @@ void postings_writer::end_term(version10::term_meta& meta, const uint64_t* tfreq
   }
 
   if (!tfreq) {
-    meta.freq = integer_traits<uint64_t>::const_max;
+    meta.freq = integer_traits<uint32_t>::const_max;
   }
 
   /* if we have flushed at least
@@ -760,7 +760,7 @@ void postings_writer::write_skip(size_t level, index_output& out) {
   const doc_id_t doc_delta = doc.block_last; //- doc.skip_doc[level];
   const uint64_t doc_ptr = doc.out->file_pointer();
 
-  out.write_vlong(doc_delta);
+  out.write_vint(doc_delta);
   out.write_vlong(doc_ptr - doc.skip_ptr[level]);
 
   doc.skip_doc[level] = doc.block_last;
@@ -800,10 +800,10 @@ void postings_writer::encode(
   const auto& meta = static_cast<const version10::term_meta&>(state);
 #endif // IRESEARCH_DEBUG
 
-  out.write_vlong(meta.docs_count);
-  if (meta.freq != integer_traits<uint64_t>::const_max) {
+  out.write_vint(meta.docs_count);
+  if (meta.freq != integer_traits<uint32_t>::const_max) {
     assert(meta.freq >= meta.docs_count);
-    out.write_vlong(meta.freq - meta.docs_count);
+    out.write_vint(meta.freq - meta.docs_count);
   }
 
   out.write_vlong(meta.doc_start - last_state.doc_start);
@@ -856,7 +856,7 @@ struct doc_state {
   const index_input* pos_in;
   const index_input* pay_in;
   version10::term_meta* term_state;
-  uint64_t* freq;
+  uint32_t* freq;
   uint64_t* enc_buf;
   uint64_t tail_start;
   size_t tail_length;
@@ -1015,7 +1015,7 @@ class doc_iterator : public iresearch::doc_iterator {
   }
 
   doc_id_t read_skip(skip_state& state, index_input& in) {
-    state.doc = in.read_vlong();
+    state.doc = in.read_vint();
     state.doc_ptr += in.read_vlong();
 
     if (features_.position()) {
@@ -1036,9 +1036,9 @@ class doc_iterator : public iresearch::doc_iterator {
     return state.doc;
   }
 
-  void read_end_block(uint64_t size) {
+  void read_end_block(size_t size) {
     if (features_.freq()) {
-      for (uint64_t i = 0; i < size; ++i) {
+      for (size_t i = 0; i < size; ++i) {
         if (shift_unpack_32(doc_in_->read_vint(), docs_[i])) {
           doc_freqs_[i] = 1;
         } else {
@@ -1046,7 +1046,7 @@ class doc_iterator : public iresearch::doc_iterator {
         }
       }
     } else {
-      for (uint64_t i = 0; i < size; ++i) {
+      for (size_t i = 0; i < size; ++i) {
         docs_[i] = doc_in_->read_vint();
       }
     }
@@ -1113,11 +1113,11 @@ class doc_iterator : public iresearch::doc_iterator {
   uint64_t enc_buf_[postings_writer::BLOCK_SIZE]; // buffer for encoding
   doc_id_t docs_[postings_writer::BLOCK_SIZE]; // doc values
   uint32_t doc_freqs_[postings_writer::BLOCK_SIZE]; // document frequencies
-  uint64_t cur_pos_{};
+  uint32_t cur_pos_{};
   const doc_id_t* begin_{docs_};
   doc_id_t* end_{docs_};
   uint32_t* doc_freq_{}; // pointer into docs_ to the frequency attribute value for the current doc
-  uint64_t term_freq_{}; // total term frequency
+  uint32_t term_freq_{}; // total term frequency
   document doc_;
   frequency freq_;
   index_input::ptr doc_in_;
@@ -1249,7 +1249,7 @@ class pos_iterator: public position {
       return false;
     }
 
-    const uint64_t freq = *freq_;
+    const uint32_t freq = *freq_;
 
     if (pend_pos_ > freq) {
       skip(pend_pos_ - freq);
@@ -1330,8 +1330,8 @@ class pos_iterator: public position {
     }
   }
 
-  virtual void skip(uint64_t count) {
-    uint64_t left = postings_writer::BLOCK_SIZE - buf_pos_;
+  virtual void skip(uint32_t count) {
+    auto left = postings_writer::BLOCK_SIZE - buf_pos_;
     if (count >= left) {
       count -= left;
       while (count >= postings_writer::BLOCK_SIZE) {
@@ -1352,9 +1352,9 @@ class pos_iterator: public position {
   }
 
   uint32_t pos_deltas_[postings_writer::BLOCK_SIZE]; /* buffer to store position deltas */
-  const uint64_t* freq_; /* lenght of the posting list for a document */
+  const uint32_t* freq_; /* lenght of the posting list for a document */
   uint32_t* enc_buf_; /* auxillary buffer to decode data */
-  uint64_t pend_pos_{}; /* how many positions "behind" we are */
+  uint32_t pend_pos_{}; /* how many positions "behind" we are */
   uint64_t tail_start_; /* file pointer where the last (vInt encoded) pos delta block is */
   size_t tail_length_; /* number of positions in the last (vInt encoded) pos delta block */
   uint32_t value_{ irs::type_limits<irs::type_t::pos_t>::invalid() }; // current position
@@ -1416,8 +1416,8 @@ class offs_pay_iterator final: public pos_iterator {
     pay_data_pos_ += pay_lengths_[buf_pos_];
   }
 
-  virtual void skip(uint64_t count) override {
-    uint64_t left = postings_writer::BLOCK_SIZE - buf_pos_;
+  virtual void skip(uint32_t count) override {
+    auto left = postings_writer::BLOCK_SIZE - buf_pos_;
     if (count >= left) {
       count -= left;
       // skip block by block
@@ -1437,7 +1437,7 @@ class offs_pay_iterator final: public pos_iterator {
       const auto begin = pay_lengths_ + buf_pos_;
       const auto end = begin + count;
       pay_data_pos_ = std::accumulate(begin, end, pay_data_pos_);
-      buf_pos_ += uint32_t(count);
+      buf_pos_ += count;
     }
     clear();
     value_ = 0;
@@ -1556,7 +1556,7 @@ class offs_iterator final : public pos_iterator {
   virtual void refill() override {
     if (pos_in_->file_pointer() == tail_start_) {
       uint32_t pay_size = 0;
-      for (uint64_t i = 0; i < tail_length_; ++i) {
+      for (size_t i = 0; i < tail_length_; ++i) {
         /* skip payloads */
         if (features_.payload()) {
           if (shift_unpack_32(pos_in_->read_vint(), pos_deltas_[i])) {
@@ -1591,8 +1591,8 @@ class offs_iterator final : public pos_iterator {
     }
   }
 
-  virtual void skip(uint64_t count) override {
-    uint64_t left = postings_writer::BLOCK_SIZE - buf_pos_;
+  virtual void skip(uint32_t count) override {
+    auto left = postings_writer::BLOCK_SIZE - buf_pos_;
     if (count >= left) {
       count -= left;
       // skip block by block
@@ -1610,7 +1610,7 @@ class offs_iterator final : public pos_iterator {
     }
 
     if (count < left) {
-      buf_pos_ += uint32_t(count);
+      buf_pos_ += count;
     }
     clear();
     value_ = 0;
@@ -1667,8 +1667,8 @@ class pay_iterator final : public pos_iterator {
     pay_data_pos_ += pay_lengths_[buf_pos_];
   }
 
-  virtual void skip(uint64_t count) override {
-    uint64_t left = postings_writer::BLOCK_SIZE - buf_pos_;
+  virtual void skip(uint32_t count) override {
+    auto left = postings_writer::BLOCK_SIZE - buf_pos_;
     if (count >= left) {
       count -= left;
       // skip block by block
@@ -1690,7 +1690,7 @@ class pay_iterator final : public pos_iterator {
       const auto begin = pay_lengths_ + buf_pos_;
       const auto end = begin + count;
       pay_data_pos_ = std::accumulate(begin, end, pay_data_pos_);
-      buf_pos_ += uint32_t(count);
+      buf_pos_ += count;
     }
     clear();
     value_ = 0;
@@ -1700,7 +1700,7 @@ class pay_iterator final : public pos_iterator {
     if (pos_in_->file_pointer() == tail_start_) {
       size_t pos = 0;
 
-      for (uint64_t i = 0; i < tail_length_; ++i) {
+      for (size_t i = 0; i < tail_length_; ++i) {
         // read payloads
         if (shift_unpack_32(pos_in_->read_vint(), pos_deltas_[i])) {
           pay_lengths_[i] = pos_in_->read_vint();

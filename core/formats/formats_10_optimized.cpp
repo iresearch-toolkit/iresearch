@@ -295,7 +295,7 @@ class postings_writer final: public irs::postings_writer {
   void begin_doc(doc_id_t id, const frequency* freq);
   void add_position( uint32_t pos, const offset* offs, const payload* pay );
   void end_doc();
-  void end_term(version10::term_meta& state, const uint64_t* tfreq);
+  void end_term(version10::term_meta& state, const uint32_t* tfreq);
 
   memory::memory_pool<> meta_pool_;
   memory::memory_pool_allocator<version10::term_meta, decltype(meta_pool_)> alloc_{ meta_pool_ };
@@ -468,7 +468,7 @@ irs::postings_writer::state postings_writer::write(irs::doc_iterator& docs) {
   const offset* offs = nullptr;
   const payload* pay = nullptr;
 
-  uint64_t* tfreq = nullptr;
+  uint32_t* tfreq = nullptr;
 
   auto meta = memory::allocate_unique<version10::term_meta>(alloc_);
 
@@ -624,7 +624,7 @@ void postings_writer::end_doc() {
   }
 }
 
-void postings_writer::end_term(version10::term_meta& meta, const uint64_t* tfreq) {
+void postings_writer::end_term(version10::term_meta& meta, const uint32_t* tfreq) {
   if (docs_count == 0) {
     return; // no documents to write
   }
@@ -709,7 +709,7 @@ void postings_writer::end_term(version10::term_meta& meta, const uint64_t* tfreq
   }
 
   if (!tfreq) {
-    meta.freq = integer_traits<uint64_t>::const_max;
+    meta.freq = integer_traits<uint32_t>::const_max;
   }
 
   /* if we have flushed at least
@@ -839,7 +839,7 @@ struct doc_state {
   const index_input* pos_in;
   const index_input* pay_in;
   version10::term_meta* term_state;
-  uint64_t* freq;
+  uint32_t* freq;
   uint64_t* enc_buf;
   uint64_t tail_start;
   size_t tail_length;
@@ -1337,7 +1337,7 @@ class pos_iterator: public position {
   }
 
   uint32_t pos_deltas_[postings_writer::BLOCK_SIZE]; /* buffer to store position deltas */
-  const uint64_t* freq_; /* lenght of the posting list for a document */
+  const uint32_t* freq_; /* lenght of the posting list for a document */
   uint32_t* enc_buf_; /* auxillary buffer to decode data */
   uint64_t pend_pos_{}; /* how many positions "behind" we are */
   uint64_t tail_start_; /* file pointer where the last (vInt encoded) pos delta block is */
