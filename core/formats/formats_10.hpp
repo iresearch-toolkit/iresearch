@@ -29,36 +29,15 @@
 NS_ROOT
 NS_BEGIN(version10)
 
+void init();
+
 //////////////////////////////////////////////////////////////////////////////
 /// @class format
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_PLUGIN format : public irs::format {
  public:
-  DECLARE_FORMAT_TYPE();
-  DECLARE_FACTORY();
-
-  format() NOEXCEPT;
-
-  virtual index_meta_writer::ptr get_index_meta_writer() const override final;
-  virtual index_meta_reader::ptr get_index_meta_reader() const override final;
-
-  virtual segment_meta_writer::ptr get_segment_meta_writer() const override final;
-  virtual segment_meta_reader::ptr get_segment_meta_reader() const override final;
-
-  virtual document_mask_writer::ptr get_document_mask_writer() const override final;
-  virtual document_mask_reader::ptr get_document_mask_reader() const override final;
-
-  virtual field_writer::ptr get_field_writer(bool volatile_state) const override final;
-  virtual field_reader::ptr get_field_reader() const override final;
-
-  virtual column_meta_writer::ptr get_column_meta_writer() const override final;
-  virtual column_meta_reader::ptr get_column_meta_reader() const override final;
-
-  virtual columnstore_writer::ptr get_columnstore_writer() const override final;
-  virtual columnstore_reader::ptr get_columnstore_reader() const override final;
-
-  virtual postings_writer::ptr get_postings_writer(bool volatile_state) const;
-  virtual postings_reader::ptr get_postings_reader() const;
+  virtual postings_writer::ptr get_postings_writer(bool volatile_state) const = 0;
+  virtual postings_reader::ptr get_postings_reader() const = 0;
 
  protected:
   explicit format(const irs::format::type_id& type) NOEXCEPT;

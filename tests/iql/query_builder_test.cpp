@@ -200,8 +200,8 @@ namespace tests {
       }
     };
 
-    iresearch::version10::format codec;
-    iresearch::format::ptr codec_ptr(&codec, [](iresearch::format*)->void{});
+    auto codec_ptr = irs::formats::get("1_0");
+
     auto writer =
       iresearch::index_writer::make(dir, codec_ptr, iresearch::OPEN_MODE::OM_CREATE);
     json_doc_generator generator(

@@ -214,7 +214,7 @@ void remove_all_unreferenced(directory& dir) {
 }
 
 directory_cleaner::removal_acceptor_t remove_except_current_segments(
-  const directory& dir, format& codec
+  const directory& dir, const format& codec
 ) {
   static const auto acceptor = [](
       const std::string& filename, 

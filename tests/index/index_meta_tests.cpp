@@ -35,7 +35,7 @@ using namespace iresearch;
 NS_BEGIN(tests)
 NS_BEGIN(detail)
 
-void index_meta_read_write(iresearch::directory& dir, iresearch::format& codec) {
+void index_meta_read_write(iresearch::directory& dir, const iresearch::format& codec) {
   auto writer = codec.get_index_meta_writer();
 
   /* check that there are no files in
@@ -91,9 +91,10 @@ NS_END // detail
 NS_END // tests
 
 TEST(index_meta_tests, memory_directory_read_write) {
-  irs::version10::format codec;
+  auto codec = irs::formats::get("1_0");
+  ASSERT_NE(nullptr, codec);
   irs::memory_directory dir;
-  tests::detail::index_meta_read_write(dir, codec);
+  tests::detail::index_meta_read_write(dir, *codec);
 }
 
 TEST(index_meta_tests, ctor) {
@@ -139,10 +140,11 @@ TEST(index_meta_tests, last_generation) {
     ASSERT_FALSE(!out);
   }
 
-  iresearch::version10::format codec;
+  auto codec = irs::formats::get("1_0");
+  ASSERT_NE(nullptr, codec);
   std::string last_seg_file;
 
-  auto reader = codec.get_index_meta_reader();
+  auto reader = codec->get_index_meta_reader();
   const bool index_exists = reader->last_segments_file(dir, last_seg_file);
   const std::string expected_seg_file = "segments_" + std::to_string(max);
 

@@ -113,7 +113,7 @@ NS_END
 NS_LOCAL
 
 struct format_traits {
-  static const uint32_t BLOCKS_SIZE = 128;
+  static const uint32_t BLOCKS_SIZE = 256;
   static const irs::string_ref NAME;
 
   FORCE_INLINE static void write_block(
@@ -139,7 +139,7 @@ struct format_traits {
   }
 }; // format_traits
 
-const irs::string_ref format_traits::NAME = "1_0-optimized";
+const irs::string_ref format_traits::NAME = "1_0";
 
 NS_END
 
@@ -1146,7 +1146,7 @@ class doc_iterator : public iresearch::doc_iterator {
           format_traits::read_block(
             *doc_in_,
             postings_writer::BLOCK_SIZE,
-            reinterpret_cast<uint32_t*>(enc_buf_),
+            enc_buf_,
             doc_freqs_
           );
         } else {
@@ -4893,20 +4893,37 @@ irs::doc_iterator::ptr postings_reader::iterator(
   return IMPLICIT_MOVE_WORKAROUND(it);
 }
 
-NS_END
+// actual implementation
+class format : public irs::version10::format {
+ public:
+  DECLARE_FORMAT_TYPE();
+  DECLARE_FACTORY();
 
-NS_ROOT
-NS_BEGIN(version10)
+  format() NOEXCEPT;
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                                           format
-// ----------------------------------------------------------------------------
+  virtual index_meta_writer::ptr get_index_meta_writer() const override final;
+  virtual index_meta_reader::ptr get_index_meta_reader() const override final;
 
-format::format() NOEXCEPT : format(format::type()) {}
+  virtual segment_meta_writer::ptr get_segment_meta_writer() const override final;
+  virtual segment_meta_reader::ptr get_segment_meta_reader() const override final;
 
-format::format(const irs::format::type_id& type) NOEXCEPT
-  : irs::format(type) {
-}
+  virtual document_mask_writer::ptr get_document_mask_writer() const override final;
+  virtual document_mask_reader::ptr get_document_mask_reader() const override final;
+
+  virtual field_writer::ptr get_field_writer(bool volatile_state) const override final;
+  virtual field_reader::ptr get_field_reader() const override final;
+
+  virtual column_meta_writer::ptr get_column_meta_writer() const override final;
+  virtual column_meta_reader::ptr get_column_meta_reader() const override final;
+
+  virtual columnstore_writer::ptr get_columnstore_writer() const override final;
+  virtual columnstore_reader::ptr get_columnstore_reader() const override final;
+
+  virtual postings_writer::ptr get_postings_writer(bool volatile_state) const;
+  virtual postings_reader::ptr get_postings_reader() const;
+};
+
+format::format() NOEXCEPT : irs::version10::format(format::type()) {}
 
 index_meta_writer::ptr format::get_index_meta_writer() const  {
   return irs::index_meta_writer::make<::index_meta_writer>();
@@ -4979,14 +4996,33 @@ irs::postings_reader::ptr format::get_postings_reader() const {
 }
 
 /*static*/ irs::format::ptr format::make() {
-  static const format INSTANCE;
+  static const ::format INSTANCE;
 
   // aliasing constructor
   return irs::format::ptr(irs::format::ptr(), &INSTANCE);
 }
 
-DEFINE_FORMAT_TYPE_NAMED(iresearch::version10::format, format_traits::NAME);
-REGISTER_FORMAT(iresearch::version10::format);
+DEFINE_FORMAT_TYPE_NAMED(::format, format_traits::NAME);
+REGISTER_FORMAT(::format);
+
+NS_END
+
+NS_ROOT
+NS_BEGIN(version10)
+
+void init() {
+#ifndef IRESEARCH_DLL
+  REGISTER_FORMAT(::format);
+#endif
+}
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                                           format
+// ----------------------------------------------------------------------------
+
+format::format(const irs::format::type_id& type) NOEXCEPT
+  : irs::format(type) {
+}
 
 NS_END // version10
 NS_END // root

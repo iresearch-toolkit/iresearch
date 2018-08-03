@@ -227,8 +227,8 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
   tests::document const* doc2 = gen.next();
   auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
   irs::memory_directory dir;
-  iresearch::version10::format codec;
-  iresearch::format::ptr codec_ptr(&codec, [](iresearch::format*)->void{});
+  auto codec_ptr = irs::formats::get("1_0");
+  ASSERT_NE(nullptr, codec_ptr);
 
   iresearch::directory_cleaner::init(dir);
 
@@ -259,7 +259,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
     ));
     writer->commit();
 
-    iresearch::directory_cleaner::clean(dir, iresearch::directory_utils::remove_except_current_segments(dir, codec));
+    iresearch::directory_cleaner::clean(dir, iresearch::directory_utils::remove_except_current_segments(dir, *codec_ptr));
     files.clear();
     ASSERT_TRUE(dir.visit(list_files));
     ASSERT_FALSE(files.empty());
@@ -277,7 +277,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
     std::string segments_file;
 
     iresearch::index_meta index_meta;
-    auto meta_reader = codec.get_index_meta_reader();
+    auto meta_reader = codec_ptr->get_index_meta_reader();
     const auto index_exists = meta_reader->last_segments_file(dir, segments_file);
 
     ASSERT_TRUE(index_exists);
@@ -299,7 +299,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
       return true;
     };
     std::unordered_set<std::string> current_files(file_set);
-    iresearch::directory_cleaner::clean(dir, iresearch::directory_utils::remove_except_current_segments(dir, codec));
+    iresearch::directory_cleaner::clean(dir, iresearch::directory_utils::remove_except_current_segments(dir, *codec_ptr));
     ASSERT_TRUE(dir.visit(list_files));
     ASSERT_FALSE(files.empty());
 

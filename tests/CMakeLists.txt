@@ -26,6 +26,10 @@ set(IResearchTests_INCLUDE_DIR
   ""
 )
 
+# set required standard version
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 set(IReSearch_tests_sources
   ./analysis/analyzer_test.cpp
   ./analysis/delimited_token_stream_tests.cpp
@@ -199,18 +203,6 @@ target_link_libraries(${IResearchTests_TARGET_NAME}-static
   ${GTEST_STATIC_LIBS}
   ${PTHREAD_LIBRARY}
   ${ATOMIC_LIBRARY}
-)
-
-target_compile_features(${IResearchTests_TARGET_NAME}-shared
-  PRIVATE
-  cxx_final
-  cxx_variadic_templates
-)
-
-target_compile_features(${IResearchTests_TARGET_NAME}-static
-  PRIVATE
-  cxx_final
-  cxx_variadic_templates
 )
 
 # setup CRT

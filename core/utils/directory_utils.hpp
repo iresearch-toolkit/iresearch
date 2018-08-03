@@ -95,7 +95,7 @@ IRESEARCH_API void remove_all_unreferenced(directory& dir);
 
 // remove tracked files if they are unreferenced and not part of the latest segments
 IRESEARCH_API directory_cleaner::removal_acceptor_t remove_except_current_segments(
-  const directory& dir, format& codec
+  const directory& dir, const format& codec
 );
 
 NS_END

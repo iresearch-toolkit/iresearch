@@ -148,8 +148,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
   doc4.insert(std::make_shared<tests::templates::string_field>("doc_string", string4));
   doc4.insert(std::make_shared<tests::templates::string_field>("another_column", "another_value"));
   
-  irs::version10::format codec;
-  irs::format::ptr codec_ptr(&codec, [](iresearch::format*)->void{});
+  auto codec_ptr = irs::formats::get("1_0");
   irs::memory_directory dir;
 
   // populate directory
@@ -555,8 +554,8 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
 
   doc4.insert(std::make_shared<tests::templates::string_field>("doc_string", string4));
 
-  iresearch::version10::format codec;
-  iresearch::format::ptr codec_ptr(&codec, [](iresearch::format*)->void{});
+  auto codec_ptr = irs::formats::get("1_0");
+  ASSERT_NE(nullptr, codec_ptr);
   irs::memory_directory dir;
 
   // populate directory
@@ -872,8 +871,8 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
 }
 
 TEST_F(merge_writer_tests, test_merge_writer) {
-  iresearch::version10::format codec;
-  iresearch::format::ptr codec_ptr(&codec, [](iresearch::format*)->void{});
+  auto codec_ptr = irs::formats::get("1_0");
+  ASSERT_NE(nullptr, codec_ptr);
   irs::memory_directory dir;
 
   iresearch::bstring bytes1;
@@ -2188,8 +2187,8 @@ TEST_F(merge_writer_tests, test_merge_writer_field_features) {
   ASSERT_TRUE(doc1.indexed.get(field)->features().is_subset_of(doc2.indexed.get(field)->features()));
   ASSERT_FALSE(doc2.indexed.get(field)->features().is_subset_of(doc1.indexed.get(field)->features()));
 
-  iresearch::version10::format codec;
-  iresearch::format::ptr codec_ptr(&codec, [](iresearch::format*)->void{});
+  auto codec_ptr = irs::formats::get("1_0");
+  ASSERT_NE(nullptr, codec_ptr);
   irs::memory_directory dir;
 
   // populate directory

@@ -21,12 +21,12 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
-#include "store_utils_optimized.hpp"
 
-#ifndef IRESEARCH_SSE2
-  #error "SSE2 is required"
-#endif
+#include "shared.hpp"
+
+#ifdef IRESEARCH_SSE2
+
+#include "store_utils_optimized.hpp"
 
 #include "store_utils.hpp"
 #include "utils/std.hpp"
@@ -39,31 +39,31 @@ void simdunpack(const __m128i*  in, uint32_t*  out, const uint32_t bit);
 
 NS_LOCAL
 
-//bool all_equal(
-//    const uint64_t* RESTRICT begin,
-//    const uint64_t* RESTRICT end
-//) NOEXCEPT {
-//  assert(0 == (std::distance(begin, end) % irs::packed::BLOCK_SIZE_64));
-//
-//  if (begin == end) {
-//    return true;
-//  }
-//
-//  const __m128i* mbegin = reinterpret_cast<const __m128i*>(begin);
-//  const __m128i* mend = reinterpret_cast<const __m128i*>(end);
-//
-//  const __m128i first = _mm_loadu_si128(mbegin);
-//
-//  for (++mbegin; mbegin != mend; ++mbegin) {
-//    const __m128i eq = _mm_cmpeq_epi32(first, _mm_loadu_si128(mbegin));
-//
-//    if (_mm_movemask_epi8(eq) != 0xFFFF) {
-//      return false;
-//    }
-//  }
-//
-//  return true;
-//}
+bool all_equal(
+    const uint32_t* RESTRICT begin,
+    const uint32_t* RESTRICT end
+) NOEXCEPT {
+  assert(0 == (std::distance(begin, end) % irs::packed::BLOCK_SIZE_32));
+
+  if (begin == end) {
+    return true;
+  }
+
+  const __m128i* mbegin = reinterpret_cast<const __m128i*>(begin);
+  const __m128i* mend = reinterpret_cast<const __m128i*>(end);
+
+  const __m128i first = _mm_loadu_si128(mbegin);
+
+  for (++mbegin; mbegin != mend; ++mbegin) {
+    const __m128i eq = _mm_cmpeq_epi32(first, _mm_loadu_si128(mbegin));
+
+    if (_mm_movemask_epi8(eq) != 0xFFFF) {
+      return false;
+    }
+  }
+
+  return true;
+}
 
 NS_END
 
@@ -119,7 +119,7 @@ uint32_t write_block_optimized(
   assert(encoded);
   assert(decoded);
 
-  if (irstd::all_equal(decoded, decoded + size)) {
+  if (all_equal(decoded, decoded + size)) {
     out.write_vint(ALL_EQUAL);
     out.write_vint(*decoded);
     return ALL_EQUAL;
@@ -150,3 +150,5 @@ uint32_t write_block_optimized(
 NS_END // encode
 NS_END // bitpack
 NS_END // ROOT
+
+#endif // IRESEARCH_SSE2
