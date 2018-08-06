@@ -707,10 +707,6 @@ before_script:
   ############################################################################
   # Go back to the root of the project and setup the build directory
   ############################################################################
-  - |
-  #    if [[ "${STATIC_LIB}" == "true" ]]; then
-  #      BUILD_PYRESEARCH="-DUSE_PYRESEARCH=On"
-  #    fi
   - CMAKE_OPTIONS="-DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DUSE_TESTS=On" ${BUILD_PYRESEARCH}
   - cd ${TRAVIS_BUILD_DIR}
   - (mkdir build && cd build && cmake .. ${CMAKE_OPTIONS})
@@ -738,8 +734,6 @@ script:
       if [[ "${STATIC_LIB}" == "true" ]]; then
         make iresearch-index-util
         make iresearch-benchmarks
-#      else
-#       make pyresearch
       fi
       # execute tests
       ulimit -n 1024 # required for MacOS
