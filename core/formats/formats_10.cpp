@@ -72,7 +72,7 @@
 NS_LOCAL
 
 struct format_traits {
-  static const uint32_t BLOCKS_SIZE = 128;
+  static const uint32_t BLOCK_SIZE = 128;
   static const irs::string_ref NAME;
 
   FORCE_INLINE static void write_block(
@@ -113,7 +113,7 @@ NS_END
 NS_LOCAL
 
 struct format_traits {
-  static const uint32_t BLOCKS_SIZE = 256;
+  static const uint32_t BLOCK_SIZE = 128;
   static const irs::string_ref NAME;
 
   FORCE_INLINE static void write_block(
@@ -278,7 +278,7 @@ class postings_writer final: public irs::postings_writer {
   static const int32_t FORMAT_MAX = FORMAT_MIN;
 
   static const uint32_t MAX_SKIP_LEVELS = 10;
-  static const uint32_t BLOCK_SIZE = format_traits::BLOCKS_SIZE;
+  static const uint32_t BLOCK_SIZE = format_traits::BLOCK_SIZE;
   static const uint32_t SKIP_N = 8;
 
   explicit postings_writer(bool volatile_attributes);

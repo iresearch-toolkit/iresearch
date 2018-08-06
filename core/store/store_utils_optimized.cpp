@@ -58,9 +58,9 @@ bool all_equal(
   const __m128i* mmbegin = reinterpret_cast<const __m128i*>(begin);
   const __m128i* mmend = reinterpret_cast<const __m128i*>(end);
 
-  const __m128i first = _mm_loadu_si128(mmbegin);
+  const __m128i first = _mm_set1_epi32(*begin);
 
-  for (++mmbegin; mmbegin != mmend; ++mmbegin) {
+  for (; mmbegin != mmend; ++mmbegin) {
     if (!_mm_testc_si128(first, _mm_loadu_si128(mmbegin))) {
       return false;
     }
@@ -72,7 +72,11 @@ bool all_equal(
 #endif
 }
 
-void fill(uint32_t* begin, uint32_t* end, uint32_t value) {
+void fill(
+    uint32_t* begin,
+    uint32_t* end,
+    const uint32_t value
+) NOEXCEPT {
   auto* mmbegin = reinterpret_cast<__m128i*>(begin);
   auto* mmend = reinterpret_cast<__m128i*>(end);
 
@@ -150,8 +154,8 @@ uint32_t write_block_optimized(
   const auto* decoded_end = decoded + size;
   const size_t step = 4*bits;
 
-  for (const auto* begin = encoded; decoded != decoded_end;) {
-    ::simdpackwithoutmask(decoded, reinterpret_cast<__m128i*>(encoded), bits);
+  for (auto* begin = encoded; decoded != decoded_end;) {
+    ::simdpackwithoutmask(decoded, reinterpret_cast<__m128i*>(begin), bits);
     decoded += SIMDBlockSize;
     begin += step;
   }

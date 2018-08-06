@@ -473,6 +473,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${Unwind_SHARED_LIBS}
   ${DL_LIBRARY}
   ${MSVC_ONLY_LIBRARIES}
+  simdcomp-shared
 )
 
 target_link_libraries(${IResearch_TARGET_NAME}-static
@@ -488,7 +489,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
   ${Unwind_STATIC_LIBS}
   ${DL_LIBRARY}
   ${MSVC_ONLY_LIBRARIES}
-  
+  simdcomp-static
 )
 
 # setup CRT
@@ -873,8 +874,6 @@ endif()
 
 if (USE_OPTIMIZE_FOR_ARCHITECTURE)
   set(FORMAT_10_EXTRA_DEFS "IRESEARCH_FORMAT10_CODEC=1")
-  set(FORMAT_10_EXTRA_LIBS_STATIC "simdcomp-static")
-  set(FORMAT_10_EXTRA_LIBS_SHARED "simdcomp-shared")
 else()
   set(FORMAT_10_EXTRA_DEFS "IRESEARCH_FORMAT10_CODEC=0")
 endif()
