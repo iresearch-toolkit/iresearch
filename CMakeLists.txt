@@ -44,6 +44,13 @@ if(CCACHE_FOUND)
   set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
 endif(CCACHE_FOUND)
 
+if (USE_OPTIMIZE_FOR_ARCHITECTURE)
+  include(OptimizeForArchitecture)
+  OptimizeForArchitecture()
+
+  add_definitions(${Vc_ARCHITECTURE_FLAGS})
+endif()
+
 ################################################################################
 ### find 3rd party libraries
 ################################################################################

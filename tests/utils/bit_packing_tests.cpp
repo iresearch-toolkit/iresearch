@@ -34,7 +34,6 @@ TEST(bit_packing_tests, const_check) {
   // check constants
   ASSERT_EQ(32U, packed::BLOCK_SIZE_32);
   ASSERT_EQ(64U, packed::BLOCK_SIZE_64);
-  ASSERT_EQ(1U, packed::VERSION);
 }
 
 TEST(bit_packing_tests, bits_required) {

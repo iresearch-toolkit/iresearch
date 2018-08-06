@@ -33,9 +33,14 @@
 
 extern "C" {
 #include <simdcomp/include/simdcomputil.h>
+
 void simdpackwithoutmask(const uint32_t*  in, __m128i*  out, const uint32_t bit);
 void simdunpack(const __m128i*  in, uint32_t*  out, const uint32_t bit);
 }
+
+#ifdef IRESEARCH_SSE4_2
+#include <smmintrin.h> // for _mm_testc_si128
+#endif
 
 NS_LOCAL
 
@@ -43,26 +48,39 @@ bool all_equal(
     const uint32_t* RESTRICT begin,
     const uint32_t* RESTRICT end
 ) NOEXCEPT {
+#ifdef IRESEARCH_SSE4_2
   assert(0 == (std::distance(begin, end) % irs::packed::BLOCK_SIZE_32));
 
   if (begin == end) {
     return true;
   }
 
-  const __m128i* mbegin = reinterpret_cast<const __m128i*>(begin);
-  const __m128i* mend = reinterpret_cast<const __m128i*>(end);
+  const __m128i* mmbegin = reinterpret_cast<const __m128i*>(begin);
+  const __m128i* mmend = reinterpret_cast<const __m128i*>(end);
 
-  const __m128i first = _mm_loadu_si128(mbegin);
+  const __m128i first = _mm_loadu_si128(mmbegin);
 
-  for (++mbegin; mbegin != mend; ++mbegin) {
-    const __m128i eq = _mm_cmpeq_epi32(first, _mm_loadu_si128(mbegin));
-
-    if (_mm_movemask_epi8(eq) != 0xFFFF) {
+  for (++mmbegin; mmbegin != mmend; ++mmbegin) {
+    if (!_mm_testc_si128(first, _mm_loadu_si128(mmbegin))) {
       return false;
     }
   }
 
   return true;
+#else
+  return irs::irstd::all_equal(begin, end);
+#endif
+}
+
+void fill(uint32_t* begin, uint32_t* end, uint32_t value) {
+  auto* mmbegin = reinterpret_cast<__m128i*>(begin);
+  auto* mmend = reinterpret_cast<__m128i*>(end);
+
+  const auto mmvalue = _mm_set1_epi32(value);
+
+  for (; mmbegin != mmend; ++mmbegin) {
+    _mm_storeu_si128(mmbegin, mmvalue);
+  }
 }
 
 NS_END
@@ -82,7 +100,7 @@ void read_block_optimized(
 
   const uint32_t bits = in.read_vint();
   if (ALL_EQUAL == bits) {
-    std::fill(decoded, decoded + size, in.read_vint());
+    fill(decoded, decoded + size, in.read_vint());
   } else {
     const size_t reqiured = packed::bytes_required_32(size, bits);
 

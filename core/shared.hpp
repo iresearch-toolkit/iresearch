@@ -297,11 +297,15 @@
 #if defined(_MSC_VER)
   #if defined(_M_IX86_FP) && _M_IX86_FP == 2 // x86
     #define IRESEARCH_SSE2
+    #define IRESEARCH_SSE4_1
+    #define IRESEARCH_SSE4_2
     #define IRESEARCH_AVX __AVX__
     #define IRESEARCH_AVX2 __AVX2__
   #endif
 #elif defined(__GNUC__)
   #define IRESEARCH_SSE2 __SSE2__
+  #define IRESEARCH_SSE4_1 __SSE4_1__
+  #define IRESEARCH_SSE4_2 __SSE4_2__
   #define IRESEARCH_AVX __AVX__
   #define IRESEARCH_AVX2 __AVX2__
 #endif
