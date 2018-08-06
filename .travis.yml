@@ -707,7 +707,7 @@ before_script:
   ############################################################################
   # Go back to the root of the project and setup the build directory
   ############################################################################
-  #  - |
+  - |
   #    if [[ "${STATIC_LIB}" == "true" ]]; then
   #      BUILD_PYRESEARCH="-DUSE_PYRESEARCH=On"
   #    fi
