@@ -29,18 +29,13 @@
 #include "utils/object_pool.hpp"
 #include "utils/utf8_path.hpp"
 #include "utils/file_utils.hpp"
+#include "utils/crc.hpp"
 
 #ifdef _WIN32
   #include <Windows.h> // for GetLastError()
 #endif
 
 #include <boost/locale/encoding.hpp>
-
-MSVC_ONLY(__pragma(warning(push)))
-MSVC_ONLY(__pragma(warning(disable:4244)))
-MSVC_ONLY(__pragma(warning(disable:4245)))
-#include <boost/crc.hpp>
-MSVC_ONLY(__pragma(warning(pop)))
 
 NS_LOCAL
 
@@ -243,7 +238,7 @@ class fs_index_output : public buffered_index_output {
   }
 
   file_utils::handle_t handle;
-  boost::crc_32_type crc;
+  crc32c crc;
 }; // fs_index_output
 
 //////////////////////////////////////////////////////////////////////////////
@@ -256,7 +251,7 @@ class fs_index_input : public buffered_index_input {
     const auto begin = handle_->pos;
     const auto end = (std::min)(begin + offset, handle_->size);
 
-    boost::crc_32_type crc;
+    crc32c crc;
     byte_type buf[1024];
 
     for (auto pos = begin; pos < end; ) {

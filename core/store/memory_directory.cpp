@@ -33,26 +33,11 @@
 #include "utils/utf8_path.hpp"
 #include "utils/bytes_utils.hpp"
 #include "utils/numeric_utils.hpp"
+#include "utils/crc.hpp"
 
 #include <cassert>
 #include <cstring>
 #include <algorithm>
-
-#if defined(_MSC_VER)
-  #pragma warning(disable : 4244)
-  #pragma warning(disable : 4245)
-#elif defined (__GNUC__)
-  // NOOP
-#endif
-
-#include <boost/crc.hpp>
-
-#if defined(_MSC_VER)
-  #pragma warning(default: 4244)
-  #pragma warning(default: 4245)
-#elif defined (__GNUC__)
-  // NOOP
-#endif
   
 NS_ROOT
 
@@ -123,7 +108,7 @@ index_input::ptr memory_index_input::dup() const NOEXCEPT {
 }
 
 int64_t memory_index_input::checksum(size_t offset) const {
-  boost::crc_32_type crc;
+  crc32c crc;
 
   auto buffer_idx = file_->buffer_offset(file_pointer());
   size_t to_process;
@@ -292,7 +277,7 @@ class checksum_memory_index_output final : public memory_index_output {
 
  private:
   mutable byte_type* crc_begin_;
-  mutable boost::crc_32_type crc_;
+  mutable crc32c crc_;
 }; // checksum_memory_index_output
 
 memory_index_output::memory_index_output(memory_file& file) NOEXCEPT
