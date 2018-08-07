@@ -585,7 +585,7 @@ int codecvt32_facet::do_encoding() const NOEXCEPT {
   }
 
   UErrorCode status = U_ZERO_ERROR;
-std::cerr << __FILE__ << ":" << __LINE__ << "|" << context_encoding() << "|" << ucnv_isFixedWidth(ctx->converter_.get(), &status) << "|" << ucnv_getMinCharSize(ctx->converter_.get()) << "|" << std::endl; status = U_ZERO_ERROR;
+std::cerr << __FILE__ << ":" << __LINE__ << "|" << context_encoding() << "|" << size_t(ucnv_isFixedWidth(ctx->converter_.get(), &status)) << "|" << size_t(status) << "|" << size_t(ucnv_getMinCharSize(ctx->converter_.get())) << "|" << size_t(ucnv_getMaxCharSize(ctx->converter_.get())) << "|" << std::endl; status = U_ZERO_ERROR;
   // the exact number of extern_type characters that correspond to one intern_type character, if constant
   return ucnv_isFixedWidth(ctx->converter_.get(), &status)
     ? ucnv_getMinCharSize(ctx->converter_.get()) : 0;
