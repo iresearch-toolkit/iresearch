@@ -49,7 +49,7 @@ bool all_equal(
     const uint32_t* RESTRICT end
 ) NOEXCEPT {
 #ifdef IRESEARCH_SSE4_2
-  assert(0 == (std::distance(begin, end) % irs::packed::BLOCK_SIZE_32));
+  assert(0 == (std::distance(begin, end) % SIMDBLockSize));
 
   if (begin == end) {
     return true;
@@ -58,10 +58,12 @@ bool all_equal(
   const __m128i* mmbegin = reinterpret_cast<const __m128i*>(begin);
   const __m128i* mmend = reinterpret_cast<const __m128i*>(end);
 
-  const __m128i first = _mm_set1_epi32(*begin);
+  const __m128i value = _mm_set1_epi32(*begin);
 
-  for (; mmbegin != mmend; ++mmbegin) {
-    if (!_mm_testc_si128(first, _mm_loadu_si128(mmbegin))) {
+  while (mmbegin != mmend) {
+    const __m128i neq = _mm_xor_si128(value, _mm_loadu_si128(mmbegin++));
+
+    if (!_mm_test_all_zeros(neq,neq)) {
       return false;
     }
   }
@@ -73,10 +75,12 @@ bool all_equal(
 }
 
 void fill(
-    uint32_t* begin,
-    uint32_t* end,
+    uint32_t* RESTRICT begin,
+    uint32_t* RESTRICT end,
     const uint32_t value
 ) NOEXCEPT {
+  assert(0 == (std::distance(begin, end) % SIMDBLockSize));
+
   auto* mmbegin = reinterpret_cast<__m128i*>(begin);
   auto* mmend = reinterpret_cast<__m128i*>(end);
 
