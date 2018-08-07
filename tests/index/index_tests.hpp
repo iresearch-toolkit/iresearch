@@ -124,7 +124,7 @@ class index_test_base : public virtual test_base {
   const index_t& index() const { return index_; }
 
   irs::index_writer::ptr open_writer(
-      irs::OPEN_MODE mode = irs::OPEN_MODE::OM_CREATE
+      irs::OpenMode mode = irs::OM_CREATE
   ) {
     return irs::index_writer::make(*dir_, codec_, mode);
   }
@@ -190,7 +190,7 @@ class index_test_base : public virtual test_base {
 
   void add_segment(
       tests::doc_generator_base& gen,
-      irs::OPEN_MODE mode = irs::OPEN_MODE::OM_CREATE
+      irs::OpenMode mode = irs::OM_CREATE
   ) {
     auto writer = open_writer(mode);
     add_segment(*writer, gen);

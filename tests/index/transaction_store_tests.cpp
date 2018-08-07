@@ -353,7 +353,7 @@ class transaction_store_tests: public test_base {
     };
     auto codec = irs::formats::get("1_0");
     irs::memory_directory dir;
-    auto dir_writer = irs::index_writer::make(dir, codec, irs::OPEN_MODE::OM_CREATE);
+    auto dir_writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
     std::atomic<bool> working(true);
     irs::async_utils::thread_pool thread_pool(2, 2);
 
@@ -3318,7 +3318,7 @@ TEST_F(transaction_store_tests, concurrent_add_mt) {
 TEST_F(transaction_store_tests, concurrent_add_flush_mt) {
   auto codec = irs::formats::get("1_0");
   irs::memory_directory dir;
-  auto dir_writer = irs::index_writer::make(dir, codec, irs::OPEN_MODE::OM_CREATE);
+  auto dir_writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
   std::atomic<bool> done(false);
   irs::transaction_store store;
   tests::json_doc_generator gen(
@@ -5144,7 +5144,7 @@ TEST_F(transaction_store_tests, segment_flush) {
   // flush empty segment
   {
     auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
-    auto dir_writer = irs::index_writer::make(dir, codec, irs::OPEN_MODE::OM_CREATE);
+    auto dir_writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
     irs::transaction_store store;
     irs::store_writer writer(store);
 
@@ -5170,7 +5170,7 @@ TEST_F(transaction_store_tests, segment_flush) {
   // flush non-empty segment, remove on empty store
   {
     auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
-    auto dir_writer = irs::index_writer::make(dir, codec, irs::OPEN_MODE::OM_CREATE);
+    auto dir_writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
     irs::transaction_store store;
     irs::store_writer writer(store);
 
@@ -5219,7 +5219,7 @@ TEST_F(transaction_store_tests, segment_flush) {
   // flush non-empty segment, remove on non-empty store (partial remove)
   {
     auto query_doc1_doc2 = irs::iql::query_builder().build("name==A||name==B", std::locale::classic());
-    auto dir_writer = irs::index_writer::make(dir, codec, irs::OPEN_MODE::OM_CREATE);
+    auto dir_writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
     irs::transaction_store store;
     irs::store_writer writer(store);
 
@@ -5279,7 +5279,7 @@ TEST_F(transaction_store_tests, segment_flush) {
   // flush non-empty segment with uncommited insert+remove, commit remainder (partial remove)
   {
     auto query_doc1_doc2 = irs::iql::query_builder().build("name==A||name==B", std::locale::classic());
-    auto dir_writer = irs::index_writer::make(dir, codec, irs::OPEN_MODE::OM_CREATE);
+    auto dir_writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
     irs::transaction_store store;
     irs::store_writer writer(store);
 
@@ -5380,7 +5380,7 @@ TEST_F(transaction_store_tests, segment_flush) {
 
   // validate doc_id reuse after flush
   {
-    auto dir_writer = irs::index_writer::make(dir, codec, irs::OPEN_MODE::OM_CREATE);
+    auto dir_writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
     irs::transaction_store store;
 
     // rolled back insert

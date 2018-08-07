@@ -270,7 +270,7 @@ class format_test_case_base : public index_test_base {
     // cleanup on refcount decrement (old files not in use)
     {
       // create writer to directory
-      auto writer = iresearch::index_writer::make(*dir, codec(), iresearch::OPEN_MODE::OM_CREATE);
+      auto writer = iresearch::index_writer::make(*dir, codec(), iresearch::OM_CREATE);
 
       // initialize directory
       {
@@ -345,7 +345,7 @@ class format_test_case_base : public index_test_base {
     // cleanup on refcount decrement (old files still in use)
     {
       // create writer to directory
-      auto writer = iresearch::index_writer::make(*dir, codec(), iresearch::OPEN_MODE::OM_CREATE);
+      auto writer = iresearch::index_writer::make(*dir, codec(), iresearch::OM_CREATE);
 
       // initialize directory
       {
@@ -460,7 +460,7 @@ class format_test_case_base : public index_test_base {
     {
       // fill directory
       {
-        auto writer = iresearch::index_writer::make(*dir, codec(), iresearch::OPEN_MODE::OM_CREATE);
+        auto writer = iresearch::index_writer::make(*dir, codec(), iresearch::OM_CREATE);
 
         writer->commit(); // initialize directory
         ASSERT_TRUE(insert(*writer,
@@ -495,7 +495,7 @@ class format_test_case_base : public index_test_base {
       ASSERT_TRUE(dir->exists(exists, "dummy.file.2") && exists);
 
       // open writer
-      auto writer = iresearch::index_writer::make(*dir, codec(), iresearch::OPEN_MODE::OM_CREATE);
+      auto writer = iresearch::index_writer::make(*dir, codec(), iresearch::OM_CREATE);
 
       // if directory has files (for fs directory) then ensure only valid meta+segments loaded
       ASSERT_TRUE(dir->exists(exists, "dummy.file.1") && !exists);

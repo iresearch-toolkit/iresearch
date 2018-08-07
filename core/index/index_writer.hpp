@@ -55,25 +55,28 @@ class directory_reader;
 /// @enum OpenMode
 /// @brief defines how index writer should be opened
 //////////////////////////////////////////////////////////////////////////////
-enum OPEN_MODE {
+enum OpenMode {
   ////////////////////////////////////////////////////////////////////////////
   /// @brief Creates new index repository. In case if repository already
   ///        exists, all contents will be cleared.
   ////////////////////////////////////////////////////////////////////////////
-  OM_CREATE,
+  OM_CREATE = 1,
 
   ////////////////////////////////////////////////////////////////////////////
-  /// @brief Opens existsing index repository. In case if repository does not 
+  /// @brief Opens existsing index repository. In case if repository does not
   ///        exists, error will be generated.
   ////////////////////////////////////////////////////////////////////////////
-  OM_APPEND,
+  OM_APPEND = 2,
 
   ////////////////////////////////////////////////////////////////////////////
-  /// @brief Checks whether index repository already exists. If so, opens it, 
-  ///        otherwise initializes new repository
+  /// @brief Do not lock index directory. Caller is responsible for providing
+  ///        and maintaining exclusive write access, otherwise it may cause
+  ///        index corruption
   ////////////////////////////////////////////////////////////////////////////
-  OM_CREATE_APPEND
-};
+  OM_NOLOCK = 4
+}; // OpenMode
+
+ENABLE_BITMASK_ENUM(OpenMode);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class index_writer 
@@ -116,7 +119,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
   static index_writer::ptr make(
     directory& dir,
     format::ptr codec,
-    OPEN_MODE mode,
+    OpenMode mode,
     size_t memory_pool_size = 0
   );
 

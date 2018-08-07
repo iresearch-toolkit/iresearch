@@ -375,7 +375,7 @@ int put(
     return 1;
   }
 
-  auto writer = irs::index_writer::make(*dir, codec, irs::OPEN_MODE::OM_CREATE);
+  auto writer = irs::index_writer::make(*dir, codec, irs::OM_CREATE);
 
   indexer_threads = (std::max)(size_t(1), (std::min)(indexer_threads, (std::numeric_limits<size_t>::max)() - 1 - 1)); // -1 for commiter thread -1 for stream reader thread
 

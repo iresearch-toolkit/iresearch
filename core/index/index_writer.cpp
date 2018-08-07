@@ -139,7 +139,6 @@ index_writer::index_writer(
 }
 
 void index_writer::clear() {
-  assert(write_lock_);
   SCOPED_LOCK(commit_lock_);
 
   if (!pending_state_
@@ -174,14 +173,18 @@ void index_writer::clear() {
 index_writer::ptr index_writer::make(
     directory& dir,
     format::ptr codec,
-    OPEN_MODE mode,
+    OpenMode mode,
     size_t memory_pool_size /*= 0*/
 ) {
-  // lock the directory
-  auto lock = dir.make_lock(WRITE_LOCK_NAME);
+  index_lock::ptr lock;
 
-  if (!lock || !lock->try_lock()) {
-    throw lock_obtain_failed(WRITE_LOCK_NAME);
+  if (0 == (OM_NOLOCK & mode)) {
+    // lock the directory
+    lock = dir.make_lock(WRITE_LOCK_NAME);
+
+    if (!lock || !lock->try_lock()) {
+      throw lock_obtain_failed(WRITE_LOCK_NAME);
+    }
   }
 
   // read from directory or create index metadata
@@ -193,10 +196,12 @@ index_writer::ptr index_writer::make(
     std::string segments_file;
     const bool index_exists = reader->last_segments_file(dir, segments_file);
 
-    if (OM_CREATE == mode || (OM_CREATE_APPEND == mode && !index_exists)) {
+    mode &= OM_CREATE | OM_APPEND;
+
+    if (OM_CREATE == mode || ((OM_CREATE | OM_APPEND) == mode && !index_exists)) {
       // Try to read. It allows us to
-      // create against an index that's
-      // currently open for searching
+      // create writer against an index that's
+      // currently opened for searching
 
       try {
         // for OM_CREATE meta must be fully recreated, meta read only to get last version
@@ -995,7 +1000,6 @@ bool index_writer::begin() {
 
 bool index_writer::start() {
   REGISTER_TIMER_DETAILED();
-  assert(write_lock_);
 
   if (pending_state_) {
     // begin has been already called 
@@ -1077,7 +1081,6 @@ void index_writer::finish() {
 }
 
 void index_writer::commit() {
-  assert(write_lock_);
   SCOPED_LOCK(commit_lock_);
 
   start();
@@ -1085,7 +1088,6 @@ void index_writer::commit() {
 }
 
 void index_writer::rollback() {
-  assert(write_lock_);
   SCOPED_LOCK(commit_lock_);
 
   if (!pending_state_) {

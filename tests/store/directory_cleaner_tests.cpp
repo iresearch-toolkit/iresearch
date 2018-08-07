@@ -234,7 +234,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
 
   // writer commit tracks files that are in active segments
   {
-    auto writer = iresearch::index_writer::make(dir, codec_ptr, iresearch::OPEN_MODE::OM_CREATE);
+    auto writer = iresearch::index_writer::make(dir, codec_ptr, iresearch::OM_CREATE);
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),

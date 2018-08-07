@@ -203,7 +203,7 @@ namespace tests {
     auto codec_ptr = irs::formats::get("1_0");
 
     auto writer =
-      iresearch::index_writer::make(dir, codec_ptr, iresearch::OPEN_MODE::OM_CREATE);
+      iresearch::index_writer::make(dir, codec_ptr, iresearch::OM_CREATE);
     json_doc_generator generator(
       test_base::resource(json_resource), 
       analyze_text ? analyzed_field_factory : &tests::generic_json_field_factory);

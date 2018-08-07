@@ -708,27 +708,70 @@ class index_test_case_base : public tests::index_test_base {
     {
       // open writer
       auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+      ASSERT_NE(nullptr, writer);
       // can't open another writer at the same time on the same directory
       ASSERT_THROW(irs::index_writer::make(dir(), codec(), irs::OM_CREATE), irs::lock_obtain_failed);
-      writer->buffered_docs();
+      ASSERT_EQ(0, writer->buffered_docs());
     }
 
     {
       // open writer
       auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+      ASSERT_NE(nullptr, writer);
 
       writer->commit();
       iresearch::directory_cleaner::clean(dir());
       // can't open another writer at the same time on the same directory
       ASSERT_THROW(irs::index_writer::make(dir(), codec(), irs::OM_CREATE), irs::lock_obtain_failed);
-      writer->buffered_docs();
+      ASSERT_EQ(0, writer->buffered_docs());
     }
 
     {
       // open writer
       auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+      ASSERT_NE(nullptr, writer);
 
-      writer->buffered_docs();
+      ASSERT_EQ(0, writer->buffered_docs());
+    }
+
+    {
+      // open writer with NOLOCK hint
+      auto writer0 = irs::index_writer::make(dir(), codec(), irs::OM_CREATE | irs::OM_NOLOCK);
+      ASSERT_NE(nullptr, writer0);
+
+      // can open another writer at the same time on the same directory
+      auto writer1 = irs::index_writer::make(dir(), codec(), irs::OM_CREATE | irs::OM_NOLOCK);
+      ASSERT_NE(nullptr, writer1);
+
+      ASSERT_EQ(0, writer0->buffered_docs());
+      ASSERT_EQ(0, writer1->buffered_docs());
+    }
+
+    {
+      // open writer with NOLOCK hint
+      auto writer0 = irs::index_writer::make(dir(), codec(), irs::OM_CREATE | irs::OM_NOLOCK);
+      ASSERT_NE(nullptr, writer0);
+
+      // can open another writer at the same time on the same directory and acquire lock
+      auto writer1 = irs::index_writer::make(dir(), codec(), irs::OM_CREATE | irs::OM_APPEND);
+      ASSERT_NE(nullptr, writer1);
+
+      ASSERT_EQ(0, writer0->buffered_docs());
+      ASSERT_EQ(0, writer1->buffered_docs());
+    }
+
+    {
+      // open writer with NOLOCK hint
+      auto writer0 = irs::index_writer::make(dir(), codec(), irs::OM_CREATE | irs::OM_NOLOCK);
+      ASSERT_NE(nullptr, writer0);
+      writer0->commit();
+
+      // can open another writer at the same time on the same directory and acquire lock
+      auto writer1 = irs::index_writer::make(dir(), codec(), irs::OM_APPEND);
+      ASSERT_NE(nullptr, writer1);
+
+      ASSERT_EQ(0, writer0->buffered_docs());
+      ASSERT_EQ(0, writer1->buffered_docs());
     }
   }
 
@@ -1193,12 +1236,41 @@ class index_test_case_base : public tests::index_test_base {
       ASSERT_EQ(0, writer->buffered_docs());
     }
 
-    // read empty index, it should not fail
+    // read index, it should not fail
     {
       auto reader = irs::directory_reader::open(dir(), codec());
       ASSERT_EQ(1, reader.live_docs_count());
       ASSERT_EQ(1, reader.docs_count());
       ASSERT_EQ(1, reader.size());
+      ASSERT_NE(reader.begin(), reader.end());
+    }
+
+    // append to index
+    {
+      auto writer = irs::index_writer::make(dir(), codec(), irs::OM_APPEND | irs::OM_CREATE);
+      tests::json_doc_generator gen(
+        resource("simple_sequential.json"),
+        &tests::generic_json_field_factory
+      );
+      tests::document const* doc1 = gen.next();
+      ASSERT_EQ(0, writer->buffered_docs());
+      ASSERT_TRUE(
+        insert(*writer,
+          doc1->indexed.begin(), doc1->indexed.end(),
+          doc1->stored.begin(), doc1->stored.end()
+        )
+      );
+      ASSERT_EQ(1, writer->buffered_docs());
+      writer->commit();
+      ASSERT_EQ(0, writer->buffered_docs());
+    }
+
+    // read index, it should not fail
+    {
+      auto reader = irs::directory_reader::open(dir(), codec());
+      ASSERT_EQ(2, reader.live_docs_count());
+      ASSERT_EQ(2, reader.docs_count());
+      ASSERT_EQ(2, reader.size());
       ASSERT_NE(reader.begin(), reader.end());
     }
   }
@@ -10013,7 +10085,7 @@ TEST_F(memory_index_test, refresh_reader) {
 
   // modify state (delete doc2)
   {
-    auto writer = open_writer(irs::OPEN_MODE::OM_APPEND);
+    auto writer = open_writer(irs::OM_APPEND);
     auto query_doc2 = iresearch::iql::query_builder().build("name==B", std::locale::classic());
 
     writer->remove(std::move(query_doc2.filter));
@@ -10063,7 +10135,7 @@ TEST_F(memory_index_test, refresh_reader) {
 
   // modify state (2nd segment 2 docs)
   {
-    auto writer = open_writer(irs::OPEN_MODE::OM_APPEND);
+    auto writer = open_writer(irs::OM_APPEND);
 
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
@@ -10134,7 +10206,7 @@ TEST_F(memory_index_test, refresh_reader) {
 
   // modify state (delete doc1)
   {
-    auto writer = open_writer(irs::OPEN_MODE::OM_APPEND);
+    auto writer = open_writer(irs::OM_APPEND);
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
 
     writer->remove(std::move(query_doc1.filter));
