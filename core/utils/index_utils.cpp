@@ -48,6 +48,8 @@ index_writer::consolidation_policy_t consolidate_bytes(float byte_threshold /*= 
     auto threshold_bytes_avg = (all_segment_bytes_size / (float)segment_count) * threshold;
     size_t i = 0;
 
+    candidates.clear(); // clear list of candidates before selection
+
     // merge segment if: {threshold} > segment_bytes / (all_segment_bytes / #segments)
     for (auto& segment: meta) {
       size_t segment_bytes_size = 0;
@@ -84,6 +86,7 @@ index_writer::consolidation_policy_t consolidate_bytes_accum(float byte_threshol
     }
 
     size_t cumulative_size = 0;
+    auto src_candidates = std::move(candidates); // remember provided segment candidates
     auto threshold_size = all_segment_bytes_size * std::max<float>(0, std::min<float>(1, byte_threshold));
     size_t i = 0;
 
@@ -98,7 +101,8 @@ index_writer::consolidation_policy_t consolidate_bytes_accum(float byte_threshol
         }
       }
 
-      if (cumulative_size + segment_bytes_size < threshold_size) {
+      if (src_candidates.test(i) // only consider segments provided by caller
+          && cumulative_size + segment_bytes_size < threshold_size) {
         cumulative_size += segment_bytes_size;
         candidates.set(i);
       }
@@ -124,6 +128,8 @@ index_writer::consolidation_policy_t consolidate_count(float docs_threshold /*= 
     auto threshold_docs_avg = (all_segment_docs_count / (float)segment_count) * threshold;
     size_t i = 0;
 
+    candidates.clear(); // clear list of candidates before selection
+
     // merge segment if: {threshold} > segment_docs{valid} / (all_segment_docs{valid} / #segments)
     for (auto& segment: meta) {
       if (!segment.meta.live_docs_count // if no valid doc_ids left in segment
@@ -142,6 +148,8 @@ index_writer::consolidation_policy_t consolidate_fill(float fill_threshold /*= 0
   )->void {
     auto threshold = std::max<float>(0, std::min<float>(1, fill_threshold));
     size_t i = 0;
+
+    candidates.clear(); // clear list of candidates before selection
 
     // merge segment if: {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})
     for (auto& segment: meta) {

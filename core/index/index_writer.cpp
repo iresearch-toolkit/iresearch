@@ -563,9 +563,11 @@ void index_writer::consolidate(
       SCOPED_LOCK(ctx->mutex_); // lock due to context modification
 
       // add a policy to hold a reference to committed_meta so that segment refs do not disapear
-      ctx->consolidation_policies_.emplace_back(
-        [meta](bitvector&, const directory&, const index_meta&)->void {}
-      );
+      ctx->consolidation_policies_.emplace_back([meta](
+        bitvector& candidates, const directory&, const index_meta&
+      )->void {
+        candidates.clear(); // do not select any consolidation candidates
+      });
 
       // 0 == merged segments existed before start of tx (all removes apply)
       ctx->pending_segments_.emplace_back(std::move(segment), 0);
