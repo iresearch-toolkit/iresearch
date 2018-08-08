@@ -554,13 +554,13 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_properties) {
       ASSERT_FALSE(cvt_cp1251.always_noconv());
       ASSERT_FALSE(cvt_koi8r.always_noconv());
       ASSERT_FALSE(cvt_utf8.always_noconv());
-
+std::cerr << "|" << cvt_big5.encoding() << "|" << cvt_c.encoding() << "|" << cvt_cp1251.encoding() << "|" << cvt_koi8r.encoding() << "|" << cvt_utf8.encoding() << "|" << std::endl;
       ASSERT_EQ(0, cvt_big5.encoding()); // bytes in the range 0x00 to 0x7f that are not part of a double-byte character are assumed to be single-byte characters
       ASSERT_EQ(1, cvt_c.encoding());
       ASSERT_EQ(1, cvt_cp1251.encoding());
       ASSERT_EQ(1, cvt_koi8r.encoding());
       ASSERT_EQ(0, cvt_utf8.encoding());
-
+std::cerr << "[" << cvt_big5.encoding() << "|" << cvt_c.encoding() << "|" << cvt_cp1251.encoding() << "|" << cvt_koi8r.encoding() << "|" << cvt_utf8.encoding() << "]" << std::endl;
       ASSERT_EQ(1, cvt_big5.length(state, &ch, &ch + 1, 1));
       ASSERT_EQ(1, cvt_c.length(state, &ch, &ch + 1, 1));
       ASSERT_EQ(1, cvt_cp1251.length(state, &ch, &ch + 1, 1));
