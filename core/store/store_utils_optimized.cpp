@@ -49,7 +49,7 @@ bool all_equal(
     const uint32_t* RESTRICT end
 ) NOEXCEPT {
 #ifdef IRESEARCH_SSE4_2
-  assert(0 == (std::distance(begin, end) % SIMDBLockSize));
+  assert(0 == (std::distance(begin, end) % SIMDBlockSize));
 
   if (begin == end) {
     return true;
@@ -79,7 +79,7 @@ void fill(
     uint32_t* RESTRICT end,
     const uint32_t value
 ) NOEXCEPT {
-  assert(0 == (std::distance(begin, end) % SIMDBLockSize));
+  assert(0 == (std::distance(begin, end) % SIMDBlockSize));
 
   auto* mmbegin = reinterpret_cast<__m128i*>(begin);
   auto* mmend = reinterpret_cast<__m128i*>(end);
@@ -178,3 +178,7 @@ NS_END // bitpack
 NS_END // ROOT
 
 #endif // IRESEARCH_SSE2
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
