@@ -437,26 +437,25 @@ bool index_writer::add_segment_mask_consolidated_records(
     directory& dir,
     flush_context::segment_mask_t& segments_mask, // append segments marked for consolidation
     const index_meta& meta, // current state to examine for consolidation candidates
+    const bitvector& candidate_mask, // only consolidate segments if present in this mask
     const consolidation_requests_t& policies // policies dictating which segments to consider
 ) {
   REGISTER_TIMER_DETAILED();
   bitvector policy_candidates(meta.size()); // candidates as deemed by individual policies
   bitvector consolidation_mask(meta.size()); // consolidated segments
-  size_t i = 0;
 
   // consolidate empty segments
-  for (auto& segment: meta) {
-    if (!segment.meta.live_docs_count) {
+  for (size_t i = 0, count = meta.size(); i < count; ++i) {
+    if (!meta.segment(i).meta.live_docs_count && candidate_mask.test(i)) {
       consolidation_mask.set(i);
     }
-
-    ++i;
   }
 
   // collect a list of consolidation candidates
   for (auto& policy: policies) {
-    policy_candidates = consolidation_mask;
+    policy_candidates = candidate_mask;
     (*(policy.policy))(policy_candidates, dir, meta);
+    policy_candidates &= candidate_mask; // only consolidate segments if present in candidate_mask
     consolidation_mask |= policy_candidates;
   }
 
@@ -532,17 +531,17 @@ void index_writer::consolidate(
       }
     }
 
-    auto meta = *(committed_state_.first);
+    bitvector candidate_mask(committed_state_.first->size());
 
-    meta.clear();
-
-    // add segments present in both 'committed_state_.first' and 'meta_' into meta
-    for (auto& segment: *(committed_state_.first)) {
+    // for immediate consolidate consider only committed segments that are still unmodified in current meta
+    // i.e. consider segments present in both 'committed_state_.first' and 'meta_' into meta
+    for (size_t i = 0, count = committed_state_.first->size(); i < count; ++i) {
+      auto& segment = committed_state_.first->segment(i);
       auto itr = segment_candidates.find(segment.meta.name);
 
       if (segment_candidates.end() != itr
           && segment.meta.version == itr->second->version) {
-        meta.add(&segment, &segment + 1);
+        candidate_mask.set(i);
       }
     }
 
@@ -550,8 +549,17 @@ void index_writer::consolidate(
 
     policies.emplace_back(policy);
 
-    // for immediate consolidate consider only committed segments that are still unmodified in current meta
-    if (add_segment_mask_consolidated_records(segment, *(ctx->dir_), ctx->segment_mask_, meta, policies)) {
+    auto consolidated = add_segment_mask_consolidated_records(
+      segment,
+      *(ctx->dir_),
+      ctx->segment_mask_,
+      *(committed_state_.first),
+      candidate_mask,
+      policies
+    );
+
+    if (consolidated) {
+      auto meta = committed_state_.first;
       SCOPED_LOCK(ctx->mutex_); // lock due to context modification
 
       // add a policy to hold a reference to committed_meta so that segment refs do not disapear
@@ -865,6 +873,12 @@ index_writer::pending_context_t index_writer::flush_all() {
 
   // process deferred merge policies
   if (!ctx->consolidation_policies_.empty() && !pending_meta->empty()) {
+    bitvector candidate_mask(pending_meta->size());
+
+    for (size_t i = 0, count = pending_meta->size(); i < count; ++i) {
+      candidate_mask.set(i);
+    }
+
     index_meta::index_segment_t segment;
     flush_context::segment_mask_t segment_mask;
     auto consolidated = add_segment_mask_consolidated_records(
@@ -872,6 +886,7 @@ index_writer::pending_context_t index_writer::flush_all() {
       *(ctx->dir_),
       segment_mask,
       *pending_meta,
+      candidate_mask,
       ctx->consolidation_policies_
     );
 

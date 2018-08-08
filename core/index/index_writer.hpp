@@ -93,8 +93,8 @@ class IRESEARCH_API index_writer : util::noncopyable {
   ////////////////////////////////////////////////////////////////////////////
   /// @brief mark consolidation candidate segments matching the current policy
   /// @param candidates the segments that should be consolidated
-  ///        in: segments selected by previous policies
-  ///        out: additional segments selected by the current policy
+  ///        in: segment candidates that may be considered by this policy
+  ///        out: actual segments selected by the current policy
   /// @param dir the segment directory
   /// @param meta the index meta containing segments to be considered
   /// @note final candidates are all segments selected by at least some policy
@@ -516,6 +516,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
     directory& dir, // directory to create merged segment in
     flush_context::segment_mask_t& segments_mask, // append segments marked for consolidation
     const index_meta& meta, // current state to examine for consolidation candidates
+    const bitvector& candidate_mask, // only consolidate segments if present in this mask
     const consolidation_requests_t& policies // policies dictating which segments to consider
   ); // return if any new records were added (segment/segment_mask modified)
 
