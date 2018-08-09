@@ -3579,7 +3579,7 @@ const std::locale& get_locale(
   auto* locale_info_ptr = locale_info.get();
   auto& converter = get_converter(locale_info->encoding());
   auto locale = std::locale(boost_locale, locale_info.release());
-
+std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
   // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
   // due to a missing export, as per their comment:
   //   This is an active bug in our database (VSO#143857), which we'll investigate
@@ -3589,11 +3589,15 @@ const std::locale& get_locale(
     locale = std::locale(
       locale, irs::memory::make_unique<codecvt16_facet>(converter).release()
     );
+std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     locale = std::locale(
       locale, irs::memory::make_unique<codecvt32_facet>(converter).release()
     );
+std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+  #else
+std::cerr << __FILE__ << ":" << __LINE__ << "|" << _MSC_VER << "|" << std::endl;
   #endif
-
+std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
   if (unicodeSystem) {
     auto cvt8 = irs::memory::make_unique<codecvt8u_facet>(converter);
     auto cvtw = irs::memory::make_unique<codecvtwu_facet>(converter);
