@@ -3589,11 +3589,11 @@ std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     locale = std::locale(
       locale, irs::memory::make_unique<codecvt16_facet>(converter).release()
     );
-std::cerr << __FILE__ << ":" << __LINE__ << "|" << codecvt16_facet::id._M_id() << "|" << std::codecvt<char16_t, char, mbstate_t>::id._M_id() << "|" << std::endl;
+std::cerr << __FILE__ << ":" << __LINE__ << "|" << codecvt16_facet::id._M_id() << "|" << std::codecvt<char16_t, char, std::mbstate_t>::id._M_id() << "|" << std::endl;
     locale = std::locale(
       locale, irs::memory::make_unique<codecvt32_facet>(converter).release()
     );
-std::cerr << __FILE__ << ":" << __LINE__ << "|" << codecvt32_facet::id._M_id() << "|" << std::codecvt<char32_t, char, mbstate_t>::id._M_id() << "|" << std::endl;
+std::cerr << __FILE__ << ":" << __LINE__ << "|" << codecvt32_facet::id._M_id() << "|" << std::codecvt<char32_t, char, std::mbstate_t>::id._M_id() << "|" << std::endl;
   #else
 std::cerr << __FILE__ << ":" << __LINE__ << "|" << _MSC_VER << "|" << std::endl;
   #endif
