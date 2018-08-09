@@ -33,16 +33,18 @@
 NS_ROOT
 
 struct directory;
-class format;
-typedef std::shared_ptr<const format> format_ptr;
 struct segment_meta;
 struct sub_reader;
 
 class IRESEARCH_API merge_writer: public util::noncopyable {
  public:
   DECLARE_UNIQUE_PTR(merge_writer);
-  merge_writer(directory& dir, const string_ref& seg_name) NOEXCEPT;
-  void add(const sub_reader& reader);
+  merge_writer(directory& dir, const string_ref& seg_name) NOEXCEPT
+    : dir_(dir), name_(seg_name) {
+  }
+  // reserve enough space to hold 'size' readers
+  void reserve(size_t size) { readers_.reserve(size); }
+  void add(const sub_reader& reader) { readers_.emplace_back(&reader); }
   bool flush(std::string& filename, segment_meta& meta); // return merge successful
 
  private:

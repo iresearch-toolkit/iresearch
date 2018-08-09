@@ -78,8 +78,8 @@ struct IRESEARCH_API segment_meta {
   uint64_t docs_count{}; // total number of documents in a segment
   uint64_t live_docs_count{}; // total number of live documents in a segment
   format_ptr codec;
-  bool column_store{};
   uint64_t version{};
+  bool column_store{};
 };
 
 /* -------------------------------------------------------------------
@@ -116,8 +116,8 @@ class IRESEARCH_API index_meta {
 
   bool operator==(const index_meta& other) const NOEXCEPT;
 
-  template<typename _ForwardIterator>
-  void add(_ForwardIterator begin, _ForwardIterator end) {
+  template<typename ForwardIterator>
+  void add(ForwardIterator begin, ForwardIterator end) {
     segments_.reserve(segments_.size() + std::distance(begin, end));
     std::move(begin, end, std::back_inserter(segments_));
   }
@@ -138,6 +138,16 @@ class IRESEARCH_API index_meta {
         if (!visitor(const_cast<std::string&>(file))) {
           return false;
         }
+      }
+    }
+    return true;
+  }
+
+  template<typename Visitor>
+  bool visit_segments(const Visitor& visitor) const {
+    for (auto& segment : segments_) {
+      if (!visitor(segment.filename, segment.meta)) {
+        return false;
       }
     }
     return true;
@@ -171,7 +181,10 @@ class IRESEARCH_API index_meta {
     segments_ = rhs.segments_;
   }
 
-  const index_segment_t& segment(size_t i) const {
+  const index_segment_t& segment(size_t i) const NOEXCEPT {
+    return segments_[i];
+  }
+  const index_segment_t& operator[](size_t i) const NOEXCEPT {
     return segments_[i];
   }
 

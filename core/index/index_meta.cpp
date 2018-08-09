@@ -59,8 +59,8 @@ segment_meta::segment_meta(segment_meta&& rhs) NOEXCEPT
     docs_count(rhs.docs_count),
     live_docs_count(rhs.live_docs_count),
     codec(rhs.codec),
-    column_store(rhs.column_store),
-    version(rhs.version) {
+    version(rhs.version),
+    column_store(rhs.column_store) {
   rhs.docs_count = 0;
 }
 
@@ -74,8 +74,8 @@ segment_meta& segment_meta::operator=(segment_meta&& rhs) NOEXCEPT {
     rhs.live_docs_count = 0;
     codec = rhs.codec;
     rhs.codec = nullptr;
-    column_store = rhs.column_store;
     version = rhs.version;
+    column_store = rhs.column_store;
   }
 
   return *this;

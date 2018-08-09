@@ -809,14 +809,6 @@ NS_END // LOCAL
 
 NS_ROOT
 
-merge_writer::merge_writer(directory& dir, const string_ref& name) NOEXCEPT
-  : dir_(dir), name_(name) {
-}
-
-void merge_writer::add(const sub_reader& reader) {
-  readers_.emplace_back(&reader);
-}
-
 bool merge_writer::flush(std::string& filename, segment_meta& meta) {
   REGISTER_TIMER_DETAILED();
   // reader with map of old doc_id to new doc_id
