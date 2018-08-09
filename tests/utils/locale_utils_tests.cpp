@@ -540,7 +540,7 @@ std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
   #if !defined(_MSC_VER) || _MSC_VER <= 1800 || !defined(_DLL)
 std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     // codecvt properties (char16)
-    {
+    {std::cerr << __FILE__ << ":" << __LINE__ << "|" << std::codecvt<char16_t, char, mbstate_t>::id._M_id() << "|" << std::endl;
       auto& cvt_big5 = std::use_facet<std::codecvt<char16_t, char, mbstate_t>>(zh0);
       auto& cvt_c = std::use_facet<std::codecvt<char16_t, char, mbstate_t>>(c);
       auto& cvt_cp1251 = std::use_facet<std::codecvt<char16_t, char, mbstate_t>>(ru0);
@@ -575,7 +575,7 @@ std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     }
 std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     // codecvt properties (char32)
-    {
+    {std::cerr << __FILE__ << ":" << __LINE__ << "|" << std::codecvt<char32_t, char, mbstate_t>::id._M_id() << "|" << std::endl;
       auto& cvt_big5 = std::use_facet<std::codecvt<char32_t, char, mbstate_t>>(zh0);
       auto& cvt_c = std::use_facet<std::codecvt<char32_t, char, mbstate_t>>(c);
       auto& cvt_cp1251 = std::use_facet<std::codecvt<char32_t, char, mbstate_t>>(ru0);
