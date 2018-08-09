@@ -336,20 +336,22 @@ class IRESEARCH_API index_writer : util::noncopyable {
   typedef std::vector<index_file_refs::ref_t> file_refs_t;
 
   struct consolidation_context {
+    typedef std::shared_ptr<const consolidation_policy_t> policy_ptr;
+
     consolidation_policy_t buf; // policy buffer for moved policies (private use)
-    std::shared_ptr<const consolidation_policy_t> policy; // keep a handle to the policy for the case when this object has ownership
+    policy_ptr policy; // keep a handle to the policy for the case when this object has ownership
     consolidation_context(const consolidation_policy_t& consolidation_policy)
-      : policy(&consolidation_policy, [](const consolidation_policy_t*)->void{}) {}
-    consolidation_context(const std::shared_ptr<consolidation_policy_t>& consolidation_policy)
+      : policy(policy_ptr(), &consolidation_policy) {} // aliasing ctor
+    consolidation_context(const policy_ptr& consolidation_policy)
       : policy(consolidation_policy) {}
     consolidation_context(consolidation_policy_t&& consolidation_policy)
       : buf(std::move(consolidation_policy)) {
-      policy.reset(&buf, [](const consolidation_policy_t*)->void{});
+      policy = policy_ptr(policy_ptr(), &buf); // aliasing ctor
     }
     consolidation_context(consolidation_context&& other) NOEXCEPT {
       if (&other.buf == other.policy.get()) {
         buf = std::move(other.buf);
-        policy.reset(&buf, [](const consolidation_policy_t*)->void{});
+        policy = policy_ptr(policy_ptr(), &buf); // aliasing ctor
       } else {
         policy = std::move(other.policy);
       }
@@ -358,15 +360,17 @@ class IRESEARCH_API index_writer : util::noncopyable {
   }; // consolidation_context
 
   struct modification_context {
-    std::shared_ptr<const iresearch::filter> filter; // keep a handle to the filter for the case when this object has ownership
+    typedef std::shared_ptr<const irs::filter> filter_ptr;
+
+    filter_ptr filter; // keep a handle to the filter for the case when this object has ownership
     const size_t generation;
     const bool update; // this is an update modification (as opposed to remove)
     bool seen;
-    modification_context(const iresearch::filter& match_filter, size_t gen, bool isUpdate)
-      : filter(&match_filter, [](const iresearch::filter*)->void{}), generation(gen), update(isUpdate), seen(false) {}
-    modification_context(const std::shared_ptr<iresearch::filter>& match_filter, size_t gen, bool isUpdate)
+    modification_context(const irs::filter& match_filter, size_t gen, bool isUpdate)
+      : filter(filter_ptr(), &match_filter), generation(gen), update(isUpdate), seen(false) {}
+    modification_context(const filter_ptr& match_filter, size_t gen, bool isUpdate)
       : filter(match_filter), generation(gen), update(isUpdate), seen(false) {}
-    modification_context(iresearch::filter::ptr&& match_filter, size_t gen, bool isUpdate)
+    modification_context(irs::filter::ptr&& match_filter, size_t gen, bool isUpdate)
       : filter(std::move(match_filter)), generation(gen), update(isUpdate), seen(false) {}
     modification_context(modification_context&& other) NOEXCEPT
       : filter(std::move(other.filter)), generation(other.generation), update(other.update), seen(other.seen) {}
