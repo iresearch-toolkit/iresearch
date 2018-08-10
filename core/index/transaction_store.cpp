@@ -1047,9 +1047,9 @@ store_reader store_reader::reopen() const {
   impl_ptr impl = atomic_utils::atomic_load(&impl_);
 
   #ifdef IRESEARCH_DEBUG
-    auto& reader_impl = dynamic_cast<store_reader_impl&>(*impl);
+    auto& reader_impl = dynamic_cast<const store_reader_impl&>(*impl);
   #else
-    auto& reader_impl = static_cast<store_reader_impl&>(*impl);
+    auto& reader_impl = static_cast<const store_reader_impl&>(*impl);
   #endif
 
   {

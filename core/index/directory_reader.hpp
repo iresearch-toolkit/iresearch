@@ -35,9 +35,9 @@ NS_ROOT
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API directory_reader final
     : public composite_reader,
-      private atomic_shared_ptr_helper<composite_reader> {
+      private atomic_shared_ptr_helper<const composite_reader> {
  public:
-  typedef atomic_shared_ptr_helper<composite_reader> atomic_utils;
+  typedef atomic_shared_ptr_helper<const composite_reader> atomic_utils;
   typedef directory_reader element_type; // type same as self
   typedef directory_reader ptr; // pointer to self
 
@@ -110,7 +110,7 @@ class IRESEARCH_API directory_reader final
   }
 
  private:
-  typedef std::shared_ptr<composite_reader> impl_ptr;
+  typedef std::shared_ptr<const composite_reader> impl_ptr;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   impl_ptr impl_;

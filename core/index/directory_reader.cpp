@@ -236,9 +236,9 @@ directory_reader directory_reader::reopen(
   impl_ptr impl = atomic_utils::atomic_load(&impl_);
 
 #ifdef IRESEARCH_DEBUG
-  auto& reader_impl = dynamic_cast<directory_reader_impl&>(*impl);
+  auto& reader_impl = dynamic_cast<const directory_reader_impl&>(*impl);
 #else
-  auto& reader_impl = static_cast<directory_reader_impl&>(*impl);
+  auto& reader_impl = static_cast<const directory_reader_impl&>(*impl);
 #endif
 
   return directory_reader_impl::open(
@@ -274,10 +274,10 @@ directory_reader_impl::directory_reader_impl(
   }
 
 #ifdef IRESEARCH_DEBUG
-  auto* cached_impl = dynamic_cast<directory_reader_impl*>(cached.get());
+  auto* cached_impl = dynamic_cast<const directory_reader_impl*>(cached.get());
   assert(!cached || cached_impl);
 #else
-  auto* cached_impl = static_cast<directory_reader_impl*>(cached.get());
+  auto* cached_impl = static_cast<const directory_reader_impl*>(cached.get());
 #endif
 
   if (cached_impl && cached_impl->meta() == meta) {

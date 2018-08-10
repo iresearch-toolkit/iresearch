@@ -40,9 +40,9 @@ class transaction_store; // forward declaration
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API store_reader final
     : public sub_reader,
-      private atomic_shared_ptr_helper<sub_reader> {
+      private atomic_shared_ptr_helper<const sub_reader> {
  public:
-  typedef atomic_shared_ptr_helper<sub_reader> atomic_utils;
+  typedef atomic_shared_ptr_helper<const sub_reader> atomic_utils;
   typedef store_reader element_type; // type same as self
   typedef store_reader ptr; // pointer to self
 
@@ -112,7 +112,7 @@ class IRESEARCH_API store_reader final
 
  private:
   friend transaction_store; // for access to the private constructor
-  typedef std::shared_ptr<sub_reader> impl_ptr;
+  typedef std::shared_ptr<const sub_reader> impl_ptr;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   impl_ptr impl_;
