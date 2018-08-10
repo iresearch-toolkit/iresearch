@@ -112,6 +112,13 @@ class IRESEARCH_API segment_reader final
     return impl_->column_reader(field);
   }
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief converts current 'segment_reader' to 'sub_reader::ptr'
+  ////////////////////////////////////////////////////////////////////////////////
+  explicit operator sub_reader::ptr() const NOEXCEPT {
+    return impl_;
+  }
+
  private:
   typedef std::shared_ptr<sub_reader> impl_ptr;
 

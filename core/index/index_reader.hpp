@@ -127,9 +127,6 @@ class IRESEARCH_API composite_reader: public index_reader {
 
   // return the i'th sub_reader
   virtual const sub_reader& operator[](size_t i) const = 0;
-
-  // return the base doc_id for the i'th sub_reader
-  virtual doc_id_t base(size_t i) const = 0;
 };
 
 NS_END

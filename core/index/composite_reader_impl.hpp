@@ -68,11 +68,6 @@ class composite_reader_impl: public composite_reader {
     return *(ctxs_[i].reader);
   }
 
-  // returns base document id for the corresponded reader
-  virtual doc_id_t base(size_t i) const override {
-    return ctxs_[i].base;
-  }
-
   virtual reader_iterator begin() const override {
     return reader_iterator(new iterator_impl(ctxs_.begin()));
   }

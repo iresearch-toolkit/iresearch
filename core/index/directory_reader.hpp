@@ -56,10 +56,6 @@ class IRESEARCH_API directory_reader final
     return (*impl_)[i];
   }
 
-  virtual doc_id_t base(size_t i) const override {
-    return impl_->base(i);
-  }
-
   virtual index_reader::reader_iterator begin() const override {
     return impl_->begin();
   }
@@ -104,6 +100,13 @@ class IRESEARCH_API directory_reader final
 
   void reset() NOEXCEPT {
     impl_.reset();
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief converts current directory_reader to 'index_reader::ptr'
+  ////////////////////////////////////////////////////////////////////////////////
+  explicit operator index_reader::ptr() const NOEXCEPT {
+    return impl_;
   }
 
  private:
