@@ -823,7 +823,7 @@ bool merge_writer::flush(std::string& filename, segment_meta& meta) {
 
   // collect field meta and field term data
   for (auto& reader: readers_) {
-    readers.emplace_back(reader, doc_id_map_t());
+    readers.emplace_back(reader.get(), doc_id_map_t());
 
     if (!compute_field_meta(field_metas, fields_features, *reader)) {
       return false;

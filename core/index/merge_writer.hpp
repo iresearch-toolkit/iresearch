@@ -38,22 +38,40 @@ struct sub_reader;
 
 class IRESEARCH_API merge_writer: public util::noncopyable {
  public:
+  typedef std::shared_ptr<const irs::sub_reader> sub_reader_ptr;
+
   DECLARE_UNIQUE_PTR(merge_writer);
+
   merge_writer(directory& dir, const string_ref& seg_name) NOEXCEPT
     : dir_(dir), name_(seg_name) {
   }
-  // reserve enough space to hold 'size' readers
-  void reserve(size_t size) { readers_.reserve(size); }
-  void add(const sub_reader& reader) { readers_.emplace_back(&reader); }
+
+  void add(const sub_reader& reader) {
+    // add reference
+    readers_.emplace_back(
+      sub_reader_ptr(sub_reader_ptr(), &reader) // noexcept aliasing ctor
+    );
+  }
+
+  void add(const sub_reader_ptr& reader) {
+    // add shared pointer
+    readers_.emplace_back(reader);
+  }
+
   bool flush(std::string& filename, segment_meta& meta); // return merge successful
+
+  // reserve enough space to hold 'size' readers
+  void reserve(size_t size) {
+    readers_.reserve(size);
+  }
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   directory& dir_;
   string_ref name_;
-  std::vector<const iresearch::sub_reader*> readers_;
+  std::vector<sub_reader_ptr> readers_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
-};
+}; // merge_writer
 
 NS_END
 
