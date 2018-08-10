@@ -440,12 +440,13 @@ index_output::ptr ref_tracking_directory::create(
   const std::string& name
 ) NOEXCEPT {
   try {
-    auto ref = attribute_->add(name);
-    SCOPED_LOCK(mutex_);
     auto result = impl_.create(name);
 
     // only track ref on successful call to impl_
     if (result) {
+      auto ref = attribute_->add(name);
+
+      SCOPED_LOCK(mutex_);
       refs_.emplace(*ref, std::move(ref));
     }
 
