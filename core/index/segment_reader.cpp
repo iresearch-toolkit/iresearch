@@ -131,7 +131,10 @@ class masked_docs_iterator
   }
 
   virtual irs::doc_id_t seek(irs::doc_id_t target) override {
-    return irs::seek(*this, target);
+    next_ = target;
+    next();
+
+    return value();
   }
 
   virtual const irs::attribute_view& attributes() const NOEXCEPT override {
