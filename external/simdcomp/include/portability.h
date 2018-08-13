@@ -22,8 +22,10 @@
 #   define SIMDCOMP_NEVER_INLINE
 #   define SIMDCOMP_PURE
 #  endif
+#  define SIMDCOMP_API __attribute__ ((visibility ("default")))
 # elif defined(_MSC_VER)
 #  define SIMDCOMP_ALWAYS_INLINE __forceinline
+#  define SIMDCOMP_API __declspec(dllexport)
 #  define SIMDCOMP_NEVER_INLINE
 #  define SIMDCOMP_PURE
 # else
@@ -80,4 +82,3 @@ typedef signed char int8_t;
 #endif
 
 #endif /* SIMDBITCOMPAT_H_ */
-
