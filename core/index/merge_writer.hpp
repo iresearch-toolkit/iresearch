@@ -66,10 +66,18 @@ class IRESEARCH_API merge_writer: public util::noncopyable {
   }
 
  private:
+  struct reader_ctx {
+    explicit reader_ctx(sub_reader_ptr reader) NOEXCEPT;
+
+    sub_reader_ptr reader; // segment reader
+    std::vector<doc_id_t> doc_id_map; // FIXME use bitpacking vector
+    std::function<doc_id_t(doc_id_t)> doc_map; // mapping function
+  }; // reader_ctx
+
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   directory& dir_;
   string_ref name_;
-  std::vector<sub_reader_ptr> readers_;
+  std::vector<reader_ctx> readers_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // merge_writer
 
