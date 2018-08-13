@@ -27,7 +27,7 @@
 // force use the same definition of std::codecvt<...> templates everywhere
 // GCC < 5 does not have <codecvt>
 #if (defined(__GNUC__) && (__GNUC__ < 5))
-  #include <bits/codecvt>
+  #include <bits/codecvt.h>
 #endif
 
 #include <locale>
