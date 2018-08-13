@@ -24,6 +24,7 @@
 #ifndef IRESEARCH_LOCALE_UTILS_H
 #define IRESEARCH_LOCALE_UTILS_H
 
+#include <codecvt> // force use the same definition of std::codecvt<...> templates everywhere
 #include <locale>
 
 #include "shared.hpp"
