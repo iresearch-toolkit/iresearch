@@ -489,8 +489,6 @@ struct empty_sub_reader : iresearch::singleton<empty_sub_reader>, iresearch::sub
 
   virtual uint64_t live_docs_count() const override { return 0; }
 
-  virtual uint64_t docs_count(const iresearch::string_ref&) const override { return 0; }
-
   virtual irs::doc_iterator::ptr docs_iterator() const override {
     return irs::doc_iterator::empty();
   }

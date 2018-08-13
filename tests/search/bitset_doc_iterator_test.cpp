@@ -34,7 +34,6 @@ struct empty_sub_reader: irs::singleton<empty_sub_reader>, irs::sub_reader {
   virtual const irs::column_meta* column(const irs::string_ref& name) const override { return nullptr; }
   virtual irs::column_iterator::ptr columns() const override { return nullptr; }
   virtual const irs::columnstore_reader::column_reader* column_reader(irs::field_id field) const override { return nullptr; }
-  virtual uint64_t docs_count(const irs::string_ref& field) const override { return 0; }
   virtual uint64_t docs_count() const override { return 0; }
   virtual irs::doc_iterator::ptr docs_iterator() const override { return nullptr; }
   virtual reader_iterator end() const override { return reader_iterator(); }

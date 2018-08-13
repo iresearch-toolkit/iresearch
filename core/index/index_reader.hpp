@@ -56,9 +56,6 @@ struct IRESEARCH_API index_reader {
   // number of live documents
   virtual uint64_t live_docs_count() const = 0;
 
-  // number of live documents for the specified field
-  virtual uint64_t docs_count(const string_ref& field) const = 0;
-
   // total number of documents including deleted
   virtual uint64_t docs_count() const = 0;
 
@@ -81,12 +78,6 @@ struct IRESEARCH_API sub_reader : index_reader {
   DEFINE_FACTORY_INLINE(sub_reader);
 
   using index_reader::docs_count;
-
-  // returns number of live documents by the specified field
-  virtual uint64_t docs_count(const string_ref& field) const {
-    const term_reader* rdr = this->field(field);
-    return nullptr == rdr ? 0 : rdr->docs_count();
-  }
 
   // returns iterator over the live documents in current segment
   virtual doc_iterator::ptr docs_iterator() const = 0;

@@ -299,9 +299,6 @@ class segment_reader {
     return reader_->column_reader(column);
   }
   size_t docs_count() const { return reader_->docs_count(); }
-  size_t docs_count(irs::string_ref field) {
-    return reader_->docs_count(field);
-  }
   doc_iterator docs_iterator() const { 
     return reader_->mask(reader_->docs_iterator()); 
   }
@@ -347,7 +344,7 @@ class segment_iterator {
  private:
   friend class index_reader;
 
-  typedef std::vector<irs::sub_reader*>::iterator iterator_t;
+  typedef std::vector<const irs::sub_reader*>::const_iterator iterator_t;
 
   segment_iterator(iterator_t begin, iterator_t end) SWIG_NOEXCEPT
     : begin_(begin), end_(end) {
@@ -369,23 +366,18 @@ class index_reader {
 
   segment_reader segment(size_t i) const;
   size_t docs_count() const { return reader_->docs_count(); }
-  size_t docs_count(irs::string_ref field) {
-    return reader_->docs_count(field);
-  }
   size_t live_docs_count() const { return reader_->live_docs_count(); }
   size_t size() const { return reader_->size(); }
 
   segment_iterator iterator() const SWIG_NOEXCEPT {
-    auto& segments = const_cast<std::vector<irs::sub_reader*>&>(segments_);
-
-    return segment_iterator(segments.begin(), segments.end());
+    return segment_iterator(segments_.begin(), segments_.end());
   }
 
  private:
   index_reader(irs::index_reader::ptr reader);
 
   irs::index_reader::ptr reader_;
-  std::vector<irs::sub_reader*> segments_;
+  std::vector<const irs::sub_reader*> segments_;
 }; // index_reader
 
 #endif // IRESEARCH_PYRESEARCH_H

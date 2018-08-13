@@ -77,18 +77,6 @@ class composite_reader_impl: public composite_reader {
     return docs_max_;
   }
 
-  // number of documents for the specified field
-  virtual uint64_t docs_count(const string_ref& field) const override {
-    return std::accumulate(
-      ctxs_.begin(),
-      ctxs_.end(),
-      uint64_t(0),
-      [&field](uint64_t total, const reader_context& ctx) {
-        return total + ctx.reader->docs_count(field);
-      }
-    );
-  }
-
   virtual reader_iterator end() const override {
     return reader_iterator(new iterator_impl(ctxs_.end()));
   }

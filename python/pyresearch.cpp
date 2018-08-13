@@ -59,13 +59,13 @@ std::vector<std::string> field_reader::features() const {
   auto dir = std::make_shared<irs::mmap_directory>(path);
   auto index = irs::directory_reader::open(*dir, irs::formats::get("1_0"));
 
-  return std::shared_ptr<irs::index_reader>(
-    index.get(),
-    [dir, index](irs::index_reader*) { }
+  return std::shared_ptr<const irs::index_reader>(
+    static_cast<irs::index_reader::ptr>(index).get(),
+    [dir, index](const irs::index_reader*) { }
   );
 }
 
-index_reader::index_reader(std::shared_ptr<irs::index_reader> reader)
+index_reader::index_reader(std::shared_ptr<const irs::index_reader> reader)
   : reader_(std::move(reader)) {
   assert(reader_);
   segments_.reserve(reader_->size()); 
@@ -78,8 +78,8 @@ index_reader::index_reader(std::shared_ptr<irs::index_reader> reader)
 segment_reader index_reader::segment(size_t i) const {
   auto* segment = segments_.at(i);
 
-  return std::shared_ptr<irs::sub_reader>(
-    std::shared_ptr<irs::sub_reader>(),
+  return std::shared_ptr<const irs::sub_reader>(
+    std::shared_ptr<const irs::sub_reader>(),
     segment
   );
 }

@@ -68,10 +68,6 @@ class IRESEARCH_API directory_reader final
     return impl_->docs_count();
   }
 
-  virtual uint64_t docs_count(const string_ref& field) const override {
-    return impl_->docs_count(field);
-  }
-
   virtual uint64_t live_docs_count() const override {
     return impl_->live_docs_count();
   }
