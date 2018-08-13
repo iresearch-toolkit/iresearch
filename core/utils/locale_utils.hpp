@@ -24,6 +24,12 @@
 #ifndef IRESEARCH_LOCALE_UTILS_H
 #define IRESEARCH_LOCALE_UTILS_H
 
+// force use the same definition of std::codecvt<...> templates everywhere
+// GCC < 5 does not have <codecvt>
+#if (defined(__GNUC__) && (__GNUC__ < 5))
+  #include <bits/codecvt.h>
+#endif
+
 #include <locale>
 
 #include "shared.hpp"
