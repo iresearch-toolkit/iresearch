@@ -381,7 +381,7 @@ int codecvt16_facet::do_encoding() const NOEXCEPT {
   }
 
   UErrorCode status = U_ZERO_ERROR;
-std::cerr << __FILE__ << ":" << __LINE__ << "|" << context_encoding() << "|" << ucnv_isFixedWidth(ctx->converter_.get(), &status) << "|" << ucnv_getMinCharSize(ctx->converter_.get()) << "|" << std::endl; status = U_ZERO_ERROR;
+
   // the exact number of externT characters that correspond to one internT character, if constant
   return ucnv_isFixedWidth(ctx->converter_.get(), &status)
     ? ucnv_getMinCharSize(ctx->converter_.get()) : 0;
@@ -592,8 +592,8 @@ int codecvt32_facet::do_encoding() const NOEXCEPT {
     return -1;
   }
 
-  UErrorCode status = U_ZERO_ERROR;int x = ucnv_isFixedWidth(ctx->converter_.get(), &status) ? ucnv_getMinCharSize(ctx->converter_.get()) : 0;status = U_ZERO_ERROR;
-std::cerr << __FILE__ << ":" << __LINE__ << "|" << context_encoding() << "|" << size_t(ucnv_isFixedWidth(ctx->converter_.get(), &status)) << "|" << size_t(status) << "|" << size_t(ucnv_getMinCharSize(ctx->converter_.get())) << "|" << size_t(ucnv_getMaxCharSize(ctx->converter_.get())) << "|" << size_t(ucnv_isFixedWidth(ctx->converter_.get(), &status) ? ucnv_getMinCharSize(ctx->converter_.get()) : 0) << "|" << x << "|" << std::endl; status = U_ZERO_ERROR; return x;
+  UErrorCode status = U_ZERO_ERROR;
+
   // the exact number of extern_type characters that correspond to one intern_type character, if constant
   return ucnv_isFixedWidth(ctx->converter_.get(), &status)
     ? int(ucnv_getMinCharSize(ctx->converter_.get())) : 0;
@@ -3587,7 +3587,7 @@ const std::locale& get_locale(
   auto* locale_info_ptr = locale_info.get();
   auto& converter = get_converter(locale_info->encoding());
   auto locale = std::locale(boost_locale, locale_info.release());
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
   // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
   // due to a missing export, as per their comment:
   //   This is an active bug in our database (VSO#143857), which we'll investigate
@@ -3597,15 +3597,11 @@ std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     locale = std::locale(
       locale, irs::memory::make_unique<codecvt16_facet>(converter).release()
     );
-std::cerr << __FILE__ << ":" << __LINE__ << "|" << codecvt16_facet::id._M_id() << "|" << std::codecvt<char16_t, char, std::mbstate_t>::id._M_id() << "|" << std::endl;
     locale = std::locale(
       locale, irs::memory::make_unique<codecvt32_facet>(converter).release()
     );
-std::cerr << __FILE__ << ":" << __LINE__ << "|" << codecvt32_facet::id._M_id() << "|" << std::codecvt<char32_t, char, std::mbstate_t>::id._M_id() << "|" << std::endl;
-  #else
-std::cerr << __FILE__ << ":" << __LINE__ << "|" << _MSC_VER << "|" << std::endl;
   #endif
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
   if (unicodeSystem) {
     auto cvt8 = irs::memory::make_unique<codecvt8u_facet>(converter);
     auto cvtw = irs::memory::make_unique<codecvtwu_facet>(converter);
