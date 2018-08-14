@@ -83,6 +83,14 @@ NS_BEGIN(std)
   std::locale::id std::codecvt<char32_t, char, _Mbstatet>::id;
 #endif
 
+// GCC < v5 does not explicitly define
+// std::codecvt<char16_t, char, mbstate_t>::id or std::codecvt<char32_t, char, mbstate_t>::id
+// this causes linking issues in optimized code
+#if defined(__GNUC__) && (__GNUC__ < 5)
+  /*static*/ template<> locale::id codecvt<char16_t, char, mbstate_t>::id;
+  /*static*/ template<> locale::id codecvt<char32_t, char, mbstate_t>::id;
+#endif
+
 NS_END // std
 
 NS_LOCAL
