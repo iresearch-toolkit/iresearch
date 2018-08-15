@@ -1956,6 +1956,7 @@ bool codecvtw_facet::append(
       while (to_next < to_end) {
         auto* buf_to_next = buf_to;
 
+        status = U_ZERO_ERROR;
         ucnv_fromUnicode(
           ctx->converter_int_.get(),
           &buf_to_next,
@@ -2131,6 +2132,7 @@ std::codecvt_base::result codecvtw_facet::do_in(
       while (to_next < to_end) {
         auto* buf_to_next = buf_to;
 
+        dst_status = U_ZERO_ERROR;
         ucnv_fromUnicode(
           ctx->converter_int_.get(),
           &buf_to_next,
@@ -2279,6 +2281,7 @@ std::codecvt_base::result codecvtw_facet::do_out(
       auto* buf_from_end =
         buf_from_next + std::distance(from_next, from_end) * sizeof(intern_type);
 
+      src_status = U_ZERO_ERROR;
       ucnv_toUnicode(
         ctx->converter_int_.get(),
         &buf_next,
@@ -2298,6 +2301,7 @@ std::codecvt_base::result codecvtw_facet::do_out(
         auto* buf_next_start = buf_next;
         auto* buf_from_next = buf_from;
 
+        src_status = U_ZERO_ERROR;
         ucnv_toUnicode(
           ctx->converter_int_.get(),
           &buf_next,

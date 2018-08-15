@@ -1030,10 +1030,65 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_non_unic
     mbstate_t state = mbstate_t();
     char cp1251[] = { char(0xe2), char(0xf5), char(0xee), char(0xe4), char(0xff), char(0xf9), char(0xe8), char(0xe5), ' ', char(0xe4), char(0xe0), char(0xed), char(0xed), char(0xfb), char(0xe5) };
     char koi8r[] =  { char(0xd7), char(0xc8), char(0xcf), char(0xc4), char(0xd1), char(0xdd), char(0xc9), char(0xc5), ' ', char(0xc4), char(0xc1), char(0xce), char(0xce), char(0xd9), char(0xc5) };
+    char error[] =  { char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a), ' ', char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a) };
     const char* koi8r_cnext;
     char buf[15];
     const char* buf_cnext;
     char* buf_next;
+    char out[15];
+    char* out_next;
+
+    ASSERT_EQ(
+      std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
+      cvt_koi8r.in(state, koi8r, koi8r + IRESEARCH_COUNTOF(koi8r), koi8r_cnext, buf, buf + 1, buf_next)
+    );
+    ASSERT_EQ(&koi8r[1], koi8r_cnext);
+    ASSERT_EQ(&buf[1], buf_next);
+
+    ASSERT_EQ(
+      std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
+      cvt_koi8r.in(state, koi8r, koi8r + IRESEARCH_COUNTOF(koi8r), koi8r_cnext, buf, buf + IRESEARCH_COUNTOF(buf), buf_next)
+    );
+
+    ASSERT_EQ(koi8r + IRESEARCH_COUNTOF(koi8r), koi8r_cnext);
+    ASSERT_EQ(buf + IRESEARCH_COUNTOF(buf), buf_next);
+
+    ASSERT_EQ(
+      std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
+      cvt_cp1251.out(state, buf, buf + IRESEARCH_COUNTOF(buf), buf_cnext, out, out + 1, out_next)
+    );
+    ASSERT_EQ(&buf[1], buf_cnext);
+    ASSERT_EQ(&out[1], out_next);
+
+    for (size_t i = 0, count = 1; i < count; ++i) {
+      ASSERT_EQ(error[i], out[i]);
+    }
+
+    ASSERT_EQ(
+      std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
+      cvt_cp1251.out(state, buf, buf + IRESEARCH_COUNTOF(buf), buf_cnext, out, out + IRESEARCH_COUNTOF(out), out_next)
+    );
+
+    ASSERT_EQ(buf + IRESEARCH_COUNTOF(buf), buf_cnext);
+    ASSERT_EQ(out + IRESEARCH_COUNTOF(out), out_next);
+
+    for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
+      ASSERT_EQ(error[i], out[i]);
+    }
+  }
+
+  // single-byte charset (wchar) koi8-r
+  {
+    auto& cvt_cp1251 = std::use_facet<std::codecvt<wchar_t, char, mbstate_t>>(ru0);
+    auto& cvt_koi8r = std::use_facet<std::codecvt<wchar_t, char, mbstate_t>>(ru1);
+    mbstate_t state = mbstate_t();
+    char cp1251[] = { char(0xe2), char(0xf5), char(0xee), char(0xe4), char(0xff), char(0xf9), char(0xe8), char(0xe5), ' ', char(0xe4), char(0xe0), char(0xed), char(0xed), char(0xfb), char(0xe5) };
+    char koi8r[] =  { char(0xd7), char(0xc8), char(0xcf), char(0xc4), char(0xd1), char(0xdd), char(0xc9), char(0xc5), ' ', char(0xc4), char(0xc1), char(0xce), char(0xce), char(0xd9), char(0xc5) };
+    char error[] =  { char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a), ' ', char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a) };
+    const char* koi8r_cnext;
+    wchar_t buf[15];
+    const wchar_t* buf_cnext;
+    wchar_t* buf_next;
     char out[15];
     char* out_next;
 /* FIXME TODO Boost implementation of codecvt fails to convert from non-unicode
@@ -1060,61 +1115,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_non_unic
     ASSERT_EQ(&out[1], out_next);
 
     for (size_t i = 0, count = 1; i < count; ++i) {
-      ASSERT_EQ(cp1251[i], out[i]);
-    }
-
-    ASSERT_EQ(
-      std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
-      cvt_cp1251.out(state, buf, buf + IRESEARCH_COUNTOF(buf), buf_cnext, out, out + IRESEARCH_COUNTOF(out), out_next)
-    );
-
-    ASSERT_EQ(buf + IRESEARCH_COUNTOF(buf), buf_cnext);
-    ASSERT_EQ(out + IRESEARCH_COUNTOF(out), out_next);
-
-    for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
-      ASSERT_EQ(cp1251[i], out[i]);
-    }
-    */
-  }
-
-  // single-byte charset (wchar) koi8-r
-  {
-    auto& cvt_cp1251 = std::use_facet<std::codecvt<wchar_t, char, mbstate_t>>(ru0);
-    auto& cvt_koi8r = std::use_facet<std::codecvt<wchar_t, char, mbstate_t>>(ru1);
-    mbstate_t state = mbstate_t();
-    char cp1251[] = { char(0xe2), char(0xf5), char(0xee), char(0xe4), char(0xff), char(0xf9), char(0xe8), char(0xe5), ' ', char(0xe4), char(0xe0), char(0xed), char(0xed), char(0xfb), char(0xe5) };
-    char koi8r[] =  { char(0xd7), char(0xc8), char(0xcf), char(0xc4), char(0xd1), char(0xdd), char(0xc9), char(0xc5), ' ', char(0xc4), char(0xc1), char(0xce), char(0xce), char(0xd9), char(0xc5) };
-    const char* koi8r_cnext;
-    wchar_t buf[16];
-    const wchar_t* buf_cnext;
-    wchar_t* buf_next;
-    char out[16];
-    char* out_next;
-/* FIXME TODO Boost implementation of codecvt fails to convert from non-unicode
-    ASSERT_EQ(
-      std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
-      cvt_koi8r.in(state, koi8r, koi8r + IRESEARCH_COUNTOF(koi8r), koi8r_cnext, buf, buf + 1, buf_next)
-    );
-    ASSERT_EQ(&koi8r[1], koi8r_cnext);
-    ASSERT_EQ(&buf[1], buf_next);
-
-    ASSERT_EQ(
-      std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
-      cvt_koi8r.in(state, koi8r, koi8r + IRESEARCH_COUNTOF(koi8r), koi8r_cnext, buf, buf + IRESEARCH_COUNTOF(buf), buf_next)
-    );
-
-    ASSERT_EQ(koi8r + IRESEARCH_COUNTOF(koi8r), koi8r_cnext);
-    ASSERT_EQ(buf + IRESEARCH_COUNTOF(buf) -1, buf_next); // FIXME TODO Boost incorrectly sets buf_next, remove -1
-
-    ASSERT_EQ(
-      std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
-      cvt_cp1251.out(state, buf, buf + IRESEARCH_COUNTOF(buf), buf_cnext, out, out + 1, out_next)
-    );
-    ASSERT_EQ(&buf[1], buf_cnext);
-    ASSERT_EQ(&out[1], out_next);
-
-    for (size_t i = 0, count = 1; i < count; ++i) {
-      ASSERT_EQ(cp1251[i], out[i]);
+      ASSERT_EQ(error[i], out[i]);
     }
 
     ASSERT_EQ(
