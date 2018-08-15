@@ -1091,7 +1091,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_non_unic
     wchar_t* buf_next;
     char out[15];
     char* out_next;
-/* FIXME TODO Boost implementation of codecvt fails to convert from non-unicode
+
     ASSERT_EQ(
       std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
       cvt_koi8r.in(state, koi8r, koi8r + IRESEARCH_COUNTOF(koi8r), koi8r_cnext, buf, buf + 1, buf_next)
@@ -1127,9 +1127,8 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_non_unic
     ASSERT_EQ(out + IRESEARCH_COUNTOF(out), out_next);
 
     for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
-      ASSERT_EQ(cp1251[i], out[i]);
+      ASSERT_EQ(error[i], out[i]);
     }
-    */
   }
 
   // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
@@ -1146,11 +1145,11 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_non_unic
       char16_t utf16[] = { 0x0432, 0x0445, 0x043E, 0x0434, 0x044F, 0x0449, 0x0438, 0x0435, 0x0020, 0x0434, 0x0430, 0x043D, 0x043D, 0x044B, 0x0435 };
       const char* koi8r_cnext;
       const char16_t* utf16_cnext;
-      char16_t buf[16];
+      char16_t buf[15];
       char16_t* buf_next;
-      char out[16];
+      char out[15];
       char* out_next;
-/* FIXME TODO Boost implementation of codecvt fails to convert from non-unicode
+
       ASSERT_EQ(
         std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
         cvt_koi8r.in(state, koi8r, koi8r + IRESEARCH_COUNTOF(koi8r), koi8r_cnext, buf, buf + 1, buf_next)
@@ -1196,7 +1195,6 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_non_unic
       for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
         ASSERT_EQ(koi8r[i], out[i]);
       }
-      */
     }
 
     // single-byte charset (char32) koi8-r
@@ -1207,11 +1205,11 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_non_unic
       char32_t utf32[] = { 0x0432, 0x0445, 0x043E, 0x0434, 0x044F, 0x0449, 0x0438, 0x0435, 0x0020, 0x0434, 0x0430, 0x043D, 0x043D, 0x044B, 0x0435 };
       const char* koi8r_cnext;
       const char32_t* utf32_cnext;
-      char32_t buf[16];
+      char32_t buf[15];
       char32_t* buf_next;
-      char out[16];
+      char out[15];
       char* out_next;
-/* FIXME TODO Boost implementation of codecvt fails to convert from non-unicode
+
       ASSERT_EQ(
         std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
         cvt_koi8r.in(state, koi8r, koi8r + IRESEARCH_COUNTOF(koi8r), koi8r_cnext, buf, buf + 1, buf_next)
@@ -1257,7 +1255,6 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_non_unic
       for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
         ASSERT_EQ(koi8r[i], out[i]);
       }
-      */
     }
 
   #endif

@@ -2293,11 +2293,10 @@ std::codecvt_base::result codecvtw_facet::do_out(
         &src_status
       );
     } else {
-      auto* buf_from = reinterpret_cast<const char*>(from_next) + (sizeof(intern_type) - char_size);
-      auto* buf_from_end = reinterpret_cast<const char*>(from_next + 1); // +1 for char after buf
-
       // convert one char at a time
-      while (buf_next < buf_end) {
+      do {
+        auto* buf_from = reinterpret_cast<const char*>(from_next) + (sizeof(intern_type) - char_size);
+        auto* buf_from_end = reinterpret_cast<const char*>(from_next + 1); // +1 for char after buf
         auto* buf_next_start = buf_next;
         auto* buf_from_next = buf_from;
 
@@ -2313,18 +2312,28 @@ std::codecvt_base::result codecvtw_facet::do_out(
           &src_status
         );
 
-        if (!U_SUCCESS(dst_status) && U_BUFFER_OVERFLOW_ERROR != dst_status) {
-          break;
+        if (U_BUFFER_OVERFLOW_ERROR == src_status) {
+          break; // conversion buffer not large enough to hold result
+        }
+
+        if (!U_SUCCESS(src_status)) {
+          IR_FRMT_WARN(
+            "failure to convert from system encoding to UTF16 while converting system encoding '%s' to encoding '%s'",
+            context_encoding_int().c_str(), context_encoding_ext().c_str()
+          );
+
+          break; // finish copying all successfully converted
         }
 
         assert(buf_next >= buf && IRESEARCH_COUNTOF(offsets) > size_t(buf_next - buf));
 
         while(buf_next_start < buf_next) {
-          offsets[buf_next - ++buf_next_start] = from_next - from; // remember converted position
+          offsets[buf_next_start - buf] = from_next - from; // remember converted position
+          ++buf_next_start;
         }
 
         ++from_next; // +1 for 1 char at a time
-      }
+      } while(from_next < from_end);
     }
 
     if (!U_SUCCESS(src_status) && U_BUFFER_OVERFLOW_ERROR != src_status) {
