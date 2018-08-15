@@ -3409,11 +3409,11 @@ locale_info_facet::locale_info_facet(const irs::string_ref& name)
     language_("C"),
     variant_(""),
     unicode_(unicode_t::NONE) { // us-ascii is not unicode
-  if (name_.empty() || name_ == "C") {
+  if (name_ == "C") {
     return;
   }
 
-  if (name_ == "c") {
+  if (name_.empty() || name_ == "c") {
     name_ = "C"; // uppercase 'classic' locale name
 
     return;
@@ -3524,10 +3524,6 @@ locale_info_facet& locale_info_facet::operator=(
 const std::locale& get_locale(
     const irs::string_ref& name, bool forceUnicodeSystem = true
 ) {
-  if (name.null() && !forceUnicodeSystem) {
-    return std::locale::classic();
-  }
-
   struct less_t {
     bool operator()(
         const locale_info_facet* lhs, const locale_info_facet* rhs
