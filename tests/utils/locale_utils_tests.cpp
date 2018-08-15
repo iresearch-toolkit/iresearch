@@ -58,7 +58,7 @@ using namespace iresearch::locale_utils;
 TEST_F(LocaleUtilsTestSuite, test_get_converter) {
   {
     auto expected = irs::locale_utils::locale("C", irs::string_ref::NIL, true);
-/* FIXME TODO Boost returns incorrect result codes on some implementations, uncomment once Boost is no longer used
+
     ASSERT_EQ((&std::use_facet<std::codecvt<char, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<char>(nullptr)));
     ASSERT_EQ((&std::use_facet<std::codecvt<wchar_t, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<wchar_t>(nullptr)));
 
@@ -70,7 +70,6 @@ TEST_F(LocaleUtilsTestSuite, test_get_converter) {
       ASSERT_EQ((&std::use_facet<std::codecvt<char16_t, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<char16_t>(nullptr)));
       ASSERT_EQ((&std::use_facet<std::codecvt<char32_t, char, std::mbstate_t>>(expected)), (&irs::locale_utils::converter<char32_t>(nullptr)));
     #endif
-*/
   }
 
   {
@@ -974,7 +973,6 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_non_unic
     char out[16];
     char* out_next;
 
-/* FIXME TODO Boost implementation of codecvt fails to convert from koi8
     ASSERT_EQ(
       std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
       cvt_koi8r.in(state, koi8r, koi8r + IRESEARCH_COUNTOF(koi8r), koi8r_cnext, buf, buf + 1, buf_next)
@@ -1012,7 +1010,6 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_non_unic
     for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
       ASSERT_EQ(cp1251[i], out[i]);
     }
-*/
   }
 
   // single-byte charset (wchar) koi8-r
@@ -1028,7 +1025,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_non_unic
     wchar_t* buf_next;
     char out[16];
     char* out_next;
-/* FIXME TODO MSVC Boost implementation of codecvt fail to convert from koi8, others do it incorrectly
+
     ASSERT_EQ(
       std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
       cvt_koi8r.in(state, koi8r, koi8r + IRESEARCH_COUNTOF(koi8r), koi8r_cnext, buf, buf + 1, buf_next)
@@ -1066,7 +1063,6 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_non_unic
     for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
       ASSERT_EQ(cp1251[i], out[i]);
     }
-*/
   }
 
   // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
@@ -1088,7 +1084,6 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_non_unic
       char out[16];
       char* out_next;
 
-/* FIXME TODO Boost implementation of codecvt fails to convert from koi8
       ASSERT_EQ(
         std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
         cvt_koi8r.in(state, koi8r, koi8r + IRESEARCH_COUNTOF(koi8r), koi8r_cnext, buf, buf + 1, buf_next)
@@ -1134,7 +1129,6 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_non_unic
       for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
         ASSERT_EQ(koi8r[i], out[i]);
       }
-*/
     }
 
     // single-byte charset (char32) koi8-r
@@ -1150,7 +1144,6 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_non_unic
       char out[16];
       char* out_next;
 
-/* FIXME TODO Boost implementation of codecvt fails to convert from koi8
       ASSERT_EQ(
         std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
         cvt_koi8r.in(state, koi8r, koi8r + IRESEARCH_COUNTOF(koi8r), koi8r_cnext, buf, buf + 1, buf_next)
@@ -1196,7 +1189,6 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_non_unic
       for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
         ASSERT_EQ(koi8r[i], out[i]);
       }
-*/
     }
 
   #endif
