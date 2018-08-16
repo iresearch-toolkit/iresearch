@@ -4606,7 +4606,7 @@ column_factory_f g_column_factories[] {
 //////////////////////////////////////////////////////////////////////////////
 /// @class reader
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API reader final: public columnstore_reader, public context_provider {
+class reader final: public columnstore_reader, public context_provider {
  public:
   explicit reader(size_t pool_size = 16)
     : context_provider(pool_size) {
