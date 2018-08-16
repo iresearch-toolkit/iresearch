@@ -1328,10 +1328,10 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_unicode)
     char cp1251[] = { char(0xe2), char(0xf5), char(0xee), char(0xe4), char(0xff), char(0xf9), char(0xe8), char(0xe5), ' ', char(0xe4), char(0xe0), char(0xed), char(0xed), char(0xfb), char(0xe5) };
     char koi8r[] =  { char(0xd7), char(0xc8), char(0xcf), char(0xc4), char(0xd1), char(0xdd), char(0xc9), char(0xc5), ' ', char(0xc4), char(0xc1), char(0xce), char(0xce), char(0xd9), char(0xc5) };
     const char* koi8r_cnext;
-    wchar_t buf[16];
+    wchar_t buf[15];
     const wchar_t* buf_cnext;
     wchar_t* buf_next;
-    char out[16];
+    char out[15];
     char* out_next;
 
     ASSERT_EQ(
@@ -1347,7 +1347,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_unicode)
     );
 
     ASSERT_EQ(koi8r + IRESEARCH_COUNTOF(koi8r), koi8r_cnext);
-    ASSERT_EQ(buf + IRESEARCH_COUNTOF(buf) -1, buf_next); // FIXME TODO Boost incorrectly sets buf_next, remove -1
+    ASSERT_EQ(buf + IRESEARCH_COUNTOF(buf), buf_next);
 
     ASSERT_EQ(
       std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
@@ -1514,20 +1514,21 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_non_unicod
     auto& cvt_big5 = std::use_facet<std::codecvt<char, char, mbstate_t>>(zh0);
     auto& cvt_utf8 = std::use_facet<std::codecvt<char, char, mbstate_t>>(zh1);
     mbstate_t state = mbstate_t();
-    char big5[] = { char(0xa4), char(0xb5), char(0xa4), char(0xd1), char(0xa4), char(0x55), char(0xa4), char(0xc8), char(0xaa), char(0xba), char(0xa4), char(0xd3), char(0xb6), char(0xa7), char(0xab), char(0xdc), char(0xb7), char(0xc5), char(0xb7), char(0x78), char(0xa1), char(0x43) };
-    char utf8[] = { char(0xe4), char(0xbb), char(0x8a), char(0xe5), char(0xa4), char(0xa9), char(0xe4), char(0xb8), char(0x8b), char(0xe5), char(0x8d), char(0x88), char(0xe7), char(0x9a), char(0x84), char(0xe5), char(0xa4), char(0xaa), char(0xe9), char(0x98), char(0xb3), char(0xe5), char(0xbe), char(0x88), char(0xe6), char(0xb8), char(0xa9), char(0xe6), char(0x9a), char(0x96), char(0xe3), char(0x80), char(0x82) };
+    char big5[] =  { char(0xa4), char(0xb5), char(0xa4), char(0xd1), char(0xa4), char(0x55), char(0xa4), char(0xc8), char(0xaa), char(0xba), char(0xa4), char(0xd3), char(0xb6), char(0xa7), char(0xab), char(0xdc), char(0xb7), char(0xc5), char(0xb7), char(0x78), char(0xa1), char(0x43) };
+    char utf8[] =  { char(0xe4), char(0xbb), char(0x8a), char(0xe5), char(0xa4), char(0xa9), char(0xe4), char(0xb8), char(0x8b), char(0xe5), char(0x8d), char(0x88), char(0xe7), char(0x9a), char(0x84), char(0xe5), char(0xa4), char(0xaa), char(0xe9), char(0x99), char(0xbd), char(0xe5), char(0xbe), char(0x88), char(0xe6), char(0xba), char(0xab), char(0xe6), char(0x9a), char(0x96), char(0xe3), char(0x80), char(0x82) };
+    char error[] = { char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a) };
     const char* big5_cnext;
-    char buf[16];
+    char buf[11];
     const char* buf_cnext;
     char* buf_next;
-    char out[16];
+    char out[11];
     char* out_next;
-/* FIXME TODO Boost implementation of codecvt fails to convert from Chinese
+
     ASSERT_EQ(
       std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
       cvt_big5.in(state, big5, big5 + IRESEARCH_COUNTOF(big5), big5_cnext, buf, buf + 1, buf_next)
     );
-    ASSERT_EQ(&big5[1], big5_cnext);
+    ASSERT_EQ(&big5[2], big5_cnext); // +2 since BIG5 uses 2 bytes per char
     ASSERT_EQ(&buf[1], buf_next);
 
     ASSERT_EQ(
@@ -1554,9 +1555,8 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_non_unicod
     ASSERT_EQ(out + IRESEARCH_COUNTOF(out), out_next);
 
     for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
-      ASSERT_EQ(utf8[i], out[i]);
+      ASSERT_EQ(error[i], out[i]);
     }
-*/
   }
 
   // multi-byte charset (char) Chinese (from utf8)
@@ -1564,20 +1564,21 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_non_unicod
     auto& cvt_big5 = std::use_facet<std::codecvt<char, char, mbstate_t>>(zh0);
     auto& cvt_utf8 = std::use_facet<std::codecvt<char, char, mbstate_t>>(zh1);
     mbstate_t state = mbstate_t();
-    char big5[] = { char(0xa4), char(0xb5), char(0xa4), char(0xd1), char(0xa4), char(0x55), char(0xa4), char(0xc8), char(0xaa), char(0xba), char(0xa4), char(0xd3), char(0xb6), char(0xa7), char(0xab), char(0xdc), char(0xb7), char(0xc5), char(0xb7), char(0x78), char(0xa1), char(0x43) };
-    char utf8[] = { char(0xe4), char(0xbb), char(0x8a), char(0xe5), char(0xa4), char(0xa9), char(0xe4), char(0xb8), char(0x8b), char(0xe5), char(0x8d), char(0x88), char(0xe7), char(0x9a), char(0x84), char(0xe5), char(0xa4), char(0xaa), char(0xe9), char(0x98), char(0xb3), char(0xe5), char(0xbe), char(0x88), char(0xe6), char(0xb8), char(0xa9), char(0xe6), char(0x9a), char(0x96), char(0xe3), char(0x80), char(0x82) };
+    char big5[] =  { char(0xa4), char(0xb5), char(0xa4), char(0xd1), char(0xa4), char(0x55), char(0xa4), char(0xc8), char(0xaa), char(0xba), char(0xa4), char(0xd3), char(0xb6), char(0xa7), char(0xab), char(0xdc), char(0xb7), char(0xc5), char(0xb7), char(0x78), char(0xa1), char(0x43) };
+    char utf8[] =  { char(0xe4), char(0xbb), char(0x8a), char(0xe5), char(0xa4), char(0xa9), char(0xe4), char(0xb8), char(0x8b), char(0xe5), char(0x8d), char(0x88), char(0xe7), char(0x9a), char(0x84), char(0xe5), char(0xa4), char(0xaa), char(0xe9), char(0x99), char(0xbd), char(0xe5), char(0xbe), char(0x88), char(0xe6), char(0xba), char(0xab), char(0xe6), char(0x9a), char(0x96), char(0xe3), char(0x80), char(0x82) };
+    char error[] = { char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a) };
     const char* utf8_cnext;
-    char buf[16];
+    char buf[11];
     const char* buf_cnext;
     char* buf_next;
-    char out[16];
+    char out[11];
     char* out_next;
-/* FIXME TODO Boost implementation of codecvt fails to convert from Chinese
+
     ASSERT_EQ(
       std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
       cvt_utf8.in(state, utf8, utf8 + IRESEARCH_COUNTOF(utf8), utf8_cnext, buf, buf + 1, buf_next)
     );
-    ASSERT_EQ(&utf8[1], utf8_cnext);
+    ASSERT_EQ(&utf8[3], utf8_cnext); // +3 since UTF8 uses 3 bytes per char for Chinese
     ASSERT_EQ(&buf[1], buf_next);
 
     ASSERT_EQ(
@@ -1604,9 +1605,8 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_non_unicod
     ASSERT_EQ(out + IRESEARCH_COUNTOF(out), out_next);
 
     for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
-      ASSERT_EQ(big5[i], out[i]);
+      ASSERT_EQ(error[i], out[i]);
     }
-*/
   }
 
   // multi-byte charset (wchar) Chinese (from big5)
@@ -1614,20 +1614,21 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_non_unicod
     auto& cvt_big5 = std::use_facet<std::codecvt<wchar_t, char, mbstate_t>>(zh0);
     auto& cvt_utf8 = std::use_facet<std::codecvt<wchar_t, char, mbstate_t>>(zh1);
     mbstate_t state = mbstate_t();
-    char big5[] = { char(0xa4), char(0xb5), char(0xa4), char(0xd1), char(0xa4), char(0x55), char(0xa4), char(0xc8), char(0xaa), char(0xba), char(0xa4), char(0xd3), char(0xb6), char(0xa7), char(0xab), char(0xdc), char(0xb7), char(0xc5), char(0xb7), char(0x78), char(0xa1), char(0x43) };
-    char utf8[] = { char(0xe4), char(0xbb), char(0x8a), char(0xe5), char(0xa4), char(0xa9), char(0xe4), char(0xb8), char(0x8b), char(0xe5), char(0x8d), char(0x88), char(0xe7), char(0x9a), char(0x84), char(0xe5), char(0xa4), char(0xaa), char(0xe9), char(0x98), char(0xb3), char(0xe5), char(0xbe), char(0x88), char(0xe6), char(0xb8), char(0xa9), char(0xe6), char(0x9a), char(0x96), char(0xe3), char(0x80), char(0x82) };
+    char big5[] =  { char(0xa4), char(0xb5), char(0xa4), char(0xd1), char(0xa4), char(0x55), char(0xa4), char(0xc8), char(0xaa), char(0xba), char(0xa4), char(0xd3), char(0xb6), char(0xa7), char(0xab), char(0xdc), char(0xb7), char(0xc5), char(0xb7), char(0x78), char(0xa1), char(0x43) };
+    char utf8[] =  { char(0xe4), char(0xbb), char(0x8a), char(0xe5), char(0xa4), char(0xa9), char(0xe4), char(0xb8), char(0x8b), char(0xe5), char(0x8d), char(0x88), char(0xe7), char(0x9a), char(0x84), char(0xe5), char(0xa4), char(0xaa), char(0xe9), char(0x99), char(0xbd), char(0xe5), char(0xbe), char(0x88), char(0xe6), char(0xba), char(0xab), char(0xe6), char(0x9a), char(0x96), char(0xe3), char(0x80), char(0x82) };
+    char error[] = { char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a) };
     const char* big5_cnext;
-    wchar_t buf[16];
+    wchar_t buf[11];
     const wchar_t* buf_cnext;
     wchar_t* buf_next;
-    char out[16];
+    char out[11];
     char* out_next;
-/* FIXME TODO Boost implementation of codecvt fails to convert from Chinese
+
     ASSERT_EQ(
       std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
       cvt_big5.in(state, big5, big5 + IRESEARCH_COUNTOF(big5), big5_cnext, buf, buf + 1, buf_next)
     );
-    ASSERT_EQ(&big5[1], big5_cnext);
+    ASSERT_EQ(&big5[2], big5_cnext); // +2 since BIG5 uses 2 bytes per char
     ASSERT_EQ(&buf[1], buf_next);
 
     ASSERT_EQ(
@@ -1636,7 +1637,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_non_unicod
     );
 
     ASSERT_EQ(big5 + IRESEARCH_COUNTOF(big5), big5_cnext);
-    ASSERT_EQ(buf + IRESEARCH_COUNTOF(buf) -1, buf_next); // FIXME TODO Boost incorrectly sets buf_next, remove -1
+    ASSERT_EQ(buf + IRESEARCH_COUNTOF(buf), buf_next);
 
     ASSERT_EQ(
       std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
@@ -1646,7 +1647,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_non_unicod
     ASSERT_EQ(&out[1], out_next);
 
     for (size_t i = 0, count = 1; i < count; ++i) {
-      ASSERT_EQ(utf8[i], out[i]);
+      ASSERT_EQ(error[i], out[i]);
     }
 
     ASSERT_EQ(
@@ -1658,9 +1659,8 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_non_unicod
     ASSERT_EQ(out + IRESEARCH_COUNTOF(out), out_next);
 
     for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
-      ASSERT_EQ(utf8[i], out[i]);
+      ASSERT_EQ(error[i], out[i]);
     }
-*/
   }
 
   // multi-byte charset (wchar) Chinese (from utf8)
@@ -1668,20 +1668,21 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_non_unicod
     auto& cvt_big5 = std::use_facet<std::codecvt<wchar_t, char, mbstate_t>>(zh0);
     auto& cvt_utf8 = std::use_facet<std::codecvt<wchar_t, char, mbstate_t>>(zh1);
     mbstate_t state = mbstate_t();
-    char big5[] = { char(0xa4), char(0xb5), char(0xa4), char(0xd1), char(0xa4), char(0x55), char(0xa4), char(0xc8), char(0xaa), char(0xba), char(0xa4), char(0xd3), char(0xb6), char(0xa7), char(0xab), char(0xdc), char(0xb7), char(0xc5), char(0xb7), char(0x78), char(0xa1), char(0x43) };
-    char utf8[] = { char(0xe4), char(0xbb), char(0x8a), char(0xe5), char(0xa4), char(0xa9), char(0xe4), char(0xb8), char(0x8b), char(0xe5), char(0x8d), char(0x88), char(0xe7), char(0x9a), char(0x84), char(0xe5), char(0xa4), char(0xaa), char(0xe9), char(0x98), char(0xb3), char(0xe5), char(0xbe), char(0x88), char(0xe6), char(0xb8), char(0xa9), char(0xe6), char(0x9a), char(0x96), char(0xe3), char(0x80), char(0x82) };
+    char big5[] =  { char(0xa4), char(0xb5), char(0xa4), char(0xd1), char(0xa4), char(0x55), char(0xa4), char(0xc8), char(0xaa), char(0xba), char(0xa4), char(0xd3), char(0xb6), char(0xa7), char(0xab), char(0xdc), char(0xb7), char(0xc5), char(0xb7), char(0x78), char(0xa1), char(0x43) };
+    char utf8[] =  { char(0xe4), char(0xbb), char(0x8a), char(0xe5), char(0xa4), char(0xa9), char(0xe4), char(0xb8), char(0x8b), char(0xe5), char(0x8d), char(0x88), char(0xe7), char(0x9a), char(0x84), char(0xe5), char(0xa4), char(0xaa), char(0xe9), char(0x99), char(0xbd), char(0xe5), char(0xbe), char(0x88), char(0xe6), char(0xba), char(0xab), char(0xe6), char(0x9a), char(0x96), char(0xe3), char(0x80), char(0x82) };
+    char error[] = { char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a), char(0x1a) };
     const char* utf8_cnext;
-    wchar_t buf[16];
+    wchar_t buf[11];
     const wchar_t* buf_cnext;
     wchar_t* buf_next;
-    char out[16];
+    char out[11];
     char* out_next;
-/* FIXME TODO Boost implementation of codecvt fails to convert from Chinese
+
     ASSERT_EQ(
       std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
       cvt_utf8.in(state, utf8, utf8 + IRESEARCH_COUNTOF(utf8), utf8_cnext, buf, buf + 1, buf_next)
     );
-    ASSERT_EQ(&utf8[1], utf8_cnext);
+    ASSERT_EQ(&utf8[3], utf8_cnext); // +3 since UTF8 uses 3 bytes per char for Chinese
     ASSERT_EQ(&buf[1], buf_next);
 
     ASSERT_EQ(
@@ -1690,7 +1691,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_non_unicod
     );
 
     ASSERT_EQ(utf8 + IRESEARCH_COUNTOF(utf8), utf8_cnext);
-    ASSERT_EQ(buf + IRESEARCH_COUNTOF(buf) -1, buf_next); // FIXME TODO Boost incorrectly sets buf_next, remove -1
+    ASSERT_EQ(buf + IRESEARCH_COUNTOF(buf), buf_next);
 
     ASSERT_EQ(
       std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
@@ -1700,7 +1701,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_non_unicod
     ASSERT_EQ(&out[1], out_next);
 
     for (size_t i = 0, count = 1; i < count; ++i) {
-      ASSERT_EQ(big5[i], out[i]);
+      ASSERT_EQ(error[i], out[i]);
     }
 
     ASSERT_EQ(
@@ -1712,9 +1713,8 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_non_unicod
     ASSERT_EQ(out + IRESEARCH_COUNTOF(out), out_next);
 
     for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
-      ASSERT_EQ(big5[i], out[i]);
+      ASSERT_EQ(error[i], out[i]);
     }
-*/
   }
 
   // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
@@ -1729,20 +1729,20 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_non_unicod
       auto& cvt_utf8 = std::use_facet<std::codecvt<char16_t, char, mbstate_t>>(zh1);
       mbstate_t state = mbstate_t();
       char big5[] = { char(0xa4), char(0xb5), char(0xa4), char(0xd1), char(0xa4), char(0x55), char(0xa4), char(0xc8), char(0xaa), char(0xba), char(0xa4), char(0xd3), char(0xb6), char(0xa7), char(0xab), char(0xdc), char(0xb7), char(0xc5), char(0xb7), char(0x78), char(0xa1), char(0x43) };
-      char16_t utf16[] = { char16_t(0x4ECA), char16_t(0x5929), char16_t(0x4E0B), char16_t(0x5348), char16_t(0x7684), char16_t(0x592A), char16_t(0x9633), char16_t(0x5F88), char16_t(0x6E29), char16_t(0x6696), char16_t(0x3002) };
-      char utf8[] = { char(0xe4), char(0xbb), char(0x8a), char(0xe5), char(0xa4), char(0xa9), char(0xe4), char(0xb8), char(0x8b), char(0xe5), char(0x8d), char(0x88), char(0xe7), char(0x9a), char(0x84), char(0xe5), char(0xa4), char(0xaa), char(0xe9), char(0x98), char(0xb3), char(0xe5), char(0xbe), char(0x88), char(0xe6), char(0xb8), char(0xa9), char(0xe6), char(0x9a), char(0x96), char(0xe3), char(0x80), char(0x82) };
+      char16_t utf16[] = { char16_t(0x4ECA), char16_t(0x5929), char16_t(0x4E0B), char16_t(0x5348), char16_t(0x7684), char16_t(0x592A), char16_t(0x967D), char16_t(0x5F88), char16_t(0x6EAB), char16_t(0x6696), char16_t(0x3002) };
+      char utf8[] = { char(0xe4), char(0xbb), char(0x8a), char(0xe5), char(0xa4), char(0xa9), char(0xe4), char(0xb8), char(0x8b), char(0xe5), char(0x8d), char(0x88), char(0xe7), char(0x9a), char(0x84), char(0xe5), char(0xa4), char(0xaa), char(0xe9), char(0x99), char(0xbd), char(0xe5), char(0xbe), char(0x88), char(0xe6), char(0xba), char(0xab), char(0xe6), char(0x9a), char(0x96), char(0xe3), char(0x80), char(0x82) };
       const char* big5_cnext;
       const char16_t* utf16_cnext;
-      char16_t buf[16];
+      char16_t buf[11];
       char16_t* buf_next;
-      char out[16];
+      char out[33];
       char* out_next;
-/* FIXME TODO Boost implementation of codecvt fails to convert from Chinese
+
       ASSERT_EQ(
         std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
         cvt_big5.in(state, big5, big5 + IRESEARCH_COUNTOF(big5), big5_cnext, buf, buf + 1, buf_next)
       );
-      ASSERT_EQ(&big5[1], big5_cnext);
+      ASSERT_EQ(&big5[2], big5_cnext); // +2 since BIG5 uses 2 bytes per char
       ASSERT_EQ(&buf[1], buf_next);
 
       for (size_t i = 0, count = 1; i < count; ++i) {
@@ -1763,12 +1763,12 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_non_unicod
 
       ASSERT_EQ(
         std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
-        cvt_utf8.out(state, utf16, utf16 + IRESEARCH_COUNTOF(utf16), utf16_cnext, out, out + 1, out_next)
+        cvt_utf8.out(state, utf16, utf16 + IRESEARCH_COUNTOF(utf16), utf16_cnext, out, out + 3, out_next) // +3 since UTF8 uses 3 bytes per char for Chinese
       );
       ASSERT_EQ(&utf16[1], utf16_cnext);
-      ASSERT_EQ(&out[1], out_next);
+      ASSERT_EQ(&out[3], out_next); // +3 since UTF8 uses 3 bytes per char for Chinese
 
-      for (size_t i = 0, count = 1; i < count; ++i) {
+      for (size_t i = 0, count = 3; i < count; ++i) { // +3 since UTF8 uses 3 bytes per char for Chinese
         ASSERT_EQ(utf8[i], out[i]);
       }
 
@@ -1783,7 +1783,6 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_non_unicod
       for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
         ASSERT_EQ(utf8[i], out[i]);
       }
-*/
     }
 
     // multi-byte charset (char16) Chinese (from utf8)
@@ -1792,20 +1791,20 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_non_unicod
       auto& cvt_utf8 = std::use_facet<std::codecvt<char16_t, char, mbstate_t>>(zh1);
       mbstate_t state = mbstate_t();
       char big5[] = { char(0xa4), char(0xb5), char(0xa4), char(0xd1), char(0xa4), char(0x55), char(0xa4), char(0xc8), char(0xaa), char(0xba), char(0xa4), char(0xd3), char(0xb6), char(0xa7), char(0xab), char(0xdc), char(0xb7), char(0xc5), char(0xb7), char(0x78), char(0xa1), char(0x43) };
-      char16_t utf16[] = { char16_t(0x4ECA), char16_t(0x5929), char16_t(0x4E0B), char16_t(0x5348), char16_t(0x7684), char16_t(0x592A), char16_t(0x9633), char16_t(0x5F88), char16_t(0x6E29), char16_t(0x6696), char16_t(0x3002) };
-      char utf8[] = { char(0xe4), char(0xbb), char(0x8a), char(0xe5), char(0xa4), char(0xa9), char(0xe4), char(0xb8), char(0x8b), char(0xe5), char(0x8d), char(0x88), char(0xe7), char(0x9a), char(0x84), char(0xe5), char(0xa4), char(0xaa), char(0xe9), char(0x98), char(0xb3), char(0xe5), char(0xbe), char(0x88), char(0xe6), char(0xb8), char(0xa9), char(0xe6), char(0x9a), char(0x96), char(0xe3), char(0x80), char(0x82) };
+      char16_t utf16[] = { char16_t(0x4ECA), char16_t(0x5929), char16_t(0x4E0B), char16_t(0x5348), char16_t(0x7684), char16_t(0x592A), char16_t(0x967D), char16_t(0x5F88), char16_t(0x6EAB), char16_t(0x6696), char16_t(0x3002) };
+      char utf8[] = { char(0xe4), char(0xbb), char(0x8a), char(0xe5), char(0xa4), char(0xa9), char(0xe4), char(0xb8), char(0x8b), char(0xe5), char(0x8d), char(0x88), char(0xe7), char(0x9a), char(0x84), char(0xe5), char(0xa4), char(0xaa), char(0xe9), char(0x99), char(0xbd), char(0xe5), char(0xbe), char(0x88), char(0xe6), char(0xba), char(0xab), char(0xe6), char(0x9a), char(0x96), char(0xe3), char(0x80), char(0x82) };
       const char* utf8_cnext;
       const char16_t* utf16_cnext;
-      char16_t buf[16];
+      char16_t buf[11];
       char16_t* buf_next;
-      char out[16];
+      char out[22];
       char* out_next;
-/* FIXME TODO Boost implementation of codecvt fails to convert from Chinese
+
       ASSERT_EQ(
         std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
         cvt_utf8.in(state, utf8, utf8 + IRESEARCH_COUNTOF(utf8), utf8_cnext, buf, buf + 1, buf_next)
       );
-      ASSERT_EQ(&utf8[1], utf8_cnext);
+      ASSERT_EQ(&utf8[3], utf8_cnext); // +3 since UTF8 uses 3 bytes per char for Chinese
       ASSERT_EQ(&buf[1], buf_next);
 
       for (size_t i = 0, count = 1; i < count; ++i) {
@@ -1826,12 +1825,12 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_non_unicod
 
       ASSERT_EQ(
         std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
-        cvt_big5.out(state, utf16, utf16 + IRESEARCH_COUNTOF(utf16), utf16_cnext, out, out + 1, out_next)
+        cvt_big5.out(state, utf16, utf16 + IRESEARCH_COUNTOF(utf16), utf16_cnext, out, out + 2, out_next) // +2 since BIG5 uses 2 bytes per char
       );
       ASSERT_EQ(&utf16[1], utf16_cnext);
-      ASSERT_EQ(&out[1], out_next);
+      ASSERT_EQ(&out[2], out_next); // +2 since BIG5 uses 2 bytes per char
 
-      for (size_t i = 0, count = 1; i < count; ++i) {
+      for (size_t i = 0, count = 2; i < count; ++i) { // +2 since BIG5 uses 2 bytes per char
         ASSERT_EQ(big5[i], out[i]);
       }
 
@@ -1854,20 +1853,20 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_non_unicod
       auto& cvt_utf8 = std::use_facet<std::codecvt<char32_t, char, mbstate_t>>(zh1);
       mbstate_t state = mbstate_t();
       char big5[] = { char(0xa4), char(0xb5), char(0xa4), char(0xd1), char(0xa4), char(0x55), char(0xa4), char(0xc8), char(0xaa), char(0xba), char(0xa4), char(0xd3), char(0xb6), char(0xa7), char(0xab), char(0xdc), char(0xb7), char(0xc5), char(0xb7), char(0x78), char(0xa1), char(0x43) };
-      char32_t utf32[] = { char32_t(0x4ECA), char32_t(0x5929), char32_t(0x4E0B), char32_t(0x5348), char32_t(0x7684), char32_t(0x592A), char32_t(0x9633), char32_t(0x5F88), char32_t(0x6E29), char32_t(0x6696), char32_t(0x3002) };
-      char utf8[] = { char(0xe4), char(0xbb), char(0x8a), char(0xe5), char(0xa4), char(0xa9), char(0xe4), char(0xb8), char(0x8b), char(0xe5), char(0x8d), char(0x88), char(0xe7), char(0x9a), char(0x84), char(0xe5), char(0xa4), char(0xaa), char(0xe9), char(0x98), char(0xb3), char(0xe5), char(0xbe), char(0x88), char(0xe6), char(0xb8), char(0xa9), char(0xe6), char(0x9a), char(0x96), char(0xe3), char(0x80), char(0x82) };
+      char32_t utf32[] = { char32_t(0x4ECA), char32_t(0x5929), char32_t(0x4E0B), char32_t(0x5348), char32_t(0x7684), char32_t(0x592A), char32_t(0x967D), char32_t(0x5F88), char32_t(0x6EAB), char32_t(0x6696), char32_t(0x3002) };
+      char utf8[] = { char(0xe4), char(0xbb), char(0x8a), char(0xe5), char(0xa4), char(0xa9), char(0xe4), char(0xb8), char(0x8b), char(0xe5), char(0x8d), char(0x88), char(0xe7), char(0x9a), char(0x84), char(0xe5), char(0xa4), char(0xaa), char(0xe9), char(0x99), char(0xbd), char(0xe5), char(0xbe), char(0x88), char(0xe6), char(0xba), char(0xab), char(0xe6), char(0x9a), char(0x96), char(0xe3), char(0x80), char(0x82) };
       const char* big5_cnext;
       const char32_t* utf32_cnext;
-      char32_t buf[16];
+      char32_t buf[11];
       char32_t* buf_next;
-      char out[16];
+      char out[33];
       char* out_next;
 
       ASSERT_EQ(
         std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
         cvt_big5.in(state, big5, big5 + IRESEARCH_COUNTOF(big5), big5_cnext, buf, buf + 1, buf_next)
       );
-      ASSERT_EQ(&big5[1], big5_cnext);
+      ASSERT_EQ(&big5[2], big5_cnext); // +2 since BIG5 uses 2 bytes per char
       ASSERT_EQ(&buf[1], buf_next);
 
       for (size_t i = 0, count = 1; i < count; ++i) {
@@ -1888,12 +1887,12 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_non_unicod
 
       ASSERT_EQ(
         std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
-        cvt_utf8.out(state, utf32, utf32 + IRESEARCH_COUNTOF(utf32), utf32_cnext, out, out + 1, out_next)
+        cvt_utf8.out(state, utf32, utf32 + IRESEARCH_COUNTOF(utf32), utf32_cnext, out, out + 3, out_next)
       );
       ASSERT_EQ(&utf32[1], utf32_cnext);
-      ASSERT_EQ(&out[1], out_next);
+      ASSERT_EQ(&out[3], out_next); // +3 since UTF8 uses 3 bytes per char for Chinese
 
-      for (size_t i = 0, count = 1; i < count; ++i) {
+      for (size_t i = 0, count = 3; i < count; ++i) { // +3 since UTF8 uses 3 bytes per char for Chinese
         ASSERT_EQ(utf8[i], out[i]);
       }
 
@@ -1908,7 +1907,6 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_non_unicod
       for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
         ASSERT_EQ(utf8[i], out[i]);
       }
-*/
     }
 
     // multi-byte charset (char32) Chinese (from utf8)
@@ -1917,20 +1915,20 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_non_unicod
       auto& cvt_utf8 = std::use_facet<std::codecvt<char32_t, char, mbstate_t>>(zh1);
       mbstate_t state = mbstate_t();
       char big5[] = { char(0xa4), char(0xb5), char(0xa4), char(0xd1), char(0xa4), char(0x55), char(0xa4), char(0xc8), char(0xaa), char(0xba), char(0xa4), char(0xd3), char(0xb6), char(0xa7), char(0xab), char(0xdc), char(0xb7), char(0xc5), char(0xb7), char(0x78), char(0xa1), char(0x43) };
-      char32_t utf32[] = { char32_t(0x4ECA), char32_t(0x5929), char32_t(0x4E0B), char32_t(0x5348), char32_t(0x7684), char32_t(0x592A), char32_t(0x9633), char32_t(0x5F88), char32_t(0x6E29), char32_t(0x6696), char32_t(0x3002) };
-      char utf8[] = { char(0xe4), char(0xbb), char(0x8a), char(0xe5), char(0xa4), char(0xa9), char(0xe4), char(0xb8), char(0x8b), char(0xe5), char(0x8d), char(0x88), char(0xe7), char(0x9a), char(0x84), char(0xe5), char(0xa4), char(0xaa), char(0xe9), char(0x98), char(0xb3), char(0xe5), char(0xbe), char(0x88), char(0xe6), char(0xb8), char(0xa9), char(0xe6), char(0x9a), char(0x96), char(0xe3), char(0x80), char(0x82) };
+      char32_t utf32[] = { char32_t(0x4ECA), char32_t(0x5929), char32_t(0x4E0B), char32_t(0x5348), char32_t(0x7684), char32_t(0x592A), char32_t(0x967D), char32_t(0x5F88), char32_t(0x6EAB), char32_t(0x6696), char32_t(0x3002) };
+      char utf8[] = { char(0xe4), char(0xbb), char(0x8a), char(0xe5), char(0xa4), char(0xa9), char(0xe4), char(0xb8), char(0x8b), char(0xe5), char(0x8d), char(0x88), char(0xe7), char(0x9a), char(0x84), char(0xe5), char(0xa4), char(0xaa), char(0xe9), char(0x99), char(0xbd), char(0xe5), char(0xbe), char(0x88), char(0xe6), char(0xba), char(0xab), char(0xe6), char(0x9a), char(0x96), char(0xe3), char(0x80), char(0x82) };
       const char* utf8_cnext;
       const char32_t* utf32_cnext;
-      char32_t buf[16];
+      char32_t buf[11];
       char32_t* buf_next;
-      char out[16];
+      char out[22];
       char* out_next;
-/* FIXME TODO Boost implementation of codecvt fails to convert from Chinese
+
       ASSERT_EQ(
         std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
         cvt_utf8.in(state, utf8, utf8 + IRESEARCH_COUNTOF(utf8), utf8_cnext, buf, buf + 1, buf_next)
       );
-      ASSERT_EQ(&utf8[1], utf8_cnext);
+      ASSERT_EQ(&utf8[3], utf8_cnext); // +3 since UTF8 uses 3 bytes per char for Chinese
       ASSERT_EQ(&buf[1], buf_next);
 
       for (size_t i = 0, count = 1; i < count; ++i) {
@@ -1951,12 +1949,12 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_non_unicod
 
       ASSERT_EQ(
         std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
-        cvt_big5.out(state, utf32, utf32 + IRESEARCH_COUNTOF(utf32), utf32_cnext, out, out + 1, out_next)
+        cvt_big5.out(state, utf32, utf32 + IRESEARCH_COUNTOF(utf32), utf32_cnext, out, out + 2, out_next) // +2 since BIG5 uses 2 bytes per char
       );
       ASSERT_EQ(&utf32[1], utf32_cnext);
-      ASSERT_EQ(&out[1], out_next);
+      ASSERT_EQ(&out[2], out_next); // +2 since BIG5 uses 2 bytes per char
 
-      for (size_t i = 0, count = 1; i < count; ++i) {
+      for (size_t i = 0, count = 2; i < count; ++i) { // +2 since BIG5 uses 2 bytes per char
         ASSERT_EQ(big5[i], out[i]);
       }
 
@@ -1971,7 +1969,6 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_non_unicod
       for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
         ASSERT_EQ(big5[i], out[i]);
       }
-      */
     }
 
   #endif
@@ -1990,20 +1987,20 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_unicode) {
     auto& cvt_utf8 = std::use_facet<std::codecvt<char, char, mbstate_t>>(zh1);
     mbstate_t state = mbstate_t();
     char big5[] = { char(0xa4), char(0xb5), char(0xa4), char(0xd1), char(0xa4), char(0x55), char(0xa4), char(0xc8), char(0xaa), char(0xba), char(0xa4), char(0xd3), char(0xb6), char(0xa7), char(0xab), char(0xdc), char(0xb7), char(0xc5), char(0xb7), char(0x78), char(0xa1), char(0x43) };
-    char utf8[] = { char(0xe4), char(0xbb), char(0x8a), char(0xe5), char(0xa4), char(0xa9), char(0xe4), char(0xb8), char(0x8b), char(0xe5), char(0x8d), char(0x88), char(0xe7), char(0x9a), char(0x84), char(0xe5), char(0xa4), char(0xaa), char(0xe9), char(0x98), char(0xb3), char(0xe5), char(0xbe), char(0x88), char(0xe6), char(0xb8), char(0xa9), char(0xe6), char(0x9a), char(0x96), char(0xe3), char(0x80), char(0x82) };
+    char utf8[] = { char(0xe4), char(0xbb), char(0x8a), char(0xe5), char(0xa4), char(0xa9), char(0xe4), char(0xb8), char(0x8b), char(0xe5), char(0x8d), char(0x88), char(0xe7), char(0x9a), char(0x84), char(0xe5), char(0xa4), char(0xaa), char(0xe9), char(0x99), char(0xbd), char(0xe5), char(0xbe), char(0x88), char(0xe6), char(0xba), char(0xab), char(0xe6), char(0x9a), char(0x96), char(0xe3), char(0x80), char(0x82) };
     const char* big5_cnext;
-    char buf[16];
+    char buf[33];
     const char* buf_cnext;
     char* buf_next;
-    char out[16];
+    char out[33];
     char* out_next;
-/* FIXME TODO Boost implementation of codecvt fails to convert from Chinese
+
     ASSERT_EQ(
       std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
-      cvt_big5.in(state, big5, big5 + IRESEARCH_COUNTOF(big5), big5_cnext, buf, buf + 1, buf_next)
+      cvt_big5.in(state, big5, big5 + IRESEARCH_COUNTOF(big5), big5_cnext, buf, buf + 3, buf_next) // +3 since UTF8 uses 3 bytes per char
     );
-    ASSERT_EQ(&big5[1], big5_cnext);
-    ASSERT_EQ(&buf[1], buf_next);
+    ASSERT_EQ(&big5[2], big5_cnext); // +2 since BIG5 uses 2 bytes per char
+    ASSERT_EQ(&buf[3], buf_next); // +3 since UTF8 uses 3 bytes per char
 
     ASSERT_EQ(
       std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
@@ -2015,10 +2012,10 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_unicode) {
 
     ASSERT_EQ(
       std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
-      cvt_utf8.out(state, buf, buf + IRESEARCH_COUNTOF(buf), buf_cnext, out, out + 1, out_next)
+      cvt_utf8.out(state, buf, buf + IRESEARCH_COUNTOF(buf), buf_cnext, out, out + 3, out_next) // +3 since UTF8 uses 3 bytes per char
     );
-    ASSERT_EQ(&buf[1], buf_cnext);
-    ASSERT_EQ(&out[1], out_next);
+    ASSERT_EQ(&buf[3], buf_cnext); // +3 since UTF8 uses 3 bytes per char
+    ASSERT_EQ(&out[3], out_next); // +3 since UTF8 uses 3 bytes per char
 
     ASSERT_EQ(
       std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
@@ -2031,7 +2028,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_unicode) {
     for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
       ASSERT_EQ(utf8[i], out[i]);
     }
-*/
+
   }
 
   // multi-byte charset (char) Chinese (from utf8)
@@ -2040,19 +2037,121 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_unicode) {
     auto& cvt_utf8 = std::use_facet<std::codecvt<char, char, mbstate_t>>(zh1);
     mbstate_t state = mbstate_t();
     char big5[] = { char(0xa4), char(0xb5), char(0xa4), char(0xd1), char(0xa4), char(0x55), char(0xa4), char(0xc8), char(0xaa), char(0xba), char(0xa4), char(0xd3), char(0xb6), char(0xa7), char(0xab), char(0xdc), char(0xb7), char(0xc5), char(0xb7), char(0x78), char(0xa1), char(0x43) };
-    char utf8[] = { char(0xe4), char(0xbb), char(0x8a), char(0xe5), char(0xa4), char(0xa9), char(0xe4), char(0xb8), char(0x8b), char(0xe5), char(0x8d), char(0x88), char(0xe7), char(0x9a), char(0x84), char(0xe5), char(0xa4), char(0xaa), char(0xe9), char(0x98), char(0xb3), char(0xe5), char(0xbe), char(0x88), char(0xe6), char(0xb8), char(0xa9), char(0xe6), char(0x9a), char(0x96), char(0xe3), char(0x80), char(0x82) };
+    char utf8[] = { char(0xe4), char(0xbb), char(0x8a), char(0xe5), char(0xa4), char(0xa9), char(0xe4), char(0xb8), char(0x8b), char(0xe5), char(0x8d), char(0x88), char(0xe7), char(0x9a), char(0x84), char(0xe5), char(0xa4), char(0xaa), char(0xe9), char(0x99), char(0xbd), char(0xe5), char(0xbe), char(0x88), char(0xe6), char(0xba), char(0xab), char(0xe6), char(0x9a), char(0x96), char(0xe3), char(0x80), char(0x82) };
     const char* utf8_cnext;
-    char buf[16];
+    char buf[33];
     const char* buf_cnext;
     char* buf_next;
-    char out[16];
+    char out[22];
     char* out_next;
-/* FIXME TODO Boost implementation of codecvt fails to convert from Chinese
+
+    ASSERT_EQ(
+      std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
+      cvt_utf8.in(state, utf8, utf8 + IRESEARCH_COUNTOF(utf8), utf8_cnext, buf, buf + 3, buf_next) // +3 since UTF8 uses 3 bytes per char for Chinese
+    );
+    ASSERT_EQ(&utf8[3], utf8_cnext); // +3 since UTF8 uses 3 bytes per char for Chinese
+    ASSERT_EQ(&buf[3], buf_next); // +3 since UTF8 uses 3 bytes per char for Chinese
+
+    ASSERT_EQ(
+      std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
+      cvt_utf8.in(state, utf8, utf8 + IRESEARCH_COUNTOF(utf8), utf8_cnext, buf, buf + IRESEARCH_COUNTOF(buf), buf_next)
+    );
+
+    ASSERT_EQ(utf8 + IRESEARCH_COUNTOF(utf8), utf8_cnext);
+    ASSERT_EQ(buf + IRESEARCH_COUNTOF(buf), buf_next);
+
+    ASSERT_EQ(
+      std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
+      cvt_big5.out(state, buf, buf + IRESEARCH_COUNTOF(buf), buf_cnext, out, out + 2, out_next) // +2 since BIG5 uses 2 bytes per char
+    );
+    ASSERT_EQ(&buf[3], buf_cnext); // +3 since UTF8 uses 3 bytes per char for Chinese
+    ASSERT_EQ(&out[2], out_next); // +2 since BIG5 uses 2 bytes per char
+
+    ASSERT_EQ(
+      std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
+      cvt_big5.out(state, buf, buf + IRESEARCH_COUNTOF(buf), buf_cnext, out, out + IRESEARCH_COUNTOF(out), out_next)
+    );
+
+    ASSERT_EQ(buf + IRESEARCH_COUNTOF(buf), buf_cnext);
+    ASSERT_EQ(out + IRESEARCH_COUNTOF(out), out_next);
+
+    for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
+      ASSERT_EQ(big5[i], out[i]);
+    }
+  }
+
+  // multi-byte charset (wchar) Chinese (from big5)
+  {
+    auto& cvt_big5 = std::use_facet<std::codecvt<wchar_t, char, mbstate_t>>(zh0);
+    auto& cvt_utf8 = std::use_facet<std::codecvt<wchar_t, char, mbstate_t>>(zh1);
+    mbstate_t state = mbstate_t();
+    char big5[] = { char(0xa4), char(0xb5), char(0xa4), char(0xd1), char(0xa4), char(0x55), char(0xa4), char(0xc8), char(0xaa), char(0xba), char(0xa4), char(0xd3), char(0xb6), char(0xa7), char(0xab), char(0xdc), char(0xb7), char(0xc5), char(0xb7), char(0x78), char(0xa1), char(0x43) };
+    char utf8[] = { char(0xe4), char(0xbb), char(0x8a), char(0xe5), char(0xa4), char(0xa9), char(0xe4), char(0xb8), char(0x8b), char(0xe5), char(0x8d), char(0x88), char(0xe7), char(0x9a), char(0x84), char(0xe5), char(0xa4), char(0xaa), char(0xe9), char(0x99), char(0xbd), char(0xe5), char(0xbe), char(0x88), char(0xe6), char(0xba), char(0xab), char(0xe6), char(0x9a), char(0x96), char(0xe3), char(0x80), char(0x82) };
+    const char* big5_cnext;
+    wchar_t buf[11];
+    const wchar_t* buf_cnext;
+    wchar_t* buf_next;
+    char out[33];
+    char* out_next;
+
+    ASSERT_EQ(
+      std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
+      cvt_big5.in(state, big5, big5 + IRESEARCH_COUNTOF(big5), big5_cnext, buf, buf + 1, buf_next)
+    );
+    ASSERT_EQ(&big5[2], big5_cnext); // +2 since BIG5 uses 2 bytes per char
+    ASSERT_EQ(&buf[1], buf_next);
+
+    ASSERT_EQ(
+      std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
+      cvt_big5.in(state, big5, big5 + IRESEARCH_COUNTOF(big5), big5_cnext, buf, buf + IRESEARCH_COUNTOF(buf), buf_next)
+    );
+
+    ASSERT_EQ(big5 + IRESEARCH_COUNTOF(big5), big5_cnext);
+    ASSERT_EQ(buf + IRESEARCH_COUNTOF(buf), buf_next);
+
+    ASSERT_EQ(
+      std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
+      cvt_utf8.out(state, buf, buf + IRESEARCH_COUNTOF(buf), buf_cnext, out, out + 3, out_next) // +3 since UTF8 uses 3 bytes per char for Chinese
+    );
+    ASSERT_EQ(&buf[1], buf_cnext);
+    ASSERT_EQ(&out[3], out_next); // +3 since UTF8 uses 3 bytes per char for Chinese
+
+    for (size_t i = 0, count = 1; i < count; ++i) {
+      ASSERT_EQ(utf8[i], out[i]);
+    }
+
+    ASSERT_EQ(
+      std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
+      cvt_utf8.out(state, buf, buf + IRESEARCH_COUNTOF(buf), buf_cnext, out, out + IRESEARCH_COUNTOF(out), out_next)
+    );
+
+    ASSERT_EQ(buf + IRESEARCH_COUNTOF(buf), buf_cnext);
+    ASSERT_EQ(out + IRESEARCH_COUNTOF(out), out_next);
+
+    for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
+      ASSERT_EQ(utf8[i], out[i]);
+    }
+  }
+
+  // multi-byte charset (wchar) Chinese (from utf8)
+  {
+    auto& cvt_big5 = std::use_facet<std::codecvt<wchar_t, char, mbstate_t>>(zh0);
+    auto& cvt_utf8 = std::use_facet<std::codecvt<wchar_t, char, mbstate_t>>(zh1);
+    mbstate_t state = mbstate_t();
+    char big5[] = { char(0xa4), char(0xb5), char(0xa4), char(0xd1), char(0xa4), char(0x55), char(0xa4), char(0xc8), char(0xaa), char(0xba), char(0xa4), char(0xd3), char(0xb6), char(0xa7), char(0xab), char(0xdc), char(0xb7), char(0xc5), char(0xb7), char(0x78), char(0xa1), char(0x43) };
+    char utf8[] = { char(0xe4), char(0xbb), char(0x8a), char(0xe5), char(0xa4), char(0xa9), char(0xe4), char(0xb8), char(0x8b), char(0xe5), char(0x8d), char(0x88), char(0xe7), char(0x9a), char(0x84), char(0xe5), char(0xa4), char(0xaa), char(0xe9), char(0x99), char(0xbd), char(0xe5), char(0xbe), char(0x88), char(0xe6), char(0xba), char(0xab), char(0xe6), char(0x9a), char(0x96), char(0xe3), char(0x80), char(0x82) };
+    const char* utf8_cnext;
+    wchar_t buf[11];
+    const wchar_t* buf_cnext;
+    wchar_t* buf_next;
+    char out[22];
+    char* out_next;
+
     ASSERT_EQ(
       std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
       cvt_utf8.in(state, utf8, utf8 + IRESEARCH_COUNTOF(utf8), utf8_cnext, buf, buf + 1, buf_next)
     );
-    ASSERT_EQ(&utf8[1], utf8_cnext);
+    ASSERT_EQ(&utf8[3], utf8_cnext); // +3 since UTF8 uses 3 bytes per char for Chinese
     ASSERT_EQ(&buf[1], buf_next);
 
     ASSERT_EQ(
@@ -2070,110 +2169,6 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_unicode) {
     ASSERT_EQ(&buf[1], buf_cnext);
     ASSERT_EQ(&out[1], out_next);
 
-    ASSERT_EQ(
-      std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
-      cvt_big5.out(state, buf, buf + IRESEARCH_COUNTOF(buf), buf_cnext, out, out + IRESEARCH_COUNTOF(out), out_next)
-    );
-
-    ASSERT_EQ(buf + IRESEARCH_COUNTOF(buf), buf_cnext);
-    ASSERT_EQ(out + IRESEARCH_COUNTOF(out), out_next);
-
-    for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
-      ASSERT_EQ(big5[i], out[i]);
-    }
-*/
-  }
-
-  // multi-byte charset (wchar) Chinese (from big5)
-  {
-    auto& cvt_big5 = std::use_facet<std::codecvt<wchar_t, char, mbstate_t>>(zh0);
-    auto& cvt_utf8 = std::use_facet<std::codecvt<wchar_t, char, mbstate_t>>(zh1);
-    mbstate_t state = mbstate_t();
-    char big5[] = { char(0xa4), char(0xb5), char(0xa4), char(0xd1), char(0xa4), char(0x55), char(0xa4), char(0xc8), char(0xaa), char(0xba), char(0xa4), char(0xd3), char(0xb6), char(0xa7), char(0xab), char(0xdc), char(0xb7), char(0xc5), char(0xb7), char(0x78), char(0xa1), char(0x43) };
-    char utf8[] = { char(0xe4), char(0xbb), char(0x8a), char(0xe5), char(0xa4), char(0xa9), char(0xe4), char(0xb8), char(0x8b), char(0xe5), char(0x8d), char(0x88), char(0xe7), char(0x9a), char(0x84), char(0xe5), char(0xa4), char(0xaa), char(0xe9), char(0x98), char(0xb3), char(0xe5), char(0xbe), char(0x88), char(0xe6), char(0xb8), char(0xa9), char(0xe6), char(0x9a), char(0x96), char(0xe3), char(0x80), char(0x82) };
-    const char* big5_cnext;
-    wchar_t buf[16];
-    const wchar_t* buf_cnext;
-    wchar_t* buf_next;
-    char out[16];
-    char* out_next;
-/* FIXME TODO Boost implementation of codecvt fails to convert from Chinese
-    ASSERT_EQ(
-      std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
-      cvt_big5.in(state, big5, big5 + IRESEARCH_COUNTOF(big5), big5_cnext, buf, buf + 1, buf_next)
-    );
-    ASSERT_EQ(&big5[1], big5_cnext);
-    ASSERT_EQ(&buf[1], buf_next);
-
-    ASSERT_EQ(
-      std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
-      cvt_big5.in(state, big5, big5 + IRESEARCH_COUNTOF(big5), big5_cnext, buf, buf + IRESEARCH_COUNTOF(buf), buf_next)
-    );
-
-    ASSERT_EQ(big5 + IRESEARCH_COUNTOF(big5), big5_cnext);
-    ASSERT_EQ(buf + IRESEARCH_COUNTOF(buf) -1, buf_next); // FIXME TODO Boost incorrectly sets buf_next, remove -1
-
-    ASSERT_EQ(
-      std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
-      cvt_utf8.out(state, buf, buf + IRESEARCH_COUNTOF(buf), buf_cnext, out, out + 1, out_next)
-    );
-    ASSERT_EQ(&buf[1], buf_cnext);
-    ASSERT_EQ(&out[1], out_next);
-
-    for (size_t i = 0, count = 1; i < count; ++i) {
-      ASSERT_EQ(utf8[i], out[i]);
-    }
-
-    ASSERT_EQ(
-      std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
-      cvt_utf8.out(state, buf, buf + IRESEARCH_COUNTOF(buf), buf_cnext, out, out + IRESEARCH_COUNTOF(out), out_next)
-    );
-
-    ASSERT_EQ(buf + IRESEARCH_COUNTOF(buf), buf_cnext);
-    ASSERT_EQ(out + IRESEARCH_COUNTOF(out), out_next);
-
-    for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
-      ASSERT_EQ(utf8[i], out[i]);
-    }
-*/
-  }
-
-  // multi-byte charset (wchar) Chinese (from utf8)
-  {
-    auto& cvt_big5 = std::use_facet<std::codecvt<wchar_t, char, mbstate_t>>(zh0);
-    auto& cvt_utf8 = std::use_facet<std::codecvt<wchar_t, char, mbstate_t>>(zh1);
-    mbstate_t state = mbstate_t();
-    char big5[] = { char(0xa4), char(0xb5), char(0xa4), char(0xd1), char(0xa4), char(0x55), char(0xa4), char(0xc8), char(0xaa), char(0xba), char(0xa4), char(0xd3), char(0xb6), char(0xa7), char(0xab), char(0xdc), char(0xb7), char(0xc5), char(0xb7), char(0x78), char(0xa1), char(0x43) };
-    char utf8[] = { char(0xe4), char(0xbb), char(0x8a), char(0xe5), char(0xa4), char(0xa9), char(0xe4), char(0xb8), char(0x8b), char(0xe5), char(0x8d), char(0x88), char(0xe7), char(0x9a), char(0x84), char(0xe5), char(0xa4), char(0xaa), char(0xe9), char(0x98), char(0xb3), char(0xe5), char(0xbe), char(0x88), char(0xe6), char(0xb8), char(0xa9), char(0xe6), char(0x9a), char(0x96), char(0xe3), char(0x80), char(0x82) };
-    const char* utf8_cnext;
-    wchar_t buf[16];
-    const wchar_t* buf_cnext;
-    wchar_t* buf_next;
-    char out[16];
-    char* out_next;
-/* FIXME TODO Boost implementation of codecvt fails to convert from Chinese
-    ASSERT_EQ(
-      std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
-      cvt_utf8.in(state, utf8, utf8 + IRESEARCH_COUNTOF(utf8), utf8_cnext, buf, buf + 1, buf_next)
-    );
-    ASSERT_EQ(&utf8[1], utf8_cnext);
-    ASSERT_EQ(&buf[1], buf_next);
-
-    ASSERT_EQ(
-      std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
-      cvt_utf8.in(state, utf8, utf8 + IRESEARCH_COUNTOF(utf8), utf8_cnext, buf, buf + IRESEARCH_COUNTOF(buf), buf_next)
-    );
-
-    ASSERT_EQ(utf8 + IRESEARCH_COUNTOF(utf8), utf8_cnext);
-    ASSERT_EQ(buf + IRESEARCH_COUNTOF(buf) -1, buf_next); // FIXME TODO Boost incorrectly sets buf_next, remove -1
-
-    ASSERT_EQ(
-      std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
-      cvt_big5.out(state, buf, buf + IRESEARCH_COUNTOF(buf), buf_cnext, out, out + 1, out_next)
-    );
-    ASSERT_EQ(&buf[1], buf_cnext);
-    ASSERT_EQ(&out[1], out_next);
-
     for (size_t i = 0, count = 1; i < count; ++i) {
       ASSERT_EQ(big5[i], out[i]);
     }
@@ -2189,9 +2184,8 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_unicode) {
     for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
       ASSERT_EQ(big5[i], out[i]);
     }
-*/
   }
-/*
+
   // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
   // due to a missing export, as per their comment:
   //   This is an active bug in our database (VSO#143857), which we'll investigate
@@ -2204,20 +2198,20 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_unicode) {
       auto& cvt_utf8 = std::use_facet<std::codecvt<char16_t, char, mbstate_t>>(zh1);
       mbstate_t state = mbstate_t();
       char big5[] = { char(0xa4), char(0xb5), char(0xa4), char(0xd1), char(0xa4), char(0x55), char(0xa4), char(0xc8), char(0xaa), char(0xba), char(0xa4), char(0xd3), char(0xb6), char(0xa7), char(0xab), char(0xdc), char(0xb7), char(0xc5), char(0xb7), char(0x78), char(0xa1), char(0x43) };
-      char16_t utf16[] = { char16_t(0x4ECA), char16_t(0x5929), char16_t(0x4E0B), char16_t(0x5348), char16_t(0x7684), char16_t(0x592A), char16_t(0x9633), char16_t(0x5F88), char16_t(0x6E29), char16_t(0x6696), char16_t(0x3002) };
-      char utf8[] = { char(0xe4), char(0xbb), char(0x8a), char(0xe5), char(0xa4), char(0xa9), char(0xe4), char(0xb8), char(0x8b), char(0xe5), char(0x8d), char(0x88), char(0xe7), char(0x9a), char(0x84), char(0xe5), char(0xa4), char(0xaa), char(0xe9), char(0x98), char(0xb3), char(0xe5), char(0xbe), char(0x88), char(0xe6), char(0xb8), char(0xa9), char(0xe6), char(0x9a), char(0x96), char(0xe3), char(0x80), char(0x82) };
+      char16_t utf16[] = { char16_t(0x4ECA), char16_t(0x5929), char16_t(0x4E0B), char16_t(0x5348), char16_t(0x7684), char16_t(0x592A), char16_t(0x967D), char16_t(0x5F88), char16_t(0x6EAB), char16_t(0x6696), char16_t(0x3002) };
+      char utf8[] = { char(0xe4), char(0xbb), char(0x8a), char(0xe5), char(0xa4), char(0xa9), char(0xe4), char(0xb8), char(0x8b), char(0xe5), char(0x8d), char(0x88), char(0xe7), char(0x9a), char(0x84), char(0xe5), char(0xa4), char(0xaa), char(0xe9), char(0x99), char(0xbd), char(0xe5), char(0xbe), char(0x88), char(0xe6), char(0xba), char(0xab), char(0xe6), char(0x9a), char(0x96), char(0xe3), char(0x80), char(0x82) };
       const char* big5_cnext;
       const char16_t* utf16_cnext;
-      char16_t buf[16];
+      char16_t buf[11];
       char16_t* buf_next;
-      char out[16];
+      char out[33];
       char* out_next;
-/* FIXME TODO Boost implementation of codecvt fails to convert from Chinese
+
       ASSERT_EQ(
         std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
         cvt_big5.in(state, big5, big5 + IRESEARCH_COUNTOF(big5), big5_cnext, buf, buf + 1, buf_next)
       );
-      ASSERT_EQ(&big5[1], big5_cnext);
+      ASSERT_EQ(&big5[2], big5_cnext); // +2 since BIG5 uses 2 bytes per char
       ASSERT_EQ(&buf[1], buf_next);
 
       for (size_t i = 0, count = 1; i < count; ++i) {
@@ -2238,10 +2232,10 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_unicode) {
 
       ASSERT_EQ(
         std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
-        cvt_utf8.out(state, utf16, utf16 + IRESEARCH_COUNTOF(utf16), utf16_cnext, out, out + 1, out_next)
+        cvt_utf8.out(state, utf16, utf16 + IRESEARCH_COUNTOF(utf16), utf16_cnext, out, out + 3, out_next) // +3 since UTF8 uses 3 bytes per char for Chinese
       );
       ASSERT_EQ(&utf16[1], utf16_cnext);
-      ASSERT_EQ(&out[1], out_next);
+      ASSERT_EQ(&out[3], out_next); // +3 since UTF8 uses 3 bytes per char for Chinese
 
       for (size_t i = 0, count = 1; i < count; ++i) {
         ASSERT_EQ(utf8[i], out[i]);
@@ -2258,7 +2252,6 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_unicode) {
       for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
         ASSERT_EQ(utf8[i], out[i]);
       }
-* /
     }
 
     // multi-byte charset (char16) Chinese (from utf8)
@@ -2267,20 +2260,20 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_unicode) {
       auto& cvt_utf8 = std::use_facet<std::codecvt<char16_t, char, mbstate_t>>(zh1);
       mbstate_t state = mbstate_t();
       char big5[] = { char(0xa4), char(0xb5), char(0xa4), char(0xd1), char(0xa4), char(0x55), char(0xa4), char(0xc8), char(0xaa), char(0xba), char(0xa4), char(0xd3), char(0xb6), char(0xa7), char(0xab), char(0xdc), char(0xb7), char(0xc5), char(0xb7), char(0x78), char(0xa1), char(0x43) };
-      char16_t utf16[] = { char16_t(0x4ECA), char16_t(0x5929), char16_t(0x4E0B), char16_t(0x5348), char16_t(0x7684), char16_t(0x592A), char16_t(0x9633), char16_t(0x5F88), char16_t(0x6E29), char16_t(0x6696), char16_t(0x3002) };
-      char utf8[] = { char(0xe4), char(0xbb), char(0x8a), char(0xe5), char(0xa4), char(0xa9), char(0xe4), char(0xb8), char(0x8b), char(0xe5), char(0x8d), char(0x88), char(0xe7), char(0x9a), char(0x84), char(0xe5), char(0xa4), char(0xaa), char(0xe9), char(0x98), char(0xb3), char(0xe5), char(0xbe), char(0x88), char(0xe6), char(0xb8), char(0xa9), char(0xe6), char(0x9a), char(0x96), char(0xe3), char(0x80), char(0x82) };
+      char16_t utf16[] = { char16_t(0x4ECA), char16_t(0x5929), char16_t(0x4E0B), char16_t(0x5348), char16_t(0x7684), char16_t(0x592A), char16_t(0x967D), char16_t(0x5F88), char16_t(0x6EAB), char16_t(0x6696), char16_t(0x3002) };
+      char utf8[] = { char(0xe4), char(0xbb), char(0x8a), char(0xe5), char(0xa4), char(0xa9), char(0xe4), char(0xb8), char(0x8b), char(0xe5), char(0x8d), char(0x88), char(0xe7), char(0x9a), char(0x84), char(0xe5), char(0xa4), char(0xaa), char(0xe9), char(0x99), char(0xbd), char(0xe5), char(0xbe), char(0x88), char(0xe6), char(0xba), char(0xab), char(0xe6), char(0x9a), char(0x96), char(0xe3), char(0x80), char(0x82) };
       const char* utf8_cnext;
       const char16_t* utf16_cnext;
-      char16_t buf[16];
+      char16_t buf[11];
       char16_t* buf_next;
-      char out[16];
+      char out[22];
       char* out_next;
-/* FIXME TODO Boost implementation of codecvt fails to convert from Chinese
+
       ASSERT_EQ(
         std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
         cvt_utf8.in(state, utf8, utf8 + IRESEARCH_COUNTOF(utf8), utf8_cnext, buf, buf + 1, buf_next)
       );
-      ASSERT_EQ(&utf8[1], utf8_cnext);
+      ASSERT_EQ(&utf8[3], utf8_cnext); // +3 since UTF8 uses 3 bytes per char for Chinese
       ASSERT_EQ(&buf[1], buf_next);
 
       for (size_t i = 0, count = 1; i < count; ++i) {
@@ -2301,12 +2294,12 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_unicode) {
 
       ASSERT_EQ(
         std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
-        cvt_big5.out(state, utf16, utf16 + IRESEARCH_COUNTOF(utf16), utf16_cnext, out, out + 1, out_next)
+        cvt_big5.out(state, utf16, utf16 + IRESEARCH_COUNTOF(utf16), utf16_cnext, out, out + 2, out_next) // +2 since BIG5 uses 2 bytes per char
       );
       ASSERT_EQ(&utf16[1], utf16_cnext);
-      ASSERT_EQ(&out[1], out_next);
+      ASSERT_EQ(&out[2], out_next); // +2 since BIG5 uses 2 bytes per char
 
-      for (size_t i = 0, count = 1; i < count; ++i) {
+      for (size_t i = 0, count = 2; i < count; ++i) { // +2 since BIG5 uses 2 bytes per char
         ASSERT_EQ(big5[i], out[i]);
       }
 
@@ -2321,7 +2314,6 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_unicode) {
       for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
         ASSERT_EQ(big5[i], out[i]);
       }
-* /
     }
 
     // multi-byte charset (char32) Chinese (from big5)
@@ -2330,20 +2322,20 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_unicode) {
       auto& cvt_utf8 = std::use_facet<std::codecvt<char32_t, char, mbstate_t>>(zh1);
       mbstate_t state = mbstate_t();
       char big5[] = { char(0xa4), char(0xb5), char(0xa4), char(0xd1), char(0xa4), char(0x55), char(0xa4), char(0xc8), char(0xaa), char(0xba), char(0xa4), char(0xd3), char(0xb6), char(0xa7), char(0xab), char(0xdc), char(0xb7), char(0xc5), char(0xb7), char(0x78), char(0xa1), char(0x43) };
-      char32_t utf32[] = { char32_t(0x4ECA), char32_t(0x5929), char32_t(0x4E0B), char32_t(0x5348), char32_t(0x7684), char32_t(0x592A), char32_t(0x9633), char32_t(0x5F88), char32_t(0x6E29), char32_t(0x6696), char32_t(0x3002) };
-      char utf8[] = { char(0xe4), char(0xbb), char(0x8a), char(0xe5), char(0xa4), char(0xa9), char(0xe4), char(0xb8), char(0x8b), char(0xe5), char(0x8d), char(0x88), char(0xe7), char(0x9a), char(0x84), char(0xe5), char(0xa4), char(0xaa), char(0xe9), char(0x98), char(0xb3), char(0xe5), char(0xbe), char(0x88), char(0xe6), char(0xb8), char(0xa9), char(0xe6), char(0x9a), char(0x96), char(0xe3), char(0x80), char(0x82) };
+      char32_t utf32[] = { char32_t(0x4ECA), char32_t(0x5929), char32_t(0x4E0B), char32_t(0x5348), char32_t(0x7684), char32_t(0x592A), char32_t(0x967D), char32_t(0x5F88), char32_t(0x6EAB), char32_t(0x6696), char32_t(0x3002) };
+      char utf8[] = { char(0xe4), char(0xbb), char(0x8a), char(0xe5), char(0xa4), char(0xa9), char(0xe4), char(0xb8), char(0x8b), char(0xe5), char(0x8d), char(0x88), char(0xe7), char(0x9a), char(0x84), char(0xe5), char(0xa4), char(0xaa), char(0xe9), char(0x99), char(0xbd), char(0xe5), char(0xbe), char(0x88), char(0xe6), char(0xba), char(0xab), char(0xe6), char(0x9a), char(0x96), char(0xe3), char(0x80), char(0x82) };
       const char* big5_cnext;
       const char32_t* utf32_cnext;
-      char32_t buf[16];
+      char32_t buf[11];
       char32_t* buf_next;
-      char out[16];
+      char out[33];
       char* out_next;
-/* FIXME TODO Boost implementation of codecvt fails to convert from Chinese
+
       ASSERT_EQ(
         std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
         cvt_big5.in(state, big5, big5 + IRESEARCH_COUNTOF(big5), big5_cnext, buf, buf + 1, buf_next)
       );
-      ASSERT_EQ(&big5[1], big5_cnext);
+      ASSERT_EQ(&big5[2], big5_cnext); // +2 since BIG5 uses 2 bytes per char
       ASSERT_EQ(&buf[1], buf_next);
 
       for (size_t i = 0, count = 1; i < count; ++i) {
@@ -2364,12 +2356,12 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_unicode) {
 
       ASSERT_EQ(
         std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
-        cvt_utf8.out(state, utf32, utf32 + IRESEARCH_COUNTOF(utf32), utf32_cnext, out, out + 1, out_next)
+        cvt_utf8.out(state, utf32, utf32 + IRESEARCH_COUNTOF(utf32), utf32_cnext, out, out + 3, out_next) // +3 since UTF8 uses 3 bytes per char for Chinese
       );
       ASSERT_EQ(&utf32[1], utf32_cnext);
-      ASSERT_EQ(&out[1], out_next);
+      ASSERT_EQ(&out[3], out_next); // +3 since UTF8 uses 3 bytes per char for Chinese
 
-      for (size_t i = 0, count = 1; i < count; ++i) {
+      for (size_t i = 0, count = 3; i < count; ++i) { // +3 since UTF8 uses 3 bytes per char for Chinese
         ASSERT_EQ(utf8[i], out[i]);
       }
 
@@ -2384,7 +2376,6 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_unicode) {
       for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
         ASSERT_EQ(utf8[i], out[i]);
       }
-* /
     }
 
     // multi-byte charset (char32) Chinese (from utf8)
@@ -2393,20 +2384,20 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_unicode) {
       auto& cvt_utf8 = std::use_facet<std::codecvt<char32_t, char, mbstate_t>>(zh1);
       mbstate_t state = mbstate_t();
       char big5[] = { char(0xa4), char(0xb5), char(0xa4), char(0xd1), char(0xa4), char(0x55), char(0xa4), char(0xc8), char(0xaa), char(0xba), char(0xa4), char(0xd3), char(0xb6), char(0xa7), char(0xab), char(0xdc), char(0xb7), char(0xc5), char(0xb7), char(0x78), char(0xa1), char(0x43) };
-      char32_t utf32[] = { char32_t(0x4ECA), char32_t(0x5929), char32_t(0x4E0B), char32_t(0x5348), char32_t(0x7684), char32_t(0x592A), char32_t(0x9633), char32_t(0x5F88), char32_t(0x6E29), char32_t(0x6696), char32_t(0x3002) };
-      char utf8[] = { char(0xe4), char(0xbb), char(0x8a), char(0xe5), char(0xa4), char(0xa9), char(0xe4), char(0xb8), char(0x8b), char(0xe5), char(0x8d), char(0x88), char(0xe7), char(0x9a), char(0x84), char(0xe5), char(0xa4), char(0xaa), char(0xe9), char(0x98), char(0xb3), char(0xe5), char(0xbe), char(0x88), char(0xe6), char(0xb8), char(0xa9), char(0xe6), char(0x9a), char(0x96), char(0xe3), char(0x80), char(0x82) };
+      char32_t utf32[] = { char32_t(0x4ECA), char32_t(0x5929), char32_t(0x4E0B), char32_t(0x5348), char32_t(0x7684), char32_t(0x592A), char32_t(0x967D), char32_t(0x5F88), char32_t(0x6EAB), char32_t(0x6696), char32_t(0x3002) };
+      char utf8[] = { char(0xe4), char(0xbb), char(0x8a), char(0xe5), char(0xa4), char(0xa9), char(0xe4), char(0xb8), char(0x8b), char(0xe5), char(0x8d), char(0x88), char(0xe7), char(0x9a), char(0x84), char(0xe5), char(0xa4), char(0xaa), char(0xe9), char(0x99), char(0xbd), char(0xe5), char(0xbe), char(0x88), char(0xe6), char(0xba), char(0xab), char(0xe6), char(0x9a), char(0x96), char(0xe3), char(0x80), char(0x82) };
       const char* utf8_cnext;
       const char32_t* utf32_cnext;
-      char32_t buf[16];
+      char32_t buf[11];
       char32_t* buf_next;
-      char out[16];
+      char out[22];
       char* out_next;
-/* FIXME TODO Boost implementation of codecvt fails to convert from Chinese
+
       ASSERT_EQ(
         std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
         cvt_utf8.in(state, utf8, utf8 + IRESEARCH_COUNTOF(utf8), utf8_cnext, buf, buf + 1, buf_next)
       );
-      ASSERT_EQ(&utf8[1], utf8_cnext);
+      ASSERT_EQ(&utf8[3], utf8_cnext); // +3 since UTF8 uses 3 bytes per char for Chinese
       ASSERT_EQ(&buf[1], buf_next);
 
       for (size_t i = 0, count = 1; i < count; ++i) {
@@ -2427,12 +2418,12 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_unicode) {
 
       ASSERT_EQ(
         std::codecvt_base::partial, // MSVC doesn't follow the specification of declaring 'result'
-        cvt_big5.out(state, utf32, utf32 + IRESEARCH_COUNTOF(utf32), utf32_cnext, out, out + 1, out_next)
+        cvt_big5.out(state, utf32, utf32 + IRESEARCH_COUNTOF(utf32), utf32_cnext, out, out + 2, out_next) // +2 since BIG5 uses 2 bytes per char
       );
       ASSERT_EQ(&utf32[1], utf32_cnext);
-      ASSERT_EQ(&out[1], out_next);
+      ASSERT_EQ(&out[2], out_next); // +2 since BIG5 uses 2 bytes per char
 
-      for (size_t i = 0, count = 1; i < count; ++i) {
+      for (size_t i = 0, count = 2; i < count; ++i) { // +2 since BIG5 uses 2 bytes per char
         ASSERT_EQ(big5[i], out[i]);
       }
 
@@ -2447,11 +2438,9 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_multibyte_unicode) {
       for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
         ASSERT_EQ(big5[i], out[i]);
       }
-* /
     }
 
   #endif
-*/
 }
 
 TEST_F(LocaleUtilsTestSuite, test_locale_info) {

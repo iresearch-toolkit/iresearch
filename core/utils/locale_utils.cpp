@@ -1122,12 +1122,14 @@ std::codecvt_base::result codecvt8u_facet::do_out(
       size_t from_size = 1;
       int32_t buf_used = 0;
 
-      for (auto* from_tail = from_next;
-           !U8_IS_TRAIL(*from_tail)
-           && from_size < U8_MAX_LENGTH
-           && ++from_tail < from_end;
-           ++from_size
-      ); // find tail UTF8 char if possible
+      if (!U8_IS_SINGLE(*from_next)) {
+        // find all the tail UTF8 chars if possible
+        for (auto* from_tail = from_next + 1;
+             from_tail < from_end && U8_IS_TRAIL(*from_tail);
+             ++from_tail) {
+          ++from_size;
+        }
+      }
 
       u_strFromUTF8(
         buf_next,
