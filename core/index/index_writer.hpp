@@ -342,6 +342,8 @@ class IRESEARCH_API index_writer : util::noncopyable {
     policy_ptr policy; // keep a handle to the policy for the case when this object has ownership
     consolidation_context(const consolidation_policy_t& consolidation_policy)
       : policy(policy_ptr(), &consolidation_policy) {} // aliasing ctor
+    consolidation_context(const std::shared_ptr<consolidation_policy_t>& consolidation_policy)
+      : policy(consolidation_policy) {}
     consolidation_context(const policy_ptr& consolidation_policy)
       : policy(consolidation_policy) {}
     consolidation_context(consolidation_policy_t&& consolidation_policy)
