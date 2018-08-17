@@ -201,8 +201,7 @@ class codecvtu_base: public std::codecvt<InternType, char, mbstate_t> {
  protected:
   struct context_t {
     DECLARE_UNIQUE_PTR(context_t);
-    std::basic_string<typename parent_t::extern_type> buf_ext_;
-    std::basic_string<typename parent_t::intern_type> buf_int_;
+    std::basic_string<typename parent_t::intern_type> buf_;
     converter_pool::ptr converter_;
 
     static ptr make(converter_pool& pool) {
@@ -283,10 +282,10 @@ int codecvtu_base<InternType>::do_length(
     return std::codecvt_base::error;
   }
 
-  ctx->buf_int_.resize(max);
+  ctx->buf_.resize(max);
 
   auto* from_next = from;
-  auto* to = &(ctx->buf_int_[0]);
+  auto* to = &(ctx->buf_[0]);
   auto* to_end = to + max;
   auto* to_next = to;
   auto res = do_in(state, from, from_end, from_next, to, to_end, to_next);
@@ -413,6 +412,8 @@ std::codecvt_base::result codecvt16_facet::do_in(
 
   UErrorCode status = U_ZERO_ERROR;
 
+  ucnv_reset(ctx->converter_.get());
+
   static_assert(sizeof(UChar) == sizeof(intern_type), "sizeof(UChar) != sizeof(intern_type)");
   ucnv_toUnicode(
     ctx->converter_.get(),
@@ -483,6 +484,8 @@ std::codecvt_base::result codecvt16_facet::do_out(
   }
 
   UErrorCode status = U_ZERO_ERROR;
+
+  ucnv_reset(ctx->converter_.get());
 
   static_assert(sizeof(UChar) == sizeof(intern_type), "sizeof(UChar) != sizeof(intern_type)");
   ucnv_fromUnicode(
@@ -1349,8 +1352,7 @@ class codecvt_base: public std::codecvt<InternType, char, mbstate_t> {
  protected:
   struct context_t {
     DECLARE_UNIQUE_PTR(context_t);
-    std::basic_string<typename parent_t::extern_type> buf_ext_;
-    std::basic_string<typename parent_t::intern_type> buf_int_;
+    std::basic_string<typename parent_t::intern_type> buf_;
     converter_pool::ptr converter_ext_;
     converter_pool::ptr converter_int_;
 
@@ -1443,10 +1445,10 @@ int codecvt_base<InternType>::do_length(
     return std::codecvt_base::error;
   }
 
-  ctx->buf_int_.resize(max);
+  ctx->buf_.resize(max);
 
   auto* from_next = from;
-  auto* to = &(ctx->buf_int_[0]);
+  auto* to = &(ctx->buf_[0]);
   auto* to_end = to + max;
   auto* to_next = to;
   auto res = do_in(state, from, from_end, from_next, to, to_end, to_next);
