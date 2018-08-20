@@ -83,6 +83,15 @@ NS_BEGIN(std)
   std::locale::id std::codecvt<char32_t, char, _Mbstatet>::id;
 #endif
 
+// GCC < v5 does not explicitly define
+// std::codecvt<char16_t, char, mbstate_t>::id or std::codecvt<char32_t, char, mbstate_t>::id
+// this causes linking issues in optimized code
+// Note: clang tries to pretend to be GCC, so it must be explicitly excluded
+#if !defined(__APPLE__) && defined(__GNUC__) && (__GNUC__ < 5)
+  /*static*/ template<> locale::id codecvt<char16_t, char, mbstate_t>::id;
+  /*static*/ template<> locale::id codecvt<char32_t, char, mbstate_t>::id;
+#endif
+
 NS_END // std
 
 NS_LOCAL
@@ -192,8 +201,7 @@ class codecvtu_base: public std::codecvt<InternType, char, mbstate_t> {
  protected:
   struct context_t {
     DECLARE_UNIQUE_PTR(context_t);
-    std::basic_string<typename parent_t::extern_type> buf_ext_;
-    std::basic_string<typename parent_t::intern_type> buf_int_;
+    std::basic_string<typename parent_t::intern_type> buf_;
     converter_pool::ptr converter_;
 
     static ptr make(converter_pool& pool) {
@@ -274,10 +282,10 @@ int codecvtu_base<InternType>::do_length(
     return std::codecvt_base::error;
   }
 
-  ctx->buf_int_.resize(max);
+  ctx->buf_.resize(max);
 
   auto* from_next = from;
-  auto* to = &(ctx->buf_int_[0]);
+  auto* to = &(ctx->buf_[0]);
   auto* to_end = to + max;
   auto* to_next = to;
   auto res = do_in(state, from, from_end, from_next, to, to_end, to_next);
@@ -373,7 +381,7 @@ int codecvt16_facet::do_encoding() const NOEXCEPT {
   }
 
   UErrorCode status = U_ZERO_ERROR;
-std::cerr << __FILE__ << ":" << __LINE__ << "|" << context_encoding() << "|" << ucnv_isFixedWidth(ctx->converter_.get(), &status) << "|" << ucnv_getMinCharSize(ctx->converter_.get()) << "|" << std::endl; status = U_ZERO_ERROR;
+
   // the exact number of externT characters that correspond to one internT character, if constant
   return ucnv_isFixedWidth(ctx->converter_.get(), &status)
     ? ucnv_getMinCharSize(ctx->converter_.get()) : 0;
@@ -403,6 +411,8 @@ std::codecvt_base::result codecvt16_facet::do_in(
   }
 
   UErrorCode status = U_ZERO_ERROR;
+
+  ucnv_reset(ctx->converter_.get());
 
   static_assert(sizeof(UChar) == sizeof(intern_type), "sizeof(UChar) != sizeof(intern_type)");
   ucnv_toUnicode(
@@ -474,6 +484,8 @@ std::codecvt_base::result codecvt16_facet::do_out(
   }
 
   UErrorCode status = U_ZERO_ERROR;
+
+  ucnv_reset(ctx->converter_.get());
 
   static_assert(sizeof(UChar) == sizeof(intern_type), "sizeof(UChar) != sizeof(intern_type)");
   ucnv_fromUnicode(
@@ -584,8 +596,8 @@ int codecvt32_facet::do_encoding() const NOEXCEPT {
     return -1;
   }
 
-  UErrorCode status = U_ZERO_ERROR;int x = ucnv_isFixedWidth(ctx->converter_.get(), &status) ? ucnv_getMinCharSize(ctx->converter_.get()) : 0;status = U_ZERO_ERROR;
-std::cerr << __FILE__ << ":" << __LINE__ << "|" << context_encoding() << "|" << size_t(ucnv_isFixedWidth(ctx->converter_.get(), &status)) << "|" << size_t(status) << "|" << size_t(ucnv_getMinCharSize(ctx->converter_.get())) << "|" << size_t(ucnv_getMaxCharSize(ctx->converter_.get())) << "|" << size_t(ucnv_isFixedWidth(ctx->converter_.get(), &status) ? ucnv_getMinCharSize(ctx->converter_.get()) : 0) << "|" << x << "|" << std::endl; status = U_ZERO_ERROR; return x;
+  UErrorCode status = U_ZERO_ERROR;
+
   // the exact number of extern_type characters that correspond to one intern_type character, if constant
   return ucnv_isFixedWidth(ctx->converter_.get(), &status)
     ? int(ucnv_getMinCharSize(ctx->converter_.get())) : 0;
@@ -1113,12 +1125,14 @@ std::codecvt_base::result codecvt8u_facet::do_out(
       size_t from_size = 1;
       int32_t buf_used = 0;
 
-      for (auto* from_tail = from_next;
-           !U8_IS_TRAIL(*from_tail)
-           && from_size < U8_MAX_LENGTH
-           && ++from_tail < from_end;
-           ++from_size
-      ); // find tail UTF8 char if possible
+      if (!U8_IS_SINGLE(*from_next)) {
+        // find all the tail UTF8 chars if possible
+        for (auto* from_tail = from_next + 1;
+             from_tail < from_end && U8_IS_TRAIL(*from_tail);
+             ++from_tail) {
+          ++from_size;
+        }
+      }
 
       u_strFromUTF8(
         buf_next,
@@ -1338,8 +1352,7 @@ class codecvt_base: public std::codecvt<InternType, char, mbstate_t> {
  protected:
   struct context_t {
     DECLARE_UNIQUE_PTR(context_t);
-    std::basic_string<typename parent_t::extern_type> buf_ext_;
-    std::basic_string<typename parent_t::intern_type> buf_int_;
+    std::basic_string<typename parent_t::intern_type> buf_;
     converter_pool::ptr converter_ext_;
     converter_pool::ptr converter_int_;
 
@@ -1432,10 +1445,10 @@ int codecvt_base<InternType>::do_length(
     return std::codecvt_base::error;
   }
 
-  ctx->buf_int_.resize(max);
+  ctx->buf_.resize(max);
 
   auto* from_next = from;
-  auto* to = &(ctx->buf_int_[0]);
+  auto* to = &(ctx->buf_[0]);
   auto* to_end = to + max;
   auto* to_next = to;
   auto res = do_in(state, from, from_end, from_next, to, to_end, to_next);
@@ -1947,6 +1960,7 @@ bool codecvtw_facet::append(
       while (to_next < to_end) {
         auto* buf_to_next = buf_to;
 
+        status = U_ZERO_ERROR;
         ucnv_fromUnicode(
           ctx->converter_int_.get(),
           &buf_to_next,
@@ -2122,6 +2136,7 @@ std::codecvt_base::result codecvtw_facet::do_in(
       while (to_next < to_end) {
         auto* buf_to_next = buf_to;
 
+        dst_status = U_ZERO_ERROR;
         ucnv_fromUnicode(
           ctx->converter_int_.get(),
           &buf_to_next,
@@ -2270,6 +2285,7 @@ std::codecvt_base::result codecvtw_facet::do_out(
       auto* buf_from_end =
         buf_from_next + std::distance(from_next, from_end) * sizeof(intern_type);
 
+      src_status = U_ZERO_ERROR;
       ucnv_toUnicode(
         ctx->converter_int_.get(),
         &buf_next,
@@ -2281,14 +2297,14 @@ std::codecvt_base::result codecvtw_facet::do_out(
         &src_status
       );
     } else {
-      auto* buf_from = reinterpret_cast<const char*>(from_next) + (sizeof(intern_type) - char_size);
-      auto* buf_from_end = reinterpret_cast<const char*>(from_next + 1); // +1 for char after buf
-
       // convert one char at a time
-      while (buf_next < buf_end) {
+      do {
+        auto* buf_from = reinterpret_cast<const char*>(from_next) + (sizeof(intern_type) - char_size);
+        auto* buf_from_end = reinterpret_cast<const char*>(from_next + 1); // +1 for char after buf
         auto* buf_next_start = buf_next;
         auto* buf_from_next = buf_from;
 
+        src_status = U_ZERO_ERROR;
         ucnv_toUnicode(
           ctx->converter_int_.get(),
           &buf_next,
@@ -2300,18 +2316,28 @@ std::codecvt_base::result codecvtw_facet::do_out(
           &src_status
         );
 
-        if (!U_SUCCESS(dst_status) && U_BUFFER_OVERFLOW_ERROR != dst_status) {
-          break;
+        if (U_BUFFER_OVERFLOW_ERROR == src_status) {
+          break; // conversion buffer not large enough to hold result
+        }
+
+        if (!U_SUCCESS(src_status)) {
+          IR_FRMT_WARN(
+            "failure to convert from system encoding to UTF16 while converting system encoding '%s' to encoding '%s'",
+            context_encoding_int().c_str(), context_encoding_ext().c_str()
+          );
+
+          break; // finish copying all successfully converted
         }
 
         assert(buf_next >= buf && IRESEARCH_COUNTOF(offsets) > size_t(buf_next - buf));
 
         while(buf_next_start < buf_next) {
-          offsets[buf_next - ++buf_next_start] = from_next - from; // remember converted position
+          offsets[buf_next_start - buf] = from_next - from; // remember converted position
+          ++buf_next_start;
         }
 
         ++from_next; // +1 for 1 char at a time
-      }
+      } while(from_next < from_end);
     }
 
     if (!U_SUCCESS(src_status) && U_BUFFER_OVERFLOW_ERROR != src_status) {
@@ -3400,11 +3426,11 @@ locale_info_facet::locale_info_facet(const irs::string_ref& name)
     language_("C"),
     variant_(""),
     unicode_(unicode_t::NONE) { // us-ascii is not unicode
-  if (name_.empty() || name_ == "C") {
+  if (name_ == "C") {
     return;
   }
 
-  if (name_ == "c") {
+  if (name_.empty() || name_ == "c") {
     name_ = "C"; // uppercase 'classic' locale name
 
     return;
@@ -3515,10 +3541,6 @@ locale_info_facet& locale_info_facet::operator=(
 const std::locale& get_locale(
     const irs::string_ref& name, bool forceUnicodeSystem = true
 ) {
-  if (name.null() && !forceUnicodeSystem) {
-    return std::locale::classic();
-  }
-
   struct less_t {
     bool operator()(
         const locale_info_facet* lhs, const locale_info_facet* rhs
@@ -3579,7 +3601,7 @@ const std::locale& get_locale(
   auto* locale_info_ptr = locale_info.get();
   auto& converter = get_converter(locale_info->encoding());
   auto locale = std::locale(boost_locale, locale_info.release());
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
   // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
   // due to a missing export, as per their comment:
   //   This is an active bug in our database (VSO#143857), which we'll investigate
@@ -3589,15 +3611,11 @@ std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     locale = std::locale(
       locale, irs::memory::make_unique<codecvt16_facet>(converter).release()
     );
-std::cerr << __FILE__ << ":" << __LINE__ << "|" << codecvt16_facet::id._M_id() << "|" << std::codecvt<char16_t, char, std::mbstate_t>::id._M_id() << "|" << std::endl;
     locale = std::locale(
       locale, irs::memory::make_unique<codecvt32_facet>(converter).release()
     );
-std::cerr << __FILE__ << ":" << __LINE__ << "|" << codecvt32_facet::id._M_id() << "|" << std::codecvt<char32_t, char, std::mbstate_t>::id._M_id() << "|" << std::endl;
-  #else
-std::cerr << __FILE__ << ":" << __LINE__ << "|" << _MSC_VER << "|" << std::endl;
   #endif
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
   if (unicodeSystem) {
     auto cvt8 = irs::memory::make_unique<codecvt8u_facet>(converter);
     auto cvtw = irs::memory::make_unique<codecvtwu_facet>(converter);

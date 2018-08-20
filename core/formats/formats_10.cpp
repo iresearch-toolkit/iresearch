@@ -3791,7 +3791,7 @@ class read_context
 
 typedef read_context<> read_context_t;
 
-class context_provider : private util::noncopyable {
+class context_provider: private util::noncopyable {
  public:
   context_provider(size_t max_pool_size)
     : pool_(std::max(size_t(1), max_pool_size)) {
@@ -4606,7 +4606,7 @@ column_factory_f g_column_factories[] {
 //////////////////////////////////////////////////////////////////////////////
 /// @class reader
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_PLUGIN reader final : public columnstore_reader, public context_provider {
+class reader final: public columnstore_reader, public context_provider {
  public:
   explicit reader(size_t pool_size = 16)
     : context_provider(pool_size) {
@@ -5030,4 +5030,3 @@ NS_END // root
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-

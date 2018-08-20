@@ -177,48 +177,12 @@ class IRESEARCH_API index_writer : util::noncopyable {
   /// @param func the insertion logic
   /// @return all fields/attributes successfully insterted
   ////////////////////////////////////////////////////////////////////////////
-  template<typename Func>
-  bool update(const irs::filter& filter, Func func) {
+  template<typename Filter, typename Func>
+  bool update(Filter&& filter, Func func) {
     auto ctx = get_flush_context(); // retain lock until end of update(...)
     auto writer = get_segment_context(*ctx);
 
-    writer->begin(make_update_context(*ctx, filter));
-
-    return update(*ctx, *writer, func);
-  }
-
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief replaces documents matching filter with the document
-  ///        to be filled by the specified functor
-  /// @note that changes are not visible until commit()
-  /// @param filter the document filter
-  /// @param func the insertion logic
-  /// @return all fields/attributes successfully insterted
-  ////////////////////////////////////////////////////////////////////////////
-  template<typename Func>
-  bool update(irs::filter::ptr&& filter, Func func) {
-    auto ctx = get_flush_context(); // retain lock until end of update(...)
-    auto writer = get_segment_context(*ctx);
-
-    writer->begin(make_update_context(*ctx, std::move(filter)));
-
-    return update(*ctx, *writer, func);
-  }
-
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief replaces documents matching filter with the document
-  ///        to be filled by the specified functor
-  /// @note that changes are not visible until commit()
-  /// @param filter the document filter
-  /// @param func the insertion logic
-  /// @return all fields/attributes successfully insterted
-  ////////////////////////////////////////////////////////////////////////////
-  template<typename Func>
-  bool update(const std::shared_ptr<irs::filter>& filter, Func func) {
-    auto ctx = get_flush_context(); // retain lock until end of update(...)
-    auto writer = get_segment_context(*ctx);
-
-    writer->begin(make_update_context(*ctx, filter));
+    writer->begin(make_update_context(*ctx, std::forward<Filter>(filter)));
 
     return update(*ctx, *writer, func);
   }
@@ -342,6 +306,8 @@ class IRESEARCH_API index_writer : util::noncopyable {
     policy_ptr policy; // keep a handle to the policy for the case when this object has ownership
     consolidation_context(const consolidation_policy_t& consolidation_policy)
       : policy(policy_ptr(), &consolidation_policy) {} // aliasing ctor
+    consolidation_context(const std::shared_ptr<consolidation_policy_t>& consolidation_policy)
+      : policy(consolidation_policy) {}
     consolidation_context(const policy_ptr& consolidation_policy)
       : policy(consolidation_policy) {}
     consolidation_context(consolidation_policy_t&& consolidation_policy)
