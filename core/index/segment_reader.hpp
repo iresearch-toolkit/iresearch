@@ -51,6 +51,14 @@ class IRESEARCH_API segment_reader final
 
   explicit operator bool() const NOEXCEPT { return bool(impl_); }
 
+  bool operator==(const segment_reader& rhs) const NOEXCEPT {
+    return impl_ == rhs.impl_;
+  }
+
+  bool operator!=(const segment_reader& rhs) const NOEXCEPT {
+    return !(*this == rhs);
+  }
+
   segment_reader& operator*() NOEXCEPT { return *this; }
   const segment_reader& operator*() const NOEXCEPT { return *this; }
   segment_reader* operator->() NOEXCEPT { return this; }

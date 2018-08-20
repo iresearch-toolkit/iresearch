@@ -47,6 +47,14 @@ class IRESEARCH_API directory_reader final
 
   explicit operator bool() const NOEXCEPT { return bool(impl_); }
 
+  bool operator==(const directory_reader& rhs) const NOEXCEPT {
+    return impl_ == rhs.impl_;
+  }
+
+  bool operator!=(const directory_reader& rhs) const NOEXCEPT {
+    return !(*this == rhs);
+  }
+
   directory_reader& operator*() NOEXCEPT { return *this; }
   const directory_reader& operator*() const NOEXCEPT { return *this; }
   directory_reader* operator->() NOEXCEPT { return this; }
