@@ -122,6 +122,10 @@ class IRESEARCH_API index_meta {
     std::move(begin, end, std::back_inserter(segments_));
   }
 
+  void add(index_segment_t&& segment) {
+    segments_.emplace_back(std::move(segment));
+  }
+
   template<typename Visitor>
   bool visit_files(const Visitor& visitor) const {
     return const_cast<index_meta&>(*this).visit_files(visitor);

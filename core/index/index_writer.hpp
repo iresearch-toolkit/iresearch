@@ -100,7 +100,9 @@ class IRESEARCH_API index_writer : util::noncopyable {
   /// @note final candidates are all segments selected by at least some policy
   ////////////////////////////////////////////////////////////////////////////
   typedef std::function<void(
-    bitvector& candidates, const directory& dir, const index_meta& meta
+    std::set<const segment_meta*>& candidates,
+    const directory& dir,
+    const index_meta& meta
   )> consolidation_policy_t;
 
   ////////////////////////////////////////////////////////////////////////////
@@ -217,60 +219,25 @@ class IRESEARCH_API index_writer : util::noncopyable {
   ///        a new segment. For all accepted segments frees the space occupied
   ///        by the doucments marked as deleted and deduplicate terms.
   /// @param policy the speicified defragmentation policy
-  /// @param immediate
-  ///        true - apply the policy immediately but only to previously
-  ///        committed segments
-  ///        false - defer consolidation until the commit stage and apply the
-  ///                policy to all segments in the commit
+  /// @param codec desired format that will be used for segment creation,
+  ///        nullptr == use index_writer's codec
   /// @note for deffered policies during the commit stage each policy will be
   ///       given the exact same index_meta containing all segments in the
   ///       commit, however, the resulting acceptor will only be segments not
   ///       yet marked for consolidation by other policies in the same commit
   ////////////////////////////////////////////////////////////////////////////
-  void consolidate(const consolidation_policy_t& policy, bool immediate);
-
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief merges segments accepted by the specified defragment policty into
-  ///        a new segment. Frees the space occupied by the doucments marked 
-  ///        as deleted and deduplicate terms.
-  /// @param policy the speicified defragmentation policy
-  /// @param immediate
-  ///        true - apply the policy immediately but only to previously
-  ///        committed segments
-  ///        false - defer consolidation until the commit stage and apply the
-  ///                policy to all segments in the commit
-  /// @note for deffered policies during the commit stage each policy will be
-  ///       given the exact same index_meta containing all segments in the
-  ///       commit, however, the resulting acceptor will only be segments not
-  ///       yet marked for consolidation by other policies in the same commit
-  ////////////////////////////////////////////////////////////////////////////
-  void consolidate(
-    const std::shared_ptr<consolidation_policy_t>& policy, bool immediate
+  bool consolidate(
+    const consolidation_policy_t& policy, format::ptr codec = nullptr
   );
-
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief merges segments accepted by the specified defragment policty into
-  ///        a new segment. Frees the space occupied by the doucments marked 
-  ///        as deleted and deduplicate terms.
-  /// @param policy the speicified defragmentation policy
-  /// @param immediate
-  ///        true - apply the policy immediately but only to previously
-  ///        committed segments
-  ///        false - defer consolidation until the commit stage and apply the
-  ///                policy to all segments in the commit
-  /// @note for deffered policies during the commit stage each policy will be
-  ///       given the exact same index_meta containing all segments in the
-  ///       commit, however, the resulting acceptor will only be segments not
-  ///       yet marked for consolidation by other policies in the same commit
-  ////////////////////////////////////////////////////////////////////////////
-  void consolidate(consolidation_policy_t&& policy, bool immediate);
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief imports index from the specified index reader into new segment
   /// @param reader the index reader to import 
+  /// @param desired format that will be used for segment creation,
+  ///        nullptr == use index_writer's codec
   /// @returns true on success
   ////////////////////////////////////////////////////////////////////////////
-  bool import(const index_reader& reader);
+  bool import(const index_reader& reader, format::ptr codec = nullptr);
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief begins the two-phase transaction
@@ -299,32 +266,6 @@ class IRESEARCH_API index_writer : util::noncopyable {
  private:
   typedef std::vector<index_file_refs::ref_t> file_refs_t;
 
-  struct consolidation_context {
-    typedef std::shared_ptr<const consolidation_policy_t> policy_ptr;
-
-    consolidation_policy_t buf; // policy buffer for moved policies (private use)
-    policy_ptr policy; // keep a handle to the policy for the case when this object has ownership
-    consolidation_context(const consolidation_policy_t& consolidation_policy)
-      : policy(policy_ptr(), &consolidation_policy) {} // aliasing ctor
-    consolidation_context(const std::shared_ptr<consolidation_policy_t>& consolidation_policy)
-      : policy(consolidation_policy) {}
-    consolidation_context(const policy_ptr& consolidation_policy)
-      : policy(consolidation_policy) {}
-    consolidation_context(consolidation_policy_t&& consolidation_policy)
-      : buf(std::move(consolidation_policy)) {
-      policy = policy_ptr(policy_ptr(), &buf); // aliasing ctor
-    }
-    consolidation_context(consolidation_context&& other) NOEXCEPT {
-      if (&other.buf == other.policy.get()) {
-        buf = std::move(other.buf);
-        policy = policy_ptr(policy_ptr(), &buf); // aliasing ctor
-      } else {
-        policy = std::move(other.policy);
-      }
-    }
-    consolidation_context& operator=(const consolidation_context& other) = delete; // no default constructor
-  }; // consolidation_context
-
   struct modification_context {
     typedef std::shared_ptr<const irs::filter> filter_ptr;
 
@@ -343,20 +284,72 @@ class IRESEARCH_API index_writer : util::noncopyable {
     modification_context& operator=(const modification_context& other) = delete; // no default constructor
   }; // modification_context
 
+  typedef std::pair<
+    std::shared_ptr<index_meta>,
+    std::set<const segment_meta*>
+  > consolidation_context_t;
+
   struct import_context {
-    import_context(index_meta::index_segment_t&& v_segment, size_t&& v_generation)
-      : generation(std::move(v_generation)), segment(std::move(v_segment)) {}
+    import_context(
+        index_meta::index_segment_t&& segment,
+        size_t generation,
+        file_refs_t&& refs,
+        std::set<const segment_meta*>&& consolidation_candidates,
+        std::shared_ptr<index_meta>&& consolidation_meta
+    ) NOEXCEPT
+      : generation(generation),
+        segment(std::move(segment)),
+        refs(std::move(refs)),
+        consolidation_ctx(std::move(consolidation_meta), std::move(consolidation_candidates)) {
+    }
+
+    import_context(
+        index_meta::index_segment_t&& segment,
+        size_t generation,
+        file_refs_t&& refs,
+        std::set<const segment_meta*>&& consolidation_candidates
+    ) NOEXCEPT
+      : generation(generation),
+        segment(std::move(segment)),
+        refs(std::move(refs)),
+        consolidation_ctx(nullptr, std::move(consolidation_candidates)) {
+    }
+
+    import_context(
+        index_meta::index_segment_t&& segment,
+        size_t generation,
+        file_refs_t&& refs
+    ) NOEXCEPT
+      : generation(generation),
+        segment(std::move(segment)),
+        refs(std::move(refs)) {
+    }
+
+    import_context(
+        index_meta::index_segment_t&& segment,
+        size_t generation
+    ) NOEXCEPT
+      : generation(generation),
+        segment(std::move(segment)) {
+    }
+
     import_context(import_context&& other) NOEXCEPT
-      : generation(std::move(other.generation)), segment(std::move(other.segment)) {}
+      : generation(other.generation),
+        segment(std::move(other.segment)),
+        refs(std::move(other.refs)),
+        consolidation_ctx(std::move(other.consolidation_ctx)) {
+    }
+
     import_context& operator=(const import_context&) = delete;
 
     const size_t generation;
-    const index_meta::index_segment_t segment;
+    index_meta::index_segment_t segment;
+    file_refs_t refs;
+    consolidation_context_t consolidation_ctx;
   }; // import_context
 
   typedef std::unordered_map<std::string, segment_reader> cached_readers_t;
   typedef std::pair<std::shared_ptr<index_meta>, file_refs_t> committed_state_t;
-  typedef std::vector<consolidation_context> consolidation_requests_t;
   typedef std::vector<modification_context> modification_requests_t;
 
   struct IRESEARCH_API flush_context {
@@ -417,7 +410,6 @@ class IRESEARCH_API index_writer : util::noncopyable {
       bool shared;
     }; // ptr
 
-    consolidation_requests_t consolidation_policies_; // sequential list of segment merge policies to apply at the end of commit to all segments
     std::atomic<size_t> generation_; // current modification/update generation
     ref_tracking_directory::ptr dir_; // ref tracking directory used by this context (tracks all/only refs for this context)
     async_utils::read_write_mutex flush_mutex_; // guard for the current context during flush (write) operations vs update (read)
@@ -481,15 +473,6 @@ class IRESEARCH_API index_writer : util::noncopyable {
     segment_meta& meta
   ); // return if any new records were added (modification_queries_ modified)
 
-  bool add_segment_mask_consolidated_records(
-    index_meta::index_segment_t& segment, // the newly created segment
-    directory& dir, // directory to create merged segment in
-    flush_context::segment_mask_t& segments_mask, // append segments marked for consolidation
-    const index_meta& meta, // current state to examine for consolidation candidates
-    const bitvector& candidate_mask, // only consolidate segments if present in this mask
-    const consolidation_requests_t& policies // policies dictating which segments to consider
-  ); // return if any new records were added (segment/segment_mask modified)
-
   pending_context_t flush_all();
 
   flush_context::ptr get_flush_context(bool shared = true);
@@ -543,6 +526,9 @@ class IRESEARCH_API index_writer : util::noncopyable {
   pending_state_t pending_state_; // current state awaiting commit completion
   index_meta_writer::ptr writer_;
   index_lock::ptr write_lock_; // exclusive write lock for directory
+
+  std::recursive_mutex consolidation_lock_;
+  std::unordered_set<const segment_meta*> consolidating_segments_; // segments that are under consolidation
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // index_writer
 

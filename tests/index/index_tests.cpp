@@ -1141,11 +1141,7 @@ class index_test_case_base : public tests::index_test_base {
   }
 
   void profile_bulk_index_dedicated_consolidate(size_t num_threads, size_t batch_size, size_t consolidate_interval) {
-    irs::index_writer::consolidation_policy_t policy = [](
-      irs::bitvector& candidates, const irs::directory& dir, const irs::index_meta& meta
-    )->void {
-      for (size_t i = meta.size(); i; candidates.set(--i)); // merge every segment
-    };
+    const auto policy = irs::index_utils::consolidate_all();
     auto* directory = &dir();
     std::atomic<bool> working(true);
     irs::async_utils::thread_pool thread_pool(2, 2);
@@ -1153,17 +1149,8 @@ class index_test_case_base : public tests::index_test_base {
 
     thread_pool.run([consolidate_interval, directory, &working, &writer, &policy]()->void {
       while (working.load()) {
-        writer->consolidate(policy, true);
+        writer->consolidate(policy);
         std::this_thread::sleep_for(std::chrono::milliseconds(consolidate_interval));
-      }
-    });
-    thread_pool.run([consolidate_interval, directory, &working, &writer, &policy]()->void {
-      while (working.load()) {
-        writer->consolidate(policy, false);
-        std::this_thread::sleep_for(std::chrono::milliseconds(consolidate_interval));
-
-        // remove unused segments from memory/fs directory to avoid space related exceptions
-        iresearch::directory_cleaner::clean(*directory);
       }
     });
 
@@ -1173,7 +1160,7 @@ class index_test_case_base : public tests::index_test_base {
     }
 
     thread_pool.stop();
-    writer->consolidate(policy, false);
+    writer->consolidate(policy);
     writer->commit();
 
     struct dummy_doc_template_t: public tests::csv_doc_generator::doc_template {
@@ -10351,13 +10338,7 @@ TEST_F(memory_index_test, reuse_segment_writer) {
 
   // merge all segments
   {
-    auto merge_all = [](
-      irs::bitvector& candidates, const irs::directory& dir, const irs::index_meta& meta
-    )->void {
-      for (size_t i = meta.size(); i; candidates.set(--i)); // merge every segment
-    };
-
-    writer->consolidate(merge_all, true);
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all()));
     writer->commit();
   }
 }
@@ -10436,6 +10417,1158 @@ TEST_F(memory_index_test, segment_column_user_system) {
   ASSERT_TRUE(expectedName.empty());
 }
 
+TEST_F(memory_index_test, segment_concurrent_consolidation) {
+
+}
+
+TEST_F(memory_index_test, segment_consolidate_long_running) {
+  struct blocking_directory : tests::directory_mock {
+    explicit blocking_directory(irs::directory& impl, const irs::string_ref& blocker)
+      : tests::directory_mock(impl), blocker(blocker) {
+    }
+
+    irs::index_output::ptr create(const std::string& name) NOEXCEPT {
+      auto stream = tests::directory_mock::create(name);
+
+      if (name == blocker) {
+        {
+          SCOPED_LOCK_NAMED(policy_lock, guard);
+          policy_applied.notify_all();
+        }
+
+        // wait for intermediate commits to be applied
+        SCOPED_LOCK_NAMED(intermediate_commits_lock, guard);
+      }
+
+      return stream;
+    }
+
+
+    irs::string_ref blocker;
+    std::mutex policy_lock;
+    std::condition_variable policy_applied;
+    std::mutex intermediate_commits_lock;
+  };
+
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+      if (data.is_string()) {
+        doc.insert(std::make_shared<tests::templates::string_field>(
+          irs::string_ref(name),
+          data.str
+        ));
+      }
+  });
+
+  tests::document const* doc1 = gen.next();
+  tests::document const* doc2 = gen.next();
+  tests::document const* doc3 = gen.next();
+  tests::document const* doc4 = gen.next();
+
+  irs::bytes_ref actual_value;
+  auto all_features = irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() };
+
+  size_t count = 0;
+  auto get_number_of_files_in_segments = [&count](const std::string& name) NOEXCEPT {
+    count += size_t(name.size() && '_' == name[0]);
+    return true;
+  };
+
+  // long running transaction
+  {
+    const irs::string_ref blocker = "_3.cs";
+    blocking_directory dir(this->dir(), blocker);
+    auto writer = open_writer(dir);
+    ASSERT_NE(nullptr, writer);
+
+    // segment 1
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    writer->commit();
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
+
+    // segment 2
+    ASSERT_TRUE(insert(*writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    writer->commit();
+    ASSERT_EQ(1, irs::directory_cleaner::clean(dir)); // segments_1
+
+    // retrieve total number of segment files
+    dir.visit(get_number_of_files_in_segments);
+
+    dir.intermediate_commits_lock.lock(); // acquire directory lock, and block consolidation
+
+    std::thread consolidation_thread([&writer, &dir]() {
+      ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+    });
+
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
+
+    bool has = false;
+    dir.exists(has, blocker);
+
+    while (!has) {
+      dir.exists(has, blocker);
+      ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
+
+      SCOPED_LOCK_NAMED(dir.policy_lock, policy_guard);
+      dir.policy_applied.wait_for(policy_guard, std::chrono::milliseconds(1000));
+    }
+
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
+
+    // add several segments in background
+    // segment 3
+    ASSERT_TRUE(insert(*writer,
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
+    writer->commit(); // commit transaction
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir)); // segments_2
+
+    // add several segments in background
+    // segment 4
+    ASSERT_TRUE(insert(*writer,
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()
+    ));
+    writer->commit(); // commit transaction
+    ASSERT_EQ(1, irs::directory_cleaner::clean(dir)); // segments_3
+
+    dir.intermediate_commits_lock.unlock(); // finish consolidation
+    consolidation_thread.join(); // wait for the consolidation to complete
+    ASSERT_EQ(1, irs::directory_cleaner::clean(dir)); // segments_3
+    writer->commit(); // commit consolidation
+    ASSERT_EQ(1+count, irs::directory_cleaner::clean(dir)); // +1 for segments_4
+
+    // validate structure
+    tests::index_t expected;
+    expected.emplace_back();
+    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
+    expected.emplace_back();
+    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    expected.emplace_back();
+    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
+    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    tests::assert_index(this->dir(), codec(), expected, all_features);
+
+    auto reader = iresearch::directory_reader::open(this->dir(), codec());
+    ASSERT_EQ(3, reader.size());
+
+    // assume 0 is 'segment 3'
+    {
+      auto& segment = reader[0];
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      ASSERT_EQ(1, segment.docs_count()); // total count of documents
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+      ASSERT_FALSE(docsItr->next());
+    }
+
+    // assume 1 is 'segment 4'
+    {
+      auto& segment = reader[1];
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      ASSERT_EQ(1, segment.docs_count()); // total count of documents
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+      ASSERT_FALSE(docsItr->next());
+    }
+
+    // assume 2 is merged segment
+    {
+      auto& segment = reader[2];
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      ASSERT_EQ(2, segment.docs_count()); // total count of documents
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
+      ASSERT_FALSE(docsItr->next());
+    }
+  }
+
+  // long running transaction + removal
+  {
+    SetUp(); // recreate directory
+    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+
+    const irs::string_ref blocker = "_3.cs";
+    blocking_directory dir(this->dir(), blocker);
+    auto writer = open_writer(dir);
+    ASSERT_NE(nullptr, writer);
+
+    // segment 1
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    writer->commit();
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
+
+    // retrieve total number of segment files
+    count = 0;
+    dir.visit(get_number_of_files_in_segments);
+
+    // segment 2
+    ASSERT_TRUE(insert(*writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    writer->commit();
+    ASSERT_EQ(1, irs::directory_cleaner::clean(dir)); // segments_1
+
+    dir.intermediate_commits_lock.lock(); // acquire directory lock, and block consolidation
+
+    std::thread consolidation_thread([&writer, &dir]() {
+      // consolidation will fail because of
+      ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+    });
+
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
+
+    bool has = false;
+    dir.exists(has, blocker);
+
+    while (!has) {
+      dir.exists(has, blocker);
+      ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
+
+      SCOPED_LOCK_NAMED(dir.policy_lock, policy_guard);
+      dir.policy_applied.wait_for(policy_guard, std::chrono::milliseconds(1000));
+    }
+
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
+
+    // add several segments in background
+    // segment 3
+    ASSERT_TRUE(insert(*writer,
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
+    writer->remove(*query_doc1.filter);
+    writer->commit(); // commit transaction
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir)); // segments_2
+
+    // add several segments in background
+    // segment 4
+    ASSERT_TRUE(insert(*writer,
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()
+    ));
+    writer->commit(); // commit transaction
+    ASSERT_EQ(1, irs::directory_cleaner::clean(dir)); // segments_3
+
+    dir.intermediate_commits_lock.unlock(); // finish consolidation
+    consolidation_thread.join(); // wait for the consolidation to complete
+    ASSERT_EQ(2*count+1, irs::directory_cleaner::clean(dir)); // files from segment 1 and 3 + segments_3
+    writer->commit(); // commit consolidation
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir)); // consolidation failed
+
+    // validate structure
+    tests::index_t expected;
+    expected.emplace_back();
+    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected.emplace_back();
+    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
+    expected.emplace_back();
+    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    tests::assert_index(this->dir(), codec(), expected, all_features);
+
+    auto reader = iresearch::directory_reader::open(this->dir(), codec());
+    ASSERT_EQ(3, reader.size());
+
+    // assume 0 is 'segment 2'
+    {
+      auto& segment = reader[0];
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      ASSERT_EQ(1, segment.docs_count()); // total count of documents
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+      ASSERT_FALSE(docsItr->next());
+    }
+
+    // assume 1 is 'segment 3'
+    {
+      auto& segment = reader[1];
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      ASSERT_EQ(1, segment.docs_count()); // total count of documents
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+      ASSERT_FALSE(docsItr->next());
+    }
+
+    // assume 1 is 'segment 4'
+    {
+      auto& segment = reader[2];
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      ASSERT_EQ(1, segment.docs_count()); // total count of documents
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
+      ASSERT_FALSE(docsItr->next());
+    }
+  }
+}
+
+TEST_F(memory_index_test, segment_consolidate_clear_commit) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+      if (data.is_string()) {
+        doc.insert(std::make_shared<tests::templates::string_field>(
+          irs::string_ref(name),
+          data.str
+        ));
+      }
+  });
+
+  tests::document const* doc1 = gen.next();
+  tests::document const* doc2 = gen.next();
+  tests::document const* doc3 = gen.next();
+  tests::document const* doc4 = gen.next();
+  tests::document const* doc5 = gen.next();
+  tests::document const* doc6 = gen.next();
+
+  irs::bytes_ref actual_value;
+  auto all_features = irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() };
+
+  size_t count = 0;
+
+// FIXME
+//  // 2-phase: clear + consolidate
+//  {
+//    auto writer = open_writer();
+//    ASSERT_NE(nullptr, writer);
+//
+//    // segment 1
+//    ASSERT_TRUE(insert(*writer,
+//      doc1->indexed.begin(), doc1->indexed.end(),
+//      doc1->stored.begin(), doc1->stored.end()
+//    ));
+//    writer->commit();
+//
+//    // segment 2
+//    ASSERT_TRUE(insert(*writer,
+//      doc2->indexed.begin(), doc2->indexed.end(),
+//      doc2->stored.begin(), doc2->stored.end()
+//    ));
+//    writer->commit();
+//
+//    // segment 3
+//    ASSERT_TRUE(insert(*writer,
+//      doc3->indexed.begin(), doc3->indexed.end(),
+//      doc3->stored.begin(), doc3->stored.end()
+//    ));
+//
+//    writer->begin();
+//    writer->clear();
+//    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+//    writer->commit(); // commit transaction
+//
+//    auto reader = iresearch::directory_reader::open(dir(), codec());
+//    ASSERT_EQ(0, reader.size());
+//  }
+//
+//  // 2-phase: consolidate + clear
+//  {
+//    auto writer = open_writer();
+//    ASSERT_NE(nullptr, writer);
+//
+//    // segment 1
+//    ASSERT_TRUE(insert(*writer,
+//      doc1->indexed.begin(), doc1->indexed.end(),
+//      doc1->stored.begin(), doc1->stored.end()
+//    ));
+//    writer->commit();
+//
+//    // segment 2
+//    ASSERT_TRUE(insert(*writer,
+//      doc2->indexed.begin(), doc2->indexed.end(),
+//      doc2->stored.begin(), doc2->stored.end()
+//    ));
+//    writer->commit();
+//
+//    // segment 3
+//    ASSERT_TRUE(insert(*writer,
+//      doc3->indexed.begin(), doc3->indexed.end(),
+//      doc3->stored.begin(), doc3->stored.end()
+//    ));
+//
+//    writer->begin();
+//    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+//    writer->clear();
+//    writer->commit(); // commit transaction
+//
+//    auto reader = iresearch::directory_reader::open(dir(), codec());
+//    ASSERT_EQ(0, reader.size());
+//  }
+
+  // consolidate + clear
+  {
+    auto writer = open_writer();
+    ASSERT_NE(nullptr, writer);
+
+    // segment 1
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    writer->commit();
+
+    // segment 2
+    ASSERT_TRUE(insert(*writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    writer->commit();
+
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+    writer->clear();
+    writer->commit(); // commit transaction
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(0, reader.size());
+  }
+
+  // clear + consolidate
+  {
+    auto writer = open_writer();
+    ASSERT_NE(nullptr, writer);
+
+    // segment 1
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    writer->commit();
+
+    // segment 2
+    ASSERT_TRUE(insert(*writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    writer->commit();
+
+    writer->clear();
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+    writer->commit(); // commit transaction
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(0, reader.size());
+  }
+}
+
+TEST_F(memory_index_test, segment_consolidate_commit) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+      if (data.is_string()) {
+        doc.insert(std::make_shared<tests::templates::string_field>(
+          irs::string_ref(name),
+          data.str
+        ));
+      }
+  });
+
+  tests::document const* doc1 = gen.next();
+  tests::document const* doc2 = gen.next();
+  tests::document const* doc3 = gen.next();
+  tests::document const* doc4 = gen.next();
+  tests::document const* doc5 = gen.next();
+  tests::document const* doc6 = gen.next();
+
+  irs::bytes_ref actual_value;
+  auto all_features = irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() };
+
+  size_t count = 0;
+  auto get_number_of_files_in_segments = [&count](const std::string& name) NOEXCEPT {
+    count += size_t(name.size() && '_' == name[0]);
+    return true;
+  };
+
+  // consolidate without deletes
+  {
+    auto writer = open_writer();
+    ASSERT_NE(nullptr, writer);
+
+    // segment 1
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    writer->commit();
+
+    // segment 2
+    ASSERT_TRUE(insert(*writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    writer->commit();
+
+    ASSERT_EQ(1, irs::directory_cleaner::clean(dir())); // segments_1
+
+    // count number of files in segments
+    count = 0;
+    ASSERT_TRUE(dir().visit(get_number_of_files_in_segments));
+
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+    // all segments are already marked for consolidation
+    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidate_all()));
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+
+    writer->commit(); // commit transaction (will commit nothing)
+    ASSERT_EQ(1+count, irs::directory_cleaner::clean(dir())); // +1 for corresponding segments_* file
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // nothing to consolidate
+    writer->commit(); // commit transaction (will commit nothing)
+
+    // validate structure
+    tests::index_t expected;
+    expected.emplace_back();
+    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
+    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    tests::assert_index(dir(), codec(), expected, all_features);
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(1, reader.size());
+
+    // assume 0 is merged segment
+    {
+      auto& segment = reader[0];
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      ASSERT_EQ(2, segment.docs_count()); // total count of documents
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
+      ASSERT_FALSE(docsItr->next());
+    }
+  }
+
+  // consolidate without deletes
+  {
+    auto writer = open_writer();
+    ASSERT_NE(nullptr, writer);
+
+    // segment 1
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    writer->commit();
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+
+    // segment 2
+    ASSERT_TRUE(insert(*writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    writer->commit();
+    ASSERT_EQ(1, irs::directory_cleaner::clean(dir())); // segments_1
+
+    // count number of files in segments
+    count = 0;
+    ASSERT_TRUE(dir().visit(get_number_of_files_in_segments));
+
+    // segment 3
+    ASSERT_TRUE(insert(*writer,
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
+    ASSERT_TRUE(insert(*writer,
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()
+    ));
+
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+
+    // can't consolidate segments that are already marked for consolidation
+    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidate_all()));
+
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+    writer->commit(); // commit transaction (will commit segment 3 + consolidation)
+    ASSERT_EQ(1+count, irs::directory_cleaner::clean(dir())); // +1 for segments_*
+
+    // validate structure
+    tests::index_t expected;
+    expected.emplace_back();
+    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
+    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected.emplace_back();
+    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
+    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    tests::assert_index(dir(), codec(), expected, all_features);
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(2, reader.size());
+
+    // assume 0 is merged segment
+    {
+      auto& segment = reader[0];
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      ASSERT_EQ(2, segment.docs_count()); // total count of documents
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
+      ASSERT_FALSE(docsItr->next());
+    }
+
+    // assume 1 is the newly created segment (doc3+doc4)
+    {
+      auto& segment = reader[1];
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      ASSERT_EQ(2, segment.docs_count()); // total count of documents
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
+      ASSERT_FALSE(docsItr->next());
+    }
+  }
+
+  // consolidate without deletes
+  {
+    auto writer = open_writer();
+    ASSERT_NE(nullptr, writer);
+
+    // segment 1
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    writer->commit();
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+
+    // segment 2
+    ASSERT_TRUE(insert(*writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    writer->commit();
+    ASSERT_EQ(1, irs::directory_cleaner::clean(dir())); // segments_1
+
+    // count number of files in segments
+    count = 0;
+    ASSERT_TRUE(dir().visit(get_number_of_files_in_segments));
+
+    // segment 3
+    ASSERT_TRUE(insert(*writer,
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
+    ASSERT_TRUE(insert(*writer,
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()
+    ));
+
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir())); // segments_1
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+
+    // can't consolidate segments that are already marked for consolidation
+    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidate_all()));
+
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir())); // segments_1
+
+    ASSERT_TRUE(insert(*writer,
+      doc5->indexed.begin(), doc5->indexed.end(),
+      doc5->stored.begin(), doc5->stored.end()
+    ));
+
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir())); // segments_1
+    writer->commit(); // commit transaction (will commit segment 3 + consolidation)
+    ASSERT_EQ(count+1, irs::directory_cleaner::clean(dir())); // +1 for segments_*
+
+    // validate structure
+    tests::index_t expected;
+    expected.emplace_back();
+    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
+    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected.emplace_back();
+    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
+    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    expected.back().add(doc5->indexed.begin(), doc5->indexed.end());
+    tests::assert_index(dir(), codec(), expected, all_features);
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_TRUE(reader);
+    ASSERT_EQ(2, reader.size());
+
+    // assume 0 is merged segment
+    {
+      auto& segment = reader[0];
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      ASSERT_EQ(2, segment.docs_count()); // total count of documents
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
+      ASSERT_FALSE(docsItr->next());
+    }
+
+    // assume 1 is the newly crated segment
+    {
+      auto& segment = reader[1];
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      ASSERT_EQ(3, segment.docs_count()); // total count of documents
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("E", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
+      ASSERT_FALSE(docsItr->next());
+    }
+  }
+}
+
+TEST_F(memory_index_test, segment_consolidate_pending_commit) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+      if (data.is_string()) {
+        doc.insert(std::make_shared<tests::templates::string_field>(
+          irs::string_ref(name),
+          data.str
+        ));
+      }
+  });
+
+  tests::document const* doc1 = gen.next();
+  tests::document const* doc2 = gen.next();
+  tests::document const* doc3 = gen.next();
+  tests::document const* doc4 = gen.next();
+  tests::document const* doc5 = gen.next();
+  tests::document const* doc6 = gen.next();
+
+  irs::bytes_ref actual_value;
+  auto all_features = irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() };
+
+  size_t count = 0;
+  auto get_number_of_files_in_segments = [&count](const std::string& name) NOEXCEPT {
+    count += size_t(name.size() && '_' == name[0]);
+    return true;
+  };
+
+  // consolidate without deletes
+  {
+    auto writer = open_writer();
+    ASSERT_NE(nullptr, writer);
+
+    // segment 1
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    writer->commit();
+
+    // segment 2
+    ASSERT_TRUE(insert(*writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    writer->commit();
+
+    ASSERT_EQ(1, irs::directory_cleaner::clean(dir())); // segments_1
+
+    // count number of files in segments
+    count = 0;
+    ASSERT_TRUE(dir().visit(get_number_of_files_in_segments));
+
+    ASSERT_FALSE(writer->begin()); // begin transaction (will not start transaction)
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+    // all segments are already marked for consolidation
+    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidate_all()));
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+
+    writer->commit(); // commit transaction (will commit nothing)
+    ASSERT_EQ(1+count, irs::directory_cleaner::clean(dir())); // +1 for corresponding segments_* file
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // nothing to consolidate
+    writer->commit(); // commit transaction (will commit nothing)
+
+    // validate structure
+    tests::index_t expected;
+    expected.emplace_back();
+    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
+    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    tests::assert_index(dir(), codec(), expected, all_features);
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(1, reader.size());
+
+    // assume 0 is merged segment
+    {
+      auto& segment = reader[0];
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      ASSERT_EQ(2, segment.docs_count()); // total count of documents
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
+      ASSERT_FALSE(docsItr->next());
+    }
+  }
+
+  // consolidate without deletes
+  {
+    auto writer = open_writer();
+    ASSERT_NE(nullptr, writer);
+
+    // segment 1
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    writer->commit();
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+
+    // segment 2
+    ASSERT_TRUE(insert(*writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    writer->commit();
+    ASSERT_EQ(1, irs::directory_cleaner::clean(dir())); // segments_1
+
+    // count number of files in segments
+    count = 0;
+    ASSERT_TRUE(dir().visit(get_number_of_files_in_segments));
+
+    // segment 3
+    ASSERT_TRUE(insert(*writer,
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
+    ASSERT_TRUE(insert(*writer,
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()
+    ));
+
+    ASSERT_TRUE(writer->begin()); // begin transaction
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+
+    // can't consolidate segments that are already marked for consolidation
+    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidate_all()));
+
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+    writer->commit(); // commit transaction (will commit segment 3)
+    ASSERT_EQ(1, irs::directory_cleaner::clean(dir())); // segments_2
+
+    writer->commit(); // commit pending merge
+    ASSERT_EQ(1+count, irs::directory_cleaner::clean(dir())); // segments_2
+
+    // validate structure
+    tests::index_t expected;
+    expected.emplace_back();
+    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
+    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    expected.emplace_back();
+    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
+    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    tests::assert_index(dir(), codec(), expected, all_features);
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(2, reader.size());
+
+    // assume 0 is the existing segment
+    {
+      auto& segment = reader[0];
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      ASSERT_EQ(2, segment.docs_count()); // total count of documents
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
+      ASSERT_FALSE(docsItr->next());
+    }
+
+    // assume 1 is merged segment
+    {
+      auto& segment = reader[1];
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      ASSERT_EQ(2, segment.docs_count()); // total count of documents
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
+      ASSERT_FALSE(docsItr->next());
+    }
+  }
+
+  // consolidate without deletes
+  {
+    auto writer = open_writer();
+    ASSERT_NE(nullptr, writer);
+
+    // segment 1
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    writer->commit();
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+
+    // segment 2
+    ASSERT_TRUE(insert(*writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    writer->commit();
+    ASSERT_EQ(1, irs::directory_cleaner::clean(dir())); // segments_1
+
+    // count number of files in segments
+    count = 0;
+    ASSERT_TRUE(dir().visit(get_number_of_files_in_segments));
+
+    // segment 3
+    ASSERT_TRUE(insert(*writer,
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
+    ASSERT_TRUE(insert(*writer,
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()
+    ));
+
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir())); // segments_1
+    ASSERT_TRUE(writer->begin()); // begin transaction
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir())); // segments_1
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+
+    // can't consolidate segments that are already marked for consolidation
+    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidate_all()));
+
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir())); // segments_1
+
+    ASSERT_TRUE(insert(*writer,
+      doc5->indexed.begin(), doc5->indexed.end(),
+      doc5->stored.begin(), doc5->stored.end()
+    ));
+
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir())); // segments_1
+    writer->commit(); // commit transaction (will commit segment 3)
+    ASSERT_EQ(1, irs::directory_cleaner::clean(dir())); // segments_2
+
+    ASSERT_TRUE(insert(*writer,
+      doc6->indexed.begin(), doc6->indexed.end(),
+      doc6->stored.begin(), doc6->stored.end()
+    ));
+
+    writer->commit(); // commit pending merge, segment 4 (doc5 + doc6)
+    ASSERT_EQ(count+1, irs::directory_cleaner::clean(dir())); // +1 for segments
+
+    // validate structure
+    tests::index_t expected;
+    expected.emplace_back();
+    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
+    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    expected.emplace_back();
+    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
+    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected.emplace_back();
+    expected.back().add(doc5->indexed.begin(), doc5->indexed.end());
+    expected.back().add(doc6->indexed.begin(), doc6->indexed.end());
+    tests::assert_index(dir(), codec(), expected, all_features);
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_TRUE(reader);
+    ASSERT_EQ(3, reader.size());
+
+    // assume 0 is the existing segment
+    {
+      auto& segment = reader[0];
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      ASSERT_EQ(2, segment.docs_count()); // total count of documents
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
+      ASSERT_FALSE(docsItr->next());
+    }
+
+    // assume 1 is merged segment
+    {
+      auto& segment = reader[1];
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      ASSERT_EQ(2, segment.docs_count()); // total count of documents
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
+      ASSERT_FALSE(docsItr->next());
+    }
+
+    // assume 2 is the last added segment
+    {
+      auto& segment = reader[2];
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      ASSERT_EQ(2, segment.docs_count()); // total count of documents
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("E", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("F", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
+      ASSERT_FALSE(docsItr->next());
+    }
+  }
+}
+
 TEST_F(memory_index_test, segment_consolidate) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
@@ -10457,11 +11590,7 @@ TEST_F(memory_index_test, segment_consolidate) {
   tests::document const* doc5 = gen.next();
   tests::document const* doc6 = gen.next();
 
-  auto always_merge = [](
-    irs::bitvector& candidates, const irs::directory& dir, const irs::index_meta& meta
-  )->void {
-    for (size_t i = meta.size(); i; candidates.set(--i)); // merge every segment
-  };
+  auto always_merge = irs::index_utils::consolidate_all();
   auto all_features = irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() };
 
   // remove empty new segment
@@ -10516,7 +11645,9 @@ TEST_F(memory_index_test, segment_consolidate) {
       doc3->stored.begin(), doc3->stored.end()
     ));
     writer->remove(std::move(query_doc1_doc2.filter));
-    writer->consolidate(always_merge, false);
+    writer->commit();
+
+    ASSERT_TRUE(writer->consolidate(always_merge));
     writer->commit();
 
     // validate structure
@@ -10563,7 +11694,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     ));
     writer->remove(std::move(query_doc1_doc2.filter));
     writer->commit();
-    writer->consolidate(always_merge, true);
+    ASSERT_TRUE(writer->consolidate(always_merge));
     writer->commit();
 
     // validate structure
@@ -10610,7 +11741,8 @@ TEST_F(memory_index_test, segment_consolidate) {
     ));
     writer->commit();
     writer->remove(std::move(query_doc1_doc2.filter));
-    writer->consolidate(always_merge, false);
+    writer->commit();
+    ASSERT_TRUE(writer->consolidate(always_merge));
     writer->commit();
 
     // validate structure
@@ -10658,7 +11790,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     writer->commit();
     writer->remove(std::move(query_doc1_doc2.filter));
     writer->commit();
-    writer->consolidate(always_merge, true);
+    ASSERT_TRUE(writer->consolidate(always_merge));
     writer->commit();
 
     // validate structure
@@ -10685,23 +11817,20 @@ TEST_F(memory_index_test, segment_consolidate) {
     ASSERT_FALSE(docsItr->next());
   }
 
+  auto merge_if_masked = [](
+    std::set<const irs::segment_meta*>& candidates, const irs::directory& dir, const irs::index_meta& meta
+  )->void {
+    for (auto& segment: meta) {
+      bool seen;
+
+      if (segment.meta.codec->get_document_mask_reader()->prepare(dir, segment.meta, &seen) && seen) {
+        candidates.insert(&segment.meta);
+      }
+    }
+  };
+
   // do defragment old segment with uncommited removal (i.e. do not consider uncomitted removals)
   {
-    auto merge_if_masked = [](
-      irs::bitvector& candidates, const irs::directory& dir, const irs::index_meta& meta
-    )->void {
-      size_t i = 0;
-
-      for (auto& segment: meta) {
-        bool seen;
-
-        if (segment.meta.codec->get_document_mask_reader()->prepare(dir, segment.meta, &seen) && seen) {
-          candidates.set(i);
-        }
-
-        ++i;
-      }
-    };
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
 
@@ -10715,7 +11844,8 @@ TEST_F(memory_index_test, segment_consolidate) {
     ));
     writer->commit();
     writer->remove(std::move(query_doc1.filter));
-    writer->consolidate(merge_if_masked, false);
+    writer->commit();
+    ASSERT_TRUE(writer->consolidate(merge_if_masked));
     writer->commit();
 
     {
@@ -10728,21 +11858,6 @@ TEST_F(memory_index_test, segment_consolidate) {
 
   // do not defragment old segment with uncommited removal (i.e. do not consider uncomitted removals)
   {
-    auto merge_if_masked = [](
-      irs::bitvector& candidates, const irs::directory& dir, const irs::index_meta& meta
-    )->void {
-      size_t i = 0;
-
-      for (auto& segment: meta) {
-        bool seen;
-
-        if (segment.meta.codec->get_document_mask_reader()->prepare(dir, segment.meta, &seen) && seen) {
-          candidates.set(i);
-        }
-
-        ++i;
-      }
-    };
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
     auto writer = open_writer();
 
@@ -10756,7 +11871,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     ));
     writer->commit();
     writer->remove(std::move(query_doc1.filter));
-    writer->consolidate(merge_if_masked, true);
+    ASSERT_TRUE(writer->consolidate(merge_if_masked));
     writer->commit();
 
     {
@@ -10766,7 +11881,7 @@ TEST_F(memory_index_test, segment_consolidate) {
       ASSERT_EQ(2, segment.docs_count()); // total count of documents
     }
 
-    writer->consolidate(merge_if_masked, true); // previous removal now committed and considered
+    ASSERT_TRUE(writer->consolidate(merge_if_masked)); // previous removal now committed and considered
     writer->commit();
 
     {
@@ -10800,7 +11915,8 @@ TEST_F(memory_index_test, segment_consolidate) {
       doc4->stored.begin(), doc4->stored.end()
     ));
     writer->remove(std::move(query_doc1_doc3.filter));
-    writer->consolidate(always_merge, false);
+    writer->commit();
+    ASSERT_TRUE(writer->consolidate(always_merge));
     writer->commit();
 
     // validate structure
@@ -10855,7 +11971,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     ));
     writer->remove(std::move(query_doc1_doc3.filter));
     writer->commit();
-    writer->consolidate(always_merge, true);
+    ASSERT_TRUE(writer->consolidate(always_merge));
     writer->commit();
 
     // validate structure
@@ -10910,7 +12026,8 @@ TEST_F(memory_index_test, segment_consolidate) {
     ));
     writer->commit();
     writer->remove(std::move(query_doc1_doc3.filter));
-    writer->consolidate(always_merge, false);
+    writer->commit();
+    ASSERT_TRUE(writer->consolidate(always_merge));
     writer->commit();
 
     // validate structure
@@ -10966,7 +12083,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     writer->commit();
     writer->remove(std::move(query_doc1_doc3.filter));
     writer->commit();
-    writer->consolidate(always_merge, true);
+    ASSERT_TRUE(writer->consolidate(always_merge));
     writer->commit();
 
     // validate structure
@@ -11030,7 +12147,8 @@ TEST_F(memory_index_test, segment_consolidate) {
     ));
     writer->commit();
     writer->remove(std::move(query_doc1_doc3_doc5.filter));
-    writer->consolidate(always_merge, false);
+    writer->commit();
+    ASSERT_TRUE(writer->consolidate(always_merge));
     writer->commit();
 
     // validate structure
@@ -11099,7 +12217,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     writer->commit();
     writer->remove(std::move(query_doc1_doc3_doc5.filter));
     writer->commit();
-    writer->consolidate(always_merge, true);
+    ASSERT_TRUE(writer->consolidate(always_merge));
     writer->commit();
 
     // validate structure
@@ -11181,7 +12299,8 @@ TEST_F(memory_index_test, segment_consolidate) {
     ));
 
     // defragment segments
-    writer->consolidate(always_merge, false);
+    writer->commit();
+    ASSERT_TRUE(writer->consolidate(always_merge));
     writer->commit();
 
     // validate merged segment 
@@ -11272,7 +12391,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     writer->commit();
 
     // defragment segments
-    writer->consolidate(std::move(always_merge), true);
+    ASSERT_TRUE(writer->consolidate(always_merge));
     writer->commit();
 
     // validate merged segment 
@@ -11361,30 +12480,60 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       doc5->stored.begin(), doc5->stored.end()
     ));
     writer->commit();
-    writer->consolidate(iresearch::index_utils::consolidate_bytes(1), true); // value garanteeing merge
+    ASSERT_TRUE(insert(*writer,
+      doc6->indexed.begin(), doc6->indexed.end(),
+      doc6->stored.begin(), doc6->stored.end()
+    ));
+    writer->commit();
+    ASSERT_TRUE(writer->consolidate(iresearch::index_utils::consolidate_bytes(1))); // value garanteeing merge
     writer->commit();
 
-    std::unordered_set<irs::string_ref> expectedName = { "A", "B", "C", "D", "E" };
-
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader.size());
-    auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
-    ASSERT_NE(nullptr, column);
-    auto values = column->values();
-    ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
-    auto terms = segment.field("same");
-    ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
-    ASSERT_TRUE(termItr->next());
+    ASSERT_EQ(2, reader.size()); // 1+(2|3)
 
-    irs::bytes_ref actual_value;
-    for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
-      ASSERT_TRUE(values(docsItr->value(), actual_value));
-      ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
+    // check 1st segment
+    {
+      std::unordered_set<irs::string_ref> expectedName = { "A", "B", "C", "D" };
+      auto& segment = reader[0];
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+
+      irs::bytes_ref actual_value;
+      for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
+        ASSERT_TRUE(values(docsItr->value(), actual_value));
+        ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
+      }
+
+      ASSERT_TRUE(expectedName.empty());
     }
 
-    ASSERT_TRUE(expectedName.empty());
+    // check 2nd (merged) segment
+    {
+      std::unordered_set<irs::string_ref> expectedName = { "E", "F" };
+      auto& segment = reader[1];
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+
+      irs::bytes_ref actual_value;
+      for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
+        ASSERT_TRUE(values(docsItr->value(), actual_value));
+        ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
+      }
+
+      ASSERT_TRUE(expectedName.empty());
+    }
   }
 
   // bytes size policy (not modified)
@@ -11413,7 +12562,7 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       doc5->stored.begin(), doc5->stored.end()
     ));
     writer->commit();
-    writer->consolidate(iresearch::index_utils::consolidate_bytes(0), true); // value garanteeing non-merge
+    ASSERT_TRUE(writer->consolidate(iresearch::index_utils::consolidate_bytes(0))); // value garanteeing non-merge
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -11478,7 +12627,7 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->commit();
-    writer->consolidate(iresearch::index_utils::consolidate_bytes_accum(1), true); // value garanteeing merge
+    ASSERT_TRUE(writer->consolidate(iresearch::index_utils::consolidate_bytes_accum(1))); // value garanteeing merge
     writer->commit();
     // segments merged because segment[0] is a candidate and needs to be merged with something
 
@@ -11519,7 +12668,7 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->commit();
-    writer->consolidate(iresearch::index_utils::consolidate_bytes_accum(0), true); // value garanteeing non-merge
+    ASSERT_TRUE(writer->consolidate(iresearch::index_utils::consolidate_bytes_accum(0))); // value garanteeing non-merge
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -11572,7 +12721,7 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
 
   // valid docs count policy (merge)
   {
-    auto query_doc2_doc3 = iresearch::iql::query_builder().build("name==B||name==C", std::locale::classic());
+    auto query_doc2_doc3_doc4 = irs::iql::query_builder().build("name==B||name==C||name==D", std::locale::classic());
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer,
@@ -11592,16 +12741,16 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       doc4->stored.begin(), doc4->stored.end()
     ));
     writer->commit();
-    writer->remove(std::move(query_doc2_doc3.filter));
+    writer->remove(std::move(query_doc2_doc3_doc4.filter));
     ASSERT_TRUE(insert(*writer,
       doc5->indexed.begin(), doc5->indexed.end(),
       doc5->stored.begin(), doc5->stored.end()
     ));
     writer->commit();
-    writer->consolidate(iresearch::index_utils::consolidate_count(1), true); // value garanteeing merge
+    ASSERT_TRUE(writer->consolidate(iresearch::index_utils::consolidate_count(1))); // value garanteeing merge
     writer->commit();
 
-    std::unordered_set<irs::string_ref> expectedName = { "A", "D", "E" };
+    std::unordered_set<irs::string_ref> expectedName = { "A", "E" };
     irs::bytes_ref actual_value;
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -11652,7 +12801,7 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       doc5->stored.begin(), doc5->stored.end()
     ));
     writer->commit();
-    writer->consolidate(iresearch::index_utils::consolidate_count(0), true); // value garanteeing non-merge
+    ASSERT_TRUE(writer->consolidate(iresearch::index_utils::consolidate_count(0))); // value garanteeing non-merge
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -11728,7 +12877,7 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
     writer->commit();
     writer->remove(std::move(query_doc2_doc4.filter));
     writer->commit();
-    writer->consolidate(iresearch::index_utils::consolidate_fill(1), true); // value garanteeing merge
+    ASSERT_TRUE(writer->consolidate(iresearch::index_utils::consolidate_fill(1))); // value garanteeing merge
     writer->commit();
 
     std::unordered_set<irs::string_ref> expectedName = { "A", "C" };
@@ -11779,7 +12928,7 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
     writer->commit();
     writer->remove(std::move(query_doc2_doc4.filter));
     writer->commit();
-    writer->consolidate(iresearch::index_utils::consolidate_fill(0), true); // value garanteeing non-merge
+    ASSERT_TRUE(writer->consolidate(iresearch::index_utils::consolidate_fill(0))); // value garanteeing non-merge
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());

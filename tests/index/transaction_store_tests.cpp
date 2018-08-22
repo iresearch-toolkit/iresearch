@@ -28,6 +28,7 @@
 #include "iql/query_builder.hpp"
 #include "search/term_filter.hpp"
 #include "store/memory_directory.hpp"
+#include "utils/index_utils.hpp"
 
 NS_LOCAL
 
@@ -377,7 +378,7 @@ class transaction_store_tests: public test_base {
       auto flushed = store.flush();
 
       ASSERT_TRUE(flushed && dir_writer->import(flushed));
-      dir_writer->consolidate(always_merge, false);
+      ASSERT_TRUE(dir_writer->consolidate(irs::index_utils::consolidate_all()));
       dir_writer->commit();
     }
 
@@ -3328,12 +3329,6 @@ TEST_F(transaction_store_tests, concurrent_add_flush_mt) {
 
   for (const tests::document* doc; (doc = gen.next()) != nullptr; docs.emplace_back(doc)) {}
 
-  auto always_merge = [](
-    irs::bitvector& candidates, const irs::directory& dir, const irs::index_meta& meta
-  )->void {
-    for (size_t i = meta.size(); i; candidates.set(--i)); // merge every segment
-  };
-
   {
     std::thread thread0a([&store, docs]()->void{
       irs::store_writer writer(store);
@@ -3400,7 +3395,8 @@ TEST_F(transaction_store_tests, concurrent_add_flush_mt) {
     auto flushed = store.flush();
 
     ASSERT_TRUE(flushed && dir_writer->import(flushed));
-    dir_writer->consolidate(always_merge, false);
+    dir_writer->commit();
+    ASSERT_TRUE(dir_writer->consolidate(irs::index_utils::consolidate_all()));
     dir_writer->commit();
   }
 
@@ -5245,7 +5241,8 @@ TEST_F(transaction_store_tests, segment_flush) {
     ASSERT_TRUE(writer.commit());
     flushed = store.flush();
     ASSERT_TRUE(flushed && dir_writer->import(flushed));
-    dir_writer->consolidate(always_merge, false);
+    dir_writer->commit();
+    ASSERT_TRUE(dir_writer->consolidate(irs::index_utils::consolidate_all()));
     dir_writer->commit();
 
     // validate structure
@@ -5344,7 +5341,8 @@ TEST_F(transaction_store_tests, segment_flush) {
       auto flushed = store.flush();
 
       ASSERT_TRUE(flushed && dir_writer->import(flushed));
-      dir_writer->consolidate(always_merge, false);
+      dir_writer->commit();
+      ASSERT_TRUE(dir_writer->consolidate(irs::index_utils::consolidate_all()));
       dir_writer->commit();
     }
 

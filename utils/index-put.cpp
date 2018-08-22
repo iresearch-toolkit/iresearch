@@ -57,11 +57,11 @@
 #include "index-put.hpp"
 #include "common.hpp"
 #include "index/index_writer.hpp"
+#include "analysis/token_attributes.hpp"
 #include "analysis/token_streams.hpp"
 #include "analysis/text_token_stream.hpp"
 #include "store/store_utils.hpp"
-#include "utils/bitvector.hpp"
-#include "analysis/token_attributes.hpp"
+#include "utils/index_utils.hpp"
 
 #include <boost/chrono.hpp>
 #include <fstream>
@@ -505,22 +505,12 @@ int put(
     writer->commit();
   }
 
-  // merge all segments into a single segment
-  writer->consolidate(
-    [](irs::bitvector& candidates, const irs::directory&, const irs::index_meta& meta)->void {
-      size_t i = 0;
-
-      for (auto& segment: meta) {
-        std::cout << segment.meta.name << std::endl;
-        candidates.set(i++);
-      }
-    },
-    false
-  );
-
   if (consolidate) {
+    // merge all segments into a single segment
+
     SCOPED_TIMER("Merge time");
     std::cout << "Merging segments:" << std::endl;
+    writer->consolidate(irs::index_utils::consolidate_all());
     writer->commit();
     irs::directory_utils::remove_all_unreferenced(*dir);
   }

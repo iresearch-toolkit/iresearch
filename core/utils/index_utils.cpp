@@ -25,12 +25,87 @@
 #include "formats/format_utils.hpp"
 #include "index_utils.hpp"
 
+NS_LOCAL
+
+size_t segment_size(
+    const irs::directory& dir,
+    const irs::segment_meta& segment
+) {
+  size_t total_size = 0;
+  size_t file_size = 0;
+  for (const auto& file : segment.files) {
+    if (dir.length(file_size, file)) {
+      total_size += file_size;
+    }
+  }
+  return total_size;
+}
+
+double fill_factor(const irs::segment_meta& segment) NOEXCEPT {
+  return double(segment.live_docs_count)/segment.docs_count;
+}
+
+std::vector<const irs::segment_meta*> get_segments_sorted_by_size(
+    const irs::index_meta& index,
+    const irs::directory& dir
+) {
+  std::vector<const irs::segment_meta*> segments;
+  segments.reserve(index.size());
+
+  // get segments from index meta
+  auto push_segments = [&segments](
+      const std::string& /*filename*/,
+      const irs::segment_meta& segment
+  ) NOEXCEPT { // NOEXCEPT - because we reserved enough space
+    segments.push_back(&segment);
+    return true;
+  };
+
+  index.visit_segments(push_segments);
+
+  // sort segments by size
+  auto less = [&dir](
+      const irs::segment_meta* lhs, 
+      const irs::segment_meta* rhs) {
+    const auto lhs_size = segment_size(dir, *lhs);
+    const auto rhs_size = segment_size(dir, *rhs);
+
+    if (lhs_size == rhs_size) {
+      const auto lhs_fill_factor = fill_factor(*lhs);
+      const auto rhs_fill_factor = fill_factor(*rhs);
+
+      if (lhs_fill_factor == rhs_fill_factor) {
+        return lhs->name < rhs->name;
+      }
+
+      return lhs_fill_factor < rhs_fill_factor;
+    }
+
+    return lhs_size < rhs_size;
+  };
+
+  std::sort(segments.begin(), segments.end(), less);
+
+  return segments;
+}
+
+NS_END
+
 NS_ROOT
 NS_BEGIN(index_utils)
 
+index_writer::consolidation_policy_t consolidate_all() {
+  return [](std::set<const segment_meta*>& candidates, const directory& /*dir*/, const index_meta& meta) {
+    // merge every segment
+    for (auto& segment : meta) {
+      candidates.insert(&segment.meta);
+    }
+  };
+}
+
 index_writer::consolidation_policy_t consolidate_bytes(float byte_threshold /*= 0*/) {
   return [byte_threshold](
-    bitvector& candidates, const directory& dir, const index_meta& meta
+    std::set<const segment_meta*>& candidates, const directory& dir, const index_meta& meta
   )->void {
     size_t all_segment_bytes_size = 0;
     size_t segment_count = meta.size();
@@ -46,9 +121,6 @@ index_writer::consolidation_policy_t consolidate_bytes(float byte_threshold /*= 
 
     auto threshold = std::max<float>(0, std::min<float>(1, byte_threshold));
     auto threshold_bytes_avg = (all_segment_bytes_size / (float)segment_count) * threshold;
-    size_t i = 0;
-
-    candidates.clear(); // clear list of candidates before selection
 
     // merge segment if: {threshold} > segment_bytes / (all_segment_bytes / #segments)
     for (auto& segment: meta) {
@@ -61,18 +133,16 @@ index_writer::consolidation_policy_t consolidate_bytes(float byte_threshold /*= 
         }
       }
 
-      if (threshold_bytes_avg > segment_bytes_size) {
-        candidates.set(i);
+      if (threshold_bytes_avg >= segment_bytes_size) {
+        candidates.insert(&segment.meta);
       }
-
-      ++i;
     }
   };
 }
 
 index_writer::consolidation_policy_t consolidate_bytes_accum(float byte_threshold /*= 0*/) {
   return [byte_threshold](
-    bitvector& candidates, const directory& dir, const index_meta& meta
+    std::set<const segment_meta*>& candidates, const directory& dir, const index_meta& meta
   )->void {
     size_t all_segment_bytes_size = 0;
     uint64_t length;
@@ -86,11 +156,9 @@ index_writer::consolidation_policy_t consolidate_bytes_accum(float byte_threshol
     }
 
     size_t cumulative_size = 0;
-    auto src_candidates = std::move(candidates); // remember provided segment candidates
     auto threshold_size = all_segment_bytes_size * std::max<float>(0, std::min<float>(1, byte_threshold));
-    size_t i = 0;
 
-    // merge segment if: {threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes
+    // merge segment if: {threshold} >= (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes
     for (auto& segment: meta) {
       size_t segment_bytes_size = 0;
       uint64_t length;
@@ -101,20 +169,17 @@ index_writer::consolidation_policy_t consolidate_bytes_accum(float byte_threshol
         }
       }
 
-      if (src_candidates.test(i) // only consider segments provided by caller
-          && cumulative_size + segment_bytes_size < threshold_size) {
+      if (cumulative_size + segment_bytes_size <= threshold_size) {
         cumulative_size += segment_bytes_size;
-        candidates.set(i);
+        candidates.insert(&segment.meta);
       }
-
-      ++i;
     }
   };
 }
 
 index_writer::consolidation_policy_t consolidate_count(float docs_threshold /*= 0*/) {
   return [docs_threshold](
-    bitvector& candidates, const directory& dir, const index_meta& meta
+    std::set<const segment_meta*>& candidates, const directory& /*dir*/, const index_meta& meta
   )->void {
     size_t all_segment_docs_count = 0;
     size_t segment_count = meta.size();
@@ -126,39 +191,29 @@ index_writer::consolidation_policy_t consolidate_count(float docs_threshold /*= 
 
     auto threshold = std::max<float>(0, std::min<float>(1, docs_threshold));
     auto threshold_docs_avg = (all_segment_docs_count / (float)segment_count) * threshold;
-    size_t i = 0;
 
-    candidates.clear(); // clear list of candidates before selection
-
-    // merge segment if: {threshold} > segment_docs{valid} / (all_segment_docs{valid} / #segments)
+    // merge segment if: {threshold} >= segment_docs{valid} / (all_segment_docs{valid} / #segments)
     for (auto& segment: meta) {
       if (!segment.meta.live_docs_count // if no valid doc_ids left in segment
-          || threshold_docs_avg > segment.meta.live_docs_count) {
-        candidates.set(i);
+          || threshold_docs_avg >= segment.meta.live_docs_count) {
+        candidates.insert(&segment.meta);
       }
-
-      ++i;
     }
   };
 }
 
 index_writer::consolidation_policy_t consolidate_fill(float fill_threshold /*= 0*/) {
   return [fill_threshold](
-    bitvector& candidates, const directory& dir, const index_meta& meta
+    std::set<const segment_meta*>& candidates, const directory& /*dir*/, const index_meta& meta
   )->void {
     auto threshold = std::max<float>(0, std::min<float>(1, fill_threshold));
-    size_t i = 0;
 
-    candidates.clear(); // clear list of candidates before selection
-
-    // merge segment if: {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})
+    // merge segment if: {threshold} >= #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})
     for (auto& segment: meta) {
       if (!segment.meta.live_docs_count // if no valid doc_ids left in segment
-          || segment.meta.docs_count * threshold > segment.meta.live_docs_count) {
-        candidates.set(i);
+          || segment.meta.docs_count * threshold >= segment.meta.live_docs_count) {
+        candidates.insert(&segment.meta);
       }
-
-      ++i;
     }
   };
 }

@@ -29,13 +29,15 @@
 NS_ROOT
 NS_BEGIN(index_utils)
 
+IRESEARCH_API index_writer::consolidation_policy_t consolidate_all();
+
 // merge segment if: {threshold} > segment_bytes / (all_segment_bytes / #segments)
 IRESEARCH_API index_writer::consolidation_policy_t consolidate_bytes(float byte_threshold = 0);
 
-// merge segment if: {threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes
+// merge segment if: {threshold} >= (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes
 IRESEARCH_API index_writer::consolidation_policy_t consolidate_bytes_accum(float byte_threshold = 0);
 
-// merge segment if: {threshold} > segment_docs{valid} / (all_segment_docs{valid} / #segments)
+// merge segment if: {threshold} >= segment_docs{valid} / (all_segment_docs{valid} / #segments)
 IRESEARCH_API index_writer::consolidation_policy_t consolidate_count(float docs_threshold = 0);
 
 // merge segment if: {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})

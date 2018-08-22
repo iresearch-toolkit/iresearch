@@ -124,6 +124,13 @@ class index_test_base : public virtual test_base {
   const index_t& index() const { return index_; }
 
   irs::index_writer::ptr open_writer(
+      irs::directory& dir,
+      irs::OpenMode mode = irs::OM_CREATE
+  ) {
+    return irs::index_writer::make(dir, codec_, mode);
+  }
+
+  irs::index_writer::ptr open_writer(
       irs::OpenMode mode = irs::OM_CREATE
   ) {
     return irs::index_writer::make(*dir_, codec_, mode);
