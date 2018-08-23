@@ -286,7 +286,7 @@ index_writer::ptr index_writer::make(
     }
   }
 
-  auto comitted_state = std::make_pair(
+  auto comitted_state = std::make_shared<committed_state_t::element_type>(
     memory::make_unique<index_meta>(meta),
     std::move(file_refs)
   );
@@ -584,10 +584,12 @@ bool index_writer::consolidate(
 
   std::set<const segment_meta*> candidates;
 
-  // hold reference to the last committed meta & refs
-  // FIXME use shared_ptr instead of pair
-  const auto committed_refs = committed_state_.second;
-  auto committed_meta = committed_state_.first;
+  // hold reference to the last committed state
+  // to prevent files to be deleted by a cleaner
+  // during upcoming consolidation
+  const auto committed_state = committed_state_;
+  assert(committed_state);
+  auto committed_meta = committed_state->first;
   assert(committed_meta);
 
   // collect a list of consolidation candidates
@@ -612,25 +614,16 @@ bool index_writer::consolidate(
     }
   }
 
-  // check candidates
-  {
-    SCOPED_LOCK(commit_lock_); // ensure committed_state_ segments are not modified by concurrent consolidate()/commit()
+  // validate candidates
+  const auto candidate_not_found = candidates.end();
 
-    if (committed_meta != committed_state_.first) {
-      // something has changed, check that all
-      // candidates are still there
+  for (const auto& segment : *committed_meta) {
+    const auto& meta = segment.meta;
 
-      const auto candidate_not_found = candidates.end();
-
-      for (const auto& segment : *committed_state_.first) {
-        const auto& meta = segment.meta;
-
-        if (candidate_not_found == candidates.find(&meta)) {
-          // segment was dropped or updated
-          // while executing policy
-          return false;
-        }
-      }
+    if (candidate_not_found == candidates.find(&meta)) {
+      // segment was dropped or updated
+      // while executing policy
+      return false;
     }
   }
 
@@ -697,7 +690,7 @@ bool index_writer::consolidate(
   // commit merge
   {
     SCOPED_LOCK_NAMED(commit_lock_, lock); // ensure committed_state_ segments are not modified by concurrent consolidate()/commit()
-    const auto current_committed_meta = committed_state_.first;
+    const auto current_committed_meta = committed_state_->first;
     assert(current_committed_meta);
 
     if (pending_state_) {
@@ -1050,8 +1043,8 @@ index_writer::pending_context_t index_writer::flush_all() {
       const auto candidate_not_found = candidates_mapping.end();
 
       size_t found = 0;
-      assert(committed_state_.first);
-      auto& pending_meta = *committed_state_.first;
+      assert(committed_state_ && committed_state_->first);
+      auto& pending_meta = *committed_state_->first;
 
       // undo changes made in segment mask
       // in case if not all segments were found
@@ -1376,16 +1369,19 @@ void index_writer::finish() {
   auto& ctx = *(pending_state_.ctx);
   auto& dir = *(ctx.dir_);
   auto& meta = *(pending_state_.meta);
-  committed_state_t committed_state;
+
+  auto committed_state = std::make_shared<committed_state_t::element_type>(); // FIXME move to begin() ???
+  auto& committed_refs = committed_state->second;
+
   auto lock_file_ref = directory_utils::reference(dir, WRITE_LOCK_NAME);
 
   if (lock_file_ref) {
     // file exists on fs_directory
-    committed_state.second.emplace_back(lock_file_ref);
+    committed_refs.emplace_back(lock_file_ref);
   }
 
-  committed_state.second.emplace_back(directory_utils::reference(dir, writer_->filename(meta), true));
-  append_segments_refs(committed_state.second, dir, meta);
+  committed_refs.emplace_back(directory_utils::reference(dir, writer_->filename(meta), true));
+  append_segments_refs(committed_refs, dir, meta);
   writer_->commit();
   meta_.last_gen_ = meta.gen_; // update 'last_gen_' to last commited/valid generation
 
@@ -1393,7 +1389,7 @@ void index_writer::finish() {
   // after here transaction successfull
   // ...........................................................................
 
-  committed_state.first = std::move(pending_state_.meta);
+  committed_state->first = std::move(pending_state_.meta);
   committed_state_ = std::move(committed_state);
   pending_state_.reset(); // flush is complete, release reference to flush_context
 }
@@ -1423,7 +1419,7 @@ void index_writer::rollback() {
 
   // reset actual meta, note that here we don't change 
   // segment counters since it can be changed from insert function
-  meta_.reset(*(committed_state_.first));
+  meta_.reset(*(committed_state_->first));
 }
 
 NS_END

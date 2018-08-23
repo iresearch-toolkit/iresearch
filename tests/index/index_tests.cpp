@@ -10421,6 +10421,164 @@ TEST_F(memory_index_test, segment_concurrent_consolidation) {
 
 }
 
+TEST_F(memory_index_test, consolidate_invalid_candidate) {
+  auto writer = open_writer(dir());
+  ASSERT_NE(nullptr, writer);
+
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+      if (data.is_string()) {
+        doc.insert(std::make_shared<tests::templates::string_field>(
+          irs::string_ref(name),
+          data.str
+        ));
+      }
+  });
+
+  tests::document const* doc1 = gen.next();
+
+  // segment 1
+  ASSERT_TRUE(insert(*writer,
+    doc1->indexed.begin(), doc1->indexed.end(),
+    doc1->stored.begin(), doc1->stored.end()
+  ));
+  writer->commit();
+  ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+
+  // null candidate
+  {
+    auto invalid_candidate_policy = [](
+        std::set<const irs::segment_meta*>& candidates,
+        const irs::directory& /*dir*/,
+        const irs::index_meta& /*meta*/
+    ) {
+      candidates.insert(nullptr);
+    };
+
+    ASSERT_FALSE(writer->consolidate(invalid_candidate_policy)); // invalid candidate
+    writer->commit();
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+  }
+
+  // invalid candidate
+  {
+    const irs::segment_meta meta("foo", nullptr, 6, 5, false, {});
+
+    auto invalid_candidate_policy = [&meta](
+        std::set<const irs::segment_meta*>& candidates,
+        const irs::directory& /*dir*/,
+        const irs::index_meta& /*meta*/
+    ) {
+      candidates.insert(&meta);
+    };
+
+    ASSERT_FALSE(writer->consolidate(invalid_candidate_policy)); // invalid candidate
+    writer->commit();
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+  }
+}
+
+TEST_F(memory_index_test, consolidate_single_segment) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+      if (data.is_string()) {
+        doc.insert(std::make_shared<tests::templates::string_field>(
+          irs::string_ref(name),
+          data.str
+        ));
+      }
+  });
+
+  tests::document const* doc1 = gen.next();
+  tests::document const* doc2 = gen.next();
+
+  auto all_features = irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() };
+  irs::bytes_ref actual_value;
+
+  // single segment without deletes
+  {
+    auto writer = open_writer(dir());
+    ASSERT_NE(nullptr, writer);
+
+    // segment 1
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    writer->commit();
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // nothing to consolidate
+    writer->commit();
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+  }
+
+  size_t count = 0;
+  auto get_number_of_files_in_segments = [&count](const std::string& name) NOEXCEPT {
+    count += size_t(name.size() && '_' == name[0]);
+    return true;
+  };
+
+  // single segment with deletes
+  {
+    auto writer = open_writer(dir());
+    ASSERT_NE(nullptr, writer);
+
+    // segment 1
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(insert(*writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    writer->commit();
+    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+    writer->remove(*query_doc1.filter);
+    writer->commit();
+    ASSERT_EQ(2, irs::directory_cleaner::clean(dir())); // segments_1 + stale segment meta
+    ASSERT_EQ(1, iresearch::directory_reader::open(this->dir(), codec()).size());
+
+    // get number of files in 1st segment
+    count = 0;
+    dir().visit(get_number_of_files_in_segments);
+
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // nothing to consolidate
+    writer->commit();
+    ASSERT_EQ(1+count, irs::directory_cleaner::clean(dir())); // +1 for segments_2
+
+    // validate structure
+    tests::index_t expected;
+    expected.emplace_back();
+    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    tests::assert_index(this->dir(), codec(), expected, all_features);
+
+    auto reader = iresearch::directory_reader::open(this->dir(), codec());
+    ASSERT_EQ(1, reader.size());
+
+    // assume 0 is 'merged' segment
+    {
+      auto& segment = reader[0];
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      ASSERT_EQ(1, segment.docs_count()); // total count of documents
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+      ASSERT_FALSE(docsItr->next());
+    }
+  }
+}
+
 TEST_F(memory_index_test, segment_consolidate_long_running) {
   struct blocking_directory : tests::directory_mock {
     explicit blocking_directory(irs::directory& impl, const irs::string_ref& blocker)

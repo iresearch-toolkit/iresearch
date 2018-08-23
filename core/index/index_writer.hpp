@@ -349,7 +349,9 @@ class IRESEARCH_API index_writer : util::noncopyable {
   }; // import_context
 
   typedef std::unordered_map<std::string, segment_reader> cached_readers_t;
-  typedef std::pair<std::shared_ptr<index_meta>, file_refs_t> committed_state_t;
+  typedef std::shared_ptr<
+    std::pair<std::shared_ptr<index_meta>, file_refs_t>
+  > committed_state_t;
   typedef std::vector<modification_context> modification_requests_t;
 
   struct IRESEARCH_API flush_context {
