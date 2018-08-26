@@ -10417,7 +10417,136 @@ TEST_F(memory_index_test, segment_column_user_system) {
   ASSERT_TRUE(expectedName.empty());
 }
 
-TEST_F(memory_index_test, segment_concurrent_consolidation) {
+TEST_F(memory_index_test, import_concurrent) {
+  struct store {
+    store(const irs::format::ptr& codec)
+      : dir(irs::memory::make_unique<irs::memory_directory>()) {
+      writer = irs::index_writer::make(*dir, codec, irs::OM_CREATE);
+      writer->commit();
+      reader = irs::directory_reader::open(*dir);
+    }
+
+    store(store&& rhs) NOEXCEPT
+      : dir(std::move(rhs.dir)),
+        writer(std::move(rhs.writer)),
+        reader(rhs.reader) {
+    }
+
+    store(const store&) = delete;
+    store& operator=(const store&) = delete;
+
+    std::unique_ptr<irs::memory_directory> dir;
+    irs::index_writer::ptr writer;
+    irs::directory_reader reader;
+  };
+
+  std::vector<store> stores;
+  stores.reserve(4);
+  for (size_t i = 0; i < stores.capacity(); ++i) {
+    stores.emplace_back(codec());
+  }
+  std::vector<std::thread> workers;
+
+  std::set<std::string> names;
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    [&names] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+      if (data.is_string()) {
+        doc.insert(std::make_shared<tests::templates::string_field>(
+          irs::string_ref(name),
+          data.str
+        ));
+
+        if (name == "name") {
+          names.emplace(data.str.data, data.str.size);
+        }
+      }
+  });
+
+  const auto count = 10;
+  for (auto& store : stores) {
+    for (auto i = 0; i < count; ++i) {
+      auto* doc = gen.next();
+
+      if (!doc) {
+        break;
+      }
+
+      ASSERT_TRUE(insert(*store.writer,
+        doc->indexed.begin(), doc->indexed.end(),
+        doc->stored.begin(), doc->stored.end()
+      ));
+    }
+    store.writer->commit();
+    store.reader = irs::directory_reader::open(*store.dir);
+  }
+
+  std::mutex mutex;
+  std::condition_variable ready_cv;
+  bool ready = false;
+
+  auto wait_for_all = [&mutex, &ready, &ready_cv]() {
+    // wait for all threads to be registered
+    std::unique_lock<std::remove_reference<decltype(mutex)>::type> lock(mutex);
+    while (!ready) {
+      ready_cv.wait(lock);
+    }
+  };
+
+  irs::memory_directory dir;
+  irs::index_writer::ptr writer = irs::index_writer::make(dir, codec(), irs::OM_CREATE);
+  irs::bytes_ref actual_value;
+
+  for (auto& store : stores) {
+    workers.emplace_back([&wait_for_all, &writer, &store]() {
+      wait_for_all();
+      writer->import(store.reader);
+    });
+  }
+
+  // all threads are registered... go, go, go...
+  {
+    std::lock_guard<decltype(mutex)> lock(mutex);
+    ready = true;
+    ready_cv.notify_all();
+  }
+
+  // wait for workers to finish
+  for (auto& worker: workers) {
+    worker.join();
+  }
+
+  writer->commit(); // commit changes
+
+  auto reader = iresearch::directory_reader::open(dir);
+  ASSERT_EQ(workers.size(), reader.size());
+  ASSERT_EQ(names.size(), reader.docs_count());
+
+  size_t removed = 0;
+  size_t source_id = 0;
+  for (auto& segment : reader) {
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
+    ASSERT_EQ(stores[source_id].reader->docs_count(), segment.docs_count()); // total count of documents
+    auto terms = segment.field("same");
+    ASSERT_NE(nullptr, terms);
+    auto termItr = terms->iterator();
+    ASSERT_TRUE(termItr->next());
+    auto docsItr = termItr->postings(iresearch::flags());
+    while (docsItr->next()) {
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ(1, names.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
+      ++removed;
+    }
+    ASSERT_FALSE(docsItr->next());
+    ++source_id;
+  }
+  ASSERT_EQ(removed, reader.docs_count());
+  ASSERT_TRUE(names.empty());
+}
+
+TEST_F(memory_index_test, concurrent_consolidation) {
 
 }
 
