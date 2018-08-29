@@ -10521,14 +10521,13 @@ TEST_F(memory_index_test, import_concurrent) {
   auto reader = iresearch::directory_reader::open(dir);
   ASSERT_EQ(workers.size(), reader.size());
   ASSERT_EQ(names.size(), reader.docs_count());
+  ASSERT_EQ(names.size(), reader.live_docs_count());
 
   size_t removed = 0;
-  size_t source_id = 0;
   for (auto& segment : reader) {
     const auto* column = segment.column_reader("name");
     ASSERT_NE(nullptr, column);
     auto values = column->values();
-    ASSERT_EQ(stores[source_id].reader->docs_count(), segment.docs_count()); // total count of documents
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
@@ -10540,7 +10539,6 @@ TEST_F(memory_index_test, import_concurrent) {
       ++removed;
     }
     ASSERT_FALSE(docsItr->next());
-    ++source_id;
   }
   ASSERT_EQ(removed, reader.docs_count());
   ASSERT_TRUE(names.empty());

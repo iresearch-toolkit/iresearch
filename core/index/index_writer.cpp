@@ -613,14 +613,23 @@ bool index_writer::consolidate(
   }
 
   // validate candidates
-  const auto candidate_not_found = candidates.end();
+  {
+    size_t found = 0;
 
-  for (const auto& segment : *committed_meta) {
-    const auto& meta = segment.meta;
+    const auto candidate_not_found = candidates.end();
 
-    if (candidate_not_found == candidates.find(&meta)) {
-      // segment was dropped or updated
-      // while executing policy
+    for (const auto& segment : *committed_meta) {
+      found += size_t(candidate_not_found != candidates.find(&segment.meta));
+    }
+
+    if (found != candidates.size()) {
+      // not all candidates are valid
+      IR_FRMT_WARN(
+        "Failed to start consolidation for index generation '" IR_SIZE_T_SPECIFIER "', found only '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER "' candidates",
+        committed_meta->generation(),
+        found,
+        candidates.size()
+      );
       return false;
     }
   }
