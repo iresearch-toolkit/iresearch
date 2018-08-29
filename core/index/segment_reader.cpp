@@ -325,7 +325,8 @@ template<>
 template<>
 /*static*/ bool segment_reader::has<document_mask_reader>(
     const segment_meta& meta) NOEXCEPT {
-  return meta.version > 0; // all version > 0 have document mask
+//  return meta.version > 0; // all version > 0 have document mask
+  return meta.live_docs_count != meta.docs_count;
 }
 
 /*static*/ segment_reader segment_reader::open(

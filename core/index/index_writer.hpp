@@ -24,8 +24,9 @@
 #ifndef IRESEARCH_INDEXWRITER_H
 #define IRESEARCH_INDEXWRITER_H
 
-#include "index_meta.hpp"
 #include "field_meta.hpp"
+#include "index_meta.hpp"
+#include "merge_writer.hpp"
 #include "segment_reader.hpp"
 #include "segment_writer.hpp"
 
@@ -284,12 +285,51 @@ class IRESEARCH_API index_writer : util::noncopyable {
     modification_context& operator=(const modification_context& other) = delete; // no default constructor
   }; // modification_context
 
-  typedef std::pair<
-    std::shared_ptr<index_meta>,
-    std::set<const segment_meta*>
-  > consolidation_context_t;
+  struct consolidation_context_t : util::noncopyable {
+    consolidation_context_t() = default;
+
+    consolidation_context_t(consolidation_context_t&& rhs) NOEXCEPT
+      : consolidaton_meta(std::move(rhs.consolidaton_meta)),
+        candidates(std::move(rhs.candidates)),
+        merger(std::move(rhs.merger)) {
+    }
+
+    consolidation_context_t(
+        std::shared_ptr<index_meta>&& consolidaton_meta,
+        std::set<const segment_meta*>&& candidates,
+        merge_writer&& merger) NOEXCEPT
+      : consolidaton_meta(std::move(consolidaton_meta)),
+        candidates(std::move(candidates)),
+        merger(std::move(merger)) {
+    }
+
+    consolidation_context_t(
+        std::shared_ptr<index_meta>&& consolidaton_meta,
+        std::set<const segment_meta*>&& candidates) NOEXCEPT
+      : consolidaton_meta(std::move(consolidaton_meta)),
+        candidates(std::move(candidates)) {
+    }
+
+    std::shared_ptr<index_meta> consolidaton_meta;
+    std::set<const segment_meta*> candidates;
+    merge_writer merger;
+  }; // consolidation_context_t
 
   struct import_context {
+    import_context(
+        index_meta::index_segment_t&& segment,
+        size_t generation,
+        file_refs_t&& refs,
+        std::set<const segment_meta*>&& consolidation_candidates,
+        std::shared_ptr<index_meta>&& consolidation_meta,
+        merge_writer&& merger
+    ) NOEXCEPT
+      : generation(generation),
+        segment(std::move(segment)),
+        refs(std::move(refs)),
+        consolidation_ctx(std::move(consolidation_meta), std::move(consolidation_candidates), std::move(merger)) {
+    }
+
     import_context(
         index_meta::index_segment_t&& segment,
         size_t generation,

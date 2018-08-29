@@ -240,6 +240,17 @@ void read_document_mask(
   }
 }
 
+std::string write_segment_meta(
+    directory& dir,
+    const segment_meta& meta
+) {
+  assert(meta.codec);
+  auto writer = meta.codec->get_segment_meta_writer();
+
+  writer->write(dir, meta);
+  return writer->filename(meta);
+}
+
 NS_END // index_utils
 NS_END // NS_ROOT
 

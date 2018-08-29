@@ -40,11 +40,29 @@ class IRESEARCH_API merge_writer: public util::noncopyable {
  public:
   typedef std::shared_ptr<const irs::sub_reader> sub_reader_ptr;
 
-  DECLARE_UNIQUE_PTR(merge_writer);
+  struct reader_ctx {
+    explicit reader_ctx(sub_reader_ptr reader) NOEXCEPT;
+
+    sub_reader_ptr reader; // segment reader
+    std::vector<doc_id_t> doc_id_map; // FIXME use bitpacking vector
+    std::function<doc_id_t(doc_id_t)> doc_map; // mapping function
+  }; // reader_ctx
+
+  merge_writer() NOEXCEPT;
 
   merge_writer(directory& dir, const string_ref& seg_name) NOEXCEPT
     : dir_(dir), name_(seg_name) {
   }
+
+  merge_writer(merge_writer&& rhs) NOEXCEPT
+    : dir_(rhs.dir_),
+      name_(rhs.name_),
+      readers_(std::move(rhs.readers_)) {
+  }
+
+  merge_writer& operator=(merge_writer&&) = delete;
+
+  operator bool() const NOEXCEPT;
 
   void add(const sub_reader& reader) {
     // add reference
@@ -58,7 +76,17 @@ class IRESEARCH_API merge_writer: public util::noncopyable {
     readers_.emplace_back(reader);
   }
 
-  bool flush(std::string& filename, segment_meta& meta); // return merge successful
+  // return merge successful
+  bool flush(
+    std::string& filename,
+    segment_meta& meta,
+    bool persist_segment_meta = true
+  );
+
+  const reader_ctx& operator[](size_t i) const NOEXCEPT {
+    assert(i < readers_.size());
+    return readers_[i];
+  }
 
   // reserve enough space to hold 'size' readers
   void reserve(size_t size) {
@@ -66,14 +94,6 @@ class IRESEARCH_API merge_writer: public util::noncopyable {
   }
 
  private:
-  struct reader_ctx {
-    explicit reader_ctx(sub_reader_ptr reader) NOEXCEPT;
-
-    sub_reader_ptr reader; // segment reader
-    std::vector<doc_id_t> doc_id_map; // FIXME use bitpacking vector
-    std::function<doc_id_t(doc_id_t)> doc_map; // mapping function
-  }; // reader_ctx
-
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   directory& dir_;
   string_ref name_;

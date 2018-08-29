@@ -30,6 +30,7 @@
 #include "index/segment_reader.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/log.hpp"
+#include "utils/index_utils.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/version_utils.hpp"
 #include "utils/type_limits.hpp"
@@ -50,6 +51,80 @@ typedef std::function<irs::doc_id_t(irs::doc_id_t)> doc_map_f;
 typedef std::vector<irs::field_id> id_map_t;
 
 typedef std::unordered_map<irs::string_ref, const irs::field_meta*> field_meta_map_t;
+
+class noop_directory : public irs::directory {
+ public:
+  static noop_directory& instance() NOEXCEPT {
+    static noop_directory INSTANCE;
+    return INSTANCE;
+  }
+
+  virtual irs::attribute_store& attributes() NOEXCEPT override {
+    return const_cast<irs::attribute_store&>(
+      irs::attribute_store::empty_instance()
+    );
+  }
+
+  virtual void close() NOEXCEPT override { }
+
+  virtual irs::index_output::ptr create(
+    const std::string&
+  ) NOEXCEPT override {
+    return nullptr;
+  }
+
+  virtual bool exists(
+    bool&, const std::string&
+  ) const NOEXCEPT override {
+    return false;
+  }
+
+  virtual bool length(
+    uint64_t&, const std::string&
+  ) const NOEXCEPT override {
+    return false;
+  }
+
+  virtual irs::index_lock::ptr make_lock(
+    const std::string&
+  ) NOEXCEPT override {
+    return nullptr;
+  }
+
+  virtual bool mtime(
+    std::time_t&, const std::string&
+  ) const NOEXCEPT override {
+    return false;
+  }
+
+  virtual irs::index_input::ptr open(
+    const std::string&,
+    irs::IOAdvice
+  ) const NOEXCEPT override {
+    return nullptr;
+  }
+
+  virtual bool remove(const std::string&) NOEXCEPT override {
+    return false;
+  }
+
+  virtual bool rename(
+    const std::string&, const std::string&
+  ) NOEXCEPT override {
+    return false;
+  }
+
+  virtual bool sync(const std::string&) NOEXCEPT override {
+    return false;
+  }
+
+  virtual bool visit(const irs::directory::visitor_f&) const override {
+    return false;
+  }
+
+ private:
+  noop_directory() NOEXCEPT { }
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class compound_attributes
@@ -816,7 +891,19 @@ merge_writer::reader_ctx::reader_ctx(irs::sub_reader::ptr reader) NOEXCEPT
   assert(reader);
 }
 
-bool merge_writer::flush(std::string& filename, segment_meta& meta) {
+merge_writer::merge_writer() NOEXCEPT
+  : dir_(noop_directory::instance()) {
+}
+
+merge_writer::operator bool() const NOEXCEPT {
+  return &dir_ == &noop_directory::instance();
+}
+
+bool merge_writer::flush(
+    std::string& filename,
+    segment_meta& meta,
+    bool persist_segment_meta /* = true */
+) {
   REGISTER_TIMER_DETAILED();
 
   std::unordered_map<irs::string_ref, const irs::field_meta*> field_metas;
@@ -894,15 +981,9 @@ bool merge_writer::flush(std::string& filename, segment_meta& meta) {
     return false;
   }
 
-  auto writer = meta.codec->get_segment_meta_writer();
-
-  writer->write(dir_, meta);
-  filename = writer->filename(meta);
-
-  // ...........................................................................
-  // finish/cleanup
-  // ...........................................................................
-  readers_.clear();
+  if (persist_segment_meta) {
+    filename = index_utils::write_segment_meta(dir_, meta);
+  }
 
   return true;
 }

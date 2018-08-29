@@ -43,11 +43,10 @@ IRESEARCH_API index_writer::consolidation_policy_t consolidate_count(float docs_
 // merge segment if: {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})
 IRESEARCH_API index_writer::consolidation_policy_t consolidate_fill(float fill_threshold = 0);
 
-void read_document_mask(
-  iresearch::document_mask& docs_mask,
-  const iresearch::directory& dir,
-  const iresearch::segment_meta& meta
-);
+void read_document_mask(document_mask& docs_mask, const directory& dir, const segment_meta& meta);
+
+// returns filename
+std::string write_segment_meta(directory& dir, const segment_meta& meta);
 
 NS_END
 NS_END
