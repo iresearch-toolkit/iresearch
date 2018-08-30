@@ -191,6 +191,9 @@ class IRESEARCH_API index_meta {
   const index_segment_t& operator[](size_t i) const NOEXCEPT {
     return segments_[i];
   }
+  const index_segments_t& segments() const NOEXCEPT {
+    return segments_;
+  }
 
  private:
   friend class index_writer;

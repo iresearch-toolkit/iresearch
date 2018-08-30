@@ -74,13 +74,16 @@ void append_segments_refs(
 const std::string& write_document_mask(
     iresearch::directory& dir,
     iresearch::segment_meta& meta,
-    const iresearch::document_mask& docs_mask
+    const iresearch::document_mask& docs_mask,
+    bool increment_version = true
 ) {
   assert(docs_mask.size() <= std::numeric_limits<uint32_t>::max());
 
   auto mask_writer = meta.codec->get_document_mask_writer();
-  meta.files.erase(mask_writer->filename(meta)); // current filename
-  ++meta.version; // segment modified due to new document_mask
+  if (increment_version) {
+    meta.files.erase(mask_writer->filename(meta)); // current filename
+    ++meta.version; // segment modified due to new document_mask
+  }
   const auto& file = *meta.files.emplace(mask_writer->filename(meta)).first; // new/expected filename
   mask_writer->prepare(dir, meta);
   mask_writer->begin((uint32_t)docs_mask.size());
@@ -97,12 +100,14 @@ typedef std::map<
     std::pair<const irs::segment_meta*, size_t> // old segment + index within merge_writer
 >> candidates_mapping_t;
 
-// first - has removals
-// second - number of mapped candidates
+/// @param candidates_mapping output mapping
+/// @param candidates candidates for mapping
+/// @param segments map against a specified segments
+/// @returns first - has removals, second - number of mapped candidates
 std::pair<bool, size_t> map_candidates(
+    candidates_mapping_t& candidates_mapping,
     const std::set<const irs::segment_meta*> candidates,
-    const irs::index_meta& meta,
-    candidates_mapping_t& candidates_mapping
+    const irs::index_meta::index_segments_t& segments
 ) {
   size_t i = 0;
   for (auto* candidate : candidates) {
@@ -113,27 +118,33 @@ std::pair<bool, size_t> map_candidates(
     );
   }
 
-  const auto candidate_not_found = candidates_mapping.end();
-
   size_t found = 0;
   bool has_removals = false;
+  const auto candidate_not_found = candidates_mapping.end();
 
-  for (auto& segment : meta) {
-    const auto it = candidates_mapping.find(segment.meta.name);
+  for (const auto& segment : segments) {
+    const auto& meta = segment.meta;
+    const auto it = candidates_mapping.find(meta.name);
 
     if (candidate_not_found == it) {
       // not a candidate
       continue;
     }
 
+    auto* new_segment = it->second.first;
+
+    if (new_segment && new_segment->version >= meta.version) {
+      // mapping already has a newer segment version
+      continue;
+    }
+
     ++found;
 
     assert(it->second.second.first);
-    it->second.first = &segment.meta;
+    it->second.first = &meta;
 
-    has_removals |= (segment.meta.version != it->second.second.first->version);
+    has_removals |= (meta.version != it->second.second.first->version);
   }
-
 
   return std::make_pair(has_removals, found);
 }
@@ -677,7 +688,7 @@ bool index_writer::consolidate(
       // - FIX segment_consolidate_clear_commit
 
       candidates_mapping_t mappings;
-      const auto res = map_candidates(candidates, *current_committed_meta, mappings);
+      const auto res = map_candidates(mappings, candidates, current_committed_meta->segments());
 
       if (res.second != candidates.size()) {
         // at least one candidate is missing
@@ -716,8 +727,7 @@ bool index_writer::consolidate(
 
         if (!doc_mask.empty()) {
           consolidation_segment.meta.live_docs_count -= doc_mask.size();
-          --consolidation_segment.meta.version; // write_document_mask will increment version
-          write_document_mask(dir, consolidation_segment.meta, doc_mask);
+          write_document_mask(dir, consolidation_segment.meta, doc_mask, false);
         }
       }
 
@@ -877,13 +887,17 @@ index_writer::pending_context_t index_writer::flush_all() {
   bool modified = !type_limits<type_t::index_gen_t>::valid(meta_.last_gen_);
   index_meta::index_segments_t segments;
   std::unordered_set<string_ref> to_sync;
+  document_mask docs_mask;
 
   auto ctx = get_flush_context(false);
   auto& dir = *(ctx->dir_);
   SCOPED_LOCK(ctx->mutex_); // ensure there are no active struct update operations
 
-  // update document_mask for existing (i.e. sealed) segments
-  document_mask docs_mask;
+  /////////////////////////////////////////////////////////////////////////////
+  /// Stage 1
+  /// update document_mask for existing (i.e. sealed) segments
+  /////////////////////////////////////////////////////////////////////////////
+
   for (auto& existing_segment: meta_) {
     // skip already masked segments
     if (ctx->segment_mask_.end() != ctx->segment_mask_.find(existing_segment.meta.name)) {
@@ -910,7 +924,11 @@ index_writer::pending_context_t index_writer::flush_all() {
     }
   }
 
-  // add pending complete segments
+  /////////////////////////////////////////////////////////////////////////////
+  /// Stage 2
+  /// add pending complete segments registered by import or consolidation
+  /////////////////////////////////////////////////////////////////////////////
+
   for (auto& pending_segment : ctx->pending_segments_) {
     // pending consolidation
     auto& candidates = pending_segment.consolidation_ctx.candidates;
@@ -931,10 +949,8 @@ index_writer::pending_context_t index_writer::flush_all() {
 
     // check if there is a pending consolidation request
     if (pending_segment.consolidation_ctx.consolidaton_meta) {
-      auto& pending_meta = *committed_state_->first;
-
       candidates_mapping_t mappings;
-      const auto res = map_candidates(candidates, pending_meta, mappings);
+      const auto res = map_candidates(mappings, candidates, segments);
 
       // undo changes made in segment mask
       // in case if not all segments were found
@@ -994,8 +1010,7 @@ index_writer::pending_context_t index_writer::flush_all() {
       // write non-empty document mask
       if (!docs_mask.empty()) {
         pending_segment.segment.meta.live_docs_count -= docs_mask.size();
-        --pending_segment.segment.meta.version; // write_document_mask will increment version
-        write_document_mask(dir, pending_segment.segment.meta, docs_mask);
+        write_document_mask(dir, pending_segment.segment.meta, docs_mask, false);
       }
 
       // persist segment meta
@@ -1033,6 +1048,11 @@ index_writer::pending_context_t index_writer::flush_all() {
     // add files from segment to list of files to sync
     to_sync.insert(segment.meta.files.begin(), segment.meta.files.end());
   }
+
+  /////////////////////////////////////////////////////////////////////////////
+  /// Stage 3
+  /// create new segments
+  /////////////////////////////////////////////////////////////////////////////
 
   {
     struct flush_context {
