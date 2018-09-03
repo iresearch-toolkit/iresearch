@@ -52,6 +52,19 @@ class bitvector; // forward declaration
 struct directory;
 class directory_reader;
 
+class readers_cache final : util::noncopyable {
+ public:
+  readers_cache() = default;
+
+  segment_reader emplace(directory& dir, const segment_meta& meta);
+  void clear() NOEXCEPT;
+  size_t purge(const std::unordered_set<string_ref>& segments) NOEXCEPT;
+
+ private:
+  std::mutex lock_;
+  std::unordered_map<std::string, segment_reader> cache_;
+}; // readers_cache
+
 //////////////////////////////////////////////////////////////////////////////
 /// @enum OpenMode
 /// @brief defines how index writer should be opened
@@ -388,7 +401,6 @@ class IRESEARCH_API index_writer : util::noncopyable {
     consolidation_context_t consolidation_ctx;
   }; // import_context
 
-  typedef std::unordered_map<std::string, segment_reader> cached_readers_t;
   typedef std::shared_ptr<
     std::pair<std::shared_ptr<index_meta>, file_refs_t>
   > committed_state_t;
@@ -466,13 +478,86 @@ class IRESEARCH_API index_writer : util::noncopyable {
     void reset();
   }; // flush_context
 
+  struct sync_context : util::noncopyable {
+    sync_context() = default;
+    sync_context(sync_context&& rhs) NOEXCEPT
+      : files(std::move(rhs.files)),
+        segments(std::move(rhs.segments)) {
+    }
+    sync_context& operator=(sync_context&& rhs) NOEXCEPT {
+      if (this != &rhs) {
+        files = std::move(rhs.files);
+        segments = std::move(rhs.segments);
+      }
+      return *this;
+    }
+
+    bool empty() const NOEXCEPT {
+      return segments.empty();
+    }
+
+    void register_full_sync(size_t i) {
+      segments.emplace_back(i, 0);
+    }
+
+    void register_partial_sync(size_t i, const std::string& file) {
+      segments.emplace_back(i, 1);
+      files.emplace_back(file);
+    }
+
+    template<typename Visitor>
+    bool visit(const Visitor& visitor, const index_meta& meta) const {
+      auto begin = files.begin();
+
+      for (auto& entry : segments) {
+        auto& segment = meta[entry.first];
+
+        if (entry.second) {
+          // partial update
+          assert(begin <= files.end());
+
+          if (integer_traits<size_t>::const_max == entry.second) {
+            // skip invalid segments
+            begin += entry.second;
+            continue;
+          }
+
+          for (auto end = begin + entry.second; begin != end; ++begin) {
+            if (!visitor(begin->get())) {
+              return false;
+            }
+          }
+        } else {
+          // full sync
+          for (auto& file : segment.meta.files) {
+            if (!visitor(file)) {
+              return false;
+            }
+          }
+        }
+
+        if (!visitor(segment.filename)) {
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    std::vector<std::reference_wrapper<const std::string>> files; // files to sync
+    std::vector<std::pair<size_t, size_t>> segments; // segments to sync (index within index meta + number of files to sync)
+  }; // sync_context
+
   struct pending_context_t {
     flush_context::ptr ctx; // reference to flush context held until end of commit
     index_meta::ptr meta; // index meta of next commit
-    std::vector<string_ref> to_sync; // file names to be synced during next commit
-    pending_context_t() {}
+    sync_context to_sync; // file names and segments to be synced during next commit
+    pending_context_t() = default;
     pending_context_t(pending_context_t&& other) NOEXCEPT
-      : ctx(std::move(other.ctx)), meta(std::move(other.meta)), to_sync(std::move(other.to_sync)) {}
+      : ctx(std::move(other.ctx)),
+        meta(std::move(other.meta)),
+        to_sync(std::move(other.to_sync)) {
+    }
     operator bool() const { return ctx && meta; }
   }; // pending_context_t
 
@@ -490,11 +575,6 @@ class IRESEARCH_API index_writer : util::noncopyable {
     index_meta&& meta, 
     committed_state_t&& committed_state
   ) NOEXCEPT;
-
-  // on open failure returns an empty pointer
-  // function access controlled by commit_lock_ since only used in
-  // flush_all(...) and defragment(...)
-  segment_reader get_segment_reader(const segment_meta& meta);
 
   bool add_document_mask_modified_records(
     modification_requests_t& requests,
@@ -557,7 +637,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
   void finish(); // finishes transaction
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  cached_readers_t cached_segment_readers_; // readers by segment name
+  readers_cache cached_readers_; // readers by segment name
   format::ptr codec_;
   std::mutex commit_lock_; // guard for cached_segment_readers_, commit_pool_, meta_ (modification during commit()/defragment())
   committed_state_t committed_state_; // last successfully committed state
