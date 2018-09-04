@@ -991,7 +991,9 @@ index_writer::pending_context_t index_writer::flush_all() {
 
     docs_mask.clear();
 
-    if (pending_segment.consolidation_ctx.merger) {
+    bool pending_consolidation = pending_segment.consolidation_ctx.merger;
+
+    if (pending_consolidation) {
       // pending consolidation request
       candidates_mapping_t mappings;
       const auto res = map_candidates(mappings, candidates, segments);
@@ -1014,7 +1016,7 @@ index_writer::pending_context_t index_writer::flush_all() {
         ctx->segment_mask_.emplace(mapping.first);
       }
 
-      // has some changes, apply deletes
+      // have some changes, apply deletes
       if (res.first) {
         map_removals(
           mappings,
@@ -1025,46 +1027,41 @@ index_writer::pending_context_t index_writer::flush_all() {
         );
       }
 
-      // FIXME
-      // write non-empty document mask
-      if (!docs_mask.empty()) {
-        pending_segment.segment.meta.live_docs_count -= docs_mask.size();
-        write_document_mask(dir, pending_segment.segment.meta, docs_mask, false);
-      }
-
-      // persist segment meta
-      pending_segment.segment.filename = index_utils::write_segment_meta(
-        dir, pending_segment.segment.meta
-      );
-
       // we're done with removals for pending consolidation
       // they have been already applied to candidates above
       // and succesfully remapped to consolidated segment
+      pending_segment.segment.meta.live_docs_count -= docs_mask.size();
+
       // we've seen at least 1 successfully applied
       // pending consolidation request
       pending_candidates_count += candidates.size();
     } else {
-      // pending imported/consolidated segment
+      // pending already imported/consolidated segment, apply deletes
       add_document_mask_modified_records(
         ctx->modification_queries_,
         docs_mask,
         pending_segment.segment.meta,
         pending_segment.generation
       );
-
-      // write non-empty document mask
-      if (!docs_mask.empty()) {
-        write_document_mask(dir, pending_segment.segment.meta, docs_mask);
-        pending_segment.segment.filename = index_utils::write_segment_meta(
-          dir, pending_segment.segment.meta
-        ); // write with new mask
-      }
     }
 
     // skip empty segments
     if (!pending_segment.segment.meta.live_docs_count) {
       ctx->segment_mask_.emplace(pending_segment.segment.meta.name);
       continue;
+    }
+
+    // write non-empty document mask
+    if (!docs_mask.empty()) {
+      write_document_mask(dir, pending_segment.segment.meta, docs_mask, !pending_consolidation);
+      pending_consolidation = true; // force write new segment meta
+    }
+
+    // persist segment meta
+    if (pending_consolidation) {
+      pending_segment.segment.filename = index_utils::write_segment_meta(
+        dir, pending_segment.segment.meta
+      );
     }
 
     // register full segment sync
