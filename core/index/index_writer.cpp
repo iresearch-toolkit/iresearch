@@ -149,6 +149,35 @@ std::pair<bool, size_t> map_candidates(
   return std::make_pair(has_removals, found);
 }
 
+void map_removals(
+    const candidates_mapping_t& candidates_mapping,
+    const irs::merge_writer& merger,
+    irs::directory& dir,
+    irs::readers_cache& readers,
+    irs::document_mask& docs_mask
+) {
+  assert(merger);
+
+  for (auto& mapping : candidates_mapping) {
+    const auto& segment_mapping = mapping.second;
+
+    if (segment_mapping.first->version != segment_mapping.second.first->version) {
+      auto& merge_ctx = merger[segment_mapping.second.second];
+
+      auto reader = readers.emplace(dir, *segment_mapping.first);
+
+      irs::exclusion deleted_docs(
+        merge_ctx.reader->docs_iterator(),
+        reader->docs_iterator()
+      );
+
+      while (deleted_docs.next()) {
+        docs_mask.insert(merge_ctx.doc_map(deleted_docs.value()));
+      }
+    }
+  }
+}
+
 NS_END // NS_LOCAL
 
 NS_ROOT
@@ -727,29 +756,12 @@ bool index_writer::consolidate(
 
       // handle deletes if something changed
       if (res.first) {
-        irs::document_mask doc_mask;
-        for (auto& mapping : mappings) {
-          const auto& segment_mapping = mapping.second;
+        irs::document_mask docs_mask;
+        map_removals(mappings, merger, dir, cached_readers_, docs_mask);
 
-          if (segment_mapping.first->version != segment_mapping.second.first->version) {
-            auto& merge_ctx = merger[segment_mapping.second.second];
-
-            auto reader = cached_readers_.emplace(dir_, *segment_mapping.first);
-
-            irs::exclusion deleted_docs(
-              merge_ctx.reader->docs_iterator(),
-              reader->docs_iterator()
-            );
-
-            while (deleted_docs.next()) {
-              doc_mask.insert(merge_ctx.doc_map(deleted_docs.value()));
-            }
-          }
-        }
-
-        if (!doc_mask.empty()) {
-          consolidation_segment.meta.live_docs_count -= doc_mask.size();
-          write_document_mask(dir, consolidation_segment.meta, doc_mask, false);
+        if (!docs_mask.empty()) {
+          consolidation_segment.meta.live_docs_count -= docs_mask.size();
+          write_document_mask(dir, consolidation_segment.meta, docs_mask, false);
         }
       }
 
@@ -979,8 +991,8 @@ index_writer::pending_context_t index_writer::flush_all() {
 
     docs_mask.clear();
 
-    // check if there is a pending consolidation request
     if (pending_segment.consolidation_ctx.merger) {
+      // pending consolidation request
       candidates_mapping_t mappings;
       const auto res = map_candidates(mappings, candidates, segments);
 
@@ -1003,29 +1015,17 @@ index_writer::pending_context_t index_writer::flush_all() {
       }
 
       // has some changes, apply deletes
-      const auto& merger = pending_segment.consolidation_ctx.merger;
-
       if (res.first) {
-        for (auto& mapping : mappings) {
-          const auto& segment_mapping = mapping.second;
-
-          if (segment_mapping.first->version != segment_mapping.second.first->version) {
-            auto& merge_ctx = merger[segment_mapping.second.second];
-
-            auto reader = cached_readers_.emplace(dir_, *segment_mapping.first);
-
-            irs::exclusion deleted_docs(
-              merge_ctx.reader->docs_iterator(),
-              reader->docs_iterator()
-            );
-
-            while (deleted_docs.next()) {
-              docs_mask.insert(merge_ctx.doc_map(deleted_docs.value()));
-            }
-          }
-        }
+        map_removals(
+          mappings,
+          pending_segment.consolidation_ctx.merger,
+          dir_,
+          cached_readers_,
+          docs_mask
+        );
       }
 
+      // FIXME
       // write non-empty document mask
       if (!docs_mask.empty()) {
         pending_segment.segment.meta.live_docs_count -= docs_mask.size();
@@ -1040,20 +1040,26 @@ index_writer::pending_context_t index_writer::flush_all() {
       // we're done with removals for pending consolidation
       // they have been already applied to candidates above
       // and succesfully remapped to consolidated segment
-      docs_mask.clear();
-
       // we've seen at least 1 successfully applied
       // pending consolidation request
       pending_candidates_count += candidates.size();
-    }
+    } else {
+      // pending imported/consolidated segment
+      add_document_mask_modified_records(
+        ctx->modification_queries_,
+        docs_mask,
+        pending_segment.segment.meta,
+        pending_segment.generation
+      );
 
-    // flush document_mask after regular flush() so remove_query can traverse
-    add_document_mask_modified_records(
-      ctx->modification_queries_,
-      docs_mask,
-      pending_segment.segment.meta,
-      pending_segment.generation
-    );
+      // write non-empty document mask
+      if (!docs_mask.empty()) {
+        write_document_mask(dir, pending_segment.segment.meta, docs_mask);
+        pending_segment.segment.filename = index_utils::write_segment_meta(
+          dir, pending_segment.segment.meta
+        ); // write with new mask
+      }
+    }
 
     // skip empty segments
     if (!pending_segment.segment.meta.live_docs_count) {
@@ -1061,18 +1067,9 @@ index_writer::pending_context_t index_writer::flush_all() {
       continue;
     }
 
-    const auto segment_id = segments.size();
-    segments.emplace_back(std::move(pending_segment.segment));
-    auto& segment = segments.back();
-
-    // write non-empty document mask
-    if (!docs_mask.empty()) {
-      write_document_mask(dir, segment.meta, docs_mask);
-      segment.filename = index_utils::write_segment_meta(dir, segment.meta); // write with new mask
-    }
-
     // register full segment sync
-    to_sync.register_full_sync(segment_id);
+    to_sync.register_full_sync(segments.size());
+    segments.emplace_back(std::move(pending_segment.segment));
   }
 
   if (pending_candidates_count) {
