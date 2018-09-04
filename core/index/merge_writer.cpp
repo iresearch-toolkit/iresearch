@@ -896,7 +896,7 @@ merge_writer::merge_writer() NOEXCEPT
 }
 
 merge_writer::operator bool() const NOEXCEPT {
-  return &dir_ == &noop_directory::instance();
+  return &dir_ != &noop_directory::instance();
 }
 
 bool merge_writer::flush(

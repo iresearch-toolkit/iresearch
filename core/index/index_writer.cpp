@@ -684,7 +684,8 @@ bool index_writer::consolidate(
         std::move(consolidation_segment),
         0, // FIXME ctx->generation_.load() ???
         extract_refs(dir), // do not forget to track refs
-        std::move(candidates) // consolidation context candidates
+        std::move(candidates), // consolidation context candidates
+        std::move(committed_meta) // consolidation context meta
       );
 
       // filter out merged segments for the next commit
@@ -765,7 +766,8 @@ bool index_writer::consolidate(
         std::move(consolidation_segment),
         0, // FIXME ctx->generation_.load() ???
         extract_refs(dir), // do not forget to track refs
-        std::move(candidates) // consolidation context candidates
+        std::move(candidates), // consolidation context candidates
+        std::move(committed_meta) // consolidation context meta
       );
 
       // filter out merged segments for the next commit
@@ -978,7 +980,7 @@ index_writer::pending_context_t index_writer::flush_all() {
     docs_mask.clear();
 
     // check if there is a pending consolidation request
-    if (pending_segment.consolidation_ctx.consolidaton_meta) {
+    if (pending_segment.consolidation_ctx.merger) {
       candidates_mapping_t mappings;
       const auto res = map_candidates(mappings, candidates, segments);
 

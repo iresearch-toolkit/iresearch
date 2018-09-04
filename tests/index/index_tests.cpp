@@ -10548,14 +10548,19 @@ TEST_F(memory_index_test, concurrent_consolidation) {
   auto writer = open_writer(dir());
   ASSERT_NE(nullptr, writer);
 
+  std::set<std::string> names;
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+    [&names] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
           irs::string_ref(name),
           data.str
         ));
+
+        if (name == "name") {
+          names.emplace(data.str.data, data.str.size);
+        }
       }
   });
 
@@ -10639,22 +10644,51 @@ TEST_F(memory_index_test, concurrent_consolidation) {
 
   writer->commit();
 
+  irs::bytes_ref actual_value;
   auto reader = iresearch::directory_reader::open(this->dir(), codec());
   ASSERT_EQ(1, reader.size());
+
+  ASSERT_EQ(names.size(), reader.docs_count());
+  ASSERT_EQ(names.size(), reader.live_docs_count());
+
+  size_t removed = 0;
+  auto& segment = reader[0];
+  const auto* column = segment.column_reader("name");
+  ASSERT_NE(nullptr, column);
+  auto values = column->values();
+  auto terms = segment.field("same");
+  ASSERT_NE(nullptr, terms);
+  auto termItr = terms->iterator();
+  ASSERT_TRUE(termItr->next());
+  auto docsItr = termItr->postings(iresearch::flags());
+  while (docsItr->next()) {
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ(1, names.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
+    ++removed;
+  }
+  ASSERT_FALSE(docsItr->next());
+
+  ASSERT_EQ(removed, reader.docs_count());
+  ASSERT_TRUE(names.empty());
 }
 
 TEST_F(memory_index_test, concurrent_consolidation_cleanup) {
   auto writer = open_writer(dir());
   ASSERT_NE(nullptr, writer);
 
+  std::set<std::string> names;
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+    [&names] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
           irs::string_ref(name),
           data.str
         ));
+
+        if (name == "name") {
+          names.emplace(data.str.data, data.str.size);
+        }
       }
   });
 
@@ -10741,8 +10775,32 @@ TEST_F(memory_index_test, concurrent_consolidation_cleanup) {
   writer->commit();
   irs::directory_cleaner::clean(const_cast<irs::directory&>(dir));
 
+  irs::bytes_ref actual_value;
   auto reader = iresearch::directory_reader::open(this->dir(), codec());
   ASSERT_EQ(1, reader.size());
+
+  ASSERT_EQ(names.size(), reader.docs_count());
+  ASSERT_EQ(names.size(), reader.live_docs_count());
+
+  size_t removed = 0;
+  auto& segment = reader[0];
+  const auto* column = segment.column_reader("name");
+  ASSERT_NE(nullptr, column);
+  auto values = column->values();
+  auto terms = segment.field("same");
+  ASSERT_NE(nullptr, terms);
+  auto termItr = terms->iterator();
+  ASSERT_TRUE(termItr->next());
+  auto docsItr = termItr->postings(iresearch::flags());
+  while (docsItr->next()) {
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ(1, names.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
+    ++removed;
+  }
+  ASSERT_FALSE(docsItr->next());
+
+  ASSERT_EQ(removed, reader.docs_count());
+  ASSERT_TRUE(names.empty());
 }
 
 TEST_F(memory_index_test, consolidate_invalid_candidate) {

@@ -407,8 +407,6 @@ class IRESEARCH_API index_writer : util::noncopyable {
   typedef std::vector<modification_context> modification_requests_t;
 
   struct IRESEARCH_API flush_context {
-    typedef std::vector<import_context> imported_segments_t;
-    typedef std::unordered_set<string_ref> segment_mask_t;
     typedef bounded_object_pool<segment_writer> segment_writers_t;
 
     // do not use std::shared_ptr to avoid unnecessary heap allocatons
@@ -470,8 +468,8 @@ class IRESEARCH_API index_writer : util::noncopyable {
     modification_requests_t modification_queries_; // sequential list of modification requests (remove/update)
     std::mutex mutex_; // guard for the current context during struct update operations, e.g. modification_queries_, pending_segments_
     flush_context* next_context_; // the next context to switch to
-    imported_segments_t pending_segments_; // complete segments to be added during next commit (import)
-    segment_mask_t segment_mask_; // set of segment names to be removed from the index upon commit (refs at strings in index_writer::meta_)
+    std::vector<import_context> pending_segments_; // complete segments to be added during next commit (import)
+    std::unordered_set<string_ref> segment_mask_; // set of segment names to be removed from the index upon commit (refs at strings in index_writer::meta_)
     segment_writers_t writers_pool_; // per thread segment writers
 
     flush_context();
@@ -648,9 +646,24 @@ class IRESEARCH_API index_writer : util::noncopyable {
   pending_state_t pending_state_; // current state awaiting commit completion
   index_meta_writer::ptr writer_;
   index_lock::ptr write_lock_; // exclusive write lock for directory
-
   std::recursive_mutex consolidation_lock_;
-  std::unordered_set<const segment_meta*> consolidating_segments_; // segments that are under consolidation
+
+  struct segment_hash {
+    size_t operator()(const segment_meta* segment) const NOEXCEPT {
+      return hash_utils::hash(segment->name);
+    }
+  };
+
+  struct segment_equal {
+    size_t operator()(
+        const segment_meta* lhs,
+        const segment_meta* rhs
+    ) const NOEXCEPT {
+      return lhs->name == rhs->name;
+    }
+  };
+
+  std::unordered_set<const segment_meta*, segment_hash, segment_equal> consolidating_segments_; // segments that are under consolidation
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // index_writer
 
