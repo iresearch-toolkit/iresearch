@@ -378,6 +378,7 @@ class transaction_store_tests: public test_base {
       auto flushed = store.flush();
 
       ASSERT_TRUE(flushed && dir_writer->import(flushed));
+      dir_writer->commit();
       ASSERT_TRUE(dir_writer->consolidate(irs::index_utils::consolidate_all()));
       dir_writer->commit();
     }
