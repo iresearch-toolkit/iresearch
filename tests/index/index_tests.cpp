@@ -10672,6 +10672,291 @@ TEST_F(memory_index_test, concurrent_consolidation) {
   ASSERT_TRUE(names.empty());
 }
 
+TEST_F(memory_index_test, concurrent_consolidation_dedicated_commit) {
+  auto writer = open_writer(dir());
+  ASSERT_NE(nullptr, writer);
+
+  std::set<std::string> names;
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    [&names] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+      if (data.is_string()) {
+        doc.insert(std::make_shared<tests::templates::string_field>(
+          irs::string_ref(name),
+          data.str
+        ));
+
+        if (name == "name") {
+          names.emplace(data.str.data, data.str.size);
+        }
+      }
+  });
+
+  // insert multiple small segments
+  size_t size = 0;
+  while (const auto* doc = gen.next()) {
+    ASSERT_TRUE(insert(*writer,
+      doc->indexed.begin(), doc->indexed.end(),
+      doc->stored.begin(), doc->stored.end()
+    ));
+    writer->commit();
+    ++size;
+  }
+  ASSERT_EQ(size-1, irs::directory_cleaner::clean(dir()));
+
+  auto consolidate_range = [](
+      std::set<const irs::segment_meta*>& candidates,
+      const irs::index_meta& meta,
+      size_t begin,
+      size_t end
+  ) {
+    if (begin > meta.size() || end > meta.size()) {
+      return;
+    }
+
+    for (;begin < end; ++begin) {
+      candidates.emplace(&meta[begin].meta);
+    }
+  };
+
+  std::mutex mutex;
+  bool ready = false;
+  std::condition_variable ready_cv;
+
+  auto wait_for_all = [&mutex, &ready, &ready_cv]() {
+    // wait for all threads to be registered
+    std::unique_lock<std::mutex> lock(mutex);
+    while (!ready) {
+      ready_cv.wait(lock);
+    }
+  };
+
+  const auto thread_count = 10;
+  std::vector<std::thread> pool;
+
+  for (size_t i = 0; i < thread_count; ++i) {
+    pool.emplace_back(std::thread([&wait_for_all, &consolidate_range, &writer, i] () mutable {
+      wait_for_all();
+
+      size_t num_segments = irs::integer_traits<size_t>::const_max;
+
+      while (num_segments > 1) {
+        auto policy = [&consolidate_range, &i, &num_segments] (
+            std::set<const irs::segment_meta*>& candidates,
+            const irs::directory&,
+            const irs::index_meta& meta
+        ) mutable {
+          num_segments = meta.size();
+          consolidate_range(candidates, meta, i, i+2);
+        };
+
+        writer->consolidate(policy);
+
+        i = (i + 1) % num_segments;
+      }
+    }));
+  }
+
+  // add dedicated commit thread
+  std::atomic<bool> shutdown(false);
+  std::thread commit_thread([&wait_for_all, &writer, &shutdown]() {
+    wait_for_all();
+
+    while (!shutdown.load()) {
+      writer->commit();
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+  });
+
+  // all threads registered... go, go, go...
+  {
+    std::lock_guard<decltype(mutex)> lock(mutex);
+    ready = true;
+    ready_cv.notify_all();
+  }
+
+  for (auto& thread : pool) {
+    thread.join();
+  }
+
+  // wait for commit thread to finish
+  shutdown = true;
+  commit_thread.join();
+
+  writer->commit();
+
+  irs::bytes_ref actual_value;
+  auto reader = iresearch::directory_reader::open(this->dir(), codec());
+  ASSERT_EQ(1, reader.size());
+
+  ASSERT_EQ(names.size(), reader.docs_count());
+  ASSERT_EQ(names.size(), reader.live_docs_count());
+
+  size_t removed = 0;
+  auto& segment = reader[0];
+  const auto* column = segment.column_reader("name");
+  ASSERT_NE(nullptr, column);
+  auto values = column->values();
+  auto terms = segment.field("same");
+  ASSERT_NE(nullptr, terms);
+  auto termItr = terms->iterator();
+  ASSERT_TRUE(termItr->next());
+  auto docsItr = termItr->postings(iresearch::flags());
+  while (docsItr->next()) {
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ(1, names.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
+    ++removed;
+  }
+  ASSERT_FALSE(docsItr->next());
+
+  ASSERT_EQ(removed, reader.docs_count());
+  ASSERT_TRUE(names.empty());
+}
+
+TEST_F(memory_index_test, concurrent_consolidation_two_phase_dedicated_commit) {
+  auto writer = open_writer(dir());
+  ASSERT_NE(nullptr, writer);
+
+  std::set<std::string> names;
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    [&names] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+      if (data.is_string()) {
+        doc.insert(std::make_shared<tests::templates::string_field>(
+          irs::string_ref(name),
+          data.str
+        ));
+
+        if (name == "name") {
+          names.emplace(data.str.data, data.str.size);
+        }
+      }
+  });
+
+  // insert multiple small segments
+  size_t size = 0;
+  while (const auto* doc = gen.next()) {
+    ASSERT_TRUE(insert(*writer,
+      doc->indexed.begin(), doc->indexed.end(),
+      doc->stored.begin(), doc->stored.end()
+    ));
+    writer->commit();
+    ++size;
+  }
+  ASSERT_EQ(size-1, irs::directory_cleaner::clean(dir()));
+
+  auto consolidate_range = [](
+      std::set<const irs::segment_meta*>& candidates,
+      const irs::index_meta& meta,
+      size_t begin,
+      size_t end
+  ) {
+    if (begin > meta.size() || end > meta.size()) {
+      return;
+    }
+
+    for (;begin < end; ++begin) {
+      candidates.emplace(&meta[begin].meta);
+    }
+  };
+
+  std::mutex mutex;
+  bool ready = false;
+  std::condition_variable ready_cv;
+
+  auto wait_for_all = [&mutex, &ready, &ready_cv]() {
+    // wait for all threads to be registered
+    std::unique_lock<std::mutex> lock(mutex);
+    while (!ready) {
+      ready_cv.wait(lock);
+    }
+  };
+
+  const auto thread_count = 10;
+  std::vector<std::thread> pool;
+
+  for (size_t i = 0; i < thread_count; ++i) {
+    pool.emplace_back(std::thread([&wait_for_all, &consolidate_range, &writer, i] () mutable {
+      wait_for_all();
+
+      size_t num_segments = irs::integer_traits<size_t>::const_max;
+
+      while (num_segments > 1) {
+        auto policy = [&consolidate_range, &i, &num_segments] (
+            std::set<const irs::segment_meta*>& candidates,
+            const irs::directory&,
+            const irs::index_meta& meta
+        ) mutable {
+          num_segments = meta.size();
+          consolidate_range(candidates, meta, i, i+2);
+        };
+
+        writer->consolidate(policy);
+
+        i = (i + 1) % num_segments;
+      }
+    }));
+  }
+
+  // add dedicated commit thread
+  std::atomic<bool> shutdown(false);
+  std::thread commit_thread([&wait_for_all, &writer, &shutdown]() {
+    wait_for_all();
+
+    while (!shutdown.load()) {
+      writer->begin();
+      std::this_thread::sleep_for(std::chrono::milliseconds(300));
+      writer->commit();
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
+  });
+
+  // all threads registered... go, go, go...
+  {
+    std::lock_guard<decltype(mutex)> lock(mutex);
+    ready = true;
+    ready_cv.notify_all();
+  }
+
+  for (auto& thread : pool) {
+    thread.join();
+  }
+
+  // wait for commit thread to finish
+  shutdown = true;
+  commit_thread.join();
+
+  writer->commit();
+
+  irs::bytes_ref actual_value;
+  auto reader = iresearch::directory_reader::open(this->dir(), codec());
+  ASSERT_EQ(1, reader.size());
+
+  ASSERT_EQ(names.size(), reader.docs_count());
+  ASSERT_EQ(names.size(), reader.live_docs_count());
+
+  size_t removed = 0;
+  auto& segment = reader[0];
+  const auto* column = segment.column_reader("name");
+  ASSERT_NE(nullptr, column);
+  auto values = column->values();
+  auto terms = segment.field("same");
+  ASSERT_NE(nullptr, terms);
+  auto termItr = terms->iterator();
+  ASSERT_TRUE(termItr->next());
+  auto docsItr = termItr->postings(iresearch::flags());
+  while (docsItr->next()) {
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ(1, names.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
+    ++removed;
+  }
+  ASSERT_FALSE(docsItr->next());
+
+  ASSERT_EQ(removed, reader.docs_count());
+  ASSERT_TRUE(names.empty());
+}
+
 TEST_F(memory_index_test, concurrent_consolidation_cleanup) {
   auto writer = open_writer(dir());
   ASSERT_NE(nullptr, writer);
