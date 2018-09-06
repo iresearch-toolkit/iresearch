@@ -38,7 +38,24 @@
 
 NS_LOCAL
 
-const size_t NON_UPDATE_RECORD = iresearch::integer_traits<size_t>::const_max; // non-update
+const size_t NON_UPDATE_RECORD = irs::integer_traits<size_t>::const_max; // non-update
+
+bool track_ref(
+    irs::directory& dir,
+    const std::string& name,
+    std::vector<irs::index_file_refs::ref_t>& refs,
+    bool include_missing = false
+) {
+  const auto lock_file_ref = irs::directory_utils::reference(dir, name, include_missing);
+
+  // file exists on fs_directory
+  if (lock_file_ref) {
+    refs.emplace_back(lock_file_ref);
+    return true;
+  }
+
+  return false;
+}
 
 std::vector<irs::index_file_refs::ref_t> extract_refs(
     const irs::ref_tracking_directory& dir
@@ -315,6 +332,7 @@ index_writer::ptr index_writer::make(
     OpenMode mode,
     size_t memory_pool_size /*= 0*/
 ) {
+  std::vector<index_file_refs::ref_t> file_refs;
   index_lock::ptr lock;
 
   if (0 == (OM_NOLOCK & mode)) {
@@ -324,11 +342,12 @@ index_writer::ptr index_writer::make(
     if (!lock || !lock->try_lock()) {
       throw lock_obtain_failed(WRITE_LOCK_NAME);
     }
+
+    track_ref(dir, WRITE_LOCK_NAME, file_refs);
   }
 
   // read from directory or create index metadata
   index_meta meta;
-  std::vector<index_file_refs::ref_t> file_refs;
   {
     auto reader = codec->get_index_meta_reader();
 
@@ -358,13 +377,6 @@ index_writer::ptr index_writer::make(
       reader->read(dir, meta, segments_file);
       append_segments_refs(file_refs, dir, meta);
       file_refs.emplace_back(iresearch::directory_utils::reference(dir, segments_file));
-    }
-
-    auto lock_file_ref = iresearch::directory_utils::reference(dir, WRITE_LOCK_NAME);
-
-    // file exists on fs_directory
-    if (lock_file_ref) {
-      file_refs.emplace_back(lock_file_ref);
     }
   }
 
@@ -1324,15 +1336,13 @@ void index_writer::finish() {
   auto committed_state = std::make_shared<committed_state_t::element_type>(); // FIXME move to begin() ???
   auto& committed_refs = committed_state->second;
 
-  auto lock_file_ref = directory_utils::reference(dir, WRITE_LOCK_NAME);
-
-  if (lock_file_ref) {
-    // file exists on fs_directory
-    committed_refs.emplace_back(lock_file_ref);
+  if (write_lock_) {
+    // track write lock if exists
+    track_ref(dir, WRITE_LOCK_NAME, committed_refs);
   }
-
-  committed_refs.emplace_back(directory_utils::reference(dir, writer_->filename(meta), true));
+  track_ref(dir, writer_->filename(meta), committed_refs, true);
   append_segments_refs(committed_refs, dir, meta);
+
   writer_->commit();
   meta_.last_gen_ = meta.gen_; // update 'last_gen_' to last commited/valid generation
 
