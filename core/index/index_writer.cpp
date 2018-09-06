@@ -730,7 +730,6 @@ bool index_writer::consolidate(
       lock.unlock(); // can release commit lock, we guarded against commit by locked flush context
 
       // FIXME
-      // - make document mask writer stateless (do writer on batch basis) + potentially use bitset
       // - FIX segment_consolidate_clear_commit
       // - concurrent merges (pass consolidation candidates to policy)
       // - store segment size in segment_meta

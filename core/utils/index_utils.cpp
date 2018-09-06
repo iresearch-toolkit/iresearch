@@ -27,67 +27,67 @@
 
 NS_LOCAL
 
-size_t segment_size(
-    const irs::directory& dir,
-    const irs::segment_meta& segment
-) {
-  size_t total_size = 0;
-  size_t file_size = 0;
-  for (const auto& file : segment.files) {
-    if (dir.length(file_size, file)) {
-      total_size += file_size;
-    }
-  }
-  return total_size;
-}
-
-double fill_factor(const irs::segment_meta& segment) NOEXCEPT {
-  return double(segment.live_docs_count)/segment.docs_count;
-}
-
-std::vector<const irs::segment_meta*> get_segments_sorted_by_size(
-    const irs::index_meta& index,
-    const irs::directory& dir
-) {
-  std::vector<const irs::segment_meta*> segments;
-  segments.reserve(index.size());
-
-  // get segments from index meta
-  auto push_segments = [&segments](
-      const std::string& /*filename*/,
-      const irs::segment_meta& segment
-  ) NOEXCEPT { // NOEXCEPT - because we reserved enough space
-    segments.push_back(&segment);
-    return true;
-  };
-
-  index.visit_segments(push_segments);
-
-  // sort segments by size
-  auto less = [&dir](
-      const irs::segment_meta* lhs, 
-      const irs::segment_meta* rhs) {
-    const auto lhs_size = segment_size(dir, *lhs);
-    const auto rhs_size = segment_size(dir, *rhs);
-
-    if (lhs_size == rhs_size) {
-      const auto lhs_fill_factor = fill_factor(*lhs);
-      const auto rhs_fill_factor = fill_factor(*rhs);
-
-      if (lhs_fill_factor == rhs_fill_factor) {
-        return lhs->name < rhs->name;
-      }
-
-      return lhs_fill_factor < rhs_fill_factor;
-    }
-
-    return lhs_size < rhs_size;
-  };
-
-  std::sort(segments.begin(), segments.end(), less);
-
-  return segments;
-}
+//uint64_t segment_size(
+//    const irs::directory& dir,
+//    const irs::segment_meta& segment
+//) {
+//  uint64_t total_size = 0;
+//  uint64_t file_size = 0;
+//  for (const auto& file : segment.files) {
+//    if (dir.length(file_size, file)) {
+//      total_size += file_size;
+//    }
+//  }
+//  return total_size;
+//}
+//
+//double fill_factor(const irs::segment_meta& segment) NOEXCEPT {
+//  return double(segment.live_docs_count)/segment.docs_count;
+//}
+//
+//std::vector<const irs::segment_meta*> get_segments_sorted_by_size(
+//    const irs::index_meta& index,
+//    const irs::directory& dir
+//) {
+//  std::vector<const irs::segment_meta*> segments;
+//  segments.reserve(index.size());
+//
+//  // get segments from index meta
+//  auto push_segments = [&segments](
+//      const std::string& /*filename*/,
+//      const irs::segment_meta& segment
+//  ) NOEXCEPT { // NOEXCEPT - because we reserved enough space
+//    segments.push_back(&segment);
+//    return true;
+//  };
+//
+//  index.visit_segments(push_segments);
+//
+//  // sort segments by size
+//  auto less = [&dir](
+//      const irs::segment_meta* lhs,
+//      const irs::segment_meta* rhs) {
+//    const auto lhs_size = segment_size(dir, *lhs);
+//    const auto rhs_size = segment_size(dir, *rhs);
+//
+//    if (lhs_size == rhs_size) {
+//      const auto lhs_fill_factor = fill_factor(*lhs);
+//      const auto rhs_fill_factor = fill_factor(*rhs);
+//
+//      if (lhs_fill_factor == rhs_fill_factor) {
+//        return lhs->name < rhs->name;
+//      }
+//
+//      return lhs_fill_factor < rhs_fill_factor;
+//    }
+//
+//    return lhs_size < rhs_size;
+//  };
+//
+//  std::sort(segments.begin(), segments.end(), less);
+//
+//  return segments;
+//}
 
 NS_END
 
