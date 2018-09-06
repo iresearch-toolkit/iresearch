@@ -278,6 +278,23 @@ class IRESEARCH_API index_writer : util::noncopyable {
   void close();
 
  private:
+  struct segment_hash {
+    size_t operator()(
+        const segment_meta* segment
+    ) const NOEXCEPT {
+      return hash_utils::hash(segment->name);
+    }
+  }; // segment_hash
+
+  struct segment_equal {
+    size_t operator()(
+        const segment_meta* lhs,
+        const segment_meta* rhs
+    ) const NOEXCEPT {
+      return lhs->name == rhs->name;
+    }
+  }; // segment_equal
+
   typedef std::vector<index_file_refs::ref_t> file_refs_t;
 
   struct modification_context {
@@ -402,8 +419,10 @@ class IRESEARCH_API index_writer : util::noncopyable {
   }; // import_context
 
   typedef std::shared_ptr<
-    std::pair<std::shared_ptr<index_meta>, file_refs_t>
-  > committed_state_t;
+    std::pair<std::shared_ptr<index_meta>,
+    file_refs_t
+  >> committed_state_t;
+
   typedef std::vector<modification_context> modification_requests_t;
 
   struct IRESEARCH_API flush_context {
@@ -556,14 +575,14 @@ class IRESEARCH_API index_writer : util::noncopyable {
         meta(std::move(other.meta)),
         to_sync(std::move(other.to_sync)) {
     }
-    operator bool() const { return ctx && meta; }
+    operator bool() const NOEXCEPT { return ctx && meta; }
   }; // pending_context_t
 
   struct pending_state_t {
     flush_context::ptr ctx; // reference to flush context held until end of commit
-    index_meta::ptr meta; // index meta of next commit
-    operator bool() const { return ctx && meta; }
-    void reset() { ctx.reset(), meta.reset(); }
+    committed_state_t commit; // meta + references of next commit
+    operator bool() const NOEXCEPT { return ctx && commit; }
+    void reset() NOEXCEPT { ctx.reset(), commit.reset(); }
   }; // pending_state_t
 
   index_writer(
@@ -648,22 +667,12 @@ class IRESEARCH_API index_writer : util::noncopyable {
   index_lock::ptr write_lock_; // exclusive write lock for directory
   std::recursive_mutex consolidation_lock_;
 
-  struct segment_hash {
-    size_t operator()(const segment_meta* segment) const NOEXCEPT {
-      return hash_utils::hash(segment->name);
-    }
-  };
-
-  struct segment_equal {
-    size_t operator()(
-        const segment_meta* lhs,
-        const segment_meta* rhs
-    ) const NOEXCEPT {
-      return lhs->name == rhs->name;
-    }
-  };
-
-  std::unordered_set<const segment_meta*, segment_hash, segment_equal> consolidating_segments_; // segments that are under consolidation
+  // works faster than std::unordered_set<string_ref>
+  std::unordered_set<
+    const segment_meta*,
+    segment_hash,
+    segment_equal
+  > consolidating_segments_; // segments that are under consolidation
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // index_writer
 

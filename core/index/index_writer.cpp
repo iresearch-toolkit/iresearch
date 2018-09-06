@@ -76,16 +76,16 @@ std::vector<irs::index_file_refs::ref_t> extract_refs(
 template<typename T, typename M>
 void append_segments_refs(
     T& buf,
-    iresearch::directory& dir,
+    irs::directory& dir,
     const M& meta
 ) {
-  auto visitor = [&buf](const iresearch::index_file_refs::ref_t& ref)->bool {
+  auto visitor = [&buf](const irs::index_file_refs::ref_t& ref)->bool {
     buf.emplace_back(ref);
     return true;
   };
 
   // track all files referenced in index_meta
-  iresearch::directory_utils::reference(dir, meta, visitor, true);
+  irs::directory_utils::reference(dir, meta, visitor, true);
 }
 
 const std::string& write_document_mask(
@@ -306,24 +306,30 @@ void index_writer::clear() {
   auto ctx = get_flush_context(false);
   SCOPED_LOCK(ctx->mutex_); // ensure there are no active struct update operations
 
-  auto pending_meta = memory::make_unique<index_meta>();
+  auto pending_commit = std::make_shared<committed_state_t::element_type>(
+    std::piecewise_construct,
+    std::forward_as_tuple(memory::make_shared<index_meta>()),
+    std::forward_as_tuple()
+  );
 
-  cached_readers_.clear(); // original readers no longer required
-  pending_meta->update_generation(meta_); // clone index metadata generation
-  pending_meta->seg_counter_.store(meta_.counter()); // ensure counter() >= max(seg#)
-  //ctx.reset(); // clear context to avoid writing anything
+  auto& pending_meta = *pending_commit->first;
+  pending_meta.update_generation(meta_); // clone index metadata generation
+  pending_meta.seg_counter_.store(meta_.counter()); // ensure counter() >= max(seg#)
 
   // write 1st phase of index_meta transaction
-  if (!writer_->prepare(*(ctx->dir_), *(pending_meta))) {
+  if (!writer_->prepare(*(ctx->dir_), pending_meta)) {
     throw illegal_state();
   }
 
   // 1st phase of the transaction successfully finished here
-  meta_.update_generation(*pending_meta); // ensure new generation reflected in 'meta_'
+  meta_.update_generation(pending_meta); // ensure new generation reflected in 'meta_'
   pending_state_.ctx = std::move(ctx); // retain flush context reference
-  pending_state_.meta = std::move(pending_meta); // retain meta pending flush
+  pending_state_.commit = std::move(pending_commit);
+
   finish();
+
   meta_.segments_.clear(); // noexcept op (clear after finish(), to match reset of pending_state_ inside finish(), allows recovery on clear() failure)
+  cached_readers_.clear(); // original readers no longer required
 }
 
 index_writer::ptr index_writer::make(
@@ -1274,27 +1280,28 @@ bool index_writer::start() {
     return false;
   }
 
-  // !!! remember that to_sync_ stores string_ref's to index_writer::meta !!!
-  // it's valid since there is no small buffer optimization at the moment
-  auto to_commit = flush_all(); // index metadata to commit
+  auto to_commit = flush_all();
 
   if (!to_commit) {
     // nothing to commit, no transaction started
     return false;
   }
 
+  auto& dir = *to_commit.ctx->dir_;
+  auto& pending_meta = *to_commit.meta;
+
+  // FIXME track all refs here
+
   // write 1st phase of index_meta transaction
-  if (!writer_->prepare(*(to_commit.ctx->dir_), *(to_commit.meta))) {
+  if (!writer_->prepare(dir, pending_meta)) {
     throw illegal_state();
   }
 
   // sync all pending files
   try {
-    auto update_generation = make_finally([this, &to_commit] {
-      meta_.update_generation(*(to_commit.meta));
+    auto update_generation = make_finally([this, &pending_meta] {
+      meta_.update_generation(pending_meta);
     });
-
-    auto& dir = *to_commit.ctx->dir_;
 
     auto sync = [&dir](const std::string& file) {
       if (!dir.sync(file)) {
@@ -1305,7 +1312,7 @@ bool index_writer::start() {
     };
 
     // sync files
-    to_commit.to_sync.visit(sync, *to_commit.meta);
+    to_commit.to_sync.visit(sync, pending_meta);
   } catch (...) {
     // in case of syncing error, just clear pending meta & peform rollback
     // next commit will create another meta & sync all pending files
@@ -1316,8 +1323,12 @@ bool index_writer::start() {
 
   // 1st phase of the transaction successfully finished here,
   // set to_commit as active flush context containing pending meta
+  pending_state_.commit = std::make_shared<committed_state_t::element_type>(
+    std::piecewise_construct,
+    std::forward_as_tuple(std::move(to_commit.meta)),
+    std::forward_as_tuple()
+  );
   pending_state_.ctx = std::move(to_commit.ctx);
-  pending_state_.meta = std::move(to_commit.meta);
 
   return true;
 }
@@ -1329,29 +1340,26 @@ void index_writer::finish() {
     return;
   }
 
-  auto& ctx = *(pending_state_.ctx);
-  auto& dir = *(ctx.dir_);
-  auto& meta = *(pending_state_.meta);
-
-  auto committed_state = std::make_shared<committed_state_t::element_type>(); // FIXME move to begin() ???
-  auto& committed_refs = committed_state->second;
+  auto& dir = *pending_state_.ctx->dir_;
+  auto& pending_commit = *pending_state_.commit;
+  auto& pending_meta = *pending_commit.first;
+  auto& pending_refs = pending_commit.second;
 
   if (write_lock_) {
     // track write lock if exists
-    track_ref(dir, WRITE_LOCK_NAME, committed_refs);
+    track_ref(dir, WRITE_LOCK_NAME, pending_refs);
   }
-  track_ref(dir, writer_->filename(meta), committed_refs, true);
-  append_segments_refs(committed_refs, dir, meta);
+  track_ref(dir, writer_->filename(pending_meta), pending_refs, true);
+  append_segments_refs(pending_refs, dir, pending_meta);
 
   writer_->commit();
-  meta_.last_gen_ = meta.gen_; // update 'last_gen_' to last commited/valid generation
 
   // ...........................................................................
-  // after here transaction successfull
+  // after here transaction successfull (only noexcept operations below)
   // ...........................................................................
 
-  committed_state->first = std::move(pending_state_.meta);
-  committed_state_ = std::move(committed_state);
+  meta_.last_gen_ = pending_meta.gen_; // update 'last_gen_' to last commited/valid generation
+  committed_state_ = std::move(pending_state_.commit);
   pending_state_.reset(); // flush is complete, release reference to flush_context
 }
 
