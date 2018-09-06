@@ -365,9 +365,7 @@ TEST(segment_reader_test, segment_reader_has) {
     expected.docs_count = 43;
     expected.live_docs_count = 42;
     expected.version = 0;
-    docs_mask_writer->prepare(dir, expected);
-    docs_mask_writer->begin(0);
-    docs_mask_writer->end();
+    docs_mask_writer->write(dir, expected, {0});
     writer->write(dir, expected);
 
     irs::segment_meta meta;
@@ -391,9 +389,7 @@ TEST(segment_reader_test, segment_reader_has) {
     expected.live_docs_count = 42;
     expected.column_store = true;
     expected.version = 1;
-    docs_mask_writer->prepare(dir, expected);
-    docs_mask_writer->begin(0);
-    docs_mask_writer->end();
+    docs_mask_writer->write(dir, expected, {0});
     writer->write(dir, expected);
 
     irs::segment_meta meta;

@@ -13508,9 +13508,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     std::set<const irs::segment_meta*>& candidates, const irs::directory& dir, const irs::index_meta& meta
   )->void {
     for (auto& segment: meta) {
-      bool seen;
-
-      if (segment.meta.codec->get_document_mask_reader()->prepare(dir, segment.meta, &seen) && seen) {
+      if (segment.meta.live_docs_count != segment.meta.docs_count) {
         candidates.insert(&segment.meta);
       }
     }

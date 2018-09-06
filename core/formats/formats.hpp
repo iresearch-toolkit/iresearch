@@ -341,28 +341,31 @@ NS_END
 
 NS_ROOT
 
-/* -------------------------------------------------------------------
- * document_mask_writer
- * ------------------------------------------------------------------*/
-
+////////////////////////////////////////////////////////////////////////////////
+/// @struct document_mask_writer
+////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API document_mask_writer {
-  DECLARE_UNIQUE_PTR(document_mask_writer);
+  DECLARE_MANAGED_PTR(document_mask_writer);
   DEFINE_FACTORY_INLINE(document_mask_writer);
 
   virtual ~document_mask_writer();
-  virtual std::string filename(const segment_meta& meta) const = 0;
-  virtual void prepare(directory& dir, const segment_meta& meta) = 0;
-  virtual void begin(uint32_t count) = 0;
-  virtual void write(const doc_id_t& mask) = 0;
-  virtual void end() = 0;
-};
 
-/* -------------------------------------------------------------------
- * document_mask_reader
- * ------------------------------------------------------------------*/
+  virtual std::string filename(
+    const segment_meta& meta
+  ) const = 0;
 
+  virtual void write(
+    directory& dir,
+    const segment_meta& meta,
+    const document_mask& docs_mask
+  ) = 0;
+}; // document_mask_writer
+
+////////////////////////////////////////////////////////////////////////////////
+/// @struct document_mask_reader
+////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API document_mask_reader {
-  DECLARE_UNIQUE_PTR(document_mask_reader);
+  DECLARE_MANAGED_PTR(document_mask_reader);
   DEFINE_FACTORY_INLINE(document_mask_reader);
 
   virtual ~document_mask_reader();
@@ -371,15 +374,12 @@ struct IRESEARCH_API document_mask_reader {
   //             if not found and seen != nullptr -> set seen = false, return true
   //             if not found and seen == nullptr -> log warning, return false
   // @return success
-  virtual bool prepare(
+  virtual bool read(
     const directory& dir,
     const segment_meta& meta,
+    document_mask& docs_mask,
     bool* seen = nullptr
   ) = 0;
-
-  virtual uint32_t begin() = 0;
-  virtual void read(doc_id_t& mask) = 0;
-  virtual void end() = 0;
 };
 
 /* -------------------------------------------------------------------

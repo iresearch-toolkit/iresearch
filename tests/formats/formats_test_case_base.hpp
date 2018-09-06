@@ -806,36 +806,18 @@ class format_test_case_base : public index_test_base {
     {
       auto writer = codec()->get_document_mask_writer();
 
-      writer->prepare(dir(), meta);
-      writer->begin(static_cast<uint32_t>(mask_set.size())); // only 6 values
-
-      for (auto& mask : mask_set) {
-        writer->write(mask);
-      }
-
-      writer->end();
+      writer->write(dir(), meta, mask_set);
     }
 
     // read document_mask
     {
       auto reader = codec()->get_document_mask_reader();
-      auto expected = mask_set;
-
-      EXPECT_EQ(true, reader->prepare(dir(), meta));
-
-      auto count = reader->begin();
-
-      EXPECT_EQ(expected.size(), count);
-
-      for (; count > 0; --count) {
-        iresearch::doc_id_t mask;
-
-        reader->read(mask);
-        EXPECT_EQ(true, expected.erase(mask) != 0);
+      irs::document_mask expected;
+      EXPECT_TRUE(reader->read(dir(), meta, expected));
+      for (auto id : mask_set) {
+        EXPECT_EQ(1, expected.erase(id));
       }
-
-      EXPECT_EQ(true, expected.empty());
-      reader->end();
+      EXPECT_TRUE(expected.empty());
     }
   }
 

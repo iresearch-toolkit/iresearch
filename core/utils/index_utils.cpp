@@ -228,16 +228,7 @@ void read_document_mask(
   }
 
   auto reader = meta.codec->get_document_mask_reader();
-  auto visitor = [&docs_mask](const doc_id_t& value)->bool {
-    docs_mask.insert(value);
-    return true;
-  };
-
-  // there will not be a document_mask list for new segments without deletes
-  if (reader->prepare(dir, meta)) {
-    read_all<iresearch::doc_id_t>(visitor, *reader, reader->begin());
-    reader->end();
-  }
+  reader->read(dir, meta, docs_mask);
 }
 
 std::string write_segment_meta(

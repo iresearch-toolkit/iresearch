@@ -275,25 +275,21 @@ document_mask_writer::document_mask_writer(const index_segment& data):
 }
 
 std::string document_mask_writer::filename(
-  const iresearch::segment_meta& meta
+    const irs::segment_meta& meta
 ) const {
   return std::string();
 }
 
-void document_mask_writer::prepare(
-  iresearch::directory& dir,
-  const iresearch::segment_meta& meta) {
+void document_mask_writer::write(
+    irs::directory& dir,
+    const irs::segment_meta& meta,
+    const irs::document_mask& docs_mask
+) {
+  EXPECT_EQ(data_.doc_mask().size(), docs_mask.size());
+  for (auto doc_id : docs_mask) {
+    EXPECT_EQ(true, data_.doc_mask().find(doc_id) != data_.doc_mask().end());
+  }
 }
-
-void document_mask_writer::begin(uint32_t count) {
-  EXPECT_EQ(data_.doc_mask().size(), count);
-}
-
-void document_mask_writer::write(const iresearch::doc_id_t& doc_id) {
-  EXPECT_EQ(true, data_.doc_mask().find(doc_id) != data_.doc_mask().end());
-}
-
-void document_mask_writer::end() { }
 
 /* -------------------------------------------------------------------
  * field_writer

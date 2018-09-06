@@ -2281,7 +2281,7 @@ void segment_meta_reader::read(
 // --SECTION--                                             document_mask_writer
 // ----------------------------------------------------------------------------
 
-class document_mask_writer final: public iresearch::document_mask_writer {
+class document_mask_writer final: public irs::document_mask_writer {
  public:
   static const string_ref FORMAT_EXT;
   static const string_ref FORMAT_NAME;
@@ -2290,14 +2290,16 @@ class document_mask_writer final: public iresearch::document_mask_writer {
   static const int32_t FORMAT_MAX = FORMAT_MIN;
 
   virtual ~document_mask_writer() = default;
-  virtual std::string filename(const segment_meta& meta) const override;
-  virtual void prepare(directory& dir, const segment_meta& meta) override;
-  virtual void begin(uint32_t count) override;
-  virtual void write(const doc_id_t& mask) override;
-  virtual void end() override;
 
-private:
-  index_output::ptr out_;
+  virtual std::string filename(
+    const segment_meta& meta
+  ) const override;
+
+  virtual void write(
+    directory& dir,
+    const segment_meta& meta,
+    const document_mask& docs_mask
+  ) override;
 }; // document_mask_writer
 
 template<>
@@ -2315,31 +2317,32 @@ std::string document_mask_writer::filename(const segment_meta& meta) const {
   return file_name<irs::document_mask_writer>(meta);
 }
 
-void document_mask_writer::prepare(directory& dir, const segment_meta& meta) {
-  auto filename = file_name<irs::document_mask_writer>(meta);
+void document_mask_writer::write(
+    directory& dir,
+    const segment_meta& meta,
+    const document_mask& docs_mask
+) {
+  const auto filename = file_name<irs::document_mask_writer>(meta);
+  auto out = dir.create(filename);
 
-  out_ = dir.create(filename);
-
-  if (!out_) {
+  if (!out) {
     std::stringstream ss;
 
     ss << "Failed to create file, path: " << filename;
 
     throw detailed_io_error(ss.str());
   }
-}
 
-void document_mask_writer::begin(uint32_t count) {
-  format_utils::write_header(*out_, FORMAT_NAME, FORMAT_MAX);
-  out_->write_vint(count);
-}
+  // segment can't have more than integer_traits<uint32_t>::const_max documents
+  assert(docs_mask.size() <= integer_traits<uint32_t>::const_max);
+  const auto count = static_cast<uint32_t>(docs_mask.size());
 
-void document_mask_writer::write(const doc_id_t& mask) {
-  out_->write_vint(mask);
-}
-
-void document_mask_writer::end() {
-  format_utils::write_footer(*out_);
+  format_utils::write_header(*out, FORMAT_NAME, FORMAT_MAX);
+  out->write_vint(count);
+  for (auto mask : docs_mask) {
+    out->write_vint(mask);
+  }
+  format_utils::write_footer(*out);
 }
 
 // ----------------------------------------------------------------------------
@@ -2350,27 +2353,21 @@ class document_mask_reader final: public irs::document_mask_reader {
  public:
   virtual ~document_mask_reader() = default;
 
-  virtual bool prepare(
+  virtual bool read(
     const directory& dir,
     const segment_meta& meta,
+    document_mask& docs_mask,
     bool* seen = nullptr
   ) override;
-
-  virtual uint32_t begin() override;
-  virtual void read(iresearch::doc_id_t& mask) override;
-  virtual void end() override;
-
-private:
-  uint64_t checksum_{};
-  index_input::ptr in_;
 }; // document_mask_reader
 
-bool document_mask_reader::prepare(
+bool document_mask_reader::read(
     const directory& dir,
     const segment_meta& meta,
+    document_mask& docs_mask,
     bool* seen /*= nullptr*/
 ) {
-  auto in_name = file_name<irs::document_mask_writer>(meta);
+  const auto in_name = file_name<irs::document_mask_writer>(meta);
   bool exists;
 
   // possible that the file does not exist since document_mask is optional
@@ -2396,37 +2393,33 @@ bool document_mask_reader::prepare(
     return false;
   }
 
-  checksum_ = format_utils::checksum(*in);
+  const auto checksum = format_utils::checksum(*in);
 
   if (seen) {
     *seen = true;
   }
 
-  in_ = std::move(in);
-
-  return true;
-}
-
-uint32_t document_mask_reader::begin() {
   format_utils::check_header(
-    *in_,
+    *in,
     document_mask_writer::FORMAT_NAME,
     document_mask_writer::FORMAT_MIN,
     document_mask_writer::FORMAT_MAX
   );
 
-  return in_->read_vint();
-}
+  auto count = in->read_vint();
 
-void document_mask_reader::read(doc_id_t& doc_id) {
-  auto id = in_->read_vint();
+  while (count--) {
+    static_assert(
+      sizeof(doc_id_t) == sizeof(decltype(in->read_vint())),
+      "sizeof(doc_id) != sizeof(decltype(id))"
+    );
 
-  static_assert(sizeof(doc_id_t) == sizeof(decltype(id)), "sizeof(doc_id) != sizeof(decltype(id))");
-  doc_id = id;
-}
+    docs_mask.insert(in->read_vint());
+  }
 
-void document_mask_reader::end() {
-  format_utils::check_footer(*in_, checksum_);
+  format_utils::check_footer(*in, checksum);
+
+  return true;
 }
 
 // ----------------------------------------------------------------------------
@@ -4951,11 +4944,17 @@ segment_meta_reader::ptr format::get_segment_meta_reader() const {
 }
 
 document_mask_writer::ptr format::get_document_mask_writer() const {
-  return iresearch::document_mask_writer::make<::document_mask_writer>();
+  // can reuse stateless writer
+  static ::document_mask_writer INSTANCE;
+
+  return memory::make_managed<irs::document_mask_writer, false>(&INSTANCE);
 }
 
 document_mask_reader::ptr format::get_document_mask_reader() const {
-  return iresearch::document_mask_reader::make<::document_mask_reader>();
+  // can reuse stateless writer
+  static ::document_mask_reader INSTANCE;
+
+  return memory::make_managed<irs::document_mask_reader, false>(&INSTANCE);
 }
 
 field_writer::ptr format::get_field_writer(bool volatile_state) const {

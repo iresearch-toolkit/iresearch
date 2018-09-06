@@ -85,10 +85,7 @@ const std::string& write_document_mask(
     ++meta.version; // segment modified due to new document_mask
   }
   const auto& file = *meta.files.emplace(mask_writer->filename(meta)).first; // new/expected filename
-  mask_writer->prepare(dir, meta);
-  mask_writer->begin((uint32_t)docs_mask.size());
-  write_all(*mask_writer, docs_mask.begin(), docs_mask.end());
-  mask_writer->end();
+  mask_writer->write(dir, meta, docs_mask);
   return file;
 }
 
