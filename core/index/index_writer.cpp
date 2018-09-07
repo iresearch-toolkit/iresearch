@@ -306,20 +306,31 @@ void index_writer::clear() {
   auto ctx = get_flush_context(false);
   SCOPED_LOCK(ctx->mutex_); // ensure there are no active struct update operations
 
-  auto pending_commit = std::make_shared<committed_state_t::element_type>(
+  auto pending_commit = memory::make_shared<committed_state_t::element_type>(
     std::piecewise_construct,
     std::forward_as_tuple(memory::make_shared<index_meta>()),
     std::forward_as_tuple()
   );
 
+  auto& dir = *ctx->dir_;
   auto& pending_meta = *pending_commit->first;
+  auto& pending_refs = pending_commit->second;
+
+  // setup new meta
   pending_meta.update_generation(meta_); // clone index metadata generation
   pending_meta.seg_counter_.store(meta_.counter()); // ensure counter() >= max(seg#)
 
   // write 1st phase of index_meta transaction
-  if (!writer_->prepare(*(ctx->dir_), pending_meta)) {
+  if (!writer_->prepare(dir, pending_meta)) {
     throw illegal_state();
   }
+
+  // track references
+  if (write_lock_) {
+    // track write lock if exists
+    track_ref(dir, WRITE_LOCK_NAME, pending_refs);
+  }
+  track_ref(dir, writer_->filename(pending_meta), pending_refs, true);
 
   // 1st phase of the transaction successfully finished here
   meta_.update_generation(pending_meta); // ensure new generation reflected in 'meta_'
@@ -386,8 +397,8 @@ index_writer::ptr index_writer::make(
     }
   }
 
-  auto comitted_state = std::make_shared<committed_state_t::element_type>(
-    memory::make_unique<index_meta>(meta),
+  auto comitted_state = memory::make_shared<committed_state_t::element_type>(
+    memory::make_shared<index_meta>(meta),
     std::move(file_refs)
   );
 
@@ -1290,8 +1301,6 @@ bool index_writer::start() {
   auto& dir = *to_commit.ctx->dir_;
   auto& pending_meta = *to_commit.meta;
 
-  // FIXME track all refs here
-
   // write 1st phase of index_meta transaction
   if (!writer_->prepare(dir, pending_meta)) {
     throw illegal_state();
@@ -1321,12 +1330,21 @@ bool index_writer::start() {
     throw;
   }
 
+  // track all refs
+  file_refs_t pending_refs;
+  if (write_lock_) {
+    // track write lock if exists
+    track_ref(dir, WRITE_LOCK_NAME, pending_refs);
+  }
+  track_ref(dir, writer_->filename(pending_meta), pending_refs, true);
+  append_segments_refs(pending_refs, dir, pending_meta);
+
   // 1st phase of the transaction successfully finished here,
   // set to_commit as active flush context containing pending meta
-  pending_state_.commit = std::make_shared<committed_state_t::element_type>(
+  pending_state_.commit = memory::make_shared<committed_state_t::element_type>(
     std::piecewise_construct,
     std::forward_as_tuple(std::move(to_commit.meta)),
-    std::forward_as_tuple()
+    std::forward_as_tuple(std::move(pending_refs))
   );
   pending_state_.ctx = std::move(to_commit.ctx);
 
@@ -1340,17 +1358,9 @@ void index_writer::finish() {
     return;
   }
 
-  auto& dir = *pending_state_.ctx->dir_;
-  auto& pending_commit = *pending_state_.commit;
-  auto& pending_meta = *pending_commit.first;
-  auto& pending_refs = pending_commit.second;
-
-  if (write_lock_) {
-    // track write lock if exists
-    track_ref(dir, WRITE_LOCK_NAME, pending_refs);
-  }
-  track_ref(dir, writer_->filename(pending_meta), pending_refs, true);
-  append_segments_refs(pending_refs, dir, pending_meta);
+  // ...........................................................................
+  // lightweight 2nd phase of the transaction
+  // ...........................................................................
 
   writer_->commit();
 
@@ -1358,8 +1368,8 @@ void index_writer::finish() {
   // after here transaction successfull (only noexcept operations below)
   // ...........................................................................
 
-  meta_.last_gen_ = pending_meta.gen_; // update 'last_gen_' to last commited/valid generation
   committed_state_ = std::move(pending_state_.commit);
+  meta_.last_gen_ = committed_state_->first->gen_; // update 'last_gen_' to last commited/valid generation
   pending_state_.reset(); // flush is complete, release reference to flush_context
 }
 
