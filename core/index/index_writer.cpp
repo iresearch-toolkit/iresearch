@@ -737,7 +737,7 @@ bool index_writer::consolidate(
 
       ctx->pending_segments_.emplace_back(
         std::move(consolidation_segment),
-        0, // FIXME ctx->generation_.load() ???
+        0, // deletes must be applied to the consolidated segment
         extract_refs(dir), // do not forget to track refs
         std::move(candidates), // consolidation context candidates
         std::move(committed_meta) // consolidation context meta
@@ -757,11 +757,6 @@ bool index_writer::consolidate(
       SCOPED_LOCK(ctx->mutex_); // lock due to context modification
 
       lock.unlock(); // can release commit lock, we guarded against commit by locked flush context
-
-      // FIXME
-      // - FIX segment_consolidate_clear_commit
-      // - concurrent merges (pass consolidation candidates to policy)
-      // - store segment size in segment_meta
 
       candidates_mapping_t mappings;
       const auto res = map_candidates(mappings, candidates, current_committed_meta->segments());
@@ -801,7 +796,7 @@ bool index_writer::consolidate(
 
       ctx->pending_segments_.emplace_back(
         std::move(consolidation_segment),
-        0, // FIXME ctx->generation_.load() ???
+        0, // deletes must be applied to the consolidated segment
         extract_refs(dir), // do not forget to track refs
         std::move(candidates), // consolidation context candidates
         std::move(committed_meta) // consolidation context meta
@@ -1036,7 +1031,7 @@ index_writer::pending_context_t index_writer::flush_all() {
         continue; // skip this particular consolidation
       }
 
-      // FIXME remove extra loop
+      // mask mapped candidates
       for (auto& mapping : mappings) {
         ctx->segment_mask_.emplace(mapping.first);
       }
