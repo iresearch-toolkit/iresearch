@@ -608,52 +608,25 @@ bool index_writer::consolidate(
   {
     SCOPED_LOCK(consolidation_lock_);
     policy(candidates, dir_, *committed_meta, consolidating_segments_);
-  }
 
-  switch (candidates.size()) {
-    case 0:
-      // nothing to consolidate
-      return true;
-    case 1: {
-      const auto* segment = *candidates.begin();
-
-      if (!segment) {
-        // invalid candidate
-        return false;
-      }
-
-      if (segment->live_docs_count == segment->docs_count) {
-        // no deletes, nothing to consolidate
+    switch (candidates.size()) {
+      case 0:
+        // nothing to consolidate
         return true;
+      case 1: {
+        const auto* segment = *candidates.begin();
+
+        if (!segment) {
+          // invalid candidate
+          return false;
+        }
+
+        if (segment->live_docs_count == segment->docs_count) {
+          // no deletes, nothing to consolidate
+          return true;
+        }
       }
     }
-  }
-
-  // validate candidates
-  {
-    size_t found = 0;
-
-    const auto candidate_not_found = candidates.end();
-
-    for (const auto& segment : *committed_meta) {
-      found += size_t(candidate_not_found != candidates.find(&segment.meta));
-    }
-
-    if (found != candidates.size()) {
-      // not all candidates are valid
-      IR_FRMT_WARN(
-        "Failed to start consolidation for index generation '" IR_SIZE_T_SPECIFIER "', found only '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER "' candidates",
-        committed_meta->generation(),
-        found,
-        candidates.size()
-      );
-      return false;
-    }
-  }
-
-  // register segments for consolidation
-  {
-    SCOPED_LOCK(consolidation_lock_);
 
     // check that candidates are not involved in ongoing merges
     for (const auto* candidate : candidates) {
@@ -679,7 +652,29 @@ bool index_writer::consolidate(
     }
   });
 
-  // do merge (without locking)
+  // validate candidates
+  {
+    size_t found = 0;
+
+    const auto candidate_not_found = candidates.end();
+
+    for (const auto& segment : *committed_meta) {
+      found += size_t(candidate_not_found != candidates.find(&segment.meta));
+    }
+
+    if (found != candidates.size()) {
+      // not all candidates are valid
+      IR_FRMT_WARN(
+        "Failed to start consolidation for index generation '" IR_SIZE_T_SPECIFIER "', found only '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER "' candidates",
+        committed_meta->generation(),
+        found,
+        candidates.size()
+      );
+      return false;
+    }
+  }
+
+  // do lock-free merge
 
   index_meta::index_segment_t consolidation_segment;
   consolidation_segment.meta.codec = codec_; // should use new codec
