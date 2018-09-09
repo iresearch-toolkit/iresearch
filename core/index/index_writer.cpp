@@ -339,8 +339,16 @@ void index_writer::clear() {
 
   finish();
 
+  // ...........................................................................
+  // all functions below are noexcept
+  // ...........................................................................
+
   meta_.segments_.clear(); // noexcept op (clear after finish(), to match reset of pending_state_ inside finish(), allows recovery on clear() failure)
   cached_readers_.clear(); // original readers no longer required
+
+  // clear consolidating segments
+  SCOPED_LOCK(consolidation_lock_);
+  consolidating_segments_.clear();
 }
 
 index_writer::ptr index_writer::make(
@@ -597,7 +605,10 @@ bool index_writer::consolidate(
   assert(committed_meta);
 
   // collect a list of consolidation candidates
-  policy(candidates, dir_, *committed_meta);
+  {
+    SCOPED_LOCK(consolidation_lock_);
+    policy(candidates, dir_, *committed_meta, consolidating_segments_);
+  }
 
   switch (candidates.size()) {
     case 0:

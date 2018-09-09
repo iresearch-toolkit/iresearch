@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+﻿////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2016 by EMC Corporation, All Rights Reserved
@@ -10616,7 +10616,8 @@ TEST_F(memory_index_test, concurrent_consolidation) {
         auto policy = [&consolidate_range, &i, &num_segments] (
             std::set<const irs::segment_meta*>& candidates,
             const irs::directory&,
-            const irs::index_meta& meta
+            const irs::index_meta& meta,
+            const irs::index_writer::consolidating_segments_t&
         ) mutable {
           num_segments = meta.size();
           consolidate_range(candidates, meta, i, i+2);
@@ -10744,7 +10745,8 @@ TEST_F(memory_index_test, concurrent_consolidation_dedicated_commit) {
         auto policy = [&consolidate_range, &i, &num_segments] (
             std::set<const irs::segment_meta*>& candidates,
             const irs::directory&,
-            const irs::index_meta& meta
+            const irs::index_meta& meta,
+            const irs::index_writer::consolidating_segments_t&
         ) mutable {
           num_segments = meta.size();
           consolidate_range(candidates, meta, i, i+2);
@@ -10885,7 +10887,8 @@ TEST_F(memory_index_test, concurrent_consolidation_two_phase_dedicated_commit) {
         auto policy = [&consolidate_range, &i, &num_segments] (
             std::set<const irs::segment_meta*>& candidates,
             const irs::directory&,
-            const irs::index_meta& meta
+            const irs::index_meta& meta,
+            const irs::index_writer::consolidating_segments_t&
         ) mutable {
           num_segments = meta.size();
           consolidate_range(candidates, meta, i, i+2);
@@ -11030,7 +11033,8 @@ TEST_F(memory_index_test, concurrent_consolidation_cleanup) {
         auto policy = [&consolidate_range, &i, &num_segments, &dir] (
             std::set<const irs::segment_meta*>& candidates,
             const irs::directory& dir,
-            const irs::index_meta& meta
+            const irs::index_meta& meta,
+            const irs::index_writer::consolidating_segments_t&
         ) mutable {
           num_segments = meta.size();
           consolidate_range(candidates, meta, i, i+2);
@@ -11092,6 +11096,15 @@ TEST_F(memory_index_test, consolidate_invalid_candidate) {
   auto writer = open_writer(dir());
   ASSERT_NE(nullptr, writer);
 
+  auto check_consolidating_segments = [](
+      std::set<const irs::segment_meta*>& candidates,
+      const irs::directory& /*dir*/,
+      const irs::index_meta& meta,
+      const irs::index_writer::consolidating_segments_t& consolidating_segments
+  ) {
+    ASSERT_TRUE(consolidating_segments.empty());
+  };
+
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
@@ -11118,12 +11131,14 @@ TEST_F(memory_index_test, consolidate_invalid_candidate) {
     auto invalid_candidate_policy = [](
         std::set<const irs::segment_meta*>& candidates,
         const irs::directory& /*dir*/,
-        const irs::index_meta& /*meta*/
+        const irs::index_meta& /*meta*/,
+        const irs::index_writer::consolidating_segments_t&
     ) {
       candidates.insert(nullptr);
     };
 
     ASSERT_FALSE(writer->consolidate(invalid_candidate_policy)); // invalid candidate
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments)); // check registered consolidation
     writer->commit();
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
   }
@@ -11135,12 +11150,14 @@ TEST_F(memory_index_test, consolidate_invalid_candidate) {
     auto invalid_candidate_policy = [&meta](
         std::set<const irs::segment_meta*>& candidates,
         const irs::directory& /*dir*/,
-        const irs::index_meta& /*meta*/
+        const irs::index_meta& /*meta*/,
+        const irs::index_writer::consolidating_segments_t&
     ) {
       candidates.insert(&meta);
     };
 
     ASSERT_FALSE(writer->consolidate(invalid_candidate_policy)); // invalid candidate
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments)); // check registered consolidation
     writer->commit();
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
   }
@@ -11164,6 +11181,20 @@ TEST_F(memory_index_test, consolidate_single_segment) {
   auto all_features = irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() };
   irs::bytes_ref actual_value;
 
+  std::vector<size_t> expected_consolidating_segments;
+  auto check_consolidating_segments = [&expected_consolidating_segments](
+      std::set<const irs::segment_meta*>& candidates,
+      const irs::directory& /*dir*/,
+      const irs::index_meta& meta,
+      const irs::index_writer::consolidating_segments_t& consolidating_segments
+  ) {
+    ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
+    for (auto i : expected_consolidating_segments) {
+      auto& expected_consolidating_segment = meta[i];
+      ASSERT_TRUE(consolidating_segments.end() != consolidating_segments.find(&expected_consolidating_segment.meta));
+    }
+  };
+
   // single segment without deletes
   {
     auto writer = open_writer(dir());
@@ -11178,6 +11209,7 @@ TEST_F(memory_index_test, consolidate_single_segment) {
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // nothing to consolidate
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments)); // check segments registered for consolidation
     writer->commit();
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
   }
@@ -11214,6 +11246,8 @@ TEST_F(memory_index_test, consolidate_single_segment) {
     dir().visit(get_number_of_files_in_segments);
 
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // nothing to consolidate
+    expected_consolidating_segments = { 0 }; // expect first segment to be marked for consolidation
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments)); // check segments registered for consolidation
     writer->commit();
     ASSERT_EQ(1+count, irs::directory_cleaner::clean(dir())); // +1 for segments_2
 
@@ -11330,6 +11364,21 @@ TEST_F(memory_index_test, segment_consolidate_long_running) {
 
     std::thread consolidation_thread([&writer, &dir]() {
       ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+
+      const std::vector<size_t> expected_consolidating_segments{ 0, 1 };
+      auto check_consolidating_segments = [&expected_consolidating_segments](
+          std::set<const irs::segment_meta*>& candidates,
+          const irs::directory& /*dir*/,
+          const irs::index_meta& meta,
+          const irs::index_writer::consolidating_segments_t& consolidating_segments
+      ) {
+        ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
+        for (auto i : expected_consolidating_segments) {
+          auto& expected_consolidating_segment = meta[i];
+          ASSERT_TRUE(consolidating_segments.end() != consolidating_segments.find(&expected_consolidating_segment.meta));
+        }
+      };
+      ASSERT_TRUE(writer->consolidate(check_consolidating_segments)); // check segments registered for consolidation
     });
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
@@ -11478,6 +11527,16 @@ TEST_F(memory_index_test, segment_consolidate_long_running) {
     std::thread consolidation_thread([&writer, &dir]() {
       // consolidation will fail because of
       ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+
+      auto check_consolidating_segments = [](
+          std::set<const irs::segment_meta*>& candidates,
+          const irs::directory& /*dir*/,
+          const irs::index_meta& meta,
+          const irs::index_writer::consolidating_segments_t& consolidating_segments
+      ) {
+        ASSERT_TRUE(consolidating_segments.empty());
+      };
+      ASSERT_TRUE(writer->consolidate(check_consolidating_segments)); // check segments registered for consolidation
     });
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
@@ -11627,6 +11686,21 @@ TEST_F(memory_index_test, segment_consolidate_long_running) {
     std::thread consolidation_thread([&writer, &dir]() {
       // consolidation will fail because of
       ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+
+      const std::vector<size_t> expected_consolidating_segments{ 0, 1 };
+      auto check_consolidating_segments = [&expected_consolidating_segments](
+          std::set<const irs::segment_meta*>& candidates,
+          const irs::directory& /*dir*/,
+          const irs::index_meta& meta,
+          const irs::index_writer::consolidating_segments_t& consolidating_segments
+      ) {
+        ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
+        for (auto i : expected_consolidating_segments) {
+          auto& expected_consolidating_segment = meta[i];
+          ASSERT_TRUE(consolidating_segments.end() != consolidating_segments.find(&expected_consolidating_segment.meta));
+        }
+      };
+      ASSERT_TRUE(writer->consolidate(check_consolidating_segments)); // check segments registered for consolidation
     });
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
@@ -11751,6 +11825,21 @@ TEST_F(memory_index_test, segment_consolidate_long_running) {
     std::thread consolidation_thread([&writer, &dir]() {
       // consolidation will fail because of
       ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+
+      const std::vector<size_t> expected_consolidating_segments{ 0, 1 };
+      auto check_consolidating_segments = [&expected_consolidating_segments](
+          std::set<const irs::segment_meta*>& candidates,
+          const irs::directory& /*dir*/,
+          const irs::index_meta& meta,
+          const irs::index_writer::consolidating_segments_t& consolidating_segments
+      ) {
+        ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
+        for (auto i : expected_consolidating_segments) {
+          auto& expected_consolidating_segment = meta[i];
+          ASSERT_TRUE(consolidating_segments.end() != consolidating_segments.find(&expected_consolidating_segment.meta));
+        }
+      };
+      ASSERT_TRUE(writer->consolidate(check_consolidating_segments)); // check segments registered for consolidation
     });
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
@@ -11838,6 +11927,20 @@ TEST_F(memory_index_test, segment_consolidate_long_running) {
 }
 
 TEST_F(memory_index_test, segment_consolidate_clear_commit) {
+  std::vector<size_t> expected_consolidating_segments;
+  auto check_consolidating_segments = [&expected_consolidating_segments](
+      std::set<const irs::segment_meta*>& candidates,
+      const irs::directory& /*dir*/,
+      const irs::index_meta& meta,
+      const irs::index_writer::consolidating_segments_t& consolidating_segments
+  ) {
+    ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
+    for (auto i : expected_consolidating_segments) {
+      auto& expected_consolidating_segment = meta[i];
+      ASSERT_TRUE(consolidating_segments.end() != consolidating_segments.find(&expected_consolidating_segment.meta));
+    }
+  };
+
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
@@ -11950,7 +12053,17 @@ TEST_F(memory_index_test, segment_consolidate_clear_commit) {
     writer->commit();
 
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+
+    // check consolidating segments
+    expected_consolidating_segments = { 0, 1 };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
     writer->clear();
+
+    // check consolidating segments
+    expected_consolidating_segments = { };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
     writer->commit(); // commit transaction
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -11978,6 +12091,11 @@ TEST_F(memory_index_test, segment_consolidate_clear_commit) {
 
     writer->clear();
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+
+    // check consolidating segments
+    expected_consolidating_segments = { };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
     writer->commit(); // commit transaction
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -11986,6 +12104,20 @@ TEST_F(memory_index_test, segment_consolidate_clear_commit) {
 }
 
 TEST_F(memory_index_test, segment_consolidate_commit) {
+  std::vector<size_t> expected_consolidating_segments;
+  auto check_consolidating_segments = [&expected_consolidating_segments](
+      std::set<const irs::segment_meta*>& candidates,
+      const irs::directory& /*dir*/,
+      const irs::index_meta& meta,
+      const irs::index_writer::consolidating_segments_t& consolidating_segments
+  ) {
+    ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
+    for (auto i : expected_consolidating_segments) {
+      auto& expected_consolidating_segment = meta[i];
+      ASSERT_TRUE(consolidating_segments.end() != consolidating_segments.find(&expected_consolidating_segment.meta));
+    }
+  };
+
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
@@ -12039,9 +12171,20 @@ TEST_F(memory_index_test, segment_consolidate_commit) {
     ASSERT_TRUE(dir().visit(get_number_of_files_in_segments));
 
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+
+    // check consolidating segments
+    expected_consolidating_segments = { 0, 1 };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+
     // all segments are already marked for consolidation
     ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidate_all()));
+
+    // check consolidating segments
+    expected_consolidating_segments = { 0, 1 };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
     writer->commit(); // commit transaction (will commit nothing)
@@ -12119,8 +12262,16 @@ TEST_F(memory_index_test, segment_consolidate_commit) {
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
 
+    // check consolidating segments
+    expected_consolidating_segments = { 0, 1 };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
     // can't consolidate segments that are already marked for consolidation
     ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidate_all()));
+
+    // check consolidating segments
+    expected_consolidating_segments = { 0, 1 };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
     writer->commit(); // commit transaction (will commit segment 3 + consolidation)
@@ -12220,8 +12371,16 @@ TEST_F(memory_index_test, segment_consolidate_commit) {
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir())); // segments_1
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
 
+    // check consolidating segments
+    expected_consolidating_segments = { 0, 1 };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
     // can't consolidate segments that are already marked for consolidation
     ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidate_all()));
+
+    // check consolidating segments
+    expected_consolidating_segments = { 0, 1 };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir())); // segments_1
 
@@ -12296,7 +12455,155 @@ TEST_F(memory_index_test, segment_consolidate_commit) {
   }
 }
 
+TEST_F(memory_index_test, consolidate_check_consolidating_segments) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+      if (data.is_string()) {
+        doc.insert(std::make_shared<tests::templates::string_field>(
+          irs::string_ref(name),
+          data.str
+        ));
+      }
+  });
+
+  auto writer = open_writer();
+  ASSERT_NE(nullptr, writer);
+
+  // ensure consolidating segments is empty
+  {
+    auto check_consolidating_segments = [](
+        std::set<const irs::segment_meta*>& candidates,
+        const irs::directory& /*dir*/,
+        const irs::index_meta& meta,
+        const irs::index_writer::consolidating_segments_t& consolidating_segments
+    ) {
+      ASSERT_TRUE(consolidating_segments.empty());
+    };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+  }
+
+  const size_t SEGMENTS_COUNT = 10;
+  for (size_t i = 0; i < SEGMENTS_COUNT; ++i) {
+    const auto* doc = gen.next();
+    ASSERT_TRUE(insert(*writer,
+      doc->indexed.begin(), doc->indexed.end(),
+      doc->stored.begin(), doc->stored.end()
+    ));
+    writer->commit();
+  }
+
+  // register 'SEGMENTS_COUNT/2' consolidations
+  for (size_t i = 0, j = 0; i < SEGMENTS_COUNT/2; ++i) {
+    auto merge_adjacent = [&j](
+        std::set<const irs::segment_meta*>& candidates,
+        const irs::directory& /*dir*/,
+        const irs::index_meta& meta,
+        const irs::index_writer::consolidating_segments_t& consolidating_segments
+    ) {
+      ASSERT_TRUE(j < meta.size());
+      candidates.emplace(&meta[j++].meta);
+      ASSERT_TRUE(j < meta.size());
+      candidates.emplace(&meta[j++].meta);
+    };
+
+    ASSERT_TRUE(writer->consolidate(merge_adjacent));
+  };
+
+  // check all segments registered
+  {
+    auto check_consolidating_segments = [](
+        std::set<const irs::segment_meta*>& candidates,
+        const irs::directory& /*dir*/,
+        const irs::index_meta& meta,
+        const irs::index_writer::consolidating_segments_t& consolidating_segments
+    ) {
+      ASSERT_EQ(meta.size(), consolidating_segments.size());
+      for (auto& segment : meta) {
+        ASSERT_TRUE(consolidating_segments.end() != consolidating_segments.find(&segment.meta));
+      }
+    };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+  }
+
+  writer->commit(); // commit pending consolidations
+
+  // ensure consolidating segments is empty
+  {
+    auto check_consolidating_segments = [](
+        std::set<const irs::segment_meta*>& candidates,
+        const irs::directory& /*dir*/,
+        const irs::index_meta& meta,
+        const irs::index_writer::consolidating_segments_t& consolidating_segments
+    ) {
+      ASSERT_TRUE(consolidating_segments.empty());
+    };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+  }
+
+  // validate structure
+  irs::bytes_ref actual_value;
+  const auto all_features = irs::flags{
+    irs::document::type(),
+    irs::frequency::type(),
+    irs::position::type(),
+    irs::payload::type(),
+    irs::offset::type()
+  };
+  gen.reset();
+  tests::index_t expected;
+  for (auto i = 0; i < SEGMENTS_COUNT/2; ++i) {
+    expected.emplace_back();
+    const auto* doc = gen.next();
+    expected.back().add(doc->indexed.begin(), doc->indexed.end());
+    doc = gen.next();
+    expected.back().add(doc->indexed.begin(), doc->indexed.end());
+  }
+  tests::assert_index(dir(), codec(), expected, all_features);
+
+  auto reader = iresearch::directory_reader::open(dir(), codec());
+  ASSERT_EQ(SEGMENTS_COUNT/2, reader.size());
+
+  std::string expected_name = "A";
+
+  for (auto i = 0; i < SEGMENTS_COUNT/2; ++i) {
+    auto& segment = reader[i];
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
+    ASSERT_EQ(2, segment.docs_count()); // total count of documents
+    auto terms = segment.field("same");
+    ASSERT_NE(nullptr, terms);
+    auto termItr = terms->iterator();
+    ASSERT_TRUE(termItr->next());
+    auto docsItr = termItr->postings(iresearch::flags());
+    ASSERT_TRUE(docsItr->next());
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ(expected_name, irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+    ++expected_name[0];
+    ASSERT_TRUE(docsItr->next());
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ(expected_name, irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
+    ASSERT_FALSE(docsItr->next());
+    ++expected_name[0];
+  }
+}
+
 TEST_F(memory_index_test, segment_consolidate_pending_commit) {
+  std::vector<size_t> expected_consolidating_segments;
+  auto check_consolidating_segments = [&expected_consolidating_segments](
+      std::set<const irs::segment_meta*>& candidates,
+      const irs::directory& /*dir*/,
+      const irs::index_meta& meta,
+      const irs::index_writer::consolidating_segments_t& consolidating_segments
+  ) {
+    ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
+    for (auto i : expected_consolidating_segments) {
+      auto& expected_consolidating_segment = meta[i];
+      ASSERT_TRUE(consolidating_segments.end() != consolidating_segments.find(&expected_consolidating_segment.meta));
+    }
+  };
+
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
@@ -12352,14 +12659,34 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
 
     ASSERT_FALSE(writer->begin()); // begin transaction (will not start transaction)
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+
+    // check consolidating segments
+    expected_consolidating_segments = { 0, 1 };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
     // all segments are already marked for consolidation
     ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidate_all()));
+
+    // check consolidating segments
+    expected_consolidating_segments = { 0, 1 };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
-    writer->commit(); // commit transaction (will commit nothing)
+    writer->commit(); // commit transaction (will commit consolidation)
     ASSERT_EQ(1+count, irs::directory_cleaner::clean(dir())); // +1 for corresponding segments_* file
+
+    // check consolidating segments
+    expected_consolidating_segments = { };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // nothing to consolidate
+
+    // check consolidating segments
+    expected_consolidating_segments = { };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
     writer->commit(); // commit transaction (will commit nothing)
 
     // validate structure
@@ -12432,17 +12759,38 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
 
     ASSERT_TRUE(writer->begin()); // begin transaction
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+
+    // check consolidating segments
+    expected_consolidating_segments = { };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+
+    // check consolidating segments
+    expected_consolidating_segments = { 0, 1};
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     // can't consolidate segments that are already marked for consolidation
     ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidate_all()));
+
+    // check consolidating segments
+    expected_consolidating_segments = { 0, 1};
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
     writer->commit(); // commit transaction (will commit segment 3)
     ASSERT_EQ(1, irs::directory_cleaner::clean(dir())); // segments_2
 
+    // check consolidating segments
+    expected_consolidating_segments = { 0, 1};
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
     writer->commit(); // commit pending merge
     ASSERT_EQ(1+count, irs::directory_cleaner::clean(dir())); // segments_2
+
+    // check consolidating segments
+    expected_consolidating_segments = { };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     // validate structure
     tests::index_t expected;
@@ -12538,10 +12886,23 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
     ASSERT_TRUE(writer->begin()); // begin transaction
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+
+    // check consolidating segments
+    expected_consolidating_segments = { };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+
+    // check consolidating segments
+    expected_consolidating_segments = { 0, 1};
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     // can't consolidate segments that are already marked for consolidation
     ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidate_all()));
+
+    // check consolidating segments
+    expected_consolidating_segments = { 0, 1};
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
@@ -12554,6 +12915,10 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
     writer->commit(); // commit transaction (will commit segment 3)
     ASSERT_EQ(1, irs::directory_cleaner::clean(dir()));
 
+    // check consolidating segments
+    expected_consolidating_segments = { 0, 1};
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
     ASSERT_TRUE(insert(*writer,
       doc6->indexed.begin(), doc6->indexed.end(),
       doc6->stored.begin(), doc6->stored.end()
@@ -12561,6 +12926,10 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
 
     writer->commit(); // commit pending merge, segment 4 (doc5 + doc6)
     ASSERT_EQ(count+1, irs::directory_cleaner::clean(dir())); // +1 for segments
+
+    // check consolidating segments
+    expected_consolidating_segments = { };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     // validate structure
     tests::index_t expected;
@@ -12678,18 +13047,39 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
     writer->remove(*query_doc1.filter);
     ASSERT_TRUE(writer->begin()); // begin transaction
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+
+    // check consolidating segments
+    expected_consolidating_segments = { };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+
+    // check consolidating segments
+    expected_consolidating_segments = { 0, 1};
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     // can't consolidate segments that are already marked for consolidation
     ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidate_all()));
+
+    // check consolidating segments
+    expected_consolidating_segments = { 0, 1};
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
     writer->commit(); // commit transaction (will commit removal)
     ASSERT_EQ(2, irs::directory_cleaner::clean(dir())); // segments_2 + stale segment 1 meta
 
+    // check consolidating segments
+    expected_consolidating_segments = { 0, 1};
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
     writer->commit(); // commit pending merge
     ASSERT_EQ(count+2, irs::directory_cleaner::clean(dir())); // +1 for segments, +1 for segment 1 doc mask
+
+    // check consolidating segments
+    expected_consolidating_segments = { };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     // validate structure (doesn't take removals into account)
     tests::index_t expected;
@@ -12784,18 +13174,39 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
     writer->remove(*query_doc1_doc4.filter);
     ASSERT_TRUE(writer->begin()); // begin transaction
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+
+    // check consolidating segments
+    expected_consolidating_segments = { };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+
+    // check consolidating segments
+    expected_consolidating_segments = { 0, 1 };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     // can't consolidate segments that are already marked for consolidation
     ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidate_all()));
+
+    // check consolidating segments
+    expected_consolidating_segments = { 0, 1 };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
     writer->commit(); // commit transaction (will commit removal)
     ASSERT_EQ(3, irs::directory_cleaner::clean(dir())); // segments_2 + stale segment 1 meta + stale segment 2 meta
 
+    // check consolidating segments
+    expected_consolidating_segments = { 0, 1 };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
     writer->commit(); // commit pending merge
     ASSERT_EQ(count+3, irs::directory_cleaner::clean(dir())); // +1 for segments, +1 for segment 1 doc mask, +1 for segment 2 doc mask
+
+    // check consolidating segments
+    expected_consolidating_segments = { };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     // validate structure (doesn't take removals into account)
     tests::index_t expected;
@@ -12894,10 +13305,23 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
     writer->remove(*query_doc1_doc4.filter);
     ASSERT_TRUE(writer->begin()); // begin transaction
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+
+    // check consolidating segments
+    expected_consolidating_segments = { };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+
+    // check consolidating segments
+    expected_consolidating_segments = { 0, 1 };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     // can't consolidate segments that are already marked for consolidation
     ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidate_all()));
+
+    // check consolidating segments
+    expected_consolidating_segments = { 0, 1 };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
@@ -12908,8 +13332,16 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
     writer->commit(); // commit transaction (will commit removal)
     ASSERT_EQ(3, irs::directory_cleaner::clean(dir())); // segments_2 + stale segment 1 meta + stale segment 2 meta
 
+    // check consolidating segments
+    expected_consolidating_segments = { 0, 1 };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
     writer->commit(); // commit pending merge
     ASSERT_EQ(count+3, irs::directory_cleaner::clean(dir())); // +1 for segments, +1 for segment 1 doc mask, +1 for segment 2 doc mask
+
+    // check consolidating segments
+    expected_consolidating_segments = { };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     // validate structure (doesn't take removals into account)
     tests::index_t expected;
@@ -13030,21 +13462,42 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
       doc5->indexed.begin(), doc5->indexed.end(),
       doc5->stored.begin(), doc5->stored.end()
     ));
+
+    // check consolidating segments
+    expected_consolidating_segments = { };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
     ASSERT_TRUE(writer->begin()); // begin transaction
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
 
+    // check consolidating segments
+    expected_consolidating_segments = { 0, 1 };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
     // can't consolidate segments that are already marked for consolidation
     ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidate_all()));
+
+    // check consolidating segments
+    expected_consolidating_segments = { 0, 1 };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
     writer->commit(); // commit transaction
     ASSERT_EQ(1, irs::directory_cleaner::clean(dir())); // segments_2
 
+    // check consolidating segments
+    expected_consolidating_segments = { 0, 1 };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
     writer->remove(*query_doc1_doc4.filter);
     writer->commit(); // commit pending merge + removal
     ASSERT_EQ(count+5, irs::directory_cleaner::clean(dir())); // +1 for segments, +1 for segment 1 doc mask, +1 for segment 1 meta, +1 for segment 2 doc mask, +1 for segment 2 meta
+
+    // check consolidating segments
+    expected_consolidating_segments = { };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     // validate structure (doesn't take removals into account)
     tests::index_t expected;
@@ -13169,8 +13622,17 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
       doc5->indexed.begin(), doc5->indexed.end(),
       doc5->stored.begin(), doc5->stored.end()
     ));
+
+    // check consolidating segments
+    expected_consolidating_segments = { };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
     ASSERT_TRUE(writer->begin()); // begin transaction
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+
+    // check consolidating segments
+    expected_consolidating_segments = { };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     // count number of files in segments
     count = 0;
@@ -13178,8 +13640,16 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
 
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
 
+    // check consolidating segments
+    expected_consolidating_segments = { 0, 1 };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
     // can't consolidate segments that are already marked for consolidation
     ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidate_all()));
+
+    // check consolidating segments
+    expected_consolidating_segments = { 0, 1 };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     size_t num_files_consolidation_segment = count;
     count = 0;
@@ -13191,11 +13661,19 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
     writer->commit(); // commit transaction
     ASSERT_EQ(1, irs::directory_cleaner::clean(dir())); // segments_2
 
+    // check consolidating segments
+    expected_consolidating_segments = { 0, 1 };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
     writer->remove(*query_doc3_doc4.filter);
 
     // commit pending merge + removal
     // pending consolidation will fail (because segment 2 will have no live docs after applying removals)
     writer->commit();
+
+    // check consolidating segments
+    expected_consolidating_segments = { };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     ASSERT_EQ(num_files_consolidation_segment+num_files_segment_2+1, irs::directory_cleaner::clean(dir())); // +1 for segments_2,
 
@@ -13505,7 +13983,10 @@ TEST_F(memory_index_test, segment_consolidate) {
   }
 
   auto merge_if_masked = [](
-    std::set<const irs::segment_meta*>& candidates, const irs::directory& dir, const irs::index_meta& meta
+      std::set<const irs::segment_meta*>& candidates,
+      const irs::directory& dir,
+      const irs::index_meta& meta,
+      const irs::index_writer::consolidating_segments_t&
   )->void {
     for (auto& segment: meta) {
       if (segment.meta.live_docs_count != segment.meta.docs_count) {

@@ -100,6 +100,30 @@ ENABLE_BITMASK_ENUM(OpenMode);
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API index_writer : util::noncopyable {
  public:
+  struct segment_hash {
+    size_t operator()(
+        const segment_meta* segment
+    ) const NOEXCEPT {
+      return hash_utils::hash(segment->name);
+    }
+  }; // segment_hash
+
+  struct segment_equal {
+    size_t operator()(
+        const segment_meta* lhs,
+        const segment_meta* rhs
+    ) const NOEXCEPT {
+      return lhs->name == rhs->name;
+    }
+  }; // segment_equal
+
+  // works faster than std::unordered_set<string_ref>
+  typedef std::unordered_set<
+    const segment_meta*,
+    segment_hash,
+    segment_equal
+  > consolidating_segments_t; // segments that are under consolidation
+
   DECLARE_SHARED_PTR(index_writer);
 
   static const size_t THREAD_COUNT = 8;
@@ -111,12 +135,15 @@ class IRESEARCH_API index_writer : util::noncopyable {
   ///        out: actual segments selected by the current policy
   /// @param dir the segment directory
   /// @param meta the index meta containing segments to be considered
+  /// @param consolidating_segments segments that are currently in progress
+  ///        of consolidation
   /// @note final candidates are all segments selected by at least some policy
   ////////////////////////////////////////////////////////////////////////////
   typedef std::function<void(
     std::set<const segment_meta*>& candidates,
     const directory& dir,
-    const index_meta& meta
+    const index_meta& meta,
+    const consolidating_segments_t& consolidating_segments
   )> consolidation_policy_t;
 
   ////////////////////////////////////////////////////////////////////////////
@@ -278,23 +305,6 @@ class IRESEARCH_API index_writer : util::noncopyable {
   void close();
 
  private:
-  struct segment_hash {
-    size_t operator()(
-        const segment_meta* segment
-    ) const NOEXCEPT {
-      return hash_utils::hash(segment->name);
-    }
-  }; // segment_hash
-
-  struct segment_equal {
-    size_t operator()(
-        const segment_meta* lhs,
-        const segment_meta* rhs
-    ) const NOEXCEPT {
-      return lhs->name == rhs->name;
-    }
-  }; // segment_equal
-
   typedef std::vector<index_file_refs::ref_t> file_refs_t;
 
   struct modification_context {
@@ -666,13 +676,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
   index_meta_writer::ptr writer_;
   index_lock::ptr write_lock_; // exclusive write lock for directory
   std::recursive_mutex consolidation_lock_;
-
-  // works faster than std::unordered_set<string_ref>
-  std::unordered_set<
-    const segment_meta*,
-    segment_hash,
-    segment_equal
-  > consolidating_segments_; // segments that are under consolidation
+  consolidating_segments_t consolidating_segments_; // segments that are under consolidation
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // index_writer
 

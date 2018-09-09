@@ -27,6 +27,10 @@
 
 NS_LOCAL
 
+// FIXME
+// - FIX segment_consolidate_clear_commit
+// - store segment size in segment_meta
+
 //uint64_t segment_size(
 //    const irs::directory& dir,
 //    const irs::segment_meta& segment
@@ -45,7 +49,7 @@ NS_LOCAL
 //  return double(segment.live_docs_count)/segment.docs_count;
 //}
 //
-//std::vector<const irs::segment_meta*> get_segments_sorted_by_size(
+//std::vector<const irs::segment_meta*> get_sorted_segments(
 //    const irs::index_meta& index,
 //    const irs::directory& dir
 //) {
@@ -94,8 +98,32 @@ NS_END
 NS_ROOT
 NS_BEGIN(index_utils)
 
+//index_writer::consolidation_policy_t consolidate_tier(
+//    size_t max_segments /*=10*/,                // maximum allowed number of segments to consolidate at once
+//    size_t max_segments_bytes /*= 5*(1<<30)*/,  // maxinum allowed size of all consolidated segments
+//    size_t floor_segment_bytes /*= 2*(1<<20)*/, // treat all smaller segments as equal for consolidation selection
+//    double_t fill_factor /* = 0.7 */            // percentage of live documents in a segment
+//) {
+//  max_segments = (std::max)(size_t(1), max_segments); // can't merge less than 1 segment
+//  fill_factor = (std::max)(0., (std::min)(1., fill_factor));
+//
+//  return [max_segments, fill_factor, floor_segment_bytes, max_segments_bytes](
+//      std::set<const segment_meta*>& candidates,
+//      const directory& dir,
+//      const index_meta& meta,
+//      const index_writer::consolidating_segments_t& consolidating_segments
+//  ) ->void {
+//    auto sorted_segments = get_sorted_segments(meta, dir);
+//  };
+//}
+
 index_writer::consolidation_policy_t consolidate_all() {
-  return [](std::set<const segment_meta*>& candidates, const directory& /*dir*/, const index_meta& meta) {
+  return [](
+      std::set<const segment_meta*>& candidates,
+      const directory& /*dir*/,
+      const index_meta& meta,
+      const index_writer::consolidating_segments_t& /*consolidating_segments*/
+   ) ->void {
     // merge every segment
     for (auto& segment : meta) {
       candidates.insert(&segment.meta);
@@ -105,8 +133,11 @@ index_writer::consolidation_policy_t consolidate_all() {
 
 index_writer::consolidation_policy_t consolidate_bytes(float byte_threshold /*= 0*/) {
   return [byte_threshold](
-    std::set<const segment_meta*>& candidates, const directory& dir, const index_meta& meta
-  )->void {
+      std::set<const segment_meta*>& candidates,
+      const directory& dir,
+      const index_meta& meta,
+      const index_writer::consolidating_segments_t& /*consolidating_segments*/
+  ) ->void {
     size_t all_segment_bytes_size = 0;
     size_t segment_count = meta.size();
     uint64_t length;
@@ -142,8 +173,11 @@ index_writer::consolidation_policy_t consolidate_bytes(float byte_threshold /*= 
 
 index_writer::consolidation_policy_t consolidate_bytes_accum(float byte_threshold /*= 0*/) {
   return [byte_threshold](
-    std::set<const segment_meta*>& candidates, const directory& dir, const index_meta& meta
-  )->void {
+      std::set<const segment_meta*>& candidates,
+      const directory& dir,
+      const index_meta& meta,
+      const index_writer::consolidating_segments_t& /*consolidating_segments*/
+  ) ->void {
     size_t all_segment_bytes_size = 0;
     uint64_t length;
 
@@ -179,7 +213,10 @@ index_writer::consolidation_policy_t consolidate_bytes_accum(float byte_threshol
 
 index_writer::consolidation_policy_t consolidate_count(float docs_threshold /*= 0*/) {
   return [docs_threshold](
-    std::set<const segment_meta*>& candidates, const directory& /*dir*/, const index_meta& meta
+      std::set<const segment_meta*>& candidates,
+      const directory& /*dir*/,
+      const index_meta& meta,
+      const index_writer::consolidating_segments_t& /*consolidating_segments*/
   )->void {
     size_t all_segment_docs_count = 0;
     size_t segment_count = meta.size();
@@ -204,7 +241,10 @@ index_writer::consolidation_policy_t consolidate_count(float docs_threshold /*= 
 
 index_writer::consolidation_policy_t consolidate_fill(float fill_threshold /*= 0*/) {
   return [fill_threshold](
-    std::set<const segment_meta*>& candidates, const directory& /*dir*/, const index_meta& meta
+      std::set<const segment_meta*>& candidates,
+      const directory& /*dir*/,
+      const index_meta& meta,
+      const index_writer::consolidating_segments_t& /*consolidating_segments*/
   )->void {
     auto threshold = std::max<float>(0, std::min<float>(1, fill_threshold));
 
