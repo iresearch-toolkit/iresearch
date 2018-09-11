@@ -724,7 +724,11 @@ script:
       # build library and tests
       if [[ "${SUPPRESS_MAKE_ERRORS}" == true ]]; then
         if ! make -j 1 iresearch-tests${BUILD_TYPE_SUFFIX} 2> stderr.log; then
-          head --bytes=2097152 stderr.log
+          head --bytes=1048576 stderr.log
+          echo ""
+          echo "..."
+          echo ""
+          tail --bytes=1048576 stderr.log
           exit 1
         fi
       else

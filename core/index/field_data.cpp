@@ -713,7 +713,7 @@ void fields_data::flush(field_writer& fw, flush_state& state) {
 
   {
     static struct less_t {
-      bool operator()(const field_data* lhs, const field_data* rhs) {
+      bool operator()(const field_data* lhs, const field_data* rhs) const {
         return lhs->meta().name < rhs->meta().name;
       };
     } less;
