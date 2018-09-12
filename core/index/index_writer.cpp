@@ -346,7 +346,7 @@ index_writer::ptr index_writer::make(
   if (0 == (OM_NOLOCK & mode)) {
     // lock the directory
     lock = dir.make_lock(WRITE_LOCK_NAME);
-    lockfile_ref = directory_utils::reference(dir, WRITE_LOCK_NAME);
+    lockfile_ref = directory_utils::reference(dir, WRITE_LOCK_NAME, true); // will be created by try_lock
 
     if (!lock || !lock->try_lock()) {
       throw lock_obtain_failed(WRITE_LOCK_NAME);
