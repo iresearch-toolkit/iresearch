@@ -1053,7 +1053,7 @@ class index_test_case_base : public tests::index_test_base {
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(true, 1 <= reader.size()); // not all commits might produce a new segment, some might merge with concurrent commits
-    ASSERT_TRUE(writer_commit_count * iresearch::index_writer::THREAD_COUNT + writer_import_count >= reader.size());
+    ASSERT_TRUE(writer_commit_count * thread_count + writer_import_count >= reader.size()); // worst case each thread is concurrently populating its own segment for every commit
 
     size_t indexed_docs_count = 0;
     size_t imported_docs_count = 0;

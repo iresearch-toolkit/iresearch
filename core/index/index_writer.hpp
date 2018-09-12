@@ -126,8 +126,6 @@ class IRESEARCH_API index_writer : util::noncopyable {
 
   DECLARE_SHARED_PTR(index_writer);
 
-  static const size_t THREAD_COUNT = 8;
-
   ////////////////////////////////////////////////////////////////////////////
   /// @brief mark consolidation candidate segments matching the current policy
   /// @param candidates the segments that should be consolidated
@@ -428,16 +426,29 @@ class IRESEARCH_API index_writer : util::noncopyable {
     consolidation_context_t consolidation_ctx;
   }; // import_context
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the segment writer and its associated ref tracing directory
+  ///        for use with an unbounded_object_pool
+  //////////////////////////////////////////////////////////////////////////////
+  struct segment_context {
+    ref_tracking_directory dir_;
+    segment_writer::ptr writer_;
+    DECLARE_SHARED_PTR(segment_context);
+    DECLARE_FACTORY(directory& dir)
+    segment_context(directory& dir)
+      : dir_(dir), writer_(segment_writer::make(dir_)) {
+    }
+  };
+
   typedef std::shared_ptr<
     std::pair<std::shared_ptr<index_meta>,
     file_refs_t
   >> committed_state_t;
 
   typedef std::vector<modification_context> modification_requests_t;
+  typedef unbounded_object_pool<segment_context> segment_pool_t;
 
   struct IRESEARCH_API flush_context {
-    typedef bounded_object_pool<segment_writer> segment_writers_t;
-
     // do not use std::shared_ptr to avoid unnecessary heap allocatons
     class ptr : util::noncopyable {
      public:
@@ -491,6 +502,14 @@ class IRESEARCH_API index_writer : util::noncopyable {
       bool shared;
     }; // ptr
 
+    struct flush_segment_context: public util::noncopyable { // non-copyable because of cleanup in destructor
+      std::shared_ptr<segment_context> ctx_;
+      bool reusable_; // is this segment context free for reuse (append)
+      flush_segment_context(const std::shared_ptr<segment_context>& ctx);
+      flush_segment_context(flush_segment_context&& other) noexcept;
+      ~flush_segment_context();
+    };
+
     std::atomic<size_t> generation_; // current modification/update generation
     ref_tracking_directory::ptr dir_; // ref tracking directory used by this context (tracks all/only refs for this context)
     async_utils::read_write_mutex flush_mutex_; // guard for the current context during flush (write) operations vs update (read)
@@ -498,8 +517,9 @@ class IRESEARCH_API index_writer : util::noncopyable {
     std::mutex mutex_; // guard for the current context during struct update operations, e.g. modification_queries_, pending_segments_
     flush_context* next_context_; // the next context to switch to
     std::vector<import_context> pending_segments_; // complete segments to be added during next commit (import)
+    std::vector<flush_segment_context> pending_segment_contexts_; // segment writers with data pending for next commit (all segments that have been used by this flush_context)
+    std::condition_variable pending_segment_context_cond_; // notified when a segment has been freed (guarded by mutex_)
     std::unordered_set<string_ref> segment_mask_; // set of segment names to be removed from the index upon commit (refs at strings in index_writer::meta_)
-    segment_writers_t writers_pool_; // per thread segment writers
 
     flush_context();
     void reset();
@@ -626,7 +646,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
   pending_context_t flush_all();
 
   flush_context::ptr get_flush_context(bool shared = true);
-  index_writer::flush_context::segment_writers_t::ptr get_segment_context(flush_context& ctx);
+  std::shared_ptr<segment_writer> get_segment_context(flush_context& ctx);
 
   // returns context for "add" operation
   static segment_writer::update_context make_update_context(flush_context& ctx);
@@ -674,6 +694,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
   std::atomic<flush_context*> flush_context_; // currently active context accumulating data to be processed during the next flush
   index_meta meta_; // latest/active state of index metadata
   pending_state_t pending_state_; // current state awaiting commit completion
+  segment_pool_t segment_writer_pool_; // a cache of segments available for reuse
   index_meta_writer::ptr writer_;
   index_lock::ptr write_lock_; // exclusive write lock for directory
   index_file_refs::ref_t write_lock_file_ref_; // track ref for lock file to preven removal
