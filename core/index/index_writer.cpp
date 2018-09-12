@@ -40,23 +40,6 @@ NS_LOCAL
 
 const size_t NON_UPDATE_RECORD = irs::integer_traits<size_t>::const_max; // non-update
 
-bool track_ref(
-    irs::directory& dir,
-    const std::string& name,
-    std::vector<irs::index_file_refs::ref_t>& refs,
-    bool include_missing = false
-) {
-  const auto lock_file_ref = irs::directory_utils::reference(dir, name, include_missing);
-
-  // file exists on fs_directory
-  if (lock_file_ref) {
-    refs.emplace_back(lock_file_ref);
-    return true;
-  }
-
-  return false;
-}
-
 std::vector<irs::index_file_refs::ref_t> extract_refs(
     const irs::ref_tracking_directory& dir
 ) {
@@ -266,8 +249,9 @@ void index_writer::flush_context::reset() {
   });
 }
 
-index_writer::index_writer( 
+index_writer::index_writer(
     index_lock::ptr&& lock,
+    index_file_refs::ref_t&& lock_file_ref,
     directory& dir,
     format::ptr codec,
     index_meta&& meta,
@@ -279,7 +263,8 @@ index_writer::index_writer(
     flush_context_pool_(2), // 2 because just swap them due to common commit lock
     meta_(std::move(meta)),
     writer_(codec->get_index_meta_writer()),
-    write_lock_(std::move(lock)) {
+    write_lock_(std::move(lock)),
+    write_lock_file_ref_(std::move(lock_file_ref)) {
   assert(codec);
   flush_context_.store(&flush_context_pool_[0]);
 
@@ -325,12 +310,9 @@ void index_writer::clear() {
     throw illegal_state();
   }
 
-  // track references
-  if (write_lock_) {
-    // track write lock if exists
-    track_ref(dir, WRITE_LOCK_NAME, pending_refs);
-  }
-  track_ref(dir, writer_->filename(pending_meta), pending_refs, true);
+  pending_refs.emplace_back(
+    directory_utils::reference(dir, writer_->filename(pending_meta), true)
+  );
 
   // 1st phase of the transaction successfully finished here
   meta_.update_generation(pending_meta); // ensure new generation reflected in 'meta_'
@@ -359,16 +341,16 @@ index_writer::ptr index_writer::make(
 ) {
   std::vector<index_file_refs::ref_t> file_refs;
   index_lock::ptr lock;
+  index_file_refs::ref_t lockfile_ref;
 
   if (0 == (OM_NOLOCK & mode)) {
     // lock the directory
     lock = dir.make_lock(WRITE_LOCK_NAME);
+    lockfile_ref = directory_utils::reference(dir, WRITE_LOCK_NAME);
 
     if (!lock || !lock->try_lock()) {
       throw lock_obtain_failed(WRITE_LOCK_NAME);
     }
-
-    track_ref(dir, WRITE_LOCK_NAME, file_refs);
   }
 
   // read from directory or create index metadata
@@ -414,6 +396,7 @@ index_writer::ptr index_writer::make(
     index_writer,
     writer,
     std::move(lock), 
+    std::move(lockfile_ref),
     dir, codec,
     std::move(meta),
     std::move(comitted_state)
@@ -1333,12 +1316,11 @@ bool index_writer::start() {
 
   // track all refs
   file_refs_t pending_refs;
-  if (write_lock_) {
-    // track write lock if exists
-    track_ref(dir, WRITE_LOCK_NAME, pending_refs);
-  }
-  track_ref(dir, writer_->filename(pending_meta), pending_refs, true);
+
   append_segments_refs(pending_refs, dir, pending_meta);
+  pending_refs.emplace_back(
+    directory_utils::reference(dir, writer_->filename(pending_meta), true)
+  );
 
   // 1st phase of the transaction successfully finished here,
   // set to_commit as active flush context containing pending meta

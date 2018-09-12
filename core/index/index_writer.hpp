@@ -597,6 +597,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
 
   index_writer(
     index_lock::ptr&& lock, 
+    index_file_refs::ref_t&& lock_file_ref,
     directory& dir, 
     format::ptr codec,
     index_meta&& meta, 
@@ -675,6 +676,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
   pending_state_t pending_state_; // current state awaiting commit completion
   index_meta_writer::ptr writer_;
   index_lock::ptr write_lock_; // exclusive write lock for directory
+  index_file_refs::ref_t write_lock_file_ref_; // track ref for lock file to preven removal
   std::recursive_mutex consolidation_lock_;
   consolidating_segments_t consolidating_segments_; // segments that are under consolidation
   IRESEARCH_API_PRIVATE_VARIABLES_END
