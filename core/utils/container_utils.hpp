@@ -26,7 +26,17 @@
 
 #include <memory>
 #include <array>
-#include <type_traits>
+
+// workaround for MSVC 2017.8 error C2338: You've instantiated std::aligned_storage<Len, Align> with an extended alignment
+#if defined(_MSC_VER) && _MSC_VER == 1915
+  #define _ENABLE_EXTENDED_ALIGNED_STORAGE
+#endif
+
+  #include <type_traits>
+
+#if defined(_MSC_VER) && _MSC_VER == 1915
+  #undef _ENABLE_EXTENDED_ALIGNED_STORAGE
+#endif
 
 #include "shared.hpp"
 #include "math_utils.hpp"
@@ -180,14 +190,7 @@ class array : private util::noncopyable {
   }
 
  private:
-  // workaround for MSVC 2017.8 error C2338: You've instantiated std::aligned_storage<Len, Align> with an extended alignment
-  #if defined(_MSC_VER) && _MSC_VER == 1915
-    #define _ENABLE_EXTENDED_ALIGNED_STORAGE
-  #endif
   typename std::aligned_storage<sizeof(T), ALIGNOF(T)>::type data_[Size];
-  #if defined(_MSC_VER) && _MSC_VER == 1915
-    #undef _ENABLE_EXTENDED_ALIGNED_STORAGE
-  #endif
 }; // array
 
 struct bucket_size_t {
