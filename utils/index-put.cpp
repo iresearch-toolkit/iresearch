@@ -476,8 +476,12 @@ int put(
 
       while (batch_provider.swap(buf)) {
         SCOPED_TIMER(std::string("Index batch ") + std::to_string(buf.size()));
+        auto ctx = writer->documents();
         size_t i = 0;
-        auto inserter = [&buf, &i, &doc](const irs::segment_writer::document& builder) {
+
+        do {
+          auto builder = ctx.insert();
+
           doc.fill(&(buf[i]));
 
           for (auto& field: doc.elements) {
@@ -488,10 +492,8 @@ int put(
             builder.insert(irs::action::store, *field);
           }
 
-          return ++i < buf.size();
-        };
+        } while (++i < buf.size());
 
-        writer->insert(inserter);
         std::cout << "." << std::flush; // newline in commit thread
       }
     });
