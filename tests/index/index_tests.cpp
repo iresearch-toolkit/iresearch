@@ -8369,6 +8369,19 @@ TEST_F(memory_index_test, concurrent_add_remove_mt) {
 }
 
 TEST_F(memory_index_test, document_context) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+    if (data.is_string()) {
+      doc.insert(std::make_shared<tests::templates::string_field>(
+        irs::string_ref(name),
+        data.str
+      ));
+    }
+  });
+
+  tests::document const* doc1 = gen.next();
+
   struct {
     std::condition_variable cond;
     std::mutex cond_mutex;
@@ -8411,17 +8424,91 @@ TEST_F(memory_index_test, document_context) {
 
   // during replace across commit blocks (single doc)
   {
-    //FIXME TODO implement
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto writer = open_writer();
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    SCOPED_LOCK_NAMED(field.cond_mutex, field_cond_lock); // wait for insertion to start
+    SCOPED_LOCK_NAMED(field.mutex, field_lock); // prevent field from finishing
+
+    std::thread thread0([&writer, &query_doc1, &field]()->void {
+      writer->documents().replace(*query_doc1.filter).insert(irs::action::store, field);
+    });
+
+    ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); // wait for insertion to start
+
+    std::thread thread1([&writer, &field]()->void {
+      writer->commit();
+      SCOPED_LOCK(field.cond_mutex);
+      field.cond.notify_all();
+    });
+
+    ASSERT_EQ(std::cv_status::timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100))); // verify commit() blocks
+    field_lock.unlock();
+    ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); // verify commit() finishes
+    thread0.join();
+    thread1.join();
   }
 
   // during replace across commit blocks (functr)
   {
-    //FIXME TODO implement
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto writer = open_writer();
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    SCOPED_LOCK_NAMED(field.cond_mutex, field_cond_lock); // wait for insertion to start
+    SCOPED_LOCK_NAMED(field.mutex, field_lock); // prevent field from finishing
+
+    std::thread thread0([&writer, &query_doc1, &field]()->void {
+      writer->documents().replace(
+        *query_doc1.filter,
+        [&field](irs::segment_writer::document& doc)->bool {
+          doc.insert(irs::action::store, field);
+          return false;
+        }
+      );
+    });
+
+    ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); // wait for insertion to start
+
+    std::thread thread1([&writer, &field]()->void {
+      writer->commit();
+      SCOPED_LOCK(field.cond_mutex);
+      field.cond.notify_all();
+    });
+
+    ASSERT_EQ(std::cv_status::timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100))); // verify commit() blocks
+    field_lock.unlock();
+    ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); // verify commit() finishes
+    thread0.join();
+    thread1.join();
   }
 
   // holding document_context after insert across commit does not block
   {
-    //FIXME TODO implement
+    auto writer = open_writer();
+    auto ctx = writer->documents();
+    SCOPED_LOCK_NAMED(field.cond_mutex, field_cond_lock); // wait for insertion to start
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    std::thread thread1([&writer, &field]()->void {
+      writer->commit();
+      SCOPED_LOCK(field.cond_mutex);
+      field.cond.notify_all();
+    });
+
+    ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); // verify commit() finishes
+    { irs::index_writer::documents_context tmp(std::move(ctx)); } // release ctx before join() in case of test failure
+    thread1.join();
   }
 
   // holding document_context after remove across commit does not block
