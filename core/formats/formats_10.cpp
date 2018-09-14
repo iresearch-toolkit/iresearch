@@ -21,6 +21,15 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <cmath>
+#include <deque>
+#include <list>
+#include <numeric>
+#include <type_traits>
+
 #include "shared.hpp"
 
 #include "skip_list.hpp"
@@ -56,25 +65,6 @@
 
 #if defined(_MSC_VER)
   #pragma warning(disable : 4351)
-#endif
-
-#include <algorithm>
-#include <array>
-#include <cassert>
-#include <cmath>
-#include <deque>
-#include <list>
-#include <numeric>
-
-// workaround for MSVC 2017.8 error C2338: You've instantiated std::aligned_storage<Len, Align> with an extended alignment
-#if defined(_MSC_VER) && _MSC_VER == 1915
-  #define _ENABLE_EXTENDED_ALIGNED_STORAGE
-#endif
-
-  #include <type_traits>
-
-#if defined(_MSC_VER) && _MSC_VER == 1915
-  #undef _ENABLE_EXTENDED_ALIGNED_STORAGE
 #endif
 
 #if (!defined(IRESEARCH_FORMAT10_CODEC) || (IRESEARCH_FORMAT10_CODEC == 0))

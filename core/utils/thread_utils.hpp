@@ -24,22 +24,11 @@
 #ifndef IRESEARCH_THREAD_UTILS_H
 #define IRESEARCH_THREAD_UTILS_H
 
-#include <mutex>
-#include <condition_variable>
-#include <thread>
-
-// workaround for MSVC 2017.8 error C2338: You've instantiated std::aligned_storage<Len, Align> with an extended alignment
-#if defined(_MSC_VER) && _MSC_VER == 1915
-  #define _ENABLE_EXTENDED_ALIGNED_STORAGE
-#endif
-
-  #include <type_traits>
-
-#if defined(_MSC_VER) && _MSC_VER == 1915
-  #undef _ENABLE_EXTENDED_ALIGNED_STORAGE
-#endif
-
 #include <chrono>
+#include <condition_variable>
+#include <mutex>
+#include <thread>
+#include <type_traits>
 
 #include "shared.hpp"
 

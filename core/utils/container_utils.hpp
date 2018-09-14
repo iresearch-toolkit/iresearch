@@ -24,19 +24,9 @@
 #ifndef IRESEARCH_CONTAINER_UTILS_H
 #define IRESEARCH_CONTAINER_UTILS_H
 
-#include <memory>
 #include <array>
-
-// workaround for MSVC 2017.8 error C2338: You've instantiated std::aligned_storage<Len, Align> with an extended alignment
-#if defined(_MSC_VER) && _MSC_VER == 1915
-  #define _ENABLE_EXTENDED_ALIGNED_STORAGE
-#endif
-
-  #include <type_traits>
-
-#if defined(_MSC_VER) && _MSC_VER == 1915
-  #undef _ENABLE_EXTENDED_ALIGNED_STORAGE
-#endif
+#include <memory>
+#include <type_traits>
 
 #include "shared.hpp"
 #include "math_utils.hpp"
