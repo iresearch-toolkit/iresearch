@@ -493,59 +493,15 @@ class IRESEARCH_API store_writer final: private util::noncopyable {
   /// @param func the insertion logic
   /// @return all fields/attributes successfully insterted
   ////////////////////////////////////////////////////////////////////////////
-  template<typename Func>
-  bool update(const irs::filter& filter, Func func) {
+  template<typename Filter, typename Func>
+  bool update(Filter&& filter, Func func) {
     bitvector doc_ids;
 
     if (!insert(doc_ids, func)) {
       return false;
     }
 
-    remove(filter);
-    modification_queries_.back().documents_ = std::move(doc_ids); // noexcept
-
-    return true;
-  }
-
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief replaces documents matching filter with the document
-  ///        to be filled by the specified functor
-  /// @note that changes are not visible until commit()
-  /// @param filter the document filter
-  /// @param func the insertion logic
-  /// @return all fields/attributes successfully insterted
-  ////////////////////////////////////////////////////////////////////////////
-  template<typename Func>
-  bool update(irs::filter::ptr&& filter, Func func) {
-    bitvector doc_ids;
-
-    if (!insert(doc_ids, func)) {
-      return false;
-    }
-
-    remove(std::move(filter));
-    modification_queries_.back().documents_ = std::move(doc_ids); // noexcept
-
-    return true;
-  }
-
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief replaces documents matching filter with the document
-  ///        to be filled by the specified functor
-  /// @note that changes are not visible until commit()
-  /// @param filter the document filter
-  /// @param func the insertion logic
-  /// @return all fields/attributes successfully insterted
-  ////////////////////////////////////////////////////////////////////////////
-  template<typename Func>
-  bool update(const std::shared_ptr<irs::filter>& filter, Func func) {
-    bitvector doc_ids;
-
-    if (!insert(doc_ids, func)) {
-      return false;
-    }
-
-    remove(filter);
+    remove(std::forward<Filter>(filter));
     modification_queries_.back().documents_ = std::move(doc_ids); // noexcept
 
     return true;
