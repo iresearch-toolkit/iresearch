@@ -8369,9 +8369,44 @@ TEST_F(memory_index_test, concurrent_add_remove_mt) {
 }
 
 TEST_F(memory_index_test, document_context) {
+  struct {
+    std::condition_variable cond;
+    std::mutex cond_mutex;
+    std::mutex mutex;
+    irs::string_ref const& name() { return irs::string_ref::EMPTY; }
+    bool write(irs::data_output& out) {
+      {
+        SCOPED_LOCK(cond_mutex);
+        cond.notify_all();
+      }
+      SCOPED_LOCK(mutex);
+      return true;
+    }
+  } field;
+
   // during insert across commit blocks
   {
-    //FIXME TODO implement
+    auto writer = open_writer();
+    SCOPED_LOCK_NAMED(field.cond_mutex, field_cond_lock); // wait for insertion to start
+    SCOPED_LOCK_NAMED(field.mutex, field_lock); // prevent field from finishing
+
+    std::thread thread0([&writer, &field]()->void {
+      writer->documents().insert().insert(irs::action::store, field);
+    });
+
+    ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); // wait for insertion to start
+
+    std::thread thread1([&writer, &field]()->void {
+      writer->commit();
+      SCOPED_LOCK(field.cond_mutex);
+      field.cond.notify_all();
+    });
+
+    ASSERT_EQ(std::cv_status::timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100))); // verify commit() blocks
+    field_lock.unlock();
+    ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); // verify commit() finishes
+    thread0.join();
+    thread1.join();
   }
 
   // during replace across commit blocks (single doc)
