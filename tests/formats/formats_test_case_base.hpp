@@ -307,7 +307,7 @@ class format_test_case_base : public index_test_base {
 
       // delete record from first segment (creating new index_meta file + doc_mask file, remove old)
       {
-        writer->remove(*(query_doc1.filter));
+        writer->documents().remove(*(query_doc1.filter));
         writer->commit();
         iresearch::directory_cleaner::clean(*dir); // clean unused files
         assert_no_directory_artifacts(*dir, *codec());
@@ -315,7 +315,7 @@ class format_test_case_base : public index_test_base {
 
       // delete all record from first segment (creating new index_meta file, remove old meta + unused segment)
       {
-        writer->remove(*(query_doc2.filter));
+        writer->documents().remove(*(query_doc2.filter));
         writer->commit();
         iresearch::directory_cleaner::clean(*dir); // clean unused files
         assert_no_directory_artifacts(*dir, *codec());
@@ -323,7 +323,7 @@ class format_test_case_base : public index_test_base {
 
       // delete all records from second segment (creating new index_meta file, remove old meta + unused segment)
       {
-        writer->remove(*(query_doc2.filter));
+        writer->documents().remove(*(query_doc2.filter));
         writer->commit();
         iresearch::directory_cleaner::clean(*dir); // clean unused files
         assert_no_directory_artifacts(*dir, *codec());
@@ -375,7 +375,7 @@ class format_test_case_base : public index_test_base {
 
       // delete record from first segment (creating new doc_mask file)
       {
-        writer->remove(*(query_doc1.filter));
+        writer->documents().remove(*(query_doc1.filter));
         writer->commit();
         iresearch::directory_cleaner::clean(*dir); // clean unused files
         assert_no_directory_artifacts(*dir, *codec());
@@ -414,7 +414,7 @@ class format_test_case_base : public index_test_base {
 
       // delete record from first segment (creating new doc_mask file, not-remove old)
       {
-        writer->remove(*(query_doc2.filter));
+        writer->documents().remove(*(query_doc2.filter));
         writer->commit();
         iresearch::directory_cleaner::clean(*dir); // clean unused files
         assert_no_directory_artifacts(*dir, *codec(), reader_files);
@@ -422,7 +422,7 @@ class format_test_case_base : public index_test_base {
 
       // delete all record from first segment (creating new index_meta file, remove old meta but leave first segment)
       {
-        writer->remove(*(query_doc3.filter));
+        writer->documents().remove(*(query_doc3.filter));
         writer->commit();
         iresearch::directory_cleaner::clean(*dir); // clean unused files
         assert_no_directory_artifacts(*dir, *codec(), reader_files);
@@ -430,7 +430,7 @@ class format_test_case_base : public index_test_base {
 
       // delete all records from second segment (creating new index_meta file, remove old meta + unused segment)
       {
-        writer->remove(*(query_doc4.filter));
+        writer->documents().remove(*(query_doc4.filter));
         writer->commit();
         iresearch::directory_cleaner::clean(*dir); // clean unused files
         assert_no_directory_artifacts(*dir, *codec(), reader_files);
@@ -477,7 +477,7 @@ class format_test_case_base : public index_test_base {
           doc3->stored.begin(), doc3->stored.end()
         ));
         writer->commit(); // add second segment
-        writer->remove(*(query_doc1.filter));
+        writer->documents().remove(*(query_doc1.filter));
         writer->commit(); // remove first segment
       }
 

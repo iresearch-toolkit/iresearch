@@ -163,10 +163,12 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   typedef std::vector<update_context> update_contexts;
 
   // begin document-write transaction
-  void begin(const update_context& ctx) {
+  void begin(const update_context& ctx, size_t reserve_rollback = 0) {
     valid_ = true;
     norm_fields_.clear(); // clear norm fields
-    docs_mask_.reserve(docs_mask_.size() + 1); // reserve space for potential rollback
+    docs_mask_.reserve(
+      docs_mask_.size() + std::max(size_t(1), reserve_rollback)
+    ); // reserve space for potential rollback
     docs_context_.emplace_back(ctx);
   }
 

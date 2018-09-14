@@ -408,7 +408,7 @@ class index_test_case_base : public tests::index_test_base {
           doc6->indexed.begin(), doc6->indexed.end(),
           doc6->stored.begin(), doc6->stored.end()
         ));
-        writer->remove(std::move(query_doc4.filter));
+        writer->documents().remove(std::move(query_doc4.filter));
         ASSERT_TRUE(writer->import(irs::directory_reader::open(data_dir)));
       }
 
@@ -859,11 +859,6 @@ class index_test_case_base : public tests::index_test_base {
           }
 
           csv_doc_template_t csv_doc_template;
-          auto csv_doc_inserter = [&csv_doc_template](irs::segment_writer::document& doc)->bool {
-            doc.insert(irs::action::index, csv_doc_template.indexed.begin(), csv_doc_template.indexed.end());
-            doc.insert(irs::action::store, csv_doc_template.stored.begin(), csv_doc_template.stored.end());
-            return false;
-          };
           tests::csv_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template);
           size_t gen_skip = i;
 
@@ -892,7 +887,11 @@ class index_test_case_base : public tests::index_test_base {
 
             {
               REGISTER_TIMER_NAMED_DETAILED("load");
-              ASSERT_TRUE(writer->insert(csv_doc_inserter));
+              ASSERT_TRUE(tests::insert(
+                *writer,
+                csv_doc_template.indexed.begin(), csv_doc_template.indexed.end(),
+                csv_doc_template.stored.begin(), csv_doc_template.stored.end()
+              ));
             }
 
             if (count >= writer_batch_size) {
@@ -1845,15 +1844,17 @@ class index_test_case_base : public tests::index_test_base {
       } field;
 
       irs::doc_id_t docs_count = 0;
-      auto inserter = [&docs_count, &field](const irs::segment_writer::document& doc) {
+      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE);
+      auto ctx = writer->documents();
+
+      do {
+        auto doc = ctx.insert();
+
         if (docs_count % 2) {
           doc.insert(irs::action::store, field);
         }
-        return ++docs_count < MAX_DOCS;
-      };
+      } while (++docs_count < MAX_DOCS); // insert MAX_DOCS/2 documents
 
-      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE);
-      writer->insert(inserter); // insert MAX_DOCS/2 documents
       writer->commit();
     }
 
@@ -2738,13 +2739,13 @@ class index_test_case_base : public tests::index_test_base {
       } field;
 
       irs::doc_id_t docs_count = 0;
-      auto inserter = [&docs_count, &field](const irs::segment_writer::document& doc) {
-        doc.insert(irs::action::store, field);
-        return ++docs_count < MAX_DOCS;
-      };
-
       auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE);
-      writer->insert(inserter); // insert MAX_DOCS documents
+      auto ctx = writer->documents();
+
+      do {
+        ctx.insert().insert(irs::action::store, field);
+      } while (++docs_count < MAX_DOCS); // insert MAX_DOCS documents
+
       writer->commit();
     }
 
@@ -3379,13 +3380,13 @@ class index_test_case_base : public tests::index_test_base {
         uint64_t value{};
       } field;
 
-      auto inserter = [&field](const irs::segment_writer::document& doc) {
-        doc.insert(irs::action::store, field);
-        return ++field.value < MAX_DOCS;
-      };
-
       auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE);
-      writer->insert(inserter); // insert MAX_DOCS documents
+      auto ctx = writer->documents();
+
+      do {
+        ctx.insert().insert(irs::action::store, field);
+      } while (++field.value < MAX_DOCS); // insert MAX_DOCS documents
+
       writer->commit();
     }
 
@@ -4202,13 +4203,13 @@ class index_test_case_base : public tests::index_test_base {
         uint64_t value{};
       } field;
 
-      auto inserter = [&field](const irs::segment_writer::document& doc) {
-        doc.insert(irs::action::store, field);
-        return ++field.value < MAX_DOCS;
-      };
-
       auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE);
-      writer->insert(inserter); // insert MAX_DOCS documents
+      auto ctx = writer->documents();
+
+      do {
+        ctx.insert().insert(irs::action::store, field);
+      } while (++field.value < MAX_DOCS); // insert MAX_DOCS documents
+
       writer->commit();
     }
 
@@ -5185,16 +5186,18 @@ class index_test_case_base : public tests::index_test_base {
         uint64_t value{};
       } field;
 
-      auto inserter = [&inserted, &field](const irs::segment_writer::document& doc) {
-        if (field.value % 2 ) {
+      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE);
+      auto ctx = writer->documents();
+
+      do {
+        auto doc = ctx.insert();
+
+        if (field.value % 2) {
           doc.insert(irs::action::store, field);
           ++inserted;
         }
-        return ++field.value < MAX_DOCS;
-      };
+      } while (++field.value < MAX_DOCS); // insert MAX_DOCS documents
 
-      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE);
-      writer->insert(inserter); // insert MAX_DOCS documents
       writer->commit();
     }
 
@@ -6320,15 +6323,16 @@ class index_test_case_base : public tests::index_test_base {
       auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
       ASSERT_NE(nullptr, writer);
 
-      auto inserter = [&field, &names](irs::segment_writer::document& doc) {
+      {
+        auto doc = writer->documents().insert();
+
         for (auto& name : names) {
           field.name_ = name;
           doc.insert(irs::action::index, field);
         }
-        return false; // break the loop
-      };
 
-      ASSERT_TRUE(writer->insert(inserter));
+        ASSERT_TRUE(doc.valid());
+      }
 
       writer->commit();
     }
@@ -6518,15 +6522,16 @@ class index_test_case_base : public tests::index_test_base {
       auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
       ASSERT_NE(nullptr, writer);
 
-      auto inserter = [&field, &names](irs::segment_writer::document& doc) {
+      {
+        auto doc = writer->documents().insert();
+
         for (auto& name : names) {
           field.name_ = name;
           doc.insert(irs::action::store, field);
         }
-        return false; // break the loop
-      };
 
-      ASSERT_TRUE(writer->insert(inserter));
+        ASSERT_TRUE(doc.valid());
+      }
 
       writer->commit();
     }
@@ -7848,8 +7853,12 @@ class index_test_case_base : public tests::index_test_base {
     bool states[max];
     std::fill(std::begin(states), std::end(states), true);
 
-    auto bulk_inserter = [&i, &max, &states](irs::segment_writer::document& doc) mutable {
+    auto ctx = writer->documents();
+
+    do {
+      auto doc = ctx.insert();
       auto& state = states[i];
+
       switch (i) {
         case 0: { // doc0
           indexed_field indexed("indexed", "doc0");
@@ -7858,6 +7867,7 @@ class index_test_case_base : public tests::index_test_base {
           state &= doc.insert(irs::action::store, stored);
           indexed_and_stored_field indexed_and_stored("indexed_and_stored", "doc0");
           state &= doc.insert(irs::action::index_store, indexed_and_stored);
+          ASSERT_TRUE(doc.valid());
         } break;
         case 1: { // doc1
           // indexed and stored fields can be indexed/stored only
@@ -7865,49 +7875,53 @@ class index_test_case_base : public tests::index_test_base {
           state &= doc.insert(irs::action::index, indexed);
           indexed_and_stored_field stored("stored", "doc1");
           state &= doc.insert(irs::action::store, stored);
+          ASSERT_TRUE(doc.valid());
         } break;
         case 2: { // doc2 (will be dropped since it contains invalid stored field)
           indexed_and_stored_field indexed("indexed", "doc2");
           state &= doc.insert(irs::action::index, indexed);
           stored_field stored("stored", "doc2", false);
           state &= doc.insert(irs::action::store, stored);
+          ASSERT_FALSE(doc.valid());
         } break;
         case 3: { // doc3 (will be dropped since it contains invalid indexed field)
           indexed_field indexed("indexed", "doc3", false);
           state &= doc.insert(irs::action::index, indexed);
           stored_field stored("stored", "doc3");
           state &= doc.insert(irs::action::store, stored);
+          ASSERT_FALSE(doc.valid());
         } break;
         case 4: { // doc4 (will be dropped since it contains invalid indexed and stored field)
           indexed_and_stored_field indexed_and_stored("indexed", "doc4", false, false);
           state &= doc.insert(irs::action::index_store, indexed_and_stored);
           stored_field stored("stored", "doc4");
           state &= doc.insert(irs::action::store, stored);
+          ASSERT_FALSE(doc.valid());
         } break;
         case 5: { // doc5 (will be dropped since it contains failed stored field)
           indexed_and_stored_field indexed_and_stored("indexed_and_stored", "doc5", false); // will fail on store, but will pass on index
           state &= doc.insert(irs::action::index_store, indexed_and_stored);
           stored_field stored("stored", "doc5");
           state &= doc.insert(irs::action::store, stored);
+          ASSERT_FALSE(doc.valid());
         } break;
         case 6: { // doc6 (will be dropped since it contains failed indexed field)
           indexed_and_stored_field indexed_and_stored("indexed_and_stored", "doc6", true, false); // will fail on index, but will pass on store
           state &= doc.insert(irs::action::index_store, indexed_and_stored);
           stored_field stored("stored", "doc6");
           state &= doc.insert(irs::action::store, stored);
+          ASSERT_FALSE(doc.valid());
         } break;
         case 7: { // valid insertion of last doc will mark bulk insert result as valid
           indexed_and_stored_field indexed_and_stored("indexed_and_stored", "doc7", true, true); // will be indexed, and will be stored
           state &= doc.insert(irs::action::index_store, indexed_and_stored);
           stored_field stored("stored", "doc7");
           state &= doc.insert(irs::action::store, stored);
+          ASSERT_TRUE(doc.valid());
         } break;
       }
+    } while (++i != max);
 
-      return ++i != max;
-    };
-
-    ASSERT_TRUE(writer->insert(bulk_inserter));
     ASSERT_TRUE(states[0]); // successfully inserted
     ASSERT_TRUE(states[1]); // successfully inserted
     ASSERT_FALSE(states[2]); // skipped
@@ -8320,7 +8334,7 @@ TEST_F(memory_index_test, concurrent_add_remove_mt) {
     });
     std::thread thread2([&writer,&query_doc1, &first_doc](){
       while(!first_doc); // busy-wait until first document loaded
-      writer->remove(std::move(query_doc1.filter));
+      writer->documents().remove(std::move(query_doc1.filter));
     });
 
     thread0.join();
@@ -8418,7 +8432,7 @@ TEST_F(memory_index_test, doc_removal) {
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
-    writer->remove(*(query_doc1.filter.get()));
+    writer->documents().remove(*(query_doc1.filter.get()));
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -8451,8 +8465,8 @@ TEST_F(memory_index_test, doc_removal) {
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
-    writer->remove(std::move(query_doc1.filter));
-    writer->remove(std::unique_ptr<irs::filter>(nullptr)); // test nullptr filter ignored
+    writer->documents().remove(std::move(query_doc1.filter));
+    writer->documents().remove(std::unique_ptr<irs::filter>(nullptr)); // test nullptr filter ignored
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -8485,8 +8499,8 @@ TEST_F(memory_index_test, doc_removal) {
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
-    writer->remove(std::shared_ptr<iresearch::filter>(std::move(query_doc1.filter)));
-    writer->remove(std::shared_ptr<irs::filter>(nullptr)); // test nullptr filter ignored
+    writer->documents().remove(std::shared_ptr<iresearch::filter>(std::move(query_doc1.filter)));
+    writer->documents().remove(std::shared_ptr<irs::filter>(nullptr)); // test nullptr filter ignored
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -8515,7 +8529,7 @@ TEST_F(memory_index_test, doc_removal) {
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    writer->remove(std::move(query_doc2.filter)); // not present yet
+    writer->documents().remove(std::move(query_doc2.filter)); // not present yet
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
@@ -8551,7 +8565,7 @@ TEST_F(memory_index_test, doc_removal) {
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    writer->remove(std::move(query_doc1.filter));
+    writer->documents().remove(std::move(query_doc1.filter));
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
@@ -8593,9 +8607,9 @@ TEST_F(memory_index_test, doc_removal) {
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
-    writer->remove(std::move(query_doc3.filter));
+    writer->documents().remove(std::move(query_doc3.filter));
     writer->commit(); // document mask with 'doc3' created
-    writer->remove(std::move(query_doc2.filter));
+    writer->documents().remove(std::move(query_doc2.filter));
     writer->commit(); // new document mask with 'doc2','doc3' created
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -8629,7 +8643,7 @@ TEST_F(memory_index_test, doc_removal) {
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->commit();
-    writer->remove(std::move(query_doc1_doc2.filter));
+    writer->documents().remove(std::move(query_doc1_doc2.filter));
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
@@ -8671,8 +8685,8 @@ TEST_F(memory_index_test, doc_removal) {
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
-    writer->remove(std::move(query_doc2.filter));
-    writer->remove(std::unique_ptr<irs::filter>(nullptr)); // test nullptr filter ignored
+    writer->documents().remove(std::move(query_doc2.filter));
+    writer->documents().remove(std::unique_ptr<irs::filter>(nullptr)); // test nullptr filter ignored
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -8733,8 +8747,8 @@ TEST_F(memory_index_test, doc_removal) {
       doc4->indexed.begin(), doc4->indexed.end(),
       doc4->stored.begin(), doc4->stored.end()
     ));
-    writer->remove(std::move(query_doc1_doc3.filter));
-    writer->remove(std::shared_ptr<irs::filter>(nullptr)); // test nullptr filter ignored
+    writer->documents().remove(std::move(query_doc1_doc3.filter));
+    writer->documents().remove(std::shared_ptr<irs::filter>(nullptr)); // test nullptr filter ignored
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -8796,7 +8810,7 @@ TEST_F(memory_index_test, doc_removal) {
       doc4->indexed.begin(), doc4->indexed.end(),
       doc4->stored.begin(), doc4->stored.end()
     )); // D
-    writer->remove(std::move(query_doc4.filter));
+    writer->documents().remove(std::move(query_doc4.filter));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc5->indexed.begin(), doc5->indexed.end(),
@@ -8810,7 +8824,7 @@ TEST_F(memory_index_test, doc_removal) {
       doc7->indexed.begin(), doc7->indexed.end(),
       doc7->stored.begin(), doc7->stored.end()
     )); // G
-    writer->remove(std::move(query_doc3_doc7.filter));
+    writer->documents().remove(std::move(query_doc3_doc7.filter));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc8->indexed.begin(), doc8->indexed.end(),
@@ -8820,7 +8834,7 @@ TEST_F(memory_index_test, doc_removal) {
       doc9->indexed.begin(), doc9->indexed.end(),
       doc9->stored.begin(), doc9->stored.end()
     )); // I
-    writer->remove(std::move(query_doc2_doc6_doc9.filter));
+    writer->documents().remove(std::move(query_doc2_doc6_doc9.filter));
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -9196,7 +9210,7 @@ TEST_F(memory_index_test, doc_update) {
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
-    writer->remove(*(query_doc2.filter)); // remove no longer existent
+    writer->documents().remove(*(query_doc2.filter)); // remove no longer existent
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -9239,7 +9253,7 @@ TEST_F(memory_index_test, doc_update) {
       doc3->stored.begin(), doc3->stored.end()
     ));
     writer->commit();
-    writer->remove(*(query_doc2.filter)); // remove no longer existent
+    writer->documents().remove(*(query_doc2.filter)); // remove no longer existent
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -9291,7 +9305,7 @@ TEST_F(memory_index_test, doc_update) {
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
-    writer->remove(*(query_doc2.filter));
+    writer->documents().remove(*(query_doc2.filter));
     ASSERT_TRUE(update(*writer,
       *(query_doc2.filter),
       doc3->indexed.begin(), doc3->indexed.end(),
@@ -9330,7 +9344,7 @@ TEST_F(memory_index_test, doc_update) {
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->commit();
-    writer->remove(*(query_doc2.filter));
+    writer->documents().remove(*(query_doc2.filter));
     writer->commit();
     ASSERT_TRUE(update(*writer,
       *(query_doc2.filter),
@@ -9370,7 +9384,7 @@ TEST_F(memory_index_test, doc_update) {
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
-    writer->remove(*(query_doc2.filter));
+    writer->documents().remove(*(query_doc2.filter));
     ASSERT_TRUE(update(*writer,
       *(query_doc2.filter),
       doc3->indexed.begin(), doc3->indexed.end(),
@@ -9415,7 +9429,7 @@ TEST_F(memory_index_test, doc_update) {
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->commit();
-    writer->remove(*(query_doc2.filter));
+    writer->documents().remove(*(query_doc2.filter));
     writer->commit();
     ASSERT_TRUE(update(*writer,
       *(query_doc2.filter),
@@ -9630,7 +9644,7 @@ TEST_F(memory_index_test, import_reader) {
       doc1->stored.begin(), doc1->stored.end()
     ));
     data_writer->commit();
-    data_writer->remove(std::move(query_doc1.filter));
+    data_writer->documents().remove(std::move(query_doc1.filter));
     data_writer->commit();
     writer->commit(); // ensure the writer has an initial completed state
     ASSERT_TRUE(writer->import(irs::directory_reader::open(data_dir, codec())));
@@ -9712,7 +9726,7 @@ TEST_F(memory_index_test, import_reader) {
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
-    data_writer->remove(std::move(query_doc1.filter));
+    data_writer->documents().remove(std::move(query_doc1.filter));
     data_writer->commit();
     ASSERT_TRUE(writer->import(iresearch::directory_reader::open(data_dir, codec())));
     writer->commit();
@@ -9813,7 +9827,7 @@ TEST_F(memory_index_test, import_reader) {
       doc4->indexed.begin(), doc4->indexed.end(),
       doc4->stored.begin(), doc4->stored.end()
     ));
-    data_writer->remove(std::move(query_doc2_doc3.filter));
+    data_writer->documents().remove(std::move(query_doc2_doc3.filter));
     data_writer->commit();
     ASSERT_TRUE(writer->import(iresearch::directory_reader::open(data_dir, codec())));
     writer->commit();
@@ -9863,7 +9877,7 @@ TEST_F(memory_index_test, import_reader) {
       doc4->indexed.begin(), doc4->indexed.end(),
       doc4->stored.begin(), doc4->stored.end()
     ));
-    data_writer->remove(std::move(query_doc4.filter));
+    data_writer->documents().remove(std::move(query_doc4.filter));
     data_writer->commit();
     ASSERT_TRUE(writer->import(iresearch::directory_reader::open(data_dir, codec())));
     writer->commit();
@@ -9912,7 +9926,7 @@ TEST_F(memory_index_test, import_reader) {
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
-    writer->remove(std::move(query_doc2.filter)); // should not match any documents
+    writer->documents().remove(std::move(query_doc2.filter)); // should not match any documents
     ASSERT_TRUE(writer->import(iresearch::directory_reader::open(data_dir, codec())));
     writer->commit();
 
@@ -10075,7 +10089,7 @@ TEST_F(memory_index_test, refresh_reader) {
     auto writer = open_writer(irs::OM_APPEND);
     auto query_doc2 = iresearch::iql::query_builder().build("name==B", std::locale::classic());
 
-    writer->remove(std::move(query_doc2.filter));
+    writer->documents().remove(std::move(query_doc2.filter));
     writer->commit();
   }
 
@@ -10196,7 +10210,7 @@ TEST_F(memory_index_test, refresh_reader) {
     auto writer = open_writer(irs::OM_APPEND);
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
 
-    writer->remove(std::move(query_doc1.filter));
+    writer->documents().remove(std::move(query_doc1.filter));
     writer->commit();
   }
 
@@ -11236,7 +11250,7 @@ TEST_F(memory_index_test, consolidate_single_segment) {
     ));
     writer->commit();
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
-    writer->remove(*query_doc1.filter);
+    writer->documents().remove(*query_doc1.filter);
     writer->commit();
     ASSERT_EQ(2, irs::directory_cleaner::clean(dir())); // segments_1 + stale segment meta
     ASSERT_EQ(1, iresearch::directory_reader::open(this->dir(), codec()).size());
@@ -11560,7 +11574,7 @@ TEST_F(memory_index_test, segment_consolidate_long_running) {
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
-    writer->remove(*query_doc1.filter);
+    writer->documents().remove(*query_doc1.filter);
     writer->commit(); // commit transaction
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir)); // segments_2
 
@@ -11719,7 +11733,7 @@ TEST_F(memory_index_test, segment_consolidate_long_running) {
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
 
     // remove doc1 in background
-    writer->remove(*query_doc1.filter);
+    writer->documents().remove(*query_doc1.filter);
     writer->commit(); // commit transaction
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
 
@@ -11858,7 +11872,7 @@ TEST_F(memory_index_test, segment_consolidate_long_running) {
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
 
     // remove doc1 in background
-    writer->remove(*query_doc1_doc4.filter);
+    writer->documents().remove(*query_doc1_doc4.filter);
     writer->commit(); // commit transaction
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
 
@@ -13044,7 +13058,7 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
     ASSERT_TRUE(dir().visit(get_number_of_files_in_segments));
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
-    writer->remove(*query_doc1.filter);
+    writer->documents().remove(*query_doc1.filter);
     ASSERT_TRUE(writer->begin()); // begin transaction
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
@@ -13171,7 +13185,7 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
     ASSERT_TRUE(dir().visit(get_number_of_files_in_segments));
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
-    writer->remove(*query_doc1_doc4.filter);
+    writer->documents().remove(*query_doc1_doc4.filter);
     ASSERT_TRUE(writer->begin()); // begin transaction
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
@@ -13302,7 +13316,7 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
     ASSERT_TRUE(dir().visit(get_number_of_files_in_segments));
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
-    writer->remove(*query_doc1_doc4.filter);
+    writer->documents().remove(*query_doc1_doc4.filter);
     ASSERT_TRUE(writer->begin()); // begin transaction
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
@@ -13491,7 +13505,7 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
     expected_consolidating_segments = { 0, 1 };
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
-    writer->remove(*query_doc1_doc4.filter);
+    writer->documents().remove(*query_doc1_doc4.filter);
     writer->commit(); // commit pending merge + removal
     ASSERT_EQ(count+5, irs::directory_cleaner::clean(dir())); // +1 for segments, +1 for segment 1 doc mask, +1 for segment 1 meta, +1 for segment 2 doc mask, +1 for segment 2 meta
 
@@ -13665,7 +13679,7 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
     expected_consolidating_segments = { 0, 1 };
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
-    writer->remove(*query_doc3_doc4.filter);
+    writer->documents().remove(*query_doc3_doc4.filter);
 
     // commit pending merge + removal
     // pending consolidation will fail (because segment 2 will have no live docs after applying removals)
@@ -13767,7 +13781,7 @@ TEST_F(memory_index_test, segment_consolidate) {
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    writer->remove(std::move(query_doc1.filter));
+    writer->documents().remove(std::move(query_doc1.filter));
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -13784,7 +13798,7 @@ TEST_F(memory_index_test, segment_consolidate) {
       doc1->stored.begin(), doc1->stored.end()
     ));
     writer->commit();
-    writer->remove(std::move(query_doc1.filter));
+    writer->documents().remove(std::move(query_doc1.filter));
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -13809,7 +13823,7 @@ TEST_F(memory_index_test, segment_consolidate) {
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
-    writer->remove(std::move(query_doc1_doc2.filter));
+    writer->documents().remove(std::move(query_doc1_doc2.filter));
     writer->commit();
 
     ASSERT_TRUE(writer->consolidate(always_merge));
@@ -13857,7 +13871,7 @@ TEST_F(memory_index_test, segment_consolidate) {
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
-    writer->remove(std::move(query_doc1_doc2.filter));
+    writer->documents().remove(std::move(query_doc1_doc2.filter));
     writer->commit();
     ASSERT_TRUE(writer->consolidate(always_merge));
     writer->commit();
@@ -13905,7 +13919,7 @@ TEST_F(memory_index_test, segment_consolidate) {
       doc3->stored.begin(), doc3->stored.end()
     ));
     writer->commit();
-    writer->remove(std::move(query_doc1_doc2.filter));
+    writer->documents().remove(std::move(query_doc1_doc2.filter));
     writer->commit();
     ASSERT_TRUE(writer->consolidate(always_merge));
     writer->commit();
@@ -13953,7 +13967,7 @@ TEST_F(memory_index_test, segment_consolidate) {
       doc3->stored.begin(), doc3->stored.end()
     ));
     writer->commit();
-    writer->remove(std::move(query_doc1_doc2.filter));
+    writer->documents().remove(std::move(query_doc1_doc2.filter));
     writer->commit();
     ASSERT_TRUE(writer->consolidate(always_merge));
     writer->commit();
@@ -14009,7 +14023,7 @@ TEST_F(memory_index_test, segment_consolidate) {
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->commit();
-    writer->remove(std::move(query_doc1.filter));
+    writer->documents().remove(std::move(query_doc1.filter));
     writer->commit();
     ASSERT_TRUE(writer->consolidate(merge_if_masked));
     writer->commit();
@@ -14036,7 +14050,7 @@ TEST_F(memory_index_test, segment_consolidate) {
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->commit();
-    writer->remove(std::move(query_doc1.filter));
+    writer->documents().remove(std::move(query_doc1.filter));
     ASSERT_TRUE(writer->consolidate(merge_if_masked));
     writer->commit();
 
@@ -14080,7 +14094,7 @@ TEST_F(memory_index_test, segment_consolidate) {
       doc4->indexed.begin(), doc4->indexed.end(),
       doc4->stored.begin(), doc4->stored.end()
     ));
-    writer->remove(std::move(query_doc1_doc3.filter));
+    writer->documents().remove(std::move(query_doc1_doc3.filter));
     writer->commit();
     ASSERT_TRUE(writer->consolidate(always_merge));
     writer->commit();
@@ -14135,7 +14149,7 @@ TEST_F(memory_index_test, segment_consolidate) {
       doc4->indexed.begin(), doc4->indexed.end(),
       doc4->stored.begin(), doc4->stored.end()
     ));
-    writer->remove(std::move(query_doc1_doc3.filter));
+    writer->documents().remove(std::move(query_doc1_doc3.filter));
     writer->commit();
     ASSERT_TRUE(writer->consolidate(always_merge));
     writer->commit();
@@ -14191,7 +14205,7 @@ TEST_F(memory_index_test, segment_consolidate) {
       doc4->stored.begin(), doc4->stored.end()
     ));
     writer->commit();
-    writer->remove(std::move(query_doc1_doc3.filter));
+    writer->documents().remove(std::move(query_doc1_doc3.filter));
     writer->commit();
     ASSERT_TRUE(writer->consolidate(always_merge));
     writer->commit();
@@ -14247,7 +14261,7 @@ TEST_F(memory_index_test, segment_consolidate) {
       doc4->stored.begin(), doc4->stored.end()
     ));
     writer->commit();
-    writer->remove(std::move(query_doc1_doc3.filter));
+    writer->documents().remove(std::move(query_doc1_doc3.filter));
     writer->commit();
     ASSERT_TRUE(writer->consolidate(always_merge));
     writer->commit();
@@ -14312,7 +14326,7 @@ TEST_F(memory_index_test, segment_consolidate) {
       doc6->stored.begin(), doc6->stored.end()
     ));
     writer->commit();
-    writer->remove(std::move(query_doc1_doc3_doc5.filter));
+    writer->documents().remove(std::move(query_doc1_doc3_doc5.filter));
     writer->commit();
     ASSERT_TRUE(writer->consolidate(always_merge));
     writer->commit();
@@ -14381,7 +14395,7 @@ TEST_F(memory_index_test, segment_consolidate) {
       doc6->stored.begin(), doc6->stored.end()
     ));
     writer->commit();
-    writer->remove(std::move(query_doc1_doc3_doc5.filter));
+    writer->documents().remove(std::move(query_doc1_doc3_doc5.filter));
     writer->commit();
     ASSERT_TRUE(writer->consolidate(always_merge));
     writer->commit();
@@ -14907,7 +14921,7 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       doc4->stored.begin(), doc4->stored.end()
     ));
     writer->commit();
-    writer->remove(std::move(query_doc2_doc3_doc4.filter));
+    writer->documents().remove(std::move(query_doc2_doc3_doc4.filter));
     ASSERT_TRUE(insert(*writer,
       doc5->indexed.begin(), doc5->indexed.end(),
       doc5->stored.begin(), doc5->stored.end()
@@ -14961,7 +14975,7 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       doc4->stored.begin(), doc4->stored.end()
     ));
     writer->commit();
-    writer->remove(std::move(query_doc2_doc3_doc4.filter));
+    writer->documents().remove(std::move(query_doc2_doc3_doc4.filter));
     ASSERT_TRUE(insert(*writer,
       doc5->indexed.begin(), doc5->indexed.end(),
       doc5->stored.begin(), doc5->stored.end()
@@ -15041,7 +15055,7 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       doc4->stored.begin(), doc4->stored.end()
     ));
     writer->commit();
-    writer->remove(std::move(query_doc2_doc4.filter));
+    writer->documents().remove(std::move(query_doc2_doc4.filter));
     writer->commit();
     ASSERT_TRUE(writer->consolidate(iresearch::index_utils::consolidate_fill(1))); // value garanteeing merge
     writer->commit();
@@ -15092,7 +15106,7 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       doc4->stored.begin(), doc4->stored.end()
     ));
     writer->commit();
-    writer->remove(std::move(query_doc2_doc4.filter));
+    writer->documents().remove(std::move(query_doc2_doc4.filter));
     writer->commit();
     ASSERT_TRUE(writer->consolidate(iresearch::index_utils::consolidate_fill(0))); // value garanteeing non-merge
     writer->commit();

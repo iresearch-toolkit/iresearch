@@ -161,7 +161,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
     ASSERT_TRUE(insert(*writer, doc2.indexed.end(), doc2.indexed.end(), doc2.stored.begin(), doc2.stored.end()));
     ASSERT_TRUE(insert(*writer, doc4.indexed.begin(), doc4.indexed.end(), doc4.stored.begin(), doc4.stored.end()));
     writer->commit();
-    writer->remove(std::move(query_doc4.filter));
+    writer->documents().remove(std::move(query_doc4.filter));
     writer->commit();
     writer->close();
   }
@@ -1052,7 +1052,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       doc4.stored.begin(), doc4.stored.end()
     ));
     writer->commit();
-    writer->remove(std::move(query_doc4.filter));
+    writer->documents().remove(std::move(query_doc4.filter));
     writer->commit();
     writer->close();
   }

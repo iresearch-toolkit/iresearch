@@ -233,30 +233,74 @@ size_t readers_cache::purge(const std::unordered_set<string_ref>& segments) NOEX
 
 const std::string index_writer::WRITE_LOCK_NAME = "write.lock";
 
-index_writer::flush_context::flush_segment_context::flush_segment_context(
-    const std::shared_ptr<segment_context> &ctx
-): ctx_(ctx), reusable_(true) {
+index_writer::documents_context::document::document(
+    const flush_context::ptr& ctx,
+    const segment_context::ptr& segment,
+    const segment_writer::update_context& update
+): segment_writer::document(*(segment->writer_)),
+   ctx_(*ctx),
+   segment_(segment),
+   update_id_(update.update_id) {
+  assert(ctx);
+  assert(segment_);
+  assert(segment_->writer_);
+  segment_->busy_ = true; // guarded by flush_context::flush_mutex_
+  segment_->writer_->begin(update);
+  segment_->buffered_docs.store(segment_->writer_->docs_cached());
 }
 
-index_writer::flush_context::flush_segment_context::flush_segment_context(
-    flush_segment_context&& other
-) noexcept {
-  ctx_ = std::move(other.ctx_);
-  reusable_ = std::move(other.reusable_);
+index_writer::documents_context::document::document(document&& other)
+  : segment_writer::document(*(other.segment_->writer_)),
+    ctx_(other.ctx_), // GCC does not allow moving of references
+    segment_(std::move(other.segment_)),
+    update_id_(std::move(other.update_id_)) {
 }
 
-index_writer::flush_context::flush_segment_context::~flush_segment_context() {
-  // reset before returning to pool
-  if (ctx_) {
-    ctx_->dir_.clear_refs();
-    ctx_->writer_->reset();
+index_writer::documents_context::document::~document() {
+  if (!segment_) {
+    return; // another instance will call commit()
   }
+
+  try {
+    segment_->writer_->commit();
+  } catch (...) {
+    segment_->writer_->rollback();
+  }
+
+  SCOPED_LOCK(ctx_.mutex_); // lock due to context modification and notification
+  segment_->busy_ = false; // guarded by flush_context::mutex_ @see flush_all()
+  ctx_.pending_segment_context_cond_.notify_all(); // in case ctx is in flush_all()
+
+  if (!valid() && update_id_ != NON_UPDATE_RECORD) {
+    ctx_.modification_queries_[update_id_].filter = nullptr; // mark invalid
+  }
+}
+
+index_writer::flush_context::ptr index_writer::documents_context::update_segment() {
+  auto ctx = writer_.get_flush_context();
+
+  // refresh segment if required (guarded by flush_context::flush_mutex_)
+  if (!segment_ || ctx.get() != ctx_ || segment_->dirty_) {
+    segment_ = writer_.get_segment_context(*ctx);
+    ctx_ = ctx.get();
+  }
+
+  return ctx;
 }
 
 index_writer::flush_context::flush_context(): generation_(0) {
 }
 
+index_writer::flush_context::~flush_context() {
+  reset();
+}
+
 void index_writer::flush_context::reset() {
+  // reset before returning to pool
+  for (auto& entry: pending_segment_contexts_) {
+    entry->reset();
+  }
+
   generation_.store(0);
   dir_->clear_refs();
   modification_queries_.clear();
@@ -265,10 +309,20 @@ void index_writer::flush_context::reset() {
   segment_mask_.clear();
 }
 
+index_writer::segment_context::segment_context(directory& dir)
+  :busy_(false), dirty_(false), dir_(dir), writer_(segment_writer::make(dir_)) {
+}
+
 index_writer::segment_context::ptr index_writer::segment_context::make(
     directory& dir
 ) {
   return memory::make_shared<segment_context>(dir);
+}
+
+void index_writer::segment_context::reset() {
+  buffered_docs.store(0);
+  dir_.clear_refs();
+  writer_->reset();
 }
 
 index_writer::index_writer(
@@ -446,7 +500,7 @@ uint64_t index_writer::buffered_docs() const {
   SCOPED_LOCK(ctx->mutex_); // 'pending_used_segment_contexts_'/'pending_free_segment_contexts_' may be modified
 
   for (auto& entry: ctx->pending_segment_contexts_) {
-    docs_in_ram += entry.ctx_->writer_->docs_cached();
+    docs_in_ram += entry->buffered_docs.load(); // reading segment_writer::docs_count() is not thread safe
   }
 
   return docs_in_ram;
@@ -879,7 +933,15 @@ index_writer::flush_context::ptr index_writer::get_flush_context(bool shared /*=
 
       lock.release();
 
-      return flush_context::ptr(ctx, false);
+      return flush_context::ptr(
+        ctx,
+        [](flush_context* ctx)->void {
+          async_utils::read_write_mutex::write_mutex mutex(ctx->flush_mutex_);
+          ADOPT_SCOPED_LOCK_NAMED(mutex, lock);
+
+          ctx->reset(); // reset context and make ready for reuse
+        }
+      );
     }
   }
 
@@ -905,75 +967,39 @@ index_writer::flush_context::ptr index_writer::get_flush_context(bool shared /*=
 
     lock.release();
 
-    return flush_context::ptr(ctx, true);
+    return flush_context::ptr(
+      ctx,
+      [](flush_context* ctx)->void {
+        async_utils::read_write_mutex::read_mutex mutex(ctx->flush_mutex_);
+        ADOPT_SCOPED_LOCK_NAMED(mutex, lock);
+      }
+    );
   }
 }
 
-std::shared_ptr<segment_writer> index_writer::get_segment_context(
+index_writer::segment_context::ptr index_writer::get_segment_context(
     flush_context& ctx
 ) {
-  size_t i = 0;
-  segment_context::ptr segment_ctx;
   SCOPED_LOCK(ctx.mutex_); // 'pending_segment_contexts_' may be asynchronously read
 
   // find a reusable slot (linear search on the assumption that there are not a lot of segments)
   // 'pending_segment_contexts_' contains only segments for the specific 'ctx' (not reused between contexts)
-  for (auto count = ctx.pending_segment_contexts_.size();
-       i < count && !ctx.pending_segment_contexts_[i].reusable_;
-       ++i
-      );
-
-  // no reusable slots found, create a new one
-  if (i >= ctx.pending_segment_contexts_.size()) {
-    ctx.pending_segment_contexts_.emplace_back(
-      segment_writer_pool_.emplace(dir_).release()
-    );
-    assert(i < ctx.pending_segment_contexts_.size());
-    ctx.pending_segment_contexts_[i].ctx_->writer_->reset(
-      segment_meta(file_name(meta_.increment()), codec_)
-    );
-  }
-
-  auto& pending_segment_context = ctx.pending_segment_contexts_[i];
-
-  segment_ctx = pending_segment_context.ctx_;
-  pending_segment_context.reusable_ = false;
-
-  return std::shared_ptr<segment_writer>(
-    segment_ctx->writer_.get(),
-    [&ctx, i](segment_writer*)->void {
-      SCOPED_LOCK(ctx.mutex_); // 'pending_segment_contexts_' may be asynchronously read
-      assert(i < ctx.pending_segment_contexts_.size());
-      ctx.pending_segment_contexts_[i].reusable_ = true;
-      ctx.pending_segment_context_cond_.notify_all();
+  for (auto& entry: ctx.pending_segment_contexts_) {
+    if (entry.use_count() == 1) { // +1 for the reference in 'pending_segment_contexts_'
+      return entry;
     }
+  }
+
+  auto segment_ctx = segment_writer_pool_.emplace(dir_).release();
+
+  segment_ctx->busy_ = false; // reset to default
+  segment_ctx->dirty_ = false; // reset to default
+  segment_ctx->writer_->reset(
+    segment_meta(file_name(meta_.increment()), codec_)
   );
-}
+  ctx.pending_segment_contexts_.emplace_back(segment_ctx); // emplace only fully ready segments
 
-void index_writer::remove(const filter& filter) {
-  auto ctx = get_flush_context();
-  SCOPED_LOCK(ctx->mutex_); // lock due to context modification
-  ctx->modification_queries_.emplace_back(filter, ctx->generation_++, false);
-}
-
-void index_writer::remove(const std::shared_ptr<filter>& filter) {
-  if (!filter) {
-    return; // skip empty filters
-  }
-
-  auto ctx = get_flush_context();
-  SCOPED_LOCK(ctx->mutex_); // lock due to context modification
-  ctx->modification_queries_.emplace_back(filter, ctx->generation_++, false);
-}
-
-void index_writer::remove(filter::ptr&& filter) {
-  if (!filter) {
-    return; // skip empty filters
-  }
-
-  auto ctx = get_flush_context();
-  SCOPED_LOCK(ctx->mutex_); // lock due to context modification
-  ctx->modification_queries_.emplace_back(std::move(filter), ctx->generation_++, false);
+  return segment_ctx;
 }
 
 index_writer::pending_context_t index_writer::flush_all() {
@@ -988,6 +1014,28 @@ index_writer::pending_context_t index_writer::flush_all() {
   auto ctx = get_flush_context(false);
   auto& dir = *(ctx->dir_);
   SCOPED_LOCK_NAMED(ctx->mutex_, lock); // ensure there are no active struct update operations
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// Stage 0
+  /// wait for any outstanding segments to settle to ensure that any rollbacks
+  /// are properly tracked in 'modification_queries_'
+  //////////////////////////////////////////////////////////////////////////////
+
+  for (auto& entry: ctx->pending_segment_contexts_) {
+    // mark the 'segment_context' as dirty so that it will not be reused if this
+    // 'flush_context' once again becomes the active context while the
+    // 'segment_context' handle is still held by documents()
+    entry->dirty_ = true;
+
+    // retry aquiring 'segment_context' until it is aquired
+    // once !'busy_' it will not change since this 'flush_context' is not the
+    // active context and hence will not give out this 'segment_context'
+    while (entry->busy_) {
+      ctx->pending_segment_context_cond_.wait_for(
+        lock, std::chrono::milliseconds(1000) // arbitrary sleep interval
+      );
+    }
+  }
 
   /////////////////////////////////////////////////////////////////////////////
   /// Stage 1
@@ -1185,27 +1233,14 @@ index_writer::pending_context_t index_writer::flush_all() {
     std::vector<flush_context> segment_ctxs;
 
     // proces all segments that have been seen by the current flush_context
-    for (size_t i = 0, count = ctx->pending_segment_contexts_.size(); i < count;) {
-      auto& entry = ctx->pending_segment_contexts_[i];
-
-      // wait for all segments to finish, need to garantee that all commited documents in segments get flushed
-      // since the segment_writer implementation is not thread safe, can't insert and flush at the same time
-      // FIXME TODO find a way to flush the already commited portion of the segment and reasign the remainder of the segment to the next context
-      if (!entry.reusable_) {
-        ctx->pending_segment_context_cond_.wait_for(
-          lock, std::chrono::milliseconds(1000)
-        );
-
-        continue; // retry aquiring segment
-      }
-
-      ++i;
-
-      if (!entry.ctx_->writer_ || !entry.ctx_->writer_->initialized()) {
+    for (auto& entry: ctx->pending_segment_contexts_) {
+      if (!entry->writer_
+          || !entry->writer_->initialized()
+          || !entry->writer_->docs_cached()) {
         continue; // skip empty segments
       }
 
-      auto& writer = *(entry.ctx_->writer_);
+      auto& writer = *(entry->writer_);
 
       segment_ctxs.emplace_back(writer.name(), codec_, writer);
 
@@ -1280,7 +1315,7 @@ index_writer::pending_context_t index_writer::flush_all() {
   };
 }
 
-segment_writer::update_context index_writer::make_update_context(
+/*static*/ segment_writer::update_context index_writer::make_update_context(
     flush_context& ctx, const filter& filter) {
   auto generation = ++ctx.generation_;
   SCOPED_LOCK(ctx.mutex_); // lock due to context modification
@@ -1294,7 +1329,7 @@ segment_writer::update_context index_writer::make_update_context(
   };
 }
 
-segment_writer::update_context index_writer::make_update_context(
+/*static*/ segment_writer::update_context index_writer::make_update_context(
     flush_context& ctx, const std::shared_ptr<filter>& filter) {
   auto generation = ++ctx.generation_;
   SCOPED_LOCK(ctx.mutex_); // lock due to context modification
@@ -1308,7 +1343,7 @@ segment_writer::update_context index_writer::make_update_context(
   };
 }
 
-segment_writer::update_context index_writer::make_update_context(
+/*static*/ segment_writer::update_context index_writer::make_update_context(
     flush_context& ctx, filter::ptr&& filter) {
   assert(filter);
   auto generation = ++ctx.generation_;
@@ -1321,6 +1356,34 @@ segment_writer::update_context index_writer::make_update_context(
     generation, // current modification generation
     update_id // entry in modification_queries_
   };
+}
+
+/*static*/ void index_writer::remove(flush_context& ctx, const filter& filter) {
+  SCOPED_LOCK(ctx.mutex_); // lock due to context modification
+  ctx.modification_queries_.emplace_back(filter, ctx.generation_++, false);
+}
+
+/*static*/ void index_writer::remove(
+    flush_context& ctx,
+    const std::shared_ptr<filter>& filter
+) {
+  if (!filter) {
+    return; // skip empty filters
+  }
+
+  SCOPED_LOCK(ctx.mutex_); // lock due to context modification
+  ctx.modification_queries_.emplace_back(filter, ctx.generation_++, false);
+}
+
+/*static*/ void index_writer::remove(flush_context& ctx, filter::ptr&& filter) {
+  if (!filter) {
+    return; // skip empty filters
+  }
+
+  SCOPED_LOCK(ctx.mutex_); // lock due to context modification
+  ctx.modification_queries_.emplace_back(
+    std::move(filter), ctx.generation_++, false
+  );
 }
 
 bool index_writer::begin() {
