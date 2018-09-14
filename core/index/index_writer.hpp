@@ -188,7 +188,8 @@ class IRESEARCH_API index_writer : util::noncopyable {
     /// @brief replace existing documents already in the index matching filter
     ///        with the documents filled by the specified functor
     /// @param filter the filter selecting which documents should be replaced
-    /// @param func the insertion logic
+    /// @param func the insertion logic, similar in signature to e.g.:
+    ///        std::function<bool(segment_writer::document&)>
     /// @note the changes are not visible until commit()
     /// @note that filter must be valid until commit()
     /// @return all fields/attributes successfully insterted
@@ -221,16 +222,20 @@ class IRESEARCH_API index_writer : util::noncopyable {
       auto update = make_update_context(*ctx_, std::forward<Filter>(filter));
 
       try {
-        rollback.set(writer.docs_cached());
-        writer.begin(update, rollback.count());
-        segment->buffered_docs.store(writer.docs_cached());
+        for(;;) {
+          rollback.set(writer.docs_cached());
+          writer.begin(update, rollback.count());
+          segment->buffered_docs.store(writer.docs_cached());
 
-        while(func(doc) && writer.valid()) {
-          writer.commit();
-        }
+          auto done = !func(doc);
 
-        if (writer.valid()) {
-          return true;
+          if (writer.valid()) {
+            writer.commit();
+
+            if (done) {
+              return true;
+            }
+          }
         }
       } catch (...) {
         exception = std::current_exception(); // track exception

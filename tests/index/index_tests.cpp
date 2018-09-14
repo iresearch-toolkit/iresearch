@@ -8368,6 +8368,43 @@ TEST_F(memory_index_test, concurrent_add_remove_mt) {
   }
 }
 
+TEST_F(memory_index_test, document_context) {
+  // during insert across commit blocks
+  {
+    //FIXME TODO implement
+  }
+
+  // during replace across commit blocks (single doc)
+  {
+    //FIXME TODO implement
+  }
+
+  // during replace across commit blocks (functr)
+  {
+    //FIXME TODO implement
+  }
+
+  // holding document_context after insert across commit does not block
+  {
+    //FIXME TODO implement
+  }
+
+  // holding document_context after remove across commit does not block
+  {
+    //FIXME TODO implement
+  }
+
+  // holding document_context after replace across commit does not block (single doc)
+  {
+    //FIXME TODO implement
+  }
+
+  // holding document_context after replace across commit does not block (functr)
+  {
+    //FIXME TODO implement
+  }
+}
+
 TEST_F(memory_index_test, doc_removal) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
@@ -9551,6 +9588,122 @@ TEST_F(memory_index_test, doc_update) {
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
+    ASSERT_FALSE(docsItr->next());
+  }
+
+  // new segment update with single-doc functr
+  {
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto writer = open_writer();
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    writer->documents().replace(
+      *query_doc1.filter,
+      [&doc2](irs::segment_writer::document& doc)->bool {
+        doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
+        doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+        return false;
+      }
+    );
+    writer->commit();
+
+    auto reader = irs::directory_reader::open(dir(), codec());
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
+    auto terms = segment.field("same");
+    ASSERT_NE(nullptr, terms);
+    auto termItr = terms->iterator();
+    ASSERT_TRUE(termItr->next());
+    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    ASSERT_TRUE(docsItr->next());
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
+    ASSERT_FALSE(docsItr->next());
+  }
+
+  // new segment update with multiple-doc functr
+  {
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto writer = open_writer();
+    std::vector<tests::document const*> docs = { doc2, doc3 };
+    size_t i = 0;
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    writer->documents().replace(
+      *query_doc1.filter,
+      [&docs, &i](irs::segment_writer::document& doc)->bool {
+        doc.insert(irs::action::index, docs[i]->indexed.begin(), docs[i]->indexed.end());
+        doc.insert(irs::action::store, docs[i]->stored.begin(), docs[i]->stored.end());
+        return ++i < docs.size();
+      }
+    );
+    writer->commit();
+
+    auto reader = irs::directory_reader::open(dir(), codec());
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
+    auto terms = segment.field("same");
+    ASSERT_NE(nullptr, terms);
+    auto termItr = terms->iterator();
+    ASSERT_TRUE(termItr->next());
+    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    ASSERT_TRUE(docsItr->next());
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
+    ASSERT_TRUE(docsItr->next());
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+    ASSERT_FALSE(docsItr->next());
+  }
+
+  // new segment update with multiple-doc functr + rollback due to exception
+  {
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto writer = open_writer();
+    std::vector<tests::document const*> docs = { doc2, doc3 };
+    size_t i = 0;
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_ANY_THROW(writer->documents().replace(
+      *query_doc1.filter,
+      [&docs, &i](irs::segment_writer::document& doc)->bool {
+        doc.insert(irs::action::index, docs[i]->indexed.begin(), docs[i]->indexed.end());
+        doc.insert(irs::action::store, docs[i]->stored.begin(), docs[i]->stored.end());
+        if (++i >= docs.size()) throw "some error";
+        return true;
+      }
+    ));
+    writer->commit();
+
+    auto reader = irs::directory_reader::open(dir(), codec());
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
+    auto terms = segment.field("same");
+    ASSERT_NE(nullptr, terms);
+    auto termItr = terms->iterator();
+    ASSERT_TRUE(termItr->next());
+    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    ASSERT_TRUE(docsItr->next());
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
     ASSERT_FALSE(docsItr->next());
   }
 }
