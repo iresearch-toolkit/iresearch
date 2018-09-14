@@ -109,7 +109,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
   /// @note the object is non-thread-safe, each thread should use its own
   ///       separate instance
   //////////////////////////////////////////////////////////////////////////////
-  class documents_context {
+  class IRESEARCH_API documents_context {
     typedef std::unique_ptr<flush_context, std::function<void(flush_context*)>> flush_context_ptr; // declaration from flush_context::ptr below
     typedef std::shared_ptr<segment_context> segment_context_ptr; // declaration from segment_context::ptr below
    public:
@@ -117,7 +117,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
     ////////////////////////////////////////////////////////////////////////////
     /// @brief a wrapper around a segment_writer::document with commit/rollback
     ////////////////////////////////////////////////////////////////////////////
-    class document: public segment_writer::document {
+    class IRESEARCH_API document: public segment_writer::document {
      public:
       document(
         const flush_context_ptr& ctx,

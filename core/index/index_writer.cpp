@@ -234,8 +234,8 @@ size_t readers_cache::purge(const std::unordered_set<string_ref>& segments) NOEX
 const std::string index_writer::WRITE_LOCK_NAME = "write.lock";
 
 index_writer::documents_context::document::document(
-    const flush_context_ptr& ctx,
-    const segment_context_ptr& segment,
+    const flush_context::ptr& ctx,
+    const segment_context::ptr& segment,
     const segment_writer::update_context& update
 ): segment_writer::document(*(segment->writer_)),
    ctx_(*ctx),
