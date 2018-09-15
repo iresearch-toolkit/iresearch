@@ -100,8 +100,18 @@ ENABLE_BITMASK_ENUM(OpenMode);
 ///        Thread safe.
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API index_writer : util::noncopyable {
+ private:
   struct flush_context; // forward declaration
   struct segment_context; // forward declaration
+
+  typedef std::unique_ptr<
+    flush_context,
+    void(*)(flush_context*) // sizeof(std::function<void(flush_context*)>) > sizeof(void(*)(flush_context*))
+  > flush_context_ptr; // unique pointer required since need ponter declaration before class declaration e.g. for 'documents_context'
+
+  typedef std::shared_ptr<
+    segment_context
+  > segment_context_ptr; // declaration from segment_context::ptr below
  public:
 
   //////////////////////////////////////////////////////////////////////////////
@@ -110,10 +120,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
   ///       separate instance
   //////////////////////////////////////////////////////////////////////////////
   class IRESEARCH_API documents_context {
-    typedef std::unique_ptr<flush_context, std::function<void(flush_context*)>> flush_context_ptr; // declaration from flush_context::ptr below
-    typedef std::shared_ptr<segment_context> segment_context_ptr; // declaration from segment_context::ptr below
    public:
-
     ////////////////////////////////////////////////////////////////////////////
     /// @brief a wrapper around a segment_writer::document with commit/rollback
     ////////////////////////////////////////////////////////////////////////////
@@ -133,7 +140,9 @@ class IRESEARCH_API index_writer : util::noncopyable {
       size_t update_id_;
     };
 
-    documents_context(index_writer& writer): ctx_(nullptr), writer_(writer) {}
+    explicit documents_context(index_writer& writer) NOEXCEPT
+      : ctx_(nullptr), writer_(writer) {
+    }
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief create a document to filled by the caller
@@ -377,7 +386,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
   /// @note all document insertions will be applied to the same segment on a
   ///       best effort basis, e.g. a flush_all() will cause a segment switch
   //////////////////////////////////////////////////////////////////////////////
-  documents_context documents() {
+  documents_context documents() NOEXCEPT {
     return documents_context(*this);
   }
 
@@ -597,8 +606,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
   ///       longer active
   //////////////////////////////////////////////////////////////////////////////
   struct IRESEARCH_API flush_context {
-    typedef std::unique_ptr<flush_context, std::function<void(flush_context*)>> ptr; // unique pointer required since need ponter declaration before class declaration e.g. for 'documents_context'
-    std::atomic<size_t> generation_; // current modification/update generation
+    std::atomic<size_t> generation_{ 0 }; // current modification/update generation
     ref_tracking_directory::ptr dir_; // ref tracking directory used by this context (tracks all/only refs for this context)
     async_utils::read_write_mutex flush_mutex_; // guard for the current context during flush (write) operations vs update (read)
     modification_requests_t modification_queries_; // sequential list of modification requests (remove/update)
@@ -609,9 +617,13 @@ class IRESEARCH_API index_writer : util::noncopyable {
     std::condition_variable pending_segment_context_cond_; // notified when a segment has been freed (guarded by mutex_)
     std::unordered_set<string_ref> segment_mask_; // set of segment names to be removed from the index upon commit (refs at strings in index_writer::meta_)
 
-    flush_context();
-    ~flush_context();
-    void reset();
+    flush_context() = default;
+
+    ~flush_context() NOEXCEPT {
+      reset();
+    }
+
+    void reset() NOEXCEPT;
   }; // flush_context
 
   struct sync_context : util::noncopyable {
@@ -685,9 +697,10 @@ class IRESEARCH_API index_writer : util::noncopyable {
   }; // sync_context
 
   struct pending_context_t {
-    flush_context::ptr ctx; // reference to flush context held until end of commit
+    flush_context_ptr ctx{ nullptr, nullptr }; // reference to flush context held until end of commit
     index_meta::ptr meta; // index meta of next commit
     sync_context to_sync; // file names and segments to be synced during next commit
+
     pending_context_t() = default;
     pending_context_t(pending_context_t&& other) NOEXCEPT
       : ctx(std::move(other.ctx)),
@@ -698,8 +711,9 @@ class IRESEARCH_API index_writer : util::noncopyable {
   }; // pending_context_t
 
   struct pending_state_t {
-    flush_context::ptr ctx; // reference to flush context held until end of commit
+    flush_context_ptr ctx{ nullptr, nullptr }; // reference to flush context held until end of commit
     committed_state_t commit; // meta + references of next commit
+
     operator bool() const NOEXCEPT { return ctx && commit; }
     void reset() NOEXCEPT { ctx.reset(), commit.reset(); }
   }; // pending_state_t
@@ -734,8 +748,8 @@ class IRESEARCH_API index_writer : util::noncopyable {
 
   pending_context_t flush_all();
 
-  flush_context::ptr get_flush_context(bool shared = true);
-  segment_context::ptr get_segment_context(flush_context& ctx);
+  flush_context_ptr get_flush_context(bool shared = true);
+  segment_context_ptr get_segment_context(flush_context& ctx);
 
   // returns context for "add" operation
   static segment_writer::update_context make_update_context(flush_context& ctx);

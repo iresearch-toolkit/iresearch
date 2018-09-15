@@ -234,7 +234,7 @@ size_t readers_cache::purge(const std::unordered_set<string_ref>& segments) NOEX
 const std::string index_writer::WRITE_LOCK_NAME = "write.lock";
 
 index_writer::documents_context::document::document(
-    const flush_context::ptr& ctx,
+    const flush_context_ptr& ctx,
     const segment_context::ptr& segment,
     const segment_writer::update_context& update
 ): segment_writer::document(*(segment->writer_)),
@@ -276,7 +276,7 @@ index_writer::documents_context::document::~document() {
   }
 }
 
-index_writer::flush_context::ptr index_writer::documents_context::update_segment() {
+index_writer::flush_context_ptr index_writer::documents_context::update_segment() {
   auto ctx = writer_.get_flush_context();
 
   // refresh segment if required (guarded by flush_context::flush_mutex_)
@@ -288,14 +288,7 @@ index_writer::flush_context::ptr index_writer::documents_context::update_segment
   return ctx;
 }
 
-index_writer::flush_context::flush_context(): generation_(0) {
-}
-
-index_writer::flush_context::~flush_context() {
-  reset();
-}
-
-void index_writer::flush_context::reset() {
+void index_writer::flush_context::reset() NOEXCEPT {
   // reset before returning to pool
   for (auto& entry: pending_segment_contexts_) {
     entry->reset();
@@ -917,7 +910,7 @@ bool index_writer::import(const index_reader& reader, format::ptr codec /*= null
   return true;
 }
 
-index_writer::flush_context::ptr index_writer::get_flush_context(bool shared /*= true*/) {
+index_writer::flush_context_ptr index_writer::get_flush_context(bool shared /*= true*/) {
   auto* ctx = flush_context_.load(); // get current ctx
 
   if (!shared) {
@@ -933,15 +926,15 @@ index_writer::flush_context::ptr index_writer::get_flush_context(bool shared /*=
 
       lock.release();
 
-      return flush_context::ptr(
+      return {
         ctx,
-        [](flush_context* ctx)->void {
+        [](flush_context* ctx) NOEXCEPT ->void {
           async_utils::read_write_mutex::write_mutex mutex(ctx->flush_mutex_);
           ADOPT_SCOPED_LOCK_NAMED(mutex, lock);
 
           ctx->reset(); // reset context and make ready for reuse
         }
-      );
+      };
     }
   }
 
@@ -967,13 +960,13 @@ index_writer::flush_context::ptr index_writer::get_flush_context(bool shared /*=
 
     lock.release();
 
-    return flush_context::ptr(
+    return {
       ctx,
-      [](flush_context* ctx)->void {
+      [](flush_context* ctx) NOEXCEPT ->void {
         async_utils::read_write_mutex::read_mutex mutex(ctx->flush_mutex_);
         ADOPT_SCOPED_LOCK_NAMED(mutex, lock);
       }
-    );
+    };
   }
 }
 
