@@ -11575,7 +11575,7 @@ TEST_F(memory_index_test, consolidate_invalid_candidate) {
 
   // invalid candidate
   {
-    const irs::segment_meta meta("foo", nullptr, 6, 5, false, {});
+    const irs::segment_meta meta("foo", nullptr, 6, 5, false, irs::segment_meta::file_set());
 
     auto invalid_candidate_policy = [&meta](
         std::set<const irs::segment_meta*>& candidates,
