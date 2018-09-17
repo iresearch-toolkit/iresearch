@@ -8380,7 +8380,9 @@ TEST_F(memory_index_test, document_context) {
     }
   });
 
+  irs::bytes_ref actual_value;
   tests::document const* doc1 = gen.next();
+  tests::document const* doc2 = gen.next();
 
   struct {
     std::condition_variable cond;
@@ -8509,21 +8511,160 @@ TEST_F(memory_index_test, document_context) {
     ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); // verify commit() finishes
     { irs::index_writer::documents_context tmp(std::move(ctx)); } // release ctx before join() in case of test failure
     thread1.join();
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
+    auto terms = segment.field("same");
+    ASSERT_NE(nullptr, terms);
+    auto termItr = terms->iterator();
+    ASSERT_TRUE(termItr->next());
+    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    ASSERT_TRUE(docsItr->next());
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+    ASSERT_FALSE(docsItr->next());
   }
 
   // holding document_context after remove across commit does not block
   {
-    //FIXME TODO implement
+    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+    auto writer = open_writer();
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(insert(*writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    writer->commit();
+
+    auto ctx = writer->documents();
+    SCOPED_LOCK_NAMED(field.cond_mutex, field_cond_lock); // wait for insertion to start
+    ctx.remove(*(query_doc2.filter));
+    std::thread thread1([&writer, &field]()->void {
+      writer->commit();
+      SCOPED_LOCK(field.cond_mutex);
+      field.cond.notify_all();
+    });
+
+    ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); // verify commit() finishes
+    { irs::index_writer::documents_context tmp(std::move(ctx)); } // release ctx before join() in case of test failure
+    thread1.join();
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
+    auto terms = segment.field("same");
+    ASSERT_NE(nullptr, terms);
+    auto termItr = terms->iterator();
+    ASSERT_TRUE(termItr->next());
+    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    ASSERT_TRUE(docsItr->next());
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+    ASSERT_FALSE(docsItr->next());
   }
 
   // holding document_context after replace across commit does not block (single doc)
   {
-    //FIXME TODO implement
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto writer = open_writer();
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    writer->commit();
+
+    auto ctx = writer->documents();
+    SCOPED_LOCK_NAMED(field.cond_mutex, field_cond_lock); // wait for insertion to start
+    {
+      auto doc = ctx.replace(*(query_doc1.filter));
+      doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
+      doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+    }
+    std::thread thread1([&writer, &field]()->void {
+      writer->commit();
+      SCOPED_LOCK(field.cond_mutex);
+      field.cond.notify_all();
+    });
+
+    ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); // verify commit() finishes
+    { irs::index_writer::documents_context tmp(std::move(ctx)); } // release ctx before join() in case of test failure
+    thread1.join();
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
+    auto terms = segment.field("same");
+    ASSERT_NE(nullptr, terms);
+    auto termItr = terms->iterator();
+    ASSERT_TRUE(termItr->next());
+    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    ASSERT_TRUE(docsItr->next());
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
+    ASSERT_FALSE(docsItr->next());
   }
 
   // holding document_context after replace across commit does not block (functr)
   {
-    //FIXME TODO implement
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto writer = open_writer();
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    writer->commit();
+
+    auto ctx = writer->documents();
+    SCOPED_LOCK_NAMED(field.cond_mutex, field_cond_lock); // wait for insertion to start
+    ctx.replace(
+      *(query_doc1.filter),
+      [&doc2](irs::segment_writer::document& doc)->bool {
+        doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
+        doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+        return false;
+      }
+    );
+    std::thread thread1([&writer, &field]()->void {
+      writer->commit();
+      SCOPED_LOCK(field.cond_mutex);
+      field.cond.notify_all();
+    });
+
+    ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); // verify commit() finishes
+    { irs::index_writer::documents_context tmp(std::move(ctx)); } // release ctx before join() in case of test failure
+    thread1.join();
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
+    auto terms = segment.field("same");
+    ASSERT_NE(nullptr, terms);
+    auto termItr = terms->iterator();
+    ASSERT_TRUE(termItr->next());
+    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    ASSERT_TRUE(docsItr->next());
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
+    ASSERT_FALSE(docsItr->next());
   }
 }
 
