@@ -537,7 +537,7 @@ matrix:
       env:
         - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
         - BOOST_B2_ARGS="boost.locale.iconv=off"
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test* --gtest_catch_exceptions=0 --ires_log_level=TRACE"
 
     ############################################################################
     # Release build, static library (remaining tests)
@@ -579,7 +579,7 @@ matrix:
       env:
         - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
         - BOOST_B2_ARGS="boost.locale.iconv=off"
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test* --gtest_catch_exceptions=0 --ires_log_level=TRACE"
 
     ############################################################################
     # Release build, shared library (remaining tests)
