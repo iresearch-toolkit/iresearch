@@ -1459,6 +1459,14 @@ void index_writer::finish() {
     return;
   }
 
+  // FIXME TODO remove this, only here to debug MacOS test failures
+  for (auto& seg: pending_state_.ctx->pending_segment_contexts_) {
+    seg->dir_.visit_refs([this](const index_file_refs::ref_t& ref)->bool {
+      pending_state_.commit->second.emplace_back(ref);
+      return true;
+    });
+  }
+
   // ...........................................................................
   // lightweight 2nd phase of the transaction
   // ...........................................................................
