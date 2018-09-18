@@ -82,13 +82,6 @@ enum OpenMode {
   ///        exists, error will be generated.
   ////////////////////////////////////////////////////////////////////////////
   OM_APPEND = 2,
-
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief Do not lock index directory. Caller is responsible for providing
-  ///        and maintaining exclusive write access, otherwise it may cause
-  ///        index corruption
-  ////////////////////////////////////////////////////////////////////////////
-  OM_NOLOCK = 4
 }; // OpenMode
 
 ENABLE_BITMASK_ENUM(OpenMode);
@@ -285,6 +278,45 @@ class IRESEARCH_API index_writer : util::noncopyable {
     flush_context_ptr update_segment();
   };
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief options the the writer should use after creation
+  //////////////////////////////////////////////////////////////////////////////
+  struct options {
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief aquire an exclusive lock on the directory to guard against index
+    ///        corruption from multiple index_writers
+    ////////////////////////////////////////////////////////////////////////////
+    bool lock_repository{true};
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief flush the segment to the directory after its size grows beyond
+    ///        this byte limit, in-flight documents will still be written to the
+    ///        segment before flush
+    ///        0 == unlimited
+    ////////////////////////////////////////////////////////////////////////////
+    size_t max_segment_bytes{0};
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief segment aquisition requests will block and wait for free segments
+    ///        after this many segments have been aquired e.g. via documents()
+    ///        0 == unlimited
+    ////////////////////////////////////////////////////////////////////////////
+    size_t max_segment_count{0};
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief number of memory blocks to cache by the internal memory pool
+    ///        0 == use default from memory_allocator::global()
+    ////////////////////////////////////////////////////////////////////////////
+    size_t memory_pool_size{0};
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief defines how index writer should be opened
+    ////////////////////////////////////////////////////////////////////////////
+    OpenMode mode;
+
+    options(OpenMode open_mode): mode(open_mode) {}
+  };
+
   struct segment_hash {
     size_t operator()(
         const segment_meta* segment
@@ -335,21 +367,6 @@ class IRESEARCH_API index_writer : util::noncopyable {
   static const std::string WRITE_LOCK_NAME;
 
   ////////////////////////////////////////////////////////////////////////////
-  /// @brief opens new index writer
-  /// @param dir directory where index will be should reside
-  /// @param codec format that will be used for creating new index segments
-  /// @param mode specifies how to open a writer
-  /// @param memory_pool_size [expert] number of memory blocks to cache for
-  ///        internal memory pool
-  ////////////////////////////////////////////////////////////////////////////
-  static index_writer::ptr make(
-    directory& dir,
-    format::ptr codec,
-    OpenMode mode,
-    size_t memory_pool_size = 0
-  );
-
-  ////////////////////////////////////////////////////////////////////////////
   /// @brief destructor 
   ////////////////////////////////////////////////////////////////////////////
   ~index_writer();
@@ -398,6 +415,18 @@ class IRESEARCH_API index_writer : util::noncopyable {
   /// @returns true on success
   ////////////////////////////////////////////////////////////////////////////
   bool import(const index_reader& reader, format::ptr codec = nullptr);
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// @brief opens new index writer
+  /// @param dir directory where index will be should reside
+  /// @param codec format that will be used for creating new index segments
+  /// @param options the configuration parameters for the writer
+  ////////////////////////////////////////////////////////////////////////////
+  static index_writer::ptr make(
+    directory& dir,
+    format::ptr codec,
+    options opts
+  );
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief begins the two-phase transaction
@@ -723,6 +752,8 @@ class IRESEARCH_API index_writer : util::noncopyable {
     index_file_refs::ref_t&& lock_file_ref,
     directory& dir, 
     format::ptr codec,
+    size_t max_segment_count,
+    size_t max_segment_bytes,
     index_meta&& meta, 
     committed_state_t&& committed_state
   ) NOEXCEPT;
@@ -775,6 +806,8 @@ class IRESEARCH_API index_writer : util::noncopyable {
   directory& dir_; // directory used for initialization of readers
   std::vector<flush_context> flush_context_pool_; // collection of contexts that collect data to be flushed, 2 because just swap them
   std::atomic<flush_context*> flush_context_; // currently active context accumulating data to be processed during the next flush
+  size_t max_segment_bytes_; // maximum segment size before flushing or requesting a new segment
+  size_t max_segment_count_; // maximum number of segments per flush_context
   index_meta meta_; // latest/active state of index metadata
   pending_state_t pending_state_; // current state awaiting commit completion
   segment_pool_t segment_writer_pool_; // a cache of segments available for reuse

@@ -278,7 +278,7 @@ index_writer::documents_context::document::~document() {
 
 index_writer::flush_context_ptr index_writer::documents_context::update_segment() {
   auto ctx = writer_.get_flush_context();
-
+  // FIXME TODO also flush the segment if exceeded 'max_segment_bytes'
   // refresh segment if required (guarded by flush_context::flush_mutex_)
   if (!segment_ || ctx.get() != ctx_ || segment_->dirty_) {
     segment_ = writer_.get_segment_context(*ctx);
@@ -323,6 +323,8 @@ index_writer::index_writer(
     index_file_refs::ref_t&& lock_file_ref,
     directory& dir,
     format::ptr codec,
+    size_t max_segment_count,
+    size_t max_segment_bytes,
     index_meta&& meta,
     committed_state_t&& committed_state
 ) NOEXCEPT:
@@ -330,6 +332,8 @@ index_writer::index_writer(
     committed_state_(std::move(committed_state)),
     dir_(dir),
     flush_context_pool_(2), // 2 because just swap them due to common commit lock
+    max_segment_bytes_(max_segment_bytes),
+    max_segment_count_(max_segment_count),
     meta_(std::move(meta)),
     segment_writer_pool_(SEGMENT_POOL_SIZE),
     writer_(codec->get_index_meta_writer()),
@@ -406,14 +410,13 @@ void index_writer::clear() {
 index_writer::ptr index_writer::make(
     directory& dir,
     format::ptr codec,
-    OpenMode mode,
-    size_t memory_pool_size /*= 0*/
+    options opts
 ) {
   std::vector<index_file_refs::ref_t> file_refs;
   index_lock::ptr lock;
   index_file_refs::ref_t lockfile_ref;
 
-  if (0 == (OM_NOLOCK & mode)) {
+  if (opts.lock_repository) {
     // lock the directory
     lock = dir.make_lock(WRITE_LOCK_NAME);
     lockfile_ref = directory_utils::reference(dir, WRITE_LOCK_NAME, true); // will be created by try_lock
@@ -431,9 +434,8 @@ index_writer::ptr index_writer::make(
     std::string segments_file;
     const bool index_exists = reader->last_segments_file(dir, segments_file);
 
-    mode &= OM_CREATE | OM_APPEND;
-
-    if (OM_CREATE == mode || ((OM_CREATE | OM_APPEND) == mode && !index_exists)) {
+    if (OM_CREATE == opts.mode
+        || ((OM_CREATE | OM_APPEND) == opts.mode && !index_exists)) {
       // Try to read. It allows us to
       // create writer against an index that's
       // currently opened for searching
@@ -467,12 +469,15 @@ index_writer::ptr index_writer::make(
     writer,
     std::move(lock), 
     std::move(lockfile_ref),
-    dir, codec,
+    dir,
+    codec,
+    opts.max_segment_count,
+    opts.max_segment_bytes,
     std::move(meta),
     std::move(comitted_state)
   );
 
-  directory_utils::ensure_allocator(dir, memory_pool_size); // ensure memory_allocator set in directory
+  directory_utils::ensure_allocator(dir, opts.memory_pool_size); // ensure memory_allocator set in directory
   directory_utils::remove_all_unreferenced(dir); // remove non-index files from directory
 
   return writer;
@@ -973,14 +978,26 @@ index_writer::flush_context_ptr index_writer::get_flush_context(bool shared /*= 
 index_writer::segment_context::ptr index_writer::get_segment_context(
     flush_context& ctx
 ) {
-  SCOPED_LOCK(ctx.mutex_); // 'pending_segment_contexts_' may be asynchronously read
+  SCOPED_LOCK_NAMED(ctx.mutex_, lock); // 'pending_segment_contexts_' may be asynchronously read
 
-  // find a reusable slot (linear search on the assumption that there are not a lot of segments)
-  // 'pending_segment_contexts_' contains only segments for the specific 'ctx' (not reused between contexts)
-  for (auto& entry: ctx.pending_segment_contexts_) {
-    if (entry.use_count() == 1) { // +1 for the reference in 'pending_segment_contexts_'
-      return entry;
+  for (;;) {
+    // find a reusable slot (linear search on the assumption that there are not a lot of segments)
+    // 'pending_segment_contexts_' contains only segments for the specific 'ctx' (not reused between contexts)
+    for (auto& entry: ctx.pending_segment_contexts_) {
+      if (entry.use_count() == 1) { // +1 for the reference in 'pending_segment_contexts_'
+        return entry;
+      }
     }
+
+    if (!max_segment_count_
+        || ctx.pending_segment_contexts_.size() < max_segment_count_) {
+      break;
+    }
+
+    // retry aquiring 'segment_context' until it is aquired
+    ctx.pending_segment_context_cond_.wait_for(
+      lock, std::chrono::milliseconds(1000) // arbitrary sleep interval
+    );
   }
 
   auto segment_ctx = segment_writer_pool_.emplace(dir_).release();

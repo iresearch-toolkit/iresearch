@@ -678,7 +678,9 @@ class index_test_case_base : public tests::index_test_base {
       ASSERT_EQ(&irs::memory_allocator::global(), &irs::directory_utils::get_allocator(dir));
 
       // open writer
-      auto writer = irs::index_writer::make(dir, codec(), irs::OM_CREATE, 42);
+      irs::index_writer::options options(irs::OM_CREATE);
+      options.memory_pool_size = 42;
+      auto writer = irs::index_writer::make(dir, codec(), options);
       ASSERT_NE(nullptr, writer);
       auto* alloc_attr = dir.attributes().get<irs::memory_allocator>();
       ASSERT_NE(nullptr, alloc_attr);
@@ -736,11 +738,15 @@ class index_test_case_base : public tests::index_test_base {
 
     {
       // open writer with NOLOCK hint
-      auto writer0 = irs::index_writer::make(dir(), codec(), irs::OM_CREATE | irs::OM_NOLOCK);
+      irs::index_writer::options options0(irs::OM_CREATE);
+      options0.lock_repository = false;
+      auto writer0 = irs::index_writer::make(dir(), codec(), options0);
       ASSERT_NE(nullptr, writer0);
 
       // can open another writer at the same time on the same directory
-      auto writer1 = irs::index_writer::make(dir(), codec(), irs::OM_CREATE | irs::OM_NOLOCK);
+      irs::index_writer::options options1(irs::OM_CREATE);
+      options1.lock_repository = false;
+      auto writer1 = irs::index_writer::make(dir(), codec(), options1);
       ASSERT_NE(nullptr, writer1);
 
       ASSERT_EQ(0, writer0->buffered_docs());
@@ -749,7 +755,9 @@ class index_test_case_base : public tests::index_test_base {
 
     {
       // open writer with NOLOCK hint
-      auto writer0 = irs::index_writer::make(dir(), codec(), irs::OM_CREATE | irs::OM_NOLOCK);
+      irs::index_writer::options options0(irs::OM_CREATE);
+      options0.lock_repository = false;
+      auto writer0 = irs::index_writer::make(dir(), codec(), options0);
       ASSERT_NE(nullptr, writer0);
 
       // can open another writer at the same time on the same directory and acquire lock
@@ -762,7 +770,9 @@ class index_test_case_base : public tests::index_test_base {
 
     {
       // open writer with NOLOCK hint
-      auto writer0 = irs::index_writer::make(dir(), codec(), irs::OM_CREATE | irs::OM_NOLOCK);
+      irs::index_writer::options options0(irs::OM_CREATE);
+      options0.lock_repository = false;
+      auto writer0 = irs::index_writer::make(dir(), codec(), options0);
       ASSERT_NE(nullptr, writer0);
       writer0->commit();
 
@@ -821,7 +831,9 @@ class index_test_case_base : public tests::index_test_base {
     std::mutex commit_mutex;
 
     if (!writer) {
-      writer = open_writer();
+      irs::index_writer::options options(irs::OM_CREATE);
+      options.max_segment_count = 8; // match original implementation or may run out of file handles (e.g. MacOS/Travis)
+      writer = irs::index_writer::make(dir(), codec(), options);
     }
 
     // initialize reader data source for import threads
@@ -8411,13 +8423,21 @@ TEST_F(memory_index_test, document_context) {
 
     ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); // wait for insertion to start
 
-    std::thread thread1([&writer, &field]()->void {
+    std::atomic<bool> stop(false);
+    std::thread thread1([&writer, &field, &stop]()->void {
       writer->commit();
+      stop = true;
       SCOPED_LOCK(field.cond_mutex);
       field.cond.notify_all();
     });
 
-    ASSERT_EQ(std::cv_status::timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100))); // verify commit() blocks
+    auto result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100));
+
+    // MSVC 2015/2017 seems to sporadically notify condition variables without explicit request
+    MSVC2015_ONLY(while(!stop && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
+    MSVC2017_ONLY(while(!stop && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
+
+    ASSERT_EQ(std::cv_status::timeout, result); // verify commit() blocks
     field_lock.unlock();
     ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); // verify commit() finishes
     thread0.join();
