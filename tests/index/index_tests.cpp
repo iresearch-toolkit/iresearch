@@ -678,9 +678,9 @@ class index_test_case_base : public tests::index_test_base {
       ASSERT_EQ(&irs::memory_allocator::global(), &irs::directory_utils::get_allocator(dir));
 
       // open writer
-      irs::index_writer::options options(irs::OM_CREATE);
+      irs::index_writer::options options;
       options.memory_pool_size = 42;
-      auto writer = irs::index_writer::make(dir, codec(), options);
+      auto writer = irs::index_writer::make(dir, codec(), irs::OM_CREATE, options);
       ASSERT_NE(nullptr, writer);
       auto* alloc_attr = dir.attributes().get<irs::memory_allocator>();
       ASSERT_NE(nullptr, alloc_attr);
@@ -738,15 +738,15 @@ class index_test_case_base : public tests::index_test_base {
 
     {
       // open writer with NOLOCK hint
-      irs::index_writer::options options0(irs::OM_CREATE);
+      irs::index_writer::options options0;
       options0.lock_repository = false;
-      auto writer0 = irs::index_writer::make(dir(), codec(), options0);
+      auto writer0 = irs::index_writer::make(dir(), codec(), irs::OM_CREATE, options0);
       ASSERT_NE(nullptr, writer0);
 
       // can open another writer at the same time on the same directory
-      irs::index_writer::options options1(irs::OM_CREATE);
+      irs::index_writer::options options1;
       options1.lock_repository = false;
-      auto writer1 = irs::index_writer::make(dir(), codec(), options1);
+      auto writer1 = irs::index_writer::make(dir(), codec(), irs::OM_CREATE, options1);
       ASSERT_NE(nullptr, writer1);
 
       ASSERT_EQ(0, writer0->buffered_docs());
@@ -755,9 +755,9 @@ class index_test_case_base : public tests::index_test_base {
 
     {
       // open writer with NOLOCK hint
-      irs::index_writer::options options0(irs::OM_CREATE);
+      irs::index_writer::options options0;
       options0.lock_repository = false;
-      auto writer0 = irs::index_writer::make(dir(), codec(), options0);
+      auto writer0 = irs::index_writer::make(dir(), codec(), irs::OM_CREATE, options0);
       ASSERT_NE(nullptr, writer0);
 
       // can open another writer at the same time on the same directory and acquire lock
@@ -770,9 +770,9 @@ class index_test_case_base : public tests::index_test_base {
 
     {
       // open writer with NOLOCK hint
-      irs::index_writer::options options0(irs::OM_CREATE);
+      irs::index_writer::options options0;
       options0.lock_repository = false;
-      auto writer0 = irs::index_writer::make(dir(), codec(), options0);
+      auto writer0 = irs::index_writer::make(dir(), codec(), irs::OM_CREATE, options0);
       ASSERT_NE(nullptr, writer0);
       writer0->commit();
 
@@ -831,9 +831,9 @@ class index_test_case_base : public tests::index_test_base {
     std::mutex commit_mutex;
 
     if (!writer) {
-      irs::index_writer::options options(irs::OM_CREATE);
+      irs::index_writer::options options;
       options.max_segment_count = 8; // match original implementation or may run out of file handles (e.g. MacOS/Travis)
-      writer = irs::index_writer::make(dir(), codec(), options);
+      writer = open_writer(irs::OM_CREATE, options);
     }
 
     // initialize reader data source for import threads

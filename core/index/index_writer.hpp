@@ -310,17 +310,12 @@ class IRESEARCH_API index_writer : util::noncopyable {
     size_t memory_pool_size{0};
 
     ////////////////////////////////////////////////////////////////////////////
-    /// @brief defines how index writer should be opened
-    ////////////////////////////////////////////////////////////////////////////
-    OpenMode mode;
-
-    ////////////////////////////////////////////////////////////////////////////
     /// @brief number of free segments cached in the segment pool for reuse
     ///        0 == do not cache any segments, i.e. always create new segments
     ////////////////////////////////////////////////////////////////////////////
     size_t segment_pool_size{128}; // arbitrary size
 
-    options(OpenMode open_mode): mode(open_mode) {}
+    options() {}; // GCC5 requires non-default definition
   };
 
   struct segment_hash {
@@ -426,12 +421,14 @@ class IRESEARCH_API index_writer : util::noncopyable {
   /// @brief opens new index writer
   /// @param dir directory where index will be should reside
   /// @param codec format that will be used for creating new index segments
+  /// @param mode specifies how to open a writer
   /// @param options the configuration parameters for the writer
   ////////////////////////////////////////////////////////////////////////////
   static index_writer::ptr make(
     directory& dir,
     format::ptr codec,
-    options opts
+    OpenMode mode,
+    const options& opts = options()
   );
 
   ////////////////////////////////////////////////////////////////////////////

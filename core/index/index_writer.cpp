@@ -410,7 +410,8 @@ void index_writer::clear() {
 index_writer::ptr index_writer::make(
     directory& dir,
     format::ptr codec,
-    options opts
+    OpenMode mode,
+    const options& opts /*= options()*/
 ) {
   std::vector<index_file_refs::ref_t> file_refs;
   index_lock::ptr lock;
@@ -430,12 +431,11 @@ index_writer::ptr index_writer::make(
   index_meta meta;
   {
     auto reader = codec->get_index_meta_reader();
-
     std::string segments_file;
     const bool index_exists = reader->last_segments_file(dir, segments_file);
 
-    if (OM_CREATE == opts.mode
-        || ((OM_CREATE | OM_APPEND) == opts.mode && !index_exists)) {
+    if (OM_CREATE == mode
+        || ((OM_CREATE | OM_APPEND) == mode && !index_exists)) {
       // Try to read. It allows us to
       // create writer against an index that's
       // currently opened for searching
