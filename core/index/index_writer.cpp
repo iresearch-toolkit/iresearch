@@ -38,7 +38,6 @@
 
 NS_LOCAL
 
-const size_t SEGMENT_POOL_SIZE = 128; // number of segments cached in the pool for reuse, the arbitrary size
 const size_t NON_UPDATE_RECORD = irs::integer_traits<size_t>::const_max; // non-update
 
 std::vector<irs::index_file_refs::ref_t> extract_refs(
@@ -323,6 +322,7 @@ index_writer::index_writer(
     index_file_refs::ref_t&& lock_file_ref,
     directory& dir,
     format::ptr codec,
+    size_t segment_pool_size,
     size_t max_segment_count,
     size_t max_segment_bytes,
     index_meta&& meta,
@@ -335,7 +335,7 @@ index_writer::index_writer(
     max_segment_bytes_(max_segment_bytes),
     max_segment_count_(max_segment_count),
     meta_(std::move(meta)),
-    segment_writer_pool_(SEGMENT_POOL_SIZE),
+    segment_writer_pool_(segment_pool_size),
     writer_(codec->get_index_meta_writer()),
     write_lock_(std::move(lock)),
     write_lock_file_ref_(std::move(lock_file_ref)) {
@@ -471,6 +471,7 @@ index_writer::ptr index_writer::make(
     std::move(lockfile_ref),
     dir,
     codec,
+    opts.segment_pool_size,
     opts.max_segment_count,
     opts.max_segment_bytes,
     std::move(meta),

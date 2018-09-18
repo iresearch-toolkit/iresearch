@@ -314,6 +314,12 @@ class IRESEARCH_API index_writer : util::noncopyable {
     ////////////////////////////////////////////////////////////////////////////
     OpenMode mode;
 
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief number of free segments cached in the segment pool for reuse
+    ///        0 == do not cache any segments, i.e. always create new segments
+    ////////////////////////////////////////////////////////////////////////////
+    size_t segment_pool_size{128}; // arbitrary size
+
     options(OpenMode open_mode): mode(open_mode) {}
   };
 
@@ -752,6 +758,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
     index_file_refs::ref_t&& lock_file_ref,
     directory& dir, 
     format::ptr codec,
+    size_t segment_pool_size,
     size_t max_segment_count,
     size_t max_segment_bytes,
     index_meta&& meta, 
