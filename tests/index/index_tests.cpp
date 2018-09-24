@@ -6348,7 +6348,7 @@ class index_test_case_base : public tests::index_test_base {
           doc.insert(irs::action::index, field);
         }
 
-        ASSERT_TRUE(doc.valid());
+        ASSERT_TRUE(doc);
       }
 
       writer->commit();
@@ -6547,7 +6547,7 @@ class index_test_case_base : public tests::index_test_base {
           doc.insert(irs::action::store, field);
         }
 
-        ASSERT_TRUE(doc.valid());
+        ASSERT_TRUE(doc);
       }
 
       writer->commit();
@@ -7884,7 +7884,7 @@ class index_test_case_base : public tests::index_test_base {
           state &= doc.insert(irs::action::store, stored);
           indexed_and_stored_field indexed_and_stored("indexed_and_stored", "doc0");
           state &= doc.insert(irs::action::index_store, indexed_and_stored);
-          ASSERT_TRUE(doc.valid());
+          ASSERT_TRUE(doc);
         } break;
         case 1: { // doc1
           // indexed and stored fields can be indexed/stored only
@@ -7892,49 +7892,49 @@ class index_test_case_base : public tests::index_test_base {
           state &= doc.insert(irs::action::index, indexed);
           indexed_and_stored_field stored("stored", "doc1");
           state &= doc.insert(irs::action::store, stored);
-          ASSERT_TRUE(doc.valid());
+          ASSERT_TRUE(doc);
         } break;
         case 2: { // doc2 (will be dropped since it contains invalid stored field)
           indexed_and_stored_field indexed("indexed", "doc2");
           state &= doc.insert(irs::action::index, indexed);
           stored_field stored("stored", "doc2", false);
           state &= doc.insert(irs::action::store, stored);
-          ASSERT_FALSE(doc.valid());
+          ASSERT_FALSE(doc);
         } break;
         case 3: { // doc3 (will be dropped since it contains invalid indexed field)
           indexed_field indexed("indexed", "doc3", false);
           state &= doc.insert(irs::action::index, indexed);
           stored_field stored("stored", "doc3");
           state &= doc.insert(irs::action::store, stored);
-          ASSERT_FALSE(doc.valid());
+          ASSERT_FALSE(doc);
         } break;
         case 4: { // doc4 (will be dropped since it contains invalid indexed and stored field)
           indexed_and_stored_field indexed_and_stored("indexed", "doc4", false, false);
           state &= doc.insert(irs::action::index_store, indexed_and_stored);
           stored_field stored("stored", "doc4");
           state &= doc.insert(irs::action::store, stored);
-          ASSERT_FALSE(doc.valid());
+          ASSERT_FALSE(doc);
         } break;
         case 5: { // doc5 (will be dropped since it contains failed stored field)
           indexed_and_stored_field indexed_and_stored("indexed_and_stored", "doc5", false); // will fail on store, but will pass on index
           state &= doc.insert(irs::action::index_store, indexed_and_stored);
           stored_field stored("stored", "doc5");
           state &= doc.insert(irs::action::store, stored);
-          ASSERT_FALSE(doc.valid());
+          ASSERT_FALSE(doc);
         } break;
         case 6: { // doc6 (will be dropped since it contains failed indexed field)
           indexed_and_stored_field indexed_and_stored("indexed_and_stored", "doc6", true, false); // will fail on index, but will pass on store
           state &= doc.insert(irs::action::index_store, indexed_and_stored);
           stored_field stored("stored", "doc6");
           state &= doc.insert(irs::action::store, stored);
-          ASSERT_FALSE(doc.valid());
+          ASSERT_FALSE(doc);
         } break;
         case 7: { // valid insertion of last doc will mark bulk insert result as valid
           indexed_and_stored_field indexed_and_stored("indexed_and_stored", "doc7", true, true); // will be indexed, and will be stored
           state &= doc.insert(irs::action::index_store, indexed_and_stored);
           stored_field stored("stored", "doc7");
           state &= doc.insert(irs::action::store, stored);
-          ASSERT_TRUE(doc.valid());
+          ASSERT_TRUE(doc);
         } break;
       }
     } while (++i != max);

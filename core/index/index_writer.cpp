@@ -442,7 +442,7 @@ index_writer::documents_context::document::~document() {
     segment_->writer_->rollback();
   }
 
-  if (!valid() && update_id_ != NON_UPDATE_RECORD) {
+  if (!*this && update_id_ != NON_UPDATE_RECORD) {
     segment_->modification_queries_[update_id_].filter = nullptr; // mark invalid
   }
 
