@@ -8738,7 +8738,52 @@ TEST_F(memory_index_test, document_context) {
 
   // reuse of same segment initially with indexed fields then with only stored fileds
   {
-    // FIXME TODO implement
+    auto writer = open_writer();
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    writer->commit(); // ensure flush() is called
+    writer->documents().insert().insert(
+      irs::action::store,
+      doc2->stored.begin(),
+      doc2->stored.end()
+    ); // document without any indexed attributes (reuse segment writer)
+    writer->commit();
+
+    auto reader = irs::directory_reader::open(dir(), codec());
+    ASSERT_EQ(2, reader.size());
+
+    {
+      auto& segment = reader[0]; // assume 0 is id of first/old segment
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = segment.mask(termItr->postings(irs::flags()));
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+      ASSERT_FALSE(docsItr->next());
+    }
+
+    {
+      auto& segment = reader[1]; // assume 0 is id of first/new segment
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      std::unordered_set<irs::string_ref> expected = { "B" };
+      ASSERT_EQ(1, column->size());
+      ASSERT_TRUE(column->visit([&expected](irs::doc_id_t, const irs::bytes_ref& data)->bool {
+        auto* value = data.c_str();
+        auto actual_value = irs::ref_cast<char>(irs::vread_string<irs::string_ref>(value));
+        return 1 == expected.erase(actual_value);
+      }));
+      ASSERT_TRUE(expected.empty());
+    }
   }
 }
 
