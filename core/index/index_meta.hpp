@@ -64,7 +64,8 @@ struct IRESEARCH_API segment_meta {
     uint64_t docs_count,
     uint64_t live_docs_count,
     bool column_store,
-    file_set&& files
+    file_set&& files,
+    size_t size = 0
   );
 
   segment_meta& operator=(segment_meta&& rhs) NOEXCEPT;
@@ -78,6 +79,7 @@ struct IRESEARCH_API segment_meta {
   uint64_t docs_count{}; // total number of documents in a segment
   uint64_t live_docs_count{}; // total number of live documents in a segment
   format_ptr codec;
+  size_t size{}; // size of a segment in bytes
   uint64_t version{};
   bool column_store{};
 };
