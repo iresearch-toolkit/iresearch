@@ -168,7 +168,7 @@ bool segment_writer::flush(std::string& filename, segment_meta& meta) {
   }
 
   // flush fields metadata & inverted data
-  {
+  if (docs_cached()) {
     flush_state state;
     state.dir = &dir_;
     state.doc_count = docs_cached();

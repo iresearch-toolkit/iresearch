@@ -210,7 +210,6 @@ bool add_document_mask_unused_updates(
   assert(segment.writer_);
   auto& writer = *(segment.writer_);
 
-  assert(min_doc_id < writer.docs_cached());
   assert(min_doc_id <= segment.uncomitted_doc_ids_);
   assert(segment.uncomitted_doc_ids_ <= writer.docs_cached());
 
@@ -1509,9 +1508,8 @@ index_writer::pending_context_t index_writer::flush_all() {
 
       if (!segment
           || !segment->writer_
-          || !segment->writer_->initialized()
-          || !segment->writer_->docs_cached()) {
-        continue; // skip empty segments
+          || !segment->writer_->initialized()) {
+        continue; // skip empty segments (segmnets  without live docs will be removed in the next section)
       }
 
       segment_ctxs.emplace_back(pending_segment_context);
@@ -1521,10 +1519,15 @@ index_writer::pending_context_t index_writer::flush_all() {
 
       segment->flushed_meta_ = segment_meta(writer.name(), codec_); // prepare new meta for flush
 
+      // flush segment, even for empty segments since this will clear internal segment_writer state
       if (!writer.flush(pending_ctx.filename_, segment->flushed_meta_)) {
         return pending_context_t();
       }
       // flush document_mask after regular flush() so remove_query can traverse
+
+      if (!segment->writer_->docs_cached()) {
+        continue; // a segment reader cannot be opened if there are no documents in the segment
+      }
 
       // mask documents matching filters from all flushed segment_contexts (i.e. from new operations)
       for (auto& modifications: ctx->pending_segment_contexts_) {

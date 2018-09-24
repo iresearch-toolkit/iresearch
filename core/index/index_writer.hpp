@@ -690,7 +690,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
     std::atomic<size_t> buffered_docs; // for use with index_writer::buffered_docs() asynchronous call
     bool busy_; // true when in use by one of the documents() operations (insert/replace), guarded by the flush_context::flush_mutex_ (during set) and flush_context::mutex_ (during unset to allow notify)
     bool dirty_; // true if flush_all() started processing this segment (this segment should not be used for any new operations), guarded by the flush_context::flush_mutex_
-    ref_tracking_directory dir_;
+    ref_tracking_directory dir_; // ref tracking for segment_writer to allow for easy ref removal on segment_writer reset
     segment_meta flushed_meta_; // previously flushed segment (used to merge document masks of head and tail segment)
     modification_requests_t modification_queries_; // sequential list of pending modification requests (remove/update)
     doc_id_t uncomitted_doc_ids_; // starting doc_id in 'segment_writer::doc_contexts' that is not part of the current flush_context
@@ -885,6 +885,8 @@ class IRESEARCH_API index_writer : util::noncopyable {
   format::ptr codec_;
   std::mutex commit_lock_; // guard for cached_segment_readers_, commit_pool_, meta_ (modification during commit()/defragment())
   committed_state_t committed_state_; // last successfully committed state
+  std::recursive_mutex consolidation_lock_;
+  consolidating_segments_t consolidating_segments_; // segments that are under consolidation
   directory& dir_; // directory used for initialization of readers
   std::vector<flush_context> flush_context_pool_; // collection of contexts that collect data to be flushed, 2 because just swap them
   std::atomic<flush_context*> flush_context_; // currently active context accumulating data to be processed during the next flush
@@ -896,8 +898,6 @@ class IRESEARCH_API index_writer : util::noncopyable {
   index_meta_writer::ptr writer_;
   index_lock::ptr write_lock_; // exclusive write lock for directory
   index_file_refs::ref_t write_lock_file_ref_; // track ref for lock file to preven removal
-  std::recursive_mutex consolidation_lock_;
-  consolidating_segments_t consolidating_segments_; // segments that are under consolidation
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // index_writer
 
