@@ -409,15 +409,25 @@ void boolean_filter::group_filters(
   incl.reserve(size() / 2);
   excl.reserve(incl.capacity());
   for (auto begin = this->begin(), end = this->end(); begin != end; ++begin) {
-    const Not* not_node = begin.safe_as<Not>();
-    if (not_node) {
-      const auto res = optimize_not(*not_node);
+    if (Not::type() == begin->type()) {
+#ifdef IRESEARCH_DEBUG
+      const auto& not_node = dynamic_cast<const Not&>(*begin);
+#else
+      const auto& not_node = static_cast<const Not&>(*begin);
+#endif
+      const auto res = optimize_not(not_node);
 
       if (!res.first) {
         continue;
       }
 
       if (res.second) {
+        if (all::type() == res.first->type()) {
+          // not all -> empty result
+          incl.clear();
+          return;
+        }
+
         excl.push_back(res.first);
       } else {
         incl.push_back(res.first);
@@ -461,8 +471,8 @@ void And::optimize(
   }
 
   // accumulate boost
-  boost *= std::accumulate(
-    it, incl.end(), irs::boost::no_boost(),
+  boost = std::accumulate(
+    it, incl.end(), boost,
     [](irs::boost::boost_t boost, const irs::filter* filter) {
       return filter->boost() * boost;
   });
