@@ -24,6 +24,8 @@
 #include "shared.hpp"
 #include "segment_reader.hpp"
 
+#include "analysis/token_attributes.hpp"
+
 #include "index/index_meta.hpp"
 
 #include "formats/format_utils.hpp"
@@ -35,7 +37,7 @@
 
 NS_LOCAL
 
-class iterator_impl: public iresearch::index_reader::reader_iterator_impl {
+class iterator_impl final : public iresearch::index_reader::reader_iterator_impl {
  public:
   explicit iterator_impl(const iresearch::sub_reader* rdr = nullptr) NOEXCEPT
     : rdr_(rdr) {
@@ -55,6 +57,39 @@ class iterator_impl: public iresearch::index_reader::reader_iterator_impl {
  private:
   const iresearch::sub_reader* rdr_;
 };
+
+class all_iterator final : public irs::doc_iterator {
+ public:
+  explicit all_iterator(irs::doc_id_t docs_count) NOEXCEPT
+    : max_doc_(irs::doc_id_t(irs::type_limits<irs::type_t::doc_id_t>::min() + docs_count - 1)) {
+  }
+
+  virtual bool next() NOEXCEPT override {
+    return !irs::type_limits<irs::type_t::doc_id_t>::eof(
+      seek(doc_.value + 1)
+    );
+  }
+
+  virtual irs::doc_id_t seek(irs::doc_id_t target) NOEXCEPT override {
+    doc_.value = target <= max_doc_
+      ? target
+      : irs::type_limits<irs::type_t::doc_id_t>::eof();
+
+    return doc_.value;
+  }
+
+  virtual irs::doc_id_t value() const NOEXCEPT override {
+    return doc_.value;
+  }
+
+  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+    return irs::attribute_view::empty_instance();
+  }
+
+ private:
+  irs::document doc_;
+  irs::doc_id_t max_doc_; // largest valid doc_id
+}; // all_iterator
 
 class mask_doc_iterator final : public irs::doc_iterator {
  public:
@@ -399,8 +434,12 @@ column_iterator::ptr segment_reader_impl::columns() const {
 }
 
 doc_iterator::ptr segment_reader_impl::docs_iterator() const {
+  if (docs_mask_.empty()) {
+    return memory::make_shared<::all_iterator>(docs_count_);
+  }
+
   // the implementation generates doc_ids sequentially
-  return memory::make_unique<masked_docs_iterator>(
+  return memory::make_shared<masked_docs_iterator>(
     type_limits<type_t::doc_id_t>::min(),
     doc_id_t(type_limits<type_t::doc_id_t>::min() + docs_count_),
     docs_mask_
