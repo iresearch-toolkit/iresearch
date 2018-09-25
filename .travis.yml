@@ -382,6 +382,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
         - CXX_STANDARD=14
+        - CMAKE_VERSION=3.2.3 # supports c++14
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
@@ -396,6 +397,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
         - CXX_STANDARD=14
+        - CMAKE_VERSION=3.2.3 # supports c++14
         - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
 
     ############################################################################
@@ -410,6 +412,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
         - CXX_STANDARD=14
+        - CMAKE_VERSION=3.2.3 # supports c++14
         - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
 
     ############################################################################
@@ -424,6 +427,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
         - CXX_STANDARD=14
+        - CMAKE_VERSION=3.2.3 # supports c++14
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
@@ -438,7 +442,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
         - CXX_STANDARD=14
-        - CXX_STANDARD=14
+        - CMAKE_VERSION=3.2.3 # supports c++14
         - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
 
     ############################################################################
@@ -453,6 +457,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
         - CXX_STANDARD=14
+        - CMAKE_VERSION=3.2.3 # supports c++14
         - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
 
     ############################################################################
