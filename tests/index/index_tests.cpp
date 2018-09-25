@@ -8895,7 +8895,7 @@ TEST_F(memory_index_test, document_context) {
     }
 
     writer->commit();
-/* FIXME TODO fix rollback spanning over several segments
+
    auto reader = iresearch::directory_reader::open(dir(), codec());
    ASSERT_EQ(2, reader.size());
 
@@ -8930,7 +8930,6 @@ TEST_F(memory_index_test, document_context) {
       ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
       ASSERT_FALSE(docsItr->next());
     }
-*/
   }
 
   // rollback removals
@@ -9050,7 +9049,7 @@ TEST_F(memory_index_test, document_context) {
     }
 
     writer->commit();
-/* FIXME TODO fix rollback spanning over several segments
+
    auto reader = iresearch::directory_reader::open(dir(), codec());
    ASSERT_EQ(2, reader.size());
 
@@ -9080,11 +9079,11 @@ TEST_F(memory_index_test, document_context) {
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
       ASSERT_FALSE(docsItr->next());
     }
-*/
   }
 
   // rollback replace (single doc)
@@ -9210,7 +9209,7 @@ TEST_F(memory_index_test, document_context) {
     }
 
     writer->commit();
-/* FIXME TODO fix rollback spanning over several segments
+
    auto reader = iresearch::directory_reader::open(dir(), codec());
    ASSERT_EQ(2, reader.size());
 
@@ -9240,11 +9239,11 @@ TEST_F(memory_index_test, document_context) {
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
       ASSERT_FALSE(docsItr->next());
     }
-*/
   }
 
   // rollback replace (functr)
@@ -9382,7 +9381,7 @@ TEST_F(memory_index_test, document_context) {
     }
 
     writer->commit();
-/* FIXME TODO fix rollback spanning over several segments
+
    auto reader = iresearch::directory_reader::open(dir(), codec());
    ASSERT_EQ(2, reader.size());
 
@@ -9412,11 +9411,11 @@ TEST_F(memory_index_test, document_context) {
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
       ASSERT_FALSE(docsItr->next());
     }
-*/
   }
 
   // segment flush due to memory bytes limit (same flush_context)
