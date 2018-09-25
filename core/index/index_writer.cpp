@@ -463,34 +463,32 @@ index_writer::documents_context::~documents_context() {
 }
 
 void index_writer::documents_context::reset() NOEXCEPT {
-  if (segments_.empty()) {
-    return; // nothing to reset
-  }
+  for (auto& segment: segments_) {
+    auto& ctx = segment.ctx();
 
-  auto& segment = segments_.back().ctx();
+    if (!ctx || !ctx->writer_) {
+      continue; // nothing to reset
+    }
 
-  if (!segment || !segment->writer_) {
-    return; // nothing to reset
-  }
+    auto& writer = *(ctx->writer_);
 
-  auto& writer = *(segment->writer_);
+    assert(integer_traits<doc_id_t>::const_max >= writer.docs_cached());
 
-  assert(integer_traits<doc_id_t>::const_max >= writer.docs_cached());
+    // rollback document insertions
+    for (auto i = ctx->uncomitted_doc_ids_,
+         count = doc_id_t(writer.docs_cached());
+         i < count;
+         ++i) {
+      writer.remove(i); // expects 0-based doc_id
+    }
 
-  // rollback document insertions
-  for (auto i = segment->uncomitted_doc_ids_,
-       count = doc_id_t(writer.docs_cached());
-       i < count;
-       ++i) {
-    writer.remove(i); // expects 0-based doc_id
-  }
-
-  // rollback modification queries
-  for (auto i = segment->uncomitted_modification_queries_,
-       count = segment->modification_queries_.size();
-       i < count;
-       ++i) {
-    segment->modification_queries_[i].filter = nullptr; // mark invalid
+    // rollback modification queries
+    for (auto i = ctx->uncomitted_modification_queries_,
+         count = ctx->modification_queries_.size();
+         i < count;
+         ++i) {
+      ctx->modification_queries_[i].filter = nullptr; // mark invalid
+    }
   }
 }
 
@@ -508,7 +506,6 @@ index_writer::flush_context_ptr index_writer::documents_context::update_segment(
   }
 
   auto& segment = segments_.back();
-
   // FIXME TODO when flushing segment, flush to repository, track meta to be added to to imported segments, then reuse same writer
   if (!segment.ctx() // no segment (lazy initialized)
       || segment.ctx()->dirty_
