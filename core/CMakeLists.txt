@@ -469,6 +469,11 @@ else()
   set(MSVC_ONLY_LIBRARIES "")
 endif()
 
+if (USE_OPTIMIZE_FOR_ARCHITECTURE)
+  set(SIMD_LIBRARY_SHARED "simdcomp-shared")
+  set(SIMD_LIBRARY_STATIC "simdcomp-static")
+endif()
+
 target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${GCOV_LIBRARY}
   ${BFD_SHARED_LIBS}
@@ -479,7 +484,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${Unwind_SHARED_LIBS}
   ${DL_LIBRARY}
   ${MSVC_ONLY_LIBRARIES}
-  simdcomp-shared
+  ${SIMD_LIBRARY_SHARED}
 )
 
 target_link_libraries(${IResearch_TARGET_NAME}-static
@@ -495,7 +500,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
   ${Unwind_STATIC_LIBS}
   ${DL_LIBRARY}
   ${MSVC_ONLY_LIBRARIES}
-  simdcomp-static
+  ${SIMD_LIBRARY_STATIC}
 )
 
 # setup CRT
