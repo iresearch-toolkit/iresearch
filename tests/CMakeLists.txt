@@ -195,7 +195,6 @@ target_link_libraries(${IResearchTests_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-format-1_0-shared
   ${GTEST_STATIC_LIBS}
   ${PTHREAD_LIBRARY}
-  ${ATOMIC_LIBRARY}
 )
 
 target_link_libraries(${IResearchTests_TARGET_NAME}-static
@@ -203,7 +202,6 @@ target_link_libraries(${IResearchTests_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-static
   ${GTEST_STATIC_LIBS}
   ${PTHREAD_LIBRARY}
-  ${ATOMIC_LIBRARY}
 )
 
 # setup CRT

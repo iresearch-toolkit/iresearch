@@ -12,6 +12,12 @@ if (NOT IResearch_version_patch)
   set(IResearch_version_patch "0")
 endif()
 
+# set libatomic library 
+# (not available on Windows and Mac)
+if (NOT MSVC AND NOT APPLE)
+  set(ATOMIC_LIBRARY atomic)
+endif()
+
 # set required standard version
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -1005,6 +1011,7 @@ target_link_libraries(${shared_format_library_name}
 
 target_link_libraries(${static_format_library_name}
   ${IResearch_TARGET_NAME}-static
+  ${ATOMIC_LIBRARY}
   ${FORMAT_10_EXTRA_LIBS_STATIC}
 )
 
