@@ -197,7 +197,6 @@ bool add_document_mask_modified_records(
 /// @brief mask documents created by updates which did not have any matches
 /// @return if any new records were added (modification_queries_ modified)
 ////////////////////////////////////////////////////////////////////////////////
-template<typename T> // required to access private struct segment_context
 bool add_document_mask_unused_updates(
     irs::index_writer::segment_context& segment, // where to apply document removals to
     irs::doc_id_t min_doc_id // staring doc_id in 'segment_writer::doc_contexts' that should be considered in the range [min_doc_id, uncomitted_document_contexts_)
@@ -1554,7 +1553,7 @@ index_writer::pending_context_t index_writer::flush_all() {
       auto& writer = *(segment.writer_);
 
       // if have a writer with potential update-replacement records then check if they were seen
-      add_document_mask_unused_updates<int>(segment, pending_ctx.doc_id_begin_);
+      add_document_mask_unused_updates(segment, pending_ctx.doc_id_begin_);
 
       auto& docs_mask = writer.docs_mask();
 
