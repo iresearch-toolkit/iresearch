@@ -98,6 +98,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
       env:
         - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
+        - CXX_STANDARD=11
         - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
@@ -111,6 +112,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
       env:
         - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
+        - CXX_STANDARD=11
         - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
@@ -651,11 +653,6 @@ install:
   - bison --version
 
   ############################################################################
-  # Travis machines have 2 cores
-  ############################################################################
-  - JOBS=4
-
-  ############################################################################
   # Install a recent CMake (unless already installed on OS X)
   ############################################################################
   - if [[ "${CMAKE_VERSION}" == "default" ]]; then CMAKE_VERSION=3.2.2; fi
@@ -797,12 +794,12 @@ script:
           exit 1
         fi
       else
-        make -j${JOBS} iresearch-tests${BUILD_TYPE_SUFFIX}
+        make iresearch-tests${BUILD_TYPE_SUFFIX}
       fi
       # build utils
       if [[ "${STATIC_LIB}" == "true" ]]; then
-        make -j${JOBS} iresearch-index-util
-        make -j${JOBS} iresearch-benchmarks
+        make iresearch-index-util
+        make iresearch-benchmarks
       fi
       # execute tests
       ulimit -n 1024 # required for MacOS
