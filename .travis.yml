@@ -653,7 +653,7 @@ install:
   ############################################################################
   # Travis machines have 2 cores
   ############################################################################
-  - JOBS=2
+  - JOBS=4
 
   ############################################################################
   # Install a recent CMake (unless already installed on OS X)
@@ -797,12 +797,12 @@ script:
           exit 1
         fi
       else
-        make iresearch-tests${BUILD_TYPE_SUFFIX}
+        make -j${JOBS} iresearch-tests${BUILD_TYPE_SUFFIX}
       fi
       # build utils
       if [[ "${STATIC_LIB}" == "true" ]]; then
-        make iresearch-index-util
-        make iresearch-benchmarks
+        make -j${JOBS} iresearch-index-util
+        make -j${JOBS} iresearch-benchmarks
       fi
       # execute tests
       ulimit -n 1024 # required for MacOS
