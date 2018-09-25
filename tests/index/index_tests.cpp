@@ -8862,6 +8862,77 @@ TEST_F(memory_index_test, document_context) {
     ASSERT_FALSE(docsItr->next());
   }
 
+  // rollback inserts split over multiple segment_writers
+  {
+    irs::index_writer::options options;
+    options.segment_docs_max = 1; // each doc will have its own segment
+    auto writer = open_writer(irs::OM_CREATE, options);
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+
+    {
+      auto ctx = writer->documents();
+
+      {
+        auto doc = ctx.insert();
+        ASSERT_TRUE(doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end()));
+        ASSERT_TRUE(doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end()));
+      }
+      {
+        auto doc = ctx.insert();
+        ASSERT_TRUE(doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end()));
+        ASSERT_TRUE(doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end()));
+      }
+      ctx.reset();
+      {
+        auto doc = ctx.insert();
+        ASSERT_TRUE(doc.insert(irs::action::index, doc4->indexed.begin(), doc4->indexed.end()));
+        ASSERT_TRUE(doc.insert(irs::action::store, doc4->stored.begin(), doc4->stored.end()));
+      }
+    }
+
+    writer->commit();
+/* FIXME TODO fix rollback spanning over several segments
+   auto reader = iresearch::directory_reader::open(dir(), codec());
+   ASSERT_EQ(2, reader.size());
+
+   {
+      auto& segment = reader[0]; // assume 0 is id of first segment
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+      ASSERT_FALSE(docsItr->next());
+    }
+
+    {
+      auto& segment = reader[1]; // assume 1 is id of second segment
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
+      ASSERT_FALSE(docsItr->next());
+    }
+*/
+  }
+
   // rollback removals
   {
     auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
@@ -8940,6 +9011,80 @@ TEST_F(memory_index_test, document_context) {
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
     ASSERT_FALSE(docsItr->next());
+  }
+
+  // rollback removals split over multiple segment_writers
+  {
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+    irs::index_writer::options options;
+    options.segment_docs_max = 1; // each doc will have its own segment
+    auto writer = open_writer(irs::OM_CREATE, options);
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+
+    {
+      auto ctx = writer->documents();
+
+      {
+        auto doc = ctx.insert();
+        ASSERT_TRUE(doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end()));
+        ASSERT_TRUE(doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end()));
+      }
+      ctx.remove(*(query_doc1.filter));
+      {
+        auto doc = ctx.insert();
+        ASSERT_TRUE(doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end()));
+        ASSERT_TRUE(doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end()));
+      }
+      ctx.remove(*(query_doc2.filter));
+      ctx.reset();
+      {
+        auto doc = ctx.insert();
+        ASSERT_TRUE(doc.insert(irs::action::index, doc4->indexed.begin(), doc4->indexed.end()));
+        ASSERT_TRUE(doc.insert(irs::action::store, doc4->stored.begin(), doc4->stored.end()));
+      }
+    }
+
+    writer->commit();
+/* FIXME TODO fix rollback spanning over several segments
+   auto reader = iresearch::directory_reader::open(dir(), codec());
+   ASSERT_EQ(2, reader.size());
+
+   {
+      auto& segment = reader[0]; // assume 0 is id of first segment
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+      ASSERT_FALSE(docsItr->next());
+    }
+
+    {
+      auto& segment = reader[1]; // assume 1 is id of second segment
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
+      ASSERT_FALSE(docsItr->next());
+    }
+*/
   }
 
   // rollback replace (single doc)
@@ -9028,6 +9173,78 @@ TEST_F(memory_index_test, document_context) {
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
+  }
+
+  // rollback replacements (single doc) split over multiple segment_writers
+  {
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+    irs::index_writer::options options;
+    options.segment_docs_max = 1; // each doc will have its own segment
+    auto writer = open_writer(irs::OM_CREATE, options);
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+
+    {
+      auto ctx = writer->documents();
+
+      {
+        auto doc = ctx.replace(*(query_doc1.filter));
+        ASSERT_TRUE(doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end()));
+        ASSERT_TRUE(doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end()));
+      }
+      {
+        auto doc = ctx.replace(*(query_doc2.filter));
+        ASSERT_TRUE(doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end()));
+        ASSERT_TRUE(doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end()));
+      }
+      ctx.reset();
+      {
+        auto doc = ctx.insert();
+        ASSERT_TRUE(doc.insert(irs::action::index, doc4->indexed.begin(), doc4->indexed.end()));
+        ASSERT_TRUE(doc.insert(irs::action::store, doc4->stored.begin(), doc4->stored.end()));
+      }
+    }
+
+    writer->commit();
+/* FIXME TODO fix rollback spanning over several segments
+   auto reader = iresearch::directory_reader::open(dir(), codec());
+   ASSERT_EQ(2, reader.size());
+
+   {
+      auto& segment = reader[0]; // assume 0 is id of first segment
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+      ASSERT_FALSE(docsItr->next());
+    }
+
+    {
+      auto& segment = reader[1]; // assume 1 is id of second segment
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
+      ASSERT_FALSE(docsItr->next());
+    }
+*/
   }
 
   // rollback replace (functr)
@@ -9124,24 +9341,338 @@ TEST_F(memory_index_test, document_context) {
     ASSERT_FALSE(docsItr->next());
   }
 
+  // rollback replacements (functr) split over multiple segment_writers
+  {
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+    irs::index_writer::options options;
+    options.segment_docs_max = 1; // each doc will have its own segment
+    auto writer = open_writer(irs::OM_CREATE, options);
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+
+    {
+      auto ctx = writer->documents();
+
+      ctx.replace(
+        *(query_doc1.filter),
+        [&doc2](irs::segment_writer::document& doc)->bool {
+          doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
+          doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+          return false;
+        }
+      );
+      ctx.replace(
+        *(query_doc2.filter),
+        [&doc3](irs::segment_writer::document& doc)->bool {
+          doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end());
+          doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end());
+          return false;
+        }
+      );
+      ctx.reset();
+      {
+        auto doc = ctx.insert();
+        ASSERT_TRUE(doc.insert(irs::action::index, doc4->indexed.begin(), doc4->indexed.end()));
+        ASSERT_TRUE(doc.insert(irs::action::store, doc4->stored.begin(), doc4->stored.end()));
+      }
+    }
+
+    writer->commit();
+/* FIXME TODO fix rollback spanning over several segments
+   auto reader = iresearch::directory_reader::open(dir(), codec());
+   ASSERT_EQ(2, reader.size());
+
+   {
+      auto& segment = reader[0]; // assume 0 is id of first segment
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+      ASSERT_FALSE(docsItr->next());
+    }
+
+    {
+      auto& segment = reader[1]; // assume 1 is id of second segment
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
+      ASSERT_FALSE(docsItr->next());
+    }
+*/
+  }
+
   // segment flush due to memory bytes limit (same flush_context)
   {
-    // FIXME TODO implement
+    irs::index_writer::options options;
+    options.segment_memory_max = 1; // arbitaty size < 1 document (first doc will always aquire a new segment_writer)
+    auto writer = open_writer(irs::OM_CREATE, options);
+
+    {
+      auto ctx = writer->documents();
+
+      {
+        auto doc = ctx.insert();
+        ASSERT_TRUE(doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end()));
+        ASSERT_TRUE(doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end()));
+      }
+      {
+        auto doc = ctx.insert();
+        ASSERT_TRUE(doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end()));
+        ASSERT_TRUE(doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end()));
+      }
+    }
+
+    writer->commit();
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(2, reader.size());
+
+    {
+      auto& segment = reader[0]; // assume 0 is id of first segment
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+      ASSERT_FALSE(docsItr->next());
+    }
+
+    {
+      auto& segment = reader[1]; // assume 1 is id of second segment
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
+      ASSERT_FALSE(docsItr->next());
+    }
   }
 
   // segment flush due to memory bytes limit (split over different flush_contexts)
   {
-    // FIXME TODO implement
+    irs::index_writer::options options;
+    options.segment_memory_max = 1; // arbitaty size < 1 document (first doc will always aquire a new segment_writer)
+    auto writer = open_writer(irs::OM_CREATE, options);
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+/* FIXME TODO use below once segment_context will not block flush_all()
+    {
+      auto ctx = writer->documents(); // will reuse segment_context from above
+
+      {
+        auto doc = ctx.insert();
+        ASSERT_TRUE(doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end()));
+        ASSERT_TRUE(doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end()));
+      }
+      writer->commit();
+      {
+        auto doc = ctx.insert();
+        ASSERT_TRUE(doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end()));
+        ASSERT_TRUE(doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end()));
+      }
+    }
+
+    writer->commit();
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(2, reader.size());
+
+    {
+      auto& segment = reader[0]; // assume 0 is id of first segment
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+      ASSERT_FALSE(docsItr->next());
+    }
+
+    {
+      auto& segment = reader[1]; // assume 1 is id of second segment
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+      ASSERT_FALSE(docsItr->next());
+    }
+*/
   }
 
   // segment flush due to document count limit (same flush_context)
   {
-    // FIXME TODO implement
+    irs::index_writer::options options;
+    options.segment_docs_max = 1; // each doc will have its own segment
+    auto writer = open_writer(irs::OM_CREATE, options);
+
+    {
+      auto ctx = writer->documents();
+
+      {
+        auto doc = ctx.insert();
+        ASSERT_TRUE(doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end()));
+        ASSERT_TRUE(doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end()));
+      }
+      {
+        auto doc = ctx.insert();
+        ASSERT_TRUE(doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end()));
+        ASSERT_TRUE(doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end()));
+      }
+    }
+
+    writer->commit();
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(2, reader.size());
+
+    {
+      auto& segment = reader[0]; // assume 0 is id of first segment
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+      ASSERT_FALSE(docsItr->next());
+    }
+
+    {
+      auto& segment = reader[1]; // assume 1 is id of second segment
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
+      ASSERT_FALSE(docsItr->next());
+    }
   }
 
   // segment flush due to document count limit (split over different flush_contexts)
   {
-    // FIXME TODO implement
+    irs::index_writer::options options;
+    options.segment_docs_max = 1; // each doc will have its own segment
+    auto writer = open_writer(irs::OM_CREATE, options);
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+/* FIXME TODO use below once segment_context will not block flush_all()
+    {
+      auto ctx = writer->documents(); // will reuse segment_context from above
+
+      {
+        auto doc = ctx.insert();
+        ASSERT_TRUE(doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end()));
+        ASSERT_TRUE(doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end()));
+      }
+      writer->commit();
+      {
+        auto doc = ctx.insert();
+        ASSERT_TRUE(doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end()));
+        ASSERT_TRUE(doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end()));
+      }
+    }
+
+    writer->commit();
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(2, reader.size());
+
+    {
+      auto& segment = reader[0]; // assume 0 is id of first segment
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+      ASSERT_FALSE(docsItr->next());
+    }
+
+    {
+      auto& segment = reader[1]; // assume 1 is id of second segment
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+      ASSERT_FALSE(docsItr->next());
+    }
+*/
   }
 
   // reuse of same segment initially with indexed fields then with only stored fileds
@@ -12195,8 +12726,7 @@ TEST_F(memory_index_test, consolidate_single_segment) {
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
     writer->documents().remove(*query_doc1.filter);
     writer->commit();
-    ASSERT_EQ(3, irs::directory_cleaner::clean(dir())); // segments_1 + stale segment meta FIXME TODO use below once *.cs will be created lazily on
-    //ASSERT_EQ(2, irs::directory_cleaner::clean(dir())); // segments_1 + stale segment meta
+    ASSERT_EQ(3, irs::directory_cleaner::clean(dir())); // segments_1 + stale segment meta + unused column store
     ASSERT_EQ(1, iresearch::directory_reader::open(this->dir(), codec()).size());
 
     // get number of files in 1st segment
@@ -12679,8 +13209,7 @@ TEST_F(memory_index_test, segment_consolidate_long_running) {
     // remove doc1 in background
     writer->documents().remove(*query_doc1.filter);
     writer->commit(); // commit transaction
-    ASSERT_EQ(1, irs::directory_cleaner::clean(dir)); // FIXME TODO use below once *.cs will be created lazily on
-    //ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
+    ASSERT_EQ(1, irs::directory_cleaner::clean(dir)); // unused column store
 
     dir.intermediate_commits_lock.unlock(); // finish consolidation
     consolidation_thread.join(); // wait for the consolidation to complete
@@ -12819,8 +13348,7 @@ TEST_F(memory_index_test, segment_consolidate_long_running) {
     // remove doc1 in background
     writer->documents().remove(*query_doc1_doc4.filter);
     writer->commit(); // commit transaction
-    ASSERT_EQ(1, irs::directory_cleaner::clean(dir)); // FIXME TODO use below once *.cs will be created lazily on
-    //ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
+    ASSERT_EQ(1, irs::directory_cleaner::clean(dir)); //  unused column store
 
     dir.intermediate_commits_lock.unlock(); // finish consolidation
     consolidation_thread.join(); // wait for the consolidation to complete
@@ -14028,8 +14556,7 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
     writer->commit(); // commit transaction (will commit removal)
-    ASSERT_EQ(3, irs::directory_cleaner::clean(dir())); // segments_2 + stale segment 1 meta FIXME TODO use below once *.cs will be created lazily on
-    //ASSERT_EQ(2, irs::directory_cleaner::clean(dir())); // segments_2 + stale segment 1 meta
+    ASSERT_EQ(3, irs::directory_cleaner::clean(dir())); // segments_2 + stale segment 1 meta  + unused column store
 
     // check consolidating segments
     expected_consolidating_segments = { 0, 1};
@@ -14156,8 +14683,7 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
     writer->commit(); // commit transaction (will commit removal)
-    ASSERT_EQ(4, irs::directory_cleaner::clean(dir())); // segments_2 + stale segment 1 meta + stale segment 2 meta FIXME TODO use below once *.cs will be created lazily on
-    //ASSERT_EQ(3, irs::directory_cleaner::clean(dir())); // segments_2 + stale segment 1 meta + stale segment 2 meta
+    ASSERT_EQ(4, irs::directory_cleaner::clean(dir())); // segments_2 + stale segment 1 meta + stale segment 2 meta + unused column store
 
     // check consolidating segments
     expected_consolidating_segments = { 0, 1 };
@@ -14292,8 +14818,7 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
       doc5->stored.begin(), doc5->stored.end()
     ));
     writer->commit(); // commit transaction (will commit removal)
-    ASSERT_EQ(4, irs::directory_cleaner::clean(dir())); // segments_2 + stale segment 1 meta + stale segment 2 meta FIXME TODO use below once *.cs will be created lazily on
-    //ASSERT_EQ(3, irs::directory_cleaner::clean(dir())); // segments_2 + stale segment 1 meta + stale segment 2 meta
+    ASSERT_EQ(4, irs::directory_cleaner::clean(dir())); // segments_2 + stale segment 1 meta + stale segment 2 meta + unused column store
 
     // check consolidating segments
     expected_consolidating_segments = { 0, 1 };
@@ -14456,8 +14981,7 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
 
     writer->documents().remove(*query_doc1_doc4.filter);
     writer->commit(); // commit pending merge + removal
-    ASSERT_EQ(count+6, irs::directory_cleaner::clean(dir())); // +1 for segments, +1 for segment 1 doc mask, +1 for segment 1 meta, +1 for segment 2 doc mask, +1 for segment 2 meta FIXME TODO use below once *.cs will be created lazily on
-    //ASSERT_EQ(count+5, irs::directory_cleaner::clean(dir())); // +1 for segments, +1 for segment 1 doc mask, +1 for segment 1 meta, +1 for segment 2 doc mask, +1 for segment 2 meta
+    ASSERT_EQ(count+6, irs::directory_cleaner::clean(dir())); // +1 for segments, +1 for segment 1 doc mask, +1 for segment 1 meta, +1 for segment 2 doc mask, +1 for segment 2 meta + unused column store
 
     // check consolidating segments
     expected_consolidating_segments = { };
@@ -14639,8 +15163,7 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
     expected_consolidating_segments = { };
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
-    ASSERT_EQ(num_files_consolidation_segment+num_files_segment_2+2, irs::directory_cleaner::clean(dir())); // +1 for segments_2,FIXME TODO use below once *.cs will be created lazily on
-    //ASSERT_EQ(num_files_consolidation_segment+num_files_segment_2+1, irs::directory_cleaner::clean(dir())); // +1 for segments_2,
+    ASSERT_EQ(num_files_consolidation_segment+num_files_segment_2+2, irs::directory_cleaner::clean(dir())); // +2 for segments_2 + unused column store
 
     // validate structure (doesn't take removals into account)
     tests::index_t expected;

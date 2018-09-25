@@ -508,7 +508,6 @@ index_writer::flush_context_ptr index_writer::documents_context::update_segment(
   }
 
   auto& segment = segments_.back();
-
   // FIXME TODO when flushing segment, flush to repository, track meta to be added to to imported segments, then reuse same writer
   if (!segment.ctx() // no segment (lazy initialized)
       || segment.ctx()->dirty_
@@ -518,6 +517,7 @@ index_writer::flush_context_ptr index_writer::documents_context::update_segment(
           && writer_.segment_limits_.segment_memory_max <= segment.ctx()->writer_->memory()) // too much memory
       || type_limits<type_t::doc_id_t>::eof(segment.ctx()->writer_->docs_cached())) { // segment full
     segments_.emplace_back(writer_.get_segment_context(*ctx));
+    //FIXME TODO for rollback need to track uncomitted portion of previous segments
   }
 
   return ctx;
