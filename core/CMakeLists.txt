@@ -75,6 +75,12 @@ source_group("search" ./search/*)
 source_group("store" ./store/*)
 source_group("utils" ./utils/*)
 
+if (USE_OPTIMIZE_FOR_ARCHITECTURE)
+  set(IResearch_core_optimized_sources
+    ./store/store_utils_optimized.cpp
+  )
+endif()
+
 set(IResearch_core_sources
   ./utils/string.cpp 
   ./analysis/analyzer.cpp
@@ -131,7 +137,6 @@ set(IResearch_core_sources
   ./store/mmap_directory.cpp
   ./store/memory_directory.cpp 
   ./store/store_utils.cpp 
-  ./store/store_utils_optimized.cpp
   ./utils/async_utils.cpp
   ./utils/attributes.cpp 
   ./utils/bit_packing.cpp 
@@ -155,6 +160,7 @@ set(IResearch_core_sources
   ./utils/cpuinfo.cpp
   ./utils/numeric_utils.cpp
   ${IResearch_core_os_specific_sources}
+  ${IResearch_core_optimized_sources}
 )
 
 set(IResearch_core_headers
