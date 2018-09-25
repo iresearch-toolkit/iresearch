@@ -300,14 +300,20 @@ class IRESEARCH_API index_writer : util::noncopyable {
       auto& writer = *(segment->writer_);
       segment_writer::document doc(writer);
       std::exception_ptr exception;
-      bitvector rollback; // doc_ids to roll back on failure
+      bitvector rollback; // doc_ids to roll back on failure for this specific replace(..) operation
       auto update = segment->make_update_context(std::forward<Filter>(filter));
 
       try {
         for(;;) {
+          typedef type_limits<type_t::doc_id_t> doc_limits;
+          assert(segment->uncomitted_doc_ids_ <= writer.docs_cached());
+          auto rollback_extra =
+            writer.docs_cached() - segment->uncomitted_doc_ids_; // ensure reset() will be noexcept
+
           rollback.set(writer.docs_cached());
 
-          if (type_limits<type_t::doc_id_t>::eof(writer.begin(update, rollback.count() - 1))) {
+          if (doc_limits::eof(writer.docs_cached())
+              || doc_limits::eof(writer.begin(update, rollback_extra))) {
             break; // the segment cannot fit any more docs, must roll back
           }
 
@@ -352,8 +358,9 @@ class IRESEARCH_API index_writer : util::noncopyable {
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief revert all pending document modifications and release resources
+    /// @note noexcept because all insertions reserve enough space for rollback
     ////////////////////////////////////////////////////////////////////////////
-    void reset();
+    void reset() NOEXCEPT;
 
    private:
     std::vector<flush_segment_context_ref> segments_; // all pending segments of this document_context (back() is the active segment)

@@ -418,8 +418,12 @@ index_writer::documents_context::document::document(
   assert(ctx);
   assert(segment_);
   assert(segment_->writer_);
+  assert(segment->uncomitted_doc_ids_ <= segment_->writer_->docs_cached());
   segment_->busy_ = true; // guarded by flush_context::flush_mutex_
-  segment_->writer_->begin(update);
+  segment_->writer_->begin(
+    update,
+    segment_->writer_->docs_cached() - segment->uncomitted_doc_ids_ // ensure reset() will be noexcept
+  );
   segment_->buffered_docs.store(segment_->writer_->docs_cached());
 }
 
@@ -458,8 +462,36 @@ index_writer::documents_context::~documents_context() {
   }
 }
 
-void index_writer::documents_context::reset() {
-  // FIXME TODO implement full rollback
+void index_writer::documents_context::reset() NOEXCEPT {
+  if (segments_.empty()) {
+    return; // nothing to reset
+  }
+
+  auto& segment = segments_.back().ctx();
+
+  if (!segment || !segment->writer_) {
+    return; // nothing to reset
+  }
+
+  auto& writer = *(segment->writer_);
+
+  assert(integer_traits<doc_id_t>::const_max >= writer.docs_cached());
+
+  // rollback document insertions
+  for (auto i = segment->uncomitted_doc_ids_,
+       count = doc_id_t(writer.docs_cached());
+       i < count;
+       ++i) {
+    writer.remove(i); // expects 0-based doc_id
+  }
+
+  // rollback modification queries
+  for (auto i = segment->uncomitted_modification_queries_,
+       count = segment->modification_queries_.size();
+       i < count;
+       ++i) {
+    segment->modification_queries_[i].filter = nullptr; // mark invalid
+  }
 }
 
 index_writer::flush_context_ptr index_writer::documents_context::update_segment() {

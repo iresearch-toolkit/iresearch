@@ -8402,6 +8402,7 @@ TEST_F(memory_index_test, document_context) {
   tests::document const* doc1 = gen.next();
   tests::document const* doc2 = gen.next();
   tests::document const* doc3 = gen.next();
+  tests::document const* doc4 = gen.next();
 
   struct {
     std::condition_variable cond;
@@ -8538,7 +8539,7 @@ TEST_F(memory_index_test, document_context) {
     });
 
     ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); // verify commit() finishes
-    { irs::index_writer::documents_context tmp(std::move(ctx)); } // release ctx before join() in case of test failure
+    { irs::index_writer::documents_context(std::move(ctx)); } // release ctx before join() in case of test failure
     thread1.join();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -8696,24 +8697,431 @@ TEST_F(memory_index_test, document_context) {
     ASSERT_FALSE(docsItr->next());
   }
 
+  // rollback empty
+  {
+    auto writer = open_writer();
+
+    {
+      auto ctx = writer->documents();
+
+      ctx.reset();
+      {
+        auto doc = ctx.insert();
+        ASSERT_TRUE(doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end()));
+        ASSERT_TRUE(doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end()));
+      }
+    }
+
+    writer->commit();
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
+    auto terms = segment.field("same");
+    ASSERT_NE(nullptr, terms);
+    auto termItr = terms->iterator();
+    ASSERT_TRUE(termItr->next());
+    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    ASSERT_TRUE(docsItr->next());
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+    ASSERT_FALSE(docsItr->next());
+  }
+
+  // rollback inserts
+  {
+    auto writer = open_writer();
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+
+    {
+      auto ctx = writer->documents();
+
+      {
+        auto doc = ctx.insert();
+        ASSERT_TRUE(doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end()));
+        ASSERT_TRUE(doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end()));
+      }
+      ctx.reset();
+    }
+
+    writer->commit();
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
+    auto terms = segment.field("same");
+    ASSERT_NE(nullptr, terms);
+    auto termItr = terms->iterator();
+    ASSERT_TRUE(termItr->next());
+    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    ASSERT_TRUE(docsItr->next());
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+    ASSERT_FALSE(docsItr->next());
+  }
+
   // rollback inserts + some more
   {
-    // FIXME TODO implement
+    auto writer = open_writer();
+
+    {
+      auto ctx = writer->documents();
+
+      {
+        auto doc = ctx.insert();
+        ASSERT_TRUE(doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end()));
+        ASSERT_TRUE(doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end()));
+      }
+      ctx.reset();
+      {
+        auto doc = ctx.insert();
+        ASSERT_TRUE(doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end()));
+        ASSERT_TRUE(doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end()));
+      }
+    }
+
+    writer->commit();
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
+    auto terms = segment.field("same");
+    ASSERT_NE(nullptr, terms);
+    auto termItr = terms->iterator();
+    ASSERT_TRUE(termItr->next());
+    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    ASSERT_TRUE(docsItr->next());
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
+    ASSERT_FALSE(docsItr->next());
+  }
+
+  // rollback multiple inserts + some more
+  {
+    auto writer = open_writer();
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+
+    {
+      auto ctx = writer->documents();
+
+      {
+        auto doc = ctx.insert();
+        ASSERT_TRUE(doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end()));
+        ASSERT_TRUE(doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end()));
+      }
+      ctx.reset();
+      {
+        auto doc = ctx.insert();
+        ASSERT_TRUE(doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end()));
+        ASSERT_TRUE(doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end()));
+      }
+      ctx.reset();
+      {
+        auto doc = ctx.insert();
+        ASSERT_TRUE(doc.insert(irs::action::index, doc4->indexed.begin(), doc4->indexed.end()));
+        ASSERT_TRUE(doc.insert(irs::action::store, doc4->stored.begin(), doc4->stored.end()));
+      }
+    }
+
+    writer->commit();
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
+    auto terms = segment.field("same");
+    ASSERT_NE(nullptr, terms);
+    auto termItr = terms->iterator();
+    ASSERT_TRUE(termItr->next());
+    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    ASSERT_TRUE(docsItr->next());
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+    ASSERT_TRUE(docsItr->next());
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
+    ASSERT_FALSE(docsItr->next());
+  }
+
+  // rollback removals
+  {
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto writer = open_writer();
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+
+    {
+      auto ctx = writer->documents();
+
+      ctx.remove(*(query_doc1.filter));
+      ctx.reset();
+    }
+
+    writer->commit();
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
+    auto terms = segment.field("same");
+    ASSERT_NE(nullptr, terms);
+    auto termItr = terms->iterator();
+    ASSERT_TRUE(termItr->next());
+    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    ASSERT_TRUE(docsItr->next());
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+    ASSERT_FALSE(docsItr->next());
   }
 
   // rollback removals + some more
   {
-    // FIXME TODO implement
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto writer = open_writer();
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+
+    {
+      auto ctx = writer->documents();
+
+      ctx.remove(*(query_doc1.filter));
+      ctx.reset();
+      {
+        auto doc = ctx.insert();
+        ASSERT_TRUE(doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end()));
+        ASSERT_TRUE(doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end()));
+      }
+    }
+
+    writer->commit();
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
+    auto terms = segment.field("same");
+    ASSERT_NE(nullptr, terms);
+    auto termItr = terms->iterator();
+    ASSERT_TRUE(termItr->next());
+    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    ASSERT_TRUE(docsItr->next());
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+    ASSERT_TRUE(docsItr->next());
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
+    ASSERT_FALSE(docsItr->next());
   }
 
   // rollback replace (single doc)
   {
-    // FIXME TODO implement
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto writer = open_writer();
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+
+    {
+      auto ctx = writer->documents();
+
+      {
+        auto doc = ctx.replace(*(query_doc1.filter));
+        ASSERT_TRUE(doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end()));
+        ASSERT_TRUE(doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end()));
+      }
+      ctx.reset();
+    }
+
+    writer->commit();
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
+    auto terms = segment.field("same");
+    ASSERT_NE(nullptr, terms);
+    auto termItr = terms->iterator();
+    ASSERT_TRUE(termItr->next());
+    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    ASSERT_TRUE(docsItr->next());
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+    ASSERT_FALSE(docsItr->next());
+  }
+
+  // rollback replace (single doc) + some more
+  {
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto writer = open_writer();
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+
+    {
+      auto ctx = writer->documents();
+
+      {
+        auto doc = ctx.replace(*(query_doc1.filter));
+        ASSERT_TRUE(doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end()));
+        ASSERT_TRUE(doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end()));
+      }
+      ctx.reset();
+      {
+        auto doc = ctx.insert();
+        ASSERT_TRUE(doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end()));
+        ASSERT_TRUE(doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end()));
+      }
+    }
+
+    writer->commit();
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
+    auto terms = segment.field("same");
+    ASSERT_NE(nullptr, terms);
+    auto termItr = terms->iterator();
+    ASSERT_TRUE(termItr->next());
+    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    ASSERT_TRUE(docsItr->next());
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+    ASSERT_TRUE(docsItr->next());
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+    ASSERT_FALSE(docsItr->next());
   }
 
   // rollback replace (functr)
   {
-    // FIXME TODO implement
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto writer = open_writer();
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+
+    {
+      auto ctx = writer->documents();
+
+      ctx.replace(
+        *(query_doc1.filter),
+        [&doc2](irs::segment_writer::document& doc)->bool {
+          doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
+          doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+          return false;
+        }
+      );
+      ctx.reset();
+    }
+
+    writer->commit();
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
+    auto terms = segment.field("same");
+    ASSERT_NE(nullptr, terms);
+    auto termItr = terms->iterator();
+    ASSERT_TRUE(termItr->next());
+    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    ASSERT_TRUE(docsItr->next());
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+    ASSERT_FALSE(docsItr->next());
+  }
+
+  // rollback replace (functr) + some more
+  {
+    auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
+    auto writer = open_writer();
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+
+    {
+      auto ctx = writer->documents();
+
+      ctx.replace(
+        *(query_doc1.filter),
+        [&doc2](irs::segment_writer::document& doc)->bool {
+          doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
+          doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+          return false;
+        }
+      );
+      ctx.reset();
+      {
+        auto doc = ctx.insert();
+        ASSERT_TRUE(doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end()));
+        ASSERT_TRUE(doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end()));
+      }
+    }
+
+    writer->commit();
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
+    auto terms = segment.field("same");
+    ASSERT_NE(nullptr, terms);
+    auto termItr = terms->iterator();
+    ASSERT_TRUE(termItr->next());
+    auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+    ASSERT_TRUE(docsItr->next());
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
+    ASSERT_TRUE(docsItr->next());
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+    ASSERT_FALSE(docsItr->next());
   }
 
   // segment flush due to memory bytes limit (same flush_context)
