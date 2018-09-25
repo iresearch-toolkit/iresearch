@@ -452,7 +452,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
   /// @note segment_writer::doc_contexts[...uncomitted_document_contexts_): generation == flush_context::generation
   /// @note segment_writer::doc_contexts[uncomitted_document_contexts_...]: generation == local generation (updated when segment_context registered once again with flush_context)
   //////////////////////////////////////////////////////////////////////////////
-  struct segment_context {
+  struct IRESEARCH_API segment_context {
     DECLARE_SHARED_PTR(segment_context);
     std::atomic<size_t> buffered_docs; // for use with index_writer::buffered_docs() asynchronous call
     bool busy_; // true when in use by one of the documents() operations (insert/replace), guarded by the flush_context::flush_mutex_ (during set) and flush_context::mutex_ (during unset to allow notify)
