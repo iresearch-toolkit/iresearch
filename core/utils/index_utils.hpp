@@ -45,8 +45,12 @@ IRESEARCH_API index_writer::consolidation_policy_t consolidate_fill(float fill_t
 
 void read_document_mask(document_mask& docs_mask, const directory& dir, const segment_meta& meta);
 
-// returns filename
-std::string write_segment_meta(directory& dir, const segment_meta& meta);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief writes segment_meta to the supplied directory
+///        updates index_meta::index_segment_t::filename to the segment filename
+///        updates segment_meta::size to the size of files written
+////////////////////////////////////////////////////////////////////////////////
+void write_index_segment(directory& dir, index_meta::index_segment_t& segment);
 
 NS_END
 NS_END

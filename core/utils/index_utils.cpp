@@ -271,28 +271,23 @@ void read_document_mask(
   reader->read(dir, meta, docs_mask);
 }
 
-std::string write_segment_meta(
-    directory& dir,
-    const segment_meta& meta
-) {
-  assert(meta.codec);
-  assert(!meta.size); // assume segment size will be calculated in a single place, here
-  auto segment = meta;
+void write_index_segment(directory& dir, index_meta::index_segment_t& segment) {
+  assert(segment.meta.codec);
+  assert(!segment.meta.size); // assume segment size will be calculated in a single place, here
 
   // estimate meta segment size
-  for (auto& filename: meta.files) {
+  for (auto& filename: segment.meta.files) {
     size_t size;
 
     if (dir.length(size, filename)) {
-      segment.size += size;
+      segment.meta.size += size;
     }
   }
 
-  auto writer = meta.codec->get_segment_meta_writer();
+  auto writer = segment.meta.codec->get_segment_meta_writer();
 
-  writer->write(dir, segment);
-
-  return writer->filename(meta);
+  segment.filename = writer->filename(segment.meta);
+  writer->write(dir, segment.meta);
 }
 
 NS_END // index_utils

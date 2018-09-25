@@ -1020,7 +1020,7 @@ bool index_writer::consolidate(
   }
 
   // we do not persist segment meta since some removals may come later
-  if (!merger.flush(consolidation_segment.filename, consolidation_segment.meta, false)) {
+  if (!merger.flush(consolidation_segment, false)) {
     return false; // nothing to consolidate or consolidation failure
   }
 
@@ -1052,16 +1052,10 @@ bool index_writer::consolidate(
       SCOPED_LOCK(ctx->mutex_); // lock due to context modification
 
       lock.unlock(); // can release commit lock, we guarded against commit by locked flush context
-
-      // persist segment meta
-      consolidation_segment.filename = index_utils::write_segment_meta(
-        dir, consolidation_segment.meta
-      );
-
+      index_utils::write_index_segment(dir, consolidation_segment); // persist segment meta
       ctx->segment_mask_.reserve(
         ctx->segment_mask_.size() + candidates.size()
       );
-
       ctx->pending_segments_.emplace_back(
         std::move(consolidation_segment),
         0, // deletes must be applied to the consolidated segment
@@ -1113,15 +1107,10 @@ bool index_writer::consolidate(
         }
       }
 
-      // persist segment meta
-      consolidation_segment.filename = index_utils::write_segment_meta(
-        dir, consolidation_segment.meta
-      );
-
+      index_utils::write_index_segment(dir, consolidation_segment);// persist segment meta
       ctx->segment_mask_.reserve(
         ctx->segment_mask_.size() + candidates.size()
       );
-
       ctx->pending_segments_.emplace_back(
         std::move(consolidation_segment),
         0, // deletes must be applied to the consolidated segment
@@ -1164,7 +1153,7 @@ bool index_writer::import(const index_reader& reader, format::ptr codec /*= null
     merger.add(segment);
   }
 
-  if (!merger.flush(segment.filename, segment.meta)) {
+  if (!merger.flush(segment)) {
     return false; // import failure (no files created, nothing to clean up)
   }
 
@@ -1366,7 +1355,8 @@ index_writer::pending_context_t index_writer::flush_all() {
       }
 
       to_sync.register_partial_sync(segment_id, write_document_mask(dir, segment.meta, docs_mask));
-      segment.filename = index_utils::write_segment_meta(dir, segment.meta); // write with new mask
+      segment.meta.size = 0; // reset for new write
+      index_utils::write_index_segment(dir, segment); // write with new mask
     }
   }
 
@@ -1475,9 +1465,7 @@ index_writer::pending_context_t index_writer::flush_all() {
 
     // persist segment meta
     if (pending_consolidation) {
-      pending_segment.segment.filename = index_utils::write_segment_meta(
-        dir, pending_segment.segment.meta
-      );
+      index_utils::write_index_segment(dir, pending_segment.segment);
     }
 
     // register full segment sync
@@ -1594,16 +1582,17 @@ index_writer::pending_context_t index_writer::flush_all() {
         continue;
       }
 
+      index_meta::index_segment_t index_segment;
+
       // write non-empty document mask
       if (!docs_mask.empty()) {
         write_document_mask(dir, segment.flushed_meta_, docs_mask);
-        segment_ctx.filename_ =
-          index_utils::write_segment_meta(dir, segment.flushed_meta_); // write with new mask
+        index_segment.meta = segment.flushed_meta_; // make updated copy after document_mask write
+        index_utils::write_index_segment(dir, index_segment); // write with new mask
+      } else {
+        index_segment.filename = std::move(segment_ctx.filename_);
+        index_segment.meta = segment.flushed_meta_;
       }
-
-      index_meta::index_segment_t index_segment(segment_meta(segment.flushed_meta_));
-
-      index_segment.filename = std::move(segment_ctx.filename_);
 
       // register full segment sync
       to_sync.register_full_sync(segments.size());
