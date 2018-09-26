@@ -180,12 +180,7 @@ class array : private util::noncopyable {
   }
 
  private:
-#if defined(_MSC_VER) && _MSC_VER < 1900
-  ALIGNAS(ALIGNOF(T)) struct
-#else
-  struct ALIGNAS(ALIGNOF(T))
-#endif
-  align_t { };
+  struct ALIGNAS(std::alignment_of<T>::value) align_t { };
 
   // can't use std::aligned_storage on MSVC before 15.8
   // because of the bug with the alignment
