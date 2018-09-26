@@ -257,12 +257,14 @@ TEST(container_utils_array_tests, check_alignment) {
     "wrong data alignment"
   );
 
+#if !(defined(__GNUC__) && (__GNUC__ == 4 && __GNUC_MINOR__ < 9))
   typedef irs::container_utils::array<std::max_align_t, 5> array_aligned_max_t;
 
   static_assert(
     ALIGNOF(array_aligned_max_t) == ALIGNOF(std::max_align_t),
     "wrong data alignment"
   );
+#endif // GCC4.8 doesn't have std::max_align_t
 
   struct ALIGNAS(16) aligned16 { char c; };
   typedef irs::container_utils::array<aligned16, 5> array_aligned16_t;

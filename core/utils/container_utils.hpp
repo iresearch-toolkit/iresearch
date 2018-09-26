@@ -180,10 +180,12 @@ class array : private util::noncopyable {
   }
 
  private:
+  struct ALIGNAS(ALIGNOF(T)) align_t { };
+
   // can't use std::aligned_storage on MSVC before 15.8
   // because of the bug with the alignment
   union {
-    struct ALIGNAS(ALIGNOF(T)) { } align_;
+    align_t align_;
     byte_type data_[sizeof(T)*Size];
   };
 }; // array
