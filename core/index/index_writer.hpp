@@ -300,15 +300,17 @@ class IRESEARCH_API index_writer : util::noncopyable {
       auto& writer = *(segment->writer_);
       segment_writer::document doc(writer);
       std::exception_ptr exception;
-      bitvector rollback; // doc_ids to roll back on failure for this specific replace(..) operation
+      bitvector rollback; // 0-based offsets to roll back on failure for this specific replace(..) operation
       auto update = segment->make_update_context(std::forward<Filter>(filter));
 
       try {
         for(;;) {
           typedef type_limits<type_t::doc_id_t> doc_limits;
-          assert(segment->uncomitted_doc_ids_ <= writer.docs_cached());
+          assert(segment->uncomitted_doc_id_begin_ <= writer.docs_cached() + type_limits<type_t::doc_id_t>::min());
           auto rollback_extra =
-            writer.docs_cached() - segment->uncomitted_doc_ids_; // ensure reset() will be noexcept
+            writer.docs_cached() + type_limits<type_t::doc_id_t>::min()
+            - segment->uncomitted_doc_id_begin_
+            ; // ensure reset() will be noexcept
 
           rollback.set(writer.docs_cached());
 
@@ -343,7 +345,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
       for (auto i = rollback.size(); i && rollback.any();) {
         if (rollback.test(--i)) {
           rollback.unset(i); // if new doc_ids at end this allows to terminate 'for' earlier
-          writer.remove(i);
+          writer.remove(i + type_limits<type_t::doc_id_t>::min()); // convert to doc_id
         }
       }
 
@@ -460,7 +462,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
     ref_tracking_directory dir_; // ref tracking for segment_writer to allow for easy ref removal on segment_writer reset
     segment_meta flushed_meta_; // previously flushed segment (used to merge document masks of head and tail segment)
     std::vector<modification_context> modification_queries_; // sequential list of pending modification requests (remove/update)
-    doc_id_t uncomitted_doc_ids_; // starting doc_id in 'segment_writer::doc_contexts' that is not part of the current flush_context
+    doc_id_t uncomitted_doc_id_begin_; // starting doc_id in 'segment_writer::doc_contexts' that is not part of the current flush_context
     size_t uncomitted_generation_offset_; // current modification/update generation offset for asignment to uncommited operations
     size_t uncomitted_modification_queries_; // staring offset in 'modification_queries_' that is not part of the current flush_context
     segment_writer::ptr writer_;

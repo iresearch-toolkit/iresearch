@@ -146,7 +146,7 @@ bool add_document_mask_modified_records(
   assert(segment.writer_);
   auto& writer = *(segment.writer_);
 
-  assert(segment.uncomitted_doc_ids_ <= writer.docs_cached());
+  assert(segment.uncomitted_doc_id_begin_ <= writer.docs_cached() + irs::type_limits<irs::type_t::doc_id_t>::min());
 
   for (auto itr = modifications_begin; itr != modifications_end; ++itr) {
     auto& modification = *itr;
@@ -158,11 +158,10 @@ bool add_document_mask_modified_records(
     auto prepared = modification.filter->prepare(reader);
 
     for (auto itr = prepared->execute(reader); itr->next();) {
-      auto seg_doc_id =
-        itr->value() - (irs::type_limits<irs::type_t::doc_id_t>::min)(); // 0-based
+      auto seg_doc_id = itr->value();
 
       if (seg_doc_id < min_doc_id
-          || seg_doc_id >= segment.uncomitted_doc_ids_) {
+          || seg_doc_id >= segment.uncomitted_doc_id_begin_) {
         continue; // doc_id is not part of the current flush_context
       }
 
@@ -209,11 +208,11 @@ bool add_document_mask_unused_updates(
   assert(segment.writer_);
   auto& writer = *(segment.writer_);
 
-  assert(min_doc_id <= segment.uncomitted_doc_ids_);
-  assert(segment.uncomitted_doc_ids_ <= writer.docs_cached());
+  assert(min_doc_id <= segment.uncomitted_doc_id_begin_);
+  assert(segment.uncomitted_doc_id_begin_ <= writer.docs_cached() + irs::type_limits<irs::type_t::doc_id_t>::min());
 
-  for (auto doc_id = min_doc_id, count = segment.uncomitted_doc_ids_;
-       doc_id < count;
+  for (auto doc_id = min_doc_id, doc_id_end = segment.uncomitted_doc_id_begin_;
+       doc_id < doc_id_end;
        ++doc_id) {
     auto& doc_ctx = writer.doc_context(doc_id);
 
@@ -418,12 +417,13 @@ index_writer::documents_context::document::document(
   assert(ctx);
   assert(segment_);
   assert(segment_->writer_);
-  assert(segment->uncomitted_doc_ids_ <= segment_->writer_->docs_cached());
+  assert(segment->uncomitted_doc_id_begin_ <= segment_->writer_->docs_cached() + type_limits<type_t::doc_id_t>::min());
+  auto rollback_extra =
+    segment_->writer_->docs_cached() + type_limits<type_t::doc_id_t>::min()
+    - segment->uncomitted_doc_id_begin_
+    ;
   segment_->busy_ = true; // guarded by flush_context::flush_mutex_
-  segment_->writer_->begin(
-    update,
-    segment_->writer_->docs_cached() - segment->uncomitted_doc_ids_ // ensure reset() will be noexcept
-  );
+  segment_->writer_->begin(update, rollback_extra); // ensure reset() will be noexcept
   segment_->buffered_docs.store(segment_->writer_->docs_cached());
 }
 
@@ -475,11 +475,11 @@ void index_writer::documents_context::reset() NOEXCEPT {
     assert(integer_traits<doc_id_t>::const_max >= writer.docs_cached());
 
     // rollback document insertions
-    for (auto i = ctx->uncomitted_doc_ids_,
-         count = doc_id_t(writer.docs_cached());
-         i < count;
-         ++i) {
-      writer.remove(i); // expects 0-based doc_id
+    for (auto doc_id = ctx->uncomitted_doc_id_begin_,
+         doc_id_end = doc_id_t(writer.docs_cached() + type_limits<type_t::doc_id_t>::min());
+         doc_id < doc_id_end;
+         ++doc_id) {
+      writer.remove(doc_id);
     }
 
     // rollback modification queries
@@ -538,7 +538,7 @@ void index_writer::flush_context::emplace(flush_segment_context_ref&& segment) {
     if (!segment.flush_ctx_) { // FIXME TODO use below once col_writer tail is fixed to flush() multiple times without overwrite
     //if (this != segment.flush_ctx_ || ctx.dirty_) {
       pending_segment_contexts_.emplace_back(pending_segment_context{
-        ctx.uncomitted_doc_ids_,
+        ctx.uncomitted_doc_id_begin_,
         ctx.uncomitted_modification_queries_,
         segment.ctx_
       });
@@ -569,11 +569,12 @@ void index_writer::flush_context::emplace(flush_segment_context_ref&& segment) {
   auto& writer = *(ctx.writer_);
 
   // update generations of segment_writer::doc_contexts
-  for (auto i = ctx.uncomitted_doc_ids_, count = doc_id_t(writer.docs_cached());
-       i < count;
-       ++i) {
-    assert(writer.doc_context(i).generation < modification_count);
-    writer.doc_context(i).generation += generation_base; // update to flush_context generation
+  for (auto doc_id = ctx.uncomitted_doc_id_begin_,
+       doc_id_end = doc_id_t(writer.docs_cached() + type_limits<type_t::doc_id_t>::min());
+       doc_id < doc_id_end;
+       ++doc_id) {
+    assert(writer.doc_context(doc_id).generation < modification_count);
+    writer.doc_context(doc_id).generation += generation_base; // update to flush_context generation
   }
 
   // update generations of modification_queries_
@@ -590,7 +591,8 @@ void index_writer::flush_context::emplace(flush_segment_context_ref&& segment) {
   // ...........................................................................
 
   ctx.uncomitted_generation_offset_ = 0;
-  ctx.uncomitted_doc_ids_ = writer.docs_cached();
+  ctx.uncomitted_doc_id_begin_ =
+    writer.docs_cached() + type_limits<type_t::doc_id_t>::min();
   ctx.uncomitted_modification_queries_ = ctx.modification_queries_.size();
 }
 
@@ -612,7 +614,7 @@ index_writer::segment_context::segment_context(directory& dir)
     busy_(false),
     dirty_(false),
     dir_(dir),
-    uncomitted_doc_ids_(0),
+    uncomitted_doc_id_begin_(type_limits<type_t::doc_id_t>::min()),
     uncomitted_generation_offset_(0),
     uncomitted_modification_queries_(0),
     writer_(segment_writer::make(dir_)) {
@@ -710,7 +712,7 @@ void index_writer::segment_context::reset() {
   dir_.clear_refs();
   flushed_meta_ = segment_meta();
   modification_queries_.clear();
-  uncomitted_doc_ids_ = 0;
+  uncomitted_doc_id_begin_ = type_limits<type_t::doc_id_t>::min();
   uncomitted_generation_offset_ = 0;
   uncomitted_modification_queries_ = 0;
   writer_->reset();
