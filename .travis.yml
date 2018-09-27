@@ -653,6 +653,12 @@ install:
   - bison --version
 
   ############################################################################
+  # All the dependencies are installed in ${TRAVIS_BUILD_DIR}/deps/
+  ############################################################################
+  - DEPS_DIR="${TRAVIS_BUILD_DIR}/deps"
+  - mkdir -p ${DEPS_DIR} && cd ${DEPS_DIR}
+
+  ############################################################################
   # Install a recent CMake (unless already installed on OS X)
   ############################################################################
   - |
@@ -667,12 +673,6 @@ install:
     fi
   - which cmake
   - cmake --version
-
-  ############################################################################
-  # All the dependencies are installed in ${TRAVIS_BUILD_DIR}/deps/
-  ############################################################################
-  - DEPS_DIR="${TRAVIS_BUILD_DIR}/deps"
-  - mkdir -p ${DEPS_DIR} && cd ${DEPS_DIR}
 
   ############################################################################
   # Setup default versions and override compiler if needed
