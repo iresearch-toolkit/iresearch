@@ -180,11 +180,12 @@ class array : private util::noncopyable {
   }
 
  private:
-  // can't use std::aligned_storage on 
+  // can't use std::aligned_storage on
   // - MSVC 2013
   // - MSVC 2017 before 15.8
   // because of the bug with the alignment
-  DEFINE_ALIGNED_STRUCT(align_t, ALIGNOF(T));
+  static CONSTEXPR const auto ALIGNMENT = ALIGNOF(T);
+  DEFINE_ALIGNED_STRUCT(align_t, ALIGNMENT);
 
   union {
     align_t align_;
