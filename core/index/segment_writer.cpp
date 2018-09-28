@@ -149,12 +149,16 @@ bool segment_writer::flush(std::string& filename, segment_meta& meta) {
 
   // flush columnstore and columns indices
   if (col_writer_->flush() && !columns_.empty()) {
-    static struct less_t {
-      bool operator()(const column* lhs, const column* rhs) {
+    struct less_t {
+      bool operator()(
+          const column* lhs,
+          const column* rhs
+      ) const NOEXCEPT {
         return lhs->name < rhs->name;
       };
-    } less;
-    std::set<const column*, decltype(less)> columns(less);
+    };
+
+    std::set<const column*, less_t> columns;
 
     // ensure columns are sorted
     for (auto& entry : columns_) {
