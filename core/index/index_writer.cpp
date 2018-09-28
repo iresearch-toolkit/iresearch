@@ -38,6 +38,7 @@
 
 NS_LOCAL
 
+typedef irs::type_limits<irs::type_t::doc_id_t> doc_limits;
 const size_t NON_UPDATE_RECORD = irs::integer_traits<size_t>::const_max; // non-update
 
 std::vector<irs::index_file_refs::ref_t> extract_refs(
@@ -128,25 +129,29 @@ template<typename ModificationItr>
 bool add_document_mask_modified_records(
     ModificationItr modifications_begin, // where to get document update_contexts from (start)
     ModificationItr modifications_end, // where to get document update_contexts from (end)
-    irs::index_writer::segment_context& segment, // where to apply document removals to
-    irs::doc_id_t min_doc_id, // staring doc_id in 'segment_writer::doc_contexts' that should be considered in the range [min_doc_id, uncomitted_document_contexts_)
-    irs::readers_cache& readers // where to get segment readers from
+    irs::document_mask& docs_mask, // where to apply document removals to
+    irs::readers_cache& readers, // where to get segment readers from
+    irs::segment_meta& meta, // key used to get reader for the segment to evaluate
+    irs::doc_id_t doc_id_begin, // staring doc_id in 'meta' that should be considered in the range [doc_id_begin, doc_id_end)
+    irs::doc_id_t doc_id_end, // ending doc_id in 'meta' that should be considered in the range [doc_id_begin, doc_id_end)
+    const std::vector<irs::segment_writer::update_context>& update_contexts, // where to get update contexts from
+    size_t doc_id_update_contexts_base, // base offset to add to any doc_id to get the offset into 'update_contexts'
+    const std::vector<irs::index_writer::modification_context>& modification_contexts // where to get modification contexts referenced by 'update_contexts'
 ) {
-  if (modifications_begin >= modifications_end || !segment.writer_) {
+  if (modifications_begin >= modifications_end) {
     return false; // nothing new to flush
   }
 
-  auto reader = readers.emplace(segment.flushed_meta_);
+  auto reader = readers.emplace(meta);
 
   if (!reader) {
     throw irs::index_error(); // failed to open segment
   }
 
+  assert(doc_limits::valid(doc_id_begin));
+  assert(doc_id_begin <= doc_id_end);
+  assert(doc_id_update_contexts_base + doc_id_end <= update_contexts.size() + doc_limits::min());
   bool modified = false;
-  assert(segment.writer_);
-  auto& writer = *(segment.writer_);
-
-  assert(segment.uncomitted_doc_id_begin_ <= writer.docs_cached() + irs::type_limits<irs::type_t::doc_id_t>::min());
 
   for (auto itr = modifications_begin; itr != modifications_end; ++itr) {
     auto& modification = *itr;
@@ -158,34 +163,36 @@ bool add_document_mask_modified_records(
     auto prepared = modification.filter->prepare(reader);
 
     for (auto itr = prepared->execute(reader); itr->next();) {
-      auto seg_doc_id = itr->value();
+      auto doc_id = itr->value();
 
-      if (seg_doc_id < min_doc_id
-          || seg_doc_id >= segment.uncomitted_doc_id_begin_) {
+      if (doc_id < doc_id_begin || doc_id >= doc_id_end) {
         continue; // doc_id is not part of the current flush_context
       }
 
-      auto& doc_ctx = writer.doc_context(seg_doc_id);
+      auto update_contexts_offset =
+        doc_id_update_contexts_base + doc_id - doc_limits::min(); // valid because of asserts above
+      auto& doc_ctx = update_contexts[update_contexts_offset];
 
       // if the indexed doc_id was insert()ed after the request for modification
       // or the indexed doc_id was already masked then it should be skipped
       if (modification.generation < doc_ctx.generation
-          || !writer.remove(seg_doc_id)) {
+          || !docs_mask.insert(doc_id).second) {
         continue; // the current modification query does not match any records
       }
 
-      // if not an update modification (i.e. a remove modification) or
-      // if non-update-value record or update-value record whose query was seen
-      // i.e. the document is a removal candidate, it exists in the modification 'generation'
+      // if an update modification and update-value record whose query was not
+      // seen (i.e. replacement value whose filter did not match any documents)
       // for every update request a replacement 'update-value' is optimistically inserted
-      if (!modification.update
-          || doc_ctx.update_id == NON_UPDATE_RECORD
-          || segment.modification_queries_[doc_ctx.update_id].seen) {
-        assert(segment.flushed_meta_.live_docs_count);
-        --segment.flushed_meta_.live_docs_count; // decrement count of live docs
-        modification.seen = true;
-        modified = true;
+      if (modification.update
+          && doc_ctx.update_id != NON_UPDATE_RECORD
+          && !modification_contexts[doc_ctx.update_id].seen) {
+        continue; // the current modification matched a replacement document which in turn did not match any records
       }
+
+      assert(meta.live_docs_count);
+      --meta.live_docs_count; // decrement count of live docs
+      modification.seen = true;
+      modified = true;
     }
   }
 
@@ -197,38 +204,42 @@ bool add_document_mask_modified_records(
 /// @return if any new records were added (modification_queries_ modified)
 ////////////////////////////////////////////////////////////////////////////////
 bool add_document_mask_unused_updates(
-    irs::index_writer::segment_context& segment, // where to apply document removals to
-    irs::doc_id_t min_doc_id // staring doc_id in 'segment_writer::doc_contexts' that should be considered in the range [min_doc_id, uncomitted_document_contexts_)
+    irs::document_mask& docs_mask, // where to apply document removals to
+    irs::segment_meta& meta, // instance holding the 'live_docs_count' value
+    irs::doc_id_t doc_id_begin, // staring doc_id in 'meta' that should be considered in the range [doc_id_begin, doc_id_end)
+    irs::doc_id_t doc_id_end, // ending doc_id in 'meta' that should be considered in the range [doc_id_begin, doc_id_end)
+    const std::vector<irs::segment_writer::update_context>& update_contexts, // where to get update contexts from
+    size_t doc_id_update_contexts_base, // base offset to add to any doc_id to get the offset into 'update_contexts'
+    const std::vector<irs::index_writer::modification_context>& modification_contexts // modifications to validate (referenced by 'update_contexts')
 ) {
-  if (segment.modification_queries_.empty()) {
+  if (modification_contexts.empty()) {
     return false; // nothing new to add
   }
-
+  assert(doc_limits::valid(doc_id_begin));
+  assert(doc_id_begin <= doc_id_end);
+  assert(doc_id_update_contexts_base + doc_id_end <= update_contexts.size() + doc_limits::min());
   bool modified = false;
-  assert(segment.writer_);
-  auto& writer = *(segment.writer_);
 
-  assert(min_doc_id <= segment.uncomitted_doc_id_begin_);
-  assert(segment.uncomitted_doc_id_begin_ <= writer.docs_cached() + irs::type_limits<irs::type_t::doc_id_t>::min());
-
-  for (auto doc_id = min_doc_id, doc_id_end = segment.uncomitted_doc_id_begin_;
-       doc_id < doc_id_end;
-       ++doc_id) {
-    auto& doc_ctx = writer.doc_context(doc_id);
+  for (auto doc_id = doc_id_begin; doc_id < doc_id_end; ++doc_id) {
+    auto update_contexts_offset =
+      doc_id_update_contexts_base + doc_id - doc_limits::min(); // valid because of asserts above
+    auto& doc_ctx = update_contexts[update_contexts_offset];
 
     if (doc_ctx.update_id == NON_UPDATE_RECORD) {
       continue; // not an update operation
     }
 
-    assert(segment.modification_queries_.size() > doc_ctx.update_id);
+    assert(modification_contexts.size() > doc_ctx.update_id);
 
-    // if it's an update record placeholder who's query did not match any records
-    if (!segment.modification_queries_[doc_ctx.update_id].seen
-        && writer.remove(doc_id)) {
-      assert(segment.flushed_meta_.live_docs_count);
-      --segment.flushed_meta_.live_docs_count; // decrement count of live docs
-      modified  = true;
+    // if it's an update record placeholder who's query already match some record
+    if (modification_contexts[doc_ctx.update_id].seen
+        || !docs_mask.insert(doc_id).second) {
+      continue; // the current placeholder record is in-use and valid
     }
+
+    assert(meta.live_docs_count);
+    --meta.live_docs_count; // decrement count of live docs
+    modified  = true;
   }
 
   return modified;
@@ -417,9 +428,9 @@ index_writer::documents_context::document::document(
   assert(ctx);
   assert(segment_);
   assert(segment_->writer_);
-  assert(segment->uncomitted_doc_id_begin_ <= segment_->writer_->docs_cached() + type_limits<type_t::doc_id_t>::min());
+  assert(segment->uncomitted_doc_id_begin_ <= segment_->writer_->docs_cached() + doc_limits::min());
   auto rollback_extra =
-    segment_->writer_->docs_cached() + type_limits<type_t::doc_id_t>::min()
+    segment_->writer_->docs_cached() + doc_limits::min()
     - segment->uncomitted_doc_id_begin_
     ;
   segment_->busy_ = true; // guarded by flush_context::flush_mutex_
@@ -476,7 +487,7 @@ void index_writer::documents_context::reset() NOEXCEPT {
 
     // rollback document insertions
     for (auto doc_id = ctx->uncomitted_doc_id_begin_,
-         doc_id_end = doc_id_t(writer.docs_cached() + type_limits<type_t::doc_id_t>::min());
+         doc_id_end = doc_id_t(writer.docs_cached() + doc_limits::min());
          doc_id < doc_id_end;
          ++doc_id) {
       writer.remove(doc_id);
@@ -509,11 +520,13 @@ index_writer::flush_context_ptr index_writer::documents_context::update_segment(
   // FIXME TODO when flushing segment, flush to repository, track meta to be added to to imported segments, then reuse same writer
   if (!segment.ctx() // no segment (lazy initialized)
       || segment.ctx()->dirty_
+      || !segment.ctx()->writer_
+      || !segment.ctx()->writer_->initialized()
       || (writer_.segment_limits_.segment_docs_max
           && writer_.segment_limits_.segment_docs_max <= segment.ctx()->writer_->docs_cached()) // too many docs
       || (writer_.segment_limits_.segment_memory_max
           && writer_.segment_limits_.segment_memory_max <= segment.ctx()->writer_->memory()) // too much memory
-      || type_limits<type_t::doc_id_t>::eof(segment.ctx()->writer_->docs_cached())) { // segment full
+      || doc_limits::eof(segment.ctx()->writer_->docs_cached())) { // segment full
     segments_.emplace_back(writer_.get_segment_context(*ctx));
   }
 
@@ -570,7 +583,7 @@ void index_writer::flush_context::emplace(flush_segment_context_ref&& segment) {
 
   // update generations of segment_writer::doc_contexts
   for (auto doc_id = ctx.uncomitted_doc_id_begin_,
-       doc_id_end = doc_id_t(writer.docs_cached() + type_limits<type_t::doc_id_t>::min());
+       doc_id_end = doc_id_t(writer.docs_cached() + doc_limits::min());
        doc_id < doc_id_end;
        ++doc_id) {
     assert(writer.doc_context(doc_id).generation < modification_count);
@@ -591,8 +604,7 @@ void index_writer::flush_context::emplace(flush_segment_context_ref&& segment) {
   // ...........................................................................
 
   ctx.uncomitted_generation_offset_ = 0;
-  ctx.uncomitted_doc_id_begin_ =
-    writer.docs_cached() + type_limits<type_t::doc_id_t>::min();
+  ctx.uncomitted_doc_id_begin_ = writer.docs_cached() + doc_limits::min();
   ctx.uncomitted_modification_queries_ = ctx.modification_queries_.size();
 }
 
@@ -609,21 +621,61 @@ void index_writer::flush_context::reset() NOEXCEPT {
   segment_mask_.clear();
 }
 
-index_writer::segment_context::segment_context(directory& dir)
-  : buffered_docs(0),
-    busy_(false),
-    dirty_(false),
-    dir_(dir),
-    uncomitted_doc_id_begin_(type_limits<type_t::doc_id_t>::min()),
-    uncomitted_generation_offset_(0),
-    uncomitted_modification_queries_(0),
-    writer_(segment_writer::make(dir_)) {
+index_writer::segment_context::segment_context(
+    directory& dir,
+    segment_meta_generator_t&& meta_generator
+): buffered_docs(0),
+   busy_(false),
+   dirty_(false),
+   dir_(dir),
+   meta_generator_(std::move(meta_generator)),
+   uncomitted_doc_id_begin_(doc_limits::min()),
+   uncomitted_generation_offset_(0),
+   uncomitted_modification_queries_(0),
+   writer_(segment_writer::make(dir_)) {
+  assert(meta_generator_);
+}
+
+bool index_writer::segment_context::flush() {
+  flushed_update_contexts_.clear();
+
+  if (!writer_ || !writer_->initialized() || !writer_->docs_cached()) {
+    flushed_ = index_meta::index_segment_t(); // mark segment as not present
+
+    return true; // skip flushing an empty writer
+  }
+
+  index_meta::index_segment_t segment(std::move(writer_meta_));
+
+  flushed_update_contexts_.reserve(flushed_update_contexts_.size() + writer_->docs_cached());
+
+  // copy over update_contexts
+  for (size_t doc_id = doc_limits::min(),
+       doc_id_end = writer_->docs_cached() + doc_limits::min();
+       doc_id < doc_id_end;
+       ++doc_id) {
+    assert(doc_id <= integer_traits<doc_id_t>::const_max);
+    flushed_update_contexts_.emplace_back(writer_->doc_context(doc_id_t(doc_id)));
+  }
+
+  // flush segment_writer
+  if (!writer_->flush(segment.filename, segment.meta)) {
+    flushed_update_contexts_.clear();
+
+    return false; // failed to flush segment
+  }
+
+  flushed_ = std::move(segment);
+  writer_->reset(); // mark segment as already flushed
+
+  return true;
 }
 
 index_writer::segment_context::ptr index_writer::segment_context::make(
-    directory& dir
+    directory& dir,
+    segment_meta_generator_t&& meta_generator
 ) {
-  return memory::make_shared<segment_context>(dir);
+  return memory::make_shared<segment_context>(dir, std::move(meta_generator));
 }
 
 segment_writer::update_context index_writer::segment_context::make_update_context() {
@@ -705,17 +757,31 @@ void index_writer::segment_context::remove(filter::ptr&& filter) {
   );
 }
 
-void index_writer::segment_context::reset() {
+void index_writer::segment_context::reset(bool initialize_writer /*= false*/) {
+  buffered_docs.store(0);
   busy_ = false;
   dirty_ = false;
-  buffered_docs.store(0);
-  dir_.clear_refs();
-  flushed_meta_ = segment_meta();
+  flushed_ = index_meta::index_segment_t();
+  flushed_update_contexts_.clear();
   modification_queries_.clear();
-  uncomitted_doc_id_begin_ = type_limits<type_t::doc_id_t>::min();
+  uncomitted_doc_id_begin_ = doc_limits::min();
   uncomitted_generation_offset_ = 0;
   uncomitted_modification_queries_ = 0;
-  writer_->reset();
+
+  if (writer_->initialized()) {
+    std::string filename;
+
+    writer_->reset(); // try to reduce number of files flushed below
+    writer_->flush(filename, writer_meta_); // flush segment even for empty segments since this will clear internal segment_writer state
+    writer_meta_ = segment_meta(); // reset to invalid
+  }
+
+  dir_.clear_refs(); // release refs only after clearing writer state to ensure 'writer_' does not hold any files
+
+  if (initialize_writer) {
+    writer_meta_ = meta_generator_();
+    writer_->reset(writer_meta_);
+  }
 }
 
 index_writer::index_writer(
@@ -1262,13 +1328,13 @@ index_writer::flush_segment_context_ref index_writer::get_segment_context(
     );
   }
 
-  auto segment_ctx = segment_writer_pool_.emplace(dir_).release();
+  auto meta_generator = [this]()->segment_meta {
+    return segment_meta(file_name(meta_.increment()), codec_);
+  };
+  auto segment_ctx =
+    segment_writer_pool_.emplace(dir_, std::move(meta_generator)).release();
 
-  segment_ctx->busy_ = false; // reset to default
-  segment_ctx->dirty_ = false; // reset to default
-  segment_ctx->writer_->reset(
-    segment_meta(file_name(meta_.increment()), codec_)
-  );
+  segment_ctx->reset(true);
 
   return flush_segment_context_ref(segment_ctx, segments_active_);
 }
@@ -1307,6 +1373,11 @@ index_writer::pending_context_t index_writer::flush_all() {
         lock, std::chrono::milliseconds(1000) // arbitrary sleep interval
       );
     }
+
+    if (!entry.segment_->flush()) {
+      return pending_context_t(); // failed to flush segment
+    }
+    // flush document_mask after regular flush() to ensure all removals are properly applied
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -1511,7 +1582,7 @@ index_writer::pending_context_t index_writer::flush_all() {
   {
     struct flush_segment_context {
       flush_context::pending_segment_context& ctx_;
-      std::string filename_;
+      document_mask docs_mask_;
 
       flush_segment_context(flush_context::pending_segment_context& ctx)
         : ctx_(ctx) {
@@ -1526,43 +1597,43 @@ index_writer::pending_context_t index_writer::flush_all() {
     for (auto& pending_segment_context: ctx->pending_segment_contexts_) {
       auto& segment = pending_segment_context.segment_;
 
-      if (!segment
-          || !segment->writer_
-          || !segment->writer_->initialized()) {
+      if (!segment || !segment->flushed_.meta.docs_count) {
         continue; // skip empty segments (segmnets  without live docs will be removed in the next section)
       }
 
       segment_ctxs.emplace_back(pending_segment_context);
 
-      auto& writer = *(segment->writer_);
       auto& pending_ctx = segment_ctxs.back();
 
-      segment->flushed_meta_ = segment_meta(writer.name(), codec_); // prepare new meta for flush
-
-      // flush segment, even for empty segments since this will clear internal segment_writer state
-      if (!writer.flush(pending_ctx.filename_, segment->flushed_meta_)) {
-        return pending_context_t();
-      }
-      // flush document_mask after regular flush() so remove_query can traverse
-
-      if (!segment->writer_->docs_cached()) {
-        continue; // a segment reader cannot be opened if there are no documents in the segment
-      }
+      index_utils::read_document_mask(
+        pending_ctx.docs_mask_, segment->dir_, segment->flushed_.meta
+      );
 
       // mask documents matching filters from all flushed segment_contexts (i.e. from new operations)
       for (auto& modifications: ctx->pending_segment_contexts_) {
+        // document_contexts_ range [flush_segment_context::doc_id_begin_, segment_context::uncomitted_doc_id_begin_)
+        auto doc_id_begin = pending_segment_context.doc_id_begin_;
+        auto doc_id_end = segment->uncomitted_doc_id_begin_;
+        assert(doc_id_begin <= doc_id_end);
+        assert(doc_id_end <= segment->flushed_update_contexts_.size() + doc_limits::min());
+
         // modification_queries_ range [flush_segment_context::modification_offset_begin_, segment_context::uncomitted_modification_queries_)
         auto modifications_begin = modifications.modification_offset_begin_;
         auto modifications_end = modifications.segment_->uncomitted_modification_queries_;
-
         assert(modifications_begin <= modifications_end);
         assert(modifications_end <= modifications.segment_->modification_queries_.size());
+
         add_document_mask_modified_records(
           &modifications.segment_->modification_queries_[modifications_begin], // modification start
           &modifications.segment_->modification_queries_[modifications_end], // modification end (exclusive)
-          *segment, // segment context holding documents
-          pending_segment_context.doc_id_begin_, // document_contexts_ range [flush_segment_context::doc_id_begin_, segment_context::uncomitted_doc_ids_)
-          cached_readers_ // reader cache for segments
+          pending_ctx.docs_mask_,
+          cached_readers_, // reader cache for segments
+          segment->flushed_.meta,
+          doc_id_begin, // doc_id in meta start
+          doc_id_end, // doc_id in meta end (exclusive)
+          segment->flushed_update_contexts_,
+          0,
+          segment->modification_queries_
         );
       }
     }
@@ -1570,35 +1641,42 @@ index_writer::pending_context_t index_writer::flush_all() {
     // write docs_mask if !empty(), if all docs are masked then remove segment altogether
     for (auto& segment_ctx: segment_ctxs) {
       auto& pending_ctx = segment_ctx.ctx_;
+      auto& docs_mask = segment_ctx.docs_mask_;
       auto& segment = *(pending_ctx.segment_);
       auto& writer = *(segment.writer_);
 
-      // if have a writer with potential update-replacement records then check if they were seen
-      add_document_mask_unused_updates(segment, pending_ctx.doc_id_begin_);
+      // document_contexts_ range [flush_segment_context::doc_id_begin_, segment_context::uncomitted_doc_id_begin_)
+      auto doc_id_begin = pending_ctx.doc_id_begin_;
+      auto doc_id_end = segment.uncomitted_doc_id_begin_;
+      assert(doc_id_begin <= doc_id_end);
+      assert(doc_id_end <= segment.flushed_update_contexts_.size() + doc_limits::min());
 
-      auto& docs_mask = writer.docs_mask();
+      // if have a writer with potential update-replacement records then check if they were seen
+      add_document_mask_unused_updates(
+        docs_mask,
+        segment.flushed_.meta,
+        doc_id_begin,
+        doc_id_end,
+        segment.flushed_update_contexts_,
+        0,
+        segment.modification_queries_
+      );
 
       // mask empty segments
-      if (!segment.flushed_meta_.live_docs_count) {
+      if (segment.flushed_.meta.docs_count <= docs_mask.size()) {
         ctx->segment_mask_.emplace(writer.name()); // ref to writer name will not change
         continue;
       }
 
-      index_meta::index_segment_t index_segment;
-
       // write non-empty document mask
       if (!docs_mask.empty()) {
-        write_document_mask(dir, segment.flushed_meta_, docs_mask);
-        index_segment.meta = segment.flushed_meta_; // make updated copy after document_mask write
-        index_utils::write_index_segment(dir, index_segment); // write with new mask
-      } else {
-        index_segment.filename = std::move(segment_ctx.filename_);
-        index_segment.meta = segment.flushed_meta_;
+        write_document_mask(dir, segment.flushed_.meta, docs_mask);
+        index_utils::write_index_segment(dir, segment.flushed_); // write with new mask
       }
 
       // register full segment sync
       to_sync.register_full_sync(segments.size());
-      segments.emplace_back(std::move(index_segment));
+      segments.emplace_back(segment.flushed_);
     }
   }
 
