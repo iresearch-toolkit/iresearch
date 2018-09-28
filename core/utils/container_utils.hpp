@@ -180,19 +180,16 @@ class array : private util::noncopyable {
   }
 
  private:
-#if defined(_MSC_VER) && _MSC_VER >= 1900 // MSVC2017
-  // can't use std::aligned_storage on MSVC before 15.8
+  // can't use std::aligned_storage on 
+  // - MSVC 2013
+  // - MSVC 2017 before 15.8
   // because of the bug with the alignment
-
-  struct ALIGNAS(ALIGNOF(T)) align_t { };
+  DEFINE_ALIGNED_STRUCT(align_t, ALIGNOF(T));
 
   union {
     align_t align_;
     byte_type data_[sizeof(T)*Size];
   };
-#else
-  typename std::aligned_storage<sizeof(T), ALIGNOF(T)>::type data_[Size];
-#endif
 }; // array
 
 struct bucket_size_t {

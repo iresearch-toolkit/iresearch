@@ -31,6 +31,9 @@
 #include "log.hpp"
 #include "type_utils.hpp"
 
+#define DEFINE_ALIGNED_STRUCT(name, alignment) \
+  struct ALIGNAS(alignment) name { }
+
 NS_ROOT
 NS_BEGIN(memory)
 
