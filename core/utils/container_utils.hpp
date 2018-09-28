@@ -184,8 +184,14 @@ class array : private util::noncopyable {
   // - MSVC 2013
   // - MSVC 2017 before 15.8
   // because of the bug with the alignment
+
   static CONSTEXPR const size_t ALIGNMENT = ALIGNOF(T);
+
+#if defined(_MSC_VER) && _MSC_VER < 1900
+  __declspec(align(ALIGNMENT)) struct align_t { };
+#else
   DEFINE_ALIGNED_STRUCT(align_t, ALIGNMENT);
+#endif
 
   union {
     align_t align_;
