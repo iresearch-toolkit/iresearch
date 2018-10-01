@@ -43,7 +43,12 @@ NS_BEGIN(container_utils)
 ///        objects without default constructor
 //////////////////////////////////////////////////////////////////////////////
 template<typename T, size_t Size>
-class array : private util::noncopyable {
+class array
+  : private memory::aligned_storage<sizeof(T)*Size, ALIGNOF(T)>,
+    private util::noncopyable {
+ private:
+  typedef memory::aligned_storage<sizeof(T)*Size, ALIGNOF(T)> buffer_t;
+
  public:
   typedef T value_type;
   typedef T& reference;
@@ -125,7 +130,7 @@ class array : private util::noncopyable {
   CONSTEXPR
 #endif
   iterator begin() NOEXCEPT {
-    return reinterpret_cast<T*>(data_);
+    return reinterpret_cast<T*>(buffer_t::data);
   }
 
 #if IRESEARCH_CXX > IRESEARCH_CXX_11
@@ -134,7 +139,7 @@ class array : private util::noncopyable {
   CONSTEXPR
 #endif
   iterator end() NOEXCEPT {
-    return reinterpret_cast<T*>(data_) + Size;
+    return this->begin() + Size;
   }
 
   CONSTEXPR const_iterator begin() const NOEXCEPT {
@@ -178,18 +183,6 @@ class array : private util::noncopyable {
   CONSTEXPR bool empty() const NOEXCEPT {
     return 0 == size();
   }
-
- private:
-  // can't use std::aligned_storage on
-  // - MSVC 2013
-  // - MSVC 2017 before 15.8
-  // because of the bug with the alignment
-  DEFINE_ALIGNED_STRUCT(align_t, ALIGNOF(T));
-
-  union {
-    align_t align_;
-    byte_type data_[sizeof(T)*Size];
-  };
 }; // array
 
 struct bucket_size_t {

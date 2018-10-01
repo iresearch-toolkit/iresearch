@@ -31,9 +31,6 @@
 #include "log.hpp"
 #include "type_utils.hpp"
 
-#define DEFINE_ALIGNED_STRUCT(name, alignment) \
-  struct ALIGNAS(alignment) name { }
-
 NS_ROOT
 NS_BEGIN(memory)
 
@@ -45,6 +42,23 @@ NS_BEGIN(memory)
 /// @brief dump memory statistics and stack trace to stderr
 ///////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API void dump_mem_stats_trace() NOEXCEPT;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @class aligned_storage
+/// @brief same as 'std::aligned_storage' but MSVC doesn't honor alignment on
+/// MSVC2013, 2017 (prior 15.8)
+///////////////////////////////////////////////////////////////////////////////
+template<size_t Size, size_t Alignment>
+class aligned_storage {
+ private:
+  struct ALIGNAS(Alignment) align_t { };
+
+ public:
+  union {
+    align_t align_;
+    char data[Size];
+  };
+}; // aligned_storage
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @struct aligned_union
