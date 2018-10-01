@@ -44,7 +44,7 @@ NS_BEGIN(container_utils)
 //////////////////////////////////////////////////////////////////////////////
 template<typename T, size_t Size>
 class array
-  : private memory::aligned_storage<sizeof(T)*Size, ALIGNOF(T)>,
+  : private irs::memory::aligned_storage<sizeof(T)*Size, ALIGNOF(T)>,
     private util::noncopyable {
  private:
   typedef memory::aligned_storage<sizeof(T)*Size, ALIGNOF(T)> buffer_t;
