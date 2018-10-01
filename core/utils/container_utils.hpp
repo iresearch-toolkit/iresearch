@@ -47,7 +47,7 @@ class array
   : private irs::memory::aligned_storage<sizeof(T)*Size, ALIGNOF(T)>,
     private util::noncopyable {
  private:
-  typedef memory::aligned_storage<sizeof(T)*Size, ALIGNOF(T)> buffer_t;
+  typedef irs::memory::aligned_storage<sizeof(T)*Size, ALIGNOF(T)> buffer_t;
 
  public:
   typedef T value_type;
