@@ -222,7 +222,6 @@ class IRESEARCH_API segment_writer: util::noncopyable {
 
   const std::string& name() const NOEXCEPT { return seg_name_; }
   size_t docs_cached() const NOEXCEPT { return docs_context_.size(); }
-  const document_mask& docs_mask() NOEXCEPT { return docs_mask_; }
   bool initialized() const NOEXCEPT { return initialized_; }
   bool valid() const NOEXCEPT { return valid_; }
   void reset();

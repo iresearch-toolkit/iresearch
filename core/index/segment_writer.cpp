@@ -188,9 +188,16 @@ bool segment_writer::flush(std::string& filename, segment_meta& meta) {
     fields_.flush(*field_writer_, state);
   }
 
-  assert(docs_cached() >= docs_mask().size());
+  // write non-empty document mask
+  if (!docs_mask_.empty()) {
+    auto writer = meta.codec->get_document_mask_writer();
+
+    writer->write(dir_, meta, docs_mask_);
+  }
+
+  assert(docs_cached() >= docs_mask_.size());
   meta.docs_count = docs_cached();
-  meta.live_docs_count = meta.docs_count - docs_mask().size();
+  meta.live_docs_count = meta.docs_count - docs_mask_.size();
   meta.files.clear(); // prepare empy set to be swaped into dir_
 
   if (!dir_.swap_tracked(meta.files)) {

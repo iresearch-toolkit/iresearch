@@ -428,7 +428,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_EQ(0, reader.live_docs_count());
         size_t file_count_post_clear = 0;
         dir().visit([&file_count_post_clear](std::string&)->bool{ ++file_count_post_clear; return true; });
-        ASSERT_EQ(file_count + 1, file_count_post_clear); // 1 extra file for new empty index meta
+        ASSERT_EQ(file_count + 1 + 2, file_count_post_clear); // +1 extra file for new empty index meta, +2 extra files for reset of empty writer (*.cm, *.sm)
       }
 
       writer->commit();
@@ -441,7 +441,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_EQ(0, reader.live_docs_count());
         size_t file_count_post_commit = 0;
         dir().visit([&file_count_post_commit](std::string&)->bool{ ++file_count_post_commit; return true; });
-        ASSERT_EQ(file_count + 1, file_count_post_commit); // +1 extra file for new empty index meta
+        ASSERT_EQ(file_count + 1 + 2, file_count_post_commit); // +1 extra file for new empty index meta, +2 extra files for reset of empty writer (*.cm, *.sm)
       }
     }
 
@@ -1422,9 +1422,10 @@ class index_test_case_base : public tests::index_test_base {
         doc2->stored.begin(), doc2->stored.end()
       ));
       ASSERT_TRUE(writer->begin()); // prepare for commit tx #1
-      writer->commit(); // commit tx #2
+      writer->commit(); // commit tx #1
       auto file_count = 0;
       auto dir_visitor = [&file_count](std::string&)->bool { ++file_count; return true; };
+      irs::directory_utils::remove_all_unreferenced(dir()); // clear any unused files before taking count
       dir().visit(dir_visitor);
       auto file_count_before = file_count;
       ASSERT_TRUE(insert(*writer,
