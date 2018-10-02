@@ -220,12 +220,12 @@ struct arena_allocator
 
 #if (defined(__cpp_aligned_new) && __cpp_aligned_new >= 201606)
 //FIXME
-//    if (Alignment > ALIGNOF(std::max_align_t)) {
+//    if (Alignment > ALIGNOF(MAX_ALIGN_T)) {
 //      return reinterpret_cast<char*>(::operator new(size, Alignment));
 //    }
 #else
     static_assert(
-      Alignment <= ALIGNOF(std::max_align_t),
+      Alignment <= ALIGNOF(MAX_ALIGN_T),
       "new can't guarantee the requested alignment"
     );
 #endif
@@ -245,12 +245,12 @@ struct arena_allocator
     } else {
 #if (defined(__cpp_aligned_new) && __cpp_aligned_new >= 201606)
 //FIXME
-//      if (Alignment > ALIGNOF(std::max_align_t)) {
+//      if (Alignment > ALIGNOF(MAX_ALIGN_T)) {
 //        ::operator delete(p, Alignment);
 //      }
 #else
       static_assert(
-        Alignment <= ALIGNOF(std::max_align_t),
+        Alignment <= ALIGNOF(MAX_ALIGN_T),
         "new can't guarantee the requested alignment"
       );
 #endif
