@@ -60,6 +60,31 @@ typedef typed_ref<irs::segment_writer::update_context> update_contexts_ref;
 
 const size_t NON_UPDATE_RECORD = irs::integer_traits<size_t>::const_max; // non-update
 
+struct flush_segment_context {
+  const size_t doc_id_begin_; // starting doc_id to consider in 'segment.meta' (inclusive)
+  const size_t doc_id_end_; // ending doc_id to consider in 'segment.meta' (exclusive)
+  irs::document_mask docs_mask_; // doc_ids masked in segment_meta
+  const modification_contexts_ref modification_contexts_; // modification contexts referenced by 'update_contexts_'
+  irs::index_meta::index_segment_t segment_; // copy so that it can be moved into 'index_writer::pending_state_'
+  const update_contexts_ref update_contexts_; // update contexts for documents in segment_meta
+
+  flush_segment_context(
+    const irs::index_meta::index_segment_t& segment,
+    size_t doc_id_begin,
+    size_t doc_id_end,
+    const update_contexts_ref& update_contexts,
+    const modification_contexts_ref& modification_contexts
+  ): doc_id_begin_(doc_id_begin),
+     doc_id_end_(doc_id_end),
+     modification_contexts_(modification_contexts),
+     segment_(segment),
+     update_contexts_(update_contexts) {
+    assert(doc_id_begin_ <= doc_id_end_);
+    assert(doc_id_end_ - doc_limits::min() <= segment_.meta.docs_count);
+    assert(update_contexts.size() == segment_.meta.docs_count);
+  }
+};
+
 std::vector<irs::index_file_refs::ref_t> extract_refs(
     const irs::ref_tracking_directory& dir
 ) {
@@ -142,27 +167,22 @@ bool add_document_mask_modified_records(
 ////////////////////////////////////////////////////////////////////////////////
 bool add_document_mask_modified_records(
     modification_contexts_ref& modifications, // where to get document update_contexts from
-    irs::document_mask& docs_mask, // where to apply document removals to
-    irs::readers_cache& readers, // where to get segment readers from
-    irs::segment_meta& meta, // key used to get reader for the segment to evaluate
-    irs::doc_id_t doc_id_begin, // staring doc_id in 'meta' that should be considered in the range [doc_id_begin, doc_id_end)
-    irs::doc_id_t doc_id_end, // ending doc_id in 'meta' that should be considered in the range [doc_id_begin, doc_id_end)
-    const update_contexts_ref& update_contexts, // where to get update contexts from
-    const modification_contexts_ref& modification_contexts // where to get modification contexts referenced by 'update_contexts'
+    flush_segment_context& ctx, // where to apply document removals to
+    irs::readers_cache& readers // where to get segment readers from
 ) {
   if (modifications.empty()) {
     return false; // nothing new to flush
   }
 
-  auto reader = readers.emplace(meta);
+  auto reader = readers.emplace(ctx.segment_.meta);
 
   if (!reader) {
     throw irs::index_error(); // failed to open segment
   }
 
-  assert(doc_limits::valid(doc_id_begin));
-  assert(doc_id_begin <= doc_id_end);
-  assert(doc_id_end <= update_contexts.size() + doc_limits::min());
+  assert(doc_limits::valid(ctx.doc_id_begin_));
+  assert(ctx.doc_id_begin_ <= ctx.doc_id_end_);
+  assert(ctx.doc_id_end_ <= ctx.update_contexts_.size() + doc_limits::min());
   bool modified = false;
 
   for (size_t i = 0, count = modifications.size(); i < count; ++i) {
@@ -177,16 +197,16 @@ bool add_document_mask_modified_records(
     for (auto itr = prepared->execute(reader); itr->next();) {
       auto doc_id = itr->value();
 
-      if (doc_id < doc_id_begin || doc_id >= doc_id_end) {
+      if (doc_id < ctx.doc_id_begin_ || doc_id >= ctx.doc_id_end_) {
         continue; // doc_id is not part of the current flush_context
       }
 
-      auto& doc_ctx = update_contexts[doc_id - doc_limits::min()]; // valid because of asserts above
+      auto& doc_ctx = ctx.update_contexts_[doc_id - doc_limits::min()]; // valid because of asserts above
 
       // if the indexed doc_id was insert()ed after the request for modification
       // or the indexed doc_id was already masked then it should be skipped
       if (modification.generation < doc_ctx.generation
-          || !docs_mask.insert(doc_id).second) {
+          || !ctx.docs_mask_.insert(doc_id).second) {
         continue; // the current modification query does not match any records
       }
 
@@ -195,12 +215,12 @@ bool add_document_mask_modified_records(
       // for every update request a replacement 'update-value' is optimistically inserted
       if (modification.update
           && doc_ctx.update_id != NON_UPDATE_RECORD
-          && !modification_contexts[doc_ctx.update_id].seen) {
+          && !ctx.modification_contexts_[doc_ctx.update_id].seen) {
         continue; // the current modification matched a replacement document which in turn did not match any records
       }
 
-      assert(meta.live_docs_count);
-      --meta.live_docs_count; // decrement count of live docs
+      assert(ctx.segment_.meta.live_docs_count);
+      --ctx.segment_.meta.live_docs_count; // decrement count of live docs
       modification.seen = true;
       modified = true;
     }
@@ -211,41 +231,34 @@ bool add_document_mask_modified_records(
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief mask documents created by updates which did not have any matches
-/// @return if any new records were added (modification_queries_ modified)
+/// @return if any new records were added (modification_contexts_ modified)
 ////////////////////////////////////////////////////////////////////////////////
-bool add_document_mask_unused_updates(
-    irs::document_mask& docs_mask, // where to apply document removals to
-    irs::segment_meta& meta, // instance holding the 'live_docs_count' value
-    irs::doc_id_t doc_id_begin, // staring doc_id in 'meta' that should be considered in the range [doc_id_begin, doc_id_end)
-    irs::doc_id_t doc_id_end, // ending doc_id in 'meta' that should be considered in the range [doc_id_begin, doc_id_end)
-    const update_contexts_ref& update_contexts, // where to get update contexts from
-    const modification_contexts_ref& modification_contexts // modifications to validate (referenced by 'update_contexts')
-) {
-  if (modification_contexts.empty()) {
+bool add_document_mask_unused_updates(flush_segment_context& ctx) {
+  if (ctx.modification_contexts_.empty()) {
     return false; // nothing new to add
   }
-  assert(doc_limits::valid(doc_id_begin));
-  assert(doc_id_begin <= doc_id_end);
-  assert(doc_id_end <= update_contexts.size() + doc_limits::min());
+  assert(doc_limits::valid(ctx.doc_id_begin_));
+  assert(ctx.doc_id_begin_ <= ctx.doc_id_end_);
+  assert(ctx.doc_id_end_ <= ctx.update_contexts_.size() + doc_limits::min());
   bool modified = false;
 
-  for (auto doc_id = doc_id_begin; doc_id < doc_id_end; ++doc_id) {
-    auto& doc_ctx = update_contexts[doc_id - doc_limits::min()]; // valid because of asserts above
+  for (auto doc_id = ctx.doc_id_begin_; doc_id < ctx.doc_id_end_; ++doc_id) {
+    auto& doc_ctx = ctx.update_contexts_[doc_id - doc_limits::min()]; // valid because of asserts above
 
     if (doc_ctx.update_id == NON_UPDATE_RECORD) {
       continue; // not an update operation
     }
 
-    assert(modification_contexts.size() > doc_ctx.update_id);
+    assert(ctx.modification_contexts_.size() > doc_ctx.update_id);
 
     // if it's an update record placeholder who's query already match some record
-    if (modification_contexts[doc_ctx.update_id].seen
-        || !docs_mask.insert(doc_id).second) {
+    if (ctx.modification_contexts_[doc_ctx.update_id].seen
+        || !ctx.docs_mask_.insert(doc_id).second) {
       continue; // the current placeholder record is in-use and valid
     }
 
-    assert(meta.live_docs_count);
-    --meta.live_docs_count; // decrement count of live docs
+    assert(ctx.segment_.meta.live_docs_count);
+    --ctx.segment_.meta.live_docs_count; // decrement count of live docs
     modified  = true;
   }
 
@@ -1686,31 +1699,6 @@ index_writer::pending_context_t index_writer::flush_all() {
   /////////////////////////////////////////////////////////////////////////////
 
   {
-    struct flush_segment_context {
-      const size_t doc_id_begin_; // starting doc_id to consider in 'segment.meta' (inclusive)
-      const size_t doc_id_end_; // ending doc_id to consider in 'segment.meta' (exclusive)
-      document_mask docs_mask_;
-      const modification_contexts_ref modification_contexts_;
-      index_meta::index_segment_t segment_; // copy so that it can be moved into 'index_writer::pending_state_'
-      const update_contexts_ref update_contexts_;
-
-      flush_segment_context(
-        const index_meta::index_segment_t& segment,
-        size_t doc_id_begin,
-        size_t doc_id_end,
-        const update_contexts_ref& update_contexts,
-        const modification_contexts_ref& modification_contexts
-      ): doc_id_begin_(doc_id_begin),
-         doc_id_end_(doc_id_end),
-         modification_contexts_(modification_contexts),
-         segment_(segment),
-         update_contexts_(update_contexts) {
-        assert(doc_id_begin_ <= doc_id_end_);
-        assert(doc_id_end_ - doc_limits::min() <= segment_.meta.docs_count);
-        assert(update_contexts.size() == segment_.meta.docs_count);
-      }
-    };
-
     std::vector<flush_segment_context> segment_ctxs;
 
     // proces all segments that have been seen by the current flush_context
@@ -1822,14 +1810,7 @@ index_writer::pending_context_t index_writer::flush_all() {
           );
 
           add_document_mask_modified_records(
-            modification_queries,
-            flush_segment_ctx.docs_mask_,
-            cached_readers_, // reader cache for segments
-            flush_segment_ctx.segment_.meta,
-            flush_segment_ctx.doc_id_begin_,
-            flush_segment_ctx.doc_id_end_,
-            flush_segment_ctx.update_contexts_,
-            flush_segment_ctx.modification_contexts_
+            modification_queries, flush_segment_ctx, cached_readers_
           );
         }
       }
@@ -1838,14 +1819,7 @@ index_writer::pending_context_t index_writer::flush_all() {
     // write docs_mask if !empty(), if all docs are masked then remove segment altogether
     for (auto& segment_ctx: segment_ctxs) {
       // if have a writer with potential update-replacement records then check if they were seen
-      add_document_mask_unused_updates(
-        segment_ctx.docs_mask_,
-        segment_ctx.segment_.meta,
-        segment_ctx.doc_id_begin_,
-        segment_ctx.doc_id_end_,
-        segment_ctx.update_contexts_,
-        segment_ctx.modification_contexts_
-      );
+      add_document_mask_unused_updates(segment_ctx);
 
       // mask empty segments
       if (!segment_ctx.segment_.meta.live_docs_count) {
