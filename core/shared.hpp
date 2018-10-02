@@ -128,9 +128,9 @@
 
 #if (defined(__GNUC__) && __GNUC__ == 4 && __GNUC_MINOR__ < 9)
   // GCC4.8 doesn't have std::max_align_t
-  #define MAX_ALIGN_T ::max_align_t;
+  #define MAX_ALIGN_T ::max_align_t
 #else
-  #define MAX_ALIGN_T std::max_align_t;
+  #define MAX_ALIGN_T std::max_align_t
 #endif
 
 // GCC before v5 does not implicitly call the move constructor on local values
