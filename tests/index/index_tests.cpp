@@ -6342,7 +6342,8 @@ class index_test_case_base : public tests::index_test_base {
       ASSERT_NE(nullptr, writer);
 
       {
-        auto doc = writer->documents().insert();
+        auto ctx = writer->documents();
+        auto doc = ctx.insert();
 
         for (auto& name : names) {
           field.name_ = name;
@@ -6541,7 +6542,8 @@ class index_test_case_base : public tests::index_test_base {
       ASSERT_NE(nullptr, writer);
 
       {
-        auto doc = writer->documents().insert();
+        auto ctx = writer->documents();
+        auto doc = ctx.insert();
 
         for (auto& name : names) {
           field.name_ = name;
