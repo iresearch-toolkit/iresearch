@@ -112,52 +112,18 @@ class IRESEARCH_API index_writer : util::noncopyable {
   /// @brief segment references given out by flush_context to allow tracking
   ///        and updating flush_context::pending_segment_context
   //////////////////////////////////////////////////////////////////////////////
-  class flush_segment_context_ref: private util::noncopyable { // non-copyable to ensure only one copy for get/put
+  class active_segment_context: private util::noncopyable { // non-copyable to ensure only one copy for get/put
    public:
-    flush_segment_context_ref() = default;
-    flush_segment_context_ref(
+    active_segment_context() = default;
+    active_segment_context(
         segment_context_ptr ctx,
         std::atomic<size_t>& segments_active,
         flush_context* flush_ctx = nullptr, // the flush_context the segment_context is currently registered with
         size_t pending_segment_context_offset = integer_traits<size_t>::const_max // the segment offset in flush_ctx_->pending_segments_
-    ) NOEXCEPT
-      : ctx_(ctx),
-        flush_ctx_(flush_ctx),
-        pending_segment_context_offset_(pending_segment_context_offset),
-        segments_active_(&segments_active) {
-      assert(!flush_ctx || pending_segment_context_offset_ < flush_ctx->pending_segment_contexts_.size());
-      assert(!flush_ctx || flush_ctx->pending_segment_contexts_[pending_segment_context_offset_].segment_ == ctx_);
-
-      if (ctx_) {
-        ++*segments_active_; // track here since garanteed to have 1 ref per active segment
-      }
-    }
-    flush_segment_context_ref(flush_segment_context_ref&& other) NOEXCEPT
-      : ctx_(std::move(other.ctx_)),
-        flush_ctx_(std::move(other.flush_ctx_)),
-        pending_segment_context_offset_(std::move(other.pending_segment_context_offset_)),
-        segments_active_(std::move(other.segments_active_)) {
-    }
-    ~flush_segment_context_ref() {
-      if (ctx_) {
-        --*segments_active_; // track here since garanteed to have 1 ref per active segment
-      }
-      if (flush_ctx_) { ctx_.reset(); SCOPED_LOCK(flush_ctx_->mutex_); flush_ctx_->pending_segment_context_cond_.notify_all(); } // FIXME TODO remove once col_writer tail is fixed to flush() multiple times without overwrite (since then the tail will be in a different context)
-    }
-    flush_segment_context_ref& operator=(flush_segment_context_ref&& other) {
-      if (this != &other) {
-        if (ctx_) {
-          --*segments_active_; // track here since garanteed to have 1 ref per active segment
-        }
-
-        ctx_ = std::move(other.ctx_);
-        flush_ctx_ = std::move(other.flush_ctx_);
-        pending_segment_context_offset_ = std::move(other.pending_segment_context_offset_);
-        segments_active_ = std::move(other.segments_active_);
-      }
-
-      return *this;
-    }
+    ) NOEXCEPT;
+    active_segment_context(active_segment_context&& other) NOEXCEPT;
+    ~active_segment_context();
+    active_segment_context& operator=(active_segment_context&& other) NOEXCEPT;
 
     const segment_context_ptr& ctx() const NOEXCEPT { return ctx_; }
 
@@ -184,7 +150,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
     class IRESEARCH_API document: public segment_writer::document {
      public:
       document(
-        const flush_context_ptr& ctx,
+        flush_context_ptr&& ctx,
         const segment_context_ptr& segment,
         const segment_writer::update_context& update
       );
@@ -289,13 +255,14 @@ class IRESEARCH_API index_writer : util::noncopyable {
         assert(segment_.ctx()->writer_);
         ctx = ctx_ptr.get(); // make copies in case 'func' causes their reload
         segment = segment_.ctx(); // make copies in case 'func' causes their reload
-        segment->busy_ = true; // guarded by flush_context::flush_mutex_
+        ++segment->active_count_;
       }
 
       auto clear_busy = make_finally([ctx, segment]()->void {
-        SCOPED_LOCK(ctx->mutex_); // lock due to context modification and notification
-        segment->busy_ = false; // guarded by flush_context::mutex_ @see flush_all()
-        ctx->pending_segment_context_cond_.notify_all(); // in case ctx is in flush_all()
+        if (!--segment->active_count_) {
+          SCOPED_LOCK(ctx->mutex_); // lock due to context modification and notification
+          ctx->pending_segment_context_cond_.notify_all(); // in case ctx is in flush_all()
+        }
       });
       auto& writer = *(segment->writer_);
       segment_writer::document doc(writer);
@@ -321,7 +288,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
             break; // the segment cannot fit any more docs, must roll back
           }
 
-          segment->buffered_docs.store(writer.docs_cached());
+          segment->buffered_docs_.store(writer.docs_cached());
 
           auto done = !func(doc);
 
@@ -367,7 +334,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
     void reset() NOEXCEPT;
 
    private:
-    flush_segment_context_ref segment_; // the segment_context used for storing changes (lazy-initialized)
+    active_segment_context segment_; // the segment_context used for storing changes (lazy-initialized)
     index_writer& writer_;
 
     // refresh segment if required (guarded by flush_context::flush_mutex_)
@@ -730,8 +697,8 @@ class IRESEARCH_API index_writer : util::noncopyable {
     typedef std::function<segment_meta()> segment_meta_generator_t;
 
     DECLARE_SHARED_PTR(segment_context);
-    std::atomic<size_t> buffered_docs; // for use with index_writer::buffered_docs() asynchronous call
-    bool busy_; // true when in use by one of the documents() operations (insert/replace), guarded by the flush_context::flush_mutex_ (during set) and flush_context::mutex_ (during unset to allow notify)
+    std::atomic<size_t> active_count_; // number of active in-progress operations (insert/replace) (e.g. document instances or replace(...))
+    std::atomic<size_t> buffered_docs_; // for use with index_writer::buffered_docs() asynchronous call
     format::ptr codec_; // the codec to used for flushing a segment writer
     bool dirty_; // true if flush_all() started processing this segment (this segment should not be used for any new operations), guarded by the flush_context::flush_mutex_
     ref_tracking_directory dir_; // ref tracking for segment_writer to allow for easy ref removal on segment_writer reset
@@ -805,20 +772,24 @@ class IRESEARCH_API index_writer : util::noncopyable {
   ///       longer active
   //////////////////////////////////////////////////////////////////////////////
   struct IRESEARCH_API flush_context {
-    struct pending_segment_context {
-      const size_t doc_id_begin_; // starting segment_context::document_contexts_ for this flush_context range [flush_segment_context::doc_id_begin_, std::min(flush_segment_context::doc_id_end_, segment_context::uncomitted_doc_ids_))
-      size_t doc_id_end_; // ending segment_context::document_contexts_ for this flush_context range [flush_segment_context::doc_id_begin_, std::min(flush_segment_context::doc_id_end_, segment_context::uncomitted_doc_ids_))
-      const size_t modification_offset_begin_; // starting segment_context::modification_queries_ for this flush_context range [flush_segment_context::modification_offset_begin_, std::min(flush_segment_context::::modification_offset_end_, segment_context::uncomitted_modification_queries_))
-      size_t modification_offset_end_; // ending segment_context::modification_queries_ for this flush_context range [flush_segment_context::modification_offset_begin_, std::min(flush_segment_context::::modification_offset_end_, segment_context::uncomitted_modification_queries_))
+    typedef concurrent_stack<size_t> freelist_t; // 'value' == node offset into 'pending_segment_context_'
+    struct pending_segment_context: public freelist_t::node_type {
+      const size_t doc_id_begin_; // starting segment_context::document_contexts_ for this flush_context range [pending_segment_context::doc_id_begin_, std::min(pending_segment_context::doc_id_end_, segment_context::uncomitted_doc_ids_))
+      size_t doc_id_end_; // ending segment_context::document_contexts_ for this flush_context range [pending_segment_context::doc_id_begin_, std::min(pending_segment_context::doc_id_end_, segment_context::uncomitted_doc_ids_))
+      const size_t modification_offset_begin_; // starting segment_context::modification_queries_ for this flush_context range [pending_segment_context::modification_offset_begin_, std::min(pending_segment_context::::modification_offset_end_, segment_context::uncomitted_modification_queries_))
+      size_t modification_offset_end_; // ending segment_context::modification_queries_ for this flush_context range [pending_segment_context::modification_offset_begin_, std::min(pending_segment_context::::modification_offset_end_, segment_context::uncomitted_modification_queries_))
       const segment_context::ptr segment_;
 
-      pending_segment_context(const segment_context::ptr& segment)
-        : doc_id_begin_(segment->uncomitted_doc_id_begin_),
-          doc_id_end_(integer_traits<size_t>::const_max),
-          modification_offset_begin_(segment->uncomitted_modification_queries_),
-          modification_offset_end_(integer_traits<size_t>::const_max),
-          segment_(segment) {
+      pending_segment_context(
+        const segment_context::ptr& segment,
+        size_t pending_segment_context_offset
+      ): doc_id_begin_(segment->uncomitted_doc_id_begin_),
+         doc_id_end_(integer_traits<size_t>::const_max),
+         modification_offset_begin_(segment->uncomitted_modification_queries_),
+         modification_offset_end_(integer_traits<size_t>::const_max),
+         segment_(segment) {
         assert(segment);
+        value = pending_segment_context_offset;
       }
     };
 
@@ -828,8 +799,9 @@ class IRESEARCH_API index_writer : util::noncopyable {
     std::mutex mutex_; // guard for the current context during struct update operations, e.g. pending_segments_, pending_segment_contexts_
     flush_context* next_context_; // the next context to switch to
     std::vector<import_context> pending_segments_; // complete segments to be added during next commit (import)
-    std::vector<pending_segment_context> pending_segment_contexts_; // segment writers with data pending for next commit (all segments that have been used by this flush_context)
     std::condition_variable pending_segment_context_cond_; // notified when a segment has been freed (guarded by mutex_)
+    std::deque<pending_segment_context> pending_segment_contexts_; // segment writers with data pending for next commit (all segments that have been used by this flush_context) must be std::deque to garantee that element memory location does not change for use with 'pending_segment_contexts_freelist_'
+    freelist_t pending_segment_contexts_freelist_; // entries from 'pending_segment_contexts_' that are available for reuse
     std::unordered_set<std::string> segment_mask_; // set of segment names to be removed from the index upon commit
 
     flush_context() = default;
@@ -838,7 +810,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
       reset();
     }
 
-    void emplace(flush_segment_context_ref&& segment); // add the segment to this flush_context
+    void emplace(active_segment_context&& segment); // add the segment to this flush_context
     void reset() NOEXCEPT;
   }; // flush_context
 
@@ -948,7 +920,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
   pending_context_t flush_all();
 
   flush_context_ptr get_flush_context(bool shared = true);
-  flush_segment_context_ref get_segment_context(flush_context& ctx);
+  active_segment_context get_segment_context(flush_context& ctx); // return a usable segment or a nullptr segment if retry is required (e.g. no free segments available)
 
   bool start(); // starts transaction
   void finish(); // finishes transaction
