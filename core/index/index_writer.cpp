@@ -439,8 +439,59 @@ size_t readers_cache::purge(
 
 const std::string index_writer::WRITE_LOCK_NAME = "write.lock";
 
+index_writer::active_segment_context::active_segment_context(
+    segment_context_ptr ctx,
+    std::atomic<size_t>& segments_active,
+    flush_context* flush_ctx /*= nullptr*/, // the flush_context the segment_context is currently registered with
+    size_t pending_segment_context_offset /*= integer_traits<size_t>::const_max*/ // the segment offset in flush_ctx_->pending_segments_
+) NOEXCEPT
+  : ctx_(ctx),
+    flush_ctx_(flush_ctx),
+    pending_segment_context_offset_(pending_segment_context_offset),
+    segments_active_(&segments_active) {
+  assert(!flush_ctx || pending_segment_context_offset_ < flush_ctx->pending_segment_contexts_.size());
+  assert(!flush_ctx || flush_ctx->pending_segment_contexts_[pending_segment_context_offset_].segment_ == ctx_);
+
+  if (ctx_) {
+    ++*segments_active_; // track here since garanteed to have 1 ref per active segment
+  }
+}
+
+index_writer::active_segment_context::active_segment_context(
+    active_segment_context&& other
+) NOEXCEPT
+  : ctx_(std::move(other.ctx_)),
+    flush_ctx_(std::move(other.flush_ctx_)),
+    pending_segment_context_offset_(std::move(other.pending_segment_context_offset_)),
+    segments_active_(std::move(other.segments_active_)) {
+}
+
+index_writer::active_segment_context::~active_segment_context() {
+  if (ctx_) {
+    --*segments_active_; // track here since garanteed to have 1 ref per active segment
+  }
+  if (flush_ctx_) { ctx_.reset(); SCOPED_LOCK(flush_ctx_->mutex_); flush_ctx_->pending_segment_context_cond_.notify_all(); } // FIXME TODO remove once col_writer tail is fixed to flush() multiple times without overwrite (since then the tail will be in a different context)
+}
+
+index_writer::active_segment_context& index_writer::active_segment_context::operator=(
+    active_segment_context&& other
+) NOEXCEPT {
+  if (this != &other) {
+    if (ctx_) {
+      --*segments_active_; // track here since garanteed to have 1 ref per active segment
+    }
+
+    ctx_ = std::move(other.ctx_);
+    flush_ctx_ = std::move(other.flush_ctx_);
+    pending_segment_context_offset_ = std::move(other.pending_segment_context_offset_);
+    segments_active_ = std::move(other.segments_active_);
+  }
+
+  return *this;
+}
+
 index_writer::documents_context::document::document(
-    const flush_context_ptr& ctx,
+    flush_context_ptr&& ctx,
     const segment_context::ptr& segment,
     const segment_writer::update_context& update
 ): segment_writer::document(*(segment->writer_)),
@@ -452,16 +503,16 @@ index_writer::documents_context::document::document(
   assert(segment_->writer_);
   auto& writer = *(segment_->writer_);
   auto uncomitted_doc_id_begin =
-      segment->uncomitted_doc_id_begin_ > segment->flushed_update_contexts_.size()
-      ? (segment->uncomitted_doc_id_begin_ - segment->flushed_update_contexts_.size()) // uncomitted start in 'writer_'
-      : doc_limits::min() // uncommited start in 'flushed_'
-      ;
+    segment_->uncomitted_doc_id_begin_ > segment_->flushed_update_contexts_.size()
+    ? (segment_->uncomitted_doc_id_begin_ - segment_->flushed_update_contexts_.size()) // uncomitted start in 'writer_'
+    : doc_limits::min() // uncommited start in 'flushed_'
+    ;
   assert(uncomitted_doc_id_begin <= writer.docs_cached() + doc_limits::min());
   auto rollback_extra =
     writer.docs_cached() + doc_limits::min() - uncomitted_doc_id_begin; // ensure reset() will be noexcept
-  segment_->busy_ = true; // guarded by flush_context::flush_mutex_
+  ++segment->active_count_;
   writer.begin(update, rollback_extra); // ensure reset() will be noexcept
-  segment_->buffered_docs.store(writer.docs_cached());
+  segment_->buffered_docs_.store(writer.docs_cached());
 }
 
 index_writer::documents_context::document::document(document&& other)
@@ -486,9 +537,10 @@ index_writer::documents_context::document::~document() {
     segment_->modification_queries_[update_id_].filter = nullptr; // mark invalid
   }
 
-  SCOPED_LOCK(ctx_.mutex_); // lock due to context modification and notification
-  segment_->busy_ = false; // guarded by flush_context::mutex_ @see flush_all()
-  ctx_.pending_segment_context_cond_.notify_all(); // in case ctx is in flush_all()
+  if (!--segment_->active_count_) {
+    SCOPED_LOCK(ctx_.mutex_); // lock due to context modification and notification
+    ctx_.pending_segment_context_cond_.notify_all(); // in case ctx is in flush_all()
+  }
 }
 
 index_writer::documents_context::~documents_context() {
@@ -546,7 +598,7 @@ void index_writer::documents_context::reset() NOEXCEPT {
 
   if (!ctx->writer_) {
     assert(ctx->uncomitted_doc_id_begin_ - doc_limits::min() == ctx->flushed_update_contexts_.size());
-    ctx->buffered_docs.store(ctx->flushed_update_contexts_.size());
+    ctx->buffered_docs_.store(ctx->flushed_update_contexts_.size());
 
     return; // nothing to reset
   }
@@ -557,7 +609,7 @@ void index_writer::documents_context::reset() NOEXCEPT {
   assert(integer_traits<doc_id_t>::const_max >= writer.docs_cached());
   assert(ctx->uncomitted_doc_id_begin_ - doc_limits::min() >= ctx->flushed_update_contexts_.size()); // update_contexts located inside th writer
   assert(ctx->uncomitted_doc_id_begin_ - doc_limits::min() <= ctx->flushed_update_contexts_.size() + writer_docs);
-  ctx->buffered_docs.store(ctx->flushed_update_contexts_.size() + writer_docs);
+  ctx->buffered_docs_.store(ctx->flushed_update_contexts_.size() + writer_docs);
 
   // rollback document insertions
   // cannot segment_writer::reset(...) since documents_context::reset() NOEXCEPT
@@ -604,12 +656,20 @@ index_writer::flush_context_ptr index_writer::documents_context::update_segment(
   return ctx;
 }
 
-void index_writer::flush_context::emplace(flush_segment_context_ref&& segment) {
+void index_writer::flush_context::emplace(active_segment_context&& segment) {
   if (!segment.ctx_) {
     return; // nothing to do
   }
 
+  assert( // failure may indicate a dangling 'document' instance
+    (!segment.flush_ctx_ && segment.ctx_.use_count() == 1) // +1 for 'active_segment_context::ctx_'
+    ||(this == segment.flush_ctx_ && segment.ctx_->dirty_ && segment.ctx_.use_count() == 1) // +1 for 'active_segment_context::ctx_' (flush_context switching made a full-circle)
+    ||(this == segment.flush_ctx_ && !segment.ctx_->dirty_ && segment.ctx_.use_count() == 2) // +1 for 'active_segment_context::ctx_', +1 for 'pending_segment_context::segment_'
+    ||(this != segment.flush_ctx_ && segment.flush_ctx_ && segment.ctx_.use_count() == 2) // +1 for 'active_segment_context::ctx_', +1 for 'pending_segment_context::segment_'
+  );
+
   auto& ctx = *(segment.ctx_);
+  freelist_t::node_type* freelist_node = nullptr;
   size_t generation_base;
   size_t modification_count;
 
@@ -620,7 +680,10 @@ void index_writer::flush_context::emplace(flush_segment_context_ref&& segment) {
     // this segment_context has not yet been seen by this flush_context
     // or was marked dirty imples flush_context switching making a full-circle
     if (this != segment.flush_ctx_ || ctx.dirty_) {
-      pending_segment_contexts_.emplace_back(segment.ctx_);
+      pending_segment_contexts_.emplace_back(
+        segment.ctx_, pending_segment_contexts_.size()
+      );
+      freelist_node = &(pending_segment_contexts_.back());
 
       // mark segment as non-reusable if it was peviously registered with a different flush_context
       if (segment.flush_ctx_ && !ctx.dirty_) {
@@ -634,7 +697,12 @@ void index_writer::flush_context::emplace(flush_segment_context_ref&& segment) {
         */
       }
 
-      if (segment.flush_ctx_ && this != segment.flush_ctx_) pending_segment_contexts_.pop_back(); // FIXME TODO remove this condition once col_writer tail is writen correctly
+      if (segment.flush_ctx_ && this != segment.flush_ctx_) { pending_segment_contexts_.pop_back(); freelist_node = nullptr; } // FIXME TODO remove this condition once col_writer tail is writen correctly
+    } else { // the segment is present in this flush_context 'pending_segment_contexts_'
+      assert(pending_segment_contexts_.size() > segment.pending_segment_context_offset_);
+      assert(pending_segment_contexts_[segment.pending_segment_context_offset_].segment_ == segment.ctx_);
+      assert(pending_segment_contexts_[segment.pending_segment_context_offset_].segment_.use_count() == 2); // +1 for the reference in 'pending_segment_contexts_', +1 for the reference in 'active_segment_context'
+      freelist_node = &(pending_segment_contexts_[segment.pending_segment_context_offset_]);
     }
 
     assert(ctx.uncomitted_modification_queries_ <= ctx.modification_queries_.size());
@@ -699,6 +767,15 @@ void index_writer::flush_context::emplace(flush_segment_context_ref&& segment) {
   ctx.uncomitted_doc_id_begin_ =
     ctx.flushed_update_contexts_.size() + writer_docs + doc_limits::min();
   ctx.uncomitted_modification_queries_ = ctx.modification_queries_.size();
+  if (!freelist_node) return; // FIXME TODO remove this condition once col_writer tail is writen correctly
+
+  // do not reuse segments that are present in another flush_context
+  if (!ctx.dirty_) {
+    assert(freelist_node);
+    assert(segment.ctx_.use_count() == 2); // +1 for 'active_segment_context::ctx_', +1 for 'pending_segment_context::segment_'
+    segment = std::move(active_segment_context()); // reset before adding to freelist to garantee proper use_count() in get_segment_context(...)
+    pending_segment_contexts_freelist_.push(*freelist_node); // add segment_context to free-list
+  }
 }
 
 void index_writer::flush_context::reset() NOEXCEPT {
@@ -711,14 +788,15 @@ void index_writer::flush_context::reset() NOEXCEPT {
   dir_->clear_refs();
   pending_segments_.clear();
   pending_segment_contexts_.clear();
+  while(pending_segment_contexts_freelist_.pop()); // clear()
   segment_mask_.clear();
 }
 
 index_writer::segment_context::segment_context(
     directory& dir,
     segment_meta_generator_t&& meta_generator
-): buffered_docs(0),
-   busy_(false),
+): active_count_(0),
+   buffered_docs_(0),
    dirty_(false),
    dir_(dir),
    meta_generator_(std::move(meta_generator)),
@@ -860,8 +938,8 @@ void index_writer::segment_context::remove(filter::ptr&& filter) {
 }
 
 void index_writer::segment_context::reset() {
-  buffered_docs.store(0);
-  busy_ = false;
+  active_count_.store(0);
+  buffered_docs_.store(0);
   dirty_ = false;
   flushed_.clear();
   flushed_update_contexts_.clear();
@@ -1064,7 +1142,7 @@ uint64_t index_writer::buffered_docs() const {
   SCOPED_LOCK(ctx->mutex_); // 'pending_used_segment_contexts_'/'pending_free_segment_contexts_' may be modified
 
   for (auto& entry: ctx->pending_segment_contexts_) {
-    docs_in_ram += entry.segment_->buffered_docs.load(); // reading segment_writer::docs_count() is not thread safe
+    docs_in_ram += entry.segment_->buffered_docs_.load(); // reading segment_writer::docs_count() is not thread safe
   }
 
   return docs_in_ram;
@@ -1396,24 +1474,22 @@ index_writer::flush_context_ptr index_writer::get_flush_context(bool shared /*= 
   }
 }
 
-index_writer::flush_segment_context_ref index_writer::get_segment_context(
+index_writer::active_segment_context index_writer::get_segment_context(
     flush_context& ctx
 ) {
-  SCOPED_LOCK_NAMED(ctx.mutex_, lock); // 'pending_segment_contexts_' may be asynchronously read
-
   for (;;) {
-    // find a reusable slot (linear search on the assumption that there are not a lot of segments)
-    // 'pending_segment_contexts_' contains only segments for the specific 'ctx' (not reused between contexts)
-    // FIXME TODO use irs::memory::freelist
-    for (size_t i = 0, count = ctx.pending_segment_contexts_.size();
-         i < count;
-         ++i) {
-      auto& segment = ctx.pending_segment_contexts_[i].segment_;
+    auto* freelist_node = static_cast<flush_context::pending_segment_context*>(
+      ctx.pending_segment_contexts_freelist_.pop()
+    ); // only nodes of type 'pending_segment_context' are added to 'pending_segment_contexts_freelist_'
 
-      // reusable segment_contexts are not referenced by anyone and are not dirty
-      if (segment.use_count() == 1 && !segment->dirty_) { // +1 for the reference in 'pending_segment_contexts_'
-        return flush_segment_context_ref(segment, segments_active_, &ctx, i);
-      }
+    if (freelist_node) {
+      assert(ctx.pending_segment_contexts_.size() > freelist_node->value);
+      assert(ctx.pending_segment_contexts_[freelist_node->value].segment_ == freelist_node->segment_);
+      assert(freelist_node->segment_.use_count() == 1); // +1 for the reference in 'pending_segment_contexts_'
+      assert(!freelist_node->segment_->dirty_);
+      return active_segment_context(
+        freelist_node->segment_, segments_active_, &ctx, freelist_node->value
+      );
     }
 
     if (!segment_limits_.segment_count_max
@@ -1422,6 +1498,7 @@ index_writer::flush_segment_context_ref index_writer::get_segment_context(
     }
 
     // retry aquiring 'segment_context' until it is aquired
+    SCOPED_LOCK_NAMED(ctx.mutex_, lock);
     ctx.pending_segment_context_cond_.wait_for(
       lock, std::chrono::milliseconds(1000) // arbitrary sleep interval
     );
@@ -1433,7 +1510,7 @@ index_writer::flush_segment_context_ref index_writer::get_segment_context(
   auto segment_ctx =
     segment_writer_pool_.emplace(dir_, std::move(meta_generator)).release();
 
-  return flush_segment_context_ref(segment_ctx, segments_active_);
+  return active_segment_context(segment_ctx, segments_active_);
 }
 
 index_writer::pending_context_t index_writer::flush_all() {
@@ -1468,7 +1545,7 @@ index_writer::pending_context_t index_writer::flush_all() {
     // once !'busy_' it will not change since this 'flush_context' is not the
     // active context and hence will not give out this 'segment_context'
     // FIXME TODO remove
-    while (entry.segment_->busy_
+    while (entry.segment_->active_count_.load()
            || entry.segment_.use_count() != 1) { // FIXME TODO remove this condition once col_writer tail is writen correctly
       ctx->pending_segment_context_cond_.wait_for(
         lock, std::chrono::milliseconds(1000) // arbitrary sleep interval
