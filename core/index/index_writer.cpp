@@ -629,8 +629,17 @@ index_writer::flush_context_ptr index_writer::documents_context::update_segment(
   // refresh segment if required (guarded by flush_context::flush_mutex_)
   // ...........................................................................
 
-  if (!segment_.ctx()) { // no segment (lazy initialized)
+  while (!segment_.ctx()) { // no segment (lazy initialized)
     segment_ = writer_.get_segment_context(*ctx);
+
+    // must unlock/relock flush_context before retrying to get a new segment so
+    // as to avoid a deadlock due to a read-write-read situation for
+    // flush_context::flush_mutex_ with threads trying to lock
+    // flush_context::flush_mutex_ to return their segment_context
+    if (!segment_.ctx()) {
+      ctx.reset(); // reset before reaquiring
+      ctx = writer_.get_flush_context();
+    }
   }
 
   assert(segment_.ctx());
@@ -1477,32 +1486,33 @@ index_writer::flush_context_ptr index_writer::get_flush_context(bool shared /*= 
 index_writer::active_segment_context index_writer::get_segment_context(
     flush_context& ctx
 ) {
-  for (;;) {
-    auto* freelist_node = static_cast<flush_context::pending_segment_context*>(
-      ctx.pending_segment_contexts_freelist_.pop()
-    ); // only nodes of type 'pending_segment_context' are added to 'pending_segment_contexts_freelist_'
+  auto* freelist_node = static_cast<flush_context::pending_segment_context*>(
+    ctx.pending_segment_contexts_freelist_.pop()
+  ); // only nodes of type 'pending_segment_context' are added to 'pending_segment_contexts_freelist_'
 
-    if (freelist_node) {
-      assert(ctx.pending_segment_contexts_.size() > freelist_node->value);
-      assert(ctx.pending_segment_contexts_[freelist_node->value].segment_ == freelist_node->segment_);
-      assert(freelist_node->segment_.use_count() == 1); // +1 for the reference in 'pending_segment_contexts_'
-      assert(!freelist_node->segment_->dirty_);
-      return active_segment_context(
-        freelist_node->segment_, segments_active_, &ctx, freelist_node->value
-      );
-    }
-
-    if (!segment_limits_.segment_count_max
-        || segments_active_.load() < segment_limits_.segment_count_max) {
-      break; // should allocate a new segment_context from the pool
-    }
-
-    // retry aquiring 'segment_context' until it is aquired
-    SCOPED_LOCK_NAMED(ctx.mutex_, lock);
-    ctx.pending_segment_context_cond_.wait_for(
-      lock, std::chrono::milliseconds(1000) // arbitrary sleep interval
+  if (freelist_node) {
+    assert(ctx.pending_segment_contexts_.size() > freelist_node->value);
+    assert(ctx.pending_segment_contexts_[freelist_node->value].segment_ == freelist_node->segment_);
+    assert(freelist_node->segment_.use_count() == 1); // +1 for the reference in 'pending_segment_contexts_'
+    assert(!freelist_node->segment_->dirty_);
+    return active_segment_context(
+      freelist_node->segment_, segments_active_, &ctx, freelist_node->value
     );
   }
+
+  // no free segment_context available and maximum number of segments reached
+  // must return to caller so as to unlock/relock flush_context before retrying
+  // to get a new segment so as to avoid a deadlock due to a read-write-read
+  // situation for flush_context::flush_mutex_ with threads trying to lock
+  // flush_context::flush_mutex_ to return their segment_context
+  if (segment_limits_.segment_count_max
+      && segments_active_.load() >= segment_limits_.segment_count_max) {
+    return active_segment_context();
+  }
+
+  // ...........................................................................
+  // should allocate a new segment_context from the pool
+  // ...........................................................................
 
   auto meta_generator = [this]()->segment_meta {
     return segment_meta(file_name(meta_.increment()), codec_);

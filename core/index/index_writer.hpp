@@ -920,7 +920,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
   pending_context_t flush_all();
 
   flush_context_ptr get_flush_context(bool shared = true);
-  active_segment_context get_segment_context(flush_context& ctx);
+  active_segment_context get_segment_context(flush_context& ctx); // return a usable segment or a nullptr segment if retry is required (e.g. no free segments available)
 
   bool start(); // starts transaction
   void finish(); // finishes transaction
