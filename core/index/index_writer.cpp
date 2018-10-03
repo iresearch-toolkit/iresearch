@@ -793,11 +793,12 @@ void index_writer::flush_context::reset() NOEXCEPT {
     entry.segment_->reset();
   }
 
+  while(pending_segment_contexts_freelist_.pop()); // clear() before pending_segment_contexts_
+
   generation_.store(0);
   dir_->clear_refs();
   pending_segments_.clear();
   pending_segment_contexts_.clear();
-  while(pending_segment_contexts_freelist_.pop()); // clear()
   segment_mask_.clear();
 }
 
