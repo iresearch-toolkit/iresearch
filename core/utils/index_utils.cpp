@@ -350,13 +350,11 @@ index_writer::consolidation_policy_t consolidate_all() {
       std::set<const segment_meta*>& candidates,
       const directory& /*dir*/,
       const index_meta& meta,
-      const index_writer::consolidating_segments_t& consolidating_segments
+      const index_writer::consolidating_segments_t& /*consolidating_segments*/
    ) ->void {
     // merge every segment
     for (auto& segment : meta) {
-      if (consolidating_segments.end() == consolidating_segments.find(&segment.meta)) {
-        candidates.insert(&segment.meta);
-      }
+      candidates.insert(&segment.meta);
     }
   };
 }
