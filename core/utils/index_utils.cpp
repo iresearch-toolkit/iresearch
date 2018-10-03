@@ -202,6 +202,7 @@ index_writer::consolidation_policy_t consolidate_tier(
   // validate input
   min_segments_per_tier = (std::max)(size_t(1), min_segments_per_tier); // can't merge less than 1 segment
   max_segments_per_tier = (std::max)(size_t(1), max_segments_per_tier); // can't merge less than 1 segment
+  min_segments_per_tier = (std::min)(min_segments_per_tier, max_segments_per_tier); // ensure min_segments_per_tier <= max_segments_per_tier
   max_segments_bytes = (std::max)(size_t(1), max_segments_bytes);
   floor_segment_bytes = (std::max)(size_t(1), floor_segment_bytes);
   lookahead = std::max(size_t(1), lookahead);

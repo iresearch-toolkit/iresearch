@@ -451,7 +451,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
   ////////////////////////////////////////////////////////////////////////////
   typedef std::function<void(
     std::set<const segment_meta*>& candidates,
-    const directory& dir,
+    const directory& dir, // FIXME remove
     const index_meta& meta,
     const consolidating_segments_t& consolidating_segments
   )> consolidation_policy_t;
