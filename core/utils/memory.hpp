@@ -79,7 +79,7 @@ class aligned_storage {
  public:
   union {
     align_t<Alignment> align_;
-    char data[Size];
+    char data[MSVC_ONLY(!Size ? 1 :) Size];
   };
 }; // aligned_storage
 
