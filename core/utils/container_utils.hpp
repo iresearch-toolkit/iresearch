@@ -26,7 +26,6 @@
 
 #include <array>
 #include <memory>
-#include <type_traits>
 
 #include "shared.hpp"
 #include "math_utils.hpp"
