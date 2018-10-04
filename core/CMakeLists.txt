@@ -45,7 +45,7 @@ if (MSVC)
   # disable "checked iterators" feature
   add_definitions(-D_SCL_SECURE_NO_WARNINGS)
 
-  # FIXME TODO find a workaround or do not use alignas(...)
+  # FIXME TODO find a workaround or do not use alignas(...)
   # MSVC2018.1 - MSVC2018.7 does not correctly support alignas()
   # MSVC2018.8 requires the following define
   add_definitions(-D_ENABLE_EXTENDED_ALIGNED_STORAGE)
