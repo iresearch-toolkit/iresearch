@@ -183,7 +183,7 @@ install:
   - cmake --build . %CMAKE_BUILD_OPTIONS%
   - cmake --install .
   - mkdir ..\googletest\lib  
-  - move /Y googletest\%CONFIGURATION%\* ..\googletest\lib
+  - move /Y lib\%CONFIGURATION%\* ..\googletest\lib
   - set GTEST_ROOT=%GTEST_DIR%\googletest
 
   ############################################################################
