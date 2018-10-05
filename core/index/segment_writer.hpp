@@ -27,6 +27,7 @@
 #include "field_data.hpp"
 #include "analysis/token_stream.hpp"
 #include "formats/formats.hpp"
+#include "utils/bitvector.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/noncopyable.hpp"
 #include "utils/type_limits.hpp"
@@ -329,7 +330,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   update_contexts docs_context_;
-  document_mask docs_mask_; // invalid/removed doc_ids (e.g. partially indexed due to indexing failure)
+  bitvector docs_mask_; // invalid/removed doc_ids (e.g. partially indexed due to indexing failure)
   fields_data fields_;
   std::unordered_map<hashed_string_ref, column> columns_;
   std::unordered_set<field_data*> norm_fields_; // document fields for normalization
