@@ -276,12 +276,10 @@ class bounded_object_pool {
       });
     }
 
+    operator bool() const NOEXCEPT { return nullptr != slot_; }
     element_type& operator*() const NOEXCEPT { return *slot_->value.ptr; }
     element_type* operator->() const NOEXCEPT { return get(); }
     element_type* get() const NOEXCEPT { return slot_->value.ptr.get(); }
-    operator bool() const NOEXCEPT {
-      return static_cast<bool>(slot_);
-    }
 
    private:
     static void reset_impl(node_type*& slot) NOEXCEPT {

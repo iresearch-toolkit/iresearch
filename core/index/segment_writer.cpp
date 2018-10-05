@@ -53,8 +53,13 @@ doc_id_t segment_writer::begin(
   valid_ = true;
   norm_fields_.clear(); // clear norm fields
   docs_mask_.reserve(
-    docs_mask_.size() + 1 + reserve_rollback_extra
+    math::roundup_power2(docs_mask_.size() + 1 + reserve_rollback_extra) // reserve in blocks of power-of-2
   ); // reserve space for potential rollback
+
+  if (docs_context_.size() >= docs_context_.capacity()) {
+    docs_context_.reserve(math::roundup_power2(docs_context_.size() + 1)); // reserve in blocks of power-of-2
+  }
+
   docs_context_.emplace_back(ctx);
 
   return docs_cached() + type_limits<type_t::doc_id_t>::min() - 1; // -1 for 0-based offset

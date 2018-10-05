@@ -1608,7 +1608,7 @@ index_writer::pending_context_t index_writer::flush_all() {
       assert(modifications_begin <= modifications_end);
       assert(modifications_end <= modifications.segment_->modification_queries_.size());
       modification_contexts_ref modification_queries(
-        &(modifications.segment_->modification_queries_[modifications_begin]),
+        modifications.segment_->modification_queries_.data() + modifications_begin,
         modifications_end - modifications_begin
       );
 
@@ -1717,7 +1717,7 @@ index_writer::pending_context_t index_writer::flush_all() {
         assert(modifications_begin <= modifications_end);
         assert(modifications_end <= modifications.segment_->modification_queries_.size());
         modification_contexts_ref modification_queries(
-          &(modifications.segment_->modification_queries_[modifications_begin]),
+          modifications.segment_->modification_queries_.data() + modifications_begin,
           modifications_end - modifications_begin
         );
 
@@ -1837,11 +1837,11 @@ index_writer::pending_context_t index_writer::flush_all() {
         }
 
         modification_contexts_ref segment_modification_contexts(
-          &(pending_segment_context.segment_->modification_queries_[0]),
+          pending_segment_context.segment_->modification_queries_.data(),
           pending_segment_context.segment_->modification_queries_.size()
         );
         update_contexts_ref flush_update_contexts(
-          &(pending_segment_context.segment_->flushed_update_contexts_[flushed_docs_start]),
+          pending_segment_context.segment_->flushed_update_contexts_.data() + flushed_docs_start,
           flushed.meta.docs_count
         );
 
@@ -1893,7 +1893,7 @@ index_writer::pending_context_t index_writer::flush_all() {
           assert(modifications_begin <= modifications_end);
           assert(modifications_end <= modifications.segment_->modification_queries_.size());
           modification_contexts_ref modification_queries(
-            &(modifications.segment_->modification_queries_[modifications_begin]),
+            modifications.segment_->modification_queries_.data() + modifications_begin,
             modifications_end - modifications_begin
           );
 
