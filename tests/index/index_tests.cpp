@@ -1171,7 +1171,8 @@ class index_test_case_base : public tests::index_test_base {
     }
 
     thread_pool.stop();
-    writer->consolidate(policy);
+    writer->commit(); // ensure there are no consolidation-pending segments left in 'consolidating_segments_' before applying the final consolidation
+    ASSERT_TRUE(writer->consolidate(policy));
     writer->commit();
 
     struct dummy_doc_template_t: public tests::csv_doc_generator::doc_template {
@@ -8512,13 +8513,21 @@ TEST_F(memory_index_test, document_context) {
 
     ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); // wait for insertion to start
 
-    std::thread thread1([&writer, &field]()->void {
+    std::atomic<bool> commit(false);
+    std::thread thread1([&writer, &field, &commit]()->void {
       writer->commit();
+      commit = true;
       SCOPED_LOCK(field.cond_mutex);
       field.cond.notify_all();
     });
 
-    ASSERT_EQ(std::cv_status::timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100))); // verify commit() blocks
+    auto result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)); // verify commit() blocks
+
+    // MSVC 2015/2017 seems to sporadically notify condition variables without explicit request
+    MSVC2015_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
+    MSVC2017_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
+
+    ASSERT_EQ(std::cv_status::timeout, result);
     field_lock.unlock();
     ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); // verify commit() finishes
     thread0.join();
@@ -11462,8 +11471,7 @@ TEST_F(memory_index_test, profile_bulk_index_multithread_cleanup_mt) {
 
 TEST_F(memory_index_test, profile_bulk_index_multithread_consolidate_mt) {
   // a lot of threads cause a lot of contention for the segment pool
-  // small consolidate_interval causes too many policies to be added and slows down test
-  profile_bulk_index_dedicated_consolidate(8, 10000, 5000);
+  profile_bulk_index_dedicated_consolidate(8, 10000, 1000);
 }
 
 TEST_F(memory_index_test, profile_bulk_index_multithread_dedicated_commit_mt) {

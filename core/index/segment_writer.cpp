@@ -65,7 +65,7 @@ doc_id_t segment_writer::begin(
 
   docs_context_.emplace_back(ctx);
 
-  return docs_cached() + type_limits<type_t::doc_id_t>::min() - 1; // -1 for 0-based offset
+  return doc_id_t(docs_cached() + type_limits<type_t::doc_id_t>::min() - 1); // -1 for 0-based offset
 }
 
 segment_writer::ptr segment_writer::make(directory& dir) {
@@ -215,7 +215,7 @@ bool segment_writer::flush(std::string& filename, segment_meta& meta) {
          doc_id < doc_id_end;
          ++doc_id) {
       if (docs_mask_.test(doc_id)) {
-        assert(integer_traits<doc_id_t>::const_max >= doc_id + type_limits<type_t::doc_id_t>::min());
+        assert(size_t(integer_traits<doc_id_t>::const_max) >= doc_id + type_limits<type_t::doc_id_t>::min());
         docs_mask.emplace(
           doc_id_t(doc_id + type_limits<type_t::doc_id_t>::min())
         );
