@@ -805,7 +805,7 @@ script:
         make iresearch-benchmarks
       fi
       # execute tests
-      ulimit -n 1024 # required for MacOS
+      ulimit -n 2048 # required for MacOS
       ulimit -a
       if ! travis_wait 60 ./bin/iresearch-tests${TEST_EXECUTABLE_SUFFIX} ${TEST_PARAMS}; then
         exit 1
