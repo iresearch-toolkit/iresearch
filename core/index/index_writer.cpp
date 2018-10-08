@@ -782,7 +782,7 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
   if (!ctx.dirty_) {
     assert(freelist_node);
     assert(segment.ctx_.use_count() == 2); // +1 for 'active_segment_context::ctx_', +1 for 'pending_segment_context::segment_'
-    segment = std::move(active_segment_context()); // reset before adding to freelist to garantee proper use_count() in get_segment_context(...)
+    segment = active_segment_context(); // reset before adding to freelist to garantee proper use_count() in get_segment_context(...)
     pending_segment_contexts_freelist_.push(*freelist_node); // add segment_context to free-list
   }
 }
@@ -1239,7 +1239,7 @@ bool index_writer::consolidate(
     if (found != candidates.size()) {
       // not all candidates are valid
       IR_FRMT_WARN(
-        "Failed to start consolidation for index generation '" IR_SIZE_T_SPECIFIER "', found only '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER "' candidates",
+        "Failed to start consolidation for index generation '" IR_UINT64_T_SPECIFIER "', found only '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER "' candidates",
         committed_meta->generation(),
         found,
         candidates.size()

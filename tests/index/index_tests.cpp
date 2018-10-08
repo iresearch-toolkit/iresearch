@@ -1122,13 +1122,15 @@ class index_test_case_base : public tests::index_test_base {
 
   void profile_bulk_index_dedicated_commit(size_t insert_threads, size_t commit_threads, size_t commit_interval) {
     auto* directory = &dir();
+    irs::index_writer::options options;
     std::atomic<bool> working(true);
     std::atomic<size_t> writer_commit_count(0);
 
     commit_threads = (std::max)(size_t(1), commit_threads);
+    options.segment_count_max = 8; // match original implementation or may run out of file handles (e.g. MacOS/Travis)
 
     irs::async_utils::thread_pool thread_pool(commit_threads, commit_threads);
-    auto writer = open_writer();
+    auto writer = open_writer(irs::OM_CREATE, options);
 
     for (size_t i = 0; i < commit_threads; ++i) {
       thread_pool.run([commit_interval, directory, &working, &writer, &writer_commit_count]()->void {
@@ -1154,9 +1156,13 @@ class index_test_case_base : public tests::index_test_base {
   void profile_bulk_index_dedicated_consolidate(size_t num_threads, size_t batch_size, size_t consolidate_interval) {
     const auto policy = irs::index_utils::consolidate_all();
     auto* directory = &dir();
+    irs::index_writer::options options;
     std::atomic<bool> working(true);
     irs::async_utils::thread_pool thread_pool(2, 2);
-    auto writer = open_writer();
+
+    options.segment_count_max = 8; // match original implementation or may run out of file handles (e.g. MacOS/Travis)
+
+    auto writer = open_writer(irs::OM_CREATE, options);
 
     thread_pool.run([consolidate_interval, directory, &working, &writer, &policy]()->void {
       while (working.load()) {
