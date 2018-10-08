@@ -1170,10 +1170,10 @@ bool index_writer::consolidate(
 
   std::set<const segment_meta*> candidates;
 
-  // hold reference to the last committed state
-  // to prevent files to be deleted by a cleaner
-  // during upcoming consolidation
-  const auto committed_state = committed_state_;
+  // hold a reference to the last committed state to prevent files from being
+  // deleted by a cleaner during the upcoming consolidation
+  // use atomic_load(...) since finish() may modify the pointer
+  auto committed_state = committed_state_helper::atomic_load(&committed_state_);
   assert(committed_state);
   auto committed_meta = committed_state->first;
   assert(committed_meta);
@@ -2040,7 +2040,9 @@ void index_writer::finish() {
   // after here transaction successfull (only noexcept operations below)
   // ...........................................................................
 
-  committed_state_ = std::move(pending_state_.commit);
+  committed_state_helper::atomic_store(
+    &committed_state_, std::move(pending_state_.commit)
+  );
   meta_.last_gen_ = committed_state_->first->gen_; // update 'last_gen_' to last commited/valid generation
   pending_state_.reset(); // flush is complete, release reference to flush_context
 }
