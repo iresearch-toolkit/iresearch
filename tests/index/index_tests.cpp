@@ -11471,7 +11471,7 @@ TEST_F(memory_index_test, profile_bulk_index_multithread_cleanup_mt) {
 
 TEST_F(memory_index_test, profile_bulk_index_multithread_consolidate_mt) {
   // a lot of threads cause a lot of contention for the segment pool
-  profile_bulk_index_dedicated_consolidate(8, 10000, 1000);
+  profile_bulk_index_dedicated_consolidate(8, 10000, 500);
 }
 
 TEST_F(memory_index_test, profile_bulk_index_multithread_dedicated_commit_mt) {

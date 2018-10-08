@@ -816,7 +816,7 @@ class unbounded_object_pool_volatile
     typename base_t::node* head = nullptr;
 
     // reset all cached instances
-    while (head = this->free_objects_.pop()) {
+    while ((head = this->free_objects_.pop())) {
       head->value = typename T::ptr{}; // empty instance
       this->free_slots_.push(*head);
     }
