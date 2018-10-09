@@ -8482,13 +8482,21 @@ TEST_F(memory_index_test, document_context) {
 
     ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); // wait for insertion to start
 
-    std::thread thread1([&writer, &field]()->void {
+    std::atomic<bool> commit(false);
+    std::thread thread1([&writer, &field, &commit]()->void {
       writer->commit();
+      commit = true;
       SCOPED_LOCK(field.cond_mutex);
       field.cond.notify_all();
     });
 
-    ASSERT_EQ(std::cv_status::timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100))); // verify commit() blocks
+    auto result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)); // verify commit() blocks
+
+    // MSVC 2015/2017 seems to sporadically notify condition variables without explicit request
+    MSVC2015_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
+    MSVC2017_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
+
+    ASSERT_EQ(std::cv_status::timeout, result);
     field_lock.unlock();
     ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); // verify commit() finishes
     thread0.join();
@@ -8594,13 +8602,21 @@ TEST_F(memory_index_test, document_context) {
     auto ctx = writer->documents();
     SCOPED_LOCK_NAMED(field.cond_mutex, field_cond_lock); // wait for insertion to start
     ctx.remove(*(query_doc1.filter));
-    std::thread thread1([&writer, &field]()->void {
+    std::atomic<bool> commit(false); // FIXME TODO remove once segment_context will not block flush_all()
+    std::thread thread1([&writer, &field, &commit]()->void {
       writer->commit();
+      commit = true;
       SCOPED_LOCK(field.cond_mutex);
       field.cond.notify_all();
     });
 
-    ASSERT_EQ(std::cv_status::timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); field_cond_lock.unlock(); // verify commit() finishes FIXME TODO use below once segment_context will not block flush_all()
+    auto result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000)); // verify commit() finishes FIXME TODO remove once segment_context will not block flush_all()
+
+    // MSVC 2015/2017 seems to sporadically notify condition variables without explicit request FIXME TODO remove once segment_context will not block flush_all()
+    MSVC2015_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
+    MSVC2017_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
+
+    ASSERT_EQ(std::cv_status::timeout, result); field_cond_lock.unlock(); // verify commit() finishes FIXME TODO use below once segment_context will not block flush_all()
     //ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); // verify commit() finishes
     { irs::index_writer::documents_context(std::move(ctx)); } // release ctx before join() in case of test failure
     thread1.join();
@@ -8639,13 +8655,21 @@ TEST_F(memory_index_test, document_context) {
       doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
       doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
     }
-    std::thread thread1([&writer, &field]()->void {
+    std::atomic<bool> commit(false); // FIXME TODO remove once segment_context will not block flush_all()
+    std::thread thread1([&writer, &field, &commit]()->void {
       writer->commit();
+      commit = true;
       SCOPED_LOCK(field.cond_mutex);
       field.cond.notify_all();
     });
 
-    ASSERT_EQ(std::cv_status::timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); field_cond_lock.unlock(); // verify commit() finishes FIXME TODO use below once segment_context will not block flush_all()
+    auto result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000)); // verify commit() finishes FIXME TODO remove once segment_context will not block flush_all()
+
+    // MSVC 2015/2017 seems to sporadically notify condition variables without explicit request FIXME TODO remove once segment_context will not block flush_all()
+    MSVC2015_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
+    MSVC2017_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
+
+    ASSERT_EQ(std::cv_status::timeout, result); field_cond_lock.unlock(); // verify commit() finishes FIXME TODO use below once segment_context will not block flush_all()
     //ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); // verify commit() finishes
     { irs::index_writer::documents_context(std::move(ctx)); } // release ctx before join() in case of test failure
     thread1.join();
@@ -8687,13 +8711,21 @@ TEST_F(memory_index_test, document_context) {
         return false;
       }
     );
-    std::thread thread1([&writer, &field]()->void {
+    std::atomic<bool> commit(false); // FIXME TODO remove once segment_context will not block flush_all()
+    std::thread thread1([&writer, &field, &commit]()->void {
       writer->commit();
+      commit = true;
       SCOPED_LOCK(field.cond_mutex);
       field.cond.notify_all();
     });
 
-    ASSERT_EQ(std::cv_status::timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); field_cond_lock.unlock(); // verify commit() finishes FIXME TODO use below once segment_context will not block flush_all()
+    auto result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000)); // verify commit() finishes FIXME TODO remove once segment_context will not block flush_all()
+
+    // MSVC 2015/2017 seems to sporadically notify condition variables without explicit request FIXME TODO remove once segment_context will not block flush_all()
+    MSVC2015_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
+    MSVC2017_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
+
+    ASSERT_EQ(std::cv_status::timeout, result); field_cond_lock.unlock(); // verify commit() finishes FIXME TODO use below once segment_context will not block flush_all()
     // ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); // verify commit() finishes
     { irs::index_writer::documents_context(std::move(ctx)); } // release ctx before join() in case of test failure
     thread1.join();
