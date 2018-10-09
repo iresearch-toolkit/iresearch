@@ -3608,6 +3608,10 @@ const std::locale& get_locale(
   //   for a future release, but we're currently working on higher priority things
   // do not add char16_t/char32_t 'codecvt' instances in the aforementioned case
   #if !defined(_MSC_VER) || _MSC_VER <= 1800
+    #if defined(_MSC_VER)
+      std::cerr << "{" << size_t(codecvt32_facet::id) << "}" << std::endl;
+      std::cerr << "[" << size_t(std::codecvt<char32_t, char, mbstate_t>::id) << "]" << std::endl;
+    #endif
     locale = std::locale(
       locale, irs::memory::make_unique<codecvt16_facet>(converter).release()
     );
