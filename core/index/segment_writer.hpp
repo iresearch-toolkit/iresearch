@@ -215,7 +215,8 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   // implicitly NOEXCEPT since we reserve memory in 'begin'
   void rollback() {
     // mark as removed since not fully inserted
-    remove(docs_cached() + type_limits<type_t::doc_id_t>::min() - 1); // -1 for 0-based offset
+    assert(docs_cached() + type_limits<type_t::doc_id_t>::min() - 1 < type_limits<type_t::doc_id_t>::eof()); // user should check return of begin() != eof()
+    remove(doc_id_t(docs_cached() + type_limits<type_t::doc_id_t>::min() - 1)); // -1 for 0-based offset
     valid_ = false;
   }
 
