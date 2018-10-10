@@ -185,8 +185,12 @@ install:
   - cmake --build . %CMAKE_BUILD_OPTIONS%
   - cmake --install .
   - mkdir ..\googletest\lib
+  - dir .. || true
+  - dir ..\googletest || true
+  - dir ..\include || true
   - dir || true
   - dir x64 || true
+  - dir x64\%CONFIGURATION% || true
   - dir %CONFIGURATION% || true
   - dir lib || true
   - move /Y lib\%CONFIGURATION%\* ..\googletest\lib || true
