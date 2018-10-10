@@ -640,7 +640,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_properties) {
     // codecvt properties (char32)
     {
       #if defined(_MSC_VER)
-        std::cerr << "[" << size_t(std::codecvt<char32_t, char, mbstate_t>::id) << "]" << std::endl;
+        std::cerr << "(" << size_t(std::codecvt<char32_t, char, mbstate_t>::id) << ") test std::codecvt" << std::endl;
       #endif
       auto& cvt_big5 = std::use_facet<std::codecvt<char32_t, char, mbstate_t>>(zh0);
       auto& cvt_c = std::use_facet<std::codecvt<char32_t, char, mbstate_t>>(c);
