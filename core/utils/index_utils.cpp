@@ -268,7 +268,7 @@ index_writer::consolidation_policy_t consolidation_policy(
     size_t cumulative_size = 0;
     auto threshold_size = all_segment_bytes_size * std::max<float>(0, std::min<float>(1, byte_threshold));
     struct {
-      bool operator()(entry_t& lhs, entry_t& rhs) const {
+      bool operator()(const entry_t& lhs, const entry_t& rhs) const {
         return lhs.first < rhs.first;
       }
     } segments_less;
