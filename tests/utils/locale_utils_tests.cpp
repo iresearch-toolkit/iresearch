@@ -519,6 +519,60 @@ TEST_F(LocaleUtilsTestSuite, test_locale_create) {
   }
 }
 
+TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_get) {
+  auto zh = irs::locale_utils::locale("zh_CN.BIG5");
+
+  // codecvt (char)
+  {
+    auto& irscvt = irs::locale_utils::codecvt<char>(zh);
+    auto& stdcvt = std::use_facet<std::codecvt<char, char, mbstate_t>>(zh);
+    ASSERT_EQ(&stdcvt, &irscvt);
+  }
+
+  // codecvt properties (wchar_t)
+  {
+    auto& irscvt = irs::locale_utils::codecvt<wchar_t>(zh);
+    auto& stdcvt = std::use_facet<std::codecvt<wchar_t, char, mbstate_t>>(zh);
+    ASSERT_EQ(&stdcvt, &irscvt);
+  }
+
+  // codecvt properties (char16_t)
+  {
+    auto& irscvt = irs::locale_utils::codecvt<char16_t>(zh);
+    auto& stdcvt = std::use_facet<std::codecvt<char16_t, char, mbstate_t>>(zh);
+
+    #if defined(_MSC_VER) && _MSC_VER > 1800 && _MSC_VER <= 1915 // MSVC2015/MSVC2017
+      // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
+      // due to a missing export, as per their comment:
+      //   This is an active bug in our database (VSO#143857), which we'll investigate
+      //   for a future release, but we're currently working on higher priority things
+      ASSERT_NE(&stdcvt, &irscvt);
+    #else
+      ASSERT_EQ(&stdcvt, &irscvt);
+    #endif
+  }
+
+  // codecvt properties (char32_t)
+  {
+    auto& irscvt = irs::locale_utils::codecvt<char32_t>(zh);
+    auto& stdcvt = std::use_facet<std::codecvt<char32_t, char, mbstate_t>>(zh);
+
+    #if defined(_MSC_VER) && _MSC_VER <= 1800 && !defined(_DLL) // MSVC2013 shared
+      // MSVC2013 does not properly export
+      // std::codecvt<char32_t, char, mbstate_t>::id for shared libraries
+      ASSERT_NE(&stdcvt, &irscvt);
+    #elif defined(_MSC_VER) && _MSC_VER > 1800 && _MSC_VER <= 1915 // MSVC2015/MSVC2017
+      // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
+      // due to a missing export, as per their comment:
+      //   This is an active bug in our database (VSO#143857), which we'll investigate
+      //   for a future release, but we're currently working on higher priority things
+      ASSERT_NE(&stdcvt, &irscvt);
+    #else
+      ASSERT_EQ(&stdcvt, &irscvt);
+    #endif
+  }
+}
+
 TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_properties) {
   auto c = irs::locale_utils::locale("C");
   auto ru0 = irs::locale_utils::locale("ru_RU.CP1251");
@@ -639,9 +693,6 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_properties) {
 
     // codecvt properties (char32)
     {
-      #if defined(_MSC_VER)
-        std::cerr << "(" << size_t(std::codecvt<char32_t, char, mbstate_t>::id) << ") test std::codecvt" << std::endl;
-      #endif
       auto& cvt_big5 = std::use_facet<std::codecvt<char32_t, char, mbstate_t>>(zh0);
       auto& cvt_c = std::use_facet<std::codecvt<char32_t, char, mbstate_t>>(c);
       auto& cvt_cp1251 = std::use_facet<std::codecvt<char32_t, char, mbstate_t>>(ru0);

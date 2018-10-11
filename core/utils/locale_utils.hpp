@@ -38,7 +38,7 @@ NS_BEGIN( locale_utils )
  * @param locale the locale to query for the desired facet
  **/
 template<typename T>
-std::codecvt<T, char, mbstate_t>& codecvt(std::locale const& locale) {
+const std::codecvt<T, char, mbstate_t>& codecvt(std::locale const& locale) {
   return std::use_facet<std::codecvt<T, char, mbstate_t>>(locale);
 }
 
@@ -46,19 +46,21 @@ std::codecvt<T, char, mbstate_t>& codecvt(std::locale const& locale) {
   // MSVC2013 does not properly export
   // std::codecvt<char32_t, char, mbstate_t>::id for shared libraries
   template<>
-  std::codecvt<char32_t, char, mbstate_t>& codecvt(std::locale const& locale);
+  IRESEARCH_API const std::codecvt<char32_t, char, mbstate_t>& codecvt(
+    std::locale const& locale
+  );
 #elif defined(_MSC_VER) && _MSC_VER <= 1915 // MSVC2015/MSVC2017
   // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
   // due to a missing export, as per their comment:
   //   This is an active bug in our database (VSO#143857), which we'll investigate
   //   for a future release, but we're currently working on higher priority things
   template<>
-  IRESEARCH_API std::codecvt<char16_t, char, mbstate_t>& codecvt(
+  IRESEARCH_API const std::codecvt<char16_t, char, mbstate_t>& codecvt(
     std::locale const& locale
   );
 
   template<>
-  IRESEARCH_API std::codecvt<char32_t, char, mbstate_t>& codecvt(
+  IRESEARCH_API const std::codecvt<char32_t, char, mbstate_t>& codecvt(
     std::locale const& locale
   );
 #endif

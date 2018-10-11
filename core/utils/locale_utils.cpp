@@ -3608,10 +3608,6 @@ const std::locale& get_locale(
   //   for a future release, but we're currently working on higher priority things
   // do not add char16_t/char32_t 'codecvt' instances in the aforementioned case
   #if !defined(_MSC_VER) || _MSC_VER <= 1800
-    #if defined(_MSC_VER)
-      std::cerr << "{" << size_t(codecvt32_facet::id) << "} cpp codecvt32_facet" << std::endl;
-      std::cerr << "[" << size_t(std::codecvt<char32_t, char, mbstate_t>::id) << "] cpp std::codecvt" << std::endl;
-    #endif
     locale = std::locale(
       locale, irs::memory::make_unique<codecvt16_facet>(converter).release()
     );
@@ -3658,6 +3654,37 @@ NS_END
 
 NS_ROOT
 NS_BEGIN( locale_utils )
+
+#if defined(_MSC_VER) && _MSC_VER <= 1800 && defined(IRESEARCH_DLL) // MSVC2013
+  // MSVC2013 does not properly export
+  // std::codecvt<char32_t, char, mbstate_t>::id for shared libraries
+  template<>
+  const std::codecvt<char32_t, char, mbstate_t>& codecvt(
+      std::locale const& locale
+  ) {
+    return std::use_facet<std::codecvt<char32_t, char, mbstate_t>>(locale);
+  }
+#elif defined(_MSC_VER) && _MSC_VER <= 1915 // MSVC2015/MSVC2017
+  // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
+  // due to a missing export, as per their comment:
+  //   This is an active bug in our database (VSO#143857), which we'll investigate
+  //   for a future release, but we're currently working on higher priority things
+  template<>
+  const std::codecvt<char16_t, char, mbstate_t>& codecvt(
+      std::locale const& locale
+  ) {
+    // FIXME TODO implement
+    return std::use_facet<std::codecvt<char16_t, char, mbstate_t>>(locale);
+  }
+
+  template<>
+  const std::codecvt<char32_t, char, mbstate_t>& codecvt(
+      std::locale const& locale
+  ) {
+    // FIXME TODO implement
+    return std::use_facet<std::codecvt<char32_t, char, mbstate_t>>(locale);
+  }
+#endif
 
 const irs::string_ref& country(std::locale const& locale) {
   auto* loc = &locale;
