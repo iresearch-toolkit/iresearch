@@ -16187,16 +16187,6 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       doc6->stored.begin(), doc6->stored.end()
     ));
     writer->commit();
-
-    {
-      irs::index_utils::consolidate_bytes options;
-      options.threshold = 1;
-      ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(options)));
-      writer->commit();
-      auto reader = iresearch::directory_reader::open(dir(), codec());
-      ASSERT_EQ(3, reader.size());
-    }
-
     irs::index_utils::consolidate_bytes options;
     options.threshold = 1;
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(options))); // value garanteeing merge
@@ -16343,16 +16333,6 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->commit();
-
-    {
-      irs::index_utils::consolidate_bytes_accum options;
-      options.threshold = 1;
-      ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(options)));
-      writer->commit();
-      auto reader = iresearch::directory_reader::open(dir(), codec());
-      ASSERT_EQ(2, reader.size());
-    }
-
     irs::index_utils::consolidate_bytes_accum options;
     options.threshold = 1;
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(options))); // value garanteeing merge
@@ -16477,16 +16457,6 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       doc5->stored.begin(), doc5->stored.end()
     ));
     writer->commit();
-
-    {
-      irs::index_utils::consolidate_docs_live options;
-      options.threshold = 1;
-      ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(options)));
-      writer->commit();
-      auto reader = iresearch::directory_reader::open(dir(), codec());
-      ASSERT_EQ(2, reader.size());
-    }
-
     irs::index_utils::consolidate_docs_live options;
     options.threshold = 1;
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(options))); // value garanteeing merge
@@ -16621,16 +16591,6 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
     writer->commit();
     writer->documents().remove(std::move(query_doc2_doc4.filter));
     writer->commit();
-
-    {
-      irs::index_utils::consolidate_docs_fill options;
-      options.threshold = 1;
-      ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(options)));
-      writer->commit();
-      auto reader = iresearch::directory_reader::open(dir(), codec());
-      ASSERT_EQ(2, reader.size());
-    }
-
     irs::index_utils::consolidate_docs_fill options;
     options.threshold = 1;
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(options))); // value garanteeing merge
