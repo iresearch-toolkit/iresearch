@@ -255,10 +255,19 @@ index_writer::consolidation_policy_t consolidation_policy(
     auto byte_threshold = options.threshold;
     size_t all_segment_bytes_size = 0;
     uint64_t length;
+    typedef std::pair<size_t, const segment_meta*> entry_t;
+    std::vector<entry_t> segments;
+
+    segments.reserve(meta.size());
 
     for (auto& segment: meta) {
+      segments.emplace_back(0, &(segment.meta));
+
+      auto& bytes_size = segments.back().first;
+
       for (auto& file: segment.meta.files) {
         if (dir.length(length, file)) {
+          bytes_size += length;
           all_segment_bytes_size += length;
         }
       }
@@ -266,21 +275,21 @@ index_writer::consolidation_policy_t consolidation_policy(
 
     size_t cumulative_size = 0;
     auto threshold_size = all_segment_bytes_size * std::max<float>(0, std::min<float>(1, byte_threshold));
+    struct {
+      bool operator()(entry_t& lhs, entry_t& rhs) const {
+        return lhs.first < rhs.first;
+      }
+    } segments_less;
+
+    std::sort(segments.begin(), segments.end(), segments_less); // prefer to consolidate smaller segments
 
     // merge segment if: {threshold} >= (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes
-    for (auto& segment: meta) {
-      size_t segment_bytes_size = 0;
-      uint64_t length;
-
-      for (auto& file: segment.meta.files) {
-        if (dir.length(length, file)) {
-          segment_bytes_size += length;
-        }
-      }
+    for (auto& entry: segments) {
+      auto segment_bytes_size = entry.first;
 
       if (cumulative_size + segment_bytes_size <= threshold_size) {
         cumulative_size += segment_bytes_size;
-        candidates.insert(&segment.meta);
+        candidates.insert(entry.second);
       }
     }
   };

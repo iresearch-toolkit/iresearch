@@ -33,6 +33,37 @@ NS_ROOT
 NS_BEGIN( locale_utils )
 
 /**
+ * @brief provide a common way to access the codecvt facet of a locale
+ *        will work even on MSVC with missing symbol exports
+ * @param locale the locale to query for the desired facet
+ **/
+template<typename T>
+std::codecvt<T, char, mbstate_t>& codecvt(std::locale const& locale) {
+  return std::use_facet<std::codecvt<T, char, mbstate_t>>(locale);
+}
+
+#if defined(_MSC_VER) && _MSC_VER <= 1800 && defined(IRESEARCH_DLL) // MSVC2013
+  // MSVC2013 does not properly export
+  // std::codecvt<char32_t, char, mbstate_t>::id for shared libraries
+  template<>
+  std::codecvt<char32_t, char, mbstate_t>& codecvt(std::locale const& locale);
+#elif defined(_MSC_VER) && _MSC_VER <= 1915 // MSVC2015/MSVC2017
+  // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
+  // due to a missing export, as per their comment:
+  //   This is an active bug in our database (VSO#143857), which we'll investigate
+  //   for a future release, but we're currently working on higher priority things
+  template<>
+  IRESEARCH_API std::codecvt<char16_t, char, mbstate_t>& codecvt(
+    std::locale const& locale
+  );
+
+  template<>
+  IRESEARCH_API std::codecvt<char32_t, char, mbstate_t>& codecvt(
+    std::locale const& locale
+  );
+#endif
+
+/**
  * @brief create a locale from name (language[_COUNTRY][.encoding][@variant])
  * @param name name of the locale to create (nullptr == "C")
  * @param encodingOverride force locale to have the specified output encoding (nullptr == take from 'name')
