@@ -201,10 +201,6 @@ index_writer::consolidation_policy_t consolidation_policy(
       const index_meta& meta,
       const index_writer::consolidating_segments_t& /*consolidating_segments*/
   )->void {
-    if (meta.size() < options.min_segment_threshold) {
-      return; // not enough segments
-    }
-
     auto byte_threshold = options.threshold;
     size_t all_segment_bytes_size = 0;
     size_t segment_count = meta.size();
@@ -248,10 +244,6 @@ index_writer::consolidation_policy_t consolidation_policy(
       const index_meta& meta,
       const index_writer::consolidating_segments_t& /*consolidating_segments*/
   )->void {
-    if (meta.size() < options.min_segment_threshold) {
-      return; // not enough segments
-    }
-
     auto byte_threshold = options.threshold;
     size_t all_segment_bytes_size = 0;
     uint64_t length;
@@ -304,10 +296,6 @@ index_writer::consolidation_policy_t consolidation_policy(
       const index_meta& meta,
       const index_writer::consolidating_segments_t& /*consolidating_segments*/
    )->void {
-    if (meta.size() < options.min_segment_threshold) {
-      return; // not enough segments
-    }
-
     // merge first 'threshold' segments
     for (size_t i = 0, count = std::min(options.threshold, meta.size());
          i < count;
@@ -326,10 +314,6 @@ index_writer::consolidation_policy_t consolidation_policy(
       const index_meta& meta,
       const index_writer::consolidating_segments_t& /*consolidating_segments*/
   )->void {
-    if (meta.size() < options.min_segment_threshold) {
-      return; // not enough segments
-    }
-
     auto fill_threshold = options.threshold;
     auto threshold = std::max<float>(0, std::min<float>(1, fill_threshold));
 
@@ -352,10 +336,6 @@ index_writer::consolidation_policy_t consolidation_policy(
       const index_meta& meta,
       const index_writer::consolidating_segments_t& /*consolidating_segments*/
   )->void {
-    if (meta.size() < options.min_segment_threshold) {
-      return; // not enough segments
-    }
-
     auto docs_threshold = options.threshold;
     size_t all_segment_docs_count = 0;
     size_t segment_count = meta.size();
@@ -395,10 +375,6 @@ index_writer::consolidation_policy_t consolidation_policy(
       const index_meta& meta,
       const index_writer::consolidating_segments_t& consolidating_segments
   )->void {
-    if (meta.size() < options.min_segment_threshold) {
-      return; // not enough segments
-    }
-
     size_t consolidating_size = 0; // size of segments in bytes that are currently under consolidation
     size_t min_segment_size = integer_traits<size_t>::const_max; // the smallest segment
     size_t total_index_size = 0; // total size in bytes of all segments in index

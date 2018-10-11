@@ -30,17 +30,10 @@ NS_ROOT
 NS_BEGIN(index_utils)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @param min_segment_threshold apply policy if: {threshold} < #segments
-////////////////////////////////////////////////////////////////////////////////
-struct consolidate_base {
-  size_t min_segment_threshold = 0;
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @param threshold merge segment if:
 ///   {threshold} > segment_bytes / (all_segment_bytes / #segments)
 ////////////////////////////////////////////////////////////////////////////////
-struct consolidate_bytes: public consolidate_base {
+struct consolidate_bytes {
   float threshold = 0;
 };
 
@@ -48,14 +41,14 @@ struct consolidate_bytes: public consolidate_base {
 /// @param threshold merge segment if:
 ///   {threshold} >= (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes
 ////////////////////////////////////////////////////////////////////////////////
-struct consolidate_bytes_accum: public consolidate_base {
+struct consolidate_bytes_accum {
   float threshold = 0;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @param threshold merge first {threshold} segments
 ////////////////////////////////////////////////////////////////////////////////
-struct consolidate_count: public consolidate_base {
+struct consolidate_count {
   size_t threshold = integer_traits<size_t>::const_max;
 };
 
@@ -63,7 +56,7 @@ struct consolidate_count: public consolidate_base {
 /// @param threshold merge segment if:
 ///   {threshold} >= segment_docs{valid} / (all_segment_docs{valid} / #segments)
 ////////////////////////////////////////////////////////////////////////////////
-struct consolidate_docs_live: public consolidate_base {
+struct consolidate_docs_live {
   float threshold = 0;
 };
 
@@ -71,7 +64,7 @@ struct consolidate_docs_live: public consolidate_base {
 /// @param threshold merge segment if:
 ///   {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})
 ////////////////////////////////////////////////////////////////////////////////
-struct consolidate_docs_fill: public consolidate_base {
+struct consolidate_docs_fill {
   float threshold = 0;
 };
 
@@ -82,7 +75,7 @@ struct consolidate_docs_fill: public consolidate_base {
 /// @param floor_segment_bytes treat all smaller segments as equal for consolidation selection
 /// @param lookahead how many tiers have to be inspected
 ////////////////////////////////////////////////////////////////////////////////
-struct consolidate_tier: public consolidate_base {
+struct consolidate_tier {
   size_t min_segments = 1;
   size_t max_segments = 10;
   size_t max_segments_bytes = size_t(5)*(1<<30);

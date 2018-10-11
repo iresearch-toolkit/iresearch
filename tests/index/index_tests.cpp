@@ -16191,7 +16191,6 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
     {
       irs::index_utils::consolidate_bytes options;
       options.threshold = 1;
-      options.min_segment_threshold = irs::integer_traits<size_t>::const_max;
       ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(options)));
       writer->commit();
       auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -16348,7 +16347,6 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
     {
       irs::index_utils::consolidate_bytes_accum options;
       options.threshold = 1;
-      options.min_segment_threshold = irs::integer_traits<size_t>::const_max;
       ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(options)));
       writer->commit();
       auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -16483,7 +16481,6 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
     {
       irs::index_utils::consolidate_docs_live options;
       options.threshold = 1;
-      options.min_segment_threshold = irs::integer_traits<size_t>::const_max;
       ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(options)));
       writer->commit();
       auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -16628,7 +16625,6 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
     {
       irs::index_utils::consolidate_docs_fill options;
       options.threshold = 1;
-      options.min_segment_threshold = irs::integer_traits<size_t>::const_max;
       ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(options)));
       writer->commit();
       auto reader = iresearch::directory_reader::open(dir(), codec());
