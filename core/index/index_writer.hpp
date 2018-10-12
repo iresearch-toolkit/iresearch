@@ -174,6 +174,7 @@ class IRESEARCH_API index_writer:
       : segment_(std::move(other.segment_)),
         segment_use_count_(std::move(other.segment_use_count_)),
         writer_(other.writer_) {
+      other.segment_use_count_ = 0;
     }
 
     ~documents_context();
