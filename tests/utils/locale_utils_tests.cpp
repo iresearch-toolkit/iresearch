@@ -557,7 +557,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_get) {
     auto& irscvt = irs::locale_utils::codecvt<char32_t>(zh);
     auto& stdcvt = std::use_facet<std::codecvt<char32_t, char, mbstate_t>>(zh);
 
-    #if defined(_MSC_VER) && _MSC_VER <= 1800 && !defined(_DLL) // MSVC2013 shared
+    #if defined(_MSC_VER) && _MSC_VER <= 1800 && defined(_DLL) // MSVC2013 shared
       // MSVC2013 does not properly export
       // std::codecvt<char32_t, char, mbstate_t>::id for shared libraries
       ASSERT_NE(&stdcvt, &irscvt);
@@ -650,83 +650,75 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_properties) {
     ASSERT_EQ(sizeof(wchar_t) > 2 ? 6 : 3, cvt_utf8.max_length()); // ICU only provides max_length per char16_t, so multiply by 2
   }
 
-  // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
-  // due to a missing export, as per their comment:
-  //   This is an active bug in our database (VSO#143857), which we'll investigate
-  //   for a future release, but we're currently working on higher priority things
-  #if !defined(_MSC_VER) || _MSC_VER <= 1800 || !defined(_DLL)
+  // codecvt properties (char16)
+  {
+    auto& cvt_big5 = irs::locale_utils::codecvt<char16_t>(zh0); // must get facet via locale_utils to work arond MSVC issues
+    auto& cvt_c = irs::locale_utils::codecvt<char16_t>(c); // must get facet via locale_utils to work arond MSVC issues
+    auto& cvt_cp1251 = irs::locale_utils::codecvt<char16_t>(ru0); // must get facet via locale_utils to work arond MSVC issues
+    auto& cvt_koi8r = irs::locale_utils::codecvt<char16_t>(ru1); // must get facet via locale_utils to work arond MSVC issues
+    auto& cvt_utf8 = irs::locale_utils::codecvt<char16_t>(zh1); // must get facet via locale_utils to work arond MSVC issues
+    mbstate_t state = mbstate_t();
+    char ch = 'x';
 
-    // codecvt properties (char16)
-    {
-      auto& cvt_big5 = std::use_facet<std::codecvt<char16_t, char, mbstate_t>>(zh0);
-      auto& cvt_c = std::use_facet<std::codecvt<char16_t, char, mbstate_t>>(c);
-      auto& cvt_cp1251 = std::use_facet<std::codecvt<char16_t, char, mbstate_t>>(ru0);
-      auto& cvt_koi8r = std::use_facet<std::codecvt<char16_t, char, mbstate_t>>(ru1);
-      auto& cvt_utf8 = std::use_facet<std::codecvt<char16_t, char, mbstate_t>>(zh1);
-      mbstate_t state = mbstate_t();
-      char ch = 'x';
+    ASSERT_FALSE(cvt_big5.always_noconv());
+    ASSERT_FALSE(cvt_c.always_noconv());
+    ASSERT_FALSE(cvt_cp1251.always_noconv());
+    ASSERT_FALSE(cvt_koi8r.always_noconv());
+    ASSERT_FALSE(cvt_utf8.always_noconv());
 
-      ASSERT_FALSE(cvt_big5.always_noconv());
-      ASSERT_FALSE(cvt_c.always_noconv());
-      ASSERT_FALSE(cvt_cp1251.always_noconv());
-      ASSERT_FALSE(cvt_koi8r.always_noconv());
-      ASSERT_FALSE(cvt_utf8.always_noconv());
+    ASSERT_EQ(0, cvt_big5.encoding()); // bytes in the range 0x00 to 0x7f that are not part of a double-byte character are assumed to be single-byte characters
+    ASSERT_EQ(1, cvt_c.encoding());
+    ASSERT_EQ(1, cvt_cp1251.encoding());
+    ASSERT_EQ(1, cvt_koi8r.encoding());
+    ASSERT_EQ(0, cvt_utf8.encoding());
 
-      ASSERT_EQ(0, cvt_big5.encoding()); // bytes in the range 0x00 to 0x7f that are not part of a double-byte character are assumed to be single-byte characters
-      ASSERT_EQ(1, cvt_c.encoding());
-      ASSERT_EQ(1, cvt_cp1251.encoding());
-      ASSERT_EQ(1, cvt_koi8r.encoding());
-      ASSERT_EQ(0, cvt_utf8.encoding());
+    ASSERT_EQ(1, cvt_big5.length(state, &ch, &ch + 1, 1));
+    ASSERT_EQ(1, cvt_c.length(state, &ch, &ch + 1, 1));
+    ASSERT_EQ(1, cvt_cp1251.length(state, &ch, &ch + 1, 1));
+    ASSERT_EQ(1, cvt_koi8r.length(state, &ch, &ch + 1, 1));
+    ASSERT_EQ(1, cvt_utf8.length(state, &ch, &ch + 1, 1));
 
-      ASSERT_EQ(1, cvt_big5.length(state, &ch, &ch + 1, 1));
-      ASSERT_EQ(1, cvt_c.length(state, &ch, &ch + 1, 1));
-      ASSERT_EQ(1, cvt_cp1251.length(state, &ch, &ch + 1, 1));
-      ASSERT_EQ(1, cvt_koi8r.length(state, &ch, &ch + 1, 1));
-      ASSERT_EQ(1, cvt_utf8.length(state, &ch, &ch + 1, 1));
+    ASSERT_EQ(2, cvt_big5.max_length());
+    ASSERT_EQ(1, cvt_c.max_length());
+    ASSERT_EQ(1, cvt_cp1251.max_length());
+    ASSERT_EQ(1, cvt_koi8r.max_length());
+    ASSERT_EQ(3, cvt_utf8.max_length());
+  }
 
-      ASSERT_EQ(2, cvt_big5.max_length());
-      ASSERT_EQ(1, cvt_c.max_length());
-      ASSERT_EQ(1, cvt_cp1251.max_length());
-      ASSERT_EQ(1, cvt_koi8r.max_length());
-      ASSERT_EQ(3, cvt_utf8.max_length());
-    }
+  // codecvt properties (char32)
+  {
+    auto& cvt_big5 = irs::locale_utils::codecvt<char32_t>(zh0); // must get facet via locale_utils to work arond MSVC issues
+    auto& cvt_c = irs::locale_utils::codecvt<char32_t>(c); // must get facet via locale_utils to work arond MSVC issues
+    auto& cvt_cp1251 = irs::locale_utils::codecvt<char32_t>(ru0); // must get facet via locale_utils to work arond MSVC issues
+    auto& cvt_koi8r = irs::locale_utils::codecvt<char32_t>(ru1); // must get facet via locale_utils to work arond MSVC issues
+    auto& cvt_utf8 = irs::locale_utils::codecvt<char32_t>(zh1); // must get facet via locale_utils to work arond MSVC issues
+    mbstate_t state = mbstate_t();
+    char ch = 'x';
 
-    // codecvt properties (char32)
-    {
-      auto& cvt_big5 = std::use_facet<std::codecvt<char32_t, char, mbstate_t>>(zh0);
-      auto& cvt_c = std::use_facet<std::codecvt<char32_t, char, mbstate_t>>(c);
-      auto& cvt_cp1251 = std::use_facet<std::codecvt<char32_t, char, mbstate_t>>(ru0);
-      auto& cvt_koi8r = std::use_facet<std::codecvt<char32_t, char, mbstate_t>>(ru1);
-      auto& cvt_utf8 = std::use_facet<std::codecvt<char32_t, char, mbstate_t>>(zh1);
-      mbstate_t state = mbstate_t();
-      char ch = 'x';
+    ASSERT_FALSE(cvt_big5.always_noconv());
+    ASSERT_FALSE(cvt_c.always_noconv());
+    ASSERT_FALSE(cvt_cp1251.always_noconv());
+    ASSERT_FALSE(cvt_koi8r.always_noconv());
+    ASSERT_FALSE(cvt_utf8.always_noconv());
 
-      ASSERT_FALSE(cvt_big5.always_noconv());
-      ASSERT_FALSE(cvt_c.always_noconv());
-      ASSERT_FALSE(cvt_cp1251.always_noconv());
-      ASSERT_FALSE(cvt_koi8r.always_noconv());
-      ASSERT_FALSE(cvt_utf8.always_noconv());
+    ASSERT_EQ(0, cvt_big5.encoding());
+    ASSERT_EQ(1, cvt_c.encoding());
+    ASSERT_EQ(1, cvt_cp1251.encoding());
+    ASSERT_EQ(1, cvt_koi8r.encoding());
+    ASSERT_EQ(0, cvt_utf8.encoding());
 
-      ASSERT_EQ(0, cvt_big5.encoding());
-      ASSERT_EQ(1, cvt_c.encoding());
-      ASSERT_EQ(1, cvt_cp1251.encoding());
-      ASSERT_EQ(1, cvt_koi8r.encoding());
-      ASSERT_EQ(0, cvt_utf8.encoding());
+    ASSERT_EQ(1, cvt_big5.length(state, &ch, &ch + 1, 1));
+    ASSERT_EQ(1, cvt_c.length(state, &ch, &ch + 1, 1));
+    ASSERT_EQ(1, cvt_cp1251.length(state, &ch, &ch + 1, 1));
+    ASSERT_EQ(1, cvt_koi8r.length(state, &ch, &ch + 1, 1));
+    ASSERT_EQ(1, cvt_utf8.length(state, &ch, &ch + 1, 1));
 
-      ASSERT_EQ(1, cvt_big5.length(state, &ch, &ch + 1, 1));
-      ASSERT_EQ(1, cvt_c.length(state, &ch, &ch + 1, 1));
-      ASSERT_EQ(1, cvt_cp1251.length(state, &ch, &ch + 1, 1));
-      ASSERT_EQ(1, cvt_koi8r.length(state, &ch, &ch + 1, 1));
-      ASSERT_EQ(1, cvt_utf8.length(state, &ch, &ch + 1, 1));
-
-      ASSERT_EQ(2, cvt_big5.max_length());
-      ASSERT_EQ(1, cvt_c.max_length());
-      ASSERT_EQ(1, cvt_cp1251.max_length());
-      ASSERT_EQ(1, cvt_koi8r.max_length());
-      ASSERT_EQ(6, cvt_utf8.max_length()); // ICU only provides max_length per char16_t, so multiply by 2
-    }
-
-  #endif
+    ASSERT_EQ(2, cvt_big5.max_length());
+    ASSERT_EQ(1, cvt_c.max_length());
+    ASSERT_EQ(1, cvt_cp1251.max_length());
+    ASSERT_EQ(1, cvt_koi8r.max_length());
+    ASSERT_EQ(6, cvt_utf8.max_length()); // ICU only provides max_length per char16_t, so multiply by 2
+  }
 }
 
 TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_ascii_non_unicode) {

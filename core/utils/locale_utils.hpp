@@ -78,6 +78,7 @@ IRESEARCH_API std::locale locale(
 );
 
 /**
+ * FIXME TODO remove since this does not work for MSVC
  * @param encoding the output encoding of the converter
  * @param forceUnicodeSystem force the internal system encoding to be unicode
  * @return the converter capable of outputing in the specified target encoding
