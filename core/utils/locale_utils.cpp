@@ -3690,16 +3690,14 @@ NS_BEGIN( locale_utils )
   const std::codecvt<char16_t, char, mbstate_t>& codecvt(
       std::locale const& locale
   ) {
-    // FIXME TODO implement
-    return std::use_facet<std::codecvt<char16_t, char, mbstate_t>>(locale);
+    return std::use_facet<codecvt16_facet>(locale);
   }
 
   template<>
   const std::codecvt<char32_t, char, mbstate_t>& codecvt(
       std::locale const& locale
   ) {
-    // FIXME TODO implement
-    return std::use_facet<std::codecvt<char32_t, char, mbstate_t>>(locale);
+    return std::use_facet<codecvt32_facet>(locale);
   }
 #endif
 
