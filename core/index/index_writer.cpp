@@ -32,31 +32,16 @@
 #include "utils/index_utils.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
+#include "utils/range.hpp"
 #include "index_writer.hpp"
 
 #include <list>
 
 NS_LOCAL
 
-template<typename T>
-class typed_ref {
- public:
-  typedef T type_t;
-  typed_ref() NOEXCEPT: data_(nullptr), size_(0) {}
-  typed_ref(T* data, size_t size) NOEXCEPT: data_(data), size_(size) {}
-  type_t& operator[](size_t i) { assert(i < size_); return data_[i]; }
-  const type_t& operator[](size_t i) const { assert(i < size_); return data_[i]; }
-  bool empty() const NOEXCEPT { return !data_ || 0 == size_; }
-  size_t size() const NOEXCEPT { return size_; }
-
- private:
-  T* data_;
-  size_t size_;
-};
-
 typedef irs::type_limits<irs::type_t::doc_id_t> doc_limits;
-typedef typed_ref<irs::index_writer::modification_context> modification_contexts_ref;
-typedef typed_ref<irs::segment_writer::update_context> update_contexts_ref;
+typedef range<irs::index_writer::modification_context> modification_contexts_ref;
+typedef range<irs::segment_writer::update_context> update_contexts_ref;
 
 const size_t NON_UPDATE_RECORD = irs::integer_traits<size_t>::const_max; // non-update
 
@@ -128,9 +113,7 @@ bool add_document_mask_modified_records(
 
   bool modified = false;
 
-  for (size_t i = 0, count = modifications.size(); i < count; ++i) {
-    auto& modification = modifications[i];
-
+  for (auto& modification : modifications) {
     if (!modification.filter) {
       continue; // skip invalid or uncommitted modification queries
     }
@@ -185,9 +168,7 @@ bool add_document_mask_modified_records(
   assert(ctx.doc_id_end_ <= ctx.update_contexts_.size() + doc_limits::min());
   bool modified = false;
 
-  for (size_t i = 0, count = modifications.size(); i < count; ++i) {
-    auto& modification = modifications[i];
-
+  for (auto& modification : modifications) {
     if (!modification.filter) {
       continue; // skip invalid or uncommitted modification queries
     }
