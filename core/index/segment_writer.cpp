@@ -74,11 +74,9 @@ segment_writer::ptr segment_writer::make(directory& dir) {
 }
 
 size_t segment_writer::memory() const NOEXCEPT {
-  return sizeof(segment_writer)
-    + (sizeof(update_contexts::value_type) * docs_context_.size())
-    + (sizeof(bitvector) + docs_mask_.count() * sizeof(bitvector::word_t))
-    + fields_.memory()
-    ;
+  return (docs_context_.size() * sizeof(update_contexts::value_type))
+    + (docs_mask_.count() * sizeof(bitvector::word_t)) // FIXME too rough
+    + fields_.memory();
 }
 
 bool segment_writer::remove(doc_id_t doc_id) {
