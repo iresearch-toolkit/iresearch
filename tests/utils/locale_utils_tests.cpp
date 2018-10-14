@@ -557,7 +557,7 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_get) {
     auto& irscvt = irs::locale_utils::codecvt<char32_t>(zh);
     auto& stdcvt = std::use_facet<std::codecvt<char32_t, char, mbstate_t>>(zh);
 
-    #if defined(_MSC_VER) && _MSC_VER <= 1800 && defined(_DLL) // MSVC2013 shared
+    #if defined(_MSC_VER) && _MSC_VER <= 1800 && defined(IRESEARCH_DLL) // MSVC2013 shared
       // MSVC2013 does not properly export
       // std::codecvt<char32_t, char, mbstate_t>::id for shared libraries
       ASSERT_NE(&stdcvt, &irscvt);

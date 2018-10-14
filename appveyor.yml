@@ -184,7 +184,7 @@ install:
   # when compiling together MSVC2017 reports _SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING as undefined even when it is defined
   - cd googletest
   - mkdir build && cd build
-  - cmake -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 -Dgtest_force_shared_crt=ON -DINSTALL_GTEST=ON -DBUILD_GMOCK=OFF -DCMAKE_DEBUG_POSTFIX="" ..
+  - cmake -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 -Dgtest_force_shared_crt=ON -DINSTALL_GTEST=ON -DBUILD_GMOCK=OFF -DCMAKE_DEBUG_POSTFIX="" -DCMAKE_CXX_FLAGS="-D_SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING=1" ..
   - cmake --build . %CMAKE_BUILD_OPTIONS%
   - mkdir %GTEST_DIR%\googletest\lib
   - move /Y %CONFIGURATION%\* %GTEST_DIR%\googletest\lib || true

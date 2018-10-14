@@ -342,8 +342,8 @@ class codecvt16_facet final: public codecvtu_base<char16_t> {
   ) const override;
 };
 
-MSVC2015_ONLY(static std::locale::id codecvt16_facet::id;) // MSVC2015 requires a static instance of an 'id' member
-MSVC2017_ONLY(static std::locale::id codecvt16_facet::id;) // MSVC2017 requires a static instance of an 'id' member
+MSVC2015_ONLY(/*static*/ std::locale::id codecvt16_facet::id;) // MSVC2015 requires a static instance of an 'id' member
+MSVC2017_ONLY(/*static*/ std::locale::id codecvt16_facet::id;) // MSVC2017 requires a static instance of an 'id' member
 
 #if defined (__GNUC__)
   #pragma GCC diagnostic push
@@ -560,8 +560,8 @@ class codecvt32_facet final: public codecvtu_base<char32_t> {
   ) const override;
 };
 
-MSVC2015_ONLY(static std::locale::id codecvt32_facet::id;) // MSVC2015 requires a static instance of an 'id' member
-MSVC2017_ONLY(static std::locale::id codecvt32_facet::id;) // MSVC2017 requires a static instance of an 'id' member
+MSVC2015_ONLY(/*static*/ std::locale::id codecvt32_facet::id;) // MSVC2015 requires a static instance of an 'id' member
+MSVC2017_ONLY(/*static*/ std::locale::id codecvt32_facet::id;) // MSVC2017 requires a static instance of an 'id' member
 
 bool codecvt32_facet::append(
     std::basic_string<intern_type>& buf, const icu::UnicodeString& value
