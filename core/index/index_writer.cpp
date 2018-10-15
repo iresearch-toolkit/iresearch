@@ -635,7 +635,7 @@ index_writer::flush_context_ptr index_writer::documents_context::update_segment(
     if ((!writer_.segment_limits_.segment_docs_max
          || writer_.segment_limits_.segment_docs_max > segment.writer_->docs_cached()) // too many docs
         && (!writer_.segment_limits_.segment_memory_max
-            || writer_.segment_limits_.segment_memory_max > segment.writer_->memory()) // too much memory
+            || writer_.segment_limits_.segment_memory_max > segment.writer_->memory_active()) // too much memory
         && !doc_limits::eof(segment.writer_->docs_cached())) { // segment full
       return ctx;
     } else if (!segment.flush()) { // force a flush of a full segment
