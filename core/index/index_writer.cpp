@@ -810,7 +810,7 @@ bool index_writer::segment_context::flush() {
 
   assert(integer_traits<doc_id_t>::const_max >= writer_->docs_cached());
   flushed_update_contexts_.reserve(flushed_update_contexts_.size() + writer_->docs_cached());
-  flushed_.emplace_back(std::move(writer_meta_));
+  flushed_.emplace_back(std::move(writer_meta_.meta));
 
   // copy over update_contexts
   for (size_t doc_id = doc_limits::min(),
@@ -824,7 +824,7 @@ bool index_writer::segment_context::flush() {
   auto& segment = flushed_.back();
 
   // flush segment_writer
-  if (!writer_->flush(segment.filename, segment.meta)) {
+  if (!writer_->flush(segment)) {
     flushed_.pop_back();
     flushed_update_contexts_.resize(flushed_docs_count);
 
@@ -899,7 +899,7 @@ void index_writer::segment_context::prepare() {
 
   if (!writer_->initialized()) {
     writer_meta_ = meta_generator_();
-    writer_->reset(writer_meta_);
+    writer_->reset(writer_meta_.meta);
   }
 }
 
@@ -943,11 +943,9 @@ void index_writer::segment_context::reset() {
   uncomitted_modification_queries_ = 0;
 
   if (writer_->initialized()) {
-    std::string filename;
-
     writer_->reset(); // try to reduce number of files flushed below
-    writer_->flush(filename, writer_meta_); // flush segment even for empty segments since this will clear internal segment_writer state
-    writer_meta_ = segment_meta(); // reset to invalid
+    writer_->flush(writer_meta_); // flush segment even for empty segments since this will clear internal segment_writer state
+    writer_meta_.meta = segment_meta(); // reset to invalid
   }
 
   dir_.clear_refs(); // release refs only after clearing writer state to ensure 'writer_' does not hold any files
@@ -1166,7 +1164,7 @@ bool index_writer::consolidate(
   // collect a list of consolidation candidates
   {
     SCOPED_LOCK(consolidation_lock_);
-    policy(candidates, dir_, *committed_meta, consolidating_segments_);
+    policy(candidates, *committed_meta, consolidating_segments_);
 
     switch (candidates.size()) {
       case 0:
