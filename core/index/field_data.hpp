@@ -130,8 +130,7 @@ class IRESEARCH_API fields_data: util::noncopyable {
   size_t memory_active() const NOEXCEPT {
     return byte_writer_.pool_offset()
       + int_writer_.pool_offset() * sizeof(int_block_pool::value_type)
-      + fields_.size() * sizeof(fields_map::value_type)
-      ;
+      + fields_.size() * sizeof(fields_map::value_type);
   }
 
   //////////////////////////////////////////////////////////////////////////////
