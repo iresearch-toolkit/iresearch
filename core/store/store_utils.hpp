@@ -766,7 +766,7 @@ inline void decode(
 
 // Decodes average compressed block denoted by [begin;end)
 inline void decode(
-    const uint64_t base, const uint64_t avg,
+    const uint32_t base, const uint32_t avg,
     uint32_t* begin, uint32_t* end) {
   visit(base, avg, begin, end, [begin](uint32_t decoded) mutable {
     *begin++ = decoded;
@@ -917,7 +917,7 @@ inline void visit_block_packed_tail(
 template<typename Visitor>
 inline void visit_block_packed_tail(
     data_input& in,
-    size_t size,
+    uint32_t size,
     uint32_t* packed,
     Visitor visitor) {
   const uint32_t base = in.read_vint();
@@ -929,7 +929,7 @@ inline void visit_block_packed_tail(
     return;
   }
 
-  const size_t block_size = math::ceil32(size, packed::BLOCK_SIZE_32);
+  const uint32_t block_size = math::ceil32(size, packed::BLOCK_SIZE_32);
 
   in.read_bytes(
     reinterpret_cast<byte_type*>(packed),
@@ -965,7 +965,7 @@ inline void visit_block_packed(
 template<typename Visitor>
 inline void visit_block_packed(
     data_input& in,
-    size_t size,
+    uint32_t size,
     uint32_t* packed,
     Visitor visitor) {
   const uint32_t base = in.read_vint();

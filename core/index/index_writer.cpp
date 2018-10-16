@@ -1541,6 +1541,7 @@ index_writer::active_segment_context index_writer::get_segment_context(
   ); // only nodes of type 'pending_segment_context' are added to 'pending_segment_contexts_freelist_'
 
   if (freelist_node) {
+    // FIXME TODO these assert(...)s may give false positives since checking 'ctx.pending_segment_contexts_' is not thread-safe
     assert(ctx.pending_segment_contexts_.size() > freelist_node->value);
     assert(ctx.pending_segment_contexts_[freelist_node->value].segment_ == freelist_node->segment_);
     assert(freelist_node->segment_.use_count() == 1); // +1 for the reference in 'pending_segment_contexts_'
