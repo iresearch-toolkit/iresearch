@@ -1050,10 +1050,6 @@ void index_writer::clear() {
     throw illegal_state();
   }
 
-  pending_refs.emplace_back(
-    directory_utils::reference(dir, writer_->filename(pending_meta), true)
-  );
-
   // 1st phase of the transaction successfully finished here
   meta_.update_generation(pending_meta); // ensure new generation reflected in 'meta_'
   pending_state_.ctx = std::move(ctx); // retain flush context reference
