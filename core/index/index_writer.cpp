@@ -272,12 +272,17 @@ const std::string& write_document_mask(
   assert(docs_mask.size() <= std::numeric_limits<uint32_t>::max());
 
   auto mask_writer = meta.codec->get_document_mask_writer();
+
   if (increment_version) {
     meta.files.erase(mask_writer->filename(meta)); // current filename
     ++meta.version; // segment modified due to new document_mask
   }
+
   const auto& file = *meta.files.emplace(mask_writer->filename(meta)).first; // new/expected filename
+
   mask_writer->write(dir, meta, docs_mask);
+  meta.size = 0; // reset no longer valid size, to be recomputed on index_utils::write_index_segment(...)
+
   return file;
 }
 

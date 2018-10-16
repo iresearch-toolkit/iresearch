@@ -723,7 +723,7 @@ inline void visit(
 // specified 'visitor'
 template<typename Visitor>
 inline void visit(
-    uint64_t base, const uint64_t avg,
+    uint32_t base, const uint32_t avg,
     uint32_t* begin, uint32_t* end,
     Visitor visitor) {
   for (; begin != end; ++begin, base += avg) {
@@ -778,7 +778,7 @@ inline uint32_t write_block(
     const uint64_t base,
     const uint64_t avg,
     const uint64_t* RESTRICT decoded,
-    const size_t size,
+    const uint64_t size, // same type as 'read_block'/'write_block'
     uint64_t* RESTRICT encoded) {
   out.write_vlong(base);
   out.write_vlong(avg);
@@ -790,7 +790,7 @@ inline uint32_t write_block(
     const uint32_t base,
     const uint32_t avg,
     const uint32_t* RESTRICT decoded,
-    const size_t size,
+    const uint32_t size, // same type as 'read_block'/'write_block'
     uint32_t* RESTRICT encoded) {
   out.write_vint(base);
   out.write_vint(avg);
@@ -805,7 +805,7 @@ inline void skip_block64(index_input& in, size_t size) {
 }
 
 // Skips average encoded 64-bit block
-inline void skip_block32(index_input& in, size_t size) {
+inline void skip_block32(index_input& in, uint32_t size) {
   in.read_vint(); // skip base
   in.read_vint(); // skip avg
   bitpack::skip_block32(in, size);
