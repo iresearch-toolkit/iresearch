@@ -1174,9 +1174,10 @@ uint64_t index_writer::buffered_docs() const {
 }
 
 bool index_writer::consolidate(
-    const consolidation_policy_t& policy, format::ptr codec /*= nullptr*/
+    const consolidation_policy_t& policy,
+    format::ptr codec /*= nullptr*/,
+    const merge_writer::flush_progress_t& progress /*= {}*/
 ) {
-  merge_writer::flush_progress_t progress = []()->bool { return true; }; // FIXME TODO move into signature
   REGISTER_TIMER_DETAILED();
 
   if (!codec) {

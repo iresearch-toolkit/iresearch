@@ -2186,8 +2186,7 @@ TEST_F(merge_writer_tests, test_merge_writer_flush_progress) {
     );
     auto* doc1 = gen.next();
     auto* doc2 = gen.next();
-    auto writer =
-      irs::index_writer::make(data_dir, codec_ptr, iresearch::OM_CREATE);
+    auto writer = irs::index_writer::make(data_dir, codec_ptr, irs::OM_CREATE);
     ASSERT_TRUE(insert(
       *writer,
       doc1->indexed.begin(), doc1->indexed.end(),
@@ -2202,7 +2201,7 @@ TEST_F(merge_writer_tests, test_merge_writer_flush_progress) {
     writer->commit(); // create segment1
   }
 
-  auto reader = iresearch::directory_reader::open(data_dir, codec_ptr);
+  auto reader = irs::directory_reader::open(data_dir, codec_ptr);
 
   ASSERT_EQ(2, reader.size());
   ASSERT_EQ(1, reader[0].docs_count());
@@ -2214,24 +2213,6 @@ TEST_F(merge_writer_tests, test_merge_writer_flush_progress) {
     irs::index_meta::index_segment_t index_segment;
     irs::merge_writer::flush_progress_t progress;
     irs::merge_writer writer(dir, "merged0");
-
-    index_segment.meta.codec = codec_ptr;
-    writer.add(reader[0]);
-    writer.add(reader[1]);
-    ASSERT_TRUE(writer.flush(index_segment, progress));
-
-    auto segment = irs::segment_reader::open(dir, index_segment.meta);
-    ASSERT_EQ(2, segment.docs_count());
-  }
-
-  size_t progress_call_count = 0;
-
-  // test always-true progress
-  {
-    irs::memory_directory dir;
-    irs::index_meta::index_segment_t index_segment;
-    irs::merge_writer::flush_progress_t progress = [&progress_call_count]()->bool { ++progress_call_count; return true; };
-    irs::merge_writer writer(dir, "merged");
 
     index_segment.meta.codec = codec_ptr;
     writer.add(reader[0]);
@@ -2257,6 +2238,25 @@ TEST_F(merge_writer_tests, test_merge_writer_flush_progress) {
     ASSERT_ANY_THROW(irs::segment_reader::open(dir, index_segment.meta));
   }
 
+  size_t progress_call_count = 0;
+
+  // test always-true progress
+  {
+    irs::memory_directory dir;
+    irs::index_meta::index_segment_t index_segment;
+    irs::merge_writer::flush_progress_t progress =
+      [&progress_call_count]()->bool { ++progress_call_count; return true; };
+    irs::merge_writer writer(dir, "merged");
+
+    index_segment.meta.codec = codec_ptr;
+    writer.add(reader[0]);
+    writer.add(reader[1]);
+    ASSERT_TRUE(writer.flush(index_segment, progress));
+
+    auto segment = irs::segment_reader::open(dir, index_segment.meta);
+    ASSERT_EQ(2, segment.docs_count());
+  }
+
   ASSERT_TRUE(progress_call_count); // there should have been at least some calls
 
   // test limited-true progress
@@ -2264,7 +2264,8 @@ TEST_F(merge_writer_tests, test_merge_writer_flush_progress) {
     size_t call_count = i;
     irs::memory_directory dir;
     irs::index_meta::index_segment_t index_segment;
-    irs::merge_writer::flush_progress_t progress = [&call_count]()->bool { return --call_count; };
+    irs::merge_writer::flush_progress_t progress =
+      [&call_count]()->bool { return --call_count; };
     irs::merge_writer writer(dir, "merged");
 
     index_segment.meta.codec = codec_ptr;
