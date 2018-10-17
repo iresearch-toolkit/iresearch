@@ -972,10 +972,6 @@ bool remove(const file_path_t path) NOEXCEPT {
 
       return false;
     }
-
-    return true;
-  }
-    return 0 != res;
   #else
     auto res = ::remove(path);
 
@@ -984,9 +980,9 @@ bool remove(const file_path_t path) NOEXCEPT {
 
       return false;
     }
-
-    return true;
   #endif
+
+  return true;
 }
 
 bool set_cwd(const file_path_t path) NOEXCEPT {
