@@ -238,21 +238,27 @@ class bounded_object_pool {
   ///        semantic similar to smart pointers
   /////////////////////////////////////////////////////////////////////////////
   class ptr : util::noncopyable {
+   private:
+    static node_type EMPTY_SLOT;
+
    public:
-    ptr() NOEXCEPT: slot_(nullptr) {}
+    ptr() NOEXCEPT
+      : slot_(&EMPTY_SLOT) {
+    }
+
     explicit ptr(node_type& slot) NOEXCEPT
       : slot_(&slot) {
     }
 
     ptr(ptr&& rhs) NOEXCEPT
       : slot_(rhs.slot_) {
-      rhs.slot_ = nullptr; // take ownership
+      rhs.slot_ = &EMPTY_SLOT; // take ownership
     }
 
     ptr& operator=(ptr&& rhs) NOEXCEPT {
       if (this != &rhs) {
         slot_ = rhs.slot_;
-        rhs.slot_ = nullptr; // take ownership
+        rhs.slot_ = &EMPTY_SLOT; // take ownership
       }
       return *this;
     }
@@ -268,7 +274,7 @@ class bounded_object_pool {
     std::shared_ptr<element_type> release() {
       auto* raw = get();
       auto* slot = slot_;
-      slot_ = nullptr; // moved
+      slot_ = &EMPTY_SLOT; // moved
 
       // in case if exception occurs
       // destructor will be called
@@ -279,23 +285,23 @@ class bounded_object_pool {
       });
     }
 
-    operator bool() const NOEXCEPT { return nullptr != slot_; }
+    operator bool() const NOEXCEPT { return &EMPTY_SLOT != slot_; }
     element_type& operator*() const NOEXCEPT { return *slot_->value.ptr; }
     element_type* operator->() const NOEXCEPT { return get(); }
     element_type* get() const NOEXCEPT {
-      return slot_ ? slot_->value.ptr.get() : nullptr;
+      return slot_->value.ptr.get();
     }
 
    private:
     static void reset_impl(node_type*& slot) NOEXCEPT {
-      if (!slot) {
+      if (slot == &EMPTY_SLOT) {
         // nothing to do
         return;
       }
 
       assert(slot->value.owner);
       slot->value.owner->unlock(*slot);
-      slot = nullptr; // release ownership
+      slot = &EMPTY_SLOT; // release ownership
     }
 
     node_type* slot_;
@@ -403,6 +409,9 @@ class bounded_object_pool {
   mutable std::vector<node_type> pool_;
   mutable stack free_list_;
 }; // bounded_object_pool
+
+template<typename T>
+typename bounded_object_pool<T>::node_type bounded_object_pool<T>::ptr::EMPTY_SLOT;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    unbounded pool
