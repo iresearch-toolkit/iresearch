@@ -2676,7 +2676,8 @@ typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, Cvt
   auto ctx = context();
 
   if (!ctx) {
-    throw irs::detailed_io_error("failed to retrieve ICU formatter in num_put_facet::do_put(...)");
+    throw irs::detailed_io_error()
+      << "failed to retrieve ICU formatter in num_put_facet::do_put(...)";
   }
 
   static_assert(sizeof(int64_t) == sizeof(long long), "sizeof(int64_t) != sizeof(long long)");
@@ -2684,7 +2685,8 @@ typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, Cvt
   ctx->regular_->format(int64_t(0 - value), ctx->icu_buf0_);
 
   if (!converter_.append(ctx->buf_, ctx->icu_buf0_)) {
-    throw irs::detailed_io_error("failed to convert data from UTF8 in num_put_facet::do_put(...)");
+    throw irs::detailed_io_error()
+      << "failed to convert data from UTF8 in num_put_facet::do_put(...)";
   }
 
   size_t len = ctx->buf_.size() + 1; // +1 for '-'
@@ -2748,7 +2750,8 @@ typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, Cvt
   }
 
   if ((unsigned long long)irs::integer_traits<int64_t>::const_max < value) {
-    throw irs::detailed_io_error("value too large while converting data from UTF8 in num_put_facet::do_put(...)");
+    throw irs::detailed_io_error()
+      << "value too large while converting data from UTF8 in num_put_facet::do_put(...)";
   }
 
   auto ipad = (str.flags() & std::ios_base::adjustfield) == std::ios_base::internal
@@ -2765,7 +2768,8 @@ typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, Cvt
   auto ctx = context();
 
   if (!ctx) {
-    throw irs::detailed_io_error("failed to retrieve ICU formatter in num_put_facet::do_put(...)");
+    throw irs::detailed_io_error()
+      << "failed to retrieve ICU formatter in num_put_facet::do_put(...)";
   }
 
   static_assert(sizeof(int64_t) == sizeof(long long), "sizeof(int64_t) != sizeof(long long)");
@@ -2773,7 +2777,8 @@ typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, Cvt
   ctx->regular_->format(int64_t(value), ctx->icu_buf0_);
 
   if (!converter_.append(ctx->buf_, ctx->icu_buf0_)) {
-    throw irs::detailed_io_error("failed to convert data from UTF8 in num_put_facet::do_put(...)");
+    throw irs::detailed_io_error()
+      << "failed to convert data from UTF8 in num_put_facet::do_put(...)";
   }
 
   size_t len = ctx->buf_.size() + (str.flags() & std::ios_base::showpos ? 1 : 0);
@@ -2827,7 +2832,8 @@ typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, Cvt
   auto ctx = context();
 
   if (!ctx) {
-    throw irs::detailed_io_error("failed to retrieve ICU formatter in num_put_facet::do_put(...)");
+    throw irs::detailed_io_error()
+      << "failed to retrieve ICU formatter in num_put_facet::do_put(...)";
   }
 
   ctx->reset(str);
@@ -2903,7 +2909,8 @@ typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, Cvt
   }
 
   if (!converter_.append(ctx->buf_, *icu_buf)) {
-    throw irs::detailed_io_error("failed to convert data from UTF8 in num_put_facet::do_put(...)");
+    throw irs::detailed_io_error()
+      << "failed to convert data from UTF8 in num_put_facet::do_put(...)";
   }
 
   size_t len = ctx->buf_.size()

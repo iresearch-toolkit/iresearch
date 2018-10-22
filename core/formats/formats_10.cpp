@@ -215,11 +215,7 @@ inline void prepare_output(
   out = state.dir->create(str);
 
   if (!out) {
-    std::stringstream ss;
-
-    ss << "Failed to create file, path: " << str;
-
-    throw detailed_io_error(ss.str());
+    throw detailed_io_error() << "failed to create file, path: " << str;
   }
 
   format_utils::write_header(*out, format, version);
@@ -239,11 +235,7 @@ inline void prepare_input(
   in = state.dir->open(str, advice);
 
   if (!in) {
-    std::stringstream ss;
-
-    ss << "Failed to open file, path: " << str;
-
-    throw detailed_io_error(ss.str());
+    throw detailed_io_error() << "failed to open file, path: " << str;
   }
 
   format_utils::check_header(*in, format, min_ver, max_ver);
@@ -652,8 +644,8 @@ void postings_writer::begin_doc(doc_id_t id, const frequency* freq) {
   }
 
   if (id < doc.last) {
-    // docs out of order
-    throw index_error();
+    throw index_error()
+      << "while beginning doc in postings_writer, error: docs out of order '" << id << "' < '" << doc.last << "'";
   }
 
   doc.doc(id - doc.last);
@@ -999,7 +991,7 @@ class doc_iterator : public iresearch::doc_iterator {
         if (!doc_in_) {
           IR_FRMT_FATAL("Failed to reopen document input in: %s", __FUNCTION__);
 
-          throw detailed_io_error("Failed to reopen document input");
+          throw detailed_io_error() << "failed to reopen document input";
         }
       }
 
@@ -1354,7 +1346,7 @@ class pos_iterator: public position {
     if (!pos_in_) {
       IR_FRMT_FATAL("Failed to reopen positions input in: %s", __FUNCTION__);
 
-      throw detailed_io_error("Failed to reopen positions input");
+      throw detailed_io_error() << "failed to reopen positions input";
     }
 
     pos_in_->seek(state.term_state->pos_start);
@@ -1467,7 +1459,7 @@ class offs_pay_iterator final: public pos_iterator {
     if (!pay_in_) {
       IR_FRMT_FATAL("Failed to reopen payload input in: %s", __FUNCTION__);
 
-      throw detailed_io_error("Failed to reopen payload input");
+      throw detailed_io_error() << "failed to reopen payload input";
     }
 
     pay_in_->seek(state.term_state->pay_start);
@@ -1612,7 +1604,7 @@ class offs_iterator final : public pos_iterator {
     if (!pay_in_) {
       IR_FRMT_FATAL("Failed to reopen payload input in: %s", __FUNCTION__);
 
-      throw detailed_io_error("Failed to reopen payload input");
+      throw detailed_io_error() << "failed to reopen payload input";
     }
 
     pay_in_->seek(state.term_state->pay_start);
@@ -1722,7 +1714,7 @@ class pay_iterator final : public pos_iterator {
     if (!pay_in_) {
       IR_FRMT_FATAL("Failed to reopen payload input in: %s", __FUNCTION__);
 
-      throw detailed_io_error("Failed to reopen payload input");
+      throw detailed_io_error() << "failed to reopen payload input";
     }
 
     pay_in_->seek(state.term_state->pay_start);
@@ -2040,12 +2032,8 @@ void index_meta_writer::commit() {
     auto clear_pending = make_finally([this]{ meta_ = nullptr; });
 
     if (!dir_->rename(src, dst)) {
-      std::stringstream ss;
-
-      ss << "Failed to rename file, src path: " << src
-         << " dst path: " << dst;
-
-      throw(detailed_io_error(ss.str()));
+      throw detailed_io_error()
+        << "failed to rename file, src path: " << src << " dst path: " << dst;
     }
 
     complete(*meta_);
@@ -2117,11 +2105,7 @@ void index_meta_reader::read(
   );
 
   if (!in) {
-    std::stringstream ss;
-
-    ss << "Failed to open file, path: " << meta_file;
-
-    throw detailed_io_error(ss.str());
+    throw detailed_io_error() << "failed to open file, path: " << meta_file;
   }
 
   const auto checksum = format_utils::checksum(*in);
@@ -2195,11 +2179,7 @@ void segment_meta_writer::write(directory& dir, const segment_meta& meta) {
   byte_type flags = meta.column_store ? segment_meta_writer::flags_t::HAS_COLUMN_STORE : 0;
 
   if (!out) {
-    std::stringstream ss;
-
-    ss << "Failed to create file, path: " << meta_file;
-
-    throw detailed_io_error(ss.str());
+    throw detailed_io_error() << "failed to create file, path: " << meta_file;
   }
 
   format_utils::write_header(*out, FORMAT_NAME, FORMAT_MAX);
@@ -2239,11 +2219,7 @@ void segment_meta_reader::read(
   );
 
   if (!in) {
-    std::stringstream ss;
-
-    ss << "Failed to open file, path: " << meta_file;
-
-    throw detailed_io_error(ss.str());
+    throw detailed_io_error() << "failed to open file, path: " << meta_file;
   }
 
   const auto checksum = format_utils::checksum(*in);
@@ -2270,8 +2246,8 @@ void segment_meta_reader::read(
   auto files = read_strings<segment_meta::file_set>(*in);
 
   if (flags & ~(segment_meta_writer::flags_t::HAS_COLUMN_STORE)) {
-    // corrupted index
-    throw index_error(); // use of unsupported flags
+    throw index_error()
+      << "while reading segment meta, error: use of unsupported flags";
   }
 
   format_utils::check_footer(*in, checksum);
@@ -2338,11 +2314,7 @@ void document_mask_writer::write(
   auto out = dir.create(filename);
 
   if (!out) {
-    std::stringstream ss;
-
-    ss << "Failed to create file, path: " << filename;
-
-    throw detailed_io_error(ss.str());
+    throw detailed_io_error()  << "Failed to create file, path: " << filename;
   }
 
   // segment can't have more than integer_traits<uint32_t>::const_max documents
@@ -2351,9 +2323,11 @@ void document_mask_writer::write(
 
   format_utils::write_header(*out, FORMAT_NAME, FORMAT_MAX);
   out->write_vint(count);
+
   for (auto mask : docs_mask) {
     out->write_vint(mask);
   }
+
   format_utils::write_footer(*out);
 }
 
@@ -2687,7 +2661,8 @@ void read_compact(
   );
 
   if (!irs::type_limits<iresearch::type_t::address_t>::valid(buf_size)) {
-    throw irs::index_error(); // corrupted index
+    throw irs::index_error()
+      << "while reading compact, error: invalid buffer size '" << buf_size << "'";
   }
 }
 
@@ -5002,9 +4977,10 @@ bool postings_reader::prepare(
   );
 
   const uint64_t block_size = in.read_vint();
+
   if (block_size != postings_writer::BLOCK_SIZE) {
-    // invalid block size
-    throw index_error();
+    throw index_error()
+      << "while preparing postings_reader, error: invalid block size '" << block_size << "'";
   }
 
   return true;

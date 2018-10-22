@@ -223,9 +223,8 @@ class fs_index_output : public buffered_index_output {
     crc.process_bytes(b, len_written);
 
     if (len && len_written != len) {
-      throw detailed_io_error("Failed to write buffer, written ")
-              << std::to_string(len_written) << " out of "
-              << std::to_string(len) << " bytes.";
+      throw detailed_io_error()
+        << "failed to write buffer, written '" << len_written << "' out of '" << len << "' bytes";
     }
   }
 
@@ -328,9 +327,8 @@ class fs_index_input : public buffered_index_input {
  protected:
   virtual void seek_internal(size_t pos) override {
     if (pos >= handle_->size) {
-      throw detailed_io_error("Seek out of range for input file, length ")
-              << std::to_string(handle_->size)
-              << ", position " << std::to_string(pos);
+      throw detailed_io_error()
+        << "seek out of range for input file, length '" << handle_->size << "', position '" << pos << "'";
     }
 
     pos_ = pos;
@@ -344,9 +342,8 @@ class fs_index_input : public buffered_index_input {
 
     if (handle_->pos != pos_) {
       if (fseek(stream, static_cast<long>(pos_), SEEK_SET) != 0) {
-        throw detailed_io_error("Failed to seek to ")
-                << std::to_string(pos_)
-                << " for input file, error " << std::to_string(ferror(stream));
+        throw detailed_io_error()
+          << "failed to seek to '" << pos_ << "' for input file, error '" << ferror(stream) << "'";
       }
 
       handle_->pos = pos_;
@@ -363,10 +360,8 @@ class fs_index_input : public buffered_index_input {
       }
 
       // read error
-      throw detailed_io_error("Failed to read from input file, read ")
-              << std::to_string(read)
-              << " out of " << std::to_string(len)
-              << " bytes, error " << std::to_string(ferror(stream));
+      throw detailed_io_error()
+        << "failed to read from input file, read '" << read << "' out of '" << len << "' bytes, error '" << ferror(stream) << "'";
     }
 
     assert(handle_->pos == pos_);
