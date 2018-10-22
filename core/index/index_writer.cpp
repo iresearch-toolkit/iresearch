@@ -109,8 +109,10 @@ bool add_document_mask_modified_records(
   auto reader = readers.emplace(meta);
 
   if (!reader) {
-    throw irs::index_error()
-      << "while adding document mask modified records to document_mask of segment '" << meta.name << "', error: failed to open segment";
+    throw irs::index_error(
+      std::string("while adding document mask modified records to document_mask of segment '") +meta.name
+      + "', error: failed to open segment"
+    );
   }
 
   bool modified = false;
@@ -162,8 +164,10 @@ bool add_document_mask_modified_records(
   auto reader = readers.emplace(ctx.segment_.meta);
 
   if (!reader) {
-    throw irs::index_error()
-      << "while adding document mask modified records to flush_segment_context of segment '" << ctx.segment_.meta.name << "', error: failed to open segment";
+    throw irs::index_error(
+      std::string("while adding document mask modified records to flush_segment_context of segment '") + ctx.segment_.meta.name
+      + "', error: failed to open segment"
+    );
   }
 
   assert(doc_limits::valid(ctx.doc_id_begin_));
@@ -683,8 +687,10 @@ index_writer::flush_context_ptr index_writer::documents_context::update_segment(
     );
 
     if (!segment.flush()) {
-      throw index_error()
-        << "while flushing segment '" << segment.writer_meta_.meta.name << "', error: failed to flush segment";
+      throw index_error(
+        std::string("while flushing segment '") + segment.writer_meta_.meta.name
+        + "', error: failed to flush segment"
+      );
     }
   }
 
@@ -2054,7 +2060,7 @@ bool index_writer::start() {
 
     auto sync = [&dir](const std::string& file) {
       if (!dir.sync(file)) {
-        throw detailed_io_error() << "failed to sync file, path: " << file;
+        throw detailed_io_error("failed to sync file, path: " + file);
       }
 
       return true;

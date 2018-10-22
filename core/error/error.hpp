@@ -63,31 +63,26 @@ struct IRESEARCH_API error_base: std::exception {
 // -----------------------------------------------------------------------------
 class IRESEARCH_API detailed_error_base: public error_base {
  public:
-  detailed_error_base(): out_(&buf_) {}
+  explicit detailed_error_base(std::string&& error) NOEXCEPT
+    : error_(std::move(error)) {
+  }
+
   detailed_error_base(const detailed_error_base& other)
-    : buf_(other.buf_), out_(&buf_) {}
+    : error_(other.error_) {
+  }
+
   detailed_error_base(detailed_error_base&& other) NOEXCEPT
-    : buf_(std::move(other.buf_)), out_(&buf_) {}
+    : error_(std::move(other.error_)) {
+  }
 
   detailed_error_base& operator=(const detailed_error_base& other) = delete;
   detailed_error_base& operator=(detailed_error_base&& other) NOEXCEPT = delete;
 
-  template<typename T>
-  detailed_error_base& operator<<(const T& arg) { out_ << arg; return *this; }
-
-  virtual const char* what() const NOEXCEPT final { return buf_.eback(); }
+  virtual const char* what() const NOEXCEPT final { return error_.c_str(); }
 
  private:
-  struct buf_t: std::stringbuf {
-    buf_t() = default;
-    buf_t(const buf_t& other): std::stringbuf(other.str()) {}
-    buf_t(buf_t&& other): std::stringbuf(std::move(other)) {}
-    using std::stringbuf::eback;
-  };
-
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  buf_t buf_;
-  std::iostream out_;
+  std::string error_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
@@ -123,6 +118,10 @@ struct IRESEARCH_API eof_error: io_error {
 // ----------------------------------------------------------------------------
 struct IRESEARCH_API detailed_io_error: public detailed_error_base {
  public:
+  explicit detailed_io_error(std::string&& error)
+    : detailed_error_base(std::move(error)) {
+  }
+
   DECLARE_ERROR_CODE(io_error);
   virtual ErrorCode code() const NOEXCEPT override { return CODE; }
 };
@@ -170,7 +169,11 @@ struct IRESEARCH_API index_not_found: error_base {
 //                                                                  index_error
 // ----------------------------------------------------------------------------
 struct IRESEARCH_API index_error: detailed_error_base {
-  DECLARE_ERROR_CODE( index_error );
+  explicit index_error(std::string&& error)
+    : detailed_error_base(std::move(error)) {
+  }
+
+  DECLARE_ERROR_CODE(index_error);
   virtual ErrorCode code() const NOEXCEPT override { return CODE; }
 };
 
