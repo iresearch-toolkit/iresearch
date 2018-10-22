@@ -2205,8 +2205,9 @@ void segment_meta_writer::write(directory& dir, const segment_meta& meta) {
   format_utils::write_header(*out, FORMAT_NAME, FORMAT_MAX);
   write_string(*out, meta.name);
   out->write_vlong(meta.version);
-  out->write_vlong(meta.docs_count);
   out->write_vlong(meta.live_docs_count);
+  out->write_vlong(meta.docs_count - meta.live_docs_count); // docs_count >= live_docs_count
+  out->write_vlong(meta.size);
   out->write_byte(flags);
   write_strings( *out, meta.files );
   format_utils::write_footer(*out);
@@ -2256,8 +2257,15 @@ void segment_meta_reader::read(
 
   auto name = read_string<std::string>(*in);
   const auto version = in->read_vlong();
-  const auto docs_count = in->read_vlong();
   const auto live_docs_count = in->read_vlong();
+  const auto docs_count = in->read_vlong() + live_docs_count;
+
+  if (docs_count < live_docs_count) {
+    // corrupted index
+    throw index_error(); // docs_count >= live_docs_count
+  }
+
+  const auto size = in->read_vlong();
   const auto flags = in->read_byte();
   auto files = read_strings<segment_meta::file_set>(*in);
 
@@ -2277,6 +2285,7 @@ void segment_meta_reader::read(
   meta.column_store = flags & segment_meta_writer::flags_t::HAS_COLUMN_STORE;
   meta.docs_count = docs_count;
   meta.live_docs_count = live_docs_count;
+  meta.size = size;
   meta.files = std::move(files);
 }
 
