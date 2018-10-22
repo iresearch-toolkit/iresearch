@@ -177,11 +177,7 @@ inline void prepare_output(
   out = state.dir->create(str);
 
   if (!out) {
-    std::stringstream ss;
-
-    ss << "Failed to create file, path: " << str;
-
-    throw detailed_io_error(ss.str());
+    throw detailed_io_error() << "failed to create file, path: " << str;
   }
 
   format_utils::write_header(*out, format, version);
@@ -203,11 +199,7 @@ inline void prepare_input(
   in = state.dir->open(str, advice);
 
   if (!in) {
-    std::stringstream ss;
-
-    ss << "Failed to open file, path: " << str;
-
-    throw detailed_io_error(ss.str());
+    throw detailed_io_error() << "failed to open file, path: " << str;
   }
 
   if (checksum) {
@@ -1132,9 +1124,10 @@ index_input& term_iterator::terms_input() const {
     if (!terms_in_) {
       IR_FRMT_FATAL("Failed to reopen terms input in: %s", __FUNCTION__);
 
-      throw detailed_io_error("Failed to reopen terms input");
+      throw detailed_io_error() << "failed to reopen terms input";
     }
   }
+
   return *terms_in_;
 }
 

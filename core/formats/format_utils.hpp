@@ -81,8 +81,8 @@ inline int64_t check_footer(index_input& in, int64_t checksum) {
   validate_footer(in);
 
   if (checksum != in.read_long()) {
-    // invalid checksum
-    throw index_error();
+    throw index_error()
+      << "while checking footer, error: invalid checksum '" << checksum << "'";
   }
 
   return checksum;

@@ -321,7 +321,8 @@ directory_reader_impl::directory_reader_impl(
     }
 
     if (!ctx.reader) {
-      throw index_error();
+      throw index_error()
+        << "while opening reader for segment '" << segment.name << "', error: failed to open reader";
     }
 
     ctx.base = static_cast<doc_id_t>(docs_max);
