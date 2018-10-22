@@ -37,6 +37,8 @@
 
 #include <boost/locale/encoding.hpp>
 
+#include <sstream>
+
 NS_LOCAL
 
 inline size_t buffer_size(FILE* file) NOEXCEPT {

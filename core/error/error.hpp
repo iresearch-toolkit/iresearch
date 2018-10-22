@@ -25,7 +25,6 @@
 #define IRESEARCH_ERROR_H
 
 #include <exception>
-#include <sstream>
 
 #include "utils/string.hpp"
 

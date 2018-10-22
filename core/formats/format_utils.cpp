@@ -28,6 +28,8 @@
 
 #include "formats/formats.hpp"
 
+#include <sstream>
+
 NS_ROOT
 
 void validate_footer(iresearch::index_input& in) {
