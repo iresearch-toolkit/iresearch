@@ -63,7 +63,7 @@ inline int to_string(std::string& buf, const char* format, Args&&... args) {
 
   try {
     result = snprintf(&buf[start], result, format, std::forward<Args>(args)...);
-    buf.resize(start + std::max(0, result));
+    buf.resize(start + (std::max)(0, result));
   } catch (...) {
     buf.resize(start);
 
@@ -84,7 +84,6 @@ inline std::string to_string(const char* format, Args&&... args) {
 
   assert(result >= 0);
   assert(size_t(result) == buf.size());
-
   UNUSED(result);
 
   return buf;
