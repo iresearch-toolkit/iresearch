@@ -5094,17 +5094,24 @@ irs::doc_iterator::ptr postings_reader::iterator(
   const auto enabled = features & req;
   doc_iterator::ptr it;
 
+  // MSVC 2013 doesn't support constexpr, can't use
+  // 'operator|' in the following switch statement
+  CONSTEXPR const auto FREQ_POS_OFFS_PAY = features::FREQ | features::POS | features::OFFS | features::PAY;
+  CONSTEXPR const auto FREQ_POS_OFFS = features::FREQ | features::POS | features::OFFS;
+  CONSTEXPR const auto FREQ_POS_PAY = features::FREQ | features::POS | features::PAY;
+  CONSTEXPR const auto FREQ_POS = features::FREQ | features::POS;
+
   switch (enabled) {
-   case features::FREQ | features::POS | features::OFFS | features::PAY:
+   case FREQ_POS_OFFS_PAY:
     it = doc_iterator::make<pos_doc_iterator<offs_pay_iterator>>();
     break;
-   case features::FREQ | features::POS | features::OFFS:
+   case FREQ_POS_OFFS:
     it = doc_iterator::make<pos_doc_iterator<offs_iterator>>();
     break;
-   case features::FREQ | features::POS | features::PAY:
+   case FREQ_POS_PAY:
     it = doc_iterator::make<pos_doc_iterator<pay_iterator>>();
     break;
-   case features::FREQ | features::POS:
+   case FREQ_POS:
     it = doc_iterator::make<pos_doc_iterator<pos_iterator>>();
     break;
    default:
