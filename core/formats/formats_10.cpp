@@ -5096,10 +5096,12 @@ irs::doc_iterator::ptr postings_reader::iterator(
 
   // MSVC 2013 doesn't support constexpr, can't use
   // 'operator|' in the following switch statement
-  CONSTEXPR const auto FREQ_POS_OFFS_PAY = features::FREQ | features::POS | features::OFFS | features::PAY;
-  CONSTEXPR const auto FREQ_POS_OFFS = features::FREQ | features::POS | features::OFFS;
-  CONSTEXPR const auto FREQ_POS_PAY = features::FREQ | features::POS | features::PAY;
-  CONSTEXPR const auto FREQ_POS = features::FREQ | features::POS;
+  enum Mask: uint32_t {
+    FREQ_POS_OFFS_PAY = features::FREQ | features::POS | features::OFFS | features::PAY,
+    FREQ_POS_OFFS = features::FREQ | features::POS | features::OFFS,
+    FREQ_POS_PAY = features::FREQ | features::POS | features::PAY,
+    FREQ_POS = features::FREQ | features::POS,
+  };
 
   switch (enabled) {
    case FREQ_POS_OFFS_PAY:
