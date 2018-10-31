@@ -102,7 +102,7 @@ void string_field::value(const irs::string_ref& str) {
   const auto max_len = (std::min)(str.size(), size_t(irs::byte_block_pool::block_type::SIZE - size_len));
   auto begin = str.begin();
   auto end = str.begin() + max_len;
-  value_ = std::string(begin, end);
+  value_.assign(begin, end);
 }
 
 bool string_field::write(irs::data_output& out) const {
