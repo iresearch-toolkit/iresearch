@@ -1320,7 +1320,7 @@ bool index_writer::consolidate(
   consolidation_segment.meta.name = file_name(meta_.increment()); // increment active meta, not fn arg
 
   ref_tracking_directory dir(dir_); // track references for new segment
-  merge_writer merger(dir, consolidation_segment.meta.name);
+  merge_writer merger(dir);
   merger.reserve(candidates.size());
 
   // add consolidated segments to the merge_writer
@@ -1475,7 +1475,11 @@ bool index_writer::consolidate(
   return true;
 }
 
-bool index_writer::import(const index_reader& reader, format::ptr codec /*= nullptr*/) {
+bool index_writer::import(
+    const index_reader& reader,
+    format::ptr codec /*= nullptr*/,
+    const merge_writer::flush_progress_t& progress /*= {}*/
+) {
   if (!reader.live_docs_count()) {
     return true; // skip empty readers since no documents to import
   }
@@ -1490,14 +1494,14 @@ bool index_writer::import(const index_reader& reader, format::ptr codec /*= null
   segment.meta.name = file_name(meta_.increment());
   segment.meta.codec = codec;
 
-  merge_writer merger(dir, segment.meta.name);
+  merge_writer merger(dir);
   merger.reserve(reader.size());
 
   for (auto& segment : reader) {
     merger.add(segment);
   }
 
-  if (!merger.flush(segment)) {
+  if (!merger.flush(segment, progress)) {
     return false; // import failure (no files created, nothing to clean up)
   }
 

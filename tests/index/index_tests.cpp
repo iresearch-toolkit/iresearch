@@ -17981,28 +17981,36 @@ TEST_F(memory_index_test, consolidate_progress) {
 
   size_t progress_call_count = 0;
 
+  const size_t MAX_DOCS = 32768;
+
   // test always-true progress
   {
     irs::memory_directory dir;
     auto writer = irs::index_writer::make(dir, get_codec(), irs::OM_CREATE);
-    ASSERT_TRUE(insert(
-      *writer,
-      doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+
+    for (auto size = 0; size < MAX_DOCS; ++size) {
+      ASSERT_TRUE(insert(
+        *writer,
+        doc1->indexed.begin(), doc1->indexed.end(),
+        doc1->stored.begin(), doc1->stored.end()
+      ));
+    }
     writer->commit(); // create segment0
-    ASSERT_TRUE(insert(
-      *writer,
-      doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+
+    for (auto size = 0; size < MAX_DOCS; ++size) {
+      ASSERT_TRUE(insert(
+        *writer,
+        doc2->indexed.begin(), doc2->indexed.end(),
+        doc2->stored.begin(), doc2->stored.end()
+      ));
+    }
     writer->commit(); // create segment1
 
     auto reader = irs::directory_reader::open(dir, get_codec());
 
     ASSERT_EQ(2, reader.size());
-    ASSERT_EQ(1, reader[0].docs_count());
-    ASSERT_EQ(1, reader[1].docs_count());
+    ASSERT_EQ(MAX_DOCS, reader[0].docs_count());
+    ASSERT_EQ(MAX_DOCS, reader[1].docs_count());
 
     irs::merge_writer::flush_progress_t progress =
       [&progress_call_count]()->bool { ++progress_call_count; return true; };
@@ -18013,7 +18021,7 @@ TEST_F(memory_index_test, consolidate_progress) {
     reader = irs::directory_reader::open(dir, get_codec());
 
     ASSERT_EQ(1, reader.size());
-    ASSERT_EQ(2, reader[0].docs_count());
+    ASSERT_EQ(2*MAX_DOCS, reader[0].docs_count());
   }
 
   ASSERT_TRUE(progress_call_count); // there should have been at least some calls
@@ -18023,24 +18031,29 @@ TEST_F(memory_index_test, consolidate_progress) {
     size_t call_count = i;
     irs::memory_directory dir;
     auto writer = irs::index_writer::make(dir, get_codec(), irs::OM_CREATE);
-    ASSERT_TRUE(insert(
-      *writer,
-      doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+    for (auto size = 0; size < MAX_DOCS; ++size) {
+      ASSERT_TRUE(insert(
+        *writer,
+        doc1->indexed.begin(), doc1->indexed.end(),
+        doc1->stored.begin(), doc1->stored.end()
+      ));
+    }
     writer->commit(); // create segment0
-    ASSERT_TRUE(insert(
-      *writer,
-      doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+
+    for (auto size = 0; size < MAX_DOCS; ++size) {
+      ASSERT_TRUE(insert(
+        *writer,
+        doc2->indexed.begin(), doc2->indexed.end(),
+        doc2->stored.begin(), doc2->stored.end()
+      ));
+    }
     writer->commit(); // create segment1
 
     auto reader = irs::directory_reader::open(dir, get_codec());
 
     ASSERT_EQ(2, reader.size());
-    ASSERT_EQ(1, reader[0].docs_count());
-    ASSERT_EQ(1, reader[1].docs_count());
+    ASSERT_EQ(MAX_DOCS, reader[0].docs_count());
+    ASSERT_EQ(MAX_DOCS, reader[1].docs_count());
 
     irs::merge_writer::flush_progress_t progress =
       [&call_count]()->bool { return --call_count; };
@@ -18051,8 +18064,8 @@ TEST_F(memory_index_test, consolidate_progress) {
     reader = irs::directory_reader::open(dir, get_codec());
 
     ASSERT_EQ(2, reader.size());
-    ASSERT_EQ(1, reader[0].docs_count());
-    ASSERT_EQ(1, reader[1].docs_count());
+    ASSERT_EQ(MAX_DOCS, reader[0].docs_count());
+    ASSERT_EQ(MAX_DOCS, reader[1].docs_count());
   }
 }
 
