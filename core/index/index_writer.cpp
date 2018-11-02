@@ -773,6 +773,7 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
     assert(ctx.uncomitted_modification_queries_ <= ctx.modification_queries_.size());
     modification_count =
       ctx.modification_queries_.size() - ctx.uncomitted_modification_queries_ + 1; // +1 for insertions before removals
+    if (segment.flush_ctx_ && this != segment.flush_ctx_) generation_base = segment.flush_ctx_->generation_ += modification_count; else  // FIXME TODO remove this condition once col_writer tail is writen correctly
     generation_base = generation_ += modification_count; // atomic increment to end of unique generation range
     generation_base -= modification_count; // start of generation range
   }
@@ -1634,8 +1635,6 @@ index_writer::pending_context_t index_writer::flush_all() {
   auto ctx = get_flush_context(false);
   auto& dir = *(ctx->dir_);
   std::vector<std::unique_lock<decltype(segment_context::flush_mutex_)>> segment_flush_locks;
-  std::vector<modification_context> pending_modification_queries;
-  std::vector<segment_meta> pending_segments;
   SCOPED_LOCK_NAMED(ctx->mutex_, lock); // ensure there are no active struct update operations
 
   //////////////////////////////////////////////////////////////////////////////
