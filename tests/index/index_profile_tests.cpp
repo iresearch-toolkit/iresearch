@@ -133,7 +133,7 @@ class index_test_case_base: public index_test_base {
           for(size_t count = 0;; ++count) {
             // assume docs generated in same order and skip docs not meant for this thread
             if (gen_skip--) {
-              if (!gen.next()) {
+              if (!gen.skip()) {
                 break;
               }
 
@@ -229,7 +229,7 @@ class index_test_case_base: public index_test_base {
           for(size_t count = 0;; ++count) {
             // assume docs generated in same order and skip docs not meant for this thread
             if (gen_skip--) {
-              if (!gen.next()) {
+              if (!gen.skip()) {
                 break;
               }
 
