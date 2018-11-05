@@ -968,6 +968,10 @@ TEST_F(memory_format_10_test_case, columns_rw_typed) {
   columns_read_write_typed();
 }
 
+TEST_F(memory_format_10_test_case, columns_rw_sparse_dense_offset_column_border_case) {
+  dense_or_sparse_fixed_offset_border_case();
+}
+
 TEST_F(memory_format_10_test_case, columns_rw) {
   columns_read_write();
 }
