@@ -6074,7 +6074,7 @@ class index_test_case_base : public tests::index_test_base {
             if (irs::ref_cast<irs::byte_type>(irs::string_ref("\1", 1)) != actual_data) {
               return false;
             }
-          } else if (irs::bytes_ref::NIL != actual_data) {
+          } else if (!actual_data.empty()) {
             return false;
           }
 
@@ -6164,7 +6164,7 @@ class index_test_case_base : public tests::index_test_base {
             if (irs::ref_cast<irs::byte_type>(irs::string_ref("\1", 1)) != actual_data) {
               return false;
             }
-          } else if (irs::bytes_ref::NIL != actual_data) {
+          } else if (!actual_data.empty()) {
             return false;
           }
 
@@ -6315,7 +6315,7 @@ class index_test_case_base : public tests::index_test_base {
             if (irs::ref_cast<irs::byte_type>(irs::string_ref("\1", 1)) != actual_data) {
               return false;
             }
-          } else if (irs::bytes_ref::NIL != actual_data) {
+          } else if (!actual_data.empty()) {
             return false;
           }
 
@@ -6376,7 +6376,7 @@ class index_test_case_base : public tests::index_test_base {
             if (irs::ref_cast<irs::byte_type>(irs::string_ref("\1", 1)) != actual_data) {
               return false;
             }
-          } else if (irs::bytes_ref::NIL != actual_data) {
+          } else if (!actual_data.empty()) {
             return false;
           }
 
