@@ -49,13 +49,13 @@ struct IRESEARCH_API index_reader {
    public:
     typedef std::iterator<std::forward_iterator_tag, const sub_reader> iterator_t;
 
-    typename iterator_t::reference operator*() const {
+    iterator_t::reference operator*() const {
       // can't mark NOEXCEPT because of virtual operator[]
       assert(i_ < reader_->size());
       return (*reader_)[i_];
     }
 
-    typename iterator_t::pointer operator->() const {
+    iterator_t::pointer operator->() const {
       return &(**this);
     }
 
