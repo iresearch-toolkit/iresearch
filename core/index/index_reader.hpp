@@ -129,7 +129,7 @@ struct IRESEARCH_API sub_reader : index_reader {
   DECLARE_SHARED_PTR(const sub_reader);
   DEFINE_FACTORY_INLINE(sub_reader);
 
-  static const sub_reader& empty() noexcept;
+  static const sub_reader& empty() NOEXCEPT;
 
   // returns iterator over the live documents in current segment
   virtual doc_iterator::ptr docs_iterator() const = 0;
