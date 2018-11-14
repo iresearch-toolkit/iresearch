@@ -221,7 +221,7 @@ class term_reader : public iresearch::term_reader {
  * index_meta_writer 
  * ------------------------------------------------------------------*/
 
-struct index_meta_writer: public iresearch::index_meta_writer {
+struct index_meta_writer: public irs::index_meta_writer {
   virtual std::string filename(
     const iresearch::index_meta& meta
   ) const override;
@@ -229,7 +229,7 @@ struct index_meta_writer: public iresearch::index_meta_writer {
     iresearch::directory& dir, 
     iresearch::index_meta& meta
   ) override;
-  virtual void commit() override;
+  virtual bool commit() NOEXCEPT override;
   virtual void rollback() NOEXCEPT override;
 };
 

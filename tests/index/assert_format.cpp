@@ -217,11 +217,9 @@ bool index_meta_writer::prepare(
   return true;
 }
 
-void index_meta_writer::commit() {
-}
+bool index_meta_writer::commit() NOEXCEPT { return true; }
 
-void index_meta_writer::rollback() NOEXCEPT {
-}
+void index_meta_writer::rollback() NOEXCEPT { }
 
 /* -------------------------------------------------------------------
  * index_meta_reader

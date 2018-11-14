@@ -2125,15 +2125,17 @@ void index_writer::finish() {
     return;
   }
 
+  auto reset_state = irs::make_finally([this]()NOEXCEPT {
+    // release reference to flush_context
+    pending_state_.reset();
+  });
+
   // ...........................................................................
   // lightweight 2nd phase of the transaction
   // ...........................................................................
 
-  try {
-    writer_->commit();
-  } catch (...) {
-    pending_state_.reset();
-    throw;
+  if (!writer_->commit()) {
+    throw illegal_state();
   }
 
   // ...........................................................................
@@ -2144,7 +2146,6 @@ void index_writer::finish() {
     &committed_state_, std::move(pending_state_.commit)
   );
   meta_.last_gen_ = committed_state_->first->gen_; // update 'last_gen_' to last commited/valid generation
-  pending_state_.reset(); // flush is complete, release reference to flush_context
 }
 
 void index_writer::commit() {

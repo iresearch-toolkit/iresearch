@@ -1960,7 +1960,7 @@ void pos_doc_iterator<PosItrType>::prepare_attributes(
 // --SECTION--                                                index_meta_writer
 // ----------------------------------------------------------------------------
 
-struct index_meta_writer final: public iresearch::index_meta_writer {
+struct index_meta_writer final: public irs::index_meta_writer {
   static const string_ref FORMAT_NAME;
   static const string_ref FORMAT_PREFIX;
   static const string_ref FORMAT_PREFIX_TMP;
@@ -1969,9 +1969,9 @@ struct index_meta_writer final: public iresearch::index_meta_writer {
   static const int32_t FORMAT_MAX = FORMAT_MIN;
 
   virtual std::string filename(const index_meta& meta) const override;
-  using iresearch::index_meta_writer::prepare;
+  using irs::index_meta_writer::prepare;
   virtual bool prepare(directory& dir, index_meta& meta) override;
-  virtual void commit() override;
+  virtual bool commit() NOEXCEPT override;
   virtual void rollback() NOEXCEPT override;
  private:
   directory* dir_ = nullptr;
@@ -2065,21 +2065,23 @@ bool index_meta_writer::prepare(directory& dir, index_meta& meta) {
   return true;
 }
 
-void index_meta_writer::commit() {
+bool index_meta_writer::commit() NOEXCEPT {
   if (!meta_) {
-    return;
+    return false;
   }
 
   const auto src = file_name<irs::index_meta_writer>(*meta_);
   const auto dst = file_name<irs::index_meta_reader>(*meta_);
 
   if (!dir_->rename(src, dst)) {
-    rollback();
-
-    throw detailed_io_error(string_utils::to_string(
+    IR_FRMT_ERROR(
       "failed to rename file, src path: '%s' dst path: '%s'",
       src.c_str(), dst.c_str()
-    ));
+    );
+
+    rollback();
+
+    return false;
   }
 
   // only noexcept operations below
@@ -2088,6 +2090,8 @@ void index_meta_writer::commit() {
   // clear pending state
   meta_ = nullptr;
   dir_ = nullptr;
+
+  return true;
 }
 
 void index_meta_writer::rollback() NOEXCEPT {

@@ -271,7 +271,7 @@ TEST(index_death_test_formats_10, index_meta_write_fail_2nd_phase) {
     ));
 
     ASSERT_TRUE(writer->begin());
-    ASSERT_THROW(writer->commit(), irs::detailed_io_error);
+    ASSERT_THROW(writer->commit(), irs::illegal_state); // FIXME why illegal_state
 
     // second attempt
     ASSERT_TRUE(writer->begin());
