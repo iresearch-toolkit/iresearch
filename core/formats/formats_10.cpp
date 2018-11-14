@@ -2019,16 +2019,16 @@ bool index_meta_writer::prepare(directory& dir, index_meta& meta) {
 
   prepare(meta); // prepare meta before generating filename
 
-  auto seg_file = file_name<irs::index_meta_writer>(meta);
+  const auto seg_file = file_name<irs::index_meta_writer>(meta);
+
+  auto out = dir.create(seg_file);
+
+  if (!out) {
+    IR_FRMT_ERROR("Failed to create output file, path: %s", seg_file.c_str());
+    return false;
+  }
 
   try {
-    auto out = dir.create(seg_file);
-
-    if (!out) {
-      IR_FRMT_ERROR("Failed to create output file, path: %s", seg_file.c_str());
-      return false;
-    }
-
     format_utils::write_header(*out, FORMAT_NAME, FORMAT_MAX);
     out->write_vlong(meta.generation());
     out->write_long(meta.counter());
@@ -2045,6 +2045,12 @@ bool index_meta_writer::prepare(directory& dir, index_meta& meta) {
   } catch (const io_error& e) {
     IR_FRMT_ERROR("Caught i/o error, reason: %s", e.what());
     return false;
+  } catch (const std::exception& e) {
+    IR_FRMT_ERROR("Caught error, reason: %s", e.what());
+    return false;
+  } catch (...) {
+    IR_FRMT_ERROR("Caught an unspecified error");
+    return false;
   }
 
   if (!dir.sync(seg_file)) {
@@ -2052,6 +2058,7 @@ bool index_meta_writer::prepare(directory& dir, index_meta& meta) {
     return false;
   }
 
+  // only noexcept operations below
   dir_ = &dir;
   meta_ = &meta;
 
@@ -2063,25 +2070,24 @@ void index_meta_writer::commit() {
     return;
   }
 
-  auto src = file_name<irs::index_meta_writer>(*meta_);
-  auto dst = file_name<irs::index_meta_reader>(*meta_);
+  const auto src = file_name<irs::index_meta_writer>(*meta_);
+  const auto dst = file_name<irs::index_meta_reader>(*meta_);
 
-  try {
-    auto clear_pending = make_finally([this]{ meta_ = nullptr; });
-
-    if (!dir_->rename(src, dst)) {
-      throw detailed_io_error(string_utils::to_string(
-        "failed to rename file, src path: '%s' dst path: '%s'",
-        src.c_str(), dst.c_str()
-      ));
-    }
-
-    complete(*meta_);
-    dir_ = nullptr;
-  } catch ( ... ) {
+  if (!dir_->rename(src, dst)) {
     rollback();
-    throw;
+
+    throw detailed_io_error(string_utils::to_string(
+      "failed to rename file, src path: '%s' dst path: '%s'",
+      src.c_str(), dst.c_str()
+    ));
   }
+
+  // only noexcept operations below
+  complete(*meta_);
+
+  // clear pending state
+  meta_ = nullptr;
+  dir_ = nullptr;
 }
 
 void index_meta_writer::rollback() NOEXCEPT {
@@ -2089,12 +2095,13 @@ void index_meta_writer::rollback() NOEXCEPT {
     return;
   }
 
-  auto seg_file = file_name<irs::index_meta_writer>(*meta_);
+  const auto seg_file = file_name<irs::index_meta_writer>(*meta_);
 
   if (!dir_->remove(seg_file)) { // suppress all errors
     IR_FRMT_ERROR("Failed to remove file, path: %s", seg_file.c_str());
   }
 
+  // clear pending state
   dir_ = nullptr;
   meta_ = nullptr;
 }

@@ -2072,12 +2072,12 @@ bool index_writer::start() {
     throw illegal_state();
   }
 
+  auto update_generation = make_finally([this, &pending_meta]()NOEXCEPT{
+    meta_.update_generation(pending_meta);
+  });
+
   // sync all pending files
   try {
-    auto update_generation = make_finally([this, &pending_meta] {
-      meta_.update_generation(pending_meta);
-    });
-
     auto sync = [&dir](const std::string& file) {
       if (!dir.sync(file)) {
         throw detailed_io_error(string_utils::to_string(
@@ -2092,10 +2092,9 @@ bool index_writer::start() {
     // sync files
     to_commit.to_sync.visit(sync, pending_meta);
   } catch (...) {
-    // in case of syncing error, just clear pending meta & peform rollback
+    // in case of syncing error, just peform rollback
     // next commit will create another meta & sync all pending files
     writer_->rollback();
-    pending_state_.reset(); // flush is rolled back
     throw;
   }
 
@@ -2130,7 +2129,12 @@ void index_writer::finish() {
   // lightweight 2nd phase of the transaction
   // ...........................................................................
 
-  writer_->commit();
+  try {
+    writer_->commit();
+  } catch (...) {
+    pending_state_.reset();
+    throw;
+  }
 
   // ...........................................................................
   // after here transaction successfull (only noexcept operations below)
