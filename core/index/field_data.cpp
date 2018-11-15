@@ -705,11 +705,8 @@ field_data& fields_data::get(const hashed_string_ref& name) {
 
 void fields_data::flush(field_writer& fw, flush_state& state) {
   REGISTER_TIMER_DETAILED();
-  /* set the segment meta */
-  state.features = &features_;
 
-  /* set total number of field in the segment */
-  state.fields_count = fields_.size();
+  state.features = &features_;
 
   {
     struct less_t {

@@ -312,7 +312,7 @@ class postings_writer final: public irs::postings_writer {
   // postings_writer
   // ------------------------------------------
 
-  virtual void prepare(index_output& out, const iresearch::flush_state& state) override;
+  virtual void prepare(index_output& out, const irs::flush_state& state) override;
   virtual void begin_field(const iresearch::flags& meta) override;
   virtual irs::postings_writer::state write(irs::doc_iterator& docs) override;
   virtual void begin_block() override;

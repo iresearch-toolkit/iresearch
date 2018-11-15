@@ -514,9 +514,7 @@ struct IRESEARCH_API flush_state {
   directory* dir;
   string_ref name; // segment name
   const flags* features; // segment features
-  size_t fields_count;
   size_t doc_count;
-  int ver;
 };
 
 struct IRESEARCH_API reader_state {

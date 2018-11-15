@@ -534,9 +534,7 @@ class format_test_case_base : public index_test_base {
       irs::flush_state state;
       state.dir = &dir();
       state.doc_count = 100;
-      state.fields_count = 1;
       state.name = "segment_name";
-      state.ver = IRESEARCH_VERSION;
       state.features = &field.features;
 
       // should use sorted terms on write

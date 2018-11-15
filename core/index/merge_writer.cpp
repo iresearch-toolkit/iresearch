@@ -756,13 +756,13 @@ irs::term_iterator::ptr compound_field_iterator::iterator() const {
 }
 
 //////////////////////////////////////////////////////////////////////////////
-/// @brief computes fields_type and fields_count
+/// @brief computes fields_type
 //////////////////////////////////////////////////////////////////////////////
 bool compute_field_meta(
-    field_meta_map_t& field_meta_map,
     irs::flags& fields_features,
     const irs::sub_reader& reader) {
   REGISTER_TIMER_DETAILED();
+  std::unordered_map<irs::string_ref, const irs::field_meta*> field_meta_map;
   for (auto it = reader.fields(); it->next();) {
     const auto& field_meta = it->value().meta();
     auto field_meta_map_itr = field_meta_map.emplace(field_meta.name, &field_meta);
@@ -920,7 +920,6 @@ bool write_fields(
     irs::directory& dir,
     const irs::segment_meta& meta,
     compound_field_iterator& field_itr,
-    const field_meta_map_t& field_meta_map,
     const irs::flags& fields_features,
     const irs::merge_writer::flush_progress_t& progress
 ) {
@@ -930,10 +929,8 @@ bool write_fields(
   irs::flush_state flush_state;
   flush_state.dir = &dir;
   flush_state.doc_count = meta.docs_count;
-  flush_state.fields_count = field_meta_map.size();
   flush_state.features = &fields_features;
   flush_state.name = meta.name;
-  flush_state.ver = IRESEARCH_VERSION;
 
   auto fw = meta.codec->get_field_writer(true);
   fw->prepare(flush_state);
@@ -1063,7 +1060,6 @@ bool merge_writer::flush(
 
   static const flush_progress_t progress_noop = []()->bool { return true; };
   auto& progress_callback = progress ? progress : progress_noop;
-  std::unordered_map<irs::string_ref, const irs::field_meta*> field_metas;
   compound_field_iterator fields_itr(progress_callback);
   compound_column_iterator_t columns_itr;
   irs::flags fields_features;
@@ -1096,7 +1092,7 @@ bool merge_writer::flush(
       return false; // failed to compute next doc_id
     }
 
-    if (!compute_field_meta(field_metas, fields_features, reader)) {
+    if (!compute_field_meta(fields_features, reader)) {
       return false;
     }
 
@@ -1136,7 +1132,7 @@ bool merge_writer::flush(
   }
 
   // write field meta and field term data
-  if (!write_fields(cs, track_dir, segment.meta, fields_itr, field_metas, fields_features, progress_callback)) {
+  if (!write_fields(cs, track_dir, segment.meta, fields_itr, fields_features, progress_callback)) {
     return false; // flush failure
   }
 

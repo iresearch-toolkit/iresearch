@@ -210,7 +210,6 @@ bool segment_writer::flush(index_meta::index_segment_t& segment) {
     state.dir = &dir_;
     state.doc_count = docs_cached();
     state.name = seg_name_;
-    state.ver = IRESEARCH_VERSION;
 
     fields_.flush(*field_writer_, state);
   }
