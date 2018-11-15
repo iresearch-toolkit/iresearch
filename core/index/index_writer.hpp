@@ -548,12 +548,20 @@ class IRESEARCH_API index_writer:
   /// @brief begins the two-phase transaction
   /// @returns true if transaction has been sucessflully started
   ////////////////////////////////////////////////////////////////////////////
-  bool begin();
+  bool begin() {
+    SCOPED_LOCK(commit_lock_);
+
+    return start();
+  }
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief rollbacks the two-phase transaction 
   ////////////////////////////////////////////////////////////////////////////
-  void rollback();
+  void rollback() {
+    SCOPED_LOCK(commit_lock_);
+
+    abort();
+  }
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief make all buffered changes visible for readers
@@ -561,7 +569,12 @@ class IRESEARCH_API index_writer:
   /// Note that if begin() has been already called commit() is 
   /// relatively lightweight operation 
   ////////////////////////////////////////////////////////////////////////////
-  void commit();
+  void commit() {
+    SCOPED_LOCK(commit_lock_);
+
+    start();
+    finish();
+  }
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief closes writer object 
@@ -946,6 +959,7 @@ class IRESEARCH_API index_writer:
 
   bool start(); // starts transaction
   void finish(); // finishes transaction
+  void abort(); // aborts transaction
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   readers_cache cached_readers_; // readers by segment name

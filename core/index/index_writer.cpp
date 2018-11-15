@@ -2023,7 +2023,6 @@ index_writer::pending_context_t index_writer::flush_all() {
   }
 
   pending_meta->update_generation(meta_); // clone index metadata generation
-  cached_readers_.purge(ctx->segment_mask_); // release cached readers
 
   modified |= !to_sync.empty(); // new files added
 
@@ -2038,17 +2037,13 @@ index_writer::pending_context_t index_writer::flush_all() {
   pending_context.ctx = std::move(ctx); // retain flush context reference
   pending_context.meta = std::move(pending_meta); // retain meta pending flush
   pending_context.to_sync = std::move(to_sync);
-  meta_.segments_ = pending_context.meta->segments_; // create copy
 
   return pending_context;
 }
 
-bool index_writer::begin() {
-  SCOPED_LOCK(commit_lock_);
-  return start();
-}
-
 bool index_writer::start() {
+  assert(!commit_lock_.try_lock()); // already locked
+
   REGISTER_TIMER_DETAILED();
 
   if (pending_state_) {
@@ -2077,48 +2072,58 @@ bool index_writer::start() {
   });
 
   // sync all pending files
-  try {
-    auto sync = [&dir](const std::string& file) {
-      if (!dir.sync(file)) {
-        throw detailed_io_error(string_utils::to_string(
-          "failed to sync file, path: %s",
-          file.c_str()
-        ));
-      }
+  auto sync = [&dir](const std::string& file) NOEXCEPT {
+    if (!dir.sync(file)) {
+      IR_FRMT_ERROR("failed to sync file, path: %s", file.c_str());
+      return false;
+    }
 
-      return true;
-    };
+    return true;
+  };
 
-    // sync files
-    to_commit.to_sync.visit(sync, pending_meta);
-  } catch (...) {
-    // in case of syncing error, just peform rollback
-    // next commit will create another meta & sync all pending files
-    writer_->rollback();
-    throw;
+  if (!to_commit.to_sync.visit(sync, pending_meta)) {
+    writer_->rollback(); // rollback started transaction
+
+    throw illegal_state();
   }
 
   // track all refs
   file_refs_t pending_refs;
 
-  append_segments_refs(pending_refs, dir, pending_meta);
-  pending_refs.emplace_back(
-    directory_utils::reference(dir, writer_->filename(pending_meta), true)
-  );
+  try {
+    append_segments_refs(pending_refs, dir, pending_meta);
+    pending_refs.emplace_back(
+      directory_utils::reference(dir, writer_->filename(pending_meta), true)
+    );
 
-  // 1st phase of the transaction successfully finished here,
-  // set to_commit as active flush context containing pending meta
-  pending_state_.commit = memory::make_shared<committed_state_t::element_type>(
-    std::piecewise_construct,
-    std::forward_as_tuple(std::move(to_commit.meta)),
-    std::forward_as_tuple(std::move(pending_refs))
-  );
+    meta_.segments_ = to_commit.meta->segments_; // create copy
+
+    // 1st phase of the transaction successfully finished here,
+    // set to_commit as active flush context containing pending meta
+    pending_state_.commit = memory::make_shared<committed_state_t::element_type>(
+      std::piecewise_construct,
+      std::forward_as_tuple(std::move(to_commit.meta)),
+      std::forward_as_tuple(std::move(pending_refs))
+    );
+  } catch (...) {
+    writer_->rollback(); // rollback started transaction
+
+    throw;
+  }
+
+  // ...........................................................................
+  // only noexcept operations below
+  // ...........................................................................
+
+  cached_readers_.purge(to_commit.ctx->segment_mask_); // release cached readers
   pending_state_.ctx = std::move(to_commit.ctx);
 
   return true;
 }
 
 void index_writer::finish() {
+  assert(!commit_lock_.try_lock()); // already locked
+
   REGISTER_TIMER_DETAILED();
 
   if (!pending_state_) {
@@ -2135,6 +2140,8 @@ void index_writer::finish() {
   // ...........................................................................
 
   if (!writer_->commit()) {
+    abort(); // rollback transaction
+
     throw illegal_state();
   }
 
@@ -2148,15 +2155,8 @@ void index_writer::finish() {
   meta_.last_gen_ = committed_state_->first->gen_; // update 'last_gen_' to last commited/valid generation
 }
 
-void index_writer::commit() {
-  SCOPED_LOCK(commit_lock_);
-
-  start();
-  finish();
-}
-
-void index_writer::rollback() {
-  SCOPED_LOCK(commit_lock_);
+void index_writer::abort() {
+  assert(!commit_lock_.try_lock()); // already locked
 
   if (!pending_state_) {
     // there is no open transaction
