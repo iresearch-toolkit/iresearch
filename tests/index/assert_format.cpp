@@ -242,14 +242,10 @@ void index_meta_reader::read(
  * segment_meta_writer 
  * ------------------------------------------------------------------*/
 
-std::string segment_meta_writer::filename(
-  const iresearch::segment_meta& meta
-) const {
-  return std::string();
-}
 
 void segment_meta_writer::write(
-  iresearch::directory& dir,  
+  iresearch::directory& dir,
+  std::string& filename,
   const iresearch::segment_meta& meta ) { 
 }
 

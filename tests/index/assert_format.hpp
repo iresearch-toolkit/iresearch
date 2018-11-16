@@ -253,11 +253,9 @@ struct index_meta_reader : public iresearch::index_meta_reader {
  * ------------------------------------------------------------------*/
 
 struct segment_meta_writer : public iresearch::segment_meta_writer {
-  virtual std::string filename(
-    const iresearch::segment_meta& meta
-  ) const override;
   virtual void write(
     iresearch::directory& dir,
+    std::string& filename,
     const iresearch::segment_meta& meta
   ) override;
 };

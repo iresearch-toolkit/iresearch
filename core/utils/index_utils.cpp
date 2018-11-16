@@ -500,8 +500,7 @@ void write_index_segment(directory& dir, index_meta::index_segment_t& segment) {
 
   auto writer = segment.meta.codec->get_segment_meta_writer();
 
-  segment.filename = writer->filename(segment.meta);
-  writer->write(dir, segment.meta);
+  writer->write(dir, segment.filename, segment.meta);
 }
 
 NS_END // index_utils

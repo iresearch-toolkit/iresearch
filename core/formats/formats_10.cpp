@@ -2208,8 +2208,7 @@ struct segment_meta_writer final : public irs::segment_meta_writer{
     HAS_COLUMN_STORE = 1,
   };
 
-  virtual std::string filename(const segment_meta& meta) const override;
-  virtual void write(directory& dir, const segment_meta& meta) override;
+  virtual void write(directory& dir, std::string& filename, const segment_meta& meta) override;
 }; // segment_meta_writer
 
 template<>
@@ -2223,12 +2222,8 @@ const string_ref segment_meta_writer::FORMAT_EXT = "sm";
 const string_ref segment_meta_writer::FORMAT_NAME = "iresearch_10_segment_meta";
 MSVC2015_ONLY(__pragma(warning(pop)))
 
-std::string segment_meta_writer::filename(const segment_meta& meta) const {
-  return file_name<irs::segment_meta_writer>(meta);
-}
-
-void segment_meta_writer::write(directory& dir, const segment_meta& meta) {
-  auto meta_file = file_name<irs::segment_meta_writer>(meta);
+void segment_meta_writer::write(directory& dir, std::string& meta_file, const segment_meta& meta) {
+  meta_file = file_name<irs::segment_meta_writer>(meta);
   auto out = dir.create(meta_file);
   byte_type flags = meta.column_store ? segment_meta_writer::flags_t::HAS_COLUMN_STORE : 0;
 

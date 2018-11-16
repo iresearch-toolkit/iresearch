@@ -776,10 +776,12 @@ class format_test_case_base : public index_test_base {
       meta.files.emplace("file3");
       meta.files.emplace("stored_file4");
 
+      std::string filename;
+
       // write segment meta
       {
         auto writer = codec()->get_segment_meta_writer();
-        writer->write(dir(), meta);
+        writer->write(dir(), filename, meta);
       }
 
       // read segment meta
@@ -815,10 +817,12 @@ class format_test_case_base : public index_test_base {
       meta.files.emplace("file3");
       meta.files.emplace("stored_file4");
 
+      std::string filename;
+
       // write segment meta
       {
         auto writer = codec()->get_segment_meta_writer();
-        writer->write(dir(), meta);
+        writer->write(dir(), filename, meta);
       }
 
       // read segment meta
