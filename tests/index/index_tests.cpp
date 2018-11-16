@@ -11218,7 +11218,7 @@ class index_test_case_base : public tests::index_test_base {
         doc4->indexed.begin(), doc4->indexed.end(),
         doc4->stored.begin(), doc4->stored.end()
       ));
-      ASSERT_THROW(writer->commit(), irs::illegal_state);
+      ASSERT_THROW(writer->commit(), irs::detailed_io_error);
     }
 
     // error while commiting index (during sync in index_writer)
@@ -11258,7 +11258,7 @@ class index_test_case_base : public tests::index_test_base {
         doc4->indexed.begin(), doc4->indexed.end(),
         doc4->stored.begin(), doc4->stored.end()
       ));
-      ASSERT_THROW(writer->commit(), irs::illegal_state);
+      ASSERT_THROW(writer->commit(), irs::detailed_io_error);
     }
 
     // check index, it should be empty 

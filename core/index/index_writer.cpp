@@ -2071,26 +2071,23 @@ bool index_writer::start() {
     meta_.update_generation(pending_meta);
   });
 
-  // sync all pending files
-  auto sync = [&dir](const std::string& file) NOEXCEPT {
+  auto sync = [&dir](const std::string& file) {
     if (!dir.sync(file)) {
-      IR_FRMT_ERROR("failed to sync file, path: %s", file.c_str());
-      return false;
+      throw detailed_io_error(string_utils::to_string(
+        "failed to sync file, path: %s",
+        file.c_str()
+      ));
     }
 
     return true;
   };
 
-  if (!to_commit.to_sync.visit(sync, pending_meta)) {
-    writer_->rollback(); // rollback started transaction
-
-    throw illegal_state();
-  }
-
-  // track all refs
-  file_refs_t pending_refs;
-
   try {
+    // sync all pending files
+    to_commit.to_sync.visit(sync, pending_meta);
+
+    // track all refs
+    file_refs_t pending_refs;
     append_segments_refs(pending_refs, dir, pending_meta);
     pending_refs.emplace_back(
       directory_utils::reference(dir, writer_->filename(pending_meta), true)
@@ -2139,10 +2136,14 @@ void index_writer::finish() {
   // lightweight 2nd phase of the transaction
   // ...........................................................................
 
-  if (!writer_->commit()) {
+  try {
+    if (!writer_->commit()) {
+      throw illegal_state();
+    }
+  } catch (...) {
     abort(); // rollback transaction
 
-    throw illegal_state();
+    throw;
   }
 
   // ...........................................................................

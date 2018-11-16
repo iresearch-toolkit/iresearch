@@ -217,7 +217,7 @@ bool index_meta_writer::prepare(
   return true;
 }
 
-bool index_meta_writer::commit() NOEXCEPT { return true; }
+bool index_meta_writer::commit() { return true; }
 
 void index_meta_writer::rollback() NOEXCEPT { }
 

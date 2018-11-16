@@ -1971,7 +1971,7 @@ struct index_meta_writer final: public irs::index_meta_writer {
   virtual std::string filename(const index_meta& meta) const override;
   using irs::index_meta_writer::prepare;
   virtual bool prepare(directory& dir, index_meta& meta) override;
-  virtual bool commit() NOEXCEPT override;
+  virtual bool commit() override;
   virtual void rollback() NOEXCEPT override;
  private:
   directory* dir_ = nullptr;
@@ -2019,26 +2019,18 @@ bool index_meta_writer::prepare(directory& dir, index_meta& meta) {
 
   prepare(meta); // prepare meta before generating filename
 
-  std::string seg_file;
-
-  try {
-    seg_file = file_name<irs::index_meta_writer>(meta);
-  } catch (const std::exception& e) {
-    IR_FRMT_ERROR("Caught error while generating file name for segment meta, reason: %s", e.what());
-    return false;
-  } catch (...) {
-    IR_FRMT_ERROR("Caught error while generating file name for segment meta");
-    return false;
-  }
+  const auto seg_file = file_name<irs::index_meta_writer>(meta);
 
   auto out = dir.create(seg_file);
 
   if (!out) {
-    IR_FRMT_ERROR("Failed to create output file, path: %s", seg_file.c_str());
-    return false;
+    throw detailed_io_error(string_utils::to_string(
+      "Failed to create file, path: %s",
+      seg_file.c_str()
+    ));
   }
 
-  try {
+  {
     format_utils::write_header(*out, FORMAT_NAME, FORMAT_MAX);
     out->write_vlong(meta.generation());
     out->write_long(meta.counter());
@@ -2052,20 +2044,13 @@ bool index_meta_writer::prepare(directory& dir, index_meta& meta) {
 
     format_utils::write_footer(*out);
     // important to close output here
-  } catch (const io_error& e) {
-    IR_FRMT_ERROR("Caught i/o error, reason: %s", e.what());
-    return false;
-  } catch (const std::exception& e) {
-    IR_FRMT_ERROR("Caught error, reason: %s", e.what());
-    return false;
-  } catch (...) {
-    IR_FRMT_ERROR("Caught an unspecified error");
-    return false;
   }
 
   if (!dir.sync(seg_file)) {
-    IR_FRMT_ERROR("Failed to sync output file, path: %s", seg_file.c_str());
-    return false;
+    throw detailed_io_error(string_utils::to_string(
+      "failed to sync file, path: %s",
+      seg_file.c_str()
+    ));
   }
 
   // only noexcept operations below
@@ -2075,33 +2060,22 @@ bool index_meta_writer::prepare(directory& dir, index_meta& meta) {
   return true;
 }
 
-bool index_meta_writer::commit() NOEXCEPT {
+bool index_meta_writer::commit() {
   if (!meta_) {
     return false;
   }
 
-  std::string src, dst;
-
-  try {
-    src = file_name<irs::index_meta_writer>(*meta_);
-    dst = file_name<irs::index_meta_reader>(*meta_);
-  } catch (const std::exception& e) {
-    IR_FRMT_ERROR("Caught error while generating file name for index meta, reason: %s", e.what());
-    return false;
-  } catch (...) {
-    IR_FRMT_ERROR("Caught error while generating file name for index meta");
-    return false;
-  }
+  const auto src = file_name<irs::index_meta_writer>(*meta_);
+  const auto dst = file_name<irs::index_meta_reader>(*meta_);
 
   if (!dir_->rename(src, dst)) {
-    IR_FRMT_ERROR(
-      "failed to rename file, src path: '%s' dst path: '%s'",
-      src.c_str(), dst.c_str()
-    );
-
     rollback();
 
-    return false;
+    throw detailed_io_error(string_utils::to_string(
+      "failed to rename file, src path: '%s' dst path: '%s'",
+      src.c_str(),
+      dst.c_str()
+    ));
   }
 
   // only noexcept operations below

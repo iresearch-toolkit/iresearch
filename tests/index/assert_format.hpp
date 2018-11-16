@@ -229,7 +229,7 @@ struct index_meta_writer: public irs::index_meta_writer {
     iresearch::directory& dir, 
     iresearch::index_meta& meta
   ) override;
-  virtual bool commit() NOEXCEPT override;
+  virtual bool commit() override;
   virtual void rollback() NOEXCEPT override;
 };
 

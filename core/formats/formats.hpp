@@ -415,7 +415,7 @@ struct IRESEARCH_API index_meta_writer {
   virtual ~index_meta_writer();
   virtual std::string filename(const index_meta& meta) const = 0;
   virtual bool prepare(directory& dir, index_meta& meta) = 0;
-  virtual bool commit() NOEXCEPT = 0;
+  virtual bool commit() = 0;
   virtual void rollback() NOEXCEPT = 0;
  protected:
   static void complete(index_meta& meta) NOEXCEPT;
