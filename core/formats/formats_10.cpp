@@ -2019,7 +2019,17 @@ bool index_meta_writer::prepare(directory& dir, index_meta& meta) {
 
   prepare(meta); // prepare meta before generating filename
 
-  const auto seg_file = file_name<irs::index_meta_writer>(meta);
+  std::string seg_file;
+
+  try {
+    seg_file = file_name<irs::index_meta_writer>(meta);
+  } catch (const std::exception& e) {
+    IR_FRMT_ERROR("Caught error while generating file name for segment meta, reason: %s", e.what());
+    return false;
+  } catch (...) {
+    IR_FRMT_ERROR("Caught error while generating file name for segment meta");
+    return false;
+  }
 
   auto out = dir.create(seg_file);
 
@@ -2070,8 +2080,18 @@ bool index_meta_writer::commit() NOEXCEPT {
     return false;
   }
 
-  const auto src = file_name<irs::index_meta_writer>(*meta_);
-  const auto dst = file_name<irs::index_meta_reader>(*meta_);
+  std::string src, dst;
+
+  try {
+    src = file_name<irs::index_meta_writer>(*meta_);
+    dst = file_name<irs::index_meta_reader>(*meta_);
+  } catch (const std::exception& e) {
+    IR_FRMT_ERROR("Caught error while generating file name for index meta, reason: %s", e.what());
+    return false;
+  } catch (...) {
+    IR_FRMT_ERROR("Caught error while generating file name for index meta");
+    return false;
+  }
 
   if (!dir_->rename(src, dst)) {
     IR_FRMT_ERROR(
@@ -2099,7 +2119,17 @@ void index_meta_writer::rollback() NOEXCEPT {
     return;
   }
 
-  const auto seg_file = file_name<irs::index_meta_writer>(*meta_);
+  std::string seg_file;
+
+  try {
+    seg_file = file_name<irs::index_meta_writer>(*meta_);
+  } catch (const std::exception& e) {
+    IR_FRMT_ERROR("Caught error while generating file name for index meta, reason: %s", e.what());
+    return;
+  } catch (...) {
+    IR_FRMT_ERROR("Caught error while generating file name for index meta");
+    return;
+  }
 
   if (!dir_->remove(seg_file)) { // suppress all errors
     IR_FRMT_ERROR("Failed to remove file, path: %s", seg_file.c_str());
@@ -2208,13 +2238,17 @@ struct segment_meta_writer final : public irs::segment_meta_writer{
     HAS_COLUMN_STORE = 1,
   };
 
-  virtual void write(directory& dir, std::string& filename, const segment_meta& meta) override;
+  virtual void write(
+    directory& dir,
+    std::string& filename,
+    const segment_meta& meta
+  ) override;
 }; // segment_meta_writer
 
 template<>
 std::string file_name<irs::segment_meta_writer, segment_meta>(const segment_meta& meta) {
   return irs::file_name(meta.name, meta.version, segment_meta_writer::FORMAT_EXT);
-};
+}
 
 MSVC2015_ONLY(__pragma(warning(push)))
 MSVC2015_ONLY(__pragma(warning(disable: 4592))) // symbol will be dynamically initialized (implementation limitation) false positive bug in VS2015.1
@@ -2225,7 +2259,6 @@ MSVC2015_ONLY(__pragma(warning(pop)))
 void segment_meta_writer::write(directory& dir, std::string& meta_file, const segment_meta& meta) {
   meta_file = file_name<irs::segment_meta_writer>(meta);
   auto out = dir.create(meta_file);
-  byte_type flags = meta.column_store ? segment_meta_writer::flags_t::HAS_COLUMN_STORE : 0;
 
   if (!out) {
     throw detailed_io_error(string_utils::to_string(
@@ -2234,6 +2267,10 @@ void segment_meta_writer::write(directory& dir, std::string& meta_file, const se
     ));
   }
 
+  const byte_type flags = meta.column_store
+    ? segment_meta_writer::flags_t::HAS_COLUMN_STORE
+    : 0;
+
   format_utils::write_header(*out, FORMAT_NAME, FORMAT_MAX);
   write_string(*out, meta.name);
   out->write_vlong(meta.version);
@@ -2241,7 +2278,7 @@ void segment_meta_writer::write(directory& dir, std::string& meta_file, const se
   out->write_vlong(meta.docs_count - meta.live_docs_count); // docs_count >= live_docs_count
   out->write_vlong(meta.size);
   out->write_byte(flags);
-  write_strings( *out, meta.files );
+  write_strings(*out, meta.files);
   format_utils::write_footer(*out);
 }
 
@@ -2351,7 +2388,7 @@ class document_mask_writer final: public irs::document_mask_writer {
 
 template<>
 std::string file_name<irs::document_mask_writer, segment_meta>(const segment_meta& meta) {
-  return iresearch::file_name(meta.name, meta.version, document_mask_writer::FORMAT_EXT);
+  return file_name(meta.name, meta.version, document_mask_writer::FORMAT_EXT);
 };
 
 MSVC2015_ONLY(__pragma(warning(push)))
@@ -3027,7 +3064,7 @@ template<>
 std::string file_name<columnstore_writer, segment_meta>(
     const segment_meta& meta
 ) {
-  return irs::file_name(meta.name, columns::writer::FORMAT_EXT);
+  return file_name(meta.name, columns::writer::FORMAT_EXT);
 };
 
 template<>
@@ -3035,7 +3072,7 @@ void file_name<columnstore_writer, segment_meta>(
     std::string& buf,
     const segment_meta& meta
 ) {
-  irs::file_name(buf, meta.name, columns::writer::FORMAT_EXT);
+  file_name(buf, meta.name, columns::writer::FORMAT_EXT);
 };
 
 MSVC2015_ONLY(__pragma(warning(push)))

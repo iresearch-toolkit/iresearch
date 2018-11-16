@@ -383,7 +383,7 @@ struct IRESEARCH_API segment_meta_writer {
 
   virtual ~segment_meta_writer();
 
-  virtual bool write(
+  virtual void write(
     directory& dir,
     std::string& filename,
     const segment_meta& meta
