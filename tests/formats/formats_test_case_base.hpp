@@ -1354,7 +1354,7 @@ class format_test_case_base : public index_test_base {
     // add columns
     {
       auto writer = codec()->get_columnstore_writer();
-      ASSERT_TRUE(writer->prepare(dir(), meta0));
+      writer->prepare(dir(), meta0);
       column0_id = writer->push_column().first;
       ASSERT_EQ(0, column0_id);
       column1_id = writer->push_column().first;
@@ -1408,7 +1408,7 @@ class format_test_case_base : public index_test_base {
     {
       // write columns values
       auto writer = codec()->get_columnstore_writer();
-      ASSERT_TRUE(writer->prepare(dir(), meta0));
+      writer->prepare(dir(), meta0);
 
       dense_fixed_offset_column = writer->push_column();
       sparse_fixed_offset_column = writer->push_column();
@@ -1611,7 +1611,7 @@ class format_test_case_base : public index_test_base {
 
     // write _1 segment
     {
-      ASSERT_TRUE(writer->prepare(dir(), meta0));
+      writer->prepare(dir(), meta0);
 
       auto field0 = writer->push_column();
       segment0_field0_id = field0.first;
@@ -1710,7 +1710,7 @@ class format_test_case_base : public index_test_base {
 
     // write _2 segment, reuse writer
     {
-      ASSERT_TRUE(writer->prepare(dir(), meta1));
+      writer->prepare(dir(), meta1);
 
       auto field0 = writer->push_column();
       segment1_field0_id = field0.first;

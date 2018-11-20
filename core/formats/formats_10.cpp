@@ -2880,7 +2880,7 @@ class writer final : public irs::columnstore_writer {
   static const string_ref FORMAT_NAME;
   static const string_ref FORMAT_EXT;
 
-  virtual bool prepare(directory& dir, const segment_meta& meta) override;
+  virtual void prepare(directory& dir, const segment_meta& meta) override;
   virtual column_t push_column() override;
   virtual bool commit() override;
   virtual void rollback() NOEXCEPT override;
@@ -3057,23 +3057,27 @@ const string_ref writer::FORMAT_NAME = "iresearch_10_columnstore";
 const string_ref writer::FORMAT_EXT = "cs";
 MSVC2015_ONLY(__pragma(warning(pop)))
 
-bool writer::prepare(directory& dir, const segment_meta& meta) {
+void writer::prepare(directory& dir, const segment_meta& meta) {
   columns_.clear();
 
-  dir_ = &dir;
-  file_name<columnstore_writer>(filename_, meta);
-  data_out_ = dir.create(filename_);
+  auto filename = file_name<columnstore_writer>(meta);
+  auto data_out = dir.create(filename);
 
-  if (!data_out_) {
-    IR_FRMT_ERROR("Failed to create file, path: %s", filename_.c_str());
-    return false;
+  if (!data_out) {
+    throw detailed_io_error(string_utils::to_string(
+      "Failed to create file, path: %s",
+      filename_.c_str()
+    ));
   }
 
-  format_utils::write_header(*data_out_, FORMAT_NAME, FORMAT_MAX);
+  format_utils::write_header(*data_out, FORMAT_NAME, FORMAT_MAX);
 
   alloc_ = &directory_utils::get_allocator(dir);
 
-  return true;
+  // noexcept block
+  dir_ = &dir;
+  data_out_ = std::move(data_out);
+  filename_ = std::move(filename);
 }
 
 columnstore_writer::column_t writer::push_column() {

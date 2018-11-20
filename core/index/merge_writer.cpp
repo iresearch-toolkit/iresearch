@@ -799,10 +799,7 @@ class columnstore {
       const irs::merge_writer::flush_progress_t& progress
   ) : progress_(progress, PROGRESS_STEP_COLUMN) {
     auto writer = meta.codec->get_columnstore_writer();
-
-    if (!writer->prepare(dir, meta)) {
-      return; // flush failure
-    }
+    writer->prepare(dir, meta);
 
     writer_ = std::move(writer);
   }

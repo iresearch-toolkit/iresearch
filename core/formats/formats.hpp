@@ -246,7 +246,7 @@ struct IRESEARCH_API columnstore_writer {
 
   virtual ~columnstore_writer();
 
-  virtual bool prepare(directory& dir, const segment_meta& meta) = 0;
+  virtual void prepare(directory& dir, const segment_meta& meta) = 0;
   virtual column_t push_column() = 0;
   virtual void rollback() NOEXCEPT = 0;
   virtual bool commit() = 0; // @return was anything actually flushed
