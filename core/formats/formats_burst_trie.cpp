@@ -171,7 +171,7 @@ inline void prepare_output(
     const string_ref& ext,
     const string_ref& format,
     const int32_t version ) {
-  assert( !out );
+  assert(!out);
 
   file_name(str, state.name, ext);
   out = state.dir->create(str);

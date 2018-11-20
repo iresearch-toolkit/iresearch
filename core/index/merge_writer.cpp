@@ -1146,10 +1146,7 @@ bool merge_writer::flush(
   // ...........................................................................
   // write segment meta
   // ...........................................................................
-  if (!track_dir.swap_tracked(segment.meta.files)) {
-    IR_FRMT_ERROR("Failed to swap list of tracked files in: %s", __FUNCTION__);
-    return false;
-  }
+  track_dir.flush_tracked(segment.meta.files);
 
   return (result = true);
 }

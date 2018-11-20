@@ -229,7 +229,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   size_t docs_cached() const NOEXCEPT { return docs_context_.size(); }
   bool initialized() const NOEXCEPT { return initialized_; }
   bool valid() const NOEXCEPT { return valid_; }
-  void reset();
+  void reset() NOEXCEPT;
   void reset(const segment_meta& meta);
 
  private:

@@ -172,6 +172,7 @@ void segment_writer::finish() {
 
 bool segment_writer::flush(index_meta::index_segment_t& segment) {
   REGISTER_TIMER_DETAILED();
+
   auto& meta = segment.meta;
 
   // flush columnstore and columns indices
@@ -211,7 +212,13 @@ bool segment_writer::flush(index_meta::index_segment_t& segment) {
     state.doc_count = docs_cached();
     state.name = seg_name_;
 
-    fields_.flush(*field_writer_, state);
+    try {
+      fields_.flush(*field_writer_, state);
+    } catch (...) {
+      field_writer_.reset(); // invalidate field writer
+
+      throw;
+    }
   }
 
   size_t docs_mask_count = 0;
@@ -242,12 +249,7 @@ bool segment_writer::flush(index_meta::index_segment_t& segment) {
   meta.docs_count = docs_cached();
   meta.live_docs_count = meta.docs_count - docs_mask_count;
   meta.files.clear(); // prepare empy set to be swaped into dir_
-
-  if (!dir_.swap_tracked(meta.files)) {
-    IR_FRMT_ERROR("Failed to swap list of tracked files in: %s", __FUNCTION__);
-
-    return false;
-  }
+  dir_.flush_tracked(meta.files);
 
   // flush segment metadata
   index_utils::write_index_segment(dir_, segment);
@@ -255,16 +257,9 @@ bool segment_writer::flush(index_meta::index_segment_t& segment) {
   return true;
 }
 
-void segment_writer::reset() {
+void segment_writer::reset() NOEXCEPT {
   initialized_ = false;
-
-  tracking_directory::file_set empty;
-
-  if (!dir_.swap_tracked(empty)) {
-    // on failre next segment might have extra files which will fail to get refs
-    IR_FRMT_ERROR("Failed to swap list of tracked files in: %s", __FUNCTION__);
-  }
-
+  dir_.clear_tracked();
   docs_context_.clear();
   docs_mask_.clear();
   fields_.reset();

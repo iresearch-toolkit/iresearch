@@ -1190,14 +1190,11 @@ index_writer::ptr index_writer::make(
 
 index_writer::~index_writer() {
   assert(!segments_active_.load()); // failure may indicate a dangling 'document' instance
-  close();
+  cached_readers_.clear();
+  write_lock_.reset(); // reset write lock if any
+  pending_state_.reset(); // reset pending state (if any) before destroying flush contexts
   flush_context_ = nullptr;
   flush_context_pool_.clear(); // ensue all tracked segment_contexts are released before segment_writer_pool_ is deallocated
-}
-
-void index_writer::close() {
-  cached_readers_.clear(); // cached_readers_ read/modified during flush()
-  write_lock_.reset();
 }
 
 uint64_t index_writer::buffered_docs() const {

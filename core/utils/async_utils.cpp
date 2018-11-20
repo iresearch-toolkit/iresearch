@@ -79,8 +79,11 @@ read_write_mutex::read_write_mutex()
 }
 
 read_write_mutex::~read_write_mutex() {
+#ifdef IRESEARCH_DEBUG
+  // ensure mutex is not locked before destroying it
   TRY_SCOPED_LOCK_NAMED(mutex_, lock);
   assert(lock && !concurrent_count_.load() && !exclusive_count_);
+#endif
 }
 
 void read_write_mutex::lock_read() {

@@ -20197,7 +20197,6 @@ TEST_F(fs_index_test, writer_close) {
     doc->stored.begin(), doc->stored.end()
   ));
   writer->commit();
-  writer->close();
 
   std::vector<std::string> files;
   auto list_files = [&files] (std::string& name) {
@@ -20327,7 +20326,6 @@ TEST_F(mmap_index_test, writer_close) {
     doc->stored.begin(), doc->stored.end()
   ));
   writer->commit();
-  writer->close();
 
   std::vector<std::string> files;
   auto list_files = [&files] (std::string& name) {

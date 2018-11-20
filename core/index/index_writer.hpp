@@ -577,9 +577,11 @@ class IRESEARCH_API index_writer:
   }
 
   ////////////////////////////////////////////////////////////////////////////
-  /// @brief closes writer object 
+  /// @brief clears index writer's reader cache
   ////////////////////////////////////////////////////////////////////////////
-  void close();
+  void purge_cached_readers() NOEXCEPT {
+    cached_readers_.clear();
+  }
 
  private:
   typedef std::vector<index_file_refs::ref_t> file_refs_t;
