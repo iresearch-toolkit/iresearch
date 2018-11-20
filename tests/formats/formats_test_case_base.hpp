@@ -890,7 +890,7 @@ class format_test_case_base : public index_test_base {
         stream.write_bytes(payload.c_str(), payload.size());
       }
 
-      ASSERT_TRUE(writer->flush());
+      ASSERT_TRUE(writer->commit());
     }
 
     // read documents
@@ -940,7 +940,7 @@ class format_test_case_base : public index_test_base {
         column_handler(id);
       }
 
-      ASSERT_TRUE(writer->flush());
+      ASSERT_TRUE(writer->commit());
     }
 
     // read documents
@@ -1024,7 +1024,7 @@ class format_test_case_base : public index_test_base {
         ++seg.docs_count;
       }
 
-      ASSERT_TRUE(writer->flush());
+      ASSERT_TRUE(writer->commit());
 
       gen.reset();
     }
@@ -1119,7 +1119,7 @@ class format_test_case_base : public index_test_base {
         ++seg_1.docs_count;
       }
 
-      ASSERT_TRUE(writer->flush());
+      ASSERT_TRUE(writer->commit());
 
       gen.reset();
 
@@ -1148,7 +1148,7 @@ class format_test_case_base : public index_test_base {
         ++seg_2.docs_count;
       }
 
-      ASSERT_TRUE(writer->flush());
+      ASSERT_TRUE(writer->commit());
 
       // write 3rd segment
       id = 0;
@@ -1175,7 +1175,7 @@ class format_test_case_base : public index_test_base {
         ++seg_3.docs_count;
       }
 
-      ASSERT_TRUE(writer->flush());
+      ASSERT_TRUE(writer->commit());
     }
 
     // read documents
@@ -1359,7 +1359,7 @@ class format_test_case_base : public index_test_base {
       ASSERT_EQ(0, column0_id);
       column1_id = writer->push_column().first;
       ASSERT_EQ(1, column1_id);
-      ASSERT_FALSE(writer->flush()); // flush empty columns
+      ASSERT_FALSE(writer->commit()); // flush empty columns
     }
 
     files.clear();
@@ -1442,7 +1442,7 @@ class format_test_case_base : public index_test_base {
         }
       }
 
-      ASSERT_TRUE(writer->flush());
+      ASSERT_TRUE(writer->commit());
     }
 
     // dense fixed offset column
@@ -1705,7 +1705,7 @@ class format_test_case_base : public index_test_base {
         }
       }
 
-      ASSERT_TRUE(writer->flush());
+      ASSERT_TRUE(writer->commit());
     }
 
     // write _2 segment, reuse writer
@@ -1764,7 +1764,7 @@ class format_test_case_base : public index_test_base {
         stream.reset(); // rollback
       }
 
-      ASSERT_TRUE(writer->flush());
+      ASSERT_TRUE(writer->commit());
     }
 
     // read columns values from segment _1
@@ -2385,7 +2385,7 @@ class format_test_case_base : public index_test_base {
       handle(9); ++segment.docs_count;
       // we don't support irs::type_limits<<irs::type_t::doc_id_t>::eof() key value
 
-      ASSERT_TRUE(writer->flush());
+      ASSERT_TRUE(writer->commit());
     }
 
     // check previously written mask
@@ -2630,7 +2630,7 @@ class format_test_case_base : public index_test_base {
         ++segment.docs_count;
       }
 
-      ASSERT_TRUE(writer->flush());
+      ASSERT_TRUE(writer->commit());
     }
 
     // read big document
@@ -2841,7 +2841,7 @@ class format_test_case_base : public index_test_base {
         ++meta.docs_count;
       }
 
-      ASSERT_TRUE(writer->flush());
+      ASSERT_TRUE(writer->commit());
     }
 
     // read stored documents

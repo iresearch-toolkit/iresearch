@@ -418,8 +418,11 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_EQ(0, reader.docs_count());
         ASSERT_EQ(0, reader.live_docs_count());
         size_t file_count_post_clear = 0;
-        dir().visit([&file_count_post_clear](std::string&)->bool{ ++file_count_post_clear; return true; });
-        ASSERT_EQ(file_count + 1 + 2, file_count_post_clear); // +1 extra file for new empty index meta, +2 extra files for reset of empty writer (*.cm, *.sm)
+        dir().visit([&file_count_post_clear](std::string const&)->bool{
+          ++file_count_post_clear;
+          return true;
+        });
+        ASSERT_EQ(file_count + 1, file_count_post_clear); // +1 extra file for new empty index meta
       }
 
       writer->commit();
@@ -432,7 +435,7 @@ class index_test_case_base : public tests::index_test_base {
         ASSERT_EQ(0, reader.live_docs_count());
         size_t file_count_post_commit = 0;
         dir().visit([&file_count_post_commit](std::string&)->bool{ ++file_count_post_commit; return true; });
-        ASSERT_EQ(file_count + 1 + 2, file_count_post_commit); // +1 extra file for new empty index meta, +2 extra files for reset of empty writer (*.cm, *.sm)
+        ASSERT_EQ(file_count + 1, file_count_post_commit); // +1 extra file for new empty index meta
       }
     }
 

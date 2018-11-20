@@ -313,7 +313,7 @@ class postings_writer final: public irs::postings_writer {
   // ------------------------------------------
 
   virtual void prepare(index_output& out, const irs::flush_state& state) override;
-  virtual void begin_field(const iresearch::flags& meta) override;
+  virtual void begin_field(const irs::flags& meta) override;
   virtual irs::postings_writer::state write(irs::doc_iterator& docs) override;
   virtual void begin_block() override;
   virtual void encode(data_output& out, const irs::term_meta& attrs) override;
@@ -493,7 +493,7 @@ postings_writer::postings_writer(bool volatile_attributes)
   attrs_.emplace(docs_);
 }
 
-void postings_writer::prepare(index_output& out, const iresearch::flush_state& state) {
+void postings_writer::prepare(index_output& out, const irs::flush_state& state) {
   assert(state.dir);
   assert(!state.name.null());
 
@@ -548,7 +548,7 @@ void postings_writer::prepare(index_output& out, const iresearch::flush_state& s
   docs_.value.reset(state.doc_count);
 }
 
-void postings_writer::begin_field(const iresearch::flags& field) {
+void postings_writer::begin_field(const irs::flags& field) {
   features_ = ::features(field);
   docs_.value.clear();
   last_state.clear();
@@ -991,7 +991,7 @@ FORCE_INLINE void skip_offsets(index_input& in) {
 ///////////////////////////////////////////////////////////////////////////////
 /// @class doc_iterator
 ///////////////////////////////////////////////////////////////////////////////
-class doc_iterator : public iresearch::doc_iterator {
+class doc_iterator : public irs::doc_iterator {
  public:
   DECLARE_UNIQUE_PTR(doc_iterator);
 
@@ -1046,7 +1046,7 @@ class doc_iterator : public iresearch::doc_iterator {
     }
 
     seek_to_block(target);
-    iresearch::seek(*this, target);
+    irs::seek(*this, target);
     return value();
   }
 
@@ -1300,7 +1300,7 @@ class mask_doc_iterator final: public DocIterator {
 
   static_assert(
     std::is_base_of<irs::doc_iterator, doc_iterator_t>::value,
-    "DocIterator must be derived from iresearch::doc_iterator"
+    "DocIterator must be derived from irs::doc_iterator"
    );
 
   explicit mask_doc_iterator(const document_mask& mask)
@@ -2131,7 +2131,7 @@ uint64_t parse_generation(const std::string& segments_file) {
 bool index_meta_reader::last_segments_file(const directory& dir, std::string& out) const {
   uint64_t max_gen = 0;
   directory::visitor_f visitor = [&out, &max_gen] (std::string& name) {
-    if (iresearch::starts_with(name, index_meta_writer::FORMAT_PREFIX)) {
+    if (irs::starts_with(name, index_meta_writer::FORMAT_PREFIX)) {
       const uint64_t gen = parse_generation(name);
 
       if (type_limits<type_t::index_gen_t>::valid(gen) && gen > max_gen) {
@@ -2493,7 +2493,7 @@ std::string file_name(const M& meta); // forward declaration
 template<typename T, typename M>
 void file_name(std::string& buf, const M& meta); // forward declaration
 
-class meta_writer final : public iresearch::column_meta_writer {
+class meta_writer final : public irs::column_meta_writer {
  public:
   static const string_ref FORMAT_NAME;
   static const string_ref FORMAT_EXT;
@@ -2501,7 +2501,7 @@ class meta_writer final : public iresearch::column_meta_writer {
   static const int32_t FORMAT_MIN = 0;
   static const int32_t FORMAT_MAX = FORMAT_MIN;
 
-  virtual bool prepare(directory& dir, const segment_meta& meta) override;
+  virtual void prepare(directory& dir, const segment_meta& meta) override;
   virtual void write(const std::string& name, field_id id) override;
   virtual void flush() override;
 
@@ -2524,22 +2524,22 @@ std::string file_name<column_meta_writer, segment_meta>(
   return irs::file_name(meta.name, columns::meta_writer::FORMAT_EXT);
 };
 
-bool meta_writer::prepare(directory& dir, const segment_meta& meta) {
+void meta_writer::prepare(directory& dir, const segment_meta& meta) {
   auto filename = file_name<column_meta_writer>(meta);
 
   out_ = dir.create(filename);
 
   if (!out_) {
-    IR_FRMT_ERROR("Failed to create file, path: %s", filename.c_str());
-    return false;
+    throw detailed_io_error(string_utils::to_string(
+      "Failed to create file, path: %s", filename.c_str()
+    ));
   }
 
   format_utils::write_header(*out_, FORMAT_NAME, FORMAT_MAX);
-
-  return true;
 }
 
 void meta_writer::write(const std::string& name, field_id id) {
+  assert(out_);
   out_->write_vlong(id);
   write_string(*out_, name);
   ++count_;
@@ -2547,6 +2547,7 @@ void meta_writer::write(const std::string& name, field_id id) {
 }
 
 void meta_writer::flush() {
+  assert(out_);
   out_->write_long(count_); // write total number of written objects
   out_->write_long(max_id_); // write highest column id written
   format_utils::write_footer(*out_);
@@ -2554,7 +2555,7 @@ void meta_writer::flush() {
   count_ = 0;
 }
 
-class meta_reader final : public iresearch::column_meta_reader {
+class meta_reader final : public irs::column_meta_reader {
  public:
   virtual bool prepare(
     const directory& dir,
@@ -2733,7 +2734,7 @@ void read_compact(
     decode_buf.size()
   );
 
-  if (!irs::type_limits<iresearch::type_t::address_t>::valid(buf_size)) {
+  if (!irs::type_limits<irs::type_t::address_t>::valid(buf_size)) {
     throw irs::index_error(string_utils::to_string(
       "while reading compact, error: invalid buffer size '" IR_SIZE_T_SPECIFIER "'",
       buf_size
@@ -2871,7 +2872,7 @@ class index_block {
 //////////////////////////////////////////////////////////////////////////////
 /// @class writer
 //////////////////////////////////////////////////////////////////////////////
-class writer final : public iresearch::columnstore_writer {
+class writer final : public irs::columnstore_writer {
  public:
   static const int32_t FORMAT_MIN = 0;
   static const int32_t FORMAT_MAX = FORMAT_MIN;
@@ -2881,10 +2882,11 @@ class writer final : public iresearch::columnstore_writer {
 
   virtual bool prepare(directory& dir, const segment_meta& meta) override;
   virtual column_t push_column() override;
-  virtual bool flush() override;
+  virtual bool commit() override;
+  virtual void rollback() NOEXCEPT override;
 
  private:
-  class column final : public iresearch::columnstore_writer::column_output {
+  class column final : public irs::columnstore_writer::column_output {
    public:
     explicit column(writer& ctx)
       : ctx_(&ctx),
@@ -3090,7 +3092,9 @@ columnstore_writer::column_t writer::push_column() {
   });
 }
 
-bool writer::flush() {
+bool writer::commit() {
+  assert(dir_);
+
   // remove all empty columns from tail
   while (!columns_.empty() && columns_.back().empty()) {
     columns_.pop_back();
@@ -3123,10 +3127,17 @@ bool writer::flush() {
 
   data_out_->write_long(block_index_ptr);
   format_utils::write_footer(*data_out_);
-  data_out_.reset();
-  columns_.clear(); // ensure next flush (without prepare(...)) will use the section without 'data_out_'
+
+  rollback();
 
   return true;
+}
+
+void writer::rollback() NOEXCEPT {
+  filename_.clear();
+  dir_ = nullptr;
+  data_out_.reset(); // close output
+  columns_.clear(); // ensure next flush (without prepare(...)) will use the section without 'data_out_'
 }
 
 template<typename Block, typename Allocator>

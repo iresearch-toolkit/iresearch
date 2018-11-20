@@ -857,7 +857,7 @@ class columnstore {
   bool empty() const { return empty_; }
 
   // @return was anything actually flushed
-  bool flush() { return writer_->flush(); }
+  bool flush() { return writer_->commit(); }
 
   // returns current column identifier
   irs::field_id id() const { return column_.first; }
@@ -889,10 +889,7 @@ bool write_columns(
 
   auto cmw = meta.codec->get_column_meta_writer();
 
-  if (!cmw->prepare(dir, meta)) {
-    // failed to prepare writer
-    return false;
-  }
+  cmw->prepare(dir, meta);
 
   while (column_itr.next()) {
     cs.reset();  
@@ -907,6 +904,7 @@ bool write_columns(
       cmw->write((*column_itr).name, cs.id());
     } 
   }
+
   cmw->flush();
 
   return true;

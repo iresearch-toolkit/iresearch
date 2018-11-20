@@ -248,7 +248,8 @@ struct IRESEARCH_API columnstore_writer {
 
   virtual bool prepare(directory& dir, const segment_meta& meta) = 0;
   virtual column_t push_column() = 0;
-  virtual bool flush() = 0; // @return was anything actually flushed
+  virtual void rollback() NOEXCEPT = 0;
+  virtual bool commit() = 0; // @return was anything actually flushed
 }; // columnstore_writer
 
 NS_END
@@ -264,7 +265,7 @@ NS_ROOT
 struct IRESEARCH_API column_meta_writer {
   DECLARE_SHARED_PTR(column_meta_writer);
   virtual ~column_meta_writer();
-  virtual bool prepare(directory& dir, const segment_meta& meta) = 0;
+  virtual void prepare(directory& dir, const segment_meta& meta) = 0;
   virtual void write(const std::string& name, field_id id) = 0;
   virtual void flush() = 0;
 }; // column_meta_writer 

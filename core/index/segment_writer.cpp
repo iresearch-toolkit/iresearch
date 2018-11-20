@@ -170,81 +170,96 @@ void segment_writer::finish() {
   }
 }
 
+void segment_writer::flush_column_meta(const segment_meta& meta) {
+  struct less_t {
+    bool operator()(
+        const column* lhs,
+        const column* rhs
+    ) const NOEXCEPT {
+      return lhs->name < rhs->name;
+    };
+  };
+
+  std::set<const column*, less_t> columns;
+
+  // ensure columns are sorted
+  for (auto& entry : columns_) {
+    columns.emplace(&entry.second);
+  }
+
+  // flush columns meta
+  try {
+    col_meta_writer_->prepare(dir_, meta);
+    for (auto& column: columns) {
+      col_meta_writer_->write(column->name, column->handle.first);
+    }
+    col_meta_writer_->flush();
+  } catch (...) {
+    col_meta_writer_.reset(); // invalidate column meta writer
+
+    throw;
+  }
+}
+
+void segment_writer::flush_fields() {
+  flush_state state;
+  state.dir = &dir_;
+  state.doc_count = docs_cached();
+  state.name = seg_name_;
+
+  try {
+    fields_.flush(*field_writer_, state);
+  } catch (...) {
+    field_writer_.reset(); // invalidate field writer
+
+    throw;
+  }
+}
+
+size_t segment_writer::flush_doc_mask(const segment_meta &meta) {
+  document_mask docs_mask;
+  docs_mask.reserve(docs_mask_.size());
+
+  for (size_t doc_id = 0, doc_id_end = docs_mask_.size();
+       doc_id < doc_id_end;
+       ++doc_id) {
+    if (docs_mask_.test(doc_id)) {
+      assert(size_t(integer_traits<doc_id_t>::const_max) >= doc_id + type_limits<type_t::doc_id_t>::min());
+      docs_mask.emplace(
+        doc_id_t(doc_id + type_limits<type_t::doc_id_t>::min())
+      );
+    }
+  }
+
+  auto writer = meta.codec->get_document_mask_writer();
+  writer->write(dir_, meta, docs_mask);
+
+  return docs_mask.size();
+}
+
 bool segment_writer::flush(index_meta::index_segment_t& segment) {
   REGISTER_TIMER_DETAILED();
 
   auto& meta = segment.meta;
 
   // flush columnstore and columns indices
-  if (col_writer_->flush() && !columns_.empty()) {
-    struct less_t {
-      bool operator()(
-          const column* lhs,
-          const column* rhs
-      ) const NOEXCEPT {
-        return lhs->name < rhs->name;
-      };
-    };
-
-    std::set<const column*, less_t> columns;
-
-    // ensure columns are sorted
-    for (auto& entry : columns_) {
-      columns.emplace(&entry.second);
-    }
-
-    // flush columns meta
-    col_meta_writer_->prepare(dir_, meta);
-
-    for (auto& column: columns) {
-      col_meta_writer_->write(column->name, column->handle.first);
-    }
-
-    col_meta_writer_->flush();
-    columns_.clear();
+  if (col_writer_->commit() && !columns_.empty()) {
+    flush_column_meta(meta);
     meta.column_store = true;
   }
 
   // flush fields metadata & inverted data
   if (docs_cached()) {
-    flush_state state;
-    state.dir = &dir_;
-    state.doc_count = docs_cached();
-    state.name = seg_name_;
-
-    try {
-      fields_.flush(*field_writer_, state);
-    } catch (...) {
-      field_writer_.reset(); // invalidate field writer
-
-      throw;
-    }
+    flush_fields();
   }
-
-  size_t docs_mask_count = 0;
 
   // write non-empty document mask
+  size_t docs_mask_count = 0;
   if (docs_mask_.any()) {
-    document_mask docs_mask;
-    auto writer = meta.codec->get_document_mask_writer();
-
-    docs_mask.reserve(docs_mask_.size());
-
-    for (size_t doc_id = 0, doc_id_end = docs_mask_.size();
-         doc_id < doc_id_end;
-         ++doc_id) {
-      if (docs_mask_.test(doc_id)) {
-        assert(size_t(integer_traits<doc_id_t>::const_max) >= doc_id + type_limits<type_t::doc_id_t>::min());
-        docs_mask.emplace(
-          doc_id_t(doc_id + type_limits<type_t::doc_id_t>::min())
-        );
-      }
-    }
-
-    writer->write(dir_, meta, docs_mask);
-    docs_mask_count = docs_mask.size();
+    docs_mask_count = flush_doc_mask(meta);
   }
 
+  // update segment metadata
   assert(docs_cached() >= docs_mask_count);
   meta.docs_count = docs_cached();
   meta.live_docs_count = meta.docs_count - docs_mask_count;
@@ -252,7 +267,7 @@ bool segment_writer::flush(index_meta::index_segment_t& segment) {
   dir_.flush_tracked(meta.files);
 
   // flush segment metadata
-  index_utils::write_index_segment(dir_, segment);
+  index_utils::flush_index_segment(dir_, segment);
 
   return true;
 }
@@ -263,6 +278,11 @@ void segment_writer::reset() NOEXCEPT {
   docs_context_.clear();
   docs_mask_.clear();
   fields_.reset();
+  columns_.clear();
+
+  if (col_writer_) {
+    col_writer_->rollback();
+  }
 }
 
 void segment_writer::reset(const segment_meta& meta) {
@@ -272,14 +292,17 @@ void segment_writer::reset(const segment_meta& meta) {
 
   if (!field_writer_) {
     field_writer_ = meta.codec->get_field_writer(false);
+    assert(field_writer_);
   }
 
   if (!col_meta_writer_) {
     col_meta_writer_ = meta.codec->get_column_meta_writer();
+    assert(col_meta_writer_);
   }
 
   if (!col_writer_) {
     col_writer_ = meta.codec->get_columnstore_writer();
+    assert(col_writer_);
   }
 
   col_writer_->prepare(dir_, meta);

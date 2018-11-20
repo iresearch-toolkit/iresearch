@@ -1015,8 +1015,6 @@ void index_writer::segment_context::reset() {
 
   if (writer_->initialized()) {
     writer_->reset(); // try to reduce number of files flushed below
-    writer_->flush(writer_meta_); // flush segment even for empty segments since this will clear internal segment_writer state
-    writer_meta_.meta = segment_meta(); // reset to invalid
   }
 
   dir_.clear_refs(); // release refs only after clearing writer state to ensure 'writer_' does not hold any files
@@ -1369,7 +1367,7 @@ bool index_writer::consolidate(
       SCOPED_LOCK(ctx->mutex_); // lock due to context modification
 
       lock.unlock(); // can release commit lock, we guarded against commit by locked flush context
-      index_utils::write_index_segment(dir, consolidation_segment); // persist segment meta
+      index_utils::flush_index_segment(dir, consolidation_segment); // persist segment meta
       ctx->segment_mask_.reserve(
         ctx->segment_mask_.size() + candidates.size()
       );
@@ -1436,7 +1434,7 @@ bool index_writer::consolidate(
         }
       }
 
-      index_utils::write_index_segment(dir, consolidation_segment);// persist segment meta
+      index_utils::flush_index_segment(dir, consolidation_segment);// persist segment meta
       ctx->segment_mask_.reserve(
         ctx->segment_mask_.size() + candidates.size()
       );
@@ -1501,7 +1499,7 @@ bool index_writer::import(
     return false; // import failure (no files created, nothing to clean up)
   }
 
-  index_utils::write_index_segment(dir, segment);
+  index_utils::flush_index_segment(dir, segment);
 
   auto refs = extract_refs(dir);
 
@@ -1722,7 +1720,7 @@ index_writer::pending_context_t index_writer::flush_all() {
 
       to_sync.register_partial_sync(segment_id, write_document_mask(dir, segment.meta, docs_mask));
       segment.meta.size = 0; // reset for new write
-      index_utils::write_index_segment(dir, segment); // write with new mask
+      index_utils::flush_index_segment(dir, segment); // write with new mask
     }
   }
 
@@ -1835,7 +1833,7 @@ index_writer::pending_context_t index_writer::flush_all() {
 
     // persist segment meta
     if (pending_consolidation) {
-      index_utils::write_index_segment(dir, pending_segment.segment);
+      index_utils::flush_index_segment(dir, pending_segment.segment);
     }
 
     // register full segment sync
@@ -2010,7 +2008,7 @@ index_writer::pending_context_t index_writer::flush_all() {
         write_document_mask(
           dir, segment_ctx.segment_.meta, segment_ctx.docs_mask_
         );
-        index_utils::write_index_segment(dir, segment_ctx.segment_); // write with new mask
+        index_utils::flush_index_segment(dir, segment_ctx.segment_); // write with new mask
       }
 
       // register full segment sync

@@ -332,6 +332,10 @@ class IRESEARCH_API segment_writer: util::noncopyable {
 
   void finish(); // finishes document
 
+  size_t flush_doc_mask(const segment_meta& meta); // flushes document mask to directory, returns number of masked documens
+  void flush_column_meta(const segment_meta& meta); // flushes column meta to directory
+  void flush_fields(); // flushes indexed fields to directory
+
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   update_contexts docs_context_;
   bitvector docs_mask_; // invalid/removed doc_ids (e.g. partially indexed due to indexing failure)

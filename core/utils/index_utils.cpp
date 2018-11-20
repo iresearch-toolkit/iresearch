@@ -482,7 +482,7 @@ void read_document_mask(
   reader->read(dir, meta, docs_mask);
 }
 
-void write_index_segment(directory& dir, index_meta::index_segment_t& segment) {
+void flush_index_segment(directory& dir, index_meta::index_segment_t& segment) {
   assert(segment.meta.codec);
   assert(!segment.meta.size); // assume segment size will be calculated in a single place, here
 
