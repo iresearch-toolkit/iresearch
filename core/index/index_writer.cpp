@@ -1002,7 +1002,7 @@ void index_writer::segment_context::remove(filter::ptr&& filter) {
   );
 }
 
-void index_writer::segment_context::reset() {
+void index_writer::segment_context::reset() NOEXCEPT {
   active_count_.store(0);
   buffered_docs_.store(0);
   dirty_ = false;
