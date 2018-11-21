@@ -16057,34 +16057,6 @@ TEST_F(memory_index_test, consolidate_single_segment) {
 }
 
 TEST_F(memory_index_test, segment_consolidate_long_running) {
-  struct blocking_directory : tests::directory_mock {
-    explicit blocking_directory(irs::directory& impl, const irs::string_ref& blocker)
-      : tests::directory_mock(impl), blocker(blocker) {
-    }
-
-    irs::index_output::ptr create(const std::string& name) NOEXCEPT {
-      auto stream = tests::directory_mock::create(name);
-
-      if (name == blocker) {
-        {
-          SCOPED_LOCK_NAMED(policy_lock, guard);
-          policy_applied.notify_all();
-        }
-
-        // wait for intermediate commits to be applied
-        SCOPED_LOCK_NAMED(intermediate_commits_lock, guard);
-      }
-
-      return stream;
-    }
-
-
-    irs::string_ref blocker;
-    std::mutex policy_lock;
-    std::condition_variable policy_applied;
-    std::mutex intermediate_commits_lock;
-  };
-
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
@@ -16112,8 +16084,7 @@ TEST_F(memory_index_test, segment_consolidate_long_running) {
 
   // long running transaction
   {
-    const irs::string_ref blocker = "_3.cs";
-    blocking_directory dir(this->dir(), blocker);
+    tests::blocking_directory dir(this->dir(), "_3.cs");
     auto writer = open_writer(dir);
     ASSERT_NE(nullptr, writer);
 
@@ -16159,10 +16130,10 @@ TEST_F(memory_index_test, segment_consolidate_long_running) {
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
 
     bool has = false;
-    dir.exists(has, blocker);
+    dir.exists(has, dir.blocker);
 
     while (!has) {
-      dir.exists(has, blocker);
+      dir.exists(has, dir.blocker);
       ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
 
       SCOPED_LOCK_NAMED(dir.policy_lock, policy_guard);
@@ -16272,8 +16243,7 @@ TEST_F(memory_index_test, segment_consolidate_long_running) {
     SetUp(); // recreate directory
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
 
-    const irs::string_ref blocker = "_3.cs";
-    blocking_directory dir(this->dir(), blocker);
+    tests::blocking_directory dir(this->dir(), "_3.cs");
     auto writer = open_writer(dir);
     ASSERT_NE(nullptr, writer);
 
@@ -16316,10 +16286,10 @@ TEST_F(memory_index_test, segment_consolidate_long_running) {
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
 
     bool has = false;
-    dir.exists(has, blocker);
+    dir.exists(has, dir.blocker);
 
     while (!has) {
-      dir.exists(has, blocker);
+      dir.exists(has, dir.blocker);
       ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
 
       SCOPED_LOCK_NAMED(dir.policy_lock, policy_guard);
@@ -16426,8 +16396,7 @@ TEST_F(memory_index_test, segment_consolidate_long_running) {
     SetUp(); // recreate directory
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
 
-    const irs::string_ref blocker = "_3.cs";
-    blocking_directory dir(this->dir(), blocker);
+    tests::blocking_directory dir(this->dir(), "_3.cs");
     auto writer = open_writer(dir);
     ASSERT_NE(nullptr, writer);
 
@@ -16479,10 +16448,10 @@ TEST_F(memory_index_test, segment_consolidate_long_running) {
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
 
     bool has = false;
-    dir.exists(has, blocker);
+    dir.exists(has, dir.blocker);
 
     while (!has) {
-      dir.exists(has, blocker);
+      dir.exists(has, dir.blocker);
       ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
 
       SCOPED_LOCK_NAMED(dir.policy_lock, policy_guard);
@@ -16560,8 +16529,7 @@ TEST_F(memory_index_test, segment_consolidate_long_running) {
     SetUp(); // recreate directory
     auto query_doc1_doc4 = iresearch::iql::query_builder().build("name==A||name==D", std::locale::classic());
 
-    const irs::string_ref blocker = "_3.cs";
-    blocking_directory dir(this->dir(), blocker);
+    tests::blocking_directory dir(this->dir(), "_3.cs");
     auto writer = open_writer(dir);
     ASSERT_NE(nullptr, writer);
 
@@ -16617,10 +16585,10 @@ TEST_F(memory_index_test, segment_consolidate_long_running) {
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
 
     bool has = false;
-    dir.exists(has, blocker);
+    dir.exists(has, dir.blocker);
 
     while (!has) {
-      dir.exists(has, blocker);
+      dir.exists(has, dir.blocker);
       ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
 
       SCOPED_LOCK_NAMED(dir.policy_lock, policy_guard);
@@ -18726,7 +18694,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     ASSERT_EQ(0, reader.size());
   }
 
-  // remove empty old, defragment new (deferred)
+  // remove empty old, defragment new
   {
     auto query_doc1_doc2 = iresearch::iql::query_builder().build("name==A||name==B", std::locale::classic());
     auto writer = open_writer();
@@ -18774,7 +18742,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     ASSERT_FALSE(docsItr->next());
   }
 
-  // remove empty old, defragment new (immediate)
+  // remove empty old, defragment new
   {
     auto query_doc1_doc2 = iresearch::iql::query_builder().build("name==A||name==B", std::locale::classic());
     auto writer = open_writer();
@@ -18821,7 +18789,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     ASSERT_FALSE(docsItr->next());
   }
 
-  // remove empty old, defragment old (deferred)
+  // remove empty old, defragment old
   {
     auto query_doc1_doc2 = iresearch::iql::query_builder().build("name==A||name==B", std::locale::classic());
     auto writer = open_writer();
@@ -18869,7 +18837,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     ASSERT_FALSE(docsItr->next());
   }
 
-  // remove empty old, defragment old (immediate)
+  // remove empty old, defragment old
   {
     auto query_doc1_doc2 = iresearch::iql::query_builder().build("name==A||name==B", std::locale::classic());
     auto writer = open_writer();
@@ -18992,7 +18960,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     }
   }
 
-  // merge new+old segment (defragment deferred)
+  // merge new+old segment
   {
     auto query_doc1_doc3 = iresearch::iql::query_builder().build("name==A||name==C", std::locale::classic());
     auto writer = open_writer();
@@ -19047,7 +19015,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     ASSERT_FALSE(docsItr->next());
   }
 
-  // merge new+old segment (defragment immediate)
+  // merge new+old segment
   {
     auto query_doc1_doc3 = iresearch::iql::query_builder().build("name==A||name==C", std::locale::classic());
     auto writer = open_writer();
@@ -19102,63 +19070,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     ASSERT_FALSE(docsItr->next());
   }
 
-  // merge old+old segment (defragment deferred)
-  {
-    auto query_doc1_doc3 = iresearch::iql::query_builder().build("name==A||name==C", std::locale::classic());
-    auto writer = open_writer();
-
-    ASSERT_TRUE(insert(*writer,
-      doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
-    ASSERT_TRUE(insert(*writer,
-      doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
-    writer->commit();
-    ASSERT_TRUE(insert(*writer,
-      doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
-    ASSERT_TRUE(insert(*writer,
-      doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
-    writer->commit();
-    writer->documents().remove(std::move(query_doc1_doc3.filter));
-    writer->commit();
-    ASSERT_TRUE(writer->consolidate(always_merge));
-    writer->commit();
-
-    // validate structure
-    tests::index_t expected;
-    expected.emplace_back();
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
-    tests::assert_index(dir(), codec(), expected, all_features);
-
-    auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader.size());
-    auto& segment = reader[0]; // assume 0 is id of first/only segment
-    ASSERT_EQ(2, segment.docs_count()); // total count of documents
-    const auto* column = segment.column_reader("name");
-    ASSERT_NE(nullptr, column);
-    auto values = column->values();
-    auto terms = segment.field("same");
-    ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
-    ASSERT_TRUE(termItr->next());
-    auto docsItr = termItr->postings(iresearch::flags());
-    ASSERT_TRUE(docsItr->next());
-    ASSERT_TRUE(values(docsItr->value(), actual_value));
-    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
-    ASSERT_TRUE(docsItr->next());
-    ASSERT_TRUE(values(docsItr->value(), actual_value));
-    ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
-    ASSERT_FALSE(docsItr->next());
-  }
-
-  // merge old+old segment (defragment immediate)
+  // merge old+old segment
   {
     auto query_doc1_doc3 = iresearch::iql::query_builder().build("name==A||name==C", std::locale::classic());
     auto writer = open_writer();
@@ -19214,7 +19126,63 @@ TEST_F(memory_index_test, segment_consolidate) {
     ASSERT_FALSE(docsItr->next());
   }
 
-  // merge old+old+old segment (defragment deferred)
+  // merge old+old segment
+  {
+    auto query_doc1_doc3 = iresearch::iql::query_builder().build("name==A||name==C", std::locale::classic());
+    auto writer = open_writer();
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(insert(*writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    writer->commit();
+    ASSERT_TRUE(insert(*writer,
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
+    ASSERT_TRUE(insert(*writer,
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()
+    ));
+    writer->commit();
+    writer->documents().remove(std::move(query_doc1_doc3.filter));
+    writer->commit();
+    ASSERT_TRUE(writer->consolidate(always_merge));
+    writer->commit();
+
+    // validate structure
+    tests::index_t expected;
+    expected.emplace_back();
+    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    tests::assert_index(dir(), codec(), expected, all_features);
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0]; // assume 0 is id of first/only segment
+    ASSERT_EQ(2, segment.docs_count()); // total count of documents
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
+    auto terms = segment.field("same");
+    ASSERT_NE(nullptr, terms);
+    auto termItr = terms->iterator();
+    ASSERT_TRUE(termItr->next());
+    auto docsItr = termItr->postings(iresearch::flags());
+    ASSERT_TRUE(docsItr->next());
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
+    ASSERT_TRUE(docsItr->next());
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
+    ASSERT_FALSE(docsItr->next());
+  }
+
+  // merge old+old+old segment
   {
     auto query_doc1_doc3_doc5 = iresearch::iql::query_builder().build("name==A||name==C||name==E", std::locale::classic());
     auto writer = open_writer();
@@ -19283,7 +19251,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     ASSERT_FALSE(docsItr->next());
   }
 
-  // merge old+old+old segment (defragment immediate)
+  // merge old+old+old segment
   {
     auto query_doc1_doc3_doc5 = iresearch::iql::query_builder().build("name==A||name==C||name==E", std::locale::classic());
     auto writer = open_writer();
@@ -19352,7 +19320,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     ASSERT_FALSE(docsItr->next());
   }
 
-  // merge two segments with different fields (defragment deferred)
+  // merge two segments with different fields
   {
     auto writer = open_writer();
     // add 1st segment
@@ -19443,7 +19411,7 @@ TEST_F(memory_index_test, segment_consolidate) {
     ASSERT_FALSE(docsItr->next());
   }
 
-  // merge two segments with different fields (defragment immediate)
+  // merge two segments with different fields
   {
     auto writer = open_writer();
     // add 1st segment

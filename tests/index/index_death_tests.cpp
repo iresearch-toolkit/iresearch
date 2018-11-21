@@ -30,7 +30,7 @@
 
 NS_LOCAL
 
-class failing_directory : public irs::directory {
+class failing_directory : public tests::directory_mock {
  public:
   enum class Failure : size_t {
     CREATE = 0,
@@ -45,7 +45,7 @@ class failing_directory : public irs::directory {
   };
 
   explicit failing_directory(irs::directory& impl) NOEXCEPT
-    : impl_(&impl) {
+    : tests::directory_mock(impl) {
   }
 
   template<typename Visitor>
@@ -75,78 +75,68 @@ class failing_directory : public irs::directory {
     return failures_.empty();
   }
 
-  using irs::directory::attributes;
-  virtual irs::attribute_store& attributes() NOEXCEPT override {
-    return impl_->attributes();
-  }
-  virtual void close() NOEXCEPT override {
-    impl_->close();
-  }
   virtual irs::index_output::ptr create(const std::string &name) NOEXCEPT override {
     if (should_fail(Failure::CREATE, name)) {
       return nullptr;
     }
 
-    return impl_->create(name);
+    return tests::directory_mock::create(name);
   }
   virtual bool exists(bool& result, const std::string& name) const NOEXCEPT override {
     if (should_fail(Failure::EXISTS, name)) {
       return false;
     }
 
-    return impl_->exists(result, name);
+    return tests::directory_mock::exists(result, name);
   }
   virtual bool length(uint64_t& result, const std::string& name) const NOEXCEPT override {
     if (should_fail(Failure::LENGTH, name)) {
       return false;
     }
 
-    return impl_->length(result, name);
+    return tests::directory_mock::length(result, name);
   }
   virtual irs::index_lock::ptr make_lock(const std::string& name) NOEXCEPT override {
     if (should_fail(Failure::MAKE_LOCK, name)) {
       return nullptr;
     }
 
-    return impl_->make_lock(name);
+    return tests::directory_mock::make_lock(name);
   }
   virtual bool mtime(std::time_t& result, const std::string& name) const NOEXCEPT override {
     if (should_fail(Failure::MTIME, name)) {
       return false;
     }
 
-    return impl_->mtime(result, name);
+    return tests::directory_mock::mtime(result, name);
   }
   virtual irs::index_input::ptr open(const std::string& name, irs::IOAdvice advice) const NOEXCEPT override {
     if (should_fail(Failure::OPEN, name)) {
       return nullptr;
     }
 
-    return impl_->open(name, advice);
+    return tests::directory_mock::open(name, advice);
   }
   virtual bool remove(const std::string& name) NOEXCEPT override {
     if (should_fail(Failure::REMOVE, name)) {
       return false;
     }
 
-    return impl_->remove(name);
+    return tests::directory_mock::remove(name);
   }
   virtual bool rename(const std::string& src, const std::string& dst) NOEXCEPT override {
     if (should_fail(Failure::RENAME, src)) {
       return false;
     }
 
-    return impl_->rename(src, dst);
+    return tests::directory_mock::rename(src, dst);
   }
   virtual bool sync(const std::string& name) NOEXCEPT override {
     if (should_fail(Failure::SYNC, name)) {
       return false;
     }
 
-    return impl_->sync(name);
-  }
-  virtual bool visit(const visitor_f& visitor) const override {
-    return impl_->visit(visitor);
+    return tests::directory_mock::sync(name);
   }
 
  private:
@@ -173,7 +163,6 @@ class failing_directory : public irs::directory {
     }
   };
 
-  irs::directory* impl_;
   mutable std::set<fail_t, fail_less> failures_;
 }; // failing_directory
 
@@ -191,7 +180,6 @@ TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
     }
   });
   const auto* doc1 = gen.next();
-
 
   auto codec = irs::formats::get("1_0");
   ASSERT_NE(nullptr, codec);
@@ -225,7 +213,6 @@ TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
     ASSERT_EQ(0, reader->docs_count());
     ASSERT_EQ(0, reader->live_docs_count());
   }
-
 
   {
     const auto all_features = irs::flags{
@@ -1341,6 +1328,468 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_immediate_consolidatio
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+      ASSERT_FALSE(docsItr->next());
+    }
+  }
+}
+
+TEST(index_death_test_formats_10, segment_meta_write_fail_deffered_consolidation) {
+  tests::json_doc_generator gen(
+    test_base::resource("simple_sequential.json"),
+    [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+    if (data.is_string()) {
+      doc.insert(std::make_shared<tests::templates::string_field>(
+        irs::string_ref(name),
+        data.str
+      ));
+    }
+  });
+  const auto* doc1 = gen.next();
+  const auto* doc2 = gen.next();
+  const auto* doc3 = gen.next();
+  const auto* doc4 = gen.next();
+
+  auto codec = irs::formats::get("1_0");
+  ASSERT_NE(nullptr, codec);
+
+  {
+    const auto all_features = irs::flags{
+      irs::document::type(),
+      irs::frequency::type(),
+      irs::position::type(),
+      irs::payload::type(),
+      irs::offset::type()
+    };
+
+    irs::memory_directory impl;
+    failing_directory dir(impl);
+
+    // write index
+    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    ASSERT_NE(nullptr, writer);
+
+    // segment 0
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    writer->commit();
+
+    // segment 1
+    ASSERT_TRUE(insert(*writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    writer->commit();
+
+    // register failures
+    dir.register_failure(failing_directory::Failure::CREATE, "_4.0.sm"); // fail at segment meta creation on consolidation
+    dir.register_failure(failing_directory::Failure::SYNC, "_6.0.sm"); // fail at segment meta synchronization on consolidation
+
+    const irs::index_utils::consolidate_count consolidate_all;
+
+    // segment meta creation failure
+    ASSERT_TRUE(insert(*writer,
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
+    ASSERT_TRUE(writer->begin()); // start transaction
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all))); // register pending consolidation
+    writer->commit(); // commit started transaction
+    ASSERT_THROW(writer->begin(), irs::detailed_io_error); // start transaction to commit pending consolidation
+
+    // segment meta synchronization failure
+    ASSERT_TRUE(insert(*writer,
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()
+    ));
+    ASSERT_TRUE(writer->begin()); // start transaction
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all))); // register pending consolidation
+    writer->commit(); // commit started transaction
+    ASSERT_THROW(writer->begin(), irs::detailed_io_error); // start transaction to commit pending consolidation
+
+    // check data
+    auto reader = irs::directory_reader::open(dir);
+    ASSERT_TRUE(reader);
+    ASSERT_EQ(4, reader->size());
+    ASSERT_EQ(4, reader->docs_count());
+    ASSERT_EQ(4, reader->live_docs_count());
+
+    // validate index
+    tests::index_t expected_index;
+    expected_index.emplace_back();
+    expected_index.back().add(doc1->indexed.begin(), doc1->indexed.end());
+    expected_index.emplace_back();
+    expected_index.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected_index.emplace_back();
+    expected_index.back().add(doc3->indexed.begin(), doc3->indexed.end());
+    expected_index.emplace_back();
+    expected_index.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    tests::assert_index(expected_index, *reader, all_features);
+
+    // validate columnstore (segment 0)
+    {
+      irs::bytes_ref actual_value;
+      auto& segment = reader[0]; // assume 0 is id of first/only segment
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      ASSERT_EQ(1, segment.docs_count()); // total count of documents
+      ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+      ASSERT_FALSE(docsItr->next());
+    }
+
+    // validate columnstore (segment 1)
+    {
+      irs::bytes_ref actual_value;
+      auto& segment = reader[1]; // assume 0 is id of first/only segment
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      ASSERT_EQ(1, segment.docs_count()); // total count of documents
+      ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+      ASSERT_FALSE(docsItr->next());
+    }
+
+    // validate columnstore (segment 2)
+    {
+      irs::bytes_ref actual_value;
+      auto& segment = reader[2]; // assume 0 is id of first/only segment
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      ASSERT_EQ(1, segment.docs_count()); // total count of documents
+      ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+      ASSERT_FALSE(docsItr->next());
+    }
+
+    // validate columnstore (segment 3)
+    {
+      irs::bytes_ref actual_value;
+      auto& segment = reader[3]; // assume 0 is id of first/only segment
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      ASSERT_EQ(1, segment.docs_count()); // total count of documents
+      ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+      ASSERT_FALSE(docsItr->next());
+    }
+  }
+}
+
+TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolidation) {
+  tests::json_doc_generator gen(
+    test_base::resource("simple_sequential.json"),
+    [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+    if (data.is_string()) {
+      doc.insert(std::make_shared<tests::templates::string_field>(
+        irs::string_ref(name),
+        data.str
+      ));
+    }
+  });
+  const auto* doc1 = gen.next();
+  const auto* doc2 = gen.next();
+  const auto* doc3 = gen.next();
+
+  auto codec = irs::formats::get("1_0");
+  ASSERT_NE(nullptr, codec);
+
+  // segment meta creation failure
+  {
+    const auto all_features = irs::flags{
+      irs::document::type(),
+      irs::frequency::type(),
+      irs::position::type(),
+      irs::payload::type(),
+      irs::offset::type()
+    };
+
+    irs::memory_directory impl;
+    failing_directory failing_dir(impl);
+    tests::blocking_directory dir(failing_dir, "_3.cs");
+
+    // write index
+    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    ASSERT_NE(nullptr, writer);
+
+    // segment 0
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    writer->commit();
+
+    // segment 1
+    ASSERT_TRUE(insert(*writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    writer->commit();
+
+    // register failures
+    failing_dir.register_failure(failing_directory::Failure::CREATE, "_3.0.sm"); // fail at segment meta creation on consolidation
+
+    dir.intermediate_commits_lock.lock(); // acquire directory lock, and block consolidation
+
+    std::thread consolidation_thread([&writer, &dir]() {
+      const irs::index_utils::consolidate_count consolidate_all;
+      ASSERT_THROW(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all)), irs::detailed_io_error); // consolidate
+    });
+
+    dir.wait_for_blocker();
+
+    // add another segment
+    ASSERT_TRUE(insert(*writer,
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
+    writer->commit();
+
+    dir.intermediate_commits_lock.unlock(); // finish consolidation
+    consolidation_thread.join(); // wait for the consolidation to complete
+
+    // check data
+    auto reader = irs::directory_reader::open(dir);
+    ASSERT_TRUE(reader);
+    ASSERT_EQ(3, reader->size());
+    ASSERT_EQ(3, reader->docs_count());
+    ASSERT_EQ(3, reader->live_docs_count());
+
+    // validate index
+    tests::index_t expected_index;
+    expected_index.emplace_back();
+    expected_index.back().add(doc1->indexed.begin(), doc1->indexed.end());
+    expected_index.emplace_back();
+    expected_index.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected_index.emplace_back();
+    expected_index.back().add(doc3->indexed.begin(), doc3->indexed.end());
+    tests::assert_index(expected_index, *reader, all_features);
+
+    // validate columnstore (segment 0)
+    {
+      irs::bytes_ref actual_value;
+      auto& segment = reader[0]; // assume 0 is id of first/only segment
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      ASSERT_EQ(1, segment.docs_count()); // total count of documents
+      ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+      ASSERT_FALSE(docsItr->next());
+    }
+
+    // validate columnstore (segment 1)
+    {
+      irs::bytes_ref actual_value;
+      auto& segment = reader[1]; // assume 0 is id of first/only segment
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      ASSERT_EQ(1, segment.docs_count()); // total count of documents
+      ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+      ASSERT_FALSE(docsItr->next());
+    }
+
+    // validate columnstore (segment 2)
+    {
+      irs::bytes_ref actual_value;
+      auto& segment = reader[2]; // assume 0 is id of first/only segment
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      ASSERT_EQ(1, segment.docs_count()); // total count of documents
+      ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+      ASSERT_FALSE(docsItr->next());
+    }
+  }
+
+  // segment meta synchonization failure
+  {
+    const auto all_features = irs::flags{
+      irs::document::type(),
+      irs::frequency::type(),
+      irs::position::type(),
+      irs::payload::type(),
+      irs::offset::type()
+    };
+
+    irs::memory_directory impl;
+    failing_directory failing_dir(impl);
+    tests::blocking_directory dir(failing_dir, "_3.cs");
+
+    // write index
+    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    ASSERT_NE(nullptr, writer);
+
+    // segment 0
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    writer->commit();
+
+    // segment 1
+    ASSERT_TRUE(insert(*writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    writer->commit();
+
+    // register failures
+    failing_dir.register_failure(failing_directory::Failure::SYNC, "_3.0.sm"); // fail at segment meta synchronization on consolidation
+
+    dir.intermediate_commits_lock.lock(); // acquire directory lock, and block consolidation
+
+    std::thread consolidation_thread([&writer, &dir]() {
+      const irs::index_utils::consolidate_count consolidate_all;
+      ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all))); // consolidate
+    });
+
+    dir.wait_for_blocker();
+
+    // add another segment
+    ASSERT_TRUE(insert(*writer,
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
+    writer->commit();
+
+    dir.intermediate_commits_lock.unlock(); // finish consolidation
+    consolidation_thread.join(); // wait for the consolidation to complete
+
+    // commit consolidation
+    ASSERT_THROW(writer->begin(), irs::detailed_io_error);
+
+    // check data
+    auto reader = irs::directory_reader::open(dir);
+    ASSERT_TRUE(reader);
+    ASSERT_EQ(3, reader->size());
+    ASSERT_EQ(3, reader->docs_count());
+    ASSERT_EQ(3, reader->live_docs_count());
+
+    // validate index
+    tests::index_t expected_index;
+    expected_index.emplace_back();
+    expected_index.back().add(doc1->indexed.begin(), doc1->indexed.end());
+    expected_index.emplace_back();
+    expected_index.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected_index.emplace_back();
+    expected_index.back().add(doc3->indexed.begin(), doc3->indexed.end());
+    tests::assert_index(expected_index, *reader, all_features);
+
+    // validate columnstore (segment 0)
+    {
+      irs::bytes_ref actual_value;
+      auto& segment = reader[0]; // assume 0 is id of first/only segment
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      ASSERT_EQ(1, segment.docs_count()); // total count of documents
+      ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+      ASSERT_FALSE(docsItr->next());
+    }
+
+    // validate columnstore (segment 1)
+    {
+      irs::bytes_ref actual_value;
+      auto& segment = reader[1]; // assume 0 is id of first/only segment
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      ASSERT_EQ(1, segment.docs_count()); // total count of documents
+      ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+      ASSERT_FALSE(docsItr->next());
+    }
+
+    // validate columnstore (segment 2)
+    {
+      irs::bytes_ref actual_value;
+      auto& segment = reader[2]; // assume 0 is id of first/only segment
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      ASSERT_EQ(1, segment.docs_count()); // total count of documents
+      ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
   }
