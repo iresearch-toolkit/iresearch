@@ -199,8 +199,8 @@ TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
       doc1->stored.begin(), doc1->stored.end()
     ));
 
-    ASSERT_THROW(writer->begin(), irs::detailed_io_error); // creation failure
-    ASSERT_THROW(writer->begin(), irs::detailed_io_error); // synchronization failure
+    ASSERT_THROW(writer->begin(), irs::io_error); // creation failure
+    ASSERT_THROW(writer->begin(), irs::io_error); // synchronization failure
 
     // successful attempt
     ASSERT_TRUE(writer->begin());
@@ -237,8 +237,8 @@ TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
       doc1->stored.begin(), doc1->stored.end()
     ));
 
-    ASSERT_THROW(writer->begin(), irs::detailed_io_error); // creation failure
-    ASSERT_THROW(writer->begin(), irs::detailed_io_error); // synchronization failure
+    ASSERT_THROW(writer->begin(), irs::io_error); // creation failure
+    ASSERT_THROW(writer->begin(), irs::io_error); // synchronization failure
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
@@ -314,21 +314,21 @@ TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
       doc1->stored.begin(), doc1->stored.end()
     ));
 
-    ASSERT_THROW(writer->begin(), irs::detailed_io_error); // synchronization failure
+    ASSERT_THROW(writer->begin(), irs::io_error); // synchronization failure
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
 
-    ASSERT_THROW(writer->begin(), irs::detailed_io_error); // synchronization failure
+    ASSERT_THROW(writer->begin(), irs::io_error); // synchronization failure
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
 
-    ASSERT_THROW(writer->begin(), irs::detailed_io_error); // synchronization failure
+    ASSERT_THROW(writer->begin(), irs::io_error); // synchronization failure
 
     // successful attempt
     ASSERT_TRUE(writer->begin());
@@ -370,7 +370,7 @@ TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
       doc1->stored.begin(), doc1->stored.end()
     ));
 
-    ASSERT_THROW(writer->begin(), irs::detailed_io_error); // synchronization failure
+    ASSERT_THROW(writer->begin(), irs::io_error); // synchronization failure
     ASSERT_FALSE(writer->begin()); // nothing to flush
 
     ASSERT_TRUE(insert(*writer,
@@ -378,7 +378,7 @@ TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
       doc1->stored.begin(), doc1->stored.end()
     ));
 
-    ASSERT_THROW(writer->begin(), irs::detailed_io_error); // synchronization failure
+    ASSERT_THROW(writer->begin(), irs::io_error); // synchronization failure
     ASSERT_FALSE(writer->begin()); // nothing to flush
 
     ASSERT_TRUE(insert(*writer,
@@ -386,7 +386,7 @@ TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
       doc1->stored.begin(), doc1->stored.end()
     ));
 
-    ASSERT_THROW(writer->begin(), irs::detailed_io_error); // synchronization failure
+    ASSERT_THROW(writer->begin(), irs::io_error); // synchronization failure
     ASSERT_FALSE(writer->begin()); // nothing to flush
 
     ASSERT_TRUE(insert(*writer,
@@ -462,7 +462,7 @@ TEST(index_death_test_formats_10, index_meta_write_failure_2nd_phase) {
     ));
 
     ASSERT_TRUE(writer->begin());
-    ASSERT_THROW(writer->commit(), irs::detailed_io_error);
+    ASSERT_THROW(writer->commit(), irs::io_error);
 
     // second attempt
     ASSERT_TRUE(writer->begin());
@@ -499,7 +499,7 @@ TEST(index_death_test_formats_10, index_meta_write_failure_2nd_phase) {
     ));
 
     ASSERT_TRUE(writer->begin());
-    ASSERT_THROW(writer->commit(), irs::detailed_io_error);
+    ASSERT_THROW(writer->commit(), irs::io_error);
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
@@ -567,7 +567,7 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
     ASSERT_THROW(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
-    ), irs::detailed_io_error);
+    ), irs::io_error);
 
     // successul attempt
     ASSERT_TRUE(writer->begin());
@@ -601,7 +601,7 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
     ASSERT_THROW(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
-    ), irs::detailed_io_error);
+    ), irs::io_error);
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
@@ -673,7 +673,7 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
     ASSERT_THROW(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
-    ), irs::detailed_io_error);
+    ), irs::io_error);
 
     // nothing to flush
     ASSERT_FALSE(writer->begin());
@@ -739,7 +739,7 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
     ASSERT_THROW(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
-    ), irs::detailed_io_error);
+    ), irs::io_error);
 
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
@@ -851,7 +851,7 @@ TEST(index_death_test_formats_10, segment_components_creation_failure_1st_phase_
 
        writer->documents().remove(*query_doc2.filter);
 
-       ASSERT_THROW(writer->begin(), irs::detailed_io_error);
+       ASSERT_THROW(writer->begin(), irs::io_error);
        ASSERT_FALSE(writer->begin()); // nothing to flush
     }
 
@@ -899,7 +899,7 @@ TEST(index_death_test_formats_10, segment_components_creation_failure_1st_phase_
 
        writer->documents().remove(*query_doc2.filter);
 
-       ASSERT_THROW(writer->begin(), irs::detailed_io_error);
+       ASSERT_THROW(writer->begin(), irs::io_error);
     }
 
     ASSERT_TRUE(insert(*writer,
@@ -986,7 +986,7 @@ TEST(index_death_test_formats_10, segment_components_sync_failure_1st_phase_flus
 
        writer->documents().remove(*query_doc2.filter);
 
-       ASSERT_THROW(writer->begin(), irs::detailed_io_error);
+       ASSERT_THROW(writer->begin(), irs::io_error);
     }
 
     // successul attempt
@@ -1039,7 +1039,7 @@ TEST(index_death_test_formats_10, segment_components_sync_failure_1st_phase_flus
 
        writer->documents().remove(*query_doc2.filter);
 
-       ASSERT_THROW(writer->begin(), irs::detailed_io_error);
+       ASSERT_THROW(writer->begin(), irs::io_error);
     }
 
     ASSERT_TRUE(insert(*writer,
@@ -1116,7 +1116,7 @@ TEST(index_death_test_formats_10, segment_meta_creation_failure_1st_phase_flush)
       doc1->stored.begin(), doc1->stored.end()
     ));
 
-    ASSERT_THROW(writer->begin(), irs::detailed_io_error);
+    ASSERT_THROW(writer->begin(), irs::io_error);
 
     // synchornization issue
     ASSERT_TRUE(insert(*writer,
@@ -1124,7 +1124,7 @@ TEST(index_death_test_formats_10, segment_meta_creation_failure_1st_phase_flush)
       doc1->stored.begin(), doc1->stored.end()
     ));
 
-    ASSERT_THROW(writer->begin(), irs::detailed_io_error);
+    ASSERT_THROW(writer->begin(), irs::io_error);
 
     // second attempt
     ASSERT_TRUE(writer->begin());
@@ -1162,7 +1162,7 @@ TEST(index_death_test_formats_10, segment_meta_creation_failure_1st_phase_flush)
       doc1->stored.begin(), doc1->stored.end()
     ));
 
-    ASSERT_THROW(writer->begin(), irs::detailed_io_error);
+    ASSERT_THROW(writer->begin(), irs::io_error);
 
     // synchornization issue
     ASSERT_TRUE(insert(*writer,
@@ -1170,7 +1170,7 @@ TEST(index_death_test_formats_10, segment_meta_creation_failure_1st_phase_flush)
       doc1->stored.begin(), doc1->stored.end()
     ));
 
-    ASSERT_THROW(writer->begin(), irs::detailed_io_error);
+    ASSERT_THROW(writer->begin(), irs::io_error);
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
@@ -1268,12 +1268,12 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_immediate_consolidatio
     const irs::index_utils::consolidate_count consolidate_all;
 
     // segment meta creation failure
-    ASSERT_THROW(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all)), irs::detailed_io_error);
+    ASSERT_THROW(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all)), irs::io_error);
     ASSERT_FALSE(writer->begin()); // nothing to flush
 
     // segment meta synchronization failure
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all)));
-    ASSERT_THROW(writer->begin(), irs::detailed_io_error);
+    ASSERT_THROW(writer->begin(), irs::io_error);
     ASSERT_FALSE(writer->begin()); // nothing to flush
 
     // check data
@@ -1396,7 +1396,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_deffered_consolidation
     ASSERT_TRUE(writer->begin()); // start transaction
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all))); // register pending consolidation
     writer->commit(); // commit started transaction
-    ASSERT_THROW(writer->begin(), irs::detailed_io_error); // start transaction to commit pending consolidation
+    ASSERT_THROW(writer->begin(), irs::io_error); // start transaction to commit pending consolidation
 
     // segment meta synchronization failure
     ASSERT_TRUE(insert(*writer,
@@ -1406,7 +1406,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_deffered_consolidation
     ASSERT_TRUE(writer->begin()); // start transaction
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all))); // register pending consolidation
     writer->commit(); // commit started transaction
-    ASSERT_THROW(writer->begin(), irs::detailed_io_error); // start transaction to commit pending consolidation
+    ASSERT_THROW(writer->begin(), irs::io_error); // start transaction to commit pending consolidation
 
     // check data
     auto reader = irs::directory_reader::open(dir);
@@ -1566,7 +1566,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
 
     std::thread consolidation_thread([&writer, &dir]() {
       const irs::index_utils::consolidate_count consolidate_all;
-      ASSERT_THROW(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all)), irs::detailed_io_error); // consolidate
+      ASSERT_THROW(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all)), irs::io_error); // consolidate
     });
 
     dir.wait_for_blocker();
@@ -1714,7 +1714,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
     consolidation_thread.join(); // wait for the consolidation to complete
 
     // commit consolidation
-    ASSERT_THROW(writer->begin(), irs::detailed_io_error);
+    ASSERT_THROW(writer->begin(), irs::io_error);
 
     // check data
     auto reader = irs::directory_reader::open(dir);
@@ -1847,7 +1847,7 @@ TEST(index_death_test_formats_10, segment_components_write_fail_consolidation) {
     const irs::index_utils::consolidate_count consolidate_all;
 
     while (!dir.no_failures()) {
-      ASSERT_THROW(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all)), irs::detailed_io_error);
+      ASSERT_THROW(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all)), irs::io_error);
       ASSERT_FALSE(writer->begin()); // nothing to flush
     }
 
@@ -1961,7 +1961,7 @@ TEST(index_death_test_formats_10, segment_components_sync_fail_consolidation) {
 
     while (!dir.no_failures()) {
       ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all)));
-      ASSERT_THROW(writer->begin(), irs::detailed_io_error); // nothing to flush
+      ASSERT_THROW(writer->begin(), irs::io_error); // nothing to flush
       ASSERT_FALSE(writer->begin());
     }
 
@@ -2022,4 +2022,5 @@ TEST(index_death_test_formats_10, segment_components_sync_fail_consolidation) {
   }
 }
 
-
+// TEST(index_death_test_formats_10, segment_components_creation_fail_import) { }
+// TEST(index_death_test_formats_10, segment_components_creation_fail_implicit_segment_flush) { }

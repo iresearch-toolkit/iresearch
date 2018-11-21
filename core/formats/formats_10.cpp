@@ -235,7 +235,7 @@ inline void prepare_output(
   out = state.dir->create(str);
 
   if (!out) {
-    throw detailed_io_error(string_utils::to_string(
+    throw io_error(string_utils::to_string(
       "failed to create file, path: %s",
       str.c_str()
     ));
@@ -258,7 +258,7 @@ inline void prepare_input(
   in = state.dir->open(str, advice);
 
   if (!in) {
-    throw detailed_io_error(string_utils::to_string(
+    throw io_error(string_utils::to_string(
       "failed to open file, path: %s",
       str.c_str()
     ));
@@ -1029,7 +1029,7 @@ class doc_iterator : public irs::doc_iterator {
         if (!doc_in_) {
           IR_FRMT_FATAL("Failed to reopen document input in: %s", __FUNCTION__);
 
-          throw detailed_io_error("failed to reopen document input");
+          throw io_error("failed to reopen document input");
         }
       }
 
@@ -1384,7 +1384,7 @@ class pos_iterator: public position {
     if (!pos_in_) {
       IR_FRMT_FATAL("Failed to reopen positions input in: %s", __FUNCTION__);
 
-      throw detailed_io_error("failed to reopen positions input");
+      throw io_error("failed to reopen positions input");
     }
 
     pos_in_->seek(state.term_state->pos_start);
@@ -1497,7 +1497,7 @@ class offs_pay_iterator final: public pos_iterator {
     if (!pay_in_) {
       IR_FRMT_FATAL("Failed to reopen payload input in: %s", __FUNCTION__);
 
-      throw detailed_io_error("failed to reopen payload input");
+      throw io_error("failed to reopen payload input");
     }
 
     pay_in_->seek(state.term_state->pay_start);
@@ -1642,7 +1642,7 @@ class offs_iterator final : public pos_iterator {
     if (!pay_in_) {
       IR_FRMT_FATAL("Failed to reopen payload input in: %s", __FUNCTION__);
 
-      throw detailed_io_error("failed to reopen payload input");
+      throw io_error("failed to reopen payload input");
     }
 
     pay_in_->seek(state.term_state->pay_start);
@@ -1752,7 +1752,7 @@ class pay_iterator final : public pos_iterator {
     if (!pay_in_) {
       IR_FRMT_FATAL("Failed to reopen payload input in: %s", __FUNCTION__);
 
-      throw detailed_io_error("failed to reopen payload input");
+      throw io_error("failed to reopen payload input");
     }
 
     pay_in_->seek(state.term_state->pay_start);
@@ -2024,7 +2024,7 @@ bool index_meta_writer::prepare(directory& dir, index_meta& meta) {
   auto out = dir.create(seg_file);
 
   if (!out) {
-    throw detailed_io_error(string_utils::to_string(
+    throw io_error(string_utils::to_string(
       "Failed to create file, path: %s",
       seg_file.c_str()
     ));
@@ -2047,7 +2047,7 @@ bool index_meta_writer::prepare(directory& dir, index_meta& meta) {
   }
 
   if (!dir.sync(seg_file)) {
-    throw detailed_io_error(string_utils::to_string(
+    throw io_error(string_utils::to_string(
       "failed to sync file, path: %s",
       seg_file.c_str()
     ));
@@ -2071,7 +2071,7 @@ bool index_meta_writer::commit() {
   if (!dir_->rename(src, dst)) {
     rollback();
 
-    throw detailed_io_error(string_utils::to_string(
+    throw io_error(string_utils::to_string(
       "failed to rename file, src path: '%s' dst path: '%s'",
       src.c_str(),
       dst.c_str()
@@ -2160,7 +2160,7 @@ void index_meta_reader::read(
   );
 
   if (!in) {
-    throw detailed_io_error(string_utils::to_string(
+    throw io_error(string_utils::to_string(
       "failed to open file, path: %s",
       meta_file.c_str()
     ));
@@ -2235,7 +2235,7 @@ void segment_meta_writer::write(directory& dir, std::string& meta_file, const se
   auto out = dir.create(meta_file);
 
   if (!out) {
-    throw detailed_io_error(string_utils::to_string(
+    throw io_error(string_utils::to_string(
       "failed to create file, path: %s",
       meta_file.c_str()
     ));
@@ -2282,7 +2282,7 @@ void segment_meta_reader::read(
   );
 
   if (!in) {
-    throw detailed_io_error(string_utils::to_string(
+    throw io_error(string_utils::to_string(
       "failed to open file, path: %s",
       meta_file.c_str()
     ));
@@ -2384,7 +2384,7 @@ void document_mask_writer::write(
   auto out = dir.create(filename);
 
   if (!out) {
-    throw detailed_io_error(string_utils::to_string(
+    throw io_error(string_utils::to_string(
       "Failed to create file, path: %s",
       filename.c_str()
     ));
@@ -2530,7 +2530,7 @@ void meta_writer::prepare(directory& dir, const segment_meta& meta) {
   out_ = dir.create(filename);
 
   if (!out_) {
-    throw detailed_io_error(string_utils::to_string(
+    throw io_error(string_utils::to_string(
       "Failed to create file, path: %s", filename.c_str()
     ));
   }
@@ -3043,14 +3043,6 @@ std::string file_name<columnstore_writer, segment_meta>(
   return file_name(meta.name, columns::writer::FORMAT_EXT);
 };
 
-template<>
-void file_name<columnstore_writer, segment_meta>(
-    std::string& buf,
-    const segment_meta& meta
-) {
-  file_name(buf, meta.name, columns::writer::FORMAT_EXT);
-};
-
 MSVC2015_ONLY(__pragma(warning(push)))
 MSVC2015_ONLY(__pragma(warning(disable: 4592))) // symbol will be dynamically initialized (implementation limitation) false positive bug in VS2015.1
 const string_ref writer::FORMAT_NAME = "iresearch_10_columnstore";
@@ -3064,7 +3056,7 @@ void writer::prepare(directory& dir, const segment_meta& meta) {
   auto data_out = dir.create(filename);
 
   if (!data_out) {
-    throw detailed_io_error(string_utils::to_string(
+    throw io_error(string_utils::to_string(
       "Failed to create file, path: %s",
       filename_.c_str()
     ));

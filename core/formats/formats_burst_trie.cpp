@@ -177,7 +177,7 @@ inline void prepare_output(
   out = state.dir->create(str);
 
   if (!out) {
-    throw detailed_io_error(string_utils::to_string(
+    throw io_error(string_utils::to_string(
       "failed to create file, path: %s",
       str.c_str()
     ));
@@ -202,7 +202,7 @@ inline void prepare_input(
   in = state.dir->open(str, advice);
 
   if (!in) {
-    throw detailed_io_error(string_utils::to_string(
+    throw io_error(string_utils::to_string(
       "failed to open file, path: %s",
       str.c_str()
     ));
@@ -1130,7 +1130,7 @@ index_input& term_iterator::terms_input() const {
     if (!terms_in_) {
       IR_FRMT_FATAL("Failed to reopen terms input in: %s", __FUNCTION__);
 
-      throw detailed_io_error("failed to reopen terms input");
+      throw io_error("failed to reopen terms input");
     }
   }
 

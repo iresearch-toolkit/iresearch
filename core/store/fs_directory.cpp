@@ -224,7 +224,7 @@ class fs_index_output : public buffered_index_output {
     crc.process_bytes(b, len_written);
 
     if (len && len_written != len) {
-      throw detailed_io_error(string_utils::to_string(
+      throw io_error(string_utils::to_string(
         "failed to write buffer, written '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER "' bytes",
         len_written, len
       ));
@@ -330,7 +330,7 @@ class fs_index_input : public buffered_index_input {
  protected:
   virtual void seek_internal(size_t pos) override {
     if (pos >= handle_->size) {
-      throw detailed_io_error(string_utils::to_string(
+      throw io_error(string_utils::to_string(
         "seek out of range for input file, length '" IR_SIZE_T_SPECIFIER "', position '" IR_SIZE_T_SPECIFIER "'",
         handle_->size, pos
       ));
@@ -347,7 +347,7 @@ class fs_index_input : public buffered_index_input {
 
     if (handle_->pos != pos_) {
       if (fseek(stream, static_cast<long>(pos_), SEEK_SET) != 0) {
-        throw detailed_io_error(string_utils::to_string(
+        throw io_error(string_utils::to_string(
           "failed to seek to '" IR_SIZE_T_SPECIFIER "' for input file, error '%d'",
           pos_, ferror(stream)
         ));
@@ -367,7 +367,7 @@ class fs_index_input : public buffered_index_input {
       }
 
       // read error
-      throw detailed_io_error(string_utils::to_string(
+      throw io_error(string_utils::to_string(
         "failed to read from input file, read '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER "' bytes, error '%d'",
         read, len, ferror(stream)
       ));

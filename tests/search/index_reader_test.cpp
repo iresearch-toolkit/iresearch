@@ -415,7 +415,7 @@ TEST(segment_reader_test, open_invalid_segment) {
     meta.codec = codec_ptr;
     meta.name = "invalid_segment_name";
 
-    ASSERT_THROW(irs::segment_reader::open(dir, meta), irs::detailed_io_error);
+    ASSERT_THROW(irs::segment_reader::open(dir, meta), irs::io_error);
   }
 }
 

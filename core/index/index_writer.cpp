@@ -2068,7 +2068,7 @@ bool index_writer::start() {
 
   auto sync = [&dir](const std::string& file) {
     if (!dir.sync(file)) {
-      throw detailed_io_error(string_utils::to_string(
+      throw io_error(string_utils::to_string(
         "failed to sync file, path: %s",
         file.c_str()
       ));
