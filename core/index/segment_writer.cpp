@@ -306,6 +306,7 @@ void segment_writer::reset(const segment_meta& meta) {
   }
 
   col_writer_->prepare(dir_, meta);
+
   initialized_ = true;
 }
 
