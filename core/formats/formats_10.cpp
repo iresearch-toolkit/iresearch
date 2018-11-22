@@ -2415,31 +2415,29 @@ class document_mask_reader final: public irs::document_mask_reader {
   virtual bool read(
     const directory& dir,
     const segment_meta& meta,
-    document_mask& docs_mask,
-    bool* seen = nullptr
+    document_mask& docs_mask
   ) override;
 }; // document_mask_reader
 
 bool document_mask_reader::read(
     const directory& dir,
     const segment_meta& meta,
-    document_mask& docs_mask,
-    bool* seen /*= nullptr*/
+    document_mask& docs_mask
 ) {
   const auto in_name = file_name<irs::document_mask_writer>(meta);
+
   bool exists;
 
-  // possible that the file does not exist since document_mask is optional
-  if (dir.exists(exists, in_name) && !exists) {
-    if (!seen) {
-      IR_FRMT_ERROR("Failed to open file, path: %s", in_name.c_str());
+  if (!dir.exists(exists, in_name)) {
+    throw io_error(string_utils::to_string(
+      "failed to check existence of file, path: %s",
+      in_name.c_str()
+    ));
+  }
 
-      return false;
-    }
-
-    *seen = false;
-
-    return true;
+  if (!exists) {
+    // possible that the file does not exist since document_mask is optional
+    return false;
   }
 
   auto in = dir.open(
@@ -2447,16 +2445,13 @@ bool document_mask_reader::read(
   );
 
   if (!in) {
-    IR_FRMT_ERROR("Failed to open file, path: %s", in_name.c_str());
-
-    return false;
+    throw io_error(string_utils::to_string(
+      "failed to open file, path: %s",
+      in_name.c_str()
+    ));
   }
 
   const auto checksum = format_utils::checksum(*in);
-
-  if (seen) {
-    *seen = true;
-  }
 
   format_utils::check_header(
     *in,
@@ -2577,15 +2572,31 @@ bool meta_reader::prepare(
     size_t& count,
     field_id& max_id
 ) {
-  auto filename = file_name<column_meta_writer>(meta);
+  const auto filename = file_name<column_meta_writer>(meta);
+
+  bool exists;
+
+  if (!dir.exists(exists, filename)) {
+    throw io_error(string_utils::to_string(
+      "failed to check existence of file, path: %s",
+      filename.c_str()
+    ));
+  }
+
+  if (!exists) {
+    // column meta is optional
+    return false;
+  }
 
   auto in = dir.open(
     filename, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE
   );
 
   if (!in) {
-    IR_FRMT_ERROR("Failed to open file, path: %s", filename.c_str());
-    return false;
+    throw io_error(string_utils::to_string(
+      "failed to open file, path: %s",
+      filename.c_str()
+    ));
   }
 
   const auto checksum = format_utils::checksum(*in);
@@ -2595,6 +2606,14 @@ bool meta_reader::prepare(
   );
   count = in->read_long(); // read number of objects to read
   max_id = in->read_long(); // read highest column id written
+
+  if (max_id >= irs::integer_traits<size_t>::const_max) {
+    throw index_error(string_utils::to_string(
+      "invalid max column id: " IR_UINT64_T_SPECIFIER ", path: %s",
+      max_id, filename.c_str()
+    ));
+  }
+
   format_utils::check_footer(*in, checksum);
 
   in->seek(0);
@@ -4845,8 +4864,7 @@ class reader final: public columnstore_reader, public context_provider {
 
   virtual bool prepare(
     const directory& dir,
-    const segment_meta& meta,
-    bool* seen = nullptr
+    const segment_meta& meta
   ) override;
 
   virtual const column_reader* column(field_id field) const override;
@@ -4861,32 +4879,31 @@ class reader final: public columnstore_reader, public context_provider {
 
 bool reader::prepare(
     const directory& dir,
-    const segment_meta& meta,
-    bool* seen /*= nullptr*/
+    const segment_meta& meta
 ) {
-  auto filename = file_name<columnstore_writer>(meta);
+  const auto filename = file_name<columnstore_writer>(meta);
   bool exists;
 
-  // possible that the file does not exist since columnstore is optional
-  if (dir.exists(exists, filename) && !exists) {
-    if (!seen) {
-      IR_FRMT_ERROR("Failed to open file, path: %s", filename.c_str());
+  if (!dir.exists(exists, filename)) {
+    throw io_error(string_utils::to_string(
+      "failed to check existence of file, path: %s",
+      filename.c_str()
+    ));
+  }
 
-      return false;
-    }
-
-    *seen = false;
-
-    return true;
+  if (!exists) {
+    // possible that the file does not exist since columnstore is optional
+    return false;
   }
 
   // open columstore stream
   auto stream = dir.open(filename, irs::IOAdvice::RANDOM);
 
   if (!stream) {
-    IR_FRMT_ERROR("Failed to open file, path: %s", filename.c_str());
-
-    return false;
+    throw io_error(string_utils::to_string(
+      "Failed to open file, path: %s",
+      filename.c_str()
+    ));
   }
 
   // check header
@@ -4916,11 +4933,10 @@ bool reader::prepare(
     const auto props = read_enum<ColumnProperty>(*stream);
 
     if (props >= IRESEARCH_COUNTOF(g_column_factories)) {
-      IR_FRMT_ERROR(
+      throw index_error(string_utils::to_string(
         "Failed to load column id=" IR_SIZE_T_SPECIFIER ", got invalid properties=%d",
         i, static_cast<uint32_t>(props)
-      );
-      return false;
+      ));
     }
 
     // create column
@@ -4932,19 +4948,19 @@ bool reader::prepare(
         "Enum 'ColumnProperty' has different underlying type"
       );
 
-      IR_FRMT_ERROR(
+      throw index_error(string_utils::to_string(
         "Failed to open column id=" IR_SIZE_T_SPECIFIER ", properties=%d",
         i, static_cast<uint32_t>(props)
-      );
-      return false;
+      ));
     }
 
     auto column = factory(*this, props);
 
     // read column
     if (!column || !column->read(*stream, buf)) {
-      IR_FRMT_ERROR("Failed to load column id=" IR_SIZE_T_SPECIFIER, i);
-      return false;
+      throw index_error(string_utils::to_string(
+        "Failed to load column id=" IR_SIZE_T_SPECIFIER, i
+      ));
     }
 
     columns.emplace_back(std::move(column));
@@ -4953,10 +4969,6 @@ bool reader::prepare(
   // noexcept
   context_provider::prepare(std::move(stream));
   columns_ = std::move(columns);
-
-  if (seen) {
-    *seen = true;
-  }
 
   return true;
 }
@@ -4975,7 +4987,7 @@ NS_END // columns
 
 class postings_reader final: public irs::postings_reader {
  public:
-  virtual bool prepare(
+  virtual void prepare(
     index_input& in,
     const reader_state& state,
     const flags& features
@@ -5000,7 +5012,7 @@ class postings_reader final: public irs::postings_reader {
   index_input::ptr pay_in_;
 }; // postings_reader
 
-bool postings_reader::prepare(
+void postings_reader::prepare(
     index_input& in,
     const reader_state& state,
     const flags& features) {
@@ -5073,8 +5085,6 @@ bool postings_reader::prepare(
       block_size
     ));
   }
-
-  return true;
 }
 
 void postings_reader::decode(

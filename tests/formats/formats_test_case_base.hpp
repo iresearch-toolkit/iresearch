@@ -1368,9 +1368,7 @@ class format_test_case_base : public index_test_base {
 
     {
       auto reader = codec()->get_columnstore_reader();
-      bool seen;
-      ASSERT_TRUE(reader->prepare(dir(), meta0, &seen));
-      ASSERT_FALSE(seen); // no columns found
+      ASSERT_FALSE(reader->prepare(dir(), meta0)); // no columns found
 
       irs::bytes_ref actual_value;
 
@@ -1598,9 +1596,7 @@ class format_test_case_base : public index_test_base {
     // read attributes from empty directory
     {
       auto reader = codec()->get_columnstore_reader();
-      bool seen;
-      ASSERT_TRUE(reader->prepare(dir(), meta1, &seen));
-      ASSERT_FALSE(seen); // no attributes found
+      ASSERT_FALSE(reader->prepare(dir(), meta1)); // no attributes found
 
       // try to get invalild column
       ASSERT_EQ(nullptr, reader->column(iresearch::type_limits<iresearch::type_t::field_id_t>::invalid()));

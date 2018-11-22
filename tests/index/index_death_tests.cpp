@@ -2520,3 +2520,103 @@ TEST(index_death_test_formats_10, segment_components_creation_fail_implicit_segm
     ASSERT_EQ(0, reader->live_docs_count());
   }
 }
+
+TEST(index_death_test_formats_10, open_reader) {
+  const auto all_features = irs::flags{
+    irs::document::type(),
+    irs::frequency::type(),
+    irs::position::type(),
+    irs::payload::type(),
+    irs::offset::type()
+  };
+
+  tests::json_doc_generator gen(
+    test_base::resource("simple_sequential.json"),
+    &tests::payloaded_json_field_factory
+  );
+  const auto* doc1 = gen.next();
+  const auto* doc2 = gen.next();
+  auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+
+  auto codec = irs::formats::get("1_0");
+  ASSERT_NE(nullptr, codec);
+
+  // create source segment
+  irs::memory_directory impl;
+  failing_directory dir(impl);
+
+  // write index
+  {
+    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    ASSERT_NE(nullptr, writer);
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+
+    ASSERT_TRUE(insert(*writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+
+    writer->documents().remove(*query_doc2.filter);
+
+    writer->commit();
+  }
+
+  // register failures
+  dir.register_failure(failing_directory::Failure::OPEN, "_1.doc"); // postings list (documents)
+  dir.register_failure(failing_directory::Failure::OPEN, "_1.1.doc_mask"); // deleted docs
+  dir.register_failure(failing_directory::Failure::OPEN, "_1.cm"); // column meta
+  dir.register_failure(failing_directory::Failure::OPEN, "_1.ti"); // term index
+  dir.register_failure(failing_directory::Failure::OPEN, "_1.tm"); // term data
+  dir.register_failure(failing_directory::Failure::OPEN, "_1.pos"); // postings list (positions)
+  dir.register_failure(failing_directory::Failure::OPEN, "_1.pay"); // postings list (offset + payload)
+
+  while (!dir.no_failures()) {
+    ASSERT_THROW(irs::directory_reader::open(dir), irs::io_error);
+  }
+
+  // check data
+  auto reader = irs::directory_reader::open(dir);
+  ASSERT_TRUE(reader);
+  ASSERT_EQ(1, reader->size());
+  ASSERT_EQ(2, reader->docs_count());
+  ASSERT_EQ(1, reader->live_docs_count());
+
+  // validate index
+  tests::index_t expected_index;
+  expected_index.emplace_back();
+  expected_index.back().add(doc1->indexed.begin(), doc1->indexed.end());
+  expected_index.back().add(doc2->indexed.begin(), doc2->indexed.end());
+  tests::assert_index(expected_index, *reader, all_features);
+
+  // validate columnstore
+  irs::bytes_ref actual_value;
+  auto& segment = reader[0]; // assume 0 is id of first/only segment
+  const auto* column = segment.column_reader("name");
+  ASSERT_NE(nullptr, column);
+  auto values = column->values();
+  ASSERT_EQ(2, segment.docs_count()); // total count of documents
+  ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
+  auto terms = segment.field("same");
+  ASSERT_NE(nullptr, terms);
+  auto termItr = terms->iterator();
+  ASSERT_TRUE(termItr->next());
+  auto docsItr = termItr->postings(iresearch::flags());
+  ASSERT_TRUE(docsItr->next());
+  ASSERT_TRUE(values(docsItr->value(), actual_value));
+  ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+  ASSERT_TRUE(docsItr->next());
+  ASSERT_TRUE(values(docsItr->value(), actual_value));
+  ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+  ASSERT_FALSE(docsItr->next());
+
+  // validate live docs
+  auto live_docs = segment.docs_iterator();
+  ASSERT_TRUE(live_docs->next());
+  ASSERT_EQ(1, live_docs->value());
+  ASSERT_FALSE(live_docs->next());
+  ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), live_docs->value());
+}

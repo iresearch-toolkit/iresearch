@@ -302,7 +302,7 @@ class field_reader : public iresearch::field_reader {
   field_reader( const index_segment& data );
   field_reader(field_reader&& other) NOEXCEPT;
 
-  virtual bool prepare(const irs::directory& dir, const irs::segment_meta& meta, const irs::document_mask& mask) override;
+  virtual void prepare(const irs::directory& dir, const irs::segment_meta& meta, const irs::document_mask& mask) override;
   virtual const iresearch::term_reader* field(const iresearch::string_ref& field) const override;
   virtual iresearch::field_iterator::ptr iterator() const override;
   virtual size_t size() const override;

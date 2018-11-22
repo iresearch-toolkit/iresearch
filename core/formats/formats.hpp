@@ -142,7 +142,7 @@ struct IRESEARCH_API postings_reader {
   
   // in - corresponding stream
   // features - the set of features available for segment
-  virtual bool prepare(
+  virtual void prepare(
     index_input& in, 
     const reader_state& state,
     const flags& features
@@ -218,7 +218,7 @@ struct IRESEARCH_API field_reader {
 
   virtual ~field_reader();
 
-  virtual bool prepare(
+  virtual void prepare(
     const directory& dir,
     const segment_meta& meta,
     const document_mask& mask
@@ -276,12 +276,15 @@ struct IRESEARCH_API column_meta_writer {
 struct IRESEARCH_API column_meta_reader {
   DECLARE_SHARED_PTR(column_meta_reader);
   virtual ~column_meta_reader();
+  /// @returns true if column_meta is present in a segment.
+  ///          false - otherwise
   virtual bool prepare(
     const directory& dir, 
     const segment_meta& meta,
     size_t& count, // out parameter
     field_id& max_id // out parameter
   ) = 0;
+
   // returns false if there is no more data to read
   virtual bool read(column_meta& column) = 0;
 }; // column_meta_reader 
@@ -315,14 +318,13 @@ struct IRESEARCH_API columnstore_reader {
 
   virtual ~columnstore_reader();
 
-  // @param seen if found and seen != nullptr -> set seen = true
-  //             if not found and seen != nullptr -> set seen = false, return true
-  //             if not found and seen == nullptr -> log warning, return false
-  // @return success
+  /// @returns true if conlumnstore is present in a segment,
+  ///          false - otherwise
+  /// @throws io_error
+  /// @throws index_error
   virtual bool prepare(
     const directory& dir,
-    const segment_meta& meta,
-    bool* seen = nullptr
+    const segment_meta& meta
   ) = 0;
 
   virtual const column_reader* column(field_id field) const = 0;
@@ -364,15 +366,14 @@ struct IRESEARCH_API document_mask_reader {
 
   virtual ~document_mask_reader();
 
-  // @param seen if found and seen != nullptr -> set seen = true
-  //             if not found and seen != nullptr -> set seen = false, return true
-  //             if not found and seen == nullptr -> log warning, return false
-  // @return success
+  /// @returns true if there are any deletes in a segment,
+  ///          false - otherwise
+  /// @throws io_error
+  /// @throws index_error
   virtual bool read(
     const directory& dir,
     const segment_meta& meta,
-    document_mask& docs_mask,
-    bool* seen = nullptr
+    document_mask& docs_mask
   ) = 0;
 };
 

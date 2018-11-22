@@ -134,7 +134,7 @@ class format_10_test_case : public tests::format_test_case_base {
       // prepare reader
       auto reader = codec->get_postings_reader();
       ASSERT_NE(nullptr, reader);
-      ASSERT_TRUE(reader->prepare(*in, state, field.features));
+      reader->prepare(*in, state, field.features);
 
       // read term0 attributes & postings
       {
