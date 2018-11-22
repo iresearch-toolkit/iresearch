@@ -509,7 +509,17 @@ index_writer::active_segment_context::~active_segment_context() {
   if (ctx_) {
     --*segments_active_; // track here since garanteed to have 1 ref per active segment
   }
-  if (flush_ctx_) { ctx_.reset(); SCOPED_LOCK(flush_ctx_->mutex_); flush_ctx_->pending_segment_context_cond_.notify_all(); } // FIXME TODO remove once col_writer tail is fixed to flush() multiple times without overwrite (since then the tail will be in a different context)
+
+  if (flush_ctx_) {
+    ctx_.reset();
+
+    try {
+      SCOPED_LOCK(flush_ctx_->mutex_);
+      flush_ctx_->pending_segment_context_cond_.notify_all();
+    } catch (...) {
+      // lock may throw
+    }
+  } // FIXME TODO remove once col_writer tail is fixed to flush() multiple times without overwrite (since then the tail will be in a different context)
 }
 
 index_writer::active_segment_context& index_writer::active_segment_context::operator=(
@@ -1204,7 +1214,7 @@ index_writer::ptr index_writer::make(
   return writer;
 }
 
-index_writer::~index_writer() {
+index_writer::~index_writer() NOEXCEPT {
   assert(!segments_active_.load()); // failure may indicate a dangling 'document' instance
   cached_readers_.clear();
   write_lock_.reset(); // reset write lock if any
