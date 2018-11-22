@@ -237,7 +237,7 @@ size_t segment_writer::flush_doc_mask(const segment_meta &meta) {
   return docs_mask.size();
 }
 
-bool segment_writer::flush(index_meta::index_segment_t& segment) {
+void segment_writer::flush(index_meta::index_segment_t& segment) {
   REGISTER_TIMER_DETAILED();
 
   auto& meta = segment.meta;
@@ -268,8 +268,6 @@ bool segment_writer::flush(index_meta::index_segment_t& segment) {
 
   // flush segment metadata
   index_utils::flush_index_segment(dir_, segment);
-
-  return true;
 }
 
 void segment_writer::reset() NOEXCEPT {

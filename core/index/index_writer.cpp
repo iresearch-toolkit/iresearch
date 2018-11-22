@@ -554,17 +554,19 @@ index_writer::documents_context::document::document(
   segment_->buffered_docs_.store(writer.docs_cached());
 }
 
-index_writer::documents_context::document::document(document&& other)
+index_writer::documents_context::document::document(document&& other) NOEXCEPT
   : segment_writer::document(*(other.segment_->writer_)),
     ctx_(other.ctx_), // GCC does not allow moving of references
     segment_(std::move(other.segment_)),
     update_id_(std::move(other.update_id_)) {
 }
 
-index_writer::documents_context::document::~document() {
+index_writer::documents_context::document::~document() NOEXCEPT {
   if (!segment_) {
     return; // another instance will call commit()
   }
+
+  assert(segment_->writer_);
 
   try {
     segment_->writer_->commit();
@@ -577,15 +579,24 @@ index_writer::documents_context::document::~document() {
   }
 
   if (!--segment_->active_count_) {
-    SCOPED_LOCK(ctx_.mutex_); // lock due to context modification and notification
-    ctx_.pending_segment_context_cond_.notify_all(); // in case ctx is in flush_all()
+    try {
+      SCOPED_LOCK(ctx_.mutex_); // lock due to context modification and notification
+      ctx_.pending_segment_context_cond_.notify_all(); // in case ctx is in flush_all()
+    } catch (...) {
+      // lock may throw
+    }
   }
 }
 
-index_writer::documents_context::~documents_context() {
+index_writer::documents_context::~documents_context() NOEXCEPT {
   // FIXME TODO move emplace into active_segment_context destructor
   assert(segment_.ctx().use_count() == segment_use_count_); // failure may indicate a dangling 'document' instance
-  writer_.get_flush_context()->emplace(std::move(segment_)); // commit segment
+
+  try {
+    writer_.get_flush_context()->emplace(std::move(segment_)); // commit segment
+  } catch (...) {
+    reset(); // abort segment
+  }
 }
 
 void index_writer::documents_context::reset() NOEXCEPT {
@@ -706,11 +717,17 @@ index_writer::flush_context_ptr index_writer::documents_context::update_segment(
       writer.name().c_str(), writer.docs_cached(), writer.memory_active(), limits.segment_docs_max, limits.segment_memory_max
     );
 
-    if (!segment.flush()) {
-      throw index_error(string_utils::to_string(
+    try {
+      segment.flush();
+    } catch (...) {
+      IR_FRMT_ERROR(
         "while flushing segment '%s', error: failed to flush segment",
         segment.writer_meta_.meta.name.c_str()
-      ));
+      );
+
+      segment.reset();
+
+      throw;
     }
   }
 
@@ -872,9 +889,9 @@ index_writer::segment_context::segment_context(
   assert(meta_generator_);
 }
 
-bool index_writer::segment_context::flush() {
+void index_writer::segment_context::flush() {
   if (!writer_ || !writer_->initialized() || !writer_->docs_cached()) {
-    return true; // skip flushing an empty writer
+    return; // skip flushing an empty writer
   }
 
   auto flushed_docs_count = flushed_update_contexts_.size();
@@ -895,16 +912,17 @@ bool index_writer::segment_context::flush() {
   auto& segment = flushed_.back();
 
   // flush segment_writer
-  if (!writer_->flush(segment)) {
+  try {
+    writer_->flush(segment);
+  } catch (...) {
+    // failed to flush segment
     flushed_.pop_back();
     flushed_update_contexts_.resize(flushed_docs_count);
 
-    return false; // failed to flush segment
+    throw;
   }
 
   writer_->reset(); // mark segment as already flushed
-
-  return true;
 }
 
 index_writer::segment_context::ptr index_writer::segment_context::make(
@@ -1655,9 +1673,7 @@ index_writer::pending_context_t index_writer::flush_all() {
     segment_flush_locks.emplace_back(entry.segment_->flush_mutex_); // prevent concurrent modification of segment_context properties during flush_context::emplace(...)
 
     // force a flush of the underlying segment_writer
-    if (!entry.segment_->flush()) {
-      return pending_context_t(); // failed to flush segment
-    }
+    entry.segment_->flush();
 
     entry.doc_id_end_ =
       std::min(entry.segment_->uncomitted_doc_id_begin_, entry.doc_id_end_); // update so that can use valid value below

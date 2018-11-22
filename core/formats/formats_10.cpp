@@ -3058,7 +3058,7 @@ void writer::prepare(directory& dir, const segment_meta& meta) {
   if (!data_out) {
     throw io_error(string_utils::to_string(
       "Failed to create file, path: %s",
-      filename_.c_str()
+      filename.c_str()
     ));
   }
 

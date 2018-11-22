@@ -108,8 +108,6 @@ struct IRESEARCH_API io_error : detailed_error_base {
   explicit io_error(T&& error)
     : detailed_error_base(std::forward<T>(error)) {
   }
-
-  virtual const char* what() const NOEXCEPT override;
 }; // io_error
 
 //////////////////////////////////////////////////////////////////////////////
