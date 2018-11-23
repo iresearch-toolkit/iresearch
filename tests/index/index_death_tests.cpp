@@ -2567,8 +2567,12 @@ TEST(index_death_test_formats_10, open_reader) {
 
   // register failures
   dir.register_failure(failing_directory::Failure::OPEN, "_1.doc"); // postings list (documents)
+  dir.register_failure(failing_directory::Failure::EXISTS, "_1.1.doc_mask"); // deleted docs
   dir.register_failure(failing_directory::Failure::OPEN, "_1.1.doc_mask"); // deleted docs
+  dir.register_failure(failing_directory::Failure::EXISTS, "_1.cm"); // column meta
   dir.register_failure(failing_directory::Failure::OPEN, "_1.cm"); // column meta
+  dir.register_failure(failing_directory::Failure::EXISTS, "_1.cs"); // columnstore
+  dir.register_failure(failing_directory::Failure::OPEN, "_1.cs"); // columnstore
   dir.register_failure(failing_directory::Failure::OPEN, "_1.ti"); // term index
   dir.register_failure(failing_directory::Failure::OPEN, "_1.tm"); // term data
   dir.register_failure(failing_directory::Failure::OPEN, "_1.pos"); // postings list (positions)
