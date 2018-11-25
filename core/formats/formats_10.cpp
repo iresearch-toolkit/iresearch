@@ -3161,7 +3161,7 @@ class block_cache : irs::util::noncopyable {
   block_cache(const Allocator& alloc = Allocator())
     : cache_(alloc) {
   }
-  block_cache(block_cache&& rhs)
+  block_cache(block_cache&& rhs) NOEXCEPT
     : cache_(std::move(rhs.cache_)) {
   }
 
@@ -3171,7 +3171,7 @@ class block_cache : irs::util::noncopyable {
     return cache_.back();
   }
 
-  void pop_back() {
+  void pop_back() NOEXCEPT {
     cache_.pop_back();
   }
 
@@ -3273,12 +3273,11 @@ class sparse_block : util::noncopyable {
     const bstring* data_{};
   }; // iterator
 
-  bool load(index_input& in, decompressor& decomp, bstring& buf) {
+  void load(index_input& in, decompressor& decomp, bstring& buf) {
     const uint32_t size = in.read_vint(); // total number of entries in a block
 
     if (!size) {
-      IR_FRMT_ERROR("Empty 'sparse_block' found in columnstore");
-      return false;
+      throw index_error("Empty 'sparse_block' found in columnstore");
     }
 
     auto begin = std::begin(index_);
@@ -3302,8 +3301,6 @@ class sparse_block : util::noncopyable {
     // read data
     read_compact(in, decomp, buf, data_);
     end_ = index_ + size;
-
-    return true;
   }
 
   bool value(doc_id_t key, bytes_ref& out) const {
@@ -3462,19 +3459,20 @@ class dense_block : util::noncopyable {
     doc_id_t base_{};
   }; // iterator
 
-  bool load(index_input& in, decompressor& decomp, bstring& buf) {
+  void load(index_input& in, decompressor& decomp, bstring& buf) {
     const uint32_t size = in.read_vint(); // total number of entries in a block
 
     if (!size) {
-      IR_FRMT_ERROR("Empty 'dense_block' found in columnstore");
-      return false;
+      throw index_error("Empty 'dense_block' found in columnstore");
     }
 
     // dense block must be encoded with RL encoding, avg must be equal to 1
     uint32_t avg;
     if (!encode::avg::read_block_rl32(in, base_, avg) || 1 != avg) {
-      // invalid block type
-      return false;
+      throw index_error(string_utils::to_string(
+        "Invalid RL encoding in 'dense_block', base_key=%du, avg_delta=%du",
+        base_, avg
+      ));
     }
 
     // read data offsets
@@ -3490,8 +3488,6 @@ class dense_block : util::noncopyable {
     // read data
     read_compact(in, decomp, buf, data_);
     end_ = index_ + size;
-
-    return true;
   }
 
   bool value(doc_id_t key, bytes_ref& out) const {
@@ -3642,31 +3638,32 @@ class dense_fixed_offset_block : util::noncopyable {
     doc_id_t value_back_{}; // last valid doc id
   }; // iterator
 
-  bool load(index_input& in, decompressor& decomp, bstring& buf) {
+  void load(index_input& in, decompressor& decomp, bstring& buf) {
     size_ = in.read_vint(); // total number of entries in a block
 
     if (!size_) {
-      IR_FRMT_ERROR("Empty 'dense_fixed_offset_block' found in columnstore");
-      return false;
+      throw index_error("Empty 'dense_fixed_offset_block' found in columnstore");
     }
 
     // dense block must be encoded with RL encoding, avg must be equal to 1
     uint32_t avg;
     if (!encode::avg::read_block_rl32(in, base_key_, avg) || 1 != avg) {
-      // invalid block type
-      return false;
+      throw index_error(string_utils::to_string(
+        "Invalid RL encoding in 'dense_fixed_offset_block', base_key=%du, avg_delta=%du",
+        base_key_, avg
+      ));
     }
 
     // fixed length block must be encoded with RL encoding
     if (!encode::avg::read_block_rl32(in, base_offset_, avg_length_)) {
-      // invalid block type
-      return false;
+      throw index_error(string_utils::to_string(
+        "Invalid RL encoding in 'dense_fixed_offset_block', base_offset=%du, avg_length=%du",
+        base_key_, avg_length_
+      ));
     }
 
     // read data
     read_compact(in, decomp, buf, data_);
-
-    return true;
   }
 
   bool value(doc_id_t key, bytes_ref& out) const {
@@ -3787,12 +3784,11 @@ class sparse_mask_block : util::noncopyable {
     );
   }
 
-  bool load(index_input& in, decompressor& /*decomp*/, bstring& buf) {
+  void load(index_input& in, decompressor& /*decomp*/, bstring& buf) {
     size_ = in.read_vint(); // total number of entries in a block
 
     if (!size_) {
-      IR_FRMT_ERROR("Empty 'sparse_mask_block' found in columnstore");
-      return false;
+      throw index_error("Empty 'sparse_mask_block' found in columnstore");
     }
 
     auto begin = std::begin(keys_);
@@ -3805,11 +3801,8 @@ class sparse_mask_block : util::noncopyable {
 
     // mask block has no data, so all offsets should be equal to 0
     if (!encode::avg::check_block_rl64(in, 0)) {
-      // invalid block type
-      return false;
+      throw index_error("'sparse_mask_block' expected to contain no data");
     }
-
-    return true;
   }
 
   bool value(doc_id_t key, bytes_ref& /*reader*/) const {
@@ -3912,30 +3905,28 @@ class dense_mask_block {
       max_(type_limits<type_t::doc_id_t>::invalid()) {
   }
 
-  bool load(index_input& in, decompressor& /*decomp*/, bstring& /*buf*/) {
+  void load(index_input& in, decompressor& /*decomp*/, bstring& /*buf*/) {
     const auto size = in.read_vint(); // total number of entries in a block
 
     if (!size) {
-      IR_FRMT_ERROR("Empty 'dense_mask_block' found in columnstore");
-      return false;
+      throw index_error("Empty 'dense_mask_block' found in columnstore");
     }
 
     // dense block must be encoded with RL encoding, avg must be equal to 1
     uint32_t avg;
     if (!encode::avg::read_block_rl32(in, min_, avg) || 1 != avg) {
-      // invalid block type
-      return false;
+      throw index_error(string_utils::to_string(
+        "Invalid RL encoding in 'dense_mask_block', base_key=%du, avg_delta=%du",
+        min_, avg
+      ));
     }
 
     // mask block has no data, so all offsets should be equal to 0
     if (!encode::avg::check_block_rl64(in, 0)) {
-      // invalid block type
-      return false;
+      throw index_error("'dense_mask_block' expected to contain no data");
     }
 
     max_ = min_ + size;
-
-    return true;
   }
 
   bool value(doc_id_t key, bytes_ref& /*reader*/) const NOEXCEPT {
@@ -3991,38 +3982,36 @@ class read_context
 
   template<typename Block, typename... Args>
   Block* emplace_back(uint64_t offset, Args&&... args) {
-    auto& block = emplace_block<Block>(
-      std::forward<Args>(args)...
-    ); // add cache entry
+    typename block_cache_traits<Block, Allocator>::cache_t& cache = *this;
 
-    if (!load(block, offset)) {
-      // unable to load block
+    // add cache entry
+    auto& block = cache.emplace_back(std::forward<Args>(args)...);
+
+    try {
+      load(block, offset);
+    } catch (...) {
+      // failed to load block
       pop_back<Block>();
-      return nullptr;
+
+      throw;
     }
 
     return &block;
   }
 
   template<typename Block>
-  bool load(Block& block, uint64_t offset) {
+  void load(Block& block, uint64_t offset) {
     stream_->seek(offset); // seek to the offset
-    return block.load(*stream_, decomp_, buf_);
+    block.load(*stream_, decomp_, buf_);
   }
 
   template<typename Block>
-  void pop_back() {
+  void pop_back() NOEXCEPT {
     typename block_cache_traits<Block, Allocator>::cache_t& cache = *this;
     cache.pop_back();
   }
 
  private:
-  template<typename Block, typename... Args>
-  Block& emplace_block(Args&&... args) {
-    typename block_cache_traits<Block, Allocator>::cache_t& cache = *this;
-    return cache.emplace_back(std::forward<Args>(args)...);
-  }
-
   decompressor decomp_; // decompressor
   bstring buf_; // temporary buffer for decoding/unpacking
   index_input::ptr stream_;
@@ -4106,10 +4095,7 @@ const typename BlockRef::block_t* load_block(
       return nullptr;
     }
 
-    if (!ctx->load(block, ref.offset)) {
-      // unable to load block
-      return nullptr;
-    }
+    ctx->load(block, ref.offset);
 
     cached = &block;
   }
@@ -4132,7 +4118,7 @@ class column
 
   virtual ~column() { }
 
-  virtual bool read(data_input& in, uint64_t* /*buf*/) {
+  virtual void read(data_input& in, uint64_t* /*buf*/) {
     count_ = in.read_vint();
     max_ = in.read_vint();
     avg_block_size_ = in.read_vint();
@@ -4140,7 +4126,6 @@ class column
     if (!avg_block_count_) {
       avg_block_count_ = count_;
     }
-    return true;
   }
 
   doc_id_t max() const NOEXCEPT { return max_; }
@@ -4298,10 +4283,9 @@ class sparse_column final : public column {
     : column(props), ctxs_(&ctxs) {
   }
 
-  virtual bool read(data_input& in, uint64_t* buf) override {
-    if (!column::read(in, buf)) {
-      return false;
-    }
+  virtual void read(data_input& in, uint64_t* buf) override {
+    column::read(in, buf); // read common header
+
     uint32_t blocks_count = in.read_vint(); // total number of column index blocks
 
     std::vector<block_ref> refs(blocks_count + 1); // +1 for upper bound
@@ -4354,7 +4338,6 @@ class sparse_column final : public column {
     begin->offset = type_limits<type_t::address_t>::invalid();
 
     refs_ = std::move(refs);
-    return true;
   }
 
   bool value(doc_id_t key, bytes_ref& value) const {
@@ -4505,10 +4488,9 @@ class dense_fixed_offset_column final : public column {
     : column(prop), ctxs_(&ctxs) {
   }
 
-  virtual bool read(data_input& in, uint64_t* buf) override {
-    if (!column::read(in, buf)) {
-      return false;
-    }
+  virtual void read(data_input& in, uint64_t* buf) override {
+    column::read(in, buf); // read common header
+
     size_t blocks_count = in.read_vint(); // total number of column index blocks
 
     std::vector<block_ref> refs(blocks_count);
@@ -4516,8 +4498,7 @@ class dense_fixed_offset_column final : public column {
     auto begin = refs.begin();
     while (blocks_count >= INDEX_BLOCK_SIZE) {
       if (!encode::avg::check_block_rl32(in, this->avg_block_count())) {
-        // invalid column type
-        return false;
+        throw index_error("Invalid RL encoding in 'dense_fixed_offset_column' (keys)");
       }
 
       encode::avg::visit_block_packed(
@@ -4538,8 +4519,7 @@ class dense_fixed_offset_column final : public column {
         : 0U; // in this case avg == 0
 
       if (!encode::avg::check_block_rl32(in, avg_block_count)) {
-        // invalid column type
-        return false;
+        throw index_error("Invalid RL encoding in 'dense_fixed_offset_column' (keys)");
       }
 
       encode::avg::visit_block_packed_tail(
@@ -4554,8 +4534,6 @@ class dense_fixed_offset_column final : public column {
 
     refs_ = std::move(refs);
     min_ = this->max() - this->count() + 1;
-
-    return true;
   }
 
   bool value(doc_id_t key, bytes_ref& value) const {
@@ -4692,21 +4670,18 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
     : column(prop) {
   }
 
-  virtual bool read(data_input& in, uint64_t* buf) override {
+  virtual void read(data_input& in, uint64_t* buf) override {
     // we treat data in blocks as "garbage" which could be
     // potentially removed on merge, so we don't validate
     // column properties using such blocks
 
-    if (!column::read(in, buf)) {
-      return false;
-    }
+    column::read(in, buf); // read common header
 
     uint32_t blocks_count = in.read_vint(); // total number of column index blocks
 
     while (blocks_count >= INDEX_BLOCK_SIZE) {
       if (!encode::avg::check_block_rl32(in, this->avg_block_count())) {
-        // invalid column type
-        return false;
+        throw index_error("Invalid RL encoding in 'dense_fixed_offset_column<dense_mask_block>' (keys)");
       }
 
       // skip offsets, they point to "garbage" data
@@ -4725,8 +4700,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
         : 0; // in this case avg == 0
 
       if (!encode::avg::check_block_rl32(in, avg_block_count)) {
-        // invalid column type
-        return false;
+        throw index_error("Invalid RL encoding in 'dense_fixed_offset_column<dense_mask_block>' (keys)");
       }
 
       // skip offsets, they point to "garbage" data
@@ -4738,8 +4712,6 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
 
 
     min_ = this->max() - this->count();
-
-    return true;
   }
 
   bool value(doc_id_t key, bytes_ref& value) const NOEXCEPT {
@@ -4956,13 +4928,21 @@ bool reader::prepare(
 
     auto column = factory(*this, props);
 
-    // read column
-    if (!column || !column->read(*stream, buf)) {
+    if (!column) {
       throw index_error(string_utils::to_string(
-        "Failed to load column id=" IR_SIZE_T_SPECIFIER, i
+        "Factory failed to create column id=" IR_SIZE_T_SPECIFIER, i
       ));
     }
 
+    try {
+      column->read(*stream, buf);
+    } catch (...) {
+      IR_FRMT_ERROR("Failed to load column id=" IR_SIZE_T_SPECIFIER, i);
+
+      throw;
+    }
+
+    // noexcept since space has been already reserved
     columns.emplace_back(std::move(column));
   }
 
