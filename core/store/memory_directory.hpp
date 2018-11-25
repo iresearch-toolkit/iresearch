@@ -267,13 +267,11 @@ class IRESEARCH_API memory_directory final : public directory {
   // 0 == pool_size -> use global allocator, noexcept
   explicit memory_directory(size_t pool_size = 0);
 
-  virtual ~memory_directory();
+  virtual ~memory_directory() NOEXCEPT;
 
   using directory::attributes;
 
   virtual attribute_store& attributes() NOEXCEPT override;
-
-  virtual void close() NOEXCEPT override;
 
   virtual index_output::ptr create(const std::string& name) NOEXCEPT override;
 

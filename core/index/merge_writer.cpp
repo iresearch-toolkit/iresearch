@@ -64,8 +64,6 @@ class noop_directory : public irs::directory {
     );
   }
 
-  virtual void close() NOEXCEPT override { }
-
   virtual irs::index_output::ptr create(
     const std::string&
   ) NOEXCEPT override {

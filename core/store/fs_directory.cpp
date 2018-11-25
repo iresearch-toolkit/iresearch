@@ -422,7 +422,7 @@ class pooled_fs_index_input final : public fs_index_input {
   DECLARE_UNIQUE_PTR(pooled_fs_index_input); // allow private construction
 
   explicit pooled_fs_index_input(const fs_index_input& in);
-  virtual ~pooled_fs_index_input();
+  virtual ~pooled_fs_index_input() NOEXCEPT;
   virtual index_input::ptr dup() const NOEXCEPT override;
   virtual index_input::ptr reopen() const NOEXCEPT override;
 
@@ -445,23 +445,39 @@ index_input::ptr fs_index_input::dup() const NOEXCEPT {
 }
 
 index_input::ptr fs_index_input::reopen() const NOEXCEPT {
-  auto ptr = index_input::make<pooled_fs_index_input>(*this);
+  index_input::ptr ptr;
 
-  if (!ptr) {
+  try {
+    ptr = index_input::make<pooled_fs_index_input>(*this);
+  } catch (...) {
+    IR_LOG_EXCEPTION();
     return nullptr;
   }
 
+  assert(ptr);
+
   auto& in = static_cast<pooled_fs_index_input&>(*ptr);
 
-  return in.handle_ && in.handle_->handle ? std::move(ptr) : nullptr;
+  if (!in.handle_ || !in.handle_->handle) {
+    return nullptr;
+  }
+
+  return ptr;
 }
 
 pooled_fs_index_input::pooled_fs_index_input(const fs_index_input& in)
   : fs_index_input(in), fd_pool_(memory::make_shared<fd_pool_t>(pool_size_)) {
   handle_ = reopen(*handle_);
+
+  if (!handle_ || !handle_->handle) {
+    throw io_error(string_utils::to_string(
+      "Failed to reopen input file in function %s",
+      __FUNCTION__
+    ));
+  }
 }
 
-pooled_fs_index_input::~pooled_fs_index_input() {
+pooled_fs_index_input::~pooled_fs_index_input() NOEXCEPT {
   handle_.reset(); // release handle before the fs_pool_ is deallocated
 }
 
@@ -486,7 +502,11 @@ index_input::ptr pooled_fs_index_input::reopen() const NOEXCEPT {
 
   in.handle_ = reopen(*handle_); // reserve a new handle from pool
 
-  return in.handle_ && in.handle_->handle ? std::move(ptr) : nullptr;
+  if (!in.handle_ || !in.handle_->handle) {
+    return nullptr;
+  }
+
+  return ptr;
 }
 
 fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
@@ -523,8 +543,6 @@ fs_directory::fs_directory(const std::string& dir)
 attribute_store& fs_directory::attributes() NOEXCEPT {
   return attributes_;
 }
-
-void fs_directory::close() NOEXCEPT { }
 
 index_output::ptr fs_directory::create(const std::string& name) NOEXCEPT {
   try {

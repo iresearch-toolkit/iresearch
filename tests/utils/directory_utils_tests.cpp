@@ -46,8 +46,6 @@ class directory_utils_tests: public ::testing::Test {
       return attrs_;
     }
 
-    virtual void close() NOEXCEPT override { }
-
     virtual irs::index_output::ptr create(
       const std::string& name
     ) NOEXCEPT override {
@@ -585,68 +583,6 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
     ASSERT_TRUE(dir.exists(exists, "def") && !exists);
   }
 
-  // test close (direct)
-  {
-    irs::memory_directory dir;
-    irs::ref_tracking_directory track_dir(dir);
-    auto file = dir.create("abc");
-    ASSERT_FALSE(!file);
-
-    bool exists;
-    ASSERT_TRUE(dir.exists(exists, "abc") && exists);
-    ASSERT_TRUE(track_dir.exists(exists, "abc") && exists);
-    file->write_byte(42);
-    file->flush();
-    uint64_t length;
-    ASSERT_TRUE(dir.length(length, "abc") && length == 1);
-    ASSERT_TRUE(track_dir.length(length, "abc") && length == 1);
-
-    std::vector<std::string> files;
-    auto list_files = [&files] (std::string& name) {
-      files.emplace_back(std::move(name));
-      return true;
-    };
-    ASSERT_TRUE(track_dir.visit(list_files));
-    ASSERT_EQ(1, files.size());
-    ASSERT_EQ("abc", *(files.begin()));
-
-    file.reset(); // release before dir.close()
-    dir.close(); // close via memory_directory (clears file list)
-    ASSERT_TRUE(dir.exists(exists, "abc") && !exists);
-    ASSERT_TRUE(track_dir.exists(exists, "abc") && !exists);
-  }
-
-  // test close (indirect)
-  {
-    irs::memory_directory dir;
-    irs::ref_tracking_directory track_dir(dir);
-    auto file = dir.create("abc");
-    ASSERT_FALSE(!file);
-
-    bool exists;
-    ASSERT_TRUE(dir.exists(exists, "abc") && exists);
-    ASSERT_TRUE(track_dir.exists(exists, "abc") && exists);
-    file->write_byte(42);
-    file->flush();
-    uint64_t length;
-    ASSERT_TRUE(dir.length(length, "abc") && length == 1);
-    ASSERT_TRUE(track_dir.length(length, "abc") && length == 1);
-
-    std::vector<std::string> files;
-    auto list_files = [&files] (std::string& name) {
-      files.emplace_back(std::move(name));
-      return true;
-    };
-    ASSERT_TRUE(track_dir.visit(list_files));
-    ASSERT_EQ(1, files.size());
-    ASSERT_EQ("abc", *(files.begin()));
-
-    file.reset(); // release before dir.close()
-    track_dir.close(); // close via tracking_directory (clears file list)
-    ASSERT_TRUE(dir.exists(exists, "abc") && !exists);
-    ASSERT_TRUE(track_dir.exists(exists, "abc") && !exists);
-  }
-
   // test visit refs visitor complete
   {
     irs::memory_directory dir;
@@ -714,7 +650,6 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
   struct error_directory: public irs::directory {
     irs::attribute_store attrs;
     virtual irs::attribute_store& attributes() NOEXCEPT override { return attrs; }
-    virtual void close() NOEXCEPT override {}
     virtual irs::index_output::ptr create(const std::string&) NOEXCEPT override { return nullptr; }
     virtual bool exists(bool& result, const std::string&) const NOEXCEPT override { return false; }
     virtual bool length(uint64_t& result, const std::string&) const NOEXCEPT override { return false; }
@@ -835,68 +770,6 @@ TEST_F(directory_utils_tests, test_tracking_dir) {
     ASSERT_EQ(1, files.size());
     track_dir.flush_tracked(files); // tracked files were cleared
     ASSERT_EQ(0, files.size());
-  }
-
-  // test close (direct)
-  {
-    irs::memory_directory dir;
-    irs::tracking_directory track_dir(dir);
-    auto file = dir.create("abc");
-    ASSERT_FALSE(!file);
-
-    bool exists;
-    ASSERT_TRUE(dir.exists(exists, "abc") && exists);
-    ASSERT_TRUE(track_dir.exists(exists, "abc") && exists);
-    file->write_byte(42);
-    file->flush();
-    uint64_t length;
-    ASSERT_TRUE(dir.length(length, "abc") && length == 1);
-    ASSERT_TRUE(track_dir.length(length, "abc") && length == 1);
-
-    std::vector<std::string> files;
-    auto list_files = [&files] (std::string& name) {
-      files.emplace_back(std::move(name));
-      return true;
-    };
-    ASSERT_TRUE(track_dir.visit(list_files));
-    ASSERT_EQ(1, files.size());
-    ASSERT_EQ("abc", *(files.begin()));
-
-    file.reset(); // release before dir.close()
-    dir.close(); // close via memory_directory (clears file list)
-    ASSERT_TRUE(dir.exists(exists, "abc") && !exists);
-    ASSERT_TRUE(track_dir.exists(exists, "abc") && !exists);
-  }
-
-  // test close (indirect)
-  {
-    irs::memory_directory dir;
-    irs::tracking_directory track_dir(dir);
-    auto file = dir.create("abc");
-    ASSERT_FALSE(!file);
-
-    bool exists;
-    ASSERT_TRUE(dir.exists(exists, "abc") && exists);
-    ASSERT_TRUE(track_dir.exists(exists, "abc") && exists);
-    file->write_byte(42);
-    file->flush();
-    uint64_t length;
-    ASSERT_TRUE(dir.length(length, "abc") && length == 1);
-    ASSERT_TRUE(track_dir.length(length, "abc") && length == 1);
-
-    std::vector<std::string> files;
-    auto list_files = [&files] (std::string& name) {
-      files.emplace_back(std::move(name));
-      return true;
-    };
-    ASSERT_TRUE(track_dir.visit(list_files));
-    ASSERT_EQ(1, files.size());
-    ASSERT_EQ("abc", *(files.begin()));
-
-    file.reset(); // release before track_dir.close()
-    track_dir.close(); // close via tracking_directory (clears file list)
-    ASSERT_TRUE(dir.exists(exists, "abc") && !exists);
-    ASSERT_TRUE(track_dir.exists(exists, "abc") && !exists);
   }
 }
 

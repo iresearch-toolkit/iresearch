@@ -53,8 +53,6 @@ class directory_mock: public irs::directory {
     return impl_.attributes();
   }
 
-  virtual void close() NOEXCEPT override { impl_.close(); }
-
   virtual irs::index_output::ptr create(
     const std::string& name
   ) NOEXCEPT override {

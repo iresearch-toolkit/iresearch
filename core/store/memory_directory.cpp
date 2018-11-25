@@ -384,17 +384,15 @@ memory_directory::memory_directory(size_t pool_size /* = 0*/) {
   alloc_ = &directory_utils::ensure_allocator(*this, pool_size);
 }
 
-memory_directory::~memory_directory() { }
-
-attribute_store& memory_directory::attributes() NOEXCEPT {
-  return attributes_;
-}
-
-void memory_directory::close() NOEXCEPT {
+memory_directory::~memory_directory() NOEXCEPT {
   async_utils::read_write_mutex::write_mutex mutex(flock_);
   SCOPED_LOCK(mutex);
 
   files_.clear();
+}
+
+attribute_store& memory_directory::attributes() NOEXCEPT {
+  return attributes_;
 }
 
 bool memory_directory::exists(

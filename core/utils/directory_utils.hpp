@@ -124,10 +124,6 @@ struct IRESEARCH_API tracking_directory final : public directory {
     return impl_.attributes();
   }
 
-  virtual void close() NOEXCEPT override {
-    impl_.close();
-  }
-
   virtual index_output::ptr create(const std::string& name) NOEXCEPT override;
 
   void clear_tracked() NOEXCEPT;
@@ -207,10 +203,6 @@ struct IRESEARCH_API ref_tracking_directory: public directory {
   }
 
   void clear_refs() const NOEXCEPT;
-
-  virtual void close() NOEXCEPT override {
-    return impl_.close();
-  }
 
   virtual index_output::ptr create(const std::string &name) NOEXCEPT override;
 
