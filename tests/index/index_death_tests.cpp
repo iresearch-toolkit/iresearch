@@ -41,9 +41,65 @@ class failing_directory : public tests::directory_mock {
     OPEN,
     RENAME,
     REMOVE,
-    SYNC
+    SYNC,
+    REOPEN,
+    DUP
   };
 
+ private:
+  class failing_index_input : public irs::index_input {
+   public:
+    explicit failing_index_input(
+        index_input::ptr&& impl,
+        const std::string name,
+        const failing_directory& dir
+    ) : impl_(std::move(impl)),
+        dir_(&dir),
+        name_(name) {
+    }
+    virtual irs::byte_type read_byte() override {
+      return impl_->read_byte();
+    }
+    virtual size_t read_bytes(irs::byte_type* b, size_t count) override {
+      return impl_->read_bytes(b, count);
+    }
+    virtual size_t file_pointer() const override {
+      return impl_->file_pointer();
+    }
+    virtual size_t length() const override {
+      return impl_->length();
+    }
+    virtual bool eof() const override {
+      return impl_->eof();
+    }
+    virtual ptr dup() const override {
+      if (dir_->should_fail(Failure::DUP, name_)) {
+        throw irs::io_error();
+      }
+
+      return impl_->dup();
+    }
+    virtual ptr reopen() const override {
+      if (dir_->should_fail(Failure::REOPEN, name_)) {
+        throw irs::io_error();
+      }
+
+      return impl_->reopen();
+    }
+    virtual void seek(size_t pos) override {
+      impl_->seek(pos);
+    }
+    virtual int64_t checksum(size_t offset) const override {
+      return impl_->checksum(offset);
+    }
+
+   private:
+    index_input::ptr impl_;
+    const failing_directory* dir_;
+    std::string name_;
+  }; // failing_index_input
+
+ public:
   explicit failing_directory(irs::directory& impl) NOEXCEPT
     : tests::directory_mock(impl) {
   }
@@ -115,7 +171,9 @@ class failing_directory : public tests::directory_mock {
       return nullptr;
     }
 
-    return tests::directory_mock::open(name, advice);
+    return irs::index_input::make<failing_index_input>(
+      tests::directory_mock::open(name, advice), name, *this
+    );
   }
   virtual bool remove(const std::string& name) NOEXCEPT override {
     if (should_fail(Failure::REMOVE, name)) {
@@ -2611,6 +2669,96 @@ TEST(index_death_test_formats_10, open_reader) {
   auto docsItr = termItr->postings(iresearch::flags());
   ASSERT_TRUE(docsItr->next());
   ASSERT_TRUE(values(docsItr->value(), actual_value));
+  ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+  ASSERT_TRUE(docsItr->next());
+  ASSERT_TRUE(values(docsItr->value(), actual_value));
+  ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+  ASSERT_FALSE(docsItr->next());
+
+  // validate live docs
+  auto live_docs = segment.docs_iterator();
+  ASSERT_TRUE(live_docs->next());
+  ASSERT_EQ(1, live_docs->value());
+  ASSERT_FALSE(live_docs->next());
+  ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), live_docs->value());
+}
+
+TEST(index_death_test_formats_10, reopen_fail) {
+  const auto all_features = irs::flags{
+    irs::document::type(),
+    irs::frequency::type(),
+    irs::position::type(),
+    irs::payload::type(),
+    irs::offset::type()
+  };
+
+  tests::json_doc_generator gen(
+    test_base::resource("simple_sequential.json"),
+    &tests::payloaded_json_field_factory
+  );
+  const auto* doc1 = gen.next();
+  const auto* doc2 = gen.next();
+  auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+
+  auto codec = irs::formats::get("1_0");
+  ASSERT_NE(nullptr, codec);
+
+  // create source segment
+  irs::memory_directory impl;
+  failing_directory dir(impl);
+
+  // write index
+  {
+    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    ASSERT_NE(nullptr, writer);
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+
+    ASSERT_TRUE(insert(*writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+
+    writer->documents().remove(*query_doc2.filter);
+
+    writer->commit();
+  }
+
+  // check data
+  auto reader = irs::directory_reader::open(dir);
+  ASSERT_TRUE(reader);
+  ASSERT_EQ(1, reader->size());
+  ASSERT_EQ(2, reader->docs_count());
+  ASSERT_EQ(1, reader->live_docs_count());
+
+  // validate index
+  tests::index_t expected_index;
+  expected_index.emplace_back();
+  expected_index.back().add(doc1->indexed.begin(), doc1->indexed.end());
+  expected_index.back().add(doc2->indexed.begin(), doc2->indexed.end());
+  tests::assert_index(expected_index, *reader, all_features);
+
+  // validate columnstore
+  irs::bytes_ref actual_value;
+  auto& segment = reader[0]; // assume 0 is id of first/only segment
+  const auto* column = segment.column_reader("name");
+  ASSERT_NE(nullptr, column);
+  auto values = column->values();
+  ASSERT_EQ(2, segment.docs_count()); // total count of documents
+  ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
+  auto terms = segment.field("same");
+  ASSERT_NE(nullptr, terms);
+  auto termItr = terms->iterator();
+  ASSERT_TRUE(termItr->next());
+  auto docsItr = termItr->postings(iresearch::flags());
+  ASSERT_TRUE(docsItr->next());
+  dir.register_failure(failing_directory::Failure::REOPEN, "_1.cs"); // regiseter reopen failure in columnstore
+  ASSERT_THROW(values(docsItr->value(), actual_value), irs::io_error); // failed to reopen
+  ASSERT_TRUE(values(docsItr->value(), actual_value)); // successful attempt
+  dir.register_failure(failing_directory::Failure::REOPEN, "_1.cs"); // don't need to reopen anymore
   ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
   ASSERT_TRUE(docsItr->next());
   ASSERT_TRUE(values(docsItr->value(), actual_value));
