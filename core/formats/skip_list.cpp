@@ -154,25 +154,24 @@ skip_reader::level::level(
     index_input::ptr&& stream,
     size_t step,
     uint64_t begin, 
-    uint64_t end) NOEXCEPT
-  : stream(stream->reopen()), // thread-safe input
+    uint64_t end,
+    uint64_t child /*= 0*/,
+    size_t skipped /*= 0*/,
+    doc_id_t doc /*= type_limits<type_t::doc_id_t>::invalid()*/
+) NOEXCEPT
+  : stream(std::move(stream)), // thread-safe input
     begin(begin), 
     end(end),
-    step(step) {
+    child(child),
+    step(step),
+    skipped(skipped),
+    doc(doc) {
 }
 
 skip_reader::level::level(skip_reader::level&& rhs) NOEXCEPT 
   : stream(std::move(rhs.stream)),
-    begin(rhs.begin), end(rhs.end),
-    child(rhs.child),
-    step(rhs.step), 
-    skipped(rhs.skipped),
-    doc(rhs.doc) {
-}
-
-skip_reader::level::level(const skip_reader::level& rhs)
-  : stream(rhs.stream->dup()), // dup of a reopen()ed input
-    begin(rhs.begin), end(rhs.end),
+    begin(rhs.begin),
+    end(rhs.end),
     child(rhs.child),
     step(rhs.step), 
     skipped(rhs.skipped),
@@ -180,13 +179,9 @@ skip_reader::level::level(const skip_reader::level& rhs)
 }
 
 index_input::ptr skip_reader::level::dup() const NOEXCEPT {
-  try {
-    return index_input::make<skip_reader::level>(*this);
-  } catch(...) {
-    IR_LOG_EXCEPTION();
-  }
-
-  return nullptr;
+  return index_input::make<skip_reader::level>(
+    stream->dup(), step, begin, end, child, skipped, doc
+  );
 }
 
 byte_type skip_reader::level::read_byte() {
@@ -199,11 +194,9 @@ size_t skip_reader::level::read_bytes(byte_type* b, size_t count) {
 }
 
 index_input::ptr skip_reader::level::reopen() const NOEXCEPT {
-  level tmp(*this);
-
-  tmp.stream = tmp.stream->reopen();
-
-  return index_input::make<skip_reader::level>(std::move(tmp));
+  return index_input::make<skip_reader::level>(
+    stream->reopen(), step, begin, end, child, skipped, doc
+  );
 }
 
 size_t skip_reader::level::file_pointer() const {
@@ -345,8 +338,7 @@ void skip_reader::load_level(levels_t& levels, index_input::ptr&& stream, size_t
   const auto begin = stream->file_pointer();
   const auto end = begin + length;
 
-  // load level
-  levels.emplace_back(std::move(stream), step, begin, end);
+  levels.emplace_back(std::move(stream), step, begin, end); // load level
 }
 
 void skip_reader::prepare(index_input::ptr&& in, const read_f& read /* = nop */) {
@@ -361,7 +353,7 @@ void skip_reader::prepare(index_input::ptr&& in, const read_f& read /* = nop */)
 
     // load levels from n down to 1
     for (; max_levels; --max_levels) {
-      load_level(levels, in->dup(), step);
+      load_level(levels, in->reopen(), step);
 
       // seek to the next level
       in->seek(levels.back().end);
@@ -370,7 +362,7 @@ void skip_reader::prepare(index_input::ptr&& in, const read_f& read /* = nop */)
     }
 
     // load 0 level
-    load_level(levels, std::move(in), skip_0_);
+    load_level(levels, in->reopen(), skip_0_);
     levels.back().child = UNDEFINED;
 
     // noexcept

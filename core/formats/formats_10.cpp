@@ -3959,7 +3959,7 @@ class read_context
   DECLARE_SHARED_PTR(read_context);
 
   static ptr make(const index_input& stream) {
-    auto clone = stream.reopen();
+    auto clone = stream.reopen(); // thead-safe stream
 
     if (!clone) {
       throw io_error(
