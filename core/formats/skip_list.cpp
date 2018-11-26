@@ -346,6 +346,8 @@ void skip_reader::reset() {
 }
 
 void skip_reader::load_level(levels_t& levels, index_input::ptr&& stream, size_t step) {
+  assert(stream);
+
   // read level length
   const auto length = stream->read_vlong();
 
@@ -360,6 +362,8 @@ void skip_reader::load_level(levels_t& levels, index_input::ptr&& stream, size_t
 }
 
 void skip_reader::prepare(index_input::ptr&& in, const read_f& read /* = nop */) {
+  assert(in && read);
+
   // read number of levels in a skip-list
   size_t max_levels = in->read_vint();
 
@@ -371,7 +375,7 @@ void skip_reader::prepare(index_input::ptr&& in, const read_f& read /* = nop */)
 
     // load levels from n down to 1
     for (; max_levels; --max_levels) {
-      load_level(levels, in->reopen(), step);
+      load_level(levels, in->dup(), step);
 
       // seek to the next level
       in->seek(levels.back().end);
@@ -380,14 +384,12 @@ void skip_reader::prepare(index_input::ptr&& in, const read_f& read /* = nop */)
     }
 
     // load 0 level
-    load_level(levels, in->reopen(), skip_0_);
+    load_level(levels, std::move(in), skip_0_);
     levels.back().child = UNDEFINED;
 
-    // noexcept
     levels_ = std::move(levels);
   }
 
-  // noexcept
   read_ = read;
 }
 

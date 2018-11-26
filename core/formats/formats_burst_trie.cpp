@@ -1124,7 +1124,7 @@ doc_iterator::ptr term_iterator::postings(const flags& features) const {
 
 index_input& term_iterator::terms_input() const {
   if (!terms_in_) {
-    terms_in_ = owner_->owner_->terms_in_->reopen();
+    terms_in_ = owner_->owner_->terms_in_->reopen(); // reopen thread-safe stream
 
     if (!terms_in_) {
       // implementation returned wrong pointer

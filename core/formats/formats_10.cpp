@@ -1024,7 +1024,7 @@ class doc_iterator : public irs::doc_iterator {
     // init document stream
     if (term_state_.docs_count > 1) {
       if (!doc_in_) {
-        doc_in_ = doc_in->reopen();
+        doc_in_ = doc_in->reopen(); // reopen thread-safe stream
 
         if (!doc_in_) {
           // implementation returned wrong pointer
@@ -1239,7 +1239,7 @@ void doc_iterator::seek_to_block(doc_id_t target) {
 
     // init skip writer in lazy fashion
     if (!skip_) {
-      index_input::ptr skip_in = doc_in_->dup();
+      auto skip_in = doc_in_->dup();
 
       if (!skip_in) {
         IR_FRMT_ERROR("Failed to duplicate input in: %s", __FUNCTION__);
@@ -1387,7 +1387,7 @@ class pos_iterator: public position {
 
   // prepares iterator to work
   virtual void prepare(const doc_state& state) {
-    pos_in_ = state.pos_in->reopen();
+    pos_in_ = state.pos_in->reopen(); // reopen thread-safe stream
 
     if (!pos_in_) {
       // implementation returned wrong pointer
@@ -1501,7 +1501,7 @@ class offs_pay_iterator final: public pos_iterator {
 
   virtual void prepare(const doc_state& state) override {
     pos_iterator::prepare(state);
-    pay_in_ = state.pay_in->reopen();
+    pay_in_ = state.pay_in->reopen(); // reopen thread-safe stream
 
     if (!pay_in_) {
       // implementation returned wrong pointer
@@ -1647,7 +1647,7 @@ class offs_iterator final : public pos_iterator {
 
   virtual void prepare(const doc_state& state) override {
     pos_iterator::prepare(state);
-    pay_in_ = state.pay_in->reopen();
+    pay_in_ = state.pay_in->reopen(); // reopen thread-safe stream
 
     if (!pay_in_) {
       // implementation returned wrong pointer
@@ -1758,7 +1758,7 @@ class pay_iterator final : public pos_iterator {
 
   virtual void prepare(const doc_state& state) override {
     pos_iterator::prepare(state);
-    pay_in_ = state.pay_in->reopen();
+    pay_in_ = state.pay_in->reopen(); // reopen thread-safe stream
 
     if (!pay_in_) {
       // implementation returned wrong pointer
@@ -3971,7 +3971,7 @@ class read_context
   DECLARE_SHARED_PTR(read_context);
 
   static ptr make(const index_input& stream) {
-    auto clone = stream.reopen(); // thead-safe stream
+    auto clone = stream.reopen(); // reopen thead-safe stream
 
     if (!clone) {
       // implementation returned wrong pointer
