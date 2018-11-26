@@ -20161,13 +20161,16 @@ TEST_F(fs_index_test, writer_close) {
   );
   auto& directory = dir();
   auto* doc = gen.next();
-  auto writer = open_writer();
 
-  ASSERT_TRUE(insert(*writer,
-    doc->indexed.begin(), doc->indexed.end(),
-    doc->stored.begin(), doc->stored.end()
-  ));
-  writer->commit();
+  {
+    auto writer = open_writer();
+
+    ASSERT_TRUE(insert(*writer,
+      doc->indexed.begin(), doc->indexed.end(),
+      doc->stored.begin(), doc->stored.end()
+    ));
+    writer->commit();
+  } // ensure writer is closed
 
   std::vector<std::string> files;
   auto list_files = [&files] (std::string& name) {
@@ -20290,13 +20293,16 @@ TEST_F(mmap_index_test, writer_close) {
   );
   auto& directory = dir();
   auto* doc = gen.next();
-  auto writer = open_writer();
 
-  ASSERT_TRUE(insert(*writer,
-    doc->indexed.begin(), doc->indexed.end(),
-    doc->stored.begin(), doc->stored.end()
-  ));
-  writer->commit();
+  {
+    auto writer = open_writer();
+
+    ASSERT_TRUE(insert(*writer,
+      doc->indexed.begin(), doc->indexed.end(),
+      doc->stored.begin(), doc->stored.end()
+    ));
+    writer->commit();
+  } // ensure writer is closed
 
   std::vector<std::string> files;
   auto list_files = [&files] (std::string& name) {
