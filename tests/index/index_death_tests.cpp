@@ -43,7 +43,9 @@ class failing_directory : public tests::directory_mock {
     REMOVE,
     SYNC,
     REOPEN,
-    DUP
+    REOPEN_NULL, // return nullptr from index_input::reopen
+    DUP,
+    DUP_NULL // return nullptr from index_input::dup
   };
 
  private:
@@ -77,11 +79,19 @@ class failing_directory : public tests::directory_mock {
         throw irs::io_error();
       }
 
+      if (dir_->should_fail(Failure::DUP_NULL, name_)) {
+        return nullptr;
+      }
+
       return impl_->dup();
     }
     virtual ptr reopen() const override {
       if (dir_->should_fail(Failure::REOPEN, name_)) {
         throw irs::io_error();
+      }
+
+      if (dir_->should_fail(Failure::REOPEN_NULL, name_)) {
+        return nullptr;
       }
 
       return impl_->reopen();
@@ -2683,13 +2693,126 @@ TEST(index_death_test_formats_10, open_reader) {
   ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), live_docs->value());
 }
 
-TEST(index_death_test_formats_10, reopen_fail) {
+TEST(index_death_test_formats_10, columnstore_reopen_fail) {
   const auto all_features = irs::flags{
     irs::document::type(),
     irs::frequency::type(),
     irs::position::type(),
     irs::payload::type(),
     irs::offset::type()
+  };
+
+  tests::json_doc_generator gen(
+    test_base::resource("simple_sequential.json"),
+    &tests::payloaded_json_field_factory
+  );
+  const auto* doc1 = gen.next();
+  const auto* doc2 = gen.next();
+  auto query_doc2 = irs::iql::query_builder().build("name==B", std::locale::classic());
+
+  auto codec = irs::formats::get("1_0");
+  ASSERT_NE(nullptr, codec);
+
+  // create source segment
+  irs::memory_directory impl;
+  failing_directory dir(impl);
+
+  // write index
+  {
+    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    ASSERT_NE(nullptr, writer);
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+
+    ASSERT_TRUE(insert(*writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+
+    writer->documents().remove(*query_doc2.filter);
+
+    writer->commit();
+  }
+
+  // check data
+  auto reader = irs::directory_reader::open(dir);
+  ASSERT_TRUE(reader);
+  ASSERT_EQ(1, reader->size());
+  ASSERT_EQ(2, reader->docs_count());
+  ASSERT_EQ(1, reader->live_docs_count());
+
+  // validate index
+  tests::index_t expected_index;
+  expected_index.emplace_back();
+  expected_index.back().add(doc1->indexed.begin(), doc1->indexed.end());
+  expected_index.back().add(doc2->indexed.begin(), doc2->indexed.end());
+  tests::assert_index(expected_index, *reader, all_features);
+
+  dir.register_failure(failing_directory::Failure::REOPEN, "_1.cs"); // regiseter reopen failure in columnstore
+  dir.register_failure(failing_directory::Failure::REOPEN_NULL, "_1.cs"); // regiseter reopen failure in columnstore
+
+  // validate columnstore
+  irs::bytes_ref actual_value;
+  auto& segment = reader[0]; // assume 0 is id of first/only segment
+  const auto* column = segment.column_reader("name");
+  ASSERT_NE(nullptr, column);
+  auto values = column->values();
+  ASSERT_EQ(2, segment.docs_count()); // total count of documents
+  ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
+  auto terms = segment.field("same");
+  ASSERT_NE(nullptr, terms);
+  auto termItr = terms->iterator();
+  ASSERT_TRUE(termItr->next());
+  auto docsItr = termItr->postings(iresearch::flags());
+  ASSERT_TRUE(docsItr->next());
+  ASSERT_THROW(values(docsItr->value(), actual_value), irs::io_error); // failed to reopen
+  ASSERT_THROW(values(docsItr->value(), actual_value), irs::io_error); // failed to reopen (nullptr)
+  ASSERT_TRUE(values(docsItr->value(), actual_value)); // successful attempt
+  dir.register_failure(failing_directory::Failure::REOPEN, "_1.cs"); // don't need to reopen anymore
+  ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+  ASSERT_TRUE(docsItr->next());
+  ASSERT_TRUE(values(docsItr->value(), actual_value));
+  ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+  ASSERT_FALSE(docsItr->next());
+
+  // validate live docs
+  auto live_docs = segment.docs_iterator();
+  ASSERT_TRUE(live_docs->next());
+  ASSERT_EQ(1, live_docs->value());
+  ASSERT_FALSE(live_docs->next());
+  ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), live_docs->value());
+}
+
+TEST(index_death_test_formats_10, postings_reopen_fail) {
+  const auto all_features = irs::flags{
+    irs::document::type(),
+    irs::frequency::type(),
+    irs::position::type(),
+    irs::payload::type(),
+    irs::offset::type()
+  };
+
+  const auto positions = irs::flags{
+    irs::document::type(),
+    irs::frequency::type(),
+    irs::position::type()
+  };
+
+  const auto positions_offsets = irs::flags{
+    irs::document::type(),
+    irs::frequency::type(),
+    irs::position::type(),
+    irs::offset::type()
+  };
+
+  const auto positions_payload = irs::flags{
+    irs::document::type(),
+    irs::frequency::type(),
+    irs::position::type(),
+    irs::payload::type()
   };
 
   tests::json_doc_generator gen(
@@ -2749,16 +2872,64 @@ TEST(index_death_test_formats_10, reopen_fail) {
   auto values = column->values();
   ASSERT_EQ(2, segment.docs_count()); // total count of documents
   ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
-  auto terms = segment.field("same");
+  auto terms = segment.field("same_anl_pay");
   ASSERT_NE(nullptr, terms);
-  auto termItr = terms->iterator();
+
+  // regiseter reopen failure in term dictionary
+  {
+    dir.register_failure(failing_directory::Failure::REOPEN, "_1.tm");
+    auto termItr = terms->iterator(); // successful attempt
+    ASSERT_NE(nullptr, termItr);
+    ASSERT_THROW(termItr->next(), irs::io_error);
+  }
+
+  // regiseter reopen failure in term dictionary (nullptr)
+  {
+    dir.register_failure(failing_directory::Failure::REOPEN_NULL, "_1.tm");
+    auto termItr = terms->iterator(); // successful attempt
+    ASSERT_NE(nullptr, termItr);
+    ASSERT_THROW(termItr->next(), irs::io_error);
+  }
+
+  auto termItr = terms->iterator(); // successful attempt
+  ASSERT_NE(nullptr, termItr);
   ASSERT_TRUE(termItr->next());
-  auto docsItr = termItr->postings(iresearch::flags());
+
+  dir.register_failure(failing_directory::Failure::REOPEN, "_1.doc"); // regiseter reopen failure in postings
+  ASSERT_THROW(termItr->postings(iresearch::flags()), irs::io_error); // can't reopen document input
+  dir.register_failure(failing_directory::Failure::REOPEN_NULL, "_1.doc"); // regiseter reopen failure in postings (nullptr)
+  ASSERT_THROW(termItr->postings(iresearch::flags()), irs::io_error); // can't reopen document input (nullptr)
+  dir.register_failure(failing_directory::Failure::REOPEN, "_1.pos"); // regiseter reopen failure in positions
+  ASSERT_THROW(termItr->postings(positions), irs::io_error); // can't reopen position input
+  dir.register_failure(failing_directory::Failure::REOPEN_NULL, "_1.pos"); // regiseter reopen failure in positions (nullptr)
+  ASSERT_THROW(termItr->postings(positions), irs::io_error); // can't reopen position (nullptr)
+  dir.register_failure(failing_directory::Failure::REOPEN, "_1.pay"); // regiseter reopen failure in payload
+  ASSERT_THROW(termItr->postings(positions_offsets), irs::io_error); // can't reopen offset input
+  dir.register_failure(failing_directory::Failure::REOPEN_NULL, "_1.pay"); // regiseter reopen failure in payload (nullptr)
+  ASSERT_THROW(termItr->postings(positions_offsets), irs::io_error); // can't reopen position (nullptr)
+  dir.register_failure(failing_directory::Failure::REOPEN, "_1.pay"); // regiseter reopen failure in payload
+  ASSERT_THROW(termItr->postings(positions_payload), irs::io_error); // can't reopen offset input
+  dir.register_failure(failing_directory::Failure::REOPEN_NULL, "_1.pay"); // regiseter reopen failure in payload (nullptr)
+  ASSERT_THROW(termItr->postings(positions_payload), irs::io_error); // can't reopen position (nullptr)
+
+  dir.register_failure(failing_directory::Failure::REOPEN, "_1.doc"); // regiseter reopen failure in postings
+  dir.register_failure(failing_directory::Failure::REOPEN_NULL, "_1.doc"); // regiseter reopen failure in postings
+  dir.register_failure(failing_directory::Failure::REOPEN, "_1.pos"); // regiseter reopen failure in positions
+  dir.register_failure(failing_directory::Failure::REOPEN_NULL, "_1.pos"); // regiseter reopen failure in positions
+  dir.register_failure(failing_directory::Failure::REOPEN, "_1.pay"); // regiseter reopen failure in payload
+  dir.register_failure(failing_directory::Failure::REOPEN_NULL, "_1.pay"); // regiseter reopen failure in payload
+  ASSERT_THROW(termItr->postings(all_features), irs::io_error);
+  ASSERT_THROW(termItr->postings(all_features), irs::io_error);
+  ASSERT_THROW(termItr->postings(all_features), irs::io_error);
+  ASSERT_THROW(termItr->postings(all_features), irs::io_error);
+  ASSERT_THROW(termItr->postings(all_features), irs::io_error);
+  ASSERT_THROW(termItr->postings(all_features), irs::io_error);
+
+  ASSERT_TRUE(dir.no_failures());
+
+  auto docsItr = termItr->postings(iresearch::flags()); // successful attempt
   ASSERT_TRUE(docsItr->next());
-  dir.register_failure(failing_directory::Failure::REOPEN, "_1.cs"); // regiseter reopen failure in columnstore
-  ASSERT_THROW(values(docsItr->value(), actual_value), irs::io_error); // failed to reopen
   ASSERT_TRUE(values(docsItr->value(), actual_value)); // successful attempt
-  dir.register_failure(failing_directory::Failure::REOPEN, "_1.cs"); // don't need to reopen anymore
   ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
   ASSERT_TRUE(docsItr->next());
   ASSERT_TRUE(values(docsItr->value(), actual_value));
