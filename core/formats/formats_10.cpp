@@ -3962,9 +3962,9 @@ class read_context
     auto clone = stream.reopen();
 
     if (!clone) {
-      IR_FRMT_FATAL("Failed to reopen document input in: %s", __FUNCTION__);
-
-      return nullptr;
+      throw io_error(
+        string_utils::to_string("Failed to reopen document input in: %s", __FUNCTION__)
+      );
     }
 
     return memory::make_shared<read_context>(std::move(clone));
@@ -3981,7 +3981,7 @@ class read_context
   }
 
   template<typename Block, typename... Args>
-  Block* emplace_back(uint64_t offset, Args&&... args) {
+  Block& emplace_back(uint64_t offset, Args&&... args) {
     typename block_cache_traits<Block, Allocator>::cache_t& cache = *this;
 
     // add cache entry
@@ -3996,7 +3996,7 @@ class read_context
       throw;
     }
 
-    return &block;
+    return block;
   }
 
   template<typename Block>
@@ -4041,7 +4041,7 @@ class context_provider: private util::noncopyable {
 // in case of success caches block pointed
 // instance, nullptr otherwise
 template<typename BlockRef>
-const typename BlockRef::block_t* load_block(
+const typename BlockRef::block_t& load_block(
     const context_provider& ctxs,
     BlockRef& ref) {
   typedef typename BlockRef::block_t block_t;
@@ -4050,30 +4050,21 @@ const typename BlockRef::block_t* load_block(
 
   if (!cached) {
     auto ctx = ctxs.get_context();
-
-    if (!ctx) {
-      // unable to get context
-      return nullptr;
-    }
+    assert(ctx);
 
     // load block
-    const auto* block = ctx->template emplace_back<block_t>(ref.offset);
-
-    if (!block) {
-      // failed to load block
-      return nullptr;
-    }
+    const auto& block = ctx->template emplace_back<block_t>(ref.offset);
 
     // mark block as loaded
-    if (ref.pblock.compare_exchange_strong(cached, block)) {
-      cached = block;
+    if (ref.pblock.compare_exchange_strong(cached, &block)) {
+      cached = &block;
     } else {
       // already cached by another thread
       ctx->template pop_back<block_t>();
     }
   }
 
-  return cached;
+  return *cached;
 }
 
 // in case of success caches block pointed
@@ -4081,7 +4072,7 @@ const typename BlockRef::block_t* load_block(
 // retuns a pointer to cached instance,
 // nullptr otherwise
 template<typename BlockRef>
-const typename BlockRef::block_t* load_block(
+const typename BlockRef::block_t& load_block(
     const context_provider& ctxs,
     const BlockRef& ref,
     typename BlockRef::block_t& block) {
@@ -4089,18 +4080,14 @@ const typename BlockRef::block_t* load_block(
 
   if (!cached) {
     auto ctx = ctxs.get_context();
-
-    if (!ctx) {
-      // unable to get context
-      return nullptr;
-    }
+    assert(ctx);
 
     ctx->load(block, ref.offset);
 
     cached = &block;
   }
 
-  return cached;
+  return *cached;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4221,20 +4208,20 @@ class column_iterator final: public irs::doc_iterator {
       return false;
     }
 
-    const auto* cached = load_block(*column_->ctxs_, *begin_);
+    try {
+      const auto& cached = load_block(*column_->ctxs_, *begin_);
 
-    if (!cached) {
+      if (block_ != cached) {
+        block_.reset(cached);
+        payload_.value_ = &(block_.value_payload());
+      }
+    } catch (...) {
       // unable to load block, seal the iterator
       block_.seal();
       begin_ = end_;
       payload_.value_ = nullptr;
 
-      return false;
-    }
-
-    if (block_ != *cached) {
-      block_.reset(*cached);
-      payload_.value_ = &(block_.value_payload());
+      throw;
     }
 
     seek_origin_ = begin_++;
@@ -4354,15 +4341,9 @@ class sparse_column final : public column {
       return false;
     }
 
-    const auto* cached = load_block(*ctxs_, *it);
+    const auto& cached = load_block(*ctxs_, *it);
 
-    if (!cached) {
-      // unable to load block
-      return false;
-    }
-
-    assert(cached);
-    return cached->value(key, value);
+    return cached.value(key, value);
   };
 
   virtual bool visit(
@@ -4370,16 +4351,9 @@ class sparse_column final : public column {
   ) const override {
     block_t block; // don't cache new blocks
     for (auto begin = refs_.begin(), end = refs_.end()-1; begin != end; ++begin) { // -1 for upper bound
-      const auto* cached = load_block(*ctxs_, *begin, block);
+      const auto& cached = load_block(*ctxs_, *begin, block);
 
-      if (!cached) {
-        // unable to load block
-        return false;
-      }
-
-      assert(cached);
-
-      if (!cached->visit(visitor)) {
+      if (!cached.visit(visitor)) {
         return false;
       }
     }
@@ -4548,15 +4522,9 @@ class dense_fixed_offset_column final : public column {
 
     auto& ref = const_cast<block_ref&>(refs_[block_idx]);
 
-    const auto* cached = load_block(*ctxs_, ref);
+    const auto& cached = load_block(*ctxs_, ref);
 
-    if (!cached) {
-      // unable to load block
-      return false;
-    }
-
-    assert(cached);
-    return cached->value(key, value);
+    return cached.value(key, value);
   }
 
   virtual bool visit(
@@ -4564,16 +4532,9 @@ class dense_fixed_offset_column final : public column {
   ) const override {
     block_t block; // don't cache new blocks
     for (auto& ref : refs_) {
-      const auto* cached = load_block(*ctxs_, ref, block);
+      const auto& cached = load_block(*ctxs_, ref, block);
 
-      if (!cached) {
-        // unable to load block
-        return false;
-      }
-
-      assert(cached);
-
-      if (!cached->visit(visitor)) {
+      if (!cached.visit(visitor)) {
         return false;
       }
     }
