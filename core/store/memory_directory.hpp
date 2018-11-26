@@ -168,12 +168,12 @@ class IRESEARCH_API memory_index_input final : public index_input {
 
   explicit memory_index_input(const memory_file& file) NOEXCEPT;
 
-  virtual index_input::ptr dup() const NOEXCEPT override;
+  virtual index_input::ptr dup() const override;
   virtual int64_t checksum(size_t offset) const override;
   virtual bool eof() const override;
   virtual byte_type read_byte() override;
   virtual size_t read_bytes(byte_type* b, size_t len) override;
-  virtual index_input::ptr reopen() const NOEXCEPT override;
+  virtual index_input::ptr reopen() const override;
   virtual size_t length() const override;
 
   virtual size_t file_pointer() const override;

@@ -97,14 +97,8 @@ memory_index_input::memory_index_input(const memory_file& file) NOEXCEPT
   : file_(&file) {
 }
 
-index_input::ptr memory_index_input::dup() const NOEXCEPT {
-  try {
-    return index_input::make<memory_index_input>(*this);
-  } catch(...) {
-    IR_LOG_EXCEPTION();
-  }
-
-  return nullptr;
+index_input::ptr memory_index_input::dup() const {
+  return index_input::make<memory_index_input>(*this);
 }
 
 int64_t memory_index_input::checksum(size_t offset) const {
@@ -150,7 +144,7 @@ bool memory_index_input::eof() const {
   return file_pointer() >= file_->length();
 }
 
-index_input::ptr memory_index_input::reopen() const NOEXCEPT {
+index_input::ptr memory_index_input::reopen() const {
   return dup(); // memory_file pointers are thread-safe
 }
 

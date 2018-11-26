@@ -1127,7 +1127,8 @@ index_input& term_iterator::terms_input() const {
     terms_in_ = owner_->owner_->terms_in_->reopen();
 
     if (!terms_in_) {
-      IR_FRMT_FATAL("Failed to reopen terms input in: %s", __FUNCTION__);
+      // implementation returned wrong pointer
+      IR_FRMT_ERROR("Failed to reopen terms input in: %s", __FUNCTION__);
 
       throw io_error("failed to reopen terms input");
     }

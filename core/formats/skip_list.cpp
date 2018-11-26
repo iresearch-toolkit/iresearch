@@ -178,9 +178,18 @@ skip_reader::level::level(skip_reader::level&& rhs) NOEXCEPT
     doc(rhs.doc) {
 }
 
-index_input::ptr skip_reader::level::dup() const NOEXCEPT {
+index_input::ptr skip_reader::level::dup() const {
+  auto clone = stream->dup(); // non thread-safe clone
+
+  if (!clone) {
+    // implementation returned wrong pointer
+    IR_FRMT_ERROR("Failed to duplicate document input in: %s", __FUNCTION__);
+
+    throw io_error("failed to duplicate document input");
+  }
+
   return index_input::make<skip_reader::level>(
-    stream->dup(), step, begin, end, child, skipped, doc
+    std::move(clone), step, begin, end, child, skipped, doc
   );
 }
 
@@ -193,9 +202,18 @@ size_t skip_reader::level::read_bytes(byte_type* b, size_t count) {
   return stream->read_bytes(b, std::min(size_t(end) - file_pointer(), count));
 }
 
-index_input::ptr skip_reader::level::reopen() const NOEXCEPT {
+index_input::ptr skip_reader::level::reopen() const {
+  auto clone = stream->reopen(); // tread-safe clone
+
+  if (!clone) {
+    // implementation returned wrong pointer
+    IR_FRMT_ERROR("Failed to reopen document input in: %s", __FUNCTION__);
+
+    throw io_error("failed to reopen document input");
+  }
+
   return index_input::make<skip_reader::level>(
-    stream->reopen(), step, begin, end, child, skipped, doc
+    std::move(clone), step, begin, end, child, skipped, doc
   );
 }
 

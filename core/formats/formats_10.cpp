@@ -1027,7 +1027,8 @@ class doc_iterator : public irs::doc_iterator {
         doc_in_ = doc_in->reopen();
 
         if (!doc_in_) {
-          IR_FRMT_FATAL("Failed to reopen document input in: %s", __FUNCTION__);
+          // implementation returned wrong pointer
+          IR_FRMT_ERROR("Failed to reopen document input in: %s", __FUNCTION__);
 
           throw io_error("failed to reopen document input");
         }
@@ -1239,6 +1240,13 @@ void doc_iterator::seek_to_block(doc_id_t target) {
     // init skip writer in lazy fashion
     if (!skip_) {
       index_input::ptr skip_in = doc_in_->dup();
+
+      if (!skip_in) {
+        IR_FRMT_ERROR("Failed to duplicate input in: %s", __FUNCTION__);
+
+        throw io_error("Failed to duplicate document input");
+      }
+
       skip_in->seek(term_state_.doc_start + term_state_.e_skip_start);
 
       skip_.prepare(
@@ -1382,7 +1390,8 @@ class pos_iterator: public position {
     pos_in_ = state.pos_in->reopen();
 
     if (!pos_in_) {
-      IR_FRMT_FATAL("Failed to reopen positions input in: %s", __FUNCTION__);
+      // implementation returned wrong pointer
+      IR_FRMT_ERROR("Failed to reopen positions input in: %s", __FUNCTION__);
 
       throw io_error("failed to reopen positions input");
     }
@@ -1495,7 +1504,8 @@ class offs_pay_iterator final: public pos_iterator {
     pay_in_ = state.pay_in->reopen();
 
     if (!pay_in_) {
-      IR_FRMT_FATAL("Failed to reopen payload input in: %s", __FUNCTION__);
+      // implementation returned wrong pointer
+      IR_FRMT_ERROR("Failed to reopen payload input in: %s", __FUNCTION__);
 
       throw io_error("failed to reopen payload input");
     }
@@ -1640,7 +1650,8 @@ class offs_iterator final : public pos_iterator {
     pay_in_ = state.pay_in->reopen();
 
     if (!pay_in_) {
-      IR_FRMT_FATAL("Failed to reopen payload input in: %s", __FUNCTION__);
+      // implementation returned wrong pointer
+      IR_FRMT_ERROR("Failed to reopen payload input in: %s", __FUNCTION__);
 
       throw io_error("failed to reopen payload input");
     }
@@ -1750,7 +1761,8 @@ class pay_iterator final : public pos_iterator {
     pay_in_ = state.pay_in->reopen();
 
     if (!pay_in_) {
-      IR_FRMT_FATAL("Failed to reopen payload input in: %s", __FUNCTION__);
+      // implementation returned wrong pointer
+      IR_FRMT_ERROR("Failed to reopen payload input in: %s", __FUNCTION__);
 
       throw io_error("failed to reopen payload input");
     }
@@ -2208,7 +2220,7 @@ struct segment_meta_writer final : public irs::segment_meta_writer{
   static const int32_t FORMAT_MIN = 0;
   static const int32_t FORMAT_MAX = FORMAT_MIN;
 
-  enum flags_t {
+  enum {
     HAS_COLUMN_STORE = 1,
   };
 
@@ -2242,7 +2254,7 @@ void segment_meta_writer::write(directory& dir, std::string& meta_file, const se
   }
 
   const byte_type flags = meta.column_store
-    ? segment_meta_writer::flags_t::HAS_COLUMN_STORE
+    ? segment_meta_writer::HAS_COLUMN_STORE
     : 0;
 
   format_utils::write_header(*out, FORMAT_NAME, FORMAT_MAX);
@@ -2313,7 +2325,7 @@ void segment_meta_reader::read(
   const auto flags = in->read_byte();
   auto files = read_strings<segment_meta::file_set>(*in);
 
-  if (flags & ~(segment_meta_writer::flags_t::HAS_COLUMN_STORE)) {
+  if (flags & ~(segment_meta_writer::HAS_COLUMN_STORE)) {
     throw index_error(
       std::string("while reading segment meta '" + name
       + "', error: use of unsupported flags '" + std::to_string(flags) + "'")
@@ -2328,7 +2340,7 @@ void segment_meta_reader::read(
 
   meta.name = std::move(name);
   meta.version = version;
-  meta.column_store = flags & segment_meta_writer::flags_t::HAS_COLUMN_STORE;
+  meta.column_store = flags & segment_meta_writer::HAS_COLUMN_STORE;
   meta.docs_count = docs_count;
   meta.live_docs_count = live_docs_count;
   meta.size = size;
@@ -3962,9 +3974,10 @@ class read_context
     auto clone = stream.reopen(); // thead-safe stream
 
     if (!clone) {
-      throw io_error(
-        string_utils::to_string("Failed to reopen document input in: %s", __FUNCTION__)
-      );
+      // implementation returned wrong pointer
+      IR_FRMT_ERROR("Failed to reopen columpstore input in: %s", __FUNCTION__);
+
+      throw io_error("Failed to reopen columnstore input in");
     }
 
     return memory::make_shared<read_context>(std::move(clone));

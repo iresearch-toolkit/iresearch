@@ -265,7 +265,9 @@ class fs_index_input : public buffered_index_input {
     return crc.checksum();
   }
 
-  virtual ptr dup() const NOEXCEPT override;
+  virtual ptr dup() const override {
+    return index_input::make<fs_index_input>(*this);
+  }
 
   static index_input::ptr open(
     const file_path_t name, size_t pool_size, IOAdvice /*advice*/
@@ -325,7 +327,7 @@ class fs_index_input : public buffered_index_input {
     return handle_->size;
   }
 
-  virtual ptr reopen() const NOEXCEPT override;
+  virtual ptr reopen() const override;
 
  protected:
   virtual void seek_internal(size_t pos) override {
@@ -423,95 +425,47 @@ class pooled_fs_index_input final : public fs_index_input {
 
   explicit pooled_fs_index_input(const fs_index_input& in);
   virtual ~pooled_fs_index_input() NOEXCEPT;
-  virtual index_input::ptr dup() const NOEXCEPT override;
-  virtual index_input::ptr reopen() const NOEXCEPT override;
+  virtual index_input::ptr dup() const override {
+    return index_input::make<pooled_fs_index_input>(*this);
+  }
+  virtual index_input::ptr reopen() const override;
 
  private:
   typedef unbounded_object_pool<file_handle> fd_pool_t;
   std::shared_ptr<fd_pool_t> fd_pool_;
 
   pooled_fs_index_input(const pooled_fs_index_input& in) = default;
-  file_handle::ptr reopen(const file_handle& src) const NOEXCEPT;
+  file_handle::ptr reopen(const file_handle& src) const;
 }; // pooled_fs_index_input
 
-index_input::ptr fs_index_input::dup() const NOEXCEPT {
-  try {
-    return index_input::make<fs_index_input>(*this);
-  } catch(...) {
-    IR_LOG_EXCEPTION();
-  }
-
-  return nullptr;
-}
-
-index_input::ptr fs_index_input::reopen() const NOEXCEPT {
-  index_input::ptr ptr;
-
-  try {
-    ptr = index_input::make<pooled_fs_index_input>(*this);
-  } catch (...) {
-    IR_LOG_EXCEPTION();
-    return nullptr;
-  }
-
-  assert(ptr);
-
-  auto& in = static_cast<pooled_fs_index_input&>(*ptr);
-
-  if (!in.handle_ || !in.handle_->handle) {
-    return nullptr;
-  }
-
-  return ptr;
+index_input::ptr fs_index_input::reopen() const {
+  return index_input::make<pooled_fs_index_input>(*this);
 }
 
 pooled_fs_index_input::pooled_fs_index_input(const fs_index_input& in)
-  : fs_index_input(in), fd_pool_(memory::make_shared<fd_pool_t>(pool_size_)) {
+  : fs_index_input(in),
+    fd_pool_(memory::make_shared<fd_pool_t>(pool_size_)) {
   handle_ = reopen(*handle_);
-
-  if (!handle_ || !handle_->handle) {
-    throw io_error(string_utils::to_string(
-      "Failed to reopen input file in function %s",
-      __FUNCTION__
-    ));
-  }
 }
 
 pooled_fs_index_input::~pooled_fs_index_input() NOEXCEPT {
   handle_.reset(); // release handle before the fs_pool_ is deallocated
 }
 
-index_input::ptr pooled_fs_index_input::dup() const NOEXCEPT {
-  try {
-    return index_input::make<pooled_fs_index_input>(*this);
-  } catch(...) {
-    IR_LOG_EXCEPTION();
-  }
-
-  return nullptr;
-}
-
-index_input::ptr pooled_fs_index_input::reopen() const NOEXCEPT {
+index_input::ptr pooled_fs_index_input::reopen() const {
   auto ptr = dup();
-
-  if (!ptr) {
-    return nullptr;
-  }
+  assert(ptr);
 
   auto& in = static_cast<pooled_fs_index_input&>(*ptr);
-
   in.handle_ = reopen(*handle_); // reserve a new handle from pool
-
-  if (!in.handle_ || !in.handle_->handle) {
-    return nullptr;
-  }
+  assert(in.handle_ && in.handle_->handle);
 
   return ptr;
 }
 
 fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
   const file_handle& src
-) const NOEXCEPT {
+) const {
   // reserve a new handle from the pool
   auto handle = const_cast<pooled_fs_index_input*>(this)->fd_pool_->emplace().release();
 
@@ -520,13 +474,21 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
 
     if (!handle->handle) {
       // even win32 uses 'errno' for error codes in calls to file_open(...)
-      IR_FRMT_ERROR("Failed to reopen input file, error: %d", errno);
-
-      return nullptr;
+      throw io_error(string_utils::to_string(
+        "Failed to reopen input file, error: %d", errno
+      ));
     }
   }
 
-  handle->pos = ::ftell(handle->handle.get()); // match position of file descriptor
+  const auto pos = ::ftell(handle->handle.get()); // match position of file descriptor
+
+  if (pos < 0) {
+    throw io_error(string_utils::to_string(
+      "Failed to obtain currnt position of input file, error: %d", errno
+    ));
+  }
+
+  handle->pos = pos;
   handle->size = src.size;
 
   return handle;

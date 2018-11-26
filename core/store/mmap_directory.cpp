@@ -101,16 +101,11 @@ class mmap_index_input : public irs::bytes_ref_input {
     }
   }
 
-  virtual ptr dup() const NOEXCEPT override {
-    try {
-      return mmap_index_input::make<mmap_index_input>(*this);
-    } catch (...) {
-      IR_LOG_EXCEPTION();
-      return nullptr;
-    }
+  virtual ptr dup() const override {
+    return mmap_index_input::make<mmap_index_input>(*this);
   }
 
-  virtual ptr reopen() const NOEXCEPT override {
+  virtual ptr reopen() const override {
     return dup();
   }
 
