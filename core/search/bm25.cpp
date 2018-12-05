@@ -312,7 +312,7 @@ class collector final : public iresearch::sort::collector {
     assert(bm25stats->idf >= 0);
 
     if (b_ == 0.f) {
-      // BM11 without norms
+      // BM15 without norms
       return;
     }
 
