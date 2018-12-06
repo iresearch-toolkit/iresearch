@@ -52,11 +52,13 @@ struct segment_stat {
     auto& lhs = *this;
 
     if (lhs.size == rhs.size) {
-      if (lhs.fill_factor == rhs.fill_factor) {
-        return lhs.meta->name < rhs.meta->name;
+      if (lhs.fill_factor > rhs.fill_factor) {
+        return true;
+      } else if (lhs.fill_factor < rhs.fill_factor) {
+        return false;
       }
 
-      return lhs.fill_factor > rhs.fill_factor;
+      return lhs.meta->name < rhs.meta->name;
     }
 
     return lhs.size < rhs.size;
@@ -136,21 +138,25 @@ double_t consolidation_score(
     const size_t segments_per_tier,
     const size_t floor_segment_bytes
 ) NOEXCEPT {
+  // to detect how skewed the consolidation we do the following:
+  // 1. evaluate coefficient of variation, less is better
+  // 2. good candidates are in range [0;1]
+  // 3. favor condidates where number of segments is equal to 'segments_per_tier' approx
+  // 4. prefer smaller consolidations
+  // 5. prefer consolidations which clean removals
+
   switch (consolidation.count) {
     case 0:
+      // empty consolidation makes not sense
       return DBL_MIN;
     case 1: {
       auto& meta = *consolidation.segments.first->meta;
-      if (meta.docs_count == meta.live_docs_count) {
-        // singleton without removals makes no sense
-        // note: that is important to return score higher than default value
-        return 0.;
-      }
-    } break;
-  }
 
-  // detect how skewed the consolidation is, we want
-  // segments of approximately the same size
+      return meta.docs_count == meta.live_docs_count
+        ? 0.   // singletone without removals makes no sense                      FIXME DBL_MIN
+        : -1.; // signletone with removals makes sense if nothing better is found FIXME choose better value
+    }
+  }
 
   size_t size_before_consolidation = 0;
   size_t size_after_consolidation = 0;
@@ -169,8 +175,11 @@ double_t consolidation_score(
     sum_square_differences += diff*diff;
   }
 
-  const auto stddev = std::sqrt(sum_square_differences/consolidation.count);
-  auto score = 1. - (stddev / segment_size_after_consolidaton_mean);
+  const auto stdev = std::sqrt(sum_square_differences/consolidation.count);
+  const auto cv = (stdev / segment_size_after_consolidaton_mean);
+
+  // evaluate initial score
+  auto score = 1. - cv;
 
   // favor consolidations that contain approximately the requested number of segments
   score *= std::pow(consolidation.count/double_t(segments_per_tier), 1.5);
@@ -178,6 +187,7 @@ double_t consolidation_score(
   // carefully prefer smaller consolidations over the bigger ones
   score /= std::pow(size_after_consolidation, 0.5);
 
+  // FIXME consider increasing influence of the removals
   // favor consolidations which clean out removals
   score /= std::pow(double_t(size_after_consolidation)/size_before_consolidation, 2.);
 

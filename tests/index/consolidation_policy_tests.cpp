@@ -43,6 +43,7 @@ void print_consolidation(
   std::set<const irs::segment_meta*> candidates;
   irs::index_writer::consolidating_segments_t consolidating_segments;
 
+  size_t i = 0;
   while (true) {
     candidates.clear();
     policy(candidates, meta, consolidating_segments);
@@ -55,9 +56,9 @@ void print_consolidation(
       candidates.begin(), candidates.end(), less
     );
 
-    std::cerr << "Consolidation: ";
+    std::cerr << "Consolidation " << i++ << ": ";
     for (auto* segment : sorted_candidates) {
-      std::cerr << segment->size << ", ";
+      std::cerr << segment->size << " (" << double_t(segment->live_docs_count)/segment->docs_count << "), ";
     }
     std::cerr << std::endl;
 
@@ -507,6 +508,47 @@ TEST(consolidation_test_tier, test_consolidation_floor) {
   }
 }
 
+TEST(consolidation_test_tier, test_prefer_segments_with_removals) {
+  // generate meta
+  irs::index_meta meta;
+  meta.add(irs::segment_meta("0", nullptr, 10, 10, false, irs::segment_meta::file_set(), 10));
+  meta.add(irs::segment_meta("1", nullptr, 10, 10, false, irs::segment_meta::file_set(), 10));
+  meta.add(irs::segment_meta("2", nullptr, 11, 10, false, irs::segment_meta::file_set(), 11));
+  meta.add(irs::segment_meta("3", nullptr, 11, 10, false, irs::segment_meta::file_set(), 11));
+
+  // ensure policy prefers segments with removals
+  irs::index_utils::consolidate_tier options;
+  options.floor_segment_bytes = 1;
+  options.max_segments = 2;
+  options.min_segments = 1;
+  options.max_segments_bytes = irs::integer_traits<size_t>::const_max;
+
+  irs::index_writer::consolidating_segments_t consolidating_segments;
+  auto policy = irs::index_utils::consolidation_policy(options);
+
+  const std::vector<std::vector<size_t>> expected_tiers {
+    { 2, 3 },
+    { 0, 1 }
+  };
+
+  for (auto& expected_tier : expected_tiers) {
+    std::set<const irs::segment_meta*> candidates;
+    policy(candidates, meta, consolidating_segments);
+    assert_candidates(meta, expected_tier, candidates);
+    candidates.clear();
+    policy(candidates, meta, consolidating_segments);
+    assert_candidates(meta, expected_tier, candidates);
+    consolidating_segments.insert(candidates.begin(), candidates.end()); // register candidates for consolidation
+  }
+
+  // no more segments to consolidate
+  {
+    std::set<const irs::segment_meta*> candidates;
+    policy(candidates, meta, consolidating_segments);
+    ASSERT_TRUE(candidates.empty());
+  }
+}
+
 TEST(consolidation_test_tier, test_defaults) {
   irs::index_utils::consolidate_tier options;
   auto policy = irs::index_utils::consolidation_policy(options);
@@ -713,6 +755,54 @@ TEST(consolidation_test_tier, test_skewed_segments) {
 
   {
     irs::index_utils::consolidate_tier options;
+    options.min_segments = 1;            // min number of segments per tier to merge at once
+    options.max_segments = 2;           // max number of segments per tier to merge at once
+    options.max_segments_bytes = 250000; // max size of the merge
+    options.floor_segment_bytes = 50;    // smaller segments will be treated as equal to this value
+    options.lookahead =  irs::integer_traits<size_t>::const_max;
+    auto policy = irs::index_utils::consolidation_policy(options);
+
+    irs::index_writer::consolidating_segments_t consolidating_segments;
+    irs::index_meta meta;
+    meta.add(irs::segment_meta("0", nullptr, 100, 100, false, irs::segment_meta::file_set{}, 10));
+    meta.add(irs::segment_meta("1", nullptr, 100, 100, false, irs::segment_meta::file_set{}, 100));
+    meta.add(irs::segment_meta("2", nullptr, 100, 100, false, irs::segment_meta::file_set{}, 500));
+    meta.add(irs::segment_meta("3", nullptr, 100, 100, false, irs::segment_meta::file_set{}, 1000));
+    meta.add(irs::segment_meta("4", nullptr, 100, 100, false, irs::segment_meta::file_set{}, 2000));
+    meta.add(irs::segment_meta("5", nullptr, 100, 100, false, irs::segment_meta::file_set{}, 4000));
+    meta.add(irs::segment_meta("6", nullptr, 100, 100, false, irs::segment_meta::file_set{}, 12000));
+    meta.add(irs::segment_meta("7", nullptr, 100, 100, false, irs::segment_meta::file_set{}, 30000));
+    meta.add(irs::segment_meta("8", nullptr, 100, 100, false, irs::segment_meta::file_set{}, 50000));
+    meta.add(irs::segment_meta("9", nullptr, 100, 100, false, irs::segment_meta::file_set{}, 100000));
+
+    const std::vector<std::vector<size_t>> expected_tiers {
+      { 0, 1 },
+      { 2, 3 },
+      { 4, 5 },
+      { 6, 7 },
+      { 8, 9 }
+    };
+
+    for (auto& expected_tier : expected_tiers) {
+      std::set<const irs::segment_meta*> candidates;
+      policy(candidates, meta, consolidating_segments);
+      assert_candidates(meta, expected_tier, candidates);
+      candidates.clear();
+      policy(candidates, meta, consolidating_segments);
+      assert_candidates(meta, expected_tier, candidates);
+      consolidating_segments.insert(candidates.begin(), candidates.end()); // register candidates for consolidation
+    }
+
+    // no more segments to consolidate
+    {
+      std::set<const irs::segment_meta*> candidates;
+      policy(candidates, meta, consolidating_segments);
+      ASSERT_TRUE(candidates.empty());
+    }
+  }
+
+  {
+    irs::index_utils::consolidate_tier options;
     options.min_segments = 3;            // min number of segments per tier to merge at once
     options.max_segments = 10;           // max number of segments per tier to merge at once
     options.max_segments_bytes = 250000; // max size of the merge
@@ -815,6 +905,266 @@ TEST(consolidation_test_tier, test_skewed_segments) {
       ASSERT_TRUE(candidates.empty());
     }
   }
+
+  {
+    irs::index_utils::consolidate_tier options;
+    options.min_segments = 1;            // min number of segments per tier to merge at once
+    options.max_segments = 10;           // max number of segments per tier to merge at once
+    options.max_segments_bytes = 250000; // max size of the merge
+    options.floor_segment_bytes = 1;    // smaller segments will be treated as equal to this value
+    options.lookahead = irs::integer_traits<size_t>::const_max;
+    options.min_score = 0; // default min score
+    auto policy = irs::index_utils::consolidation_policy(options);
+
+    irs::index_writer::consolidating_segments_t consolidating_segments;
+    irs::index_meta meta;
+    meta.add(irs::segment_meta("0", nullptr, 100, 100, false, irs::segment_meta::file_set{}, 1));
+    meta.add(irs::segment_meta("1", nullptr, 100, 100, false, irs::segment_meta::file_set{}, 9886));
+
+    const std::vector<std::vector<size_t>> expected_tiers {
+      { 0, 1 }
+    };
+
+    for (auto& expected_tier : expected_tiers) {
+      std::set<const irs::segment_meta*> candidates;
+      policy(candidates, meta, consolidating_segments);
+      assert_candidates(meta, expected_tier, candidates);
+      candidates.clear();
+      policy(candidates, meta, consolidating_segments);
+      assert_candidates(meta, expected_tier, candidates);
+      consolidating_segments.insert(candidates.begin(), candidates.end()); // register candidates for consolidation
+    }
+    ASSERT_EQ(meta.size(), consolidating_segments.size());
+
+    // no segments to consolidate
+    {
+      std::set<const irs::segment_meta*> candidates;
+      policy(candidates, meta, consolidating_segments);
+      ASSERT_TRUE(candidates.empty());
+    }
+  }
+
+  {
+    irs::index_utils::consolidate_tier options;
+    options.min_segments = 1;            // min number of segments per tier to merge at once
+    options.max_segments = 10;           // max number of segments per tier to merge at once
+    options.max_segments_bytes = 250000; // max size of the merge
+    options.floor_segment_bytes = 1;    // smaller segments will be treated as equal to this value
+    options.lookahead = irs::integer_traits<size_t>::const_max;
+    options.min_score = 0.001; // filter out irrelevant merges
+    auto policy = irs::index_utils::consolidation_policy(options);
+
+    irs::index_writer::consolidating_segments_t consolidating_segments;
+    irs::index_meta meta;
+    meta.add(irs::segment_meta("0", nullptr, 100, 100, false, irs::segment_meta::file_set{}, 1));
+    meta.add(irs::segment_meta("1", nullptr, 100, 100, false, irs::segment_meta::file_set{}, 9886));
+
+    // no segments to consolidate
+    {
+      std::set<const irs::segment_meta*> candidates;
+      policy(candidates, meta, consolidating_segments);
+      ASSERT_TRUE(candidates.empty());
+    }
+  }
+
+  {
+    irs::index_utils::consolidate_tier options;
+    options.min_segments = 1;            // min number of segments per tier to merge at once
+    options.max_segments = 10;           // max number of segments per tier to merge at once
+    options.max_segments_bytes = 250000; // max size of the merge
+    options.floor_segment_bytes = 1;    // smaller segments will be treated as equal to this value
+    options.lookahead = irs::integer_traits<size_t>::const_max;
+    options.min_score = 0; // default min score
+    auto policy = irs::index_utils::consolidation_policy(options);
+
+    irs::index_writer::consolidating_segments_t consolidating_segments;
+    irs::index_meta meta;
+    meta.add(irs::segment_meta("0", nullptr, 100, 100, false, irs::segment_meta::file_set{}, 1));
+    meta.add(irs::segment_meta("1", nullptr, 100, 100, false, irs::segment_meta::file_set{}, 9886));
+    meta.add(irs::segment_meta("2", nullptr, 100, 100, false, irs::segment_meta::file_set{}, 2));
+
+    const std::vector<std::vector<size_t>> expected_tiers {
+      { 0, 2 },
+      { 1 }
+    };
+
+    for (auto& expected_tier : expected_tiers) {
+      std::set<const irs::segment_meta*> candidates;
+      policy(candidates, meta, consolidating_segments);
+      assert_candidates(meta, expected_tier, candidates);
+      candidates.clear();
+      policy(candidates, meta, consolidating_segments);
+      assert_candidates(meta, expected_tier, candidates);
+      consolidating_segments.insert(candidates.begin(), candidates.end()); // register candidates for consolidation
+    }
+    ASSERT_EQ(meta.size(), consolidating_segments.size());
+
+    // no segments to consolidate
+    {
+      std::set<const irs::segment_meta*> candidates;
+      policy(candidates, meta, consolidating_segments);
+      ASSERT_TRUE(candidates.empty());
+    }
+  }
+
+  {
+    irs::index_utils::consolidate_tier options;
+    options.min_segments = 1;            // min number of segments per tier to merge at once
+    options.max_segments = 10;           // max number of segments per tier to merge at once
+    options.max_segments_bytes = 250000; // max size of the merge
+    options.floor_segment_bytes = 1;    // smaller segments will be treated as equal to this value
+    options.lookahead = irs::integer_traits<size_t>::const_max;
+    options.min_score = 0.001; // filter our irrelevant merges
+    auto policy = irs::index_utils::consolidation_policy(options);
+
+    irs::index_writer::consolidating_segments_t consolidating_segments;
+    irs::index_meta meta;
+    meta.add(irs::segment_meta("0", nullptr, 100, 100, false, irs::segment_meta::file_set{}, 1));
+    meta.add(irs::segment_meta("1", nullptr, 100, 100, false, irs::segment_meta::file_set{}, 9886));
+    meta.add(irs::segment_meta("2", nullptr, 100, 100, false, irs::segment_meta::file_set{}, 2));
+
+    const std::vector<std::vector<size_t>> expected_tiers {
+      { 0, 2 },
+    };
+
+    for (auto& expected_tier : expected_tiers) {
+      std::set<const irs::segment_meta*> candidates;
+      policy(candidates, meta, consolidating_segments);
+      assert_candidates(meta, expected_tier, candidates);
+      candidates.clear();
+      policy(candidates, meta, consolidating_segments);
+      assert_candidates(meta, expected_tier, candidates);
+      consolidating_segments.insert(candidates.begin(), candidates.end()); // register candidates for consolidation
+    }
+
+    // no segments to consolidate
+    {
+      std::set<const irs::segment_meta*> candidates;
+      policy(candidates, meta, consolidating_segments);
+      ASSERT_TRUE(candidates.empty());
+    }
+  }
+
+  {
+    irs::index_utils::consolidate_tier options;
+    options.min_segments = 1;            // min number of segments per tier to merge at once
+    options.max_segments = 10; // max number of segments per tier to merge at once
+    options.max_segments_bytes = irs::integer_traits<size_t>::const_max;; // max size of the merge
+    options.floor_segment_bytes = 50;    // smaller segments will be treated as equal to this value
+    options.lookahead = 1;
+    auto policy = irs::index_utils::consolidation_policy(options);
+
+    irs::index_meta meta;
+
+    // generate meta
+    {
+      const size_t sizes[] = {
+        90, 100, 110, 95, 105,
+        150, 145, 155, 160, 165,
+        1000, 900, 1100, 1150, 950,
+        10000, 10100, 9900, 10250, 9800,
+        110000, 110100, 19900, 110250, 19800
+      };
+
+      for (auto begin = std::begin(sizes), end = std::end(sizes); begin != end; ++begin) {
+        const auto i = std::distance(begin, end);
+        meta.add(irs::segment_meta(std::to_string(i), nullptr, 100, 100, false, irs::segment_meta::file_set{}, *begin));
+      }
+    }
+
+    const std::vector<std::vector<size_t>> expected_tiers {
+      { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 },
+      { 10, 11, 12, 13, 14 },
+      { 15, 16, 17, 18, 19},
+      { 22, 24 },
+      { 20, 21, 23 },
+    };
+
+    irs::index_writer::consolidating_segments_t consolidating_segments;
+    for (auto& expected_tier : expected_tiers) {
+      std::set<const irs::segment_meta*> candidates;
+      policy(candidates, meta, consolidating_segments);
+      assert_candidates(meta, expected_tier, candidates);
+      candidates.clear();
+      policy(candidates, meta, consolidating_segments);
+      assert_candidates(meta, expected_tier, candidates);
+      consolidating_segments.insert(candidates.begin(), candidates.end()); // register candidates for consolidation
+    }
+    ASSERT_EQ(meta.size(), consolidating_segments.size());
+
+    // no more segments to consolidate
+    {
+      std::set<const irs::segment_meta*> candidates;
+      policy(candidates, meta, consolidating_segments);
+      ASSERT_TRUE(candidates.empty());
+    }
+  }
+
+/*
+  {
+    irs::index_utils::consolidate_tier options;
+    options.min_segments = 1;            // min number of segments per tier to merge at once
+    options.max_segments = 10; // max number of segments per tier to merge at once
+    options.max_segments_bytes = irs::integer_traits<size_t>::const_max;; // max size of the merge
+    options.floor_segment_bytes = 50;    // smaller segments will be treated as equal to this value
+    options.lookahead = 1;
+    auto policy = irs::index_utils::consolidation_policy(options);
+
+    irs::index_meta meta;
+
+    // generate meta
+    {
+      const size_t sizes[] = {
+        90, 100, 110, 95, 105,
+        150, 145, 155, 160, 165,
+        1000, 900, 1100, 1150, 950,
+        10000, 10100, 9900, 10250, 9800,
+        110000, 110100, 19900, 110250, 19800,
+      };
+
+      for (auto begin = std::begin(sizes), end = std::end(sizes); begin != end; ++begin) {
+        const auto i = std::distance(begin, end);
+        meta.add(irs::segment_meta(std::to_string(i), nullptr, 100, 100, false, irs::segment_meta::file_set{}, *begin));
+      }
+
+
+      const_cast<irs::segment_meta&>(meta[25].meta).live_docs_count = 99;
+      const_cast<irs::segment_meta&>(meta[26].meta).live_docs_count = 99;
+//      const_cast<irs::segment_meta&>(meta[17].meta).live_docs_count = 1;
+//      const_cast<irs::segment_meta&>(meta[18].meta).live_docs_count = 1;
+//      const_cast<irs::segment_meta&>(meta[19].meta).live_docs_count = 1;
+    }
+
+    print_consolidation(meta, policy);
+
+    const std::vector<std::vector<size_t>> expected_tiers {
+      { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 },
+      { 10, 11, 12, 13, 14 },
+      { 15, 16, 17, 18, 19},
+      { 22, 24 },
+      { 20, 21, 23 },
+    };
+
+    irs::index_writer::consolidating_segments_t consolidating_segments;
+    for (auto& expected_tier : expected_tiers) {
+      std::set<const irs::segment_meta*> candidates;
+      policy(candidates, meta, consolidating_segments);
+      assert_candidates(meta, expected_tier, candidates);
+      candidates.clear();
+      policy(candidates, meta, consolidating_segments);
+      assert_candidates(meta, expected_tier, candidates);
+      consolidating_segments.insert(candidates.begin(), candidates.end()); // register candidates for consolidation
+    }
+    ASSERT_EQ(meta.size(), consolidating_segments.size());
+
+    // no more segments to consolidate
+    {
+      std::set<const irs::segment_meta*> candidates;
+      policy(candidates, meta, consolidating_segments);
+      ASSERT_TRUE(candidates.empty());
+    }
+  }
+*/
 }
 
 /*
@@ -843,19 +1193,6 @@ TEST(consolidation_test_tier, print_consolidation) {
  // const size_t sizes[] = {
  //74604, 51462, 27638, 81295, 75957, 91440, 17068, 85996, 82025, 98362, 96854, 90636, 71054, 86661, 74262, 38172, 10466, 17682, 49883, 8338, 40183, 77155, 19723, 76477, 66132, 15475, 18601, 87714, 22698, 59075, 1573, 38357, 68392, 6167, 95481, 91022, 77503, 8948, 99338, 43697, 50419, 60041, 33054, 57314, 2088, 53208, 19883, 80704, 26602, 85861, 70361, 16845, 85436, 65456, 6352, 97385, 71451, 18428, 87989, 13448, 72374, 55228, 43709, 22734, 88412, 88552, 16858, 85550, 78397, 25945, 7546, 90200, 78385, 96336, 84866
  // };
-
-//  const size_t sizes[] = {
-//    90,
-//    11000
-//  };
-
-//  const size_t sizes[] = {
-//    90, 100, 110, 95, 105,
-//    150, 145, 155, 160, 165,
-//    1000, 900, 1100, 1150, 950,
-//    10000, 10100, 9900, 10250, 9800,
-//    110000, 110100, 19900, 110250, 19800,
-//  };
 
   irs::index_meta meta;
   for (auto begin = std::begin(sizes), end = std::end(sizes); begin != end; ++begin) {
