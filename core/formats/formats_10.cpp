@@ -1047,6 +1047,8 @@ class doc_iterator : public irs::doc_iterator {
     }
 
     seek_to_block(target);
+
+    // FIXME binary search instead of linear
     irs::seek(*this, target);
     return value();
   }
@@ -1458,7 +1460,7 @@ class pos_iterator: public position {
     }
 
     if (count < left) {
-      buf_pos_ += uint32_t(count);
+      buf_pos_ += count;
     }
     clear();
     value_ = 0;

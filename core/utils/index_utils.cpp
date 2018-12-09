@@ -103,7 +103,7 @@ struct consolidation_candidate {
   range_t segments;
   size_t count{ 0 };
   size_t size{ 0 }; // estimated size of the level
-  double_t score{ -1. }; // how good this permutation is
+  double_t score{ DBL_MIN }; // how good this permutation is
 };
 
 struct consolidation {
@@ -152,9 +152,14 @@ double_t consolidation_score(
     case 1: {
       auto& meta = *consolidation.segments.first->meta;
 
-      return meta.docs_count == meta.live_docs_count
-        ? 0.   // singletone without removals makes no sense                      FIXME DBL_MIN
-        : -1.; // signletone with removals makes sense if nothing better is found FIXME choose better value
+      if (meta.docs_count == meta.live_docs_count) {
+        // singletone without removals makes no sense
+        return DBL_MIN;
+      }
+
+      // FIXME honor number of deletes???
+      // signletone with removals makes sense if nothing better is found
+       return DBL_MIN + DBL_EPSILON;
     }
   }
 
@@ -184,12 +189,12 @@ double_t consolidation_score(
   // favor consolidations that contain approximately the requested number of segments
   score *= std::pow(consolidation.count/double_t(segments_per_tier), 1.5);
 
+  // FIXME use relative measure, e.g. cosolidation_size/total_size
   // carefully prefer smaller consolidations over the bigger ones
   score /= std::pow(size_after_consolidation, 0.5);
 
-  // FIXME consider increasing influence of the removals
   // favor consolidations which clean out removals
-  score /= std::pow(double_t(size_after_consolidation)/size_before_consolidation, 2.);
+  score /= std::pow(double_t(size_after_consolidation)/size_before_consolidation, 2);
 
   return score;
 }
