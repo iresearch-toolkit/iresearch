@@ -81,7 +81,6 @@ struct consolidate_tier {
   size_t max_segments = 10;
   size_t max_segments_bytes = size_t(5)*(1<<30);
   size_t floor_segment_bytes = size_t(2)*(1<<20);
-  size_t lookahead = integer_traits<size_t>::const_max;
   double_t min_score = 0.;
 };
 

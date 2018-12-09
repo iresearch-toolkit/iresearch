@@ -662,7 +662,6 @@ TEST(consolidation_test_tier, test_no_candidates) {
   options.max_segments_bytes = 4294967296;
   options.min_segments = 5;         // min number of segments per tier to merge at once
   options.max_segments = 10;        // max number of segments per tier to merge at once
-  options.lookahead = irs::integer_traits<size_t>::const_max;
   auto policy = irs::index_utils::consolidation_policy(options);
 
   irs::index_writer::consolidating_segments_t consolidating_segments;
@@ -685,7 +684,6 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     options.max_segments = 10;        // max number of segments per tier to merge at once
     options.max_segments_bytes= 2500; // max size of the merge
     options.floor_segment_bytes = 50; // smaller segments will be treated as equal to this value
-    options.lookahead = irs::integer_traits<size_t>::const_max;
     auto policy = irs::index_utils::consolidation_policy(options);
 
     irs::index_writer::consolidating_segments_t consolidating_segments;
@@ -738,7 +736,6 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     options.max_segments = 10;           // max number of segments per tier to merge at once
     options.max_segments_bytes = 250000; // max size of the merge
     options.floor_segment_bytes = 50;    // smaller segments will be treated as equal to this value
-    options.lookahead =  irs::integer_traits<size_t>::const_max;
     auto policy = irs::index_utils::consolidation_policy(options);
 
     irs::index_writer::consolidating_segments_t consolidating_segments;
@@ -785,7 +782,6 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     options.max_segments = 2;           // max number of segments per tier to merge at once
     options.max_segments_bytes = 250000; // max size of the merge
     options.floor_segment_bytes = 50;    // smaller segments will be treated as equal to this value
-    options.lookahead =  irs::integer_traits<size_t>::const_max;
     auto policy = irs::index_utils::consolidation_policy(options);
 
     irs::index_writer::consolidating_segments_t consolidating_segments;
@@ -833,7 +829,6 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     options.max_segments = 10;           // max number of segments per tier to merge at once
     options.max_segments_bytes = 250000; // max size of the merge
     options.floor_segment_bytes = 50;    // smaller segments will be treated as equal to this value
-    options.lookahead = irs::integer_traits<size_t>::const_max;
     auto policy = irs::index_utils::consolidation_policy(options);
 
     irs::index_writer::consolidating_segments_t consolidating_segments;
@@ -879,7 +874,6 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     options.max_segments = 10;           // max number of segments per tier to merge at once
     options.max_segments_bytes = 250000; // max size of the merge
     options.floor_segment_bytes = 50;    // smaller segments will be treated as equal to this value
-    options.lookahead = irs::integer_traits<size_t>::const_max;
     auto policy = irs::index_utils::consolidation_policy(options);
 
     irs::index_writer::consolidating_segments_t consolidating_segments;
@@ -936,7 +930,6 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     options.max_segments = 10;           // max number of segments per tier to merge at once
     options.max_segments_bytes = 250000; // max size of the merge
     options.floor_segment_bytes = 1;    // smaller segments will be treated as equal to this value
-    options.lookahead = irs::integer_traits<size_t>::const_max;
     options.min_score = 0; // default min score
     auto policy = irs::index_utils::consolidation_policy(options);
 
@@ -974,7 +967,6 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     options.max_segments = 10;           // max number of segments per tier to merge at once
     options.max_segments_bytes = 250000; // max size of the merge
     options.floor_segment_bytes = 1;    // smaller segments will be treated as equal to this value
-    options.lookahead = irs::integer_traits<size_t>::const_max;
     options.min_score = 0.001; // filter out irrelevant merges
     auto policy = irs::index_utils::consolidation_policy(options);
 
@@ -997,7 +989,6 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     options.max_segments = 10;           // max number of segments per tier to merge at once
     options.max_segments_bytes = 250000; // max size of the merge
     options.floor_segment_bytes = 1;    // smaller segments will be treated as equal to this value
-    options.lookahead = irs::integer_traits<size_t>::const_max;
     options.min_score = 0; // default min score
     auto policy = irs::index_utils::consolidation_policy(options);
 
@@ -1035,7 +1026,6 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     options.max_segments = 10;           // max number of segments per tier to merge at once
     options.max_segments_bytes = 250000; // max size of the merge
     options.floor_segment_bytes = 1;    // smaller segments will be treated as equal to this value
-    options.lookahead = irs::integer_traits<size_t>::const_max;
     options.min_score = 0.001; // filter our irrelevant merges
     auto policy = irs::index_utils::consolidation_policy(options);
 
@@ -1073,7 +1063,6 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     options.max_segments = 10; // max number of segments per tier to merge at once
     options.max_segments_bytes = irs::integer_traits<size_t>::const_max;; // max size of the merge
     options.floor_segment_bytes = 50;    // smaller segments will be treated as equal to this value
-    options.lookahead = 1;
     auto policy = irs::index_utils::consolidation_policy(options);
 
     irs::index_meta meta;
@@ -1129,7 +1118,6 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     options.max_segments = 10; // max number of segments per tier to merge at once
     options.max_segments_bytes = irs::integer_traits<size_t>::const_max;; // max size of the merge
     options.floor_segment_bytes = 50;    // smaller segments will be treated as equal to this value
-    options.lookahead = 1;
     auto policy = irs::index_utils::consolidation_policy(options);
 
     irs::index_meta meta;
@@ -1187,7 +1175,6 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     options.max_segments = 10; // max number of segments per tier to merge at once
     options.max_segments_bytes = irs::integer_traits<size_t>::const_max;; // max size of the merge
     options.floor_segment_bytes = 50;    // smaller segments will be treated as equal to this value
-    options.lookahead = 1;
     auto policy = irs::index_utils::consolidation_policy(options);
 
     irs::index_meta meta;
@@ -1246,7 +1233,6 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     options.max_segments = 10; // max number of segments per tier to merge at once
     options.max_segments_bytes = irs::integer_traits<size_t>::const_max;; // max size of the merge
     options.floor_segment_bytes = 50;    // smaller segments will be treated as equal to this value
-    options.lookahead = 1;
     auto policy = irs::index_utils::consolidation_policy(options);
 
     irs::index_meta meta;

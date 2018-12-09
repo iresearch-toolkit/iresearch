@@ -357,10 +357,9 @@ index_writer::consolidation_policy_t consolidation_policy(
   min_segments_per_tier = (std::min)(min_segments_per_tier, max_segments_per_tier); // ensure min_segments_per_tier <= max_segments_per_tier
   const auto max_segments_bytes = (std::max)(size_t(1), options.max_segments_bytes);
   const auto floor_segment_bytes = (std::max)(size_t(1), options.floor_segment_bytes);
-  const auto lookahead = std::max(size_t(1), options.lookahead);
   const auto min_score = options.min_score; // skip consolidation that have score less than min_score
 
-  return [max_segments_per_tier, min_segments_per_tier, floor_segment_bytes, max_segments_bytes, lookahead, min_score](
+  return [max_segments_per_tier, min_segments_per_tier, floor_segment_bytes, max_segments_bytes, min_score](
       std::set<const segment_meta*>& candidates,
       const index_meta& meta,
       const index_writer::consolidating_segments_t& consolidating_segments
@@ -437,9 +436,9 @@ index_writer::consolidation_policy_t consolidation_policy(
     /// find candidates
     ///////////////////////////////////////////////////////////////////////////
 
-    std::vector<consolidation> consolidation_candidates;
+    consolidation_candidate best;
 
-    for (consolidation_candidate best; sorted_segments.size() >= min_segments_per_tier; best.reset()) {
+    if (sorted_segments.size() >= min_segments_per_tier) {
       for (auto i = sorted_segments.begin(), end = sorted_segments.end(); i != end; ++i) {
         consolidation_candidate candidate(i);
 
@@ -476,27 +475,6 @@ index_writer::consolidation_policy_t consolidation_policy(
           }
         }
       }
-
-      if (!best.count) {
-        // can't find a suitable candidate
-        break;
-      }
-
-      // remember the best candidate
-      consolidation_candidates.emplace_back(best);
-      std::push_heap(consolidation_candidates.begin(), consolidation_candidates.end());
-
-      // remove picked segments from the list
-      sorted_segments.erase(best.segments.first, best.segments.second);
-
-      if (consolidation_candidates.size() >= lookahead) {
-        break;
-      }
-    }
-
-    if (consolidation_candidates.empty()) {
-      // nothing ot merge
-      return;
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -504,8 +482,8 @@ index_writer::consolidation_policy_t consolidation_policy(
     /// pick the best candidate
     ///////////////////////////////////////////////////////////////////////////
 
-    for (auto& segment : consolidation_candidates.front().segments) {
-      candidates.insert(segment.meta);
+    for (auto& candidate : best) {
+      candidates.insert(candidate.meta);
     }
   };
 }
