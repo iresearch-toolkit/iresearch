@@ -993,9 +993,7 @@ FORCE_INLINE void skip_offsets(index_input& in) {
 ///////////////////////////////////////////////////////////////////////////////
 class doc_iterator : public irs::doc_iterator {
  public:
-  DECLARE_UNIQUE_PTR(doc_iterator);
-
-  DEFINE_FACTORY_INLINE(doc_iterator);
+  DECLARE_SHARED_PTR(doc_iterator);
 
   doc_iterator() NOEXCEPT
     : skip_levels_(1),
@@ -5089,7 +5087,8 @@ void postings_reader::decode(
 irs::doc_iterator::ptr postings_reader::iterator(
     const flags& field,
     const attribute_view& attrs,
-    const flags& req) {
+    const flags& req
+) {
   // compile field features
   const auto features = ::features(field);
   // get enabled features:
@@ -5101,19 +5100,19 @@ irs::doc_iterator::ptr postings_reader::iterator(
   // 'operator|' in the following switch statement
   switch (enabled) {
    case features::FREQ_POS_OFFS_PAY:
-    it = doc_iterator::make<pos_doc_iterator<offs_pay_iterator>>();
+    it = std::make_shared<pos_doc_iterator<offs_pay_iterator>>();
     break;
    case features::FREQ_POS_OFFS:
-    it = doc_iterator::make<pos_doc_iterator<offs_iterator>>();
+    it = std::make_shared<pos_doc_iterator<offs_iterator>>();
     break;
    case features::FREQ_POS_PAY:
-    it = doc_iterator::make<pos_doc_iterator<pay_iterator>>();
+    it = std::make_shared<pos_doc_iterator<pay_iterator>>();
     break;
    case features::FREQ_POS:
-    it = doc_iterator::make<pos_doc_iterator<pos_iterator>>();
+    it = std::make_shared<pos_doc_iterator<pos_iterator>>();
     break;
    default:
-    it = doc_iterator::make<doc_iterator>();
+    it = std::make_shared<doc_iterator>();
   }
 
   it->prepare(
