@@ -2374,7 +2374,7 @@ TEST(index_death_test_formats_10, segment_components_creation_fail_implicit_segm
     dir.register_failure(failing_directory::Failure::CREATE, "_8.0.sm"); // segment meta
 
     // write index
-    irs::index_writer::options opts;
+    irs::index_writer::init_options opts;
     opts.segment_docs_max = 1; // flush every 2nd document
 
     auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE, opts);
@@ -2422,7 +2422,7 @@ TEST(index_death_test_formats_10, segment_components_creation_fail_implicit_segm
     dir.register_failure(failing_directory::Failure::CREATE, "_8.0.sm"); // segment meta
 
     // write index
-    irs::index_writer::options opts;
+    irs::index_writer::init_options opts;
     opts.segment_docs_max = 1; // flush every 2nd document
 
     auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE, opts);
@@ -2512,7 +2512,7 @@ TEST(index_death_test_formats_10, columnstore_creation_fail_implicit_segment_flu
     failing_directory dir(impl);
 
     // write index
-    irs::index_writer::options opts;
+    irs::index_writer::init_options opts;
     opts.segment_docs_max = 1; // flush every 2nd document
 
     auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE, opts);
@@ -2595,7 +2595,7 @@ TEST(index_death_test_formats_10, columnstore_creation_sync_fail_implicit_segmen
     failing_directory dir(impl);
 
     // write index
-    irs::index_writer::options opts;
+    irs::index_writer::init_options opts;
     opts.segment_docs_max = 1; // flush every 2nd document
 
     auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE, opts);
@@ -2983,3 +2983,7 @@ TEST(index_death_test_formats_10, postings_reopen_fail) {
   ASSERT_FALSE(live_docs->next());
   ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), live_docs->value());
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
