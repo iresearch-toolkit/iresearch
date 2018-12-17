@@ -1072,7 +1072,6 @@ index_writer::index_writer(
     segment_limits_(segment_limits),
     segment_writer_pool_(segment_pool_size),
     segments_active_(0),
-    segments_reserved_(0),
     writer_(codec->get_index_meta_writer()),
     write_lock_(std::move(lock)),
     write_lock_file_ref_(std::move(lock_file_ref)) {
@@ -1616,9 +1615,9 @@ index_writer::flush_context_ptr index_writer::get_flush_context(bool shared /*= 
 index_writer::active_segment_context index_writer::get_segment_context(
     flush_context& ctx
 ) {
-  auto segments_reserved_decrement =
-    irs::make_finally([this]()->void { --segments_reserved_; }); // release reservation (delcare before aquisition since operator++() is noexcept)
-  auto segment_count_current = segments_active_.load() + ++segments_reserved_; // increment counter to aquire reservation, if another thread tries to reserve last context then it'll be over limit
+  auto segments_active_decrement =
+    irs::make_finally([this]()->void { --segments_active_; }); // release reservation (delcare before aquisition since operator++() is noexcept)
+  auto segments_active = ++segments_active_; // increment counter to aquire reservation, if another thread tries to reserve last context then it'll be over limit
   auto segment_count_max = segment_limits_.segment_count_max.load();
 
   // no free segment_context available and maximum number of segments reached
@@ -1626,7 +1625,7 @@ index_writer::active_segment_context index_writer::get_segment_context(
   // to get a new segment so as to avoid a deadlock due to a read-write-read
   // situation for flush_context::flush_mutex_ with threads trying to lock
   // flush_context::flush_mutex_ to return their segment_context
-  if (segment_count_max && segment_count_max < segment_count_current) { // '<' to account for +1 reservation
+  if (segment_count_max && segment_count_max < segments_active) { // '<' to account for +1 reservation
     return active_segment_context();
   }
 

@@ -995,7 +995,6 @@ class IRESEARCH_API index_writer:
   segment_limits segment_limits_; // limits for use with respect to segments
   segment_pool_t segment_writer_pool_; // a cache of segments available for reuse
   std::atomic<size_t> segments_active_; // number of segments currently in use by the writer
-  std::atomic<size_t> segments_reserved_; // number of concurrent segment reservations awaiting a free segment
   index_meta_writer::ptr writer_;
   index_lock::ptr write_lock_; // exclusive write lock for directory
   index_file_refs::ref_t write_lock_file_ref_; // track ref for lock file to preven removal
