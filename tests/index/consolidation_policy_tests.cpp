@@ -32,14 +32,11 @@ void print_consolidation(
     const irs::index_meta& meta,
     const irs::index_writer::consolidation_policy_t& policy
 ) {
-  auto less = [](const irs::segment_meta* lhs, const irs::segment_meta* rhs) {
-    if (lhs->size == rhs->size) {
-      return lhs->name < rhs->name;
+  struct less_t {
+    bool operator()(const irs::segment_meta* lhs, const irs::segment_meta* rhs) {
+      return lhs->size == rhs->size ? lhs->name < rhs->name : lhs->size < rhs->size;
     }
-
-    return lhs->size < rhs->size;
   };
-
   std::set<const irs::segment_meta*> candidates;
   irs::index_writer::consolidating_segments_t consolidating_segments;
 
@@ -52,8 +49,8 @@ void print_consolidation(
       break;
     }
 
-    std::set<const irs::segment_meta*, decltype(less)> sorted_candidates(
-      candidates.begin(), candidates.end(), less
+    std::set<const irs::segment_meta*, less_t> sorted_candidates(
+      candidates.begin(), candidates.end(), less_t()
     );
 
     std::cerr << "Consolidation " << i++ << ": ";
