@@ -73,8 +73,6 @@ struct consolidation_candidate {
   typedef std::set<segment_stat>::const_iterator iterator_t;
   typedef std::pair<iterator_t, iterator_t> range_t;
 
-  consolidation_candidate() = default;
-
   explicit consolidation_candidate(iterator_t i) NOEXCEPT
     : segments(i, i) {
   }
@@ -436,7 +434,7 @@ index_writer::consolidation_policy_t consolidation_policy(
     /// find candidates
     ///////////////////////////////////////////////////////////////////////////
 
-    consolidation_candidate best;
+    consolidation_candidate best(sorted_segments.begin());
 
     if (sorted_segments.size() >= min_segments_per_tier) {
       for (auto i = sorted_segments.begin(), end = sorted_segments.end(); i != end; ++i) {
