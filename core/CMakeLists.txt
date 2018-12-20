@@ -631,7 +631,7 @@ if (MSVC)
     COMMAND ${IResearch_STATIC_SCRT_LIBRARIES_CMD}
   )
 
-  add_library(${IResearch_TARGET_NAME}-static-srct-allinone
+  add_library(${IResearch_TARGET_NAME}-static-scrt-allinone
     STATIC IMPORTED GLOBAL
   )
 
