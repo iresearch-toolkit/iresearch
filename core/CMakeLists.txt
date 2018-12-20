@@ -574,9 +574,8 @@ if (MSVC)
     set(IResearch_STATIC_LIBRARIES "${IResearch_STATIC_LIBRARIES} \"${ELEMENT}\"")
   endforeach()
 
-  set(IResearch_STATIC_LIBRARIES_OUT "${CMAKE_BINARY_DIR}/bin/${CMAKE_STATIC_LIBRARY_PREFIX}iresearch-sa${CMAKE_STATIC_LIBRARY_SUFFIX}")
+  set(IResearch_STATIC_LIBRARIES_OUT "${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/libiresearch-sa${CMAKE_STATIC_LIBRARY_SUFFIX}")
   set(IResearch_STATIC_LIBRARIES_CMD "lib.exe \"/OUT:${IResearch_STATIC_LIBRARIES_OUT}\" \"$<TARGET_FILE:${IResearch_TARGET_NAME}-static>\" ${IResearch_STATIC_LIBRARIES}")
-  string(REPLACE " " ";" IResearch_STATIC_LIBRARIES_CMD "${IResearch_STATIC_LIBRARIES_CMD}") # COMMAND requires ';' instead of ' '
   add_custom_command(
     TARGET ${IResearch_TARGET_NAME}-static POST_BUILD
     COMMAND ${IResearch_STATIC_LIBRARIES_CMD}
@@ -589,7 +588,7 @@ if (MSVC)
   set_target_properties(${IResearch_TARGET_NAME}-static-allinone
     PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES "$<TARGET_PROPERTY:${IResearch_TARGET_NAME}-static,INTERFACE_INCLUDE_DIRECTORIES>"
-    IMPORTED_LOCATION "${CMAKE_BINARY_DIR}/bin/${CMAKE_SCRT_LIBRARY_PREFIX}iresearch-sa${CMAKE_STATIC_LIBRARY_SUFFIX}"
+    IMPORTED_LOCATION "${IResearch_STATIC_LIBRARIES_OUT}"
   )
 
   set_property(TARGET ${IResearch_TARGET_NAME}-static-allinone
@@ -597,6 +596,7 @@ if (MSVC)
     INTERFACE_LINK_LIBRARIES # additional IMPORTED_LOCATION value list (non-static libraries)
     ${ATOMIC_LIBRARY} # non-static library
     ${DL_LIBRARY} # non-static library
+    ${MSVC_ONLY_LIBRARIES} # non-static library
   )
 
   add_dependencies(${IResearch_TARGET_NAME}-static-allinone
@@ -624,9 +624,8 @@ if (MSVC)
     set(IResearch_STATIC_SCRT_LIBRARIES "${IResearch_STATIC_SCRT_LIBRARIES} \"${ELEMENT}\"")
   endforeach()
 
-  set(IResearch_STATIC_SCRT_LIBRARIES_OUT "${CMAKE_BINARY_DIR}/bin/${CMAKE_STATIC_LIBRARY_PREFIX}iresearch-srct-sa${CMAKE_STATIC_LIBRARY_SUFFIX}")
+  set(IResearch_STATIC_SCRT_LIBRARIES_OUT "${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/libiresearch-srct-sa${CMAKE_STATIC_LIBRARY_SUFFIX}")
   set(IResearch_STATIC_SCRT_LIBRARIES_CMD "lib.exe \"/OUT:${IResearch_STATIC_SCRT_LIBRARIES_OUT}\" \"$<TARGET_FILE:${IResearch_TARGET_NAME}-static-scrt>\" ${IResearch_STATIC_SCRT_LIBRARIES}")
-  string(REPLACE " " ";" IResearch_STATIC_SCRT_LIBRARIES_CMD "${IResearch_STATIC_SCRT_LIBRARIES_CMD}") # COMMAND requires ';' instead of ' '
   add_custom_command(
     TARGET ${IResearch_TARGET_NAME}-static-scrt POST_BUILD
     COMMAND ${IResearch_STATIC_SCRT_LIBRARIES_CMD}
@@ -639,7 +638,7 @@ if (MSVC)
   set_target_properties(${IResearch_TARGET_NAME}-static-scrt-allinone
     PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES "$<TARGET_PROPERTY:${IResearch_TARGET_NAME}-static-srct,INTERFACE_INCLUDE_DIRECTORIES>"
-    IMPORTED_LOCATION "${CMAKE_BINARY_DIR}/bin/${CMAKE_SCRT_LIBRARY_PREFIX}iresearch-scrt-sa${CMAKE_STATIC_LIBRARY_SUFFIX}"
+    IMPORTED_LOCATION "${IResearch_STATIC_SCRT_LIBRARIES_OUT}"
   )
 
   set_property(TARGET ${IResearch_TARGET_NAME}-static-scrt-allinone
@@ -647,6 +646,7 @@ if (MSVC)
     INTERFACE_LINK_LIBRARIES # additional IMPORTED_LOCATION value list (non-static libraries)
     ${ATOMIC_LIBRARY} # non-static library
     ${DL_LIBRARY} # non-static library
+    ${MSVC_ONLY_LIBRARIES} # non-static library
   )
 
   add_dependencies(${IResearch_TARGET_NAME}-static-scrt-allinone
@@ -675,7 +675,7 @@ elseif (APPLE)
     set(IResearch_STATIC_LIBRARIES "${IResearch_STATIC_LIBRARIES} '${ELEMENT}'")
   endforeach ()
 
-  set(IResearch_STATIC_LIBRARIES_OUT "${CMAKE_BINARY_DIR}/bin/${CMAKE_STATIC_LIBRARY_PREFIX}iresearch-sa${CMAKE_STATIC_LIBRARY_SUFFIX}")
+  set(IResearch_STATIC_LIBRARIES_OUT "${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/libiresearch-sa${CMAKE_STATIC_LIBRARY_SUFFIX}")
   set(IResearch_STATIC_LIBRARIES_CMD "libtool -static -o '${IResearch_STATIC_LIBRARIES_OUT}' -a '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>' ${IResearch_STATIC_LIBRARIES}")
   add_custom_command(
     TARGET ${IResearch_TARGET_NAME}-static POST_BUILD
@@ -690,7 +690,7 @@ elseif (APPLE)
   set_target_properties(${IResearch_TARGET_NAME}-static-allinone
     PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES "$<TARGET_PROPERTY:${IResearch_TARGET_NAME}-static,INTERFACE_INCLUDE_DIRECTORIES>"
-    IMPORTED_LOCATION "${CMAKE_BINARY_DIR}/bin/${CMAKE_STATIC_LIBRARY_PREFIX}iresearch-sa${CMAKE_STATIC_LIBRARY_SUFFIX}"
+    IMPORTED_LOCATION "${IResearch_STATIC_LIBRARIES_OUT}"
   )
 
   set_property(TARGET ${IResearch_TARGET_NAME}-static-allinone
@@ -698,6 +698,7 @@ elseif (APPLE)
     INTERFACE_LINK_LIBRARIES # additional IMPORTED_LOCATION value list (non-static libraries)
     ${ATOMIC_LIBRARY} # non-static library
     ${DL_LIBRARY} # non-static library
+    ${MSVC_ONLY_LIBRARIES} # non-static library
   )
 
   add_dependencies(${IResearch_TARGET_NAME}-static-allinone
@@ -726,7 +727,7 @@ else()
     set(IResearch_STATIC_LIBRARIES "${IResearch_STATIC_LIBRARIES} addlib '${ELEMENT}'\\n")
   endforeach ()
 
-  set(IResearch_STATIC_LIBRARIES_OUT "${CMAKE_BINARY_DIR}/bin/${CMAKE_STATIC_LIBRARY_PREFIX}iresearch-sa${CMAKE_STATIC_LIBRARY_SUFFIX}")
+  set(IResearch_STATIC_LIBRARIES_OUT "${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/libresearch-sa${CMAKE_STATIC_LIBRARY_SUFFIX}")
   set(IResearch_STATIC_LIBRARIES_CMD "`which echo` -e \"create '${IResearch_STATIC_LIBRARIES_OUT}'\\n addlib '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>'\\n ${IResearch_STATIC_LIBRARIES} save\\n end\" | ar -M")
   add_custom_command(
     TARGET ${IResearch_TARGET_NAME}-static POST_BUILD
@@ -741,7 +742,7 @@ else()
   set_target_properties(${IResearch_TARGET_NAME}-static-allinone
     PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES "$<TARGET_PROPERTY:${IResearch_TARGET_NAME}-static,INTERFACE_INCLUDE_DIRECTORIES>"
-    IMPORTED_LOCATION "${CMAKE_BINARY_DIR}/bin/${CMAKE_STATIC_LIBRARY_PREFIX}iresearch-sa${CMAKE_STATIC_LIBRARY_SUFFIX}"
+    IMPORTED_LOCATION "${IResearch_STATIC_LIBRARIES_OUT}"
   )
 
   set_property(TARGET ${IResearch_TARGET_NAME}-static-allinone
@@ -749,6 +750,7 @@ else()
     INTERFACE_LINK_LIBRARIES # additional IMPORTED_LOCATION value list (non-static libraries)
     ${ATOMIC_LIBRARY} # non-static library
     ${DL_LIBRARY} # non-static library
+    ${MSVC_ONLY_LIBRARIES} # non-static library
   )
 
   add_dependencies(${IResearch_TARGET_NAME}-static-allinone
