@@ -560,8 +560,9 @@ if (MSVC)
     "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_LOCALE_LIBRARY_RELEASE}>"
     "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_RELEASE}>"
     ${Unwind_STATIC_LIBS}
-    $<TARGET_FILE:icu-static>
-    $<TARGET_PROPERTY:icu-static,INTERFACE_LINK_LIBRARIES>
+    "$<TARGET_FILE:icudata-static>" # must expand icu-static into components
+    "$<TARGET_FILE:icui18n-static>" # must expand icu-static into components
+    "$<TARGET_FILE:icuuc-static>"   # must expand icu-static into components
     "$<TARGET_FILE:lz4_static>"
     "$<TARGET_FILE:stemmer-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimited-static>"
@@ -596,7 +597,6 @@ if (MSVC)
     INTERFACE_LINK_LIBRARIES # additional IMPORTED_LOCATION value list (non-static libraries)
     ${ATOMIC_LIBRARY} # non-static library
     ${DL_LIBRARY} # non-static library
-    icudata-static # non-static library (even though named static)
   )
 
   add_dependencies(${IResearch_TARGET_NAME}-static-allinone
@@ -610,8 +610,9 @@ if (MSVC)
     "$<$<CONFIG:Debug>:${Boost_STATIC_staticRT_LOCALE_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_staticRT_LOCALE_LIBRARY_RELEASE}>"
     "$<$<CONFIG:Debug>:${Boost_STATIC_staticRT_SYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_staticRT_SYSTEM_LIBRARY_RELEASE}>"
     ${Unwind_STATIC_LIBS}
-    $<TARGET_FILE:icu-static>
-    $<TARGET_PROPERTY:icu-static,INTERFACE_LINK_LIBRARIES>
+    "$<TARGET_FILE:icudata-static>" # must expand icu-static into components
+    "$<TARGET_FILE:icui18n-static>" # must expand icu-static into components
+    "$<TARGET_FILE:icuuc-static>"   # must expand icu-static into components
     "$<TARGET_FILE:lz4_static>"
     "$<TARGET_FILE:stemmer-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimited-static-scrt>"
@@ -646,7 +647,6 @@ if (MSVC)
     INTERFACE_LINK_LIBRARIES # additional IMPORTED_LOCATION value list (non-static libraries)
     ${ATOMIC_LIBRARY} # non-static library
     ${DL_LIBRARY} # non-static library
-    icudata-static # non-static library (even though named static)
   )
 
   add_dependencies(${IResearch_TARGET_NAME}-static-scrt-allinone
@@ -661,8 +661,9 @@ elseif (APPLE)
     ${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}
     ${Boost_STATIC_sharedRT_THREAD_LIBRARY_DEBUG}
     ${Unwind_STATIC_LIBS}
-    $<TARGET_FILE:icu-static>
-    $<TARGET_PROPERTY:icu-static,INTERFACE_LINK_LIBRARIES>
+    "$<TARGET_FILE:icudata-static>" # must expand icu-static into components
+    "$<TARGET_FILE:icui18n-static>" # must expand icu-static into components
+    "$<TARGET_FILE:icuuc-static>"   # must expand icu-static into components
     "$<TARGET_FILE:lz4_static>"
     "$<TARGET_FILE:stemmer-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimited-static>"
@@ -697,7 +698,6 @@ elseif (APPLE)
     INTERFACE_LINK_LIBRARIES # additional IMPORTED_LOCATION value list (non-static libraries)
     ${ATOMIC_LIBRARY} # non-static library
     ${DL_LIBRARY} # non-static library
-    icudata-static # non-static library (even though named static)
   )
 
   add_dependencies(${IResearch_TARGET_NAME}-static-allinone
@@ -712,8 +712,9 @@ else()
     ${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}
     ${Boost_STATIC_sharedRT_THREAD_LIBRARY_DEBUG}
     ${Unwind_STATIC_LIBS}
-    $<TARGET_FILE:icu-static>
-    $<TARGET_PROPERTY:icu-static,INTERFACE_LINK_LIBRARIES>
+    "$<TARGET_FILE:icudata-static>" # must expand icu-static into components
+    "$<TARGET_FILE:icui18n-static>" # must expand icu-static into components
+    "$<TARGET_FILE:icuuc-static>"   # must expand icu-static into components
     "$<TARGET_FILE:lz4_static>"
     "$<TARGET_FILE:stemmer-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimited-static>"
@@ -748,7 +749,6 @@ else()
     INTERFACE_LINK_LIBRARIES # additional IMPORTED_LOCATION value list (non-static libraries)
     ${ATOMIC_LIBRARY} # non-static library
     ${DL_LIBRARY} # non-static library
-    icudata-static # non-static library (even though named static)
   )
 
   add_dependencies(${IResearch_TARGET_NAME}-static-allinone
