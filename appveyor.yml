@@ -209,11 +209,16 @@ install:
   - appveyor-retry git clone --depth 1 --recursive --quiet %LZ4_URL% %LZ4_DIR%
   - cd %LZ4_DIR%
   - mkdir build && cd build
-  - cmake -DCMAKE_INSTALL_PREFIX=%LZ4_DIR%\build -DBUILD_SHARED_LIBS=OFF -DBUILD_STATIC_LIBS=ON -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 ../contrib/cmake_unofficial
+  - cmake -DCMAKE_INSTALL_PREFIX=%LZ4_DIR%\build -DBUILD_SHARED_LIBS=ON -DBUILD_STATIC_LIBS=ON -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 ../contrib/cmake_unofficial
   - cmake --build . %CMAKE_BUILD_OPTIONS%
   - cmake --build . --target install
   - set LZ4_ROOT=%LZ4_DIR%\build
   - dir %LZ4_ROOT%
+  - dir %LZ4_ROOT%\bin
+  - dir %LZ4_ROOT%\lib
+  - dir %LZ4_ROOT%\Debug
+  - dir %LZ4_ROOT%\share
+  - dir %LZ4_ROOT%\x64
   
   ############################################################################
   # Setup bison
