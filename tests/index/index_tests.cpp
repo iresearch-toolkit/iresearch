@@ -11647,6 +11647,12 @@ TEST_F(memory_index_test, concurrent_add_remove_overlap_commit_mt) {
     thread.join();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
+    /* FIXME TODO add once segment_context will not block flush_all()
+    ASSERT_EQ(0, reader.docs_count());
+    ASSERT_EQ(0, reader.live_docs_count());
+    writer->commit(); // commit after releasing documents_context
+    reader = irs::directory_reader::open(dir(), codec());
+    */
     ASSERT_EQ(2, reader.docs_count());
     ASSERT_EQ(2, reader.live_docs_count());
   }
@@ -11761,6 +11767,8 @@ TEST_F(memory_index_test, document_context) {
     ASSERT_EQ(std::cv_status::timeout, result); // verify commit() blocks
     field_lock.unlock();
     ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); // verify commit() finishes
+    // FIXME TODO add once segment_context will not block flush_all()
+    //ASSERT_TRUE(stop);
     thread0.join();
     thread1.join();
   }
@@ -11800,6 +11808,8 @@ TEST_F(memory_index_test, document_context) {
     ASSERT_EQ(std::cv_status::timeout, result);
     field_lock.unlock();
     ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); // verify commit() finishes
+    // FIXME TODO add once segment_context will not block flush_all()
+    //ASSERT_TRUE(commit);
     thread0.join();
     thread1.join();
   }
@@ -11845,6 +11855,8 @@ TEST_F(memory_index_test, document_context) {
     ASSERT_EQ(std::cv_status::timeout, result);
     field_lock.unlock();
     ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); // verify commit() finishes
+    // FIXME TODO add once segment_context will not block flush_all()
+    //ASSERT_TRUE(commit);
     thread0.join();
     thread1.join();
   }
@@ -11919,8 +11931,12 @@ TEST_F(memory_index_test, document_context) {
 
     ASSERT_EQ(std::cv_status::timeout, result); field_cond_lock.unlock(); // verify commit() finishes FIXME TODO use below once segment_context will not block flush_all()
     //ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); // verify commit() finishes
+    // FIXME TODO add once segment_context will not block flush_all()
+    //ASSERT_TRUE(commit);
     { irs::index_writer::documents_context(std::move(ctx)); } // release ctx before join() in case of test failure
     thread1.join();
+    // FIXME TODO add once segment_context will not block flush_all()
+    //writer->commit(); // commit doc removal
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
@@ -11972,8 +11988,12 @@ TEST_F(memory_index_test, document_context) {
 
     ASSERT_EQ(std::cv_status::timeout, result); field_cond_lock.unlock(); // verify commit() finishes FIXME TODO use below once segment_context will not block flush_all()
     //ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); // verify commit() finishes
+    // FIXME TODO add once segment_context will not block flush_all()
+    //ASSERT_TRUE(commit);
     { irs::index_writer::documents_context(std::move(ctx)); } // release ctx before join() in case of test failure
     thread1.join();
+    // FIXME TODO add once segment_context will not block flush_all()
+    //writer->commit(); // commit doc replace
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
@@ -12028,8 +12048,12 @@ TEST_F(memory_index_test, document_context) {
 
     ASSERT_EQ(std::cv_status::timeout, result); field_cond_lock.unlock(); // verify commit() finishes FIXME TODO use below once segment_context will not block flush_all()
     // ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); // verify commit() finishes
+    // FIXME TODO add once segment_context will not block flush_all()
+    //ASSERT_TRUE(commit);
     { irs::index_writer::documents_context(std::move(ctx)); } // release ctx before join() in case of test failure
     thread1.join();
+    // FIXME TODO add once segment_context will not block flush_all()
+    //writer->commit(); // commit doc replace
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
@@ -12858,7 +12882,7 @@ TEST_F(memory_index_test, document_context) {
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(2, reader.size());
+    ASSERT_EQ(3, reader.size());
 
     {
       auto& segment = reader[0]; // assume 0 is id of first segment
@@ -12889,6 +12913,19 @@ TEST_F(memory_index_test, document_context) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
+      ASSERT_FALSE(docsItr->next());
+    }
+
+    {
+      auto& segment = reader[2]; // assume 2 is id of third segment
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -12986,7 +13023,7 @@ TEST_F(memory_index_test, document_context) {
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_EQ(2, reader.size());
+    ASSERT_EQ(3, reader.size());
 
     {
       auto& segment = reader[0]; // assume 0 is id of first segment
@@ -13017,6 +13054,19 @@ TEST_F(memory_index_test, document_context) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
+      ASSERT_FALSE(docsItr->next());
+    }
+
+    {
+      auto& segment = reader[2]; // assume 2 is id of third segment
+      const auto* column = segment.column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
