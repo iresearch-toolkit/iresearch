@@ -757,6 +757,7 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
     ||(this == segment.flush_ctx_ && segment.ctx_->dirty_ && segment.ctx_.use_count() == 1) // +1 for 'active_segment_context::ctx_' (flush_context switching made a full-circle)
     ||(this == segment.flush_ctx_ && !segment.ctx_->dirty_ && segment.ctx_.use_count() == 2) // +1 for 'active_segment_context::ctx_', +1 for 'pending_segment_context::segment_'
     ||(this != segment.flush_ctx_ && segment.flush_ctx_ && segment.ctx_.use_count() == 2) // +1 for 'active_segment_context::ctx_', +1 for 'pending_segment_context::segment_'
+    ||(this != segment.flush_ctx_ && segment.flush_ctx_ && segment.ctx_.use_count() == 1) // +1 for 'active_segment_context::ctx_', +0 for 'pending_segment_context::segment_' that was already cleared
   );
 
   auto& ctx = *(segment.ctx_);
@@ -877,7 +878,9 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
 void index_writer::flush_context::reset() NOEXCEPT {
   // reset before returning to pool
   for (auto& entry: pending_segment_contexts_) {
-    entry.segment_->reset();
+    if (entry.segment_.use_count() == 1) {
+      entry.segment_->reset(); // reset only if segment not tracked anywhere else
+    }
   }
 
   while(pending_segment_contexts_freelist_.pop()); // clear() before pending_segment_contexts_
