@@ -778,9 +778,12 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
       freelist_node = &(pending_segment_contexts_.back());
 
       // mark segment as non-reusable if it was peviously registered with a different flush_context
-      if (segment.flush_ctx_ && !ctx.dirty_) {
+      // NOTE: 'ctx.dirty_' implies flush_context switching making a full-circle
+      //       and this emplace(...) call being the first and only call for this
+      //       segment (not given out again via free-list) so no 'dirty_' check
+      if (segment.flush_ctx_ && this != segment.flush_ctx_) {
         ctx.dirty_ = true;
-        SCOPED_LOCK(ctx.flush_mutex_);
+        SCOPED_LOCK(ctx.flush_mutex_); // 'segment.flush_ctx_' may be asynchronously flushed
         assert(segment.flush_ctx_->pending_segment_contexts_[segment.pending_segment_context_offset_].segment_ == segment.ctx_); // thread-safe because pending_segment_contexts_ is a deque
         /* FIXME TODO uncomment once col_writer tail is writen correctly (need to track tail in new segment
         segment.flush_ctx_->pending_segment_contexts_[segment.pending_segment_context_offset_].doc_id_end_ = ctx.uncomitted_doc_id_begin_;
@@ -1993,6 +1996,7 @@ index_writer::pending_context_t index_writer::flush_all() {
           flush_update_contexts,
           segment_modification_contexts
         );
+        ++flushed.meta.version; // increment version for next run due to documents masked from this run, similar to write_document_mask(...)
 
         auto& flush_segment_ctx = segment_ctxs.back();
 
