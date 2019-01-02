@@ -588,12 +588,12 @@ index_writer::documents_context::document::~document() NOEXCEPT {
     segment_->modification_queries_[update_id_].filter = nullptr; // mark invalid
   }
 
+  // optimization to notify any ongoing flush_all() operations so they wake up earlier
   if (!--segment_->active_count_) {
-    try {
-      SCOPED_LOCK(ctx_.mutex_); // lock due to context modification and notification
-      ctx_.pending_segment_context_cond_.notify_all(); // in case ctx is in flush_all()
-    } catch (...) {
-      // lock may throw
+    TRY_SCOPED_LOCK_NAMED(ctx_.mutex_, lock); // lock due to context modification and notification, note: std::mutex::try_lock() does not throw exceptions as per documentation @see https://en.cppreference.com/w/cpp/named_req/Mutex
+
+    if (lock.owns_lock()) {
+      ctx_.pending_segment_context_cond_.notify_all(); // ignore if lock failed because it imples that flush_all() is not waiting for a notification
     }
   }
 }
@@ -1698,10 +1698,10 @@ index_writer::pending_context_t index_writer::flush_all() {
     // 'segment_context' handle is still held by documents()
     entry.segment_->dirty_ = true;
 
-    // retry aquiring 'segment_context' until it is aquired
-    // once !'busy_' it will not change since this 'flush_context' is not the
-    // active context and hence will not give out this 'segment_context'
-    // FIXME TODO remove
+    // wait for the segment to no longer be active
+    // i.e. wait for all ongoing document operations to finish (insert/replace)
+    // the segment will not be given out again by the active 'flush_context'
+    // because it was started by a different 'flush_context', i.e. by 'ctx'
     while (entry.segment_->active_count_.load()
            || entry.segment_.use_count() != 1) { // FIXME TODO remove this condition once col_writer tail is writen correctly
       ctx->pending_segment_context_cond_.wait_for(
