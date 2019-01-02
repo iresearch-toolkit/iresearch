@@ -796,9 +796,13 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
       freelist_node = &(pending_segment_contexts_[segment.pending_segment_context_offset_]);
     }
 
+    // NOTE: if the first uncommitted operation is a removal operation then it
+    //       is fully valid for its 'committed' generation value to equal the
+    //       generation of the last 'committed' insert operation since removals
+    //       are applied to documents with generation <= removal
     assert(ctx.uncomitted_modification_queries_ <= ctx.modification_queries_.size());
     modification_count =
-      ctx.modification_queries_.size() - ctx.uncomitted_modification_queries_ + 1; // +1 for insertions before removals
+      ctx.modification_queries_.size() - ctx.uncomitted_modification_queries_;
     if (segment.flush_ctx_ && this != segment.flush_ctx_) generation_base = segment.flush_ctx_->generation_ += modification_count; else  // FIXME TODO remove this condition once col_writer tail is writen correctly
     generation_base = generation_ += modification_count; // atomic increment to end of unique generation range
     generation_base -= modification_count; // start of generation range
@@ -818,7 +822,7 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
        count = ctx.modification_queries_.size();
        i < count;
        ++i) {
-    assert(ctx.modification_queries_[i].generation < modification_count);
+    assert(ctx.modification_queries_[i].generation < modification_count); // must be < modification_count since inserts come after modification
     const_cast<size_t&>(ctx.modification_queries_[i].generation) += generation_base; // update to flush_context generation
   }
 
@@ -829,7 +833,7 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
        end = ctx.flushed_update_contexts_.size();
        i < end;
        ++i, ++uncomitted_doc_id_begin) {
-    assert(ctx.flushed_update_contexts_[i].generation < modification_count);
+    assert(ctx.flushed_update_contexts_[i].generation <= modification_count); // can == modification_count if inserts come after modification
     ctx.flushed_update_contexts_[i].generation += generation_base; // update to flush_context generation
   }
 
@@ -847,7 +851,7 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
        doc_id < doc_id_end;
        ++doc_id) {
     assert(doc_id <= integer_traits<doc_id_t>::const_max);
-    assert(writer.doc_context(doc_id).generation < modification_count);
+    assert(writer.doc_context(doc_id).generation <= modification_count); // can == modification_count if inserts come after modification
     writer.doc_context(doc_id_t(doc_id)).generation += generation_base; // update to flush_context generation
   }
 
