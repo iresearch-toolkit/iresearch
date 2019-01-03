@@ -786,9 +786,18 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
         ctx.dirty_ = true;
         flush_lock.lock(); // 'segment.flush_ctx_' may be asynchronously flushed
         assert(segment.flush_ctx_->pending_segment_contexts_[segment.pending_segment_context_offset_].segment_ == segment.ctx_); // thread-safe because pending_segment_contexts_ is a deque
+        // ^^^ FIXME TODO remove last line
         /* FIXME TODO uncomment once col_writer tail is writen correctly (need to track tail in new segment
-        segment.flush_ctx_->pending_segment_contexts_[segment.pending_segment_context_offset_].doc_id_end_ = ctx.uncomitted_doc_id_begin_;
-        segment.flush_ctx_->pending_segment_contexts_[segment.pending_segment_context_offset_].modification_offset_end_ = ctx.uncomitted_modification_queries_;
+        // if this segment is still referenced by the previous flush_context then
+        // store 'pending_segment_contexts_' and 'uncomitted_modification_queries_'
+        // in the previous flush_context because they will be modified lower down
+        if (segment.ctx_.use_count() != 2) {
+          assert(segment.flush_ctx_->pending_segment_contexts_.size() > segment.pending_segment_context_offset_);
+          assert(segment.flush_ctx_->pending_segment_contexts_[segment.pending_segment_context_offset_].segment_ == segment.ctx_); // thread-safe because pending_segment_contexts_ is a deque
+          assert(segment.flush_ctx_->pending_segment_contexts_[segment.pending_segment_context_offset_].segment_.use_count() == 3); // +1 for the reference in 'pending_segment_contexts_', +1 for the reference in other flush_context 'pending_segment_contexts_', +1 for the reference in 'active_segment_context'
+          segment.flush_ctx_->pending_segment_contexts_[segment.pending_segment_context_offset_].doc_id_end_ = ctx.uncomitted_doc_id_begin_;
+          segment.flush_ctx_->pending_segment_contexts_[segment.pending_segment_context_offset_].modification_offset_end_ = ctx.uncomitted_modification_queries_;
+        }
         */
       }
 

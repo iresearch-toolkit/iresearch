@@ -11930,7 +11930,7 @@ TEST_F(memory_index_test, document_context) {
     MSVC2017_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
 
     ASSERT_EQ(std::cv_status::timeout, result); field_cond_lock.unlock(); // verify commit() finishes FIXME TODO use below once segment_context will not block flush_all()
-    //ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); // verify commit() finishes
+    //ASSERT_EQ(std::cv_status::no_timeout, result); // verify commit() finishes
     // FIXME TODO add once segment_context will not block flush_all()
     //ASSERT_TRUE(commit);
     { irs::index_writer::documents_context(std::move(ctx)); } // release ctx before join() in case of test failure
@@ -11987,7 +11987,7 @@ TEST_F(memory_index_test, document_context) {
     MSVC2017_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
 
     ASSERT_EQ(std::cv_status::timeout, result); field_cond_lock.unlock(); // verify commit() finishes FIXME TODO use below once segment_context will not block flush_all()
-    //ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); // verify commit() finishes
+    //ASSERT_EQ(std::cv_status::no_timeout, result); // verify commit() finishes
     // FIXME TODO add once segment_context will not block flush_all()
     //ASSERT_TRUE(commit);
     { irs::index_writer::documents_context(std::move(ctx)); } // release ctx before join() in case of test failure
@@ -12047,7 +12047,7 @@ TEST_F(memory_index_test, document_context) {
     MSVC2017_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
 
     ASSERT_EQ(std::cv_status::timeout, result); field_cond_lock.unlock(); // verify commit() finishes FIXME TODO use below once segment_context will not block flush_all()
-    // ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); // verify commit() finishes
+    // ASSERT_EQ(std::cv_status::no_timeout, result); // verify commit() finishes
     // FIXME TODO add once segment_context will not block flush_all()
     //ASSERT_TRUE(commit);
     { irs::index_writer::documents_context(std::move(ctx)); } // release ctx before join() in case of test failure
