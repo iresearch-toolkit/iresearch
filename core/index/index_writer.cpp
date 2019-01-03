@@ -303,6 +303,15 @@ const std::string& write_document_mask(
   if (increment_version) {
     meta.files.erase(mask_writer->filename(meta)); // current filename
     ++meta.version; // segment modified due to new document_mask
+
+    // a second time +1 to avoid overlap with version increment due to commit of
+    // uncommited segment tail which must mask committed segment head
+    // NOTE0: +1 extra is enough since a segment can reside in at most 2
+    //        flush_contexts, there fore no more than 1 tail
+    // NOTE1: flush_all() Stage3 increments version by _only_ 1 to avoid overlap
+    //        with here, i.e. segment tail version will always be odd due to the
+    //        aforementioned and because there is at most 1 tail
+    ++meta.version;
   }
 
   const auto& file = *meta.files.emplace(mask_writer->filename(meta)).first; // new/expected filename
@@ -2010,6 +2019,7 @@ index_writer::pending_context_t index_writer::flush_all() {
         auto& flush_segment_ctx = segment_ctxs.back();
 
         // read document_mask as was originally flushed
+        // could be due to truncated records due to rollback of uncommitted data
         index_utils::read_document_mask(
           flush_segment_ctx.docs_mask_,
           pending_segment_context.segment_->dir_,
