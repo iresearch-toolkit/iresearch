@@ -764,6 +764,7 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
   freelist_t::node_type* freelist_node = nullptr;
   size_t generation_base;
   size_t modification_count;
+  DEFER_SCOPED_LOCK_NAMED(ctx.flush_mutex_, flush_lock); // prevent concurrent flush related modifications, i.e. if segment is also owned by another flush_context
 
   {
     SCOPED_LOCK(mutex_); // pending_segment_contexts_ may be asynchronously read
@@ -783,7 +784,7 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
       //       segment (not given out again via free-list) so no 'dirty_' check
       if (segment.flush_ctx_ && this != segment.flush_ctx_) {
         ctx.dirty_ = true;
-        SCOPED_LOCK(ctx.flush_mutex_); // 'segment.flush_ctx_' may be asynchronously flushed
+        flush_lock.lock(); // 'segment.flush_ctx_' may be asynchronously flushed
         assert(segment.flush_ctx_->pending_segment_contexts_[segment.pending_segment_context_offset_].segment_ == segment.ctx_); // thread-safe because pending_segment_contexts_ is a deque
         /* FIXME TODO uncomment once col_writer tail is writen correctly (need to track tail in new segment
         segment.flush_ctx_->pending_segment_contexts_[segment.pending_segment_context_offset_].doc_id_end_ = ctx.uncomitted_doc_id_begin_;
@@ -915,6 +916,8 @@ index_writer::segment_context::segment_context(
 }
 
 void index_writer::segment_context::flush() {
+  SCOPED_LOCK(flush_mutex_); // prevent concurrent flush related modifications
+
   if (!writer_ || !writer_->initialized() || !writer_->docs_cached()) {
     return; // skip flushing an empty writer
   }
@@ -1715,7 +1718,7 @@ index_writer::pending_context_t index_writer::flush_all() {
     // force a flush of the underlying segment_writer
     entry.segment_->flush();
 
-    entry.doc_id_end_ =
+    entry.doc_id_end_ = // may be integer_traits<size_t>::const_max if segment_meta only in this flush_context
       std::min(entry.segment_->uncomitted_doc_id_begin_, entry.doc_id_end_); // update so that can use valid value below
     entry.modification_offset_end_ = std::min(
       entry.segment_->uncomitted_modification_queries_,
@@ -1940,10 +1943,7 @@ index_writer::pending_context_t index_writer::flush_all() {
       }
 
       size_t flushed_docs_count = 0;
-      auto flushed_doc_id_end = std::min(
-        pending_segment_context.doc_id_end_, // may be integer_traits<size_t>::const_max if segment_meta only in this flush_context
-        pending_segment_context.segment_->uncomitted_doc_id_begin_
-      );
+      auto flushed_doc_id_end = pending_segment_context.doc_id_end_; // was updated after flush
       assert(pending_segment_context.doc_id_begin_ <= flushed_doc_id_end);
       assert(flushed_doc_id_end - doc_limits::min() <= pending_segment_context.segment_->flushed_update_contexts_.size());
 

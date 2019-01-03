@@ -747,13 +747,13 @@ class IRESEARCH_API index_writer:
     format::ptr codec_; // the codec to used for flushing a segment writer
     bool dirty_; // true if flush_all() started processing this segment (this segment should not be used for any new operations), guarded by the flush_context::flush_mutex_
     ref_tracking_directory dir_; // ref tracking for segment_writer to allow for easy ref removal on segment_writer reset
-    std::mutex flush_mutex_; // guard 'uncomitted_*' and 'writer_' from concurrent flush
+    std::recursive_mutex flush_mutex_; // guard 'flushed_', 'uncomitted_*' and 'writer_' from concurrent flush
     std::vector<flushed_t> flushed_; // all of the previously flushed versions of this segment, guarded by the flush_context::flush_mutex_
     std::vector<segment_writer::update_context> flushed_update_contexts_; // update_contexts to use with 'flushed_' sequentially increasing through all offsets (sequential doc_id in 'flushed_' == offset + type_limits<type_t::doc_id_t>::min(), size() == sum of all 'flushed_'.'docs_count')
     segment_meta_generator_t meta_generator_; // function to get new segment_meta from
     std::vector<modification_context> modification_queries_; // sequential list of pending modification requests (remove/update)
     size_t uncomitted_doc_id_begin_; // starting doc_id that is not part of the current flush_context (doc_id sequentially increasing through all 'flushed_' offsets and into 'segment_writer::doc_contexts' hence value may be greater than doc_id_t::max)
-    size_t uncomitted_generation_offset_; // current modification/update generation offset for asignment to uncommited operations
+    size_t uncomitted_generation_offset_; // current modification/update generation offset for asignment to uncommited operations (same as modification_queries_.size() - uncomitted_modification_queries_) FIXME TODO consider removing
     size_t uncomitted_modification_queries_; // staring offset in 'modification_queries_' that is not part of the current flush_context
     segment_writer::ptr writer_;
     index_meta::index_segment_t writer_meta_; // the segment_meta this writer was initialized with
