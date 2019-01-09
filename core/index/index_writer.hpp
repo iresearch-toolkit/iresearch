@@ -758,7 +758,7 @@ class IRESEARCH_API index_writer:
     segment_writer::ptr writer_;
     index_meta::index_segment_t writer_meta_; // the segment_meta this writer was initialized with
 
-    DECLARE_FACTORY(directory& dir, segment_meta_generator_t&& meta_generator)
+    DECLARE_FACTORY(directory& dir, segment_meta_generator_t&& meta_generator);
     segment_context(directory& dir, segment_meta_generator_t&& meta_generator);
 
     ////////////////////////////////////////////////////////////////////////////

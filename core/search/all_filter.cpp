@@ -54,8 +54,8 @@ class all_query: public filter::prepared {
   }
 };
 
-DEFINE_FILTER_TYPE(irs::all);
-DEFINE_FACTORY_DEFAULT(irs::all);
+DEFINE_FILTER_TYPE(irs::all)
+DEFINE_FACTORY_DEFAULT(irs::all)
 
 all::all() NOEXCEPT
   : filter(all::type()) {

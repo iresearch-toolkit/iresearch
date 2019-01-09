@@ -126,7 +126,7 @@ struct basic_sort : irs::sort {
   size_t idx;
 };
 
-DEFINE_SORT_TYPE(::tests::detail::basic_sort);
+DEFINE_SORT_TYPE(::tests::detail::basic_sort)
 
 class basic_doc_iterator: public iresearch::doc_iterator {
  public:
@@ -321,8 +321,8 @@ struct boosted: public iresearch::filter {
   basic_doc_iterator::docids_t docs;
 }; // boosted
 
-DEFINE_FILTER_TYPE(boosted);
-DEFINE_FACTORY_DEFAULT(boosted);
+DEFINE_FILTER_TYPE(boosted)
+DEFINE_FACTORY_DEFAULT(boosted)
 
 NS_END // detail
 
@@ -1230,8 +1230,8 @@ struct unestimated: public iresearch::filter {
   unestimated() : filter(unestimated::type()) {}
 }; // unestimated
 
-DEFINE_FILTER_TYPE(unestimated);
-DEFINE_FACTORY_DEFAULT(unestimated);
+DEFINE_FILTER_TYPE(unestimated)
+DEFINE_FACTORY_DEFAULT(unestimated)
 
 struct estimated: public iresearch::filter {
   struct doc_iterator : iresearch::doc_iterator {
@@ -1297,8 +1297,8 @@ struct estimated: public iresearch::filter {
   iresearch::cost::cost_t est{};
 }; // estimated
 
-DEFINE_FILTER_TYPE(estimated);
-DEFINE_FACTORY_DEFAULT(estimated);
+DEFINE_FILTER_TYPE(estimated)
+DEFINE_FACTORY_DEFAULT(estimated)
 
 NS_END // detail
 

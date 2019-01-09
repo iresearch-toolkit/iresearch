@@ -169,8 +169,8 @@ class phrase_query : public filter::prepared {
   return req;
 }
 
-DEFINE_FILTER_TYPE(by_phrase);
-DEFINE_FACTORY_DEFAULT(by_phrase);
+DEFINE_FILTER_TYPE(by_phrase)
+DEFINE_FACTORY_DEFAULT(by_phrase)
 
 by_phrase::by_phrase(): filter(by_phrase::type()) {
 }

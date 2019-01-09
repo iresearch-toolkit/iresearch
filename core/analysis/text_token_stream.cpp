@@ -478,7 +478,7 @@ char const* text_token_stream::STOPWORD_PATH_ENV_VARIABLE = "IRESEARCH_TEXT_STOP
 // --SECTION--                                                  static functions
 // -----------------------------------------------------------------------------
 
-DEFINE_ANALYZER_TYPE_NAMED(text_token_stream, "text");
+DEFINE_ANALYZER_TYPE_NAMED(text_token_stream, "text")
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors

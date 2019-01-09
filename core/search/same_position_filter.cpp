@@ -182,8 +182,8 @@ class same_position_query final : public filter::prepared {
   stats_t stats_;
 }; // same_position_query
 
-DEFINE_FILTER_TYPE(by_same_position);
-DEFINE_FACTORY_DEFAULT(by_same_position);
+DEFINE_FILTER_TYPE(by_same_position)
+DEFINE_FACTORY_DEFAULT(by_same_position)
 
 /* static */ const flags& by_same_position::features() {
   static flags features{ frequency::type(), position::type() };

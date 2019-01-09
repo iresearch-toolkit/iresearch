@@ -46,7 +46,7 @@ namespace tests {
 
     class prepared : sort::prepared {
      public:
-      DEFINE_FACTORY_INLINE(prepared);
+      DEFINE_FACTORY_INLINE(prepared)
       prepared() { }
       virtual collector::ptr prepare_collector() const override { return nullptr; }
       virtual scorer::ptr prepare_scorer(
@@ -70,8 +70,8 @@ namespace tests {
     virtual sort::prepared::ptr prepare() const { return test_sort::prepared::make<test_sort::prepared>(); }
   };
 
-  DEFINE_SORT_TYPE(test_sort);
-  DEFINE_FACTORY_DEFAULT(test_sort);
+  DEFINE_SORT_TYPE(test_sort)
+  DEFINE_FACTORY_DEFAULT(test_sort)
 
   class IqlQueryBuilderTestSuite: public ::testing::Test {
     virtual void SetUp() {
