@@ -71,13 +71,13 @@ NS_BEGIN(analysis)
 // -----------------------------------------------------------------------------
 
 struct text_token_stream::state_t {
-  std::shared_ptr<BreakIterator> break_iterator;
-  UnicodeString data;
-  Locale locale;
-  std::shared_ptr<const Normalizer2> normalizer;
+  std::shared_ptr<icu::BreakIterator> break_iterator;
+  icu::UnicodeString data;
+  icu::Locale locale;
+  std::shared_ptr<const icu::Normalizer2> normalizer;
   std::shared_ptr<sb_stemmer> stemmer;
   std::string tmp_buf; // used by processTerm(...)
-  std::shared_ptr<Transliterator> transliterator;
+  std::shared_ptr<icu::Transliterator> transliterator;
   state_t(): locale("C") {
     // NOTE: use of the default constructor for Locale() or
     //       use of Locale::createFromName(nullptr)
@@ -336,13 +336,13 @@ bool process_term(
   irs::analysis::text_token_stream::bytes_term& term,
   const std::unordered_set<std::string>& ignored_words,
   irs::analysis::text_token_stream::state_t& state,
-  UnicodeString const& data
+  icu::UnicodeString const& data
 ) {
   // ...........................................................................
   // normalize unicode
   // ...........................................................................
-  UnicodeString word;
-  UErrorCode err = U_ZERO_ERROR; // a value that passes the U_SUCCESS() test
+  icu::UnicodeString word;
+  auto err = UErrorCode::U_ZERO_ERROR; // a value that passes the U_SUCCESS() test
 
   state.normalizer->normalize(data, word, err);
 
@@ -515,18 +515,21 @@ text_token_stream::text_token_stream(
 
 bool text_token_stream::reset(const string_ref& data) {
   if (state_->locale.isBogus()) {
-    state_->locale = Locale(locale_.language.c_str(), locale_.country.c_str());
+    state_->locale =
+      icu::Locale(locale_.language.c_str(), locale_.country.c_str());
 
     if (state_->locale.isBogus()) {
       return false;
     }
   }
 
-  UErrorCode err = U_ZERO_ERROR; // a value that passes the U_SUCCESS() test
+  auto err = UErrorCode::U_ZERO_ERROR; // a value that passes the U_SUCCESS() test
 
   if (!state_->normalizer) {
     // reusable object owned by ICU
-    state_->normalizer.reset(Normalizer2::getNFCInstance(err), [](const Normalizer2*)->void{});
+    state_->normalizer.reset(
+      icu::Normalizer2::getNFCInstance(err), [](const icu::Normalizer2*)->void{}
+    );
 
     if (!U_SUCCESS(err) || !state_->normalizer) {
       state_->normalizer.reset();
@@ -537,12 +540,12 @@ bool text_token_stream::reset(const string_ref& data) {
 
   if (!state_->transliterator) {
     // transliteration rule taken verbatim from: http://userguide.icu-project.org/transforms/general
-    UnicodeString collationRule("NFD; [:Nonspacing Mark:] Remove; NFC"); // do not allocate statically since it causes memory leaks in ICU
+    icu::UnicodeString collationRule("NFD; [:Nonspacing Mark:] Remove; NFC"); // do not allocate statically since it causes memory leaks in ICU
 
     // reusable object owned by *this
-    state_->transliterator.reset(
-      Transliterator::createInstance(collationRule, UTransDirection::UTRANS_FORWARD, err)
-    );
+    state_->transliterator.reset(icu::Transliterator::createInstance(
+      collationRule, UTransDirection::UTRANS_FORWARD, err
+    ));
 
     if (!U_SUCCESS(err) || !state_->transliterator) {
       state_->transliterator.reset();
@@ -553,7 +556,9 @@ bool text_token_stream::reset(const string_ref& data) {
 
   if (!state_->break_iterator) {
     // reusable object owned by *this
-    state_->break_iterator.reset(BreakIterator::createWordInstance(state_->locale, err));
+    state_->break_iterator.reset(icu::BreakIterator::createWordInstance(
+      state_->locale, err
+    ));
 
     if (!U_SUCCESS(err) || !state_->break_iterator) {
       state_->break_iterator.reset();
@@ -579,8 +584,9 @@ bool text_token_stream::reset(const string_ref& data) {
       return false; // ICU UnicodeString signatures can handle at most INT32_MAX
     }
 
-    state_->data =
-      UnicodeString::fromUTF8(StringPiece(data.c_str(), (int32_t)(data.size())));
+    state_->data = icu::UnicodeString::fromUTF8(
+      icu::StringPiece(data.c_str(), (int32_t)(data.size()))
+    );
   }
   else {
     std::string data_utf8 = boost::locale::conv::to_utf<char>(
@@ -591,8 +597,9 @@ bool text_token_stream::reset(const string_ref& data) {
       return false; // ICU UnicodeString signatures can handle at most INT32_MAX
     }
 
-    state_->data =
-      UnicodeString::fromUTF8(StringPiece(data_utf8.c_str(), (int32_t)(data_utf8.size())));
+    state_->data = icu::UnicodeString::fromUTF8(
+      icu::StringPiece(data_utf8.c_str(), (int32_t)(data_utf8.size()))
+    );
   }
 
   // ...........................................................................
@@ -607,15 +614,16 @@ bool text_token_stream::next() {
   // ...........................................................................
   // find boundaries of the next word
   // ...........................................................................
-  for (auto start = state_->break_iterator->current(), end = state_->break_iterator->next();
-    BreakIterator::DONE != end;
-    start = end, end = state_->break_iterator->next()) {
+  for (auto start = state_->break_iterator->current(),
+       end = state_->break_iterator->next();
+       icu::BreakIterator::DONE != end;
+       start = end, end = state_->break_iterator->next()) {
 
     // ...........................................................................
     // skip whitespace and unsuccessful terms
     // ...........................................................................
-    if (state_->break_iterator->getRuleStatus() == UWordBreak::UBRK_WORD_NONE ||
-        !process_term(term_, ignored_words_, *state_, state_->data.tempSubString(start, end - start))) {
+    if (UWordBreak::UBRK_WORD_NONE == state_->break_iterator->getRuleStatus()
+        || !process_term(term_, ignored_words_, *state_, state_->data.tempSubString(start, end - start))) {
       continue;
     }
 
