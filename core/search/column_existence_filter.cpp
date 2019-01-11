@@ -213,8 +213,10 @@ filter::prepared::ptr by_column_existence::prepare(
 ) const {
   attribute_store attrs;
 
-  // skip filed-level/term-level statistics because there are no fields/terms
-  order.prepare_stats().finish(attrs, reader);
+  // skip field-level/term-level statistics because there are no explicit
+  // fields/terms, but still collect index-level statistics
+  // i.e. all fields and terms implicitly match
+  order.prepare_collectors(attrs, reader);
 
   irs::boost::apply(attrs, boost() * filter_boost); // apply boost
 

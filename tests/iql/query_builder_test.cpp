@@ -48,7 +48,17 @@ namespace tests {
      public:
       DEFINE_FACTORY_INLINE(prepared)
       prepared() { }
-      virtual collector::ptr prepare_collector() const override { return nullptr; }
+      virtual void collect(
+        irs::attribute_store& filter_attrs,
+        const irs::index_reader& index,
+        const irs::sort::field_collector::ptr& field,
+        const irs::sort::term_collector::ptr& term
+      ) const {
+        // do not need to collect stats
+      }
+      virtual irs::sort::field_collector::ptr prepare_field_collector() const override {
+        return nullptr; // do not need to collect stats
+      }
       virtual scorer::ptr prepare_scorer(
           const iresearch::sub_reader&,
           const iresearch::term_reader&,
@@ -56,6 +66,9 @@ namespace tests {
           const irs::attribute_view& doc_attrs
       ) const override {
         return nullptr; 
+      }
+      virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
+        return nullptr; // do not need to collect stats
       }
       virtual const iresearch::flags& features() const override { 
         return iresearch::flags::empty_instance();
