@@ -270,6 +270,20 @@ order::prepared::scorers::scorers(
   }
 }
 
+order::prepared::scorers::scorers(order::prepared::scorers&& other) NOEXCEPT
+  : scorers_(std::move(other.scorers_)) {
+}
+
+order::prepared::scorers& order::prepared::scorers::operator=(
+  order::prepared::scorers&& other
+) NOEXCEPT {
+  if (this != &other) {
+    scorers_ = std::move(other.scorers_);
+  }
+
+  return *this;
+}
+
 void order::prepared::scorers::score(
   const order::prepared& ord, byte_type* scr
 ) const {

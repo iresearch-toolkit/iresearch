@@ -547,9 +547,9 @@ class IRESEARCH_API order final {
         const attribute_store& stats,
         const attribute_view& doc
       );
-      scorers(scorers&& other) = default;
+      scorers(scorers&& other) NOEXCEPT; // function definition explicitly required by MSVC2013
 
-      scorers& operator=(scorers&& other) = default;
+      scorers& operator=(scorers&& other) NOEXCEPT; // function definition explicitly required by MSVC2013
 
       void score(const prepared& ord, byte_type* score) const;
 
