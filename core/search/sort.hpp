@@ -209,8 +209,8 @@ class IRESEARCH_API sort {
     virtual void collect(
       attribute_store& filter_attrs,
       const index_reader& index,
-      const field_collector::ptr& field,
-      const term_collector::ptr& term
+      const field_collector* field,
+      const term_collector* term
     ) const = 0;
 
     ////////////////////////////////////////////////////////////////////////////////

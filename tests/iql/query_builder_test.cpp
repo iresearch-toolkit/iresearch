@@ -51,8 +51,8 @@ namespace tests {
       virtual void collect(
         irs::attribute_store& filter_attrs,
         const irs::index_reader& index,
-        const irs::sort::field_collector::ptr& field,
-        const irs::sort::term_collector::ptr& term
+        const irs::sort::field_collector* field,
+        const irs::sort::term_collector* term
       ) const {
         // do not need to collect stats
       }

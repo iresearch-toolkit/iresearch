@@ -210,7 +210,7 @@ void order::prepared::collectors::finish(
       auto& bucket = buckets_[i].bucket;
 
       if (bucket) {
-        bucket->collect(filter_attrs, index, field_collectors_[i], nullptr);
+        bucket->collect(filter_attrs, index, field_collectors_[i].get(), nullptr);
       }
     }
   } else {
@@ -226,8 +226,8 @@ void order::prepared::collectors::finish(
         bucket->collect(
           filter_attrs,
           index,
-          field_collectors_[bucket_offset],
-          term_collectors_[i]
+          field_collectors_[bucket_offset].get(),
+          term_collectors_[i].get()
         );
       }
     }

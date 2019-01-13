@@ -320,16 +320,25 @@ class sort final : irs::sort::prepared_basic<bm25::score_t> {
   virtual void collect(
     irs::attribute_store& filter_attrs,
     const irs::index_reader& index,
-    const irs::sort::field_collector::ptr& field,
-    const irs::sort::term_collector::ptr& term
+    const irs::sort::field_collector* field,
+    const irs::sort::term_collector* term
   ) const override {
     bool is_new; // stats weren't already initialized
     auto& stats = filter_attrs.try_emplace<bm25::stats>(is_new);
-    auto* field_ptr = dynamic_cast<const field_collector*>(field.get());
-    auto* term_ptr = dynamic_cast<const term_collector*>(term.get());
-    auto docs_with_field = field_ptr ? field_ptr->docs_with_field : 0; // nullptr possible if e.g. 'all' filter
-    auto docs_with_term = term_ptr ? term_ptr->docs_with_term : 0; // nullptr possible if e.g.'by_column_existence' filter
-    auto total_term_freq = field_ptr ? field_ptr->total_term_freq : 0; // nullptr possible if e.g. 'all' filter
+
+#ifdef IRESEARCH_DEBUG
+    auto* field_ptr = dynamic_cast<const field_collector*>(field);
+    assert(!field || field_ptr);
+    auto* term_ptr = dynamic_cast<const term_collector*>(term);
+    assert(!term || term_ptr);
+#else
+    auto* field_ptr = static_cast<const field_collector*>(field);
+    auto* term_ptr = static_cast<const term_collector*>(term);
+#endif
+
+    const auto docs_with_field = field_ptr ? field_ptr->docs_with_field : 0; // nullptr possible if e.g. 'all' filter
+    const auto docs_with_term = term_ptr ? term_ptr->docs_with_term : 0; // nullptr possible if e.g.'by_column_existence' filter
+    const auto total_term_freq = field_ptr ? field_ptr->total_term_freq : 0; // nullptr possible if e.g. 'all' filter
 
     // precomputed idf value
     stats->idf += float_t(std::log(

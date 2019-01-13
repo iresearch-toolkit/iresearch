@@ -69,8 +69,8 @@ struct boost : public iresearch::sort {
     virtual void collect(
       irs::attribute_store& filter_attrs,
       const irs::index_reader& index,
-      const irs::sort::field_collector::ptr& field,
-      const irs::sort::term_collector::ptr& term
+      const irs::sort::field_collector* field,
+      const irs::sort::term_collector* term
     ) const {
       // do not need to collect stats
     }
@@ -190,8 +190,8 @@ struct custom_sort: public irs::sort {
     virtual void collect(
       irs::attribute_store& filter_attrs,
       const irs::index_reader& index,
-      const irs::sort::field_collector::ptr& field,
-      const irs::sort::term_collector::ptr& term
+      const irs::sort::field_collector* field,
+      const irs::sort::term_collector* term
     ) const {
       if (sort_.collectors_collect_) {
         sort_.collectors_collect_(filter_attrs, index, field, term);
@@ -255,7 +255,7 @@ struct custom_sort: public irs::sort {
 
   std::function<void(const irs::sub_reader&, const irs::term_reader&)> collector_collect_field;
   std::function<void(const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)> collector_collect_term;
-  std::function<void(irs::attribute_store&, const irs::index_reader&, const irs::sort::field_collector::ptr&, const irs::sort::term_collector::ptr&)> collectors_collect_;
+  std::function<void(irs::attribute_store&, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)> collectors_collect_;
   std::function<irs::sort::field_collector::ptr()> prepare_field_collector_;
   std::function<scorer::ptr(const irs::sub_reader&, const irs::term_reader&, const irs::attribute_store&, const irs::attribute_view&)> prepare_scorer;
   std::function<irs::sort::term_collector::ptr()> prepare_term_collector_;
@@ -332,10 +332,10 @@ struct frequency_sort: public iresearch::sort {
     virtual void collect(
       irs::attribute_store& filter_attrs,
       const irs::index_reader& index,
-      const irs::sort::field_collector::ptr& field,
-      const irs::sort::term_collector::ptr& term
+      const irs::sort::field_collector* field,
+      const irs::sort::term_collector* term
     ) const {
-      auto* term_ptr = dynamic_cast<const term_collector*>(term.get());
+      auto* term_ptr = dynamic_cast<const term_collector*>(term);
       if (term_ptr) { // may be null e.g. 'all' filter
         filter_attrs.emplace<count>()->value = term_ptr->docs_count;
         const_cast<term_collector*>(term_ptr)->docs_count = 0;
