@@ -537,7 +537,7 @@ class IRESEARCH_API order final {
     /// @brief a convinience class for doc_iterators to invoke scorer functions
     ///        on scorers in each order bucket
     ////////////////////////////////////////////////////////////////////////////
-    class IRESEARCH_API scorers {
+    class IRESEARCH_API scorers: private util::noncopyable { // noncopyable required by MSVC
      public:
       scorers() = default;
       scorers(
@@ -547,9 +547,9 @@ class IRESEARCH_API order final {
         const attribute_store& stats,
         const attribute_view& doc
       );
-      scorers(scorers&& other) NOEXCEPT; // function definition explicitly required by MSVC2013
+      scorers(scorers&& other) NOEXCEPT; // function definition explicitly required by MSVC
 
-      scorers& operator=(scorers&& other) NOEXCEPT; // function definition explicitly required by MSVC2013
+      scorers& operator=(scorers&& other) NOEXCEPT; // function definition explicitly required by MSVC
 
       void score(const prepared& ord, byte_type* score) const;
 

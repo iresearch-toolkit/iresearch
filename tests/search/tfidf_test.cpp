@@ -495,8 +495,8 @@ TEST_F(tfidf_test, test_query) {
 
     std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     std::vector<uint64_t> expected{
-      0, 2, // segment 0
-      3, 5, 7 // segment 1
+      3, 7, // same value in 2 documents
+      0, 2, 5 // same value in 3 documents
     };
 
     irs::bytes_ref actual_value;
@@ -529,9 +529,7 @@ TEST_F(tfidf_test, test_query) {
     size_t i = 0;
 
     for (auto& entry: sorted) {
-/* FIXME TODO uncomment once statistics is collected correctly over multiple terms not present on all segments
       ASSERT_EQ(expected[i++], entry.second);
-*/
     }
   }
 
@@ -585,8 +583,9 @@ TEST_F(tfidf_test, test_query) {
 
     std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     std::vector<uint64_t> expected{
-      0, 8, 20, 28, 30, // segment 0
-      3, 15, 23, 25, 31 // segment 1
+      30, 31, // same value in segment 0 and segment 1
+      0, 8, 20, 28, // segment 0
+      3, 15, 23, 25 // segment 1
     };
 
     irs::bytes_ref actual_value;
@@ -619,9 +618,7 @@ TEST_F(tfidf_test, test_query) {
     size_t i = 0;
 
     for (auto& entry: sorted) {
-/* FIXME TODO uncomment once statistics is collected correctly over multiple terms not present on all segments
       ASSERT_EQ(expected[i++], entry.second);
-*/
     }
   }
 
