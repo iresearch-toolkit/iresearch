@@ -56,7 +56,9 @@ namespace tests {
       ) const {
         // do not need to collect stats
       }
-      virtual irs::sort::field_collector::ptr prepare_field_collector() const override {
+      virtual irs::sort::field_collector::ptr prepare_field_collector(
+          irs::bytes_ref const& init
+      ) const override {
         return nullptr; // do not need to collect stats
       }
       virtual scorer::ptr prepare_scorer(
@@ -67,7 +69,9 @@ namespace tests {
       ) const override {
         return nullptr; 
       }
-      virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
+      virtual irs::sort::term_collector::ptr prepare_term_collector(
+          irs::bytes_ref const& init
+      ) const override {
         return nullptr; // do not need to collect stats
       }
       virtual const iresearch::flags& features() const override { 

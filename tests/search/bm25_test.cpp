@@ -35,6 +35,19 @@
 #include "search/term_filter.hpp"
 #include "utils/utf8_path.hpp"
 
+NS_LOCAL
+
+struct bstring_data_output: public data_output {
+  irs::bstring out_;
+  virtual void close() override {}
+  virtual void write_byte(irs::byte_type b) override { write_bytes(&b, 1); }
+  virtual void write_bytes(const irs::byte_type* b, size_t size) override {
+    out_.append(b, size);
+  }
+};
+
+NS_END
+
 NS_BEGIN(tests)
 
 class bm25_test: public index_test_base { 
@@ -994,6 +1007,131 @@ TEST_F(bm25_test, test_query_norms) {
 }
 
 #ifndef IRESEARCH_DLL
+
+TEST_F(bm25_test, test_collector_serialization) {
+  // initialize test data
+  {
+    tests::json_doc_generator gen(
+      resource("simple_sequential.json"),
+      &tests::payloaded_json_field_factory
+    );
+    auto writer = open_writer(irs::OM_CREATE);
+    const document* doc;
+
+    while ((doc = gen.next())) {
+      ASSERT_TRUE(insert(
+        *writer,
+        doc->indexed.begin(), doc->indexed.end(),
+        doc->stored.begin(), doc->stored.end()
+      ));
+    }
+
+    writer->commit();
+  }
+
+  auto reader = irs::directory_reader::open(dir(), codec());
+  ASSERT_EQ(1, reader.size());
+  auto* field = reader[0].field("name");
+  ASSERT_NE(nullptr, field);
+  auto term = field->iterator();
+  ASSERT_NE(nullptr, term);
+  ASSERT_TRUE(term->next());
+  term->read(); // fill term_meta
+  irs::bstring fcollector_out;
+  irs::bstring tcollector_out;
+
+  // default init (field_collector)
+  {
+    irs::bm25_sort sort;
+    auto prepared_sort = sort.prepare();
+    ASSERT_NE(nullptr, prepared_sort);
+    auto collector = prepared_sort->prepare_field_collector(irs::bytes_ref::NIL);
+    ASSERT_NE(nullptr, collector);
+    bstring_data_output out0;
+    collector->write(out0);
+    collector->collect(reader[0], *field);
+    bstring_data_output out1;
+    collector->write(out1);
+    fcollector_out = out1.out_;
+    ASSERT_TRUE(out0.out_.size() != out1.out_.size() || 0 != std::memcmp(&out0.out_[0], &out1.out_[0], out0.out_.size()));
+
+    // identical to default
+    collector = prepared_sort->prepare_field_collector(out0.out_);
+    bstring_data_output out2;
+    collector->write(out2);
+    ASSERT_TRUE(out0.out_.size() == out2.out_.size() && 0 == std::memcmp(&out0.out_[0], &out2.out_[0], out0.out_.size()));
+
+    // identical to modified
+    collector = prepared_sort->prepare_field_collector(out1.out_);
+    bstring_data_output out3;
+    collector->write(out3);
+    ASSERT_TRUE(out1.out_.size() == out3.out_.size() && 0 == std::memcmp(&out1.out_[0], &out3.out_[0], out1.out_.size()));
+  }
+
+  // default init (term_collector)
+  {
+    irs::bm25_sort sort;
+    auto prepared_sort = sort.prepare();
+    ASSERT_NE(nullptr, prepared_sort);
+    auto collector = prepared_sort->prepare_term_collector(irs::bytes_ref::NIL);
+    ASSERT_NE(nullptr, collector);
+    bstring_data_output out0;
+    collector->write(out0);
+    collector->collect(reader[0], *field, term->attributes());
+    bstring_data_output out1;
+    collector->write(out1);
+    tcollector_out = out1.out_;
+    ASSERT_TRUE(out0.out_.size() != out1.out_.size() || 0 != std::memcmp(&out0.out_[0], &out1.out_[0], out0.out_.size()));
+
+    // identical to default
+    collector = prepared_sort->prepare_term_collector(out0.out_);
+    bstring_data_output out2;
+    collector->write(out2);
+    ASSERT_TRUE(out0.out_.size() == out2.out_.size() && 0 == std::memcmp(&out0.out_[0], &out2.out_[0], out0.out_.size()));
+
+    // identical to modified
+    collector = prepared_sort->prepare_term_collector(out1.out_);
+    bstring_data_output out3;
+    collector->write(out3);
+    ASSERT_TRUE(out1.out_.size() == out3.out_.size() && 0 == std::memcmp(&out1.out_[0], &out3.out_[0], out1.out_.size()));
+  }
+
+  // serialized too short (field_collector)
+  {
+    irs::bm25_sort sort;
+    auto prepared_sort = sort.prepare();
+    ASSERT_NE(nullptr, prepared_sort);
+    ASSERT_THROW(prepared_sort->prepare_field_collector(irs::bytes_ref(&fcollector_out[0], fcollector_out.size() - 1)), irs::io_error);
+  }
+
+  // serialized too short (term_collector)
+  {
+    irs::bm25_sort sort;
+    auto prepared_sort = sort.prepare();
+    ASSERT_NE(nullptr, prepared_sort);
+    ASSERT_THROW(prepared_sort->prepare_term_collector(irs::bytes_ref(&tcollector_out[0], tcollector_out.size() - 1)), irs::io_error);
+  }
+
+  // serialized too long (field_collector)
+  {
+    irs::bm25_sort sort;
+    auto prepared_sort = sort.prepare();
+    ASSERT_NE(nullptr, prepared_sort);
+    auto out = fcollector_out;
+    out.append(1, 42);
+    ASSERT_THROW(prepared_sort->prepare_field_collector(out), irs::io_error);
+  }
+
+  // serialized too long (term_collector)
+  {
+    irs::bm25_sort sort;
+    auto prepared_sort = sort.prepare();
+    ASSERT_NE(nullptr, prepared_sort);
+    auto out = tcollector_out;
+    out.append(1, 42);
+    ASSERT_THROW(prepared_sort->prepare_term_collector(out), irs::io_error);
+  }
+}
 
 TEST_F(bm25_test, test_make) {
   // default values

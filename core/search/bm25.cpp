@@ -167,9 +167,48 @@ irs::sort::ptr make_json(const irs::string_ref& args) {
 
 REGISTER_SCORER_JSON(irs::bm25_sort, make_json);
 
+struct byte_ref_iterator {
+  const irs::byte_type* end_;
+  const irs::byte_type* pos_;
+  byte_ref_iterator(const irs::bytes_ref& in)
+    : end_(in.c_str() + in.size()), pos_(in.c_str()) {
+  }
+
+  irs::byte_type operator*() {
+    if (pos_ >= end_) {
+      throw irs::io_error("invalid read past end of input");
+    }
+
+    return *pos_;
+
+  }
+
+  void operator++() { ++pos_; }
+
+  template<typename T>
+  T vread() {
+    return irs::bytes_io<T, sizeof(T)>::vread(*this, std::input_iterator_tag());
+  }
+};
+
 struct field_collector final: public irs::sort::field_collector {
   uint64_t docs_with_field = 0; // number of documents containing the matched field (possibly without matching terms)
   uint64_t total_term_freq = 0; // number of terms for processed field
+
+  field_collector(irs::bytes_ref const& in = irs::bytes_ref::NIL) {
+    if (in.null()) {
+      return; // use defaults
+    }
+
+    byte_ref_iterator itr(in);
+
+    docs_with_field = itr.vread<uint64_t>();
+    total_term_freq = itr.vread<uint64_t>();
+
+    if (itr.pos_ != itr.end_) {
+      throw irs::io_error("input not read fully");
+    }
+  }
 
   virtual void collect(
     const irs::sub_reader& segment,
@@ -183,10 +222,29 @@ struct field_collector final: public irs::sort::field_collector {
       total_term_freq += freq->value;
     }
   }
+
+  virtual void write(irs::data_output& out) override {
+    out.write_vlong(docs_with_field);
+    out.write_vlong(total_term_freq);
+  }
 };
 
 struct term_collector final: public irs::sort::term_collector {
   uint64_t docs_with_term = 0; // number of documents containing the matched term
+
+  term_collector(irs::bytes_ref const & in = irs::bytes_ref::NIL) {
+    if (in.null()) {
+      return; // use defaults
+    }
+
+    byte_ref_iterator itr(in);
+
+    docs_with_term = itr.vread<uint64_t>();
+
+    if (itr.pos_ != itr.end_) {
+      throw irs::io_error("input not read fully");
+    }
+  }
 
   virtual void collect(
     const irs::sub_reader& segment,
@@ -198,6 +256,10 @@ struct term_collector final: public irs::sort::term_collector {
     if (meta) {
       docs_with_term += meta->docs_count;
     }
+  }
+
+  virtual void write(irs::data_output& out) override {
+    out.write_vlong(docs_with_term);
   }
 };
 
@@ -375,8 +437,10 @@ class sort final : irs::sort::prepared_basic<bm25::score_t> {
     return FEATURES[b_ != 0.f];
   }
 
-  virtual irs::sort::field_collector::ptr prepare_field_collector() const override {
-    return irs::memory::make_unique<field_collector>();
+  virtual irs::sort::field_collector::ptr prepare_field_collector(
+      bytes_ref const& init
+  ) const override {
+    return irs::memory::make_unique<field_collector>(init);
   }
 
   virtual scorer::ptr prepare_scorer(
@@ -412,8 +476,10 @@ class sort final : irs::sort::prepared_basic<bm25::score_t> {
     );
   }
 
-  virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
-    return irs::memory::make_unique<term_collector>();
+  virtual irs::sort::term_collector::ptr prepare_term_collector(
+      bytes_ref const& init
+  ) const override {
+    return irs::memory::make_unique<term_collector>(init);
   }
 
  private:

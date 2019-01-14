@@ -79,7 +79,9 @@ struct boost : public iresearch::sort {
       return iresearch::flags::empty_instance();
     }
 
-    virtual irs::sort::field_collector::ptr prepare_field_collector() const override {
+    virtual irs::sort::field_collector::ptr prepare_field_collector(
+        const irs::bytes_ref& init = irs::bytes_ref::NIL
+    ) const override {
       return nullptr; // do not need to collect stats
     }
 
@@ -94,7 +96,9 @@ struct boost : public iresearch::sort {
        );
     }
 
-    virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
+    virtual irs::sort::term_collector::ptr prepare_term_collector(
+        const irs::bytes_ref& init = irs::bytes_ref::NIL
+    ) const override {
       return nullptr; // do not need to collect stats
     }
 
@@ -142,6 +146,10 @@ struct custom_sort: public irs::sort {
         if (sort_.collector_collect_term) {
           sort_.collector_collect_term(segment, field, term_attrs);
         }
+      }
+
+      virtual void write(irs::data_output& out) override {
+        // NOOP
       }
 
      private:
@@ -202,7 +210,9 @@ struct custom_sort: public irs::sort {
       return iresearch::flags::empty_instance();
     }
 
-    virtual irs::sort::field_collector::ptr prepare_field_collector() const override {
+    virtual irs::sort::field_collector::ptr prepare_field_collector(
+        const irs::bytes_ref& init = irs::bytes_ref::NIL
+    ) const override {
       if (sort_.prepare_field_collector_) {
         return sort_.prepare_field_collector_();
       }
@@ -231,7 +241,9 @@ struct custom_sort: public irs::sort {
       score_cast(score) = irs::type_limits<irs::type_t::doc_id_t>::invalid();
     }
 
-    virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
+    virtual irs::sort::term_collector::ptr prepare_term_collector(
+        const irs::bytes_ref& init = irs::bytes_ref::NIL
+    ) const override {
       if (sort_.prepare_term_collector_) {
         return sort_.prepare_term_collector_();
       }
@@ -302,6 +314,10 @@ struct frequency_sort: public iresearch::sort {
         meta_attr = term_attrs.get<irs::term_meta>();
         docs_count += meta_attr->docs_count;
       }
+
+      virtual void write(irs::data_output& out) override {
+        // NOOP
+      }
     };
 
     class scorer: public iresearch::sort::scorer_base<score_t> {
@@ -346,7 +362,9 @@ struct frequency_sort: public iresearch::sort {
       return iresearch::flags::empty_instance();
     }
 
-    virtual irs::sort::field_collector::ptr prepare_field_collector() const override {
+    virtual irs::sort::field_collector::ptr prepare_field_collector(
+        const irs::bytes_ref& init = irs::bytes_ref::NIL
+    ) const override {
       return nullptr; // do not need to collect stats
     }
 
@@ -369,7 +387,9 @@ struct frequency_sort: public iresearch::sort {
       score.prepared = true;
     }
 
-    virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
+    virtual irs::sort::term_collector::ptr prepare_term_collector(
+        const irs::bytes_ref& init = irs::bytes_ref::NIL
+    ) const override {
       return irs::memory::make_unique<term_collector>();
     }
 
