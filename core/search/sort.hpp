@@ -470,9 +470,10 @@ class IRESEARCH_API order final {
     /// @brief a convinience class for filters to invoke collector functions
     ///        on collectors in each order bucket
     ////////////////////////////////////////////////////////////////////////////
-    class IRESEARCH_API collectors {
+    class IRESEARCH_API collectors: private util::noncopyable { // noncopyable required by MSVC
      public:
       collectors(const prepared_order_t& buckets, size_t terms_count);
+      collectors(collectors&& other) NOEXCEPT; // function definition explicitly required by MSVC
 
       //////////////////////////////////////////////////////////////////////////
       /// @brief collect field related statistics, i.e. field used in the filter

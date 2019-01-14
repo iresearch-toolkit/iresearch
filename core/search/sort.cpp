@@ -170,6 +170,12 @@ order::prepared::collectors::collectors(
   }
 }
 
+order::prepared::collectors::collectors(collectors&& other) NOEXCEPT
+  : buckets_(other.buckets_),
+    field_collectors_(std::move(other.field_collectors_)),
+    term_collectors_(std::move(other.term_collectors_)) {
+}
+
 void order::prepared::collectors::collect(
   const sub_reader& segment,
   const term_reader& field
