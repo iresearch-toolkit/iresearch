@@ -148,7 +148,7 @@ struct custom_sort: public irs::sort {
         }
       }
 
-      virtual void write(irs::data_output& out) override {
+      virtual void write(irs::data_output& out) const override {
         // NOOP
       }
 
@@ -315,7 +315,7 @@ struct frequency_sort: public iresearch::sort {
         docs_count += meta_attr->docs_count;
       }
 
-      virtual void write(irs::data_output& out) override {
+      virtual void write(irs::data_output& out) const override {
         // NOOP
       }
     };

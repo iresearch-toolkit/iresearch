@@ -147,7 +147,8 @@ irs::sort::ptr make_json(const irs::string_ref& args) {
 
 REGISTER_SCORER_JSON(irs::tfidf_sort, make_json);
 
-struct byte_ref_iterator {
+struct byte_ref_iterator
+  : public std::iterator<std::input_iterator_tag, irs::byte_type, void, void, void> {
   const irs::byte_type* end_;
   const irs::byte_type* pos_;
   byte_ref_iterator(const irs::bytes_ref& in)
@@ -160,15 +161,9 @@ struct byte_ref_iterator {
     }
 
     return *pos_;
-
   }
 
   void operator++() { ++pos_; }
-
-  template<typename T>
-  T vread() {
-    return irs::bytes_io<T, sizeof(T)>::vread(*this, std::input_iterator_tag());
-  }
 };
 
 struct field_collector final: public irs::sort::field_collector {
@@ -181,7 +176,7 @@ struct field_collector final: public irs::sort::field_collector {
 
     byte_ref_iterator itr(in);
 
-    docs_with_field = itr.vread<uint64_t>();
+    docs_with_field = irs::vread<uint64_t>(itr);
 
     if (itr.pos_ != itr.end_) {
       throw irs::io_error("input not read fully");
@@ -195,7 +190,7 @@ struct field_collector final: public irs::sort::field_collector {
     docs_with_field += field.docs_count();
   }
 
-  virtual void write(irs::data_output& out) override {
+  virtual void write(irs::data_output& out) const override {
     out.write_vlong(docs_with_field);
   }
 };
@@ -210,7 +205,7 @@ struct term_collector final: public irs::sort::term_collector {
 
     byte_ref_iterator itr(in);
 
-    docs_with_term = itr.vread<uint64_t>();
+    docs_with_term = irs::vread<uint64_t>(itr);
 
     if (itr.pos_ != itr.end_) {
       throw irs::io_error("input not read fully");
@@ -229,7 +224,7 @@ struct term_collector final: public irs::sort::term_collector {
     }
   }
 
-  virtual void write(irs::data_output& out) override {
+  virtual void write(irs::data_output& out) const override {
     out.write_vlong(docs_with_term);
   }
 };
