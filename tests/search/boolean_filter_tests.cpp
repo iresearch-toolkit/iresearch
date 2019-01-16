@@ -96,9 +96,7 @@ struct basic_sort : irs::sort {
       return irs::flags::empty_instance();
     }
 
-    virtual irs::sort::field_collector::ptr prepare_field_collector(
-        irs::bytes_ref const& init
-    ) const override {
+    virtual irs::sort::field_collector::ptr prepare_field_collector() const override {
       return nullptr; // do not need to collect stats
     }
 
@@ -115,9 +113,7 @@ struct basic_sort : irs::sort {
       score_cast<size_t>(score) = 0;
     }
 
-    virtual irs::sort::term_collector::ptr prepare_term_collector(
-        irs::bytes_ref const& init
-    ) const override {
+    virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
       return nullptr; // do not need to collect stats
     }
 
