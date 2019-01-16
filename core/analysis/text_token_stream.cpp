@@ -565,6 +565,12 @@ text_token_stream::text_token_stream(const options_t& options)
 
   options.locale = locale;
 
+  if (!get_ignored_words(options.ignored_words, options.locale)) {
+     IR_FRMT_WARN("Failed to retrieve 'ignored_words' while constructing text_token_stream for locale: %s", options.locale.name().c_str());
+
+     return nullptr;
+  }
+
   return construct(locale.name(), std::move(options));
 }
 
