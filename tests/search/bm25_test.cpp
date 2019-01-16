@@ -1045,7 +1045,7 @@ TEST_F(bm25_test, test_collector_serialization) {
     irs::bm25_sort sort;
     auto prepared_sort = sort.prepare();
     ASSERT_NE(nullptr, prepared_sort);
-    auto collector = prepared_sort->prepare_field_collector(irs::bytes_ref::NIL);
+    auto collector = prepared_sort->prepare_field_collector();
     ASSERT_NE(nullptr, collector);
     bstring_data_output out0;
     collector->write(out0);
@@ -1056,13 +1056,15 @@ TEST_F(bm25_test, test_collector_serialization) {
     ASSERT_TRUE(out0.out_.size() != out1.out_.size() || 0 != std::memcmp(&out0.out_[0], &out1.out_[0], out0.out_.size()));
 
     // identical to default
-    collector = prepared_sort->prepare_field_collector(out0.out_);
+    collector = prepared_sort->prepare_field_collector();
+    collector->collect(out0.out_);
     bstring_data_output out2;
     collector->write(out2);
     ASSERT_TRUE(out0.out_.size() == out2.out_.size() && 0 == std::memcmp(&out0.out_[0], &out2.out_[0], out0.out_.size()));
 
     // identical to modified
-    collector = prepared_sort->prepare_field_collector(out1.out_);
+    collector = prepared_sort->prepare_field_collector();
+    collector->collect(out1.out_);
     bstring_data_output out3;
     collector->write(out3);
     ASSERT_TRUE(out1.out_.size() == out3.out_.size() && 0 == std::memcmp(&out1.out_[0], &out3.out_[0], out1.out_.size()));
@@ -1073,7 +1075,7 @@ TEST_F(bm25_test, test_collector_serialization) {
     irs::bm25_sort sort;
     auto prepared_sort = sort.prepare();
     ASSERT_NE(nullptr, prepared_sort);
-    auto collector = prepared_sort->prepare_term_collector(irs::bytes_ref::NIL);
+    auto collector = prepared_sort->prepare_term_collector();
     ASSERT_NE(nullptr, collector);
     bstring_data_output out0;
     collector->write(out0);
@@ -1084,13 +1086,15 @@ TEST_F(bm25_test, test_collector_serialization) {
     ASSERT_TRUE(out0.out_.size() != out1.out_.size() || 0 != std::memcmp(&out0.out_[0], &out1.out_[0], out0.out_.size()));
 
     // identical to default
-    collector = prepared_sort->prepare_term_collector(out0.out_);
+    collector = prepared_sort->prepare_term_collector();
+    collector->collect(out0.out_);
     bstring_data_output out2;
     collector->write(out2);
     ASSERT_TRUE(out0.out_.size() == out2.out_.size() && 0 == std::memcmp(&out0.out_[0], &out2.out_[0], out0.out_.size()));
 
     // identical to modified
-    collector = prepared_sort->prepare_term_collector(out1.out_);
+    collector = prepared_sort->prepare_term_collector();
+    collector->collect(out1.out_);
     bstring_data_output out3;
     collector->write(out3);
     ASSERT_TRUE(out1.out_.size() == out3.out_.size() && 0 == std::memcmp(&out1.out_[0], &out3.out_[0], out1.out_.size()));
@@ -1101,7 +1105,9 @@ TEST_F(bm25_test, test_collector_serialization) {
     irs::bm25_sort sort;
     auto prepared_sort = sort.prepare();
     ASSERT_NE(nullptr, prepared_sort);
-    ASSERT_THROW(prepared_sort->prepare_field_collector(irs::bytes_ref(&fcollector_out[0], fcollector_out.size() - 1)), irs::io_error);
+    auto collector = prepared_sort->prepare_field_collector();
+    ASSERT_NE(nullptr, collector);
+    ASSERT_THROW(collector->collect(irs::bytes_ref(&fcollector_out[0], fcollector_out.size() - 1)), irs::io_error);
   }
 
   // serialized too short (term_collector)
@@ -1109,7 +1115,9 @@ TEST_F(bm25_test, test_collector_serialization) {
     irs::bm25_sort sort;
     auto prepared_sort = sort.prepare();
     ASSERT_NE(nullptr, prepared_sort);
-    ASSERT_THROW(prepared_sort->prepare_term_collector(irs::bytes_ref(&tcollector_out[0], tcollector_out.size() - 1)), irs::io_error);
+    auto collector = prepared_sort->prepare_term_collector();
+    ASSERT_NE(nullptr, collector);
+    ASSERT_THROW(collector->collect(irs::bytes_ref(&tcollector_out[0], tcollector_out.size() - 1)), irs::io_error);
   }
 
   // serialized too long (field_collector)
@@ -1117,9 +1125,11 @@ TEST_F(bm25_test, test_collector_serialization) {
     irs::bm25_sort sort;
     auto prepared_sort = sort.prepare();
     ASSERT_NE(nullptr, prepared_sort);
+    auto collector = prepared_sort->prepare_field_collector();
+    ASSERT_NE(nullptr, collector);
     auto out = fcollector_out;
     out.append(1, 42);
-    ASSERT_THROW(prepared_sort->prepare_field_collector(out), irs::io_error);
+    ASSERT_THROW(collector->collect(out), irs::io_error);
   }
 
   // serialized too long (term_collector)
@@ -1127,9 +1137,11 @@ TEST_F(bm25_test, test_collector_serialization) {
     irs::bm25_sort sort;
     auto prepared_sort = sort.prepare();
     ASSERT_NE(nullptr, prepared_sort);
+    auto collector = prepared_sort->prepare_term_collector();
+    ASSERT_NE(nullptr, collector);
     auto out = tcollector_out;
     out.append(1, 42);
-    ASSERT_THROW(prepared_sort->prepare_term_collector(out), irs::io_error);
+    ASSERT_THROW(collector->collect(out), irs::io_error);
   }
 }
 

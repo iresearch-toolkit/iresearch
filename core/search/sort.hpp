@@ -118,6 +118,12 @@ class IRESEARCH_API sort {
      ) = 0;
 
      ///////////////////////////////////////////////////////////////////////////
+     /// @brief collect field related statistics from a serialized
+     ///        representation as produced by write(...) below
+     ///////////////////////////////////////////////////////////////////////////
+     virtual void collect(const bytes_ref& in) = 0;
+
+     ///////////////////////////////////////////////////////////////////////////
      /// @brief serialize the internal data representation into 'out'
      ///////////////////////////////////////////////////////////////////////////
      virtual void write(data_output& out) const = 0;
@@ -178,6 +184,12 @@ class IRESEARCH_API sort {
     ) = 0;
 
     ///////////////////////////////////////////////////////////////////////////
+    /// @brief collect term related statistics from a serialized
+    ///        representation as produced by write(...) below
+    ///////////////////////////////////////////////////////////////////////////
+    virtual void collect(const bytes_ref& in) = 0;
+
+    ///////////////////////////////////////////////////////////////////////////
     /// @brief serialize the internal data representation into 'out'
     ///////////////////////////////////////////////////////////////////////////
     virtual void write(data_output& out) const = 0;
@@ -233,14 +245,9 @@ class IRESEARCH_API sort {
     ////////////////////////////////////////////////////////////////////////////
     /// @brief create an object to be used for collecting index statistics, one
     ///        instance per matched field
-    /// @param init initialize with the serialized representation obtained from
-    ///        the call to 'write(...)'
-    ///        NIL == initialize with defaults
     /// @return nullptr == no statistics collection required
     ////////////////////////////////////////////////////////////////////////////
-    virtual field_collector::ptr prepare_field_collector(
-      const bytes_ref& init = bytes_ref::NIL
-    ) const = 0;
+    virtual field_collector::ptr prepare_field_collector() const = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief create a stateful scorer used for computation of document scores
@@ -255,14 +262,9 @@ class IRESEARCH_API sort {
     ////////////////////////////////////////////////////////////////////////////
     /// @brief create an object to be used for collecting index statistics, one
     ///        instance per matched term
-    /// @param init initialize with the serialized representation obtained from
-    ///        the call to 'write(...)'
-    ///        NIL == initialize with defaults
     /// @return nullptr == no statistics collection required
     ////////////////////////////////////////////////////////////////////////////
-    virtual term_collector::ptr prepare_term_collector(
-      const bytes_ref& init = bytes_ref::NIL
-    ) const = 0;
+    virtual term_collector::ptr prepare_term_collector() const = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief initialize the score container and prepare it for add(...) calls

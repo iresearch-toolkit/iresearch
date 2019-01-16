@@ -191,21 +191,6 @@ struct field_collector final: public irs::sort::field_collector {
   uint64_t docs_with_field = 0; // number of documents containing the matched field (possibly without matching terms)
   uint64_t total_term_freq = 0; // number of terms for processed field
 
-  field_collector(irs::bytes_ref const& in = irs::bytes_ref::NIL) {
-    if (in.null()) {
-      return; // use defaults
-    }
-
-    byte_ref_iterator itr(in);
-
-    docs_with_field = irs::vread<uint64_t>(itr);
-    total_term_freq = irs::vread<uint64_t>(itr);
-
-    if (itr.pos_ != itr.end_) {
-      throw irs::io_error("input not read fully");
-    }
-  }
-
   virtual void collect(
     const irs::sub_reader& segment,
     const irs::term_reader& field
@@ -219,6 +204,19 @@ struct field_collector final: public irs::sort::field_collector {
     }
   }
 
+  virtual void collect(const irs::bytes_ref& in) override {
+    byte_ref_iterator itr(in);
+    auto docs_with_field_value = irs::vread<uint64_t>(itr);
+    auto total_term_freq_value = irs::vread<uint64_t>(itr);
+
+    if (itr.pos_ != itr.end_) {
+      throw irs::io_error("input not read fully");
+    }
+
+    docs_with_field += docs_with_field_value;
+    total_term_freq += total_term_freq_value;
+  }
+
   virtual void write(irs::data_output& out) const override {
     out.write_vlong(docs_with_field);
     out.write_vlong(total_term_freq);
@@ -227,20 +225,6 @@ struct field_collector final: public irs::sort::field_collector {
 
 struct term_collector final: public irs::sort::term_collector {
   uint64_t docs_with_term = 0; // number of documents containing the matched term
-
-  term_collector(irs::bytes_ref const & in = irs::bytes_ref::NIL) {
-    if (in.null()) {
-      return; // use defaults
-    }
-
-    byte_ref_iterator itr(in);
-
-    docs_with_term = irs::vread<uint64_t>(itr);
-
-    if (itr.pos_ != itr.end_) {
-      throw irs::io_error("input not read fully");
-    }
-  }
 
   virtual void collect(
     const irs::sub_reader& segment,
@@ -252,6 +236,17 @@ struct term_collector final: public irs::sort::term_collector {
     if (meta) {
       docs_with_term += meta->docs_count;
     }
+  }
+
+  virtual void collect(const irs::bytes_ref& in) override {
+    byte_ref_iterator itr(in);
+    auto docs_with_term_value = irs::vread<uint64_t>(itr);
+
+    if (itr.pos_ != itr.end_) {
+      throw irs::io_error("input not read fully");
+    }
+
+    docs_with_term += docs_with_term_value;
   }
 
   virtual void write(irs::data_output& out) const override {
@@ -433,10 +428,8 @@ class sort final : irs::sort::prepared_basic<bm25::score_t> {
     return FEATURES[b_ != 0.f];
   }
 
-  virtual irs::sort::field_collector::ptr prepare_field_collector(
-      bytes_ref const& init
-  ) const override {
-    return irs::memory::make_unique<field_collector>(init);
+  virtual irs::sort::field_collector::ptr prepare_field_collector() const override {
+    return irs::memory::make_unique<field_collector>();
   }
 
   virtual scorer::ptr prepare_scorer(
@@ -472,10 +465,8 @@ class sort final : irs::sort::prepared_basic<bm25::score_t> {
     );
   }
 
-  virtual irs::sort::term_collector::ptr prepare_term_collector(
-      bytes_ref const& init
-  ) const override {
-    return irs::memory::make_unique<term_collector>(init);
+  virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
+    return irs::memory::make_unique<term_collector>();
   }
 
  private:
