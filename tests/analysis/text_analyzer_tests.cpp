@@ -223,7 +223,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
   {
     irs::analysis::text_token_stream::options_t options;
 
-    options.ignored_words = { "a", "of", "and" };
+    options.ignored_words = std::unordered_set<std::string>({ "a", "of", "and" });
     options.locale = irs::locale_utils::locale("en_US.UTF-8");
 
     std::string sDataASCII = " A thing of some KIND and ANoTher ";
