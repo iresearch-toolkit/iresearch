@@ -398,6 +398,7 @@ void map_removals(
         reader->docs_iterator()
       );
 
+      // FIXME TODO does this only mask documents of a single segment? how are multiple segments of the same name handled?
       while (deleted_docs.next()) {
         docs_mask.insert(merge_ctx.doc_map(deleted_docs.value()));
       }
@@ -435,6 +436,10 @@ NS_END // NS_LOCAL
 
 NS_ROOT
 
+readers_cache::key_t::key_t(const segment_meta& meta)
+  : name(meta.name), version(meta.version) {
+}
+
 segment_reader readers_cache::emplace(const segment_meta& meta) {
   REGISTER_TIMER_DETAILED();
 
@@ -442,7 +447,7 @@ segment_reader readers_cache::emplace(const segment_meta& meta) {
 
   // FIXME consider moving open/reopen out of the scope of the lock
   SCOPED_LOCK(lock_);
-  auto& reader = cache_[meta.name];
+  auto& reader = cache_[meta];
 
   cached_reader = std::move(reader); // clear existing reader
 
@@ -460,7 +465,7 @@ void readers_cache::clear() NOEXCEPT {
 }
 
 size_t readers_cache::purge(
-    const std::unordered_set<std::string>& segments
+    const std::unordered_set<key_t, key_hash_t>& segments
 ) NOEXCEPT {
   if (segments.empty()) {
     return 0;
@@ -1453,7 +1458,7 @@ bool index_writer::consolidate(
       const auto& consolidation_meta = pending_segment.segment.meta;
 
       for (const auto* segment : consolidation_ctx.candidates) {
-        ctx->segment_mask_.emplace(segment->name);
+        ctx->segment_mask_.emplace(*segment);
       }
 
       IR_FRMT_TRACE(
@@ -1519,8 +1524,18 @@ bool index_writer::consolidate(
       const auto& consolidation_ctx = pending_segment.consolidation_ctx;
       const auto& consolidation_meta = pending_segment.segment.meta;
 
+      // mask mapped candidates
+      // segments from the to-be added new segment
       for (const auto* segment : consolidation_ctx.candidates) {
-        ctx->segment_mask_.emplace(segment->name);
+        ctx->segment_mask_.emplace(*segment);
+      }
+
+      // mask mapped (matched) segments
+      // segments from the already finished commit
+      for (auto& segment: current_committed_meta->segments()) {
+        if (mappings.end() != mappings.find(segment.meta.name)) {
+          ctx->segment_mask_.emplace(segment.meta);
+        }
       }
 
       IR_FRMT_TRACE(
@@ -1751,7 +1766,7 @@ index_writer::pending_context_t index_writer::flush_all() {
 
   for (auto& existing_segment: meta_) {
     // skip already masked segments
-    if (ctx->segment_mask_.end() != ctx->segment_mask_.find(existing_segment.meta.name)) {
+    if (ctx->segment_mask_.end() != ctx->segment_mask_.find(existing_segment.meta)) {
       continue;
     }
 
@@ -1789,7 +1804,7 @@ index_writer::pending_context_t index_writer::flush_all() {
     if (mask_modified) {
       // mask empty segments
       if (!segment.meta.live_docs_count) {
-        ctx->segment_mask_.emplace(existing_segment.meta.name); // mask segment to clear reader cache
+        ctx->segment_mask_.emplace(existing_segment.meta); // mask segment to clear reader cache
         segments.pop_back(); // remove empty segment
         modified = true; // removal of one fo the existing segments
         continue;
@@ -1849,8 +1864,17 @@ index_writer::pending_context_t index_writer::flush_all() {
       }
 
       // mask mapped candidates
+      // segments from the to-be added new segment
       for (auto& mapping : mappings) {
-        ctx->segment_mask_.emplace(mapping.first);
+        ctx->segment_mask_.emplace(*(mapping.second.second.first));
+      }
+
+      // mask mapped (matched) segments
+      // segments from the currently ongoing commit
+      for (auto& segment: segments) {
+        if (mappings.end() != mappings.find(segment.meta.name)) {
+          ctx->segment_mask_.emplace(segment.meta);
+        }
       }
 
       // have some changes, apply deletes
@@ -1898,7 +1922,7 @@ index_writer::pending_context_t index_writer::flush_all() {
 
     // skip empty segments
     if (!pending_segment.segment.meta.live_docs_count) {
-      ctx->segment_mask_.emplace(pending_segment.segment.meta.name);
+      ctx->segment_mask_.emplace(pending_segment.segment.meta);
       continue;
     }
 
@@ -1931,7 +1955,7 @@ index_writer::pending_context_t index_writer::flush_all() {
       auto& segment = segments[i];
 
       // valid segment
-      const bool valid = ctx->segment_mask_.end() == ctx->segment_mask_.find(segment.meta.name);
+      const bool valid = ctx->segment_mask_.end() == ctx->segment_mask_.find(segment.meta);
 
       if (begin != end && i == begin->first) {
         begin->first = valid ? tmp.size() : integer_traits<size_t>::const_max; // mark invalid
@@ -2075,7 +2099,7 @@ index_writer::pending_context_t index_writer::flush_all() {
 
       // mask empty segments
       if (!segment_ctx.segment_.meta.live_docs_count) {
-        ctx->segment_mask_.emplace(segment_ctx.segment_.meta.name);
+        ctx->segment_mask_.emplace(segment_ctx.segment_.meta);
         continue;
       }
 
