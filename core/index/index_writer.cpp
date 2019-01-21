@@ -398,7 +398,11 @@ void map_removals(
         reader->docs_iterator()
       );
 
-      // FIXME TODO does this only mask documents of a single segment? how are multiple segments of the same name handled?
+      // this only masks documents of a single segment
+      // this works due to the current architectural approach of segments,
+      // either removals are new and will be applied during flush_all()
+      // or removals are in the docs_mask and swill be applied by the reader
+      // passed to the merge_writer
       while (deleted_docs.next()) {
         docs_mask.insert(merge_ctx.doc_map(deleted_docs.value()));
       }
@@ -1306,6 +1310,7 @@ bool index_writer::consolidate(
   // collect a list of consolidation candidates
   {
     SCOPED_LOCK(consolidation_lock_);
+    // FIXME TODO remove from 'consolidating_segments_' any segments in 'committed_state_' or 'pending_state_' to avoid data duplication
     policy(candidates, *committed_meta, consolidating_segments_);
 
     switch (candidates.size()) {
@@ -1457,6 +1462,8 @@ bool index_writer::consolidate(
       const auto& consolidation_ctx = pending_segment.consolidation_ctx;
       const auto& consolidation_meta = pending_segment.segment.meta;
 
+      // mask mapped candidates
+      // segments from the to-be added new segment
       for (const auto* segment : consolidation_ctx.candidates) {
         ctx->segment_mask_.emplace(*segment);
       }
