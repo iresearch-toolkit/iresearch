@@ -1813,10 +1813,11 @@ index_writer::pending_context_t index_writer::flush_all() {
       if (!segment.meta.live_docs_count) {
         ctx->segment_mask_.emplace(existing_segment.meta); // mask segment to clear reader cache
         segments.pop_back(); // remove empty segment
-        modified = true; // removal of one fo the existing segments
+        modified = true; // removal of one of the existing segments
         continue;
       }
 
+      ctx->segment_mask_.emplace(existing_segment.meta); // mask segment since write_document_mask(...) will increment version
       to_sync.register_partial_sync(segment_id, write_document_mask(dir, segment.meta, docs_mask));
       segment.meta.size = 0; // reset for new write
       index_utils::flush_index_segment(dir, segment); // write with new mask
