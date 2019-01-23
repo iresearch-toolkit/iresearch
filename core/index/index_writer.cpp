@@ -379,7 +379,7 @@ std::pair<bool, size_t> map_candidates(
   return std::make_pair(has_removals, found);
 }
 
-void map_removals(
+bool map_removals(
     const candidates_mapping_t& candidates_mapping,
     const irs::merge_writer& merger,
     irs::readers_cache& readers,
@@ -393,21 +393,72 @@ void map_removals(
     if (segment_mapping.first->version != segment_mapping.second.first->version) {
       auto& merge_ctx = merger[segment_mapping.second.second];
       auto reader = readers.emplace(*segment_mapping.first);
-      irs::exclusion deleted_docs(
-        merge_ctx.reader->docs_iterator(),
-        reader->docs_iterator()
-      );
+      auto merged_itr = merge_ctx.reader->docs_iterator();
+      auto current_itr = reader->docs_iterator();
 
       // this only masks documents of a single segment
       // this works due to the current architectural approach of segments,
       // either removals are new and will be applied during flush_all()
       // or removals are in the docs_mask and swill be applied by the reader
       // passed to the merge_writer
-      while (deleted_docs.next()) {
-        docs_mask.insert(merge_ctx.doc_map(deleted_docs.value()));
+
+      // no more docs in merged reader
+      if (!merged_itr->next()) {
+        if (current_itr->next()) {
+          return false; // current reader has unmerged docs
+        }
+
+        continue; // continue wih next mapping
+      }
+
+      // mask all remaining doc_ids
+      if (!current_itr->next()) {
+        do {
+          assert(irs::type_limits<irs::type_t::doc_id_t>::valid(merge_ctx.doc_map(merged_itr->value()))); // doc_id must have a valid mapping
+          docs_mask.insert(merge_ctx.doc_map(merged_itr->value()));
+        } while (merged_itr->next());
+
+        continue; // continue wih next mapping
+      }
+
+      // validate that all docs in the current reader were merged, and add any removed docs to the meged mask
+      for (;;) {
+        while (merged_itr->value() < current_itr->value()) {
+          assert(irs::type_limits<irs::type_t::doc_id_t>::valid(merge_ctx.doc_map(merged_itr->value()))); // doc_id must have a valid mapping
+          docs_mask.insert(merge_ctx.doc_map(merged_itr->value()));
+
+          if (!merged_itr->next()) {
+            return false; // current reader has unmerged docs
+          }
+        }
+
+        if (merged_itr->value() > current_itr->value()) {
+          return false; // current reader has unmerged docs
+        }
+
+        // no more docs in merged reader
+        if (!merged_itr->next()) {
+          if (current_itr->next()) {
+            return false; // current reader has unmerged docs
+          }
+
+          break; // continue wih next mapping
+        }
+
+        // mask all remaining doc_ids
+        if (!current_itr->next()) {
+          do {
+            assert(irs::type_limits<irs::type_t::doc_id_t>::valid(merge_ctx.doc_map(merged_itr->value()))); // doc_id must have a valid mapping
+            docs_mask.insert(merge_ctx.doc_map(merged_itr->value()));
+          } while (merged_itr->next());
+
+          break;  // continue wih next mapping
+        }
       }
     }
   }
+
+  return true;
 }
 
 std::string to_string(std::set<const irs::segment_meta*>& consolidation) {
@@ -1502,12 +1553,20 @@ bool index_writer::consolidate(
         return false;
       }
 
-      // FIXME TODO this can potentially remove more documents then required due to improper document mask merging
       // handle deletes if something changed
       if (res.first) {
         irs::document_mask docs_mask;
 
-        map_removals(mappings, merger, cached_readers_, docs_mask);
+        if (!map_removals(mappings, merger, cached_readers_, docs_mask)) {
+          // consolidated segment has docs missing from current_committed_meta->segments()
+          IR_FRMT_WARN(
+            "Failed to finish consolidation id='" IR_SIZE_T_SPECIFIER "' for segment '%s', due removed documents still present the consolidation candidates",
+            run_id,
+            consolidation_segment.meta.name.c_str()
+          );
+
+          return false;
+        }
 
         if (!docs_mask.empty()) {
           consolidation_segment.meta.live_docs_count -= docs_mask.size();
@@ -1888,12 +1947,22 @@ index_writer::pending_context_t index_writer::flush_all() {
 
       // have some changes, apply deletes
       if (res.first) {
-        map_removals(
+        auto success = map_removals(
           mappings,
           pending_segment.consolidation_ctx.merger,
           cached_readers_,
           docs_mask
         );
+
+        if (!success) {
+          // consolidated segment has docs missing from 'segments'
+          IR_FRMT_WARN(
+            "Failed to finish merge for segment '%s', due removed documents still present the consolidation candidates",
+            pending_segment.segment.meta.name.c_str()
+          );
+
+          continue; // skip this particular consolidation
+        }
       }
 
       // we're done with removals for pending consolidation
