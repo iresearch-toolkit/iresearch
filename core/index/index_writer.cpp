@@ -1502,6 +1502,7 @@ bool index_writer::consolidate(
         return false;
       }
 
+      // FIXME TODO this can potentially remove more documents then required due to improper document mask merging
       // handle deletes if something changed
       if (res.first) {
         irs::document_mask docs_mask;
