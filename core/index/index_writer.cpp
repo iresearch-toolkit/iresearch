@@ -405,6 +405,15 @@ bool map_removals(
       // no more docs in merged reader
       if (!merged_itr->next()) {
         if (current_itr->next()) {
+          IR_FRMT_WARN(
+            "Failed to map removals for consolidated segment '%s' version '" IR_UINT64_T_SPECIFIER "' from current segment '%s' version '" IR_UINT64_T_SPECIFIER "', current segment has doc_id '" IR_UINT32_T_SPECIFIER "' not present in the consolidated segment",
+            segment_mapping.second.first->name.c_str(),
+            segment_mapping.second.first->version,
+            segment_mapping.first->name.c_str(),
+            segment_mapping.first->version,
+            current_itr->value()
+          );
+
           return false; // current reader has unmerged docs
         }
 
@@ -428,17 +437,44 @@ bool map_removals(
           docs_mask.insert(merge_ctx.doc_map(merged_itr->value()));
 
           if (!merged_itr->next()) {
+            IR_FRMT_WARN(
+              "Failed to map removals for consolidated segment '%s' version '" IR_UINT64_T_SPECIFIER "' from current segment '%s' version '" IR_UINT64_T_SPECIFIER "', current segment has doc_id '" IR_UINT32_T_SPECIFIER "' not present in the consolidated segment",
+              segment_mapping.second.first->name.c_str(),
+              segment_mapping.second.first->version,
+              segment_mapping.first->name.c_str(),
+              segment_mapping.first->version,
+              current_itr->value()
+            );
+
             return false; // current reader has unmerged docs
           }
         }
 
         if (merged_itr->value() > current_itr->value()) {
+          IR_FRMT_WARN(
+            "Failed to map removals for consolidated segment '%s' version '" IR_UINT64_T_SPECIFIER "' from current segment '%s' version '" IR_UINT64_T_SPECIFIER "', current segment has doc_id '" IR_UINT32_T_SPECIFIER "' not present in the consolidated segment",
+            segment_mapping.second.first->name.c_str(),
+            segment_mapping.second.first->version,
+            segment_mapping.first->name.c_str(),
+            segment_mapping.first->version,
+            current_itr->value()
+          );
+
           return false; // current reader has unmerged docs
         }
 
         // no more docs in merged reader
         if (!merged_itr->next()) {
           if (current_itr->next()) {
+            IR_FRMT_WARN(
+              "Failed to map removals for consolidated segment '%s' version '" IR_UINT64_T_SPECIFIER "' from current segment '%s' version '" IR_UINT64_T_SPECIFIER "', current segment has doc_id '" IR_UINT32_T_SPECIFIER "' not present in the consolidated segment",
+              segment_mapping.second.first->name.c_str(),
+              segment_mapping.second.first->version,
+              segment_mapping.first->name.c_str(),
+              segment_mapping.first->version,
+              current_itr->value()
+            );
+
             return false; // current reader has unmerged docs
           }
 
