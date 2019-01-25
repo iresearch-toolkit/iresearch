@@ -39,6 +39,7 @@ endif()
 set(IReSearch_tests_sources
   ./analysis/analyzer_test.cpp
   ./analysis/delimited_token_stream_tests.cpp
+  ./analysis/ngram_token_stream_test.cpp
   ./analysis/token_stream_tests.cpp
   ./formats/formats_tests.cpp
   ./formats/skip_list_test.cpp
