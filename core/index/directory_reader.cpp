@@ -166,6 +166,8 @@ class directory_reader_impl :
     return dir_;
   }
 
+  const index_meta& meta() const NOEXCEPT { return meta_; }
+
   // open a new directory reader
   // if codec == nullptr then use the latest file for all known codecs
   // if cached != nullptr then try to reuse its segments
@@ -211,6 +213,18 @@ directory_reader& directory_reader::operator=(
   }
 
   return *this;
+}
+
+const index_meta& directory_reader::meta() const {
+  auto impl = atomic_utils::atomic_load(&impl_); // make a copy
+
+  #ifdef IRESEARCH_DEBUG
+    auto& reader_impl = dynamic_cast<const directory_reader_impl&>(*impl);
+  #else
+    auto& reader_impl = static_cast<const directory_reader_impl&>(*impl);
+  #endif
+
+  return reader_impl.meta();
 }
 
 /*static*/ directory_reader directory_reader::open(

@@ -73,6 +73,12 @@ class IRESEARCH_API directory_reader final
     return impl_->live_docs_count();
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return the index_meta this reader is based upon
+  /// @note return value valid on an already open reader until call to reopen()
+  //////////////////////////////////////////////////////////////////////////////
+  const index_meta& meta() const;
+
   virtual size_t size() const override {
     return impl_->size();
   }
