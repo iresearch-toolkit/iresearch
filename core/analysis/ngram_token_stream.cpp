@@ -92,7 +92,7 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
     return nullptr;
   }
 
-  size_t min, max;
+  uint64_t min, max;
   bool preserve_original;
 
   if (get_uint64(json, "min", min)) {
@@ -119,7 +119,9 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
     return nullptr;
   }
 
-  return irs::analysis::ngram_token_stream::make(min, max, preserve_original);
+  return irs::analysis::ngram_token_stream::make(
+    size_t(min), size_t(max), preserve_original
+  );
 }
 
 REGISTER_ANALYZER_JSON(irs::analysis::ngram_token_stream, make_json);
