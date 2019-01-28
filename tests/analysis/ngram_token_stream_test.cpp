@@ -24,6 +24,8 @@
 #include "tests_shared.hpp"
 #include "analysis/ngram_token_stream.hpp"
 
+#ifndef IRESEARCH_DLL
+
 TEST(ngram_token_stream_test, construct) {
   // 2-gram
   {
@@ -480,3 +482,5 @@ TEST(ngram_token_stream_test, next) {
     assert_tokens(expected, "quick", stream);
   }
 }
+
+#endif // IRESEARCH_DLL
