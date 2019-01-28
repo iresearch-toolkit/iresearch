@@ -569,22 +569,22 @@ block_iterator::block_iterator(
 }
 
 void block_iterator::load() {
-  if ( !dirty_ ) {
+  if (!dirty_) {
     return;
   }
 
   index_input& in = owner_->terms_input();
-  in.seek( cur_start_ );
-  if ( shift_unpack_64( in.read_vint(), ent_count_ ) ) {
+  in.seek(cur_start_);
+  if (shift_unpack_64( in.read_vint(), ent_count_)) {
     sub_count_ = 0; // no sub-blocks
   }
   uint64_t block_size;
-  leaf_ = shift_unpack_64( in.read_vlong(), block_size );
-  suffix_in_.read_from( in, block_size );
+  leaf_ = shift_unpack_64(in.read_vlong(), block_size);
+  suffix_in_.read_from(in, block_size);
 
   const uint64_t stats_size = in.read_vlong();
-  if ( stats_size ) {
-    stats_in_.read_from( in, stats_size );
+  if (stats_size) {
+    stats_in_.read_from(in, stats_size);
   }
   cur_end_ = in.file_pointer();
   cur_ent_ = 0;
@@ -1222,10 +1222,10 @@ void field_writer::write_term_entry(const detail::entry& e, size_t prefix, bool 
 
   const irs::bytes_ref& data = e.data();
   const size_t suf_size = data.size() - prefix;
-  suffix.stream.write_vlong(leaf ? suf_size : shift_pack_64(suf_size, false));
-  suffix.stream.write_bytes(data.c_str() + prefix, suf_size);
+  suffix_.stream.write_vlong(leaf ? suf_size : shift_pack_64(suf_size, false));
+  suffix_.stream.write_bytes(data.c_str() + prefix, suf_size);
 
-  pw->encode(stats.stream, *e.term());
+  pw_->encode(stats_.stream, *e.term());
 }
 
 void field_writer::write_block_entry(
@@ -1234,13 +1234,13 @@ void field_writer::write_block_entry(
     uint64_t block_start) {
   const irs::bytes_ref& data = e.data();
   const size_t suf_size = data.size() - prefix;
-  suffix.stream.write_vlong(shift_pack_64(suf_size, true));
-  suffix.stream.write_bytes(data.c_str() + prefix, suf_size);
+  suffix_.stream.write_vlong(shift_pack_64(suf_size, true));
+  suffix_.stream.write_bytes(data.c_str() + prefix, suf_size);
 
   /* current block start pointer
   * should be greater */
   assert( block_start > e.block().start );
-  suffix.stream.write_vlong( block_start - e.block().start );
+  suffix_.stream.write_vlong( block_start - e.block().start );
 }
 
 void field_writer::write_block(
@@ -1252,12 +1252,12 @@ void field_writer::write_block(
   assert(end > begin);
 
   // begin of the block
-  const uint64_t block_start = terms_out->file_pointer();
+  const uint64_t block_start = terms_out_->file_pointer();
 
   // write block header
-  terms_out->write_vint( 
+  terms_out_->write_vint(
     shift_pack_32(static_cast<uint32_t>(end - begin),
-                  end == stack.size())
+                  end == stack_.size())
   );
 
   // write block entries
@@ -1265,11 +1265,11 @@ void field_writer::write_block(
 
   std::list<detail::block_t::prefixed_output> index;
 
-  pw->begin_block();
+  pw_->begin_block();
 
   for (size_t i = begin; i < end; ++i) {
-    auto& e = stack[i];
-    assert(starts_with(static_cast<const bytes_ref&>(e.data()), bytes_ref(last_term, prefix)));
+    auto& e = stack_[i];
+    assert(starts_with(static_cast<const bytes_ref&>(e.data()), bytes_ref(last_term_, prefix)));
 
     switch (e.type()) {
       case detail::ET_TERM:
@@ -1285,20 +1285,20 @@ void field_writer::write_block(
     }
   }
 
-  suffix.stream.flush();
-  stats.stream.flush();
+  suffix_.stream.flush();
+  stats_.stream.flush();
 
-  terms_out->write_vlong(shift_pack_64(static_cast<uint64_t>(suffix.stream.file_pointer()), leaf > 0));
-  suffix.file >> *terms_out;
+  terms_out_->write_vlong(shift_pack_64(static_cast<uint64_t>(suffix_.stream.file_pointer()), leaf > 0));
+  suffix_.file >> *terms_out_; // FIXME encrypt
 
-  terms_out->write_vlong(static_cast<uint64_t>(stats.stream.file_pointer()));
-  stats.file >> *terms_out;
+  terms_out_->write_vlong(static_cast<uint64_t>(stats_.stream.file_pointer()));
+  stats_.file >> *terms_out_; // FIXME encrypt ???
 
-  suffix.stream.reset();
-  stats.stream.reset();
+  suffix_.stream.reset();
+  stats_.stream.reset();
 
   // add new block to the list of created blocks
-  blocks.emplace_back(bytes_ref(last_term, prefix), block_start, meta, label, volatile_state_);
+  blocks.emplace_back(bytes_ref(last_term_, prefix), block_start, meta, label, volatile_state_);
 
   if (!index.empty()) {
     blocks.back().block().index = std::move(index);
@@ -1352,36 +1352,35 @@ void field_writer::write_block(
 }
 
 void field_writer::write_blocks( size_t prefix, size_t count ) {
-  /* only root node able to write whole stack */
-  assert( prefix || count == stack.size() );
+  // only root node able to write whole stack
+  assert(prefix || count == stack_.size());
   using namespace detail;
 
-  /* block metadata */
-//  detail::block_meta meta;
+  // block metadata
   irs::byte_type meta{};
 
-  /* created blocks */
-  std::list< entry > blocks;
+  // created blocks
+  std::list<entry> blocks;
 
-  const size_t end = stack.size();
+  const size_t end = stack_.size();
   const size_t begin = end - count;
-  size_t block_start = begin; /* begin of current block to write */
+  size_t block_start = begin; // begin of current block to write
 
-  int16_t last_label = block_t::INVALID_LABEL; /* last lead suffix label */
-  int16_t next_label = block_t::INVALID_LABEL; /* next lead suffix label in current block */
-  for ( size_t i = begin; i < end; ++i ) {
-    const entry& e = stack[i];
+  int16_t last_label = block_t::INVALID_LABEL; // last lead suffix label
+  int16_t next_label = block_t::INVALID_LABEL; // next lead suffix label in current block
+  for (size_t i = begin; i < end; ++i) {
+    const entry& e = stack_[i];
     const irs::bytes_ref& data = e.data();
 
     const int16_t label = data.size() == prefix
       ? block_t::INVALID_LABEL
       : data[prefix];
 
-    if ( last_label != label ) {
+    if (last_label != label) {
       const size_t block_size = i - block_start;
 
-      if ( block_size >= min_block_size
-           && end - block_start > max_block_size ) {
+      if (block_size >= min_block_size_
+           && end - block_start > max_block_size_) {
         block_meta::floor(meta, block_size < count);
         write_block( blocks, prefix, block_start, i, meta, next_label );
         next_label = label;
@@ -1395,31 +1394,31 @@ void field_writer::write_blocks( size_t prefix, size_t count ) {
     block_meta::type(meta, e.type());
   }
 
-  /* write remaining block */
+  // write remaining block
   if ( block_start < end ) {
     block_meta::floor(meta, end - block_start < count);
-    write_block( blocks, prefix, block_start, end, meta, next_label );
+    write_block(blocks, prefix, block_start, end, meta, next_label);
   }
 
-  /* merge blocks into 1st block */
+  // merge blocks into 1st block
   merge_blocks( blocks );
 
-  /* remove processed entries from the
-   * top of the stack */
-  stack.erase( stack.begin() + begin, stack.end() );
+  // remove processed entries from the
+  // top of the stack
+  stack_.erase(stack_.begin() + begin, stack_.end());
 
-  /* move root block from temporary storage
-   * to the top of the stack */
+  // move root block from temporary storage
+  // to the top of the stack
   if (!blocks.empty()) {
-    stack.emplace_back(std::move(blocks.front()));
+    stack_.emplace_back(std::move(blocks.front()));
   }
 }
 
 void field_writer::push( const bytes_ref& term ) {
-  const irs::bytes_ref& last = last_term;
+  const irs::bytes_ref& last = last_term_;
   const size_t limit = std::min(last.size(), term.size());
 
-  /* find common prefix */
+  // find common prefix
   size_t pos = 0;
   while (pos < limit && term[pos] == last[pos]) {
     ++pos;
@@ -1427,19 +1426,19 @@ void field_writer::push( const bytes_ref& term ) {
 
   for (size_t i = last.empty() ? 0 : last.size() - 1; i > pos;) {
     --i; /* should use it here as we use size_t */
-    const size_t top = stack.size() - prefixes[i];
-    if (top > min_block_size) {
+    const size_t top = stack_.size() - prefixes_[i];
+    if (top > min_block_size_) {
       write_blocks(i + 1, top);
-      prefixes[i] -= (top - 1);
+      prefixes_[i] -= (top - 1);
     }
   }
 
-  prefixes.resize(term.size());
-  std::fill(prefixes.begin() + pos, prefixes.end(), stack.size());
+  prefixes_.resize(term.size());
+  std::fill(prefixes_.begin() + pos, prefixes_.end(), stack_.size());
   if (volatile_state_) {
-    last_term.assign<true>(term);
+    last_term_.assign<true>(term);
   } else {
-    last_term.assign<false>(term);
+    last_term_.assign<false>(term);
   }
 }
 
@@ -1448,50 +1447,50 @@ field_writer::field_writer(
     bool volatile_state,
     uint32_t min_block_size,
     uint32_t max_block_size)
-  : suffix(memory_allocator::global()),
-    stats(memory_allocator::global()),
-    pw(std::move(pw)),
+  : suffix_(memory_allocator::global()),
+    stats_(memory_allocator::global()),
+    pw_(std::move(pw)),
     fst_buf_(memory::make_unique<detail::fst_buffer>()),
-    prefixes(DEFAULT_SIZE, 0),
-    term_count(0),
-    min_block_size(min_block_size),
-    max_block_size(max_block_size),
+    prefixes_(DEFAULT_SIZE, 0),
+    term_count_(0),
+    min_block_size_(min_block_size),
+    max_block_size_(max_block_size),
     volatile_state_(volatile_state) {
-  assert(this->pw);
+  assert(this->pw_);
   assert(min_block_size > 1);
   assert(min_block_size <= max_block_size);
   assert(2 * (min_block_size - 1) <= max_block_size);
-  min_term.first = false;
+  min_term_.first = false;
 }
 
 void field_writer::prepare(const irs::flush_state& state) {
   assert(state.dir);
 
   // reset writer state
-  last_term.clear();
-  max_term.clear();
-  min_term.first = false;
-  min_term.second.clear();
-  prefixes.assign(DEFAULT_SIZE, 0);
-  stack.clear();
-  stats.reset();
-  suffix.reset();
-  term_count = 0;
-  fields_count = 0;
+  last_term_.clear();
+  max_term_.clear();
+  min_term_.first = false;
+  min_term_.second.clear();
+  prefixes_.assign(DEFAULT_SIZE, 0);
+  stack_.clear();
+  stats_.reset();
+  suffix_.reset();
+  term_count_ = 0;
+  fields_count_ = 0;
 
   // prepare terms and index output
   std::string str;
-  detail::prepare_output(str, terms_out, state, TERMS_EXT, FORMAT_TERMS, FORMAT_MAX);
-  detail::prepare_output(str, index_out, state, TERMS_INDEX_EXT, FORMAT_TERMS_INDEX, FORMAT_MAX);
-  write_segment_features(*index_out, *state.features);
+  detail::prepare_output(str, terms_out_, state, TERMS_EXT, FORMAT_TERMS, FORMAT_MAX);
+  detail::prepare_output(str, index_out_, state, TERMS_INDEX_EXT, FORMAT_TERMS_INDEX, FORMAT_MAX);
+  write_segment_features(*index_out_, *state.features);
 
   // prepare postings writer
-  pw->prepare(*terms_out, state);
+  pw_->prepare(*terms_out_, state);
 
   // reset allocator from a directory
   auto& allocator = directory_utils::get_allocator(*state.dir);
-  suffix.reset(allocator);
-  stats.reset(allocator);
+  suffix_.reset(allocator);
+  stats_.reset(allocator);
 }
 
 void field_writer::write(
@@ -1506,12 +1505,12 @@ void field_writer::write(
   uint64_t sum_tfreq = 0;
 
   const bool freq_exists = features.check<frequency>();
-  auto& docs = pw->attributes().get<version10::documents>();
+  auto& docs = pw_->attributes().get<version10::documents>();
   assert(docs);
 
   for (; terms.next();) {
     auto postings = terms.postings(features);
-    auto meta = pw->write(*postings);
+    auto meta = pw_->write(*postings);
 
     if (freq_exists) {
       sum_tfreq += meta->freq;
@@ -1524,25 +1523,25 @@ void field_writer::write(
       push(term);
 
       // push term to the top of the stack
-      stack.emplace_back(term, std::move(meta), volatile_state_);
+      stack_.emplace_back(term, std::move(meta), volatile_state_);
 
-      if (!min_term.first) {
-        min_term.first = true;
+      if (!min_term_.first) {
+        min_term_.first = true;
         if (volatile_state_) {
-          min_term.second.assign<true>(term);
+          min_term_.second.assign<true>(term);
         } else {
-          min_term.second.assign<false>(term);
+          min_term_.second.assign<false>(term);
         }
       }
 
       if (volatile_state_) {
-        max_term.assign<true>(term);
+        max_term_.assign<true>(term);
       } else {
-        max_term.assign<false>(term);
+        max_term_.assign<false>(term);
       }
 
       // increase processed term count
-      ++term_count;
+      ++term_count_;
     }
   }
 
@@ -1550,21 +1549,20 @@ void field_writer::write(
 }
 
 void field_writer::begin_field(const irs::flags& field) {
-  assert(terms_out);
-  assert(index_out);
+  assert(terms_out_);
+  assert(index_out_);
 
   // at the beginning of the field
   // there should be no pending
   // entries at all
-  assert(stack.empty());
-//  assert(blocks_.empty());
+  assert(stack_.empty());
 
   // reset first field term
-  min_term.first = false;
-  min_term.second.clear();
-  term_count = 0;
+  min_term_.first = false;
+  min_term_.second.clear();
+  term_count_ = 0;
 
-  pw->begin_field(field);
+  pw_->begin_field(field);
 }
 
 void field_writer::write_segment_features(data_output& out, const flags& features) {
@@ -1593,11 +1591,11 @@ void field_writer::end_field(
     uint64_t total_doc_freq,
     uint64_t total_term_freq,
     size_t doc_count) {
-  assert(terms_out);
-  assert(index_out);
+  assert(terms_out_);
+  assert(index_out_);
   using namespace detail;
 
-  if (!term_count) {
+  if (!term_count_) {
     // nothing to write
     return;
   }
@@ -1606,49 +1604,49 @@ void field_writer::end_field(
   push(bytes_ref::EMPTY);
 
   // write root block with empty prefix
-  write_blocks(0, stack.size());
-  assert(1 == stack.size());
-  const entry& root = *stack.begin();
+  write_blocks(0, stack_.size());
+  assert(1 == stack_.size());
+  const entry& root = *stack_.begin();
 
   // build fst
   assert(fst_buf_);
   auto& fst = fst_buf_->reset(root.block().index);
 
   // write field meta
-  write_string(*index_out, name);
-  write_field_features(*index_out, features);
-  write_zvlong(*index_out, norm);
-  index_out->write_vlong(term_count);
-  index_out->write_vlong(doc_count);
-  index_out->write_vlong(total_doc_freq);
-  write_string<irs::bytes_ref>(*index_out, min_term.second);
-  write_string<irs::bytes_ref>(*index_out, max_term);
+  write_string(*index_out_, name);
+  write_field_features(*index_out_, features);
+  write_zvlong(*index_out_, norm);
+  index_out_->write_vlong(term_count_);
+  index_out_->write_vlong(doc_count);
+  index_out_->write_vlong(total_doc_freq);
+  write_string<irs::bytes_ref>(*index_out_, min_term_.second);
+  write_string<irs::bytes_ref>(*index_out_, max_term_);
   if (features.check<frequency>()) {
-    index_out->write_vlong(total_term_freq);
+    index_out_->write_vlong(total_term_freq);
   }
 
   // write fst
-  output_buf isb(index_out.get()); // wrap stream to be OpenFST compliant
+  output_buf isb(index_out_.get()); // wrap stream to be OpenFST compliant
   std::ostream os(&isb);
   fst.Write(os, fst::FstWriteOptions());
 
-  stack.clear();
-  ++fields_count;
+  stack_.clear();
+  ++fields_count_;
 }
 
 void field_writer::end() {
-  assert(terms_out);
-  assert(index_out);
+  assert(terms_out_);
+  assert(index_out_);
 
   // finish postings
-  pw->end();
+  pw_->end();
 
-  format_utils::write_footer(*terms_out);
-  terms_out.reset(); // ensure stream is closed
+  format_utils::write_footer(*terms_out_);
+  terms_out_.reset(); // ensure stream is closed
 
-  index_out->write_long(fields_count);
-  format_utils::write_footer(*index_out);
-  index_out.reset(); // ensure stream is closed
+  index_out_->write_long(fields_count_);
+  format_utils::write_footer(*index_out_);
+  index_out_.reset(); // ensure stream is closed
 }
 
 // -----------------------------------------------------------------------------

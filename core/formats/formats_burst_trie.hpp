@@ -137,16 +137,11 @@ typedef volatile_ref<byte_type> volatile_byte_ref;
 ///////////////////////////////////////////////////////////////////////////////
 struct block_t : private util::noncopyable {
   struct prefixed_output final : irs::byte_weight_output {
-//    explicit prefixed_output(const irs::bytes_ref& prefix) NOEXCEPT
-//     : prefix(prefix.c_str(), prefix.size()) {
-//    }
     explicit prefixed_output(volatile_byte_ref&& prefix) NOEXCEPT
      : prefix(std::move(prefix)) {
     }
 
     volatile_byte_ref prefix;
-//    irs::bytes_ref prefix;
-//    irs::bstring prefix; // TODO: find a way to avoid copy
   }; // prefixed_output
 
   static const int16_t INVALID_LABEL = -1;
@@ -338,21 +333,21 @@ class field_writer final : public irs::field_writer {
   void push( const irs::bytes_ref& term );
 
   std::unordered_map<const attribute::type_id*, size_t> feature_map_;
-  irs::memory_output suffix; /* term suffix column */
-  irs::memory_output stats; /* term stats column */
-  irs::index_output::ptr terms_out; /* output stream for terms */
-  irs::index_output::ptr index_out; /* output stream for indexes*/
-  irs::postings_writer::ptr pw; /* postings writer */
-  std::vector< detail::entry > stack;
+  irs::memory_output suffix_; // term suffix column
+  irs::memory_output stats_; // term stats column
+  irs::index_output::ptr terms_out_; // output stream for terms
+  irs::index_output::ptr index_out_; // output stream for indexes
+  irs::postings_writer::ptr pw_; // postings writer
+  std::vector<detail::entry> stack_;
   std::unique_ptr<detail::fst_buffer> fst_buf_; // pimpl buffer used for building FST for fields
-  detail::volatile_byte_ref last_term; // last pushed term
-  std::vector<size_t> prefixes;
-  std::pair<bool, detail::volatile_byte_ref> min_term; // current min term in a block
-  detail::volatile_byte_ref max_term; // current max term in a block
-  uint64_t term_count;    /* count of terms */
-  size_t fields_count{};
-  uint32_t min_block_size;
-  uint32_t max_block_size;
+  detail::volatile_byte_ref last_term_; // last pushed term
+  std::vector<size_t> prefixes_;
+  std::pair<bool, detail::volatile_byte_ref> min_term_; // current min term in a block
+  detail::volatile_byte_ref max_term_; // current max term in a block
+  uint64_t term_count_; // count of terms
+  size_t fields_count_{};
+  uint32_t min_block_size_;
+  uint32_t max_block_size_;
   const bool volatile_state_;
 }; // field_writer
 

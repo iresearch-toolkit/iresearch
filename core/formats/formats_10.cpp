@@ -413,12 +413,12 @@ class postings_writer final: public irs::postings_writer {
   memory::memory_pool_allocator<version10::term_meta, decltype(meta_pool_)> alloc_{ meta_pool_ };
   skip_writer skip_;
   irs::attribute_view attrs_;
-  uint32_t buf[BLOCK_SIZE];        // buffer for encoding (worst case)
-  version10::term_meta last_state; // last final term state
-  doc_stream doc;                  // document stream
+  uint32_t buf_[BLOCK_SIZE];        // buffer for encoding (worst case)
+  version10::term_meta last_state_; // last final term state
+  doc_stream doc_;                 // document stream
   pos_stream::ptr pos_;            // proximity stream
   pay_stream::ptr pay_;            // payloads and offsets stream
-  size_t docs_count{};             // count of processed documents
+  size_t docs_count_{};             // count of processed documents
   version10::documents docs_;      // bit set of all processed documents
   features features_;              // features supported by current field
   bool volatile_attributes_;       // attribute value memory locations may change after next()
@@ -498,18 +498,18 @@ void postings_writer::prepare(index_output& out, const irs::flush_state& state) 
   assert(!state.name.null());
 
   // reset writer state
-  docs_count = 0;
+  docs_count_ = 0;
 
   std::string name;
 
   // prepare document stream
-  prepare_output(name, doc.out, state, DOC_EXT, DOC_FORMAT_NAME, FORMAT_MAX);
+  prepare_output(name, doc_.out, state, DOC_EXT, DOC_FORMAT_NAME, FORMAT_MAX);
 
   auto& features = *state.features;
-  if (features.check<frequency>() && !doc.freqs) {
+  if (features.check<frequency>() && !doc_.freqs) {
     // prepare frequency stream
-    doc.freqs = memory::make_unique<uint32_t[]>(BLOCK_SIZE);
-    std::memset(doc.freqs.get(), 0, sizeof(uint32_t) * BLOCK_SIZE);
+    doc_.freqs = memory::make_unique<uint32_t[]>(BLOCK_SIZE);
+    std::memset(doc_.freqs.get(), 0, sizeof(uint32_t) * BLOCK_SIZE);
   }
 
   if (features.check<position>()) {
@@ -551,14 +551,14 @@ void postings_writer::prepare(index_output& out, const irs::flush_state& state) 
 void postings_writer::begin_field(const irs::flags& field) {
   features_ = ::features(field);
   docs_.value.clear();
-  last_state.clear();
+  last_state_.clear();
 }
 
 void postings_writer::begin_block() {
   /* clear state in order to write
    * absolute address of the first
    * entry in the block */
-  last_state.clear();
+  last_state_.clear();
 }
 
 #if defined(_MSC_VER)
@@ -646,8 +646,8 @@ void postings_writer::release(irs::term_meta *meta) NOEXCEPT {
 #endif
 
 void postings_writer::begin_term() {
-  doc.start = doc.out->file_pointer();
-  std::fill_n(doc.skip_ptr, MAX_SKIP_LEVELS, doc.start);
+  doc_.start = doc_.out->file_pointer();
+  std::fill_n(doc_.skip_ptr, MAX_SKIP_LEVELS, doc_.start);
   if (features_.position()) {
     assert(pos_ && pos_->out);
     pos_->start = pos_->out->file_pointer();
@@ -659,37 +659,37 @@ void postings_writer::begin_term() {
     }
   }
 
-  doc.last = type_limits<type_t::doc_id_t>::min(); // for proper delta of 1st id
-  doc.block_last = type_limits<type_t::doc_id_t>::invalid();
+  doc_.last = type_limits<type_t::doc_id_t>::min(); // for proper delta of 1st id
+  doc_.block_last = type_limits<type_t::doc_id_t>::invalid();
   skip_.reset();
 }
 
 void postings_writer::begin_doc(doc_id_t id, const frequency* freq) {
-  if (type_limits<type_t::doc_id_t>::valid(doc.block_last) && 0 == doc.size) {
-    skip_.skip(docs_count);
+  if (type_limits<type_t::doc_id_t>::valid(doc_.block_last) && 0 == doc_.size) {
+    skip_.skip(docs_count_);
   }
 
-  if (id < doc.last) {
+  if (id < doc_.last) {
     throw index_error(string_utils::to_string(
-      "while beginning doc in postings_writer, error: docs out of order '%d' < '%d'",
-      id, doc.last
+      "while beginning doc_ in postings_writer, error: docs out of order '%d' < '%d'",
+      id, doc_.last
     ));
   }
 
-  doc.doc(id - doc.last);
+  doc_.doc(id - doc_.last);
   if (freq) {
-    doc.freq(freq->value);
+    doc_.freq(freq->value);
   }
 
-  doc.next(id);
-  if (doc.full()) {
-    doc.flush(buf, freq != nullptr);
+  doc_.next(id);
+  if (doc_.full()) {
+    doc_.flush(buf_, freq != nullptr);
   }
 
   if (pos_) pos_->last = 0;
   if (pay_) pay_->last = 0;
 
-  ++docs_count;
+  ++docs_count_;
 }
 
 void postings_writer::add_position(uint32_t pos, const offset* offs, const payload* pay) {
@@ -703,24 +703,24 @@ void postings_writer::add_position(uint32_t pos, const offset* offs, const paylo
   pos_->next(pos);
 
   if (pos_->full()) {
-    pos_->flush(buf);
+    pos_->flush(buf_);
 
     if (pay) {
       assert(features_.payload() && pay_ && pay_->out);
-      pay_->flush_payload(buf);
+      pay_->flush_payload(buf_); // FIXME encrypt
     }
 
     if (offs) {
       assert(features_.offset() && pay_ && pay_->out);
-      pay_->flush_offsets(buf);
+      pay_->flush_offsets(buf_);
     }
   }
 }
 
 void postings_writer::end_doc() {
-  if (doc.full()) {
-    doc.block_last = doc.last;
-    doc.end = doc.out->file_pointer();
+  if (doc_.full()) {
+    doc_.block_last = doc_.last;
+    doc_.end = doc_.out->file_pointer();
     if (features_.position()) {
       assert(pos_ && pos_->out);
       pos_->end = pos_->out->file_pointer();
@@ -734,30 +734,30 @@ void postings_writer::end_doc() {
       }
     }
 
-    doc.size = 0;
+    doc_.size = 0;
   }
 }
 
 void postings_writer::end_term(version10::term_meta& meta, const uint32_t* tfreq) {
-  if (docs_count == 0) {
+  if (docs_count_ == 0) {
     return; // no documents to write
   }
 
   if (1 == meta.docs_count) {
-    meta.e_single_doc = doc.deltas[0];
+    meta.e_single_doc = doc_.deltas[0];
   } else {
     // write remaining documents using
     // variable length encoding
-    data_output& out = *doc.out;
+    data_output& out = *doc_.out;
 
-    for (uint32_t i = 0; i < doc.size; ++i) {
-      const doc_id_t doc_delta = doc.deltas[i];
+    for (uint32_t i = 0; i < doc_.size; ++i) {
+      const doc_id_t doc_delta = doc_.deltas[i];
 
       if (!features_.freq()) {
         out.write_vint(doc_delta);
       } else {
-        assert(doc.freqs);
-        const uint32_t freq = doc.freqs[i];
+        assert(doc_.freqs);
+        const uint32_t freq = doc_.freqs[i];
 
         if (1 == freq) {
           out.write_vint(shift_pack_32(doc_delta, true));
@@ -836,16 +836,16 @@ void postings_writer::end_term(version10::term_meta& meta, const uint32_t* tfreq
   /* if we have flushed at least
    * one block there was buffered
    * skip data, so we need to flush it*/
-  if (docs_count > BLOCK_SIZE) {
+  if (docs_count_ > BLOCK_SIZE) {
     //const uint64_t start = doc.out->file_pointer();
-    meta.e_skip_start = doc.out->file_pointer() - doc.start;
-    skip_.flush(*doc.out);
+    meta.e_skip_start = doc_.out->file_pointer() - doc_.start;
+    skip_.flush(*doc_.out);
   }
 
-  docs_count = 0;
-  doc.size = 0;
-  doc.last = 0;
-  meta.doc_start = doc.start;
+  docs_count_ = 0;
+  doc_.size = 0;
+  doc_.last = 0;
+  meta.doc_start = doc_.start;
 
   if (pos_) {
     pos_->size = 0;
@@ -861,14 +861,14 @@ void postings_writer::end_term(version10::term_meta& meta, const uint32_t* tfreq
 }
 
 void postings_writer::write_skip(size_t level, index_output& out) {
-  const doc_id_t doc_delta = doc.block_last; //- doc.skip_doc[level];
-  const uint64_t doc_ptr = doc.out->file_pointer();
+  const doc_id_t doc_delta = doc_.block_last; //- doc_.skip_doc[level];
+  const uint64_t doc_ptr = doc_.out->file_pointer();
 
   out.write_vint(doc_delta);
-  out.write_vlong(doc_ptr - doc.skip_ptr[level]);
+  out.write_vlong(doc_ptr - doc_.skip_ptr[level]);
 
-  doc.skip_doc[level] = doc.block_last;
-  doc.skip_ptr[level] = doc_ptr;
+  doc_.skip_doc[level] = doc_.block_last;
+  doc_.skip_ptr[level] = doc_ptr;
 
   if (features_.position()) {
     assert(pos_);
@@ -910,14 +910,14 @@ void postings_writer::encode(
     out.write_vint(meta.freq - meta.docs_count);
   }
 
-  out.write_vlong(meta.doc_start - last_state.doc_start);
+  out.write_vlong(meta.doc_start - last_state_.doc_start);
   if (features_.position()) {
-    out.write_vlong(meta.pos_start - last_state.pos_start);
+    out.write_vlong(meta.pos_start - last_state_.pos_start);
     if (type_limits<type_t::address_t>::valid(meta.pos_end)) {
       out.write_vlong(meta.pos_end);
     }
     if (features_.any(features::OFFS | features::PAY)) {
-      out.write_vlong(meta.pay_start - last_state.pay_start);
+      out.write_vlong(meta.pay_start - last_state_.pay_start);
     }
   }
 
@@ -925,12 +925,12 @@ void postings_writer::encode(
     out.write_vlong(meta.e_skip_start);
   }
 
-  last_state = meta;
+  last_state_ = meta;
 }
 
 void postings_writer::end() {
-  format_utils::write_footer(*doc.out);
-  doc.out.reset(); // ensure stream is closed
+  format_utils::write_footer(*doc_.out);
+  doc_.out.reset(); // ensure stream is closed
 
   if (pos_ && pos_->out) { // check both for the case where the writer is reused
     format_utils::write_footer(*pos_->out);
