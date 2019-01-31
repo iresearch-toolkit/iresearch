@@ -42,7 +42,7 @@ class IRESEARCH_API compressor: public bytes_ref, private util::noncopyable {
   }
 
  private:
-  struct deleter {
+  struct IRESEARCH_API deleter {
     void operator()(void* p) NOEXCEPT;
   };
 
@@ -67,7 +67,7 @@ class IRESEARCH_API decompressor {
   ) const;
 
  private:
-  struct deleter {
+  struct IRESEARCH_API deleter {
     void operator()(void* p) NOEXCEPT;
   };
 
