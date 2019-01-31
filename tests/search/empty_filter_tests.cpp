@@ -23,73 +23,56 @@
 
 #include "tests_shared.hpp"
 #include "filter_test_case_base.hpp"
-#include "store/memory_directory.hpp"
-#include "store/fs_directory.hpp"
 
 NS_LOCAL
 
-class empty_filter_test_case: public tests::filter_test_case_base {
- protected:
-  void empty_sequential() {
-    // add segment
-    {
-      tests::json_doc_generator gen(
-         resource("simple_sequential.json"),
-         &tests::generic_json_field_factory);
-      add_segment(gen);
-    }
-
-    auto rdr = open_reader();
-
-    std::vector<irs::cost::cost_t> cost{ 0 };
-
-    check_query(irs::empty(), docs_t{}, cost, rdr);
-  }
+class empty_filter_test_case : public tests::filter_test_case_base {
 };
+
+TEST_P(empty_filter_test_case, empty) {
+   // add segment
+   {
+     tests::json_doc_generator gen(
+        resource("simple_sequential.json"),
+        &tests::generic_json_field_factory);
+     add_segment(gen);
+   }
+
+   auto rdr = open_reader();
+
+   std::vector<irs::cost::cost_t> cost{ 0 };
+
+   check_query(irs::empty(), docs_t{}, cost, rdr);
+}
+
+INSTANTIATE_TEST_CASE_P(
+  memory_10,
+  empty_filter_test_case,
+  ::testing::Combine(
+    ::testing::Values(&tests::memory_directory),
+    ::testing::Values("1_0")
+  )
+);
+
+INSTANTIATE_TEST_CASE_P(
+  fs_10,
+  empty_filter_test_case,
+  ::testing::Combine(
+    ::testing::Values(&tests::fs_directory),
+    ::testing::Values("1_0")
+  )
+);
+
+INSTANTIATE_TEST_CASE_P(
+  mmap_10,
+  empty_filter_test_case,
+  ::testing::Combine(
+    ::testing::Values(&tests::mmap_directory),
+    ::testing::Values("1_0")
+  )
+);
 
 NS_END
-
-// ----------------------------------------------------------------------------
-// --SECTION--                           memory_directory + iresearch_format_10
-// ----------------------------------------------------------------------------
-
-class memory_empty_filter_test_case: public empty_filter_test_case {
- protected:
-  virtual irs::directory* get_directory() override {
-    return new irs::memory_directory();
-  }
-
-  virtual irs::format::ptr get_codec() override {
-    return irs::formats::get("1_0");
-  }
-};
-
-TEST_F(memory_empty_filter_test_case, empty) {
-  empty_sequential();
-}
-
-// ----------------------------------------------------------------------------
-// --SECTION--                               fs_directory + iresearch_format_10
-// ----------------------------------------------------------------------------
-
-class fs_empty_filter_test_case: public empty_filter_test_case {
- protected:
-  virtual irs::directory* get_directory() override {
-    auto dir = test_dir();
-
-    dir /= "index";
-
-    return new irs::fs_directory(dir.utf8());
-  }
-
-  virtual irs::format::ptr get_codec() override {
-    return irs::formats::get("1_0");
-  }
-};
-
-TEST_F(fs_empty_filter_test_case, empty) {
-  empty_sequential();
-}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

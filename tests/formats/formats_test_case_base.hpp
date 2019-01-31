@@ -259,7 +259,7 @@ class format_test_case_base : public index_test_base {
       return true;
     };
 
-    iresearch::directory::ptr dir(get_directory());
+    auto dir = get_directory(*this);
     files.clear();
     ASSERT_TRUE(dir->visit(list_files));
     ASSERT_TRUE(files.empty());

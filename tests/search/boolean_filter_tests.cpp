@@ -29,14 +29,10 @@
 #include "search/min_match_disjunction.hpp"
 #include "search/exclusion.hpp"
 #include "filter_test_case_base.hpp"
-#include "formats/formats_10.hpp"
 #include "index/iterators.hpp"
-#include "store/memory_directory.hpp"
 #include "formats/formats.hpp"
-#include "store/fs_directory.hpp"
 #include "search/term_filter.hpp"
 #include "search/term_query.hpp"
-#include "utils/singleton.hpp"
 
 #include <functional>
 
@@ -5805,7 +5801,7 @@ TEST(exclusion_test, seek) {
 // ----------------------------------------------------------------------------
 
 class boolean_filter_test_case : public filter_test_case_base {
-protected:
+ protected:
   void mixed_sequential() {
     {
       // add segment
@@ -6578,6 +6574,27 @@ protected:
   }
 };
 
+TEST_P(boolean_filter_test_case, or) {
+  or_sequential_multiple_segments();
+  or_sequential();
+}
+
+TEST_P(boolean_filter_test_case, and) {
+  and_schemas();
+  and_sequential();
+}
+
+TEST_P(boolean_filter_test_case, not) {
+  not_standalone_sequential();
+  not_standalone_sequential_ordered();
+  not_sequential();
+  not_sequential_ordered();
+}
+
+TEST_P(boolean_filter_test_case, mixed) {
+  mixed_sequential();
+}
+
 // ----------------------------------------------------------------------------
 // --SECTION--                                                   Not base tests
 // ----------------------------------------------------------------------------
@@ -6867,81 +6884,32 @@ TEST(Or_test, optimize_single_node) {
 
 #endif // IRESEARCH_DLL
 
-// ----------------------------------------------------------------------------
-// --SECTION--                           memory_directory + iresearch_format_10
-// ----------------------------------------------------------------------------
+INSTANTIATE_TEST_CASE_P(
+  memory_10,
+  boolean_filter_test_case,
+  ::testing::Combine(
+    ::testing::Values(&tests::memory_directory),
+    ::testing::Values("1_0")
+  )
+);
 
-class memory_boolean_test_case : public tests::boolean_filter_test_case {
-protected:
-  virtual irs::directory* get_directory() override {
-    return new irs::memory_directory();
-  }
+INSTANTIATE_TEST_CASE_P(
+  fs_10,
+  boolean_filter_test_case,
+  ::testing::Combine(
+    ::testing::Values(&tests::fs_directory),
+    ::testing::Values("1_0")
+  )
+);
 
-  virtual irs::format::ptr get_codec() override {
-    return irs::formats::get("1_0");
-  }
-};
-
-TEST_F(memory_boolean_test_case, or) {
-  or_sequential_multiple_segments();
-  or_sequential();
-}
-
-TEST_F( memory_boolean_test_case, and) {
-  and_schemas();
-  and_sequential();
-}
-
-TEST_F(memory_boolean_test_case, not) {
-  not_standalone_sequential();
-  not_standalone_sequential_ordered();
-  not_sequential();
-  not_sequential_ordered();
-}
-
-TEST_F(memory_boolean_test_case, mixed) {
-  mixed_sequential();
-}
-
-// ----------------------------------------------------------------------------
-// --SECTION--                               fs_directory + iresearch_format_10
-// ----------------------------------------------------------------------------
-
-class fs_boolean_filter_test_case : public tests::boolean_filter_test_case {
-protected:
-  virtual irs::directory* get_directory() override {
-    auto dir = test_dir();
-
-    dir /= "index";
-
-    return new iresearch::fs_directory(dir.utf8());
-  }
-
-  virtual irs::format::ptr get_codec() override {
-    return irs::formats::get("1_0");
-  }
-};
-
-TEST_F(fs_boolean_filter_test_case, or) {
-  or_sequential_multiple_segments();
-  or_sequential();
-}
-
-TEST_F(fs_boolean_filter_test_case, and ) {
-  and_sequential();
-  and_schemas();
-}
-
-TEST_F(fs_boolean_filter_test_case, not) {
-  not_standalone_sequential();
-  not_standalone_sequential_ordered();
-  not_sequential();
-  not_sequential_ordered();
-}
-
-TEST_F(fs_boolean_filter_test_case, mixed) {
-  mixed_sequential();
-}
+INSTANTIATE_TEST_CASE_P(
+  mmap_10,
+  boolean_filter_test_case,
+  ::testing::Combine(
+    ::testing::Values(&tests::mmap_directory),
+    ::testing::Values("1_0")
+  )
+);
 
 NS_END // tests
 
