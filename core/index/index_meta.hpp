@@ -188,9 +188,11 @@ class IRESEARCH_API index_meta {
   }
 
   const index_segment_t& segment(size_t i) const NOEXCEPT {
+    assert(i < segments_.size());
     return segments_[i];
   }
   const index_segment_t& operator[](size_t i) const NOEXCEPT {
+    assert(i < segments_.size());
     return segments_[i];
   }
   const index_segments_t& segments() const NOEXCEPT {
