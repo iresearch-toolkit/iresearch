@@ -1323,9 +1323,9 @@ INSTANTIATE_TEST_CASE_P(
   )
 );
 
-NS_END
-
 #endif // IRESEARCH_DLL
+
+NS_END // NS_LOCAL
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

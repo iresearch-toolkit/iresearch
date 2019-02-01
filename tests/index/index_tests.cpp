@@ -325,9 +325,9 @@ std::shared_ptr<irs::directory> fs_directory(const test_base& test) {
 
   return std::shared_ptr<irs::fs_directory>(
     new irs::fs_directory(dir.utf8()),
-    [](irs::fs_directory* dir) {
-      irs::file_utils::remove(dir->directory().c_str());
-      delete dir;
+    [dir](irs::fs_directory* p) {
+      dir.remove();
+      delete p;
   });
 }
 
@@ -339,9 +339,9 @@ std::shared_ptr<irs::directory> mmap_directory(const test_base& test) {
 
   return std::shared_ptr<irs::mmap_directory>(
     new irs::mmap_directory(dir.utf8()),
-    [](irs::mmap_directory* dir) {
-      irs::file_utils::remove(dir->directory().c_str());
-      delete dir;
+    [dir](irs::mmap_directory* p) {
+      dir.remove();
+      delete p;
   });
 }
 
