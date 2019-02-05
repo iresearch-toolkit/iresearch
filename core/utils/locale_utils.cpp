@@ -2128,9 +2128,9 @@ std::codecvt_base::result codecvtw_facet::do_in(
         &dst_status
       );
     } else {
-      intern_type ch = 0;
-      auto* buf_to = reinterpret_cast<char*>(&ch) + (sizeof(intern_type) - char_size);
-      auto* buf_to_end = reinterpret_cast<char*>(&ch + 1); // +1 for char after buf
+      char ch = 0;
+      auto* buf_to = &ch;
+      auto* buf_to_end = buf_to + 1; // +1 for char after buf
 
       // convert one char at a time and left pad with 0's
       while (to_next < to_end) {
@@ -2152,7 +2152,7 @@ std::codecvt_base::result codecvtw_facet::do_in(
           break;
         }
 
-        *to_next = ch; // copy over char
+        *to_next = intern_type(ch); // copy over char
         ++to_next;
         ch = 0;
 
@@ -2299,8 +2299,9 @@ std::codecvt_base::result codecvtw_facet::do_out(
     } else {
       // convert one char at a time
       do {
-        auto* buf_from = reinterpret_cast<const char*>(from_next) + (sizeof(intern_type) - char_size);
-        auto* buf_from_end = reinterpret_cast<const char*>(from_next + 1); // +1 for char after buf
+        const auto ch = char(*from_next); // truncate
+        auto* buf_from = &ch;
+        auto* buf_from_end = buf_from + 1; // +1 for char after buf
         auto* buf_next_start = buf_next;
         auto* buf_from_next = buf_from;
 
