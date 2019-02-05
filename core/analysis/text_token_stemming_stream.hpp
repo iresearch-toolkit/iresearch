@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,49 +21,52 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_DELIMITED_TOKEN_STREAM_H
-#define IRESEARCH_DELIMITED_TOKEN_STREAM_H
+#ifndef IRESEARCH_TEXT_TOKEN_STEMMING_STREAM_H
+#define IRESEARCH_TEXT_TOKEN_STEMMING_STREAM_H
 
 #include "analyzers.hpp"
 #include "token_attributes.hpp"
+
+struct sb_stemmer; // forward declaration
 
 NS_ROOT
 NS_BEGIN(analysis)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief an analyzer capable of breaking up delimited text into tokens as per
-///        RFC4180 (without starting new records on newlines)
+/// @brief an analyser capable of stemming the text, treated as a single token,
+///        for supported languages
 ////////////////////////////////////////////////////////////////////////////////
-class delimited_token_stream: public analyzer, util::noncopyable {
+class text_token_stemming_stream: public analyzer, util::noncopyable {
  public:
   DECLARE_ANALYZER_TYPE();
 
   // for use with irs::order::add<T>() and default args (static build)
-  DECLARE_FACTORY(const string_ref& delimiter);
+  DECLARE_FACTORY(const string_ref& language);
 
-  delimited_token_stream(const irs::string_ref& delimiter);
+  text_token_stemming_stream(const irs::string_ref& locale);
   virtual const irs::attribute_view& attributes() const NOEXCEPT override {
     return attrs_;
   }
   static void init(); // for trigering registration in a static build
   virtual bool next() override;
-  virtual bool reset(const string_ref& data) override;
+  virtual bool reset(const irs::string_ref& data) override;
 
- private:
-  class term_attribute final: public irs::term_attribute {
-   public:
-    void value(const irs::bytes_ref& value) { value_ = value; }
-  };
+  private:
+   class term_attribute final: public irs::term_attribute {
+    public:
+     using irs::term_attribute::value;
+     void value(const irs::bytes_ref& value) { value_ = value; }
+   };
 
-  irs::attribute_view attrs_;
-  irs::bytes_ref data_;
-  irs::bytes_ref delim_;
-  irs::bstring delim_buf_;
-  irs::increment inc_;
-  irs::offset offset_;
-  irs::payload payload_; // raw token value
-  term_attribute term_; // token value with evaluated quotes
-  irs::bstring term_buf_; // buffer for the last evaluated term
+   irs::attribute_view attrs_;
+   irs::increment inc_;
+   std::locale locale_;
+   irs::offset offset_;
+   irs::payload payload_; // raw token value
+   std::shared_ptr<sb_stemmer> stemmer_;
+   term_attribute term_; // token value with evaluated quotes
+   std::string term_buf_; // buffer for the last evaluated term
+   bool term_eof_;
 };
 
 NS_END // analysis

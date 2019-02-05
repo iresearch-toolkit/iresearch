@@ -52,6 +52,8 @@ class text_token_stream : public analyzer, util::noncopyable {
       value_ = irs::bytes_ref::NIL;
     }
 
+    using irs::term_attribute::value;
+
     void value(irs::bstring&& data) {
       buf_ = std::move(data);
       value(buf_);

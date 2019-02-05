@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,8 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_DELIMITED_TOKEN_STREAM_H
-#define IRESEARCH_DELIMITED_TOKEN_STREAM_H
+#ifndef IRESEARCH_TOKEN_MASKING_STREAM_H
+#define IRESEARCH_TOKEN_MASKING_STREAM_H
 
 #include "analyzers.hpp"
 #include "token_attributes.hpp"
@@ -31,17 +31,17 @@ NS_ROOT
 NS_BEGIN(analysis)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief an analyzer capable of breaking up delimited text into tokens as per
-///        RFC4180 (without starting new records on newlines)
+/// @brief an analyzer capable of masking the input, treated as a single token,
+///        if it is present in the configured list
 ////////////////////////////////////////////////////////////////////////////////
-class delimited_token_stream: public analyzer, util::noncopyable {
+class token_masking_stream: public analyzer, util::noncopyable {
  public:
   DECLARE_ANALYZER_TYPE();
 
   // for use with irs::order::add<T>() and default args (static build)
-  DECLARE_FACTORY(const string_ref& delimiter);
+  DECLARE_FACTORY(const string_ref& mask);
 
-  delimited_token_stream(const irs::string_ref& delimiter);
+  token_masking_stream(std::unordered_set<irs::bstring>&& mask);
   virtual const irs::attribute_view& attributes() const NOEXCEPT override {
     return attrs_;
   }
@@ -49,21 +49,20 @@ class delimited_token_stream: public analyzer, util::noncopyable {
   virtual bool next() override;
   virtual bool reset(const string_ref& data) override;
 
- private:
-  class term_attribute final: public irs::term_attribute {
-   public:
-    void value(const irs::bytes_ref& value) { value_ = value; }
-  };
+  private:
+   class term_attribute final: public irs::term_attribute {
+    public:
+     using irs::term_attribute::value;
+     void value(const irs::bytes_ref& value) { value_ = value; }
+   };
 
-  irs::attribute_view attrs_;
-  irs::bytes_ref data_;
-  irs::bytes_ref delim_;
-  irs::bstring delim_buf_;
-  irs::increment inc_;
-  irs::offset offset_;
-  irs::payload payload_; // raw token value
-  term_attribute term_; // token value with evaluated quotes
-  irs::bstring term_buf_; // buffer for the last evaluated term
+   irs::attribute_view attrs_;
+   irs::increment inc_;
+   std::unordered_set<irs::bstring> mask_;
+   irs::offset offset_;
+   irs::payload payload_; // raw token value
+   term_attribute term_; // token value with evaluated quotes
+   bool term_eof_;
 };
 
 NS_END // analysis
