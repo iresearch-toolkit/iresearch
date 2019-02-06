@@ -139,7 +139,9 @@ bool text_token_stemming_stream::next() {
 bool text_token_stemming_stream::reset(const irs::string_ref& data) {
   if (!stemmer_) {
     stemmer_.reset(
-      sb_stemmer_new(irs::locale_utils::language(locale_).c_str(), nullptr), // defaults to utf-8
+      sb_stemmer_new(
+        std::string(irs::locale_utils::language(locale_)).c_str(), nullptr // defaults to utf-8
+      ),
       [](sb_stemmer* ptr)->void{ sb_stemmer_delete(ptr); }
     );
   }

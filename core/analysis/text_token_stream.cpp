@@ -560,8 +560,8 @@ bool text_token_stream::reset(const string_ref& data) {
       state_->options.locale, irs::string_ref::NIL, true // true == convert to unicode, required for ICU and Snowball
     );
     state_->icu_locale = icu::Locale(
-      irs::locale_utils::language(state_->locale).c_str(),
-      irs::locale_utils::country(state_->locale).c_str()
+      std::string(irs::locale_utils::language(state_->locale)).c_str(),
+      std::string(irs::locale_utils::country(state_->locale)).c_str()
     );
 
     if (state_->icu_locale.isBogus()) {
@@ -618,7 +618,8 @@ bool text_token_stream::reset(const string_ref& data) {
     // reusable object owned by *this
     state_->stemmer.reset(
       sb_stemmer_new(
-        irs::locale_utils::language(state_->locale).c_str(), nullptr // defaults to utf-8
+        std::string(irs::locale_utils::language(state_->locale)).c_str(),
+        nullptr // defaults to utf-8
       ),
       [](sb_stemmer* ptr)->void{ sb_stemmer_delete(ptr); }
     );
