@@ -107,7 +107,7 @@ NS_BEGIN(analysis)
   try {
     auto* factory =
       analyzer_register::instance().get(entry_key_t(name, args_format));
-std::cerr << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << " " << size_t(factory) << std::endl; // FIXME TODO remove debug
+if (name == "text-token-stem") std::cerr << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << " " << size_t(factory) << std::endl; // FIXME TODO remove debug
     return factory ? factory(args) : nullptr;
   } catch (...) {
     IR_FRMT_ERROR("Caught exception while getting an analyzer instance");

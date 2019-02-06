@@ -44,7 +44,7 @@ NS_END // NS_LOCAL
 
 #ifndef IRESEARCH_DLL
 
-TEST_F(token_masking_stream_tests, test_stemming) {
+TEST_F(token_masking_stream_tests, test_masking) {
   // test mask nothing
   {
     irs::string_ref data0("abc");
