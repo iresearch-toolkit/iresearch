@@ -1101,7 +1101,7 @@ set_target_properties(${IResearch_TARGET_NAME}-analyzer-text-stemming-shared
   PROPERTIES
   PREFIX lib
   IMPORT_PREFIX lib
-  OUTPUT_NAME analyzer-text-stem
+  OUTPUT_NAME analyzer-text-token-stem
   DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
   COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN"
   CXX_VISIBILITY_PRESET hidden
@@ -1111,7 +1111,7 @@ set_target_properties(${IResearch_TARGET_NAME}-analyzer-text-stemming-static
   PROPERTIES
   PREFIX lib
   IMPORT_PREFIX lib
-  OUTPUT_NAME analyzer-text-stem-s
+  OUTPUT_NAME analyzer-text-token-stem-s
   COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
 )
 
@@ -1121,7 +1121,7 @@ if(MSVC)
     PROPERTIES
     PREFIX lib
     IMPORT_PREFIX lib
-    OUTPUT_NAME analyzer-text-stem-scrt
+    OUTPUT_NAME analyzer-text-token-stem-scrt
     COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN"
     CXX_VISIBILITY_PRESET hidden
   )
@@ -1130,7 +1130,7 @@ if(MSVC)
     PROPERTIES
     PREFIX lib
     IMPORT_PREFIX lib
-    OUTPUT_NAME analyzer-text-stem-scrt-s
+    OUTPUT_NAME analyzer-text-token-stem-scrt-s
     COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
   )
 endif()
