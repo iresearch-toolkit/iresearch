@@ -41,7 +41,7 @@ class text_token_stemming_stream: public analyzer, util::noncopyable {
   DECLARE_ANALYZER_TYPE();
 
   // for use with irs::order::add<T>() and default args (static build)
-  DECLARE_FACTORY(const string_ref& language);
+  DECLARE_FACTORY(const string_ref& locale);
 
   text_token_stemming_stream(const irs::string_ref& locale);
   virtual const irs::attribute_view& attributes() const NOEXCEPT override {

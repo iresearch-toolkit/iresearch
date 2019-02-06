@@ -3399,7 +3399,6 @@ class locale_info_facet: public std::locale::facet {
   const irs::string_ref& language() const NOEXCEPT { return language_; }
   const std::string& name() const NOEXCEPT { return name_; }
   bool unicode() const NOEXCEPT { return unicode_t::NONE != unicode_; }
-  bool utf8() const NOEXCEPT { return unicode_t::UTF8 == unicode_; }
   const irs::string_ref& variant() const NOEXCEPT { return variant_; }
 
  private:
@@ -3744,16 +3743,6 @@ const std::string& name(std::locale const& locale) {
   }
 
   return std::use_facet<locale_info_facet>(*loc).name();
-}
-
-bool utf8(std::locale const& locale) {
-  auto* loc = &locale;
-
-  if (!std::has_facet<locale_info_facet>(*loc)) {
-    loc = &get_locale(loc->name());
-  }
-
-  return std::use_facet<locale_info_facet>(*loc).utf8();
 }
 
 NS_END // locale_utils

@@ -116,9 +116,9 @@ text_token_stemming_stream::text_token_stemming_stream(
 }
 
 /*static*/ analyzer::ptr text_token_stemming_stream::make(
-    const string_ref& language
+    const string_ref& locale
 ) {
-  return make_text(language);
+  return make_text(locale);
 }
 
 bool text_token_stemming_stream::next() {
