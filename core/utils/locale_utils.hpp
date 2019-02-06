@@ -81,7 +81,7 @@ bool append_external(
 ) {
   auto& cvt = codecvt<T>(locale);
   std::mbstate_t state;
-  auto* from_begin = &value[0];
+  const auto* from_begin = value.c_str();
   const auto* from_end = from_begin + value.size();
   static const size_t to_buf_size = 1024; // arbitrary size
   char to_buf[to_buf_size];
@@ -122,7 +122,7 @@ bool append_internal(
 ) {
   auto& cvt = codecvt<T>(locale);
   std::mbstate_t state;
-  auto* from_begin = &value[0];
+  const auto* from_begin = value.c_str();
   const auto* from_end = from_begin + value.size();
   static const size_t to_buf_size = 1024; // arbitrary size
   T to_buf[to_buf_size];
