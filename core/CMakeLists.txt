@@ -1022,7 +1022,6 @@ target_link_libraries(${IResearch_TARGET_NAME}-analyzer-text-static
 if(MSVC)
   target_link_libraries(${IResearch_TARGET_NAME}-analyzer-text-shared-scrt
     ${IResearch_TARGET_NAME}-shared-scrt
-    ${Boost_SHARED_sharedRT_LIBRARIES}
     stemmer-shared
   )
 
@@ -1360,7 +1359,6 @@ target_link_libraries(${IResearch_TARGET_NAME}-analyzer-ngram-static
 if(MSVC)
   target_link_libraries(${IResearch_TARGET_NAME}-analyzer-ngram-shared-scrt
     ${IResearch_TARGET_NAME}-shared-scrt
-    ${Boost_SHARED_sharedRT_LIBRARIES}
   )
 
   target_link_libraries(${IResearch_TARGET_NAME}-analyzer-ngram-static-scrt

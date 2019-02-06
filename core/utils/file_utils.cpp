@@ -772,7 +772,7 @@ bool mkdir(const file_path_t path) NOEXCEPT {
         auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
         std::string utf8path;
 
-        irs::locale_utils::append_external<char_t>(utf8path, file, locale);
+        irs::locale_utils::append_external<char_t>(utf8path, path, locale);
         IR_FRMT_ERROR("Failed to create path: '%s', error %d", utf8path.c_str(), GetLastError());
 
         return false;
@@ -794,7 +794,7 @@ bool mkdir(const file_path_t path) NOEXCEPT {
       auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
       std::string utf8path;
 
-      irs::locale_utils::append_external<char_t>(utf8path, file, locale);
+      irs::locale_utils::append_external<char_t>(utf8path, path, locale);
       IR_FRMT_ERROR("Failed to create path: '%s', error %d", utf8path.c_str(), GetLastError());
 
       return false;
@@ -1005,7 +1005,7 @@ bool remove(const file_path_t path) NOEXCEPT {
         auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
         std::string utf8path;
 
-        irs::locale_utils::append_external<char_t>(utf8path, file, locale);
+        irs::locale_utils::append_external<char_t>(utf8path, path, locale);
         IR_FRMT_ERROR("Failed to remove path: '%s', error %d", utf8path.c_str(), GetLastError());
 
         return false;
@@ -1033,7 +1033,7 @@ bool remove(const file_path_t path) NOEXCEPT {
       auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
       std::string utf8path;
 
-      irs::locale_utils::append_external<char_t>(utf8path, file, locale);
+      irs::locale_utils::append_external<char_t>(utf8path, path, locale);
       IR_FRMT_ERROR("Failed to remove path: '%s', error %d", utf8path.c_str(), GetLastError());
 
       return false;

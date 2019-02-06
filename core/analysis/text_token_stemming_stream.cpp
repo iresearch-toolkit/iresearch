@@ -34,6 +34,7 @@ NS_LOCAL
 ///        "locale"(string): the locale to use for stemming <required>
 ////////////////////////////////////////////////////////////////////////////////
 irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
+std::cerr << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl; // FIXME TODO remove debug
   rapidjson::Document json;
 
   if (json.Parse(args.c_str(), args.size()).HasParseError()) {

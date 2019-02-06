@@ -33,6 +33,9 @@
   #pragma warning(default: 4101)
 #endif
 
+#include <fstream>
+#include <memory>
+
 #if defined(_MSC_VER)
   #pragma warning(disable: 4229)
 #endif
@@ -43,21 +46,17 @@
   #pragma warning(default: 4229)
 #endif
 
-#include "index-put.hpp"
 #include "common.hpp"
-#include "index/index_writer.hpp"
+#include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "analysis/token_streams.hpp"
-#include "analysis/text_token_stream.hpp"
+#include "index/index_writer.hpp"
 #include "store/store_utils.hpp"
 #include "utils/index_utils.hpp"
+#include "utils/string_utils.hpp"
+#include "utils/text_format.hpp"
 
-#include <fstream>
-#include <iostream>
-
-#if defined(_MSC_VER) && (_MSC_VER < 1900)
-  #define snprintf _snprintf
-#endif
+#include "index-put.hpp"
 
 NS_LOCAL
 
@@ -129,8 +128,6 @@ struct Doc {
     return result;
   }
 
-  /**
-  */
   struct Field {
     const std::string& _name;
     const irs::flags feats;
