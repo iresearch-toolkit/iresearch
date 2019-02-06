@@ -21,17 +21,6 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#if defined(__GNUC__)
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
-
-#include <boost/thread.hpp>
-
-#if defined(__GNUC__)
-  #pragma GCC diagnostic pop
-#endif
-
 #if defined(_MSC_VER)
   #pragma warning(disable: 4101)
   #pragma warning(disable: 4267)
@@ -68,7 +57,6 @@
 #include "utils/async_utils.hpp"
 #include "utils/memory_pool.hpp"
 
-#include <boost/chrono.hpp>
 #include <random>
 #include <fstream>
 #include <iostream>
@@ -136,7 +124,7 @@ struct Task {
     int totalHitCount;
     int topN;
 
-    boost::posix_time::time_duration tdiff;
+    size_t tdiff_msec;
     std::thread::id tid;
 
     Task(std::string& s, std::string& t, int n, irs::filter::prepared::ptr p) :
@@ -153,11 +141,13 @@ struct Task {
 
     void go(std::thread::id id, irs::directory_reader& reader) {
         tid = id;
-        boost::posix_time::ptime start = boost::posix_time::microsec_clock::local_time();
+        auto start = std::chrono::system_clock::now();
 
         query(reader);
 
-        tdiff = boost::posix_time::microsec_clock::local_time() - start;
+        tdiff_msec = std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::system_clock::now() - start
+        ).count();
     }
 
     virtual int query(irs::directory_reader& reader) = 0;
@@ -234,7 +224,7 @@ struct SearchTask : public Task {
      */
     void print(std::ostream& out) override {
         out << "TASK: cat=" << category << " q='body:" << text << "' hits=" << totalHitCount << std::endl;
-        out << "  " << tdiff.total_milliseconds() / 1000. << " msec" << std::endl;
+        out << "  " << tdiff_msec / 1000. << " msec" << std::endl;
         out << "  thread " << tid << std::endl;
         for (auto& doc : top_docs) {
             out << "  doc=" << doc.id << " score=" << doc.score << std::endl;
@@ -245,7 +235,7 @@ struct SearchTask : public Task {
     /**
      */
     void print_csv(std::ostream& out) override {
-        out << category << "," << text << "," << totalHitCount << "," << tdiff.total_milliseconds() / 1000. << "," << tdiff.total_milliseconds() << std::endl;
+        out << category << "," << text << "," << totalHitCount << "," << tdiff_msec / 1000. << "," << tdiff_msec << std::endl;
     }
 
 };
@@ -785,7 +775,7 @@ static int printResults(std::vector<Task::ptr>& tasks, std::ostream& out, bool c
 static int search(const std::string& path, std::istream& in, std::ostream& out, 
         int maxtasks, int repeat, int thrs, int topN, bool shuffle, bool csv) {
 
-    boost::posix_time::ptime start = boost::posix_time::microsec_clock::local_time();
+    auto start = std::chrono::system_clock::now();
 
     irs::fs_directory dir(path);
     irs::directory_reader reader = irs::directory_reader::open(dir, irs::formats::get("1_0"));
@@ -814,9 +804,11 @@ static int search(const std::string& path, std::istream& in, std::ostream& out,
     //testQueries(tasks.getTasks(), reader);
     printResults(tasks.getTasks(), out, csv);
 
-    boost::posix_time::time_duration msdiff = boost::posix_time::microsec_clock::local_time() - start;
+    auto tdiff_msec = std::chrono::duration_cast<std::chrono::milliseconds>(
+      std::chrono::system_clock::now() - start
+    ).count();
 
-    std::cout << msdiff.total_milliseconds() << " msec total" << std::endl;
+    std::cout << tdiff_msec << " msec total" << std::endl;
 
     u_cleanup();
 

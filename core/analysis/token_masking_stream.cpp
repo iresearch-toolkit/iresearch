@@ -21,6 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <cctype> // for std::isspace(...)
 #include <rapidjson/rapidjson/document.h> // for rapidjson::Document
 
 #include "token_masking_stream.hpp"

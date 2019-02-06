@@ -161,6 +161,8 @@ add_dependencies(${IResearchTests_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-analyzer-delimited-shared
   ${IResearch_TARGET_NAME}-analyzer-ngram-shared
   ${IResearch_TARGET_NAME}-analyzer-text-shared
+  ${IResearch_TARGET_NAME}-analyzer-text-stemming-shared
+  ${IResearch_TARGET_NAME}-analyzer-token-masking-shared
   ${IResearch_TARGET_NAME}-format-1_0-shared
   ${IResearch_TARGET_NAME}-scorer-tfidf-shared
   ${IResearch_TARGET_NAME}-scorer-bm25-shared
@@ -170,6 +172,8 @@ add_dependencies(${IResearchTests_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-analyzer-delimited-static
   ${IResearch_TARGET_NAME}-analyzer-ngram-static
   ${IResearch_TARGET_NAME}-analyzer-text-static
+  ${IResearch_TARGET_NAME}-analyzer-text-stemming-static
+  ${IResearch_TARGET_NAME}-analyzer-token-masking-static
   ${IResearch_TARGET_NAME}-format-1_0-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
   ${IResearch_TARGET_NAME}-scorer-bm25-static
@@ -211,6 +215,8 @@ target_link_libraries(${IResearchTests_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-analyzer-delimited-shared
   ${IResearch_TARGET_NAME}-analyzer-ngram-shared
   ${IResearch_TARGET_NAME}-analyzer-text-shared
+  ${IResearch_TARGET_NAME}-analyzer-text-stemming-shared
+  ${IResearch_TARGET_NAME}-analyzer-token-masking-shared
   ${IResearch_TARGET_NAME}-format-1_0-shared
   ${GTEST_STATIC_LIBS}
   ${PTHREAD_LIBRARY}

@@ -44,19 +44,6 @@
   #pragma GCC diagnostic pop
 #endif
 
-#include <boost/locale/info.hpp>
-
-#if defined (__GNUC__)
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
-
-  #include <boost/locale/util.hpp>
-
-#if defined (__GNUC__)
-  #pragma GCC diagnostic pop
-#endif
-
 #include <unicode/coll.h> // for icu::Collator
 #include <unicode/decimfmt.h> // for icu::DecimalFormat
 #include <unicode/numfmt.h> // for icu::NumberFormat

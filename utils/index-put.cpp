@@ -21,17 +21,6 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#if defined(__GNUC__)
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
-
-#include <boost/thread.hpp>
-
-#if defined(__GNUC__)
-  #pragma GCC diagnostic pop
-#endif
-
 #if defined(_MSC_VER)
   #pragma warning(disable: 4101)
   #pragma warning(disable: 4267)
@@ -63,7 +52,6 @@
 #include "store/store_utils.hpp"
 #include "utils/index_utils.hpp"
 
-#include <boost/chrono.hpp>
 #include <fstream>
 #include <iostream>
 

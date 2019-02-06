@@ -21,7 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cctype>
+#include <cctype> // for std::isspace(...)
 #include <fstream>
 #include <mutex>
 #include <unordered_map>
