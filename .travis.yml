@@ -570,7 +570,7 @@ matrix:
         - brew update || true;
           brew install bison@2.7 || true;
       env:
-        - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
+        - SET_ENV="PATH=/usr/local/opt/bison/bin:/usr/local/opt/bison@2.7/bin:$PATH"
         - CXX_STANDARD=11
         - BOOST_B2_ARGS="boost.locale.iconv=off"
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
@@ -585,7 +585,7 @@ matrix:
         - brew update || true;
           brew install bison@2.7 || true;
       env:
-        - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
+        - SET_ENV="PATH=/usr/local/opt/bison/bin:/usr/local/opt/bison@2.7/bin:$PATH"
         - CXX_STANDARD=11
         - BOOST_B2_ARGS="boost.locale.iconv=off"
         - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
@@ -600,7 +600,7 @@ matrix:
         - brew update || true;
           brew install bison@2.7 || true;
       env:
-        - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
+        - SET_ENV="PATH=/usr/local/opt/bison/bin:/usr/local/opt/bison@2.7/bin:$PATH"
         - CXX_STANDARD=11
         - BOOST_B2_ARGS="boost.locale.iconv=off"
         - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
@@ -615,7 +615,7 @@ matrix:
         - brew update || true;
           brew install bison@2.7 || true;
       env:
-        - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
+        - SET_ENV="PATH=/usr/local/opt/bison/bin:/usr/local/opt/bison@2.7/bin:$PATH"
         - CXX_STANDARD=11
         - BOOST_B2_ARGS="boost.locale.iconv=off"
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
@@ -630,7 +630,7 @@ matrix:
         - brew update || true;
           brew install bison@2.7 || true;
       env:
-        - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
+        - SET_ENV="PATH=/usr/local/opt/bison/bin:/usr/local/opt/bison@2.7/bin:$PATH"
         - CXX_STANDARD=11
         - BOOST_B2_ARGS="boost.locale.iconv=off"
         - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
@@ -645,7 +645,7 @@ matrix:
         - brew update || true;
           brew install bison@2.7 || true;
       env:
-        - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
+        - SET_ENV="PATH=/usr/local/opt/bison/bin:/usr/local/opt/bison@2.7/bin:$PATH"
         - CXX_STANDARD=11
         - BOOST_B2_ARGS="boost.locale.iconv=off"
         - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
