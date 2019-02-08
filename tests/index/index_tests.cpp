@@ -313,36 +313,61 @@ void payloaded_json_field_factory(
   }
 }
 
-std::shared_ptr<irs::directory> memory_directory(const test_base&) {
-  return std::make_shared<irs::memory_directory>();
+std::pair<std::shared_ptr<irs::directory>, std::string> memory_directory(const test_base*) {
+  return std::make_pair(
+    std::make_shared<irs::memory_directory>(),
+    "memory"
+  );
 }
 
-std::shared_ptr<irs::directory> fs_directory(const test_base& test) {
-  auto dir = test.test_dir();
+std::pair<std::shared_ptr<irs::directory>, std::string> fs_directory(const test_base* test) {
+  std::shared_ptr<irs::directory> impl;
 
-  dir /= "index";
-  dir.mkdir();
+  if (test) {
+    auto dir = test->test_dir();
 
-  return std::shared_ptr<irs::fs_directory>(
-    new irs::fs_directory(dir.utf8()),
-    [dir](irs::fs_directory* p) {
-      dir.remove();
-      delete p;
-  });
+    dir /= "index";
+    dir.mkdir();
+
+    impl = std::shared_ptr<irs::fs_directory>(
+      new irs::fs_directory(dir.utf8()),
+      [dir](irs::fs_directory* p) {
+        dir.remove();
+        delete p;
+    });
+  }
+
+  return std::make_pair(impl, "fs");
 }
 
-std::shared_ptr<irs::directory> mmap_directory(const test_base& test) {
-  auto dir = test.test_dir();
+std::pair<std::shared_ptr<irs::directory>, std::string> mmap_directory(const test_base* test) {
+  std::shared_ptr<irs::directory> impl;
 
-  dir /= "index";
-  dir.mkdir();
+  if (test) {
+    auto dir = test->test_dir();
 
-  return std::shared_ptr<irs::mmap_directory>(
-    new irs::mmap_directory(dir.utf8()),
-    [dir](irs::mmap_directory* p) {
-      dir.remove();
-      delete p;
-  });
+    dir /= "index";
+    dir.mkdir();
+
+    impl = std::shared_ptr<irs::mmap_directory>(
+      new irs::mmap_directory(dir.utf8()),
+      [dir](irs::mmap_directory* p) {
+        dir.remove();
+        delete p;
+    });
+  }
+
+  return std::make_pair(impl, "mmap");
+}
+
+std::string to_string(
+    const testing::TestParamInfo<index_test_context>& info
+) {
+  dir_factory_f factory;
+  const char* codec_name;
+  std::tie(factory, codec_name) = info.param;
+
+  return (*factory)(nullptr).second + "___" + codec_name;
 }
 
 NS_END // tests
@@ -21956,30 +21981,17 @@ TEST_P(index_test_case, writer_close) {
 //}
 
 INSTANTIATE_TEST_CASE_P(
-  memory_10,
+  index_test,
   index_test_case,
   ::testing::Combine(
-    ::testing::Values(&tests::memory_directory),
+    ::testing::Values(
+      &tests::memory_directory,
+      &tests::fs_directory,
+      &tests::mmap_directory
+    ),
     ::testing::Values("1_0")
-  )
-);
-
-INSTANTIATE_TEST_CASE_P(
-  fs_10,
-  index_test_case,
-  ::testing::Combine(
-    ::testing::Values(&tests::fs_directory),
-    ::testing::Values("1_0")
-  )
-);
-
-INSTANTIATE_TEST_CASE_P(
-  mmap_10,
-  index_test_case,
-  ::testing::Combine(
-    ::testing::Values(&tests::mmap_directory),
-    ::testing::Values("1_0")
-  )
+  ),
+  tests::to_string
 );
 
 // -----------------------------------------------------------------------------

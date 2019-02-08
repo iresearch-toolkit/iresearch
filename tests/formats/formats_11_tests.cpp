@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 by EMC Corporation, All Rights Reserved
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,52 +15,32 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is EMC Corporation
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "tests_shared.hpp"
-#include "filter_test_case_base.hpp"
+#include "formats_test_case_base.hpp"
+#include "store/directory_attributes.hpp"
 
 NS_LOCAL
 
-class empty_filter_test_case : public tests::filter_test_case_base {
-};
-
-TEST_P(empty_filter_test_case, empty) {
-   // add segment
-   {
-     tests::json_doc_generator gen(
-        resource("simple_sequential.json"),
-        &tests::generic_json_field_factory);
-     add_segment(gen);
-   }
-
-   auto rdr = open_reader();
-
-   std::vector<irs::cost::cost_t> cost{ 0 };
-
-   check_query(irs::empty(), docs_t{}, cost, rdr);
-}
+using tests::format_test_case;
 
 INSTANTIATE_TEST_CASE_P(
-  empty_filter_test,
-  empty_filter_test_case,
+  format_11_test,
+  format_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::memory_directory,
-      &tests::fs_directory,
-      &tests::mmap_directory
+      &tests::rot13_cipher_directory<&tests::memory_directory, 16>,
+      &tests::rot13_cipher_directory<&tests::fs_directory, 16>,
+      &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
     ),
-    ::testing::Values("1_0")
+    ::testing::Values("1_1")
   ),
   tests::to_string
 );
 
 NS_END
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

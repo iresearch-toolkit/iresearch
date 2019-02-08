@@ -1618,30 +1618,17 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
 }
 
 INSTANTIATE_TEST_CASE_P(
-  memory_10,
+  granular_range_filter_test,
   granular_range_filter_test_case,
   ::testing::Combine(
-    ::testing::Values(&tests::memory_directory),
+    ::testing::Values(
+      &tests::memory_directory,
+      &tests::fs_directory,
+      &tests::mmap_directory
+    ),
     ::testing::Values("1_0")
-  )
-);
-
-INSTANTIATE_TEST_CASE_P(
-  fs_10,
-  granular_range_filter_test_case,
-  ::testing::Combine(
-    ::testing::Values(&tests::fs_directory),
-    ::testing::Values("1_0")
-  )
-);
-
-INSTANTIATE_TEST_CASE_P(
-  mmap_10,
-  granular_range_filter_test_case,
-  ::testing::Combine(
-    ::testing::Values(&tests::mmap_directory),
-    ::testing::Values("1_0")
-  )
+  ),
+  tests::to_string
 );
 
 NS_END
