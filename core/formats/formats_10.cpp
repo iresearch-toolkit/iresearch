@@ -72,7 +72,6 @@ NS_LOCAL
 
 struct format_traits {
   static const uint32_t BLOCK_SIZE = 128;
-  static const irs::string_ref NAME;
 
   FORCE_INLINE static void write_block(
       irs::index_output& out,
@@ -97,8 +96,6 @@ struct format_traits {
   }
 }; // format_traits
 
-const irs::string_ref format_traits::NAME = "1_0";
-
 NS_END
 
 #elif (IRESEARCH_FORMAT10_CODEC == 1) // simdpack
@@ -113,7 +110,6 @@ NS_LOCAL
 
 struct format_traits {
   static const uint32_t BLOCK_SIZE = 128;
-  static const irs::string_ref NAME;
 
   FORCE_INLINE static void write_block(
       irs::index_output& out,
@@ -137,8 +133,6 @@ struct format_traits {
     irs::encode::bitpack::skip_block32(in, size);
   }
 }; // format_traits
-
-const irs::string_ref format_traits::NAME = "1_0";
 
 NS_END
 
@@ -1524,6 +1518,7 @@ class offs_pay_iterator final: public pos_iterator {
     offs_.start += offs_start_deltas_[buf_pos_];
     offs_.end = offs_.start + offs_lengts_[buf_pos_];
 
+    // FIXME decrypt
     pay_.value = bytes_ref(
       pay_data_.c_str() + pay_data_pos_,
       pay_lengths_[buf_pos_]);
@@ -1778,6 +1773,7 @@ class pay_iterator final : public pos_iterator {
 
  protected:
   virtual void read_attributes() override {
+    // FIXME decrypt
     pay_.value = bytes_ref(
       pay_data_.data() + pay_data_pos_,
       pay_lengths_[buf_pos_]
@@ -2548,7 +2544,7 @@ void meta_writer::prepare(directory& dir, const segment_meta& meta) {
 void meta_writer::write(const std::string& name, field_id id) {
   assert(out_);
   out_->write_vlong(id);
-  write_string(*out_, name);
+  write_string(*out_, name); // FIXME encrypt
   ++count_;
   max_id_ = std::max(max_id_, id);
 }
@@ -3030,7 +3026,7 @@ class writer final : public irs::columnstore_writer {
       //   const auto res = expr0() | expr1();
       // otherwise it would violate format layout
       auto block_props = block_index_.flush(out, buf);
-      block_props |= write_compact(out, ctx_->comp_, static_cast<bytes_ref>(block_buf_));
+      block_props |= write_compact(out, ctx_->comp_, static_cast<bytes_ref>(block_buf_)); // FIXME encrypt
       length_ += block_buf_.size();
 
       // refresh blocks properties
@@ -3311,7 +3307,7 @@ class sparse_block : util::noncopyable {
     });
 
     // read data
-    read_compact(in, decomp, buf, data_);
+    read_compact(in, decomp, buf, data_); // FIXME decrypt
     end_ = index_ + size;
   }
 
@@ -3498,7 +3494,7 @@ class dense_block : util::noncopyable {
     });
 
     // read data
-    read_compact(in, decomp, buf, data_);
+    read_compact(in, decomp, buf, data_); // FIXME decrypt
     end_ = index_ + size;
   }
 
@@ -3675,7 +3671,7 @@ class dense_fixed_offset_block : util::noncopyable {
     }
 
     // read data
-    read_compact(in, decomp, buf, data_);
+    read_compact(in, decomp, buf, data_); // FIXME decrypt
   }
 
   bool value(doc_id_t key, bytes_ref& out) const {
@@ -5128,13 +5124,16 @@ irs::doc_iterator::ptr postings_reader::iterator(
   #pragma GCC diagnostic pop
 #endif
 
-// actual implementation
-class format : public irs::version10::format {
+// ----------------------------------------------------------------------------
+// --SECTION--                                                         format10
+// ----------------------------------------------------------------------------
+
+class format10 : public irs::version10::format {
  public:
   DECLARE_FORMAT_TYPE();
   DECLARE_FACTORY();
 
-  format() NOEXCEPT;
+  format10() NOEXCEPT : format10(format10::type()) { }
 
   virtual index_meta_writer::ptr get_index_meta_writer() const override final;
   virtual index_meta_reader::ptr get_index_meta_reader() const override final;
@@ -5145,7 +5144,7 @@ class format : public irs::version10::format {
   virtual document_mask_writer::ptr get_document_mask_writer() const override final;
   virtual document_mask_reader::ptr get_document_mask_reader() const override final;
 
-  virtual field_writer::ptr get_field_writer(bool volatile_state) const override final;
+  virtual field_writer::ptr get_field_writer(bool volatile_state) const override;
   virtual field_reader::ptr get_field_reader() const override final;
 
   virtual column_meta_writer::ptr get_column_meta_writer() const override final;
@@ -5156,95 +5155,131 @@ class format : public irs::version10::format {
 
   virtual postings_writer::ptr get_postings_writer(bool volatile_state) const override;
   virtual postings_reader::ptr get_postings_reader() const override;
-};
 
-format::format() NOEXCEPT : irs::version10::format(format::type()) {}
+ protected:
+  explicit format10(const irs::format::type_id& type) NOEXCEPT
+    : irs::version10::format(type) {
+  }
+}; // format10
 
-index_meta_writer::ptr format::get_index_meta_writer() const  {
+index_meta_writer::ptr format10::get_index_meta_writer() const  {
   return irs::index_meta_writer::make<::index_meta_writer>();
 }
 
-index_meta_reader::ptr format::get_index_meta_reader() const {
+index_meta_reader::ptr format10::get_index_meta_reader() const {
   // can reuse stateless reader
   static ::index_meta_reader INSTANCE;
 
   return memory::make_managed<irs::index_meta_reader, false>(&INSTANCE);
 }
 
-segment_meta_writer::ptr format::get_segment_meta_writer() const {
+segment_meta_writer::ptr format10::get_segment_meta_writer() const {
   // can reuse stateless writer
   static ::segment_meta_writer INSTANCE;
 
   return memory::make_managed<irs::segment_meta_writer, false>(&INSTANCE);
 }
 
-segment_meta_reader::ptr format::get_segment_meta_reader() const {
+segment_meta_reader::ptr format10::get_segment_meta_reader() const {
   // can reuse stateless writer
   static ::segment_meta_reader INSTANCE;
 
   return memory::make_managed<irs::segment_meta_reader, false>(&INSTANCE);
 }
 
-document_mask_writer::ptr format::get_document_mask_writer() const {
+document_mask_writer::ptr format10::get_document_mask_writer() const {
   // can reuse stateless writer
   static ::document_mask_writer INSTANCE;
 
   return memory::make_managed<irs::document_mask_writer, false>(&INSTANCE);
 }
 
-document_mask_reader::ptr format::get_document_mask_reader() const {
+document_mask_reader::ptr format10::get_document_mask_reader() const {
   // can reuse stateless writer
   static ::document_mask_reader INSTANCE;
 
   return memory::make_managed<irs::document_mask_reader, false>(&INSTANCE);
 }
 
-field_writer::ptr format::get_field_writer(bool volatile_state) const {
+field_writer::ptr format10::get_field_writer(bool volatile_state) const {
   return irs::field_writer::make<burst_trie::field_writer>(
     get_postings_writer(volatile_state),
-    volatile_state
+    volatile_state,
+    int32_t(burst_trie::field_writer::FORMAT_MIN)
   );
 }
 
-field_reader::ptr format::get_field_reader() const  {
+field_reader::ptr format10::get_field_reader() const  {
   return irs::field_reader::make<burst_trie::field_reader>(
     get_postings_reader()
   );
 }
 
-column_meta_writer::ptr format::get_column_meta_writer() const {
+column_meta_writer::ptr format10::get_column_meta_writer() const {
   return memory::make_unique<columns::meta_writer>();
 }
 
-column_meta_reader::ptr format::get_column_meta_reader() const {
+column_meta_reader::ptr format10::get_column_meta_reader() const {
   return memory::make_unique<columns::meta_reader>();
 }
 
-columnstore_writer::ptr format::get_columnstore_writer() const {
+columnstore_writer::ptr format10::get_columnstore_writer() const {
   return memory::make_unique<columns::writer>();
 }
 
-columnstore_reader::ptr format::get_columnstore_reader() const {
+columnstore_reader::ptr format10::get_columnstore_reader() const {
   return memory::make_unique<columns::reader>();
 }
 
-irs::postings_writer::ptr format::get_postings_writer(bool volatile_state) const {
+irs::postings_writer::ptr format10::get_postings_writer(bool volatile_state) const {
   return irs::postings_writer::make<::postings_writer>(volatile_state);
 }
 
-irs::postings_reader::ptr format::get_postings_reader() const {
+irs::postings_reader::ptr format10::get_postings_reader() const {
   return irs::postings_reader::make<::postings_reader>();
 }
 
-/*static*/ irs::format::ptr format::make() {
-  static const ::format INSTANCE;
+/*static*/ irs::format::ptr format10::make() {
+  static const ::format10 INSTANCE;
 
   // aliasing constructor
   return irs::format::ptr(irs::format::ptr(), &INSTANCE);
 }
 
-DEFINE_FORMAT_TYPE_NAMED(::format, format_traits::NAME)
-REGISTER_FORMAT(::format);
+DEFINE_FORMAT_TYPE_NAMED(::format10, "1_0")
+REGISTER_FORMAT(::format10);
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                                         format11
+// ----------------------------------------------------------------------------
+
+class format11 : public format10 {
+ public:
+  DECLARE_FORMAT_TYPE();
+  DECLARE_FACTORY();
+
+  format11() NOEXCEPT : format10(format11::type()) { }
+
+  virtual field_writer::ptr get_field_writer(bool volatile_state) const override final;
+}; // format10
+
+field_writer::ptr format11::get_field_writer(bool volatile_state) const {
+  return irs::field_writer::make<burst_trie::field_writer>(
+    get_postings_writer(volatile_state),
+    volatile_state,
+    int32_t(burst_trie::field_writer::FORMAT_MAX)
+  );
+}
+
+/*static*/ irs::format::ptr format11::make() {
+  static const ::format11 INSTANCE;
+
+  // aliasing constructor
+  return irs::format::ptr(irs::format::ptr(), &INSTANCE);
+}
+
+DEFINE_FORMAT_TYPE_NAMED(::format11, "1_1");
+REGISTER_FORMAT(::format11);
 
 NS_END
 
@@ -5253,7 +5288,8 @@ NS_BEGIN(version10)
 
 void init() {
 #ifndef IRESEARCH_DLL
-  REGISTER_FORMAT(::format);
+  REGISTER_FORMAT(::format10);
+  REGISTER_FORMAT(::format11);
 #endif
 }
 

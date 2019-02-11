@@ -275,7 +275,8 @@ NS_END // detail
 class field_writer final : public irs::field_writer {
  public:
   static const int32_t FORMAT_MIN = 0;
-  static const int32_t FORMAT_MAX = FORMAT_MIN;
+  static const int32_t FORMAT_MAX = 1;
+
   static const uint32_t DEFAULT_MIN_BLOCK_SIZE = 25;
   static const uint32_t DEFAULT_MAX_BLOCK_SIZE = 48;
 
@@ -284,13 +285,18 @@ class field_writer final : public irs::field_writer {
   static const string_ref FORMAT_TERMS_INDEX;
   static const string_ref TERMS_INDEX_EXT;
 
-  field_writer(irs::postings_writer::ptr&& pw,
-               bool volatile_state,
-               uint32_t min_block_size = DEFAULT_MIN_BLOCK_SIZE,
-               uint32_t max_block_size = DEFAULT_MAX_BLOCK_SIZE);
+  field_writer(
+    irs::postings_writer::ptr&& pw,
+    bool volatile_state,
+    int32_t version = FORMAT_MAX,
+    uint32_t min_block_size = DEFAULT_MIN_BLOCK_SIZE,
+    uint32_t max_block_size = DEFAULT_MAX_BLOCK_SIZE
+  );
 
-  virtual void prepare( const irs::flush_state& state ) override;
+  virtual void prepare(const irs::flush_state& state) override;
+
   virtual void end() override;
+
   virtual void write( 
     const std::string& name,
     irs::field_id norm,
@@ -304,9 +310,11 @@ class field_writer final : public irs::field_writer {
   static void merge_blocks(std::list< detail::entry >& blocks);
 
   void write_segment_features(data_output& out, const flags& features);
+
   void write_field_features(data_output& out, const flags& features) const;
 
   void begin_field(const irs::flags& field);
+
   void end_field(
     const std::string& name,
     irs::field_id norm,
@@ -316,22 +324,29 @@ class field_writer final : public irs::field_writer {
     size_t doc_count
   );
 
-  void write_term_entry( const detail::entry& e, size_t prefix, bool leaf );
-  void write_block_entry( const detail::entry& e, size_t prefix, uint64_t block_start );
-  /* prefix - prefix length ( in last_term )
-  * begin - index of the first entry in the block
-  * end - index of the last entry in the block
-  * meta - block metadata
-  * label - block lead label ( if present ) */
-  void write_block( std::list< detail::entry >& blocks,
-                    size_t prefix, size_t begin,
-                    size_t end, byte_type meta,
-                    int16_t label );
-  /* prefix - prefix length ( in last_term
-  * count - number of entries to write into block */
-  void write_blocks( size_t prefix, size_t count );
-  void push( const irs::bytes_ref& term );
+  void write_term_entry(const detail::entry& e, size_t prefix, bool leaf);
 
+  void write_block_entry(const detail::entry& e, size_t prefix, uint64_t block_start);
+
+  // prefix - prefix length (in last_term)
+  // begin - index of the first entry in the block
+  // end - index of the last entry in the block
+  // meta - block metadata
+  // label - block lead label (if present)
+  void write_block(
+    std::list<detail::entry>& blocks,
+    size_t prefix, size_t begin,
+    size_t end, byte_type meta,
+    int16_t label
+  );
+
+  // prefix - prefix length ( in last_term
+  // count - number of entries to write into block
+  void write_blocks(size_t prefix, size_t count);
+
+  void push(const irs::bytes_ref& term);
+
+  const cipher* cipher_{};
   std::unordered_map<const attribute::type_id*, size_t> feature_map_;
   irs::memory_output suffix_; // term suffix column
   irs::memory_output stats_; // term stats column
@@ -346,8 +361,9 @@ class field_writer final : public irs::field_writer {
   detail::volatile_byte_ref max_term_; // current max term in a block
   uint64_t term_count_; // count of terms
   size_t fields_count_{};
-  uint32_t min_block_size_;
-  uint32_t max_block_size_;
+  const int32_t version_;
+  const uint32_t min_block_size_;
+  const uint32_t max_block_size_;
   const bool volatile_state_;
 }; // field_writer
 
@@ -371,6 +387,7 @@ class field_reader final : public irs::field_reader {
  private:
   friend class detail::term_iterator;
 
+  const cipher* cipher_{};
   std::vector<detail::term_reader> fields_;
   std::unordered_map<hashed_string_ref, term_reader*> name_to_field_;
   std::vector<const detail::term_reader*> fields_mask_;

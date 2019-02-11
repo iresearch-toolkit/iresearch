@@ -35,6 +35,25 @@ NS_ROOT
 /// @class memory_allocator
 /// @brief a reusable thread-safe allocator for memory files
 //////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API cipher : public stored_attribute {
+ public:
+  DECLARE_ATTRIBUTE_TYPE();
+
+  virtual size_t block_size() const = 0;
+
+  virtual bool decrypt(byte_type* data) const = 0;
+
+  bool decrypt(byte_type* data, size_t length) const;
+
+  virtual bool encrypt(byte_type* data) const = 0;
+
+  bool encrypt(byte_type* data, size_t length) const;
+}; // cipher
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class memory_allocator
+/// @brief a reusable thread-safe allocator for memory files
+//////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API memory_allocator : public stored_attribute {
  private:
   struct IRESEARCH_API buffer {

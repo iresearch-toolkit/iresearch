@@ -82,10 +82,41 @@
   #endif
 #endif
 
+NS_LOCAL
+
+/// @returns padding required by a specified cipher for a given size
+inline size_t padding(const irs::cipher& cipher, size_t size) NOEXCEPT {
+  const auto block_size = cipher.block_size();
+
+  if (block_size < 2) {
+    return 0;
+  }
+
+  return block_size - size % block_size;
+}
+
+inline const irs::cipher* get_cipher(const irs::directory& dir) NOEXCEPT {
+  auto cipher = dir.attributes().get<irs::cipher>();
+
+  return cipher ? cipher.get() : nullptr;
+}
+
+void append_padding(const irs::cipher& cipher, irs::index_output& out) {
+  static const irs::byte_type PADDING[16] { }; // FIXME
+  auto pad = padding(cipher, out.file_pointer());
+
+  while (pad) {
+    const auto to_write = std::min(pad, sizeof(PADDING));
+    out.write_bytes(PADDING, to_write);
+    pad -= to_write;
+  }
+}
+
+NS_END
+
 NS_ROOT
 
 NS_BEGIN(burst_trie)
-
 NS_BEGIN(detail)
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -185,7 +216,7 @@ inline void prepare_output(
   format_utils::write_header(*out, format, version);
 }
 
-inline void prepare_input(
+inline int32_t prepare_input(
     std::string& str,
     index_input::ptr& in,
     irs::IOAdvice advice,
@@ -211,7 +242,7 @@ inline void prepare_input(
     *checksum = format_utils::checksum(*in);
   }
 
-  format_utils::check_header(*in, format, min_ver, max_ver);
+  return format_utils::check_header(*in, format, min_ver, max_ver);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -370,28 +401,28 @@ class block_iterator : util::noncopyable {
   SeekResult scan_to_term_nonleaf(const bytes_ref& term, uint64_t& suffix, uint64_t& start);
   SeekResult scan_to_term_leaf(const bytes_ref& term, uint64_t& suffix, uint64_t& start);
 
-  //TODO: check layout
-  byte_weight_input header_in_; /* reader for block header */
-  bytes_input suffix_in_; /* suffix input stream */
-  bytes_input stats_in_; /* stats input stream */
+  byte_weight_input header_in_; // reader for block header
+  irs::bstring suffix_block_; // suffix data block
+  bytes_ref_input suffix_in_; // suffix input stream (over suffix data block)
+  bytes_input stats_in_; // stats input stream
   term_iterator* owner_;
   version10::term_meta state_;
-  uint64_t cur_ent_{}; /* current entry in a block */
-  uint64_t ent_count_{}; /* number of entries in a current block */
-  uint64_t start_; /* initial block start pointer */
-  uint64_t cur_start_; /* current block start pointer */
-  uint64_t cur_end_; /* block end pointer */
-  uint64_t term_count_{}; /* number terms in a block, that we have seen */
-  uint64_t cur_stats_ent_{}; /* current position of loaded stats */
-  uint64_t cur_block_start_{ UNDEFINED }; /* start pointer of the current sub-block entry*/
-  size_t prefix_; /* block prefix length */
-  uint64_t sub_count_; /* number of sub-blocks */
-  int16_t next_label_{ block_t::INVALID_LABEL }; /* next label (of the next sub-block)*/
-  EntryType cur_type_; /* term or block */
-  byte_type meta_; /* initial block metadata */
-  byte_type cur_meta_; /* current block metadata */
-  bool dirty_{ true }; /* current block is dirty */
-  bool leaf_{ false }; /* current block is leaf block */
+  uint64_t cur_ent_{}; // current entry in a block
+  uint64_t ent_count_{}; // number of entries in a current block
+  uint64_t start_; // initial block start pointer
+  uint64_t cur_start_; // current block start pointer
+  uint64_t cur_end_; // block end pointer
+  uint64_t term_count_{}; // number terms in a block we have seen
+  uint64_t cur_stats_ent_{}; // current position of loaded stats
+  uint64_t cur_block_start_{ UNDEFINED }; // start pointer of the current sub-block entry
+  size_t prefix_; // block prefix length
+  uint64_t sub_count_; // number of sub-blocks
+  int16_t next_label_{ block_t::INVALID_LABEL }; // next label (of the next sub-block)
+  EntryType cur_type_; // term or block
+  byte_type meta_; // initial block metadata
+  byte_type cur_meta_; // current block metadata
+  bool dirty_{ true }; // current block is dirty
+  bool leaf_{ false }; // current block is leaf block
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -452,11 +483,18 @@ class term_iterator : public irs::seek_term_iterator {
     cur_block_ = nullptr;
     return true;
   }
+
   virtual seek_term_iterator::seek_cookie::ptr cookie() const override {
     return detail::cookie::make(state_, freq_.value);
   }
+
   virtual doc_iterator::ptr postings( const flags& features ) const override;
+
   index_input& terms_input() const;
+
+  const irs::cipher* cipher() const NOEXCEPT {
+    return owner_->owner_->cipher_;
+  }
 
  private:
   typedef term_reader::fst_t fst_t;
@@ -573,19 +611,35 @@ void block_iterator::load() {
     return;
   }
 
+  auto* cipher = owner_->cipher();
+
   index_input& in = owner_->terms_input();
   in.seek(cur_start_);
-  if (shift_unpack_64( in.read_vint(), ent_count_)) {
+  if (shift_unpack_64(in.read_vint(), ent_count_)) {
     sub_count_ = 0; // no sub-blocks
   }
   uint64_t block_size;
   leaf_ = shift_unpack_64(in.read_vlong(), block_size);
-  suffix_in_.read_from(in, block_size);
+  const auto aligned_block_size = block_size + (cipher ? ::padding(*cipher, block_size) : 0);
 
-  const uint64_t stats_size = in.read_vlong();
-  if (stats_size) {
-    stats_in_.read_from(in, stats_size);
+  // read suffix block
+  string_utils::oversize(suffix_block_, aligned_block_size);
+#ifdef IRESEARCH_DEBUG
+  const auto read = in.read_bytes(&(suffix_block_[0]), aligned_block_size);
+  assert(read == aligned_block_size);
+  UNUSED(read);
+#else
+  in.read_bytes(&(suffix_block_[0]), aligned_block_size);
+#endif // IRESEARCH_DEBUG
+  suffix_in_.reset(suffix_block_.c_str(), block_size);
+  if (cipher) {
+    cipher->decrypt(&(suffix_block_[0]), aligned_block_size);
   }
+
+  // read stats block
+  const uint64_t stats_size = in.read_vlong();
+  stats_in_.read_from(in, stats_size);
+
   cur_end_ = in.file_pointer();
   cur_ent_ = 0;
   cur_block_start_ = UNDEFINED;
@@ -597,7 +651,7 @@ void block_iterator::load() {
 inline void block_iterator::refresh_term(uint64_t suffix, uint64_t start) {
   auto& term = owner_->term_;
   term.reset(prefix_);
-  term.append(suffix_in_.c_str() + start, suffix);
+  term.append(suffix_block_.c_str() + start, suffix);
 }
 
 inline void block_iterator::refresh_term(uint64_t suffix) {
@@ -663,7 +717,7 @@ SeekResult block_iterator::scan_to_term_leaf(
     bool stop = false;
     for (size_t tpos = prefix_, spos = start;;) {
       if (tpos < max) {
-        cmp = suffix_in_.c_str()[spos] - term[tpos];
+        cmp = suffix_block_[spos] - term[tpos];
         ++tpos, ++spos;
       } else {
         assert(tpos == max);
@@ -715,7 +769,7 @@ SeekResult block_iterator::scan_to_term_nonleaf(
     for (size_t tpos = prefix_, spos = start;;) {
       bool stop = false;
       if (tpos < max) {
-        cmp = suffix_in_.c_str()[spos] - term[tpos];
+        cmp = suffix_block_[spos] - term[tpos];
         ++tpos, ++spos;
       } else {
         assert(tpos == max);
@@ -888,7 +942,6 @@ void term_iterator::read() {
     *owner_->owner_->pr_
   );
 }
-
 bool term_iterator::next() {
   /* iterator at the beginning or seek to cached state was called */
   if (!cur_block_) {
@@ -1178,7 +1231,7 @@ void term_reader::prepare(
 ) {
   // read field metadata
   index_input& meta_in = *static_cast<input_buf*>(in.rdbuf());
-  field_.name = read_string<std::string>(meta_in);
+  field_.name = read_string<std::string>(meta_in); // FIXME decrypt
 
   read_field_features(meta_in, feature_map, field_.features);
 
@@ -1237,10 +1290,9 @@ void field_writer::write_block_entry(
   suffix_.stream.write_vlong(shift_pack_64(suf_size, true));
   suffix_.stream.write_bytes(data.c_str() + prefix, suf_size);
 
-  /* current block start pointer
-  * should be greater */
-  assert( block_start > e.block().start );
-  suffix_.stream.write_vlong( block_start - e.block().start );
+  // current block start pointer should be greater
+  assert(block_start > e.block().start );
+  suffix_.stream.write_vlong(block_start - e.block().start);
 }
 
 void field_writer::write_block(
@@ -1285,20 +1337,52 @@ void field_writer::write_block(
     }
   }
 
+  size_t block_size = suffix_.stream.file_pointer();
+
+  if (cipher_) {
+    ::append_padding(*cipher_, suffix_.stream);
+  }
+
   suffix_.stream.flush();
   stats_.stream.flush();
 
-  terms_out_->write_vlong(shift_pack_64(static_cast<uint64_t>(suffix_.stream.file_pointer()), leaf > 0));
-  suffix_.file >> *terms_out_; // FIXME encrypt
+  terms_out_->write_vlong(
+    shift_pack_64(static_cast<uint64_t>(block_size), leaf > 0)
+  );
+
+  auto copy = [this](const irs::byte_type* b, size_t len) {
+    terms_out_->write_bytes(b, len);
+    return true;
+  };
+
+  if (cipher_) {
+    auto encrypt_and_copy = [this](irs::byte_type* b, size_t len) {
+      assert(cipher_);
+
+      cipher_->encrypt(b, len);
+      terms_out_->write_bytes(b, len);
+      return true;
+    };
+
+    suffix_.file.visit(encrypt_and_copy);
+  } else {
+    suffix_.file.visit(copy);
+  }
 
   terms_out_->write_vlong(static_cast<uint64_t>(stats_.stream.file_pointer()));
-  stats_.file >> *terms_out_; // FIXME encrypt ???
+  stats_.file.visit(copy);
 
   suffix_.stream.reset();
   stats_.stream.reset();
 
   // add new block to the list of created blocks
-  blocks.emplace_back(bytes_ref(last_term_, prefix), block_start, meta, label, volatile_state_);
+  blocks.emplace_back(
+    bytes_ref(last_term_, prefix),
+    block_start,
+    meta,
+    label,
+    volatile_state_
+  );
 
   if (!index.empty()) {
     blocks.back().block().index = std::move(index);
@@ -1445,14 +1529,16 @@ void field_writer::push( const bytes_ref& term ) {
 field_writer::field_writer(
     irs::postings_writer::ptr&& pw,
     bool volatile_state,
-    uint32_t min_block_size,
-    uint32_t max_block_size)
+    int32_t version /* = FORMAT_MAX */,
+    uint32_t min_block_size /* = DEFAULT_MIN_BLOCK_SIZE */,
+    uint32_t max_block_size /* = DEFAULT_MAX_BLOCK_SIZE */)
   : suffix_(memory_allocator::global()),
     stats_(memory_allocator::global()),
     pw_(std::move(pw)),
     fst_buf_(memory::make_unique<detail::fst_buffer>()),
     prefixes_(DEFAULT_SIZE, 0),
     term_count_(0),
+    version_(version),
     min_block_size_(min_block_size),
     max_block_size_(max_block_size),
     volatile_state_(volatile_state) {
@@ -1460,11 +1546,17 @@ field_writer::field_writer(
   assert(min_block_size > 1);
   assert(min_block_size <= max_block_size);
   assert(2 * (min_block_size - 1) <= max_block_size);
+  assert(version_ >= FORMAT_MIN && version_ <= FORMAT_MAX);
+
   min_term_.first = false;
 }
 
 void field_writer::prepare(const irs::flush_state& state) {
   assert(state.dir);
+
+  if (version_ > FORMAT_MIN) {
+    cipher_ = ::get_cipher(*state.dir);
+  }
 
   // reset writer state
   last_term_.clear();
@@ -1480,8 +1572,8 @@ void field_writer::prepare(const irs::flush_state& state) {
 
   // prepare terms and index output
   std::string str;
-  detail::prepare_output(str, terms_out_, state, TERMS_EXT, FORMAT_TERMS, FORMAT_MAX);
-  detail::prepare_output(str, index_out_, state, TERMS_INDEX_EXT, FORMAT_TERMS_INDEX, FORMAT_MAX);
+  detail::prepare_output(str, terms_out_, state, TERMS_EXT, FORMAT_TERMS, version_);
+  detail::prepare_output(str, index_out_, state, TERMS_INDEX_EXT, FORMAT_TERMS_INDEX, version_);
   write_segment_features(*index_out_, *state.features);
 
   // prepare postings writer
@@ -1613,7 +1705,7 @@ void field_writer::end_field(
   auto& fst = fst_buf_->reset(root.block().index);
 
   // write field meta
-  write_string(*index_out_, name);
+  write_string(*index_out_, name); // FIXME encrypt
   write_field_features(*index_out_, features);
   write_zvlong(*index_out_, norm);
   index_out_->write_vlong(term_count_);
@@ -1625,6 +1717,7 @@ void field_writer::end_field(
     index_out_->write_vlong(total_term_freq);
   }
 
+  // FIXME encrypt
   // write fst
   output_buf isb(index_out_.get()); // wrap stream to be OpenFST compliant
   std::ostream os(&isb);
@@ -1681,7 +1774,7 @@ void field_reader::prepare(
 
   int64_t checksum = 0;
 
-  detail::prepare_input(
+  const auto term_index_version = detail::prepare_input(
     str, index_in,
     irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE, state,
     field_writer::TERMS_INDEX_EXT,
@@ -1690,6 +1783,10 @@ void field_reader::prepare(
     field_writer::FORMAT_MAX,
     &checksum
   );
+
+  if (term_index_version > field_writer::FORMAT_MIN) {
+    cipher_ = ::get_cipher(dir);
+  }
 
   detail::read_segment_features(*index_in, feature_map, features);
 
@@ -1756,13 +1853,22 @@ void field_reader::prepare(
   //-----------------------------------------------------------------
 
   // check term header
-  detail::prepare_input(
+  const auto term_dict_version = detail::prepare_input(
     str, terms_in_, irs::IOAdvice::RANDOM, state,
     field_writer::TERMS_EXT,
     field_writer::FORMAT_TERMS,
     field_writer::FORMAT_MIN,
     field_writer::FORMAT_MAX
   );
+
+  if (term_index_version != term_dict_version) {
+    throw index_error(string_utils::to_string(
+      "term index version '%d' mismatches term dictionary version '%d' in segment '%s'",
+      term_index_version,
+      meta.name.c_str(),
+      term_dict_version
+    ));
+  }
 
   // prepare postings reader
   pr_->prepare(*terms_in_, state, features);

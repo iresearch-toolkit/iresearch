@@ -33,6 +33,46 @@ NS_END
 NS_ROOT
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                            cipher
+// -----------------------------------------------------------------------------
+
+DEFINE_ATTRIBUTE_TYPE(cipher)
+
+bool cipher::encrypt(byte_type* data, size_t length) const {
+  const auto block_size = this->block_size();
+
+  if (length % block_size) {
+    // can't encrypt unaligned data
+    return false;
+  }
+
+  bool result = true;
+
+  for (auto* end = data + length; data != end; data += block_size) {
+    result |= encrypt(data);
+  }
+
+  return result;
+}
+
+bool cipher::decrypt(byte_type* data, size_t length) const {
+  const auto block_size = this->block_size();
+
+  if (length % block_size) {
+    // can't decrypt unaligned data
+    return false;
+  }
+
+  bool result = true;
+
+  for (auto* end = data + length; data != end; data += block_size) {
+    result |= decrypt(data);
+  }
+
+  return result;
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                  memory_allocator
 // -----------------------------------------------------------------------------
 
