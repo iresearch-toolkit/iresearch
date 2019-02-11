@@ -11384,7 +11384,6 @@ TEST_P(index_test_case, clear_writer) {
 }
 
 TEST_P(index_test_case, open_writer) {
-  //FIXME
   open_writer_check_lock();
   open_writer_check_directory_allocator();
 }
@@ -21936,10 +21935,6 @@ TEST_P(index_test_case, segment_options) {
   }
 }
 
-//TEST_F(fs_index_test, open_writer) {
-//  open_writer_check_lock();
-//}
-
 TEST_P(index_test_case, writer_close) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"), 
@@ -21975,10 +21970,6 @@ TEST_P(index_test_case, writer_close) {
   ASSERT_TRUE(directory.visit(list_files));
   ASSERT_TRUE(files.empty());
 }
-
-//TEST_F(mmap_index_test, open_writer) {
-//  open_writer_check_lock();
-//}
 
 INSTANTIATE_TEST_CASE_P(
   index_test,
