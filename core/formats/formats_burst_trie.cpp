@@ -84,8 +84,11 @@
 
 NS_LOCAL
 
+using namespace iresearch;
+using namespace iresearch::burst_trie::detail;
+
 /// @returns padding required by a specified cipher for a given size
-inline size_t padding(const irs::cipher& cipher, size_t size) NOEXCEPT {
+inline size_t padding(const cipher& cipher, size_t size) NOEXCEPT {
   const auto block_size = cipher.block_size();
 
   if (block_size < 2) {
@@ -95,14 +98,14 @@ inline size_t padding(const irs::cipher& cipher, size_t size) NOEXCEPT {
   return block_size - size % block_size;
 }
 
-inline const irs::cipher* get_cipher(const irs::directory& dir) NOEXCEPT {
+inline const cipher* get_cipher(const directory& dir) NOEXCEPT {
   auto cipher = dir.attributes().get<irs::cipher>();
 
   return cipher ? cipher.get() : nullptr;
 }
 
-void append_padding(const irs::cipher& cipher, irs::index_output& out) {
-  static const irs::byte_type PADDING[16] { }; // FIXME
+void append_padding(const cipher& cipher, index_output& out) {
+  static const byte_type PADDING[16] { }; // FIXME
   auto pad = padding(cipher, out.file_pointer());
 
   while (pad) {
@@ -111,13 +114,6 @@ void append_padding(const irs::cipher& cipher, irs::index_output& out) {
     pad -= to_write;
   }
 }
-
-NS_END
-
-NS_ROOT
-
-NS_BEGIN(burst_trie)
-NS_BEGIN(detail)
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @struct block_meta
@@ -130,19 +126,19 @@ struct block_meta {
   // 2 - is floor block
 
   // block has terms
-  static bool terms(byte_type mask) { return check_bit<ET_TERM>(mask); }
+  static bool terms(byte_type mask) NOEXCEPT { return check_bit<ET_TERM>(mask); }
 
   // block has sub-blocks
-  static bool blocks(byte_type mask) { return check_bit<ET_BLOCK>(mask); }
+  static bool blocks(byte_type mask) NOEXCEPT { return check_bit<ET_BLOCK>(mask); }
 
-  static void type(byte_type& mask, EntryType type) { set_bit(mask, type); }
+  static void type(byte_type& mask, EntryType type) NOEXCEPT { set_bit(mask, type); }
 
   // block is floor block
-  static bool floor(byte_type mask) { return check_bit<ET_INVALID>(mask); }
-  static void floor(byte_type& mask, bool b) { set_bit<ET_INVALID>(b, mask); }
+  static bool floor(byte_type mask) NOEXCEPT { return check_bit<ET_INVALID>(mask); }
+  static void floor(byte_type& mask, bool b) NOEXCEPT { set_bit<ET_INVALID>(b, mask); }
 
   // resets block meta
-  static void reset(byte_type mask) {
+  static void reset(byte_type mask) NOEXCEPT {
     unset_bit<ET_TERM>(mask);
     unset_bit<ET_BLOCK>(mask);
   }
@@ -153,8 +149,8 @@ struct block_meta {
 // -----------------------------------------------------------------------------
 
 void read_segment_features(
-    data_input& in, 
-    detail::feature_map_t& feature_map, 
+    data_input& in,
+    feature_map_t& feature_map,
     flags& features) {
   feature_map.clear();
   feature_map.reserve(in.read_vlong());
@@ -178,8 +174,8 @@ void read_segment_features(
 }
 
 void read_field_features(
-    data_input& in, 
-    const detail::feature_map_t& feature_map, 
+    data_input& in,
+    const feature_map_t& feature_map,
     flags& features) {
   for (size_t count = in.read_vlong(); count; --count) {
     const size_t id = in.read_vlong(); // feature id
@@ -244,6 +240,31 @@ inline int32_t prepare_input(
 
   return format_utils::check_header(*in, format, min_ver, max_ver);
 }
+
+///////////////////////////////////////////////////////////////////////////////
+/// @struct cookie
+///////////////////////////////////////////////////////////////////////////////
+struct cookie : irs::seek_term_iterator::seek_cookie {
+  cookie(const version10::term_meta& meta, uint64_t term_freq)
+    : meta(meta), term_freq(term_freq) {
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief declaration/implementation of DECLARE_FACTORY()
+  //////////////////////////////////////////////////////////////////////////////
+  static seek_term_iterator::seek_cookie::ptr make(const version10::term_meta& meta, uint64_t term_freq) {
+    return memory::make_unique<cookie>(meta, term_freq);
+  }
+
+  version10::term_meta meta; // term metadata
+  uint64_t term_freq; // length of the positions list
+}; // cookie
+
+NS_END
+
+NS_ROOT
+NS_BEGIN(burst_trie)
+NS_BEGIN(detail)
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class fst_buffer
@@ -426,25 +447,6 @@ class block_iterator : util::noncopyable {
 };
 
 ///////////////////////////////////////////////////////////////////////////////
-/// @struct cookie
-///////////////////////////////////////////////////////////////////////////////
-struct cookie : irs::seek_term_iterator::seek_cookie {
-  cookie(const version10::term_meta& meta, uint64_t term_freq)
-    : meta(meta), term_freq(term_freq) {
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief declaration/implementation of DECLARE_FACTORY()
-  //////////////////////////////////////////////////////////////////////////////
-  static seek_term_iterator::seek_cookie::ptr make(const version10::term_meta& meta, uint64_t term_freq) {
-    return memory::make_unique<cookie>(meta, term_freq);
-  }
-
-  version10::term_meta meta; // term metadata
-  uint64_t term_freq; // length of the positions list
-}; // cookie
-
-///////////////////////////////////////////////////////////////////////////////
 /// @class term_iterator
 ///////////////////////////////////////////////////////////////////////////////
 class term_iterator : public irs::seek_term_iterator {
@@ -463,9 +465,9 @@ class term_iterator : public irs::seek_term_iterator {
       const bytes_ref& term,
       const irs::seek_term_iterator::seek_cookie& cookie) override {
 #ifdef IRESEARCH_DEBUG
-    const auto& state = dynamic_cast<const detail::cookie&>(cookie);
+    const auto& state = dynamic_cast<const ::cookie&>(cookie);
 #else
-    const auto& state = static_cast<const detail::cookie&>(cookie);
+    const auto& state = static_cast<const ::cookie&>(cookie);
 #endif // IRESEARCH_DEBUG
 
     // copy state
@@ -485,10 +487,10 @@ class term_iterator : public irs::seek_term_iterator {
   }
 
   virtual seek_term_iterator::seek_cookie::ptr cookie() const override {
-    return detail::cookie::make(state_, freq_.value);
+    return ::cookie::make(state_, freq_.value);
   }
 
-  virtual doc_iterator::ptr postings( const flags& features ) const override;
+  virtual doc_iterator::ptr postings(const flags& features) const override;
 
   index_input& terms_input() const;
 
@@ -718,7 +720,8 @@ SeekResult block_iterator::scan_to_term_leaf(
     for (size_t tpos = prefix_, spos = start;;) {
       if (tpos < max) {
         cmp = suffix_block_[spos] - term[tpos];
-        ++tpos, ++spos;
+        ++tpos;
+        ++spos;
       } else {
         assert(tpos == max);
         cmp = term_len - term.size();
@@ -770,7 +773,8 @@ SeekResult block_iterator::scan_to_term_nonleaf(
       bool stop = false;
       if (tpos < max) {
         cmp = suffix_block_[spos] - term[tpos];
-        ++tpos, ++spos;
+        ++tpos;
+        ++spos;
       } else {
         assert(tpos == max);
         cmp = term_len - term.size();
@@ -1313,7 +1317,7 @@ void field_writer::write_block(
   );
 
   // write block entries
-  const uint64_t leaf = !detail::block_meta::blocks(meta);
+  const uint64_t leaf = !block_meta::blocks(meta);
 
   std::list<detail::block_t::prefixed_output> index;
 
@@ -1414,7 +1418,7 @@ void field_writer::write_block(
   out.write_byte(static_cast<byte_type>(root_block.meta)); // block metadata
   out.write_vlong(root_block.start); // start pointer of the block
 
-  if (detail::block_meta::floor(root_block.meta)) {
+  if (block_meta::floor(root_block.meta)) {
     out.write_vlong(static_cast< uint64_t >(blocks.size()-1));
     for (++it; it != blocks.end(); ++it ) {
       const auto* block = &it->block();
@@ -1572,8 +1576,8 @@ void field_writer::prepare(const irs::flush_state& state) {
 
   // prepare terms and index output
   std::string str;
-  detail::prepare_output(str, terms_out_, state, TERMS_EXT, FORMAT_TERMS, version_);
-  detail::prepare_output(str, index_out_, state, TERMS_INDEX_EXT, FORMAT_TERMS_INDEX, version_);
+  prepare_output(str, terms_out_, state, TERMS_EXT, FORMAT_TERMS, version_);
+  prepare_output(str, index_out_, state, TERMS_INDEX_EXT, FORMAT_TERMS_INDEX, version_);
   write_segment_features(*index_out_, *state.features);
 
   // prepare postings writer
@@ -1774,7 +1778,7 @@ void field_reader::prepare(
 
   int64_t checksum = 0;
 
-  const auto term_index_version = detail::prepare_input(
+  const auto term_index_version = prepare_input(
     str, index_in,
     irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE, state,
     field_writer::TERMS_INDEX_EXT,
@@ -1788,7 +1792,7 @@ void field_reader::prepare(
     cipher_ = ::get_cipher(dir);
   }
 
-  detail::read_segment_features(*index_in, feature_map, features);
+  read_segment_features(*index_in, feature_map, features);
 
   // read total number of indexed fields
   size_t fields_count{ 0 };
@@ -1853,7 +1857,7 @@ void field_reader::prepare(
   //-----------------------------------------------------------------
 
   // check term header
-  const auto term_dict_version = detail::prepare_input(
+  const auto term_dict_version = prepare_input(
     str, terms_in_, irs::IOAdvice::RANDOM, state,
     field_writer::TERMS_EXT,
     field_writer::FORMAT_TERMS,
@@ -1910,8 +1914,8 @@ size_t field_reader::size() const {
   return fields_.size();
 }
 
-NS_END /* burst_trie */
-NS_END /* root */
+NS_END // burst_trie
+NS_END // ROOT
 
 #if defined (__GNUC__)
   #pragma GCC diagnostic pop
