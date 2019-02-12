@@ -33,6 +33,7 @@
 #include "index/file_names.hpp"
 #include "index/index_meta.hpp"
 
+#include "utils/cipher_utils.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/fst.hpp"
@@ -259,6 +260,28 @@ struct cookie : irs::seek_term_iterator::seek_cookie {
   version10::term_meta meta; // term metadata
   uint64_t term_freq; // length of the positions list
 }; // cookie
+
+const fst::FstWriteOptions& fst_write_options() {
+  static const auto INSTANCE = [](){
+    fst::FstWriteOptions options;
+    options.write_osymbols = false; // we don't need output symbols
+
+    return options;
+  }();
+
+  return INSTANCE;
+}
+
+const fst::FstReadOptions& fst_read_options() {
+  static const auto INSTANCE = [](){
+    fst::FstReadOptions options;
+    options.read_osymbols = false; // we don't need output symbols
+
+    return options;
+  }();
+
+  return INSTANCE;
+}
 
 NS_END
 
@@ -1253,8 +1276,8 @@ void term_reader::prepare(
     attrs_.emplace(freq_);
   }
 
-  // read fst
-  fst_ = fst_t::Read(in, fst::FstReadOptions());
+  // read FST
+  fst_ = fst_t::Read(in, fst_read_options());
   assert(fst_);
 
   owner_ = &owner;
@@ -1715,17 +1738,17 @@ void field_writer::end_field(
   index_out_->write_vlong(term_count_);
   index_out_->write_vlong(doc_count);
   index_out_->write_vlong(total_doc_freq);
-  write_string<irs::bytes_ref>(*index_out_, min_term_.second);
-  write_string<irs::bytes_ref>(*index_out_, max_term_);
+  write_string<irs::bytes_ref>(*index_out_, min_term_.second); // FIXME encrypt
+  write_string<irs::bytes_ref>(*index_out_, max_term_); // FIXME encrypt
   if (features.check<frequency>()) {
     index_out_->write_vlong(total_term_freq);
   }
 
   // FIXME encrypt
-  // write fst
+  // write FST
   output_buf isb(index_out_.get()); // wrap stream to be OpenFST compliant
   std::ostream os(&isb);
-  fst.Write(os, fst::FstWriteOptions());
+  fst.Write(os, fst_write_options());
 
   stack_.clear();
   ++fields_count_;
