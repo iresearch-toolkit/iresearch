@@ -21,7 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "directory_test_case.hpp"
+#include "tests_shared.hpp"
+#include "tests_param.hpp"
 
 #include "store/store_utils.hpp"
 #include "store/data_output.hpp"
@@ -35,7 +36,36 @@
 #include <string>
 #include <algorithm>
 
-void directory_test_case::lock_obtain_release() {
+NS_LOCAL
+
+std::string to_string(
+    const testing::TestParamInfo<tests::dir_factory_f>& info
+) {
+  return (*info.param)(nullptr).second;
+}
+
+class directory_test_case : public virtual test_param_base<tests::dir_factory_f> {
+ public:
+  virtual void SetUp() override {
+    test_base::SetUp();
+
+    auto* factory = GetParam();
+    ASSERT_NE(nullptr, factory);
+
+    dir_ = (*factory)(this).first;
+    ASSERT_NE(nullptr, dir_);
+  }
+
+  virtual void TearDown() override {
+    dir_ = nullptr;
+    test_base::TearDown();
+  }
+
+ protected:
+  std::shared_ptr<irs::directory> dir_;
+};
+
+TEST_P(directory_test_case, lock_obtain_release) {
   {
     // single lock
     auto lock0 = dir_->make_lock("lock0");
@@ -100,7 +130,7 @@ void directory_test_case::lock_obtain_release() {
   }
 }
 
-void directory_test_case::read_multiple_streams() {
+TEST_P(directory_test_case, read_multiple_streams) {
   using namespace iresearch;
 
   // write data
@@ -267,7 +297,7 @@ void directory_test_case::read_multiple_streams() {
   }
 }
 
-void directory_test_case::string_read_write() {
+TEST_P(directory_test_case, string_read_write) {
   using namespace iresearch;
 
   // strings are smaller than internal buffer size
@@ -614,7 +644,7 @@ void directory_test_case::string_read_write() {
   }
 }
 
-void directory_test_case::visit() {
+TEST_P(directory_test_case, visit) {
   using namespace iresearch;
   
   std::set<std::string> names {
@@ -668,7 +698,7 @@ void directory_test_case::visit() {
   }
 }
 
-void directory_test_case::list() {
+TEST_P(directory_test_case, list) {
   using namespace iresearch;
 
   std::vector<std::string> files;
@@ -717,7 +747,7 @@ void directory_test_case::list() {
   }));
 }
 
-void directory_test_case::smoke_index_io() {
+TEST_P(directory_test_case, smoke_index_io) {
   using namespace iresearch;
 
   const std::string name = "test";
@@ -850,7 +880,7 @@ void directory_test_case::smoke_index_io() {
   }
 }
 
-void directory_test_case::smoke_store() {
+TEST_P(directory_test_case, smoke_store) {
   using namespace iresearch;
 
   std::vector<std::string> names{
@@ -1030,7 +1060,7 @@ void directory_test_case::smoke_store() {
   }
 }
 
-void directory_test_case::directory_size() {
+TEST_P(directory_test_case, directory_size) {
   // write integer to file
   {
     auto file = dir_->create("test_file");
@@ -1061,6 +1091,19 @@ void directory_test_case::directory_size() {
     ASSERT_EQ(sizeof(uint32_t), accumulated_size);
   }
 }
+
+INSTANTIATE_TEST_CASE_P(
+  directory_test,
+  directory_test_case,
+  ::testing::Values(
+    &tests::memory_directory,
+    &tests::fs_directory,
+    &tests::mmap_directory
+  ),
+  to_string
+);
+
+NS_END
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

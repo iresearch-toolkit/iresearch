@@ -33,21 +33,21 @@
 
 NS_ROOT
 
-/* -------------------------------------------------------------------
-* data_input
-* ------------------------------------------------------------------*/
+// -----------------------------------------------------------------------------
+// --SECTION--                                         data_input implementation
+// -----------------------------------------------------------------------------
 
 data_input::~data_input() { }
 
-/* -------------------------------------------------------------------
-* index_input
-* ------------------------------------------------------------------*/
+// -----------------------------------------------------------------------------
+// --SECTION--                                         index_input implementation
+// -----------------------------------------------------------------------------
 
 index_input::~index_input() { }
 
-/* -------------------------------------------------------------------
-* input_buf
-* ------------------------------------------------------------------*/
+// -----------------------------------------------------------------------------
+// --SECTION--                                          input_buf implementation
+// -----------------------------------------------------------------------------
 
 input_buf::input_buf( index_input* in )
   : in_( in ) {
@@ -80,12 +80,15 @@ std::streamsize input_buf::showmanyc() {
   return in_->length() - in_->file_pointer();
 }
 
-/* -------------------------------------------------------------------
-* buffered_index_input
-* ------------------------------------------------------------------*/
+// -----------------------------------------------------------------------------
+// --SECTION--                               buffered_index_input implementation
+// -----------------------------------------------------------------------------
 
-buffered_index_input::buffered_index_input(size_t buf_size /* = 1024 */)
-  : buf_size_(buf_size) {
+buffered_index_input::buffered_index_input(
+    size_t buf_size /* = 1024 */,
+    size_t start /* = 0 */)
+  : start_(start),
+    buf_size_(buf_size) {
 }
 
 buffered_index_input::buffered_index_input(const buffered_index_input& rhs)
@@ -140,7 +143,7 @@ size_t buffered_index_input::read_bytes(byte_type* b, size_t count) {
   }
 
   if (!count) {
-    return read; // it's enuogh for us
+    return read; // it's enough for us
   }
 
   size_t size;

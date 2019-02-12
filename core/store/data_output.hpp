@@ -88,7 +88,6 @@ struct IRESEARCH_API index_output : public data_output {
 
   virtual ~index_output();
 
-  /* deprecated */
   virtual void flush() = 0;
 
   virtual size_t file_pointer() const = 0;

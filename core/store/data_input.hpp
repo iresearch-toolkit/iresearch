@@ -162,7 +162,10 @@ class IRESEARCH_API buffered_index_input : public index_input {
   virtual uint64_t read_vlong() override final;
 
  protected:
-  explicit buffered_index_input(size_t buf_size = 1024);
+  explicit buffered_index_input(
+    size_t buf_size = 1024,
+    size_t start = 0
+  );
 
   buffered_index_input(const buffered_index_input& rhs);
 

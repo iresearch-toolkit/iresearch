@@ -23,8 +23,6 @@
 
 #include "tests_shared.hpp" 
 #include "iql/query_builder.hpp"
-#include "store/fs_directory.hpp"
-#include "store/mmap_directory.hpp"
 #include "store/memory_directory.hpp"
 #include "utils/index_utils.hpp"
 #include "utils/file_utils.hpp"
@@ -311,53 +309,6 @@ void payloaded_json_field_factory(
     field.name(iresearch::string_ref(name));
     field.value(data.as_number<double_t>());
   }
-}
-
-std::pair<std::shared_ptr<irs::directory>, std::string> memory_directory(const test_base*) {
-  return std::make_pair(
-    std::make_shared<irs::memory_directory>(),
-    "memory"
-  );
-}
-
-std::pair<std::shared_ptr<irs::directory>, std::string> fs_directory(const test_base* test) {
-  std::shared_ptr<irs::directory> impl;
-
-  if (test) {
-    auto dir = test->test_dir();
-
-    dir /= "index";
-    dir.mkdir();
-
-    impl = std::shared_ptr<irs::fs_directory>(
-      new irs::fs_directory(dir.utf8()),
-      [dir](irs::fs_directory* p) {
-        dir.remove();
-        delete p;
-    });
-  }
-
-  return std::make_pair(impl, "fs");
-}
-
-std::pair<std::shared_ptr<irs::directory>, std::string> mmap_directory(const test_base* test) {
-  std::shared_ptr<irs::directory> impl;
-
-  if (test) {
-    auto dir = test->test_dir();
-
-    dir /= "index";
-    dir.mkdir();
-
-    impl = std::shared_ptr<irs::mmap_directory>(
-      new irs::mmap_directory(dir.utf8()),
-      [dir](irs::mmap_directory* p) {
-        dir.remove();
-        delete p;
-    });
-  }
-
-  return std::make_pair(impl, "mmap");
 }
 
 std::string to_string(

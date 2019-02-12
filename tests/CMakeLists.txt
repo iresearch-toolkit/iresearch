@@ -49,7 +49,6 @@ set(IReSearch_tests_sources
   ./store/directory_test_case.cpp
   ./store/directory_cleaner_tests.cpp
   ./store/fs_directory_tests.cpp
-  ./store/mmap_directory_tests.cpp
   ./store/memory_directory_tests.cpp
   ./store/memory_index_output_tests.cpp
   ./store/store_utils_tests.cpp
@@ -110,11 +109,11 @@ set(IReSearch_tests_sources
   ./utils/type_utils_tests.cpp
   ./utils/utf8_path_tests.cpp
   ./utils/fst_string_weight_test.cpp
+  ./tests_param.cpp
   ./tests_main.cpp
 )
 
 set(IReSearch_tests_headers
-  ./store/directory_test_case.hpp
   ./index/assert_format.hpp
   ./index/doc_generator.hpp
   ./index/index_tests.hpp

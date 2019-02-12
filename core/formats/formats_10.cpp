@@ -701,7 +701,7 @@ void postings_writer::add_position(uint32_t pos, const offset* offs, const paylo
 
     if (pay) {
       assert(features_.payload() && pay_ && pay_->out);
-      pay_->flush_payload(buf_); // FIXME encrypt
+      pay_->flush_payload(buf_);
     }
 
     if (offs) {
@@ -3026,7 +3026,7 @@ class writer final : public irs::columnstore_writer {
       //   const auto res = expr0() | expr1();
       // otherwise it would violate format layout
       auto block_props = block_index_.flush(out, buf);
-      block_props |= write_compact(out, ctx_->comp_, static_cast<bytes_ref>(block_buf_)); // FIXME encrypt
+      block_props |= write_compact(out, ctx_->comp_, static_cast<bytes_ref>(block_buf_));
       length_ += block_buf_.size();
 
       // refresh blocks properties

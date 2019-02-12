@@ -118,7 +118,8 @@ void buffered_index_output::write_byte(byte_type b) {
 }
 
 void buffered_index_output::write_bytes(const byte_type* b, size_t length) {
-  size_t left = std::distance(pos, end);
+  assert(pos <= end);
+  auto left = size_t(std::distance(pos, end));
 
   // is there enough space in the buffer?
   if (left >= length) {
@@ -163,12 +164,14 @@ void buffered_index_output::write_bytes(const byte_type* b, size_t length) {
   }
 }
 
-size_t buffered_index_output::file_pointer() const { 
-  return start + std::distance(buf.get(), pos);
+size_t buffered_index_output::file_pointer() const {
+  assert(buf.get() <= pos);
+  return start + size_t(std::distance(buf.get(), pos));
 }
 
 void buffered_index_output::flush() {
-  const size_t size = std::distance(buf.get(), pos);
+  assert(buf.get() <= pos);
+  const auto size = size_t(std::distance(buf.get(), pos));
   flush_buffer(buf.get(), size);
   start += size;
   pos = buf.get();

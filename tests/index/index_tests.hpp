@@ -25,6 +25,7 @@
 #define IRESEARCH_INDEX_TESTS_H
 
 #include "tests_shared.hpp"
+#include "tests_param.hpp"
 #include "assert_format.hpp"
 #include "analysis/analyzers.hpp"
 #include "analysis/token_streams.hpp"
@@ -150,54 +151,6 @@ struct blocking_directory : directory_mock {
   std::condition_variable policy_applied;
   std::mutex intermediate_commits_lock;
 }; // blocking_directory
-
-class rot13_cipher final : public irs::cipher {
- public:
-  static std::shared_ptr<irs::cipher> make(size_t block_size) {
-    return std::make_shared<rot13_cipher>(block_size);
-  }
-
-  explicit rot13_cipher(size_t block_size) NOEXCEPT
-    : block_size_(block_size) {
-  }
-
-  size_t block_size() const NOEXCEPT {
-    return block_size_;
-  }
-
-  virtual bool decrypt(irs::byte_type* data) const override {
-    for (size_t i = 0; i < block_size_; ++i) {
-      data[i] -= 13;
-    }
-    return true;
-  }
-
-  virtual bool encrypt(irs::byte_type* data) const override {
-    for (size_t i = 0; i < block_size_; ++i) {
-      data[i] += 13;
-    }
-    return true;
-  }
-
- private:
-  size_t block_size_;
-}; // rot13_cipher
-
-typedef std::pair<std::shared_ptr<irs::directory>, std::string>(*dir_factory_f)(const test_base*);
-std::pair<std::shared_ptr<irs::directory>, std::string> memory_directory(const test_base*);
-std::pair<std::shared_ptr<irs::directory>, std::string> fs_directory(const test_base* test);
-std::pair<std::shared_ptr<irs::directory>, std::string> mmap_directory(const test_base* test);
-
-template<dir_factory_f DirectoryGenerator, size_t BlockSize>
-std::pair<std::shared_ptr<irs::directory>, std::string> rot13_cipher_directory(const test_base* ctx) {
-  auto info = DirectoryGenerator(ctx);
-
-  if (info.first) {
-    info.first->attributes().emplace<rot13_cipher>(BlockSize);
-  }
-
-  return std::make_pair(info.first, info.second + "_cipher_rot13");
-}
 
 typedef std::tuple<dir_factory_f, const char*> index_test_context;
 

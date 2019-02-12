@@ -84,7 +84,7 @@ if (USE_SIMDCOMP)
 endif()
 
 set(IResearch_core_sources
-  ./utils/string.cpp 
+  ./utils/string.cpp
   ./analysis/analyzer.cpp
   ./analysis/analyzers.cpp
   ./analysis/token_attributes.cpp 
@@ -137,11 +137,12 @@ set(IResearch_core_sources
   ./store/directory_cleaner.cpp
   ./store/fs_directory.cpp
   ./store/mmap_directory.cpp
-  ./store/memory_directory.cpp 
-  ./store/store_utils.cpp 
+  ./store/memory_directory.cpp
+  ./store/store_utils.cpp
   ./utils/async_utils.cpp
-  ./utils/attributes.cpp 
-  ./utils/bit_packing.cpp 
+  ./utils/attributes.cpp
+  ./utils/bit_packing.cpp
+  ./utils/cipher_utils.cpp
   ./utils/compression.cpp
   ./utils/directory_utils.cpp
   ./utils/file_utils.cpp 
@@ -151,6 +152,7 @@ set(IResearch_core_sources
   ./utils/math_utils.cpp 
   ./utils/memory.cpp
   ./utils/text_format.cpp
+  ./utils/timer_utils.cpp
   ./utils/version_utils.cpp
   ./utils/utf8_path.cpp
   ./utils/locale_utils.cpp
@@ -236,8 +238,6 @@ set(IResearch_core_headers
   ./utils/register.hpp
   ./utils/std.hpp
   ./utils/string.hpp
-  ./utils/text_format.cpp
-  ./utils/timer_utils.cpp
   ./utils/log.hpp
   ./utils/thread_utils.hpp
   ./utils/object_pool.hpp

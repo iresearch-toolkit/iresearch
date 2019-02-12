@@ -23,24 +23,14 @@
 
 #include "tests_shared.hpp"
 
-#include "directory_test_case.hpp"
-
 #include "store/memory_directory.hpp"
 #include "utils/directory_utils.hpp"
 
+NS_LOCAL
+
 using namespace iresearch;
 
-class memory_directory_test : public directory_test_case,
-                              public test_base {
- protected:
-  virtual void SetUp() {
-    test_base::SetUp();
-
-    dir_ = directory::make<memory_directory>();
-  }
-}; // memory_directory_test
-
-TEST_F(memory_directory_test, construct_check_allocator) {
+TEST(memory_directory_test, construct_check_allocator) {
   // default ctor
   {
     irs::memory_directory dir;
@@ -59,7 +49,7 @@ TEST_F(memory_directory_test, construct_check_allocator) {
   }
 }
 
-TEST_F(memory_directory_test, file_reset_allocator) {
+TEST(memory_directory_test, file_reset_allocator) {
   memory_allocator alloc0(1);
   memory_allocator alloc1(1);
   memory_file file(alloc0);
@@ -95,37 +85,7 @@ TEST_F(memory_directory_test, file_reset_allocator) {
   ASSERT_NE(buf0.data, buf1.data);
 }
 
-TEST_F(memory_directory_test, read_multiple_streams) {
-  read_multiple_streams();
-}
-
-TEST_F(memory_directory_test, string_read_write) {
-  string_read_write();
-}
-
-TEST_F(memory_directory_test, smoke_store) {
-  smoke_store();
-}
-
-TEST_F(memory_directory_test, list) {
-  list();
-}
-
-TEST_F(memory_directory_test, visit) {
-  visit();
-}
-
-TEST_F(memory_directory_test, index_io) {
-  smoke_index_io();
-}
-
-TEST_F(memory_directory_test, lock_obtain_release) {
-  lock_obtain_release();
-}
-
-TEST_F(memory_directory_test, directory_size) {
-  directory_size();
-}
+NS_END
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
