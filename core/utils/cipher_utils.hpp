@@ -26,11 +26,33 @@
 
 #include "store/data_output.hpp"
 #include "store/data_input.hpp"
+#include "store/directory_attributes.hpp"
 #include "utils/noncopyable.hpp"
 
 NS_ROOT
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                              forward declarations
+// -----------------------------------------------------------------------------
+
 struct cipher;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                           helpers
+// -----------------------------------------------------------------------------
+
+/// @returns padding required by a specified cipher for a given size
+inline size_t padding(const cipher& cipher, size_t size) NOEXCEPT {
+  const auto block_size = cipher.block_size();
+
+  if (block_size < 2) {
+    return 0;
+  }
+
+  return block_size - size % block_size;
+}
+
+void append_padding(const cipher& cipher, index_output& out);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class encrypted_output
@@ -44,6 +66,8 @@ class encrypted_output final : public irs::index_output, util::noncopyable {
   );
 
   virtual void flush() override;
+
+  void flush(bool append_padding);
 
   virtual void close() override;
 
@@ -97,7 +121,7 @@ class encrypted_input final : public irs::buffered_index_input, util::noncopyabl
   }
 
   virtual size_t length() const override final {
-    return in_->length();
+    return length_;
   }
 
   virtual int64_t checksum(size_t offset) const override final {
@@ -106,7 +130,9 @@ class encrypted_input final : public irs::buffered_index_input, util::noncopyabl
 
  protected:
   virtual void seek_internal(size_t pos) override final {
-    throw not_supported();
+    if (pos != file_pointer()) {
+      throw not_supported();
+    }
   }
 
   virtual size_t read_internal(byte_type* b, size_t count) override final;
@@ -114,6 +140,7 @@ class encrypted_input final : public irs::buffered_index_input, util::noncopyabl
  private:
   irs::index_input* in_;
   const irs::cipher* cipher_;
+  const size_t length_;
 }; // encrypted_input
 
 NS_END // ROOT

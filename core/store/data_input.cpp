@@ -158,6 +158,7 @@ size_t buffered_index_input::refill() {
 
   if (!buf_) {
     buf_ = memory::make_unique<byte_type[]>(buf_size_);
+    begin_ = end_ = buf_.get();
     seek_internal(start_);
   }
 

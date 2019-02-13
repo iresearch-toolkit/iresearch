@@ -30,6 +30,21 @@
 NS_ROOT
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                           helpers
+// -----------------------------------------------------------------------------
+
+void append_padding(const cipher& cipher, index_output& out) {
+  static const byte_type PADDING[16] { }; // FIXME
+  auto pad = padding(cipher, out.file_pointer());
+
+  while (pad) {
+    const auto to_write = std::min(pad, sizeof(PADDING));
+    out.write_bytes(PADDING, to_write);
+    pad -= to_write;
+  }
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                   encrypted_output implementation
 // -----------------------------------------------------------------------------
 
@@ -41,7 +56,7 @@ encrypted_output::encrypted_output(
     cipher_(&cipher),
     buf_size_(cipher.block_size() * buf_size),
     buf_(memory::make_unique<byte_type[]>(buf_size_)),
-    start_(out.file_pointer()),
+    start_(0),
     pos_(buf_.get()),
     end_(pos_ + buf_size_) {
 }
@@ -127,8 +142,17 @@ size_t encrypted_output::file_pointer() const {
 }
 
 void encrypted_output::flush() {
+  flush(false);
+}
+
+void encrypted_output::flush(bool append_padding) {
   assert(buf_.get() <= pos_);
-  const auto size = size_t(std::distance(buf_.get(), pos_));
+  auto size = size_t(std::distance(buf_.get(), pos_));
+
+  if (append_padding) {
+    irs::append_padding(*cipher_, *this);
+    size = size_t(std::distance(buf_.get(), pos_));
+  }
 
   if (!cipher_->encrypt(buf_.get(), size)) {
     throw io_error(string_utils::to_string(
@@ -140,12 +164,16 @@ void encrypted_output::flush() {
   out_->write_bytes(buf_.get(), size);
   start_ += size;
   pos_ = buf_.get();
+
+  out_->flush();
 }
 
 void encrypted_output::close() {
   flush();
   start_ = 0;
   pos_ = buf_.get();
+
+  out_->close();
 }
 
 // -----------------------------------------------------------------------------
@@ -156,9 +184,11 @@ encrypted_input::encrypted_input(
     irs::index_input& in,
     const irs::cipher& cipher,
     size_t buf_size
-) : irs::buffered_index_input(cipher.block_size()*buf_size, in.file_pointer()),
+) : irs::buffered_index_input(cipher.block_size()*buf_size),
     in_(&in),
-    cipher_(&cipher) {
+    cipher_(&cipher),
+    length_(in.length() - in.file_pointer()) {
+  assert(in.length() >= in.file_pointer());
 }
 
 index_input::ptr encrypted_input::dup() const {

@@ -35,6 +35,7 @@
 #include "utils/directory_utils.hpp"
 #include "utils/process_utils.hpp"
 #include "utils/network_utils.hpp"
+#include "utils/cipher_utils.hpp"
 
 #include <cstdio>
 #include <vector>
@@ -45,184 +46,6 @@
 NS_LOCAL
 
 using namespace iresearch;
-
-void smoke_store(directory& dir) {
-  std::vector<std::string> names{
-    "spM42fEO88eDt2","jNIvCMksYwpoxN","Re5eZWCkQexrZn","jjj003oxVAIycv","N9IJuRjFSlO8Pa","OPGG6Ic3JYJyVY","ZDGVji8xtjh9zI","DvBDXbjKgIfPIk",
-    "bZyCbyByXnGvlL","pvjGDbNcZGDmQ2","J7by8eYg0ZGbYw","6UZ856mrVW9DeD","Ny6bZIbGQ43LSU","oaYAsO0tXnNBkR","Fr97cjyQoTs9Pf","7rLKaQN4REFIgn",
-    "EcFMetqynwG87T","oshFa26WK3gGSl","8keZ9MLvnkec8Q","HuiOGpLtqn79GP","Qnlj0JiQjBR3YW","k64uvviemlfM8p","32X34QY6JaCH3L","NcAU3Aqnn87LJW",
-    "Q4LLFIBU9ci40O","M5xpjDYIfos22t","Te9ZhWmGt2cTXD","HYO3hJ1C4n1DvD","qVRj2SyXcKQz3Z","vwt41rzEW7nkoi","cLqv5U8b8kzT2H","tNyCoJEOm0POyC",
-    "mLw6cl4HxmOHXa","2eTVXvllcGmZ0e","NFF9SneLv6pX8h","kzCvqOVYlYA3QT","mxCkaGg0GeLxYq","PffuwSr8h3acP0","zDm0rAHgzhHsmv","8LYMjImx00le9c",
-    "Ju0FM0mJmqkue1","uNwn8A2SH4OSZW","R1Dm21RTJzb0aS","sUpQGy1n6TiH82","fhkCGcuQ5VnrEa","b6Xsq05brtAr88","NXVkmxvLmhzFRY","s9OuZyZX28uux0",
-    "DQaD4HyDMGkbg3","Fr2L3V4UzCZZcJ","7MgRPt0rLo6Cp4","c8lK5hjmKUuc3e","jzmu3ZcP3PF62X","pmUUUvAS00bPfa","lonoswip3le6Hs","TQ1G0ruVvknb8A",
-    "4XqPhpJvDazbG1","gY0QFCjckHp1JI","v2a0yfs9yN5lY4","l1XKKtBXtktOs2","AGotoLgRxPe4Pr","x9zPgBi3Bw8DFD","OhX85k7OhY3FZM","riRP6PRhkq0CUi",
-    "1ToW1HIephPBlz","C8xo1SMWPZW8iE","tBa3qiFG7c1wiD","BRXFbUYzw646PS","mbR0ECXCash1rF","AVDjHnwujjOGAK","16bmhl4gvDpj44","OLa0D9RlpBLRgK",
-    "PgCSXvlxyHQFlQ","sMyrmGRcVTwg53","Fa6Fo687nt9bDV","P0lUFttS64mC7s","rxTZUQIpOPYkPp","oNEsVpak9SNgLh","iHmFTSjGutROen","aTMmlghno9p91a",
-    "tpb3rHs9ZWtL5m","iG0xrYN7gXXPTs","KsEl2f8WtF6Ylv","triXFZM9baNltC","MBFTh22Yos3vGt","DTuFyue5f9Mk3x","v2zm4kYxfar0J7","xtpwVgOMT0eIFS",
-    "8Wz7MrtXkSH9CA","FuURHWmPLbvFU0","YpIFnExqjgpSh0","2oaIkTM6EJ2zty","s16qvfbrycGnVP","yUb2fcGIDRSujG","9rIfsuCyTCTiLY","HXTg5jWrVZNLNP",
-    "maLjUi6Oo6wsJr","C6iHChfoJHGxzO","6LxzytT8iSzNHZ","ex8znLIzbatFCo","HiYTSzZhBHgtaP","H5EpiJw2L5UgD1","ZhPvYoUMMFkoiL","y6014BfgqbE3ke",
-    "XXutx8GrPYt7Rq","DjYwLMixhS80an","aQxh91iigWOt4x","1J9ZC2r7CCfGIH","Sg9PzDCOb5Ezym","4PB3SukHVhA6SB","BfVm1XGLDOhabZ","ChEvexTp1CrLUL",
-    "M5nlO4VcxIOrxH","YO9rnNNFwzRphV","KzQhfZSnQQGhK9","r7Ez7ZqkXwr0bn","fQipSie8ZKyT62","3yyLqJMcShXG9z","UTb12lz3k5xPPt","JjcWQnBnRFJ2Mv",
-    "zsKEX7BLJQTjCx","g0oPvTcOhiev1k","8P6HF4I6t1jwzu","LaOiJIU47kagqu","pyY9sV9WQ5YuQC","MCgpgJhEwrGKWM","Hq5Wgc3Am8cjWw","FnITVHg0jw03Bm",
-    "0Jq2YEnFf52861","y0FT03yG9Uvg6I","S6uehKP8uj6wUe","usC8CZtobBmuk6","LrZuchHNpSs282","PsmFFySt7fKFOv","mXe9j6xNYttnSy","al9J6AZYlhAlWU",
-    "3v8PsohUeKegJI","QZCwr1URS1OWzX","UVCg1mVWmSBWRT","pO2lnQ4L6yHQic","w5EtZl2gZhj2ca","04B62aNIpnBslQ","0Sz6UCGXBwi7At","l49gEiyDkc3J00",
-    "2T9nyWrRwuZj9W","CTtHTPRhSAPRIW","sJZI3K8vP96JPm","HYEy1bBJskEYa2","UKb3uiFuGEi7m9","yeRCnG0EEZ8Vrr"
-  };
-
-  // Write contents
-  auto it = names.end();
-  for (const auto& name : names) {
-    --it;
-    irs::crc32c crc;
-
-    auto file = dir.create(name);
-    ASSERT_FALSE(!file);
-    EXPECT_EQ(0, file->file_pointer());
-
-    file->write_bytes(reinterpret_cast<const byte_type*>(it->c_str()), static_cast<uint32_t>(it->size()));
-    crc.process_bytes(it->c_str(), it->size());
-
-    // check file_pointer
-    EXPECT_EQ(it->size(), file->file_pointer());
-    // check checksum
-    EXPECT_EQ(crc.checksum(), file->checksum());
-
-    file->flush();
-  }
-
-  // Check files count
-  std::vector<std::string> files;
-  auto list_files = [&files] (std::string& name) {
-    files.emplace_back(std::move(name));
-    return true;
-  };
-  ASSERT_TRUE(dir.visit(list_files));
-  EXPECT_EQ(files.size(), names.size());
-
-  // Read contents
-  it = names.end();
-  bstring buf;
-
-  for (const auto& name : names) {
-    --it;
-    irs::crc32c crc;
-    bool exists;
-
-    ASSERT_TRUE(dir.exists(exists, name) && exists);
-    uint64_t length;
-    EXPECT_TRUE(dir.length(length, name) && length == it->size());
-
-    auto file = dir.open(name, irs::IOAdvice::NORMAL);
-    ASSERT_FALSE(!file);
-    EXPECT_FALSE(file->eof());
-    EXPECT_EQ(0, file->file_pointer());
-    EXPECT_EQ(file->length(), it->size());
-
-    const auto checksum = file->checksum(file->length());
-
-    buf.resize(it->size());
-    const auto read = file->read_bytes(&(buf[0]), it->size());
-    ASSERT_EQ(read, it->size());
-    ASSERT_EQ(ref_cast<byte_type>(string_ref(*it)), buf);
-
-    crc.process_bytes(buf.c_str(), buf.size());
-
-    EXPECT_TRUE(file->eof());
-    // check checksum
-    EXPECT_EQ(crc.checksum(), checksum);
-    // check that this is the end of the file
-    EXPECT_EQ(file->length(), file->file_pointer());
-  }
-
-  for (const auto& name : names) {
-    ASSERT_TRUE(dir.remove(name));
-    bool exists;
-    ASSERT_TRUE(dir.exists(exists, name) && !exists);
-  }
-
-  // Check files count
-  files.clear();
-  ASSERT_TRUE(dir.visit(list_files));
-  EXPECT_EQ(0, files.size());
-
-  // Try to open non existing input
-  ASSERT_FALSE(dir.open("invalid_file_name", irs::IOAdvice::NORMAL));
-
-  // Check locking logic
-  auto l = dir.make_lock("sample_lock");
-  ASSERT_FALSE(!l);
-  ASSERT_TRUE(l->lock());
-  bool locked;
-  ASSERT_TRUE(l->is_locked(locked) && locked);
-  ASSERT_TRUE(l->unlock());
-  ASSERT_TRUE(l->is_locked(locked) && !locked);
-
-  // Check read_bytes on empty file
-  {
-    byte_type buf[10];
-
-    // create file
-    {
-      auto out = dir.create("empty_file");
-      ASSERT_FALSE(!out);
-    }
-
-    // read from file
-    {
-      auto in = dir.open("empty_file", irs::IOAdvice::NORMAL);
-      ASSERT_FALSE(!in);
-
-      size_t read = std::numeric_limits<size_t>::max();
-      try {
-        read = in->read_bytes(buf, sizeof buf);
-        ASSERT_EQ(0, read);
-      } catch (const eof_error&) {
-        // TODO: rework stream logic, stream should not throw an error
-      } catch (...) {
-        ASSERT_TRUE(false);
-      }
-    }
-
-    ASSERT_TRUE(dir.remove("empty_file"));
-  }
-
-  // Check read_bytes after the end of file
-  {
-
-    // write to file
-    {
-      byte_type buf[1024]{};
-      auto out = dir.create("nonempty_file");
-      ASSERT_FALSE(!out);
-      out->write_bytes(buf, sizeof buf);
-      out->write_bytes(buf, sizeof buf);
-      out->write_bytes(buf, 691);
-      out->flush();
-    }
-
-    // read from file
-    {
-      byte_type buf[1024 + 691]{}; // 1024 + 691 from above
-      auto in = dir.open("nonempty_file", irs::IOAdvice::NORMAL);
-      size_t expected = sizeof buf;
-      ASSERT_FALSE(!in);
-      ASSERT_EQ(expected, in->read_bytes(buf, sizeof buf));
-
-      size_t read = std::numeric_limits<size_t>::max();
-      try {
-        expected = in->length() - sizeof buf; // 'sizeof buf' already read above
-        read = in->read_bytes(buf, sizeof buf);
-        ASSERT_EQ(expected, read);
-      } catch (const io_error&) {
-        // TODO: rework stream logic, stream should not throw an error
-      } catch (...) {
-        ASSERT_TRUE(false);
-      }
-    }
-
-    ASSERT_TRUE(dir.remove("nonempty_file"));
-  }
-}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               directory_test_case
@@ -251,9 +74,220 @@ class directory_test_case : public virtual test_param_base<tests::dir_factory_f>
     test_base::TearDown();
   }
 
+  static void smoke_store(directory& dir) {
+    std::vector<std::string> names{
+      "spM42fEO88eDt2","jNIvCMksYwpoxN","Re5eZWCkQexrZn","jjj003oxVAIycv","N9IJuRjFSlO8Pa","OPGG6Ic3JYJyVY","ZDGVji8xtjh9zI","DvBDXbjKgIfPIk",
+      "bZyCbyByXnGvlL","pvjGDbNcZGDmQ2","J7by8eYg0ZGbYw","6UZ856mrVW9DeD","Ny6bZIbGQ43LSU","oaYAsO0tXnNBkR","Fr97cjyQoTs9Pf","7rLKaQN4REFIgn",
+      "EcFMetqynwG87T","oshFa26WK3gGSl","8keZ9MLvnkec8Q","HuiOGpLtqn79GP","Qnlj0JiQjBR3YW","k64uvviemlfM8p","32X34QY6JaCH3L","NcAU3Aqnn87LJW",
+      "Q4LLFIBU9ci40O","M5xpjDYIfos22t","Te9ZhWmGt2cTXD","HYO3hJ1C4n1DvD","qVRj2SyXcKQz3Z","vwt41rzEW7nkoi","cLqv5U8b8kzT2H","tNyCoJEOm0POyC",
+      "mLw6cl4HxmOHXa","2eTVXvllcGmZ0e","NFF9SneLv6pX8h","kzCvqOVYlYA3QT","mxCkaGg0GeLxYq","PffuwSr8h3acP0","zDm0rAHgzhHsmv","8LYMjImx00le9c",
+      "Ju0FM0mJmqkue1","uNwn8A2SH4OSZW","R1Dm21RTJzb0aS","sUpQGy1n6TiH82","fhkCGcuQ5VnrEa","b6Xsq05brtAr88","NXVkmxvLmhzFRY","s9OuZyZX28uux0",
+      "DQaD4HyDMGkbg3","Fr2L3V4UzCZZcJ","7MgRPt0rLo6Cp4","c8lK5hjmKUuc3e","jzmu3ZcP3PF62X","pmUUUvAS00bPfa","lonoswip3le6Hs","TQ1G0ruVvknb8A",
+      "4XqPhpJvDazbG1","gY0QFCjckHp1JI","v2a0yfs9yN5lY4","l1XKKtBXtktOs2","AGotoLgRxPe4Pr","x9zPgBi3Bw8DFD","OhX85k7OhY3FZM","riRP6PRhkq0CUi",
+      "1ToW1HIephPBlz","C8xo1SMWPZW8iE","tBa3qiFG7c1wiD","BRXFbUYzw646PS","mbR0ECXCash1rF","AVDjHnwujjOGAK","16bmhl4gvDpj44","OLa0D9RlpBLRgK",
+      "PgCSXvlxyHQFlQ","sMyrmGRcVTwg53","Fa6Fo687nt9bDV","P0lUFttS64mC7s","rxTZUQIpOPYkPp","oNEsVpak9SNgLh","iHmFTSjGutROen","aTMmlghno9p91a",
+      "tpb3rHs9ZWtL5m","iG0xrYN7gXXPTs","KsEl2f8WtF6Ylv","triXFZM9baNltC","MBFTh22Yos3vGt","DTuFyue5f9Mk3x","v2zm4kYxfar0J7","xtpwVgOMT0eIFS",
+      "8Wz7MrtXkSH9CA","FuURHWmPLbvFU0","YpIFnExqjgpSh0","2oaIkTM6EJ2zty","s16qvfbrycGnVP","yUb2fcGIDRSujG","9rIfsuCyTCTiLY","HXTg5jWrVZNLNP",
+      "maLjUi6Oo6wsJr","C6iHChfoJHGxzO","6LxzytT8iSzNHZ","ex8znLIzbatFCo","HiYTSzZhBHgtaP","H5EpiJw2L5UgD1","ZhPvYoUMMFkoiL","y6014BfgqbE3ke",
+      "XXutx8GrPYt7Rq","DjYwLMixhS80an","aQxh91iigWOt4x","1J9ZC2r7CCfGIH","Sg9PzDCOb5Ezym","4PB3SukHVhA6SB","BfVm1XGLDOhabZ","ChEvexTp1CrLUL",
+      "M5nlO4VcxIOrxH","YO9rnNNFwzRphV","KzQhfZSnQQGhK9","r7Ez7ZqkXwr0bn","fQipSie8ZKyT62","3yyLqJMcShXG9z","UTb12lz3k5xPPt","JjcWQnBnRFJ2Mv",
+      "zsKEX7BLJQTjCx","g0oPvTcOhiev1k","8P6HF4I6t1jwzu","LaOiJIU47kagqu","pyY9sV9WQ5YuQC","MCgpgJhEwrGKWM","Hq5Wgc3Am8cjWw","FnITVHg0jw03Bm",
+      "0Jq2YEnFf52861","y0FT03yG9Uvg6I","S6uehKP8uj6wUe","usC8CZtobBmuk6","LrZuchHNpSs282","PsmFFySt7fKFOv","mXe9j6xNYttnSy","al9J6AZYlhAlWU",
+      "3v8PsohUeKegJI","QZCwr1URS1OWzX","UVCg1mVWmSBWRT","pO2lnQ4L6yHQic","w5EtZl2gZhj2ca","04B62aNIpnBslQ","0Sz6UCGXBwi7At","l49gEiyDkc3J00",
+      "2T9nyWrRwuZj9W","CTtHTPRhSAPRIW","sJZI3K8vP96JPm","HYEy1bBJskEYa2","UKb3uiFuGEi7m9","yeRCnG0EEZ8Vrr"
+    };
+
+    // Write contents
+    auto it = names.end();
+    for (const auto& name : names) {
+      --it;
+      irs::crc32c crc;
+
+      auto file = dir.create(name);
+      ASSERT_FALSE(!file);
+      EXPECT_EQ(0, file->file_pointer());
+
+      file->write_bytes(reinterpret_cast<const byte_type*>(it->c_str()), static_cast<uint32_t>(it->size()));
+      crc.process_bytes(it->c_str(), it->size());
+
+      // check file_pointer
+      EXPECT_EQ(it->size(), file->file_pointer());
+      // check checksum
+      EXPECT_EQ(crc.checksum(), file->checksum());
+
+      file->flush();
+    }
+
+    // Check files count
+    std::vector<std::string> files;
+    auto list_files = [&files] (std::string& name) {
+      files.emplace_back(std::move(name));
+      return true;
+    };
+    ASSERT_TRUE(dir.visit(list_files));
+    EXPECT_EQ(files.size(), names.size());
+
+    // Read contents
+    it = names.end();
+    bstring buf;
+
+    for (const auto& name : names) {
+      --it;
+      irs::crc32c crc;
+      bool exists;
+
+      ASSERT_TRUE(dir.exists(exists, name) && exists);
+      uint64_t length;
+      EXPECT_TRUE(dir.length(length, name) && length == it->size());
+
+      auto file = dir.open(name, irs::IOAdvice::NORMAL);
+      ASSERT_FALSE(!file);
+      EXPECT_FALSE(file->eof());
+      EXPECT_EQ(0, file->file_pointer());
+      EXPECT_EQ(file->length(), it->size());
+
+      const auto checksum = file->checksum(file->length());
+
+      buf.resize(it->size());
+      const auto read = file->read_bytes(&(buf[0]), it->size());
+      ASSERT_EQ(read, it->size());
+      ASSERT_EQ(ref_cast<byte_type>(string_ref(*it)), buf);
+
+      crc.process_bytes(buf.c_str(), buf.size());
+
+      EXPECT_TRUE(file->eof());
+      // check checksum
+      EXPECT_EQ(crc.checksum(), checksum);
+      // check that this is the end of the file
+      EXPECT_EQ(file->length(), file->file_pointer());
+    }
+
+    for (const auto& name : names) {
+      ASSERT_TRUE(dir.remove(name));
+      bool exists;
+      ASSERT_TRUE(dir.exists(exists, name) && !exists);
+    }
+
+    // Check files count
+    files.clear();
+    ASSERT_TRUE(dir.visit(list_files));
+    EXPECT_EQ(0, files.size());
+
+    // Try to open non existing input
+    ASSERT_FALSE(dir.open("invalid_file_name", irs::IOAdvice::NORMAL));
+
+    // Check locking logic
+    auto l = dir.make_lock("sample_lock");
+    ASSERT_FALSE(!l);
+    ASSERT_TRUE(l->lock());
+    bool locked;
+    ASSERT_TRUE(l->is_locked(locked) && locked);
+    ASSERT_TRUE(l->unlock());
+    ASSERT_TRUE(l->is_locked(locked) && !locked);
+
+    // Check read_bytes on empty file
+    {
+      byte_type buf[10];
+
+      // create file
+      {
+        auto out = dir.create("empty_file");
+        ASSERT_FALSE(!out);
+      }
+
+      // read from file
+      {
+        auto in = dir.open("empty_file", irs::IOAdvice::NORMAL);
+        ASSERT_FALSE(!in);
+
+        size_t read = std::numeric_limits<size_t>::max();
+        try {
+          read = in->read_bytes(buf, sizeof buf);
+          ASSERT_EQ(0, read);
+        } catch (const eof_error&) {
+          // TODO: rework stream logic, stream should not throw an error
+        } catch (...) {
+          ASSERT_TRUE(false);
+        }
+      }
+
+      ASSERT_TRUE(dir.remove("empty_file"));
+    }
+
+    // Check read_bytes after the end of file
+    {
+
+      // write to file
+      {
+        byte_type buf[1024]{};
+        auto out = dir.create("nonempty_file");
+        ASSERT_FALSE(!out);
+        out->write_bytes(buf, sizeof buf);
+        out->write_bytes(buf, sizeof buf);
+        out->write_bytes(buf, 691);
+        out->flush();
+      }
+
+      // read from file
+      {
+        byte_type buf[1024 + 691]{}; // 1024 + 691 from above
+        auto in = dir.open("nonempty_file", irs::IOAdvice::NORMAL);
+        size_t expected = sizeof buf;
+        ASSERT_FALSE(!in);
+        ASSERT_EQ(expected, in->read_bytes(buf, sizeof buf));
+
+        size_t read = std::numeric_limits<size_t>::max();
+        try {
+          expected = in->length() - sizeof buf; // 'sizeof buf' already read above
+          read = in->read_bytes(buf, sizeof buf);
+          ASSERT_EQ(expected, read);
+        } catch (const io_error&) {
+          // TODO: rework stream logic, stream should not throw an error
+        } catch (...) {
+          ASSERT_TRUE(false);
+        }
+      }
+
+      ASSERT_TRUE(dir.remove("nonempty_file"));
+    }
+  }
+
  protected:
   std::shared_ptr<irs::directory> dir_;
 };
+
+TEST_P(directory_test_case, encrypted_io) {
+  tests::rot13_cipher cipher(13);
+
+  // write data
+  {
+    auto out = dir_->create("encrypted");
+    irs::write_string(*out, irs::string_ref("header"));
+
+    irs::encrypted_output encryptor(*out, cipher, 10);
+    ASSERT_EQ(0, encryptor.file_pointer());
+    irs::write_string(encryptor, irs::string_ref("encrypted header"));
+    ASSERT_NE(0, out->file_pointer() % cipher.block_size());
+    ASSERT_THROW(encryptor.flush(), irs::io_error); // length is not multiple to cipher block size
+    encryptor.flush(true);
+    ASSERT_EQ(0, encryptor.file_pointer() % cipher.block_size());
+  }
+
+  // read data
+  {
+    auto in = dir_->open("encrypted", IOAdvice::NORMAL);
+    ASSERT_EQ("header", irs::read_string<std::string>(*in));
+    irs::encrypted_input decryptor(*in, cipher, 13);
+    ASSERT_EQ(0, decryptor.file_pointer());
+    ASSERT_EQ("encrypted header", irs::read_string<std::string>(decryptor));
+    ASSERT_EQ(17, decryptor.file_pointer());
+
+    // check padding
+    while (decryptor.file_pointer() < decryptor.length()) {
+      ASSERT_EQ(0, decryptor.read_byte());
+    }
+  }
+}
 
 TEST_P(directory_test_case, lock_obtain_release) {
   {
@@ -1321,7 +1355,7 @@ TEST_F(fs_directory_test, utf8_chars) {
   // create directory via iResearch functions
   {
     SetUp();
-    smoke_store(*dir_);
+    directory_test_case::smoke_store(*dir_);
     // Read files from directory
     check_files(*dir_, path_);
   }
@@ -1345,7 +1379,7 @@ TEST_F(fs_directory_test, utf8_chars_native) {
     #endif
 
     SetUp();
-    smoke_store(*dir_);
+    directory_test_case::smoke_store(*dir_);
     // Read files from directory
     check_files(*dir_, native_path);
   }

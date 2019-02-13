@@ -88,32 +88,10 @@ NS_LOCAL
 using namespace iresearch;
 using namespace iresearch::burst_trie::detail;
 
-/// @returns padding required by a specified cipher for a given size
-inline size_t padding(const cipher& cipher, size_t size) NOEXCEPT {
-  const auto block_size = cipher.block_size();
-
-  if (block_size < 2) {
-    return 0;
-  }
-
-  return block_size - size % block_size;
-}
-
-inline const cipher* get_cipher(const directory& dir) NOEXCEPT {
+inline const cipher* get_cipher(const irs::directory& dir) NOEXCEPT {
   auto cipher = dir.attributes().get<irs::cipher>();
 
   return cipher ? cipher.get() : nullptr;
-}
-
-void append_padding(const cipher& cipher, index_output& out) {
-  static const byte_type PADDING[16] { }; // FIXME
-  auto pad = padding(cipher, out.file_pointer());
-
-  while (pad) {
-    const auto to_write = std::min(pad, sizeof(PADDING));
-    out.write_bytes(PADDING, to_write);
-    pad -= to_write;
-  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1367,7 +1345,7 @@ void field_writer::write_block(
   size_t block_size = suffix_.stream.file_pointer();
 
   if (cipher_) {
-    ::append_padding(*cipher_, suffix_.stream);
+    irs::append_padding(*cipher_, suffix_.stream);
   }
 
   suffix_.stream.flush();
