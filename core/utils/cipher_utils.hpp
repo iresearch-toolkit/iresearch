@@ -61,6 +61,10 @@ class encrypted_output final : public irs::index_output, util::noncopyable {
 
   virtual void write_long(int64_t v) override final;
 
+  virtual int64_t checksum() const override final {
+    return out_->checksum();
+  }
+
  private:
   // returns number of reamining bytes in the buffer
   FORCE_INLINE size_t remain() const {

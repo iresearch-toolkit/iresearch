@@ -34,24 +34,12 @@
 NS_ROOT
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                         data_input implementation
-// -----------------------------------------------------------------------------
-
-data_input::~data_input() { }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                         index_input implementation
-// -----------------------------------------------------------------------------
-
-index_input::~index_input() { }
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                          input_buf implementation
 // -----------------------------------------------------------------------------
 
-input_buf::input_buf( index_input* in )
-  : in_( in ) {
-  assert( in_ );
+input_buf::input_buf(index_input* in)
+  : in_(in) {
+  assert(in_);
 }
 
 std::streamsize input_buf::xsgetn(input_buf::char_type* c, std::streamsize size) {
@@ -96,8 +84,6 @@ buffered_index_input::buffered_index_input(const buffered_index_input& rhs)
     start_(rhs.start_ + rhs.offset()),
     buf_size_(rhs.buf_size_) {
 }
-
-buffered_index_input::~buffered_index_input() { }
 
 byte_type buffered_index_input::read_byte() {
   if (begin_ >= end_) {

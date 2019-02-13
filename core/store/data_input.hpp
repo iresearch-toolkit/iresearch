@@ -45,7 +45,7 @@ NS_ROOT
 struct IRESEARCH_API data_input
     : std::iterator<std::forward_iterator_tag, byte_type, void, void, void> {
 
-  virtual ~data_input();
+  virtual ~data_input() = default;
 
   virtual byte_type read_byte() = 0;
 
@@ -93,7 +93,6 @@ struct IRESEARCH_API index_input : public data_input {
   DECLARE_UNIQUE_PTR(index_input);
   DEFINE_FACTORY_INLINE(index_input)
 
-  virtual ~index_input();
   virtual ptr dup() const = 0; // non-thread-safe fd copy (offset preserved)
   virtual ptr reopen() const = 0; // thread-safe new low-level-fd (offset preserved)
   virtual void seek(size_t pos) = 0;
@@ -135,8 +134,6 @@ class IRESEARCH_API input_buf final : public std::streambuf, util::noncopyable {
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API buffered_index_input : public index_input {
  public:
-  virtual ~buffered_index_input();
-
   virtual byte_type read_byte() override final;
 
   virtual size_t read_bytes(byte_type* b, size_t count) override final;

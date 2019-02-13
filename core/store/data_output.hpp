@@ -40,7 +40,7 @@ NS_ROOT
 struct IRESEARCH_API data_output
     : std::iterator<std::output_iterator_tag, byte_type, void, void, void> {
 
-  virtual ~data_output();
+  virtual ~data_output() = default;
 
   // TODO: remove close method
   virtual void close() = 0;
@@ -86,8 +86,6 @@ struct IRESEARCH_API index_output : public data_output {
   DECLARE_IO_PTR(index_output, close);
   DEFINE_FACTORY_INLINE(index_output)
 
-  virtual ~index_output();
-
   virtual void flush() = 0;
 
   virtual size_t file_pointer() const = 0;
@@ -124,8 +122,6 @@ class IRESEARCH_API buffered_index_output : public index_output, util::noncopyab
   static const size_t DEF_BUFFER_SIZE = 1024;
 
   buffered_index_output(size_t buf_size = DEF_BUFFER_SIZE);
-
-  virtual ~buffered_index_output();
 
   virtual void flush() override;
 

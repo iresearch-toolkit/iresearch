@@ -88,7 +88,6 @@ set(IResearch_core_sources
   ./analysis/analyzer.cpp
   ./analysis/analyzers.cpp
   ./analysis/token_attributes.cpp 
-  ./analysis/token_stream.cpp 
   ./analysis/token_streams.cpp 
   ./error/error.cpp 
   ./formats/formats.cpp 

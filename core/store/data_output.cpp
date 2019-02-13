@@ -33,21 +33,9 @@
 
 NS_ROOT
 
-/* -------------------------------------------------------------------
-* data_output
-* ------------------------------------------------------------------*/
-
-data_output::~data_output() {}
-
-/* -------------------------------------------------------------------
-* index_output
-* ------------------------------------------------------------------*/
-
-index_output::~index_output() {}
-
-/* -------------------------------------------------------------------
-* output_buf
-* ------------------------------------------------------------------*/
+// -----------------------------------------------------------------------------
+// --SECTION--                                         output_buf implementation
+// -----------------------------------------------------------------------------
 
 output_buf::output_buf(index_output* out) : out_(out) {
   assert(out_);
@@ -63,9 +51,9 @@ output_buf::int_type output_buf::overflow(int_type c) {
   return c;
 }
 
-/* -------------------------------------------------------------------
-* buffered_index_output
-* ------------------------------------------------------------------*/
+// -----------------------------------------------------------------------------
+// --SECTION--                              buffered_index_output implementation
+// -----------------------------------------------------------------------------
 
 buffered_index_output::buffered_index_output(size_t buf_size)
   : buf(memory::make_unique<byte_type[]>(buf_size)),
@@ -74,8 +62,6 @@ buffered_index_output::buffered_index_output(size_t buf_size)
     end(pos + buf_size),
     buf_size(buf_size) {
 }
-
-buffered_index_output::~buffered_index_output() {}
 
 void buffered_index_output::write_int(int32_t value) {
   if (remain() < sizeof(uint32_t)) {
