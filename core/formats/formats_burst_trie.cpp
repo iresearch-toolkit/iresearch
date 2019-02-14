@@ -636,7 +636,7 @@ void block_iterator::load() {
 #endif // IRESEARCH_DEBUG
   suffix_in_.reset(suffix_block_.c_str(), block_size);
   if (cipher) {
-    cipher->decrypt(&(suffix_block_[0]), aligned_block_size);
+    decrypt(*cipher, &(suffix_block_[0]), aligned_block_size);
   }
 
   // read stats block
@@ -1364,12 +1364,17 @@ void field_writer::write_block(
     auto encrypt_and_copy = [this](irs::byte_type* b, size_t len) {
       assert(cipher_);
 
-      cipher_->encrypt(b, len);
+      if (!encrypt(*cipher_, b, len)) {
+        return false;
+      }
+
       terms_out_->write_bytes(b, len);
       return true;
     };
 
-    suffix_.file.visit(encrypt_and_copy);
+    if (!suffix_.file.visit(encrypt_and_copy)) {
+      throw io_error("failed to encrypt term dictionary");
+    }
   } else {
     suffix_.file.visit(copy);
   }

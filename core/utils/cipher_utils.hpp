@@ -54,6 +54,9 @@ inline size_t padding(const cipher& cipher, size_t size) NOEXCEPT {
 
 void append_padding(const cipher& cipher, index_output& out);
 
+bool encrypt(const irs::cipher& cipher, byte_type* data, size_t length);
+bool decrypt(const irs::cipher& cipher, byte_type* data, size_t length);
+
 //////////////////////////////////////////////////////////////////////////////
 /// @class encrypted_output
 //////////////////////////////////////////////////////////////////////////////
@@ -89,6 +92,8 @@ class encrypted_output final : public irs::index_output, util::noncopyable {
     return out_->checksum();
   }
 
+  size_t buffer_size() const NOEXCEPT { return buf_size_; }
+
  private:
   // returns number of reamining bytes in the buffer
   FORCE_INLINE size_t remain() const {
@@ -106,7 +111,7 @@ class encrypted_output final : public irs::index_output, util::noncopyable {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // encrypted_output
 
-class encrypted_input final : public irs::buffered_index_input, util::noncopyable {
+class encrypted_input final : public buffered_index_input, util::noncopyable {
  public:
   encrypted_input(
     irs::index_input& in,
@@ -129,17 +134,20 @@ class encrypted_input final : public irs::buffered_index_input, util::noncopyabl
   }
 
  protected:
-  virtual void seek_internal(size_t pos) override final {
+  virtual void seek_internal(size_t pos) override {
     if (pos != file_pointer()) {
       throw not_supported();
     }
   }
 
-  virtual size_t read_internal(byte_type* b, size_t count) override final;
+  virtual bool read_internal(
+    byte_type* b, size_t count, size_t& read
+  ) override;
 
  private:
   irs::index_input* in_;
   const irs::cipher* cipher_;
+  const size_t block_size_;
   const size_t length_;
 }; // encrypted_input
 

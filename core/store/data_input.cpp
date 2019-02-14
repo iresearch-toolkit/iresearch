@@ -72,11 +72,8 @@ std::streamsize input_buf::showmanyc() {
 // --SECTION--                               buffered_index_input implementation
 // -----------------------------------------------------------------------------
 
-buffered_index_input::buffered_index_input(
-    size_t buf_size /* = 1024 */,
-    size_t start /* = 0 */)
-  : start_(start),
-    buf_size_(buf_size) {
+buffered_index_input::buffered_index_input(size_t buf_size /* = 1024 */)
+  : start_(0), buf_size_(buf_size) {
 }
 
 buffered_index_input::buffered_index_input(const buffered_index_input& rhs)
@@ -125,26 +122,37 @@ size_t buffered_index_input::read_bytes(byte_type* b, size_t count) {
   if (read) {
     std::memcpy(b, begin_, sizeof(byte_type) * read);
     begin_ += read;
-    count -= read;
   }
 
-  if (!count) {
+  if (read == count) {
     return read; // it's enough for us
   }
 
-  size_t size;
+  size_t size = count - read;
   b += read;
-  if (count < buf_size_) { // refill buffer & copy
-    size = std::min(count, refill());
+  if (size < buf_size_) { // refill buffer & copy
+    size = std::min(size, refill());
     std::memcpy(b, begin_, sizeof(byte_type) * size);
     begin_ += size;
-  } else { // read directly to output buffer
-    size = read_internal(b, count);
-    start_ += (offset() + size);
-    begin_ = end_ = buf_.get(); // will trigger refill on the next read
+    read += size;
+  } else {
+    // read directly to output buffer if possible
+    if (read_internal(b, size, size)) {
+      start_ += (offset() + size);
+      begin_ = end_ = buf_.get(); // will trigger refill on the next read
+      read += size;
+    } else {
+      do {
+        size = std::min(size, refill());
+        std::memcpy(b, begin_, sizeof(byte_type) * size);
+        begin_ += size;
+        read += size;
+        b += size;
+      } while ((size = count - read));
+    }
   }
 
-  return read += size;
+  return read;
 }
 
 size_t buffered_index_input::refill() {

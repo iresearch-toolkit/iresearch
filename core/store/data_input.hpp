@@ -159,17 +159,22 @@ class IRESEARCH_API buffered_index_input : public index_input {
   virtual uint64_t read_vlong() override final;
 
  protected:
-  explicit buffered_index_input(
-    size_t buf_size = 1024,
-    size_t start = 0
-  );
+  explicit buffered_index_input(size_t buf_size = 1024);
 
   buffered_index_input(const buffered_index_input& rhs);
 
   virtual void seek_internal(size_t pos) = 0;
 
+  virtual bool read_internal(byte_type* b, size_t count, size_t& read) = 0;
+
   // returns number of bytes read
-  virtual size_t read_internal(byte_type* b, size_t count) = 0;
+  size_t read_internal(byte_type* b, size_t count) {
+    size_t read;
+    const auto res = read_internal(b, count, read);
+    assert(res);
+    UNUSED(res);
+    return read;
+  }
 
  private:
   // returns number of bytes between begin_ & end_

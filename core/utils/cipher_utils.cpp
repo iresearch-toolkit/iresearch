@@ -27,6 +27,28 @@
 #include "store/data_output.hpp"
 #include "store/directory_attributes.hpp"
 
+NS_LOCAL
+
+bool decrypt(
+    const irs::cipher& cipher,
+    irs::byte_type* data,
+    size_t length,
+    size_t block_size
+) {
+  assert(block_size == cipher.block_size());
+  bool result = true;
+
+  for (auto* end = data + length; data != end; data += block_size) {
+    result |= cipher.decrypt(data);
+  }
+
+  return result;
+}
+
+const irs::byte_type PADDING[32] { };
+
+NS_END
+
 NS_ROOT
 
 // -----------------------------------------------------------------------------
@@ -34,14 +56,41 @@ NS_ROOT
 // -----------------------------------------------------------------------------
 
 void append_padding(const cipher& cipher, index_output& out) {
-  static const byte_type PADDING[16] { }; // FIXME
-  auto pad = padding(cipher, out.file_pointer());
-
-  while (pad) {
+  for (auto pad = padding(cipher, out.file_pointer()); pad; ) {
     const auto to_write = std::min(pad, sizeof(PADDING));
     out.write_bytes(PADDING, to_write);
     pad -= to_write;
   }
+}
+
+bool encrypt(const irs::cipher& cipher, byte_type* data, size_t length) {
+  const auto block_size = cipher.block_size();
+  assert(block_size);
+
+  if (length % block_size) {
+    // can't encrypt unaligned data
+    return false;
+  }
+
+  bool result = true;
+
+  for (auto* end = data + length; data != end; data += block_size) {
+    result |= cipher.encrypt(data);
+  }
+
+  return result;
+}
+
+bool decrypt(const irs::cipher& cipher, byte_type* data, size_t length) {
+  const auto block_size = cipher.block_size();
+  assert(block_size);
+
+  if (length % block_size) {
+    // can't decrypt unaligned data
+    return false;
+  }
+
+  return ::decrypt(cipher, data, length, block_size);
 }
 
 // -----------------------------------------------------------------------------
@@ -54,7 +103,7 @@ encrypted_output::encrypted_output(
     size_t buf_size
 ) : out_(&out),
     cipher_(&cipher),
-    buf_size_(cipher.block_size() * buf_size),
+    buf_size_(cipher.block_size() * std::max(size_t(1), buf_size)),
     buf_(memory::make_unique<byte_type[]>(buf_size_)),
     start_(0),
     pos_(buf_.get()),
@@ -142,19 +191,9 @@ size_t encrypted_output::file_pointer() const {
 }
 
 void encrypted_output::flush() {
-  flush(false);
-}
+  const auto size = size_t(std::distance(buf_.get(), pos_));
 
-void encrypted_output::flush(bool append_padding) {
-  assert(buf_.get() <= pos_);
-  auto size = size_t(std::distance(buf_.get(), pos_));
-
-  if (append_padding) {
-    irs::append_padding(*cipher_, *this);
-    size = size_t(std::distance(buf_.get(), pos_));
-  }
-
-  if (!cipher_->encrypt(buf_.get(), size)) {
+  if (!encrypt(*cipher_, buf_.get(), size)) {
     throw io_error(string_utils::to_string(
       "buffer size " IR_SIZE_T_SPECIFIER " is not multiple to cipher block size " IR_SIZE_T_SPECIFIER,
       size, cipher_->block_size()
@@ -164,16 +203,22 @@ void encrypted_output::flush(bool append_padding) {
   out_->write_bytes(buf_.get(), size);
   start_ += size;
   pos_ = buf_.get();
+}
 
-  out_->flush();
+void encrypted_output::flush(bool append_padding) {
+  assert(buf_.get() <= pos_);
+
+  if (append_padding) {
+    irs::append_padding(*cipher_, *this);
+  }
+
+  flush();
 }
 
 void encrypted_output::close() {
   flush();
   start_ = 0;
   pos_ = buf_.get();
-
-  out_->close();
 }
 
 // -----------------------------------------------------------------------------
@@ -184,10 +229,12 @@ encrypted_input::encrypted_input(
     irs::index_input& in,
     const irs::cipher& cipher,
     size_t buf_size
-) : irs::buffered_index_input(cipher.block_size()*buf_size),
+) : buffered_index_input(cipher.block_size() * std::max(size_t(1), buf_size)),
     in_(&in),
     cipher_(&cipher),
+    block_size_(cipher.block_size()),
     length_(in.length() - in.file_pointer()) {
+  assert(block_size_);
   assert(in.length() >= in.file_pointer());
 }
 
@@ -197,17 +244,22 @@ index_input::ptr encrypted_input::dup() const {
   );
 }
 
-size_t encrypted_input::read_internal(byte_type* b, size_t count) {
-  const auto read = in_->read_bytes(b, count);
+bool encrypted_input::read_internal(byte_type* b, size_t count, size_t& read) {
+  if (count % block_size_) {
+    // count is not multiple to a block size
+    return false;
+  }
 
-  if (!cipher_->decrypt(b, read)) {
+  read = in_->read_bytes(b, count);
+
+  if (!::decrypt(*cipher_, b, read, block_size_)) {
     throw io_error(string_utils::to_string(
       "buffer size " IR_SIZE_T_SPECIFIER " is not multiple to cipher block size " IR_SIZE_T_SPECIFIER,
-      read, cipher_->block_size()
+      read, block_size_
     ));
   }
 
-  return read;
+  return true;
 }
 
 NS_END

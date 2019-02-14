@@ -43,11 +43,7 @@ class IRESEARCH_API cipher : public stored_attribute {
 
   virtual bool decrypt(byte_type* data) const = 0;
 
-  bool decrypt(byte_type* data, size_t length) const;
-
   virtual bool encrypt(byte_type* data) const = 0;
-
-  bool encrypt(byte_type* data, size_t length) const;
 }; // cipher
 
 //////////////////////////////////////////////////////////////////////////////

@@ -259,34 +259,277 @@ class directory_test_case : public virtual test_param_base<tests::dir_factory_f>
 TEST_P(directory_test_case, encrypted_io) {
   tests::rot13_cipher cipher(13);
 
-  // write data
+  // unencrypted + encrypted data
   {
-    auto out = dir_->create("encrypted");
-    irs::write_string(*out, irs::string_ref("header"));
+    // write data
+    {
+      auto out = dir_->create("encrypted");
+      irs::write_string(*out, irs::string_ref("header"));
+      ASSERT_EQ(7, out->file_pointer());
 
-    irs::encrypted_output encryptor(*out, cipher, 10);
-    ASSERT_EQ(0, encryptor.file_pointer());
-    irs::write_string(encryptor, irs::string_ref("encrypted header"));
-    ASSERT_NE(0, out->file_pointer() % cipher.block_size());
-    ASSERT_THROW(encryptor.flush(), irs::io_error); // length is not multiple to cipher block size
-    encryptor.flush(true);
-    ASSERT_EQ(0, encryptor.file_pointer() % cipher.block_size());
-  }
+      irs::encrypted_output encryptor(*out, cipher, 10);
+      ASSERT_EQ(10*cipher.block_size(), encryptor.buffer_size());
+      ASSERT_EQ(0, encryptor.file_pointer());
+      irs::write_string(encryptor, irs::string_ref("encrypted header"));
+      ASSERT_EQ(7, out->file_pointer());
+      ASSERT_EQ(17, encryptor.file_pointer());
+      ASSERT_THROW(encryptor.flush(), irs::io_error); // length is not multiple to cipher block size
+      ASSERT_THROW(encryptor.flush(false), irs::io_error); // length is not multiple to cipher block size
+      encryptor.flush(true);
+      ASSERT_EQ(26, encryptor.file_pointer());
+      ASSERT_EQ(33, out->file_pointer());
+    }
 
-  // read data
-  {
-    auto in = dir_->open("encrypted", IOAdvice::NORMAL);
-    ASSERT_EQ("header", irs::read_string<std::string>(*in));
-    irs::encrypted_input decryptor(*in, cipher, 13);
-    ASSERT_EQ(0, decryptor.file_pointer());
-    ASSERT_EQ("encrypted header", irs::read_string<std::string>(decryptor));
-    ASSERT_EQ(17, decryptor.file_pointer());
+    // read data
+    {
+      auto in = dir_->open("encrypted", IOAdvice::NORMAL);
+      ASSERT_EQ("header", irs::read_string<std::string>(*in));
+      irs::encrypted_input decryptor(*in, cipher, 13);
+      ASSERT_EQ(in->length()-7, decryptor.length());
+      ASSERT_EQ(2*cipher.block_size(), decryptor.length());
+      ASSERT_EQ(13*cipher.block_size(), decryptor.buffer_size());
+      ASSERT_EQ(0, decryptor.file_pointer());
+      ASSERT_EQ("encrypted header", irs::read_string<std::string>(decryptor));
+      ASSERT_EQ(17, decryptor.file_pointer());
+      ASSERT_EQ(in->length(), in->file_pointer());
 
-    // check padding
-    while (decryptor.file_pointer() < decryptor.length()) {
-      ASSERT_EQ(0, decryptor.read_byte());
+      // check padding
+      while (decryptor.file_pointer() < decryptor.length()) {
+        ASSERT_EQ(0, decryptor.read_byte());
+      }
+
+      ASSERT_EQ(in->length(), in->file_pointer());
     }
   }
+
+  // data is shorter than ciper block size
+  {
+    // write data
+    {
+      auto out = dir_->create("encrypted_small");
+      irs::encrypted_output encryptor(*out, cipher, 0);
+      ASSERT_EQ(cipher.block_size(), encryptor.buffer_size());
+      ASSERT_EQ(0, encryptor.file_pointer());
+      ASSERT_EQ(0, out->file_pointer());
+      irs::write_string(encryptor, irs::string_ref("header"));
+      ASSERT_EQ(0, out->file_pointer());
+      ASSERT_EQ(7, encryptor.file_pointer());
+      ASSERT_THROW(encryptor.flush(), irs::io_error); // length is not multiple to cipher block size
+      ASSERT_THROW(encryptor.flush(false), irs::io_error); // length is not multiple to cipher block size
+      encryptor.flush(true);
+      ASSERT_EQ(13, encryptor.file_pointer());
+      ASSERT_EQ(encryptor.file_pointer(), out->file_pointer());
+    }
+
+    // read data
+    {
+      auto in = dir_->open("encrypted_small", IOAdvice::NORMAL);
+      irs::encrypted_input decryptor(*in, cipher, 0);
+      ASSERT_EQ(in->length(), decryptor.length());
+      ASSERT_EQ(cipher.block_size(), decryptor.length());
+      ASSERT_EQ(cipher.block_size(), decryptor.buffer_size());
+      ASSERT_EQ(0, decryptor.file_pointer());
+      ASSERT_EQ("header", irs::read_string<std::string>(decryptor));
+      ASSERT_EQ(7, decryptor.file_pointer());
+
+      // check padding
+      while (decryptor.file_pointer() < decryptor.length()) {
+        ASSERT_EQ(0, decryptor.read_byte());
+      }
+
+      ASSERT_EQ(in->length(), in->file_pointer());
+    }
+  }
+
+  // data length is equal to ciper block size
+  {
+    // write data
+    {
+      auto out = dir_->create("encrypted_equal_to_block_size");
+      irs::encrypted_output encryptor(*out, cipher, 0);
+      ASSERT_EQ(cipher.block_size(), encryptor.buffer_size());
+      ASSERT_EQ(0, encryptor.file_pointer());
+      ASSERT_EQ(0, out->file_pointer());
+      irs::write_string(encryptor, irs::string_ref("headerheader"));
+      ASSERT_EQ(cipher.block_size(), out->file_pointer());
+      ASSERT_EQ(cipher.block_size(), encryptor.file_pointer());
+      encryptor.flush(false); // length is multiple to cipher block size
+      ASSERT_EQ(cipher.block_size(), encryptor.file_pointer());
+      ASSERT_EQ(encryptor.file_pointer(), out->file_pointer());
+    }
+
+    // read data
+    {
+      auto in = dir_->open("encrypted_equal_to_block_size", IOAdvice::NORMAL);
+      irs::encrypted_input decryptor(*in, cipher, 0);
+      ASSERT_EQ(in->length(), decryptor.length());
+      ASSERT_EQ(cipher.block_size(), decryptor.length());
+      ASSERT_EQ(cipher.block_size(), decryptor.buffer_size());
+      ASSERT_EQ(0, decryptor.file_pointer());
+      ASSERT_EQ("headerheader", irs::read_string<std::string>(decryptor));
+      ASSERT_EQ(cipher.block_size(), decryptor.file_pointer());
+      ASSERT_EQ(decryptor.length(), decryptor.file_pointer());
+      ASSERT_EQ(in->length(), in->file_pointer());
+    }
+  }
+
+  // data length is longer than ciper block size
+  {
+    // write data
+    {
+      auto out = dir_->create("encrypted_longer_than_block_size");
+      irs::encrypted_output encryptor(*out, cipher, 0);
+      ASSERT_EQ(cipher.block_size(), encryptor.buffer_size());
+      ASSERT_EQ(0, encryptor.file_pointer());
+      ASSERT_EQ(0, out->file_pointer());
+      irs::write_string(encryptor, irs::string_ref("headerheaderh"));
+      ASSERT_EQ(cipher.block_size(), out->file_pointer());
+      ASSERT_EQ(14, encryptor.file_pointer());
+      ASSERT_THROW(encryptor.flush(), irs::io_error); // length is not multiple to cipher block size
+      ASSERT_THROW(encryptor.flush(false), irs::io_error); // length is not multiple to cipher block size
+      encryptor.flush(true);
+      ASSERT_EQ(2*cipher.block_size(), encryptor.file_pointer());
+      ASSERT_EQ(encryptor.file_pointer(), out->file_pointer());
+    }
+
+    // read data
+    {
+      auto in = dir_->open("encrypted_longer_than_block_size", IOAdvice::NORMAL);
+      irs::encrypted_input decryptor(*in, cipher, 0);
+      ASSERT_EQ(2*cipher.block_size(), decryptor.length());
+      ASSERT_EQ(in->length(), decryptor.length());
+      ASSERT_EQ(cipher.block_size(), decryptor.buffer_size());
+      ASSERT_EQ(0, decryptor.file_pointer());
+      ASSERT_EQ("headerheaderh", irs::read_string<std::string>(decryptor));
+      ASSERT_EQ(14, decryptor.file_pointer());
+      ASSERT_EQ(in->length(), in->file_pointer());
+
+      // check padding
+      while (decryptor.file_pointer() < decryptor.length()) {
+        ASSERT_EQ(0, decryptor.read_byte());
+      }
+
+      ASSERT_EQ(decryptor.length(), decryptor.file_pointer());
+    }
+  }
+
+  // long encrypted stream, small buffer
+  {
+    // write data
+    {
+      auto out = dir_->create("encrypted_long_string");
+      irs::encrypted_output encryptor(*out, cipher, 0);
+      ASSERT_EQ(cipher.block_size(), encryptor.buffer_size());
+      ASSERT_EQ(0, encryptor.file_pointer());
+      ASSERT_EQ(0, out->file_pointer());
+      irs::write_string(encryptor, irs::string_ref("headerheaderheaderheaderheader"));
+      ASSERT_EQ(2*cipher.block_size(), out->file_pointer());
+      ASSERT_EQ(31, encryptor.file_pointer());
+      ASSERT_THROW(encryptor.flush(), irs::io_error); // length is not multiple to cipher block size
+      ASSERT_THROW(encryptor.flush(false), irs::io_error); // length is not multiple to cipher block size
+      encryptor.flush(true);
+      ASSERT_EQ(3*cipher.block_size(), encryptor.file_pointer());
+      ASSERT_EQ(encryptor.file_pointer(), out->file_pointer());
+    }
+
+    // read data
+    {
+      auto in = dir_->open("encrypted_long_string", IOAdvice::NORMAL);
+      irs::encrypted_input decryptor(*in, cipher, 0);
+      ASSERT_EQ(3*cipher.block_size(), decryptor.length());
+      ASSERT_EQ(cipher.block_size(), decryptor.buffer_size());
+      ASSERT_EQ(0, decryptor.file_pointer());
+      ASSERT_EQ("headerheaderheaderheaderheader", irs::read_string<std::string>(decryptor));
+      ASSERT_EQ(in->length(), in->file_pointer());
+      ASSERT_EQ(31, decryptor.file_pointer());
+
+      // check padding
+      while (decryptor.file_pointer() < decryptor.length()) {
+        ASSERT_EQ(0, decryptor.read_byte());
+      }
+    }
+  }
+
+  // long encrypted stream, small buffer, blob is equal to cipher block size
+  {
+    const auto data = irs::ref_cast<irs::byte_type>(irs::string_ref("012345678912301234567891230123456789123"));
+    ASSERT_EQ(3*cipher.block_size(), data.size());
+
+    // write data
+    {
+      auto out = dir_->create("encrypted_long_string_multiple_to_block_size");
+      irs::encrypted_output encryptor(*out, cipher, 0);
+      ASSERT_EQ(cipher.block_size(), encryptor.buffer_size());
+      ASSERT_EQ(0, encryptor.file_pointer());
+      ASSERT_EQ(0, out->file_pointer());
+      encryptor.write_bytes(data.c_str(), data.size());
+      ASSERT_EQ(3*cipher.block_size(), out->file_pointer());
+      ASSERT_EQ(39, encryptor.file_pointer());
+      encryptor.flush(false);
+      ASSERT_EQ(3*cipher.block_size(), encryptor.file_pointer());
+      ASSERT_EQ(encryptor.file_pointer(), out->file_pointer());
+    }
+
+    // read data
+    {
+      irs::byte_type read[39];
+
+      auto in = dir_->open("encrypted_long_string_multiple_to_block_size", IOAdvice::NORMAL);
+      irs::encrypted_input decryptor(*in, cipher, 0);
+      ASSERT_EQ(3*cipher.block_size(), decryptor.length());
+      ASSERT_EQ(cipher.block_size(), decryptor.buffer_size());
+      ASSERT_EQ(0, decryptor.file_pointer());
+      decryptor.read_bytes(read, sizeof read);
+      ASSERT_EQ(data, irs::bytes_ref(read, sizeof read));
+      ASSERT_EQ(in->length(), in->file_pointer());
+      ASSERT_EQ(39, decryptor.file_pointer());
+    }
+  }
+
+  // long encrypted stream
+  {
+    // write data
+    {
+      auto out = dir_->create("encrypted_long");
+      irs::encrypted_output encryptor(*out, cipher, 0);
+      ASSERT_EQ(cipher.block_size(), encryptor.buffer_size());
+      ASSERT_EQ(0, encryptor.file_pointer());
+      ASSERT_EQ(0, out->file_pointer());
+      for (size_t step = 97, seed = 99, i = 0; i < 10000; ++i, seed += step) {
+        encryptor.write_long(seed);
+        encryptor.write_vlong(seed);
+        const auto str = std::to_string(seed);
+        irs::write_string(encryptor, str);
+      }
+      encryptor.flush(true);
+      ASSERT_EQ(encryptor.file_pointer(), out->file_pointer());
+    }
+
+    // read data
+    {
+      irs::byte_type read[39];
+
+      auto in = dir_->open("encrypted_long", IOAdvice::NORMAL);
+      irs::encrypted_input decryptor(*in, cipher, 0);
+      ASSERT_EQ(cipher.block_size(), decryptor.buffer_size());
+      ASSERT_EQ(0, decryptor.file_pointer());
+      for (size_t step = 97, seed = 99, i = 0; i < 10000; ++i, seed += step) {
+        ASSERT_EQ(seed, decryptor.read_long());
+        ASSERT_EQ(seed, decryptor.read_vlong());
+        const auto expected_str = std::to_string(seed);
+        auto str = irs::read_string<std::string>(decryptor);
+        ASSERT_EQ(expected_str, str);
+      }
+      // check padding
+      while (decryptor.file_pointer() < decryptor.length()) {
+        ASSERT_EQ(0, decryptor.read_byte());
+      }
+      ASSERT_EQ(in->length(), in->file_pointer());
+    }
+  }
+
+  // FIXME
+  // write long encrypted stream
 }
 
 TEST_P(directory_test_case, lock_obtain_release) {

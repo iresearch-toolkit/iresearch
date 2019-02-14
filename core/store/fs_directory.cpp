@@ -252,6 +252,8 @@ class fs_index_output : public buffered_index_output {
 class pooled_fs_index_input; // predeclaration used by fs_index_input
 class fs_index_input : public buffered_index_input {
  public:
+  using buffered_index_input::read_internal;
+
   virtual int64_t checksum(size_t offset) const override final {
     const auto begin = handle_->pos;
     const auto end = (std::min)(begin + offset, handle_->size);
@@ -353,7 +355,7 @@ class fs_index_input : public buffered_index_input {
     pos_ = pos;
   }
 
-  virtual size_t read_internal(byte_type* b, size_t len) override {
+  virtual bool read_internal(byte_type* b, size_t len, size_t& read) override {
     assert(b);
     assert(handle_->handle);
 
@@ -370,7 +372,7 @@ class fs_index_input : public buffered_index_input {
       handle_->pos = pos_;
     }
 
-    const size_t read = fread(b, sizeof(byte_type), len, stream);
+    read = fread(b, sizeof(byte_type), len, stream);
     pos_ = handle_->pos += read;
 
     if (read != len) {
