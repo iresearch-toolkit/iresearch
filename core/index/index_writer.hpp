@@ -43,8 +43,6 @@
 #include <cassert>
 #include <atomic>
 
-MSVC_ONLY(template struct IRESEARCH_API std::atomic<size_t>;) // std::atomic<size_t> (supress MSVC warnings)
-
 NS_ROOT
 
 // ----------------------------------------------------------------------------
