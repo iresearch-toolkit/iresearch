@@ -2513,7 +2513,7 @@ class meta_writer final : public irs::column_meta_writer {
   virtual void flush() override;
 
  private:
-  const cipher* cipher_{};
+  size_t cipher_block_size_{};
   index_output::ptr out_;
   size_t count_{}; // number of written objects
   field_id max_id_{}; // the highest column id written (optimization for vector resize on read to highest id)
@@ -2533,7 +2533,7 @@ std::string file_name<column_meta_writer, segment_meta>(
   return irs::file_name(meta.name, columns::meta_writer::FORMAT_EXT);
 };
 
-void meta_writer::prepare(directory& dir, const segment_meta& meta) {
+void meta_writer::prepare(directory& dir, const segment_meta& meta) { 
   auto filename = file_name<column_meta_writer>(meta);
 
   out_ = dir.create(filename);
@@ -2545,16 +2545,17 @@ void meta_writer::prepare(directory& dir, const segment_meta& meta) {
   }
 
   format_utils::write_header(*out_, FORMAT_NAME, version_);
+  cipher_block_size_ = 0;
 
   if (version_ > FORMAT_MIN) {
-    cipher_ = irs::get_cipher(dir.attributes());
+    auto* cipher = irs::get_cipher(dir.attributes());
 
-    const size_t block_size = cipher_ ? cipher_->block_size() : 0;
-    out_->write_vlong(block_size);
+    cipher_block_size_ = cipher ? cipher->block_size() : 0;
+    out_->write_vlong(cipher_block_size_);
 
-    if (block_size) {
-      const auto buffer_size = buffered_index_output::DEFAULT_BUFFER_SIZE/block_size;
-      out_ = index_output::make<encrypted_output>(std::move(out_), *cipher_, buffer_size);
+    if (cipher_block_size_) {
+      const auto buffer_size = buffered_index_output::DEFAULT_BUFFER_SIZE/cipher_block_size_;
+      out_ = index_output::make<encrypted_output>(std::move(out_), *cipher, buffer_size);
     }
   }
 }
@@ -2570,7 +2571,7 @@ void meta_writer::write(const std::string& name, field_id id) {
 void meta_writer::flush() {
   assert(out_);
 
-  if (cipher_) {
+  if (cipher_block_size_) {
     auto& out = static_cast<encrypted_output&>(*out_);
     out.append_and_flush();
     out_ = out.release();

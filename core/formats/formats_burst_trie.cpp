@@ -1586,6 +1586,9 @@ void field_writer::prepare(const irs::flush_state& state) {
     if (block_size) {
       const auto buffer_size = buffered_index_output::DEFAULT_BUFFER_SIZE/block_size;
       index_out_ = index_output::make<encrypted_output>(std::move(index_out_), *cipher_, buffer_size);
+    } else {
+      // don't use cipher
+      cipher_ = nullptr;
     }
   }
 
