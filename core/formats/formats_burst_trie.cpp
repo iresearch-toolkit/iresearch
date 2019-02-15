@@ -1558,10 +1558,6 @@ field_writer::field_writer(
 void field_writer::prepare(const irs::flush_state& state) {
   assert(state.dir);
 
-  if (version_ > FORMAT_MIN) {
-    cipher_ = get_cipher(state.dir->attributes());
-  }
-
   // reset writer state
   last_term_.clear();
   max_term_.clear();
@@ -1578,6 +1574,16 @@ void field_writer::prepare(const irs::flush_state& state) {
   std::string str;
   prepare_output(str, terms_out_, state, TERMS_EXT, FORMAT_TERMS, version_);
   prepare_output(str, index_out_, state, TERMS_INDEX_EXT, FORMAT_TERMS_INDEX, version_);
+
+  if (version_ > FORMAT_MIN) {
+    cipher_ = get_cipher(state.dir->attributes());
+
+    const size_t block_size = cipher_ ? cipher_->block_size() : 0;
+
+    terms_out_->write_vlong(block_size);
+    index_out_->write_vlong(block_size);
+  }
+
   write_segment_features(*index_out_, *state.features);
 
   // prepare postings writer
@@ -1789,7 +1795,25 @@ void field_reader::prepare(
   );
 
   if (term_index_version > field_writer::FORMAT_MIN) {
-    cipher_ = irs::get_cipher(dir.attributes());
+    const size_t block_size = index_in->read_vlong();
+
+    if (block_size) {
+      cipher_ = irs::get_cipher(dir.attributes());
+
+      if (!cipher_) {
+        throw index_error(string_utils::to_string(
+          "failed to open encrypted term index without cipher in segment: '%s'",
+          meta.name.c_str()
+        ));
+      }
+
+      if (block_size != cipher_->block_size()) {
+        throw index_error(string_utils::to_string(
+          "failed to open encrypted term index in segment '%s', expect cipher block of size " IR_SIZE_T_SPECIFIER ", got " IR_SIZE_T_SPECIFIER,
+          meta.name.c_str(), cipher_->block_size(), block_size
+        ));
+      }
+    }
   }
 
   read_segment_features(*index_in, feature_map, features);
@@ -1831,7 +1855,7 @@ void field_reader::prepare(
 
     if (!res.second) {
       throw irs::index_error(string_utils::to_string(
-        "duplicated field: '%s' found in segment: %s",
+        "duplicated field: '%s' found in segment: '%s'",
         name.c_str(),
         meta.name.c_str()
       ));
@@ -1872,6 +1896,26 @@ void field_reader::prepare(
       meta.name.c_str(),
       term_dict_version
     ));
+  }
+
+  if (term_dict_version > field_writer::FORMAT_MIN) {
+    const size_t block_size = terms_in_->read_vlong();
+
+    if (block_size) {
+      if (!cipher_) {
+        throw index_error(string_utils::to_string(
+          "failed to open encrypted term dictionary without cipher in segment: '%s'",
+          meta.name.c_str()
+        ));
+      }
+
+      if (block_size != cipher_->block_size()) {
+        throw index_error(string_utils::to_string(
+          "failed to open encrypted term dictionary in segment '%s', expect cipher block of size " IR_SIZE_T_SPECIFIER ", got " IR_SIZE_T_SPECIFIER,
+          meta.name.c_str(), cipher_->block_size(), block_size
+        ));
+      }
+    }
   }
 
   // prepare postings reader

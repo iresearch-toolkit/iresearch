@@ -2550,7 +2550,7 @@ void meta_writer::prepare(directory& dir, const segment_meta& meta) {
     cipher_ = irs::get_cipher(dir.attributes());
 
     if (cipher_) {
-      const auto block_size = cipher_->block_size();
+      const size_t block_size = cipher_->block_size();
       out_->write_vlong(block_size);
       const auto buffer_size = buffered_index_output::DEFAULT_BUFFER_SIZE/block_size;
       out_ = index_output::make<encrypted_output>(std::move(out_), *cipher_, buffer_size);
@@ -2674,7 +2674,7 @@ bool meta_reader::prepare(
 
       if (block_size != cipher->block_size()) {
         throw index_error(string_utils::to_string(
-          "failed to open encrypted file, path %s, expect cipher block size " IR_SIZE_T_SPECIFIER ", but got " IR_SIZE_T_SPECIFIER,
+          "failed to open encrypted file, path '%s', expect cipher block of size " IR_SIZE_T_SPECIFIER ", got " IR_SIZE_T_SPECIFIER,
           filename.c_str(), cipher->block_size(), block_size
         ));
       }
