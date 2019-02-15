@@ -273,7 +273,7 @@ TEST_P(directory_test_case, encrypted_io) {
       irs::write_string(encryptor, irs::string_ref("encrypted header"));
       ASSERT_EQ(7, encryptor.stream().file_pointer());
       ASSERT_EQ(17, encryptor.file_pointer());
-      ASSERT_THROW(encryptor.flush(), irs::io_error); // length is not multiple to cipher block size
+      ASSERT_THROW(encryptor.flush(), irs::io_error); // length is not multiple of cipher block size
       encryptor.append_and_flush();
       ASSERT_EQ(26, encryptor.file_pointer());
       ASSERT_EQ(33, encryptor.stream().file_pointer());
@@ -310,7 +310,7 @@ TEST_P(directory_test_case, encrypted_io) {
       irs::write_string(encryptor, irs::string_ref("header"));
       ASSERT_EQ(0, encryptor.stream().file_pointer());
       ASSERT_EQ(7, encryptor.file_pointer());
-      ASSERT_THROW(encryptor.flush(), irs::io_error); // length is not multiple to cipher block size
+      ASSERT_THROW(encryptor.flush(), irs::io_error); // length is not multiple of cipher block size
       encryptor.append_and_flush();
       ASSERT_EQ(13, encryptor.file_pointer());
       ASSERT_EQ(encryptor.file_pointer(), encryptor.stream().file_pointer());
@@ -346,7 +346,7 @@ TEST_P(directory_test_case, encrypted_io) {
       irs::write_string(encryptor, irs::string_ref("headerheader"));
       ASSERT_EQ(cipher.block_size(), encryptor.stream().file_pointer());
       ASSERT_EQ(cipher.block_size(), encryptor.file_pointer());
-      encryptor.flush(); // length is multiple to cipher block size
+      encryptor.flush(); // length is multiple of cipher block size
       ASSERT_EQ(cipher.block_size(), encryptor.file_pointer());
       ASSERT_EQ(encryptor.file_pointer(), encryptor.stream().file_pointer());
     }
@@ -376,7 +376,7 @@ TEST_P(directory_test_case, encrypted_io) {
       irs::write_string(encryptor, irs::string_ref("headerheaderh"));
       ASSERT_EQ(cipher.block_size(), encryptor.stream().file_pointer());
       ASSERT_EQ(14, encryptor.file_pointer());
-      ASSERT_THROW(encryptor.flush(), irs::io_error); // length is not multiple to cipher block size
+      ASSERT_THROW(encryptor.flush(), irs::io_error); // length is not multiple of cipher block size
       encryptor.append_and_flush();
       ASSERT_EQ(2*cipher.block_size(), encryptor.file_pointer());
       ASSERT_EQ(encryptor.file_pointer(), encryptor.stream().file_pointer());
@@ -413,7 +413,7 @@ TEST_P(directory_test_case, encrypted_io) {
       irs::write_string(encryptor, irs::string_ref("headerheaderheaderheaderheader"));
       ASSERT_EQ(2*cipher.block_size(), encryptor.stream().file_pointer());
       ASSERT_EQ(31, encryptor.file_pointer());
-      ASSERT_THROW(encryptor.flush(), irs::io_error); // length is not multiple to cipher block size
+      ASSERT_THROW(encryptor.flush(), irs::io_error); // length is not multiple of cipher block size
       encryptor.append_and_flush();
       ASSERT_EQ(3*cipher.block_size(), encryptor.file_pointer());
       ASSERT_EQ(encryptor.file_pointer(), encryptor.stream().file_pointer());

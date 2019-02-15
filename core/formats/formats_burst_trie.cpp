@@ -237,6 +237,7 @@ const fst::FstWriteOptions& fst_write_options() {
   static const auto INSTANCE = [](){
     fst::FstWriteOptions options;
     options.write_osymbols = false; // we don't need output symbols
+    options.stream_write = true;
 
     return options;
   }();
@@ -1230,7 +1231,7 @@ void term_reader::prepare(
 ) {
   // read field metadata
   index_input& meta_in = *static_cast<input_buf*>(in.rdbuf());
-  field_.name = read_string<std::string>(meta_in); // FIXME decrypt
+  field_.name = read_string<std::string>(meta_in);
 
   read_field_features(meta_in, feature_map, field_.features);
 
@@ -1579,9 +1580,13 @@ void field_writer::prepare(const irs::flush_state& state) {
     cipher_ = get_cipher(state.dir->attributes());
 
     const size_t block_size = cipher_ ? cipher_->block_size() : 0;
-
     terms_out_->write_vlong(block_size);
     index_out_->write_vlong(block_size);
+
+    if (block_size) {
+      const auto buffer_size = buffered_index_output::DEFAULT_BUFFER_SIZE/block_size;
+      index_out_ = index_output::make<encrypted_output>(std::move(index_out_), *cipher_, buffer_size);
+    }
   }
 
   write_segment_features(*index_out_, *state.features);
@@ -1715,19 +1720,18 @@ void field_writer::end_field(
   auto& fst = fst_buf_->reset(root.block().index);
 
   // write field meta
-  write_string(*index_out_, name); // FIXME encrypt
+  write_string(*index_out_, name);
   write_field_features(*index_out_, features);
   write_zvlong(*index_out_, norm);
   index_out_->write_vlong(term_count_);
   index_out_->write_vlong(doc_count);
   index_out_->write_vlong(total_doc_freq);
-  write_string<irs::bytes_ref>(*index_out_, min_term_.second); // FIXME encrypt
-  write_string<irs::bytes_ref>(*index_out_, max_term_); // FIXME encrypt
+  write_string<irs::bytes_ref>(*index_out_, min_term_.second);
+  write_string<irs::bytes_ref>(*index_out_, max_term_);
   if (features.check<frequency>()) {
     index_out_->write_vlong(total_term_freq);
   }
 
-  // FIXME encrypt
   // write FST
   output_buf isb(index_out_.get()); // wrap stream to be OpenFST compliant
   std::ostream os(&isb);
@@ -1746,6 +1750,12 @@ void field_writer::end() {
 
   format_utils::write_footer(*terms_out_);
   terms_out_.reset(); // ensure stream is closed
+
+  if (cipher_) {
+    auto& out = static_cast<encrypted_output&>(*index_out_);
+    out.append_and_flush();
+    index_out_ = out.release();
+  }
 
   index_out_->write_long(fields_count_);
   format_utils::write_footer(*index_out_);
@@ -1794,6 +1804,25 @@ void field_reader::prepare(
     &checksum
   );
 
+  CONSTEXPR const size_t FOOTER_LEN =
+      sizeof(uint64_t) // fields count
+    + format_utils::FOOTER_LEN;
+
+  // read total number of indexed fields
+  size_t fields_count{ 0 };
+  {
+    const uint64_t ptr = index_in->file_pointer();
+
+    index_in->seek(index_in->length() - FOOTER_LEN);
+
+    fields_count = index_in->read_long();
+
+    // check index checksum
+    format_utils::check_footer(*index_in, checksum);
+
+    index_in->seek(ptr);
+  }
+
   if (term_index_version > field_writer::FORMAT_MIN) {
     const size_t block_size = index_in->read_vlong();
 
@@ -1813,27 +1842,16 @@ void field_reader::prepare(
           meta.name.c_str(), cipher_->block_size(), block_size
         ));
       }
+
+      const auto buffer_size = buffered_index_input::DEFAULT_BUFFER_SIZE/block_size;
+
+      index_in = index_input::make<encrypted_input>(
+        std::move(index_in), *cipher_, buffer_size, FOOTER_LEN
+      );
     }
   }
 
   read_segment_features(*index_in, feature_map, features);
-
-  // read total number of indexed fields
-  size_t fields_count{ 0 };
-  {
-    const uint64_t ptr = index_in->file_pointer();
-
-    index_in->seek(
-      index_in->length() - format_utils::FOOTER_LEN - sizeof(uint64_t)
-    );
-
-    fields_count = index_in->read_long();
-
-    // check index checksum
-    format_utils::check_footer(*index_in, checksum);
-
-    index_in->seek(ptr);
-  }
 
   input_buf isb(index_in.get());
   std::istream input(&isb); // wrap stream to be OpenFST compliant

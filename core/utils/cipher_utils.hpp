@@ -125,7 +125,8 @@ class IRESEARCH_API encrypted_input final : public buffered_index_input, util::n
   encrypted_input(
     irs::index_input::ptr&& in,
     const irs::cipher& cipher,
-    size_t buf_size
+    size_t buf_size,
+    size_t padding = 0
   );
 
   virtual index_input::ptr dup() const override final;

@@ -200,7 +200,7 @@ void encrypted_output::flush() {
 
   if (!encrypt(*cipher_, buf_.get(), size)) {
     throw io_error(string_utils::to_string(
-      "buffer size " IR_SIZE_T_SPECIFIER " is not multiple to cipher block size " IR_SIZE_T_SPECIFIER,
+      "buffer size " IR_SIZE_T_SPECIFIER " is not multiple of cipher block size " IR_SIZE_T_SPECIFIER,
       size, cipher_->block_size()
     ));
   }
@@ -223,14 +223,15 @@ void encrypted_output::close() {
 encrypted_input::encrypted_input(
     irs::index_input::ptr&& in,
     const irs::cipher& cipher,
-    size_t buf_size
+    size_t buf_size,
+    size_t padding /* = 0*/
 ) : buffered_index_input(cipher.block_size() * std::max(size_t(1), buf_size)),
     in_(std::move(in)),
     cipher_(&cipher),
     block_size_(cipher.block_size()),
-    length_(in_->length() - in_->file_pointer()) {
+    length_(in_->length() - in_->file_pointer() - padding) {
   assert(block_size_);
-  assert(in_ && in_->length() >= in_->file_pointer());
+  assert(in_ && in_->length() >= in_->file_pointer() + padding);
 }
 
 index_input::ptr encrypted_input::dup() const {
@@ -255,7 +256,7 @@ bool encrypted_input::read_internal(byte_type* b, size_t count, size_t& read) {
 
   if (!::decrypt(*cipher_, b, read, block_size_)) {
     throw io_error(string_utils::to_string(
-      "buffer size " IR_SIZE_T_SPECIFIER " is not multiple to cipher block size " IR_SIZE_T_SPECIFIER,
+      "buffer size " IR_SIZE_T_SPECIFIER " is not multiple of cipher block size " IR_SIZE_T_SPECIFIER,
       read, block_size_
     ));
   }

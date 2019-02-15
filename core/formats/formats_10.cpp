@@ -2549,13 +2549,12 @@ void meta_writer::prepare(directory& dir, const segment_meta& meta) {
   if (version_ > FORMAT_MIN) {
     cipher_ = irs::get_cipher(dir.attributes());
 
-    if (cipher_) {
-      const size_t block_size = cipher_->block_size();
-      out_->write_vlong(block_size);
+    const size_t block_size = cipher_ ? cipher_->block_size() : 0;
+    out_->write_vlong(block_size);
+
+    if (block_size) {
       const auto buffer_size = buffered_index_output::DEFAULT_BUFFER_SIZE/block_size;
       out_ = index_output::make<encrypted_output>(std::move(out_), *cipher_, buffer_size);
-    } else {
-      out_->write_vlong(0);
     }
   }
 }
@@ -2635,9 +2634,13 @@ bool meta_reader::prepare(
 
   const auto checksum = format_utils::checksum(*in_);
 
-  in_->seek( // seek to start of meta footer (before count and max_id)
-    in_->length() - sizeof(size_t) - sizeof(field_id) - format_utils::FOOTER_LEN
-  );
+  CONSTEXPR const size_t FOOTER_LEN =
+      sizeof(uint64_t) // count
+    + sizeof(field_id) // max id
+    + format_utils::FOOTER_LEN;
+
+  // seek to start of meta footer (before count and max_id)
+  in_->seek(in_->length() - FOOTER_LEN);
   count = in_->read_long(); // read number of objects to read
   max_id = in_->read_long(); // read highest column id written
 
@@ -2680,7 +2683,7 @@ bool meta_reader::prepare(
       }
 
       const auto buffer_size = buffered_index_output::DEFAULT_BUFFER_SIZE/block_size;
-      in_ = index_input::make<encrypted_input>(std::move(in_), *cipher, buffer_size);
+      in_ = index_input::make<encrypted_input>(std::move(in_), *cipher, buffer_size, FOOTER_LEN);
     }
   }
 
@@ -2893,7 +2896,7 @@ class index_block {
     // write keys
     {
       // adjust number of elements to pack to the nearest value
-      // that is multiple to the block size
+      // that is multiple of the block size
       const auto block_size = math::ceil32(size, packed::BLOCK_SIZE_32);
       assert(block_size >= size);
 
@@ -2911,7 +2914,7 @@ class index_block {
     // write offsets
     {
       // adjust number of elements to pack to the nearest value
-      // that is multiple to the block size
+      // that is multiple of the block size
       const auto block_size = math::ceil64(size, packed::BLOCK_SIZE_64);
       assert(block_size >= size);
 
