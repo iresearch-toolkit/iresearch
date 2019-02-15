@@ -39,7 +39,7 @@ bool decrypt(
   bool result = true;
 
   for (auto* end = data + length; data != end; data += block_size) {
-    result |= cipher.decrypt(data);
+    result &= cipher.decrypt(data);
   }
 
   return result;
@@ -75,7 +75,7 @@ bool encrypt(const irs::cipher& cipher, byte_type* data, size_t length) {
   bool result = true;
 
   for (auto* end = data + length; data != end; data += block_size) {
-    result |= cipher.encrypt(data);
+    result &= cipher.encrypt(data);
   }
 
   return result;
@@ -98,10 +98,10 @@ bool decrypt(const irs::cipher& cipher, byte_type* data, size_t length) {
 // -----------------------------------------------------------------------------
 
 encrypted_output::encrypted_output(
-    irs::index_output& out,
+    index_output::ptr&& out,
     const irs::cipher& cipher,
-    size_t buf_size
-) : out_(&out),
+    size_t buf_size)
+  : out_(std::move(out)),
     cipher_(&cipher),
     buf_size_(cipher.block_size() * std::max(size_t(1), buf_size)),
     buf_(memory::make_unique<byte_type[]>(buf_size_)),
@@ -191,6 +191,11 @@ size_t encrypted_output::file_pointer() const {
 }
 
 void encrypted_output::flush() {
+  if (!out_) {
+    return;
+  }
+
+  assert(buf_.get() <= pos_);
   const auto size = size_t(std::distance(buf_.get(), pos_));
 
   if (!encrypt(*cipher_, buf_.get(), size)) {
@@ -205,16 +210,6 @@ void encrypted_output::flush() {
   pos_ = buf_.get();
 }
 
-void encrypted_output::flush(bool append_padding) {
-  assert(buf_.get() <= pos_);
-
-  if (append_padding) {
-    irs::append_padding(*cipher_, *this);
-  }
-
-  flush();
-}
-
 void encrypted_output::close() {
   flush();
   start_ = 0;
@@ -226,21 +221,27 @@ void encrypted_output::close() {
 // -----------------------------------------------------------------------------
 
 encrypted_input::encrypted_input(
-    irs::index_input& in,
+    irs::index_input::ptr&& in,
     const irs::cipher& cipher,
     size_t buf_size
 ) : buffered_index_input(cipher.block_size() * std::max(size_t(1), buf_size)),
-    in_(&in),
+    in_(std::move(in)),
     cipher_(&cipher),
     block_size_(cipher.block_size()),
-    length_(in.length() - in.file_pointer()) {
+    length_(in_->length() - in_->file_pointer()) {
   assert(block_size_);
-  assert(in.length() >= in.file_pointer());
+  assert(in_ && in_->length() >= in_->file_pointer());
 }
 
 index_input::ptr encrypted_input::dup() const {
   return index_input::make<encrypted_input>(
-    *in_, *cipher_, buffer_size() / cipher_->block_size()
+    in_->dup(), *cipher_, buffer_size() / cipher_->block_size()
+  );
+}
+
+index_input::ptr encrypted_input::reopen() const {
+  return index_input::make<encrypted_input>(
+    in_->reopen(), *cipher_, buffer_size() / cipher_->block_size()
   );
 }
 

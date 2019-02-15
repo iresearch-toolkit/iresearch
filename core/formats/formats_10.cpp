@@ -51,6 +51,7 @@
 #include "utils/bit_packing.hpp"
 #include "utils/bit_utils.hpp"
 #include "utils/bitset.hpp"
+#include "utils/cipher_utils.hpp"
 #include "utils/compression.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/log.hpp"
@@ -1518,7 +1519,6 @@ class offs_pay_iterator final: public pos_iterator {
     offs_.start += offs_start_deltas_[buf_pos_];
     offs_.end = offs_.start + offs_lengts_[buf_pos_];
 
-    // FIXME decrypt
     pay_.value = bytes_ref(
       pay_data_.c_str() + pay_data_pos_,
       pay_lengths_[buf_pos_]);
@@ -1773,7 +1773,6 @@ class pay_iterator final : public pos_iterator {
 
  protected:
   virtual void read_attributes() override {
-    // FIXME decrypt
     pay_.value = bytes_ref(
       pay_data_.data() + pay_data_pos_,
       pay_lengths_[buf_pos_]
@@ -2502,16 +2501,23 @@ class meta_writer final : public irs::column_meta_writer {
   static const string_ref FORMAT_EXT;
 
   static const int32_t FORMAT_MIN = 0;
-  static const int32_t FORMAT_MAX = FORMAT_MIN;
+  static const int32_t FORMAT_MAX = 1;
+
+  explicit meta_writer(int32_t version) NOEXCEPT
+    : version_(version) {
+    assert(version >= FORMAT_MIN && version <= FORMAT_MAX);
+  }
 
   virtual void prepare(directory& dir, const segment_meta& meta) override;
   virtual void write(const std::string& name, field_id id) override;
   virtual void flush() override;
 
  private:
+  const cipher* cipher_{};
   index_output::ptr out_;
   size_t count_{}; // number of written objects
   field_id max_id_{}; // the highest column id written (optimization for vector resize on read to highest id)
+  int32_t version_;
 }; // meta_writer
 
 MSVC2015_ONLY(__pragma(warning(push)))
@@ -2538,19 +2544,39 @@ void meta_writer::prepare(directory& dir, const segment_meta& meta) {
     ));
   }
 
-  format_utils::write_header(*out_, FORMAT_NAME, FORMAT_MAX);
+  format_utils::write_header(*out_, FORMAT_NAME, version_);
+
+  if (version_ > FORMAT_MIN) {
+    cipher_ = irs::get_cipher(dir.attributes());
+
+    if (cipher_) {
+      const auto block_size = cipher_->block_size();
+      out_->write_vlong(block_size);
+      const auto buffer_size = buffered_index_output::DEFAULT_BUFFER_SIZE/block_size;
+      out_ = index_output::make<encrypted_output>(std::move(out_), *cipher_, buffer_size);
+    } else {
+      out_->write_vlong(0);
+    }
+  }
 }
 
 void meta_writer::write(const std::string& name, field_id id) {
   assert(out_);
   out_->write_vlong(id);
-  write_string(*out_, name); // FIXME encrypt
+  write_string(*out_, name);
   ++count_;
   max_id_ = std::max(max_id_, id);
 }
 
 void meta_writer::flush() {
   assert(out_);
+
+  if (cipher_) {
+    auto& out = static_cast<encrypted_output&>(*out_);
+    out.append_and_flush();
+    out_ = out.release();
+  }
+
   out_->write_long(count_); // write total number of written objects
   out_->write_long(max_id_); // write highest column id written
   format_utils::write_footer(*out_);
@@ -2596,24 +2622,24 @@ bool meta_reader::prepare(
     return false;
   }
 
-  auto in = dir.open(
+  in_ = dir.open(
     filename, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE
   );
 
-  if (!in) {
+  if (!in_) {
     throw io_error(string_utils::to_string(
       "failed to open file, path: %s",
       filename.c_str()
     ));
   }
 
-  const auto checksum = format_utils::checksum(*in);
+  const auto checksum = format_utils::checksum(*in_);
 
-  in->seek( // seek to start of meta footer (before count and max_id)
-    in->length() - sizeof(size_t) - sizeof(field_id) - format_utils::FOOTER_LEN
+  in_->seek( // seek to start of meta footer (before count and max_id)
+    in_->length() - sizeof(size_t) - sizeof(field_id) - format_utils::FOOTER_LEN
   );
-  count = in->read_long(); // read number of objects to read
-  max_id = in->read_long(); // read highest column id written
+  count = in_->read_long(); // read number of objects to read
+  max_id = in_->read_long(); // read highest column id written
 
   if (max_id >= irs::integer_traits<size_t>::const_max) {
     throw index_error(string_utils::to_string(
@@ -2622,18 +2648,42 @@ bool meta_reader::prepare(
     ));
   }
 
-  format_utils::check_footer(*in, checksum);
+  format_utils::check_footer(*in_, checksum);
 
-  in->seek(0);
+  in_->seek(0);
 
-  format_utils::check_header(
-    *in,
+  const auto version = format_utils::check_header(
+    *in_,
     meta_writer::FORMAT_NAME,
     meta_writer::FORMAT_MIN,
     meta_writer::FORMAT_MAX
   );
 
-  in_ = std::move(in);
+  if (version > meta_writer::FORMAT_MIN) {
+    const size_t block_size = in_->read_vlong();
+
+    if (block_size) {
+      auto* cipher = irs::get_cipher(dir.attributes());
+
+      if (!cipher) {
+        throw index_error(string_utils::to_string(
+          "failed to open encrypted file without cipher, path: %s",
+          filename.c_str()
+        ));
+      }
+
+      if (block_size != cipher->block_size()) {
+        throw index_error(string_utils::to_string(
+          "failed to open encrypted file, path %s, expect cipher block size " IR_SIZE_T_SPECIFIER ", but got " IR_SIZE_T_SPECIFIER,
+          filename.c_str(), cipher->block_size(), block_size
+        ));
+      }
+
+      const auto buffer_size = buffered_index_output::DEFAULT_BUFFER_SIZE/block_size;
+      in_ = index_input::make<encrypted_input>(std::move(in_), *cipher, buffer_size);
+    }
+  }
+
   count_ = count;
   max_id_ = max_id;
   return true;
@@ -3307,7 +3357,7 @@ class sparse_block : util::noncopyable {
     });
 
     // read data
-    read_compact(in, decomp, buf, data_); // FIXME decrypt
+    read_compact(in, decomp, buf, data_);
     end_ = index_ + size;
   }
 
@@ -3494,7 +3544,7 @@ class dense_block : util::noncopyable {
     });
 
     // read data
-    read_compact(in, decomp, buf, data_); // FIXME decrypt
+    read_compact(in, decomp, buf, data_);
     end_ = index_ + size;
   }
 
@@ -3671,7 +3721,7 @@ class dense_fixed_offset_block : util::noncopyable {
     }
 
     // read data
-    read_compact(in, decomp, buf, data_); // FIXME decrypt
+    read_compact(in, decomp, buf, data_);
   }
 
   bool value(doc_id_t key, bytes_ref& out) const {
@@ -5147,7 +5197,7 @@ class format10 : public irs::version10::format {
   virtual field_writer::ptr get_field_writer(bool volatile_state) const override;
   virtual field_reader::ptr get_field_reader() const override final;
 
-  virtual column_meta_writer::ptr get_column_meta_writer() const override final;
+  virtual column_meta_writer::ptr get_column_meta_writer() const override;
   virtual column_meta_reader::ptr get_column_meta_reader() const override final;
 
   virtual columnstore_writer::ptr get_columnstore_writer() const override final;
@@ -5216,7 +5266,9 @@ field_reader::ptr format10::get_field_reader() const  {
 }
 
 column_meta_writer::ptr format10::get_column_meta_writer() const {
-  return memory::make_unique<columns::meta_writer>();
+  return memory::make_unique<columns::meta_writer>(
+    int32_t(columns::meta_writer::FORMAT_MIN)
+  );
 }
 
 column_meta_reader::ptr format10::get_column_meta_reader() const {
@@ -5253,7 +5305,7 @@ REGISTER_FORMAT(::format10);
 // --SECTION--                                                         format11
 // ----------------------------------------------------------------------------
 
-class format11 : public format10 {
+class format11 final : public format10 {
  public:
   DECLARE_FORMAT_TYPE();
   DECLARE_FACTORY();
@@ -5261,6 +5313,8 @@ class format11 : public format10 {
   format11() NOEXCEPT : format10(format11::type()) { }
 
   virtual field_writer::ptr get_field_writer(bool volatile_state) const override final;
+
+  virtual column_meta_writer::ptr get_column_meta_writer() const override final;
 }; // format10
 
 field_writer::ptr format11::get_field_writer(bool volatile_state) const {
@@ -5268,6 +5322,12 @@ field_writer::ptr format11::get_field_writer(bool volatile_state) const {
     get_postings_writer(volatile_state),
     volatile_state,
     int32_t(burst_trie::field_writer::FORMAT_MAX)
+  );
+}
+
+column_meta_writer::ptr format11::get_column_meta_writer() const {
+  return memory::make_unique<columns::meta_writer>(
+    int32_t(columns::meta_writer::FORMAT_MAX)
   );
 }
 

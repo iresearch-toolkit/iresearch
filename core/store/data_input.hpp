@@ -134,6 +134,8 @@ class IRESEARCH_API input_buf final : public std::streambuf, util::noncopyable {
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API buffered_index_input : public index_input {
  public:
+  static const size_t DEFAULT_BUFFER_SIZE = 1024;
+
   virtual byte_type read_byte() override final;
 
   virtual size_t read_bytes(byte_type* b, size_t count) override final;
@@ -159,9 +161,11 @@ class IRESEARCH_API buffered_index_input : public index_input {
   virtual uint64_t read_vlong() override final;
 
  protected:
-  explicit buffered_index_input(size_t buf_size = 1024);
+  explicit buffered_index_input(
+    size_t buf_size = DEFAULT_BUFFER_SIZE
+  ) NOEXCEPT;
 
-  buffered_index_input(const buffered_index_input& rhs);
+  buffered_index_input(const buffered_index_input& rhs) NOEXCEPT;
 
   virtual void seek_internal(size_t pos) = 0;
 

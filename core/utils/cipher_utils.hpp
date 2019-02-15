@@ -32,14 +32,14 @@
 NS_ROOT
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
-
-struct cipher;
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                           helpers
 // -----------------------------------------------------------------------------
+
+inline const irs::cipher* get_cipher(const attribute_store& attrs) NOEXCEPT {
+  auto cipher = attrs.get<irs::cipher>();
+
+  return cipher ? cipher.get() : nullptr;
+}
 
 /// @returns padding required by a specified cipher for a given size
 inline size_t padding(const cipher& cipher, size_t size) NOEXCEPT {
@@ -52,25 +52,23 @@ inline size_t padding(const cipher& cipher, size_t size) NOEXCEPT {
   return block_size - size % block_size;
 }
 
-void append_padding(const cipher& cipher, index_output& out);
+IRESEARCH_API void append_padding(const cipher& cipher, index_output& out);
 
-bool encrypt(const irs::cipher& cipher, byte_type* data, size_t length);
-bool decrypt(const irs::cipher& cipher, byte_type* data, size_t length);
+IRESEARCH_API bool encrypt(const irs::cipher& cipher, byte_type* data, size_t length);
+IRESEARCH_API bool decrypt(const irs::cipher& cipher, byte_type* data, size_t length);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class encrypted_output
 //////////////////////////////////////////////////////////////////////////////
-class encrypted_output final : public irs::index_output, util::noncopyable {
+class IRESEARCH_API encrypted_output final : public irs::index_output, util::noncopyable {
  public:
   encrypted_output(
-    irs::index_output& out,
+    index_output::ptr&& out,
     const irs::cipher& cipher,
     size_t buf_size
   );
 
   virtual void flush() override;
-
-  void flush(bool append_padding);
 
   virtual void close() override;
 
@@ -92,7 +90,18 @@ class encrypted_output final : public irs::index_output, util::noncopyable {
     return out_->checksum();
   }
 
+  void append_and_flush() {
+    append_padding(*cipher_, *this);
+    flush();
+  }
+
   size_t buffer_size() const NOEXCEPT { return buf_size_; }
+
+  index_output::ptr release() NOEXCEPT {
+    return std::move(out_);
+  }
+
+  const index_output& stream() const NOEXCEPT { return *out_; }
 
  private:
   // returns number of reamining bytes in the buffer
@@ -101,7 +110,7 @@ class encrypted_output final : public irs::index_output, util::noncopyable {
   }
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  irs::index_output* out_;
+  index_output::ptr out_;
   const irs::cipher* cipher_;
   const size_t buf_size_;
   std::unique_ptr<byte_type[]> buf_;
@@ -111,19 +120,17 @@ class encrypted_output final : public irs::index_output, util::noncopyable {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // encrypted_output
 
-class encrypted_input final : public buffered_index_input, util::noncopyable {
+class IRESEARCH_API encrypted_input final : public buffered_index_input, util::noncopyable {
  public:
   encrypted_input(
-    irs::index_input& in,
+    irs::index_input::ptr&& in,
     const irs::cipher& cipher,
     size_t buf_size
   );
 
   virtual index_input::ptr dup() const override final;
 
-  virtual index_input::ptr reopen() const override final {
-    throw not_supported();
-  }
+  virtual index_input::ptr reopen() const override final;
 
   virtual size_t length() const override final {
     return length_;
@@ -131,6 +138,14 @@ class encrypted_input final : public buffered_index_input, util::noncopyable {
 
   virtual int64_t checksum(size_t offset) const override final {
     return in_->checksum(offset);
+  }
+
+  const index_input& stream() const NOEXCEPT {
+    return *in_;
+  }
+
+  index_input::ptr release() NOEXCEPT {
+    return std::move(in_);
   }
 
  protected:
@@ -145,7 +160,7 @@ class encrypted_input final : public buffered_index_input, util::noncopyable {
   ) override;
 
  private:
-  irs::index_input* in_;
+  index_input::ptr in_;
   const irs::cipher* cipher_;
   const size_t block_size_;
   const size_t length_;

@@ -72,11 +72,16 @@ std::streamsize input_buf::showmanyc() {
 // --SECTION--                               buffered_index_input implementation
 // -----------------------------------------------------------------------------
 
-buffered_index_input::buffered_index_input(size_t buf_size /* = 1024 */)
-  : start_(0), buf_size_(buf_size) {
+buffered_index_input::buffered_index_input(
+    size_t buf_size/*= DEFAULT_BUFFER_SIZE*/
+) NOEXCEPT
+  : start_(0),
+    buf_size_(buf_size) {
 }
 
-buffered_index_input::buffered_index_input(const buffered_index_input& rhs)
+buffered_index_input::buffered_index_input(
+    const buffered_index_input& rhs
+) NOEXCEPT
   : index_input(),
     start_(rhs.start_ + rhs.offset()),
     buf_size_(rhs.buf_size_) {

@@ -88,12 +88,6 @@ NS_LOCAL
 using namespace iresearch;
 using namespace iresearch::burst_trie::detail;
 
-inline const cipher* get_cipher(const irs::directory& dir) NOEXCEPT {
-  auto cipher = dir.attributes().get<irs::cipher>();
-
-  return cipher ? cipher.get() : nullptr;
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 /// @struct block_meta
 /// @brief Provides set of helper functions to work with block metadata
@@ -1565,7 +1559,7 @@ void field_writer::prepare(const irs::flush_state& state) {
   assert(state.dir);
 
   if (version_ > FORMAT_MIN) {
-    cipher_ = ::get_cipher(*state.dir);
+    cipher_ = get_cipher(state.dir->attributes());
   }
 
   // reset writer state
@@ -1795,7 +1789,7 @@ void field_reader::prepare(
   );
 
   if (term_index_version > field_writer::FORMAT_MIN) {
-    cipher_ = ::get_cipher(dir);
+    cipher_ = irs::get_cipher(dir.attributes());
   }
 
   read_segment_features(*index_in, feature_map, features);
