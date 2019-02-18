@@ -313,7 +313,6 @@ TEST_P(cipher_utils_test_case, encrypted_io) {
 
   // FIXME
   // - try to avoid copying data into buffered stream buffer in case if encrypted buffer size matches underlying buffer size
-  // - move tests to cipher tests
   // - test cipher with block size == 0
   // - test format with different cipher block sizes (e.g. 13, 16, 7)
   // - test different block sizes and underlying stream buffer sizes

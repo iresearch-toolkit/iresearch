@@ -85,7 +85,7 @@ std::pair<std::shared_ptr<irs::directory>, std::string> rot13_cipher_directory(c
     info.first->attributes().emplace<rot13_cipher>(BlockSize);
   }
 
-  return std::make_pair(info.first, info.second + "_cipher_rot13");
+  return std::make_pair(info.first, info.second + "_cipher_rot13_" + std::to_string(BlockSize));
 }
 
 // -----------------------------------------------------------------------------
