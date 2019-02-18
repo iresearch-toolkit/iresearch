@@ -27,6 +27,7 @@
 #include "store/data_output.hpp"
 #include "store/data_input.hpp"
 #include "store/directory_attributes.hpp"
+#include "utils/math_utils.hpp"
 #include "utils/noncopyable.hpp"
 
 NS_ROOT
@@ -42,14 +43,10 @@ inline const irs::cipher* get_cipher(const attribute_store& attrs) NOEXCEPT {
 }
 
 /// @returns padding required by a specified cipher for a given size
-inline size_t padding(const cipher& cipher, size_t size) NOEXCEPT {
-  const auto block_size = cipher.block_size();
+inline size_t ceil(const cipher& cipher, size_t size) NOEXCEPT {
+  assert(cipher.block_size());
 
-  if (block_size < 2) {
-    return 0;
-  }
-
-  return block_size - size % block_size;
+  return math::math_traits<size_t>::ceil(size, cipher.block_size());
 }
 
 IRESEARCH_API void append_padding(const cipher& cipher, index_output& out);

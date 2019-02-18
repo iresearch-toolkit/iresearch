@@ -32,6 +32,10 @@ class test_base;
 
 namespace tests {
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      rot13_cipher
+// -----------------------------------------------------------------------------
+
 class rot13_cipher final : public irs::cipher {
  public:
   static std::shared_ptr<irs::cipher> make(size_t block_size) {
@@ -64,6 +68,10 @@ class rot13_cipher final : public irs::cipher {
   size_t block_size_;
 }; // rot13_cipher
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                               directory factories
+// -----------------------------------------------------------------------------
+
 typedef std::pair<std::shared_ptr<irs::directory>, std::string>(*dir_factory_f)(const test_base*);
 std::pair<std::shared_ptr<irs::directory>, std::string> memory_directory(const test_base*);
 std::pair<std::shared_ptr<irs::directory>, std::string> fs_directory(const test_base* test);
@@ -79,6 +87,23 @@ std::pair<std::shared_ptr<irs::directory>, std::string> rot13_cipher_directory(c
 
   return std::make_pair(info.first, info.second + "_cipher_rot13");
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                          directory_test_case_base
+// -----------------------------------------------------------------------------
+
+class directory_test_case_base : public virtual test_param_base<tests::dir_factory_f> {
+ public:
+  static std::string to_string(const testing::TestParamInfo<tests::dir_factory_f>& info);
+
+  virtual void SetUp() override;
+  virtual void TearDown() override;
+
+  irs::directory& dir() const NOEXCEPT { return *dir_; }
+
+ protected:
+  std::shared_ptr<irs::directory> dir_;
+}; // directory_test_case_base
 
 } // tests
 

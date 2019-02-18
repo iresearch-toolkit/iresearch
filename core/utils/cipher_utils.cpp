@@ -56,10 +56,12 @@ NS_ROOT
 // -----------------------------------------------------------------------------
 
 void append_padding(const cipher& cipher, index_output& out) {
-  for (auto pad = padding(cipher, out.file_pointer()); pad; ) {
-    const auto to_write = std::min(pad, sizeof(PADDING));
+  const auto begin = out.file_pointer();
+
+  for (auto padding = ceil(cipher, begin) - begin; padding; ) {
+    const auto to_write = std::min(padding, sizeof(PADDING));
     out.write_bytes(PADDING, to_write);
-    pad -= to_write;
+    padding -= to_write;
   }
 }
 
@@ -108,6 +110,7 @@ encrypted_output::encrypted_output(
     start_(0),
     pos_(buf_.get()),
     end_(pos_ + buf_size_) {
+  assert(buf_size_);
 }
 
 void encrypted_output::write_int(int32_t value) {
@@ -230,17 +233,21 @@ encrypted_input::encrypted_input(
     cipher_(&cipher),
     block_size_(cipher.block_size()),
     length_(in_->length() - in_->file_pointer() - padding) {
-  assert(block_size_);
+  assert(block_size_ && buffer_size());
   assert(in_ && in_->length() >= in_->file_pointer() + padding);
 }
 
 index_input::ptr encrypted_input::dup() const {
+  assert(cipher_->block_size());
+
   return index_input::make<encrypted_input>(
     in_->dup(), *cipher_, buffer_size() / cipher_->block_size()
   );
 }
 
 index_input::ptr encrypted_input::reopen() const {
+  assert(cipher_->block_size());
+
   return index_input::make<encrypted_input>(
     in_->reopen(), *cipher_, buffer_size() / cipher_->block_size()
   );

@@ -618,7 +618,7 @@ void block_iterator::load() {
   }
   uint64_t block_size;
   leaf_ = shift_unpack_64(in.read_vlong(), block_size);
-  const auto aligned_block_size = block_size + (cipher ? ::padding(*cipher, block_size) : 0);
+  const auto aligned_block_size = (cipher ? ceil(*cipher, block_size) : block_size);
 
   // read suffix block
   string_utils::oversize(suffix_block_, aligned_block_size);
