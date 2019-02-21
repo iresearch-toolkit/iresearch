@@ -36,7 +36,7 @@ NS_ROOT
 /// @struct encryption
 /// @brief directory encryption provider
 //////////////////////////////////////////////////////////////////////////////
-struct encryption : public stored_attribute {
+struct IRESEARCH_API encryption : public stored_attribute {
   DECLARE_ATTRIBUTE_TYPE();
 
   ////////////////////////////////////////////////////////////////////////////
@@ -67,7 +67,7 @@ struct encryption : public stored_attribute {
   /// @returns a cipher stream for a file given file name
   virtual stream::ptr create_stream(
     const std::string& filename,
-    const bytes_ref& header
+    byte_type* header
   ) = 0;
 };
 
@@ -81,32 +81,26 @@ inline irs::encryption* get_encryption(const attribute_store& attrs) NOEXCEPT {
   return enc ? enc.get() : nullptr;
 }
 
-bool write_encryption_header(
-  const std::string& filename,
-  index_output& out,
-  encryption* enc,
-  bstring& buf
-);
-
 /// @brief initialize an encryption header and create corresponding cipher stream
 /// @returns true if cipher stream was initialized, false if encryption is not
 ///          appliclabe
 /// @throws index_error in case of error on header or stream creation
-bool encrypt(
+IRESEARCH_API bool encrypt(
   const std::string& filename,
+  index_output& out,
   encryption* enc,
   bstring& header,
   encryption::stream::ptr& cipher
 );
 
-/// @brief create corresponding cipher stream from a specified header
+/// @brief create corresponding cipher stream from a specified encryption header
 /// @returns true if cipher stream was initialized, false if encryption is not
 ///          appliclabe
-/// @throws index_error in case of error on stream creation
-bool decrypt(
+/// @throws index_error in case of error on cipher stream creation
+IRESEARCH_API bool decrypt(
   const std::string& filename,
+  index_input& in,
   encryption* enc,
-  const bstring& header,
   encryption::stream::ptr& cipher
 );
 
@@ -122,7 +116,7 @@ IRESEARCH_API void append_padding(const encryption::stream& cipher, index_output
 ////////////////////////////////////////////////////////////////////////////////
 ///// @class cipher
 ////////////////////////////////////////////////////////////////////////////////
-struct cipher {
+struct IRESEARCH_API cipher {
   virtual ~cipher() = default;
 
   virtual size_t block_size() const = 0;
@@ -135,7 +129,7 @@ struct cipher {
 ////////////////////////////////////////////////////////////////////////////////
 ///// @class ctr_cipher_stream
 ////////////////////////////////////////////////////////////////////////////////
-class ctr_cipher_stream : public encryption::stream {
+class IRESEARCH_API ctr_cipher_stream : public encryption::stream {
  public:
   explicit ctr_cipher_stream(
       const cipher& cipher,
@@ -166,7 +160,7 @@ class ctr_cipher_stream : public encryption::stream {
 ////////////////////////////////////////////////////////////////////////////////
 ///// @class ctr_encryption
 ////////////////////////////////////////////////////////////////////////////////
-class ctr_encryption : public encryption {
+class IRESEARCH_API ctr_encryption : public encryption {
  public:
   static const size_t DEFAULT_HEADER_LENGTH = 4096;
 
@@ -185,7 +179,7 @@ class ctr_encryption : public encryption {
 
   virtual stream::ptr create_stream(
     const std::string& filename,
-    const bytes_ref& heder
+    byte_type* header
   ) override;
 
  private:

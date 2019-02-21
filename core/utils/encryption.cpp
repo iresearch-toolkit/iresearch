@@ -28,6 +28,7 @@
 #include "store/store_utils.hpp"
 #include "store/directory_attributes.hpp"
 #include "utils/bytes_utils.hpp"
+#include "utils/crc.hpp"
 
 NS_LOCAL
 
@@ -64,41 +65,22 @@ DEFINE_ATTRIBUTE_TYPE(encryption)
 // --SECTION--                                                           helpers
 // -----------------------------------------------------------------------------
 
-bool write_encryption_header(
-    const std::string& filename,
-    index_output& out,
-    encryption* enc,
-    bstring& buf
-) {
-  const size_t size = enc ? enc->header_length() : 0;
-  buf.resize(size);
-
-  if (size) {
-    assert(enc);
-    if (!enc->create_header(filename, &buf[0])) {
-      return false;
-    }
-  }
-
-  irs::write_string(out, buf);
-  return true;
-}
-
 bool encrypt(
     const std::string& filename,
+    index_output& out,
     encryption* enc,
     bstring& header,
     encryption::stream::ptr& cipher
 ) {
-  const size_t size = enc ? enc->header_length() : 0;
+  header.resize(enc ? enc->header_length() : 0);
 
-  if (!size) {
+  if (header.empty()) {
     // no encryption
-    return true;
+    irs::write_string(out, header);
+    return false;
   }
 
   assert(enc);
-  header.resize(size);
 
   if (!enc->create_header(filename, &header[0])) {
     throw index_error(string_utils::to_string(
@@ -107,7 +89,10 @@ bool encrypt(
     ));
   }
 
-  cipher = enc->create_stream(filename, header);
+  // header is encrypted here
+  irs::write_string(out, header);
+
+  cipher = enc->create_stream(filename, &header[0]);
 
   if (!cipher) {
     throw index_error(string_utils::to_string(
@@ -116,30 +101,32 @@ bool encrypt(
     ));
   }
 
-
-  const auto block_size = cipher->block_size();
-
-  if (!block_size) {
-    IR_FRMT_WARN(
-      "failed to instantiate encryption stream with block of size 0, fallback to unencrypted, path '%s'",
+  if (!cipher->block_size()) {
+    throw index_error(string_utils::to_string(
+      "failed to instantiate encryption stream with block of size 0, path '%s'",
       filename.c_str()
-    );
-
-    cipher = nullptr;
+    ));
   }
+
+  // header is decrypted here, write checksum
+  crc32c crc;
+  crc.process_bytes(header.c_str(), header.size());
+  out.write_vlong(crc.checksum());
 
   return true;
 }
 
 bool decrypt(
     const std::string& filename,
+    index_input& in,
     encryption* enc,
-    const bstring& header,
     encryption::stream::ptr& cipher
 ) {
+  auto header = irs::read_string<bstring>(in);
+
   if (header.empty()) {
     // no encryption
-    return true;
+    return false;
   }
 
   if (!enc) {
@@ -156,7 +143,7 @@ bool decrypt(
     ));
   }
 
-  cipher = enc->create_stream(filename, header);
+  cipher = enc->create_stream(filename, &header[0]);
 
   if (!cipher) {
     throw index_error(string_utils::to_string(
@@ -171,6 +158,17 @@ bool decrypt(
     throw index_error(string_utils::to_string(
       "invalid block size 0 specified for encrypted file, path '%s'",
       filename.c_str(), enc->header_length(), header.size()
+    ));
+  }
+
+  // header is decrypted here, check checksum
+  crc32c crc;
+  crc.process_bytes(header.c_str(), header.size());
+
+  if (crc.checksum() != in.read_vlong()) {
+    throw index_error(string_utils::to_string(
+      "invalid ecryption header, path '%s'",
+      filename.c_str()
     ));
   }
 
@@ -277,8 +275,8 @@ bool ctr_cipher_stream::encrypt_block(
   // init nonce + counter
   const auto block_size = this->block_size();
   std::memmove(scratch, iv_.c_str(), block_size);
-  //auto* begin = scratch;
-  //irs::write<uint64_t>(begin, 0);//counter_base_ + block_index);
+  auto* begin = scratch;
+  irs::write<uint64_t>(begin, counter_base_ + block_index);
 
   // encrypt nonce + counter
   if (!cipher_->encrypt(scratch)) {
@@ -371,8 +369,10 @@ bool ctr_encryption::create_header(
 
 encryption::stream::ptr ctr_encryption::create_stream(
     const std::string& filename,
-    const bytes_ref& header
+    byte_type* header
 ) {
+  assert(header);
+
   const auto block_size = cipher_->block_size();
 
   if (!block_size) {
@@ -384,13 +384,24 @@ encryption::stream::ptr ctr_encryption::create_stream(
     return nullptr;
   }
 
+  const auto header_length = this->header_length();
+
+  if (header_length < 2*block_size) {
+    IR_FRMT_ERROR(
+      "failed to initialize encryption header of size " IR_SIZE_T_SPECIFIER ", need at least " IR_SIZE_T_SPECIFIER ", path '%s'",
+      header_length, 2*block_size, filename.c_str()
+    );
+
+    return nullptr;
+  }
+
   uint64_t base_counter;
   bytes_ref iv;
 
-  if (!decode_ctr_header(header, block_size, base_counter, iv)) {
+  if (!decode_ctr_header(bytes_ref(header, header_length), block_size, base_counter, iv)) {
     IR_FRMT_ERROR(
       "failed to initialize encryption header of size " IR_SIZE_T_SPECIFIER " for instantiation of encryption stream, path '%s'",
-      header.size(), filename.c_str()
+      header_length, filename.c_str()
     );
 
     return nullptr;
@@ -398,7 +409,7 @@ encryption::stream::ptr ctr_encryption::create_stream(
 
   // decrypt the encrypted part of the header
   ctr_cipher_stream stream(*cipher_, iv, base_counter);
-  if (!stream.decrypt(0, const_cast<byte_type*>(header.c_str()) + 2*block_size, header.size() - 2*block_size)) {
+  if (!stream.decrypt(0, header + 2*block_size, header_length - 2*block_size)) {
     IR_FRMT_ERROR(
       "failed to decrypt encryption header for instantiation of encryption stream, path '%s'",
       filename.c_str()
