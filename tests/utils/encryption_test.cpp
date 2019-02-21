@@ -318,7 +318,6 @@ class encryption_test_case : public tests::directory_test_case_base { };
 //  // - test different block sizes and underlying stream buffer sizes
 //  // - extend index tests to use encrypted format
 //  // - fixme test block size < sizeof(uint64_t)/2
-//  // - test encryption with 0 size block
 //  // - write/read checksum over unencrypted data checksum
 //}
 

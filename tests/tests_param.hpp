@@ -26,7 +26,7 @@
 
 #include "store/directory.hpp"
 #include "store/directory_attributes.hpp"
-#include "utils/encryption.hpp"
+#include "utils/ctr_encryption.hpp"
 #include <memory>
 
 class test_base;

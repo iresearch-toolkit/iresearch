@@ -21,8 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_CIPHER_UTILS_H
-#define IRESEARCH_CIPHER_UTILS_H
+#ifndef IRESEARCH_ENCRYPTION_H
+#define IRESEARCH_ENCRYPTION_H
 
 #include "store/data_output.hpp"
 #include "store/data_input.hpp"
@@ -112,79 +112,6 @@ inline size_t ceil(const encryption::stream& cipher, size_t size) NOEXCEPT {
 }
 
 IRESEARCH_API void append_padding(const encryption::stream& cipher, index_output& out);
-
-////////////////////////////////////////////////////////////////////////////////
-///// @class cipher
-////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API cipher {
-  virtual ~cipher() = default;
-
-  virtual size_t block_size() const = 0;
-
-  virtual bool encrypt(byte_type* data) const = 0;
-
-  virtual bool decrypt(byte_type* data) const = 0;
-}; // cipher
-
-////////////////////////////////////////////////////////////////////////////////
-///// @class ctr_cipher_stream
-////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API ctr_cipher_stream : public encryption::stream {
- public:
-  explicit ctr_cipher_stream(
-      const cipher& cipher,
-      const bytes_ref& iv,
-      uint64_t counter_base = 0
-  ) NOEXCEPT
-    : cipher_(&cipher),
-      iv_(iv),
-      counter_base_(counter_base) {
-  }
-
-  virtual size_t block_size() const NOEXCEPT override { return cipher_->block_size(); }
-
-  virtual bool encrypt(uint64_t offset, byte_type* data, size_t size) override;
-
-  virtual bool decrypt(uint64_t offset, byte_type* data, size_t size) override;
-
- private:
-  bool encrypt_block(uint64_t block_index, byte_type* data, byte_type* scratch);
-
-  bool decrypt_block(uint64_t block_index, byte_type* data, byte_type* scratch);
-
-  const cipher* cipher_;
-  bstring iv_;
-  uint64_t counter_base_;
-}; // ctr_cipher_stream
-
-////////////////////////////////////////////////////////////////////////////////
-///// @class ctr_encryption
-////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API ctr_encryption : public encryption {
- public:
-  static const size_t DEFAULT_HEADER_LENGTH = 4096;
-
-  explicit ctr_encryption(const cipher& cipher) NOEXCEPT
-   : cipher_(&cipher) {
-  }
-
-  virtual size_t header_length() NOEXCEPT override {
-    return DEFAULT_HEADER_LENGTH;
-  }
-
-  virtual bool create_header(
-    const std::string& filename,
-    byte_type* header
-  ) override;
-
-  virtual stream::ptr create_stream(
-    const std::string& filename,
-    byte_type* header
-  ) override;
-
- private:
-  const cipher* cipher_;
-}; // ctr_encryption
 
 ////////////////////////////////////////////////////////////////////////////////
 ///// @class encrypted_output
@@ -298,4 +225,4 @@ class IRESEARCH_API encrypted_input final : public buffered_index_input, util::n
 
 NS_END // ROOT
 
-#endif
+#endif // IRESEARCH_ENCRYPTION_H

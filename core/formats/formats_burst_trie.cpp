@@ -1831,10 +1831,9 @@ void field_reader::prepare(
   }
 
   auto* enc = get_encryption(dir.attributes());
+  encryption::stream::ptr index_in_cipher;
 
   if (term_index_version > field_writer::FORMAT_MIN) {
-    encryption::stream::ptr index_in_cipher;
-
     if (irs::decrypt(filename, *index_in, enc, index_in_cipher)) {
       assert(index_in_cipher && index_in_cipher->block_size());
 

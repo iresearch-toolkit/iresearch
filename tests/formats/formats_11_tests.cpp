@@ -34,6 +34,66 @@ NS_LOCAL
 class format_11_test_case : public tests::directory_test_case_base {
 };
 
+TEST_P(format_11_test_case, read_zero_block_encryption) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory
+  );
+
+  tests::document const* doc1 = gen.next();
+
+  // replace encryption
+  ASSERT_TRUE(dir().attributes().contains<tests::rot13_encryption>());
+
+  // write segment with format10
+  {
+    auto codec = irs::formats::get("1_1");
+    ASSERT_NE(nullptr, codec);
+    auto writer = irs::index_writer::make(dir(), codec, irs::OM_CREATE);
+    ASSERT_NE(nullptr, writer);
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+
+    writer->commit();
+  }
+
+  // replace encryption
+  ASSERT_TRUE(dir().attributes().remove<tests::rot13_encryption>());
+  dir().attributes().emplace<tests::rot13_encryption>(6);
+
+  // can't open encrypted index without encryption
+  ASSERT_THROW(irs::directory_reader::open(dir()), irs::index_error);
+}
+
+TEST_P(format_11_test_case, write_zero_block_encryption) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory
+  );
+
+  tests::document const* doc1 = gen.next();
+
+  // replace encryption
+  ASSERT_TRUE(dir().attributes().remove<tests::rot13_encryption>());
+  dir().attributes().emplace<tests::rot13_encryption>(0);
+
+  // write segment with format10
+  auto codec = irs::formats::get("1_1");
+  ASSERT_NE(nullptr, codec);
+  auto writer = irs::index_writer::make(dir(), codec, irs::OM_CREATE);
+  ASSERT_NE(nullptr, writer);
+
+  ASSERT_TRUE(insert(*writer,
+    doc1->indexed.begin(), doc1->indexed.end(),
+    doc1->stored.begin(), doc1->stored.end()
+  ));
+
+  ASSERT_THROW(writer->commit(), irs::index_error);
+}
+
 TEST_P(format_11_test_case, open_ecnrypted_with_wrong_encryption) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),

@@ -142,6 +142,7 @@ set(IResearch_core_sources
   ./utils/attributes.cpp
   ./utils/bit_packing.cpp
   ./utils/encryption.cpp
+  ./utils/ctr_encryption.cpp
   ./utils/compression.cpp
   ./utils/directory_utils.cpp
   ./utils/file_utils.cpp 
