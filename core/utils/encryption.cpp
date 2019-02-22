@@ -30,12 +30,6 @@
 #include "utils/bytes_utils.hpp"
 #include "utils/crc.hpp"
 
-NS_LOCAL
-
-const irs::byte_type PADDING[32] { };
-
-NS_END
-
 NS_ROOT
 
 // -----------------------------------------------------------------------------
@@ -156,16 +150,6 @@ bool decrypt(
   }
 
   return true;
-}
-
-void append_padding(const encryption::stream& cipher, index_output& out) {
-  const auto begin = out.file_pointer();
-
-  for (auto padding = ceil(cipher, begin) - begin; padding; ) {
-    const auto to_write = std::min(padding, sizeof(PADDING));
-    out.write_bytes(PADDING, to_write);
-    padding -= to_write;
-  }
 }
 
 // -----------------------------------------------------------------------------
@@ -304,26 +288,69 @@ encrypted_input::encrypted_input(
 ) : buffered_index_input(cipher.block_size() * std::max(size_t(1), buf_size)),
     in_(std::move(in)),
     cipher_(&cipher),
-    block_size_(cipher.block_size()),
-    length_(in_->length() - in_->file_pointer() - padding) {
-  assert(block_size_ && buffer_size());
+    start_(in_->file_pointer()),
+    length_(in_->length() - start_ - padding) {
+  assert(cipher.block_size() && buffer_size());
   assert(in_ && in_->length() >= in_->file_pointer() + padding);
 }
 
-index_input::ptr encrypted_input::dup() const {
+encrypted_input::encrypted_input(const encrypted_input& rhs, index_input::ptr&& in) NOEXCEPT
+  : buffered_index_input(rhs.buffer_size()),
+    in_(std::move(in)),
+    cipher_(rhs.cipher_),
+    start_(rhs.start_),
+    length_(rhs.length_) {
   assert(cipher_->block_size());
+}
 
-  return index_input::make<encrypted_input>(
-    in_->dup(), *cipher_, buffer_size() / cipher_->block_size()
-  );
+int64_t encrypted_input::checksum(size_t offset) const {
+  const auto begin = file_pointer();
+  const auto end = (std::min)(begin + offset, this->length());
+
+  auto restore_position = make_finally([begin, this](){
+    const_cast<encrypted_input*>(this)->seek_internal(begin);
+  });
+
+  crc32c crc;
+  byte_type buf[DEFAULT_BUFFER_SIZE];
+
+  for (auto pos = begin; pos < end; ) {
+    const auto to_read = (std::min)(end - pos, sizeof buf);
+    pos += const_cast<encrypted_input*>(this)->read_internal(buf, to_read);
+    crc.process_bytes(buf, to_read);
+  }
+
+  return crc.checksum();
+}
+
+index_input::ptr encrypted_input::dup() const {
+  auto dup = in_->dup();
+
+  if (!dup) {
+    throw io_error(string_utils::to_string(
+      "Failed to duplicate input file, error: %d", errno
+    ));
+  }
+
+  return index_input::ptr(new encrypted_input(*this, std::move(dup)));
 }
 
 index_input::ptr encrypted_input::reopen() const {
-  assert(cipher_->block_size());
+  auto reopened = in_->reopen();
 
-  return index_input::make<encrypted_input>(
-    in_->reopen(), *cipher_, buffer_size() / cipher_->block_size()
-  );
+  if (!reopened) {
+    throw io_error(string_utils::to_string(
+      "Failed to reopen input file, error: %d", errno
+    ));
+  }
+
+  return index_input::ptr(new encrypted_input(*this, std::move(reopened)));
+}
+
+void encrypted_input::seek_internal(size_t pos) {
+  if (pos != file_pointer()) {
+    in_->seek(start_ + pos);
+  }
 }
 
 size_t encrypted_input::read_internal(byte_type* b, size_t count) {
@@ -334,7 +361,7 @@ size_t encrypted_input::read_internal(byte_type* b, size_t count) {
   if (!cipher_->decrypt(offset, b, read)) {
     throw io_error(string_utils::to_string(
       "buffer size " IR_SIZE_T_SPECIFIER " is not multiple of cipher block size " IR_SIZE_T_SPECIFIER,
-      read, block_size_
+      read, cipher_->block_size()
     ));
   }
 

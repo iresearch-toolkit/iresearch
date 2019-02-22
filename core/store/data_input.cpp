@@ -174,9 +174,9 @@ void buffered_index_input::seek(size_t p) {
   if (p >= start_ && p < (start_ + size())) {
     begin_ = buf_.get() + p - start_;
   } else {
+    seek_internal(p);
     begin_ = end_ = buf_.get();
     start_ = p;
-    seek_internal(p);
   }
 }
 

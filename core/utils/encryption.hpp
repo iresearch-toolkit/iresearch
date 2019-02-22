@@ -47,15 +47,18 @@ struct IRESEARCH_API encryption : public stored_attribute {
 
     virtual ~stream() = default;
 
+    /// @returns size of the block supported by stream
     virtual size_t block_size() const = 0;
 
+    /// @brief decrypt specified data at a provided offset
     virtual bool decrypt(uint64_t offset, byte_type* data, size_t size) = 0;
 
+    /// @brief encrypt specified data at a provided offset
     virtual bool encrypt(uint64_t offset, byte_type* data, size_t size) = 0;
   };
 
-   /// @returns the length of the header that is added to every file
-   ///          and used for storing encryption options
+  /// @returns the length of the header that is added to every file
+  ///          and used for storing encryption options
   virtual size_t header_length() = 0;
 
   /// @brief an allocated block of header memory for a new file
@@ -104,15 +107,6 @@ IRESEARCH_API bool decrypt(
   encryption::stream::ptr& cipher
 );
 
-/// @returns padding required by a specified cipher for a given size
-inline size_t ceil(const encryption::stream& cipher, size_t size) NOEXCEPT {
-  assert(cipher.block_size());
-
-  return math::math_traits<size_t>::ceil(size, cipher.block_size());
-}
-
-IRESEARCH_API void append_padding(const encryption::stream& cipher, index_output& out);
-
 ////////////////////////////////////////////////////////////////////////////////
 ///// @class encrypted_output
 ////////////////////////////////////////////////////////////////////////////////
@@ -146,11 +140,6 @@ class IRESEARCH_API encrypted_output final : public irs::index_output, util::non
     return out_->checksum();
   }
 
-  void append_and_flush() {
-    append_padding(*cipher_, *this);
-    flush();
-  }
-
   size_t buffer_size() const NOEXCEPT { return buf_size_; }
 
   index_output::ptr release() NOEXCEPT {
@@ -160,7 +149,7 @@ class IRESEARCH_API encrypted_output final : public irs::index_output, util::non
   const index_output& stream() const NOEXCEPT { return *out_; }
 
  private:
-  // returns number of reamining bytes in the buffer
+  /// @returns number of remaining bytes in the buffer
   FORCE_INLINE size_t remain() const {
     return std::distance(pos_, end_);
   }
@@ -193,9 +182,7 @@ class IRESEARCH_API encrypted_input final : public buffered_index_input, util::n
     return length_;
   }
 
-  virtual int64_t checksum(size_t offset) const override final {
-    return in_->checksum(offset);
-  }
+  virtual int64_t checksum(size_t offset) const override final;
 
   const index_input& stream() const NOEXCEPT {
     return *in_;
@@ -206,18 +193,16 @@ class IRESEARCH_API encrypted_input final : public buffered_index_input, util::n
   }
 
  protected:
-  virtual void seek_internal(size_t pos) override {
-    if (pos != file_pointer()) {
-      throw not_supported();
-    }
-  }
+  virtual void seek_internal(size_t pos) override;
 
   virtual size_t read_internal(byte_type* b, size_t count) override;
 
  private:
+  encrypted_input(const encrypted_input& rhs, index_input::ptr&& in) NOEXCEPT;
+
   index_input::ptr in_;
   encryption::stream* cipher_;
-  const size_t block_size_;
+  const uint64_t start_;
   const size_t length_;
 }; // encrypted_input
 

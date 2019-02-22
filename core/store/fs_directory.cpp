@@ -259,7 +259,7 @@ class fs_index_input : public buffered_index_input {
     const auto end = (std::min)(begin + offset, handle_->size);
 
     crc32c crc;
-    byte_type buf[1024];
+    byte_type buf[DEFAULT_BUFFER_SIZE];
 
     for (auto pos = begin; pos < end; ) {
       const auto to_read = (std::min)(end - pos, sizeof buf);

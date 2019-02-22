@@ -39,8 +39,10 @@ namespace tests {
 
 class rot13_encryption final : public irs::ctr_encryption {
  public:
-  static std::shared_ptr<rot13_encryption> make(size_t block_size) {
-    return std::make_shared<rot13_encryption>(block_size);
+  static std::shared_ptr<rot13_encryption> make(
+       size_t block_size,
+       size_t header_length = DEFAULT_HEADER_LENGTH) {
+    return std::make_shared<rot13_encryption>(block_size, header_length);
   }
 
   explicit rot13_encryption(
