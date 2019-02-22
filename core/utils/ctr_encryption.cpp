@@ -222,6 +222,8 @@ bool ctr_encryption::create_header(
       "failed to initialize encryption header of size " IR_SIZE_T_SPECIFIER ", need at least " IR_SIZE_T_SPECIFIER ", path '%s'",
       header_length, MIN_HEADER_LENGTH, filename.c_str()
     );
+
+    return false;
   }
 
   if (header_length < 2*block_size) {
@@ -279,6 +281,15 @@ encryption::stream::ptr ctr_encryption::create_stream(
   }
 
   const auto header_length = this->header_length();
+
+  if (header_length < MIN_HEADER_LENGTH) {
+    IR_FRMT_ERROR(
+      "failed to instantiate encryption stream with header of size " IR_SIZE_T_SPECIFIER ", need at least " IR_SIZE_T_SPECIFIER ", path '%s'",
+      header_length, MIN_HEADER_LENGTH, filename.c_str()
+    );
+
+    return nullptr;
+  }
 
   if (header_length < 2*block_size) {
     IR_FRMT_ERROR(

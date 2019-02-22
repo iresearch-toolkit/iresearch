@@ -43,8 +43,17 @@ class rot13_encryption final : public irs::ctr_encryption {
     return std::make_shared<rot13_encryption>(block_size);
   }
 
-  explicit rot13_encryption(size_t block_size) NOEXCEPT
-    : irs::ctr_encryption(cipher), cipher(block_size) {
+  explicit rot13_encryption(
+      size_t block_size,
+      size_t header_length = DEFAULT_HEADER_LENGTH
+  ) NOEXCEPT
+    : irs::ctr_encryption(cipher_),
+      cipher_(block_size),
+      header_length_(header_length) {
+  }
+
+  virtual size_t header_length() NOEXCEPT override {
+    return header_length_;
   }
 
  private:
@@ -76,7 +85,8 @@ class rot13_encryption final : public irs::ctr_encryption {
     size_t block_size_;
   }; // rot13_cipher
 
-  rot13_cipher cipher;
+  rot13_cipher cipher_;
+  size_t header_length_;
 }; // rot13_encryption
 
 // -----------------------------------------------------------------------------

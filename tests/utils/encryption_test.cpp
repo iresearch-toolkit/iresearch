@@ -24,32 +24,197 @@
 #include "tests_shared.hpp"
 #include "tests_param.hpp"
 
+#include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
 #include "utils/encryption.hpp"
 
 NS_LOCAL
 
-using namespace iresearch;
+using irs::bstring;
+
+void assert_encryption(size_t block_size, size_t header_lenght) {
+  tests::rot13_encryption enc(block_size, header_lenght);
+
+  bstring encrypted_header;
+  encrypted_header.resize(enc.header_length());
+  ASSERT_TRUE(enc.create_header("encrypted", &encrypted_header[0]));
+  ASSERT_EQ(header_lenght, enc.header_length());
+
+  bstring header = encrypted_header;
+  auto cipher = enc.create_stream("encrypted", &header[0]);
+  ASSERT_NE(nullptr, cipher);
+  ASSERT_EQ(block_size, cipher->block_size());
+
+  // unencrypted part of the header: counter+iv
+  ASSERT_EQ(
+    irs::bytes_ref(encrypted_header.c_str(), 2*cipher->block_size()),
+    irs::bytes_ref(header.c_str(), 2*cipher->block_size())
+  );
+
+  // encrypted part of the header
+  ASSERT_TRUE(
+    encrypted_header.size() == 2*cipher->block_size()
+    || (irs::bytes_ref(encrypted_header.c_str()+2*cipher->block_size(), encrypted_header.size() - 2*cipher->block_size())
+        != irs::bytes_ref(header.c_str()+2*cipher->block_size(), header.size() - 2*cipher->block_size()))
+  );
+
+  const bstring data(
+    reinterpret_cast<const irs::byte_type*>("4jLFtfXSuSdsGXbXqH8IpmPqx5n6IWjO9Pj8nZ0yD2ibKvZxPdRaX4lNsz8N"),
+    30
+  );
+
+  // encrypt less than block size
+  {
+    bstring source(data.c_str(), 7);
+
+    {
+      size_t offset = 0;
+      ASSERT_TRUE(cipher->encrypt(offset, &source[0], source.size()));
+      ASSERT_TRUE(cipher->decrypt(offset, &source[0], source.size()));
+      ASSERT_EQ(
+        irs::bytes_ref(data.c_str(), source.size()),
+        irs::bytes_ref(source)
+      );
+    }
+
+    {
+      size_t offset = 4;
+      ASSERT_TRUE(cipher->encrypt(offset, &source[0], source.size()));
+      ASSERT_TRUE(cipher->decrypt(offset, &source[0], source.size()));
+      ASSERT_EQ(
+        irs::bytes_ref(data.c_str(), source.size()),
+        irs::bytes_ref(source)
+      );
+    }
+
+    {
+      size_t offset = 1023;
+      ASSERT_TRUE(cipher->encrypt(offset, &source[0], source.size()));
+      ASSERT_TRUE(cipher->decrypt(offset, &source[0], source.size()));
+      ASSERT_EQ(
+        irs::bytes_ref(data.c_str(), source.size()),
+        irs::bytes_ref(source)
+      );
+    }
+  }
+
+  // encrypt size of the block
+  {
+    bstring source(data.c_str(), 13);
+
+    {
+      size_t offset = 0;
+      ASSERT_TRUE(cipher->encrypt(offset, &source[0], source.size()));
+      ASSERT_TRUE(cipher->decrypt(offset, &source[0], source.size()));
+      ASSERT_EQ(
+        irs::bytes_ref(data.c_str(), source.size()),
+        irs::bytes_ref(source)
+      );
+    }
+
+    {
+      size_t offset = 4;
+      ASSERT_TRUE(cipher->encrypt(offset, &source[0], source.size()));
+      ASSERT_TRUE(cipher->decrypt(offset, &source[0], source.size()));
+      ASSERT_EQ(
+        irs::bytes_ref(data.c_str(), source.size()),
+        irs::bytes_ref(source)
+      );
+    }
+
+    {
+      size_t offset = 1023;
+      ASSERT_TRUE(cipher->encrypt(offset, &source[0], source.size()));
+      ASSERT_TRUE(cipher->decrypt(offset, &source[0], source.size()));
+      ASSERT_EQ(
+        irs::bytes_ref(data.c_str(), source.size()),
+        irs::bytes_ref(source)
+      );
+    }
+  }
+
+  // encrypt more than size of the block
+  {
+    bstring source = data;
+
+    {
+      size_t offset = 0;
+      ASSERT_TRUE(cipher->encrypt(offset, &source[0], source.size()));
+      ASSERT_TRUE(cipher->decrypt(offset, &source[0], source.size()));
+      ASSERT_EQ(
+        irs::bytes_ref(data.c_str(), source.size()),
+        irs::bytes_ref(source)
+      );
+    }
+
+    {
+      size_t offset = 4;
+      ASSERT_TRUE(cipher->encrypt(offset, &source[0], source.size()));
+      ASSERT_TRUE(cipher->decrypt(offset, &source[0], source.size()));
+      ASSERT_EQ(
+        irs::bytes_ref(data.c_str(), source.size()),
+        irs::bytes_ref(source)
+      );
+    }
+
+    {
+      size_t offset = 1023;
+      ASSERT_TRUE(cipher->encrypt(offset, &source[0], source.size()));
+      ASSERT_TRUE(cipher->decrypt(offset, &source[0], source.size()));
+      ASSERT_EQ(
+        irs::bytes_ref(data.c_str(), source.size()),
+        irs::bytes_ref(source)
+      );
+    }
+  }
+}
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 cipher_utils test
+// --SECTION--                                          ctr_encryption_test_case
 // -----------------------------------------------------------------------------
 
-//TEST(cipher_utils_test, ceil) {
-//  ASSERT_EQ(1, irs::ceil(tests::rot13_cipher(1), 1));
-//  ASSERT_EQ(2, irs::ceil(tests::rot13_cipher(2), 1));
-//  ASSERT_EQ(2, irs::ceil(tests::rot13_cipher(2), 2));
-//  ASSERT_EQ(4, irs::ceil(tests::rot13_cipher(2), 3));
-//  ASSERT_EQ(1024, irs::ceil(tests::rot13_cipher(2), 1023));
-//  ASSERT_EQ(3, irs::ceil(tests::rot13_cipher(3), 1));
-//  ASSERT_EQ(3, irs::ceil(tests::rot13_cipher(3), 2));
-//  ASSERT_EQ(3, irs::ceil(tests::rot13_cipher(3), 3));
-//  ASSERT_EQ(6, irs::ceil(tests::rot13_cipher(3), 4));
-//  ASSERT_EQ(6, irs::ceil(tests::rot13_cipher(3), 5));
-//  ASSERT_EQ(13, irs::ceil(tests::rot13_cipher(13), 5));
-//  ASSERT_EQ(26, irs::ceil(tests::rot13_cipher(13), 15));
-//  ASSERT_EQ(39, irs::ceil(tests::rot13_cipher(13), 27));
-//}
+TEST(ctr_encryption, static_consts) {
+  ASSERT_EQ(4096, size_t(irs::ctr_encryption::DEFAULT_HEADER_LENGTH));
+  ASSERT_EQ(sizeof(uint64_t), size_t(irs::ctr_encryption::MIN_HEADER_LENGTH));
+}
+
+TEST(ctr_encryption, create_header_stream) {
+  assert_encryption(1, irs::ctr_encryption::DEFAULT_HEADER_LENGTH);
+  assert_encryption(13, irs::ctr_encryption::DEFAULT_HEADER_LENGTH);
+  assert_encryption(16, irs::ctr_encryption::DEFAULT_HEADER_LENGTH);
+  assert_encryption(1, sizeof(uint64_t));
+  assert_encryption(4, sizeof(uint64_t));
+  assert_encryption(8, 2*sizeof(uint64_t));
+
+  // block_size == 0
+  {
+    tests::rot13_encryption enc(0);
+
+    bstring encrypted_header;
+    ASSERT_FALSE(enc.create_header("encrypted", &encrypted_header[0]));
+    ASSERT_FALSE(enc.create_stream("encrypted", &encrypted_header[0]));
+  }
+
+  // header is too small (< MIN_HEADER_LENGTH)
+  {
+    tests::rot13_encryption enc(1, 7);
+
+    bstring encrypted_header;
+    encrypted_header.resize(enc.header_length());
+    ASSERT_FALSE(enc.create_header("encrypted", &encrypted_header[0]));
+    ASSERT_FALSE(enc.create_stream("encrypted", &encrypted_header[0]));
+  }
+
+  // header is too small (< 2*block_size)
+  {
+    tests::rot13_encryption enc(13, 25);
+
+    bstring encrypted_header;
+    encrypted_header.resize(enc.header_length());
+    ASSERT_FALSE(enc.create_header("encrypted", &encrypted_header[0]));
+    ASSERT_FALSE(enc.create_stream("encrypted", &encrypted_header[0]));
+  }
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              encryption_test_case
@@ -57,8 +222,14 @@ using namespace iresearch;
 
 class encryption_test_case : public tests::directory_test_case_base { };
 
-//TEST_P(cipher_utils_test_case, encrypted_io) {
-//  tests::rot13_cipher cipher(13);
+//TEST_P(encryption_test_case, encrypted_io) {
+//  dir().attributes().emplace<tests::rot13_encryption>(13);
+//
+//  {
+//
+//  }
+//
+//
 //
 //  // unencrypted + encrypted data
 //  {
@@ -99,6 +270,8 @@ class encryption_test_case : public tests::directory_test_case_base { };
 //      }
 //    }
 //  }
+//
+//}
 //
 //  // data is shorter than ciper block size
 //  {
@@ -319,6 +492,7 @@ class encryption_test_case : public tests::directory_test_case_base { };
 //  // - extend index tests to use encrypted format
 //  // - fixme test block size < sizeof(uint64_t)/2
 //  // - write/read checksum over unencrypted data checksum
+//  // - test extreme values of block_size/header_length for ctr encryption
 //}
 
 INSTANTIATE_TEST_CASE_P(
