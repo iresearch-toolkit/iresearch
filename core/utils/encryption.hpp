@@ -212,9 +212,7 @@ class IRESEARCH_API encrypted_input final : public buffered_index_input, util::n
     }
   }
 
-  virtual bool read_internal(
-    byte_type* b, size_t count, size_t& read
-  ) override;
+  virtual size_t read_internal(byte_type* b, size_t count) override;
 
  private:
   index_input::ptr in_;

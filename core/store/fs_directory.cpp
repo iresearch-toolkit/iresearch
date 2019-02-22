@@ -355,7 +355,7 @@ class fs_index_input : public buffered_index_input {
     pos_ = pos;
   }
 
-  virtual bool read_internal(byte_type* b, size_t len, size_t& read) override {
+  virtual size_t read_internal(byte_type* b, size_t len) override {
     assert(b);
     assert(handle_->handle);
 
@@ -372,7 +372,7 @@ class fs_index_input : public buffered_index_input {
       handle_->pos = pos_;
     }
 
-    read = fread(b, sizeof(byte_type), len, stream);
+    size_t read = fread(b, sizeof(byte_type), len, stream);
     pos_ = handle_->pos += read;
 
     if (read != len) {

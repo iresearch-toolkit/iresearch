@@ -326,10 +326,10 @@ index_input::ptr encrypted_input::reopen() const {
   );
 }
 
-bool encrypted_input::read_internal(byte_type* b, size_t count, size_t& read) {
+size_t encrypted_input::read_internal(byte_type* b, size_t count) {
   const auto offset = in_->file_pointer();
 
-  read = in_->read_bytes(b, count);
+  const auto read = in_->read_bytes(b, count);
 
   if (!cipher_->decrypt(offset, b, read)) {
     throw io_error(string_utils::to_string(
@@ -338,7 +338,7 @@ bool encrypted_input::read_internal(byte_type* b, size_t count, size_t& read) {
     ));
   }
 
-  return true;
+  return read;
 }
 
 NS_END
