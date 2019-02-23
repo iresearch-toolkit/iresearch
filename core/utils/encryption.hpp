@@ -137,6 +137,8 @@ class IRESEARCH_API encrypted_output final : public irs::index_output, util::non
   virtual void write_long(int64_t v) override final;
 
   virtual int64_t checksum() const override final {
+    // FIXME do we need to calculate checksum over
+    // unencrypted data here? That will slow down writes.
     return out_->checksum();
   }
 
