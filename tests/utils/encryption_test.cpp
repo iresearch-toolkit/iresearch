@@ -174,12 +174,12 @@ void assert_encryption(size_t block_size, size_t header_lenght) {
 // --SECTION--                                          ctr_encryption_test_case
 // -----------------------------------------------------------------------------
 
-TEST(ctr_encryption, static_consts) {
+TEST(ctr_encryption_test, static_consts) {
   ASSERT_EQ(4096, size_t(irs::ctr_encryption::DEFAULT_HEADER_LENGTH));
   ASSERT_EQ(sizeof(uint64_t), size_t(irs::ctr_encryption::MIN_HEADER_LENGTH));
 }
 
-TEST(ctr_encryption, create_header_stream) {
+TEST(ctr_encryption_test, create_header_stream) {
   assert_encryption(1, irs::ctr_encryption::DEFAULT_HEADER_LENGTH);
   assert_encryption(13, irs::ctr_encryption::DEFAULT_HEADER_LENGTH);
   assert_encryption(16, irs::ctr_encryption::DEFAULT_HEADER_LENGTH);
@@ -400,14 +400,145 @@ TEST_P(encryption_test_case, encrypted_io) {
   assert_ecnrypted_streams(16, irs::ctr_encryption::DEFAULT_HEADER_LENGTH, 64);
 }
 
+TEST(ecnryption_test_case, ensure_no_double_bufferring) {
+  class buffered_output : public irs::buffered_index_output {
+   public:
+    buffered_output(index_output& out)
+      : out_(&out) {
+    }
+
+    virtual int64_t checksum() const override {
+      return out_->checksum();
+    }
+
+    const index_output& stream() const {
+      return *out_;
+    }
+
+    using irs::buffered_index_output::remain;
+
+    size_t last_written_size() const NOEXCEPT {
+      return last_written_size_;
+    }
+
+   protected:
+    virtual void flush_buffer(const irs::byte_type* b, size_t size) override {
+      last_written_size_ = size;
+      out_->write_bytes(b, size);
+    }
+
+    index_output* out_;
+    size_t last_written_size_{};
+  };
+
+  class buffered_input : public irs::buffered_index_input {
+   public:
+    buffered_input(index_input& in)
+      : in_(&in) {
+    }
+
+    const index_input& stream() {
+      return *in_;
+    }
+
+    virtual size_t length() const override {
+      return in_->length();
+    }
+
+    virtual index_input::ptr dup() const override {
+      throw irs::not_impl_error();
+    }
+
+    virtual index_input::ptr reopen() const override {
+      throw irs::not_impl_error();
+    }
+
+    virtual int64_t checksum(size_t offset) const override {
+      return in_->checksum(offset);
+    }
+
+    using irs::buffered_index_input::remain;
+
+    size_t last_read_size() const NOEXCEPT {
+      return last_read_size_;
+    }
+
+   protected:
+    void seek_internal(size_t pos) {
+      in_->seek(pos);
+    }
+
+    size_t read_internal(irs::byte_type* b, size_t size) {
+      last_read_size_ = size;
+      return in_->read_bytes(b, size);
+    }
+
+   private:
+    index_input* in_;
+    size_t last_read_size_{};
+  };
+
+  tests::rot13_encryption enc(16);
+  irs::memory_output out(irs::memory_allocator::global());
+
+  bstring encrypted_header;
+  encrypted_header.resize(enc.header_length());
+  ASSERT_TRUE(enc.create_header("encrypted", &encrypted_header[0]));
+  ASSERT_EQ(size_t(tests::rot13_encryption::DEFAULT_HEADER_LENGTH), enc.header_length());
+
+  bstring header = encrypted_header;
+  auto cipher = enc.create_stream("encrypted", &header[0]);
+  ASSERT_NE(nullptr, cipher);
+  ASSERT_EQ(16, cipher->block_size());
+
+  {
+    auto buf_out = irs::index_output::make<buffered_output>(out.stream);
+    irs::encrypted_output enc_out(
+      std::move(buf_out), *cipher, buffered_output::DEFAULT_BUFFER_SIZE/cipher->block_size()
+    );
+    auto& stream = static_cast<const buffered_output&>(enc_out.stream());
+
+    for (auto i = 0; i < 2*buffered_output::DEFAULT_BUFFER_SIZE+1; ++i) {
+      enc_out.write_vint(i);
+      ASSERT_EQ(size_t(buffered_output::DEFAULT_BUFFER_SIZE), stream.remain()); // ensure no buffering
+      if (stream.file_pointer() >= buffered_output::DEFAULT_BUFFER_SIZE) {
+        ASSERT_EQ(size_t(buffered_output::DEFAULT_BUFFER_SIZE), stream.last_written_size());
+      }
+    }
+
+    enc_out.flush();
+    enc_out.release()->flush();
+    ASSERT_EQ(enc_out.file_pointer() - 3*buffered_output::DEFAULT_BUFFER_SIZE, stream.last_written_size());
+  }
+
+  out.stream.flush();
+
+  {
+    irs::memory_index_input in(out.file);
+    auto buf_in = irs::index_input::make<buffered_input>(in);
+    irs::encrypted_input enc_in(
+      std::move(buf_in), *cipher, buffered_output::DEFAULT_BUFFER_SIZE/cipher->block_size()
+    );
+    auto& stream = static_cast<const buffered_input&>(enc_in.stream());
+
+    for (auto i = 0; i < 2*buffered_output::DEFAULT_BUFFER_SIZE+1; ++i) {
+      ASSERT_EQ(i, enc_in.read_vint());
+      ASSERT_EQ(0, stream.remain()); // ensure no buffering
+      if (stream.file_pointer() <= 3*buffered_output::DEFAULT_BUFFER_SIZE) {
+        ASSERT_EQ(size_t(buffered_output::DEFAULT_BUFFER_SIZE), stream.last_read_size());
+      } else {
+        ASSERT_EQ(stream.length() - 3*buffered_output::DEFAULT_BUFFER_SIZE, stream.last_read_size());
+      }
+    }
+  }
+}
+
 //  // FIXME
-//  // - try to avoid copying data into buffered stream buffer in case if encrypted buffer size matches underlying buffer size
 //  // - test cipher with block size == 0
 //  // - test format with different cipher block sizes (e.g. 13, 16, 7)
 //  // - test different block sizes and underlying stream buffer sizes
-//  // - extend index tests to use encrypted format
 //  // - write/read checksum over unencrypted data checksum
-//  // - test extreme values of block_size/header_length for ctr encryption
+//  // - test very big > 1024 block sizes
 //}
 
 INSTANTIATE_TEST_CASE_P(
