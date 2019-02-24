@@ -492,42 +492,37 @@ TEST(ecnryption_test_case, ensure_no_double_bufferring) {
   ASSERT_EQ(16, cipher->block_size());
 
   {
-    auto buf_out = irs::index_output::make<buffered_output>(out.stream);
-    irs::encrypted_output enc_out(
-      std::move(buf_out), *cipher, buffered_output::DEFAULT_BUFFER_SIZE/cipher->block_size()
-    );
-    auto& stream = static_cast<const buffered_output&>(enc_out.stream());
+    buffered_output buf_out(out.stream);
+    irs::encrypted_output enc_out(buf_out, *cipher, buffered_output::DEFAULT_BUFFER_SIZE/cipher->block_size());
+    ASSERT_EQ(nullptr, enc_out.release()); // unmanaged instance
 
     for (auto i = 0; i < 2*buffered_output::DEFAULT_BUFFER_SIZE+1; ++i) {
       enc_out.write_vint(i);
-      ASSERT_EQ(size_t(buffered_output::DEFAULT_BUFFER_SIZE), stream.remain()); // ensure no buffering
-      if (stream.file_pointer() >= buffered_output::DEFAULT_BUFFER_SIZE) {
-        ASSERT_EQ(size_t(buffered_output::DEFAULT_BUFFER_SIZE), stream.last_written_size());
+      ASSERT_EQ(size_t(buffered_output::DEFAULT_BUFFER_SIZE), buf_out.remain()); // ensure no buffering
+      if (buf_out.file_pointer() >= buffered_output::DEFAULT_BUFFER_SIZE) {
+        ASSERT_EQ(size_t(buffered_output::DEFAULT_BUFFER_SIZE), buf_out.last_written_size());
       }
     }
 
     enc_out.flush();
-    enc_out.release()->flush();
-    ASSERT_EQ(enc_out.file_pointer() - 3*buffered_output::DEFAULT_BUFFER_SIZE, stream.last_written_size());
+    buf_out.flush();
+    ASSERT_EQ(enc_out.file_pointer() - 3*buffered_output::DEFAULT_BUFFER_SIZE, buf_out.last_written_size());
   }
 
   out.stream.flush();
 
   {
     irs::memory_index_input in(out.file);
-    auto buf_in = irs::index_input::make<buffered_input>(in);
-    irs::encrypted_input enc_in(
-      std::move(buf_in), *cipher, buffered_output::DEFAULT_BUFFER_SIZE/cipher->block_size()
-    );
-    auto& stream = static_cast<const buffered_input&>(enc_in.stream());
+    buffered_input buf_in(in);
+    irs::encrypted_input enc_in(buf_in, *cipher, buffered_input::DEFAULT_BUFFER_SIZE/cipher->block_size());
 
     for (auto i = 0; i < 2*buffered_output::DEFAULT_BUFFER_SIZE+1; ++i) {
       ASSERT_EQ(i, enc_in.read_vint());
-      ASSERT_EQ(0, stream.remain()); // ensure no buffering
-      if (stream.file_pointer() <= 3*buffered_output::DEFAULT_BUFFER_SIZE) {
-        ASSERT_EQ(size_t(buffered_output::DEFAULT_BUFFER_SIZE), stream.last_read_size());
+      ASSERT_EQ(0, buf_in.remain()); // ensure no buffering
+      if (buf_in.file_pointer() <= 3*buffered_output::DEFAULT_BUFFER_SIZE) {
+        ASSERT_EQ(size_t(buffered_output::DEFAULT_BUFFER_SIZE), buf_in.last_read_size());
       } else {
-        ASSERT_EQ(stream.length() - 3*buffered_output::DEFAULT_BUFFER_SIZE, stream.last_read_size());
+        ASSERT_EQ(buf_in.length() - 3*buffered_output::DEFAULT_BUFFER_SIZE, buf_in.last_read_size());
       }
     }
   }
