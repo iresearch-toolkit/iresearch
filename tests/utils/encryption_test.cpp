@@ -398,6 +398,7 @@ TEST_P(encryption_test_case, encrypted_io) {
   assert_ecnrypted_streams(13, irs::ctr_encryption::DEFAULT_HEADER_LENGTH, 1);
   assert_ecnrypted_streams(7, irs::ctr_encryption::DEFAULT_HEADER_LENGTH, 5);
   assert_ecnrypted_streams(16, irs::ctr_encryption::DEFAULT_HEADER_LENGTH, 64);
+  assert_ecnrypted_streams(2048, irs::ctr_encryption::DEFAULT_HEADER_LENGTH, 1);
 }
 
 TEST(ecnryption_test_case, ensure_no_double_bufferring) {
@@ -527,14 +528,6 @@ TEST(ecnryption_test_case, ensure_no_double_bufferring) {
     }
   }
 }
-
-//  // FIXME
-//  // - test cipher with block size == 0
-//  // - test format with different cipher block sizes (e.g. 13, 16, 7)
-//  // - test different block sizes and underlying stream buffer sizes
-//  // - write/read checksum over unencrypted data checksum
-//  // - test very big > 1024 block sizes
-//}
 
 INSTANTIATE_TEST_CASE_P(
   encryption_test,
