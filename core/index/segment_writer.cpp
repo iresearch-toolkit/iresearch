@@ -242,6 +242,20 @@ void segment_writer::flush(index_meta::index_segment_t& segment) {
 
   auto& meta = segment.meta;
 
+  std::vector<doc_id_t> order;
+  if (!pk_.empty()) {
+    auto comparer = [](const irs::bytes_ref& lhs, const bytes_ref& rhs) {
+      return lhs.size() < rhs.size();
+    };
+
+    std::tie(order, std::ignore) = pk_.flush(
+      *col_writer_,
+      doc_id_t(segment.meta.docs_count),
+      docs_mask_,
+      comparer
+    );
+  }
+
   // flush columnstore and columns indices
   if (col_writer_->commit() && !columns_.empty()) {
     flush_column_meta(meta);

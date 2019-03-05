@@ -25,6 +25,7 @@
 #define IRESEARCH_TL_DOC_WRITER_H
 
 #include "field_data.hpp"
+#include "sorted_column.hpp"
 #include "analysis/token_stream.hpp"
 #include "formats/formats.hpp"
 #include "utils/bitvector.hpp"
@@ -337,6 +338,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   void flush_fields(); // flushes indexed fields to directory
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
+  sorted_column pk_;
   update_contexts docs_context_;
   bitvector docs_mask_; // invalid/removed doc_ids (e.g. partially indexed due to indexing failure)
   fields_data fields_;

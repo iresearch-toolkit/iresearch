@@ -87,25 +87,26 @@ set(IResearch_core_sources
   ./utils/string.cpp
   ./analysis/analyzer.cpp
   ./analysis/analyzers.cpp
-  ./analysis/token_attributes.cpp 
-  ./analysis/token_streams.cpp 
-  ./error/error.cpp 
-  ./formats/formats.cpp 
-  ./formats/format_utils.cpp 
-  ./formats/skip_list.cpp 
+  ./analysis/token_attributes.cpp
+  ./analysis/token_streams.cpp
+  ./error/error.cpp
+  ./formats/formats.cpp
+  ./formats/format_utils.cpp
+  ./formats/skip_list.cpp
   ./index/directory_reader.cpp
   ./index/field_data.cpp
-  ./index/field_meta.cpp 
-  ./index/file_names.cpp 
-  ./index/index_meta.cpp 
-  ./index/index_writer.cpp 
+  ./index/field_meta.cpp
+  ./index/file_names.cpp
+  ./index/index_meta.cpp
+  ./index/index_writer.cpp
   ./index/index_reader.cpp
   ./index/iterators.cpp
   ./index/merge_writer.cpp
   ./index/postings.cpp
-  ./index/segment_reader.cpp 
-  ./index/segment_writer.cpp 
+  ./index/segment_reader.cpp
+  ./index/segment_writer.cpp
   ./index/transaction_store.cpp
+  ./index/sorted_column.cpp
   ./iql/parser.cc
   ./iql/parser_common.cpp
   ./iql/parser_context.cpp
