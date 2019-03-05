@@ -77,7 +77,7 @@ class sorted_column final : public irs::columnstore_writer::column_output {
     index_.clear();
   }
 
-  // first - oredered array of positions within the original data
+  // first - oredered array (new -> old)
   // second - flushed column identifier
   std::pair<std::vector<irs::doc_id_t>, field_id> flush(
     columnstore_writer& writer,

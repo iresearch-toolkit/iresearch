@@ -45,22 +45,22 @@ std::pair<std::vector<irs::doc_id_t>, field_id> sorted_column::flush(
   // temporary push sentinel
   index_.emplace_back(type_limits<type_t::doc_id_t>::eof(), data_buf_.size());
 
-  // prepare order array
-  std::vector<irs::doc_id_t> ord(max, type_limits<type_t::doc_id_t>::eof());
+  // prepare order array (new -> old)
+  std::vector<irs::doc_id_t> new_old(max, type_limits<type_t::doc_id_t>::eof());
   doc_id_t new_doc_id = 0;
   std::for_each(
     index_.begin(), index_.end() - 1,
-    [&ord, &new_doc_id, &docs_mask](const std::pair<doc_id_t, size_t>& value) NOEXCEPT {
+    [&new_old, &new_doc_id, &docs_mask](const std::pair<doc_id_t, size_t>& value) NOEXCEPT {
       const auto doc_id = value.first - type_limits<type_t::doc_id_t>::min(); // 0-based doc_id
 
       if (!docs_mask.test(doc_id)) {
-        ord[doc_id] = new_doc_id++;
+        new_old[doc_id] = new_doc_id++;
       }
   });
 
   // sort data
   std::sort(
-    ord.begin(), ord.end(),
+    new_old.begin(), new_old.end(),
     [data, &less, this] (doc_id_t lhs, doc_id_t rhs) {
       if (lhs == rhs) {
         return false;
@@ -82,7 +82,7 @@ std::pair<std::vector<irs::doc_id_t>, field_id> sorted_column::flush(
   auto& column_writer = column.second;
 
   new_doc_id = type_limits<type_t::doc_id_t>::min();
-  for (const auto doc_id : ord) {
+  for (const auto doc_id : new_old) {
     auto& stream = column_writer(new_doc_id++);
 
     if (!type_limits<type_t::doc_id_t>::eof(doc_id)) {
@@ -93,7 +93,7 @@ std::pair<std::vector<irs::doc_id_t>, field_id> sorted_column::flush(
   // data have been flushed
   clear();
 
-  return std::make_pair(std::move(ord), column.first);
+  return std::make_pair(std::move(new_old), column.first);
 }
 
 NS_END
