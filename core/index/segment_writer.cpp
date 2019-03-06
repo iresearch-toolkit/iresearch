@@ -201,11 +201,12 @@ void segment_writer::flush_column_meta(const segment_meta& meta) {
   }
 }
 
-void segment_writer::flush_fields() {
+void segment_writer::flush_fields(const doc_map& docmap) {
   flush_state state;
   state.dir = &dir_;
   state.doc_count = docs_cached();
   state.name = seg_name_;
+  state.docmap = docmap.empty() ? nullptr : &docmap;
 
   try {
     fields_.flush(*field_writer_, state);
@@ -242,13 +243,14 @@ void segment_writer::flush(index_meta::index_segment_t& segment) {
 
   auto& meta = segment.meta;
 
-  std::vector<doc_id_t> order;
+  doc_map docmap;
+
   if (!pk_.empty()) {
     auto comparer = [](const irs::bytes_ref& lhs, const bytes_ref& rhs) {
       return lhs.size() < rhs.size();
     };
 
-    std::tie(order, std::ignore) = pk_.flush(
+    std::tie(docmap, std::ignore) = pk_.flush(
       *col_writer_,
       doc_id_t(segment.meta.docs_count),
       docs_mask_,
@@ -264,7 +266,7 @@ void segment_writer::flush(index_meta::index_segment_t& segment) {
 
   // flush fields metadata & inverted data
   if (docs_cached()) {
-    flush_fields();
+    flush_fields(docmap);
   }
 
   // write non-empty document mask

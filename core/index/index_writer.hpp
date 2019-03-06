@@ -268,7 +268,6 @@ class IRESEARCH_API index_writer:
     ////////////////////////////////////////////////////////////////////////////
     template<typename Filter, typename Func>
     bool replace(Filter&& filter, Func func) {
-      typedef type_limits<type_t::doc_id_t> doc_limits;
       flush_context* ctx;
       segment_context_ptr segment;
 

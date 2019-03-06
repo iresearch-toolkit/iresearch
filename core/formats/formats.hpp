@@ -49,6 +49,7 @@ struct data_input;
 struct index_input;
 typedef std::unordered_set<doc_id_t> document_mask;
 struct postings_writer;
+class doc_map;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class term_meta
@@ -509,6 +510,7 @@ struct IRESEARCH_API flush_state {
   string_ref name; // segment name
   const flags* features; // segment features
   size_t doc_count;
+  const doc_map* docmap;
 };
 
 struct IRESEARCH_API reader_state {

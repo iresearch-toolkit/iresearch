@@ -29,6 +29,8 @@
 #include "utils/bytes_utils.hpp"
 #include "utils/type_limits.hpp"
 
+// FIXME check gaps && deleted docs
+
 TEST(sorted_colum_test, sort) {
   const uint32_t values[] = {
     19,45,27,1,73,98,46,48,38,20,60,91,61,80,44,53,88,
@@ -67,7 +69,7 @@ TEST(sorted_colum_test, sort) {
   irs::memory_directory dir;
   irs::bitvector docs_mask;
   irs::field_id column_id;
-  std::vector<irs::doc_id_t> order;
+  irs::doc_map order;
 
   auto codec = irs::formats::get("1_0");
   ASSERT_NE(nullptr, codec);
@@ -90,7 +92,7 @@ TEST(sorted_colum_test, sort) {
     }
     ASSERT_EQ(IRESEARCH_COUNTOF(values), col.size());
 
-    std::tie(order, column_id) = col.flush(*writer, doc-1, docs_mask, less);
+    std::tie(order, column_id) = col.flush(*writer, IRESEARCH_COUNTOF(values), docs_mask, less);
     ASSERT_TRUE(col.empty());
     ASSERT_EQ(0, col.size());
     ASSERT_EQ(IRESEARCH_COUNTOF(values), order.size());
@@ -105,10 +107,17 @@ TEST(sorted_colum_test, sort) {
   // check order
   {
     auto begin = sorted_values.begin();
-    for (const auto pos : order) {
-      ASSERT_EQ(*begin, values[pos]);
+
+    auto visitor = [&begin, &values](irs::doc_id_t pos) {
+      if (*begin != values[pos]) {
+        return false;
+      }
+
       ++begin;
-    }
+      return true;
+    };
+
+    ASSERT_TRUE(order.visit<irs::doc_map::OLD>(visitor));
     ASSERT_EQ(sorted_values.end(), begin);
   }
 

@@ -69,12 +69,16 @@ template<> struct type_limits<type_t::doc_id_t> {
   CONSTEXPR static bool valid(doc_id_t id) { return invalid() != id; }
 };
 
+typedef irs::type_limits<irs::type_t::doc_id_t> doc_limits;
+
 template<> struct type_limits<type_t::field_id_t> {
   CONSTEXPR static field_id invalid() { 
     return integer_traits<field_id>::const_max;
   }
   CONSTEXPR static bool valid(field_id id) { return invalid() != id; }
 };
+
+typedef irs::type_limits<irs::type_t::field_id_t> field_limits;
 
 template<> struct type_limits<type_t::index_gen_t> {
   CONSTEXPR static uint64_t invalid() {

@@ -262,7 +262,7 @@ class doc_iterator : public irs::doc_iterator {
 
 class term_iterator : public irs::term_iterator {
  public:
-  void reset(const field_data& field, const bytes_ref*& min, const bytes_ref*& max) {
+  void reset(const field_data& field, const doc_map* docmap, const bytes_ref*& min, const bytes_ref*& max) {
     // refill postings
     postings_.clear();
     postings_.insert(field.terms_.begin(), field.terms_.end());
@@ -273,8 +273,8 @@ class term_iterator : public irs::term_iterator {
       max = &((--postings_.end())->first);
     }
 
-    // set field
     field_ = &field;
+    doc_map_ = docmap;
 
     // reset state
     itr_ = postings_.begin();
@@ -356,6 +356,7 @@ class term_iterator : public irs::term_iterator {
   map_t::iterator itr_{ postings_.end() };
   irs::bytes_ref term_;
   const field_data* field_;
+  const doc_map* doc_map_;
   mutable detail::doc_iterator doc_itr_;
   irs::doc_iterator::ptr pdoc_itr_{irs::doc_iterator::ptr(), &doc_itr_}; // aliasing ctor
   bool itr_increment_{ false };
@@ -363,8 +364,8 @@ class term_iterator : public irs::term_iterator {
 
 class term_reader final : public irs::basic_term_reader, util::noncopyable {
  public:
-  void reset(const field_data& field) {
-    it_.reset(field, min_, max_);
+  void reset(const field_data& field, const doc_map* docmap) {
+    it_.reset(field, docmap, min_, max_);
   }
 
   virtual const irs::bytes_ref& (min)() const NOEXCEPT override {
@@ -730,7 +731,7 @@ void fields_data::flush(field_writer& fw, flush_state& state) {
     auto& meta = field->meta();
 
     // reset reader
-    terms.reset(*field);
+    terms.reset(*field, state.docmap);
 
     // write inverted data
     auto it = terms.iterator();
@@ -738,7 +739,6 @@ void fields_data::flush(field_writer& fw, flush_state& state) {
   }
 
   fw.end();
-
 }
 
 void fields_data::reset() NOEXCEPT {

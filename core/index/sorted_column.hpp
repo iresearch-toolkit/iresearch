@@ -31,6 +31,69 @@ NS_ROOT
 
 class bitvector;
 
+class doc_map {
+ public:
+  enum Type { OLD, NEW };
+
+  doc_map() = default;
+
+  doc_map(
+    std::vector<doc_id_t>&& new_old,
+    std::vector<doc_id_t>&& old_new
+  ) NOEXCEPT;
+
+  doc_map(doc_map&& rhs) NOEXCEPT
+    : new_old_(std::move(rhs.new_old_)),
+      old_new_(std::move(rhs.old_new_)) {
+  }
+
+  doc_map& operator=(doc_map&& rhs) NOEXCEPT {
+    if (this != &rhs) {
+      new_old_ = std::move(rhs.new_old_);
+      old_new_ = std::move(rhs.old_new_);
+    }
+    return *this;
+  }
+
+  template<Type type>
+  doc_id_t get(doc_id_t doc) const NOEXCEPT {
+    if (type == OLD) {
+      assert(doc < new_old_.size());
+      return new_old_[doc];
+    }
+
+    assert(doc < old_new_.size());
+    return old_new_[doc];
+  }
+
+  template<Type type, typename Visitor>
+  bool visit(Visitor visitor) const {
+    const std::vector<doc_id_t>& map = type == OLD
+      ? new_old_
+      : old_new_;
+
+    for (const auto doc : map) {
+      if (!visitor(doc)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  bool empty() const NOEXCEPT {
+    return new_old_.empty();
+  }
+
+  size_t size() const NOEXCEPT {
+    return new_old_.size();
+  }
+
+ private:
+  std::vector<doc_id_t> new_old_;
+  std::vector<doc_id_t> old_new_;
+}; // doc_map
+
 class sorted_column final : public irs::columnstore_writer::column_output {
  public:
   typedef std::function<bool(const bytes_ref&, const bytes_ref&)> less_f;
@@ -77,16 +140,16 @@ class sorted_column final : public irs::columnstore_writer::column_output {
     index_.clear();
   }
 
-  // first - oredered array (new -> old)
-  // second - flushed column identifier
-  std::pair<std::vector<irs::doc_id_t>, field_id> flush(
+  // 1st - doc map (old->new, new->old)
+  // 2nd - flushed column identifier
+  std::pair<doc_map, field_id> flush(
     columnstore_writer& writer,
     doc_id_t max,
     const bitvector& docs_mask,
     const less_f& less
   );
 
-  size_t memory() const {
+  size_t memory() const NOEXCEPT {
     return data_buf_.size() + index_.size()*sizeof(decltype(index_)::value_type);
   }
 

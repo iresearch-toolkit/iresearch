@@ -41,7 +41,6 @@
 
 NS_LOCAL
 
-typedef irs::type_limits<irs::type_t::doc_id_t> doc_limits;
 typedef range<irs::index_writer::modification_context> modification_contexts_ref;
 typedef range<irs::segment_writer::update_context> update_contexts_ref;
 
@@ -67,7 +66,7 @@ struct flush_segment_context {
      segment_(segment),
      update_contexts_(update_contexts) {
     assert(doc_id_begin_ <= doc_id_end_);
-    assert(doc_id_end_ - doc_limits::min() <= segment_.meta.docs_count);
+    assert(doc_id_end_ - irs::doc_limits::min() <= segment_.meta.docs_count);
     assert(update_contexts.size() == segment_.meta.docs_count);
   }
 };
@@ -181,9 +180,9 @@ bool add_document_mask_modified_records(
     ));
   }
 
-  assert(doc_limits::valid(ctx.doc_id_begin_));
+  assert(irs::doc_limits::valid(ctx.doc_id_begin_));
   assert(ctx.doc_id_begin_ <= ctx.doc_id_end_);
-  assert(ctx.doc_id_end_ <= ctx.update_contexts_.size() + doc_limits::min());
+  assert(ctx.doc_id_end_ <= ctx.update_contexts_.size() + irs::doc_limits::min());
   bool modified = false;
 
   for (auto& modification : modifications) {
@@ -210,7 +209,7 @@ bool add_document_mask_modified_records(
         continue; // doc_id is not part of the current flush_context
       }
 
-      auto& doc_ctx = ctx.update_contexts_[doc_id - doc_limits::min()]; // valid because of asserts above
+      auto& doc_ctx = ctx.update_contexts_[doc_id - irs::doc_limits::min()]; // valid because of asserts above
 
       // if the indexed doc_id was insert()ed after the request for modification
       // or the indexed doc_id was already masked then it should be skipped
@@ -246,13 +245,13 @@ bool add_document_mask_unused_updates(flush_segment_context& ctx) {
   if (ctx.modification_contexts_.empty()) {
     return false; // nothing new to add
   }
-  assert(doc_limits::valid(ctx.doc_id_begin_));
+  assert(irs::doc_limits::valid(ctx.doc_id_begin_));
   assert(ctx.doc_id_begin_ <= ctx.doc_id_end_);
-  assert(ctx.doc_id_end_ <= ctx.update_contexts_.size() + doc_limits::min());
+  assert(ctx.doc_id_end_ <= ctx.update_contexts_.size() + irs::doc_limits::min());
   bool modified = false;
 
   for (auto doc_id = ctx.doc_id_begin_; doc_id < ctx.doc_id_end_; ++doc_id) {
-    auto& doc_ctx = ctx.update_contexts_[doc_id - doc_limits::min()]; // valid because of asserts above
+    auto& doc_ctx = ctx.update_contexts_[doc_id - irs::doc_limits::min()]; // valid because of asserts above
 
     if (doc_ctx.update_id == NON_UPDATE_RECORD) {
       continue; // not an update operation
@@ -659,8 +658,7 @@ index_writer::documents_context::document::document(
   auto uncomitted_doc_id_begin =
     segment_->uncomitted_doc_id_begin_ > segment_->flushed_update_contexts_.size()
     ? (segment_->uncomitted_doc_id_begin_ - segment_->flushed_update_contexts_.size()) // uncomitted start in 'writer_'
-    : doc_limits::min() // uncommited start in 'flushed_'
-    ;
+    : doc_limits::min(); // uncommited start in 'flushed_'
   assert(uncomitted_doc_id_begin <= writer.docs_cached() + doc_limits::min());
   auto rollback_extra =
     writer.docs_cached() + doc_limits::min() - uncomitted_doc_id_begin; // ensure reset() will be noexcept
