@@ -158,7 +158,6 @@ set(IResearch_core_sources
   ./utils/utf8_path.cpp
   ./utils/locale_utils.cpp
   ./utils/log.cpp
-  ./utils/unicode_utils.cpp
   ./utils/so_utils.cpp
   ./utils/process_utils.cpp
   ./utils/network_utils.cpp
@@ -242,7 +241,6 @@ set(IResearch_core_headers
   ./utils/log.hpp
   ./utils/thread_utils.hpp
   ./utils/object_pool.hpp
-  ./utils/unicode_utils.hpp
   ./utils/so_utils.hpp
   ./utils/process_utils.hpp
   ./utils/network_utils.hpp

@@ -34,8 +34,6 @@
 #include "search/boolean_filter.hpp"
 #include "search/tfidf.hpp"
 
-#include "misc.hpp"
-
 #include "utils/bit_utils.hpp"
 
 #include "store/data_output.hpp"
@@ -95,7 +93,7 @@ posting& term::add(irs::doc_id_t id) {
 }
 
 bool term::operator<( const term& rhs ) const {
-  return utf8_less(
+  return irs::memcmp_less(
     value.c_str(), value.size(),
     rhs.value.c_str(), rhs.value.size()
   );

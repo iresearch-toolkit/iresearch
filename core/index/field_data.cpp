@@ -42,7 +42,6 @@
 #include "utils/object_pool.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
-#include "utils/unicode_utils.hpp"
 #include "utils/bytes_utils.hpp"
 
 #include <set>
@@ -50,6 +49,26 @@
 #include <cassert>
 
 NS_ROOT
+
+bool memcmp_less(
+    const byte_type* lhs, size_t lhs_size,
+    const byte_type* rhs, size_t rhs_size
+) NOEXCEPT {
+  assert(lhs && rhs);
+
+  if (lhs == rhs) {
+    return lhs_size < rhs_size;
+  }
+
+  const size_t size = std::min(lhs_size, rhs_size);
+  const auto res = ::memcmp(lhs, rhs, size);
+
+  if (0 == res) {
+    return lhs_size < rhs_size;
+  }
+
+  return res < 0;
+}
 
 NS_BEGIN(detail)
 
@@ -340,16 +359,16 @@ class term_iterator : public irs::term_iterator {
   }
 
  private:
-  struct utf8_less_t {
-    bool operator()(const bytes_ref& lhs, const bytes_ref& rhs) const {
-      return utf8_less(lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size());
+  struct less_t {
+    bool operator()(const bytes_ref& lhs, const bytes_ref& rhs) const NOEXCEPT {
+      return memcmp_less(lhs, rhs);
     }
   };
 
   typedef std::map<
     bytes_ref,
     std::reference_wrapper<const posting>,
-    utf8_less_t
+    less_t
   > map_t;
 
   map_t postings_;

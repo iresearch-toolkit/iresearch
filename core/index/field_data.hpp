@@ -55,6 +55,20 @@ class term_iterator;
 class doc_iterator;
 NS_END
 
+IRESEARCH_API bool memcmp_less(
+  const byte_type* lhs,
+  size_t lhs_size,
+  const byte_type* rhs,
+  size_t rhs_size
+) NOEXCEPT;
+
+inline bool memcmp_less(
+    const bytes_ref& lhs,
+    const bytes_ref& rhs
+) NOEXCEPT {
+  return memcmp_less(lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size());
+}
+
 class IRESEARCH_API field_data : util::noncopyable {
  public:
   field_data(
