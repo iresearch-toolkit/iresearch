@@ -116,8 +116,8 @@ segment_writer::segment_writer(
 bool segment_writer::index(
     const hashed_string_ref& name,
     const doc_id_t doc,
-    token_stream& tokens,
-    const flags& features) {
+    const flags& features,
+    token_stream& tokens) {
   REGISTER_TIMER_DETAILED();
 
   auto& slot = fields_.emplace(name);
@@ -138,10 +138,17 @@ bool segment_writer::index(
 }
 
 columnstore_writer::column_output& segment_writer::stream(
-    doc_id_t doc_id, const hashed_string_ref& name) {
+    const hashed_string_ref& name,
+    const doc_id_t doc_id,
+    const flags& features) {
   REGISTER_TIMER_DETAILED();
 
-  static auto generator = [](
+  if (fields_.comparator() && features.check<primary_key>()) {
+    // FIXME what to do with the name???
+    return pk_;
+  }
+
+  auto generator = [](
       const hashed_string_ref& key,
       const column& value) NOEXCEPT {
     // reuse hash but point ref at value

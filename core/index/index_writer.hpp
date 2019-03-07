@@ -427,7 +427,7 @@ class IRESEARCH_API index_writer:
     ///        produced by an index_writer.
     ///        empty == use default system sorting order
     ////////////////////////////////////////////////////////////////////////////
-    const comparer* comparator;
+    const comparer* comparator{nullptr};
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief number of memory blocks to cache by the internal memory pool

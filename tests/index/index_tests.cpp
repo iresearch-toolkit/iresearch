@@ -1463,6 +1463,9 @@ class index_test_case : public tests::index_test_base {
     {
       struct stored {
         const irs::string_ref& name() { return column_name; }
+        const irs::flags& features() const {
+          return irs::flags::empty_instance();
+        }
         bool write(irs::data_output& out) { return true; }
       } field;
 
@@ -2361,6 +2364,9 @@ class index_test_case : public tests::index_test_base {
     {
       struct stored {
         const irs::string_ref& name() { return column_name; }
+        const irs::flags& features() const {
+          return irs::flags::empty_instance();
+        }
         bool write(irs::data_output& out) { return true; }
       } field;
 
@@ -2997,6 +3003,10 @@ class index_test_case : public tests::index_test_base {
     {
       struct stored {
         const irs::string_ref& name() { return column_name; }
+
+        const irs::flags& features() const {
+          return irs::flags::empty_instance();
+        }
 
         bool write(irs::data_output& out) {
           irs::write_string(
@@ -3821,6 +3831,10 @@ class index_test_case : public tests::index_test_base {
     {
       struct stored {
         const irs::string_ref& name() { return column_name; }
+
+        const irs::flags& features() const {
+          return irs::flags::empty_instance();
+        }
 
         bool write(irs::data_output& out) {
           auto str = std::to_string(value);
@@ -4810,6 +4824,10 @@ class index_test_case : public tests::index_test_base {
           : column_name(name) {
         }
         const irs::string_ref& name() { return column_name; }
+
+        const irs::flags& features() const {
+          return irs::flags::empty_instance();
+        }
 
         bool write(irs::data_output& out) {
           auto str = std::to_string(value);
@@ -6017,6 +6035,10 @@ class index_test_case : public tests::index_test_base {
 
         const irs::string_ref& name() NOEXCEPT { return column_name; }
 
+        const irs::flags& features() const {
+          return irs::flags::empty_instance();
+        }
+
         bool write(irs::data_output& out) {
           if (value == BLOCK_SIZE-1) {
             out.write_byte(0);
@@ -6272,6 +6294,10 @@ class index_test_case : public tests::index_test_base {
       struct stored {
         const irs::string_ref& name() { return column_name; }
 
+        const irs::flags& features() const {
+          return irs::flags::empty_instance();
+        }
+
         bool write(irs::data_output& out) {
           if (value == BLOCK_SIZE-1) {
             out.write_byte(0);
@@ -6470,6 +6496,10 @@ class index_test_case : public tests::index_test_base {
         }
 
         const irs::string_ref& name() NOEXCEPT { return column_name; }
+
+        const irs::flags& features() const {
+          return irs::flags::empty_instance();
+        }
 
         bool write(irs::data_output& out) {
           irs::write_string(
@@ -7518,6 +7548,9 @@ class index_test_case : public tests::index_test_base {
           : column_name(name) {
         }
         const irs::string_ref& name() { return column_name; }
+        const irs::flags& features() const {
+          return irs::flags::empty_instance();
+        }
         bool write(irs::data_output&) { return true; }
         const irs::string_ref column_name;
       } field(column_name), gap("gap");
@@ -8387,6 +8420,10 @@ class index_test_case : public tests::index_test_base {
     {
       struct stored {
         const irs::string_ref& name() { return column_name; }
+
+        const irs::flags& features() const {
+          return irs::flags::empty_instance();
+        }
 
         bool write(irs::data_output& out) {
           auto str = std::to_string(value);
@@ -9726,6 +9763,10 @@ class index_test_case : public tests::index_test_base {
         return name_;
       }
 
+      const irs::flags& features() const {
+        return irs::flags::empty_instance();
+      }
+
       bool write(irs::data_output&) const NOEXCEPT {
         return true;
       }
@@ -11053,6 +11094,10 @@ class index_test_case : public tests::index_test_base {
         return name_;
       }
 
+      const irs::flags& features() const NOEXCEPT {
+        return irs::flags::empty_instance();
+      }
+
       bool write(irs::data_output& out) const {
         write_string(out, value_);
         return valid_;
@@ -11664,7 +11709,8 @@ TEST_P(index_test_case, document_context) {
     std::condition_variable cond;
     std::mutex cond_mutex;
     std::mutex mutex;
-    irs::string_ref const& name() { return irs::string_ref::EMPTY; }
+    const irs::string_ref& name() { return irs::string_ref::EMPTY; }
+    const irs::flags& features() const { return irs::flags::empty_instance(); }
     bool write(irs::data_output& out) {
       {
         SCOPED_LOCK(cond_mutex);

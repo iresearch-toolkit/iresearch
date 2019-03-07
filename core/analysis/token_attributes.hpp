@@ -138,6 +138,14 @@ struct IRESEARCH_API granularity_prefix : attribute {
 }; // granularity_prefix
 
 //////////////////////////////////////////////////////////////////////////////
+/// @struct primary_key
+//////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API primary_key : attribute {
+  DECLARE_ATTRIBUTE_TYPE();
+  primary_key() = default;
+}; // primary_key
+
+//////////////////////////////////////////////////////////////////////////////
 /// @class norm
 /// @brief this is marker attribute only used in field::features in order to
 ///        allow evaluation of the field normalization factor 
@@ -196,9 +204,9 @@ class IRESEARCH_API position
   virtual value_t value() const = 0;
 
  protected:
-  attribute_view attrs_;
+  position(size_t reserve_attrs) NOEXCEPT;
 
-  position(size_t reserve_attrs);
+  attribute_view attrs_;
 }; // position
 
 NS_END // ROOT

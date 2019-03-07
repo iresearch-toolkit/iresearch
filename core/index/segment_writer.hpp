@@ -251,21 +251,20 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   bool index(
     const hashed_string_ref& name,
     const doc_id_t doc,
-    token_stream& tokens,
-    const flags& features
+    const flags& features,
+    token_stream& tokens
   );
 
   template<typename Writer>
   bool store(
       const hashed_string_ref& name,
       const doc_id_t doc,
+      const flags& features,
       Writer& writer
   ) {
     assert(doc < type_limits<type_t::doc_id_t>::eof());
 
-    // FIXME check if a part of PK
-
-    auto& out = stream(doc, name);
+    auto& out = stream(name, doc, features);
 
     if (writer.write(out)) {
       return true;
@@ -285,10 +284,12 @@ class IRESEARCH_API segment_writer: util::noncopyable {
       std::hash<irs::string_ref>()
     );
 
+    const auto& features = static_cast<const flags&>(field.features());
+
     assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof()); // user should check return of begin() != eof()
     const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() - 1); // -1 for 0-based offset
 
-    return store(name, doc_id, field);
+    return store(name, doc_id, features, field);
   }
 
   // adds document field
@@ -307,7 +308,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof()); // user should check return of begin() != eof()
     const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() - 1); // -1 for 0-based offset
 
-    return index(name, doc_id, tokens, features);
+    return index(name, doc_id, features, tokens);
   }
 
   template<typename Field>
@@ -325,17 +326,18 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof()); // user should check return of begin() != eof()
     const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() - 1); // -1 for 0-based offset
 
-    if (!index(name, doc_id, tokens, features)) {
+    if (!index(name, doc_id, features, tokens)) {
       return false; // indexing failed
     }
 
-    return store(name, doc_id, field);
+    return store(name, doc_id, features, field);
   }
 
   // returns stream for storing attributes
   columnstore_writer::column_output& stream(
-    doc_id_t doc,
-    const hashed_string_ref& name
+    const hashed_string_ref& name,
+    const doc_id_t doc,
+    const flags& features
   );
 
   void finish(); // finishes document
