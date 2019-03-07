@@ -193,7 +193,6 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   // adds indexed and stored document field
   template<typename Field>
   bool insert(action::index_store_t, Field& field) {
-    // FIXME optimize, do not evaluate field name hash twice
     return valid_ = valid_ && index_and_store_worker(field);
   }
 
@@ -251,9 +250,31 @@ class IRESEARCH_API segment_writer: util::noncopyable {
 
   bool index(
     const hashed_string_ref& name,
+    const doc_id_t doc,
     token_stream& tokens,
     const flags& features
   );
+
+  template<typename Writer>
+  bool store(
+      const hashed_string_ref& name,
+      const doc_id_t doc,
+      Writer& writer
+  ) {
+    assert(doc < type_limits<type_t::doc_id_t>::eof());
+
+    // FIXME check if a part of PK
+
+    auto& out = stream(doc, name);
+
+    if (writer.write(out)) {
+      return true;
+    }
+
+    out.reset();
+
+    return false;
+  }
 
   template<typename Field>
   bool store_worker(Field& field) {
@@ -264,18 +285,10 @@ class IRESEARCH_API segment_writer: util::noncopyable {
       std::hash<irs::string_ref>()
     );
 
-    assert(docs_cached() + type_limits<type_t::doc_id_t>::min() - 1 < type_limits<type_t::doc_id_t>::eof()); // user should check return of begin() != eof()
-    auto doc_id =
-      doc_id_t(docs_cached() + type_limits<type_t::doc_id_t>::min() - 1); // -1 for 0-based offset
-    auto& out = stream(doc_id, name);
+    assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof()); // user should check return of begin() != eof()
+    const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() - 1); // -1 for 0-based offset
 
-    if (field.write(out)) {
-      return true;
-    }
-
-    out.reset();
-
-    return false;
+    return store(name, doc_id, field);
   }
 
   // adds document field
@@ -291,7 +304,10 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     auto& tokens = static_cast<token_stream&>(field.get_tokens());
     const auto& features = static_cast<const flags&>(field.features());
 
-    return index(name, tokens, features);
+    assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof()); // user should check return of begin() != eof()
+    const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() - 1); // -1 for 0-based offset
+
+    return index(name, doc_id, tokens, features);
   }
 
   template<typename Field>
@@ -303,27 +319,17 @@ class IRESEARCH_API segment_writer: util::noncopyable {
       std::hash<irs::string_ref>()
     );
 
-    // index field
     auto& tokens = static_cast<token_stream&>(field.get_tokens());
     const auto& features = static_cast<const flags&>(field.features());
 
-    if (!index(name, tokens, features)) {
+    assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof()); // user should check return of begin() != eof()
+    const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() - 1); // -1 for 0-based offset
+
+    if (!index(name, doc_id, tokens, features)) {
       return false; // indexing failed
     }
 
-    // store field
-    assert(docs_cached() + type_limits<type_t::doc_id_t>::min() - 1 < type_limits<type_t::doc_id_t>::eof()); // user should check return of begin() != eof()
-    auto doc_id =
-      doc_id_t(docs_cached() + type_limits<type_t::doc_id_t>::min() - 1); // -1 for 0-based offset
-    auto& out = stream(doc_id, name);
-
-    if (field.write(out)) {
-      return true;
-    }
-
-    out.reset();
-
-    return false; // store failed
+    return store(name, doc_id, field);
   }
 
   // returns stream for storing attributes

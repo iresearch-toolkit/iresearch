@@ -115,18 +115,17 @@ segment_writer::segment_writer(
 
 bool segment_writer::index(
     const hashed_string_ref& name,
+    const doc_id_t doc,
     token_stream& tokens,
     const flags& features) {
   REGISTER_TIMER_DETAILED();
 
-  assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof()); // user should check return of begin() != eof()
-  const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() - 1); // -1 for 0-based offset
   auto& slot = fields_.emplace(name);
   auto& slot_features = slot.meta().features;
 
   // invert only if new field features are a subset of slot features
   if ((slot.empty() || features.is_subset_of(slot_features)) &&
-      slot.invert(tokens, slot.empty() ? features : slot_features, doc_id)) {
+      slot.invert(tokens, slot.empty() ? features : slot_features, doc)) {
     if (features.check<norm>()) {
       norm_fields_.insert(&slot);
     }
