@@ -299,11 +299,8 @@ class block_pool_reader : public std::iterator < std::input_iterator_tag, typena
   block_pool_reader(const container& pool, size_t offset)
     : where_(pool, offset) {}
 
-  explicit
-    block_pool_reader(const const_iterator& where)
+  explicit block_pool_reader(const const_iterator& where)
     : where_(where) {}
-
-  ~block_pool_reader() {}
 
   const_reference operator*() const {
     assert(!where_.eof());
@@ -398,8 +395,6 @@ class block_pool_sliced_reader : public std::iterator < std::input_iterator_tag,
     : where_(pool, offset), end_(end) {
     init();
   }
-
-  ~block_pool_sliced_reader() {}
 
   const_reference operator*() const {
     assert(!eof());
@@ -512,8 +507,6 @@ class block_pool_inserter : public std::iterator < std::output_iterator_tag, voi
   typedef typename container::value_type value_type;
 
   block_pool_inserter(const iterator& where) : where_(where) {}
-
-  ~block_pool_inserter() {}
 
   inline size_t pool_offset() const { return where_.pool_offset(); }
 
@@ -657,8 +650,6 @@ class block_pool_sliced_inserter : public std::iterator < std::output_iterator_t
     assert(writer);
   }
 
-  ~block_pool_sliced_inserter() {}
-
   inline size_t pool_offset() const { return where_.pool_offset(); }
 
   inline iterator& position() { return where_; }
@@ -745,8 +736,6 @@ class block_pool {
     : rep_(blocks_t(block_ptr_allocator(alloc)), alloc) {
     static_assert(block_type::SIZE > 0, "block_type::SIZE == 0");
   }
-
-  ~block_pool() {}
 
   void alloc_buffer(size_t count = 1) {
     proxy_allocator proxy_alloc(get_allocator());
