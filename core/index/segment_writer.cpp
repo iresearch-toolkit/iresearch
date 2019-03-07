@@ -50,7 +50,7 @@ doc_id_t segment_writer::begin(
     const update_context& ctx,
     size_t reserve_rollback_extra /*= 0*/
 ) {
-  assert(docs_cached() + type_limits<type_t::doc_id_t>::min() - 1 < type_limits<type_t::doc_id_t>::eof());
+  assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof());
   valid_ = true;
   norm_fields_.clear(); // clear norm fields
 
@@ -66,7 +66,7 @@ doc_id_t segment_writer::begin(
 
   docs_context_.emplace_back(ctx);
 
-  return doc_id_t(docs_cached() + type_limits<type_t::doc_id_t>::min() - 1); // -1 for 0-based offset
+  return doc_id_t(docs_cached() + doc_limits::min() - 1); // -1 for 0-based offset
 }
 
 segment_writer::ptr segment_writer::make(directory& dir) {
@@ -94,13 +94,13 @@ size_t segment_writer::memory_reserved() const NOEXCEPT {
 }
 
 bool segment_writer::remove(doc_id_t doc_id) {
-  if (!type_limits<type_t::doc_id_t>::valid(doc_id)
-      || (doc_id - type_limits<type_t::doc_id_t>::min()) >= docs_cached()
-      || docs_mask_.test(doc_id - type_limits<type_t::doc_id_t>::min())) {
+  if (!doc_limits::valid(doc_id)
+      || (doc_id - doc_limits::min()) >= docs_cached()
+      || docs_mask_.test(doc_id - doc_limits::min())) {
     return false;
   }
 
-  docs_mask_.set(doc_id - type_limits<type_t::doc_id_t>::min());
+  docs_mask_.set(doc_id - doc_limits::min());
 
   return true;
 }
@@ -115,9 +115,8 @@ bool segment_writer::index(
     const flags& features) {
   REGISTER_TIMER_DETAILED();
 
-  assert(docs_cached() + type_limits<type_t::doc_id_t>::min() - 1 < type_limits<type_t::doc_id_t>::eof()); // user should check return of begin() != eof()
-  auto doc_id =
-    doc_id_t(docs_cached() + type_limits<type_t::doc_id_t>::min() - 1); // -1 for 0-based offset
+  assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof()); // user should check return of begin() != eof()
+  const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() - 1); // -1 for 0-based offset
   auto& slot = fields_.get(name);
   auto& slot_features = slot.meta().features;
 
@@ -225,10 +224,8 @@ size_t segment_writer::flush_doc_mask(const segment_meta &meta) {
        doc_id < doc_id_end;
        ++doc_id) {
     if (docs_mask_.test(doc_id)) {
-      assert(size_t(integer_traits<doc_id_t>::const_max) >= doc_id + type_limits<type_t::doc_id_t>::min());
-      docs_mask.emplace(
-        doc_id_t(doc_id + type_limits<type_t::doc_id_t>::min())
-      );
+      assert(size_t(integer_traits<doc_id_t>::const_max) >= doc_id + doc_limits::min());
+      docs_mask.emplace(doc_id_t(doc_id + doc_limits::min()));
     }
   }
 

@@ -40,7 +40,6 @@ struct doc_id_t {};
 struct field_id_t {};
 struct index_gen_t {};
 struct pos_t {};
-struct term_id_t {};
 
 NS_END // type_t
 
@@ -97,11 +96,7 @@ template<> struct type_limits<type_t::pos_t> {
   CONSTEXPR static uint32_t (min)() { return 0; }
 };
 
-template<> struct type_limits<type_t::term_id_t> {
-  CONSTEXPR static bool valid(term_id id) { 
-    return integer_traits<term_id>::const_max != id; 
-  }
-};
+typedef irs::type_limits<irs::type_t::pos_t> pos_limits;
 
 NS_END
 

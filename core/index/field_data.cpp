@@ -48,36 +48,9 @@
 #include <algorithm>
 #include <cassert>
 
-NS_ROOT
+NS_LOCAL
 
-bool memcmp_less(
-    const byte_type* lhs, size_t lhs_size,
-    const byte_type* rhs, size_t rhs_size
-) NOEXCEPT {
-  assert(lhs && rhs);
-
-  if (lhs == rhs) {
-    return lhs_size < rhs_size;
-  }
-
-  const size_t size = std::min(lhs_size, rhs_size);
-  const auto res = ::memcmp(lhs, rhs, size);
-
-  if (0 == res) {
-    return lhs_size < rhs_size;
-  }
-
-  return res < 0;
-}
-
-NS_BEGIN(detail)
-
-using irs::field_data;
-using irs::bytes_ref;
-
-/* -------------------------------------------------------------------
- * doc_iterator
- * ------------------------------------------------------------------*/
+using namespace irs;
 
 class payload : public irs::payload {
  public:
@@ -178,9 +151,30 @@ class pos_iterator final: public irs::position {
   bool has_offs_{false}; // FIXME find a better way to handle presence of offsets
 };
 
-/* -------------------------------------------------------------------
- * doc_iterator
- * ------------------------------------------------------------------*/
+NS_END
+
+NS_ROOT
+
+bool memcmp_less(
+    const byte_type* lhs, size_t lhs_size,
+    const byte_type* rhs, size_t rhs_size
+) NOEXCEPT {
+  assert(lhs && rhs);
+
+  const size_t size = std::min(lhs_size, rhs_size);
+  const auto res = ::memcmp(lhs, rhs, size);
+
+  if (0 == res) {
+    return lhs_size < rhs_size;
+  }
+
+  return res < 0;
+}
+
+NS_BEGIN(detail)
+
+using irs::field_data;
+using irs::bytes_ref;
 
 class doc_iterator : public irs::doc_iterator {
  public:
@@ -229,7 +223,7 @@ class doc_iterator : public irs::doc_iterator {
 
   virtual bool next() override {
     if (freq_in_.eof()) {
-      if (!type_limits<type_t::doc_id_t>::valid(posting_->doc_code)) {
+      if (!doc_limits::valid(posting_->doc_code)) {
         return false;
       }
 
@@ -239,7 +233,7 @@ class doc_iterator : public irs::doc_iterator {
         freq_.value = posting_->freq; 
       }
 
-      const_cast<posting*>(posting_)->doc_code = type_limits<type_t::doc_id_t>::invalid();
+      const_cast<posting*>(posting_)->doc_code = doc_limits::invalid();
     } else {
       //if (freq_) {
       if (has_freq_) {
@@ -274,10 +268,6 @@ class doc_iterator : public irs::doc_iterator {
   const field_data* field_;
   bool has_freq_{false}; // FIXME remove
 };
-
-/* -------------------------------------------------------------------
- * term_iterator
- * ------------------------------------------------------------------*/
 
 class term_iterator : public irs::term_iterator {
  public:
@@ -466,13 +456,13 @@ field_data::field_data(
     terms_(*byte_writer),
     byte_writer_(byte_writer),
     int_writer_(int_writer),
-    last_doc_(type_limits<type_t::doc_id_t>::invalid()) {
+    last_doc_(doc_limits::invalid()) {
   assert(byte_writer_);
   assert(int_writer_);
 }
 
 void field_data::init(doc_id_t doc_id) {
-  assert(type_limits<type_t::doc_id_t>::valid(doc_id));
+  assert(doc_limits::valid(doc_id));
 
   if (doc_id == last_doc_) {
     return; // nothing to do
@@ -602,13 +592,10 @@ bool field_data::invert(
     token_stream& stream, 
     const flags& features, 
     doc_id_t id) {
+  assert(id < doc_limits::eof() - 1); // 0-based document id
   REGISTER_TIMER_DETAILED();
 
-  // accumulate field features
-  meta_.features |= features;
-
-  // TODO: should check feature consistency 
-  // among features & meta_.features()
+  meta_.features |= features; // accumulate field features
 
   auto& attrs = stream.attributes();
   auto& term = attrs.get<term_attribute>();
@@ -646,11 +633,14 @@ bool field_data::invert(
     pos_ += inc->value;
 
     if (pos_ < last_pos_) {
-      IR_FRMT_ERROR("invalid position %u < %u", pos_, last_pos_);
+      IR_FRMT_ERROR("invalid position %u < %u in field '%s'", pos_, last_pos_, meta_.name.c_str());
       return false;
     }
 
-    last_pos_ = pos_;
+    if (pos_ >= pos_limits::eof()) {
+      IR_FRMT_ERROR("invalid position %u >= %u in field '%s'", pos_, pos_limits::eof(), meta_.name.c_str());
+      return false;
+    }
 
     if (0 == inc->value) {
       ++num_overlap_;
@@ -661,7 +651,7 @@ bool field_data::invert(
       const uint32_t end_offset = offs_ + offs->end;
 
       if (start_offset < last_start_offs_ || end_offset < start_offset) {
-        IR_FRMT_ERROR("invalid offset start=%u end=%u", start_offset, end_offset);
+        IR_FRMT_ERROR("invalid offset start=%u end=%u in field '%s'", start_offset, end_offset, meta_.name.c_str());
         return false;
       }
 
@@ -682,9 +672,14 @@ bool field_data::invert(
     }
 
     if (0 == ++len_) {
-      IR_FRMT_ERROR("too many token in field, document '" IR_UINT32_T_SPECIFIER "'", id);
+      IR_FRMT_ERROR(
+        "too many tokens in field '%s', document '" IR_UINT32_T_SPECIFIER "'",
+         meta_.name.c_str(), id
+      );
       return false;
     }
+
+    last_pos_ = pos_;
   }
 
   if (offs) {

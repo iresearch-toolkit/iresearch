@@ -422,7 +422,7 @@ bool map_removals(
       // mask all remaining doc_ids
       if (!current_itr->next()) {
         do {
-          assert(irs::type_limits<irs::type_t::doc_id_t>::valid(merge_ctx.doc_map(merged_itr->value()))); // doc_id must have a valid mapping
+          assert(irs::doc_limits::valid(merge_ctx.doc_map(merged_itr->value()))); // doc_id must have a valid mapping
           docs_mask.insert(merge_ctx.doc_map(merged_itr->value()));
         } while (merged_itr->next());
 
@@ -432,7 +432,7 @@ bool map_removals(
       // validate that all docs in the current reader were merged, and add any removed docs to the meged mask
       for (;;) {
         while (merged_itr->value() < current_itr->value()) {
-          assert(irs::type_limits<irs::type_t::doc_id_t>::valid(merge_ctx.doc_map(merged_itr->value()))); // doc_id must have a valid mapping
+          assert(irs::doc_limits::valid(merge_ctx.doc_map(merged_itr->value()))); // doc_id must have a valid mapping
           docs_mask.insert(merge_ctx.doc_map(merged_itr->value()));
 
           if (!merged_itr->next()) {
@@ -483,7 +483,7 @@ bool map_removals(
         // mask all remaining doc_ids
         if (!current_itr->next()) {
           do {
-            assert(irs::type_limits<irs::type_t::doc_id_t>::valid(merge_ctx.doc_map(merged_itr->value()))); // doc_id must have a valid mapping
+            assert(irs::doc_limits::valid(merge_ctx.doc_map(merged_itr->value()))); // doc_id must have a valid mapping
             docs_mask.insert(merge_ctx.doc_map(merged_itr->value()));
           } while (merged_itr->next());
 
