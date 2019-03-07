@@ -45,11 +45,8 @@
 
 NS_ROOT
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                             forward declarations 
-// ----------------------------------------------------------------------------
-
-class bitvector; // forward declaration
+class comparer;
+class bitvector;
 struct directory;
 class directory_reader;
 
@@ -426,10 +423,11 @@ class IRESEARCH_API index_writer:
   //////////////////////////////////////////////////////////////////////////////
   struct init_options: public segment_options {
     ////////////////////////////////////////////////////////////////////////////
-    /// @brief aquire an exclusive lock on the repository to guard against index
-    ///        corruption from multiple index_writers
+    /// @brief comparator defines physical order of documents in each segment
+    ///        produced by an index_writer.
+    ///        empty == use default system sorting order
     ////////////////////////////////////////////////////////////////////////////
-    bool lock_repository{true};
+    const comparer* comparator;
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief number of memory blocks to cache by the internal memory pool
@@ -442,6 +440,12 @@ class IRESEARCH_API index_writer:
     ///        0 == do not cache any segments, i.e. always create new segments
     ////////////////////////////////////////////////////////////////////////////
     size_t segment_pool_size{128}; // arbitrary size
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief aquire an exclusive lock on the repository to guard against index
+    ///        corruption from multiple index_writers
+    ////////////////////////////////////////////////////////////////////////////
+    bool lock_repository{true};
 
     init_options() {}; // GCC5 requires non-default definition
   };
@@ -777,8 +781,8 @@ class IRESEARCH_API index_writer:
     segment_writer::ptr writer_;
     index_meta::index_segment_t writer_meta_; // the segment_meta this writer was initialized with
 
-    DECLARE_FACTORY(directory& dir, segment_meta_generator_t&& meta_generator);
-    segment_context(directory& dir, segment_meta_generator_t&& meta_generator);
+    DECLARE_FACTORY(directory& dir, segment_meta_generator_t&& meta_generator, const comparer* comparator);
+    segment_context(directory& dir, segment_meta_generator_t&& meta_generator, const comparer* comparator);
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief flush current writer state into a materialized segment
@@ -986,6 +990,7 @@ class IRESEARCH_API index_writer:
     format::ptr codec,
     size_t segment_pool_size,
     const segment_options& segment_limits,
+    const comparer* comparator,
     index_meta&& meta, 
     committed_state_t&& committed_state
   ) NOEXCEPT;
@@ -1000,6 +1005,7 @@ class IRESEARCH_API index_writer:
   void abort(); // aborts transaction
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
+  const comparer* comparator_;
   readers_cache cached_readers_; // readers by segment name
   format::ptr codec_;
   std::mutex commit_lock_; // guard for cached_segment_readers_, commit_pool_, meta_ (modification during commit()/defragment())

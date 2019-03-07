@@ -41,27 +41,29 @@ TEST(sorted_colum_test, sort) {
     14,73,30,70,38,85,98,79,75,38,79,85,85,100,91
   };
 
-  auto less = [](const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) NOEXCEPT {
-    const auto* plhs = lhs.c_str();
-    const auto* prhs = rhs.c_str();
+  struct comparator final : irs::comparer {
+    virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const NOEXCEPT override {
+      const auto* plhs = lhs.c_str();
+      const auto* prhs = rhs.c_str();
 
-    if (!plhs && !prhs) {
-      return false;
+      if (!plhs && !prhs) {
+        return false;
+      }
+
+      if (!plhs) {
+        return true;
+      }
+
+      if (!prhs) {
+        return false;
+      }
+
+      const auto lhs_value = irs::vread<uint32_t>(plhs);
+      const auto rhs_value = irs::vread<uint32_t>(prhs);
+
+      return lhs_value < rhs_value;
     }
-
-    if (!plhs) {
-      return true;
-    }
-
-    if (!prhs) {
-      return false;
-    }
-
-    const auto lhs_value = irs::vread<uint32_t>(plhs);
-    const auto rhs_value = irs::vread<uint32_t>(prhs);
-
-    return lhs_value < rhs_value;
-  };
+  } less;
 
   irs::segment_meta segment;
   segment.name = "123";

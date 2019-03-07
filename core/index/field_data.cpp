@@ -592,7 +592,7 @@ bool field_data::invert(
     token_stream& stream, 
     const flags& features, 
     doc_id_t id) {
-  assert(id < doc_limits::eof() - 1); // 0-based document id
+  assert(id < doc_limits::eof()); // 0-based document id
   REGISTER_TIMER_DETAILED();
 
   meta_.features |= features; // accumulate field features
@@ -693,12 +693,13 @@ bool field_data::invert(
  * fields_data
  * ------------------------------------------------------------------*/
 
-fields_data::fields_data()
-  : byte_writer_(byte_pool_.begin()),
+fields_data::fields_data(const comparer* comparator /*= nullptr*/)
+  : comparator_(comparator),
+    byte_writer_(byte_pool_.begin()),
     int_writer_(int_pool_.begin()) {
 }
 
-field_data& fields_data::get(const hashed_string_ref& name) {
+field_data& fields_data::emplace(const hashed_string_ref& name) {
   static auto generator = [](
       const hashed_string_ref& key,
       const field_data& value) NOEXCEPT {

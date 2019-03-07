@@ -67,9 +67,8 @@ std::pair<doc_map, field_id> sorted_column::flush(
     columnstore_writer& writer,
     doc_id_t max,
     const bitvector& docs_mask,
-    const less_f& less
+    const comparer& less
 ) {
-  assert(less);
   assert(index_.size() <= max);
 
   const bytes_ref data = data_buf_;

@@ -47,10 +47,12 @@ struct offset;
 struct payload;
 class format;
 struct directory;
+class comparer;
+struct flush_state;
 
 typedef block_pool<size_t, 8192> int_block_pool;
 
-NS_BEGIN( detail ) 
+NS_BEGIN(detail)
 class term_iterator;
 class doc_iterator;
 NS_END
@@ -126,15 +128,17 @@ class IRESEARCH_API field_data : util::noncopyable {
   uint32_t unq_term_cnt_;
 };
 
-struct flush_state;
-
 class IRESEARCH_API fields_data: util::noncopyable {
  public:
   typedef std::unordered_map<hashed_string_ref, field_data> fields_map;
 
-  fields_data();
+  explicit fields_data(const comparer* comparator);
 
-  field_data& get(const hashed_string_ref& name);
+  const comparer* comparator() const NOEXCEPT {
+    return comparator_;
+  }
+
+  field_data& emplace(const hashed_string_ref& name);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return approximate amount of memory actively in-use by this instance
@@ -163,6 +167,7 @@ class IRESEARCH_API fields_data: util::noncopyable {
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
+  const comparer* comparator_;
   fields_map fields_;
   byte_block_pool byte_pool_;
   byte_block_pool::inserter byte_writer_;

@@ -35,6 +35,7 @@
 
 NS_ROOT
 
+class comparer;
 struct segment_meta;
 
 //////////////////////////////////////////////////////////////////////////////
@@ -156,7 +157,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   }; // document
 
   DECLARE_UNIQUE_PTR(segment_writer);
-  DECLARE_FACTORY(directory& dir);
+  DECLARE_FACTORY(directory& dir, const comparer* comparator);
 
   struct update_context {
     size_t generation;
@@ -246,7 +247,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     columnstore_writer::column_t handle;
   };
 
-  segment_writer(directory& dir) NOEXCEPT;
+  segment_writer(directory& dir, const comparer* comparator) NOEXCEPT;
 
   bool index(
     const hashed_string_ref& name,

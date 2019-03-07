@@ -29,6 +29,18 @@
 
 NS_ROOT
 
+class comparer {
+ public:
+  virtual ~comparer() = default;
+
+  bool operator()(const bytes_ref& lhs, const bytes_ref& rhs) const {
+    return less(lhs, rhs);
+  }
+
+ protected:
+  virtual bool less(const bytes_ref& lhs, const bytes_ref& rhs) const = 0;
+}; // comparer
+
 class bitvector;
 
 class doc_map {
@@ -146,7 +158,7 @@ class sorted_column final : public irs::columnstore_writer::column_output {
     columnstore_writer& writer,
     doc_id_t max,
     const bitvector& docs_mask,
-    const less_f& less
+    const comparer& less
   );
 
   size_t memory() const NOEXCEPT {

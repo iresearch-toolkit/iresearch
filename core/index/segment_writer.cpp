@@ -69,9 +69,8 @@ doc_id_t segment_writer::begin(
   return doc_id_t(docs_cached() + doc_limits::min() - 1); // -1 for 0-based offset
 }
 
-segment_writer::ptr segment_writer::make(directory& dir) {
-  // can't use make_unique becuase of the private constructor
-  return memory::maker<segment_writer>::make(dir);
+segment_writer::ptr segment_writer::make(directory& dir, const comparer* comparator) {
+  return memory::maker<segment_writer>::make(dir, comparator);
 }
 
 size_t segment_writer::memory_active() const NOEXCEPT {
@@ -105,8 +104,13 @@ bool segment_writer::remove(doc_id_t doc_id) {
   return true;
 }
 
-segment_writer::segment_writer(directory& dir) NOEXCEPT
-  : dir_(dir), initialized_(false) {
+segment_writer::segment_writer(
+    directory& dir,
+    const comparer* comparator
+) NOEXCEPT
+  : fields_(comparator),
+    dir_(dir),
+    initialized_(false) {
 }
 
 bool segment_writer::index(
@@ -117,7 +121,7 @@ bool segment_writer::index(
 
   assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof()); // user should check return of begin() != eof()
   const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() - 1); // -1 for 0-based offset
-  auto& slot = fields_.get(name);
+  auto& slot = fields_.emplace(name);
   auto& slot_features = slot.meta().features;
 
   // invert only if new field features are a subset of slot features
@@ -242,16 +246,12 @@ void segment_writer::flush(index_meta::index_segment_t& segment) {
 
   doc_map docmap;
 
-  if (!pk_.empty()) {
-    auto comparer = [](const irs::bytes_ref& lhs, const bytes_ref& rhs) {
-      return lhs.size() < rhs.size();
-    };
-
+  if (fields_.comparator()) {
     std::tie(docmap, std::ignore) = pk_.flush(
       *col_writer_,
       doc_id_t(segment.meta.docs_count),
       docs_mask_,
-      comparer
+      *fields_.comparator()
     );
   }
 

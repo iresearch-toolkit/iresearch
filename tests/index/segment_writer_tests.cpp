@@ -68,7 +68,7 @@ TEST_F(segment_writer_tests, memory) {
   field_t field(stream);
 
   irs::memory_directory dir;
-  auto writer = irs::segment_writer::make(dir);
+  auto writer = irs::segment_writer::make(dir, nullptr);
   ASSERT_EQ(0, writer->memory_active());
 
   for (size_t i = 0; i < 100; ++i) {
@@ -107,7 +107,7 @@ TEST_F(segment_writer_tests, index_field) {
   // test missing token_stream attributes (increment)
   {
     irs::memory_directory dir;
-    auto writer = irs::segment_writer::make(dir);
+    auto writer = irs::segment_writer::make(dir, nullptr);
     irs::segment_writer::update_context ctx;
     token_stream_t stream;
     field_t field(stream);
@@ -126,7 +126,7 @@ TEST_F(segment_writer_tests, index_field) {
   // test missing token_stream attributes (term_attribute)
   {
     irs::memory_directory dir;
-    auto writer = irs::segment_writer::make(dir);
+    auto writer = irs::segment_writer::make(dir, nullptr);
     irs::segment_writer::update_context ctx;
     token_stream_t stream;
     field_t field(stream);

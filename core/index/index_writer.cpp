@@ -1014,7 +1014,8 @@ void index_writer::flush_context::reset() NOEXCEPT {
 
 index_writer::segment_context::segment_context(
     directory& dir,
-    segment_meta_generator_t&& meta_generator
+    segment_meta_generator_t&& meta_generator,
+    const comparer* comparator
 ): active_count_(0),
    buffered_docs_(0),
    dirty_(false),
@@ -1023,7 +1024,7 @@ index_writer::segment_context::segment_context(
    uncomitted_doc_id_begin_(doc_limits::min()),
    uncomitted_generation_offset_(0),
    uncomitted_modification_queries_(0),
-   writer_(segment_writer::make(dir_)) {
+   writer_(segment_writer::make(dir_, comparator)) {
   assert(meta_generator_);
 }
 
@@ -1067,9 +1068,10 @@ void index_writer::segment_context::flush() {
 
 index_writer::segment_context::ptr index_writer::segment_context::make(
     directory& dir,
-    segment_meta_generator_t&& meta_generator
+    segment_meta_generator_t&& meta_generator,
+    const comparer* comparator
 ) {
-  return memory::make_shared<segment_context>(dir, std::move(meta_generator));
+  return memory::make_shared<segment_context>(dir, std::move(meta_generator), comparator);
 }
 
 segment_writer::update_context index_writer::segment_context::make_update_context() {
@@ -1185,9 +1187,11 @@ index_writer::index_writer(
     format::ptr codec,
     size_t segment_pool_size,
     const segment_options& segment_limits,
+    const comparer* comparator,
     index_meta&& meta,
     committed_state_t&& committed_state
-) NOEXCEPT:
+) NOEXCEPT :
+    comparator_(comparator),
     cached_readers_(dir),
     codec_(codec),
     committed_state_(std::move(committed_state)),
@@ -1334,6 +1338,7 @@ index_writer::ptr index_writer::make(
     codec,
     opts.segment_pool_size,
     segment_options(opts),
+    opts.comparator,
     std::move(meta),
     std::move(comitted_state)
   );
@@ -1797,13 +1802,13 @@ index_writer::active_segment_context index_writer::get_segment_context(
     return segment_meta(file_name(meta_.increment()), codec_);
   };
   auto segment_ctx =
-    segment_writer_pool_.emplace(dir_, std::move(meta_generator)).release();
+    segment_writer_pool_.emplace(dir_, std::move(meta_generator), comparator_).release();
   auto segment_memory_max = segment_limits_.segment_memory_max.load();
 
   // recreate writer if it reserved more memory than allowed by current limits
   if (segment_memory_max &&
       segment_memory_max < segment_ctx->writer_->memory_reserved()) {
-    segment_ctx->writer_ = segment_writer::make(segment_ctx->dir_);
+    segment_ctx->writer_ = segment_writer::make(segment_ctx->dir_, comparator_);
   }
 
   return active_segment_context(segment_ctx, segments_active_);
