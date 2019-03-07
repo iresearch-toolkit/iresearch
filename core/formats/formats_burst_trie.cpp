@@ -292,11 +292,7 @@ entry::entry(
     irs::postings_writer::state&& attrs,
     bool volatile_term)
   : type_(ET_TERM) {
-  if (volatile_term) {
-    data_.assign<true>(term);
-  } else {
-    data_.assign<false>(term);
-  }
+  data_.assign(term, volatile_term);
 
   mem_.construct<irs::postings_writer::state>(std::move(attrs));
 }
@@ -310,10 +306,8 @@ entry::entry(
   : type_(ET_BLOCK) {
   if (block_t::INVALID_LABEL != label) {
     data_.assign(prefix, static_cast<byte_type>(label & 0xFF));
-  } else if (volatile_term) {
-    data_.assign<true>(prefix);
   } else {
-    data_.assign<false>(prefix);
+    data_.assign(prefix, volatile_term);
   }
 
   mem_.construct<block_t>(block_start, meta, label);
@@ -1522,11 +1516,7 @@ void field_writer::push( const bytes_ref& term ) {
 
   prefixes_.resize(term.size());
   std::fill(prefixes_.begin() + pos, prefixes_.end(), stack_.size());
-  if (volatile_state_) {
-    last_term_.assign<true>(term);
-  } else {
-    last_term_.assign<false>(term);
-  }
+  last_term_.assign(term, volatile_state_);
 }
 
 field_writer::field_writer(
@@ -1649,18 +1639,10 @@ void field_writer::write(
 
       if (!min_term_.first) {
         min_term_.first = true;
-        if (volatile_state_) {
-          min_term_.second.assign<true>(term);
-        } else {
-          min_term_.second.assign<false>(term);
-        }
+        min_term_.second.assign(term, volatile_state_);
       }
 
-      if (volatile_state_) {
-        max_term_.assign<true>(term);
-      } else {
-        max_term_.assign<false>(term);
-      }
+      max_term_.assign(term, volatile_state_);
 
       // increase processed term count
       ++term_count_;
