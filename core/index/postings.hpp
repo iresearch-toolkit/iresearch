@@ -37,7 +37,7 @@ NS_ROOT
 typedef block_pool<byte_type, 32768> byte_block_pool;
 
 struct posting {
-  doc_id_t doc_code;
+  uint64_t doc_code;
   doc_id_t doc;
   // ...........................................................................
   // store pointers to data in the following way:

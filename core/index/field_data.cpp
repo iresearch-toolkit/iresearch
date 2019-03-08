@@ -237,15 +237,16 @@ class doc_iterator : public irs::doc_iterator {
     } else {
       //if (freq_) {
       if (has_freq_) {
-        doc_id_t delta;
+        uint64_t delta;
 
-        if (shift_unpack_32(irs::vread<uint32_t>(freq_in_), delta)) {
+        if (shift_unpack_64(irs::vread<uint64_t>(freq_in_), delta)) {
           freq_.value = 1U;
         } else {
           freq_.value = irs::vread<uint32_t>(freq_in_);
         }
 
-        doc_.value += delta;
+        assert(delta < doc_limits::eof());
+        doc_.value += doc_id_t(delta);
       } else {
         doc_.value += irs::vread<uint32_t>(freq_in_);
       }
@@ -508,7 +509,7 @@ void field_data::new_term(
   if (!features.check< frequency >()) {
     p.doc_code = did;
   } else {
-    p.doc_code = did << 1;
+    p.doc_code = uint64_t(did) << 1;
     p.freq = 1;
 
     if (features.check<position>()) {
@@ -538,7 +539,7 @@ void field_data::add_term(
       assert(did > p.doc);
 
       byte_block_pool::sliced_inserter out( byte_writer_, *it );
-      irs::vwrite<uint32_t>(out, p.doc_code);
+      irs::vwrite<uint32_t>(out, doc_id_t(p.doc_code));
       *it = out.pool_offset();
 
       p.doc_code = did - p.doc;
@@ -551,16 +552,15 @@ void field_data::add_term(
     byte_block_pool::sliced_inserter out(byte_writer_, *it);
 
     if (1U == p.freq) {
-      // FIXME pack as uint64_t?
-      irs::vwrite<uint32_t>(out, p.doc_code | 1);
+      irs::vwrite<uint64_t>(out, p.doc_code | UINT64_C(1));
     } else {
-      irs::vwrite<uint32_t>(out, p.doc_code);
+      irs::vwrite<uint64_t>(out, p.doc_code);
       irs::vwrite<uint32_t>(out, p.freq);
     }
 
     *it = out.pool_offset();
 
-    p.doc_code = (did - p.doc) << 1;
+    p.doc_code = uint64_t(did - p.doc) << 1;
     p.freq = 1;
 
     p.doc = did;
