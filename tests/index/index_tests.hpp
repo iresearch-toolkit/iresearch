@@ -255,9 +255,10 @@ class index_test_base : public virtual test_param_base<index_test_context> {
 
   void add_segment(
       tests::doc_generator_base& gen,
-      irs::OpenMode mode = irs::OM_CREATE
+      irs::OpenMode mode = irs::OM_CREATE,
+      const irs::index_writer::init_options& opts = {}
   ) {
-    auto writer = open_writer(mode);
+    auto writer = open_writer(mode, opts);
     add_segment(*writer, gen);
   }
 

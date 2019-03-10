@@ -2213,17 +2213,25 @@ struct segment_meta_writer final : public irs::segment_meta_writer{
   static const string_ref FORMAT_NAME;
 
   static const int32_t FORMAT_MIN = 0;
-  static const int32_t FORMAT_MAX = FORMAT_MIN;
+  static const int32_t FORMAT_MAX = 1;
 
   enum {
     HAS_COLUMN_STORE = 1,
+    SORTED = 2
   };
+
+  explicit segment_meta_writer(int32_t version) NOEXCEPT
+    : version_(version) {
+  }
 
   virtual void write(
     directory& dir,
     std::string& filename,
     const segment_meta& meta
   ) override;
+
+ private:
+  int32_t version_;
 }; // segment_meta_writer
 
 template<>
@@ -2248,11 +2256,13 @@ void segment_meta_writer::write(directory& dir, std::string& meta_file, const se
     ));
   }
 
-  const byte_type flags = meta.column_store
-    ? segment_meta_writer::HAS_COLUMN_STORE
-    : 0;
+  byte_type flags = meta.column_store ? HAS_COLUMN_STORE : 0;
 
-  format_utils::write_header(*out, FORMAT_NAME, FORMAT_MAX);
+  if (field_limits::valid(meta.sort)) {
+    flags |= SORTED;
+  }
+
+  format_utils::write_header(*out, FORMAT_NAME, version_);
   write_string(*out, meta.name);
   out->write_vlong(meta.version);
   out->write_vlong(meta.live_docs_count);
@@ -2260,6 +2270,9 @@ void segment_meta_writer::write(directory& dir, std::string& meta_file, const se
   out->write_vlong(meta.size);
   out->write_byte(flags);
   write_strings(*out, meta.files);
+  if (version_ > FORMAT_MIN) {
+    out->write_vlong(1+meta.sort); // max->0
+  }
   format_utils::write_footer(*out);
 }
 
@@ -2297,7 +2310,7 @@ void segment_meta_reader::read(
 
   const auto checksum = format_utils::checksum(*in);
 
-  format_utils::check_header(
+  const int32_t version = format_utils::check_header(
     *in,
     segment_meta_writer::FORMAT_NAME,
     segment_meta_writer::FORMAT_MIN,
@@ -2305,7 +2318,7 @@ void segment_meta_reader::read(
   );
 
   auto name = read_string<std::string>(*in);
-  const auto version = in->read_vlong();
+  const auto segment_version = in->read_vlong();
   const auto live_docs_count = in->read_vlong();
   const auto docs_count = in->read_vlong() + live_docs_count;
 
@@ -2319,12 +2332,31 @@ void segment_meta_reader::read(
   const auto size = in->read_vlong();
   const auto flags = in->read_byte();
   auto files = read_strings<segment_meta::file_set>(*in);
+  const field_id sort = version > segment_meta_writer::FORMAT_MIN
+    ? field_limits::invalid()
+    : (in->read_vlong()-1);
 
-  if (flags & ~(segment_meta_writer::HAS_COLUMN_STORE)) {
-    throw index_error(
-      std::string("while reading segment meta '" + name
-      + "', error: use of unsupported flags '" + std::to_string(flags) + "'")
-    );
+  if (flags & ~(segment_meta_writer::HAS_COLUMN_STORE | segment_meta_writer::SORTED)) {
+    throw index_error(string_utils::to_string(
+      "while reading segment meta '%s', error: use of unsupported flags '%u'",
+      name.c_str(), flags
+    ));
+  }
+
+  const auto sorted = bool(flags & segment_meta_writer::SORTED);
+
+  if ((!field_limits::valid(sort)) && sorted) {
+    throw index_error(string_utils::to_string(
+      "while reading segment meta '%s', error: incorrectly marked as sorted",
+      name.c_str()
+    ));
+  }
+
+  if ((field_limits::valid(sort)) && !sorted) {
+    throw index_error(string_utils::to_string(
+      "while reading segment meta '%s', error: incorrectly marked as unsorted",
+      name.c_str()
+    ));
   }
 
   format_utils::check_footer(*in, checksum);
@@ -2334,10 +2366,11 @@ void segment_meta_reader::read(
   // ...........................................................................
 
   meta.name = std::move(name);
-  meta.version = version;
+  meta.version = segment_version;
   meta.column_store = flags & segment_meta_writer::HAS_COLUMN_STORE;
   meta.docs_count = docs_count;
   meta.live_docs_count = live_docs_count;
+  meta.sort = sort;
   meta.size = size;
   meta.files = std::move(files);
 }
@@ -5195,7 +5228,7 @@ class format10 : public irs::version10::format {
   virtual index_meta_writer::ptr get_index_meta_writer() const override final;
   virtual index_meta_reader::ptr get_index_meta_reader() const override final;
 
-  virtual segment_meta_writer::ptr get_segment_meta_writer() const override final;
+  virtual segment_meta_writer::ptr get_segment_meta_writer() const override;
   virtual segment_meta_reader::ptr get_segment_meta_reader() const override final;
 
   virtual document_mask_writer::ptr get_document_mask_writer() const override final;
@@ -5232,7 +5265,7 @@ index_meta_reader::ptr format10::get_index_meta_reader() const {
 
 segment_meta_writer::ptr format10::get_segment_meta_writer() const {
   // can reuse stateless writer
-  static ::segment_meta_writer INSTANCE;
+  static ::segment_meta_writer INSTANCE(::segment_meta_writer::FORMAT_MIN);
 
   return memory::make_managed<irs::segment_meta_writer, false>(&INSTANCE);
 }
@@ -5321,6 +5354,8 @@ class format11 final : public format10 {
 
   virtual field_writer::ptr get_field_writer(bool volatile_state) const override final;
 
+  virtual segment_meta_writer::ptr get_segment_meta_writer() const override final;
+
   virtual column_meta_writer::ptr get_column_meta_writer() const override final;
 }; // format10
 
@@ -5330,6 +5365,13 @@ field_writer::ptr format11::get_field_writer(bool volatile_state) const {
     volatile_state,
     int32_t(burst_trie::field_writer::FORMAT_MAX)
   );
+}
+
+segment_meta_writer::ptr format11::get_segment_meta_writer() const {
+  // can reuse stateless writer
+  static ::segment_meta_writer INSTANCE(::segment_meta_writer::FORMAT_MAX);
+
+  return memory::make_managed<irs::segment_meta_writer, false>(&INSTANCE);
 }
 
 column_meta_writer::ptr format11::get_column_meta_writer() const {

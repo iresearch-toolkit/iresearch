@@ -237,6 +237,9 @@ class store_reader_impl final: public irs::sub_reader {
     return *this;
   }
   virtual size_t size() const override { return 1; } // only 1 segment
+  virtual const irs::columnstore_reader::column_reader* sort() const override {
+    return nullptr;
+  }
 
  private:
   friend irs::store_reader irs::store_reader::reopen() const;

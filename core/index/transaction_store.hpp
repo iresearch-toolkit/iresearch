@@ -100,6 +100,10 @@ class IRESEARCH_API store_reader final
     return (*impl_)[i];
   }
 
+  virtual const columnstore_reader::column_reader* sort() const override {
+    return impl_->sort();
+  }
+
   virtual size_t size() const override { return impl_->size(); }
 
  private:

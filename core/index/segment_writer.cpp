@@ -145,6 +145,7 @@ columnstore_writer::column_output& segment_writer::stream(
 
   if (fields_.comparator() && features.check<primary_key>()) {
     // FIXME what to do with the name???
+    pk_.prepare(doc_id);
     return pk_;
   }
 
@@ -215,7 +216,7 @@ void segment_writer::flush_fields(const doc_map& docmap) {
   state.dir = &dir_;
   state.doc_count = docs_cached();
   state.name = seg_name_;
-  state.docmap = docmap.empty() ? nullptr : &docmap;
+  state.docmap = fields_.comparator() ? &docmap : nullptr;
 
   try {
     fields_.flush(*field_writer_, state);
@@ -253,9 +254,9 @@ void segment_writer::flush(index_meta::index_segment_t& segment) {
   doc_map docmap;
 
   if (fields_.comparator()) {
-    std::tie(docmap, std::ignore) = pk_.flush(
+    std::tie(docmap, meta.sort) = pk_.flush(
       *col_writer_,
-      doc_id_t(segment.meta.docs_count),
+      doc_id_t(docs_cached()),
       docs_mask_,
       *fields_.comparator()
     );

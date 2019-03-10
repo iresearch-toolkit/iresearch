@@ -1349,10 +1349,6 @@ index_writer::ptr index_writer::make(
   return writer;
 }
 
-void index_writer::options(const segment_options& opts) {
-  segment_limits_ = opts;
-}
-
 index_writer::~index_writer() NOEXCEPT {
   assert(!segments_active_.load()); // failure may indicate a dangling 'document' instance
   cached_readers_.clear();

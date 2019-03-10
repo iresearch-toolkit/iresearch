@@ -24,6 +24,7 @@
 #include "shared.hpp"
 #include "field_data.hpp"
 #include "field_meta.hpp"
+#include "sorted_column.hpp"
 
 #include "formats/formats.hpp"
 
@@ -83,7 +84,7 @@ class pos_iterator final: public irs::position {
     pay_.clear();
   }
 
-  void init(
+  void reset(
       const field_data& field,
       const frequency& freq,
       const byte_block_pool::sliced_reader& prox
@@ -187,7 +188,7 @@ class doc_iterator : public irs::doc_iterator {
     return attrs_;
   }
 
-  void init(
+  void reset(
       const field_data& field, const irs::posting& posting,
       const byte_block_pool::sliced_reader& freq,
       const byte_block_pool::sliced_reader& prox) {
@@ -205,7 +206,7 @@ class doc_iterator : public irs::doc_iterator {
       freq_.value = 0;
 
       if (features.check<position>()) {
-        pos_.init(field, freq_, prox);
+        pos_.reset(field, freq_, prox);
         attrs_.emplace(pos_);
       }
     }
@@ -270,6 +271,92 @@ class doc_iterator : public irs::doc_iterator {
   bool has_freq_{false}; // FIXME remove
 };
 
+class sorting_doc_iterator : public irs::doc_iterator {
+ public:
+  sorting_doc_iterator()
+    : attrs_(3) { // document + frequency + position
+    attrs_.emplace(doc_);
+    attrs_.emplace(freq_);
+  }
+
+  void reset(doc_iterator& it, const doc_map& docmap) {
+    const uint32_t no_frequency = 0;
+    const uint32_t* freq = &no_frequency;
+
+    const auto freq_attr = it.attributes().get<frequency>();
+    if (freq_attr) {
+      freq = &freq_attr->value;
+    }
+
+    docs_.clear();
+    // FIXME docs_.reserve(cost)
+    while (it.next()) {
+      const auto new_doc = docmap.get<doc_map::NEW>(it.value() - doc_limits::min()) + doc_limits::min();
+
+      if (doc_limits::eof(new_doc)) {
+        // skip invalid documents
+        continue;
+      }
+
+      docs_.emplace_back(new_doc, *freq);
+    }
+
+    // FIXME check if docs are already sorted
+    std::sort(docs_.begin(), docs_.end());
+
+    doc_.value = irs::doc_limits::invalid();
+    freq_.value = 0;
+    i_ = 0;
+  }
+
+  virtual const attribute_view& attributes() const NOEXCEPT override {
+    return attrs_;
+  }
+
+  virtual doc_id_t seek(doc_id_t doc) NOEXCEPT override {
+    irs::seek(*this, doc);
+    return value();
+  }
+
+  virtual doc_id_t value() const NOEXCEPT override {
+    return doc_.value;
+  }
+
+  virtual bool next() NOEXCEPT override {
+    if (i_ >= docs_.size()) {
+      return false;
+    }
+
+    const auto& entry = docs_[i_++];
+    doc_.value = entry.doc;
+    freq_.value = entry.freq;
+
+    return true;
+  }
+
+ private:
+  struct doc_entry {
+    doc_entry(doc_id_t doc, uint32_t freq) NOEXCEPT
+      : doc(doc), freq(freq) {
+    }
+
+    bool operator<(const doc_entry& rhs) const NOEXCEPT {
+      return doc < rhs.doc;
+    }
+
+    doc_id_t doc;
+    uint32_t freq;
+    size_t pos_start;
+  };
+
+  size_t i_{ };
+  std::vector<doc_entry> docs_;
+  document doc_;
+  frequency freq_;
+  pos_iterator pos_;
+  attribute_view attrs_;
+}; // sorting_doc_iterator
+
 class term_iterator : public irs::term_iterator {
  public:
   void reset(const field_data& field, const doc_map* docmap, const bytes_ref*& min, const bytes_ref*& max) {
@@ -322,9 +409,14 @@ class term_iterator : public irs::term_iterator {
     const byte_block_pool::sliced_reader freq(pool.seek(freq_begin), freq_end); // term's frequencies
     const byte_block_pool::sliced_reader prox(pool.seek(prox_begin), prox_end); // term's proximity // TODO: create on demand!!!
 
-    doc_itr_.init(*field_, posting, freq, prox);
+    doc_itr_.reset(*field_, posting, freq, prox);
 
-    return pdoc_itr_;
+    if (doc_map_) {
+      sorting_doc_itr_.reset(doc_itr_, *doc_map_);
+      return doc_iterator::ptr(doc_iterator::ptr(), &sorting_doc_itr_); // aliasing ctor
+    }
+
+    return doc_iterator::ptr(doc_iterator::ptr(), &doc_itr_); // aliasing ctor
   }
 
   virtual bool next() override {   
@@ -368,7 +460,7 @@ class term_iterator : public irs::term_iterator {
   const field_data* field_;
   const doc_map* doc_map_;
   mutable detail::doc_iterator doc_itr_;
-  irs::doc_iterator::ptr pdoc_itr_{irs::doc_iterator::ptr(), &doc_itr_}; // aliasing ctor
+  mutable detail::sorting_doc_iterator sorting_doc_itr_;
   bool itr_increment_{ false };
 }; // term_iterator
 
@@ -462,7 +554,7 @@ field_data::field_data(
   assert(int_writer_);
 }
 
-void field_data::init(doc_id_t doc_id) {
+void field_data::reset(doc_id_t doc_id) {
   assert(doc_limits::valid(doc_id));
 
   if (doc_id == last_doc_) {
@@ -627,7 +719,7 @@ bool field_data::invert(
     }
   } 
 
-  init(id); // initialize field_data for the supplied doc_id
+  reset(id); // initialize field_data for the supplied doc_id
 
   while (stream.next()) {
     pos_ += inc->value;

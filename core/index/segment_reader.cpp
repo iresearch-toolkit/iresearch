@@ -298,6 +298,10 @@ class segment_reader_impl : public sub_reader {
     return 1; // only 1 segment
   }
 
+  virtual const columnstore_reader::column_reader* sort() const NOEXCEPT override {
+    return sort_;
+  }
+
   virtual const columnstore_reader::column_reader* column_reader(
     field_id field
   ) const override;
@@ -306,6 +310,7 @@ class segment_reader_impl : public sub_reader {
   DECLARE_SHARED_PTR(segment_reader_impl); // required for NAMED_PTR(...)
   std::vector<column_meta> columns_;
   columnstore_reader::ptr columnstore_reader_;
+  const columnstore_reader::column_reader* sort_{};
   const directory& dir_;
   uint64_t docs_count_;
   document_mask docs_mask_;
@@ -452,6 +457,17 @@ doc_iterator::ptr segment_reader_impl::docs_iterator() const {
         "failed to find existing (according to meta) columnstore in segment '%s'",
         meta.name.c_str()
       ));
+    }
+
+    if (field_limits::valid(meta.sort)) {
+      reader->sort_ = columnstore_reader->column(meta.sort);
+
+      if (!reader->sort_) {
+        throw index_error(string_utils::to_string(
+          "failed to find sort column '" IR_UINT64_T_SPECIFIER "' (according to meta) in columnstore in segment '%s'",
+          meta.sort, meta.name.c_str()
+        ));
+      }
     }
   }
 

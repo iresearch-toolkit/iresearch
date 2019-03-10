@@ -79,18 +79,18 @@ class IRESEARCH_API field_data : util::noncopyable {
     int_block_pool::inserter* int_writer
   );
 
-  doc_id_t doc() const { return last_doc_; }
+  doc_id_t doc() const NOEXCEPT { return last_doc_; }
 
   // returns number of terms in a field within a document
-  size_t size() const { return len_; }
+  size_t size() const NOEXCEPT { return len_; }
 
-  const field_meta& meta() const { return meta_; }
+  const field_meta& meta() const NOEXCEPT { return meta_; }
 
   data_output& norms(columnstore_writer& writer);
 
   // returns false if field contains indexed data
-  bool empty() const {
-    return !type_limits<type_t::doc_id_t>::valid(last_doc_);
+  bool empty() const NOEXCEPT {
+    return !doc_limits::valid(last_doc_);
   }
 
   bool invert(token_stream& tokens, const flags& features, doc_id_t id);
@@ -100,7 +100,7 @@ class IRESEARCH_API field_data : util::noncopyable {
   friend class detail::doc_iterator;
   friend class fields_data;
 
-  void init(doc_id_t doc_id);
+  void reset(doc_id_t doc_id);
 
   void new_term(posting& p, doc_id_t did, const payload* pay, const offset* offs);
 
@@ -171,7 +171,7 @@ class IRESEARCH_API fields_data: util::noncopyable {
   fields_map fields_;
   byte_block_pool byte_pool_;
   byte_block_pool::inserter byte_writer_;
-  int_block_pool int_pool_;
+  int_block_pool int_pool_; // FIXME why don't to use std::vector<size_t>?
   int_block_pool::inserter int_writer_;
   flags features_;
   IRESEARCH_API_PRIVATE_VARIABLES_END

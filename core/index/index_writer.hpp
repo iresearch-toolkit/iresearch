@@ -576,7 +576,17 @@ class IRESEARCH_API index_writer:
   /// @brief modify the runtime segment options as per the specified values
   ///        options will apply no later than after the next commit()
   ////////////////////////////////////////////////////////////////////////////
-  void options(const segment_options& opts);
+  void options(const segment_options& opts) NOEXCEPT {
+    segment_limits_ = opts;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// @returns comparator using for sorting documents by a primary key
+  ///          nullptr == default sort order
+  ////////////////////////////////////////////////////////////////////////////
+  const comparer* comparator() const NOEXCEPT {
+    return comparator_;
+  }
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief begins the two-phase transaction
