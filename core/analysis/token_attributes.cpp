@@ -92,11 +92,11 @@ REGISTER_ATTRIBUTE(irs::granularity_prefix);
 DEFINE_ATTRIBUTE_TYPE(irs::granularity_prefix)
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                       primary_key
+// --SECTION--                                                            sorted
 // -----------------------------------------------------------------------------
 
-REGISTER_ATTRIBUTE(irs::primary_key);
-DEFINE_ATTRIBUTE_TYPE(irs::primary_key)
+REGISTER_ATTRIBUTE(irs::sorted);
+DEFINE_ATTRIBUTE_TYPE(irs::sorted)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              norm

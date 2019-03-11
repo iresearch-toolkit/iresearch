@@ -49,7 +49,7 @@ TEST_P(sorted_index_test_case, check_document_order) {
         doc.insert(std::make_shared<tests::templates::string_field>(
           irs::string_ref(name),
           data.str,
-          name == "name" ? irs::flags{irs::primary_key::type()} : irs::flags{}
+          name == "name" ? irs::flags{irs::sorted::type()} : irs::flags{}
         ));
       }
   });
@@ -86,7 +86,7 @@ TEST_P(sorted_index_test_case, check_document_order) {
     irs::bytes_ref actual_value;
 
     auto& segment = reader[0];
-    const auto* column = segment.column_reader(3);
+    const auto* column = segment.sort();
     ASSERT_NE(nullptr, column);
     auto values = column->values();
     auto terms = segment.field("same");

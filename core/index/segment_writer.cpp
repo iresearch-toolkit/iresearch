@@ -143,10 +143,10 @@ columnstore_writer::column_output& segment_writer::stream(
     const flags& features) {
   REGISTER_TIMER_DETAILED();
 
-  if (fields_.comparator() && features.check<primary_key>()) {
+  if (fields_.comparator() && features.check<sorted>()) {
     // FIXME what to do with the name???
-    pk_.prepare(doc_id);
-    return pk_;
+    sort_.prepare(doc_id);
+    return sort_;
   }
 
   auto generator = [](
@@ -254,7 +254,7 @@ void segment_writer::flush(index_meta::index_segment_t& segment) {
   doc_map docmap;
 
   if (fields_.comparator()) {
-    std::tie(docmap, meta.sort) = pk_.flush(
+    std::tie(docmap, meta.sort) = sort_.flush(
       *col_writer_,
       doc_id_t(docs_cached()),
       docs_mask_,
