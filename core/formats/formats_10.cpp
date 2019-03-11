@@ -2258,21 +2258,24 @@ void segment_meta_writer::write(directory& dir, std::string& meta_file, const se
 
   byte_type flags = meta.column_store ? HAS_COLUMN_STORE : 0;
 
-  if (field_limits::valid(meta.sort)) {
-    flags |= SORTED;
-  }
-
   format_utils::write_header(*out, FORMAT_NAME, version_);
   write_string(*out, meta.name);
   out->write_vlong(meta.version);
   out->write_vlong(meta.live_docs_count);
   out->write_vlong(meta.docs_count - meta.live_docs_count); // docs_count >= live_docs_count
   out->write_vlong(meta.size);
-  out->write_byte(flags);
-  write_strings(*out, meta.files);
   if (version_ > FORMAT_MIN) {
+    // sorted indices are not supported in version 1.0
+    if (field_limits::valid(meta.sort)) {
+      flags |= SORTED;
+    }
+
+    out->write_byte(flags);
     out->write_vlong(1+meta.sort); // max->0
+  } else {
+    out->write_byte(flags);
   }
+  write_strings(*out, meta.files);
   format_utils::write_footer(*out);
 }
 
@@ -2331,10 +2334,11 @@ void segment_meta_reader::read(
 
   const auto size = in->read_vlong();
   const auto flags = in->read_byte();
+  field_id sort = field_limits::invalid();
+  if (version > segment_meta_writer::FORMAT_MIN) {
+    sort = in->read_vlong() - 1;
+  }
   auto files = read_strings<segment_meta::file_set>(*in);
-  const field_id sort = version > segment_meta_writer::FORMAT_MIN
-    ? field_limits::invalid()
-    : (in->read_vlong()-1);
 
   if (flags & ~(segment_meta_writer::HAS_COLUMN_STORE | segment_meta_writer::SORTED)) {
     throw index_error(string_utils::to_string(

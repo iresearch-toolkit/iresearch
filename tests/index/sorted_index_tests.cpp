@@ -23,6 +23,7 @@
 
 #include "tests_shared.hpp"
 #include "iql/query_builder.hpp"
+#include "search/sorting_doc_iterator.hpp"
 
 #include "index_tests.hpp"
 
@@ -56,6 +57,8 @@ TEST_P(sorted_index_test_case, check_document_order) {
 
   auto* doc0 = gen.next(); // name == 'A'
   auto* doc1 = gen.next(); // name == 'B'
+  auto* doc2 = gen.next(); // name == 'C'
+  auto* doc3 = gen.next(); // name == 'D'
 
   // create index segment
   {
@@ -66,41 +69,122 @@ TEST_P(sorted_index_test_case, check_document_order) {
     ASSERT_NE(nullptr, writer);
     ASSERT_NE(nullptr, writer->comparator());
 
-    ASSERT_TRUE(insert(*writer,
-      doc0->indexed.begin(), doc0->indexed.end(),
-      doc0->stored.begin(), doc0->stored.end()
-    ));
-    ASSERT_TRUE(insert(*writer,
-      doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+    // segment 0
+    {
+      ASSERT_TRUE(insert(*writer,
+        doc0->indexed.begin(), doc0->indexed.end(),
+        doc0->stored.begin(), doc0->stored.end()
+      ));
+      ASSERT_TRUE(insert(*writer,
+        doc2->indexed.begin(), doc2->indexed.end(),
+        doc2->stored.begin(), doc2->stored.end()
+      ));
+      writer->commit();
+    }
 
-    writer->commit();
+    // segment 1
+    {
+      ASSERT_TRUE(insert(*writer,
+        doc1->indexed.begin(), doc1->indexed.end(),
+        doc1->stored.begin(), doc1->stored.end()
+      ));
+      ASSERT_TRUE(insert(*writer,
+        doc3->indexed.begin(), doc3->indexed.end(),
+        doc3->stored.begin(), doc3->stored.end()
+      ));
+      writer->commit();
+    }
   }
 
   // read documents
   {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_TRUE(reader);
-    ASSERT_EQ(1, reader.size());
+    ASSERT_EQ(2, reader.size());
     irs::bytes_ref actual_value;
 
-    auto& segment = reader[0];
-    const auto* column = segment.sort();
-    ASSERT_NE(nullptr, column);
-    auto values = column->values();
-    auto terms = segment.field("same");
-    ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
-    ASSERT_TRUE(termItr->next());
-    auto docsItr = termItr->postings(iresearch::flags());
-    ASSERT_TRUE(docsItr->next());
-    ASSERT_TRUE(values(docsItr->value(), actual_value));
-    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str()));
-    ASSERT_TRUE(docsItr->next());
-    ASSERT_TRUE(values(docsItr->value(), actual_value));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
-    ASSERT_FALSE(docsItr->next());
+    // check segment 0
+    {
+      auto& segment = reader[0];
+      const auto* column = segment.sort();
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_FALSE(docsItr->next());
+    }
+
+    // check segment 1
+    {
+      auto& segment = reader[1];
+      const auto* column = segment.sort();
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_FALSE(docsItr->next());
+    }
+
+    // check sorting iterator
+    {
+      irs::sorting_doc_iterator docs(less);
+
+      // emplace segment 0
+      {
+        auto& segment = reader[0];
+        const auto* column = segment.sort();
+        ASSERT_NE(nullptr, column);
+        auto values = column->values();
+        auto terms = segment.field("same");
+        ASSERT_NE(nullptr, terms);
+        auto termItr = terms->iterator();
+        ASSERT_TRUE(termItr->next());
+        docs.emplace(
+          termItr->postings(iresearch::flags()),
+          *column
+        );
+      }
+
+      // emplace segment 1
+      {
+        auto& segment = reader[1];
+        const auto* column = segment.sort();
+        ASSERT_NE(nullptr, column);
+        auto values = column->values();
+        auto terms = segment.field("same");
+        ASSERT_NE(nullptr, terms);
+        auto termItr = terms->iterator();
+        ASSERT_TRUE(termItr->next());
+        docs.emplace(
+          termItr->postings(iresearch::flags()),
+          *column
+        );
+      }
+
+      ASSERT_TRUE(docs.next());
+      ASSERT_TRUE(docs.next());
+      ASSERT_TRUE(docs.next());
+      ASSERT_TRUE(docs.next());
+      ASSERT_FALSE(docs.next());
+    }
   }
 }
 
@@ -113,7 +197,7 @@ INSTANTIATE_TEST_CASE_P(
       &tests::fs_directory,
       &tests::mmap_directory
     ),
-    ::testing::Values("1_0", "1_1")
+    ::testing::Values("1_1")
   ),
   tests::to_string
 );
