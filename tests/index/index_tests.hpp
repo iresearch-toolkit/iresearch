@@ -175,6 +175,13 @@ class index_test_base : public virtual test_param_base<index_test_context> {
   irs::directory& dir() const { return *dir_; }
   irs::format::ptr codec() { return codec_; }
   const index_t& index() const { return index_; }
+  index_t& index() { return index_; }
+
+  void sort(const irs::comparer& comparator) {
+    for (auto& segment : index_) {
+      segment.sort(comparator);
+    }
+  }
 
   irs::index_writer::ptr open_writer(
       irs::directory& dir,

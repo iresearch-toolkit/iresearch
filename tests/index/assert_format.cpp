@@ -45,27 +45,17 @@
 
 NS_BEGIN(tests)
 
-/* -------------------------------------------------------------------
-* FREQUENCY BASED DATA MODEL
-* ------------------------------------------------------------------*/
-
-/* -------------------------------------------------------------------
-* position
-* ------------------------------------------------------------------*/
-
 position::position(
     uint32_t pos, uint32_t start,
     uint32_t end,
     const irs::bytes_ref& pay)
-  : pos( pos ), start( start ),
-    end( end ), payload( pay ) {
+  : pos(pos), start(start),
+    end(end), payload(pay) {
 }
 
-/* -------------------------------------------------------------------
-* posting
-* ------------------------------------------------------------------*/
-
-posting::posting(irs::doc_id_t id): id_(id) {}
+posting::posting(irs::doc_id_t id)
+  : id_(id) {
+}
 
 void posting::add(uint32_t pos, uint32_t offs_start, const irs::attribute_view& attrs) {
   auto& offs = attrs.get<irs::offset>();
@@ -73,23 +63,18 @@ void posting::add(uint32_t pos, uint32_t offs_start, const irs::attribute_view& 
 
   uint32_t start = irs::offset::INVALID_OFFSET;
   uint32_t end = irs::offset::INVALID_OFFSET;
-  if ( offs ) {
+  if (offs) {
     start = offs_start + offs->start;
     end = offs_start + offs->end;
   }
 
-  positions_.emplace( pos, start, end,
-                      pay ? pay->value : irs::bytes_ref::NIL);
+  positions_.emplace(pos, start, end, pay ? pay->value : irs::bytes_ref::NIL);
 }
-
-/* -------------------------------------------------------------------
-* term
-* ------------------------------------------------------------------*/
 
 term::term(const irs::bytes_ref& data): value( data ) {}
 
 posting& term::add(irs::doc_id_t id) {
-  return const_cast< posting& >( *postings.emplace( id ).first );
+  return const_cast<posting&>(*postings.emplace(id).first);
 }
 
 bool term::operator<( const term& rhs ) const {
@@ -98,10 +83,6 @@ bool term::operator<( const term& rhs ) const {
     rhs.value.c_str(), rhs.value.size()
   );
 }
-
-/* -------------------------------------------------------------------
-* field
-* ------------------------------------------------------------------*/
 
 field::field(
     const irs::string_ref& name,
@@ -174,7 +155,15 @@ void index_segment::add(const ifield& f) {
   auto& pay = attrs.get<irs::payload>();
 
   bool empty = true;
-  auto doc_id = (irs::type_limits<irs::type_t::doc_id_t>::min)() + count_;
+  auto doc_id = irs::doc_id_t((irs::doc_limits::min)() + count_);
+
+  irs::bytes_output out;
+  if (f.features().check<irs::sorted>()) {
+    if (f.write(out)) {
+      const irs::bytes_ref value = out;
+      sort_.emplace_back(std::make_pair(irs::bstring(value.c_str(), value.size()), doc_id));
+    }
+  }
 
   while (stream.next()) {
     tests::term& trm = fld.add(term->value());
@@ -193,14 +182,6 @@ void index_segment::add(const ifield& f) {
     fld.offs += offs->end;
   }
 }
-
-/* -------------------------------------------------------------------
-* FORMAT DEFINITION 
-* ------------------------------------------------------------------*/
-
-/* -------------------------------------------------------------------
- * index_meta_writer
- * ------------------------------------------------------------------*/
 
 std::string index_meta_writer::filename(
   const irs::index_meta& meta
@@ -377,8 +358,7 @@ class doc_iterator : public irs::doc_iterator {
   }
 
   virtual irs::doc_id_t seek(irs::doc_id_t id) override {
-    posting tmp( id );
-    auto it = data_.postings.find( tmp );
+    auto it = data_.postings.find(id);
 
     if ( it == data_.postings.end() ) {
       prev_ = next_ = it;
