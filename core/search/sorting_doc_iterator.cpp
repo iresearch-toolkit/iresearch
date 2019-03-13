@@ -38,6 +38,7 @@ bool sorting_doc_iterator::next() {
     if (!lead.next()) {
       if (!remove_lead(it)) {
         doc_ = doc_limits::eof();
+        attrs_ = &attribute_view::empty_instance();
         return false;
       }
       continue;
@@ -51,6 +52,7 @@ bool sorting_doc_iterator::next() {
 
   const segment& lead = heap_.back();
   doc_ = lead.value();
+  attrs_ = &lead.attributes();
   lead_ = 1;
 
   return true;

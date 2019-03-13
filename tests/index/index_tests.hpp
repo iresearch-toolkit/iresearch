@@ -242,6 +242,10 @@ class index_test_base : public virtual test_param_base<index_test_context> {
         src->stored.begin(), src->stored.end()
       ));
     }
+
+    if (writer.comparator()) {
+      segment.sort(*writer.comparator());
+    }
   }
 
   void add_segment(irs::index_writer& writer, tests::doc_generator_base& gen) {

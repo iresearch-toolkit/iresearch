@@ -67,6 +67,10 @@ class sorting_doc_iterator final : public doc_iterator {
       return payload_->value();
     }
 
+    const attribute_view& attributes() const {
+      return doc_->attributes();
+    }
+
     bool next() {
       if (!doc_->next()) {
         return false;
@@ -116,7 +120,7 @@ class sorting_doc_iterator final : public doc_iterator {
   virtual doc_id_t value() const NOEXCEPT override { return doc_; }
 
   virtual const attribute_view& attributes() const NOEXCEPT override {
-    return attrs_;
+    return *attrs_;
   }
 
  private:
@@ -133,7 +137,7 @@ class sorting_doc_iterator final : public doc_iterator {
   }; // heap_comparer
 
   template<typename Iterator>
-  inline bool remove_lead(Iterator it) {
+  bool remove_lead(Iterator it) {
     if (&*it != &heap_.back()) {
       std::swap(*it, heap_.back());
     }
@@ -142,7 +146,7 @@ class sorting_doc_iterator final : public doc_iterator {
   }
 
   heap_comparer less_;
-  attribute_view attrs_;
+  const attribute_view* attrs_{ &attribute_view::empty_instance() };
   std::deque<segment> itrs_; // FIXME use vector instead
   std::vector<std::reference_wrapper<segment>> heap_;
   size_t lead_{0}; // number of segments in lead group

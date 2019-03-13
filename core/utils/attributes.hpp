@@ -421,6 +421,8 @@ template<
 
   size_t size() const NOEXCEPT { return map_.size(); }
 
+  bool empty() const NOEXCEPT { return map_.empty(); }
+
  protected:
   typename ref<T>::type& emplace(bool& inserted, const attribute::type_id& type) {
     auto res = map_utils::try_emplace(map_, &type);

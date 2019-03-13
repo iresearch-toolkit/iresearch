@@ -195,7 +195,7 @@ class index_segment: irs::util::noncopyable {
       [&comparator](
           const std::pair<irs::bstring, irs::doc_id_t>& lhs,
           const std::pair<irs::bstring, irs::doc_id_t>& rhs) {
-        return comparator(lhs.first, lhs.first);
+        return comparator(lhs.first, rhs.first);
     });
 
     irs::doc_id_t new_doc_id = irs::doc_limits::min();

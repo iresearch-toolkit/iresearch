@@ -30,10 +30,7 @@
 NS_LOCAL
 
 class sorted_index_test_case : public tests::index_test_base {
-
-};
-
-TEST_P(sorted_index_test_case, check_document_order) {
+ protected:
   struct comparer : irs::comparer {
     virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const {
       const auto lhs_value = irs::to_string<irs::bytes_ref>(lhs.c_str());
@@ -41,8 +38,42 @@ TEST_P(sorted_index_test_case, check_document_order) {
 
       return lhs_value > rhs_value;
     }
-  } less;
+  };
 
+  void assert_index(size_t skip = 0) const {
+    index_test_base::assert_index(irs::flags(), skip);
+    index_test_base::assert_index(irs::flags{ irs::document::type() }, skip);
+    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type() }, skip);
+//    index_test_base::asset_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type() }, skip);
+//    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::offset::type() }, skip);
+//    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type() }, skip);
+//    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() }, skip);
+  }
+
+  comparer less;
+};
+
+TEST_P(sorted_index_test_case, assert_index) {
+  // build index
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+      if (data.is_string()) {
+        doc.insert(std::make_shared<tests::templates::string_field>(
+          irs::string_ref(name),
+          data.str,
+          name == "name" ? irs::flags{irs::sorted::type()} : irs::flags{}
+        ));
+      }
+  });
+  irs::index_writer::init_options opts;
+  opts.comparator = &less;
+  add_segment(gen, irs::OM_CREATE, opts); // add segment
+
+  assert_index();
+}
+
+TEST_P(sorted_index_test_case, check_document_order) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
