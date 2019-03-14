@@ -1152,6 +1152,7 @@ SeekResult term_iterator::seek_ge(const bytes_ref& term) {
   if (seek_to_block(term, prefix)) {
     return SeekResult::FOUND;
   }
+  UNUSED(prefix);
 
   assert(cur_block_);
 
