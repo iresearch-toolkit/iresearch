@@ -1166,10 +1166,11 @@ SeekResult term_iterator::seek_ge(const bytes_ref& term) {
           // we're already at greater term
           return SeekResult::NOT_FOUND;
         case ET_BLOCK:
+          // we're at the greater block, load it and call next
           cur_block_ = push_block(cur_block_->sub_start(), term_.size());
           cur_block_->load();
           break;
-        case ET_INVALID:
+        default:
           assert(false);
           return SeekResult::END;
       }
@@ -1178,7 +1179,6 @@ SeekResult term_iterator::seek_ge(const bytes_ref& term) {
       return next()
         ? SeekResult::NOT_FOUND // have moved to the next entry
         : SeekResult::END; // have no more terms
-      break;
   }
 
   assert(false);
