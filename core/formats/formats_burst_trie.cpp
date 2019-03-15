@@ -455,7 +455,9 @@ class term_iterator final : public irs::seek_term_iterator {
   }
   const bytes_ref& value() const override { return term_; }
   virtual SeekResult seek_ge(const bytes_ref& term) override;
-  virtual bool seek(const bytes_ref& term) override;
+  virtual bool seek(const bytes_ref& term) override {
+    return SeekResult::FOUND == seek_equal(term);
+  }
   virtual bool seek(
       const bytes_ref& term,
       const irs::seek_term_iterator::seek_cookie& cookie) override {
@@ -1184,10 +1186,6 @@ SeekResult term_iterator::seek_ge(const bytes_ref& term) {
 
   assert(false);
   return SeekResult::END;
-}
-
-bool term_iterator::seek(const bytes_ref& term) {
-  return SeekResult::FOUND == seek_equal(term);
 }
 
 #if defined(_MSC_VER)
