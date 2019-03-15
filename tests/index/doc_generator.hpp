@@ -289,13 +289,13 @@ struct document: irs::util::noncopyable {
 
 /* Base class for document generators */
 struct doc_generator_base {
-  DECLARE_UNIQUE_PTR( doc_generator_base );
+  DECLARE_UNIQUE_PTR(doc_generator_base);
   DEFINE_FACTORY_INLINE(doc_generator_base)
 
   virtual const tests::document* next() = 0;
   virtual void reset() = 0;
 
-  virtual ~doc_generator_base() { }
+  virtual ~doc_generator_base() = default;
 };
 
 /* Generates documents from UTF-8 encoded file 
