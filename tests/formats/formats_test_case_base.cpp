@@ -404,6 +404,7 @@ TEST_P(format_test_case, fields_seek_ge) {
   {
     const std::vector<std::vector<irs::byte_type>> terms {
       { 207 },
+      { 208 },
       { 208, 191 },
       { 208, 192, 81 },
       { 192, 192, 187, 86, 0 },
@@ -438,9 +439,19 @@ TEST_P(format_test_case, fields_seek_ge) {
   {
     const irs::byte_type term[] { 209, 191 };
     const irs::bytes_ref target(term, sizeof term);
+    const std::vector<std::vector<irs::byte_type>> terms {
+      { 209 },
+      { 208, 193 },
+      { 208, 192, 188 },
+      { 208, 192, 188 },
+    };
 
     auto it = field->iterator();
-    ASSERT_EQ(irs::SeekResult::END, it->seek_ge(target));
+
+    for (auto& term : terms) {
+      const irs::bytes_ref target(term.data(), term.size());
+      ASSERT_EQ(irs::SeekResult::END, it->seek_ge(target));
+    }
   }
 }
 
