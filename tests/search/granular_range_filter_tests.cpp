@@ -1666,7 +1666,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
   ASSERT_EQ(1, reader->size());
   auto& segment = reader[0];
 
-  // a < 30
+  // a > -inf && a < 30.
   {
     std::set<std::string> expected;
 
@@ -1715,7 +1715,54 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
     ASSERT_EQ(expected, actual);
   }
 
-  // a > 30
+  // a < 30.
+  {
+    std::set<std::string> expected;
+
+    // fill expected values
+    {
+      gen.reset();
+      while (auto* doc = gen.next()) {
+        auto* numeric_field = dynamic_cast<granular_double_field*>(doc->indexed.get("a"));
+        ASSERT_NE(nullptr, numeric_field);
+
+        if (numeric_field->value() < 30.) {
+          auto* key_field = dynamic_cast<tests::templates::string_field*>(doc->indexed.get("_key"));
+          ASSERT_NE(nullptr, key_field);
+
+          expected.emplace(std::string(key_field->value()));
+        }
+      }
+    }
+
+    irs::numeric_token_stream max_stream;
+    max_stream.reset(30.);
+
+    irs::by_granular_range query;
+    query.field("a")
+         .include<irs::Bound::MAX>(false)
+         .insert<irs::Bound::MAX>(max_stream);
+
+    auto prepared = query.prepare(reader);
+    ASSERT_NE(nullptr, prepared);
+    auto* column = segment.column_reader("_key");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
+
+
+    std::set<std::string> actual;
+
+    irs::bytes_ref value;
+    auto docs = prepared->execute(segment);
+    while(docs->next()) {
+      const auto doc = docs->value();
+      values(doc, value);
+      actual.emplace(irs::to_string<std::string>(value.c_str()));
+    }
+    ASSERT_EQ(expected, actual);
+  }
+
+  // a > 30. && a < inf
   {
     std::set<std::string> expected;
 
@@ -1744,6 +1791,52 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
          .insert<irs::Bound::MIN>(min_stream)
          .include<irs::Bound::MAX>(false)
          .insert<irs::Bound::MAX>(irs::numeric_utils::numeric_traits<double_t>::inf());
+
+    auto prepared = query.prepare(reader);
+    ASSERT_NE(nullptr, prepared);
+    auto* column = segment.column_reader("_key");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
+
+    std::set<std::string> actual;
+
+    irs::bytes_ref value;
+    auto docs = prepared->execute(segment);
+    while(docs->next()) {
+      const auto doc = docs->value();
+      values(doc, value);
+      actual.emplace(irs::to_string<std::string>(value.c_str()));
+    }
+    ASSERT_EQ(expected, actual);
+  }
+
+  // a > 30.
+  {
+    std::set<std::string> expected;
+
+    // fill expected values
+    {
+      gen.reset();
+      while (auto* doc = gen.next()) {
+        auto* numeric_field = dynamic_cast<granular_double_field*>(doc->indexed.get("a"));
+        ASSERT_NE(nullptr, numeric_field);
+
+        if (numeric_field->value() > 30.) {
+          auto* key_field = dynamic_cast<tests::templates::string_field*>(doc->indexed.get("_key"));
+          ASSERT_NE(nullptr, key_field);
+
+          expected.emplace(std::string(key_field->value()));
+        }
+      }
+    }
+
+    irs::numeric_token_stream min_stream;
+    min_stream.reset(30.);
+
+    irs::by_granular_range query;
+    query.field("a")
+         .include<irs::Bound::MIN>(false)
+         .insert<irs::Bound::MIN>(min_stream);
 
     auto prepared = query.prepare(reader);
     ASSERT_NE(nullptr, prepared);
