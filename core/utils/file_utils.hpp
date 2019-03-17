@@ -44,6 +44,9 @@
   #define posix_create _wcreat
   #define posix_open _wopen
   #define posix_close _close
+  #define fwrite_unlocked _fwrite_nolock
+  #define fread_unlocked _fread_nolock
+  #define feof_unlocked _feof_nolock
 
   #define IR_FADVICE_NORMAL 0
   #define IR_FADVICE_SEQUENTIAL 1
