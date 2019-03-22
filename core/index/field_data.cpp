@@ -502,29 +502,28 @@ NS_END // detail
  * field_data
  * ------------------------------------------------------------------*/
 
-void field_data::write_offset( posting& p, int_block_pool::iterator& where, const offset* offs ) {
-  assert(offs);
-  const uint32_t start_offset = offs_ + offs->start;
-  const uint32_t end_offset = offs_ + offs->end;
+void field_data::write_offset(posting& p, size_t& where, const offset& offs ) {
+  const uint32_t start_offset = offs_ + offs.start;
+  const uint32_t end_offset = offs_ + offs.end;
 
-  assert( start_offset >= p.offs );
+  assert(start_offset >= p.offs);
 
-  byte_block_pool::sliced_inserter out( byte_writer_, *where );
+  byte_block_pool::sliced_inserter out(byte_writer_, where);
 
   irs::vwrite<uint32_t>(out, start_offset - p.offs);
   irs::vwrite<uint32_t>(out, end_offset - start_offset);
 
-  *where = out.pool_offset();
+  where = out.pool_offset();
   p.offs = start_offset;
 }
 
 void field_data::write_prox(
     posting& p,
-    int_block_pool::iterator& where,
+    size_t& where,
     uint32_t prox,
     const payload* pay
 ) {
-  byte_block_pool::sliced_inserter out( byte_writer_, *where );
+  byte_block_pool::sliced_inserter out(byte_writer_, where);
 
   if (!pay || pay->value.empty()) {
     irs::vwrite<uint32_t>(out, shift_pack_32(prox, false));
@@ -537,7 +536,7 @@ void field_data::write_prox(
     meta_.features.add<payload>();
   }
 
-  *where = out.pool_offset();
+  where = out.pool_offset();
   p.pos = pos_;
 }
 
@@ -605,10 +604,11 @@ void field_data::new_term(
     p.freq = 1;
 
     if (features.check<position>()) {
-      int_block_pool::iterator it = int_writer_->parent().seek(p.int_start + 1);
-      write_prox(p, it, pos_, pay);
+      auto& where = *int_writer_->parent().seek(p.int_start + 1);
+      write_prox(p, where, pos_, pay);
       if (features.check<offset>()) {
-        write_offset(p, it, offs);
+        assert(offs);
+        write_offset(p, where, *offs);
       }
     }
   }
@@ -623,16 +623,16 @@ void field_data::add_term(
     const payload* pay,
     const offset* offs
 ) {
-  int_block_pool::iterator it = int_writer_->parent().seek(p.int_start);
 
   auto& features = meta_.features;
   if (!features.check<frequency>()) {
     if (p.doc != did) {
       assert(did > p.doc);
 
-      byte_block_pool::sliced_inserter out( byte_writer_, *it );
+      auto& doc_stream_end = *int_writer_->parent().seek(p.int_start);
+      byte_block_pool::sliced_inserter out(byte_writer_, doc_stream_end);
       irs::vwrite<uint32_t>(out, doc_id_t(p.doc_code));
-      *it = out.pool_offset();
+      doc_stream_end = out.pool_offset();
 
       p.doc_code = did - p.doc;
       p.doc = did;
@@ -641,7 +641,8 @@ void field_data::add_term(
   } else if (p.doc != did) {
     assert(did > p.doc);
 
-    byte_block_pool::sliced_inserter out(byte_writer_, *it);
+    auto& doc_stream_end = *int_writer_->parent().seek(p.int_start);
+    byte_block_pool::sliced_inserter out(byte_writer_, doc_stream_end);
 
     if (1U == p.freq) {
       irs::vwrite<uint64_t>(out, p.doc_code | UINT64_C(1));
@@ -650,7 +651,7 @@ void field_data::add_term(
       irs::vwrite<uint32_t>(out, p.freq);
     }
 
-    *it = out.pool_offset();
+    doc_stream_end = out.pool_offset();
 
     p.doc_code = uint64_t(did - p.doc) << 1;
     p.freq = 1;
@@ -660,20 +661,22 @@ void field_data::add_term(
     ++unq_term_cnt_;
 
     if (features.check<position>()) {
-      ++it;
-      write_prox(p, it, pos_, pay);
+      auto& prox_stream_end = *int_writer_->parent().seek(p.int_start+1);
+      write_prox(p, prox_stream_end, pos_, pay);
       if (features.check<offset>()) {
+        assert(offs);
         p.offs = 0;
-        write_offset(p, it, offs);
+        write_offset(p, prox_stream_end, *offs);
       }
     }
   } else { // exists in current doc
     max_term_freq_ = std::max(++p.freq, max_term_freq_);
-    if (features.check<position >() ) {
-      ++it;
-      write_prox(p, it, pos_ - p.pos, pay);
-      if (features.check< offset >()) {
-        write_offset(p, it, offs);
+    if (features.check<position>() ) {
+      auto& prox_stream_end = *int_writer_->parent().seek(p.int_start+1);
+      write_prox(p, prox_stream_end, pos_ - p.pos, pay);
+      if (features.check<offset>()) {
+        assert(offs);
+        write_offset(p, prox_stream_end, *offs);
       }
     }
 
