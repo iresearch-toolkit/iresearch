@@ -45,11 +45,11 @@ class doc_iterator {
 
   bool next() { return it_->next(); }
 
-  uint64_t seek(uint64_t target) {
+  irs::doc_id_t seek(irs::doc_id_t target) {
     return it_->seek(target);
   }
 
-  uint64_t value() const {
+  irs::doc_id_t value() const {
     return it_->value();
   }
 
