@@ -597,7 +597,7 @@ void field_data::new_term(
   auto& features = meta_.features;
 
   p.doc = did;
-  if (!features.check< frequency >()) {
+  if (!features.check<frequency>()) {
     p.doc_code = did;
   } else {
     p.doc_code = uint64_t(did) << 1;

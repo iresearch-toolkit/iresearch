@@ -421,13 +421,13 @@ class block_pool_sliced_reader : public std::iterator < std::input_iterator_tag,
     return where_.pool_offset() == end_;
   }
 
-  inline const_iterator& position() const { return where_; }
+  const_iterator& position() const { return where_; }
 
-  inline size_t pool_offset() const { return where_.pool_offset(); }
+  size_t pool_offset() const { return where_.pool_offset(); }
 
-  inline container& parent() { return where_.parent(); }
+  container& parent() { return where_.parent(); }
 
-  inline const container& parent() const { return where_.parent(); }
+  const container& parent() const { return where_.parent(); }
 
   size_t read(pointer b, size_t len) {
     assert(!eof());
@@ -471,7 +471,7 @@ class block_pool_sliced_reader : public std::iterator < std::input_iterator_tag,
     }
   }
 
-  inline void next() {
+  void next() {
     ++where_;
     --left_;
 
@@ -480,7 +480,7 @@ class block_pool_sliced_reader : public std::iterator < std::input_iterator_tag,
     }
   }
 
-  inline void init() {
+  void init() {
     assert(end_ >= 0 && where_.pool_offset() <= end_);
 
     left_ = std::min(end_ - where_.pool_offset(),
@@ -508,13 +508,13 @@ class block_pool_inserter : public std::iterator < std::output_iterator_tag, voi
 
   block_pool_inserter(const iterator& where) : where_(where) {}
 
-  inline size_t pool_offset() const { return where_.pool_offset(); }
+  size_t pool_offset() const { return where_.pool_offset(); }
 
-  inline iterator& position() { return where_; }
+  iterator& position() { return where_; }
 
-  inline container& parent() { return where_.parent(); }
+  container& parent() { return where_.parent(); }
 
-  inline const container& parent() const { return where_.parent(); }
+  const container& parent() const { return where_.parent(); }
 
   block_pool_inserter& operator=(const_reference value) {
     resize();
@@ -570,7 +570,7 @@ class block_pool_inserter : public std::iterator < std::output_iterator_tag, voi
  private:
   friend class block_pool_sliced_inserter < ContType >;
 
-  inline void resize() {
+  void resize() {
     if (where_.eof()) {
       where_.parent().alloc_buffer();
       where_.refresh();
@@ -650,11 +650,11 @@ class block_pool_sliced_inserter : public std::iterator < std::output_iterator_t
     assert(writer);
   }
 
-  inline size_t pool_offset() const { return where_.pool_offset(); }
+  size_t pool_offset() const { return where_.pool_offset(); }
 
-  inline iterator& position() { return where_; }
+  iterator& position() { return where_; }
 
-  inline container& parent() { return where_.parent(); }
+  container& parent() { return where_.parent(); }
 
   block_pool_sliced_inserter& operator=(const_reference value) {
     if (*where_) {
