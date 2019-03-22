@@ -500,6 +500,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${DL_LIBRARY}
   ${MSVC_ONLY_LIBRARIES}
   ${SIMD_LIBRARY_SHARED}
+  ${ATOMIC_LIBRARY}
 )
 
 target_link_libraries(${IResearch_TARGET_NAME}-static
