@@ -502,29 +502,27 @@ NS_END // detail
  * field_data
  * ------------------------------------------------------------------*/
 
-void field_data::write_offset(posting& p, size_t& where, const offset& offs ) {
+void field_data::write_offset(
+    posting& p,
+    byte_block_pool::sliced_inserter& out,
+    const offset& offs) {
   const uint32_t start_offset = offs_ + offs.start;
   const uint32_t end_offset = offs_ + offs.end;
 
   assert(start_offset >= p.offs);
 
-  byte_block_pool::sliced_inserter out(byte_writer_, where);
-
   irs::vwrite<uint32_t>(out, start_offset - p.offs);
   irs::vwrite<uint32_t>(out, end_offset - start_offset);
 
-  where = out.pool_offset();
   p.offs = start_offset;
 }
 
 void field_data::write_prox(
     posting& p,
-    size_t& where,
+    byte_block_pool::sliced_inserter& out,
     uint32_t prox,
     const payload* pay
 ) {
-  byte_block_pool::sliced_inserter out(byte_writer_, where);
-
   if (!pay || pay->value.empty()) {
     irs::vwrite<uint32_t>(out, shift_pack_32(prox, false));
   } else {
@@ -536,7 +534,6 @@ void field_data::write_prox(
     meta_.features.add<payload>();
   }
 
-  where = out.pool_offset();
   p.pos = pos_;
 }
 
@@ -604,12 +601,16 @@ void field_data::new_term(
     p.freq = 1;
 
     if (features.check<position>()) {
-      auto& where = *int_writer_->parent().seek(p.int_start + 1);
-      write_prox(p, where, pos_, pay);
+      auto& prox_stream_end = *int_writer_->parent().seek(p.int_start + 1);
+      byte_block_pool::sliced_inserter prox_out(byte_writer_, prox_stream_end);
+
+      write_prox(p, prox_out, pos_, pay);
       if (features.check<offset>()) {
         assert(offs);
-        write_offset(p, where, *offs);
+        write_offset(p, prox_out, *offs);
       }
+
+      prox_stream_end = prox_out.pool_offset();
     }
   }
 
@@ -623,16 +624,15 @@ void field_data::add_term(
     const payload* pay,
     const offset* offs
 ) {
-
   auto& features = meta_.features;
   if (!features.check<frequency>()) {
     if (p.doc != did) {
       assert(did > p.doc);
 
       auto& doc_stream_end = *int_writer_->parent().seek(p.int_start);
-      byte_block_pool::sliced_inserter out(byte_writer_, doc_stream_end);
-      irs::vwrite<uint32_t>(out, doc_id_t(p.doc_code));
-      doc_stream_end = out.pool_offset();
+      byte_block_pool::sliced_inserter doc_out(byte_writer_, doc_stream_end);
+      irs::vwrite<uint32_t>(doc_out, doc_id_t(p.doc_code));
+      doc_stream_end = doc_out.pool_offset();
 
       p.doc_code = did - p.doc;
       p.doc = did;
@@ -642,16 +642,14 @@ void field_data::add_term(
     assert(did > p.doc);
 
     auto& doc_stream_end = *int_writer_->parent().seek(p.int_start);
-    byte_block_pool::sliced_inserter out(byte_writer_, doc_stream_end);
+    byte_block_pool::sliced_inserter doc_out(byte_writer_, doc_stream_end);
 
     if (1U == p.freq) {
-      irs::vwrite<uint64_t>(out, p.doc_code | UINT64_C(1));
+      irs::vwrite<uint64_t>(doc_out, p.doc_code | UINT64_C(1));
     } else {
-      irs::vwrite<uint64_t>(out, p.doc_code);
-      irs::vwrite<uint32_t>(out, p.freq);
+      irs::vwrite<uint64_t>(doc_out, p.doc_code);
+      irs::vwrite<uint32_t>(doc_out, p.freq);
     }
-
-    doc_stream_end = out.pool_offset();
 
     p.doc_code = uint64_t(did - p.doc) << 1;
     p.freq = 1;
@@ -662,24 +660,38 @@ void field_data::add_term(
 
     if (features.check<position>()) {
       auto& prox_stream_end = *int_writer_->parent().seek(p.int_start+1);
-      write_prox(p, prox_stream_end, pos_, pay);
+      byte_block_pool::sliced_inserter prox_out(byte_writer_, prox_stream_end);
+
+      //if (sorted_) {
+      //  out.write(start-of-the-slice)
+      //  out.write(offset-within-slice)
+      //}
+
+      write_prox(p, prox_out, pos_, pay);
       if (features.check<offset>()) {
         assert(offs);
         p.offs = 0;
-        write_offset(p, prox_stream_end, *offs);
+        write_offset(p, prox_out, *offs);
       }
+
+      prox_stream_end = prox_out.pool_offset();
     }
+
+    doc_stream_end = doc_out.pool_offset();
   } else { // exists in current doc
     max_term_freq_ = std::max(++p.freq, max_term_freq_);
     if (features.check<position>() ) {
       auto& prox_stream_end = *int_writer_->parent().seek(p.int_start+1);
-      write_prox(p, prox_stream_end, pos_ - p.pos, pay);
+      byte_block_pool::sliced_inserter prox_out(byte_writer_, prox_stream_end);
+
+      write_prox(p, prox_out, pos_ - p.pos, pay);
       if (features.check<offset>()) {
         assert(offs);
-        write_offset(p, prox_stream_end, *offs);
+        write_offset(p, prox_out, *offs);
       }
-    }
 
+      prox_stream_end = prox_out.pool_offset();
+    }
   }
 }
 
