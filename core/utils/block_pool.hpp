@@ -36,6 +36,7 @@
 #include "memory.hpp"
 #include "ebo.hpp"
 #include "bytes_utils.hpp"
+#include "misc.hpp"
 
 NS_ROOT
 
@@ -288,7 +289,7 @@ block_pool_iterator<ContType> operator+(
 }
 
 template<typename ContType>
-class block_pool_reader : public std::iterator <std::input_iterator_tag, typename ContType::value_type> {
+class block_pool_reader : public std::iterator<std::input_iterator_tag, typename ContType::value_type> {
  public:
   typedef ContType container;
   typedef typename container::block_type block_type;
@@ -366,13 +367,13 @@ struct level {
   size_t size; // size of the level in bytes
 }; // level
 
-const level LEVELS[] = {
-  { 1, 5 }, { 2, 14 }, { 3, 20 }, { 4, 30 }, { 5, 40 },
-  { 6, 40 }, { 7, 80 }, { 8, 80 }, { 9, 120 }, { 9, 200 }
+CONSTEXPR const level LEVELS[] = {
+  { 1, 5 }, { 2, 14 },
+  { 3, 20 }, { 4, 30 },
+  { 5, 40 }, { 6, 40 },
+  { 7, 80 }, { 8, 80 },
+  { 9, 120 }, { 9, 200 }
 };
-
-const byte_type MAGIC = 16;
-const byte_type MAGIC_MASK = MAGIC - 1;
 
 NS_END
 
@@ -494,8 +495,8 @@ class block_pool_sliced_reader : public std::iterator<std::input_iterator_tag, t
   size_t left_{};
 }; // block_pool_sliced_reader 
 
-template<typename ContType>
-class block_pool_sliced_inserter;
+template<typename ContType> class block_pool_sliced_inserter;
+template<typename ContType> class block_pool_sliced_inserter_ra;
 
 template<typename ContType>
 class block_pool_inserter : public std::iterator<std::output_iterator_tag, void, void, void, void> {
@@ -560,18 +561,26 @@ class block_pool_inserter : public std::iterator<std::output_iterator_tag, void,
   void skip(size_t offset) { seek(where_.pool_offset() + offset); }
 
   // returns offset of the beginning of the allocated slice in the pool
-  size_t alloc_slice() {
-    const size_t size = LEVELS[0].size;
+  size_t alloc_slice(size_t level = 0) {
+    assert(level < IRESEARCH_COUNTOF(LEVELS));
+    auto& level_info = LEVELS[level];
+    const size_t size = level_info.size;
 
-    alloc_slice(size); // reserve next slice
+    alloc_slice_of_size(size); // reserve next slice
     const size_t slice_start = where_.pool_offset();
     where_ += size;
-    where_[-1] = MAGIC;
+    assert(level_info.next);
+    assert(level_info.next < IRESEARCH_COUNTOF(LEVELS));
+    where_[-1] = static_cast<byte_type>(level_info.next);
+
     return slice_start;
   }
 
  private:
-  friend class block_pool_sliced_inserter < ContType >;
+  friend class block_pool_sliced_inserter<ContType>;
+  friend class block_pool_sliced_inserter_ra<ContType>;
+
+  static CONSTEXPR const size_t ADDR_OFFSET = sizeof(uint32_t)-1;
 
   void resize() {
     if (where_.eof()) {
@@ -580,7 +589,7 @@ class block_pool_inserter : public std::iterator<std::output_iterator_tag, void,
     }
   }
 
-  void alloc_slice(size_t size) {
+  void alloc_slice_of_size(size_t size) {
     auto pool_size = where_.parent().value_count();
     auto slice_start = where_.pool_offset() + size;
     auto next_block_start = where_.block_offset() + block_type::SIZE;
@@ -605,30 +614,36 @@ class block_pool_inserter : public std::iterator<std::output_iterator_tag, void,
     std::memset(where_.buffer(), 0, sizeof(value_type)*size);
   }
 
-  size_t alloc_slice(iterator& pos) {
-    const size_t level = *pos & MAGIC_MASK;
-    assert(level < sizeof(LEVELS)/sizeof(LEVELS[0]));
-    const size_t next_level = LEVELS[level].next;
-    const size_t size = LEVELS[next_level].size;
-    const size_t addr_offset = sizeof(uint32_t) - 1;
+  size_t alloc_slice(iterator& pos, size_t& next_level) {
+    next_level = *pos;
+    assert(next_level < IRESEARCH_COUNTOF(LEVELS));
+    const auto& next_level_info = LEVELS[next_level];
+    const size_t size = next_level_info.size;
 
-    alloc_slice(size); // reserve next slice
+    alloc_slice_of_size(size); // reserve next slice
 
     // copy data to new slice
-    std::copy(pos - addr_offset, pos, where_);
+    std::copy(pos - ADDR_OFFSET, pos, where_);
 
     // write next address at the end of current slice
     {
       // write gets non-const reference. need explicit copy here
-      block_pool_inserter it = pos - addr_offset;
+      block_pool_inserter it = pos - ADDR_OFFSET;
       irs::write<uint32_t>(it, uint32_t(where_.pool_offset()));
     }
 
-    pos.reset(where_.pool_offset() + addr_offset);
+    pos.reset(where_.pool_offset() + ADDR_OFFSET);
     where_ += size;
-    where_[-1] = static_cast<byte_type>(MAGIC | next_level);
+    assert(next_level_info.next);
+    assert(next_level_info.next < IRESEARCH_COUNTOF(LEVELS));
+    where_[-1] = static_cast<byte_type>(next_level_info.next);
 
     return size - sizeof(uint32_t);
+  }
+
+  size_t alloc_slice(iterator& pos) {
+    size_t level;
+    return alloc_slice(pos, level);
   }
 
   iterator where_;
@@ -638,16 +653,17 @@ template<typename ContType>
 class block_pool_sliced_inserter : public std::iterator<std::output_iterator_tag, void, void, void, void> {
  public:
   typedef ContType container;
+  typedef typename container::inserter inserter;
   typedef typename container::iterator iterator;
   typedef typename container::const_pointer const_pointer;
   typedef typename container::const_reference const_reference;
   typedef typename container::value_type value_type;
 
-  block_pool_sliced_inserter(block_pool_inserter<container>& writer, const iterator& where) NOEXCEPT
+  block_pool_sliced_inserter(inserter& writer, const iterator& where) NOEXCEPT
     : where_(where), writer_(&writer) {
   }
 
-  block_pool_sliced_inserter(block_pool_inserter<container>& writer, size_t offset) NOEXCEPT
+  block_pool_sliced_inserter(inserter& writer, size_t offset) NOEXCEPT
     : where_(writer.parent(), offset), writer_(&writer) {
   }
 
@@ -695,7 +711,89 @@ class block_pool_sliced_inserter : public std::iterator<std::output_iterator_tag
 
  private:
   iterator where_;
-  block_pool_inserter< container >* writer_;
+  block_pool_inserter<container>* writer_;
+}; // block_pool_sliced_inserter
+
+template<typename ContType>
+class block_pool_sliced_inserter_ra : public std::iterator<std::output_iterator_tag, void, void, void, void> {
+ public:
+  typedef ContType container;
+  typedef typename container::inserter inserter;
+  typedef typename container::iterator iterator;
+  typedef typename container::const_pointer const_pointer;
+  typedef typename container::const_reference const_reference;
+  typedef typename container::value_type value_type;
+
+  block_pool_sliced_inserter_ra(inserter& writer, const iterator& where, size_t level = 0) NOEXCEPT
+    : level_(level),
+      where_(where),
+      slice_begin_(where),
+      writer_(&writer) {
+    assert(level < IRESEARCH_COUNTOF(LEVELS));
+  }
+
+  block_pool_sliced_inserter_ra(inserter& writer, size_t offset, size_t level = 0) NOEXCEPT
+    : block_pool_sliced_inserter_ra(writer, iterator(writer.parent(), offset), level) {
+  }
+
+  size_t slice_offset() const NOEXCEPT { return std::distance(slice_begin_, where_); }
+
+  iterator& slice_position() const NOEXCEPT { return slice_begin_; }
+
+  size_t slice() const NOEXCEPT {
+    assert(level_ < IRESEARCH_COUNTOF(LEVELS));
+    return level_;
+  }
+
+  size_t pool_offset() const NOEXCEPT { return where_.pool_offset(); }
+
+  iterator& position() NOEXCEPT { return where_; }
+
+  container& parent() NOEXCEPT { return where_.parent(); }
+
+  block_pool_sliced_inserter_ra& operator=(const_reference value) {
+    if (*where_) {
+      writer_->alloc_slice(where_, level_);
+      slice_begin_ = where_ - inserter::ADDR_OFFSET;
+    }
+
+    *where_ = value;
+    ++where_;
+    return *this;
+  }
+
+  block_pool_sliced_inserter_ra& operator*() NOEXCEPT { return *this; }
+
+  block_pool_sliced_inserter_ra& operator++(int) NOEXCEPT { return *this; }
+
+  block_pool_sliced_inserter_ra& operator++() NOEXCEPT { return *this; }
+
+  // MSVC 2017.3 through 2017.9 incorectly count offsets if this function is inlined during optimization
+  // MSVC 2017.2 and below work correctly for both debug and release
+  MSVC2017_3456789_OPTIMIZED_WORKAROUND(__declspec(noinline))
+  void write(const_pointer b, size_t len) {
+    // find end of the slice
+    for (; 0 == *where_ && len; --len, ++where_, ++b) {
+      *where_ = *b;
+    }
+
+    // chunked copy
+    while (len) {
+      const size_t size = writer_->alloc_slice(where_, level_);
+      slice_begin_ = where_ - inserter::ADDR_OFFSET;
+      const size_t to_copy = std::min(size, len);
+      std::memcpy(where_.buffer(), b, to_copy * sizeof(typename container::value_type));
+      where_ += to_copy;
+      len -= to_copy;
+      b += to_copy;
+    }
+  }
+
+ private:
+  size_t level_;
+  iterator where_;
+  iterator slice_begin_;
+  block_pool_inserter<container>* writer_;
 }; // block_pool_sliced_inserter
 
 template<typename T, size_t Size>
@@ -734,6 +832,7 @@ class block_pool {
 
   typedef block_pool_inserter<my_type> inserter;
   typedef block_pool_sliced_inserter<my_type> sliced_inserter;
+  typedef block_pool_sliced_inserter_ra<my_type> sliced_inserter_ra;
 
   explicit block_pool(const allocator& alloc = allocator())
     : rep_(blocks_t(block_ptr_allocator(alloc)), alloc) {
