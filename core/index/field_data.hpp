@@ -76,7 +76,8 @@ class IRESEARCH_API field_data : util::noncopyable {
   field_data(
     const string_ref& name,
     byte_block_pool::inserter* byte_writer,
-    int_block_pool::inserter* int_writer
+    int_block_pool::inserter* int_writer,
+    bool random_access
   );
 
   doc_id_t doc() const NOEXCEPT { return last_doc_; }
@@ -120,6 +121,7 @@ class IRESEARCH_API field_data : util::noncopyable {
   uint32_t last_start_offs_;
   uint32_t max_term_freq_; // maximum number of terms in a field across all indexed documents 
   uint32_t unq_term_cnt_;
+  const bool random_access_; // allow random access to positions
 };
 
 class IRESEARCH_API fields_data: util::noncopyable {

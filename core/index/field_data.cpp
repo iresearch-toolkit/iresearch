@@ -539,12 +539,14 @@ NS_END // detail
 field_data::field_data( 
     const string_ref& name,
     byte_block_pool::inserter* byte_writer,
-    int_block_pool::inserter* int_writer )
+    int_block_pool::inserter* int_writer,
+    bool random_access)
   : meta_(name, flags::empty_instance()),
     terms_(*byte_writer),
     byte_writer_(byte_writer),
     int_writer_(int_writer),
-    last_doc_(doc_limits::invalid()) {
+    last_doc_(doc_limits::invalid()),
+    random_access_(random_access) {
   assert(byte_writer_);
   assert(int_writer_);
 }
@@ -663,10 +665,11 @@ void field_data::add_term(
       auto& prox_stream_end = *int_writer_->parent().seek(p.int_start+1);
       byte_block_pool::sliced_inserter prox_out(*byte_writer_, prox_stream_end);
 
-      //if (sorted_) {
-      //  out.write(start-of-the-slice)
-      //  out.write(offset-within-slice)
-      //}
+//      byte_block_pool::sliced_inserter_ra prox_out(*byte_writer_, prox_stream_end);
+//      if (random_access_) {
+//        irs::vwrite<uint32_t>(doc_out, prox_out.slice_position().pool_offset()); // where slice starts
+//        doc_out = static_cast<byte_type>(prox_out.slice_offset()); // relative offset within a slice
+//      }
 
       write_prox(prox_out, pos_, pay, meta_.features);
 
@@ -822,10 +825,10 @@ field_data& fields_data::emplace(const hashed_string_ref& name) {
   // replace original reference to 'name' provided by the caller
   // with a reference to the cached copy in 'value'
   return map_utils::try_emplace_update_key(
-    fields_,                                    // container
-    generator,                                  // key generator
-    name,                                       // key
-    name, &byte_writer_, &int_writer_           // value
+    fields_,                                                   // container
+    generator,                                                 // key generator
+    name,                                                      // key
+    name, &byte_writer_, &int_writer_, nullptr != comparator_  // value
   ).first->second;
 }
 
