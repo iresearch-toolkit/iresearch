@@ -24,7 +24,6 @@
 #include "doc_generator.hpp"
 #include "analysis/analyzers.hpp"
 #include "index/field_data.hpp"
-#include "utils/block_pool.hpp"
 #include "analysis/token_streams.hpp"
 #include "store/store_utils.hpp"
 #include "unicode/utf8.h"

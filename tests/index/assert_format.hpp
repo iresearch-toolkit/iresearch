@@ -28,7 +28,6 @@
 
 #include "doc_generator.hpp"
 #include "index/field_meta.hpp"
-#include "utils/block_pool.hpp"
 #include "formats/formats.hpp"
 
 namespace tests {

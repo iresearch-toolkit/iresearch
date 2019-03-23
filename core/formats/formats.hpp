@@ -31,7 +31,6 @@
 #include "index/index_meta.hpp"
 #include "index/iterators.hpp"
 
-#include "utils/block_pool.hpp"
 #include "utils/io_utils.hpp"
 #include "utils/string.hpp"
 #include "utils/type_id.hpp"
