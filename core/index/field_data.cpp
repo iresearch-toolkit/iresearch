@@ -152,6 +152,40 @@ class pos_iterator final: public irs::position {
   bool has_offs_{false}; // FIXME find a better way to handle presence of offsets
 };
 
+void write_offset(
+    posting& p,
+    byte_block_pool::sliced_inserter& out,
+    const uint32_t base,
+    const offset& offs) {
+  const uint32_t start_offset = base + offs.start;
+  const uint32_t end_offset = base + offs.end;
+
+  assert(start_offset >= p.offs);
+
+  irs::vwrite<uint32_t>(out, start_offset - p.offs);
+  irs::vwrite<uint32_t>(out, end_offset - start_offset);
+
+  p.offs = start_offset;
+}
+
+void write_prox(
+    byte_block_pool::sliced_inserter& out,
+    uint32_t prox,
+    const irs::payload* pay,
+    flags& features
+) {
+  if (!pay || pay->value.empty()) {
+    irs::vwrite<uint32_t>(out, shift_pack_32(prox, false));
+  } else {
+    irs::vwrite<uint32_t>(out, shift_pack_32(prox, true));
+    irs::vwrite<size_t>(out, pay->value.size());
+    out.write(pay->value.c_str(), pay->value.size());
+
+    // saw payloads
+    features.add<payload>();
+  }
+}
+
 NS_END
 
 NS_ROOT
@@ -498,44 +532,9 @@ class term_reader final : public irs::basic_term_reader, util::noncopyable {
 
 NS_END // detail
 
-/* -------------------------------------------------------------------
- * field_data
- * ------------------------------------------------------------------*/
-
-void field_data::write_offset(
-    posting& p,
-    byte_block_pool::sliced_inserter& out,
-    const offset& offs) {
-  const uint32_t start_offset = offs_ + offs.start;
-  const uint32_t end_offset = offs_ + offs.end;
-
-  assert(start_offset >= p.offs);
-
-  irs::vwrite<uint32_t>(out, start_offset - p.offs);
-  irs::vwrite<uint32_t>(out, end_offset - start_offset);
-
-  p.offs = start_offset;
-}
-
-void field_data::write_prox(
-    posting& p,
-    byte_block_pool::sliced_inserter& out,
-    uint32_t prox,
-    const payload* pay
-) {
-  if (!pay || pay->value.empty()) {
-    irs::vwrite<uint32_t>(out, shift_pack_32(prox, false));
-  } else {
-    irs::vwrite<uint32_t>(out, shift_pack_32(prox, true));
-    irs::vwrite<size_t>(out, pay->value.size());
-    out.write(pay->value.c_str(), pay->value.size());
-
-    // saw payloads
-    meta_.features.add<payload>();
-  }
-
-  p.pos = pos_;
-}
+// -----------------------------------------------------------------------------
+// --SECTION--                                         field_data implementation
+// -----------------------------------------------------------------------------
 
 field_data::field_data( 
     const string_ref& name,
@@ -602,15 +601,17 @@ void field_data::new_term(
 
     if (features.check<position>()) {
       auto& prox_stream_end = *int_writer_->parent().seek(p.int_start + 1);
-      byte_block_pool::sliced_inserter prox_out(byte_writer_, prox_stream_end);
+      byte_block_pool::sliced_inserter prox_out(*byte_writer_, prox_stream_end);
 
-      write_prox(p, prox_out, pos_, pay);
+      write_prox(prox_out, pos_, pay, meta_.features);
+
       if (features.check<offset>()) {
         assert(offs);
-        write_offset(p, prox_out, *offs);
+        write_offset(p, prox_out, offs_, *offs);
       }
 
       prox_stream_end = prox_out.pool_offset();
+      p.pos = pos_;
     }
   }
 
@@ -630,7 +631,7 @@ void field_data::add_term(
       assert(did > p.doc);
 
       auto& doc_stream_end = *int_writer_->parent().seek(p.int_start);
-      byte_block_pool::sliced_inserter doc_out(byte_writer_, doc_stream_end);
+      byte_block_pool::sliced_inserter doc_out(*byte_writer_, doc_stream_end);
       irs::vwrite<uint32_t>(doc_out, doc_id_t(p.doc_code));
       doc_stream_end = doc_out.pool_offset();
 
@@ -642,7 +643,7 @@ void field_data::add_term(
     assert(did > p.doc);
 
     auto& doc_stream_end = *int_writer_->parent().seek(p.int_start);
-    byte_block_pool::sliced_inserter doc_out(byte_writer_, doc_stream_end);
+    byte_block_pool::sliced_inserter doc_out(*byte_writer_, doc_stream_end);
 
     if (1U == p.freq) {
       irs::vwrite<uint64_t>(doc_out, p.doc_code | UINT64_C(1));
@@ -660,21 +661,23 @@ void field_data::add_term(
 
     if (features.check<position>()) {
       auto& prox_stream_end = *int_writer_->parent().seek(p.int_start+1);
-      byte_block_pool::sliced_inserter prox_out(byte_writer_, prox_stream_end);
+      byte_block_pool::sliced_inserter prox_out(*byte_writer_, prox_stream_end);
 
       //if (sorted_) {
       //  out.write(start-of-the-slice)
       //  out.write(offset-within-slice)
       //}
 
-      write_prox(p, prox_out, pos_, pay);
+      write_prox(prox_out, pos_, pay, meta_.features);
+
       if (features.check<offset>()) {
         assert(offs);
-        p.offs = 0;
-        write_offset(p, prox_out, *offs);
+        p.offs = 0; // reset base offset
+        write_offset(p, prox_out, offs_, *offs);
       }
 
       prox_stream_end = prox_out.pool_offset();
+      p.pos = pos_;
     }
 
     doc_stream_end = doc_out.pool_offset();
@@ -682,15 +685,17 @@ void field_data::add_term(
     max_term_freq_ = std::max(++p.freq, max_term_freq_);
     if (features.check<position>() ) {
       auto& prox_stream_end = *int_writer_->parent().seek(p.int_start+1);
-      byte_block_pool::sliced_inserter prox_out(byte_writer_, prox_stream_end);
+      byte_block_pool::sliced_inserter prox_out(*byte_writer_, prox_stream_end);
 
-      write_prox(p, prox_out, pos_ - p.pos, pay);
+      write_prox(prox_out, pos_ - p.pos, pay, meta_.features);
+
       if (features.check<offset>()) {
         assert(offs);
-        write_offset(p, prox_out, *offs);
+        write_offset(p, prox_out, offs_, *offs);
       }
 
       prox_stream_end = prox_out.pool_offset();
+      p.pos = pos_;
     }
   }
 }
@@ -796,9 +801,9 @@ bool field_data::invert(
   return true;
 }
 
-/* -------------------------------------------------------------------
- * fields_data
- * ------------------------------------------------------------------*/
+// -----------------------------------------------------------------------------
+// --SECTION--                                        fields_data implementation
+// -----------------------------------------------------------------------------
 
 fields_data::fields_data(const comparer* comparator /*= nullptr*/)
   : comparator_(comparator),

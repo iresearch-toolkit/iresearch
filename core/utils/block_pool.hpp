@@ -39,12 +39,12 @@
 
 NS_ROOT
 
-template< typename ContType >
-class block_pool_const_iterator : public std::iterator < std::random_access_iterator_tag, typename ContType::value_type > {
+template<typename ContType>
+class block_pool_const_iterator : public std::iterator<std::random_access_iterator_tag, typename ContType::value_type> {
   public:
   typedef ContType container;
   typedef typename container::block_type block_type;
-  typedef std::iterator< std::random_access_iterator_tag, typename container::value_type > base;
+  typedef std::iterator<std::random_access_iterator_tag, typename container::value_type> base;
 
   typedef typename base::pointer pointer;
   typedef typename base::difference_type difference_type;
@@ -52,40 +52,41 @@ class block_pool_const_iterator : public std::iterator < std::random_access_iter
   typedef const typename container::value_type& const_reference;
   typedef typename container::const_pointer const_pointer;
 
-  explicit block_pool_const_iterator(container* pool): pool_(pool) {
+  explicit block_pool_const_iterator(container& pool) NOEXCEPT
+    : pool_(&pool) {
     reset(pool_->value_count());
   }
 
-  block_pool_const_iterator(container* pool, size_t offset)
-    : pool_(pool) {
+  block_pool_const_iterator(container& pool, size_t offset) NOEXCEPT
+    : pool_(&pool) {
     reset(offset);
   }
 
-  block_pool_const_iterator& operator++() {
+  block_pool_const_iterator& operator++() NOEXCEPT {
     seek_relative(1);
     return *this;
   }
 
-  block_pool_const_iterator& operator--() {
+  block_pool_const_iterator& operator--() NOEXCEPT {
     seek_relative(-1);
     return *this;
   }
 
-  block_pool_const_iterator operator--(int) {
+  block_pool_const_iterator operator--(int) NOEXCEPT {
     block_pool_const_iterator state;
     --*this;
     return state;
   }
 
-  block_pool_const_iterator operator++(int) {
+  block_pool_const_iterator operator++(int) NOEXCEPT {
     block_pool_const_iterator state;
     ++*this;
     return state;
   }
 
-  const_reference operator*() const { return *pos_; }
+  const_reference operator*() const NOEXCEPT { return *pos_; }
 
-  const_reference operator[](difference_type offset) const {
+  const_reference operator[](difference_type offset) const NOEXCEPT {
     const auto pos = pos_ + offset;
     if (pos < block_->begin || pos >= block_->end) {
       return pool_->at(block_offset() + std::distance(block_->begin, pos));
@@ -94,81 +95,80 @@ class block_pool_const_iterator : public std::iterator < std::random_access_iter
     return *pos;
   }
 
-  block_pool_const_iterator& operator+=(difference_type offset) {
+  block_pool_const_iterator& operator+=(difference_type offset) NOEXCEPT {
     seek_relative(offset);
     return *this;
   }
 
-  block_pool_const_iterator& operator-=(difference_type offset) {
+  block_pool_const_iterator& operator-=(difference_type offset) NOEXCEPT {
     seek_relative(offset);
     return *this;
   }
 
-  block_pool_const_iterator operator+(difference_type offset) const {
+  block_pool_const_iterator operator+(difference_type offset) const NOEXCEPT {
     return block_pool_const_iterator(pool_, block_offset() + std::distance(block_->begin, pos_) + offset);
   }
 
-  block_pool_const_iterator operator-(difference_type offset) const {
+  block_pool_const_iterator operator-(difference_type offset) const NOEXCEPT {
     return block_pool_const_iterator(pool_, block_offset() + std::distance(block_->begin, pos_) - offset);
   }
 
-  difference_type operator-(const block_pool_const_iterator& rhs) const {
+  difference_type operator-(const block_pool_const_iterator& rhs) const NOEXCEPT {
     assert(pool_ == rhs.pool_);
     return pool_offset() - rhs.pool_offset();
   }
 
-  bool operator==(const block_pool_const_iterator& rhs) const {
+  bool operator==(const block_pool_const_iterator& rhs) const NOEXCEPT {
     assert(pool_ == rhs.pool_);
     return pool_offset() == rhs.pool_offset();
   }
 
-  bool operator!=(const block_pool_const_iterator& rhs) const {
+  bool operator!=(const block_pool_const_iterator& rhs) const NOEXCEPT {
     return !(*this == rhs);
   }
 
-  bool operator>(const block_pool_const_iterator& rhs) const {
+  bool operator>(const block_pool_const_iterator& rhs) const NOEXCEPT {
     assert(pool_ == rhs.pool_);
     return pool_offset() > rhs.pool_offset();
   }
 
-  bool operator<(const block_pool_const_iterator& rhs) const {
+  bool operator<(const block_pool_const_iterator& rhs) const NOEXCEPT {
     assert(pool_ == rhs.pool_);
     return pool_offset() < rhs.pool_offset();
   }
 
-  bool operator<=(const block_pool_const_iterator& rhs) const {
+  bool operator<=(const block_pool_const_iterator& rhs) const NOEXCEPT {
     return !(*this > rhs);
   }
 
-  bool operator>= (const block_pool_const_iterator& rhs) const {
+  bool operator>= (const block_pool_const_iterator& rhs) const NOEXCEPT {
     return !(*this < rhs);
   }
 
-  bool eof() const {
+  bool eof() const NOEXCEPT {
     return block_offset()
-      + std::distance(block_->begin, pos_) == pool_->value_count()
-      ;
+      + std::distance(block_->begin, pos_) == pool_->value_count();
   }
 
-  const_pointer buffer() const {
+  const_pointer buffer() const NOEXCEPT {
     return pos_;
   }
 
-  size_t remain() const { return pool_->block_size() - std::distance(block_->begin, pos_); }
+  size_t remain() const NOEXCEPT { return pool_->block_size() - std::distance(block_->begin, pos_); }
 
-  size_t offset() const { return std::distance(block_->begin, pos_); }
+  size_t offset() const NOEXCEPT { return std::distance(block_->begin, pos_); }
 
-  size_t block_offset() const { return block_start_; }
+  size_t block_offset() const NOEXCEPT { return block_start_; }
 
-  size_t pool_offset() const { return block_offset() + std::distance(block_->begin, pos_); }
+  size_t pool_offset() const NOEXCEPT { return block_offset() + std::distance(block_->begin, pos_); }
 
-  void refresh() {
+  void refresh() NOEXCEPT {
     const auto pos = std::distance(block_->begin, pos_);
     block_ = pool_->get_blocks()[block_offset() / block_type::SIZE].get();
     pos_ = block_->begin + pos;
   }
 
-  void reset(size_t offset) {
+  void reset(size_t offset) NOEXCEPT {
     if (offset >= pool_->value_count()) {
       block_start_ = pool_->value_count();
       block_ = nullptr;
@@ -188,10 +188,10 @@ class block_pool_const_iterator : public std::iterator < std::random_access_iter
     pos_ = block_->begin + pos;
   }
 
-  const container& parent() const { return pool_; }
+  const container& parent() const NOEXCEPT { return pool_; }
 
  protected:
-  void seek_relative(difference_type offset) {
+  void seek_relative(difference_type offset) NOEXCEPT {
     pos_ += offset;
     if (pos_ < block_->begin || pos_ >= block_->end) {
       reset(block_offset() + std::distance(block_->begin, pos_));
@@ -204,89 +204,91 @@ class block_pool_const_iterator : public std::iterator < std::random_access_iter
   size_t block_start_;
 }; // block_pool_const_iterator 
 
-template< typename ContType >
-block_pool_const_iterator< ContType > operator+(
+template<typename ContType>
+block_pool_const_iterator<ContType> operator+(
     size_t offset,
-    const block_pool_const_iterator< ContType >& it) {
+    const block_pool_const_iterator<ContType>& it) NOEXCEPT {
   return it + offset;
 }
 
-template< typename ContType >
-class block_pool_iterator : public block_pool_const_iterator < ContType > {
+template<typename ContType>
+class block_pool_iterator : public block_pool_const_iterator<ContType> {
  public:
   typedef ContType container;
   typedef typename container::block_type block_type;
-  typedef block_pool_const_iterator< container > base;
+  typedef block_pool_const_iterator<container> base;
   typedef typename base::pointer pointer;
   typedef typename base::difference_type difference_type;
   typedef typename base::reference reference;
 
   using base::operator-;
 
-  explicit block_pool_iterator(container* pool)
-    : base(pool) {}
+  explicit block_pool_iterator(container& pool) NOEXCEPT
+    : base(pool) {
+  }
 
-  block_pool_iterator(container* pool, size_t offset)
-    : base(pool, offset) {}
+  block_pool_iterator(container& pool, size_t offset) NOEXCEPT
+    : base(pool, offset) {
+  }
 
-  block_pool_iterator& operator++() {
+  block_pool_iterator& operator++() NOEXCEPT {
     return static_cast<block_pool_iterator&>(base::operator++());
   }
 
-  block_pool_iterator& operator--() {
+  block_pool_iterator& operator--() NOEXCEPT {
     return static_cast<block_pool_iterator&>(base::operator--());
   }
 
-  block_pool_iterator operator--(int) {
+  block_pool_iterator operator--(int) NOEXCEPT {
     block_pool_iterator state(*this);
     --*this;
     return state;
   }
 
-  block_pool_iterator operator++(int) {
+  block_pool_iterator operator++(int) NOEXCEPT {
     block_pool_iterator state(*this);
     ++*this;
     return state;
   }
 
-  reference operator*() {
+  reference operator*() NOEXCEPT {
     return const_cast<reference>(*static_cast<base&>(*this));
   }
 
-  reference operator[](difference_type offset) {
+  reference operator[](difference_type offset) NOEXCEPT {
     return const_cast<reference>(static_cast<base&>(*this)[offset]);
   }
 
-  block_pool_iterator& operator+=(difference_type offset) {
+  block_pool_iterator& operator+=(difference_type offset) NOEXCEPT {
     return static_cast<block_pool_iterator&>(base::operator+=(offset));
   }
 
-  block_pool_iterator& operator-=(difference_type offset) {
+  block_pool_iterator& operator-=(difference_type offset) NOEXCEPT {
     return static_cast<block_pool_iterator&>(base::operator-=(offset));
   }
 
-  block_pool_iterator operator+(difference_type offset) const {
-    return block_pool_iterator(this->pool_, this->pool_offset() + offset);
+  block_pool_iterator operator+(difference_type offset) const NOEXCEPT {
+    return block_pool_iterator(*this->pool_, this->pool_offset() + offset);
   }
 
-  block_pool_iterator operator-(difference_type offset) const {
-    return block_pool_iterator(this->pool_, this->pool_offset() - offset);
+  block_pool_iterator operator-(difference_type offset) const NOEXCEPT {
+    return block_pool_iterator(*this->pool_, this->pool_offset() - offset);
   }
 
-  pointer buffer() { return this->pos_; }
+  pointer buffer() NOEXCEPT { return this->pos_; }
 
-  container& parent() { return const_cast<container&>(*this->pool_); }
+  container& parent() NOEXCEPT { return const_cast<container&>(*this->pool_); }
 }; // block_pool_iterator 
 
-template< typename ContType >
-block_pool_iterator< ContType > operator+(
+template<typename ContType>
+block_pool_iterator<ContType> operator+(
     size_t offset,
-    const block_pool_iterator< ContType >& it) {
+    const block_pool_iterator<ContType>& it) NOEXCEPT {
   return it + offset;
 }
 
-template< typename ContType >
-class block_pool_reader : public std::iterator < std::input_iterator_tag, typename ContType::value_type > {
+template<typename ContType>
+class block_pool_reader : public std::iterator <std::input_iterator_tag, typename ContType::value_type> {
  public:
   typedef ContType container;
   typedef typename container::block_type block_type;
@@ -296,27 +298,29 @@ class block_pool_reader : public std::iterator < std::input_iterator_tag, typena
   typedef typename container::pointer pointer;
   typedef typename container::value_type value_type;
 
-  block_pool_reader(const container& pool, size_t offset)
-    : where_(pool, offset) {}
+  block_pool_reader(const container& pool, size_t offset) NOEXCEPT
+    : where_(pool, offset) {
+  }
 
-  explicit block_pool_reader(const const_iterator& where)
-    : where_(where) {}
+  explicit block_pool_reader(const const_iterator& where) NOEXCEPT
+    : where_(where) {
+  }
 
-  const_reference operator*() const {
+  const_reference operator*() const NOEXCEPT {
     assert(!where_.eof());
     return *where_;
   }
 
-  const_pointer operator->() const { return &(operator*()); };
+  const_pointer operator->() const NOEXCEPT { return &(operator*()); };
 
-  block_pool_reader& operator++() {
+  block_pool_reader& operator++() NOEXCEPT {
     assert(!eof());
 
     ++where_;
     return *this;
   }
 
-  block_pool_reader operator++(int) {
+  block_pool_reader operator++(int) NOEXCEPT {
     assert(!eof());
 
     block_pool_reader tmp = *this;
@@ -324,9 +328,9 @@ class block_pool_reader : public std::iterator < std::input_iterator_tag, typena
     return tmp;
   }
 
-  bool eof() const { return where_.pool_offset() == where_.parent().size(); }
+  bool eof() const NOEXCEPT { return where_.pool_offset() == where_.parent().size(); }
 
-  size_t read(pointer b, size_t len) {
+  size_t read(pointer b, size_t len) NOEXCEPT {
     assert(!eof());
     assert(b != nullptr);
 
@@ -372,8 +376,8 @@ const byte_type MAGIC_MASK = MAGIC - 1;
 
 NS_END
 
-template< typename ContType >
-class block_pool_sliced_reader : public std::iterator < std::input_iterator_tag, typename ContType::value_type > {
+template<typename ContType>
+class block_pool_sliced_reader : public std::iterator<std::input_iterator_tag, typename ContType::value_type> {
  public:
   typedef ContType container;
   typedef typename container::block_type block_type;
@@ -382,9 +386,6 @@ class block_pool_sliced_reader : public std::iterator < std::input_iterator_tag,
   typedef typename container::const_pointer const_pointer;
   typedef typename container::const_reference const_reference;
   typedef typename container::value_type value_type;
-
-  block_pool_sliced_reader(const container& pool)
-    : where_(pool) {}
 
   block_pool_sliced_reader(const const_iterator& where, size_t end)
     : where_(where), end_(end) {
@@ -396,40 +397,40 @@ class block_pool_sliced_reader : public std::iterator < std::input_iterator_tag,
     init();
   }
 
-  const_reference operator*() const {
+  const_reference operator*() const NOEXCEPT {
     assert(!eof());
     return *where_;
   }
 
-  const_pointer operator->() const { return &(operator*()); };
+  const_pointer operator->() const NOEXCEPT { return &(operator*()); };
 
-  block_pool_sliced_reader& operator++() {
+  block_pool_sliced_reader& operator++() NOEXCEPT {
     assert(!eof());
     next();
     return *this;
   }
 
-  block_pool_sliced_reader operator++(int) {
+  block_pool_sliced_reader operator++(int) NOEXCEPT {
     assert(!eof());
     block_pool_sliced_reader tmp = *this;
     next();
     return tmp;
   }
 
-  bool eof() const {
+  bool eof() const NOEXCEPT {
     assert(where_.pool_offset() <= end_);
     return where_.pool_offset() == end_;
   }
 
-  const_iterator& position() const { return where_; }
+  const_iterator& position() const NOEXCEPT { return where_; }
 
-  size_t pool_offset() const { return where_.pool_offset(); }
+  size_t pool_offset() const NOEXCEPT { return where_.pool_offset(); }
 
-  container& parent() { return where_.parent(); }
+  container& parent() NOEXCEPT { return where_.parent(); }
 
-  const container& parent() const { return where_.parent(); }
+  const container& parent() const NOEXCEPT { return where_.parent(); }
 
-  size_t read(pointer b, size_t len) {
+  size_t read(pointer b, size_t len) NOEXCEPT {
     assert(!eof());
     assert(b != nullptr);
 
@@ -455,7 +456,7 @@ class block_pool_sliced_reader : public std::iterator < std::input_iterator_tag,
   }
 
  private:
-  void next_slice() {
+  void next_slice() NOEXCEPT {
     // TODO: check for overflow. max_size = MAX(uint32_t)-address_size-1
     // base case where last slice of pool which does not have address footer
     if (where_.pool_offset() + sizeof(uint32_t) >= end_) {
@@ -480,7 +481,7 @@ class block_pool_sliced_reader : public std::iterator < std::input_iterator_tag,
     }
   }
 
-  void init() {
+  void init() NOEXCEPT {
     assert(end_ >= 0 && where_.pool_offset() <= end_);
 
     left_ = std::min(end_ - where_.pool_offset(),
@@ -493,11 +494,11 @@ class block_pool_sliced_reader : public std::iterator < std::input_iterator_tag,
   size_t left_{};
 }; // block_pool_sliced_reader 
 
-template< typename ContType >
+template<typename ContType>
 class block_pool_sliced_inserter;
 
-template< typename ContType >
-class block_pool_inserter : public std::iterator < std::output_iterator_tag, void, void, void, void > {
+template<typename ContType>
+class block_pool_inserter : public std::iterator<std::output_iterator_tag, void, void, void, void> {
  public:
   typedef ContType container;
   typedef typename container::block_type block_type;
@@ -506,15 +507,17 @@ class block_pool_inserter : public std::iterator < std::output_iterator_tag, voi
   typedef typename container::const_reference const_reference;
   typedef typename container::value_type value_type;
 
-  block_pool_inserter(const iterator& where) : where_(where) {}
+  block_pool_inserter(const iterator& where) NOEXCEPT
+    : where_(where) {
+  }
 
-  size_t pool_offset() const { return where_.pool_offset(); }
+  size_t pool_offset() const NOEXCEPT { return where_.pool_offset(); }
 
-  iterator& position() { return where_; }
+  iterator& position() NOEXCEPT { return where_; }
 
-  container& parent() { return where_.parent(); }
+  container& parent() NOEXCEPT { return where_.parent(); }
 
-  const container& parent() const { return where_.parent(); }
+  const container& parent() const NOEXCEPT { return where_.parent(); }
 
   block_pool_inserter& operator=(const_reference value) {
     resize();
@@ -523,11 +526,11 @@ class block_pool_inserter : public std::iterator < std::output_iterator_tag, voi
     return *this;
   }
 
-  block_pool_inserter& operator*() { return *this; }
+  block_pool_inserter& operator*() NOEXCEPT { return *this; }
 
-  block_pool_inserter& operator++(int) { return *this; }
+  block_pool_inserter& operator++(int) NOEXCEPT { return *this; }
 
-  block_pool_inserter& operator++() { return *this; }
+  block_pool_inserter& operator++() NOEXCEPT { return *this; }
 
   void write(const_pointer b, size_t len) {
     assert(b || !len);
@@ -631,8 +634,8 @@ class block_pool_inserter : public std::iterator < std::output_iterator_tag, voi
   iterator where_;
 }; // block_pool_inserter 
 
-template< typename ContType >
-class block_pool_sliced_inserter : public std::iterator < std::output_iterator_tag, void, void, void, void > {
+template<typename ContType>
+class block_pool_sliced_inserter : public std::iterator<std::output_iterator_tag, void, void, void, void> {
  public:
   typedef ContType container;
   typedef typename container::iterator iterator;
@@ -640,21 +643,19 @@ class block_pool_sliced_inserter : public std::iterator < std::output_iterator_t
   typedef typename container::const_reference const_reference;
   typedef typename container::value_type value_type;
 
-  block_pool_sliced_inserter(block_pool_inserter< container >* writer, const iterator& where)
-    : where_(where), writer_(writer) {
-    assert(writer);
+  block_pool_sliced_inserter(block_pool_inserter<container>& writer, const iterator& where) NOEXCEPT
+    : where_(where), writer_(&writer) {
   }
 
-  block_pool_sliced_inserter(block_pool_inserter< container >* writer, size_t offset)
-    : where_(&writer->parent(), offset), writer_(writer) {
-    assert(writer);
+  block_pool_sliced_inserter(block_pool_inserter<container>& writer, size_t offset) NOEXCEPT
+    : where_(writer.parent(), offset), writer_(&writer) {
   }
 
-  size_t pool_offset() const { return where_.pool_offset(); }
+  size_t pool_offset() const NOEXCEPT { return where_.pool_offset(); }
 
-  iterator& position() { return where_; }
+  iterator& position() NOEXCEPT { return where_; }
 
-  container& parent() { return where_.parent(); }
+  container& parent() NOEXCEPT { return where_.parent(); }
 
   block_pool_sliced_inserter& operator=(const_reference value) {
     if (*where_) {
@@ -666,11 +667,11 @@ class block_pool_sliced_inserter : public std::iterator < std::output_iterator_t
     return *this;
   }
 
-  block_pool_sliced_inserter& operator*() { return *this; }
+  block_pool_sliced_inserter& operator*() NOEXCEPT { return *this; }
 
-  block_pool_sliced_inserter& operator++(int) { return *this; }
+  block_pool_sliced_inserter& operator++(int) NOEXCEPT { return *this; }
 
-  block_pool_sliced_inserter& operator++() { return *this; }
+  block_pool_sliced_inserter& operator++() NOEXCEPT { return *this; }
 
   // MSVC 2017.3 through 2017.9 incorectly count offsets if this function is inlined during optimization
   // MSVC 2017.2 and below work correctly for both debug and release
@@ -695,7 +696,7 @@ class block_pool_sliced_inserter : public std::iterator < std::output_iterator_t
  private:
   iterator where_;
   block_pool_inserter< container >* writer_;
-}; // block_pool_sliced_inserter 
+}; // block_pool_sliced_inserter
 
 template<typename T, size_t Size>
 struct proxy_block_t {
@@ -704,14 +705,16 @@ struct proxy_block_t {
 
   static const size_t SIZE = Size;
 
-  explicit proxy_block_t(size_t start) : start(start) { }
+  explicit proxy_block_t(size_t start) NOEXCEPT
+    : start(start) {
+  }
 
   value_type begin[SIZE]; // begin of valid bytes
   value_type* end{ begin + SIZE }; // end of valid bytes
   size_t start; // where block starts
 }; // proxy_block_t
 
-template< typename T, size_t BlockSize, typename AllocType = std::allocator<T>>
+template<typename T, size_t BlockSize, typename AllocType = std::allocator<T>>
 class block_pool {
  public:
   typedef proxy_block_t<T, BlockSize> block_type;
@@ -748,11 +751,11 @@ class block_pool {
     }
   }
 
-  size_t block_count() const { return get_blocks().size(); }
+  size_t block_count() const NOEXCEPT { return get_blocks().size(); }
 
-  size_t value_count() const { return block_type::SIZE * block_count(); }
+  size_t value_count() const NOEXCEPT { return block_type::SIZE * block_count(); }
 
-  size_t size() const { return sizeof(value_type) * value_count(); }
+  size_t size() const NOEXCEPT { return sizeof(value_type) * value_count(); }
 
   iterator write(iterator where, value_type b) {
     if (where.eof()) {
@@ -785,7 +788,7 @@ class block_pool {
     return where;
   }
 
-  iterator read(iterator where, pointer b) {
+  iterator read(iterator where, pointer b) NOEXCEPT {
     if (where.eof()) {
       return end();
     }
@@ -794,7 +797,7 @@ class block_pool {
     return ++where;
   }
 
-  iterator read(iterator where, pointer b, size_t len) const {
+  iterator read(iterator where, pointer b, size_t len) const NOEXCEPT {
     assert(b);
 
     size_t to_copy = 0;
@@ -818,11 +821,11 @@ class block_pool {
 
   void clear() { get_blocks().clear(); }
 
-  const_reference at(size_t offset) const {
+  const_reference at(size_t offset) const NOEXCEPT {
     return const_cast<block_pool*>(this)->at(offset);
   }
 
-  reference at(size_t offset) {
+  reference at(size_t offset) NOEXCEPT {
     assert(offset < this->value_count());
 
     const size_t idx = offset / block_type::SIZE;
@@ -831,43 +834,43 @@ class block_pool {
     return *(get_blocks()[idx]->begin + pos);
   }
 
-  reference operator[](size_t offset) { return at(offset); }
+  reference operator[](size_t offset) NOEXCEPT { return at(offset); }
 
-  const_reference operator[](size_t offset) const {
+  const_reference operator[](size_t offset) const NOEXCEPT {
     return at(offset);
   }
 
-  const_iterator seek(size_t offset) const {
-    return const_iterator(const_cast<block_pool*>(this), offset);
+  const_iterator seek(size_t offset) const NOEXCEPT {
+    return const_iterator(*const_cast<block_pool*>(this), offset);
   }
 
-  const_iterator begin() const {
-    return const_iterator(const_cast<block_pool*>(this), 0);
+  const_iterator begin() const NOEXCEPT {
+    return const_iterator(*const_cast<block_pool*>(this), 0);
   }
 
-  const_iterator end() const {
-    return const_iterator(const_cast<block_pool*>(this));
+  const_iterator end() const NOEXCEPT {
+    return const_iterator(*const_cast<block_pool*>(this));
   }
 
-  iterator seek(size_t offset) {
-    return iterator(this, offset);
+  iterator seek(size_t offset) NOEXCEPT {
+    return iterator(*this, offset);
   }
 
-  iterator begin() { return iterator(this, 0); }
+  iterator begin() NOEXCEPT { return iterator(*this, 0); }
 
-  iterator end() { return iterator(this); }
+  iterator end() NOEXCEPT { return iterator(*this); }
 
-  pointer buffer(size_t i) {
+  pointer buffer(size_t i) NOEXCEPT {
     assert(i < block_count());
     return get_blocks()[i];
   }
 
-  const_pointer buffer(size_t i) const {
+  const_pointer buffer(size_t i) const NOEXCEPT {
     assert(i < block_count());
     return get_blocks()[i];
   }
 
-  size_t block_offset(size_t i) const {
+  size_t block_offset(size_t i) const NOEXCEPT {
     assert(i < block_count());
     return block_type::SIZE * i;
   }
@@ -881,10 +884,10 @@ class block_pool {
   typedef typename std::allocator_traits<allocator>::template rebind_alloc<block_ptr> block_ptr_allocator;
   typedef std::vector<block_ptr, block_ptr_allocator> blocks_t;
 
-  const blocks_t& get_blocks() const { return rep_.first(); }
-  blocks_t& get_blocks() { return rep_.first(); }
-  const allocator& get_allocator() const { return rep_.second(); }
-  allocator& get_allocator() { return rep_.second(); }
+  const blocks_t& get_blocks() const NOEXCEPT { return rep_.first(); }
+  blocks_t& get_blocks() NOEXCEPT { return rep_.first(); }
+  const allocator& get_allocator() const NOEXCEPT { return rep_.second(); }
+  allocator& get_allocator() NOEXCEPT { return rep_.second(); }
 
   compact_pair<blocks_t, allocator> rep_;
 }; // block_pool

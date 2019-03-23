@@ -96,7 +96,7 @@ class block_pool_test : public test_base {
     inserter_t ins( pool_.begin() ); 
     ins.alloc_slice();
 
-    sliced_inserter_t w( &ins, pool_.begin() );
+    sliced_inserter_t w(ins, pool_.begin());
 
     const char* const payload = "payload";
     const auto len = static_cast<uint32_t>(strlen(payload)); // only 8 chars
@@ -152,7 +152,7 @@ class block_pool_test : public test_base {
         ins.write(payload, sizeof payload);
       }
 
-      sliced_inserter_t sliced_ins(&ins, slice_chain_begin);
+      sliced_inserter_t sliced_ins(ins, slice_chain_begin);
       sliced_ins.write(data0.c_str(), data0.size()); // fill 1st slice & alloc 2nd slice here
       sliced_ins.write(data1.c_str(), data1.size()); // fill 2st slice & alloc 3nd slice here
 
@@ -205,7 +205,7 @@ class block_pool_test : public test_base {
                       [](T val) { return 0 == val; })
           );
 
-      sliced_inserter_t sliced_ins(&ins, slice_chain_begin);
+      sliced_inserter_t sliced_ins(ins, slice_chain_begin);
 
       // write single value 
       sliced_ins = 5;

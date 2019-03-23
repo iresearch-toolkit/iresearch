@@ -106,10 +106,6 @@ class IRESEARCH_API field_data : util::noncopyable {
 
   void add_term(posting& p, doc_id_t did, const payload* pay, const offset* offs);
 
-  void write_prox(posting& p, byte_block_pool::sliced_inserter& out, uint32_t prox, const payload* pay);
-
-  void write_offset(posting& p, byte_block_pool::sliced_inserter& out, const offset& offs);
-
   columnstore_writer::values_writer_f norms_;
   field_meta meta_;
   postings terms_;
