@@ -86,10 +86,11 @@ class pos_iterator final: public irs::position {
   }
 
   // reset field
-  void reset(const flags& features) {
+  void reset(const flags& features, const frequency& freq) {
     assert(features.check<frequency>());
 
     attrs_.clear();
+    freq_ = &freq;
     has_offs_ = false;
 
     if (features.check<offset>()) {
@@ -103,12 +104,8 @@ class pos_iterator final: public irs::position {
   }
 
   // reset value
-  void reset(
-      const frequency& freq,
-      const Reader& prox
-  ) {
+  void reset(const Reader& prox) {
     clear();
-    freq_ = &freq;
     prox_in_ = prox;
   }
 
@@ -272,7 +269,7 @@ class doc_iterator : public irs::doc_iterator {
       has_freq_ = true;
 
       if (features.check<position>()) {
-        pos_.reset(features);
+        pos_.reset(features, freq_);
 
         attrs_.emplace(pos_);
         has_prox_ = true;
@@ -292,7 +289,9 @@ class doc_iterator : public irs::doc_iterator {
     posting_ = &posting;
 
     if (has_prox_ && prox) {
-      pos_.reset(freq_, *prox);
+      // reset positions only once,
+      // as we need iterator for sequential reads
+      pos_.reset(*prox);
     }
   }
 
@@ -379,6 +378,8 @@ class sorting_doc_iterator : public irs::doc_iterator {
       attrs_.emplace(freq_);
 
       if (features.check<position>()) {
+        pos_.reset(features, freq_);
+
         attrs_.emplace(pos_);
         has_pos_ = true;
       }
@@ -441,12 +442,11 @@ class sorting_doc_iterator : public irs::doc_iterator {
     }
 
     uint64_t cookie;
-
     std::tie(doc_.value, freq_.value, cookie) = *it_;
     ++it_;
 
     if (has_pos_) {
-    //  pos_.reset()
+      //pos_.reset()
     }
 
     return true;
@@ -1078,7 +1078,7 @@ void fields_data::flush(field_writer& fw, flush_state& state) {
         const field_data* rhs
     ) const NOEXCEPT {
       return lhs->meta().name < rhs->meta().name;
-    };
+    }
   };
 
   std::set<const field_data*, less_t> fields;
