@@ -101,17 +101,24 @@ class IRESEARCH_API field_data : util::noncopyable {
   friend class detail::doc_iterator;
   friend class fields_data;
 
+  typedef void(field_data::*process_term_f)(posting&, doc_id_t, const payload*, const offset*);
+
+  static const process_term_f TERM_PROCESSING_TABLES[2][2];
+
   void reset(doc_id_t doc_id);
 
   void new_term(posting& p, doc_id_t did, const payload* pay, const offset* offs);
-
   void add_term(posting& p, doc_id_t did, const payload* pay, const offset* offs);
+
+  void new_term_random_access(posting& p, doc_id_t did, const payload* pay, const offset* offs);
+  void add_term_random_access(posting& p, doc_id_t did, const payload* pay, const offset* offs);
 
   columnstore_writer::values_writer_f norms_;
   field_meta meta_;
   postings terms_;
   byte_block_pool::inserter* byte_writer_;
   int_block_pool::inserter* int_writer_;
+  const process_term_f* proc_table_;
   doc_id_t last_doc_{ type_limits<type_t::doc_id_t>::invalid() };
   uint32_t pos_;
   uint32_t last_pos_;
@@ -121,7 +128,6 @@ class IRESEARCH_API field_data : util::noncopyable {
   uint32_t last_start_offs_;
   uint32_t max_term_freq_; // maximum number of terms in a field across all indexed documents 
   uint32_t unq_term_cnt_;
-  const bool random_access_; // allow random access to positions
 };
 
 class IRESEARCH_API fields_data: util::noncopyable {

@@ -45,8 +45,8 @@ segment_meta::segment_meta(
     uint64_t live_docs_count,
     bool column_store,
     segment_meta::file_set&& files,
-    field_id sort,
-    size_t size /* = 0*/
+    size_t size, /* = 0*/
+    field_id sort /* = field_limits::invalid() */
 ) NOEXCEPT
   : files(std::move(files)),
     name(std::move(name)),

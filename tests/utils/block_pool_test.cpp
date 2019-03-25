@@ -38,57 +38,59 @@ class block_pool_test : public test_base {
   typedef typename pool_t::inserter inserter_t;
   typedef typename pool_t::sliced_inserter sliced_inserter_t;
   typedef typename pool_t::sliced_reader sliced_reader_t;
+  typedef typename pool_t::sliced_greedy_inserter sliced_greedy_inserter_t;
+  typedef typename pool_t::sliced_greedy_reader sliced_greedy_reader_t;
 
-  void ctor() const {
-    ASSERT_EQ( BlockSize, pool_.block_size() );
-    ASSERT_EQ( 0, pool_.count() );
-    ASSERT_EQ( 0, pool_.size() );
-    ASSERT_EQ( pool_.begin(), pool_.end() );
+  void ctor() {
+    ASSERT_EQ(BlockSize, size_t(block_type::SIZE));
+    ASSERT_EQ(0, pool_.block_count());
+    ASSERT_EQ(0, pool_.size());
+    ASSERT_EQ(pool_.begin(), pool_.end());
 
-    /* check const iterators */
+    // check const iterators
     {
       const auto& cpool = pool_;
-      ASSERT_EQ( cpool.begin(), cpool.end() );
+      ASSERT_EQ(cpool.begin(), cpool.end());
     }
   }
 
   void next_buffer_clear() {
-    ASSERT_EQ( BlockSize, size_t(block_type::SIZE) );
+    ASSERT_EQ(BlockSize, size_t(block_type::SIZE));
     ASSERT_EQ(0, pool_.block_count());
     ASSERT_EQ(0, pool_.value_count());
-    ASSERT_EQ( pool_.begin(), pool_.end() );
+    ASSERT_EQ( pool_.begin(), pool_.end());
 
-    /* add buffer */
+    // add buffer
     pool_.alloc_buffer();
     ASSERT_EQ(1, pool_.block_count());
     ASSERT_EQ(BlockSize, pool_.value_count());
-    ASSERT_NE( pool_.begin(), pool_.end() );
+    ASSERT_NE(pool_.begin(), pool_.end());
 
-    /* add several buffers */
+    // add several buffers
     const size_t count = 15;
-    pool_.alloc_buffer( count );
+    pool_.alloc_buffer(count);
     ASSERT_EQ(1 + count, pool_.block_count());
-    ASSERT_EQ(BlockSize * (1 + count), pool_.value_count());
-    ASSERT_NE( pool_.begin(), pool_.end() );
+    ASSERT_EQ(BlockSize *(1 + count), pool_.value_count());
+    ASSERT_NE( pool_.begin(), pool_.end());
 
-    /* clear buffers */
+    // clear buffers
     pool_.clear();
     ASSERT_EQ(0, pool_.block_count());
     ASSERT_EQ(0, pool_.value_count());
-    ASSERT_EQ( pool_.begin(), pool_.end() );
+    ASSERT_EQ(pool_.begin(), pool_.end());
   }
 
   void write_read(uint32_t max, uint32_t step) {
-    inserter_t w( pool_.begin() );
+    inserter_t w(pool_.begin());
 
-    for ( uint32_t i = 0; max; i += step, --max ) {
-      irs::vwrite<uint32_t>( w, i );
+    for (uint32_t i = 0; max; i += step, --max) {
+      irs::vwrite<uint32_t>(w, i);
     }
 
     auto it = pool_.begin();
 
-    for ( uint32_t i = 0; max; i += step, --max ) {
-      ASSERT_EQ( i, irs::vread<uint32_t>( it ) );
+    for (uint32_t i = 0; max; i += step, --max) {
+      ASSERT_EQ(i, irs::vread<uint32_t>(it));
     }
   }
 
@@ -103,25 +105,25 @@ class block_pool_test : public test_base {
     std::string slice_data("test_data");
 
     int count = max;
-    for ( uint32_t i = 0; count; i += step, --count ) {
-      irs::vwrite<uint32_t>( w, i );
+    for (uint32_t i = 0; count; i += step, --count) {
+      irs::vwrite<uint32_t>(w, i);
 
       if (i % 3 == 0) { // write data within slice
         w.write(reinterpret_cast<const byte_type*>(slice_data.c_str()), slice_data.size());
       }
 
       if ( i % 2 ) {
-        ins.write( ( const iresearch::byte_type* ) payload, len );
+        ins.write((const irs::byte_type*)payload, len);
       }
     }
 
-    sliced_reader_t r( pool_.begin(), w.pool_offset() );
+    sliced_reader_t r(pool_.begin(), w.pool_offset());
 
     count = max;
-    for ( uint32_t i = 0; count; i += step, --count ) {
-      int res = irs::vread<uint32_t>( r );
+    for (uint32_t i = 0; count; i += step, --count) {
+      int res = irs::vread<uint32_t>(r);
 
-      EXPECT_EQ( i, res );
+      EXPECT_EQ(i, res);
 
       if (i % 3 == 0) { // read data within slice
         bstring payload;
@@ -141,7 +143,7 @@ class block_pool_test : public test_base {
 
     // write data
     {
-      inserter_t ins( pool_.begin() ); 
+      inserter_t ins(pool_.begin());
       // alloc slice chain
       slice_chain_begin = ins.alloc_slice();
 
@@ -244,15 +246,90 @@ class block_pool_test : public test_base {
     }
   }
 
+  void greedy_slice_read_write() {
+    const bytes_ref data[] {
+      ref_cast<byte_type>(string_ref("first_payload")),
+      ref_cast<byte_type>(string_ref("second_payload_1234"))
+    };
+
+    std::vector<std::pair<size_t, size_t>> cookies; // slice_offset + offset
+
+    auto push_cookie = [&cookies](const sliced_greedy_inserter_t& writer) {
+      cookies.emplace_back(writer.slice_offset(), writer.pool_offset() - writer.slice_offset());
+    };
+
+    // write data
+    {
+      inserter_t ins(pool_.begin());
+      cookies.emplace_back(ins.alloc_greedy_slice(), 1); // alloc slice chain
+
+      // insert payload
+      {
+        T payload[500];
+        std::fill(payload, payload + sizeof payload, 20);
+        ins.write(payload, sizeof payload);
+      }
+
+      sliced_greedy_inserter_t sliced_ins(ins, cookies.back().first, cookies.back().second);
+      sliced_ins.write(data[0].c_str(), data[0].size()); // fill 1st slice & alloc 2nd slice here
+      push_cookie(sliced_ins);
+      sliced_ins.write(data[1].c_str(), data[1].size()); // fill 2st slice & alloc 3nd slice here
+
+      // insert payload
+      {
+        T payload[500];
+        std::fill(payload, payload + sizeof payload, 20);
+        ins.write(payload, sizeof payload);
+      }
+
+      for (size_t i = 0; i < 1024; ++i) {
+        push_cookie(sliced_ins);
+        irs::vwrite(sliced_ins, i);
+        const auto str = std::to_string(i);
+        sliced_ins.write(reinterpret_cast<const irs::byte_type*>(str.c_str()), str.size());
+      }
+    }
+
+    // read data
+    {
+      byte_type read[100]{};
+      size_t i = cookies.size();
+
+      while (--i > 2) {
+        const auto expected = i - 2;
+        sliced_greedy_reader_t sliced_rdr(pool_, cookies[i].first, cookies[i].second);
+        ASSERT_EQ(expected, irs::vread<size_t>(sliced_rdr));
+
+        const auto str = std::to_string(expected);
+        sliced_rdr.read(read, str.size());
+
+        ASSERT_EQ(
+          irs::bytes_ref(reinterpret_cast<const byte_type*>(str.c_str()), str.size()),
+          irs::bytes_ref(read, str.size())
+        );
+      }
+
+      while (i--) {
+        sliced_greedy_reader_t sliced_rdr(pool_, cookies[i].first, cookies[i].second);
+        sliced_rdr.read(read, data[i].size());
+        ASSERT_EQ(data[i], bytes_ref(read, data[i].size()));
+      }
+    }
+  }
+
+  // alloc_slice
+  //void slice_chunked_read_write_slice_offset() {
+
  protected:
-  iresearch::block_pool<T, BlockSize> pool_;
+  irs::block_pool<T, BlockSize> pool_;
 }; // block_pool_test  
 
 /* byte_block_pool_test */
 
-typedef block_pool_test<iresearch::byte_type, BLOCK_SIZE> byte_block_pool_test;
+typedef block_pool_test<irs::byte_type, BLOCK_SIZE> byte_block_pool_test;
 
 TEST_F(byte_block_pool_test, ctor) {
+  ctor();
 }
 
 TEST_F(byte_block_pool_test, next_buffer_clear) {
@@ -278,6 +355,7 @@ TEST_F(byte_block_pool_test, slice_alignment_with_reuse) {
 
 TEST_F(byte_block_pool_test, slice_chunked_read_write) {
   slice_chunked_read_write();
+  greedy_slice_read_write();
 }
 
 // -----------------------------------------------------------------------------
