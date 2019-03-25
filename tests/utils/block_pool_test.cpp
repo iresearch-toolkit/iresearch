@@ -117,7 +117,7 @@ class block_pool_test : public test_base {
       }
     }
 
-    sliced_reader_t r(pool_.begin(), w.pool_offset());
+    sliced_reader_t r(pool_, 0, w.pool_offset());
 
     count = max;
     for (uint32_t i = 0; count; i += step, --count) {
@@ -164,7 +164,7 @@ class block_pool_test : public test_base {
     // read data
     {
       
-      sliced_reader_t sliced_rdr(pool_.seek(slice_chain_begin), slice_chain_end);
+      sliced_reader_t sliced_rdr(pool_, slice_chain_begin, slice_chain_end);
       
       // read first data
       {
@@ -231,7 +231,7 @@ class block_pool_test : public test_base {
 
     // read phase
     {
-      sliced_reader_t sliced_rdr(pool_.seek(slice_chain_begin), slice_chain_end);
+      sliced_reader_t sliced_rdr(pool_, slice_chain_begin, slice_chain_end);
       ASSERT_EQ(5, *sliced_rdr); ++sliced_rdr;
       ASSERT_FALSE(sliced_rdr.eof());
       ASSERT_EQ(6, *sliced_rdr); ++sliced_rdr;

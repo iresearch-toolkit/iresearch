@@ -70,11 +70,12 @@ class payload : public irs::payload {
 
 const byte_block_pool EMPTY_POOL;
 
+template<typename Reader>
 class pos_iterator final: public irs::position {
  public:
   pos_iterator()
     : irs::position(2), // offset + payload
-      prox_in_(EMPTY_POOL.begin(), 0) {
+      prox_in_(EMPTY_POOL) {
   }
 
   virtual void clear() NOEXCEPT override {
@@ -87,7 +88,7 @@ class pos_iterator final: public irs::position {
   void reset(
       const field_data& field,
       const frequency& freq,
-      const byte_block_pool::sliced_reader& prox
+      const Reader& prox
   ) {
     auto& features = field.meta().features;
     assert(features.check<frequency>());
@@ -114,7 +115,7 @@ class pos_iterator final: public irs::position {
     assert(freq_);
 
     if (pos_ == freq_->value) {
-      val_ = irs::type_limits<irs::type_t::pos_t>::eof();
+      val_ = irs::pos_limits::eof();
 
       return false;
     }
@@ -140,11 +141,11 @@ class pos_iterator final: public irs::position {
   }
 
  private:
-  byte_block_pool::sliced_reader prox_in_;
-  const frequency* freq_{}; // number of terms position in a document
-  uint64_t pos_{}; // current position
+  Reader prox_in_;
+  const frequency* freq_{}; // number of term positions in a document
   payload pay_{};
   offset offs_{};
+  uint32_t pos_{}; // current position
   uint32_t val_{};
   bool has_offs_{false}; // FIXME find a better way to handle presence of offsets
 }; // pos_iterator
@@ -185,6 +186,7 @@ void write_prox(
   }
 }
 
+//FIXME use delta encoding
 template<typename Inserter>
 FORCE_INLINE void write_cookie(Inserter& out, uint64_t cookie) {
   *out = static_cast<byte_type>(cookie & 0xFF);
@@ -291,7 +293,7 @@ class sorting_doc_iterator : public irs::doc_iterator {
   std::vector<doc_entry> docs_;
   document doc_;
   frequency freq_;
-  pos_iterator pos_;
+  pos_iterator<byte_block_pool::sliced_greedy_reader> pos_;
   attribute_view attrs_;
 }; // sorting_doc_iterator
 
@@ -324,7 +326,7 @@ class doc_iterator : public irs::doc_iterator {
  public:
   doc_iterator()
     : attrs_(3), // document + frequency + position
-      freq_in_(EMPTY_POOL.begin(), 0) {
+      freq_in_(EMPTY_POOL) {
   }
 
   virtual const attribute_view& attributes() const NOEXCEPT override {
@@ -400,7 +402,7 @@ class doc_iterator : public irs::doc_iterator {
  private:
   document doc_;
   frequency freq_;
-  pos_iterator pos_;
+  pos_iterator<byte_block_pool::sliced_reader> pos_;
   attribute_view attrs_;
   byte_block_pool::sliced_reader freq_in_;
   const posting* posting_;
@@ -490,7 +492,7 @@ class term_iterator : public irs::term_iterator {
   irs::doc_iterator::ptr postings(const posting& posting) const {
     assert(!doc_map_);
 
-    // where the term's data starts
+    // where the term data starts
     auto ptr = field_->int_writer_->parent().seek(posting.int_start);
     const auto freq_end = *ptr; ++ptr;
     const auto prox_end = *ptr; ++ptr;
@@ -498,8 +500,8 @@ class term_iterator : public irs::term_iterator {
     const auto prox_begin = *ptr;
 
     auto& pool = field_->byte_writer_->parent();
-    const byte_block_pool::sliced_reader freq(pool.seek(freq_begin), freq_end); // term's frequencies
-    const byte_block_pool::sliced_reader prox(pool.seek(prox_begin), prox_end); // term's proximity // TODO: create on demand!!!
+    const byte_block_pool::sliced_reader freq(pool, freq_begin, freq_end); // term's frequencies
+    const byte_block_pool::sliced_reader prox(pool, prox_begin, prox_end); // term's proximity // TODO: create on demand!!!
 
     doc_itr_.reset(*field_, posting, freq, &prox);
     return doc_iterator::ptr(doc_iterator::ptr(), &doc_itr_); // aliasing ctor
@@ -508,13 +510,13 @@ class term_iterator : public irs::term_iterator {
   irs::doc_iterator::ptr sort_postings(const posting& posting) const {
     assert(doc_map_);
 
-    // where the term's data starts
+    // where the term data starts
     auto ptr = field_->int_writer_->parent().seek(posting.int_start);
     const auto freq_end = *ptr; ++ptr;
     const auto freq_begin = *ptr;
 
     auto& pool = field_->byte_writer_->parent();
-    const byte_block_pool::sliced_reader freq(pool.seek(freq_begin), freq_end); // term's frequencies
+    const byte_block_pool::sliced_reader freq(pool, freq_begin, freq_end); // term's frequencies
     doc_itr_.reset(*field_, posting, freq, nullptr);
 
     sorting_doc_itr_.reset(doc_itr_, *doc_map_);
