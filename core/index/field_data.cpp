@@ -77,7 +77,7 @@ class pos_iterator final: public irs::position {
       prox_in_(EMPTY_POOL.begin(), 0) {
   }
 
-  virtual void clear() override {
+  virtual void clear() NOEXCEPT override {
     pos_ = 0;
     val_ = 0; // FIXME TODO change to invalid when invalid() == 0
     offs_.clear();
@@ -90,10 +90,10 @@ class pos_iterator final: public irs::position {
       const byte_block_pool::sliced_reader& prox
   ) {
     auto& features = field.meta().features;
+    assert(features.check<frequency>());
 
     attrs_.clear();
     clear();
-    field_ = &field;
     freq_ = &freq;
     prox_in_ = prox;
 
@@ -106,7 +106,7 @@ class pos_iterator final: public irs::position {
     }
   }
 
-  virtual uint32_t value() const override {
+  virtual uint32_t value() const NOEXCEPT override {
     return val_;
   }
 
@@ -145,10 +145,9 @@ class pos_iterator final: public irs::position {
   uint64_t pos_{}; // current position
   payload pay_{};
   offset offs_{};
-  const field_data* field_{};
   uint32_t val_{};
   bool has_offs_{false}; // FIXME find a better way to handle presence of offsets
-};
+}; // pos_iterator
 
 template<typename Inserter>
 void write_offset(
@@ -209,125 +208,6 @@ FORCE_INLINE byte_block_pool::sliced_greedy_inserter stream(
     static_cast<size_t>((cookie >> 8) & 0xFFFFFFFF)
   );
 }
-
-NS_END
-
-NS_ROOT
-
-bool memcmp_less(
-    const byte_type* lhs, size_t lhs_size,
-    const byte_type* rhs, size_t rhs_size
-) NOEXCEPT {
-  assert(lhs && rhs);
-
-  const size_t size = std::min(lhs_size, rhs_size);
-  const auto res = ::memcmp(lhs, rhs, size);
-
-  if (0 == res) {
-    return lhs_size < rhs_size;
-  }
-
-  return res < 0;
-}
-
-NS_BEGIN(detail)
-
-using irs::field_data;
-using irs::bytes_ref;
-
-class doc_iterator : public irs::doc_iterator {
- public:
-  doc_iterator()
-    : attrs_(3), // document + frequency + position
-      freq_in_(EMPTY_POOL.begin(), 0) {
-  }
-
-  virtual const attribute_view& attributes() const NOEXCEPT override {
-    return attrs_;
-  }
-
-  void reset(
-      const field_data& field, const irs::posting& posting,
-      const byte_block_pool::sliced_reader& freq,
-      const byte_block_pool::sliced_reader* prox) {
-    attrs_.clear();
-    attrs_.emplace(doc_);
-    doc_.value = 0;
-    freq_in_ = freq;
-    posting_ = &posting;
-    field_ = &field;
-
-    const auto& features = field_->meta().features;
-
-    if (true == (has_freq_ = features.check<frequency>())) {
-      attrs_.emplace(freq_);
-      freq_.value = 0;
-
-      if (prox && features.check<position>()) {
-        pos_.reset(field, freq_, *prox);
-        attrs_.emplace(pos_);
-      }
-    }
-
-  }
-
-  virtual doc_id_t seek(doc_id_t doc) override {
-    irs::seek(*this, doc);
-    return value();
-  }
-
-  virtual doc_id_t value() const override {
-    return doc_.value;
-  }
-
-  virtual bool next() override {
-    if (freq_in_.eof()) {
-      if (!doc_limits::valid(posting_->doc_code)) {
-        return false;
-      }
-
-      doc_.value = posting_->doc;
-
-      if (field_->meta().features.check<frequency>()) {
-        freq_.value = posting_->freq; 
-      }
-
-      const_cast<posting*>(posting_)->doc_code = doc_limits::invalid();
-    } else {
-      //if (freq_) {
-      if (has_freq_) {
-        uint64_t delta;
-
-        if (shift_unpack_64(irs::vread<uint64_t>(freq_in_), delta)) {
-          freq_.value = 1U;
-        } else {
-          freq_.value = irs::vread<uint32_t>(freq_in_);
-        }
-
-        assert(delta < doc_limits::eof());
-        doc_.value += doc_id_t(delta);
-      } else {
-        doc_.value += irs::vread<uint32_t>(freq_in_);
-      }
-
-      assert(doc_.value != posting_->doc);
-    }
-
-    pos_.clear();
-
-    return true;
-  }
-
- private:
-  document doc_;
-  frequency freq_;
-  pos_iterator pos_;
-  attribute_view attrs_;
-  byte_block_pool::sliced_reader freq_in_;
-  const posting* posting_;
-  const field_data* field_;
-  bool has_freq_{false}; // FIXME remove
-};
 
 class sorting_doc_iterator : public irs::doc_iterator {
  public:
@@ -415,6 +295,118 @@ class sorting_doc_iterator : public irs::doc_iterator {
   attribute_view attrs_;
 }; // sorting_doc_iterator
 
+NS_END
+
+NS_ROOT
+
+bool memcmp_less(
+    const byte_type* lhs, size_t lhs_size,
+    const byte_type* rhs, size_t rhs_size
+) NOEXCEPT {
+  assert(lhs && rhs);
+
+  const size_t size = std::min(lhs_size, rhs_size);
+  const auto res = ::memcmp(lhs, rhs, size);
+
+  if (0 == res) {
+    return lhs_size < rhs_size;
+  }
+
+  return res < 0;
+}
+
+NS_BEGIN(detail)
+
+using irs::field_data;
+using irs::bytes_ref;
+
+class doc_iterator : public irs::doc_iterator {
+ public:
+  doc_iterator()
+    : attrs_(3), // document + frequency + position
+      freq_in_(EMPTY_POOL.begin(), 0) {
+  }
+
+  virtual const attribute_view& attributes() const NOEXCEPT override {
+    return attrs_;
+  }
+
+  void reset(
+      const field_data& field,
+      const irs::posting& posting,
+      const byte_block_pool::sliced_reader& freq,
+      const byte_block_pool::sliced_reader* prox) {
+    attrs_.clear();
+    attrs_.emplace(doc_);
+    doc_.value = 0;
+    freq_in_ = freq;
+    posting_ = &posting;
+
+    const auto& features = field.meta().features;
+
+    if (true == (has_freq_ = features.check<frequency>())) {
+      attrs_.emplace(freq_);
+      freq_.value = 0;
+
+      if (prox && features.check<position>()) {
+        pos_.reset(field, freq_, *prox);
+        attrs_.emplace(pos_);
+      }
+    }
+  }
+
+  virtual doc_id_t seek(doc_id_t doc) override {
+    irs::seek(*this, doc);
+    return value();
+  }
+
+  virtual doc_id_t value() const NOEXCEPT override {
+    return doc_.value;
+  }
+
+  virtual bool next() override {
+    if (freq_in_.eof()) {
+      if (!posting_) {
+        return false;
+      }
+
+      doc_.value = posting_->doc;
+      freq_.value = posting_->freq;
+      posting_ = nullptr;
+    } else {
+      if (has_freq_) {
+        uint64_t delta;
+
+        if (shift_unpack_64(irs::vread<uint64_t>(freq_in_), delta)) {
+          freq_.value = 1U;
+        } else {
+          freq_.value = irs::vread<uint32_t>(freq_in_);
+        }
+
+        assert(delta < doc_limits::eof());
+        doc_.value += doc_id_t(delta);
+      } else {
+        doc_.value += irs::vread<uint32_t>(freq_in_);
+      }
+
+      assert(doc_.value != posting_->doc);
+    }
+
+    pos_.clear();
+
+    return true;
+  }
+
+ private:
+  document doc_;
+  frequency freq_;
+  pos_iterator pos_;
+  attribute_view attrs_;
+  byte_block_pool::sliced_reader freq_in_;
+  const posting* posting_;
+  bool has_freq_{false}; // FIXME remove
+};
+
 class term_iterator : public irs::term_iterator {
  public:
   void reset(const field_data& field, const doc_map* docmap, const bytes_ref*& min, const bytes_ref*& max) {
@@ -437,7 +429,7 @@ class term_iterator : public irs::term_iterator {
     term_ = irs::bytes_ref::NIL;
   }
 
-  virtual const bytes_ref& value() const override {
+  virtual const bytes_ref& value() const NOEXCEPT override {
     return term_;
   }
 
@@ -445,7 +437,7 @@ class term_iterator : public irs::term_iterator {
     return attribute_view::empty_instance();
   }
 
-  virtual void read() override {
+  virtual void read() NOEXCEPT override {
     // Does nothing now
   }
 
@@ -535,7 +527,7 @@ class term_iterator : public irs::term_iterator {
   const field_data* field_;
   const doc_map* doc_map_;
   mutable detail::doc_iterator doc_itr_;
-  mutable detail::sorting_doc_iterator sorting_doc_itr_;
+  mutable ::sorting_doc_iterator sorting_doc_itr_;
   bool itr_increment_{ false };
 }; // term_iterator
 
