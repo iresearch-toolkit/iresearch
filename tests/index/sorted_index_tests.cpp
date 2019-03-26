@@ -44,10 +44,10 @@ class sorted_index_test_case : public tests::index_test_base {
     index_test_base::assert_index(irs::flags(), skip);
     index_test_base::assert_index(irs::flags{ irs::document::type() }, skip);
     index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type() }, skip);
-//    index_test_base::asset_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type() }, skip);
-//    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::offset::type() }, skip);
-//    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type() }, skip);
-//    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() }, skip);
+    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type() }, skip);
+    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::offset::type() }, skip);
+    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type() }, skip);
+    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() }, skip);
   }
 
   comparer less;

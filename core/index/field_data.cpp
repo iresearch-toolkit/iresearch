@@ -191,24 +191,40 @@ void write_prox(
 //FIXME use delta encoding
 template<typename Inserter>
 FORCE_INLINE void write_cookie(Inserter& out, uint64_t cookie) {
-  *out = static_cast<byte_type>(cookie & 0xFF);
-  irs::vwrite(out, static_cast<uint32_t>((cookie >> 8) & 0xFFFFFFFF));
+//  *out = static_cast<byte_type>(cookie & 0xFF);
+//  irs::vwrite<uint32_t>(out, static_cast<uint32_t>((cookie >> 8) & 0xFFFFFFFF));
+  irs::write(out, cookie);
+}
+
+FORCE_INLINE uint64_t cookie(size_t slice_offset, size_t offset) NOEXCEPT {
+  return static_cast<uint64_t>(slice_offset) << 8 | static_cast<byte_type>(offset);
 }
 
 template<typename Reader>
 FORCE_INLINE uint64_t read_cookie(Reader& in) {
-  const uint64_t offset = *in;
-  return uint64_t(irs::vread<uint32_t>(in)) << 8 | offset;
+  return irs::read<uint64_t>(in);
+//  const size_t offset = *in;
+//  return cookie(irs::vread<uint32_t>(in), offset);
 }
 
-uint64_t cookie(const byte_block_pool::sliced_greedy_inserter& stream) NOEXCEPT {
+FORCE_INLINE uint64_t cookie(const byte_block_pool::sliced_greedy_inserter& stream) NOEXCEPT {
   assert(stream.slice_offset() <= stream.pool_offset());
   const auto slice_offset = stream.slice_offset();
-  const auto offset = stream.pool_offset() - slice_offset;
-  return static_cast<uint64_t>(slice_offset) << 8 | static_cast<byte_type>(offset);
+  return cookie(slice_offset, stream.pool_offset() - slice_offset);
 }
 
-FORCE_INLINE byte_block_pool::sliced_greedy_inserter stream(
+FORCE_INLINE byte_block_pool::sliced_greedy_reader greedy_reader(
+    const byte_block_pool& pool,
+    uint64_t cookie
+) NOEXCEPT {
+  return byte_block_pool::sliced_greedy_reader(
+    pool,
+    static_cast<size_t>((cookie >> 8) & 0xFFFFFFFF),
+    static_cast<size_t>(cookie & 0xFF)
+  );
+}
+
+FORCE_INLINE byte_block_pool::sliced_greedy_inserter greedy_writer(
     byte_block_pool::inserter& writer,
     uint64_t cookie
 ) NOEXCEPT {
@@ -256,14 +272,16 @@ class doc_iterator : public irs::doc_iterator {
   }
 
   // reset field
-  void reset(const flags& features) {
+  void reset(const field_data& field) {
     attrs_.clear();
     attrs_.emplace(doc_);
 
+    field_ = &field;
     has_freq_ = false;
     has_prox_ = false;
     has_cookie_ = false;
 
+    auto& features = field.meta().features;
     if (features.check<frequency>()) {
       attrs_.emplace(freq_);
       has_freq_ = true;
@@ -273,6 +291,7 @@ class doc_iterator : public irs::doc_iterator {
 
         attrs_.emplace(pos_);
         has_prox_ = true;
+        has_cookie_ = field.prox_random_access();
       }
     }
   }
@@ -317,9 +336,9 @@ class doc_iterator : public irs::doc_iterator {
       doc_.value = posting_->doc;
       freq_.value = posting_->freq;
 
-//      if (has_cookie_) {
-//        auto& prox_stream_end = *int_writer_->parent().seek(posting_->int_start+2);
-//      }
+      if (has_cookie_) {
+ //       cookie_ = *field_->int_writer_->parent().seek(posting_->int_start+3);
+      }
 
       posting_ = nullptr;
     } else {
@@ -335,9 +354,9 @@ class doc_iterator : public irs::doc_iterator {
         assert(delta < doc_limits::eof());
         doc_.value += doc_id_t(delta);
 
-//        if (has_cookie_) {
-//          cookie_ = read_cookie(freq_in_);
-//        }
+        if (has_cookie_) {
+          cookie_ = read_cookie(freq_in_);
+        }
       } else {
         doc_.value += irs::vread<uint32_t>(freq_in_);
       }
@@ -351,7 +370,8 @@ class doc_iterator : public irs::doc_iterator {
   }
 
  private:
-  uint64_t cookie_;
+  const field_data* field_{};
+  uint64_t cookie_{};
   document doc_;
   frequency freq_;
   pos_iterator<byte_block_pool::sliced_reader> pos_;
@@ -370,10 +390,15 @@ class sorting_doc_iterator : public irs::doc_iterator {
   }
 
   // reset field
-  void reset(const flags& features) {
+  void reset(const field_data& field) {
+    byte_pool_ = &field.byte_writer_->parent();
+
     attrs_.clear();
     attrs_.emplace(doc_);
 
+    has_pos_ = false;
+
+    auto& features = field.meta().features;
     if (features.check<frequency>()) {
       attrs_.emplace(freq_);
 
@@ -446,7 +471,7 @@ class sorting_doc_iterator : public irs::doc_iterator {
     ++it_;
 
     if (has_pos_) {
-      //pos_.reset()
+      pos_.reset(greedy_reader(*byte_pool_, cookie));
     }
 
     return true;
@@ -459,6 +484,7 @@ class sorting_doc_iterator : public irs::doc_iterator {
     uint64_t   // prox cookie
   > doc_entry_t;
 
+  const byte_block_pool* byte_pool_{};
   std::vector<doc_entry_t>::const_iterator it_;
   std::vector<doc_entry_t> docs_;
   document doc_;
@@ -484,11 +510,9 @@ class term_iterator : public irs::term_iterator {
     field_ = &field;
     doc_map_ = docmap;
 
-    auto& features = field.meta().features;
+    doc_itr_.reset(field);
     if (docmap) {
-      sorting_doc_itr_.reset(features);
-    } else {
-      doc_itr_.reset(features);
+      sorting_doc_itr_.reset(field);
     }
 
     // reset state
@@ -575,8 +599,13 @@ class term_iterator : public irs::term_iterator {
 
     auto& pool = field_->byte_writer_->parent();
     const byte_block_pool::sliced_reader freq(pool, freq_begin, freq_end); // term's frequencies
-    doc_itr_.reset(posting, freq, nullptr);
+//    doc_itr_.reset(posting, freq, nullptr);
+//
+//    while (doc_itr_.next()) {
+//      std::cerr << doc_itr_.value() << std::endl;
+//    }
 
+    doc_itr_.reset(posting, freq, nullptr);
     sorting_doc_itr_.reset(doc_itr_, *doc_map_);
     return doc_iterator::ptr(doc_iterator::ptr(), &sorting_doc_itr_); // aliasing ctor
   }
@@ -649,17 +678,15 @@ NS_END // detail
 
 field_data::field_data( 
     const string_ref& name,
-    byte_block_pool::inserter* byte_writer,
-    int_block_pool::inserter* int_writer,
+    byte_block_pool::inserter& byte_writer,
+    int_block_pool::inserter& int_writer,
     bool random_access)
   : meta_(name, flags::empty_instance()),
     terms_(*byte_writer),
-    byte_writer_(byte_writer),
-    int_writer_(int_writer),
+    byte_writer_(&byte_writer),
+    int_writer_(&int_writer),
     proc_table_(TERM_PROCESSING_TABLES[size_t(random_access)]),
     last_doc_(doc_limits::invalid()) {
-  assert(byte_writer_);
-  assert(int_writer_);
 }
 
 void field_data::reset(doc_id_t doc_id) {
@@ -821,8 +848,11 @@ void field_data::new_term_random_access(
   p.int_start = int_writer_->pool_offset();
 
   const auto freq_start = byte_writer_->alloc_slice(); // pointer to freq stream
+  const auto prox_start = byte_writer_->alloc_greedy_slice(); // pointer to prox stream
   *int_writer_ = freq_start; // freq stream end
   *int_writer_ = freq_start; // freq stream start
+  *int_writer_ = cookie(prox_start, 1); // end cookie
+  *int_writer_ = cookie(prox_start, 1); // start cookie
 
   auto& features = meta_.features;
 
@@ -834,10 +864,7 @@ void field_data::new_term_random_access(
     p.freq = 1;
 
     if (features.check<position>()) {
-      const auto prox_start = byte_writer_->alloc_greedy_slice(); // pointer to prox stream
       byte_block_pool::sliced_greedy_inserter prox_out(*byte_writer_, 1, prox_start);
-
-      *int_writer_ = cookie(prox_out); // prox stream start cookie
 
       write_prox(prox_out, pos_, pay, meta_.features);
 
@@ -846,7 +873,8 @@ void field_data::new_term_random_access(
         write_offset(p, prox_out, offs_, *offs);
       }
 
-      *int_writer_ = cookie(prox_out); // prox stream end cookie
+      auto& end_cookie = *int_writer_->parent().seek(p.int_start+2);
+      end_cookie = cookie(prox_out); // prox stream end cookie
 
       p.pos = pos_;
     }
@@ -899,15 +927,13 @@ void field_data::add_term_random_access(
     if (features.check<position>()) {
       auto prox_stream_cookie = int_writer_->parent().seek(p.int_start+2);
 
-      // write start cookie
+      auto& end_cookie = *prox_stream_cookie; ++prox_stream_cookie;
       auto& start_cookie = *prox_stream_cookie;
-      //write_cookie(doc_out, start_cookie);
-      // update start cookie
-      ++prox_stream_cookie;
-      auto& end_cookie = *prox_stream_cookie;
-      start_cookie = end_cookie;
 
-      byte_block_pool::sliced_greedy_inserter prox_out = stream(*byte_writer_, start_cookie);
+      write_cookie(doc_out, start_cookie);
+      start_cookie = end_cookie; // update start cookie
+
+      auto prox_out = greedy_writer(*byte_writer_, start_cookie);
 
       write_prox(prox_out, pos_, pay, meta_.features);
 
@@ -926,8 +952,8 @@ void field_data::add_term_random_access(
     max_term_freq_ = std::max(++p.freq, max_term_freq_);
     if (features.check<position>() ) {
       // update end cookie
-      auto& end_cookie = *int_writer_->parent().seek(p.int_start+3);
-      byte_block_pool::sliced_greedy_inserter prox_out = stream(*byte_writer_, end_cookie);
+      auto& end_cookie = *int_writer_->parent().seek(p.int_start+2);
+      auto prox_out = greedy_writer(*byte_writer_, end_cookie);
 
       write_prox(prox_out, pos_ - p.pos, pay, meta_.features);
 
@@ -1060,10 +1086,10 @@ field_data& fields_data::emplace(const hashed_string_ref& name) {
   // replace original reference to 'name' provided by the caller
   // with a reference to the cached copy in 'value'
   return map_utils::try_emplace_update_key(
-    fields_,                                                   // container
-    generator,                                                 // key generator
-    name,                                                      // key
-    name, &byte_writer_, &int_writer_, nullptr != comparator_  // value
+    fields_,                                                  // container
+    generator,                                                // key generator
+    name,                                                     // key
+    name, byte_writer_, int_writer_, (nullptr != comparator_) // value
   ).first->second;
 }
 

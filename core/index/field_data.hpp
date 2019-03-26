@@ -55,6 +55,7 @@ typedef block_pool<size_t, 8192> int_block_pool;
 NS_BEGIN(detail)
 class term_iterator;
 class doc_iterator;
+class sorting_doc_iterator;
 NS_END
 
 IRESEARCH_API bool memcmp_less(
@@ -75,8 +76,8 @@ class IRESEARCH_API field_data : util::noncopyable {
  public:
   field_data(
     const string_ref& name,
-    byte_block_pool::inserter* byte_writer,
-    int_block_pool::inserter* int_writer,
+    byte_block_pool::inserter& byte_writer,
+    int_block_pool::inserter& int_writer,
     bool random_access
   );
 
@@ -96,9 +97,14 @@ class IRESEARCH_API field_data : util::noncopyable {
 
   bool invert(token_stream& tokens, const flags& features, doc_id_t id);
 
+  bool prox_random_access() const NOEXCEPT {
+    return TERM_PROCESSING_TABLES[1] == proc_table_;
+  }
+
  private:
   friend class detail::term_iterator;
   friend class detail::doc_iterator;
+  friend class detail::sorting_doc_iterator;
   friend class fields_data;
 
   typedef void(field_data::*process_term_f)(posting&, doc_id_t, const payload*, const offset*);
