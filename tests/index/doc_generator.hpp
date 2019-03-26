@@ -263,6 +263,7 @@ class particle: irs::util::noncopyable {
 struct document: irs::util::noncopyable {
   document() = default;
   document(document&& rhs) NOEXCEPT;
+  virtual ~document() = default;
 
   void insert(const ifield::ptr& field, bool indexed = true, bool stored = true) {
     if (indexed) this->indexed.push_back(field);

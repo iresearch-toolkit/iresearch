@@ -29,17 +29,45 @@
 
 NS_LOCAL
 
+class sorted_europarl_doc_template : public tests::templates::europarl_doc_template {
+ public:
+  explicit sorted_europarl_doc_template(const std::string& field)
+    : field_(field) {
+  }
+
+  virtual void init() override {
+    tests::templates::europarl_doc_template::init();
+    auto fields = indexed.find(field_);
+
+    for (auto field : fields) {
+      const_cast<irs::flags&>(field->features()).add<irs::sorted>();
+    }
+  }
+
+ private:
+  std::string field_; // sorting field
+}; // sorted_europal_doc_template
+
+struct string_comparer : irs::comparer {
+  virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const {
+    const auto lhs_value = irs::to_string<irs::bytes_ref>(lhs.c_str());
+    const auto rhs_value = irs::to_string<irs::bytes_ref>(rhs.c_str());
+
+    return lhs_value > rhs_value;
+  }
+};
+
+struct long_comparer : irs::comparer {
+  virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const {
+    auto* plhs = lhs.c_str();
+    auto* prhs = rhs.c_str();
+
+    return irs::zig_zag_decode64(irs::vread<uint64_t>(plhs)) < irs::zig_zag_decode64(irs::vread<uint64_t>(prhs));
+  }
+};
+
 class sorted_index_test_case : public tests::index_test_base {
  protected:
-  struct comparer : irs::comparer {
-    virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const {
-      const auto lhs_value = irs::to_string<irs::bytes_ref>(lhs.c_str());
-      const auto rhs_value = irs::to_string<irs::bytes_ref>(rhs.c_str());
-
-      return lhs_value > rhs_value;
-    }
-  };
-
   void assert_index(size_t skip = 0) const {
     index_test_base::assert_index(irs::flags(), skip);
     index_test_base::assert_index(irs::flags{ irs::document::type() }, skip);
@@ -49,11 +77,9 @@ class sorted_index_test_case : public tests::index_test_base {
     index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type() }, skip);
     index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() }, skip);
   }
-
-  comparer less;
 };
 
-TEST_P(sorted_index_test_case, assert_index) {
+TEST_P(sorted_index_test_case, simple_sequential) {
   // build index
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
@@ -66,6 +92,22 @@ TEST_P(sorted_index_test_case, assert_index) {
         ));
       }
   });
+
+  string_comparer less;
+
+  irs::index_writer::init_options opts;
+  opts.comparator = &less;
+  add_segment(gen, irs::OM_CREATE, opts); // add segment
+
+  assert_index();
+}
+
+TEST_P(sorted_index_test_case, europarl) {
+  sorted_europarl_doc_template doc("date");
+  tests::delim_doc_generator gen(resource("europarl.subset.txt"), doc);
+
+  long_comparer less;
+
   irs::index_writer::init_options opts;
   opts.comparator = &less;
   add_segment(gen, irs::OM_CREATE, opts); // add segment
@@ -90,6 +132,8 @@ TEST_P(sorted_index_test_case, check_document_order) {
   auto* doc1 = gen.next(); // name == 'B'
   auto* doc2 = gen.next(); // name == 'C'
   auto* doc3 = gen.next(); // name == 'D'
+
+  string_comparer less;
 
   // create index segment
   {
