@@ -337,7 +337,7 @@ class doc_iterator : public irs::doc_iterator {
       freq_.value = posting_->freq;
 
       if (has_cookie_) {
- //       cookie_ = *field_->int_writer_->parent().seek(posting_->int_start+3);
+        cookie_ = *field_->int_writer_->parent().seek(posting_->int_start+3);
       }
 
       posting_ = nullptr;
