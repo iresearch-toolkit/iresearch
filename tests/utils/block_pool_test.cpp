@@ -28,7 +28,6 @@
 #include "utils/misc.hpp"
 
 using namespace iresearch;
-enum { BLOCK_SIZE = 32768 };
 
 template<typename T, size_t BlockSize>
 class block_pool_test : public test_base {
@@ -182,6 +181,27 @@ class block_pool_test : public test_base {
     }
   }
 
+  void alloc_slice() {
+    const size_t offset = 5;
+
+    // check slice format
+    for (size_t i = 0; i < irs::detail::LEVEL_MAX; ++i) {
+      pool_.alloc_buffer();
+      inserter_t writer(offset + pool_.begin());
+      ASSERT_EQ(offset, writer.pool_offset());
+      auto p = writer.alloc_slice(i);
+      ASSERT_EQ(offset, p);
+      ASSERT_EQ(offset + irs::detail::LEVELS[i].size, writer.pool_offset());
+      auto begin = pool_.seek(p);
+      for (size_t j = 0; j < irs::detail::LEVELS[i].size-1; ++j) {
+        ASSERT_EQ(0, *begin);
+        ++begin;
+      }
+      ASSERT_EQ(irs::detail::LEVELS[i].next, *begin);
+      pool_.clear();
+    }
+  }
+
   void slice_between_blocks() {
     // add initial block
     pool_.alloc_buffer();
@@ -198,12 +218,12 @@ class block_pool_test : public test_base {
       // we align slices the way they never overcome block boundaries
       slice_chain_begin = ins.alloc_slice();
       ASSERT_EQ(BlockSize, slice_chain_begin);
-      ASSERT_EQ(BlockSize + LEVELS[0].size, ins.pool_offset());
+      ASSERT_EQ(BlockSize + irs::detail::LEVELS[0].size, ins.pool_offset());
 
       // slice should be initialized
       ASSERT_TRUE(
           std::all_of(pool_.seek(BlockSize),
-                      pool_.seek(BlockSize + LEVELS[0].size - 1),
+                      pool_.seek(BlockSize + irs::detail::LEVELS[0].size - 1),
                       [](T val) { return 0 == val; })
           );
 
@@ -246,6 +266,33 @@ class block_pool_test : public test_base {
     }
   }
 
+  void alloc_greedy_slice() {
+    const size_t offset = 5;
+
+    // check slice format
+    // level 0 makes no sense for greedy format
+    for (size_t i = 1; i < irs::detail::LEVEL_MAX; ++i) {
+      pool_.alloc_buffer();
+      inserter_t writer(offset + pool_.begin());
+      ASSERT_EQ(offset, writer.pool_offset());
+      auto p = writer.alloc_greedy_slice(i);
+      ASSERT_EQ(offset, p);
+      ASSERT_EQ(offset + irs::detail::LEVELS[i].size, writer.pool_offset());
+      auto begin = pool_.seek(p);
+      ASSERT_EQ(i, *begin); ++begin; // slice header
+      for (size_t j = 0; j < irs::detail::LEVELS[i].size-sizeof(uint32_t)-1; ++j) {
+        ASSERT_EQ(0, *begin);
+        ++begin;
+      }
+      // address part
+      ASSERT_EQ(irs::detail::LEVELS[i].next, *begin); ++begin;
+      ASSERT_EQ(0, *begin); ++begin;
+      ASSERT_EQ(0, *begin); ++begin;
+      ASSERT_EQ(0, *begin);
+      pool_.clear();
+    }
+  }
+
   void greedy_slice_read_write() {
     const bytes_ref data[] {
       ref_cast<byte_type>(string_ref("first_payload")),
@@ -270,7 +317,7 @@ class block_pool_test : public test_base {
         ins.write(payload, sizeof payload);
       }
 
-      sliced_greedy_inserter_t sliced_ins(ins, cookies.back().first, cookies.back().second);
+      sliced_greedy_inserter_t sliced_ins(ins, cookies.back().second, cookies.back().first);
       sliced_ins.write(data[0].c_str(), data[0].size()); // fill 1st slice & alloc 2nd slice here
       push_cookie(sliced_ins);
       sliced_ins.write(data[1].c_str(), data[1].size()); // fill 2st slice & alloc 3nd slice here
@@ -317,16 +364,78 @@ class block_pool_test : public test_base {
     }
   }
 
-  // alloc_slice
-  //void slice_chunked_read_write_slice_offset() {
+  void greedy_slice_between_blocks() {
+    // add initial block
+    pool_.alloc_buffer();
+
+    decltype(pool_.begin().pool_offset()) slice_chain_begin;
+    decltype(slice_chain_begin) slice_chain_end;
+
+    // write phase
+    {
+      // seek to the 1 item before the end of the first block
+      auto begin = pool_.seek(BlockSize - 1); // begin of the slice chain
+      inserter_t ins(begin);
+
+      // we align slices the way they never overcome block boundaries
+      slice_chain_begin = ins.alloc_greedy_slice();
+      ASSERT_EQ(BlockSize, slice_chain_begin);
+      ASSERT_EQ(BlockSize + irs::detail::LEVELS[1].size, ins.pool_offset()); // level 0 makes no sense for greedy slice
+
+      // slice should be initialized
+      ASSERT_TRUE(
+          std::all_of(pool_.seek(BlockSize + 1),
+                      pool_.seek(BlockSize + irs::detail::LEVELS[1].size - sizeof(uint32_t) - 1),
+                      [](T val) { return 0 == val; })
+          );
+
+      sliced_greedy_inserter_t sliced_ins(ins, slice_chain_begin, 1);
+
+      // write single value
+      sliced_ins = 5;
+
+      // insert payload
+      {
+        T payload[BlockSize-5];
+        std::fill(payload, payload + sizeof payload, 20);
+        ins.write(payload, sizeof payload);
+      }
+
+      // write additional values
+      sliced_ins = 6; // will be moved to the 2nd slice
+      sliced_ins = 7; // will be moved to the 2nd slice
+      sliced_ins = 8; // will be moved to the 2nd slice
+      sliced_ins = 9; // will be moved to the 2nd slice
+      sliced_ins = 10; // will be moved to the 2nd slice
+      sliced_ins = 11; // will be moved to the 2nd slice
+      sliced_ins = 12; // will be moved to the 2nd slice
+      sliced_ins = 13; // will be moved to the 2nd slice
+      ASSERT_EQ(2*BlockSize+9+1, sliced_ins.pool_offset());
+
+      slice_chain_end = sliced_ins.pool_offset();
+    }
+
+    // read phase
+    {
+      sliced_greedy_reader_t sliced_rdr(pool_, slice_chain_begin, 1);
+      ASSERT_EQ(5, *sliced_rdr); ++sliced_rdr;
+      ASSERT_EQ(6, *sliced_rdr); ++sliced_rdr;
+      ASSERT_EQ(7, *sliced_rdr); ++sliced_rdr;
+      ASSERT_EQ(8, *sliced_rdr); ++sliced_rdr;
+      ASSERT_EQ(9, *sliced_rdr); ++sliced_rdr;
+      ASSERT_EQ(10, *sliced_rdr); ++sliced_rdr;
+      ASSERT_EQ(11, *sliced_rdr); ++sliced_rdr;
+      ASSERT_EQ(12, *sliced_rdr); ++sliced_rdr;
+      ASSERT_EQ(13, *sliced_rdr); ++sliced_rdr;
+      ASSERT_EQ(slice_chain_end, sliced_rdr.pool_offset());
+    }
+  }
 
  protected:
   irs::block_pool<T, BlockSize> pool_;
-}; // block_pool_test  
+}; // block_pool_test
 
-/* byte_block_pool_test */
-
-typedef block_pool_test<irs::byte_type, BLOCK_SIZE> byte_block_pool_test;
+typedef block_pool_test<irs::byte_type, 32768> byte_block_pool_test;
 
 TEST_F(byte_block_pool_test, ctor) {
   ctor();
@@ -353,9 +462,29 @@ TEST_F(byte_block_pool_test, slice_alignment_with_reuse) {
   slice_between_blocks(); // reuse block_pool from previous run
 }
 
+TEST_F(byte_block_pool_test, alloc_slice) {
+  alloc_slice();
+}
+
 TEST_F(byte_block_pool_test, slice_chunked_read_write) {
   slice_chunked_read_write();
+}
+
+TEST_F(byte_block_pool_test, alloc_greedy_slice) {
+  alloc_greedy_slice();
+}
+
+TEST_F(byte_block_pool_test, greedy_slice_chunked_read_write) {
   greedy_slice_read_write();
+}
+
+TEST_F(byte_block_pool_test, greedy_slice_alignment) {
+  greedy_slice_between_blocks();
+}
+
+TEST_F(byte_block_pool_test, greedy_slice_alignment_with_reuse) {
+  greedy_slice_between_blocks();
+  greedy_slice_between_blocks(); // reuse block_pool from previous run
 }
 
 // -----------------------------------------------------------------------------

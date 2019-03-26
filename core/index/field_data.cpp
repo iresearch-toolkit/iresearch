@@ -230,8 +230,8 @@ FORCE_INLINE byte_block_pool::sliced_greedy_inserter greedy_writer(
 ) NOEXCEPT {
   return byte_block_pool::sliced_greedy_inserter(
     writer,
-    static_cast<size_t>(cookie & 0xFF),
-    static_cast<size_t>((cookie >> 8) & 0xFFFFFFFF)
+    static_cast<size_t>((cookie >> 8) & 0xFFFFFFFF),
+    static_cast<size_t>(cookie & 0xFF)
   );
 }
 
@@ -864,7 +864,7 @@ void field_data::new_term_random_access(
     p.freq = 1;
 
     if (features.check<position>()) {
-      byte_block_pool::sliced_greedy_inserter prox_out(*byte_writer_, 1, prox_start);
+      byte_block_pool::sliced_greedy_inserter prox_out(*byte_writer_, prox_start, 1);
 
       write_prox(prox_out, pos_, pay, meta_.features);
 
