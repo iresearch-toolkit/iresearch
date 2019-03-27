@@ -53,6 +53,101 @@ NS_LOCAL
 
 using namespace irs;
 
+const byte_block_pool EMPTY_POOL;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                           helpers
+// -----------------------------------------------------------------------------
+
+template<typename Stream>
+void write_offset(
+    posting& p,
+    Stream& out,
+    const uint32_t base,
+    const offset& offs) {
+  const uint32_t start_offset = base + offs.start;
+  const uint32_t end_offset = base + offs.end;
+
+  assert(start_offset >= p.offs);
+
+  irs::vwrite<uint32_t>(out, start_offset - p.offs);
+  irs::vwrite<uint32_t>(out, end_offset - start_offset);
+
+  p.offs = start_offset;
+}
+
+template<typename Stream>
+void write_prox(
+    Stream& out,
+    uint32_t prox,
+    const irs::payload* pay,
+    flags& features
+) {
+  if (!pay || pay->value.empty()) {
+    irs::vwrite<uint32_t>(out, shift_pack_32(prox, false));
+  } else {
+    irs::vwrite<uint32_t>(out, shift_pack_32(prox, true));
+    irs::vwrite<size_t>(out, pay->value.size());
+    out.write(pay->value.c_str(), pay->value.size());
+
+    // saw payloads
+    features.add<payload>();
+  }
+}
+
+//FIXME count number of documents in posting
+//FIXME use this information to reserve data in sorting_iterator
+
+//FIXME use delta encoding
+template<typename Inserter>
+FORCE_INLINE void write_cookie(Inserter& out, uint64_t cookie) {
+//  *out = static_cast<byte_type>(cookie & 0xFF);
+//  irs::vwrite<uint32_t>(out, static_cast<uint32_t>((cookie >> 8) & 0xFFFFFFFF));
+  irs::vwrite(out, cookie);
+}
+
+FORCE_INLINE uint64_t cookie(size_t slice_offset, size_t offset) NOEXCEPT {
+  return static_cast<uint64_t>(slice_offset) << 8 | static_cast<byte_type>(offset);
+}
+
+template<typename Reader>
+FORCE_INLINE uint64_t read_cookie(Reader& in) {
+  return irs::vread<uint64_t>(in);
+//  const size_t offset = *in;
+//  return cookie(irs::vread<uint32_t>(in), offset);
+}
+
+FORCE_INLINE uint64_t cookie(const byte_block_pool::sliced_greedy_inserter& stream) NOEXCEPT {
+  assert(stream.slice_offset() <= stream.pool_offset());
+  const auto slice_offset = stream.slice_offset();
+  return cookie(slice_offset, stream.pool_offset() - slice_offset);
+}
+
+FORCE_INLINE byte_block_pool::sliced_greedy_reader greedy_reader(
+    const byte_block_pool& pool,
+    uint64_t cookie
+) NOEXCEPT {
+  return byte_block_pool::sliced_greedy_reader(
+    pool,
+    static_cast<size_t>((cookie >> 8) & 0xFFFFFFFF),
+    static_cast<size_t>(cookie & 0xFF)
+  );
+}
+
+FORCE_INLINE byte_block_pool::sliced_greedy_inserter greedy_writer(
+    byte_block_pool::inserter& writer,
+    uint64_t cookie
+) NOEXCEPT {
+  return byte_block_pool::sliced_greedy_inserter(
+    writer,
+    static_cast<size_t>((cookie >> 8) & 0xFFFFFFFF),
+    static_cast<size_t>(cookie & 0xFF)
+  );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class payload
+////////////////////////////////////////////////////////////////////////////////
 class payload : public irs::payload {
  public:
   byte_type* data() {
@@ -66,10 +161,11 @@ class payload : public irs::payload {
 
  private:
   bstring value_;
-};
+}; // payload
 
-const byte_block_pool EMPTY_POOL;
-
+////////////////////////////////////////////////////////////////////////////////
+/// @class pos_iterator
+///////////////////////////////////////////////////////////////////////////////
 template<typename Reader>
 class pos_iterator final: public irs::position {
  public:
@@ -152,89 +248,6 @@ class pos_iterator final: public irs::position {
   bool has_offs_{false}; // FIXME find a better way to handle presence of offsets
 }; // pos_iterator
 
-template<typename Inserter>
-void write_offset(
-    posting& p,
-    Inserter& out,
-    const uint32_t base,
-    const offset& offs) {
-  const uint32_t start_offset = base + offs.start;
-  const uint32_t end_offset = base + offs.end;
-
-  assert(start_offset >= p.offs);
-
-  irs::vwrite<uint32_t>(out, start_offset - p.offs);
-  irs::vwrite<uint32_t>(out, end_offset - start_offset);
-
-  p.offs = start_offset;
-}
-
-template<typename Inserter>
-void write_prox(
-    Inserter& out,
-    uint32_t prox,
-    const irs::payload* pay,
-    flags& features
-) {
-  if (!pay || pay->value.empty()) {
-    irs::vwrite<uint32_t>(out, shift_pack_32(prox, false));
-  } else {
-    irs::vwrite<uint32_t>(out, shift_pack_32(prox, true));
-    irs::vwrite<size_t>(out, pay->value.size());
-    out.write(pay->value.c_str(), pay->value.size());
-
-    // saw payloads
-    features.add<payload>();
-  }
-}
-
-//FIXME use delta encoding
-template<typename Inserter>
-FORCE_INLINE void write_cookie(Inserter& out, uint64_t cookie) {
-//  *out = static_cast<byte_type>(cookie & 0xFF);
-//  irs::vwrite<uint32_t>(out, static_cast<uint32_t>((cookie >> 8) & 0xFFFFFFFF));
-  irs::write(out, cookie);
-}
-
-FORCE_INLINE uint64_t cookie(size_t slice_offset, size_t offset) NOEXCEPT {
-  return static_cast<uint64_t>(slice_offset) << 8 | static_cast<byte_type>(offset);
-}
-
-template<typename Reader>
-FORCE_INLINE uint64_t read_cookie(Reader& in) {
-  return irs::read<uint64_t>(in);
-//  const size_t offset = *in;
-//  return cookie(irs::vread<uint32_t>(in), offset);
-}
-
-FORCE_INLINE uint64_t cookie(const byte_block_pool::sliced_greedy_inserter& stream) NOEXCEPT {
-  assert(stream.slice_offset() <= stream.pool_offset());
-  const auto slice_offset = stream.slice_offset();
-  return cookie(slice_offset, stream.pool_offset() - slice_offset);
-}
-
-FORCE_INLINE byte_block_pool::sliced_greedy_reader greedy_reader(
-    const byte_block_pool& pool,
-    uint64_t cookie
-) NOEXCEPT {
-  return byte_block_pool::sliced_greedy_reader(
-    pool,
-    static_cast<size_t>((cookie >> 8) & 0xFFFFFFFF),
-    static_cast<size_t>(cookie & 0xFF)
-  );
-}
-
-FORCE_INLINE byte_block_pool::sliced_greedy_inserter greedy_writer(
-    byte_block_pool::inserter& writer,
-    uint64_t cookie
-) NOEXCEPT {
-  return byte_block_pool::sliced_greedy_inserter(
-    writer,
-    static_cast<size_t>((cookie >> 8) & 0xFFFFFFFF),
-    static_cast<size_t>(cookie & 0xFF)
-  );
-}
-
 NS_END
 
 NS_ROOT
@@ -257,9 +270,9 @@ bool memcmp_less(
 
 NS_BEGIN(detail)
 
-using irs::field_data;
-using irs::bytes_ref;
-
+////////////////////////////////////////////////////////////////////////////////
+/// @class doc_iterator
+////////////////////////////////////////////////////////////////////////////////
 class doc_iterator : public irs::doc_iterator {
  public:
   doc_iterator()
@@ -337,6 +350,7 @@ class doc_iterator : public irs::doc_iterator {
       freq_.value = posting_->freq;
 
       if (has_cookie_) {
+        // read last cookie
         cookie_ = *field_->int_writer_->parent().seek(posting_->int_start+3);
       }
 
@@ -383,6 +397,9 @@ class doc_iterator : public irs::doc_iterator {
   bool has_cookie_{false}; // FIXME remove
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class sorting_doc_iterator
+////////////////////////////////////////////////////////////////////////////////
 class sorting_doc_iterator : public irs::doc_iterator {
  public:
   sorting_doc_iterator()
@@ -396,17 +413,13 @@ class sorting_doc_iterator : public irs::doc_iterator {
     attrs_.clear();
     attrs_.emplace(doc_);
 
-    has_pos_ = false;
-
     auto& features = field.meta().features;
     if (features.check<frequency>()) {
       attrs_.emplace(freq_);
 
       if (features.check<position>()) {
         pos_.reset(features, freq_);
-
         attrs_.emplace(pos_);
-        has_pos_ = true;
       }
     }
   }
@@ -421,8 +434,8 @@ class sorting_doc_iterator : public irs::doc_iterator {
       freq = &freq_attr->value;
     }
 
-    docs_.clear();
     // FIXME docs_.reserve(cost)
+    docs_.clear();
     while (it.next()) {
       const auto new_doc = docmap.get<doc_map::NEW>(it.value() - doc_limits::min()) + doc_limits::min();
 
@@ -435,6 +448,7 @@ class sorting_doc_iterator : public irs::doc_iterator {
     }
 
     // FIXME check if docs are already sorted
+    // FIXME use external sort?
     std::sort(
       docs_.begin(), docs_.end(),
       [](const doc_entry_t& lhs, const doc_entry_t& rhs) NOEXCEPT {
@@ -468,12 +482,13 @@ class sorting_doc_iterator : public irs::doc_iterator {
 
     uint64_t cookie;
     std::tie(doc_.value, freq_.value, cookie) = *it_;
-    ++it_;
 
-    if (has_pos_) {
+    if (cookie) {
+      // (cookie != 0) -> we have proximity data
       pos_.reset(greedy_reader(*byte_pool_, cookie));
     }
 
+    ++it_;
     return true;
   }
 
@@ -491,12 +506,18 @@ class sorting_doc_iterator : public irs::doc_iterator {
   frequency freq_;
   pos_iterator<byte_block_pool::sliced_greedy_reader> pos_;
   attribute_view attrs_;
-  bool has_pos_{false};
 }; // sorting_doc_iterator
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class term_iterator
+////////////////////////////////////////////////////////////////////////////////
 class term_iterator : public irs::term_iterator {
  public:
-  void reset(const field_data& field, const doc_map* docmap, const bytes_ref*& min, const bytes_ref*& max) {
+  void reset(
+      const field_data& field,
+      const doc_map* docmap,
+      const bytes_ref*& min,
+      const bytes_ref*& max) {
     // refill postings
     postings_.clear();
     postings_.insert(field.terms_.begin(), field.terms_.end());
@@ -599,11 +620,6 @@ class term_iterator : public irs::term_iterator {
 
     auto& pool = field_->byte_writer_->parent();
     const byte_block_pool::sliced_reader freq(pool, freq_begin, freq_end); // term's frequencies
-//    doc_itr_.reset(posting, freq, nullptr);
-//
-//    while (doc_itr_.next()) {
-//      std::cerr << doc_itr_.value() << std::endl;
-//    }
 
     doc_itr_.reset(posting, freq, nullptr);
     sorting_doc_itr_.reset(doc_itr_, *doc_map_);
@@ -624,6 +640,9 @@ class term_iterator : public irs::term_iterator {
   &term_iterator::postings
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class term_reader
+////////////////////////////////////////////////////////////////////////////////
 class term_reader final : public irs::basic_term_reader, util::noncopyable {
  public:
   void reset(const field_data& field, const doc_map* docmap) {
