@@ -11751,7 +11751,7 @@ TEST_P(index_test_case, document_context) {
 
     ASSERT_EQ(std::cv_status::timeout, result); // verify commit() blocks
     field_lock.unlock();
-    ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); // verify commit() finishes
+    ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(10000))); // verify commit() finishes
     // FIXME TODO add once segment_context will not block flush_all()
     //ASSERT_TRUE(stop);
     thread0.join();
