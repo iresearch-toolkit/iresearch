@@ -11792,7 +11792,7 @@ TEST_P(index_test_case, document_context) {
 
     ASSERT_EQ(std::cv_status::timeout, result);
     field_lock.unlock();
-    ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); // verify commit() finishes
+    ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(10000))); // verify commit() finishes
     // FIXME TODO add once segment_context will not block flush_all()
     //ASSERT_TRUE(commit);
     thread0.join();
@@ -11839,7 +11839,7 @@ TEST_P(index_test_case, document_context) {
 
     ASSERT_EQ(std::cv_status::timeout, result);
     field_lock.unlock();
-    ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); // verify commit() finishes
+    ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(10000))); // verify commit() finishes
     // FIXME TODO add once segment_context will not block flush_all()
     //ASSERT_TRUE(commit);
     thread0.join();
@@ -11862,7 +11862,7 @@ TEST_P(index_test_case, document_context) {
       field.cond.notify_all();
     });
 
-    ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); // verify commit() finishes
+    ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(10000))); // verify commit() finishes
     { irs::index_writer::documents_context(std::move(ctx)); } // release ctx before join() in case of test failure
     thread1.join();
 
@@ -11908,7 +11908,7 @@ TEST_P(index_test_case, document_context) {
       field.cond.notify_all();
     });
 
-    auto result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000)); // verify commit() finishes FIXME TODO remove once segment_context will not block flush_all()
+    auto result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(10000)); // verify commit() finishes FIXME TODO remove once segment_context will not block flush_all()
 
     // MSVC 2015/2017 seems to sporadically notify condition variables without explicit request FIXME TODO remove once segment_context will not block flush_all()
     MSVC2015_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
@@ -11965,7 +11965,7 @@ TEST_P(index_test_case, document_context) {
       field.cond.notify_all();
     });
 
-    auto result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000)); // verify commit() finishes FIXME TODO remove once segment_context will not block flush_all()
+    auto result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(10000)); // verify commit() finishes FIXME TODO remove once segment_context will not block flush_all()
 
     // MSVC 2015/2017 seems to sporadically notify condition variables without explicit request FIXME TODO remove once segment_context will not block flush_all()
     MSVC2015_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
