@@ -40,8 +40,12 @@
 
 NS_ROOT
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class block_pool_const_iterator
+////////////////////////////////////////////////////////////////////////////////
 template<typename ContType>
-class block_pool_const_iterator : public std::iterator<std::random_access_iterator_tag, typename ContType::value_type> {
+class block_pool_const_iterator
+    : public std::iterator<std::random_access_iterator_tag, typename ContType::value_type> {
   public:
   typedef ContType container;
   typedef typename container::block_type block_type;
@@ -212,6 +216,9 @@ block_pool_const_iterator<ContType> operator+(
   return it + offset;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class block_pool_iterator
+////////////////////////////////////////////////////////////////////////////////
 template<typename ContType>
 class block_pool_iterator : public block_pool_const_iterator<ContType> {
  public:
@@ -288,8 +295,12 @@ block_pool_iterator<ContType> operator+(
   return it + offset;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class block_pool_reader
+////////////////////////////////////////////////////////////////////////////////
 template<typename ContType>
-class block_pool_reader : public std::iterator<std::input_iterator_tag, typename ContType::value_type> {
+class block_pool_reader
+    : public std::iterator<std::input_iterator_tag, typename ContType::value_type> {
  public:
   typedef ContType container;
   typedef typename container::block_type block_type;
@@ -312,7 +323,9 @@ class block_pool_reader : public std::iterator<std::input_iterator_tag, typename
     return *where_;
   }
 
-  const_pointer operator->() const NOEXCEPT { return &(operator*()); };
+  const_pointer operator->() const NOEXCEPT {
+    return &(operator*());
+  }
 
   block_pool_reader& operator++() NOEXCEPT {
     assert(!eof());
@@ -380,10 +393,14 @@ CONSTEXPR const size_t LEVEL_SIZE_MAX = 200; // FIXME compile time
 
 NS_END // detail
 
-template<typename ContType>
-class block_pool_sliced_reader
+////////////////////////////////////////////////////////////////////////////////
+/// @class block_pool_sliced_reader_base
+////////////////////////////////////////////////////////////////////////////////
+template<typename ReaderType, typename ContType>
+class block_pool_sliced_reader_base
     : public std::iterator<std::input_iterator_tag, typename ContType::value_type> {
  public:
+  typedef ReaderType reader;
   typedef ContType container;
   typedef typename container::block_type block_type;
   typedef typename container::const_iterator const_iterator;
@@ -392,38 +409,24 @@ class block_pool_sliced_reader
   typedef typename container::const_reference const_reference;
   typedef typename container::value_type value_type;
 
-  explicit block_pool_sliced_reader(const container& pool) NOEXCEPT
-    : where_(pool.end()), end_(pool_offset()) {
-  }
-
-  block_pool_sliced_reader(const container& pool, size_t offset, size_t end)
-    : where_(pool, offset), end_(end) {
-    init();
-  }
-
   const_reference operator*() const NOEXCEPT {
-    assert(!eof());
+    assert(!impl().eof());
     return *where_;
   }
 
-  const_pointer operator->() const NOEXCEPT { return &(operator*()); };
-
-  block_pool_sliced_reader& operator++() NOEXCEPT {
-    assert(!eof());
-    next();
-    return *this;
+  const_pointer operator->() const NOEXCEPT {
+    return &(operator*());
   }
 
-  block_pool_sliced_reader operator++(int) NOEXCEPT {
-    assert(!eof());
-    block_pool_sliced_reader tmp = *this;
-    next();
+  reader& operator++() NOEXCEPT {
+    impl().next();
+    return impl();
+  }
+
+  reader operator++(int) NOEXCEPT {
+    reader tmp = impl();
+    impl().next();
     return tmp;
-  }
-
-  bool eof() const NOEXCEPT {
-    assert(where_.pool_offset() <= end_);
-    return where_.pool_offset() == end_;
   }
 
   const_iterator& position() const NOEXCEPT { return where_; }
@@ -435,7 +438,7 @@ class block_pool_sliced_reader
   const container& parent() const NOEXCEPT { return where_.parent(); }
 
   size_t read(pointer b, size_t len) NOEXCEPT {
-    assert(!eof());
+    assert(!impl().eof());
     assert(b != nullptr);
 
     size_t to_copy = 0;
@@ -452,55 +455,47 @@ class block_pool_sliced_reader
       items_read += to_copy;
 
       if (!left_) {
-        next_slice();
+        impl().next_slice();
       }
     }
 
     return items_read;
   }
 
- private:
-  void next_slice() NOEXCEPT {
-    // TODO: check for overflow. max_size = MAX(uint32_t)-address_size-1
-    // base case where last slice of pool which does not have address footer
-    if (where_.pool_offset() + sizeof(uint32_t) >= end_) {
-      left_ = end_ - where_.pool_offset();
-    } else {
-      level_ = detail::LEVELS[level_].next;
-
-      const size_t next_address = irs::read<uint32_t>(where_);
-
-      where_.reset(next_address);
-      left_ = std::min(end_ - where_.pool_offset(),
-                       detail::LEVELS[level_].size - sizeof(uint32_t));
-    }
+ protected:
+  explicit block_pool_sliced_reader_base(const container& pool) NOEXCEPT
+    : where_(pool.end()) {
   }
 
-  void next() {
+  block_pool_sliced_reader_base(const container& pool, size_t offset) NOEXCEPT
+    : where_(pool, offset) {
+  }
+
+ private:
+  FORCE_INLINE const reader& impl() const NOEXCEPT { return static_cast<const reader&>(*this) ;}
+  FORCE_INLINE reader& impl() NOEXCEPT { return static_cast<reader&>(*this) ;}
+
+  void next() NOEXCEPT {
+    assert(!impl().eof());
     ++where_;
     --left_;
 
     if (!left_) {
-      next_slice();
+      impl().next_slice();
     }
   }
 
-  void init() NOEXCEPT {
-    assert(end_ >= 0 && where_.pool_offset() <= end_);
-
-    left_ = std::min(end_ - where_.pool_offset(),
-                     detail::LEVELS[level_].size - sizeof(uint32_t));
-  }
-
+ protected:
   const_iterator where_;
-  size_t level_{};
-  size_t end_{};
   size_t left_{};
-}; // block_pool_sliced_reader 
+}; // block_pool_sliced_reader_base
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class block_pool_sliced_reader
+////////////////////////////////////////////////////////////////////////////////
 template<typename ContType>
-class block_pool_sliced_greedy_reader
-    : public std::iterator<std::input_iterator_tag, typename ContType::value_type> {
+class block_pool_sliced_reader
+    : public block_pool_sliced_reader_base<block_pool_sliced_reader<ContType>, ContType> {
  public:
   typedef ContType container;
   typedef typename container::block_type block_type;
@@ -510,98 +505,139 @@ class block_pool_sliced_greedy_reader
   typedef typename container::const_reference const_reference;
   typedef typename container::value_type value_type;
 
-  explicit block_pool_sliced_greedy_reader(const container& pool) NOEXCEPT
-    : where_(pool.end()) {
-  }
+  explicit block_pool_sliced_reader(const container& pool) NOEXCEPT;
 
-  block_pool_sliced_greedy_reader(const container& pool, size_t slice_offset, size_t offset) NOEXCEPT
-    : where_(pool.end()) {
-    init(slice_offset, offset);
-  }
+  block_pool_sliced_reader(const container& pool, size_t offset, size_t end) NOEXCEPT;
 
-  const_reference operator*() const NOEXCEPT {
-    return *where_;
-  }
-
-  const_pointer operator->() const NOEXCEPT { return &(operator*()); };
-
-  block_pool_sliced_greedy_reader& operator++() NOEXCEPT {
-    next();
-    return *this;
-  }
-
-  block_pool_sliced_greedy_reader operator++(int) NOEXCEPT {
-    block_pool_sliced_greedy_reader tmp = *this;
-    next();
-    return tmp;
-  }
-
-  const_iterator& position() const NOEXCEPT { return where_; }
-
-  size_t pool_offset() const NOEXCEPT { return where_.pool_offset(); }
-
-  container& parent() NOEXCEPT { return where_.parent(); }
-
-  const container& parent() const NOEXCEPT { return where_.parent(); }
-
-  size_t read(pointer b, size_t len) NOEXCEPT {
-    assert(b || !len);
-
-    size_t to_copy = 0;
-    size_t items_read = 0;
-
-    while (len) {
-      to_copy = std::min(len, size_t(left_));
-      memcpy(b, where_.buffer(), to_copy * sizeof(value_type));
-
-      b += to_copy;
-      where_ += to_copy;
-      len -= to_copy;
-      left_ -= to_copy;
-      items_read += to_copy;
-
-      if (!left_) {
-        next_slice();
-      }
-    }
-
-    return items_read;
-  }
+  inline bool eof() const NOEXCEPT;
 
  private:
+  typedef block_pool_sliced_reader_base<block_pool_sliced_reader<ContType>, ContType> base;
+  friend class block_pool_sliced_reader_base<block_pool_sliced_reader<ContType>, ContType>;
+
   void next_slice() NOEXCEPT {
-    level_ = detail::LEVELS[level_].next; // next level
-    const size_t next_address = 1 + irs::read<uint32_t>(where_); // +1 for slice header
-    where_.reset(next_address);
-    left_ = detail::LEVELS[level_].size - sizeof(uint32_t) - 1;
-  }
+    // TODO: check for overflow. max_size = MAX(uint32_t)-address_size-1
+    // base case where last slice of pool which does not have address footer
+    if (this->where_.pool_offset() + sizeof(uint32_t) >= end_) {
+      this->left_ = end_ - this->where_.pool_offset();
+    } else {
+      level_ = detail::LEVELS[level_].next;
 
-  void next() {
-    ++where_;
-    --left_;
+      const size_t next_address = irs::read<uint32_t>(this->where_);
 
-    if (!left_) {
-      next_slice();
+      this->where_.reset(next_address);
+      this->left_ = std::min(end_ - this->where_.pool_offset(),
+                       detail::LEVELS[level_].size - sizeof(uint32_t));
     }
   }
 
-  void init(size_t slice_offset, size_t offset) NOEXCEPT {
-    where_.reset(slice_offset);
-    level_ = *where_;
-    assert(level_ < detail::LEVEL_MAX);
-    where_ += offset;
-    assert(detail::LEVELS[level_].size > offset);
-    left_ = detail::LEVELS[level_].size - offset - sizeof(uint32_t);
+  void init() NOEXCEPT {
+    assert(end_ >= 0 && this->where_.pool_offset() <= end_);
+
+    this->left_ = std::min(end_ - this->where_.pool_offset(),
+                     detail::LEVELS[level_].size - sizeof(uint32_t));
   }
 
-  const_iterator where_;
   size_t level_{};
-  size_t left_{};
+  size_t end_{};
+}; // block_pool_sliced_reader
+
+template<typename ContType>
+block_pool_sliced_reader<ContType>::block_pool_sliced_reader(
+    const typename block_pool_sliced_reader<ContType>::container& pool
+) NOEXCEPT
+  : base(pool), end_(this->pool_offset()) {
+}
+
+template<typename ContType>
+block_pool_sliced_reader<ContType>::block_pool_sliced_reader(
+    const typename block_pool_sliced_reader<ContType>::container& pool,
+    size_t offset,
+    size_t end
+) NOEXCEPT
+  : base(pool, offset), end_(end) {
+  init();
+}
+
+template<typename ContType>
+bool block_pool_sliced_reader<ContType>::eof() const NOEXCEPT {
+  assert(this->where_.pool_offset() <= end_);
+  return this->where_.pool_offset() == end_;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class block_pool_sliced_greedy_reader
+////////////////////////////////////////////////////////////////////////////////
+template<typename ContType>
+class block_pool_sliced_greedy_reader
+    : public block_pool_sliced_reader_base<block_pool_sliced_greedy_reader<ContType>, ContType> {
+ public:
+  typedef ContType container;
+  typedef typename container::block_type block_type;
+  typedef typename container::const_iterator const_iterator;
+  typedef typename container::pointer pointer;
+  typedef typename container::const_pointer const_pointer;
+  typedef typename container::const_reference const_reference;
+  typedef typename container::value_type value_type;
+
+  explicit block_pool_sliced_greedy_reader(const container& pool) NOEXCEPT;
+
+  block_pool_sliced_greedy_reader(
+    const container& pool,
+    size_t slice_offset,
+    size_t offset
+  ) NOEXCEPT;
+
+ private:
+  typedef block_pool_sliced_reader_base<block_pool_sliced_greedy_reader<ContType>, ContType> base;
+  friend class block_pool_sliced_reader_base<block_pool_sliced_greedy_reader<ContType>, ContType>;
+
+  bool eof() const NOEXCEPT {
+    // we don't track eof()
+    return false;
+  }
+
+  void next_slice() NOEXCEPT {
+    level_ = detail::LEVELS[level_].next; // next level
+    const size_t next_address = 1 + irs::read<uint32_t>(this->where_); // +1 for slice header
+    this->where_.reset(next_address);
+    this->left_ = detail::LEVELS[level_].size - sizeof(uint32_t) - 1;
+  }
+
+  void init(size_t offset) NOEXCEPT {
+    level_ = *this->where_;
+    assert(level_ < detail::LEVEL_MAX);
+    this->where_ += offset;
+    assert(detail::LEVELS[level_].size > offset);
+    this->left_ = detail::LEVELS[level_].size - offset - sizeof(uint32_t);
+  }
+
+  size_t level_{};
 }; // block_pool_sliced_greedy_reader
+
+template<typename ContType>
+block_pool_sliced_greedy_reader<ContType>::block_pool_sliced_greedy_reader(
+    const typename block_pool_sliced_greedy_reader<ContType>::container& pool
+) NOEXCEPT
+  : base(pool) {
+}
+
+template<typename ContType>
+block_pool_sliced_greedy_reader<ContType>::block_pool_sliced_greedy_reader(
+    const typename block_pool_sliced_greedy_reader<ContType>::container& pool,
+    size_t slice_offset,
+    size_t offset
+) NOEXCEPT
+  : base(pool, slice_offset) {
+  init(offset);
+}
 
 template<typename ContType> class block_pool_sliced_inserter;
 template<typename ContType> class block_pool_sliced_greedy_inserter;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class block_pool_inserter
+////////////////////////////////////////////////////////////////////////////////
 template<typename ContType>
 class block_pool_inserter : public std::iterator<std::output_iterator_tag, void, void, void, void> {
  public:
@@ -726,8 +762,11 @@ class block_pool_inserter : public std::iterator<std::output_iterator_tag, void,
     where_ += size;
     assert(level_info.next);
     assert(level_info.next < detail::LEVEL_MAX);
-    where_[-(Greedy ? sizeof(uint32_t) : size_t(1))] = static_cast<byte_type>(level_info.next);
-
+    if /*constexpr*/ (Greedy) {
+      where_[-sizeof(uint32_t)] = static_cast<byte_type>(level_info.next);
+    } else {
+      where_[-1] = static_cast<byte_type>(level_info.next);
+    }
     return slice_start;
   }
 
@@ -785,6 +824,9 @@ class block_pool_inserter : public std::iterator<std::output_iterator_tag, void,
   iterator where_;
 }; // block_pool_inserter
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class block_pool_sliced_inserter
+////////////////////////////////////////////////////////////////////////////////
 template<typename ContType>
 class block_pool_sliced_inserter
     : public std::iterator<std::output_iterator_tag, void, void, void, void> {
@@ -851,6 +893,9 @@ class block_pool_sliced_inserter
   inserter* writer_;
 }; // block_pool_sliced_inserter
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class block_pool_sliced_greedy_inserter
+////////////////////////////////////////////////////////////////////////////////
 template<typename ContType>
 class block_pool_sliced_greedy_inserter
     : public std::iterator<std::output_iterator_tag, void, void, void, void> {
@@ -939,6 +984,9 @@ class block_pool_sliced_greedy_inserter
   inserter* writer_;
 }; // block_pool_sliced_greedy_inserter
 
+////////////////////////////////////////////////////////////////////////////////
+/// @struct proxy_block_t
+////////////////////////////////////////////////////////////////////////////////
 template<typename T, size_t Size>
 struct proxy_block_t {
   typedef std::shared_ptr<proxy_block_t> ptr;
@@ -955,6 +1003,9 @@ struct proxy_block_t {
   size_t start; // where block starts
 }; // proxy_block_t
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class block_pool
+////////////////////////////////////////////////////////////////////////////////
 template<typename T, size_t BlockSize, typename AllocType = std::allocator<T>>
 class block_pool {
  public:
