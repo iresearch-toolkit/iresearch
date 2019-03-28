@@ -168,7 +168,7 @@ class index_segment: irs::util::noncopyable {
   }
 
   template<typename Iterator>
-  void add(Iterator begin, Iterator end) {
+  void add(Iterator begin, Iterator end, ifield::ptr sorted = nullptr) {
     // reset field per-document state
     for (auto it = begin; it != end; ++it) {
       auto* field_data = find((*it).name());
@@ -185,10 +185,18 @@ class index_segment: irs::util::noncopyable {
       add(*begin);
     }
 
+    if (sorted) {
+      add_sorted(*sorted);
+    }
+
     ++count_;
   }
 
   void sort(const irs::comparer& comparator) {
+    if (sort_.empty()) {
+      return;
+    }
+
     std::sort(
       sort_.begin(), sort_.end(),
       [&comparator](
@@ -214,7 +222,8 @@ class index_segment: irs::util::noncopyable {
   }
 
  private:
-  void add(const ifield& f);
+  void add(const ifield& field);
+  void add_sorted(const ifield& field);
 
   std::vector<std::pair<irs::bstring, irs::doc_id_t>> sort_;
   std::vector<const field*> id_to_field_;

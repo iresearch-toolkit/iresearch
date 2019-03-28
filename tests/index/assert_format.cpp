@@ -136,6 +136,15 @@ index_segment& index_segment::operator=(index_segment&& rhs) NOEXCEPT {
   return *this;
 }
 
+void index_segment::add_sorted(const ifield& f) {
+  irs::bytes_output out;
+  if (f.write(out)) {
+    const irs::bytes_ref value = out;
+    const auto doc_id = irs::doc_id_t((irs::doc_limits::min)() + count_);
+    sort_.emplace_back(std::make_pair(irs::bstring(value.c_str(), value.size()), doc_id));
+  }
+}
+
 void index_segment::add(const ifield& f) {
   const irs::string_ref& field_name = f.name();
   field field(field_name, f.features());
@@ -152,18 +161,9 @@ void index_segment::add(const ifield& f) {
   auto& term = attrs.get<irs::term_attribute>();
   auto& inc = attrs.get<irs::increment>();
   auto& offs = attrs.get<irs::offset>();
-  auto& pay = attrs.get<irs::payload>();
 
   bool empty = true;
   auto doc_id = irs::doc_id_t((irs::doc_limits::min)() + count_);
-
-  irs::bytes_output out;
-  if (f.features().check<irs::sorted>()) {
-    if (f.write(out)) {
-      const irs::bytes_ref value = out;
-      sort_.emplace_back(std::make_pair(irs::bstring(value.c_str(), value.size()), doc_id));
-    }
-  }
 
   while (stream.next()) {
     tests::term& trm = fld.add(term->value());

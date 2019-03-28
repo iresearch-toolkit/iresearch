@@ -235,11 +235,17 @@ class index_test_base : public virtual test_param_base<index_test_context> {
     const document* src;
 
     while ((src = gen.next())) {
-      segment.add(src->indexed.begin(), src->indexed.end());
+      segment.add(
+        src->indexed.begin(),
+        src->indexed.end(),
+        src->sorted
+      );
+
       ASSERT_TRUE(insert(
         writer,
         src->indexed.begin(), src->indexed.end(),
-        src->stored.begin(), src->stored.end()
+        src->stored.begin(), src->stored.end(),
+        src->sorted
       ));
     }
 

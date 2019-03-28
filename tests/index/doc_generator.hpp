@@ -217,7 +217,7 @@ class particle: irs::util::noncopyable {
 
   ifield& back() const { return *fields_.back(); }
   bool contains(const irs::string_ref& name) const;
-  std::vector<const ifield*> find(const irs::string_ref& name) const;
+  std::vector<ifield::ptr> find(const irs::string_ref& name) const;
 
   template<typename T>
   T& back() const {
@@ -282,6 +282,7 @@ struct document: irs::util::noncopyable {
 
   particle indexed;
   particle stored;
+  ifield::ptr sorted;
 }; // document
 
 /* -------------------------------------------------------------------
@@ -476,6 +477,23 @@ bool insert(
     Stored sbegin, Stored send) {
   auto ctx = writer.documents();
   auto doc = ctx.insert();
+
+  return doc.insert<irs::Action::INDEX>(ibegin, iend)
+         && doc.insert<irs::Action::STORE>(sbegin, send);
+}
+
+template<typename Indexed, typename Stored, typename Sorted>
+bool insert(
+    irs::index_writer& writer,
+    Indexed ibegin, Indexed iend,
+    Stored sbegin, Stored send,
+    Sorted sorted = nullptr) {
+  auto ctx = writer.documents();
+  auto doc = ctx.insert();
+
+  if (sorted && !doc.insert<irs::Action::STORE_SORTED>(*sorted)) {
+    return false;
+  }
 
   return doc.insert<irs::Action::INDEX>(ibegin, iend)
          && doc.insert<irs::Action::STORE>(sbegin, send);

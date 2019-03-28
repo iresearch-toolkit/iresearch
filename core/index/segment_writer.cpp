@@ -39,11 +39,11 @@
 
 NS_ROOT
 
-segment_writer::column::column(
+segment_writer::stored_column::stored_column(
     const string_ref& name, 
     columnstore_writer& columnstore) {
   this->name.assign(name.c_str(), name.size());
-  this->handle = columnstore.push_column();
+  std::tie(id, handle) = columnstore.push_column();
 }
 
 doc_id_t segment_writer::begin(
@@ -137,17 +137,23 @@ bool segment_writer::index(
   return false;
 }
 
+columnstore_writer::column_output& segment_writer::sorted_stream(
+    const hashed_string_ref& name,
+    const doc_id_t doc_id) {
+  assert(fields_.comparator()); // already checked in segment_writer::store
+
+  if (sort_.name.empty()) {
+    sort_.name.assign(name.c_str(), name.size()); // reset name
+  }
+
+  sort_.handle.prepare(doc_id);
+  return sort_.handle;
+}
+
 columnstore_writer::column_output& segment_writer::stream(
     const hashed_string_ref& name,
-    const doc_id_t doc_id,
-    const flags& features) {
+    const doc_id_t doc_id) {
   REGISTER_TIMER_DETAILED();
-
-  if (fields_.comparator() && features.check<sorted>()) {
-    // FIXME what to do with the name???
-    sort_.prepare(doc_id);
-    return sort_;
-  }
 
   auto generator = [](
       const hashed_string_ref& key,
@@ -163,7 +169,7 @@ columnstore_writer::column_output& segment_writer::stream(
     generator,                                    // key generator
     name,                                         // key
     name, *col_writer_                            // value
-  ).first->second.handle.second(doc_id);
+  ).first->second.handle(doc_id);
 }
 
 void segment_writer::finish() {
@@ -197,11 +203,16 @@ void segment_writer::flush_column_meta(const segment_meta& meta) {
     columns.emplace(&entry.second);
   }
 
+  // ensure sorted column is in column meta
+  if (field_limits::valid(sort_.id)) {
+    columns.emplace(&sort_);
+  }
+
   // flush columns meta
   try {
     col_meta_writer_->prepare(dir_, meta);
     for (auto& column: columns) {
-      col_meta_writer_->write(column->name, column->handle.first);
+      col_meta_writer_->write(column->name, column->id);
     }
     col_meta_writer_->flush();
   } catch (...) {
@@ -254,12 +265,14 @@ void segment_writer::flush(index_meta::index_segment_t& segment) {
   doc_map docmap;
 
   if (fields_.comparator()) {
-    std::tie(docmap, meta.sort) = sort_.flush(
+    std::tie(docmap, sort_.id) = sort_.handle.flush(
       *col_writer_,
       doc_id_t(docs_cached()),
       docs_mask_,
       *fields_.comparator()
     );
+
+    meta.sort = sort_.id;
   }
 
   // flush columnstore and columns indices

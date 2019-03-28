@@ -216,16 +216,31 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   friend struct action_helper;
 
   struct column : util::noncopyable {
-    column(const string_ref& name, columnstore_writer& columnstore);
+    column() = default;
 
     column(column&& other) NOEXCEPT
       : name(std::move(other.name)),
-        handle(std::move(other.handle)) {
+        id(other.id) {
     }
 
     std::string name;
-    columnstore_writer::column_t handle;
-  };
+    field_id id;
+  }; // column
+
+  struct stored_column : column {
+    stored_column(
+      const string_ref& name,
+      columnstore_writer& columnstore
+    );
+
+    columnstore_writer::values_writer_f handle;
+  }; // stored_column
+
+  struct sorted_column : column {
+    sorted_column() = default;
+
+    irs::sorted_column handle;
+  }; // sorted_column
 
   segment_writer(directory& dir, const comparer* comparator) NOEXCEPT;
 
@@ -236,16 +251,17 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     token_stream& tokens
   );
 
-  template<typename Writer>
+  template<bool Sorted, typename Writer>
   bool store(
       const hashed_string_ref& name,
       const doc_id_t doc,
-      const flags& features,
       Writer& writer
   ) {
     assert(doc < type_limits<type_t::doc_id_t>::eof());
 
-    auto& out = stream(name, doc, features);
+    auto& out = (Sorted && fields_.comparator())
+      ? sorted_stream(name, doc)
+      : stream(name, doc);
 
     if (writer.write(out)) {
       return true;
@@ -256,7 +272,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     return false;
   }
 
-  template<typename Field>
+  template<bool Sorted, typename Field>
   bool store_worker(Field& field) {
     REGISTER_TIMER_DETAILED();
 
@@ -265,12 +281,10 @@ class IRESEARCH_API segment_writer: util::noncopyable {
       std::hash<irs::string_ref>()
     );
 
-    const auto& features = static_cast<const flags&>(field.features());
-
     assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof()); // user should check return of begin() != eof()
     const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() - 1); // -1 for 0-based offset
 
-    return store(name, doc_id, features, field);
+    return store<Sorted>(name, doc_id, field);
   }
 
   // adds document field
@@ -292,7 +306,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     return index(name, doc_id, features, tokens);
   }
 
-  template<typename Field>
+  template<bool Sorted, typename Field>
   bool index_and_store_worker(Field& field) {
     REGISTER_TIMER_DETAILED();
 
@@ -311,14 +325,18 @@ class IRESEARCH_API segment_writer: util::noncopyable {
       return false; // indexing failed
     }
 
-    return store(name, doc_id, features, field);
+    return store<Sorted>(name, doc_id, field);
   }
+
+  // returns stream for storing attributes in sorted order
+  columnstore_writer::column_output& sorted_stream(
+    const hashed_string_ref& name,
+    const doc_id_t doc_id);
 
   // returns stream for storing attributes
   columnstore_writer::column_output& stream(
     const hashed_string_ref& name,
-    const doc_id_t doc,
-    const flags& features
+    const doc_id_t doc
   );
 
   void finish(); // finishes document
@@ -332,7 +350,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   update_contexts docs_context_;
   bitvector docs_mask_; // invalid/removed doc_ids (e.g. partially indexed due to indexing failure)
   fields_data fields_;
-  std::unordered_map<hashed_string_ref, column> columns_;
+  std::unordered_map<hashed_string_ref, stored_column> columns_;
   std::unordered_set<field_data*> norm_fields_; // document fields for normalization
   std::string seg_name_;
   field_writer::ptr field_writer_;
@@ -356,7 +374,15 @@ template<>
 struct action_helper<Action::STORE> {
   template<typename Field>
   static bool insert(segment_writer& writer, Field& field) {
-    return writer.store_worker(field);
+    return writer.store_worker<false>(field);
+  }
+}; // action_helper
+
+template<>
+struct action_helper<Action::STORE_SORTED> {
+  template<typename Field>
+  static bool insert(segment_writer& writer, Field& field) {
+    return writer.store_worker<true>(field);
   }
 }; // action_helper
 
@@ -364,7 +390,15 @@ template<>
 struct action_helper<Action::INDEX | Action::STORE> {
   template<typename Field>
   static bool insert(segment_writer& writer, Field& field) {
-    return writer.index_and_store_worker(field);
+    return writer.index_and_store_worker<false>(field);
+  }
+}; // action_helper
+
+template<>
+struct action_helper<Action::INDEX | Action::STORE_SORTED> {
+  template<typename Field>
+  static bool insert(segment_writer& writer, Field& field) {
+    return writer.index_and_store_worker<true>(field);
   }
 }; // action_helper
 

@@ -138,14 +138,6 @@ struct IRESEARCH_API granularity_prefix : attribute {
 }; // granularity_prefix
 
 //////////////////////////////////////////////////////////////////////////////
-/// @struct sorted
-//////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API sorted : attribute {
-  DECLARE_ATTRIBUTE_TYPE();
-  sorted() = default;
-}; // primary_key
-
-//////////////////////////////////////////////////////////////////////////////
 /// @class norm
 /// @brief this marker attribute is only used in field::features in order to
 ///        allow evaluation of the field normalization factor 
