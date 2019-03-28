@@ -75,7 +75,7 @@ TEST_F(segment_writer_tests, memory) {
     irs::segment_writer::update_context ctx;
     writer->begin(ctx);
     ASSERT_TRUE(writer->valid());
-    ASSERT_TRUE(writer->insert(irs::action::index, field));
+    ASSERT_TRUE(writer->insert<irs::Action::INDEX>(field));
     ASSERT_TRUE(writer->valid());
     writer->commit();
   }
@@ -118,7 +118,7 @@ TEST_F(segment_writer_tests, index_field) {
 
     writer->begin(ctx);
     ASSERT_TRUE(writer->valid());
-    ASSERT_FALSE(writer->insert(irs::action::index, field));
+    ASSERT_FALSE(writer->insert<irs::Action::INDEX>(field));
     ASSERT_FALSE(writer->valid());
     writer->commit();
   }
@@ -137,7 +137,7 @@ TEST_F(segment_writer_tests, index_field) {
 
     writer->begin(ctx);
     ASSERT_TRUE(writer->valid());
-    ASSERT_FALSE(writer->insert(irs::action::index, field));
+    ASSERT_FALSE(writer->insert<irs::Action::INDEX>( field));
     ASSERT_FALSE(writer->valid());
     writer->commit();
   }

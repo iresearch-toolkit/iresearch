@@ -374,9 +374,9 @@ class IRESEARCH_API store_writer final: private util::noncopyable {
     /// @param field attribute to be inserted
     /// @return true, if field was successfully insterted
     ////////////////////////////////////////////////////////////////////////////
-    template<typename Action, typename Field>
-    bool insert(Action& action, Field& field) {
-      return valid_ = valid_ && writer_.insert(action, doc_, out_, state_, field);
+    template<Action action, typename Field>
+    bool insert(Field& field) {
+      return valid_ = valid_ && writer_.insert<action>(doc_, out_, state_, field);
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -387,10 +387,10 @@ class IRESEARCH_API store_writer final: private util::noncopyable {
     /// @param field attribute to be inserted
     /// @return true, if field was successfully insterted
     ////////////////////////////////////////////////////////////////////////////
-    template<typename Action, typename Field>
-    bool insert(Action& action, Field* field) {
+    template<Action action, typename Field>
+    bool insert(Field* field) {
       assert(field);
-      return insert(action, *field);
+      return insert<action>(action, *field);
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -401,10 +401,10 @@ class IRESEARCH_API store_writer final: private util::noncopyable {
     /// @param end the end of the fields range
     /// @return true, if the range was successfully insterted
     ////////////////////////////////////////////////////////////////////////////
-    template<typename Action, typename Iterator>
-    bool insert(Action& action, Iterator begin, Iterator end) {
+    template<Action action, typename Iterator>
+    bool insert(Iterator begin, Iterator end) {
       for (; valid() && begin != end; ++begin) {
-        insert(action, *begin);
+        insert<action>(*begin);
       }
 
       return valid();

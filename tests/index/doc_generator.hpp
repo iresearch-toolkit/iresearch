@@ -466,7 +466,7 @@ bool insert(
   auto ctx = writer.documents();
   auto doc = ctx.insert();
 
-  return doc.insert(irs::action::index, ibegin, iend);
+  return doc.insert<irs::Action::INDEX>(ibegin, iend);
 }
 
 template<typename Indexed, typename Stored>
@@ -477,8 +477,8 @@ bool insert(
   auto ctx = writer.documents();
   auto doc = ctx.insert();
 
-  return doc.insert(irs::action::index, ibegin, iend)
-         && doc.insert(irs::action::store, sbegin, send);
+  return doc.insert<irs::Action::INDEX>(ibegin, iend)
+         && doc.insert<irs::Action::STORE>(sbegin, send);
 }
 
 template<typename Indexed>
@@ -489,7 +489,7 @@ bool update(
   auto ctx = writer.documents();
   auto doc = ctx.replace(filter);
 
-  return doc.insert(irs::action::index, ibegin, iend);
+  return doc.insert<irs::Action::INDEX>(ibegin, iend);
 }
 
 template<typename Indexed, typename Stored>
@@ -501,8 +501,8 @@ bool update(
   auto ctx = writer.documents();
   auto doc = ctx.replace(filter);
 
-  return doc.insert(irs::action::index, ibegin, iend)
-         && doc.insert(irs::action::store, sbegin, send);
+  return doc.insert<irs::Action::INDEX>(ibegin, iend)
+         && doc.insert<irs::Action::STORE>(sbegin, send);
 }
 
 template<typename Indexed>
@@ -513,7 +513,7 @@ bool update(
   auto ctx = writer.documents();
   auto doc = ctx.replace(std::move(filter));
 
-  return doc.insert(irs::action::index, ibegin, iend);
+  return doc.insert<irs::Action::INDEX>(ibegin, iend);
 }
 
 template<typename Indexed, typename Stored>
@@ -525,8 +525,8 @@ bool update(
   auto ctx = writer.documents();
   auto doc = ctx.replace(std::move(filter));
 
-  return doc.insert(irs::action::index, ibegin, iend)
-         && doc.insert(irs::action::store, sbegin, send);
+  return doc.insert<irs::Action::INDEX>(ibegin, iend)
+         && doc.insert<irs::Action::STORE>(sbegin, send);
 }
 
 template<typename Indexed>
@@ -537,7 +537,7 @@ bool update(
   auto ctx = writer.documents();
   auto doc = ctx.replace(filter);
 
-  return doc.insert(irs::action::index, ibegin, iend);
+  return doc.insert<irs::Action::INDEX>(ibegin, iend);
 }
 
 template<typename Indexed, typename Stored>
@@ -549,8 +549,8 @@ bool update(
   auto ctx = writer.documents();
   auto doc = ctx.replace(filter);
 
-  return doc.insert(irs::action::index, ibegin, iend)
-         && doc.insert(irs::action::store, sbegin, send);
+  return doc.insert<irs::Action::INDEX>(ibegin, iend)
+         && doc.insert<irs::Action::STORE>(sbegin, send);
 }
 
 NS_END // tests

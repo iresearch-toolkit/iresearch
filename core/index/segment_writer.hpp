@@ -37,47 +37,39 @@ NS_ROOT
 
 class comparer;
 struct segment_meta;
+class segment_writer;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @enum Action
 /// @brief defines how the inserting field should be processed
 //////////////////////////////////////////////////////////////////////////////
-NS_BEGIN(action)
+enum class Action {
+  ////////////////////////////////////////////////////////////////////////////
+  /// @brief Field should be indexed only
+  /// @note Field must satisfy 'Field' concept
+  ////////////////////////////////////////////////////////////////////////////
+  INDEX = 1,
 
-////////////////////////////////////////////////////////////////////////////
-/// @brief Field should be indexed only
-/// @note Field must satisfy 'Field' concept
-////////////////////////////////////////////////////////////////////////////
-struct index_t{};
-#if defined(_MSC_VER) && (_MSC_VER < 1900)
-  static const index_t index = index_t();
-#else
-  CONSTEXPR const index_t index = index_t();
-#endif
+  ////////////////////////////////////////////////////////////////////////////
+  /// @brief Field should be stored only
+  /// @note Field must satisfy 'Attribute' concept
+  ////////////////////////////////////////////////////////////////////////////
+  STORE = 2,
 
-////////////////////////////////////////////////////////////////////////////
-/// @brief Field should be indexed and stored
-/// @note Field must satisfy 'Field' and 'Attribute' concepts
-////////////////////////////////////////////////////////////////////////////
-struct index_store_t{};
-#if defined(_MSC_VER) && (_MSC_VER < 1900)
-  static const index_store_t index_store = index_store_t();
-#else
-  CONSTEXPR const index_store_t index_store = index_store_t();
-#endif
+  STORE_SORTED = 4
+}; // Action
 
-////////////////////////////////////////////////////////////////////////////
-/// @brief Field should be stored only
-/// @note Field must satisfy 'Attribute' concept
-////////////////////////////////////////////////////////////////////////////
-struct store_t{};
-#if defined(_MSC_VER) && (_MSC_VER < 1900)
-  static const store_t store = store_t();
-#else
-  CONSTEXPR const store_t store = store_t();
-#endif
+ENABLE_BITMASK_ENUM(Action);
 
-NS_END // action
+template<Action action>
+struct action_helper {
+  template<typename Field>
+  static bool insert(segment_writer& /*writer*/, Field& /*field*/) {
+    // unsupported action
+    assert(false);
+    return false;
+  }
+}; // action_helper
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief interface for an index writer over a directory
@@ -116,9 +108,9 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     /// @param field attribute to be inserted
     /// @return true, if field was successfully insterted
     ////////////////////////////////////////////////////////////////////////////
-    template<typename Action, typename Field>
-    bool insert(Action action, Field& field) const {
-      return writer_.insert(action, field);
+    template<Action action, typename Field>
+    bool insert(Field& field) const {
+      return writer_.insert<action>(field);
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -129,10 +121,9 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     /// @param field attribute to be inserted
     /// @return true, if field was successfully insterted
     ////////////////////////////////////////////////////////////////////////////
-    template<typename Action, typename Field>
-    bool insert(Action action, Field* field) const {
-      assert(field);
-      return insert(action, *field);
+    template<Action action, typename Field>
+    bool insert(Field* field) const {
+      return writer_.insert<action>(*field);
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -143,10 +134,10 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     /// @param end the end of the fields range
     /// @return true, if the range was successfully insterted
     ////////////////////////////////////////////////////////////////////////////
-    template<typename Action, typename Iterator>
-    bool insert(Action action, Iterator begin, Iterator end) const {
+    template<Action action, typename Iterator>
+    bool insert(Iterator begin, Iterator end) const {
       for (; writer_.valid() && begin != end; ++begin) {
-        insert(action, *begin);
+        insert<action>(*begin);
       }
 
       return writer_.valid();
@@ -178,22 +169,9 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     return docs_context_[doc_id - type_limits<type_t::doc_id_t>::min()];
   }
 
-  // adds stored document field
-  template<typename Field>
-  bool insert(action::store_t, Field& field) {
-    return valid_ = valid_ && store_worker(field);
-  }
-
-  // adds indexed document field
-  template<typename Field>
-  bool insert(action::index_t, Field& field) {
-    return valid_ = valid_ && index_worker(field);
-  }
-
-  // adds indexed and stored document field
-  template<typename Field>
-  bool insert(action::index_store_t, Field& field) {
-    return valid_ = valid_ && index_and_store_worker(field);
+  template<Action action, typename Field>
+  bool insert(Field& field) {
+    return valid_ = valid_ && action_helper<action>::insert(*this, field);
   }
 
   // commit document-write transaction
@@ -234,6 +212,9 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   void reset(const segment_meta& meta);
 
  private:
+  template<Action action>
+  friend struct action_helper;
+
   struct column : util::noncopyable {
     column(const string_ref& name, columnstore_writer& columnstore);
 
@@ -362,6 +343,30 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   bool valid_{ true }; // current state
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // segment_writer
+
+template<>
+struct action_helper<Action::INDEX> {
+  template<typename Field>
+  static bool insert(segment_writer& writer, Field& field) {
+    return writer.index_worker(field);
+  }
+}; // action_helper
+
+template<>
+struct action_helper<Action::STORE> {
+  template<typename Field>
+  static bool insert(segment_writer& writer, Field& field) {
+    return writer.store_worker(field);
+  }
+}; // action_helper
+
+template<>
+struct action_helper<Action::INDEX | Action::STORE> {
+  template<typename Field>
+  static bool insert(segment_writer& writer, Field& field) {
+    return writer.index_and_store_worker(field);
+  }
+}; // action_helper
 
 NS_END
 

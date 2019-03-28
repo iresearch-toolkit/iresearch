@@ -105,7 +105,6 @@ set(IResearch_core_sources
   ./index/postings.cpp
   ./index/segment_reader.cpp
   ./index/segment_writer.cpp
-  ./index/transaction_store.cpp
   ./index/sorted_column.cpp
   ./iql/parser.cc
   ./iql/parser_common.cpp
