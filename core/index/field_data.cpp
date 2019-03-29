@@ -425,7 +425,7 @@ class sorting_doc_iterator : public irs::doc_iterator {
   }
 
   // reset term
-  void reset(detail::doc_iterator& it, const doc_map& docmap) {
+  void reset(detail::doc_iterator& it, const std::vector<doc_id_t>& docmap) {
     const uint32_t no_frequency = 0;
     const uint32_t* freq = &no_frequency;
 
@@ -437,7 +437,7 @@ class sorting_doc_iterator : public irs::doc_iterator {
     // FIXME docs_.reserve(cost)
     docs_.clear();
     while (it.next()) {
-      const auto new_doc = docmap.get<doc_map::NEW>(it.value() - doc_limits::min()) + doc_limits::min();
+      const auto new_doc = docmap[it.value() - doc_limits::min()] + doc_limits::min();
 
       if (doc_limits::eof(new_doc)) {
         // skip invalid documents

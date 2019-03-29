@@ -27,6 +27,8 @@
 #include "formats/formats.hpp"
 #include "store/store_utils.hpp"
 
+#include <vector>
+
 NS_ROOT
 
 class comparer {
@@ -43,68 +45,7 @@ class comparer {
 
 class bitvector;
 
-class doc_map {
- public:
-  enum Type { OLD, NEW };
-
-  doc_map() = default;
-
-  doc_map(
-    std::vector<doc_id_t>&& new_old,
-    std::vector<doc_id_t>&& old_new
-  ) NOEXCEPT;
-
-  doc_map(doc_map&& rhs) NOEXCEPT
-    : new_old_(std::move(rhs.new_old_)),
-      old_new_(std::move(rhs.old_new_)) {
-  }
-
-  doc_map& operator=(doc_map&& rhs) NOEXCEPT {
-    if (this != &rhs) {
-      new_old_ = std::move(rhs.new_old_);
-      old_new_ = std::move(rhs.old_new_);
-    }
-    return *this;
-  }
-
-  template<Type type>
-  doc_id_t get(doc_id_t doc) const NOEXCEPT {
-    if (type == OLD) {
-      assert(doc < new_old_.size());
-      return new_old_[doc];
-    }
-
-    assert(doc < old_new_.size());
-    return old_new_[doc];
-  }
-
-  template<Type type, typename Visitor>
-  bool visit(Visitor visitor) const {
-    const std::vector<doc_id_t>& map = type == OLD
-      ? new_old_
-      : old_new_;
-
-    for (const auto doc : map) {
-      if (!visitor(doc)) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  bool empty() const NOEXCEPT {
-    return new_old_.empty();
-  }
-
-  size_t size() const NOEXCEPT {
-    return new_old_.size();
-  }
-
- private:
-  std::vector<doc_id_t> new_old_;
-  std::vector<doc_id_t> old_new_;
-}; // doc_map
+typedef std::vector<doc_id_t> doc_map;
 
 class sorted_column final : public irs::columnstore_writer::column_output {
  public:
@@ -152,12 +93,11 @@ class sorted_column final : public irs::columnstore_writer::column_output {
     index_.clear();
   }
 
-  // 1st - doc map (old->new, new->old)
+  // 1st - doc map (old->new)
   // 2nd - flushed column identifier
   std::pair<doc_map, field_id> flush(
     columnstore_writer& writer,
     doc_id_t max,
-    const bitvector& docs_mask,
     const comparer& less
   );
 
@@ -166,7 +106,7 @@ class sorted_column final : public irs::columnstore_writer::column_output {
   }
 
  private:
-  bytes_output data_buf_;
+  bytes_output data_buf_; // FIXME use memory_file or block_pool instead
   std::vector<std::pair<irs::doc_id_t, size_t>> index_; // doc_id + offset in 'data_buf_'
 }; // sorted_column
 

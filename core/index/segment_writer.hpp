@@ -56,7 +56,23 @@ enum class Action {
   ////////////////////////////////////////////////////////////////////////////
   STORE = 2,
 
-  STORE_SORTED = 4
+  ////////////////////////////////////////////////////////////////////////////
+  /// @brief Field should be indexed and stored
+  /// @note Field must satisfy 'Field' concept
+  ////////////////////////////////////////////////////////////////////////////
+  INDEX_AND_STORE = 3, // MSVC2013 doesn't support constexpr
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// @brief Field should be stored in sorted order
+  /// @note Field must satisfy 'Attribute' concept
+  ////////////////////////////////////////////////////////////////////////////
+  STORE_SORTED = 4,
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// @brief Field should be indexed and stored in sorted order
+  /// @note Field must satisfy 'Field' concept
+  ////////////////////////////////////////////////////////////////////////////
+  INDEX_AND_STORE_SORTED = 5, // MSVC2013 doesn't support constexpr
 }; // Action
 
 ENABLE_BITMASK_ENUM(Action);
@@ -387,7 +403,7 @@ struct action_helper<Action::STORE_SORTED> {
 }; // action_helper
 
 template<>
-struct action_helper<Action::INDEX | Action::STORE> {
+struct action_helper<Action::INDEX_AND_STORE> {
   template<typename Field>
   static bool insert(segment_writer& writer, Field& field) {
     return writer.index_and_store_worker<false>(field);
@@ -395,7 +411,7 @@ struct action_helper<Action::INDEX | Action::STORE> {
 }; // action_helper
 
 template<>
-struct action_helper<Action::INDEX | Action::STORE_SORTED> {
+struct action_helper<Action::INDEX_AND_STORE_SORTED> {
   template<typename Field>
   static bool insert(segment_writer& writer, Field& field) {
     return writer.index_and_store_worker<true>(field);
