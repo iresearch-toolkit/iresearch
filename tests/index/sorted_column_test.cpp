@@ -107,13 +107,14 @@ TEST(sorted_colum_test, sort) {
   std::sort(sorted_values.begin(), sorted_values.end());
 
   // check order
-  ASSERT_TRUE(std::is_sorted(
-    std::begin(values), std::end(values),
-    [&values, &order](const uint32_t& lhs, const uint32_t& rhs) {
-      const auto lhs_idx = &lhs - values;
-      const auto rhs_idx = &rhs - values;
-      return order[lhs_idx] < order[rhs_idx];
-  }));
+  {
+    uint32_t values_by_order[IRESEARCH_COUNTOF(values)];
+    for (size_t i = 0; i < IRESEARCH_COUNTOF(values); ++i) {
+      values_by_order[order[i]] = values[i];
+    }
+
+    ASSERT_TRUE(std::is_sorted(std::begin(values_by_order), std::end(values_by_order)));
+  }
 
   // read sorted column
   {

@@ -72,11 +72,13 @@ std::pair<doc_map, field_id> sorted_column::flush(
 
       const auto& lhs_value = doc_limits::eof(lhs.first)
         ? bytes_ref::NIL
-        : bytes_ref(data.c_str() + index_[lhs.first].second, index_[lhs.first+1].second);
+        : bytes_ref(data.c_str() + index_[lhs.first].second,
+                    index_[lhs.first+1].second);
 
       const auto& rhs_value = doc_limits::eof(rhs.first)
         ? bytes_ref::NIL
-        : bytes_ref(data.c_str() + index_[rhs.first].second, index_[rhs.first+1].second);
+        : bytes_ref(data.c_str() + index_[rhs.first].second,
+                    index_[rhs.first+1].second);
 
       return less(lhs_value, rhs_value);
   });
@@ -96,7 +98,10 @@ std::pair<doc_map, field_id> sorted_column::flush(
     auto& stream = column_writer(new_doc_id++);
 
     if (!doc_limits::eof(entry.first)) {
-      stream.write_bytes(data.c_str() + index_[entry.first].second, index_[entry.first+1].second);
+      stream.write_bytes(
+        data.c_str() + index_[entry.first].second,
+        index_[entry.first+1].second
+      );
     }
   };
 
