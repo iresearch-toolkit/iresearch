@@ -23,7 +23,6 @@
 
 #include "shared.hpp"
 #include "sorted_column.hpp"
-#include "utils/bitvector.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/misc.hpp"
 

@@ -43,8 +43,6 @@ class comparer {
   virtual bool less(const bytes_ref& lhs, const bytes_ref& rhs) const = 0;
 }; // comparer
 
-class bitvector;
-
 typedef std::vector<doc_id_t> doc_map;
 
 class sorted_column final : public irs::columnstore_writer::column_output {
