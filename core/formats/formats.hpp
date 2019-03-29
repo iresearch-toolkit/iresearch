@@ -48,7 +48,7 @@ struct data_input;
 struct index_input;
 typedef std::unordered_set<doc_id_t> document_mask;
 struct postings_writer;
-class doc_map;
+typedef std::vector<doc_id_t> doc_map;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class term_meta

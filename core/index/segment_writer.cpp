@@ -268,7 +268,6 @@ void segment_writer::flush(index_meta::index_segment_t& segment) {
     std::tie(docmap, sort_.id) = sort_.handle.flush(
       *col_writer_,
       doc_id_t(docs_cached()),
-      docs_mask_,
       *fields_.comparator()
     );
 

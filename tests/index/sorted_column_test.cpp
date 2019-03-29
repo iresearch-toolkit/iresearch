@@ -94,7 +94,7 @@ TEST(sorted_colum_test, sort) {
     }
     ASSERT_EQ(IRESEARCH_COUNTOF(values), col.size());
 
-    std::tie(order, column_id) = col.flush(*writer, IRESEARCH_COUNTOF(values), docs_mask, less);
+    std::tie(order, column_id) = col.flush(*writer, IRESEARCH_COUNTOF(values), less);
     ASSERT_TRUE(col.empty());
     ASSERT_EQ(0, col.size());
     ASSERT_EQ(IRESEARCH_COUNTOF(values), order.size());
@@ -107,21 +107,13 @@ TEST(sorted_colum_test, sort) {
   std::sort(sorted_values.begin(), sorted_values.end());
 
   // check order
-  {
-    auto begin = sorted_values.begin();
-
-    auto visitor = [&begin, &values](irs::doc_id_t pos) {
-      if (*begin != values[pos]) {
-        return false;
-      }
-
-      ++begin;
-      return true;
-    };
-
-    ASSERT_TRUE(order.visit<irs::doc_map::OLD>(visitor));
-    ASSERT_EQ(sorted_values.end(), begin);
-  }
+  ASSERT_TRUE(std::is_sorted(
+    std::begin(values), std::end(values),
+    [&values, &order](const uint32_t& lhs, const uint32_t& rhs) {
+      const auto lhs_idx = &lhs - values;
+      const auto rhs_idx = &rhs - values;
+      return order[lhs_idx] < order[rhs_idx];
+  }));
 
   // read sorted column
   {
