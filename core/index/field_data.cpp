@@ -101,24 +101,26 @@ void write_prox(
 //FIXME use delta encoding
 template<typename Inserter>
 FORCE_INLINE void write_cookie(Inserter& out, uint64_t cookie) {
-//  *out = static_cast<byte_type>(cookie & 0xFF);
-//  irs::vwrite<uint32_t>(out, static_cast<uint32_t>((cookie >> 8) & 0xFFFFFFFF));
-  irs::vwrite(out, cookie);
+  std::cerr << "w:" << cookie << std::endl;
+  *out = static_cast<byte_type>(cookie & 0xFF); // offset
+  irs::vwrite<uint32_t>(out, static_cast<uint32_t>((cookie >> 8) & 0xFFFFFFFF)); // slice offset
 }
 
 FORCE_INLINE uint64_t cookie(size_t slice_offset, size_t offset) NOEXCEPT {
+  assert(offset <= integer_traits<byte_type>::const_max);
   return static_cast<uint64_t>(slice_offset) << 8 | static_cast<byte_type>(offset);
 }
 
 template<typename Reader>
 FORCE_INLINE uint64_t read_cookie(Reader& in) {
-  return irs::vread<uint64_t>(in);
-//  const size_t offset = *in;
-//  return cookie(irs::vread<uint32_t>(in), offset);
+  const size_t offset = *in; ++in;
+  const size_t slice_offset = irs::vread<uint32_t>(in);
+  std::cerr << "r:" << cookie(slice_offset, offset)<< std::endl;
+  return cookie(slice_offset, offset);
 }
 
 FORCE_INLINE uint64_t cookie(const byte_block_pool::sliced_greedy_inserter& stream) NOEXCEPT {
-  assert(stream.slice_offset() <= stream.pool_offset());
+  // we don't span slices over the buffers
   const auto slice_offset = stream.slice_offset();
   return cookie(slice_offset, stream.pool_offset() - slice_offset);
 }
@@ -317,6 +319,7 @@ class doc_iterator : public irs::doc_iterator {
   ) {
     doc_.value = 0;
     freq_.value = 0;
+    cookie_ = 0;
     freq_in_ = freq;
     posting_ = &posting;
 
@@ -351,7 +354,7 @@ class doc_iterator : public irs::doc_iterator {
 
       if (has_cookie_) {
         // read last cookie
-        cookie_ = *field_->int_writer_->parent().seek(posting_->int_start+3);
+        cookie_ += *field_->int_writer_->parent().seek(posting_->int_start+3);
       }
 
       posting_ = nullptr;
@@ -369,7 +372,7 @@ class doc_iterator : public irs::doc_iterator {
         doc_.value += doc_id_t(delta);
 
         if (has_cookie_) {
-          cookie_ = read_cookie(freq_in_);
+          cookie_ += read_cookie(freq_in_);
         }
       } else {
         doc_.value += irs::vread<uint32_t>(freq_in_);
@@ -950,9 +953,9 @@ void field_data::add_term_random_access(
       auto& start_cookie = *prox_stream_cookie;
 
       write_cookie(doc_out, start_cookie);
-      start_cookie = end_cookie; // update start cookie
+      start_cookie = end_cookie - start_cookie; // update start cookie
 
-      auto prox_out = greedy_writer(*byte_writer_, start_cookie);
+      auto prox_out = greedy_writer(*byte_writer_, end_cookie);
 
       write_prox(prox_out, pos_, pay, meta_.features);
 
