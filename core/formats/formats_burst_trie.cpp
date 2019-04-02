@@ -255,6 +255,67 @@ const fst::FstReadOptions& fst_read_options() {
   return INSTANCE;
 }
 
+// mininum size of string weight we store in FST
+CONSTEXPR const size_t MIN_WEIGHT_SIZE = 2;
+
+void merge_blocks(std::list<irs::burst_trie::detail::entry>& blocks) {
+  assert(!blocks.empty());
+
+  auto it = blocks.begin();
+
+  auto& root = *it;
+  auto& root_block = root.block();
+  auto& root_index = root_block.index;
+
+  root_index.emplace_front(std::move(root.data()));
+
+  // First byte in block header must not be equal to fst::kStringInfinity
+  // Consider the following:
+  //   StringWeight0 -> { fst::kStringInfinity 0x11 ... }
+  //   StringWeight1 -> { fst::KStringInfinity 0x22 ... }
+  //   CommonPrefix = fst::Plus(StringWeight0, StringWeight1) -> { fst::kStringInfinity }
+  //   Suffix = fst::Divide(StringWeight1, CommonPrefix) -> { fst::kStringBad }
+  // But actually Suffix should be equal to { 0x22 ... }
+  assert(char(root_block.meta) != fst::kStringInfinity);
+
+  // will store just several bytes here
+  auto& out = *root_index.begin();
+  out.write_byte(static_cast<byte_type>(root_block.meta)); // block metadata
+  out.write_vlong(root_block.start); // start pointer of the block
+
+  if (block_meta::floor(root_block.meta)) {
+    out.write_vlong(static_cast<uint64_t>(blocks.size()-1));
+    for (++it; it != blocks.end(); ++it ) {
+      const auto* block = &it->block();
+      assert(block->label != irs::burst_trie::detail::block_t::INVALID_LABEL);
+      assert(block->start > root_block.start);
+
+      const uint64_t start_delta = it->block().start - root_block.start;
+      out.write_byte(static_cast<byte_type>(block->label & 0xFF));
+      out.write_vlong(start_delta);
+      out.write_byte(static_cast<byte_type>(block->meta));
+
+      root_index.splice(root_index.end(), it->block().index);
+    }
+  } else {
+    for (++it; it != blocks.end(); ++it) {
+      root_index.splice(root_index.end(), it->block().index);
+    }
+  }
+
+  // ensure weight we've written doesn't interfere
+  // with semiring members and other constants
+  assert(
+    out.weight != byte_weight::One()
+      && out.weight != byte_weight::Zero()
+      && out.weight != byte_weight::NoWeight()
+      && out.weight.Size() >= MIN_WEIGHT_SIZE
+      && byte_weight::One().Size() < MIN_WEIGHT_SIZE
+      && byte_weight::Zero().Size() < MIN_WEIGHT_SIZE
+      && byte_weight::NoWeight().Size() < MIN_WEIGHT_SIZE
+  );
+}
+
 NS_END
 
 NS_ROOT
@@ -554,7 +615,7 @@ class term_iterator final : public irs::seek_term_iterator {
   }
 
   inline block_iterator* push_block(byte_weight&& out, size_t prefix) {
-    assert(out.Size());
+    assert(out.Size() >= MIN_WEIGHT_SIZE); // ensure weight correctess
     block_stack_.emplace_back(std::move(out), prefix, this);
     return &block_stack_.back();
   }
@@ -1421,52 +1482,6 @@ void field_writer::write_block(
   }
 }
 
-/* static */ void field_writer::merge_blocks(std::list<detail::entry>& blocks) {
-  assert(!blocks.empty());
-
-  auto it = blocks.begin();
-
-  auto& root = *it;
-  auto& root_block = root.block();
-  auto& root_index = root_block.index;
-
-  root_index.emplace_front(std::move(root.data()));
-
-  // First byte in block header must not be equal to fst::kStringInfinity
-  // Consider the following:
-  //   StringWeight0 -> { fst::kStringInfinity 0x11 ... }
-  //   StringWeight1 -> { fst::KStringInfinity 0x22 ... }
-  //   CommonPrefix = fst::Plus(StringWeight0, StringWeight1) -> { fst::kStringInfinity }
-  //   Suffix = fst::Divide(StringWeight1, CommonPrefix) -> { fst::kStringBad }
-  // But actually Suffix should be equal to { 0x22 ... }
-  assert(char(root_block.meta) != fst::kStringInfinity);
-
-  // will store just several bytes here
-  auto& out = *root_index.begin();
-  out.write_byte(static_cast<byte_type>(root_block.meta)); // block metadata
-  out.write_vlong(root_block.start); // start pointer of the block
-
-  if (block_meta::floor(root_block.meta)) {
-    out.write_vlong(static_cast< uint64_t >(blocks.size()-1));
-    for (++it; it != blocks.end(); ++it ) {
-      const auto* block = &it->block();
-      assert(block->label != detail::block_t::INVALID_LABEL);
-      assert(block->start > root_block.start);
-
-      const uint64_t start_delta = it->block().start - root_block.start;
-      out.write_byte( static_cast< byte_type >(block->label & 0xFF));
-      out.write_vlong( start_delta );
-      out.write_byte( static_cast< byte_type >(block->meta));
-
-      root_index.splice(root_index.end(), it->block().index);
-    }
-  } else {
-    for (++it; it != blocks.end(); ++it ) {
-      root_index.splice(root_index.end(), it->block().index);
-    }
-  }
-}
-
 void field_writer::write_blocks( size_t prefix, size_t count ) {
   // only root node able to write whole stack
   assert(prefix || count == stack_.size());
@@ -1517,7 +1532,7 @@ void field_writer::write_blocks( size_t prefix, size_t count ) {
   }
 
   // merge blocks into 1st block
-  merge_blocks( blocks );
+  ::merge_blocks(blocks);
 
   // remove processed entries from the
   // top of the stack
