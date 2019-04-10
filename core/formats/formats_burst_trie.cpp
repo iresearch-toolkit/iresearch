@@ -615,7 +615,9 @@ class term_iterator final : public irs::seek_term_iterator {
   }
 
   inline block_iterator* push_block(byte_weight&& out, size_t prefix) {
-    assert(out.Size() >= MIN_WEIGHT_SIZE); // ensure weight correctess
+    // ensure final weight correctess
+    assert(out.Size() >= MIN_WEIGHT_SIZE);
+
     block_stack_.emplace_back(std::move(out), prefix, this);
     return &block_stack_.back();
   }
@@ -1101,7 +1103,7 @@ ptrdiff_t term_iterator::seek_cached(
     auto end = begin + std::min(target.size(), sstate_.size());
 
     for (;begin != end && *pterm == *ptarget; ++begin, ++pterm, ++ptarget) {
-      fst_utils::append(weight, begin->weight);
+      weight.PushBack(begin->weight);
       state = begin->state;
       cur_block = begin->block;
     }
@@ -1135,11 +1137,12 @@ ptrdiff_t term_iterator::seek_cached(
 }
 
 bool term_iterator::seek_to_block(const bytes_ref& term, size_t& prefix) {
-  assert(owner_->fst_);
+  assert(owner_->fst_ && owner_->fst_->GetImpl());
 
-  typedef fst_t::Weight weight_t;
+  // ensure final state has no weight assigned
+  assert(owner_->fst_->Final(fst_byte_builder::final).Empty());
 
-  const auto& fst = *owner_->fst_;
+  const auto& fst = *owner_->fst_->GetImpl();
 
   prefix = 0; // number of current symbol to process
   arc::stateid_t state = fst.Start(); // start state
@@ -1162,27 +1165,33 @@ bool term_iterator::seek_to_block(const bytes_ref& term, size_t& prefix) {
   term_.reset(prefix); // reset to common seek prefix
   sstate_.resize(prefix); // remove invalid cached arcs
 
-  bool found = fst_byte_builder::final != state;
-  while (found && prefix < term.size()) {
+  while (fst_byte_builder::final != state && prefix < term.size()) {
     matcher_.SetState(state);
-    if (found = matcher_.Find(term[prefix])) {
-      const auto& arc = matcher_.Value();
-      term_ += byte_type(arc.ilabel);
-      fst_utils::append(weight_, arc.weight);
-      ++prefix;
 
-      const auto weight = fst.Final(state = arc.nextstate);
-      if (weight_t::One() != weight && weight_t::Zero() != weight) {
-        cur_block_ = push_block(fst::Times(weight_, weight), prefix);
-      } else if (fst_byte_builder::final == state) {
-        cur_block_ = push_block(std::move(weight_), prefix);
-        found = false;
-      }
-
-      // cache found arcs, we can reuse it in further seeks
-      // avoiding relatively expensive FST lookups
-      sstate_.emplace_back(state, arc.weight, cur_block_);
+    if (!matcher_.Find(term[prefix])) {
+      break;
     }
+
+    const auto& arc = matcher_.Value();
+
+    term_ += byte_type(arc.ilabel); // aggregate arc label
+    weight_.PushBack(arc.weight); // aggregate arc weight
+    ++prefix;
+
+    const auto& weight = fst.FinalRef(arc.nextstate);
+
+    if (!weight.Empty()) {
+      cur_block_ = push_block(fst::Times(weight_, weight), prefix);
+    } else if (fst_byte_builder::final == arc.nextstate) {
+      cur_block_ = push_block(std::move(weight_), prefix);
+    }
+
+    // cache found arcs, we can reuse it in further seeks
+    // avoiding relatively expensive FST lookups
+    sstate_.emplace_back(arc.nextstate, arc.weight, cur_block_);
+
+    // proceed to the next state
+    state = arc.nextstate;
   }
 
   assert(cur_block_);

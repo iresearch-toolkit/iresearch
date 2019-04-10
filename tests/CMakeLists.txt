@@ -107,6 +107,7 @@ set(IReSearch_tests_sources
   ./utils/std_test.cpp
   ./utils/type_utils_tests.cpp
   ./utils/utf8_path_tests.cpp
+  ./utils/fst_builder_test.cpp
   ./utils/fst_string_weight_test.cpp
   ./tests_param.cpp
   ./tests_main.cpp
