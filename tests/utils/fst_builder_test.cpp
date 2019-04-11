@@ -117,13 +117,13 @@ TEST(fst_builder_test, build_fst) {
     ASSERT_EQ(fst::kILabelSorted, fst.Properties(fst::kILabelSorted, true));
     ASSERT_TRUE(fst.Final(irs::fst_byte_builder::final).Empty());
 
-    for (auto& expected_data : expected_data) {
+    for (auto& data : expected_data) {
       irs::byte_weight actual_weight;
 
       auto state = fst.Start(); // root node
 
       matcher_t matcher(fst, fst::MATCH_INPUT);
-      for (irs::byte_type c : expected_data.first) {
+      for (irs::byte_type c : data.first) {
         matcher.SetState(state);
         ASSERT_TRUE(matcher.Find(c));
 
@@ -135,7 +135,7 @@ TEST(fst_builder_test, build_fst) {
 
       actual_weight = fst::Times(actual_weight, fst.Final(state));
 
-      ASSERT_EQ(irs::bytes_ref(actual_weight), irs::bytes_ref(expected_data.second));
+      ASSERT_EQ(irs::bytes_ref(actual_weight), irs::bytes_ref(data.second));
     }
   }
 }
