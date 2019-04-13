@@ -255,6 +255,67 @@ const fst::FstReadOptions& fst_read_options() {
   return INSTANCE;
 }
 
+// mininum size of string weight we store in FST
+CONSTEXPR const size_t MIN_WEIGHT_SIZE = 2;
+
+void merge_blocks(std::list<irs::burst_trie::detail::entry>& blocks) {
+  assert(!blocks.empty());
+
+  auto it = blocks.begin();
+
+  auto& root = *it;
+  auto& root_block = root.block();
+  auto& root_index = root_block.index;
+
+  root_index.emplace_front(std::move(root.data()));
+
+  // First byte in block header must not be equal to fst::kStringInfinity
+  // Consider the following:
+  //   StringWeight0 -> { fst::kStringInfinity 0x11 ... }
+  //   StringWeight1 -> { fst::KStringInfinity 0x22 ... }
+  //   CommonPrefix = fst::Plus(StringWeight0, StringWeight1) -> { fst::kStringInfinity }
+  //   Suffix = fst::Divide(StringWeight1, CommonPrefix) -> { fst::kStringBad }
+  // But actually Suffix should be equal to { 0x22 ... }
+  assert(char(root_block.meta) != fst::kStringInfinity);
+
+  // will store just several bytes here
+  auto& out = *root_index.begin();
+  out.write_byte(static_cast<byte_type>(root_block.meta)); // block metadata
+  out.write_vlong(root_block.start); // start pointer of the block
+
+  if (block_meta::floor(root_block.meta)) {
+    out.write_vlong(static_cast<uint64_t>(blocks.size()-1));
+    for (++it; it != blocks.end(); ++it ) {
+      const auto* block = &it->block();
+      assert(block->label != irs::burst_trie::detail::block_t::INVALID_LABEL);
+      assert(block->start > root_block.start);
+
+      const uint64_t start_delta = it->block().start - root_block.start;
+      out.write_byte(static_cast<byte_type>(block->label & 0xFF));
+      out.write_vlong(start_delta);
+      out.write_byte(static_cast<byte_type>(block->meta));
+
+      root_index.splice(root_index.end(), it->block().index);
+    }
+  } else {
+    for (++it; it != blocks.end(); ++it) {
+      root_index.splice(root_index.end(), it->block().index);
+    }
+  }
+
+  // ensure weight we've written doesn't interfere
+  // with semiring members and other constants
+  assert(
+    out.weight != byte_weight::One()
+      && out.weight != byte_weight::Zero()
+      && out.weight != byte_weight::NoWeight()
+      && out.weight.Size() >= MIN_WEIGHT_SIZE
+      && byte_weight::One().Size() < MIN_WEIGHT_SIZE
+      && byte_weight::Zero().Size() < MIN_WEIGHT_SIZE
+      && byte_weight::NoWeight().Size() < MIN_WEIGHT_SIZE
+  );
+}
+
 NS_END
 
 NS_ROOT
@@ -548,7 +609,9 @@ class term_iterator final : public irs::seek_term_iterator {
   }
 
   inline block_iterator* push_block(byte_weight&& out, size_t prefix) {
-    assert(out.Size());
+    // ensure final weight correctess
+    assert(out.Size() >= MIN_WEIGHT_SIZE);
+
     block_stack_.emplace_back(std::move(out), prefix, this);
     return &block_stack_.back();
   }
@@ -1034,7 +1097,7 @@ ptrdiff_t term_iterator::seek_cached(
     auto end = begin + std::min(target.size(), sstate_.size());
 
     for (;begin != end && *pterm == *ptarget; ++begin, ++pterm, ++ptarget) {
-      fst_utils::append(weight, begin->weight);
+      weight.PushBack(begin->weight);
       state = begin->state;
       cur_block = begin->block;
     }
@@ -1068,11 +1131,9 @@ ptrdiff_t term_iterator::seek_cached(
 }
 
 bool term_iterator::seek_to_block(const bytes_ref& term, size_t& prefix) {
-  assert(owner_->fst_);
+  assert(owner_->fst_ && owner_->fst_->GetImpl());
 
-  typedef fst_t::Weight weight_t;
-
-  const auto& fst = *owner_->fst_;
+  const auto& fst = *owner_->fst_->GetImpl();
 
   prefix = 0; // number of current symbol to process
   arc::stateid_t state = fst.Start(); // start state
@@ -1095,27 +1156,39 @@ bool term_iterator::seek_to_block(const bytes_ref& term, size_t& prefix) {
   term_.reset(prefix); // reset to common seek prefix
   sstate_.resize(prefix); // remove invalid cached arcs
 
-  bool found = fst_byte_builder::final != state;
-  while (found && prefix < term.size()) {
+  while (fst_byte_builder::final != state && prefix < term.size()) {
     matcher_.SetState(state);
-    if (found = matcher_.Find(term[prefix])) {
-      const auto& arc = matcher_.Value();
-      term_ += byte_type(arc.ilabel);
-      fst_utils::append(weight_, arc.weight);
-      ++prefix;
 
-      const auto weight = fst.Final(state = arc.nextstate);
-      if (weight_t::One() != weight && weight_t::Zero() != weight) {
-        cur_block_ = push_block(fst::Times(weight_, weight), prefix);
-      } else if (fst_byte_builder::final == state) {
-        cur_block_ = push_block(std::move(weight_), prefix);
-        found = false;
-      }
-
-      // cache found arcs, we can reuse it in further seeks
-      // avoiding relatively expensive FST lookups
-      sstate_.emplace_back(state, arc.weight, cur_block_);
+    if (!matcher_.Find(term[prefix])) {
+      break;
     }
+
+    const auto& arc = matcher_.Value();
+
+    term_ += byte_type(arc.ilabel); // aggregate arc label
+    weight_.PushBack(arc.weight); // aggregate arc weight
+    ++prefix;
+
+    const auto& weight = fst.FinalRef(arc.nextstate);
+
+    if (!weight.Empty()) {
+      cur_block_ = push_block(fst::Times(weight_, weight), prefix);
+    } else if (fst_byte_builder::final == arc.nextstate) {
+      // ensure final state has no weight assigned
+      // the only case when it's wrong is degerated FST composed of only
+      // 'fst_byte_builder::final' state.
+      // in that case we'll never get there due to the loop condition above.
+      assert(fst.FinalRef(fst_byte_builder::final).Empty());
+
+      cur_block_ = push_block(std::move(weight_), prefix);
+    }
+
+    // cache found arcs, we can reuse it in further seeks
+    // avoiding relatively expensive FST lookups
+    sstate_.emplace_back(arc.nextstate, arc.weight, cur_block_);
+
+    // proceed to the next state
+    state = arc.nextstate;
   }
 
   assert(cur_block_);
@@ -1415,52 +1488,6 @@ void field_writer::write_block(
   }
 }
 
-/* static */ void field_writer::merge_blocks(std::list<detail::entry>& blocks) {
-  assert(!blocks.empty());
-
-  auto it = blocks.begin();
-
-  auto& root = *it;
-  auto& root_block = root.block();
-  auto& root_index = root_block.index;
-
-  root_index.emplace_front(std::move(root.data()));
-
-  // First byte in block header must not be equal to fst::kStringInfinity
-  // Consider the following:
-  //   StringWeight0 -> { fst::kStringInfinity 0x11 ... }
-  //   StringWeight1 -> { fst::KStringInfinity 0x22 ... }
-  //   CommonPrefix = fst::Plus(StringWeight0, StringWeight1) -> { fst::kStringInfinity }
-  //   Suffix = fst::Divide(StringWeight1, CommonPrefix) -> { fst::kStringBad }
-  // But actually Suffix should be equal to { 0x22 ... }
-  assert(char(root_block.meta) != fst::kStringInfinity);
-
-  // will store just several bytes here
-  auto& out = *root_index.begin();
-  out.write_byte(static_cast<byte_type>(root_block.meta)); // block metadata
-  out.write_vlong(root_block.start); // start pointer of the block
-
-  if (block_meta::floor(root_block.meta)) {
-    out.write_vlong(static_cast< uint64_t >(blocks.size()-1));
-    for (++it; it != blocks.end(); ++it ) {
-      const auto* block = &it->block();
-      assert(block->label != detail::block_t::INVALID_LABEL);
-      assert(block->start > root_block.start);
-
-      const uint64_t start_delta = it->block().start - root_block.start;
-      out.write_byte( static_cast< byte_type >(block->label & 0xFF));
-      out.write_vlong( start_delta );
-      out.write_byte( static_cast< byte_type >(block->meta));
-
-      root_index.splice(root_index.end(), it->block().index);
-    }
-  } else {
-    for (++it; it != blocks.end(); ++it ) {
-      root_index.splice(root_index.end(), it->block().index);
-    }
-  }
-}
-
 void field_writer::write_blocks( size_t prefix, size_t count ) {
   // only root node able to write whole stack
   assert(prefix || count == stack_.size());
@@ -1511,7 +1538,7 @@ void field_writer::write_blocks( size_t prefix, size_t count ) {
   }
 
   // merge blocks into 1st block
-  merge_blocks( blocks );
+  ::merge_blocks(blocks);
 
   // remove processed entries from the
   // top of the stack
@@ -1711,8 +1738,17 @@ void field_writer::write_segment_features(data_output& out, const flags& feature
 void field_writer::write_field_features(data_output& out, const flags& features) const {
   out.write_vlong(features.size());
   for (auto feature : features) {
-    auto it = feature_map_.find(*feature);
+    const auto it = feature_map_.find(*feature);
     assert(it != feature_map_.end());
+
+    if (feature_map_.end() == it) {
+      // should not happen in reality
+      throw irs::index_error(string_utils::to_string(
+        "feature '%s' is not listed in segment features",
+        feature->name().c_str()
+      ));
+    }
+
     out.write_vlong(it->second);
   }
 }
