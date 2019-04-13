@@ -113,19 +113,21 @@ class fst_builder : util::noncopyable {
 
     const bool is_final = last_.size() != in.size() || pref != (in.size() + 1);
 
-    weight_t output = out; // FIXME remove temporary variable
+    weight_t output = out; // FIXME use ref
+
     for (size_t i = 1; i < pref; ++i) {
       state& s = states_[i];
       state& p = states_[i - 1];
 
       assert(!p.arcs.empty() && p.arcs.back().label == in[i - 1]);
 
-      const weight_t& last_out = p.arcs.back().out;
-      if (last_out != weight_t::One()) {
-        const weight_t prefix = fst::Plus(last_out, out); // FIXME remove temporary variable
-        const weight_t suffix = fst::Divide(last_out, prefix, fst::DIVIDE_LEFT);
+      auto& last_out = p.arcs.back().out;
 
-        p.arcs.back().out = prefix;
+      if (last_out != weight_t::One()) {
+        auto prefix = fst::Plus(last_out, out); // FIXME use ref
+        const auto suffix = fst::Divide(last_out, prefix, fst::DIVIDE_LEFT); // FIXME use ref
+
+        last_out = std::move(prefix);
 
         for (arc& a : s.arcs) {
           a.out = fst::Times(suffix, a.out);
@@ -135,7 +137,7 @@ class fst_builder : util::noncopyable {
           s.out = fst::Times(suffix, s.out);
         }
 
-        output = fst::Divide(output, prefix, fst::DIVIDE_LEFT);
+        output = fst::Divide(output, last_out, fst::DIVIDE_LEFT); // FIXME use ref
       }
     }
 
