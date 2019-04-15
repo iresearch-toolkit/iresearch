@@ -97,10 +97,11 @@ std::pair<doc_map, field_id> sorted_column::flush(
     auto& stream = column_writer(new_doc_id++);
 
     if (!doc_limits::eof(entry.first)) {
-      stream.write_bytes(
-        data.c_str() + index_[entry.first].second,
-        index_[entry.first+1].second
-      );
+      const auto begin = index_[entry.first].second;
+      const auto end = index_[entry.first+1].second;
+      assert(begin <= end);
+
+      stream.write_bytes(data.c_str() + begin, end - begin);
     }
   };
 

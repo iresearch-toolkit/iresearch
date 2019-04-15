@@ -98,10 +98,8 @@ void write_prox(
 //FIXME count number of documents in posting
 //FIXME use this information to reserve data in sorting_iterator
 
-//FIXME use delta encoding
 template<typename Inserter>
 FORCE_INLINE void write_cookie(Inserter& out, uint64_t cookie) {
-//  std::cerr << "w:" << cookie << std::endl;
   *out = static_cast<byte_type>(cookie & 0xFF); // offset
   irs::vwrite<uint32_t>(out, static_cast<uint32_t>((cookie >> 8) & 0xFFFFFFFF)); // slice offset
 }
@@ -115,7 +113,6 @@ template<typename Reader>
 FORCE_INLINE uint64_t read_cookie(Reader& in) {
   const size_t offset = *in; ++in;
   const size_t slice_offset = irs::vread<uint32_t>(in);
-//  std::cerr << "r:" << cookie(slice_offset, offset)<< std::endl;
   return cookie(slice_offset, offset);
 }
 
@@ -372,7 +369,7 @@ class doc_iterator : public irs::doc_iterator {
         doc_.value += doc_id_t(delta);
 
         if (has_cookie_) {
-          cookie_ = read_cookie(freq_in_);
+          cookie_ += read_cookie(freq_in_);
         }
       } else {
         doc_.value += irs::vread<uint32_t>(freq_in_);
@@ -873,8 +870,11 @@ void field_data::new_term_random_access(
   const auto prox_start = byte_writer_->alloc_greedy_slice(); // pointer to prox stream
   *int_writer_ = freq_start; // freq stream end
   *int_writer_ = freq_start; // freq stream start
-  *int_writer_ = cookie(prox_start, 1); // end cookie
-  *int_writer_ = cookie(prox_start, 1); // start cookie
+
+  const auto cookie = ::cookie(prox_start, 1);
+  *int_writer_ = cookie; // end cookie
+  *int_writer_ = cookie; // start cookie
+  *int_writer_ = 0;      // last start cookie
 
   auto& features = meta_.features;
 
@@ -896,7 +896,7 @@ void field_data::new_term_random_access(
       }
 
       auto& end_cookie = *int_writer_->parent().seek(p.int_start+2);
-      end_cookie = cookie(prox_out); // prox stream end cookie
+      end_cookie = ::cookie(prox_out); // prox stream end cookie
 
       p.pos = pos_;
     }
@@ -950,10 +950,12 @@ void field_data::add_term_random_access(
       auto prox_stream_cookie = int_writer_->parent().seek(p.int_start+2);
 
       auto& end_cookie = *prox_stream_cookie; ++prox_stream_cookie;
-      auto& start_cookie = *prox_stream_cookie;
+      auto& start_cookie = *prox_stream_cookie; ++prox_stream_cookie;
+      auto& last_start_cookie = *prox_stream_cookie;
 
-      write_cookie(doc_out, start_cookie);
-      start_cookie = end_cookie; //- start_cookie; // update start cookie
+      write_cookie(doc_out, start_cookie - last_start_cookie);
+      last_start_cookie = start_cookie; // update previous cookie
+      start_cookie = end_cookie; // update start cookie
 
       auto prox_out = greedy_writer(*byte_writer_, end_cookie);
 
