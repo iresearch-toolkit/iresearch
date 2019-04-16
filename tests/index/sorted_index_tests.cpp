@@ -24,6 +24,7 @@
 #include "tests_shared.hpp"
 #include "iql/query_builder.hpp"
 #include "search/sorting_doc_iterator.hpp"
+#include "utils/index_utils.hpp"
 
 #include "index_tests.hpp"
 
@@ -50,7 +51,7 @@ class sorted_europarl_doc_template : public tests::templates::europarl_doc_templ
 
 struct string_comparer : irs::comparer {
   virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const {
-    if (!lhs.null() && !rhs.null()) {
+    if (lhs.null() && rhs.null()) {
       return false;
     } else if (rhs.null()) {
       return true;
@@ -161,15 +162,15 @@ TEST_P(sorted_index_test_case, check_document_order) {
 
   string_comparer less;
 
+  // open writer
+  irs::index_writer::init_options opts;
+  opts.comparator = &less;
+  auto writer = open_writer(irs::OM_CREATE, opts);
+  ASSERT_NE(nullptr, writer);
+  ASSERT_EQ(&less, writer->comparator());
+
   // create index segment
   {
-    irs::index_writer::init_options opts;
-    opts.comparator = &less;
-
-    auto writer = open_writer(irs::OM_CREATE, opts);
-    ASSERT_NE(nullptr, writer);
-    ASSERT_NE(nullptr, writer->comparator());
-
     // segment 0
     {
       ASSERT_TRUE(insert(*writer,
@@ -248,48 +249,89 @@ TEST_P(sorted_index_test_case, check_document_order) {
       ASSERT_FALSE(docsItr->next());
     }
 
-    // check sorting iterator
-    {
-      irs::sorting_doc_iterator docs(less);
+    //// check sorting iterator
+    //{
+    //  irs::sorting_doc_iterator docs(less);
 
-      // emplace segment 0
-      {
-        auto& segment = reader[0];
-        const auto* column = segment.sort();
-        ASSERT_NE(nullptr, column);
-        auto values = column->values();
-        auto terms = segment.field("same");
-        ASSERT_NE(nullptr, terms);
-        auto termItr = terms->iterator();
-        ASSERT_TRUE(termItr->next());
-        docs.emplace(
-          termItr->postings(iresearch::flags()),
-          *column
-        );
-      }
+    //  // emplace segment 0
+    //  {
+    //    auto& segment = reader[0];
+    //    const auto* column = segment.sort();
+    //    ASSERT_NE(nullptr, column);
+    //    auto values = column->values();
+    //    auto terms = segment.field("same");
+    //    ASSERT_NE(nullptr, terms);
+    //    auto termItr = terms->iterator();
+    //    ASSERT_TRUE(termItr->next());
+    //    docs.emplace(
+    //      termItr->postings(iresearch::flags()),
+    //      *column
+    //    );
+    //  }
 
-      // emplace segment 1
-      {
-        auto& segment = reader[1];
-        const auto* column = segment.sort();
-        ASSERT_NE(nullptr, column);
-        auto values = column->values();
-        auto terms = segment.field("same");
-        ASSERT_NE(nullptr, terms);
-        auto termItr = terms->iterator();
-        ASSERT_TRUE(termItr->next());
-        docs.emplace(
-          termItr->postings(iresearch::flags()),
-          *column
-        );
-      }
+    //  // emplace segment 1
+    //  {
+    //    auto& segment = reader[1];
+    //    const auto* column = segment.sort();
+    //    ASSERT_NE(nullptr, column);
+    //    auto values = column->values();
+    //    auto terms = segment.field("same");
+    //    ASSERT_NE(nullptr, terms);
+    //    auto termItr = terms->iterator();
+    //    ASSERT_TRUE(termItr->next());
+    //    docs.emplace(
+    //      termItr->postings(iresearch::flags()),
+    //      *column
+    //    );
+    //  }
 
-      ASSERT_TRUE(docs.next());
-      ASSERT_TRUE(docs.next());
-      ASSERT_TRUE(docs.next());
-      ASSERT_TRUE(docs.next());
-      ASSERT_FALSE(docs.next());
-    }
+    //  ASSERT_TRUE(docs.next());
+    //  ASSERT_TRUE(docs.next());
+    //  ASSERT_TRUE(docs.next());
+    //  ASSERT_TRUE(docs.next());
+    //  ASSERT_FALSE(docs.next());
+    //}
+  }
+
+  // consolidate segments
+  {
+    irs::index_utils::consolidate_count consolidate_all;
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all)));
+    writer->commit();
+  }
+
+  // check consolidated segment
+  {
+    auto reader = irs::directory_reader::open(dir(), codec());
+    ASSERT_TRUE(reader);
+    ASSERT_EQ(1, reader.size());
+    irs::bytes_ref actual_value;
+
+    // check segment 0
+    //{
+    //  auto& segment = reader[0];
+    //  const auto* column = segment.sort();
+    //  ASSERT_NE(nullptr, column);
+    //  auto values = column->values();
+    //  auto terms = segment.field("same");
+    //  ASSERT_NE(nullptr, terms);
+    //  auto termItr = terms->iterator();
+    //  ASSERT_TRUE(termItr->next());
+    //  auto docsItr = termItr->postings(iresearch::flags());
+    //  ASSERT_TRUE(docsItr->next());
+    //  ASSERT_TRUE(values(docsItr->value(), actual_value));
+    //  ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str()));
+    //  ASSERT_TRUE(docsItr->next());
+    //  ASSERT_TRUE(values(docsItr->value(), actual_value));
+    //  ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str()));
+    //  ASSERT_TRUE(docsItr->next());
+    //  ASSERT_TRUE(values(docsItr->value(), actual_value));
+    //  ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str()));
+    //  ASSERT_TRUE(docsItr->next());
+    //  ASSERT_TRUE(values(docsItr->value(), actual_value));
+    //  ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
+    //  ASSERT_FALSE(docsItr->next());
+    //}
   }
 }
 

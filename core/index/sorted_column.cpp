@@ -72,12 +72,12 @@ std::pair<doc_map, field_id> sorted_column::flush(
       const auto& lhs_value = doc_limits::eof(lhs.first)
         ? bytes_ref::NIL
         : bytes_ref(data.c_str() + index_[lhs.first].second,
-                    index_[lhs.first+1].second);
+                    index_[lhs.first+1].second - index_[lhs.first].second);
 
       const auto& rhs_value = doc_limits::eof(rhs.first)
         ? bytes_ref::NIL
         : bytes_ref(data.c_str() + index_[rhs.first].second,
-                    index_[rhs.first+1].second);
+                    index_[rhs.first+1].second - index_[rhs.first].second);
 
       return less(lhs_value, rhs_value);
   });
