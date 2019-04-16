@@ -240,7 +240,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     }
 
     std::string name;
-    field_id id;
+    field_id id{ field_limits::invalid() };
   }; // column
 
   struct stored_column : column {
