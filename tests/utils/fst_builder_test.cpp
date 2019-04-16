@@ -21,6 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef IRESEARCH_DLL
+
 #include "tests_shared.hpp"
 #include "utils/fst_string_weight.h"
 #include "utils/fst_decl.hpp"
@@ -141,3 +143,5 @@ TEST(fst_builder_test, build_fst) {
 }
 
 NS_END
+
+#endif // IRESEARCH_DLL
