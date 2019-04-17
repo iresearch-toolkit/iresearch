@@ -294,18 +294,18 @@ TEST_P(sorted_index_test_case, check_document_order) {
   }
 
   // consolidate segments
-  {
-    irs::index_utils::consolidate_count consolidate_all;
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all)));
-    writer->commit();
-  }
+//  {
+//    irs::index_utils::consolidate_count consolidate_all;
+//    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all)));
+//    writer->commit();
+//  }
 
   // check consolidated segment
   {
-    auto reader = irs::directory_reader::open(dir(), codec());
-    ASSERT_TRUE(reader);
-    ASSERT_EQ(1, reader.size());
-    irs::bytes_ref actual_value;
+//    auto reader = irs::directory_reader::open(dir(), codec());
+//    ASSERT_TRUE(reader);
+//    ASSERT_EQ(1, reader.size());
+//    irs::bytes_ref actual_value;
 
     // check segment 0
     //{
