@@ -61,26 +61,30 @@ std::pair<doc_map, field_id> sorted_column::flush(
     ++new_doc_id;
   }
 
-  // sort data
-  std::sort(
-    new_old.begin(), new_old.end(),
-    [data, &less, this] (const std::pair<doc_id_t, doc_id_t>& lhs, const std::pair<doc_id_t, doc_id_t>& rhs) {
-      if (lhs.first == rhs.first) {
-        return false;
-      }
+  auto comparer = [data, &less, this] (
+      const std::pair<doc_id_t, doc_id_t>& lhs,
+      const std::pair<doc_id_t, doc_id_t>& rhs) {
+    if (lhs.first == rhs.first) {
+      return false;
+    }
 
-      const auto& lhs_value = doc_limits::eof(lhs.first)
-        ? bytes_ref::NIL
-        : bytes_ref(data.c_str() + index_[lhs.first].second,
-                    index_[lhs.first+1].second - index_[lhs.first].second);
+    const auto& lhs_value = doc_limits::eof(lhs.first)
+      ? bytes_ref::NIL
+      : bytes_ref(data.c_str() + index_[lhs.first].second,
+                  index_[lhs.first+1].second - index_[lhs.first].second);
 
-      const auto& rhs_value = doc_limits::eof(rhs.first)
-        ? bytes_ref::NIL
-        : bytes_ref(data.c_str() + index_[rhs.first].second,
-                    index_[rhs.first+1].second - index_[rhs.first].second);
+    const auto& rhs_value = doc_limits::eof(rhs.first)
+      ? bytes_ref::NIL
+      : bytes_ref(data.c_str() + index_[rhs.first].second,
+                  index_[rhs.first+1].second - index_[rhs.first].second);
 
-      return less(lhs_value, rhs_value);
-  });
+    return less(lhs_value, rhs_value);
+  };
+
+  // perform extra check to avoid qsort worst case complexity
+  if (!std::is_sorted(new_old.begin(), new_old.end(), comparer)) {
+    std::sort(new_old.begin(), new_old.end(), comparer);
+  }
 
   doc_map old_new(max);
 

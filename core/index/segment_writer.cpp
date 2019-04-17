@@ -41,8 +41,8 @@ NS_ROOT
 
 segment_writer::stored_column::stored_column(
     const string_ref& name, 
-    columnstore_writer& columnstore) {
-  this->name.assign(name.c_str(), name.size());
+    columnstore_writer& columnstore
+) : name(name.c_str(), name.size()) {
   std::tie(id, handle) = columnstore.push_column();
 }
 
@@ -137,15 +137,7 @@ bool segment_writer::index(
   return false;
 }
 
-columnstore_writer::column_output& segment_writer::sorted_stream(
-    const hashed_string_ref& name,
-    const doc_id_t doc_id) {
-  assert(fields_.comparator()); // already checked in segment_writer::store
-
-  if (sort_.name.empty()) {
-    sort_.name.assign(name.c_str(), name.size()); // reset name
-  }
-
+columnstore_writer::column_output& segment_writer::sorted_stream(const doc_id_t doc_id) {
   sort_.handle.prepare(doc_id);
   return sort_.handle;
 }
@@ -157,7 +149,7 @@ columnstore_writer::column_output& segment_writer::stream(
 
   auto generator = [](
       const hashed_string_ref& key,
-      const column& value) NOEXCEPT {
+      const stored_column& value) NOEXCEPT {
     // reuse hash but point ref at value
     return hashed_string_ref(key.hash(), value.name);
   };
@@ -189,23 +181,18 @@ void segment_writer::finish() {
 void segment_writer::flush_column_meta(const segment_meta& meta) {
   struct less_t {
     bool operator()(
-        const column* lhs,
-        const column* rhs
+        const stored_column* lhs,
+        const stored_column* rhs
     ) const NOEXCEPT {
       return lhs->name < rhs->name;
     };
   };
 
-  std::set<const column*, less_t> columns;
+  std::set<const stored_column*, less_t> columns;
 
   // ensure columns are sorted
   for (auto& entry : columns_) {
     columns.emplace(&entry.second);
-  }
-
-  // ensure sorted column is in column meta
-  if (field_limits::valid(sort_.id)) {
-    columns.emplace(&sort_);
   }
 
   // flush columns meta
@@ -271,7 +258,7 @@ void segment_writer::flush(index_meta::index_segment_t& segment) {
       *fields_.comparator()
     );
 
-    meta.sort = sort_.id;
+    meta.sort = sort_.id; // store sorted column id in segment meta
   }
 
   // flush columnstore and columns indices

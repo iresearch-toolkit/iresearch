@@ -234,12 +234,6 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   struct column : util::noncopyable {
     column() = default;
 
-    column(column&& other) NOEXCEPT
-      : name(std::move(other.name)),
-        id(other.id) {
-    }
-
-    std::string name;
     field_id id{ field_limits::invalid() };
   }; // column
 
@@ -249,6 +243,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
       columnstore_writer& columnstore
     );
 
+    std::string name;
     columnstore_writer::values_writer_f handle;
   }; // stored_column
 
@@ -267,17 +262,19 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     token_stream& tokens
   );
 
-  template<bool Sorted, typename Writer>
-  bool store(
-      const hashed_string_ref& name,
+  template<typename Writer>
+  bool store_sorted(
       const doc_id_t doc,
       Writer& writer
   ) {
     assert(doc < type_limits<type_t::doc_id_t>::eof());
 
-    auto& out = (Sorted && fields_.comparator())
-      ? sorted_stream(name, doc)
-      : stream(name, doc);
+    if (!fields_.comparator()) {
+      // can't store sorted field without a comparator
+      return false;
+    }
+
+    auto& out = sorted_stream(doc);
 
     if (writer.write(out)) {
       return true;
@@ -288,7 +285,26 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     return false;
   }
 
-  template<bool Sorted, typename Field>
+  template<typename Writer>
+  bool store(
+      const hashed_string_ref& name,
+      const doc_id_t doc,
+      Writer& writer
+  ) {
+    assert(doc < type_limits<type_t::doc_id_t>::eof());
+
+    auto& out = stream(name, doc);
+
+    if (writer.write(out)) {
+      return true;
+    }
+
+    out.reset();
+
+    return false;
+  }
+
+  template<typename Field>
   bool store_worker(Field& field) {
     REGISTER_TIMER_DETAILED();
 
@@ -300,7 +316,17 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof()); // user should check return of begin() != eof()
     const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() - 1); // -1 for 0-based offset
 
-    return store<Sorted>(name, doc_id, field);
+    return store(name, doc_id, field);
+  }
+
+  template<typename Field>
+  bool store_sorted_worker(Field& field) {
+    REGISTER_TIMER_DETAILED();
+
+    assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof()); // user should check return of begin() != eof()
+    const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() - 1); // -1 for 0-based offset
+
+    return store_sorted(doc_id, field);
   }
 
   // adds document field
@@ -341,13 +367,15 @@ class IRESEARCH_API segment_writer: util::noncopyable {
       return false; // indexing failed
     }
 
-    return store<Sorted>(name, doc_id, field);
+    if (Sorted) {
+      return store_sorted(doc_id, field);
+    }
+
+    return store(name, doc_id, field);
   }
 
   // returns stream for storing attributes in sorted order
-  columnstore_writer::column_output& sorted_stream(
-    const hashed_string_ref& name,
-    const doc_id_t doc_id);
+  columnstore_writer::column_output& sorted_stream(const doc_id_t doc_id);
 
   // returns stream for storing attributes
   columnstore_writer::column_output& stream(
@@ -390,7 +418,7 @@ template<>
 struct action_helper<Action::STORE> {
   template<typename Field>
   static bool insert(segment_writer& writer, Field& field) {
-    return writer.store_worker<false>(field);
+    return writer.store_worker(field);
   }
 }; // action_helper
 
@@ -398,7 +426,7 @@ template<>
 struct action_helper<Action::STORE_SORTED> {
   template<typename Field>
   static bool insert(segment_writer& writer, Field& field) {
-    return writer.store_worker<true>(field);
+    return writer.store_sorted_worker(field);
   }
 }; // action_helper
 
