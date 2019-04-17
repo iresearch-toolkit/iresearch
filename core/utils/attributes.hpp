@@ -471,6 +471,12 @@ template<
   }
 }; // attribute_map
 
+// FIXME: find way to workaround `fatal error C1001: An internal error has
+// occurred in the compiler (compiler file 'msc1.cpp', line 1527)` or change
+// if fix is available in later Visual Studio 2019 updates
+#if defined _MSC_VER
+  static_assert(_MSC_VER < 1920, "_MSC_VER < 1920");
+#endif
 template<typename T, template <typename, typename...> class Ref, typename... Args>
 template<typename U>
 typename attribute_map<T, Ref, Args...>::template ref<U>::type
