@@ -408,6 +408,7 @@ class sorting_doc_iterator : public irs::doc_iterator {
 
   // reset field
   void reset(const field_data& field) {
+    assert(field.prox_random_access());
     byte_pool_ = &field.byte_writer_->parent();
 
     attrs_.clear();
@@ -424,36 +425,25 @@ class sorting_doc_iterator : public irs::doc_iterator {
     }
   }
 
-  // reset term
-  void reset(detail::doc_iterator& it, const std::vector<doc_id_t>& docmap) {
-    const uint32_t no_frequency = 0;
-    const uint32_t* freq = &no_frequency;
+  // reset iterator,
+  // docmap == null -> segment is already sorted
+  void reset(detail::doc_iterator& it, const std::vector<doc_id_t>* docmap) {
+    const frequency no_frequency;
+    const frequency* freq = &no_frequency;
 
     const auto freq_attr = it.attributes().get<frequency>();
     if (freq_attr) {
-      freq = &freq_attr->value;
+      freq = freq_attr.get();
     }
 
     // FIXME docs_.reserve(cost)
     docs_.clear();
-    while (it.next()) {
-      const auto new_doc = docmap[it.value() - doc_limits::min()] + doc_limits::min();
 
-      if (doc_limits::eof(new_doc)) {
-        // skip invalid documents
-        continue;
-      }
-
-      docs_.emplace_back(new_doc, *freq, it.cookie());
+    if (docmap) {
+      reset(it, *freq, *docmap);
+    } else {
+      reset(it, *freq); // current segment is already sorted
     }
-
-    // FIXME check if docs are already sorted
-    // FIXME use external sort?
-    std::sort(
-      docs_.begin(), docs_.end(),
-      [](const doc_entry_t& lhs, const doc_entry_t& rhs) NOEXCEPT {
-        return std::get<0>(lhs) < std::get<0>(rhs);
-    });
 
     doc_.value = irs::doc_limits::invalid();
     freq_.value = 0;
@@ -499,6 +489,34 @@ class sorting_doc_iterator : public irs::doc_iterator {
     uint64_t   // prox cookie
   > doc_entry_t;
 
+  void reset(detail::doc_iterator& it, const frequency& freq, const std::vector<doc_id_t>& docmap) {
+    assert(!docmap.empty());
+
+    while (it.next()) {
+      const auto new_doc = docmap[it.value() - doc_limits::min()] + doc_limits::min();
+
+      if (doc_limits::eof(new_doc)) {
+        // skip invalid documents
+        continue;
+      }
+
+      docs_.emplace_back(new_doc, freq.value, it.cookie());
+    }
+
+    // FIXME use external sort?
+    std::sort(
+      docs_.begin(), docs_.end(),
+      [](const doc_entry_t& lhs, const doc_entry_t& rhs) NOEXCEPT {
+        return std::get<0>(lhs) < std::get<0>(rhs);
+    });
+  }
+
+  void reset(detail::doc_iterator& it, const frequency& freq) {
+    while (it.next()) {
+      docs_.emplace_back(it.value(), freq.value, it.cookie());
+    }
+  }
+
   const byte_block_pool* byte_pool_{};
   std::vector<doc_entry_t>::const_iterator it_;
   std::vector<doc_entry_t> docs_;
@@ -532,7 +550,7 @@ class term_iterator : public irs::term_iterator {
     doc_map_ = docmap;
 
     doc_itr_.reset(field);
-    if (docmap) {
+    if (field.prox_random_access()) {
       sorting_doc_itr_.reset(field);
     }
 
@@ -558,7 +576,7 @@ class term_iterator : public irs::term_iterator {
     REGISTER_TIMER_DETAILED();
     assert(it_ != postings_.end());
 
-    return (this->*POSTINGS[size_t(doc_map_ == nullptr)])(it_->second);
+    return (this->*POSTINGS[size_t(field_->prox_random_access())])(it_->second);
   }
 
   virtual bool next() override {   
@@ -611,8 +629,6 @@ class term_iterator : public irs::term_iterator {
   }
 
   irs::doc_iterator::ptr sort_postings(const posting& posting) const {
-    assert(doc_map_);
-
     // where the term data starts
     auto ptr = field_->int_writer_->parent().seek(posting.int_start);
     const auto freq_end = *ptr; ++ptr;
@@ -622,7 +638,7 @@ class term_iterator : public irs::term_iterator {
     const byte_block_pool::sliced_reader freq(pool, freq_begin, freq_end); // term's frequencies
 
     doc_itr_.reset(posting, freq, nullptr);
-    sorting_doc_itr_.reset(doc_itr_, *doc_map_);
+    sorting_doc_itr_.reset(doc_itr_, doc_map_);
     return doc_iterator::ptr(doc_iterator::ptr(), &sorting_doc_itr_); // aliasing ctor
   }
 
@@ -636,8 +652,8 @@ class term_iterator : public irs::term_iterator {
 }; // term_iterator
 
 /*static*/ const term_iterator::postings_f term_iterator::POSTINGS[2] {
-  &term_iterator::sort_postings,
-  &term_iterator::postings
+  &term_iterator::postings,
+  &term_iterator::sort_postings
 };
 
 ////////////////////////////////////////////////////////////////////////////////

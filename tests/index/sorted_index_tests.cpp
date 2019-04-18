@@ -124,6 +124,33 @@ TEST_P(sorted_index_test_case, simple_sequential) {
   assert_index();
 }
 
+TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
+  // build index
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+      if (data.is_string()) {
+        auto field = std::make_shared<tests::templates::string_field>(
+          irs::string_ref(name),
+          data.str
+        );
+
+        doc.insert(field);
+
+        if (name == "seq") {
+          doc.sorted = field;
+        }
+      }
+  });
+
+  long_comparer less;
+  irs::index_writer::init_options opts;
+  opts.comparator = &less;
+  add_segment(gen, irs::OM_CREATE, opts); // add segment
+
+  assert_index();
+}
+
 TEST_P(sorted_index_test_case, europarl) {
   sorted_europarl_doc_template doc("date");
   tests::delim_doc_generator gen(resource("europarl.subset.txt"), doc);

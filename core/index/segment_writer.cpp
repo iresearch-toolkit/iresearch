@@ -214,7 +214,7 @@ void segment_writer::flush_fields(const doc_map& docmap) {
   state.dir = &dir_;
   state.doc_count = docs_cached();
   state.name = seg_name_;
-  state.docmap = fields_.comparator() ? &docmap : nullptr;
+  state.docmap = fields_.comparator() && !docmap.empty() ? &docmap : nullptr;
 
   try {
     fields_.flush(*field_writer_, state);

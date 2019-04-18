@@ -82,15 +82,16 @@ std::pair<doc_map, field_id> sorted_column::flush(
     return less(lhs_value, rhs_value);
   };
 
+  doc_map old_new;
+
   // perform extra check to avoid qsort worst case complexity
   if (!std::is_sorted(new_old.begin(), new_old.end(), comparer)) {
     std::sort(new_old.begin(), new_old.end(), comparer);
-  }
 
-  doc_map old_new(max);
-
-  for (size_t i = 0, size = new_old.size(); i < size; ++i) {
-    old_new[new_old[i].second] = doc_id_t(i);
+    old_new.resize(max);
+    for (size_t i = 0, size = new_old.size(); i < size; ++i) {
+      old_new[new_old[i].second] = doc_id_t(i);
+    }
   }
 
   // flush sorted data

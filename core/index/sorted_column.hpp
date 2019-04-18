@@ -92,7 +92,7 @@ class sorted_column final : public irs::columnstore_writer::column_output {
     index_.clear();
   }
 
-  // 1st - doc map (old->new)
+  // 1st - doc map (old->new), empty -> already sorted
   // 2nd - flushed column identifier
   std::pair<doc_map, field_id> flush(
     columnstore_writer& writer,
