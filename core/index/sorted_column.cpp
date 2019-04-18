@@ -28,6 +28,7 @@
 
 NS_ROOT
 
+//FIXME optimize already sorted case
 std::pair<doc_map, field_id> sorted_column::flush(
     columnstore_writer& writer,
     doc_id_t max,

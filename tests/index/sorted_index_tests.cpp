@@ -68,7 +68,7 @@ struct string_comparer : irs::comparer {
 
 struct long_comparer : irs::comparer {
   virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const {
-    if (!lhs.null() && !rhs.null()) {
+    if (lhs.null() && rhs.null()) {
       return false;
     } else if (rhs.null()) {
       return false;
