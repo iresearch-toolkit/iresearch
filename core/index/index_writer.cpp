@@ -1478,7 +1478,7 @@ bool index_writer::consolidate(
   consolidation_segment.meta.name = file_name(meta_.increment()); // increment active meta, not fn arg
 
   ref_tracking_directory dir(dir_); // track references for new segment
-  merge_writer merger(dir);
+  merge_writer merger(dir, comparator_);
   merger.reserve(candidates.size());
 
   // add consolidated segments to the merge_writer

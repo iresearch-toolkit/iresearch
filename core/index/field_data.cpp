@@ -391,7 +391,7 @@ class doc_iterator : public irs::doc_iterator {
   pos_iterator<byte_block_pool::sliced_reader> pos_;
   attribute_view attrs_;
   byte_block_pool::sliced_reader freq_in_;
-  const posting* posting_;
+  const posting* posting_{};
   bool has_freq_{false}; // FIXME remove
   bool has_prox_{false}; // FIXME remove
   bool has_cookie_{false}; // FIXME remove
@@ -439,6 +439,7 @@ class sorting_doc_iterator : public irs::doc_iterator {
     // FIXME docs_.reserve(cost)
     docs_.clear();
 
+    //FIXME better to split into different doc_iterator implementations
     if (docmap) {
       reset(it, *freq, *docmap);
     } else {
@@ -645,7 +646,7 @@ class term_iterator : public irs::term_iterator {
   map_t postings_;
   map_t::iterator next_{ postings_.end() };
   map_t::iterator it_{ postings_.end() };
-  const field_data* field_;
+  const field_data* field_{};
   const doc_map* doc_map_;
   mutable detail::doc_iterator doc_itr_;
   mutable detail::sorting_doc_iterator sorting_doc_itr_;
