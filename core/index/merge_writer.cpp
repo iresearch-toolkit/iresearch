@@ -30,6 +30,7 @@
 #include "index/index_meta.hpp"
 #include "index/segment_reader.hpp"
 #include "index/sorted_column.hpp"
+#include "index/heap_iterator.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/type_limits.hpp"
@@ -233,6 +234,9 @@ class compound_attributes: public irs::attribute_view {
 /// @brief iterator over doc_ids for a term over all readers
 //////////////////////////////////////////////////////////////////////////////
 struct compound_doc_iterator : public irs::doc_iterator {
+  typedef std::pair<irs::doc_iterator::ptr, const doc_map_f*> doc_iterator_t;
+  typedef std::vector<doc_iterator_t> iterators_t;
+
   static CONSTEXPR const size_t PROGRESS_STEP_DOCS = size_t(1) << 14;
 
   explicit compound_doc_iterator(
@@ -241,25 +245,49 @@ struct compound_doc_iterator : public irs::doc_iterator {
     : progress(progress, PROGRESS_STEP_DOCS) {
   }
 
-  void reset() NOEXCEPT {
-    iterators.clear();
+  template<typename Func>
+  bool reset(Func func) {
+    if (!func(iterators)) {
+      return false;
+    }
+
+    auto begin = iterators.begin();
+    auto end = iterators.end();
+
+    if (begin != end) {
+      attrs.set(begin->first->attributes()); // add keys and set values
+      ++begin;
+    }
+
+    for (; begin != end; ++begin) {
+      attrs.add(begin->first->attributes()); // only add missing keys
+    }
+
     current_id = irs::doc_limits::invalid();
     current_itr = 0;
+
+    return true;
   }
+
+//  void reset() NOEXCEPT {
+//    iterators.clear();
+//    current_id = irs::doc_limits::invalid();
+//    current_itr = 0;
+//  }
 
   bool aborted() const NOEXCEPT {
     return !static_cast<bool>(progress);
   }
 
-  void add(irs::doc_iterator::ptr&& postings, const doc_map_f& doc_map) {
-    if (iterators.empty()) {
-      attrs.set(postings->attributes()); // add keys and set values
-    } else {
-      attrs.add(postings->attributes()); // only add missing keys
-    }
-
-    iterators.emplace_back(std::move(postings), &doc_map);
-  }
+//  void add(irs::doc_iterator::ptr&& postings, const doc_map_f& doc_map) {
+//    if (iterators.empty()) {
+//      attrs.set(postings->attributes()); // add keys and set values
+//    } else {
+//      attrs.add(postings->attributes()); // only add missing keys
+//    }
+//
+//    iterators.emplace_back(std::move(postings), &doc_map);
+//  }
 
   virtual const irs::attribute_view& attributes() const NOEXCEPT override {
     return attrs;
@@ -275,8 +303,6 @@ struct compound_doc_iterator : public irs::doc_iterator {
   virtual irs::doc_id_t value() const override {
     return current_id;
   }
-
-  typedef std::pair<irs::doc_iterator::ptr, const doc_map_f*> doc_iterator_t;
 
   compound_attributes attrs;
   std::vector<doc_iterator_t> iterators;
@@ -329,6 +355,98 @@ bool compound_doc_iterator::next() {
 
   return false;
 }
+
+//////////////////////////////////////////////////////////////////////////////
+/// @struct sorting_compound_doc_iterator
+/// @brief iterator over sorted doc_ids for a term over all readers
+//////////////////////////////////////////////////////////////////////////////
+class sorting_compound_doc_iterator : public compound_doc_iterator {
+ public:
+  explicit sorting_compound_doc_iterator(
+      const irs::merge_writer::flush_progress_t& progress
+  ) NOEXCEPT
+    : compound_doc_iterator(progress),
+      heap_it_(min_heap_context(iterators)) {
+  }
+
+  template<typename Func>
+  bool reset(Func func) {
+    if (!compound_doc_iterator::reset(func)) {
+      return false;
+    }
+
+    heap_it_.reset(iterators.size());
+    lead_ = nullptr;
+
+    return true;
+  }
+
+  virtual bool next() override {
+    progress();
+
+    if (aborted()) {
+      current_id = irs::doc_limits::eof();
+      iterators.clear();
+      return false;
+    }
+
+    while (heap_it_.next()) {
+      auto& new_lead = iterators[heap_it_.value()];
+      auto& it = new_lead.first;
+      auto& doc_map = *new_lead.second;
+
+      if (&new_lead != lead_) {
+        // update attributes
+        attrs.set(it->attributes());
+        lead_ = &new_lead;
+      }
+
+      current_id = doc_map(it->value());
+
+      if (irs::doc_limits::eof(current_id)) {
+        continue;
+      }
+
+      return true;
+    }
+
+    current_id = irs::doc_limits::eof();
+    attrs.set(irs::attribute_view::empty_instance());
+
+    return false;
+  }
+
+ private:
+  class min_heap_context {
+   public:
+    explicit min_heap_context(std::vector<doc_iterator_t>& itrs) NOEXCEPT
+      : itrs_(itrs) {
+    }
+
+    // advance
+    bool operator()(const size_t i) const {
+      assert(i < itrs_.get().size());
+      return itrs_.get()[i].first->next();
+    }
+
+    // compare
+    bool operator()(const size_t lhs, const size_t rhs) const {
+      return remap(lhs) > remap(rhs);
+    }
+
+   private:
+    irs::doc_id_t remap(const size_t i) const {
+      assert(i < itrs_.get().size());
+      auto& doc_it = itrs_.get()[i];
+      return (*doc_it.second)(doc_it.first->value());
+    }
+
+    std::reference_wrapper<std::vector<doc_iterator_t>> itrs_;
+  }; // min_heap_context
+
+  irs::external_heap_iterator<min_heap_context> heap_it_;
+  doc_iterator_t* lead_{};
+}; // sorting_compound_doc_iterator
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct compound_iterator
@@ -563,13 +681,20 @@ bool compound_term_iterator::next() {
 }
 
 irs::doc_iterator::ptr compound_term_iterator::postings(const irs::flags& /*features*/) const {
-  doc_itr_.reset();
+  auto add_iterators = [this](compound_doc_iterator::iterators_t& itrs) {
+    itrs.clear();
+    itrs.reserve(term_iterator_mask_.size());
 
-  for (auto& itr_id : term_iterator_mask_) {
-    auto& term_itr = term_iterators_[itr_id];
+    for (auto& itr_id : term_iterator_mask_) {
+      auto& term_itr = term_iterators_[itr_id];
 
-    doc_itr_.add(term_itr.first->postings(meta().features), *(term_itr.second));
-  }
+      itrs.emplace_back(term_itr.first->postings(meta().features), term_itr.second);
+    }
+
+    return true;
+  };
+
+  doc_itr_.reset(add_iterators);
 
   // aliasing constructor
   return irs::doc_iterator::ptr(irs::doc_iterator::ptr(), &doc_itr_);
@@ -865,20 +990,17 @@ class columnstore {
   bool empty_{ false };
 }; // columnstore
 
+//////////////////////////////////////////////////////////////////////////////
+/// @struct compound_column_iterator
+//////////////////////////////////////////////////////////////////////////////
 class compound_column_iterator : irs::util::noncopyable {
  public:
   typedef std::pair<irs::doc_iterator::ptr, irs::payload_iterator*> iterator_t;
+  typedef std::vector<iterator_t> iterators_t;
 
-  explicit compound_column_iterator(const irs::comparer& comparator)
-    : less_(itrs_, comparator) {
-  }
-
-  void reserve(size_t size) {
-    itrs_.reserve(size);
-    heap_.reserve(size);
-  }
-
-  bool emplace_back(const irs::columnstore_reader::column_reader& column) {
+  static bool emplace_back(
+      iterators_t& itrs,
+      const irs::columnstore_reader::column_reader& column) {
     // FIXME don't cache blocks
     auto it = column.iterator();
 
@@ -892,87 +1014,60 @@ class compound_column_iterator : irs::util::noncopyable {
       return false;
     }
 
-    heap_.emplace_back(itrs_.size());
-    itrs_.emplace_back(std::move(it), payload);
-    ++lead_;
+    itrs.emplace_back(std::move(it), payload);
 
     return true;
   }
 
-  bool next();
-
-  std::pair<size_t, const iterator_t&> value() const NOEXCEPT {
-    assert(!heap_.empty());
-    return std::make_pair(heap_.back(), itrs_[heap_.back()]);
+  explicit compound_column_iterator(const irs::comparer& comparator)
+    : heap_it_(min_heap_context(itrs_, comparator)) {
   }
 
-  irs::bytes_ref payload() const NOEXCEPT {
-    return itrs_[heap_.back()].second->value();
+  void reset(iterators_t&& itrs) {
+    heap_it_.reset(itrs.size());
+    itrs_ = std::move(itrs);
+  }
+
+  bool next() {
+    return heap_it_.next();
+  }
+
+  std::pair<size_t, const iterator_t&> value() const NOEXCEPT {
+    return std::make_pair(heap_it_.value(), itrs_[heap_it_.value()]);
   }
 
  private:
-  class min_heap_comparer {
+  class min_heap_context {
    public:
-    explicit min_heap_comparer(
-        const std::vector<iterator_t>& itrs,
+    explicit min_heap_context(
+        std::vector<iterator_t>& itrs,
         const irs::comparer& less) NOEXCEPT
       : itrs_(itrs), less_(less) {
     }
 
-    bool operator()(const size_t lhs, const size_t& rhs) const {
+    // advance
+    bool operator()(const size_t i) const {
+      assert(i < itrs_.get().size());
+      return itrs_.get()[i].first->next();
+    }
+
+    // compare
+    bool operator()(const size_t lhs, const size_t rhs) const {
+      assert(lhs < itrs_.get().size());
+      assert(rhs < itrs_.get().size());
       const auto& lhs_value = itrs_.get()[lhs].second->value();
       const auto& rhs_value = itrs_.get()[rhs].second->value();
       return less_.get()(rhs_value, lhs_value);
     }
 
    private:
-    std::reference_wrapper<const std::vector<iterator_t>> itrs_;
+    std::reference_wrapper<std::vector<iterator_t>> itrs_;
     std::reference_wrapper<const irs::comparer> less_;
-  }; // heap_comparer
-
-  template<typename Iterator>
-  bool remove_lead(Iterator it) {
-    if (&*it != &heap_.back()) {
-      std::swap(*it, heap_.back());
-    }
-    heap_.pop_back();
-    return !heap_.empty();
-  }
+  }; // min_heap_context
 
   std::vector<iterator_t> itrs_;
-  min_heap_comparer less_;
-  std::vector<size_t> heap_;
-  size_t lead_{0}; // number of segments in lead group
+  irs::external_heap_iterator<min_heap_context> heap_it_;
 }; // compound_column_iterator
-
-bool compound_column_iterator::next() {
-  if (heap_.empty()) {
-    return false;
-  }
-
-  while (lead_) {
-    auto begin = heap_.begin();
-    auto it = heap_.end() - lead_--;
-
-    size_t lead = *it;
-    if (!itrs_[lead].first->next()) {
-      if (!remove_lead(it)) {
-        return false;
-      }
-
-      continue;
-    }
-
-    std::push_heap(begin, ++it, less_);
-  }
-
-  assert(!heap_.empty());
-  std::pop_heap(heap_.begin(), heap_.end(), less_);
-
-  lead_ = 1;
-
-  return true;
-}
 
 bool write_columns(
     columnstore& cs,
@@ -1245,7 +1340,8 @@ bool merge_writer::flush_sorted(
   compound_field_iterator fields_itr(progress);
   irs::flags fields_features;
 
-  compound_column_iterator columns_it(*comparator_);
+  compound_column_iterator::iterators_t itrs;
+  itrs.reserve(readers_.size());
 
   // write new sorted column and init doc map for each reader
   segment.meta.docs_count = 0;
@@ -1261,8 +1357,8 @@ bool merge_writer::flush_sorted(
 
     auto column = reader.sort();
 
-    if (!column || !columns_it.emplace_back(*column)) {
-      // sort column is not presented, give up
+    if (!column || !compound_column_iterator::emplace_back(itrs, *column)) {
+      // sort column is not present, give up
       return false;
     }
 
@@ -1314,6 +1410,9 @@ bool merge_writer::flush_sorted(
   }
 
   // write sort column
+  compound_column_iterator columns_it(*comparator_);
+  columns_it.reset(std::move(itrs));
+
   auto writer = segment.meta.codec->get_columnstore_writer();
   writer->prepare(dir, segment.meta);
 
@@ -1323,12 +1422,15 @@ bool merge_writer::flush_sorted(
   while (columns_it.next()) {
     const auto value = columns_it.value();
     auto& it = value.second;
-    auto& payload = value.second.second->value();
+    auto& payload = it.second->value();
 
     // fill doc id map
     readers_[value.first].doc_id_map[it.first->value()] = next_id;
 
     // write value into new column
+
+    std::cout << irs::ref_cast<char>(payload) << std::endl;
+
     auto& stream = column.second(next_id);
     stream.write_bytes(payload.c_str(), payload.size());
 
