@@ -321,44 +321,44 @@ TEST_P(sorted_index_test_case, check_document_order) {
   }
 
   // consolidate segments
-//  {
-//    irs::index_utils::consolidate_count consolidate_all;
-//    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all)));
-//    writer->commit();
-//  }
+  {
+    irs::index_utils::consolidate_count consolidate_all;
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all)));
+    writer->commit();
+  }
 
   // check consolidated segment
   {
-//    auto reader = irs::directory_reader::open(dir(), codec());
-//    ASSERT_TRUE(reader);
-//    ASSERT_EQ(1, reader.size());
-//    irs::bytes_ref actual_value;
+    auto reader = irs::directory_reader::open(dir(), codec());
+    ASSERT_TRUE(reader);
+    ASSERT_EQ(1, reader.size());
+    irs::bytes_ref actual_value;
 
     // check segment 0
-    //{
-    //  auto& segment = reader[0];
-    //  const auto* column = segment.sort();
-    //  ASSERT_NE(nullptr, column);
-    //  auto values = column->values();
-    //  auto terms = segment.field("same");
-    //  ASSERT_NE(nullptr, terms);
-    //  auto termItr = terms->iterator();
-    //  ASSERT_TRUE(termItr->next());
-    //  auto docsItr = termItr->postings(iresearch::flags());
-    //  ASSERT_TRUE(docsItr->next());
-    //  ASSERT_TRUE(values(docsItr->value(), actual_value));
-    //  ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str()));
-    //  ASSERT_TRUE(docsItr->next());
-    //  ASSERT_TRUE(values(docsItr->value(), actual_value));
-    //  ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str()));
-    //  ASSERT_TRUE(docsItr->next());
-    //  ASSERT_TRUE(values(docsItr->value(), actual_value));
-    //  ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str()));
-    //  ASSERT_TRUE(docsItr->next());
-    //  ASSERT_TRUE(values(docsItr->value(), actual_value));
-    //  ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
-    //  ASSERT_FALSE(docsItr->next());
-    //}
+    {
+      auto& segment = reader[0];
+      const auto* column = segment.sort();
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_FALSE(docsItr->next());
+    }
   }
 }
 
