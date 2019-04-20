@@ -40,6 +40,7 @@ set(IReSearch_tests_sources
   ./analysis/analyzer_test.cpp
   ./analysis/delimited_token_stream_tests.cpp
   ./analysis/ngram_token_stream_test.cpp
+  ./analysis/text_token_normalizing_stream_tests.cpp
   ./analysis/text_token_stemming_stream_tests.cpp
   ./analysis/token_masking_stream_tests.cpp
   ./analysis/token_stream_tests.cpp
@@ -163,6 +164,7 @@ add_dependencies(${IResearchTests_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-analyzer-delimited-shared
   ${IResearch_TARGET_NAME}-analyzer-ngram-shared
   ${IResearch_TARGET_NAME}-analyzer-text-shared
+  ${IResearch_TARGET_NAME}-analyzer-text-normalizing-shared
   ${IResearch_TARGET_NAME}-analyzer-text-stemming-shared
   ${IResearch_TARGET_NAME}-analyzer-token-masking-shared
   ${IResearch_TARGET_NAME}-format-1_0-shared
@@ -174,6 +176,7 @@ add_dependencies(${IResearchTests_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-analyzer-delimited-static
   ${IResearch_TARGET_NAME}-analyzer-ngram-static
   ${IResearch_TARGET_NAME}-analyzer-text-static
+  ${IResearch_TARGET_NAME}-analyzer-text-normalizing-static
   ${IResearch_TARGET_NAME}-analyzer-text-stemming-static
   ${IResearch_TARGET_NAME}-analyzer-token-masking-static
   ${IResearch_TARGET_NAME}-format-1_0-static
@@ -217,6 +220,7 @@ target_link_libraries(${IResearchTests_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-analyzer-delimited-shared
   ${IResearch_TARGET_NAME}-analyzer-ngram-shared
   ${IResearch_TARGET_NAME}-analyzer-text-shared
+  ${IResearch_TARGET_NAME}-analyzer-text-normalizing-shared
   ${IResearch_TARGET_NAME}-analyzer-text-stemming-shared
   ${IResearch_TARGET_NAME}-analyzer-token-masking-shared
   ${IResearch_TARGET_NAME}-format-1_0-shared
