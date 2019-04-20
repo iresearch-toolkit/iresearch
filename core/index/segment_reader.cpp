@@ -264,6 +264,10 @@ class segment_reader_impl : public sub_reader {
   virtual doc_iterator::ptr docs_iterator() const override;
 
   virtual doc_iterator::ptr mask(doc_iterator::ptr&& it) const override {
+    if (!it) {
+      return nullptr;
+    }
+
     if (docs_mask_.empty()) {
       return std::move(it);
     }

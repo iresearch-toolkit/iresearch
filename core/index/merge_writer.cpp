@@ -39,6 +39,8 @@
 
 #include <array>
 
+#include <boost/iterator/filter_iterator.hpp>
+
 NS_LOCAL
 
 // mapping of old doc_id to new doc_id (reader doc_ids are sequential 0 based)
@@ -701,7 +703,7 @@ irs::doc_iterator::ptr compound_term_iterator::postings(const irs::flags& /*feat
   irs::doc_iterator* doc_itr = &doc_itr_;
   doc_itr_.reset(add_iterators);
 
-  if (psorting_doc_itr_) {
+  if (psorting_doc_itr_ && doc_itr_.iterators.size() > 1) {
     sorting_doc_itr_.reset();
     doc_itr = psorting_doc_itr_;
   }
@@ -932,8 +934,8 @@ class columnstore {
   columnstore(
       irs::columnstore_writer::ptr&& writer,
       const irs::merge_writer::flush_progress_t& progress
-  ) : writer_(std::move(writer)),
-      progress_(progress, PROGRESS_STEP_COLUMN) {
+  ) : progress_(progress, PROGRESS_STEP_COLUMN),
+      writer_(std::move(writer)) {
   }
 
   columnstore(
@@ -1017,11 +1019,14 @@ class compound_column_iterator : irs::util::noncopyable {
   typedef std::pair<irs::doc_iterator::ptr, irs::payload_iterator*> iterator_t;
   typedef std::vector<iterator_t> iterators_t;
 
-  static bool emplace_back(
-      iterators_t& itrs,
-      const irs::columnstore_reader::column_reader& column) {
+  static bool emplace_back(iterators_t& itrs, const irs::sub_reader& segment) {
+    if (!segment.sort()) {
+      // sort column is not present, give up
+      return false;
+    }
+
     // FIXME don't cache blocks
-    auto it = column.iterator();
+    auto it = segment.mask(segment.sort()->iterator());
 
     if (!it) {
       return false;
@@ -1377,9 +1382,7 @@ bool merge_writer::flush_sorted(
       return false;
     }
 
-    auto column = reader.sort();
-
-    if (!column || !compound_column_iterator::emplace_back(itrs, *column)) {
+    if (!compound_column_iterator::emplace_back(itrs, reader)) {
       // sort column is not present, give up
       return false;
     }
@@ -1432,7 +1435,7 @@ bool merge_writer::flush_sorted(
   }
 
   //...........................................................................
-  // write new sorted column and fill doc map for each reader
+  // write new sorted column and fill doc maps for each reader
   //...........................................................................
 
   compound_column_iterator columns_it(*comparator_);
@@ -1464,11 +1467,21 @@ bool merge_writer::flush_sorted(
   }
 
 #ifdef IRESEARCH_DEBUG
+  struct ne_eof {
+    bool operator()(doc_id_t doc) const NOEXCEPT {
+      return !doc_limits::eof(doc);
+    }
+  };
+
   // ensure doc ids for each segment are sorted
   for (auto& reader : readers_) {
     auto& doc_map = reader.doc_id_map;
     assert(doc_map.size() >= irs::doc_limits::min());
-    assert(std::is_sorted(doc_map.begin() + irs::doc_limits::min(), doc_map.end()));
+    assert(
+      std::is_sorted(
+        boost::make_filter_iterator(ne_eof(), doc_map.begin(), doc_map.end()),
+        boost::make_filter_iterator(ne_eof(), doc_map.end(), doc_map.end())
+    ));
   }
 #endif
 
