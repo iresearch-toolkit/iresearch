@@ -27,6 +27,7 @@
 #ifndef IRESEARCH_DLL
   #include "delimited_token_stream.hpp"
   #include "ngram_token_stream.hpp"
+  #include "text_token_normalizing_stream.hpp"
   #include "text_token_stemming_stream.hpp"
   #include "text_token_stream.hpp"
   #include "token_masking_stream.hpp"
@@ -124,6 +125,7 @@ NS_BEGIN(analysis)
   #ifndef IRESEARCH_DLL
     irs::analysis::delimited_token_stream::init();
     irs::analysis::ngram_token_stream::init();
+    irs::analysis::text_token_normalizing_stream::init();
     irs::analysis::text_token_stemming_stream::init();
     irs::analysis::text_token_stream::init();
     irs::analysis::token_masking_stream::init();
