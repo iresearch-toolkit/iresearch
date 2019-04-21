@@ -36,13 +36,12 @@ if (MSVC)
   add_definitions(-D_ENABLE_EXTENDED_ALIGNED_STORAGE)
 
   if (MSVC_BUILD_THREADS)
-    set(MP_FLAG "/MP${MSVC_BUILD_THREADS}")
+    set(CMAKE_C_FLAGS "/MP${MSVC_BUILD_THREADS} ${CMAKE_C_FLAGS}")
+    set(CMAKE_CXX_FLAGS "/MP${MSVC_BUILD_THREADS} ${CMAKE_CXX_FLAGS}")
   else ()
-    set(MP_FLAG "/MP")
+    set(CMAKE_C_FLAGS "/MP ${CMAKE_C_FLAGS}")
+    set(CMAKE_CXX_FLAGS "/MP ${CMAKE_CXX_FLAGS}")
   endif()
-  
-  set(CMAKE_C_FLAGS "${MP_FLAG} ${CMAKE_C_FLAGS}")
-  set(CMAKE_CXX_FLAGS "${MP_FLAG} ${CMAKE_CXX_FLAGS}")
 endif()
 
 ################################################################################
