@@ -53,7 +53,7 @@ TEST_F(text_token_normalizing_stream_tests, test_normalizing) {
 
     options.locale = "en.utf8";
 
-    irs::string_ref data({ 'r', 'U', 'n', 'N', 'i', 'N', 'g', char(0xd0), char(0x81) });
+    irs::string_ref data("rUnNiNg\xd0\x81");
     irs::analysis::text_token_normalizing_stream stream(options);
 
     auto& offset = stream.attributes().get<irs::offset>();
@@ -77,8 +77,8 @@ TEST_F(text_token_normalizing_stream_tests, test_normalizing) {
     options.locale = "en.utf8";
     options.no_accent = true;
 
-    irs::string_ref data({ 'r', 'U', 'n', 'N', 'i', 'N', 'g', char(0xd0), char(0x81) });
-    irs::string_ref expected({ 'r', 'U', 'n', 'N', 'i', 'N', 'g', char(0xd0), char(0x95) });
+    irs::string_ref data("rUnNiNg\xd0\x81");
+    irs::string_ref expected("rUnNiNg\xd0\x95");
     irs::analysis::text_token_normalizing_stream stream(options);
 
     auto& offset = stream.attributes().get<irs::offset>();
@@ -102,8 +102,8 @@ TEST_F(text_token_normalizing_stream_tests, test_normalizing) {
     options.locale = "en.utf8";
     options.case_convert = options_t::case_convert_t::LOWER;
 
-    irs::string_ref data({ 'r', 'U', 'n', 'N', 'i', 'N', 'g', char(0xd0), char(0x81) });
-    irs::string_ref expected({ 'r', 'u', 'n', 'n', 'i', 'n', 'g', char(0xd1), char(0x91) });
+    irs::string_ref data("rUnNiNg\xd0\x81");
+    irs::string_ref expected("running\xd1\x91");
     irs::analysis::text_token_normalizing_stream stream(options);
 
     auto& offset = stream.attributes().get<irs::offset>();
@@ -127,8 +127,8 @@ TEST_F(text_token_normalizing_stream_tests, test_normalizing) {
     options.locale = "en.utf8";
     options.case_convert = options_t::case_convert_t::UPPER;
 
-    irs::string_ref data({ 'r', 'U', 'n', 'N', 'i', 'N', 'g', char(0xd1), char(0x91) });
-    irs::string_ref expected({ 'R', 'U', 'N', 'N', 'I', 'N', 'G', char(0xd0), char(0x81) });
+    irs::string_ref data("rUnNiNg\xd1\x91");
+    irs::string_ref expected("RUNNING\xd0\x81");
     irs::analysis::text_token_normalizing_stream stream(options);
 
     auto& offset = stream.attributes().get<irs::offset>();
