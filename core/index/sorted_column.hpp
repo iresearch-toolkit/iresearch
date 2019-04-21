@@ -54,8 +54,9 @@ class sorted_column final : public irs::columnstore_writer::column_output {
   void prepare(doc_id_t key) {
     assert(index_.empty() || key >= index_.back().first);
 
-    // FIXME properly handle multi-valued attributes
-    index_.emplace_back(key, data_buf_.size());
+    if (index_.empty() || index_.back().first != key) {
+      index_.emplace_back(key, data_buf_.size());
+    }
   }
 
   virtual void close() override {

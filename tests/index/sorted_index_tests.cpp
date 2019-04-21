@@ -164,7 +164,84 @@ TEST_P(sorted_index_test_case, europarl) {
   assert_index();
 }
 
-//FIXME check multi-valued sorted field
+TEST_P(sorted_index_test_case, multi_valued_sorting_field) {
+  struct {
+    bool write(irs::data_output& out) {
+      out.write_bytes(reinterpret_cast<const irs::byte_type*>(value.c_str()), value.size());
+      return true;
+    }
+
+    irs::string_ref value;
+  } field;
+
+  tests::templates::string_ref_field same("same");
+  same.value("A");
+
+  // open writer
+  string_comparer less;
+  irs::index_writer::init_options opts;
+  opts.comparator = &less;
+  auto writer = open_writer(irs::OM_CREATE, opts);
+  ASSERT_NE(nullptr, writer);
+  ASSERT_EQ(&less, writer->comparator());
+
+  // write documents
+  {
+    auto docs = writer->documents();
+
+    {
+      auto doc = docs.insert();
+
+      // compund sorted field
+      field.value = "A"; doc.insert<irs::Action::STORE_SORTED>(field);
+      field.value = "B"; doc.insert<irs::Action::STORE_SORTED>(field);
+
+      // indexed field
+      doc.insert<irs::Action::INDEX>(same);
+    }
+
+    {
+      auto doc = docs.insert();
+
+      // compund sorted field
+      field.value = "C"; doc.insert<irs::Action::STORE_SORTED>(field);
+      field.value = "D"; doc.insert<irs::Action::STORE_SORTED>(field);
+
+      // indexed field
+      doc.insert<irs::Action::INDEX>(same);
+    }
+  }
+
+  writer->commit();
+
+  // read documents
+  {
+    auto reader = irs::directory_reader::open(dir(), codec());
+    ASSERT_TRUE(reader);
+    ASSERT_EQ(1, reader.size());
+    irs::bytes_ref actual_value;
+
+    // check segment 0
+    {
+      auto& segment = reader[0];
+      const auto* column = segment.sort();
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator();
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(iresearch::flags());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("CD", irs::ref_cast<char>(actual_value));
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ("AB", irs::ref_cast<char>(actual_value));
+      ASSERT_FALSE(docsItr->next());
+    }
+  }
+}
 
 TEST_P(sorted_index_test_case, check_document_order_after_consolidation) {
   tests::json_doc_generator gen(

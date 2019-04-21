@@ -261,9 +261,12 @@ void segment_writer::flush(index_meta::index_segment_t& segment) {
     meta.sort = sort_.id; // store sorted column id in segment meta
   }
 
-  // flush columnstore and columns indices
-  if (col_writer_->commit() && !columns_.empty()) {
-    flush_column_meta(meta);
+  // flush columnstore
+  if (col_writer_->commit()) {
+    if (!columns_.empty()) {
+      flush_column_meta(meta);
+    }
+
     meta.column_store = true;
   }
 
