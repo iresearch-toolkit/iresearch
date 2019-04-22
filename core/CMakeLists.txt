@@ -186,7 +186,6 @@ set(IResearch_core_headers
   ./index/iterators.hpp
   ./index/segment_reader.hpp
   ./index/segment_writer.hpp
-  ./index/transaction_store.hpp
   ./index/index_writer.hpp
   ./iql/parser_common.hpp
   ./iql/parser_context.hpp
