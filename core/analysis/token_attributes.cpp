@@ -66,13 +66,6 @@ REGISTER_ATTRIBUTE(payload);
 DEFINE_ATTRIBUTE_TYPE(payload) // DO NOT CHANGE NAME
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  payload_iterator
-// -----------------------------------------------------------------------------
-
-REGISTER_ATTRIBUTE(payload_iterator);
-DEFINE_ATTRIBUTE_TYPE(payload_iterator)
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                          document
 // -----------------------------------------------------------------------------
 

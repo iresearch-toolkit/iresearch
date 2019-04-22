@@ -306,7 +306,7 @@ struct IRESEARCH_API columnstore_reader {
 
     // returns the corresponding column iterator
     // if the column implementation supports document payloads then the latter
-    // may be accessed via the 'payload_iterator' attribute
+    // may be accessed via the 'payload' attribute
     virtual doc_iterator::ptr iterator() const = 0;
 
     virtual bool visit(const columnstore_reader::values_visitor_f& reader) const = 0;

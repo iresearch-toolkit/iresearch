@@ -51,7 +51,7 @@ class sorting_doc_iterator final : public doc_iterator {
     segment(
         doc_iterator::ptr&& doc,
         doc_iterator::ptr&& sort,
-        payload_iterator& payload
+        irs::payload& payload
     ) NOEXCEPT
       : doc_(std::move(doc)),
         sort_(std::move(sort)),
@@ -64,7 +64,7 @@ class sorting_doc_iterator final : public doc_iterator {
     }
 
     const bytes_ref& payload() const {
-      return payload_->value();
+      return payload_->value;
     }
 
     const attribute_view& attributes() const {
@@ -77,13 +77,13 @@ class sorting_doc_iterator final : public doc_iterator {
       }
 
       const auto target = doc_->value();
-      return target == sort_->seek(target) && payload_->next();
+      return target == sort_->seek(target);
     }
 
    private:
     doc_iterator::ptr doc_;
     doc_iterator::ptr sort_;
-    payload_iterator* payload_; // FIXME use irs::payload instead?
+    irs::payload* payload_; // FIXME use irs::payload instead?
   };
 
   sorting_doc_iterator(
@@ -98,7 +98,7 @@ class sorting_doc_iterator final : public doc_iterator {
       return false;
     }
 
-    payload_iterator* payload = it->attributes().get<payload_iterator>().get();
+    irs::payload* payload = it->attributes().get<irs::payload>().get();
 
     if (!payload) {
       return false;

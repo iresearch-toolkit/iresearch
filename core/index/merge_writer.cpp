@@ -1016,7 +1016,7 @@ class columnstore {
 //////////////////////////////////////////////////////////////////////////////
 class compound_column_iterator : irs::util::noncopyable {
  public:
-  typedef std::pair<irs::doc_iterator::ptr, irs::payload_iterator*> iterator_t;
+  typedef std::pair<irs::doc_iterator::ptr, const irs::payload*> iterator_t;
   typedef std::vector<iterator_t> iterators_t;
 
   static bool emplace_back(iterators_t& itrs, const irs::sub_reader& segment) {
@@ -1032,7 +1032,7 @@ class compound_column_iterator : irs::util::noncopyable {
       return false;
     }
 
-    irs::payload_iterator* payload = it->attributes().get<irs::payload_iterator>().get();
+    irs::payload* payload = it->attributes().get<irs::payload>().get();
 
     if (!payload) {
       return false;
@@ -1079,8 +1079,8 @@ class compound_column_iterator : irs::util::noncopyable {
     bool operator()(const size_t lhs, const size_t rhs) const {
       assert(lhs < itrs_.get().size());
       assert(rhs < itrs_.get().size());
-      const auto& lhs_value = itrs_.get()[lhs].second->value();
-      const auto& rhs_value = itrs_.get()[rhs].second->value();
+      const auto& lhs_value = itrs_.get()[lhs].second->value;
+      const auto& rhs_value = itrs_.get()[rhs].second->value;
       return less_.get()(rhs_value, lhs_value);
     }
 
@@ -1451,7 +1451,8 @@ bool merge_writer::flush_sorted(
     const auto value = columns_it.value();
     assert(value.second);
     auto& it = *value.second;
-    auto& payload = it.second->value();
+    assert(it.second);
+    auto& payload = it.second->value;
 
     // fill doc id map
     readers_[value.first].doc_id_map[it.first->value()] = next_id;

@@ -1313,9 +1313,9 @@ class index_test_case : public tests::index_test_base {
           return false;
         }
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
 
-        if (!payload || payload->next()) {
+        if (!payload) {
           return false;
         }
 
@@ -1330,10 +1330,6 @@ class index_test_case : public tests::index_test_base {
             return false;
           }
 
-          if (!payload->next()) {
-            return false;
-          }
-
           if (++expected_id != it->value()) {
             return false;
           }
@@ -1344,7 +1340,7 @@ class index_test_case : public tests::index_test_base {
             return false;
           }
 
-          if (field->value() != irs::to_string<irs::string_ref>(payload->value().c_str())) {
+          if (field->value() != irs::to_string<irs::string_ref>(payload->value.c_str())) {
             return false;
           }
 
@@ -1587,27 +1583,24 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t docs_count = 0;
         irs::doc_id_t expected_doc = 2;
         for (; it->next(); ) {
-          ASSERT_TRUE(payload->next());
           ASSERT_EQ(expected_doc, it->value());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
           expected_doc += 2;
           ++docs_count;
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
       }
     }
@@ -1660,27 +1653,24 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t docs_count = 0;
         irs::doc_id_t expected_doc = 2;
         for (; it->next(); ) {
-          ASSERT_TRUE(payload->next());
           ASSERT_EQ(expected_doc, it->value());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
           expected_doc += 2;
           ++docs_count;
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
       }
 
@@ -1731,27 +1721,24 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t docs_count = 0;
         irs::doc_id_t expected_doc = 2;
         for (; it->next(); ) {
-          ASSERT_TRUE(payload->next());
           ASSERT_EQ(expected_doc, it->value());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
           expected_doc += 2;
           ++docs_count;
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
       }
     }
@@ -1804,37 +1791,32 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t docs_count = 0;
         irs::doc_id_t expected_doc = 2;
         for (; expected_doc <= MAX_DOCS; ) {
           ASSERT_EQ(expected_doc, it->seek(expected_doc));
-          ASSERT_TRUE(payload->next());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
           expected_doc += 2;
           ++docs_count;
         }
 
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(expected_doc));
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS + 1));
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
       }
 
@@ -1845,41 +1827,35 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t docs_count = 0;
         irs::doc_id_t expected_doc = 2;
         for (; expected_doc <= MAX_DOCS; ) {
           ASSERT_EQ(expected_doc, it->seek(expected_doc));
-          ASSERT_TRUE(payload->next());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
           ASSERT_EQ(expected_doc, it->seek(expected_doc - 1)); // seek before the existing key (value should remain the same)
-          ASSERT_TRUE(payload->next());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
           expected_doc += 2;
           ++docs_count;
         }
 
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(expected_doc));
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS + 1));
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
       }
 
@@ -1890,41 +1866,35 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = 2;
         size_t docs_count = 0;
         for (; expected_doc <= MAX_DOCS; ) {
           ASSERT_EQ(expected_doc, it->seek(expected_doc - 1));
-          ASSERT_TRUE(payload->next());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
           ASSERT_EQ(expected_doc, it->seek(expected_doc)); // seek to the existing key (value should remain the same)
-          ASSERT_TRUE(payload->next());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
           expected_doc += 2;
           ++docs_count;
         }
 
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(expected_doc));
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS + 1));
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
       }
 
@@ -1935,35 +1905,31 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = 2;
         size_t docs_count = 0;
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
-        ASSERT_TRUE(payload->next());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         expected_doc += 2;
         ++docs_count;
 
         for (; it->next(); ) {
-          ASSERT_TRUE(payload->next());
           ASSERT_EQ(expected_doc, it->value());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
           expected_doc += 2;
           ++docs_count;
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
       }
 
@@ -1974,34 +1940,30 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = 2;
         size_t docs_count = 0;
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc - 1));
-        ASSERT_TRUE(payload->next());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         expected_doc += 2;
         ++docs_count;
 
         for (; it->next(); ) {
-          ASSERT_TRUE(payload->next());
           ASSERT_EQ(expected_doc, it->value());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
           expected_doc += 2;
           ++docs_count;
         }
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
       }
 
@@ -2012,20 +1974,17 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_EQ(MAX_DOCS, it->seek(MAX_DOCS));
-        ASSERT_TRUE(payload->next());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       }
 
       // seek to before the end + next
@@ -2035,20 +1994,17 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_EQ(MAX_DOCS, it->seek(MAX_DOCS - 1));
-        ASSERT_TRUE(payload->next());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       }
 
       // seek to after the end + next
@@ -2058,25 +2014,21 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS + 1));
-        ASSERT_FALSE(payload->next());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         // can't seek backwards
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS - 1));
-        ASSERT_FALSE(payload->next());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       }
 
       // seek + next(x5)
@@ -2088,11 +2040,10 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = 2;
         size_t docs_count = 0;
@@ -2104,22 +2055,19 @@ class index_test_case : public tests::index_test_base {
             break;
           }
 
-          ASSERT_TRUE(payload->next());
           ASSERT_EQ(expected_doc, it->value());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
           ++docs_count;
 
           auto next_expected_doc = expected_doc + 2;
           for (auto i = 0; i < steps_forward && it->next(); ++i) {
-            ASSERT_TRUE(payload->next());
             ASSERT_EQ(next_expected_doc, it->value());
-            ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+            ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
             // can't seek backwards
             ASSERT_EQ(next_expected_doc, it->seek(expected_doc));
-            ASSERT_TRUE(payload->next());
-            ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+            ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
             next_expected_doc += 2;
             ++docs_count;
@@ -2129,9 +2077,8 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(MAX_DOCS/2, docs_count);
       }
 
@@ -2150,23 +2097,20 @@ class index_test_case : public tests::index_test_base {
           auto it = column->iterator();
           ASSERT_NE(nullptr, it);
 
-          auto& payload = it->attributes().get<irs::payload_iterator>();
+          auto& payload = it->attributes().get<irs::payload>();
           ASSERT_FALSE(!payload);
-          ASSERT_FALSE(payload->next());
           ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
           ASSERT_EQ(expected_doc, it->seek(expected_doc));
-          ASSERT_TRUE(payload->next());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
           ++docs_count;
 
           auto next_expected_doc = expected_doc + 2;
           for (auto i = 0; i < steps_forward && it->next(); ++i) {
-            ASSERT_TRUE(payload->next());
             ASSERT_EQ(next_expected_doc, it->value());
-            ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+            ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
             next_expected_doc += 2;
           }
@@ -2179,24 +2123,21 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         it->seek(expected_doc);
         expected_doc = min_doc;
         ASSERT_EQ(min_doc, it->seek(expected_doc));
-        ASSERT_TRUE(payload->next());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         auto next_expected_doc = expected_doc + 2;
         for (auto i = 0; i < steps_forward; ++i) {
           ASSERT_TRUE(it->next());
-          ASSERT_TRUE(payload->next());
           ASSERT_EQ(next_expected_doc, it->value());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
           next_expected_doc += 2;
         }
@@ -2211,31 +2152,27 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = MAX_DOCS;
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
-        ASSERT_TRUE(payload->next());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         auto next_expected_doc = expected_doc + 2;
         for (auto i = 0; i < steps_forward && it->next(); ++i) {
-          ASSERT_TRUE(payload->next());
           ASSERT_EQ(next_expected_doc, it->value());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
           next_expected_doc += 2;
         }
 
         expected_doc -= 2;
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(expected_doc));
-        ASSERT_FALSE(payload->next());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       }
 
       // seek over column (cached)
@@ -2245,37 +2182,32 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = 2;
         size_t docs_count = 0;
         for (; expected_doc <= MAX_DOCS; ) {
           ASSERT_EQ(expected_doc, it->seek(expected_doc - 1));
-          ASSERT_TRUE(payload->next());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
           expected_doc += 2;
           ++docs_count;
         }
 
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(expected_doc));
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS + 1));
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
       }
 
@@ -2326,27 +2258,24 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t docs_count = 0;
         irs::doc_id_t expected_doc = 2;
         for (; it->next(); ) {
-          ASSERT_TRUE(payload->next());
           ASSERT_EQ(expected_doc, it->value());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
           expected_doc += 2;
           ++docs_count;
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
       }
     }
@@ -2485,7 +2414,7 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        ASSERT_TRUE(!it->attributes().get<irs::payload_iterator>()); // dense_mask does not have a payload
+        ASSERT_TRUE(!it->attributes().get<irs::payload>()); // dense_mask does not have a payload
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
 
         irs::doc_id_t docs_count = 0;
@@ -2550,7 +2479,7 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        ASSERT_TRUE(!it->attributes().get<irs::payload_iterator>()); // dense_mask does not have a payload
+        ASSERT_TRUE(!it->attributes().get<irs::payload>()); // dense_mask does not have a payload
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
 
         irs::doc_id_t docs_count = 0;
@@ -2613,7 +2542,7 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        ASSERT_TRUE(!it->attributes().get<irs::payload_iterator>()); // dense_mask does not have a payload
+        ASSERT_TRUE(!it->attributes().get<irs::payload>()); // dense_mask does not have a payload
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
 
         irs::doc_id_t docs_count = 0;
@@ -2678,7 +2607,7 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        ASSERT_TRUE(!it->attributes().get<irs::payload_iterator>()); // dense_mask does not have a payload
+        ASSERT_TRUE(!it->attributes().get<irs::payload>()); // dense_mask does not have a payload
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
 
         irs::doc_id_t docs_count = 0;
@@ -2705,7 +2634,7 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        ASSERT_TRUE(!it->attributes().get<irs::payload_iterator>()); // dense_mask does not have a payload
+        ASSERT_TRUE(!it->attributes().get<irs::payload>()); // dense_mask does not have a payload
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
 
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
@@ -2733,7 +2662,7 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        ASSERT_TRUE(!it->attributes().get<irs::payload_iterator>()); // dense_mask does not have a payload
+        ASSERT_TRUE(!it->attributes().get<irs::payload>()); // dense_mask does not have a payload
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
 
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
@@ -2761,7 +2690,7 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        ASSERT_TRUE(!it->attributes().get<irs::payload_iterator>()); // dense_mask does not have a payload
+        ASSERT_TRUE(!it->attributes().get<irs::payload>()); // dense_mask does not have a payload
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
 
         ASSERT_EQ(MAX_DOCS, it->seek(MAX_DOCS));
@@ -2777,7 +2706,7 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        ASSERT_TRUE(!it->attributes().get<irs::payload_iterator>()); // dense_mask does not have a payload
+        ASSERT_TRUE(!it->attributes().get<irs::payload>()); // dense_mask does not have a payload
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
 
         ASSERT_EQ(MAX_DOCS - 1, it->seek(MAX_DOCS - 1));
@@ -2796,7 +2725,7 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        ASSERT_TRUE(!it->attributes().get<irs::payload_iterator>()); // dense_mask does not have a payload
+        ASSERT_TRUE(!it->attributes().get<irs::payload>()); // dense_mask does not have a payload
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
 
         it->seek(MAX_DOCS+1);
@@ -2818,7 +2747,7 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        ASSERT_TRUE(!it->attributes().get<irs::payload_iterator>()); // dense_mask does not have a payload
+        ASSERT_TRUE(!it->attributes().get<irs::payload>()); // dense_mask does not have a payload
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
 
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
@@ -2867,7 +2796,7 @@ class index_test_case : public tests::index_test_base {
           auto it = column->iterator();
           ASSERT_NE(nullptr, it);
 
-          ASSERT_TRUE(!it->attributes().get<irs::payload_iterator>()); // dense_mask does not have a payload
+          ASSERT_TRUE(!it->attributes().get<irs::payload>()); // dense_mask does not have a payload
           ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
 
           ++docs_count;
@@ -2887,7 +2816,7 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        ASSERT_TRUE(!it->attributes().get<irs::payload_iterator>()); // dense_mask does not have a payload
+        ASSERT_TRUE(!it->attributes().get<irs::payload>()); // dense_mask does not have a payload
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
 
         it->seek(expected_doc);
@@ -2911,7 +2840,7 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        ASSERT_TRUE(!it->attributes().get<irs::payload_iterator>()); // dense_mask does not have a payload
+        ASSERT_TRUE(!it->attributes().get<irs::payload>()); // dense_mask does not have a payload
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
 
         irs::doc_id_t expected_doc = MAX_DOCS;
@@ -2975,7 +2904,7 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        ASSERT_TRUE(!it->attributes().get<irs::payload_iterator>()); // dense_mask does not have a payload
+        ASSERT_TRUE(!it->attributes().get<irs::payload>()); // dense_mask does not have a payload
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
 
         irs::doc_id_t docs_count = 0;
@@ -3135,17 +3064,15 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         irs::doc_id_t expected_value = 0;
         for (; it->next(); ) {
-          ASSERT_TRUE(payload->next());
-          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
           ASSERT_EQ(expected_doc, it->value());
           ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
@@ -3155,9 +3082,8 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(irs::doc_id_t(MAX_DOCS), expected_value);
       }
     }
@@ -3210,17 +3136,15 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         irs::doc_id_t expected_value = 0;
         for (; it->next(); ) {
-          ASSERT_TRUE(payload->next());
-          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
           ASSERT_EQ(expected_doc, it->value());
           ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
@@ -3230,9 +3154,8 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(irs::doc_id_t(MAX_DOCS), expected_value);
       }
 
@@ -3284,17 +3207,15 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         irs::doc_id_t expected_value = 0;
         for (; it->next(); ) {
-          ASSERT_TRUE(payload->next());
-          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
           ASSERT_EQ(expected_doc, it->value());
           ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
@@ -3304,9 +3225,8 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(irs::doc_id_t(MAX_DOCS), expected_value);
       }
     }
@@ -3359,18 +3279,16 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         irs::doc_id_t expected_value = 0;
         for (; expected_doc <= MAX_DOCS; ) {
           ASSERT_EQ(expected_doc, it->seek(expected_doc));
-          ASSERT_TRUE(payload->next());
-          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
           ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
 
           ++expected_doc;
@@ -3378,19 +3296,16 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(expected_doc));
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS + 1));
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(MAX_DOCS, expected_value);
       }
 
@@ -3401,26 +3316,23 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         irs::doc_id_t expected_value = 0;
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
-        ASSERT_TRUE(payload->next());
-        const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+        const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
 
         ++expected_doc;
         ++expected_value;
 
         for (; it->next(); ) {
-          ASSERT_TRUE(payload->next());
-          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
           ASSERT_EQ(expected_doc, it->value());
           ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
@@ -3430,9 +3342,8 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(MAX_DOCS, expected_value);
       }
 
@@ -3443,26 +3354,23 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         irs::doc_id_t expected_value = 0;
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc - 1));
-        ASSERT_TRUE(payload->next());
-        const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+        const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
 
         ++expected_doc;
         ++expected_value;
 
         for (; it->next(); ) {
-          ASSERT_TRUE(payload->next());
-          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
           ASSERT_EQ(expected_doc, it->value());
           ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
@@ -3471,9 +3379,8 @@ class index_test_case : public tests::index_test_base {
           ++expected_value;
         }
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(MAX_DOCS, expected_value);
       }
 
@@ -3484,24 +3391,21 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         auto expected_doc = MAX_DOCS;
         auto expected_value = MAX_DOCS-1;
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
-        ASSERT_TRUE(payload->next());
-        const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+        const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       }
 
       // seek to before the end + next
@@ -3511,32 +3415,28 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         auto expected_doc = MAX_DOCS-1;
         auto expected_value = expected_doc-1;
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
-        ASSERT_TRUE(payload->next());
-        auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+        auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
 
         ++expected_doc;
         ++expected_value;
         ASSERT_TRUE(it->next());
-        ASSERT_TRUE(payload->next());
-        actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+        actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
         ASSERT_EQ(expected_doc, it->value());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       }
 
       // seek to after the end + next
@@ -3546,25 +3446,21 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS + 1));
-        ASSERT_FALSE(payload->next());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         // can't seek backwards
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS - 1));
-        ASSERT_FALSE(payload->next());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       }
 
       // seek + next(x5)
@@ -3576,11 +3472,10 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         irs::doc_id_t expected_value = 0;
@@ -3592,16 +3487,14 @@ class index_test_case : public tests::index_test_base {
             break;
           }
 
-          ASSERT_TRUE(payload->next());
-          auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
           ASSERT_EQ(expected_doc, it->value());
           ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
 
           auto next_expected_doc = expected_doc + 1;
           auto next_expected_value = expected_value + 1;
           for (auto i = 0; i < steps_forward && it->next(); ++i) {
-            ASSERT_TRUE(payload->next());
-            actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+            actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
             ASSERT_EQ(next_expected_doc, it->value());
             ASSERT_EQ(next_expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
@@ -3619,9 +3512,8 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(MAX_DOCS, expected_value);
       }
 
@@ -3640,15 +3532,13 @@ class index_test_case : public tests::index_test_base {
           auto it = column->iterator();
           ASSERT_NE(nullptr, it);
 
-          auto& payload = it->attributes().get<irs::payload_iterator>();
+          auto& payload = it->attributes().get<irs::payload>();
           ASSERT_FALSE(!payload);
-          ASSERT_FALSE(payload->next());
           ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
           ASSERT_EQ(expected_doc, it->seek(expected_doc));
-          ASSERT_TRUE(payload->next());
-          auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
           ++docs_count;
 
@@ -3657,8 +3547,7 @@ class index_test_case : public tests::index_test_base {
           auto next_expected_doc = expected_doc + 1;
           auto next_expected_value = expected_value + 1;
           for (auto i = 0; i < steps_forward && it->next(); ++i) {
-            ASSERT_TRUE(payload->next());
-            actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+            actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
             ASSERT_EQ(next_expected_doc, it->value());
             ASSERT_EQ(next_expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
@@ -3676,26 +3565,23 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         it->seek(expected_doc);
         expected_doc = min_doc;
         expected_value = expected_doc - 1;
         ASSERT_EQ(min_doc, it->seek(expected_doc));
-        ASSERT_TRUE(payload->next());
-        auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+        auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
 
         auto next_expected_doc = expected_doc + 1;
         auto next_expected_value = expected_value + 1;
         for (auto i = 0; i < steps_forward; ++i) {
           ASSERT_TRUE(it->next());
-          ASSERT_TRUE(payload->next());
-          actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
           ASSERT_EQ(next_expected_doc, it->value());
           ASSERT_EQ(next_expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
@@ -3714,25 +3600,22 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = MAX_DOCS;
         irs::doc_id_t expected_value = expected_doc - 1;
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
-        ASSERT_TRUE(payload->next());
-        auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+        auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
 
         auto next_expected_doc = expected_doc + 1;
         auto next_expected_value = expected_value + 1;
         for (auto i = 0; i < steps_forward && it->next(); ++i) {
-          ASSERT_TRUE(payload->next());
-          actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
           ASSERT_EQ(next_expected_doc, it->value());
           ASSERT_EQ(next_expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
@@ -3793,17 +3676,15 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         irs::doc_id_t expected_value = 0;
         for (; it->next(); ) {
-          ASSERT_TRUE(payload->next());
-          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
           ASSERT_EQ(expected_doc, it->value());
           ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
@@ -3813,9 +3694,8 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(irs::doc_id_t(MAX_DOCS), expected_value);
       }
     }
@@ -3985,17 +3865,15 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         irs::doc_id_t expected_value = 0;
         for (; it->next(); ) {
-          ASSERT_TRUE(payload->next());
-          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value.c_str());
           auto expected_value_str = std::to_string(expected_value);
 
           if (expected_value % 2) {
@@ -4010,9 +3888,8 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(MAX_DOCS, expected_value);
       }
     }
@@ -4071,17 +3948,15 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         irs::doc_id_t expected_value = 0;
         for (; it->next(); ) {
-          ASSERT_TRUE(payload->next());
-          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value.c_str());
           auto expected_value_str = std::to_string(expected_value);
 
           if (expected_value % 2) {
@@ -4096,9 +3971,8 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(MAX_DOCS, expected_value);
       }
 
@@ -4160,17 +4034,15 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         irs::doc_id_t expected_value = 0;
         for (; it->next(); ) {
-          ASSERT_TRUE(payload->next());
-          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value.c_str());
           auto expected_value_str = std::to_string(expected_value);
 
           if (expected_value % 2) {
@@ -4185,9 +4057,8 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(MAX_DOCS, expected_value);
       }
     }
@@ -4246,18 +4117,16 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         irs::doc_id_t expected_value = 0;
         for (; expected_doc <= MAX_DOCS; ) {
           ASSERT_EQ(expected_doc, it->seek(expected_doc));
-          ASSERT_TRUE(payload->next());
-          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value.c_str());
           auto expected_value_str = std::to_string(expected_value);
 
           if (expected_value % 2) {
@@ -4271,19 +4140,16 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(expected_doc));
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS + 1));
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(MAX_DOCS, expected_value);
       }
 
@@ -4294,18 +4160,16 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         irs::doc_id_t expected_value = 0;
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
-        ASSERT_TRUE(payload->next());
-        const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+        const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
@@ -4318,8 +4182,7 @@ class index_test_case : public tests::index_test_base {
         ++expected_value;
 
         for (; it->next(); ) {
-          ASSERT_TRUE(payload->next());
-          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
           auto expected_value_str = std::to_string(expected_value);
 
           if (expected_value % 2) {
@@ -4334,9 +4197,8 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(MAX_DOCS, expected_value);
       }
 
@@ -4347,18 +4209,16 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         irs::doc_id_t expected_value = 0;
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc - 1));
-        ASSERT_TRUE(payload->next());
-        const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+        const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
@@ -4371,8 +4231,7 @@ class index_test_case : public tests::index_test_base {
         ++expected_value;
 
         for (; it->next(); ) {
-          ASSERT_TRUE(payload->next());
-          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
           auto expected_value_str = std::to_string(expected_value);
 
           if (expected_value % 2) {
@@ -4387,9 +4246,8 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(MAX_DOCS, expected_value);
       }
 
@@ -4400,18 +4258,16 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         auto expected_doc = MAX_DOCS;
         auto expected_value = MAX_DOCS-1;
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
-        ASSERT_TRUE(payload->next());
-        const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+        const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
         auto expected_value_str  = std::to_string(expected_value);
 
         if (expected_value % 2) {
@@ -4421,9 +4277,8 @@ class index_test_case : public tests::index_test_base {
         ASSERT_EQ(expected_value_str, actual_value_str);
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       }
 
       // seek to before the end + next
@@ -4433,18 +4288,16 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         auto expected_doc = MAX_DOCS-1;
         auto expected_value = expected_doc-1;
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
-        ASSERT_TRUE(payload->next());
-        auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+        auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
         auto expected_value_str  = std::to_string(expected_value);
 
         if (expected_value % 2) {
@@ -4461,14 +4314,12 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_TRUE(it->next());
-        ASSERT_TRUE(payload->next());
         ASSERT_EQ(expected_doc, it->value());
-        ASSERT_EQ(expected_value_str, irs::to_string<irs::string_ref>(payload->value().c_str()));
+        ASSERT_EQ(expected_value_str, irs::to_string<irs::string_ref>(payload->value.c_str()));
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       }
 
       // seek to after the end + next
@@ -4478,25 +4329,21 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS + 1));
-        ASSERT_FALSE(payload->next());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         // can't seek backwards
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS - 1));
-        ASSERT_FALSE(payload->next());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       }
 
       // seek + next(x5)
@@ -4508,11 +4355,10 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         irs::doc_id_t expected_value = 0;
@@ -4524,8 +4370,7 @@ class index_test_case : public tests::index_test_base {
             break;
           }
 
-          ASSERT_TRUE(payload->next());
-          auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
           auto expected_value_str  = std::to_string(expected_value);
 
           if (expected_value % 2) {
@@ -4538,8 +4383,7 @@ class index_test_case : public tests::index_test_base {
           auto next_expected_doc = expected_doc + 1;
           auto next_expected_value = expected_value + 1;
           for (auto i = 0; i < steps_forward && it->next(); ++i) {
-            ASSERT_TRUE(payload->next());
-            actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+            actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
             auto next_expected_value_str  = std::to_string(next_expected_value);
 
             if (next_expected_value % 2) {
@@ -4562,9 +4406,8 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(MAX_DOCS, expected_value);
       }
 
@@ -4583,15 +4426,13 @@ class index_test_case : public tests::index_test_base {
           auto it = column->iterator();
           ASSERT_NE(nullptr, it);
 
-          auto& payload = it->attributes().get<irs::payload_iterator>();
+          auto& payload = it->attributes().get<irs::payload>();
           ASSERT_FALSE(!payload);
-          ASSERT_FALSE(payload->next());
           ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
           ASSERT_EQ(expected_doc, it->seek(expected_doc));
-          ASSERT_TRUE(payload->next());
-          auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
           auto expected_value_str  = std::to_string(expected_value);
 
           if (expected_value % 2) {
@@ -4605,8 +4446,7 @@ class index_test_case : public tests::index_test_base {
           auto next_expected_doc = expected_doc + 1;
           auto next_expected_value = expected_value + 1;
           for (auto i = 0; i < steps_forward && it->next(); ++i) {
-            ASSERT_TRUE(payload->next());
-            actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+            actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
             auto next_expected_value_str  = std::to_string(next_expected_value);
 
             if (next_expected_value % 2) {
@@ -4629,18 +4469,16 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         it->seek(expected_doc);
         expected_doc = min_doc;
         expected_value = expected_doc - 1;
         ASSERT_EQ(min_doc, it->seek(expected_doc));
-        ASSERT_TRUE(payload->next());
-        auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+        auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
         auto expected_value_str  = std::to_string(expected_value);
 
         if (expected_value % 2) {
@@ -4653,8 +4491,7 @@ class index_test_case : public tests::index_test_base {
         auto next_expected_value = expected_value + 1;
         for (auto i = 0; i < steps_forward; ++i) {
           ASSERT_TRUE(it->next());
-          ASSERT_TRUE(payload->next());
-          actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
           auto next_expected_value_str  = std::to_string(next_expected_value);
           if (next_expected_value % 2) {
@@ -4678,18 +4515,16 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = MAX_DOCS;
         irs::doc_id_t expected_value = expected_doc - 1;
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
-        ASSERT_TRUE(payload->next());
-        auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+        auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
         auto expected_value_str  = std::to_string(expected_value);
 
         if (expected_value % 2) {
@@ -4701,8 +4536,7 @@ class index_test_case : public tests::index_test_base {
         auto next_expected_doc = expected_doc + 1;
         auto next_expected_value = expected_value + 1;
         for (auto i = 0; i < steps_forward && it->next(); ++i) {
-          ASSERT_TRUE(payload->next());
-          actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
           auto next_expected_value_str  = std::to_string(next_expected_value);
 
           if (next_expected_value % 2) {
@@ -4778,17 +4612,15 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         irs::doc_id_t expected_value = 0;
         for (; it->next(); ) {
-          ASSERT_TRUE(payload->next());
-          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value.c_str());
           auto expected_value_str = std::to_string(expected_value);
 
           if (expected_value % 2) {
@@ -4802,9 +4634,8 @@ class index_test_case : public tests::index_test_base {
           ++expected_value;
         }
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(MAX_DOCS, expected_value);
       }
     }
@@ -5032,18 +4863,16 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         size_t docs_count = 0;
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         irs::doc_id_t expected_value = 0;
         for (; it->next(); ) {
-          ASSERT_TRUE(payload->next());
-          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value.c_str());
           auto expected_value_str = std::to_string(expected_value);
 
           if (expected_value % 2) {
@@ -5064,9 +4893,8 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(MAX_DOCS, docs_count);
       }
     }
@@ -5131,18 +4959,16 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         size_t docs_count = 0;
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         irs::doc_id_t expected_value = 0;
         for (; it->next(); ) {
-          ASSERT_TRUE(payload->next());
-          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value.c_str());
           auto expected_value_str = std::to_string(expected_value);
 
           if (expected_value % 2) {
@@ -5163,9 +4989,8 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(MAX_DOCS, docs_count);
       }
 
@@ -5250,18 +5075,16 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         size_t docs_count = 0;
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         irs::doc_id_t expected_value = 0;
         for (; it->next(); ) {
-          ASSERT_TRUE(payload->next());
-          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value.c_str());
           auto expected_value_str = std::to_string(expected_value);
 
           if (expected_value % 2) {
@@ -5282,9 +5105,8 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(MAX_DOCS, docs_count);
       }
     }
@@ -5349,11 +5171,10 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         size_t docs_count = 0;
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
@@ -5367,8 +5188,7 @@ class index_test_case : public tests::index_test_base {
             ASSERT_EQ(expected_doc, it->seek(expected_doc));
           }
 
-          ASSERT_TRUE(payload->next());
-          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value.c_str());
           auto expected_value_str = std::to_string(expected_value);
 
           if (expected_value % 2) {
@@ -5383,19 +5203,16 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(expected_doc));
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS + 1));
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(MAX_DOCS, docs_count);
       }
 
@@ -5406,19 +5223,17 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         size_t docs_count = 0;
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         irs::doc_id_t expected_value = 0;
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
-        ASSERT_TRUE(payload->next());
-        const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+        const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
@@ -5437,8 +5252,7 @@ class index_test_case : public tests::index_test_base {
             ++expected_value;
           }
 
-          ASSERT_TRUE(payload->next());
-          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
           auto expected_value_str = std::to_string(expected_value);
 
           if (expected_value % 2) {
@@ -5454,9 +5268,8 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(MAX_DOCS, docs_count);
       }
 
@@ -5467,19 +5280,17 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         size_t docs_count = 0;
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         irs::doc_id_t expected_value = 0;
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc - 1));
-        ASSERT_TRUE(payload->next());
-        const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+        const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
@@ -5498,8 +5309,7 @@ class index_test_case : public tests::index_test_base {
             ++expected_value;
           }
 
-          ASSERT_TRUE(payload->next());
-          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
           auto expected_value_str = std::to_string(expected_value);
 
           if (expected_value % 2) {
@@ -5515,9 +5325,8 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(MAX_DOCS, docs_count);
       }
 
@@ -5528,18 +5337,16 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         auto expected_doc = MAX_DOCS+1;
         auto expected_value = MAX_DOCS;
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
-        ASSERT_TRUE(payload->next());
-        const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+        const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
         auto expected_value_str  = std::to_string(expected_value);
 
         if (expected_value % 2) {
@@ -5549,9 +5356,8 @@ class index_test_case : public tests::index_test_base {
         ASSERT_EQ(expected_value_str, actual_value_str);
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       }
 
       // seek to before the end + next
@@ -5561,18 +5367,16 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         auto expected_doc = MAX_DOCS;
         auto expected_value = expected_doc-1;
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
-        ASSERT_TRUE(payload->next());
-        auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+        auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
         auto expected_value_str  = std::to_string(expected_value);
 
         if (expected_value % 2) {
@@ -5589,14 +5393,12 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_TRUE(it->next());
-        ASSERT_TRUE(payload->next());
         ASSERT_EQ(expected_doc, it->value());
-        ASSERT_EQ(expected_value_str, irs::to_string<irs::string_ref>(payload->value().c_str()));
+        ASSERT_EQ(expected_value_str, irs::to_string<irs::string_ref>(payload->value.c_str()));
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       }
 
       // seek to after the end + next
@@ -5606,25 +5408,21 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS + 2));
-        ASSERT_FALSE(payload->next());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         // can't seek backwards
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS));
-        ASSERT_FALSE(payload->next());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       }
 
       // seek + next(x5)
@@ -5636,11 +5434,10 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         size_t docs_count = 0;
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
@@ -5665,8 +5462,7 @@ class index_test_case : public tests::index_test_base {
 
           ++docs_count;
 
-          ASSERT_TRUE(payload->next());
-          auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
           auto expected_value_str  = std::to_string(expected_value);
 
           if (expected_value % 2) {
@@ -5684,8 +5480,7 @@ class index_test_case : public tests::index_test_base {
               ++next_expected_value;
             }
 
-            ASSERT_TRUE(payload->next());
-            actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+            actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
             auto next_expected_value_str  = std::to_string(next_expected_value);
 
             if (next_expected_value % 2) {
@@ -5709,9 +5504,8 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(MAX_DOCS, docs_count);
       }
 
@@ -5730,16 +5524,14 @@ class index_test_case : public tests::index_test_base {
           auto it = column->iterator();
           ASSERT_NE(nullptr, it);
 
-          auto& payload = it->attributes().get<irs::payload_iterator>();
+          auto& payload = it->attributes().get<irs::payload>();
           ASSERT_FALSE(!payload);
-          ASSERT_FALSE(payload->next());
           ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
           ASSERT_EQ(expected_doc, it->seek(expected_doc));
           ASSERT_EQ(expected_doc, it->seek(expected_doc));
-          ASSERT_TRUE(payload->next());
-          auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
           auto expected_value_str  = std::to_string(expected_value);
 
           if (expected_value % 2) {
@@ -5758,8 +5550,7 @@ class index_test_case : public tests::index_test_base {
               ++next_expected_value;
             }
 
-            ASSERT_TRUE(payload->next());
-            actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+            actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
             auto next_expected_value_str  = std::to_string(next_expected_value);
 
             if (next_expected_value % 2) {
@@ -5787,18 +5578,16 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         it->seek(expected_doc);
         expected_doc = min_doc;
         expected_value = expected_doc - 1;
         ASSERT_EQ(min_doc, it->seek(expected_doc));
-        ASSERT_TRUE(payload->next());
-        auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+        auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
         auto expected_value_str  = std::to_string(expected_value);
 
         if (expected_value % 2) {
@@ -5811,8 +5600,7 @@ class index_test_case : public tests::index_test_base {
         auto next_expected_value = expected_value + 1;
         for (auto i = 0; i < steps_forward; ++i) {
           ASSERT_TRUE(it->next());
-          ASSERT_TRUE(payload->next());
-          actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
           auto next_expected_value_str  = std::to_string(next_expected_value);
           if (next_expected_value % 2) {
@@ -5836,18 +5624,16 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = MAX_DOCS;
         irs::doc_id_t expected_value = expected_doc - 1;
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
-        ASSERT_TRUE(payload->next());
-        auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+        auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
         auto expected_value_str  = std::to_string(expected_value);
 
         if (expected_value % 2) {
@@ -5864,8 +5650,7 @@ class index_test_case : public tests::index_test_base {
             ++next_expected_value;
           }
 
-          ASSERT_TRUE(payload->next());
-          actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
           auto next_expected_value_str  = std::to_string(next_expected_value);
 
           if (next_expected_value % 2) {
@@ -5964,18 +5749,16 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         size_t docs_count = 0;
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         irs::doc_id_t expected_value = 0;
         for (; it->next(); ) {
-          ASSERT_TRUE(payload->next());
-          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value.c_str());
           auto expected_value_str = std::to_string(expected_value);
 
           if (expected_value % 2) {
@@ -5995,9 +5778,8 @@ class index_test_case : public tests::index_test_base {
           }
         }
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(MAX_DOCS, docs_count);
       }
     }
@@ -6230,17 +6012,15 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         size_t count = 0;
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         for (; it->next(); ) {
-          ASSERT_TRUE(payload->next());
-          const auto actual_data = payload->value();
+          const auto actual_data = payload->value;
 
           ASSERT_EQ(expected_doc, it->value());
 
@@ -6259,9 +6039,8 @@ class index_test_case : public tests::index_test_base {
           }
         }
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(MAX_DOCS, count);
       }
     }
@@ -6446,17 +6225,15 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         size_t count = 0;
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         for (; it->next(); ) {
-          ASSERT_TRUE(payload->next());
-          const auto actual_data = payload->value();
+          const auto actual_data = payload->value;
 
           ASSERT_EQ(expected_doc, it->value());
 
@@ -6472,9 +6249,8 @@ class index_test_case : public tests::index_test_base {
           }
         }
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(MAX_DOCS, count);
       }
     }
@@ -6674,18 +6450,16 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         size_t count = 0;
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         irs::doc_id_t expected_value = 0;
         for (; it->next(); ) {
-          ASSERT_TRUE(payload->next());
-          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
           ASSERT_EQ(expected_doc, it->value());
           ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
@@ -6700,9 +6474,8 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(irs::doc_id_t(1+MAX_DOCS), expected_value);
       }
     }
@@ -6762,18 +6535,16 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         size_t count = 0;
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         irs::doc_id_t expected_value = 0;
         for (; it->next(); ) {
-          ASSERT_TRUE(payload->next());
-          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
           ASSERT_EQ(expected_doc, it->value());
           ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
@@ -6788,9 +6559,8 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(irs::doc_id_t(1+MAX_DOCS), expected_value);
       }
 
@@ -6859,18 +6629,16 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         size_t count = 0;
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         irs::doc_id_t expected_value = 0;
         for (; it->next(); ) {
-          ASSERT_TRUE(payload->next());
-          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
           ASSERT_EQ(expected_doc, it->value());
           ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
@@ -6885,9 +6653,8 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(irs::doc_id_t(1+MAX_DOCS), expected_value);
       }
     }
@@ -6947,11 +6714,10 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         size_t count = 0;
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
@@ -6964,8 +6730,7 @@ class index_test_case : public tests::index_test_base {
           } else {
             ASSERT_EQ(expected_doc, it->seek(expected_doc));
           }
-          ASSERT_TRUE(payload->next());
-          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
           ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
 
           ++expected_doc;
@@ -6973,19 +6738,16 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(expected_doc));
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS + 1));
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(1+MAX_DOCS, expected_value);
       }
 
@@ -6996,18 +6758,16 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         irs::doc_id_t expected_value = 0;
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
-        ASSERT_TRUE(payload->next());
-        const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+        const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
 
         ++expected_doc;
@@ -7019,8 +6779,7 @@ class index_test_case : public tests::index_test_base {
             ++expected_value;
           }
 
-          ASSERT_TRUE(payload->next());
-          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
           ASSERT_EQ(expected_doc, it->value());
           ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
@@ -7030,9 +6789,8 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(1+MAX_DOCS, expected_value);
       }
 
@@ -7043,18 +6801,16 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         irs::doc_id_t expected_value = 0;
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc - 1));
-        ASSERT_TRUE(payload->next());
-        const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+        const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
 
         ++expected_doc;
@@ -7066,8 +6822,7 @@ class index_test_case : public tests::index_test_base {
             ++expected_value;
           }
 
-          ASSERT_TRUE(payload->next());
-          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
           ASSERT_EQ(expected_doc, it->value());
           ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
@@ -7076,9 +6831,8 @@ class index_test_case : public tests::index_test_base {
           ++expected_value;
         }
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(1+MAX_DOCS, expected_value);
       }
 
@@ -7089,24 +6843,21 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         auto expected_doc = MAX_DOCS+1;
         auto expected_value = MAX_DOCS;
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
-        ASSERT_TRUE(payload->next());
-        const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+        const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       }
 
       // seek to before the end + next
@@ -7116,32 +6867,28 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         auto expected_doc = MAX_DOCS;
         auto expected_value = MAX_DOCS-1;
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
-        ASSERT_TRUE(payload->next());
-        auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+        auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
 
         ++expected_doc;
         ++expected_value;
         ASSERT_TRUE(it->next());
-        ASSERT_TRUE(payload->next());
-        actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+        actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
         ASSERT_EQ(expected_doc, it->value());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       }
 
       // seek to after the end + next
@@ -7151,25 +6898,21 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS + 2));
-        ASSERT_FALSE(payload->next());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         // can't seek backwards
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS - 1));
-        ASSERT_FALSE(payload->next());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       }
 
       // FIXME revisit
@@ -7180,7 +6923,7 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto payload = it->attributes().get<irs::payload_iterator>();
+        auto payload = it->attributes().get<irs::payload>();
         ASSERT_TRUE(payload);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
 
@@ -7189,8 +6932,7 @@ class index_test_case : public tests::index_test_base {
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc-1));
         ASSERT_EQ(expected_doc, it->value());
-        ASSERT_TRUE(payload->next());
-        auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+        auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
 
         for (; it->next(); ) {
@@ -7198,8 +6940,7 @@ class index_test_case : public tests::index_test_base {
           ++expected_value;
 
           ASSERT_EQ(expected_doc, it->value());
-          ASSERT_TRUE(payload->next());
-          auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
           ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
         }
 
@@ -7216,11 +6957,10 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         irs::doc_id_t expected_value = 0;
@@ -7242,8 +6982,7 @@ class index_test_case : public tests::index_test_base {
             break;
           }
 
-          ASSERT_TRUE(payload->next());
-          auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
           ASSERT_EQ(expected_doc, it->value());
           ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
 
@@ -7255,8 +6994,7 @@ class index_test_case : public tests::index_test_base {
               ++next_expected_value;
             }
 
-            ASSERT_TRUE(payload->next());
-            actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+            actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
             ASSERT_EQ(next_expected_doc, it->value());
             ASSERT_EQ(next_expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
@@ -7274,9 +7012,8 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(1+MAX_DOCS, expected_value);
       }
 
@@ -7295,11 +7032,10 @@ class index_test_case : public tests::index_test_base {
           auto it = column->iterator();
           ASSERT_NE(nullptr, it);
 
-          auto& payload = it->attributes().get<irs::payload_iterator>();
+          auto& payload = it->attributes().get<irs::payload>();
           ASSERT_FALSE(!payload);
-          ASSERT_FALSE(payload->next());
           ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
           if (expected_doc == 1025) {
             ASSERT_EQ(expected_doc+1, it->seek(expected_doc));
@@ -7313,8 +7049,7 @@ class index_test_case : public tests::index_test_base {
             }
           }
 
-          ASSERT_TRUE(payload->next());
-          auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
           ++docs_count;
 
@@ -7328,8 +7063,7 @@ class index_test_case : public tests::index_test_base {
               ++next_expected_value;
             }
 
-            ASSERT_TRUE(payload->next());
-            actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+            actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
             ASSERT_EQ(next_expected_doc, it->value());
             ASSERT_EQ(next_expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
@@ -7353,26 +7087,23 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         it->seek(expected_doc);
         expected_doc = min_doc;
         expected_value = expected_doc - 1;
         ASSERT_EQ(min_doc, it->seek(expected_doc));
-        ASSERT_TRUE(payload->next());
-        auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+        auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
 
         auto next_expected_doc = expected_doc + 1;
         auto next_expected_value = expected_value + 1;
         for (auto i = 0; i < steps_forward; ++i) {
           ASSERT_TRUE(it->next());
-          ASSERT_TRUE(payload->next());
-          actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
           ASSERT_EQ(next_expected_doc, it->value());
           ASSERT_EQ(next_expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
@@ -7391,11 +7122,10 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = MAX_DOCS;
         irs::doc_id_t expected_value = expected_doc - 1;
@@ -7407,8 +7137,7 @@ class index_test_case : public tests::index_test_base {
         } else {
           ASSERT_EQ(expected_doc, it->seek(expected_doc));
         }
-        ASSERT_TRUE(payload->next());
-        auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+        auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
 
         auto next_expected_doc = expected_doc + 1;
@@ -7419,8 +7148,7 @@ class index_test_case : public tests::index_test_base {
             next_expected_value++;
           }
 
-          ASSERT_TRUE(payload->next());
-          actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
           ASSERT_EQ(next_expected_doc, it->value());
           ASSERT_EQ(next_expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
@@ -7498,18 +7226,16 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         size_t count = 0;
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         irs::doc_id_t expected_value = 0;
         for (; it->next(); ) {
-          ASSERT_TRUE(payload->next());
-          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
           ASSERT_EQ(expected_doc, it->value());
           ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
@@ -7524,9 +7250,8 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(irs::doc_id_t(1+MAX_DOCS), expected_value);
       }
     }
@@ -7708,7 +7433,7 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto payload = it->attributes().get<irs::payload_iterator>();
+        auto payload = it->attributes().get<irs::payload>();
         ASSERT_TRUE(payload);
 
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
@@ -7717,8 +7442,7 @@ class index_test_case : public tests::index_test_base {
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         for (; it->next(); ) {
           ASSERT_EQ(expected_doc, it->value());
-          ASSERT_TRUE(payload->next());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value()); // mask block has no data
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value); // mask block has no data
           ++expected_doc;
           ++docs_count;
 
@@ -7788,7 +7512,7 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto payload = it->attributes().get<irs::payload_iterator>();
+        auto payload = it->attributes().get<irs::payload>();
         ASSERT_TRUE(payload);
 
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
@@ -7797,8 +7521,7 @@ class index_test_case : public tests::index_test_base {
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         for (; it->next(); ) {
           ASSERT_EQ(expected_doc, it->value());
-          ASSERT_TRUE(payload->next());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value()); // mask block has no data
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value); // mask block has no data
           ++expected_doc;
           ++docs_count;
 
@@ -7878,7 +7601,7 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto payload = it->attributes().get<irs::payload_iterator>();
+        auto payload = it->attributes().get<irs::payload>();
         ASSERT_TRUE(payload);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
 
@@ -7886,8 +7609,7 @@ class index_test_case : public tests::index_test_base {
         irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
         for (; it->next(); ) {
           ASSERT_EQ(expected_doc, it->value());
-          ASSERT_TRUE(payload->next());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value()); // mask block has no data
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value); // mask block has no data
           ++expected_doc;
           ++docs_count;
 
@@ -7957,7 +7679,7 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto payload = it->attributes().get<irs::payload_iterator>();
+        auto payload = it->attributes().get<irs::payload>();
         ASSERT_TRUE(payload);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
 
@@ -7970,8 +7692,7 @@ class index_test_case : public tests::index_test_base {
           } else {
             ASSERT_EQ(expected_doc, it->seek(expected_doc));
           }
-          ASSERT_TRUE(payload->next());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value()); // mask block has no data
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value); // mask block has no data
           ++expected_doc;
           ++docs_count;
         }
@@ -7992,7 +7713,7 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto payload = it->attributes().get<irs::payload_iterator>();
+        auto payload = it->attributes().get<irs::payload>();
         ASSERT_TRUE(payload);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
 
@@ -8005,8 +7726,7 @@ class index_test_case : public tests::index_test_base {
 
         for (; it->next(); ) {
           ASSERT_EQ(expected_doc, it->value());
-          ASSERT_TRUE(payload->next());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value()); // mask block has no data
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value); // mask block has no data
           ++expected_doc;
           ++docs_count;
 
@@ -8027,7 +7747,7 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto payload = it->attributes().get<irs::payload_iterator>();
+        auto payload = it->attributes().get<irs::payload>();
         ASSERT_TRUE(payload);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
 
@@ -8040,8 +7760,7 @@ class index_test_case : public tests::index_test_base {
 
         for (; it->next(); ) {
           ASSERT_EQ(expected_doc, it->value());
-          ASSERT_TRUE(payload->next());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value()); // mask block has no data
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value); // mask block has no data
           ++expected_doc;
           ++docs_count;
 
@@ -8062,14 +7781,13 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto payload = it->attributes().get<irs::payload_iterator>();
+        auto payload = it->attributes().get<irs::payload>();
         ASSERT_TRUE(payload);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
 
         ASSERT_EQ(MAX_DOCS+1, it->seek(MAX_DOCS+1));
 
-        ASSERT_TRUE(payload->next());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value()); // mask block has no data
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value); // mask block has no data
         ASSERT_FALSE(it->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
       }
@@ -8081,20 +7799,18 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto payload = it->attributes().get<irs::payload_iterator>();
+        auto payload = it->attributes().get<irs::payload>();
         ASSERT_TRUE(payload);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
 
         ASSERT_EQ(MAX_DOCS, it->seek(MAX_DOCS));
 
-        ASSERT_TRUE(payload->next());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value()); // mask block has no data
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value); // mask block has no data
 
         ASSERT_TRUE(it->next());
         ASSERT_EQ(MAX_DOCS+1, it->value());
 
-        ASSERT_TRUE(payload->next());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value()); // mask block has no data
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value); // mask block has no data
 
         ASSERT_FALSE(it->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
@@ -8107,17 +7823,15 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto payload = it->attributes().get<irs::payload_iterator>();
+        auto payload = it->attributes().get<irs::payload>();
         ASSERT_TRUE(payload);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
 
         it->seek(MAX_DOCS+2);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_FALSE(payload->next());
 
         // can't seek backwards
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS));
-        ASSERT_FALSE(payload->next());
 
         ASSERT_FALSE(it->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
@@ -8130,7 +7844,7 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto payload = it->attributes().get<irs::payload_iterator>();
+        auto payload = it->attributes().get<irs::payload>();
         ASSERT_TRUE(payload);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
 
@@ -8145,8 +7859,7 @@ class index_test_case : public tests::index_test_base {
           ++docs_count;
 
           ASSERT_EQ(expected_doc, it->value());
-          ASSERT_TRUE(payload->next());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value()); // mask block has no data
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value); // mask block has no data
         }
 
         ASSERT_FALSE(it->next());
@@ -8162,7 +7875,7 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto payload = it->attributes().get<irs::payload_iterator>();
+        auto payload = it->attributes().get<irs::payload>();
         ASSERT_TRUE(payload);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
 
@@ -8185,8 +7898,7 @@ class index_test_case : public tests::index_test_base {
             break;
           }
 
-          ASSERT_TRUE(payload->next());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value()); // mask block has no data
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value); // mask block has no data
 
           ++docs_count;
           ASSERT_EQ(expected_doc, it->value());
@@ -8195,8 +7907,7 @@ class index_test_case : public tests::index_test_base {
           for (auto i = 0; i < steps_forward && it->next(); ++i) {
             ASSERT_EQ(next_expected_doc, it->value());
 
-            ASSERT_TRUE(payload->next());
-            ASSERT_EQ(irs::bytes_ref::NIL, payload->value()); // mask block has no data
+            ASSERT_EQ(irs::bytes_ref::NIL, payload->value); // mask block has no data
 
             // can't seek backwards
             ASSERT_EQ(next_expected_doc, it->seek(expected_doc));
@@ -8231,7 +7942,7 @@ class index_test_case : public tests::index_test_base {
           auto it = column->iterator();
           ASSERT_NE(nullptr, it);
 
-          auto payload = it->attributes().get<irs::payload_iterator>();
+          auto payload = it->attributes().get<irs::payload>();
           ASSERT_TRUE(payload);
           ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
 
@@ -8251,8 +7962,7 @@ class index_test_case : public tests::index_test_base {
             }
 
             ASSERT_EQ(next_expected_doc, it->value());
-            ASSERT_TRUE(payload->next());
-            ASSERT_EQ(irs::bytes_ref::NIL, payload->value()); // mask block has no data
+            ASSERT_EQ(irs::bytes_ref::NIL, payload->value); // mask block has no data
             ++next_expected_doc;
           }
 
@@ -8268,15 +7978,14 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto payload = it->attributes().get<irs::payload_iterator>();
+        auto payload = it->attributes().get<irs::payload>();
         ASSERT_TRUE(payload);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
 
         ASSERT_EQ(min_doc, it->seek(expected_doc));
         expected_doc = min_doc;
         ASSERT_EQ(min_doc, it->seek(expected_doc));
-        ASSERT_TRUE(payload->next());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value()); // mask block has no data
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value); // mask block has no data
 
         auto next_expected_doc = expected_doc + 1;
         for (auto i = 0; i < steps_forward; ++i) {
@@ -8298,21 +8007,19 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto payload = it->attributes().get<irs::payload_iterator>();
+        auto payload = it->attributes().get<irs::payload>();
         ASSERT_TRUE(payload);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
 
         irs::doc_id_t expected_doc = MAX_DOCS;
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
-        ASSERT_TRUE(payload->next());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value()); // mask block has no data
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value); // mask block has no data
 
         auto next_expected_doc = expected_doc + 1;
         for (auto i = 0; i < steps_forward && it->next(); ++i) {
           ASSERT_EQ(next_expected_doc, it->value());
-          ASSERT_TRUE(payload->next());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value()); // mask block has no data
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value); // mask block has no data
           ++next_expected_doc;
         }
 
@@ -8383,7 +8090,7 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto payload = it->attributes().get<irs::payload_iterator>();
+        auto payload = it->attributes().get<irs::payload>();
         ASSERT_TRUE(payload);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
 
@@ -8394,8 +8101,7 @@ class index_test_case : public tests::index_test_base {
             ++expected_doc; // gap
           }
 
-          ASSERT_TRUE(payload->next());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value()); // mask block has no data
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value); // mask block has no data
 
           ASSERT_EQ(expected_doc, it->value());
           ++expected_doc;
@@ -8589,18 +8295,16 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = 2;
         irs::doc_id_t expected_value = 1;
         size_t docs = 0;
         for (; it->next(); ) {
-          ASSERT_TRUE(payload->next());
-          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value.c_str());
           auto expected_value_str  = std::to_string(expected_value);
 
           if (expected_value % 3) {
@@ -8616,9 +8320,8 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(inserted, docs);
       }
     }
@@ -8678,18 +8381,16 @@ class index_test_case : public tests::index_test_base {
         ASSERT_NE(nullptr, it);
 
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = 2;
         irs::doc_id_t expected_value = 1;
         size_t docs = 0;
         for (; it->next(); ) {
-          ASSERT_TRUE(payload->next());
-          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value.c_str());
           auto expected_value_str  = std::to_string(expected_value);
 
           if (expected_value % 3) {
@@ -8705,9 +8406,8 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(inserted, docs);
       }
 
@@ -8774,18 +8474,16 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = 2;
         irs::doc_id_t expected_value = 1;
         size_t docs = 0;
         for (; it->next(); ) {
-          ASSERT_TRUE(payload->next());
-          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value.c_str());
           auto expected_value_str  = std::to_string(expected_value);
 
           if (expected_value % 3) {
@@ -8801,9 +8499,8 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(inserted, docs);
       }
     }
@@ -8862,11 +8559,10 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = 2;
         irs::doc_id_t expected_value = 1;
@@ -8878,13 +8574,11 @@ class index_test_case : public tests::index_test_base {
           }
 
           ASSERT_EQ(expected_doc, it->seek(expected_doc));
-          ASSERT_TRUE(payload->next());
-          auto actual_str_value = irs::to_string<irs::string_ref>(payload->value().c_str());
+          auto actual_str_value = irs::to_string<irs::string_ref>(payload->value.c_str());
           ASSERT_EQ(expected_value_str, actual_str_value);
 
           ASSERT_EQ(expected_doc, it->seek(expected_value)); // seek before the existing key (value should remain the same)
-          ASSERT_TRUE(payload->next());
-          actual_str_value = irs::to_string<irs::string_ref>(payload->value().c_str());
+          actual_str_value = irs::to_string<irs::string_ref>(payload->value.c_str());
           ASSERT_EQ(expected_value_str, actual_str_value);
 
           expected_doc += 2;
@@ -8893,19 +8587,16 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(expected_doc));
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS + 1));
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(inserted, docs);
       }
 
@@ -8916,11 +8607,10 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = 2;
         irs::doc_id_t expected_value = 1;
@@ -8932,13 +8622,11 @@ class index_test_case : public tests::index_test_base {
           }
 
           ASSERT_EQ(expected_doc, it->seek(expected_value));
-          ASSERT_TRUE(payload->next());
-          auto actual_str_value = irs::to_string<irs::string_ref>(payload->value().c_str());
+          auto actual_str_value = irs::to_string<irs::string_ref>(payload->value.c_str());
           ASSERT_EQ(expected_value_str, actual_str_value);
 
           ASSERT_EQ(expected_doc, it->seek(expected_doc)); // seek to the existing key (value should remain the same)
-          ASSERT_TRUE(payload->next());
-          actual_str_value = irs::to_string<irs::string_ref>(payload->value().c_str());
+          actual_str_value = irs::to_string<irs::string_ref>(payload->value.c_str());
           ASSERT_EQ(expected_value_str, actual_str_value);
 
           expected_doc += 2;
@@ -8947,19 +8635,16 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(expected_doc));
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS + 1));
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(inserted, docs);
       }
 
@@ -8970,19 +8655,17 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = 2;
         irs::doc_id_t expected_value = 1;
         size_t docs = 0;
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
-        ASSERT_TRUE(payload->next());
-        const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+        const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
         auto expected_value_str  = std::to_string(expected_value);
 
         if (expected_value % 3) {
@@ -8996,8 +8679,7 @@ class index_test_case : public tests::index_test_base {
         ++docs;
 
         for (; it->next(); ) {
-          ASSERT_TRUE(payload->next());
-          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
           auto expected_value_str  = std::to_string(expected_value);
 
           if (expected_value % 3) {
@@ -9013,9 +8695,8 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(inserted, docs);
       }
 
@@ -9026,19 +8707,17 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = 2;
         irs::doc_id_t expected_value = 1;
         size_t docs = 0;
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc - 1));
-        ASSERT_TRUE(payload->next());
-        const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+        const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
         auto expected_value_str  = std::to_string(expected_value);
 
         if (expected_value % 3) {
@@ -9052,8 +8731,7 @@ class index_test_case : public tests::index_test_base {
         ++docs;
 
         for (; it->next(); ) {
-          ASSERT_TRUE(payload->next());
-          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
           auto expected_value_str  = std::to_string(expected_value);
 
           if (expected_value % 3) {
@@ -9069,9 +8747,8 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(inserted, docs);
       }
 
@@ -9082,11 +8759,10 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         auto expected_doc = MAX_DOCS;
         auto expected_value = MAX_DOCS-1;
@@ -9096,15 +8772,13 @@ class index_test_case : public tests::index_test_base {
         }
 
         it->seek(expected_doc);
-        ASSERT_TRUE(payload->next());
-        const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+        const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
         ASSERT_EQ(expected_doc, it->value());
         ASSERT_EQ(expected_value_str, actual_value_str);
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       }
 
       // seek to before the end + next
@@ -9114,11 +8788,10 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         auto expected_value = MAX_DOCS-1;
         auto expected_value_str  = std::to_string(expected_value);
@@ -9127,15 +8800,13 @@ class index_test_case : public tests::index_test_base {
         }
 
         it->seek(expected_value);
-        ASSERT_TRUE(payload->next());
-        const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+        const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
         ASSERT_EQ(MAX_DOCS, it->value());
         ASSERT_EQ(expected_value_str, actual_value_str);
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       }
 
       // seek to after the end + next
@@ -9145,25 +8816,21 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS + 1));
-        ASSERT_FALSE(payload->next());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         // can't seek backwards
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS - 1));
-        ASSERT_FALSE(payload->next());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_FALSE(it->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_FALSE(payload->next());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       }
 
       // seek + next(x5)
@@ -9175,11 +8842,10 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = 2;
         irs::doc_id_t expected_value = 1;
@@ -9192,8 +8858,7 @@ class index_test_case : public tests::index_test_base {
             break;
           }
 
-          ASSERT_TRUE(payload->next());
-          auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
           auto expected_value_str  = std::to_string(expected_value);
 
           if (expected_value % 3) {
@@ -9208,8 +8873,7 @@ class index_test_case : public tests::index_test_base {
           auto next_expected_doc = expected_doc + 2;
           auto next_expected_value = expected_value + 2;
           for (auto i = 0; i < steps_forward && it->next(); ++i) {
-            ASSERT_TRUE(payload->next());
-            actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+            actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
             auto next_expected_value_str  = std::to_string(next_expected_value);
 
             if (next_expected_value % 3) {
@@ -9233,9 +8897,8 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(inserted, docs);
       }
 
@@ -9254,15 +8917,13 @@ class index_test_case : public tests::index_test_base {
           auto it = column->iterator();
           ASSERT_NE(nullptr, it);
 
-          auto& payload = it->attributes().get<irs::payload_iterator>();
+          auto& payload = it->attributes().get<irs::payload>();
           ASSERT_FALSE(!payload);
-          ASSERT_FALSE(payload->next());
           ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
           ASSERT_EQ(expected_doc, it->seek(expected_doc));
-          ASSERT_TRUE(payload->next());
-          auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
           auto expected_value_str  = std::to_string(expected_value);
 
           if (expected_value % 3) {
@@ -9276,8 +8937,7 @@ class index_test_case : public tests::index_test_base {
           auto next_expected_doc = expected_doc + 2;
           auto next_expected_value = expected_value + 2;
           for (auto i = 0; i < steps_forward && it->next(); ++i) {
-            ASSERT_TRUE(payload->next());
-            actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+            actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
             auto next_expected_value_str  = std::to_string(next_expected_value);
 
             if (next_expected_value % 3) {
@@ -9301,18 +8961,16 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         it->seek(expected_doc);
         expected_doc = min_doc;
         expected_value = expected_doc - 1;
         ASSERT_EQ(min_doc, it->seek(expected_doc));
-        ASSERT_TRUE(payload->next());
-        auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+        auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
         auto expected_value_str  = std::to_string(expected_value);
 
         if (expected_value % 3) {
@@ -9325,8 +8983,7 @@ class index_test_case : public tests::index_test_base {
         auto next_expected_value = expected_value + 2;
         for (auto i = 0; i < steps_forward; ++i) {
           ASSERT_TRUE(it->next());
-          ASSERT_TRUE(payload->next());
-          actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
           auto next_expected_value_str  = std::to_string(next_expected_value);
           if (next_expected_value % 3) {
@@ -9350,18 +9007,16 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = MAX_DOCS;
         irs::doc_id_t expected_value = expected_doc - 1;
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
-        ASSERT_TRUE(payload->next());
-        auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+        auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
         auto expected_value_str  = std::to_string(expected_value);
 
         if (expected_value % 3) {
@@ -9373,8 +9028,7 @@ class index_test_case : public tests::index_test_base {
         auto next_expected_doc = expected_doc + 2;
         auto next_expected_value = expected_value + 2;
         for (auto i = 0; i < steps_forward && it->next(); ++i) {
-          ASSERT_TRUE(payload->next());
-          actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+          actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
           auto next_expected_value_str  = std::to_string(next_expected_value);
 
           if (next_expected_value % 3) {
@@ -9399,19 +9053,17 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = 2;
         irs::doc_id_t expected_value = 1;
         size_t docs = 0;
         for (; expected_doc <= MAX_DOCS; ) {
           ASSERT_EQ(expected_doc, it->seek(expected_doc - 1));
-          ASSERT_TRUE(payload->next());
-          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value.c_str());
           auto expected_value_str  = std::to_string(expected_value);
 
           if (expected_value % 3) {
@@ -9426,19 +9078,16 @@ class index_test_case : public tests::index_test_base {
         }
 
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(expected_doc));
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS + 1));
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       }
 
       // read values
@@ -9504,18 +9153,16 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         irs::doc_id_t expected_doc = 2;
         irs::doc_id_t expected_value = 1;
         size_t docs = 0;
         for (; it->next(); ) {
-          ASSERT_TRUE(payload->next());
-          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value.c_str());
           auto expected_value_str  = std::to_string(expected_value);
 
           if (expected_value % 3) {
@@ -9530,9 +9177,8 @@ class index_test_case : public tests::index_test_base {
           ++docs;
         }
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(inserted, docs);
       }
     }
@@ -10020,11 +9666,10 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         std::vector<std::pair<irs::doc_id_t, irs::string_ref>> expected_values = {
           { 1, "A" }, { 2, "B" }, { 3, "C" }, { 4, "D" }
@@ -10032,18 +9677,16 @@ class index_test_case : public tests::index_test_base {
 
         size_t i = 0;
         for (; it->next(); ++i) {
-          ASSERT_TRUE(payload->next());
           const auto& expected_value = expected_values[i];
-          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value.c_str());
 
           ASSERT_EQ(expected_value.first, it->value());
           ASSERT_EQ(expected_value.second, actual_str_value);
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(i, expected_values.size());
       }
 
@@ -10072,11 +9715,10 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         std::vector<std::pair<irs::doc_id_t, irs::string_ref>> expected_values = {
           { 1, "abcd" }, { 4, "abcde" }
@@ -10084,18 +9726,16 @@ class index_test_case : public tests::index_test_base {
 
         size_t i = 0;
         for (; it->next(); ++i) {
-          ASSERT_TRUE(payload->next());
           const auto& expected_value = expected_values[i];
-          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value.c_str());
 
           ASSERT_EQ(expected_value.first, it->value());
           ASSERT_EQ(expected_value.second, actual_str_value);
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(i, expected_values.size());
       }
     }
@@ -10121,11 +9761,10 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         std::vector<std::pair<irs::doc_id_t, irs::string_ref>> expected_values = {
           { 1, "A" }, { 2, "B" }, { 3, "C" }, { 4, "D" }
@@ -10133,18 +9772,16 @@ class index_test_case : public tests::index_test_base {
 
         size_t i = 0;
         for (; it->next(); ++i) {
-          ASSERT_TRUE(payload->next());
           const auto& expected_value = expected_values[i];
-          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value.c_str());
 
           ASSERT_EQ(expected_value.first, it->value());
           ASSERT_EQ(expected_value.second, actual_str_value);
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(i, expected_values.size());
       }
 
@@ -10173,11 +9810,10 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         std::vector<std::pair<irs::doc_id_t, irs::string_ref>> expected_values = {
           { 1, "A" }, { 2, "B" }, { 3, "C" }, { 4, "D" }
@@ -10185,18 +9821,16 @@ class index_test_case : public tests::index_test_base {
 
         size_t i = 0;
         for (; it->next(); ++i) {
-          ASSERT_TRUE(payload->next());
           const auto& expected_value = expected_values[i];
-          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value.c_str());
 
           ASSERT_EQ(expected_value.first, it->value());
           ASSERT_EQ(expected_value.second, actual_str_value);
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(i, expected_values.size());
       }
 
@@ -10207,11 +9841,10 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         std::vector<std::pair<irs::doc_id_t, irs::string_ref>> expected_values = {
           { 1, "abcd" }, { 4, "abcde" }
@@ -10219,18 +9852,16 @@ class index_test_case : public tests::index_test_base {
 
         size_t i = 0;
         for (; it->next(); ++i) {
-          ASSERT_TRUE(payload->next());
           const auto& expected_value = expected_values[i];
-          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value.c_str());
 
           ASSERT_EQ(expected_value.first, it->value());
           ASSERT_EQ(expected_value.second, actual_str_value);
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(i, expected_values.size());
       }
 
@@ -10259,11 +9890,10 @@ class index_test_case : public tests::index_test_base {
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
 
-        auto& payload = it->attributes().get<irs::payload_iterator>();
+        auto& payload = it->attributes().get<irs::payload>();
         ASSERT_FALSE(!payload);
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
         std::vector<std::pair<irs::doc_id_t, irs::string_ref>> expected_values = {
           { 1, "abcd" }, { 4, "abcde" }
@@ -10271,18 +9901,16 @@ class index_test_case : public tests::index_test_base {
 
         size_t i = 0;
         for (; it->next(); ++i) {
-          ASSERT_TRUE(payload->next());
           const auto& expected_value = expected_values[i];
-          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value().c_str());
+          const auto actual_str_value = irs::to_string<irs::string_ref>(payload->value.c_str());
 
           ASSERT_EQ(expected_value.first, it->value());
           ASSERT_EQ(expected_value.second, actual_str_value);
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(i, expected_values.size());
       }
     }
@@ -10441,11 +10069,10 @@ class index_test_case : public tests::index_test_base {
           auto it = column->iterator();
           ASSERT_NE(nullptr, it);
 
-          auto& payload = it->attributes().get<irs::payload_iterator>();
+          auto& payload = it->attributes().get<irs::payload>();
           ASSERT_FALSE(!payload);
-          ASSERT_FALSE(payload->next());
           ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
           for (; it->next(); ) {
             ++expected_id;
@@ -10454,17 +10081,15 @@ class index_test_case : public tests::index_test_base {
             auto* field = doc->stored.get<tests::templates::string_field>(column_name);
             ASSERT_NE(nullptr, field);
 
-            ASSERT_TRUE(payload->next());
-            const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+            const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
             ASSERT_EQ(expected_id, it->value());
             ASSERT_EQ(field->value(), actual_value_str);
           }
 
           ASSERT_FALSE(it->next());
-          ASSERT_FALSE(payload->next());
           ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
           ASSERT_EQ(docs_count, expected_id);
         }
       }
@@ -10562,11 +10187,10 @@ class index_test_case : public tests::index_test_base {
           auto it = column->iterator();
           ASSERT_NE(nullptr, it);
 
-          auto& payload = it->attributes().get<irs::payload_iterator>();
+          auto& payload = it->attributes().get<irs::payload>();
           ASSERT_FALSE(!payload);
-          ASSERT_FALSE(payload->next());
           ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
           for (; it->next(); ) {
             ++expected_id;
@@ -10574,17 +10198,15 @@ class index_test_case : public tests::index_test_base {
             auto* doc = gen.next();
             auto* field = doc->stored.get<tests::templates::string_field>(column_name);
             ASSERT_NE(nullptr, field);
-            ASSERT_TRUE(payload->next());
-            const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+            const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
             ASSERT_EQ(expected_id, it->value());
             ASSERT_EQ(field->value(), actual_value_str);
           }
 
           ASSERT_FALSE(it->next());
-          ASSERT_FALSE(payload->next());
           ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
           ASSERT_EQ(docs_count, expected_id);
         }
       }
@@ -10657,11 +10279,10 @@ class index_test_case : public tests::index_test_base {
           auto it = column->iterator();
           ASSERT_NE(nullptr, it);
 
-          auto& payload = it->attributes().get<irs::payload_iterator>();
+          auto& payload = it->attributes().get<irs::payload>();
           ASSERT_FALSE(!payload);
-          ASSERT_FALSE(payload->next());
           ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
           for (; it->next(); ) {
             ++expected_id;
@@ -10669,17 +10290,15 @@ class index_test_case : public tests::index_test_base {
             auto* doc = gen.next();
             auto* field = doc->stored.get<tests::templates::string_field>(column_name);
             ASSERT_NE(nullptr, field);
-            ASSERT_TRUE(payload->next());
-            const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+            const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
             ASSERT_EQ(expected_id, it->value());
             ASSERT_EQ(field->value(), actual_value_str);
           }
 
           ASSERT_FALSE(it->next());
-          ASSERT_FALSE(payload->next());
           ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
           ASSERT_EQ(docs_count, expected_id);
         }
 
@@ -10744,11 +10363,10 @@ class index_test_case : public tests::index_test_base {
           auto it = column->iterator();
           ASSERT_NE(nullptr, it);
 
-          auto& payload = it->attributes().get<irs::payload_iterator>();
+          auto& payload = it->attributes().get<irs::payload>();
           ASSERT_FALSE(!payload);
-          ASSERT_FALSE(payload->next());
           ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
           for (; it->next(); ) {
             ++expected_id;
@@ -10756,17 +10374,15 @@ class index_test_case : public tests::index_test_base {
             auto* doc = gen.next();
             auto* field = doc->stored.get<tests::templates::string_field>(column_name);
             ASSERT_NE(nullptr, field);
-            ASSERT_TRUE(payload->next());
-            const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+            const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
             ASSERT_EQ(expected_id, it->value());
             ASSERT_EQ(field->value(), actual_value_str);
           }
 
           ASSERT_FALSE(it->next());
-          ASSERT_FALSE(payload->next());
           ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
           ASSERT_EQ(docs_count, expected_id);
         }
       }
@@ -10816,11 +10432,10 @@ class index_test_case : public tests::index_test_base {
           auto it = column->iterator();
           ASSERT_NE(nullptr, it);
 
-          auto& payload = it->attributes().get<irs::payload_iterator>();
+          auto& payload = it->attributes().get<irs::payload>();
           ASSERT_FALSE(!payload);
-          ASSERT_FALSE(payload->next());
           ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
           for (; it->next(); ) {
             ++expected_id;
@@ -10828,17 +10443,15 @@ class index_test_case : public tests::index_test_base {
             auto* doc = gen.next();
             auto* field = doc->stored.get<tests::templates::string_field>(column_name);
             ASSERT_NE(nullptr, field);
-            ASSERT_TRUE(payload->next());
-            const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+            const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
             ASSERT_EQ(expected_id, it->value());
             ASSERT_EQ(field->value(), actual_value_str);
           }
 
           ASSERT_FALSE(it->next());
-          ASSERT_FALSE(payload->next());
           ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
           ASSERT_EQ(docs_count, expected_id);
         }
 
@@ -10900,11 +10513,10 @@ class index_test_case : public tests::index_test_base {
           auto it = column->iterator();
           ASSERT_NE(nullptr, it);
 
-          auto& payload = it->attributes().get<irs::payload_iterator>();
+          auto& payload = it->attributes().get<irs::payload>();
           ASSERT_FALSE(!payload);
-          ASSERT_FALSE(payload->next());
           ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
           for (; it->next(); ) {
             ++expected_id;
@@ -10912,17 +10524,15 @@ class index_test_case : public tests::index_test_base {
             auto* doc = gen.next();
             auto* field = doc->stored.get<tests::templates::string_field>(column_name);
             ASSERT_NE(nullptr, field);
-            ASSERT_TRUE(payload->next());
-            const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value().c_str());
+            const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
             ASSERT_EQ(expected_id, it->value());
             ASSERT_EQ(field->value(), actual_value_str);
           }
 
           ASSERT_FALSE(it->next());
-          ASSERT_FALSE(payload->next());
           ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
           ASSERT_EQ(docs_count, expected_id);
         }
       }

@@ -127,18 +127,16 @@ TEST(sorted_colum_test, sort) {
     ASSERT_NE(nullptr, column);
 
     auto it = column->iterator();
-    auto& payload = it->attributes().get<irs::payload_iterator>();
+    auto& payload = it->attributes().get<irs::payload>();
     ASSERT_TRUE(payload);
 
     auto begin = sorted_values.begin();
     irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
     while (it->next()) {
       ASSERT_EQ(doc, it->value());
-      ASSERT_TRUE(payload->next());
-      const auto* pvalue = payload->value().c_str();
+      const auto* pvalue = payload->value.c_str();
       ASSERT_NE(nullptr, pvalue);
       ASSERT_EQ(*begin, irs::vread<uint32_t>(pvalue));
-//      ASSERT_FALSE(payload->next()); // FIXME
       ++doc;
       ++begin;
     }

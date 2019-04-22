@@ -29,6 +29,19 @@
 
 NS_LOCAL
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief represents multiple sequential arbitrary byte sequences
+//////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API payload_iterator
+  : public attribute, public iterator<const bytes_ref&> {
+  DECLARE_ATTRIBUTE_TYPE();
+
+  payload_iterator() = default;
+};
+
+REGISTER_ATTRIBUTE(payload_iterator);
+DEFINE_ATTRIBUTE_TYPE(payload_iterator)
+
 static const size_t DEFAULT_BUFFER_SIZE = 512; // arbitrary value
 
 ///////////////////////////////////////////////////////////////////////////////

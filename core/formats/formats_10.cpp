@@ -3314,10 +3314,6 @@ class sparse_block : util::noncopyable {
 
     const irs::doc_id_t& value() const NOEXCEPT { return value_; }
 
-    const irs::bytes_ref& value_payload() const NOEXCEPT {
-      return value_payload_;
-    }
-
     bool next() NOEXCEPT {
       if (next_ == end_) {
         return false;
@@ -3330,7 +3326,8 @@ class sparse_block : util::noncopyable {
       const auto vend = (++next_ == end_ ? data_->size() : next_->offset);
 
       assert(vend >= vbegin);
-      value_payload_ = bytes_ref(
+      assert(payload_ != &DUMMY);
+      *payload_ = bytes_ref(
         data_->c_str() + vbegin, // start
         vend - vbegin // length
       );
@@ -3340,13 +3337,14 @@ class sparse_block : util::noncopyable {
 
     void seal() NOEXCEPT {
       value_ = irs::type_limits<irs::type_t::doc_id_t>::eof();
-      value_payload_ = irs::bytes_ref::NIL;
+      payload_ = &DUMMY;
       next_ = begin_ = end_;
     }
 
-    void reset(const sparse_block& block) NOEXCEPT {
+    void reset(const sparse_block& block, irs::payload& payload) NOEXCEPT {
       value_ = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-      value_payload_ = irs::bytes_ref::NIL;
+      payload.clear();
+      payload_ = &payload.value;
       next_ = begin_ = std::begin(block.index_);
       end_ = block.end_;
       data_ = &block.data_;
@@ -3367,7 +3365,7 @@ class sparse_block : util::noncopyable {
     }
 
    private:
-    irs::bytes_ref value_payload_ { irs::bytes_ref::NIL };
+    irs::bytes_ref* payload_{ &DUMMY };
     irs::doc_id_t value_ { irs::type_limits<irs::type_t::doc_id_t>::invalid() };
     const sparse_block::ref* next_{}; // next position
     const sparse_block::ref* begin_{};
@@ -3499,10 +3497,6 @@ class dense_block : util::noncopyable {
 
     const irs::doc_id_t& value() const NOEXCEPT { return value_; }
 
-    const irs::bytes_ref& value_payload() const NOEXCEPT {
-      return value_payload_;
-    }
-
     bool next() NOEXCEPT {
       if (it_ >= end_) {
         // after the last element
@@ -3517,13 +3511,14 @@ class dense_block : util::noncopyable {
 
     void seal() NOEXCEPT {
       value_ = irs::type_limits<irs::type_t::doc_id_t>::eof();
-      value_payload_ = irs::bytes_ref::NIL;
+      payload_ = &DUMMY;
       it_ = begin_ = end_;
     }
 
-    void reset(const dense_block& block) NOEXCEPT {
+    void reset(const dense_block& block, irs::payload& payload) NOEXCEPT {
       value_ = block.base_;
-      value_payload_ = bytes_ref::NIL;
+      payload.clear();
+      payload_ = &payload.value;
       it_ = begin_ = std::begin(block.index_);
       end_ = block.end_;
       data_ = &block.data_;
@@ -3539,21 +3534,21 @@ class dense_block : util::noncopyable {
     }
 
    private:
-    irs::bytes_ref value_payload_ { irs::bytes_ref::NIL };
-    irs::doc_id_t value_ { irs::type_limits<irs::type_t::doc_id_t>::invalid() };
-
     // note that function increments 'it_'
     void next_value() NOEXCEPT {
       const auto vbegin = *it_;
       const auto vend = (++it_ == end_ ? data_->size() : *it_);
 
       assert(vend >= vbegin);
-      value_payload_ = bytes_ref(
+      assert(payload_ != &DUMMY);
+      *payload_ = bytes_ref(
         data_->c_str() + vbegin, // start
         vend - vbegin // length
       );
     }
 
+    irs::bytes_ref* payload_{ &DUMMY };
+    irs::doc_id_t value_ { irs::type_limits<irs::type_t::doc_id_t>::invalid() };
     const uint32_t* begin_{};
     const uint32_t* it_{};
     const uint32_t* end_{};
@@ -3681,10 +3676,6 @@ class dense_fixed_offset_block : util::noncopyable {
       return value_;
     }
 
-    const bytes_ref& value_payload() const NOEXCEPT {
-      return value_payload_;
-    }
-
     bool next() NOEXCEPT {
       if (value_next_ >= value_end_) {
         seal();
@@ -3694,7 +3685,8 @@ class dense_fixed_offset_block : util::noncopyable {
       value_ = value_next_++;
       const auto offset = (value_ - value_min_)*avg_length_;
 
-      value_payload_ = bytes_ref(
+      assert(payload_ != &DUMMY);
+      *payload_= bytes_ref(
         data_.c_str() + offset,
         value_ == value_back_ ? data_.size() - offset : avg_length_
       );
@@ -3707,13 +3699,14 @@ class dense_fixed_offset_block : util::noncopyable {
       value_next_ = type_limits<type_t::doc_id_t>::eof();
       value_min_ = type_limits<type_t::doc_id_t>::eof();
       value_end_ = type_limits<type_t::doc_id_t>::eof();
-      value_payload_ = bytes_ref::NIL;
+      payload_ = &DUMMY;
     }
 
-    void reset(const dense_fixed_offset_block& block) NOEXCEPT {
+    void reset(const dense_fixed_offset_block& block, irs::payload& payload) NOEXCEPT {
       avg_length_ = block.avg_length_;
       data_ = block.data_;
-      value_payload_ = bytes_ref::NIL;
+      payload.clear();
+      payload_ = &payload.value;
       value_ = type_limits<type_t::doc_id_t>::invalid();
       value_next_ = block.base_key_;
       value_min_ = block.base_key_;
@@ -3732,7 +3725,7 @@ class dense_fixed_offset_block : util::noncopyable {
    private:
     uint64_t avg_length_{}; // average value length
     bytes_ref data_;
-    bytes_ref value_payload_;
+    irs::bytes_ref* payload_{ &DUMMY };
     doc_id_t value_ { type_limits<type_t::doc_id_t>::invalid() }; // current value
     doc_id_t value_next_{ type_limits<type_t::doc_id_t>::invalid() }; // next value
     doc_id_t value_min_{}; // min doc_id
@@ -3834,10 +3827,6 @@ class sparse_mask_block : util::noncopyable {
 
     const irs::doc_id_t& value() const NOEXCEPT { return value_; }
 
-    const irs::bytes_ref& value_payload() const NOEXCEPT {
-      return value_payload_;
-    }
-
     bool next() NOEXCEPT {
       if (it_ == end_) {
         return false;
@@ -3850,13 +3839,12 @@ class sparse_mask_block : util::noncopyable {
 
     void seal() NOEXCEPT {
       value_ = irs::type_limits<irs::type_t::doc_id_t>::eof();
-      value_payload_ = irs::bytes_ref::NIL;
       it_ = begin_ = end_;
     }
 
-    void reset(const sparse_mask_block& block) NOEXCEPT {
+    void reset(const sparse_mask_block& block, irs::payload& payload) NOEXCEPT {
       value_ = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-      value_payload_ = irs::bytes_ref::NIL;
+      payload.clear(); // mask block doesn't have payload
       it_ = begin_ = std::begin(block.keys_);
       end_ = begin_ + block.size_;
 
@@ -3872,7 +3860,6 @@ class sparse_mask_block : util::noncopyable {
     }
 
    private:
-    irs::bytes_ref value_payload_ { irs::bytes_ref::NIL };
     irs::doc_id_t value_ { irs::type_limits<irs::type_t::doc_id_t>::invalid() };
     const doc_id_t* it_{};
     const doc_id_t* begin_{};
@@ -3960,10 +3947,6 @@ class dense_mask_block {
       return value_;
     }
 
-    const irs::bytes_ref& value_payload() const NOEXCEPT {
-      return irs::bytes_ref::NIL;
-    }
-
     bool next() NOEXCEPT {
       if (doc_ >= max_) {
         seal();
@@ -3980,9 +3963,9 @@ class dense_mask_block {
       doc_ = max_;
     }
 
-    void reset(const dense_mask_block& block) NOEXCEPT {
+    void reset(const dense_mask_block& block, irs::payload& payload) NOEXCEPT {
       block_ = &block;
-      value_ = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+      payload.clear(); // mask block doesn't have payload
       doc_ = block.min_;
       max_ = block.max_;
     }
@@ -4248,7 +4231,7 @@ class column_iterator final: public irs::doc_iterator {
       const column_t& column,
       const typename column_t::block_ref* begin,
       const typename column_t::block_ref* end
-  ): attrs_(1), // payload_iterator
+  ): attrs_(1), // payload
      begin_(begin),
      seek_origin_(begin),
      end_(end),
@@ -4293,20 +4276,12 @@ class column_iterator final: public irs::doc_iterator {
  private:
   typedef typename column_t::refs_t refs_t;
 
-  struct payload_iterator: public irs::payload_iterator {
-    const irs::bytes_ref* value_{ nullptr };
-    virtual bool next() override { return nullptr != value_; }
-    virtual const irs::bytes_ref& value() const override {
-      return value_ ? *value_ : irs::bytes_ref::NIL;
-    }
-  };
-
   bool next_block() {
     if (begin_ == end_) {
       // reached the end of the column
       block_.seal();
       seek_origin_ = end_;
-      payload_.value_ = nullptr;
+      payload_.clear();
 
       return false;
     }
@@ -4315,14 +4290,13 @@ class column_iterator final: public irs::doc_iterator {
       const auto& cached = load_block(*column_->ctxs_, *begin_);
 
       if (block_ != cached) {
-        block_.reset(cached);
-        payload_.value_ = &(block_.value_payload());
+        block_.reset(cached, payload_);
       }
     } catch (...) {
       // unable to load block, seal the iterator
       block_.seal();
       begin_ = end_;
-      payload_.value_ = nullptr;
+      payload_.clear();
 
       throw;
     }
@@ -4334,7 +4308,7 @@ class column_iterator final: public irs::doc_iterator {
 
   irs::attribute_view attrs_;
   block_iterator_t block_;
-  payload_iterator payload_;
+  irs::payload payload_;
   const typename column_t::block_ref* begin_;
   const typename column_t::block_ref* seek_origin_;
   const typename column_t::block_ref* end_;
