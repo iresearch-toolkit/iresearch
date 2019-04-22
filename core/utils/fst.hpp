@@ -83,7 +83,7 @@ class fst_builder : util::noncopyable {
   static const stateid_t final = 0;
 
   explicit fst_builder(fst_t& fst) : fst_(fst) {
-    /* initialize final state */
+    // initialize final state
     fst_.AddState();
     fst_.SetFinal(final, weight_t::One());
   }
@@ -113,7 +113,7 @@ class fst_builder : util::noncopyable {
 
     const bool is_final = last_.size() != in.size() || pref != (in.size() + 1);
 
-    weight_t output = out; // FIXME use ref
+    decltype(fst::DivideLeft(out, out)) output = out;
 
     for (size_t i = 1; i < pref; ++i) {
       state& s = states_[i];
@@ -124,10 +124,8 @@ class fst_builder : util::noncopyable {
       auto& last_out = p.arcs.back().out;
 
       if (last_out != weight_t::One()) {
-        auto prefix = fst::Plus(last_out, out); // FIXME use ref
-        const auto suffix = fst::Divide(last_out, prefix, fst::DIVIDE_LEFT); // FIXME use ref
-
-        last_out = std::move(prefix);
+        auto prefix = fst::Plus(last_out, out);
+        const auto suffix = fst::DivideLeft(last_out, prefix);
 
         for (arc& a : s.arcs) {
           a.out = fst::Times(suffix, a.out);
@@ -137,7 +135,8 @@ class fst_builder : util::noncopyable {
           s.out = fst::Times(suffix, s.out);
         }
 
-        output = fst::Divide(output, last_out, fst::DIVIDE_LEFT); // FIXME use ref
+        last_out = std::move(prefix);
+        output = fst::DivideLeft(output, last_out);
       }
     }
 
@@ -393,9 +392,9 @@ class fst_builder : util::noncopyable {
   }
 
   state_map states_map_;
-  std::vector<state> states_; /* current states */
-  weight_t start_out_; /* output for "empty" input */
-  bstring last_;
+  std::vector<state> states_; // current states
+  weight_t start_out_; // output for "empty" input
+  key_t last_;
   fst_t& fst_;
 }; // fst_builder
 
