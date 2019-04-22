@@ -1056,8 +1056,8 @@ class compound_column_iterator : irs::util::noncopyable {
     return heap_it_.next();
   }
 
-  std::pair<size_t, const iterator_t&> value() const NOEXCEPT {
-    return std::make_pair(heap_it_.value(), itrs_[heap_it_.value()]);
+  std::pair<size_t, const iterator_t*> value() const NOEXCEPT {
+    return std::make_pair(heap_it_.value(), &itrs_[heap_it_.value()]);
   }
 
  private:
@@ -1449,7 +1449,8 @@ bool merge_writer::flush_sorted(
   irs::doc_id_t next_id = irs::doc_limits::min();
   while (columns_it.next()) {
     const auto value = columns_it.value();
-    auto& it = value.second;
+    assert(value.second);
+    auto& it = *value.second;
     auto& payload = it.second->value();
 
     // fill doc id map
