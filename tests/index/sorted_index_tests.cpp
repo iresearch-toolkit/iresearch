@@ -253,6 +253,335 @@ TEST_P(sorted_index_test_case, simple_sequential) {
   }
 }
 
+TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
+  const irs::string_ref sorted_column = "name";
+
+  // build index
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    [&sorted_column] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+      if (data.is_string()) {
+        auto field = std::make_shared<tests::templates::string_field>(
+          irs::string_ref(name),
+          data.str
+        );
+
+        doc.insert(field);
+
+        if (name == sorted_column) {
+          doc.sorted = field;
+        }
+      } else if (data.is_number()) {
+        auto field = std::make_shared<tests::long_field>();
+        field->name(name);
+        field->value(data.i64);
+
+        doc.insert(field);
+      }
+  });
+
+  std::vector<std::pair<size_t, size_t>> segment_offsets {
+    { 0, 15 }, { 15, 17 }
+  };
+
+  string_comparer less;
+
+  irs::index_writer::init_options opts;
+  opts.comparator = &less;
+  auto writer = open_writer(irs::OM_CREATE, opts);
+  ASSERT_NE(nullptr, writer);
+  ASSERT_EQ(&less, writer->comparator());
+
+  // add segment 0
+  {
+    auto& offset = segment_offsets[0];
+    tests::limiting_doc_generator segment_gen(gen, offset.first, offset.second);
+    add_segment(*writer, segment_gen); // add segment
+  }
+
+  // add segment 1
+  add_segment(*writer, gen); // add segment
+
+  // check inverted index
+  assert_index();
+
+  // check columns
+  {
+    auto reader = irs::directory_reader::open(dir(), codec());
+    ASSERT_TRUE(reader);
+    ASSERT_EQ(2, reader.size());
+
+    // check segments
+    size_t i = 0;
+    for (auto& segment : *reader) {
+      auto& offset = segment_offsets[i++];
+      tests::limiting_doc_generator segment_gen(gen, offset.first, offset.second);
+
+      ASSERT_EQ(offset.second, segment.docs_count());
+      ASSERT_EQ(segment.docs_count(), segment.live_docs_count());
+      ASSERT_NE(nullptr, segment.sort());
+
+      // check sorted column
+      {
+        segment_gen.reset();
+        std::vector<irs::bytes_output> column_payload;
+
+        while (auto* doc = segment_gen.next()) {
+          auto* field = doc->stored.get(sorted_column);
+          ASSERT_NE(nullptr, field);
+
+          column_payload.emplace_back();
+          field->write(column_payload.back());
+        }
+
+        ASSERT_EQ(column_payload.size(), segment.docs_count());
+
+        std::sort(
+          column_payload.begin(), column_payload.end(),
+          [&less](const irs::bytes_output& lhs, const irs::bytes_output& rhs) {
+            return less(lhs, rhs);
+        });
+
+        auto& sorted_column = *segment.sort();
+        ASSERT_EQ(segment.docs_count(), sorted_column.size());
+
+        auto sorted_column_it = sorted_column.iterator();
+        ASSERT_NE(nullptr, sorted_column_it);
+
+        auto& payload = sorted_column_it->attributes().get<irs::payload>();
+        ASSERT_TRUE(payload);
+
+        auto expected_doc = irs::doc_limits::min();
+        for (auto& expected_payload : column_payload) {
+          ASSERT_TRUE(sorted_column_it->next());
+          ASSERT_EQ(expected_doc, sorted_column_it->value());
+          ASSERT_EQ(expected_payload, payload->value);
+          ++expected_doc;
+        }
+        ASSERT_FALSE(sorted_column_it->next());
+      }
+
+      // check regular columns
+      std::vector<irs::string_ref> column_names {
+        "seq", "value", "duplicated", "prefix"
+      };
+
+      for (auto& column_name : column_names) {
+        struct doc {
+          irs::doc_id_t id{ irs::doc_limits::eof() };
+          irs::bytes_output order;
+          irs::bytes_output value;
+        };
+
+        std::vector<doc> column_docs;
+        column_docs.reserve(segment.docs_count());
+
+        segment_gen.reset();
+        irs::doc_id_t id{ irs::doc_limits::min() };
+        while (auto* doc = segment_gen.next()) {
+          auto* sorted = doc->stored.get(sorted_column);
+          ASSERT_NE(nullptr, sorted);
+
+          column_docs.emplace_back();
+
+          auto* column = doc->stored.get(column_name);
+
+          auto& value = column_docs.back();
+          sorted->write(value.order);
+
+          if (column) {
+            value.id = id++;
+            column->write(value.value);
+          }
+        }
+
+        std::sort(
+          column_docs.begin(), column_docs.end(),
+          [&less](const doc& lhs, const doc& rhs) {
+            return less(lhs.order, rhs.order);
+        });
+
+        auto* column_meta = segment.column(column_name);
+        ASSERT_NE(nullptr, column_meta);
+        auto* column = segment.column_reader(column_meta->id);
+        ASSERT_NE(nullptr, column);
+
+        ASSERT_EQ(id-1, column->size());
+
+        auto column_it = column->iterator();
+        ASSERT_NE(nullptr, column_it);
+
+        auto& payload = column_it->attributes().get<irs::payload>();
+        ASSERT_TRUE(payload);
+
+        irs::doc_id_t doc = 0;
+        for (auto& expected_value: column_docs) {
+          ++doc;
+
+          if (irs::doc_limits::eof(expected_value.id)) {
+            // skip empty values
+            continue;
+          }
+
+          ASSERT_TRUE(column_it->next());
+          ASSERT_EQ(doc, column_it->value());
+          EXPECT_EQ(expected_value.value, payload->value);
+        }
+        ASSERT_FALSE(column_it->next());
+      }
+    }
+  }
+
+  // consolidate segments
+  {
+    irs::index_utils::consolidate_count consolidate_all;
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all)));
+    writer->commit();
+
+    // simulate consolidation
+    index().clear();
+    index().emplace_back();
+    auto& segment = index().back();
+
+    gen.reset();
+    while (auto* doc = gen.next()) {
+      segment.add(
+        doc->indexed.begin(),
+        doc->indexed.end(),
+        doc->sorted
+      );
+    }
+
+    ASSERT_NE(nullptr, writer->comparator());
+    segment.sort(*writer->comparator());
+  }
+
+  assert_index();
+
+  // check columns in consolidated segment
+  {
+    auto reader = irs::directory_reader::open(dir(), codec());
+    ASSERT_TRUE(reader);
+    ASSERT_EQ(1, reader.size());
+
+    // check segments
+    auto& segment = reader[0];
+
+    ASSERT_EQ(segment_offsets[0].second + segment_offsets[1].second, segment.docs_count());
+    ASSERT_EQ(segment.docs_count(), segment.live_docs_count());
+    ASSERT_NE(nullptr, segment.sort());
+
+    // check sorted column
+    {
+      gen.reset();
+      std::vector<irs::bytes_output> column_payload;
+
+      while (auto* doc = gen.next()) {
+        auto* field = doc->stored.get(sorted_column);
+        ASSERT_NE(nullptr, field);
+
+        column_payload.emplace_back();
+        field->write(column_payload.back());
+      }
+
+      ASSERT_EQ(column_payload.size(), segment.docs_count());
+
+      std::sort(
+        column_payload.begin(), column_payload.end(),
+        [&less](const irs::bytes_output& lhs, const irs::bytes_output& rhs) {
+          return less(lhs, rhs);
+      });
+
+      auto& sorted_column = *segment.sort();
+      ASSERT_EQ(segment.docs_count(), sorted_column.size());
+
+      auto sorted_column_it = sorted_column.iterator();
+      ASSERT_NE(nullptr, sorted_column_it);
+
+      auto& payload = sorted_column_it->attributes().get<irs::payload>();
+      ASSERT_TRUE(payload);
+
+      auto expected_doc = irs::doc_limits::min();
+      for (auto& expected_payload : column_payload) {
+        ASSERT_TRUE(sorted_column_it->next());
+        ASSERT_EQ(expected_doc, sorted_column_it->value());
+        ASSERT_EQ(expected_payload, payload->value);
+        ++expected_doc;
+      }
+      ASSERT_FALSE(sorted_column_it->next());
+    }
+
+    // check regular columns
+    std::vector<irs::string_ref> column_names {
+      "seq", "value", "duplicated", "prefix"
+    };
+
+    for (auto& column_name : column_names) {
+      struct doc {
+        irs::doc_id_t id{ irs::doc_limits::eof() };
+        irs::bytes_output order;
+        irs::bytes_output value;
+      };
+
+      std::vector<doc> column_docs;
+      column_docs.reserve(segment.docs_count());
+
+      gen.reset();
+      irs::doc_id_t id{ irs::doc_limits::min() };
+      while (auto* doc = gen.next()) {
+        auto* sorted = doc->stored.get(sorted_column);
+        ASSERT_NE(nullptr, sorted);
+
+        column_docs.emplace_back();
+
+        auto* column = doc->stored.get(column_name);
+
+        auto& value = column_docs.back();
+        sorted->write(value.order);
+
+        if (column) {
+          value.id = id++;
+          column->write(value.value);
+        }
+      }
+
+      std::sort(
+        column_docs.begin(), column_docs.end(),
+        [&less](const doc& lhs, const doc& rhs) {
+          return less(lhs.order, rhs.order);
+      });
+
+      auto* column_meta = segment.column(column_name);
+      ASSERT_NE(nullptr, column_meta);
+      auto* column = segment.column_reader(column_meta->id);
+      ASSERT_NE(nullptr, column);
+
+      ASSERT_EQ(id-1, column->size());
+
+      auto column_it = column->iterator();
+      ASSERT_NE(nullptr, column_it);
+
+      auto& payload = column_it->attributes().get<irs::payload>();
+      ASSERT_TRUE(payload);
+
+      irs::doc_id_t doc = 0;
+      for (auto& expected_value: column_docs) {
+        ++doc;
+
+        if (irs::doc_limits::eof(expected_value.id)) {
+          // skip empty values
+          continue;
+        }
+
+        ASSERT_TRUE(column_it->next());
+        ASSERT_EQ(doc, column_it->value());
+        EXPECT_EQ(expected_value.value, payload->value);
+      }
+      ASSERT_FALSE(column_it->next());
+    }
+  }
+}
+
 TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
   const irs::string_ref sorted_column = "seq";
 

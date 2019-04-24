@@ -300,6 +300,49 @@ struct doc_generator_base {
   virtual ~doc_generator_base() = default;
 };
 
+class limiting_doc_generator : public doc_generator_base {
+ public:
+  limiting_doc_generator(doc_generator_base& gen, size_t offset, size_t limit)
+    : gen_(&gen), begin_(offset), end_(offset + limit) {
+  }
+
+  virtual const tests::document* next() override {
+    while (pos_ < begin_) {
+      if (!gen_->next()) {
+        // exhausted
+        pos_ = end_;
+        return nullptr;
+      }
+
+      ++pos_;
+    }
+
+    if (pos_ < end_) {
+      auto* doc = gen_->next();
+      if (!doc) {
+        // exhausted
+        pos_ = end_;
+        return nullptr;
+      }
+      ++pos_;
+      return doc;
+    }
+
+    return nullptr;
+  }
+
+  virtual void reset() override {
+    pos_ = 0;
+    gen_->reset();
+  }
+
+ private:
+  doc_generator_base* gen_;
+  size_t pos_{0};
+  const size_t begin_;
+  const size_t end_;
+};
+
 /* Generates documents from UTF-8 encoded file 
  * with strings of the following format:
  * <title>;<date>:<body> */
