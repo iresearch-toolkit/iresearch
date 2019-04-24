@@ -73,7 +73,7 @@ REGISTER_ATTRIBUTE(document);
 DEFINE_ATTRIBUTE_TYPE(document) // DO NOT CHANGE NAME
 
 document::document() NOEXCEPT:
-  basic_attribute<doc_id_t>(type_limits<type_t::doc_id_t>::invalid()) {
+  basic_attribute<doc_id_t>(doc_limits::invalid()) {
 }
 
 // -----------------------------------------------------------------------------

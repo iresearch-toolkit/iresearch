@@ -253,6 +253,8 @@ TEST_P(sorted_index_test_case, simple_sequential) {
   }
 }
 
+//FIXME check norms
+
 TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
   const irs::string_ref sorted_column = "name";
 
