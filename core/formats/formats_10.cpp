@@ -338,7 +338,7 @@ class postings_writer final: public irs::postings_writer {
 
     void reset() {
       stream::reset();
-      last = type_limits<type_t::doc_id_t>::invalid();
+      last = doc_limits::invalid();
       block_last = 0;
       size = 0;
     }
@@ -346,7 +346,7 @@ class postings_writer final: public irs::postings_writer {
     doc_id_t deltas[BLOCK_SIZE]{}; // document deltas
     doc_id_t skip_doc[MAX_SKIP_LEVELS]{};
     std::unique_ptr<uint32_t[]> freqs; // document frequencies
-    doc_id_t last{ type_limits<type_t::doc_id_t>::invalid() }; // last buffered document id
+    doc_id_t last{ doc_limits::invalid() }; // last buffered document id
     doc_id_t block_last{}; // last document id in a block
     uint32_t size{}; // number of buffered elements
   }; // doc_stream
@@ -593,9 +593,9 @@ irs::postings_writer::state postings_writer::write(irs::doc_iterator& docs) {
   while (docs.next()) {
     const auto did = docs.value();
 
-    assert(type_limits<type_t::doc_id_t>::valid(did));
+    assert(doc_limits::valid(did));
     begin_doc(did, freq.get());
-    docs_.value.set(did - type_limits<type_t::doc_id_t>::min());
+    docs_.value.set(did - doc_limits::min());
 
     if (pos) {
       if (volatile_attributes_) {
@@ -654,13 +654,13 @@ void postings_writer::begin_term() {
     }
   }
 
-  doc_.last = type_limits<type_t::doc_id_t>::min(); // for proper delta of 1st id
-  doc_.block_last = type_limits<type_t::doc_id_t>::invalid();
+  doc_.last = doc_limits::min(); // for proper delta of 1st id
+  doc_.block_last = doc_limits::invalid();
   skip_.reset();
 }
 
 void postings_writer::begin_doc(doc_id_t id, const frequency* freq) {
-  if (type_limits<type_t::doc_id_t>::valid(doc_.block_last) && 0 == doc_.size) {
+  if (doc_limits::valid(doc_.block_last) && 0 == doc_.size) {
     skip_.skip(docs_count_);
   }
 
@@ -943,7 +943,7 @@ struct skip_state {
   uint64_t pos_ptr{}; // pointer to the positions of the first document in a document block
   uint64_t pay_ptr{}; // pointer to the payloads of the first document in a document block
   size_t pend_pos{}; // positions to skip before new document block
-  doc_id_t doc{ type_limits<type_t::doc_id_t>::invalid() }; // last document in a previous block
+  doc_id_t doc{ doc_limits::invalid() }; // last document in a previous block
   uint32_t pay_pos{}; // payload size to skip before in new document block
 }; // skip_state
 
@@ -993,7 +993,7 @@ class doc_iterator : public irs::doc_iterator {
   doc_iterator() NOEXCEPT
     : skip_levels_(1),
       skip_(postings_writer::BLOCK_SIZE, postings_writer::SKIP_N) {
-    std::fill(docs_, docs_ + postings_writer::BLOCK_SIZE, type_limits<type_t::doc_id_t>::invalid());
+    std::fill(docs_, docs_ + postings_writer::BLOCK_SIZE, doc_limits::invalid());
   }
 
   void prepare(
@@ -1066,7 +1066,7 @@ class doc_iterator : public irs::doc_iterator {
       cur_pos_ += relative_pos();
 
       if (cur_pos_ == term_state_.docs_count) {
-        doc_.value = type_limits<type_t::doc_id_t>::eof();
+        doc_.value = doc_limits::eof();
         begin_ = end_ = docs_; // seal the iterator
         return false;
       }
@@ -1195,9 +1195,9 @@ class doc_iterator : public irs::doc_iterator {
 
     // if this is the initial doc_id then set it to min() for proper delta value
     // add last doc_id before decoding
-    *docs_ += type_limits<type_t::doc_id_t>::valid(doc_.value)
+    *docs_ += doc_limits::valid(doc_.value)
       ? doc_.value
-      : (type_limits<type_t::doc_id_t>::min)();
+      : (doc_limits::min)();
 
     // decode delta encoded documents block
     encode::delta::decode(std::begin(docs_), end_);
@@ -1263,7 +1263,7 @@ void doc_iterator::seek_to_block(doc_id_t target) {
 
           if (in.eof()) {
             // stream exhausted
-            return (next.doc = type_limits<type_t::doc_id_t>::eof());
+            return (next.doc = doc_limits::eof());
           }
 
           return read_skip(next, in);
@@ -1346,12 +1346,12 @@ class pos_iterator: public position {
   pos_iterator(size_t reserve_attrs = 0): position(reserve_attrs) {}
 
   virtual void clear() override {
-    value_ = irs::type_limits<irs::type_t::pos_t>::invalid();
+    value_ = irs::pos_limits::invalid();
   }
 
   virtual bool next() override {
     if (0 == pend_pos_) {
-      value_ = irs::type_limits<irs::type_t::pos_t>::eof();
+      value_ = irs::pos_limits::eof();
 
       return false;
     }
@@ -1369,7 +1369,7 @@ class pos_iterator: public position {
     }
 
     // FIXME TODO: make INVALID = 0, remove this
-    if (!irs::type_limits<irs::type_t::pos_t>::valid(value_)) {
+    if (!irs::pos_limits::valid(value_)) {
       value_ = 0;
     }
 
@@ -1465,7 +1465,7 @@ class pos_iterator: public position {
   uint32_t pend_pos_{}; /* how many positions "behind" we are */
   uint64_t tail_start_; /* file pointer where the last (vInt encoded) pos delta block is */
   size_t tail_length_; /* number of positions in the last (vInt encoded) pos delta block */
-  uint32_t value_{ irs::type_limits<irs::type_t::pos_t>::invalid() }; // current position
+  uint32_t value_{ irs::pos_limits::invalid() }; // current position
   uint32_t buf_pos_{ postings_writer::BLOCK_SIZE } ; /* current position in pos_deltas_ buffer */
   index_input::ptr pos_in_;
   features features_; /* field features */
@@ -1890,7 +1890,7 @@ class pos_doc_iterator final: public doc_iterator {
       cur_pos_ += relative_pos();
 
       if (cur_pos_ == term_state_.docs_count) {
-        doc_.value = type_limits<type_t::doc_id_t>::eof();
+        doc_.value = doc_limits::eof();
         begin_ = end_ = docs_; // seal the iterator
         return false;
       }
@@ -3141,7 +3141,7 @@ class writer final : public irs::columnstore_writer {
     index_block<INDEX_BLOCK_SIZE> column_index_; // column block index (per block key/offset)
     memory_output blocks_index_; // blocks index
     bytes_output block_buf_{ 2*MAX_DATA_BLOCK_SIZE }; // data buffer
-    doc_id_t max_{ type_limits<type_t::doc_id_t>::invalid() }; // max key (among flushed blocks)
+    doc_id_t max_{ doc_limits::invalid() }; // max key (among flushed blocks)
     ColumnProperty blocks_props_{ CP_DENSE | CP_FIXED | CP_MASK }; // aggregated column blocks properties
     ColumnProperty column_props_{ CP_DENSE }; // aggregated column block index properties
     uint32_t avg_block_count_{}; // average number of items per block (tail block is not taken into account since it may skew distribution)
@@ -3201,8 +3201,8 @@ columnstore_writer::column_t writer::push_column() {
   return std::make_pair(id, [&column] (doc_id_t doc) -> column_output& {
     // to avoid extra (and useless in our case) check for block index
     // emptiness in 'writer::column::prepare', we disallow passing
-    // doc <= irs::type_limits<irs::type_t::doc_id_t>::invalid() || doc >= irs::type_limits<irs::type_t::doc_id_t>::eof()
-    assert(doc > irs::type_limits<irs::type_t::doc_id_t>::invalid() && doc < irs::type_limits<irs::type_t::doc_id_t>::eof());
+    // doc <= doc_limits::invalid() || doc >= doc_limits::eof()
+    assert(doc > doc_limits::invalid() && doc < doc_limits::eof());
 
     column.prepare(doc);
     return column;
@@ -3295,7 +3295,7 @@ struct block_cache_traits {
 class sparse_block : util::noncopyable {
  private:
   struct ref {
-    doc_id_t key{ type_limits<type_t::doc_id_t>::eof() };
+    doc_id_t key{ doc_limits::eof() };
     uint64_t offset;
   };
 
@@ -3336,13 +3336,13 @@ class sparse_block : util::noncopyable {
     }
 
     void seal() NOEXCEPT {
-      value_ = irs::type_limits<irs::type_t::doc_id_t>::eof();
+      value_ = doc_limits::eof();
       payload_ = &DUMMY;
       next_ = begin_ = end_;
     }
 
     void reset(const sparse_block& block, irs::payload& payload) NOEXCEPT {
-      value_ = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+      value_ = doc_limits::invalid();
       payload.clear();
       payload_ = &payload.value;
       next_ = begin_ = std::begin(block.index_);
@@ -3366,7 +3366,7 @@ class sparse_block : util::noncopyable {
 
    private:
     irs::bytes_ref* payload_{ &DUMMY };
-    irs::doc_id_t value_ { irs::type_limits<irs::type_t::doc_id_t>::invalid() };
+    irs::doc_id_t value_ { doc_limits::invalid() };
     const sparse_block::ref* next_{}; // next position
     const sparse_block::ref* begin_{};
     const sparse_block::ref* end_{};
@@ -3510,7 +3510,7 @@ class dense_block : util::noncopyable {
     }
 
     void seal() NOEXCEPT {
-      value_ = irs::type_limits<irs::type_t::doc_id_t>::eof();
+      value_ = doc_limits::eof();
       payload_ = &DUMMY;
       it_ = begin_ = end_;
     }
@@ -3548,7 +3548,7 @@ class dense_block : util::noncopyable {
     }
 
     irs::bytes_ref* payload_{ &DUMMY };
-    irs::doc_id_t value_ { irs::type_limits<irs::type_t::doc_id_t>::invalid() };
+    irs::doc_id_t value_ { doc_limits::invalid() };
     const uint32_t* begin_{};
     const uint32_t* it_{};
     const uint32_t* end_{};
@@ -3660,7 +3660,7 @@ class dense_fixed_offset_block : util::noncopyable {
    public:
     bool seek(doc_id_t doc) NOEXCEPT {
       if (doc < value_next_) {
-        if (!type_limits<type_t::doc_id_t>::valid(value_)) {
+        if (!doc_limits::valid(value_)) {
           return next();
         }
 
@@ -3695,10 +3695,10 @@ class dense_fixed_offset_block : util::noncopyable {
     }
 
     void seal() NOEXCEPT {
-      value_ = type_limits<type_t::doc_id_t>::eof();
-      value_next_ = type_limits<type_t::doc_id_t>::eof();
-      value_min_ = type_limits<type_t::doc_id_t>::eof();
-      value_end_ = type_limits<type_t::doc_id_t>::eof();
+      value_ = doc_limits::eof();
+      value_next_ = doc_limits::eof();
+      value_min_ = doc_limits::eof();
+      value_end_ = doc_limits::eof();
       payload_ = &DUMMY;
     }
 
@@ -3707,7 +3707,7 @@ class dense_fixed_offset_block : util::noncopyable {
       data_ = block.data_;
       payload.clear();
       payload_ = &payload.value;
-      value_ = type_limits<type_t::doc_id_t>::invalid();
+      value_ = doc_limits::invalid();
       value_next_ = block.base_key_;
       value_min_ = block.base_key_;
       value_end_ = value_min_ + block.size_;
@@ -3726,8 +3726,8 @@ class dense_fixed_offset_block : util::noncopyable {
     uint64_t avg_length_{}; // average value length
     bytes_ref data_;
     irs::bytes_ref* payload_{ &DUMMY };
-    doc_id_t value_ { type_limits<type_t::doc_id_t>::invalid() }; // current value
-    doc_id_t value_next_{ type_limits<type_t::doc_id_t>::invalid() }; // next value
+    doc_id_t value_ { doc_limits::invalid() }; // current value
+    doc_id_t value_next_{ doc_limits::invalid() }; // next value
     doc_id_t value_min_{}; // min doc_id
     doc_id_t value_end_{}; // after the last valid doc id
     doc_id_t value_back_{}; // last valid doc id
@@ -3838,12 +3838,12 @@ class sparse_mask_block : util::noncopyable {
     }
 
     void seal() NOEXCEPT {
-      value_ = irs::type_limits<irs::type_t::doc_id_t>::eof();
+      value_ = doc_limits::eof();
       it_ = begin_ = end_;
     }
 
     void reset(const sparse_mask_block& block, irs::payload& payload) NOEXCEPT {
-      value_ = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+      value_ = doc_limits::invalid();
       payload.clear(); // mask block doesn't have payload
       it_ = begin_ = std::begin(block.keys_);
       end_ = begin_ + block.size_;
@@ -3860,7 +3860,7 @@ class sparse_mask_block : util::noncopyable {
     }
 
    private:
-    irs::doc_id_t value_ { irs::type_limits<irs::type_t::doc_id_t>::invalid() };
+    irs::doc_id_t value_ { doc_limits::invalid() };
     const doc_id_t* it_{};
     const doc_id_t* begin_{};
     const doc_id_t* end_{};
@@ -3869,7 +3869,7 @@ class sparse_mask_block : util::noncopyable {
   sparse_mask_block() NOEXCEPT {
     std::fill(
       std::begin(keys_), std::end(keys_),
-      type_limits<type_t::doc_id_t>::eof()
+      doc_limits::eof()
     );
   }
 
@@ -3931,7 +3931,7 @@ class dense_mask_block {
    public:
     bool seek(doc_id_t doc) NOEXCEPT {
       if (doc < doc_) {
-        if (!type_limits<type_t::doc_id_t>::valid(value_)) {
+        if (!doc_limits::valid(value_)) {
           return next();
         }
 
@@ -3959,7 +3959,7 @@ class dense_mask_block {
     }
 
     void seal() NOEXCEPT {
-      value_ = irs::type_limits<irs::type_t::doc_id_t>::eof();
+      value_ = doc_limits::eof();
       doc_ = max_;
     }
 
@@ -3980,14 +3980,14 @@ class dense_mask_block {
 
    private:
     const dense_mask_block* block_{};
-    doc_id_t value_{ irs::type_limits<irs::type_t::doc_id_t>::invalid() };
-    doc_id_t doc_{ irs::type_limits<irs::type_t::doc_id_t>::invalid() };
-    doc_id_t max_{ irs::type_limits<irs::type_t::doc_id_t>::invalid() };
+    doc_id_t value_{ doc_limits::invalid() };
+    doc_id_t doc_{ doc_limits::invalid() };
+    doc_id_t max_{ doc_limits::invalid() };
   }; // iterator
 
   dense_mask_block() NOEXCEPT
-    : min_(type_limits<type_t::doc_id_t>::invalid()),
-      max_(type_limits<type_t::doc_id_t>::invalid()) {
+    : min_(doc_limits::invalid()),
+      max_(doc_limits::invalid()) {
   }
 
   void load(index_input& in, decompressor& /*decomp*/, bstring& /*buf*/) {
@@ -4213,7 +4213,7 @@ class column
   uint32_t count() const NOEXCEPT { return count_; }
 
  private:
-  doc_id_t max_{ type_limits<type_t::doc_id_t>::eof() };
+  doc_id_t max_{ doc_limits::eof() };
   uint32_t count_{};
   uint32_t avg_block_size_{};
   uint32_t avg_block_count_{};
@@ -4394,10 +4394,10 @@ class sparse_column final : public column {
     }
 
     // upper bound
-    if (this->max() < type_limits<type_t::doc_id_t>::eof()) {
+    if (this->max() < doc_limits::eof()) {
       begin->key = this->max() + 1;
     } else {
-      begin->key = type_limits<type_t::doc_id_t>::eof();
+      begin->key = doc_limits::eof();
     }
     begin->offset = type_limits<type_t::address_t>::invalid();
 
@@ -4794,7 +4794,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
 
     virtual irs::doc_id_t seek(irs::doc_id_t doc) NOEXCEPT override {
       if (doc < min_) {
-        if (!type_limits<type_t::doc_id_t>::valid(value_)) {
+        if (!doc_limits::valid(value_)) {
           next();
         }
 
@@ -4809,7 +4809,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
 
     virtual bool next() NOEXCEPT override {
       if (min_ > max_) {
-        value_ = type_limits<type_t::doc_id_t>::eof();
+        value_ = doc_limits::eof();
 
         return false;
       }
@@ -4821,9 +4821,9 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
     }
 
    private:
-    irs::doc_id_t value_ { irs::type_limits<irs::type_t::doc_id_t>::invalid() };
-    doc_id_t min_{ type_limits<type_t::doc_id_t>::invalid() };
-    doc_id_t max_{ type_limits<type_t::doc_id_t>::invalid() };
+    irs::doc_id_t value_ { doc_limits::invalid() };
+    doc_id_t min_{ doc_limits::invalid() };
+    doc_id_t max_{ doc_limits::invalid() };
   }; // column_iterator
 
   doc_id_t min_{}; // min key (less than any key in column)

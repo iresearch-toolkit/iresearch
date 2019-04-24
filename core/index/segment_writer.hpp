@@ -180,9 +180,9 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   // @param doc_id the document id as returned by begin(...)
   // @return modifiable update_context for the specified doc_id
   update_context& doc_context(doc_id_t doc_id) {
-    assert(type_limits<type_t::doc_id_t>::valid(doc_id));
-    assert(doc_id - type_limits<type_t::doc_id_t>::min() < docs_context_.size());
-    return docs_context_[doc_id - type_limits<type_t::doc_id_t>::min()];
+    assert(doc_limits::valid(doc_id));
+    assert(doc_id - doc_limits::min() < docs_context_.size());
+    return docs_context_[doc_id - doc_limits::min()];
   }
 
   template<Action action, typename Field>
@@ -213,8 +213,8 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   // implicitly NOEXCEPT since we reserve memory in 'begin'
   void rollback() {
     // mark as removed since not fully inserted
-    assert(docs_cached() + type_limits<type_t::doc_id_t>::min() - 1 < type_limits<type_t::doc_id_t>::eof()); // user should check return of begin() != eof()
-    remove(doc_id_t(docs_cached() + type_limits<type_t::doc_id_t>::min() - 1)); // -1 for 0-based offset
+    assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof()); // user should check return of begin() != eof()
+    remove(doc_id_t(docs_cached() + doc_limits::min() - 1)); // -1 for 0-based offset
     valid_ = false;
   }
 
@@ -265,7 +265,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
       const doc_id_t doc,
       Writer& writer
   ) {
-    assert(doc < type_limits<type_t::doc_id_t>::eof());
+    assert(doc < doc_limits::eof());
 
     if (!fields_.comparator()) {
       // can't store sorted field without a comparator
@@ -289,7 +289,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
       const doc_id_t doc,
       Writer& writer
   ) {
-    assert(doc < type_limits<type_t::doc_id_t>::eof());
+    assert(doc < doc_limits::eof());
 
     auto& out = stream(name, doc);
 
