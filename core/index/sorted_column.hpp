@@ -101,11 +101,18 @@ class sorted_column final : public irs::columnstore_writer::column_output {
     const comparer& less
   );
 
+  field_id flush(
+    columnstore_writer& writer,
+    const doc_map& docmap
+  );
+
   size_t memory() const NOEXCEPT {
     return data_buf_.size() + index_.size()*sizeof(decltype(index_)::value_type);
   }
 
  private:
+  void write_value(data_output& out, const size_t idx);
+
   bytes_output data_buf_; // FIXME use memory_file or block_pool instead
   std::vector<std::pair<irs::doc_id_t, size_t>> index_; // doc_id + offset in 'data_buf_'
 }; // sorted_column

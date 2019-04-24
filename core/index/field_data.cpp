@@ -491,9 +491,11 @@ class sorting_doc_iterator : public irs::doc_iterator {
   > doc_entry_t;
 
   void reset(detail::doc_iterator& it, const frequency& freq, const std::vector<doc_id_t>& docmap) {
+    //FIXME optimize dense case
     assert(!docmap.empty());
 
     while (it.next()) {
+      assert(it.value() - doc_limits::min() < docmap.size());
       const auto new_doc = docmap[it.value() - doc_limits::min()] + doc_limits::min();
 
       if (doc_limits::eof(new_doc)) {

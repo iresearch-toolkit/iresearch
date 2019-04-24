@@ -41,9 +41,17 @@ NS_ROOT
 
 segment_writer::stored_column::stored_column(
     const string_ref& name, 
-    columnstore_writer& columnstore
+    columnstore_writer& columnstore,
+    bool cache
 ) : name(name.c_str(), name.size()) {
-  std::tie(id, handle) = columnstore.push_column();
+  if (!cache) {
+    std::tie(id, handle) = columnstore.push_column();
+  } else {
+    handle = [this](irs::doc_id_t doc)->columnstore_writer::column_output& {
+      this->cache.prepare(doc);
+      return this->cache;
+    };
+  }
 }
 
 doc_id_t segment_writer::begin(
@@ -157,10 +165,10 @@ columnstore_writer::column_output& segment_writer::stream(
   // replace original reference to 'name' provided by the caller
   // with a reference to the cached copy in 'value'
   return map_utils::try_emplace_update_key(
-    columns_,                                     // container
-    generator,                                    // key generator
-    name,                                         // key
-    name, *col_writer_                            // value
+    columns_,                                           // container
+    generator,                                          // key generator
+    name,                                               // key
+    name, *col_writer_, nullptr != fields_.comparator() // value // FIXME
   ).first->second.handle(doc_id);
 }
 
@@ -257,6 +265,15 @@ void segment_writer::flush(index_meta::index_segment_t& segment) {
       doc_id_t(docs_cached()),
       *fields_.comparator()
     );
+
+    for (auto& column_entry : columns_) {
+      auto& column = column_entry.second;
+
+      if (!field_limits::valid(column.id)) {
+        // cached column
+        column.id = column.cache.flush(*col_writer_, docmap);
+      }
+    }
 
     meta.sort = sort_.id; // store sorted column id in segment meta
   }

@@ -231,26 +231,24 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   template<Action action>
   friend struct action_helper;
 
-  struct column : util::noncopyable {
-    column() = default;
-
-    field_id id{ field_limits::invalid() };
-  }; // column
-
-  struct stored_column : column {
+  struct stored_column : util::noncopyable {
     stored_column(
       const string_ref& name,
-      columnstore_writer& columnstore
+      columnstore_writer& columnstore,
+      bool cache
     );
 
     std::string name;
+    irs::sorted_column cache;
     columnstore_writer::values_writer_f handle;
+    field_id id{ field_limits::invalid() };
   }; // stored_column
 
-  struct sorted_column : column {
+  struct sorted_column : util::noncopyable {
     sorted_column() = default;
 
     irs::sorted_column handle;
+    field_id id{ field_limits::invalid() };
   }; // sorted_column
 
   segment_writer(directory& dir, const comparer* comparator) NOEXCEPT;

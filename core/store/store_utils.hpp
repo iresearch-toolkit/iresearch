@@ -373,6 +373,10 @@ class IRESEARCH_API bytes_output final : public data_output {
     buf_.append(b, size);
   }
 
+  const byte_type* c_str() const NOEXCEPT {
+    return buf_.c_str();
+  }
+
   size_t size() const NOEXCEPT {
     return buf_.size();
   }
