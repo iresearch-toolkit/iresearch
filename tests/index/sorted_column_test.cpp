@@ -21,6 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef IRESEARCH_DLL
+
 #include "tests_shared.hpp"
 #include "index/sorted_column.hpp"
 #include "analysis/token_attributes.hpp"
@@ -145,4 +147,4 @@ TEST(sorted_colum_test, sort) {
   }
 }
 
-
+#endif // IRESEARCH_DLL
