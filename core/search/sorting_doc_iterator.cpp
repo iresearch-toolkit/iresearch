@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 by EMC Corporation, All Rights Reserved
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,41 +15,47 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is EMC Corporation
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_INDEX_TESTS_MISC_H
-#define IRESEARCH_INDEX_TESTS_MISC_H
+#include "sorting_doc_iterator.hpp"
 
-#include <algorithm>
+NS_ROOT
 
-NS_BEGIN( tests )
-
-inline bool utf8_less(
-    const iresearch::byte_type* lhs, size_t lhs_len,
-    const iresearch::byte_type* rhs, size_t rhs_len
-) {
-  const auto len = (std::min)(lhs_len, rhs_len);
-
-  for (size_t i = 0; i < len; ++i) {
-    const uint8_t lhs_b = *lhs; ++lhs;
-    const uint8_t rhs_b = *rhs; ++rhs;
-
-    if ( lhs_b < rhs_b ) {
-      return true;
-    }
-
-    if ( lhs_b > rhs_b ) {
-      return false;
-    }
+bool sorting_doc_iterator::next() {
+  if (doc_limits::eof(doc_)) {
+    return false;
   }
 
-  return lhs_len < rhs_len;
+  while (lead_) {
+    auto begin = heap_.begin();
+    auto it = heap_.end() - lead_--;
+
+    segment& lead = *it;
+    if (!lead.next()) {
+      if (!remove_lead(it)) {
+        doc_ = doc_limits::eof();
+        attrs_ = &attribute_view::empty_instance();
+        return false;
+      }
+      continue;
+    }
+
+    std::push_heap(begin, ++it, less_);
+  }
+
+  assert(!heap_.empty());
+  std::pop_heap(heap_.begin(), heap_.end(), less_);
+
+  const segment& lead = heap_.back();
+  doc_ = lead.value();
+  attrs_ = &lead.attributes();
+  lead_ = 1;
+
+  return true;
 }
 
-NS_END
-
-#endif
+NS_END // ROOT

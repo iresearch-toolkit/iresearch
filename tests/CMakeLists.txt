@@ -56,10 +56,12 @@ set(IReSearch_tests_sources
   ./index/index_meta_tests.cpp
   ./index/index_profile_tests.cpp
   ./index/index_tests.cpp
+  ./index/sorted_index_tests.cpp
   ./index/index_death_tests.cpp
   ./index/field_meta_test.cpp
   ./index/merge_writer_tests.cpp
   ./index/postings_tests.cpp
+  ./index/sorted_column_test.cpp
   ./index/segment_writer_tests.cpp
   ./index/consolidation_policy_tests.cpp
   ./search/empty_filter_tests.cpp

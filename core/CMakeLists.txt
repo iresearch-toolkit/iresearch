@@ -87,25 +87,25 @@ set(IResearch_core_sources
   ./utils/string.cpp
   ./analysis/analyzer.cpp
   ./analysis/analyzers.cpp
-  ./analysis/token_attributes.cpp 
-  ./analysis/token_streams.cpp 
-  ./error/error.cpp 
-  ./formats/formats.cpp 
-  ./formats/format_utils.cpp 
-  ./formats/skip_list.cpp 
+  ./analysis/token_attributes.cpp
+  ./analysis/token_streams.cpp
+  ./error/error.cpp
+  ./formats/formats.cpp
+  ./formats/format_utils.cpp
+  ./formats/skip_list.cpp
   ./index/directory_reader.cpp
   ./index/field_data.cpp
-  ./index/field_meta.cpp 
-  ./index/file_names.cpp 
-  ./index/index_meta.cpp 
-  ./index/index_writer.cpp 
+  ./index/field_meta.cpp
+  ./index/file_names.cpp
+  ./index/index_meta.cpp
+  ./index/index_writer.cpp
   ./index/index_reader.cpp
   ./index/iterators.cpp
   ./index/merge_writer.cpp
   ./index/postings.cpp
-  ./index/segment_reader.cpp 
-  ./index/segment_writer.cpp 
-  ./index/transaction_store.cpp
+  ./index/segment_reader.cpp
+  ./index/segment_writer.cpp
+  ./index/sorted_column.cpp
   ./iql/parser.cc
   ./iql/parser_common.cpp
   ./iql/parser_context.cpp
@@ -126,6 +126,7 @@ set(IResearch_core_sources
   ./search/phrase_filter.cpp
   ./search/column_existence_filter.cpp
   ./search/same_position_filter.cpp
+  ./search/sorting_doc_iterator.cpp
   ./search/range_query.cpp
   ./search/term_query.cpp
   ./search/boolean_filter.cpp
@@ -157,7 +158,6 @@ set(IResearch_core_sources
   ./utils/utf8_path.cpp
   ./utils/locale_utils.cpp
   ./utils/log.cpp
-  ./utils/unicode_utils.cpp
   ./utils/so_utils.cpp
   ./utils/process_utils.cpp
   ./utils/network_utils.cpp
@@ -186,7 +186,6 @@ set(IResearch_core_headers
   ./index/iterators.hpp
   ./index/segment_reader.hpp
   ./index/segment_writer.hpp
-  ./index/transaction_store.hpp
   ./index/index_writer.hpp
   ./iql/parser_common.hpp
   ./iql/parser_context.hpp
@@ -241,7 +240,6 @@ set(IResearch_core_headers
   ./utils/log.hpp
   ./utils/thread_utils.hpp
   ./utils/object_pool.hpp
-  ./utils/unicode_utils.hpp
   ./utils/so_utils.hpp
   ./utils/process_utils.hpp
   ./utils/network_utils.hpp
