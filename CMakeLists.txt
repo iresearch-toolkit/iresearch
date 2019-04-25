@@ -186,7 +186,7 @@ if (USE_TESTS)
     include(CodeCoverage)
 
     # exclude directories from coverage report
-    SET(LCOV_EXCLUDE "external/*;boost/*")
+    SET(LCOV_EXCLUDE "external/*;boost/*;${LCOV_EXCLUDE}")
 
     setup_target_for_coverage(
       ${IResearch_TARGET_NAME}-coverage 
@@ -200,7 +200,7 @@ if (USE_TESTS)
 
     if (PYTHON_EXECUTABLE AND GCOVR_PATH)   
       # exclude directories from coverage report
-      SET(GCOVR_EXTRA_ARGS "-e;${PROJECT_SOURCE_DIR}/external/")
+      SET(GCOVR_EXTRA_ARGS "-e;${PROJECT_SOURCE_DIR}/external/;${GCOVR_EXTRA_ARGS}")
 
       setup_target_for_coverage_cobertura(
         ${IResearch_TARGET_NAME}-coverage-cobertura
