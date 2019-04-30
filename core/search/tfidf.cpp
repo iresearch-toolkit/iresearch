@@ -369,8 +369,14 @@ class sort final: irs::sort::prepared_basic<tfidf::score_t> {
       const attribute_view& doc_attrs
   ) const override {
     if (!doc_attrs.contains<frequency>()) {
+      const auto boost = boost::extract(query_attrs);
+
+      if (0.f == boost) {
+        return nullptr;
+      }
+
       // if there is no frequency then all the scores will be the same (e.g. filter irs::all)
-      return tfidf::const_scorer::make<tfidf::const_scorer>(boost::extract(query_attrs));
+      return tfidf::const_scorer::make<tfidf::const_scorer>(boost);
     }
 
     auto& norm = query_attrs.get<iresearch::norm>();

@@ -455,8 +455,14 @@ class sort final : irs::sort::prepared_basic<bm25::score_t> {
       const attribute_view& doc_attrs
   ) const override {
     if (!doc_attrs.contains<frequency>()) {
+      const auto boost = irs::boost::extract(query_attrs);
+
+      if (0.f == boost) {
+        return nullptr;
+      }
+
       // if there is no frequency then all the scores will be the same (e.g. filter irs::all)
-      return bm25::const_scorer::make<bm25::const_scorer>(boost::extract(query_attrs));
+      return bm25::const_scorer::make<bm25::const_scorer>(boost);
     }
 
     if (b_ != 0.f) {
