@@ -23,7 +23,6 @@
 
 #include "tests_shared.hpp"
 #include "iql/query_builder.hpp"
-#include "search/sorting_doc_iterator.hpp"
 #include "utils/index_utils.hpp"
 
 #include "index_tests.hpp"
