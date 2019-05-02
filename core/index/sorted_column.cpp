@@ -23,6 +23,7 @@
 
 #include "shared.hpp"
 #include "sorted_column.hpp"
+#include "comparer.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/misc.hpp"
 

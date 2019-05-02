@@ -31,19 +31,9 @@
 
 NS_ROOT
 
-class comparer {
- public:
-  virtual ~comparer() = default;
-
-  bool operator()(const bytes_ref& lhs, const bytes_ref& rhs) const {
-    return less(lhs, rhs);
-  }
-
- protected:
-  virtual bool less(const bytes_ref& lhs, const bytes_ref& rhs) const = 0;
-}; // comparer
-
 typedef std::vector<doc_id_t> doc_map;
+
+class comparer;
 
 class sorted_column final : public irs::columnstore_writer::column_output {
  public:
@@ -106,8 +96,12 @@ class sorted_column final : public irs::columnstore_writer::column_output {
     const doc_map& docmap
   );
 
-  size_t memory() const NOEXCEPT {
+  size_t memory_active() const NOEXCEPT {
     return data_buf_.size() + index_.size()*sizeof(decltype(index_)::value_type);
+  }
+
+  size_t memory_reserved() const NOEXCEPT {
+    return data_buf_.capacity() + index_.capacity()*sizeof(decltype(index_)::value_type);
   }
 
  private:

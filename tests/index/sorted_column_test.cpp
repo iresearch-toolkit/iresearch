@@ -25,6 +25,7 @@
 
 #include "tests_shared.hpp"
 #include "index/sorted_column.hpp"
+#include "index/comparer.hpp"
 #include "analysis/token_attributes.hpp"
 #include "store/memory_directory.hpp"
 #include "utils/bitvector.hpp"
