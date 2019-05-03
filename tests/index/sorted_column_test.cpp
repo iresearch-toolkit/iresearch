@@ -89,6 +89,8 @@ TEST(sorted_colum_test, sort) {
     irs::sorted_column col;
     ASSERT_TRUE(col.empty());
     ASSERT_EQ(0, col.size());
+    ASSERT_EQ(0, col.memory_active());
+    ASSERT_EQ(0, col.memory_reserved());
 
     irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
     for (const auto value : values) {
@@ -97,9 +99,14 @@ TEST(sorted_colum_test, sort) {
     }
     ASSERT_EQ(IRESEARCH_COUNTOF(values), col.size());
 
+    ASSERT_GE(col.memory_active(), 0);
+    ASSERT_GE(col.memory_reserved(), 0);
+
     std::tie(order, column_id) = col.flush(*writer, IRESEARCH_COUNTOF(values), less);
     ASSERT_TRUE(col.empty());
     ASSERT_EQ(0, col.size());
+    ASSERT_EQ(0, col.memory_active());
+    ASSERT_GE(col.memory_reserved(), 0);
     ASSERT_EQ(IRESEARCH_COUNTOF(values), order.size());
     ASSERT_TRUE(irs::type_limits<irs::type_t::field_id_t>::valid(column_id));
 
