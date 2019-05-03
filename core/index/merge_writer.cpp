@@ -29,7 +29,6 @@
 #include "index/field_meta.hpp"
 #include "index/index_meta.hpp"
 #include "index/segment_reader.hpp"
-#include "index/sorted_column.hpp"
 #include "index/heap_iterator.hpp"
 #include "index/comparer.hpp"
 #include "utils/directory_utils.hpp"

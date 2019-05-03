@@ -37,8 +37,6 @@ class comparer;
 
 class sorted_column final : public irs::columnstore_writer::column_output {
  public:
-  typedef std::function<bool(const bytes_ref&, const bytes_ref&)> less_f;
-
   sorted_column() = default;
 
   void prepare(doc_id_t key) {

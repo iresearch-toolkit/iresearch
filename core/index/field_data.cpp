@@ -24,7 +24,6 @@
 #include "shared.hpp"
 #include "field_data.hpp"
 #include "field_meta.hpp"
-#include "sorted_column.hpp"
 
 #include "formats/formats.hpp"
 
