@@ -282,12 +282,13 @@ void segment_writer::flush(index_meta::index_segment_t& segment) {
       *fields_.comparator()
     );
 
+    irs::sorted_column::flush_buffer_t buffer;
     for (auto& column_entry : columns_) {
       auto& column = column_entry.second;
 
       if (!field_limits::valid(column.id)) {
         // cached column
-        column.id = column.stream.flush(*col_writer_, docmap);
+        column.id = column.stream.flush(*col_writer_, docmap, buffer);
       }
     }
 

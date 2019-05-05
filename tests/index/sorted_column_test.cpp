@@ -299,7 +299,7 @@ TEST(sorted_column_test, sort) {
     ASSERT_TRUE(col.empty());
     ASSERT_EQ(0, col.memory_active());
     ASSERT_GE(col.memory_reserved(), 0);
-    ASSERT_EQ(IRESEARCH_COUNTOF(values), order.size());
+    ASSERT_EQ(1+IRESEARCH_COUNTOF(values), order.size());
     ASSERT_TRUE(irs::type_limits<irs::type_t::field_id_t>::valid(column_id));
 
     ASSERT_TRUE(writer->commit());
@@ -312,10 +312,10 @@ TEST(sorted_column_test, sort) {
   {
     uint32_t values_by_order[IRESEARCH_COUNTOF(values)];
     for (size_t i = 0; i < IRESEARCH_COUNTOF(values); ++i) {
-      values_by_order[order[i]] = values[i];
+      values_by_order[order[irs::doc_limits::min() + i]] = values[i];
     }
 
-    ASSERT_TRUE(std::is_sorted(std::begin(values_by_order), std::end(values_by_order)));
+    ASSERT_TRUE(std::is_sorted(irs::doc_limits::min() + std::begin(values_by_order), std::end(values_by_order)));
   }
 
   // read sorted column

@@ -116,7 +116,7 @@ TEST_P(sorted_index_test_case, simple_sequential) {
       } else if (data.is_number()) {
         auto field = std::make_shared<tests::long_field>();
         field->name(name);
-        field->value(data.i64);
+        field->value(data.ui);
 
         doc.insert(field);
       }

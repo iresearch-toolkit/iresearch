@@ -495,7 +495,7 @@ class sorting_doc_iterator : public irs::doc_iterator {
 
     while (it.next()) {
       assert(it.value() - doc_limits::min() < docmap.size());
-      const auto new_doc = docmap[it.value() - doc_limits::min()] + doc_limits::min();
+      const auto new_doc = docmap[it.value()];
 
       if (doc_limits::eof(new_doc)) {
         // skip invalid documents
