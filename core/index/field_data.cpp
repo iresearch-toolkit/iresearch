@@ -95,9 +95,6 @@ void write_prox(
   }
 }
 
-//FIXME count number of documents in posting
-//FIXME use this information to reserve data in sorting_iterator
-
 template<typename Inserter>
 FORCE_INLINE void write_cookie(Inserter& out, uint64_t cookie) {
   *out = static_cast<byte_type>(cookie & 0xFF); // offset
