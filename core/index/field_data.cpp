@@ -330,6 +330,10 @@ class doc_iterator : public irs::doc_iterator {
     return cookie_;
   }
 
+  doc_id_t cost() const NOEXCEPT {
+    return posting_->size;
+  }
+
   virtual doc_id_t seek(doc_id_t doc) override {
     irs::seek(*this, doc);
     return value();
@@ -435,14 +439,15 @@ class sorting_doc_iterator : public irs::doc_iterator {
       freq = freq_attr.get();
     }
 
-    // FIXME docs_.reserve(cost)
+    docs_.reserve(it.cost());
     docs_.clear();
 
-    //FIXME better to split into different doc_iterator implementations
-    if (docmap) {
-      reset(it, *freq, *docmap);
+    if (!docmap) {
+      reset_already_sorted(it, *freq);
+    } else if ((docmap->size()-1) == it.cost()) {
+      reset_dense(it, *freq, *docmap);
     } else {
-      reset(it, *freq); // current segment is already sorted
+      reset_sparse(it, *freq, *docmap);
     }
 
     doc_.value = irs::doc_limits::invalid();
@@ -470,12 +475,13 @@ class sorting_doc_iterator : public irs::doc_iterator {
       return false;
     }
 
-    uint64_t cookie;
-    std::tie(doc_.value, freq_.value, cookie) = *it_;
+    auto& doc = *it_;
+    doc_.value = doc.doc;
+    freq_.value = doc.freq;
 
-    if (cookie) {
+    if (doc.cookie) {
       // (cookie != 0) -> we have proximity data
-      pos_.reset(greedy_reader(*byte_pool_, cookie));
+      pos_.reset(greedy_reader(*byte_pool_, doc.cookie));
     }
 
     ++it_;
@@ -483,15 +489,48 @@ class sorting_doc_iterator : public irs::doc_iterator {
   }
 
  private:
-  typedef std::tuple<
-    doc_id_t,  // doc_id
-    uint32_t,  // freq
-    uint64_t   // prox cookie
-  > doc_entry_t;
+  struct doc_entry {
+    doc_entry() = default;
+    doc_entry(doc_id_t doc, uint32_t freq, uint64_t cookie) NOEXCEPT
+      : doc(doc), freq(freq), cookie(cookie) {
+    }
 
-  void reset(detail::doc_iterator& it, const frequency& freq, const std::vector<doc_id_t>& docmap) {
-    //FIXME optimize dense case
+    doc_id_t doc; // doc_id
+    uint32_t freq; // freq
+    uint64_t cookie; // prox_cookie
+  }; // doc_entry
+
+  void reset_dense(
+      detail::doc_iterator& it,
+      const frequency& freq,
+      const std::vector<doc_id_t>& docmap) {
     assert(!docmap.empty());
+    assert((docmap.size()-1) == it.cost());
+
+    docs_.resize(docs_.capacity());
+
+    while (it.next()) {
+      assert(it.value() - doc_limits::min() < docmap.size());
+      const auto new_doc = docmap[it.value()];
+
+      if (doc_limits::eof(new_doc)) {
+        // skip invalid documents
+        continue;
+      }
+
+      auto& doc = docs_[new_doc - doc_limits::min()];
+      doc.doc = new_doc;
+      doc.freq = freq.value;
+      doc.cookie = it.cookie();
+    }
+  }
+
+  void reset_sparse(
+      detail::doc_iterator& it,
+      const frequency& freq,
+      const std::vector<doc_id_t>& docmap) {
+    assert(!docmap.empty());
+    assert((docmap.size()-1) > it.cost());
 
     while (it.next()) {
       assert(it.value() - doc_limits::min() < docmap.size());
@@ -505,23 +544,22 @@ class sorting_doc_iterator : public irs::doc_iterator {
       docs_.emplace_back(new_doc, freq.value, it.cookie());
     }
 
-    // FIXME use external sort?
     std::sort(
       docs_.begin(), docs_.end(),
-      [](const doc_entry_t& lhs, const doc_entry_t& rhs) NOEXCEPT {
-        return std::get<0>(lhs) < std::get<0>(rhs);
+      [](const doc_entry& lhs, const doc_entry& rhs) NOEXCEPT {
+        return lhs.doc < rhs.doc;
     });
   }
 
-  void reset(detail::doc_iterator& it, const frequency& freq) {
+  void reset_already_sorted(detail::doc_iterator& it, const frequency& freq) {
     while (it.next()) {
       docs_.emplace_back(it.value(), freq.value, it.cookie());
     }
   }
 
   const byte_block_pool* byte_pool_{};
-  std::vector<doc_entry_t>::const_iterator it_;
-  std::vector<doc_entry_t> docs_;
+  std::vector<doc_entry>::const_iterator it_;
+  std::vector<doc_entry> docs_;
   document doc_;
   frequency freq_;
   pos_iterator<byte_block_pool::sliced_greedy_reader> pos_;
@@ -940,6 +978,7 @@ void field_data::add_term_random_access(
       irs::vwrite<uint32_t>(doc_out, doc_id_t(p.doc_code));
       doc_stream_end = doc_out.pool_offset();
 
+      ++p.size;
       p.doc_code = did - p.doc;
       p.doc = did;
       ++unq_term_cnt_;
@@ -957,6 +996,7 @@ void field_data::add_term_random_access(
       irs::vwrite<uint32_t>(doc_out, p.freq);
     }
 
+    ++p.size;
     p.doc_code = uint64_t(did - p.doc) << 1;
     p.freq = 1;
 
