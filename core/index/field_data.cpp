@@ -24,6 +24,7 @@
 #include "shared.hpp"
 #include "field_data.hpp"
 #include "field_meta.hpp"
+#include "comparer.hpp"
 
 #include "formats/formats.hpp"
 
@@ -330,7 +331,7 @@ class doc_iterator : public irs::doc_iterator {
     return cookie_;
   }
 
-  doc_id_t cost() const NOEXCEPT {
+  size_t cost() const NOEXCEPT {
     return posting_->size;
   }
 
@@ -444,7 +445,7 @@ class sorting_doc_iterator : public irs::doc_iterator {
 
     if (!docmap) {
       reset_already_sorted(it, *freq);
-    } else if ((docmap->size()-1) == it.cost()) {
+    } else if (irs::use_dense_sort(it.cost(), docmap->size()-1)) { // -1 for first element
       reset_dense(it, *freq, *docmap);
     } else {
       reset_sparse(it, *freq, *docmap);
@@ -469,23 +470,30 @@ class sorting_doc_iterator : public irs::doc_iterator {
   }
 
   virtual bool next() NOEXCEPT override {
-    if (it_ == docs_.end()) {
-      doc_.value = doc_limits::eof();
-      freq_.value = 0;
-      return false;
+    while (it_ != docs_.end()) {
+      if (doc_limits::eof(it_->doc)) {
+        // skip invalid docs
+        ++it_;
+        continue;
+      }
+
+      auto& doc = *it_;
+      doc_.value = doc.doc;
+      freq_.value = doc.freq;
+
+      if (doc.cookie) {
+        // (cookie != 0) -> we have proximity data
+        pos_.reset(greedy_reader(*byte_pool_, doc.cookie));
+      }
+
+      ++it_;
+      return true;
+
     }
 
-    auto& doc = *it_;
-    doc_.value = doc.doc;
-    freq_.value = doc.freq;
-
-    if (doc.cookie) {
-      // (cookie != 0) -> we have proximity data
-      pos_.reset(greedy_reader(*byte_pool_, doc.cookie));
-    }
-
-    ++it_;
-    return true;
+    doc_.value = doc_limits::eof();
+    freq_.value = 0;
+    return false;
   }
 
  private:
@@ -495,7 +503,7 @@ class sorting_doc_iterator : public irs::doc_iterator {
       : doc(doc), freq(freq), cookie(cookie) {
     }
 
-    doc_id_t doc; // doc_id
+    doc_id_t doc{ doc_limits::eof() }; // doc_id
     uint32_t freq; // freq
     uint64_t cookie; // prox_cookie
   }; // doc_entry
@@ -505,9 +513,10 @@ class sorting_doc_iterator : public irs::doc_iterator {
       const frequency& freq,
       const std::vector<doc_id_t>& docmap) {
     assert(!docmap.empty());
-    assert((docmap.size()-1) == it.cost());
+    assert(it.cost() <= docmap.size());
+    assert(irs::use_dense_sort(it.cost(), docmap.size()-1)); // -1 for first element
 
-    docs_.resize(docs_.capacity());
+    docs_.resize(docmap.size()-1); // -1 for first element
 
     while (it.next()) {
       assert(it.value() - doc_limits::min() < docmap.size());
@@ -530,7 +539,8 @@ class sorting_doc_iterator : public irs::doc_iterator {
       const frequency& freq,
       const std::vector<doc_id_t>& docmap) {
     assert(!docmap.empty());
-    assert((docmap.size()-1) > it.cost());
+    assert(it.cost() < docmap.size());
+    assert(!irs::use_dense_sort(it.cost(), docmap.size()-1)); // -1 for first element
 
     while (it.next()) {
       assert(it.value() - doc_limits::min() < docmap.size());

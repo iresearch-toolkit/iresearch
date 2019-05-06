@@ -121,16 +121,25 @@ void sorted_column::flush_already_sorted(
   }
 }
 
-void sorted_column::flush_dense(
+bool sorted_column::flush_dense(
     const columnstore_writer::values_writer_f& writer,
     const doc_map& docmap,
     flush_buffer_t& buffer) {
   assert(!docmap.empty());
-  assert(index_.size() == docmap.size());
+  assert(index_.size() <= docmap.size());
 
+  const size_t total = docmap.size() - 1; // -1 for first element
   const size_t size = index_.size() - 1; // -1 for sentinel
 
-  buffer.resize(size);
+  if (!use_dense_sort(size, total)) {
+    return false;
+  }
+
+  buffer.clear();
+  buffer.resize(
+    total,
+    std::make_pair(doc_limits::eof(), doc_limits::invalid())
+  );
 
   for (size_t i = 0; i < size; ++i) {
     buffer[docmap[index_[i].first] - doc_limits::min()].first = doc_id_t(i);
@@ -139,8 +148,13 @@ void sorted_column::flush_dense(
   // flush sorted data
   irs::doc_id_t doc = doc_limits::min();
   for (const auto& entry : buffer) {
-    write_value(writer(doc++), entry.first);
+    if (!doc_limits::eof(entry.first)) {
+      write_value(writer(doc), entry.first);
+    }
+    ++doc;
   };
+
+  return true;
 }
 
 void sorted_column::flush_sparse(
@@ -158,9 +172,6 @@ void sorted_column::flush_sparse(
     buffer[i] = std::make_pair(doc_id_t(i), docmap[index_[i].first]);
   }
 
-  // FIXME consider sorting sparse data via table
-  // similar to dense case if number of filled values
-  // is close to size of docmap
   std::sort(
     buffer.begin(), buffer.end(),
     [] (const std::pair<size_t, doc_id_t>& lhs,
@@ -193,9 +204,7 @@ field_id sorted_column::flush(
 
   if (docmap.empty()) {
     flush_already_sorted(column_writer);
-  } else if (docmap.size() == index_.size()) {
-    flush_dense(column_writer, docmap, buffer);
-  } else {
+  } else if (!flush_dense(column_writer, docmap, buffer)) {
     flush_sparse(column_writer, docmap, buffer);
   }
 

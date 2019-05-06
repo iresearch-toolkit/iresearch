@@ -40,6 +40,14 @@ class comparer {
   virtual bool less(const bytes_ref& lhs, const bytes_ref& rhs) const = 0;
 }; // comparer
 
+inline bool use_dense_sort(size_t size, size_t total) NOEXCEPT {
+  // check: N*logN > K
+  return std::isgreaterequal(
+    static_cast<double_t>(size)*std::log(size),
+    static_cast<double_t>(total)
+  );
+}
+
 NS_END
 
 #endif // IRESEARCH_COMPARER_H

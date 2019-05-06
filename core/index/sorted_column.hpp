@@ -119,7 +119,7 @@ class sorted_column final : public irs::columnstore_writer::column_output {
     const columnstore_writer::values_writer_f& writer
   );
 
-  void flush_dense(
+  bool flush_dense(
     const columnstore_writer::values_writer_f& writer,
     const doc_map& docmap,
     flush_buffer_t& buffer
