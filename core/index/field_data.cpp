@@ -172,7 +172,7 @@ class pos_iterator final: public irs::position {
 
   virtual void clear() NOEXCEPT override {
     pos_ = 0;
-    val_ = 0; // FIXME TODO change to invalid when invalid() == 0
+    val_ = pos_limits::invalid();
     offs_.clear();
     pay_.clear();
   }

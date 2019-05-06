@@ -98,14 +98,14 @@ template<> struct type_limits<type_t::index_gen_t> {
 
 template<> struct type_limits<type_t::pos_t> {
   CONSTEXPR static uint32_t invalid() NOEXCEPT {
-    return integer_traits<uint32_t>::const_max; 
+    return 0;
   }
   CONSTEXPR static bool valid(uint32_t pos) NOEXCEPT {
     return invalid() != pos;
   }
-  CONSTEXPR static uint32_t eof() NOEXCEPT { return invalid() - 1;  }
+  CONSTEXPR static uint32_t eof() NOEXCEPT { return integer_traits<uint32_t>::const_max; }
   CONSTEXPR static bool eof(uint32_t pos) NOEXCEPT { return eof() == pos; }
-  CONSTEXPR static uint32_t (min)() NOEXCEPT { return 0; }
+  CONSTEXPR static uint32_t (min)() NOEXCEPT { return 1; }
 };
 
 typedef irs::type_limits<irs::type_t::pos_t> pos_limits;
