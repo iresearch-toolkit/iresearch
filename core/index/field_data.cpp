@@ -510,7 +510,6 @@ class sorting_doc_iterator : public irs::doc_iterator {
       const frequency& freq,
       const std::vector<doc_id_t>& docmap) {
     assert(!docmap.empty());
-    assert(it.cost() <= docmap.size());
     assert(irs::use_dense_sort(it.cost(), docmap.size()-1)); // -1 for first element
 
     docs_.resize(docmap.size()-1); // -1 for first element
@@ -536,7 +535,6 @@ class sorting_doc_iterator : public irs::doc_iterator {
       const frequency& freq,
       const std::vector<doc_id_t>& docmap) {
     assert(!docmap.empty());
-    assert(it.cost() < docmap.size());
     assert(!irs::use_dense_sort(it.cost(), docmap.size()-1)); // -1 for first element
 
     while (it.next()) {

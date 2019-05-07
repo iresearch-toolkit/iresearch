@@ -126,7 +126,6 @@ bool sorted_column::flush_dense(
     const doc_map& docmap,
     flush_buffer_t& buffer) {
   assert(!docmap.empty());
-  assert(index_.size() <= docmap.size());
 
   const size_t total = docmap.size() - 1; // -1 for first element
   const size_t size = index_.size() - 1; // -1 for sentinel
@@ -162,7 +161,6 @@ void sorted_column::flush_sparse(
     const doc_map& docmap,
     flush_buffer_t& buffer) {
   assert(!docmap.empty());
-  assert(index_.size() < docmap.size());
 
   const size_t size = index_.size() - 1; // -1 for sentinel
 
