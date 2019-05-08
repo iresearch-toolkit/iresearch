@@ -922,6 +922,9 @@ class block_pool_sliced_greedy_inserter
 
   container& parent() NOEXCEPT { return where_.parent(); }
 
+  // At least MSVC 2017.9 incorectly process increment if this function is inlined during optimization
+  // Other MSVC 2017 versions could have similar issue
+  __declspec(noinline)
   block_pool_sliced_greedy_inserter& operator=(const_reference value) {
     assert(!*where_); // we're not at the address part
 
