@@ -312,10 +312,10 @@ TEST(sorted_column_test, sort) {
   {
     uint32_t values_by_order[IRESEARCH_COUNTOF(values)];
     for (size_t i = 0; i < IRESEARCH_COUNTOF(values); ++i) {
-      values_by_order[order[irs::doc_limits::min() + i]] = values[i];
+      values_by_order[order[irs::doc_limits::min() + i] - irs::doc_limits::min()] = values[i];
     }
 
-    ASSERT_TRUE(std::is_sorted(irs::doc_limits::min() + std::begin(values_by_order), std::end(values_by_order)));
+    ASSERT_TRUE(std::is_sorted(std::begin(values_by_order), std::end(values_by_order)));
   }
 
   // read sorted column
