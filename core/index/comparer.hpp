@@ -24,9 +24,10 @@
 #ifndef IRESEARCH_COMPARER_H
 #define IRESEARCH_COMPARER_H
 
-NS_ROOT
-
 #include "shared.hpp"
+#include "utils/string.hpp"
+
+NS_ROOT
 
 class comparer {
  public:

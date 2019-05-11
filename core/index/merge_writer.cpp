@@ -1657,6 +1657,7 @@ bool merge_writer::flush_sorted(
         boost::make_filter_iterator(ne_eof(), doc_map.begin(), doc_map.end()),
         boost::make_filter_iterator(ne_eof(), doc_map.end(), doc_map.end())
     ));
+    UNUSED(doc_map);
   }
 #endif
 
