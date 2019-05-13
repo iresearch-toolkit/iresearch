@@ -381,7 +381,7 @@ class IRESEARCH_API sort {
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API order final {
  public:
-  class entry {
+  class entry : private util::noncopyable {
    public:
     entry(const irs::sort::ptr& sort, bool reverse) NOEXCEPT
       : sort_(sort), reverse_(reverse) {
