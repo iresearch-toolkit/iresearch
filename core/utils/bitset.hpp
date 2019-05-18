@@ -125,6 +125,18 @@ class dynamic_bitset : public dynamic_bitset_base<Alloc> {
     clear();
   }
 
+  bool operator==(const dynamic_bitset& rhs) const NOEXCEPT {
+    if (this->size() != rhs.size()) {
+      return false;
+    }
+
+    return 0 == std::memcmp(this->begin(), rhs.begin(), this->size());
+  }
+
+  bool operator!=(const dynamic_bitset& rhs) const NOEXCEPT {
+    return !(*this == rhs);
+  }
+
   // number of bits in bitset
   size_t size() const NOEXCEPT { return bits_; }
 
