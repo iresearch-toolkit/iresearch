@@ -66,10 +66,24 @@ class IRESEARCH_API doc_iterator_base : public doc_iterator {
 }; // doc_iterator_base
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @class doc_iterator_base
+////////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API basic_doc_iterator_base : public doc_iterator_base {
+ public:
+  explicit basic_doc_iterator_base(const order::prepared& ord);
+
+ protected:
+  // intenitonally hides doc_iterator_base::prepare_score(...)
+  void prepare_score(order::prepared::scorers&& scorers);
+
+  order::prepared::scorers scorers_;
+}; // basic_doc_iterator_base
+
+////////////////////////////////////////////////////////////////////////////////
 /// @class basic_doc_iterator
 /// @brief basic implementation of scoring iterator for single term queries
 ////////////////////////////////////////////////////////////////////////////////
-class basic_doc_iterator final : public doc_iterator_base {
+class basic_doc_iterator final : public basic_doc_iterator_base {
  public:
    basic_doc_iterator(
      const sub_reader& segment,
@@ -95,7 +109,6 @@ class basic_doc_iterator final : public doc_iterator_base {
   }
 
  private:
-  order::prepared::scorers scorers_;
   const irs::document* doc_;
   doc_iterator::ptr it_;
   const attribute_store* stats_;

@@ -462,7 +462,8 @@ class filter_test_case_base : public index_test_base {
       const irs::filter& filter,
       const iresearch::order& order,
       const std::vector<iresearch::doc_id_t>& expected,
-      const irs::index_reader& rdr
+      const irs::index_reader& rdr,
+      bool score_must_be_present = true
   ) {
     typedef std::pair<iresearch::string_ref, iresearch::doc_id_t> result_item_t;
     auto prepared_order = order.prepare();
@@ -476,11 +477,17 @@ class filter_test_case_base : public index_test_base {
 
     for (const auto& sub: rdr) {
       auto docs = prepared_filter->execute(sub, prepared_order);
-      auto& score = docs->attributes().get<irs::score>();
-      ASSERT_TRUE(bool(score));
+      const auto* score = docs->attributes().get<irs::score>().get();
 
       // ensure that we avoid COW for pre c++11 std::basic_string
-      const irs::bytes_ref score_value = score->value();
+      irs::bytes_ref score_value;
+
+      if (score) {
+        score_value = score->value();
+      } else {
+        ASSERT_FALSE(score_must_be_present);
+        score = &irs::score::no_score();
+      }
 
       while(docs->next()) {
         score->evaluate();
