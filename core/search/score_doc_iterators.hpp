@@ -76,6 +76,7 @@ class IRESEARCH_API basic_doc_iterator_base : public doc_iterator_base {
   // intenitonally hides doc_iterator_base::prepare_score(...)
   void prepare_score(order::prepared::scorers&& scorers);
 
+ private:
   order::prepared::scorers scorers_;
 }; // basic_doc_iterator_base
 
