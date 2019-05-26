@@ -79,8 +79,11 @@ class basic_doc_iterator final : public doc_iterator_base {
      const order::prepared& ord,
      cost::cost_t estimation) NOEXCEPT;
 
-  virtual doc_id_t value() const override {
-    return it_->value();
+  virtual doc_id_t value() const NOEXCEPT override {
+    // this function is executed very frequently, to avoid expensive virtual call
+    // and optimize it, we directly access document attribute of wrapped iterator
+    assert(doc_);
+    return doc_->value;
   }
 
   virtual bool next() override {
@@ -93,6 +96,7 @@ class basic_doc_iterator final : public doc_iterator_base {
 
  private:
   order::prepared::scorers scorers_;
+  const irs::document* doc_;
   doc_iterator::ptr it_;
   const attribute_store* stats_;
 }; // basic_doc_iterator

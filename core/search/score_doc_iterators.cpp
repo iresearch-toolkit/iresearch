@@ -45,9 +45,11 @@ basic_doc_iterator::basic_doc_iterator(
     const order::prepared& ord,
     cost::cost_t estimation) NOEXCEPT
   : doc_iterator_base(ord),
-    it_(std::move(it)), 
+    doc_(it->attributes().get<irs::document>().get()),
+    it_(std::move(it)),
     stats_(&stats) {
   assert(it_);
+  assert(doc_);
 
   // set estimation value
   estimate(estimation);
