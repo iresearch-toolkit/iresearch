@@ -110,8 +110,8 @@ class basic_doc_iterator final : public basic_doc_iterator_base {
   }
 
  private:
-  const irs::document* doc_;
   doc_iterator::ptr it_;
+  const irs::document* doc_{};
   const attribute_store* stats_;
 }; // basic_doc_iterator
 

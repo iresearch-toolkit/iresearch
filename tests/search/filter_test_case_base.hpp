@@ -477,6 +477,10 @@ class filter_test_case_base : public index_test_base {
 
     for (const auto& sub: rdr) {
       auto docs = prepared_filter->execute(sub, prepared_order);
+
+      auto& doc = docs->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc)); // ensure all iterators contain "document" attribute
+
       const auto* score = docs->attributes().get<irs::score>().get();
 
       // ensure that we avoid COW for pre c++11 std::basic_string
@@ -489,7 +493,8 @@ class filter_test_case_base : public index_test_base {
         score = &irs::score::no_score();
       }
 
-      while(docs->next()) {
+      while (docs->next()) {
+        ASSERT_EQ(docs->value(), doc->value);
         score->evaluate();
         scored_result.emplace(score_value, docs->value());
       }
@@ -514,14 +519,21 @@ class filter_test_case_base : public index_test_base {
   ) {
     for (const auto& sub : rdr) {
       auto docs = q->execute(sub);
+
+      auto& doc = docs->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc)); // ensure all iterators contain "document" attribute
+
       auto& score = docs->attributes().get<irs::score>();
 
       result_costs.push_back(irs::cost::extract(docs->attributes()));
-      for (;docs->next();) {
+
+      while (docs->next()) {
+        ASSERT_EQ(docs->value(), doc->value);
+
         if (score) {
           score->evaluate();
         }
-        /* put score attributes to iterator */
+        // put score attributes to iterator
         result.push_back(docs->value());
       }
     }

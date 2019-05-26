@@ -80,14 +80,17 @@ basic_doc_iterator::basic_doc_iterator(
     const order::prepared& ord,
     cost::cost_t estimation) NOEXCEPT
   : basic_doc_iterator_base(ord),
-    doc_(it->attributes().get<irs::document>().get()),
     it_(std::move(it)),
     stats_(&stats) {
   assert(it_);
-  assert(doc_);
 
   // set estimation value
   estimate(estimation);
+
+  // make document attribute accessible
+  doc_ = (attrs_.emplace<irs::document>()
+            = it_->attributes().get<irs::document>()).get();
+  assert(doc_);
 
   // set scorers
   prepare_score(ord_->prepare_scorers(
