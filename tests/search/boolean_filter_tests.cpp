@@ -1285,6 +1285,9 @@ NS_BEGIN(detail)
 
 struct unestimated: public irs::filter {
   struct doc_iterator : irs::doc_iterator {
+    doc_iterator() {
+      attrs.emplace(doc);
+    }
     virtual irs::doc_id_t value() const override {
       // prevent iterator to filter out
       return irs::type_limits<irs::type_t::doc_id_t>::invalid();
@@ -1295,8 +1298,11 @@ struct unestimated: public irs::filter {
       return irs::type_limits<irs::type_t::doc_id_t>::invalid();
     }
     virtual const irs::attribute_view& attributes() const NOEXCEPT override {
-      return irs::attribute_view::empty_instance();
+      return attrs;
     }
+
+    irs::document doc;
+    irs::attribute_view attrs;
   }; // doc_iterator
 
   struct prepared: public irs::filter::prepared {
@@ -1334,6 +1340,7 @@ struct estimated: public irs::filter {
         return est;
       });
       attrs.emplace(cost);
+      attrs.emplace(doc);
     }
     virtual irs::doc_id_t value() const override {
       // prevent iterator to filter out
@@ -1348,6 +1355,7 @@ struct estimated: public irs::filter {
       return attrs;
     }
 
+    irs::document doc;
     irs::cost cost;
     irs::attribute_view attrs;
   }; // doc_iterator
