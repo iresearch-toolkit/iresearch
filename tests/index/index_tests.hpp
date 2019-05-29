@@ -345,7 +345,7 @@ class text_field : public tests::field_base {
   }
 
   irs::string_ref value() const { return value_; }
-  void value(const T& value) { value = value; }
+  void value(const T& value) { value_ = value; }
   void value(T&& value) { value_ = std::move(value); }
 
   const irs::flags& features() const {
