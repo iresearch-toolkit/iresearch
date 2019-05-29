@@ -23,6 +23,7 @@
 
 #include "gtest/gtest.h"
 #include "analysis/text_token_normalizing_stream.hpp"
+#include "utils/locale_utils.hpp"
 
 NS_LOCAL
 
@@ -189,6 +190,95 @@ TEST_F(text_token_normalizing_stream_tests, test_load) {
     ASSERT_FALSE(stream->next());
   }
 
+  // with UPPER case 
+  {
+    irs::string_ref data("ruNNing");
+    auto stream = irs::analysis::analyzers::get("text-token-normalize", irs::text_format::json, "{\"locale\":\"en\", \"caseConvert\":\"upper\"}");
+
+    ASSERT_NE(nullptr, stream);
+    ASSERT_TRUE(stream->reset(data));
+
+    auto& offset = stream->attributes().get<irs::offset>();
+    auto& payload = stream->attributes().get<irs::payload>();
+    auto& term = stream->attributes().get<irs::term_attribute>();
+
+    ASSERT_TRUE(stream->next());
+    ASSERT_EQ(0, offset->start);
+    ASSERT_EQ(7, offset->end);
+    ASSERT_EQ("ruNNing", irs::ref_cast<char>(payload->value));
+    ASSERT_EQ("RUNNING", irs::ref_cast<char>(term->value()));
+    ASSERT_FALSE(stream->next());
+  }
+
+  // with LOWER case 
+  {
+    irs::string_ref data("ruNNing");
+    auto stream = irs::analysis::analyzers::get("text-token-normalize", irs::text_format::json, "{\"locale\":\"en\", \"caseConvert\":\"lower\"}");
+
+    ASSERT_NE(nullptr, stream);
+    ASSERT_TRUE(stream->reset(data));
+
+    auto& offset = stream->attributes().get<irs::offset>();
+    auto& payload = stream->attributes().get<irs::payload>();
+    auto& term = stream->attributes().get<irs::term_attribute>();
+
+    ASSERT_TRUE(stream->next());
+    ASSERT_EQ(0, offset->start);
+    ASSERT_EQ(7, offset->end);
+    ASSERT_EQ("ruNNing", irs::ref_cast<char>(payload->value));
+    ASSERT_EQ("running", irs::ref_cast<char>(term->value()));
+    ASSERT_FALSE(stream->next());
+  }
+
+  // with NONE case 
+  {
+    irs::string_ref data("ruNNing");
+    auto stream = irs::analysis::analyzers::get("text-token-normalize", irs::text_format::json, "{\"locale\":\"en\", \"caseConvert\":\"none\"}");
+
+    ASSERT_NE(nullptr, stream);
+    ASSERT_TRUE(stream->reset(data));
+
+    auto& offset = stream->attributes().get<irs::offset>();
+    auto& payload = stream->attributes().get<irs::payload>();
+    auto& term = stream->attributes().get<irs::term_attribute>();
+
+    ASSERT_TRUE(stream->next());
+    ASSERT_EQ(0, offset->start);
+    ASSERT_EQ(7, offset->end);
+    ASSERT_EQ("ruNNing", irs::ref_cast<char>(payload->value));
+    ASSERT_EQ("ruNNing", irs::ref_cast<char>(term->value()));
+    ASSERT_FALSE(stream->next());
+  }
+
+  // remove accent 
+  {
+    std::wstring unicodeData = L"\u00F6\u00F5";
+    
+    std::string data;
+    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); 
+    ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, unicodeData, locale));
+    
+    auto stream = irs::analysis::analyzers::get("text-token-normalize", irs::text_format::json, "{\"locale\":\"de_DE.UTF8\", \"caseConvert\":\"lower\", \"noAccent\":true}");
+   
+    ASSERT_NE(nullptr, stream);
+    ASSERT_TRUE(stream->reset(data));
+    auto& offset = stream->attributes().get<irs::offset>();
+    auto& payload = stream->attributes().get<irs::payload>();
+    auto& term = stream->attributes().get<irs::term_attribute>();
+
+    ASSERT_TRUE(stream->next());
+    
+    ASSERT_EQ(0, offset->start);
+    ASSERT_EQ(data.size(), offset->end);
+    ASSERT_EQ(data, irs::ref_cast<char>(payload->value));
+
+    std::basic_string<wchar_t> unicodeTerm;
+    ASSERT_TRUE(irs::locale_utils::append_internal<wchar_t>(unicodeTerm, irs::ref_cast<char>(term->value()), locale));
+    ASSERT_EQ(L"\u006F\u006F", unicodeTerm);
+    
+    ASSERT_FALSE(stream->next());
+  }
+
   // load jSON invalid
   {
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("text-token-normalize", irs::text_format::json, irs::string_ref::NIL));
@@ -196,8 +286,8 @@ TEST_F(text_token_normalizing_stream_tests, test_load) {
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("text-token-normalize", irs::text_format::json, "[]"));
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("text-token-normalize", irs::text_format::json, "{}"));
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("text-token-normalize", irs::text_format::json, "{\"locale\":1}"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("text-token-normalize", irs::text_format::json, "{\"locale\":\"en\", \"case_convert\":42}"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("text-token-normalize", irs::text_format::json, "{\"locale\":\"en\", \"no_accent\":42}"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("text-token-normalize", irs::text_format::json, "{\"locale\":\"en\", \"caseConvert\":42}"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("text-token-normalize", irs::text_format::json, "{\"locale\":\"en\", \"noAccent\":42}"));
   }
 
   // load text
