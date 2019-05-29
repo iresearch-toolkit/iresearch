@@ -105,7 +105,7 @@ TEST_F(token_masking_stream_tests, test_load) {
     irs::string_ref data0("abc");
     irs::string_ref data1("ghi");
 
-    auto testFunc = [](auto& data0, auto& data1, auto stream) {
+    auto testFunc = [](const irs::string_ref& data0, const irs::string_ref& data1, irs::analysis::analyzer::ptr stream) {
       ASSERT_NE(nullptr, stream);
       ASSERT_TRUE(stream->reset(data0));
       ASSERT_FALSE(stream->next());
@@ -136,7 +136,7 @@ TEST_F(token_masking_stream_tests, test_load) {
     irs::string_ref data1("646566");
  
 
-    auto testFunc = [](const auto& data0, const auto& data1, auto stream) {
+    auto testFunc = [](const irs::string_ref& data0, const irs::string_ref& data1, irs::analysis::analyzer::ptr stream) {
       ASSERT_NE(nullptr, stream);
       ASSERT_TRUE(stream->reset(data0));
       ASSERT_FALSE(stream->next());

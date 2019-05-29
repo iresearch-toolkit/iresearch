@@ -107,7 +107,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     std::string data = " A  hErd of   quIck brown  foXes ran    and Jumped over  a     runninG dog";
     irs::analysis::text_token_stream stream(options);
 
-    auto testFunc = [](const auto& data, auto pStream) {
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto& pOffset = pStream->attributes().get<iresearch::offset>();
@@ -150,10 +150,10 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       testFunc(data, &stream);
     }
     {
-      // ignoredWords  should be set to empty - or default values will interfere with test data
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"ignoredWords\":[]}"); 
+      // stopwords  should be set to empty - or default values will interfere with test data
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[]}"); 
       ASSERT_NE(nullptr, stream);
-      testFunc(data, stream);
+      testFunc(data, stream.get());
     }
   }
 
@@ -162,7 +162,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
 
     std::string data = "A qUiCk brOwn FoX";
     
-    auto testFunc = [](const auto& data, auto pStream) {
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
 
       ASSERT_TRUE(pStream->reset(data));
 
@@ -187,10 +187,10 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       testFunc(data, &stream);
     }
     {
-      // ignoredWords  should be set to empty - or default values will interfere with test data
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"ignoredWords\":[], \"caseConvert\":\"lower\"}");
+      // stopwords  should be set to empty - or default values will interfere with test data
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[], \"caseConvert\":\"lower\"}");
       ASSERT_NE(nullptr, stream);
-      testFunc(data, stream);
+      testFunc(data, stream.get());
     }
   }
 
@@ -198,7 +198,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
   {
     std::string data = "A qUiCk brOwn FoX";
 
-    auto testFunc = [](const auto& data, auto pStream) {
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto& value = pStream->attributes().get<irs::term_attribute>();
@@ -222,10 +222,10 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       testFunc(data, &stream);
     }
     {
-      // ignoredWords  should be set to empty - or default values will interfere with test data
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"ignoredWords\":[], \"caseConvert\":\"upper\"}");
+      // stopwords  should be set to empty - or default values will interfere with test data
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[], \"caseConvert\":\"upper\"}");
       ASSERT_NE(nullptr, stream);
-      testFunc(data, stream);
+      testFunc(data, stream.get());
     }
   }
 
@@ -234,7 +234,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
    
     std::string data = "A qUiCk brOwn FoX";
 
-    auto testFunc = [](const auto& data, auto pStream) {
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto& value = pStream->attributes().get<irs::term_attribute>();
@@ -258,10 +258,10 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       testFunc(data, &stream);
     }
     {
-      // ignoredWords  should be set to empty - or default values will interfere with test data
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"ignoredWords\":[], \"caseConvert\":\"none\"}");
+      // stopwords  should be set to empty - or default values will interfere with test data
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[], \"caseConvert\":\"none\"}");
       ASSERT_NE(nullptr, stream);
-      testFunc(data, stream);
+      testFunc(data, stream.get());
     }
   }
 
@@ -271,7 +271,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
 
     std::string data = " A thing of some KIND and ANoTher ";
  
-    auto testFunc = [](const auto& data, auto pStream) {
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
      
       auto& pOffset = pStream->attributes().get<iresearch::offset>();
@@ -297,9 +297,9 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       testFunc(data, &stream);
     }
     {
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"ignoredWords\":[\"a\", \"of\", \"and\"]}");
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\", \"of\", \"and\"]}");
       ASSERT_NE(nullptr, stream);
-      testFunc(data, stream);
+      testFunc(data, stream.get());
     }
 
   }
@@ -314,7 +314,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
    
 
-    auto testFunc = [](const auto& data, auto pStream) {
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto& pOffset = pStream->attributes().get<iresearch::offset>();
@@ -347,10 +347,10 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       testFunc(data, &stream);
     }
     {
-      // ignoredWords  should be set to empty - or default values will interfere with test data
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"ru_RU.UTF-8\", \"ignoredWords\":[]}");
+      // stopwords  should be set to empty - or default values will interfere with test data
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"ru_RU.UTF-8\", \"stopwords\":[]}");
       ASSERT_NE(nullptr, stream);
-      testFunc(data, stream);
+      testFunc(data, stream.get());
     }
   }
 
@@ -363,7 +363,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     std::string data;
     ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
    
-    auto testFunc = [](const auto& data, auto pStream) {
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto& value = pStream->attributes().get<iresearch::term_attribute>();
@@ -396,10 +396,10 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       testFunc(data, &stream);
     }
     {
-      // ignoredWords  should be set to empty - or default values will interfere with test data
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"ru_RU.UTF-8\", \"ignoredWords\":[], \"noAccent\":false}");
+      // stopwords  should be set to empty - or default values will interfere with test data
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"ru_RU.UTF-8\", \"stopwords\":[], \"noAccent\":false}");
       ASSERT_NE(nullptr, stream);
-      testFunc(data, stream);
+      testFunc(data, stream.get());
     }
   }
 
@@ -410,7 +410,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     std::string data;
     ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
    
-    auto testFunc = [](const auto& data, auto pStream) {
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
 
       ASSERT_TRUE(pStream->reset(data));
 
@@ -443,10 +443,10 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       testFunc(data, &stream);
     }
     {
-      // ignoredWords  should be set to empty - or default values will interfere with test data
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"ru_RU.UTF-8\", \"ignoredWords\":[], \"noStem\":true}");
+      // stopwords  should be set to empty - or default values will interfere with test data
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"ru_RU.UTF-8\", \"stopwords\":[], \"noStem\":true}");
       ASSERT_NE(nullptr, stream);
-      testFunc(data, stream);
+      testFunc(data, stream.get());
     }
   }
 
@@ -460,7 +460,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
    
 
-    auto testFunc = [](const auto& data, auto pStream) {
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto& pOffset = pStream->attributes().get<iresearch::offset>();
@@ -479,10 +479,10 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       testFunc(data, &stream);
     }
     {
-      // ignoredWords  should be set to empty - or default values will interfere with test data
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"tr-TR.UTF-8\", \"ignoredWords\":[]}");
+      // stopwords  should be set to empty - or default values will interfere with test data
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"tr-TR.UTF-8\", \"stopwords\":[]}");
       ASSERT_NE(nullptr, stream);
-      testFunc(data, stream);
+      testFunc(data, stream.get());
     }
   }
 
@@ -495,7 +495,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
  
 
-    auto testFunc = [](const auto& data, auto pStream) {
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto& pOffset = pStream->attributes().get<iresearch::offset>();
@@ -524,10 +524,10 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       testFunc(data, &stream);
     }
     {
-      // ignoredWords  should be set to empty - or default values will interfere with test data
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"zh_CN.UTF-8\", \"ignoredWords\":[]}");
+      // stopwords  should be set to empty - or default values will interfere with test data
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"zh_CN.UTF-8\", \"stopwords\":[]}");
       ASSERT_NE(nullptr, stream);
-      testFunc(data, stream);
+      testFunc(data, stream.get());
     }
   }
 
@@ -544,8 +544,8 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       ASSERT_FALSE(stream.reset(data));
     }
     {
-      // ignoredWords  should be set to empty - or default values will interfere with test data
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"invalid12345.UTF-8\", \"ignoredWords\":[]}");
+      // stopwords  should be set to empty - or default values will interfere with test data
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"invalid12345.UTF-8\", \"stopwords\":[]}");
       ASSERT_NE(nullptr, stream);
       ASSERT_FALSE(stream->reset(data));
     }
@@ -569,7 +569,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords) {
     auto locale = "en_US.UTF-8";
     std::string sDataASCII = "A E I O U";
 
-    auto testFunc = [](const auto& data, auto pStream) {
+    auto testFunc = [](const irs::string_ref& data, analyzer::ptr pStream) {
       ASSERT_TRUE(pStream->reset(data));
       auto& pOffset = pStream->attributes().get<iresearch::offset>();
       auto& pPayload = pStream->attributes().get<iresearch::payload>();
@@ -620,7 +620,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords) {
 TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords_path_override) {
   std::string sDataASCII = "A E I O U";
 
-  auto testFunc = [](const auto& data, auto pStream) {
+  auto testFunc = [](const irs::string_ref& data, analyzer::ptr pStream) {
     ASSERT_TRUE(pStream->reset(data));
     auto& pOffset = pStream->attributes().get<iresearch::offset>();
     auto& pPayload = pStream->attributes().get<iresearch::payload>();
@@ -644,7 +644,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords_path_override) {
   iresearch::setenv(text_token_stream::STOPWORD_PATH_ENV_VARIABLE, "some invalid path", true);
 
   // overriding ignored words path
-  auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"ignoredWordsPath\":\"" IResearch_test_resource_dir "\"}");
+  auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwordsPath\":\"" IResearch_test_resource_dir "\"}");
   ASSERT_NE(nullptr, stream);
   testFunc(sDataASCII, stream);
 }

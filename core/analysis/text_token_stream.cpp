@@ -285,7 +285,7 @@ irs::analysis::analyzer::ptr construct(
     auto locale = irs::locale_utils::locale(options.locale);
 
     if (!get_ignored_words(options.ignored_words, locale)) {
-      IR_FRMT_WARN("Failed to retrieve 'ignored_words' while constructing text_token_stream with cache key: %s", cache_key.c_str());
+      IR_FRMT_WARN("Failed to retrieve 'stop_words' while constructing text_token_stream with cache key: %s", cache_key.c_str());
 
       return nullptr;
     }
@@ -377,8 +377,8 @@ bool process_term(
 
 static const irs::string_ref localeParamName           = "locale";
 static const irs::string_ref caseConvertParamName      = "caseConvert";
-static const irs::string_ref ignoredWordsParamName     = "ignoredWords";
-static const irs::string_ref ignoredWordsPathParamName = "ignoredWordsPath";
+static const irs::string_ref stopwordsParamName        = "stopwords";
+static const irs::string_ref stopwordsPathParamName    = "stopwordsPath";
 static const irs::string_ref noAccentParamName         = "noAccent";
 static const irs::string_ref noStemParamName           = "noStem";
 
@@ -388,9 +388,9 @@ static const irs::string_ref noStemParamName           = "noStem";
 ///        "caseConvert"(string enum): modify token case using "locale"
 ///        "noAccent"(bool): remove accents
 ///        "noStem"(bool): disable stemming
-///        "ignoredWords([string...]): set of words to ignore 
-///        "ignoredWordsPath"(string): custom path, where to load stopwords
-///  if none of ignoredWords and ignoredWordsPath specified, stopwords are loaded from default location
+///        "stopwords([string...]): set of words to ignore 
+///        "stopwordsPath"(string): custom path, where to load stopwords
+///  if none of stopwords and stopwordsPath specified, stopwords are loaded from default location
 ////////////////////////////////////////////////////////////////////////////////
 irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
   rapidjson::Document json;
@@ -451,24 +451,24 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
     auto locale = irs::locale_utils::locale(options.locale);
 
     // load stopwords
-    // 'ignoredWords' + 'ignoredWordsPath' = load from both
-    // 'ignoredWords' only - load from 'ignoredWords'
-    // 'ignoredWordsPath' only - load from 'ignoredWordsPath'
+    // 'stopwords' + 'stopwordsPath' = load from both
+    // 'stopwords' only - load from 'stopwords'
+    // 'stopwordsPath' only - load from 'stopwordsPath'
     // none - load from default location
-    if (json.HasMember(ignoredWordsParamName.c_str())) {
-      auto& ignored_words = json[ignoredWordsParamName.c_str()]; // optional string array
+    if (json.HasMember(stopwordsParamName.c_str())) {
+      auto& stop_words = json[stopwordsParamName.c_str()]; // optional string array
 
-      if (!ignored_words.IsArray()) {
-        IR_FRMT_WARN("Invalid value in '%s' while constructing text_token_stream from jSON arguments: %s", ignoredWordsParamName.c_str(), args.c_str());
+      if (!stop_words.IsArray()) {
+        IR_FRMT_WARN("Invalid value in '%s' while constructing text_token_stream from jSON arguments: %s", stopwordsParamName.c_str(), args.c_str());
 
         return nullptr;
       }
 
-      for (auto itr = ignored_words.Begin(), end = ignored_words.End();
+      for (auto itr = stop_words.Begin(), end = stop_words.End();
            itr != end;
            ++itr) {
         if (!itr->IsString()) {
-          IR_FRMT_WARN("Non-string value in '%s' while constructing text_token_stream from jSON arguments: %s", ignoredWordsParamName.c_str(), args.c_str());
+          IR_FRMT_WARN("Non-string value in '%s' while constructing text_token_stream from jSON arguments: %s", stopwordsParamName.c_str(), args.c_str());
 
           return nullptr;
         }
@@ -476,38 +476,38 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
         options.ignored_words.emplace(itr->GetString());
       }
 
-      if (json.HasMember(ignoredWordsPathParamName.c_str())) {
-        auto& ignored_words_path = json[ignoredWordsPathParamName.c_str()]; // optional string
+      if (json.HasMember(stopwordsPathParamName.c_str())) {
+        auto& ignored_words_path = json[stopwordsPathParamName.c_str()]; // optional string
 
         if (!ignored_words_path.IsString()) {
-          IR_FRMT_WARN("Non-string value in '%s' while constructing text_token_stream from jSON arguments: %s", ignoredWordsPathParamName.c_str(), args.c_str());
+          IR_FRMT_WARN("Non-string value in '%s' while constructing text_token_stream from jSON arguments: %s", stopwordsPathParamName.c_str(), args.c_str());
 
           return nullptr;
         }
 
         if (!get_ignored_words(options.ignored_words, locale, ignored_words_path.GetString())) {
-          IR_FRMT_WARN("Failed to retrieve 'ignored_words' from path while constructing text_token_stream from jSON arguments: %s", args.c_str());
+          IR_FRMT_WARN("Failed to retrieve 'stop_words' from path while constructing text_token_stream from jSON arguments: %s", args.c_str());
 
           return nullptr;
         }
       }
-    } else if (json.HasMember(ignoredWordsPathParamName.c_str())) {
-      auto& ignored_words_path = json[ignoredWordsPathParamName.c_str()]; // optional string
+    } else if (json.HasMember(stopwordsPathParamName.c_str())) {
+      auto& ignored_words_path = json[stopwordsPathParamName.c_str()]; // optional string
 
       if (!ignored_words_path.IsString()) {
-        IR_FRMT_WARN("Non-string value in '%s' while constructing text_token_stream from jSON arguments: %s", ignoredWordsPathParamName.c_str(), args.c_str());
+        IR_FRMT_WARN("Non-string value in '%s' while constructing text_token_stream from jSON arguments: %s", stopwordsPathParamName.c_str(), args.c_str());
 
         return nullptr;
       }
 
       if (!get_ignored_words(options.ignored_words, locale, ignored_words_path.GetString())) {
-        IR_FRMT_WARN("Failed to retrieve 'ignored_words' from path while constructing text_token_stream from jSON arguments: %s", args.c_str());
+        IR_FRMT_WARN("Failed to retrieve 'stopwords' from path while constructing text_token_stream from jSON arguments: %s", args.c_str());
 
         return nullptr;
       }
     } else {
       if (!get_ignored_words(options.ignored_words, locale)) {
-        IR_FRMT_WARN("Failed to retrieve 'ignored_words' while constructing text_token_stream from jSON arguments: %s", args.c_str());
+        IR_FRMT_WARN("Failed to retrieve 'stopwords' while constructing text_token_stream from jSON arguments: %s", args.c_str());
 
         return nullptr;
       }

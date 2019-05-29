@@ -214,7 +214,7 @@ TEST_F(delimited_token_stream_tests, test_quote) {
     irs::string_ref data("abc,\"def\",\"\"ghi"); // quoted terms should be honoured
   
 
-    auto testFunc = [](const auto& data, auto pStream) {
+    auto testFunc = [](const irs::string_ref& data, irs::analysis::analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto& offset = pStream->attributes().get<irs::offset>();
@@ -245,7 +245,7 @@ TEST_F(delimited_token_stream_tests, test_quote) {
     }
     {
       auto stream = irs::analysis::analyzers::get("delimited", irs::text_format::json, "{\"delimiter\":\",\"}");
-      testFunc(data, stream);
+      testFunc(data, stream.get());
     }
   }
 

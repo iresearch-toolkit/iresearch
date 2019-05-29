@@ -863,7 +863,7 @@ int search(
   for (size_t i = search_threads; i; --i) {
     thread_pool.run([&task_provider, &dir, &reader, &order, limit, &out, csv, scored_terms_limit]()->void {
       static const std::string analyzer_name("text");
-      static const std::string analyzer_args("{\"locale\":\"en\", \"ignored_words\":[\"abc\", \"def\", \"ghi\"]}"); // from index-put
+      static const std::string analyzer_args("{\"locale\":\"en\", \"stopwords\":[\"abc\", \"def\", \"ghi\"]}"); // from index-put
       auto analyzer = irs::analysis::analyzers::get(analyzer_name, irs::text_format::json, analyzer_args);
       irs::filter::prepared::ptr filter;
       std::string tmpBuf;
