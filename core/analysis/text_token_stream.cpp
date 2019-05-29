@@ -285,7 +285,7 @@ irs::analysis::analyzer::ptr construct(
     auto locale = irs::locale_utils::locale(options.locale);
 
     if (!get_ignored_words(options.ignored_words, locale)) {
-      IR_FRMT_WARN("Failed to retrieve 'stop_words' while constructing text_token_stream with cache key: %s", cache_key.c_str());
+      IR_FRMT_WARN("Failed to retrieve 'stopwords' while constructing text_token_stream with cache key: %s", cache_key.c_str());
 
       return nullptr;
     }
@@ -486,7 +486,7 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
         }
 
         if (!get_ignored_words(options.ignored_words, locale, ignored_words_path.GetString())) {
-          IR_FRMT_WARN("Failed to retrieve 'stop_words' from path while constructing text_token_stream from jSON arguments: %s", args.c_str());
+          IR_FRMT_WARN("Failed to retrieve 'stopwords' from path while constructing text_token_stream from jSON arguments: %s", args.c_str());
 
           return nullptr;
         }
