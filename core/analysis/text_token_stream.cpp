@@ -375,14 +375,25 @@ bool process_term(
   return true;
 }
 
+static const irs::string_ref localeParamName           = "locale";
+static const irs::string_ref caseConvertParamName      = "caseConvert";
+static const irs::string_ref ignoredWordsParamName     = "ignoredWords";
+static const irs::string_ref ignoredWordsPathParamName = "ignoredWordsPath";
+static const irs::string_ref noAccentParamName         = "noAccent";
+static const irs::string_ref noStemParamName           = "noStem";
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a jSON encoded object with the following attributes:
 ///        "locale"(string): locale of the analyzer <required>
-///        "ignored_words([string...]): set of words to ignore (missing == use default list)
+///        "caseConvert"(string enum): modify token case using "locale"
+///        "noAccent"(bool): remove accents
+///        "noStem"(bool): disable stemming
+///        "ignoredWords([string...]): set of words to ignore 
+///        "ignoredWordsPath"(string): custom path, where to load stopwords
+///  if none of ignoredWords and ignoredWordsPath specified, stopwords are loaded from default location
 ////////////////////////////////////////////////////////////////////////////////
 irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
   rapidjson::Document json;
-
   if (json.Parse(args.c_str(), args.size()).HasParseError()) {
     IR_FRMT_ERROR(
       "Invalid jSON arguments passed while constructing text_token_stream, arguments: %s",
@@ -397,11 +408,11 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
   }
 
   if (!json.IsObject()
-      || !json.HasMember("locale")
-      || !json["locale"].IsString()
+      || !json.HasMember(localeParamName.c_str())
+      || !json[localeParamName.c_str()].IsString()
      ) {
 
-    IR_FRMT_WARN("Missing 'locale' while constructing text_token_stream from jSON arguments: %s", args.c_str());
+    IR_FRMT_WARN("Missing '%s' while constructing text_token_stream from jSON arguments: %s", localeParamName.c_str(), args.c_str());
 
     return nullptr;
   }
@@ -410,13 +421,13 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
     typedef irs::analysis::text_token_stream::options_t options_t;
     options_t options;
 
-    options.locale = json["locale"].GetString(); // required
+    options.locale = json[localeParamName.c_str()].GetString(); // required
 
-    if (json.HasMember("case_convert")) {
-      auto& case_convert = json["case_convert"]; // optional string enum
+    if (json.HasMember(caseConvertParamName.c_str())) {
+      auto& case_convert = json[caseConvertParamName.c_str()]; // optional string enum
 
       if (!case_convert.IsString()) {
-        IR_FRMT_WARN("Non-string value in 'case_convert' while constructing text_token_stream from jSON arguments: %s", args.c_str());
+        IR_FRMT_WARN("Non-string value in '%s' while constructing text_token_stream from jSON arguments: %s", caseConvertParamName.c_str(), args.c_str());
 
         return nullptr;
       }
@@ -429,7 +440,7 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
       auto itr = case_convert_map.find(case_convert.GetString());
 
       if (itr == case_convert_map.end()) {
-        IR_FRMT_WARN("Invalid value in 'case_convert' while constructing text_token_stream from jSON arguments: %s", args.c_str());
+        IR_FRMT_WARN("Invalid value in '%s' while constructing text_token_stream from jSON arguments: %s", caseConvertParamName.c_str(),  args.c_str());
 
         return nullptr;
       }
@@ -440,15 +451,15 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
     auto locale = irs::locale_utils::locale(options.locale);
 
     // load stopwords
-    // 'ignored_words' + 'ignored_words_path' = load from both
-    // 'ignored_words' only - load from 'ignored_words'
-    // 'ignored_words_path' only - load from 'ignored_words_path'
+    // 'ignoredWords' + 'ignoredWordsPath' = load from both
+    // 'ignoredWords' only - load from 'ignoredWords'
+    // 'ignoredWordsPath' only - load from 'ignoredWordsPath'
     // none - load from default location
-    if (json.HasMember("ignored_words")) {
-      auto& ignored_words = json["ignored_words"]; // optional string array
+    if (json.HasMember(ignoredWordsParamName.c_str())) {
+      auto& ignored_words = json[ignoredWordsParamName.c_str()]; // optional string array
 
       if (!ignored_words.IsArray()) {
-        IR_FRMT_WARN("Invalid value in 'ignored_words' while constructing text_token_stream from jSON arguments: %s", args.c_str());
+        IR_FRMT_WARN("Invalid value in '%s' while constructing text_token_stream from jSON arguments: %s", ignoredWordsParamName.c_str(), args.c_str());
 
         return nullptr;
       }
@@ -457,7 +468,7 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
            itr != end;
            ++itr) {
         if (!itr->IsString()) {
-          IR_FRMT_WARN("Non-string value in 'ignored_words' while constructing text_token_stream from jSON arguments: %s", args.c_str());
+          IR_FRMT_WARN("Non-string value in '%s' while constructing text_token_stream from jSON arguments: %s", ignoredWordsParamName.c_str(), args.c_str());
 
           return nullptr;
         }
@@ -465,11 +476,11 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
         options.ignored_words.emplace(itr->GetString());
       }
 
-      if (json.HasMember("ignored_words_path")) {
-        auto& ignored_words_path = json["ignored_words_path"]; // optional string
+      if (json.HasMember(ignoredWordsPathParamName.c_str())) {
+        auto& ignored_words_path = json[ignoredWordsPathParamName.c_str()]; // optional string
 
         if (!ignored_words_path.IsString()) {
-          IR_FRMT_WARN("Non-string value in 'ignored_words_path' while constructing text_token_stream from jSON arguments: %s", args.c_str());
+          IR_FRMT_WARN("Non-string value in '%s' while constructing text_token_stream from jSON arguments: %s", ignoredWordsPathParamName.c_str(), args.c_str());
 
           return nullptr;
         }
@@ -480,11 +491,11 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
           return nullptr;
         }
       }
-    } else if (json.HasMember("ignored_words_path")) {
-      auto& ignored_words_path = json["ignored_words_path"]; // optional string
+    } else if (json.HasMember(ignoredWordsPathParamName.c_str())) {
+      auto& ignored_words_path = json[ignoredWordsPathParamName.c_str()]; // optional string
 
       if (!ignored_words_path.IsString()) {
-        IR_FRMT_WARN("Non-string value in 'ignored_words_path' while constructing text_token_stream from jSON arguments: %s", args.c_str());
+        IR_FRMT_WARN("Non-string value in '%s' while constructing text_token_stream from jSON arguments: %s", ignoredWordsPathParamName.c_str(), args.c_str());
 
         return nullptr;
       }
@@ -502,11 +513,11 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
       }
     }
 
-    if (json.HasMember("no_accent")) {
-      auto& no_accent = json["no_accent"]; // optional bool
+    if (json.HasMember(noAccentParamName.c_str())) {
+      auto& no_accent = json[noAccentParamName.c_str()]; // optional bool
 
       if (!no_accent.IsBool()) {
-        IR_FRMT_WARN("Non-boolean value in 'no_accent' while constructing text_token_stream from jSON arguments: %s", args.c_str());
+        IR_FRMT_WARN("Non-boolean value in '%s' while constructing text_token_stream from jSON arguments: %s", noAccentParamName.c_str(), args.c_str());
 
         return nullptr;
       }
@@ -514,11 +525,11 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
       options.no_accent = no_accent.GetBool();
     }
 
-    if (json.HasMember("no_stem")) {
-      auto& no_stem = json["no_stem"]; // optional bool
+    if (json.HasMember(noStemParamName.c_str())) {
+      auto& no_stem = json[noStemParamName.c_str()]; // optional bool
 
       if (!no_stem.IsBool()) {
-        IR_FRMT_WARN("Non-boolean value in 'no_stem' while constructing text_token_stream from jSON arguments: %s", args.c_str());
+        IR_FRMT_WARN("Non-boolean value in '%s' while constructing text_token_stream from jSON arguments: %s", noStemParamName.c_str(), args.c_str());
 
         return nullptr;
       }
