@@ -204,7 +204,7 @@ NS_END
 NS_ROOT
 NS_BEGIN(analysis)
 
-DEFINE_ANALYZER_TYPE_NAMED(text_token_normalizing_stream, "text-token-normalize")
+DEFINE_ANALYZER_TYPE_NAMED(text_token_normalizing_stream, "norm")
 
 text_token_normalizing_stream::text_token_normalizing_stream(
     const options_t& options

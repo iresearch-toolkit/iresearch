@@ -104,7 +104,7 @@ NS_END
 NS_ROOT
 NS_BEGIN(analysis)
 
-DEFINE_ANALYZER_TYPE_NAMED(text_token_stemming_stream, "text-token-stem")
+DEFINE_ANALYZER_TYPE_NAMED(text_token_stemming_stream, "stem")
 
 text_token_stemming_stream::text_token_stemming_stream(
     const irs::string_ref& locale
