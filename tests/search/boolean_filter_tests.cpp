@@ -171,7 +171,7 @@ class basic_doc_iterator: public irs::doc_iterator {
       );
 
       score_.prepare(ord, [this] (irs::byte_type* score) {
-        scorers_.score(*ord_, score);
+        scorers_.score(score);
       });
 
       attrs_.emplace(score_);
@@ -2297,7 +2297,7 @@ TEST(small_disjunction_test, next) {
     std::vector<irs::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 45 };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -2319,7 +2319,7 @@ TEST(small_disjunction_test, next) {
     };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -2342,7 +2342,7 @@ TEST(small_disjunction_test, next) {
     };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -2363,7 +2363,7 @@ TEST(small_disjunction_test, next) {
     };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -2385,7 +2385,7 @@ TEST(small_disjunction_test, next) {
     std::vector<irs::doc_id_t> expected{};
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -2410,7 +2410,7 @@ TEST(small_disjunction_test, next) {
     std::vector<irs::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 45 };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -2437,7 +2437,7 @@ TEST(small_disjunction_test, next) {
     std::vector<irs::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 45, 79, 101, 141, 256, 1025, 1101 };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -2462,7 +2462,7 @@ TEST(small_disjunction_test, next) {
     std::vector<irs::doc_id_t> expected{ 1, 2, 3 };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -2484,7 +2484,7 @@ TEST(small_disjunction_test, next) {
 
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -2508,7 +2508,7 @@ TEST(small_disjunction_test, next) {
 
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -2531,7 +2531,7 @@ TEST(small_disjunction_test, next) {
     std::vector<irs::doc_id_t> expected{ };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -2570,7 +2570,7 @@ TEST(small_disjunction_test, seek) {
         {57, irs::type_limits<irs::type_t::doc_id_t>::eof()}
     };
 
-    disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -2591,7 +2591,7 @@ TEST(small_disjunction_test, seek) {
       {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::eof()}
     };
 
-    disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -2618,7 +2618,7 @@ TEST(small_disjunction_test, seek) {
       {57, irs::type_limits<irs::type_t::doc_id_t>::eof()}
     };
 
-    disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -2643,7 +2643,7 @@ TEST(small_disjunction_test, seek) {
         {57, irs::type_limits<irs::type_t::doc_id_t>::eof()}
     };
 
-    disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -2675,7 +2675,7 @@ TEST(small_disjunction_test, seek) {
     std::vector<irs::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 45 };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -2702,7 +2702,7 @@ TEST(small_disjunction_test, seek) {
     std::vector<irs::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 45, 79, 101, 141, 256, 1025, 1101 };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -2727,7 +2727,7 @@ TEST(small_disjunction_test, seek) {
     std::vector<irs::doc_id_t> expected{ 1, 2, 3 };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -2749,7 +2749,7 @@ TEST(small_disjunction_test, seek) {
 
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -2773,7 +2773,7 @@ TEST(small_disjunction_test, seek) {
 
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -2796,7 +2796,7 @@ TEST(small_disjunction_test, seek) {
     std::vector<irs::doc_id_t> expected{ };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -2822,7 +2822,7 @@ TEST(small_disjunction_test, seek_next) {
       { 1, 5, 6 }
     };
 
-    disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
 
@@ -2873,7 +2873,7 @@ TEST(small_disjunction_test, scored_seek_next) {
       docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, std::move(ord));
     }
 
-    auto res = detail::execute_all<irs::score_iterator_adapter>(docs);
+    auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
     disjunction it(std::move(res.first), irs::order::prepared::unordered(), 1); // custom cost
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
@@ -2925,7 +2925,7 @@ TEST(small_disjunction_test, scored_seek_next) {
     ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
     auto prepared_order = ord.prepare();
 
-    auto res = detail::execute_all<irs::score_iterator_adapter>(docs);
+    auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
     disjunction it(std::move(res.first), prepared_order, 1); // custom cost
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
@@ -2990,7 +2990,7 @@ TEST(small_disjunction_test, scored_seek_next) {
     ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
     auto prepared_order = ord.prepare();
 
-    auto res = detail::execute_all<irs::score_iterator_adapter>(docs);
+    auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
     disjunction it(std::move(res.first), prepared_order, 1); // custom cost
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
@@ -3053,7 +3053,7 @@ TEST(small_disjunction_test, scored_seek_next) {
     ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
     auto prepared_order = ord.prepare();
 
-    auto res = detail::execute_all<irs::score_iterator_adapter>(docs);
+    auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
     disjunction it(std::move(res.first), prepared_order, 1); // custom cost
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
@@ -3114,7 +3114,7 @@ TEST(disjunction_test, next) {
     std::vector<irs::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 45 };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -3136,7 +3136,7 @@ TEST(disjunction_test, next) {
     };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -3159,7 +3159,7 @@ TEST(disjunction_test, next) {
     };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -3180,7 +3180,7 @@ TEST(disjunction_test, next) {
     };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -3202,7 +3202,7 @@ TEST(disjunction_test, next) {
     std::vector<irs::doc_id_t> expected{};
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -3238,7 +3238,7 @@ TEST(disjunction_test, next) {
     std::vector<irs::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 45 };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -3265,7 +3265,7 @@ TEST(disjunction_test, next) {
     std::vector<irs::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 45, 79, 101, 141, 256, 1025, 1101 };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -3290,7 +3290,7 @@ TEST(disjunction_test, next) {
     std::vector<irs::doc_id_t> expected{ 1, 2, 3 };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -3312,7 +3312,7 @@ TEST(disjunction_test, next) {
 
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -3336,7 +3336,7 @@ TEST(disjunction_test, next) {
 
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -3359,7 +3359,7 @@ TEST(disjunction_test, next) {
     std::vector<irs::doc_id_t> expected{ };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -3409,7 +3409,7 @@ TEST(disjunction_test, seek) {
         {57, irs::type_limits<irs::type_t::doc_id_t>::eof()}
     };
 
-    disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -3430,7 +3430,7 @@ TEST(disjunction_test, seek) {
       {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::eof()}
     };
 
-    disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -3457,7 +3457,7 @@ TEST(disjunction_test, seek) {
       {57, irs::type_limits<irs::type_t::doc_id_t>::eof()}
     };
 
-    disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -3482,7 +3482,7 @@ TEST(disjunction_test, seek) {
         {57, irs::type_limits<irs::type_t::doc_id_t>::eof()}
     };
 
-    disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -3513,7 +3513,7 @@ TEST(disjunction_test, seek) {
         {57, irs::type_limits<irs::type_t::doc_id_t>::eof()}
     };
 
-    disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -3546,7 +3546,7 @@ TEST(disjunction_test, seek) {
         {2001, irs::type_limits<irs::type_t::doc_id_t>::eof()}
     };
 
-    disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -3566,7 +3566,7 @@ TEST(disjunction_test, seek) {
       {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::eof()}
     };
 
-    disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -3595,7 +3595,7 @@ TEST(disjunction_test, seek) {
       {57, irs::type_limits<irs::type_t::doc_id_t>::eof()}
     };
 
-    disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -3623,7 +3623,7 @@ TEST(disjunction_test, seek) {
         {1201, irs::type_limits<irs::type_t::doc_id_t>::eof()}
     };
 
-    disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
@@ -3644,7 +3644,7 @@ TEST(disjunction_test, seek_next) {
       { 1, 5, 6 }
     };
 
-    disjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
 
@@ -3695,7 +3695,7 @@ TEST(disjunction_test, scored_seek_next) {
       docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, std::move(ord));
     }
 
-    auto res = detail::execute_all<irs::score_iterator_adapter>(docs);
+    auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
     disjunction it(std::move(res.first), irs::order::prepared::unordered(), 1); // custom cost
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
@@ -3747,7 +3747,7 @@ TEST(disjunction_test, scored_seek_next) {
     ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
     auto prepared_order = ord.prepare();
 
-    auto res = detail::execute_all<irs::score_iterator_adapter>(docs);
+    auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
     disjunction it(std::move(res.first), prepared_order, 1); // custom cost
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
@@ -3812,7 +3812,7 @@ TEST(disjunction_test, scored_seek_next) {
     ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
     auto prepared_order = ord.prepare();
 
-    auto res = detail::execute_all<irs::score_iterator_adapter>(docs);
+    auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
     disjunction it(std::move(res.first), prepared_order, 1); // custom cost
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
@@ -3875,7 +3875,7 @@ TEST(disjunction_test, scored_seek_next) {
     ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
     auto prepared_order = ord.prepare();
 
-    auto res = detail::execute_all<irs::score_iterator_adapter>(docs);
+    auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
     disjunction it(std::move(res.first), prepared_order, 1); // custom cost
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
@@ -5365,7 +5365,7 @@ TEST(conjunction_test, next) {
     std::vector<irs::doc_id_t> expected{ 1, 5 };
     std::vector<irs::doc_id_t> result;
     {
-      conjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+      conjunction it(detail::execute_all<conjunction::doc_iterator_t>(docs));
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::min_element(docs.begin(), docs.end(), shortest)->size(), irs::cost::extract(it.attributes()));
@@ -5390,7 +5390,7 @@ TEST(conjunction_test, next) {
     std::vector<irs::doc_id_t> expected{ 1, 5, 11, 21, 27, 31 };
     std::vector<irs::doc_id_t> result;
     {
-      conjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+      conjunction it(detail::execute_all<conjunction::doc_iterator_t>(docs));
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::min_element(docs.begin(), docs.end(), shortest)->size(), irs::cost::extract(it.attributes()));
@@ -5414,7 +5414,7 @@ TEST(conjunction_test, next) {
     std::vector<irs::doc_id_t> expected{ 1, 5, 11, 21, 27, 31 };
     std::vector<irs::doc_id_t> result;
     {
-      conjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+      conjunction it(detail::execute_all<conjunction::doc_iterator_t>(docs));
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::min_element(docs.begin(), docs.end(), shortest)->size(), irs::cost::extract(it.attributes()));
@@ -5440,7 +5440,7 @@ TEST(conjunction_test, next) {
     std::vector<irs::doc_id_t> expected{ 1, 5 };
     std::vector<irs::doc_id_t> result;
     {
-      conjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+      conjunction it(detail::execute_all<conjunction::doc_iterator_t>(docs));
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::min_element(docs.begin(), docs.end(), shortest)->size(), irs::cost::extract(it.attributes()));
@@ -5465,7 +5465,7 @@ TEST(conjunction_test, next) {
 
     std::vector<irs::doc_id_t> result;
     {
-      conjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+      conjunction it(detail::execute_all<conjunction::doc_iterator_t>(docs));
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::min_element(docs.begin(), docs.end(), shortest)->size(), irs::cost::extract(it.attributes()));
@@ -5487,7 +5487,7 @@ TEST(conjunction_test, next) {
 
     std::vector<irs::doc_id_t> result;
     {
-      conjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+      conjunction it(detail::execute_all<conjunction::doc_iterator_t>(docs));
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::min_element(docs.begin(), docs.end(), shortest)->size(), irs::cost::extract(it.attributes()));
@@ -5513,7 +5513,7 @@ TEST(conjunction_test, next) {
     std::vector<irs::doc_id_t> expected{ };
     std::vector<irs::doc_id_t> result;
     {
-      conjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+      conjunction it(detail::execute_all<conjunction::doc_iterator_t>(docs));
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::min_element(docs.begin(), docs.end(), shortest)->size(), irs::cost::extract(it.attributes()));
@@ -5536,7 +5536,7 @@ TEST(conjunction_test, next) {
     std::vector<irs::doc_id_t> expected{};
     std::vector<irs::doc_id_t> result;
     {
-      conjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+      conjunction it(detail::execute_all<conjunction::doc_iterator_t>(docs));
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::min_element(docs.begin(), docs.end(), shortest)->size(), irs::cost::extract(it.attributes()));
@@ -5579,7 +5579,7 @@ TEST(conjunction_test, seek) {
       {257, irs::type_limits<irs::type_t::doc_id_t>::eof()}
     };
 
-    conjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+    conjunction it(detail::execute_all<conjunction::doc_iterator_t>(docs));
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(std::min_element(docs.begin(), docs.end(), shortest)->size(), irs::cost::extract(it.attributes()));
@@ -5611,7 +5611,7 @@ TEST(conjunction_test, seek) {
         {257, irs::type_limits<irs::type_t::doc_id_t>::eof()}
     };
 
-    conjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+    conjunction it(detail::execute_all<conjunction ::doc_iterator_t>(docs));
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(std::min_element(docs.begin(), docs.end(), shortest)->size(), irs::cost::extract(it.attributes()));
@@ -5631,7 +5631,7 @@ TEST(conjunction_test, seek) {
       {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::eof()}
     };
 
-    conjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+    conjunction it(detail::execute_all<conjunction::doc_iterator_t>(docs));
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(std::min_element(docs.begin(), docs.end(), shortest)->size(), irs::cost::extract(it.attributes()));
@@ -5660,7 +5660,7 @@ TEST(conjunction_test, seek) {
       {57, irs::type_limits<irs::type_t::doc_id_t>::eof()}
     };
 
-    conjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+    conjunction it(detail::execute_all<conjunction::doc_iterator_t>(docs));
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(std::min_element(docs.begin(), docs.end(), shortest)->size(), irs::cost::extract(it.attributes()));
@@ -5688,7 +5688,7 @@ TEST(conjunction_test, seek) {
       {257, irs::type_limits<irs::type_t::doc_id_t>::eof()}
     };
 
-    conjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+    conjunction it(detail::execute_all<conjunction::doc_iterator_t>(docs));
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(std::min_element(docs.begin(), docs.end(), shortest)->size(), irs::cost::extract(it.attributes()));
@@ -5711,7 +5711,7 @@ TEST(conjunction_test, seek_next) {
       { 1, 4, 5, 8, 14 }
     };
 
-    conjunction it(detail::execute_all<irs::score_iterator_adapter>(docs));
+    conjunction it(detail::execute_all<conjunction::doc_iterator_t>(docs));
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
 
@@ -5760,7 +5760,7 @@ TEST(conjunction_test, scored_seek_next) {
       docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 4, 5, 8, 14 }, std::move(ord));
     }
 
-    auto res = detail::execute_all<irs::score_iterator_adapter>(docs);
+    auto res = detail::execute_all<conjunction::doc_iterator_t>(docs);
     conjunction it(std::move(res.first), irs::order::prepared::unordered());
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
@@ -5810,7 +5810,7 @@ TEST(conjunction_test, scored_seek_next) {
     ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
     auto prepared_order = ord.prepare();
 
-    auto res = detail::execute_all<irs::score_iterator_adapter>(docs);
+    auto res = detail::execute_all<conjunction::doc_iterator_t>(docs);
     conjunction it(std::move(res.first), prepared_order);
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
@@ -5871,7 +5871,7 @@ TEST(conjunction_test, scored_seek_next) {
     ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
     auto prepared_order = ord.prepare();
 
-    auto res = detail::execute_all<irs::score_iterator_adapter>(docs);
+    auto res = detail::execute_all<conjunction::doc_iterator_t>(docs);
     conjunction it(std::move(res.first), prepared_order);
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
@@ -5930,7 +5930,7 @@ TEST(conjunction_test, scored_seek_next) {
     ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
     auto prepared_order = ord.prepare();
 
-    auto res = detail::execute_all<irs::score_iterator_adapter>(docs);
+    auto res = detail::execute_all<conjunction::doc_iterator_t>(docs);
     conjunction it(std::move(res.first), prepared_order);
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));

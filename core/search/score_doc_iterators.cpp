@@ -50,19 +50,19 @@ void basic_doc_iterator_base::prepare_score(order::prepared::scorers&& scorers) 
       });
     } break;
     case 2: {
-      auto* scorer0 = scorers_[0].first.get();
-      assert(scorer0);
-      auto* scorer1 = scorers_[1].first.get();
-      assert(scorer1);
-      const auto offset_scorer_1 = scorers_[1].second;
-      doc_iterator_base::prepare_score([scorer0, scorer1, offset_scorer_1](byte_type* score) {
-        scorer0->score(score);
-        scorer1->score(score + offset_scorer_1);
+      auto* first = scorers_[0].first.get();
+      assert(first);
+      auto* second = scorers_[1].first.get();
+      assert(second);
+      const auto second_offset = scorers_[1].second;
+      doc_iterator_base::prepare_score([first, second, second_offset](byte_type* score) {
+        first->score(score);
+        second->score(score + second_offset);
       });
     } break;
     default: {
       doc_iterator_base::prepare_score([this](byte_type* score) {
-        scorers_.score(*ord_, score);
+        scorers_.score(score);
       });
     } break;
   }
