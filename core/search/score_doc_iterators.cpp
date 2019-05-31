@@ -38,7 +38,10 @@ void basic_doc_iterator_base::prepare_score(order::prepared::scorers&& scorers) 
   scorers_ = std::move(scorers);
 
   switch (scorers_.size()) {
-    case 0: break;
+    case 0: {
+      // let order initialize empty score
+      doc_iterator_base::prepare_score([](byte_type*){ });
+    } break;
     case 1: {
       auto* scorer = scorers_[0].first.get();
       assert(scorer);
