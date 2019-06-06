@@ -332,7 +332,8 @@ filter::prepared::ptr by_same_position::prepare(
   assert(term_stats.size() == terms_.size()); // initialized above
 
   for (size_t i = 0, size = terms_.size(); i < size; ++i) {
-    term_itr->finish(*stat_itr, index);
+    stat_itr->resize(ord.stats_size());
+    term_itr->finish(const_cast<byte_type*>(stat_itr->data()), index);
     ++stat_itr;
     ++term_itr;
   }

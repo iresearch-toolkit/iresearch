@@ -146,7 +146,11 @@ void limited_sample_scorer::score(
 
   // iterate over all stats and apply/store order stats
   for (auto& entry: term_stats) {
-    entry.second.collectors.finish(entry.second.stats, index);
+    entry.second.stats.resize(order.stats_size());
+    entry.second.collectors.finish(
+      const_cast<byte_type*>(entry.second.stats.data()),
+      index
+    );
   }
 
   // set filter attributes for each corresponding term

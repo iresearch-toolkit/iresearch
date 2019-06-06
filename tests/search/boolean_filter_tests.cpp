@@ -122,12 +122,12 @@ struct basic_sort : irs::sort {
       return score_cast<size_t>(lhs) < score_cast<size_t>(rhs);
     }
 
-    size_t size() const override {
-      return sizeof(size_t);
+    std::pair<size_t, size_t> size() const override {
+      return std::make_pair(sizeof(size_t), ALIGNOF(size_t));
     }
 
-    size_t stats_size() const override {
-      return 0;
+    std::pair<size_t, size_t> stats_size() const override {
+      return std::make_pair(size_t(0), size_t(0));
     }
 
     size_t idx;

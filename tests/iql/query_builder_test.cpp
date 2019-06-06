@@ -77,8 +77,12 @@ namespace tests {
       virtual void prepare_score(iresearch::byte_type* score) const override {}
       virtual void add(iresearch::byte_type* dst, const iresearch::byte_type* src) const override {}
       virtual bool less(const iresearch::byte_type* lhs, const iresearch::byte_type* rhs) const override { throw std::bad_function_call(); }
-      virtual size_t size() const override { return 0; }
-      virtual size_t stats_size() const override { return 0; }
+      std::pair<size_t, size_t> size() const override {
+        return std::make_pair(size_t(0), size_t(0));
+      }
+      std::pair<size_t, size_t> stats_size() const override {
+        return std::make_pair(size_t(0), size_t(0));
+      }
     };
 
     test_sort():sort(test_sort::type()) {}

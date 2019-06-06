@@ -81,8 +81,8 @@ term_query::ptr term_query::make(
     collectors.collect(segment, *reader, 0, terms->attributes()); // collect statistics, 0 because only 1 term
   }
 
-  bstring stats;
-  collectors.finish(stats, index);
+  bstring stats(ord.stats_size(), 0);
+  collectors.finish(const_cast<byte_type*>(stats.data()), index);
 
   return memory::make_shared<term_query>(
     std::move(states), std::move(stats), boost

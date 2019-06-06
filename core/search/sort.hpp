@@ -247,14 +247,15 @@ class IRESEARCH_API sort {
     virtual bool less(const byte_type* lhs, const byte_type* rhs) const = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief number of bytes required to store the score type (i.e. sizeof(score))
+    /// @brief number of bytes and alignemnt required to store the score type
+    ///       (i.e. sizeof(score), alignof(score))
     ////////////////////////////////////////////////////////////////////////////////
-    virtual size_t size() const = 0;
+    virtual std::pair<size_t, size_t> size() const = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief number of bytes required to store stats
+    /// @brief number of bytes and alignment required to store stats
     ////////////////////////////////////////////////////////////////////////////////
-    virtual size_t stats_size() const = 0;
+    virtual std::pair<size_t, size_t> stats_size() const = 0;
 
    private:
     attribute_view attrs_;
@@ -302,15 +303,15 @@ class IRESEARCH_API sort {
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief number of bytes required to store the score type (i.e. sizeof(score))
     ////////////////////////////////////////////////////////////////////////////////
-    virtual inline size_t size() const final override {
-      return sizeof(score_t);
+    virtual inline std::pair<size_t, size_t> size() const NOEXCEPT final {
+      return std::make_pair(sizeof(score_t), ALIGNOF(score_t));
     }
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief number of bytes required to store stats
     ////////////////////////////////////////////////////////////////////////////////
-    virtual inline size_t stats_size() const final override {
-      return sizeof(stats_t);
+    virtual inline std::pair<size_t, size_t> stats_size() const NOEXCEPT final {
+      return std::make_pair(sizeof(stats_t), ALIGNOF(stats_t));
     }
   }; // prepared_base
 
@@ -381,15 +382,15 @@ class IRESEARCH_API sort {
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief number of bytes required to store the score type (i.e. sizeof(score))
     ////////////////////////////////////////////////////////////////////////////////
-    virtual inline size_t size() const final override {
-      return sizeof(score_t);
+    virtual inline std::pair<size_t, size_t> size() const NOEXCEPT final {
+      return std::make_pair(sizeof(score_t), ALIGNOF(score_t));
     }
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief number of bytes required to store stats
     ////////////////////////////////////////////////////////////////////////////////
-    virtual inline size_t stats_size() const final override {
-      return 0;
+    virtual inline std::pair<size_t, size_t> stats_size() const NOEXCEPT final {
+      return std::make_pair(size_t(0), size_t(0));
     }
   }; // prepared_base
 
@@ -538,10 +539,14 @@ class IRESEARCH_API order final {
   class IRESEARCH_API prepared final : private util::noncopyable {
    public:
     struct prepared_sort : private util::noncopyable {
-      explicit prepared_sort(sort::prepared::ptr&& bucket, bool reverse)
+      explicit prepared_sort(
+          sort::prepared::ptr&& bucket,
+          size_t offset,
+          size_t stats_offset,
+          bool reverse)
         : bucket(std::move(bucket)),
-          offset(0),
-          stats_offset(0),
+          offset(offset),
+          stats_offset(stats_offset),
           reverse(reverse) {
       }
 
@@ -623,7 +628,7 @@ class IRESEARCH_API order final {
       ///       calling collect(...) on each of its segments
       /// @note if not matched terms then called exactly once
       //////////////////////////////////////////////////////////////////////////
-      void finish(bstring& stats, const index_reader& index) const;
+      void finish(byte_type* stats, const index_reader& index) const;
 
       //////////////////////////////////////////////////////////////////////////
       /// @brief add collectors for another term
@@ -723,7 +728,7 @@ class IRESEARCH_API order final {
     ///        buckets without explicitly collecting field or term statistics,
     ///        e.g. for 'all' filter
     ////////////////////////////////////////////////////////////////////////////
-    void prepare_collectors(bstring& stats, const index_reader& index) const;
+    void prepare_collectors(byte_type* stats, const index_reader& index) const;
 
     prepared::scorers prepare_scorers(
         const sub_reader& segment,
@@ -742,7 +747,8 @@ class IRESEARCH_API order final {
     template<typename T>
     CONSTEXPR const T& get(const byte_type* score, size_t i) const NOEXCEPT {
       #if !defined(__APPLE__) && defined(IRESEARCH_DEBUG) // MacOS can't handle asserts in non-debug CONSTEXPR functions
-        assert(sizeof(T) == order_[i].bucket->size());
+        assert(sizeof(T) == order_[i].bucket->size().first);
+        assert(ALIGNOF(T) == order_[i].bucket->size().second);
       #endif
       return reinterpret_cast<const T&>(*(score + order_[i].offset));
     }

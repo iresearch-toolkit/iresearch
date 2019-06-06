@@ -64,12 +64,11 @@ filter::prepared::ptr all::prepare(
     boost_t filter_boost,
     const attribute_view& /*ctx*/
 ) const {
-  bstring stats;
-
   // skip field-level/term-level statistics because there are no explicit
   // fields/terms, but still collect index-level statistics
   // i.e. all fields and terms implicitly match
-  order.prepare_collectors(stats, reader);
+  bstring stats(order.stats_size(), 0);
+  order.prepare_collectors(const_cast<byte_type*>(stats.data()), reader);
 
   return filter::prepared::make<all_query>(std::move(stats), this->boost()*filter_boost);
 }
