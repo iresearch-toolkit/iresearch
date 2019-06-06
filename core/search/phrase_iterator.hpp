@@ -44,8 +44,9 @@ class phrase_iterator final : public basic_doc_iterator_base {
       positions_t&& pos,
       const sub_reader& segment,
       const term_reader& field,
-      const attribute_store& stats,
-      const order::prepared& ord
+      const byte_type* stats,
+      const order::prepared& ord,
+      boost_t boost
   ) : basic_doc_iterator_base(ord),
       approx_(std::move(itrs)),
       pos_(std::move(pos)) {
@@ -63,7 +64,7 @@ class phrase_iterator final : public basic_doc_iterator_base {
     assert(doc_);
 
     // set scorers
-    prepare_score(ord_->prepare_scorers(segment, field, stats, attributes()));
+    prepare_score(ord_->prepare_scorers(segment, field, stats, attributes(), boost));
   }
 
   virtual doc_id_t value() const override final {

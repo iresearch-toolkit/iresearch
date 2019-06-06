@@ -792,7 +792,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       sort.collector_collect_term = [&collector_collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
         ++collector_collect_term_count;
       };
-      sort.collectors_collect_ = [&collector_finish_count](irs::attribute_store&, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
+      sort.collectors_collect_ = [&collector_finish_count](irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
         ++collector_finish_count;
       };
       sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { ASSERT_TRUE(&dst); ASSERT_TRUE(&src); dst = src; };
@@ -877,7 +877,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       sort.collector_collect_term = [&collector_collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
         ++collector_collect_term_count;
       };
-      sort.collectors_collect_ = [&collector_finish_count](irs::attribute_store&, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
+      sort.collectors_collect_ = [&collector_finish_count](irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
         ++collector_finish_count;
       };
       sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { ASSERT_TRUE(&dst); ASSERT_TRUE(&src); dst = src; };
@@ -959,7 +959,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       sort.collector_collect_term = [&collector_collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
         ++collector_collect_term_count;
       };
-      sort.collectors_collect_ = [&collector_finish_count](irs::attribute_store&, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
+      sort.collectors_collect_ = [&collector_finish_count](irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
         ++collector_finish_count;
       };
       sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { ASSERT_TRUE(&dst); ASSERT_TRUE(&src); dst = src; };
@@ -1036,7 +1036,7 @@ TEST(by_column_existence, ctor) {
   ASSERT_EQ(irs::by_column_existence::type(), filter.type());
   ASSERT_FALSE(filter.prefix_match());
   ASSERT_TRUE(filter.field().empty());
-  ASSERT_EQ(irs::boost::no_boost(), filter.boost());
+  ASSERT_EQ(irs::no_boost(), filter.boost());
 }
 
 TEST(by_column_existence, boost) {

@@ -89,10 +89,11 @@ class basic_doc_iterator final : public basic_doc_iterator_base {
    basic_doc_iterator(
      const sub_reader& segment,
      const term_reader& field,
-     const attribute_store& stats,
+     const byte_type* stats,
      doc_iterator::ptr&& it,
      const order::prepared& ord,
-     cost::cost_t estimation) NOEXCEPT;
+     cost::cost_t estimation,
+     boost_t boost) NOEXCEPT;
 
   virtual doc_id_t value() const NOEXCEPT override {
     // this function is executed very frequently, to avoid expensive virtual call
@@ -112,7 +113,7 @@ class basic_doc_iterator final : public basic_doc_iterator_base {
  private:
   doc_iterator::ptr it_;
   const irs::document* doc_{};
-  const attribute_store* stats_;
+  const byte_type* stats_;
 }; // basic_doc_iterator
 
 NS_END // ROOT

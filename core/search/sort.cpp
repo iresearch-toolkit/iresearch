@@ -29,17 +29,6 @@
 NS_ROOT
 
 // ----------------------------------------------------------------------------
-// --SECTION--                                                       Attributes
-// ----------------------------------------------------------------------------
-
-DEFINE_ATTRIBUTE_TYPE(iresearch::boost)
-DEFINE_FACTORY_DEFAULT(boost)
-
-boost::boost() NOEXCEPT
-  : basic_stored_attribute<boost::boost_t>(boost_t(boost::no_boost())) {
-}
-
-// ----------------------------------------------------------------------------
 // --SECTION--                                                             sort
 // ----------------------------------------------------------------------------
 
@@ -76,8 +65,10 @@ const order::prepared& order::prepared::unordered() {
 order::prepared::prepared(order::prepared&& rhs) NOEXCEPT
   : order_(std::move(rhs.order_)),
     features_(std::move(rhs.features_)),
-    size_(rhs.size_) {
+    size_(rhs.size_),
+    stats_size_(rhs.stats_size_) {
   rhs.size_ = 0;
+  rhs.stats_size_ = 0;
 }
 
 order::prepared& order::prepared::operator=(order::prepared&& rhs) NOEXCEPT {
@@ -86,6 +77,8 @@ order::prepared& order::prepared::operator=(order::prepared&& rhs) NOEXCEPT {
     features_ = std::move(rhs.features_);
     size_ = rhs.size_;
     rhs.size_ = 0;
+    stats_size_ = rhs.stats_size_;
+    rhs.stats_size_ = 0;
   }
 
   return *this;
@@ -115,10 +108,6 @@ bool order::operator==(const order& other) const {
   return true;
 }
 
-bool order::operator!=(const order& other) const {
-  return !(*this == other);
-}
-
 order& order::add(bool reverse, const sort::ptr& sort) {
   assert(sort);
   order_.emplace_back(sort, reverse);
@@ -130,7 +119,8 @@ order::prepared order::prepare() const {
   order::prepared pord;
   pord.order_.reserve(order_.size()); // strong exception guarantee
 
-  size_t offset = 0;
+  pord.size_ = 0;
+  pord.stats_size_ = 0;
   for (auto& entry : order_) {
     auto prepared = entry.sort().prepare();
 
@@ -144,9 +134,10 @@ order::prepared order::prepare() const {
     prepared::prepared_sort& psort = pord.order_.back();
     const sort::prepared& bucket = *psort.bucket;
     pord.features_ |= bucket.features();
-    psort.offset = offset;
+    psort.offset = pord.size_;
+    psort.stats_offset = pord.stats_size_;
     pord.size_ += bucket.size();
-    offset += bucket.size();
+    pord.stats_size_ += bucket.stats_size();
   }
 
   return pord;
@@ -157,11 +148,12 @@ order::prepared order::prepare() const {
 // -----------------------------------------------------------------------------
 
 order::prepared::collectors::collectors(
-    const prepared_order_t& buckets,
+    const order::prepared& buckets,
     size_t terms_count
-): buckets_(buckets) {
-  field_collectors_.reserve(buckets_.size());
-  term_collectors_.reserve(buckets_.size() * terms_count);
+): buckets_(buckets.order_),
+   stats_size_(buckets.stats_size_) {
+   field_collectors_.reserve(buckets_.size());
+   term_collectors_.reserve(buckets_.size() * terms_count);
 
   // add field collectors from each bucket
   for (auto& entry: buckets_) {
@@ -182,7 +174,8 @@ order::prepared::collectors::collectors(
 order::prepared::collectors::collectors(collectors&& other) NOEXCEPT
   : buckets_(other.buckets_),
     field_collectors_(std::move(other.field_collectors_)),
-    term_collectors_(std::move(other.term_collectors_)) {
+    term_collectors_(std::move(other.term_collectors_)),
+    stats_size_(other.stats_size_) {
 }
 
 void order::prepared::collectors::collect(
@@ -213,32 +206,40 @@ void order::prepared::collectors::collect(
 }
 
 void order::prepared::collectors::finish(
-  attribute_store& filter_attrs,
-  const index_reader& index
-) const {
+    bstring& stats_buf,
+    const index_reader& index) const {
+  stats_buf.resize(stats_size_); // ensure we have enough space to store stats
+  auto* stats = const_cast<byte_type*>(stats_buf.data());
+
   // special case where term statistics collection is not applicable
   // e.g. by_column_existence filter
   if (term_collectors_.empty()) {
     assert(field_collectors_.size() == buckets_.size()); // enforced by allocation in the constructor
 
     for (size_t i = 0, count = field_collectors_.size(); i < count; ++i) {
-      auto& bucket = buckets_[i].bucket;
-      assert(bucket); // ensured by order::prepare
+      auto& sort = buckets_[i];
+      assert(sort.bucket); // ensured by order::prepare
 
-      bucket->collect(filter_attrs, index, field_collectors_[i].get(), nullptr);
+      sort.bucket->collect(
+        stats + sort.stats_offset, // where stats for bucket start
+        index,
+        field_collectors_[i].get(),
+        nullptr
+      );
     }
   } else {
     auto bucket_count = buckets_.size();
     assert(term_collectors_.size() % bucket_count == 0); // enforced by allocation in the constructor
 
+    auto* stats = const_cast<byte_type*>(stats_buf.data());
     for (size_t i = 0, count = term_collectors_.size(); i < count; ++i) {
       auto bucket_offset = i % bucket_count;
-      auto& bucket = buckets_[bucket_offset].bucket;
-      assert(bucket); // ensured by order::prepare
+      auto& sort = buckets_[bucket_offset];
+      assert(sort.bucket); // ensured by order::prepare
 
       assert(i % bucket_count < field_collectors_.size()); // enforced by allocation in the constructor
-      bucket->collect(
-        filter_attrs,
+      sort.bucket->collect(
+        stats + sort.stats_offset, // where stats for bucket start
         index,
         field_collectors_[bucket_offset].get(),
         term_collectors_[i].get()
@@ -268,16 +269,20 @@ order::prepared::scorers::scorers(
     const prepared_order_t& buckets,
     const sub_reader& segment,
     const term_reader& field,
-    const attribute_store& stats,
-    const attribute_view& doc
+    const byte_type* stats_buf,
+    const attribute_view& doc,
+    boost_t boost
 ) {
   scorers_.reserve(buckets.size());
 
   for (auto& entry: buckets) {
+    assert(stats_buf);
     assert(entry.bucket); // ensured by order::prepared
     const auto& bucket = *entry.bucket;
 
-    auto scorer = bucket.prepare_scorer(segment, field, stats, doc);
+    auto scorer = bucket.prepare_scorer(
+      segment, field, stats_buf + entry.stats_offset, doc, boost
+    );
 
     if (scorer) {
       // skip empty scorers
@@ -307,21 +312,16 @@ void order::prepared::scorers::score(byte_type* scr) const {
   }
 }
 
-order::prepared::prepared() : size_(0) { }
-
-order::prepared::collectors order::prepared::prepare_collectors(
-    size_t terms_count /*= 0*/
-) const {
-  return collectors(order_, terms_count);
-}
-
 void order::prepared::prepare_collectors(
-    attribute_store& filter_attrs,
+    bstring& stats_buf,
     const index_reader& index
 ) const {
+  stats_buf.resize(stats_size_); // ensure we have enough space to store stats
+
+  auto* stats = const_cast<byte_type*>(stats_buf.data());
   for (auto& entry: order_) {
     assert(entry.bucket); // ensured by order::prepared
-    entry.bucket->collect(filter_attrs, index, nullptr, nullptr);
+    entry.bucket->collect(stats + entry.stats_offset, index, nullptr, nullptr);
   }
 }
 
@@ -330,16 +330,6 @@ void order::prepared::prepare_score(byte_type* score) const {
     assert(sort.bucket);
     sort.bucket->prepare_score(score + sort.offset);
   }
-}
-
-order::prepared::scorers 
-order::prepared::prepare_scorers(
-    const sub_reader& segment,
-    const term_reader& field,
-    const attribute_store& stats,
-    const attribute_view& doc
-) const {
-  return scorers(order_, segment, field, stats, doc);
 }
 
 bool order::prepared::less(const byte_type* lhs, const byte_type* rhs) const {
@@ -377,18 +367,6 @@ void order::prepared::add(byte_type* lhs, const byte_type* rhs) const {
     lhs += bucket.size();
     rhs += bucket.size();
   });
-}
-
-order::order(order&& rhs) NOEXCEPT
-  : order_(std::move(rhs.order_)) {
-}
-
-order& order::operator=(order&& rhs) NOEXCEPT {
-  if (this != &rhs) {
-    order_ = std::move(rhs.order_);
-  }
-
-  return *this;
 }
 
 NS_END

@@ -101,13 +101,14 @@ void basic_doc_iterator_base::prepare_score(order::prepared::scorers&& scorers) 
 basic_doc_iterator::basic_doc_iterator(
     const sub_reader& segment,
     const term_reader& field,
-    const attribute_store& stats,
+    const byte_type* stats,
     doc_iterator::ptr&& it,
     const order::prepared& ord,
-    cost::cost_t estimation) NOEXCEPT
+    cost::cost_t estimation,
+    boost_t boost) NOEXCEPT
   : basic_doc_iterator_base(ord),
     it_(std::move(it)),
-    stats_(&stats) {
+    stats_(stats) {
   assert(it_);
 
   // set estimation value
@@ -120,7 +121,7 @@ basic_doc_iterator::basic_doc_iterator(
 
   // set scorers
   prepare_score(ord_->prepare_scorers(
-    segment, field, *stats_, it_->attributes()
+    segment, field, stats_, it_->attributes(), boost
   ));
 }
 

@@ -49,15 +49,17 @@ bitset_doc_iterator::bitset_doc_iterator(
 
 bitset_doc_iterator::bitset_doc_iterator(
     const sub_reader& reader,
-    const attribute_store& prepared_filter_attrs,
+    const byte_type* stats,
     const bitset& set,
-    const order::prepared& order
-): bitset_doc_iterator(set, order) {
+    const order::prepared& order,
+    boost_t boost)
+  : bitset_doc_iterator(set, order) {
   prepare_score(ord_->prepare_scorers(
     reader,
     empty_term_reader(cost_.estimate()),
-    prepared_filter_attrs,
-    attributes() // doc_iterator attributes
+    stats,
+    attributes(), // doc_iterator attributes
+    boost
   ));
 }
 

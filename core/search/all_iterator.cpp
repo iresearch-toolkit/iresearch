@@ -28,12 +28,13 @@
 NS_ROOT
 
 all_iterator::all_iterator(
-    const irs::sub_reader& reader,
-    const irs::attribute_store& prepared_filter_attrs,
-    const irs::order::prepared& order,
-    uint64_t docs_count)
+    const sub_reader& reader,
+    const byte_type* query_stats,
+    const order::prepared& order,
+    uint64_t docs_count,
+    boost_t boost)
   : basic_doc_iterator_base(order),
-    max_doc_(irs::doc_id_t(irs::type_limits<irs::type_t::doc_id_t>::min() + docs_count - 1)) {
+    max_doc_(doc_id_t(doc_limits::min() + docs_count - 1)) {
   // make doc_id accessible via attribute
   attrs_.emplace(doc_);
 
@@ -44,8 +45,9 @@ all_iterator::all_iterator(
   prepare_score(ord_->prepare_scorers(
     reader,
     irs::empty_term_reader(docs_count),
-    prepared_filter_attrs,
-    attributes() // doc_iterator attributes
+    query_stats,
+    attributes(), // doc_iterator attributes
+    boost
   ));
 }
 
