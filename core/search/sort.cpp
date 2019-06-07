@@ -172,8 +172,7 @@ order::prepared order::prepare() const {
 order::prepared::collectors::collectors(
     const order::prepared& buckets,
     size_t terms_count
-): buckets_(buckets.order_),
-   stats_size_(buckets.stats_size_) {
+): buckets_(buckets.order_) {
    field_collectors_.reserve(buckets_.size());
    term_collectors_.reserve(buckets_.size() * terms_count);
 
@@ -196,8 +195,7 @@ order::prepared::collectors::collectors(
 order::prepared::collectors::collectors(collectors&& other) NOEXCEPT
   : buckets_(other.buckets_),
     field_collectors_(std::move(other.field_collectors_)),
-    term_collectors_(std::move(other.term_collectors_)),
-    stats_size_(other.stats_size_) {
+    term_collectors_(std::move(other.term_collectors_)) {
 }
 
 void order::prepared::collectors::collect(

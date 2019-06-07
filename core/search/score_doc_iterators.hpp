@@ -41,7 +41,7 @@ class IRESEARCH_API doc_iterator_base : public doc_iterator {
   }
 
  protected:
-  explicit doc_iterator_base(const order::prepared& ord);
+  doc_iterator_base() = default;
 
   void estimate(cost::cost_f&& func) {
     cost_.rule(std::move(func));
@@ -53,8 +53,10 @@ class IRESEARCH_API doc_iterator_base : public doc_iterator {
     attrs_.emplace(cost_);
   }
 
-  void prepare_score(score::score_f&& func) {
-    if (scr_.prepare(*ord_, std::move(func))) {
+  void prepare_score(
+      const order::prepared& order,
+      score::score_f&& func) {
+    if (scr_.prepare(order, std::move(func))) {
       attrs_.emplace(scr_);
     }
   }
@@ -62,7 +64,6 @@ class IRESEARCH_API doc_iterator_base : public doc_iterator {
   attribute_view attrs_;
   irs::cost cost_;
   irs::score scr_;
-  const order::prepared* ord_;
 }; // doc_iterator_base
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -70,11 +71,14 @@ class IRESEARCH_API doc_iterator_base : public doc_iterator {
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API basic_doc_iterator_base : public doc_iterator_base {
  public:
-  explicit basic_doc_iterator_base(const order::prepared& ord);
+  basic_doc_iterator_base() = default;
 
  protected:
   // intenitonally hides doc_iterator_base::prepare_score(...)
-  void prepare_score(order::prepared::scorers&& scorers);
+  void prepare_score(
+    const order::prepared& order,
+    order::prepared::scorers&& scorers
+  );
 
  private:
   order::prepared::scorers scorers_;

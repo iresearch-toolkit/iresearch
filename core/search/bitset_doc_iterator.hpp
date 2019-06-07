@@ -33,10 +33,7 @@ NS_ROOT
 
 class bitset_doc_iterator final: public basic_doc_iterator_base, util::noncopyable {
  public:
-  explicit bitset_doc_iterator(
-    const bitset& set,
-    const order::prepared& order = order::prepared::unordered()
-  );
+  explicit bitset_doc_iterator(const bitset& set);
 
   bitset_doc_iterator(
     const sub_reader& reader,

@@ -641,7 +641,6 @@ class IRESEARCH_API order final {
       const std::vector<prepared_sort>& buckets_;
       std::vector<sort::field_collector::ptr> field_collectors_; // size == buckets_.size()
       std::vector<sort::term_collector::ptr> term_collectors_; // size == buckets_.size() * terms_count, layout order [t0.b0, t0.b1, ... t0.bN, t1.b0, t1.b1 ... tM.BN]
-      size_t stats_size_;
       IRESEARCH_API_PRIVATE_VARIABLES_END
     };
 

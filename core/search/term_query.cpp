@@ -121,7 +121,7 @@ doc_iterator::ptr term_query::execute(
   return doc_iterator::make<basic_doc_iterator>(
     rdr, 
     *state->reader,
-    this->stats(),
+    stats(),
     terms->postings(ord.features()), 
     ord, 
     state->estimation,

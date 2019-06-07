@@ -159,17 +159,18 @@ class basic_doc_iterator: public irs::doc_iterator {
       const irs::byte_type* stats = nullptr,
       const irs::order::prepared& ord = irs::order::prepared::unordered(),
       irs::boost_t boost = irs::no_boost())
-    : first_(first), last_(last),
-      stats_(stats), ord_(&ord),
+    : first_(first),
+      last_(last),
+      stats_(stats),
       doc_(irs::doc_limits::invalid()) {
-    assert(ord_ && stats_);
-
     est_.value(std::distance(first_, last_));
     attrs_.emplace(est_);
     attrs_.emplace(doc_);
 
     if (!ord.empty()) {
-      scorers_ = ord_->prepare_scorers(
+      assert(stats_);
+
+      scorers_ = ord.prepare_scorers(
         irs::sub_reader::empty(),
         empty_term_reader::instance(),
         stats_,
@@ -227,7 +228,6 @@ class basic_doc_iterator: public irs::doc_iterator {
   docids_t::const_iterator first_;
   docids_t::const_iterator last_;
   const irs::byte_type* stats_;
-  const irs::order::prepared* ord_;
   irs::score score_;
   irs::document doc_;
 }; // basic_doc_iterator

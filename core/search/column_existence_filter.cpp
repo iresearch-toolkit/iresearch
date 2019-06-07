@@ -40,8 +40,7 @@ class column_existence_iterator final : public irs::basic_doc_iterator_base {
       const irs::order::prepared& ord,
       uint64_t docs_count,
       irs::boost_t boost)
-    : basic_doc_iterator_base(ord),
-      it_(std::move(it)) {
+    : it_(std::move(it)) {
     assert(it_);
 
     // make doc_id accessible via attribute
@@ -57,7 +56,7 @@ class column_existence_iterator final : public irs::basic_doc_iterator_base {
     estimate(docs_count);
 
     // set scorers
-    prepare_score(ord_->prepare_scorers(
+    prepare_score(ord, ord.prepare_scorers(
       reader,
       irs::empty_term_reader(docs_count),
       stats,

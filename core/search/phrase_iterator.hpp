@@ -47,9 +47,9 @@ class phrase_iterator final : public basic_doc_iterator_base {
       const byte_type* stats,
       const order::prepared& ord,
       boost_t boost
-  ) : basic_doc_iterator_base(ord),
-      approx_(std::move(itrs)),
-      pos_(std::move(pos)) {
+  ) : approx_(std::move(itrs)),
+      pos_(std::move(pos)),
+      order_(&ord) {
     assert(!pos_.empty()); // must not be empty
     assert(0 == pos_.front().second); // lead offset is always 0
 
@@ -64,7 +64,10 @@ class phrase_iterator final : public basic_doc_iterator_base {
     assert(doc_);
 
     // set scorers
-    prepare_score(ord_->prepare_scorers(segment, field, stats, attributes(), boost));
+    prepare_score(
+      ord,
+      ord.prepare_scorers(segment, field, stats, attributes(), boost)
+    );
   }
 
   virtual doc_id_t value() const override final {
@@ -122,7 +125,7 @@ class phrase_iterator final : public basic_doc_iterator_base {
       }
 
       if (match) {
-        if (ord_->empty()) {
+        if (order_->empty()) {
           return 1;
         }
 
@@ -138,6 +141,7 @@ class phrase_iterator final : public basic_doc_iterator_base {
   const document* doc_{}; // document itself
   frequency phrase_freq_; // freqency of the phrase in a document
   positions_t pos_; // list of desired positions along with corresponding attributes
+  const order::prepared* order_;
 }; // phrase_iterator
 
 NS_END // ROOT
