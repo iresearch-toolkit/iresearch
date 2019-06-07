@@ -687,29 +687,33 @@ class IRESEARCH_API order final {
 
     prepared& operator=(prepared&& rhs) NOEXCEPT;
 
-    const flags& features() const { return features_; }
+    const flags& features() const NOEXCEPT { return features_; }
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief number of bytes required to store the score types of all buckets
     ////////////////////////////////////////////////////////////////////////////
-    size_t score_size() const { return score_size_; }
+    size_t score_size() const NOEXCEPT { return score_size_; }
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief number of bytes required to store stats of all buckets
     ////////////////////////////////////////////////////////////////////////////
-    size_t stats_size() const { return stats_size_; }
+    size_t stats_size() const NOEXCEPT { return stats_size_; }
 
-    bool empty() const { return order_.empty(); }
+    ////////////////////////////////////////////////////////////////////////////
+    /// @returns number of bucket in order
+    ////////////////////////////////////////////////////////////////////////////
+    size_t size() const NOEXCEPT { return order_.size(); }
+    bool empty() const NOEXCEPT { return order_.empty(); }
 
-    prepared_order_t::const_iterator begin() const {
+    prepared_order_t::const_iterator begin() const NOEXCEPT {
       return prepared_order_t::const_iterator(order_.begin());
     }
 
-    prepared_order_t::const_iterator end() const { 
+    prepared_order_t::const_iterator end() const NOEXCEPT {
       return prepared_order_t::const_iterator(order_.end());
     }
 
-    const prepared_sort& operator[]( size_t i ) const {
+    const prepared_sort& operator[](size_t i) const NOEXCEPT {
       return order_[i];
     }
 

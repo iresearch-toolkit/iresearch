@@ -167,6 +167,11 @@ TEST(sort_tests, order_equal) {
   }
 }
 
+TEST(sort_tests, static_const) {
+  ASSERT_TRUE(irs::order::unordered().empty());
+  ASSERT_TRUE(irs::order::prepared::unordered().empty());
+}
+
 TEST(sort_tests, prepare_order) {
   {
     irs::order ord;
@@ -181,7 +186,9 @@ TEST(sort_tests, prepare_order) {
     };
 
     auto prepared = ord.prepare();
+    ASSERT_EQ(irs::flags::empty_instance(), prepared.features());
     ASSERT_FALSE(prepared.empty());
+    ASSERT_EQ(3, prepared.size());
     ASSERT_EQ(3, prepared.score_size());
     ASSERT_EQ(3, prepared.stats_size());
 
@@ -209,6 +216,8 @@ TEST(sort_tests, prepare_order) {
 
     auto prepared = ord.prepare();
     ASSERT_FALSE(prepared.empty());
+    ASSERT_EQ(irs::flags::empty_instance(), prepared.features());
+    ASSERT_EQ(3, prepared.size());
     ASSERT_EQ(4, prepared.score_size());
     ASSERT_EQ(4, prepared.stats_size());
 
@@ -230,7 +239,9 @@ TEST(sort_tests, prepare_order) {
     ord.add<aligned_scorer<aligned_value<4, 4>, aligned_value<4, 4>>>(true);
 
     auto prepared = ord.prepare();
+    ASSERT_EQ(irs::flags::empty_instance(), prepared.features());
     ASSERT_FALSE(prepared.empty());
+    ASSERT_EQ(3, prepared.size());
     ASSERT_EQ(8, prepared.score_size());
     ASSERT_EQ(8, prepared.stats_size());
 
@@ -264,7 +275,9 @@ TEST(sort_tests, prepare_order) {
     };
 
     auto prepared = ord.prepare();
+    ASSERT_EQ(irs::flags::empty_instance(), prepared.features());
     ASSERT_FALSE(prepared.empty());
+    ASSERT_EQ(3, prepared.size());
     ASSERT_EQ(16, prepared.score_size());
     ASSERT_EQ(16, prepared.stats_size());
 
