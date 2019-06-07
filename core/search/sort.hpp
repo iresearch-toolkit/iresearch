@@ -250,7 +250,7 @@ class IRESEARCH_API sort {
     /// @brief number of bytes and alignemnt required to store the score type
     ///       (i.e. sizeof(score), alignof(score))
     ////////////////////////////////////////////////////////////////////////////////
-    virtual std::pair<size_t, size_t> size() const = 0;
+    virtual std::pair<size_t, size_t> score_size() const = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief number of bytes and alignment required to store stats
@@ -303,7 +303,7 @@ class IRESEARCH_API sort {
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief number of bytes required to store the score type (i.e. sizeof(score))
     ////////////////////////////////////////////////////////////////////////////////
-    virtual inline std::pair<size_t, size_t> size() const NOEXCEPT final {
+    virtual inline std::pair<size_t, size_t> score_size() const NOEXCEPT final {
       return std::make_pair(sizeof(score_t), ALIGNOF(score_t));
     }
 
@@ -382,7 +382,7 @@ class IRESEARCH_API sort {
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief number of bytes required to store the score type (i.e. sizeof(score))
     ////////////////////////////////////////////////////////////////////////////////
-    virtual inline std::pair<size_t, size_t> size() const NOEXCEPT final {
+    virtual inline std::pair<size_t, size_t> score_size() const NOEXCEPT final {
       return std::make_pair(sizeof(score_t), ALIGNOF(score_t));
     }
 
@@ -541,29 +541,29 @@ class IRESEARCH_API order final {
     struct prepared_sort : private util::noncopyable {
       explicit prepared_sort(
           sort::prepared::ptr&& bucket,
-          size_t offset,
+          size_t score_offset,
           size_t stats_offset,
           bool reverse)
         : bucket(std::move(bucket)),
-          offset(offset),
+          score_offset(score_offset),
           stats_offset(stats_offset),
           reverse(reverse) {
       }
 
       prepared_sort(prepared_sort&& rhs) NOEXCEPT
         : bucket(std::move(rhs.bucket)),
-          offset(rhs.offset),
+          score_offset(rhs.score_offset),
           stats_offset(rhs.stats_offset),
           reverse(rhs.reverse) {
-        rhs.offset = 0;
+        rhs.score_offset = 0;
         rhs.stats_offset = 0;
       }
 
       prepared_sort& operator=(prepared_sort&& rhs) NOEXCEPT {
         if (this != &rhs) {
           bucket = std::move(rhs.bucket);
-          offset = rhs.offset;
-          rhs.offset = 0;
+          score_offset = rhs.score_offset;
+          rhs.score_offset = 0;
           stats_offset = rhs.stats_offset;
           rhs.stats_offset = 0;
           reverse = rhs.reverse;
@@ -572,7 +572,7 @@ class IRESEARCH_API order final {
       }
 
       sort::prepared::ptr bucket;
-      size_t offset; // offset in score buffer
+      size_t score_offset; // offset in score buffer
       size_t stats_offset; // offset in stats buffer
       bool reverse;
     }; // prepared_sort
@@ -692,7 +692,7 @@ class IRESEARCH_API order final {
     ////////////////////////////////////////////////////////////////////////////
     /// @brief number of bytes required to store the score types of all buckets
     ////////////////////////////////////////////////////////////////////////////
-    size_t size() const { return size_; }
+    size_t score_size() const { return score_size_; }
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief number of bytes required to store stats of all buckets
@@ -746,10 +746,10 @@ class IRESEARCH_API order final {
     template<typename T>
     CONSTEXPR const T& get(const byte_type* score, size_t i) const NOEXCEPT {
       #if !defined(__APPLE__) && defined(IRESEARCH_DEBUG) // MacOS can't handle asserts in non-debug CONSTEXPR functions
-        assert(sizeof(T) == order_[i].bucket->size().first);
-        assert(ALIGNOF(T) == order_[i].bucket->size().second);
+        assert(sizeof(T) == order_[i].bucket->score_size().first);
+        assert(ALIGNOF(T) == order_[i].bucket->score_size().second);
       #endif
-      return reinterpret_cast<const T&>(*(score + order_[i].offset));
+      return reinterpret_cast<const T&>(*(score + order_[i].score_offset));
     }
 
     template<
@@ -761,8 +761,8 @@ class IRESEARCH_API order final {
       typedef typename TraitsType::char_type char_type;
 
       return StringType(
-        reinterpret_cast<const char_type*>(score + order_[i].offset),
-        order_[i].bucket->size()
+        reinterpret_cast<const char_type*>(score + order_[i].score_offset),
+        order_[i].bucket->score_size()
       );
     }
 
@@ -777,7 +777,7 @@ class IRESEARCH_API order final {
     IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
     prepared_order_t order_;
     flags features_;
-    size_t size_{ 0 };
+    size_t score_size_{ 0 };
     size_t stats_size_{ 0 };
     IRESEARCH_API_PRIVATE_VARIABLES_END
   }; // prepared

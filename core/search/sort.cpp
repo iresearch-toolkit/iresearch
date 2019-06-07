@@ -66,9 +66,9 @@ const order::prepared& order::prepared::unordered() {
 order::prepared::prepared(order::prepared&& rhs) NOEXCEPT
   : order_(std::move(rhs.order_)),
     features_(std::move(rhs.features_)),
-    size_(rhs.size_),
+    score_size_(rhs.score_size_),
     stats_size_(rhs.stats_size_) {
-  rhs.size_ = 0;
+  rhs.score_size_ = 0;
   rhs.stats_size_ = 0;
 }
 
@@ -76,8 +76,8 @@ order::prepared& order::prepared::operator=(order::prepared&& rhs) NOEXCEPT {
   if (this != &rhs) {
     order_ = std::move(rhs.order_);
     features_ = std::move(rhs.features_);
-    size_ = rhs.size_;
-    rhs.size_ = 0;
+    score_size_ = rhs.score_size_;
+    rhs.score_size_ = 0;
     stats_size_ = rhs.stats_size_;
     rhs.stats_size_ = 0;
   }
@@ -147,7 +147,7 @@ order::prepared order::prepare() const {
 
     pord.order_.emplace_back(
       std::move(prepared),
-      pord.size_,
+      pord.score_size_,
       pord.stats_size_,
       entry.reverse()
     );
@@ -155,12 +155,12 @@ order::prepared order::prepare() const {
     const sort::prepared& bucket = *pord.order_.back().bucket;
 
     pord.features_ |= bucket.features();
-    add_bucket(pord.size_, score_align, bucket.size());
+    add_bucket(pord.score_size_, score_align, bucket.score_size());
     add_bucket(pord.stats_size_, stats_align, bucket.stats_size());
   }
 
   pord.stats_size_ = memory::align_up(pord.stats_size_, stats_align);
-  pord.size_ = memory::align_up(pord.size_, score_align);
+  pord.score_size_ = memory::align_up(pord.score_size_, score_align);
 
   return pord;
 }
@@ -302,7 +302,7 @@ order::prepared::scorers::scorers(
 
     if (scorer) {
       // skip empty scorers
-      scorers_.emplace_back(std::move(scorer), entry.offset);
+      scorers_.emplace_back(std::move(scorer), entry.score_offset);
     }
   }
 }
@@ -341,7 +341,7 @@ void order::prepared::prepare_collectors(
 void order::prepared::prepare_score(byte_type* score) const {
   for (auto& sort : order_) {
     assert(sort.bucket);
-    sort.bucket->prepare_score(score + sort.offset);
+    sort.bucket->prepare_score(score + sort.score_offset);
   }
 }
 
@@ -357,8 +357,8 @@ bool order::prepared::less(const byte_type* lhs, const byte_type* rhs) const {
   for (const auto& sort: order_) {
     assert(sort.bucket); // ensured by order::prepared
     const auto& bucket = *sort.bucket;
-    const auto* lhs_begin = lhs + sort.offset;
-    const auto* rhs_begin = rhs + sort.offset;
+    const auto* lhs_begin = lhs + sort.score_offset;
+    const auto* rhs_begin = rhs + sort.score_offset;
 
     if (bucket.less(lhs_begin, rhs_begin)) {
       return !sort.reverse;
@@ -375,7 +375,7 @@ bool order::prepared::less(const byte_type* lhs, const byte_type* rhs) const {
 void order::prepared::add(byte_type* lhs, const byte_type* rhs) const {
   for_each([lhs, rhs] (const prepared_sort& sort) {
     assert(sort.bucket);
-    sort.bucket->add(lhs + sort.offset, rhs + sort.offset);
+    sort.bucket->add(lhs + sort.score_offset, rhs + sort.score_offset);
   });
 }
 
