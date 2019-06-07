@@ -79,7 +79,6 @@ const irs::string_ref preserveOriginalParamName = "preserveOriginal";
 ////////////////////////////////////////////////////////////////////////////////
 irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
   rapidjson::Document json;
-
   if (json.Parse(args.c_str(), args.size()).HasParseError()) {
     IR_FRMT_ERROR(
       "Invalid jSON arguments passed while constructing ngram_token_stream, arguments: %s", 
@@ -129,14 +128,14 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
   }
 
   return irs::analysis::ngram_token_stream::make(
-    size_t(min), size_t(max), preserve_original
+    irs::analysis::ngram_token_stream::options_t(size_t(min), size_t(max), preserve_original)
   );
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief builds analyzer config from internal options in json format
 ///////////////////////////////////////////////////////////////////////////////
-bool make_json_config(size_t min_gram, size_t max_gram, bool preserve_original, std::string& definition) {
+bool make_json_config(const irs::analysis::ngram_token_stream::options_t& options, std::string& definition) {
   rapidjson::Document json;
   json.SetObject();
 
@@ -144,15 +143,15 @@ bool make_json_config(size_t min_gram, size_t max_gram, bool preserve_original, 
 
   //min_gram
   json.AddMember(rapidjson::Value::StringRefType(minParamName.c_str(), static_cast<rapidjson::SizeType>(minParamName.size())),
-    rapidjson::Value(min_gram), allocator);
+    rapidjson::Value(options.min_gram), allocator);
 
   //max_gram
   json.AddMember(rapidjson::Value::StringRefType(maxParamName.c_str(), static_cast<rapidjson::SizeType>(maxParamName.size())),
-    rapidjson::Value(max_gram), allocator);
+    rapidjson::Value(options.max_gram), allocator);
 
   //preserve_original
   json.AddMember(rapidjson::Value::StringRefType(preserveOriginalParamName.c_str(), static_cast<rapidjson::SizeType>(preserveOriginalParamName.size())),
-    rapidjson::Value(preserve_original), allocator);
+    rapidjson::Value(options.preserve_original), allocator);
 
   //output json to string
   rapidjson::StringBuffer buffer;
@@ -170,9 +169,9 @@ NS_ROOT
 NS_BEGIN(analysis)
 
 /*static*/ analyzer::ptr ngram_token_stream::make(
-    size_t min, size_t max, bool preserve_original
+    const options_t& options
 ) {
-  return std::make_shared<ngram_token_stream>(min, max, preserve_original);
+  return std::make_shared<ngram_token_stream>(options);
 }
 
 /*static*/ void ngram_token_stream::init() {
@@ -180,15 +179,11 @@ NS_BEGIN(analysis)
 }
 
 ngram_token_stream::ngram_token_stream(
-    size_t min_gram,
-    size_t max_gram,
-    bool preserve_original
+    const options_t& options
 ) : analyzer(ngram_token_stream::type()),
-    min_gram_(min_gram),
-    max_gram_(max_gram),
-    preserve_original_(preserve_original) {
-  min_gram_ = std::max(min_gram_, size_t(1));
-  max_gram_ = std::max(max_gram_, min_gram_);
+    options_(options) {
+  options_.min_gram = std::max(options_.min_gram, size_t(1));
+  options_.max_gram = std::max(options_.max_gram, options_.min_gram);
 
   attrs_.emplace(offset_);
   attrs_.emplace(inc_);
@@ -197,10 +192,10 @@ ngram_token_stream::ngram_token_stream(
 
 //FIXME UTF-8 support
 bool ngram_token_stream::next() NOEXCEPT {
-  if (length_ < min_gram_) {
+  if (length_ < options_.min_gram) {
     ++begin_;
 
-    if (data_.end() < begin_ + min_gram_) {
+    if (data_.end() < begin_ + options_.min_gram) {
       if (emit_original_) {
         // emit the original input if it's not yet emitted
         term_.value(data_);
@@ -217,11 +212,11 @@ bool ngram_token_stream::next() NOEXCEPT {
       }
 
       return false;
-    } else if (data_.end() < begin_ + max_gram_) {
+    } else if (data_.end() < begin_ + options_.max_gram) {
       assert(begin_ <= data_.end());
       length_ = size_t(std::distance(begin_, data_.end()));
     } else {
-      length_ = max_gram_;
+      length_ = options_.max_gram;
     }
 
     ++offset_.start;
@@ -253,7 +248,7 @@ bool ngram_token_stream::reset(const irs::string_ref& value) NOEXCEPT {
   data_ = ref_cast<byte_type>(value);
   begin_ = data_.begin()-1;
   length_ = 0;
-  emit_original_ = data_.size() > max_gram_ && preserve_original_;
+  emit_original_ = data_.size() > options_.max_gram && options_.preserve_original;
   assert(length_ < min_gram_);
 
   return true;
@@ -263,8 +258,7 @@ bool ngram_token_stream::to_string_impl(
     const ::irs::text_format::type_id& format,
     std::string& definition) const {
   if (::irs::text_format::json == format)
-    return make_json_config(min_gram_, max_gram_,
-      preserve_original_, definition);
+    return make_json_config(options_, definition);
 
   return false;
 }
