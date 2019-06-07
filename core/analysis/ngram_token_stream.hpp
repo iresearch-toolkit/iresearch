@@ -62,6 +62,11 @@ class ngram_token_stream: public analyzer, util::noncopyable {
   size_t max_gram() const NOEXCEPT { return max_gram_; }
 
   bool preserve_original() const NOEXCEPT { return preserve_original_; }
+ 
+ protected:
+  virtual bool to_string_impl(
+    const ::irs::text_format::type_id& format,
+    std::string& definition) const override;
 
  private:
   class term_attribute final: public irs::term_attribute {

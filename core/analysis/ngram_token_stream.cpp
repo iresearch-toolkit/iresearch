@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <rapidjson/rapidjson/document.h> // for rapidjson::Document
+#include <rapidjson/rapidjson/writer.h> // for rapidjson::Writer
+#include <rapidjson/rapidjson/stringbuffer.h> // for rapidjson::StringBuffer
 
 #include "ngram_token_stream.hpp"
 
@@ -65,9 +67,9 @@ bool get_bool(
   return true;
 }
 
-static const irs::string_ref minParamName              = "min";
-static const irs::string_ref maxParamName              = "max";
-static const irs::string_ref preserveOriginalParamName = "preserveOriginal";
+const irs::string_ref minParamName              = "min";
+const irs::string_ref maxParamName              = "max";
+const irs::string_ref preserveOriginalParamName = "preserveOriginal";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a jSON encoded object with the following attributes:
@@ -129,6 +131,35 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
   return irs::analysis::ngram_token_stream::make(
     size_t(min), size_t(max), preserve_original
   );
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief builds analyzer config from internal options in json format
+///////////////////////////////////////////////////////////////////////////////
+bool make_json_config(size_t min_gram, size_t max_gram, bool preserve_original, std::string& definition) {
+  rapidjson::Document json;
+  json.SetObject();
+
+  rapidjson::Document::AllocatorType& allocator = json.GetAllocator();
+
+  //min_gram
+  json.AddMember(rapidjson::Value::StringRefType(minParamName.c_str(), static_cast<rapidjson::SizeType>(minParamName.size())),
+    rapidjson::Value(min_gram), allocator);
+
+  //max_gram
+  json.AddMember(rapidjson::Value::StringRefType(maxParamName.c_str(), static_cast<rapidjson::SizeType>(maxParamName.size())),
+    rapidjson::Value(max_gram), allocator);
+
+  //preserve_original
+  json.AddMember(rapidjson::Value::StringRefType(preserveOriginalParamName.c_str(), static_cast<rapidjson::SizeType>(preserveOriginalParamName.size())),
+    rapidjson::Value(preserve_original), allocator);
+
+  //output json to string
+  rapidjson::StringBuffer buffer;
+  rapidjson::Writer< rapidjson::StringBuffer> writer(buffer);
+  json.Accept(writer);
+  definition = buffer.GetString();
+  return true;
 }
 
 REGISTER_ANALYZER_JSON(irs::analysis::ngram_token_stream, make_json);
@@ -226,6 +257,16 @@ bool ngram_token_stream::reset(const irs::string_ref& value) NOEXCEPT {
   assert(length_ < min_gram_);
 
   return true;
+}
+
+bool ngram_token_stream::to_string_impl(
+    const ::irs::text_format::type_id& format,
+    std::string& definition) const {
+  if (::irs::text_format::json == format)
+    return make_json_config(min_gram_, max_gram_,
+      preserve_original_, definition);
+
+  return false;
 }
 
 DEFINE_ANALYZER_TYPE_NAMED(ngram_token_stream, "ngram")

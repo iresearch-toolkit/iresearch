@@ -517,4 +517,42 @@ TEST(ngram_token_stream_test, next) {
   }
 }
 
+TEST(ngram_token_stream_test, test_make_config_json) {
+
+  //with unknown parameter
+  {
+    std::string config = "{\"min\":1,\"max\":5,\"preserveOriginal\":false,\"invalid_parameter\":true}";
+    auto stream = irs::analysis::analyzers::get("ngram", irs::text_format::json, config.c_str());
+    ASSERT_NE(nullptr, stream);
+
+    std::string actual;
+    ASSERT_TRUE(stream->to_string(::irs::text_format::json, actual));
+    ASSERT_EQ("{\"min\":1,\"max\":5,\"preserveOriginal\":false}", actual);
+  }
+
+  //with changed values
+  {
+    std::string config = "{\"min\":11,\"max\":22,\"preserveOriginal\":true}";
+    auto stream = irs::analysis::analyzers::get("ngram", irs::text_format::json, config.c_str());
+    ASSERT_NE(nullptr, stream);
+
+    std::string actual;
+    ASSERT_TRUE(stream->to_string(::irs::text_format::json, actual));
+    ASSERT_EQ("{\"min\":11,\"max\":22,\"preserveOriginal\":true}", actual);
+  }
+}
+
+//TEST_F(ngram_token_stream_test, test_make_config_text) {
+// No text builder for analyzer so far
+//}
+
+TEST(ngram_token_stream_test, test_make_config_invalid_format) {
+  std::string config = "{\"min\":11,\"max\":22,\"preserveOriginal\":true}";
+  auto stream = irs::analysis::analyzers::get("ngram", irs::text_format::json, config.c_str());
+  ASSERT_NE(nullptr, stream);
+
+  std::string actual;
+  ASSERT_FALSE(stream->to_string(::irs::text_format::csv, actual));
+}
+
 #endif // IRESEARCH_DLL

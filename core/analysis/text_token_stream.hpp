@@ -34,13 +34,16 @@ NS_BEGIN(analysis)
 
 class text_token_stream : public analyzer, util::noncopyable {
  public:
+  typedef std::unordered_set<std::string> stopwords_t;
   struct options_t {
     enum case_convert_t { LOWER, NONE, UPPER };
     case_convert_t case_convert{case_convert_t::LOWER}; // lowercase tokens, mach original implementation
-    std::unordered_set<std::string> ignored_words;
+    stopwords_t explicit_stopwords;
+    bool explicit_stopwords_set{ false }; // needed for mark empty explicit_stopwords as valid and prevent loading from defaults
     std::string locale;
     bool no_accent{true}; // remove accents from letters, mach original implementation
     bool no_stem{false}; // try to stem if possible, mach original implementation
+    std::string stopwordsPath{0}; // string with zero char indicates 'no value set'
   };
 
   struct state_t;
@@ -74,13 +77,18 @@ class text_token_stream : public analyzer, util::noncopyable {
   // for use with irs::order::add<T>() and default args (static build)
   DECLARE_FACTORY(const irs::string_ref& locale);
 
-  text_token_stream(const options_t& options);
+  text_token_stream(const options_t& options, const stopwords_t& stopwords);
   virtual const irs::attribute_view& attributes() const NOEXCEPT override {
     return attrs_;
   }
   static void init(); // for trigering registration in a static build
   virtual bool next() override;
   virtual bool reset(const string_ref& data) override;
+
+ protected:
+  virtual bool to_string_impl(
+    const ::irs::text_format::type_id& format,
+    std::string& definition) const override;
 
  private:
   irs::attribute_view attrs_;
