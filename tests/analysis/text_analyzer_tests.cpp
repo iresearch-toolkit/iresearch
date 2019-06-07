@@ -826,18 +826,18 @@ TEST_F(TextAnalyzerParserTestSuite, test_make_config_json) {
 }
 
 TEST_F(TextAnalyzerParserTestSuite, test_make_config_text) {
-  std::string config = "ru_RU.UTF-8";
-  auto stream = irs::analysis::analyzers::get("text", irs::text_format::text, config.c_str());
+  std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"caseConvert\":\"lower\",\"stopwords\":[],\"noAccent\":false}";
+  auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, config.c_str());
   ASSERT_NE(nullptr, stream);
 
   std::string actual;
   ASSERT_TRUE(stream->to_string(::irs::text_format::text, actual));
-  ASSERT_EQ(config, actual);
+  ASSERT_EQ("ru_RU.UTF-8", actual);
 }
 
 TEST_F(TextAnalyzerParserTestSuite, test_make_config_invalid_format) {
-  std::string config = "ru_RU.UTF-8";
-  auto stream = irs::analysis::analyzers::get("text", irs::text_format::text, config.c_str());
+  std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"caseConvert\":\"lower\",\"stopwords\":[],\"noAccent\":false}";
+  auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, config.c_str());
   ASSERT_NE(nullptr, stream);
 
   std::string actual;

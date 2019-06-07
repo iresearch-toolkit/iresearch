@@ -249,7 +249,7 @@ bool ngram_token_stream::reset(const irs::string_ref& value) NOEXCEPT {
   begin_ = data_.begin()-1;
   length_ = 0;
   emit_original_ = data_.size() > options_.max_gram && options_.preserve_original;
-  assert(length_ < min_gram_);
+  assert(length_ < options_.min_gram);
 
   return true;
 }
