@@ -64,8 +64,9 @@ protected:
   virtual bool to_string_impl(
     const ::irs::text_format::type_id& format,
     std::string& definition) const {
-
-    return to_string_impl(format, definition);
+    UNUSED(format);
+    definition.clear();
+    return false;
   }
  private:
   const type_id* type_;

@@ -143,11 +143,11 @@ bool make_json_config(const irs::analysis::ngram_token_stream::options_t& option
 
   //min_gram
   json.AddMember(rapidjson::Value::StringRefType(minParamName.c_str(), static_cast<rapidjson::SizeType>(minParamName.size())),
-    rapidjson::Value(options.min_gram), allocator);
+    rapidjson::Value(static_cast<uint64_t>(options.min_gram)), allocator);
 
   //max_gram
   json.AddMember(rapidjson::Value::StringRefType(maxParamName.c_str(), static_cast<rapidjson::SizeType>(maxParamName.size())),
-    rapidjson::Value(options.max_gram), allocator);
+    rapidjson::Value(static_cast<uint64_t>(options.max_gram)), allocator);
 
   //preserve_original
   json.AddMember(rapidjson::Value::StringRefType(preserveOriginalParamName.c_str(), static_cast<rapidjson::SizeType>(preserveOriginalParamName.size())),
