@@ -66,19 +66,12 @@ class ngram_token_stream: public analyzer, util::noncopyable {
   }
 
   virtual bool next() NOEXCEPT override;
-
   virtual bool reset(const string_ref& data) NOEXCEPT override;
-
+  virtual bool to_string(const ::irs::text_format::type_id& format,
+                         std::string& definition) const override;
   size_t min_gram() const NOEXCEPT { return options_.min_gram; }
-
   size_t max_gram() const NOEXCEPT { return options_.max_gram; }
-
   bool preserve_original() const NOEXCEPT { return options_.preserve_original; }
- 
- protected:
-  virtual bool to_string_impl(
-    const ::irs::text_format::type_id& format,
-    std::string& definition) const override;
 
  private:
   class term_attribute final: public irs::term_attribute {
@@ -94,7 +87,6 @@ class ngram_token_stream: public analyzer, util::noncopyable {
   term_attribute term_;
   const byte_type* begin_{};
   size_t length_{};
-
   bool emit_original_{ false };
 }; // ngram_token_stream
 

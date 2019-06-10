@@ -189,13 +189,13 @@ TEST_F(text_token_stemming_stream_tests, test_make_config_json) {
 
     std::string actual;
     ASSERT_TRUE(stream->to_string(::irs::text_format::json, actual));
-    ASSERT_EQ("{\"locale\":\"ru_RU.UTF-8\"}", actual);
+    ASSERT_EQ("{\"locale\":\"ru_RU.utf-8\"}", actual);
   }
 
 }
 
 TEST_F(text_token_stemming_stream_tests, test_make_config_text) {
-  std::string config = "ru_RU.UTF-8";
+  std::string config = "ru_RU.utf-8";
   auto stream = irs::analysis::analyzers::get("stem", irs::text_format::text, config.c_str());
   ASSERT_NE(nullptr, stream);
 
@@ -205,7 +205,7 @@ TEST_F(text_token_stemming_stream_tests, test_make_config_text) {
 }
 
 TEST_F(text_token_stemming_stream_tests, test_make_config_invalid_format) {
-  std::string config = "ru_RU.UTF-8";
+  std::string config = "ru_RU.utfF-8";
   auto stream = irs::analysis::analyzers::get("stem", irs::text_format::text, config.c_str());
   ASSERT_NE(nullptr, stream);
 

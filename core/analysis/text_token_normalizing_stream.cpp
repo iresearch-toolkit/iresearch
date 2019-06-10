@@ -85,7 +85,9 @@ const irs::string_ref caseConvertParamName = "caseConvert";
 const irs::string_ref noAccentParamName    = "noAccent";
 
 
-const std::unordered_map<std::string, irs::analysis::text_token_normalizing_stream::options_t::case_convert_t> case_convert_map = {
+const std::unordered_map<
+    std::string, 
+    irs::analysis::text_token_normalizing_stream::options_t::case_convert_t> case_convert_map = {
   { "lower", irs::analysis::text_token_normalizing_stream::options_t::case_convert_t::LOWER },
   { "none", irs::analysis::text_token_normalizing_stream::options_t::case_convert_t::NONE },
   { "upper", irs::analysis::text_token_normalizing_stream::options_t::case_convert_t::UPPER },
@@ -126,7 +128,9 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
           auto& case_convert = json[caseConvertParamName.c_str()]; // optional string enum
 
           if (!case_convert.IsString()) {
-            IR_FRMT_WARN("Non-string value in '%s' while constructing text_token_normalizing_stream from jSON arguments: %s", caseConvertParamName.c_str(), args.c_str());
+            IR_FRMT_WARN(
+              "Non-string value in '%s' while constructing text_token_normalizing_stream from jSON arguments: %s", 
+              caseConvertParamName.c_str(), args.c_str());
 
             return nullptr;
           }
@@ -134,7 +138,9 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
           auto itr = case_convert_map.find(case_convert.GetString());
 
           if (itr == case_convert_map.end()) {
-            IR_FRMT_WARN("Invalid value in '%s' while constructing text_token_normalizing_stream from jSON arguments: %s", caseConvertParamName.c_str(), args.c_str());
+            IR_FRMT_WARN(
+              "Invalid value in '%s' while constructing text_token_normalizing_stream from jSON arguments: %s", 
+              caseConvertParamName.c_str(), args.c_str());
 
             return nullptr;
           }
@@ -146,7 +152,9 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
           auto& no_accent = json[noAccentParamName.c_str()]; // optional bool
 
           if (!no_accent.IsBool()) {
-            IR_FRMT_WARN("Non-boolean value in '%s' while constructing text_token_normalizing_stream from jSON arguments: %s", noAccentParamName.c_str(), args.c_str());
+            IR_FRMT_WARN(
+              "Non-boolean value in '%s' while constructing text_token_normalizing_stream from jSON arguments: %s", 
+              noAccentParamName.c_str(), args.c_str());
 
             return nullptr;
           }
@@ -191,29 +199,39 @@ bool make_json_config(
   rapidjson::Document::AllocatorType& allocator = json.GetAllocator();
 
   // locale
-  json.AddMember(rapidjson::Value::StringRefType(localeParamName.c_str(), static_cast<rapidjson::SizeType>(localeParamName.size())),
-    rapidjson::Value(options.locale.c_str(), static_cast<rapidjson::SizeType>(options.locale.length())), allocator);
+  json.AddMember(rapidjson::Value::StringRefType(localeParamName.c_str(), 
+                     static_cast<rapidjson::SizeType>(localeParamName.size())),
+                 rapidjson::Value(options.locale.c_str(), 
+                     static_cast<rapidjson::SizeType>(options.locale.length())), 
+                 allocator);
 
   // case convert
   {
     auto case_value = std::find_if(case_convert_map.begin(), case_convert_map.end(),
-      [&options](const decltype(case_convert_map)::value_type& v) { return v.second == options.case_convert; });
+      [&options](const decltype(case_convert_map)::value_type& v) { 
+          return v.second == options.case_convert; 
+      });
     if (case_value != case_convert_map.end()) {
-      json.AddMember(rapidjson::Value::StringRefType(caseConvertParamName.c_str(), static_cast<rapidjson::SizeType>(caseConvertParamName.size())),
-        rapidjson::Value(case_value->first.c_str(), static_cast<rapidjson::SizeType>(case_value->first.length())), allocator);
+      json.AddMember(rapidjson::Value::StringRefType(caseConvertParamName.c_str(),
+                         static_cast<rapidjson::SizeType>(caseConvertParamName.size())),
+                     rapidjson::Value(case_value->first.c_str(), 
+                         static_cast<rapidjson::SizeType>(case_value->first.length())), 
+                     allocator);
     }
     else {
       IR_FRMT_ERROR(
-        "Invalid case_convert value in text analyzer options: %d", static_cast<int>(options.case_convert));
+        "Invalid case_convert value in text analyzer options: %d", 
+        static_cast<int>(options.case_convert));
       return false;
     }
   }
 
   // noAccent
-  json.AddMember(rapidjson::Value::StringRefType(noAccentParamName.c_str(), static_cast<rapidjson::SizeType>(noAccentParamName.size())),
-    rapidjson::Value(options.no_accent), allocator);
+  json.AddMember(rapidjson::Value::StringRefType(noAccentParamName.c_str(), 
+                     static_cast<rapidjson::SizeType>(noAccentParamName.size())),
+                 rapidjson::Value(options.no_accent),
+                 allocator);
 
-  
   //output json to string
   rapidjson::StringBuffer buffer;
   rapidjson::Writer< rapidjson::StringBuffer> writer(buffer);
@@ -250,11 +268,12 @@ irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief build config string in 'text' format
 ////////////////////////////////////////////////////////////////////////////////
-bool make_text_config(const irs::analysis::text_token_normalizing_stream::options_t& options, std::string& definition) {
+bool make_text_config(
+    const irs::analysis::text_token_normalizing_stream::options_t& options, 
+    std::string& definition) {
   definition = options.locale; // only locale available with text config (see make_text)
   return true;
 }
-
 
 REGISTER_ANALYZER_JSON(irs::analysis::text_token_normalizing_stream, make_json);
 REGISTER_ANALYZER_TEXT(irs::analysis::text_token_normalizing_stream, make_text);
@@ -284,8 +303,7 @@ text_token_normalizing_stream::text_token_normalizing_stream(
 }
 
 /*static*/ analyzer::ptr text_token_normalizing_stream::make(
-    const string_ref& locale
-) {
+    const string_ref& locale) {
   return make_text(locale);
 }
 
@@ -331,7 +349,8 @@ bool text_token_normalizing_stream::reset(const irs::string_ref& data) {
 
   if (state_->options.no_accent && !state_->transliterator) {
     // transliteration rule taken verbatim from: http://userguide.icu-project.org/transforms/general
-    icu::UnicodeString collationRule("NFD; [:Nonspacing Mark:] Remove; NFC"); // do not allocate statically since it causes memory leaks in ICU
+    // do not allocate statically since it causes memory leaks in ICU
+    icu::UnicodeString collationRule("NFD; [:Nonspacing Mark:] Remove; NFC"); 
 
     // reusable object owned by *this
     state_->transliterator.reset(icu::Transliterator::createInstance(
@@ -411,14 +430,14 @@ bool text_token_normalizing_stream::reset(const irs::string_ref& data) {
   return true;
 }
 
-bool text_token_normalizing_stream::to_string_impl(
+bool text_token_normalizing_stream::to_string(
     const ::irs::text_format::type_id& format,
     std::string& definition) const {
-  if (::irs::text_format::json == format)
+  if (::irs::text_format::json == format) {
     return make_json_config(state_->options, definition);
-  else if (::irs::text_format::text == format)
+  } else if (::irs::text_format::text == format) {
     return make_text_config(state_->options, definition);
-
+  }
   return false;
 }
 

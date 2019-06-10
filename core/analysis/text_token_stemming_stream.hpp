@@ -50,11 +50,8 @@ class text_token_stemming_stream: public analyzer, util::noncopyable {
   static void init(); // for trigering registration in a static build
   virtual bool next() override;
   virtual bool reset(const irs::string_ref& data) override;
-
-  protected:
-   virtual bool to_string_impl(
-    const ::irs::text_format::type_id& format,
-    std::string& definition) const override;
+  virtual bool to_string(const ::irs::text_format::type_id& format,
+                         std::string& definition) const override;
 
   private:
    class term_attribute final: public irs::term_attribute {
@@ -66,7 +63,6 @@ class text_token_stemming_stream: public analyzer, util::noncopyable {
    irs::attribute_view attrs_;
    irs::increment inc_;
    std::locale locale_;
-   std::string locale_name_;
    irs::offset offset_;
    irs::payload payload_; // raw token value
    std::shared_ptr<sb_stemmer> stemmer_;

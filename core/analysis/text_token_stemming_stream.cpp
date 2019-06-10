@@ -91,8 +91,11 @@ bool make_json_config( const std::string& locale,  std::string& definition) {
   rapidjson::Document::AllocatorType& allocator = json.GetAllocator();
 
   // locale
-  json.AddMember(rapidjson::Value::StringRefType(localeParamName.c_str(), static_cast<rapidjson::SizeType>(localeParamName.size())),
-    rapidjson::Value(locale.c_str(), static_cast<rapidjson::SizeType>(locale.length())), allocator);
+  json.AddMember(rapidjson::Value::StringRefType(localeParamName.c_str(), 
+                     static_cast<rapidjson::SizeType>(localeParamName.size())),
+                 rapidjson::Value(locale.c_str(), 
+                     static_cast<rapidjson::SizeType>(locale.length())), 
+                 allocator);
 
   //output json to string
   rapidjson::StringBuffer buffer;
@@ -144,7 +147,6 @@ text_token_stemming_stream::text_token_stemming_stream(
 ): analyzer(text_token_stemming_stream::type()),
    attrs_(4), // increment + offset + payload + term
    locale_(irs::locale_utils::locale(locale, irs::string_ref::NIL, true)), // true == convert to unicode
-   locale_name_(locale),
    term_eof_(true) {
   attrs_.emplace(inc_);
   attrs_.emplace(offset_);
@@ -240,13 +242,14 @@ bool text_token_stemming_stream::reset(const irs::string_ref& data) {
   return true;
 }
 
-bool text_token_stemming_stream::to_string_impl(
+bool text_token_stemming_stream::to_string( 
     const ::irs::text_format::type_id& format,
     std::string& definition) const {
-  if (::irs::text_format::json == format)
-    return make_json_config(locale_name_, definition);
-  else if (::irs::text_format::text == format)
-    return make_text_config(locale_name_, definition);
+  if (::irs::text_format::json == format) {
+    return make_json_config(locale_utils::name(locale_), definition);
+  } else if (::irs::text_format::text == format) {
+    return make_text_config(locale_utils::name(locale_), definition);
+  }
 
   return false;
 }

@@ -37,9 +37,11 @@ class text_token_stream : public analyzer, util::noncopyable {
   typedef std::unordered_set<std::string> stopwords_t;
   struct options_t {
     enum case_convert_t { LOWER, NONE, UPPER };
-    case_convert_t case_convert{case_convert_t::LOWER}; // lowercase tokens, mach original implementation
+    // lowercase tokens, mach original implementation
+    case_convert_t case_convert{case_convert_t::LOWER};
     stopwords_t explicit_stopwords;
-    bool explicit_stopwords_set{ false }; // needed for mark empty explicit_stopwords as valid and prevent loading from defaults
+    // needed for mark empty explicit_stopwords as valid and prevent loading from defaults
+    bool explicit_stopwords_set{ false }; 
     std::string locale;
     bool no_accent{true}; // remove accents from letters, mach original implementation
     bool no_stem{false}; // try to stem if possible, mach original implementation
@@ -84,11 +86,8 @@ class text_token_stream : public analyzer, util::noncopyable {
   static void init(); // for trigering registration in a static build
   virtual bool next() override;
   virtual bool reset(const string_ref& data) override;
-
- protected:
-  virtual bool to_string_impl(
-    const ::irs::text_format::type_id& format,
-    std::string& definition) const override;
+  virtual bool to_string(const ::irs::text_format::type_id& format,
+                         std::string& definition) const override;
 
  private:
   irs::attribute_view attrs_;

@@ -117,7 +117,8 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
    case rapidjson::kStringType:
     return irs::analysis::delimited_token_stream::make(json.GetString());
    case rapidjson::kObjectType:
-    if (json.HasMember(delimiterParamName.c_str()) && json[delimiterParamName.c_str()].IsString()) {
+    if (json.HasMember(delimiterParamName.c_str()) && 
+        json[delimiterParamName.c_str()].IsString()) {
       return irs::analysis::delimited_token_stream::make(json[delimiterParamName.c_str()].GetString());
     }
    default: {} // fall through
@@ -146,8 +147,11 @@ bool make_json_config(const irs::bstring& delimiter, std::string& definition) {
   // delimiter
   {
     auto delimiterStringRef = ::irs::ref_cast<char>(delimiter);
-    json.AddMember(rapidjson::Value::StringRefType(delimiterParamName.c_str(), static_cast<rapidjson::SizeType>(delimiterParamName.size())),
-      rapidjson::Value(rapidjson::StringRef(delimiterStringRef.c_str(), static_cast<rapidjson::SizeType>(delimiterStringRef.size()))), allocator);
+    json.AddMember(rapidjson::Value::StringRefType(delimiterParamName.c_str(),
+                       static_cast<rapidjson::SizeType>(delimiterParamName.size())),
+                   rapidjson::Value(rapidjson::StringRef(delimiterStringRef.c_str(), 
+                       static_cast<rapidjson::SizeType>(delimiterStringRef.size()))), 
+                   allocator);
   }
 
   //output json to string
@@ -250,14 +254,14 @@ bool delimited_token_stream::reset(const string_ref& data) {
   return true;
 }
 
-bool delimited_token_stream::to_string_impl(
+bool delimited_token_stream::to_string(
     const ::irs::text_format::type_id& format,
     std::string& definition) const {
-  if (::irs::text_format::json == format)
+  if (::irs::text_format::json == format) {
     return make_json_config(delim_buf_, definition);
-  else if (::irs::text_format::text == format)
+  } else if (::irs::text_format::text == format) {
     return make_text_config(delim_buf_, definition);
-
+  }
   return false;
 }
 

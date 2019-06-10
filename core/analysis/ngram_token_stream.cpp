@@ -135,23 +135,31 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief builds analyzer config from internal options in json format
 ///////////////////////////////////////////////////////////////////////////////
-bool make_json_config(const irs::analysis::ngram_token_stream::options_t& options, std::string& definition) {
+bool make_json_config(const irs::analysis::ngram_token_stream::options_t& options, 
+                      std::string& definition) {
   rapidjson::Document json;
   json.SetObject();
-
   rapidjson::Document::AllocatorType& allocator = json.GetAllocator();
-
+  
+  // ensure disambiguating casts below are safe. Casts required for clang compiler on Mac
+  static_assert(sizeof(uint64_t) >= sizeof(size_t), "sizeof(uint64_t) >= sizeof(size_t)");
   //min_gram
-  json.AddMember(rapidjson::Value::StringRefType(minParamName.c_str(), static_cast<rapidjson::SizeType>(minParamName.size())),
-    rapidjson::Value(static_cast<uint64_t>(options.min_gram)), allocator);
+  json.AddMember(rapidjson::Value::StringRefType(minParamName.c_str(), 
+                     static_cast<rapidjson::SizeType>(minParamName.size())),
+                 rapidjson::Value(static_cast<uint64_t>(options.min_gram)), 
+                 allocator);
 
   //max_gram
-  json.AddMember(rapidjson::Value::StringRefType(maxParamName.c_str(), static_cast<rapidjson::SizeType>(maxParamName.size())),
-    rapidjson::Value(static_cast<uint64_t>(options.max_gram)), allocator);
+  json.AddMember(rapidjson::Value::StringRefType(maxParamName.c_str(), 
+                     static_cast<rapidjson::SizeType>(maxParamName.size())),
+                 rapidjson::Value(static_cast<uint64_t>(options.max_gram)), 
+                 allocator);
 
   //preserve_original
-  json.AddMember(rapidjson::Value::StringRefType(preserveOriginalParamName.c_str(), static_cast<rapidjson::SizeType>(preserveOriginalParamName.size())),
-    rapidjson::Value(options.preserve_original), allocator);
+  json.AddMember(rapidjson::Value::StringRefType(preserveOriginalParamName.c_str(), 
+                     static_cast<rapidjson::SizeType>(preserveOriginalParamName.size())),
+                 rapidjson::Value(options.preserve_original), 
+                 allocator);
 
   //output json to string
   rapidjson::StringBuffer buffer;
@@ -254,12 +262,12 @@ bool ngram_token_stream::reset(const irs::string_ref& value) NOEXCEPT {
   return true;
 }
 
-bool ngram_token_stream::to_string_impl(
+bool ngram_token_stream::to_string(
     const ::irs::text_format::type_id& format,
     std::string& definition) const {
-  if (::irs::text_format::json == format)
+  if (::irs::text_format::json == format) {
     return make_json_config(options_, definition);
-
+  }
   return false;
 }
 
