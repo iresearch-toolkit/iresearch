@@ -27,6 +27,7 @@
 #include "shared.hpp"
 #include "utils/attributes.hpp"
 #include "utils/attributes_provider.hpp"
+#include "utils/math_utils.hpp"
 #include "utils/iterator.hpp"
 
 #include <vector>
@@ -247,13 +248,19 @@ class IRESEARCH_API sort {
     virtual bool less(const byte_type* lhs, const byte_type* rhs) const = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief number of bytes and alignemnt required to store the score type
-    ///       (i.e. sizeof(score), alignof(score))
+    /// @brief number of bytes (first) and alignment (second) required to store
+    ///        the score type (i.e. sizeof(score), alignof(score))
+    /// @note alignment must satisfy the following requirements:
+    ///       - be a power of 2
+    ///       - be less or equal than ALIGNOF(MAX_ALIGN_T))
     ////////////////////////////////////////////////////////////////////////////////
     virtual std::pair<size_t, size_t> score_size() const = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief number of bytes and alignment required to store stats
+    /// @brief number of bytes (first) and alignment (first) required to store stats
+    /// @note alignment must satisfy the following requirements:
+    ///       - be a power of 2
+    ///       - be less or equal than ALIGNOF(MAX_ALIGN_T))
     ////////////////////////////////////////////////////////////////////////////////
     virtual std::pair<size_t, size_t> stats_size() const = 0;
 
@@ -269,18 +276,6 @@ class IRESEARCH_API sort {
    public:
     typedef ScoreType score_t;
     typedef StatsType stats_t;
-
-    // we don't support custom alignments for scores
-    static_assert(
-      ALIGNOF(score_t) <= ALIGNOF(MAX_ALIGN_T),
-      "alignof(stats_t) must be <= alignof(std::max_align_t)"
-    );
-
-    // we don't support custom alignments for stats
-    static_assert(
-      ALIGNOF(stats_t) <= ALIGNOF(MAX_ALIGN_T),
-      "alignof(stats_t) must be <= alignof(std::max_align_t)"
-    );
 
     FORCE_INLINE static const score_t& score_cast(const byte_type* buf) NOEXCEPT {
       assert(buf);
@@ -304,6 +299,16 @@ class IRESEARCH_API sort {
     /// @brief number of bytes required to store the score type (i.e. sizeof(score))
     ////////////////////////////////////////////////////////////////////////////////
     virtual inline std::pair<size_t, size_t> score_size() const NOEXCEPT final {
+      static_assert(
+        ALIGNOF(score_t) <= ALIGNOF(MAX_ALIGN_T),
+        "alignof(score_t) must be <= alignof(std::max_align_t)"
+      );
+
+      static_assert (
+        math::is_power2(ALIGNOF(score_t)),
+        "alignof(score_t) must be a power of 2"
+      );
+
       return std::make_pair(sizeof(score_t), ALIGNOF(score_t));
     }
 
@@ -311,6 +316,16 @@ class IRESEARCH_API sort {
     /// @brief number of bytes required to store stats
     ////////////////////////////////////////////////////////////////////////////////
     virtual inline std::pair<size_t, size_t> stats_size() const NOEXCEPT final {
+      static_assert(
+        ALIGNOF(stats_t) <= ALIGNOF(MAX_ALIGN_T),
+        "alignof(stats_t) must be <= alignof(std::max_align_t)"
+      );
+
+      static_assert (
+        math::is_power2(ALIGNOF(stats_t)),
+        "alignof(stats_t) must be a power of 2"
+      );
+
       return std::make_pair(sizeof(stats_t), ALIGNOF(stats_t));
     }
   }; // prepared_base
@@ -813,8 +828,8 @@ class IRESEARCH_API order final {
 
   template<typename T, typename... Args>
   T& add(bool reverse, Args&&... args) {
-    typedef typename std::enable_if <
-      std::is_base_of< sort, T >::value, T
+    typedef typename std::enable_if<
+      std::is_base_of<sort, T>::value, T
     >::type type;
 
     add(reverse, type::make(std::forward<Args>(args)...));
@@ -823,24 +838,24 @@ class IRESEARCH_API order final {
 
   template<typename T>
   void remove() {
-    typedef typename std::enable_if <
-      std::is_base_of< sort, T >::value, T
+    typedef typename std::enable_if<
+      std::is_base_of<sort, T>::value, T
     >::type type;
 
     remove(type::type());
   }
 
   void remove(const type_id& id);
-  void clear() { order_.clear(); }
+  void clear() NOEXCEPT { order_.clear(); }
 
   size_t size() const NOEXCEPT { return order_.size(); }
   bool empty() const NOEXCEPT { return order_.empty(); }
 
-  const_iterator begin() const { return order_.begin(); }
-  const_iterator end() const { return order_.end(); }
+  const_iterator begin() const NOEXCEPT { return order_.begin(); }
+  const_iterator end() const NOEXCEPT { return order_.end(); }
 
-  iterator begin() { return order_.begin(); }
-  iterator end() { return order_.end(); }
+  iterator begin() NOEXCEPT { return order_.begin(); }
+  iterator end() NOEXCEPT { return order_.end(); }
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN

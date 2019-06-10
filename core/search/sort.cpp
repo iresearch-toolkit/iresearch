@@ -117,26 +117,12 @@ order& order::add(bool reverse, const sort::ptr& sort) {
 }
 
 order::prepared order::prepare() const {
-  auto add_bucket = [](
-      size_t& size,
-      size_t& align,
-      const std::pair<size_t, size_t>& bucket) NOEXCEPT {
-    assert(math::is_power2(bucket.second));
-
-    if (align < bucket.second) {
-      align = bucket.second;
-      size = memory::align_up(size, align);
-      size += memory::align_up(bucket.first, align);
-    } else {
-      size += memory::align_up(bucket.first, bucket.second);
-    }
-  };
-
   order::prepared pord;
-  pord.order_.reserve(order_.size()); // strong exception guarantee
+  pord.order_.reserve(order_.size());
 
   size_t stats_align = 0;
   size_t score_align = 0;
+
   for (auto& entry : order_) {
     auto prepared = entry.sort().prepare();
 
@@ -145,6 +131,21 @@ order::prepared order::prepare() const {
       continue;
     }
 
+    const auto score_size = prepared->score_size();
+    assert(score_size.second <= ALIGNOF(MAX_ALIGN_T));
+    assert(score_size.second && math::is_power2(score_size.second));
+
+    const auto stats_size = prepared->stats_size();
+    assert(stats_size.second <= ALIGNOF(MAX_ALIGN_T));
+    assert(stats_size.second && math::is_power2(stats_size.second));
+
+    stats_align = std::max(stats_align, stats_size.second);
+    score_align = std::max(score_align, score_size.second);
+
+    pord.score_size_ = memory::align_up(pord.score_size_, score_size.second);
+    pord.stats_size_ = memory::align_up(pord.stats_size_, stats_size.second);
+    pord.features_ |= prepared->features();
+
     pord.order_.emplace_back(
       std::move(prepared),
       pord.score_size_,
@@ -152,11 +153,8 @@ order::prepared order::prepare() const {
       entry.reverse()
     );
 
-    const sort::prepared& bucket = *pord.order_.back().bucket;
-
-    pord.features_ |= bucket.features();
-    add_bucket(pord.score_size_, score_align, bucket.score_size());
-    add_bucket(pord.stats_size_, stats_align, bucket.stats_size());
+    pord.score_size_ += memory::align_up(score_size.first, score_size.second);
+    pord.stats_size_ += memory::align_up(stats_size.first, stats_size.second);
   }
 
   pord.stats_size_ = memory::align_up(pord.stats_size_, stats_align);
