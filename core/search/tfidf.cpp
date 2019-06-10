@@ -362,7 +362,9 @@ class sort final: irs::sort::prepared_basic<tfidf::score_t, tfidf::idf> {
       const attribute_view& doc_attrs,
       boost_t boost
   ) const override {
-    if (!doc_attrs.contains<frequency>()) {
+    auto& freq = doc_attrs.get<frequency>();
+
+    if (!freq) {
       if (0.f == boost) {
         return nullptr;
       }
@@ -379,15 +381,13 @@ class sort final: irs::sort::prepared_basic<tfidf::score_t, tfidf::idf> {
 
       if (norm.reset(segment, field.meta().norm, *doc_attrs.get<document>())) {
         return tfidf::scorer::make<tfidf::norm_scorer>(
-          std::move(norm), boost, stats, doc_attrs.get<frequency>().get()
+          std::move(norm), boost, stats, freq.get()
         );
       }
     }
 
 
-    return tfidf::scorer::make<tfidf::scorer>(
-      boost, stats, doc_attrs.get<frequency>().get()
-    );
+    return tfidf::scorer::make<tfidf::scorer>(boost, stats, freq.get());
   }
 
   virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
