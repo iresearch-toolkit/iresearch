@@ -279,17 +279,11 @@ NS_BEGIN(bm25)
 // empty frequency
 const frequency EMPTY_FREQ;
 
-struct stats final : attribute {
-  DECLARE_ATTRIBUTE_TYPE();
-
-  stats() = default;
-
+struct stats final {
   float_t idf{ 0.f }; // precomputed idf value
   float_t norm_const{ 1.f }; // precomputed k*(1-b)
   float_t norm_length{ 0.f }; // precomputed k*b/avgD
 }; // stats
-
-DEFINE_ATTRIBUTE_TYPE(irs::bm25::stats)
 
 typedef bm25_sort::score_t score_t;
 

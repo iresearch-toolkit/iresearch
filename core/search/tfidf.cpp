@@ -233,13 +233,8 @@ NS_BEGIN(tfidf)
 const frequency EMPTY_FREQ;
 
 struct idf final : attribute {
-  DECLARE_ATTRIBUTE_TYPE();
-  idf() NOEXCEPT : value(0.f) { }
-
-  float_t value;
+  float_t value{ 0.f };
 };
-
-DEFINE_ATTRIBUTE_TYPE(irs::tfidf::idf)
 
 typedef tfidf_sort::score_t score_t;
 
