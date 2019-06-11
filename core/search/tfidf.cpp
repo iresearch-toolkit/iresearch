@@ -316,7 +316,7 @@ class sort final: irs::sort::prepared_basic<tfidf::score_t, tfidf::idf> {
       const irs::sort::field_collector* field,
       const irs::sort::term_collector* term
   ) const override {
-    auto* idf = new (stats_buf) tfidf::idf();
+    auto& idf = stats_cast(stats_buf);
 
 #ifdef IRESEARCH_DEBUG
     auto* field_ptr = dynamic_cast<const field_collector*>(field);
@@ -331,10 +331,10 @@ class sort final: irs::sort::prepared_basic<tfidf::score_t, tfidf::idf> {
     const auto docs_with_field = field_ptr ? field_ptr->docs_with_field : 0; // nullptr possible if e.g. 'all' filter
     const auto docs_with_term = term_ptr ? term_ptr->docs_with_term : 0; // nullptr possible if e.g.'by_column_existence' filter
 
-    idf->value += float_t(
+    idf.value += float_t(
       std::log((docs_with_field + 1) / double_t(docs_with_term + 1)) + 1.0
     );
-    assert(idf->value >= 0);
+    assert(idf.value >= 0.f);
   }
 
   virtual const flags& features() const override {
@@ -374,7 +374,14 @@ class sort final: irs::sort::prepared_basic<tfidf::score_t, tfidf::idf> {
     if (normalize_) {
       irs::norm norm;
 
-      if (norm.reset(segment, field.meta().norm, *doc_attrs.get<document>())) {
+      auto& doc = doc_attrs.get<document>();
+
+      if (!doc) {
+        // we need 'document' attribute to be exposed
+        return nullptr;
+      }
+
+      if (norm.reset(segment, field.meta().norm, *doc)) {
         return tfidf::scorer::make<tfidf::norm_scorer>(
           std::move(norm), boost, stats, freq.get()
         );

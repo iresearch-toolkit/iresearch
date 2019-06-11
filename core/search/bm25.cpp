@@ -376,7 +376,7 @@ class sort final : public irs::sort::prepared_basic<bm25::score_t, bm25::stats> 
     const irs::sort::field_collector* field,
     const irs::sort::term_collector* term
   ) const override {
-    auto* stats = new (stats_buf) bm25::stats(); // initialize stats
+    auto& stats = stats_cast(stats_buf);
 
 #ifdef IRESEARCH_DEBUG
     auto* field_ptr = dynamic_cast<const field_collector*>(field);
@@ -393,10 +393,10 @@ class sort final : public irs::sort::prepared_basic<bm25::score_t, bm25::stats> 
     const auto total_term_freq = field_ptr ? field_ptr->total_term_freq : 0; // nullptr possible if e.g. 'all' filter
 
     // precomputed idf value
-    stats->idf += float_t(std::log(
+    stats.idf += float_t(std::log(
       1 + ((docs_with_field - docs_with_term + 0.5)/(docs_with_term + 0.5))
     ));
-    assert(stats->idf >= 0);
+    assert(stats.idf >= 0.f);
 
     // - stats were already initialized
     // - BM15 without norms
@@ -407,11 +407,11 @@ class sort final : public irs::sort::prepared_basic<bm25::score_t, bm25::stats> 
     // precomputed length norm
     const float_t kb = k_ * b_;
 
-    stats->norm_const = k_ - kb;
-    stats->norm_length = kb;
+    stats.norm_const = k_ - kb;
+    stats.norm_length = kb;
 
     if (total_term_freq && docs_with_field) {
-      stats->norm_length /= float_t(total_term_freq) / docs_with_field;
+      stats.norm_length /= float_t(total_term_freq) / docs_with_field;
     }
   }
 
@@ -451,7 +451,14 @@ class sort final : public irs::sort::prepared_basic<bm25::score_t, bm25::stats> 
     if (b_ != 0.f) {
       irs::norm norm;
 
-      if (norm.reset(segment, field.meta().norm, *doc_attrs.get<document>())) {
+      auto& doc = doc_attrs.get<document>();
+
+      if (!doc) {
+        // we need 'document' attribute to be exposed
+        return nullptr;
+      }
+
+      if (norm.reset(segment, field.meta().norm, *doc)) {
         return bm25::scorer::make<bm25::norm_scorer>(
           k_, boost, stats, freq.get(), std::move(norm)
         );
