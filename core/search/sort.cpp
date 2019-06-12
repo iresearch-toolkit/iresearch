@@ -346,7 +346,7 @@ void order::prepared::prepare_score(byte_type* score) const {
 void order::prepared::prepare_stats(byte_type* stats) const {
   for (auto& sort : order_) {
     assert(sort.bucket);
-    sort.bucket->prepare_score(stats + sort.stats_offset);
+    sort.bucket->prepare_stats(stats + sort.stats_offset);
   }
 }
 
