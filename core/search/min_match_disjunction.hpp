@@ -240,7 +240,7 @@ class min_match_disjunction : public doc_iterator_base {
   template<typename Iterator>
   inline void push(Iterator begin, Iterator end) {
     // lambda here gives ~20% speedup on GCC
-    std::push_heap(begin, end, [this](const size_t lhs, const size_t rhs) {
+    std::push_heap(begin, end, [this](const size_t lhs, const size_t rhs) NOEXCEPT {
       const auto& lhs_it = itrs_[lhs];
       const auto& rhs_it = itrs_[rhs];
       const auto lhs_doc = lhs_it.value();
@@ -252,7 +252,7 @@ class min_match_disjunction : public doc_iterator_base {
   template<typename Iterator>
   inline void pop(Iterator begin, Iterator end) {
     // lambda here gives ~20% speedup on GCC
-    detail::pop_heap(begin, end, [this](const size_t lhs, const size_t rhs) {
+    detail::pop_heap(begin, end, [this](const size_t lhs, const size_t rhs) NOEXCEPT {
       const auto& lhs_it = itrs_[lhs];
       const auto& rhs_it = itrs_[rhs];
       const auto lhs_doc = lhs_it.value();

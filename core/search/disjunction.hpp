@@ -508,7 +508,7 @@ class disjunction : public doc_iterator_base {
   template<typename Iterator>
   inline void push(Iterator begin, Iterator end) {
     // lambda here gives ~20% speedup on GCC
-    std::push_heap(begin, end, [this](const size_t lhs, const size_t rhs) {
+    std::push_heap(begin, end, [this](const size_t lhs, const size_t rhs) NOEXCEPT {
       return itrs_[lhs].value() > itrs_[rhs].value();
     });
   }
@@ -516,7 +516,7 @@ class disjunction : public doc_iterator_base {
   template<typename Iterator>
   inline void pop(Iterator begin, Iterator end) {
     // lambda here gives ~20% speedup on GCC
-    detail::pop_heap(begin, end, [this](const size_t lhs, const size_t rhs) {
+    detail::pop_heap(begin, end, [this](const size_t lhs, const size_t rhs) NOEXCEPT {
       return itrs_[lhs].value() > itrs_[rhs].value();
     });
   }
