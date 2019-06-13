@@ -2755,12 +2755,10 @@ bool meta_reader::read(column_meta& column) {
 // |Compressed block #1|
 // |Compressed block #2|
 // ...
-// |Bloom Filter| <- not implemented yet
 // |Last block #0 key|Block #0 offset|
 // |Last block #1 key|Block #1 offset| <-- Columnstore blocks index
 // |Last block #2 key|Block #2 offset|
 // ...
-// |Bloom filter offset| <- not implemented yet
 // |Footer|
 
 const uint32_t INDEX_BLOCK_SIZE = 1024;
@@ -2768,16 +2766,24 @@ const size_t MAX_DATA_BLOCK_SIZE = 8192;
 
 // By default we treat columns as a variable length sparse columns
 enum ColumnProperty : uint32_t {
+  // Column flags
   CP_SPARSE = 0,
-  CP_DENSE = 1, // keys can be presented as an array indices
-  CP_FIXED = 2, // fixed length colums
-  CP_MASK = 4, // column contains no data
+  CP_DENSE = 1,         // keys can be presented as an array indices
+  CP_FIXED = 1 << 1,    // fixed length colums
+  CP_MASK = 1 << 2,     // column contains no data
+
+  // Encryption flags
+  CP_ENCRYPT = 1 << 11, // column data is encrypted
+
+  // Compression flags
+  CP_LZ4 = 1 << 20      // column data is compressed using LZ4
 }; // ColumnProperty
 
 ENABLE_BITMASK_ENUM(ColumnProperty);
 
 ColumnProperty write_compact(
     irs::index_output& out,
+    irs::encryption::stream* cipher,
     irs::compressor& compressor,
     const irs::bytes_ref& data) {
   if (data.empty()) {
@@ -2791,11 +2797,17 @@ ColumnProperty write_compact(
   if (compressor.size() < data.size()) {
     assert(compressor.size() <= irs::integer_traits<int32_t>::const_max);
     irs::write_zvint(out, int32_t(compressor.size())); // compressed size
+    if (cipher) {
+      cipher->encrypt(out.file_pointer(), const_cast<irs::byte_type*>(compressor.c_str()), compressor.size());
+    }
     out.write_bytes(compressor.c_str(), compressor.size());
     irs::write_zvlong(out, data.size() - MAX_DATA_BLOCK_SIZE); // original size
   } else {
     assert(data.size() <= irs::integer_traits<int32_t>::const_max);
     irs::write_zvint(out, int32_t(0) - int32_t(data.size())); // -ve to mark uncompressed
+    if (cipher) {
+      cipher->encrypt(out.file_pointer(), const_cast<irs::byte_type*>(data.c_str()), data.size());
+    }
     out.write_bytes(data.c_str(), data.size());
   }
 
@@ -2804,6 +2816,7 @@ ColumnProperty write_compact(
 
 void read_compact(
     irs::index_input& in,
+    irs::encryption::stream* cipher,
     const irs::decompressor& decompressor,
     irs::bstring& encode_buf,
     irs::bstring& decode_buf) {
@@ -2826,6 +2839,11 @@ void read_compact(
 #else
     in.read_bytes(&(decode_buf[0]), buf_size);
 #endif // IRESEARCH_DEBUG
+
+    if (cipher) {
+      cipher->decrypt(in.file_pointer() - buf_size, &(decode_buf[0]), buf_size);
+    }
+
     return;
   }
 
@@ -2838,6 +2856,10 @@ void read_compact(
 #else
   in.read_bytes(&(encode_buf[0]), buf_size);
 #endif // IRESEARCH_DEBUG
+
+  if (cipher) {
+    cipher->decrypt(in.file_pointer() - buf_size, &(encode_buf[0]), buf_size);
+  }
 
   // ensure that we have enough space to store decompressed data
   decode_buf.resize(irs::read_zvlong(in) + MAX_DATA_BLOCK_SIZE);
@@ -2990,10 +3012,15 @@ class index_block {
 class writer final : public irs::columnstore_writer {
  public:
   static const int32_t FORMAT_MIN = 0;
-  static const int32_t FORMAT_MAX = FORMAT_MIN;
+  static const int32_t FORMAT_MAX = 1;
 
   static const string_ref FORMAT_NAME;
   static const string_ref FORMAT_EXT;
+
+  explicit writer(int32_t version) NOEXCEPT
+    : version_(version) {
+    assert(version >= FORMAT_MIN && version <= FORMAT_MAX);
+  }
 
   virtual void prepare(directory& dir, const segment_meta& meta) override;
   virtual column_t push_column() override;
@@ -3114,7 +3141,7 @@ class writer final : public irs::columnstore_writer {
       //   const auto res = expr0() | expr1();
       // otherwise it would violate format layout
       auto block_props = block_index_.flush(out, buf);
-      block_props |= write_compact(out, ctx_->comp_, static_cast<bytes_ref>(block_buf_));
+      block_props |= write_compact(out, ctx_->data_out_cipher_.get(), ctx_->comp_, static_cast<bytes_ref>(block_buf_));
       length_ += block_buf_.size();
 
       // refresh blocks properties
@@ -3149,6 +3176,8 @@ class writer final : public irs::columnstore_writer {
   index_output::ptr data_out_;
   std::string filename_;
   directory* dir_;
+  encryption::stream::ptr data_out_cipher_;
+  int32_t version_;
 }; // writer
 
 template<>
@@ -3177,13 +3206,25 @@ void writer::prepare(directory& dir, const segment_meta& meta) {
     ));
   }
 
-  format_utils::write_header(*data_out, FORMAT_NAME, FORMAT_MAX);
+  format_utils::write_header(*data_out, FORMAT_NAME, version_);
+
+  encryption::stream::ptr data_out_cipher;
+
+  if (version_ > FORMAT_MIN) {
+    bstring enc_header;
+    auto* enc = get_encryption(dir.attributes());
+
+    const auto encrypt = irs::encrypt(filename, *data_out, enc, enc_header, data_out_cipher);
+    assert(!encrypt || (data_out_cipher && data_out_cipher->block_size()));
+    UNUSED(encrypt);
+  }
 
   alloc_ = &directory_utils::get_allocator(dir);
 
   // noexcept block
   dir_ = &dir;
   data_out_ = std::move(data_out);
+  data_out_cipher_ = std::move(data_out_cipher);
   filename_ = std::move(filename);
 }
 
@@ -3367,7 +3408,7 @@ class sparse_block : util::noncopyable {
     const bstring* data_{};
   }; // iterator
 
-  void load(index_input& in, decompressor& decomp, bstring& buf) {
+  void load(index_input& in, encryption::stream* cipher, decompressor& decomp, bstring& buf) {
     const uint32_t size = in.read_vint(); // total number of entries in a block
 
     if (!size) {
@@ -3393,7 +3434,7 @@ class sparse_block : util::noncopyable {
     });
 
     // read data
-    read_compact(in, decomp, buf, data_);
+    read_compact(in, cipher, decomp, buf, data_);
     end_ = index_ + size;
   }
 
@@ -3550,7 +3591,7 @@ class dense_block : util::noncopyable {
     doc_id_t base_{};
   }; // iterator
 
-  void load(index_input& in, decompressor& decomp, bstring& buf) {
+  void load(index_input& in, encryption::stream* cipher, decompressor& decomp, bstring& buf) {
     const uint32_t size = in.read_vint(); // total number of entries in a block
 
     if (!size) {
@@ -3577,7 +3618,7 @@ class dense_block : util::noncopyable {
     });
 
     // read data
-    read_compact(in, decomp, buf, data_);
+    read_compact(in, cipher, decomp, buf, data_);
     end_ = index_ + size;
   }
 
@@ -3727,7 +3768,7 @@ class dense_fixed_offset_block : util::noncopyable {
     doc_id_t value_back_{}; // last valid doc id
   }; // iterator
 
-  void load(index_input& in, decompressor& decomp, bstring& buf) {
+  void load(index_input& in, encryption::stream* cipher, decompressor& decomp, bstring& buf) {
     size_ = in.read_vint(); // total number of entries in a block
 
     if (!size_) {
@@ -3752,7 +3793,7 @@ class dense_fixed_offset_block : util::noncopyable {
     }
 
     // read data
-    read_compact(in, decomp, buf, data_);
+    read_compact(in, cipher, decomp, buf, data_);
   }
 
   bool value(doc_id_t key, bytes_ref& out) const {
@@ -3867,7 +3908,7 @@ class sparse_mask_block : util::noncopyable {
     );
   }
 
-  void load(index_input& in, decompressor& /*decomp*/, bstring& buf) {
+  void load(index_input& in, encryption::stream* /*cipher*/, decompressor& /*decomp*/, bstring& buf) {
     size_ = in.read_vint(); // total number of entries in a block
 
     if (!size_) {
@@ -3984,7 +4025,7 @@ class dense_mask_block {
       max_(doc_limits::invalid()) {
   }
 
-  void load(index_input& in, decompressor& /*decomp*/, bstring& /*buf*/) {
+  void load(index_input& in, encryption::stream* /*cipher*/, decompressor& /*decomp*/, bstring& /*buf*/) {
     const auto size = in.read_vint(); // total number of entries in a block
 
     if (!size) {
@@ -4037,7 +4078,7 @@ class read_context
  public:
   DECLARE_SHARED_PTR(read_context);
 
-  static ptr make(const index_input& stream) {
+  static ptr make(const index_input& stream, encryption::stream* cipher) {
     auto clone = stream.reopen(); // reopen thead-safe stream
 
     if (!clone) {
@@ -4047,17 +4088,21 @@ class read_context
       throw io_error("Failed to reopen columnstore input in");
     }
 
-    return memory::make_shared<read_context>(std::move(clone));
+    return memory::make_shared<read_context>(std::move(clone), cipher);
   }
 
-  read_context(index_input::ptr&& in = index_input::ptr(), const Allocator& alloc = Allocator())
+  read_context(
+      index_input::ptr&& in,
+      encryption::stream* cipher,
+      const Allocator& alloc = Allocator())
     : block_cache_traits<sparse_block, Allocator>::cache_t(typename block_cache_traits<sparse_block, Allocator>::allocator_t(alloc)),
       block_cache_traits<dense_block, Allocator>::cache_t(typename block_cache_traits<dense_block, Allocator>::allocator_t(alloc)),
       block_cache_traits<dense_fixed_offset_block, Allocator>::cache_t(typename block_cache_traits<dense_fixed_offset_block, Allocator>::allocator_t(alloc)),
       block_cache_traits<sparse_mask_block, Allocator>::cache_t(typename block_cache_traits<sparse_mask_block, Allocator>::allocator_t(alloc)),
       block_cache_traits<dense_mask_block, Allocator>::cache_t(typename block_cache_traits<dense_mask_block, Allocator>::allocator_t(alloc)),
       buf_(INDEX_BLOCK_SIZE*sizeof(uint32_t), 0),
-      stream_(std::move(in)) {
+      stream_(std::move(in)),
+      cipher_(cipher) {
   }
 
   template<typename Block, typename... Args>
@@ -4082,7 +4127,7 @@ class read_context
   template<typename Block>
   void load(Block& block, uint64_t offset) {
     stream_->seek(offset); // seek to the offset
-    block.load(*stream_, decomp_, buf_);
+    block.load(*stream_, cipher_, decomp_, buf_);
   }
 
   template<typename Block>
@@ -4095,6 +4140,7 @@ class read_context
   decompressor decomp_; // decompressor
   bstring buf_; // temporary buffer for decoding/unpacking
   index_input::ptr stream_;
+  encryption::stream* cipher_; // options cipher stream
 }; // read_context
 
 typedef read_context<> read_context_t;
@@ -4105,16 +4151,20 @@ class context_provider: private util::noncopyable {
     : pool_(std::max(size_t(1), max_pool_size)) {
   }
 
-  void prepare(index_input::ptr&& stream) NOEXCEPT {
+  void prepare(index_input::ptr&& stream, encryption::stream::ptr&& cipher) NOEXCEPT {
+    assert(stream);
+
     stream_ = std::move(stream);
+    cipher_ = std::move(cipher);
   }
 
   bounded_object_pool<read_context_t>::ptr get_context() const {
-    return pool_.emplace(*stream_);
+    return pool_.emplace(*stream_, cipher_.get());
   }
 
  private:
   mutable bounded_object_pool<read_context_t> pool_;
+  encryption::stream::ptr cipher_;
   index_input::ptr stream_;
 }; // context_provider
 
@@ -4921,18 +4971,28 @@ bool reader::prepare(
   }
 
   // check header
-  format_utils::check_header(
+  const auto version = format_utils::check_header(
     *stream,
     writer::FORMAT_NAME,
     writer::FORMAT_MIN,
     writer::FORMAT_MAX
   );
 
+  encryption::stream::ptr cipher;
+
+  if (version > writer::FORMAT_MIN) {
+    auto* enc = get_encryption(dir.attributes());
+
+    if (irs::decrypt(filename, *stream, enc, cipher)) {
+      assert(cipher && cipher->block_size());
+    }
+  }
+
   // since columns data are too large
   // it is too costly to verify checksum of
   // the entire file. here we perform cheap
   // error detection which could recognize
-  // some forms of corruption. */
+  // some forms of corruption
   format_utils::read_checksum(*stream);
 
   // seek to data start
@@ -4989,7 +5049,7 @@ bool reader::prepare(
   }
 
   // noexcept
-  context_provider::prepare(std::move(stream));
+  context_provider::prepare(std::move(stream), std::move(cipher));
   columns_ = std::move(columns);
 
   return true;
@@ -5222,7 +5282,7 @@ class format10 : public irs::version10::format {
   virtual column_meta_writer::ptr get_column_meta_writer() const override;
   virtual column_meta_reader::ptr get_column_meta_reader() const override final;
 
-  virtual columnstore_writer::ptr get_columnstore_writer() const override final;
+  virtual columnstore_writer::ptr get_columnstore_writer() const override;
   virtual columnstore_reader::ptr get_columnstore_reader() const override final;
 
   virtual postings_writer::ptr get_postings_writer(bool volatile_state) const override;
@@ -5298,7 +5358,9 @@ column_meta_reader::ptr format10::get_column_meta_reader() const {
 }
 
 columnstore_writer::ptr format10::get_columnstore_writer() const {
-  return memory::make_unique<columns::writer>();
+  return memory::make_unique<columns::writer>(
+    int32_t(columns::writer::FORMAT_MIN)
+  );
 }
 
 columnstore_reader::ptr format10::get_columnstore_reader() const {
@@ -5339,6 +5401,8 @@ class format11 final : public format10 {
   virtual segment_meta_writer::ptr get_segment_meta_writer() const override final;
 
   virtual column_meta_writer::ptr get_column_meta_writer() const override final;
+
+  virtual columnstore_writer::ptr get_columnstore_writer() const override final;
 }; // format10
 
 field_writer::ptr format11::get_field_writer(bool volatile_state) const {
@@ -5359,6 +5423,12 @@ segment_meta_writer::ptr format11::get_segment_meta_writer() const {
 column_meta_writer::ptr format11::get_column_meta_writer() const {
   return memory::make_unique<columns::meta_writer>(
     int32_t(columns::meta_writer::FORMAT_MAX)
+  );
+}
+
+columnstore_writer::ptr format11::get_columnstore_writer() const {
+  return memory::make_unique<columns::writer>(
+    int32_t(columns::writer::FORMAT_MAX)
   );
 }
 
