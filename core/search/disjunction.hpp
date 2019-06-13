@@ -27,7 +27,6 @@
 #include "conjunction.hpp"
 #include "utils/std.hpp"
 #include "utils/type_limits.hpp"
-#include "index/heap_iterator.hpp"
 #include "index/iterators.hpp"
 
 #include <queue>
@@ -149,7 +148,6 @@ class basic_disjunction final : public doc_iterator_base {
       rhs_(std::move(rhs)),
       doc_(doc_limits::invalid()),
       ord_(&ord) {
-
     // make 'document' attribute accessible from outside
     attrs_.emplace(doc_);
 
@@ -322,7 +320,7 @@ class small_disjunction : public doc_iterator_base {
         }
       }
 
-      min = std::min(min, it->value());
+      min = std::min(min, it.value());
       ++begin;
     }
 
@@ -361,10 +359,10 @@ class small_disjunction : public doc_iterator_base {
         ord_->prepare_score(score);
 
         for (auto& it : scored_itrs_) {
-          auto doc = it.it->value();
+          auto doc = it.value();
 
           if (doc < doc_.value) {
-            doc = it.it->seek(doc_.value);
+            doc = it->seek(doc_.value);
           }
 
           if (doc == doc_.value) {
@@ -491,7 +489,7 @@ class disjunction : public doc_iterator_base {
     // iterators are equal here */
     //assert(irstd::all_equal(itrs_.begin(), itrs_.end()));
 
-    // make 'document' attribute accessible fromo outside
+    // make 'document' attribute accessible from outside
     attrs_.emplace(doc_);
 
     // prepare external heap
@@ -509,6 +507,8 @@ class disjunction : public doc_iterator_base {
   inline void push(Iterator begin, Iterator end) {
     // lambda here gives ~20% speedup on GCC
     std::push_heap(begin, end, [this](const size_t lhs, const size_t rhs) NOEXCEPT {
+      assert(lhs < itrs_.size());
+      assert(rhs < itrs_.size());
       return itrs_[lhs].value() > itrs_[rhs].value();
     });
   }
@@ -517,6 +517,8 @@ class disjunction : public doc_iterator_base {
   inline void pop(Iterator begin, Iterator end) {
     // lambda here gives ~20% speedup on GCC
     detail::pop_heap(begin, end, [this](const size_t lhs, const size_t rhs) NOEXCEPT {
+      assert(lhs < itrs_.size());
+      assert(rhs < itrs_.size());
       return itrs_[lhs].value() > itrs_[rhs].value();
     });
   }
@@ -544,10 +546,14 @@ class disjunction : public doc_iterator_base {
   }
 
   inline doc_iterator_t& lead() NOEXCEPT {
+    assert(!heap_.empty());
+    assert(heap_.back() < itrs_.size());
     return itrs_[heap_.back()];
   }
 
   inline doc_iterator_t& top() NOEXCEPT {
+    assert(!heap_.empty());
+    assert(heap_.front() < itrs_.size());
     return itrs_[heap_.front()];
   }
 
@@ -578,9 +584,11 @@ class disjunction : public doc_iterator_base {
       irstd::heap::for_each_if(
         begin, end,
         [this](const size_t it) {
+          assert(it < itrs_.size());
           return itrs_[it].value() == doc_.value;
         },
         [this, lhs](size_t it) {
+          assert(it < itrs_.size());
           detail::score_add(lhs, *ord_, itrs_[it]);
       });
     }

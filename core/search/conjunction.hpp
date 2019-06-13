@@ -62,7 +62,6 @@ struct score_iterator_adapter {
     return *this;
   }
 
-
   doc_iterator* operator->() const NOEXCEPT {
     return it.get();
   }
@@ -71,6 +70,7 @@ struct score_iterator_adapter {
     return it;
   }
 
+  // access iterator value without virtual call
   doc_id_t value() const NOEXCEPT {
     return doc->value;
   }
