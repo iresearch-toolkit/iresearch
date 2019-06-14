@@ -71,30 +71,26 @@ const irs::string_ref minParamName              = "min";
 const irs::string_ref maxParamName              = "max";
 const irs::string_ref preserveOriginalParamName = "preserveOriginal";
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief args is a jSON encoded object with the following attributes:
-///        "min" (number): minimum ngram size
-///        "max" (number): maximum ngram size
-///        "preserveOriginal" (boolean): preserve or not the original term
-////////////////////////////////////////////////////////////////////////////////
-irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
+
+bool parse_json_config(const irs::string_ref& args,
+                        irs::analysis::ngram_token_stream::options_t& options) {
   rapidjson::Document json;
   if (json.Parse(args.c_str(), args.size()).HasParseError()) {
     IR_FRMT_ERROR(
-      "Invalid jSON arguments passed while constructing ngram_token_stream, arguments: %s", 
-      args.c_str()
-    );
+        "Invalid jSON arguments passed while constructing ngram_token_stream, "
+        "arguments: %s",
+        args.c_str());
 
-    return nullptr;
+    return false;
   }
 
   if (rapidjson::kObjectType != json.GetType()) {
     IR_FRMT_ERROR(
-      "Not a jSON object passed while constructing ngram_token_stream, arguments: %s", 
-      args.c_str()
-    );
+        "Not a jSON object passed while constructing ngram_token_stream, "
+        "arguments: %s",
+        args.c_str());
 
-    return nullptr;
+    return false;
   }
 
   uint64_t min, max;
@@ -102,34 +98,47 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
 
   if (!get_uint64(json, minParamName, min)) {
     IR_FRMT_ERROR(
-      "Failed to read '%s' attribute as number while constructing ngram_token_stream from jSON arguments: %s",
-      minParamName.c_str(),
-      args.c_str()
-    );
-    return nullptr;
+        "Failed to read '%s' attribute as number while constructing "
+        "ngram_token_stream from jSON arguments: %s",
+        minParamName.c_str(), args.c_str());
+    return false;
   }
 
   if (!get_uint64(json, maxParamName, max)) {
     IR_FRMT_ERROR(
-      "Failed to read '%s' attribute as number while constructing ngram_token_stream from jSON arguments: %s",
-      maxParamName.c_str(),
-      args.c_str()
-    );
-    return nullptr;
+        "Failed to read '%s' attribute as number while constructing "
+        "ngram_token_stream from jSON arguments: %s",
+        maxParamName.c_str(), args.c_str());
+    return false;
   }
 
   if (!get_bool(json, preserveOriginalParamName, preserve_original)) {
     IR_FRMT_ERROR(
-      "Failed to read '%s' attribute as boolean while constructing ngram_token_stream from jSON arguments: %s",
-      preserveOriginalParamName.c_str(),
-      args.c_str()
-    );
+        "Failed to read '%s' attribute as boolean while constructing "
+        "ngram_token_stream from jSON arguments: %s",
+        preserveOriginalParamName.c_str(), args.c_str());
+    return false;
+  }
+  options.min_gram = min;
+  options.max_gram = max;
+  options.preserve_original = preserve_original;
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief args is a jSON encoded object with the following attributes:
+///        "min" (number): minimum ngram size
+///        "max" (number): maximum ngram size
+///        "preserveOriginal" (boolean): preserve or not the original term
+////////////////////////////////////////////////////////////////////////////////
+irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
+  
+  irs::analysis::ngram_token_stream::options_t options;
+  if (parse_json_config(args, options)) {
+    return irs::analysis::ngram_token_stream::make(options);
+  } else {
     return nullptr;
   }
-
-  return irs::analysis::ngram_token_stream::make(
-    irs::analysis::ngram_token_stream::options_t(size_t(min), size_t(max), preserve_original)
-  );
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -169,7 +178,17 @@ bool make_json_config(const irs::analysis::ngram_token_stream::options_t& option
   return true;
 }
 
-REGISTER_ANALYZER_JSON(irs::analysis::ngram_token_stream, make_json);
+bool normalize_json_config(const irs::string_ref& args, std::string& config) {
+  irs::analysis::ngram_token_stream::options_t options;
+  if (parse_json_config(args, options)) {
+    return make_json_config(options, config);
+  } else {
+    return false;
+  }
+}
+
+REGISTER_ANALYZER_JSON(irs::analysis::ngram_token_stream, make_json, 
+                       normalize_json_config);
 
 NS_END
 
@@ -183,7 +202,8 @@ NS_BEGIN(analysis)
 }
 
 /*static*/ void ngram_token_stream::init() {
-  REGISTER_ANALYZER_JSON(ngram_token_stream, make_json); // match registration above
+  REGISTER_ANALYZER_JSON(ngram_token_stream, make_json, 
+                         normalize_json_config); // match registration above
 }
 
 ngram_token_stream::ngram_token_stream(
@@ -262,14 +282,6 @@ bool ngram_token_stream::reset(const irs::string_ref& value) NOEXCEPT {
   return true;
 }
 
-bool ngram_token_stream::to_string(
-    const ::irs::text_format::type_id& format,
-    std::string& definition) const {
-  if (::irs::text_format::json == format) {
-    return make_json_config(options_, definition);
-  }
-  return false;
-}
 
 DEFINE_ANALYZER_TYPE_NAMED(ngram_token_stream, "ngram")
 

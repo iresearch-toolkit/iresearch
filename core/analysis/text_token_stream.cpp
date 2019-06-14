@@ -529,8 +529,6 @@ bool make_json_config(
   return true;
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a jSON encoded object with the following attributes:
 ///        "locale"(string): locale of the analyzer <required>
@@ -686,6 +684,10 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
 }
 
 
+bool normalize_json_config(const irs::string_ref& args, std::string& definition) {
+  return false;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a locale name
@@ -702,8 +704,17 @@ bool make_text_config(const irs::analysis::text_token_stream::options_t& options
   return true;
 }
 
-REGISTER_ANALYZER_JSON(irs::analysis::text_token_stream, make_json);
-REGISTER_ANALYZER_TEXT(irs::analysis::text_token_stream, make_text);
+
+bool normalize_text_config(const irs::string_ref& args, std::string& definition) {
+  definition = args;
+  return true;
+}
+
+
+REGISTER_ANALYZER_JSON(irs::analysis::text_token_stream, make_json, 
+                       normalize_json_config);
+REGISTER_ANALYZER_TEXT(irs::analysis::text_token_stream, make_text, 
+                       normalize_text_config);
 
 NS_END
 
@@ -742,8 +753,10 @@ text_token_stream::text_token_stream(const options_t& options, const stopwords_t
 // -----------------------------------------------------------------------------
 
 /*static*/ void text_token_stream::init() {
-  REGISTER_ANALYZER_JSON(text_token_stream, make_json); // match registration above
-  REGISTER_ANALYZER_TEXT(text_token_stream, make_text); // match registration above
+  REGISTER_ANALYZER_JSON(text_token_stream, make_json,
+                         normalize_json_config);  // match registration above
+  REGISTER_ANALYZER_TEXT(text_token_stream, make_text,
+                         normalize_text_config); // match registration above
 }
 
 /*static*/ analyzer::ptr text_token_stream::make(
@@ -873,17 +886,6 @@ bool text_token_stream::next() {
   return false;
 }
 
-bool text_token_stream::to_string(
-    const ::irs::text_format::type_id& format,
-    std::string& definition) const {
-  if (::irs::text_format::json == format) {
-    return make_json_config(state_->options, definition);
-  } else if (::irs::text_format::text == format) {
-    return make_text_config(state_->options, definition);
-  }
-
-  return false;
-}
 
 NS_END // analysis
 NS_END // ROOT

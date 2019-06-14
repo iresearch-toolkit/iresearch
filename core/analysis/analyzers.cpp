@@ -48,6 +48,27 @@ struct entry_key_t {
   }
 };
 
+struct entry_type_t {
+  irs::analysis::analyzer::ptr (*factory_)(const irs::string_ref& args);
+  bool (*normalizer_)(const irs::string_ref& args, std::string& config);
+
+  entry_type_t() : factory_(nullptr), normalizer_(nullptr) {}
+  entry_type_t(
+      irs::analysis::analyzer::ptr(*factory)(const irs::string_ref& args),
+      bool(*normalizer)(const irs::string_ref& args, std::string& config)
+  ) : factory_(factory), normalizer_(normalizer) {}
+  bool empty() const NOEXCEPT { 
+    return nullptr == factory_; 
+  }
+  bool operator==(const entry_type_t& other) const NOEXCEPT {
+    return factory_ == other.factory_ && normalizer_ == other.normalizer_;
+  }
+  bool operator!=(const entry_type_t& other) const NOEXCEPT {
+    return !(*this == other);
+  }
+};
+ 
+
 NS_END
 
 NS_BEGIN(std)
@@ -66,7 +87,7 @@ NS_LOCAL
 const std::string FILENAME_PREFIX("libanalyzer-");
 
 class analyzer_register:
-  public irs::tagged_generic_register<entry_key_t, irs::analysis::analyzer::ptr(*)(const irs::string_ref& args), irs::string_ref, analyzer_register> {
+  public irs::tagged_generic_register<entry_key_t, entry_type_t, irs::string_ref, analyzer_register> {
  protected:
   virtual std::string key_to_filename(const key_type& key) const override {
     auto& name = key.name_;
@@ -98,7 +119,7 @@ NS_BEGIN(analysis)
     const irs::text_format::type_id& args_format,
     bool load_library /*= true*/
 ) {
-  return nullptr != analyzer_register::instance().get(entry_key_t(name, args_format), load_library);
+  return !analyzer_register::instance().get(entry_key_t(name, args_format), load_library).empty();
 }
 
 /*static*/ analyzer::ptr analyzers::get(
@@ -109,8 +130,7 @@ NS_BEGIN(analysis)
 ) NOEXCEPT {
   try {
     auto* factory = analyzer_register::instance().get(
-      entry_key_t(name, args_format), load_library
-    );
+      entry_key_t(name, args_format), load_library).factory_;
 
     return factory ? factory(args) : nullptr;
   } catch (...) {
@@ -154,18 +174,20 @@ analyzer_registrar::analyzer_registrar(
     const analyzer::type_id& type,
     const irs::text_format::type_id& args_format,
     analyzer::ptr(*factory)(const irs::string_ref& args),
+    bool(*normalizer)(const irs::string_ref& args, std::string& config),
     const char* source /*= nullptr*/
 ) {
   irs::string_ref source_ref(source);
+  const auto new_entry = entry_type_t(factory, normalizer);
   auto entry = analyzer_register::instance().set(
     entry_key_t(type.name(), args_format),
-    factory,
+    new_entry,
     source_ref.null() ? nullptr : &source_ref
   );
 
   registered_ = entry.second;
 
-  if (!registered_ && factory != entry.first) {
+  if (!registered_ && new_entry != entry.first) {
     auto* registered_source =
       analyzer_register::instance().tag(entry_key_t(type.name(), args_format));
 
