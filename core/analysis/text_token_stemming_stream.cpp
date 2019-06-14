@@ -139,13 +139,6 @@ irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
   return nullptr;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief build config string in 'text' format
-////////////////////////////////////////////////////////////////////////////////
-bool make_text_config(const std::string& locale, std::string& definition) {
-  definition = locale; 
-  return true;
-}
 
 bool normalize_text_config(const irs::string_ref& args, std::string& definition) {
   definition = args;

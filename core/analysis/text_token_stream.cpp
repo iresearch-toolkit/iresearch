@@ -696,15 +696,6 @@ irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
   return construct(args);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief build config string in 'text' format
-////////////////////////////////////////////////////////////////////////////////
-bool make_text_config(const irs::analysis::text_token_stream::options_t& options, std::string& definition) {
-  definition = options.locale; // only locale available with text config (see make_text)
-  return true;
-}
-
-
 bool normalize_text_config(const irs::string_ref& args, std::string& definition) {
   definition = args;
   return true;
