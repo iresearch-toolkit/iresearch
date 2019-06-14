@@ -108,9 +108,6 @@ bool parse_json_config(
   }
 
   try {
-    typedef irs::analysis::text_token_normalizing_stream::options_t options_t;
-    options_t options;
-
     switch (json.GetType()) {
       case rapidjson::kStringType:
         options.locale = json.GetString();  // required
