@@ -418,16 +418,16 @@ bool process_term(
   return true;
 }
 
-const irs::string_ref localeParamName           = "locale";
-const irs::string_ref caseConvertParamName      = "caseConvert";
-const irs::string_ref stopwordsParamName        = "stopwords";
-const irs::string_ref stopwordsPathParamName    = "stopwordsPath";
-const irs::string_ref noAccentParamName         = "noAccent";
-const irs::string_ref noStemParamName           = "noStem";
+const irs::string_ref LOCALE_PARAM_NAME           = "locale";
+const irs::string_ref CASE_CONVERT_PARAM_NAME      = "caseConvert";
+const irs::string_ref STOPWORDS_PARAM_NAME        = "stopwords";
+const irs::string_ref STOPWORDS_PATH_PARAM_NAME    = "stopwordsPath";
+const irs::string_ref NO_ACCENT_PARAM_NAME         = "noAccent";
+const irs::string_ref NO_STEM_PARAM_NAME           = "noStem";
 
 const std::unordered_map<
     std::string, 
-    irs::analysis::text_token_stream::options_t::case_convert_t> case_convert_map = {
+    irs::analysis::text_token_stream::options_t::case_convert_t> CASE_CONVERT_MAP = {
   { "lower", irs::analysis::text_token_stream::options_t::case_convert_t::LOWER },
   { "none", irs::analysis::text_token_stream::options_t::case_convert_t::NONE },
   { "upper", irs::analysis::text_token_stream::options_t::case_convert_t::UPPER },
@@ -451,39 +451,39 @@ bool parse_json_options(const irs::string_ref& args,
     return true;
   }
 
-  if (!json.IsObject() || !json.HasMember(localeParamName.c_str()) ||
-      !json[localeParamName.c_str()].IsString()) {
+  if (!json.IsObject() || !json.HasMember(LOCALE_PARAM_NAME.c_str()) ||
+      !json[LOCALE_PARAM_NAME.c_str()].IsString()) {
     IR_FRMT_WARN(
         "Missing '%s' while constructing text_token_stream from jSON "
         "arguments: %s",
-        localeParamName.c_str(), args.c_str());
+        LOCALE_PARAM_NAME.c_str(), args.c_str());
 
     return false;
   }
 
   try {
-    options.locale = json[localeParamName.c_str()].GetString();  // required
+    options.locale = json[LOCALE_PARAM_NAME.c_str()].GetString();  // required
 
-    if (json.HasMember(caseConvertParamName.c_str())) {
+    if (json.HasMember(CASE_CONVERT_PARAM_NAME.c_str())) {
       auto& case_convert =
-          json[caseConvertParamName.c_str()];  // optional string enum
+          json[CASE_CONVERT_PARAM_NAME.c_str()];  // optional string enum
 
       if (!case_convert.IsString()) {
         IR_FRMT_WARN(
             "Non-string value in '%s' while constructing text_token_stream "
             "from jSON arguments: %s",
-            caseConvertParamName.c_str(), args.c_str());
+            CASE_CONVERT_PARAM_NAME.c_str(), args.c_str());
 
         return false;
       }
 
-      auto itr = case_convert_map.find(case_convert.GetString());
+      auto itr = CASE_CONVERT_MAP.find(case_convert.GetString());
 
-      if (itr == case_convert_map.end()) {
+      if (itr == CASE_CONVERT_MAP.end()) {
         IR_FRMT_WARN(
             "Invalid value in '%s' while constructing text_token_stream from "
             "jSON arguments: %s",
-            caseConvertParamName.c_str(), args.c_str());
+            CASE_CONVERT_PARAM_NAME.c_str(), args.c_str());
 
         return false;
       }
@@ -491,15 +491,15 @@ bool parse_json_options(const irs::string_ref& args,
       options.case_convert = itr->second;
     }
 
-    if (json.HasMember(stopwordsParamName.c_str())) {
+    if (json.HasMember(STOPWORDS_PARAM_NAME.c_str())) {
       auto& stop_words =
-          json[stopwordsParamName.c_str()];  // optional string array
+          json[STOPWORDS_PARAM_NAME.c_str()];  // optional string array
 
       if (!stop_words.IsArray()) {
         IR_FRMT_WARN(
             "Invalid value in '%s' while constructing text_token_stream from "
             "jSON arguments: %s",
-            stopwordsParamName.c_str(), args.c_str());
+            STOPWORDS_PARAM_NAME.c_str(), args.c_str());
 
         return false;
       }
@@ -511,49 +511,49 @@ bool parse_json_options(const irs::string_ref& args,
           IR_FRMT_WARN(
               "Non-string value in '%s' while constructing text_token_stream "
               "from jSON arguments: %s",
-              stopwordsParamName.c_str(), args.c_str());
+              STOPWORDS_PARAM_NAME.c_str(), args.c_str());
 
           return false;
         }
         options.explicit_stopwords.emplace(itr->GetString());
       }
-      if (json.HasMember(stopwordsPathParamName.c_str())) {
+      if (json.HasMember(STOPWORDS_PATH_PARAM_NAME.c_str())) {
         auto& ignored_words_path =
-            json[stopwordsPathParamName.c_str()];  // optional string
+            json[STOPWORDS_PATH_PARAM_NAME.c_str()];  // optional string
 
         if (!ignored_words_path.IsString()) {
           IR_FRMT_WARN(
               "Non-string value in '%s' while constructing text_token_stream "
               "from jSON arguments: %s",
-              stopwordsPathParamName.c_str(), args.c_str());
+              STOPWORDS_PATH_PARAM_NAME.c_str(), args.c_str());
 
           return false;
         }
         options.stopwordsPath = ignored_words_path.GetString();
       }
-    } else if (json.HasMember(stopwordsPathParamName.c_str())) {
+    } else if (json.HasMember(STOPWORDS_PATH_PARAM_NAME.c_str())) {
       auto& ignored_words_path =
-          json[stopwordsPathParamName.c_str()];  // optional string
+          json[STOPWORDS_PATH_PARAM_NAME.c_str()];  // optional string
 
       if (!ignored_words_path.IsString()) {
         IR_FRMT_WARN(
             "Non-string value in '%s' while constructing text_token_stream "
             "from jSON arguments: %s",
-            stopwordsPathParamName.c_str(), args.c_str());
+            STOPWORDS_PATH_PARAM_NAME.c_str(), args.c_str());
 
         return false;
       }
       options.stopwordsPath = ignored_words_path.GetString();
     }
 
-    if (json.HasMember(noAccentParamName.c_str())) {
-      auto& no_accent = json[noAccentParamName.c_str()];  // optional bool
+    if (json.HasMember(NO_ACCENT_PARAM_NAME.c_str())) {
+      auto& no_accent = json[NO_ACCENT_PARAM_NAME.c_str()];  // optional bool
 
       if (!no_accent.IsBool()) {
         IR_FRMT_WARN(
             "Non-boolean value in '%s' while constructing text_token_stream "
             "from jSON arguments: %s",
-            noAccentParamName.c_str(), args.c_str());
+            NO_ACCENT_PARAM_NAME.c_str(), args.c_str());
 
         return false;
       }
@@ -561,14 +561,14 @@ bool parse_json_options(const irs::string_ref& args,
       options.no_accent = no_accent.GetBool();
     }
 
-    if (json.HasMember(noStemParamName.c_str())) {
-      auto& no_stem = json[noStemParamName.c_str()];  // optional bool
+    if (json.HasMember(NO_STEM_PARAM_NAME.c_str())) {
+      auto& no_stem = json[NO_STEM_PARAM_NAME.c_str()];  // optional bool
 
       if (!no_stem.IsBool()) {
         IR_FRMT_WARN(
             "Non-boolean value in '%s' while constructing text_token_stream "
             "from jSON arguments: %s",
-            noStemParamName.c_str(), args.c_str());
+            NO_STEM_PARAM_NAME.c_str(), args.c_str());
 
         return false;
       }
@@ -603,29 +603,25 @@ bool make_json_config(
   rapidjson::Document::AllocatorType& allocator = json.GetAllocator();
 
   // locale
-  json.AddMember(rapidjson::Value::StringRefType(
-                     localeParamName.c_str(), 
-                     static_cast<rapidjson::SizeType>(localeParamName.size())), 
-                 rapidjson::Value(
-                     options.locale.c_str(), 
-                     static_cast<rapidjson::SizeType>(options.locale.length())), 
-                 allocator);
+  json.AddMember(
+    rapidjson::StringRef(LOCALE_PARAM_NAME.c_str(), LOCALE_PARAM_NAME.size()),
+    rapidjson::Value(options.locale.c_str(),
+                     static_cast<rapidjson::SizeType>(options.locale.length())),
+    allocator);
 
   // case convert
   {
-    auto case_value = std::find_if(case_convert_map.begin(), case_convert_map.end(),
-      [&options](const decltype(case_convert_map)::value_type& v) {
+    auto case_value = std::find_if(CASE_CONVERT_MAP.begin(), CASE_CONVERT_MAP.end(),
+      [&options](const decltype(CASE_CONVERT_MAP)::value_type& v) {
         return v.second == options.case_convert; 
       });
 
-    if (case_value != case_convert_map.end()) {
-      json.AddMember(rapidjson::Value::StringRefType(
-                         caseConvertParamName.c_str(), 
-                         static_cast<rapidjson::SizeType>(caseConvertParamName.size())),
-                     rapidjson::Value(
-                         case_value->first.c_str(), 
-                         static_cast<rapidjson::SizeType>(case_value->first.length())), 
-                     allocator);
+    if (case_value != CASE_CONVERT_MAP.end()) {
+      json.AddMember(
+        rapidjson::StringRef(CASE_CONVERT_PARAM_NAME.c_str(), CASE_CONVERT_PARAM_NAME.size()),
+        rapidjson::Value(case_value->first.c_str(),
+                         static_cast<rapidjson::SizeType>(case_value->first.length())),
+        allocator);
     } else {
       IR_FRMT_ERROR(
         "Invalid case_convert value in text analyzer options: %d",
@@ -640,40 +636,36 @@ bool make_json_config(
     rapidjson::Value stopwordsArray(rapidjson::kArrayType);
     for (const auto& stopword : options.explicit_stopwords) {
       stopwordsArray.PushBack(
-          rapidjson::StringRef(stopword.c_str(), 
-          static_cast<rapidjson::SizeType>(stopword.size())), allocator);
+        rapidjson::StringRef(stopword.c_str(), stopword.size()),
+        allocator);
     }
-    json.AddMember(rapidjson::Value::StringRefType(
-                       stopwordsParamName.c_str(), 
-                       static_cast<rapidjson::SizeType>(stopwordsParamName.size())),
-                   stopwordsArray.Move(), 
-                   allocator);
+
+    json.AddMember(
+      rapidjson::StringRef(STOPWORDS_PARAM_NAME.c_str(), STOPWORDS_PARAM_NAME.size()),
+      stopwordsArray.Move(),
+      allocator);
   }
 
   // noAccent
-  json.AddMember(rapidjson::Value::StringRefType(
-                     noAccentParamName.c_str(), 
-                     static_cast<rapidjson::SizeType>(noAccentParamName.size())),
-                 rapidjson::Value(options.no_accent),
-                 allocator);
+  json.AddMember(
+    rapidjson::StringRef(NO_ACCENT_PARAM_NAME.c_str(), NO_ACCENT_PARAM_NAME.size()),
+    rapidjson::Value(options.no_accent),
+    allocator);
 
   //noStem
-  json.AddMember(rapidjson::Value::StringRefType(
-                     noStemParamName.c_str(), 
-                     static_cast<rapidjson::SizeType>(noStemParamName.size())),
-                 rapidjson::Value(options.no_stem), 
-                 allocator);
+  json.AddMember(
+    rapidjson::StringRef(NO_STEM_PARAM_NAME.c_str(), NO_STEM_PARAM_NAME.size()),
+    rapidjson::Value(options.no_stem),
+    allocator);
   
   //stopwords path
   if (options.stopwordsPath.empty() || options.stopwordsPath[0] != 0 ) { 
     // if stopwordsPath is set  - output it (empty string is also valid value =  use of CWD)
-    json.AddMember(rapidjson::Value::StringRefType(
-                       stopwordsPathParamName.c_str(), 
-                       static_cast<rapidjson::SizeType>(stopwordsPathParamName.size())),
-                   rapidjson::Value(
-                       options.stopwordsPath.c_str(), 
-                       static_cast<rapidjson::SizeType>(options.stopwordsPath.length())), 
-                   allocator);
+    json.AddMember(
+      rapidjson::StringRef(STOPWORDS_PATH_PARAM_NAME.c_str(), STOPWORDS_PATH_PARAM_NAME.size()),
+      rapidjson::Value(options.stopwordsPath.c_str(),
+                       static_cast<rapidjson::SizeType>(options.stopwordsPath.length())),
+      allocator);
   }
 
   //output json to string

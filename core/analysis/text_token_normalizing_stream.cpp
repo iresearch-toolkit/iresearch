@@ -80,14 +80,13 @@ NS_END // ROOT
 
 NS_LOCAL
 
-const irs::string_ref localeParamName      = "locale";
-const irs::string_ref caseConvertParamName = "caseConvert";
-const irs::string_ref noAccentParamName    = "noAccent";
-
+const irs::string_ref LOCALE_PARAM_NAME      = "locale";
+const irs::string_ref CASE_CONVERT_PARAM_NAME = "caseConvert";
+const irs::string_ref NO_ACCENT_PARAM_NAME    = "noAccent";
 
 const std::unordered_map<
     std::string, 
-    irs::analysis::text_token_normalizing_stream::options_t::case_convert_t> case_convert_map = {
+    irs::analysis::text_token_normalizing_stream::options_t::case_convert_t> CASE_CONVERT_MAP = {
   { "lower", irs::analysis::text_token_normalizing_stream::options_t::case_convert_t::LOWER },
   { "none", irs::analysis::text_token_normalizing_stream::options_t::case_convert_t::NONE },
   { "upper", irs::analysis::text_token_normalizing_stream::options_t::case_convert_t::UPPER },
@@ -113,31 +112,31 @@ bool parse_json_config(
         options.locale = json.GetString();  // required
         return true;
       case rapidjson::kObjectType:
-        if (json.HasMember(localeParamName.c_str()) &&
-            json[localeParamName.c_str()].IsString()) {
+        if (json.HasMember(LOCALE_PARAM_NAME.c_str()) &&
+            json[LOCALE_PARAM_NAME.c_str()].IsString()) {
           options.locale =
-              json[localeParamName.c_str()].GetString();  // required
+              json[LOCALE_PARAM_NAME.c_str()].GetString();  // required
 
-          if (json.HasMember(caseConvertParamName.c_str())) {
+          if (json.HasMember(CASE_CONVERT_PARAM_NAME.c_str())) {
             auto& case_convert =
-                json[caseConvertParamName.c_str()];  // optional string enum
+                json[CASE_CONVERT_PARAM_NAME.c_str()];  // optional string enum
 
             if (!case_convert.IsString()) {
               IR_FRMT_WARN(
                   "Non-string value in '%s' while constructing "
                   "text_token_normalizing_stream from jSON arguments: %s",
-                  caseConvertParamName.c_str(), args.c_str());
+                  CASE_CONVERT_PARAM_NAME.c_str(), args.c_str());
 
               return false;
             }
 
-            auto itr = case_convert_map.find(case_convert.GetString());
+            auto itr = CASE_CONVERT_MAP.find(case_convert.GetString());
 
-            if (itr == case_convert_map.end()) {
+            if (itr == CASE_CONVERT_MAP.end()) {
               IR_FRMT_WARN(
                   "Invalid value in '%s' while constructing "
                   "text_token_normalizing_stream from jSON arguments: %s",
-                  caseConvertParamName.c_str(), args.c_str());
+                  CASE_CONVERT_PARAM_NAME.c_str(), args.c_str());
 
               return false;
             }
@@ -145,14 +144,14 @@ bool parse_json_config(
             options.case_convert = itr->second;
           }
 
-          if (json.HasMember(noAccentParamName.c_str())) {
-            auto& no_accent = json[noAccentParamName.c_str()];  // optional bool
+          if (json.HasMember(NO_ACCENT_PARAM_NAME.c_str())) {
+            auto& no_accent = json[NO_ACCENT_PARAM_NAME.c_str()];  // optional bool
 
             if (!no_accent.IsBool()) {
               IR_FRMT_WARN(
                   "Non-boolean value in '%s' while constructing "
                   "text_token_normalizing_stream from jSON arguments: %s",
-                  noAccentParamName.c_str(), args.c_str());
+                  NO_ACCENT_PARAM_NAME.c_str(), args.c_str());
 
               return false;
             }
@@ -166,7 +165,7 @@ bool parse_json_config(
         IR_FRMT_ERROR(
             "Missing '%s' while constructing text_token_normalizing_stream "
             "from jSON arguments: %s",
-            localeParamName.c_str(), args.c_str());
+            LOCALE_PARAM_NAME.c_str(), args.c_str());
     }
   } catch (...) {
     IR_FRMT_ERROR(
@@ -207,24 +206,24 @@ bool make_json_config(
   rapidjson::Document::AllocatorType& allocator = json.GetAllocator();
 
   // locale
-  json.AddMember(rapidjson::Value::StringRefType(localeParamName.c_str(), 
-                     static_cast<rapidjson::SizeType>(localeParamName.size())),
-                 rapidjson::Value(options.locale.c_str(), 
-                     static_cast<rapidjson::SizeType>(options.locale.length())), 
-                 allocator);
+  json.AddMember(
+    rapidjson::StringRef(LOCALE_PARAM_NAME.c_str(), LOCALE_PARAM_NAME.size()),
+    rapidjson::Value(options.locale.c_str(),
+                     static_cast<rapidjson::SizeType>(options.locale.length())),
+    allocator);
 
   // case convert
   {
-    auto case_value = std::find_if(case_convert_map.begin(), case_convert_map.end(),
-      [&options](const decltype(case_convert_map)::value_type& v) { 
+    auto case_value = std::find_if(CASE_CONVERT_MAP.begin(), CASE_CONVERT_MAP.end(),
+      [&options](const decltype(CASE_CONVERT_MAP)::value_type& v) {
           return v.second == options.case_convert; 
       });
-    if (case_value != case_convert_map.end()) {
-      json.AddMember(rapidjson::Value::StringRefType(caseConvertParamName.c_str(),
-                         static_cast<rapidjson::SizeType>(caseConvertParamName.size())),
-                     rapidjson::Value(case_value->first.c_str(), 
-                         static_cast<rapidjson::SizeType>(case_value->first.length())), 
-                     allocator);
+    if (case_value != CASE_CONVERT_MAP.end()) {
+      json.AddMember(
+        rapidjson::StringRef(CASE_CONVERT_PARAM_NAME.c_str(), CASE_CONVERT_PARAM_NAME.size()),
+        rapidjson::Value(case_value->first.c_str(),
+                         static_cast<rapidjson::SizeType>(case_value->first.length())),
+        allocator);
     }
     else {
       IR_FRMT_ERROR(
@@ -235,14 +234,14 @@ bool make_json_config(
   }
 
   // noAccent
-  json.AddMember(rapidjson::Value::StringRefType(noAccentParamName.c_str(), 
-                     static_cast<rapidjson::SizeType>(noAccentParamName.size())),
-                 rapidjson::Value(options.no_accent),
-                 allocator);
+  json.AddMember(
+    rapidjson::StringRef(NO_ACCENT_PARAM_NAME.c_str(), NO_ACCENT_PARAM_NAME.size()),
+    rapidjson::Value(options.no_accent),
+    allocator);
 
   //output json to string
   rapidjson::StringBuffer buffer;
-  rapidjson::Writer< rapidjson::StringBuffer> writer(buffer);
+  rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
   json.Accept(writer);
   definition = buffer.GetString();
   return true;

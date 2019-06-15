@@ -31,7 +31,7 @@
 
 NS_LOCAL
 
-const irs::string_ref localeParamName = "locale";
+const irs::string_ref LOCALE_PARAM_NAME = "locale";
 
 bool parse_json_config(const irs::string_ref& args, std::string& locale) {
   rapidjson::Document json;
@@ -51,16 +51,16 @@ bool parse_json_config(const irs::string_ref& args, std::string& locale) {
         locale = json.GetString();
         return true;
       case rapidjson::kObjectType:
-        if (json.HasMember(localeParamName.c_str()) &&
-            json[localeParamName.c_str()].IsString()) {
-          locale = json[localeParamName.c_str()].GetString(); 
+        if (json.HasMember(LOCALE_PARAM_NAME.c_str()) &&
+            json[LOCALE_PARAM_NAME.c_str()].IsString()) {
+          locale = json[LOCALE_PARAM_NAME.c_str()].GetString();
           return true;
         }
       default:  // fall through
         IR_FRMT_ERROR(
             "Missing '%s' while constructing text_token_stemming_stream from "
             "jSON arguments: %s",
-            localeParamName.c_str(), args.c_str());
+            LOCALE_PARAM_NAME.c_str(), args.c_str());
     }
   } catch (...) {
     IR_FRMT_ERROR(
@@ -97,11 +97,10 @@ bool make_json_config( const std::string& locale,  std::string& definition) {
   rapidjson::Document::AllocatorType& allocator = json.GetAllocator();
 
   // locale
-  json.AddMember(rapidjson::Value::StringRefType(localeParamName.c_str(), 
-                     static_cast<rapidjson::SizeType>(localeParamName.size())),
-                 rapidjson::Value(locale.c_str(), 
-                     static_cast<rapidjson::SizeType>(locale.length())), 
-                 allocator);
+  json.AddMember(
+    rapidjson::StringRef(LOCALE_PARAM_NAME.c_str(), LOCALE_PARAM_NAME.size()),
+    rapidjson::Value(locale.c_str(), static_cast<rapidjson::SizeType>(locale.length())),
+    allocator);
 
   //output json to string
   rapidjson::StringBuffer buffer;

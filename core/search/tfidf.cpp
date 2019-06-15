@@ -43,7 +43,7 @@ irs::sort::ptr make_from_bool(
   );
 }
 
-static const irs::string_ref withNormsParamName = "withNorms";
+static const irs::string_ref WITH_NORMS_PARAM_NAME = "withNorms";
 
 irs::sort::ptr make_from_object(
     const rapidjson::Document& json,
@@ -61,14 +61,16 @@ irs::sort::ptr make_from_object(
   {
     // optional bool
    
-    if (json.HasMember(withNormsParamName.c_str())) {
-      if (!json[withNormsParamName.c_str()].IsBool()) {
-        IR_FRMT_ERROR("Non-boolean value in '%s' while constructing tfidf scorer from jSON arguments: %s", withNormsParamName.c_str(), args.c_str());
+    if (json.HasMember(WITH_NORMS_PARAM_NAME.c_str())) {
+      if (!json[WITH_NORMS_PARAM_NAME.c_str()].IsBool()) {
+        IR_FRMT_ERROR("Non-boolean value in '%s' while constructing tfidf scorer from jSON arguments: %s",
+                      WITH_NORMS_PARAM_NAME.c_str(),
+                      args.c_str());
 
         return nullptr;
       }
 
-      scorer.normalize(json[withNormsParamName.c_str()].GetBool());
+      scorer.normalize(json[WITH_NORMS_PARAM_NAME.c_str()].GetBool());
     }
   }
 

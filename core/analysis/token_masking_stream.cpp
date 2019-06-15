@@ -138,7 +138,7 @@ irs::analysis::analyzer::ptr construct(
   );
 }
 
-static const irs::string_ref maskParamName = "mask";
+static const irs::string_ref MASK_PARAM_NAME = "mask";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a jSON encoded object with the following attributes:
@@ -161,15 +161,15 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
    case rapidjson::kArrayType:
     return construct(json.GetArray());
    case rapidjson::kObjectType:
-    if (json.HasMember(maskParamName.c_str()) && json[maskParamName.c_str()].IsArray()) {
-      return construct(json[maskParamName.c_str()].GetArray());
+    if (json.HasMember(MASK_PARAM_NAME.c_str()) && json[MASK_PARAM_NAME.c_str()].IsArray()) {
+      return construct(json[MASK_PARAM_NAME.c_str()].GetArray());
     }
    default: {}
   }
 
   IR_FRMT_ERROR(
     "Invalid '%s' while constructing token_masking_stream from jSON arguments: %s",
-    maskParamName.c_str(),
+    MASK_PARAM_NAME.c_str(),
     args.c_str()
   );
 

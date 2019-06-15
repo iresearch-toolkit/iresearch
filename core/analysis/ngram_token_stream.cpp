@@ -67,10 +67,9 @@ bool get_bool(
   return true;
 }
 
-const irs::string_ref minParamName              = "min";
-const irs::string_ref maxParamName              = "max";
-const irs::string_ref preserveOriginalParamName = "preserveOriginal";
-
+const irs::string_ref MIN_PARAM_NAME               = "min";
+const irs::string_ref MAX_PARAM_NAME               = "max";
+const irs::string_ref PRESERVE_ORIGINAL_PARAM_NAME = "preserveOriginal";
 
 bool parse_json_config(const irs::string_ref& args,
                         irs::analysis::ngram_token_stream::options_t& options) {
@@ -96,27 +95,27 @@ bool parse_json_config(const irs::string_ref& args,
   uint64_t min, max;
   bool preserve_original;
 
-  if (!get_uint64(json, minParamName, min)) {
+  if (!get_uint64(json, MIN_PARAM_NAME, min)) {
     IR_FRMT_ERROR(
         "Failed to read '%s' attribute as number while constructing "
         "ngram_token_stream from jSON arguments: %s",
-        minParamName.c_str(), args.c_str());
+        MIN_PARAM_NAME.c_str(), args.c_str());
     return false;
   }
 
-  if (!get_uint64(json, maxParamName, max)) {
+  if (!get_uint64(json, MAX_PARAM_NAME, max)) {
     IR_FRMT_ERROR(
         "Failed to read '%s' attribute as number while constructing "
         "ngram_token_stream from jSON arguments: %s",
-        maxParamName.c_str(), args.c_str());
+        MAX_PARAM_NAME.c_str(), args.c_str());
     return false;
   }
 
-  if (!get_bool(json, preserveOriginalParamName, preserve_original)) {
+  if (!get_bool(json, PRESERVE_ORIGINAL_PARAM_NAME, preserve_original)) {
     IR_FRMT_ERROR(
         "Failed to read '%s' attribute as boolean while constructing "
         "ngram_token_stream from jSON arguments: %s",
-        preserveOriginalParamName.c_str(), args.c_str());
+        PRESERVE_ORIGINAL_PARAM_NAME.c_str(), args.c_str());
     return false;
   }
   options.min_gram = min;
@@ -153,22 +152,22 @@ bool make_json_config(const irs::analysis::ngram_token_stream::options_t& option
   // ensure disambiguating casts below are safe. Casts required for clang compiler on Mac
   static_assert(sizeof(uint64_t) >= sizeof(size_t), "sizeof(uint64_t) >= sizeof(size_t)");
   //min_gram
-  json.AddMember(rapidjson::Value::StringRefType(minParamName.c_str(), 
-                     static_cast<rapidjson::SizeType>(minParamName.size())),
-                 rapidjson::Value(static_cast<uint64_t>(options.min_gram)), 
-                 allocator);
+  json.AddMember(
+    rapidjson::StringRef(MIN_PARAM_NAME.c_str(), MIN_PARAM_NAME.size()),
+    rapidjson::Value(static_cast<uint64_t>(options.min_gram)),
+    allocator);
 
   //max_gram
-  json.AddMember(rapidjson::Value::StringRefType(maxParamName.c_str(), 
-                     static_cast<rapidjson::SizeType>(maxParamName.size())),
-                 rapidjson::Value(static_cast<uint64_t>(options.max_gram)), 
-                 allocator);
+  json.AddMember(
+    rapidjson::StringRef(MAX_PARAM_NAME.c_str(), MAX_PARAM_NAME.size()),
+    rapidjson::Value(static_cast<uint64_t>(options.max_gram)),
+    allocator);
 
   //preserve_original
-  json.AddMember(rapidjson::Value::StringRefType(preserveOriginalParamName.c_str(), 
-                     static_cast<rapidjson::SizeType>(preserveOriginalParamName.size())),
-                 rapidjson::Value(options.preserve_original), 
-                 allocator);
+  json.AddMember(
+    rapidjson::StringRef(PRESERVE_ORIGINAL_PARAM_NAME.c_str(), PRESERVE_ORIGINAL_PARAM_NAME.size()),
+    rapidjson::Value(options.preserve_original),
+    allocator);
 
   //output json to string
   rapidjson::StringBuffer buffer;
@@ -281,7 +280,6 @@ bool ngram_token_stream::reset(const irs::string_ref& value) NOEXCEPT {
 
   return true;
 }
-
 
 DEFINE_ANALYZER_TYPE_NAMED(ngram_token_stream, "ngram")
 
