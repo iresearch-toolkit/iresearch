@@ -37,46 +37,61 @@
 
 NS_LOCAL
 
-struct entry_key_t {
-  const irs::text_format::type_id& args_format_;
-  const irs::string_ref name_;
-  entry_key_t(
-      const irs::string_ref& name, const irs::text_format::type_id& args_format
-  ): args_format_(args_format), name_(name) {}
-  bool operator==(const entry_key_t& other) const NOEXCEPT {
-    return &args_format_ == &other.args_format_ && name_ == other.name_;
+struct key {
+  key(const irs::string_ref& name,
+      const irs::text_format::type_id& args_format)
+    : args_format(args_format),
+      name(name) {
   }
+
+  bool operator==(const key& other) const NOEXCEPT {
+    return &args_format == &other.args_format && name == other.name;
+  }
+
+  bool operator!=(const key& other) const NOEXCEPT {
+    return !(*this == other);
+  }
+
+  const irs::text_format::type_id& args_format;
+  const irs::string_ref name;
 };
 
-struct entry_type_t {
+struct value{
+  typedef irs::analysis::analyzer::ptr (*factory_f)(const irs::string_ref& args);
+  typedef bool (*normalizer_f)(const irs::string_ref& args, std::string& config);
+
   irs::analysis::analyzer::ptr (*factory_)(const irs::string_ref& args);
   bool (*normalizer_)(const irs::string_ref& args, std::string& config);
 
-  entry_type_t() : factory_(nullptr), normalizer_(nullptr) {}
-  entry_type_t(
-      irs::analysis::analyzer::ptr(*factory)(const irs::string_ref& args),
-      bool(*normalizer)(const irs::string_ref& args, std::string& config)
-  ) : factory_(factory), normalizer_(normalizer) {}
-  bool empty() const NOEXCEPT { 
-    return nullptr == factory_; 
+  explicit value(
+      factory_f factory = nullptr,
+      normalizer_f normalizer = nullptr)
+    : factory(factory),
+      normalizer(normalizer) {
   }
-  bool operator==(const entry_type_t& other) const NOEXCEPT {
-    return factory_ == other.factory_ && normalizer_ == other.normalizer_;
+
+  bool empty() const NOEXCEPT { return nullptr == factory_;  }
+
+  bool operator==(const value& other) const NOEXCEPT {
+    return factory == other.factory && normalizer == other.normalizer;
   }
-  bool operator!=(const entry_type_t& other) const NOEXCEPT {
+
+  bool operator!=(const value& other) const NOEXCEPT {
     return !(*this == other);
   }
+
+  const factory_f factory;
+  const normalizer_f normalizer;
 };
  
-
 NS_END
 
 NS_BEGIN(std)
 
 template<>
-struct hash<entry_key_t> {
-  size_t operator()(const entry_key_t& value) const {
-    return std::hash<irs::string_ref>()(value.name_);
+struct hash<::key> {
+  size_t operator()(const ::key& value) const NOEXCEPT {
+    return std::hash<irs::string_ref>()(value.name);
   }
 }; // hash
 
@@ -86,11 +101,11 @@ NS_LOCAL
 
 const std::string FILENAME_PREFIX("libanalyzer-");
 
-class analyzer_register:
-  public irs::tagged_generic_register<entry_key_t, entry_type_t, irs::string_ref, analyzer_register> {
+class analyzer_register
+    : public irs::tagged_generic_register<::key, ::value, irs::string_ref, analyzer_register> {
  protected:
   virtual std::string key_to_filename(const key_type& key) const override {
-    auto& name = key.name_;
+    auto& name = key.name;
     std::string filename(FILENAME_PREFIX.size() + name.size(), 0);
 
     std::memcpy(
@@ -119,7 +134,29 @@ NS_BEGIN(analysis)
     const irs::text_format::type_id& args_format,
     bool load_library /*= true*/
 ) {
-  return !analyzer_register::instance().get(entry_key_t(name, args_format), load_library).empty();
+  return !analyzer_register::instance().get(::key(name, args_format), load_library).empty();
+}
+
+/*static*/ bool analyzers::normalize(
+    std::string& out,
+    const string_ref& name,
+    const irs::text_format::type_id& args_format,
+    const string_ref& args,
+    bool load_library /*= true*/
+) NOEXCEPT {
+  try {
+    auto* normalizer = analyzer_register::instance().get(
+      ::key(name, args_format),
+      load_library
+    ).normalizer;
+
+    return normalizer ? normalizer(args, out) : false;
+  } catch (...) {
+    IR_FRMT_ERROR("Caught exception while normalizing analyzer '%s' arguments", name.c_str());
+    IR_LOG_EXCEPTION();
+  }
+
+  return false;
 }
 
 /*static*/ analyzer::ptr analyzers::get(
@@ -130,7 +167,9 @@ NS_BEGIN(analysis)
 ) NOEXCEPT {
   try {
     auto* factory = analyzer_register::instance().get(
-      entry_key_t(name, args_format), load_library).factory_;
+      ::key(name, args_format),
+      load_library
+    ).factory;
 
     return factory ? factory(args) : nullptr;
   } catch (...) {
@@ -159,8 +198,8 @@ NS_BEGIN(analysis)
 /*static*/ bool analyzers::visit(
   const std::function<bool(const string_ref&, const irs::text_format::type_id&)>& visitor
 ) {
-  analyzer_register::visitor_t wrapper = [&visitor](const entry_key_t& key)->bool {
-    return visitor(key.name_, key.args_format_);
+  analyzer_register::visitor_t wrapper = [&visitor](const ::key& key)->bool {
+    return visitor(key.name, key.args_format);
   };
 
   return analyzer_register::instance().visit(wrapper);
@@ -178,9 +217,9 @@ analyzer_registrar::analyzer_registrar(
     const char* source /*= nullptr*/
 ) {
   irs::string_ref source_ref(source);
-  const auto new_entry = entry_type_t(factory, normalizer);
+  const auto new_entry = ::value(factory, normalizer);
   auto entry = analyzer_register::instance().set(
-    entry_key_t(type.name(), args_format),
+    ::key(type.name(), args_format),
     new_entry,
     source_ref.null() ? nullptr : &source_ref
   );
@@ -189,7 +228,7 @@ analyzer_registrar::analyzer_registrar(
 
   if (!registered_ && new_entry != entry.first) {
     auto* registered_source =
-      analyzer_register::instance().tag(entry_key_t(type.name(), args_format));
+      analyzer_register::instance().tag(::key(type.name(), args_format));
 
     if (source && registered_source) {
       IR_FRMT_WARN(

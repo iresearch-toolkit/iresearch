@@ -95,7 +95,7 @@ size_t find_delimiter(const irs::bytes_ref& data, const irs::bytes_ref& delim) {
   return data.size();
 }
 
-static const irs::string_ref delimiterParamName = "delimiter";
+static const irs::string_ref DELIMITER_PARAM_NAME = "delimiter";
 
 bool parse_json_config(const irs::string_ref& args, std::string& delimiter) {
   rapidjson::Document json;
@@ -114,9 +114,9 @@ bool parse_json_config(const irs::string_ref& args, std::string& delimiter) {
       delimiter = json.GetString();
       return true;
     case rapidjson::kObjectType:
-      if (json.HasMember(delimiterParamName.c_str()) &&
-          json[delimiterParamName.c_str()].IsString()) {
-        delimiter = json[delimiterParamName.c_str()].GetString();
+      if (json.HasMember(DELIMITER_PARAM_NAME.c_str()) &&
+          json[DELIMITER_PARAM_NAME.c_str()].IsString()) {
+        delimiter = json[DELIMITER_PARAM_NAME.c_str()].GetString();
         return true;
       }
     default: {}  // fall through
@@ -125,7 +125,7 @@ bool parse_json_config(const irs::string_ref& args, std::string& delimiter) {
   IR_FRMT_ERROR(
       "Missing '%s' while constructing delimited_token_stream from jSON "
       "arguments: %s",
-      delimiterParamName.c_str(), args.c_str());
+      DELIMITER_PARAM_NAME.c_str(), args.c_str());
 
   return false;
 }
@@ -154,14 +154,11 @@ bool make_json_config(const std::string& delimiter, std::string& definition) {
 
   rapidjson::Document::AllocatorType& allocator = json.GetAllocator();
   // delimiter
-  {
-
-    json.AddMember(rapidjson::Value::StringRefType(delimiterParamName.c_str(),
-                       static_cast<rapidjson::SizeType>(delimiterParamName.size())),
-                   rapidjson::Value(rapidjson::StringRef(delimiter.c_str(), 
-                       static_cast<rapidjson::SizeType>(delimiter.length()))), 
-                   allocator);
-  }
+  json.AddMember(
+    rapidjson::StringRef(DELIMITER_PARAM_NAME.c_str(), DELIMITER_PARAM_NAME.size()),
+    rapidjson::Value(rapidjson::StringRef(delimiter.c_str(), delimiter.length())),
+    allocator
+  );
 
   //output json to string
   rapidjson::StringBuffer buffer;
