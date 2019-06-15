@@ -57,20 +57,14 @@ struct key {
 };
 
 struct value{
-  typedef irs::analysis::analyzer::ptr (*factory_f)(const irs::string_ref& args);
-  typedef bool (*normalizer_f)(const irs::string_ref& args, std::string& config);
-
-  irs::analysis::analyzer::ptr (*factory_)(const irs::string_ref& args);
-  bool (*normalizer_)(const irs::string_ref& args, std::string& config);
-
   explicit value(
-      factory_f factory = nullptr,
-      normalizer_f normalizer = nullptr)
+      irs::analysis::factory_f factory = nullptr,
+      irs::analysis::normalizer_f normalizer = nullptr)
     : factory(factory),
       normalizer(normalizer) {
   }
 
-  bool empty() const NOEXCEPT { return nullptr == factory_;  }
+  bool empty() const NOEXCEPT { return nullptr == factory;  }
 
   bool operator==(const value& other) const NOEXCEPT {
     return factory == other.factory && normalizer == other.normalizer;
@@ -80,8 +74,8 @@ struct value{
     return !(*this == other);
   }
 
-  const factory_f factory;
-  const normalizer_f normalizer;
+  const irs::analysis::factory_f factory;
+  const irs::analysis::normalizer_f normalizer;
 };
  
 NS_END

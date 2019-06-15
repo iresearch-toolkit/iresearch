@@ -46,13 +46,16 @@ NS_BEGIN(analysis)
 // --SECTION--                                             analyzer registration
 // -----------------------------------------------------------------------------
 
+typedef irs::analysis::analyzer::ptr(*factory_f)(const irs::string_ref& args);
+typedef bool(*normalizer_f)(const irs::string_ref& args, std::string& config);
+
 class IRESEARCH_API analyzer_registrar {
  public:
    analyzer_registrar(
     const analyzer::type_id& type,
     const irs::text_format::type_id& args_format,
-    analyzer::ptr(*factory)(const irs::string_ref& args),
-    bool (*normalizer)(const irs::string_ref& args, std::string& config),
+    factory_f factory,
+    normalizer_f normalizer,
     const char* source = nullptr
   );
   operator bool() const NOEXCEPT;
