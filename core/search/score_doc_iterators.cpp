@@ -29,57 +29,55 @@ NS_ROOT
 void basic_doc_iterator_base::prepare_score(
     const order::prepared& order,
     order::prepared::scorers&& scorers) {
-  struct scorer_ref {
-    explicit scorer_ref(const std::pair<sort::scorer::ptr, size_t>& bucket) NOEXCEPT
-      : scorer(bucket.first.get()), offset(bucket.second) {
-      assert(scorer);
-    }
-
-    irs::sort::scorer* scorer;
-    size_t offset;
-  }; // scorer_ref
-
   scorers_ = std::move(scorers);
 
   switch (scorers_.size()) {
     case 0: {
       // let order initialize empty score
-      doc_iterator_base::prepare_score(order, [](byte_type*){ });
+      doc_iterator_base::prepare_score(order, nullptr, [](const void*, byte_type*){ });
     } break;
     case 1: {
-      const scorer_ref ref(scorers_[0]);
+      auto& scorer = scorers_[0];
 
-      if (ref.offset) {
-        doc_iterator_base::prepare_score(order, [ref](byte_type* score) {
-          ref.scorer->score(score + ref.offset);
+      if (scorer.second) {
+        doc_iterator_base::prepare_score(
+            order, &scorer, 
+            [](const void* ctx, byte_type* score) {
+          auto& scorer = *static_cast<const std::pair<sort::scorer::ptr, size_t>*>(ctx);
+          scorer.first->score(score + scorer.second);
         });
       } else {
-        auto* scorer = ref.scorer;
-
-        doc_iterator_base::prepare_score(order, [scorer](byte_type* score) {
-          scorer->score(score);
+        doc_iterator_base::prepare_score(
+            order, scorer.first.get(), 
+            [](const void* ctx, byte_type* score) {
+          auto& scorer = const_cast<sort::scorer&>(*static_cast<const sort::scorer*>(ctx)); // FIXME remove const_cast
+          scorer.score(score);
         });
       }
     } break;
     case 2: {
-      const scorer_ref first(scorers_[0]);
-      const scorer_ref second(scorers_[1]);
-
-      if (first.offset) {
-        doc_iterator_base::prepare_score(order, [first, second](byte_type* score) {
-          first.scorer->score(score + first.offset);
-          second.scorer->score(score + second.offset);
+      if (scorers_[0].second) {
+        doc_iterator_base::prepare_score(
+            order, &scorers_, [](const void* ctx, byte_type* score) {
+          auto& scorers = *static_cast<const order::prepared::scorers*>(ctx);
+          scorers[0].first->score(score + scorers[0].second);
+          scorers[1].first->score(score + scorers[1].second);
         });
       } else {
-        doc_iterator_base::prepare_score(order, [first, second](byte_type* score) {
-          first.scorer->score(score);
-          second.scorer->score(score + second.offset);
+        doc_iterator_base::prepare_score(
+            order, &scorers_, [](const void* ctx, byte_type* score) {
+          auto& scorers = *static_cast<const order::prepared::scorers*>(ctx);
+          scorers[0].first->score(score);
+          scorers[1].first->score(score + scorers[1].second);
         });
       }
     } break;
     default: {
-      doc_iterator_base::prepare_score(order, [this](byte_type* score) {
-        scorers_.score(score);
+      doc_iterator_base::prepare_score(
+          order, &scorers_,
+          [](const void* ctx, byte_type* score) {
+        auto& scorers = *static_cast<const order::prepared::scorers*>(ctx);
+        scorers.score(score);
       });
     } break;
   }
@@ -113,8 +111,9 @@ basic_doc_iterator::basic_doc_iterator(
   assert(doc_);
 
   // set scorers
-  prepare_score(ord, ord.prepare_scorers(
-    segment, field, stats_, it_->attributes(), boost
+  prepare_score(
+    ord,
+    ord.prepare_scorers(segment, field, stats_, it_->attributes(), boost
   ));
 }
 

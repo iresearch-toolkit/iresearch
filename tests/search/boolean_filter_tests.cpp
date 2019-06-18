@@ -180,8 +180,9 @@ class basic_doc_iterator: public irs::doc_iterator {
         boost
       );
 
-      score_.prepare(ord, [this] (irs::byte_type* score) {
-        scorers_.score(score);
+      score_.prepare(ord, this, [](const void* ctx, irs::byte_type* score) {
+        auto& self = *static_cast<const basic_doc_iterator*>(ctx);
+        self.scorers_.score(score);
       });
 
       attrs_.emplace(score_);
