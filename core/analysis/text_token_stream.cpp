@@ -439,12 +439,12 @@ bool make_locale_from_name(const irs::string_ref& name,
 }
 
 
-const irs::string_ref LOCALE_PARAM_NAME           = "locale";
-const irs::string_ref CASE_CONVERT_PARAM_NAME      = "caseConvert";
-const irs::string_ref STOPWORDS_PARAM_NAME        = "stopwords";
+const irs::string_ref LOCALE_PARAM_NAME            = "locale";
+const irs::string_ref CASE_CONVERT_PARAM_NAME      = "case";
+const irs::string_ref STOPWORDS_PARAM_NAME         = "stopwords";
 const irs::string_ref STOPWORDS_PATH_PARAM_NAME    = "stopwordsPath";
-const irs::string_ref NO_ACCENT_PARAM_NAME         = "noAccent";
-const irs::string_ref NO_STEM_PARAM_NAME           = "noStem";
+const irs::string_ref ACCENT_PARAM_NAME            = "accent";
+const irs::string_ref STEMMING_PARAM_NAME          = "stemming";
 
 const std::unordered_map<
     std::string, 
@@ -568,34 +568,34 @@ bool parse_json_options(const irs::string_ref& args,
       options.stopwordsPath = ignored_words_path.GetString();
     }
 
-    if (json.HasMember(NO_ACCENT_PARAM_NAME.c_str())) {
-      auto& no_accent = json[NO_ACCENT_PARAM_NAME.c_str()];  // optional bool
+    if (json.HasMember(ACCENT_PARAM_NAME.c_str())) {
+      auto& accent = json[ACCENT_PARAM_NAME.c_str()];  // optional bool
 
-      if (!no_accent.IsBool()) {
+      if (!accent.IsBool()) {
         IR_FRMT_WARN(
             "Non-boolean value in '%s' while constructing text_token_stream "
             "from jSON arguments: %s",
-            NO_ACCENT_PARAM_NAME.c_str(), args.c_str());
+            ACCENT_PARAM_NAME.c_str(), args.c_str());
 
         return false;
       }
 
-      options.no_accent = no_accent.GetBool();
+      options.accent = accent.GetBool();
     }
 
-    if (json.HasMember(NO_STEM_PARAM_NAME.c_str())) {
-      auto& no_stem = json[NO_STEM_PARAM_NAME.c_str()];  // optional bool
+    if (json.HasMember(STEMMING_PARAM_NAME.c_str())) {
+      auto& stemming = json[STEMMING_PARAM_NAME.c_str()];  // optional bool
 
-      if (!no_stem.IsBool()) {
+      if (!stemming.IsBool()) {
         IR_FRMT_WARN(
             "Non-boolean value in '%s' while constructing text_token_stream "
             "from jSON arguments: %s",
-            NO_STEM_PARAM_NAME.c_str(), args.c_str());
+            STEMMING_PARAM_NAME.c_str(), args.c_str());
 
         return false;
       }
 
-      options.no_stem = no_stem.GetBool();
+      options.stemming = stemming.GetBool();
     }
 
     return true;
@@ -670,16 +670,16 @@ bool make_json_config(
       allocator);
   }
 
-  // noAccent
+  // Accent
   json.AddMember(
-    rapidjson::StringRef(NO_ACCENT_PARAM_NAME.c_str(), NO_ACCENT_PARAM_NAME.size()),
-    rapidjson::Value(options.no_accent),
+    rapidjson::StringRef(ACCENT_PARAM_NAME.c_str(), ACCENT_PARAM_NAME.size()),
+    rapidjson::Value(options.accent),
     allocator);
 
-  //noStem
+  //Stem
   json.AddMember(
-    rapidjson::StringRef(NO_STEM_PARAM_NAME.c_str(), NO_STEM_PARAM_NAME.size()),
-    rapidjson::Value(options.no_stem),
+    rapidjson::StringRef(STEMMING_PARAM_NAME.c_str(), STEMMING_PARAM_NAME.size()),
+    rapidjson::Value(options.stemming),
     allocator);
   
   //stopwords path
@@ -703,9 +703,9 @@ bool make_json_config(
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a jSON encoded object with the following attributes:
 ///        "locale"(string): locale of the analyzer <required>
-///        "caseConvert"(string enum): modify token case using "locale"
-///        "noAccent"(bool): remove accents
-///        "noStem"(bool): disable stemming
+///        "case"(string enum): modify token case using "locale"
+///        "accent"(bool): leave accents
+///        "stemming"(bool): use stemming
 ///        "stopwords([string...]): set of words to ignore 
 ///        "stopwordsPath"(string): custom path, where to load stopwords
 ///  if none of stopwords and stopwordsPath specified, stopwords are loaded from default location
@@ -860,7 +860,7 @@ bool text_token_stream::reset(const string_ref& data) {
     }
   }
 
-  if (state_->options.no_accent && !state_->transliterator) {
+  if (!state_->options.accent && !state_->transliterator) {
     // transliteration rule taken verbatim from: http://userguide.icu-project.org/transforms/general
     icu::UnicodeString collationRule("NFD; [:Nonspacing Mark:] Remove; NFC"); // do not allocate statically since it causes memory leaks in ICU
 
@@ -890,7 +890,7 @@ bool text_token_stream::reset(const string_ref& data) {
   }
 
   // optional since not available for all locales
-  if (!state_->options.no_stem && !state_->stemmer) {
+  if (state_->options.stemming && !state_->stemmer) {
     // reusable object owned by *this
     state_->stemmer.reset(
       sb_stemmer_new(
