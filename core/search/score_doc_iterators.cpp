@@ -39,36 +39,31 @@ void basic_doc_iterator_base::prepare_score(
     case 1: {
       auto& scorer = scorers_[0];
 
-      if (scorer.second) {
+      if (scorer.offset) {
         doc_iterator_base::prepare_score(
             order, &scorer, 
             [](const void* ctx, byte_type* score) {
-          auto& scorer = *static_cast<const std::pair<sort::scorer::ptr, size_t>*>(ctx);
-          scorer.first->score(score + scorer.second);
+          auto& scorer = *static_cast<const order::prepared::scorers::entry*>(ctx);
+          (*scorer.func)(scorer.ctx.get(), score + scorer.offset);
         });
       } else {
-        doc_iterator_base::prepare_score(
-            order, scorer.first.get(), 
-            [](const void* ctx, byte_type* score) {
-          auto& scorer = const_cast<sort::scorer&>(*static_cast<const sort::scorer*>(ctx)); // FIXME remove const_cast
-          scorer.score(score);
-        });
+        doc_iterator_base::prepare_score(order, scorer.ctx.get(), scorer.func);
       }
     } break;
     case 2: {
-      if (scorers_[0].second) {
+      if (scorers_[0].offset) {
         doc_iterator_base::prepare_score(
             order, &scorers_, [](const void* ctx, byte_type* score) {
           auto& scorers = *static_cast<const order::prepared::scorers*>(ctx);
-          scorers[0].first->score(score + scorers[0].second);
-          scorers[1].first->score(score + scorers[1].second);
+          (*scorers[0].func)(scorers[0].ctx.get(), score + scorers[0].offset);
+          (*scorers[1].func)(scorers[1].ctx.get(), score + scorers[1].offset);
         });
       } else {
         doc_iterator_base::prepare_score(
             order, &scorers_, [](const void* ctx, byte_type* score) {
           auto& scorers = *static_cast<const order::prepared::scorers*>(ctx);
-          scorers[0].first->score(score);
-          scorers[1].first->score(score + scorers[1].second);
+          (*scorers[0].func)(scorers[0].ctx.get(), score);
+          (*scorers[1].func)(scorers[1].ctx.get(), score + scorers[1].offset);
         });
       }
     } break;
