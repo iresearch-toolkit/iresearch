@@ -37,10 +37,6 @@ sort::sort(const type_id& type) NOEXCEPT
   : type_(&type) {
 }
 
-sort::prepared::prepared(attribute_view&& attrs) NOEXCEPT
-  : attrs_(std::move(attrs)) {
-}
-
 // ----------------------------------------------------------------------------
 // --SECTION--                                                            order 
 // ----------------------------------------------------------------------------

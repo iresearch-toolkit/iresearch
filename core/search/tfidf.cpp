@@ -224,8 +224,13 @@ struct term_collector final: public irs::sort::term_collector {
   }
 };
 
-FORCE_INLINE float_t tfidf(float_t idf, float_t freq) NOEXCEPT {
-  return idf * float_t(std::sqrt(freq));
+FORCE_INLINE float_t tfidf(float_t freq, float_t idf) NOEXCEPT {
+  static_assert(
+    std::is_same<decltype(std::sqrt(freq)), float_t>::value,
+    "float_t expected"
+  );
+
+  return idf * std::sqrt(freq);
 }
 
 NS_END // LOCAL

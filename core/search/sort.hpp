@@ -112,6 +112,11 @@ class IRESEARCH_API sort {
     return *reinterpret_cast<T*>(score_buf);
   }
 
+  template<typename T>
+  FORCE_INLINE static const T& score_cast(const byte_type* score_buf) NOEXCEPT {
+    return score_cast<T>(const_cast<byte_type*>(score_buf));
+  }
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief object used for collecting index statistics, for a specific matched
   ///        term of a field, that are required by the scorer for scoring
@@ -154,18 +159,12 @@ class IRESEARCH_API sort {
   /// @class sort::prepared
   /// @brief base class for all prepared(compiled) sort entries
   ////////////////////////////////////////////////////////////////////////////////
-  class IRESEARCH_API prepared : public util::attribute_view_provider {
+  class IRESEARCH_API prepared {
    public:
     DECLARE_UNIQUE_PTR(prepared);
 
     prepared() = default;
-    explicit prepared(attribute_view&& attrs) NOEXCEPT;
     virtual ~prepared() = default;
-
-    using util::attribute_view_provider::attributes;
-    virtual attribute_view& attributes() NOEXCEPT override final {
-      return attrs_;
-    }
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief store collected index statistics into 'stats' of the

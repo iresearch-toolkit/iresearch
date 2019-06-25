@@ -254,6 +254,15 @@ struct term_collector final: public irs::sort::term_collector {
   }
 };
 
+FORCE_INLINE float_t tf(float_t freq) NOEXCEPT {
+  static_assert(
+    std::is_same<decltype(std::sqrt(freq)), float_t>::value,
+    "float_t expected"
+  );
+
+  return std::sqrt(freq);
+}
+
 NS_END // LOCAL
 
 NS_ROOT
@@ -278,10 +287,6 @@ NS_BEGIN(bm25)
 
 // empty frequency
 const frequency EMPTY_FREQ;
-
-FORCE_INLINE float_t tf(float_t freq) NOEXCEPT {
-  return float_t(std::sqrt(freq));
-}
 
 struct stats final {
   float_t idf{ 0.f }; // precomputed idf value
@@ -447,8 +452,8 @@ class sort final : public irs::sort::prepared_basic<bm25::score_t, bm25::stats> 
           [](const void* ctx, byte_type* score_buf) NOEXCEPT {
             auto& state = *static_cast<const bm25::norm_score_ctx*>(ctx);
 
-            const float_t freq = tf(state.freq_->value);
-            irs::sort::score_cast<score_t>(score_buf) = state.num_ * freq / (state.norm_const_ + state.norm_length_ * state.norm_.read() + freq);
+            const float_t tf = ::tf(state.freq_->value);
+            irs::sort::score_cast<score_t>(score_buf) = state.num_ * tf / (state.norm_const_ + state.norm_length_ * state.norm_.read() + tf);
           }
         };
       }
@@ -460,8 +465,8 @@ class sort final : public irs::sort::prepared_basic<bm25::score_t, bm25::stats> 
       [](const void* ctx, byte_type* score_buf) NOEXCEPT {
         auto& state = *static_cast<const bm25::score_ctx*>(ctx);
 
-        const float_t freq = tf(state.freq_->value);
-        irs::sort::score_cast<score_t>(score_buf) = state.num_ * freq / (state.norm_const_ + freq);
+        const float_t tf = ::tf(state.freq_->value);
+        irs::sort::score_cast<score_t>(score_buf) = state.num_ * tf / (state.norm_const_ + tf);
       }
     };
   }
