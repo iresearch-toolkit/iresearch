@@ -1053,15 +1053,13 @@ class doc_iterator : public irs::doc_iterator {
       refill();
     }
 
-    begin_ = std::find_if(
-      begin_,  const_cast<const doc_id_t*>(end_),
-      [target](doc_id_t doc) NOEXCEPT {
-        return doc >= target;
-    });
+    while (begin_ < end_ && *begin_ < target) {
+      ++begin_;
+    }
     doc_freq_ = doc_freqs_ + relative_pos();
 
     next();
-    return value();
+    return doc_.value;
   }
 
   virtual doc_id_t value() const override {
@@ -1904,8 +1902,24 @@ class pos_doc_iterator final: public doc_iterator {
 
     seek_to_block(target);
 
-    // FIXME binary search instead of linear
-    while ((doc_.value < target) && next());
+    if (begin_ == end_) {
+      cur_pos_ += relative_pos();
+
+      if (cur_pos_ == term_state_.docs_count) {
+        doc_.value = doc_limits::eof();
+        begin_ = end_ = docs_; // seal the iterator
+        return doc_limits::eof();
+      }
+
+      refill();
+    }
+
+    while (begin_ < end_ && *begin_ < target) {
+      ++begin_;
+      pos_.pend_pos_ += *doc_freq_++;
+    }
+
+    next();
     return doc_.value;
   }
 
