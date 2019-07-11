@@ -594,7 +594,14 @@ index_writer::active_segment_context::active_segment_context(
     flush_ctx_(flush_ctx),
     pending_segment_context_offset_(pending_segment_context_offset),
     segments_active_(&segments_active) {
-  assert(!flush_ctx || flush_ctx->pending_segment_contexts_[pending_segment_context_offset_].segment_ == ctx_); // thread-safe because pending_segment_contexts_ is a deque
+#ifdef IRESEARCH_DEBUG
+  if (flush_ctx) {
+    // ensure there are no active struct update operations (only needed for assert)
+    SCOPED_LOCK_NAMED(flush_ctx->mutex_, lock);
+    // assert that flush_ctx and ctx are compatible
+    assert(flush_ctx->pending_segment_contexts_[pending_segment_context_offset_].segment_ == ctx_);
+  }
+#endif
 
   if (ctx_) {
     ++*segments_active_; // track here since garanteed to have 1 ref per active segment
@@ -1783,7 +1790,6 @@ index_writer::active_segment_context index_writer::get_segment_context(
   ); // only nodes of type 'pending_segment_context' are added to 'pending_segment_contexts_freelist_'
 
   if (freelist_node) {
-    assert(ctx.pending_segment_contexts_[freelist_node->value].segment_ == freelist_node->segment_); // thread-safe because pending_segment_contexts_ is a deque
     assert(freelist_node->segment_.use_count() == 1); // +1 for the reference in 'pending_segment_contexts_'
     assert(!freelist_node->segment_->dirty_);
     return active_segment_context(

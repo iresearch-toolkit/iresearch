@@ -21691,7 +21691,7 @@ INSTANTIATE_TEST_CASE_P(
 
 class index_test_case_11 : public tests::index_test_base { };
 
-TEST_P(index_test_case_11, commit_payload) {
+TEST_P(index_test_case_11, DISABLED_commit_payload) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     &tests::generic_json_field_factory);
