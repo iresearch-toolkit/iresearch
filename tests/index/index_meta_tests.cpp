@@ -91,62 +91,61 @@ TEST(index_meta_tests, memory_directory_read_write_10) {
   EXPECT_EQ(meta_orig, meta_read);
 }
 
-//FIXME uncomment for '1_2'
-//TEST(index_meta_tests, memory_directory_read_write_11) {
-//  auto codec = irs::formats::get("1_1");
-//  ASSERT_NE(nullptr, codec);
-//  irs::memory_directory dir;
-//  auto writer = codec->get_index_meta_writer();
-//
-//  // check that there are no files in a directory
-//  std::vector<std::string> files;
-//  auto list_files = [&files] (std::string& name) {
-//    files.emplace_back(std::move(name));
-//    return true;
-//  };
-//  ASSERT_TRUE(dir.visit(list_files));
-//  ASSERT_TRUE(files.empty());
-//
-//  // create index metadata and write it into the specified directory
-//  irs::index_meta meta_orig;
-//  ASSERT_TRUE(meta_orig.payload().null());
-//
-//  // set payload
-//  const irs::bytes_ref payload = ref_cast<byte_type>(string_ref("payload"));
-//  const_cast<bytes_ref&>(meta_orig.payload()) = payload;
-//
-//  ASSERT_TRUE(writer->prepare(dir, meta_orig));
-//
-//  // we should increase meta generation after we write to directory
-//  EXPECT_EQ(1, meta_orig.generation());
-//
-//  // check that files were successfully
-//  // written to directory
-//  files.clear();
-//  ASSERT_TRUE(dir.visit(list_files));
-//  EXPECT_EQ(1, files.size());
-//  EXPECT_EQ(files[0], irs::string_ref("pending_segments_1"));
-//
-//  writer->commit();
-//
-//  // create index metadata and read it from the specified  directory
-//  irs::index_meta meta_read;
-//  {
-//    std::string segments_file;
-//
-//    auto reader = codec->get_index_meta_reader();
-//    const bool index_exists = reader->last_segments_file(dir, segments_file);
-//
-//    ASSERT_TRUE(index_exists);
-//    reader->read(dir, meta_read, segments_file);
-//  }
-//
-//  EXPECT_EQ(meta_orig.counter(), meta_read.counter());
-//  EXPECT_EQ(meta_orig.generation(), meta_read.generation());
-//  EXPECT_EQ(meta_orig.size(), meta_read.size());
-//  EXPECT_EQ(meta_orig.payload(), meta_read.payload());
-//  EXPECT_EQ(meta_orig, meta_read);
-//}
+TEST(index_meta_tests, memory_directory_read_write_11) {
+  auto codec = irs::formats::get("1_1");
+  ASSERT_NE(nullptr, codec);
+  irs::memory_directory dir;
+  auto writer = codec->get_index_meta_writer();
+
+  // check that there are no files in a directory
+  std::vector<std::string> files;
+  auto list_files = [&files] (std::string& name) {
+    files.emplace_back(std::move(name));
+    return true;
+  };
+  ASSERT_TRUE(dir.visit(list_files));
+  ASSERT_TRUE(files.empty());
+
+  // create index metadata and write it into the specified directory
+  irs::index_meta meta_orig;
+  ASSERT_TRUE(meta_orig.payload().null());
+
+  // set payload
+  const irs::bytes_ref payload = ref_cast<byte_type>(string_ref("payload"));
+  const_cast<bytes_ref&>(meta_orig.payload()) = payload;
+
+  ASSERT_TRUE(writer->prepare(dir, meta_orig));
+
+  // we should increase meta generation after we write to directory
+  EXPECT_EQ(1, meta_orig.generation());
+
+  // check that files were successfully
+  // written to directory
+  files.clear();
+  ASSERT_TRUE(dir.visit(list_files));
+  EXPECT_EQ(1, files.size());
+  EXPECT_EQ(files[0], irs::string_ref("pending_segments_1"));
+
+  writer->commit();
+
+  // create index metadata and read it from the specified  directory
+  irs::index_meta meta_read;
+  {
+    std::string segments_file;
+
+    auto reader = codec->get_index_meta_reader();
+    const bool index_exists = reader->last_segments_file(dir, segments_file);
+
+    ASSERT_TRUE(index_exists);
+    reader->read(dir, meta_read, segments_file);
+  }
+
+  EXPECT_EQ(meta_orig.counter(), meta_read.counter());
+  EXPECT_EQ(meta_orig.generation(), meta_read.generation());
+  EXPECT_EQ(meta_orig.size(), meta_read.size());
+  EXPECT_EQ(meta_orig.payload(), meta_read.payload());
+  EXPECT_EQ(meta_orig, meta_read);
+}
 
 TEST(index_meta_tests, ctor) {
   irs::index_meta meta;

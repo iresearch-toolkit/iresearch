@@ -594,14 +594,7 @@ index_writer::active_segment_context::active_segment_context(
     flush_ctx_(flush_ctx),
     pending_segment_context_offset_(pending_segment_context_offset),
     segments_active_(&segments_active) {
-#ifdef IRESEARCH_DEBUG
-  if (flush_ctx) {
-    // ensure there are no active struct update operations (only needed for assert)
-    SCOPED_LOCK_NAMED(flush_ctx->mutex_, lock);
-    // assert that flush_ctx and ctx are compatible
-    assert(flush_ctx->pending_segment_contexts_[pending_segment_context_offset_].segment_ == ctx_);
-  }
-#endif
+  assert(!flush_ctx || flush_ctx->pending_segment_contexts_[pending_segment_context_offset_].segment_ == ctx_); // thread-safe because pending_segment_contexts_ is a deque
 
   if (ctx_) {
     ++*segments_active_; // track here since garanteed to have 1 ref per active segment
@@ -711,6 +704,14 @@ index_writer::documents_context::document::~document() NOEXCEPT {
 
 index_writer::documents_context::~documents_context() NOEXCEPT {
   assert(segment_.ctx().use_count() == segment_use_count_); // failure may indicate a dangling 'document' instance
+
+  if (segment_.ctx()) {
+    auto& writer = *segment_.ctx()->writer_;
+
+    if (writer.tick() < tick_) {
+      writer.tick(tick_);
+    }
+  }
 
   try {
     // FIXME TODO move emplace into active_segment_context destructor
@@ -1036,11 +1037,11 @@ index_writer::segment_context::segment_context(
   assert(meta_generator_);
 }
 
-void index_writer::segment_context::flush() {
+uint64_t index_writer::segment_context::flush() {
   SCOPED_LOCK(flush_mutex_); // prevent concurrent flush related modifications
 
   if (!writer_ || !writer_->initialized() || !writer_->docs_cached()) {
-    return; // skip flushing an empty writer
+    return 0; // skip flushing an empty writer
   }
 
   auto flushed_docs_count = flushed_update_contexts_.size();
@@ -1071,7 +1072,9 @@ void index_writer::segment_context::flush() {
     throw;
   }
 
+  auto const tick = writer_->tick();
   writer_->reset(); // mark segment as already flushed
+  return tick;
 }
 
 index_writer::segment_context::ptr index_writer::segment_context::make(
@@ -1790,6 +1793,7 @@ index_writer::active_segment_context index_writer::get_segment_context(
   ); // only nodes of type 'pending_segment_context' are added to 'pending_segment_contexts_freelist_'
 
   if (freelist_node) {
+    assert(ctx.pending_segment_contexts_[freelist_node->value].segment_ == freelist_node->segment_); // thread-safe because pending_segment_contexts_ is a deque
     assert(freelist_node->segment_.use_count() == 1); // +1 for the reference in 'pending_segment_contexts_'
     assert(!freelist_node->segment_->dirty_);
     return active_segment_context(
@@ -1817,7 +1821,7 @@ index_writer::active_segment_context index_writer::get_segment_context(
   return active_segment_context(segment_ctx, segments_active_);
 }
 
-index_writer::pending_context_t index_writer::flush_all(const bytes_ref& payload) {
+index_writer::pending_context_t index_writer::flush_all(const before_commit_f& before_commit) {
   REGISTER_TIMER_DETAILED();
   bool modified = !type_limits<type_t::index_gen_t>::valid(meta_.last_gen_);
   sync_context to_sync;
@@ -1836,6 +1840,8 @@ index_writer::pending_context_t index_writer::flush_all(const bytes_ref& payload
   /// wait for any outstanding segments to settle to ensure that any rollbacks
   /// are properly tracked in 'modification_queries_'
   //////////////////////////////////////////////////////////////////////////////
+
+  uint64_t max_tick = 0;
 
   for (auto& entry: ctx->pending_segment_contexts_) {
     // mark the 'segment_context' as dirty so that it will not be reused if this
@@ -1858,7 +1864,7 @@ index_writer::pending_context_t index_writer::flush_all(const bytes_ref& payload
     segment_flush_locks.emplace_back(entry.segment_->flush_mutex_); // prevent concurrent modification of segment_context properties during flush_context::emplace(...)
 
     // force a flush of the underlying segment_writer
-    entry.segment_->flush();
+    max_tick = std::max(entry.segment_->flush(), max_tick);
 
     entry.doc_id_end_ = // may be integer_traits<size_t>::const_max if segment_meta only in this flush_context
       std::min(entry.segment_->uncomitted_doc_id_begin_, entry.doc_id_end_); // update so that can use valid value below
@@ -1866,6 +1872,7 @@ index_writer::pending_context_t index_writer::flush_all(const bytes_ref& payload
       entry.segment_->uncomitted_modification_queries_,
       entry.modification_offset_end_
     ); // update so that can use valid value below
+
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -2246,19 +2253,18 @@ index_writer::pending_context_t index_writer::flush_all(const bytes_ref& payload
 
   pending_meta->update_generation(meta_); // clone index metadata generation
 
-  // new files were added or no payload was supplied and it's different compared to the previous one
-  auto& committed_payload = committed_state_->first->payload();
-
-  modified |= (!to_sync.empty()
-               || (payload.null() && !committed_payload.null())
-               || (!payload.null() && (committed_payload.null() || payload != committed_payload)));
+  modified |= !to_sync.empty();
 
   // only flush a new index version upon a new index or a metadata change
   if (!modified) {
     return pending_context_t();
   }
 
-  pending_meta->payload(payload);
+  pending_meta->payload_buf_.clear();
+  if (before_commit && before_commit(max_tick, pending_meta->payload_buf_)) {
+    pending_meta->payload_ = pending_meta->payload_buf_;
+  }
+
   pending_meta->seg_counter_.store(meta_.counter()); // ensure counter() >= max(seg#)
 
   pending_context_t pending_context;
@@ -2269,7 +2275,7 @@ index_writer::pending_context_t index_writer::flush_all(const bytes_ref& payload
   return pending_context;
 }
 
-bool index_writer::start(const bytes_ref& payload) {
+bool index_writer::start(const before_commit_f& before_commit) {
   assert(!commit_lock_.try_lock()); // already locked
 
   REGISTER_TIMER_DETAILED();
@@ -2280,7 +2286,7 @@ bool index_writer::start(const bytes_ref& payload) {
     return false;
   }
 
-  auto to_commit = flush_all(payload);
+  auto to_commit = flush_all(before_commit);
 
   if (!to_commit) {
     // nothing to commit, no transaction started
