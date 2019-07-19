@@ -722,6 +722,8 @@ index_writer::documents_context::~documents_context() NOEXCEPT {
 }
 
 void index_writer::documents_context::reset() NOEXCEPT {
+  tick_ = 0; // reset tick
+
   auto& ctx = segment_.ctx();
 
   if (!ctx) {
