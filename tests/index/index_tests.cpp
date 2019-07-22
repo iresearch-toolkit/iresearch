@@ -21605,6 +21605,747 @@ INSTANTIATE_TEST_CASE_P(
   tests::to_string
 );
 
+class index_test_case_10 : public tests::index_test_base { };
+
+TEST_P(index_test_case_10, commit_payload) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory);
+
+  auto& directory = dir();
+  auto* doc0 = gen.next();
+
+  auto writer = open_writer();
+
+  ASSERT_TRUE(writer->begin()); // initial commit
+  writer->commit();
+  auto reader = irs::directory_reader::open(directory);
+  ASSERT_TRUE(reader.meta().meta.payload().null());
+
+  ASSERT_FALSE(writer->begin()); // transaction hasn't been started, no changes
+  writer->commit();
+  ASSERT_EQ(reader, reader.reopen());
+
+  // commit with a specified payload
+  {
+    const uint64_t expected_tick = 42;
+
+    // insert document (trx 0)
+    {
+      auto trx = writer->documents();
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(), doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+      ASSERT_EQ(0, trx.tick());
+      trx.tick(expected_tick);
+      ASSERT_EQ(expected_tick, trx.tick());
+    }
+
+    // insert document (trx 1)
+    {
+      auto trx = writer->documents();
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(), doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+      ASSERT_EQ(0, trx.tick());
+      trx.tick(expected_tick-1);
+      ASSERT_EQ(expected_tick-1, trx.tick());
+    }
+
+    uint64_t actual_tick = 0;
+
+    auto payload = irs::ref_cast<irs::byte_type>(irs::string_ref(reader.meta().filename));
+    ASSERT_TRUE(writer->begin([&actual_tick, &payload](uint64_t tick, irs::bstring& out) {
+      actual_tick = tick;
+      out.append(payload.c_str(), payload.size());
+      return true;
+    }));
+    ASSERT_EQ(expected_tick, actual_tick);
+
+    // transaction is already started
+    size_t calls_count = 0;
+    writer->commit([&calls_count](uint64_t tick, irs::bstring& out) {
+      ++calls_count;
+      return true;
+    });
+    ASSERT_EQ(0, calls_count);
+
+    // check written payload
+    {
+      auto new_reader = reader.reopen();
+      ASSERT_NE(reader, new_reader);
+      ASSERT_TRUE(new_reader.meta().meta.payload().null()); // '1_0' doesn't support payload
+      reader = new_reader;
+    }
+  }
+
+  // commit with rollback
+  {
+    const uint64_t expected_tick = 42;
+
+    // insert document (trx 0)
+    {
+      auto trx = writer->documents();
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(), doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+      ASSERT_EQ(0, trx.tick());
+      trx.tick(expected_tick);
+      ASSERT_EQ(expected_tick, trx.tick());
+    }
+
+    // insert document (trx 1)
+    {
+      auto trx = writer->documents();
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(), doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+      ASSERT_EQ(0, trx.tick());
+      trx.tick(expected_tick-1);
+      ASSERT_EQ(expected_tick-1, trx.tick());
+    }
+
+    uint64_t actual_tick = 0;
+
+    auto payload = irs::ref_cast<irs::byte_type>(irs::string_ref(reader.meta().filename));
+    ASSERT_TRUE(writer->begin([&actual_tick, &payload](uint64_t tick, irs::bstring& out) {
+      actual_tick = tick;
+      out.append(payload.c_str(), payload.size());
+      return true;
+    }));
+    ASSERT_EQ(expected_tick, actual_tick);
+
+    writer->rollback();
+
+    // check payload
+    {
+      auto new_reader = reader.reopen();
+      ASSERT_EQ(reader, new_reader);
+    }
+  }
+
+  // commit with a reverted payload
+  {
+    const uint64_t expected_tick = 0;
+
+    // insert document (trx 0)
+    {
+      auto trx = writer->documents();
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(), doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+      ASSERT_EQ(0, trx.tick());
+      trx.tick(expected_tick);
+      ASSERT_EQ(expected_tick, trx.tick());
+    }
+
+    // insert document (trx 1)
+    {
+      auto trx = writer->documents();
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(), doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+      ASSERT_EQ(0, trx.tick());
+      trx.tick(expected_tick);
+      ASSERT_EQ(expected_tick, trx.tick());
+    }
+
+    uint64_t actual_tick = 0;
+
+    auto payload = irs::ref_cast<irs::byte_type>(irs::string_ref(reader.meta().filename));
+    ASSERT_TRUE(writer->begin([&actual_tick, &payload](uint64_t tick, irs::bstring& out) {
+      actual_tick = tick;
+      out.append(payload.c_str(), payload.size());
+      return false; // reset payload to 'bytes_ref::NIL'
+    }));
+    ASSERT_EQ(expected_tick, actual_tick);
+
+    // transaction is already started
+    size_t calls_count = 0;
+    writer->commit([&calls_count](uint64_t tick, irs::bstring& out) {
+      ++calls_count;
+      return true;
+    });
+    ASSERT_EQ(0, calls_count);
+
+    // check written payload
+    {
+      auto new_reader = reader.reopen();
+      ASSERT_NE(reader, new_reader);
+      ASSERT_TRUE(new_reader.meta().meta.payload().null()); // '1_0' doesn't support payload
+      reader = new_reader;
+    }
+  }
+
+  // commit with empty payload
+  {
+    const uint64_t expected_tick = 0;
+
+    // insert document (trx 0)
+    {
+      auto trx = writer->documents();
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(), doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+      ASSERT_EQ(0, trx.tick());
+      trx.tick(expected_tick);
+      ASSERT_EQ(expected_tick, trx.tick());
+    }
+
+    // insert document (trx 1)
+    {
+      auto trx = writer->documents();
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(), doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+      ASSERT_EQ(0, trx.tick());
+      trx.tick(expected_tick);
+      ASSERT_EQ(expected_tick, trx.tick());
+    }
+
+    uint64_t actual_tick = 42;
+
+    ASSERT_TRUE(writer->begin([&actual_tick](uint64_t tick, irs::bstring& out) {
+      actual_tick = tick;
+      out.clear();
+      return true;
+    }));
+    ASSERT_EQ(expected_tick, actual_tick);
+
+    // transaction is already started
+    size_t calls_count = 0;
+    writer->commit([&calls_count](uint64_t tick, irs::bstring& out) {
+      ++calls_count;
+      return true;
+    });
+    ASSERT_EQ(0, calls_count);
+
+    // check written payload
+    {
+      auto new_reader = reader.reopen();
+      ASSERT_NE(reader, new_reader);
+      ASSERT_TRUE(new_reader.meta().meta.payload().null()); // '1_0' doesn't support payload
+      reader = new_reader;
+    }
+  }
+
+  // commit without payload
+  {
+    // insert document (trx 0)
+    {
+      auto trx = writer->documents();
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(), doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+    }
+
+    writer->commit();
+  }
+
+  // check written payload
+  {
+    auto new_reader = reader.reopen();
+    ASSERT_NE(reader, new_reader);
+    ASSERT_TRUE(new_reader.meta().meta.payload().null()); // '1_0' doesn't support payload
+    reader = new_reader;
+  }
+
+  ASSERT_FALSE(writer->begin()); // transaction hasn't been started, no changes
+  writer->commit();
+  ASSERT_EQ(reader, reader.reopen());
+}
+
+INSTANTIATE_TEST_CASE_P(
+  index_test_10,
+  index_test_case_10,
+  ::testing::Combine(
+    ::testing::Values(
+      &tests::memory_directory,
+      &tests::fs_directory,
+      &tests::mmap_directory
+    ),
+    ::testing::Values("1_0")
+  ),
+  tests::to_string
+);
+
+class index_test_case_11 : public tests::index_test_base { };
+
+TEST_P(index_test_case_11, initial_two_phase_commit_no_payload) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory);
+
+  auto& directory = dir();
+
+  auto writer = open_writer();
+
+  ASSERT_TRUE(writer->begin());
+
+  // transaction is already started
+  size_t calls_count = 0;
+  writer->commit([&calls_count](uint64_t /*tick*/, irs::bstring& /*out*/) {
+    ++calls_count;
+    return true;
+  });
+  ASSERT_EQ(0, calls_count);
+
+  auto reader = irs::directory_reader::open(directory);
+  ASSERT_TRUE(reader.meta().meta.payload().null());
+
+  // no changes
+  writer->commit([&calls_count](uint64_t tick, irs::bstring& out) {
+    ++calls_count;
+    return true;
+  });
+  ASSERT_EQ(0, calls_count);
+  ASSERT_EQ(reader, reader.reopen());
+}
+
+TEST_P(index_test_case_11, initial_commit_no_payload) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory);
+
+  auto& directory = dir();
+
+  auto writer = open_writer();
+
+  writer->commit();
+
+  auto reader = irs::directory_reader::open(directory);
+  ASSERT_TRUE(reader.meta().meta.payload().null());
+
+  // no changes
+  size_t calls_count = 0;
+  writer->commit([&calls_count](uint64_t tick, irs::bstring& out) {
+    ++calls_count;
+    return true;
+  });
+  ASSERT_EQ(0, calls_count);
+  ASSERT_EQ(reader, reader.reopen());
+}
+
+TEST_P(index_test_case_11, initial_two_phase_commit_payload_revert) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory);
+
+  auto& directory = dir();
+
+  auto writer = open_writer();
+
+  auto payload = irs::ref_cast<irs::byte_type>(irs::string_ref("init"));
+  uint64_t actual_tick = 42;
+  ASSERT_TRUE(writer->begin([&actual_tick, &payload](uint64_t tick, irs::bstring& out) {
+    actual_tick = tick;
+    out.append(payload.c_str(), payload.size());
+    return false; // revert payload
+  }));
+  ASSERT_EQ(0, actual_tick);
+
+  // transaction is already started
+  size_t calls_count = 0;
+  writer->commit([&calls_count](uint64_t /*tick*/, irs::bstring& /*out*/) {
+    ++calls_count;
+    return true;
+  });
+  ASSERT_EQ(0, calls_count);
+
+  auto reader = irs::directory_reader::open(directory);
+  ASSERT_TRUE(reader.meta().meta.payload().null());
+
+  // no changes
+  writer->commit([&calls_count](uint64_t tick, irs::bstring& out) {
+    ++calls_count;
+    return true;
+  });
+  ASSERT_EQ(0, calls_count);
+  ASSERT_EQ(reader, reader.reopen());
+}
+
+TEST_P(index_test_case_11, initial_commit_payload_revert) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory);
+
+  auto& directory = dir();
+
+  auto writer = open_writer();
+
+  auto payload = irs::ref_cast<irs::byte_type>(irs::string_ref("init"));
+  uint64_t actual_tick = 42;
+  writer->commit([&actual_tick, &payload](uint64_t tick, irs::bstring& out) {
+    actual_tick = tick;
+    out.append(payload.c_str(), payload.size());
+    return false; // revert payload
+  });
+  ASSERT_EQ(0, actual_tick);
+
+  auto reader = irs::directory_reader::open(directory);
+  ASSERT_TRUE(reader.meta().meta.payload().null());
+
+  // no changes
+  size_t calls_count = 0;
+  writer->commit([&calls_count](uint64_t tick, irs::bstring& out) {
+    ++calls_count;
+    return true;
+  });
+  ASSERT_EQ(0, calls_count);
+  ASSERT_EQ(reader, reader.reopen());
+}
+
+TEST_P(index_test_case_11, initial_two_phase_commit_payload) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory);
+
+  auto& directory = dir();
+
+  auto writer = open_writer();
+
+  auto payload = irs::ref_cast<irs::byte_type>(irs::string_ref("init"));
+  uint64_t actual_tick = 42;
+  ASSERT_TRUE(writer->begin([&actual_tick, &payload](uint64_t tick, irs::bstring& out) {
+    actual_tick = tick;
+    out.append(payload.c_str(), payload.size());
+    return true;
+  }));
+  ASSERT_EQ(0, actual_tick);
+
+  // transaction is already started
+  size_t calls_count = 0;
+  writer->commit([&calls_count](uint64_t /*tick*/, irs::bstring& /*out*/) {
+    ++calls_count;
+    return true;
+  });
+  ASSERT_EQ(0, calls_count);
+
+  auto reader = irs::directory_reader::open(directory);
+  ASSERT_EQ(payload, reader.meta().meta.payload());
+
+  // no changes
+  writer->commit([&calls_count](uint64_t tick, irs::bstring& out) {
+    ++calls_count;
+    return true;
+  });
+  ASSERT_EQ(0, calls_count);
+  ASSERT_EQ(reader, reader.reopen());
+}
+
+TEST_P(index_test_case_11, initial_commit_payload) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory);
+
+  auto& directory = dir();
+
+  auto writer = open_writer();
+
+  auto payload = irs::ref_cast<irs::byte_type>(irs::string_ref("init"));
+  uint64_t actual_tick = 42;
+  writer->commit([&actual_tick, &payload](uint64_t tick, irs::bstring& out) {
+    actual_tick = tick;
+    out.append(payload.c_str(), payload.size());
+    return true;
+  });
+  ASSERT_EQ(0, actual_tick);
+
+  auto reader = irs::directory_reader::open(directory);
+  ASSERT_EQ(payload, reader.meta().meta.payload());
+
+  // no changes
+  size_t calls_count = 0;
+  writer->commit([&calls_count](uint64_t tick, irs::bstring& out) {
+    ++calls_count;
+    return true;
+  });
+  ASSERT_EQ(0, calls_count);
+  ASSERT_EQ(reader, reader.reopen());
+}
+
+TEST_P(index_test_case_11, commit_payload) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory);
+
+  auto& directory = dir();
+  auto* doc0 = gen.next();
+
+  auto writer = open_writer();
+
+  ASSERT_TRUE(writer->begin()); // initial commit
+  writer->commit();
+  auto reader = irs::directory_reader::open(directory);
+  ASSERT_TRUE(reader.meta().meta.payload().null());
+
+  ASSERT_FALSE(writer->begin()); // transaction hasn't been started, no changes
+  writer->commit();
+  ASSERT_EQ(reader, reader.reopen());
+
+  // commit with a specified payload
+  {
+    const uint64_t expected_tick = 42;
+
+    // insert document (trx 0)
+    {
+      auto trx = writer->documents();
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(), doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+      ASSERT_EQ(0, trx.tick());
+      trx.tick(expected_tick);
+      ASSERT_EQ(expected_tick, trx.tick());
+    }
+
+    // insert document (trx 1)
+    {
+      auto trx = writer->documents();
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(), doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+      ASSERT_EQ(0, trx.tick());
+      trx.tick(expected_tick-1);
+      ASSERT_EQ(expected_tick-1, trx.tick());
+    }
+
+    uint64_t actual_tick = 0;
+
+    auto payload = irs::ref_cast<irs::byte_type>(irs::string_ref(reader.meta().filename));
+    ASSERT_TRUE(writer->begin([&actual_tick, &payload](uint64_t tick, irs::bstring& out) {
+      actual_tick = tick;
+      out.append(payload.c_str(), payload.size());
+      return true;
+    }));
+    ASSERT_EQ(expected_tick, actual_tick);
+
+    // transaction is already started
+    size_t calls_count = 0;
+    writer->commit([&calls_count](uint64_t tick, irs::bstring& out) {
+      ++calls_count;
+      return true;
+    });
+    ASSERT_EQ(0, calls_count);
+
+    // check written payload
+    {
+      auto new_reader = reader.reopen();
+      ASSERT_NE(reader, new_reader);
+      ASSERT_EQ(payload, new_reader.meta().meta.payload());
+      reader = new_reader;
+    }
+  }
+
+  // commit with rollback
+  {
+    const uint64_t expected_tick = 42;
+
+    // insert document (trx 0)
+    {
+      auto trx = writer->documents();
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(), doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+      ASSERT_EQ(0, trx.tick());
+      trx.tick(expected_tick);
+      ASSERT_EQ(expected_tick, trx.tick());
+    }
+
+    // insert document (trx 1)
+    {
+      auto trx = writer->documents();
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(), doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+      ASSERT_EQ(0, trx.tick());
+      trx.tick(expected_tick-1);
+      ASSERT_EQ(expected_tick-1, trx.tick());
+    }
+
+    uint64_t actual_tick = 0;
+
+    auto payload = irs::ref_cast<irs::byte_type>(irs::string_ref(reader.meta().filename));
+    ASSERT_TRUE(writer->begin([&actual_tick, &payload](uint64_t tick, irs::bstring& out) {
+      actual_tick = tick;
+      out.append(payload.c_str(), payload.size());
+      return true;
+    }));
+    ASSERT_EQ(expected_tick, actual_tick);
+
+    writer->rollback();
+
+    // check payload
+    {
+      auto new_reader = reader.reopen();
+      ASSERT_EQ(reader, new_reader);
+    }
+  }
+
+  // commit with a reverted payload
+  {
+    const uint64_t expected_tick = 0;
+
+    // insert document (trx 0)
+    {
+      auto trx = writer->documents();
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(), doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+      ASSERT_EQ(0, trx.tick());
+      trx.tick(expected_tick);
+      ASSERT_EQ(expected_tick, trx.tick());
+    }
+
+    // insert document (trx 1)
+    {
+      auto trx = writer->documents();
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(), doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+      ASSERT_EQ(0, trx.tick());
+      trx.tick(expected_tick);
+      ASSERT_EQ(expected_tick, trx.tick());
+    }
+
+    uint64_t actual_tick = 0;
+
+    auto payload = irs::ref_cast<irs::byte_type>(irs::string_ref(reader.meta().filename));
+    ASSERT_TRUE(writer->begin([&actual_tick, &payload](uint64_t tick, irs::bstring& out) {
+      actual_tick = tick;
+      out.append(payload.c_str(), payload.size());
+      return false; // reset payload to 'bytes_ref::NIL'
+    }));
+    ASSERT_EQ(expected_tick, actual_tick);
+
+    // transaction is already started
+    size_t calls_count = 0;
+    writer->commit([&calls_count](uint64_t tick, irs::bstring& out) {
+      ++calls_count;
+      return true;
+    });
+    ASSERT_EQ(0, calls_count);
+
+    // check written payload
+    {
+      auto new_reader = reader.reopen();
+      ASSERT_NE(reader, new_reader);
+      ASSERT_TRUE(new_reader.meta().meta.payload().null());
+      reader = new_reader;
+    }
+  }
+
+  // commit with empty payload
+  {
+    const uint64_t expected_tick = 0;
+
+    // insert document (trx 0)
+    {
+      auto trx = writer->documents();
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(), doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+      ASSERT_EQ(0, trx.tick());
+      trx.tick(expected_tick);
+      ASSERT_EQ(expected_tick, trx.tick());
+    }
+
+    // insert document (trx 1)
+    {
+      auto trx = writer->documents();
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(), doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+      ASSERT_EQ(0, trx.tick());
+      trx.tick(expected_tick);
+      ASSERT_EQ(expected_tick, trx.tick());
+    }
+
+    uint64_t actual_tick = 42;
+
+    ASSERT_TRUE(writer->begin([&actual_tick](uint64_t tick, irs::bstring& out) {
+      actual_tick = tick;
+      out.clear();
+      return true;
+    }));
+    ASSERT_EQ(expected_tick, actual_tick);
+
+    // transaction is already started
+    size_t calls_count = 0;
+    writer->commit([&calls_count](uint64_t tick, irs::bstring& out) {
+      ++calls_count;
+      return true;
+    });
+    ASSERT_EQ(0, calls_count);
+
+    // check written payload
+    {
+      auto new_reader = reader.reopen();
+      ASSERT_NE(reader, new_reader);
+      ASSERT_FALSE(new_reader.meta().meta.payload().null());
+      ASSERT_TRUE(new_reader.meta().meta.payload().empty());
+      ASSERT_EQ(irs::bytes_ref::EMPTY, new_reader.meta().meta.payload());
+      reader = new_reader;
+    }
+  }
+
+  // commit without payload
+  {
+    // insert document (trx 0)
+    {
+      auto trx = writer->documents();
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(), doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+    }
+
+    writer->commit();
+  }
+
+  // check written payload
+  {
+    auto new_reader = reader.reopen();
+    ASSERT_NE(reader, new_reader);
+    ASSERT_TRUE(new_reader.meta().meta.payload().null());
+    reader = new_reader;
+  }
+
+  ASSERT_FALSE(writer->begin()); // transaction hasn't been started, no changes
+  writer->commit();
+  ASSERT_EQ(reader, reader.reopen());
+}
+
+INSTANTIATE_TEST_CASE_P(
+  index_test_11,
+  index_test_case_11,
+  ::testing::Combine(
+    ::testing::Values(
+      &tests::memory_directory,
+      &tests::fs_directory,
+      &tests::mmap_directory
+    ),
+    ::testing::Values("1_1")
+  ),
+  tests::to_string
+);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
