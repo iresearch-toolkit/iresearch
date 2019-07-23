@@ -517,6 +517,7 @@ class IRESEARCH_API index_writer:
   ////////////////////////////////////////////////////////////////////////////
   /// @brief Clears the existing index repository by staring an empty index.
   ///        Previously opened readers still remain valid.
+  /// @note call will rollback any opened transaction
   ////////////////////////////////////////////////////////////////////////////
   void clear();
 

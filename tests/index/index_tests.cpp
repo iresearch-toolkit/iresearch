@@ -11014,6 +11014,139 @@ TEST_P(index_test_case, writer_begin_rollback) {
   writer_begin_rollback();
 }
 
+TEST_P(index_test_case, writer_begin_clear_empty_index) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory
+  );
+
+  tests::document const* doc1 = gen.next();
+
+  {
+    auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+
+    ASSERT_TRUE(
+      insert(*writer,
+        doc1->indexed.begin(), doc1->indexed.end(),
+        doc1->stored.begin(), doc1->stored.end()
+      )
+    );
+    ASSERT_EQ(1, writer->buffered_docs());
+    writer->clear(); // rollback started transaction and clear index
+    ASSERT_EQ(0, writer->buffered_docs());
+    ASSERT_FALSE(writer->begin()); // nothing to commit
+
+    // check index, it should be empty
+    {
+      auto reader = irs::directory_reader::open(dir(), codec());
+      ASSERT_EQ(0, reader.live_docs_count());
+      ASSERT_EQ(0, reader.docs_count());
+      ASSERT_EQ(0, reader.size());
+      ASSERT_EQ(reader.begin(), reader.end());
+    }
+  }
+}
+
+TEST_P(index_test_case, writer_begin_clear) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory
+  );
+
+  tests::document const* doc1 = gen.next();
+
+  {
+    auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+
+    ASSERT_TRUE(
+      insert(*writer,
+        doc1->indexed.begin(), doc1->indexed.end(),
+        doc1->stored.begin(), doc1->stored.end()
+      )
+    );
+    ASSERT_EQ(1, writer->buffered_docs());
+    writer->commit();
+    ASSERT_EQ(0, writer->buffered_docs());
+
+    // check index, it should not be empty
+    {
+      auto reader = irs::directory_reader::open(dir(), codec());
+      ASSERT_EQ(1, reader.live_docs_count());
+      ASSERT_EQ(1, reader.docs_count());
+      ASSERT_EQ(1, reader.size());
+      ASSERT_NE(reader.begin(), reader.end());
+    }
+
+    ASSERT_TRUE(
+      insert(*writer,
+        doc1->indexed.begin(), doc1->indexed.end(),
+        doc1->stored.begin(), doc1->stored.end()
+      )
+    );
+    ASSERT_EQ(1, writer->buffered_docs());
+    ASSERT_TRUE(writer->begin()); // start transaction
+    ASSERT_EQ(0, writer->buffered_docs());
+
+    writer->clear(); // rollback and clear index contents
+    ASSERT_EQ(0, writer->buffered_docs());
+    ASSERT_FALSE(writer->begin()); // nothing to commit
+
+    // check index, it should be empty
+    {
+      auto reader = irs::directory_reader::open(dir(), codec());
+      ASSERT_EQ(0, reader.live_docs_count());
+      ASSERT_EQ(0, reader.docs_count());
+      ASSERT_EQ(0, reader.size());
+      ASSERT_EQ(reader.begin(), reader.end());
+    }
+  }
+}
+
+TEST_P(index_test_case, writer_commit_clear) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory
+  );
+
+  tests::document const* doc1 = gen.next();
+
+  {
+    auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+
+    ASSERT_TRUE(
+      insert(*writer,
+        doc1->indexed.begin(), doc1->indexed.end(),
+        doc1->stored.begin(), doc1->stored.end()
+      )
+    );
+    ASSERT_EQ(1, writer->buffered_docs());
+    writer->commit();
+    ASSERT_EQ(0, writer->buffered_docs());
+
+    // check index, it should not be empty
+    {
+      auto reader = irs::directory_reader::open(dir(), codec());
+      ASSERT_EQ(1, reader.live_docs_count());
+      ASSERT_EQ(1, reader.docs_count());
+      ASSERT_EQ(1, reader.size());
+      ASSERT_NE(reader.begin(), reader.end());
+    }
+
+    writer->clear(); // clear index contents
+    ASSERT_EQ(0, writer->buffered_docs());
+    ASSERT_FALSE(writer->begin()); // nothing to commit
+
+    // check index, it should be empty
+    {
+      auto reader = irs::directory_reader::open(dir(), codec());
+      ASSERT_EQ(0, reader.live_docs_count());
+      ASSERT_EQ(0, reader.docs_count());
+      ASSERT_EQ(0, reader.size());
+      ASSERT_EQ(reader.begin(), reader.end());
+    }
+  }
+}
+
 TEST_P(index_test_case, insert_null_empty_term) {
   insert_doc_with_null_empty_term();
 }
@@ -16343,78 +16476,83 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
   tests::document const* doc6 = gen.next();
 
   irs::bytes_ref actual_value;
-  auto all_features = irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() };
+  auto const all_features = irs::flags{
+    irs::document::type(),
+    irs::frequency::type(),
+    irs::position::type(),
+    irs::payload::type(),
+    irs::offset::type()
+  };
 
   size_t count = 0;
 
-// FIXME
-//  // 2-phase: clear + consolidate
-//  {
-//    auto writer = open_writer();
-//    ASSERT_NE(nullptr, writer);
-//
-//    // segment 1
-//    ASSERT_TRUE(insert(*writer,
-//      doc1->indexed.begin(), doc1->indexed.end(),
-//      doc1->stored.begin(), doc1->stored.end()
-//    ));
-//    writer->commit();
-//
-//    // segment 2
-//    ASSERT_TRUE(insert(*writer,
-//      doc2->indexed.begin(), doc2->indexed.end(),
-//      doc2->stored.begin(), doc2->stored.end()
-//    ));
-//    writer->commit();
-//
-//    // segment 3
-//    ASSERT_TRUE(insert(*writer,
-//      doc3->indexed.begin(), doc3->indexed.end(),
-//      doc3->stored.begin(), doc3->stored.end()
-//    ));
-//
-//    writer->begin();
-//    writer->clear();
-//    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
-//    writer->commit(); // commit transaction
-//
-//    auto reader = iresearch::directory_reader::open(dir(), codec());
-//    ASSERT_EQ(0, reader.size());
-//  }
-//
-//  // 2-phase: consolidate + clear
-//  {
-//    auto writer = open_writer();
-//    ASSERT_NE(nullptr, writer);
-//
-//    // segment 1
-//    ASSERT_TRUE(insert(*writer,
-//      doc1->indexed.begin(), doc1->indexed.end(),
-//      doc1->stored.begin(), doc1->stored.end()
-//    ));
-//    writer->commit();
-//
-//    // segment 2
-//    ASSERT_TRUE(insert(*writer,
-//      doc2->indexed.begin(), doc2->indexed.end(),
-//      doc2->stored.begin(), doc2->stored.end()
-//    ));
-//    writer->commit();
-//
-//    // segment 3
-//    ASSERT_TRUE(insert(*writer,
-//      doc3->indexed.begin(), doc3->indexed.end(),
-//      doc3->stored.begin(), doc3->stored.end()
-//    ));
-//
-//    writer->begin();
-//    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
-//    writer->clear();
-//    writer->commit(); // commit transaction
-//
-//    auto reader = iresearch::directory_reader::open(dir(), codec());
-//    ASSERT_EQ(0, reader.size());
-//  }
+  // 2-phase: clear + consolidate
+  {
+    auto writer = open_writer();
+    ASSERT_NE(nullptr, writer);
+
+    // segment 1
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    writer->commit();
+
+    // segment 2
+    ASSERT_TRUE(insert(*writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    writer->commit();
+
+    // segment 3
+    ASSERT_TRUE(insert(*writer,
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
+
+    writer->begin();
+    writer->clear();
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
+    writer->commit(); // commit transaction
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(0, reader.size());
+  }
+
+  // 2-phase: consolidate + clear
+  {
+    auto writer = open_writer();
+    ASSERT_NE(nullptr, writer);
+
+    // segment 1
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    writer->commit();
+
+    // segment 2
+    ASSERT_TRUE(insert(*writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    writer->commit();
+
+    // segment 3
+    ASSERT_TRUE(insert(*writer,
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
+
+    writer->begin();
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
+    writer->clear();
+    writer->commit(); // commit transaction
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(0, reader.size());
+  }
 
   // consolidate + clear
   {

@@ -28,9 +28,6 @@
 
 NS_LOCAL
 
-// FIXME
-// - FIX segment_consolidate_clear_commit
-
 /// @returns percentage of live documents
 inline double_t fill_factor(const irs::segment_meta& segment) NOEXCEPT {
   return double(segment.live_docs_count)/segment.docs_count;

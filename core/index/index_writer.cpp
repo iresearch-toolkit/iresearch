@@ -1264,6 +1264,9 @@ void index_writer::clear() {
   pending_meta.update_generation(meta_); // clone index metadata generation
   pending_meta.seg_counter_.store(meta_.counter()); // ensure counter() >= max(seg#)
 
+  // rollback already opened transaction if any
+  writer_->rollback();
+
   // write 1st phase of index_meta transaction
   if (!writer_->prepare(dir, pending_meta)) {
     throw illegal_state();
