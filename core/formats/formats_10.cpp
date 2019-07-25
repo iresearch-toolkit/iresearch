@@ -5483,6 +5483,8 @@ class format11 final : public format10 {
   virtual segment_meta_writer::ptr get_segment_meta_writer() const override final;
 
   virtual column_meta_writer::ptr get_column_meta_writer() const override final;
+
+  virtual columnstore_writer::ptr get_columnstore_writer() const override final;
 }; // format11
 
 index_meta_writer::ptr format11::get_index_meta_writer() const {
