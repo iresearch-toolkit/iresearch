@@ -35,20 +35,19 @@ void compressor::deleter::operator()(void *p) NOEXCEPT {
   LZ4_freeStream(reinterpret_cast<LZ4_stream_t*>(p));
 }
 
-compressor::compressor(unsigned int chunk_size):
-  dict_size_(0),
-  stream_(LZ4_createStream()) {
-  string_utils::oversize(buf_, LZ4_COMPRESSBOUND(chunk_size));
+compressor::compressor()
+  : dict_size_(0),
+    stream_(LZ4_createStream()) {
 }
 
-void compressor::compress(const char* src, size_t size) {
-  assert(size <= std::numeric_limits<int>::max()); // LZ4 API uses int
+bytes_ref compressor::compress(const char* src, size_t size, bstring& out) {
+  assert(size <= integer_traits<int>::const_max); // LZ4 API uses int
   auto src_size = static_cast<int>(size);
   auto* stream = reinterpret_cast<LZ4_stream_t*>(stream_.get());
 
   // ensure LZ4 dictionary from the previous run is at the start of buf_
   {
-    auto* dict_store = dict_size_ ? &(buf_[0]) : nullptr;
+    auto* dict_store = dict_size_ ? reinterpret_cast<char*>(&out[0]) : nullptr;
 
     // move the LZ4 dictionary from the previous run to the start of buf_
     if (dict_store) {
@@ -56,19 +55,19 @@ void compressor::compress(const char* src, size_t size) {
       assert(dict_size_ >= 0);
     }
 
-    string_utils::oversize(buf_, LZ4_compressBound(src_size) + dict_size_);
+    string_utils::oversize(out, LZ4_compressBound(src_size) + dict_size_);
 
     // reload the LZ4 dictionary if buf_ has changed
-    if (&(buf_[0]) != dict_store) {
-      dict_size_ = LZ4_loadDict(stream, &(buf_[0]), dict_size_);
+    if (reinterpret_cast<char*>(&out[0]) != dict_store) {
+      dict_size_ = LZ4_loadDict(stream, reinterpret_cast<char*>(&out[0]), dict_size_);
       assert(dict_size_ >= 0);
     }
   }
 
-  auto* buf = &(buf_[dict_size_]);
+  auto* buf = reinterpret_cast<char*>(&out[dict_size_]);
   auto buf_size = static_cast<int>(std::min(
-    buf_.size() - dict_size_,
-    static_cast<size_t>(std::numeric_limits<int>::max())) // LZ4 API uses int
+    out.size() - dict_size_,
+    static_cast<size_t>(integer_traits<int>::const_max)) // LZ4 API uses int
   );
 
   #if defined(LZ4_VERSION_NUMBER) && (LZ4_VERSION_NUMBER >= 10700)
@@ -78,13 +77,10 @@ void compressor::compress(const char* src, size_t size) {
   #endif
 
   if (lz4_size < 0) {
-    this->size_ = 0;
-
     throw index_error("while compressing, error: LZ4 returned negative size");
   }
 
-  this->data_ = reinterpret_cast<const byte_type*>(buf);
-  this->size_ = lz4_size;
+  return bytes_ref(reinterpret_cast<const byte_type*>(buf), lz4_size);
 }
 
 void decompressor::deleter::operator()(void *p) NOEXCEPT {

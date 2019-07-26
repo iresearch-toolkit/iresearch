@@ -2861,6 +2861,7 @@ ENABLE_BITMASK_ENUM(ColumnProperty);
 
 ColumnProperty write_compact(
     irs::index_output& out,
+    irs::bstring& encode_buf,
     irs::encryption::stream* cipher,
     irs::compressor& compressor,
     const irs::bytes_ref& data) {
@@ -2870,15 +2871,15 @@ ColumnProperty write_compact(
   }
 
   // compressor can only handle size of int32_t, so can use the negative flag as a compression flag
-  compressor.compress(reinterpret_cast<const char*>(data.c_str()), data.size());
+  auto const compressed = compressor.compress(reinterpret_cast<const char*>(data.c_str()), data.size(), encode_buf);
 
-  if (compressor.size() < data.size()) {
-    assert(compressor.size() <= irs::integer_traits<int32_t>::const_max);
-    irs::write_zvint(out, int32_t(compressor.size())); // compressed size
+  if (compressed.size() < data.size()) {
+    assert(compressed.size() <= irs::integer_traits<int32_t>::const_max);
+    irs::write_zvint(out, int32_t(compressed.size())); // compressed size
     if (cipher) {
-      cipher->encrypt(out.file_pointer(), const_cast<irs::byte_type*>(compressor.c_str()), compressor.size());
+      cipher->encrypt(out.file_pointer(), const_cast<irs::byte_type*>(compressed.c_str()), compressed.size());
     }
-    out.write_bytes(compressor.c_str(), compressor.size());
+    out.write_bytes(compressed.c_str(), compressed.size());
     irs::write_zvlong(out, data.size() - MAX_DATA_BLOCK_SIZE); // original size
   } else {
     assert(data.size() <= irs::integer_traits<int32_t>::const_max);
@@ -3096,7 +3097,13 @@ class writer final : public irs::columnstore_writer {
   static const string_ref FORMAT_EXT;
 
   explicit writer(int32_t version) NOEXCEPT
-    : version_(version) {
+    : buf_(2*MAX_DATA_BLOCK_SIZE, 0),
+      version_(version) {
+    static_assert(
+      2*MAX_DATA_BLOCK_SIZE >= INDEX_BLOCK_SIZE*sizeof(uint64_t),
+      "buffer is not big enough"
+    );
+
     assert(version >= FORMAT_MIN && version <= FORMAT_MAX);
   }
 
@@ -3155,7 +3162,9 @@ class writer final : public irs::columnstore_writer {
       flush_block();
 
       // finish column blocks index
-      column_index_.flush(blocks_index_.stream, ctx_->buf_);
+      assert(ctx_->buf_.size() >= INDEX_BLOCK_SIZE*sizeof(uint64_t));
+      auto* buf = reinterpret_cast<uint64_t*>(&ctx_->buf_[0]);
+      column_index_.flush(blocks_index_.stream, buf);
       blocks_index_.stream.flush();
     }
 
@@ -3199,10 +3208,13 @@ class writer final : public irs::columnstore_writer {
       max_ = block_index_.max_key();
 
       auto& out = *ctx_->data_out_;
-      auto* buf = ctx_->buf_;
+
 
       // write first block key & where block starts
       column_index_.push_back(block_index_.min_key(), out.file_pointer());
+
+      assert(ctx_->buf_.size() >= INDEX_BLOCK_SIZE*sizeof(uint64_t));
+      auto* buf = reinterpret_cast<uint64_t*>(&ctx_->buf_[0]);
 
       if (column_index_.full()) {
         column_index_.flush(blocks_index_.stream, buf);
@@ -3219,7 +3231,7 @@ class writer final : public irs::columnstore_writer {
       //   const auto res = expr0() | expr1();
       // otherwise it would violate format layout
       auto block_props = block_index_.flush(out, buf);
-      block_props |= write_compact(out, ctx_->data_out_cipher_.get(), ctx_->comp_, static_cast<bytes_ref>(block_buf_));
+      block_props |= write_compact(out, ctx_->buf_, ctx_->data_out_cipher_.get(), ctx_->comp_, static_cast<bytes_ref>(block_buf_));
       length_ += block_buf_.size();
 
       // refresh blocks properties
@@ -3248,9 +3260,9 @@ class writer final : public irs::columnstore_writer {
   }; // column
 
   memory_allocator* alloc_{ &memory_allocator::global() };
-  uint64_t buf_[INDEX_BLOCK_SIZE]; // reusable temporary buffer for packing
   std::deque<column> columns_; // pointers remain valid
-  compressor comp_{ 2*MAX_DATA_BLOCK_SIZE };
+  bstring buf_; // reusable temporary buffer for packing
+  compressor comp_;
   index_output::ptr data_out_;
   std::string filename_;
   directory* dir_;

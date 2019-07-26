@@ -31,14 +31,14 @@
 
 NS_ROOT
 
-class IRESEARCH_API compressor: public bytes_ref, private util::noncopyable {
+class IRESEARCH_API compressor : private util::noncopyable {
  public:
-  explicit compressor(unsigned int chunk_size);
+  compressor();
 
-  void compress(const char* src, size_t size);
+  bytes_ref compress(const char* src, size_t size, bstring& out);
 
-  inline void compress(const bytes_ref& src) {
-    compress(ref_cast<char>(src).c_str(), src.size());
+  inline bytes_ref compress(const bytes_ref& src, bstring& out) {
+    return compress(ref_cast<char>(src).c_str(), src.size(), out);
   }
 
  private:
@@ -47,7 +47,6 @@ class IRESEARCH_API compressor: public bytes_ref, private util::noncopyable {
   };
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  std::string buf_;
   int dict_size_; // the size of the LZ4 dictionary from the previous call
   std::unique_ptr<void, deleter> stream_; // hide internal LZ4 implementation
   IRESEARCH_API_PRIVATE_VARIABLES_END
