@@ -3259,7 +3259,7 @@ class writer final : public irs::columnstore_writer {
 
   memory_allocator* alloc_{ &memory_allocator::global() };
   std::deque<column> columns_; // pointers remain valid
-  bstring buf_; // reusable temporary buffer for packing
+  bstring buf_; // reusable temporary buffer for packing/compression
   lz4compressor comp_;
   index_output::ptr data_out_;
   std::string filename_;

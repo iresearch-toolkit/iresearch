@@ -336,6 +336,17 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// likely/unlikely branch indicator
+// macro definitions similar to the ones at
+// https://kernelnewbies.org/FAQ/LikelyUnlikely
+#if defined(__GNUC__) || defined(__GNUG__)
+#define IRS_LIKELY(v) __builtin_expect(!!(v), 1)
+#define IRS_UNLIKELY(v) __builtin_expect(!!(v), 0)
+#else
+#define IRS_LIKELY(v) v
+#define IRS_UNLIKELY(v) v
+#endif
+
 #ifdef IRESEARCH_DEBUG
 #define IRS_ASSERT(CHECK) \
     ( (CHECK) ? void(0) : []{assert(!#CHECK);}() )
