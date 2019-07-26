@@ -28,51 +28,69 @@
 #include "noncopyable.hpp"
 
 #include <memory>
+#include <lz4.h>
 
 NS_ROOT
 
-class IRESEARCH_API compressor : private util::noncopyable {
+class IRESEARCH_API lz4compressor : private util::noncopyable {
  public:
-  compressor();
+#ifdef IRESEARCH_DLL
+  lz4compressor() : stream_(LZ4_createStream()) {
+    if (!stream_) {
+      throw std::bad_alloc();
+    }
+  }
+  ~lz4compressor() { LZ4_freeStream(stream_); }
+#else
+  lz4compressor() { LZ4_resetStream(&stream_); }
+#endif
 
-  bytes_ref compress(const char* src, size_t size, bstring& out);
+  bytes_ref compress(const byte_type* src, size_t size, bstring& out);
 
-  inline bytes_ref compress(const bytes_ref& src, bstring& out) {
-    return compress(ref_cast<char>(src).c_str(), src.size(), out);
+  template<typename Source>
+  bytes_ref compress(const Source& src, bstring& out) {
+    return compress(src.c_str(), src.size(), out);
   }
 
  private:
-  struct IRESEARCH_API deleter {
-    void operator()(void* p) NOEXCEPT;
-  };
-
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  int dict_size_; // the size of the LZ4 dictionary from the previous call
-  std::unique_ptr<void, deleter> stream_; // hide internal LZ4 implementation
-  IRESEARCH_API_PRIVATE_VARIABLES_END
+#ifdef IRESEARCH_DLL
+  LZ4_stream_t* stream() NOEXCEPT { return stream_; }
+  LZ4_stream_t* stream_;
+#else
+  LZ4_stream_t* stream() NOEXCEPT { return &stream_; }
+  LZ4_stream_t stream_;
+#endif
+  int dict_size_{}; // the size of the LZ4 dictionary from the previous call
 }; // compressor
 
-class IRESEARCH_API decompressor {
+class IRESEARCH_API lz4decompressor : private util::noncopyable {
  public:
-  decompressor();
-  decompressor(const decompressor&) = default;
-  decompressor& operator=(const decompressor&) = default;
+#ifdef IRESEARCH_DLL
+  lz4decompressor() : stream_(LZ4_createStreamDecode()) {
+    if (!stream_) {
+      throw std::bad_alloc();
+    }
+  }
+  ~lz4decompressor() { LZ4_freeStreamDecode(stream_); }
+#else
+  lz4decompressor() NOEXCEPT {
+    std::memset(&stream_, 0, sizeof(stream_));
+  }
+#endif
 
   // returns number of decompressed bytes,
   // or integer_traits<size_t>::const_max in case of error
-  size_t deflate(
-    const char* src, size_t src_size, 
-    char* dst, size_t dst_size
-  ) const;
+  size_t decompress(const byte_type* src, size_t src_size,
+                    byte_type* dst, size_t dst_size);
 
  private:
-  struct IRESEARCH_API deleter {
-    void operator()(void* p) NOEXCEPT;
-  };
-
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  std::unique_ptr<void, deleter> stream_; // hide internal LZ4 implementation
-  IRESEARCH_API_PRIVATE_VARIABLES_END
+#ifdef IRESEARCH_DLL
+  LZ4_streamDecode_t* stream() NOEXCEPT { return stream_; }
+  LZ4_streamDecode_t* stream_;
+#else
+  LZ4_streamDecode_t* stream() NOEXCEPT { return &stream_; }
+  LZ4_streamDecode_t stream_;
+#endif
 }; // decompressor
 
 NS_END // NS_ROOT

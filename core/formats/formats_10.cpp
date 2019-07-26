@@ -2863,7 +2863,7 @@ ColumnProperty write_compact(
     irs::index_output& out,
     irs::bstring& encode_buf,
     irs::encryption::stream* cipher,
-    irs::compressor& compressor,
+    irs::lz4compressor& compressor,
     const irs::bytes_ref& data) {
   if (data.empty()) {
     out.write_byte(0); // zig_zag_encode32(0) == 0
@@ -2871,7 +2871,7 @@ ColumnProperty write_compact(
   }
 
   // compressor can only handle size of int32_t, so can use the negative flag as a compression flag
-  auto const compressed = compressor.compress(reinterpret_cast<const char*>(data.c_str()), data.size(), encode_buf);
+  auto const compressed = compressor.compress(data, encode_buf);
 
   if (compressed.size() < data.size()) {
     assert(compressed.size() <= irs::integer_traits<int32_t>::const_max);
@@ -2896,7 +2896,7 @@ ColumnProperty write_compact(
 void read_compact(
     irs::index_input& in,
     irs::encryption::stream* cipher,
-    const irs::decompressor& decompressor,
+    irs::lz4decompressor& decompressor,
     irs::bstring& encode_buf,
     irs::bstring& decode_buf) {
   const auto size = irs::read_zvint(in);
@@ -2943,11 +2943,9 @@ void read_compact(
   // ensure that we have enough space to store decompressed data
   decode_buf.resize(irs::read_zvlong(in) + MAX_DATA_BLOCK_SIZE);
 
-  buf_size = decompressor.deflate(
-    reinterpret_cast<const char*>(encode_buf.c_str()),
-    buf_size,
-    reinterpret_cast<char*>(&decode_buf[0]),
-    decode_buf.size()
+  buf_size = decompressor.decompress(
+    encode_buf.c_str(), buf_size,
+    &decode_buf[0], decode_buf.size()
   );
 
   if (!irs::type_limits<irs::type_t::address_t>::valid(buf_size)) {
@@ -3262,7 +3260,7 @@ class writer final : public irs::columnstore_writer {
   memory_allocator* alloc_{ &memory_allocator::global() };
   std::deque<column> columns_; // pointers remain valid
   bstring buf_; // reusable temporary buffer for packing
-  compressor comp_;
+  lz4compressor comp_;
   index_output::ptr data_out_;
   std::string filename_;
   directory* dir_;
@@ -3498,7 +3496,7 @@ class sparse_block : util::noncopyable {
     const bstring* data_{};
   }; // iterator
 
-  void load(index_input& in, encryption::stream* cipher, decompressor& decomp, bstring& buf) {
+  void load(index_input& in, encryption::stream* cipher, lz4decompressor& decomp, bstring& buf) {
     const uint32_t size = in.read_vint(); // total number of entries in a block
 
     if (!size) {
@@ -3681,7 +3679,7 @@ class dense_block : util::noncopyable {
     doc_id_t base_{};
   }; // iterator
 
-  void load(index_input& in, encryption::stream* cipher, decompressor& decomp, bstring& buf) {
+  void load(index_input& in, encryption::stream* cipher, lz4decompressor& decomp, bstring& buf) {
     const uint32_t size = in.read_vint(); // total number of entries in a block
 
     if (!size) {
@@ -3858,7 +3856,7 @@ class dense_fixed_offset_block : util::noncopyable {
     doc_id_t value_back_{}; // last valid doc id
   }; // iterator
 
-  void load(index_input& in, encryption::stream* cipher, decompressor& decomp, bstring& buf) {
+  void load(index_input& in, encryption::stream* cipher, lz4decompressor& decomp, bstring& buf) {
     size_ = in.read_vint(); // total number of entries in a block
 
     if (!size_) {
@@ -3998,7 +3996,7 @@ class sparse_mask_block : util::noncopyable {
     );
   }
 
-  void load(index_input& in, encryption::stream* /*cipher*/, decompressor& /*decomp*/, bstring& buf) {
+  void load(index_input& in, encryption::stream* /*cipher*/, lz4decompressor& /*decomp*/, bstring& buf) {
     size_ = in.read_vint(); // total number of entries in a block
 
     if (!size_) {
@@ -4115,7 +4113,7 @@ class dense_mask_block {
       max_(doc_limits::invalid()) {
   }
 
-  void load(index_input& in, encryption::stream* /*cipher*/, decompressor& /*decomp*/, bstring& /*buf*/) {
+  void load(index_input& in, encryption::stream* /*cipher*/, lz4decompressor& /*decomp*/, bstring& /*buf*/) {
     const auto size = in.read_vint(); // total number of entries in a block
 
     if (!size) {
@@ -4227,7 +4225,7 @@ class read_context
   }
 
  private:
-  decompressor decomp_; // decompressor
+  lz4decompressor decomp_; // decompressor
   bstring buf_; // temporary buffer for decoding/unpacking
   index_input::ptr stream_;
   encryption::stream* cipher_; // options cipher stream
