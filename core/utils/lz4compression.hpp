@@ -33,16 +33,25 @@ NS_ROOT
 
 class IRESEARCH_API lz4compressor : private util::noncopyable {
  public:
+ // as stated in 'lz4.h', we have to use
+ // LZ4_createStream/LZ4_freeStream in context of a DLL
 #ifdef IRESEARCH_DLL
-  lz4compressor() : stream_(LZ4_createStream()) {
+  explicit lz4compressor(int acceleration = 0)
+    : stream_(LZ4_createStream()),
+      acceleration_(acceleration) {
     if (!stream_) {
       throw std::bad_alloc();
     }
   }
   ~lz4compressor() { LZ4_freeStream(stream_); }
 #else
-  lz4compressor() { LZ4_resetStream(&stream_); }
+  explicit lz4compressor(int acceleration = 0)
+    : acceleration_(acceleration) {
+    LZ4_resetStream(&stream_);
+  }
 #endif
+
+  int acceleration() const NOEXCEPT { return acceleration_; }
 
   bytes_ref compress(const byte_type* src, size_t size, bstring& out);
 
@@ -59,11 +68,14 @@ class IRESEARCH_API lz4compressor : private util::noncopyable {
   LZ4_stream_t* stream() NOEXCEPT { return &stream_; }
   LZ4_stream_t stream_;
 #endif
+  const int acceleration_{0}; // 0 - default acceleration
   int dict_size_{}; // the size of the LZ4 dictionary from the previous call
-}; // compressor
+}; // lz4compressor
 
 class IRESEARCH_API lz4decompressor : private util::noncopyable {
  public:
+ // as stated in 'lz4.h', we have to use
+ // LZ4_createStreamDecode/LZ4_freeStreamDecode in context of a DLL
 #ifdef IRESEARCH_DLL
   lz4decompressor() : stream_(LZ4_createStreamDecode()) {
     if (!stream_) {
@@ -90,7 +102,7 @@ class IRESEARCH_API lz4decompressor : private util::noncopyable {
   LZ4_streamDecode_t* stream() NOEXCEPT { return &stream_; }
   LZ4_streamDecode_t stream_;
 #endif
-}; // decompressor
+}; // lz4decompressor
 
 NS_END // NS_ROOT
 

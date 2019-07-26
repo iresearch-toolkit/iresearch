@@ -64,7 +64,7 @@ bytes_ref lz4compressor::compress(const byte_type* src, size_t size, bstring& ou
   );
 
   #if defined(LZ4_VERSION_NUMBER) && (LZ4_VERSION_NUMBER >= 10700)
-    auto lz4_size = LZ4_compress_fast_continue(stream(), src_data, buf, src_size, buf_size, 0); // 0 == use default acceleration
+    auto lz4_size = LZ4_compress_fast_continue(stream(), src_data, buf, src_size, buf_size, acceleration_);
   #else
     auto lz4_size = LZ4_compress_limitedOutput_continue(stream(), src_data, buf, src_size, buf_size); // use for LZ4 <= v1.6.0
   #endif
