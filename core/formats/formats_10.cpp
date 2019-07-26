@@ -52,7 +52,7 @@
 #include "utils/bit_utils.hpp"
 #include "utils/bitset.hpp"
 #include "utils/encryption.hpp"
-#include "utils/compression.hpp"
+#include "utils/lz4compression.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/memory.hpp"

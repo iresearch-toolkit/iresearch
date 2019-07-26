@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 by EMC Corporation, All Rights Reserved
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,14 +15,13 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is EMC Corporation
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_COMPRESSION_H
-#define IRESEARCH_COMPRESSION_H
+#ifndef IRESEARCH_LZ4COMPRESSION_H
+#define IRESEARCH_LZ4COMPRESSION_H
 
 #include "string.hpp"
 #include "noncopyable.hpp"
