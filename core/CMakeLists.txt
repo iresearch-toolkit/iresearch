@@ -515,7 +515,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
   ${GCOV_LIBRARY}
   ${BFD_STATIC_LIBS}
   ${Lz4_STATIC_LIB}
-  icu-static
+  ${ICU_LIBS}
   ${Unwind_STATIC_LIBS}
   ${DL_LIBRARY}
   ${MSVC_ONLY_LIBRARIES}
@@ -549,7 +549,7 @@ if(MSVC)
     ${GCOV_LIBRARY}
     ${BFD_STATIC_LIBS}
     ${Lz4_STATIC_LIB}
-    icu-static
+    ${ICU_LIBS}
     ${Unwind_STATIC_LIBS}
     ${DL_LIBRARY}
     ${MSVC_ONLY_LIBRARIES}
@@ -561,9 +561,7 @@ unset(IResearch_STATIC_LIBRARIES)
 set(IRESEARCH_STATIC_DEPENDENCIES
   ${BFD_STATIC_LIBS}
   ${Unwind_STATIC_LIBS}
-  "$<TARGET_FILE:icudata-static>" # must expand icu-static into components
-  "$<TARGET_FILE:icui18n-static>" # must expand icu-static into components
-  "$<TARGET_FILE:icuuc-static>"   # must expand icu-static into components
+  ${ICU_LIBS}
   "$<TARGET_FILE:lz4_static>"
   "$<TARGET_FILE:stemmer-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimiter-static>"

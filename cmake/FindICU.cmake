@@ -434,3 +434,9 @@ mark_as_advanced(
   ICU_SHARED_LIBRARY_UC
   ICU_STATIC_LIBRARY_UC
 )
+
+set(ICU_LIBS
+  "$<TARGET_FILE:icudata-static>" # must expand icu-static into components
+  "$<TARGET_FILE:icui18n-static>" # must expand icu-static into components
+  "$<TARGET_FILE:icuuc-static>"   # must expand icu-static into components
+    )
