@@ -126,12 +126,24 @@ IRESEARCH_API compressor::ptr get_compressor(
     const string_ref& name,
     bool load_library = true) NOEXCEPT;
 
+inline compressor::ptr get_compressor(
+    const type_id& type,
+    bool load_library = true) NOEXCEPT {
+  return get_compressor(type.name(), load_library);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a decompressor by name, or nullptr if not found
 ////////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API decompressor::ptr get_decompressor(
     const string_ref& name,
     bool load_library = true) NOEXCEPT;
+
+inline decompressor::ptr get_decompressor(
+    const type_id& type,
+    bool load_library = true) NOEXCEPT {
+  return get_decompressor(type.name(), load_library);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief for static lib reference all known compressions in lib

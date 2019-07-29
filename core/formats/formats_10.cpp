@@ -3272,7 +3272,7 @@ class writer final : public irs::columnstore_writer {
   // helper for deduplication
   struct compressor_wrapper {
     compressor_wrapper(const compression::type_id& compression)
-      : compressor(compression::get_compressor(compression.name())) {
+      : compressor(compression::get_compressor(compression)) {
     }
 
     operator compression::compressor::ptr() const NOEXCEPT { return compressor; }
@@ -3346,7 +3346,7 @@ columnstore_writer::column_t writer::push_column(const compression::type_id& com
                                       std::forward_as_tuple(compression),
                                       std::forward_as_tuple(compression)).first->second;
   } else {
-    compressor = compression::get_compressor(compression.name());
+    compressor = compression::get_compressor(compression);
   }
 
   const auto id = columns_.size();
@@ -4379,7 +4379,7 @@ class column
     if (!avg_block_count_) {
       avg_block_count_ = count_;
     }
-    decomp_ = compression::get_decompressor(compression::lz4::type().name()); // FIXME
+    decomp_ = compression::get_decompressor(compression::lz4::type()); // FIXME
   }
 
   doc_id_t max() const NOEXCEPT { return max_; }
