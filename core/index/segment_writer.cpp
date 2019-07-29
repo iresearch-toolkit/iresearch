@@ -29,6 +29,7 @@
 #include "analysis/token_attributes.hpp"
 #include "utils/index_utils.hpp"
 #include "utils/log.hpp"
+#include "utils/lz4compression.hpp"
 #include "utils/map_utils.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
@@ -45,7 +46,7 @@ segment_writer::stored_column::stored_column(
     bool cache
 ) : name(name.c_str(), name.size()) {
   if (!cache) {
-    std::tie(id, writer) = columnstore.push_column();
+    std::tie(id, writer) = columnstore.push_column(compression::lz4::type());
   } else {
     writer = [this](irs::doc_id_t doc)->columnstore_writer::column_output& {
       this->stream.prepare(doc);

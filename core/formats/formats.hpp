@@ -38,6 +38,10 @@
 
 NS_ROOT
 
+NS_BEGIN(compression)
+class type_id;
+NS_END // compression
+
 struct segment_meta;
 struct field_meta;
 struct column_meta;
@@ -247,7 +251,7 @@ struct IRESEARCH_API columnstore_writer {
   virtual ~columnstore_writer() = default;
 
   virtual void prepare(directory& dir, const segment_meta& meta) = 0;
-  virtual column_t push_column() = 0;
+  virtual column_t push_column(const compression::type_id& compression) = 0;
   virtual void rollback() NOEXCEPT = 0;
   virtual bool commit() = 0; // @return was anything actually flushed
 }; // columnstore_writer

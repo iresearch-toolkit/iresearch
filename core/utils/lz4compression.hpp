@@ -24,14 +24,16 @@
 #define IRESEARCH_LZ4COMPRESSION_H
 
 #include "string.hpp"
+#include "compression.hpp"
 #include "noncopyable.hpp"
 
 #include <memory>
 #include <lz4.h>
 
 NS_ROOT
+NS_BEGIN(compression)
 
-class IRESEARCH_API lz4compressor : private util::noncopyable {
+class IRESEARCH_API lz4compressor : public compressor, private util::noncopyable {
  public:
  // as stated in 'lz4.h', we have to use
  // LZ4_createStream/LZ4_freeStream in context of a DLL
@@ -53,12 +55,9 @@ class IRESEARCH_API lz4compressor : private util::noncopyable {
 
   int acceleration() const NOEXCEPT { return acceleration_; }
 
-  bytes_ref compress(const byte_type* src, size_t size, bstring& out);
+  virtual bytes_ref compress(const byte_type* src, size_t size, bstring& out) final;
 
-  template<typename Source>
-  bytes_ref compress(const Source& src, bstring& out) {
-    return compress(src.c_str(), src.size(), out);
-  }
+  using compressor::compress;
 
  private:
 #ifdef IRESEARCH_DLL
@@ -72,7 +71,7 @@ class IRESEARCH_API lz4compressor : private util::noncopyable {
   int dict_size_{}; // the size of the LZ4 dictionary from the previous call
 }; // lz4compressor
 
-class IRESEARCH_API lz4decompressor : private util::noncopyable {
+class IRESEARCH_API lz4decompressor : public decompressor, private util::noncopyable {
  public:
  // as stated in 'lz4.h', we have to use
  // LZ4_createStreamDecode/LZ4_freeStreamDecode in context of a DLL
@@ -91,8 +90,8 @@ class IRESEARCH_API lz4decompressor : private util::noncopyable {
 
   // returns number of decompressed bytes,
   // or integer_traits<size_t>::const_max in case of error
-  size_t decompress(const byte_type* src, size_t src_size,
-                    byte_type* dst, size_t dst_size);
+  virtual size_t decompress(const byte_type* src, size_t src_size,
+                            byte_type* dst, size_t dst_size) final;
 
  private:
 #ifdef IRESEARCH_DLL
@@ -104,6 +103,15 @@ class IRESEARCH_API lz4decompressor : private util::noncopyable {
 #endif
 }; // lz4decompressor
 
+struct lz4 {
+  DECLARE_COMPRESSION_TYPE();
+
+  static void init();
+  static compression::compressor::ptr compressor();
+  static compression::decompressor::ptr decompressor();
+}; // lz4
+
+NS_END // compression
 NS_END // NS_ROOT
 
 #endif

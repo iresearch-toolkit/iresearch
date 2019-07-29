@@ -33,6 +33,7 @@
 #include "index/comparer.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/log.hpp"
+#include "utils/lz4compression.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/version_utils.hpp"
 #include "store/store_utils.hpp"
@@ -1012,7 +1013,7 @@ class columnstore {
 
   void reset() {
     if (!empty_) {
-      column_ = writer_->push_column();
+      column_ = writer_->push_column(irs::compression::lz4::type());
       empty_ = true;
     }
   }
@@ -1617,7 +1618,7 @@ bool merge_writer::flush_sorted(
   auto writer = segment.meta.codec->get_columnstore_writer();
   writer->prepare(dir, segment.meta);
 
-  auto column = writer->push_column();
+  auto column = writer->push_column(irs::compression::lz4::type());
 
   irs::doc_id_t next_id = irs::doc_limits::min();
   while (columns_it.next()) {

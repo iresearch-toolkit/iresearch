@@ -27,6 +27,7 @@
 #include "utils/type_limits.hpp"
 
 NS_ROOT
+NS_BEGIN(compression)
 
 static_assert(
   sizeof(char) == sizeof(byte_type),
@@ -60,6 +61,7 @@ bytes_ref lz4compressor::compress(const byte_type* src, size_t size, bstring& ou
       }
 
       dict_size_ = dict_size;
+    std::cout << dict_size_ << std::endl;
     }
 
     // reload the LZ4 dictionary if buf has changed
@@ -108,4 +110,18 @@ size_t lz4decompressor::decompress(
   return size_t(lz4_size);
 }
 
+compressor::ptr lz4::compressor() { return std::make_shared<lz4compressor>(); }
+decompressor::ptr lz4::decompressor() { return std::make_shared<lz4decompressor>(); }
+
+void lz4::init() {
+  // match registration below
+  REGISTER_COMPRESSION(lz4, &lz4::compressor, &lz4::decompressor);
+}
+
+DEFINE_COMPRESSION_TYPE(iresearch::compression::lz4,
+                        iresearch::compression::type_id::Scope::GLOBAL);
+
+REGISTER_COMPRESSION(lz4, &lz4::compressor, &lz4::decompressor);
+
+NS_END // compression
 NS_END

@@ -38,6 +38,7 @@
 #include "utils/bit_utils.hpp"
 #include "utils/io_utils.hpp"
 #include "utils/log.hpp"
+#include "utils/lz4compression.hpp"
 #include "utils/map_utils.hpp"
 #include "utils/memory.hpp"
 #include "utils/object_pool.hpp"
@@ -784,7 +785,7 @@ void field_data::reset(doc_id_t doc_id) {
 
 data_output& field_data::norms(columnstore_writer& writer) {
   if (!norms_) {
-    auto handle = writer.push_column();
+    auto handle = writer.push_column(compression::lz4::type());
     norms_ = std::move(handle.second);
     meta_.norm = handle.first;
   }

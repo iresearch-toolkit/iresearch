@@ -26,6 +26,7 @@
 #include "comparer.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/misc.hpp"
+#include "utils/lz4compression.hpp"
 
 NS_ROOT
 
@@ -93,7 +94,7 @@ std::pair<doc_map, field_id> sorted_column::flush(
   }
 
   // flush sorted data
-  auto column = writer.push_column();
+  auto column = writer.push_column(compression::lz4::type());
   auto& column_writer = column.second;
 
   new_doc_id = doc_limits::min();
@@ -194,7 +195,7 @@ field_id sorted_column::flush(
     return field_limits::invalid();
   }
 
-  auto column = writer.push_column();
+  auto column = writer.push_column(compression::lz4::type());
   auto& column_writer = column.second;
 
   // temporarily push sentinel
