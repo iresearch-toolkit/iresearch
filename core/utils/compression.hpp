@@ -32,11 +32,23 @@
 // -----------------------------------------------------------------------------
 
 #define DECLARE_COMPRESSION_TYPE() DECLARE_TYPE_ID(iresearch::compression::type_id)
-#define DEFINE_COMPRESSION_TYPE_NAMED(class_type, class_name, scope) DEFINE_TYPE_ID(class_type, iresearch::compression::type_id) { \
-  static iresearch::compression::type_id type(class_name, scope); \
+#define DEFINE_COMPRESSION_TYPE_NAMED(class_type, class_name, scope) \
+  DEFINE_TYPE_ID(class_type, iresearch::compression::type_id) { \
+    static iresearch::compression::type_id type(class_name, scope); \
   return type; \
 }
 #define DEFINE_COMPRESSION_TYPE(class_type, scope) DEFINE_COMPRESSION_TYPE_NAMED(class_type, #class_type, scope)
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                          compression registration
+// -----------------------------------------------------------------------------
+
+#define REGISTER_COMPRESSION__(compression_name, compressor_factory, decompressor_factory, line, source) \
+  static iresearch::compression::compression_registrar compression_registrar ## _ ## line(compression_name::type(), compressor_factory, decompressor_factory, source)
+#define REGISTER_COMPRESSION_EXPANDER__(compression_name, compressor_factory, decompressor_factory, file, line) \
+  REGISTER_COMPRESSION__(compression_name, compressor_factory, decompressor_factory, line, file ":" TOSTRING(line))
+#define REGISTER_COMPRESSION(compression_name, compressor_factory, decompressor_factory) \
+  REGISTER_COMPRESSION_EXPANDER__(compression_name, compressor_factory, decompressor_factory, __FILE__, __LINE__)
 
 NS_ROOT
 NS_BEGIN(compression)
@@ -110,10 +122,6 @@ class IRESEARCH_API compression_registrar {
   bool registered_;
 };
 
-#define REGISTER_COMPRESSION__(compression_name, compressor_factory, decompressor_factory, line, source) static iresearch::compression::compression_registrar compression_registrar ## _ ## line(compression_name::type(), compressor_factory, decompressor_factory, source)
-#define REGISTER_COMPRESSION_EXPANDER__(compression_name, compressor_factory, decompressor_factory, file, line) REGISTER_COMPRESSION__(compression_name, compressor_factory, decompressor_factory, line, file ":" TOSTRING(line))
-#define REGISTER_COMPRESSION(compression_name, compressor_factory, decompressor_factory) REGISTER_COMPRESSION_EXPANDER__(compression_name, compressor_factory, decompressor_factory, __FILE__, __LINE__)
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether an comopression with the specified name is registered
 ////////////////////////////////////////////////////////////////////////////////
@@ -126,6 +134,9 @@ IRESEARCH_API compressor::ptr get_compressor(
     const string_ref& name,
     bool load_library = true) NOEXCEPT;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a compressor by name, or nullptr if not found
+////////////////////////////////////////////////////////////////////////////////
 inline compressor::ptr get_compressor(
     const type_id& type,
     bool load_library = true) NOEXCEPT {
@@ -139,6 +150,9 @@ IRESEARCH_API decompressor::ptr get_decompressor(
     const string_ref& name,
     bool load_library = true) NOEXCEPT;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a decompressor by name, or nullptr if not found
+////////////////////////////////////////////////////////////////////////////////
 inline decompressor::ptr get_decompressor(
     const type_id& type,
     bool load_library = true) NOEXCEPT {
@@ -164,8 +178,9 @@ IRESEARCH_API bool visit(const std::function<bool(const string_ref&)>& visitor);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class raw
+/// @brief no compression
 ////////////////////////////////////////////////////////////////////////////////
-struct raw {
+struct IRESEARCH_API raw {
   DECLARE_COMPRESSION_TYPE();
 
   static void init();

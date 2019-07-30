@@ -167,6 +167,7 @@ decompressor::ptr get_decompressor(const string_ref& name, bool load_library /*=
 void init() {
 #ifndef IRESEARCH_DLL
   lz4::init();
+  raw::init();
 #endif
 }
 
