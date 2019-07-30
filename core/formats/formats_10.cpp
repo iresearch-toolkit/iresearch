@@ -3118,8 +3118,10 @@ class writer final : public irs::columnstore_writer {
  private:
   class column final : public irs::columnstore_writer::column_output {
    public:
-    explicit column(writer& ctx, const compression::compressor::ptr& compressor)
+    explicit column(writer& ctx, const compression::type_id& type,
+                    const compression::compressor::ptr& compressor)
       : ctx_(&ctx),
+        comp_type_(type),
         comp_(compressor),
         blocks_index_(*ctx.alloc_) {
       assert(comp_);
@@ -3149,6 +3151,9 @@ class writer final : public irs::columnstore_writer {
     void finish() {
       auto& out = *ctx_->data_out_;
       write_enum(out, ColumnProperty(((column_props_ & CP_DENSE) << 3) | blocks_props_)); // column properties
+      if (ctx_->version_ > FORMAT_MIN) {
+        write_string(out, comp_type_->name());
+      }
       out.write_vint(block_index_.total()); // total number of items
       out.write_vint(max_); // max column key
       out.write_vint(avg_block_size_); // avg data block size
@@ -3256,6 +3261,7 @@ class writer final : public irs::columnstore_writer {
     }
 
     writer* ctx_; // writer context
+    const compression::type_id* comp_type_;
     compression::compressor::ptr comp_; // compressor used for column
     uint64_t length_{}; // size of all data blocks in the column
     index_block<INDEX_BLOCK_SIZE> block_index_; // current block index (per document key/offset)
@@ -3350,7 +3356,7 @@ columnstore_writer::column_t writer::push_column(const compression::type_id& com
   }
 
   const auto id = columns_.size();
-  columns_.emplace_back(*this, compressor);
+  columns_.emplace_back(*this, compression, compressor);
   auto& column = columns_.back();
 
   return std::make_pair(id, [&column] (doc_id_t doc) -> column_output& {
@@ -4371,7 +4377,8 @@ class column
 
   virtual ~column() = default;
 
-  virtual void read(data_input& in, uint64_t* /*buf*/) {
+  virtual void read(data_input& in, uint64_t* /*buf*/, compression::decompressor::ptr decomp) {
+    assert(decomp);
     count_ = in.read_vint();
     max_ = in.read_vint();
     avg_block_size_ = in.read_vint();
@@ -4379,7 +4386,7 @@ class column
     if (!avg_block_count_) {
       avg_block_count_ = count_;
     }
-    decomp_ = compression::get_decompressor(compression::lz4::type()); // FIXME
+    decomp_ = decomp;
   }
 
   doc_id_t max() const NOEXCEPT { return max_; }
@@ -4395,6 +4402,8 @@ class column
   uint32_t count() const NOEXCEPT { return count_; }
 
  private:
+  friend class reader;
+
   compression::decompressor::ptr decomp_;
   doc_id_t max_{ doc_limits::eof() };
   uint32_t count_{};
@@ -4536,8 +4545,8 @@ class sparse_column final : public column {
     : column(props), ctxs_(&ctxs) {
   }
 
-  virtual void read(data_input& in, uint64_t* buf) override {
-    column::read(in, buf); // read common header
+  virtual void read(data_input& in, uint64_t* buf, compression::decompressor::ptr decomp) override {
+    column::read(in, buf, decomp); // read common header
 
     uint32_t blocks_count = in.read_vint(); // total number of column index blocks
 
@@ -4728,8 +4737,8 @@ class dense_fixed_offset_column final : public column {
     : column(prop), ctxs_(&ctxs) {
   }
 
-  virtual void read(data_input& in, uint64_t* buf) override {
-    column::read(in, buf); // read common header
+  virtual void read(data_input& in, uint64_t* buf, compression::decompressor::ptr decomp) override {
+    column::read(in, buf, decomp); // read common header
 
     size_t blocks_count = in.read_vint(); // total number of column index blocks
 
@@ -4897,12 +4906,12 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
     : column(prop) {
   }
 
-  virtual void read(data_input& in, uint64_t* buf) override {
+  virtual void read(data_input& in, uint64_t* buf, compression::decompressor::ptr decomp) override {
     // we treat data in blocks as "garbage" which could be
     // potentially removed on merge, so we don't validate
     // column properties using such blocks
 
-    column::read(in, buf); // read common header
+    column::read(in, buf, decomp); // read common header
 
     uint32_t blocks_count = in.read_vint(); // total number of column index blocks
 
@@ -5080,8 +5089,7 @@ class reader final: public columnstore_reader, public context_provider {
   std::vector<column::ptr> columns_;
 }; // reader
 
-bool reader::prepare(const directory& dir,
-                     const segment_meta& meta) {
+bool reader::prepare(const directory& dir, const segment_meta& meta) {
   const auto filename = file_name<columnstore_writer>(meta);
   bool exists;
 
@@ -5173,8 +5181,25 @@ bool reader::prepare(const directory& dir,
       ));
     }
 
+    compression::decompressor::ptr decomp;
+
+    if (version > writer::FORMAT_MIN) {
+      const auto compression_id = read_string<std::string>(*stream);
+      decomp = compression::get_decompressor(compression_id);
+
+      if (!decomp) {
+        throw index_error(string_utils::to_string(
+          "Factory failed to load compression '%s' for column id=" IR_SIZE_T_SPECIFIER,
+          i, compression_id));
+      }
+    } else {
+      decomp = compression::get_decompressor(compression::lz4::type());
+    }
+
+    assert(decomp);
+
     try {
-      column->read(*stream, buf);
+      column->read(*stream, buf, decomp);
     } catch (...) {
       IR_FRMT_ERROR("Failed to load column id=" IR_SIZE_T_SPECIFIER, i);
 
@@ -5528,7 +5553,7 @@ REGISTER_FORMAT(::format10);
 // --SECTION--                                                         format11
 // ----------------------------------------------------------------------------
 
-class format11 final : public format10 {
+class format11 : public format10 {
  public:
   DECLARE_FORMAT_TYPE();
   DECLARE_FACTORY();
@@ -5543,7 +5568,10 @@ class format11 final : public format10 {
 
   virtual column_meta_writer::ptr get_column_meta_writer() const override final;
 
-  virtual columnstore_writer::ptr get_columnstore_writer() const override final;
+ protected:
+  explicit format11(const irs::format::type_id& type) NOEXCEPT
+    : format10(type) {
+  }
 }; // format11
 
 index_meta_writer::ptr format11::get_index_meta_writer() const {
@@ -5573,12 +5601,6 @@ column_meta_writer::ptr format11::get_column_meta_writer() const {
   );
 }
 
-columnstore_writer::ptr format11::get_columnstore_writer() const {
-  return memory::make_unique<columns::writer>(
-    int32_t(columns::writer::FORMAT_MAX)
-  );
-}
-
 /*static*/ irs::format::ptr format11::make() {
   static const ::format11 INSTANCE;
 
@@ -5589,6 +5611,36 @@ columnstore_writer::ptr format11::get_columnstore_writer() const {
 DEFINE_FORMAT_TYPE_NAMED(::format11, "1_1");
 REGISTER_FORMAT(::format11);
 
+// ----------------------------------------------------------------------------
+// --SECTION--                                                         format12
+// ----------------------------------------------------------------------------
+
+class format12 final : public format11 {
+ public:
+  DECLARE_FORMAT_TYPE();
+  DECLARE_FACTORY();
+
+  format12() NOEXCEPT : format11(format12::type()) { }
+
+  virtual columnstore_writer::ptr get_columnstore_writer() const override final;
+}; // format12
+
+columnstore_writer::ptr format12::get_columnstore_writer() const {
+  return memory::make_unique<columns::writer>(
+    int32_t(columns::writer::FORMAT_MAX)
+  );
+}
+
+/*static*/ irs::format::ptr format12::make() {
+  static const ::format12 INSTANCE;
+
+  // aliasing constructor
+  return irs::format::ptr(irs::format::ptr(), &INSTANCE);
+}
+
+DEFINE_FORMAT_TYPE_NAMED(::format12, "1_2");
+REGISTER_FORMAT(::format12);
+
 NS_END
 
 NS_ROOT
@@ -5598,6 +5650,7 @@ void init() {
 #ifndef IRESEARCH_DLL
   REGISTER_FORMAT(::format10);
   REGISTER_FORMAT(::format11);
+  REGISTER_FORMAT(::format12);
 #endif
 }
 
