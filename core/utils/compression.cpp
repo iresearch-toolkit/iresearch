@@ -31,6 +31,9 @@
 
 NS_LOCAL
 
+// placeholder for compression_info
+const irs::compression::compression_info::mapping_t NO_COMPRESSION;
+
 struct value{
   explicit value(
       irs::compression::compressor_factory_f compressor_factory = nullptr,
@@ -198,6 +201,19 @@ DEFINE_COMPRESSION_TYPE(iresearch::compression::raw,
                         iresearch::compression::type_id::Scope::LOCAL);
 
 REGISTER_COMPRESSION(raw, &raw::compressor, &raw::decompressor);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                   compression_info implementation
+// -----------------------------------------------------------------------------
+
+compression_info::compression_info(
+    const compression::type_id* default_compression /*= nullptr*/,
+    const compression::type_id* sorted_column_compression /*= nullptr*/,
+    const mapping_t* mapping /*= nullptr*/) NOEXCEPT
+  : default_(default_compression ? default_compression : compression::raw::type()),
+    sorted_(sorted_column_compression ? sorted_column_compression : default_),
+    mapping_(mapping ? mapping : &NO_COMPRESSION) {
+}
 
 NS_END // compression
 NS_END

@@ -959,8 +959,7 @@ class columnstore {
   bool insert(
       const irs::sub_reader& reader,
       irs::field_id column,
-      const doc_map_f& doc_map
-  ) {
+      const doc_map_f& doc_map) {
     const auto* column_reader = reader.column_reader(column);
 
     if (!column_reader) {
@@ -1011,9 +1010,9 @@ class columnstore {
     return true;
   }
 
-  void reset() {
+  void reset(const irs::compression::type_id& compression) {
     if (!empty_) {
-      column_ = writer_->push_column(irs::compression::lz4::type());
+      column_ = writer_->push_column(compression);
       empty_ = true;
     }
   }
@@ -1129,6 +1128,7 @@ bool write_columns(
     columnstore& cs,
     CompoundIterator& columns,
     irs::directory& dir,
+    const irs::compression::compression_info& compression,
     const irs::segment_meta& meta,
     compound_column_meta_iterator_t& column_meta_itr,
     const irs::merge_writer::flush_progress_t& progress
@@ -1160,7 +1160,8 @@ bool write_columns(
   column_meta_writer->prepare(dir, meta);
 
   while (column_meta_itr.next()) {
-    cs.reset();
+    const auto& column_name = (*column_meta_itr).name;
+    cs.reset(compression.get(column_name));
 
     // visit matched columns from merging segments and
     // write all survived values to the new segment
@@ -1173,7 +1174,7 @@ bool write_columns(
     }
 
     if (!cs.empty()) {
-      column_meta_writer->write((*column_meta_itr).name, cs.id());
+      column_meta_writer->write(column_name, cs.id());
     }
   }
 
@@ -1188,6 +1189,7 @@ bool write_columns(
 bool write_columns(
     columnstore& cs,
     irs::directory& dir,
+    const irs::compression::compression_info& compression,
     const irs::segment_meta& meta,
     compound_column_meta_iterator_t& column_itr,
     const irs::merge_writer::flush_progress_t& progress
@@ -1208,7 +1210,8 @@ bool write_columns(
   cmw->prepare(dir, meta);
 
   while (column_itr.next()) {
-    cs.reset();  
+    const auto& column_name = (*column_itr).name;
+    cs.reset(compression.get(column_name));
 
     // visit matched columns from merging segments and
     // write all survived values to the new segment 
@@ -1217,7 +1220,7 @@ bool write_columns(
     }
 
     if (!cs.empty()) {
-      cmw->write((*column_itr).name, cs.id());
+      cmw->write(column_name, cs.id());
     } 
   }
 
@@ -1263,7 +1266,7 @@ bool write_fields(
   };
 
   while (field_itr.next()) {
-    cs.reset();
+    cs.reset(irs::compression::lz4::type()); // FIXME encoder for norms???
 
     auto& field_meta = field_itr.meta();
     auto& field_features = field_meta.features;
@@ -1340,7 +1343,7 @@ bool write_fields(
   };
 
   while (field_itr.next()) {
-    cs.reset();
+    cs.reset(irs::compression::lz4::type()); // FIXME encoder for norms???
 
     auto& field_meta = field_itr.meta();
     auto& field_features = field_meta.features;
@@ -1430,8 +1433,7 @@ merge_writer::operator bool() const NOEXCEPT {
 bool merge_writer::flush(
     tracking_directory& dir,
     index_meta::index_segment_t& segment,
-    const flush_progress_t& progress
-) {
+    const flush_progress_t& progress) {
   REGISTER_TIMER_DETAILED();
   assert(progress);
   assert(!comparator_);
@@ -1501,7 +1503,7 @@ bool merge_writer::flush(
   }
 
   // write columns
-  if (!write_columns(cs, dir, segment.meta, columns_meta_itr, progress)) {
+  if (!write_columns(cs, dir, compression_, segment.meta, columns_meta_itr, progress)) {
     return false; // flush failure
   }
 
@@ -1526,8 +1528,7 @@ bool merge_writer::flush(
 bool merge_writer::flush_sorted(
     tracking_directory& dir,
     index_meta::index_segment_t& segment,
-    const flush_progress_t& progress
-) {
+    const flush_progress_t& progress) {
   REGISTER_TIMER_DETAILED();
   assert(progress);
   assert(comparator_);
@@ -1618,7 +1619,7 @@ bool merge_writer::flush_sorted(
   auto writer = segment.meta.codec->get_columnstore_writer();
   writer->prepare(dir, segment.meta);
 
-  auto column = writer->push_column(irs::compression::lz4::type());
+  auto column = writer->push_column(compression_.get());
 
   irs::doc_id_t next_id = irs::doc_limits::min();
   while (columns_it.next()) {
@@ -1675,7 +1676,7 @@ bool merge_writer::flush_sorted(
   }
 
   // write columns
-  if (!write_columns(cs, sorting_doc_it, dir, segment.meta, columns_meta_itr, progress)) {
+  if (!write_columns(cs, sorting_doc_it, dir, compression_, segment.meta, columns_meta_itr, progress)) {
     return false; // flush failure
   }
 

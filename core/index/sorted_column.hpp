@@ -39,7 +39,9 @@ class sorted_column final : public irs::columnstore_writer::column_output {
  public:
   typedef std::vector<std::pair<doc_id_t, doc_id_t>> flush_buffer_t;
 
-  sorted_column() = default;
+  explicit sorted_column(const compression::type_id& compression)
+    : compression_(&compression) {
+  }
 
   void prepare(doc_id_t key) {
     assert(index_.empty() || key >= index_.back().first);
@@ -105,6 +107,10 @@ class sorted_column final : public irs::columnstore_writer::column_output {
     return data_buf_.capacity() + index_.capacity()*sizeof(decltype(index_)::value_type);
   }
 
+  const compression::type_id& compression() const NOEXCEPT {
+    return *compression_;
+  }
+
  private:
   void write_value(data_output& out, const size_t idx) {
     assert(idx + 1 < index_.size());
@@ -133,6 +139,7 @@ class sorted_column final : public irs::columnstore_writer::column_output {
 
   bytes_output data_buf_; // FIXME use memory_file or block_pool instead
   std::vector<std::pair<irs::doc_id_t, size_t>> index_; // doc_id + offset in 'data_buf_'
+  const compression::type_id* compression_;
 }; // sorted_column
 
 NS_END // ROOT

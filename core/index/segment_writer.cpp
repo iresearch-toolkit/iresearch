@@ -43,10 +43,12 @@ NS_ROOT
 segment_writer::stored_column::stored_column(
     const string_ref& name, 
     columnstore_writer& columnstore,
-    bool cache
-) : name(name.c_str(), name.size()) {
+    const compression::compression_info& compression,
+    bool cache)
+  : name(name.c_str(), name.size()),
+    stream(compression.get(name)) {
   if (!cache) {
-    std::tie(id, writer) = columnstore.push_column(compression::lz4::type());
+    std::tie(id, writer) = columnstore.push_column(stream.compression());
   } else {
     writer = [this](irs::doc_id_t doc)->columnstore_writer::column_output& {
       this->stream.prepare(doc);
@@ -78,8 +80,11 @@ doc_id_t segment_writer::begin(
   return doc_id_t(docs_cached() + doc_limits::min() - 1); // -1 for 0-based offset
 }
 
-segment_writer::ptr segment_writer::make(directory& dir, const comparer* comparator) {
-  return memory::maker<segment_writer>::make(dir, comparator);
+segment_writer::ptr segment_writer::make(
+    directory& dir,
+    const compression::compression_info& compression,
+    const comparer* comparator) {
+  return memory::maker<segment_writer>::make(dir, compression, comparator);
 }
 
 size_t segment_writer::memory_active() const NOEXCEPT {
@@ -131,9 +136,11 @@ bool segment_writer::remove(doc_id_t doc_id) {
 
 segment_writer::segment_writer(
     directory& dir,
-    const comparer* comparator
-) NOEXCEPT
-  : fields_(comparator),
+    const compression::compression_info& compression,
+    const comparer* comparator) NOEXCEPT
+  : compression_(compression),
+    sort_(compression),
+    fields_(comparator),
     dir_(dir),
     initialized_(false) {
 }
@@ -182,10 +189,10 @@ columnstore_writer::column_output& segment_writer::stream(
   // replace original reference to 'name' provided by the caller
   // with a reference to the cached copy in 'value'
   return map_utils::try_emplace_update_key(
-    columns_,                                           // container
-    generator,                                          // key generator
-    name,                                               // key
-    name, *col_writer_, nullptr != fields_.comparator() // value // FIXME
+    columns_,                                                         // container
+    generator,                                                        // key generator
+    name,                                                             // key
+    name, *col_writer_, compression_, nullptr != fields_.comparator() // value // FIXME
   ).first->second.writer(doc_id);
 }
 
@@ -207,8 +214,7 @@ void segment_writer::flush_column_meta(const segment_meta& meta) {
   struct less_t {
     bool operator()(
         const stored_column* lhs,
-        const stored_column* rhs
-    ) const NOEXCEPT {
+        const stored_column* rhs) const NOEXCEPT {
       return lhs->name < rhs->name;
     }
   };

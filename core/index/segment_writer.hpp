@@ -29,6 +29,7 @@
 #include "analysis/token_stream.hpp"
 #include "formats/formats.hpp"
 #include "utils/bitvector.hpp"
+#include "utils/compression.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/noncopyable.hpp"
 #include "utils/type_limits.hpp"
@@ -164,7 +165,11 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   }; // document
 
   DECLARE_UNIQUE_PTR(segment_writer);
-  DECLARE_FACTORY(directory& dir, const comparer* comparator);
+  DECLARE_FACTORY(
+    directory& dir,
+    const compression::compression_info& compression,
+    const comparer* comparator
+  );
 
   struct update_context {
     size_t generation;
@@ -238,6 +243,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     stored_column(
       const string_ref& name,
       columnstore_writer& columnstore,
+      const compression::compression_info& compression,
       bool cache
     );
 
@@ -248,13 +254,20 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   }; // stored_column
 
   struct sorted_column : util::noncopyable {
-    sorted_column() = default;
+    explicit sorted_column(
+        const compression::compression_info& compression) NOEXCEPT
+      : stream(compression.get()) {  // get compression for sorted column
+    }
 
     irs::sorted_column stream;
     field_id id{ field_limits::invalid() };
   }; // sorted_column
 
-  segment_writer(directory& dir, const comparer* comparator) NOEXCEPT;
+  segment_writer(
+    directory& dir,
+    const compression::compression_info& compression,
+    const comparer* comparator
+  ) NOEXCEPT;
 
   bool index(
     const hashed_string_ref& name,
@@ -391,6 +404,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   void flush_fields(const doc_map& docmap); // flushes indexed fields to directory
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
+  compression::compression_info compression_;
   sorted_column sort_;
   update_contexts docs_context_;
   bitvector docs_mask_; // invalid/removed doc_ids (e.g. partially indexed due to indexing failure)
