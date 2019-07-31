@@ -75,7 +75,7 @@ TEST_F(segment_writer_tests, invalid_actions) {
   stream.reset(true);
   field_t field(stream);
 
-  auto column_info = [](const irs::string_ref&) {
+  irs::column_info_provider_t column_info = [](const irs::string_ref&) {
     return irs::column_info( irs::compression::lz4::type(), true );
   };
 
@@ -131,7 +131,7 @@ TEST_F(segment_writer_tests, memory_sorted_vs_unsorted) {
     }
   } less;
 
-  auto column_info = [](const irs::string_ref&) {
+  irs::column_info_provider_t column_info = [](const irs::string_ref&) {
     return irs::column_info( irs::compression::lz4::type(), true );
   };
 
@@ -190,7 +190,7 @@ TEST_F(segment_writer_tests, insert_sorted_without_comparator) {
     }
   } field;
 
-  auto column_info = [](const irs::string_ref&) {
+  irs::column_info_provider_t column_info = [](const irs::string_ref&) {
     return irs::column_info( irs::compression::lz4::type(), true );
   };
 
@@ -240,7 +240,7 @@ TEST_F(segment_writer_tests, memory_store_sorted_field) {
     }
   } less;
 
-  auto column_info = [](const irs::string_ref&) {
+  irs::column_info_provider_t column_info = [](const irs::string_ref&) {
     return irs::column_info( irs::compression::lz4::type(), true );
   };
 
@@ -290,7 +290,7 @@ TEST_F(segment_writer_tests, memory_store_field_sorted) {
     }
   } less;
 
-  auto column_info = [](const irs::string_ref&) {
+  irs::column_info_provider_t column_info = [](const irs::string_ref&) {
     return irs::column_info( irs::compression::lz4::type(), true );
   };
 
@@ -334,7 +334,7 @@ TEST_F(segment_writer_tests, memory_store_field_unsorted) {
     }
   } field;
 
-  auto column_info = [](const irs::string_ref&) {
+  irs::column_info_provider_t column_info = [](const irs::string_ref&) {
     return irs::column_info( irs::compression::lz4::type(), true );
   };
 
@@ -385,7 +385,7 @@ TEST_F(segment_writer_tests, memory_index_field) {
   stream.reset(true);
   field_t field(stream);
 
-  auto column_info = [](const irs::string_ref&) {
+  irs::column_info_provider_t column_info = [](const irs::string_ref&) {
     return irs::column_info( irs::compression::lz4::type(), true );
   };
 
@@ -428,7 +428,7 @@ TEST_F(segment_writer_tests, index_field) {
 
   // test missing token_stream attributes (increment)
   {
-    auto column_info = [](const irs::string_ref&) {
+    irs::column_info_provider_t column_info = [](const irs::string_ref&) {
       return irs::column_info( irs::compression::lz4::type(), true );
     };
 
@@ -451,7 +451,7 @@ TEST_F(segment_writer_tests, index_field) {
 
   // test missing token_stream attributes (term_attribute)
   {
-    auto column_info = [](const irs::string_ref&) {
+    irs::column_info_provider_t column_info = [](const irs::string_ref&) {
       return irs::column_info( irs::compression::lz4::type(), true );
     };
 

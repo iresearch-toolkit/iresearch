@@ -166,7 +166,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
     writer->commit();
   }
 
-  auto column_info = [](const irs::string_ref&) {
+  irs::column_info_provider_t column_info = [](const irs::string_ref&) {
     return irs::column_info(irs::compression::lz4::type(), true );
   };
 
@@ -571,7 +571,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
     writer->commit();
   }
 
-  auto column_info = [](const irs::string_ref&) {
+  irs::column_info_provider_t column_info = [](const irs::string_ref&) {
     return irs::column_info(irs::compression::lz4::type(), true );
   };
 
@@ -1065,7 +1065,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     return reader ? reader->docs_count() : 0;
   };
 
-  auto column_info = [](const irs::string_ref&) {
+  irs::column_info_provider_t column_info = [](const irs::string_ref&) {
     return irs::column_info(irs::compression::lz4::type(), true );
   };
 
@@ -2220,7 +2220,7 @@ TEST_F(merge_writer_tests, test_merge_writer_add_segments) {
 
   // merge 33 segments to writer (segments > 32 to trigger GCC 8.2.0 optimizer bug)
   {
-    auto column_info = [](const irs::string_ref&) {
+    irs::column_info_provider_t column_info = [](const irs::string_ref&) {
       return irs::column_info(irs::compression::lz4::type(), true );
     };
 
@@ -2280,7 +2280,7 @@ TEST_F(merge_writer_tests, test_merge_writer_flush_progress) {
 
   // test default progress (false)
   {
-    auto column_info = [](const irs::string_ref&) {
+    irs::column_info_provider_t column_info = [](const irs::string_ref&) {
       return irs::column_info(irs::compression::lz4::type(), true );
     };
 
@@ -2306,7 +2306,7 @@ TEST_F(merge_writer_tests, test_merge_writer_flush_progress) {
 
   // test always-false progress
   {
-    auto column_info = [](const irs::string_ref&) {
+    irs::column_info_provider_t column_info = [](const irs::string_ref&) {
       return irs::column_info(irs::compression::lz4::type(), true );
     };
 
@@ -2336,7 +2336,7 @@ TEST_F(merge_writer_tests, test_merge_writer_flush_progress) {
 
   // test always-true progress
   {
-    auto column_info = [](const irs::string_ref&) {
+    irs::column_info_provider_t column_info = [](const irs::string_ref&) {
       return irs::column_info(irs::compression::lz4::type(), true );
     };
 
@@ -2363,7 +2363,7 @@ TEST_F(merge_writer_tests, test_merge_writer_flush_progress) {
 
   ASSERT_TRUE(progress_call_count); // there should have been at least some calls
 
-  auto column_info = [](const irs::string_ref&) {
+  irs::column_info_provider_t column_info = [](const irs::string_ref&) {
     return irs::column_info(irs::compression::lz4::type(), true );
   };
 
@@ -2438,7 +2438,7 @@ TEST_F(merge_writer_tests, test_merge_writer_field_features) {
 
   // test merge existing with feature subset (success)
   {
-    auto column_info = [](const irs::string_ref&) {
+    irs::column_info_provider_t column_info = [](const irs::string_ref&) {
       return irs::column_info(irs::compression::lz4::type(), true );
     };
 
@@ -2454,7 +2454,7 @@ TEST_F(merge_writer_tests, test_merge_writer_field_features) {
 
   // test merge existing with feature superset (fail)
   {
-    auto column_info = [](const irs::string_ref&) {
+    irs::column_info_provider_t column_info = [](const irs::string_ref&) {
       return irs::column_info(irs::compression::lz4::type(), true );
     };
 
