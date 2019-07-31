@@ -2843,13 +2843,14 @@ bool meta_reader::read(column_meta& column) {
 const uint32_t INDEX_BLOCK_SIZE = 1024;
 const size_t MAX_DATA_BLOCK_SIZE = 8192;
 
-// By default we treat columns as a variable length sparse columns
+/// @brief Column flags
+/// @note by default we treat columns as a variable length sparse columns
 enum ColumnProperty : uint32_t {
-  // Column flags
   CP_SPARSE = 0,
   CP_DENSE = 1,         // keys can be presented as an array indices
   CP_FIXED = 1 << 1,    // fixed length colums
   CP_MASK = 1 << 2,     // column contains no data
+  CP_ENCRYPT = 1 << 3   // column contains encrypted data
 }; // ColumnProperty
 
 ENABLE_BITMASK_ENUM(ColumnProperty);
@@ -3111,7 +3112,7 @@ class writer final : public irs::columnstore_writer {
   }
 
   virtual void prepare(directory& dir, const segment_meta& meta) override;
-  virtual column_t push_column(const compression::type_id& compression) override;
+  virtual column_t push_column(const column_info& info) override;
   virtual bool commit() override;
   virtual void rollback() NOEXCEPT override;
 
@@ -3119,10 +3120,12 @@ class writer final : public irs::columnstore_writer {
   class column final : public irs::columnstore_writer::column_output {
    public:
     explicit column(writer& ctx, const compression::type_id& type,
-                    const compression::compressor::ptr& compressor)
+                    const compression::compressor::ptr& compressor,
+                    encryption::stream* cipher)
       : ctx_(&ctx),
         comp_type_(type),
         comp_(compressor),
+        cipher_(cipher),
         blocks_index_(*ctx.alloc_) {
       assert(comp_);
     }
@@ -3150,7 +3153,14 @@ class writer final : public irs::columnstore_writer {
 
     void finish() {
       auto& out = *ctx_->data_out_;
-      write_enum(out, ColumnProperty(((column_props_ & CP_DENSE) << 3) | blocks_props_)); // column properties
+
+       // evaluate overall column properties
+      auto clumn_props = ColumnProperty(((column_props_ & CP_DENSE) << 3) | blocks_props_);
+      if (cipher_) {
+        clumn_props |= CP_ENCRYPT;
+      }
+
+      write_enum(out, clumn_props);
       if (ctx_->version_ > FORMAT_MIN) {
         write_string(out, comp_type_->name());
       }
@@ -3242,7 +3252,7 @@ class writer final : public irs::columnstore_writer {
       auto block_props = block_index_.flush(out, buf);
       block_props |= write_compact(out,
                                    ctx_->buf_,
-                                   ctx_->data_out_cipher_.get(),
+                                   cipher_,
                                    comp_.get(),
                                    static_cast<bytes_ref>(block_buf_));
 
@@ -3263,6 +3273,7 @@ class writer final : public irs::columnstore_writer {
     writer* ctx_; // writer context
     const compression::type_id* comp_type_;
     compression::compressor::ptr comp_; // compressor used for column
+    encryption::stream* cipher_;
     uint64_t length_{}; // size of all data blocks in the column
     index_block<INDEX_BLOCK_SIZE> block_index_; // current block index (per document key/offset)
     index_block<INDEX_BLOCK_SIZE> column_index_; // column block index (per block key/offset)
@@ -3343,9 +3354,10 @@ void writer::prepare(directory& dir, const segment_meta& meta) {
   filename_ = std::move(filename);
 }
 
-columnstore_writer::column_t writer::push_column(const compression::type_id& compression) {
+columnstore_writer::column_t writer::push_column(const column_info& info) {
   compression::compressor::ptr compressor;
 
+  auto& compression = info.compression();
   if (compression::type_id::Scope::GLOBAL == compression.scope()) {
     // deduplicate global compressors
     compressor = compressors_.emplace(std::piecewise_construct,
@@ -3355,8 +3367,10 @@ columnstore_writer::column_t writer::push_column(const compression::type_id& com
     compressor = compression::get_compressor(compression);
   }
 
+  auto* cipher = info.encryption() ? data_out_cipher_.get() : nullptr;
+
   const auto id = columns_.size();
-  columns_.emplace_back(*this, compression, compressor);
+  columns_.emplace_back(*this, compression, compressor, cipher);
   auto& column = columns_.back();
 
   return std::make_pair(id, [&column] (doc_id_t doc) -> column_output& {
@@ -4247,14 +4261,14 @@ class read_context
   }
 
   template<typename Block, typename... Args>
-  Block& emplace_back(uint64_t offset, compression::decompressor* decomp, Args&&... args) {
+  Block& emplace_back(uint64_t offset, compression::decompressor* decomp, bool decrypt, Args&&... args) {
     typename block_cache_traits<Block, Allocator>::cache_t& cache = *this;
 
     // add cache entry
     auto& block = cache.emplace_back(std::forward<Args>(args)...);
 
     try {
-      load(block, decomp, offset);
+      load(block, decomp, decrypt, offset);
     } catch (...) {
       // failed to load block
       pop_back<Block>();
@@ -4266,9 +4280,9 @@ class read_context
   }
 
   template<typename Block>
-  void load(Block& block, compression::decompressor* decomp, uint64_t offset) {
+  void load(Block& block, compression::decompressor* decomp, bool decrypt, uint64_t offset) {
     stream_->seek(offset); // seek to the offset
-    block.load(*stream_, decomp, cipher_, buf_);
+    block.load(*stream_, decomp, decrypt ? cipher_ : nullptr, buf_);
   }
 
   template<typename Block>
@@ -4314,6 +4328,7 @@ template<typename BlockRef>
 const typename BlockRef::block_t& load_block(
     const context_provider& ctxs,
     compression::decompressor* decomp,
+    bool decrypt,
     BlockRef& ref) {
   typedef typename BlockRef::block_t block_t;
 
@@ -4324,7 +4339,7 @@ const typename BlockRef::block_t& load_block(
     assert(ctx);
 
     // load block
-    const auto& block = ctx->template emplace_back<block_t>(ref.offset, decomp);
+    const auto& block = ctx->template emplace_back<block_t>(ref.offset, decomp, decrypt);
 
     // mark block as loaded
     if (ref.pblock.compare_exchange_strong(cached, &block)) {
@@ -4346,6 +4361,7 @@ template<typename BlockRef>
 const typename BlockRef::block_t& load_block(
     const context_provider& ctxs,
     compression::decompressor* decomp,
+    bool decrypt,
     const BlockRef& ref,
     typename BlockRef::block_t& block) {
   const auto* cached = ref.pblock.load();
@@ -4354,7 +4370,7 @@ const typename BlockRef::block_t& load_block(
     auto ctx = ctxs.get_context();
     assert(ctx);
 
-    ctx->load(block, decomp, ref.offset);
+    ctx->load(block, decomp, decrypt, ref.offset);
 
     cached = &block;
   }
@@ -4372,7 +4388,8 @@ class column
   DECLARE_UNIQUE_PTR(column);
 
   explicit column(ColumnProperty props) NOEXCEPT
-    : props_(props) {
+    : props_(props),
+      encrypted_(0 != (props & CP_ENCRYPT)) {
   }
 
   virtual ~column() = default;
@@ -4389,6 +4406,7 @@ class column
     decomp_ = decomp;
   }
 
+  bool encrypted() const NOEXCEPT { return encrypted_; }
   doc_id_t max() const NOEXCEPT { return max_; }
   virtual size_t size() const NOEXCEPT override { return count_; }
   bool empty() const NOEXCEPT { return 0 == size(); }
@@ -4402,14 +4420,13 @@ class column
   uint32_t count() const NOEXCEPT { return count_; }
 
  private:
-  friend class reader;
-
   compression::decompressor::ptr decomp_;
   doc_id_t max_{ doc_limits::eof() };
   uint32_t count_{};
   uint32_t avg_block_size_{};
   uint32_t avg_block_count_{};
   ColumnProperty props_{ CP_SPARSE };
+  bool encrypted_{ false }; // cached encryption mark
 }; // column
 
 template<typename Column>
@@ -4483,7 +4500,7 @@ class column_iterator final: public irs::doc_iterator {
     }
 
     try {
-      const auto& cached = load_block(*column_->ctxs_, column_->decompressor(), *begin_);
+      const auto& cached = load_block(*column_->ctxs_, column_->decompressor(), column_->encrypted(), *begin_);
 
       if (block_ != cached) {
         block_.reset(cached, payload_);
@@ -4616,7 +4633,7 @@ class sparse_column final : public column {
       return false;
     }
 
-    const auto& cached = load_block(*ctxs_, decompressor(), *it);
+    const auto& cached = load_block(*ctxs_, decompressor(), encrypted(), *it);
 
     return cached.value(key, value);
   };
@@ -4626,7 +4643,7 @@ class sparse_column final : public column {
   ) const override {
     block_t block; // don't cache new blocks
     for (auto begin = refs_.begin(), end = refs_.end()-1; begin != end; ++begin) { // -1 for upper bound
-      const auto& cached = load_block(*ctxs_, decompressor(), *begin, block);
+      const auto& cached = load_block(*ctxs_, decompressor(), encrypted(), *begin, block);
 
       if (!cached.visit(visitor)) {
         return false;
@@ -4797,17 +4814,15 @@ class dense_fixed_offset_column final : public column {
 
     auto& ref = const_cast<block_ref&>(refs_[block_idx]);
 
-    const auto& cached = load_block(*ctxs_, decompressor(), ref);
+    const auto& cached = load_block(*ctxs_, decompressor(), encrypted(), ref);
 
     return cached.value(key, value);
   }
 
-  virtual bool visit(
-      const columnstore_reader::values_visitor_f& visitor
-  ) const override {
+  virtual bool visit(const columnstore_reader::values_visitor_f& visitor) const override {
     block_t block; // don't cache new blocks
     for (auto& ref : refs_) {
-      const auto& cached = load_block(*ctxs_, decompressor(), ref, block);
+      const auto& cached = load_block(*ctxs_, decompressor(), encrypted(), ref, block);
 
       if (!cached.visit(visitor)) {
         return false;
@@ -5045,7 +5060,7 @@ typedef std::function<
   column::ptr(const context_provider& ctxs, ColumnProperty prop)
 > column_factory_f;
                                                                //  Column  |          Blocks
-const column_factory_f g_column_factories[] {                  // CP_DENSE | CP_MASK CP_FIXED CP_DENSE
+const column_factory_f COLUMN_FACTORIES[] {                    // CP_DENSE | CP_MASK CP_FIXED CP_DENSE
   &sparse_column<sparse_block>::make,                          //    0     |    0        0        0
   &sparse_column<dense_block>::make,                           //    0     |    0        0        1
   &sparse_column<sparse_block>::make,                          //    0     |    0        1        0
@@ -5150,8 +5165,9 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
   for (size_t i = 0, size = columns.capacity(); i < size; ++i) {
     // read column properties
     const auto props = read_enum<ColumnProperty>(*stream);
+    const auto factory_id = (props & (~CP_ENCRYPT));
 
-    if (props >= IRESEARCH_COUNTOF(g_column_factories)) {
+    if (factory_id >= IRESEARCH_COUNTOF(COLUMN_FACTORIES)) {
       throw index_error(string_utils::to_string(
         "Failed to load column id=" IR_SIZE_T_SPECIFIER ", got invalid properties=%d",
         i, static_cast<uint32_t>(props)
@@ -5159,7 +5175,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
     }
 
     // create column
-    const auto& factory = g_column_factories[props];
+    const auto& factory = COLUMN_FACTORIES[factory_id];
 
     if (!factory) {
       static_assert(

@@ -1010,9 +1010,9 @@ class columnstore {
     return true;
   }
 
-  void reset(const irs::compression::type_id& compression) {
+  void reset(const irs::column_info& info) {
     if (!empty_) {
-      column_ = writer_->push_column(compression);
+      column_ = writer_->push_column(info);
       empty_ = true;
     }
   }
@@ -1128,11 +1128,10 @@ bool write_columns(
     columnstore& cs,
     CompoundIterator& columns,
     irs::directory& dir,
-    const irs::compression::compression_info& compression,
+    const irs::column_info_provider_t& column_info,
     const irs::segment_meta& meta,
     compound_column_meta_iterator_t& column_meta_itr,
-    const irs::merge_writer::flush_progress_t& progress
-) {
+    const irs::merge_writer::flush_progress_t& progress) {
   REGISTER_TIMER_DETAILED();
   assert(cs);
   assert(progress);
@@ -1161,7 +1160,7 @@ bool write_columns(
 
   while (column_meta_itr.next()) {
     const auto& column_name = (*column_meta_itr).name;
-    cs.reset(compression.get(column_name));
+    cs.reset(column_info(column_name));
 
     // visit matched columns from merging segments and
     // write all survived values to the new segment
@@ -1189,11 +1188,10 @@ bool write_columns(
 bool write_columns(
     columnstore& cs,
     irs::directory& dir,
-    const irs::compression::compression_info& compression,
+    const irs::column_info_provider_t& column_info,
     const irs::segment_meta& meta,
     compound_column_meta_iterator_t& column_itr,
-    const irs::merge_writer::flush_progress_t& progress
-) {
+    const irs::merge_writer::flush_progress_t& progress) {
   REGISTER_TIMER_DETAILED();
   assert(cs);
   assert(progress);
@@ -1211,7 +1209,7 @@ bool write_columns(
 
   while (column_itr.next()) {
     const auto& column_name = (*column_itr).name;
-    cs.reset(compression.get(column_name));
+    cs.reset(column_info(column_name));
 
     // visit matched columns from merging segments and
     // write all survived values to the new segment 
@@ -1266,7 +1264,7 @@ bool write_fields(
   };
 
   while (field_itr.next()) {
-    cs.reset(irs::compression::lz4::type()); // FIXME encoder for norms???
+    cs.reset({ irs::compression::lz4::type(), false }); // FIXME encoder for norms???
 
     auto& field_meta = field_itr.meta();
     auto& field_features = field_meta.features;
@@ -1343,7 +1341,7 @@ bool write_fields(
   };
 
   while (field_itr.next()) {
-    cs.reset(irs::compression::lz4::type()); // FIXME encoder for norms???
+    cs.reset({ irs::compression::lz4::type(), false }); // FIXME encoder for norms???
 
     auto& field_meta = field_itr.meta();
     auto& field_features = field_meta.features;
@@ -1423,7 +1421,9 @@ merge_writer::reader_ctx::reader_ctx(irs::sub_reader::ptr reader) NOEXCEPT
 }
 
 merge_writer::merge_writer() NOEXCEPT
-  : dir_(noop_directory::instance()) {
+  : dir_(noop_directory::instance()),
+    column_info_(nullptr),
+    comparator_(nullptr) {
 }
 
 merge_writer::operator bool() const NOEXCEPT {
@@ -1503,7 +1503,7 @@ bool merge_writer::flush(
   }
 
   // write columns
-  if (!write_columns(cs, dir, compression_, segment.meta, columns_meta_itr, progress)) {
+  if (!write_columns(cs, dir, *column_info_, segment.meta, columns_meta_itr, progress)) {
     return false; // flush failure
   }
 
@@ -1532,6 +1532,7 @@ bool merge_writer::flush_sorted(
   REGISTER_TIMER_DETAILED();
   assert(progress);
   assert(comparator_);
+  assert(column_info_ && *column_info_);
 
   field_meta_map_t field_meta_map;
   compound_column_meta_iterator_t columns_meta_itr;
@@ -1619,7 +1620,9 @@ bool merge_writer::flush_sorted(
   auto writer = segment.meta.codec->get_columnstore_writer();
   writer->prepare(dir, segment.meta);
 
-  auto column = writer->push_column(compression_.get());
+  // get column info for sorted column
+  const auto info = (*column_info_)(string_ref::NIL);
+  auto column = writer->push_column(info);
 
   irs::doc_id_t next_id = irs::doc_limits::min();
   while (columns_it.next()) {
@@ -1676,7 +1679,7 @@ bool merge_writer::flush_sorted(
   }
 
   // write columns
-  if (!write_columns(cs, sorting_doc_it, dir, compression_, segment.meta, columns_meta_itr, progress)) {
+  if (!write_columns(cs, sorting_doc_it, dir, *column_info_, segment.meta, columns_meta_itr, progress)) {
     return false; // flush failure
   }
 

@@ -190,47 +190,6 @@ struct IRESEARCH_API raw {
   static compression::decompressor::ptr decompressor() { return nullptr; }
 }; // raw
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class compression_info
-////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API compression_info {
- public:
-  typedef std::map<string_ref, const compression::type_id*> mapping_t;
-
-  explicit compression_info(
-    const compression::type_id* default_compression = nullptr,
-    const compression::type_id* sorted_column_compression = nullptr,
-    const mapping_t* mapping = nullptr) NOEXCEPT;
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @return compression for a specified field
-  ////////////////////////////////////////////////////////////////////////////////
-  const compression::type_id& get(const string_ref& name) const NOEXCEPT {
-    assert(default_ && mapping_);
-    const auto it = mapping_->find(name);
-
-    if (it == mapping_->end()) {
-      return *default_;
-    }
-
-    assert(it->second);
-    return *it->second;
-  }
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @return compression for sorted column
-  ////////////////////////////////////////////////////////////////////////////////
-  const compression::type_id& get() const NOEXCEPT {
-    assert(sorted_);
-    return *sorted_;
-  }
-
- private:
-  const compression::type_id* default_; // default compression
-  const compression::type_id* sorted_; // compression for sorted coolumn
-  const mapping_t* mapping_; // compression for stored columns
-}; // compression_info
-
 NS_END // compression
 NS_END
 

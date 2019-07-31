@@ -47,6 +47,11 @@ typedef range<irs::segment_writer::update_context> update_contexts_ref;
 
 const size_t NON_UPDATE_RECORD = irs::integer_traits<size_t>::const_max; // non-update
 
+const irs::column_info_provider_t DEFAULT_COLUMN_INFO = [](const irs::string_ref&) {
+  // no compression, no encryption
+  return irs::column_info{ irs::compression::raw::type(), false };
+};
+
 struct flush_segment_context {
   const size_t doc_id_begin_; // starting doc_id to consider in 'segment.meta' (inclusive)
   const size_t doc_id_end_; // ending doc_id to consider in 'segment.meta' (exclusive)
@@ -1031,7 +1036,7 @@ void index_writer::flush_context::reset() NOEXCEPT {
 index_writer::segment_context::segment_context(
     directory& dir,
     segment_meta_generator_t&& meta_generator,
-    const compression::compression_info& compression,
+    const column_info_provider_t& column_info,
     const comparer* comparator)
   : active_count_(0),
     buffered_docs_(0),
@@ -1041,7 +1046,7 @@ index_writer::segment_context::segment_context(
     uncomitted_doc_id_begin_(doc_limits::min()),
     uncomitted_generation_offset_(0),
     uncomitted_modification_queries_(0),
-    writer_(segment_writer::make(dir_, compression, comparator)) {
+    writer_(segment_writer::make(dir_, column_info, comparator)) {
   assert(meta_generator_);
 }
 
@@ -1088,9 +1093,9 @@ uint64_t index_writer::segment_context::flush() {
 index_writer::segment_context::ptr index_writer::segment_context::make(
     directory& dir,
     segment_meta_generator_t&& meta_generator,
-    const compression::compression_info& compression,
+    const column_info_provider_t& column_info,
     const comparer* comparator) {
-  return memory::make_shared<segment_context>(dir, std::move(meta_generator), compression, comparator);
+  return memory::make_shared<segment_context>(dir, std::move(meta_generator), column_info, comparator);
 }
 
 segment_writer::update_context index_writer::segment_context::make_update_context() {
@@ -1204,10 +1209,10 @@ index_writer::index_writer(
     size_t segment_pool_size,
     const segment_options& segment_limits,
     const comparer* comparator,
-    const compression::compression_info& compression,
+    const column_info_provider_t& column_info,
     index_meta&& meta,
     committed_state_t&& committed_state)
-  : compression_(compression),
+  : column_info_(column_info),
     comparator_(comparator),
     cached_readers_(dir),
     codec_(codec),
@@ -1221,6 +1226,7 @@ index_writer::index_writer(
     writer_(codec->get_index_meta_writer()),
     write_lock_(std::move(lock)),
     write_lock_file_ref_(std::move(lock_file_ref)) {
+  assert(column_info); // ensured by 'make'
   assert(codec);
   flush_context_.store(&flush_context_pool_[0]);
 
@@ -1348,12 +1354,6 @@ index_writer::ptr index_writer::make(
     std::move(file_refs)
   );
 
-  const compression::compression_info compression(
-    opts.columnstore_default_compression,
-    opts.columnstore_sorted_column_compression,
-    opts.columnstore_compression
-  );
-
   PTR_NAMED(
     index_writer,
     writer,
@@ -1364,7 +1364,7 @@ index_writer::ptr index_writer::make(
     opts.segment_pool_size,
     segment_options(opts),
     opts.comparator,
-    compression,
+    opts.column_info ? opts.column_info : DEFAULT_COLUMN_INFO,
     std::move(meta),
     std::move(comitted_state)
   );
@@ -1503,7 +1503,7 @@ bool index_writer::consolidate(
   consolidation_segment.meta.name = file_name(meta_.increment()); // increment active meta, not fn arg
 
   ref_tracking_directory dir(dir_); // track references for new segment
-  merge_writer merger(dir, compression_, comparator_);
+  merge_writer merger(dir, column_info_, comparator_);
   merger.reserve(candidates.size());
 
   // add consolidated segments to the merge_writer
@@ -1697,7 +1697,7 @@ bool index_writer::import(
   segment.meta.name = file_name(meta_.increment());
   segment.meta.codec = codec;
 
-  merge_writer merger(dir, compression_, comparator_);
+  merge_writer merger(dir, column_info_, comparator_);
   merger.reserve(reader.size());
 
   for (auto& segment : reader) {
@@ -1823,14 +1823,14 @@ index_writer::active_segment_context index_writer::get_segment_context(
   };
   auto segment_ctx = segment_writer_pool_.emplace(
     dir_, std::move(meta_generator),
-    compression_, comparator_
+    column_info_, comparator_
   ).release();
   auto segment_memory_max = segment_limits_.segment_memory_max.load();
 
   // recreate writer if it reserved more memory than allowed by current limits
   if (segment_memory_max &&
       segment_memory_max < segment_ctx->writer_->memory_reserved()) {
-    segment_ctx->writer_ = segment_writer::make(segment_ctx->dir_, compression_, comparator_);
+    segment_ctx->writer_ = segment_writer::make(segment_ctx->dir_, column_info_, comparator_);
   }
 
   return active_segment_context(segment_ctx, segments_active_);

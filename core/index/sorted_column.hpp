@@ -24,6 +24,7 @@
 #ifndef IRESEARCH_SORTED_COLUMN_H
 #define IRESEARCH_SORTED_COLUMN_H
 
+#include "column_info.hpp"
 #include "formats/formats.hpp"
 #include "store/store_utils.hpp"
 
@@ -39,8 +40,8 @@ class sorted_column final : public irs::columnstore_writer::column_output {
  public:
   typedef std::vector<std::pair<doc_id_t, doc_id_t>> flush_buffer_t;
 
-  explicit sorted_column(const compression::type_id& compression)
-    : compression_(&compression) {
+  explicit sorted_column(const column_info& info)
+    : info_(info) {
   }
 
   void prepare(doc_id_t key) {
@@ -107,8 +108,8 @@ class sorted_column final : public irs::columnstore_writer::column_output {
     return data_buf_.capacity() + index_.capacity()*sizeof(decltype(index_)::value_type);
   }
 
-  const compression::type_id& compression() const NOEXCEPT {
-    return *compression_;
+  const column_info& info() const NOEXCEPT {
+    return info_;
   }
 
  private:
@@ -139,7 +140,7 @@ class sorted_column final : public irs::columnstore_writer::column_output {
 
   bytes_output data_buf_; // FIXME use memory_file or block_pool instead
   std::vector<std::pair<irs::doc_id_t, size_t>> index_; // doc_id + offset in 'data_buf_'
-  const compression::type_id* compression_;
+  column_info info_;
 }; // sorted_column
 
 NS_END // ROOT

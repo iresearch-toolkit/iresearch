@@ -21,10 +21,11 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_INDEXWRITER_H
-#define IRESEARCH_INDEXWRITER_H
+#ifndef IRESEARCH_INDEX_WRITER_H
+#define IRESEARCH_INDEX_WRITER_H
 
 #include "field_meta.hpp"
+#include "column_info.hpp"
 #include "index_meta.hpp"
 #include "merge_writer.hpp"
 #include "segment_reader.hpp"
@@ -35,7 +36,6 @@
 
 #include "utils/async_utils.hpp"
 #include "utils/bitvector.hpp"
-#include "utils/compression.hpp"
 #include "utils/thread_utils.hpp"
 #include "utils/object_pool.hpp"
 #include "utils/string.hpp"
@@ -432,25 +432,10 @@ class IRESEARCH_API index_writer
   /// @brief options the the writer should use after creation
   //////////////////////////////////////////////////////////////////////////////
   struct init_options : public segment_options {
-    typedef std::map<string_ref, const compression::type_id*> compression_info_t;
-
     ////////////////////////////////////////////////////////////////////////////
-    /// @brief default compression for all columns in columnstore,
-    ///        nullptr == no compression
+    /// @brief returns column info the writer should use for columnstore
     ////////////////////////////////////////////////////////////////////////////
-    const compression::type_id* columnstore_default_compression{nullptr};
-
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief compression for sorted column in columnstore (if any)
-    ///        nullptr == no compression
-    ////////////////////////////////////////////////////////////////////////////
-    const compression::type_id* columnstore_sorted_column_compression{nullptr};
-
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief per field compression for columnstore,
-    ///        nullptr == no compression
-    ////////////////////////////////////////////////////////////////////////////
-    const compression_info_t* columnstore_compression{nullptr};
+    column_info_provider_t column_info;
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief comparator defines physical order of documents in each segment
@@ -822,8 +807,8 @@ class IRESEARCH_API index_writer
     segment_writer::ptr writer_;
     index_meta::index_segment_t writer_meta_; // the segment_meta this writer was initialized with
 
-    DECLARE_FACTORY(directory& dir, segment_meta_generator_t&& meta_generator, const compression::compression_info& compression, const comparer* comparator);
-    segment_context(directory& dir, segment_meta_generator_t&& meta_generator, const compression::compression_info& compression, const comparer* comparator);
+    DECLARE_FACTORY(directory& dir, segment_meta_generator_t&& meta_generator, const column_info_provider_t& column_info, const comparer* comparator);
+    segment_context(directory& dir, segment_meta_generator_t&& meta_generator, const column_info_provider_t& column_info, const comparer* comparator);
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief flush current writer state into a materialized segment
@@ -1036,7 +1021,7 @@ class IRESEARCH_API index_writer
     size_t segment_pool_size,
     const segment_options& segment_limits,
     const comparer* comparator,
-    const compression::compression_info& compression,
+    const column_info_provider_t& column_info,
     index_meta&& meta,
     committed_state_t&& committed_state
   );
@@ -1051,7 +1036,7 @@ class IRESEARCH_API index_writer
   void abort(); // aborts transaction
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  compression::compression_info compression_;
+  column_info_provider_t column_info_;
   const comparer* comparator_;
   readers_cache cached_readers_; // readers by segment name
   format::ptr codec_;
@@ -1075,4 +1060,4 @@ class IRESEARCH_API index_writer
 
 NS_END
 
-#endif
+#endif // IRESEARCH_INDEX_WRITER_H

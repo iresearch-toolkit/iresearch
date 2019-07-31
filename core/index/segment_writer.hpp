@@ -24,6 +24,7 @@
 #ifndef IRESEARCH_TL_DOC_WRITER_H
 #define IRESEARCH_TL_DOC_WRITER_H
 
+#include "column_info.hpp"
 #include "field_data.hpp"
 #include "sorted_column.hpp"
 #include "analysis/token_stream.hpp"
@@ -167,7 +168,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   DECLARE_UNIQUE_PTR(segment_writer);
   DECLARE_FACTORY(
     directory& dir,
-    const compression::compression_info& compression,
+    const column_info_provider_t& column_info,
     const comparer* comparator
   );
 
@@ -243,7 +244,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     stored_column(
       const string_ref& name,
       columnstore_writer& columnstore,
-      const compression::compression_info& compression,
+      const column_info_provider_t& column_info,
       bool cache
     );
 
@@ -255,8 +256,8 @@ class IRESEARCH_API segment_writer: util::noncopyable {
 
   struct sorted_column : util::noncopyable {
     explicit sorted_column(
-        const compression::compression_info& compression) NOEXCEPT
-      : stream(compression.get()) {  // get compression for sorted column
+        const column_info_provider_t& column_info) NOEXCEPT
+      : stream(column_info(string_ref::NIL)) {  // get compression for sorted column
     }
 
     irs::sorted_column stream;
@@ -265,7 +266,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
 
   segment_writer(
     directory& dir,
-    const compression::compression_info& compression,
+    const column_info_provider_t& column_info,
     const comparer* comparator
   ) NOEXCEPT;
 
@@ -404,7 +405,6 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   void flush_fields(const doc_map& docmap); // flushes indexed fields to directory
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  compression::compression_info compression_;
   sorted_column sort_;
   update_contexts docs_context_;
   bitvector docs_mask_; // invalid/removed doc_ids (e.g. partially indexed due to indexing failure)
@@ -413,6 +413,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   std::unordered_set<field_data*> norm_fields_; // document fields for normalization
   std::string seg_name_;
   field_writer::ptr field_writer_;
+  const column_info_provider_t* column_info_;
   column_meta_writer::ptr col_meta_writer_;
   columnstore_writer::ptr col_writer_;
   tracking_directory dir_;
