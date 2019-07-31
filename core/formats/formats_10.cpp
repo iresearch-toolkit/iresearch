@@ -2847,10 +2847,11 @@ const size_t MAX_DATA_BLOCK_SIZE = 8192;
 /// @note by default we treat columns as a variable length sparse columns
 enum ColumnProperty : uint32_t {
   CP_SPARSE = 0,
-  CP_DENSE = 1,         // keys can be presented as an array indices
-  CP_FIXED = 1 << 1,    // fixed length colums
-  CP_MASK = 1 << 2,     // column contains no data
-  CP_ENCRYPT = 1 << 3   // column contains encrypted data
+  CP_DENSE = 1,                // keys can be presented as an array indices
+  CP_FIXED = 1 << 1,           // fixed length colums
+  CP_MASK = 1 << 2,            // column contains no data
+  CP_COLUMN_DENSE = 1 << 3,    // column index is dense
+  CP_COLUMN_ENCRYPT = 1 << 4   // column contains encrypted data
 }; // ColumnProperty
 
 ENABLE_BITMASK_ENUM(ColumnProperty);
@@ -2867,7 +2868,7 @@ ColumnProperty write_compact(
   }
 
   // compressor can only handle size of int32_t, so can use the negative flag as a compression flag
-  irs::bytes_ref compressed;
+  irs::bytes_ref compressed = data;
   if (compressor) {
     compressed = compressor->compress(data, encode_buf);
   }
@@ -3127,7 +3128,6 @@ class writer final : public irs::columnstore_writer {
         comp_(compressor),
         cipher_(cipher),
         blocks_index_(*ctx.alloc_) {
-      assert(comp_);
     }
 
     void prepare(doc_id_t key) {
@@ -3155,12 +3155,11 @@ class writer final : public irs::columnstore_writer {
       auto& out = *ctx_->data_out_;
 
        // evaluate overall column properties
-      auto clumn_props = ColumnProperty(((column_props_ & CP_DENSE) << 3) | blocks_props_);
-      if (cipher_) {
-        clumn_props |= CP_ENCRYPT;
-      }
+      auto column_props = blocks_props_;
+      if (0 != (column_props_ & CP_DENSE)) { column_props |= CP_COLUMN_DENSE; }
+      if (cipher_) 						   { column_props |= CP_COLUMN_ENCRYPT; }
 
-      write_enum(out, clumn_props);
+      write_enum(out, column_props);
       if (ctx_->version_ > FORMAT_MIN) {
         write_string(out, comp_type_->name());
       }
@@ -4389,13 +4388,12 @@ class column
 
   explicit column(ColumnProperty props) NOEXCEPT
     : props_(props),
-      encrypted_(0 != (props & CP_ENCRYPT)) {
+      encrypted_(0 != (props & CP_COLUMN_ENCRYPT)) {
   }
 
   virtual ~column() = default;
 
   virtual void read(data_input& in, uint64_t* /*buf*/, compression::decompressor::ptr decomp) {
-    assert(decomp);
     count_ = in.read_vint();
     max_ = in.read_vint();
     avg_block_size_ = in.read_vint();
@@ -5059,25 +5057,25 @@ irs::doc_iterator::ptr dense_fixed_offset_column<dense_mask_block>::iterator() c
 typedef std::function<
   column::ptr(const context_provider& ctxs, ColumnProperty prop)
 > column_factory_f;
-                                                               //  Column  |          Blocks
-const column_factory_f COLUMN_FACTORIES[] {                    // CP_DENSE | CP_MASK CP_FIXED CP_DENSE
-  &sparse_column<sparse_block>::make,                          //    0     |    0        0        0
-  &sparse_column<dense_block>::make,                           //    0     |    0        0        1
-  &sparse_column<sparse_block>::make,                          //    0     |    0        1        0
-  &sparse_column<dense_fixed_offset_block>::make,              //    0     |    0        1        1
-  nullptr, /* invalid properties, should never happen */       //    0     |    1        0        0
-  nullptr, /* invalid properties, should never happen */       //    0     |    1        0        1
-  &sparse_column<sparse_mask_block>::make,                     //    0     |    1        1        0
-  &sparse_column<dense_mask_block>::make,                      //    0     |    1        1        1
+                                                               //     Column      |          Blocks
+const column_factory_f COLUMN_FACTORIES[] {                    // CP_COLUMN_DENSE | CP_MASK CP_FIXED CP_DENSE
+  &sparse_column<sparse_block>::make,                          //       0         |    0        0        0
+  &sparse_column<dense_block>::make,                           //       0         |    0        0        1
+  &sparse_column<sparse_block>::make,                          //       0         |    0        1        0
+  &sparse_column<dense_fixed_offset_block>::make,              //       0         |    0        1        1
+  nullptr, /* invalid properties, should never happen */       //       0         |    1        0        0
+  nullptr, /* invalid properties, should never happen */       //       0         |    1        0        1
+  &sparse_column<sparse_mask_block>::make,                     //       0         |    1        1        0
+  &sparse_column<dense_mask_block>::make,                      //       0         |    1        1        1
 
-  &sparse_column<sparse_block>::make,                          //    1     |    0        0        0
-  &sparse_column<dense_block>::make,                           //    1     |    0        0        1
-  &sparse_column<sparse_block>::make,                          //    1     |    0        1        0
-  &dense_fixed_offset_column<dense_fixed_offset_block>::make,  //    1     |    0        1        1
-  nullptr, /* invalid properties, should never happen */       //    1     |    1        0        0
-  nullptr, /* invalid properties, should never happen */       //    1     |    1        0        1
-  &sparse_column<sparse_mask_block>::make,                     //    1     |    1        1        0
-  &dense_fixed_offset_column<dense_mask_block>::make           //    1     |    1        1        1
+  &sparse_column<sparse_block>::make,                          //       1         |    0        0        0
+  &sparse_column<dense_block>::make,                           //       1         |    0        0        1
+  &sparse_column<sparse_block>::make,                          //       1         |    0        1        0
+  &dense_fixed_offset_column<dense_fixed_offset_block>::make,  //       1         |    0        1        1
+  nullptr, /* invalid properties, should never happen */       //       1         |    1        0        0
+  nullptr, /* invalid properties, should never happen */       //       1         |    1        0        1
+  &sparse_column<sparse_mask_block>::make,                     //       1         |    1        1        0
+  &dense_fixed_offset_column<dense_mask_block>::make           //       1         |    1        1        1
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -5165,7 +5163,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
   for (size_t i = 0, size = columns.capacity(); i < size; ++i) {
     // read column properties
     const auto props = read_enum<ColumnProperty>(*stream);
-    const auto factory_id = (props & (~CP_ENCRYPT));
+    const auto factory_id = (props & (~CP_COLUMN_ENCRYPT));
 
     if (factory_id >= IRESEARCH_COUNTOF(COLUMN_FACTORIES)) {
       throw index_error(string_utils::to_string(
@@ -5203,7 +5201,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
       const auto compression_id = read_string<std::string>(*stream);
       decomp = compression::get_decompressor(compression_id);
 
-      if (!decomp) {
+      if (!decomp && !compression::exists(compression_id)) {
         throw index_error(string_utils::to_string(
           "Factory failed to load compression '%s' for column id=" IR_SIZE_T_SPECIFIER,
           i, compression_id));

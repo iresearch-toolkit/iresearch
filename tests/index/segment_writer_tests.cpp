@@ -75,8 +75,12 @@ TEST_F(segment_writer_tests, invalid_actions) {
   stream.reset(true);
   field_t field(stream);
 
+  auto column_info = [](const irs::string_ref&) {
+    return irs::column_info( irs::compression::lz4::type(), true );
+  };
+
   irs::memory_directory dir;
-  auto writer = irs::segment_writer::make(dir, nullptr);
+  auto writer = irs::segment_writer::make(dir, column_info, nullptr);
   ASSERT_EQ(0, writer->memory_active());
 
   // store + store sorted
