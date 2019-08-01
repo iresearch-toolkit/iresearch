@@ -86,12 +86,10 @@ TEST_P(format_12_test_case, write_zero_block_encryption) {
   auto writer = irs::index_writer::make(dir(), codec, irs::OM_CREATE);
   ASSERT_NE(nullptr, writer);
 
-  ASSERT_TRUE(insert(*writer,
+  ASSERT_THROW(insert(*writer,
     doc1->indexed.begin(), doc1->indexed.end(),
     doc1->stored.begin(), doc1->stored.end()
-  ));
-
-  ASSERT_THROW(writer->commit(), irs::index_error);
+  ), irs::index_error);
 }
 
 TEST_P(format_12_test_case, fields_read_write_wrong_encryption) {
