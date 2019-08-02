@@ -55,9 +55,7 @@ class IRESEARCH_API lz4compressor : public compressor, private util::noncopyable
 
   int acceleration() const NOEXCEPT { return acceleration_; }
 
-  virtual bytes_ref compress(const byte_type* src, size_t size, bstring& out) final;
-
-  using compressor::compress;
+  virtual bytes_ref compress(byte_type* src, size_t size, bstring& out) override final;
 
  private:
 #ifdef IRESEARCH_DLL
@@ -88,10 +86,9 @@ class IRESEARCH_API lz4decompressor : public decompressor, private util::noncopy
   }
 #endif
 
-  // returns number of decompressed bytes,
-  // or integer_traits<size_t>::const_max in case of error
-  virtual size_t decompress(const byte_type* src, size_t src_size,
-                            byte_type* dst, size_t dst_size) final;
+  /// @returns bytes_ref::NIL in case of error
+  virtual bytes_ref decompress(byte_type* src, size_t src_size,
+                               byte_type* dst, size_t dst_size) override final;
 
  private:
 #ifdef IRESEARCH_DLL

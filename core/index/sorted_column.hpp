@@ -57,11 +57,11 @@ class sorted_column final : public irs::columnstore_writer::column_output {
   }
 
   virtual void write_byte(byte_type b) override {
-    data_buf_.write_byte(b);
+    data_buf_ += b;
   }
 
   virtual void write_bytes(const byte_type* b, size_t size) override {
-    data_buf_.write_bytes(b, size);
+    data_buf_.append(b, size);
   }
 
   virtual void reset() override {
@@ -69,7 +69,7 @@ class sorted_column final : public irs::columnstore_writer::column_output {
       return;
     }
 
-    data_buf_.reset(index_.back().second);
+    data_buf_.resize(index_.back().second);
     index_.pop_back();
   }
 
@@ -82,7 +82,7 @@ class sorted_column final : public irs::columnstore_writer::column_output {
   }
 
   void clear() NOEXCEPT {
-    data_buf_.reset();
+    data_buf_.clear();
     index_.clear();
   }
 
@@ -138,7 +138,7 @@ class sorted_column final : public irs::columnstore_writer::column_output {
     flush_buffer_t& buffer
   );
 
-  bytes_output data_buf_; // FIXME use memory_file or block_pool instead
+  bstring data_buf_; // FIXME use memory_file or block_pool instead
   std::vector<std::pair<irs::doc_id_t, size_t>> index_; // doc_id + offset in 'data_buf_'
   column_info info_;
 }; // sorted_column

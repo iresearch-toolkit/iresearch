@@ -2857,21 +2857,20 @@ enum ColumnProperty : uint32_t {
 ENABLE_BITMASK_ENUM(ColumnProperty);
 
 ColumnProperty write_compact(
-    irs::index_output& out,
-    irs::bstring& encode_buf,
-    irs::encryption::stream* cipher,
-    irs::compression::compressor* compressor,
-    const irs::bytes_ref& data) {
+    index_output& out,
+    bstring& encode_buf,
+    encryption::stream* cipher,
+    compression::compressor* compressor,
+    bstring& data) {
   if (data.empty()) {
     out.write_byte(0); // zig_zag_encode32(0) == 0
     return CP_MASK;
   }
 
   // compressor can only handle size of int32_t, so can use the negative flag as a compression flag
-  irs::bytes_ref compressed = data;
-  if (compressor) {
-    compressed = compressor->compress(data, encode_buf);
-  }
+  const bytes_ref compressed = compressor
+     ? compressor->compress(&data[0], data.size(), encode_buf)
+     : static_cast<bytes_ref>(data);
 
   if (compressed.size() < data.size()) {
     assert(compressed.size() <= irs::integer_traits<int32_t>::const_max);
@@ -2950,16 +2949,13 @@ void read_compact(
   // ensure that we have enough space to store decompressed data
   decode_buf.resize(irs::read_zvlong(in) + MAX_DATA_BLOCK_SIZE);
 
-  buf_size = decompressor->decompress(
-    encode_buf.c_str(), buf_size,
+  const auto decoded = decompressor->decompress(
+    &encode_buf[0], buf_size,
     &decode_buf[0], decode_buf.size()
   );
 
-  if (!irs::type_limits<irs::type_t::address_t>::valid(buf_size)) {
-    throw irs::index_error(string_utils::to_string(
-      "while reading compact, error: invalid buffer size '" IR_SIZE_T_SPECIFIER "'",
-      buf_size
-    ));
+  if (decoded.null()) {
+    throw irs::index_error("error while reading compact");
   }
 }
 
@@ -3041,6 +3037,7 @@ class index_block {
       const auto block_size = math::ceil32(size, packed::BLOCK_SIZE_32);
       assert(block_size >= size);
 
+      assert(std::is_sorted(keys_, key_));
       const auto stats = encode::avg::encode(keys_, key_);
       const auto bits = encode::avg::write_block(
         out, stats.first, stats.second,
@@ -3059,6 +3056,7 @@ class index_block {
       const auto block_size = math::ceil64(size, packed::BLOCK_SIZE_64);
       assert(block_size >= size);
 
+      assert(std::is_sorted(offsets_, offset_));
       const auto stats = encode::avg::encode(offsets_, offset_);
       const auto bits = encode::avg::write_block(
         out, stats.first, stats.second,
@@ -3127,7 +3125,8 @@ class writer final : public irs::columnstore_writer {
         comp_type_(type),
         comp_(compressor),
         cipher_(cipher),
-        blocks_index_(*ctx.alloc_) {
+        blocks_index_(*ctx.alloc_),
+        block_buf_(2*MAX_DATA_BLOCK_SIZE, 0) {
     }
 
     void prepare(doc_id_t key) {
@@ -3192,11 +3191,11 @@ class writer final : public irs::columnstore_writer {
     }
 
     virtual void write_byte(byte_type b) override {
-      block_buf_.write_byte(b);
+      block_buf_ += b;
     }
 
     virtual void write_bytes(const byte_type* b, size_t size) override {
-      block_buf_.write_bytes(b, size);
+      block_buf_.append(b, size);
     }
 
     virtual void reset() override {
@@ -3206,7 +3205,7 @@ class writer final : public irs::columnstore_writer {
       }
 
       // reset to previous offset
-      block_buf_.reset(block_index_.max_offset());
+      block_buf_.resize(block_index_.max_offset());
       block_index_.pop_back();
     }
 
@@ -3253,14 +3252,14 @@ class writer final : public irs::columnstore_writer {
                                    ctx_->buf_,
                                    cipher_,
                                    comp_.get(),
-                                   static_cast<bytes_ref>(block_buf_));
+                                   block_buf_);
 
       length_ += block_buf_.size();
 
       // refresh blocks properties
       blocks_props_ &= block_props;
       // reset buffer stream after flush
-      block_buf_.reset();
+      block_buf_.clear();
 
       // refresh column properties
       // column is dense IFF
@@ -3277,7 +3276,7 @@ class writer final : public irs::columnstore_writer {
     index_block<INDEX_BLOCK_SIZE> block_index_; // current block index (per document key/offset)
     index_block<INDEX_BLOCK_SIZE> column_index_; // column block index (per block key/offset)
     memory_output blocks_index_; // blocks index
-    bytes_output block_buf_{ 2*MAX_DATA_BLOCK_SIZE }; // data buffer
+    bstring block_buf_; // data buffer
     doc_id_t max_{ doc_limits::invalid() }; // max key (among flushed blocks)
     ColumnProperty blocks_props_{ CP_DENSE | CP_FIXED | CP_MASK }; // aggregated column blocks properties
     ColumnProperty column_props_{ CP_DENSE }; // aggregated column block index properties

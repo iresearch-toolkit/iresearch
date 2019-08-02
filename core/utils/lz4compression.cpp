@@ -34,7 +34,7 @@ static_assert(
   "sizeof(char) != sizeof(byte_type)"
 );
 
-bytes_ref lz4compressor::compress(const byte_type* src, size_t size, bstring& out) {
+bytes_ref lz4compressor::compress(byte_type* src, size_t size, bstring& out) {
   assert(size <= integer_traits<int>::const_max); // LZ4 API uses int
   auto src_size = static_cast<int>(size);
   auto src_data = reinterpret_cast<const char*>(src);
@@ -90,8 +90,8 @@ bytes_ref lz4compressor::compress(const byte_type* src, size_t size, bstring& ou
   return bytes_ref(reinterpret_cast<const byte_type*>(buf), size_t(lz4_size));
 }
 
-size_t lz4decompressor::decompress(
-    const byte_type* src,  size_t src_size,
+bytes_ref lz4decompressor::decompress(
+    byte_type* src,  size_t src_size,
     byte_type* dst,  size_t dst_size) {
   assert(src_size <= integer_traits<int>::const_max); // LZ4 API uses int
   
@@ -104,10 +104,10 @@ size_t lz4decompressor::decompress(
   );
 
   if (IRS_UNLIKELY(lz4_size < 0)) {
-    return type_limits<type_t::address_t>::invalid(); // corrupted index
+    return bytes_ref::NIL; // corrupted index
   }
 
-  return size_t(lz4_size);
+  return bytes_ref(dst, size_t(lz4_size));
 }
 
 compressor::ptr lz4::compressor() { return std::make_shared<lz4compressor>(); }

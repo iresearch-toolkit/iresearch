@@ -63,12 +63,8 @@ struct IRESEARCH_API compressor {
 
   virtual ~compressor() = default;
 
-  virtual bytes_ref compress(const byte_type* in, size_t size, bstring& buf) = 0;
-
-  template<typename Source>
-  bytes_ref compress(const Source& src, bstring& out) {
-    return compress(src.c_str(), src.size(), out);
-  }
+  /// @note caller is allowed to modify data pointed by 'in' up to 'size'
+  virtual bytes_ref compress(byte_type* in, size_t size, bstring& buf) = 0;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -79,8 +75,10 @@ struct IRESEARCH_API decompressor {
 
   virtual ~decompressor() = default;
 
-  virtual size_t decompress(const byte_type* src, size_t src_size,
-                            byte_type* dst, size_t dst_size) = 0;
+  /// @note caller is allowed to modify data pointed by 'src' up to 'src_size'
+  /// @note caller is allowed to modify data pointed by 'dst' up to 'dst_size'
+  virtual bytes_ref decompress(byte_type* src, size_t src_size,
+                               byte_type* dst, size_t dst_size) = 0;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
