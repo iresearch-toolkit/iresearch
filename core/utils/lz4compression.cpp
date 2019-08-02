@@ -61,7 +61,6 @@ bytes_ref lz4compressor::compress(byte_type* src, size_t size, bstring& out) {
       }
 
       dict_size_ = dict_size;
-    std::cout << dict_size_ << std::endl;
     }
 
     // reload the LZ4 dictionary if buf has changed
