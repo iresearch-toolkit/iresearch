@@ -3127,6 +3127,7 @@ class writer final : public irs::columnstore_writer {
         cipher_(cipher),
         blocks_index_(*ctx.alloc_),
         block_buf_(2*MAX_DATA_BLOCK_SIZE, 0) {
+      block_buf_.clear(); // reset size to '0'
     }
 
     void prepare(doc_id_t key) {

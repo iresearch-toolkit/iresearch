@@ -25,6 +25,8 @@
 #include "iql/query_builder.hpp"
 #include "store/memory_directory.hpp"
 #include "utils/index_utils.hpp"
+#include "utils/lz4compression.hpp"
+#include "utils/delta_compression.hpp"
 #include "utils/file_utils.hpp"
 
 #include "index_tests.hpp"
@@ -1420,6 +1422,11 @@ class index_test_case : public tests::index_test_base {
   }
 
   void read_empty_doc_attributes() {
+    irs::index_writer::init_options options;
+    options.column_info = [](const irs::string_ref&) {
+      return irs::column_info{ irs::compression::lz4::type(), true };
+    };
+
     tests::json_doc_generator gen(
       resource("simple_sequential.json"),
       &tests::generic_json_field_factory
@@ -1431,7 +1438,7 @@ class index_test_case : public tests::index_test_base {
 
     // write documents without attributes
     {
-      auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+      auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE, options);
 
       // fields only
       ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end()));
@@ -1451,6 +1458,10 @@ class index_test_case : public tests::index_test_base {
 
   void read_write_doc_attributes_sparse_column_sparse_mask() {
     // sparse_column<sparse_mask_block>
+    irs::index_writer::init_options options;
+    options.column_info = [](const irs::string_ref&) {
+      return irs::column_info{ irs::compression::lz4::type(), true };
+    };
 
     static const irs::doc_id_t MAX_DOCS = 1500;
     static const iresearch::string_ref column_name = "id";
@@ -1466,7 +1477,7 @@ class index_test_case : public tests::index_test_base {
       } field;
 
       irs::doc_id_t docs_count = 0;
-      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE);
+      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE, options);
       auto ctx = writer->documents();
 
       do {
@@ -2284,6 +2295,11 @@ class index_test_case : public tests::index_test_base {
   void read_write_doc_attributes_dense_column_dense_mask() {
     // dense_fixed_length_column<dense_mask_block>
 
+    irs::index_writer::init_options options;
+    options.column_info = [](const irs::string_ref&) {
+      return irs::column_info{ irs::compression::lz4::type(), true };
+    };
+
     static const irs::doc_id_t MAX_DOCS
       = 1024*1024 // full index block
       + 2051;     // tail index block
@@ -2300,7 +2316,7 @@ class index_test_case : public tests::index_test_base {
       } field;
 
       irs::doc_id_t docs_count = 0;
-      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE);
+      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE, options);
       auto ctx = writer->documents();
 
       do {
@@ -2924,6 +2940,10 @@ class index_test_case : public tests::index_test_base {
 
   void read_write_doc_attributes_dense_column_dense_fixed_length() {
     // dense_fixed_length_column<dense_fixed_length_block>
+    irs::index_writer::init_options options;
+    options.column_info = [](const irs::string_ref&) {
+      return irs::column_info{ irs::compression::lz4::type(), true };
+    };
 
     static const irs::doc_id_t MAX_DOCS = 1500;
     static const iresearch::string_ref column_name = "id";
@@ -2948,7 +2968,7 @@ class index_test_case : public tests::index_test_base {
         uint64_t value{};
       } field;
 
-      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE);
+      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE, options);
       auto ctx = writer->documents();
 
       do {
@@ -3703,6 +3723,10 @@ class index_test_case : public tests::index_test_base {
 
   void read_write_doc_attributes_dense_column_dense_variable_length() {
     // sparse_column<dense_block>
+    irs::index_writer::init_options options;
+    options.column_info = [](const irs::string_ref&) {
+      return irs::column_info{ irs::compression::lz4::type(), true };
+    };
 
     static const irs::doc_id_t MAX_DOCS = 1500;
     static const iresearch::string_ref column_name = "id";
@@ -3729,7 +3753,7 @@ class index_test_case : public tests::index_test_base {
         uint64_t value{};
       } field;
 
-      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE);
+      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE, options);
       auto ctx = writer->documents();
 
       do {
@@ -4643,6 +4667,10 @@ class index_test_case : public tests::index_test_base {
 
   void read_write_doc_attributes_sparse_column_dense_variable_length() {
     // sparse_column<dense_block>
+    irs::index_writer::init_options options;
+    options.column_info = [](const irs::string_ref&) {
+      return irs::column_info{ irs::compression::raw::type(), true };
+    };
 
     static const irs::doc_id_t BLOCK_SIZE = 1024;
     static const irs::doc_id_t MAX_DOCS = 1500;
@@ -4674,7 +4702,7 @@ class index_test_case : public tests::index_test_base {
         const irs::string_ref column_name;
       } field(column_name), gap("gap");
 
-      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE);
+      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE, options);
       auto ctx = writer->documents();
 
       do {
@@ -5788,6 +5816,11 @@ class index_test_case : public tests::index_test_base {
   void read_write_doc_attributes_sparse_column_dense_fixed_offset() {
     // sparse_column<dense_fixed_length_block>
 
+    irs::index_writer::init_options options;
+    options.column_info = [](const irs::string_ref&) {
+      return irs::column_info{ irs::compression::raw::type(), false };
+    };
+
     // border case for sparse fixed offset columns, e.g.
     // |--------------|------------|
     // |doc           | value_size |
@@ -6049,6 +6082,11 @@ class index_test_case : public tests::index_test_base {
   void read_write_doc_attributes_dense_column_dense_fixed_offset() {
     // dense_fixed_length_column<dense_fixed_length_block>
 
+    irs::index_writer::init_options options;
+    options.column_info = [](const irs::string_ref&) {
+      return irs::column_info{ irs::compression::lz4::type(), true };
+    };
+
     // border case for dense fixed offset columns, e.g.
     // |--------------|------------|
     // |doc           | value_size |
@@ -6089,7 +6127,7 @@ class index_test_case : public tests::index_test_base {
         uint64_t value{};
       } field;
 
-      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE);
+      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE, options);
       auto ctx = writer->documents();
 
       do {
@@ -6258,6 +6296,10 @@ class index_test_case : public tests::index_test_base {
 
   void read_write_doc_attributes_sparse_column_dense_fixed_length() {
     // sparse_column<dense_fixed_length_block>
+    irs::index_writer::init_options options;
+    options.column_info = [](const irs::string_ref&) {
+      return irs::column_info{ irs::compression::lz4::type(), false };
+    };
 
     static const irs::doc_id_t BLOCK_SIZE = 1024;
     static const irs::doc_id_t MAX_DOCS = 1500;
@@ -6289,7 +6331,7 @@ class index_test_case : public tests::index_test_base {
         const irs::string_ref column_name;
       } field(column_name), gap("gap");
 
-      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE);
+      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE, options);
       auto ctx = writer->documents();
 
       do {
@@ -7259,6 +7301,10 @@ class index_test_case : public tests::index_test_base {
 
   void read_write_doc_attributes_sparse_column_dense_mask() {
     // sparse_column<dense_mask_block>
+    irs::index_writer::init_options options;
+    options.column_info = [](const irs::string_ref&) {
+      return irs::column_info{ irs::compression::lz4::type(), true };
+    };
 
     static const irs::doc_id_t BLOCK_SIZE = 1024;
     static const irs::doc_id_t MAX_DOCS
@@ -7281,7 +7327,7 @@ class index_test_case : public tests::index_test_base {
       } field(column_name), gap("gap");
 
       irs::doc_id_t docs_count = 0;
-      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE);
+      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE, options);
       auto ctx = writer->documents();
 
       do {
@@ -8117,6 +8163,10 @@ class index_test_case : public tests::index_test_base {
 
   void read_write_doc_attributes_sparse_column_sparse_variable_length() {
     // sparse_column<sparse_block>
+    irs::index_writer::init_options options;
+    options.column_info = [](const irs::string_ref&) {
+      return irs::column_info{ irs::compression::lz4::type(), true };
+    };
 
     static const irs::doc_id_t MAX_DOCS = 1500;
     static const iresearch::string_ref column_name = "id";
@@ -8144,7 +8194,7 @@ class index_test_case : public tests::index_test_base {
         uint64_t value{};
       } field;
 
-      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE);
+      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE, options);
       auto ctx = writer->documents();
 
       do {
@@ -9598,6 +9648,11 @@ class index_test_case : public tests::index_test_base {
   }
 
   void read_write_doc_attributes() {
+    irs::index_writer::init_options options;
+    options.column_info = [](const irs::string_ref&) {
+      return irs::column_info{ irs::compression::lz4::type(), true };
+    };
+
     tests::json_doc_generator gen(
       resource("simple_sequential.json"),
       &tests::generic_json_field_factory
@@ -9609,7 +9664,7 @@ class index_test_case : public tests::index_test_base {
 
     // write documents
     {
-      auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+      auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE, options);
 
       // attributes only
       ASSERT_TRUE(insert(*writer, doc1->indexed.end(), doc1->indexed.end(), doc1->stored.begin(), doc1->stored.end()));
@@ -9917,6 +9972,11 @@ class index_test_case : public tests::index_test_base {
   }
 
   void read_write_doc_attributes_big() {
+    irs::index_writer::init_options options;
+    options.column_info = [](const irs::string_ref&) {
+      return irs::column_info{ irs::compression::lz4::type(), true };
+    };
+
     struct csv_doc_template_t: public tests::csv_doc_generator::doc_template {
       virtual void init() {
         clear();
@@ -9942,7 +10002,7 @@ class index_test_case : public tests::index_test_base {
 
     // write attributes 
     {
-      auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+      auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE, options);
 
       const tests::document* doc;
       while ((doc = gen.next())) {
