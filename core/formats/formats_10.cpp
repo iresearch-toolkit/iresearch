@@ -5210,8 +5210,6 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
       decomp = compression::get_decompressor(compression::lz4::type());
     }
 
-    assert(decomp);
-
     try {
       column->read(*stream, buf, decomp);
     } catch (...) {
