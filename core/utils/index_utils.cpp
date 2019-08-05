@@ -107,32 +107,6 @@ struct consolidation_candidate {
   double_t score{ DBL_MIN }; // how good this permutation is
 };
 
-struct consolidation {
-  explicit consolidation(
-      const consolidation_candidate& candidate
-  ) : size(candidate.size),
-      score(candidate.score) {
-    segments.reserve(candidate.count);
-    for (const auto& segment : candidate) {
-      segments.emplace_back(segment);
-    }
-  }
-
-  bool operator<(const consolidation& rhs) const NOEXCEPT {
-    if (score < rhs.score) {
-      return true;
-    } else if (score > rhs.score) {
-      return false;
-    }
-
-    return segments.size() > segments.size();
-  }
-
-  std::vector<segment_stat> segments;
-  size_t size{ 0 }; // estimated size of the level
-  double_t score{ DBL_MIN }; // how good this permutation is
-};
-
 /// @returns score of the consolidation bucket
 double_t consolidation_score(
     const consolidation_candidate& consolidation,
