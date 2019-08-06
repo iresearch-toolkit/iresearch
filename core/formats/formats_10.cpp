@@ -5204,7 +5204,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
       if (!decomp && !compression::exists(compression_id)) {
         throw index_error(string_utils::to_string(
           "Factory failed to load compression '%s' for column id=" IR_SIZE_T_SPECIFIER,
-          i, compression_id));
+          compression_id.c_str(), i));
       }
     } else {
       decomp = compression::get_decompressor(compression::lz4::type());
