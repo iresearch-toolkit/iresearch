@@ -194,8 +194,7 @@ bool visit(const std::function<bool(const string_ref&)>& visitor) {
 #endif
 }
 
-DEFINE_COMPRESSION_TYPE(iresearch::compression::raw,
-                        iresearch::compression::type_id::Scope::LOCAL);
+DEFINE_COMPRESSION_TYPE(iresearch::compression::raw);
 
 REGISTER_COMPRESSION(raw, &raw::compressor, &raw::decompressor);
 

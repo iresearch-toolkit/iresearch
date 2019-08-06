@@ -100,7 +100,7 @@ class IRESEARCH_API lz4decompressor : public decompressor, private util::noncopy
 #endif
 }; // lz4decompressor
 
-struct lz4 {
+struct IRESEARCH_API lz4 {
   DECLARE_COMPRESSION_TYPE();
 
   static void init();

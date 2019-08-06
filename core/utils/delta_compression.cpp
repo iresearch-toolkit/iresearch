@@ -80,8 +80,7 @@ void delta::init() {
   REGISTER_COMPRESSION(delta, &delta::compressor, &delta::decompressor);
 }
 
-DEFINE_COMPRESSION_TYPE(iresearch::compression::delta,
-                        iresearch::compression::type_id::Scope::GLOBAL);
+DEFINE_COMPRESSION_TYPE(iresearch::compression::delta);
 
 REGISTER_COMPRESSION(delta, &delta::compressor, &delta::decompressor);
 

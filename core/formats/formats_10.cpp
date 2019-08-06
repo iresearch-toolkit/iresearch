@@ -3162,6 +3162,7 @@ class writer final : public irs::columnstore_writer {
       write_enum(out, column_props);
       if (ctx_->version_ > FORMAT_MIN) {
         write_string(out, comp_type_->name());
+        comp_->finish(out); // flush compression dependent data
       }
       out.write_vint(block_index_.total()); // total number of items
       out.write_vint(max_); // max column key
@@ -3354,22 +3355,11 @@ void writer::prepare(directory& dir, const segment_meta& meta) {
 }
 
 columnstore_writer::column_t writer::push_column(const column_info& info) {
-  compression::compressor::ptr compressor;
-
-  auto& compression = info.compression();
-  if (compression::type_id::Scope::GLOBAL == compression.scope()) {
-    // deduplicate global compressors
-    compressor = compressors_.emplace(std::piecewise_construct,
-                                      std::forward_as_tuple(compression),
-                                      std::forward_as_tuple(compression)).first->second;
-  } else {
-    compressor = compression::get_compressor(compression);
-  }
-
   auto* cipher = info.encryption() ? data_out_cipher_.get() : nullptr;
+  auto compressor = compression::get_compressor(info.compression());
 
   const auto id = columns_.size();
-  columns_.emplace_back(*this, compression, compressor, cipher);
+  columns_.emplace_back(*this, info.compression(), compressor, cipher);
   auto& column = columns_.back();
 
   return std::make_pair(id, [&column] (doc_id_t doc) -> column_output& {
@@ -5203,7 +5193,13 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
 
       if (!decomp && !compression::exists(compression_id)) {
         throw index_error(string_utils::to_string(
-          "Factory failed to load compression '%s' for column id=" IR_SIZE_T_SPECIFIER,
+          "Failed to load compression '%s' for column id=" IR_SIZE_T_SPECIFIER,
+          compression_id.c_str(), i));
+      }
+
+      if (decomp && !decomp->prepare(*stream)) {
+        throw index_error(string_utils::to_string(
+          "Failed to prepare compression '%s' for column id=" IR_SIZE_T_SPECIFIER,
           compression_id.c_str(), i));
       }
     } else {
