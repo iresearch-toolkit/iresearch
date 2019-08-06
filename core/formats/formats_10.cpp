@@ -3162,7 +3162,7 @@ class writer final : public irs::columnstore_writer {
       write_enum(out, column_props);
       if (ctx_->version_ > FORMAT_MIN) {
         write_string(out, comp_type_->name());
-        comp_->finish(out); // flush compression dependent data
+        comp_->flush(out); // flush compression dependent data
       }
       out.write_vint(block_index_.total()); // total number of items
       out.write_vint(max_); // max column key

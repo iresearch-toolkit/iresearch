@@ -101,29 +101,29 @@ class IRESEARCH_API lz4decompressor_base : public decompressor,
 
 NS_BEGIN(obsolete)
 
-class lz4compressor final : public lz4compressor_base {
- public:
-  explicit lz4compressor(int acceleration = 0)
-    : acceleration_(acceleration) {
-  }
-
-  int acceleration() const NOEXCEPT { return acceleration_; }
-
-  virtual bytes_ref compress(byte_type* src, size_t size, bstring& out) override;
-
- private:
-  const int acceleration_{0}; // 0 - default acceleration
-  int dict_size_{}; // the size of the LZ4 dictionary from the previous call
-};
-
-class lz4decompressor final : public lz4decompressor_base {
- public:
-  virtual bytes_ref decompress(byte_type* src, size_t src_size,
-                               byte_type* dst, size_t dst_size) override;
-};
-
 struct IRESEARCH_API lz4 {
   DECLARE_COMPRESSION_TYPE();
+
+  class lz4compressor final : public lz4compressor_base {
+   public:
+    explicit lz4compressor(int acceleration = 0)
+      : acceleration_(acceleration) {
+    }
+
+    int acceleration() const NOEXCEPT { return acceleration_; }
+
+    virtual bytes_ref compress(byte_type* src, size_t size, bstring& out) override;
+
+   private:
+    const int acceleration_{0}; // 0 - default acceleration
+    int dict_size_{}; // the size of the LZ4 dictionary from the previous call
+  };
+
+  class lz4decompressor final : public lz4decompressor_base {
+   public:
+    virtual bytes_ref decompress(byte_type* src, size_t src_size,
+                                 byte_type* dst, size_t dst_size) override;
+  };
 
   static void init();
   static compression::compressor::ptr compressor();
@@ -132,29 +132,63 @@ struct IRESEARCH_API lz4 {
 
 NS_END // obsolete
 
-class lz4compressor final : public lz4compressor_base {
- public:
-  explicit lz4compressor(int acceleration = 0)
-    : acceleration_(acceleration) {
-  }
+struct IRESEARCH_API lz4basic {
+  DECLARE_COMPRESSION_TYPE();
 
-  int acceleration() const NOEXCEPT { return acceleration_; }
+  class lz4compressor final : public compression::compressor {
+   public:
+    explicit lz4compressor(int acceleration = 0) NOEXCEPT
+      : acceleration_(acceleration) {
+    }
 
-  virtual bytes_ref compress(byte_type* src, size_t size, bstring& out) override;
+    int acceleration() const NOEXCEPT { return acceleration_; }
 
- private:
-  const int acceleration_{0}; // 0 - default acceleration
-  int dict_size_{}; // the size of the LZ4 dictionary from the previous call
-};
+    virtual bytes_ref compress(byte_type* src, size_t size, bstring& out) override;
 
-class lz4decompressor final : public lz4decompressor_base {
- public:
-  virtual bytes_ref decompress(byte_type* src, size_t src_size,
-                               byte_type* dst, size_t dst_size) override;
-};
+   private:
+    const int acceleration_{0}; // 0 - default acceleration
+  };
+
+  class lz4decompressor final : public compression::decompressor {
+   public:
+    virtual bytes_ref decompress(byte_type* src, size_t src_size,
+                                 byte_type* dst, size_t dst_size) override;
+  };
+
+  static void init();
+  static compression::compressor::ptr compressor();
+  static compression::decompressor::ptr decompressor();
+}; // lz4basic
 
 struct IRESEARCH_API lz4 {
   DECLARE_COMPRESSION_TYPE();
+
+  class lz4compressor final : public lz4compressor_base {
+   public:
+    explicit lz4compressor(int acceleration = 0) NOEXCEPT;
+
+    int acceleration() const NOEXCEPT { return acceleration_; }
+
+    virtual bytes_ref compress(byte_type* src, size_t size, bstring& out) override;
+
+    virtual void flush(data_output& out) override;
+
+   private:
+    const int acceleration_{0}; // 0 - default acceleration
+    int dict_size_;
+    std::string dict_; // dictionary
+  };
+
+  class lz4decompressor final : public lz4decompressor_base {
+   public:
+    virtual bytes_ref decompress(byte_type* src, size_t src_size,
+                                 byte_type* dst, size_t dst_size) override;
+
+    virtual bool prepare(data_input& in) override;
+
+   private:
+    std::string dict_; // dictionary
+  };
 
   static void init();
   static compression::compressor::ptr compressor();

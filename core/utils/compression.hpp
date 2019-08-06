@@ -70,7 +70,8 @@ struct IRESEARCH_API compressor {
   /// @note caller is allowed to modify data pointed by 'in' up to 'size'
   virtual bytes_ref compress(byte_type* in, size_t size, bstring& buf) = 0;
 
-  virtual void finish(data_output& /*out*/) { /*NOOP*/ }
+  /// @brief flush arbitrary payload relevant to compression
+  virtual void flush(data_output& /*out*/) { /*NOOP*/ }
 };
 
 ////////////////////////////////////////////////////////////////////////////////

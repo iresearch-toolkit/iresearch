@@ -23,8 +23,17 @@
 #include "shared.hpp"
 #include "lz4compression.hpp"
 #include "error/error.hpp"
+#include "store/store_utils.hpp"
 #include "utils/string_utils.hpp"
 #include "utils/type_limits.hpp"
+
+NS_LOCAL
+
+// can reuse stateless instances
+irs::compression::lz4basic::lz4compressor LZ4_BASIC_COMPRESSOR;
+irs::compression::lz4basic::lz4decompressor LZ4_BASIC_DECOMPRESSOR;
+
+NS_END
 
 NS_ROOT
 
@@ -36,7 +45,11 @@ static_assert(
 NS_BEGIN(compression)
 NS_BEGIN(obsolete)
 
-bytes_ref lz4compressor::compress(byte_type* src, size_t size, bstring& out) {
+// -----------------------------------------------------------------------------
+// --SECTION--                                         obsolete::lz4 compression
+// -----------------------------------------------------------------------------
+
+bytes_ref lz4::lz4compressor::compress(byte_type* src, size_t size, bstring& out) {
   assert(size <= integer_traits<int>::const_max); // LZ4 API uses int
   auto src_size = static_cast<int>(size);
   auto src_data = reinterpret_cast<const char*>(src);
@@ -91,7 +104,7 @@ bytes_ref lz4compressor::compress(byte_type* src, size_t size, bstring& out) {
   return bytes_ref(reinterpret_cast<const byte_type*>(buf), size_t(lz4_size));
 }
 
-bytes_ref lz4decompressor::decompress(
+bytes_ref lz4::lz4decompressor::decompress(
     byte_type* src,  size_t src_size,
     byte_type* dst,  size_t dst_size) {
   assert(src_size <= integer_traits<int>::const_max); // LZ4 API uses int
@@ -124,47 +137,86 @@ REGISTER_COMPRESSION(lz4, &lz4::compressor, &lz4::decompressor);
 
 NS_END // obsolete
 
-bytes_ref lz4compressor::compress(byte_type* src, size_t size, bstring& out) {
+// -----------------------------------------------------------------------------
+// --SECTION--                                              lz4basic compression
+// -----------------------------------------------------------------------------
+
+bytes_ref lz4basic::lz4compressor::compress(byte_type* src, size_t size, bstring& out) {
   assert(size <= integer_traits<int>::const_max); // LZ4 API uses int
-  auto src_size = static_cast<int>(size);
-  auto src_data = reinterpret_cast<const char*>(src);
+  const auto src_size = static_cast<int>(size);
 
-  // ensure LZ4 dictionary from the previous run is at the start of buf
-  {
-    auto* dict_store = dict_size_ ? reinterpret_cast<char*>(&out[0]) : nullptr;
-    const size_t compression_bound = size_t(LZ4_COMPRESSBOUND(src_size));
+  // ensure we have enough space to store compressed data
+  string_utils::oversize(out, size_t(LZ4_COMPRESSBOUND(src_size)));
 
-    // ensure we have enough space to store dictionary from previous run
-    string_utils::oversize(out, compression_bound + size_t(dict_size_));
+  const auto* src_data = reinterpret_cast<const char*>(src);
+  auto* buf = reinterpret_cast<char*>(&out[0]);
+  const auto buf_size = static_cast<int>(out.size());
+  const auto lz4_size = LZ4_compress_fast(src_data, buf, src_size, buf_size, acceleration_);
 
-    // move the LZ4 dictionary from the previous run to the start of buf
-    if (dict_store) {
-      const auto dict_size = LZ4_saveDict(stream(), dict_store, dict_size_);
-      assert(dict_size >= 0);
-
-      const auto required_size = compression_bound + size_t(dict_size);
-
-      if (IRS_UNLIKELY(out.size() < required_size)) {
-        // very very unlikely...
-        // basically guard against unexpected changes in lz4
-        string_utils::oversize(out, required_size);
-      }
-
-      dict_size_ = dict_size;
-    }
-
-    // reload the LZ4 dictionary if buf has changed
-    if (reinterpret_cast<char*>(&out[0]) != dict_store) {
-      dict_size_ = LZ4_loadDict(stream(), reinterpret_cast<char*>(&out[0]), dict_size_);
-      assert(dict_size_ >= 0);
-    }
+  if (IRS_UNLIKELY(lz4_size < 0)) {
+    throw index_error("while compressing, error: LZ4 returned negative size");
   }
 
-  auto* buf = reinterpret_cast<char*>(&out[size_t(dict_size_)]);
-  auto buf_size = static_cast<int>(std::min(
-    out.size() - size_t(dict_size_),
-    size_t(integer_traits<int>::const_max)) // LZ4 API uses int
+  return bytes_ref(reinterpret_cast<const byte_type*>(buf), size_t(lz4_size));
+}
+
+bytes_ref lz4basic::lz4decompressor::decompress(
+    byte_type* src,  size_t src_size,
+    byte_type* dst,  size_t dst_size) {
+  assert(src_size <= integer_traits<int>::const_max); // LZ4 API uses int
+
+  const auto lz4_size = LZ4_decompress_safe(
+    reinterpret_cast<const char*>(src),
+    reinterpret_cast<char*>(dst),
+    static_cast<int>(src_size),  // LZ4 API uses int
+    static_cast<int>(std::min(dst_size, static_cast<size_t>(integer_traits<int>::const_max))) // LZ4 API uses int
   );
+
+  if (IRS_UNLIKELY(lz4_size < 0)) {
+    return bytes_ref::NIL; // corrupted index
+  }
+
+  return bytes_ref(dst, size_t(lz4_size));
+}
+
+compressor::ptr lz4basic::compressor() {
+  return compressor::ptr(compressor::ptr(), &LZ4_BASIC_COMPRESSOR);
+}
+
+decompressor::ptr lz4basic::decompressor() {
+  return decompressor::ptr(decompressor::ptr(), &LZ4_BASIC_DECOMPRESSOR);
+}
+
+void lz4basic::init() {
+  // match registration below
+  REGISTER_COMPRESSION(lz4basic, &lz4basic::compressor, &lz4basic::decompressor);
+}
+
+DEFINE_COMPRESSION_TYPE(iresearch::compression::lz4basic);
+REGISTER_COMPRESSION(lz4basic, &lz4basic::compressor, &lz4basic::decompressor);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   lz4 compression
+// -----------------------------------------------------------------------------
+
+const int LZ4_DICT_SIZE = 8192;
+
+lz4::lz4compressor::lz4compressor(int acceleration /*= 0*/) NOEXCEPT
+  : acceleration_(acceleration) {
+  // ensure we have enough space to store dictionary
+  string_utils::oversize(dict_, dict_size_ = LZ4_DICT_SIZE);
+}
+
+bytes_ref lz4::lz4compressor::compress(byte_type* src, size_t size, bstring& out) {
+  assert(size <= integer_traits<int>::const_max); // LZ4 API uses int
+  const auto src_size = static_cast<int>(size);
+  const auto* src_data = reinterpret_cast<const char*>(src);
+
+  // ensure we have enough space to store compressed data
+  string_utils::oversize(out, size_t(LZ4_COMPRESSBOUND(src_size)));
+
+  auto* buf = reinterpret_cast<char*>(&out[0]);
+  const auto buf_size = static_cast<int>(out.size());
 
   #if defined(LZ4_VERSION_NUMBER) && (LZ4_VERSION_NUMBER >= 10700)
     const auto lz4_size = LZ4_compress_fast_continue(stream(), src_data, buf, src_size, buf_size, acceleration_);
@@ -176,10 +228,22 @@ bytes_ref lz4compressor::compress(byte_type* src, size_t size, bstring& out) {
     throw index_error("while compressing, error: LZ4 returned negative size");
   }
 
+  // save current dictionary
+  auto* dict_data = reinterpret_cast<char*>(&dict_[0]);
+  dict_size_ = LZ4_saveDict(stream(), dict_data, dict_size_);
+
+  if (IRS_UNLIKELY(dict_size_ < 0)) {
+    throw index_error("while saving dictionary, error: LZ4 returned negative size");
+  }
+
   return bytes_ref(reinterpret_cast<const byte_type*>(buf), size_t(lz4_size));
 }
 
-bytes_ref lz4decompressor::decompress(
+void lz4::lz4compressor::flush(data_output& out) {
+  write_string(out, irs::string_ref(dict_.c_str(), size_t(dict_size_)));
+}
+
+bytes_ref lz4::lz4decompressor::decompress(
     byte_type* src,  size_t src_size,
     byte_type* dst,  size_t dst_size) {
   assert(src_size <= integer_traits<int>::const_max); // LZ4 API uses int
@@ -197,6 +261,13 @@ bytes_ref lz4decompressor::decompress(
   }
 
   return bytes_ref(dst, size_t(lz4_size));
+}
+
+bool lz4::lz4decompressor::prepare(data_input& in) {
+  dict_ = read_string<std::string>(in);
+
+  const auto dict_size = static_cast<int>(dict_.size()); // LZ4 API uses int
+  return 0 != LZ4_setStreamDecode(stream(), dict_.c_str(), dict_size);
 }
 
 compressor::ptr lz4::compressor() { return std::make_shared<lz4compressor>(); }
