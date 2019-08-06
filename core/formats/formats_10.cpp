@@ -3355,8 +3355,21 @@ void writer::prepare(directory& dir, const segment_meta& meta) {
 }
 
 columnstore_writer::column_t writer::push_column(const column_info& info) {
-  auto* cipher = info.encryption() ? data_out_cipher_.get() : nullptr;
-  auto compressor = compression::get_compressor(info.compression());
+  encryption::stream* cipher;
+  const compression::type_id* compression;
+
+  if (version_ > FORMAT_MIN) {
+    compression = info.compression();
+    cipher = info.encryption() ? data_out_cipher_.get() : nullptr;
+  } else {
+    // we don't support encryption and custom
+    // compression for 'FORMAT_MIN' version
+    compression = compression::obsolete::lz4::type();
+    cipher = nullptr;
+  }
+
+  assert(compression);
+  auto compressor = irs::compression::get_compressor(*compression);
 
   const auto id = columns_.size();
   columns_.emplace_back(*this, info.compression(), compressor, cipher);
@@ -5203,7 +5216,10 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
           compression_id.c_str(), i));
       }
     } else {
-      decomp = compression::get_decompressor(compression::lz4::type());
+      // we don't support encryption and custom
+      // compression for 'FORMAT_MIN' version
+      decomp = compression::get_decompressor(compression::obsolete::lz4::type());
+      assert(decomp);
     }
 
     try {
