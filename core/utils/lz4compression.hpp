@@ -168,6 +168,9 @@ struct IRESEARCH_API lz4 {
     explicit lz4compressor(int acceleration = 0) NOEXCEPT;
 
     int acceleration() const NOEXCEPT { return acceleration_; }
+    string_ref dictionary() const NOEXCEPT {
+      return string_ref(dict_.c_str(), size_t(dict_size_));
+    }
 
     virtual bytes_ref compress(byte_type* src, size_t size, bstring& out) override;
 
@@ -184,6 +187,7 @@ struct IRESEARCH_API lz4 {
     virtual bytes_ref decompress(byte_type* src, size_t src_size,
                                  byte_type* dst, size_t dst_size) override;
 
+    const std::string& dictionary() const NOEXCEPT { return dict_; }
     virtual bool prepare(data_input& in) override;
 
    private:
