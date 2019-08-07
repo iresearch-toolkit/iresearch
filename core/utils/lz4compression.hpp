@@ -132,7 +132,7 @@ struct IRESEARCH_API lz4 {
 
 NS_END // obsolete
 
-struct IRESEARCH_API lz4basic {
+struct IRESEARCH_API lz4 {
   DECLARE_COMPRESSION_TYPE();
 
   class IRESEARCH_API lz4compressor final : public compression::compressor {
@@ -159,45 +159,6 @@ struct IRESEARCH_API lz4basic {
   static compression::compressor::ptr compressor();
   static compression::decompressor::ptr decompressor();
 }; // lz4basic
-
-struct IRESEARCH_API lz4 {
-  DECLARE_COMPRESSION_TYPE();
-
-  class IRESEARCH_API lz4compressor final : public lz4compressor_base {
-   public:
-    explicit lz4compressor(int acceleration = 0) NOEXCEPT;
-
-    int acceleration() const NOEXCEPT { return acceleration_; }
-    string_ref dictionary() const NOEXCEPT {
-      return string_ref(dict_.c_str(), size_t(dict_size_));
-    }
-
-    virtual bytes_ref compress(byte_type* src, size_t size, bstring& out) override;
-
-    virtual void flush(data_output& out) override;
-
-   private:
-    const int acceleration_{0}; // 0 - default acceleration
-    int dict_size_;
-    std::string dict_; // dictionary
-  };
-
-  class IRESEARCH_API lz4decompressor final : public lz4decompressor_base {
-   public:
-    virtual bytes_ref decompress(byte_type* src, size_t src_size,
-                                 byte_type* dst, size_t dst_size) override;
-
-    const std::string& dictionary() const NOEXCEPT { return dict_; }
-    virtual bool prepare(data_input& in) override;
-
-   private:
-    std::string dict_; // dictionary
-  };
-
-  static void init();
-  static compression::compressor::ptr compressor();
-  static compression::decompressor::ptr decompressor();
-}; // lz4
 
 NS_END // compression
 NS_END // NS_ROOT

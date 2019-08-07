@@ -71,7 +71,7 @@ TEST(compression_test, lz4obsolete) {
   }
 }
 
-TEST(compression_test, lz4basic) {
+TEST(compression_test, lz4) {
   using namespace iresearch;
 
   std::vector<size_t> data(2047, 0);
@@ -80,8 +80,8 @@ TEST(compression_test, lz4basic) {
   std::uniform_int_distribution<size_t> dist {1, 2142152};
   auto generator = [&dist, &mersenne_engine](){ return dist(mersenne_engine); };
 
-  compression::lz4basic::lz4decompressor decompressor;
-  compression::lz4basic::lz4compressor compressor;
+  compression::lz4::lz4decompressor decompressor;
+  compression::lz4::lz4compressor compressor;
   ASSERT_EQ(0, compressor.acceleration());
 
   for (size_t i = 0; i < 10; ++i) {
@@ -111,88 +111,6 @@ TEST(compression_test, lz4basic) {
 
     ASSERT_EQ(data_buf, decompression_buf);
     ASSERT_EQ(data_buf, decompressed);
-  }
-}
-
-TEST(compression_test, lz4) {
-  using namespace iresearch;
-
-  bstring store;
-  bstring dict;
-  std::vector<size_t> offsets;
-
-  const size_t PAGE_SIZE = 2047;
-  const size_t PAGES = 10;
-
-  std::vector<size_t> data(PAGE_SIZE*PAGES, 0);
-  std::random_device rnd_device;
-  std::mt19937 mersenne_engine {rnd_device()};
-  std::uniform_int_distribution<size_t> dist {1, 2142152};
-  auto generator = [&dist, &mersenne_engine](){ return dist(mersenne_engine); };
-  std::generate(data.begin(), data.end(), generator);
-
-  compression::lz4::lz4compressor compressor;
-  ASSERT_EQ(0, compressor.acceleration());
-
-  // compress data
-  for (size_t i = 0; i < PAGES; ++i) {
-    bstring compression_buf;
-    bstring data_buf(PAGE_SIZE*sizeof(size_t), 0);
-    std::memcpy(&data_buf[0], data.data() + i*PAGE_SIZE, data_buf.size());
-
-    ASSERT_EQ(
-      bytes_ref(reinterpret_cast<const byte_type*>(data.data() + i*PAGE_SIZE), data_buf.size()),
-      bytes_ref(data_buf)
-    );
-
-    const auto compressed = compressor.compress(&data_buf[0], data_buf.size(), compression_buf);
-    ASSERT_EQ(compressed, bytes_ref(compression_buf.c_str(), compressed.size()));
-
-    // lz4 doesn't modify data_buf
-    ASSERT_EQ(
-      bytes_ref(reinterpret_cast<const byte_type*>(data.data() + i*PAGE_SIZE), data_buf.size()),
-      bytes_ref(data_buf)
-    );
-
-    offsets.push_back(store.size());
-    bytes_output store_out(store);
-    write_string(store_out, compressed);
-  }
-
-  // write dictionary
-  {
-    bytes_output dict_out(dict);
-    write_string(dict_out, compressor.dictionary());
-  }
-
-  compression::lz4::lz4decompressor decompressor;
-
-  // prepare decompressor
-  {
-    bytes_ref_input dict_in(dict);
-    ASSERT_TRUE(decompressor.prepare(dict_in));
-  }
-
-  ASSERT_EQ(compressor.dictionary(), decompressor.dictionary());
-
-  bstring decompression_buf(PAGE_SIZE*sizeof(size_t), 0);
-  for (size_t i = 0; i < offsets.size(); ++i) {
-    const auto offset = offsets[i];
-    const auto length = (&offsets[i] == &offsets.back()
-                         ? store.size() - offset
-                         : offsets[i+1] - offset);
-
-    bytes_ref_input in(bytes_ref(store.c_str() + offset, length));
-    bstring compressed = read_string<bstring>(in);
-
-    const auto decompressed = decompressor.decompress(&compressed[0], compressed.size(),
-                                                      &decompression_buf[0], decompression_buf.size());
-
-    ASSERT_FALSE(decompressed.null());
-    ASSERT_EQ(
-      bytes_ref(reinterpret_cast<const byte_type*>(data.data() + i*PAGE_SIZE), PAGE_SIZE*sizeof(size_t)),
-      decompressed
-    );
   }
 }
 

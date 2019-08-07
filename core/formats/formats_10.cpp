@@ -2871,6 +2871,11 @@ enum ColumnProperty : uint32_t {
 
 ENABLE_BITMASK_ENUM(ColumnProperty);
 
+bool is_good_compression_ratio(size_t raw_size, size_t compressed_size) NOEXCEPT {
+  // Check to see if compressed less than 12.5%
+  return compressed_size < raw_size - (raw_size / 8U);
+}
+
 ColumnProperty write_compact(
     index_output& out,
     bstring& encode_buf,
@@ -2885,7 +2890,7 @@ ColumnProperty write_compact(
   // compressor can only handle size of int32_t, so can use the negative flag as a compression flag
   const bytes_ref compressed = compressor.compress(&data[0], data.size(), encode_buf);
 
-  if (compressed.size() < data.size()) {
+  if (is_good_compression_ratio(data.size(), compressed.size())) {
     assert(compressed.size() <= irs::integer_traits<int32_t>::const_max);
     irs::write_zvint(out, int32_t(compressed.size())); // compressed size
     if (cipher) {
