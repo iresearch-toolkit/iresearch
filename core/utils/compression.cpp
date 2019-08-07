@@ -27,6 +27,7 @@
 // list of statically loaded scorers via init()
 #ifndef IRESEARCH_DLL
   #include "lz4compression.hpp"
+  #include "delta_compression.hpp"
 #endif
 
 NS_LOCAL
@@ -166,8 +167,8 @@ decompressor::ptr get_decompressor(const string_ref& name, bool load_library /*=
 
 void init() {
 #ifndef IRESEARCH_DLL
-  obsolete::lz4::init();
   lz4::init();
+  delta::init();
   raw::init();
 #endif
 }

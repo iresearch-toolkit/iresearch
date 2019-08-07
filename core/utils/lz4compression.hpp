@@ -99,39 +99,6 @@ class IRESEARCH_API lz4decompressor_base : public decompressor,
 #endif
 }; // lz4decompressor
 
-NS_BEGIN(obsolete)
-
-struct IRESEARCH_API lz4 {
-  DECLARE_COMPRESSION_TYPE();
-
-  class IRESEARCH_API lz4compressor final : public lz4compressor_base {
-   public:
-    explicit lz4compressor(int acceleration = 0)
-      : acceleration_(acceleration) {
-    }
-
-    int acceleration() const NOEXCEPT { return acceleration_; }
-
-    virtual bytes_ref compress(byte_type* src, size_t size, bstring& out) override;
-
-   private:
-    const int acceleration_{0}; // 0 - default acceleration
-    int dict_size_{}; // the size of the LZ4 dictionary from the previous call
-  };
-
-  class IRESEARCH_API lz4decompressor final : public lz4decompressor_base {
-   public:
-    virtual bytes_ref decompress(byte_type* src, size_t src_size,
-                                 byte_type* dst, size_t dst_size) override;
-  };
-
-  static void init();
-  static compression::compressor::ptr compressor();
-  static compression::decompressor::ptr decompressor();
-}; // lz4
-
-NS_END // obsolete
-
 struct IRESEARCH_API lz4 {
   DECLARE_COMPRESSION_TYPE();
 

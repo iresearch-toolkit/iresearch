@@ -2872,7 +2872,7 @@ enum ColumnProperty : uint32_t {
 ENABLE_BITMASK_ENUM(ColumnProperty);
 
 bool is_good_compression_ratio(size_t raw_size, size_t compressed_size) NOEXCEPT {
-  // Check to see if compressed less than 12.5%
+  // check if compressed is less than 12.5%
   return compressed_size < raw_size - (raw_size / 8U);
 }
 
@@ -3367,7 +3367,7 @@ columnstore_writer::column_t writer::push_column(const column_info& info) {
   } else {
     // we don't support encryption and custom
     // compression for 'FORMAT_MIN' version
-    compression = compression::obsolete::lz4::type();
+    compression = compression::lz4::type();
     cipher = nullptr;
   }
 
@@ -5224,7 +5224,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
     } else {
       // we don't support encryption and custom
       // compression for 'FORMAT_MIN' version
-      decomp = compression::get_decompressor(compression::obsolete::lz4::type());
+      decomp = compression::get_decompressor(compression::lz4::type());
       assert(decomp);
     }
 
