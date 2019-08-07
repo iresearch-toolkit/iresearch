@@ -3371,7 +3371,7 @@ columnstore_writer::column_t writer::push_column(const column_info& info) {
     cipher = nullptr;
   }
 
-  auto compressor = compression::get_compressor(*compression);
+  auto compressor = compression::get_compressor(*compression, info.options());
 
   if (!compressor) {
     compressor = noop_compressor::make();

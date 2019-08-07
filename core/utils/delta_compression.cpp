@@ -67,7 +67,7 @@ bytes_ref delta_decompressor::decompress(
   return bytes_ref(dst, dst_size);
 }
 
-compressor::ptr delta::compressor() {
+compressor::ptr delta::compressor(const options& /*opts*/) {
   return compressor::ptr(compressor::ptr(), &COMPRESSOR);
 }
 

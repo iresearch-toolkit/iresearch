@@ -139,11 +139,14 @@ bool exists(const string_ref& name, bool load_library /*= true*/ ) {
   return !compression_register::instance().get(name, load_library).empty();
 }
 
-compressor::ptr get_compressor(const string_ref& name, bool load_library /*= true*/) NOEXCEPT {
+compressor::ptr get_compressor(
+    const string_ref& name,
+    const options& opts,
+    bool load_library /*= true*/) NOEXCEPT {
   try {
     auto* factory = compression_register::instance().get(name, load_library).compressor_factory_;
 
-    return factory ? factory() : nullptr;
+    return factory ? factory(opts) : nullptr;
   } catch (...) {
     IR_FRMT_ERROR("Caught exception while getting an analyzer instance");
     IR_LOG_EXCEPTION();

@@ -123,7 +123,7 @@ struct IRESEARCH_API lz4 {
   };
 
   static void init();
-  static compression::compressor::ptr compressor();
+  static compression::compressor::ptr compressor(const options& opts);
   static compression::decompressor::ptr decompressor();
 }; // lz4basic
 

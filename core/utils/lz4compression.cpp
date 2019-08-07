@@ -25,6 +25,7 @@
 #include "error/error.hpp"
 #include "store/store_utils.hpp"
 #include "utils/string_utils.hpp"
+#include "utils/misc.hpp"
 #include "utils/type_limits.hpp"
 
 NS_LOCAL
@@ -32,6 +33,13 @@ NS_LOCAL
 // can reuse stateless instances
 irs::compression::lz4::lz4compressor LZ4_BASIC_COMPRESSOR;
 irs::compression::lz4::lz4decompressor LZ4_BASIC_DECOMPRESSOR;
+
+inline int acceleration(const irs::compression::options::Hint hint) NOEXCEPT {
+  static const int FACTORS[] { 0, 2, 0 };
+  assert(static_cast<size_t>(hint) < IRESEARCH_COUNTOF(FACTORS));
+
+  return FACTORS[static_cast<size_t>(hint)];
+}
 
 NS_END
 
@@ -86,8 +94,14 @@ bytes_ref lz4::lz4decompressor::decompress(
   return bytes_ref(dst, size_t(lz4_size));
 }
 
-compressor::ptr lz4::compressor() {
-  return compressor::ptr(compressor::ptr(), &LZ4_BASIC_COMPRESSOR);
+compressor::ptr lz4::compressor(const options& opts) {
+  const auto acceleration = ::acceleration(opts.hint);
+
+  if (0 == acceleration) {
+    return compressor::ptr(compressor::ptr(), &LZ4_BASIC_COMPRESSOR);
+  }
+
+  return std::make_shared<lz4compressor>(acceleration);
 }
 
 decompressor::ptr lz4::decompressor() {

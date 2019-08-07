@@ -46,7 +46,7 @@ struct IRESEARCH_API delta {
   DECLARE_COMPRESSION_TYPE();
 
   static void init();
-  static compression::compressor::ptr compressor();
+  static compression::compressor::ptr compressor(const options& opts);
   static compression::decompressor::ptr decompressor();
 }; // delta
 

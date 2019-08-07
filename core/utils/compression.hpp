@@ -59,6 +59,26 @@ struct data_input;
 
 NS_BEGIN(compression)
 
+struct options {
+  enum class Hint : byte_type {
+    /// @brief use default compressor parameters
+    DEFAULT = 0,
+
+    /// @brief prefer speed over compression ratio
+    SPEED,
+
+    /// @brief prefer compression ratio over speed
+    COMPRESSION
+  };
+
+  /// @brief
+  Hint hint{ Hint::DEFAULT };
+
+  explicit options(Hint hint = Hint::DEFAULT)
+    : hint(hint) {
+  }
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @class compressor
 ////////////////////////////////////////////////////////////////////////////////
@@ -108,7 +128,7 @@ class IRESEARCH_API type_id : public irs::type_id, private util::noncopyable {
   string_ref name_;
 };
 
-typedef irs::compression::compressor::ptr(*compressor_factory_f)();
+typedef irs::compression::compressor::ptr(*compressor_factory_f)(const options&);
 typedef irs::compression::decompressor::ptr(*decompressor_factory_f)();
 
 // -----------------------------------------------------------------------------
@@ -140,6 +160,7 @@ IRESEARCH_API bool exists(const string_ref& name, bool load_library = true);
 ////////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API compressor::ptr get_compressor(
     const string_ref& name,
+    const options& opts,
     bool load_library = true) NOEXCEPT;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -147,8 +168,9 @@ IRESEARCH_API compressor::ptr get_compressor(
 ////////////////////////////////////////////////////////////////////////////////
 inline compressor::ptr get_compressor(
     const type_id& type,
+    const options& opts,
     bool load_library = true) NOEXCEPT {
-  return get_compressor(type.name(), load_library);
+  return get_compressor(type.name(), opts, load_library);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -192,8 +214,14 @@ struct IRESEARCH_API raw {
   DECLARE_COMPRESSION_TYPE();
 
   static void init();
-  static compression::compressor::ptr compressor() { return nullptr; }
-  static compression::decompressor::ptr decompressor() { return nullptr; }
+
+  static compression::compressor::ptr compressor(const options& /*opts*/) {
+    return nullptr;
+  }
+
+  static compression::decompressor::ptr decompressor() {
+    return nullptr;
+  }
 }; // raw
 
 NS_END // compression
