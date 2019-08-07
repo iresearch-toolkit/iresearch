@@ -218,11 +218,11 @@ bytes_ref lz4::lz4compressor::compress(byte_type* src, size_t size, bstring& out
   auto* buf = reinterpret_cast<char*>(&out[0]);
   const auto buf_size = static_cast<int>(out.size());
 
-  #if defined(LZ4_VERSION_NUMBER) && (LZ4_VERSION_NUMBER >= 10700)
-    const auto lz4_size = LZ4_compress_fast_continue(stream(), src_data, buf, src_size, buf_size, acceleration_);
-  #else
-    const auto lz4_size = LZ4_compress_limitedOutput_continue(stream(), src_data, buf, src_size, buf_size); // use for LZ4 <= v1.6.0
-  #endif
+#if defined(LZ4_VERSION_NUMBER) && (LZ4_VERSION_NUMBER >= 10700)
+  const auto lz4_size = LZ4_compress_fast_continue(stream(), src_data, buf, src_size, buf_size, acceleration_);
+#else
+  const auto lz4_size = LZ4_compress_limitedOutput_continue(stream(), src_data, buf, src_size, buf_size); // use for LZ4 <= v1.6.0
+#endif
 
   if (IRS_UNLIKELY(lz4_size < 0)) {
     throw index_error("while compressing, error: LZ4 returned negative size");

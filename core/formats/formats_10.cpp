@@ -62,6 +62,7 @@
 #include "utils/object_pool.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
+#include "utils/singleton.hpp"
 #include "utils/std.hpp"
 
 #if defined(_MSC_VER)
@@ -71,6 +72,20 @@
 #if (!defined(IRESEARCH_FORMAT10_CODEC) || (IRESEARCH_FORMAT10_CODEC == 0))
 
 NS_LOCAL
+
+struct noop_compressor final : irs::compression::compressor, irs::singleton<noop_compressor> {
+  static irs::compression::compressor::ptr make() {
+    typedef irs::compression::compressor::ptr ptr;
+    return ptr(ptr(), &instance());
+  }
+
+  virtual irs::bytes_ref compress(
+      irs::byte_type* in, size_t size, irs::bstring& /*buf*/) {
+    return { in, size };
+  }
+
+  virtual void flush(data_output& /*out*/) { /*NOOP*/ }
+};
 
 struct format_traits {
   static const uint32_t BLOCK_SIZE = 128;
@@ -2860,7 +2875,7 @@ ColumnProperty write_compact(
     index_output& out,
     bstring& encode_buf,
     encryption::stream* cipher,
-    compression::compressor* compressor,
+    compression::compressor& compressor,
     bstring& data) {
   if (data.empty()) {
     out.write_byte(0); // zig_zag_encode32(0) == 0
@@ -2868,9 +2883,7 @@ ColumnProperty write_compact(
   }
 
   // compressor can only handle size of int32_t, so can use the negative flag as a compression flag
-  const bytes_ref compressed = compressor
-     ? compressor->compress(&data[0], data.size(), encode_buf)
-     : static_cast<bytes_ref>(data);
+  const bytes_ref compressed = compressor.compress(&data[0], data.size(), encode_buf);
 
   if (compressed.size() < data.size()) {
     assert(compressed.size() <= irs::integer_traits<int32_t>::const_max);
@@ -3127,6 +3140,7 @@ class writer final : public irs::columnstore_writer {
         cipher_(cipher),
         blocks_index_(*ctx.alloc_),
         block_buf_(2*MAX_DATA_BLOCK_SIZE, 0) {
+      assert(comp_); // ensured by `push_column'
       block_buf_.clear(); // reset size to '0'
     }
 
@@ -3250,11 +3264,7 @@ class writer final : public irs::columnstore_writer {
       //   const auto res = expr0() | expr1();
       // otherwise it would violate format layout
       auto block_props = block_index_.flush(out, buf);
-      block_props |= write_compact(out,
-                                   ctx_->buf_,
-                                   cipher_,
-                                   comp_.get(),
-                                   block_buf_);
+      block_props |= write_compact(out, ctx_->buf_, cipher_, *comp_, block_buf_);
 
       length_ += block_buf_.size();
 
@@ -3286,19 +3296,7 @@ class writer final : public irs::columnstore_writer {
     uint32_t avg_block_size_{}; // average size of the block (tail block is not taken into account since it may skew distribution)
   }; // column
 
-  // helper for deduplication
-  struct compressor_wrapper {
-    compressor_wrapper(const compression::type_id& compression)
-      : compressor(compression::get_compressor(compression)) {
-    }
-
-    operator compression::compressor::ptr() const NOEXCEPT { return compressor; }
-
-    compression::compressor::ptr compressor;
-  }; // compressor_wrapper
-
   memory_allocator* alloc_{ &memory_allocator::global() };
-  std::map<const compression::type_id*, compressor_wrapper> compressors_; // list of global compressors
   std::deque<column> columns_; // pointers remain valid
   bstring buf_; // reusable temporary buffer for packing/compression
   index_output::ptr data_out_;
@@ -3368,8 +3366,11 @@ columnstore_writer::column_t writer::push_column(const column_info& info) {
     cipher = nullptr;
   }
 
-  assert(compression);
-  auto compressor = irs::compression::get_compressor(*compression);
+  auto compressor = compression::get_compressor(*compression);
+
+  if (!compressor) {
+    compressor = noop_compressor::make();
+  }
 
   const auto id = columns_.size();
   columns_.emplace_back(*this, info.compression(), compressor, cipher);

@@ -104,7 +104,7 @@ NS_BEGIN(obsolete)
 struct IRESEARCH_API lz4 {
   DECLARE_COMPRESSION_TYPE();
 
-  class lz4compressor final : public lz4compressor_base {
+  class IRESEARCH_API lz4compressor final : public lz4compressor_base {
    public:
     explicit lz4compressor(int acceleration = 0)
       : acceleration_(acceleration) {
@@ -119,7 +119,7 @@ struct IRESEARCH_API lz4 {
     int dict_size_{}; // the size of the LZ4 dictionary from the previous call
   };
 
-  class lz4decompressor final : public lz4decompressor_base {
+  class IRESEARCH_API lz4decompressor final : public lz4decompressor_base {
    public:
     virtual bytes_ref decompress(byte_type* src, size_t src_size,
                                  byte_type* dst, size_t dst_size) override;
@@ -135,7 +135,7 @@ NS_END // obsolete
 struct IRESEARCH_API lz4basic {
   DECLARE_COMPRESSION_TYPE();
 
-  class lz4compressor final : public compression::compressor {
+  class IRESEARCH_API lz4compressor final : public compression::compressor {
    public:
     explicit lz4compressor(int acceleration = 0) NOEXCEPT
       : acceleration_(acceleration) {
@@ -149,7 +149,7 @@ struct IRESEARCH_API lz4basic {
     const int acceleration_{0}; // 0 - default acceleration
   };
 
-  class lz4decompressor final : public compression::decompressor {
+  class IRESEARCH_API lz4decompressor final : public compression::decompressor {
    public:
     virtual bytes_ref decompress(byte_type* src, size_t src_size,
                                  byte_type* dst, size_t dst_size) override;
@@ -163,7 +163,7 @@ struct IRESEARCH_API lz4basic {
 struct IRESEARCH_API lz4 {
   DECLARE_COMPRESSION_TYPE();
 
-  class lz4compressor final : public lz4compressor_base {
+  class IRESEARCH_API lz4compressor final : public lz4compressor_base {
    public:
     explicit lz4compressor(int acceleration = 0) NOEXCEPT;
 
@@ -179,7 +179,7 @@ struct IRESEARCH_API lz4 {
     std::string dict_; // dictionary
   };
 
-  class lz4decompressor final : public lz4decompressor_base {
+  class IRESEARCH_API lz4decompressor final : public lz4decompressor_base {
    public:
     virtual bytes_ref decompress(byte_type* src, size_t src_size,
                                  byte_type* dst, size_t dst_size) override;
