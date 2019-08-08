@@ -74,7 +74,7 @@ struct options {
   /// @brief
   Hint hint{ Hint::DEFAULT };
 
-  explicit options(Hint hint = Hint::DEFAULT)
+  options(Hint hint = Hint::DEFAULT)
     : hint(hint) {
   }
 };
