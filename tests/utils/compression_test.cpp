@@ -45,7 +45,7 @@ struct dummy_decompressor final : irs::compression::decompressor {
     return irs::bytes_ref::NIL;
   }
 
-  virtual bool prepare(data_input&) { }
+  virtual bool prepare(data_input&) { return true; }
 };
 
 NS_END
