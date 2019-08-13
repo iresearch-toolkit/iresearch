@@ -3,6 +3,8 @@ add_library(iresearch-python
   pyresearch.cpp
 )
 
+set_ipo(iresearch-python)
+
 target_include_directories(iresearch-python
   PRIVATE ${IResearch_INCLUDE_DIR}
 )

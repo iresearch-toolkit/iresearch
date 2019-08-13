@@ -276,11 +276,15 @@ add_library(${IResearch_TARGET_NAME}-shared
   $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-murmurhash>
 )
 
+set_ipo(${IResearch_TARGET_NAME}-shared)
+
 add_library(${IResearch_TARGET_NAME}-static
   STATIC
   ${IResearch_core_sources} ${IResearch_core_headers}
   $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-murmurhash>
 )
+
+set_ipo(${IResearch_TARGET_NAME}-static)
 
 # setup CRT
 if(MSVC)
@@ -290,11 +294,15 @@ if(MSVC)
   $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-murmurhash-scrt>
   )
 
+  set_ipo(${IResearch_TARGET_NAME}-shared-scrt)
+
   add_library(${IResearch_TARGET_NAME}-static-scrt
     STATIC
     ${IResearch_core_sources} ${IResearch_core_headers}
     $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-murmurhash-scrt>
   )
+
+  set_ipo(${IResearch_TARGET_NAME}-static-scrt)
 endif()
 
 add_sanitizers(${IResearch_TARGET_NAME}-shared)
@@ -770,10 +778,14 @@ add_library(${IResearch_TARGET_NAME}-analyzer-delimiter-shared
   ./analysis/delimited_token_stream.hpp
 )
 
+set_ipo(${IResearch_TARGET_NAME}-analyzer-delimiter-shared)
+
 add_library(${IResearch_TARGET_NAME}-analyzer-delimiter-static
   STATIC
   ./analysis/delimited_token_stream.cpp
 )
+
+set_ipo(${IResearch_TARGET_NAME}-analyzer-delimiter-static)
 
 # setup CRT
 if(MSVC)
@@ -782,10 +794,14 @@ if(MSVC)
     ./analysis/delimited_token_stream.cpp
   )
 
+  set_ipo(${IResearch_TARGET_NAME}-analyzer-delimiter-shared-scrt)
+
   add_library(${IResearch_TARGET_NAME}-analyzer-delimiter-static-scrt
     STATIC
     ./analysis/delimited_token_stream.cpp
   )
+
+  set_ipo(${IResearch_TARGET_NAME}-analyzer-delimiter-static-scrt)
 endif()
 
 # setup CRT
@@ -874,10 +890,14 @@ add_library(${IResearch_TARGET_NAME}-analyzer-text-shared
   ./analysis/text_token_stream.hpp
 )
 
+set_ipo(${IResearch_TARGET_NAME}-analyzer-text-shared)
+
 add_library(${IResearch_TARGET_NAME}-analyzer-text-static
   STATIC
   ./analysis/text_token_stream.cpp
 )
+
+set_ipo(${IResearch_TARGET_NAME}-analyzer-text-static)
 
 # setup CRT
 if(MSVC)
@@ -886,10 +906,14 @@ if(MSVC)
     ./analysis/text_token_stream.cpp
   )
 
+  set_ipo(${IResearch_TARGET_NAME}-analyzer-text-shared-scrt)
+
   add_library(${IResearch_TARGET_NAME}-analyzer-text-static-scrt
     STATIC
     ./analysis/text_token_stream.cpp
   )
+
+  set_ipo(${IResearch_TARGET_NAME}-analyzer-text-static-scrt)
 endif()
 
 target_include_directories(${IResearch_TARGET_NAME}-analyzer-text-shared
@@ -1005,10 +1029,14 @@ add_library(${IResearch_TARGET_NAME}-analyzer-norm-shared
   ./analysis/text_token_normalizing_stream.hpp
 )
 
+set_ipo(${IResearch_TARGET_NAME}-analyzer-norm-shared)
+
 add_library(${IResearch_TARGET_NAME}-analyzer-norm-static
   STATIC
   ./analysis/text_token_normalizing_stream.cpp
 )
+
+set_ipo(${IResearch_TARGET_NAME}-analyzer-norm-static)
 
 # setup CRT
 if(MSVC)
@@ -1017,10 +1045,14 @@ if(MSVC)
     ./analysis/text_token_normalizing_stream.cpp
   )
 
+  set_ipo(${IResearch_TARGET_NAME}-analyzer-norm-shared-scrt)
+
   add_library(${IResearch_TARGET_NAME}-analyzer-norm-static-scrt
     STATIC
     ./analysis/text_token_normalizing_stream.cpp
   )
+
+  set_ipo(${IResearch_TARGET_NAME}-analyzer-norm-static-scrt)
 endif()
 
 target_include_directories(${IResearch_TARGET_NAME}-analyzer-norm-shared
@@ -1128,10 +1160,14 @@ add_library(${IResearch_TARGET_NAME}-analyzer-stem-shared
   ./analysis/text_token_stemming_stream.hpp
 )
 
+set_ipo(${IResearch_TARGET_NAME}-analyzer-stem-shared)
+
 add_library(${IResearch_TARGET_NAME}-analyzer-stem-static
   STATIC
   ./analysis/text_token_stemming_stream.cpp
 )
+
+set_ipo(${IResearch_TARGET_NAME}-analyzer-stem-static)
 
 # setup CRT
 if(MSVC)
@@ -1140,10 +1176,14 @@ if(MSVC)
     ./analysis/text_token_stemming_stream.cpp
   )
 
+  set_ipo(${IResearch_TARGET_NAME}-analyzer-stem-shared-scrt)
+
   add_library(${IResearch_TARGET_NAME}-analyzer-stem-static-scrt
     STATIC
     ./analysis/text_token_stemming_stream.cpp
   )
+
+  set_ipo(${IResearch_TARGET_NAME}-analyzer-stem-static-scrt)
 endif()
 
 target_include_directories(${IResearch_TARGET_NAME}-analyzer-stem-shared
@@ -1259,10 +1299,14 @@ add_library(${IResearch_TARGET_NAME}-analyzer-mask-shared
   ./analysis/token_masking_stream.hpp
 )
 
+set_ipo(${IResearch_TARGET_NAME}-analyzer-mask-shared)
+
 add_library(${IResearch_TARGET_NAME}-analyzer-mask-static
   STATIC
   ./analysis/token_masking_stream.cpp
 )
+
+set_ipo(${IResearch_TARGET_NAME}-analyzer-mask-static)
 
 # setup CRT
 if(MSVC)
@@ -1271,10 +1315,14 @@ if(MSVC)
     ./analysis/token_masking_stream.cpp
   )
 
+  set_ipo(${IResearch_TARGET_NAME}-analyzer-mask-shared-scrt)
+
   add_library(${IResearch_TARGET_NAME}-analyzer-mask-static-scrt
     STATIC
     ./analysis/token_masking_stream.cpp
   )
+
+  set_ipo(${IResearch_TARGET_NAME}-analyzer-mask-static-scrt)
 endif()
 
 # setup CRT
@@ -1363,10 +1411,14 @@ add_library(${IResearch_TARGET_NAME}-analyzer-ngram-shared
   ./analysis/ngram_token_stream.hpp
 )
 
+set_ipo(${IResearch_TARGET_NAME}-analyzer-ngram-shared)
+
 add_library(${IResearch_TARGET_NAME}-analyzer-ngram-static
   STATIC
   ./analysis/ngram_token_stream.cpp
 )
+
+set_ipo(${IResearch_TARGET_NAME}-analyzer-ngram-static)
 
 # setup CRT
 if(MSVC)
@@ -1375,10 +1427,14 @@ if(MSVC)
     ./analysis/ngram_token_stream.cpp
   )
 
+  set_ipo(${IResearch_TARGET_NAME}-analyzer-ngram-shared-scrt)
+
   add_library(${IResearch_TARGET_NAME}-analyzer-ngram-static-scrt
     STATIC
     ./analysis/ngram_token_stream.cpp
   )
+
+  set_ipo(${IResearch_TARGET_NAME}-analyzer-ngram-static-scrt)
 endif()
 
 # setup CRT
@@ -1484,12 +1540,16 @@ add_library(${shared_format_library_name}
   ${IResearch_format-1_0_source}
   $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst> # used by formats_burst_trie
 )
+  
+set_ipo(${shared_format_library_name})
 
 add_library(${static_format_library_name}
   STATIC
   ${IResearch_format-1_0_source}
   $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst> # used by formats_burst_trie
 )
+
+set_ipo(${static_format_library_name})
 
 # setup CRT
 if(MSVC)
@@ -1499,11 +1559,15 @@ if(MSVC)
     $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst-scrt> # used by formats_burst_trie
   )
 
+  set_ipo(${static_format_library_name}-scrt)
+
   add_library(${static_format_library_name}-scrt
     STATIC
     ${IResearch_format-1_0_source}
     $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst-scrt> # used by formats_burst_trie
   )
+
+  set_ipo(${static_format_library_name}-scrt)
 endif()
 
 # setup CRT
@@ -1623,10 +1687,14 @@ add_library(${IResearch_TARGET_NAME}-scorer-tfidf-shared
   ${IResearch_tfidf_source}
 )
 
+set_ipo(${IResearch_TARGET_NAME}-scorer-tfidf-shared)
+
 add_library(${IResearch_TARGET_NAME}-scorer-tfidf-static
   STATIC
   ${IResearch_tfidf_source}
 )
+
+set_ipo(${IResearch_TARGET_NAME}-scorer-tfidf-static)
 
 # setup CRT
 if(MSVC)
@@ -1635,10 +1703,14 @@ if(MSVC)
     ${IResearch_tfidf_source}
   )
 
+  set_ipo(${IResearch_TARGET_NAME}-scorer-tfidf-shared-scrt)
+
   add_library(${IResearch_TARGET_NAME}-scorer-tfidf-static-scrt
     STATIC
     ${IResearch_tfidf_source}
   )
+
+  set_ipo(${IResearch_TARGET_NAME}-scorer-tfidf-static-scrt)
 endif()
 
 # setup CRT
@@ -1718,16 +1790,19 @@ set(IResearch_bm25_source
   ./search/bm25.hpp
 )
 
-
 add_library(${IResearch_TARGET_NAME}-scorer-bm25-shared
   SHARED
   ${IResearch_bm25_source}
 )
+  
+set_ipo(${IResearch_TARGET_NAME}-scorer-bm25-shared)
 
 add_library(${IResearch_TARGET_NAME}-scorer-bm25-static
   STATIC
   ${IResearch_bm25_source}
 )
+
+set_ipo(${IResearch_TARGET_NAME}-scorer-bm25-static)
 
 # setup CRT
 if(MSVC)
@@ -1736,10 +1811,14 @@ if(MSVC)
     ${IResearch_bm25_source}
   )
 
+  set_ipo(${IResearch_TARGET_NAME}-scorer-bm25-shared-scrt)
+
   add_library(${IResearch_TARGET_NAME}-scorer-bm25-static-scrt
     STATIC
     ${IResearch_bm25_source}
   )
+
+  set_ipo(${IResearch_TARGET_NAME}-scorer-bm25-static-scrt)
 endif()
 
 # setup CRT

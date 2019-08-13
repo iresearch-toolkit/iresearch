@@ -1,12 +1,55 @@
-cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
-
-set (IResearch_TARGET_NAME 
-  "iresearch"
-  CACHE INTERNAL
-  ""
-)
-
 project(${IResearch_TARGET_NAME})
+
+################################################################################
+### interprocedural optimization (link time optimization)
+################################################################################
+
+set(USE_IPO AUTO CACHE STRING "Use interprocedural optimization: ON, OFF or AUTO")
+set_property(CACHE USE_IPO PROPERTY STRINGS AUTO ON OFF)
+
+set(IPO_ENABLED False)
+
+# Determine value if IPO_ENABLED from USE_IPO and CMAKE_BUILD_TYPE
+if(USE_IPO STREQUAL "AUTO")
+  # When USE_IPO=AUTO, enable IPO for optimized / release builds.
+  # But to work around a g++ segfault triggered by using both -flto and
+  # -fno-devirtualize-functions, we disable IPO when using google tests, because
+  # this will set no-devirtualize. See
+  # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=91387 and
+  # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=91375.
+  # So this check may be removed later as soon as we use fixed gcc versions.
+  # - Tobias, 2019-08-08
+  if (NOT USE_GOOGLE_TESTS AND
+    (CMAKE_BUILD_TYPE STREQUAL "Release"
+    OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"
+    OR CMAKE_BUILD_TYPE STREQUAL "MinSizeRel"))
+    set(IPO_ENABLED True)
+  else()
+    set(IPO_ENABLED False)
+  endif ()
+elseif(USE_IPO)
+  set(IPO_ENABLED True)
+else()
+  set(IPO_ENABLED False)
+endif()
+
+message(STATUS "IPO_ENABLED: ${IPO_ENABLED}")
+
+if (IPO_ENABLED)
+  cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
+
+  macro(SET_IPO _target)
+    set_property(TARGET ${_target} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
+  endmacro()
+else()
+  cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
+
+  macro(SET_IPO _target)
+    # NOOP
+  endmacro()
+endif()
+
+set(IResearch_TARGET_NAME "iresearch" CACHE INTERNAL "")
 
 # attach additional cmake modules
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")

@@ -148,6 +148,7 @@ add_executable(${IResearchTests_TARGET_NAME}-shared
   ${IReSearch_tests_sources} ${IReSearch_tests_headers}
 )
 
+set_ipo(${IResearchTests_TARGET_NAME}-shared)
 add_sanitizers(${IResearchTests_TARGET_NAME}-shared)
 
 add_executable(${IResearchTests_TARGET_NAME}-static
@@ -160,6 +161,7 @@ add_executable(${IResearchTests_TARGET_NAME}-static
   ./iql/parser_test.cpp
 )
 
+set_ipo(${IResearchTests_TARGET_NAME}-static)
 add_sanitizers(${IResearchTests_TARGET_NAME}-static)
 
 add_dependencies(${IResearchTests_TARGET_NAME}-shared
