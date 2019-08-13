@@ -83,7 +83,8 @@ class dynamic_bitset : public dynamic_bitset_base<Alloc> {
 
   dynamic_bitset(const Alloc& alloc = Alloc())
     : base_t(alloc),
-      data_(nullptr, word_ptr_deleter_t(this->allocator(), 0)) {
+      data_(static_cast<typename word_ptr_t::pointer>(nullptr), // workaround for broken check in MSVC2015
+            word_ptr_deleter_t(this->allocator(), 0)) {
   }
 
   explicit dynamic_bitset(size_t bits, const Alloc& alloc = Alloc())

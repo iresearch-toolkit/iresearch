@@ -1025,11 +1025,13 @@ struct proxy_block_t {
   static const size_t SIZE = Size;
 
   CONSTEXPR explicit proxy_block_t(size_t start) NOEXCEPT
-    : start(start) {
+    : begin{ 0 },
+      end(begin + SIZE),
+      start(start) {
   }
 
   value_type begin[SIZE]; // begin of valid bytes
-  value_type* end{ begin + SIZE }; // end of valid bytes
+  value_type* end; // end of valid bytes
   size_t start; // where block starts
 }; // proxy_block_t
 
