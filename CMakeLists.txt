@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
 
-project(${IResearch_TARGET_NAME})
-
 ################################################################################
 ### interprocedural optimization (link time optimization)
 ################################################################################
@@ -51,6 +49,7 @@ endif()
 message(STATUS "IPO_ENABLED: ${IPO_ENABLED}")
 
 set(IResearch_TARGET_NAME "iresearch" CACHE INTERNAL "")
+project(${IResearch_TARGET_NAME})
 
 # attach additional cmake modules
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
