@@ -1559,7 +1559,7 @@ if(MSVC)
     $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst-scrt> # used by formats_burst_trie
   )
 
-  set_ipo(${static_format_library_name}-scrt)
+  set_ipo(${shared_format_library_name}-scrt)
 
   add_library(${static_format_library_name}-scrt
     STATIC
