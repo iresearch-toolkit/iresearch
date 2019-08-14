@@ -35,7 +35,7 @@ class IRESEARCH_API by_prefix final : public by_term {
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
 
-  by_prefix() NOEXCEPT;
+  by_prefix() noexcept;
 
   using by_term::field;
 
@@ -68,10 +68,10 @@ class IRESEARCH_API by_prefix final : public by_term {
     return scored_terms_limit_;
   }
 
-  virtual size_t hash() const NOEXCEPT override;
+  virtual size_t hash() const noexcept override;
 
  protected:
-  virtual bool equals(const filter& rhs) const NOEXCEPT override;
+  virtual bool equals(const filter& rhs) const noexcept override;
 
  private:
   size_t scored_terms_limit_{1024};

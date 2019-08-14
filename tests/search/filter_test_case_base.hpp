@@ -521,7 +521,7 @@ struct empty_term_reader : irs::singleton<empty_term_reader>, irs::term_reader {
     return EMPTY;
   }
 
-  virtual const irs::attribute_view& attributes() const NOEXCEPT {
+  virtual const irs::attribute_view& attributes() const noexcept {
     return irs::attribute_view::empty_instance();
   }
 

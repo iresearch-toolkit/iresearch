@@ -41,7 +41,7 @@ template<typename ScoreType, typename StatsType>
 struct aligned_scorer : public irs::sort {
   class prepared : public irs::sort::prepared_basic<ScoreType, StatsType> {
    public:
-    explicit prepared(const irs::flags& features) NOEXCEPT
+    explicit prepared(const irs::flags& features) noexcept
       : features_(features) {
     }
 

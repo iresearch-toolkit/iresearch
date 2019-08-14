@@ -115,7 +115,7 @@ struct basic_sort : irs::sort {
     }
 
     std::pair<size_t, size_t> score_size() const override {
-      return std::make_pair(sizeof(size_t), ALIGNOF(size_t));
+      return std::make_pair(sizeof(size_t), alignof(size_t));
     }
 
     std::pair<size_t, size_t> stats_size() const override {
@@ -198,7 +198,7 @@ class basic_doc_iterator: public irs::doc_iterator {
     return true;
   }
 
-  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+  virtual const irs::attribute_view& attributes() const noexcept override {
     return attrs_;
   }
 
@@ -1262,7 +1262,7 @@ struct unestimated: public irs::filter {
       // prevent iterator to filter out
       return irs::type_limits<irs::type_t::doc_id_t>::invalid();
     }
-    virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+    virtual const irs::attribute_view& attributes() const noexcept override {
       return attrs;
     }
 
@@ -1316,7 +1316,7 @@ struct estimated: public irs::filter {
       // prevent iterator to filter out
       return irs::type_limits<irs::type_t::doc_id_t>::invalid();
     }
-    virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+    virtual const irs::attribute_view& attributes() const noexcept override {
       return attrs;
     }
 

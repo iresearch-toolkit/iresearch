@@ -554,14 +554,14 @@ segment_reader readers_cache::emplace(const segment_meta& meta) {
   return reader;
 }
 
-void readers_cache::clear() NOEXCEPT {
+void readers_cache::clear() noexcept {
   SCOPED_LOCK(lock_);
   cache_.clear();
 }
 
 size_t readers_cache::purge(
     const std::unordered_set<key_t, key_hash_t>& segments
-) NOEXCEPT {
+) noexcept {
   if (segments.empty()) {
     return 0;
   }
@@ -593,7 +593,7 @@ index_writer::active_segment_context::active_segment_context(
     std::atomic<size_t>& segments_active,
     flush_context* flush_ctx /*= nullptr*/, // the flush_context the segment_context is currently registered with
     size_t pending_segment_context_offset /*= integer_traits<size_t>::const_max*/ // the segment offset in flush_ctx_->pending_segments_
-) NOEXCEPT
+) noexcept
   : ctx_(ctx),
     flush_ctx_(flush_ctx),
     pending_segment_context_offset_(pending_segment_context_offset),
@@ -613,7 +613,7 @@ index_writer::active_segment_context::active_segment_context(
 }
 
 index_writer::active_segment_context::active_segment_context(
-    active_segment_context&& other) NOEXCEPT
+    active_segment_context&& other) noexcept
   : ctx_(std::move(other.ctx_)),
     flush_ctx_(std::move(other.flush_ctx_)),
     pending_segment_context_offset_(std::move(other.pending_segment_context_offset_)),
@@ -639,7 +639,7 @@ index_writer::active_segment_context::~active_segment_context() {
 
 index_writer::active_segment_context& index_writer::active_segment_context::operator=(
     active_segment_context&& other
-) NOEXCEPT {
+) noexcept {
   if (this != &other) {
     if (ctx_) {
       --*segments_active_; // track here since garanteed to have 1 ref per active segment
@@ -678,14 +678,14 @@ index_writer::documents_context::document::document(
   segment_->buffered_docs_.store(writer.docs_cached());
 }
 
-index_writer::documents_context::document::document(document&& other) NOEXCEPT
+index_writer::documents_context::document::document(document&& other) noexcept
   : segment_writer::document(*(other.segment_->writer_)),
     ctx_(other.ctx_), // GCC does not allow moving of references
     segment_(std::move(other.segment_)),
     update_id_(std::move(other.update_id_)) {
 }
 
-index_writer::documents_context::document::~document() NOEXCEPT {
+index_writer::documents_context::document::~document() noexcept {
   if (!segment_) {
     return; // another instance will call commit()
   }
@@ -712,7 +712,7 @@ index_writer::documents_context::document::~document() NOEXCEPT {
   }
 }
 
-index_writer::documents_context::~documents_context() NOEXCEPT {
+index_writer::documents_context::~documents_context() noexcept {
   assert(segment_.ctx().use_count() == segment_use_count_); // failure may indicate a dangling 'document' instance
 
   if (segment_.ctx()) {
@@ -731,7 +731,7 @@ index_writer::documents_context::~documents_context() NOEXCEPT {
   }
 }
 
-void index_writer::documents_context::reset() NOEXCEPT {
+void index_writer::documents_context::reset() noexcept {
   tick_ = 0; // reset tick
 
   auto& ctx = segment_.ctx();
@@ -798,7 +798,7 @@ void index_writer::documents_context::reset() NOEXCEPT {
   ctx->buffered_docs_.store(ctx->flushed_update_contexts_.size() + writer_docs);
 
   // rollback document insertions
-  // cannot segment_writer::reset(...) since documents_context::reset() NOEXCEPT
+  // cannot segment_writer::reset(...) since documents_context::reset() noexcept
   for (auto doc_id = ctx->uncomitted_doc_id_begin_ - ctx->flushed_update_contexts_.size(),
        doc_id_end = writer_docs + doc_limits::min();
        doc_id < doc_id_end;
@@ -1016,7 +1016,7 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
   }
 }
 
-void index_writer::flush_context::reset() NOEXCEPT {
+void index_writer::flush_context::reset() noexcept {
   // reset before returning to pool
   for (auto& entry: pending_segment_contexts_) {
     if (entry.segment_.use_count() == 1) {
@@ -1183,7 +1183,7 @@ void index_writer::segment_context::remove(filter::ptr&& filter) {
   );
 }
 
-void index_writer::segment_context::reset() NOEXCEPT {
+void index_writer::segment_context::reset() noexcept {
   active_count_.store(0);
   buffered_docs_.store(0);
   dirty_ = false;
@@ -1375,7 +1375,7 @@ index_writer::ptr index_writer::make(
   return writer;
 }
 
-index_writer::~index_writer() NOEXCEPT {
+index_writer::~index_writer() noexcept {
   assert(!segments_active_.load()); // failure may indicate a dangling 'document' instance
   cached_readers_.clear();
   write_lock_.reset(); // reset write lock if any
@@ -1456,7 +1456,7 @@ bool index_writer::consolidate(
   }
 
   // unregisterer for all registered candidates
-  auto unregister_segments = irs::make_finally([&candidates, this]() NOEXCEPT {
+  auto unregister_segments = irs::make_finally([&candidates, this]() noexcept {
     if (candidates.empty()) {
       return;
     }
@@ -1742,7 +1742,7 @@ index_writer::flush_context_ptr index_writer::get_flush_context(bool shared /*= 
 
       return {
         ctx,
-        [](flush_context* ctx) NOEXCEPT ->void {
+        [](flush_context* ctx) noexcept ->void {
           async_utils::read_write_mutex::write_mutex mutex(ctx->flush_mutex_);
           ADOPT_SCOPED_LOCK_NAMED(mutex, lock);
 
@@ -1776,7 +1776,7 @@ index_writer::flush_context_ptr index_writer::get_flush_context(bool shared /*= 
 
     return {
       ctx,
-      [](flush_context* ctx) NOEXCEPT ->void {
+      [](flush_context* ctx) noexcept ->void {
         async_utils::read_write_mutex::read_mutex mutex(ctx->flush_mutex_);
         ADOPT_SCOPED_LOCK_NAMED(mutex, lock);
       }
@@ -1962,7 +1962,7 @@ index_writer::pending_context_t index_writer::flush_all(const before_commit_f& b
     auto& candidates = pending_segment.consolidation_ctx.candidates;
 
     // unregisterer for all registered candidates
-    auto unregister_segments = irs::make_finally([&candidates, this]() NOEXCEPT {
+    auto unregister_segments = irs::make_finally([&candidates, this]() noexcept {
       if (candidates.empty()) {
         return;
       }
@@ -2316,7 +2316,7 @@ bool index_writer::start(const before_commit_f& before_commit) {
     throw illegal_state();
   }
 
-  auto update_generation = make_finally([this, &pending_meta]()NOEXCEPT{
+  auto update_generation = make_finally([this, &pending_meta]()noexcept{
     meta_.update_generation(pending_meta);
   });
 
@@ -2376,7 +2376,7 @@ void index_writer::finish() {
     return;
   }
 
-  auto reset_state = irs::make_finally([this]()NOEXCEPT {
+  auto reset_state = irs::make_finally([this]()noexcept {
     // release reference to flush_context
     pending_state_.reset();
   });

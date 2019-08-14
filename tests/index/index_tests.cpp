@@ -38,13 +38,13 @@ NS_BEGIN(tests)
 struct incompatible_attribute : irs::attribute {
   DECLARE_ATTRIBUTE_TYPE();
 
-  incompatible_attribute() NOEXCEPT;
+  incompatible_attribute() noexcept;
 };
 
 REGISTER_ATTRIBUTE(incompatible_attribute);
 DEFINE_ATTRIBUTE_TYPE(incompatible_attribute)
 
-incompatible_attribute::incompatible_attribute() NOEXCEPT {
+incompatible_attribute::incompatible_attribute() noexcept {
 }
 
 NS_BEGIN(templates)
@@ -4679,7 +4679,7 @@ class index_test_case : public tests::index_test_base {
     // write documents
     {
       struct stored {
-        explicit stored(const irs::string_ref& name) NOEXCEPT
+        explicit stored(const irs::string_ref& name) noexcept
           : column_name(name) {
         }
         const irs::string_ref& name() { return column_name; }
@@ -5844,11 +5844,11 @@ class index_test_case : public tests::index_test_base {
     // write documents
     {
       struct stored {
-        explicit stored(const irs::string_ref& name) NOEXCEPT
+        explicit stored(const irs::string_ref& name) noexcept
           : column_name(name) {
         }
 
-        const irs::string_ref& name() NOEXCEPT { return column_name; }
+        const irs::string_ref& name() noexcept { return column_name; }
 
         const irs::flags& features() const {
           return irs::flags::empty_instance();
@@ -6309,11 +6309,11 @@ class index_test_case : public tests::index_test_base {
     // write documents
     {
       struct stored {
-        explicit stored(const irs::string_ref& name) NOEXCEPT
+        explicit stored(const irs::string_ref& name) noexcept
           : column_name(name) {
         }
 
-        const irs::string_ref& name() NOEXCEPT { return column_name; }
+        const irs::string_ref& name() noexcept { return column_name; }
 
         const irs::flags& features() const {
           return irs::flags::empty_instance();
@@ -7315,7 +7315,7 @@ class index_test_case : public tests::index_test_base {
     // write documents
     {
       struct stored {
-        explicit stored(const irs::string_ref& name) NOEXCEPT
+        explicit stored(const irs::string_ref& name) noexcept
           : column_name(name) {
         }
         const irs::string_ref& name() { return column_name; }
@@ -9463,7 +9463,7 @@ class index_test_case : public tests::index_test_base {
         return irs::flags::empty_instance();
       }
 
-      bool write(irs::data_output&) const NOEXCEPT {
+      bool write(irs::data_output&) const noexcept {
         return true;
       }
 
@@ -10605,7 +10605,7 @@ class index_test_case : public tests::index_test_base {
       field(std::string&& name, const irs::string_ref& value)
         : name_(std::move(name)),
         value_(value) {}
-      field(field&& other) NOEXCEPT
+      field(field&& other) noexcept
         : stream_(std::move(other.stream_)),
           name_(std::move(other.name_)),
           value_(std::move(other.value_)) {
@@ -10695,7 +10695,7 @@ class index_test_case : public tests::index_test_base {
           features_.add<tests::incompatible_attribute>();
         }
       }
-      indexed_and_stored_field(indexed_and_stored_field&& other) NOEXCEPT
+      indexed_and_stored_field(indexed_and_stored_field&& other) noexcept
         : features_(std::move(other.features_)),
           stream_(std::move(other.stream_)),
           name_(std::move(other.name_)),
@@ -10711,7 +10711,7 @@ class index_test_case : public tests::index_test_base {
       const irs::flags& features() const {
         return features_;
       }
-      bool write(irs::data_output& out) const NOEXCEPT {
+      bool write(irs::data_output& out) const noexcept {
         irs::write_string(out, value_);
         return stored_valid_;
       }
@@ -10732,7 +10732,7 @@ class index_test_case : public tests::index_test_base {
           features_.add<tests::incompatible_attribute>();
         }
       }
-      indexed_field(indexed_field&& other) NOEXCEPT
+      indexed_field(indexed_field&& other) noexcept
         : features_(std::move(other.features_)),
           stream_(std::move(other.stream_)),
           name_(std::move(other.name_)),
@@ -10764,7 +10764,7 @@ class index_test_case : public tests::index_test_base {
         return name_;
       }
 
-      const irs::flags& features() const NOEXCEPT {
+      const irs::flags& features() const noexcept {
         return irs::flags::empty_instance();
       }
 
@@ -10900,7 +10900,7 @@ class index_test_case : public tests::index_test_base {
         : directory_mock(impl), sync_(std::move(sync)) {
       }
 
-      virtual bool sync(const std::string& name) NOEXCEPT override {
+      virtual bool sync(const std::string& name) noexcept override {
         try {
           if (sync_(name)) {
             return true;
@@ -15047,7 +15047,7 @@ TEST_P(index_test_case, import_concurrent) {
       reader = irs::directory_reader::open(*dir);
     }
 
-    store(store&& rhs) NOEXCEPT
+    store(store&& rhs) noexcept
       : dir(std::move(rhs.dir)),
         writer(std::move(rhs.writer)),
         reader(rhs.reader) {
@@ -15828,7 +15828,7 @@ TEST_P(index_test_case, consolidate_single_segment) {
   }
 
   size_t count = 0;
-  auto get_number_of_files_in_segments = [&count](const std::string& name) NOEXCEPT {
+  auto get_number_of_files_in_segments = [&count](const std::string& name) noexcept {
     count += size_t(name.size() && '_' == name[0]);
     return true;
   };
@@ -15914,7 +15914,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
   auto all_features = irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() };
 
   size_t count = 0;
-  auto get_number_of_files_in_segments = [&count](const std::string& name) NOEXCEPT {
+  auto get_number_of_files_in_segments = [&count](const std::string& name) noexcept {
     count += size_t(name.size() && '_' == name[0]);
     return true;
   };
@@ -16720,7 +16720,7 @@ TEST_P(index_test_case, segment_consolidate_commit) {
   auto all_features = irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() };
 
   size_t count = 0;
-  auto get_number_of_files_in_segments = [&count](const std::string& name) NOEXCEPT {
+  auto get_number_of_files_in_segments = [&count](const std::string& name) noexcept {
     count += size_t(name.size() && '_' == name[0]);
     return true;
   };
@@ -17201,7 +17201,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   auto all_features = irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() };
 
   size_t count = 0;
-  auto get_number_of_files_in_segments = [&count](const std::string& name) NOEXCEPT {
+  auto get_number_of_files_in_segments = [&count](const std::string& name) noexcept {
     count += size_t(name.size() && '_' == name[0]);
     return true;
   };
@@ -18329,7 +18329,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
     }
   };
   size_t count = 0;
-  auto get_number_of_files_in_segments = [&count](const std::string& name) NOEXCEPT {
+  auto get_number_of_files_in_segments = [&count](const std::string& name) noexcept {
     count += size_t(name.size() && '_' == name[0]);
     return true;
   };

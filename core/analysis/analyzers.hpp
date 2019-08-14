@@ -59,7 +59,7 @@ class IRESEARCH_API analyzer_registrar {
     const char* source = nullptr
   );
 
-  operator bool() const NOEXCEPT {
+  operator bool() const noexcept {
     return registered_;
   }
 
@@ -102,7 +102,7 @@ class IRESEARCH_API analyzers {
     const irs::text_format::type_id& args_format,
     const string_ref& args,
     bool load_library = true
-  ) NOEXCEPT;
+  ) noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find an analyzer by name, or nullptr if not found
@@ -115,7 +115,7 @@ class IRESEARCH_API analyzers {
     const irs::text_format::type_id& args_format,
     const string_ref& args,
     bool load_library = true
-  ) NOEXCEPT;
+  ) noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief for static lib reference all known scorers in lib
