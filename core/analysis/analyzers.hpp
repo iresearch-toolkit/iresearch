@@ -27,6 +27,7 @@
 #include "shared.hpp"
 #include "analyzer.hpp"
 #include "utils/text_format.hpp"
+#include "utils/result.hpp"
 
 NS_ROOT
 NS_BEGIN(analysis)
@@ -98,6 +99,20 @@ class IRESEARCH_API analyzers {
   ////////////////////////////////////////////////////////////////////////////////
   static bool normalize(
     std::string& out,
+    const string_ref& name,
+    const irs::text_format::type_id& args_format,
+    const string_ref& args,
+    bool load_library = true
+  ) noexcept;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief find an analyzer by name, or nullptr if not found
+  ///        indirect call to <class>::make(...)
+  ///        requires use of DECLARE_FACTORY() in class definition
+  ///        NOTE: make(...) MUST be defined in CPP to ensire proper code scope
+  ////////////////////////////////////////////////////////////////////////////////
+  static result get(
+    analyzer::ptr& analyzer,
     const string_ref& name,
     const irs::text_format::type_id& args_format,
     const string_ref& args,

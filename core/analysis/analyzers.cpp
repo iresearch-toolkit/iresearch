@@ -153,6 +153,37 @@ NS_BEGIN(analysis)
   return false;
 }
 
+/*static*/ result analyzers::get(
+    analyzer::ptr& analyzer,
+    const string_ref& name,
+    const irs::text_format::type_id& args_format,
+    const string_ref& args,
+    bool load_library /*= true*/
+) noexcept {
+  try {
+    auto* factory = analyzer_register::instance().get(
+      ::key(name, args_format),
+      load_library
+    ).factory;
+
+    if (!factory) {
+      return result::make<result::NOT_FOUND>();
+    }
+
+    analyzer = factory(args);
+  } catch (const std::exception& e) {
+    return result::make<result::INVALID_ARGUMENT>(
+      "Caught exception while getting an analyzer instance",
+      e.what());
+  } catch (...) {
+    return result::make<result::INVALID_ARGUMENT>(
+      "Caught exception while getting an analyzer instance");
+    IR_LOG_EXCEPTION();
+  }
+
+  return {};
+}
+
 /*static*/ analyzer::ptr analyzers::get(
     const string_ref& name,
     const irs::text_format::type_id& args_format,
