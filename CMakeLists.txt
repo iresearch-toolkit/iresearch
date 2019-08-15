@@ -67,6 +67,7 @@ endif()
 ### compile options
 ################################################################################
 
+option(USE_PVS_STUDIO "Generate target for PVS-Studio check" OFF)
 option(USE_TESTS "Build tests" OFF)
 option(USE_PYRESEARCH "Build iresearch python bridge" OFF)
 option(USE_VALGRIND "Use workarounds to avoid false positives in valgrind" OFF)
@@ -224,6 +225,19 @@ add_subdirectory(utils)
 
 if (USE_PYRESEARCH)
   add_subdirectory(python)
+endif()
+
+if (USE_PVS_STUDIO)
+  pvs_studio_add_target(
+    TARGET iresearch-pvs-check ALL
+    OUTPUT FORMAT errorfile 
+    ANALYZE ${IResearch_TARGET_NAME}-static
+            ${IResearchUtil_TARGET_NAME}
+            ${IResearchBenchmarks_TARGET_NAME}
+            ${IResearchPython_TARGET_NAME}
+    MODE GA:1,2 OP
+    LOG iresearch.err
+  )
 endif()
 
 if (USE_TESTS)
