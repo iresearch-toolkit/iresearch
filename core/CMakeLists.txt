@@ -1889,9 +1889,30 @@ if(MSVC)
   )
 endif()
 
-##########################  
-# installation
-########################## 
+################################################################################
+### pvs-studio check
+################################################################################
+
+pvs_studio_add_target(
+  TARGET ${IResearch_TARGET_NAME}-pvs-check ALL
+  OUTPUT FORMAT errorfile 
+  ANALYZE ${IResearch_TARGET_NAME}-static
+          ${IResearch_TARGET_NAME}-analyzer-delimiter-static
+          ${IResearch_TARGET_NAME}-analyzer-ngram-static
+          ${IResearch_TARGET_NAME}-analyzer-text-static
+          ${IResearch_TARGET_NAME}-analyzer-norm-static
+          ${IResearch_TARGET_NAME}-analyzer-stem-static
+          ${IResearch_TARGET_NAME}-analyzer-mask-static
+          ${IResearch_TARGET_NAME}-format-1_0-static
+          ${IResearch_TARGET_NAME}-scorer-tfidf-static
+          ${IResearch_TARGET_NAME}-scorer-bm25-static
+  MODE GA:1,2 OP
+  LOG ${IResearch_TARGET_NAME}.err
+)
+
+################################################################################
+### installation
+################################################################################
 
 install(TARGETS ${IResearch_TARGET_NAME}-shared
   DESTINATION lib

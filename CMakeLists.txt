@@ -56,6 +56,7 @@ list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
 # load cmake utils
 include(Utils)
+include(PVS-Studio)
 
 if (NOT MSVC)
   # put GCC version into GCC_VERSION variable
