@@ -228,15 +228,26 @@ if (USE_PYRESEARCH)
 endif()
 
 if (USE_PVS_STUDIO)
+  set(PVS_STUDIO_TARGET_NAME "iresearch-pvs-check")
+  set(PVS_STUDIO_ANALYZE ${IResearch_TARGET_NAME}-static
+                         ${IResearchUtil_TARGET_NAME}
+                         ${IResearchBenchmarks_TARGET_NAME}
+                         ${IResearchPython_TARGET_NAME})
+
   pvs_studio_add_target(
-    TARGET iresearch-pvs-check ALL
-    OUTPUT FORMAT errorfile 
-    ANALYZE ${IResearch_TARGET_NAME}-static
-            ${IResearchUtil_TARGET_NAME}
-            ${IResearchBenchmarks_TARGET_NAME}
-            ${IResearchPython_TARGET_NAME}
+    TARGET ${PVS_STUDIO_TARGET_NAME} ALL
+    OUTPUT FORMAT errorfile
+    ANALYZE ${PVS_STUDIO_ANALYZE}
     MODE GA:1,2 OP
-    LOG iresearch.err
+    LOG ${IResearch_TARGET_NAME}.err
+  )
+
+  pvs_studio_add_target(
+    TARGET ${PVS_STUDIO_TARGET_NAME}-html ALL
+    FORMAT fullhtml
+    ANALYZE ${PVS_STUDIO_ANALYZE}
+    MODE GA:1,2 OP
+    LOG ${IResearch_TARGET_NAME}-html.err
   )
 endif()
 
