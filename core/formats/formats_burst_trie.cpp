@@ -995,7 +995,7 @@ void block_iterator::reset() {
 
 term_iterator::term_iterator(const term_reader* owner)
   : owner_(owner),
-    matcher_(*owner->fst_, fst::MATCH_INPUT),
+    matcher_(owner->fst_, fst::MATCH_INPUT), // pass pointer to avoid copying FST
     attrs_(2), // version10::term_meta + frequency
     cur_block_(nullptr) {
   assert(owner_);
