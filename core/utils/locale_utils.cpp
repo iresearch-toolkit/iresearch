@@ -3588,15 +3588,17 @@ const std::locale& get_locale(
   try {
     boost_locale = locale_genrator.generate(info.name());
   } catch(...) {
-    if (info.encoding().c_str() < info.name().c_str()
-        || info.encoding().c_str() >= info.name().c_str() + info.name().size()) {
+    auto* encoding = info.encoding().c_str();
+    auto* name = info.name().c_str();
+
+    if (encoding < name || encoding >= name + info.name().size()) {
       throw;
     }
 
     auto boost_locale_name = info.name();
 
     boost_locale_name.erase(
-      info.encoding().c_str() - info.name().c_str() - 1, // -1 for '_'
+      encoding - name - 1, // -1 for '_'
       info.encoding().size() + 1 // +1 for '_'
     ); // skip encoding
     boost_locale = locale_genrator.generate(boost_locale_name);

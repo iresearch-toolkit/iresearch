@@ -38,8 +38,8 @@ class text_token_normalizing_stream: public analyzer, util::noncopyable {
  public:
   struct options_t {
     enum case_convert_t { LOWER, NONE, UPPER };
-    case_convert_t case_convert{case_convert_t::NONE}; // no extra normalization
     std::locale locale;
+    case_convert_t case_convert{case_convert_t::NONE}; // no extra normalization
     bool accent{true}; // no extra normalization
   };
 

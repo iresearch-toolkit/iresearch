@@ -751,19 +751,20 @@ class block_pool_inserter : public std::iterator<std::output_iterator_tag, void,
   }
 
   void alloc_slice_of_size(size_t size) {
-    auto pool_size = where_.parent().value_count();
+    auto& parent = where_.parent();
+    auto pool_size = parent.value_count();
     auto slice_start = where_.pool_offset() + size;
     auto next_block_start = where_.block_offset() + block_type::SIZE;
 
     // if need to increase pool size
     if (slice_start >= pool_size) {
-      where_.parent().alloc_buffer();
+      parent.alloc_buffer();
 
       if (slice_start == pool_size) {
         where_.refresh();
       } else {
         // do not span slice over 2 blocks, start slice at start of block allocated above
-        where_.reset(where_.parent().block_offset(where_.parent().block_count() - 1));
+        where_.reset(parent.block_offset(parent.block_count() - 1));
       }
     } else if (slice_start > next_block_start) {
       // can reuse existing pool but slice is not in the current buffer

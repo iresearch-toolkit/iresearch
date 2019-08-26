@@ -61,7 +61,7 @@ lock_obtain_failed::lock_obtain_failed(
     error_ += ".";
   } else {
     error_ += ": ";
-    error_ + filename.c_str();
+    error_ += filename.c_str();
   }
 }
 
