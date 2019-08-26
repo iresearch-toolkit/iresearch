@@ -42,29 +42,32 @@ filter::prepared::ptr by_prefix::prepare(
 
   auto& prefix = term();
 
-  /* iterate over the segments */
+  // iterate over the segments
   const string_ref field = this->field();
   for (const auto& sr : rdr ) {
-    /* get term dictionary for field */
+    // get term dictionary for field
     const term_reader* tr = sr.field(field);
+
     if (!tr) {
       continue;
     }
 
     seek_term_iterator::ptr terms = tr->iterator();
 
-    /* seek to prefix */
+    // seek to prefix
     if (SeekResult::END == terms->seek_ge(prefix)) {
       continue;
     }
 
-    /* get term metadata */
+    // get term metadata
     auto& meta = terms->attributes().get<term_meta>();
+    const decltype(irs::term_meta::docs_count) NO_DOCS = 0;
+    const auto& docs_count = meta ? &meta->docs_count : &NO_DOCS;
 
     if (starts_with(terms->value(), prefix)) {
       terms->read();
 
-      /* get state for current segment */
+      // get state for current segment
       auto& state = states.insert(sr);
       state.reader = tr;
       state.min_term = terms->value();
@@ -73,13 +76,9 @@ filter::prepared::ptr by_prefix::prepare(
 
       do {
         // fill scoring candidates
-        scorer.collect(meta ? meta->docs_count : 0, state.count, state, sr, *terms);
+        scorer.collect(*docs_count, state.count, state, sr, *terms);
         ++state.count;
-
-        /* collect cost */
-        if (meta) {
-          state.estimation += meta->docs_count;
-        }
+        state.estimation += *docs_count; // collect cost
 
         if (!terms->next()) {
           break;

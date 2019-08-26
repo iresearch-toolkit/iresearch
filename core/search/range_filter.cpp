@@ -55,15 +55,14 @@ void collect_terms(
 
     // get term metadata
     auto& meta = terms.attributes().get<irs::term_meta>();
+    const decltype(irs::term_meta::docs_count) NO_DOCS = 0;
+    const auto& docs_count = meta ? &meta->docs_count : &NO_DOCS;
 
     do {
       // fill scoring candidates
-      scorer.collect(meta ? meta->docs_count : 0, state.count, state, segment, terms);
+      scorer.collect(*docs_count , state.count, state, segment, terms);
       ++state.count;
-
-      if (meta) {
-        state.estimation += meta->docs_count;
-      }
+      state.estimation += *docs_count;
 
       if (!terms.next()) {
         break;
