@@ -13,6 +13,7 @@
 
 #include <fst/fst.h>
 #include <fst/util.h>
+#include <fst/script/fst-class.h>
 
 namespace fst {
 
@@ -29,7 +30,8 @@ class FstDrawer {
             const SymbolTable *osyms, const SymbolTable *ssyms, bool accep,
             const std::string &title, float width, float height, bool portrait,
             bool vertical, float ranksep, float nodesep, int fontsize,
-            int precision, const std::string &float_format, bool show_weight_one)
+            int precision, const std::string &float_format,
+            bool show_weight_one)
       : fst_(fst),
         isyms_(isyms),
         osyms_(osyms),
@@ -66,7 +68,7 @@ class FstDrawer {
     PrintString(",");
     Print(height_);
     PrintString("\";\n");
-    if (!dest_.empty()) PrintString("label = \"" + title_ + "\";\n");
+    if (!title_.empty()) PrintString("label = \"" + title_ + "\";\n");
     PrintString("center = 1;\n");
     if (portrait_) {
       PrintString("orientation = Portrait;\n");
@@ -100,8 +102,8 @@ class FstDrawer {
 
   void PrintString(const std::string &str) const { *ostrm_ << str; }
 
-  // Escapes backslash and double quote if these occur in the string. Dot will
-  // not deal gracefully with these if they are not escaped.
+  // Escapes backslash and double quote if these occur in the string. Dot
+  // will not deal gracefully with these if they are not escaped.
   static std::string Escape(const std::string &str) {
     std::string ns;
     for (char c : str) {
@@ -130,11 +132,11 @@ class FstDrawer {
   void PrintStateId(StateId s) const { PrintId(s, ssyms_, "state ID"); }
 
   void PrintILabel(Label label) const {
-    PrintId(label, isyms_, "arc input label");
+    PrintLabel(label, isyms_, "arc input label");
   }
 
   void PrintOLabel(Label label) const {
-    PrintId(label, osyms_, "arc output label");
+    PrintLabel(label, osyms_, "arc output label");
   }
 
   void PrintWeight(Weight w) const {
@@ -144,6 +146,24 @@ class FstDrawer {
 
   template <class T>
   void Print(T t) const { *ostrm_ << t; }
+
+  void PrintLabel(int32_t id, const SymbolTable* syms, const char* name) const {
+    if (syms) {
+      auto symbol = syms->Find(id);
+      if (!symbol.empty()) {
+        PrintString(Escape(symbol));
+      } else {
+        PrintString(std::to_string(id));
+      }
+    } else {
+      PrintString(std::to_string(id));
+    }
+  }
+
+  template<class T>
+  void PrintLabel(const T& label, const SymbolTable*, const char*) const {
+    *ostrm_ << label;
+  }
 
   template <class T>
   std::string ToString(T t) const {
@@ -203,7 +223,7 @@ class FstDrawer {
   const SymbolTable *ssyms_;  // slabel symbol table.
   bool accep_;                // Print as acceptor when possible.
   std::ostream *ostrm_;       // Drawn FST destination.
-  std::string dest_;               // Drawn FST destination name.
+  std::string dest_;          // Drawn FST destination name.
 
   std::string title_;
   float width_;

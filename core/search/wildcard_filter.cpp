@@ -23,6 +23,9 @@
 #include "shared.hpp"
 #include "wildcard_filter.hpp"
 #include "all_filter.hpp"
+#include "range_query.hpp"
+#include "term_query.hpp"
+#include "index/index_reader.hpp"
 
 #include "utils/automaton.hpp"
 #include "utils/hash_utils.hpp"
@@ -31,9 +34,61 @@ NS_LOCAL
 
 using wildcard_traits_t = fst::fsa::WildcardTraits<irs::byte_type>;
 
+enum class WildcardType {
+  MATCH_ALL = 0,
+  TERM,
+  PREFIX,
+  WILDCARD
+};
+
+WildcardType type(const irs::bstring& expr) noexcept {
+  if (expr.empty()) {
+    return WildcardType::TERM;
+  }
+
+  bool escaped = false;
+  size_t num_match_any_string = 0;
+  for (const auto c : expr) {
+    switch (c) {
+      case wildcard_traits_t::MatchAnyString:
+        num_match_any_string = size_t(!escaped);
+        break;
+      case wildcard_traits_t::MatchAnyChar:
+        if (!escaped) {
+          return WildcardType::WILDCARD;
+        }
+        break;
+      case wildcard_traits_t::Escape:
+       escaped = !escaped;
+       break;
+    }
+  }
+
+  if (0 == num_match_any_string) {
+    return WildcardType::TERM;
+  }
+
+  if (1 == num_match_any_string) {
+    if (1 == expr.size()) {
+      return WildcardType::MATCH_ALL;
+    }
+
+    if (wildcard_traits_t::MatchAnyString == expr.back()) {
+      return WildcardType::PREFIX;
+    }
+  }
+
+  return WildcardType::WILDCARD;
+}
+
 NS_END
 
 NS_ROOT
+
+struct state {
+  const term_reader* field;
+
+};
 
 DEFINE_FILTER_TYPE(by_wildcard)
 DEFINE_FACTORY_DEFAULT(by_wildcard)
@@ -43,25 +98,79 @@ filter::prepared::ptr by_wildcard::prepare(
     const order::prepared& ord,
     boost_t boost,
     const attribute_view& ctx) const {
-  auto& pattern = term();
+  const auto wildcard_type = ::type(term());
 
-  if (pattern.empty()) {
-    return by_term::prepare(index, ord, boost, ctx);
-  }
-
-  if (wildcard_traits_t::MatchAnyString == pattern.back()) {
-    if (1 == pattern.size()) {
+  switch (wildcard_type) {
+    case WildcardType::MATCH_ALL:
       return all().prepare(index, ord, this->boost()*boost, ctx);
-    }
-
-    if (0 == std::count(pattern.begin(), pattern.end() - 1, wildcard_traits_t::MatchAnyChar)) {
+    case WildcardType::TERM:
+      return term_query::make(index, ord, this->boost()*boost, field(), term());
+    case WildcardType::PREFIX:
       return by_prefix::prepare(index, ord, boost, ctx);
-    }
+    default:
+      break;
   }
 
-  auto a = fst::fsa::fromWildcard<byte_type, wildcard_traits_t>(pattern);
+  assert(WildcardType::WILDCARD == wildcard_type);
 
-  // build automaton
+  term_query::states_t states(index.size());
+  limited_sample_scorer scorer(ord.empty() ? 0 : scored_terms_limit()); // object for collecting order stats
+  auto acceptor = fst::fsa::fromWildcard<byte_type, wildcard_traits_t>(term());
+
+  const string_ref field = this->field();
+
+  for (const auto& segment : index) {
+    // get term dictionary for field
+    const term_reader* terms = segment.field(field);
+
+    if (!terms) {
+      continue;
+    }
+
+    seek_term_iterator::ptr it = terms->iterator();
+    auto& meta = it->attributes().get<term_meta>(); // get term metadata
+
+    while (it->next()) {
+      if (!fst::fsa::accept(acceptor, it->value())) {
+        continue;
+      }
+
+      it->read(); // read term attributes
+
+
+    }
+
+
+//    if (starts_with(terms->value(), prefix)) {
+//      terms->read();
+//
+//      /* get state for current segment */
+//      auto& state = states.insert(sr);
+//      state.reader = tr;
+//      state.min_term = terms->value();
+//      state.min_cookie = terms->cookie();
+//      state.unscored_docs.reset((type_limits<type_t::doc_id_t>::min)() + sr.docs_count()); // highest valid doc_id in reader
+//
+//      do {
+//        // fill scoring candidates
+//        scorer.collect(meta ? meta->docs_count : 0, state.count, state, sr, *terms);
+//        ++state.count;
+//
+//        /* collect cost */
+//        if (meta) {
+//          state.estimation += meta->docs_count;
+//        }
+//
+//        if (!terms->next()) {
+//          break;
+//        }
+//
+//        terms->read();
+//      } while (starts_with(terms->value(), prefix));
+//    }
+  }
+
+
 
   return nullptr;
 }
