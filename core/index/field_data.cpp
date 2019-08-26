@@ -693,7 +693,7 @@ class term_iterator : public irs::term_iterator {
   map_t::iterator next_{ postings_.end() };
   map_t::iterator it_{ postings_.end() };
   const field_data* field_{};
-  const doc_map* doc_map_;
+  const doc_map* doc_map_{};
   mutable detail::doc_iterator doc_itr_;
   mutable detail::sorting_doc_iterator sorting_doc_itr_;
 }; // term_iterator
