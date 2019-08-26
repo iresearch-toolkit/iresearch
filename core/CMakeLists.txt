@@ -126,6 +126,7 @@ set(IResearch_core_sources
   ./search/phrase_filter.cpp
   ./search/column_existence_filter.cpp
   ./search/same_position_filter.cpp
+  ./search/wildcard_filter.cpp
   ./search/range_query.cpp
   ./search/term_query.cpp
   ./search/boolean_filter.cpp
@@ -219,6 +220,7 @@ set(IResearch_core_headers
   ./store/memory_directory.hpp
   ./store/store_utils.hpp
   ./utils/attributes.hpp
+  ./utils/automaton.hpp
   ./utils/bit_packing.hpp
   ./utils/bit_utils.hpp
   ./utils/block_pool.hpp

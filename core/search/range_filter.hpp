@@ -58,8 +58,6 @@ struct range {
 
 NS_END // detail
 
-class term_selector;
-
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_range
 /// @brief user-side term range filter

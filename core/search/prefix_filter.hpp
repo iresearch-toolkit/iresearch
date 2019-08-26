@@ -28,9 +28,7 @@
 
 NS_ROOT
 
-class term_selector;
-
-class IRESEARCH_API by_prefix final : public by_term {
+class IRESEARCH_API by_prefix : public by_term {
  public:
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
@@ -71,6 +69,10 @@ class IRESEARCH_API by_prefix final : public by_term {
   virtual size_t hash() const noexcept override;
 
  protected:
+  explicit by_prefix(const type_id& type) noexcept
+    : by_term(type) {
+  }
+
   virtual bool equals(const filter& rhs) const noexcept override;
 
  private:

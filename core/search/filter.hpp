@@ -129,7 +129,7 @@ class IRESEARCH_API filter {
   DECLARE_UNIQUE_PTR(filter);
   DEFINE_FACTORY_INLINE(filter)
 
-  filter(const type_id& type) noexcept;
+  explicit filter(const type_id& type) noexcept;
   virtual ~filter() = default;
 
   virtual size_t hash() const noexcept {

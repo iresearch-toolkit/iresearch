@@ -319,7 +319,12 @@ class SortedMatcher : public MatcherBase<typename F::Arc> {
  private:
   Label GetLabel() const {
     const auto &arc = aiter_->Value();
-    return match_type_ == MATCH_INPUT ? arc.ilabel : arc.olabel;
+
+    if (match_type_ == MATCH_INPUT) {
+      return arc.ilabel;
+    }
+
+    return arc.olabel;
   }
 
   bool BinarySearch();

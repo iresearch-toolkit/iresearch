@@ -38,7 +38,7 @@ class IRESEARCH_API by_term : public filter {
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
 
-  by_term();
+  by_term() noexcept;
 
   by_term& field(std::string fld) {
     fld_ = std::move(fld); 
@@ -79,7 +79,9 @@ class IRESEARCH_API by_term : public filter {
   virtual size_t hash() const noexcept override;
 
  protected:
-  by_term(const type_id& type);
+  explicit by_term(const type_id& type) noexcept
+    : filter(type) {
+  }
   virtual bool equals(const filter& rhs) const noexcept override;
 
  private:
