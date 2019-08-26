@@ -23,19 +23,6 @@
 #include "tests_shared.hpp"
 
 #include "utils/automaton.hpp"
-#include "draw-impl.h"
-#include "fst/vector-fst.h"
-#include "fst/arcsort.h"
-#include "fst/matcher.h"
-#include "fst/union.h"
-#include "fst/minimize.h"
-#include "fst/determinize.h"
-#include "fst/concat.h"
-#include "fst/rmepsilon.h"
-#include "fst/determinize.h"
-#include "fst/arcsort.h"
-#include "fst/closure.h"
-#include "fst/compose.h"
 
 TEST(automaton_test, match_wildcard) {
   // nil string
