@@ -141,6 +141,7 @@ set(IResearch_core_sources
   ./store/store_utils.cpp
   ./utils/async_utils.cpp
   ./utils/attributes.cpp
+  ./utils/automaton_utils.cpp
   ./utils/bit_packing.cpp
   ./utils/encryption.cpp
   ./utils/ctr_encryption.cpp
@@ -221,6 +222,7 @@ set(IResearch_core_headers
   ./store/store_utils.hpp
   ./utils/attributes.hpp
   ./utils/automaton.hpp
+  ./utils/automaton_utils.hpp
   ./utils/bit_packing.hpp
   ./utils/bit_utils.hpp
   ./utils/block_pool.hpp

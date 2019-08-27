@@ -27,21 +27,18 @@
 #include "term_query.hpp"
 #include "index/index_reader.hpp"
 
-#include "utils/automaton.hpp"
+#include "utils/automaton_utils.hpp"
 #include "utils/hash_utils.hpp"
 
 NS_LOCAL
 
-using wildcard_traits_t = fst::fsa::WildcardTraits<irs::byte_type>;
+using wildcard_traits_t = irs::wildcard_traits<irs::byte_type>;
 
-enum class WildcardType {
-  MATCH_ALL = 0,
-  TERM,
-  PREFIX,
-  WILDCARD
-};
+NS_END
 
-WildcardType type(const irs::bstring& expr) noexcept {
+NS_ROOT
+
+WildcardType wildcard_type(const irs::bstring& expr) noexcept {
   if (expr.empty()) {
     return WildcardType::TERM;
   }
@@ -50,15 +47,15 @@ WildcardType type(const irs::bstring& expr) noexcept {
   size_t num_match_any_string = 0;
   for (const auto c : expr) {
     switch (c) {
-      case wildcard_traits_t::MatchAnyString:
+      case wildcard_traits_t::MATCH_ANY_STRING:
         num_match_any_string = size_t(!escaped);
         break;
-      case wildcard_traits_t::MatchAnyChar:
+      case wildcard_traits_t::MATCH_ANY_CHAR:
         if (!escaped) {
           return WildcardType::WILDCARD;
         }
         break;
-      case wildcard_traits_t::Escape:
+      case wildcard_traits_t::ESCAPE:
        escaped = !escaped;
        break;
     }
@@ -73,7 +70,7 @@ WildcardType type(const irs::bstring& expr) noexcept {
       return WildcardType::MATCH_ALL;
     }
 
-    if (wildcard_traits_t::MatchAnyString == expr.back()) {
+    if (wildcard_traits_t::MATCH_ANY_STRING == expr.back()) {
       return WildcardType::PREFIX;
     }
   }
@@ -81,15 +78,50 @@ WildcardType type(const irs::bstring& expr) noexcept {
   return WildcardType::WILDCARD;
 }
 
-NS_END
-
-NS_ROOT
-
-struct state {
-  const term_reader* field;
+struct multiterm_state {
+  const term_reader* reader;
   cost::cost_t estimation;
   std::vector<seek_term_iterator::seek_cookie::ptr> cookies;
 };
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class multiterm_query
+/// @brief compiled query suitable for filters with non adjacent set of terms
+//////////////////////////////////////////////////////////////////////////////
+class multiterm_query : public filter::prepared {
+ public:
+  typedef states_cache<multiterm_state> states_t;
+
+  DECLARE_SHARED_PTR(multiterm_query);
+
+  explicit multiterm_query(states_t&& states, boost_t boost)
+    : prepared(boost), states_(std::move(states)) {
+  }
+
+  virtual doc_iterator::ptr execute(
+      const sub_reader& rdr,
+      const order::prepared& ord,
+      const attribute_view& /*ctx*/) const override;
+
+ private:
+  states_t states_;
+}; // multiterm_query
+
+doc_iterator::ptr multiterm_query::execute(
+    const sub_reader& segment,
+    const order::prepared& ord,
+    const attribute_view& /*ctx*/) const {
+  auto state = states_.find(segment);
+
+  if (!state) {
+    // invalid state
+    return doc_iterator::empty();
+  }
+
+
+
+  return doc_iterator::empty();
+}
 
 DEFINE_FILTER_TYPE(by_wildcard)
 DEFINE_FACTORY_DEFAULT(by_wildcard)
@@ -99,13 +131,14 @@ filter::prepared::ptr by_wildcard::prepare(
     const order::prepared& ord,
     boost_t boost,
     const attribute_view& ctx) const {
-  const auto wildcard_type = ::type(term());
+  const string_ref field = this->field();
+  const auto wildcard_type = irs::wildcard_type(term());
 
   switch (wildcard_type) {
     case WildcardType::MATCH_ALL:
       return all().prepare(index, ord, this->boost()*boost, ctx);
     case WildcardType::TERM:
-      return term_query::make(index, ord, this->boost()*boost, field(), term());
+      return term_query::make(index, ord, this->boost()*boost, field, term());
     case WildcardType::PREFIX:
       return by_prefix::prepare(index, ord, boost, ctx);
     default:
@@ -114,21 +147,19 @@ filter::prepared::ptr by_wildcard::prepare(
 
   assert(WildcardType::WILDCARD == wildcard_type);
 
-  states_cache<state> states(index.size());
+  multiterm_query::states_t states(index.size());
   limited_sample_scorer scorer(ord.empty() ? 0 : scored_terms_limit()); // object for collecting order stats
-  auto acceptor = fst::fsa::fromWildcard<byte_type, wildcard_traits_t>(term());
-
-  const string_ref field = this->field();
+  auto acceptor = from_wildcard<byte_type, wildcard_traits_t>(term());
 
   for (const auto& segment : index) {
     // get term dictionary for field
-    const term_reader* terms = segment.field(field);
+    const term_reader* reader = segment.field(field);
 
-    if (!terms) {
+    if (!reader) {
       continue;
     }
 
-    seek_term_iterator::ptr it = terms->iterator();
+    seek_term_iterator::ptr it = reader->iterator();
 
     if (!it->next()) {
       continue;
@@ -136,13 +167,13 @@ filter::prepared::ptr by_wildcard::prepare(
 
     auto& value = it->value();
 
-    if (fst::fsa::accept(acceptor, value)) {
+    if (accept(acceptor, value)) {
       auto& meta = it->attributes().get<term_meta>(); // get term metadata
       const decltype(irs::term_meta::docs_count) NO_DOCS = 0;
       const auto& docs_count = meta ? meta->docs_count : NO_DOCS;
 
       auto& state = states.insert(segment);
-      state.field = terms;
+      state.reader = reader;
 
       do {
         // read term attributes
@@ -151,11 +182,11 @@ filter::prepared::ptr by_wildcard::prepare(
         // get state for current segment
         state.cookies.emplace_back(it->cookie());
         state.estimation += docs_count;
-      } while (it->next() && fst::fsa::accept(acceptor, value));
+      } while (it->next() && accept(acceptor, value));
     }
   }
 
-  return nullptr;
+  return std::make_shared<multiterm_query>(std::move(states), this->boost()*boost);
 }
 
 by_wildcard::by_wildcard() noexcept

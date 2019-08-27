@@ -56,12 +56,12 @@ public:
     return it->second;    
   }
 
-  const State* find(const sub_reader& rdr) const {
+  const State* find(const sub_reader& rdr) const noexcept {
     auto it = states_.find(&rdr);
     return states_.end() == it ? nullptr : &(it->second);
   }
 
-  bool empty() const { return states_.empty(); }
+  bool empty() const noexcept { return states_.empty(); }
 
 private:
   typedef std::unordered_map<

@@ -36,6 +36,7 @@
 #include "utils/string.hpp"
 #include "utils/type_id.hpp"
 #include "utils/attributes_provider.hpp"
+#include "utils/fst_decl.hpp"
 
 NS_ROOT
 
@@ -187,12 +188,16 @@ struct IRESEARCH_API basic_term_reader: public util::const_attribute_view_provid
 /// @struct term_reader
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API term_reader: public util::const_attribute_view_provider {
-  DECLARE_UNIQUE_PTR( term_reader);
+  DECLARE_UNIQUE_PTR(term_reader);
   DEFINE_FACTORY_INLINE(term_reader)
 
   virtual ~term_reader() = default;
 
+  // returns an iterator over terms for a field
   virtual seek_term_iterator::ptr iterator() const = 0;
+
+  // returns an intersection of a specified automaton and term reader
+  virtual seek_term_iterator::ptr iterator(const automaton& a) const = 0;
 
   // returns field metadata
   virtual const field_meta& meta() const = 0;

@@ -29,6 +29,15 @@
 
 NS_ROOT
 
+enum class WildcardType {
+  MATCH_ALL = 0, // *
+  TERM,          // foo
+  PREFIX,        // foo*
+  WILDCARD       // f_o*
+};
+
+IRESEARCH_API WildcardType wildcard_type(const bytes_ref& pattern) noexcept;
+
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_wildcard
 /// @brief user-side wildcard filter

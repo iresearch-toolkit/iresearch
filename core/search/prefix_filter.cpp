@@ -46,31 +46,33 @@ filter::prepared::ptr by_prefix::prepare(
   const string_ref field = this->field();
   for (const auto& sr : rdr ) {
     // get term dictionary for field
-    const term_reader* tr = sr.field(field);
+    const term_reader* reader = sr.field(field);
 
-    if (!tr) {
+    if (!reader) {
       continue;
     }
 
-    seek_term_iterator::ptr terms = tr->iterator();
+    seek_term_iterator::ptr terms = reader->iterator();
 
     // seek to prefix
     if (SeekResult::END == terms->seek_ge(prefix)) {
       continue;
     }
 
+    auto& value = terms->value();
+
     // get term metadata
     auto& meta = terms->attributes().get<term_meta>();
     const decltype(irs::term_meta::docs_count) NO_DOCS = 0;
     const auto& docs_count = meta ? meta->docs_count : NO_DOCS;
 
-    if (starts_with(terms->value(), prefix)) {
+    if (starts_with(value, prefix)) {
       terms->read();
 
       // get state for current segment
       auto& state = states.insert(sr);
-      state.reader = tr;
-      state.min_term = terms->value();
+      state.reader = reader;
+      state.min_term = value;
       state.min_cookie = terms->cookie();
       state.unscored_docs.reset((type_limits<type_t::doc_id_t>::min)() + sr.docs_count()); // highest valid doc_id in reader
 
@@ -85,7 +87,7 @@ filter::prepared::ptr by_prefix::prepare(
         }
 
         terms->read();
-      } while (starts_with(terms->value(), prefix));
+      } while (starts_with(value, prefix));
     }
   }
 

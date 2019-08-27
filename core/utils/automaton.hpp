@@ -298,120 +298,16 @@ constexpr const int32_t kSigma = kPhi - 1; // match all + consume symbol
 constexpr const int32_t kMinLabel = 0;
 constexpr const int32_t kMaxLabel = kSigma - 1;
 
-template<typename Char>
-struct WildcardTraits {
-  using char_type = Char;
-
-  // match any string or empty string
-  static constexpr Char MatchAnyString = Char('%');
-
-  // match any char
-  static constexpr Char MatchAnyChar = Char('_');
-
-  // denotes beginning of escape sequence
-  static constexpr Char Escape = Char('\\');
-};
-
-template<
-  typename Char,
-  typename Traits = WildcardTraits<Char>,
-  typename = typename std::enable_if<sizeof(Char) < sizeof(kMaxLabel)>::type,
-  typename = typename std::enable_if<Traits::MatchAnyChar != Traits::MatchAnyString>::type>
-Automaton fromWildcard(const irs::basic_string_ref<Char>& expr) {
-  Automaton a;
-  a.ReserveStates(expr.size() + 1);
-
-  Automaton::StateId from = a.AddState();
-  Automaton::StateId to = from;
-  a.SetStart(from);
-
-  bool escaped = false;
-  auto appendChar = [&escaped, &a, &to, &from](Char c) {
-    to = a.AddState();
-    a.EmplaceArc(from, c, to);
-    from = to;
-    escaped = false;
-  };
-
-  for (const auto c : expr) {
-    switch (c) {
-      case Traits::MatchAnyString: {
-        if (escaped) {
-          appendChar(c);
-        } else {
-          a.EmplaceArc(from, kRho, from);
-        }
-        break;
-      }
-      case Traits::MatchAnyChar: {
-        if (escaped) {
-          appendChar(c);
-        } else {
-          to = a.AddState();
-          a.EmplaceArc(from, kRho, to);
-          from = to;
-        }
-      } break;
-      case Traits::Escape: {
-       if (escaped) {
-         appendChar(c);
-       } else {
-         escaped = !escaped;
-       }
-       break;
-      }
-      default: {
-        appendChar(c);
-        break;
-      }
-    }
-  }
-
-  // non-terminated escape sequence
-  if (escaped) {
-    appendChar(Traits::Escape);
-  }
-
-  a.SetFinal(to);
-
-  fst::ArcSort(&a, fst::ILabelCompare<fst::fsa::Transition>());
-
-  Automaton res;
-  fst::Determinize(a, &res);
-
-  return res;
-}
-
-template<typename Char>
-bool accept(const Automaton& a, const irs::basic_string_ref<Char>& target) {
-  typedef fst::SortedMatcher<fst::fsa::Automaton> sorted_matcher_t;
-  typedef fst::RhoMatcher<sorted_matcher_t> matcher_t;
-
-  matcher_t matcher(a, fst::MatchType::MATCH_INPUT, kRho);
-
-  auto state = a.Start();
-  matcher.SetState(state);
-
-  auto begin = target.begin();
-  auto end = target.end();
-  for (; begin < end && matcher.Find(*begin); ++begin) {
-    state = matcher.Value().nextstate;
-    matcher.SetState(state);
-  }
-
-  return begin == end && matcher.Final(state);
-}
-
 NS_END // fsa
 NS_END // fst
 
 NS_BEGIN(std)
 
-void swap(::fst::fsa::MinMaxLabel& lhs, ::fst::fsa::EmptyLabel& /*rhs*/) {
+inline void swap(::fst::fsa::MinMaxLabel& lhs, ::fst::fsa::EmptyLabel& /*rhs*/) noexcept {
   lhs = ::fst::kNoLabel;
 }
 
-void swap(int32_t& lhs, ::fst::fsa::EmptyLabel& /*rhs*/) {
+inline void swap(int32_t& lhs, ::fst::fsa::EmptyLabel& /*rhs*/) noexcept {
   lhs = ::fst::kNoLabel;
 }
 

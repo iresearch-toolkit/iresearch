@@ -254,11 +254,12 @@ class term_reader : public irs::term_reader,
   );
 
   virtual seek_term_iterator::ptr iterator() const override;
-  virtual const field_meta& meta() const override { return field_; }
-  virtual size_t size() const override { return terms_count_; }
-  virtual uint64_t docs_count() const override { return doc_count_; }
-  virtual const bytes_ref& min() const override { return min_term_ref_; }
-  virtual const bytes_ref& max() const override { return max_term_ref_; }
+  virtual seek_term_iterator::ptr iterator(const automaton& a) const override;
+  virtual const field_meta& meta() const noexcept override { return field_; }
+  virtual size_t size() const noexcept override { return terms_count_; }
+  virtual uint64_t docs_count() const noexcept override { return doc_count_; }
+  virtual const bytes_ref& min() const noexcept override { return min_term_ref_; }
+  virtual const bytes_ref& max() const noexcept override { return max_term_ref_; }
   virtual const irs::attribute_view& attributes() const noexcept override {
     return attrs_; 
   }

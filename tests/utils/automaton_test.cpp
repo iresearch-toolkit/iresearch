@@ -22,219 +22,219 @@
 
 #include "tests_shared.hpp"
 
-#include "utils/automaton.hpp"
+#include "utils/automaton_utils.hpp"
 
 TEST(automaton_test, match_wildcard) {
   // nil string
   {
-    auto a = fst::fsa::fromWildcard<char>(irs::string_ref::NIL);
+    auto a = irs::from_wildcard<char>(irs::string_ref::NIL);
     ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, ""));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, "a"));
+    ASSERT_TRUE(irs::accept<char>(a, ""));
+    ASSERT_TRUE(irs::accept<char>(a, irs::string_ref::NIL));
+    ASSERT_FALSE(irs::accept<char>(a, "a"));
   }
 
   // empty string
   {
-    auto a = fst::fsa::fromWildcard<char>(irs::string_ref::EMPTY);
+    auto a = irs::from_wildcard<char>(irs::string_ref::EMPTY);
     ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, ""));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, "a"));
+    ASSERT_TRUE(irs::accept<char>(a, ""));
+    ASSERT_TRUE(irs::accept<char>(a, irs::string_ref::NIL));
+    ASSERT_FALSE(irs::accept<char>(a, "a"));
   }
 
   // any or empty string
   {
-    auto a = fst::fsa::fromWildcard<char>("%");
+    auto a = irs::from_wildcard<char>("%");
     ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, ""));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, "a"));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, "abc"));
+    ASSERT_TRUE(irs::accept<char>(a, ""));
+    ASSERT_TRUE(irs::accept<char>(a, irs::string_ref::NIL));
+    ASSERT_TRUE(irs::accept<char>(a, "a"));
+    ASSERT_TRUE(irs::accept<char>(a, "abc"));
   }
 
   // any or empty string
   {
-    auto a = fst::fsa::fromWildcard<char>("%%");
+    auto a = irs::from_wildcard<char>("%%");
 
     ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, ""));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, "a"));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, "aa"));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, "azbce1d"));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, "azbce1d1"));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, "azbce11d"));
+    ASSERT_TRUE(irs::accept<char>(a, ""));
+    ASSERT_TRUE(irs::accept<char>(a, irs::string_ref::NIL));
+    ASSERT_TRUE(irs::accept<char>(a, "a"));
+    ASSERT_TRUE(irs::accept<char>(a, "aa"));
+    ASSERT_TRUE(irs::accept<char>(a, "azbce1d"));
+    ASSERT_TRUE(irs::accept<char>(a, "azbce1d1"));
+    ASSERT_TRUE(irs::accept<char>(a, "azbce11d"));
   }
 
   // any char
   {
-    auto a = fst::fsa::fromWildcard<char>("_");
+    auto a = irs::from_wildcard<char>("_");
     ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, ""));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, "a"));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, "abc"));
+    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
+    ASSERT_TRUE(irs::accept<char>(a, "a"));
+    ASSERT_FALSE(irs::accept<char>(a, "abc"));
   }
 
   // two any chars
   {
-    auto a = fst::fsa::fromWildcard<char>("__");
+    auto a = irs::from_wildcard<char>("__");
     ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, ""));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, "a"));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, "ba"));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, "azbce1d"));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, "azbce1d1"));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, "azbce11d"));
+    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
+    ASSERT_FALSE(irs::accept<char>(a, "a"));
+    ASSERT_TRUE(irs::accept<char>(a, "ba"));
+    ASSERT_FALSE(irs::accept<char>(a, "azbce1d"));
+    ASSERT_FALSE(irs::accept<char>(a, "azbce1d1"));
+    ASSERT_FALSE(irs::accept<char>(a, "azbce11d"));
   }
 
   // any char (suffix)
   {
-    auto a = fst::fsa::fromWildcard<char>("a_");
+    auto a = irs::from_wildcard<char>("a_");
     ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, ""));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, "a_"));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, "a"));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, "ab"));
+    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
+    ASSERT_TRUE(irs::accept<char>(a, "a_"));
+    ASSERT_FALSE(irs::accept<char>(a, "a"));
+    ASSERT_TRUE(irs::accept<char>(a, "ab"));
   }
 
   // any char (prefix)
   {
-    auto a = fst::fsa::fromWildcard<char>("_a");
+    auto a = irs::from_wildcard<char>("_a");
     ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, ""));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, "_a"));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, "a"));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, "ba"));
+    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
+    ASSERT_TRUE(irs::accept<char>(a, "_a"));
+    ASSERT_FALSE(irs::accept<char>(a, "a"));
+    ASSERT_TRUE(irs::accept<char>(a, "ba"));
   }
 
   // escaped '_'
   {
-    auto a = fst::fsa::fromWildcard<char>("\\_a");
+    auto a = irs::from_wildcard<char>("\\_a");
     ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, ""));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, "_a"));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, "a"));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, "ba"));
+    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
+    ASSERT_TRUE(irs::accept<char>(a, "_a"));
+    ASSERT_FALSE(irs::accept<char>(a, "a"));
+    ASSERT_FALSE(irs::accept<char>(a, "ba"));
   }
 
   // escaped '\'
   {
-    auto a = fst::fsa::fromWildcard<char>("\\\\\\_a");
+    auto a = irs::from_wildcard<char>("\\\\\\_a");
     ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, ""));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, "\\_a"));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, "a"));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, "ba"));
+    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
+    ASSERT_TRUE(irs::accept<char>(a, "\\_a"));
+    ASSERT_FALSE(irs::accept<char>(a, "a"));
+    ASSERT_FALSE(irs::accept<char>(a, "ba"));
   }
 
   // nonterminated '\'
   {
-    auto a = fst::fsa::fromWildcard<char>("a\\");
+    auto a = irs::from_wildcard<char>("a\\");
     ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, ""));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, "a\\"));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, "a"));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, "ba"));
+    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
+    ASSERT_TRUE(irs::accept<char>(a, "a\\"));
+    ASSERT_FALSE(irs::accept<char>(a, "a"));
+    ASSERT_FALSE(irs::accept<char>(a, "ba"));
   }
 
   // escaped '%'
   {
-    auto a = fst::fsa::fromWildcard<char>("\\\\\\%a");
+    auto a = irs::from_wildcard<char>("\\\\\\%a");
     ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, ""));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, "\\%a"));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, "a"));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, "ba"));
+    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
+    ASSERT_TRUE(irs::accept<char>(a, "\\%a"));
+    ASSERT_FALSE(irs::accept<char>(a, "a"));
+    ASSERT_FALSE(irs::accept<char>(a, "ba"));
   }
 
   // prefix
   {
-    auto a = fst::fsa::fromWildcard<char>("foo%");
+    auto a = irs::from_wildcard<char>("foo%");
     ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, ""));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, "foo"));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, "foobar"));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, "foa"));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, "foabar"));
+    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
+    ASSERT_TRUE(irs::accept<char>(a, "foo"));
+    ASSERT_TRUE(irs::accept<char>(a, "foobar"));
+    ASSERT_FALSE(irs::accept<char>(a, "foa"));
+    ASSERT_FALSE(irs::accept<char>(a, "foabar"));
   }
 
   // suffix
   {
-    auto a = fst::fsa::fromWildcard<char>("%foo");
+    auto a = irs::from_wildcard<char>("%foo");
     ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, ""));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, "foo"));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, "bfoo"));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, "foa"));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, "bfoa"));
+    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
+    ASSERT_TRUE(irs::accept<char>(a, "foo"));
+    ASSERT_TRUE(irs::accept<char>(a, "bfoo"));
+    ASSERT_FALSE(irs::accept<char>(a, "foa"));
+    ASSERT_FALSE(irs::accept<char>(a, "bfoa"));
   }
 
   // mixed
   {
-    auto a = fst::fsa::fromWildcard<char>("a%bce_d");
+    auto a = irs::from_wildcard<char>("a%bce_d");
     ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, ""));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, "azbce1d"));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, "azbce1d1"));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, "azbce11d"));
+    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
+    ASSERT_TRUE(irs::accept<char>(a, "azbce1d"));
+    ASSERT_FALSE(irs::accept<char>(a, "azbce1d1"));
+    ASSERT_FALSE(irs::accept<char>(a, "azbce11d"));
   }
 
   // mixed
   {
-    auto a = fst::fsa::fromWildcard<char>("%_");
+    auto a = irs::from_wildcard<char>("%_");
     ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, ""));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, "a"));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, "aa"));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, "azbce1d"));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, "azbce1d1"));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, "azbce11d"));
+    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
+    ASSERT_TRUE(irs::accept<char>(a, "a"));
+    ASSERT_TRUE(irs::accept<char>(a, "aa"));
+    ASSERT_TRUE(irs::accept<char>(a, "azbce1d"));
+    ASSERT_TRUE(irs::accept<char>(a, "azbce1d1"));
+    ASSERT_TRUE(irs::accept<char>(a, "azbce11d"));
   }
 
   // mixed
   {
-    auto a = fst::fsa::fromWildcard<char>("%%_");
+    auto a = irs::from_wildcard<char>("%%_");
     ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, ""));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, "a"));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, "aa"));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, "azbce1d"));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, "azbce1d1"));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, "azbce11d"));
+    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
+    ASSERT_TRUE(irs::accept<char>(a, "a"));
+    ASSERT_TRUE(irs::accept<char>(a, "aa"));
+    ASSERT_TRUE(irs::accept<char>(a, "azbce1d"));
+    ASSERT_TRUE(irs::accept<char>(a, "azbce1d1"));
+    ASSERT_TRUE(irs::accept<char>(a, "azbce11d"));
   }
 
   // mixed
   {
-    auto a = fst::fsa::fromWildcard<char>("_%");
+    auto a = irs::from_wildcard<char>("_%");
     ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, ""));
-    ASSERT_FALSE(fst::fsa::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, "a"));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, "aa"));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, "azbce1d"));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, "azbce1d1"));
-    ASSERT_TRUE(fst::fsa::accept<char>(a, "azbce11d"));
+    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
+    ASSERT_TRUE(irs::accept<char>(a, "a"));
+    ASSERT_TRUE(irs::accept<char>(a, "aa"));
+    ASSERT_TRUE(irs::accept<char>(a, "azbce1d"));
+    ASSERT_TRUE(irs::accept<char>(a, "azbce1d1"));
+    ASSERT_TRUE(irs::accept<char>(a, "azbce11d"));
   }
 }
 
 //TEST(automaton_test, test) {
-//  auto a0 = fst::fsa::fromWildcard<char>("%");
-////  auto a1 = fst::fsa::fromWildcard<char>("a");
-//  auto a2 = fst::fsa::fromWildcard<char>("_");
+//  auto a0 = irs::from_wildcard<char>("%");
+////  auto a1 = irs::from_wildcard<char>("a");
+//  auto a2 = irs::from_wildcard<char>("_");
 //
 // // fst::Concat(&a0, a1);
 //  fst::Concat(&a0, a2);

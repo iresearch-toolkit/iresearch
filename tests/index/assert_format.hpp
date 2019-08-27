@@ -242,6 +242,7 @@ class term_reader : public irs::term_reader {
   }
 
   virtual irs::seek_term_iterator::ptr iterator() const override;
+  virtual irs::seek_term_iterator::ptr iterator(const irs::automaton& a) const override;
   virtual const irs::field_meta& meta() const override;
   virtual size_t size() const override;
   virtual uint64_t docs_count() const override;

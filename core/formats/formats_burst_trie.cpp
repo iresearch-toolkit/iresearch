@@ -1318,7 +1318,11 @@ term_reader::~term_reader() {
 seek_term_iterator::ptr term_reader::iterator() const {
   return seek_term_iterator::make<detail::term_iterator>( this );
 }
-  
+
+seek_term_iterator::ptr term_reader::iterator(const automaton& a) const {
+  return nullptr;
+}
+
 void term_reader::prepare(
     std::istream& in, 
     const feature_map_t& feature_map,

@@ -35,6 +35,7 @@
 #include "search/tfidf.hpp"
 
 #include "utils/bit_utils.hpp"
+#include "utils/automaton_utils.hpp"
 
 #include "store/data_output.hpp"
 
@@ -551,6 +552,10 @@ irs::seek_term_iterator::ptr term_reader::iterator() const {
   return irs::seek_term_iterator::ptr(
     new detail::term_iterator( data_ )
   );
+}
+
+irs::seek_term_iterator::ptr term_reader::iterator(const irs::automaton& a) const {
+  return irs::seek_term_iterator::ptr(new irs::intersect_term_iterator(a, iterator()));
 }
 
 const irs::field_meta& term_reader::meta() const {
