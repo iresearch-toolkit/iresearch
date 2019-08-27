@@ -173,7 +173,7 @@ filter::prepared::ptr by_wildcard::prepare(
         // read term attributes
         it.read();
 
-        // get state for current segment
+        // get state for current term
         state.cookies.emplace_back(it.cookie());
         state.estimation += docs_count;
       } while (it.next());
