@@ -62,7 +62,7 @@ filter::prepared::ptr by_prefix::prepare(
     // get term metadata
     auto& meta = terms->attributes().get<term_meta>();
     const decltype(irs::term_meta::docs_count) NO_DOCS = 0;
-    const auto& docs_count = meta ? &meta->docs_count : &NO_DOCS;
+    const auto& docs_count = meta ? meta->docs_count : NO_DOCS;
 
     if (starts_with(terms->value(), prefix)) {
       terms->read();
@@ -76,9 +76,9 @@ filter::prepared::ptr by_prefix::prepare(
 
       do {
         // fill scoring candidates
-        scorer.collect(*docs_count, state.count, state, sr, *terms);
+        scorer.collect(docs_count, state.count, state, sr, *terms);
         ++state.count;
-        state.estimation += *docs_count; // collect cost
+        state.estimation += docs_count; // collect cost
 
         if (!terms->next()) {
           break;

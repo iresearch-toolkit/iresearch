@@ -87,7 +87,8 @@ NS_ROOT
 
 struct state {
   const term_reader* field;
-
+  cost::cost_t estimation;
+  std::vector<seek_term_iterator::seek_cookie::ptr> cookies;
 };
 
 DEFINE_FILTER_TYPE(by_wildcard)
@@ -113,7 +114,7 @@ filter::prepared::ptr by_wildcard::prepare(
 
   assert(WildcardType::WILDCARD == wildcard_type);
 
-  term_query::states_t states(index.size());
+  states_cache<state> states(index.size());
   limited_sample_scorer scorer(ord.empty() ? 0 : scored_terms_limit()); // object for collecting order stats
   auto acceptor = fst::fsa::fromWildcard<byte_type, wildcard_traits_t>(term());
 
@@ -128,49 +129,31 @@ filter::prepared::ptr by_wildcard::prepare(
     }
 
     seek_term_iterator::ptr it = terms->iterator();
-    auto& meta = it->attributes().get<term_meta>(); // get term metadata
 
-    while (it->next()) {
-      if (!fst::fsa::accept(acceptor, it->value())) {
-        continue;
-      }
-
-      it->read(); // read term attributes
-
-
+    if (!it->next()) {
+      continue;
     }
 
+    auto& value = it->value();
 
-//    if (starts_with(terms->value(), prefix)) {
-//      terms->read();
-//
-//      /* get state for current segment */
-//      auto& state = states.insert(sr);
-//      state.reader = tr;
-//      state.min_term = terms->value();
-//      state.min_cookie = terms->cookie();
-//      state.unscored_docs.reset((type_limits<type_t::doc_id_t>::min)() + sr.docs_count()); // highest valid doc_id in reader
-//
-//      do {
-//        // fill scoring candidates
-//        scorer.collect(meta ? meta->docs_count : 0, state.count, state, sr, *terms);
-//        ++state.count;
-//
-//        /* collect cost */
-//        if (meta) {
-//          state.estimation += meta->docs_count;
-//        }
-//
-//        if (!terms->next()) {
-//          break;
-//        }
-//
-//        terms->read();
-//      } while (starts_with(terms->value(), prefix));
-//    }
+    if (fst::fsa::accept(acceptor, value)) {
+      auto& meta = it->attributes().get<term_meta>(); // get term metadata
+      const decltype(irs::term_meta::docs_count) NO_DOCS = 0;
+      const auto& docs_count = meta ? meta->docs_count : NO_DOCS;
+
+      auto& state = states.insert(segment);
+      state.field = terms;
+
+      do {
+        // read term attributes
+        it->read();
+
+        // get state for current segment
+        state.cookies.emplace_back(it->cookie());
+        state.estimation += docs_count;
+      } while (it->next() && fst::fsa::accept(acceptor, value));
+    }
   }
-
-
 
   return nullptr;
 }
