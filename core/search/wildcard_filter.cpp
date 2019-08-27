@@ -159,30 +159,24 @@ filter::prepared::ptr by_wildcard::prepare(
       continue;
     }
 
-    seek_term_iterator::ptr it = reader->iterator();
+    intersect_term_iterator it(acceptor, reader->iterator());
 
-    if (!it->next()) {
-      continue;
-    }
+    auto& meta = it.attributes().get<term_meta>(); // get term metadata
+    const decltype(irs::term_meta::docs_count) NO_DOCS = 0;
+    const auto& docs_count = meta ? meta->docs_count : NO_DOCS;
 
-    auto& value = it->value();
-
-    if (accept(acceptor, value)) {
-      auto& meta = it->attributes().get<term_meta>(); // get term metadata
-      const decltype(irs::term_meta::docs_count) NO_DOCS = 0;
-      const auto& docs_count = meta ? meta->docs_count : NO_DOCS;
-
+    if (it.next()) {
       auto& state = states.insert(segment);
       state.reader = reader;
 
       do {
         // read term attributes
-        it->read();
+        it.read();
 
         // get state for current segment
-        state.cookies.emplace_back(it->cookie());
+        state.cookies.emplace_back(it.cookie());
         state.estimation += docs_count;
-      } while (it->next() && accept(acceptor, value));
+      } while (it.next());
     }
   }
 
