@@ -534,7 +534,7 @@ filter::prepared::ptr by_granular_range::prepare(
     const auto& max = rng_.max.begin()->second;
 
     if (min == max) { // compare the most precise terms
-      if (rng_.min_type == rng_.max_type && rng_.min_type == Bound_Type::INCLUSIVE) {
+      if (rng_.min_type == rng_.max_type && rng_.min_type == BoundType::INCLUSIVE) {
         // degenerated case
         return term_query::make(rdr, ord, boost*this->boost(), fld_, min);
       }
@@ -564,8 +564,8 @@ filter::prepared::ptr by_granular_range::prepare(
       continue; // no terms to collect
     }
 
-    assert(!rng_.min.empty() || Bound_Type::UNBOUNDED == rng_.min_type);
-    assert(!rng_.max.empty() || Bound_Type::UNBOUNDED == rng_.max_type);
+    assert(!rng_.min.empty() || BoundType::UNBOUNDED == rng_.min_type);
+    assert(!rng_.max.empty() || BoundType::UNBOUNDED == rng_.max_type);
 
     if (rng_.min.empty()) { // open min range
       if (rng_.max.empty()) { // open max range
@@ -580,7 +580,7 @@ filter::prepared::ptr by_granular_range::prepare(
 
       // collect terms ending with max granularity range, include/exclude max term
       if (iresearch::SeekResult::END != terms->seek_ge(smallest_term)) {
-        collect_terms_until(states, sr, *tr, *terms, prefix_size, rng_.max, Bound_Type::INCLUSIVE == rng_.max_type, scorer);
+        collect_terms_until(states, sr, *tr, *terms, prefix_size, rng_.max, BoundType::INCLUSIVE == rng_.max_type, scorer);
       }
 
       continue;
@@ -588,12 +588,12 @@ filter::prepared::ptr by_granular_range::prepare(
 
     if (rng_.max.empty()) { // open max range
       // collect terms starting with min granularity range, include/exclude min term
-      collect_terms_from(states, sr, *tr, *terms, prefix_size, rng_.min, Bound_Type::INCLUSIVE == rng_.min_type, scorer);
+      collect_terms_from(states, sr, *tr, *terms, prefix_size, rng_.min, BoundType::INCLUSIVE == rng_.min_type, scorer);
       continue;
     }
 
     // collect terms starting with min granularity range and ending with max granularity range, include/exclude min/max term
-    collect_terms_within(states, sr, *tr, *terms, prefix_size, rng_.min, rng_.max, Bound_Type::INCLUSIVE == rng_.min_type, Bound_Type::INCLUSIVE == rng_.max_type, scorer);
+    collect_terms_within(states, sr, *tr, *terms, prefix_size, rng_.min, rng_.max, BoundType::INCLUSIVE == rng_.min_type, BoundType::INCLUSIVE == rng_.max_type, scorer);
   }
 
   scorer.score(rdr, ord);

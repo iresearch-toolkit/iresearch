@@ -30,54 +30,6 @@
 
 #include <boost/functional/hash.hpp>
 
-NS_LOCAL
-
-template<typename Comparer>
-void collect_terms(
-    const irs::sub_reader& segment,
-    const irs::term_reader& field,
-    irs::seek_term_iterator& terms,
-    irs::range_query::states_t& states,
-    irs::limited_sample_scorer& scorer,
-    Comparer cmp) {
-  auto& value = terms.value();
-
-  if (cmp(value)) {
-    // read attributes
-    terms.read();
-
-    // get state for current segment
-    auto& state = states.insert(segment);
-    state.reader = &field;
-    state.min_term = value;
-    state.min_cookie = terms.cookie();
-    state.unscored_docs.reset(
-      (irs::type_limits<irs::type_t::doc_id_t>::min)() + segment.docs_count()
-    ); // highest valid doc_id in segment
-
-    // get term metadata
-    auto& meta = terms.attributes().get<irs::term_meta>();
-    const decltype(irs::term_meta::docs_count) NO_DOCS = 0;
-    const auto& docs_count = meta ? meta->docs_count : NO_DOCS;
-
-    do {
-      // fill scoring candidates
-      scorer.collect(docs_count , state.count, state, segment, terms);
-      ++state.count;
-      state.estimation += docs_count;
-
-      if (!terms.next()) {
-        break;
-      }
-
-      // read attributes
-      terms.read();
-    } while (cmp(value));
-  }
-}
-
-NS_END // LOCAL
-
 NS_ROOT
 
 DEFINE_FILTER_TYPE(by_range)
@@ -114,11 +66,11 @@ filter::prepared::ptr by_range::prepare(
   // - seek to max
   // - get ordinal position of the term
 
-  if (rng_.min_type != Bound_Type::UNBOUNDED
-      && rng_.max_type != Bound_Type::UNBOUNDED
+  if (rng_.min_type != BoundType::UNBOUNDED
+      && rng_.max_type != BoundType::UNBOUNDED
       && rng_.min == rng_.max) {
 
-    if (rng_.min_type == rng_.max_type && rng_.min_type == Bound_Type::INCLUSIVE) {
+    if (rng_.min_type == rng_.max_type && rng_.min_type == BoundType::INCLUSIVE) {
       // degenerated case
       return term_query::make(index, ord, boost*this->boost(), fld_, rng_.min);
     }
@@ -127,75 +79,7 @@ filter::prepared::ptr by_range::prepare(
     return prepared::empty();
   }
 
-  limited_sample_scorer scorer(ord.empty() ? 0 : scored_terms_limit_); // object for collecting order stats
-  range_query::states_t states(index.size());
-
-  // iterate over the segments
-  const string_ref field_name = fld_;
-  for (const auto& segment : index) {
-    // get term dictionary for field
-    const auto* field = segment.field(field_name);
-
-    if (!field) {
-      // can't find field with the specified name
-      continue;
-    }
-
-    auto terms = field->iterator();
-    bool res = false;
-
-    // seek to min
-    switch (rng_.min_type) {
-      case Bound_Type::UNBOUNDED:
-        res = terms->next();
-        break;
-      case Bound_Type::INCLUSIVE:
-        res = seek_min<true>(*terms, rng_.min);
-        break;
-      case Bound_Type::EXCLUSIVE:
-        res = seek_min<false>(*terms, rng_.min);
-        break;
-      default:
-        assert(false);
-    }
-
-    if (!res) {
-      // reached the end, nothing to collect
-      continue;
-    }
-
-    // now we are on the target or the next term
-    const irs::bytes_ref max = rng_.max;
-
-    switch (rng_.max_type) {
-      case Bound_Type::UNBOUNDED:
-        ::collect_terms(
-          segment, *field, *terms, states, scorer, [](const bytes_ref&) {
-            return true;
-        });
-        break;
-      case Bound_Type::INCLUSIVE:
-        ::collect_terms(
-          segment, *field, *terms, states, scorer, [max](const bytes_ref& term) {
-            return term <= max;
-        });
-        break;
-      case Bound_Type::EXCLUSIVE:
-        ::collect_terms(
-          segment, *field, *terms, states, scorer, [max](const bytes_ref& term) {
-            return term < max;
-        });
-        break;
-      default:
-        assert(false);
-    }
-  }
-
-  scorer.score(index, ord);
-
-  return memory::make_shared<range_query>(
-    std::move(states), this->boost() * boost
-  );
+  return range_query::make_from_range(index, ord, this->boost()*boost, fld_, rng_, scored_terms_limit_);
 }
 
 NS_END // ROOT

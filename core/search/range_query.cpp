@@ -24,6 +24,7 @@
 #include "bitset_doc_iterator.hpp"
 #include "shared.hpp"
 #include "range_query.hpp"
+#include "range_filter.hpp"
 #include "disjunction.hpp"
 #include "score_doc_iterators.hpp"
 #include "index/index_reader.hpp"
@@ -40,6 +41,50 @@ void set_doc_ids(irs::bitset& buf, const irs::term_iterator& term) {
 
   while(itr->next()) {
     buf.set(itr->value());
+  }
+}
+
+template<typename Comparer>
+void collect_terms(
+    const irs::sub_reader& segment,
+    const irs::term_reader& field,
+    irs::seek_term_iterator& terms,
+    irs::range_query::states_t& states,
+    irs::limited_sample_scorer& scorer,
+    Comparer cmp) {
+  auto& value = terms.value();
+
+  if (cmp(value)) {
+    // read attributes
+    terms.read();
+
+    // get state for current segment
+    auto& state = states.insert(segment);
+    state.reader = &field;
+    state.min_term = value;
+    state.min_cookie = terms.cookie();
+    state.unscored_docs.reset(
+      (irs::type_limits<irs::type_t::doc_id_t>::min)() + segment.docs_count()
+    ); // highest valid doc_id in segment
+
+    // get term metadata
+    auto& meta = terms.attributes().get<irs::term_meta>();
+    const decltype(irs::term_meta::docs_count) NO_DOCS = 0;
+    const auto& docs_count = meta ? meta->docs_count : NO_DOCS;
+
+    do {
+      // fill scoring candidates
+      scorer.collect(docs_count , state.count, state, segment, terms);
+      ++state.count;
+      state.estimation += docs_count;
+
+      if (!terms.next()) {
+        break;
+      }
+
+      // read attributes
+      terms.read();
+    } while (cmp(value));
   }
 }
 
@@ -228,6 +273,146 @@ doc_iterator::ptr range_query::execute(
   return make_disjunction<irs::disjunction>(
     std::move(itrs), ord, state->estimation
   );
+}
+
+/*static*/ range_query::ptr range_query::make_from_range(
+    const index_reader& index,
+    const order::prepared& ord,
+    boost_t boost,
+    const string_ref& field,
+    const range<bstring>& rng,
+    size_t scored_terms_limit) {
+  //TODO: optimize unordered case
+  // - seek to min
+  // - get ordinal position of the term
+  // - seek to max
+  // - get ordinal position of the term
+
+  limited_sample_scorer scorer(ord.empty() ? 0 : scored_terms_limit); // object for collecting order stats
+  range_query::states_t states(index.size());
+
+  // iterate over the segments
+  for (const auto& segment : index) {
+    // get term dictionary for field
+    const auto* reader = segment.field(field);
+
+    if (!reader) {
+      // can't find field with the specified name
+      continue;
+    }
+
+    auto terms = reader->iterator();
+    bool res = false;
+
+    // seek to min
+    switch (rng.min_type) {
+      case BoundType::UNBOUNDED:
+        res = terms->next();
+        break;
+      case BoundType::INCLUSIVE:
+        res = seek_min<true>(*terms, rng.min);
+        break;
+      case BoundType::EXCLUSIVE:
+        res = seek_min<false>(*terms, rng.min);
+        break;
+    }
+
+    if (!res) {
+      // reached the end, nothing to collect
+      continue;
+    }
+
+    // now we are on the target or the next term
+    const irs::bytes_ref max = rng.max;
+
+    switch (rng.max_type) {
+      case BoundType::UNBOUNDED:
+        ::collect_terms(
+          segment, *reader, *terms, states, scorer, [](const bytes_ref&) {
+            return true;
+        });
+        break;
+      case BoundType::INCLUSIVE:
+        ::collect_terms(
+          segment, *reader, *terms, states, scorer, [max](const bytes_ref& term) {
+            return term <= max;
+        });
+        break;
+      case BoundType::EXCLUSIVE:
+        ::collect_terms(
+          segment, *reader, *terms, states, scorer, [max](const bytes_ref& term) {
+            return term < max;
+        });
+        break;
+    }
+  }
+
+  scorer.score(index, ord);
+
+  return memory::make_shared<range_query>(std::move(states), boost);
+}
+
+/*static*/ range_query::ptr range_query::make_from_prefix(
+    const index_reader& index,
+    const order::prepared& ord,
+    boost_t boost,
+    const string_ref& field,
+    const bytes_ref& prefix,
+    size_t scored_terms_limit) {
+  limited_sample_scorer scorer(ord.empty() ? 0 : scored_terms_limit); // object for collecting order stats
+  range_query::states_t states(index.size());
+
+  // iterate over the segments
+  for (const auto& segment: index) {
+    // get term dictionary for field
+    const term_reader* reader = segment.field(field);
+
+    if (!reader) {
+      continue;
+    }
+
+    seek_term_iterator::ptr terms = reader->iterator();
+
+    // seek to prefix
+    if (SeekResult::END == terms->seek_ge(prefix)) {
+      continue;
+    }
+
+    auto& value = terms->value();
+
+    // get term metadata
+    auto& meta = terms->attributes().get<term_meta>();
+    const decltype(irs::term_meta::docs_count) NO_DOCS = 0;
+    const auto& docs_count = meta ? meta->docs_count : NO_DOCS;
+
+    if (starts_with(value, prefix)) {
+      terms->read();
+
+      // get state for current segment
+      auto& state = states.insert(segment);
+      state.reader = reader;
+      state.min_term = value;
+      state.min_cookie = terms->cookie();
+      state.unscored_docs.reset((type_limits<type_t::doc_id_t>::min)() + segment.docs_count()); // highest valid doc_id in reader
+
+      do {
+        // fill scoring candidates
+        scorer.collect(docs_count, state.count, state, segment, *terms);
+        ++state.count;
+        state.estimation += docs_count; // collect cost
+
+        if (!terms->next()) {
+          break;
+        }
+
+        terms->read();
+      } while (starts_with(value, prefix));
+    }
+  }
+
+  scorer.score(index, ord);
+
+  return memory::make_shared<range_query>(std::move(states), boost);
 }
 
 NS_END // ROOT

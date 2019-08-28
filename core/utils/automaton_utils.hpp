@@ -158,7 +158,7 @@ class intersect_term_iterator final : public seek_term_iterator {
   virtual bool next() override {
     bool next = it_->next();
 
-    while (next && accept()) {
+    while (next && !accept()) {
       next = it_->next();
     }
 

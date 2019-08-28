@@ -33,67 +33,12 @@
 NS_ROOT
 
 filter::prepared::ptr by_prefix::prepare(
-    const index_reader& rdr,
+    const index_reader& index,
     const order::prepared& ord,
     boost_t boost,
     const attribute_view& /*ctx*/) const {
-  limited_sample_scorer scorer(ord.empty() ? 0 : scored_terms_limit_); // object for collecting order stats
-  range_query::states_t states(rdr.size());
-
-  auto& prefix = term();
-
-  // iterate over the segments
-  const string_ref field = this->field();
-  for (const auto& sr : rdr ) {
-    // get term dictionary for field
-    const term_reader* reader = sr.field(field);
-
-    if (!reader) {
-      continue;
-    }
-
-    seek_term_iterator::ptr terms = reader->iterator();
-
-    // seek to prefix
-    if (SeekResult::END == terms->seek_ge(prefix)) {
-      continue;
-    }
-
-    auto& value = terms->value();
-
-    // get term metadata
-    auto& meta = terms->attributes().get<term_meta>();
-    const decltype(irs::term_meta::docs_count) NO_DOCS = 0;
-    const auto& docs_count = meta ? meta->docs_count : NO_DOCS;
-
-    if (starts_with(value, prefix)) {
-      terms->read();
-
-      // get state for current segment
-      auto& state = states.insert(sr);
-      state.reader = reader;
-      state.min_term = value;
-      state.min_cookie = terms->cookie();
-      state.unscored_docs.reset((type_limits<type_t::doc_id_t>::min)() + sr.docs_count()); // highest valid doc_id in reader
-
-      do {
-        // fill scoring candidates
-        scorer.collect(docs_count, state.count, state, sr, *terms);
-        ++state.count;
-        state.estimation += docs_count; // collect cost
-
-        if (!terms->next()) {
-          break;
-        }
-
-        terms->read();
-      } while (starts_with(value, prefix));
-    }
-  }
-
-  scorer.score(rdr, ord);
-
-  return memory::make_shared<range_query>(std::move(states), this->boost() * boost);
+  return range_query::make_from_prefix(index, ord, this->boost()*boost,
+                                       field(), term(), scored_terms_limit_);
 }
 
 DEFINE_FILTER_TYPE(by_prefix)

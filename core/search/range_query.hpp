@@ -36,6 +36,9 @@ NS_ROOT
 
 struct term_reader;
 
+template<typename T>
+struct range;
+
 //////////////////////////////////////////////////////////////////////////////
 /// @class range_state
 /// @brief cached per reader range state
@@ -135,6 +138,22 @@ class range_query : public filter::prepared {
   typedef states_cache<range_state> states_t;
 
   DECLARE_SHARED_PTR(range_query);
+
+  static ptr make_from_prefix(
+    const index_reader& index,
+    const order::prepared& ord,
+    boost_t boost,
+    const string_ref& field,
+    const bytes_ref& prefix,
+    size_t scored_terms_limit);
+
+  static ptr make_from_range(
+    const index_reader& index,
+    const order::prepared& ord,
+    boost_t boost,
+    const string_ref& field,
+    const range<bstring>& range,
+    size_t scored_terms_limit);
 
   explicit range_query(states_t&& states, boost_t boost)
     : prepared(boost), states_(std::move(states)) {

@@ -23,6 +23,7 @@
 #include "shared.hpp"
 #include "wildcard_filter.hpp"
 #include "all_filter.hpp"
+#include "disjunction.hpp"
 #include "range_query.hpp"
 #include "term_query.hpp"
 #include "index/index_reader.hpp"
@@ -118,9 +119,29 @@ doc_iterator::ptr multiterm_query::execute(
     return doc_iterator::empty();
   }
 
+  std::vector<disjunction::doc_iterator_t> itrs;
+  itrs.reserve(state->cookies.size());
 
+  auto terms = state->reader->iterator();
 
-  return doc_iterator::empty();
+  // get required features for order
+  auto& features = ord.features();
+
+  for (auto& cookie : state->cookies) {
+    if (!terms->seek(irs::bytes_ref::NIL, *cookie)) {
+      // wrong cookie
+      continue;
+    }
+
+    itrs.emplace_back(terms->postings(features));
+
+    if (IRS_UNLIKELY(!itrs.back().it)) {
+      itrs.pop_back();
+      continue;
+    }
+  }
+
+  return make_disjunction<disjunction>(std::move(itrs), ord, state->estimation);
 }
 
 DEFINE_FILTER_TYPE(by_wildcard)
@@ -140,7 +161,10 @@ filter::prepared::ptr by_wildcard::prepare(
     case WildcardType::TERM:
       return term_query::make(index, ord, this->boost()*boost, field, term());
     case WildcardType::PREFIX:
-      return by_prefix::prepare(index, ord, boost, ctx);
+      assert(!term().empty());
+      return range_query::make_from_prefix(index, ord, this->boost()*boost, field,
+                                           bytes_ref(term().c_str(), term().size() - 1), // remove trailing '%'
+                                           scored_terms_limit());
     default:
       break;
   }
