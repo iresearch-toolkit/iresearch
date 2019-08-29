@@ -24,6 +24,12 @@
 #include "filter_test_case_base.hpp"
 #include "search/wildcard_filter.hpp"
 
+#ifndef IRESEARCH_DLL
+#include "search/term_filter.hpp"
+#include "search/all_filter.hpp"
+#include "search/prefix_filter.hpp"
+#endif
+
 class wildcard_filter_test_case : public tests::filter_test_case_base {
  protected:
   //void by_prefix_order() {
@@ -175,6 +181,48 @@ TEST(by_wildcard_test, boost) {
   }
 }
 
+#ifndef IRESEARCH_DLL
+
+TEST(by_wildcard_test, test_type_of_prepared_query) {
+  // term query
+  ASSERT_EQ(
+    typeid(irs::by_term().field("foo").term("bar").prepare(irs::sub_reader::empty())),
+    typeid(irs::by_wildcard().field("foo").term("bar").prepare(irs::sub_reader::empty()))
+  );
+
+  // term query
+  ASSERT_EQ(
+    typeid(irs::by_term().field("foo").term("").prepare(irs::sub_reader::empty())),
+    typeid(irs::by_wildcard().field("foo").term("").prepare(irs::sub_reader::empty()))
+  );
+
+  // prefix query
+  ASSERT_EQ(
+    typeid(irs::by_prefix().field("foo").term("bar").prepare(irs::sub_reader::empty())),
+    typeid(irs::by_wildcard().field("foo").term("bar%").prepare(irs::sub_reader::empty()))
+  );
+
+  // term query
+  ASSERT_EQ(
+    typeid(irs::by_prefix().field("foo").term("bar%").prepare(irs::sub_reader::empty())),
+    typeid(irs::by_wildcard().field("foo").term("bar\\%").prepare(irs::sub_reader::empty()))
+  );
+
+  // all query
+  ASSERT_EQ(
+    typeid(irs::all().prepare(irs::sub_reader::empty())),
+    typeid(irs::by_wildcard().field("foo").term("%").prepare(irs::sub_reader::empty()))
+  );
+
+  // term query
+  ASSERT_EQ(
+    typeid(irs::by_term().field("foo").term("%").prepare(irs::sub_reader::empty())),
+    typeid(irs::by_wildcard().field("foo").term("\\%").prepare(irs::sub_reader::empty()))
+  );
+}
+
+#endif
+
 TEST_P(wildcard_filter_test_case, simple_sequential) {
   // add segment
   {
@@ -201,6 +249,36 @@ TEST_P(wildcard_filter_test_case, simple_sequential) {
   // empty pattern - no match
   check_query(irs::by_wildcard().field("duplicated"), docs_t{}, costs_t{0}, rdr);
 
+  // match all
+  {
+    docs_t result;
+    for(size_t i = 0; i < 32; ++i) {
+      result.push_back(irs::doc_id_t((irs::type_limits<irs::type_t::doc_id_t>::min)() + i));
+    }
+
+    costs_t costs{ result.size() };
+
+    check_query(irs::by_wildcard().field("same").term("%"), result, costs, rdr);
+    check_query(irs::by_wildcard().field("same").term("___"), result, costs, rdr);
+    check_query(irs::by_wildcard().field("same").term("%_"), result, costs, rdr);
+    check_query(irs::by_wildcard().field("same").term("_%"), result, costs, rdr);
+    check_query(irs::by_wildcard().field("same").term("x_%"), result, costs, rdr);
+    check_query(irs::by_wildcard().field("same").term("__z"), result, costs, rdr);
+    check_query(irs::by_wildcard().field("same").term("%_z"), result, costs, rdr);
+    check_query(irs::by_wildcard().field("same").term("x%_"), result, costs, rdr);
+    check_query(irs::by_wildcard().field("same").term("x_%"), result, costs, rdr);
+    check_query(irs::by_wildcard().field("same").term("x_z"), result, costs, rdr);
+    check_query(irs::by_wildcard().field("same").term("x%z"), result, costs, rdr);
+    check_query(irs::by_wildcard().field("same").term("_yz"), result, costs, rdr);
+    check_query(irs::by_wildcard().field("same").term("%yz"), result, costs, rdr);
+    check_query(irs::by_wildcard().field("same").term("xyz"), result, costs, rdr);
+  }
+
+  // match nothing
+  check_query(irs::by_wildcard().field("same").term("x\\_z"), docs_t{}, costs_t{0}, rdr);
+  check_query(irs::by_wildcard().field("same").term("x\\%z"), docs_t{}, costs_t{0}, rdr);
+  check_query(irs::by_wildcard().field("same").term("_"), docs_t{}, costs_t{0}, rdr);
+
   // valid prefix
   {
     docs_t result;
@@ -211,6 +289,17 @@ TEST_P(wildcard_filter_test_case, simple_sequential) {
     costs_t costs{ result.size() };
 
     check_query(irs::by_wildcard().field("same").term("xyz%"), result, costs, rdr);
+  }
+
+  // pattern
+  {
+    docs_t docs{ 2, 3, 8, 14, 17, 19, 24 };
+    costs_t costs{ docs.size() };
+
+    check_query(irs::by_wildcard().field("duplicated").term("v_z%"), docs, costs, rdr);
+    check_query(irs::by_wildcard().field("duplicated").term("v%c"), docs, costs, rdr);
+    check_query(irs::by_wildcard().field("duplicated").term("%c"), docs, costs, rdr);
+    check_query(irs::by_wildcard().field("duplicated").term("%_c"), docs, costs, rdr);
   }
 
   // single digit prefix

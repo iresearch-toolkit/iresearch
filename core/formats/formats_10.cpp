@@ -48,6 +48,8 @@
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
 
+#include "search/cost.hpp"
+
 #include "utils/bit_packing.hpp"
 #include "utils/bit_utils.hpp"
 #include "utils/bitset.hpp"
@@ -1129,6 +1131,9 @@ class doc_iterator : public irs::doc_iterator {
       const index_input* pay_in) {
     UNUSED(pos_in);
     UNUSED(pay_in);
+    // estimate iterator
+    cost_.value(term_state_.docs_count);
+    attrs_.emplace(cost_);
 
     // term frequency attributes
     if (enabled.freq()) {
@@ -1255,6 +1260,7 @@ class doc_iterator : public irs::doc_iterator {
   uint32_t term_freq_{}; // total term frequency
   document doc_;
   frequency freq_;
+  cost cost_;
   index_input::ptr doc_in_;
   version10::term_meta term_state_;
   features features_; // field features

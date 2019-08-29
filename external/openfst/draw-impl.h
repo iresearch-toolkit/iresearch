@@ -12,6 +12,7 @@
 #include <string>
 
 #include <fst/fst.h>
+#include <fst/symbol-table.h>
 #include <fst/util.h>
 #include <fst/script/fst-class.h>
 
@@ -245,7 +246,7 @@ template<typename Fst>
 inline void drawFst(
     const Fst& fst,
     std::ostream& strm,
-    const std::string& dest,
+    const std::string& dest = "",
     const SymbolTable* isyms = nullptr,
     const SymbolTable* osyms = nullptr,
     const SymbolTable* ssyms = nullptr,

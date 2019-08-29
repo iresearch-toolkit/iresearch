@@ -23,6 +23,7 @@
 #include "tests_shared.hpp"
 
 #include "utils/automaton_utils.hpp"
+#include "draw-impl.h"
 
 TEST(automaton_test, match_wildcard) {
   // nil string
@@ -168,6 +169,19 @@ TEST(automaton_test, match_wildcard) {
     ASSERT_FALSE(irs::accept<char>(a, "foabar"));
   }
 
+  // prefix
+  {
+    auto a = irs::from_wildcard<char>("v%%");
+
+    ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
+    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
+    ASSERT_TRUE(irs::accept<char>(a, "vcc"));
+    ASSERT_TRUE(irs::accept<char>(a, "vccc"));
+    ASSERT_TRUE(irs::accept<char>(a, "vczc"));
+    ASSERT_TRUE(irs::accept<char>(a, "vczczvccccc"));
+  }
+
   // suffix
   {
     auto a = irs::from_wildcard<char>("%foo");
@@ -229,23 +243,28 @@ TEST(automaton_test, match_wildcard) {
     ASSERT_TRUE(irs::accept<char>(a, "azbce1d1"));
     ASSERT_TRUE(irs::accept<char>(a, "azbce11d"));
   }
-}
 
-//TEST(automaton_test, test) {
-//  auto a0 = irs::from_wildcard<char>("%");
-////  auto a1 = irs::from_wildcard<char>("a");
-//  auto a2 = irs::from_wildcard<char>("_");
-//
-// // fst::Concat(&a0, a1);
-//  fst::Concat(&a0, a2);
-//  fst::RmEpsilon(&a0);
-//  fst::fsa::Automaton a;
-//  fst::Determinize(a0, &a);
-//
-//  {
-//    std::fstream fff("myfuck1", std::fstream::out);
-//    fst::drawFst(a, fff, "");
-//  }
-//
-//  ASSERT_FALSE(fst::kError == a0.Properties(fst::kError, true));
-//}
+  // mixed
+  {
+    auto a = irs::from_wildcard<char>("v%%c");
+    ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
+    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
+    ASSERT_TRUE(irs::accept<char>(a, "vcc"));
+    ASSERT_TRUE(irs::accept<char>(a, "vccc"));
+    ASSERT_TRUE(irs::accept<char>(a, "vczc"));
+    ASSERT_TRUE(irs::accept<char>(a, "vczczvccccc"));
+  }
+
+  // mixed
+  {
+    auto a = irs::from_wildcard<char>("v%c");
+    ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
+    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
+    ASSERT_TRUE(irs::accept<char>(a, "vcc"));
+    ASSERT_TRUE(irs::accept<char>(a, "vccc"));
+    ASSERT_TRUE(irs::accept<char>(a, "vczc"));
+    ASSERT_TRUE(irs::accept<char>(a, "vczczvccccc"));
+  }
+}
