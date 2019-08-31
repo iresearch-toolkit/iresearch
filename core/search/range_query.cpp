@@ -216,6 +216,8 @@ doc_iterator::ptr range_query::execute(
     const sub_reader& rdr,
     const order::prepared& ord,
     const attribute_view& /*ctx*/) const {
+  typedef disjunction<doc_iterator::ptr> disjunction_t;
+
   // get term state for the specified reader
   auto state = states_.find(rdr);
   if (!state) {
@@ -233,7 +235,7 @@ doc_iterator::ptr range_query::execute(
 
   // prepared disjunction
   const bool has_bit_set = state->unscored_docs.any();
-  disjunction::doc_iterators_t itrs;
+  disjunction_t::doc_iterators_t itrs;
   itrs.reserve(state->count + size_t(has_bit_set)); // +1 for possible bitset_doc_iterator
 
   // get required features for order
@@ -270,9 +272,7 @@ doc_iterator::ptr range_query::execute(
     ));
   }
 
-  return make_disjunction<irs::disjunction>(
-    std::move(itrs), ord, state->estimation
-  );
+  return make_disjunction<disjunction_t>(std::move(itrs), ord, state->estimation);
 }
 
 /*static*/ range_query::ptr range_query::make_from_range(

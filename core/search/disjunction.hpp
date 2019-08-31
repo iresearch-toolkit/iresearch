@@ -86,9 +86,10 @@ NS_END // detail
 ////////////////////////////////////////////////////////////////////////////////
 /// @class basic_disjunction
 ////////////////////////////////////////////////////////////////////////////////
+template<typename DocIterator>
 class basic_disjunction final : public doc_iterator_base {
  public:
-  typedef score_iterator_adapter<irs::doc_iterator::ptr> doc_iterator_t;
+  typedef score_iterator_adapter<DocIterator> doc_iterator_t;
 
   basic_disjunction(
       doc_iterator_t&& lhs,
@@ -223,9 +224,10 @@ class basic_disjunction final : public doc_iterator_base {
 /// @class small_disjunction
 /// @brief linear search based disjunction
 ////////////////////////////////////////////////////////////////////////////////
+template<typename DocIterator>
 class small_disjunction : public doc_iterator_base {
  public:
-  typedef score_iterator_adapter<doc_iterator::ptr> doc_iterator_t;
+  typedef score_iterator_adapter<DocIterator> doc_iterator_t;
   typedef std::vector<doc_iterator_t> doc_iterators_t;
 
   small_disjunction(
@@ -402,11 +404,12 @@ class small_disjunction : public doc_iterator_base {
 ///   [n]   <-- lead (accepted iterator)
 /// ----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
+template<typename DocIterator>
 class disjunction : public doc_iterator_base {
  public:
-  typedef small_disjunction small_disjunction_t;
-  typedef basic_disjunction basic_disjunction_t;
-  typedef score_iterator_adapter<doc_iterator::ptr> doc_iterator_t;
+  typedef small_disjunction<DocIterator> small_disjunction_t;
+  typedef basic_disjunction<DocIterator> basic_disjunction_t;
+  typedef score_iterator_adapter<DocIterator> doc_iterator_t;
   typedef std::vector<doc_iterator_t> doc_iterators_t;
 
   disjunction(

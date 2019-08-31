@@ -42,21 +42,22 @@ NS_ROOT
 /// t |  [n] <-- end
 ///-----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
+template<typename DocIterator>
 class min_match_disjunction : public doc_iterator_base {
  public:
-  struct cost_iterator_adapter : score_iterator_adapter<doc_iterator::ptr> {
+  struct cost_iterator_adapter : score_iterator_adapter<DocIterator> {
     cost_iterator_adapter(irs::doc_iterator::ptr&& it) noexcept
-      : score_iterator_adapter(std::move(it)) {
+      : score_iterator_adapter<DocIterator>(std::move(it)) {
       est = cost::extract(this->it->attributes(), cost::MAX);
     }
 
     cost_iterator_adapter(cost_iterator_adapter&& rhs) noexcept
-      : score_iterator_adapter(std::move(rhs)), est(rhs.est) {
+      : score_iterator_adapter<DocIterator>(std::move(rhs)), est(rhs.est) {
     }
 
     cost_iterator_adapter& operator=(cost_iterator_adapter&& rhs) noexcept {
       if (this != &rhs) {
-        score_iterator_adapter::operator=(std::move(rhs));
+        score_iterator_adapter<DocIterator>::operator=(std::move(rhs));
         est = rhs.est;
       }
       return *this;

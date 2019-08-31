@@ -119,7 +119,9 @@ doc_iterator::ptr multiterm_query::execute(
     return doc_iterator::empty();
   }
 
-  std::vector<disjunction::doc_iterator_t> itrs;
+  typedef disjunction<doc_iterator::ptr> disjunction_t;
+
+  disjunction_t::doc_iterators_t itrs;
   itrs.reserve(state->cookies.size());
 
   auto terms = state->reader->iterator();
@@ -141,7 +143,7 @@ doc_iterator::ptr multiterm_query::execute(
     }
   }
 
-  return make_disjunction<disjunction>(std::move(itrs), ord, state->estimation);
+  return make_disjunction<disjunction_t>(std::move(itrs), ord, state->estimation);
 }
 
 DEFINE_FILTER_TYPE(by_wildcard)

@@ -1646,7 +1646,7 @@ TEST( boolean_query_estimation, and ) {
 // ----------------------------------------------------------------------------
 
 TEST(basic_disjunction, next) {
-  typedef irs::basic_disjunction disjunction;
+  typedef irs::basic_disjunction<irs::doc_iterator::ptr> disjunction;
   // simple case
   {
     std::vector<irs::doc_id_t> first{ 1, 2, 5, 7, 9, 11, 45 };
@@ -1799,7 +1799,7 @@ TEST(basic_disjunction, next) {
 }
 
 TEST(basic_disjunction_test, seek) {
-  typedef irs::basic_disjunction disjunction;
+  typedef irs::basic_disjunction<irs::doc_iterator::ptr> disjunction;
   // simple case
   {
     std::vector<irs::doc_id_t> first{ 1, 2, 5, 7, 9, 11, 45 };
@@ -1912,7 +1912,7 @@ TEST(basic_disjunction_test, seek) {
 }
 
 TEST(basic_disjunction_test, seek_next) {
-  using disjunction = irs::basic_disjunction;
+  typedef irs::basic_disjunction<irs::doc_iterator::ptr> disjunction;
 
   {
     std::vector<irs::doc_id_t> first{ 1, 2, 5, 7, 9, 11, 45 };
@@ -1951,7 +1951,7 @@ TEST(basic_disjunction_test, seek_next) {
 }
 
 TEST(basic_disjunction_test, scored_seek_next) {
-  using disjunction = irs::basic_disjunction;
+  typedef irs::basic_disjunction<irs::doc_iterator::ptr> disjunction;
   const irs::byte_type* empty_stats = irs::bytes_ref::EMPTY.c_str();
 
   // disjunction without order
@@ -2240,7 +2240,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
 // ----------------------------------------------------------------------------
 
 TEST(small_disjunction_test, next) {
-  using disjunction = irs::small_disjunction;
+  using disjunction = irs::small_disjunction<irs::doc_iterator::ptr>;
   auto sum = [](size_t sum, const std::vector<irs::doc_id_t>& docs) { return sum += docs.size(); };
 
   // no iterators provided
@@ -2513,7 +2513,7 @@ TEST(small_disjunction_test, next) {
 }
 
 TEST(small_disjunction_test, seek) {
-  using disjunction = irs::small_disjunction;
+  using disjunction = irs::small_disjunction<irs::doc_iterator::ptr>;
   auto sum = [](size_t sum, const std::vector<irs::doc_id_t>& docs) { return sum += docs.size(); };
 
   // simple case
@@ -2778,7 +2778,7 @@ TEST(small_disjunction_test, seek) {
 }
 
 TEST(small_disjunction_test, seek_next) {
-  using disjunction = irs::small_disjunction;
+  using disjunction = irs::small_disjunction<irs::doc_iterator::ptr>;
   auto sum = [](size_t sum, const std::vector<irs::doc_id_t>& docs) { return sum += docs.size(); };
 
   {
@@ -2818,7 +2818,7 @@ TEST(small_disjunction_test, seek_next) {
 }
 
 TEST(small_disjunction_test, scored_seek_next) {
-  using disjunction = irs::small_disjunction;
+  using disjunction = irs::small_disjunction<irs::doc_iterator::ptr>;
 
   // disjunction without score, sub-iterators with scores
   {
@@ -3068,7 +3068,7 @@ TEST(small_disjunction_test, scored_seek_next) {
 // ----------------------------------------------------------------------------
 
 TEST(disjunction_test, next) {
-  using disjunction = irs::disjunction;
+  using disjunction = irs::disjunction<irs::doc_iterator::ptr>;
   auto sum = [](size_t sum, const std::vector<irs::doc_id_t>& docs) { return sum += docs.size(); };
 
   // simple case
@@ -3341,7 +3341,7 @@ TEST(disjunction_test, next) {
 }
 
 TEST(disjunction_test, seek) {
-  using disjunction = irs::disjunction;
+  using disjunction = irs::disjunction<irs::doc_iterator::ptr>;
   auto sum = [](size_t sum, const std::vector<irs::doc_id_t>& docs) { return sum += docs.size(); };
 
   // no iterators provided
@@ -3600,7 +3600,7 @@ TEST(disjunction_test, seek) {
 }
 
 TEST(disjunction_test, seek_next) {
-  using disjunction = irs::disjunction;
+  using disjunction = irs::disjunction<irs::doc_iterator::ptr>;
   auto sum = [](size_t sum, const std::vector<irs::doc_id_t>& docs) { return sum += docs.size(); };
 
   {
@@ -3640,7 +3640,7 @@ TEST(disjunction_test, seek_next) {
 }
 
 TEST(disjunction_test, scored_seek_next) {
-  using disjunction = irs::disjunction;
+  using disjunction = irs::disjunction<irs::doc_iterator::ptr>;
 
   // disjunction without score, sub-iterators with scores
   {
@@ -3890,7 +3890,7 @@ TEST(disjunction_test, scored_seek_next) {
 // ----------------------------------------------------------------------------
 
 TEST(min_match_disjunction_test, next) {
-  using disjunction = irs::min_match_disjunction;
+  using disjunction = irs::min_match_disjunction<irs::doc_iterator::ptr>;
   // single dataset
   {
     std::vector<std::vector<irs::doc_id_t>> docs{
@@ -3902,7 +3902,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-          detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
+          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
           min_match_count
         );
         auto& doc = it.attributes().get<irs::document>();
@@ -3922,7 +3922,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
+            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
             min_match_count
         );
         auto& doc = it.attributes().get<irs::document>();
@@ -3943,7 +3943,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
+            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
             min_match_count
         );
         auto& doc = it.attributes().get<irs::document>();
@@ -3964,7 +3964,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
+            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
             min_match_count
         );
         auto& doc = it.attributes().get<irs::document>();
@@ -3985,7 +3985,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
+            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
             min_match_count
         );
         auto& doc = it.attributes().get<irs::document>();
@@ -4017,7 +4017,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
+            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
             min_match_count
         );
         auto& doc = it.attributes().get<irs::document>();
@@ -4038,7 +4038,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
+            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
             min_match_count
         );
         auto& doc = it.attributes().get<irs::document>();
@@ -4059,7 +4059,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
+            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
             min_match_count
         );
         auto& doc = it.attributes().get<irs::document>();
@@ -4080,7 +4080,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
+            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
             min_match_count
         );
         auto& doc = it.attributes().get<irs::document>();
@@ -4102,7 +4102,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
+            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
             min_match_count
         );
         auto& doc = it.attributes().get<irs::document>();
@@ -4124,7 +4124,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
+            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
             min_match_count
         );
         auto& doc = it.attributes().get<irs::document>();
@@ -4146,7 +4146,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
+            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
             min_match_count
         );
         auto& doc = it.attributes().get<irs::document>();
@@ -4177,7 +4177,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
+            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
             min_match_count
         );
         auto& doc = it.attributes().get<irs::document>();
@@ -4198,7 +4198,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
+            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
             min_match_count
         );
         auto& doc = it.attributes().get<irs::document>();
@@ -4219,7 +4219,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
+            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
             min_match_count
         );
         auto& doc = it.attributes().get<irs::document>();
@@ -4240,7 +4240,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
+            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
             min_match_count
         );
         auto& doc = it.attributes().get<irs::document>();
@@ -4262,7 +4262,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
+            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
             min_match_count
         );
         auto& doc = it.attributes().get<irs::document>();
@@ -4284,7 +4284,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
+            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
             min_match_count
         );
         auto& doc = it.attributes().get<irs::document>();
@@ -4306,7 +4306,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
+            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
             min_match_count
         );
         auto& doc = it.attributes().get<irs::document>();
@@ -4337,7 +4337,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
+            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
             min_match_count
         );
         auto& doc = it.attributes().get<irs::document>();
@@ -4358,7 +4358,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
+            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
             min_match_count
         );
         auto& doc = it.attributes().get<irs::document>();
@@ -4378,7 +4378,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
+            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
             min_match_count
         );
         auto& doc = it.attributes().get<irs::document>();
@@ -4398,7 +4398,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
+            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
             min_match_count
         );
         auto& doc = it.attributes().get<irs::document>();
@@ -4419,7 +4419,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
+            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
             min_match_count
         );
         auto& doc = it.attributes().get<irs::document>();
@@ -4440,7 +4440,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
+            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
             min_match_count
         );
         auto& doc = it.attributes().get<irs::document>();
@@ -4461,7 +4461,7 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
+            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
             min_match_count
         );
         auto& doc = it.attributes().get<irs::document>();
@@ -4490,7 +4490,7 @@ TEST(min_match_disjunction_test, next) {
         std::vector<irs::doc_id_t> result;
         {
           disjunction it(
-              detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs), 0
+              detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), 0
           );
           auto& doc = it.attributes().get<irs::document>();
           ASSERT_TRUE(bool(doc));
@@ -4508,7 +4508,7 @@ TEST(min_match_disjunction_test, next) {
         std::vector<irs::doc_id_t> result;
         {
           disjunction it(
-              detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs), 1
+              detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), 1
           );
           auto& doc = it.attributes().get<irs::document>();
           ASSERT_TRUE(bool(doc));
@@ -4526,7 +4526,7 @@ TEST(min_match_disjunction_test, next) {
         std::vector<irs::doc_id_t> result;
         {
           disjunction it(
-              detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs), irs::integer_traits<size_t>::const_max
+              detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), irs::integer_traits<size_t>::const_max
           );
           auto& doc = it.attributes().get<irs::document>();
           ASSERT_TRUE(bool(doc));
@@ -4544,7 +4544,7 @@ TEST(min_match_disjunction_test, next) {
 }
 
 TEST(min_match_disjunction_test, seek) {
-  using disjunction = irs::min_match_disjunction;
+  using disjunction = irs::min_match_disjunction<irs::doc_iterator::ptr>;
 
   // simple case
   {
@@ -4570,7 +4570,7 @@ TEST(min_match_disjunction_test, seek) {
       };
 
       disjunction it(
-        detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
+        detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
         min_match_count
       );
       auto& doc = it.attributes().get<irs::document>();
@@ -4596,7 +4596,7 @@ TEST(min_match_disjunction_test, seek) {
       };
 
       disjunction it(
-          detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
+          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
           min_match_count
       );
       auto& doc = it.attributes().get<irs::document>();
@@ -4620,7 +4620,7 @@ TEST(min_match_disjunction_test, seek) {
       };
 
       disjunction it(
-          detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
+          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
           min_match_count
       );
       auto& doc = it.attributes().get<irs::document>();
@@ -4640,7 +4640,7 @@ TEST(min_match_disjunction_test, seek) {
       };
 
       disjunction it(
-          detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
+          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
           min_match_count
       );
       auto& doc = it.attributes().get<irs::document>();
@@ -4660,7 +4660,7 @@ TEST(min_match_disjunction_test, seek) {
       };
 
       disjunction it(
-          detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
+          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
           min_match_count
       );
       auto& doc = it.attributes().get<irs::document>();
@@ -4698,7 +4698,7 @@ TEST(min_match_disjunction_test, seek) {
       };
 
       disjunction it(
-          detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
+          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
           min_match_count
       );
       auto& doc = it.attributes().get<irs::document>();
@@ -4725,7 +4725,7 @@ TEST(min_match_disjunction_test, seek) {
       };
 
       disjunction it(
-          detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
+          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
           min_match_count
       );
       auto& doc = it.attributes().get<irs::document>();
@@ -4749,7 +4749,7 @@ TEST(min_match_disjunction_test, seek) {
       };
 
       disjunction it(
-          detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
+          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
           min_match_count
       );
       auto& doc = it.attributes().get<irs::document>();
@@ -4769,7 +4769,7 @@ TEST(min_match_disjunction_test, seek) {
       };
 
       disjunction it(
-          detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
+          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
           min_match_count
       );
       auto& doc = it.attributes().get<irs::document>();
@@ -4790,7 +4790,7 @@ TEST(min_match_disjunction_test, seek) {
       };
 
       disjunction it(
-          detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs),
+          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
           min_match_count
       );
       auto& doc = it.attributes().get<irs::document>();
@@ -4816,7 +4816,7 @@ TEST(min_match_disjunction_test, seek) {
 
     {
       disjunction it(
-          detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs), 0
+          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), 0
       );
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
@@ -4827,7 +4827,7 @@ TEST(min_match_disjunction_test, seek) {
 
     {
       disjunction it(
-          detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs), 1
+          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), 1
       );
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
@@ -4838,7 +4838,7 @@ TEST(min_match_disjunction_test, seek) {
 
     {
       disjunction it(
-          detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs), irs::integer_traits<size_t>::const_max
+          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), irs::integer_traits<size_t>::const_max
       );
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
@@ -4871,7 +4871,7 @@ TEST(min_match_disjunction_test, seek) {
 
     {
       disjunction it(
-          detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs), 0
+          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), 0
       );
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
@@ -4882,7 +4882,7 @@ TEST(min_match_disjunction_test, seek) {
 
     {
       disjunction it(
-          detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs), 1
+          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), 1
       );
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
@@ -4893,7 +4893,7 @@ TEST(min_match_disjunction_test, seek) {
 
     {
       disjunction it(
-          detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs), 2
+          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), 2
       );
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
@@ -4904,7 +4904,7 @@ TEST(min_match_disjunction_test, seek) {
 
     {
       disjunction it(
-          detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs), irs::integer_traits<size_t>::const_max
+          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), irs::integer_traits<size_t>::const_max
       );
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
@@ -4938,7 +4938,7 @@ TEST(min_match_disjunction_test, seek) {
 
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs), 0
+            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), 0
         );
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
@@ -4949,7 +4949,7 @@ TEST(min_match_disjunction_test, seek) {
 
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs), 1
+            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), 1
         );
         auto& doc = it.attributes().get<irs::document>();
         ASSERT_TRUE(bool(doc));
@@ -4969,7 +4969,7 @@ TEST(min_match_disjunction_test, seek) {
 
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs), 2
+            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), 2
         );
         auto& doc = it.attributes().get<irs::document>();
         ASSERT_TRUE(bool(doc));
@@ -4988,7 +4988,7 @@ TEST(min_match_disjunction_test, seek) {
 
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs), 3
+            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), 3
         );
         auto& doc = it.attributes().get<irs::document>();
         ASSERT_TRUE(bool(doc));
@@ -5008,7 +5008,7 @@ TEST(min_match_disjunction_test, seek) {
 
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs), 5
+            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), 5
         );
         auto& doc = it.attributes().get<irs::document>();
         ASSERT_TRUE(bool(doc));
@@ -5019,7 +5019,7 @@ TEST(min_match_disjunction_test, seek) {
 
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs), irs::integer_traits<size_t>::const_max
+            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), irs::integer_traits<size_t>::const_max
         );
         auto& doc = it.attributes().get<irs::document>();
         ASSERT_TRUE(bool(doc));
@@ -5032,7 +5032,7 @@ TEST(min_match_disjunction_test, seek) {
 }
 
 TEST(min_match_disjunction_test, seek_next) {
-  using disjunction = irs::min_match_disjunction;
+  using disjunction = irs::min_match_disjunction<irs::doc_iterator::ptr>;
 
   {
     std::vector<std::vector<irs::doc_id_t>> docs{
@@ -5041,7 +5041,7 @@ TEST(min_match_disjunction_test, seek_next) {
       { 1, 5, 6, 9, 29 }
     };
 
-    disjunction it(detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs), 2);
+    disjunction it(detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), 2);
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
 
@@ -5078,7 +5078,7 @@ TEST(min_match_disjunction_test, seek_next) {
 }
 
 TEST(min_match_disjunction_test, scored_seek_next) {
-  using disjunction = irs::min_match_disjunction;
+  using disjunction = irs::min_match_disjunction<irs::doc_iterator::ptr>;
 
   // disjunction without score, sub-iterators with scores
   {
@@ -5099,7 +5099,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
       docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 9, 29 }, std::move(ord));
     }
 
-    auto res = detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs);
+    auto res = detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs);
     disjunction it(std::move(res.first), 2, irs::order::prepared::unordered());
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
@@ -5149,7 +5149,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
     auto prepared_order = ord.prepare();
 
-    auto res = detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs);
+    auto res = detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs);
     disjunction it(std::move(res.first), 2, prepared_order);
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
@@ -5210,7 +5210,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
     auto prepared_order = ord.prepare();
 
-    auto res = detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs);
+    auto res = detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs);
     disjunction it(std::move(res.first), 2, prepared_order);
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
@@ -5269,7 +5269,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
     auto prepared_order = ord.prepare();
 
-    auto res = detail::execute_all<irs::min_match_disjunction::cost_iterator_adapter>(docs);
+    auto res = detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs);
     disjunction it(std::move(res.first), 2, prepared_order);
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));

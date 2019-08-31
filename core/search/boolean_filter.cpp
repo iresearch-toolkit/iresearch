@@ -55,6 +55,8 @@ irs::doc_iterator::ptr make_disjunction(
     QueryIterator begin,
     QueryIterator end,
     Args&&... args) {
+  typedef irs::disjunction<irs::doc_iterator::ptr> disjunction_t;
+
   assert(std::distance(begin, end) >= 0);
   const size_t size = size_t(std::distance(begin, end));
 
@@ -64,7 +66,7 @@ irs::doc_iterator::ptr make_disjunction(
     return irs::doc_iterator::empty();
   }
 
-  irs::disjunction::doc_iterators_t itrs;
+  disjunction_t::doc_iterators_t itrs;
   itrs.reserve(size);
 
   for (;begin != end; ++begin) {
@@ -77,7 +79,7 @@ irs::doc_iterator::ptr make_disjunction(
     }
   }
 
-  return irs::make_disjunction<irs::disjunction>(
+  return irs::make_disjunction<disjunction_t>(
     std::move(itrs), ord, std::forward<Args>(args)...
   );
 }
@@ -291,7 +293,7 @@ class min_match_query final : public boolean_query {
     // min_match_count <= size
     min_match_count = std::min(size, min_match_count);
 
-    min_match_disjunction::doc_iterators_t itrs;
+    min_match_disjunction<doc_iterator::ptr>::doc_iterators_t itrs;
     itrs.reserve(size);
 
     for (;begin != end; ++begin) {
@@ -311,7 +313,7 @@ class min_match_query final : public boolean_query {
 
  private:
   static doc_iterator::ptr make_min_match_disjunction(
-      min_match_disjunction::doc_iterators_t&& itrs,
+      min_match_disjunction<doc_iterator::ptr>::doc_iterators_t&& itrs,
       const order::prepared& ord,
       size_t min_match_count) {
     const auto size = min_match_count > itrs.size() ? 0 : itrs.size();
@@ -339,7 +341,7 @@ class min_match_query final : public boolean_query {
 
     // min match disjunction
     assert(min_match_count < size);
-    return memory::make_shared<min_match_disjunction>(
+    return memory::make_shared<min_match_disjunction<doc_iterator::ptr>>(
       std::move(itrs), min_match_count, ord
     );
   }
