@@ -44,7 +44,7 @@ NS_ROOT
 ////////////////////////////////////////////////////////////////////////////////
 class min_match_disjunction : public doc_iterator_base {
  public:
-  struct cost_iterator_adapter : score_iterator_adapter {
+  struct cost_iterator_adapter : score_iterator_adapter<doc_iterator::ptr> {
     cost_iterator_adapter(irs::doc_iterator::ptr&& it) noexcept
       : score_iterator_adapter(std::move(it)) {
       est = cost::extract(this->it->attributes(), cost::MAX);

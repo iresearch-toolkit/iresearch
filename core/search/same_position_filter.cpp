@@ -33,17 +33,23 @@
 
 #include <boost/functional/hash.hpp>
 
+NS_LOCAL
+
+typedef irs::conjunction<irs::basic_doc_iterator::ptr> conjunction_t;
+
+NS_END
+
 NS_ROOT
 
-class same_position_iterator final : public conjunction {
+class same_position_iterator final : public conjunction_t {
  public:
   typedef std::vector<position::ref> positions_t;
 
   same_position_iterator(
-      conjunction::doc_iterators_t&& itrs,
+      conjunction_t::doc_iterators_t&& itrs,
       const order::prepared& ord,
       positions_t&& pos)
-    : conjunction(std::move(itrs), ord),
+    : conjunction_t(std::move(itrs), ord),
       pos_(std::move(pos)) {
     assert(!pos_.empty());
   }
@@ -57,7 +63,7 @@ class same_position_iterator final : public conjunction {
 
   virtual bool next() override {
     bool next = false;
-    while (true == (next = conjunction::next()) && !find_same_position()) {}
+    while (true == (next = conjunction_t::next()) && !find_same_position()) {}
     return next;
   }
 
@@ -68,7 +74,7 @@ class same_position_iterator final : public conjunction {
 #endif
 
   virtual doc_id_t seek(doc_id_t target) override {
-    const auto doc = conjunction::seek(target);
+    const auto doc = conjunction_t::seek(target);
 
     if (doc_limits::eof(doc) || find_same_position()) {
       return doc; 
@@ -165,7 +171,7 @@ class same_position_query final : public filter::prepared {
       positions.emplace_back(std::ref(*pos));
 
       // add base iterator
-      itrs.emplace_back(doc_iterator::make<basic_doc_iterator>(
+      itrs.emplace_back(memory::make_shared<basic_doc_iterator>(
         segment,
         *term_state.reader,
         term_stats->c_str(),

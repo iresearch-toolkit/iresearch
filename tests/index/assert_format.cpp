@@ -33,6 +33,7 @@
 #include "search/term_filter.hpp"
 #include "search/boolean_filter.hpp"
 #include "search/tfidf.hpp"
+#include "search/cost.hpp"
 
 #include "utils/bit_utils.hpp"
 #include "utils/automaton_utils.hpp"
@@ -421,6 +422,7 @@ class doc_iterator : public irs::doc_iterator {
   irs::attribute_view attrs_;
   irs::document doc_;
   irs::frequency freq_;
+  irs::cost cost_;
   pos_iterator pos_;
   const irs::flags& features_;
   const tests::term& data_;
@@ -433,6 +435,9 @@ doc_iterator::doc_iterator(const irs::flags& features, const tests::term& data)
     data_(data),
     pos_(*this, features) {
   next_ = data_.postings.begin();
+
+  cost_.value(data_.postings.size());
+  attrs_.emplace(cost_);
 
   attrs_.emplace(doc_);
 

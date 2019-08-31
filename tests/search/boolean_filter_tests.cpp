@@ -5314,7 +5314,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
 // ----------------------------------------------------------------------------
 
 TEST(conjunction_test, next) {
-  using conjunction = irs::conjunction;
+  using conjunction = irs::conjunction<irs::doc_iterator::ptr>;
   auto shortest = [](const std::vector<irs::doc_id_t>& lhs, const std::vector<irs::doc_id_t>& rhs) {
     return lhs.size() < rhs.size();
   };
@@ -5518,7 +5518,7 @@ TEST(conjunction_test, next) {
 }
 
 TEST(conjunction_test, seek) {
-  using conjunction = irs::conjunction;
+  using conjunction = irs::conjunction<irs::doc_iterator::ptr>;
   auto shortest = [](const std::vector<irs::doc_id_t>& lhs, const std::vector<irs::doc_id_t>& rhs) {
     return lhs.size() < rhs.size();
   };
@@ -5665,7 +5665,7 @@ TEST(conjunction_test, seek) {
 }
 
 TEST(conjunction_test, seek_next) {
-  using conjunction = irs::conjunction;
+  using conjunction = irs::conjunction<irs::doc_iterator::ptr>;
   auto shortest = [](const std::vector<irs::doc_id_t>& lhs, const std::vector<irs::doc_id_t>& rhs) {
     return lhs.size() < rhs.size();
   };
@@ -5705,7 +5705,7 @@ TEST(conjunction_test, seek_next) {
 }
 
 TEST(conjunction_test, scored_seek_next) {
-  using conjunction = irs::conjunction;
+  using conjunction = irs::conjunction<irs::doc_iterator::ptr>;
 
   // conjunction without score, sub-iterators with scores
   {

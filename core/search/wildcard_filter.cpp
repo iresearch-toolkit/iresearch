@@ -204,7 +204,7 @@ filter::prepared::ptr by_wildcard::prepare(
     }
   }
 
-  return std::make_shared<multiterm_query>(std::move(states), this->boost()*boost);
+  return memory::make_shared<multiterm_query>(std::move(states), this->boost()*boost);
 }
 
 by_wildcard::by_wildcard() noexcept

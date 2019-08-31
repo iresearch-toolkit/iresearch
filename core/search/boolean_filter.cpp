@@ -93,6 +93,8 @@ irs::doc_iterator::ptr make_conjunction(
     QueryIterator begin,
     QueryIterator end,
     Args&&... args) {
+  typedef irs::conjunction<irs::doc_iterator::ptr> conjunction_t;
+
   assert(std::distance(begin, end) >= 0);
   const size_t size = std::distance(begin, end);
 
@@ -104,7 +106,7 @@ irs::doc_iterator::ptr make_conjunction(
       return begin->execute(rdr, ord, ctx);
   }
 
-  irs::conjunction::doc_iterators_t itrs;
+  conjunction_t::doc_iterators_t itrs;
   itrs.reserve(size);
 
   for (;begin != end; ++begin) {
@@ -118,9 +120,7 @@ irs::doc_iterator::ptr make_conjunction(
     itrs.emplace_back(std::move(docs));
   }
 
-  return irs::make_conjunction<irs::conjunction>(
-    std::move(itrs), ord
-  );
+  return irs::make_conjunction<conjunction_t>(std::move(itrs), ord);
 }
 
 NS_END // LOCAL
@@ -326,9 +326,11 @@ class min_match_query final : public boolean_query {
     }
 
     if (min_match_count == size) {
+      typedef conjunction<doc_iterator::ptr> conjunction_t;
+
       // pure conjunction
-      return doc_iterator::make<conjunction>(
-        conjunction::doc_iterators_t(
+      return memory::make_shared<conjunction_t>(
+        conjunction_t::doc_iterators_t(
           std::make_move_iterator(itrs.begin()),
           std::make_move_iterator(itrs.end())
         ), ord
@@ -337,7 +339,7 @@ class min_match_query final : public boolean_query {
 
     // min match disjunction
     assert(min_match_count < size);
-    return doc_iterator::make<min_match_disjunction>(
+    return memory::make_shared<min_match_disjunction>(
       std::move(itrs), min_match_count, ord
     );
   }

@@ -2001,6 +2001,11 @@ void pos_doc_iterator<PosItrType>::prepare_attributes(
   attrs_.emplace(freq_);
   term_freq_ = attrs.get<frequency>()->value;
 
+
+  // estimate iterator
+  cost_.value(term_state_.docs_count);
+  attrs_.emplace(cost_);
+
   // ...........................................................................
   // position attribute
   // ...........................................................................
@@ -5429,19 +5434,19 @@ irs::doc_iterator::ptr postings_reader::iterator(
   // 'operator|' in the following switch statement
   switch (enabled) {
    case features::FREQ_POS_OFFS_PAY:
-    it = std::make_shared<pos_doc_iterator<offs_pay_iterator>>();
+    it = memory::make_shared<pos_doc_iterator<offs_pay_iterator>>();
     break;
    case features::FREQ_POS_OFFS:
-    it = std::make_shared<pos_doc_iterator<offs_iterator>>();
+    it = memory::make_shared<pos_doc_iterator<offs_iterator>>();
     break;
    case features::FREQ_POS_PAY:
-    it = std::make_shared<pos_doc_iterator<pay_iterator>>();
+    it = memory::make_shared<pos_doc_iterator<pay_iterator>>();
     break;
    case features::FREQ_POS:
-    it = std::make_shared<pos_doc_iterator<pos_iterator>>();
+    it = memory::make_shared<pos_doc_iterator<pos_iterator>>();
     break;
    default:
-    it = std::make_shared<doc_iterator>();
+    it = memory::make_shared<doc_iterator>();
   }
 
   it->prepare(

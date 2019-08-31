@@ -113,10 +113,13 @@ class phrase_query : public filter::prepared {
     // get features required for query & order
     auto features = ord.features() | by_phrase::required();
 
-    conjunction::doc_iterators_t itrs;
+    typedef conjunction<doc_iterator::ptr> conjunction_t;
+    typedef phrase_iterator<conjunction_t> phrase_iterator_t;
+
+    conjunction_t::doc_iterators_t itrs;
     itrs.reserve(phrase_state->terms.size());
 
-    phrase_iterator::positions_t positions;
+    phrase_iterator_t::positions_t positions;
     positions.reserve(phrase_state->terms.size());
 
     // find term using cached state
@@ -146,7 +149,7 @@ class phrase_query : public filter::prepared {
       ++position;
     }
 
-    return std::make_shared<phrase_iterator>(
+    return memory::make_shared<phrase_iterator_t>(
       std::move(itrs),
       std::move(positions),
       rdr,

@@ -88,7 +88,7 @@ NS_END // detail
 ////////////////////////////////////////////////////////////////////////////////
 class basic_disjunction final : public doc_iterator_base {
  public:
-  typedef score_iterator_adapter doc_iterator_t;
+  typedef score_iterator_adapter<irs::doc_iterator::ptr> doc_iterator_t;
 
   basic_disjunction(
       doc_iterator_t&& lhs,
@@ -225,7 +225,7 @@ class basic_disjunction final : public doc_iterator_base {
 ////////////////////////////////////////////////////////////////////////////////
 class small_disjunction : public doc_iterator_base {
  public:
-  typedef score_iterator_adapter doc_iterator_t;
+  typedef score_iterator_adapter<doc_iterator::ptr> doc_iterator_t;
   typedef std::vector<doc_iterator_t> doc_iterators_t;
 
   small_disjunction(
@@ -406,7 +406,7 @@ class disjunction : public doc_iterator_base {
  public:
   typedef small_disjunction small_disjunction_t;
   typedef basic_disjunction basic_disjunction_t;
-  typedef score_iterator_adapter doc_iterator_t;
+  typedef score_iterator_adapter<doc_iterator::ptr> doc_iterator_t;
   typedef std::vector<doc_iterator_t> doc_iterators_t;
 
   disjunction(
