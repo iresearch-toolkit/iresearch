@@ -69,6 +69,7 @@ NS_BEGIN(detail)
 
 class fst_buffer;
 class term_iterator;
+class automaton_term_iterator;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                          typedefs
@@ -267,6 +268,7 @@ class term_reader : public irs::term_reader,
  private:
   typedef fst::VectorFst<byte_arc> fst_t;
   friend class term_iterator;
+  friend class automaton_term_iterator;
 
   irs::attribute_view attrs_;
   bstring min_term_;
@@ -401,6 +403,7 @@ class field_reader final : public irs::field_reader {
 
  private:
   friend class detail::term_iterator;
+  friend class detail::automaton_term_iterator;
 
   std::vector<detail::term_reader> fields_;
   std::unordered_map<hashed_string_ref, term_reader*> name_to_field_;

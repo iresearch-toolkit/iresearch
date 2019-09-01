@@ -554,13 +554,11 @@ const irs::bytes_ref& (term_reader::max)() const {
 }
 
 irs::seek_term_iterator::ptr term_reader::iterator() const {
-  return irs::seek_term_iterator::ptr(
-    new detail::term_iterator( data_ )
-  );
+  return irs::seek_term_iterator::ptr(new detail::term_iterator(data_));
 }
 
 irs::seek_term_iterator::ptr term_reader::iterator(const irs::automaton& a) const {
-  return irs::seek_term_iterator::ptr(new irs::intersect_term_iterator(a, iterator()));
+  return irs::seek_term_iterator::ptr(new irs::automaton_term_iterator(a, iterator()));
 }
 
 const irs::field_meta& term_reader::meta() const {
