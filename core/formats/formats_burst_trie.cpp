@@ -473,14 +473,15 @@ class block_iterator : util::noncopyable {
   SeekResult scan_to_term_nonleaf(const bytes_ref& term, uint64_t& suffix, uint64_t& start);
   SeekResult scan_to_term_leaf(const bytes_ref& term, uint64_t& suffix, uint64_t& start);
 
-  byte_weight_input header_in_; // reader for block header
-  irs::bstring suffix_block_; // suffix data block
-  irs::bstring stats_block_; // statis data block
-  const byte_type* suffix_begin_{}; // begin of suffix input stream
-  const byte_type* stats_begin_{}; // begin of suffix stats stream
+  byte_weight header_; // block header
+  bstring suffix_block_; // suffix data block
+  bstring stats_block_; // statis data block
+  const byte_type* header_begin_{header_.c_str()}; // beginning of block header stream
+  const byte_type* suffix_begin_{suffix_block_.c_str()}; // beginning of suffix input stream
+  const byte_type* stats_begin_{stats_block_.c_str()}; // beginning of suffix stats stream
 #ifdef IRESEARCH_DEBUG
-  const byte_type* suffix_end_{}; // end of valid suffix input stream
-  const byte_type* stats_end_{}; // end of valid stats input stream
+  const byte_type* suffix_end_{suffix_begin_ + suffix_block_.size()}; // end of valid suffix input stream
+  const byte_type* stats_end_{stats_begin_ + stats_block_.size()}; // end of valid stats input stream
 #endif
   term_iterator* owner_;
   version10::term_meta state_;
@@ -844,17 +845,18 @@ block_iterator::block_iterator(
     byte_weight&& header,
     size_t prefix,
     term_iterator* owner)
-  : header_in_(std::move(header)),
+  : header_(std::move(header)),
     owner_(owner),
     prefix_(prefix),
     sub_count_(0) {
   assert(owner_);
-  cur_meta_ = meta_ = header_in_.read_byte();
-  cur_start_ = start_ = header_in_.read_vlong();
+  cur_meta_ = meta_ = *header_begin_++;
+  cur_start_ = start_ = vread<uint64_t>(header_begin_);
   if (block_meta::floor(meta_)) {
-    sub_count_ = header_in_.read_vlong();
-    next_label_ = header_in_.read_byte();
+    sub_count_ = vread<uint64_t>(header_begin_);
+    next_label_ = *header_begin_++;
   }
+  assert(header_begin_ <= header_.c_str() + header_.Size());
 }
 
 block_iterator::block_iterator(
@@ -1118,15 +1120,15 @@ void block_iterator::scan_to_block(const bytes_ref& term) {
   // TODO: better to use binary search here
   uint64_t start = cur_start_;
   for (;;) {
-    start = start_ + header_in_.read_vlong();
-    cur_meta_ = header_in_.read_byte();
+    start = start_ + vread<uint64_t>(header_begin_);
+    cur_meta_ = *header_begin_++;
     --sub_count_;
 
     if (0 == sub_count_) {
       next_label_ = block_t::INVALID_LABEL;
       break;
     } else {
-      next_label_ = header_in_.read_byte();
+      next_label_ = *header_begin_++;
       if (label < next_label_) {
         break;
       }
@@ -1138,6 +1140,8 @@ void block_iterator::scan_to_block(const bytes_ref& term) {
     cur_ent_ = 0;
     dirty_ = true;
   }
+
+  assert(header_begin_ <= header_.c_str() + header_.Size());
 }
 
 void block_iterator::scan_to_block(uint64_t start) {
@@ -1204,21 +1208,22 @@ void block_iterator::load_data(const field_meta& meta, irs::postings_reader& pr)
 }
 
 void block_iterator::reset() {
-  if ( sub_count_ != UNDEFINED ) {
+  if (sub_count_ != UNDEFINED) {
     sub_count_ = 0;
   }
   next_label_ = block_t::INVALID_LABEL;
   cur_start_ = start_;
   cur_meta_ = meta_;
   if (block_meta::floor(meta_)) {
-    assert( sub_count_ != UNDEFINED );
-    header_in_.reset();
-    header_in_.read_byte(); // skip meta
-    header_in_.read_vlong(); // skip address
-    sub_count_ = header_in_.read_vlong();
-    next_label_ = header_in_.read_byte();
+    assert(sub_count_ != UNDEFINED);
+    header_begin_ = header_.c_str() + 1; // +1 to skip meta
+    vread<uint64_t>(header_begin_); // skip address
+    sub_count_ = vread<uint64_t>(header_begin_);
+    next_label_ = *header_begin_++;
   }
   dirty_ = true;
+
+  assert(header_begin_ <= header_.c_str() + header_.Size());
 }
 
 // -----------------------------------------------------------------------------
