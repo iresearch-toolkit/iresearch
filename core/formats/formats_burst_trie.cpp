@@ -1524,11 +1524,15 @@ term_reader::~term_reader() {
 }
 
 seek_term_iterator::ptr term_reader::iterator() const {
-  return seek_term_iterator::make<detail::term_iterator>(*this);
+  return memory::make_managed<seek_term_iterator>(
+    memory::make_unique<detail::term_iterator>(*this)
+  );
 }
 
 seek_term_iterator::ptr term_reader::iterator(const automaton& a) const {
-  return seek_term_iterator::make<detail::automaton_term_iterator>(*this, a);
+  return memory::make_managed<seek_term_iterator>(
+    memory::make_unique<detail::automaton_term_iterator>(*this, a)
+  );
 }
 
 void term_reader::prepare(
