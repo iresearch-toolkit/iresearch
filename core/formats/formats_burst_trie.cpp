@@ -436,7 +436,17 @@ class block_iterator : util::noncopyable {
     dirty_ = true;
   }
 
-  void next();
+  template<typename Reader>
+  void next(Reader& reader) {
+    assert(!dirty_ && cur_ent_ < ent_count_);
+    if (leaf_) {
+      read_entry_leaf(reader);
+    } else {
+      read_entry_nonleaf(reader);
+    }
+    ++cur_ent_;
+  }
+
   void end();
   void reset();
 
@@ -453,7 +463,24 @@ class block_iterator : util::noncopyable {
   uint64_t start() const { return start_; }
   bool block_end() const { return cur_ent_ == ent_count_; }
 
-  SeekResult scan_to_term(const bytes_ref& term);
+  template<typename Reader>
+  SeekResult scan_to_term(const bytes_ref& term, Reader& reader) {
+    assert(!dirty_);
+
+    if (cur_ent_ == ent_count_) {
+      // have reached the end of the block
+      return SeekResult::END;
+    }
+
+    uint64_t suffix, start;
+    const SeekResult res = leaf_
+      ? scan_to_term_leaf(term, suffix, start)
+      : scan_to_term_nonleaf(term, suffix, start);
+
+    reader(suffix_block_.c_str() + start, suffix);
+
+    return res;
+  }
 
   //  scan to floor block
   void scan_to_block(const bytes_ref& term);
@@ -465,10 +492,19 @@ class block_iterator : util::noncopyable {
   void load_data(const field_meta& meta, irs::postings_reader& pr);
 
  private:
-  inline void refresh_term(uint64_t suffix);
-  inline void refresh_term(uint64_t suffix, uint64_t start);
-  inline void read_entry_leaf();
-  void read_entry_nonleaf();
+  template<typename Reader>
+  void read_entry_leaf(Reader& reader) {
+    assert(leaf_ && cur_ent_ < ent_count_);
+    cur_type_ = ET_TERM; // always term
+    const auto suffix = vread<uint64_t>(suffix_begin_);
+    reader(suffix_begin_, suffix);
+    ++term_count_;
+    suffix_begin_ += suffix;
+    assert(suffix_begin_ <= suffix_end_);
+  }
+
+  template<typename Reader>
+  void read_entry_nonleaf(Reader& reader);
 
   SeekResult scan_to_term_nonleaf(const bytes_ref& term, uint64_t& suffix, uint64_t& start);
   SeekResult scan_to_term_leaf(const bytes_ref& term, uint64_t& suffix, uint64_t& start);
@@ -826,10 +862,18 @@ bool automaton_term_iterator::next() {
     }
   }
 
+  auto append_suffix = [this](const byte_type* suffix, size_t suffix_size) {
+    const auto prefix = cur_block_->prefix();
+    const auto size = prefix + suffix_size;
+    term_.oversize(size);
+    term_.reset(size);
+    std::memcpy(term_.data() + prefix, suffix, suffix_size);
+  };
+
   // push new block or next term
-  for (cur_block_->next();
+  for (cur_block_->next(append_suffix);
        EntryType::ET_BLOCK == cur_block_->type();
-       cur_block_->next()) {
+       cur_block_->next(append_suffix)) {
     cur_block_ = push_block(cur_block_->sub_start(), term_.size());
     cur_block_->load();
   }
@@ -912,7 +956,7 @@ void block_iterator::load() {
   assert(read == block_size);
   UNUSED(read);
 #else
-  in.read_bytes(&(stats_block_[0]), stats_size);
+  in.read_bytes(&(stats_block_[0]), block_size);
 #endif // IRESEARCH_DEBUG
   stats_begin_ = stats_block_.c_str();
 #ifdef IRESEARCH_DEBUG
@@ -927,37 +971,18 @@ void block_iterator::load() {
   dirty_ = false;
 }
 
-inline void block_iterator::refresh_term(uint64_t suffix, uint64_t start) {
-  auto& term = owner_->term_;
-  term.reset(prefix_);
-  term.append(suffix_block_.c_str() + start, suffix);
-}
-
-inline void block_iterator::refresh_term(uint64_t suffix) {
-  auto& term = owner_->term_;
-  term.oversize(prefix_ + suffix);
-  term.reset(prefix_ + suffix);
-  std::memcpy(term.data() + prefix_, suffix_begin_, suffix);
-  suffix_begin_ += suffix;
-  assert(suffix_begin_ <= suffix_end_);
-}
-
-void block_iterator::read_entry_leaf() {
-  assert(leaf_ && cur_ent_ < ent_count_);
-  cur_type_ = ET_TERM; // always term
-  refresh_term(vread<uint64_t>(suffix_begin_));
-  ++term_count_;
-  assert(suffix_begin_ <= suffix_end_);
-}
-
-void block_iterator::read_entry_nonleaf() {
+template<typename Reader>
+void block_iterator::read_entry_nonleaf(Reader& reader) {
   assert(!leaf_ && cur_ent_ < ent_count_);
 
   uint64_t suffix;
   cur_type_ = shift_unpack_64(vread<uint64_t>(suffix_begin_), suffix)
     ? ET_BLOCK 
     : ET_TERM;
-  refresh_term(suffix);
+
+  reader(suffix_begin_, suffix);
+  suffix_begin_ += suffix;
+  assert(suffix_begin_ <= suffix_end_);
 
   switch (cur_type_) {
     case ET_TERM: ++term_count_; break;
@@ -966,16 +991,6 @@ void block_iterator::read_entry_nonleaf() {
   }
 
   assert(suffix_begin_ <= suffix_end_);
-}
-
-void block_iterator::next() {
-  assert(!dirty_ && cur_ent_ < ent_count_);
-  if (leaf_) {
-    read_entry_leaf();
-  } else {
-    read_entry_nonleaf();
-  }
-  ++cur_ent_;
 }
 
 SeekResult block_iterator::scan_to_term_leaf(
@@ -1084,23 +1099,6 @@ SeekResult block_iterator::scan_to_term_nonleaf(
 
   // we have reached the end of the block
   return SeekResult::END;
-}
-
-SeekResult block_iterator::scan_to_term(const bytes_ref& term) {
-  assert(!dirty_);
-
-  if (cur_ent_ == ent_count_) {
-    // have reached the end of the block
-    return SeekResult::END;
-  }
-
-  uint64_t suffix, start;
-  const SeekResult res = leaf_
-    ? scan_to_term_leaf(term, suffix, start)
-    : scan_to_term_nonleaf(term, suffix, start);
-
-  refresh_term(suffix, start);
-  return res;
 }
 
 void block_iterator::scan_to_block(const bytes_ref& term) {
@@ -1280,10 +1278,18 @@ bool term_iterator::next() {
     sstate_.resize(std::min(sstate_.size(), cur_block_->prefix()));
   }
 
+  auto append_suffix = [this](const byte_type* suffix, size_t suffix_size) {
+    const auto prefix = cur_block_->prefix();
+    const auto size = prefix + suffix_size;
+    term_.oversize(size);
+    term_.reset(size);
+    std::memcpy(term_.data() + prefix, suffix, suffix_size);
+  };
+
   // push new block or next term
-  for (cur_block_->next();
+  for (cur_block_->next(append_suffix);
        EntryType::ET_BLOCK == cur_block_->type();
-       cur_block_->next()) {
+       cur_block_->next(append_suffix)) {
     cur_block_ = push_block(cur_block_->sub_start(), term_.size());
     cur_block_->load();
   }
@@ -1429,8 +1435,16 @@ SeekResult term_iterator::seek_equal(const bytes_ref& term) {
     return SeekResult::NOT_FOUND;
   }
 
+  auto append_suffix = [this](const byte_type* suffix, size_t suffix_size) {
+    const auto prefix = cur_block_->prefix();
+    const auto size = prefix + suffix_size;
+    term_.oversize(size);
+    term_.reset(size);
+    std::memcpy(term_.data() + prefix, suffix, suffix_size);
+  };
+
   cur_block_->load();
-  return cur_block_->scan_to_term(term);
+  return cur_block_->scan_to_term(term, append_suffix);
 }
 
 SeekResult term_iterator::seek_ge(const bytes_ref& term) {
@@ -1442,8 +1456,16 @@ SeekResult term_iterator::seek_ge(const bytes_ref& term) {
 
   assert(cur_block_);
 
+  auto append_suffix = [this](const byte_type* suffix, size_t suffix_size) {
+    const auto prefix = cur_block_->prefix();
+    const auto size = prefix + suffix_size;
+    term_.oversize(size);
+    term_.reset(size);
+    std::memcpy(term_.data() + prefix, suffix, suffix_size);
+  };
+
   cur_block_->load();
-  switch (cur_block_->scan_to_term(term)) {
+  switch (cur_block_->scan_to_term(term, append_suffix)) {
     case SeekResult::FOUND:
       assert(ET_TERM == cur_block_->type());
       return SeekResult::FOUND;
