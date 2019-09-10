@@ -422,10 +422,15 @@ class block_iterator : util::noncopyable {
  public:
   static const uint64_t UNDEFINED = integer_traits<uint64_t>::const_max;
 
-  block_iterator(byte_weight&& header, size_t prefix, term_iterator* owner);
-  block_iterator(uint64_t start, size_t prefix, term_iterator* owner);
+  block_iterator(byte_weight&& header, size_t prefix) noexcept;
+  block_iterator(uint64_t start, size_t prefix) noexcept
+    : start_(start),
+      cur_start_(start),
+      prefix_(prefix),
+      sub_count_(UNDEFINED) {
+  }
 
-  void load();
+  void load(index_input& in, encryption::stream* cipher);
 
   void next_block() {
     assert(sub_count_);
@@ -489,7 +494,8 @@ class block_iterator : util::noncopyable {
   void scan_to_block(uint64_t ptr);
 
   // read attributes
-  void load_data(const field_meta& meta, irs::postings_reader& pr);
+  void load_data(const field_meta& meta, const attribute_view& attrs,
+                 version10::term_meta& state, irs::postings_reader& pr);
 
  private:
   template<typename Reader>
@@ -519,7 +525,6 @@ class block_iterator : util::noncopyable {
   const byte_type* suffix_end_{suffix_begin_ + suffix_block_.size()}; // end of valid suffix input stream
   const byte_type* stats_end_{stats_begin_ + stats_block_.size()}; // end of valid stats input stream
 #endif
-  term_iterator* owner_;
   version10::term_meta state_;
   uint64_t cur_ent_{}; // current entry in a block
   uint64_t ent_count_{}; // number of entries in a current block
@@ -560,7 +565,7 @@ class term_iterator final : public irs::seek_term_iterator {
   virtual void read() override {
     // read attributes
     assert(cur_block_);
-    cur_block_->load_data(owner_->field_, *owner_->owner_->pr_);
+    cur_block_->load_data(owner_->field_, attrs_, state_, *owner_->owner_->pr_);
   }
   virtual bool next() override;
   const irs::attribute_view& attributes() const noexcept override {
@@ -604,7 +609,7 @@ class term_iterator final : public irs::seek_term_iterator {
     const field_meta& field = owner_->field_;
     postings_reader& pr = *owner_->owner_->pr_;
     if (cur_block_) {
-      cur_block_->load_data(field, pr); // read attributes
+      cur_block_->load_data(field, attrs_, state_, pr); // read attributes
     }
     return pr.iterator(field.features, attrs_, features);
   }
@@ -668,7 +673,7 @@ class term_iterator final : public irs::seek_term_iterator {
   /// common bytes
   SeekResult seek_equal(const bytes_ref& term);
 
-  inline block_iterator* pop_block() {
+  inline block_iterator* pop_block() noexcept {
     block_stack_.pop_back();
     return &block_stack_.back();
   }
@@ -677,12 +682,12 @@ class term_iterator final : public irs::seek_term_iterator {
     // ensure final weight correctess
     assert(out.Size() >= MIN_WEIGHT_SIZE);
 
-    block_stack_.emplace_back(std::move(out), prefix, this);
+    block_stack_.emplace_back(std::move(out), prefix);
     return &block_stack_.back();
   }
 
   inline block_iterator* push_block(uint64_t start, size_t prefix) {
-    block_stack_.emplace_back(start, prefix, this);
+    block_stack_.emplace_back(start, prefix);
     return &block_stack_.back();
   }
 
@@ -692,7 +697,7 @@ class term_iterator final : public irs::seek_term_iterator {
   seek_state_t sstate_;
   block_stack_t block_stack_;
   block_iterator* cur_block_;
-  version10::term_meta state_;
+  mutable version10::term_meta state_;
   frequency freq_;
   mutable index_input::ptr terms_in_;
   bytes_builder term_;
@@ -715,7 +720,7 @@ class automaton_term_iterator final : public irs::seek_term_iterator {
   virtual void read() override {
     // read attributes
     assert(cur_block_);
-    cur_block_->load_data(owner_->field_, *owner_->owner_->pr_);
+    cur_block_->load_data(owner_->field_, attrs_, state_, *owner_->owner_->pr_);
   }
   virtual bool next() override;
   const irs::attribute_view& attributes() const noexcept override {
@@ -762,7 +767,7 @@ class automaton_term_iterator final : public irs::seek_term_iterator {
     const field_meta& field = owner_->field_;
     postings_reader& pr = *owner_->owner_->pr_;
     if (cur_block_) {
-      cur_block_->load_data(field, pr); // read attributes
+      cur_block_->load_data(field, attrs_, state_, pr); // read attributes
     }
     return pr.iterator(field.features, attrs_, features);
   }
@@ -789,7 +794,7 @@ class automaton_term_iterator final : public irs::seek_term_iterator {
  private:
   typedef std::deque<block_iterator> block_stack_t; // does not invalidate addresses
 
-  inline block_iterator* pop_block() {
+  inline block_iterator* pop_block() noexcept {
     block_stack_.pop_back();
     return &block_stack_.back();
   }
@@ -798,12 +803,12 @@ class automaton_term_iterator final : public irs::seek_term_iterator {
     // ensure final weight correctess
     assert(out.Size() >= MIN_WEIGHT_SIZE);
 
- //   block_stack_.emplace_back(std::move(out), prefix, this);
+    block_stack_.emplace_back(std::move(out), prefix);
     return &block_stack_.back();
   }
 
   inline block_iterator* push_block(uint64_t start, size_t prefix) {
-//    block_stack_.emplace_back(start, prefix, this);
+    block_stack_.emplace_back(start, prefix);
     return &block_stack_.back();
   }
 
@@ -812,7 +817,7 @@ class automaton_term_iterator final : public irs::seek_term_iterator {
   irs::attribute_view attrs_;
   block_stack_t block_stack_;
   block_iterator* cur_block_;
-  version10::term_meta state_;
+  mutable version10::term_meta state_;
   frequency freq_;
   mutable index_input::ptr terms_in_;
   byte_weight weight_; // aggregated fst output
@@ -826,7 +831,7 @@ bool automaton_term_iterator::next() {
       // iterator at the beginning
       const auto& fst = *owner_->fst_;
       cur_block_ = push_block(fst.Final(fst.Start()), 0);
-      cur_block_->load();
+      cur_block_->load(terms_input(), terms_cipher());
     } else {
       // seek to the term with the specified state was called from
       // term_iterator::seek(const bytes_ref&, const attribute&),
@@ -844,7 +849,7 @@ bool automaton_term_iterator::next() {
   while (cur_block_->block_end()) {
     if (cur_block_->sub_count() > 0) {
       cur_block_->next_block();
-      cur_block_->load();
+      cur_block_->load(terms_input(), terms_cipher());
     } else if (&block_stack_.front() == cur_block_) { // root
       term_.reset();
       cur_block_->reset();
@@ -856,26 +861,34 @@ bool automaton_term_iterator::next() {
       if (cur_block_->dirty() || cur_block_->sub_start() != start) {
         // here we're currently at non block that was not loaded yet
         cur_block_->scan_to_block(term_); // to sub-block
-        cur_block_->load();
+        cur_block_->load(terms_input(), terms_cipher());
         cur_block_->scan_to_block(start);
       }
     }
   }
 
-  auto append_suffix = [this](const byte_type* suffix, size_t suffix_size) {
-    const auto prefix = cur_block_->prefix();
-    const auto size = prefix + suffix_size;
-    term_.oversize(size);
-    term_.reset(size);
-    std::memcpy(term_.data() + prefix, suffix, suffix_size);
+  const byte_type* begin;
+  size_t size;
+  auto append_suffix = [&begin, &size](const byte_type* suffix, size_t suffix_size) {
+    begin = suffix;
+    size = suffix_size;
+//    const auto prefix = cur_block_->prefix();
+//    const auto size = prefix + suffix_size;
+//    term_.oversize(size);
+//    term_.reset(size);
+//    std::memcpy(term_.data() + prefix, suffix, suffix_size);
   };
+
+  while (true) {
+
+  }
 
   // push new block or next term
   for (cur_block_->next(append_suffix);
        EntryType::ET_BLOCK == cur_block_->type();
        cur_block_->next(append_suffix)) {
     cur_block_ = push_block(cur_block_->sub_start(), term_.size());
-    cur_block_->load();
+    cur_block_->load(terms_input(), terms_cipher());
   }
 
   return true;
@@ -885,15 +898,10 @@ bool automaton_term_iterator::next() {
 // --SECTION--                                     block_iterator implementation
 // -----------------------------------------------------------------------------
 
-block_iterator::block_iterator(
-    byte_weight&& header,
-    size_t prefix,
-    term_iterator* owner)
+block_iterator::block_iterator(byte_weight&& header, size_t prefix) noexcept
   : header_(std::move(header)),
-    owner_(owner),
     prefix_(prefix),
     sub_count_(0) {
-  assert(owner_);
   cur_meta_ = meta_ = *header_begin_++;
   cur_start_ = start_ = vread<uint64_t>(header_begin_);
   if (block_meta::floor(meta_)) {
@@ -903,26 +911,11 @@ block_iterator::block_iterator(
   assert(header_begin_ <= header_.c_str() + header_.Size());
 }
 
-block_iterator::block_iterator(
-    uint64_t start,
-    size_t prefix,
-    term_iterator* owner)
-  : owner_(owner),
-    start_(start),
-    cur_start_(start),
-    prefix_(prefix),
-    sub_count_(UNDEFINED) {
-  assert( owner_ );
-}
-
-void block_iterator::load() {
+void block_iterator::load(index_input& in, irs::encryption::stream* cipher) {
   if (!dirty_) {
     return;
   }
 
-  auto* cipher = owner_->terms_cipher();
-
-  index_input& in = owner_->terms_input();
   in.seek(cur_start_);
   if (shift_unpack_64(in.read_vint(), ent_count_)) {
     sub_count_ = 0; // no sub-blocks
@@ -1001,7 +994,6 @@ SeekResult block_iterator::scan_to_term_leaf(
   assert(!dirty_);
 
   for (; cur_ent_ < ent_count_;) {
-    assert(starts_with(term, owner_->term_));
     ++cur_ent_;
     ++term_count_;
     cur_type_ = ET_TERM;
@@ -1053,7 +1045,6 @@ SeekResult block_iterator::scan_to_term_nonleaf(
   assert(!dirty_);
 
   for (; cur_ent_ < ent_count_;) {
-    assert(starts_with(term, owner_->term_));
     ++cur_ent_;
     cur_type_ = shift_unpack_64(vread<uint64_t>(suffix_begin_), suffix) ? ET_BLOCK : ET_TERM;
     assert(suffix_begin_ <= suffix_end_);
@@ -1182,14 +1173,16 @@ void block_iterator::scan_to_block(uint64_t start) {
   assert(false);
 }
 
-void block_iterator::load_data(const field_meta& meta, irs::postings_reader& pr) {
+void block_iterator::load_data(const field_meta& meta,
+                               const attribute_view& attrs,
+                               version10::term_meta& state,
+                               irs::postings_reader& pr) {
   assert(ET_TERM == cur_type_);
 
   if (cur_stats_ent_ >= term_count_) {
     return;
   }
 
-  auto& state = owner_->state_;
   if (0 == cur_stats_ent_) {
     // clear state at the beginning
     state.clear();
@@ -1198,7 +1191,7 @@ void block_iterator::load_data(const field_meta& meta, irs::postings_reader& pr)
   }
 
   for (; cur_stats_ent_ < term_count_; ++cur_stats_ent_) {
-    stats_begin_ += pr.decode(stats_begin_, meta.features, owner_->attrs_, owner_->state_);
+    stats_begin_ += pr.decode(stats_begin_, meta.features, attrs, state);
     assert(stats_begin_ <= stats_end_);
   }
 
@@ -1235,7 +1228,7 @@ bool term_iterator::next() {
       // iterator at the beginning
       const auto& fst = *owner_->fst_;
       cur_block_ = push_block(fst.Final(fst.Start()), 0);
-      cur_block_->load();
+      cur_block_->load(terms_input(), terms_cipher());
     } else {
       // seek to the term with the specified state was called from
       // term_iterator::seek(const bytes_ref&, const attribute&),
@@ -1257,7 +1250,7 @@ bool term_iterator::next() {
   while (cur_block_->block_end()) {
     if (cur_block_->sub_count() > 0) {
       cur_block_->next_block();
-      cur_block_->load();
+      cur_block_->load(terms_input(), terms_cipher());
     } else if (&block_stack_.front() == cur_block_) { // root
       term_.reset();
       cur_block_->reset();
@@ -1270,7 +1263,7 @@ bool term_iterator::next() {
       if (cur_block_->dirty() || cur_block_->sub_start() != start) {
         // here we're currently at non block that was not loaded yet
         cur_block_->scan_to_block(term_); // to sub-block
-        cur_block_->load();
+        cur_block_->load(terms_input(), terms_cipher());
         cur_block_->scan_to_block(start);
       }
     }
@@ -1291,7 +1284,7 @@ bool term_iterator::next() {
        EntryType::ET_BLOCK == cur_block_->type();
        cur_block_->next(append_suffix)) {
     cur_block_ = push_block(cur_block_->sub_start(), term_.size());
-    cur_block_->load();
+    cur_block_->load(terms_input(), terms_cipher());
   }
 
   return true;
@@ -1443,7 +1436,9 @@ SeekResult term_iterator::seek_equal(const bytes_ref& term) {
     std::memcpy(term_.data() + prefix, suffix, suffix_size);
   };
 
-  cur_block_->load();
+  cur_block_->load(terms_input(), terms_cipher());
+
+  assert(starts_with(term, term_));
   return cur_block_->scan_to_term(term, append_suffix);
 }
 
@@ -1464,7 +1459,9 @@ SeekResult term_iterator::seek_ge(const bytes_ref& term) {
     std::memcpy(term_.data() + prefix, suffix, suffix_size);
   };
 
-  cur_block_->load();
+  cur_block_->load(terms_input(), terms_cipher());
+
+  assert(starts_with(term, term_));
   switch (cur_block_->scan_to_term(term, append_suffix)) {
     case SeekResult::FOUND:
       assert(ET_TERM == cur_block_->type());
@@ -1477,7 +1474,7 @@ SeekResult term_iterator::seek_ge(const bytes_ref& term) {
         case ET_BLOCK:
           // we're at the greater block, load it and call next
           cur_block_ = push_block(cur_block_->sub_start(), term_.size());
-          cur_block_->load();
+          cur_block_->load(terms_input(), terms_cipher());
           break;
         default:
           assert(false);
