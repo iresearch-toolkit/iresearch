@@ -29,8 +29,11 @@
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
 #include "index/field_meta.hpp"
+#include "utils/math_utils.hpp"
 
 NS_LOCAL
+
+const irs::math::sqrt<uint32_t, float_t, 1024> SQRT;
 
 irs::sort::ptr make_from_bool(
     const rapidjson::Document& json,
@@ -226,13 +229,8 @@ struct term_collector final: public irs::sort::term_collector {
   }
 };
 
-FORCE_INLINE float_t tfidf(float_t freq, float_t idf) noexcept {
-  static_assert(
-    std::is_same<decltype(std::sqrt(freq)), float_t>::value,
-    "float_t expected"
-  );
-
-  return idf * std::sqrt(freq);
+FORCE_INLINE float_t tfidf(uint32_t freq, float_t idf) noexcept {
+  return idf * SQRT(freq);
 }
 
 NS_END // LOCAL
@@ -258,8 +256,7 @@ struct const_score_ctx final : public irs::sort::score_ctx {
 }; // const_score_ctx
 
 struct score_ctx : public irs::sort::score_ctx {
-  score_ctx(
-      irs::boost_t boost,
+  score_ctx( irs::boost_t boost,
       const tfidf::idf& idf,
       const frequency* freq) noexcept
     : idf_(boost * idf.value),
