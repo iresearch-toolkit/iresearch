@@ -49,6 +49,7 @@
 #include "store/store_utils.hpp"
 
 #include "search/cost.hpp"
+#include "search/score_doc_iterators.hpp"
 
 #include "utils/bit_packing.hpp"
 #include "utils/bit_utils.hpp"
@@ -1007,7 +1008,7 @@ FORCE_INLINE void skip_offsets(index_input& in) {
 ///////////////////////////////////////////////////////////////////////////////
 /// @class doc_iterator
 ///////////////////////////////////////////////////////////////////////////////
-class doc_iterator : public irs::doc_iterator {
+class doc_iterator : public irs::doc_iterator_base {
  public:
   DECLARE_SHARED_PTR(doc_iterator);
 
@@ -1020,7 +1021,7 @@ class doc_iterator : public irs::doc_iterator {
   void prepare(
       const features& field,
       const features& enabled,
-      const irs::attribute_view& attrs,
+      const attribute_view& attrs,
       const index_input* doc_in,
       const index_input* pos_in,
       const index_input* pay_in) {
@@ -1087,10 +1088,6 @@ class doc_iterator : public irs::doc_iterator {
     return doc_.value;
   }
 
-  virtual const irs::attribute_view& attributes() const noexcept override {
-    return attrs_;
-  }
-
 #if defined(_MSC_VER)
   #pragma warning( disable : 4706 )
 #elif defined (__GNUC__)
@@ -1132,8 +1129,7 @@ class doc_iterator : public irs::doc_iterator {
     UNUSED(pos_in);
     UNUSED(pay_in);
     // estimate iterator
-    cost_.value(term_state_.docs_count);
-    attrs_.emplace(cost_);
+    estimate(term_state_.docs_count);
 
     // term frequency attributes
     if (enabled.freq()) {
@@ -1249,7 +1245,6 @@ class doc_iterator : public irs::doc_iterator {
   std::vector<skip_state> skip_levels_;
   skip_reader skip_;
   skip_context* skip_ctx_; // pointer to used skip context, will be used by skip reader
-  irs::attribute_view attrs_;
   uint32_t enc_buf_[postings_writer::BLOCK_SIZE]; // buffer for encoding
   doc_id_t docs_[postings_writer::BLOCK_SIZE]; // doc values
   uint32_t doc_freqs_[postings_writer::BLOCK_SIZE]; // document frequencies
@@ -1260,7 +1255,6 @@ class doc_iterator : public irs::doc_iterator {
   uint32_t term_freq_{}; // total term frequency
   document doc_;
   frequency freq_;
-  cost cost_;
   index_input::ptr doc_in_;
   version10::term_meta term_state_;
   features features_; // field features
@@ -2001,10 +1995,8 @@ void pos_doc_iterator<PosItrType>::prepare_attributes(
   attrs_.emplace(freq_);
   term_freq_ = attrs.get<frequency>()->value;
 
-
   // estimate iterator
-  cost_.value(term_state_.docs_count);
-  attrs_.emplace(cost_);
+  estimate(term_state_.docs_count);
 
   // ...........................................................................
   // position attribute
@@ -5424,8 +5416,7 @@ size_t postings_reader::decode(
 irs::doc_iterator::ptr postings_reader::iterator(
     const flags& field,
     const attribute_view& attrs,
-    const flags& req
-) {
+    const flags& req) {
   // compile field features
   const auto features = ::features(field);
   // get enabled features:

@@ -35,7 +35,7 @@
 
 NS_LOCAL
 
-typedef irs::conjunction<irs::basic_doc_iterator::ptr> conjunction_t;
+typedef irs::conjunction<irs::doc_iterator::ptr> conjunction_t;
 
 NS_END
 
@@ -161,25 +161,24 @@ class same_position_query final : public filter::prepared {
 
       // get postings
       auto docs = term->postings(features);
+      auto& attrs = docs->attributes();
 
       // get needed postings attributes
-      auto& pos = docs->attributes().get<position>();
+      auto& pos = attrs.get<position>();
       if (!pos) {
         // positions not found
         return doc_iterator::empty();
       }
       positions.emplace_back(std::ref(*pos));
 
-      // add base iterator
-      itrs.emplace_back(memory::make_shared<basic_doc_iterator>(
-        segment,
-        *term_state.reader,
-        term_stats->c_str(),
-        std::move(docs), 
-        ord, 
-        term_state.estimation,
-        boost()
-      ));
+      // set score
+      auto& score = attrs.get<irs::score>();
+      if (score) {
+        score->prepare(ord, ord.prepare_scorers(segment, *term_state.reader, stats(), attrs, boost()));
+      }
+
+      // add iterator
+      itrs.emplace_back(std::move(docs));
 
       ++term_stats;
     }

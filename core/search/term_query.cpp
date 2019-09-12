@@ -120,16 +120,17 @@ doc_iterator::ptr term_query::execute(
     return doc_iterator::empty();
   }
 
-  // return iterator
-  return doc_iterator::make<basic_doc_iterator>(
-    rdr, 
-    *state->reader,
-    stats(),
-    terms->postings(ord.features()), 
-    ord, 
-    state->estimation,
-    boost()
-  );
+  auto docs = terms->postings(ord.features());
+  auto& attrs = docs->attributes();
+
+  // set score
+  auto& score = attrs.get<irs::score>();
+
+  if (score) {
+    score->prepare(ord, ord.prepare_scorers(rdr, *state->reader, stats(), attrs, boost()));
+  }
+
+  return docs;
 }
 
 NS_END // ROOT

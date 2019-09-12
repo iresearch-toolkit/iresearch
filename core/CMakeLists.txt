@@ -117,7 +117,6 @@ set(IResearch_core_sources
   ./search/sort.cpp
   ./search/cost.cpp
   ./search/score.cpp
-  ./search/score_doc_iterators.cpp
   ./search/bitset_doc_iterator.cpp
   ./search/filter.cpp
   ./search/term_filter.cpp

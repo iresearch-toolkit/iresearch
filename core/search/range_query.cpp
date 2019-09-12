@@ -261,15 +261,17 @@ doc_iterator::ptr range_query::execute(
     }
 
     last_offset = offset;
-    itrs.emplace_back(doc_iterator::make<basic_doc_iterator>(
-      rdr,
-      *state->reader,
-      stats,
-      terms->postings(features),
-      ord,
-      state->estimation,
-      boost()
-    ));
+
+    auto docs = terms->postings(features);
+    auto& attrs = docs->attributes();
+
+    // set score
+    auto& score = attrs.get<irs::score>();
+    if (score) {
+      score->prepare(ord, ord.prepare_scorers(rdr, *state->reader, stats, attrs, boost()));
+    }
+
+    itrs.emplace_back(std::move(docs));
   }
 
   return make_disjunction<disjunction_t>(std::move(itrs), ord, state->estimation);
