@@ -290,7 +290,7 @@ struct stats final {
 
 typedef bm25_sort::score_t score_t;
 
-struct const_score_ctx final : public irs::sort::score_ctx {
+struct const_score_ctx final : public irs::score_ctx {
  public:
   explicit const_score_ctx(irs::boost_t boost) noexcept
     : boost_(boost) {
@@ -299,7 +299,7 @@ struct const_score_ctx final : public irs::sort::score_ctx {
   const irs::boost_t boost_;
 }; // const_score_ctx
 
-struct score_ctx : public irs::sort::score_ctx {
+struct score_ctx : public irs::score_ctx {
  public:
   score_ctx(
       float_t k, 
@@ -404,7 +404,7 @@ class sort final : public irs::sort::prepared_basic<bm25::score_t, bm25::stats> 
     return irs::memory::make_unique<field_collector>();
   }
 
-  virtual std::pair<score_ctx::ptr, score_f> prepare_scorer(
+  virtual std::pair<score_ctx_ptr, score_f> prepare_scorer(
       const sub_reader& segment,
       const term_reader& field,
       const byte_type* query_stats,
@@ -421,7 +421,7 @@ class sort final : public irs::sort::prepared_basic<bm25::score_t, bm25::stats> 
       // if there is no frequency then all the scores will be the same (e.g. filter irs::all)
       return {
         memory::make_unique<bm25::const_score_ctx>(boost),
-        [](const void* ctx, byte_type* score_buf) noexcept {
+        [](const irs::score_ctx* ctx, byte_type* RESTRICT score_buf) noexcept {
           auto& state = *static_cast<const bm25::const_score_ctx*>(ctx);
           irs::sort::score_cast<score_t>(score_buf) = state.boost_;
         }
@@ -443,7 +443,7 @@ class sort final : public irs::sort::prepared_basic<bm25::score_t, bm25::stats> 
       if (norm.reset(segment, field.meta().norm, *doc)) {
         return { 
           memory::make_unique<bm25::norm_score_ctx>(k_, boost, stats, freq.get(), std::move(norm)),
-          [](const void* ctx, byte_type* score_buf) noexcept {
+          [](const irs::score_ctx* ctx, byte_type* RESTRICT score_buf) noexcept {
             auto& state = *static_cast<const bm25::norm_score_ctx*>(ctx);
 
             const float_t tf = ::SQRT(state.freq_->value);
@@ -456,7 +456,7 @@ class sort final : public irs::sort::prepared_basic<bm25::score_t, bm25::stats> 
     // BM11
     return { 
       memory::make_unique<bm25::score_ctx>(k_, boost, stats, freq.get()),
-      [](const void* ctx, byte_type* score_buf) noexcept {
+      [](const irs::score_ctx* ctx, byte_type* RESTRICT score_buf) noexcept {
         auto& state = *static_cast<const bm25::score_ctx*>(ctx);
 
         const float_t tf = ::SQRT(state.freq_->value);

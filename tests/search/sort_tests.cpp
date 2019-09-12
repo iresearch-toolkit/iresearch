@@ -59,7 +59,7 @@ struct aligned_scorer : public irs::sort {
     ) const override {
       // NOOP
     }
-    virtual std::pair<score_ctx::ptr, irs::score_f> prepare_scorer(
+    virtual std::pair<irs::score_ctx_ptr, irs::score_f> prepare_scorer(
         const irs::sub_reader& segment,
         const irs::term_reader& field,
         const irs::byte_type* stats,
