@@ -42,7 +42,7 @@ NS_ROOT
 /// t |  [n] <-- end
 ///-----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
-class min_match_disjunction : public doc_iterator_base {
+class min_match_disjunction : public doc_iterator_base, score_ctx {
  public:
   struct cost_iterator_adapter : score_iterator_adapter {
     cost_iterator_adapter(irs::doc_iterator::ptr&& it) noexcept
@@ -105,7 +105,7 @@ class min_match_disjunction : public doc_iterator_base {
     std::iota(heap_.begin(), heap_.end(), size_t(0));
 
     // prepare score
-    prepare_score(ord, this, [](const void* ctx, byte_type* score) {
+    prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
       auto& self = const_cast<min_match_disjunction&>(
         *static_cast<const min_match_disjunction*>(ctx)
       );

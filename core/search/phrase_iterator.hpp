@@ -31,7 +31,7 @@ NS_ROOT
 
 // implementation is optimized for frequency based similarity measures
 // for generic implementation see a03025accd8b84a5f8ecaaba7412fc92a1636be3
-class phrase_iterator final : public basic_doc_iterator_base {
+class phrase_iterator final : public doc_iterator_base {
  public:
   typedef std::pair<
     position::ref, // position attribute

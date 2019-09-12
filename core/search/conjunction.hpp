@@ -90,7 +90,7 @@ struct score_iterator_adapter {
 ///   V  [n] <-- end
 ///-----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
-class conjunction : public doc_iterator_base {
+class conjunction : public doc_iterator_base, score_ctx {
  public:
   typedef score_iterator_adapter doc_iterator_t;
   typedef std::vector<doc_iterator_t> doc_iterators_t;
@@ -130,10 +130,10 @@ class conjunction : public doc_iterator_base {
     }
 
     if (scores_.empty()) {
-      prepare_score(ord, nullptr, [](const void*, byte_type*) { /*NOOP*/});
+      prepare_score(ord, nullptr, [](const score_ctx*, byte_type*) { /*NOOP*/});
     } else {
       // prepare score
-      prepare_score(ord, this, [](const void* ctx, byte_type* score) {
+      prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
         auto& self = *static_cast<const conjunction*>(ctx);
         self.order_->prepare_score(score);
         for (auto* it_score : self.scores_) {
