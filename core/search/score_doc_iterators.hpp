@@ -36,13 +36,11 @@ NS_ROOT
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API doc_iterator_base : public doc_iterator {
  public:
-  virtual const attribute_view& attributes() const noexcept override final {
+  virtual const attribute_view& attributes() const noexcept final {
     return attrs_;
   }
 
  protected:
-  doc_iterator_base() = default;
-
   void estimate(cost::cost_f&& func) {
     cost_.rule(std::move(func));
     attrs_.emplace(cost_);

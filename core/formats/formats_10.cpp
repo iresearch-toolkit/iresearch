@@ -1128,8 +1128,8 @@ class doc_iterator : public irs::doc_iterator_base {
       const index_input* pay_in) {
     UNUSED(pos_in);
     UNUSED(pay_in);
-    // estimate iterator
-    estimate(term_state_.docs_count);
+    estimate(term_state_.docs_count); // estimate iterator
+    attrs_.emplace(scr_); // make score accessible from outside
 
     // term frequency attributes
     if (enabled.freq()) {
@@ -1995,8 +1995,8 @@ void pos_doc_iterator<PosItrType>::prepare_attributes(
   attrs_.emplace(freq_);
   term_freq_ = attrs.get<frequency>()->value;
 
-  // estimate iterator
-  estimate(term_state_.docs_count);
+  estimate(term_state_.docs_count); // estimate iterator
+  attrs_.emplace(scr_); // make score accessible from outside
 
   // ...........................................................................
   // position attribute
