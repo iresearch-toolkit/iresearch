@@ -980,19 +980,21 @@ int search(
 
                 sorted.pop_back();
               }
-
-              auto end = sorted.end();
-              for (auto begin = sorted.begin(); begin != end; --end) {
-                std::pop_heap(
-                  begin, end,
-                  [](const std::pair<float_t, irs::doc_id_t>& lhs,
-                     const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
-                    return lhs.first < rhs.first;
-                });
-              }
 #endif
             }
           }
+
+#ifndef IRESEARCH_COMPLEX_SCORING
+          auto end = sorted.end();
+          for (auto begin = sorted.begin(); begin != end; --end) {
+            std::pop_heap(
+              begin, end,
+              [](const std::pair<float_t, irs::doc_id_t>& lhs,
+                 const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
+                return lhs.first < rhs.first;
+            });
+          }
+#endif
         }
 
         // output task results
