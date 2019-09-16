@@ -1069,16 +1069,25 @@ class doc_iterator : public irs::doc_iterator_base {
       refill();
     }
 
-    while (begin_ < end_ && *begin_ < target) {
-      ++begin_;
-    }
-    doc_freq_ = doc_freqs_ + relative_pos();
+    while (begin_ < end_ ) {
+      doc_.value += *begin_++;
 
-    next();
+      if (doc_.value >= target) {
+        doc_freq_ = doc_freqs_ + relative_pos();
+        freq_.value = *doc_freq_++;
+
+        return doc_.value;
+      }
+    }
+
+    while (doc_.value < target) {
+      next();
+    }
+
     return doc_.value;
   }
 
-  virtual doc_id_t value() const override {
+  virtual doc_id_t value() const noexcept final {
     return doc_.value;
   }
 
@@ -1102,7 +1111,7 @@ class doc_iterator : public irs::doc_iterator_base {
       refill();
     }
 
-    doc_.value = *begin_++;
+    doc_.value += *begin_++;
     freq_.value = *doc_freq_++;
 
     return true;
@@ -1224,13 +1233,9 @@ class doc_iterator : public irs::doc_iterator_base {
     }
 
     // if this is the initial doc_id then set it to min() for proper delta value
-    // add last doc_id before decoding
-    *docs_ += doc_limits::valid(doc_.value)
-      ? doc_.value
-      : (doc_limits::min)();
-
-    // decode delta encoded documents block
-    encode::delta::decode(std::begin(docs_), end_);
+    if (!doc_limits::valid(doc_.value)) {
+      doc_.value = (doc_limits::min)();
+    }
 
     begin_ = docs_;
     doc_freq_ = docs_ + postings_writer::BLOCK_SIZE;
@@ -1927,12 +1932,21 @@ class pos_doc_iterator final: public doc_iterator {
       refill();
     }
 
-    while (begin_ < end_ && *begin_ < target) {
-      ++begin_;
-      pos_.pend_pos_ += *doc_freq_++;
+    while (begin_ < end_) {
+      doc_.value += *begin_++;
+      freq_.value = *doc_freq_++;
+      pos_.pend_pos_ += freq_.value;
+
+      if (doc_.value >= target) {
+        pos_.clear();
+        return doc_.value;
+      }
     }
 
-    next();
+    while (doc_.value < target) {
+      next();
+    }
+
     return doc_.value;
   }
 
@@ -1950,7 +1964,7 @@ class pos_doc_iterator final: public doc_iterator {
     }
 
     // update document attribute
-    doc_.value = *begin_++;
+    doc_.value += *begin_++;
 
     // update frequency attribute
     freq_.value = *doc_freq_++;
