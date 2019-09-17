@@ -34,11 +34,13 @@
 
 #include "utils/io_utils.hpp"
 #include "utils/string.hpp"
+#include "utils/fst_decl.hpp"
 #include "utils/type_id.hpp"
 #include "utils/attributes_provider.hpp"
-#include "utils/fst_decl.hpp"
 
 NS_ROOT
+
+typedef fst::VectorFst<fst::fsa::Transition> automaton;
 
 struct segment_meta;
 struct field_meta;
