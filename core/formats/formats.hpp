@@ -34,13 +34,22 @@
 
 #include "utils/io_utils.hpp"
 #include "utils/string.hpp"
-#include "utils/fst_decl.hpp"
 #include "utils/type_id.hpp"
 #include "utils/attributes_provider.hpp"
 
+NS_BEGIN(fst)
+NS_BEGIN(fsa)
+class Transition;
+NS_END
+template<typename Arc, typename Allocator> class VectorState;
+template<typename Arc, typename State> class VectorFst;
+NS_END
+
 NS_ROOT
 
-typedef fst::VectorFst<fst::fsa::Transition> automaton;
+typedef std::allocator<fst::fsa::Transition> transition_allocator;
+typedef fst::VectorState<fst::fsa::Transition, transition_allocator> transition_state;
+typedef fst::VectorFst<fst::fsa::Transition, transition_state> automaton;
 
 struct segment_meta;
 struct field_meta;
