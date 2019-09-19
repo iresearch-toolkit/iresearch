@@ -57,8 +57,8 @@ NS_ROOT
 /// @brief cached per reader phrase state
 //////////////////////////////////////////////////////////////////////////////
 struct phrase_state {
-  typedef std::pair<seek_term_iterator::cookie_ptr, cost::cost_t> term_state_t;
-  typedef std::vector<term_state_t> terms_states_t;
+  typedef seek_term_iterator::cookie_ptr term_state_t;
+  typedef std::vector<seek_term_iterator::cookie_ptr> terms_states_t;
 
   phrase_state() = default;
 
@@ -129,7 +129,7 @@ class phrase_query : public filter::prepared {
     for (auto& term_state : phrase_state->terms) {
       // use bytes_ref::blank here since we do not need just to "jump"
       // to cached state, and we are not interested in term value itself */
-      if (!terms->seek(bytes_ref::NIL, *term_state.first)) {
+      if (!terms->seek(bytes_ref::NIL, *term_state)) {
         return doc_iterator::empty();
       }
 
@@ -243,8 +243,6 @@ filter::prepared::ptr by_phrase::prepare(
 
     // find terms
     seek_term_iterator::ptr term = tr->iterator();
-    // get term metadata
-    auto& meta = term->attributes().get<term_meta>();
     size_t term_itr = 0;
 
     for(auto& word: phrase_) {
@@ -264,8 +262,7 @@ filter::prepared::ptr by_phrase::prepare(
       collectors.collect(sr, *tr, term_itr, term->attributes()); // collect statistics
 
       // estimate phrase & term
-      const cost::cost_t term_estimation = meta ? meta->docs_count : cost::MAX;
-      phrase_terms.emplace_back(term->cookie(), term_estimation);
+      phrase_terms.emplace_back(term->cookie());
     }
 
     // we have not found all needed terms
@@ -285,8 +282,6 @@ filter::prepared::ptr by_phrase::prepare(
   size_t base_offset = first_pos();
 
   // finish stats
-
-
   phrase_query::positions_t positions(phrase_.size());
   auto pos_itr = positions.begin();
 

@@ -34,6 +34,7 @@
 #include "search/boolean_filter.hpp"
 #include "search/tfidf.hpp"
 #include "search/cost.hpp"
+#include "search/score.hpp"
 
 #include "utils/bit_utils.hpp"
 #include "utils/automaton_utils.hpp"
@@ -423,6 +424,7 @@ class doc_iterator : public irs::doc_iterator {
   irs::document doc_;
   irs::frequency freq_;
   irs::cost cost_;
+  irs::score score_;
   pos_iterator pos_;
   const irs::flags& features_;
   const tests::term& data_;
@@ -440,6 +442,9 @@ doc_iterator::doc_iterator(const irs::flags& features, const tests::term& data)
   attrs_.emplace(cost_);
 
   attrs_.emplace(doc_);
+  attrs_.emplace(score_);
+
+  attrs_.emplace(cost_);
 
   if (features.check<irs::frequency>()) {
     attrs_.emplace(freq_);

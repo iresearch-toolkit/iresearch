@@ -60,9 +60,6 @@ term_query::ptr term_query::make(
       continue;
     }
 
-    // get term metadata
-    auto& meta = terms->attributes().get<term_meta>();
-
     // read term attributes
     terms->read();
 
@@ -72,11 +69,6 @@ term_query::ptr term_query::make(
     auto& state = states.insert(segment);
     state.reader = reader;
     state.cookie = terms->cookie();
-
-    // collect cost
-    if (meta) {
-      state.estimation = meta->docs_count;
-    }
 
     collectors.collect(segment, *reader, 0, terms->attributes()); // collect statistics, 0 because only 1 term
   }

@@ -42,15 +42,12 @@ struct reader_term_state {
 
   reader_term_state(reader_term_state&& rhs) noexcept
     : reader(rhs.reader),
-      cookie(std::move(rhs.cookie)),
-      estimation(rhs.estimation) {
+      cookie(std::move(rhs.cookie)) {
     rhs.reader = nullptr;
-    rhs.estimation = 0;
   }
 
   const term_reader* reader{};
   seek_term_iterator::cookie_ptr cookie;
-  cost::cost_t estimation{};
 }; // term_state
 
 //////////////////////////////////////////////////////////////////////////////

@@ -97,6 +97,8 @@ iresearch::range_state& collect_terms(
   state.unscored_docs.reset((irs::doc_limits::min)() + reader.docs_count()); // highest valid doc_id in reader
 
   auto& meta = terms.attributes().get<iresearch::term_meta>(); // get term metadata
+  const decltype(irs::term_meta::docs_count) NO_DOCS = 0;
+  const auto& docs_count = meta ? meta->docs_count : NO_DOCS;
 
   do {
     terms.read(); // read attributes
@@ -108,7 +110,7 @@ iresearch::range_state& collect_terms(
 
     // fill scoring candidates
     scorer.collect(
-      meta ? meta->docs_count : 0,
+      docs_count,
       state.count, // current term offset in state
       state,
       reader,
@@ -116,9 +118,7 @@ iresearch::range_state& collect_terms(
     );
     ++(state.count);
 
-    if (meta) {
-      state.estimation += meta->docs_count;
-    }
+    state.estimation += docs_count;
   } while (terms.next());
 
   return state;

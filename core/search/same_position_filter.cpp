@@ -294,8 +294,6 @@ filter::prepared::ptr by_same_position::prepare(
 
       // find terms
       seek_term_iterator::ptr term = field->iterator();
-      // get term metadata
-      auto& meta = term->attributes().get<term_meta>();
 
       if (!term->seek(branch.second)) {
         if (ord.empty()) {
@@ -314,7 +312,6 @@ filter::prepared::ptr by_same_position::prepare(
       auto& state = term_states.back();
 
       state.cookie = term->cookie();
-      state.estimation = meta ? meta->docs_count : cost::MAX;
       state.reader = field;
     }
 
