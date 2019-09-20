@@ -690,6 +690,14 @@ class term_iterator final : public irs::seek_term_iterator {
     return &block_stack_.back();
   }
 
+  void copy(const byte_type* suffix, size_t suffix_size) {
+    const auto prefix = cur_block_->prefix();
+    const auto size = prefix + suffix_size;
+    term_.oversize(size);
+    term_.reset(size);
+    std::memcpy(term_.data() + prefix, suffix, suffix_size);
+  }
+
   const term_reader* owner_;
   matcher_t matcher_;
   irs::attribute_view attrs_;
@@ -831,6 +839,14 @@ class automaton_term_iterator final : public irs::seek_term_iterator {
     return &block_stack_.back();
   }
 
+  void copy(const byte_type* suffix, size_t suffix_size) {
+    const auto prefix = cur_block_->it.prefix();
+    const auto size = prefix + suffix_size;
+    term_.oversize(size);
+    term_.reset(size);
+    std::memcpy(term_.data() + prefix, suffix, suffix_size);
+  }
+
   const automaton* a_;
   fst::RhoMatcher<fst::fsa::AutomatonMatcher> matcher_;
   const term_reader* owner_;
@@ -871,28 +887,31 @@ bool automaton_term_iterator::next() {
   auto read_suffix = [this, &match, &state](const byte_type* suffix, size_t suffix_size) {
     match = false;
     state = cur_block_->state;
-    matcher_.SetState(state);
 
     auto begin = suffix;
     const auto end = begin + suffix_size;
 
-    for (; begin < end && matcher_.Find(*begin); ++begin) {
+    for (matcher_.SetState(state); begin < end; ++begin) {
+      if (!matcher_.Find(*begin)) {
+        // suffix doesn't match
+        return;
+      }
+
       state = matcher_.Value().nextstate;
       matcher_.SetState(state);
     }
 
+    assert(begin == end);
+
     switch (cur_block_->it.type()) {
       case ET_TERM: {
-        if (begin == end && a_->Final(state)) {
-          const auto prefix = cur_block_->it.prefix();
-          const auto size = prefix + suffix_size;
-          term_.oversize(size);
-          term_.reset(size);
-          std::memcpy(term_.data() + prefix, suffix, suffix_size);
+        if (a_->Final(state)) {
+          copy(suffix, suffix_size);
           match = true;
         }
       } break;
       case ET_BLOCK: {
+        copy(suffix, suffix_size);
         cur_block_ = push_block(cur_block_->it.sub_start(), term_.size(), state);
         cur_block_->it.load(terms_input(), terms_cipher());
       } break;
@@ -1312,18 +1331,14 @@ bool term_iterator::next() {
     sstate_.resize(std::min(sstate_.size(), cur_block_->prefix()));
   }
 
-  auto append_suffix = [this](const byte_type* suffix, size_t suffix_size) {
-    const auto prefix = cur_block_->prefix();
-    const auto size = prefix + suffix_size;
-    term_.oversize(size);
-    term_.reset(size);
-    std::memcpy(term_.data() + prefix, suffix, suffix_size);
+  auto copy_suffix = [this](const byte_type* suffix, size_t suffix_size) {
+    copy(suffix, suffix_size);
   };
 
   // push new block or next term
-  for (cur_block_->next(append_suffix);
+  for (cur_block_->next(copy_suffix);
        EntryType::ET_BLOCK == cur_block_->type();
-       cur_block_->next(append_suffix)) {
+       cur_block_->next(copy_suffix)) {
     cur_block_ = push_block(cur_block_->sub_start(), term_.size());
     cur_block_->load(terms_input(), terms_cipher());
   }
