@@ -288,6 +288,7 @@ struct MinMaxTransition {
 };
 
 using Automaton = VectorFst<Transition>;
+using AutomatonMatcher = SortedMatcher<Automaton>;
 using MinMaxAutomaton = VectorFst<MinMaxTransition>;
 
 constexpr const int32_t kEps   = 0;        // match all + don't consume symbol

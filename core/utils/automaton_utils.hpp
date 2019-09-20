@@ -165,19 +165,19 @@ bool accept(const automaton& a, Matcher& matcher, const irs::basic_string_ref<Ch
   matcher.SetState(state);
 
   auto begin = target.begin();
-  auto end = target.end();
+  const auto end = target.end();
+
   for (; begin < end && matcher.Find(*begin); ++begin) {
     state = matcher.Value().nextstate;
     matcher.SetState(state);
   }
 
-  return begin == end && matcher.Final(state);
+  return begin == end && a.Final(state);
 }
 
 template<typename Char>
 bool accept(const automaton& a, const irs::basic_string_ref<Char>& target) {
-  typedef fst::SortedMatcher<fst::fsa::Automaton> sorted_matcher_t;
-  typedef fst::RhoMatcher<sorted_matcher_t> matcher_t;
+  typedef fst::RhoMatcher<fst::fsa::AutomatonMatcher> matcher_t;
 
   // FIXME optimize rho label lookup (just check last arc)
   matcher_t matcher(a, fst::MatchType::MATCH_INPUT, fst::fsa::kRho);
@@ -241,8 +241,7 @@ class automaton_term_iterator final : public seek_term_iterator {
   }
 
  private:
-  typedef fst::SortedMatcher<fst::fsa::Automaton> sorted_matcher_t;
-  typedef fst::RhoMatcher<sorted_matcher_t> matcher_t;
+  typedef fst::RhoMatcher<fst::fsa::AutomatonMatcher> matcher_t;
 
   bool accept() { return irs::accept(*a_, matcher_, *value_); }
 

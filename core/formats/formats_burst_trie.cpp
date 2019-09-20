@@ -647,7 +647,7 @@ class term_iterator final : public irs::seek_term_iterator {
   }; // arc
 
   typedef std::vector<arc> seek_state_t;
-  typedef std::deque<block_iterator> block_stack_t; // does not invalidate addresses
+  typedef std::deque<block_iterator> block_stack_t;
 
   ptrdiff_t seek_cached(
     size_t& prefix, arc::stateid_t& state,
@@ -671,12 +671,13 @@ class term_iterator final : public irs::seek_term_iterator {
   /// common bytes
   SeekResult seek_equal(const bytes_ref& term);
 
-  inline block_iterator* pop_block() noexcept {
+  block_iterator* pop_block() noexcept {
     block_stack_.pop_back();
+    assert(!block_stack_.empty());
     return &block_stack_.back();
   }
 
-  inline block_iterator* push_block(byte_weight&& out, size_t prefix) {
+  block_iterator* push_block(byte_weight&& out, size_t prefix) {
     // ensure final weight correctess
     assert(out.Size() >= MIN_WEIGHT_SIZE);
 
@@ -684,7 +685,7 @@ class term_iterator final : public irs::seek_term_iterator {
     return &block_stack_.back();
   }
 
-  inline block_iterator* push_block(uint64_t start, size_t prefix) {
+  block_iterator* push_block(uint64_t start, size_t prefix) {
     block_stack_.emplace_back(start, prefix);
     return &block_stack_.back();
   }
@@ -709,16 +710,22 @@ class automaton_term_iterator final : public irs::seek_term_iterator {
  public:
   explicit automaton_term_iterator(const term_reader& owner, const automaton& a)
     : a_(&a),
+      matcher_(a_, fst::MatchType::MATCH_INPUT, fst::fsa::kRho),
       owner_(&owner),
       attrs_(2), // version10::term_meta + frequency
       cur_block_(nullptr) {
     assert(owner_);
+    attrs_.emplace(state_);
+
+    if (owner_->field_.features.check<frequency>()) {
+      attrs_.emplace(freq_);
+    }
   }
 
   virtual void read() override {
     // read attributes
     assert(cur_block_);
-    cur_block_->load_data(owner_->field_, attrs_, state_, *owner_->owner_->pr_);
+    cur_block_->it.load_data(owner_->field_, attrs_, state_, *owner_->owner_->pr_);
   }
   virtual bool next() override;
   const irs::attribute_view& attributes() const noexcept override {
@@ -765,7 +772,7 @@ class automaton_term_iterator final : public irs::seek_term_iterator {
     const field_meta& field = owner_->field_;
     postings_reader& pr = *owner_->owner_->pr_;
     if (cur_block_) {
-      cur_block_->load_data(field, attrs_, state_, pr); // read attributes
+      cur_block_->it.load_data(field, attrs_, state_, pr); // read attributes
     }
     return pr.iterator(field.features, attrs_, features);
   }
@@ -790,31 +797,46 @@ class automaton_term_iterator final : public irs::seek_term_iterator {
   }
 
  private:
-  typedef std::deque<block_iterator> block_stack_t; // does not invalidate addresses
+  struct block_state {
+    block_state(byte_weight&& out, size_t prefix, automaton::StateId state)
+      : it(std::move(out), prefix), state(state) {
+    }
 
-  inline block_iterator* pop_block() noexcept {
+    block_state(uint64_t start, size_t prefix, automaton::StateId state)
+      : it(start, prefix), state(state) {
+    }
+
+    block_iterator it;
+    automaton::StateId state;
+  };
+
+  typedef std::deque<block_state> block_stack_t;
+
+  block_state* pop_block() noexcept {
     block_stack_.pop_back();
+    assert(!block_stack_.empty());
     return &block_stack_.back();
   }
 
-  inline block_iterator* push_block(byte_weight&& out, size_t prefix) {
+  block_state* push_block(byte_weight&& out, size_t prefix, automaton::StateId state) {
     // ensure final weight correctess
     assert(out.Size() >= MIN_WEIGHT_SIZE);
 
-    block_stack_.emplace_back(std::move(out), prefix);
+    block_stack_.emplace_back(std::move(out), prefix, state);
     return &block_stack_.back();
   }
 
-  inline block_iterator* push_block(uint64_t start, size_t prefix) {
-    block_stack_.emplace_back(start, prefix);
+  block_state* push_block(uint64_t start, size_t prefix, automaton::StateId state) {
+    block_stack_.emplace_back(start, prefix, state);
     return &block_stack_.back();
   }
 
   const automaton* a_;
+  fst::RhoMatcher<fst::fsa::AutomatonMatcher> matcher_;
   const term_reader* owner_;
   irs::attribute_view attrs_;
   block_stack_t block_stack_;
-  block_iterator* cur_block_;
+  block_state* cur_block_;
   mutable version10::term_meta state_;
   frequency freq_;
   mutable index_input::ptr terms_in_;
@@ -828,8 +850,8 @@ bool automaton_term_iterator::next() {
     if (term_.empty()) {
       // iterator at the beginning
       const auto& fst = *owner_->fst_;
-      cur_block_ = push_block(fst.Final(fst.Start()), 0);
-      cur_block_->load(terms_input(), terms_cipher());
+      cur_block_ = push_block(fst.Final(fst.Start()), 0, a_->Start());
+      cur_block_->it.load(terms_input(), terms_cipher());
     } else {
       // seek to the term with the specified state was called from
       // term_iterator::seek(const bytes_ref&, const attribute&),
@@ -843,53 +865,74 @@ bool automaton_term_iterator::next() {
     }
   }
 
-  // pop finished blocks
-  while (cur_block_->block_end()) {
-    if (cur_block_->sub_count() > 0) {
-      cur_block_->next_block();
-      cur_block_->load(terms_input(), terms_cipher());
-    } else if (&block_stack_.front() == cur_block_) { // root
-      term_.reset();
-      cur_block_->reset();
-      return false;
-    } else {
-      const uint64_t start = cur_block_->start();
-      cur_block_ = pop_block();
-      state_ = cur_block_->state();
-      if (cur_block_->dirty() || cur_block_->sub_start() != start) {
-        // here we're currently at non block that was not loaded yet
-        cur_block_->scan_to_block(term_); // to sub-block
-        cur_block_->load(terms_input(), terms_cipher());
-        cur_block_->scan_to_block(start);
-      }
-    }
-  }
+  bool match;
+  automaton::StateId state;
 
-  const byte_type* begin;
-  size_t size;
-  auto append_suffix = [&begin, &size](const byte_type* suffix, size_t suffix_size) {
-    begin = suffix;
-    size = suffix_size;
-//    const auto prefix = cur_block_->prefix();
-//    const auto size = prefix + suffix_size;
-//    term_.oversize(size);
-//    term_.reset(size);
-//    std::memcpy(term_.data() + prefix, suffix, suffix_size);
+  auto read_suffix = [this, &match, &state](const byte_type* suffix, size_t suffix_size) {
+    match = false;
+    state = cur_block_->state;
+    matcher_.SetState(state);
+
+    auto begin = suffix;
+    const auto end = begin + suffix_size;
+
+    for (; begin < end && matcher_.Find(*begin); ++begin) {
+      state = matcher_.Value().nextstate;
+      matcher_.SetState(state);
+    }
+
+    switch (cur_block_->it.type()) {
+      case ET_TERM: {
+        if (begin == end && a_->Final(state)) {
+          const auto prefix = cur_block_->it.prefix();
+          const auto size = prefix + suffix_size;
+          term_.oversize(size);
+          term_.reset(size);
+          std::memcpy(term_.data() + prefix, suffix, suffix_size);
+          match = true;
+        }
+      } break;
+      case ET_BLOCK: {
+        cur_block_ = push_block(cur_block_->it.sub_start(), term_.size(), state);
+        cur_block_->it.load(terms_input(), terms_cipher());
+      } break;
+      default: {
+        assert(false);
+      } break;
+    }
   };
 
-  while (true) {
+  for (;;) {
+    // pop finished blocks
+    while (cur_block_->it.block_end()) {
+      if (cur_block_->it.sub_count() > 0) {
+        cur_block_->it.next_block();
+        cur_block_->it.load(terms_input(), terms_cipher());
+      } else if (&block_stack_.front() == cur_block_) { // root
+        term_.reset();
+        cur_block_->it.reset();
+        return false;
+      } else {
+        const uint64_t start = cur_block_->it.start();
+        cur_block_ = pop_block();
+        state_ = cur_block_->it.state();
+        if (cur_block_->it.dirty() || cur_block_->it.sub_start() != start) {
+          // here we're currently at non block that was not loaded yet
+          cur_block_->it.scan_to_block(term_); // to sub-block
+          cur_block_->it.load(terms_input(), terms_cipher());
+          cur_block_->it.scan_to_block(start);
+        }
+      }
+    }
 
+    do {
+      cur_block_->it.next(read_suffix);
+
+      if (match) {
+        return true;
+      }
+    } while (!cur_block_->it.block_end());
   }
-
-  // push new block or next term
-  for (cur_block_->next(append_suffix);
-       EntryType::ET_BLOCK == cur_block_->type();
-       cur_block_->next(append_suffix)) {
-    cur_block_ = push_block(cur_block_->sub_start(), term_.size());
-    cur_block_->load(terms_input(), terms_cipher());
-  }
-
-  return true;
 }
 
 // -----------------------------------------------------------------------------

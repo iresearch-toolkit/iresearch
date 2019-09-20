@@ -185,24 +185,22 @@ filter::prepared::ptr by_wildcard::prepare(
       continue;
     }
 
-    automaton_term_iterator it(acceptor, reader->iterator());
+    auto it = reader->iterator(acceptor);
 
-    auto& meta = it.attributes().get<term_meta>(); // get term metadata
+    auto& meta = it->attributes().get<term_meta>(); // get term metadata
     const decltype(irs::term_meta::docs_count) NO_DOCS = 0;
     const auto& docs_count = meta ? meta->docs_count : NO_DOCS;
 
-    if (it.next()) {
+    if (it->next()) {
       auto& state = states.insert(segment);
       state.reader = reader;
 
       do {
-        // read term attributes
-        it.read();
+        it->read(); // read term attributes
 
-        // get state for current term
-        state.cookies.emplace_back(it.cookie());
+        state.cookies.emplace_back(it->cookie());
         state.estimation += docs_count;
-      } while (it.next());
+      } while (it->next());
     }
   }
 
