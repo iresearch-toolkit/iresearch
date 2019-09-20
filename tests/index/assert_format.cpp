@@ -763,7 +763,8 @@ void assert_term(
 void assert_terms_next(
     const irs::term_reader& expected_term_reader,
     const irs::term_reader& actual_term_reader,
-    const irs::flags& features) {
+    const irs::flags& features,
+    const irs::automaton* acceptor) {
   // check term reader
   ASSERT_EQ((expected_term_reader.min)(), (actual_term_reader.min)());
   ASSERT_EQ((expected_term_reader.max)(), (actual_term_reader.max)());
@@ -776,8 +777,8 @@ void assert_terms_next(
   irs::bstring actual_max_buf;
   size_t actual_size = 0;
 
-  auto expected_term = expected_term_reader.iterator();
-  auto actual_term = actual_term_reader.iterator();
+  auto expected_term = acceptor ? expected_term_reader.iterator(*acceptor) : expected_term_reader.iterator();
+  auto actual_term = acceptor ? actual_term_reader.iterator(*acceptor) : actual_term_reader.iterator();
   for (; actual_term->next(); ++actual_size) {
     ASSERT_TRUE(expected_term->next());
 
@@ -802,6 +803,7 @@ void assert_terms_seek(
     const irs::term_reader& expected_term_reader,
     const irs::term_reader& actual_term_reader,
     const irs::flags& features,
+    const irs::automaton* acceptor,
     size_t lookahead /* = 10 */) {
   // check term reader
   ASSERT_EQ((expected_term_reader.min)(), (actual_term_reader.min)());
@@ -809,8 +811,8 @@ void assert_terms_seek(
   ASSERT_EQ(expected_term_reader.size(), actual_term_reader.size());
   ASSERT_EQ(expected_term_reader.docs_count(), actual_term_reader.docs_count());
 
-  auto expected_term = expected_term_reader.iterator();
-  auto actual_term_with_state = actual_term_reader.iterator();
+  auto expected_term = acceptor ? expected_term_reader.iterator(*acceptor) : expected_term_reader.iterator();
+  auto actual_term_with_state = acceptor ? actual_term_reader.iterator(*acceptor) : actual_term_reader.iterator();
   for (; expected_term->next();) {
     // seek with state
     {
@@ -917,7 +919,8 @@ void assert_index(
   const index_t& expected_index,
   const irs::index_reader& actual_index_reader,
   const irs::flags& features,
-  size_t skip /*= 0*/
+  size_t skip /*= 0*/,
+  const irs::automaton* acceptor /*=nullptr*/
 ) {
   // check number of segments
   ASSERT_EQ(expected_index.size(), actual_index_reader.size());
@@ -956,8 +959,8 @@ void assert_index(
       ASSERT_NE(nullptr, expected_field);
       auto features_to_check = features & expected_field->features;
 
-      assert_terms_next(*expected_term_reader, *actual_term_reader, features_to_check);
-      assert_terms_seek(*expected_term_reader, *actual_term_reader, features_to_check);
+      assert_terms_next(*expected_term_reader, *actual_term_reader, features_to_check, acceptor);
+      assert_terms_seek(*expected_term_reader, *actual_term_reader, features_to_check, acceptor);
     }
     ++i;
   }
@@ -968,10 +971,11 @@ void assert_index(
     irs::format::ptr codec,
     const index_t& expected_index,
     const irs::flags& features,
-    size_t skip /*= 0*/) {
+    size_t skip /*= 0*/,
+    const irs::automaton* acceptor /*= nullptr*/) {
   auto actual_index_reader = irs::directory_reader::open(dir, codec);
 
-  assert_index(expected_index, actual_index_reader, features, skip);
+  assert_index(expected_index, actual_index_reader, features, skip, acceptor);
 }
 
 NS_END // tests

@@ -394,19 +394,22 @@ void assert_term(
 void assert_terms_next(
   const irs::term_reader& expected_term_reader,
   const irs::term_reader& actual_term_reader,
+  const irs::automaton* acceptor,
   const irs::flags& features);
 
 void assert_terms_seek(
   const irs::term_reader& expected_term_reader,
   const irs::term_reader& actual_term_reader,
   const irs::flags& features,
+  const irs::automaton* acceptor,
   size_t lookahead = 10); // number of steps to iterate after the seek
 
 void assert_index(
   const index_t& expected_index,
   const irs::index_reader& actual_index,
   const irs::flags& features,
-  size_t skip = 0 // do not validate the first 'skip' segments
+  size_t skip = 0, // do not validate the first 'skip' segments
+  const irs::automaton* acceptor = nullptr
 );
 
 void assert_index(
@@ -414,7 +417,8 @@ void assert_index(
   irs::format::ptr codec,
   const index_t& index,
   const irs::flags& features,
-  size_t skip = 0 // no not validate the first 'skip' segments
+  size_t skip = 0, // no not validate the first 'skip' segments
+  const irs::automaton* acceptor  = nullptr
 );
 
 } // tests

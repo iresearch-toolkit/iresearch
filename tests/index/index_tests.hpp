@@ -200,8 +200,8 @@ class index_test_base : public virtual test_param_base<index_test_context> {
     return irs::directory_reader::open(*dir_, codec_);
   }
 
-  void assert_index(const irs::flags& features, size_t skip = 0) const {
-    tests::assert_index(dir(), codec_, index(), features, skip);
+  void assert_index(const irs::flags& features, size_t skip = 0, const irs::automaton* acceptor = nullptr) const {
+    tests::assert_index(dir(), codec_, index(), features, skip, acceptor);
   }
 
   virtual void SetUp() {
