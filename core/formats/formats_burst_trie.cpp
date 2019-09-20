@@ -21,28 +21,9 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "formats_burst_trie.hpp"
-#include "format_utils.hpp"
 
-#include "analysis/token_attributes.hpp"
-
-#include "index/iterators.hpp"
-#include "index/index_meta.hpp"
-#include "index/field_meta.hpp"
-#include "index/file_names.hpp"
-#include "index/index_meta.hpp"
-
-#include "utils/automaton.hpp"
-#include "utils/directory_utils.hpp"
-#include "utils/timer_utils.hpp"
-#include "utils/fst.hpp"
-#include "utils/bit_utils.hpp"
-#include "utils/bitset.hpp"
-#include "utils/attributes.hpp"
-#include "utils/string.hpp"
-#include "utils/log.hpp"
-#include "utils/fst_matcher.hpp"
+#include <cassert>
 
 #if defined(_MSC_VER)
   #pragma warning(disable : 4291)
@@ -50,7 +31,7 @@
   // NOOP
 #endif
 
-#include <fst/matcher.h>
+#include "fst/matcher.h"
 
 #if defined(_MSC_VER)
   #pragma warning(default: 4291)
@@ -65,7 +46,7 @@
   // NOOP
 #endif
 
-#include <boost/crc.hpp>
+#include "boost/crc.hpp"
 
 #if defined(_MSC_VER)
   #pragma warning(default: 4244)
@@ -74,14 +55,31 @@
   // NOOP
 #endif
 
-#include <cassert>
-
 #if defined (__GNUC__)
   #pragma GCC diagnostic push
   #if (__GNUC__ >= 7)
     #pragma GCC diagnostic ignored "-Wimplicit-fallthrough=0"
   #endif
 #endif
+
+#include "shared.hpp"
+#include "format_utils.hpp"
+#include "analysis/token_attributes.hpp"
+#include "index/iterators.hpp"
+#include "index/index_meta.hpp"
+#include "index/field_meta.hpp"
+#include "index/file_names.hpp"
+#include "index/index_meta.hpp"
+#include "utils/automaton.hpp"
+#include "utils/directory_utils.hpp"
+#include "utils/timer_utils.hpp"
+#include "utils/fst.hpp"
+#include "utils/bit_utils.hpp"
+#include "utils/bitset.hpp"
+#include "utils/attributes.hpp"
+#include "utils/string.hpp"
+#include "utils/log.hpp"
+#include "utils/fst_matcher.hpp"
 
 NS_LOCAL
 

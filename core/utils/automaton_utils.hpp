@@ -184,9 +184,9 @@ bool accept(const automaton& a, const irs::basic_string_ref<Char>& target) {
   return accept(a, matcher, target);
 }
 
-class intersect_term_iterator final : public seek_term_iterator {
+class automaton_term_iterator final : public seek_term_iterator {
  public:
-  intersect_term_iterator(const automaton& a, seek_term_iterator::ptr&& it)
+  automaton_term_iterator(const automaton& a, seek_term_iterator::ptr&& it)
     : a_(&a), matcher_(a_, fst::MatchType::MATCH_INPUT, fst::fsa::kRho), it_(std::move(it)) {
     assert(it_);
     value_ = &it_->value();

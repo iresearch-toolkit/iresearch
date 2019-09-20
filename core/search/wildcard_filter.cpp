@@ -185,7 +185,7 @@ filter::prepared::ptr by_wildcard::prepare(
       continue;
     }
 
-    intersect_term_iterator it(acceptor, reader->iterator());
+    automaton_term_iterator it(acceptor, reader->iterator());
 
     auto& meta = it.attributes().get<term_meta>(); // get term metadata
     const decltype(irs::term_meta::docs_count) NO_DOCS = 0;

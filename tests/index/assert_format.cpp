@@ -566,7 +566,7 @@ irs::seek_term_iterator::ptr term_reader::iterator() const {
 
 irs::seek_term_iterator::ptr term_reader::iterator(const irs::automaton& a) const {
   return irs::memory::make_managed<irs::seek_term_iterator>(
-    irs::memory::make_unique<irs::intersect_term_iterator>(a, iterator())
+    irs::memory::make_unique<irs::automaton_term_iterator>(a, iterator())
   );
 }
 
